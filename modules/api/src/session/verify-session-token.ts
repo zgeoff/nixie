@@ -2,6 +2,7 @@ import { withWriteTransaction } from '@heynixie/log';
 import { writeRefusal } from '../refusal/write-refusal';
 import type { APIContext, APITables, Identity } from '../types';
 import { deriveSecretHash } from '../utils/derive-secret-hash';
+import { isReadOnlyToken } from './is-read-only-token';
 
 // Every token nixie never issued shares this external ID, which no session ID equals, so a stranger
 // with fresh random tokens still gets one refusal per interval.
@@ -13,6 +14,10 @@ export async function verifySessionToken(
 ): Promise<Identity | null> {
   if (token === undefined || token === '') {
     return null;
+  }
+
+  if (isReadOnlyToken(context.settings, token)) {
+    return buildReadOnlyCaller(context.clock.now());
   }
 
   const tokenHash = deriveSecretHash(token);
@@ -36,6 +41,18 @@ export async function verifySessionToken(
     label: row.label,
     pairedAt: row.paired_at,
     lastSeenAt,
+  };
+}
+
+// A read-only caller writes nothing, not even its last seen time, and never lapses: the deployment
+// config decides which tokens hold, so removing a hash there revokes its token.
+function buildReadOnlyCaller(now: number): Identity {
+  return {
+    identityID: 'read-only-token',
+    channel: 'client',
+    label: 'read-only token',
+    pairedAt: now,
+    lastSeenAt: now,
   };
 }
 

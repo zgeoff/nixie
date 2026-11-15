@@ -46,6 +46,7 @@ test('it reads every section, with the default of each setting the file leaves o
       logLevel: 'info',
     },
     owner: { name: null, pronouns: { they: 'they', their: 'their' } },
+    api: { readOnlyTokenHashes: [] },
     agent: { names: [] },
     compaction: { threshold: 0.8, headsUp: 0.7, summaryTokens: 2000 },
     sandbox: { adapter: 'imp' },

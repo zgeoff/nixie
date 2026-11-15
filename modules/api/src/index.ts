@@ -1,4 +1,5 @@
 export { apiProjections } from './api/api-projections';
+export { apiConfigSchema } from './session/api-config-schema';
 export { createAPIApp } from './api/create-api-app';
 export { createEnrolmentCode } from './enrolment/create-enrolment-code';
 export { createFirstEnrolmentCode } from './enrolment/create-first-enrolment-code';

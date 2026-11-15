@@ -27,6 +27,11 @@ import { previewCheckout } from './preview/preview-checkout';
 import { readPreviewEndpoints } from './preview/read-preview-endpoints';
 import type { PullRequest } from './preview/read-pull-request';
 import { readPullRequest } from './preview/read-pull-request';
+import { buildProdEndpoints } from './prod/build-prod-endpoints';
+import { readProdCall } from './prod/read-prod-call';
+import { readProdErrors } from './prod/read-prod-errors';
+import { readProdHealth } from './prod/read-prod-health';
+import { readProdVersion } from './prod/read-prod-version';
 import { readConversationTurn } from './read-conversation-turn';
 import { runHostCLI } from './run-host-cli';
 
@@ -37,14 +42,20 @@ const sessionsSchema = z.array(
 const conversationTurnSchema = z.strictObject({ records: z.array(conversationRecordSchema) });
 const harnessPath = join(import.meta.dir, 'harness', 'run-verify-harness.ts');
 
+// The prod reads leave out each record's and each task's content, which is the owner's data.
+const conversationPageSchema = z.object({ records: z.array(z.unknown()) });
+const taskListSchema = z.object({ tasks: z.array(z.unknown()) });
+const prodReadPaths = ['/rpc/conversation/read', '/rpc/tasks/list'] as const;
+
 const refusalHint =
   'This target refuses the command. Leave it undone, skip `done` for this feature, and report the command you needed: add the triage label to the pull request, or report it to the owner.';
 
 // The registry's name is not `nixie`: gunshi reads a command group named like the program as the
 // program itself.
 export function createVerifyRegistry(): Wringer {
+  const env = process.env;
   const pullRequest = makeCachedRead(readPullRequest);
-  const previewHost = createPreviewHost(process.env, pullRequest);
+  const previewHost = createPreviewHost(env, pullRequest);
 
   return createWringer({ name: 'nixie-verify' })
     .use(browser({}))
@@ -98,7 +109,26 @@ export function createVerifyRegistry(): Wringer {
         http: () => ({ healthPath: '/health/ready' }),
       },
     })
+    .target('prod', {
+      mode: 'attach',
+      access: 'read-only',
+      refusalHint,
+      host: local(),
+      endpoints: () => buildProdEndpoints(env),
+
+      // With no web origin, as in the deploy job, the target runs the doctor's cluster checks alone.
+      drivers:
+        buildProdEndpoints(env)['web'] === undefined
+          ? {}
+          : {
+              http: () => ({
+                healthPath: '/health/ready',
+                readOnly: { allow: prodReadPaths.map((path) => ({ method: 'POST', path })) },
+              }),
+            },
+    })
     .secret('NIXIE_PREVIEW_SSH', 'NIXIE_PREVIEW_IMP_EXEC')
+    .secret('NIXIE_PROD_TOKEN', 'NIXIE_PROD_KUBECONFIG')
     .action({
       name: 'enrol-code',
       summary:
@@ -211,8 +241,82 @@ export function createVerifyRegistry(): Wringer {
         return listed;
       },
     })
+    .command({
+      path: ['prod', 'conversation'],
+      summary:
+        "Check that prod's conversation answers a read with the read-only token, and count the records it returned",
+      effect: 'read',
+      args: z.strictObject({}),
+      data: z.strictObject({ recordCount: z.int().nonnegative() }),
+      run: async (_args, ctx) => {
+        refuseOffProd(ctx.target, 'prod conversation');
+
+        const answer = await readProdCall(ctx.drivers.http, env, '/rpc/conversation/read', {
+          thread: 'conversation',
+          limit: 5,
+        });
+
+        const page = conversationPageSchema.parse(answer);
+
+        return { recordCount: page.records.length };
+      },
+    })
+    .command({
+      path: ['prod', 'tasks'],
+      summary:
+        "Check that prod's task list answers a read with the read-only token, and count its tasks",
+      effect: 'read',
+      args: z.strictObject({}),
+      data: z.strictObject({ taskCount: z.int().nonnegative() }),
+      run: async (_args, ctx) => {
+        refuseOffProd(ctx.target, 'prod tasks');
+
+        const answer = await readProdCall(ctx.drivers.http, env, '/rpc/tasks/list', {});
+
+        const listed = taskListSchema.parse(answer);
+
+        return { taskCount: listed.tasks.length };
+      },
+    })
+    .command({
+      path: ['prod', 'health'],
+      summary: "Check that prod's nixie reports itself ready",
+      effect: 'read',
+      args: z.strictObject({}),
+      data: z.strictObject({ status: z.string() }),
+      run: (_args, ctx) => {
+        refuseOffProd(ctx.target, 'prod health');
+
+        return readProdHealth(env);
+      },
+    })
+    .check({
+      name: 'prod-version',
+      targets: ['prod'],
+      input: z.strictObject({}),
+      data: z.strictObject({ version: z.string() }),
+      timeoutMs: 30_000,
+      run: () => readProdVersion(env),
+    })
+    .check({
+      name: 'prod-health',
+      targets: ['prod'],
+      input: z.strictObject({}),
+      data: z.strictObject({ status: z.string() }),
+      timeoutMs: 30_000,
+      run: () => readProdHealth(env),
+    })
+    .check({
+      name: 'prod-errors',
+      targets: ['prod'],
+      input: z.strictObject({}),
+      data: z.strictObject({ errorLines: z.int().nonnegative() }),
+      timeoutMs: 30_000,
+      run: () => readProdErrors(env),
+    })
     .check({
       name: 'nixie',
+      targets: ['local', 'preview'],
       input: z.strictObject({}),
       data: z.strictObject({ commit: z.string() }),
 
@@ -308,6 +412,17 @@ function refuseHarnessless(target: string, command: string): void {
 function throwRefusal(refusal: string | null, data: unknown): void {
   if (refusal !== null) {
     throw new WringerError('check-failed', { message: refusal, data });
+  }
+}
+
+// The prod reads go through the read-only token and the prod cluster's kubeconfig, which only the
+// prod target uses.
+function refuseOffProd(target: string, command: string): void {
+  if (target !== 'prod') {
+    throw new WringerError('usage', {
+      message: `\`${command}\` reads production nixie, which only the prod target reaches`,
+      hint: 'Run the command with `--target prod`.',
+    });
   }
 }
 

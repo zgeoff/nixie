@@ -63,6 +63,18 @@ first paired time and encrypts its label, and the identity row points at that re
 enrolment record, which the reset deleted. The session's enrol, label and revoke history goes with
 the old log.
 
+## Read-only tokens
+
+A read-only token lets a check outside nixie read the conversation and the task list, and never
+write. The deployment config lists the SHA-256 hash of each token under
+`api.read_only_token_hashes`, so the deployment repo holds the hash, and the token itself stays with
+the check. nixie never issues a read-only token, and no row of the identity record holds one.
+
+The API checks the token before any procedure runs. A call with a read-only token reaches only
+`conversation.read`, `tasks.list` and `tasks.read`, and the API answers any other path with a 403.
+The token then resolves to one fixed read-only caller, without a write: no last seen time and no
+refusal. The token never lapses. Removing its hash from the config and restarting nixie revokes it.
+
 ## Passkeys
 
 The `passkeys` procedures register, list and revoke the passkeys that approve a high-risk proposal,

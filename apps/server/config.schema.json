@@ -71,6 +71,20 @@
       },
       "additionalProperties": false
     },
+    "api": {
+      "type": "object",
+      "properties": {
+        "read_only_token_hashes": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
     "agent": {
       "type": "object",
       "properties": {

@@ -2,6 +2,8 @@ import { clientHeaderName, sessionCookieName } from '@heynixie/contract';
 import { RPCHandler } from '@orpc/server/fetch';
 import { ResponseHeadersPlugin } from '@orpc/server/plugins';
 import { Elysia } from 'elysia';
+import { isReadOnlyProcedure } from '../session/is-read-only-procedure';
+import { isReadOnlyToken } from '../session/is-read-only-token';
 import type { APIContext, APIRequestContext, ReadViewMemory } from '../types';
 import { createAPIRouter } from './create-api-router';
 
@@ -31,8 +33,17 @@ export function createAPIApp(
         return new Response('the client header is missing', { status: 403 });
       }
 
+      const session = findSessionToken(request.headers);
+
+      if (
+        isReadOnlyToken(context.settings, session.sessionToken) &&
+        !isReadOnlyProcedure(new URL(request.url).pathname)
+      ) {
+        return new Response('this token only reads', { status: 403 });
+      }
+
       const result = await handler.handle(request, {
-        context: findSessionToken(request.headers),
+        context: session,
         prefix: '/rpc',
       });
 

@@ -9,6 +9,9 @@
   // the shared oxlint config loads the plugin, the synced start-up stub in .claude/ imports
   // the package, and only the hooks run diet, so knip sees none of them
   "ignoreDependencies": ["@stylistic/eslint-plugin", "@zgeoff/agent-hooks", "@zgeoff/diet"],
+  // the prod target reads the cluster with the kubectl on the caller's PATH, which no package
+  // provides
+  "ignoreBinaries": ["kubectl"],
   "workspaces": {
     // a test spawns the stub program as its own process, so no import reaches it
     "modules/log": { "entry": ["src/test-utils/run-stub-*.ts"] },

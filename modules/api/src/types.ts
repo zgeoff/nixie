@@ -25,6 +25,9 @@ export interface APISettings {
 
   readonly lastSeenIntervalMs: number;
 
+  // SHA-256 hashes, in hex, of the tokens that may make only the reads of a read-only caller
+  readonly readOnlyTokenHashes: readonly string[];
+
   readonly isBackupEnabled: boolean;
 
   readonly taskDirectory: readonly TaskProfile[];

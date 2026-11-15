@@ -3,15 +3,22 @@ import { readRecords } from '@heynixie/log';
 import { createDeviceSession } from '../test-utils/create-device-session';
 import { startTestAPI } from '../test-utils/start-test-api';
 import type { APITables } from '../types';
+import { defaultAPISettings } from '../utils/default-api-settings';
+import { deriveSecretHash } from '../utils/derive-secret-hash';
 import { writeSessionRevocation } from '../utils/write-session-revocation';
 import { verifySessionToken } from './verify-session-token';
 
 async function setupTest() {
-  const api = await startTestAPI();
+  const readOnlyToken = Buffer.from(crypto.getRandomValues(new Uint8Array(32))).toString('hex');
+
+  const api = await startTestAPI({
+    ...defaultAPISettings,
+    readOnlyTokenHashes: [deriveSecretHash(readOnlyToken)],
+  });
 
   const db = api.writer.db.$extendTables<APITables>();
 
-  return { ...api, db };
+  return { ...api, db, readOnlyToken };
 }
 
 test('it resolves a live session to its row of the identity record', async () => {
@@ -199,4 +206,45 @@ test('it refuses a revoked session and an unknown token each under its own ID', 
     { channel: 'client', externalID: 'unknown-token', refusedAt: 1_000_000 },
     { channel: 'client', externalID: session.sessionID, refusedAt: 1_000_000 },
   ]);
+});
+
+test('it resolves a read-only token to the read-only caller', async () => {
+  const ctx = await setupTest();
+  const caller = await verifySessionToken(ctx.context, ctx.readOnlyToken);
+
+  expect(caller).toStrictEqual({
+    identityID: 'read-only-token',
+    channel: 'client',
+    label: 'read-only token',
+    pairedAt: 1_000_000,
+    lastSeenAt: 1_000_000,
+  });
+});
+
+test('it writes no identity row and no refusal for a read-only token', async () => {
+  const ctx = await setupTest();
+
+  await verifySessionToken(ctx.context, ctx.readOnlyToken);
+
+  const identities = await ctx.db.selectFrom('identities').select('identity_id').execute();
+
+  const refusals = await readRecords(ctx.context.log, {
+    afterSequence: 0,
+    kinds: ['identity.refused'],
+  });
+
+  expect({ identities, refusals }).toStrictEqual({ identities: [], refusals: [] });
+});
+
+test('it refuses a token whose hash the settings list no longer', async () => {
+  const ctx = await setupTest();
+
+  const token = ctx.readOnlyToken;
+
+  const caller = await verifySessionToken(
+    { ...ctx.context, settings: { ...ctx.context.settings, readOnlyTokenHashes: [] } },
+    token,
+  );
+
+  expect(caller).toBeNull();
 });

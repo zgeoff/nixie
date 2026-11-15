@@ -93,6 +93,7 @@ test('it serves the API with the settings the test gives', async () => {
     sessionIdleMs: 3_600_000,
     refusalIntervalMs: 60_000,
     lastSeenIntervalMs: 1000,
+    readOnlyTokenHashes: [],
     isBackupEnabled: false,
     taskDirectory: [],
   });
@@ -102,6 +103,7 @@ test('it serves the API with the settings the test gives', async () => {
     sessionIdleMs: 3_600_000,
     refusalIntervalMs: 60_000,
     lastSeenIntervalMs: 1000,
+    readOnlyTokenHashes: [],
     isBackupEnabled: false,
     taskDirectory: [],
   });

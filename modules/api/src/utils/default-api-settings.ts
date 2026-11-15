@@ -14,6 +14,7 @@ export const defaultAPISettings: APISettings = {
   sessionIdleMs: 30 * 24 * 60 * 60 * 1000,
   refusalIntervalMs: 60 * 60 * 1000,
   lastSeenIntervalMs: 60 * 1000,
+  readOnlyTokenHashes: [],
   isBackupEnabled: true,
   approvals: defaultApprovalSettings,
   taskDirectory: [
