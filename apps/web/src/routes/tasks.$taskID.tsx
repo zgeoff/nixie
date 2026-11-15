@@ -1,10 +1,9 @@
-import { Link, createFileRoute, useLocation, useRouter } from '@tanstack/react-router';
+import { createFileRoute, useLocation, useRouter } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import { SignedInPage } from '../components/signed-in-page';
 import { TaskPage } from '../components/task-page';
 import { parseLinkedMessage } from '../conversation/parse-linked-message';
 import { readRouteSession } from '../conversation/read-route-session';
-import { css } from '../styled-system/css';
 
 export const Route = createFileRoute('/tasks/$taskID')({
   component: Task,
@@ -25,23 +24,7 @@ function Task(): ReactNode {
       }}
       session={data.session}
     >
-      <TaskPage
-        {...messageOptions}
-        key={params.taskID}
-        navigation={
-          <nav className={css({ display: 'flex', gap: '3' })}>
-            <Link className={link} to="/">
-              Conversation
-            </Link>
-            <Link className={link} to="/tasks">
-              Tasks
-            </Link>
-          </nav>
-        }
-        taskID={params.taskID}
-      />
+      <TaskPage {...messageOptions} key={params.taskID} taskID={params.taskID} />
     </SignedInPage>
   );
 }
-
-const link = css({ color: 'link', textDecoration: 'underline' });

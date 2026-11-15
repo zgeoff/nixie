@@ -25,9 +25,7 @@ test('it heads the thread of a task with its name, state and controls', async ()
     taskID: 'k3vq8m2xpa',
   });
 
-  const rendered = render(
-    <TaskPage navigation={null} startTimer={ctx.timer.startTimer} taskID="k3vq8m2xpa" />,
-  );
+  const rendered = render(<TaskPage startTimer={ctx.timer.startTimer} taskID="k3vq8m2xpa" />);
 
   const controls = await rendered.findByRole('group', { name: 'Controls for Garden plan' });
 
@@ -48,9 +46,7 @@ test('it heads the thread of a task that the task list leaves out', async () => 
     ),
   );
 
-  const rendered = render(
-    <TaskPage navigation={null} startTimer={ctx.timer.startTimer} taskID="k3vq8m2xpa" />,
-  );
+  const rendered = render(<TaskPage startTimer={ctx.timer.startTimer} taskID="k3vq8m2xpa" />);
 
   const banner = await rendered.findByRole('banner');
 
@@ -70,9 +66,7 @@ test('it says the task did not load, offers no composer, and loads it again on r
 
   server.use(http.post('*/rpc/tasks/read', () => HttpResponse.error(), { once: true }));
 
-  const rendered = render(
-    <TaskPage navigation={null} startTimer={ctx.timer.startTimer} taskID="k3vq8m2xpa" />,
-  );
+  const rendered = render(<TaskPage startTimer={ctx.timer.startTimer} taskID="k3vq8m2xpa" />);
 
   const alert = await rendered.findByRole('alert');
 
@@ -116,7 +110,7 @@ test('it reads earlier records until the thread shows the linked message', async
   const rendered = render(
     <TaskPage
       messageID="m7q2x9k4pa"
-      navigation={null}
+
       startTimer={ctx.timer.startTimer}
       taskID="p7hd2wq9zn"
     />,
@@ -168,7 +162,7 @@ test('it reads earlier records until the thread shows the linked message that th
   const rendered = render(
     <TaskPage
       messageID="r4t8w2qz6n"
-      navigation={null}
+
       startTimer={ctx.timer.startTimer}
       taskID="k3vq8m2xpa"
     />,
@@ -192,9 +186,7 @@ test('it sends a message written on the task page to that task', async () => {
 
   await store.tasks.create({ name: 'Garden plan', state: 'waiting', taskID: 'k3vq8m2xpa' });
 
-  const rendered = render(
-    <TaskPage navigation={null} startTimer={ctx.timer.startTimer} taskID="k3vq8m2xpa" />,
-  );
+  const rendered = render(<TaskPage startTimer={ctx.timer.startTimer} taskID="k3vq8m2xpa" />);
 
   const composer = await rendered.findByRole('textbox');
 
@@ -215,9 +207,7 @@ test('it leaves a closed task readable with no composer', async () => {
 
   await store.tasks.create({ name: 'Garden plan', state: 'closed', taskID: 'k3vq8m2xpa' });
 
-  const rendered = render(
-    <TaskPage navigation={null} startTimer={ctx.timer.startTimer} taskID="k3vq8m2xpa" />,
-  );
+  const rendered = render(<TaskPage startTimer={ctx.timer.startTimer} taskID="k3vq8m2xpa" />);
 
   const closed = await rendered.findByText('This task is closed, so it takes no more messages.');
 

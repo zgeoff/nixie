@@ -17,7 +17,6 @@ import { MomentSpan } from './moment-span';
 
 export interface MomentViewProps {
   readonly momentID: string;
-  readonly navigation?: ReactNode;
 
   readonly onDestroyed: () => void;
 }
@@ -42,7 +41,6 @@ export function MomentView(props: MomentViewProps): ReactNode {
     <main className={layout}>
       <header className={header}>
         <p className={css({ fontSize: 'sm' })}>Moment</p>
-        {props.navigation}
       </header>
       {moment.isPending ? <p>Loading the moment…</p> : null}
       {moment.isError ? <p role="alert">This moment did not load. It may be gone.</p> : null}

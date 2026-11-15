@@ -1,11 +1,10 @@
 // oxlint-disable zgeoff/file-named-for-export -- TanStack Router builds the route from this file path and its Route export
 
-import { Link, createFileRoute, useRouter } from '@tanstack/react-router';
+import { createFileRoute, useRouter } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import { MomentTimeline } from '../components/moment-timeline';
 import { SignedInPage } from '../components/signed-in-page';
 import { readRouteSession } from '../conversation/read-route-session';
-import { css } from '../styled-system/css';
 
 export const Route = createFileRoute('/moments')({
   component: Moments,
@@ -23,20 +22,7 @@ function Moments(): ReactNode {
       }}
       session={data.session}
     >
-      <MomentTimeline
-        navigation={
-          <nav className={css({ display: 'flex', gap: '3' })}>
-            <Link className={link} to="/memory">
-              Memory
-            </Link>
-            <Link className={link} to="/">
-              Conversation
-            </Link>
-          </nav>
-        }
-      />
+      <MomentTimeline />
     </SignedInPage>
   );
 }
-
-const link = css({ color: 'link', textDecoration: 'underline' });

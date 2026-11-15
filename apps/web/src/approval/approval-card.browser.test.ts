@@ -208,7 +208,7 @@ test('it offers to add a passkey and names the host command when the host has no
   await ctx.view.click('button[name="approve"]');
 
   await ctx.waitForPage(
-    `document.body.innerText.includes('No passkey is set up') && document.body.innerText.includes('nixie passkey-code') && document.querySelector('a[href="/passkeys"]') !== null`,
+    `document.body.innerText.includes('No passkey is set up') && document.body.innerText.includes('nixie passkey-code') && document.querySelector('main a[href="/passkeys"]') !== null`,
   );
 
   expect(ctx.findRow(row.proposalID)?.state).toBe('pending');
