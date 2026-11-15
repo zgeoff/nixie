@@ -75,7 +75,7 @@ stale hash returns `CONFLICT`, and the client shows what changed. **Why:** a pro
 under the same ID after a rule narrows. The passkey challenge hashes fresh random bytes with the
 proposal ID, the action hash and the choice, and requires WebAuthn user verification, so the
 assertion covers that one answer and the server rejects one made without your biometric or PIN
-check. The [passkeys design](../../queue/passkeys.md) holds the check.
+check. The [passkeys doc](../../../architecture/policy/passkeys.md) holds the check.
 
 The card then follows the outcome from its records, never from the model's words.
 

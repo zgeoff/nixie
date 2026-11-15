@@ -32,6 +32,9 @@ log line, so a deployment's check reads the report and not the log.
 | `nixie pause`                        | the pause state as JSON, with the cause `owner`                                             | the server paused nixie              |
 | `nixie resume`                       | the pause state as JSON, which is null once nixie runs                                      | the server answered                  |
 | `nixie recovery`                     | the last restore and each task it left to check, as JSON, or null before any restore        | the server answered                  |
+| `nixie passkey-code`                 | a one-time code that registers a passkey, then until when it works                          | the server issued a code             |
+| `nixie passkeys`                     | every passkey, live and revoked, as JSON                                                    | the server answered                  |
+| `nixie passkeys revoke <id>`         | the revoked passkey's ID                                                                    | the passkey existed and is revoked   |
 | `nixie sessions`                     | the live device sessions, as JSON                                                           | the server answered                  |
 | `nixie backup --to <directory>`      | each database it copied, then the directory and the number of copies                        | both copies match                    |
 | `nixie restore --from … --yes`       | the databases it restored and the directory they came from                                  | both databases were replaced         |
