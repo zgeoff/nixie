@@ -160,6 +160,76 @@ reset seed restores the rules of the snapshot in force.
 The snapshot hash covers each rule in force with its revision, its origin and its runtime change, so
 each snapshot holds the revision of every rule in force.
 
+## Proposed rules
+
+When the user approves the same kind of call 3 times in 30 days and declines none, nixie proposes
+the narrowest allow rule that covers those calls. A call that no rule matches asks with the cause
+`no_rule`, and the user's answer to that action proposal joins a gap group. The group's key is the
+tool with its variant, the context and the sorted destinations, hashed with SHA-256. The
+`gap_answers` and `gap_groups` projections hold the group hash, each answer and its time, and never
+a destination or an argument.
+
+After each answer that joins a group, the rule store checks the group in a transaction of its own,
+and proposes a rule when all of these hold:
+
+1. The group holds at least `policy.proposed_rules.approvals` approved answers within
+   `policy.proposed_rules.window_days`. An answer whose action proposal lost its erasable fields to
+   a record forget does not count.
+2. The group holds no declined answer in that window.
+3. The group has no open proposed rule, and its `quiet_until` lies before now.
+
+`buildProposedRule` builds the rule from the counted calls: the tool, the context, the task
+definition when every call came from one, the exact destinations, the union of the sources, and an
+`eq` check on each scalar argument that held one value in every call. An argument that the tool
+declares as content gets no check, and neither does a list. The rule parser checks the result as it
+checks every rule, and a test holds that every counted call matches it.
+
+The proposal is a row of the `proposed_rule` family with the cause `proposed_rule` and the
+`always_ask` risk class. Its record, `rules.rule_proposed`, keeps the rule in erasable fields, so a
+record forget of the proposal removes it. The card offers these choices:
+
+| Control | What happens                                                                                          |
+| ------- | ----------------------------------------------------------------------------------------------------- |
+| Approve | A runtime change adds the rule as `proposed-<short ID>`, with the reason "proposed after 3 approvals" |
+| Not now | The decline choice: the group stays quiet for `policy.proposed_rules.quiet_days`                      |
+| Defer   | As [the approval record](approvals.md#defer) defines it                                               |
+| Edit    | Sends `rules.editProposedRule`, which withdraws the card and opens a new one with the edited rule     |
+
+A lapse of the proposal keeps the group quiet as Not now does, and a decline of a new action
+proposal in the group withdraws the open proposed rule. An edited rule stays an allow rule, takes
+the `lifting` risk class when it lets an always-ask effect through, and returns `INVALID` with each
+fault the parser found. At start, the rule store checks each group that gained an answer since its
+last check, so a crash between an answer and its check loses no proposal. An approved proposed rule
+goes into [the rule export](#the-rule-export), and Undo on its notice removes it.
+
+## Mandates
+
+A mandate gives nixie authority for a period. It holds 1 to 10 allow rules that share a mandate ID
+and an expiry, and the user proposes it in the web client's mandates page or through the
+conversation tool `rules.propose_mandate`, which only the conversation holds and which declares the
+`note` effect, because its call writes a proposal and nothing else. `policy.mandates.max_hours`
+limits the expiry, counted from the proposal, and the default expiry is the next midnight in the
+user's time zone. The rule store refuses a past or too late expiry.
+
+The proposal is a row of the `mandate` family, with the cause `mandate`, the `lifting` risk class
+when a rule lifts the always-ask set and `always_ask` otherwise. Its deadline is the expiry, so a
+late approval starts nothing. The card shows the title, each rule's sentence and the end time.
+
+- An approval writes each rule as a new runtime rule with the ID `<mandate ID>-<number>`, with
+  `mandate` and `expires` set, and `rules.mandate_started`, in one transaction. A seed of the
+  definitions in force then puts the rules in force.
+- The rule store refuses an edit of a mandate rule, and refuses a runtime change that is not a
+  mandate over the ID of a mandate rule.
+- The decision point stops a rule at its `expires`, and a replay of an earlier decision uses the
+  snapshot its record names.
+- End now, `rules.endMandate`, and a timer that checks every 30 seconds each retire the mandate's
+  runtime changes, write one `rules.mandate_ended` with the reason `ended` or `expired`, and run a
+  seed. Neither writes a runtime removal, so the export never offers to remove a rule of the user's.
+  At start, the timer ends each mandate whose expiry passed while nixie was down.
+- The export filters out each change whose rule holds `mandate`.
+- The server adds a line to the [events block](../core/conversation-turns.md#the-events-block) when
+  a mandate starts and when it ends.
+
 ## The rule export
 
 nixie exports the runtime changes in force to the definitions repo through the
@@ -208,6 +278,8 @@ The host commands read and answer the rule store, and each prints JSON:
 | `nixie proposals list`                        | Lists each pending rule change proposal                            |
 | `nixie proposals approve <id>`                | Puts the proposal's widenings in force                             |
 | `nixie proposals reject <id> --reason <why>`  | Leaves the seeded versions in force, with your reason              |
+| `nixie mandates list`                         | Lists each active mandate, its rules and its end                   |
+| `nixie mandates end <id>`                     | Ends the mandate, as End now does                                  |
 
 The approvals page in the web client lists the same pending proposals among every other kind, each
 change as the sentence before and after it, and answers them through `approvals.answerProposal`. A

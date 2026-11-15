@@ -14,6 +14,10 @@ what each means for the row, so the approvals module imports no kind module and 
 from the log. The migration that creates the table folds the records that already exist, and a test
 holds that fold equal to the live one.
 
+A row's family is `action`, `memory`, `skill`, `rule_change`, `proposed_rule` or `mandate`. The
+[rules](rules.md#proposed-rules) doc covers the last 2, which take the causes `proposed_rule` and
+`mandate`.
+
 A closed row never reopens. A row is pending, deferred, approved, declined, lapsed or withdrawn.
 
 The row names the identity that answered it in `answered_by`, set when the kind's answer record
