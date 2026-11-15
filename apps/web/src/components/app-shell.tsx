@@ -53,12 +53,18 @@ const drawer = css({
   borderInlineEndWidth: '1px',
   color: 'text',
   height: '100dvh',
+  insetInlineStart: '0',
   margin: '0',
   maxHeight: '100dvh',
   maxWidth: '85vw',
   padding: '0',
   width: '18rem',
-  _backdrop: { backgroundColor: 'rgb(0 0 0 / 0.5)' },
+  _backdrop: { backgroundColor: 'scrim' },
+  _open: {
+    transition: 'inset-inline-start 200ms ease-out',
+    _motionReduce: { transition: 'none' },
+    _starting: { insetInlineStart: '-100%' },
+  },
 });
 
 const panel = css({

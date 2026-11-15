@@ -3,6 +3,7 @@ export const themePalette = {
   borderStrong: { dark: '#71717a', light: '#71717a' },
   canvas: { dark: '#18181b', light: '#ffffff' },
   link: { dark: '#93c5fd', light: '#1d4ed8' },
+  scrim: { dark: '#000000b3', light: '#00000080' },
   surface: { dark: '#27272a', light: '#f4f4f5' },
   text: { dark: '#f4f4f5', light: '#18181b' },
   textMuted: { dark: '#a1a1aa', light: '#52525b' },
