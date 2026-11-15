@@ -808,6 +808,7 @@ test('it forgets the request and the end of a report with its delivered message,
     [{ recordSequence: requested.sequence }],
     [{ recordSequence: ended.sequence }],
   ]);
+});
 
 test('it fails the forget with the destroy sentence when a code sandbox will not go, and a retry with the same action ID finishes it', async () => {
   const ctx = await setupTest();

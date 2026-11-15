@@ -7,7 +7,7 @@ import { runMigrations } from '../migration/run-migrations';
 import { nixieSchema } from '../schema/nixie-schema';
 import { buildSqliteWorkerDialect } from '../sqlite/build-sqlite-worker-dialect';
 import { readRunPrefix } from '../test-utils/read-run-prefix';
-import { codeFilesMigration } from './0050-code-files-migration';
+import { codeFilesMigration } from './0052-code-files-migration';
 
 async function setupTest() {
   const stack = new AsyncDisposableStack();
@@ -30,8 +30,8 @@ async function setupTest() {
   return { db };
 }
 
-test('it moves the schema to version 50', () => {
-  expect(nixieSchema.migrations.indexOf(codeFilesMigration) + 1).toBe(50);
+test('it moves the schema to version 52', () => {
+  expect(nixieSchema.migrations.indexOf(codeFilesMigration) + 1).toBe(52);
 });
 
 test('it creates a table that stores one file of a result record', async () => {

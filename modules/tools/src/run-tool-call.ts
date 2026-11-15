@@ -386,12 +386,6 @@ function buildHiddenFields(fields: JSONObject, hidden: JSONObject | undefined): 
   return hidden !== undefined && Object.keys(hidden).length > 0 ? { ...fields, hidden } : fields;
 }
 
-function renderCallCapRefusal(run: ToolRun, tool: string): string {
-  const cap = run.taskRun?.calls[tool] ?? 0;
-
-  return callCapRefusal.replace('{n}', String(cap)).replace('{tool}', tool);
-}
-
 // A tool missing from the run's list skips the schema, so its errors never show the tool to the
 // model, and the decision point denies the call.
 function checkListedInput(
@@ -412,6 +406,12 @@ async function writeInvalidCall(recorder: CallRecorder, errors: string): Promise
     written.sequence,
     buildMessage('invalid', errors, { source: 'untrusted' }),
   );
+}
+
+function renderCallCapRefusal(run: ToolRun, tool: string): string {
+  const cap = run.taskRun?.calls[tool] ?? 0;
+
+  return callCapRefusal.replace('{n}', String(cap)).replace('{tool}', tool);
 }
 
 interface DecidedCall {
