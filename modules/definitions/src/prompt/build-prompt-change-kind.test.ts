@@ -164,7 +164,7 @@ test("it moves a part file that another prompt reads, and the seed after the mer
 
   await writeFile(
     join(ctx.root, 'nixie.yaml'),
-    'format: 3\nprompts:\n  writer:\n    instruction: prompts/shared.md\n',
+    'format: 3\nprompts:\n  retirement-checker:\n    instruction: prompts/shared.md\n',
   );
 
   await writeFile(join(ctx.root, 'prompts', 'shared.md'), 'Write each memory in one sentence.\n');
@@ -224,7 +224,10 @@ test("it moves a part file that another prompt reads, and the seed after the mer
   const inForce = await readDefinitionsInForce(ctx.writer.db);
 
   expect(inForce?.prompts).toStrictEqual({
-    writer: { parts: { instruction: 'Write each memory in one sentence.' }, template: null },
+    'retirement-checker': {
+      parts: { instruction: 'Write each memory in one sentence.' },
+      template: null,
+    },
     compaction: {
       parts: { instruction: 'Summarise the open questions first.' },
       template: null,

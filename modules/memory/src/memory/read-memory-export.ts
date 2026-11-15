@@ -11,7 +11,6 @@ import type {
 import { findCheckerModel } from '../utils/checker/find-checker-model';
 import { getRowSubject } from '../utils/get-row-subject';
 import { getItemShortID } from '../utils/item/get-item-short-id';
-import { loadWriterModel } from '../utils/load-writer-model';
 import { parseChecks } from '../utils/parse-checks';
 import { readPages } from '../utils/read-pages';
 import type { MemoryExport, MemoryExportItem } from '../utils/schema/memory-export-schema';
@@ -197,7 +196,7 @@ async function loadExportVersion(row: MemoryVersionRow, parts: ItemParts): Promi
       taskID: row.task_id,
       proposalID: row.proposal_id,
       checks,
-      writerModel: await loadWriterModel(parts.log, row),
+      writerModel: row.model,
       checkerModel: findCheckerModel(checks),
       snapshotHash: row.snapshot_hash,
       recordedAt: new Date(row.recorded_at).toISOString(),

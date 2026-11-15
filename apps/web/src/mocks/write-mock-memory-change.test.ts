@@ -5,7 +5,7 @@ import { writeMockMemoryChange } from './write-mock-memory-change';
 test('it retires an active item with a version of your own that keeps its text', async () => {
   const item = await store.memoryItems.create({
     isPinned: true,
-    versions: [{ origin: 'memory_writer', text: 'Rents a flat on Mill Lane' }],
+    versions: [{ origin: 'conversation', text: 'Rents a flat on Mill Lane' }],
   });
 
   const result = await writeMockMemoryChange({
@@ -23,7 +23,7 @@ test('it retires an active item with a version of your own that keeps its text',
     isPinned: false,
     state: 'retired',
     versions: [
-      { origin: 'memory_writer' },
+      { origin: 'conversation' },
       { change: 'retired', origin: 'owner', state: 'retired', text: 'Rents a flat on Mill Lane' },
     ],
   });

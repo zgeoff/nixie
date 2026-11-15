@@ -25,15 +25,15 @@ test('it gives the conversation and each started task, and leaves out a task on 
     {
       kind: 'task.created',
       definitions: { snapshotHash: 'sha256:test' },
-      thread: 'memory-writer',
-      payload: { taskID: 'memory-writer', isConversation: false, state: 'waiting' },
+      thread: 'sweeper',
+      payload: { taskID: 'sweeper', isConversation: false, state: 'waiting' },
     },
   ]);
 
   const takers = await readOwnerMessageTakers(ctx.context, [
     'conversation',
     'k3x9m2p7qa',
-    'memory-writer',
+    'sweeper',
     'z0z0z0z0z0',
   ]);
 

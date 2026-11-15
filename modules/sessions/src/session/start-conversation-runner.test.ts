@@ -940,8 +940,8 @@ test("it wakes the conversation for a system task's message and gives the turn t
   const messaging = {
     directory: [
       {
-        taskID: 'memory-writer',
-        name: 'Memory writer',
+        taskID: 'sweeper',
+        name: 'Sweeper',
         brief: 'Saves.',
         isWokenByMessages: true,
         speaker: 'plain_task' as const,
@@ -960,7 +960,7 @@ test("it wakes the conversation for a system task's message and gives the turn t
   };
 
   await createConversationTask(ctx.context);
-  await createSystemTask(ctx.context, 'memory-writer');
+  await createSystemTask(ctx.context, 'sweeper');
   await claimTask(ctx.context, { holder: 'runner-b', leaseMs: 60_000 });
 
   const runner = await ctx.startRunner({
@@ -973,7 +973,7 @@ test("it wakes the conversation for a system task's message and gives the turn t
   ctx.sandboxes.setGuestScript(buildStubTurnScript(() => ({})));
 
   await writeTestTaskMessage(ctx.context, messaging, {
-    from: 'memory-writer',
+    from: 'sweeper',
     to: 'conversation',
     kind: 'report',
     body: 'Two new memories wait for your review.',
@@ -985,7 +985,7 @@ test("it wakes the conversation for a system task's message and gives the turn t
   await ctx.runNextStep(runner);
 
   expect(ctx.sandboxes.turns[0]?.input.at(-1)?.text).toMatch(
-    /<task-message id="\w+" from="task: Memory writer" kind="report" sent="[^"]+" fence="(?<fence>\w+)">\nTwo new memories wait for your review\.\n<\/task-message fence="\k<fence>">$/u,
+    /<task-message id="\w+" from="task: Sweeper" kind="report" sent="[^"]+" fence="(?<fence>\w+)">\nTwo new memories wait for your review\.\n<\/task-message fence="\k<fence>">$/u,
   );
 });
 
@@ -995,8 +995,8 @@ test("it passes a held task message that lands during a turn into that turn, fra
   const messaging = {
     directory: [
       {
-        taskID: 'memory-writer',
-        name: 'Memory writer',
+        taskID: 'sweeper',
+        name: 'Sweeper',
         brief: 'Saves.',
         isWokenByMessages: true,
         speaker: 'plain_task' as const,
@@ -1016,7 +1016,7 @@ test("it passes a held task message that lands during a turn into that turn, fra
 
   await createConversationTask(ctx.context);
 
-  await ctx.seed.systemTaskAtHop({ taskID: 'memory-writer', hop: 3 });
+  await ctx.seed.systemTaskAtHop({ taskID: 'sweeper', hop: 3 });
 
   await claimTask(ctx.context, { holder: 'runner-b', leaseMs: 60_000 });
 
@@ -1029,7 +1029,7 @@ test("it passes a held task message that lands during a turn into that turn, fra
 
   const live = buildStubLiveTurnScript(() =>
     writeTestTaskMessage(ctx.context, messaging, {
-      from: 'memory-writer',
+      from: 'sweeper',
       to: 'conversation',
       kind: 'question',
       body: 'Keep the note about the bike?',
@@ -1050,7 +1050,7 @@ test("it passes a held task message that lands during a turn into that turn, fra
 
   expect(sent.payload).toMatchObject({ hop: 4, woke: false });
   expect(live.received).toHaveLength(1);
-  expect(live.received[0]?.text).toInclude('from="task: Memory writer" kind="question"');
+  expect(live.received[0]?.text).toInclude('from="task: Sweeper" kind="question"');
   expect(live.received[0]?.text).toInclude('\nKeep the note about the bike?\n');
   expect([task.state, task.readCursor]).toStrictEqual(['waiting', sent.sequence]);
 });
@@ -1061,8 +1061,8 @@ test('it gives the next turn a message sent with no wake, before the message tha
   const messaging = {
     directory: [
       {
-        taskID: 'memory-writer',
-        name: 'Memory writer',
+        taskID: 'sweeper',
+        name: 'Sweeper',
         brief: 'Saves.',
         isWokenByMessages: true,
         speaker: 'plain_task' as const,
@@ -1081,7 +1081,7 @@ test('it gives the next turn a message sent with no wake, before the message tha
   };
 
   await createConversationTask(ctx.context);
-  await createSystemTask(ctx.context, 'memory-writer');
+  await createSystemTask(ctx.context, 'sweeper');
   await claimTask(ctx.context, { holder: 'runner-b', leaseMs: 60_000 });
 
   const runner = await ctx.startRunner({
@@ -1094,7 +1094,7 @@ test('it gives the next turn a message sent with no wake, before the message tha
   ctx.sandboxes.setGuestScript(buildStubTurnScript(() => ({})));
 
   await writeTestTaskMessage(ctx.context, messaging, {
-    from: 'memory-writer',
+    from: 'sweeper',
     to: 'conversation',
     kind: 'progress',
     body: 'Halfway through the backlog.',
@@ -1118,8 +1118,8 @@ test('it tells the conversation which messages arrived past the hop limit when t
   const messaging = {
     directory: [
       {
-        taskID: 'memory-writer',
-        name: 'Memory writer',
+        taskID: 'sweeper',
+        name: 'Sweeper',
         brief: 'Saves.',
         isWokenByMessages: true,
         speaker: 'plain_task' as const,
@@ -1139,7 +1139,7 @@ test('it tells the conversation which messages arrived past the hop limit when t
 
   await createConversationTask(ctx.context);
 
-  await ctx.seed.systemTaskAtHop({ taskID: 'memory-writer', hop: 2 });
+  await ctx.seed.systemTaskAtHop({ taskID: 'sweeper', hop: 2 });
 
   await claimTask(ctx.context, { holder: 'runner-b', leaseMs: 60_000 });
 
@@ -1153,7 +1153,7 @@ test('it tells the conversation which messages arrived past the hop limit when t
   ctx.sandboxes.setGuestScript(buildStubTurnScript(() => ({})));
 
   await writeTestTaskMessage(ctx.context, messaging, {
-    from: 'memory-writer',
+    from: 'sweeper',
     to: 'conversation',
     kind: 'chat',
     body: 'One more thought.',
@@ -1165,7 +1165,7 @@ test('it tells the conversation which messages arrived past the hop limit when t
   await ctx.sendMessage(runner, 'Morning.');
 
   expect(ctx.sandboxes.turns[0]?.input[0]?.text).toInclude(
-    '1 message from Memory writer arrived after the exchange reached its limit, so it did not wake you. You woke for a message from Robin, so a reply from you will wake Memory writer.',
+    '1 message from Sweeper arrived after the exchange reached its limit, so it did not wake you. You woke for a message from Robin, so a reply from you will wake Sweeper.',
   );
 });
 
@@ -2739,8 +2739,8 @@ test('it ends a turn that a task report alone woke with no reply, and records th
   const messaging = {
     directory: [
       {
-        taskID: 'memory-writer',
-        name: 'Memory writer',
+        taskID: 'sweeper',
+        name: 'Sweeper',
         brief: 'Saves.',
         isWokenByMessages: true,
         speaker: 'plain_task' as const,
@@ -2759,7 +2759,7 @@ test('it ends a turn that a task report alone woke with no reply, and records th
   };
 
   await createConversationTask(ctx.context);
-  await createSystemTask(ctx.context, 'memory-writer');
+  await createSystemTask(ctx.context, 'sweeper');
   await claimTask(ctx.context, { holder: 'runner-b', leaseMs: 60_000 });
 
   const runner = await ctx.startRunner({
@@ -2798,7 +2798,7 @@ test('it ends a turn that a task report alone woke with no reply, and records th
   });
 
   await writeTestTaskMessage(ctx.context, messaging, {
-    from: 'memory-writer',
+    from: 'sweeper',
     to: 'conversation',
     kind: 'report',
     body: 'Two memories saved.',
@@ -2861,8 +2861,8 @@ test.each([
   const messaging = {
     directory: [
       {
-        taskID: 'memory-writer',
-        name: 'Memory writer',
+        taskID: 'sweeper',
+        name: 'Sweeper',
         brief: 'Saves.',
         isWokenByMessages: true,
         speaker: 'plain_task' as const,
@@ -2881,7 +2881,7 @@ test.each([
   };
 
   await createConversationTask(ctx.context);
-  await createSystemTask(ctx.context, 'memory-writer');
+  await createSystemTask(ctx.context, 'sweeper');
   await claimTask(ctx.context, { holder: 'runner-b', leaseMs: 60_000 });
 
   const runner = await ctx.startRunner({
@@ -2901,7 +2901,7 @@ test.each([
 
   for (const body of row.reports) {
     await writeTestTaskMessage(ctx.context, messaging, {
-      from: 'memory-writer',
+      from: 'sweeper',
       to: 'conversation',
       kind: 'report',
       body,

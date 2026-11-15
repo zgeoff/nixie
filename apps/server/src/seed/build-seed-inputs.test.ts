@@ -128,7 +128,7 @@ test('it keeps the policy hash when only a prompt other than the checkers has an
 
   const tool = buildLogConnector(() => {}).tool;
   const inputs = buildSeedInputs(config, { definitions: [], actions: { logConnector: { tool } } });
-  const prompts = { writer: { parts: { safety: 'Quote the owner.' }, template: null } };
+  const prompts = { compaction: { parts: { safety: 'Quote the owner.' }, template: null } };
 
   const snapshot = buildDefinitionsSnapshot({
     skills: [],

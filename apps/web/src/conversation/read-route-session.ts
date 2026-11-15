@@ -9,7 +9,7 @@ export interface RouteSession {
 export async function readRouteSession(context: RouterContext): Promise<RouteSession> {
   const session = await readSessionState(() =>
     context.queryClient.query({
-      ...context.queryUtils.memory.writerStatus.queryOptions(),
+      ...context.queryUtils.sessions.list.queryOptions(),
       staleTime: 'static',
     }),
   );

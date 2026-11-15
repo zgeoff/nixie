@@ -15,7 +15,7 @@ const versionTargetSchema = z.strictObject({
 });
 
 const itemTextSchema = z.string().max(2000).regex(/\S/u);
-const proposalOriginSchema = z.enum(['owner', 'conversation', 'task', 'memory_writer']);
+const proposalOriginSchema = z.enum(['owner', 'conversation', 'task']);
 const memoryOriginSchema = z.enum([...proposalOriginSchema.options, 'lapse']);
 const contentSourceSchema = z.enum(['owner', 'owner_data', 'untrusted']);
 

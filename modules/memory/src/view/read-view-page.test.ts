@@ -11,7 +11,7 @@ test('it lists each active item with its text, origin, source and age', async ()
   const item = await ctx.memory.store.remember({
     text: 'Plays the cello on Thursdays',
     provenance: {
-      origin: 'memory_writer',
+      origin: 'conversation',
       source: 'owner',
       taskID: 'task-1',
       proposalID: null,
@@ -31,7 +31,7 @@ test('it lists each active item with its text, origin, source and age', async ()
         isSensitive: false,
         subject: 'owner',
         version: 1,
-        origin: 'memory_writer',
+        origin: 'conversation',
         source: 'owner',
         createdAt: expect.toBeNumber(),
         changedAt: expect.toBeNumber(),

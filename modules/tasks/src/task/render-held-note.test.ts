@@ -47,13 +47,13 @@ test('it tells the sender a task on its own schedule reads the message at its ne
     renderHeldNote({
       hold: 'next_run',
       kind: 'progress',
-      name: 'Memory writer',
+      name: 'Sweeper',
       messageID: 'k3vq8m2xpa',
       hop: 1,
       ownerName: 'Robin',
     }),
   ).toBe(
-    'Delivered to Memory writer as k3vq8m2xpa. It did not wake them, because Memory writer runs on its own schedule and reads messages only then. They will read it at their next run, with any earlier messages. Sending it again does not deliver it sooner.',
+    'Delivered to Sweeper as k3vq8m2xpa. It did not wake them, because Sweeper runs on its own schedule and reads messages only then. They will read it at their next run, with any earlier messages. Sending it again does not deliver it sooner.',
   );
 });
 
@@ -64,13 +64,13 @@ test.each(['question', 'request'] as const)(
       renderHeldNote({
         hold: 'next_run',
         kind,
-        name: 'Memory writer',
+        name: 'Sweeper',
         messageID: 'k3vq8m2xpa',
         hop: 1,
         ownerName: 'Robin',
       }),
     ).toBe(
-      'Delivered to Memory writer as k3vq8m2xpa. It did not wake them, because Memory writer runs on its own schedule and reads messages only then. They will read it at their next run, with any earlier messages. You do not wait on them for an answer, and a reply, if any, arrives as a new message. Sending it again does not deliver it sooner.',
+      'Delivered to Sweeper as k3vq8m2xpa. It did not wake them, because Sweeper runs on its own schedule and reads messages only then. They will read it at their next run, with any earlier messages. You do not wait on them for an answer, and a reply, if any, arrives as a new message. Sending it again does not deliver it sooner.',
     );
   },
 );

@@ -8,7 +8,6 @@ export { buildMemoryTools } from './memory/build-memory-tools';
 export { buildPinnedCoreStatus } from './pinned/build-pinned-core-status';
 export { buildMomentKeptKind } from './moment/kept/build-moment-kept-kind';
 export { buildMomentStatus } from './moment/build-moment-status';
-export { buildWriterTools } from './writer/build-writer-tools';
 export { buildConsolidatorTools } from './consolidator/build-consolidator-tools';
 
 export type {
@@ -34,12 +33,10 @@ export { createConsolidationStaging } from './consolidation/create-consolidation
 export { memoryConsolidatorTaskID } from './utils/memory-consolidator-task-id';
 export type { MemoryConsolidator } from './memory/start-memory-consolidator';
 export { startMemoryConsolidator } from './memory/start-memory-consolidator';
-export type { WriterStaging } from './writer/create-writer-staging';
-export { createWriterStaging } from './writer/create-writer-staging';
 export { defaultGateLimits } from './gate/default-gate-limits';
 export { defaultOwnerPronouns } from './owner/default-owner-pronouns';
-export type { MemoryConfig } from './writer/memory-config-schema';
-export { memoryConfigSchema } from './writer/memory-config-schema';
+export type { MemoryConfig } from './gate/memory-config-schema';
+export { memoryConfigSchema } from './gate/memory-config-schema';
 export { MemoryProposalNotFoundError } from './utils/error/memory-proposal-not-found-error';
 export { ProposalCapError } from './utils/error/proposal-cap-error';
 export { ProposalClosedError } from './utils/error/proposal-closed-error';
@@ -53,14 +50,10 @@ export { memoryExportSchemaVersion } from './utils/schema/memory-export-schema-v
 export type { MemoryExportRequest } from './memory/read-memory-export';
 export { MemoryItemNotFoundError } from './utils/error/memory-item-not-found-error';
 export { MemoryStateError } from './utils/error/memory-state-error';
-export { memoryWriterTaskID } from './utils/memory-writer-task-id';
 export type { ForgetFloorCause } from './forget/read-forget-floor';
 export { readForgetFloor } from './forget/read-forget-floor';
 export type { AnswerQuoteSource, ProposalAnswerEvent } from './proposal/build-proposal-answer-kind';
 export { buildProposalAnswerKind } from './proposal/build-proposal-answer-kind';
-export { buildCatchUpKind } from './version/build-catch-up-kind';
-export type { SelfNoteFlagEvent } from './gate/build-self-note-flag-kind';
-export { buildSelfNoteFlagKind } from './gate/build-self-note-flag-kind';
 export { buildMemoryChangeKind } from './memory/build-memory-change-kind';
 export type { HostMemory, HostMemoryStore } from './memory/build-host-memory';
 export { buildHostMemory } from './memory/build-host-memory';
@@ -71,8 +64,6 @@ export type { VersionTextResult } from './version/read-version-texts';
 export { readVersionTexts } from './version/read-version-texts';
 export type { RatingNoteRef, RatingNoteResult } from './memory/read-rating-notes';
 export { readRatingNotes } from './memory/read-rating-notes';
-export type { WriterStatus } from './writer/read-writer-status';
-export { readWriterStatus } from './writer/read-writer-status';
 export { PinnedCoreFullError } from './utils/error/pinned-core-full-error';
 export { SelfNoteError } from './utils/error/self-note-error';
 export { StaleVersionError } from './utils/error/stale-version-error';
@@ -81,15 +72,6 @@ export type { MomentDestroyPreview } from './moment/destroy/read-moment-destroy-
 export type { MomentRow } from './moment/read-moment-row';
 export type { StartedMemoryStore } from './memory/start-memory-store';
 export { startMemoryStore } from './memory/start-memory-store';
-export type { MemoryWriter, MemoryWriterOptions } from './memory/start-memory-writer';
-export { startMemoryWriter } from './memory/start-memory-writer';
-
-export type {
-  MemoryWriterRunner,
-  MemoryWriterRunnerOptions,
-} from './memory/start-memory-writer-runner';
-
-export { startMemoryWriterRunner } from './memory/start-memory-writer-runner';
 export type { MemoryConsolidatorRunnerOptions } from './memory/start-memory-consolidator-runner';
 export { startMemoryConsolidatorRunner } from './memory/start-memory-consolidator-runner';
 
@@ -168,21 +150,6 @@ export type {
   WriteInTransaction,
 } from './types';
 
-export type { BatchPublication, GatedWrite, PublishResult } from './memory/write-memory-batch';
-export type { WriterConfig, WriterConfigInput } from './utils/schema/writer-config-schema';
-export { writerConfigSchema } from './utils/schema/writer-config-schema';
-
-export type {
-  GateBatch,
-  GateVerdict,
-  SourceMessage,
-  StagedWrite,
-  WriterGate,
-  WriterModel,
-  WriterSessionInput,
-  WriterUsage,
-} from './writer/writer-model';
-
 export type { IsOwnerTyped } from './typed/make-owner-typed-check';
 export { makeOwnerTypedCheck } from './typed/make-owner-typed-check';
 export { getTypedQuote } from './typed/get-typed-quote';
@@ -193,8 +160,6 @@ export type { DestinationToken } from './gate/collect-destination-tokens';
 export { collectDestinationTokens } from './gate/collect-destination-tokens';
 export { removeImageOfferKeys } from './image/remove-image-offer-keys';
 export { renderCheckerInput } from './checker/render-checker-input';
-export type { ShownItem, SpeakerNames, WriterPromptInput } from './writer/render-writer-prompt';
-export { renderWriterPrompt } from './writer/render-writer-prompt';
 export type { MemoryRecordKind } from './record/memory-record-kind';
 export { memoryItemErasableKinds } from './record/memory-item-erasable-kinds';
 export { momentErasableKinds } from './record/moment-erasable-kinds';

@@ -3,8 +3,8 @@ import type { MessageSpan, OwnerMessage, ReviewReason } from '../gate/gate-conte
 import type { QuoteMatch } from '../typed/get-typed-quote';
 import { getTypedQuote } from '../typed/get-typed-quote';
 import { readForgottenSequences } from '../utils/read-forgotten-sequences';
-import type { SourceMessage } from '../writer/writer-model';
 import type { QuoteEvidenceResult } from './read-quote-evidence';
+import type { SourceMessage } from './source-message';
 
 const invisible = /\p{Cf}/u;
 
@@ -45,7 +45,7 @@ export async function readSourceEvidence(
 
 const spanSources: readonly MessageSpan['source'][] = ['typed', 'pasted', 'dropped', 'unknown'];
 
-export function toOwnerMessage(source: SourceMessage): OwnerMessage {
+function toOwnerMessage(source: SourceMessage): OwnerMessage {
   return {
     sequence: source.sequence,
     text: source.text,

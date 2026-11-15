@@ -291,31 +291,6 @@ test('it proposes a self-note mislabelled as a fact when it cites no quote', asy
   expect(outcome).toMatchObject({ status: 'proposed', reason: 'no_quote' });
 });
 
-test('it refuses a self-note from the memory writer, and writes nothing', async () => {
-  const memory = await startTestMemory();
-
-  const write = memory.store.writes.remember({
-    text: 'I like tidy lists',
-    subject: 'self',
-    caller: buildMockWriteCaller({ origin: 'memory_writer', thread: 'memory-writer' }),
-  });
-
-  await Promise.allSettled([write]);
-
-  const db = memory.writer.db.$extendTables<MemoryTables>();
-
-  const proposals = await db.selectFrom('memory_proposals').select('proposal_id').execute();
-  const items = await db.selectFrom('memory_items').select('item_id').execute();
-
-  expect(write).rejects.toThrowWithMessage(
-    SelfNoteError,
-    'only the conversation writes a self-note, and this write came from the memory_writer',
-  );
-
-  expect(proposals).toStrictEqual([]);
-  expect(items).toStrictEqual([]);
-});
-
 test('it refuses a self-note from a task, and writes nothing', async () => {
   const memory = await startTestMemory();
 
@@ -334,35 +309,6 @@ test('it refuses a self-note from a task, and writes nothing', async () => {
     'only the conversation writes a self-note, and this write came from the task',
   );
 
-  expect(pending).toStrictEqual([]);
-});
-
-test('it refuses the note-taker an edit of a self-note, and writes nothing', async () => {
-  const memory = await startTestMemory();
-
-  const note = await memory.store.remember({
-    text: 'I like tidy lists',
-    subject: 'self',
-    provenance: {
-      origin: 'conversation',
-      source: 'untrusted',
-      taskID: 'conversation',
-      proposalID: null,
-      checks: null,
-    },
-  });
-
-  const write = memory.store.writes.remember({
-    text: 'I like tidy lists with short items',
-    target: note,
-    caller: buildMockWriteCaller({ origin: 'memory_writer', taskID: 'memory-writer' }),
-  });
-
-  await Promise.allSettled([write]);
-
-  const pending = await memory.store.proposals.listPending();
-
-  expect(write).rejects.toThrowWithMessage(SelfNoteError, 'the note-taker never edits a self-note');
   expect(pending).toStrictEqual([]);
 });
 

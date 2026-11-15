@@ -390,32 +390,7 @@ test('it shows the end date of an item in the notice, in your time zone', async 
   );
 });
 
-test('it shows the end of the catch-up as a count that opens the memory view', async () => {
-  await setupTest();
-
-  const message = await store.records.create({
-    kind: 'owner_message',
-    message: { text: 'I run on Sundays' },
-  });
-
-  await store.records.create({ kind: 'model.reply', message: { text: 'Noted.' } });
-
-  await store.memoryNotices.create({
-    count: 12,
-    kind: 'catch_up',
-    sequence: message.sequence + 2,
-  });
-
-  const rendered = render(<Conversation thread="conversation" />);
-
-  const notice = await rendered.findByRole('listitem', {
-    name: 'Remembered 12 things from earlier conversation',
-  });
-
-  expect(within(notice).getByRole('link', { name: 'View' })).toHaveAttribute('href', '/memory');
-});
-
-test("it shows a batch's writes as a notice after the reply they followed", async () => {
+test("it shows a run's writes as a notice after the reply they followed", async () => {
   await setupTest();
 
   const message = await store.records.create({
@@ -429,7 +404,7 @@ test("it shows a batch's writes as a notice after the reply they followed", asyn
 
   await store.memoryNotices.create({
     entries: [{ itemID: runs.itemID, sequence: message.sequence + 2 }],
-    kind: 'batch',
+    kind: 'run',
   });
 
   const rendered = render(<Conversation thread="conversation" />);

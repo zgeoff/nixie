@@ -5,10 +5,10 @@ import { runOffTaskStep } from './run-off-task-step';
 
 test('it reads every inbox record of a task that is off, writes nothing and waits', async () => {
   const input = buildMockStepInput({
-    taskID: 'memory-writer',
+    taskID: 'sweeper',
     inbox: [
-      buildMockLogRecord({ sequence: 41, kind: 'task.wake', thread: 'memory-writer' }),
-      buildMockLogRecord({ sequence: 57, kind: 'timer.fired', thread: 'memory-writer' }),
+      buildMockLogRecord({ sequence: 41, kind: 'task.wake', thread: 'sweeper' }),
+      buildMockLogRecord({ sequence: 57, kind: 'timer.fired', thread: 'sweeper' }),
     ],
   });
 

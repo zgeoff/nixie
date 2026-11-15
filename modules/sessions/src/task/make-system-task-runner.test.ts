@@ -8,7 +8,7 @@ test('it starts the task on its role profile, in a sandbox with the shared limit
   const sessions: SystemTaskSession[] = [];
 
   const startTask = makeSystemTaskRunner({
-    role: 'memory-writer',
+    role: 'memory-consolidator',
     entry: 'turn',
     start: (_options, session) => {
       sessions.push(session);
@@ -29,7 +29,7 @@ test('it starts the task on its role profile, in a sandbox with the shared limit
           effort: 'low',
           prices: { input: 3, cache_write: 3.75, cache_write_1h: 6, cached_input: 0.3, output: 15 },
         },
-        'writer-direct': {
+        'consolidator-direct': {
           harness: 'agent-sdk',
           base_url: 'http://127.0.0.1:1',
           credential: 'deployment:anthropic',
@@ -38,7 +38,7 @@ test('it starts the task on its role profile, in a sandbox with the shared limit
           effort: 'low',
         },
       },
-      roles: { conversation: 'chat-direct', 'memory-writer': 'writer-direct' },
+      roles: { conversation: 'chat-direct', 'memory-consolidator': 'consolidator-direct' },
     }),
     secrets: { model_credentials: { anthropic: 'not-a-real-key' } },
     sandboxes: buildStubSandboxes().adapter,
@@ -49,7 +49,7 @@ test('it starts the task on its role profile, in a sandbox with the shared limit
 
   expect(sessions).toMatchObject([
     {
-      profile: { profile: { id: 'writer-direct', model: 'claude-test-writer' } },
+      profile: { profile: { id: 'consolidator-direct', model: 'claude-test-writer' } },
       image: 'nixie-conversation-0123456789ab',
       limits: { vcpus: 1, memoryMiB: 384, diskMiB: 4096 },
       command: { argv: ['bun', '--no-install', '/app/conversation/main.js'] },
@@ -150,7 +150,7 @@ test('it stops the parts a failed start registered, then rethrows its error', as
   const stopped: string[] = [];
 
   const startTask = makeSystemTaskRunner({
-    role: 'memory-writer',
+    role: 'memory-consolidator',
     entry: 'turn',
     start: (_options, session) => {
       session.defer(() => {

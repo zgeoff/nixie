@@ -68,7 +68,7 @@ test('it builds another hash for another prompt', () => {
     }),
   ).not.toBe(
     buildPromptProposalHash({
-      promptID: 'writer',
+      promptID: 'task',
       entry: { _template: '{{ parts.safety }}' },
       files: [],
     }),

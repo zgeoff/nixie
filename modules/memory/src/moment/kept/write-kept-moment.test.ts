@@ -2,7 +2,6 @@ import { expect, test } from 'bun:test';
 import { readRecords, writeRecords, writeRecordsInTransaction } from '@heynixie/log';
 import invariant from 'tiny-invariant';
 import { startTestMemory } from '../../test-utils/start-test-memory';
-import { memoryWriterTaskID } from '../../utils/memory-writer-task-id';
 import type { MomentTables } from '../../utils/moment-context';
 
 async function setupTest() {
@@ -71,31 +70,6 @@ test('it keeps a span of the caller own thread with its title under the record k
     status: 'readable',
     fields: { title: 'The kettle argument' },
   });
-});
-
-test('it refuses a keep from the memory writer', async () => {
-  const ctx = await setupTest();
-
-  const [message] = await writeRecords(ctx.memory.log, [
-    {
-      kind: 'task.wake',
-      definitions: { snapshotHash: 'sha256:test' },
-      thread: memoryWriterTaskID,
-      payload: {},
-    },
-  ]);
-
-  invariant(message);
-
-  const kept = await ctx.memory.store.moments.keep({
-    caller: { kind: 'model', thread: memoryWriterTaskID, model: 'claude-test-4' },
-    thread: memoryWriterTaskID,
-    firstSequence: message.sequence,
-    lastSequence: message.sequence,
-    title: 'A batch worth keeping',
-  });
-
-  expect(kept).toStrictEqual({ status: 'refused', reason: 'memory_writer' });
 });
 
 test("it refuses a task's keep of a span of the conversation", async () => {

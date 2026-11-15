@@ -1,22 +1,20 @@
 import { expect, test } from 'bun:test';
 import { renderMemoryLine } from './render-memory-line';
 
-test('it renders the target example for an approved note-taker item from a pasted page', () => {
+test('it renders the target example for an approved conversation item from a pasted page', () => {
   expect(
     renderMemoryLine(
       {
         shortID: 'b7kq2m9xza',
         version: 3,
         recordedAt: Date.UTC(2025, 9, 13, 9, 30),
-        origin: 'memory_writer',
+        origin: 'conversation',
         source: 'untrusted',
         approval: { isQuotePasted: true },
       },
       { ownerName: 'Robin', defaultZone: 'UTC', now: new Date('2026-10-14T12:00:00Z') },
     ),
-  ).toBe(
-    'b7kq2m9xza v3 · 13 Oct 2025 · the note-taker noted it · from a pasted page · Robin approved',
-  );
+  ).toBe('b7kq2m9xza v3 · 13 Oct 2025 · you noted it · from a pasted page · Robin approved');
 });
 
 test.each([
@@ -29,22 +27,6 @@ test.each([
   [
     { origin: 'conversation', source: 'untrusted', approval: { isQuotePasted: true } },
     'you noted it · from a pasted page · Robin approved',
-  ],
-  [
-    { origin: 'memory_writer', source: 'owner', approval: null },
-    'the note-taker noted it · Robin said this',
-  ],
-  [
-    { origin: 'memory_writer', source: 'untrusted', approval: null },
-    'the note-taker noted it · unconfirmed',
-  ],
-  [
-    { origin: 'memory_writer', source: 'untrusted', approval: { isQuotePasted: false } },
-    'the note-taker noted it · unconfirmed · Robin approved',
-  ],
-  [
-    { origin: 'memory_writer', source: 'untrusted', approval: { isQuotePasted: true } },
-    'the note-taker noted it · from a pasted page · Robin approved',
   ],
   [
     { origin: 'task', source: 'owner', approval: { isQuotePasted: false } },
@@ -84,15 +66,13 @@ test('it names the owner as the owner when no name is set', () => {
         shortID: 'h4ns8w1cpe',
         version: 2,
         recordedAt: Date.UTC(2026, 9, 13, 9, 30),
-        origin: 'memory_writer',
+        origin: 'conversation',
         source: 'owner',
         approval: { isQuotePasted: false },
       },
       { ownerName: null, defaultZone: 'UTC', now: new Date('2026-10-14T12:00:00Z') },
     ),
-  ).toBe(
-    'h4ns8w1cpe v2 · 13 Oct · the note-taker noted it · the owner said this · the owner approved',
-  );
+  ).toBe('h4ns8w1cpe v2 · 13 Oct · you noted it · the owner said this · the owner approved');
 });
 
 test('it names the version that replaced a past version last', () => {

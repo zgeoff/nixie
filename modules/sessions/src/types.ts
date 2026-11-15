@@ -17,7 +17,7 @@ export interface MemoryRef {
   readonly version: number;
 }
 
-export type MemoryOrigin = 'owner' | 'conversation' | 'task' | 'memory_writer' | 'lapse';
+export type MemoryOrigin = 'owner' | 'conversation' | 'task' | 'lapse';
 
 export interface MemoryItem extends MemoryRef {
   readonly shortID: string;

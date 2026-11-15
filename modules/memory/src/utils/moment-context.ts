@@ -114,7 +114,6 @@ export type MomentRefusal =
   | 'wrong_state'
   | 'bad_span'
   | 'other_thread'
-  | 'memory_writer'
   | 'owner_only'
   | 'model_only'
   | 'reflection_not_found'

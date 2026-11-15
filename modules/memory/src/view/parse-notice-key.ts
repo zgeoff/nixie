@@ -6,10 +6,6 @@ export interface NoticeKeyParts {
 }
 
 export function parseNoticeKey(noticeKey: string): NoticeKeyParts {
-  if (noticeKey.startsWith('batch/')) {
-    return { kind: 'batch', messageSequence: null };
-  }
-
   if (noticeKey.startsWith('turn/')) {
     return {
       kind: 'turn',

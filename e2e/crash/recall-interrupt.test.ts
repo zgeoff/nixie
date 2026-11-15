@@ -3,7 +3,7 @@ import { readTestSessionDeliveries, startSpawnedNixie } from '@heynixie/server/t
 import { z } from 'zod';
 
 async function setupTest() {
-  const nixie = await startSpawnedNixie({ memoryWriter: true });
+  const nixie = await startSpawnedNixie({ isCheckerScripted: true });
 
   return { nixie };
 }
@@ -16,8 +16,6 @@ test('it counts only the recall whose result reached the model as held when its 
   await first.ready;
 
   await ctx.nixie.waitForQueueCheck();
-
-  ctx.nixie.writerModel.addReplies({ text: 'Nothing to stage.' }, { text: 'Nothing to stage.' });
 
   ctx.nixie.checkerModel.addReplies(
     { toolUse: { name: 'StructuredOutput', input: { verdict: 'asserted', reason: 'Stated.' } } },

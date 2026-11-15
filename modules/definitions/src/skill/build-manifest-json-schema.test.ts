@@ -28,7 +28,7 @@ test.each([
   ['format 3 and a skill list', 'format: 3\nskills:\n  - triage\n  - travel\n'],
   [
     'format 3 and a prompts map',
-    'format: 3\nprompts:\n  writer:\n    safety: prompts/writer.md\n    _template: "{{ parts.safety }}"\n',
+    'format: 3\nprompts:\n  compaction:\n    safety: prompts/writer.md\n    _template: "{{ parts.safety }}"\n',
   ],
   ['format 2, which the release before writes', 'format: 2\n'],
   ['format 2 and a prompts map, which format 2 ignores', 'format: 2\nprompts: 5\n'],

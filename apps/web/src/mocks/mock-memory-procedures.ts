@@ -7,7 +7,6 @@ import { readMockMemoryItem } from './read-mock-memory-item';
 import { readMockMemoryNotices } from './read-mock-memory-notices';
 import { readMockMemoryPage } from './read-mock-memory-page';
 import { readMockPinnedCore } from './read-mock-pinned-core';
-import { readMockWriterStatus } from './read-mock-writer-status';
 import { readRatingNote } from './read-rating-note';
 import { requireMockSession } from './require-mock-session';
 import { writeMockMemoryChange } from './write-mock-memory-change';
@@ -31,7 +30,16 @@ export const mockMemoryProcedures = {
   writerStatus: memory.writerStatus.handler((options) => {
     requireMockSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
 
-    return readMockWriterStatus();
+    return {
+      isEnabled: false,
+      backlog: 0,
+      batches: 0,
+      cursor: 0,
+      failures: 0,
+      isCatchingUp: false,
+      lastError: null,
+      retryAt: null,
+    };
   }),
 
   consolidatorStatus: memory.consolidatorStatus.handler((options) => {

@@ -78,7 +78,7 @@ test('it runs a session over the active items and leaves the diff its model prop
 
   const [allergy, duplicate, stale] = await Promise.all([
     createMemoryItem(ctx.store, { text: 'Is allergic to peanuts' }),
-    createMemoryItem(ctx.store, { text: 'has peanut allergy', origin: 'memory_writer' }),
+    createMemoryItem(ctx.store, { text: 'has peanut allergy', origin: 'conversation' }),
     createMemoryItem(ctx.store, { text: 'Has a dentist appointment on 2026-03-02' }),
   ]);
 

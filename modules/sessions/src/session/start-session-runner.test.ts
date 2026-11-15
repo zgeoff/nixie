@@ -24,10 +24,10 @@ async function setupTest() {
     steps: tools.steps,
     startRunner: (config: RunnerConfig, capture?: StepCaptureInput[]) =>
       startSessionRunner({
+        captureRole: 'task',
         ...(capture === undefined
           ? {}
           : {
-              captureRole: 'memory-writer' as const,
               turnInputs: {
                 openCapture: (input: StepCaptureInput) => {
                   capture.push(input);
@@ -47,7 +47,7 @@ async function setupTest() {
         sandboxes: sandboxes.adapter,
         tools: tools.endpoint,
         toolNames: ['memory_write'],
-        taskID: 'memory-writer',
+        taskID: 'sweeper',
         image: 'conversation',
         limits: { vcpus: 1, memoryMiB: 1024, diskMiB: 2048 },
         command: { argv: ['bun', '/opt/nixie/conversation/src/main.ts'], env: {} },
@@ -95,7 +95,7 @@ test('it sums the token counts over every model turn the session ended', async (
     systemPrompt: 'You write memory.',
     prompt: 'Read the batch.',
     signal: new AbortController().signal,
-    stepRunID: 'memory-writer:1@1',
+    stepRunID: 'sweeper:1@1',
   });
 
   expect(usage).toStrictEqual({
@@ -118,11 +118,11 @@ test("it gives the session's tools a token for the step that runs it, and stops 
     systemPrompt: 'You write memory.',
     prompt: 'Read the batch.',
     signal: new AbortController().signal,
-    stepRunID: 'memory-writer:3@2',
+    stepRunID: 'sweeper:3@2',
   });
 
   expect(ctx.steps).toStrictEqual([
-    { stepRunID: 'memory-writer:3@2', session: null, token: 'step-token-1', isStopped: true },
+    { stepRunID: 'sweeper:3@2', session: null, token: 'step-token-1', isStopped: true },
   ]);
 
   expect(ctx.sandboxes.turns[0]?.tools.token).toBe('step-token-1');
@@ -145,7 +145,7 @@ test('it starts each session fresh with the prompt as its one message', async ()
     systemPrompt: 'You write memory.',
     prompt: 'Read the batch.',
     signal: new AbortController().signal,
-    stepRunID: 'memory-writer:1@1',
+    stepRunID: 'sweeper:1@1',
   });
 
   expect(ctx.sandboxes.turns).toMatchObject([
@@ -170,7 +170,7 @@ test('it keeps 5-minute cache entries on a profile that sets a 1-hour lifetime',
     systemPrompt: 'You write memory.',
     prompt: 'Read the batch.',
     signal: new AbortController().signal,
-    stepRunID: 'memory-writer:1@1',
+    stepRunID: 'sweeper:1@1',
   });
 
   expect(ctx.sandboxes.turns.map((turn) => turn.profile.cacheTTL)).toStrictEqual(['5m']);
@@ -193,11 +193,11 @@ test('it throws when the guest fails the session', async () => {
       systemPrompt: 'You write memory.',
       prompt: 'Read the batch.',
       signal: new AbortController().signal,
-      stepRunID: 'memory-writer:1@1',
+      stepRunID: 'sweeper:1@1',
     }),
   ).rejects.toThrowWithMessage(
     Error,
-    "the memory-writer session failed: tools_not_connected: nixie's tool server is failed",
+    "the sweeper session failed: tools_not_connected: nixie's tool server is failed",
   );
 });
 
@@ -231,9 +231,9 @@ test('it throws when a model turn of the session ended at a model API error', as
       systemPrompt: 'You write memory.',
       prompt: 'Read the batch.',
       signal: new AbortController().signal,
-      stepRunID: 'memory-writer:1@1',
+      stepRunID: 'sweeper:1@1',
     }),
-  ).rejects.toThrowWithMessage(Error, 'the memory-writer session ended at a model API error');
+  ).rejects.toThrowWithMessage(Error, 'the sweeper session ended at a model API error');
 });
 
 test('it throws an overflow apart from an API error when the session ends at prompt_too_long', async () => {
@@ -266,9 +266,9 @@ test('it throws an overflow apart from an API error when the session ends at pro
       systemPrompt: 'You write memory.',
       prompt: 'Read the batch.',
       signal: new AbortController().signal,
-      stepRunID: 'memory-writer:1@1',
+      stepRunID: 'sweeper:1@1',
     }),
-  ).rejects.toThrowWithMessage(Error, "the memory-writer session's context passed its window");
+  ).rejects.toThrowWithMessage(Error, "the sweeper session's context passed its window");
 });
 
 test('it throws an overflow apart from an API error when the session ends at blocking_limit', async () => {
@@ -301,9 +301,9 @@ test('it throws an overflow apart from an API error when the session ends at blo
       systemPrompt: 'You write memory.',
       prompt: 'Read the batch.',
       signal: new AbortController().signal,
-      stepRunID: 'memory-writer:1@1',
+      stepRunID: 'sweeper:1@1',
     }),
-  ).rejects.toThrowWithMessage(Error, "the memory-writer session's context passed its window");
+  ).rejects.toThrowWithMessage(Error, "the sweeper session's context passed its window");
 });
 
 test('it opens the tool run for the system task on the profile model', async () => {
@@ -317,8 +317,8 @@ test('it opens the tool run for the system task on the profile model', async () 
   expect(ctx.runs).toStrictEqual([
     {
       toolUseMetaKey: 'claudecode/toolUseId',
-      runID: 'memory-writer',
-      thread: 'memory-writer',
+      runID: 'sweeper',
+      thread: 'sweeper',
       tools: ['memory_write'],
       model: { model: 'claude-test-1', profile: 'chat-direct' },
     },
@@ -333,7 +333,7 @@ test('it keeps the worker sandbox across restarts while its spec matches', async
   await ctx.startRunner({ models, credential: 'not-a-real-key' });
   await ctx.startRunner({ models, credential: 'not-a-real-key' });
 
-  expect(ctx.sandboxes.created).toMatchObject([{ kind: 'worker', owner: 'memory-writer' }]);
+  expect(ctx.sandboxes.created).toMatchObject([{ kind: 'worker', owner: 'sweeper' }]);
   expect(ctx.sandboxes.destroyed).toStrictEqual([]);
 });
 
@@ -363,7 +363,7 @@ test('it replaces the worker sandbox when its spec no longer matches', async () 
   expect(ctx.sandboxes.destroyed).toHaveLength(1);
 });
 
-test('it opens a capture for the memory-writer role and gives the turn its base URL', async () => {
+test('it opens a capture for the sweeper role and gives the turn its base URL', async () => {
   const ctx = await setupTest();
 
   const opened: StepCaptureInput[] = [];
@@ -377,13 +377,13 @@ test('it opens a capture for the memory-writer role and gives the turn its base 
     systemPrompt: 'You write memory.',
     prompt: 'Read the batch.',
     signal: new AbortController().signal,
-    stepRunID: 'memory-writer:1@1',
+    stepRunID: 'sweeper:1@1',
   });
 
   expect(opened).toStrictEqual([
     expect.objectContaining({
-      step: { taskID: 'memory-writer', stepRunID: 'memory-writer:1@1' },
-      role: 'memory-writer',
+      step: { taskID: 'sweeper', stepRunID: 'sweeper:1@1' },
+      role: 'task',
       isRewritten: false,
     }),
   ]);
@@ -410,7 +410,7 @@ test('it marks the capture of a step on a profile outside Claude as rewritten', 
     systemPrompt: 'You write memory.',
     prompt: 'Read the batch.',
     signal: new AbortController().signal,
-    stepRunID: 'memory-writer:1@1',
+    stepRunID: 'sweeper:1@1',
   });
 
   expect(opened.map((input) => input.isRewritten)).toStrictEqual([true]);

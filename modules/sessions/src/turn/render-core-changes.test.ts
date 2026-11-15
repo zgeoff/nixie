@@ -161,7 +161,7 @@ test('it keeps where a changed item came from, so an unconfirmed edit still read
         itemID: '5d2b1e0c-7f3a-4e8b-9c6d-2a1b3c4d5e6f',
         shortID: 'h4ns8w1cpe',
         version: 2,
-        origin: 'memory_writer',
+        origin: 'conversation',
         source: 'untrusted',
         evidenceQuote: 'the clinic moved to Elm Street',
         approval: null,
@@ -179,6 +179,6 @@ test('it keeps where a changed item came from, so an unconfirmed edit still read
   );
 
   expect(note).toInclude(
-    '\n- Changed [h4ns8w1cpe]:\n  - The clinic is on Elm Street\n    h4ns8w1cpe v2 · 13 Oct · the note-taker noted it · unconfirmed\n    How it came up: "the clinic moved to Elm Street"',
+    '\n- Changed [h4ns8w1cpe]:\n  - The clinic is on Elm Street\n    h4ns8w1cpe v2 · 13 Oct · you noted it · unconfirmed\n    How it came up: "the clinic moved to Elm Street"',
   );
 });

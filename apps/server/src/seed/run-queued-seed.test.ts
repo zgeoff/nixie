@@ -96,8 +96,8 @@ test('it writes one operator log line at startup that names each prompt with its
     [
       'format: 3',
       'prompts:',
-      '  writer:',
-      '    safety: prompts/writer-safety.md',
+      '  retirement-checker:',
+      '    safety: prompts/checker-safety.md',
       '  compaction:',
       '    _template: "{{ parts.instruction }}"',
       '',
@@ -106,7 +106,7 @@ test('it writes one operator log line at startup that names each prompt with its
 
   await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
   await mkdir(join(ctx.root, 'prompts'));
-  await writeFile(join(ctx.root, 'prompts', 'writer-safety.md'), 'Quote the owner.\n');
+  await writeFile(join(ctx.root, 'prompts', 'checker-safety.md'), 'Quote the owner.\n');
 
   const log = mock<SeedParts['log']>(() => {});
 
@@ -124,7 +124,7 @@ test('it writes one operator log line at startup that names each prompt with its
   );
 
   expect(log).toHaveBeenCalledWith('prompts.safety_missing', {
-    writer: 'replaced',
+    'retirement-checker': 'replaced',
     compaction: 'omitted',
   });
 });
@@ -166,12 +166,12 @@ test('it writes no safety line when every prompt keeps its safety part', async (
 
   await writeFile(
     join(ctx.root, 'nixie.yaml'),
-    'format: 3\nprompts:\n  writer:\n    instruction: prompts/writer.md\n',
+    'format: 3\nprompts:\n  retirement-checker:\n    instruction: prompts/checker.md\n',
   );
 
   await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
   await mkdir(join(ctx.root, 'prompts'));
-  await writeFile(join(ctx.root, 'prompts', 'writer.md'), 'Keep durable facts.\n');
+  await writeFile(join(ctx.root, 'prompts', 'checker.md'), 'Keep durable facts.\n');
 
   const log = mock<SeedParts['log']>(() => {});
 

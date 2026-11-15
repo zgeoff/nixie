@@ -5,7 +5,7 @@ import invariant from 'tiny-invariant';
 import { z } from 'zod';
 
 async function setupTest() {
-  const nixie = await startSpawnedNixie({ memoryWriter: true });
+  const nixie = await startSpawnedNixie({ isCheckerScripted: true });
 
   return { nixie };
 }
@@ -18,9 +18,6 @@ test('it holds the edit of a started task that reads memory as a proposal, made 
   await process.ready;
 
   await ctx.nixie.waitForQueueCheck();
-
-  // The writer runs on its own model and has nothing to stage from this message.
-  ctx.nixie.writerModel.addReplies({ text: 'Nothing to stage.' }, { text: 'Nothing to stage.' });
 
   ctx.nixie.checkerModel.addReplies({
     toolUse: { name: 'StructuredOutput', input: { verdict: 'asserted', reason: 'Stated.' } },

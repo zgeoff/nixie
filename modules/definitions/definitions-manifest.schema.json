@@ -39,24 +39,6 @@
         "prompts": {
           "type": "object",
           "properties": {
-            "writer": {
-              "type": "object",
-              "properties": {
-                "_template": {
-                  "type": "string"
-                },
-                "persona": {
-                  "type": "string"
-                },
-                "instruction": {
-                  "type": "string"
-                },
-                "safety": {
-                  "type": "string"
-                }
-              },
-              "additionalProperties": false
-            },
             "consolidator": {
               "type": "object",
               "properties": {
@@ -118,9 +100,6 @@
                   "type": "string"
                 },
                 "skillCatalog": {
-                  "type": "string"
-                },
-                "instruction": {
                   "type": "string"
                 },
                 "safety": {

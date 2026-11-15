@@ -25,7 +25,7 @@ export interface SessionRunnerOptions {
 
   // the turn-input log, and the role its roles list names this runner by
   readonly turnInputs?: StepCapturePort;
-  readonly captureRole?: ModelRole;
+  readonly captureRole: ModelRole;
 }
 
 export interface SessionInput {
@@ -119,12 +119,11 @@ async function runStepSession(
   tools: SessionTools,
 ): Promise<SessionUsage> {
   const profile = run.profile.profile;
-  const port = run.captureRole === undefined ? undefined : run.turnInputs;
 
-  const capture = await openStepCapture(port, {
+  const capture = await openStepCapture(run.turnInputs, {
     step: { taskID: run.taskID, stepRunID: session.stepRunID },
     profile,
-    role: run.captureRole ?? 'memory-writer',
+    role: run.captureRole,
     isRewritten: run.harness.rewritesRequests,
   });
 

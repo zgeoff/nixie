@@ -21,9 +21,9 @@
           "evidenceQuote": "the allotment plot is number 14",
           "until": null,
           "provenance": {
-            "origin": "memory_writer",
+            "origin": "conversation",
             "source": "owner",
-            "taskID": "memory-writer",
+            "taskID": "conversation",
             "proposalID": null,
             "checks": {
               "quote": "pass",

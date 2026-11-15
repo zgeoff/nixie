@@ -5,5 +5,4 @@ import type { MemoryErasableRecordKind } from './memory-record-kind';
 export const memoryItemErasableKinds = [
   'memory.image_offered',
   'memory.proposal_rejected',
-  'memory.self_note_flagged',
 ] as const satisfies readonly MemoryErasableRecordKind[];

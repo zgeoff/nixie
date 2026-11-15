@@ -2,8 +2,6 @@ import { expect, onTestFinished, test } from 'bun:test';
 import { existsSync } from 'node:fs';
 import { createAllowedAction } from '@heynixie/actions';
 import { clientHeaderName } from '@heynixie/contract';
-import { writeRecords } from '@heynixie/log';
-import { readWriterStatus } from '@heynixie/memory';
 import { readTestTasks } from '@heynixie/tasks/test-utils';
 import { buildSeeder } from './build-seeder';
 import { buildTestClient } from './build-test-client';
@@ -95,7 +93,6 @@ test('it serves the API with the settings the test gives', async () => {
     sessionIdleMs: 3_600_000,
     refusalIntervalMs: 60_000,
     lastSeenIntervalMs: 1000,
-    isMemoryWriterEnabled: false,
     isMemoryConsolidatorEnabled: false,
     isBackupEnabled: false,
     taskDirectory: [],
@@ -106,28 +103,10 @@ test('it serves the API with the settings the test gives', async () => {
     sessionIdleMs: 3_600_000,
     refusalIntervalMs: 60_000,
     lastSeenIntervalMs: 1000,
-    isMemoryWriterEnabled: false,
     isMemoryConsolidatorEnabled: false,
     isBackupEnabled: false,
     taskDirectory: [],
   });
-});
-
-test("it folds the memory writer's records into its row", async () => {
-  const ctx = await startTestAPI();
-
-  await writeRecords(ctx.context.log, [
-    {
-      kind: 'memory.writer_started',
-      definitions: { snapshotHash: 'sha256:test' },
-      thread: 'memory-writer',
-      payload: { startSequence: 3, at: 1_000_000 },
-    },
-  ]);
-
-  const status = await readWriterStatus(ctx.context.log);
-
-  expect(status.startSequence).toBe(3);
 });
 
 test('it stops the server and removes the data directory once the test finishes', async () => {

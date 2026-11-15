@@ -1,7 +1,7 @@
 import type { MemoryNotice } from '../types';
 
 export function formatNoticeSummary(
-  notice: Pick<MemoryNotice, 'kind' | 'remembered' | 'retired' | 'proposed'>,
+  notice: Pick<MemoryNotice, 'remembered' | 'retired' | 'proposed'>,
 ): string {
   const parts = [
     formatCount('Remembered', notice.remembered),
@@ -9,13 +9,7 @@ export function formatNoticeSummary(
     formatCount('Proposed', notice.proposed),
   ].filter((part) => part !== null);
 
-  const summary = parts.join(', ');
-
-  if (notice.kind === 'catch_up') {
-    return `${summary} from earlier conversation`;
-  }
-
-  return summary;
+  return parts.join(', ');
 }
 
 function formatCount(verb: string, count: number): string | null {

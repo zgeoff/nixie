@@ -369,8 +369,8 @@ test('#tasks.list marks a task that runs on its own schedule as taking no messag
     ...defaultAPISettings,
     taskDirectory: [
       {
-        taskID: 'memory-writer',
-        name: 'Memory writer',
+        taskID: 'sweeper',
+        name: 'Sweeper',
         brief: 'Saves what you say as memory.',
         isWokenByMessages: false,
         speaker: 'plain_task',
@@ -386,15 +386,15 @@ test('#tasks.list marks a task that runs on its own schedule as taking no messag
     {
       kind: 'task.created',
       definitions: { snapshotHash: 'sha256:test' },
-      thread: 'memory-writer',
-      payload: { taskID: 'memory-writer', isConversation: false, state: 'waiting' },
+      thread: 'sweeper',
+      payload: { taskID: 'sweeper', isConversation: false, state: 'waiting' },
     },
   ]);
 
   const listed = await client.tasks.list({});
 
   expect(listed.tasks.map((task) => [task.taskID, task.isTakingMessages])).toStrictEqual([
-    ['memory-writer', false],
+    ['sweeper', false],
   ]);
 });
 

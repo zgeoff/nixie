@@ -88,7 +88,7 @@ const coreItems = coreTexts.map(([text, quote], index) => ({
   shortID: `m${(index + 10).toString(36)}${(index * 7 + 3).toString(36)}`,
   text,
   subject: 'owner' as const,
-  origin: 'memory_writer' as const,
+  origin: 'conversation' as const,
   source: 'owner' as const,
   recordedAt: day - (40 - index) * dayMs,
   evidenceQuote: quote,
@@ -105,7 +105,7 @@ const otherItems = otherTexts.map(([text, quote], index) => ({
   shortID: `n${(index + 36).toString(36)}${(index * 5 + 7).toString(36)}`,
   text,
   subject: 'owner' as const,
-  origin: 'memory_writer' as const,
+  origin: 'conversation' as const,
   source: 'owner' as const,
   recordedAt: day - (60 - index) * dayMs,
   evidenceQuote: quote,
@@ -271,16 +271,6 @@ const conversationAnswers: Record<string, (input: Record<string, unknown>) => un
   'memory.comment': (input) => ({ changeID: String(input['changeID'] ?? ''), status: 'commented' }),
 };
 
-const writerAnswers: Record<string, (input: Record<string, unknown>) => unknown> = {
-  'memory.recall': (input) => ({
-    items: findItems(input['query']).map((item) => ({ itemID: item.shortID, text: item.text })),
-  }),
-  'memory.remember': () => ({ staged: true }),
-  'memory.edit': () => ({ staged: true }),
-  'memory.retire': () => ({ staged: true }),
-  'memory.flag-self-note': () => ({ staged: true }),
-};
-
 const consolidatorAnswers: Record<string, (input: Record<string, unknown>) => unknown> = {
   'memory.recall': (input) => ({
     items: findItems(input['query']).map((item) => ({
@@ -296,7 +286,7 @@ const consolidatorAnswers: Record<string, (input: Record<string, unknown>) => un
 
 // the scripted answer to one call, as JSON text, from the answers of the role's tool set
 const answerCall = (set: ToolSet, name: string, input: Record<string, unknown>): string => {
-  const answers = { conversation: conversationAnswers, worker: conversationAnswers, 'memory-writer': writerAnswers, 'memory-consolidator': consolidatorAnswers }[set];
+  const answers = { conversation: conversationAnswers, worker: conversationAnswers, 'memory-consolidator': consolidatorAnswers }[set];
   const answer = answers[name];
 
   if (answer === undefined) {

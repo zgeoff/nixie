@@ -231,23 +231,6 @@ export interface NixieTables {
     readonly until: number | null;
     readonly previous_subject: string | null;
   };
-  readonly memory_writer: {
-    readonly writer_id: string;
-    readonly cursor: number;
-    readonly start_sequence: number;
-    readonly caught_up_sequence: number | null;
-    readonly catch_up_applied: number;
-    readonly pending_start: number | null;
-    readonly pending_end: number | null;
-    readonly batches: number;
-    readonly last_batch_at: number | null;
-    readonly failures: number;
-    readonly retry_at: number | null;
-    readonly last_error_code: string | null;
-    readonly last_error_sequence: number | null;
-    readonly last_error_at: number | null;
-    readonly updated_sequence: number;
-  };
   readonly moment_links: {
     readonly link_key: string;
     readonly moment_id: string;

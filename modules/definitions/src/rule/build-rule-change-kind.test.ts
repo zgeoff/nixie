@@ -485,7 +485,7 @@ test('it opens no pull request that would write a rule into a prompt part under 
 
   await writeFile(
     join(ctx.root, 'nixie.yaml'),
-    'format: 3\nprompts:\n  writer:\n    instruction: rules/nixie.yaml\n',
+    'format: 3\nprompts:\n  compaction:\n    instruction: rules/nixie.yaml\n',
   );
 
   await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');

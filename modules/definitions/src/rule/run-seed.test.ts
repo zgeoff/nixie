@@ -141,7 +141,7 @@ test('it changes the snapshot hash when a prompt part file changes', async () =>
 
   await writeFile(
     join(ctx.root, 'nixie.yaml'),
-    'format: 3\nprompts:\n  writer:\n    instruction: prompts/writer.md\n',
+    'format: 3\nprompts:\n  compaction:\n    instruction: prompts/writer.md\n',
   );
 
   await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');

@@ -1,8 +1,6 @@
 import type { Log } from '@heynixie/log';
 import type { TurnNoteRange } from '@heynixie/sessions';
 import type { MemoryChange, MemoryOrigin, MemoryTables } from '../types';
-import { memoryWriterTaskID } from '../utils/memory-writer-task-id';
-import type { WriterTables } from '../writer/writer-model';
 
 export interface OutsideVersion {
   readonly item_id: string;
@@ -13,28 +11,7 @@ export interface OutsideVersion {
   readonly until: number | null;
 }
 
-export interface OutsideVersions {
-  readonly catchUp: readonly OutsideVersion[];
-  readonly listed: readonly OutsideVersion[];
-}
-
-export async function readOutsideVersions(
-  log: Pick<Log, 'writer'>,
-  range: TurnNoteRange,
-): Promise<OutsideVersions> {
-  const versions = await readVersionRows(log, range);
-  const caughtUp = await readCaughtUpSequence(log);
-
-  const isCatchUp = (version: OutsideVersion) =>
-    version.origin === 'memory_writer' && (caughtUp === null || version.sequence < caughtUp);
-
-  return {
-    catchUp: versions.filter((version) => isCatchUp(version)),
-    listed: versions.filter((version) => !isCatchUp(version)),
-  };
-}
-
-function readVersionRows(
+export function readOutsideVersions(
   log: Pick<Log, 'writer'>,
   range: TurnNoteRange,
 ): Promise<readonly OutsideVersion[]> {
@@ -56,15 +33,4 @@ function readVersionRows(
     .where('memory_items.state', 'in', ['active', 'retired'])
     .orderBy('memory_versions.sequence')
     .execute();
-}
-
-async function readCaughtUpSequence(log: Pick<Log, 'writer'>): Promise<number | null> {
-  const writer = await log.writer.db
-    .$extendTables<WriterTables>()
-    .selectFrom('memory_writer')
-    .select('caught_up_sequence')
-    .where('writer_id', '=', memoryWriterTaskID)
-    .executeTakeFirst();
-
-  return writer?.caught_up_sequence ?? null;
 }

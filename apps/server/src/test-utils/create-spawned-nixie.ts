@@ -89,8 +89,6 @@ export interface SpawnedNixie extends BootFiles {
   readonly harness: SpawnedNixieHarness;
   readonly model: ScriptedModel;
 
-  readonly writerModel: ScriptedModel;
-
   readonly checkerModel: ScriptedModel;
   readonly provider: ProviderDouble;
   readonly readRecords: () => Promise<readonly TestRecord[]>;
@@ -145,7 +143,7 @@ interface ModelRoute {
 }
 
 export interface SpawnedNixieOptions {
-  readonly memoryWriter?: boolean;
+  readonly isCheckerScripted?: boolean;
 
   readonly extraConfig?: readonly string[];
 
@@ -252,16 +250,12 @@ export async function createSpawnedNixie(
   };
 }
 
-type TestDoubles = Pick<SpawnedNixie, 'model' | 'provider' | 'writerModel' | 'checkerModel'>;
+type TestDoubles = Pick<SpawnedNixie, 'model' | 'provider' | 'checkerModel'>;
 
 function startDoubles(stack: AsyncDisposableStack): TestDoubles {
   const model = startScriptedModel();
 
   stack.defer(() => model.stop());
-
-  const writerModel = startScriptedModel();
-
-  stack.defer(() => writerModel.stop());
 
   const checkerModel = startScriptedModel();
 
@@ -271,27 +265,22 @@ function startDoubles(stack: AsyncDisposableStack): TestDoubles {
 
   stack.defer(() => provider.stop());
 
-  return { model, writerModel, checkerModel, provider };
+  return { model, checkerModel, provider };
 }
 
 const checkerTimeoutMs = 60 * 60 * 1000;
 
-// The memory writer and the consolidator ask the model on their own schedule, so a test that does
-// not ask for them keeps them off and its scripted replies for the turns it drives. The writer's
-// gate asks the checker in the middle of a batch, so the checker gets its own model as well.
+// The consolidator asks the model on its own schedule, so a test keeps it off and its scripted
+// replies for the turns it drives. A test that scripts the checker's answers gives it its own model.
 function buildBootExtras(options: SpawnedNixieOptions, doubles: TestDoubles) {
-  const isWriterOn = options.memoryWriter === true;
-
   return {
     config: [
-      'memory_writer:',
-      `  enabled: ${String(isWriterOn)}`,
       'memory_consolidation:',
       '  enabled: false',
 
       // The checker's timeout runs on the harness clock, which a suite advances in steps while the
       // check starts the real SDK on the wall clock. On a busy host 2 steps outran the default
-      // timeout mid-check, and the writer staged a proposal instead of the active item.
+      // timeout mid-check, and the write became a proposal instead of the active item.
       'memory:',
       `  checker_timeout_ms: ${String(checkerTimeoutMs)}`,
       ...(options.extraConfig ?? []),
@@ -300,13 +289,8 @@ function buildBootExtras(options: SpawnedNixieOptions, doubles: TestDoubles) {
     definitions: [],
     hasStarterRules: true,
     ...(options.logLevel === undefined ? {} : { logLevel: options.logLevel }),
-    ...(isWriterOn
-      ? {
-          roleModelURLs: {
-            'memory-writer': doubles.writerModel.url,
-            checker: doubles.checkerModel.url,
-          },
-        }
+    ...(options.isCheckerScripted === true
+      ? { roleModelURLs: { checker: doubles.checkerModel.url } }
       : {}),
     ...(options.release === undefined ? {} : { sandboxAdapter: 'imp' as const }),
     ...(options.backups === undefined ? {} : { isBackupOn: options.backups }),

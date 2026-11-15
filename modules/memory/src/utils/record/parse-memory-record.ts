@@ -16,7 +16,7 @@ const versionAdded = z.strictObject({
   sealed: z.base64(),
   evidence: quoteEvidence.nullable(),
   intentEvidence: quoteEvidence.nullable(),
-  origin: z.enum(['owner', 'conversation', 'task', 'memory_writer', 'lapse']),
+  origin: z.enum(['owner', 'conversation', 'task', 'lapse']),
   source: z.enum(['owner', 'owner_data', 'untrusted']),
   taskID: z.string().nullable(),
   proposalID: z.string().nullable(),

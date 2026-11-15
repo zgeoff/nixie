@@ -257,10 +257,6 @@
               "type": "string",
               "pattern": "^[a-z0-9][a-z0-9-]*$"
             },
-            "memory-writer": {
-              "type": "string",
-              "pattern": "^[a-z0-9][a-z0-9-]*$"
-            },
             "memory-consolidator": {
               "type": "string",
               "pattern": "^[a-z0-9][a-z0-9-]*$"
@@ -1173,72 +1169,6 @@
       },
       "additionalProperties": false
     },
-    "memory_writer": {
-      "type": "object",
-      "properties": {
-        "enabled": {
-          "default": true,
-          "type": "boolean"
-        },
-        "batch_messages": {
-          "default": 4,
-          "type": "integer",
-          "exclusiveMinimum": 0,
-          "maximum": 9007199254740991
-        },
-        "batch_tokens": {
-          "default": 12000,
-          "type": "integer",
-          "exclusiveMinimum": 0,
-          "maximum": 9007199254740991
-        },
-        "idle_minutes": {
-          "default": 5,
-          "type": "number",
-          "exclusiveMinimum": 0
-        },
-        "max_age_minutes": {
-          "default": 20,
-          "type": "number",
-          "exclusiveMinimum": 0
-        },
-        "batches_per_hour": {
-          "default": 300,
-          "type": "integer",
-          "exclusiveMinimum": 0,
-          "maximum": 9007199254740991
-        },
-        "item_list_tokens": {
-          "default": 8000,
-          "type": "integer",
-          "exclusiveMinimum": 0,
-          "maximum": 9007199254740991
-        },
-        "top_items": {
-          "default": 20,
-          "type": "integer",
-          "exclusiveMinimum": 0,
-          "maximum": 100
-        },
-        "proposal_cap": {
-          "default": 10,
-          "type": "integer",
-          "exclusiveMinimum": 0,
-          "maximum": 9007199254740991
-        },
-        "first_backoff_seconds": {
-          "default": 30,
-          "type": "number",
-          "exclusiveMinimum": 0
-        },
-        "max_backoff_minutes": {
-          "default": 60,
-          "type": "number",
-          "exclusiveMinimum": 0
-        }
-      },
-      "additionalProperties": false
-    },
     "memory": {
       "type": "object",
       "properties": {
@@ -1498,7 +1428,6 @@
                 "enum": [
                   "conversation",
                   "task",
-                  "memory-writer",
                   "memory-consolidator"
                 ]
               },

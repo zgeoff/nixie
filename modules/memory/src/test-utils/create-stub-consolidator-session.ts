@@ -4,12 +4,12 @@ import type {
   ConsolidationStaging,
 } from '../consolidation/create-consolidation-staging';
 import { createConsolidationStaging } from '../consolidation/create-consolidation-staging';
-import type { WriterModel } from '../writer/writer-model';
+import type { ConsolidatorModel } from '../consolidator/consolidator-model';
 
 export interface StubConsolidatorSession {
   readonly staging: ConsolidationStaging;
 
-  readonly model: WriterModel & { readonly runSession: ReturnType<typeof mock> };
+  readonly model: ConsolidatorModel & { readonly runSession: ReturnType<typeof mock> };
 }
 
 export function createStubConsolidatorSession(

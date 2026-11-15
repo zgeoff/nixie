@@ -11,7 +11,7 @@ function setupTest() {
 test('it creates a system task under its fixed ID, ready for its first step', async () => {
   const ctx = await setupTest();
 
-  await createSystemTask(ctx.context, 'memory-writer');
+  await createSystemTask(ctx.context, 'sweeper');
 
   const task = await ctx.writer.db
     .$extendTables<TasksTables>()
@@ -19,14 +19,14 @@ test('it creates a system task under its fixed ID, ready for its first step', as
     .select(['task_id', 'is_conversation', 'state'])
     .executeTakeFirstOrThrow();
 
-  expect(task).toStrictEqual({ task_id: 'memory-writer', is_conversation: 0, state: 'ready' });
+  expect(task).toStrictEqual({ task_id: 'sweeper', is_conversation: 0, state: 'ready' });
 });
 
 test('it leaves the system task be on every start after the first', async () => {
   const ctx = await setupTest();
 
-  await createSystemTask(ctx.context, 'memory-writer');
-  await createSystemTask(ctx.context, 'memory-writer');
+  await createSystemTask(ctx.context, 'sweeper');
+  await createSystemTask(ctx.context, 'sweeper');
 
   const records = await readRecords(ctx.context.log, { afterSequence: 0 });
 

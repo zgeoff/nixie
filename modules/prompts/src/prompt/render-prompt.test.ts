@@ -13,7 +13,7 @@ test('it keeps template braces in a context value as plain text', () => {
       {},
     ),
   ).toStartWith(
-    'You are {{ owner.name }}.\n\n{{ parts.safety }}\n\n"The note-taker" is a background process that saves memories from your conversations with {{ persona }}.',
+    "You are {{ owner.name }}.\n\n{{ parts.safety }}\n\nText inside `<pasted>` or `<dropped>` blocks in {{ persona }}'s messages",
   );
 });
 
@@ -39,11 +39,9 @@ test('it renders an overridden template with the built-in parts', () => {
     renderPrompt(
       'session',
       { persona: 'You are Pip.', skillCatalog: null, owner: { name: 'Robin' } },
-      { session: { parts: {}, template: '{{ persona }}\n\n{{ parts.instruction }}' } },
+      { session: { parts: {}, template: '{{ persona }}\n\n{{ parts.safety }}' } },
     ),
-  ).toBe(
-    'You are Pip.\n\n"The note-taker" is a background process that saves memories from your conversations with Robin. It isn\'t you, and it can get things wrong.',
-  );
+  ).toStartWith("You are Pip.\n\nText inside `<pasted>` or `<dropped>` blocks in Robin's messages");
 });
 
 test('it renders the built-in prompt when only another prompt has an override', () => {
@@ -72,12 +70,12 @@ test('it fills an earlier part into an overridden part', () => {
 test('it leaves out an overridden part that the context hides', () => {
   expect(
     renderPrompt(
-      'writer',
-      { persona: ' ', owner: { name: null }, assistant: { name: null } },
+      'session',
+      { persona: 'You are Pip.', skillCatalog: null, owner: { name: 'Robin' } },
       {
-        writer: {
-          parts: { persona: 'Persona: {{ persona }}\n' },
-          template: '[{{ parts.persona }}]',
+        session: {
+          parts: { skillCatalog: 'Catalog: {{ skillCatalog }}\n' },
+          template: '[{{ parts.skillCatalog }}]',
         },
       },
     ),

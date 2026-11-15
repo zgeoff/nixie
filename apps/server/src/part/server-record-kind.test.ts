@@ -12,8 +12,6 @@ function setupTest() {
     'action.retry_scheduled': ['result', 'message'],
     'memory.image_offered': ['text'],
     'memory.proposal_rejected': ['reason'],
-    'memory.self_note_flagged': ['text'],
-    'memory.writer_failed': ['message'],
     'model.compaction_failed': ['message'],
     'model.reply': ['text', 'summary'],
     'model.session_summarized': ['text'],

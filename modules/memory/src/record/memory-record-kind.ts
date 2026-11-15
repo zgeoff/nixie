@@ -1,7 +1,5 @@
 export type MemoryRecordKind =
   | 'memory.approval_recorded'
-  | 'memory.batch_planned'
-  | 'memory.batch_published'
   | 'memory.consolidation_approved'
   | 'memory.consolidation_commented'
   | 'memory.consolidation_lapsed'
@@ -11,7 +9,6 @@ export type MemoryRecordKind =
   | 'memory.forget_started'
   | 'memory.forgotten'
   | 'memory.image_offered'
-  | 'memory.notice'
   | 'memory.pinned'
   | 'memory.proposal_lapsed'
   | 'memory.proposal_merged'
@@ -22,14 +19,11 @@ export type MemoryRecordKind =
   | 'memory.proposal_subject_changed'
   | 'memory.proposed'
   | 'memory.rated'
-  | 'memory.self_note_flagged'
   | 'memory.self_noted'
   | 'memory.sensitive_marked'
   | 'memory.shared_noted'
   | 'memory.subject_changed'
   | 'memory.version_added'
-  | 'memory.writer_failed'
-  | 'memory.writer_started'
   | 'moment_destroyed'
   | 'moment_edited'
   | 'moment_kept'
@@ -41,8 +35,6 @@ export type MemoryRecordKind =
 export type MemoryErasableRecordKind =
   | 'memory.image_offered'
   | 'memory.proposal_rejected'
-  | 'memory.self_note_flagged'
-  | 'memory.writer_failed'
   | 'moment_edited'
   | 'moment_kept';
 

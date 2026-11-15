@@ -1,9 +1,8 @@
-import { memoryConsolidatorTaskID, memoryWriterTaskID } from '@heynixie/memory';
+import { memoryConsolidatorTaskID } from '@heynixie/memory';
 import type { TaskMessaging, TaskProfile } from '@heynixie/tasks';
 import { conversationTaskID } from '@heynixie/tasks';
 
 interface MessagingConfig {
-  readonly memory_writer: { readonly isEnabled: boolean };
   readonly memory_consolidation: { readonly isEnabled: boolean };
   readonly owner: { readonly name: string | null };
   readonly agent: { readonly names: readonly string[] };
@@ -21,14 +20,6 @@ export function buildTaskMessaging(config: MessagingConfig): TaskMessaging {
     speaker: 'conversation',
   };
 
-  const writer: TaskProfile = {
-    taskID: memoryWriterTaskID,
-    name: 'Memory writer',
-    brief: `Reads the conversation in batches and saves or proposes what ${owner} says as memory. Runs on its own schedule.`,
-    isWokenByMessages: false,
-    speaker: 'plain_task',
-  };
-
   const consolidator: TaskProfile = {
     taskID: memoryConsolidatorTaskID,
     name: 'Memory consolidator',
@@ -38,11 +29,7 @@ export function buildTaskMessaging(config: MessagingConfig): TaskMessaging {
   };
 
   return {
-    directory: [
-      conversation,
-      ...(config.memory_writer.isEnabled ? [writer] : []),
-      ...(config.memory_consolidation.isEnabled ? [consolidator] : []),
-    ],
+    directory: [conversation, ...(config.memory_consolidation.isEnabled ? [consolidator] : [])],
     hopLimit: config.tasks.messaging.hopLimit,
     ownerName: config.owner.name,
     agentName: config.agent.names[0] ?? null,

@@ -52,7 +52,7 @@ test('it reads each answer on the thread with its prompt, its edits and the reas
       thread: 'conversation',
       payload: promptsOverrideProposedCodec.encode({
         proposalID: 'w7tn4c9rhz',
-        promptID: 'writer',
+        promptID: 'compaction',
         proposalHash: 'hash-b',
         baseHash: null,
         entry: { _template: '{{ parts.safety }}' },
@@ -106,7 +106,7 @@ test('it reads each answer on the thread with its prompt, its edits and the reas
       at: expect.toBeNumber(),
       detail: {
         proposalID: 'w7tn4c9rhz',
-        promptID: 'writer',
+        promptID: 'compaction',
         step: 'rejected',
         isEdited: false,
         pullRequestURL: null,
@@ -224,7 +224,7 @@ test('it reads the answers through the end of the range and none after it', asyn
       thread: 'conversation',
       payload: promptsOverrideProposedCodec.encode({
         proposalID: 'w7tn4c9rhz',
-        promptID: 'writer',
+        promptID: 'compaction',
         proposalHash: 'hash-b',
         baseHash: null,
         entry: { _template: '{{ parts.safety }}' },

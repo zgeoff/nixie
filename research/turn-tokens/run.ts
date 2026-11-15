@@ -19,8 +19,6 @@ import { runTurn } from '../../guests/conversation/src/turn/run-turn';
 // @boundaries-ignore a spike imports the code it measures
 import { renderConsolidatorPrompt } from '../../modules/memory/src/consolidator/render-consolidator-prompt';
 // @boundaries-ignore a spike imports the code it measures
-import { renderWriterPrompt } from '../../modules/memory/src/writer/render-writer-prompt';
-// @boundaries-ignore a spike imports the code it measures
 import { encodeInboxUUID } from '../../modules/sessions/src/inbox/encode-inbox-uuid';
 // @boundaries-ignore a spike imports the code it measures
 import { renderInboxMessage } from '../../modules/sessions/src/inbox/render-inbox-message';
@@ -76,7 +74,6 @@ const dir = import.meta.dir;
 const runners: Record<string, () => Promise<readonly SessionResult[]>> = {
   conversation: runConversation,
   checker: runChecker,
-  'memory-writer': runWriter,
   'memory-consolidator': runConsolidator,
   task: runTasks,
   worker: runWorkers,
@@ -211,59 +208,6 @@ async function runChecker(): Promise<readonly SessionResult[]> {
       replies: [reply.kind === 'answer' ? JSON.stringify(reply.output) : reply.reason],
       error: reply.kind === 'answer' ? null : reply.reason,
     });
-  }
-  return results;
-}
-
-// the conversation's 24 messages in batches of 4, the writer's default, with 20 shown items
-async function runWriter(): Promise<readonly SessionResult[]> {
-  // the replies of the Opus conversation run, which runs first
-  const conversationRun = (await Bun.file(
-    join(dir, 'runs', 'conversation-claude-opus-5-5-medium.json'),
-  ).json()) as { sessions: SessionResult[] };
-  const messages = fixtures.conversation.flatMap((message, index) => [
-    { sequence: ownerSequence(index), role: 'owner' as const, shown: message.text, recordedAt: fixtures.day + index * 600_000, timeZone: 'Europe/Lisbon' },
-    {
-      sequence: ownerSequence(index) + 1,
-      role: 'assistant' as const,
-      shown: conversationRun.sessions[index]?.replies.join('\n\n') ?? '',
-      recordedAt: fixtures.day + index * 600_000 + 20_000,
-      timeZone: null,
-    },
-  ]);
-  const items = [...fixtures.coreItems, ...fixtures.otherItems.slice(0, 10)].map((item) => ({
-    itemID: item.shortID,
-    version: item.version,
-    subject: 'owner' as const,
-    text: item.text,
-  }));
-  const names = { owner: fixtures.ownerName, assistant: null };
-  const systemPrompt = renderPrompt(
-    'writer',
-    { persona: fixtures.persona, owner: { name: names.owner }, assistant: { name: names.assistant } },
-    {},
-  );
-  const results: SessionResult[] = [];
-
-  for (let start = 0; start < messages.length; start += 4) {
-    const prompt = renderWriterPrompt({
-      items,
-      isComplete: false,
-      proposals: [],
-      messages: messages.slice(start, start + 4),
-      names,
-      defaultZone: 'Europe/Lisbon',
-      taskMessages: null,
-    });
-    // oxlint-disable-next-line no-await-in-loop -- the writer runs one batch at a time
-    const result = await runGuestSession(`batch-${start / 4 + 1}`, 'memory-writer', {
-      home: await mkdtemp(join(tmpdir(), 'turn-tokens-')),
-      systemPrompt,
-      input: [buildPlainMessage(prompt)],
-      resume: null,
-    });
-
-    results.push(result.session);
   }
   return results;
 }

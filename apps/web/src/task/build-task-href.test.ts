@@ -10,5 +10,5 @@ test('it links a task to its own page', () => {
 });
 
 test('it escapes a task ID that holds a slash', () => {
-  expect(buildTaskHref('memory/writer')).toBe('/tasks/memory%2Fwriter');
+  expect(buildTaskHref('memory/consolidator')).toBe('/tasks/memory%2Fconsolidator');
 });

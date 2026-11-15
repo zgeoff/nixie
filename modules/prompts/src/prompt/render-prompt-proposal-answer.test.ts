@@ -58,7 +58,7 @@ test('it gives the reason for a rejection', () => {
     renderPromptProposalAnswer(
       {
         proposalID: 'k3x9m2p7qa',
-        promptID: 'writer',
+        promptID: 'compaction',
         step: 'rejected',
         isEdited: false,
         pullRequestURL: null,
@@ -67,7 +67,7 @@ test('it gives the reason for a rejection', () => {
       { ownerName: 'Robin' },
     ),
   ).toBe(
-    'Robin rejected your prompt proposal k3x9m2p7qa (writer). Reason: "Keep the quote rule.".',
+    'Robin rejected your prompt proposal k3x9m2p7qa (compaction). Reason: "Keep the quote rule.".',
   );
 });
 
@@ -76,7 +76,7 @@ test('it names a rejection without a reason it can read', () => {
     renderPromptProposalAnswer(
       {
         proposalID: 'k3x9m2p7qa',
-        promptID: 'writer',
+        promptID: 'compaction',
         step: 'rejected',
         isEdited: false,
         pullRequestURL: null,
@@ -84,7 +84,7 @@ test('it names a rejection without a reason it can read', () => {
       },
       { ownerName: 'Robin' },
     ),
-  ).toBe('Robin rejected your prompt proposal k3x9m2p7qa (writer).');
+  ).toBe('Robin rejected your prompt proposal k3x9m2p7qa (compaction).');
 });
 
 test('it tells the model a proposal lapsed after 14 days with no answer', () => {

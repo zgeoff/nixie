@@ -12,7 +12,7 @@ test("it renders a task's message in the task-message envelope and never in an o
     recordedAt: new Date('2026-10-13T03:05:00Z'),
     payload: {
       messageID: 'k3vq8m2xpa',
-      from: 'memory-writer',
+      from: 'sweeper',
       to: 'conversation',
       kind: 'question',
       replyTo: null,
@@ -21,7 +21,7 @@ test("it renders a task's message in the task-message envelope and never in an o
       hopLimit: 20,
       wake: true,
       woke: true,
-      source: 'task:memory-writer',
+      source: 'task:sweeper',
     },
     erasable: { status: 'readable', fields: { body: 'Should I keep the note about the bike?' } },
   });
@@ -33,8 +33,8 @@ test("it renders a task's message in the task-message envelope and never in an o
       messaging: {
         directory: [
           {
-            taskID: 'memory-writer',
-            name: 'Memory writer',
+            taskID: 'sweeper',
+            name: 'Sweeper',
             brief: 'Saves memories.',
             isWokenByMessages: true,
             speaker: 'plain_task',
@@ -44,7 +44,7 @@ test("it renders a task's message in the task-message envelope and never in an o
         ownerName: 'Robin',
         agentName: null,
       },
-      wake: { hop: 2, cause: { kind: 'task', taskID: 'memory-writer' } },
+      wake: { hop: 2, cause: { kind: 'task', taskID: 'sweeper' } },
     }),
   );
 
@@ -52,7 +52,7 @@ test("it renders a task's message in the task-message envelope and never in an o
 
   expect(message).toBe(
     [
-      `<task-message id="k3vq8m2xpa" from="task: Memory writer" kind="question" sent="Tue 13 Oct, 14:05, Sydney" on-behalf-of="48212" fence="${fence}">`,
+      `<task-message id="k3vq8m2xpa" from="task: Sweeper" kind="question" sent="Tue 13 Oct, 14:05, Sydney" on-behalf-of="48212" fence="${fence}">`,
       'Should I keep the note about the bike?',
       `</task-message fence="${fence}">`,
     ].join('\n'),

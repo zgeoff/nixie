@@ -11,11 +11,9 @@ import { buildConsolidatorTools } from '../../modules/memory/src/consolidator/bu
 import { buildLogReadTool } from '../../modules/memory/src/log/build-log-read-tool';
 // @boundaries-ignore a spike imports the code it measures
 import { buildMemoryTools } from '../../modules/memory/src/memory/build-memory-tools';
-// @boundaries-ignore a spike imports the code it measures
-import { buildWriterTools } from '../../modules/memory/src/writer/build-writer-tools';
 import type { ListedTool } from './start-tool-server';
 
-export type ToolSet = 'conversation' | 'memory-writer' | 'memory-consolidator' | 'worker';
+export type ToolSet = 'conversation' | 'memory-consolidator' | 'worker';
 
 const unused = {} as never;
 const options = {
@@ -34,7 +32,6 @@ export function buildRoleTools(set: ToolSet): readonly ListedTool[] {
       buildLogReadTool(unused),
       ...buildMemoryTools(unused, options),
     ],
-    'memory-writer': () => buildWriterTools(unused, unused, 20),
     'memory-consolidator': () => buildConsolidatorTools(unused, unused, 20),
     worker: () => [webFetch],
   }[set]();

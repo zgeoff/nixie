@@ -8,7 +8,6 @@ const refusals: Readonly<Record<MomentRefusal, string>> = {
   bad_span:
     'firstEventID and lastEventID must both be events of your own thread, the first no later than the last',
   other_thread: 'you keep, or move the edges of, a span of your own thread only',
-  memory_writer: 'the memory writer keeps no moments',
   owner_only: 'only the owner writes that, from the client',
   model_only: 'only a model writes a reflection',
   reflection_not_found: 'the moment holds no reflection with that reflectionID',

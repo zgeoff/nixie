@@ -14,7 +14,6 @@ import type {
   VersionRef,
   WriteInTransaction,
 } from '../types';
-import type { SourceMessage, WriterGate } from '../writer/writer-model';
 import type { reviewReasons } from './review-reasons';
 
 export type { ContentGateRequest, ContentGateResult } from './content-gate-request';
@@ -67,7 +66,7 @@ export interface MessageSpan {
 export type ReviewReason = (typeof reviewReasons)[number];
 
 export interface WriteCaller {
-  readonly origin: 'conversation' | 'task' | 'memory_writer';
+  readonly origin: 'conversation' | 'task';
   readonly thread: string;
   readonly taskID: string;
   readonly runID: string;
@@ -138,12 +137,9 @@ export interface MemoryWrites {
   readonly unpin: (request: UnpinRequest) => Promise<WriteOutcome>;
   readonly markSensitive: (request: SensitiveMarkRequest) => Promise<WriteOutcome>;
 
-  readonly batch: WriterGate;
-
   // the sources that the decision point reads for a write, from the quote the gate finds
   readonly readRememberSources: (request: GatedRememberRequest) => Promise<readonly WriteSource[]>;
   readonly readRetireSources: (request: GatedRetireRequest) => Promise<readonly WriteSource[]>;
-  readonly readBatchSources: (source: SourceMessage, quote: string) => Promise<WriteSource>;
 
   // the subject of an item, which a rule reads when a call leaves it out
   readonly readItemSubject: (itemID: string) => Promise<MemorySubject>;

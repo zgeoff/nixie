@@ -3,12 +3,10 @@ import type { CompactionSettings } from '@heynixie/compaction';
 import type { Log } from '@heynixie/log';
 import type { AnswerQuoteSource, StartedMemoryStore } from '@heynixie/memory';
 import {
-  buildCatchUpKind,
   buildMemoryChangeKind,
   buildMomentKeptKind,
   buildProposalAnswerKind,
   buildProposalMergeKind,
-  buildSelfNoteFlagKind,
 } from '@heynixie/memory';
 import type { TurnNote, TurnNoteRequest } from '@heynixie/sessions';
 import {
@@ -48,10 +46,8 @@ export function makeTurnNoteReader(
 
   const events = buildEventRegistry([
     buildMemoryChangeKind(options.log, store),
-    buildCatchUpKind(options.log),
     buildProposalMergeKind(options.log),
     buildProposalAnswerKind(options.log, store),
-    buildSelfNoteFlagKind(options.log),
     buildMomentKeptKind(options.log, options.getTaskName),
     buildRestartKind(options.log),
     buildRetriedTurnKind(options.log),

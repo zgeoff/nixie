@@ -24,7 +24,7 @@ test('it renders each pinned item with the line that says where it came from, in
           subject: 'owner',
           model: null,
           version: 2,
-          origin: 'memory_writer',
+          origin: 'conversation',
           source: 'untrusted',
           recordedAt: Date.UTC(2025, 10, 30, 9, 30),
           text: 'Goes by Sam',
@@ -41,7 +41,7 @@ test('it renders each pinned item with the line that says where it came from, in
       b7kq2m9xza v1 · 2 Mar · you noted it · Robin said this
       How it came up: "they/them for me, please"
     - Goes by Sam
-      h4ns8w1cpe v2 · 30 Nov 2025 · the note-taker noted it · unconfirmed · Robin approved"
+      h4ns8w1cpe v2 · 30 Nov 2025 · you noted it · unconfirmed · Robin approved"
   `);
 });
 

@@ -541,13 +541,13 @@ test('it gives a sandbox the socket of a run that another endpoint of the same w
 
   const run = await other.startRun({
     toolUseMetaKey: null,
-    runID: 'memory-writer',
-    thread: 'memory-writer',
+    runID: 'sweeper',
+    thread: 'sweeper',
     tools: ['notes_read'],
     model: { model: 'model-a', profile: 'chat-direct' },
   });
 
-  expect(ctx.endpoint.getToolTarget({ id: 'nixie-0123', owner: 'memory-writer' })).toStrictEqual(
+  expect(ctx.endpoint.getToolTarget({ id: 'nixie-0123', owner: 'sweeper' })).toStrictEqual(
     run.target,
   );
 });

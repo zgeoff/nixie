@@ -66,7 +66,7 @@ test('it shows an item quote on one line under its text, and no quote line for a
           version: 1,
           change: 'created',
           state: 'active',
-          origin: 'memory_writer',
+          origin: 'conversation',
           source: 'owner',
           evidenceQuote: 'my sourdough starter is called\nBarnaby and he is a menace',
           image: null,

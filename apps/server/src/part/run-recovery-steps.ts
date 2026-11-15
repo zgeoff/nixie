@@ -1,5 +1,5 @@
 import { writeUnknownOutcomes } from '@heynixie/actions';
-import { memoryConsolidatorTaskID, memoryWriterTaskID } from '@heynixie/memory';
+import { memoryConsolidatorTaskID } from '@heynixie/memory';
 import { removeStaleSandboxes } from '@heynixie/sandbox';
 import { checkerOwner } from '@heynixie/sessions';
 import { conversationTaskID, readStartedTaskIDs, runRecovery } from '@heynixie/tasks';
@@ -16,13 +16,7 @@ export async function runRecoverySteps(parts: ServerParts): Promise<void> {
         await removeStaleSandboxes({
           log: parts.context.log,
           adapter: parts.tools.adapter,
-          keptOwners: [
-            conversationTaskID,
-            memoryWriterTaskID,
-            memoryConsolidatorTaskID,
-            checkerOwner,
-            ...started,
-          ],
+          keptOwners: [conversationTaskID, memoryConsolidatorTaskID, checkerOwner, ...started],
         });
       },
     },

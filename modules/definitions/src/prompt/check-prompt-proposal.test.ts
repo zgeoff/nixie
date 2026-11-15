@@ -8,12 +8,12 @@ test('it passes a proposal whose parts and template the definitions parse accept
     checkPromptProposal({
       id: 'session',
       entry: {
-        instruction: 'prompts/session-instruction.md',
-        _template: '{{ persona }}\n\n{{ parts.instruction }}\n\n{{ parts.safety }}',
+        skillCatalog: 'prompts/session-catalog.md',
+        _template: '{{ persona }}\n\n{{ parts.skillCatalog }}\n\n{{ parts.safety }}',
       },
       files: [
         {
-          path: 'prompts/session-instruction.md',
+          path: 'prompts/session-catalog.md',
           text: 'Keep replies to {{ owner.name }} short.\n',
         },
       ],
@@ -42,7 +42,7 @@ test('it refuses a prompt that nixie does not have', () => {
     {
       path: 'nixie.yaml',
       reason:
-        'prompts: no prompt is named greeter; the prompts are writer, consolidator, content-checker, retirement-checker, session, compaction, task',
+        'prompts: no prompt is named greeter; the prompts are consolidator, content-checker, retirement-checker, session, compaction, task',
     },
   ]);
 });

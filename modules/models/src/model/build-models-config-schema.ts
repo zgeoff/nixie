@@ -32,7 +32,6 @@ const rolesSchema = z.strictObject({
   task: profileIDSchema.optional(),
   worker: profileIDSchema.optional(),
   checker: profileIDSchema.optional(),
-  'memory-writer': profileIDSchema.optional(),
   'memory-consolidator': profileIDSchema.optional(),
 });
 

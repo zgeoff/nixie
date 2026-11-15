@@ -42,17 +42,17 @@ test('it gives each role the model it names', async () => {
   const files = await writeBootFiles(ctx.directory, 'http://127.0.0.1:4010', {
     config: [],
     secrets: [],
-    roleModelURLs: { 'memory-writer': 'http://127.0.0.1:4020', checker: 'http://127.0.0.1:4030' },
+    roleModelURLs: { task: 'http://127.0.0.1:4020', checker: 'http://127.0.0.1:4030' },
   });
 
   const config = await loadDeploymentConfig(files.configPath);
 
   expect(config.models.roles).toMatchObject({
-    'memory-writer': 'scripted-memory-writer',
+    task: 'scripted-task',
     checker: 'scripted-checker',
   });
 
-  expect(config.models.profiles['scripted-memory-writer']?.baseURL).toBe('http://127.0.0.1:4020');
+  expect(config.models.profiles['scripted-task']?.baseURL).toBe('http://127.0.0.1:4020');
   expect(config.models.profiles['scripted-checker']?.baseURL).toBe('http://127.0.0.1:4030');
 });
 

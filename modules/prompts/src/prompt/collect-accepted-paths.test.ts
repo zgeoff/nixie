@@ -15,7 +15,6 @@ test('it accepts each earlier part in a later part', () => {
     'skillCatalog',
     'owner.name',
     'parts.skillCatalog',
-    'parts.instruction',
   ]);
 });
 

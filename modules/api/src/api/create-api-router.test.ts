@@ -1224,102 +1224,6 @@ test("#sessions.issueCode refuses another session's retry of the action", async 
   expect(retry.error).toMatchObject({ code: 'CLIENT_ACTION_ID_REUSED' });
 });
 
-test('#memory.writerStatus reports every message of yours as backlog before the writer starts', async () => {
-  const ctx = await setupTest();
-
-  await createConversationTask(ctx.context);
-
-  const laptop = await createDeviceSession(ctx.context, 'laptop');
-
-  const laptopClient = buildTestClient(ctx.url, laptop.token);
-
-  await laptopClient.conversation.send({
-    clientMessageId: '0b9d8f0e-6f1c-4d2a-9b7e-3c5a1d2e4f60',
-    thread: 'conversation',
-    text: 'hello',
-    spans: [{ start: 0, end: 5, source: 'typed' }],
-  });
-
-  const status = await laptopClient.memory.writerStatus();
-
-  expect(status).toStrictEqual({
-    isEnabled: true,
-    backlog: 1,
-    batches: 0,
-    cursor: 0,
-    failures: 0,
-    isCatchingUp: true,
-    lastError: null,
-    retryAt: null,
-  });
-});
-
-test('#memory.writerStatus reports the last error with its time and when the writer tries again', async () => {
-  const ctx = await setupTest();
-  const laptop = await createDeviceSession(ctx.context, 'laptop');
-
-  await writeRecords(ctx.context.log, [
-    {
-      kind: 'memory.writer_started',
-      definitions: { snapshotHash: 'sha256:test' },
-      thread: 'memory-writer',
-      payload: { startSequence: 0, at: 1_000_000 },
-    },
-    {
-      kind: 'memory.writer_failed',
-      definitions: { snapshotHash: 'sha256:test' },
-      thread: 'memory-writer',
-      payload: { code: 'batch_failed', failures: 2, retryAt: 1_060_000, at: 1_000_500 },
-      erasable: { message: 'the model API refused the request' },
-    },
-  ]);
-
-  const status = await buildTestClient(ctx.url, laptop.token).memory.writerStatus();
-
-  expect(status).toStrictEqual({
-    isEnabled: true,
-    backlog: 0,
-    batches: 0,
-    cursor: 0,
-    failures: 2,
-    isCatchingUp: true,
-    lastError: {
-      at: new Date(1_000_500),
-      code: 'batch_failed',
-      message: 'the model API refused the request',
-    },
-    retryAt: new Date(1_060_000),
-  });
-});
-
-test('#memory.writerStatus refuses a caller with no session', async () => {
-  const ctx = await setupTest();
-
-  const status = buildTestClient(ctx.url).memory.writerStatus();
-
-  await status.catch(() => {});
-
-  expect(status).rejects.toMatchObject({ code: 'UNAUTHORIZED' });
-});
-
-test('#memory.writerStatus reports the writer as off when the deployment turns it off', async () => {
-  const api = await startTestAPI({
-    enrolmentCodeLifetimeMs: 900_000,
-    sessionIdleMs: 2_592_000_000,
-    refusalIntervalMs: 3_600_000,
-    lastSeenIntervalMs: 60_000,
-    isMemoryWriterEnabled: false,
-    isMemoryConsolidatorEnabled: true,
-    isBackupEnabled: true,
-    taskDirectory: [],
-  });
-
-  const laptop = await createDeviceSession(api.context, 'laptop');
-  const status = await buildTestClient(api.url, laptop.token).memory.writerStatus();
-
-  expect(status.isEnabled).toBeFalse();
-});
-
 test('#memory.consolidatorStatus reports the consolidator as on by default', async () => {
   const ctx = await setupTest();
   const laptop = await createDeviceSession(ctx.context, 'laptop');
@@ -1334,7 +1238,6 @@ test('#memory.consolidatorStatus reports the consolidator as off when the deploy
     sessionIdleMs: 2_592_000_000,
     refusalIntervalMs: 3_600_000,
     lastSeenIntervalMs: 60_000,
-    isMemoryWriterEnabled: true,
     isMemoryConsolidatorEnabled: false,
     isBackupEnabled: true,
     taskDirectory: [],

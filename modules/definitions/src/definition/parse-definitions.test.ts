@@ -125,7 +125,9 @@ test('it ignores the prompts map under format 2 and lists its part files as unap
   const files = new Map([
     [
       'nixie.yaml',
-      new TextEncoder().encode('format: 2\nprompts:\n  writer:\n    safety: prompts/writer.md\n'),
+      new TextEncoder().encode(
+        'format: 2\nprompts:\n  compaction:\n    safety: prompts/writer.md\n',
+      ),
     ],
     ['persona.md', new TextEncoder().encode('# Persona\n')],
     ['prompts/writer.md', new TextEncoder().encode('Quote every fact.\n')],
@@ -305,8 +307,8 @@ test('it reads a part override from its file and a template inline under format 
   const manifest = [
     'format: 3',
     'prompts:',
-    '  writer:',
-    '    safety: prompts/writer-safety.md',
+    '  task:',
+    '    safety: prompts/compaction-safety.md',
     '  compaction:',
     '    _template: |',
     '      {{ parts.instruction }}',
@@ -316,7 +318,7 @@ test('it reads a part override from its file and a template inline under format 
   const files = new Map([
     ['nixie.yaml', new TextEncoder().encode(manifest)],
     ['persona.md', new TextEncoder().encode('# Persona\n')],
-    ['prompts/writer-safety.md', new TextEncoder().encode('Quote {{ owner.name }} exactly.\n')],
+    ['prompts/compaction-safety.md', new TextEncoder().encode('Quote {{ owner.name }} exactly.\n')],
     ['prompts/draft.md', new TextEncoder().encode('Not used yet.\n')],
   ]);
 
@@ -329,7 +331,7 @@ test('it reads a part override from its file and a template inline under format 
     skills: [],
     conversationSkills: [],
     prompts: {
-      writer: { parts: { safety: 'Quote {{ owner.name }} exactly.' }, template: null },
+      task: { parts: { safety: 'Quote {{ owner.name }} exactly.' }, template: null },
       compaction: { parts: {}, template: '{{ parts.instruction }}' },
     },
     rules: [],
@@ -342,7 +344,9 @@ test('it drops the final Windows line breaks of a part file', () => {
   const files = new Map([
     [
       'nixie.yaml',
-      new TextEncoder().encode('format: 3\nprompts:\n  writer:\n    safety: prompts/writer.md\n'),
+      new TextEncoder().encode(
+        'format: 3\nprompts:\n  compaction:\n    safety: prompts/writer.md\n',
+      ),
     ],
     ['persona.md', new TextEncoder().encode('# Persona\n')],
     ['prompts/writer.md', new TextEncoder().encode('Quote every fact.\r\nKeep it short.\r\n\r\n')],
@@ -352,7 +356,7 @@ test('it drops the final Windows line breaks of a part file', () => {
     parseDefinitions({ contentHash: 'c', files, revision: 'r', repository: null, skipped: [] })
       .prompts,
   ).toStrictEqual({
-    writer: { parts: { safety: 'Quote every fact.\r\nKeep it short.' }, template: null },
+    compaction: { parts: { safety: 'Quote every fact.\r\nKeep it short.' }, template: null },
   });
 });
 
@@ -373,31 +377,31 @@ test.each([
     'an unknown prompt',
     'format: 3\nprompts:\n  greeter:\n    safety: prompts/greeter.md\n',
     [],
-    'nixie.yaml: prompts: no prompt is named greeter; the prompts are writer, consolidator, content-checker, retirement-checker, session, compaction, task',
+    'nixie.yaml: prompts: no prompt is named greeter; the prompts are consolidator, content-checker, retirement-checker, session, compaction, task',
   ],
   [
     'an unknown part',
-    'format: 3\nprompts:\n  writer:\n    tone: prompts/tone.md\n',
+    'format: 3\nprompts:\n  compaction:\n    tone: prompts/tone.md\n',
     [],
-    'nixie.yaml: prompts.writer: the prompt has no part tone; its parts are persona, instruction, safety',
+    'nixie.yaml: prompts.compaction: the prompt has no part tone; its parts are instruction, safety',
   ],
   [
     'a part that is not a file path',
-    'format: 3\nprompts:\n  writer:\n    safety: 5\n',
+    'format: 3\nprompts:\n  compaction:\n    safety: 5\n',
     [],
-    'nixie.yaml: prompts.writer.safety must be the path of a file',
+    'nixie.yaml: prompts.compaction.safety must be the path of a file',
   ],
   [
     'a part file that the definitions do not hold',
-    'format: 3\nprompts:\n  writer:\n    safety: prompts/missing.md\n',
+    'format: 3\nprompts:\n  compaction:\n    safety: prompts/missing.md\n',
     [],
-    'nixie.yaml: prompts.writer.safety: the definitions hold no file prompts/missing.md',
+    'nixie.yaml: prompts.compaction.safety: the definitions hold no file prompts/missing.md',
   ],
   [
     'a part file that reads a path the prompt does not have',
     'format: 3\nprompts:\n  session:\n    safety: prompts/session.md\n',
     [{ path: 'prompts/session.md', text: 'Answer {{ assistant.name }} kindly.\n' }],
-    'prompts/session.md: the safety part of the session prompt reads {{ assistant.name }}, which it does not accept; it accepts persona, skillCatalog, owner.name, parts.skillCatalog, parts.instruction',
+    'prompts/session.md: the safety part of the session prompt reads {{ assistant.name }}, which it does not accept; it accepts persona, skillCatalog, owner.name, parts.skillCatalog',
   ],
   [
     'a template that reads a path the prompt does not have',
@@ -424,7 +428,9 @@ test('it refuses a part file that is not UTF-8 text', () => {
   const files = new Map([
     [
       'nixie.yaml',
-      new TextEncoder().encode('format: 3\nprompts:\n  writer:\n    safety: prompts/writer.md\n'),
+      new TextEncoder().encode(
+        'format: 3\nprompts:\n  compaction:\n    safety: prompts/writer.md\n',
+      ),
     ],
     ['persona.md', new TextEncoder().encode('# Persona\n')],
     ['prompts/writer.md', Uint8Array.from([0x51, 0xff, 0xfe])],

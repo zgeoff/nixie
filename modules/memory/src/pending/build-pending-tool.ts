@@ -66,8 +66,8 @@ export function buildPendingTool(
   return {
     name: 'memory.pending',
     description:
-      "Lists every memory proposal that still waits for the owner's review, yours and the " +
-      "note-taker's, oldest first: its ID, the proposed text, who noted it, why it waits and how " +
+      "Lists every memory proposal that still waits for the owner's review, yours and a " +
+      "task's, oldest first: its ID, the proposed text, who noted it, why it waits and how " +
       'long it has waited. Read it before you propose a memory, so you never propose one that ' +
       'already waits, and whenever you need to know what is still unanswered. Only the owner ' +
       'approves or rejects a proposal.',
@@ -138,7 +138,6 @@ function pickChange(proposal: MemoryProposal): 'new' | 'edit' | 'retire' | 'pin'
 
 const notedByWords: Readonly<Record<ProposalOrigin, string>> = {
   conversation: 'you noted it',
-  memory_writer: 'the note-taker noted it',
   task: 'a task noted it',
   owner: 'the owner noted it',
 };

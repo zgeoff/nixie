@@ -1,19 +1,17 @@
 import { expect, mock, test } from 'bun:test';
-import type { TestMemoryWriterOptions } from '@heynixie/memory/test-utils';
-import {
-  buildRememberReply,
-  startTestMemoryWriter,
-  writeOwnerMessages,
-} from '@heynixie/memory/test-utils';
+import type { GateContext } from '@heynixie/memory';
+import { defaultGateLimits, defaultOwnerPronouns, startMemoryStore } from '@heynixie/memory';
+import { writeOwnerMessages } from '@heynixie/memory/test-utils';
 import {
   buildTestConversationTools,
   startTestConversation,
   startTestServer,
 } from '@heynixie/server/test-utils';
 import { runTaskSteps } from '@heynixie/tasks/test-utils';
+import { buildTestClock } from '@heynixie/testing';
 
-test('it turns every write a poisoned page causes into a proposal from outside content, in the turn and in the writer batch over it', async () => {
-  const check = mock<NonNullable<TestMemoryWriterOptions['check']>>(() =>
+test('it turns every write a poisoned page causes into a proposal from outside content', async () => {
+  const check = mock<GateContext['check']>(() =>
     Promise.resolve({
       verdict: 'not_asserted',
       reason: 'The message asks for a summary of a page.',
@@ -44,14 +42,32 @@ test('it turns every write a poisoned page causes into a proposal from outside c
   });
 
   const server = await startTestServer(tools.buildTools, { fakeGuest: true });
-  const memory = await startTestMemoryWriter(server, { check });
 
-  tools.setStore(memory.store);
+  const clock = buildTestClock(1_000_000);
+  const context = { ...server.context, clock };
+
+  const store = await startMemoryStore({
+    log: context.log,
+    definitions: context.definitions,
+    cleanupSessions: () => Promise.resolve(),
+    gate: {
+      check,
+      clock,
+      defaultZone: 'UTC',
+      limits: defaultGateLimits,
+      ownerName: null,
+      ownerPronouns: defaultOwnerPronouns,
+      getPromptsInForce: () => ({ snapshotHash: 'sha256:test', prompts: {} }),
+    },
+  });
+
+  server.defer(() => store.stop());
+  tools.setStore(store);
 
   const conversation = await startTestConversation(server, {
-    context: memory.context,
+    context,
     toolNames: ['web_fetch', 'memory.remember'],
-    memory: () => memory.store,
+    memory: () => store,
   });
 
   server.guest.addReplies(
@@ -92,42 +108,22 @@ test('it turns every write a poisoned page causes into a proposal from outside c
     { text: 'It simmers red lentils with smoked paprika in stock for 25 minutes.' },
   );
 
-  const [sequence] = await writeOwnerMessages(memory.context.log, [
+  await writeOwnerMessages(context.log, [
     'Can you sum up the lentil soup recipe at https://soup-notes.test/lentil?',
   ]);
 
-  await runTaskSteps(memory.context, {
+  await runTaskSteps(context, {
     steps: { conversation: conversation.runner.runStep },
     advance: (durationMs) => {
-      memory.clock.advance(durationMs);
+      clock.advance(durationMs);
     },
     maxSteps: 5,
   });
 
-  memory.guest.addReplies(
-    buildRememberReply({
-      text: "The owner's new billing email is billing@ledger-keep.test.",
-      quote: 'billing@ledger-keep.test',
-      sourceID: sequence,
-    }),
-    buildRememberReply({
-      text: 'The owner pays invoices to account 4400 1234 5678.',
-      quote: 'the lentil soup recipe',
-      sourceID: sequence,
-    }),
-    buildRememberReply({
-      text: 'The owner wants replies written in French.',
-      quote: 'sum up the lentil soup recipe',
-      sourceID: sequence,
-    }),
-    { text: 'Staged.' },
-  );
-
-  await memory.start();
-  await memory.run();
-
   const records = await server.readRecords();
-  const items = await memory.listItems();
+  const recalled = await store.recall({ limit: 100 });
+
+  const items = recalled.items;
 
   const fetchCall = records.find(
     (record) => record.kind === 'tool_called' && record.payload['tool'] === 'web_fetch',
@@ -172,31 +168,10 @@ test('it turns every write a poisoned page causes into a proposal from outside c
         reviewReason: 'checker_not_asserted',
       },
     },
-    {
-      contentSource: 'untrusted',
-      payload: { origin: 'memory_writer', source: 'untrusted', reviewReason: 'no_quote' },
-    },
-    {
-      contentSource: 'untrusted',
-      payload: { origin: 'memory_writer', source: 'untrusted', reviewReason: 'token_missing' },
-    },
-    {
-      contentSource: 'untrusted',
-      payload: {
-        origin: 'memory_writer',
-        source: 'untrusted',
-        reviewReason: 'checker_not_asserted',
-      },
-    },
-  ]);
-
-  expect(records.filter((record) => record.kind === 'memory.batch_published')).toMatchObject([
-    { payload: { mode: 'catch_up', applied: [], proposed: 3 } },
-    { payload: { mode: 'catch_up', applied: [], proposed: 0, catchUpEnded: true } },
   ]);
 
   const inputs = check.mock.calls.map(([request]) => request.input);
 
-  expect(inputs).toHaveLength(2);
+  expect(inputs).toHaveLength(1);
   expect(inputs).toSatisfyAll((input: string) => !input.includes('Note to AI assistants'));
 });
