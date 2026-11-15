@@ -55,7 +55,7 @@ thread and stay out of the inbox.
 Every inbox record wakes the task, except a task message in one of these cases, which
 [task messages](./task-messages.md) explains:
 
-- its receiver runs only on its schedule, as the memory writer does;
+- its receiver runs only on its schedule, as the memory consolidator does;
 - its sender sent it with no wake;
 - the hop limit held it back.
 

@@ -51,10 +51,9 @@ Before the decision, the tool sets the call's sources and arguments, because the
 the step's own sources would misstate them:
 
 - The sources come from the quote that the content gate finds: `owner` for a quote in text you typed
-  in the thread's recent messages, outside any pasted span, and for a
-  [memory writer](../memory/writer.md) write whose quote lies in the one message it cites. A write
-  with no quote, a quote in a pasted span, a photo, a self-note or a quote the gate cannot place
-  takes `outside`. A write from a task run adds `task`. A memory write never takes `own_data`.
+  in the thread's recent messages, outside any pasted span. A write with no quote, a quote in a
+  pasted span, a photo, a self-note or a quote the gate cannot place takes `outside`. A write from a
+  task run adds `task`. A memory write never takes `own_data`.
 - `memory.edit` and `memory.retire` take `subject` from the item when the call leaves it out, so a
   rule reads `subject` on all 3 tools.
 

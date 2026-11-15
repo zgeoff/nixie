@@ -36,11 +36,10 @@ as stale and writes nothing. The check and the record commit in one write transa
 
 A model keeps a span of its own thread only, because the thread comes from the task run and never
 from the tool's arguments. The conversation therefore keeps moments from its conversation with the
-user, and a task keeps moments from its own work. The store refuses a keep from the memory writer's
-thread, and the memory writer's tool list holds no moment tool. The user keeps a span of any thread
-through a [checked action](../channels/api.md#checked-actions) in the client. The API makes the
-moment's IDs before the keep's transaction and keeps them as the action's result, so the API returns
-the first keep's IDs to a retry.
+user, and a task keeps moments from its own work. The user keeps a span of any thread through a
+[checked action](../channels/api.md#checked-actions) in the client. The API makes the moment's IDs
+before the keep's transaction and keeps them as the action's result, so the API returns the first
+keep's IDs to a retry.
 
 The parts of a moment have different writers:
 

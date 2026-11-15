@@ -6,8 +6,8 @@
 
 The [memory writes](../../../architecture/memory/writes.md) architecture doc covers the content
 gate, the retirement intent gate, provenance, memory proposals and notices as built. This design
-covers the parts still to build: the rule lookup in front of the gate, the memory writer that
-captures facts from batches of turns, and what the client shows for a proposal and a notice.
+covers the parts still to build: the rule lookup in front of the gate, and what the client shows for
+a proposal and a notice.
 
 ## The gate as a rule lookup
 
@@ -20,7 +20,7 @@ because a retirement adds no text. Your rules decide a memory write first, and t
 write that no rule matches.
 
 `memory.remember`, `memory.edit` and `memory.retire` declare the `memory_write` effect, whoever
-calls them: the conversation, a task or the memory writer. Each call goes through the
+calls them: the conversation or a task. Each call goes through the
 [decision point](../policy/decision-point.md) like any other tool call, and the rules that match it
 decide what happens:
 
@@ -53,46 +53,18 @@ run and the proposal still waits for you. A self-note is a `memory.remember` cal
 
 ## Who writes
 
-Memory has 2 write paths:
-
-- **The conversation and tasks** call `memory.remember` and `memory.retire` during a turn, such as
-  when you say "remember that I'm vegetarian now". These writes never wait for a batch.
-- **The memory writer** captures passing facts from batches of committed conversation turns. A small
-  model reads your original messages in order, the replies, and the relevant current items. Its only
-  tools are `memory.recall`, `memory.remember` and `memory.retire`, and it supplies an exact quote
-  for each candidate.
+The conversation and tasks call `memory.remember` and `memory.retire` during a turn, such as when
+you say "remember that I'm vegetarian now". These writes never wait for a batch.
 
 Compaction is not a write path: a compaction summary never becomes memory, as
 [compaction](context.md#compaction) covers.
 
-[The memory writer](../../../architecture/memory/writer.md) describes the built writer: its batch
-triggers, its sandbox, its sessions and how it publishes.
-
 A write whose text matches an active item exactly returns that item and writes nothing. A
-near-duplicate is the model's job: the writer sees the items retrieval found and revises one instead
+near-duplicate is the model's job: the model sees the items retrieval found and revises one instead
 of adding a second. A fact that replaces another, such as a new address, revises or retires the old
 item. **Why:** the [retrieval spike](../../../../research/memory-retrieval/README.md) found that no
 ranking separates a current fact from the one it superseded, so the store never holds both as
 active.
-
-### Batch boundaries and recovery
-
-[The memory writer](../../../architecture/memory/writer.md#publishing) describes how a batch
-publishes in one transaction and how a crash at any point leaves it published once. The
-[offline batch spike](https://github.com/zgeoff/nixie/tree/e232631a587680970a5c8804455415e7f97140bc/docs/design/platform/spikes/memory-batch/)
-tested the writer's cursor under process kills.
-
-## The gate for writer batches
-
-The writer's writes pass the same [content gate](../../../architecture/memory/writes.md) as a
-conversation write, with 2 differences:
-
-- The gate resolves the one source record that a batch write's candidate selected, instead of
-  searching the thread's latest messages.
-- The gate makes a write whose quote lies outside that batch a proposal.
-
-A job run has no messages from you, so every write from a job run is a proposal unless your allow
-rule covers job runs.
 
 ## Dictated text
 

@@ -22,10 +22,9 @@ The conversation alone decides which task gets a message of the user's, and nixi
 where each message went. When the conversation needs to know whether a task already covers some
 work, it asks the list tool.
 
-The conversation wakes for a message. The [memory writer](../memory/writer.md) and the
-[consolidator](../memory/consolidation.md) run on their own schedule, so a message to either waits
-unread until its next scheduled session reads it, and that session marks it read. The message tool
-refuses these, with the refusal as the tool's answer:
+The conversation wakes for a message. The [consolidator](../memory/consolidation.md) runs on its own
+schedule, so a message to it waits unread until its next scheduled session reads it, and that
+session marks it read. The message tool refuses these, with the refusal as the tool's answer:
 
 - a message to the sender itself;
 - a message to a task outside the directory, or to one that has finished;
@@ -45,8 +44,8 @@ A message write checks the sender's lease in its own transaction, as a step comm
 call carries the ID of the step that made it, and the write refuses the call when the task has
 started another step, its lease has moved to another
 [generation](./leases-and-recovery.md#the-claim-path), or the lease has expired. A step that lost
-its task therefore wakes nobody and changes no message wait. The memory writer and the consolidator
-open each session under a token for the step that runs it, so their calls carry that step's ID too.
+its task therefore wakes nobody and changes no message wait. The consolidator opens each session
+under a token for the step that runs it, so its calls carry that step's ID too.
 
 ## The hop limit
 
@@ -71,12 +70,12 @@ was claimed with, so a reply from it wakes the sender only when the turn's own h
 
 A task-messages projection keeps one row per message with its wait state. A question or a request to
 a task that wakes for messages opens a message wait, and any other message opens none. The tasks
-module checks each move between wait states against one table. A question or a request to the memory
-writer or the consolidator opens no wait, because neither task finishes, so its wait would stay open
-until a reply that may never come. The tool's note tells the sender that a reply, if any, arrives as
-a new message. The message record holds whether the message opens a wait, so a rebuild of the
-projection keeps each wait as it was. A message record with no such field opens a wait for every
-question and request.
+module checks each move between wait states against one table. A question or a request to the
+consolidator opens no wait, because the task never finishes, so its wait would stay open until a
+reply that may never come. The tool's note tells the sender that a reply, if any, arrives as a new
+message. The message record holds whether the message opens a wait, so a rebuild of the projection
+keeps each wait as it was. A message record with no such field opens a wait for every question and
+request.
 
 A reply that names the question answers that wait. A step that commits as done, a task that fails,
 and a close release every open wait that names the task, and a stop releases the waits the stopped

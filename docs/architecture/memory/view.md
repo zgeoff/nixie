@@ -39,14 +39,13 @@ nothing to the size, because a session's opening leaves it out.
 
 An item's history holds every version, oldest first, each with its provenance: its change and state,
 its origin and source, the task and proposal behind it, the verdict of each write check, the model
-of the call that wrote it and the model of the checker that judged its quote. A version the memory
-writer applied whose row holds no model takes the model from the record of the batch that applied
-it. The source labels the version's text, so an approved proposal reads as outside content beside a
-quote from the user's message ([provenance](./writes.md#provenance)). A version with evidence
-carries the quote's offsets and the text of the message the offsets point into, so the view shows
-the quote inside its message. The view reads that message only while the version's own text is
-readable. A forgotten item therefore never shows the words it came from, even while the user's
-message still holds them. A message forgotten on its own reads as a gap beside a readable version.
+of the call that wrote it and the model of the checker that judged its quote. The source labels the
+version's text, so an approved proposal reads as outside content beside a quote from the user's
+message ([provenance](./writes.md#provenance)). A version with evidence carries the quote's offsets
+and the text of the message the offsets point into, so the view shows the quote inside its message.
+The view reads that message only while the version's own text is readable. A forgotten item
+therefore never shows the words it came from, even while the user's message still holds them. A
+message forgotten on its own reads as a gap beside a readable version.
 
 A version [from a photo](./writes.md#writes-from-a-photo) carries the photo's event ID, its number
 and the thread of the message that holds it, and the web view shows the photo beside the version as
@@ -56,16 +55,13 @@ readable, as it does the message behind a quote, so a forgotten item never shows
 ## The web view
 
 The web client shows the memory view as its own page, behind the same session check as the
-conversation. The page opens with the memory writer's progress: whether its catch-up over the
-conversation from before memory still runs, the record its cursor stands at, how many of the user's
-messages wait, and its last error. A writer that the deployment turns off shows as off, and so does
-a consolidator that the deployment turns off. The pinned core with its size follows, then the active
-items or the matches of a search, then the retired and the forgotten items, each list apart. Every
-list draws an item through one row, so a control on an item shows in every list. The active items
-and the matches show self-notes in a section of their own, apart from the user's and the shared
-items, and a self-note's row in any other list carries a self-note label. A row offers a pin
-whatever the item's subject. A row shows whether its item is [sensitive](./store.md#sensitive-items)
-and offers to mark it or clear the mark.
+conversation. A consolidator that the deployment turns off shows as off. The pinned core with its
+size follows, then the active items or the matches of a search, then the retired and the forgotten
+items, each list apart. Every list draws an item through one row, so a control on an item shows in
+every list. The active items and the matches show self-notes in a section of their own, apart from
+the user's and the shared items, and a self-note's row in any other list carries a self-note label.
+A row offers a pin whatever the item's subject. A row shows whether its item is
+[sensitive](./store.md#sensitive-items) and offers to mark it or clear the mark.
 
 An item's history loads only when the user opens it, so a long list reads no history it never shows.
 Each version shows the words it changed from the version before as a word diff, and its evidence as

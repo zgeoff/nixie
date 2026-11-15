@@ -82,8 +82,8 @@ the evening and morning times that clients offer.
 ## memory_write
 
 `memory_write` is an effect name. `memory.remember`, `memory.edit` and `memory.retire` declare it,
-in the conversation, a task run and the memory writer alike. Every other memory tool declares
-`note`, so a rule on `memory_write` never reaches a pin, an unpin, a rating or a comment.
+in the conversation and a task run alike. Every other memory tool declares `note`, so a rule on
+`memory_write` never reaches a pin, an unpin, a rating or a comment.
 
 A rule on `memory_write` matches as a rule on any other effect does:
 

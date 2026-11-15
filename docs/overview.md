@@ -105,9 +105,8 @@ key ([the memory store](architecture/memory/store.md),
 
 A memory applies at once, with a notice and undo, only when a quote you typed backs it and a checker
 confirms you asserted it. Every other write is a proposal
-([0008](decisions/0008-memory-write-review.md)). The conversation writes memory during chat, and a
-background writer captures passing facts in batches. "Forget that" in chat retires an item with
-undo, and only a checked action in the client destroys one
+([0008](decisions/0008-memory-write-review.md)). The conversation writes memory during chat. "Forget
+that" in chat retires an item with undo, and only a checked action in the client destroys one
 ([the memory store](architecture/memory/store.md)).
 
 The conversation runs on the SDK's session, and nixie compacts it itself

@@ -123,8 +123,7 @@ ID.
 A memory item exposes a short ID, a 10-character cuid2 such as `k3x9m2p7qa`, and the conversation's
 model reads and names the item by it instead of by its UUID. A UUID costs 36 characters in every
 prompt, tool result and tool call that names the record, and the model gains nothing from the extra
-length. Every kind of record that the model can see follows the same rule when it is added. One view
-from before the rule shows UUIDs: the memory writer's view of the items it reads.
+length. Every kind of record that the model can see follows the same rule when it is added.
 
 A tool's stored result follows the same rule: it holds the short ID, and the UUID sits under the
 result's `hidden.uuids`, keyed by short ID.

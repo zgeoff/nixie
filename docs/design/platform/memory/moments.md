@@ -101,13 +101,10 @@ A model keeps a span of its own thread only, and its rules decide whether it kee
   keeps one from that conversation.
 - **A task** keeps a moment from its own work, on its own thread, whenever your rules allow it, even
   while you are away.
-- **The memory writer** neither keeps a moment nor flags a span for keeping. Its tools hold no
-  moment tool, and the moments store refuses a keep from its thread.
 - **You** keep a span of any thread from the client.
 
 **Why:** a moment from a conversation with you records what that conversation judged mattered, so no
-other task marks the conversation's records. The memory writer reads your messages for facts and has
-no part in which conversations matter.
+other task marks the conversation's records.
 
 ### The weekly count
 
