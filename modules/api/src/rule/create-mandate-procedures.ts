@@ -52,7 +52,11 @@ export function createMandateProcedures(context: RuleProcedureContext) {
       const run = await runCheckedRuleAction(context, caller, {
         clientActionID: input.clientActionID,
         procedure: 'rules.editProposedRule',
-        inputHash: buildInputHash({ proposalID: input.proposalID, actionHash: input.actionHash }),
+        inputHash: buildInputHash({
+          proposalID: input.proposalID,
+          actionHash: input.actionHash,
+          rule: JSON.stringify(input.rule),
+        }),
         write: async (tx) => {
           const edit = await writeProposedRuleEdit(tx, context, input);
 
@@ -112,7 +116,10 @@ export function createMandateProcedures(context: RuleProcedureContext) {
       const run = await runCheckedRuleAction(context, caller, {
         clientActionID,
         procedure: 'rules.proposeMandate',
-        inputHash: buildInputHash({ rules: form.rules.length, expires: form.expires ?? null }),
+        inputHash: buildInputHash({
+          rules: JSON.stringify(form.rules),
+          expires: form.expires ?? null,
+        }),
         write: async (tx) => {
           const proposed = await writeMandateProposal(
             tx,

@@ -12,12 +12,17 @@ export interface ProposedRuleCall {
   readonly destinations: readonly string[];
 }
 
-// The narrowest allow rule that every one of the calls matches. The calls share one gap group, so
-// they share the tool, the context and the set of destinations.
+// The narrowest allow rule that every one of the calls matches, or null when none can be exact: a
+// destination pattern reads `*` as a wildcard and has no escape, so a destination that holds `*`
+// has no exact rule.
 export function buildProposedRule(
   calls: readonly [ProposedRuleCall, ...ProposedRuleCall[]],
-): Omit<Rule, 'id'> {
+): Omit<Rule, 'id'> | null {
   const [first] = calls;
+
+  if (calls.some((call) => call.destinations.some((destination) => destination.includes('*')))) {
+    return null;
+  }
 
   const definitions = new Set(calls.map((call) => call.definitionID));
 

@@ -10,6 +10,12 @@ export interface CheckDraft {
 
   // the text of the check's value; an `in` check lists its values one to a line
   readonly value: string;
+
+  // the check as the rule held it, so text the owner left alone keeps its type
+  readonly original?: {
+    readonly op: (typeof checkOperations)[number];
+    readonly value: CheckValue;
+  };
 }
 
 // The fields of an allow rule as the form holds them. A list field is text, one entry to a line,
@@ -26,6 +32,8 @@ export interface RuleDraft {
 }
 
 const listValueSchema = z.array(z.unknown());
+
+type CheckValue = string | number | boolean | unknown[];
 
 const checkSchema = z.object({
   arg: z.string(),
@@ -48,7 +56,7 @@ function collectChecks(value: unknown): z.infer<typeof checkListSchema> {
   return parsed.success ? parsed.data : [];
 }
 
-function toCheckText(value: z.infer<typeof checkSchema>['value']): string {
+function toCheckText(value: CheckValue): string {
   if (Array.isArray(value)) {
     const items = value.map(String);
 
@@ -96,6 +104,7 @@ export function toRuleDraft(rule: Readonly<Record<string, unknown>>): RuleDraft 
       arg: check.arg,
       op: check.op,
       value: toCheckText(check.value),
+      original: { op: check.op, value: check.value },
     })),
     rest: Object.fromEntries(Object.entries(rule).filter(([key]) => !knownKeys.has(key))),
   };
@@ -108,7 +117,15 @@ function toLines(text: string): string[] {
     .filter((line) => line !== '');
 }
 
-function toCheckValue(check: CheckDraft): string | readonly string[] | number | boolean {
+function toCheckValue(check: CheckDraft): CheckValue {
+  if (
+    check.original !== undefined &&
+    check.original.op === check.op &&
+    toCheckText(check.original.value) === check.value
+  ) {
+    return check.original.value;
+  }
+
   if (check.op === 'in') {
     return toLines(check.value);
   }

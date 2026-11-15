@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import invariant from 'tiny-invariant';
 import { buildEmptyRuleDraft, toRuleDraft, toRuleForm } from './rule-draft';
 
 test('it turns a rule into a draft and back to the same rule', () => {
@@ -17,6 +18,36 @@ test('it turns a rule into a draft and back to the same rule', () => {
   };
 
   expect(toRuleForm(toRuleDraft(rule))).toStrictEqual(rule);
+});
+
+test('it keeps the type of a check value that the owner did not edit', () => {
+  const rule = {
+    outcome: 'allow',
+    checks: [
+      { arg: 'code', op: 'eq', value: '0012' },
+      { arg: 'flag', op: 'eq', value: 'false' },
+      { arg: 'amount', op: 'eq', value: 12 },
+      { arg: 'urgent', op: 'eq', value: true },
+      { arg: 'ids', op: 'in', value: [1, 2] },
+    ],
+  };
+
+  expect(toRuleForm(toRuleDraft(rule))).toStrictEqual(rule);
+});
+
+test('it reads an edited check value from its text again', () => {
+  const draft = toRuleDraft({
+    outcome: 'allow',
+    checks: [{ arg: 'code', op: 'eq', value: '0012' }],
+  });
+
+  const [check] = draft.checks;
+
+  invariant(check, 'the draft has its check');
+
+  const edited = { ...draft, checks: [{ ...check, value: '13' }] };
+
+  expect(toRuleForm(edited)['checks']).toStrictEqual([{ arg: 'code', op: 'eq', value: 13 }]);
 });
 
 test('it keeps a field of the rule that the form has no input for', () => {

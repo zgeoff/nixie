@@ -66,11 +66,12 @@ async function writeGapCheck(
     );
 
     const [first, ...rest] = calls;
+    const rule = first === undefined ? null : buildProposedRule([first, ...rest]);
 
-    if (first !== undefined && calls.length >= settings.approvals) {
+    if (rule !== null && calls.length >= settings.approvals) {
       await writeProposedRule(tx, context, {
         groupHash,
-        rule: buildProposedRule([first, ...rest]),
+        rule,
         approvals: calls.map((call) => call.proposalID),
         editOf: null,
       });
