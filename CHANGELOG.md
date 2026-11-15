@@ -1,5 +1,31 @@
 # Changelog
 
+## [0.73.0](https://github.com/zgeoff/nixie/compare/v0.72.0...v0.73.0) (2026-11-15)
+
+
+### ⚠ BREAKING CHANGES
+
+* **memory:** delete the consolidator ([#1109](https://github.com/zgeoff/nixie/issues/1109))
+* **memory:** delete the note-taker ([#1108](https://github.com/zgeoff/nixie/issues/1108))
+
+### Features
+
+* **approvals:** require a passkey to approve always-ask and lifting proposals ([#1107](https://github.com/zgeoff/nixie/issues/1107)) ([478e213](https://github.com/zgeoff/nixie/commit/478e2131399a51282627b472b7e60e52319bec8b))
+* **connectors:** add the code.run tool in a throwaway sandbox ([#1104](https://github.com/zgeoff/nixie/issues/1104)) ([37a3960](https://github.com/zgeoff/nixie/commit/37a3960c40bd4757743862858ccee77fb03e9527))
+* **conversation:** run the conversation guest from a bundle ([#1040](https://github.com/zgeoff/nixie/issues/1040)) ([7d29075](https://github.com/zgeoff/nixie/commit/7d29075675518cffcd45f5a43f29adb6ae5d1fad))
+
+
+### Bug Fixes
+
+* **deps:** update @tanstack/react-start to v1.169.5 ([#1106](https://github.com/zgeoff/nixie/issues/1106)) ([2daab20](https://github.com/zgeoff/nixie/commit/2daab2063f733832071e527c3e2afb255da32f63))
+* **memory:** rewrite the memory tasks' records as the conversation's ([#1099](https://github.com/zgeoff/nixie/issues/1099)) ([2250dae](https://github.com/zgeoff/nixie/commit/2250dae44b0a15017e9fcd97ccfeaeec70134765))
+
+
+### Code Refactoring
+
+* **memory:** delete the consolidator ([#1109](https://github.com/zgeoff/nixie/issues/1109)) ([7584bfe](https://github.com/zgeoff/nixie/commit/7584bfe7afb2af294573e41d19e91d3f8f232ea9))
+* **memory:** delete the note-taker ([#1108](https://github.com/zgeoff/nixie/issues/1108)) ([af12ee8](https://github.com/zgeoff/nixie/commit/af12ee8a16a4e3b276a7a971702b6be5e037ee2a))
+
 ## [0.72.0](https://github.com/zgeoff/nixie/compare/v0.71.0...v0.72.0) (2026-11-15)
 
 
