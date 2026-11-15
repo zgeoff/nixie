@@ -12,11 +12,14 @@ import {
 import { writeRecords } from '@heynixie/log';
 import type { PolicyCall } from '@heynixie/policy';
 import { buildActionProposalInput, makeDecisionPoint } from '@heynixie/policy';
+import { createConversationTask } from '@heynixie/tasks';
 import invariant from 'tiny-invariant';
 import { buildSeeder } from './test-utils/build-seeder';
 
 async function setupTest() {
   const api = await startTestAPI();
+
+  await createConversationTask(api.context);
 
   const root = join(api.dataDir, 'definitions');
 
