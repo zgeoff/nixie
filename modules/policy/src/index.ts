@@ -103,3 +103,7 @@ export type { ActionHandlerDeps } from './action/make-action-proposal-handler';
 export { makeActionProposalHandler } from './action/make-action-proposal-handler';
 export { mapActionProposalRecord } from './action/map-action-proposal-record';
 export { alwaysAskEffects } from './effect/always-ask-effects';
+export type { GapGroupKey } from './action/build-gap-group-hash';
+export { buildGapGroupHash } from './action/build-gap-group-hash';
+export { ruleBodySchema } from './rule/rule-body-schema';
+export { ruleObjectSchema } from './rule/rule-body-schema';

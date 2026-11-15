@@ -18,7 +18,7 @@ export type RuleEditPick =
   | {
       readonly status: 'refused';
       readonly code: 'NOT_ALLOWED';
-      readonly reason: 'widens' | 'empty';
+      readonly reason: 'widens' | 'empty' | 'mandate';
     };
 
 // An owner's edit of a rule in force goes through only when it leaves the rule no wider.
@@ -34,6 +34,10 @@ export function pickRuleEdit(
     return { status: 'refused', code: 'CONFLICT', revision: current.revision };
   }
 
+  if (isMandateRule(current)) {
+    return { status: 'refused', code: 'NOT_ALLOWED', reason: 'mandate' };
+  }
+
   const { id: _id, ...body } = current.rule;
 
   if (request.action === 'remove') {
@@ -47,6 +51,16 @@ export function pickRuleEdit(
   const edited = { ...body, destinations: [...request.destinations] };
 
   return pickChange(current.rule, edited, 'Edit of the destinations of a rule');
+}
+
+// A mandate's own rule changes only by ending the mandate. A rule of your definitions that holds
+// the field is an ordinary rule.
+function isMandateRule(current: CurrentRuleVersion): boolean {
+  return (
+    current.origin === 'nixie' &&
+    current.rule.mandate !== undefined &&
+    current.rule.id.startsWith(`${current.rule.mandate}-`)
+  );
 }
 
 function pickChange(before: Rule, after: Omit<Rule, 'id'> | null, reason: string): RuleEditPick {

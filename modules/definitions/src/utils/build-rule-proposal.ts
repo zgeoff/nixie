@@ -1,9 +1,10 @@
 import type { RuleForm } from '@heynixie/policy';
-import { alwaysAskEffects, renderRule } from '@heynixie/policy';
+import { renderRule } from '@heynixie/policy';
 import type { z } from 'zod';
 import type { StoredRule } from '../types';
 import type { RuleEdit } from './build-rule-seed-plan';
 import { buildSHA256 } from './build-sha256';
+import { isLiftingRule } from './is-lifting-rule';
 import type { HeldEffects } from './pick-seed-effects';
 import type { ruleProposalSchema } from './rule-proposal-schema';
 import { toCanonicalJSON } from './to-canonical-json';
@@ -39,12 +40,6 @@ function isLiftingEdit(edit: RuleEdit): boolean {
   }
 
   return edit.before === null || edit.before.hash !== edit.after?.hash;
-}
-
-function isLiftingRule(rule: RuleForm): boolean {
-  return (
-    rule.outcome === 'allow' && (rule.effects ?? []).some((effect) => alwaysAskEffects.has(effect))
-  );
 }
 
 // A proposal with no effect change hashes as the release before did, so a pending one stays itself.

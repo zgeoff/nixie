@@ -1,9 +1,10 @@
 import { createShortID } from '@heynixie/db';
 import type { Definitions, JSONObject, RecordInput } from '@heynixie/log';
 import { buildAlwaysAllowRule } from '../rule/build-always-allow-rule';
-import type { AskCause, CallDestination, Effect } from '../types';
+import type { AskCause, CallDestination, Effect, PolicyCall } from '../types';
 import { actionProposedCodec } from './action-proposed-codec';
 import { buildActionHash } from './build-action-hash';
+import { buildGapGroupHash } from './build-gap-group-hash';
 
 export interface ActionProposalFacts {
   readonly definitions: Definitions;
@@ -17,6 +18,9 @@ export interface ActionProposalFacts {
 
   // the names of the tool's free-text arguments
   readonly content?: readonly string[];
+
+  // the call's frame, which a no_rule ask records so its answer can join a gap group
+  readonly frame?: Pick<PolicyCall, 'context' | 'definitionID' | 'sources'>;
 }
 
 export interface ActionProposalInput {
@@ -39,6 +43,21 @@ export function buildActionProposalInput(facts: ActionProposalFacts): ActionProp
       })
     : null;
 
+  const gap =
+    facts.cause === 'no_rule' && facts.frame !== undefined
+      ? {
+          groupHash: buildGapGroupHash({
+            tool: facts.tool,
+            context: facts.frame.context,
+            destinations: facts.destinations.map((destination) => destination.value),
+          }),
+          context: facts.frame.context,
+          definitionID: facts.frame.definitionID,
+          sources: [...facts.frame.sources],
+          content: [...(facts.content ?? [])],
+        }
+      : {};
+
   const record: RecordInput = {
     kind: actionProposedCodec.kind,
     definitions: facts.definitions,
@@ -59,6 +78,7 @@ export function buildActionProposalInput(facts: ActionProposalFacts): ActionProp
       cause: facts.cause,
       riskClass: facts.cause === 'always_ask' ? 'always_ask' : 'routine',
       rule: alwaysAllow === null ? null : { hash: alwaysAllow.hash },
+      ...gap,
     }),
     erasable: {
       ...(alwaysAllow === null

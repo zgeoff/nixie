@@ -24,6 +24,8 @@ function setupTest() {
     'policy.contact_marked_known': ['name', 'destination'],
     'prompts.override_rejected': ['reason'],
     'proposals.deferred': ['note'],
+    'rules.mandate_proposed': ['title', 'rules'],
+    'rules.rule_proposed': ['rule'],
     'session.enrolled': ['label'],
     'session.labelled': ['label'],
     session_kept: ['label'],

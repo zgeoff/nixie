@@ -10,3 +10,4 @@ export type { AuthenticatorFlags, TestAuthenticator } from './create-test-authen
 export { seedPasskey } from './seed-passkey';
 export type { SeededPasskey } from './seed-passkey';
 export { seedRevokedPasskey } from './seed-revoked-passkey';
+export { startTestRules } from './start-test-rules';

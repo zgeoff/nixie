@@ -5,6 +5,7 @@ function setupTest() {
   return {
     allowMail: {
       revision: 2,
+      origin: 'nixie' as const,
       rule: {
         id: 'allow-mail',
         outcome: 'allow' as const,
@@ -110,4 +111,39 @@ test('it writes nothing for an edit that leaves the destinations as they are', (
   };
 
   expect(pickRuleEdit(ctx.allowMail, request)).toStrictEqual({ status: 'unchanged' });
+});
+
+test.each([
+  ['remove', { action: 'remove', revision: 2 }],
+  ['edit', { action: 'edit', revision: 2, destinations: ['harbour@example.org'] }],
+] as const)('it refuses to %s a rule that a mandate holds', (_name, request) => {
+  const ctx = setupTest();
+
+  const mandateRule = {
+    ...ctx.allowMail,
+    rule: {
+      ...ctx.allowMail.rule,
+      id: 'k3x9m2p7qa-1',
+      mandate: 'k3x9m2p7qa',
+      expires: '2026-11-14T00:00:00.000Z',
+    },
+  };
+
+  expect(pickRuleEdit(mandateRule, request)).toStrictEqual({
+    status: 'refused',
+    code: 'NOT_ALLOWED',
+    reason: 'mandate',
+  });
+});
+
+test('it takes the removal of a rule of your definitions that holds the mandate field', () => {
+  const ctx = setupTest();
+
+  const seeded = {
+    revision: 2,
+    origin: 'definitions' as const,
+    rule: { ...ctx.allowMail.rule, mandate: 'weekly', expires: '2026-11-14T00:00:00.000Z' },
+  };
+
+  expect(pickRuleEdit(seeded, { action: 'remove', revision: 2 }).status).toBe('write');
 });

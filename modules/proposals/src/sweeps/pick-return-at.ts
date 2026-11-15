@@ -42,14 +42,14 @@ function toMinutes(time: string): number {
   return Number(hours) * 60 + Number(minutes);
 }
 
-interface WallClock {
+export interface WallClock {
   readonly year: number;
   readonly month: number;
   readonly day: number;
   readonly minutes: number;
 }
 
-function toWallClock(at: number, zone: string): WallClock {
+export function toWallClock(at: number, zone: string): WallClock {
   const parts = new Intl.DateTimeFormat('en-GB', {
     timeZone: zone,
     year: 'numeric',
@@ -74,7 +74,7 @@ function toWallClock(at: number, zone: string): WallClock {
 // The first instant from `notBefore` on whose wall clock in the zone reads `wall` (written as if it
 // were UTC). A time the clock skips takes the instant the skip lands it on, as Temporal's
 // 'compatible' disambiguation does.
-function toZonedInstant(wall: number, zone: string, notBefore: number): number {
+export function toZonedInstant(wall: number, zone: string, notBefore: number): number {
   const offsetBefore = toOffsetMs(wall - dayMs, zone);
   const offsetAfter = toOffsetMs(wall + dayMs, zone);
 

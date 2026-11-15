@@ -86,7 +86,11 @@ test('it reads every section, with the default of each setting the file leaves o
     time: { default_zone: 'Australia/Sydney' },
     tasks: { runners: 3, startedClaimLoops: 2, messaging: { hopLimit: 20 } },
     actions: { runners: 4 },
-    policy: { consent: { linkMaxAgeMs: 86_400_000 } },
+    policy: {
+      consent: { linkMaxAgeMs: 86_400_000 },
+      proposedRules: { approvals: 3, windowDays: 30, quietDays: 30 },
+      mandates: { maxHours: 24 },
+    },
     approvals: { defer: { default_minutes: 60, evening_at: '18:00', morning_at: '08:00' } },
     skills: { catalogShare: 0.02 },
     backup: { isEnabled: true, intervalMs: 3_600_000 },

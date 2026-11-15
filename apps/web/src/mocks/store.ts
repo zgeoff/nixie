@@ -347,6 +347,18 @@ const rules = new Collection({
   }),
 });
 
+const mandateRuleSchema = z.object({ ruleID: z.string(), sentence: z.string() });
+
+const mandates = new Collection({
+  schema: z.object({
+    expires: z.date(),
+    mandateID: z.string().default(() => faker.string.alphanumeric({ length: 10, casing: 'lower' })),
+    rules: z.array(mandateRuleSchema).default(() => []),
+    startedAt: z.date().default(() => new Date()),
+    title: z.string().nullable().default(null),
+  }),
+});
+
 const moments = new Collection({
   schema: z.object({
     editedAt: z.date().nullable().default(null),
@@ -431,6 +443,7 @@ export const store = {
   memoryItems,
   memoryNotices,
   memoryProposals,
+  mandates,
   memoryVersions,
   moments,
   passkeyChecks,
@@ -458,6 +471,7 @@ export const store = {
       passkeyChecks,
       passkeyRows,
       rules,
+      mandates,
       backupNotices,
       memoryVersions,
       moments,

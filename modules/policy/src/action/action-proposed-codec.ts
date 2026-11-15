@@ -1,5 +1,7 @@
 import { defineRecordCodec } from '@heynixie/log';
 import { z } from 'zod';
+import { ruleContexts } from '../rule/rule-contexts';
+import { ruleSources } from '../rule/rule-sources';
 import { effectNames } from '../utils/effect-names';
 
 const ruleSchema = z.object({ hash: z.string() });
@@ -29,5 +31,13 @@ export const actionProposedCodec = defineRecordCodec(
     taskID: z.string().nullable().exactOptional(),
     lapsesAt: z.number().exactOptional(),
     deadlineAt: z.number().nullable().exactOptional(),
+
+    // Only an ask with the cause no_rule holds the facts below, and a record without them never
+    // joins a gap group. None is a destination or an argument value.
+    groupHash: z.string().exactOptional(),
+    context: z.enum(ruleContexts).exactOptional(),
+    definitionID: z.string().nullable().exactOptional(),
+    sources: z.enum(ruleSources).array().exactOptional(),
+    content: z.string().array().exactOptional(),
   }),
 );

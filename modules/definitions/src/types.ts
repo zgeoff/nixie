@@ -402,6 +402,21 @@ interface RuleFireRow {
   readonly last_fired_at: number;
 }
 
+interface GapAnswerRow {
+  readonly proposal_id: string;
+  readonly group_hash: string;
+  readonly answer: 'approved' | 'declined';
+  readonly answered_at: number;
+  readonly answered_sequence: number;
+}
+
+interface GapGroupRow {
+  readonly group_hash: string;
+  readonly quiet_until: number | null;
+  readonly proposal_id: string | null;
+  readonly checked_sequence: number | null;
+}
+
 // Kysely's table map needs an index signature, which an interface lacks, so the tables are mapped
 // types.
 export type DefinitionsTables = CheckedTables<
@@ -426,5 +441,7 @@ export type DefinitionsTables = CheckedTables<
     rule_fires: RuleFireRow;
     closed_rule_proposals: { readonly proposal_hash: string };
     rule_exports: RuleExportRow;
+    gap_answers: GapAnswerRow;
+    gap_groups: GapGroupRow;
   }>
 >;

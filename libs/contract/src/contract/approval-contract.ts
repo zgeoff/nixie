@@ -36,6 +36,7 @@ const bodySchema = z.object({
   fields: z.record(z.string(), z.string()),
   ruleSentence: z.string().nullable(),
   approveLabel: z.string(),
+  rule: z.record(z.string(), z.unknown()).optional(),
   memory: memoryProposalSchema.optional(),
 });
 

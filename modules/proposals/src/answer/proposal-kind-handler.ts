@@ -104,6 +104,9 @@ export interface ProposalBody {
 
   // the approve button's text, built from the kind's template and never from a model
   readonly approveLabel: string;
+
+  // the rule form that a proposed rule's card opens in its Edit
+  readonly rule?: Readonly<Record<string, unknown>>;
 }
 
 export interface ProposalHashes {

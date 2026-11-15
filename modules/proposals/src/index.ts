@@ -49,6 +49,7 @@ export type {
 } from './rows/proposal-tables';
 
 export type { ProposalRecordKind } from './records/proposal-record-kind';
+export { proposalsWithdrawnCodec } from './records/proposals-withdrawn-codec';
 export { proposalsDeferredCodec } from './records/proposals-deferred-codec';
 export { proposalsReturnedCodec } from './records/proposals-returned-codec';
 export { readOpenProposals } from './rows/read-open-proposals';
@@ -61,3 +62,4 @@ export { runProposalReturns } from './sweeps/run-proposal-returns';
 export type { ProposalContext, ProposalOutcome, ProposalState, ProposalStatus } from './types';
 export type { ProposalLapseSource } from './write-proposal-lapses';
 export { writeProposalLapses } from './write-proposal-lapses';
+export { pickNextMidnight } from './sweeps/pick-next-midnight';

@@ -17,6 +17,8 @@ export const forgettableKinds = [
   'proposals.deferred',
   'session.enrolled',
   'session.labelled',
+  'rules.mandate_proposed',
+  'rules.rule_proposed',
   'session_kept',
   'skills.write_rejected',
   'task.created',

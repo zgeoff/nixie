@@ -37,6 +37,13 @@ export interface ActionHandlerDeps {
 
   // runs after the answer commits, so a rule takes effect at once
   readonly runAfterRule: () => Promise<unknown>;
+
+  // Runs in the answer's transaction for a Decline of a no_rule ask, which ends the habit that the
+  // group's open proposed rule rests on.
+  readonly writeGapDecline: (tx: Transaction<unknown>, groupHash: string) => Promise<void>;
+
+  // Runs after the commit of an Approve or Decline of a no_rule ask, to check the group.
+  readonly runGapCheck: (groupHash: string) => Promise<void>;
 }
 
 export function makeActionProposalHandler(deps: ActionHandlerDeps): ProposalKindHandler {
@@ -140,6 +147,7 @@ async function writeAnswer(
   const tx = run.tx;
 
   invariant(tx, 'an action answers in the transaction that the core opens');
+  invariant(answer.choice !== 'defer', 'a defer never reaches the handler');
 
   const isDeclined = answer.choice === 'decline';
 
@@ -151,6 +159,7 @@ async function writeAnswer(
 
   const payload = actionProposedCodec.decode(proposed.payload);
   const rule = answer.choice === 'always_allow' ? findRule(proposed) : null;
+  const groupHash = answer.choice === 'always_allow' ? undefined : payload.groupHash;
 
   if (answer.choice === 'always_allow' && rule === null) {
     return { status: 'refused', refusal: { error: 'NOT_ALLOWED', reason: 'rule_gone' } };
@@ -166,16 +175,36 @@ async function writeAnswer(
       shortID: row.shortID,
       answer: isDeclined ? 'declined' : 'approved',
       identityID: answer.identityID,
+      choice: answer.choice,
+      ...(groupHash === undefined ? {} : { groupHash }),
     }),
     ...(isDeclined && answer.note !== undefined ? { erasable: { reason: answer.note } } : {}),
   });
 
+  if (isDeclined && groupHash !== undefined) {
+    await deps.writeGapDecline(tx, groupHash);
+  }
+
+  const afterGap = async (): Promise<void> => {
+    if (groupHash !== undefined) {
+      await deps.runGapCheck(groupHash);
+    }
+  };
+
   if (isDeclined) {
-    return { status: 'done', result: { proposalID: row.id, state: 'declined' } };
+    return {
+      status: 'done',
+      result: { proposalID: row.id, state: 'declined' },
+      afterCommit: afterGap,
+    };
   }
 
   if (rule === null) {
-    return { status: 'done', result: { proposalID: row.id, state: 'approved' } };
+    return {
+      status: 'done',
+      result: { proposalID: row.id, state: 'approved' },
+      afterCommit: afterGap,
+    };
   }
 
   await deps.writeRule(tx, {

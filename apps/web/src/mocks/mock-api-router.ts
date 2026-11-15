@@ -6,6 +6,7 @@ import type { ReadonlyDeep } from '../types';
 import { isForgettableKind } from './is-forgettable-kind';
 import { mockApprovalProcedures } from './mock-approval-procedures';
 import { mockImplementer } from './mock-implementer';
+import { mockMandateProcedures } from './mock-mandate-procedures';
 import { mockMemoryRouter } from './mock-memory-router';
 import { mockPasskeyProcedures } from './mock-passkey-procedures';
 import { mockRuleProcedures } from './mock-rule-procedures';
@@ -190,7 +191,7 @@ export const mockAPIRouter = os.router({
   },
   passkeys: mockPasskeyProcedures,
   records: { follow: followProcedure },
-  rules: mockRuleProcedures,
+  rules: { ...mockRuleProcedures, ...mockMandateProcedures },
   sessions: {
     enrol: os.sessions.enrol.handler(async (options) => {
       const input = options.input;
