@@ -17,6 +17,7 @@ import { seedPasskey } from '../test-utils/seed-passkey';
 import { startTestAPI } from '../test-utils/start-test-api';
 import type { APITables } from '../types';
 import { createPasskeyAnswerGate } from './create-passkey-answer-gate';
+import { createPasskeyCheck } from './create-passkey-check';
 
 type Assertion = NonNullable<ContractInputs['approvals']['answerProposal']['passkey']>;
 
@@ -315,6 +316,39 @@ test('#approvals.answerProposal fails an assertion that was issued for another c
   const refusal = await ctx.refusalOf(ctx.answer({ ...row, choice: 'approve', passkey }));
 
   expect(refusal).toMatchObject({ code: 'PASSKEY_FAILED', data: { reason: 'binding' } });
+});
+
+// Only a routine row offers Always allow, and a routine row takes no passkey, so no answer reaches
+// the check with a rule hash, and the test calls the check itself.
+test('#createPasskeyCheck fails an assertion that was issued for another rule hash with binding', async () => {
+  const ctx = await setupTest();
+  const seeded = await seedPasskey(ctx.api.context, { caller: ctx.laptop.caller });
+  const row = await ctx.createAlwaysAskRow();
+
+  const asked = { ...row, choice: 'always_allow' as const, ruleHash: 'sha256:rule-harbour' };
+
+  const optionsIssued = await ctx.client.passkeys.challenge({ for: { kind: 'answer', ...asked } });
+
+  const assertion = await seeded.authenticator.assert(optionsIssued.options, {
+    origin: ctx.origin,
+  });
+
+  const verdict = await withWriteTransaction(ctx.api.context.log.writer, (tx) =>
+    createPasskeyCheck(ctx.api.context).verify(
+      tx,
+      ctx.laptop.caller,
+      {
+        kind: 'answer',
+        proposalID: row.proposalID,
+        actionHash: row.actionHash,
+        choice: 'always_allow',
+        ruleHash: 'sha256:rule-marina',
+      },
+      assertion,
+    ),
+  );
+
+  expect(verdict).toStrictEqual({ error: 'PASSKEY_FAILED', reason: 'binding' });
 });
 
 test('#approvals.answerProposal fails an assertion that another session asked for with unknown_challenge', async () => {
