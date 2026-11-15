@@ -45,7 +45,7 @@ export async function requireNoOrphans(
 
     if (orphan !== undefined) {
       throw new Error(
-        `record ${String(orphan.sequence)} refers to a record of a built-in memory task through ${orphan.field}, which the memory task migration cannot remove`,
+        `record ${String(orphan.sequence)} refers to a record that the migration removes, through ${orphan.field}, so the migration stops`,
       );
     }
   }

@@ -36,7 +36,7 @@ export async function requireNoProjectionOrphans(
 
       if (field !== null) {
         throw new Error(
-          `a row of ${column.table_name} refers to a record of a built-in memory task through ${field}, which the memory task migration cannot remove`,
+          `a row of ${column.table_name} refers to a record that the migration removes, through ${field}, so the migration stops`,
         );
       }
     }
@@ -60,7 +60,7 @@ export async function requireNoProjectionOrphans(
 
     if (change !== undefined) {
       throw new Error(
-        `a change of ${change.projection} at record ${String(change.sequence)} refers to a record of a built-in memory task through ${change.field}, which the memory task migration cannot remove`,
+        `a change of ${change.projection} at record ${String(change.sequence)} refers to a record that the migration removes, through ${change.field}, so the migration stops`,
       );
     }
   }
