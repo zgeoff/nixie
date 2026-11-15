@@ -14,7 +14,7 @@ export function mapProposedRuleRecord(record: EnvelopeRecord): ProposalChange | 
       proposal: {
         id: proposed.proposalID,
         shortID: proposed.shortID,
-        family: 'proposed_rule',
+        family: 'rule_change',
         kind: 'internal_change',
         riskClass: proposed.riskClass,
         actionHash: proposed.actionHash,

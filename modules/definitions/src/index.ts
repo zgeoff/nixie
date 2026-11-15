@@ -118,6 +118,8 @@ export { writeRuleProposalAnswer } from './rule/write-rule-proposal-answer';
 export type { DefinitionsRecordKind } from './skill/definitions-record-kind';
 export type { RulesRecordKind } from './skill/rules-record-kind';
 export { makeRuleProposalHandler } from './rule/make-rule-proposal-handler';
+export { makeRuleChangeHandler } from './rule/make-rule-change-handler';
+export { writeProposedRule } from './proposed-rule/write-proposed-rule';
 export { mapRuleProposalRecord } from './rule/map-rule-proposal-record';
 export { writeRuntimeRuleInTransaction } from './runtime/write-runtime-rule';
 export type { CurrentRuleVersion } from './runtime/read-current-rule';

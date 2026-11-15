@@ -2,6 +2,7 @@ import type { Projection } from '@heynixie/log';
 import { actionAnsweredCodec } from '@heynixie/policy';
 import { proposalsWithdrawnCodec } from '@heynixie/proposals';
 import type { Transaction } from 'kysely';
+import { rulesChangeLapsedCodec } from '../change/rules-change-lapsed-codec';
 import type { DefinitionsTables } from '../types';
 import { ruleAnsweredCodec } from './rule-answered-codec';
 import { ruleLapsedCodec } from './rule-lapsed-codec';
@@ -48,28 +49,42 @@ export const gapGroupsProjection: Projection = {
 
     if (record.kind === ruleAnsweredCodec.kind) {
       const answered = ruleAnsweredCodec.decode(record.payload);
+      const quiet = answered.quietUntil === undefined ? {} : { quiet_until: answered.quietUntil };
 
-      return closeProposal(tx, answered.proposalID, answered.quietUntil ?? null);
+      return closeProposal(tx, answered.proposalID, quiet);
     }
 
     if (record.kind === ruleLapsedCodec.kind) {
       const lapsed = ruleLapsedCodec.decode(record.payload);
 
-      return closeProposal(tx, lapsed.proposalID, lapsed.quietUntil);
+      return closeProposal(tx, lapsed.proposalID, { quiet_until: lapsed.quietUntil });
+    }
+
+    // The release before lapses every row of the family with its own record, which carries no quiet
+    // time, so the group keeps the lapse time and the check adds the quiet days to it.
+    if (record.kind === rulesChangeLapsedCodec.kind) {
+      return closeProposal(tx, rulesChangeLapsedCodec.decode(record.payload).proposalID, {
+        lapsed_at: record.recordedAt.getTime(),
+      });
     }
 
     if (record.kind === proposalsWithdrawnCodec.kind) {
-      return closeProposal(tx, proposalsWithdrawnCodec.decode(record.payload).proposalID, null);
+      return closeProposal(tx, proposalsWithdrawnCodec.decode(record.payload).proposalID, {});
     }
 
     return [];
   },
 };
 
+interface CloseChange {
+  readonly quiet_until?: number;
+  readonly lapsed_at?: number;
+}
+
 async function closeProposal(
   tx: Transaction<unknown>,
   proposalID: string,
-  quietUntil: number | null,
+  change: CloseChange,
 ): Promise<readonly string[]> {
   const tables = tx.$extendTables<DefinitionsTables>();
 
@@ -83,12 +98,9 @@ async function closeProposal(
     return [];
   }
 
-  const change =
-    quietUntil === null ? { proposal_id: null } : { proposal_id: null, quiet_until: quietUntil };
-
   await tables
     .updateTable('gap_groups')
-    .set(change)
+    .set({ proposal_id: null, ...change })
     .where('group_hash', '=', group.group_hash)
     .execute();
 

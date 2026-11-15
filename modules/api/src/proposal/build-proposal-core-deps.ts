@@ -2,6 +2,7 @@ import { readMessageTimeZone } from '@heynixie/connectors';
 import {
   makeMandateHandler,
   makeProposedRuleHandler,
+  makeRuleChangeHandler,
   makeRuleProposalHandler,
   runGapCheck,
   writeGapWithdrawal,
@@ -85,24 +86,26 @@ export function buildProposalCoreDeps(
         await parts.runInForceSeed();
       },
     }),
-    makeRuleProposalHandler({
-      log: context.log,
-      clock: context.clock,
-      definitions: context.definitions,
-      runInForceSeed: parts.runInForceSeed,
-    }),
-    makeProposedRuleHandler({
-      log: context.log,
-      clock: context.clock,
-      definitions: context.definitions,
-      runInForceSeed: parts.runInForceSeed,
-      settings: gapSettings,
-    }),
-    makeMandateHandler({
-      log: context.log,
-      clock: context.clock,
-      definitions: context.definitions,
-      runInForceSeed: parts.runInForceSeed,
+    makeRuleChangeHandler({
+      rule_widening: makeRuleProposalHandler({
+        log: context.log,
+        clock: context.clock,
+        definitions: context.definitions,
+        runInForceSeed: parts.runInForceSeed,
+      }),
+      proposed_rule: makeProposedRuleHandler({
+        log: context.log,
+        clock: context.clock,
+        definitions: context.definitions,
+        runInForceSeed: parts.runInForceSeed,
+        settings: gapSettings,
+      }),
+      mandate: makeMandateHandler({
+        log: context.log,
+        clock: context.clock,
+        definitions: context.definitions,
+        runInForceSeed: parts.runInForceSeed,
+      }),
     }),
   ];
 

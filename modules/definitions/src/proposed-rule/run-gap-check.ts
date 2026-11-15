@@ -6,6 +6,7 @@ import { buildProposedRule } from './build-proposed-rule';
 import { canProposeRule } from './can-propose-rule';
 import type { GapSettings } from './gap-settings';
 import { dayMs } from './gap-settings';
+import { pickQuietUntil } from './pick-quiet-until';
 import { readGapCalls } from './read-gap-calls';
 import { writeProposedRule } from './write-proposed-rule';
 
@@ -31,7 +32,7 @@ async function writeGapCheck(
 
   const group = await tables
     .selectFrom('gap_groups')
-    .select(['quiet_until', 'proposal_id'])
+    .select(['quiet_until', 'proposal_id', 'lapsed_at'])
     .where('group_hash', '=', groupHash)
     .executeTakeFirst();
 
@@ -55,7 +56,7 @@ async function writeGapCheck(
     approvedCount: approved.length,
     declinedCount: answers.length - approved.length,
     hasOpenProposal: group.proposal_id !== null,
-    quietUntil: group.quiet_until,
+    quietUntil: pickQuietUntil(group.quiet_until, group.lapsed_at, settings.quietDays * dayMs),
   });
 
   if (isProposable) {

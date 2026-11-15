@@ -14,7 +14,7 @@ export function mapMandateRecord(record: EnvelopeRecord): ProposalChange | null 
       proposal: {
         id: proposed.proposalID,
         shortID: proposed.shortID,
-        family: 'mandate',
+        family: 'rule_change',
         kind: 'internal_change',
         riskClass: proposed.riskClass,
         actionHash: proposed.actionHash,

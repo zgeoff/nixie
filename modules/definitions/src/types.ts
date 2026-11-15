@@ -415,6 +415,9 @@ interface GapGroupRow {
   readonly quiet_until: number | null;
   readonly proposal_id: string | null;
   readonly checked_sequence: number | null;
+
+  // when the release before lapsed the group's proposed rule, whose record carries no quiet time
+  readonly lapsed_at: number | null;
 }
 
 // Kysely's table map needs an index signature, which an interface lacks, so the tables are mapped

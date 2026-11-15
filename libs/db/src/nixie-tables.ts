@@ -97,6 +97,7 @@ export interface NixieTables {
     readonly quiet_until: number | null;
     readonly proposal_id: string | null;
     readonly checked_sequence: number | null;
+    readonly lapsed_at: number | null;
   };
   readonly identities: {
     readonly identity_id: string;

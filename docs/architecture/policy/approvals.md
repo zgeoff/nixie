@@ -14,9 +14,13 @@ what each means for the row, so the approvals module imports no kind module and 
 from the log. The migration that creates the table folds the records that already exist, and a test
 holds that fold equal to the live one.
 
-A row's family is `action`, `memory`, `skill`, `rule_change`, `proposed_rule` or `mandate`. The
-[rules](rules.md#proposed-rules) doc covers the last 2, which take the causes `proposed_rule` and
-`mandate`.
+A row's family is `action`, `memory`, `skill` or `rule_change`. A `rule_change` row takes one of 3
+causes, and its cause picks the handler: `rule_widening` for a change from the definitions repo, and
+`proposed_rule` and `mandate`, which the [rules](rules.md#proposed-rules) doc covers. The 3 share
+one family so the release before still reads the proposals table. That release lapses every
+`rule_change` row with `rules.change_lapsed`, and refuses an answer to a row it has no record for.
+The host's rule answer route answers only a `rule_widening` row, because the other 2 take the
+passkey.
 
 A closed row never reopens. A row is pending, deferred, approved, declined, lapsed or withdrawn.
 

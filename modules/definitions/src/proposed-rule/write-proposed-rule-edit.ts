@@ -30,7 +30,7 @@ export async function writeProposedRuleEdit(
 ): Promise<ProposedRuleEdit> {
   const row = await readProposal(tx, edit.proposalID);
 
-  if (row?.family !== 'proposed_rule') {
+  if (row?.cause !== 'proposed_rule') {
     return { status: 'not_found' };
   }
 

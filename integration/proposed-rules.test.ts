@@ -1,6 +1,7 @@
 import { expect, test } from 'bun:test';
 import { startTestRules } from '@heynixie/api/test-utils';
 import { runGapChecks } from '@heynixie/definitions';
+import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import {
   answerProposal,
   readOpenProposals,
@@ -18,10 +19,10 @@ async function setupTest() {
   const readProposedRules = async () => {
     const open = await readOpenProposals(rules.log.writer.db, rules.clock.now());
 
-    const rows = open.filter((row) => row.family === 'proposed_rule');
-    const handler = rules.deps.handlers.get('proposed_rule');
+    const rows = open.filter((row) => row.cause === 'proposed_rule');
+    const handler = rules.deps.handlers.get('rule_change');
 
-    invariant(handler, 'the server wires a proposed rule handler');
+    invariant(handler, 'the server wires the rule change handler');
 
     const bodies = await handler.readBodies(rules.log.writer.db, rows);
 
@@ -83,6 +84,18 @@ async function setupTest() {
     approveSend,
     approveWithoutCheck,
     runStartChecks: () => runGapChecks(rules.context, settings),
+
+    // the lapse that the release before writes for every row of the rule change family
+    writeOlderLapse: (proposalID: string) =>
+      withWriteTransaction(rules.log.writer, (tx) =>
+        writeRecordsInTransaction(tx, rules.log, [
+          {
+            kind: 'rules.change_lapsed',
+            definitions: rules.context.definitions(),
+            payload: { proposalID },
+          },
+        ]),
+      ),
     runLapses: () => runProposalLapses(rules.deps),
   };
 }
@@ -252,6 +265,49 @@ test('it keeps the group quiet for 30 days after the proposal lapses', async () 
   const open = await ctx.readProposedRules();
 
   expect(open).toStrictEqual([]);
+});
+
+test('it keeps the group quiet for 30 days after the release before lapsed the open proposal', async () => {
+  const ctx = await setupTest();
+
+  await ctx.approveSend();
+  await ctx.approveSend();
+  await ctx.approveSend();
+
+  const [first] = await ctx.readProposedRules();
+
+  invariant(first, 'the group proposed a rule');
+
+  await ctx.writeOlderLapse(first.row.id);
+  await ctx.approveSend();
+
+  const open = await ctx.readProposedRules();
+
+  expect(open).toStrictEqual([]);
+});
+
+test('it proposes again once the quiet days after a lapse by the release before have passed', async () => {
+  const ctx = await setupTest();
+
+  await ctx.approveSend();
+  await ctx.approveSend();
+  await ctx.approveSend();
+
+  const [first] = await ctx.readProposedRules();
+
+  invariant(first, 'the group proposed a rule');
+
+  await ctx.writeOlderLapse(first.row.id);
+
+  ctx.clock.advance(31 * ctx.dayMs);
+
+  await ctx.approveSend();
+  await ctx.approveSend();
+  await ctx.approveSend();
+
+  const open = await ctx.readProposedRules();
+
+  expect(open.map((entry) => entry.row.id === first.row.id)).toStrictEqual([false]);
 });
 
 test('it withdraws the open proposal when a new call of the group is declined', async () => {

@@ -32,7 +32,7 @@ export interface ProposedRuleHandlerDeps extends RuleContext {
 
 export function makeProposedRuleHandler(deps: ProposedRuleHandlerDeps): ProposalKindHandler {
   return {
-    family: 'proposed_rule',
+    family: 'rule_change',
     lapseIntervalMs: proposalLapseMs,
     ownsTransaction: false,
     readBodies: async (db, rows) => {

@@ -22,7 +22,7 @@ import { mandateStartedCodec } from './mandate-started-codec';
 // The mandate's proposal lapses at its end, so an approval never starts a mandate that is over.
 export function makeMandateHandler(context: RuleContext): ProposalKindHandler {
   return {
-    family: 'mandate',
+    family: 'rule_change',
     lapseIntervalMs: 0,
     ownsTransaction: false,
     readBodies: async (db, rows) => {

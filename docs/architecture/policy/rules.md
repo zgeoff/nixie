@@ -184,7 +184,7 @@ definition when every call came from one, the exact destinations, the union of t
 declares as content gets no check, and neither does a list. The rule parser checks the result as it
 checks every rule, and a test holds that every counted call matches it.
 
-The proposal is a row of the `proposed_rule` family with the cause `proposed_rule` and the
+The proposal is a row of the `rule_change` family with the cause `proposed_rule` and the
 `always_ask` risk class. Its record, `rules.rule_proposed`, keeps the rule in erasable fields, so a
 record forget of the proposal removes it. The card offers these choices:
 
@@ -196,11 +196,14 @@ record forget of the proposal removes it. The card offers these choices:
 | Edit    | Sends `rules.editProposedRule`, which withdraws the card and opens a new one with the edited rule     |
 
 A lapse of the proposal keeps the group quiet as Not now does, and a decline of a new action
-proposal in the group withdraws the open proposed rule. An edited rule stays an allow rule, takes
-the `lifting` risk class when it lets an always-ask effect through, and returns `INVALID` with each
-fault the parser found. At start, the rule store checks each group that gained an answer since its
-last check, so a crash between an answer and its check loses no proposal. An approved proposed rule
-goes into [the rule export](#the-rule-export), and Undo on its notice removes it.
+proposal in the group withdraws the open proposed rule. A lapse that the release before writes, with
+`rules.change_lapsed`, closes the open proposed rule too. That record holds no quiet time, so the
+group keeps the lapse time, and the rule store adds the quiet days to it when it checks the group.
+An edited rule stays an allow rule, takes the `lifting` risk class when it lets an always-ask effect
+through, and returns `INVALID` with each fault the parser found. At start, the rule store checks
+each group that gained an answer since its last check, so a crash between an answer and its check
+loses no proposal. An approved proposed rule goes into [the rule export](#the-rule-export), and Undo
+on its notice removes it.
 
 ## Mandates
 
@@ -211,9 +214,9 @@ conversation tool `rules.propose_mandate`, which only the conversation holds and
 limits the expiry, counted from the proposal, and the default expiry is the next midnight in the
 user's time zone. The rule store refuses a past or too late expiry.
 
-The proposal is a row of the `mandate` family, with the cause `mandate`, the `lifting` risk class
-when a rule lifts the always-ask set and `always_ask` otherwise. Its deadline is the expiry, so a
-late approval starts nothing. The card shows the title, each rule's sentence and the end time.
+The proposal is a row of the `rule_change` family, with the cause `mandate`, the `lifting` risk
+class when a rule lifts the always-ask set and `always_ask` otherwise. Its deadline is the expiry,
+so a late approval starts nothing. The card shows the title, each rule's sentence and the end time.
 
 - An approval writes each rule as a new runtime rule with the ID `<mandate ID>-<number>`, with
   `mandate` and `expires` set, and `rules.mandate_started`, in one transaction. A seed of the

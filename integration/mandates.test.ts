@@ -318,6 +318,25 @@ test('it lapses the proposal at the mandate expiry, so a late approval starts no
   expect({ answered: answered.status, active }).toStrictEqual({ answered: 'refused', active: [] });
 });
 
+test('it lapses a deferred mandate proposal no later than the mandate expiry', async () => {
+  const ctx = await setupTest();
+
+  const proposed = await ctx.proposeMandate({
+    title: 'Briefly',
+    rules: [{ outcome: 'allow', tools: ['test.send'] }],
+  });
+
+  invariant(proposed.status === 'proposed', 'the mandate was proposed');
+
+  await ctx.answer(proposed.proposalID, 'defer', {
+    deferUntil: ctx.clock.now() + 3 * ctx.hourMs,
+  });
+
+  const row = await readProposal(ctx.log.writer.db, proposed.proposalID);
+
+  expect(row?.lapsesAt).toBe(proposed.expires);
+});
+
 test('it declines a mandate with no rule put in force', async () => {
   const ctx = await setupTest();
 
