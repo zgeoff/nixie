@@ -15,6 +15,7 @@ Each part's doc owns the meaning of its own settings, and the file only carries 
 - where the server keeps its data, listens and finds the secrets file, and the lowest level of event
   it logs
 - the user's name and pronouns, and the names the user calls the agent by
+- the hashes of the API's [read-only tokens](../channels/api.md#read-only-tokens)
 - the [model profiles and the role map](../core/model-profiles.md#the-role-map), with each profile's
   [harness](../core/model-profiles.md#harnesses) and its credential as a reference, and when
   [compaction](../core/compaction.md) runs

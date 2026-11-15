@@ -40,6 +40,7 @@ export const frontPartDeclarations: readonly AnyPartDeclaration<ServerPartValues
           settings: {
             ...defaultAPISettings,
             isBackupEnabled: options.config.backup.isEnabled,
+            readOnlyTokenHashes: options.config.api.readOnlyTokenHashes,
             taskDirectory: buildTaskMessaging(options.config).directory,
             approvals: {
               defaultMinutes: options.config.approvals.defer.default_minutes,

@@ -1,4 +1,5 @@
 import { actionsConfigSchema } from '@heynixie/actions';
+import { apiConfigSchema } from '@heynixie/api';
 import { backupConfigSchema } from '@heynixie/backup';
 import { searchConfigSchema, timeConfigSchema, webFetchConfigSchema } from '@heynixie/connectors';
 import { definitionsConfigSchema } from '@heynixie/definitions';
@@ -18,6 +19,7 @@ export const deploymentConfigSchema = z
   .strictObject({
     server: serverConfigSchema.default(serverConfigSchema.parse({})),
     owner: ownerConfigSchema.default(ownerConfigSchema.parse({})),
+    api: apiConfigSchema.default(apiConfigSchema.parse({})),
     ...modelSections,
     ...sandboxSections,
     definitions: definitionsConfigSchema,
