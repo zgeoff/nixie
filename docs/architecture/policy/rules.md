@@ -162,12 +162,12 @@ each snapshot holds the revision of every rule in force.
 
 ## Proposed rules
 
-When the user approves the same kind of call 3 times in 30 days and declines none, nixie proposes
-the narrowest allow rule that covers those calls. A call that no rule matches asks with the cause
-`no_rule`, and the user's answer to that action proposal joins a gap group. The group's key is the
-tool with its variant, the context and the sorted destinations, hashed with SHA-256. The
-`gap_answers` and `gap_groups` projections hold the group hash, each answer and its time, and never
-a destination or an argument.
+When the user approves the same kind of call often enough within a window and declines none,
+`policy.proposed_rules` sets the counts and nixie proposes the narrowest allow rule that covers
+those calls. A call that no rule matches asks with the cause `no_rule`, and the user's answer to
+that action proposal joins a gap group. The group's key is the tool with its variant, the context
+and the sorted destinations, hashed with SHA-256. The `gap_answers` and `gap_groups` projections
+hold the group hash, each answer and its time, and never a destination or an argument.
 
 After each answer that joins a group, the rule store checks the group in a transaction of its own,
 and proposes a rule when all of these hold:
@@ -222,10 +222,10 @@ late approval starts nothing. The card shows the title, each rule's sentence and
   mandate over the ID of a mandate rule.
 - The decision point stops a rule at its `expires`, and a replay of an earlier decision uses the
   snapshot its record names.
-- End now, `rules.endMandate`, and a timer that checks every 30 seconds each retire the mandate's
-  runtime changes, write one `rules.mandate_ended` with the reason `ended` or `expired`, and run a
-  seed. Neither writes a runtime removal, so the export never offers to remove a rule of the user's.
-  At start, the timer ends each mandate whose expiry passed while nixie was down.
+- End now, `rules.endMandate`, and a periodic timer each retire the mandate's runtime changes, write
+  one `rules.mandate_ended` with the reason `ended` or `expired`, and run a seed. Neither writes a
+  runtime removal, so the export never offers to remove a rule of the user's. At start, the timer
+  ends each mandate whose expiry passed while nixie was down.
 - The export filters out each change whose rule holds `mandate`.
 - The server adds a line to the [events block](../core/conversation-turns.md#the-events-block) when
   a mandate starts and when it ends.
