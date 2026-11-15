@@ -9,7 +9,7 @@ import { readQueryRows } from '../read-query-rows';
 import { nixieSchema } from '../schema/nixie-schema';
 import { buildSqliteWorkerDialect } from '../sqlite/build-sqlite-worker-dialect';
 import { readRunPrefix } from '../test-utils/read-run-prefix';
-import { memoryConsolidationRemovalMigration } from './0055-memory-consolidation-removal-migration';
+import { memoryConsolidationRemovalMigration } from './0056-memory-consolidation-removal-migration';
 
 async function setupTest() {
   const stack = new AsyncDisposableStack();
