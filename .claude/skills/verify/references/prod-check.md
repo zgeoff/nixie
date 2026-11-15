@@ -1,52 +1,61 @@
 # The prod check
 
-Check the owner's nixie after a release deploys: the doctor reads its version, its health and its
-error lines, and three commands read its API with a token that cannot write. The deploy job runs the
-same doctor after each apply, with no model call.
+After a release deploys, check the nixie that runs in production through the `prod` target of
+`bun verify`. Hand back each doctor check's result and each read's result.
 
-The target is read-only, and nixie refuses a write with the token too. A command that would write
-fails with exit 3 and `read-only`; leave it undone and report the command.
+`prod` holds a real person's data, so you only read it:
+
+- Run only the commands on this page. `bun verify` refuses each other command that changes data on
+  `prod`, with exit 3 and `error.code` `read-only`. Leave a refused command undone, and report it.
+- Never send nixie a message, by any route. A message becomes a turn of a real conversation.
 
 ## Set it up
 
-The two credentials sit in the `nixie` 1Password vault. Read each into the command's environment,
-and never print one:
+Pass these variables to every `bun verify` command, such as by an `export` in the same shell call.
+The `op` commands need the `nixie` vault; when `op` fails to sign in, report the check as blocked.
 
-| Variable                | Holds                                                | Where                                                |
-| ----------------------- | ---------------------------------------------------- | ---------------------------------------------------- |
-| `NIXIE_PROD_URL`        | the web origin of the owner's nixie                  | ask the repo's maintainer                            |
-| `NIXIE_PROD_TOKEN`      | the read-only API token                              | item `nixie-prod-read-token`, field `credential`     |
-| `NIXIE_PROD_KUBECONFIG` | the path of a kubeconfig that only reads nixie's pod | item `nixie-prod-kubeconfig`, file `kubeconfig.yaml` |
-| `NIXIE_PROD_VERSION`    | optional: the version you expect, such as `0.74.0`   | the release you are checking                         |
+| Variable                | Holds                                                   | Needed by                                      |
+| ----------------------- | ------------------------------------------------------- | ---------------------------------------------- |
+| `NIXIE_PROD_KUBECONFIG` | the path of a kubeconfig that can only read nixie's pod | `doctor`, `prod health`                        |
+| `NIXIE_PROD_URL`        | the web origin of the production nixie                  | `prod conversation`, `prod tasks`              |
+| `NIXIE_PROD_TOKEN`      | an API token that nixie lets only read                  | `prod conversation`, `prod tasks`              |
+| `NIXIE_PROD_VERSION`    | the version you check, such as `0.74.0`                 | `doctor`, which accepts any version without it |
 
-Write the kubeconfig to a file outside the repo, such as one in your scratch folder, and remove it
-when you finish.
+1. Write the kubeconfig to your scratch folder, outside the repo:
+
+   ```bash
+   op read op://nixie/nixie-prod-kubeconfig/kubeconfig.yaml --out-file "<scratch>/prod-kubeconfig.yaml"
+   ```
+
+   Set `NIXIE_PROD_KUBECONFIG` to that path.
+
+2. Set the token without printing it:
+   `NIXIE_PROD_TOKEN="$(op read op://nixie/nixie-prod-read-token/credential)"`.
+3. Ask your caller for `NIXIE_PROD_URL`. Without it, run the doctor and `prod health` only, and
+   report the other two reads as not run.
+4. Set `NIXIE_PROD_VERSION` to the version your caller names, without a leading `v`.
 
 ## Run it
 
-```bash
-bun verify use --target prod
-bun verify attach
-bun verify doctor
-bun verify prod health
-bun verify prod conversation
-bun verify prod tasks
-bun verify detach
-```
+1. Run `bun verify use --target prod`.
+2. Run `bun verify attach`. Expect: `ok: true`.
+3. Run `bun verify doctor`. Expect: `data.passed: true`. When a check fails, follow
+   [When the doctor fails](#when-the-doctor-fails), and come back here once `doctor` passes.
+4. Run `bun verify prod health`. Expect: `data.status` is `ready`.
+5. Run `bun verify prod conversation`. Expect: a `data.recordCount`, of any size.
+6. Run `bun verify prod tasks`. Expect: a `data.taskCount`, of any size.
+7. Run `bun verify detach`, and remove the kubeconfig file. Do this step after a failure too.
 
-Expect from `doctor`: `data.passed: true`, with `prod-version`, `prod-health` and `prod-errors`
-passed. Expect from each `prod` command: exit 0, and a count in `data`.
+## When the doctor fails
 
-When a doctor check fails:
+Read the failed check's `message` in `data.results`:
 
-- `prod-version`: the pod runs another version than you expect, or the rollout has not finished.
-  Wait for the deploy, then run `doctor` again.
-- `prod-health`: nixie reports `degraded` or `unready`, and names each failing part. Report it.
-- `prod-errors`: nixie logged an error line in the last hour. The message names each event; report
-  them.
+- `prod-version`: the pod runs another version, or its rollout has not finished. Run `doctor` again
+  each minute. After 10 minutes, report the version in the message, and go to step 7.
+- `prod-health`: nixie is `degraded` or `unready`. Report the status and each failing part in the
+  message, and go to step 7.
+- `prod-errors`: nixie logged an error line since its container started, up to an hour back. Report
+  each event name in the message, and go to step 7.
 
-A `prod` command reads the API, so it fails with `environment` without `NIXIE_PROD_URL` or
-`NIXIE_PROD_TOKEN`. The deploy job sets neither, and runs the doctor alone.
-
-**Reply:** the doctor's result for each check, the counts from the three reads, and each command
-that failed with its `error.code`.
+**Reply:** each doctor check's result, the status and the two counts from the reads, and each
+command that failed or was refused, with its `error.code` or its check's message.

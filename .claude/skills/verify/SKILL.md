@@ -3,7 +3,8 @@ name: verify
 description:
   "Uses nixie the way its user would with `bun verify`, on a local test build or on a pull request's
   preview, and records the verdict that a feature works. Load it before you check a change in the
-  running app, run the journey of a feature, or put the verdicts in a PR."
+  running app, run the journey of a feature, put the verdicts in a PR, or check prod after a release
+  deploys."
 metadata:
   wringer-template: 'sha256:97fabc9a9389'
   wringer-command: bun verify
@@ -126,13 +127,14 @@ command points that command alone.
 | --------- | ----------------------------------------------------------- | ---------- | ------------------------------------------------------------------------------- |
 | `local`   | `bun verify use --target local`, then `bun verify up`       | read-write | A test build of this tree, with a scripted model. No model call leaves it.      |
 | `preview` | `bun verify use --target preview`, then `bun verify attach` | read-write | The pull request's preview, on the real model under a spend cap. Never stop it. |
-| `prod`    | `bun verify use --target prod`, then `bun verify attach`    | read-only  | The owner's nixie. It runs no feature journey; never send it a message.         |
+| `prod`    | `bun verify use --target prod`, then `bun verify attach`    | read-only  | The production nixie. Run no feature journey on it; read it only.               |
 
 - Run the `sign-in-enrol` journey first. The other journeys use the browser it signs in, and
   `up --restart` starts a browser with no sign-in.
 - Before you attach to `preview`, read [the preview setup](references/preview-setup.md).
 - Each feature file says what to skip on `preview`, or that it runs on `local` only.
-- After a release deploys, check `prod` as [the prod check](references/prod-check.md) says.
+- After a release deploys, check `prod` as [the prod check](references/prod-check.md) says, with no
+  `done` or `publish`.
 - Evidence stays in `.wringer/`; `publish` adds only the report to the PR.
 
 <!-- /repo -->
