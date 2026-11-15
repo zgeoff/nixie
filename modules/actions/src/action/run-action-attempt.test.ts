@@ -6,16 +6,19 @@ import {
   resumeNixieInTransaction,
   withWriteTransaction,
 } from '@heynixie/log';
+import { buildActionProposalInput } from '@heynixie/policy';
 import { setFaultPointHandler, writeStepCommit, writeTaskControl } from '@heynixie/tasks';
 import { readTestLeases } from '@heynixie/tasks/test-utils';
-import { createAllowedAction, runActionAttempt } from '../index';
+import { claimAction, createAllowedAction, runActionAttempt } from '../index';
 import { buildActionSeeder } from '../test-utils/build-action-seeder';
 import { buildStubConnector } from '../test-utils/build-stub-connector';
 import { claimTestAction } from '../test-utils/claim-test-action';
 import { createTestStep } from '../test-utils/create-test-step';
+import { readTestAction } from '../test-utils/read-test-action';
 import { runStalledAttempt } from '../test-utils/run-stalled-attempt';
 import { startTestActions } from '../test-utils/start-test-actions';
 import type { ActionsTables } from '../types';
+import type { AttemptVerdict } from './attempt-check';
 
 async function setupTest() {
   const actions = await startTestActions();
@@ -499,4 +502,224 @@ test('it starts the attempt at the next claim after nixie resumes', async () => 
   await runActionAttempt(ctx.context, next, options);
 
   expect(stub.calls).toHaveLength(1);
+});
+
+test('it fails an action past its deadline before it records an attempt or calls the provider', async () => {
+  const ctx = await setupTest();
+  const step = await createTestStep(ctx.context);
+
+  const queued = await createAllowedAction(ctx.context, {
+    step,
+    tool: 'test.send',
+    actionHash: 'sha256:send-1',
+    arguments: { to: 'team' },
+    decision: { outcome: 'allow', stage: 4, rule: { id: 'test-rule', revision: 1 } },
+    deadlineAt: 1_005_000,
+  });
+
+  const stub = buildStubConnector(() => ({ kind: 'success', result: {} }));
+
+  ctx.clock.advance(5000);
+
+  const lease = await claimTestAction(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  await runActionAttempt(ctx.context, lease, {
+    connectors: new Map([['test.send', stub.connector]]),
+    leaseMs: 60_000,
+  });
+
+  const action = await readTestAction(ctx.writer, queued.actionID);
+
+  expect(stub.calls).toStrictEqual([]);
+  expect(action).toMatchObject({ status: 'failed', reason: 'deadline_passed', attempt_count: 0 });
+});
+
+test('it starts an action whose deadline has not come', async () => {
+  const ctx = await setupTest();
+  const step = await createTestStep(ctx.context);
+
+  const queued = await createAllowedAction(ctx.context, {
+    step,
+    tool: 'test.send',
+    actionHash: 'sha256:send-1',
+    arguments: { to: 'team' },
+    decision: { outcome: 'allow', stage: 4, rule: { id: 'test-rule', revision: 1 } },
+    deadlineAt: 1_005_000,
+  });
+
+  const stub = buildStubConnector(() => ({ kind: 'success', result: {} }));
+
+  const lease = await claimTestAction(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  await runActionAttempt(ctx.context, lease, {
+    connectors: new Map([['test.send', stub.connector]]),
+    leaseMs: 60_000,
+  });
+
+  const action = await readTestAction(ctx.writer, queued.actionID);
+
+  expect(action).toMatchObject({ status: 'done', deadline_at: 1_005_000 });
+});
+
+test('it fails an action that a rule now denies, and names the rule in the outcome', async () => {
+  const ctx = await setupTest();
+  const step = await createTestStep(ctx.context);
+
+  const queued = await createAllowedAction(ctx.context, {
+    step,
+    tool: 'test.send',
+    actionHash: 'sha256:send-1',
+    arguments: { to: 'team' },
+    decision: { outcome: 'allow', stage: 4, rule: { id: 'test-rule', revision: 1 } },
+    callSequence: 1,
+  });
+
+  const stub = buildStubConnector(() => ({ kind: 'success', result: {} }));
+
+  const lease = await claimTestAction(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  await runActionAttempt(ctx.context, lease, {
+    connectors: new Map([['test.send', stub.connector]]),
+    leaseMs: 60_000,
+    checkAttempt: () =>
+      Promise.resolve({
+        kind: 'deny',
+        rule: { id: 'owner.no-team', revision: 2 },
+        message: 'rule owner.no-team (r2)',
+      }),
+  });
+
+  const entries = await readRecords(ctx.context.log, { afterSequence: 0, limit: 100 });
+
+  const outcome = entries.find((entry) => entry.record.kind === 'action.outcome')?.record;
+
+  const action = await readTestAction(ctx.writer, queued.actionID);
+
+  expect(stub.calls).toStrictEqual([]);
+  expect(action).toMatchObject({ status: 'failed', reason: 'rule_denied', attempt_count: 0 });
+
+  expect(outcome?.payload).toStrictEqual({
+    actionID: queued.actionID,
+    status: 'failed',
+    attempt: 1,
+    reason: 'rule_denied',
+    rule: { id: 'owner.no-team', revision: 2 },
+  });
+
+  expect(outcome?.erasable).toStrictEqual({
+    status: 'readable',
+    fields: { message: 'rule owner.no-team (r2)' },
+  });
+});
+
+test('it hands the checked destinations to the connector', async () => {
+  const ctx = await setupTest();
+  const step = await createTestStep(ctx.context);
+
+  await createAllowedAction(ctx.context, {
+    step,
+    tool: 'test.send',
+    actionHash: 'sha256:send-1',
+    arguments: { to: 'team' },
+    decision: { outcome: 'allow', stage: 4, rule: { id: 'test-rule', revision: 1 } },
+    callSequence: 1,
+  });
+
+  const stub = buildStubConnector(() => ({ kind: 'success', result: {} }));
+
+  const lease = await claimTestAction(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  await runActionAttempt(ctx.context, lease, {
+    connectors: new Map([['test.send', stub.connector]]),
+    leaseMs: 60_000,
+    checkAttempt: () => Promise.resolve({ kind: 'go', destinations: ['team'] }),
+  });
+
+  expect(stub.calls.map((call) => call.destinations)).toStrictEqual([['team']]);
+});
+
+test('it fails an action whose provider reports another destination set', async () => {
+  const ctx = await setupTest();
+  const step = await createTestStep(ctx.context);
+
+  const queued = await createAllowedAction(ctx.context, {
+    step,
+    tool: 'test.send',
+    actionHash: 'sha256:send-1',
+    arguments: { to: 'team' },
+    decision: { outcome: 'allow', stage: 4, rule: { id: 'test-rule', revision: 1 } },
+  });
+
+  const stub = buildStubConnector(() => ({
+    kind: 'destinations_changed',
+    reason: 'the list grew',
+  }));
+
+  const lease = await claimTestAction(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  await runActionAttempt(ctx.context, lease, {
+    connectors: new Map([['test.send', stub.connector]]),
+    leaseMs: 60_000,
+  });
+
+  const action = await readTestAction(ctx.writer, queued.actionID);
+
+  expect(action).toMatchObject({ status: 'failed', reason: 'destinations_changed' });
+});
+
+test('it holds an action that a rule allowed and now asks about, and runs none of it', async () => {
+  const ctx = await setupTest();
+  const step = await createTestStep(ctx.context);
+
+  const queued = await createAllowedAction(ctx.context, {
+    step,
+    tool: 'test.send',
+    actionHash: 'sha256:send-1',
+    arguments: { to: 'team' },
+    decision: { outcome: 'allow', stage: 4, rule: { id: 'test-rule', revision: 1 } },
+    callSequence: 1,
+  });
+
+  const proposal = buildActionProposalInput({
+    definitions: ctx.definitions,
+    thread: step.lease.workID,
+    callSequence: 1,
+    tool: 'test.send',
+    effects: ['send'],
+    cause: 'ask_rule',
+    input: { to: 'team' },
+    destinations: [{ value: 'team', replyTarget: false }],
+    reopen: { proposalID: queued.actionID, actionID: queued.actionID },
+  });
+
+  const verdict: AttemptVerdict = {
+    kind: 'ask',
+    cause: 'ask_rule',
+    destinations: ['team'],
+    proposalID: queued.actionID,
+    record: proposal.record,
+  };
+
+  const stub = buildStubConnector(() => ({ kind: 'success', result: {} }));
+
+  const lease = await claimTestAction(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  await runActionAttempt(ctx.context, lease, {
+    connectors: new Map([['test.send', stub.connector]]),
+    leaseMs: 60_000,
+    checkAttempt: () => Promise.resolve(verdict),
+  });
+
+  const held = await readTestAction(ctx.writer, queued.actionID);
+  const claimed = await claimAction(ctx.context, { holder: 'runner-b', leaseMs: 60_000 });
+
+  expect(stub.calls).toStrictEqual([]);
+
+  expect(held).toMatchObject({
+    status: 'pending',
+    held_by_proposal_id: queued.actionID,
+    attempt_count: 0,
+  });
+
+  expect(claimed).toBeNull();
 });

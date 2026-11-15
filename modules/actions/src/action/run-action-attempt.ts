@@ -59,6 +59,9 @@ interface UnknownResult {
 
   // absent when the claim found an attempt with no result
   readonly attempt?: number;
+
+  // when the attempt started, which the claimed row predates
+  readonly startedAt?: number;
 }
 
 // An unknown outcome is settled by what the connector declares: a retry under the same key, a
@@ -74,8 +77,14 @@ async function writeUnknown(
     attempt: unknown.attempt ?? claimed.action.attempt_count,
   };
 
+  const lastAttemptAt = unknown.startedAt ?? claimed.action.last_attempt_at;
+
   const records = buildUnknownRecords(context, {
-    action: claimed.action,
+    action: {
+      ...claimed.action,
+      last_attempt_at: lastAttemptAt,
+      first_attempt_at: claimed.action.first_attempt_at ?? lastAttemptAt,
+    },
     attempt: attempt.attempt,
     reason: unknown.reason,
     details: unknown.details,
@@ -182,6 +191,8 @@ async function runAttempt(
     return;
   }
 
+  const startedAt = context.clock.now();
+
   const response = await runConnector(context, attempt, {
     connector,
     args,
@@ -193,6 +204,7 @@ async function runAttempt(
     response,
     connector,
     retryDelaysMs: connector.retryDelaysMs ?? defaultRetryDelaysMs,
+    startedAt,
     options,
   });
 }
@@ -296,6 +308,7 @@ interface AttemptResult {
   readonly response: ProviderResponse;
   readonly connector: ActionConnector;
   readonly retryDelaysMs: readonly number[];
+  readonly startedAt: number;
   readonly options: ActionAttemptOptions;
 }
 
@@ -319,6 +332,7 @@ async function writeAttemptResult(
       reason: outcome.reason,
       details,
       attempt: attempt.attempt,
+      startedAt: result.startedAt,
     });
 
     return;

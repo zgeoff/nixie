@@ -1,6 +1,7 @@
 import { expect, mock, test } from 'bun:test';
 import { readRecordAttachments, readRecords, writeRecordsInTransaction } from '@heynixie/log';
 import type { EffectDeclaration, RuleEntry } from '@heynixie/policy';
+import { buildActionHash } from '@heynixie/policy';
 import { readStarterDecisionPoint, readStarterRules } from '@heynixie/policy/test-utils';
 import { waitForCondition } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
@@ -1968,4 +1969,114 @@ test('it writes an error result with no attachments when writeBeside refuses the
   expect(entries.map((entry) => entry.record.kind)).toStrictEqual(['tool_called', 'tool_result']);
   expect(entries[1]?.record.payload).toMatchObject({ outcome: 'error' });
   expect(stored.get(2)).toStrictEqual({ status: 'none' });
+});
+
+test('it queues a call with the deadline the tool resolved on the host and a hash that covers it', async () => {
+  const ctx = await setupTest({
+    tools: [
+      buildMockToolDefinition({
+        name: 'test.send',
+        execution: 'queued',
+        declaration: { effects: ['send'] },
+        resolveDeadline: () => Promise.resolve({ status: 'ok', deadlineAt: 2_000_000 }),
+      }),
+    ],
+  });
+
+  const call = runToolCall(
+    { tool: 'test.send', input: { query: 'hello' }, toolUseID: 'toolu_3' },
+    {
+      runID: 'run-1',
+      thread: 'task-1',
+      tools: ['test.send'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
+    ctx.options,
+  );
+
+  await waitForCondition(() => ctx.queue.waits.length === 1);
+
+  ctx.queue.drainWaits();
+
+  await call;
+
+  const entries = await readRecords(ctx.log, { afterSequence: 0 });
+
+  expect(ctx.queue.actions.map((entry) => entry.action.deadlineAt)).toStrictEqual([2_000_000]);
+
+  expect(ctx.queue.actions.map((entry) => entry.action.actionHash)).toStrictEqual([
+    buildActionHash({
+      tool: 'test.send',
+      input: { query: 'hello' },
+      destinations: [],
+      deadlineAt: 2_000_000,
+    }),
+  ]);
+
+  expect(entries[0]?.record.payload['deadlineAt']).toBe(2_000_000);
+});
+
+test('it lapses the proposal of an ask at the deadline of the call when that comes first', async () => {
+  const ctx = await setupTest({
+    tools: [
+      buildMockToolDefinition({
+        name: 'files_delete',
+        execution: 'queued',
+        declaration: { effects: ['delete'] },
+        resolveDeadline: () =>
+          Promise.resolve({ status: 'ok', deadlineAt: Date.now() + 60 * 60 * 1000 }),
+      }),
+    ],
+  });
+
+  await runToolCall(
+    { tool: 'files_delete', input: { query: 'old' }, toolUseID: 'toolu_9' },
+    {
+      runID: 'run-1',
+      thread: 'task-1',
+      tools: ['files_delete'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
+    ctx.options,
+  );
+
+  const entries = await readRecords(ctx.log, { afterSequence: 0 });
+
+  const proposed = entries.find((entry) => entry.record.kind === 'policy.action_proposed');
+  const deadlineAt = proposed?.record.payload['deadlineAt'];
+
+  expect(proposed?.record.payload['lapsesAt']).toBe(deadlineAt);
+  expect(typeof deadlineAt).toBe('number');
+});
+
+test('it returns the error of a deadline that cannot resolve, and never asks the decision point', async () => {
+  const ctx = await setupTest({
+    tools: [
+      buildMockToolDefinition({
+        name: 'test.send',
+        execution: 'queued',
+        declaration: { effects: ['send'] },
+        resolveDeadline: () =>
+          Promise.resolve({ status: 'error', message: 'the provider names no deadline' }),
+      }),
+    ],
+  });
+
+  const result = await runToolCall(
+    { tool: 'test.send', input: { query: 'hello' }, toolUseID: 'toolu_3' },
+    {
+      runID: 'run-1',
+      thread: 'task-1',
+      tools: ['test.send'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
+    ctx.options,
+  );
+
+  expect(result).toStrictEqual({
+    content: [{ type: 'text', text: 'the provider names no deadline' }],
+    isError: true,
+  });
+
+  expect(ctx.queue.actions).toStrictEqual([]);
 });

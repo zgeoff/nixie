@@ -57,6 +57,16 @@ export async function createApprovedAction(
     return held.action_id;
   }
 
+  const existing = await db
+    .selectFrom('actions')
+    .select('action_id')
+    .where('action_id', '=', approved.proposalID)
+    .executeTakeFirst();
+
+  if (existing !== undefined) {
+    return existing.action_id;
+  }
+
   await writeRecordsInTransaction(tx, context.log, [
     {
       kind: 'action.queued',
