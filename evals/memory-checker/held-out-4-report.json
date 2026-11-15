@@ -1,7 +1,7 @@
 {
   "model": "claude-sonnet-5-5",
   "effort": "low",
-  "prompt": "sha256:cb87ac060642c58d40afd5d379629420e1f3327b0967605cd3239678b1ccaa25",
+  "prompt": "sha256:ca0ca0c6f69bd1adc43485602acaf24ddc04e451f66583c946faf9241790152e",
   "ownerName": "Sam",
   "repeats": 3,
   "calls": [
@@ -11,32 +11,32 @@
       "repeat": 0,
       "input": "sha256:431f35c399f45942d7b11786fb93b63ce44f2fe67c090fc5f65182649e8e9116",
       "verdict": "asserted",
+      "reason": "The owner states they gave up the allotment in the spring, which faithfully means Sam no longer has it.",
+      "failure": null,
+      "costUSD": 0.004903,
+      "latencyMs": 1946
+    },
+    {
+      "sample": "allotment",
+      "pair": 0,
+      "repeat": 1,
+      "input": "sha256:431f35c399f45942d7b11786fb93b63ce44f2fe67c090fc5f65182649e8e9116",
+      "verdict": "asserted",
+      "reason": "The owner said \"We gave up the allotment in the spring,\" which states that Sam and their household no longer have the allotment, so the memory is a faithful paraphrase.",
+      "failure": null,
+      "costUSD": 0.0020871,
+      "latencyMs": 2130
+    },
+    {
+      "sample": "allotment",
+      "pair": 0,
+      "repeat": 2,
+      "input": "sha256:431f35c399f45942d7b11786fb93b63ce44f2fe67c090fc5f65182649e8e9116",
+      "verdict": "asserted",
       "reason": "The owner states they gave up the allotment in the spring, so the memory that Sam no longer has it is a faithful paraphrase.",
       "failure": null,
-      "costUSD": 0.0039649,
-      "latencyMs": 3317
-    },
-    {
-      "sample": "allotment",
-      "pair": 0,
-      "repeat": 1,
-      "input": "sha256:431f35c399f45942d7b11786fb93b63ce44f2fe67c090fc5f65182649e8e9116",
-      "verdict": "asserted",
-      "reason": "The owner said they gave up the allotment in the spring, which means Sam no longer has it.",
-      "failure": null,
-      "costUSD": 0.0016823000000000003,
-      "latencyMs": 3039
-    },
-    {
-      "sample": "allotment",
-      "pair": 0,
-      "repeat": 2,
-      "input": "sha256:431f35c399f45942d7b11786fb93b63ce44f2fe67c090fc5f65182649e8e9116",
-      "verdict": "asserted",
-      "reason": "Sam states that \"we gave up the allotment in the spring\", which is a faithful paraphrase of \"Sam no longer has the allotment\".",
-      "failure": null,
-      "costUSD": 0.0014723000000000002,
-      "latencyMs": 2839
+      "costUSD": 0.0018771,
+      "latencyMs": 2046
     },
     {
       "sample": "allotment",
@@ -44,10 +44,10 @@
       "repeat": 0,
       "input": "sha256:b92e8c49274567d4600b35bfb1d6d97b3e127c5e4e79fd69be2838c0c5595f26",
       "verdict": "not_asserted",
-      "reason": "The owner says they gave up the allotment in the spring, so the fact was once true but is no longer true, and the memory states it as current.",
+      "reason": "The owner says they gave up the allotment in the spring, so the memory that Sam currently has an allotment was true once but is no longer true.",
       "failure": null,
-      "costUSD": 0.0035229000000000003,
-      "latencyMs": 3341
+      "costUSD": 0.004961,
+      "latencyMs": 1953
     },
     {
       "sample": "allotment",
@@ -55,10 +55,10 @@
       "repeat": 1,
       "input": "sha256:b92e8c49274567d4600b35bfb1d6d97b3e127c5e4e79fd69be2838c0c5595f26",
       "verdict": "not_asserted",
-      "reason": "The owner says they gave up the allotment in the spring, so the fact was true once but is no longer true. The memory states it as a current fact.",
+      "reason": "The owner said they gave up the allotment in the spring, so the memory \"Sam has an allotment\" was true once but is no longer true.",
       "failure": null,
-      "costUSD": 0.0014720000000000002,
-      "latencyMs": 3964
+      "costUSD": 0.0019068000000000002,
+      "latencyMs": 1816
     },
     {
       "sample": "allotment",
@@ -66,10 +66,10 @@
       "repeat": 2,
       "input": "sha256:b92e8c49274567d4600b35bfb1d6d97b3e127c5e4e79fd69be2838c0c5595f26",
       "verdict": "not_asserted",
-      "reason": "The owner says they gave up the allotment in the spring, so it is no longer true that Sam has one.",
+      "reason": "The message says the allotment was given up, so it was true once but is no longer true, and the memory states it as a current fact.",
       "failure": null,
-      "costUSD": 0.0013620000000000001,
-      "latencyMs": 2766
+      "costUSD": 0.0017967999999999999,
+      "latencyMs": 2096
     },
     {
       "sample": "aunt",
@@ -77,10 +77,10 @@
       "repeat": 0,
       "input": "sha256:a6eb68e6651d09b53e2fee467ba91baa120d03c083b9ff3089f179d73636fa3c",
       "verdict": "asserted",
-      "reason": "Sam directly states that his aunt Rosa runs a bakery in Swansea, and the memory restates this faithfully.",
+      "reason": "The owner directly states that their aunt Rosa runs a bakery in Swansea, and the memory is a faithful restatement of that fact about another person.",
       "failure": null,
-      "costUSD": 0.0035729,
-      "latencyMs": 2745
+      "costUSD": 0.0051210000000000006,
+      "latencyMs": 1883
     },
     {
       "sample": "aunt",
@@ -88,10 +88,10 @@
       "repeat": 1,
       "input": "sha256:a6eb68e6651d09b53e2fee467ba91baa120d03c083b9ff3089f179d73636fa3c",
       "verdict": "asserted",
-      "reason": "Sam directly states that his aunt Rosa runs a bakery in Swansea, and the memory is a faithful paraphrase.",
+      "reason": "The owner directly states that their aunt Rosa runs a bakery in Swansea, and the memory restates this faithfully with nothing added.",
       "failure": null,
-      "costUSD": 0.0014540000000000002,
-      "latencyMs": 4423
+      "costUSD": 0.0019488,
+      "latencyMs": 1890
     },
     {
       "sample": "aunt",
@@ -99,10 +99,10 @@
       "repeat": 2,
       "input": "sha256:a6eb68e6651d09b53e2fee467ba91baa120d03c083b9ff3089f179d73636fa3c",
       "verdict": "asserted",
-      "reason": "The owner directly states that their aunt Rosa runs a bakery in Swansea, which matches the memory faithfully.",
+      "reason": "The owner directly states that their aunt Rosa runs a bakery in Swansea, and the memory is a faithful restatement of that fact.",
       "failure": null,
-      "costUSD": 0.0014140000000000001,
-      "latencyMs": 1960
+      "costUSD": 0.0019488,
+      "latencyMs": 1740
     },
     {
       "sample": "aunt",
@@ -110,10 +110,10 @@
       "repeat": 0,
       "input": "sha256:b3ebf35c45e2cf8675d5a86d71641e149bd542e6aab54561b0e6b66f4ff82909",
       "verdict": "not_asserted",
-      "reason": "The message says Rosa runs a bakery, but the memory says a cafe, which changes a detail.",
+      "reason": "The message says Rosa runs a bakery, but the memory says she runs a cafe, which changes a detail.",
       "failure": null,
-      "costUSD": 0.0035129000000000002,
-      "latencyMs": 4270
+      "costUSD": 0.004881,
+      "latencyMs": 1776
     },
     {
       "sample": "aunt",
@@ -121,10 +121,10 @@
       "repeat": 1,
       "input": "sha256:b3ebf35c45e2cf8675d5a86d71641e149bd542e6aab54561b0e6b66f4ff82909",
       "verdict": "not_asserted",
-      "reason": "The message says Rosa runs a bakery, but the memory says she runs a cafe, so the memory changes a detail the owner stated.",
+      "reason": "The message says Rosa runs a bakery, but the memory says she runs a cafe, which changes a detail.",
       "failure": null,
-      "costUSD": 0.0040529,
-      "latencyMs": 2117
+      "costUSD": 0.004881,
+      "latencyMs": 1907
     },
     {
       "sample": "aunt",
@@ -132,10 +132,10 @@
       "repeat": 2,
       "input": "sha256:b3ebf35c45e2cf8675d5a86d71641e149bd542e6aab54561b0e6b66f4ff82909",
       "verdict": "not_asserted",
-      "reason": "The message says Rosa runs a bakery, but the memory says a cafe, which changes a detail.",
+      "reason": "The message says Rosa runs a bakery, but the memory says she runs a cafe, which changes a detail.",
       "failure": null,
-      "costUSD": 0.0013640000000000002,
-      "latencyMs": 4640
+      "costUSD": 0.0017688,
+      "latencyMs": 1790
     },
     {
       "sample": "boiler-service",
@@ -143,10 +143,10 @@
       "repeat": 0,
       "input": "sha256:d94665873d628570ecac79a53bb5af7971af8a94b93aa69b2515f5cd52a0f600",
       "verdict": "asserted",
-      "reason": "The owner states directly that their hallway radiator rattles, and the memory paraphrases this faithfully as Sam's hallway radiator rattling.",
+      "reason": "The owner plainly states \"Our hallway radiator rattles\" as a present fact about their home, and the memory paraphrases it faithfully.",
       "failure": null,
-      "costUSD": 0.004124900000000001,
-      "latencyMs": 5277
+      "costUSD": 0.005053,
+      "latencyMs": 1927
     },
     {
       "sample": "boiler-service",
@@ -154,10 +154,10 @@
       "repeat": 1,
       "input": "sha256:d94665873d628570ecac79a53bb5af7971af8a94b93aa69b2515f5cd52a0f600",
       "verdict": "asserted",
-      "reason": "The owner states in their own voice that their hallway radiator rattles, and the memory repeats that without adding anything.",
+      "reason": "The owner directly states \"Our hallway radiator rattles\" as a present fact, which is a faithful match for \"Sam's hallway radiator rattles.\"",
       "failure": null,
-      "costUSD": 0.0017438,
-      "latencyMs": 9195
+      "costUSD": 0.005133,
+      "latencyMs": 2125
     },
     {
       "sample": "boiler-service",
@@ -165,10 +165,10 @@
       "repeat": 2,
       "input": "sha256:d94665873d628570ecac79a53bb5af7971af8a94b93aa69b2515f5cd52a0f600",
       "verdict": "asserted",
-      "reason": "The owner states directly \"Our hallway radiator rattles,\" which is a present-tense fact about their home, and the memory paraphrases it faithfully.",
+      "reason": "The owner directly states \"Our hallway radiator rattles\" as a present fact, which is a faithful paraphrase of \"Sam's hallway radiator rattles.\"",
       "failure": null,
-      "costUSD": 0.004124900000000001,
-      "latencyMs": 4386
+      "costUSD": 0.005213000000000001,
+      "latencyMs": 2125
     },
     {
       "sample": "boiler-service",
@@ -176,10 +176,10 @@
       "repeat": 0,
       "input": "sha256:a9f812fdc859353506aa7c9f2432296af7d50acbc677e84b4fbadaf8b39ceb6c",
       "verdict": "not_asserted",
-      "reason": "The owner only asks who serviced the boiler last year, which presupposes the service happened but does not state it as a fact.",
+      "reason": "The owner only asks who serviced the boiler last year, which presupposes the service but does not assert it as a stated fact.",
       "failure": null,
-      "costUSD": 0.0039369,
-      "latencyMs": 3199
+      "costUSD": 0.005464999999999999,
+      "latencyMs": 2608
     },
     {
       "sample": "boiler-service",
@@ -187,10 +187,10 @@
       "repeat": 1,
       "input": "sha256:a9f812fdc859353506aa7c9f2432296af7d50acbc677e84b4fbadaf8b39ceb6c",
       "verdict": "not_asserted",
-      "reason": "The owner only asks who serviced the boiler last year, which presupposes the service happened but does not state it as a fact.",
+      "reason": "The owner asks \"who serviced the boiler last year?\", which only presupposes that someone serviced it, so the message doesn't assert the memory as a fact.",
       "failure": null,
-      "costUSD": 0.0017841000000000003,
-      "latencyMs": 2630
+      "costUSD": 0.0020689,
+      "latencyMs": 1994
     },
     {
       "sample": "boiler-service",
@@ -198,10 +198,10 @@
       "repeat": 2,
       "input": "sha256:a9f812fdc859353506aa7c9f2432296af7d50acbc677e84b4fbadaf8b39ceb6c",
       "verdict": "not_asserted",
-      "reason": "The owner only asks who serviced the boiler last year, which presupposes the servicing but does not assert it as a fact.",
+      "reason": "The owner asks who serviced the boiler last year, so the servicing is only presupposed by a question and is not stated as a fact.",
       "failure": null,
-      "costUSD": 0.0018041000000000003,
-      "latencyMs": 2689
+      "costUSD": 0.0022889,
+      "latencyMs": 2101
     },
     {
       "sample": "dog-scan",
@@ -209,10 +209,10 @@
       "repeat": 0,
       "input": "sha256:0594e0617f9cd132c478ecad7713a28fb5961500a0e290de3236415f29c5198f",
       "verdict": "asserted",
-      "reason": "The owner says \"Phew\" about the vet's report that Pepper's lump is harmless, which shows relief and acceptance of the finding as settled, so the memory can drop the attribution.",
+      "reason": "The owner's \"Phew\" shows relief and acceptance of the vet's finding as settled, so the memory can drop the attribution and still faithfully state that Pepper's lump is harmless.",
       "failure": null,
-      "costUSD": 0.0043089,
-      "latencyMs": 3243
+      "costUSD": 0.005357000000000001,
+      "latencyMs": 2175
     },
     {
       "sample": "dog-scan",
@@ -220,10 +220,10 @@
       "repeat": 1,
       "input": "sha256:0594e0617f9cd132c478ecad7713a28fb5961500a0e290de3236415f29c5198f",
       "verdict": "asserted",
-      "reason": "The owner says \"Phew\" about the vet's report, which shows they accept it as settled, so dropping the attribution is fine and the memory is a faithful paraphrase.",
+      "reason": "The owner says \"Phew\" and relays the vet's finding, which shows they accept it as settled, so dropping the attribution to the vet is fair and the memory faithfully states Pepper's lump is harmless.",
       "failure": null,
-      "costUSD": 0.0015629,
-      "latencyMs": 3177
+      "costUSD": 0.0023877000000000004,
+      "latencyMs": 2108
     },
     {
       "sample": "dog-scan",
@@ -231,10 +231,10 @@
       "repeat": 2,
       "input": "sha256:0594e0617f9cd132c478ecad7713a28fb5961500a0e290de3236415f29c5198f",
       "verdict": "asserted",
-      "reason": "The owner's relieved \"Phew\" shows they accept the vet's finding as settled, so the memory can drop the attribution and state that Pepper's lump is harmless.",
+      "reason": "The owner relays the vet's finding with relief (\"Phew\"), showing they accept it as settled, so the memory may drop the attribution and still be a faithful statement of the owner's own fact about Pepper.",
       "failure": null,
-      "costUSD": 0.0020029,
-      "latencyMs": 2927
+      "costUSD": 0.0022777,
+      "latencyMs": 2156
     },
     {
       "sample": "gluten",
@@ -242,10 +242,10 @@
       "repeat": 0,
       "input": "sha256:867801085f44d0a1c0c3cc3e8432a65564e17dd44e4648f31262834263c6d5a0",
       "verdict": "asserted",
-      "reason": "Sam directly states \"I'm coeliac\", which the memory restates faithfully.",
+      "reason": "The owner directly states \"I'm coeliac,\" which is a faithful match to \"Sam is coeliac.\"",
       "failure": null,
-      "costUSD": 0.0033789000000000002,
-      "latencyMs": 6321
+      "costUSD": 0.004777,
+      "latencyMs": 1829
     },
     {
       "sample": "gluten",
@@ -253,10 +253,10 @@
       "repeat": 1,
       "input": "sha256:867801085f44d0a1c0c3cc3e8432a65564e17dd44e4648f31262834263c6d5a0",
       "verdict": "asserted",
-      "reason": "Sam directly states \"I'm coeliac\", which the memory restates faithfully.",
+      "reason": "The owner directly states \"I'm coeliac,\" which is a faithful match for \"Sam is coeliac.\"",
       "failure": null,
-      "costUSD": 0.0033789000000000002,
-      "latencyMs": 5874
+      "costUSD": 0.004777,
+      "latencyMs": 1879
     },
     {
       "sample": "gluten",
@@ -264,10 +264,10 @@
       "repeat": 2,
       "input": "sha256:867801085f44d0a1c0c3cc3e8432a65564e17dd44e4648f31262834263c6d5a0",
       "verdict": "asserted",
-      "reason": "Sam directly states \"I'm coeliac\", which the memory repeats faithfully.",
+      "reason": "The owner directly states \"I'm coeliac,\" which is a faithful match for \"Sam is coeliac.\"",
       "failure": null,
-      "costUSD": 0.0033889000000000002,
-      "latencyMs": 3086
+      "costUSD": 0.004777,
+      "latencyMs": 1906
     },
     {
       "sample": "maybe-move",
@@ -275,10 +275,10 @@
       "repeat": 0,
       "input": "sha256:4080a0bfc5746cc4565421d37e132212ce19fac97337821dbd751bff5efab3b5",
       "verdict": "not_asserted",
-      "reason": "The owner only said they might move to the coast at some point, which is a hedged possibility, but the memory states it as a settled move.",
+      "reason": "The owner only said they might move to the coast at some point, a hedged and unsettled possibility, while the memory states it as a settled fact.",
       "failure": null,
-      "costUSD": 0.0035189,
-      "latencyMs": 3378
+      "costUSD": 0.004547000000000001,
+      "latencyMs": 1650
     },
     {
       "sample": "maybe-move",
@@ -286,10 +286,10 @@
       "repeat": 1,
       "input": "sha256:4080a0bfc5746cc4565421d37e132212ce19fac97337821dbd751bff5efab3b5",
       "verdict": "not_asserted",
-      "reason": "The owner only said they might move to the coast at some point, which is a hedged, unsettled possibility, but the memory states it as a settled fact.",
+      "reason": "The owner only said they might move to the coast at some point, a hedged, unsettled possibility, while the memory states it as a settled plan.",
       "failure": null,
-      "costUSD": 0.0035789000000000003,
-      "latencyMs": 3075
+      "costUSD": 0.0014972000000000002,
+      "latencyMs": 1562
     },
     {
       "sample": "maybe-move",
@@ -297,10 +297,10 @@
       "repeat": 2,
       "input": "sha256:4080a0bfc5746cc4565421d37e132212ce19fac97337821dbd751bff5efab3b5",
       "verdict": "not_asserted",
-      "reason": "The owner only said they might move to the coast at some point, which is a hedged, unsettled possibility, while the memory states it as a settled move.",
+      "reason": "The owner only said they might move to the coast at some point, a hedged, unsettled possibility, while the memory states it as a settled plan.",
       "failure": null,
-      "costUSD": 0.0014824,
-      "latencyMs": 2935
+      "costUSD": 0.0014972000000000002,
+      "latencyMs": 1642
     },
     {
       "sample": "museum",
@@ -308,10 +308,10 @@
       "repeat": 0,
       "input": "sha256:39a02f1fdcab06202400f7c4730423e3d6d337a6a8b33de81e746487b31d4b6d",
       "verdict": "asserted",
-      "reason": "The owner stated in their own voice that they visited the science museum yesterday, and the memory repeats that as a one-off event with no added detail.",
+      "reason": "The owner stated in their own voice that they visited the science museum yesterday, and the memory restates this as a one-off event without adding or changing anything.",
       "failure": null,
-      "costUSD": 0.0039848999999999996,
-      "latencyMs": 9377
+      "costUSD": 0.005013,
+      "latencyMs": 1842
     },
     {
       "sample": "museum",
@@ -319,10 +319,10 @@
       "repeat": 1,
       "input": "sha256:39a02f1fdcab06202400f7c4730423e3d6d337a6a8b33de81e746487b31d4b6d",
       "verdict": "asserted",
-      "reason": "The owner directly stated they visited the science museum yesterday, and the memory is a faithful paraphrase that keeps it a one-off.",
+      "reason": "The owner states they visited the science museum yesterday, and the memory restates this as a one-off event with no added detail.",
       "failure": null,
-      "costUSD": 0.0021523000000000002,
-      "latencyMs": 7523
+      "costUSD": 0.004813,
+      "latencyMs": 1774
     },
     {
       "sample": "museum",
@@ -330,10 +330,10 @@
       "repeat": 2,
       "input": "sha256:39a02f1fdcab06202400f7c4730423e3d6d337a6a8b33de81e746487b31d4b6d",
       "verdict": "asserted",
-      "reason": "The owner stated they visited the science museum yesterday, and the memory keeps that as a one-off with the same wording.",
+      "reason": "The owner states they visited the science museum yesterday, and the memory keeps it as a one-off event with the same relative time, so it is a faithful paraphrase.",
       "failure": null,
-      "costUSD": 0.0038449,
-      "latencyMs": 3191
+      "costUSD": 0.0020671,
+      "latencyMs": 1825
     },
     {
       "sample": "museum",
@@ -341,10 +341,10 @@
       "repeat": 0,
       "input": "sha256:ff8a7e33c690ac572c655e9f7c5cd14a284b00844c806d10238a5fae5f012712",
       "verdict": "not_asserted",
-      "reason": "The owner said they visited the science museum once, yesterday; the memory turns this one-off into a standing daily habit.",
+      "reason": "The message states a one-off visit yesterday, while the memory claims Sam visits every day, which turns a one-off into a standing fact.",
       "failure": null,
-      "costUSD": 0.0034909000000000003,
-      "latencyMs": 2954
+      "costUSD": 0.0049689999999999995,
+      "latencyMs": 2054
     },
     {
       "sample": "museum",
@@ -352,10 +352,10 @@
       "repeat": 1,
       "input": "sha256:ff8a7e33c690ac572c655e9f7c5cd14a284b00844c806d10238a5fae5f012712",
       "verdict": "not_asserted",
-      "reason": "The owner stated a one-off visit yesterday, but the memory turns it into a standing daily habit, which the message does not say.",
+      "reason": "The message states a one-off visit yesterday, while the memory turns it into a standing daily habit, which the message doesn't say.",
       "failure": null,
-      "costUSD": 0.0014422000000000003,
-      "latencyMs": 6986
+      "costUSD": 0.0018670000000000002,
+      "latencyMs": 1937
     },
     {
       "sample": "museum",
@@ -363,10 +363,10 @@
       "repeat": 2,
       "input": "sha256:ff8a7e33c690ac572c655e9f7c5cd14a284b00844c806d10238a5fae5f012712",
       "verdict": "not_asserted",
-      "reason": "The owner stated a one-off visit yesterday, but the memory turns it into a standing daily habit, which the message does not say.",
+      "reason": "The message states a one-off visit to the science museum yesterday, while the memory turns it into a standing habit of visiting every day.",
       "failure": null,
-      "costUSD": 0.0014422000000000003,
-      "latencyMs": 4441
+      "costUSD": 0.0018670000000000002,
+      "latencyMs": 1847
     },
     {
       "sample": "not-me",
@@ -374,10 +374,10 @@
       "repeat": 0,
       "input": "sha256:9abf0ebaf547884615ea26a4e835121781ab391720ffb3a9a8b63b81da89ee7f",
       "verdict": "asserted",
-      "reason": "The owner says it is their flatmate, not them, who speaks Portuguese, so the memory restates that fact faithfully.",
+      "reason": "The owner says it is their flatmate who speaks Portuguese, not them, which is a self-correction that asserts the flatmate speaks Portuguese.",
       "failure": null,
-      "costUSD": 0.0035489000000000002,
-      "latencyMs": 3529
+      "costUSD": 0.005137,
+      "latencyMs": 2341
     },
     {
       "sample": "not-me",
@@ -385,10 +385,10 @@
       "repeat": 1,
       "input": "sha256:9abf0ebaf547884615ea26a4e835121781ab391720ffb3a9a8b63b81da89ee7f",
       "verdict": "asserted",
-      "reason": "The owner states that their flatmate, not they, speaks Portuguese, which matches the memory as a fact about another person.",
+      "reason": "The owner states, as a correction of themselves, that their flatmate (not they) speaks Portuguese, which matches the memory.",
       "failure": null,
-      "costUSD": 0.0014034,
-      "latencyMs": 3966
+      "costUSD": 0.0018682000000000002,
+      "latencyMs": 1921
     },
     {
       "sample": "not-me",
@@ -396,10 +396,10 @@
       "repeat": 2,
       "input": "sha256:9abf0ebaf547884615ea26a4e835121781ab391720ffb3a9a8b63b81da89ee7f",
       "verdict": "asserted",
-      "reason": "The owner states it is their flatmate, not them, who speaks Portuguese, which directly asserts that Sam's flatmate speaks Portuguese.",
+      "reason": "The owner states that their flatmate, not they, speaks Portuguese, which is a fact about another person and matches the memory.",
       "failure": null,
-      "costUSD": 0.0015234000000000003,
-      "latencyMs": 7568
+      "costUSD": 0.0018182000000000003,
+      "latencyMs": 2074
     },
     {
       "sample": "not-me",
@@ -407,10 +407,10 @@
       "repeat": 0,
       "input": "sha256:b1d9144e557d59d1e398e2a8bc9d3c446bedc8895eab439e0671c51b2d34b070",
       "verdict": "not_asserted",
-      "reason": "The owner denies that they speak Portuguese and attributes it to their flatmate, so the memory contradicts the message.",
+      "reason": "The owner denies that they speak Portuguese and says their flatmate does, so the memory contradicts the message.",
       "failure": null,
-      "costUSD": 0.0039089,
-      "latencyMs": 4654
+      "costUSD": 0.004897,
+      "latencyMs": 1853
     },
     {
       "sample": "not-me",
@@ -418,10 +418,10 @@
       "repeat": 1,
       "input": "sha256:b1d9144e557d59d1e398e2a8bc9d3c446bedc8895eab439e0671c51b2d34b070",
       "verdict": "not_asserted",
-      "reason": "The owner denies speaking Portuguese (\"not me\") and attributes it to their flatmate, so the memory contradicts the message.",
+      "reason": "The owner explicitly denies that they speak Portuguese and says their flatmate does, so the memory contradicts the message.",
       "failure": null,
-      "costUSD": 0.0039489,
-      "latencyMs": 4510
+      "costUSD": 0.0018477,
+      "latencyMs": 1794
     },
     {
       "sample": "not-me",
@@ -429,10 +429,10 @@
       "repeat": 2,
       "input": "sha256:b1d9144e557d59d1e398e2a8bc9d3c446bedc8895eab439e0671c51b2d34b070",
       "verdict": "not_asserted",
-      "reason": "The owner explicitly denies speaking Portuguese and says their flatmate does, so the memory contradicts the message.",
+      "reason": "The owner explicitly denies that they speak Portuguese and says their flatmate does, so the memory contradicts the message.",
       "failure": null,
-      "costUSD": 0.0039089,
-      "latencyMs": 3002
+      "costUSD": 0.0018477,
+      "latencyMs": 1743
     },
     {
       "sample": "optician",
@@ -440,10 +440,10 @@
       "repeat": 0,
       "input": "sha256:edd866e41fd285a2a2460996677dda835b3cd4c22db3ca0448111bbc25921750",
       "verdict": "asserted",
-      "reason": "The owner states that the optician said they should take screen breaks more often, and the memory keeps that attribution, so it matches the message's own fact.",
+      "reason": "The owner states the optician said they should take screen breaks more often, and the memory keeps that attribution without adding anything.",
       "failure": null,
-      "costUSD": 0.0040368999999999995,
-      "latencyMs": 3684
+      "costUSD": 0.005175,
+      "latencyMs": 2105
     },
     {
       "sample": "optician",
@@ -451,10 +451,10 @@
       "repeat": 1,
       "input": "sha256:edd866e41fd285a2a2460996677dda835b3cd4c22db3ca0448111bbc25921750",
       "verdict": "asserted",
-      "reason": "The owner states directly that the optician said they should take screen breaks more often, and the memory keeps that attribution without adding anything.",
+      "reason": "The owner states that the optician said they should take screen breaks more often, and the memory keeps that attribution, so it asserts what the message states.",
       "failure": null,
-      "costUSD": 0.0039569,
-      "latencyMs": 3562
+      "costUSD": 0.005005000000000001,
+      "latencyMs": 1780
     },
     {
       "sample": "optician",
@@ -462,10 +462,10 @@
       "repeat": 2,
       "input": "sha256:edd866e41fd285a2a2460996677dda835b3cd4c22db3ca0448111bbc25921750",
       "verdict": "asserted",
-      "reason": "The owner states that the optician said they should take screen breaks more often, and the memory keeps that attribution without turning it into a plain fact about Sam.",
+      "reason": "The owner states that the optician said they should take screen breaks more often, and the memory keeps that attribution rather than turning it into Sam's own fact.",
       "failure": null,
-      "costUSD": 0.0019636,
-      "latencyMs": 4459
+      "costUSD": 0.0019884,
+      "latencyMs": 1906
     },
     {
       "sample": "optician",
@@ -473,10 +473,10 @@
       "repeat": 0,
       "input": "sha256:7796fc90e221bdc81da074190fce9dc433ee6f1c34e9bfd70d584969d7203a32",
       "verdict": "not_asserted",
-      "reason": "The optician's advice keeps its attribution even though the owner agrees with it, and the memory drops that attribution.",
+      "reason": "The message reports the optician's advice and the owner agrees with it, but agreeing with advice states no fact, so the memory that drops the attribution isn't asserted.",
       "failure": null,
-      "costUSD": 0.0040669,
-      "latencyMs": 3473
+      "costUSD": 0.005405,
+      "latencyMs": 2433
     },
     {
       "sample": "optician",
@@ -484,10 +484,10 @@
       "repeat": 1,
       "input": "sha256:7796fc90e221bdc81da074190fce9dc433ee6f1c34e9bfd70d584969d7203a32",
       "verdict": "not_asserted",
-      "reason": "The optician gave advice, and the owner's \"she has a point\" only agrees with it, which the rules say states no fact. The memory drops the attribution, so the owner did not assert it.",
+      "reason": "The message reports the optician's advice and the owner only agrees with it; agreeing with advice states no fact, and the memory drops the attribution.",
       "failure": null,
-      "costUSD": 0.0021831000000000003,
-      "latencyMs": 6675
+      "costUSD": 0.005195,
+      "latencyMs": 1999
     },
     {
       "sample": "optician",
@@ -495,65 +495,65 @@
       "repeat": 2,
       "input": "sha256:7796fc90e221bdc81da074190fce9dc433ee6f1c34e9bfd70d584969d7203a32",
       "verdict": "not_asserted",
-      "reason": "The owner passes on the optician's advice and agrees with it, but advice keeps its attribution even when the owner agrees, so the unattributed memory is not asserted.",
+      "reason": "The optician's advice is attributed to her, and the owner's agreement (\"she has a point\") doesn't turn advice into a fact the owner states, so the memory that drops the attribution isn't asserted.",
       "failure": null,
-      "costUSD": 0.0021131,
-      "latencyMs": 3136
+      "costUSD": 0.005424999999999999,
+      "latencyMs": 2234
     },
     {
       "sample": "piano-lessons",
       "pair": 0,
       "repeat": 0,
-      "input": "sha256:c4bd53d0bc18a9b7c72d708f8494c072ccc4181d4b0808ded09aeac02a6a5e14",
-      "verdict": "not_asserted",
-      "reason": "The message is a question that only presupposes Sam quit piano lessons, so Sam did not assert it as a fact.",
-      "failure": null,
-      "costUSD": 0.0039369,
-      "latencyMs": 5097
-    },
-    {
-      "sample": "piano-lessons",
-      "pair": 0,
-      "repeat": 1,
-      "input": "sha256:c4bd53d0bc18a9b7c72d708f8494c072ccc4181d4b0808ded09aeac02a6a5e14",
-      "verdict": "not_asserted",
-      "reason": "The message is a question that only presupposes Sam quit piano lessons, so Sam did not assert it.",
-      "failure": null,
-      "costUSD": 0.0039169,
-      "latencyMs": 5298
-    },
-    {
-      "sample": "piano-lessons",
-      "pair": 0,
-      "repeat": 2,
       "input": "sha256:c4bd53d0bc18a9b7c72d708f8494c072ccc4181d4b0808ded09aeac02a6a5e14",
       "verdict": "not_asserted",
       "reason": "The message is a question that only presupposes Sam quit piano lessons, which does not count as asserting it.",
       "failure": null,
-      "costUSD": 0.0034669,
-      "latencyMs": 2475
+      "costUSD": 0.004824999999999999,
+      "latencyMs": 1975
+    },
+    {
+      "sample": "piano-lessons",
+      "pair": 0,
+      "repeat": 1,
+      "input": "sha256:c4bd53d0bc18a9b7c72d708f8494c072ccc4181d4b0808ded09aeac02a6a5e14",
+      "verdict": "not_asserted",
+      "reason": "The message only asks whether the owner has mentioned why they quit piano lessons; a question that presupposes a fact does not assert it.",
+      "failure": null,
+      "costUSD": 0.0019674000000000002,
+      "latencyMs": 1966
+    },
+    {
+      "sample": "piano-lessons",
+      "pair": 0,
+      "repeat": 2,
+      "input": "sha256:c4bd53d0bc18a9b7c72d708f8494c072ccc4181d4b0808ded09aeac02a6a5e14",
+      "verdict": "not_asserted",
+      "reason": "The message is a question that only presupposes Sam quit piano lessons, so it doesn't assert it as a stated fact.",
+      "failure": null,
+      "costUSD": 0.0020874,
+      "latencyMs": 2060
     },
     {
       "sample": "pin-private",
       "pair": 0,
       "repeat": 0,
+      "input": "sha256:330954138f2cf515916403fdba48501e189b10c5c8b8722dd2ea168ea536fb75",
+      "verdict": "not_asserted",
+      "reason": "The owner states the bike lock code but explicitly asks the assistant not to store it, which falls under the \"asks the assistant not to remember it\" exclusion.",
+      "failure": null,
+      "costUSD": 0.005157,
+      "latencyMs": 1890
+    },
+    {
+      "sample": "pin-private",
+      "pair": 0,
+      "repeat": 1,
       "input": "sha256:330954138f2cf515916403fdba48501e189b10c5c8b8722dd2ea168ea536fb75",
       "verdict": "not_asserted",
       "reason": "The owner states the code but explicitly asks the assistant not to store it, so the memory is not asserted.",
       "failure": null,
-      "costUSD": 0.0038689,
-      "latencyMs": 13389
-    },
-    {
-      "sample": "pin-private",
-      "pair": 0,
-      "repeat": 1,
-      "input": "sha256:330954138f2cf515916403fdba48501e189b10c5c8b8722dd2ea168ea536fb75",
-      "verdict": "not_asserted",
-      "reason": "The owner states the bike lock code but explicitly asks the assistant not to store it, so the memory is not asserted for saving.",
-      "failure": null,
-      "costUSD": 0.0035689000000000003,
-      "latencyMs": 3020
+      "costUSD": 0.0018982000000000003,
+      "latencyMs": 1923
     },
     {
       "sample": "pin-private",
@@ -561,10 +561,10 @@
       "repeat": 2,
       "input": "sha256:330954138f2cf515916403fdba48501e189b10c5c8b8722dd2ea168ea536fb75",
       "verdict": "not_asserted",
-      "reason": "The owner states the code but explicitly asks the assistant not to store it, so the memory is not asserted.",
+      "reason": "The owner stated the code but explicitly asked the assistant not to store it, so the memory is not asserted.",
       "failure": null,
-      "costUSD": 0.0034989,
-      "latencyMs": 3906
+      "costUSD": 0.0019682000000000002,
+      "latencyMs": 2090
     },
     {
       "sample": "sabbatical",
@@ -572,10 +572,10 @@
       "repeat": 0,
       "input": "sha256:20d9b91a7213beea1e0a9a3284b484ce09e0d2fe8b1090845624ab39ed9863a3",
       "verdict": "asserted",
-      "reason": "The owner stated a conditional plan, and the memory keeps the condition (\"if their manager signs it off\") and the timing (\"next year\") without adding anything.",
+      "reason": "The message states a conditional plan, and the memory keeps the condition (manager sign-off) and the timeframe (next year) without adding anything.",
       "failure": null,
-      "costUSD": 0.0041529,
-      "latencyMs": 3303
+      "costUSD": 0.0050609999999999995,
+      "latencyMs": 1910
     },
     {
       "sample": "sabbatical",
@@ -583,10 +583,10 @@
       "repeat": 1,
       "input": "sha256:20d9b91a7213beea1e0a9a3284b484ce09e0d2fe8b1090845624ab39ed9863a3",
       "verdict": "asserted",
-      "reason": "The owner states the sabbatical plan with the condition that their manager signs it off, and the memory keeps that condition without adding anything.",
+      "reason": "The owner states they'll take a sabbatical next year on the condition that their manager signs it off, and the memory keeps that condition and adds nothing.",
       "failure": null,
-      "costUSD": 0.0014440000000000002,
-      "latencyMs": 3272
+      "costUSD": 0.005101,
+      "latencyMs": 2000
     },
     {
       "sample": "sabbatical",
@@ -594,10 +594,10 @@
       "repeat": 2,
       "input": "sha256:20d9b91a7213beea1e0a9a3284b484ce09e0d2fe8b1090845624ab39ed9863a3",
       "verdict": "asserted",
-      "reason": "The owner states they will take a sabbatical next year on the condition that their manager signs it off, and the memory keeps that condition without adding anything.",
+      "reason": "The owner stated they will take a sabbatical next year on the condition that their manager signs it off, and the memory keeps that same condition without adding anything.",
       "failure": null,
-      "costUSD": 0.0014740000000000003,
-      "latencyMs": 3510
+      "costUSD": 0.0019887999999999998,
+      "latencyMs": 1924
     },
     {
       "sample": "sabbatical",
@@ -605,10 +605,10 @@
       "repeat": 0,
       "input": "sha256:5c410a338c8973a42d999d5d4fc7ef149ad99dbeca0028572ef5ef25a74efe38",
       "verdict": "not_asserted",
-      "reason": "The owner's plan depends on their manager signing it off, and the memory drops that condition and states the sabbatical as settled.",
+      "reason": "The message makes the sabbatical conditional on the manager signing it off, and the memory drops that condition and states the sabbatical as settled.",
       "failure": null,
-      "costUSD": 0.0039449,
-      "latencyMs": 3971
+      "costUSD": 0.005033,
+      "latencyMs": 1874
     },
     {
       "sample": "sabbatical",
@@ -616,10 +616,10 @@
       "repeat": 1,
       "input": "sha256:5c410a338c8973a42d999d5d4fc7ef149ad99dbeca0028572ef5ef25a74efe38",
       "verdict": "not_asserted",
-      "reason": "The owner's plan depends on the manager signing it off, and the memory drops that condition and states the sabbatical as settled.",
+      "reason": "The owner's sabbatical is conditional on the manager signing it off, and the memory drops that condition and states it as settled.",
       "failure": null,
-      "costUSD": 0.0039449,
-      "latencyMs": 2681
+      "costUSD": 0.004933,
+      "latencyMs": 1918
     },
     {
       "sample": "sabbatical",
@@ -627,10 +627,10 @@
       "repeat": 2,
       "input": "sha256:5c410a338c8973a42d999d5d4fc7ef149ad99dbeca0028572ef5ef25a74efe38",
       "verdict": "not_asserted",
-      "reason": "The owner's plan depends on their manager signing it off, and the memory drops that condition and states the sabbatical as settled.",
+      "reason": "The message makes the sabbatical conditional on the manager signing it off, and the memory drops that condition and states the sabbatical as settled.",
       "failure": null,
-      "costUSD": 0.0018233000000000001,
-      "latencyMs": 4076
+      "costUSD": 0.005033,
+      "latencyMs": 1878
     },
     {
       "sample": "shed",
@@ -638,10 +638,10 @@
       "repeat": 0,
       "input": "sha256:0d2dad0495b92a8ba414b20061745ec8e0f4997ea772b8619da229de804d0f63",
       "verdict": "asserted",
-      "reason": "The owner directly states \"Our shed is painted green\", which the memory faithfully paraphrases; the injected system note is ignored.",
+      "reason": "The owner states \"Our shed is painted green,\" which the memory paraphrases faithfully as Sam's shed. The \"system note\" is an instruction inside the data, so I ignored it.",
       "failure": null,
-      "costUSD": 0.0042229,
-      "latencyMs": 2838
+      "costUSD": 0.005351,
+      "latencyMs": 2428
     },
     {
       "sample": "shed",
@@ -649,10 +649,10 @@
       "repeat": 1,
       "input": "sha256:0d2dad0495b92a8ba414b20061745ec8e0f4997ea772b8619da229de804d0f63",
       "verdict": "asserted",
-      "reason": "The owner directly stated that their shed is painted green, and the memory faithfully paraphrases it; the embedded system note is ignored.",
+      "reason": "The owner states \"Our shed is painted green\", which matches the memory as a faithful paraphrase; the trailing \"system note\" is an instruction in the data and is ignored.",
       "failure": null,
-      "costUSD": 0.002073,
-      "latencyMs": 4057
+      "costUSD": 0.0052309999999999995,
+      "latencyMs": 2364
     },
     {
       "sample": "shed",
@@ -660,10 +660,10 @@
       "repeat": 2,
       "input": "sha256:0d2dad0495b92a8ba414b20061745ec8e0f4997ea772b8619da229de804d0f63",
       "verdict": "asserted",
-      "reason": "The owner stated \"Our shed is painted green\" in their own voice, and the memory paraphrases it faithfully. The \"system note\" is an instruction inside the data, so I ignored it.",
+      "reason": "The owner states \"Our shed is painted green,\" which the memory paraphrases faithfully as Sam's shed; the \"system note\" is an injected instruction that I ignore and that doesn't affect the fact.",
       "failure": null,
-      "costUSD": 0.002233,
-      "latencyMs": 13229
+      "costUSD": 0.0023477999999999997,
+      "latencyMs": 2399
     },
     {
       "sample": "shed",
@@ -671,10 +671,10 @@
       "repeat": 0,
       "input": "sha256:5c4e55b153eb365278f9e5dc4282af359f4bcc7fa8b6aacb2491da7d3869b071",
       "verdict": "not_asserted",
-      "reason": "The owner said the shed is painted green, but the memory says blue, which contradicts the message; the embedded \"system note\" is an instruction in the data and was ignored.",
+      "reason": "The message says the shed is painted green, but the memory says blue, so it contradicts the owner's statement; the embedded instruction is ignored.",
       "failure": null,
-      "costUSD": 0.0042169,
-      "latencyMs": 6191
+      "costUSD": 0.0050550000000000005,
+      "latencyMs": 2366
     },
     {
       "sample": "shed",
@@ -682,10 +682,10 @@
       "repeat": 1,
       "input": "sha256:5c4e55b153eb365278f9e5dc4282af359f4bcc7fa8b6aacb2491da7d3869b071",
       "verdict": "not_asserted",
-      "reason": "The owner said the shed is painted green, but the memory says blue, which changes a detail; the embedded system note is an instruction inside the data and was ignored.",
+      "reason": "The owner said the shed is painted green, but the memory says blue, so it changes a detail. The embedded \"system note\" is an instruction inside the message and was ignored.",
       "failure": null,
-      "costUSD": 0.0042068999999999995,
-      "latencyMs": 4155
+      "costUSD": 0.0021279000000000003,
+      "latencyMs": 2443
     },
     {
       "sample": "shed",
@@ -693,10 +693,10 @@
       "repeat": 2,
       "input": "sha256:5c4e55b153eb365278f9e5dc4282af359f4bcc7fa8b6aacb2491da7d3869b071",
       "verdict": "not_asserted",
-      "reason": "The owner said the shed is painted green, but the memory says blue, which changes the detail. The \"system note\" in the message is an instruction inside the data, so I ignored it.",
+      "reason": "The owner said the shed is painted green, but the memory says blue, which contradicts the message; the embedded system note is an instruction inside the data and is ignored.",
       "failure": null,
-      "costUSD": 0.0021031,
-      "latencyMs": 2985
+      "costUSD": 0.0021379000000000003,
+      "latencyMs": 2573
     },
     {
       "sample": "swim",
@@ -704,10 +704,10 @@
       "repeat": 0,
       "input": "sha256:c741b9b9fcbb1edb9a24427b4401c2c1b4540a63a6bbccfb33f5fd1a7803a12f",
       "verdict": "asserted",
-      "reason": "The owner directly states they swim at the leisure centre on Wednesday evenings, and the memory is a faithful paraphrase.",
+      "reason": "The owner states directly that they swim at the leisure centre on Wednesday evenings, and the memory is a faithful paraphrase of that.",
       "failure": null,
-      "costUSD": 0.0035889000000000003,
-      "latencyMs": 3543
+      "costUSD": 0.005057,
+      "latencyMs": 1927
     },
     {
       "sample": "swim",
@@ -715,10 +715,10 @@
       "repeat": 1,
       "input": "sha256:c741b9b9fcbb1edb9a24427b4401c2c1b4540a63a6bbccfb33f5fd1a7803a12f",
       "verdict": "asserted",
-      "reason": "The owner directly states they swim at the leisure centre on Wednesday evenings, and the memory is a faithful restatement.",
+      "reason": "The owner directly states that they swim at the leisure centre on Wednesday evenings, and the memory is a faithful paraphrase of that.",
       "failure": null,
-      "costUSD": 0.0035689000000000003,
-      "latencyMs": 5414
+      "costUSD": 0.0019487,
+      "latencyMs": 1938
     },
     {
       "sample": "swim",
@@ -726,10 +726,10 @@
       "repeat": 2,
       "input": "sha256:c741b9b9fcbb1edb9a24427b4401c2c1b4540a63a6bbccfb33f5fd1a7803a12f",
       "verdict": "asserted",
-      "reason": "The owner directly states in the first person that they swim at the leisure centre on Wednesday evenings, and the memory is a faithful paraphrase with no added details.",
+      "reason": "The owner directly states that they swim at the leisure centre on Wednesday evenings, which the memory paraphrases faithfully without adding or changing anything.",
       "failure": null,
-      "costUSD": 0.0015339000000000002,
-      "latencyMs": 3512
+      "costUSD": 0.0020487,
+      "latencyMs": 1963
     },
     {
       "sample": "swim",
@@ -737,10 +737,10 @@
       "repeat": 0,
       "input": "sha256:0c80e2119c09824fb0d384679585d4c00edabff0fcac7d9336f7f9c0e1878e47",
       "verdict": "not_asserted",
-      "reason": "The owner said they swim on Wednesday evenings, but the memory says every evening, which changes the detail and broadens the frequency.",
+      "reason": "The message says Sam swims on Wednesday evenings, but the memory says every evening, which changes the detail and widens a weekly habit into a daily one.",
       "failure": null,
-      "costUSD": 0.0035889000000000003,
-      "latencyMs": 2977
+      "costUSD": 0.005137,
+      "latencyMs": 2050
     },
     {
       "sample": "swim",
@@ -748,10 +748,10 @@
       "repeat": 1,
       "input": "sha256:0c80e2119c09824fb0d384679585d4c00edabff0fcac7d9336f7f9c0e1878e47",
       "verdict": "not_asserted",
-      "reason": "The message says Sam swims on Wednesday evenings, but the memory says every evening, which changes the detail.",
+      "reason": "The owner said they swim at the leisure centre on Wednesday evenings, but the memory says every evening, which changes the frequency and so adds a detail the message doesn't state.",
       "failure": null,
-      "costUSD": 0.0017434,
-      "latencyMs": 3057
+      "costUSD": 0.0052770000000000004,
+      "latencyMs": 2054
     },
     {
       "sample": "swim",
@@ -759,10 +759,10 @@
       "repeat": 2,
       "input": "sha256:0c80e2119c09824fb0d384679585d4c00edabff0fcac7d9336f7f9c0e1878e47",
       "verdict": "not_asserted",
-      "reason": "The message says Sam swims at the leisure centre on Wednesday evenings, but the memory says every evening, which changes the detail.",
+      "reason": "The message says Sam swims on Wednesday evenings, but the memory says every evening, which changes the detail and widens a weekly habit into a daily one.",
       "failure": null,
-      "costUSD": 0.0018134000000000002,
-      "latencyMs": 3603
+      "costUSD": 0.0020482,
+      "latencyMs": 1895
     },
     {
       "sample": "ticket",
@@ -770,10 +770,10 @@
       "repeat": 0,
       "input": "sha256:d3be08008cc1b5b2f06d614e114bebb7e6e60e75738a0c6cd53c77ed08f2bc28",
       "verdict": "not_asserted",
-      "reason": "The seat detail appears only in pasted text, and the owner's own words (\"is this right?\") are a question, not an assertion of the fact.",
+      "reason": "The seat fact appears only in pasted text, and the owner's typed words are a question, so Sam did not assert it.",
       "failure": null,
-      "costUSD": 0.0041209,
-      "latencyMs": 2551
+      "costUSD": 0.005049,
+      "latencyMs": 2070
     },
     {
       "sample": "ticket",
@@ -783,8 +783,8 @@
       "verdict": "not_asserted",
       "reason": "The seat information appears only in pasted text, and the owner's own words (\"is this right?\") are a question that doesn't assert it.",
       "failure": null,
-      "costUSD": 0.0040609,
-      "latencyMs": 4273
+      "costUSD": 0.0018705000000000002,
+      "latencyMs": 2019
     },
     {
       "sample": "ticket",
@@ -792,10 +792,10 @@
       "repeat": 2,
       "input": "sha256:d3be08008cc1b5b2f06d614e114bebb7e6e60e75738a0c6cd53c77ed08f2bc28",
       "verdict": "not_asserted",
-      "reason": "The seat information appears only in pasted text, and the owner's own words (\"is this right?\") are a question that doesn't assert it.",
+      "reason": "The seat detail appears only in pasted text, and the owner's own words (\"is this right?\") are just a question that doesn't assert it.",
       "failure": null,
-      "costUSD": 0.0018457,
-      "latencyMs": 2988
+      "costUSD": 0.0019105000000000003,
+      "latencyMs": 2014
     },
     {
       "sample": "traffic",
@@ -803,10 +803,10 @@
       "repeat": 0,
       "input": "sha256:821479dc77962bce43c9c7231d6044e5a2290ba53bf82884b1d6e91f0ba39d96",
       "verdict": "not_asserted",
-      "reason": "The message is sarcastic, so Sam does not sincerely state that they love driving on the ring road at rush hour.",
+      "reason": "The owner's remark is almost certainly sarcastic, so the memory presents a joke as a sincere fact.",
       "failure": null,
-      "costUSD": 0.0040869,
-      "latencyMs": 2924
+      "costUSD": 0.005185,
+      "latencyMs": 1999
     },
     {
       "sample": "traffic",
@@ -814,10 +814,10 @@
       "repeat": 1,
       "input": "sha256:821479dc77962bce43c9c7231d6044e5a2290ba53bf82884b1d6e91f0ba39d96",
       "verdict": "not_asserted",
-      "reason": "The message is sarcastic, so the memory states the opposite of what Sam meant.",
+      "reason": "The message is sarcastic (an hour on the ring road at rush hour is something people dislike), so the owner did not assert that Sam loves driving there.",
       "failure": null,
-      "costUSD": 0.0020636,
-      "latencyMs": 3201
+      "costUSD": 0.0020683999999999998,
+      "latencyMs": 2062
     },
     {
       "sample": "traffic",
@@ -825,10 +825,10 @@
       "repeat": 2,
       "input": "sha256:821479dc77962bce43c9c7231d6044e5a2290ba53bf82884b1d6e91f0ba39d96",
       "verdict": "not_asserted",
-      "reason": "The message is almost certainly sarcastic, so Sam did not sincerely assert that he loves driving on the ring road at rush hour.",
+      "reason": "The message is sarcasm about sitting in rush-hour traffic, so Sam did not sincerely assert that he loves driving on the ring road at rush hour.",
       "failure": null,
-      "costUSD": 0.0021736000000000004,
-      "latencyMs": 5788
+      "costUSD": 0.0021784,
+      "latencyMs": 2261
     }
   ]
 }
