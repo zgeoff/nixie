@@ -3,7 +3,7 @@ import { z } from 'zod';
 export const codeRunLanguages = ['python', 'javascript', 'typescript', 'bash'] as const;
 const pathPattern = /^[\w./-]{1,200}$/u;
 
-export type CodeRunFileInput =
+type CodeRunFileInput =
   | { readonly path: string; readonly file: string }
   | { readonly path: string; readonly page: string };
 

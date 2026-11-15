@@ -1,7 +1,7 @@
 import type { MemoryKillRead } from '@heynixie/sandbox';
 import { formatCodeRunSize } from './format-code-run-size';
 
-export type CodeRunLimitKind = 'wall_time' | 'memory' | 'killed' | 'output' | 'files';
+type CodeRunLimitKind = 'wall_time' | 'memory' | 'killed' | 'output' | 'files';
 
 export interface CodeRunLimitHit {
   readonly kind: CodeRunLimitKind;
