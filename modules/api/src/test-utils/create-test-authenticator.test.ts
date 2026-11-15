@@ -9,7 +9,7 @@ test('it signs an assertion whose client data carries the challenge and the orig
     { origin: 'https://nixie.example.org' },
   );
 
-  const clientData = JSON.parse(
+  const clientData: unknown = JSON.parse(
     Buffer.from(assertion.response.clientDataJSON, 'base64url').toString(),
   );
 

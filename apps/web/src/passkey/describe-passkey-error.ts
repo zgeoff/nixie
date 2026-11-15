@@ -16,7 +16,12 @@ const words: Readonly<Record<string, string>> = {
 // One sentence for a failed passkey call or a prompt that was cancelled, so nothing fails silently.
 export function describePasskeyError(error: unknown): string {
   if (error instanceof ORPCError) {
-    return words[error.code] ?? 'The host refused this, so nothing changed.';
+    const code: unknown = error.code;
+
+    return (
+      (typeof code === 'string' ? words[code] : undefined) ??
+      'The host refused this, so nothing changed.'
+    );
   }
 
   if (error instanceof Error && (error.name === 'NotAllowedError' || error.name === 'AbortError')) {
