@@ -22,33 +22,40 @@ export async function startTriggerSources(
   const health = new Map<string, SourceHealth>();
 
   const controllers: AbortController[] = [];
+  const started: TriggerSource[] = [];
 
   for (const source of sources) {
     const controller = new AbortController();
 
     controllers.push(controller);
 
-    await source.start({
-      cursor: await readCursor(core, source.id),
-      deliver: (batch) => deliverTriggerBatch(core, source.id, batch),
-      reportHealth: (next) => {
-        if (health.get(source.id) !== next) {
-          health.set(source.id, next);
-          core.logEvent('trigger_source.health', { source: source.id, health: next });
-        }
-      },
-      signal: controller.signal,
-    } satisfies TriggerContext);
+    try {
+      await source.start({
+        cursor: await readCursor(core, source.id),
+        deliver: (batch) => deliverTriggerBatch(core, source.id, batch),
+        reportHealth: (next) => {
+          if (health.get(source.id) !== next) {
+            health.set(source.id, next);
+            core.logEvent('trigger_source.health', { source: source.id, health: next });
+          }
+        },
+        signal: controller.signal,
+      } satisfies TriggerContext);
+    } catch (error) {
+      await stopSources(controllers, started);
+
+      throw error;
+    }
+
+    started.push(source);
   }
 
   return {
     stop: async () => {
-      for (const controller of controllers) {
-        controller.abort();
-      }
+      const failures = await stopSources(controllers, started);
 
-      for (const source of sources) {
-        await source.stop();
+      if (failures.length > 0) {
+        throw new AggregateError(failures, 'trigger sources failed to stop');
       }
     },
     readHealth: () => new Map(health),
@@ -64,4 +71,18 @@ async function readCursor(core: TriggerCoreContext, sourceID: string): Promise<J
     .executeTakeFirst();
 
   return row?.cursor === undefined || row.cursor === null ? null : JSON.parse(row.cursor);
+}
+
+// Aborts every signal, then stops every started source even when one stop rejects.
+async function stopSources(
+  controllers: readonly AbortController[],
+  started: readonly TriggerSource[],
+): Promise<unknown[]> {
+  for (const controller of controllers) {
+    controller.abort();
+  }
+
+  const results = await Promise.allSettled(started.map((source) => source.stop()));
+
+  return results.flatMap((result) => (result.status === 'rejected' ? [result.reason] : []));
 }

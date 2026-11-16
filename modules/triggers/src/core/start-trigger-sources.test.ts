@@ -17,18 +17,21 @@ async function setupTest() {
   const started: TriggerContext[] = [];
   const stops: string[] = [];
 
-  const buildSource = (id: string): TriggerSource => ({
+  const buildSource = (
+    id: string,
+    failures: { start?: Error; stop?: Error } = {},
+  ): TriggerSource => ({
     id,
     kind: 'schedule',
     start: (context) => {
       started.push(context);
 
-      return Promise.resolve();
+      return failures.start ? Promise.reject(failures.start) : Promise.resolve();
     },
     stop: () => {
       stops.push(id);
 
-      return Promise.resolve();
+      return failures.stop ? Promise.reject(failures.stop) : Promise.resolve();
     },
   });
 
@@ -110,4 +113,37 @@ test('it starts no source for an empty list', async () => {
   await sources.stop();
 
   expect(sources.readHealth()).toStrictEqual(new Map());
+});
+
+test('it aborts and stops the sources already started when a later source fails to start', async () => {
+  const ctx = await setupTest();
+
+  const startError = new Error('cannot start');
+
+  const promise = startTriggerSources(
+    [ctx.buildSource('schedule'), ctx.buildSource('poll', { start: startError })],
+    ctx.core,
+  );
+
+  await expect(promise).rejects.toBe(startError);
+
+  expect(ctx.started.map((context) => context.signal.aborted)).toStrictEqual([true, true]);
+  expect(ctx.stops).toStrictEqual(['schedule']);
+});
+
+test('it stops every source and rejects when one stop rejects', async () => {
+  const ctx = await setupTest();
+
+  const stopError = new Error('cannot stop');
+
+  const sources = await startTriggerSources(
+    [ctx.buildSource('schedule', { stop: stopError }), ctx.buildSource('poll')],
+    ctx.core,
+  );
+
+  const promise = sources.stop();
+
+  await expect(promise).rejects.toMatchObject({ errors: [stopError] });
+
+  expect(ctx.stops).toStrictEqual(['schedule', 'poll']);
 });
