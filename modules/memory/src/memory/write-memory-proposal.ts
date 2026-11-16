@@ -1,11 +1,13 @@
 import type { JSONObject } from '@heynixie/log';
 import { removeRecordKey, withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import type { Transaction } from 'kysely';
+import { requireUnforgottenQuote } from '../evidence/require-unforgotten-quote';
 import type { ReviewReason, WriteCaller } from '../gate/gate-context';
 import { createSealedProposal } from '../proposal/create-sealed-proposal';
 import { readMatchingProposal } from '../proposal/read-matching-proposal';
 import type { PendingProposal } from '../proposal/write-proposal-record';
 import { writeProposalRecord } from '../proposal/write-proposal-record';
+import { requireItemNotPurging } from '../purge/require-item-not-purging';
 import { buildMergeRecord } from '../record/build-merge-record';
 import type {
   Labels,
@@ -56,7 +58,11 @@ export async function writeMemoryProposal(
 ): Promise<WrittenProposal> {
   const log = parts.context.log;
 
-  const merged = await withWriteTransaction(log.writer, (tx) => writePendingMerge(tx, parts, plan));
+  const merged = await withWriteTransaction(log.writer, async (tx) => {
+    await requireProposalWritable(tx, plan);
+
+    return writePendingMerge(tx, parts, plan);
+  });
 
   if (merged !== null) {
     return merged;
@@ -79,6 +85,21 @@ export async function writeMemoryProposal(
   }
 
   return written;
+}
+
+// A proposal that quotes a record a forget began on, or that edits an item a purge has not finished,
+// writes nothing.
+async function requireProposalWritable(
+  tx: Transaction<unknown>,
+  plan: ProposalPlan,
+): Promise<void> {
+  if (plan.evidence !== null) {
+    await requireUnforgottenQuote(tx, plan.evidence.recordSequence);
+  }
+
+  if (plan.target !== null) {
+    await requireItemNotPurging(tx, plan.target.itemID);
+  }
 }
 
 async function writePendingMerge(
@@ -104,6 +125,8 @@ async function writeProposalOrMerge(
   parts: StoreParts,
   pending: PendingProposal,
 ): Promise<WrittenProposal> {
+  await requireProposalWritable(tx, pending.plan);
+
   const merged = await writePendingMerge(tx, parts, pending.plan);
 
   if (merged !== null) {

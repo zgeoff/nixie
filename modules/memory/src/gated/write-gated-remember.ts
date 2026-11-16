@@ -1,4 +1,5 @@
 import { requireLiveEvidence } from '../evidence/require-live-evidence';
+import { requireUnforgottenQuote } from '../evidence/require-unforgotten-quote';
 import type { ContentGateResult, GatedRememberRequest, WriteOutcome } from '../gate/gate-context';
 import { writeRememberedItem } from '../item/write-remembered-item';
 import { writeMemoryProposal } from '../memory/write-memory-proposal';
@@ -125,6 +126,7 @@ async function applyRemember(
         requireCheckerSnapshot(parts.context, passed.gate.checks);
 
         if (evidence !== null) {
+          await requireUnforgottenQuote(db, evidence.recordSequence);
           await requireLiveEvidence(db, evidence.recordSequence);
         }
       },

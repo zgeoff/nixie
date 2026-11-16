@@ -1,4 +1,5 @@
 import { requireLiveEvidence } from '../evidence/require-live-evidence';
+import { requireUnforgottenQuote } from '../evidence/require-unforgotten-quote';
 import { buildAskReview } from '../gate/build-ask-review';
 import type { ContentGateResult, GatedRetireRequest, WriteOutcome } from '../gate/gate-context';
 import { pickCoveringRule } from '../gate/pick-covering-rule';
@@ -149,6 +150,7 @@ async function applyRetirement(
         requireCheckerSnapshot(parts.context, passed.gate.checks);
 
         if (evidence !== null) {
+          await requireUnforgottenQuote(db, evidence.recordSequence);
           await requireLiveEvidence(db, evidence.recordSequence);
         }
       },
