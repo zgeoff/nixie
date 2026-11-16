@@ -1,4 +1,5 @@
 import { removeRecordKey } from '@heynixie/log';
+import { waitAtFaultPoint } from '@heynixie/tasks';
 import { match } from 'ts-pattern';
 import type { PurgeRequest, StoreParts } from '../types';
 import { pickPurgePlan } from './pick-purge-plan';
@@ -20,8 +21,16 @@ export async function runItemPurge(parts: StoreParts, request: PurgeRequest): Pr
     return 'skipped';
   }
 
+  if (NIXIE_TEST_BUILD) {
+    await waitAtFaultPoint('memory.purge.closed', { kind: 'memory', id: request.itemID });
+  }
+
   for (const keyID of keyIDs) {
     await removeRecordKey(parts.context.log, keyID);
+  }
+
+  if (NIXIE_TEST_BUILD) {
+    await waitAtFaultPoint('memory.purge.keys_removed', { kind: 'memory', id: request.itemID });
   }
 
   await writeEvidencePurged(parts, request);

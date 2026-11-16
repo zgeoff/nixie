@@ -1,7 +1,7 @@
 import { expect, mock, test } from 'bun:test';
 import { readRecords, writeRecords } from '@heynixie/log';
 import { readRecordForgetPreview } from '@heynixie/memory';
-import { readPurgeRows } from '@heynixie/memory/test-utils';
+import { buildMockWriteCaller, readPurgeRows } from '@heynixie/memory/test-utils';
 import { createConversationTask } from '@heynixie/tasks';
 import invariant from 'tiny-invariant';
 import { buildSeeder } from '../test-utils/build-seeder';
@@ -222,4 +222,28 @@ test('it writes record.forgotten after the last mark of every item of the set', 
 
   expect(purged).toHaveLength(1);
   expect(purged).toSatisfyAll((sequence: number) => sequence < forgotten);
+});
+
+test('it reads every value the purge deletes as removed from the forget start, and refuses a proposal for the item', async () => {
+  const ctx = await setupTest();
+  const seeded = await seedQuotedMemoryItems(ctx.context, ctx.memory);
+
+  await runRecordForget(ctx.context, { thread: 'conversation', sequence: seeded.sequence });
+
+  const history = await ctx.memory.readHistory(seeded.quoting.itemID);
+
+  const proposal = ctx.memory.writes.remember({
+    text: 'The cat uses the flap every evening',
+    target: seeded.quoting,
+    caller: buildMockWriteCaller(),
+  });
+
+  const refused = await proposal.catch((error: unknown) => error);
+
+  expect(history?.versions).toMatchObject([
+    { version: 1, status: 'shredded', isRemoved: true },
+    { version: 2, status: 'readable', isRemoved: false },
+  ]);
+
+  expect(refused).toMatchObject({ code: 'ITEM_PURGING' });
 });

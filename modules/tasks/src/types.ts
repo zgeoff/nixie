@@ -294,6 +294,11 @@ export type FaultPointID =
   | 'memory.forget.key_removed'
   | 'memory.lapse.read'
   | 'memory.approval.opened'
+  | 'memory.purge.keys_created'
+  | 'memory.purge.closed'
+  | 'memory.purge.keys_removed'
+  | 'record.forget.started'
+  | 'record.forget.purged'
   | 'backup.set.copied';
 
 export interface FaultPointContext {

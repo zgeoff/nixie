@@ -1,5 +1,6 @@
 import { createRecordKey, withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import type { RecordInput } from '@heynixie/log';
+import { waitAtFaultPoint } from '@heynixie/tasks';
 import invariant from 'tiny-invariant';
 import { writeLabelsInTransaction } from '../label/write-labels-in-transaction';
 import { memoryEvidencePurgeClosedCodec } from '../record/memory-evidence-purge-closed-codec';
@@ -36,6 +37,10 @@ export async function writeItemClose(
 
   const next = await createRecordKey(log, `${facts.itemID}/${crypto.randomUUID()}`);
   const labels = await readCurrentLabels(parts, log.writer.db, facts.itemID);
+
+  if (NIXIE_TEST_BUILD) {
+    await waitAtFaultPoint('memory.purge.keys_created', { kind: 'memory', id: facts.itemID });
+  }
 
   const bridge = close.isShared ? await readBridge(parts, facts, item, currentVersion) : null;
   const revision = item.version + item.label_edits + (bridge === null ? 0 : 1);

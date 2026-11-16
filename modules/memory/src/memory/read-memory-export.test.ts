@@ -3,6 +3,8 @@ import { expect, onTestFinished, setSystemTime, test } from 'bun:test';
 import { writeRecords } from '@heynixie/log';
 import { buildTestClock } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
+import { seedBegunPurge } from '../test-utils/seed-begun-purge';
+import { seedSharedKeyVersion } from '../test-utils/seed-shared-key-version';
 import type { TestMemoryOptions } from '../test-utils/start-test-memory';
 import { startTestMemory } from '../test-utils/start-test-memory';
 import { writeOwnerMessageRecord } from '../test-utils/write-owner-message-record';
@@ -426,5 +428,51 @@ test("it exports a pointer to each photo of an owner message in a moment's span"
       { n: 1, mediaType: 'image/png' },
       { n: 2, mediaType: 'image/jpeg' },
     ],
+  ]);
+});
+
+test("it exports a purge's bridge version as a bridge, and the versions it removed as removed", async () => {
+  const ctx = await setupTest();
+
+  const message = 'I keep bees on the allotment.';
+
+  const recordSequence = await writeOwnerMessageRecord(ctx.memory.log, {
+    thread: 'conversation',
+    text: message,
+    spans: [{ start: 0, end: message.length, source: 'typed' }],
+  });
+
+  const first = await seedSharedKeyVersion(ctx.memory.log, {
+    text: 'Keeps bees on the allotment',
+    evidence: { recordSequence, start: 0, end: 11 },
+    evidenceQuote: 'I keep bees',
+  });
+
+  await seedSharedKeyVersion(ctx.memory.log, {
+    target: first,
+    text: 'Keeps two hives on the allotment',
+  });
+
+  await seedBegunPurge(ctx.memory.log, { recordSequence, itemIDs: [first.itemID] });
+
+  await ctx.memory.store.purgeItemEvidence({ recordSequence, itemID: first.itemID });
+
+  const text = await ctx.readExportText(Date.parse('2026-10-14T08:00:00.000Z'));
+
+  expect(memoryExportSchema.safeParse(JSON.parse(text)).data?.items).toMatchObject([
+    {
+      itemID: first.itemID,
+      versions: [
+        { version: 1, text: null, evidenceQuote: null, isRemoved: true, isBridge: false },
+        { version: 2, text: null, evidenceQuote: null, isRemoved: true, isBridge: false },
+        {
+          version: 3,
+          text: 'Keeps two hives on the allotment',
+          evidenceQuote: null,
+          isRemoved: false,
+          isBridge: true,
+        },
+      ],
+    },
   ]);
 });

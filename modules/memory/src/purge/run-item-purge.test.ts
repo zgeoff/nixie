@@ -1,13 +1,24 @@
 import { expect, test } from 'bun:test';
-import { readRecordKeys, readRecords, removeRecordKey } from '@heynixie/log';
+import { stat } from 'node:fs/promises';
+import {
+  getDataFilePath,
+  getWALPath,
+  readRecordKeys,
+  readRecords,
+  removeRecordKey,
+} from '@heynixie/log';
 import { readTestRecordKeyRows } from '@heynixie/log/test-utils';
+import { startFaultPointFailure } from '@heynixie/tasks/test-utils';
 import { buildTestClock } from '@heynixie/testing';
 import { buildMockProvenance } from '../test-utils/build-mock-provenance';
 import type { QuotedProposal } from '../test-utils/create-quoted-proposal';
 import { createQuotedProposal } from '../test-utils/create-quoted-proposal';
+import { readPurgeRows } from '../test-utils/read-purge-rows';
 import { seedBegunPurge } from '../test-utils/seed-begun-purge';
 import { seedForgettingMemoryItem } from '../test-utils/seed-forgetting-memory-item';
 import { seedSharedKeyVersion } from '../test-utils/seed-shared-key-version';
+import { startKeyStoreReader } from '../test-utils/start-key-store-reader';
+import { startNextTestMemory } from '../test-utils/start-next-test-memory';
 import { startTestMemory } from '../test-utils/start-test-memory';
 import { writeOwnerMessageRecord } from '../test-utils/write-owner-message-record';
 import type { MemoryTables } from '../types';
@@ -15,7 +26,7 @@ import type { MemoryTables } from '../types';
 async function setupTest() {
   const clock = buildTestClock(Date.parse('2026-11-02T09:00:00Z'));
 
-  const memory = await startTestMemory({ gate: { clock } });
+  const memory = await startTestMemory({ gate: { clock }, keyStoreBusyTimeoutMs: 50 });
 
   return {
     memory,
@@ -482,4 +493,98 @@ test('it needs no bridge for a shared-key item that an earlier purge gave a vers
     'shredded',
     'readable',
   ]);
+});
+
+test.each([
+  'memory.purge.keys_created',
+  'memory.purge.closed',
+  'memory.purge.keys_removed',
+] as const)(
+  'it finishes a purge that a crash cut short at %s, and the current text still reads',
+  async (faultPoint) => {
+    const ctx = await setupTest();
+    const recordSequence = await ctx.writeMessage('I keep bees on the allotment.');
+
+    const first = await ctx.memory.store.remember({
+      text: 'Keeps bees on the allotment',
+      evidence: { recordSequence, start: 0, end: 11 },
+      evidenceQuote: 'I keep bees',
+      labels: ctx.labels,
+      provenance: buildMockProvenance(),
+    });
+
+    await ctx.memory.store.remember({
+      text: 'Keeps two hives on the allotment',
+      target: first,
+      provenance: buildMockProvenance(),
+    });
+
+    await seedBegunPurge(ctx.memory.log, { recordSequence, itemIDs: [first.itemID] });
+
+    startFaultPointFailure(faultPoint);
+
+    const crash = await ctx.memory.store
+      .purgeItemEvidence({ recordSequence, itemID: first.itemID })
+      .catch((error: unknown) => error);
+
+    const restarted = await startNextTestMemory(ctx.memory, { gate: { clock: ctx.clock } });
+
+    await restarted.store.finishEvidencePurges({ recordSequence });
+
+    const history = await restarted.store.readHistory(first.itemID);
+    const rows = await readPurgeRows(restarted.writer.db);
+    const keys = await readRecordKeys(restarted.log, [first.itemID]);
+
+    expect(crash).toMatchObject({ message: `crashed at ${faultPoint}` });
+    expect(rows).toMatchObject([{ item_id: first.itemID, purged_sequence: expect.toBeNumber() }]);
+    expect(keys.has(first.itemID)).toBe(false);
+
+    expect(history?.versions).toMatchObject([
+      { version: 1, status: 'shredded', isRemoved: true },
+      { version: 2, status: 'readable', text: 'Keeps two hives on the allotment' },
+    ]);
+  },
+);
+
+test('it counts the purge as done only after the key store checkpoint has cleared the old key from the write-ahead log', async () => {
+  const ctx = await setupTest();
+  const recordSequence = await ctx.writeMessage('I keep bees on the allotment.');
+
+  const item = await ctx.memory.store.remember({
+    text: 'Keeps bees on the allotment',
+    evidence: { recordSequence, start: 0, end: 11 },
+    evidenceQuote: 'I keep bees',
+    provenance: buildMockProvenance(),
+  });
+
+  await seedBegunPurge(ctx.memory.log, { recordSequence, itemIDs: [item.itemID] });
+
+  const reader = await startKeyStoreReader(ctx.memory.dataDir);
+
+  const blocked = await ctx.memory.store
+    .purgeItemEvidence({ recordSequence, itemID: item.itemID })
+    .catch((error: unknown) => error);
+
+  const whileHeld = await readPurgeRows(ctx.memory.writer.db);
+
+  await reader.release();
+
+  const finished = await ctx.memory.store.purgeItemEvidence({
+    recordSequence,
+    itemID: item.itemID,
+  });
+
+  const afterRelease = await readPurgeRows(ctx.memory.writer.db);
+
+  const keysWAL = getWALPath(getDataFilePath(ctx.memory.dataDir, 'keys.db'));
+
+  expect(blocked).toMatchObject({ name: 'KeyStoreBusyError' });
+
+  expect(whileHeld).toMatchObject([
+    { closed_sequence: expect.toBeNumber(), purged_sequence: null },
+  ]);
+
+  expect(finished).toBe('purged');
+  expect(afterRelease).toMatchObject([{ purged_sequence: expect.toBeNumber() }]);
+  expect(stat(keysWAL)).resolves.toMatchObject({ size: 0 });
 });

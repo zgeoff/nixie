@@ -8,6 +8,7 @@ import {
 import { recordForgetStartedCodec } from '@heynixie/memory';
 import { writeImageOfferRecord } from '@heynixie/memory/test-utils';
 import { createConversationTask } from '@heynixie/tasks';
+import { startFaultPointFailure } from '@heynixie/tasks/test-utils';
 import invariant from 'tiny-invariant';
 import type { ForgetTarget } from '../forget/write-forget-start';
 import { writeForgetStart } from '../forget/write-forget-start';
@@ -587,3 +588,40 @@ test('it writes nothing more when the cleanup of a forget that an earlier releas
 
   expect(second).toHaveLength(first.length);
 });
+
+test.each(['record.forget.started', 'record.forget.purged'] as const)(
+  'it finishes a forget that a crash cut short at %s, purging the quoting item before record.forgotten',
+  async (faultPoint) => {
+    const api = await startTestAPI();
+    const forgets = await startTestMemoryForgets(api.context);
+    const seeded = await seedQuotedMemoryItems(api.context, forgets.memory);
+
+    await writeRecords(api.context.log, [
+      {
+        kind: recordForgetStartedCodec.kind,
+        definitions: { snapshotHash: 'sha256:test' },
+        thread: 'conversation',
+        payload: recordForgetStartedCodec.encode({ recordSequence: seeded.sequence }),
+      },
+    ]);
+
+    startFaultPointFailure(faultPoint);
+
+    const crash = await runRecordForgetCleanup(forgets.forgetContext, seeded.sequence).catch(
+      (error: unknown) => error,
+    );
+
+    await runPendingRecordForgets(forgets.forgetContext);
+
+    const entries = await readRecords(api.context.log, { afterSequence: 0 });
+    const history = await forgets.memory.readHistory(seeded.quoting.itemID);
+
+    expect(crash).toMatchObject({ message: `crashed at ${faultPoint}` });
+    expect(entries.map((entry) => entry.record.kind).at(-1)).toBe('record.forgotten');
+
+    expect(history?.versions).toMatchObject([
+      { version: 1, status: 'shredded', isRemoved: true },
+      { version: 2, status: 'readable', text: 'The cat uses the flap every night' },
+    ]);
+  },
+);
