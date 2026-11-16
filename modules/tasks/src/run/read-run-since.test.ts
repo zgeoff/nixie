@@ -2,6 +2,7 @@ import { expect, onTestFinished, setSystemTime, test } from 'bun:test';
 import { writeRecords } from '@heynixie/log';
 import invariant from 'tiny-invariant';
 import { writeStepCommit } from '../step/write-step-commit';
+import { taskCreatedCodec } from '../task/codec/task-created-codec';
 import { taskDefinitionSetCodec } from '../task/codec/task-definition-set-codec';
 import { writeTaskLimitRaise } from '../task/limit/write-task-limit-raise';
 import { claimTask } from '../task/projection/claim-task';
@@ -75,6 +76,28 @@ async function setupTest() {
           }),
         },
       ]),
+
+    // a task of the definition that holds no hash yet, as a task of a withdrawn definition does
+    writeUnenabledTask: async (taskID: string) => {
+      await writeRecords(tasks.context.log, [
+        {
+          kind: 'task.created',
+          definitions: tasks.context.definitions(),
+          thread: taskID,
+          payload: taskCreatedCodec.encode({ taskID, isConversation: false, state: 'waiting' }),
+        },
+        {
+          kind: 'task.definition_set',
+          definitions: tasks.context.definitions(),
+          thread: taskID,
+          payload: taskDefinitionSetCodec.encode({
+            taskID,
+            definitionID: 'water-the-tomatoes',
+            definitionHash: null,
+          }),
+        },
+      ]);
+    },
 
     // a fire that the next claim turns into a task run, which waits idle for the next fire
     openRun: async (taskID: string) => {
@@ -164,6 +187,60 @@ test('it gives the time the definition was first enabled for its first task run,
     previousStartedAt: new Date(1_000_000),
     startedAt: new Date(1_060_000),
   });
+});
+
+test('it skips a null-hash definition set before the first one that holds a hash', async () => {
+  const ctx = await setupTest();
+
+  ctx.setNow(1_000_000);
+
+  await ctx.writeUnenabledTask('tomato01');
+
+  ctx.setNow(1_030_000);
+
+  const taskID = await ctx.enableDefinition();
+
+  ctx.setNow(1_060_000);
+
+  await ctx.openRun(taskID);
+
+  const [run] = await ctx.readRuns(taskID);
+
+  invariant(run);
+
+  const since = await readRunSince(ctx.context, run);
+
+  expect(taskID).toBe('tomato01');
+
+  expect(since).toStrictEqual({
+    previousStartedAt: new Date(1_030_000),
+    startedAt: new Date(1_060_000),
+  });
+});
+
+test('it gives null for a first task run of a definition whose task never held a hash', async () => {
+  const ctx = await setupTest();
+
+  ctx.setNow(1_000_000);
+
+  await ctx.writeUnenabledTask('tomato01');
+
+  ctx.definitionStore.add('hash-1', {
+    version: { definitionID: 'water-the-tomatoes' },
+    policy: { wakeable: true },
+  });
+
+  ctx.setNow(1_060_000);
+
+  await ctx.openRun('tomato01');
+
+  const [run] = await ctx.readRuns('tomato01');
+
+  invariant(run);
+
+  const since = await readRunSince(ctx.context, run);
+
+  expect(since).toBeNull();
 });
 
 test.each([[1], [2]])(
