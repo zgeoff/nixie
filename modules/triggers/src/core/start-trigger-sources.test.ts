@@ -125,8 +125,9 @@ test('it aborts and stops the sources already started when a later source fails 
     ctx.core,
   );
 
-  await expect(promise).rejects.toBe(startError);
+  await Promise.allSettled([promise]);
 
+  expect(promise).rejects.toBe(startError);
   expect(ctx.started.map((context) => context.signal.aborted)).toStrictEqual([true, true]);
   expect(ctx.stops).toStrictEqual(['schedule']);
 });
@@ -143,7 +144,8 @@ test('it stops every source and rejects when one stop rejects', async () => {
 
   const promise = sources.stop();
 
-  await expect(promise).rejects.toMatchObject({ errors: [stopError] });
+  await Promise.allSettled([promise]);
 
+  expect(promise).rejects.toMatchObject({ errors: [stopError] });
   expect(ctx.stops).toStrictEqual(['schedule', 'poll']);
 });

@@ -1,4 +1,5 @@
 import type { JSONValue } from '@heynixie/log';
+import { z } from 'zod';
 import type {
   SourceHealth,
   TriggerContext,
@@ -70,7 +71,9 @@ async function readCursor(core: TriggerCoreContext, sourceID: string): Promise<J
     .where('source_id', '=', sourceID)
     .executeTakeFirst();
 
-  return row?.cursor === undefined || row.cursor === null ? null : JSON.parse(row.cursor);
+  return row?.cursor === undefined || row.cursor === null
+    ? null
+    : z.json().parse(JSON.parse(row.cursor));
 }
 
 // Aborts every signal, then stops every started source even when one stop rejects.
@@ -84,5 +87,15 @@ async function stopSources(
 
   const results = await Promise.allSettled(started.map((source) => source.stop()));
 
-  return results.flatMap((result) => (result.status === 'rejected' ? [result.reason] : []));
+  const failures: unknown[] = [];
+
+  for (const result of results) {
+    if (result.status === 'rejected') {
+      const reason: unknown = result.reason;
+
+      failures.push(reason);
+    }
+  }
+
+  return failures;
 }
