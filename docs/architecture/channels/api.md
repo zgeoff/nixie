@@ -212,6 +212,35 @@ replay of the client action included:
 - `forgotten` at the sequence of `record.forgotten`, otherwise. The backup job's report for that
   sequence gives the state.
 
+### The log.forget tool
+
+The conversation's model removes a record of its own thread with the `log.forget` tool, which takes
+`record`: the event ID of the record, as the stamp of a message, a `log.read` entry's `eventID` or
+`callEventID` shows it. The tool joins the conversation's tool list and no task's. It declares the
+[`delete` effect](../policy/decision-point.md#effects-and-declarations), so it runs as a queued
+action, and the user's rules decide each call:
+
+- Under the starter rules, `ask-permanent-deletes` asks. The card shows the record's kind and text,
+  and how many moments and memory items go with it. Nixie reads the text when it reads the card and
+  keeps no copy in the proposal, the call, the result or the notice. A card whose record or preview
+  cannot be read has no body, so the user never approves a removal without its preview.
+- Rules decide strictest first, so an allow rule for the tool removes a record with no approval only
+  once the user's ask rule no longer catches the call. The user narrows or removes
+  `ask-permanent-deletes` and adds the allow rule.
+
+Before any ask is written, the tool refuses a record of another kind, a record that does not exist
+on the thread, and a queued action that has not run. It runs the same forget as the API, so a repeat
+of a finished forget changes nothing.
+
+An allow rule makes the forget run during the turn that called the tool. The forget's session
+cleanup aborts the turn, and the turn's step runs again after its retry delay on a rebuilt session
+where the record is a gap. The call waits at most `queuedWaitMs` for the action, so the turn never
+hangs.
+
+The action's `action.outcome` record holds the removed record's event ID and kind, never its text.
+The API reads them into the `removal` field of the contract record, and the web client shows one
+muted line under the last reply of the turn.
+
 ## Reading tasks
 
 A task list read returns the most recently active tasks up to a cap, each with its name, brief,

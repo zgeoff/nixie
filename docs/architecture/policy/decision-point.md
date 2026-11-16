@@ -126,6 +126,10 @@ lives in nixie's registry. The declaration also names the arguments that hold a 
 amount or free text, and the source of content of each field of the tool's result, which the
 [tool endpoint](../connectors/tool-calls.md#records) records with every result.
 
+The `delete` effect covers a removal for good: a file or an account at an outside service, or a
+record of nixie's own that [`log.forget`](../channels/api.md#the-logforget-tool) erases. A tool that
+declares it runs queued, as an action.
+
 A definitions repository can change a tool's effects with a file in `effects/`, from format 4 on:
 
 ```yaml
