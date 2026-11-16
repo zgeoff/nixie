@@ -14,8 +14,8 @@
   // the package, and only the hooks run diet, so knip sees none of them
   "ignoreDependencies": ["@stylistic/eslint-plugin", "@zgeoff/agent-hooks", "@zgeoff/diet"],
   // the prod target reads the cluster with the kubectl on the caller's PATH, which no package
-  // provides
-  "ignoreBinaries": ["kubectl", "codex"],
+  // provides, and a gateway test makes a named pipe with the host's mkfifo
+  "ignoreBinaries": ["kubectl", "codex", "mkfifo"],
   "workspaces": {
     // a test spawns the stub program as its own process, so no import reaches it
     "modules/log": { "entry": ["src/test-utils/run-stub-*.ts"] },
