@@ -1,8 +1,9 @@
 import { expect, mock, onTestFinished, test } from 'bun:test';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { Logger } from '@heynixie/logger';
+import { z } from 'zod';
 import { createPeriodStore } from '../periods/create-period-store';
 import { makePeriodsAccounting } from './make-periods-accounting';
 
@@ -11,8 +12,10 @@ async function setupTest() {
 
   onTestFinished(() => rm(directory, { recursive: true, force: true }));
 
+  const storePath = join(directory, 'counter.json');
+
   const store = await createPeriodStore({
-    path: join(directory, 'counter.json'),
+    path: storePath,
     zone: 'Europe/London',
     now: () => Date.parse('2026-11-13T10:00:00Z'),
     readOverride: () => Promise.resolve(null),
@@ -35,6 +38,7 @@ async function setupTest() {
 
   return {
     store,
+    storePath,
     log,
     route: {
       api: 'anthropic-messages',
@@ -67,6 +71,23 @@ test('it marks the count lost and refuses every later request when a reply that 
 
   expect(refusal?.status).toBe(503);
   expect(stored.lost).toBeTrue();
+});
+
+test('it admits a request again once an operator removes the lost mark, with no restart', async () => {
+  const ctx = await setupTest();
+
+  await ctx.accounting.count(ctx.route, 'alpha', null, true);
+
+  const markedText = await readFile(ctx.storePath, 'utf8');
+
+  const marked: unknown = JSON.parse(markedText);
+  const { lost: _, ...cleared } = z.looseObject({ lost: z.literal(true) }).parse(marked);
+
+  await writeFile(ctx.storePath, JSON.stringify(cleared));
+
+  const refusal = await ctx.accounting.admit('alpha');
+
+  expect(refusal).toBeNull();
 });
 
 test('it adds nothing for a reply with no usage that spent nothing', async () => {

@@ -21,9 +21,10 @@ export function makePeriodsAccounting(deps: PeriodsAccountingDeps): Accounting {
   let tripLogged = '';
 
   const loseCount = async (): Promise<void> => {
-    countFailed = true;
-
     await deps.store.markLost().catch((error: unknown) => {
+      // with no mark in the store, only this process can refuse, until a restart
+      countFailed = true;
+
       deps.log('counter.mark_failed', toErrorFields(error), 'error');
     });
   };
