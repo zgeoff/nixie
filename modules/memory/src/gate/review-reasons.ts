@@ -16,5 +16,6 @@ export const reviewReasons = [
   'from_photo',
   'sensitive',
   'subject_change',
+  'labels',
   'ask_rule',
 ] as const;

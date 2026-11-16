@@ -2,6 +2,7 @@ import { readEventEvidence } from '../evidence/read-event-evidence';
 import { readQuoteEvidence } from '../evidence/read-quote-evidence';
 import type { MemoryContext } from '../types';
 import { buildGateReview } from './build-gate-review';
+import { buildGatedText } from './build-gated-text';
 import type { ContentGateRequest, ContentGateResult } from './gate-context';
 import type { CoveringRule } from './pick-covering-rule';
 import { runQuotedGate } from './run-quoted-gate';
@@ -15,7 +16,7 @@ export async function runContentGate(
   request: ContentGateRequest,
   rule: CoveringRule | null,
 ): Promise<ContentGateResult> {
-  if (invisible.test(request.text)) {
+  if (invisible.test(buildGatedText(request))) {
     return buildGateReview('invisible_character', { checks: { tokens: 'fail' } });
   }
 

@@ -7,7 +7,7 @@ import { readItemText } from '../item/read-item-text';
 import { writeMemoryProposal } from '../memory/write-memory-proposal';
 import { readNewestMessage } from '../message/read-newest-message';
 import { writeRetirement } from '../retirement/write-retirement';
-import type { StoreParts } from '../types';
+import type { StoreParts, VersionRef } from '../types';
 import { requireCheckerSnapshot } from '../utils/checker/require-checker-snapshot';
 import { ForgottenEvidenceError } from '../utils/error/forgotten-evidence-error';
 import type { WriteGroup } from '../write/build-write-group';
@@ -20,8 +20,10 @@ export async function writeGatedRetirement(
   const item = await readItemText(parts, request.target, 'retire');
 
   const itemText = item.text;
+  const textTarget = { itemID: request.target.itemID, version: item.version };
 
   const gate = await runRetirementGate(parts, request, {
+    textTarget,
     itemText,
     isSelfNote: item.subject === 'self',
   });
@@ -31,13 +33,14 @@ export async function writeGatedRetirement(
   const group = buildWriteGroup(request.caller, newest);
 
   if (gate.status === 'pass') {
-    return applyPassedRetirement(parts, request, { gate, group, itemText });
+    return applyPassedRetirement(parts, request, { gate, group, itemText, textTarget });
   }
 
-  return writeRetirementProposal(parts, request, { review: gate, group, itemText });
+  return writeRetirementProposal(parts, request, { review: gate, group, itemText, textTarget });
 }
 
 interface RetiredItem {
+  readonly textTarget: VersionRef;
   readonly itemText: string;
   readonly isSelfNote: boolean;
 }
@@ -76,7 +79,7 @@ function runRetirementGate(
   }
 
   return runIntentGate(parts.context, {
-    target: request.target,
+    target: item.textTarget,
     intentQuote: request.intentQuote ?? null,
     thread: request.caller.thread,
     itemText: item.itemText,
@@ -87,6 +90,7 @@ interface PassedRetirement {
   readonly gate: Extract<ContentGateResult, { readonly status: 'pass' }>;
   readonly group: WriteGroup;
   readonly itemText: string;
+  readonly textTarget: VersionRef;
 }
 
 async function applyPassedRetirement(
@@ -158,6 +162,7 @@ interface ReviewedRetirement {
   readonly review: Extract<ContentGateResult, { readonly status: 'review' }>;
   readonly group: WriteGroup;
   readonly itemText: string;
+  readonly textTarget: VersionRef;
 }
 
 async function writeRetirementProposal(
@@ -169,7 +174,7 @@ async function writeRetirementProposal(
 
   const written = await writeMemoryProposal(parts, {
     operation: 'retire',
-    target: request.target,
+    target: reviewed.textTarget,
     isPinned: false,
     text: reviewed.itemText,
     quote: request.intentQuote ?? null,

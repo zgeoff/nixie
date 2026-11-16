@@ -10,6 +10,7 @@ export interface CorePin {
   readonly subject: MemorySubject;
 
   readonly version: number;
+  readonly revision: number;
   readonly text: string;
   readonly origin: MemoryOrigin;
   readonly source: ContentSource;

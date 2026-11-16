@@ -1,7 +1,7 @@
 import type { MemoryItem, MemoryLineOptions } from '../types';
 import { formatMemoryDay } from '../utils/format-memory-day';
 
-type SelfNote = Pick<MemoryItem, 'shortID' | 'version' | 'recordedAt' | 'model' | 'text'>;
+type SelfNote = Pick<MemoryItem, 'shortID' | 'revision' | 'recordedAt' | 'model' | 'text'>;
 
 export function renderRetrievedSelfNotes(
   notes: readonly SelfNote[],
@@ -21,7 +21,7 @@ export function renderRetrievedSelfNotes(
 
 function renderSelfNoteLine(note: SelfNote, options: MemoryLineOptions): string {
   const parts = [
-    `${note.shortID} v${note.version}`,
+    `${note.shortID} v${note.revision}`,
     formatMemoryDay(note.recordedAt, options),
     'you wrote this',
     note.model,

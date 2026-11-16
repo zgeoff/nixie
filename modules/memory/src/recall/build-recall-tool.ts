@@ -20,6 +20,7 @@ import { buildHiddenUUIDs } from '../utils/build-hidden-uuids';
 import { readItemIDs } from '../utils/item/read-item-ids';
 import { makeInputRecorder } from '../utils/make-input-recorder';
 import { recallLimits } from './recall-limits';
+import { recallOutputSchema } from './recall-output-schema';
 
 // Long enough for a UUID.
 const itemIDMaxLength = 64;
@@ -51,99 +52,6 @@ const recallInput = {
       description: 'return only the items of these subjects',
     },
   },
-  additionalProperties: false,
-};
-
-const recalledVersion = {
-  type: 'object',
-  properties: {
-    version: { type: 'integer' },
-    change: { type: 'string' },
-    state: { type: 'string' },
-    text: { type: 'string' },
-    about: {
-      type: 'string',
-      description:
-        'where the version came from: its ID and version, its date, who noted it, what backs it ' +
-        'and who confirmed it, and for a past version the version that replaced it',
-    },
-    quote: { type: 'string', description: 'the words the version came from' },
-    image: {
-      type: 'object',
-      description:
-        "the owner's photo the version came from: the eventID of the message that holds it and " +
-        'its number, which log.read_image opens',
-      properties: { eventID: { type: 'string' }, number: { type: 'integer' } },
-      required: ['eventID', 'number'],
-    },
-    model: { type: ['string', 'null'], description: 'the model that wrote the version' },
-  },
-  required: ['version', 'change', 'state', 'text', 'about', 'model'],
-};
-
-const recallOutput = {
-  type: 'object',
-  properties: {
-    items: {
-      type: 'array',
-      items: {
-        ...recalledVersion,
-        properties: {
-          ...recalledVersion.properties,
-          itemID: { type: 'string' },
-          isPinned: { type: 'boolean' },
-          subject: {
-            type: 'string',
-            enum: ['owner', 'self', 'shared'],
-            description:
-              'owner for a fact about the owner, shared for something between the owner and you, such as ' +
-              'a deal, a nickname or a running joke, self for a self-note you wrote about yourself',
-          },
-          history: { type: 'array', items: recalledVersion },
-          moments: {
-            type: 'array',
-            description: 'the moments linked to the item, each by its momentID and title',
-            items: {
-              type: 'object',
-              properties: { momentID: { type: 'string' }, title: { type: 'string' } },
-              required: ['momentID', 'title'],
-            },
-          },
-        },
-        required: [...recalledVersion.required, 'itemID', 'isPinned', 'subject'],
-      },
-    },
-    next: { type: ['string', 'null'] },
-    searched: {
-      type: 'object',
-      description: 'the search of the call, copied: its query or itemIDs, and its subjects',
-      properties: {
-        query: { type: 'string' },
-        itemIDs: { type: 'array', items: { type: 'string' } },
-        subjects: { type: 'array', items: { type: 'string', enum: ['owner', 'self', 'shared'] } },
-      },
-      additionalProperties: false,
-    },
-    leftOut: {
-      type: 'object',
-      description: 'what the page leaves out because it is capped in size',
-      properties: {
-        count: { type: 'integer', description: 'the items the result leaves out' },
-        itemIDs: {
-          type: 'array',
-          items: { type: 'string' },
-          description: 'the IDs of the items left out, to recall',
-        },
-        versions: {
-          type: 'integer',
-          description: 'the past versions of the first item that the result leaves out',
-        },
-      },
-      required: ['count', 'itemIDs', 'versions'],
-      additionalProperties: false,
-    },
-  },
-  required: ['items', 'searched'],
   additionalProperties: false,
 };
 
@@ -179,7 +87,7 @@ export function buildRecallTool(
       'owner attached names that image: open it with log.read_image when seeing it would ' +
       'change your answer.',
     input: recallInput,
-    output: recallOutput,
+    output: recallOutputSchema,
     declaration: {
       effects: ['read'],
       destinations: [],
@@ -335,30 +243,54 @@ function toItemJSON(
   links: readonly MomentLink[],
 ): JSONObject {
   return {
-    ...toVersionJSON(item, lines, null),
+    ...toVersionJSON(item, lines, { next: null, number: { version: item.revision } }),
+    gist: item.gist,
+    topic: item.topic,
+    triggers: [...item.triggers],
     itemID: item.shortID,
     isPinned: item.isPinned,
     subject: item.subject,
     ...(item.history === undefined
       ? {}
       : { history: item.history.map((version) => toPastVersionJSON(item, version, lines)) }),
+    ...(item.labelHistory === undefined
+      ? {}
+      : {
+          labelHistory: item.labelHistory.map((entry) => ({
+            revision: entry.revision,
+            gist: entry.gist,
+            topic: entry.topic,
+            triggers: [...entry.triggers],
+          })),
+        }),
     ...(links.length === 0
       ? {}
       : { moments: links.map((link) => ({ momentID: link.momentID, title: link.title })) }),
   };
 }
 
+// An item shows its revision as `version`, and a history entry shows its text version as
+// `textVersion`, so no recall field named `version` ever holds a text version.
+type ShownNumber = { readonly version: number } | { readonly textVersion: number };
+
+interface VersionLine {
+  readonly next: NextVersion | null;
+  readonly number: ShownNumber;
+}
+
 function toVersionJSON(
   version: RecalledVersion & { readonly shortID: string },
   lines: MemoryLineOptions,
-  next: NextVersion | null,
+  line: VersionLine,
 ): JSONObject {
+  const shownVersion = 'version' in line.number ? line.number.version : version.version;
+
   return {
-    version: version.version,
+    ...line.number,
     change: version.change,
     state: version.state,
     text: version.text,
-    about: renderMemoryLine(version, lines, next),
+    about: renderMemoryLine({ ...version, shownVersion }, lines, line.next),
     ...(version.evidenceQuote === null ? {} : { quote: version.evidenceQuote }),
     ...(version.image === null
       ? {}
@@ -381,7 +313,10 @@ function toPastVersionJSON(
       ? null
       : { ref: `${item.shortID} v${after.version}`, isRetirement: after.change === 'retired' };
 
-  return toVersionJSON({ ...version, shortID: item.shortID }, lines, next);
+  return toVersionJSON({ ...version, shortID: item.shortID }, lines, {
+    next,
+    number: { textVersion: version.version },
+  });
 }
 
 const searchedQueryLength = 200;

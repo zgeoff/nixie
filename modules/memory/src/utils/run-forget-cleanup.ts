@@ -13,6 +13,7 @@ export async function runForgetCleanup(parts: StoreParts, itemID: string): Promi
 
   await parts.index.remove(itemID);
 
+  parts.labels.remove(itemID);
   parts.vectors?.remove(itemID);
 
   await parts.context.cleanupSessions({ itemID });

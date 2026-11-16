@@ -6,7 +6,7 @@ export function renderMemoryItem(
   item: Pick<
     MemoryItem,
     | 'shortID'
-    | 'version'
+    | 'revision'
     | 'recordedAt'
     | 'origin'
     | 'source'
@@ -16,5 +16,9 @@ export function renderMemoryItem(
   >,
   options: MemoryLineOptions,
 ): readonly string[] {
-  return [`- ${item.text}`, `  ${renderMemoryLine(item, options)}`, ...renderItemQuote(item)];
+  return [
+    `- ${item.text}`,
+    `  ${renderMemoryLine({ ...item, shownVersion: item.revision }, options)}`,
+    ...renderItemQuote(item),
+  ];
 }

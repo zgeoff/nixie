@@ -2,7 +2,11 @@ import { readRecordKeys } from '@heynixie/log';
 import type { Kysely } from 'kysely';
 import { toReviewReason } from '../gate/to-review-reason';
 import { findImageSource } from '../image/find-image-source';
+import { buildDerivedLabels } from '../label/build-derived-labels';
+import { itemLabelsCodec } from '../label/item-labels-codec';
+import type { LabelEntries } from '../label/make-label-entries';
 import type {
+  LabelRevision,
   MemoryItemRow,
   MemoryState,
   MemoryTables,
@@ -69,7 +73,7 @@ export async function readDeliverableItems(
 
       return row === undefined || key === undefined || key === null
         ? Promise.resolve(null)
-        : readItem(db, { row, key, includeHistory: query.includeHistory });
+        : readItem(db, { row, key, includeHistory: query.includeHistory, labels: parts.labels });
     }),
   );
 
@@ -84,6 +88,8 @@ interface ItemToRead {
   readonly row: MemoryItemRow;
   readonly key: CryptoKey;
   readonly includeHistory: boolean;
+
+  readonly labels: LabelEntries;
 
   readonly db?: Kysely<MemoryTables>;
 }
@@ -110,14 +116,23 @@ async function readItem(db: Kysely<MemoryTables>, item: ItemToRead): Promise<Rec
       return null;
     }
 
+    const subject = getRowSubject(item.row);
+    const labels = item.labels.find(item.row.item_id) ?? buildDerivedLabels(current.text, subject);
+
     return {
       itemID: item.row.item_id,
       shortID: getItemShortID(item.row),
       isPinned: item.row.is_pinned === 1,
-      subject: getRowSubject(item.row),
+      subject,
+      revision: item.row.version + item.row.label_edits,
+      gist: labels.gist,
+      topic: labels.topic,
+      triggers: [...labels.triggers],
       ...current,
       ...(item.row.state === 'retired' ? { state: 'retired' as const } : {}),
-      ...(item.includeHistory ? { history: readable } : {}),
+      ...(item.includeHistory
+        ? { history: readable, labelHistory: await readLabelHistory(db, item) }
+        : {}),
     };
   } catch {
     return null;
@@ -155,4 +170,33 @@ function toApprovedProposal(row: ApprovableVersionRow): ApprovedProposal | null 
   return row.proposal_operation === null || row.review_reason === null
     ? null
     : { operation: row.proposal_operation, reason: toReviewReason(row.review_reason) };
+}
+
+async function readLabelHistory(
+  db: Kysely<MemoryTables>,
+  item: ItemToRead,
+): Promise<readonly LabelRevision[]> {
+  const rows = await db
+    .selectFrom('memory_labels')
+    .select(['revision', 'sealed'])
+    .where('item_id', '=', item.row.item_id)
+    .orderBy('sequence')
+    .execute();
+
+  return Promise.all(
+    rows.map(async (row) => {
+      const labels = await itemLabelsCodec.decode(
+        item.key,
+        { itemID: item.row.item_id, revision: row.revision },
+        row.sealed,
+      );
+
+      return {
+        revision: row.revision,
+        gist: labels.gist,
+        topic: labels.topic,
+        triggers: labels.triggers,
+      };
+    }),
+  );
 }

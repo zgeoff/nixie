@@ -61,7 +61,7 @@ export function makeMemoryProposalHandler(
       const proposal = await db
         .$extendTables<MemoryTables>()
         .selectFrom('memory_proposals')
-        .select(['item_id', 'target_version'])
+        .select(['item_id', 'target_version', 'target_revision', 'sealed_labels'])
         .where('proposal_id', '=', row.id)
         .executeTakeFirst();
 
@@ -71,15 +71,12 @@ export function makeMemoryProposalHandler(
           : await db
               .$extendTables<MemoryTables>()
               .selectFrom('memory_items')
-              .select('version')
+              .select(['version', 'label_edits'])
               .where('item_id', '=', proposal.item_id)
               .executeTakeFirst();
 
       const isMoved =
-        proposal?.target_version !== null &&
-        proposal?.target_version !== undefined &&
-        item !== undefined &&
-        item.version > proposal.target_version;
+        proposal !== undefined && item !== undefined && isProposalMoved(proposal, item);
 
       return { action: isMoved ? `${row.actionHash}:moved` : row.actionHash, rule: null };
     },
@@ -96,6 +93,27 @@ export function makeMemoryProposalHandler(
       ]);
     },
   };
+}
+
+interface MovableProposal {
+  readonly target_version: number | null;
+  readonly target_revision: number | null;
+  readonly sealed_labels: string | null;
+}
+
+interface MovedItem {
+  readonly version: number;
+  readonly label_edits: number;
+}
+
+// A proposal with a label record moves with the revision, and one without it, as built, when the
+// text version moves past the version it read.
+function isProposalMoved(proposal: MovableProposal, item: MovedItem): boolean {
+  if (proposal.sealed_labels !== null && proposal.target_revision !== null) {
+    return item.version + item.label_edits !== proposal.target_revision;
+  }
+
+  return proposal.target_version !== null && item.version > proposal.target_version;
 }
 
 async function applyAnswer(

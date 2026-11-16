@@ -219,6 +219,7 @@ test('it edits a memory proposal before approving it from the digest, and applie
       isSensitive: false,
       itemID: 'e8a4d2c6-1f3b-4a7e-9c5d-0b6f2e8a1d47',
       kind: 'fact',
+      labels: null,
       lapseAt: new Date('2026-11-20T01:00:00Z'),
       newSubject: null,
       operation: 'remember',

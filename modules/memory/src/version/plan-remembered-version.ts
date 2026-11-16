@@ -11,6 +11,9 @@ export function planRememberedVersion(request: RememberRequest): VersionPlan {
   const evidence = request.evidence ?? null;
 
   const marks = {
+    ...(request.labels === undefined
+      ? {}
+      : { labels: { labels: request.labels, change: 'written' as const } }),
     ...(request.isPinned === undefined ? {} : { isPinned: request.isPinned }),
     ...(request.isSensitive === undefined ? {} : { isSensitive: request.isSensitive }),
   };

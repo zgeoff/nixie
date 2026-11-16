@@ -15,7 +15,7 @@ export async function runForget(parts: StoreParts, request: ForgetRequest): Prom
 
       await request.writeInTransaction?.(tx);
 
-      await requireItem(db, {
+      const item = await requireItem(db, {
         target: request.target,
         operation: 'forget',
         states: ['active', 'retired'],
@@ -30,7 +30,7 @@ export async function runForget(parts: StoreParts, request: ForgetRequest): Prom
           ...(request.provenance.thread === undefined ? {} : { thread: request.provenance.thread }),
           payload: {
             itemID,
-            version: request.target.version,
+            version: item.version,
             evidenceSequences: [...sequences],
           },
         },
@@ -41,6 +41,7 @@ export async function runForget(parts: StoreParts, request: ForgetRequest): Prom
 
     await parts.index.remove(itemID);
 
+    parts.labels.remove(itemID);
     parts.vectors?.remove(itemID);
 
     await removeMessageEntries(parts, evidenceSequences);

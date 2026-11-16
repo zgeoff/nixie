@@ -22,6 +22,9 @@ export type MemoryOrigin = 'owner' | 'conversation' | 'task' | 'lapse';
 export interface MemoryItem extends MemoryRef {
   readonly shortID: string;
 
+  // the text version plus the approved label edits, which a line shows as its version
+  readonly revision: number;
+
   readonly subject: 'owner' | 'self' | 'shared';
   readonly text: string;
   readonly origin: MemoryOrigin;

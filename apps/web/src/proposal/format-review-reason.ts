@@ -18,6 +18,8 @@ const reviewReasons: Readonly<Record<MemoryProposal['reason'], string>> = {
   sensitive: 'It was marked sensitive, and every sensitive item waits for your review.',
   subject_change:
     'It changes whose fact the item is, and every subject change waits for your review.',
+  labels:
+    'It changes how the item is listed or what brings it up, and every such change waits for your review.',
   ask_rule: 'A rule of yours asks before nixie writes this kind of memory.',
 };
 

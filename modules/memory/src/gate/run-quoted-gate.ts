@@ -2,6 +2,7 @@ import type { QuoteEvidenceResult } from '../evidence/read-quote-evidence';
 import { runMemoryChecker } from '../memory/run-memory-checker';
 import type { MemoryContext } from '../types';
 import { buildGateReview } from './build-gate-review';
+import { buildGatedText } from './build-gated-text';
 import { findMissingToken } from './find-missing-token';
 import type { ContentGateRequest, ContentGateResult } from './gate-context';
 
@@ -22,7 +23,7 @@ export function runQuotedGate(
     return Promise.resolve(buildGateReview(found.reason, { checks: { quote: 'fail' } }));
   }
 
-  if (findMissingToken(request.text, quoted.quote) !== null) {
+  if (findMissingToken(buildGatedText(request), quoted.quote) !== null) {
     return Promise.resolve(
       buildGateReview('token_missing', {
         evidence: found.evidence,

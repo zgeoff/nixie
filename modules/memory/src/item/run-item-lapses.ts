@@ -9,7 +9,7 @@ export async function runItemLapses(parts: StoreParts): Promise<number> {
   const due = await parts.context.log.writer.db
     .$extendTables<MemoryTables>()
     .selectFrom('memory_items')
-    .select(['item_id', 'version'])
+    .select(['item_id', 'version', 'label_edits'])
     .where('state', '=', 'active')
     .where('until', '<=', parts.context.gate.clock.now())
     .orderBy('until')
@@ -23,7 +23,10 @@ export async function runItemLapses(parts: StoreParts): Promise<number> {
   const failures: unknown[] = [];
 
   for (const row of due) {
-    const outcome = await tryWriteLapse(parts, { itemID: row.item_id, version: row.version }).then(
+    const outcome = await tryWriteLapse(parts, {
+      itemID: row.item_id,
+      version: row.version + row.label_edits,
+    }).then(
       (isLapsed) => ({ isLapsed, error: null }),
       (error: unknown) => ({ isLapsed: false, error }),
     );

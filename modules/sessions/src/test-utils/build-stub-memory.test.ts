@@ -7,6 +7,7 @@ test('it answers the pinned items and their use it is given', async () => {
       {
         itemID: '2f6c0d1e-8a4b-4c7d-9e2f-5b1a3c8d7e60',
         version: 1,
+        revision: 1,
         shortID: 'r7t2v9x4kq',
         subject: 'owner',
         text: 'Rows on the canal on Sundays',

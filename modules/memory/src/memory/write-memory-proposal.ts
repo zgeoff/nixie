@@ -8,6 +8,7 @@ import type { PendingProposal } from '../proposal/write-proposal-record';
 import { writeProposalRecord } from '../proposal/write-proposal-record';
 import { buildMergeRecord } from '../record/build-merge-record';
 import type {
+  Labels,
   MemorySubject,
   MemoryTables,
   ProposalOperationKind,
@@ -37,6 +38,14 @@ export interface ProposalPlan {
   readonly isSensitive?: boolean;
 
   readonly until?: number | null;
+
+  // the whole label set the approval applies; a proposal with none writes no label record
+  readonly labels?: Labels;
+
+  // the revision the caller read, which a proposal that edits an existing item records
+  readonly targetRevision?: number;
+
+  readonly isLabelOnly?: boolean;
 }
 
 export interface WrittenProposal {

@@ -3,6 +3,7 @@ import { readOwnerMessages } from '../owner/read-owner-messages';
 import { collectTypedSegments } from '../typed/collect-typed-segments';
 import type { MemoryContext } from '../types';
 import { buildGateReview } from './build-gate-review';
+import { buildGatedText } from './build-gated-text';
 import { findMissingToken } from './find-missing-token';
 import type { ContentGateRequest, ContentGateResult } from './gate-context';
 
@@ -13,7 +14,9 @@ export async function runRuleGate(
   request: ContentGateRequest,
   rule: JSONObject,
 ): Promise<ContentGateResult> {
-  if (invisible.test(request.text)) {
+  const gatedText = buildGatedText(request);
+
+  if (invisible.test(gatedText)) {
     return buildGateReview('invisible_character', { checks: { rule, tokens: 'fail' } });
   }
 
@@ -24,7 +27,7 @@ export async function runRuleGate(
 
   const typed = messages.flatMap((message) => collectTypedSegments(message)).join('\n');
 
-  if (findMissingToken(request.text, typed) !== null) {
+  if (findMissingToken(gatedText, typed) !== null) {
     return buildGateReview('token_missing', { checks: { rule, tokens: 'fail' } });
   }
 

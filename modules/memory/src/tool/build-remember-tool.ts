@@ -2,6 +2,8 @@ import { untilConventions } from '@heynixie/prompts';
 import type { ToolContext, ToolDefinition } from '@heynixie/tools';
 import { z } from 'zod';
 import type { GatedRememberRequest, ModelWriteStore } from '../gate/gate-context';
+import { labelInputSchema } from '../label/label-input-schema';
+import { pickTopicSpelling } from '../label/pick-topic-spelling';
 import type { ItemIDStore } from '../types';
 import { makeInputRecorder } from '../utils/make-input-recorder';
 import { memoryWriteOutput } from '../utils/memory-write-output';
@@ -28,12 +30,15 @@ const rememberDescription =
   'review, whatever its quote. Set until when the quoted message says when the fact stops ' +
   'being true, such as "I\'m in London this week": the item then lapses on its own at that ' +
   'time, and the quote must back the time limit too. ' +
-  `${untilConventions} Each message stamp shows when it was sent and in which zone.`;
+  `${untilConventions} ${labelInputSchema.description} Each message stamp shows when it was sent and in which zone.`;
 
 const rememberInput = {
   type: 'object',
   properties: {
     text: { type: 'string', minLength: 1, maxLength: 2000 },
+    gist: labelInputSchema.gist,
+    topic: labelInputSchema.topic,
+    triggers: labelInputSchema.triggers,
     quote: { type: 'string', minLength: 1, maxLength: 2000 },
     eventID: {
       type: 'string',
@@ -68,12 +73,15 @@ const rememberInput = {
     },
     until: untilInputSchema,
   },
-  required: ['text'],
+  required: ['text', 'gist', 'topic'],
   additionalProperties: false,
 };
 
 const rememberArguments = z.object({
   text: z.string(),
+  gist: z.string(),
+  topic: z.string(),
+  triggers: z.array(z.string()).optional(),
   quote: z.string().optional(),
   eventID: z.string().optional(),
   subject: z.enum(['owner', 'self', 'shared']).optional(),
@@ -93,7 +101,7 @@ export function buildRememberTool(
       effects: ['memory_write'],
       destinations: [],
       amount: null,
-      content: ['text', 'quote'],
+      content: ['text', 'quote', 'gist', 'topic', 'triggers'],
       results: {
         status: 'owner_data',
         itemID: 'owner_data',
@@ -115,20 +123,27 @@ export function buildRememberTool(
           args: { ...rawInput, subject: input.subject ?? 'owner' },
         };
       }),
-    run: (call, context) => {
+    run: async (call, context) => {
       const input = rememberArguments.parse(call.input);
       const parsed = parseUntilInput(input.until);
 
       if (parsed.status === 'invalid') {
-        return Promise.resolve({ status: 'error', message: parsed.message });
+        return { status: 'error', message: parsed.message };
       }
 
+      const topics = await memory.writes.readTopics(null);
+
+      const topic = pickTopicSpelling(input.topic, topics);
+
       return runWriteCall(memory, () =>
-        memory.writes.remember(buildRememberRequest(input, parsed.until, context)),
+        memory.writes.remember({
+          ...buildRememberRequest(input, parsed.until, context),
+          labels: { gist: input.gist, topic, triggers: input.triggers ?? [] },
+        }),
       );
     },
 
-    recordInput: makeInputRecorder(['text', 'quote']),
+    recordInput: makeInputRecorder(['text', 'quote', 'gist', 'topic', 'triggers']),
   };
 }
 

@@ -33,6 +33,7 @@ export function buildConversationMemoryTools(
       readShortIDs: (itemIDs) => requireStore().readShortIDs(itemIDs),
       writes: {
         remember: (request) => requireStore().writes.remember(request),
+        editLabels: (request) => requireStore().writes.editLabels(request),
         retire: (request) => requireStore().writes.retire(request),
         pin: (request) => requireStore().writes.pin(request),
         unpin: (request) => requireStore().writes.unpin(request),
@@ -40,6 +41,8 @@ export function buildConversationMemoryTools(
         readRememberSources: (request) => requireStore().writes.readRememberSources(request),
         readRetireSources: (request) => requireStore().writes.readRetireSources(request),
         readItemSubject: (itemID) => requireStore().writes.readItemSubject(itemID),
+        readItemLabels: (itemID) => requireStore().writes.readItemLabels(itemID),
+        readTopics: (excludedItemID) => requireStore().writes.readTopics(excludedItemID),
       },
       renderReviewReason: (reason) => requireStore().renderReviewReason(reason),
       moments: {

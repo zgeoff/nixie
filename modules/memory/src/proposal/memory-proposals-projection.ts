@@ -3,6 +3,7 @@ import { proposalsDeferredCodec } from '@heynixie/proposals';
 import type { Kysely } from 'kysely';
 import type { MemoryTables } from '../types';
 import { getRowSubject } from '../utils/get-row-subject';
+import { parseLabelRecord } from '../utils/record/parse-label-record';
 import type { ProposalRecord } from '../utils/record/parse-proposal-record';
 import { parseProposalRecord } from '../utils/record/parse-proposal-record';
 import { parseSensitiveRecord } from '../utils/record/parse-sensitive-record';
@@ -61,6 +62,23 @@ export const memoryProposalsProjection: Projection = {
         .execute();
 
       return [sensitive.proposalID];
+    }
+
+    const labelled = parseLabelRecord(record);
+
+    if (labelled?.kind === 'memory.proposal_labelled') {
+      await tx
+        .$extendTables<MemoryTables>()
+        .updateTable('memory_proposals')
+        .set({
+          sealed_labels: labelled.sealed,
+          target_revision: labelled.targetRevision,
+          is_label_only: labelled.isLabelOnly ? 1 : 0,
+        })
+        .where('proposal_id', '=', labelled.proposalID)
+        .execute();
+
+      return [labelled.proposalID];
     }
 
     const parsed = parseProposalRecord(record);
@@ -142,6 +160,9 @@ async function writeProposalRow(
       resolved_sequence: null,
       is_sensitive: 0,
       new_subject: null,
+      sealed_labels: null,
+      target_revision: null,
+      is_label_only: 0,
       ...(await readProposalSubject(db, parsed)),
     })
     .execute();

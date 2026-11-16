@@ -1,5 +1,7 @@
 import { waitAtFaultPoint } from '@heynixie/tasks';
 import { match } from 'ts-pattern';
+import { readApprovalTarget } from '../approved/read-approval-target';
+import { writeApprovedLabels } from '../approved/write-approved-labels';
 import { writeApprovedNewItem } from '../approved/write-approved-new-item';
 import { writeApprovedPin } from '../approved/write-approved-pin';
 import { writeApprovedRemember } from '../approved/write-approved-remember';
@@ -30,12 +32,20 @@ export async function writeProposalApproval(
     throw new RevisionTargetError(row.proposal_id);
   }
 
-  const target = { itemID: row.item_id, version: row.target_version };
+  if (row.is_label_only === 1) {
+    const labelled = await writeApprovedLabels(parts, opened, answer);
+
+    return toAppliedResult(labelled);
+  }
 
   const ref = await match(row.operation)
     .with('retire', () => writeApprovedRetirement(parts, opened, answer))
     .with('pin', () => writeApprovedPin(parts, opened, answer))
-    .with('remember', () => writeApprovedRemember(parts, { opened, answer, target }))
+    .with('remember', async () => {
+      const target = await readApprovalTarget(parts, row);
+
+      return writeApprovedRemember(parts, { opened, answer, target });
+    })
     .exhaustive();
 
   return toAppliedResult(ref);

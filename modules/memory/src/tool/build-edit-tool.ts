@@ -1,8 +1,11 @@
 import { untilConventions } from '@heynixie/prompts';
 import type { ToolCall, ToolContext, ToolDefinition } from '@heynixie/tools';
+import invariant from 'tiny-invariant';
 import { z } from 'zod';
 import type { GatedRememberRequest, ModelWriteStore } from '../gate/gate-context';
-import type { ItemIDStore } from '../types';
+import { labelInputSchema } from '../label/label-input-schema';
+import { pickTopicSpelling } from '../label/pick-topic-spelling';
+import type { ItemIDStore, Labels } from '../types';
 import { readItemIDs } from '../utils/item/read-item-ids';
 import { makeInputRecorder } from '../utils/make-input-recorder';
 import { memoryWriteOutput } from '../utils/memory-write-output';
@@ -13,19 +16,23 @@ import { resolveWriteFacts } from '../write/resolve-write-facts';
 import { runWriteCall } from '../write/run-write-call';
 
 const editDescription =
-  'Rewrites an existing memory item as a new version, by its itemID and the version you read ' +
-  'with memory.recall. The new text replaces the whole item, and the old version stays in ' +
-  "the item's history. Pass quote: the exact words from one of the owner's own messages that " +
-  "state the new text, and that message's eventID: the number after # in its stamp, or a " +
-  "log.read entry's eventID. The edit applies at once only when those typed words back " +
-  "it; otherwise it waits for the owner's review as a proposal, and the result says why. " +
-  'The item keeps its subject unless you pass subject: owner for a fact about the owner, shared ' +
-  'for something between the owner and you, self for a note about yourself. Pass it to fix an ' +
-  'item filed under the wrong subject. A subject change changes whose fact the item is, so it ' +
-  "always waits for the owner's review as a proposal, whatever the quote. To split an item " +
-  'that holds two subjects, edit it down to one fact and store the other with memory.remember. ' +
-  'The item keeps its end time unless you pass until: a new end time, which the quote must ' +
-  `back, or null when the fact no longer ends, such as after "actually I'm staying on". ${untilConventions}`;
+  `Rewrites an existing memory item as a new version, by its itemID and the version you read ` +
+  `with memory.recall. The new text replaces the whole item, and the old version stays in ` +
+  `the item's history. Pass quote: the exact words from one of the owner's own messages that ` +
+  `state the new text, and that message's eventID: the number after # in its stamp, or a ` +
+  `log.read entry's eventID. The edit applies at once only when those typed words back ` +
+  `it; otherwise it waits for the owner's review as a proposal, and the result says why. ` +
+  `The item keeps its subject unless you pass subject: owner for a fact about the owner, shared ` +
+  `for something between the owner and you, self for a note about yourself. Pass it to fix an ` +
+  `item filed under the wrong subject. A subject change changes whose fact the item is, so it ` +
+  `always waits for the owner's review as a proposal, whatever the quote. To split an item ` +
+  `that holds two subjects, edit it down to one fact and store the other with memory.remember. ` +
+  `The item keeps its end time unless you pass until: a new end time, which the quote must ` +
+  `back, or null when the fact no longer ends, such as after "actually I'm staying on". ${untilConventions} ` +
+  `Pass gist, topic or triggers to change how the item is listed and what brings it up: a label ` +
+  `you leave out keeps its value, and triggers replaces the whole list, so [] clears it. Leave ` +
+  `text out for an edit of labels only: it takes none of quote, eventID, until and subject, and ` +
+  `it always waits for the owner's review as a proposal. ${labelInputSchema.description}`;
 
 const editInput = {
   type: 'object',
@@ -33,6 +40,9 @@ const editInput = {
     itemID: { type: 'string' },
     version: { type: 'integer', minimum: 1 },
     text: { type: 'string', minLength: 1, maxLength: 2000 },
+    gist: labelInputSchema.gist,
+    topic: labelInputSchema.topic,
+    triggers: labelInputSchema.triggers,
     quote: { type: 'string', minLength: 1, maxLength: 2000 },
     eventID: {
       type: 'string',
@@ -47,14 +57,17 @@ const editInput = {
       description: 'the subject to move the item to; leave it out to keep its subject',
     },
   },
-  required: ['itemID', 'version', 'text'],
+  required: ['itemID', 'version'],
   additionalProperties: false,
 };
 
 const editArguments = z.object({
   itemID: z.string(),
   version: z.int(),
-  text: z.string(),
+  text: z.string().optional(),
+  gist: z.string().optional(),
+  topic: z.string().optional(),
+  triggers: z.array(z.string()).optional(),
   quote: z.string().optional(),
   eventID: z.string().optional(),
   until: z.string().nullable().optional(),
@@ -71,7 +84,7 @@ export function buildEditTool(memory: ModelWriteStore & ItemIDStore): ToolDefini
       effects: ['memory_write'],
       destinations: [],
       amount: null,
-      content: ['text', 'quote'],
+      content: ['text', 'quote', 'gist', 'topic', 'triggers'],
       results: {
         status: 'owner_data',
         itemID: 'owner_data',
@@ -83,7 +96,7 @@ export function buildEditTool(memory: ModelWriteStore & ItemIDStore): ToolDefini
     },
     execution: 'direct',
 
-    recordInput: makeInputRecorder(['text', 'quote']),
+    recordInput: makeInputRecorder(['text', 'quote', 'gist', 'topic', 'triggers']),
     resolvePolicyFacts: (rawInput, context) =>
       resolveWriteFacts(async () => {
         const input = editArguments.parse(rawInput);
@@ -108,11 +121,34 @@ export function buildEditTool(memory: ModelWriteStore & ItemIDStore): ToolDefini
         return { status: 'error', message: parsed.message };
       }
 
+      const refusal = pickLabelRefusal(input);
+
+      if (refusal !== null) {
+        return { status: 'error', message: refusal };
+      }
+
       const [itemID = input.itemID] = await readItemIDs(memory, [input.itemID]);
 
       return runWriteCall(
         memory,
-        () => memory.writes.remember(buildEditRequest(input, itemID, parsed.until, context)),
+        async () => {
+          const labels = await mergeLabels(memory.writes, itemID, input);
+
+          if (input.text === undefined) {
+            invariant(labels, 'an edit with no text and no label is refused before it runs');
+
+            return memory.writes.editLabels({
+              target: { itemID, version: input.version },
+              labels,
+              caller: buildWriteCaller(context),
+            });
+          }
+
+          return memory.writes.remember({
+            ...buildEditRequest(input, itemID, parsed.until, context),
+            ...(labels === null ? {} : { labels }),
+          });
+        },
         itemID,
       );
     },
@@ -126,7 +162,7 @@ function buildEditRequest(
   context: ToolContext,
 ): GatedRememberRequest {
   return {
-    text: input.text,
+    text: input.text ?? '',
     target: { itemID, version: input.version },
     caller: buildWriteCaller(context),
     ...(context.verdict === undefined ? {} : { verdict: context.verdict }),
@@ -134,5 +170,52 @@ function buildEditRequest(
     ...(input.eventID === undefined ? {} : { eventID: Number(input.eventID.replace(/^#/u, '')) }),
     ...(until === undefined ? {} : { until }),
     ...(input.subject === undefined ? {} : { subject: input.subject }),
+  };
+}
+
+type EditInput = z.infer<typeof editArguments>;
+
+const labelOnlyRefusal =
+  'refused: an edit of labels only, with no text, takes none of quote, eventID, until and subject';
+
+function pickLabelRefusal(input: EditInput): string | null {
+  const hasLabel =
+    input.gist !== undefined || input.topic !== undefined || input.triggers !== undefined;
+
+  if (input.text === undefined && !hasLabel) {
+    return 'refused: pass text, gist, topic or triggers';
+  }
+
+  const isLabelOnly = input.text === undefined;
+
+  const hasTextOnlyField =
+    input.quote !== undefined ||
+    input.eventID !== undefined ||
+    input.until !== undefined ||
+    input.subject !== undefined;
+
+  return isLabelOnly && hasTextOnlyField ? labelOnlyRefusal : null;
+}
+
+// The whole label set of the call: a label it omits keeps the item's value. Null when the call
+// passes none.
+async function mergeLabels(
+  memory: Pick<ModelWriteStore['writes'], 'readItemLabels' | 'readTopics'>,
+  itemID: string,
+  input: EditInput,
+): Promise<Labels | null> {
+  if (input.gist === undefined && input.topic === undefined && input.triggers === undefined) {
+    return null;
+  }
+
+  const current = await memory.readItemLabels(itemID);
+
+  const topics = input.topic === undefined ? [] : await memory.readTopics(itemID);
+  const topic = input.topic === undefined ? current.topic : pickTopicSpelling(input.topic, topics);
+
+  return {
+    gist: input.gist ?? current.gist,
+    topic,
+    triggers: input.triggers ?? current.triggers,
   };
 }

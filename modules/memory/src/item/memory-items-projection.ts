@@ -2,6 +2,7 @@ import { buildShortIDFromUUID } from '@heynixie/db';
 import type { EnvelopeRecord, Projection } from '@heynixie/log';
 import type { Transaction } from 'kysely';
 import type { MemoryTables } from '../types';
+import { parseLabelRecord } from '../utils/record/parse-label-record';
 import type { MemoryRecord } from '../utils/record/parse-memory-record';
 import { parseMemoryRecord } from '../utils/record/parse-memory-record';
 import { parseSensitiveRecord } from '../utils/record/parse-sensitive-record';
@@ -35,6 +36,24 @@ export const memoryItemsProjection: Projection = {
         .execute();
 
       return [sensitive.itemID];
+    }
+
+    const labelled = parseLabelRecord(record);
+
+    if (labelled?.kind === 'memory.labelled') {
+      if (labelled.change === 'edited') {
+        await tx
+          .$extendTables<MemoryTables>()
+          .updateTable('memory_items')
+          .set((eb) => ({
+            label_edits: eb('label_edits', '+', 1),
+            updated_sequence: record.sequence,
+          }))
+          .where('item_id', '=', labelled.itemID)
+          .execute();
+      }
+
+      return [labelled.itemID];
     }
 
     const parsed = parseMemoryRecord(record);
@@ -72,6 +91,7 @@ async function applyMemoryRecord(
         subject: 'owner',
         until: parsed.until,
         is_sensitive: 0,
+        label_edits: 0,
       })
       .execute();
 

@@ -1,5 +1,5 @@
 import invariant from 'tiny-invariant';
-import type { RetiredForgetRequest, StoreParts } from '../types';
+import type { RetiredForgetRequest, StoreParts, VersionRef } from '../types';
 import { requireItem } from '../utils/item/require-item';
 import { runForgetItems } from './run-forget-items';
 
@@ -15,11 +15,15 @@ export async function runForgetRetired(
     provenance: request.provenance,
     writeInTransaction: request.writeInTransaction,
     readTargets: async (db) => {
+      const textTargets: VersionRef[] = [];
+
       for (const target of request.targets) {
-        await requireItem(db, { target, operation: 'forget', states: ['retired'] });
+        const item = await requireItem(db, { target, operation: 'forget', states: ['retired'] });
+
+        textTargets.push({ itemID: target.itemID, version: item.version });
       }
 
-      return request.targets;
+      return textTargets;
     },
   });
 }

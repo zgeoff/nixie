@@ -44,7 +44,7 @@ export async function readCloseMatch(
 
   return best === undefined
     ? null
-    : { itemID: best.itemID, version: best.version, text: best.text };
+    : { itemID: best.itemID, version: best.revision, text: best.text };
 }
 
 async function readExcludedIDs(

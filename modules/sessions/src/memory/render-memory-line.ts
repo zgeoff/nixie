@@ -15,17 +15,17 @@ const notedWords: Readonly<Record<MemoryOrigin, string | null>> = {
 };
 
 export function renderMemoryLine(
-  version: Pick<
-    MemoryItem,
-    'shortID' | 'version' | 'recordedAt' | 'origin' | 'source' | 'approval'
-  >,
+  version: Pick<MemoryItem, 'shortID' | 'recordedAt' | 'origin' | 'source' | 'approval'> & {
+    // the number the line shows: an item's revision, or a past version's text version
+    readonly shownVersion: number;
+  },
   options: MemoryLineOptions,
   next: NextVersion | null = null,
 ): string {
   const owner = options.ownerName ?? 'the owner';
 
   const parts = [
-    `${version.shortID} v${version.version}`,
+    `${version.shortID} v${version.shownVersion}`,
     formatMemoryDay(version.recordedAt, options),
     notedWords[version.origin],
     formatBacking(version.source, version.approval, owner),

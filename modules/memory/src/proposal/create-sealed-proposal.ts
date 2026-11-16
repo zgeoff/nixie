@@ -1,4 +1,5 @@
 import { createRecordKey } from '@heynixie/log';
+import { proposalLabelsCodec } from '../label/proposal-labels-codec';
 import type { ProposalPlan } from '../memory/write-memory-proposal';
 import type { StoreParts } from '../types';
 import { MemoryItemNotFoundError } from '../utils/error/memory-item-not-found-error';
@@ -68,7 +69,25 @@ async function sealProposal(
     ...(plan.newSubject === undefined ? {} : { newSubject: plan.newSubject }),
     ...(plan.isSensitive === true ? { isSensitive: true } : {}),
     ...(plan.until === undefined ? {} : { until: plan.until }),
+    ...(plan.labels === undefined
+      ? {}
+      : {
+          labels: plan.labels,
+          targetRevision: plan.targetRevision ?? null,
+          isLabelOnly: plan.isLabelOnly === true,
+        }),
   });
 
-  return { proposalID, itemID, sealed, actionHash };
+  const sealedLabels =
+    plan.labels === undefined
+      ? undefined
+      : await proposalLabelsCodec.encode(key, proposalID, plan.labels);
+
+  return {
+    proposalID,
+    itemID,
+    sealed,
+    actionHash,
+    ...(sealedLabels === undefined ? {} : { sealedLabels }),
+  };
 }

@@ -6,6 +6,7 @@ import { runRuleGate } from '../gate/run-rule-gate';
 import { runSelfNoteGate } from '../gate/run-self-note-gate';
 import { requireImageSource } from '../image/require-image-source';
 import { runImageGate } from '../image/run-image-gate';
+import { collectLabelTexts } from '../label/collect-label-texts';
 import type { MemorySubject, MemoryTables, StoreParts } from '../types';
 import { SelfNoteError } from '../utils/error/self-note-error';
 import { getRowSubject } from '../utils/get-row-subject';
@@ -18,6 +19,9 @@ export interface SubjectGateResult {
   readonly newSubject: MemorySubject | null;
 
   readonly until: number | null;
+
+  // the text version of the item the write edits, null for a write that creates one
+  readonly textVersion: number | null;
 }
 
 export async function runSubjectGate(
@@ -55,6 +59,7 @@ export async function runSubjectGate(
     subject,
     newSubject,
     until: request.until === undefined ? (item?.until ?? null) : request.until,
+    textVersion: item?.version ?? null,
   };
 }
 
@@ -83,6 +88,7 @@ function runGateOfSubject(
 
   const content = {
     text: request.text,
+    labelTexts: request.labels === undefined ? [] : collectLabelTexts(request.labels),
     quote: request.quote ?? null,
     eventID: request.eventID ?? null,
     isPinned: false,
@@ -98,7 +104,11 @@ function runGateOfSubject(
       request.image === undefined || pickCoveringRule(verdict, 'photo') !== null;
 
     return covering === null || !isPhotoCovered
-      ? runSelfNoteGate(parts.context, { text: request.text, thread: request.caller.thread })
+      ? runSelfNoteGate(parts.context, {
+          text: request.text,
+          labelTexts: content.labelTexts,
+          thread: request.caller.thread,
+        })
       : runRuleGate(parts.context, content, { id: covering.id, revision: covering.revision });
   }
 

@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import type { MemorySubject, ProposalOperationKind } from '../types';
+import type { Labels, MemorySubject, ProposalOperationKind } from '../types';
 
 export interface ProposalOperation {
   readonly operation: ProposalOperationKind;
@@ -23,6 +23,14 @@ export interface ProposalOperation {
   readonly isSensitive?: boolean;
 
   readonly until?: number | null;
+
+  // Stored hashes name the labels, the revision and the label-only flag only for a proposal that
+  // has a proposal label record, so a proposal with none hashes as it always did.
+  readonly labels?: Labels;
+
+  readonly targetRevision?: number | null;
+
+  readonly isLabelOnly?: boolean;
 }
 
 export function buildProposalHash(operation: ProposalOperation): string {
@@ -43,6 +51,17 @@ export function buildProposalHash(operation: ProposalOperation): string {
     ...(operation.until === undefined || operation.until === null
       ? {}
       : { until: operation.until }),
+    ...(operation.labels === undefined
+      ? {}
+      : {
+          labels: {
+            gist: operation.labels.gist.normalize('NFC'),
+            topic: operation.labels.topic.normalize('NFC'),
+            triggers: operation.labels.triggers.map((trigger) => trigger.normalize('NFC')),
+          },
+          targetRevision: operation.targetRevision ?? null,
+          isLabelOnly: operation.isLabelOnly === true,
+        }),
   });
 
   return `sha256:${createHash('sha256').update(canonical).digest('hex')}`;

@@ -27,6 +27,16 @@ export type ProposalOperationKind = 'remember' | 'retire' | 'pin';
 
 export type MemoryOrigin = 'owner' | 'conversation' | 'task' | 'lapse';
 
+export type LabelChange = 'written' | 'edited' | 'backfilled';
+
+export type LabelOrigin = MemoryOrigin | 'migration';
+
+export interface Labels {
+  readonly gist: string;
+  readonly topic: string;
+  readonly triggers: readonly string[];
+}
+
 export type ProposalOrigin = Exclude<MemoryOrigin, 'lapse'>;
 
 export interface QuoteEvidence {
@@ -70,6 +80,8 @@ export interface RememberRequest {
   readonly isSensitive?: boolean;
 
   readonly until?: number | null;
+
+  readonly labels?: Labels;
 }
 
 export type WriteInTransaction = (tx: Transaction<unknown>) => Promise<void>;
@@ -209,7 +221,20 @@ export interface RecalledItem extends RecalledVersion {
 
   readonly subject: MemorySubject;
 
+  // the text version plus the approved label edits, which the tools show as `version`
+  readonly revision: number;
+
+  readonly gist: string;
+  readonly topic: string;
+  readonly triggers: readonly string[];
+
   readonly history?: readonly RecalledVersion[];
+
+  readonly labelHistory?: readonly LabelRevision[];
+}
+
+export interface LabelRevision extends Labels {
+  readonly revision: number;
 }
 
 export type SearchMode = 'hybrid' | 'keyword' | 'keyword-fallback';
@@ -331,6 +356,22 @@ interface MemoryItemTable {
   readonly subject: MemorySubject | null;
   readonly until: number | null;
   readonly is_sensitive: number;
+  readonly label_edits: number;
+}
+
+interface MemoryLabelTable {
+  readonly item_id: string;
+  readonly revision: number;
+  readonly version: number;
+  readonly change: LabelChange;
+  readonly sealed: string;
+  readonly origin: LabelOrigin;
+  readonly source: ContentSource;
+  readonly task_id: string | null;
+  readonly proposal_id: string | null;
+  readonly model: string | null;
+  readonly sequence: number;
+  readonly recorded_at: number;
 }
 
 interface MemoryVersionTable {
@@ -372,6 +413,7 @@ export type MemoryTables = CheckedTables<
   Readonly<{
     memory_items: MemoryItemTable;
     memory_versions: MemoryVersionTable;
+    memory_labels: MemoryLabelTable;
     memory_proposals: MemoryProposalTable;
     memory_proposal_merges: MemoryProposalMergeTable;
     memory_notice_entries: MemoryNoticeEntryTable;

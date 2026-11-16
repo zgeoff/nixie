@@ -1,4 +1,5 @@
 import { buildGateReview } from '../gate/build-gate-review';
+import { buildGatedText } from '../gate/build-gated-text';
 import type { ContentGateRequest, ContentGateResult } from '../gate/gate-context';
 import type { CoveringRule } from '../gate/pick-covering-rule';
 import { readTokenVerdict } from '../gate/read-token-verdict';
@@ -14,7 +15,9 @@ export async function runImageGate(
   request: ContentGateRequest,
   rule: CoveringRule | null,
 ): Promise<ContentGateResult> {
-  if (invisible.test(request.text)) {
+  const gatedText = buildGatedText(request);
+
+  if (invisible.test(gatedText)) {
     return buildGateReview('invisible_character', { checks: { tokens: 'fail' } });
   }
 
@@ -22,7 +25,7 @@ export async function runImageGate(
     return runRuleGate(context, request, { id: rule.id, revision: rule.revision });
   }
 
-  const tokens = await readTokenVerdict(context, request);
+  const tokens = await readTokenVerdict(context, { text: gatedText, thread: request.thread });
 
   return buildGateReview('from_photo', { checks: { tokens } });
 }

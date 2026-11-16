@@ -14,6 +14,7 @@ export function buildProposalRecords(
 ): readonly RecordInput[] {
   const plan = pending.plan;
   const gate = parts.context.gate;
+  const { sealedLabels, ...sealed } = pending.sealed;
 
   const proposed: RecordInput = {
     kind: 'memory.proposed',
@@ -21,7 +22,7 @@ export function buildProposalRecords(
     thread: plan.caller.thread,
     contentSource: 'untrusted',
     payload: {
-      ...pending.sealed,
+      ...sealed,
       isNewItem: plan.target === null,
       operation: plan.operation,
       targetVersion: plan.target?.version ?? null,
@@ -39,9 +40,28 @@ export function buildProposalRecords(
     },
   };
 
+  const labelled: readonly RecordInput[] =
+    sealedLabels === undefined
+      ? []
+      : [
+          {
+            kind: 'memory.proposal_labelled',
+            definitions: parts.context.definitions(),
+            thread: plan.caller.thread,
+            contentSource: 'untrusted',
+            payload: {
+              proposalID: sealed.proposalID,
+              itemID: sealed.itemID,
+              sealed: sealedLabels,
+              targetRevision: plan.targetRevision ?? null,
+              isLabelOnly: plan.isLabelOnly === true,
+            },
+          },
+        ];
+
   if (plan.target !== null) {
     return plan.newSubject === undefined
-      ? [proposed]
+      ? [proposed, ...labelled]
       : [
           proposed,
           {
@@ -50,6 +70,7 @@ export function buildProposalRecords(
             thread: plan.caller.thread,
             payload: { proposalID: pending.sealed.proposalID, subject: plan.newSubject },
           },
+          ...labelled,
         ];
   }
 
@@ -62,6 +83,7 @@ export function buildProposalRecords(
 
   return [
     proposed,
+    ...labelled,
     ...markKinds.map((kind) => ({
       kind,
       definitions: parts.context.definitions(),

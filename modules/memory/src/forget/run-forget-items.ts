@@ -60,6 +60,7 @@ export async function runForgetItems(
     for (const itemID of begun.itemIDs) {
       await parts.index.remove(itemID);
 
+      parts.labels.remove(itemID);
       parts.vectors?.remove(itemID);
     }
 

@@ -26,8 +26,10 @@ export async function requireItem(
     throw new MemoryItemNotFoundError(target.itemID);
   }
 
-  if (item.version !== target.version) {
-    throw new StaleVersionError(target, item.version);
+  const revision = item.version + item.label_edits;
+
+  if (revision !== target.version) {
+    throw new StaleVersionError(target, revision);
   }
 
   if (!requirement.states.includes(item.state)) {

@@ -101,6 +101,7 @@ const reviewReasonSchema = z.enum([
   'from_photo',
   'sensitive',
   'subject_change',
+  'labels',
   'ask_rule',
 ]);
 
@@ -108,6 +109,13 @@ const proposalSourceSchema = z.object({
   origin: proposalOriginSchema,
   proposedAt: z.date(),
   thread: z.string().nullable(),
+});
+
+const proposalLabelsSchema = z.object({
+  gist: z.string(),
+  isLabelOnly: z.boolean(),
+  topic: z.string(),
+  triggers: z.array(z.string()),
 });
 
 export const memoryProposalSchema = z.object({
@@ -120,6 +128,7 @@ export const memoryProposalSchema = z.object({
   isSensitive: z.boolean(),
   itemID: z.string(),
   kind: kindSchema,
+  labels: proposalLabelsSchema.nullable(),
   lapseAt: z.date(),
   newSubject: subjectSchema.nullable(),
   operation: z.enum(['remember', 'retire', 'pin']),

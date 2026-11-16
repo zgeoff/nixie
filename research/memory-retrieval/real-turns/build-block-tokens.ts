@@ -69,6 +69,7 @@ export function buildBlockTokens(
     return {
       itemID,
       version,
+      revision: version,
       shortID: meta?.shortID ?? 'm0000000000',
       subject: meta?.subject ?? 'owner',
       text,
