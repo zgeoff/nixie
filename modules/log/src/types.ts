@@ -202,6 +202,10 @@ export interface Projection {
   readonly table: string;
   readonly keyColumn: string;
   readonly fold: (tx: Transaction<unknown>, record: EnvelopeRecord) => Promise<readonly string[]>;
+
+  // Runs after a rebuild commits, for state that a fold cannot read because it sits in an erasable
+  // field.
+  readonly afterRebuild?: (log: Log) => Promise<void>;
 }
 
 export interface Log {

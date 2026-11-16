@@ -10,7 +10,6 @@ import { startTestDefinitions } from '../test-utils/start-test-definitions';
 import { definitionSettledCodec } from './definition-settled-codec';
 import { requestDefinitionChange } from './request-definition-change';
 import { writeDefinitionResolution } from './write-definition-resolution';
-import { writeTaskVersionRestore } from './write-task-version-restore';
 
 async function setupTest() {
   const ctx = await startTestDefinitions();
@@ -230,7 +229,6 @@ test('it restores the version of a change from its record when the versions tabl
 
   await seedLostTaskVersions(ctx.writer);
   await runProjectionRebuild(ctx.log);
-  await writeTaskVersionRestore(ctx.log);
 
   const versions = await sql`select definition_id from task_definition_versions
     where definition_hash = ${String(row?.['definition_hash'])}`.execute(ctx.writer.db);

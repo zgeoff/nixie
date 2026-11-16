@@ -6,13 +6,15 @@ import { definitionConflictResolvedCodec } from './definition-conflict-resolved-
 import { definitionRepoMovedCodec } from './definition-repo-moved-codec';
 import { definitionSettledCodec } from './definition-settled-codec';
 import { writeRuntimeTaskState } from './write-runtime-task-state';
+import { writeTaskVersionRestore } from './write-task-version-restore';
 
 // One row per runtime change of a task definition. The body of a version sits in
 // task_definition_versions, which the writer of the change fills, because a fold reads no erasable
-// field. writeTaskVersionRestore fills it again from the records after a rebuild.
+// field. A rebuild fills it again through writeTaskVersionRestore.
 export const runtimeTaskDefinitionsProjection: Projection = {
   table: 'runtime_task_definitions',
   keyColumn: 'change_id',
+  afterRebuild: writeTaskVersionRestore,
   fold: (tx, record) => {
     const tables = tx.$extendTables<DefinitionsTables>();
 

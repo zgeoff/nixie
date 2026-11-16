@@ -5,11 +5,15 @@ import { applyProjections } from './apply-projections';
 import { buildEnvelopeRecord } from './build-envelope-record';
 import { withWriteTransaction } from './with-write-transaction';
 
-export function runProjectionRebuild(log: Pick<Log, 'projections' | 'writer'>): Promise<void> {
-  return withWriteTransaction(log.writer, async (tx) => {
+export async function runProjectionRebuild(log: Log): Promise<void> {
+  await withWriteTransaction(log.writer, async (tx) => {
     await resetProjections(tx, log.projections);
     await applyEveryRecord(tx, log.projections);
   });
+
+  for (const projection of log.projections) {
+    await projection.afterRebuild?.(log);
+  }
 }
 
 async function resetProjections(
