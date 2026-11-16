@@ -376,7 +376,13 @@ test("it moves a task that names a removed answer back to the task's earlier inb
     z.object({ last_inbox_sequence: z.number(), updated_sequence: z.number() }),
   );
 
-  expect(change.map((row) => JSON.parse(row.row))).toStrictEqual([
+  expect(
+    change.map((row) => {
+      const parsed: unknown = JSON.parse(row.row);
+
+      return parsed;
+    }),
+  ).toStrictEqual([
     {
       task_id: 'conversation',
       created_sequence: earlier,
