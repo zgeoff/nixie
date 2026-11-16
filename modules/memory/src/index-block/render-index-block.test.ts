@@ -166,6 +166,30 @@ test('it cuts an unbroken word that is wider than a line', () => {
   expect(row.join('').replaceAll(' ', '')).toContain('x'.repeat(250));
 });
 
+test('it cuts a wide word of characters outside the basic plane between whole characters', () => {
+  const rows = [
+    {
+      itemID: '00000000-0000-4000-8000-000000000001',
+      shortID: 'h1garden01',
+      subject: 'owner' as const,
+      topic: 'g'.repeat(39),
+      gist: '🌷'.repeat(40),
+      createdSequence: 1,
+    },
+  ];
+
+  const lines = renderIndexBlock(collectTopicRows(rows), {
+    budget: 3000,
+    openTopicItems: 25,
+    ownerName: 'Robin',
+  }).split('\n');
+
+  const row = lines.slice(2);
+
+  expect(row.length).toBeGreaterThan(1);
+  expect(row).toSatisfyAll((line: string) => line.isWellFormed() && line.length <= 100);
+});
+
 test('it stays within a budget by folding the topic with the most items first', () => {
   const rows = [...buildIndexRows('home', 20, 1), ...buildIndexRows('trips', 10, 100)];
 

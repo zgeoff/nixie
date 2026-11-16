@@ -143,12 +143,12 @@ function wrapWords(content: string, first: string): readonly string[] {
 
     // A word wider than the room left is cut, so no line passes the width.
     while (current.length + rest.length > lineWidth && lineWidth > current.length) {
-      const room = lineWidth - current.length;
+      const cut = pickCut(rest, lineWidth - current.length);
 
-      lines.push(`${current}${rest.slice(0, room)}`);
+      lines.push(`${current}${rest.slice(0, cut)}`);
 
       current = hanging;
-      rest = rest.slice(room);
+      rest = rest.slice(cut);
     }
 
     current = `${current}${rest}`;
@@ -158,6 +158,22 @@ function wrapWords(content: string, first: string): readonly string[] {
   lines.push(current);
 
   return lines;
+}
+
+// A cut inside a surrogate pair leaves both halves malformed, so the cut lands between code points
+// and always keeps the first one.
+function pickCut(text: string, room: number): number {
+  let cut = 0;
+
+  for (const character of text) {
+    if (cut > 0 && cut + character.length > room) {
+      break;
+    }
+
+    cut += character.length;
+  }
+
+  return cut;
 }
 
 function pickShrink(
