@@ -51,5 +51,8 @@ test('it rejects a pending request when the output ends and the process keeps ru
 
   server.close(0);
 
-  await expect(pending).rejects.toThrow('closed its output');
+  expect(pending).rejects.toThrowWithMessage(
+    Error,
+    'codex app-server closed its output and kept running',
+  );
 });
