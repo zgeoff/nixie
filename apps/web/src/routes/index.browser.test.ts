@@ -8,6 +8,7 @@ import { setupSignedInBrowser } from '../test-utils/setup-signed-in-browser';
 import { startBuiltWeb } from '../test-utils/start-built-web';
 import { startFrontProxy } from '../test-utils/start-front-proxy';
 import { startStubAPI } from '../test-utils/start-stub-api';
+import { waitForPage } from '../test-utils/wait-for-page';
 
 async function setupTest() {
   const api = startStubAPI();
@@ -255,28 +256,19 @@ test('it opens the conversation at a message that a hop-limit notice links, behi
 
   await ctx.view.navigate(`${ctx.appURL}/tasks/k3vq8m2xpa`);
 
-  await waitFor(
-    async () => {
-      const hasLink: unknown = await ctx.view.evaluate(
-        'document.querySelector(\'a[href="/#task-message-m7q2x9k4pa"]\') !== null',
-      );
-
-      expect(hasLink).toBeTrue();
-    },
-    { timeout: 10_000 },
+  // The task summary's arrival moves the link down, and a click lands where the link was
+  await waitForPage(
+    ctx.view,
+    `document.body.innerText.includes('Show the whole prompt') && document.body.innerText.includes('Last activity') && document.querySelector('a[href="/#task-message-m7q2x9k4pa"]') !== null`,
+    8000,
   );
 
   await ctx.view.click('a[href="/#task-message-m7q2x9k4pa"]');
 
-  await waitFor(
-    async () => {
-      const isInView: unknown = await ctx.view.evaluate(
-        "(() => { const box = document.getElementById('task-message-m7q2x9k4pa')?.getBoundingClientRect(); return box !== undefined && box.top >= 0 && box.bottom <= innerHeight; })()",
-      );
-
-      expect(isInView).toBeTrue();
-    },
-    { timeout: 10_000 },
+  await waitForPage(
+    ctx.view,
+    "(() => { const box = document.getElementById('task-message-m7q2x9k4pa')?.getBoundingClientRect(); return box !== undefined && box.top >= 0 && box.bottom <= innerHeight; })()",
+    8000,
   );
 });
 

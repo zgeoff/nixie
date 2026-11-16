@@ -1,13 +1,12 @@
 import { expect, onTestFinished, test } from 'bun:test';
-import { waitFor } from '@testing-library/react';
 import { store } from '../mocks/store';
 import { setupSignedInBrowser } from '../test-utils/setup-signed-in-browser';
 import { startBuiltWeb } from '../test-utils/start-built-web';
 import { startFrontProxy } from '../test-utils/start-front-proxy';
 import { startStubAPI } from '../test-utils/start-stub-api';
+import { waitForPage } from '../test-utils/wait-for-page';
 
 async function setupTest() {
-  const hydrated = "Object.keys(document).some((key) => key.startsWith('_reactListening'))";
   const api = startStubAPI();
 
   const web = await startBuiltWeb(api.url);
@@ -27,25 +26,15 @@ async function setupTest() {
 
   await setupSignedInBrowser(view, { appURL: app.url, token: session.token });
 
-  const waitForPage = (expression: string) =>
-    waitFor(
-      async () => {
-        const holds: unknown = await view.evaluate(expression);
-
-        expect(holds).toBeTrue();
-      },
-      { timeout: 8000 },
-    );
+  const waitInView = (expression: string) => waitForPage(view, expression, 8000);
 
   return {
     view,
-    waitForPage,
+    waitForPage: waitInView,
     openPage: async () => {
       await view.navigate(`${app.url}/mandates`);
 
-      await waitForPage(
-        `${hydrated} && document.querySelector('form[aria-label="Propose a mandate"]') !== null`,
-      );
+      await waitInView(`document.querySelector('form[aria-label="Propose a mandate"]') !== null`);
     },
   };
 }
@@ -71,6 +60,9 @@ test('it proposes a mandate that then waits on the approvals page', async () => 
   const ctx = await setupTest();
 
   await ctx.openPage();
+
+  // The list's arrival moves the form down, and a click lands where the field was
+  await ctx.waitForPage(`document.body.innerText.includes('No mandate is in force.')`);
   await ctx.view.click('input[maxlength="120"]');
   await ctx.view.type('Handle my test sends');
   await ctx.view.click('div[aria-label="Rule 1"] textarea');

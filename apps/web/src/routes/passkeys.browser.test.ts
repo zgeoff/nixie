@@ -1,5 +1,4 @@
 import { expect, onTestFinished, test } from 'bun:test';
-import { waitFor } from '@testing-library/react';
 import { z } from 'zod';
 import { mockPasskeyCode } from '../mocks/passkey-rows';
 import { store } from '../mocks/store';
@@ -7,6 +6,7 @@ import { setupSignedInBrowser } from '../test-utils/setup-signed-in-browser';
 import { startBuiltWeb } from '../test-utils/start-built-web';
 import { startFrontProxy } from '../test-utils/start-front-proxy';
 import { startStubAPI } from '../test-utils/start-stub-api';
+import { waitForPage } from '../test-utils/wait-for-page';
 
 async function setupTest() {
   const authenticatorSchema = z.object({ authenticatorId: z.string() });
@@ -68,15 +68,7 @@ async function setupTest() {
 
       return credentialsSchema.parse(raw).credentials.length;
     },
-    waitForPage: (expression: string) =>
-      waitFor(
-        async () => {
-          const holds: unknown = await view.evaluate(expression);
-
-          expect(holds).toBeTrue();
-        },
-        { timeout: 8000 },
-      ),
+    waitForPage: (expression: string) => waitForPage(view, expression, 8000),
   };
 }
 
@@ -85,9 +77,9 @@ test('it registers a passkey with a host code, lists it, and the authenticator h
 
   await ctx.view.navigate(`${ctx.appURL}/passkeys`);
 
-  // React marks the document as it hydrates it, and a submit before that posts the bare form
+  // The list's arrival moves the form down, and a click lands where the button was
   await ctx.waitForPage(
-    "Object.keys(document).some((key) => key.startsWith('_reactListening')) && document.querySelector('form[aria-label=\"Add a passkey\"]') !== null",
+    "document.body.innerText.includes('No passkey is set up yet.') && document.querySelector('form[aria-label=\"Add a passkey\"]') !== null",
   );
 
   await ctx.view.click('form[aria-label="Add a passkey"] label:nth-of-type(1) input');
@@ -108,8 +100,9 @@ test('it says that a host code is wrong and adds no passkey', async () => {
 
   await ctx.view.navigate(`${ctx.appURL}/passkeys`);
 
+  // The list's arrival moves the form down, and a click lands where the button was
   await ctx.waitForPage(
-    "Object.keys(document).some((key) => key.startsWith('_reactListening')) && document.querySelector('form[aria-label=\"Add a passkey\"]') !== null",
+    "document.body.innerText.includes('No passkey is set up yet.') && document.querySelector('form[aria-label=\"Add a passkey\"]') !== null",
   );
 
   await ctx.view.click('form[aria-label="Add a passkey"] label:nth-of-type(2) input');
