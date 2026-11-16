@@ -378,7 +378,7 @@ test('it acknowledges a silent record that the guest never reports read, and a r
       images: { bytes: 0, count: 0 },
       isSilent: false,
       harness: ctx.agentSDK,
-      memory: { pinnedCore: [], retrieved: [], retrievedMessages: [], invalidatedThrough: 0 },
+      memory: { pinnedCore: [], retrieved: [], invalidatedThrough: 0 },
     },
     [],
   );
@@ -409,7 +409,7 @@ test('it acknowledges no silent record for a turn that failed', () => {
         images: { bytes: 0, count: 0 },
         isSilent: false,
         harness: ctx.agentSDK,
-        memory: { pinnedCore: [], retrieved: [], retrievedMessages: [], invalidatedThrough: 0 },
+        memory: { pinnedCore: [], retrieved: [], invalidatedThrough: 0 },
       },
       [],
     ),
