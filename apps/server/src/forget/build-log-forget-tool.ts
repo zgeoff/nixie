@@ -1,6 +1,7 @@
 import type { ActionsTables } from '@heynixie/actions';
 import type { APIContext } from '@heynixie/api';
 import {
+  forgetToolName,
   readForgetBackupState,
   readRecordForget,
   readRecordForgetCheck,
@@ -18,8 +19,6 @@ export interface LogForget {
   readonly tool: ToolDefinition;
   readonly connector: ActionConnector;
 }
-
-export const logForgetToolName = 'log.forget';
 
 const logForgetInput = {
   type: 'object',
@@ -55,7 +54,7 @@ const trustNegativeAfterMs = 1000;
 export function buildLogForgetTool(context: APIContext): LogForget {
   return {
     tool: {
-      name: logForgetToolName,
+      name: forgetToolName,
       description:
         "Removes one record of this conversation from nixie's log for good, so its text can never " +
         'be read again. Pass record: the eventID that the # stamp on a message, a log.read ' +
@@ -92,12 +91,12 @@ export function buildLogForgetTool(context: APIContext): LogForget {
         };
       },
       run: () =>
-        Promise.resolve({ status: 'error', message: `${logForgetToolName} runs only queued` }),
+        Promise.resolve({ status: 'error', message: `${forgetToolName} runs only queued` }),
     },
     connector: {
       reconcile: {
         kind: 'check',
-        tool: logForgetToolName,
+        tool: forgetToolName,
         onNotFound: 'retry',
         trustNegativeAfterMs,
       },

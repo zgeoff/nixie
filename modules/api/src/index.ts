@@ -12,6 +12,7 @@ export { readKeptSessions } from './kept/read-kept-sessions';
 export { readSessions } from './utils/read-sessions';
 export { readAllPasskeys } from './passkey/read-all-passkeys';
 export { removeRevokedPasskeys } from './passkey/remove-revoked-passkeys';
+export { forgetToolName } from './proposal/read-forget-body-fields';
 export { readRecordForget } from './utils/read-record-forget';
 export { readRecordForgetCheck } from './record/read-record-forget-check';
 export { readRecordForgetProgress } from './record/read-record-forget-progress';
