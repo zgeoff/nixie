@@ -497,6 +497,46 @@ test("it forgets a tool result inside a moment's span, and refuses the moment's 
   ]);
 });
 
+test('it refuses the forget of a runtime change of a task definition and leaves its version readable', async () => {
+  const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+
+  const [changed] = await writeRecords(ctx.context.log, [
+    {
+      kind: 'definition.changed',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: {
+        changeID: crypto.randomUUID(),
+        shortID: 'c7k2x9m4ab',
+        definitionID: 'water-the-tomatoes',
+        operation: 'add',
+        hash: 'h-1',
+        previous: null,
+        caller: 'conversation',
+        undoes: null,
+        replaces: null,
+        base: null,
+        definitions: null,
+      },
+      erasable: { version: { definitionID: 'water-the-tomatoes', hash: 'h-1' } },
+    },
+  ]);
+
+  invariant(changed);
+
+  const refused = await writeRecordForget(ctx.context, laptop.caller, {
+    clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a88',
+    thread: 'conversation',
+    sequence: changed.sequence,
+  });
+
+  const [record] = await ctx.readRecordsAfter(changed.sequence);
+
+  expect(refused).toStrictEqual({ status: 'not_found' });
+  expect(record?.erasable.status).toBe('readable');
+});
+
 test('it refuses the forget of a queued action that has not run, and accepts the same forget once it ran', async () => {
   const ctx = await setupTest();
   const laptop = await createDeviceSession(ctx.context, 'laptop');

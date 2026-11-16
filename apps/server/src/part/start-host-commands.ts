@@ -1,6 +1,7 @@
 import { join } from 'node:path';
 import type { APIContext } from '@heynixie/api';
 import { makeHostResponder } from '@heynixie/api';
+import type { DefinitionsContext } from '@heynixie/definitions';
 import type { StartedMemoryStore } from '@heynixie/memory';
 import type { PromptsInForce } from '@heynixie/prompts';
 import type { TurnInputs } from '@heynixie/turn-inputs';
@@ -17,6 +18,7 @@ export interface HostCommandsOptions {
   readonly readMemory: () => StartedMemoryStore | null;
 
   readonly runInForceSeed: () => Promise<void>;
+  readonly readDefinitions: () => DefinitionsContext | null;
   readonly readInForce: () => PromptsInForce | null;
   readonly wakeExports: () => void;
   readonly runReset: () => Promise<ServerReset>;
@@ -35,6 +37,7 @@ export async function startHostCommands(
     context: options.apiContext,
     readMemory: options.readMemory,
     runInForceSeed: options.runInForceSeed,
+    readDefinitions: options.readDefinitions,
     readInForce: options.readInForce,
     wakeExports: options.wakeExports,
     runReset: options.runReset,

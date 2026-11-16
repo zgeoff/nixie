@@ -35,7 +35,7 @@ export interface OverlaidTaskDefinition {
   readonly isUnreadable: boolean;
 }
 
-export interface RepoMovedChange {
+interface RepoMovedChange {
   readonly change: RuntimeTaskChange;
   readonly definitions: string | null;
 }

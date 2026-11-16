@@ -1,5 +1,6 @@
 import { defaultAPISettings } from '@heynixie/api';
 import { buildRunSettings } from '@heynixie/sessions';
+import { buildDefinitionsContext } from '../definition/build-definitions-context';
 import { buildSeedInputs } from '../seed/build-seed-inputs';
 import { runInForceSeedAndWake } from '../seed/run-in-force-seed-and-wake';
 import { buildServerReset } from '../server/build-server-reset';
@@ -179,6 +180,13 @@ export const frontPartDeclarations: readonly AnyPartDeclaration<ServerPartValues
           readMemory: () => parts.find('memory'),
           runInForceSeed: () =>
             runInForceSeedAndWake(parts.find('server_parts'), parts.find('definitions_exports')),
+          readDefinitions: () => {
+            const serverParts = parts.find('server_parts');
+
+            return serverParts === null
+              ? null
+              : buildDefinitionsContext(serverParts, parts.find('definitions_exports'));
+          },
           readInForce: parts.get('context').inForce.read,
           wakeExports: () => parts.find('definitions_exports')?.wake(),
           runReset: parts.get('reset').run,

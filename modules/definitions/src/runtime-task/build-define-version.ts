@@ -37,18 +37,6 @@ export type DefineVersion =
     }
   | { readonly status: 'invalid'; readonly reasons: readonly string[] };
 
-// The slug of a name: lowercase, each run of characters outside a-z and 0-9 one hyphen, hyphens
-// trimmed from both ends, cut to 64 characters. An empty slug is null.
-export function buildDefinitionSlug(name: string): string | null {
-  const slug = name
-    .toLowerCase()
-    .replaceAll(/[^a-z0-9]+/gu, '-')
-    .replaceAll(/^-+|-+$/gu, '')
-    .slice(0, 64);
-
-  return slug === '' ? null : slug;
-}
-
 // Builds the whole version from the input, the way the seed builds one from a task.yaml: the same
 // schema, defaults and hash, checked for the starter `conversation`. The input is the whole
 // version, so an optional key it omits takes its default.
@@ -89,6 +77,18 @@ export function buildDefineVersion(
     definition: toStoredDefinition(outcome.definition),
     oneShotAt: toOneShotAt(input.trigger),
   };
+}
+
+// The slug of a name: lowercase, each run of characters outside a-z and 0-9 one hyphen, hyphens
+// trimmed from both ends, cut to 64 characters. An empty slug is null.
+function buildDefinitionSlug(name: string): string | null {
+  const slug = name
+    .toLowerCase()
+    .replaceAll(/[^a-z0-9]+/gu, '-')
+    .replaceAll(/^-+|-+$/gu, '')
+    .slice(0, 64);
+
+  return slug === '' ? null : slug;
 }
 
 // The place for the checks that need more than the schema: the zone read of an `at` without an

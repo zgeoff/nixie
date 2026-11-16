@@ -4,8 +4,6 @@ import type { InForceSeedOptions } from '../seed/run-in-force-seed';
 import type { CheckTaskStart } from '../task/types';
 import type { DefinitionOperation } from '../types';
 
-export type { DefinitionOperation } from '../types';
-
 export type DefinitionRefusal =
   | { readonly code: 'ID_TAKEN' }
   | { readonly code: 'NOT_FOUND' }

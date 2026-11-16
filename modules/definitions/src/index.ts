@@ -199,7 +199,7 @@ export type {
 } from './runtime-task/write-definition-resolution';
 
 export { writeDefinitionResolution } from './runtime-task/write-definition-resolution';
-export { writeOneShotSettle } from './runtime-task/write-one-shot-settle';
+export { makeRetireOneShot } from './runtime-task/make-retire-one-shot';
 export { readTaskDefinitionsOverlay } from './runtime-task/read-task-definitions-overlay';
 export type { OverlaidTaskDefinition } from './utils/build-task-seed-plan';
 export type { InForceSeedOptions } from './seed/run-in-force-seed';

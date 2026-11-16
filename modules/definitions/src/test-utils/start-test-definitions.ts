@@ -4,12 +4,20 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { Log, Writer } from '@heynixie/log';
 import { startTestLog } from '@heynixie/log/test-utils';
-import { tasksProjections } from '@heynixie/tasks';
+import type { TasksContext } from '@heynixie/tasks';
+import { readDefinitionTaskInTransaction, tasksProjections } from '@heynixie/tasks';
+import {
+  buildTestDefinitionStore,
+  buildTestRunSettings,
+  buildTestTaskRunners,
+} from '@heynixie/tasks/test-utils';
 import type { TestClock } from '@heynixie/testing';
+import type { TriggerCoreContext } from '@heynixie/triggers';
 import { triggersProjections } from '@heynixie/triggers';
 import { createPathSource } from '../definition/create-path-source';
 import type { SeedResult } from '../rule/run-seed';
 import { runSeed } from '../rule/run-seed';
+import { makeRetireOneShot } from '../runtime-task/make-retire-one-shot';
 import { runtimeTaskDefinitionsProjection } from '../runtime-task/runtime-task-definitions-projection';
 import { taskDefinitionExportsProjection } from '../runtime-task/task-definition-exports-projection';
 import type { DefinitionsContext } from '../runtime-task/types';
@@ -24,6 +32,12 @@ export interface TestDefinitions {
   readonly log: Log;
   readonly clock: TestClock;
   readonly context: DefinitionsContext;
+
+  // the tasks module's context on the same log
+  readonly tasks: TasksContext;
+
+  // the core of the trigger sources, with the retireOneShot that the server passes
+  readonly core: TriggerCoreContext;
 
   // the results of the seeds that a change or a resolve ran in its own transaction
   readonly seeded: SeedResult[];
@@ -66,6 +80,18 @@ export async function startTestDefinitions(): Promise<TestDefinitions> {
   const seeded: SeedResult[] = [];
   const wakes = { count: 0 };
   const seed = () => runSeed({ tasks, log, source, buildPolicy });
+  const definitionStore = buildTestDefinitionStore();
+
+  const tasksContext: TasksContext = {
+    log,
+    clock: base.clock,
+    definitions: () => ({ snapshotHash: 'sha256:test' }),
+    runSettings: buildTestRunSettings(),
+    runners: buildTestTaskRunners(),
+    readDefinitionVersion: definitionStore.readDefinitionVersion,
+    readDefinitionRunPolicy: definitionStore.readDefinitionRunPolicy,
+    readDefinitionNextFire: definitionStore.readDefinitionNextFire,
+  };
 
   return {
     root,
@@ -75,6 +101,15 @@ export async function startTestDefinitions(): Promise<TestDefinitions> {
     clock: base.clock,
     seeded,
     seed,
+    tasks: tasksContext,
+    core: {
+      log,
+      clock: base.clock,
+      definitions: tasksContext.definitions,
+      logEvent: () => null,
+      readDefinitionTask: readDefinitionTaskInTransaction,
+      retireOneShot: makeRetireOneShot(tasksContext),
+    },
     readExportWakes: () => wakes.count,
     writeRepoTask: async (id, yaml) => {
       await mkdir(join(root, 'tasks', id), { recursive: true });

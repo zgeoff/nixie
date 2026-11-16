@@ -116,6 +116,7 @@ export interface CLIFlags {
 
   readonly taskID?: string;
   readonly ruleID?: string;
+  readonly definitionID?: string;
   readonly mandateID?: string;
   readonly proposalID?: string;
 }

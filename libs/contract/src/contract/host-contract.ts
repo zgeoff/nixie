@@ -283,6 +283,11 @@ const ruleProposalErrors = {
 
 const rules = oc.errors(ruleProposalErrors);
 
+const definitions = oc.errors({
+  NOT_FOUND: { message: 'the definition has no conflict with the repo', status: 404 },
+  DEFINITIONS_NOT_STARTED: { message: 'nixie has not started its definitions yet', status: 503 },
+});
+
 const contacts = oc.errors({
   NOT_FOUND: { message: 'no known contact has that ID', status: 404 },
 });
@@ -478,6 +483,17 @@ export const hostContract = {
       approve: rules.input(ruleProposalAnswerSchema).output(z.object({ proposalID: z.string() })),
       reject: rules.input(ruleProposalRejectionSchema).output(z.object({ proposalID: z.string() })),
     },
+  },
+  definitions: {
+    resolve: definitions
+      .input(z.strictObject({ definitionID: z.string().min(1), keep: z.enum(['nixie', 'repo']) }))
+      .output(
+        z.object({
+          definitionID: z.string(),
+          changeID: z.string(),
+          keep: z.enum(['nixie', 'repo']),
+        }),
+      ),
   },
   actions: {
     proposals: {
