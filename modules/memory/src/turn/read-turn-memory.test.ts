@@ -2,6 +2,8 @@ import { expect, mock, test } from 'bun:test';
 import { readRecords } from '@heynixie/log';
 import type { MemoryRef, TurnMemoryAsk } from '@heynixie/sessions';
 import { buildMockProvenance } from '../test-utils/build-mock-provenance';
+import { buildStubEncoder } from '../test-utils/build-stub-encoder';
+import { startNextTestMemory } from '../test-utils/start-next-test-memory';
 import { startTestMemory } from '../test-utils/start-test-memory';
 import type { TurnMemorySettings } from './types';
 
@@ -262,4 +264,40 @@ test('it records the keyword search mode with no encoder', async () => {
   const records = await ctx.readRecalls();
 
   expect(records.map((entry) => entry.record.payload['searchMode'])).toStrictEqual(['keyword']);
+});
+
+test('it records keyword-fallback when the trigger vectors are unavailable, whatever the other pushes find', async () => {
+  const ctx = await setupTest();
+
+  const stub = buildStubEncoder([['sister', 'sibling']]);
+
+  await ctx.remember('Ana is my sister', ['tractor hire']);
+
+  // The trigger vectors rebuild from the phrases, so a failing phrase leaves them unready.
+  const next = await startNextTestMemory(ctx.memory, {
+    turn: {
+      trigger: { items: 3, minScore: 0, minSimilarity: 1 },
+      similarity: { items: 1, selfNotes: 0, messages: 0, minScore: 0, minSimilarity: 0.38 },
+    },
+    semanticSearch: {
+      encoder: {
+        encode: (texts, kind) =>
+          texts.includes('tractor hire')
+            ? Promise.reject(new Error('the encoder fails on this phrase'))
+            : stub.encode(texts, kind),
+      },
+      onError: mock<(error: unknown) => void>(),
+    },
+  });
+
+  await next.store.waitForSemanticIndex();
+
+  const result = await next.store.readTurnMemory(ctx.buildAsk('call my sibling'));
+  const records = await readRecords(next.log, { afterSequence: 0, kinds: ['memory.recalled'] });
+
+  expect(result).toMatchObject({ kind: 'placed', items: [{}] });
+
+  expect(records.map((entry) => entry.record.payload['searchMode'])).toStrictEqual([
+    'keyword-fallback',
+  ]);
 });
