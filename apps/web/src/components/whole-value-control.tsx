@@ -8,12 +8,12 @@ export interface WholeValueControlProps {
 
 const quiet = css({ color: 'textMuted', fontSize: 'sm' });
 
-// Shown beside a value that the server cut. Once the whole value loads, the control is gone and the
+// Shown beside a value that the server cut. Once the whole value of every cut record loads, the control is gone and the
 // value shows in place of the cut one.
 export function WholeValueControl(props: WholeValueControlProps): ReactNode {
   const whole = props.whole;
 
-  if (whole.payloads.size > 0) {
+  if (whole.isLoaded) {
     return null;
   }
 

@@ -10,10 +10,13 @@ export type ReadablePayload = Extract<Payload, { status: 'readable' }>;
 
 export interface WholePayloads {
   readonly failure: string | null;
+
+  // true when every current target has its whole payload
+  readonly isLoaded: boolean;
   readonly isLoading: boolean;
 
-  // the whole payload of each record the control loaded, by the record's sequence; held in memory
-  // only
+  // the whole payload of each current target the control loaded, by the record's sequence; held in
+  // memory only. A record that leaves `targets`, as a forgotten one does, drops out.
   readonly payloads: ReadonlyMap<number, ReadablePayload>;
 
   readonly onLoad: () => void;
@@ -37,13 +40,22 @@ export function useWholePayloads(targets: readonly RecordRef[]): WholePayloads {
     },
   });
 
+  const current = new Map(
+    targets.flatMap((target) => {
+      const payload = payloads.get(target.sequence);
+
+      return payload === undefined ? [] : [[target.sequence, payload] as const];
+    }),
+  );
+
   return {
     failure,
+    isLoaded: targets.every((target) => current.has(target.sequence)),
     isLoading: load.isPending,
     onLoad: () => {
       load.mutate();
     },
-    payloads,
+    payloads: current,
   };
 }
 

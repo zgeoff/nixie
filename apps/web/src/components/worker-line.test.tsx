@@ -246,3 +246,174 @@ test('it shows the failure and keeps the cut text when the whole text cannot loa
   expect(rendered.getByText('cut text')).toBeVisible();
   expect(rendered.getByRole('button', { name: 'Try again' })).toBeEnabled();
 });
+
+test('it drops the whole text of a turn that is forgotten after it loaded', async () => {
+  const user = userEvent.setup();
+
+  await createDeviceSession();
+
+  const turn = await store.records.create({
+    kind: 'worker.turn_ended',
+    thread: 'k3vq8m2xpa',
+    worker: {
+      phase: 'turn',
+      workerRunID: 'w1',
+      callID: 'call-1',
+      turn: 1,
+      tokens: 10,
+      dollars: 0,
+      text: `${'a'.repeat(4096)}THE END`,
+    },
+  });
+
+  const record = { sequence: turn.sequence, thread: 'k3vq8m2xpa' };
+
+  const call = {
+    callID: 'call-1',
+    input: { question: 'Q' },
+    outcome: 'result',
+    tool: 'worker.run',
+  };
+
+  const rendered = render(
+    <WorkerLine
+      worker={{
+        call,
+        calls: [],
+        shortID: 'w7k2m9qa4x',
+        turns: [
+          {
+            dollars: 0,
+            isCut: true,
+            isForgotten: false,
+            record,
+            text: 'a'.repeat(4096),
+            tokens: 10,
+            turn: 1,
+          },
+        ],
+        workerRunID: 'w1',
+      }}
+    />,
+  );
+
+  await user.click(rendered.getByText(/^worker w7k2m9qa4x/u));
+  await user.click(rendered.getByRole('button', { name: 'Load the whole value' }));
+
+  await waitFor(() => {
+    expect(rendered.getByRole('region', { name: 'Worker w7k2m9qa4x' })).toHaveTextContent(
+      'THE END',
+    );
+  });
+
+  rendered.rerender(
+    <WorkerLine
+      worker={{
+        call,
+        calls: [],
+        shortID: 'w7k2m9qa4x',
+        turns: [{ dollars: 0, isCut: false, isForgotten: true, record, tokens: 10, turn: 1 }],
+        workerRunID: 'w1',
+      }}
+    />,
+  );
+
+  const region = rendered.getByRole('region', { name: 'Worker w7k2m9qa4x' });
+
+  expect(region).not.toHaveTextContent('THE END');
+  expect(region).toHaveTextContent('Forgotten.');
+});
+
+test('it offers the control again for a cut turn that arrives after an earlier load', async () => {
+  const user = userEvent.setup();
+
+  await createDeviceSession();
+
+  const first = await store.records.create({
+    kind: 'worker.turn_ended',
+    thread: 'k3vq8m2xpa',
+    worker: {
+      phase: 'turn',
+      workerRunID: 'w1',
+      callID: 'call-1',
+      turn: 1,
+      tokens: 10,
+      dollars: 0,
+      text: `${'a'.repeat(4096)}FIRST END`,
+    },
+  });
+
+  const second = await store.records.create({
+    kind: 'worker.turn_ended',
+    thread: 'k3vq8m2xpa',
+    worker: {
+      phase: 'turn',
+      workerRunID: 'w1',
+      callID: 'call-1',
+      turn: 2,
+      tokens: 10,
+      dollars: 0,
+      text: `${'b'.repeat(4096)}SECOND END`,
+    },
+  });
+
+  const call = {
+    callID: 'call-1',
+    input: { question: 'Q' },
+    outcome: 'result',
+    tool: 'worker.run',
+  };
+
+  const turnOne = {
+    dollars: 0,
+    isCut: true,
+    isForgotten: false,
+    record: { sequence: first.sequence, thread: 'k3vq8m2xpa' },
+    text: 'a'.repeat(4096),
+    tokens: 10,
+    turn: 1,
+  };
+
+  const rendered = render(
+    <WorkerLine
+      worker={{ call, calls: [], shortID: 'w7k2m9qa4x', turns: [turnOne], workerRunID: 'w1' }}
+    />,
+  );
+
+  await user.click(rendered.getByText(/^worker w7k2m9qa4x/u));
+  await user.click(rendered.getByRole('button', { name: 'Load the whole value' }));
+
+  await waitFor(() => {
+    expect(rendered.getByRole('region', { name: 'Worker w7k2m9qa4x' })).toHaveTextContent(
+      'FIRST END',
+    );
+  });
+
+  rendered.rerender(
+    <WorkerLine
+      worker={{
+        call,
+        calls: [],
+        shortID: 'w7k2m9qa4x',
+        turns: [
+          turnOne,
+          {
+            ...turnOne,
+            record: { sequence: second.sequence, thread: 'k3vq8m2xpa' },
+            text: 'b'.repeat(4096),
+            turn: 2,
+          },
+        ],
+        workerRunID: 'w1',
+      }}
+    />,
+  );
+
+  await user.click(rendered.getByRole('button', { name: 'Load the whole value' }));
+
+  await waitFor(() => {
+    expect(rendered.getByRole('region', { name: 'Worker w7k2m9qa4x' })).toHaveTextContent(
+      'SECOND END',
+    );
+  });
+});
