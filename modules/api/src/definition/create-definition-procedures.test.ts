@@ -1,6 +1,7 @@
 import { expect, test } from 'bun:test';
-import { readTaskDefinitionsOverlay } from '@heynixie/definitions';
+import { makeRetireOneShot, readTaskDefinitionsOverlay } from '@heynixie/definitions';
 import { readTestRuntimeTasks } from '@heynixie/definitions/test-utils';
+import { withWriteTransaction } from '@heynixie/log';
 import { ORPCError } from '@orpc/client';
 import { createRouterClient } from '@orpc/server';
 import invariant from 'tiny-invariant';
@@ -33,6 +34,10 @@ async function setupTest() {
     writeRepoTask: definitions.writeRepoTask,
     define: definitions.define,
     readOverlay: () => readTaskDefinitionsOverlay(api.writer.db),
+    retireOneShot: (definitionID: string) =>
+      withWriteTransaction(api.writer, (tx) =>
+        makeRetireOneShot(api.context)(tx, definitionID, 'one_shot_fired'),
+      ),
 
     // An error that the procedure throws in process holds the whole call's context, so a matcher
     // that walks it never ends. This keeps only what the contract shows.
@@ -195,6 +200,46 @@ test('#undo refuses a one-time trigger whose time has passed with ONE_SHOT_PAST'
   );
 
   expect(refusal).toStrictEqual({ code: 'ONE_SHOT_PAST', data: undefined });
+});
+
+test('#undo refuses a one-time trigger that went back over a definition in the repo with ONE_SHOT_OVER_REPO', async () => {
+  const ctx = await setupTest();
+
+  await ctx.define({
+    target: 'task',
+    trigger: { at: new Date(ctx.api.clock.now() + 60_000).toISOString() },
+  });
+
+  const changed = await ctx.define({
+    definitionID: 'water-the-tomatoes',
+    brief: 'Water them well.',
+  });
+
+  await ctx.writeRepoTask('Water the tomatoes.');
+  await ctx.seed();
+
+  const refusal = await ctx.readRefusal(
+    ctx.client.undo({ clientActionID: crypto.randomUUID(), changeID: changed.changeID }),
+  );
+
+  expect(refusal).toStrictEqual({ code: 'ONE_SHOT_OVER_REPO', data: undefined });
+});
+
+test('#undo refuses a one-time trigger that fired with NOT_IN_FORCE and its cause', async () => {
+  const ctx = await setupTest();
+
+  const added = await ctx.define({
+    target: 'task',
+    trigger: { at: new Date(ctx.api.clock.now() + 60_000).toISOString() },
+  });
+
+  await ctx.retireOneShot('water-the-tomatoes');
+
+  const refusal = await ctx.readRefusal(
+    ctx.client.undo({ clientActionID: crypto.randomUUID(), changeID: added.changeID }),
+  );
+
+  expect(refusal).toStrictEqual({ code: 'NOT_IN_FORCE', data: { cause: 'one_shot_fired' } });
 });
 
 test('#undo refuses a caller with no session with UNAUTHORIZED', async () => {
