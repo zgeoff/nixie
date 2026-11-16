@@ -33,17 +33,21 @@ export const memoryPartDeclarations: readonly AnyPartDeclaration<ServerPartValue
   },
   {
     name: 'session_cleanup',
-    needs: ['server_parts', 'conversation_imp', 'sandbox_runner'],
+    needs: ['server_parts', 'conversation_imp', 'sandbox_runner', 'memory'],
     start: (reader) => {
       const parts = reader.get('server_parts');
       const conversation = reader.get('conversation_imp');
       const tasks = reader.get('sandbox_runner');
+      const memory = reader.get('memory');
 
       return Promise.resolve(async (cause) => {
         await conversation.cleanupSessions(cause);
         await tasks.cleanupSessions(cause);
 
         await runTurnInputForget(parts, cause);
+
+        // The sessions rebuild first, so no turn still holds a value that a purge deletes.
+        await memory.finishEvidencePurges({ recordSequence: cause.recordSequence });
       });
     },
   },

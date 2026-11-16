@@ -17,6 +17,8 @@ export function toContractMemoryVersion(version: ViewVersion) {
     evidenceQuote: version.evidenceQuote,
     evidence: version.evidence === null ? null : toContractEvidence(version.evidence),
     image: toContractImage(version.image),
+    isBridge: version.isBridge,
+    isRemoved: version.isRemoved,
     status: version.status,
     ...(version.status === 'readable' ? { text: version.text } : {}),
   };

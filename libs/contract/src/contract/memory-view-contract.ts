@@ -70,6 +70,8 @@ const memoryVersionSchema = z.object({
   evidence: evidenceSchema.nullable(),
   evidenceQuote: z.string().nullable(),
   image: ownerImageSchema.nullable(),
+  isBridge: z.boolean(),
+  isRemoved: z.boolean(),
   origin: originSchema,
   proposalID: z.string().nullable(),
   recordedAt: z.date(),
@@ -248,6 +250,10 @@ export const memoryViewContract = {
   undo: memoryChange
     .errors({
       PINNED_CORE_FULL: { message: 'The undo takes the pinned core past its budget', status: 409 },
+      VERSION_REMOVED: {
+        message: 'The earlier version was removed with a message it quoted',
+        status: 409,
+      },
     })
     .input(versionTargetSchema)
     .output(versionResultSchema),

@@ -7852,6 +7852,12 @@
                               }
                             ]
                           },
+                          "isBridge": {
+                            "type": "boolean"
+                          },
+                          "isRemoved": {
+                            "type": "boolean"
+                          },
                           "origin": {
                             "enum": [
                               "owner",
@@ -7936,6 +7942,8 @@
                           "evidence",
                           "evidenceQuote",
                           "image",
+                          "isBridge",
+                          "isRemoved",
                           "origin",
                           "proposalID",
                           "recordedAt",
@@ -9576,6 +9584,31 @@
                       "type": "object",
                       "properties": {
                         "defined": {
+                          "const": true
+                        },
+                        "code": {
+                          "const": "VERSION_REMOVED"
+                        },
+                        "status": {
+                          "const": 409
+                        },
+                        "message": {
+                          "type": "string",
+                          "default": "The earlier version was removed with a message it quoted"
+                        },
+                        "data": {}
+                      },
+                      "required": [
+                        "defined",
+                        "code",
+                        "status",
+                        "message"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "defined": {
                           "const": false
                         },
                         "code": {
@@ -10297,6 +10330,12 @@
                               }
                             ]
                           },
+                          "isBridge": {
+                            "type": "boolean"
+                          },
+                          "isRemoved": {
+                            "type": "boolean"
+                          },
                           "origin": {
                             "enum": [
                               "owner",
@@ -10381,6 +10420,8 @@
                           "evidence",
                           "evidenceQuote",
                           "image",
+                          "isBridge",
+                          "isRemoved",
                           "origin",
                           "proposalID",
                           "recordedAt",

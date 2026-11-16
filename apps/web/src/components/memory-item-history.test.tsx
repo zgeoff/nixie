@@ -209,3 +209,43 @@ test('it shows a version whose text fails to open as unavailable, not as forgott
   expect(within(version).getByText('(text unavailable)')).toBeVisible();
   expect(within(version).queryByText('(forgotten)')).toBeNull();
 });
+
+test('it shows a removed version with its date and provenance and no text', async () => {
+  await createDeviceSession();
+
+  await store.memoryItems.create({
+    itemID: '6f0c2d4e-8a1b-4c3d-9e5f-7a2b1c0d9e8f',
+    versions: [
+      { isRemoved: true, recordedAt: new Date('2026-03-01T09:00:00Z'), text: 'Plays the cello' },
+      { change: 'edited', text: 'Plays the cello on Thursdays' },
+    ],
+  });
+
+  const rendered = render(<MemoryItemHistory itemID="6f0c2d4e-8a1b-4c3d-9e5f-7a2b1c0d9e8f" />);
+
+  const version = await rendered.findByRole('listitem', { name: 'Version 1' });
+
+  expect(within(version).getByText('(removed with a message it quoted)')).toBeVisible();
+  expect(within(version).getByText(/Created/u)).toBeVisible();
+  expect(rendered.queryByText('Plays the cello')).toBeNull();
+});
+
+test("it shows a bridge version as the purge's version, with its text and no change or origin", async () => {
+  await createDeviceSession();
+
+  await store.memoryItems.create({
+    itemID: '6f0c2d4e-8a1b-4c3d-9e5f-7a2b1c0d9e8f',
+    versions: [
+      { isRemoved: true, text: 'Plays the cello' },
+      { change: 'edited', isBridge: true, text: 'Plays the cello on Thursdays' },
+    ],
+  });
+
+  const rendered = render(<MemoryItemHistory itemID="6f0c2d4e-8a1b-4c3d-9e5f-7a2b1c0d9e8f" />);
+
+  const version = await rendered.findByRole('listitem', { name: 'Version 2' });
+
+  expect(version).toHaveTextContent('Kept when a message was removed');
+  expect(version).not.toHaveTextContent('Edited');
+  expect(within(version).getByText('Plays the cello on Thursdays')).toBeVisible();
+});

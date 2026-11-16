@@ -43,6 +43,9 @@ export async function startMemory(
 
   await parts.cleanup.defer(() => store.stop());
 
+  // A purge that no record forget owns has no later step to finish it
+  await store.finishEvidencePurges({ isUnowned: true });
+
   void waitForSemanticIndex(parts, store);
 
   const sweep = startLapseSweep({

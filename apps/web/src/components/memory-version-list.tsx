@@ -26,14 +26,6 @@ export function MemoryVersionList(props: MemoryVersionListProps): ReactNode {
   );
 }
 
-const changes = {
-  created: 'Created',
-  edited: 'Edited',
-  retired: 'Retired',
-  restored: 'Restored',
-  undone: 'Undone',
-};
-
 interface VersionEntryProps {
   readonly version: MemoryVersion;
   readonly previous: MemoryVersion | undefined;
@@ -47,22 +39,48 @@ function VersionEntry(props: VersionEntryProps): ReactNode {
 
   return (
     <li aria-label={`Version ${version.version}`} className={entry}>
-      <p className={meta}>
-        Version {version.version} · {changes[version.change]} ·{' '}
-        {formatMemoryDate(version.recordedAt)} ·{' '}
-        {formatMemoryProvenance(version.origin, version.source)}
-      </p>
+      <VersionMeta version={version} />
       {version.status === 'readable' ? (
         <VersionText previous={props.previous} version={version} />
       ) : (
-        <p className={meta}>
-          {version.status === 'shredded' ? '(forgotten)' : '(text unavailable)'}
-        </p>
+        <p className={meta}>{formatUnavailableText(version)}</p>
       )}
       <VersionEvidence version={version} />
       <VersionPhoto version={version} />
       <VersionProvenance version={version} />
     </li>
+  );
+}
+
+const changes = {
+  created: 'Created',
+  edited: 'Edited',
+  retired: 'Retired',
+  restored: 'Restored',
+  undone: 'Undone',
+};
+
+interface VersionProps {
+  readonly version: MemoryVersion;
+}
+
+function VersionMeta(props: VersionProps): ReactNode {
+  const version = props.version;
+  const date = formatMemoryDate(version.recordedAt);
+
+  if (version.isBridge) {
+    return (
+      <p className={meta}>
+        Version {version.version} · Kept when a message was removed · {date}
+      </p>
+    );
+  }
+
+  return (
+    <p className={meta}>
+      Version {version.version} · {changes[version.change]} · {date} ·{' '}
+      {formatMemoryProvenance(version.origin, version.source)}
+    </p>
   );
 }
 
@@ -110,8 +128,12 @@ function DiffRun(props: DiffRunProps): ReactNode {
   return props.text;
 }
 
-interface VersionProps {
-  readonly version: MemoryVersion;
+function formatUnavailableText(version: MemoryVersion): string {
+  if (version.isRemoved) {
+    return '(removed with a message it quoted)';
+  }
+
+  return version.status === 'shredded' ? '(forgotten)' : '(text unavailable)';
 }
 
 const evidenceBox = css({ backgroundColor: 'surface', marginBlock: '1', padding: '2' });

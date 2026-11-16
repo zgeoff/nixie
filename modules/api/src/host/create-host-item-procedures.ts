@@ -30,6 +30,8 @@ export function createHostItemProcedures(context: APIContext, readMemory: ReadHo
           origin: version.origin,
           source: version.source,
           recordedAt: new Date(version.recordedAt),
+          isRemoved: version.isRemoved,
+          isBridge: version.isBridge,
           status: version.status,
           text: version.status === 'readable' ? version.text : null,
         })),

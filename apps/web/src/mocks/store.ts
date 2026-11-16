@@ -199,6 +199,8 @@ const memoryItemVersionSchema = z.object({
   evidenceQuote: z.string().nullable().default(null),
   image: ownerImageSchema.nullable().default(null),
 
+  isBridge: z.boolean().optional(),
+  isRemoved: z.boolean().optional(),
   isUnreadable: z.boolean().default(false),
   origin: z.enum(['owner', 'conversation', 'task']).default('owner'),
   proposalID: z.string().nullable().default(null),

@@ -3,6 +3,7 @@ import { defaultGateLimits, defaultOwnerPronouns, startMemoryStore } from '@heyn
 import {
   buildMockCheckerAnswer,
   buildMockWriteCaller,
+  seedBegunPurge,
   writeOwnerMessages,
 } from '@heynixie/memory/test-utils';
 import invariant from 'tiny-invariant';
@@ -114,6 +115,41 @@ test('#memory.undo undoes the version the notice showed, as your own change', as
     state: 'retired',
     versions: [{ change: 'created' }, { change: 'undone', origin: 'owner', state: 'retired' }],
   });
+});
+
+test('#memory.undo refuses an earlier version that a purge removed with VERSION_REMOVED, and writes nothing', async () => {
+  const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+  const [sequence] = await writeOwnerMessages(ctx.context.log, ['I cycle to work every day']);
+
+  const written = await ctx.memory.writes.remember({
+    text: 'Cycles to work',
+    quote: 'I cycle to work',
+    caller: buildMockWriteCaller(),
+  });
+
+  invariant(written.status === 'applied' && sequence !== undefined);
+
+  await ctx.memory.remember({
+    text: 'Cycles to work and back',
+    target: { itemID: written.itemID, version: 1 },
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  await seedBegunPurge(ctx.context.log, { recordSequence: sequence, itemIDs: [written.itemID] });
+
+  const undo = buildTestClient(ctx.url, laptop.token).memory.undo({
+    clientActionID: '5c2e9a41-3b7d-4f60-8e1a-9d4c7b2f6a18',
+    itemID: written.itemID,
+    version: 2,
+  });
+
+  await undo.catch(() => {});
+
+  const history = await ctx.memory.readHistory(written.itemID);
+
+  expect(undo).rejects.toMatchObject({ code: 'VERSION_REMOVED' });
+  expect(history?.versions).toHaveLength(2);
 });
 
 test('#memory.undo refuses an item that changed after the notice, and writes nothing', async () => {

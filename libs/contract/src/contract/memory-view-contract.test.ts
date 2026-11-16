@@ -38,7 +38,7 @@ test('it refuses an undo without the version the notice showed', () => {
   ).toPartiallyContain({ path: ['version'] });
 });
 
-test('it declares a reused ID, a stale version and a full pinned core for an undo', () => {
+test('it declares a reused ID, a stale version, a full pinned core and a removed version for an undo', () => {
   expect(memoryViewContract.undo['~orpc'].errorMap).toContainAllKeys([
     'UNAUTHORIZED',
     'MEMORY_NOT_STARTED',
@@ -47,6 +47,7 @@ test('it declares a reused ID, a stale version and a full pinned core for an und
     'STALE_VERSION',
     'WRONG_STATE',
     'PINNED_CORE_FULL',
+    'VERSION_REMOVED',
   ]);
 });
 

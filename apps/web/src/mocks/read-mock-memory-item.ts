@@ -21,7 +21,7 @@ export function readMockMemoryItem(itemID: string) {
 type StoredVersion = StoredMemoryItem['versions'][number];
 
 function readMockVersion(version: StoredVersion, number: number, isGone: boolean) {
-  const isClosed = isGone || version.isUnreadable;
+  const isClosed = isGone || version.isUnreadable || version.isRemoved === true;
 
   return {
     change: version.change,
@@ -30,6 +30,8 @@ function readMockVersion(version: StoredVersion, number: number, isGone: boolean
     evidence: version.evidence === null ? null : readEvidence(version.evidence, isClosed),
     evidenceQuote: isClosed ? null : version.evidenceQuote,
     image: isClosed || version.image === null ? null : { ...version.image },
+    isBridge: version.isBridge === true,
+    isRemoved: version.isRemoved === true,
     origin: version.origin,
     proposalID: version.proposalID,
     recordedAt: version.recordedAt,
@@ -66,7 +68,7 @@ function readMessage(sequence: number) {
 }
 
 function toVersionText(version: StoredVersion, isGone: boolean) {
-  if (isGone) {
+  if (isGone || version.isRemoved === true) {
     return { status: 'shredded' as const };
   }
 

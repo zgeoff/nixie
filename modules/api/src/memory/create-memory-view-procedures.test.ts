@@ -337,6 +337,8 @@ test("#memory.readItem reads a version's quote inside the message it came from",
       writerModel: 'writer-model-1',
       checkerModel: 'checker-model-1',
       evidenceQuote: 'my sister Ana lives in Porto',
+      isRemoved: false,
+      isBridge: false,
       evidence: {
         sequence: sent.sequence,
         start: 11,
