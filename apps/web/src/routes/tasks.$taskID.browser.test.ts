@@ -123,6 +123,167 @@ test('it shows a hop-limit notice on a task page that opens the exchange', async
   );
 });
 
+test('it shows one worker line for each worker run of a step', async () => {
+  const ctx = await setupTest();
+  const session = await store.sessions.create({});
+
+  await store.tasks.create({ name: 'Garden plan', taskID: 'k3vq8m2xpa' });
+
+  await store.records.create({
+    kind: 'task.step_started',
+    task: { stepKey: 'step-1', taskID: 'k3vq8m2xpa' },
+    thread: 'k3vq8m2xpa',
+  });
+
+  for (const [index, callID] of ['call-1', 'call-2'].entries()) {
+    await store.records.create({
+      kind: 'tool_called',
+      thread: 'k3vq8m2xpa',
+      toolCall: { callID, input: { question: `Question ${index}` }, tool: 'worker.run' },
+    });
+
+    await store.records.create({
+      kind: 'worker.run_started',
+      thread: 'k3vq8m2xpa',
+      worker: {
+        phase: 'started',
+        workerRunID: `w${index}`,
+        shortID: `worker${index}`,
+        callID,
+        model: 'test-model',
+        tools: [],
+        limits: { minutes: 5, turns: 8, tokens: 100_000, dollars: 0.5 },
+        isTaskLimit: false,
+      },
+    });
+
+    await store.records.create({
+      kind: 'worker.run_ended',
+      thread: 'k3vq8m2xpa',
+      worker: {
+        phase: 'ended',
+        workerRunID: `w${index}`,
+        callID,
+        outcome: 'answered',
+        used: { minutes: 1, turns: 1, tokens: 100, dollars: 0.01 },
+      },
+    });
+  }
+
+  await store.records.create({
+    kind: 'task.step_committed',
+    task: { stepKey: 'step-1', taskID: 'k3vq8m2xpa' },
+    thread: 'k3vq8m2xpa',
+  });
+
+  await setupSignedInBrowser(ctx.view, { appURL: ctx.appURL, token: session.token });
+
+  await ctx.view.navigate(`${ctx.appURL}/tasks/k3vq8m2xpa`);
+
+  await waitFor(
+    async () => {
+      const lines: unknown = await ctx.view.evaluate(
+        '[...document.querySelectorAll(\'section[aria-label^="Worker "] > details > summary\')].map((summary) => summary.textContent)',
+      );
+
+      expect(lines).toStrictEqual([
+        'worker worker0 · Question 0 · answered · 1.0 min · 1 turn · 100 tokens · $0.01',
+        'worker worker1 · Question 1 · answered · 1.0 min · 1 turn · 100 tokens · $0.01',
+      ]);
+    },
+    { timeout: 10_000 },
+  );
+});
+
+test('it shows a payload past the clip limit cut, and loads it whole from its control', async () => {
+  const ctx = await setupTest();
+  const session = await store.sessions.create({});
+
+  await store.tasks.create({ name: 'Garden plan', taskID: 'k3vq8m2xpa' });
+
+  await store.records.create({
+    kind: 'task.step_started',
+    task: { stepKey: 'step-1', taskID: 'k3vq8m2xpa' },
+    thread: 'k3vq8m2xpa',
+  });
+
+  await store.records.create({
+    kind: 'tool_called',
+    thread: 'k3vq8m2xpa',
+    toolCall: {
+      callID: 'call-1',
+      input: { url: 'https://cafe-list.test/north' },
+      tool: 'web_fetch',
+    },
+  });
+
+  await store.records.create({
+    kind: 'tool_result',
+    thread: 'k3vq8m2xpa',
+    toolCall: {
+      callID: 'call-1',
+      content: { result: { url: 'https://cafe-list.test/north', text: 'x'.repeat(20_000) } },
+      outcome: 'result',
+    },
+  });
+
+  await store.records.create({
+    kind: 'task.step_committed',
+    task: { stepKey: 'step-1', taskID: 'k3vq8m2xpa' },
+    thread: 'k3vq8m2xpa',
+  });
+
+  await setupSignedInBrowser(ctx.view, { appURL: ctx.appURL, token: session.token });
+
+  await ctx.view.navigate(`${ctx.appURL}/tasks/k3vq8m2xpa`);
+
+  const openStep = `
+    (() => {
+      const step = document.querySelector('li details');
+      step.open = true;
+      step.querySelector('details[aria-label^="Tools"]').open = true;
+    })()
+  `;
+
+  const readShownLength = `
+    (() => {
+      const label = [...document.querySelectorAll('section[aria-label="web_fetch"] button')]
+        .map((button) => button.textContent)
+        .find((text) => text.startsWith('Show all'));
+
+      return label === undefined ? 0 : Number(label.replace(/\\D/gu, ''));
+    })()
+  `;
+
+  await waitFor(
+    async () => {
+      await ctx.view.evaluate(openStep);
+
+      const isCut: unknown = await ctx.view.evaluate(
+        'document.querySelector(\'button[name="load-whole-value"]\') !== null',
+      );
+
+      expect(isCut).toBeTrue();
+    },
+    { timeout: 10_000 },
+  );
+
+  const cutLength: unknown = await ctx.view.evaluate(readShownLength);
+
+  expect(cutLength).toBeLessThan(5000);
+
+  await ctx.view.evaluate('document.querySelector(\'button[name="load-whole-value"]\').click()');
+
+  await waitFor(
+    async () => {
+      const wholeLength: unknown = await ctx.view.evaluate(readShownLength);
+
+      expect(wholeLength).toBeGreaterThan(20_000);
+    },
+    { timeout: 10_000 },
+  );
+});
+
 test('it opens the whole of a long prompt on a task page, down to its last paragraph', async () => {
   const ctx = await setupTest();
   const session = await store.sessions.create({});

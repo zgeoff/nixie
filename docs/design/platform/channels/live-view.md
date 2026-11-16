@@ -28,12 +28,10 @@ An open task reads like the conversation: its brief, your messages, the model's 
 reports. Each step's work shows as a compact line that expands. A tool call shows the policy
 decision and its rule, a worker its question, answer and sources, a proposal its
 [card](approvals.md), an action its recorded outcome, and a memory read or write its items and
-versions. Every line offers its raw record, and a record with no renderer still shows by its kind.
-**Why:** nothing is hidden. Payloads over 4 KB load on demand.
-[Worker runs and large payloads](../../queue/task-view-records.md) gives the contracts of the worker
-line and of the load on demand. Whether each line offers its raw record is
-[open for the owner](https://linear.app/zgeoff/issue/GEO-1837), and until it is settled no line
-offers it.
+versions. A record with no renderer still shows by its kind, and no line offers its raw record.
+Payloads over 4 KB load on demand. The
+[client architecture](../../../architecture/channels/client.md#worker-runs-and-large-payloads)
+describes the worker line and the load on demand.
 
 ## Stepping in
 

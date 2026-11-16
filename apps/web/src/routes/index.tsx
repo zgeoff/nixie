@@ -12,7 +12,9 @@ export const Route = createFileRoute('/')({
   loader: async (options) => ({
     session: await readSessionState(() =>
       options.context.queryClient.query({
-        ...options.context.queryUtils.conversation.read.queryOptions({ input: { thread } }),
+        ...options.context.queryUtils.conversation.read.queryOptions({
+          input: { clipPayloads: true, thread },
+        }),
         staleTime: 'static',
       }),
     ),

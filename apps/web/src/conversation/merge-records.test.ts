@@ -100,3 +100,36 @@ test('it drops the error text of a failed step record that a forget names', () =
   expect(record?.isRemoved).toBe(true);
   expect(record?.task).toStrictEqual({ stepKey: 'step-1', taskID: 'task-1' });
 });
+
+test('it drops the text of a worker turn and the detail of a worker end that a forget names, and keeps the usage', () => {
+  const turn = buildMockLogRecord({
+    kind: 'worker.turn_ended',
+    sequence: 5,
+    worker: {
+      phase: 'turn',
+      workerRunID: 'w1',
+      callID: 'call-1',
+      turn: 1,
+      tokens: 10,
+      dollars: 0.01,
+      text: 'private model text',
+    },
+  });
+
+  const forget = buildMockLogRecord({
+    forget: { sequence: 5 },
+    kind: 'record.forgotten',
+    sequence: 6,
+  });
+
+  const record = mergeRecords([turn], [forget]).records.at(0);
+
+  expect(record?.worker).toStrictEqual({
+    phase: 'turn',
+    workerRunID: 'w1',
+    callID: 'call-1',
+    turn: 1,
+    tokens: 10,
+    dollars: 0.01,
+  });
+});

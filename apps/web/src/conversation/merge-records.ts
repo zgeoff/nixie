@@ -68,8 +68,11 @@ function toErasedSummary(record: LiveRecord): LiveRecord {
 
 // The tool's name and outcome stay, so the call still reads as a call that ran.
 function toForgottenRecord(record: LiveRecord): LiveRecord {
-  const { message: _message, toolCall, task, ...rest } = record;
-  const withTask = task === undefined ? rest : { ...rest, task: toTaskWithoutError(task) };
+  const { message: _message, toolCall, task, worker, ...rest } = record;
+  const withWorker = worker === undefined ? rest : { ...rest, worker: toWorkerWithoutText(worker) };
+
+  const withTask =
+    task === undefined ? withWorker : { ...withWorker, task: toTaskWithoutError(task) };
 
   if (toolCall === undefined) {
     return { ...withTask, isRemoved: true };
@@ -78,6 +81,24 @@ function toForgottenRecord(record: LiveRecord): LiveRecord {
   const { input: _input, content: _content, ...kept } = toolCall;
 
   return { ...withTask, toolCall: kept, isRemoved: true };
+}
+
+function toWorkerWithoutText(
+  worker: NonNullable<LiveRecord['worker']>,
+): NonNullable<LiveRecord['worker']> {
+  if (worker.phase === 'turn') {
+    const { text: _text, ...kept } = worker;
+
+    return kept;
+  }
+
+  if (worker.phase === 'ended') {
+    const { detail: _detail, ...kept } = worker;
+
+    return kept;
+  }
+
+  return worker;
 }
 
 function toTaskWithoutError(

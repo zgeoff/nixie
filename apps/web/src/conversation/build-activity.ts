@@ -1,7 +1,16 @@
 import { collectSentMessages } from './collect-sent-messages';
+import { collectWorkers } from './collect-workers';
 import type { LiveRecord } from './use-live-records';
+import type { WorkerActivity } from './worker-activity';
+
+export interface RecordRef {
+  readonly sequence: number;
+  readonly thread: string;
+}
 
 export interface ToolActivity {
+  // the record that holds the call, which the server cut when its input is cut
+  readonly called?: RecordRef;
   readonly callID: string;
   readonly content?: Readonly<Record<string, unknown>>;
   readonly input?: Readonly<Record<string, unknown>>;
@@ -9,7 +18,16 @@ export interface ToolActivity {
   // the call's record or its result's record was removed, so the call keeps no input or content
   readonly isRemoved?: true;
 
+  // the call's result holds a string that the server cut
+  readonly isContentCut?: true;
+
+  // the call's input holds a string that the server cut
+  readonly isInputCut?: true;
+
   readonly outcome?: string;
+
+  // the run that made the call; a worker's own call carries the worker run's ID
+  readonly runID?: string;
 
   // the record that holds the call's result, which a forget removes
   readonly result?: { readonly kind: string; readonly sequence: number; readonly thread: string };
@@ -34,6 +52,8 @@ export type SummaryActivity = NonNullable<LiveRecord['summary']> & {
 };
 
 export interface TaskMessageActivity {
+  // the record that holds the call that sent the message, when the server cut the text
+  readonly cut?: RecordRef;
   readonly direction: 'received' | 'sent';
   readonly hop: number;
   readonly kind: string;
@@ -74,6 +94,8 @@ export interface StepActivity {
   readonly status: StepStatus;
   readonly stepKey?: string;
   readonly taskID?: string;
+
+  readonly workers?: readonly WorkerActivity[];
 }
 
 export type ActivityItem =
@@ -211,7 +233,15 @@ function buildStep(records: readonly LiveRecord[], status: StepStatus): StepActi
     record.summary === undefined ? [] : [{ ...record.summary, sequence: record.sequence }],
   );
 
-  const calls = collectCalls(records);
+  const allCalls = collectCalls(records);
+  const workers = collectWorkers(records, allCalls);
+
+  const workerRunIDs = new Set(workers.map((worker) => worker.workerRunID));
+
+  const calls = allCalls.filter(
+    (call) => call.runID === undefined || !workerRunIDs.has(call.runID),
+  );
+
   const sentMessages = collectSentMessages(calls);
 
   return {
@@ -232,6 +262,7 @@ function buildStep(records: readonly LiveRecord[], status: StepStatus): StepActi
     status,
     ...(stepKey === undefined ? {} : { stepKey }),
     ...(task === undefined ? {} : { taskID: task.taskID }),
+    ...(workers.length === 0 ? {} : { workers }),
   };
 }
 
@@ -258,11 +289,19 @@ function collectCalls(records: readonly LiveRecord[]): readonly ToolActivity[] {
 
     if (toolCall !== undefined) {
       const earlier = calls.get(toolCall.callID);
+      const clips = record.isRemoved === true ? [] : (record.clipped ?? []);
+      const isInputCut = clips.some((clip) => clip.field === 'toolCall.input');
+      const isContentCut = clips.some((clip) => clip.field === 'toolCall.content');
 
       calls.set(toolCall.callID, {
         ...earlier,
         callID: toolCall.callID,
         ...(record.isRemoved === true ? { isRemoved: true } : {}),
+        ...(toolCall.runID === undefined ? {} : { runID: toolCall.runID }),
+        ...(isInputCut
+          ? { called: { sequence: record.sequence, thread: record.thread }, isInputCut: true }
+          : {}),
+        ...(isContentCut ? { isContentCut: true } : {}),
         tool: toolCall.tool ?? earlier?.tool ?? 'tool',
         ...(toolCall.input === undefined ? {} : { input: toolCall.input }),
         ...(toolCall.outcome === undefined ? {} : { outcome: toolCall.outcome }),

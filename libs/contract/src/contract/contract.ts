@@ -2,6 +2,7 @@ import { eventIterator, oc } from '@orpc/contract';
 import { z } from 'zod';
 import { spanSchema } from '../span/span-schema';
 import { approvalContract } from './approval-contract';
+import { clippedPayloadSchema } from './clipped-payload-schema';
 import { definitionNoticeSchema } from './definition-notice-schema';
 import { definitionsContract } from './definitions-contract';
 import { forgetBackupSchema } from './forget-backup-schema';
@@ -17,6 +18,7 @@ import {
 import { memoryViewContract } from './memory-view-contract';
 import { passkeyContract } from './passkey-contract';
 import { pauseStateSchema } from './pause-state-schema';
+import { readPayloadContract } from './read-payload-contract';
 import { recoverySchema } from './recovery-schema';
 import { reusedIDErrors } from './reused-id-errors';
 import { ruleContract } from './rule-contract';
@@ -26,6 +28,7 @@ import { taskSchema } from './task-schema';
 import { threadSchema } from './thread-schema';
 import { toolCallSchema } from './tool-call-schema';
 import { viewContract } from './view-contract';
+import { workerViewSchema } from './worker-view-schema';
 
 const clientActionIDSchema = z.uuid();
 const imageSchema = z.object({ mediaType: z.enum(imageLimits.mediaTypes) });
@@ -93,6 +96,7 @@ const reminderSchema = z.object({
 });
 
 const recordSchema = z.object({
+  clipped: z.array(clippedPayloadSchema).optional(),
   compaction: compactionSchema.optional(),
 
   exchangeNotice: exchangeNoticeSchema.optional(),
@@ -150,6 +154,7 @@ const recordSchema = z.object({
   taskMessage: taskMessageSchema.optional(),
 
   toolCall: toolCallSchema.optional(),
+  worker: workerViewSchema.optional(),
 });
 
 const writerErrorSchema = z
@@ -212,7 +217,13 @@ const backupNoticeSchema = z.object({
 });
 
 const followRecords = signedIn
-  .input(z.object({ afterSequence: sequenceSchema, thread: threadSchema.optional() }))
+  .input(
+    z.object({
+      afterSequence: sequenceSchema,
+      clipPayloads: z.boolean().optional(),
+      thread: threadSchema.optional(),
+    }),
+  )
   .output(eventIterator(z.object({ record: recordSchema })));
 
 export const contract = {
@@ -222,6 +233,7 @@ export const contract = {
       .input(
         z.object({
           beforeSequence: sequenceSchema.optional(),
+          clipPayloads: z.boolean().optional(),
           limit: z.int().min(1).max(200).optional(),
           thread: threadSchema,
         }),
@@ -411,6 +423,7 @@ export const contract = {
   },
   records: {
     follow: followRecords,
+    readPayload: readPayloadContract,
   },
   sessions: {
     enrol: oc

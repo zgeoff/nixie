@@ -1,4 +1,5 @@
 import type { LogRecord as ContractRecord } from '@heynixie/contract';
+import { clipRecordPayloads } from '@heynixie/contract';
 import type { RecordKind } from '@heynixie/log';
 import { readRecords } from '@heynixie/log';
 import { toContractRecord } from '../contract/to-contract-record';
@@ -10,6 +11,7 @@ interface ThreadPageInput {
   readonly thread: string;
   readonly beforeSequence?: number | undefined;
   readonly limit?: number | undefined;
+  readonly clipPayloads?: boolean | undefined;
 }
 
 interface ThreadPage {
@@ -62,7 +64,13 @@ export async function readThreadPage(
   return {
     hasEarlier: window.hasEarlier,
     readAtSequence: head,
-    records: entries.flatMap((entry) => toContractRecord(entry.record, lookups) ?? []),
+    records: entries.flatMap((entry) => {
+      const record = toContractRecord(entry.record, lookups);
+
+      return record === null
+        ? []
+        : [input.clipPayloads === true ? clipRecordPayloads(record) : record];
+    }),
     lastStepEnd: await readLastStepEnd(context, input.thread, head),
   };
 }

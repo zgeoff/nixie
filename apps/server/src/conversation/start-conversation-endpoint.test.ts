@@ -477,6 +477,7 @@ test("it serves search to the conversation with the key from the secrets file, s
 
   expect(records.find((record) => record.kind === 'tool_result')?.toolCall).toStrictEqual({
     callID: expect.any(String),
+    runID: 'conversation',
     outcome: 'result',
     content: { result: { hits }, hidden: { costUSD: 0.012 } },
   });

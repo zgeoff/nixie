@@ -156,11 +156,28 @@ test('it returns INVALID with the reasons for a version that a start refuses', a
 
   await ctx.seed();
 
-  const outcome = await ctx.define(buildTestDefineInput({ tools: ['files.write'] }));
+  const outcome = await ctx.define(
+    buildTestDefineInput({ target: 'task', tools: ['files.write'] }),
+  );
 
   expect(outcome).toStrictEqual({
     status: 'ok',
     result: { refused: { code: 'INVALID', reasons: expect.any(Array) } },
+  });
+});
+
+test('it names the task-only fields that a conversation target takes none of', async () => {
+  const ctx = await setupTest();
+
+  await ctx.seed();
+
+  const outcome = await ctx.define(buildTestDefineInput({ memory: 'none', report: 'none' }));
+
+  expect(outcome).toStrictEqual({
+    status: 'error',
+    message:
+      'A conversation target takes only name, brief, target, trigger and definitionID. ' +
+      'Leave out: memory, report.',
   });
 });
 

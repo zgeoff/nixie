@@ -204,16 +204,61 @@ permission again to tell the two apart. An installed app shares the site's permi
 one grant covers the app and the browser tab, and the web server sends no Permissions-Policy header
 that could block the microphone.
 
+### Worker runs and large payloads
+
+A step with a `worker.run` call shows one worker line in its tools section, apart from the step's
+own tool calls. A worker record joins the call whose `callID` it carries. A tool call or result
+whose `toolCall.runID` is the worker run's ID belongs to the line, so the step leaves it out of its
+calls, its tool count and the tools its collapsed line names. A worker record whose call is not on
+the page shows by its kind, as any record with no renderer does.
+
+- The collapsed line shows the worker run's short ID, the start of the question, the outcome, and
+  the minutes, turns, tokens and dollars of the run's end record. Before the end record, it shows
+  `running` with the turns and dollars so far.
+- The open line shows the question, the answer, each tool call of the worker as a source with the
+  target the step line shows, and each turn with its tokens, dollars and text. An outcome other than
+  `answered` shows its limit or detail.
+- The answer and each turn's text came from a model and from pages it read, so the line shows them
+  as plain text.
+- A forgotten question, answer or turn text shows as forgotten, and the line keeps its usage and
+  outcome.
+- No line offers its raw record. A record kind with no renderer shows by the kind's name.
+
+The client sets `clipPayloads` on each conversation read and on the live stream, so a task's page
+and the conversation's page both show cut values. Each component that shows a cut value, which are
+the step's tool calls, the worker line and the sent message block, shows it as cut with a control
+that calls `records.readPayload` and shows the whole value in its place. The client keeps a loaded
+value in the view's memory only, and drops it when the stream brings a forget of its record or a log
+reset. When the read fails, the control shows the failure with a retry and the cut value stays.
+
+## The ended runs and definitions routes
+
+`/tasks/ended` lists the ended task runs from `tasks.listEnded`, newest first, with a control for
+the next page. Each task run links to its task's thread and, when a fire started it, names the fire.
+The route also shows the trigger report from `triggers.report`, with each late fire and each skipped
+fire and its reason or lateness. The report starts a week back, counted on the browser's calendar.
+
+`/definitions` lists each definition from `definitions.listTasks` with its name, rendered trigger,
+next fire, origin, whether it is enabled, and the kind and sequence of the record that created it. A
+definition that nixie made has an undo that calls `definitions.undo` as the conversation's notice
+does and shows a refusal beside the control. The control reads the creating record to get the change
+ID the undo names. A definition whose content is lost shows the marker for missing content, and a
+definition's name shows as plain text.
+
+Both routes follow the live stream, which starts at the head the task list read. `/tasks/ended`
+reads again on a `trigger.fired`, `trigger.skipped` or `task.run_ended` record, and `/definitions`
+on a `definition.changed` record, so neither polls.
+
 ## The app shell
 
-Every page sits in one shell, which the root route renders. Its bar holds 5 links: Conversation,
-Memory, Moments, Tasks and Passkeys. The link of the current page carries `aria-current="page"`, and
-a detail page marks its parent, so a task marks Tasks and the proposals page marks Memory. A page
-with no entry, such as the approvals page, marks nothing. Below 768px the links fold into a menu
-button that opens a side drawer. The drawer is a native modal dialog, so the rest of the page goes
-inert while it is open. It closes on a link tap, on Escape and on a tap outside it, and focus
-returns to the menu button. CSS alone switches between the bar and the button, so the server render
-matches the client. The conversation fills the height below the bar.
+Every page sits in one shell, which the root route renders. Its bar holds 7 links: Conversation,
+Memory, Moments, Tasks, Ended runs, Definitions and Passkeys. The link of the current page carries
+`aria-current="page"`, and a detail page marks its parent, so a task marks Tasks and the proposals
+page marks Memory. A page with no entry, such as the approvals page, marks nothing. Below 768px the
+links fold into a menu button that opens a side drawer. The drawer is a native modal dialog, so the
+rest of the page goes inert while it is open. It closes on a link tap, on Escape and on a tap
+outside it, and focus returns to the menu button. CSS alone switches between the bar and the button,
+so the server render matches the client. The conversation fills the height below the bar.
 
 ## Approvals
 

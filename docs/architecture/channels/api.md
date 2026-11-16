@@ -337,9 +337,38 @@ version, and last by the definition ID.
 
 `definitions.listTasks` returns each definition of the seed in force, with its trigger in words, the
 date of its next fire and the task bound to it. The next fire is null for a spent one-shot and for a
-definition with no armed trigger, such as a disabled one. A definition from the repo names the seed
-record that put its version in force, which is the oldest seed of the newest unbroken run of seeds
-that hold the same version.
+definition with no armed trigger, such as a disabled one. `createdBy` names the record that put the
+version in force. For a definition from the repo, it is the oldest seed of the newest unbroken run
+of seeds that hold the same version. For a runtime definition, whose `origin` is `nixie`, it is the
+`definition.changed` record of the change in force.
+
+## Large payloads
+
+A record carries 4 payload fields: `toolCall.input`, `toolCall.content`, `worker.text` and
+`worker.detail`. A conversation read and the live stream cut the long strings of these fields only
+when the client sets `clipPayloads`. A client that sets nothing, such as one from before clipping,
+gets every field whole.
+
+- The server cuts each string whose UTF-8 size passes `payloadClipBytes` (4,096) to its first
+  `payloadClipBytes` bytes, on a code point boundary. It lists each cut string in the record's
+  `clipped`, with its field, its path inside the field and its whole size.
+- When a field's JSON still passes its size limit after those cuts, the server leaves the field out
+  and lists it with an empty path. A field of many short strings can reach that size.
+- Every field outside the 4 payload fields arrives whole, such as a message's text. The step end
+  that a page read returns beside its records is never cut, because the failure notice reads its
+  error from it.
+
+`records.readPayload` takes a thread and a sequence and returns the whole payload fields of that
+record, read through the same mapping as the page, with no cut. Its status is `readable`,
+`forgotten` when a forget or a log reset destroyed the record's key, or `unreadable` when the key
+fails to decrypt the fields. A sequence that belongs to another thread returns `RECORD_NOT_FOUND`,
+so a caller reads a record only through the thread that holds it. The procedure returns only what a
+page read already holds for a caller who asks for no clipping.
+
+The 3 worker record kinds map to `worker`: `started` with the worker run's short ID, model, tools
+and limits, `turn` with the sum of its 4 token counts, its dollars and its text, and `ended` with
+its outcome, limit, usage and failure detail. A tool call and its result carry `toolCall.runID`, the
+run that made the call. A worker's own tool calls carry the worker run's ID.
 
 ## Reading and the live stream
 

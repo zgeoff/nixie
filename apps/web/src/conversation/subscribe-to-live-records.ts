@@ -108,7 +108,11 @@ async function tryStartRecordStream(
 ): Promise<RecordEvents | undefined> {
   try {
     return await options.client.records.follow(
-      { afterSequence, ...(options.thread === undefined ? {} : { thread: options.thread }) },
+      {
+        afterSequence,
+        clipPayloads: true,
+        ...(options.thread === undefined ? {} : { thread: options.thread }),
+      },
       { signal },
     );
   } catch {

@@ -30,7 +30,7 @@ export function useEarlierRecords(request: EarlierRecordsRequest): EarlierRecord
 
   const earlier = useInfiniteQuery({
     ...nixie.queryUtils.conversation.read.infiniteOptions({
-      input: (beforeSequence: number) => ({ beforeSequence, thread }),
+      input: (beforeSequence: number) => ({ beforeSequence, clipPayloads: true, thread }),
       initialPageParam: oldest ?? 0,
       getNextPageParam: (page) => (page.hasEarlier ? page.records[0]?.sequence : undefined),
 

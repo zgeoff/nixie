@@ -954,8 +954,82 @@ test('#records.follow streams a failed tool result as cancelled when a stop canc
   const seen = await readEvents(connection, 1);
 
   expect(seen.map((event) => event.record.toolCall)).toStrictEqual([
-    { callID: 'call-1', outcome: 'cancelled' },
+    { callID: 'call-1', outcome: 'cancelled', runID: 'conversation' },
   ]);
+});
+
+test('#records.follow cuts a long payload string only when the client asks for clipping', async () => {
+  const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+
+  const laptopClient = buildTestClient(ctx.url, laptop.token);
+
+  const [called] = await writeRecords(ctx.context.log, [
+    {
+      kind: 'tool_called',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: {
+        callID: 'call-1',
+        runID: 'conversation',
+        toolUseID: null,
+        tool: 'web.fetch',
+        model: 'test-model',
+        profile: 'test',
+      },
+      erasable: { input: { note: 'n'.repeat(9000) } },
+    },
+  ]);
+
+  invariant(called);
+
+  const connection = await laptopClient.records.follow({
+    afterSequence: called.sequence - 1,
+    clipPayloads: true,
+    thread: 'conversation',
+  });
+
+  const seen = await readEvents(connection, 1);
+
+  expect(seen.map((event) => event.record.clipped)).toStrictEqual([
+    [{ field: 'toolCall.input', path: ['note'], bytes: 9000 }],
+  ]);
+});
+
+test('#records.readPayload returns the whole input that a clipped read cut', async () => {
+  const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+
+  const laptopClient = buildTestClient(ctx.url, laptop.token);
+
+  const [called] = await writeRecords(ctx.context.log, [
+    {
+      kind: 'tool_called',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: {
+        callID: 'call-1',
+        runID: 'conversation',
+        toolUseID: null,
+        tool: 'web.fetch',
+        model: 'test-model',
+        profile: 'test',
+      },
+      erasable: { input: { note: 'n'.repeat(9000) } },
+    },
+  ]);
+
+  invariant(called);
+
+  const payload = await laptopClient.records.readPayload({
+    thread: 'conversation',
+    sequence: called.sequence,
+  });
+
+  expect(payload).toStrictEqual({
+    status: 'readable',
+    toolCall: { input: { note: 'n'.repeat(9000) } },
+  });
 });
 
 test('#log.follow still streams the records of the thread for a client of an earlier release', async () => {

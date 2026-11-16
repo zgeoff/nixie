@@ -21,6 +21,7 @@ export function collectSentMessages(
 
     return [
       {
+        ...(call.isInputCut === true && call.called !== undefined ? { cut: call.called } : {}),
         direction: 'sent',
         hop: sent.hop,
         kind: input.kind,

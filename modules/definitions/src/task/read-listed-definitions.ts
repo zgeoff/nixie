@@ -4,7 +4,7 @@ import { startedTaskDefaultTools } from '@heynixie/tasks';
 import type { Kysely } from 'kysely';
 import { z } from 'zod';
 import { readDefinitionsInForce } from '../definition/read-definitions-in-force';
-import type { DefinitionsTables } from '../types';
+import type { DefinitionsTables, SnapshotTask } from '../types';
 import type { SeededTask } from './pick-seeded-sequence';
 import { pickSeededSequence } from './pick-seeded-sequence';
 import { readSeededTasks } from './read-seeded-tasks';
@@ -17,10 +17,14 @@ export interface ListedDefinition {
   readonly target: 'task' | 'conversation';
   readonly trigger: Trigger | null;
   readonly tools: readonly string[];
-  readonly origin: 'definitions';
+  readonly origin: 'definitions' | 'nixie';
 
-  // the seed record that put this version in force
-  readonly createdBy: { readonly sequence: number; readonly kind: 'definitions_seeded' };
+  // the record that put this version in force: the seed for a definition of the repo, and the
+  // definition.changed record of the change for a runtime definition
+  readonly createdBy: {
+    readonly sequence: number;
+    readonly kind: 'definition.changed' | 'definitions_seeded';
+  };
   readonly isUnreadable: false;
 }
 
@@ -57,7 +61,10 @@ export async function readListedDefinitions(
     rows.map((row) => [row.definition_hash, formSchema.parse(JSON.parse(row.form))]),
   );
 
-  const seeded = await readSeededSequences(db, inForce.tasks, inForce.recordSequence);
+  const repoTasks = inForce.tasks.filter((task) => task.origin === 'definitions');
+
+  const seeded = await readSeededSequences(db, repoTasks, inForce.recordSequence);
+  const changed = await readChangedSequences(db, inForce.tasks);
 
   return inForce.tasks
     .toSorted((left, right) => left.id.localeCompare(right.id))
@@ -68,6 +75,8 @@ export async function readListedDefinitions(
         return [];
       }
 
+      const changeSequence = task.origin === 'nixie' ? changed.get(task.changeID) : undefined;
+
       return [
         {
           definitionID: task.id,
@@ -77,11 +86,14 @@ export async function readListedDefinitions(
           target: form.target,
           trigger: form.trigger ?? null,
           tools: form.target === 'conversation' ? [] : (form.tools ?? startedTaskDefaultTools),
-          origin: 'definitions' as const,
-          createdBy: {
-            sequence: seeded.get(task.id) ?? inForce.recordSequence,
-            kind: 'definitions_seeded' as const,
-          },
+          origin: task.origin,
+          createdBy:
+            changeSequence === undefined
+              ? {
+                  sequence: seeded.get(task.id) ?? inForce.recordSequence,
+                  kind: 'definitions_seeded' as const,
+                }
+              : { sequence: changeSequence, kind: 'definition.changed' as const },
           isUnreadable: false as const,
         },
       ];
@@ -136,4 +148,25 @@ async function readSeededSequences(
 
 function isHeld(tasks: readonly SeededTask[], task: SeededTask): boolean {
   return tasks.some((candidate) => candidate.id === task.id && candidate.hash === task.hash);
+}
+
+// The sequence of the definition.changed record of each runtime change in force, by change ID
+async function readChangedSequences(
+  db: Kysely<unknown>,
+  tasks: readonly SnapshotTask[],
+): Promise<ReadonlyMap<string, number>> {
+  const changeIDs = tasks.flatMap((task) => (task.origin === 'nixie' ? [task.changeID] : []));
+
+  if (changeIDs.length === 0) {
+    return new Map();
+  }
+
+  const rows = await db
+    .$extendTables<DefinitionsTables>()
+    .selectFrom('runtime_task_definitions')
+    .select(['change_id', 'changed_sequence'])
+    .where('change_id', 'in', changeIDs)
+    .execute();
+
+  return new Map(rows.map((row) => [row.change_id, row.changed_sequence]));
 }

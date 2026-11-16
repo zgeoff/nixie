@@ -17,7 +17,10 @@ export function useConversationPage(thread: string) {
   >(undefined);
 
   useEffect(() => {
-    const queryKey = queryUtils.conversation.read.queryKey({ input: { thread } });
+    const queryKey = queryUtils.conversation.read.queryKey({
+      input: { clipPayloads: true, thread },
+    });
+
     const kept = dropped.current;
 
     // React's StrictMode at mount and a hidden Activity stop and start the effect of a view that
@@ -42,7 +45,7 @@ export function useConversationPage(thread: string) {
 
   return useQuery(
     queryUtils.conversation.read.queryOptions({
-      input: { thread },
+      input: { clipPayloads: true, thread },
       staleTime: Number.POSITIVE_INFINITY,
     }),
   );

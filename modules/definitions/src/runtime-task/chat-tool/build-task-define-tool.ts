@@ -15,6 +15,7 @@ const jsonSchema = z.toJSONSchema(taskDefineInputSchema, {
 });
 
 const inputSchema = z.record(z.string(), z.json()).parse(structuredClone(jsonSchema));
+const taskOnlyKeys = ['model', 'persona', 'memory', 'tools', 'report'] as const;
 
 // Held by the conversation alone: the tool stays out of every task's list.
 export function buildTaskDefineTool(options: ChatToolOptions): ToolDefinition {
@@ -25,7 +26,8 @@ export function buildTaskDefineTool(options: ChatToolOptions): ToolDefinition {
       'schedule, or one time with `at`. It takes effect at once, and the owner sees a notice ' +
       'with an undo. Pass definitionID to replace a definition, with every field you want kept: ' +
       'a field you leave out goes back to its default. An `at` without an offset is read in the ' +
-      "owner's zone. A refusal comes back as `refused` with a code and what you need to retry.",
+      "owner's zone. A conversation target takes only name, brief, target, trigger and " +
+      'definitionID. A refusal comes back as `refused` with a code and what you need to retry.',
     input: inputSchema,
     output: {
       type: 'object',
@@ -59,15 +61,31 @@ export function buildTaskDefineTool(options: ChatToolOptions): ToolDefinition {
         return { status: 'error', message: z.prettifyError(parsed.error) };
       }
 
+      const given = parsed.data;
+      const extraKeys = taskOnlyKeys.filter((key) => given[key] !== undefined);
+
+      if (given.target === 'conversation' && extraKeys.length > 0) {
+        return {
+          status: 'error',
+          message:
+            'A conversation target takes only name, brief, target, trigger and definitionID. ' +
+            `Leave out: ${extraKeys.join(', ')}.`,
+        };
+      }
+
       const context = options.readDefinitions();
 
       if (context === null) {
         return { status: 'error', message: notReadyMessage };
       }
 
-      const { definitionID, trigger: given, ...rest } = parsed.data;
-      const ownerZone = 'at' in given ? await options.readZone('owner') : null;
-      const trigger = 'at' in given ? { at: buildOffsetAt(given.at, ownerZone ?? 'UTC') } : given;
+      const { definitionID, trigger: givenTrigger, ...rest } = given;
+      const ownerZone = 'at' in givenTrigger ? await options.readZone('owner') : null;
+
+      const trigger =
+        'at' in givenTrigger
+          ? { at: buildOffsetAt(givenTrigger.at, ownerZone ?? 'UTC') }
+          : givenTrigger;
 
       const result = await requestDefinitionChange(context, {
         kind: 'define',

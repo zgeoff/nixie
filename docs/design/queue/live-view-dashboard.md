@@ -38,4 +38,5 @@ the decisions that shaped it and what it leaves out.
 - Proposals that wait for your answer. The approval cards and the approval digest of
   [the approval record](https://linear.app/zgeoff/issue/GEO-1804) show them.
 - The routes `/tasks/ended` and `/definitions`, which
-  [the views of definitions and ended task runs](definition-views.md) cover.
+  [the client architecture](../../architecture/channels/client.md#the-ended-runs-and-definitions-routes)
+  describes.

@@ -228,8 +228,8 @@ test('it follows again from the last record it delivered, so a reconnect repeats
   });
 
   expect(ctx.follows.mock.calls.map(([body]) => body)).toStrictEqual([
-    { json: { afterSequence: 0, thread: 'k3vq8m2xpa' } },
-    { json: { afterSequence: first.sequence, thread: 'k3vq8m2xpa' } },
+    { json: { afterSequence: 0, clipPayloads: true, thread: 'k3vq8m2xpa' } },
+    { json: { afterSequence: first.sequence, clipPayloads: true, thread: 'k3vq8m2xpa' } },
   ]);
 
   expect(onRecord.mock.calls.map(([record]) => record.sequence)).toStrictEqual([
@@ -253,7 +253,9 @@ test('it follows every thread when it names none', async () => {
   });
 
   await waitFor(() => {
-    expect(ctx.follows).toHaveBeenCalledExactlyOnceWith({ json: { afterSequence: 4 } });
+    expect(ctx.follows).toHaveBeenCalledExactlyOnceWith({
+      json: { afterSequence: 4, clipPayloads: true },
+    });
   });
 });
 

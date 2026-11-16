@@ -335,7 +335,12 @@ test('it carries a tool call with its tool and input', () => {
     recordedAt: new Date('2026-10-10T12:00:01Z'),
     sequence: 5,
     thread: 'conversation',
-    toolCall: { callID: 'call-1', input: { url: 'https://example.com/' }, tool: 'web_fetch' },
+    toolCall: {
+      callID: 'call-1',
+      input: { url: 'https://example.com/' },
+      runID: 'run-1',
+      tool: 'web_fetch',
+    },
   });
 });
 

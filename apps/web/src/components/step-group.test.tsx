@@ -81,6 +81,91 @@ test('it shows each call with its input and result once its section opens', asyn
   expect(call).toHaveTextContent('"text": "Example Domain"');
 });
 
+test('it shows a cut result with a control that loads the whole value in its place', async () => {
+  const user = userEvent.setup();
+
+  await createDeviceSession();
+
+  const result = await store.records.create({
+    kind: 'tool_result',
+    thread: 'k3vq8m2xpa',
+    toolCall: {
+      callID: 'a',
+      content: { result: { text: 'the whole text of the page' } },
+      outcome: 'result',
+    },
+  });
+
+  const rendered = render(
+    <StepGroup
+      step={buildMockStepActivity({
+        calls: [
+          {
+            callID: 'a',
+            content: { result: { text: 'the cut start of the page' } },
+            input: { url: 'https://example.com/' },
+            isContentCut: true,
+            outcome: 'result',
+            result: { kind: 'tool_result', sequence: result.sequence, thread: 'k3vq8m2xpa' },
+            tool: 'web_fetch',
+          },
+        ],
+        taskID: 'conversation',
+      })}
+    />,
+  );
+
+  await user.click(rendered.getByText(/^conversation · /u));
+  await user.click(rendered.getByText('Tools 1'));
+
+  expect(rendered.getByRole('region', { name: 'web_fetch' })).not.toHaveTextContent(
+    'THE LAST WORDS',
+  );
+
+  await user.click(rendered.getByRole('button', { name: 'Load the whole value' }));
+
+  await waitFor(() => {
+    expect(rendered.getByRole('region', { name: 'web_fetch' })).toHaveTextContent(
+      'the whole text of the page',
+    );
+  });
+});
+
+test('it keeps the cut value and offers a retry when the whole value cannot load', async () => {
+  const user = userEvent.setup();
+
+  await createDeviceSession();
+
+  const rendered = render(
+    <StepGroup
+      step={buildMockStepActivity({
+        calls: [
+          {
+            callID: 'a',
+            content: { result: { text: 'cut start' } },
+            input: { url: 'https://example.com/' },
+            isContentCut: true,
+            outcome: 'result',
+            result: { kind: 'tool_result', sequence: 9999, thread: 'k3vq8m2xpa' },
+            tool: 'web_fetch',
+          },
+        ],
+        taskID: 'conversation',
+      })}
+    />,
+  );
+
+  await user.click(rendered.getByText(/^conversation · /u));
+  await user.click(rendered.getByText('Tools 1'));
+  await user.click(rendered.getByRole('button', { name: 'Load the whole value' }));
+
+  const failure = await rendered.findByRole('alert');
+
+  expect(failure).toHaveTextContent('The whole value did not load.');
+  expect(rendered.getByRole('region', { name: 'web_fetch' })).toHaveTextContent('cut start');
+  expect(rendered.getByRole('button', { name: 'Try again' })).toBeEnabled();
+});
+
 test('it shows an error with hidden as one JSON object with the message before hidden', async () => {
   const user = userEvent.setup();
 
