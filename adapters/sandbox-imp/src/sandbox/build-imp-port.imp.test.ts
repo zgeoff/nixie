@@ -1,4 +1,4 @@
-import { expect, onTestFinished, test } from 'bun:test';
+import { expect, test } from 'bun:test';
 import { buildSandboxSpec, buildWorkerRunOwner } from '@heynixie/sandbox';
 import { buildMockGrantSpec, buildMockSandboxSpec } from '@heynixie/sandbox/test-utils';
 import { createImpClient } from '@impz/client';
@@ -113,8 +113,6 @@ test.skipIf(!hasImpHost)(
       }),
     );
 
-    onTestFinished(() => sandbox.destroy());
-
     const viaBroker = await runProbe(sandbox, 'https://api.anthropic.com/v1/models', {
       viaBroker: true,
     });
@@ -127,6 +125,8 @@ test.skipIf(!hasImpHost)(
     const otherHost = await runProbe(sandbox, 'https://example.com/', { viaBroker: false });
     const literalAddress = await runProbe(sandbox, 'https://1.1.1.1/', { viaBroker: false });
     const brokerOtherHost = await runProbe(sandbox, 'https://example.com/', { viaBroker: true });
+
+    await sandbox.destroy();
 
     expect(viaBroker).toMatch(/^status=[1-5]\d\d exit=0$/u);
     expect(ownKey).toMatch(/^status=000 exit=[1-9]\d*$/u);
