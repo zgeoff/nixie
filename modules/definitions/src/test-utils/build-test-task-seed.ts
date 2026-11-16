@@ -15,6 +15,10 @@ export function buildTestTaskSeed(): TaskSeedContext {
     'memory.remember',
     'memory.edit',
     'memory.retire',
+    'moment.find',
+    'moment.read',
+    'moment.edit',
+    'log.read',
     'web.fetch',
   ];
 
@@ -27,7 +31,7 @@ export function buildTestTaskSeed(): TaskSeedContext {
         ],
         conversationTools: ['task.define'],
         memoryTools: {
-          read: ['memory.recall', 'memory.pending', 'moment.read'],
+          read: ['memory.recall', 'memory.pending', 'moment.find', 'moment.read'],
           write: ['memory.remember', 'memory.edit', 'memory.retire', 'moment.keep', 'moment.edit'],
         },
       }),
