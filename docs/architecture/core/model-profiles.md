@@ -88,7 +88,8 @@ items beside a filler, reaches the model whole at that value. A tool server that
 within the guest config's `startup_timeout_sec` fails the turn with `tools_not_connected`. The guest
 writes the turn frame's tool-call wait into `tool_timeout_sec` of nixie's tool server, in seconds,
 and writes nothing when the wait is null. The `codex` harness record declares a wait, because the
-test imp lane proves that the CLI drops a tool call that outlasts the setting.
+test imp lane proves that the CLI gives the model a timeout error in place of a result that arrives
+after the setting.
 
 The wire library holds every harness ID and the features each harness declares, such as resuming a
 session at an entry or returning structured output. Each role declares the features its loop needs,

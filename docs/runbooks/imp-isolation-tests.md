@@ -32,10 +32,12 @@ model replies, through the real model gateway: the first request, the bearer hea
 calls a tool, a tool result inside and one after the tool-call wait, a failed call, a retried call,
 a compaction inside one turn, a down tool server, a recall result of the page limit, the capture tag
 segment, and the memory of the `codexTask` size row. Each case asserts that the gateway's count
-equals the sum of the turn's `call` frames. The memory case prints one probe line: `oom_kill` from
-`/proc/vmstat`, the cgroup's `memory.peak` and `memory.events`, and `MemTotal`. It passes when the
-turn ends with no out-of-memory kill. Set `NIXIE_IMP_TEST_CODEX_MEMORY_MIB` to probe another size.
-It defaults to the row's figure.
+equals the sum of the turn's `call` frames. The 2 tool-call wait cases check only what reaches the
+model, and skip that count. The late-result case prints the turn's last frame and the model's second
+request, which holds the text the CLI sends in place of the result. The memory case prints one probe
+line: `oom_kill` from `/proc/vmstat`, the cgroup's `memory.peak` and `memory.events`, and
+`MemTotal`. It passes when the turn ends with no out-of-memory kill. Set
+`NIXIE_IMP_TEST_CODEX_MEMORY_MIB` to probe another size. It defaults to the row's figure.
 
 The suite skips until it has 2 more variables:
 
