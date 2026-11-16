@@ -23,10 +23,9 @@ export function isRunBlocksTurn(run: TaskRun, turn: RunBlocksTurn): boolean {
   return turn.isNewSession || isFirstStep;
 }
 
-// The trigger block comes first, then the report shape, then the since block. The report shape's
-// fence is the start of the run's ID, which the model never sees, so a rerun and a rebuild render
-// the same block and no text can close it early. The trigger and since blocks hold only code-made
-// text, so they need no fence.
+// The report shape's fence is the start of the run's ID, which the model never sees, so a rerun and
+// a rebuild render the same block and no text can close it early. The trigger and since blocks hold
+// only code-made text, so they need no fence.
 export function renderRunBlocks(
   run: TaskRun,
   turn: RunBlocksTurn,

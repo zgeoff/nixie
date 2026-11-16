@@ -65,12 +65,10 @@ async function readRunBlocks(step: SessionStep, isNewSession: boolean): Promise<
     return null;
   }
 
-  return renderRunBlocks(
-    run,
-    turn,
-    await readRunTrigger(step.run, run),
-    await readRunSince(step.run.context, run),
-  );
+  const trigger = await readRunTrigger(step.run, run);
+  const since = await readRunSince(step.run.context, run);
+
+  return renderRunBlocks(run, turn, trigger, since);
 }
 
 // a session resumes only after its opening, which keeps or gives its key
