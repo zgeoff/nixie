@@ -32,6 +32,10 @@ again after you change the web client: each command builds the client once, when
   first view, which rig's preload opens, and Bun ignores the options of each later view.
 - **Clear the cookies before each test.** Every view shares the one Chrome's cookie jar, across
   files too.
+- **Before a click, wait for the state that each query the page loads after hydration renders.**
+  `view.click` fires at coordinates it measured earlier, and a list that lands in between moves the
+  target. `_reactListening` on `document` shows that React's root listeners are attached, not that
+  the page hydrated.
 - **Undo in `onTestFinished` each change your suite makes to `globalThis`, such as a stubbed
   `fetch`.** The next file runs in the same process, and the preloads in the root `bunfig.toml`
   reset only what they set up.
