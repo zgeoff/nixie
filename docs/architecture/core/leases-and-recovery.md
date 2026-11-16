@@ -72,8 +72,11 @@ in order:
 4. It fires every timer that fell due while nixie was down.
 5. It runs the sandbox cleanup the server passes in, whose job is to destroy every sandbox that
    belongs to a step that no longer runs. It keeps the sandboxes of the conversation, the system
-   tasks and every started task that is not done or closed. The sandboxes projection lists each
-   sandbox that still stands with its owner and the adapter that made it
+   tasks and every started task that is not done or closed, but it destroys a kept owner's sandbox
+   whose image the release's manifest does not hold. The conversation's sandbox is the exception,
+   because its own setup replaces it after copying its session out. A destroy that fails is logged
+   and tried again at the next start. The sandboxes projection lists each sandbox that still stands
+   with its owner and the adapter that made it
    ([sandboxes](../connectors/sandboxes.md#records-and-recovery)).
 
 The actions module and the sandbox module depend on tasks, and modules form no cycles, so the server
