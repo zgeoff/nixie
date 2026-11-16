@@ -18,16 +18,16 @@ Each point below links the decision record or doc that settles it. [Principles](
 | Tier          | Holds                                                   | Lives in                                      |
 | ------------- | ------------------------------------------------------- | --------------------------------------------- |
 | System        | Platform code, defaults and docs                        | The public `nixie` repo                       |
-| Definitions   | Your persona, jobs and policy seed                      | A private repo, or another definitions source |
+| Definitions   | Your persona, task definitions and policy seed          | A private repo, or another definitions source |
 | Deployment    | The image version, infrastructure, secrets and backups  | Wherever you deploy nixie                     |
 | Personal data | Memory, conversations, the event log and connector data | Hosts you control, with encrypted backups     |
 
-The public repo ships no persona, no jobs and no policy for any one person. Every behaviour is data
-your definitions supply.
+The public repo ships no persona, no task definitions and no policy for any one person. Every
+behaviour is data your definitions supply.
 
-## Jobs
+## Task definitions
 
-nixie ships no jobs. It runs these kinds of job, each one defined in your definitions:
+nixie ships no task definitions. It runs these kinds of task, each one defined in your definitions:
 
 | Kind                                   | Example                                                  | Risk   |
 | -------------------------------------- | -------------------------------------------------------- | ------ |
@@ -81,8 +81,8 @@ budget. A bounded rule can lift them, and creating one always asks
 and every prompt records its cause.
 
 The conversation counts as untrusted, because it reads outside content within minutes. A send to a
-destination that neither you nor a rule named asks first. Taint applies to jobs and workers in
-stages ([0005](decisions/0005-untrusted-conversation.md)).
+destination that neither you nor a rule named asks first. Taint applies to task runs of a definition
+and to workers in stages ([0005](decisions/0005-untrusted-conversation.md)).
 
 An approval binds to one exact action and is used once. "Always allow" is one tap that also creates
 the rule shown on the card ([proposals and approvals](design/platform/policy/approvals.md)). A

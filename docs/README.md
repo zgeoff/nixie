@@ -20,7 +20,7 @@
 ## Start here
 
 - [Overview](overview.md) — what nixie is, why it exists, and the design in brief
-- [Principles](principles.md) — the rules every job and deployment holds to
+- [Principles](principles.md) — the rules every task and deployment holds to
 - [Scope](scope.md) — requirements in tiers, and non-goals
 - [Glossary](glossary.md) — the terms the docs and the code use, one meaning each
 - [Planned work](https://linear.app/zgeoff/project/nixie-caa59289fb88) — the nixie project in
@@ -200,7 +200,7 @@ rests on.
 - [The event log and records](design/platform/core/event-log.md) — what a record holds, append-only
   semantics, projections, the data behind the dashboard and the live view, export and retention
 - [Tasks](design/platform/core/tasks.md) — tasks as state machines with leases and an inbox, waits,
-  the conversation's task tools, job runs, workers in imps, and crash recovery
+  the conversation's task tools, task runs of a definition, workers in imps, and crash recovery
 - [Actions](design/platform/core/actions.md) — the action queue, its outcomes, approval consumption,
   reconciliation per connector, and unknown outcomes
 - [Model profiles](design/platform/core/models.md) — the profile, model roles and their defaults,
