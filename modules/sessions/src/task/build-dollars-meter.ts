@@ -3,6 +3,7 @@ import type { ModelPrices } from '@heynixie/models';
 import { buildCallCost, modelSessionSummarizedCodec, modelTurnEndedCodec } from '@heynixie/models';
 import type { RunMeter } from '@heynixie/tasks';
 import { readRunRecords, readTaskSetup, taskFailedTurnSpentCodec } from '@heynixie/tasks';
+import { workerGatewayChargedCodec } from '../worker/worker-gateway-charged-codec';
 import { workerTurnEndedCodec } from '../worker/worker-turn-ended-codec';
 
 // The profile a task runs on gives the prices, and a task with no profile of its own runs on the
@@ -26,6 +27,7 @@ export function buildDollarsMeter(readPrices: ReadRunPrices): RunMeter {
         modelSessionSummarizedCodec.kind,
         taskFailedTurnSpentCodec.kind,
         workerTurnEndedCodec.kind,
+        workerGatewayChargedCodec.kind,
       ]);
 
       let total = 0;
@@ -65,6 +67,10 @@ function buildRecordDollars(record: LogRecord, prices: ModelPrices | null): numb
 
   if (record.kind === workerTurnEndedCodec.kind) {
     return workerTurnEndedCodec.decode(record.payload).dollars;
+  }
+
+  if (record.kind === workerGatewayChargedCodec.kind) {
+    return workerGatewayChargedCodec.decode(record.payload).dollars;
   }
 
   return buildTokensCost(

@@ -2,6 +2,7 @@ import type { LogRecord } from '@heynixie/log';
 import { readRecords } from '@heynixie/log';
 import type { TaskRun, TasksContext } from '@heynixie/tasks';
 import { taskFailedTurnSpentCodec } from '@heynixie/tasks';
+import { workerGatewayChargedCodec } from '../worker/worker-gateway-charged-codec';
 import { workerRunStartedCodec } from '../worker/worker-run-started-codec';
 import { workerTurnEndedCodec } from '../worker/worker-turn-ended-codec';
 
@@ -31,7 +32,7 @@ export async function readLateSpend(
 
       dollars += spent.taskRunID === run.runID ? spent.dollars : 0;
     } else {
-      const turn = workerTurnEndedCodec.decode(record.payload);
+      const turn = decodeWorkerSpend(record);
 
       dollars +=
         turn.taskRunID === run.runID && !ownWorkerRunIDs.has(turn.workerRunID) ? turn.dollars : 0;
@@ -57,7 +58,11 @@ async function readLateRecords(
     const page = await readRecords(context.log, {
       afterSequence: cursor,
       thread: run.taskID,
-      kinds: [taskFailedTurnSpentCodec.kind, workerTurnEndedCodec.kind],
+      kinds: [
+        taskFailedTurnSpentCodec.kind,
+        workerTurnEndedCodec.kind,
+        workerGatewayChargedCodec.kind,
+      ],
       limit: pageSize,
     });
 
@@ -73,11 +78,22 @@ async function readLateRecords(
 function collectWorkerRunIDs(records: readonly LogRecord[], run: TaskRun): ReadonlySet<string> {
   return new Set(
     records
-      .filter((record) => record.kind === workerTurnEndedCodec.kind)
-      .map((record) => workerTurnEndedCodec.decode(record.payload))
+      .filter((record) => record.kind !== taskFailedTurnSpentCodec.kind)
+      .map((record) => decodeWorkerSpend(record))
       .filter((turn) => turn.taskRunID === run.runID)
       .map((turn) => turn.workerRunID),
   );
+}
+
+// A worker's turn and the gateway's excess over its turns both name the worker run and the dollars.
+function decodeWorkerSpend(record: LogRecord): {
+  readonly workerRunID: string;
+  readonly taskRunID?: string | undefined;
+  readonly dollars: number;
+} {
+  return record.kind === workerGatewayChargedCodec.kind
+    ? workerGatewayChargedCodec.decode(record.payload)
+    : workerTurnEndedCodec.decode(record.payload);
 }
 
 // A worker's start record can sit before the sequence the late read begins at, so the read goes back

@@ -29,6 +29,7 @@ import type {
 } from './types';
 import { workerSystemPrompt } from './worker-system-prompt';
 import type { WorkerUsed } from './worker-used';
+import { writeWorkerGatewayCharged } from './write-worker-gateway-charged';
 import { writeWorkerRunEnded } from './write-worker-run-ended';
 import { writeWorkerRunStarted } from './write-worker-run-started';
 import { writeWorkerTurnEnded } from './write-worker-turn-ended';
@@ -123,7 +124,7 @@ async function runOpenWorker(
 
   const count = await readGatewayCount(deps, run);
 
-  chargeGatewayExcess(plan, run, count);
+  await chargeGatewayExcess(deps, plan, run, count);
 
   const end = pickGatewayEnd(stagesEnd, count, plan.limits);
   const used = buildUsed(deps, plan, run, count);
@@ -375,11 +376,22 @@ async function readGatewayCount(deps: WorkerDeps, run: WorkerRun): Promise<Sandb
 }
 
 // The gateway's dollars are the count that holds, so the calling task pays what the guest's own
-// usage reports left out.
-function chargeGatewayExcess(plan: WorkerPlan, run: WorkerRun, count: SandboxCount | null): void {
-  if (count !== null && count.dollars > run.tally.dollars) {
-    plan.hold.onSpend(count.dollars - run.tally.dollars);
+// usage reports left out. The excess goes in a record too, so a later step's meter counts it.
+async function chargeGatewayExcess(
+  deps: WorkerDeps,
+  plan: WorkerPlan,
+  run: WorkerRun,
+  count: SandboxCount | null,
+): Promise<void> {
+  if (count === null || count.dollars <= run.tally.dollars) {
+    return;
   }
+
+  const excess = count.dollars - run.tally.dollars;
+
+  await writeWorkerGatewayCharged(deps, plan, run.names, excess);
+
+  plan.hold.onSpend(excess);
 }
 
 function buildUsed(

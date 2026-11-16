@@ -697,6 +697,35 @@ test('it states the gateway numbers in the result of an answered run', async () 
   expect(ctx.spent.reduce((sum, value) => sum + value, 0)).toBe(0.42);
 });
 
+test('it records the dollars the gateway counted beyond the priced calls of the worker', async () => {
+  const ctx = await setupTest({ isGatewayOn: true });
+
+  ctx.gateway.readSandbox.mockResolvedValue({
+    kind: 'ok',
+    value: { dollars: 0.42, tokens: 7777, tripped: false },
+  });
+
+  ctx.guest.addKindReplies('worker', { text: 'Done.' });
+
+  await ctx.callWorker({ question: 'Which cafes are open?' });
+
+  const records = await ctx.readKinds(['worker.gateway_charged']);
+
+  expect(records.map((record) => record.payload['dollars'])).toStrictEqual([0.42]);
+});
+
+test('it records no gateway charge when the priced calls cover the gateway count', async () => {
+  const ctx = await setupTest();
+
+  ctx.guest.addKindReplies('worker', { text: 'Done.' });
+
+  await ctx.callWorker({ question: 'Which cafes are open?' });
+
+  const records = await ctx.readKinds(['worker.gateway_charged']);
+
+  expect(records).toStrictEqual([]);
+});
+
 test('it ends a run at a dollar limit when the gateway found its sandbox past it', async () => {
   const ctx = await setupTest({ isGatewayOn: true, limits: { dollars: 1 } });
 
