@@ -1,4 +1,4 @@
-import { expect, test } from 'bun:test';
+import { expect, mock, test } from 'bun:test';
 import type { RecordKind } from '@heynixie/log';
 import { readRecords, writeRecords } from '@heynixie/log';
 import type { Harness } from '@heynixie/models';
@@ -15,7 +15,32 @@ import { buildStubTurnScript } from '../test-utils/build-stub-turn-script';
 import { runNextStep } from '../test-utils/run-next-step';
 import { startTestTasks } from '../test-utils/start-test-tasks';
 import { takeGuestMessages } from '../test-utils/take-guest-messages';
+import type { ConversationMemory } from '../types';
 import type { StepCaptureInput, StepCapturePort } from '../utils/open-step-capture';
+
+test('it records the error and keeps no turn when the memory rejects', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  ctx.readTurnMemory.mockRejectedValue(new Error('the trigger index is gone'));
+
+  const runner = await ctx.startRunner();
+
+  await ctx.sendMessage(runner, 'Where is the bike pump?');
+
+  const errored = await ctx.readKinds('task.step_errored');
+  const ended = await ctx.readKinds('model.turn_ended');
+
+  expect(errored).toMatchObject([
+    {
+      payload: { errors: 1 },
+      erasable: { fields: { message: expect.stringContaining('the trigger index is gone') } },
+    },
+  ]);
+
+  expect(ended).toStrictEqual([]);
+});
 
 type Runner = Awaited<ReturnType<typeof startConversationRunner>>;
 
@@ -25,6 +50,11 @@ async function setupTest() {
   const sandboxes = buildStubSandboxes();
   const tools = buildStubToolEndpoint();
   const profile = buildMockModelProfile();
+
+  const readTurnMemory = mock<ConversationMemory['readTurnMemory']>(() =>
+    Promise.resolve({ kind: 'none' }),
+  );
+
   const opened: StepCaptureInput[] = [];
   const closed: number[] = [];
 
@@ -66,6 +96,7 @@ async function setupTest() {
     ...tasks,
     sandboxes,
     callingScript,
+    readTurnMemory,
     profile,
     opened,
     closed,
@@ -97,13 +128,7 @@ async function setupTest() {
           readPinnedCore: () => Promise.resolve([]),
           readPinnedCoreUse: () => Promise.resolve({ items: 0, tokens: 0, budget: 2000 }),
           readIndex: () => Promise.resolve({ text: '', items: 0, tokens: 0, budget: 0 }),
-          recall: () =>
-            Promise.resolve({
-              items: [],
-              next: null,
-              omitted: { items: [], count: 0, versions: 0 },
-            }),
-          recallMessages: () => Promise.resolve({ messages: [] }),
+          readTurnMemory: (ask) => readTurnMemory(ask),
           readShortIDs: () => Promise.resolve(new Map()),
         }),
         compaction: { summaryTokens },

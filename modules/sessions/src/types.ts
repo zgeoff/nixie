@@ -47,32 +47,6 @@ export interface MemoryLineOptions extends MessageTimeOptions {
   readonly ownerName: string | null;
 }
 
-interface MemoryRetrieval {
-  readonly query: string;
-  readonly limit: number;
-  readonly selfNoteLimit: number;
-  readonly minScore: number;
-  readonly minSimilarity: number;
-
-  readonly excludePinned: true;
-
-  readonly excludedVersions: readonly MemoryRef[];
-
-  readonly excludedWords: readonly string[];
-
-  readonly thread: string;
-}
-
-interface MessageRetrieval {
-  readonly query: string;
-  readonly limit: number;
-  readonly minScore: number;
-  readonly minSimilarity: number;
-
-  readonly excludedSequences: readonly number[];
-  readonly excludedWords: readonly string[];
-}
-
 export interface PastMessage {
   readonly sequence: number;
   readonly thread: string | null;
@@ -101,30 +75,43 @@ export interface SessionIndex {
   readonly budget: number;
 }
 
+export interface TurnMemoryAsk {
+  readonly text: string;
+  readonly thread: string;
+  readonly excludedWords: readonly string[];
+
+  // what the session holds, which no push picks again
+  readonly held: SessionHeld;
+}
+
+export interface SessionHeld {
+  // each read is lazy: the memory module calls it only when it needs the answer
+  readonly readVersions: () => Promise<readonly MemoryRef[]>;
+
+  // the similarity push cleanup removes this
+  readonly readMessages: () => Promise<readonly number[]>;
+}
+
+export type TurnMemory =
+  | {
+      readonly kind: 'placed';
+      readonly items: readonly MemoryItem[];
+      readonly selfNotes: readonly MemoryItem[];
+
+      // empty once the similarity push is gone
+      readonly messages: readonly PastMessage[];
+    }
+  | { readonly kind: 'none' };
+
 export interface ConversationMemory {
   readonly readIndex: () => Promise<SessionIndex>;
   readonly readPinnedCore: () => Promise<readonly MemoryItem[]>;
   readonly readPinnedCoreUse: () => Promise<PinnedCoreUse>;
-  readonly recall: (request: MemoryRetrieval) => Promise<{ readonly items: readonly MemoryItem[] }>;
-
-  readonly recallMessages: (
-    request: MessageRetrieval,
-  ) => Promise<{ readonly messages: readonly PastMessage[] }>;
-
+  readonly readTurnMemory: (ask: TurnMemoryAsk) => Promise<TurnMemory>;
   readonly readShortIDs: (itemIDs: readonly string[]) => Promise<ReadonlyMap<string, string>>;
 }
 
 export interface ConversationMemorySettings {
-  readonly retrievalItems: number;
-
-  readonly retrievalSelfNotes: number;
-
-  readonly retrievalMessages: number;
-
-  readonly retrievalMinScore: number;
-
-  readonly retrievalMinSimilarity: number;
-
   readonly rebuildTokens: number;
 
   readonly ownerName: string | null;

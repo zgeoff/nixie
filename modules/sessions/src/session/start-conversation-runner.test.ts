@@ -68,10 +68,9 @@ async function setupTest() {
 
   const sandboxes = buildStubSandboxes();
   const tools = buildStubToolEndpoint();
-  const recall = mock<ConversationMemory['recall']>(() => Promise.resolve({ items: [] }));
 
-  const recallMessages = mock<ConversationMemory['recallMessages']>(() =>
-    Promise.resolve({ messages: [] }),
+  const readTurnMemory = mock<ConversationMemory['readTurnMemory']>(() =>
+    Promise.resolve({ kind: 'none' }),
   );
 
   const writeMessage = (text: string) =>
@@ -88,8 +87,7 @@ async function setupTest() {
     ...tasks,
     seed: buildSeeder(tasks),
     sandboxes,
-    recall,
-    recallMessages,
+    readTurnMemory,
     runs: tools.runs,
     steps: tools.steps,
     startRunner: (config: RunnerConfig) =>
@@ -112,8 +110,7 @@ async function setupTest() {
           readPinnedCoreUse: () => Promise.resolve({ items: 0, tokens: 0, budget: 2000 }),
           readIndex: () =>
             Promise.resolve(config.index ?? { text: '', items: 0, tokens: 0, budget: 0 }),
-          recall,
-          recallMessages,
+          readTurnMemory,
           readShortIDs: () => Promise.resolve(new Map()),
         }),
         clearFetchPauses: config.clearFetchPauses ?? (() => {}),
@@ -131,7 +128,7 @@ async function setupTest() {
   };
 }
 
-test('it searches memory for no similar item, self-note or message unless the settings ask for one', async () => {
+test('it asks memory once for what the turn brings, with the message text and no search setting', async () => {
   const ctx = await setupTest();
 
   await createConversationTask(ctx.context);
@@ -144,8 +141,12 @@ test('it searches memory for no similar item, self-note or message unless the se
 
   await ctx.sendMessage(runner, 'Where is the bike pump?');
 
-  expect(ctx.recall).toHaveBeenCalledWith(expect.objectContaining({ limit: 0, selfNoteLimit: 0 }));
-  expect(ctx.recallMessages).not.toHaveBeenCalled();
+  expect(ctx.readTurnMemory).toHaveBeenCalledTimes(1);
+
+  expect(ctx.readTurnMemory.mock.calls[0]?.[0]).toMatchObject({
+    text: 'Where is the bike pump?',
+    excludedWords: [],
+  });
 });
 
 test('it opens a conversation with the memory index right after the pinned memory, and writes no recall record', async () => {

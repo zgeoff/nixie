@@ -109,11 +109,6 @@ async function setupTest() {
         policyHash: 'sha256:policy-test',
       }),
       memorySettings: {
-        retrievalItems: 5,
-        retrievalSelfNotes: 2,
-        retrievalMessages: 3,
-        retrievalMinScore: 0.25,
-        retrievalMinSimilarity: 0.38,
         rebuildTokens: 30_000,
         ownerName: 'Robin',
         agentNames: [],
@@ -1086,7 +1081,7 @@ test("it searches memory for the brief of a task that reads memory, on the task'
 
   await ctx.runNextStep(runner);
 
-  const queries = memory.recall.mock.calls.map(([request]) => request.query);
+  const queries = memory.readTurnMemory.mock.calls.map(([ask]) => ask.text);
 
   expect(queries).toStrictEqual(['Find the high tides for Saturday.']);
 });
@@ -1110,7 +1105,7 @@ test('it searches memory for the body of a task message to a task that reads mem
   await ctx.writeTaskMessage(taskID, 'Only the morning tide at the harbour.');
   await ctx.runNextStep(runner);
 
-  const queries = memory.recall.mock.calls.map(([request]) => request.query);
+  const queries = memory.readTurnMemory.mock.calls.map(([ask]) => ask.text);
 
   expect(queries.at(-1)).toBe('Only the morning tide at the harbour.');
 });

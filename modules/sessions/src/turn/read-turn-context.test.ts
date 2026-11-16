@@ -8,11 +8,6 @@ async function setupTest() {
   const tasks = await startTestTasks();
 
   const memorySettings = {
-    retrievalItems: 5,
-    retrievalSelfNotes: 2,
-    retrievalMessages: 3,
-    retrievalMinScore: 0,
-    retrievalMinSimilarity: 0,
     rebuildTokens: 1000,
     ownerName: null,
     agentNames: [],
@@ -33,8 +28,7 @@ test('it renders the system prompt with the session prompt override in force', a
         readPinnedCoreUse: () => Promise.resolve({ items: 0, tokens: 0, budget: 2000 }),
         readIndex: () => Promise.resolve({ text: '', items: 0, tokens: 0, budget: 0 }),
         readShortIDs: () => Promise.resolve(new Map<string, string>()),
-        recall: () => Promise.resolve({ items: [] }),
-        recallMessages: () => Promise.resolve({ messages: [] }),
+        readTurnMemory: () => Promise.resolve({ kind: 'none' as const }),
       }),
       memorySettings: ctx.memorySettings,
       messaging: { directory: [], hopLimit: 20, ownerName: null, agentName: null },
@@ -85,8 +79,7 @@ test("it puts no task board in the conversation's turn, with a started task in t
         readPinnedCoreUse: () => Promise.resolve({ items: 0, tokens: 0, budget: 2000 }),
         readIndex: () => Promise.resolve({ text: '', items: 0, tokens: 0, budget: 0 }),
         readShortIDs: () => Promise.resolve(new Map<string, string>()),
-        recall: () => Promise.resolve({ items: [] }),
-        recallMessages: () => Promise.resolve({ messages: [] }),
+        readTurnMemory: () => Promise.resolve({ kind: 'none' as const }),
       }),
       memorySettings: ctx.memorySettings,
       defaultZone: 'UTC',
@@ -151,8 +144,7 @@ test('it reads the pinned figures for no turn whose pinned core is unchanged', a
     readPinnedCoreUse,
     readIndex: () => Promise.resolve({ text: '', items: 0, tokens: 0, budget: 0 }),
     readShortIDs,
-    recall: () => Promise.resolve({ items: [] }),
-    recallMessages: () => Promise.resolve({ messages: [] }),
+    readTurnMemory: () => Promise.resolve({ kind: 'none' as const }),
   };
 
   const context = await readTurnContext(
@@ -210,8 +202,7 @@ test('it reads the pinned figures once for a turn whose pinned core changed, and
     readPinnedCoreUse,
     readIndex: () => Promise.resolve({ text: '', items: 0, tokens: 0, budget: 0 }),
     readShortIDs: () => Promise.resolve(new Map<string, string>()),
-    recall: () => Promise.resolve({ items: [] }),
-    recallMessages: () => Promise.resolve({ messages: [] }),
+    readTurnMemory: () => Promise.resolve({ kind: 'none' as const }),
   };
 
   const context = await readTurnContext(
@@ -429,7 +420,7 @@ test('it tells a started task whose cut work it carries on to continue that work
   ]);
 });
 
-test('it asks the memory for no retrieved block at limits of 0', async () => {
+test('it asks the memory once with the message text, and places nothing when it answers none', async () => {
   const ctx = await setupTest();
 
   await writeRecords(ctx.tasks.context.log, [
@@ -451,12 +442,7 @@ test('it asks the memory for no retrieved block at limits of 0', async () => {
       context: ctx.tasks.context,
       frame: { kind: 'conversation' } as const,
       memory: () => memory,
-      memorySettings: {
-        ...ctx.memorySettings,
-        retrievalItems: 0,
-        retrievalSelfNotes: 0,
-        retrievalMessages: 0,
-      },
+      memorySettings: ctx.memorySettings,
       messaging: { directory: [], hopLimit: 20, ownerName: null, agentName: null },
       defaultZone: 'UTC',
     },
@@ -475,17 +461,82 @@ test('it asks the memory for no retrieved block at limits of 0', async () => {
     },
   );
 
-  expect(memory.recall).toHaveBeenCalledWith(
-    expect.objectContaining({ limit: 0, selfNoteLimit: 0 }),
-  );
+  expect(memory.readTurnMemory.mock.calls.map(([ask]) => [ask.text, ask.thread])).toStrictEqual([
+    ['Where did I leave the bike pump?', 'conversation'],
+  ]);
 
-  expect(memory.recallMessages).not.toHaveBeenCalled();
   expect(context.retrieved).toStrictEqual([]);
   expect(context.retrievedMessages).toStrictEqual([]);
   expect(context.preamble.join('\n')).not.toInclude('retrieved-');
 });
 
-test('it places an item in the turn search when its limits are above 0, whatever the index showed', async () => {
+test('it hands the memory held lists that read nothing until called, and none for a new session', async () => {
+  const ctx = await setupTest();
+
+  const memory = buildStubMemory({ pinned: [], pinnedUse: { items: 0, tokens: 0, budget: 2000 } });
+
+  await readTurnContext(
+    {
+      context: ctx.tasks.context,
+      frame: { kind: 'conversation' } as const,
+      memory: () => memory,
+      memorySettings: ctx.memorySettings,
+      messaging: { directory: [], hopLimit: 20, ownerName: null, agentName: null },
+      defaultZone: 'UTC',
+    },
+    {
+      taskID: 'conversation',
+      persona: 'You are Pip.',
+      prompts: {},
+      skillCatalog: null,
+      runBlocks: null,
+      batch: [],
+      brief: null,
+      previousCore: null,
+      isNewSession: true,
+      isFirstSession: false,
+      isContinuation: false,
+    },
+  );
+
+  const held = memory.readTurnMemory.mock.calls[0]?.[0].held;
+
+  const versions = await held?.readVersions();
+
+  expect(versions).toStrictEqual([]);
+});
+
+test('it asks nothing of a run with no memory', async () => {
+  const ctx = await setupTest();
+
+  const context = await readTurnContext(
+    {
+      context: ctx.tasks.context,
+      frame: { kind: 'conversation' } as const,
+      memorySettings: ctx.memorySettings,
+      messaging: { directory: [], hopLimit: 20, ownerName: null, agentName: null },
+      defaultZone: 'UTC',
+    },
+    {
+      taskID: 'conversation',
+      persona: 'You are Pip.',
+      prompts: {},
+      skillCatalog: null,
+      runBlocks: null,
+      batch: [],
+      brief: null,
+      previousCore: null,
+      isNewSession: true,
+      isFirstSession: false,
+      isContinuation: false,
+    },
+  );
+
+  expect(context.retrieved).toStrictEqual([]);
+  expect(context.retrievedMessages).toStrictEqual([]);
+});
+
+test('it places the items that the memory answers with, whatever the index showed', async () => {
   const ctx = await setupTest();
 
   await writeRecords(ctx.tasks.context.log, [
@@ -512,7 +563,10 @@ test('it places an item in the turn search when its limits are above 0, whatever
     },
   });
 
-  memory.recall.mockResolvedValue({
+  memory.readTurnMemory.mockResolvedValue({
+    kind: 'placed',
+    selfNotes: [],
+    messages: [],
     items: [
       {
         itemID: '0b4f4c8e-3d0a-4c39-9a51-6f1f1f2b8c01',
@@ -556,6 +610,10 @@ test('it places an item in the turn search when its limits are above 0, whatever
   );
 
   expect(context.preamble.join('\n')).toInclude('The spare bike pump is behind the shed door');
-  expect(memory.recall).toHaveBeenCalledWith(expect.objectContaining({ excludedVersions: [] }));
+
+  expect(context.retrieved).toStrictEqual([
+    { itemID: '0b4f4c8e-3d0a-4c39-9a51-6f1f1f2b8c01', version: 1 },
+  ]);
+
   expect(memory.readIndex).not.toHaveBeenCalled();
 });
