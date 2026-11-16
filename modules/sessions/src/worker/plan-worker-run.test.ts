@@ -88,6 +88,25 @@ test.each<
   });
 });
 
+test.each([
+  'task.start',
+  'task.message',
+  'task.close',
+  'tasks.list',
+  'task.report',
+  'turn.end_silently',
+  'worker.run',
+])('it refuses %s, which a worker never holds', (tool) => {
+  const facts = setupTest();
+  const call = { ...facts.call, tools: [tool] };
+  const run = { ...facts.run, tools: [...facts.run.tools, tool] };
+
+  expect(planWorkerRun({ ...facts, call, run })).toStrictEqual({
+    status: 'refused',
+    sentence: `A worker can never use ${tool}, so nixie started none.`,
+  });
+});
+
 test('it refuses a call that no model turn made', () => {
   const facts = setupTest();
 

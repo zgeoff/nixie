@@ -206,9 +206,9 @@ the question as its only input. The call waits for the worker's last reply and r
 answer, with the minutes, turns, tokens and dollars the worker used.
 
 A worker holds only tools that its caller holds. It never holds a tool that starts a task, sends a
-message, reports, ends a turn silently or starts a worker, and it never holds a memory tool or a
-conversation-only tool. A call that names such a tool, or one that its caller does not hold, gets an
-error sentence and starts nothing.
+message, closes a task, lists tasks, reports, ends a turn silently or starts a worker, and it never
+holds a memory tool or a conversation-only tool. A call that names such a tool, or one that its
+caller does not hold, gets an error sentence and starts nothing.
 
 Four limits stop a worker, each with a sentence that tells the caller which limit it reached:
 

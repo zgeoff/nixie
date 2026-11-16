@@ -8,10 +8,12 @@ import type { WorkerPlan } from './types';
 import { workerRunToolName } from './worker-run-tool-name';
 
 // The tools that a worker never holds, whoever calls: a worker starts no task, sends no message,
-// reports for no task, and starts no worker of its own.
+// closes none of the tasks its caller started, reports for no task, and starts no worker of its
+// own.
 const neverHeldTools: ReadonlySet<string> = new Set([
   'task.start',
   'task.message',
+  'task.close',
   'tasks.list',
   taskReportToolName,
   silentEndToolName,
