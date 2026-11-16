@@ -26,7 +26,7 @@ async function setupTest() {
   await view.navigate('about:blank');
   await view.cdp('Network.clearBrowserCookies');
 
-  return { appURL: app.url, view };
+  return { api, appURL: app.url, view };
 }
 
 test('it shows a hop-limit notice on a task page that opens the exchange', async () => {
@@ -343,3 +343,78 @@ test('it says on the page of a closed task who closed it', async () => {
     { timeout: 10_000 },
   );
 });
+
+test.each([
+  ['a brief and a waiting-on line', 'Plan the vegetable beds.', 'Waiting on Seed order'],
+  ['no brief', '', 'Waiting on Seed order'],
+])(
+  'it keeps the linked message where it is when the task loads, with %s',
+  async (_name, brief, summaryLine) => {
+    const ctx = await setupTest();
+    const session = await store.sessions.create({});
+
+    await store.tasks.create({
+      brief,
+      name: 'Garden plan',
+      taskID: 'k3vq8m2xpa',
+      waitingOn: 'p7hd2wq9zn',
+    });
+
+    await store.tasks.create({ name: 'Seed order', taskID: 'p7hd2wq9zn', waitingOn: 'k3vq8m2xpa' });
+
+    await store.records.create({
+      exchangeNotice: {
+        link: { label: 'Open the exchange', messageID: 'm7q2x9k4pa', taskID: 'p7hd2wq9zn' },
+        text: 'Garden plan and Seed order exchanged 21 messages with no outside cause.',
+      },
+      kind: 'task.exchange_limited',
+      thread: 'k3vq8m2xpa',
+    });
+
+    await setupSignedInBrowser(ctx.view, { appURL: ctx.appURL, token: session.token });
+
+    // The page paints before a read that takes this long, so it shows where the link sits without the
+    // task's summary.
+    ctx.api.delayPath('/rpc/tasks/read', 500);
+    ctx.api.delayPath('/rpc/tasks/list', 500);
+
+    const link = 'a[href="/tasks/p7hd2wq9zn#task-message-m7q2x9k4pa"]';
+
+    const readTop = async () => {
+      const top: unknown = await ctx.view.evaluate(
+        `document.querySelector('${link}')?.getBoundingClientRect().top ?? null`,
+      );
+
+      return top;
+    };
+
+    await ctx.view.navigate(`${ctx.appURL}/tasks/k3vq8m2xpa`);
+
+    await waitFor(
+      async () => {
+        const top = await readTop();
+
+        expect(top).toBeNumber();
+      },
+      { timeout: 10_000 },
+    );
+
+    const before = await readTop();
+
+    // The "Last activity" span renders only after hydration
+    await waitFor(
+      async () => {
+        const text: unknown = await ctx.view.evaluate('document.body.innerText');
+
+        expect(text).toInclude('Garden plan');
+        expect(text).toInclude(summaryLine);
+        expect(text).toInclude('Last activity');
+      },
+      { timeout: 10_000 },
+    );
+
+    const after = await readTop();
+
+    expect(after).toBe(before);
+  },
+);

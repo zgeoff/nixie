@@ -1,6 +1,7 @@
 import type { ContractOutputs } from '@heynixie/contract';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
+import { routeDataStaleTimeMs } from '../conversation/read-route-session';
 import { subscribeToLiveRecords } from '../conversation/subscribe-to-live-records';
 import type { StartTimer } from '../utils/start-platform-timer';
 import { startPlatformTimer } from '../utils/start-platform-timer';
@@ -23,7 +24,12 @@ export interface LiveTaskListOptions {
 
 export function useLiveTaskList(options: LiveTaskListOptions = {}): LiveTaskList {
   const nixie = useNixieClient();
-  const listed = useQuery(nixie.queryUtils.tasks.list.queryOptions());
+
+  const listed = useQuery({
+    ...nixie.queryUtils.tasks.list.queryOptions(),
+    staleTime: routeDataStaleTimeMs,
+  });
+
   const [unavailable, setUnavailable] = useState(false);
   const startTimer = options.startTimer ?? startPlatformTimer;
   const afterSequence = listed.data?.readAtSequence;

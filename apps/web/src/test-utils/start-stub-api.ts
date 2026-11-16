@@ -10,12 +10,22 @@ interface StubAPIRequest {
 export function startStubAPI() {
   const requests: StubAPIRequest[] = [];
 
-  const answerRequest = (request: Request) => {
+  const delaysMs = new Map<string, number>();
+
+  const answerRequest = async (request: Request): Promise<Response> => {
+    const path = new URL(request.url).pathname;
+
     requests.push({
       authorization: request.headers.get('authorization'),
       cookie: request.headers.get('cookie'),
-      path: new URL(request.url).pathname,
+      path,
     });
+
+    const delayMs = delaysMs.get(path);
+
+    if (delayMs !== undefined) {
+      await Bun.sleep(delayMs);
+    }
 
     return runMockAPIRequest(request);
   };
@@ -30,5 +40,13 @@ export function startStubAPI() {
     await server.stop(true);
   });
 
-  return { requests, url: `http://127.0.0.1:${server.port}` };
+  return {
+    requests,
+    url: `http://127.0.0.1:${server.port}`,
+
+    // Holds back each answer to this path, so a test sees the page before the data lands.
+    delayPath: (path: string, delayMs: number) => {
+      delaysMs.set(path, delayMs);
+    },
+  };
 }

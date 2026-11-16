@@ -59,6 +59,7 @@ async function setupTest() {
   });
 
   return {
+    api,
     appURL,
     view,
     countCredentials: async () => {
@@ -112,3 +113,39 @@ test('it says that a host code is wrong and adds no passkey', async () => {
 
   expect([store.passkeyRows.all(), await ctx.countCredentials()]).toStrictEqual([[], 0]);
 });
+
+test.each([
+  ['an empty list', 0, `document.body.innerText.includes('No passkey is set up yet.')`],
+  ['2 passkeys', 2, `document.querySelectorAll('ul[aria-label="Passkeys"] li').length === 2`],
+])(
+  'it keeps the Add a passkey button where it is when the list loads, with %s',
+  async (_name, passkeyCount, loaded) => {
+    const ctx = await setupTest();
+
+    const readTop = () =>
+      ctx.view.evaluate(
+        `document.querySelector('form[aria-label="Add a passkey"] button[type=submit]').getBoundingClientRect().top`,
+      );
+
+    await Promise.all(
+      Array.from({ length: passkeyCount }, (_item, index) =>
+        store.passkeyRows.create({ label: `Phone ${index + 1}` }),
+      ),
+    );
+
+    // The page paints before a read that takes this long, so it shows where the button sits without
+    // the list.
+    ctx.api.delayPath('/rpc/passkeys/list', 500);
+
+    await ctx.view.navigate(`${ctx.appURL}/passkeys`);
+    await ctx.waitForPage(`document.querySelector('form[aria-label="Add a passkey"]') !== null`);
+
+    const before = await readTop();
+
+    await ctx.waitForPage(loaded);
+
+    const after = await readTop();
+
+    expect(after).toBe(before);
+  },
+);

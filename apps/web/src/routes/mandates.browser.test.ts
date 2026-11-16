@@ -29,6 +29,8 @@ async function setupTest() {
   const waitInView = (expression: string) => waitForPage(view, expression, 8000);
 
   return {
+    api,
+    appURL: app.url,
     view,
     waitForPage: waitInView,
     openPage: async () => {
@@ -74,3 +76,50 @@ test('it proposes a mandate that then waits on the approvals page', async () => 
 
   expect(rows.map((row) => [row.cause, row.state])).toStrictEqual([['mandate', 'pending']]);
 });
+
+test.each([
+  ['an empty list', 0, `document.body.innerText.includes('No mandate is in force.')`],
+  [
+    '2 mandates',
+    2,
+    `document.querySelectorAll('ul[aria-label="Mandates in force"] > li').length === 2`,
+  ],
+])(
+  'it keeps the Propose a mandate form where it is when the list loads, with %s',
+  async (_name, mandateCount, loaded) => {
+    const ctx = await setupTest();
+
+    const readTop = () =>
+      ctx.view.evaluate(
+        `document.querySelector('form[aria-label="Propose a mandate"] input[maxlength="120"]').getBoundingClientRect().top`,
+      );
+
+    await Promise.all(
+      Array.from({ length: mandateCount }, (_item, index) =>
+        store.mandates.create({
+          expires: new Date(Date.now() + 60 * 60 * 1000),
+          rules: [{ ruleID: `abc-${index + 1}`, sentence: `Allow calendar.respond.${index + 1}` }],
+          title: `Calendar invites ${index + 1}`,
+        }),
+      ),
+    );
+
+    // The page paints before a read that takes this long, so it shows where the form sits without
+    // the list.
+    ctx.api.delayPath('/rpc/rules/listMandates', 500);
+
+    await ctx.view.navigate(`${ctx.appURL}/mandates`);
+
+    await ctx.waitForPage(
+      `document.querySelector('form[aria-label="Propose a mandate"]') !== null`,
+    );
+
+    const before = await readTop();
+
+    await ctx.waitForPage(loaded);
+
+    const after = await readTop();
+
+    expect(after).toBe(before);
+  },
+);
