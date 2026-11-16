@@ -8,6 +8,7 @@ import type { ImageTally, MessageTimeOptions } from '../types';
 import { countImages } from '../utils/count-images';
 import { isPastImageBudget } from '../utils/is-past-image-budget';
 import { mergeImageTallies } from '../utils/merge-image-tallies';
+import { isSilentFire } from './is-silent-fire';
 import { readReminder } from './read-reminder';
 import { toInboxMessage } from './to-inbox-message';
 
@@ -21,12 +22,23 @@ export interface InboxRead {
   readonly imageBudget: ImageTally;
 }
 
+export interface InboxMessages {
+  // the records that the read took, in order: each one that has a message, and each silent one
+  readonly records: readonly LogRecord[];
+  readonly messages: readonly InboxMessage[];
+
+  // the records among them that render no message
+  readonly silent: readonly LogRecord[];
+}
+
 export async function readInboxMessages(
   context: InboxContext,
   records: readonly LogRecord[],
   read: InboxRead,
-): Promise<readonly InboxMessage[]> {
+): Promise<InboxMessages> {
+  const taken: LogRecord[] = [];
   const messages: InboxMessage[] = [];
+  const silent: LogRecord[] = [];
   let spent: ImageTally = { bytes: 0, count: 0 };
 
   for (const record of records) {
@@ -35,20 +47,27 @@ export async function readInboxMessages(
       continue;
     }
 
+    if (isSilentFire(record)) {
+      taken.push(record);
+      silent.push(record);
+      continue;
+    }
+
     const message = await readInboxMessage(context, record, read);
 
     const images = countImages(message);
 
     if (messages.length > 0 && isPastImageBudget(spent, images, read.imageBudget)) {
-      return messages;
+      return { records: taken, messages, silent };
     }
 
     spent = mergeImageTallies(spent, images);
 
+    taken.push(record);
     messages.push(message);
   }
 
-  return messages;
+  return { records: taken, messages, silent };
 }
 
 async function readInboxMessage(

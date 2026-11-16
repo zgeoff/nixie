@@ -1,7 +1,10 @@
 import { expect, mock, test } from 'bun:test';
 import { writeRecords } from '@heynixie/log';
 import { removeTestRecordKey } from '@heynixie/log/test-utils';
+import { buildTestTaskRun } from '@heynixie/tasks/test-utils';
 import invariant from 'tiny-invariant';
+import { renderRunBlocks } from '../task/render-run-blocks';
+import { buildMockDefinitionBrief } from '../test-utils/build-mock-definition-brief';
 import { buildMockTaskMessageView } from '../test-utils/build-mock-task-message-view';
 import { startTestTasks } from '../test-utils/start-test-tasks';
 import { buildModelStatus } from './build-model-status';
@@ -834,4 +837,149 @@ test('it keeps the 2 status lines but leaves out the block when no item is liste
   expect(opening.blocks.at(0)).toInclude(
     '- Memory index: 0 items\n- Memory index tokens: 0 of 3000',
   );
+});
+
+test("it opens the rebuilt session of a fire-opened definition's task run with its run blocks, then its brief, before the summary and the recent turns", async () => {
+  const ctx = await setupTest();
+
+  await writeRecords(ctx.tasks.context.log, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'k3vq8m2xpa',
+      erasable: { text: 'Old news.' },
+    },
+    {
+      kind: 'model.session_summarized',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'k3vq8m2xpa',
+      payload: { throughSequence: 1 },
+      erasable: { text: 'They sent old news.' },
+    },
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'k3vq8m2xpa',
+      erasable: { text: 'Fresh news.' },
+    },
+  ]);
+
+  const base = buildTestTaskRun({ runID: 'k3f9c2d4-0000-0000-0000-000000000000' });
+
+  const run = {
+    ...base,
+    opened: {
+      ...base.opened,
+      reportShape: {
+        type: 'object',
+        additionalProperties: false,
+        properties: { city: { type: 'string' } },
+        required: ['city'],
+      } as const,
+    },
+  };
+
+  const runBlocks = renderRunBlocks(
+    run,
+    { stepKey: 'tide-tables:1', isNewSession: true },
+    {
+      zone: 'Australia/Sydney',
+      details: {
+        kind: 'schedule',
+        scheduledFor: '2026-06-04T06:30:00+10:00',
+        startedAt: '2026-06-04T08:15:00+10:00',
+        isCatchUp: false,
+        skipped: [],
+        skippedCount: 0,
+        sentence: 'This task run was scheduled for Thu 4 Jun, 06:30 and started at 08:15.',
+      },
+    },
+    {
+      previousStartedAt: new Date('2026-06-03T20:30:00Z'),
+      startedAt: new Date('2026-06-03T22:15:00Z'),
+    },
+  );
+
+  const opening = await readSessionOpening(ctx.tasks.context, {
+    taskID: 'k3vq8m2xpa',
+    start: { kind: 'rebuild', reason: 'lost', lostSessionID: 'a-lost-session' },
+    beforeSequence: Number.MAX_SAFE_INTEGER,
+    rebuildTokens: 30_000,
+    brief: buildMockDefinitionBrief(),
+    briefPlace: 'pinned',
+    runBlocks,
+    isFirstSession: false,
+    inbox: [],
+    messaging: buildMockTaskMessageView().messaging,
+    times: { defaultZone: 'UTC', now: new Date('2026-11-06T09:00:00Z') },
+    pinnedMemory: 'Nothing is pinned in your memory.',
+    model: 'claude-test-1',
+    status: [buildStartStatus()],
+  });
+
+  const order = [
+    ...opening.blocks
+      .join('\n')
+      .matchAll(
+        /^<(?<tag>input name="[a-z-]+"|report-shape|task-message|system-message type="[a-z-]+")/gmu,
+      ),
+  ].map((match) => match.groups?.['tag']);
+
+  expect(order).toStrictEqual([
+    'system-message type="status"',
+    'system-message type="pinned-memory"',
+    'input name="trigger"',
+    'report-shape',
+    'input name="since"',
+    'task-message',
+    'system-message type="summary"',
+    'system-message type="recent-turns"',
+  ]);
+
+  expect(opening.record.briefSequence).toBe(18_200);
+});
+
+test("it pins a definition's brief in the opening of a compacted session", async () => {
+  const ctx = await setupTest();
+
+  const opening = await readSessionOpening(ctx.tasks.context, {
+    taskID: 'k3vq8m2xpa',
+    start: { kind: 'compaction' },
+    beforeSequence: Number.MAX_SAFE_INTEGER,
+    rebuildTokens: 30_000,
+    brief: buildMockDefinitionBrief(),
+    briefPlace: 'pinned',
+    isFirstSession: false,
+    inbox: [],
+    messaging: buildMockTaskMessageView().messaging,
+    times: { defaultZone: 'UTC', now: new Date('2026-11-06T09:00:00Z') },
+    pinnedMemory: null,
+    model: 'claude-test-1',
+    status: [buildStartStatus()],
+  });
+
+  expect(opening.blocks.at(-1)).toInclude('<task-message id="d4h9"');
+});
+
+test("it leaves a definition's brief out of the opening of a first session, which the preamble carries", async () => {
+  const ctx = await setupTest();
+
+  const opening = await readSessionOpening(ctx.tasks.context, {
+    taskID: 'k3vq8m2xpa',
+    start: { kind: 'first' },
+    beforeSequence: Number.MAX_SAFE_INTEGER,
+    rebuildTokens: 30_000,
+    brief: buildMockDefinitionBrief(),
+    briefPlace: 'preamble',
+    isFirstSession: true,
+    inbox: [],
+    messaging: buildMockTaskMessageView().messaging,
+    times: { defaultZone: 'UTC', now: new Date('2026-11-06T09:00:00Z') },
+    pinnedMemory: null,
+    model: 'claude-test-1',
+    status: [buildStartStatus()],
+  });
+
+  expect(opening.blocks.join('\n')).not.toInclude('<task-message');
+  expect(opening.record.briefSequence).toBe(18_200);
 });

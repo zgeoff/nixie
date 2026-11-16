@@ -16,6 +16,7 @@ import type {
 } from '../types';
 import { readRecalledThrough } from '../utils/read-recalled-through';
 import type { StatusLine, StatusRegistry } from './build-status-registry';
+import type { BriefPlace } from './pick-brief-place';
 import { pickPinnedBrief } from './pick-pinned-brief';
 import { renderBriefEnvelope } from './render-brief-envelope';
 import { renderSessionHistory } from './render-session-history';
@@ -47,6 +48,13 @@ export interface SessionOpeningQuery {
 
   // whether the task has opened no session yet
   readonly isFirstSession: boolean;
+
+  // where the turn puts the brief of a definition's task run; a turn with none leaves it out
+  readonly briefPlace?: BriefPlace;
+
+  // the blocks of the open task run that a rebuilt or compacted session pins beside its brief, which
+  // the turn's preamble then leaves out
+  readonly runBlocks?: string | null;
 
   // the unread records that the turn renders
   readonly inbox: readonly LogRecord[];
@@ -108,6 +116,7 @@ export async function readSessionOpening(
     recent,
     inbox: query.inbox,
     isFirstSession: query.isFirstSession,
+    ...(query.briefPlace === undefined ? {} : { place: query.briefPlace }),
   });
 
   const facts = { ...query, openedAt };
@@ -142,9 +151,14 @@ export async function readSessionOpening(
     statusBlock,
     memoryBlock,
     indexBlock,
+    query.runBlocks ?? null,
     brief.pinned === null
       ? null
-      : renderBriefEnvelope(brief.pinned, query.times, query.messaging, mint),
+      : renderBriefEnvelope(
+          brief.pinned,
+          { taskID: query.taskID, times: query.times, messaging: query.messaging },
+          mint,
+        ),
     renderOpeningMessage('summary', at, summary?.text ?? null, mint),
     renderOpeningMessage(
       'recent-turns',

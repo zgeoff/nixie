@@ -5,13 +5,17 @@ import { isRunBlocksTurn, renderRunBlocks } from '../task/render-run-blocks';
 import { pickTurnInbox } from '../turn/pick-turn-inbox';
 import { readTurnContext } from '../turn/read-turn-context';
 import type { SessionTurn } from '../turn/run-planned-turn';
-import type { SessionStep } from '../types';
+import type { SessionStart, SessionStep } from '../types';
 import { isTaskWorkCut } from '../utils/is-task-work-cut';
+import { pickBriefPlace } from './pick-brief-place';
 
+// `start` is how the session that the turn opens starts, or null for a turn that resumes one.
 export async function readSessionTurn(
   step: SessionStep,
-  isNewSession: boolean,
+  start: SessionStart | null,
 ): Promise<SessionTurn> {
+  const isNewSession = start !== null;
+
   // The conversation and the other fixed tasks have no brief.
   const brief =
     step.run.frame.kind === 'task'
@@ -21,6 +25,19 @@ export async function readSessionTurn(
   // A forget can invalidate a task before its first session opens, and the task still starts.
   const isFirstSession = step.marks.sessionKey === null;
 
+  // The place is decided once, and the preamble and the opening both follow it.
+  const briefPlace = pickBriefPlace({
+    brief,
+    run: step.input.run,
+    stepKey: step.input.stepKey,
+    start,
+  });
+
+  // A rebuilt or compacted session pins the blocks of the task run in its opening, beside the brief.
+  const runBlocks = await readRunBlocks(step, isNewSession);
+
+  const isPinned = start !== null && start.kind !== 'first';
+
   const context = await readTurnContext(step.run, {
     taskID: step.input.taskID,
     persona: step.definitions.persona,
@@ -28,7 +45,9 @@ export async function readSessionTurn(
     skillCatalog: step.skillCatalog,
     batch: pickTurnInbox(step.input.inbox),
     brief,
-    runBlocks: await readRunBlocks(step, isNewSession),
+    briefPlace,
+    report: step.input.run?.opened.report ?? null,
+    runBlocks: isPinned ? null : runBlocks,
     previousCore: step.marks.previousCore,
     isNewSession,
 
@@ -46,6 +65,8 @@ export async function readSessionTurn(
     images: isNewSession ? { bytes: 0, count: 0 } : step.marks.images,
     sessionKey: isNewSession ? crypto.randomUUID() : getResumedKey(step),
     brief,
+    briefPlace,
+    openingRunBlocks: isPinned ? runBlocks : null,
     isFirstSession,
     context,
   };

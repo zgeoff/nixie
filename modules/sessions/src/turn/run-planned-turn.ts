@@ -1,6 +1,7 @@
 import type { StepInput, TaskBrief } from '@heynixie/tasks';
 import { ownerMessageCodec } from '@heynixie/tasks';
 import type { SessionPoint } from '@heynixie/wire';
+import type { BriefPlace } from '../session/pick-brief-place';
 import type { OpeningRecord, SessionOpening } from '../session/read-session-opening';
 import { readSessionOpening } from '../session/read-session-opening';
 import type { CompletedTurn } from '../step/build-step-result';
@@ -22,6 +23,13 @@ export interface SessionTurn {
 
   // the task's own brief, or null for a task with none
   readonly brief: TaskBrief | null;
+
+  // where the turn puts the brief of a definition's task run
+  readonly briefPlace: BriefPlace;
+
+  // the blocks of the task run that the opening of a rebuilt or compacted session pins, so the
+  // preamble holds none
+  readonly openingRunBlocks: string | null;
 
   // whether the task has opened no session yet
   readonly isFirstSession: boolean;
@@ -91,6 +99,8 @@ async function readOpening(
     pinnedMemory: turn.context.pinnedMemory,
     index,
     brief: turn.brief,
+    briefPlace: turn.briefPlace,
+    runBlocks: turn.openingRunBlocks,
     isFirstSession: turn.isFirstSession,
     messaging: turn.run.messaging,
     inbox: turn.input.inbox,

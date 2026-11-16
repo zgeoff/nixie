@@ -1,6 +1,7 @@
 import { expect, test } from 'bun:test';
 import { bindHarness } from '@heynixie/models';
 import { buildMockCodexProfile, buildMockModelProfile } from '@heynixie/models/test-utils';
+import { encodeInboxUUID } from '../inbox/encode-inbox-uuid';
 import { buildStepResult } from './build-step-result';
 
 function setupTest() {
@@ -38,6 +39,7 @@ test('it records no reply with the error of a silent turn that the model API ref
         notedThrough: null,
         images: { bytes: 0, count: 0 },
         isSilent: true,
+        silent: new Set(),
         harness: ctx.agentSDK,
         memory: { pinnedCore: [], retrieved: [], retrievedMessages: [], invalidatedThrough: 0 },
       },
@@ -93,6 +95,7 @@ test('it sums the thinking tokens of every ended frame onto the last reply, and 
       notedThrough: null,
       images: { bytes: 0, count: 0 },
       isSilent: false,
+      silent: new Set(),
       harness: ctx.agentSDK,
       memory: { pinnedCore: [], retrieved: [], retrievedMessages: [], invalidatedThrough: 0 },
     },
@@ -146,6 +149,7 @@ test('it records no reply for a silent turn, and marks its turn end silent', () 
       notedThrough: null,
       images: { bytes: 0, count: 0 },
       isSilent: true,
+      silent: new Set(),
       harness: ctx.agentSDK,
       memory: { pinnedCore: [], retrieved: [], retrievedMessages: [], invalidatedThrough: 0 },
     },
@@ -215,6 +219,7 @@ test('it stores no session point for a step on a harness with no session, and re
       notedThrough: null,
       images: { bytes: 0, count: 0 },
       isSilent: false,
+      silent: new Set(),
       harness: ctx.codex,
       memory: { pinnedCore: [], retrieved: [], retrievedMessages: [], invalidatedThrough: 0 },
     },
@@ -255,6 +260,7 @@ test('it fails a step whose turn overflowed', () => {
         notedThrough: null,
         images: { bytes: 0, count: 0 },
         isSilent: false,
+        silent: new Set(),
         harness: ctx.codex,
         memory: { pinnedCore: [], retrieved: [], retrievedMessages: [], invalidatedThrough: 0 },
       },
@@ -292,6 +298,7 @@ test('it fails a step whose guest broke the contract of its harness', () => {
         notedThrough: null,
         images: { bytes: 0, count: 0 },
         isSilent: false,
+        silent: new Set(),
         harness: ctx.agentSDK,
         memory: { pinnedCore: [], retrieved: [], retrievedMessages: [], invalidatedThrough: 0 },
       },
@@ -332,10 +339,80 @@ test('it fails a step whose earlier ended frame broke the contract, though its l
         notedThrough: null,
         images: { bytes: 0, count: 0 },
         isSilent: false,
+        silent: new Set(),
         harness: ctx.codex,
         memory: { pinnedCore: [], retrieved: [], retrievedMessages: [], invalidatedThrough: 0 },
       },
       [],
     ),
   ).toThrow('it sent a context size');
+});
+
+test('it acknowledges a silent record that the guest never reports read, and a read record that was sent', () => {
+  const ctx = setupTest();
+
+  const result = buildStepResult(
+    {
+      definitions: () => ({ snapshotHash: 'sha256:test' }),
+      model: { model: 'claude-test-1', profile: 'chat-direct' },
+    },
+    {
+      turn: {
+        assistants: [],
+        read: [encodeInboxUUID(12), encodeInboxUUID(99)],
+        ended: [
+          {
+            type: 'ended',
+            boundary: { harness: 'agent-sdk', sessionID: 'session-1', messageID: 'message-1' },
+            outcome: 'finished',
+            stopReason: 'end_turn',
+            turns: 1,
+            usage: { inputTokens: 10, outputTokens: 5, cacheReadTokens: 0, cacheWriteTokens: 0 },
+          },
+        ],
+        failure: null,
+      },
+      sent: new Set([11, 12]),
+      silent: new Set([11]),
+      hasMore: false,
+      notedThrough: null,
+      images: { bytes: 0, count: 0 },
+      isSilent: false,
+      harness: ctx.agentSDK,
+      memory: { pinnedCore: [], retrieved: [], retrievedMessages: [], invalidatedThrough: 0 },
+    },
+    [],
+  );
+
+  expect(result.acknowledged).toIncludeSameMembers([11, 12]);
+});
+
+test('it acknowledges no silent record for a turn that failed', () => {
+  const ctx = setupTest();
+
+  expect(() =>
+    buildStepResult(
+      {
+        definitions: () => ({ snapshotHash: 'sha256:test' }),
+        model: { model: 'claude-test-1', profile: 'chat-direct' },
+      },
+      {
+        turn: {
+          assistants: [],
+          read: [],
+          ended: [],
+          failure: { type: 'failed', reason: 'error', detail: 'the guest exited' },
+        },
+        sent: new Set([11]),
+        silent: new Set([11]),
+        hasMore: false,
+        notedThrough: null,
+        images: { bytes: 0, count: 0 },
+        isSilent: false,
+        harness: ctx.agentSDK,
+        memory: { pinnedCore: [], retrieved: [], retrievedMessages: [], invalidatedThrough: 0 },
+      },
+      [],
+    ),
+  ).toThrow('the conversation turn failed');
 });

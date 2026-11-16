@@ -138,6 +138,7 @@ async function runTokenTurn(
     return {
       turn,
       sent,
+      silent: new Set(opening.batch.silent.map((record) => record.sequence)),
       hasMore: hasMore || opening.images.isCapped,
       notedThrough: note?.throughSequence ?? null,
       images: opening.images.spent,

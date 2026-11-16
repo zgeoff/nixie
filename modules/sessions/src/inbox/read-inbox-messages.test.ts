@@ -47,11 +47,13 @@ test('it reads each record with the images its attachments hold', async () => {
     },
   ]);
 
-  const messages = await readInboxMessages(ctx.context, records, {
+  const read = await readInboxMessages(ctx.context, records, {
     times: { defaultZone: 'Australia/Sydney', now: new Date('2026-10-13T05:00:00Z') },
     view: buildMockTaskMessageView(),
     imageBudget: { bytes: 1024, count: 100 },
   });
+
+  const messages = read.messages;
 
   expect(messages).toStrictEqual([
     {
@@ -88,11 +90,13 @@ test('it stops before the record whose images would pass the budget', async () =
     },
   ]);
 
-  const messages = await readInboxMessages(ctx.context, records, {
+  const read = await readInboxMessages(ctx.context, records, {
     times: { defaultZone: 'Australia/Sydney', now: new Date('2026-10-13T05:00:00Z') },
     view: buildMockTaskMessageView(),
     imageBudget: { bytes: 12, count: 100 },
   });
+
+  const messages = read.messages;
 
   expect(messages.map((message) => message.text)).toStrictEqual([
     expect.toInclude('The first plan.'),
@@ -121,11 +125,13 @@ test('it stops before the record whose images would pass the count, however few 
     },
   ]);
 
-  const messages = await readInboxMessages(ctx.context, records, {
+  const read = await readInboxMessages(ctx.context, records, {
     times: { defaultZone: 'Australia/Sydney', now: new Date('2026-10-13T05:00:00Z') },
     view: buildMockTaskMessageView(),
     imageBudget: { bytes: 1024, count: 2 },
   });
+
+  const messages = read.messages;
 
   expect(messages.map((message) => message.text)).toStrictEqual([
     expect.toInclude('The first two plans.'),
@@ -152,11 +158,13 @@ test('it reads a record with no images past a budget the images before it spent'
     },
   ]);
 
-  const messages = await readInboxMessages(ctx.context, records, {
+  const read = await readInboxMessages(ctx.context, records, {
     times: { defaultZone: 'Australia/Sydney', now: new Date('2026-10-13T05:00:00Z') },
     view: buildMockTaskMessageView(),
     imageBudget: { bytes: 4, count: 100 },
   });
+
+  const messages = read.messages;
 
   expect(messages.map((message) => message.text)).toStrictEqual([
     expect.toInclude('The first plan.'),
@@ -178,11 +186,13 @@ test('it reads the first record whatever its images, so a large message still re
     },
   ]);
 
-  const messages = await readInboxMessages(ctx.context, records, {
+  const read = await readInboxMessages(ctx.context, records, {
     times: { defaultZone: 'Australia/Sydney', now: new Date('2026-10-13T05:00:00Z') },
     view: buildMockTaskMessageView(),
     imageBudget: { bytes: 0, count: 0 },
   });
+
+  const messages = read.messages;
 
   expect(messages).toHaveLength(1);
 });
@@ -212,11 +222,13 @@ test('it passes over a record of a kind no module registers and keeps the record
     },
   ]);
 
-  const messages = await readInboxMessages(ctx.context, records, {
+  const read = await readInboxMessages(ctx.context, records, {
     times: { defaultZone: 'Australia/Sydney', now: new Date('2026-10-13T05:00:00Z') },
     view: buildMockTaskMessageView(),
     imageBudget: { bytes: 1024, count: 100 },
   });
+
+  const messages = read.messages;
 
   expect(messages.map((message) => message.text)).toStrictEqual([
     expect.stringContaining('Before.'),
@@ -248,11 +260,13 @@ test.each([
       },
     ]);
 
-    const messages = await readInboxMessages(ctx.context, records, {
+    const read = await readInboxMessages(ctx.context, records, {
       times: { defaultZone: 'Australia/Sydney', now: new Date('2027-03-09T03:30:00Z') },
       view: buildMockTaskMessageView(),
       imageBudget: { bytes: 1024, count: 100 },
     });
+
+    const messages = read.messages;
 
     expect(messages).toStrictEqual([
       {
@@ -267,7 +281,6 @@ test.each([
 );
 
 test.each([
-  ['a fire on the thread of a task', 'water-the-tomatoes', {}],
   ['a poll fire on the conversation thread', 'conversation', { kind: 'poll', polled: [1] }],
   ['a fire of an unknown kind', 'conversation', { kind: 'webhook' }],
 ])('it keeps the fallback line for %s', async (_name, thread, overrides) => {
@@ -282,11 +295,45 @@ test.each([
     },
   ]);
 
-  const messages = await readInboxMessages(ctx.context, records, {
+  const read = await readInboxMessages(ctx.context, records, {
     times: { defaultZone: 'Australia/Sydney', now: new Date('2027-03-09T03:30:00Z') },
     view: buildMockTaskMessageView(),
     imageBudget: { bytes: 1024, count: 100 },
   });
 
+  const messages = read.messages;
+
   expect(messages[0]?.text).toStartWith('A trigger.fired record arrived:');
+});
+
+test('it renders no message for a fire on the thread of a task, and takes its record as silent', async () => {
+  const ctx = await setupTest();
+
+  const records = await writeRecords(ctx.log, [
+    {
+      kind: 'trigger.fired',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'water-the-tomatoes',
+      payload: ctx.buildFirePayload({}),
+    },
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'water-the-tomatoes',
+      erasable: { text: 'Start with the greenhouse.' },
+    },
+  ]);
+
+  const read = await readInboxMessages(ctx.context, records, {
+    times: { defaultZone: 'Australia/Sydney', now: new Date('2027-03-09T03:30:00Z') },
+    view: buildMockTaskMessageView(),
+    imageBudget: { bytes: 1024, count: 100 },
+  });
+
+  expect(read.records).toStrictEqual(records);
+  expect(read.silent).toStrictEqual(records.slice(0, 1));
+
+  expect(read.messages).toStrictEqual([
+    { uuid: expect.toBeString(), text: expect.toInclude('Start with the greenhouse.') },
+  ]);
 });

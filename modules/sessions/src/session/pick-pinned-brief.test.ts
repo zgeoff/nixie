@@ -1,6 +1,7 @@
 import { expect, test } from 'bun:test';
 import { buildMockLogRecord } from '@heynixie/log/test-utils';
 import { buildMockCreatedBrief } from '../test-utils/build-mock-created-brief';
+import { buildMockDefinitionBrief } from '../test-utils/build-mock-definition-brief';
 import { buildMockMessageBrief } from '../test-utils/build-mock-message-brief';
 import { pickPinnedBrief } from './pick-pinned-brief';
 
@@ -71,3 +72,25 @@ test('it pins a brief with no record in a session that is no first', () => {
     }),
   ).toStrictEqual({ pinned: buildMockCreatedBrief(), briefSequence: 400 });
 });
+
+test.each([
+  ['pinned', true],
+  ['preamble', false],
+  ['none', false],
+] as const)(
+  "it decides a definition's brief by its place %s, since it has no record to hold it",
+  (place, isPinned) => {
+    expect(
+      pickPinnedBrief({
+        brief: buildMockDefinitionBrief(),
+        recent: [],
+        inbox: [],
+        isFirstSession: false,
+        place,
+      }),
+    ).toStrictEqual({
+      pinned: isPinned ? buildMockDefinitionBrief() : null,
+      briefSequence: 18_200,
+    });
+  },
+);
