@@ -2515,7 +2515,7 @@ test('it binds one task to a definition with target task, and an unchanged seed 
   const inForce = await readDefinitionsInForce(ctx.writer.db);
 
   const tasks = await ctx.writer.db
-    .withTables<{
+    .$extendTables<{
       tasks: { task_id: string; definition_id: string | null; definition_hash: string | null };
     }>()
     .selectFrom('tasks')

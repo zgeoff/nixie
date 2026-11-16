@@ -34,6 +34,7 @@ GEO-1806: POST /rules/removeRule added the new `mandate` enum value to the `oneO
 # GEO-2114: no client of the last release depends on it: only the consolidator status panel called it, and an older tab loses only that panel.
 GEO-2114: POST /memory/consolidatorStatus api path removed without deprecation
 GEO-2588: POST /tasks/close added `subschema #3` to the response body `oneOf` list for the response status `409`
+GEO-2588: POST /tasks/close added `subschema #5` to the response body `oneOf` list for the response status `409`
 GEO-2588: POST /tasks/interrupt added `subschema #3` to the response body `oneOf` list for the response status `409`
 GEO-2588: POST /tasks/pause added `subschema #3` to the response body `oneOf` list for the response status `409`
 GEO-2588: POST /tasks/restart added `subschema #3` to the response body `oneOf` list for the response status `409`

@@ -417,7 +417,7 @@ test('it binds a task to each definition in force with target task', async () =>
   const inForce = await readDefinitionsInForce(ctx.writer.db);
 
   const tasks = await ctx.writer.db
-    .withTables<{ tasks: { definition_id: string | null; definition_hash: string | null } }>()
+    .$extendTables<{ tasks: { definition_id: string | null; definition_hash: string | null } }>()
     .selectFrom('tasks')
     .select(['definition_id', 'definition_hash'])
     .execute();
