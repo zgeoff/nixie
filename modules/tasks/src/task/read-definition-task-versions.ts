@@ -1,5 +1,5 @@
-import { probeDefinitionRunToEnd } from '../run/probe-definition-run-to-end';
-import { readRunRows } from '../run/read-run-rows';
+import { pickRunDefinition } from '../run/pick-run-definition';
+import { readDefinitionRunFacts } from '../run/read-definition-run-facts';
 import type { DefinitionVersion, TaskRow, TasksContext, TasksTables } from '../types';
 
 export interface DefinitionTaskVersion {
@@ -13,7 +13,7 @@ export interface DefinitionTaskVersion {
 }
 
 // The version that each definition's task shows: the one in force, or for a task out of force that
-// still has a task run to end, the one its newest task run pins. A task whose version is not stored
+// still has a task run to end, the one its pending or open task run pins. A task whose version is not stored
 // is left out.
 export async function readDefinitionTaskVersions(
   context: Pick<TasksContext, 'log' | 'readDefinitionVersion'>,
@@ -68,13 +68,21 @@ async function readShownHash(
 
   const db = context.log.writer.db;
 
-  if (!(await probeDefinitionRunToEnd(db, row.task_id))) {
+  const read = await readDefinitionRunFacts(db, row.task_id);
+
+  if (read === null) {
     return null;
   }
 
-  const runs = await readRunRows(db, row.task_id);
+  // a pending task run pins the hash of the pick that opens it, which a fire can make another than
+  // the newest task run's
+  const pick = pickRunDefinition(read.facts);
 
-  const pinned = runs.at(-1)?.opened.definitionHash ?? null;
+  if (pick.kind === 'open') {
+    return { hash: pick.definitionHash, isInForce: false };
+  }
+
+  const pinned = read.runs.find((run) => run.ended === null)?.opened.definitionHash ?? null;
 
   return pinned === null ? null : { hash: pinned, isInForce: false };
 }

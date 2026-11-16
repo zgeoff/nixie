@@ -66,7 +66,7 @@ export async function writeRunEndInTransaction(
 
   const task = await db
     .selectFrom('tasks')
-    .select(['step_hop', 'started_by'])
+    .select('step_hop')
     .where('task_id', '=', request.taskID)
     .executeTakeFirstOrThrow();
 
@@ -94,7 +94,7 @@ export async function writeRunEndInTransaction(
   if (ending.cause === 'limit') {
     await writeLimitHold(tx, context, run, {
       stepKey: request.stepKey,
-      target: target ?? task.started_by,
+      target,
       isReportWake: delivery.delivery === 'wake',
     });
   }
@@ -290,7 +290,7 @@ function renderCodeMadeSummary(
 interface LimitHold {
   readonly stepKey: string | null;
 
-  // the report target that the task run pinned, else the starter of a started task, or null
+  // the report target that the task run pinned, or null when it pinned none
   readonly target: string | null;
 
   // whether the report wakes its target, which then needs no notice

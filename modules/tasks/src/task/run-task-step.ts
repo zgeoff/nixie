@@ -3,6 +3,7 @@ import { StaleWriterError } from '@heynixie/log';
 import type { Logger } from '@heynixie/logger';
 import { readInbox } from '../inbox/read-inbox';
 import { startLeaseRenewal } from '../lease/start-lease-renewal';
+import { pickRunDefinition } from '../run/pick-run-definition';
 import { readDefinitionRunFacts } from '../run/read-definition-run-facts';
 import { readOpenRun } from '../run/read-open-run';
 import type { TaskRun } from '../run/types';
@@ -106,10 +107,18 @@ async function runOrHoldStep(
 ): Promise<StepResult> {
   const taskID = claim.lease.workID;
 
-  if (read.run === null) {
-    const definition = await readDefinitionRunFacts(context.log.writer.db, taskID);
+  const definition = await readDefinitionRunFacts(context.log.writer.db, taskID);
 
-    if (definition !== null) {
+  if (definition !== null) {
+    const pick = pickRunDefinition(definition.facts);
+
+    if (pick.kind === 'open') {
+      throw new Error(
+        `no version of hash ${pick.definitionHash} is stored, so the task ${taskID} opens no task run`,
+      );
+    }
+
+    if (read.run === null) {
       return {
         next: 'hold',
         records: [],

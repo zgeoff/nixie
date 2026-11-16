@@ -556,7 +556,7 @@ test('it lists nothing for a task out of force with no task run pending or open'
   expect(result).toStrictEqual([]);
 });
 
-test('it lists a task out of force under the name of the version its pending task run pins', async () => {
+test('it lists a task out of force under the name of the version its open task run pins', async () => {
   const ctx = await setupTest();
 
   const empty: Pick<TaskMessaging, 'directory'> = { directory: [] };
@@ -569,6 +569,30 @@ test('it lists a task out of force under the name of the version its pending tas
 
   await writeTestTriggerFire(ctx.context, taskID, { definitionHash: 'hash-1' });
   await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  await withWriteTransaction(ctx.writer, (tx) =>
+    withdrawDefinitionTaskInTransaction(tx, ctx.context, 'water-the-tomatoes'),
+  );
+
+  const directory = await readTaskDirectory(ctx.context, empty);
+  const tasks = await readTaskList(ctx.context, directory, { callerID: null, limit: 10 });
+
+  expect(directory.directory).toStrictEqual([]);
+  expect(tasks.map((task) => [task.id, task.name])).toStrictEqual([[taskID, 'Water the tomatoes']]);
+});
+
+test('it lists a task out of force under the name of the version its pending task run pins', async () => {
+  const ctx = await setupTest();
+
+  const empty: Pick<TaskMessaging, 'directory'> = { directory: [] };
+
+  const taskID = await seedDefinitionTask(ctx, {
+    definitionID: 'water-the-tomatoes',
+    definitionHash: 'hash-1',
+    version: { name: 'Water the tomatoes' },
+  });
+
+  await writeTestTriggerFire(ctx.context, taskID, { definitionHash: 'hash-1' });
 
   await withWriteTransaction(ctx.writer, (tx) =>
     withdrawDefinitionTaskInTransaction(tx, ctx.context, 'water-the-tomatoes'),

@@ -4,8 +4,10 @@ import { buildRecordedCommits } from '@heynixie/log/test-utils';
 import { waitForCondition } from '@heynixie/testing';
 import { writeStepCommit } from '../step/write-step-commit';
 import { seedConversationStep } from '../test-utils/seed-conversation-step';
+import { seedDefinitionTask } from '../test-utils/seed-definition-task';
 import { seedTask } from '../test-utils/seed-task';
 import { startTestTasks } from '../test-utils/start-test-tasks';
+import { writeTestTriggerFire } from '../test-utils/write-test-trigger-fire';
 import type { RunStep, StepErrored, StepResult, TasksTables } from '../types';
 import { createTask } from './create-task';
 import { claimTask } from './projection/claim-task';
@@ -348,4 +350,60 @@ test('it claims a message to the conversation while every claim loop of the star
   expect(conversation).toHaveBeenCalledExactlyOnceWith(
     expect.objectContaining({ taskID: 'conversation' }),
   );
+});
+
+test('it fails a definition task whose fire names a missing version after its retries and still runs another task', async () => {
+  const ctx = await setupTest();
+
+  const definitionTaskID = await seedDefinitionTask(ctx, {
+    definitionID: 'water-the-tomatoes',
+    definitionHash: 'hash-1',
+  });
+
+  await writeTestTriggerFire(ctx.context, definitionTaskID, { definitionHash: 'hash-missing' });
+
+  const otherTaskID = await createTask(ctx.context, 'tidy the inbox');
+
+  const onStepErrored = mock<(errored: StepErrored) => void>();
+  const onError = mock<(error: unknown) => void>();
+
+  const runners = startTaskClaimPools(ctx.context, {
+    runStep: () => Promise.resolve<StepResult>({ next: 'done', records: [], acknowledged: [] }),
+    onStepErrored,
+    onError,
+    logger: () => {},
+    maxStepErrors: 2,
+    retryDelayMs: 1000,
+  });
+
+  onTestFinished(() => runners.stop(0));
+
+  await waitForCondition(async () => {
+    ctx.clock.advance(1000);
+
+    const task = await ctx.db
+      .selectFrom('tasks')
+      .select('state')
+      .where('task_id', '=', definitionTaskID)
+      .executeTakeFirstOrThrow();
+
+    return task.state === 'failed' && onStepErrored.mock.calls.length === 2;
+  });
+
+  const other = await ctx.db
+    .selectFrom('tasks')
+    .select('state')
+    .where('task_id', '=', otherTaskID)
+    .executeTakeFirstOrThrow();
+
+  expect(onError).not.toHaveBeenCalled();
+
+  expect(
+    onStepErrored.mock.calls.map(([errored]) => [errored.taskID, errored.errors]),
+  ).toStrictEqual([
+    [definitionTaskID, 1],
+    [definitionTaskID, 2],
+  ]);
+
+  expect(other.state).toBe('done');
 });

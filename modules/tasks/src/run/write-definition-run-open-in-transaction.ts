@@ -1,10 +1,11 @@
 import { createShortID } from '@heynixie/db';
 import { writeRecordsInTransaction } from '@heynixie/log';
 import type { Transaction } from 'kysely';
-import type { TasksContext } from '../types';
+import type { DefinitionRunPolicy, TasksContext } from '../types';
 import { conversationTaskID } from '../utils/conversation-task-id';
 import { pickReportMode } from './pick-report-mode';
 import { pickRunDefinition } from './pick-run-definition';
+import type { RunDefinitionPick } from './pick-run-definition';
 import { readCarriedOpened } from './read-carried-opened';
 import type { DefinitionRunFacts } from './read-definition-run-facts';
 import { taskRunOpenedCodec } from './task-run-opened-codec';
@@ -45,6 +46,14 @@ export async function writeDefinitionRunOpenInTransaction(
     return 'ready';
   }
 
+  const opened = await readOpened(tx, context, request, { read, pick });
+
+  // A fire whose version is not stored opens no task run and ends no idle one. The step that follows
+  // fails on it, so it retries up to the step error limit and then fails the task.
+  if (opened === null) {
+    return 'ready';
+  }
+
   if (pick.isEndingOpen) {
     await writeRunEndInTransaction(tx, context, {
       taskID: request.taskID,
@@ -53,21 +62,6 @@ export async function writeDefinitionRunOpenInTransaction(
       stepKey: request.stepKey,
     });
   }
-
-  const opened =
-    pick.carries === null
-      ? await readDefinitionOpened(tx, context, request, {
-          definitionID: read.definitionID,
-          origin: pick.origin,
-          definitionHash: pick.definitionHash,
-          triggerKey: pick.triggerKey,
-        })
-      : await readCarriedOpened(tx, context, {
-          runs: read.runs,
-          carries: pick.carries,
-          stepKey: request.stepKey,
-          origin: pick.origin,
-        });
 
   await writeRecordsInTransaction(tx, context.log, [
     {
@@ -81,6 +75,42 @@ export async function writeDefinitionRunOpenInTransaction(
   return 'ready';
 }
 
+interface OpenFacts {
+  readonly read: DefinitionRunFacts;
+  readonly pick: Extract<RunDefinitionPick, { kind: 'open' }>;
+}
+
+async function readOpened(
+  tx: Transaction<unknown>,
+  context: OpenContext,
+  request: DefinitionRunOpenRequest,
+  facts: OpenFacts,
+): Promise<TaskRunOpened | null> {
+  const carries = facts.pick.carries;
+
+  if (carries !== null) {
+    return readCarriedOpened(tx, context, {
+      runs: facts.read.runs,
+      carries,
+      stepKey: request.stepKey,
+      origin: facts.pick.origin,
+    });
+  }
+
+  const hash = facts.pick.definitionHash;
+
+  const policy = await context.readDefinitionRunPolicy(tx, request.taskID, hash);
+
+  return policy === null
+    ? null
+    : buildDefinitionOpened(context, request, policy, {
+        definitionID: facts.read.definitionID,
+        origin: facts.pick.origin,
+        definitionHash: hash,
+        triggerKey: facts.pick.triggerKey,
+      });
+}
+
 interface DefinitionOpening {
   readonly definitionID: string;
   readonly origin: TaskRunOpened['origin'];
@@ -88,20 +118,12 @@ interface DefinitionOpening {
   readonly triggerKey: string | null;
 }
 
-async function readDefinitionOpened(
-  tx: Transaction<unknown>,
+function buildDefinitionOpened(
   context: OpenContext,
   request: DefinitionRunOpenRequest,
+  policy: DefinitionRunPolicy,
   opening: DefinitionOpening,
-): Promise<TaskRunOpened> {
-  const policy = await context.readDefinitionRunPolicy(tx, request.taskID, opening.definitionHash);
-
-  if (policy === null) {
-    throw new Error(
-      `no version of hash ${opening.definitionHash} is stored, so the task ${request.taskID} opens no task run`,
-    );
-  }
-
+): TaskRunOpened {
   const mode = pickReportMode(policy.report ?? undefined, 'definition', context.runSettings);
 
   return {

@@ -647,7 +647,7 @@ test('it ends an idle run and opens the run of a fire with another key in the sa
   ]);
 });
 
-test('it throws when the version of the claimed fire is not stored, so the step fails', async () => {
+test('it claims a fire whose version is not stored and opens no task run', async () => {
   const ctx = await setupTest();
 
   const taskID = await seedDefinitionTask(ctx, {
@@ -657,11 +657,13 @@ test('it throws when the version of the claimed fire is not stored, so the step 
 
   await writeTestTriggerFire(ctx.context, taskID, { definitionHash: 'hash-missing' });
 
-  const claim = claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+  const claim = await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
 
-  await Promise.allSettled([claim]);
+  expect(claim?.lease.workID).toBe(taskID);
 
-  expect(claim).rejects.toThrow(/hash-missing/u);
+  const runs = await ctx.readRuns(taskID);
+
+  expect(runs).toStrictEqual([]);
 });
 
 test('it claims a definition task from the started pool and no other', async () => {
