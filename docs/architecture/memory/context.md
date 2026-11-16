@@ -126,13 +126,14 @@ by keyword and by meaning, with each limit and floor its `retrieval_*` keys set.
 push placed take no second place, and each push applies only its own cap and floor.
 
 Neither push picks a pinned item, because the session's opening holds it, an item past its end time,
-or an item whose current text version the session already holds. A message such as "is the piano out
-of tune again" places the item whose trigger phrase is "piano tuning", and a message that shares
-only function words with a phrase places nothing, as [the store](./store.md#the-indexes) explains.
-Both searches leave out the user's name and the names the deployment configuration gives the agent,
-because nearly every item names one of them. The store drops each query word that the index stems
-the same as one of those names, whatever its case, and leaves the names out of the text it encodes.
-While the vector index rebuilds after a start, a search places keyword matches alone.
+or an item whose current text version the session already holds. With an encoder and an index of a
+few dozen phrases, a message such as "when is the boiler service due?" places the item whose trigger
+phrase is "boiler service appointment", and a message that shares only function words with a phrase
+places nothing, as [the store](./store.md#the-indexes) explains. Both searches leave out the user's
+name and the names the deployment configuration gives the agent, because nearly every item names one
+of them. The store drops each query word that the index stems the same as one of those names,
+whatever its case, and leaves the names out of the text it encodes. While the vector index rebuilds
+after a start, a search places keyword matches alone.
 
 Placing reads each pick's current text version under the delivery lock, so the version a turn sees
 is the version it records. A pick that was pinned, retired or forgotten since the selection drops
@@ -148,24 +149,29 @@ encoder, over indexes of 2, 19 and 52 trigger phrases. A message that shared one
 phrase scored the same as a message that meant the phrase, so no keyword floor separates them. The
 default `trigger_min_score` of 6.4 sits above every such near miss, at the cost that a deployment
 with a small index rarely matches by keyword: BM25 weighs a word by how few phrases hold it, and in
-an index of 1 or 2 phrases every score is about 0. A near miss reached a similarity of 0.56, above
-the 0.3 floor of a search the model asks for, so `trigger_min_similarity` defaults to 0.57. Messages
-that only paraphrase a phrase score from 0.39 to 0.46 and place nothing at these floors. A floor set
-for one encoder is wrong for another, because scores depend on the encoder.
+an index of 1 or 2 phrases every score is about 0.
+
+Until the index grows, the similarity floor carries trigger push. A near miss reached a similarity
+of 0.56, above the 0.3 floor of a search the model asks for, so `trigger_min_similarity` defaults to
+0.57. Messages that only paraphrase a phrase score from 0.39 to 0.46 and place nothing at these
+floors. A floor set for one encoder is wrong for another, because scores depend on the encoder.
 
 The conversation finds the versions a session holds by replaying the thread's records from the start
 of the step that wrote its last opening or invalidation, and only when the memory module asks for
 them. A version counts as held when a recall delivered it in a step whose turn ended, before the
 turn's last result. A step that errored or stopped ran on a session that its retry starts again from
 the last boundary, and a recall after the last result reached a part of the session that the next
-turn never resumes. When the user interrupts a turn, a recall that finishes after the interrupt
-never gives the model its result, so the turn counts only the recalls whose tool result came before
-the interrupt. The turn's record keeps the newest recall it saw at that result for this reason. A
-first session, and a session rebuilt after an invalidation, holds what its step delivered. A turn
-that finds its session lost reads its context again without the exclusion, and the new session
-counts what that turn retrieved and what its opening recalled, because the step's first recall
-served the lost session. An edit makes a new version, which the session has not seen, so an edited
-item matches again. A recall that the model calls itself excludes nothing.
+turn never resumes.
+
+When the user interrupts a turn, a recall that finishes after the interrupt never gives the model
+its result, so the turn counts only the recalls whose tool result came before the interrupt. The
+turn's record keeps the newest recall it saw at that result for this reason. A first session, and a
+session rebuilt after an invalidation, holds what its step delivered. A turn that finds its session
+lost reads its context again without the exclusion, and the new session counts what that turn
+retrieved and what its opening recalled, because the step's first recall served the lost session.
+
+An edit makes a new version, which the session has not seen, so an edited item matches again. A
+recall that the model calls itself excludes nothing.
 
 When a search or a log read rejects, the turn's step records the error and retries after a delay,
 and a task fails after 3 errors in a row.
