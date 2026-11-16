@@ -173,6 +173,51 @@ test('it starts a task from the conversation, and lists it under the name the co
   );
 });
 
+test('it refuses a task start from the conversation that gives the task tasks.definitions', async () => {
+  const ctx = await setupTest();
+  const api = await createTestClient(ctx);
+
+  ctx.guest.addKindReplies(
+    'conversation',
+    {
+      toolUse: {
+        name: 'task.start',
+        input: {
+          name: 'Chore check',
+          brief: 'List the chores that run each week.',
+          tools: ['tasks.definitions'],
+        },
+      },
+    },
+    { text: 'Refused.' },
+  );
+
+  await sendClientMessage(api.client, { text: 'Check the weekly chores.' }, 'Refused.');
+
+  const refused = ctx.toolResults.at(-1);
+  const result: unknown = JSON.parse(refused?.result ?? '{}');
+
+  expect({ name: refused?.name, result }).toStrictEqual({
+    name: 'task.start',
+    result: {
+      _meta: {
+        'io.modelcontextprotocol/serverInfo': { name: 'nixie', version: expect.any(String) },
+      },
+      content: [
+        {
+          type: 'text',
+          text: expect.stringMatching(
+            /^only the conversation can use tasks\.definitions, so nixie started nothing\./u,
+          ),
+        },
+      ],
+      isError: true,
+    },
+  });
+
+  expect(refused?.result).not.toInclude('tasks.definitions or mcp__nixie__tasks_definitions');
+});
+
 test('it holds a started task waiting with its message unread, and never fails it', async () => {
   const ctx = await setupTest();
   const api = await createTestClient(ctx);

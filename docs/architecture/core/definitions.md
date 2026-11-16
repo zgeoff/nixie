@@ -443,9 +443,9 @@ request that the user closes by hand opens again at the next export.
 ### Changes from the conversation
 
 The conversation holds 3 tools. `task.define` and `task.undefine` have the effect `schedule`, and
-`tasks.definitions` has the effect `read`. A task's tool list never holds the first 2: a
-`task.start` that names either is refused with `conversation_tools`, because the start bounds list
-them as conversation tools.
+`tasks.definitions` has the effect `read`. A task's tool list never holds any of the 3: a
+`task.start` that names one is refused with `conversation_tools`, because the start bounds list all
+3 as conversation tools.
 
 - **`task.define`** takes a name, a brief, a target and a trigger, and returns the ID, the trigger
   in words, the next fire and the short ID of the change. A schedule has a zone, and an `at` may
