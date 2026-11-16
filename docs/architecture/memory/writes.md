@@ -310,11 +310,12 @@ quote, runs the rules, and hands the gate its answer:
 
 Under an allow rule, the token check compares against everything the user typed in the evidence
 window. A write that passes applies with a notice and takes outside content as its source, and a
-write that fails becomes a proposal with the reason `token_missing`. The decision point gives a
-write the source `owner` only when it finds the quote in text the user typed, and adds the source
-`task` to a write from a task run. An allow rule whose `sources` lists only `owner` therefore covers
-only a conversation write whose quote the user typed, and under it the gate skips the checker's
-judgment of whether the message asserts the memory.
+write that fails the token check becomes a proposal with the reason `token_missing`. A write that
+holds a hidden character becomes a proposal with `invisible_character` first. The decision point
+gives a write the source `owner` only when it finds the quote in text the user typed, and adds the
+source `task` to a write from a task run. An allow rule whose `sources` lists only `owner` therefore
+covers only a conversation write whose quote the user typed, and under it the gate skips the
+checker's judgment of whether the message asserts the memory.
 
 - A self-note is covered only when a matching allow rule checks `subject` `eq` `self`, and a write
   from a photo only when one checks an `image` argument

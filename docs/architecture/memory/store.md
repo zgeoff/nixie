@@ -96,12 +96,13 @@ the conversation retires an item and never destroys it.
 
 ## Changing an item
 
-Each change binds to the revision its caller read, except an unpin and a pin from a
-[host command](../deployment/host-commands.md#memory), which carry none. When the item has moved
-past that revision, the change fails as stale and writes nothing, so 2 tasks that edit the same item
-never overwrite each other unseen. The change's records and the rows they fold into commit in one
-write transaction, behind the check on the writer's epoch that stops an older nixie process from
-writing ([the single writer](../core/database.md#the-single-writer)).
+Each change binds to the revision its caller read, except the model's unpin and a pin from a
+[host command](../deployment/host-commands.md#memory), which carry none. The client's pin and unpin
+carry the revision the user saw. When the item has moved past that revision, the change fails as
+stale and writes nothing, so 2 tasks that edit the same item never overwrite each other unseen. The
+change's records and the rows they fold into commit in one write transaction, behind the check on
+the writer's epoch that stops an older nixie process from writing
+([the single writer](../core/database.md#the-single-writer)).
 
 - **Remember** creates an item with its key and its first version, and **edit** adds an edited
   version that keeps the item's state.
