@@ -6,7 +6,7 @@ export interface TopicLine {
   readonly gist: string;
 }
 
-export interface SubTopic {
+interface SubTopic {
   readonly name: string;
   readonly count: number;
 }
