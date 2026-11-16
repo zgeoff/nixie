@@ -32,7 +32,12 @@ test('it calls a tool on the run endpoint with the run token and returns its res
     log: ctx.log,
     definitions: () => ({ snapshotHash: 'sha256:test' }),
 
-    queue: { enqueue: mock(), readOpenRepeat: mock(), waitForOutcome: mock() },
+    queue: {
+      enqueue: mock(),
+      readOpenRepeat: mock(),
+      readOpenProposal: mock(),
+      waitForOutcome: mock(),
+    },
   });
 
   onTestFinished(() => endpoint.stop());
@@ -70,7 +75,12 @@ test('it rejects a call that carries a token the endpoint does not know', async 
     log: ctx.log,
     definitions: () => ({ snapshotHash: 'sha256:test' }),
 
-    queue: { enqueue: mock(), readOpenRepeat: mock(), waitForOutcome: mock() },
+    queue: {
+      enqueue: mock(),
+      readOpenRepeat: mock(),
+      readOpenProposal: mock(),
+      waitForOutcome: mock(),
+    },
   });
 
   onTestFinished(() => endpoint.stop());

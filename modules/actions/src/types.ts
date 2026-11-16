@@ -89,6 +89,9 @@ interface ActionTable {
   readonly deadline_at: number | null;
   readonly risk_class: ActionRiskClass;
   readonly is_approved: 0 | 1;
+
+  // 1 for an approved call to a tool that runs inside the turn, which the task's step runs
+  readonly runs_in_step: 0 | 1;
   readonly held_by_proposal_id: string | null;
   readonly unknown_streak: number;
   readonly first_attempt_at: number | null;

@@ -7,6 +7,7 @@ import type {
   RuleSource,
 } from '@heynixie/policy';
 import type { SandboxRef, ToolTarget } from '@heynixie/sandbox';
+import type { ApprovedCallRequest, ApprovedRun } from './approved-call/run-approved-call';
 
 export type JsonSchema = JSONObject;
 
@@ -280,11 +281,23 @@ export interface RepeatQuery {
   readonly actionHash: string;
 }
 
+// The earlier approved action of the same call that no run has settled.
+export interface OpenRepeat {
+  readonly actionID: string;
+
+  // whether the task's step runs it, so it settles in no turn that repeats the call
+  readonly runsInStep: boolean;
+}
+
 export interface ActionQueue {
   readonly enqueue: (action: QueuedAction) => Promise<string>;
 
-  // the ID of the pending or unknown action that the same call already queued, or null
-  readonly readOpenRepeat: (query: RepeatQuery) => Promise<string | null>;
+  // the pending or unknown action that the same call already queued, or null
+  readonly readOpenRepeat: (query: RepeatQuery) => Promise<OpenRepeat | null>;
+
+  // The short ID of the open proposal that asks the owner about the same call, or null. It reads in
+  // the transaction that would write a second proposal, so two identical calls cannot both ask.
+  readonly readOpenProposal: (tx: WriteTransaction, query: RepeatQuery) => Promise<string | null>;
 
   readonly waitForOutcome: (actionID: string, timeoutMs: number) => Promise<ActionOutcome | null>;
 }
@@ -298,6 +311,11 @@ export interface RunEndpoint {
     session?: ToolSession,
     taskRun?: NonNullable<ToolRun['taskRun']>,
   ) => StepToken;
+
+  // Runs the call the owner approved, with the tool run of the step that the token belongs to, so
+  // the call has the step's session, its hold on the turn's budget and its task run's bounds. A
+  // token of a step that has stopped refuses.
+  readonly runApproved: (token: string, request: ApprovedCallRequest) => Promise<ApprovedRun>;
 
   readonly socketPath: string;
   readonly target: ToolTarget;

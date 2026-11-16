@@ -1,28 +1,19 @@
 import type { ActionConnector, ProviderResponse } from '@heynixie/connectors';
 import type { JSONObject } from '@heynixie/log';
-import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import type { Lease, TasksContext } from '@heynixie/tasks';
-import {
-  LeaseLostError,
-  probeTaskPaused,
-  requireLease,
-  resetLease,
-  startLeaseRenewal,
-  waitAtFaultPoint,
-} from '@heynixie/tasks';
-import type { ActionRow, ActionsTables, OutcomeReason } from '../types';
+import { LeaseLostError, startLeaseRenewal, waitAtFaultPoint } from '@heynixie/tasks';
+import type { ActionsTables, OutcomeReason } from '../types';
 import type { ActionAttemptOptions } from './action-attempt-options';
-import type { AttemptVerdict } from './attempt-check';
-import { buildCancelledCheck } from './build-cancelled-check';
-import { buildHeldCheck } from './build-held-check';
+import { buildRefusalRecords } from './build-refusal-records';
 import { buildUnknownRecords } from './build-unknown-records';
 import { defaultRetryDelaysMs } from './default-retry-delays-ms';
 import { isKeyExpired } from './is-key-expired';
 import type { Attempt, Settlement } from './leased-records';
 import { buildOutcomeRecord, readArguments, writeLeasedRecords } from './leased-records';
-import { pickAttemptStep } from './pick-attempt-step';
 import { pickOutcome } from './pick-outcome';
+import { readAttemptStep } from './read-attempt-step';
 import { runReconcileCheck } from './run-reconcile-check';
+import { isPastDeadline, writeAttemptStarted } from './write-attempt-started';
 
 export async function runActionAttempt(
   context: TasksContext,
@@ -142,46 +133,30 @@ async function runAttempt(
     return;
   }
 
-  const verdict: AttemptVerdict =
-    options.checkAttempt === undefined
-      ? { kind: 'go', destinations: [] }
-      : await options.checkAttempt({
-          action: claimed.action,
-          arguments: args,
-          proposalID:
-            claimed.action.is_approved === 1 ? crypto.randomUUID() : claimed.action.action_id,
-        });
+  const step = await readAttemptStep(options.checkAttempt, {
+    action: claimed.action,
+    arguments: args,
+  });
 
-  const step = pickAttemptStep(verdict, claimed.action);
-
-  if (step.kind === 'deny') {
-    await writeOutcome(context, attempt, {
-      outcome: { status: 'failed', reason: 'rule_denied' },
-      details: { message: step.verdict.message },
-      rule: step.verdict.rule,
-    });
-
-    return;
-  }
-
-  if (step.kind === 'hold') {
+  if (step.kind !== 'go') {
     await writeLeasedRecords(context, attempt.lease, {
-      records: [
-        step.verdict.record,
-        {
-          kind: 'action.held',
-          definitions: context.definitions(),
-          thread: claimed.action.task_id,
-          payload: { actionID: claimed.action.action_id, proposalID: step.verdict.proposalID },
-        },
-      ],
+      records: buildRefusalRecords(context, attempt, step),
       reset: true,
     });
 
+    if (step.kind === 'deny' && NIXIE_TEST_BUILD) {
+      await waitAtFaultPoint('attempt.result.after', {
+        kind: 'action',
+        id: claimed.action.action_id,
+      });
+
+      await waitAtFaultPoint('inbox.write.after', { kind: 'task', id: claimed.action.task_id });
+    }
+
     return;
   }
 
-  const start = await writeAttemptStarted(context, attempt);
+  const start = await writeAttemptStarted(context, attempt, { resetWhenBarred: true });
 
   if (start === 'past_deadline') {
     await writeFailure(context, attempt, 'deadline_passed', 'the action passed its deadline');
@@ -229,10 +204,6 @@ async function writeOutcome(
   }
 }
 
-function isPastDeadline(action: Pick<ActionRow, 'deadline_at'>, now: number): boolean {
-  return action.deadline_at !== null && now >= action.deadline_at;
-}
-
 function writeFailure(
   context: TasksContext,
   attempt: Attempt,
@@ -243,65 +214,6 @@ function writeFailure(
     outcome: { status: 'failed', reason },
     details: { message },
   });
-}
-
-type AttemptStart = 'started' | 'barred' | 'past_deadline';
-
-// A stop, a pause, a close or a pause of all of nixie can commit, and the deadline can pass, while
-// the policy check runs, so the start reads them again in its own transaction. An action past its
-// deadline keeps its lease for the failure.
-async function writeAttemptStarted(context: TasksContext, attempt: Attempt): Promise<AttemptStart> {
-  const start = await withWriteTransaction(
-    context.log.writer,
-    async (tx): Promise<AttemptStart> => {
-      const now = context.clock.now();
-
-      await requireLease(tx, attempt.lease, now);
-
-      const action = await tx
-        .$extendTables<ActionsTables>()
-        .selectFrom('actions')
-        .innerJoin('tasks', 'tasks.task_id', 'actions.task_id')
-        .select((eb) => eb.or([buildCancelledCheck(eb), buildHeldCheck(eb)]).as('is_barred'))
-        .select(['actions.held_by_proposal_id', 'actions.deadline_at'])
-        .where('actions.action_id', '=', attempt.action.action_id)
-        .executeTakeFirstOrThrow();
-
-      const isPaused = await probeTaskPaused(tx, attempt.action.task_id);
-
-      const isBarred = action.is_barred === 1 || action.is_barred === true;
-
-      if (isBarred || isPaused || action.held_by_proposal_id !== null) {
-        await resetLease(tx, attempt.lease);
-
-        return 'barred';
-      }
-
-      if (isPastDeadline(action, now)) {
-        return 'past_deadline';
-      }
-
-      await writeRecordsInTransaction(tx, context.log, [
-        {
-          kind: 'action.attempt_started',
-          definitions: context.definitions(),
-          thread: attempt.action.task_id,
-          payload: { actionID: attempt.action.action_id, attempt: attempt.attempt },
-        },
-      ]);
-
-      return 'started';
-    },
-  );
-
-  if (start === 'started' && NIXIE_TEST_BUILD) {
-    await waitAtFaultPoint('attempt.record.after', {
-      kind: 'action',
-      id: attempt.action.action_id,
-    });
-  }
-
-  return start;
 }
 
 interface ConnectorCall {

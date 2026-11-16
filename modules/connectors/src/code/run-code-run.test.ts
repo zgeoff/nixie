@@ -83,6 +83,7 @@ async function setupTest() {
       queue: {
         enqueue: () => Promise.reject(new Error('code.run runs direct')),
         readOpenRepeat: () => Promise.resolve(null),
+        readOpenProposal: () => Promise.resolve(null),
         waitForOutcome: () => Promise.resolve(null),
       },
       queuedWaitMs: 1000,

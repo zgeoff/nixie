@@ -34,6 +34,7 @@ async function setupTest() {
         callSequence: 1,
         riskClass: 'routine',
         deadlineAt: null,
+        runsInStep: false,
         ...overrides,
       }),
     );
@@ -94,6 +95,19 @@ test('it queues an approved action once, under the ID of its proposal', async ()
   expect(rows).toMatchObject([
     { action_id: 'proposal-1', is_approved: 1, risk_class: 'routine', status: 'pending' },
   ]);
+});
+
+test.each([
+  [true, 1],
+  [false, 0],
+] as const)('it stores runsInStep %s as runs_in_step %s', async (runsInStep, stored) => {
+  const ctx = await setupTest();
+
+  await ctx.approve({ runsInStep });
+
+  const rows = await ctx.readActions();
+
+  expect(rows.map((row) => row.runs_in_step)).toStrictEqual([stored]);
 });
 
 test('it queues an approved action under the step of the call that asked', async () => {

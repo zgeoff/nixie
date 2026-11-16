@@ -284,3 +284,27 @@ test('it rejects an action queued once stopped', () => {
     }),
   ).rejects.toThrowWithMessage(Error, 'the action queue stopped');
 });
+
+test('it answers a wait with no time at once, with no outcome', async () => {
+  const stub = buildStubActionQueue();
+
+  const actionID = await stub.queue.enqueue({
+    call: { callID: 'call-1', tool: 'test.send', input: { to: 'a' }, toolUseID: null },
+    run: {
+      runID: 'run-1',
+      thread: 'task-1',
+      logThread: 'task-1',
+      tools: ['test.send'],
+      model: { model: 'm', profile: 'p' },
+    },
+    decision: { outcome: 'allow', stage: 3, rule: null },
+    callSequence: 1,
+    actionHash: 'hash-1',
+    deadlineAt: null,
+    effects: ['send'],
+  });
+
+  const outcome = await stub.queue.waitForOutcome(actionID, 0);
+
+  expect(outcome).toBeNull();
+});

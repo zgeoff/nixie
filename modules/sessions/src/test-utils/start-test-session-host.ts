@@ -126,6 +126,7 @@ export async function startTestSessionHost(
     queue: {
       enqueue: () => Promise.reject(new Error('the host serves no tool, so nothing is queued')),
       readOpenRepeat: () => Promise.resolve(null),
+      readOpenProposal: () => Promise.resolve(null),
       waitForOutcome: () => Promise.resolve(null),
     },
   });

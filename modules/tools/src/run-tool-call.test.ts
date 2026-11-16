@@ -11,6 +11,7 @@ import type { ToolCallOptions } from './run-tool-call';
 import { runToolCall } from './run-tool-call';
 import { buildMockToolDefinition } from './test-utils/build-mock-tool-definition';
 import { buildMockVariantToolDefinition } from './test-utils/build-mock-variant-tool-definition';
+import type { StubActionQueueOptions } from './test-utils/build-stub-action-queue';
 import { buildStubActionQueue } from './test-utils/build-stub-action-queue';
 import { setupTestLog } from './test-utils/setup-test-log';
 import type { ToolCall, ToolContext } from './types';
@@ -20,6 +21,7 @@ interface SetupConfig {
   readonly tools: readonly ReturnType<typeof buildMockToolDefinition>[];
   readonly rules?: readonly RuleEntry[];
   readonly decisionDeadlineMs?: number;
+  readonly queue?: StubActionQueueOptions;
 
   // the declarations of a snapshot, which the decision point reads before the ones in code
   readonly snapshotTools?: ReadonlyMap<string, EffectDeclaration>;
@@ -29,7 +31,7 @@ async function setupTest(config: SetupConfig) {
   const testLog = await setupTestLog();
 
   const registry = buildToolRegistry(config.tools);
-  const queue = buildStubActionQueue();
+  const queue = buildStubActionQueue(config.queue);
 
   const options: ToolCallOptions = {
     registry,
@@ -2192,6 +2194,107 @@ test('it proposes nothing for a call that repeats an approved action still open,
   );
 
   expect(ctx.queue.actions).toHaveLength(1);
+});
+
+test('it proposes nothing for a direct call that repeats an approved action still open, and waits for nothing', async () => {
+  const ctx = await setupTest({
+    tools: [
+      buildMockToolDefinition({
+        name: 'notes_wipe',
+        execution: 'direct',
+        declaration: { effects: ['export'] },
+      }),
+    ],
+    queue: { stepTools: ['notes_wipe'] },
+  });
+
+  const run = {
+    runID: 'run-1',
+    thread: 'task-1',
+    logThread: 'task-1',
+    tools: ['notes_wipe'],
+    model: { model: 'model-a', profile: 'chat-direct' },
+  };
+
+  const earlierID = await ctx.queue.queue.enqueue({
+    call: { callID: 'call-0', tool: 'notes_wipe', input: { query: 'old' }, toolUseID: null },
+    run,
+    decision: { outcome: 'allow', stage: 3, rule: null },
+    callSequence: 1,
+    actionHash: buildActionHash({
+      tool: 'notes_wipe',
+      input: { query: 'old' },
+      destinations: [],
+      deadlineAt: null,
+    }),
+    deadlineAt: null,
+    effects: ['export'],
+  });
+
+  const result = await runToolCall(
+    { tool: 'notes_wipe', input: { query: 'old' }, toolUseID: 'toolu_9' },
+    run,
+    ctx.options,
+  );
+
+  const entries = await readRecords(ctx.log, { afterSequence: 0 });
+
+  expect(result).toStrictEqual({
+    content: [{ type: 'text', text: `queued as ${earlierID}` }],
+    isError: false,
+  });
+
+  expect(ctx.queue.waits).toStrictEqual([{ actionID: earlierID, timeoutMs: 0 }]);
+
+  expect(entries.filter((entry) => entry.record.kind === 'policy.action_proposed')).toStrictEqual(
+    [],
+  );
+});
+
+test('it writes no second proposal for a call whose question the owner has not answered, and names the open one', async () => {
+  const actionHash = buildActionHash({
+    tool: 'notes_wipe',
+    input: { query: 'old' },
+    destinations: [],
+    deadlineAt: null,
+  });
+
+  const ctx = await setupTest({
+    tools: [
+      buildMockToolDefinition({
+        name: 'notes_wipe',
+        execution: 'direct',
+        declaration: { effects: ['export'] },
+      }),
+    ],
+    queue: { openProposals: [{ thread: 'task-1', actionHash, shortID: 'k3v8n2p6wd' }] },
+  });
+
+  const result = await runToolCall(
+    { tool: 'notes_wipe', input: { query: 'old' }, toolUseID: 'toolu_9' },
+    {
+      runID: 'run-1',
+      thread: 'task-1',
+      logThread: 'task-1',
+      tools: ['notes_wipe'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
+    ctx.options,
+  );
+
+  const entries = await readRecords(ctx.log, { afterSequence: 0 });
+
+  expect(result).toStrictEqual({
+    content: [
+      {
+        type: 'text',
+        text: 'Waiting for approval as `k3v8n2p6wd`. You can keep working; you will hear the answer in your inbox.',
+      },
+    ],
+    isError: false,
+  });
+
+  expect(entries.map((entry) => entry.record.kind)).toStrictEqual(['tool_called', 'tool_result']);
 });
 
 test('it asks about a call under its variant name, so a rule on one variant leaves the other alone', async () => {

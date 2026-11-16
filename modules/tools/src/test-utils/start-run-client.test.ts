@@ -37,6 +37,7 @@ test('it sends the run token over the run socket', async () => {
     socketPath,
     target: { path: socketPath },
     startStep: () => ({ token: 'step-token', stop: () => Promise.resolve() }),
+    runApproved: () => Promise.resolve({ status: 'unavailable' as const }),
     stop: () => Promise.resolve(),
   }).catch((error: unknown) => error);
 
@@ -70,6 +71,7 @@ test('it sends the token given in place of the run token', async () => {
       socketPath,
       target: { path: socketPath },
       startStep: () => ({ token: 'step-token', stop: () => Promise.resolve() }),
+      runApproved: () => Promise.resolve({ status: 'unavailable' as const }),
       stop: () => Promise.resolve(),
     },
     'step-token',

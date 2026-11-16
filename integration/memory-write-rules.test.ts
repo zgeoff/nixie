@@ -80,6 +80,7 @@ async function setupTest(config: SetupConfig = {}) {
           queue: {
             enqueue: () => Promise.reject(new Error('every memory tool runs direct')),
             readOpenRepeat: () => Promise.resolve(null),
+            readOpenProposal: () => Promise.resolve(null),
             waitForOutcome: () => Promise.resolve(null),
           },
           queuedWaitMs: 1000,

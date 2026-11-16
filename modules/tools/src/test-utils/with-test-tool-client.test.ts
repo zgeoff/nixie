@@ -30,7 +30,12 @@ test('it runs the callback with a client connected to the run endpoint and retur
     log: ctx.log,
     definitions: () => ({ snapshotHash: 'sha256:test' }),
 
-    queue: { enqueue: mock(), readOpenRepeat: mock(), waitForOutcome: mock() },
+    queue: {
+      enqueue: mock(),
+      readOpenRepeat: mock(),
+      readOpenProposal: mock(),
+      waitForOutcome: mock(),
+    },
   });
 
   onTestFinished(() => endpoint.stop());

@@ -164,6 +164,7 @@ test('it rebuilds an approved action that a proposal held equal to the live one'
       callSequence: 1,
       riskClass: 'always_ask',
       deadlineAt: null,
+      runsInStep: false,
     }),
   );
 

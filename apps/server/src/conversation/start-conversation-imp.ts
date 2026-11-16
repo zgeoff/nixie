@@ -10,6 +10,7 @@ import {
 import type { SessionCleanupCause } from '@heynixie/sessions';
 import type { RunStep } from '@heynixie/tasks';
 import { getTaskName } from '@heynixie/tasks';
+import { makeInStepActions } from '../action/make-in-step-actions';
 import { makeSkillCatalogLoader } from '../cli/make-skill-catalog-loader';
 import { toImageNames } from '../sandbox/to-image-names';
 import { makeTurnNoteReader } from '../turn/make-turn-note-reader';
@@ -79,6 +80,7 @@ export async function startConversationImp(
     turnInputs: parts.turnInputs,
     ...(parts.spend === null ? {} : { gateway: parts.spend.gateway }),
     clearFetchPauses: parts.tools.webFetch.clearPauses,
+    inStepActions: makeInStepActions(parts),
     log: parts.log,
   });
 

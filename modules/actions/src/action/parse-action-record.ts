@@ -21,6 +21,7 @@ export type ActionRecord =
       readonly riskClass: ActionRiskClass;
       readonly deadlineAt: number | null;
       readonly isApproved: boolean;
+      readonly runsInStep: boolean;
     }
   | { readonly kind: 'action.attempt_started'; readonly actionID: string; readonly attempt: number }
   | {
@@ -84,6 +85,7 @@ const actionRecordParsers: ReadonlyMap<string, Parser> = new Map<string, Parser>
       riskClass: toOptionalRiskClass(getField('riskClass')),
       deadlineAt: toOptionalNumber(getField('deadlineAt')),
       isApproved: getField('isApproved') === true,
+      runsInStep: getField('runsInStep') === true,
     }),
   ],
   [
@@ -163,6 +165,7 @@ const optionalFields: ReadonlySet<string> = new Set([
   'riskClass',
   'deadlineAt',
   'isApproved',
+  'runsInStep',
   'ownerReason',
   'nextAttemptAt',
 ]);

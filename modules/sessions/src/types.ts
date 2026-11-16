@@ -5,7 +5,13 @@ import type { Harness, ResolvedProfile } from '@heynixie/models';
 import type { PromptOverrides } from '@heynixie/prompts';
 import type { GuestCommand, Sandbox } from '@heynixie/sandbox';
 import type { StepInput, TaskMessaging, TaskReport, TasksContext } from '@heynixie/tasks';
-import type { RunEndpoint, ToolRunModel } from '@heynixie/tools';
+import type {
+  ApprovedCallRequest,
+  ApprovedRun,
+  RunEndpoint,
+  ToolImage,
+  ToolRunModel,
+} from '@heynixie/tools';
 import type { ModelCallUsage, SessionPoint, TurnProfile } from '@heynixie/wire';
 import type { StatusRegistry } from './session/build-status-registry';
 import type { SessionGuard } from './utils/make-session-guard';
@@ -139,6 +145,25 @@ interface TurnBudget {
   readonly onSpend: (dollars: number) => void;
 }
 
+export interface InStepSettled {
+  // the sequence of the outcome record that the action wrote
+  readonly outcomeSequence: number;
+  readonly images: readonly ToolImage[];
+}
+
+export interface InStepActions {
+  // whether the task holds an approved call that its next step has to run
+  readonly probePending: (taskID: string) => Promise<boolean>;
+
+  // runs each such call under the step's lease, through the step's own tool run
+  readonly run: (request: InStepRunRequest) => Promise<readonly InStepSettled[]>;
+}
+
+export interface InStepRunRequest {
+  readonly lease: StepInput['lease'];
+  readonly runCall: (request: ApprovedCallRequest) => Promise<ApprovedRun>;
+}
+
 export interface ConversationRun {
   readonly context: TasksContext;
   readonly frame: SessionFrame;
@@ -154,7 +179,11 @@ export interface ConversationRun {
   readonly turnProfile: TurnProfile;
   readonly sandbox: Sandbox;
 
-  readonly endpoint: Pick<RunEndpoint, 'startStep'>;
+  readonly endpoint: Pick<RunEndpoint, 'startStep' | 'runApproved'>;
+
+  // The approved calls of the tools that run inside the turn, which the step runs before its turn.
+  // Absent, no step runs one.
+  readonly inStepActions?: InStepActions;
   readonly model: ToolRunModel;
   readonly command: GuestCommand;
 

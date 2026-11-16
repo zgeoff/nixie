@@ -182,6 +182,7 @@ function startTestToolEndpoint(
     queue: {
       enqueue: () => Promise.reject(new Error('every test tool runs direct, so nothing is queued')),
       readOpenRepeat: () => Promise.resolve(null),
+      readOpenProposal: () => Promise.resolve(null),
       waitForOutcome: () => Promise.resolve(null),
     },
   });

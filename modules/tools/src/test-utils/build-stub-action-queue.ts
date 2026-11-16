@@ -24,7 +24,21 @@ export interface StubActionQueue {
   readonly stop: () => void;
 }
 
-export function buildStubActionQueue(): StubActionQueue {
+export interface OpenProposal {
+  readonly thread: string;
+  readonly actionHash: string;
+  readonly shortID: string;
+}
+
+export interface StubActionQueueOptions {
+  // the proposals that still wait for the owner
+  readonly openProposals?: readonly OpenProposal[];
+
+  // the tools whose approved actions the task's step runs
+  readonly stepTools?: readonly string[];
+}
+
+export function buildStubActionQueue(options: StubActionQueueOptions = {}): StubActionQueue {
   const actions: QueuedEntry[] = [];
   const outcomes = buildOutcomeWaits();
 
@@ -55,8 +69,23 @@ export function buildStubActionQueue(): StubActionQueue {
             !outcomes.hasOutcome(entry.actionID),
         );
 
-        return Promise.resolve(earlier?.actionID ?? null);
+        const open =
+          earlier === undefined
+            ? null
+            : {
+                actionID: earlier.actionID,
+                runsInStep: options.stepTools?.includes(earlier.action.call.tool) === true,
+              };
+
+        return Promise.resolve(open);
       },
+      readOpenProposal: (_tx, query) =>
+        Promise.resolve(
+          options.openProposals?.find(
+            (proposal) =>
+              proposal.thread === query.run.thread && proposal.actionHash === query.actionHash,
+          )?.shortID ?? null,
+        ),
       waitForOutcome: (actionID, timeoutMs) =>
         actions.some((entry) => entry.actionID === actionID)
           ? outcomes.waitFor(actionID, timeoutMs)
@@ -90,6 +119,8 @@ function buildOutcomeWaits() {
 
       if (state.stopped) {
         wait.reject(buildStoppedError());
+      } else if (outcome === undefined && timeoutMs === 0) {
+        wait.resolve(null);
       } else if (outcome === undefined) {
         pending.add({ actionID, resolve: wait.resolve, reject: wait.reject });
       } else {

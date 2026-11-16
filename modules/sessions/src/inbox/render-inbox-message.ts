@@ -8,6 +8,7 @@ import { renderTaskMessage } from '../task/render-task-message';
 import type { MessageTimeOptions } from '../types';
 import { findSessionLabel } from '../utils/find-session-label';
 import { renderOwnerText } from '../utils/render-owner-text';
+import type { ActionResultBlock } from './render-action-result';
 import { renderApprovalAnswer } from './render-approval-answer';
 import { renderLimitNotice } from './render-limit-notice';
 import { renderProposalDecline } from './render-proposal-decline';
@@ -16,12 +17,20 @@ import { renderRecoveryNotice } from './render-recovery-notice';
 import type { ReminderRead } from './render-reminder-notice';
 import { renderReminderNotice } from './render-reminder-notice';
 
+// What the inbox read fetched beside the record, for the kinds that show it.
+interface RenderedExtras {
+  readonly reminder?: ReminderRead | null;
+  readonly result?: ActionResultBlock | null;
+}
+
 export function renderInboxMessage(
   record: LogRecord,
   times: MessageTimeOptions,
   view: TaskMessageView,
-  reminder: ReminderRead | null = null,
+  extras: RenderedExtras = {},
 ): string {
+  const reminder = extras.reminder ?? null;
+
   if (record.kind === 'owner_message') {
     return renderOwnerMessage(record, times, view.messaging.ownerName);
   }
@@ -35,7 +44,7 @@ export function renderInboxMessage(
   }
 
   if (record.kind === 'action.outcome') {
-    return renderRecordMessage(record, 'outcome', times);
+    return renderRecordMessage(record, 'outcome', times, extras.result ?? null);
   }
 
   if (record.kind === 'task.limit_notice') {
@@ -103,10 +112,13 @@ function renderRecordMessage(
   record: LogRecord,
   type: RecordMessageType,
   times: MessageTimeOptions,
+  result: ActionResultBlock | null = null,
 ): string {
+  const line = `[#${record.sequence}] ${recordSummaries[type]}: ${JSON.stringify(record.payload)}`;
+
   return renderSystemMessage({
     type,
     at: formatMessageTime(record.recordedAt, null, times),
-    body: `[#${record.sequence}] ${recordSummaries[type]}: ${JSON.stringify(record.payload)}`,
+    body: result === null ? line : `${line}\n${result.text}`,
   });
 }

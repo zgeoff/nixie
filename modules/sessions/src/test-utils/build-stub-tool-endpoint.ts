@@ -1,4 +1,10 @@
-import type { GuestToolRun, ToolEndpoint, ToolSession } from '@heynixie/tools';
+import type {
+  ApprovedCallRequest,
+  ApprovedRun,
+  GuestToolRun,
+  ToolEndpoint,
+  ToolSession,
+} from '@heynixie/tools';
 
 interface StubStepToken {
   readonly stepRunID: string;
@@ -13,20 +19,28 @@ export interface StubToolEndpoint {
   readonly runs: readonly GuestToolRun[];
 
   readonly steps: readonly StubStepToken[];
+
+  // each approved call that a step ran, with the token of the step that ran it
+  readonly approved: readonly { readonly token: string; readonly request: ApprovedCallRequest }[];
 }
 
 export interface StubToolEndpointOptions {
   // The first starts reject, as a tool socket that cannot bind would.
   readonly failedStarts?: number;
+
+  // What a step's approved call runs as; a stub that sets none refuses the call.
+  readonly runApproved?: (token: string, request: ApprovedCallRequest) => Promise<ApprovedRun>;
 }
 
 export function buildStubToolEndpoint(options: StubToolEndpointOptions = {}): StubToolEndpoint {
   const runs: GuestToolRun[] = [];
   const steps: StubStepToken[] = [];
+  const approved: { token: string; request: ApprovedCallRequest }[] = [];
 
   return {
     runs,
     steps,
+    approved,
     endpoint: {
       startRun: (run) => {
         runs.push(run);
@@ -58,6 +72,13 @@ export function buildStubToolEndpoint(options: StubToolEndpointOptions = {}): St
                 return Promise.resolve();
               },
             };
+          },
+          runApproved: (token, request) => {
+            approved.push({ token, request });
+
+            return options.runApproved === undefined
+              ? Promise.reject(new Error('the stub endpoint runs no approved call'))
+              : options.runApproved(token, request);
           },
           stop: () => Promise.resolve(),
         });

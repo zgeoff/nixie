@@ -1,3 +1,4 @@
+import { readOpenProposals } from '@heynixie/proposals';
 import type { RunStep, TaskClaim, TasksContext } from '@heynixie/tasks';
 import { buildStepRunID } from '@heynixie/tasks';
 import type { ActionOutcome, ActionQueue } from '@heynixie/tools';
@@ -57,6 +58,18 @@ export function buildActionQueue(
           arguments: query.input,
           actionHash: query.actionHash,
         }),
+      readOpenProposal: async (tx, query) => {
+        const open = await readOpenProposals(tx, context.clock.now());
+
+        const proposal = open.find(
+          (row) =>
+            row.family === 'action' &&
+            row.thread === query.run.thread &&
+            row.actionHash === query.actionHash,
+        );
+
+        return proposal?.shortID ?? null;
+      },
       waitForOutcome: async (actionID, timeoutMs) => {
         const view = await waitForActionOutcome(context, actionID, {
           timeoutMs,

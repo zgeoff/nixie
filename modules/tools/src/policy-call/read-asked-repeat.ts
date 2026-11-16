@@ -1,5 +1,5 @@
 import type { PolicyDecision } from '@heynixie/policy';
-import type { ActionQueue, RegisteredTool, ToolCall, ToolRun } from '../types';
+import type { ActionQueue, OpenRepeat, RegisteredTool, ToolCall, ToolRun } from '../types';
 import { isMemoryRuleAsk } from './build-memory-verdict';
 
 export interface AskedRepeat {
@@ -12,11 +12,11 @@ export interface AskedRepeat {
 }
 
 // A call that asks again while its earlier approved action is still open is a repeat of that
-// action, so it proposes nothing and reports the action's own status.
-export function readAskedRepeat(asked: AskedRepeat): Promise<string | null> {
+// action, whichever way the tool runs, so it proposes nothing and reports the action's own status.
+export function readAskedRepeat(asked: AskedRepeat): Promise<OpenRepeat | null> {
   const isAsk = asked.policy.decision.outcome === 'ask' && !isMemoryRuleAsk(asked.policy);
 
-  if (!isAsk || asked.registered?.definition.execution !== 'queued') {
+  if (!isAsk || asked.registered === null) {
     return Promise.resolve(null);
   }
 

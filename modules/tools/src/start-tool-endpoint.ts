@@ -3,6 +3,7 @@ import { mkdir, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { findWorkerRunID } from '@heynixie/sandbox';
 import { createMcpHandler } from '@modelcontextprotocol/server';
+import { runApprovedCall } from './approved-call/run-approved-call';
 import { createRunServer } from './create-run-server';
 import type { ToolCallOptions } from './run-tool-call';
 import type { GuestToolRun, RunEndpoint, ToolEndpoint } from './types';
@@ -75,6 +76,8 @@ function startRunEndpoint(spec: RunEndpointSpec): RunEndpoint {
   const token = randomBytes(32).toString('base64url');
   const state = { isRevoked: false };
 
+  const stepRuns = new Map<string, GuestToolRun>();
+
   const handlers = new Map<string, McpHandler>([
     [token, createMcpHandler(() => createRunServer(spec.run, spec.options))],
   ]);
@@ -94,7 +97,18 @@ function startRunEndpoint(spec: RunEndpointSpec): RunEndpoint {
     token,
     socketPath: spec.socketPath,
     target: { path: spec.socketPath },
-    startStep: makeStepStarter(spec, handlers),
+    startStep: makeStepStarter(spec, { handlers, stepRuns }),
+    runApproved: (stepToken, request) => {
+      const stepRun = stepRuns.get(stepToken);
+
+      if (stepRun === undefined || state.isRevoked) {
+        return Promise.reject(new Error('the step of this token has stopped, so it runs no call'));
+      }
+
+      const { toolUseMetaKey: _key, parent: _parent, ...run } = stepRun;
+
+      return runApprovedCall(request, run, spec.options);
+    },
     stop: async () => {
       if (state.isRevoked) {
         return;
@@ -107,6 +121,7 @@ function startRunEndpoint(spec: RunEndpointSpec): RunEndpoint {
       const stopped = [...handlers.values()];
 
       handlers.clear();
+      stepRuns.clear();
 
       await Promise.all(stopped.map((handler) => handler.close()));
       await server.stop(true);
@@ -158,11 +173,12 @@ function isRunToken(authorization: string | null, token: string): boolean {
   return presented.length === expected.length && timingSafeEqual(presented, expected);
 }
 
-function makeStepStarter(
-  spec: RunEndpointSpec,
+interface StepTokens {
+  readonly handlers: Map<string, McpHandler>;
+  readonly stepRuns: Map<string, GuestToolRun>;
+}
 
-  handlers: Map<string, McpHandler>,
-): RunEndpoint['startStep'] {
+function makeStepStarter(spec: RunEndpointSpec, tokens: StepTokens): RunEndpoint['startStep'] {
   return (stepRunID, session, taskRun) => {
     const token = randomBytes(32).toString('base64url');
 
@@ -175,12 +191,15 @@ function makeStepStarter(
 
     const handler = createMcpHandler(() => createRunServer(stepRun, spec.options));
 
-    handlers.set(token, handler);
+    tokens.handlers.set(token, handler);
+    tokens.stepRuns.set(token, stepRun);
 
     return {
       token,
       stop: async () => {
-        if (handlers.delete(token)) {
+        tokens.stepRuns.delete(token);
+
+        if (tokens.handlers.delete(token)) {
           await handler.close();
         }
       },

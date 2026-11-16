@@ -59,3 +59,5 @@ export type { WaitForActionOutcomeOptions } from './action/wait-for-action-outco
 export { waitForActionOutcome } from './action/wait-for-action-outcome';
 export { writeUnknownOutcomes } from './action/write-unknown-outcomes';
 export type { ActionsRecordKind } from './action/actions-record-kind';
+export type { InStepActionsOptions, InStepSettled } from './action/run-in-step-actions';
+export { probeInStepActionPending, runInStepActions } from './action/run-in-step-actions';
