@@ -1,10 +1,12 @@
 import { faker } from '@faker-js/faker';
 import { listedStateSchema } from '@heynixie/contract';
+import { workerViewSchema } from '@heynixie/contract';
 import { taskControls } from '@heynixie/task-control';
 import { Collection } from '@msw/data';
 import { z } from 'zod';
 import { approvalRows } from './approval-rows';
 import { mockSequence } from './mock-sequence';
+import { mockViewStore } from './mock-view-store';
 import { passkeyChecks, passkeyRows } from './passkey-rows';
 import { pauseStore } from './pause-store';
 import { unknownOutcomeRows } from './unknown-outcome-rows';
@@ -65,6 +67,7 @@ const toolCallSchema = z.object({
   content: jsonObjectSchema.optional(),
   input: jsonObjectSchema.optional(),
   outcome: z.string().optional(),
+  runID: z.string().optional(),
   tool: z.string().optional(),
 });
 
@@ -173,6 +176,7 @@ const records = new Collection({
     taskMessage: taskMessageSchema.optional(),
     thread: z.string().default('conversation'),
     toolCall: toolCallSchema.optional(),
+    worker: workerViewSchema.optional(),
   }),
 });
 
@@ -513,6 +517,7 @@ export const store = {
     }
 
     pauseStore.reset();
+    mockViewStore.reset();
 
     mockSequence.lastSequence = 0;
   },

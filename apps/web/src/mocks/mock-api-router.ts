@@ -10,15 +10,20 @@ import { mockImplementer } from './mock-implementer';
 import { mockMandateProcedures } from './mock-mandate-procedures';
 import { mockMemoryRouter } from './mock-memory-router';
 import { mockPasskeyProcedures } from './mock-passkey-procedures';
+import { mockReadPayloadProcedure } from './mock-read-payload-procedure';
 import { mockRuleProcedures } from './mock-rule-procedures';
 import { readMockBackupNotice } from './read-mock-backup-notice';
+import { readMockDefinitions } from './read-mock-definitions';
+import { readMockEndedRuns } from './read-mock-ended-runs';
 import { readMockPause } from './read-mock-pause';
 import { readMockRecordForgetPreview } from './read-mock-record-forget-preview';
 import { readMockRecovery } from './read-mock-recovery';
 import { readMockTaskActions } from './read-mock-task-actions';
 import { readMockTaskList } from './read-mock-task-list';
+import { readMockTriggerReport } from './read-mock-trigger-report';
 import { requireMockSession } from './require-mock-session';
 import { store } from './store';
+import { toClippedLogRecord } from './to-clipped-log-record';
 import { toLogRecord } from './to-log-record';
 import { writeMockForget } from './write-mock-forget';
 import { writeMockNixieControl } from './write-mock-nixie-control';
@@ -66,7 +71,9 @@ export const mockAPIRouter = os.router({
       return {
         hasEarlier: page.length > limit,
         readAtSequence: Math.max(0, ...store.records.all().map((record) => record.sequence)),
-        records: page.slice(-limit).map((record) => toLogRecord(record)),
+        records: page
+          .slice(-limit)
+          .map((record) => toClippedLogRecord(record, options.input.clipPayloads)),
         lastStepEnd: lastStepEnd === undefined ? null : toLogRecord(lastStepEnd),
       };
     }),
@@ -192,7 +199,7 @@ export const mockAPIRouter = os.router({
     }),
   },
   passkeys: mockPasskeyProcedures,
-  records: { follow: followProcedure },
+  records: { follow: followProcedure, readPayload: mockReadPayloadProcedure },
   rules: { ...mockRuleProcedures, ...mockMandateProcedures },
   sessions: {
     enrol: os.sessions.enrol.handler(async (options) => {
@@ -263,7 +270,7 @@ export const mockAPIRouter = os.router({
     report: os.triggers.report.handler((options) => {
       requireMockSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
 
-      return { entries: [] };
+      return readMockTriggerReport(options.input);
     }),
   },
   definitions: {
@@ -271,31 +278,14 @@ export const mockAPIRouter = os.router({
     listTasks: os.definitions.listTasks.handler((options) => {
       requireMockSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
 
-      const owners = store.tasks.all().filter((task) => task.definitionID !== undefined);
-
-      return {
-        definitions: owners.map((task) => ({
-          definitionID: task.definitionID ?? '',
-          name: task.name,
-          enabled: true,
-          target: 'task' as const,
-          trigger: null,
-          rendered: null,
-          next: null,
-          tools: [],
-          origin: 'definitions' as const,
-          createdBy: { sequence: 1, kind: 'definitions_seeded' as const },
-          taskID: task.taskID,
-          isUnreadable: false,
-        })),
-      };
+      return readMockDefinitions();
     }),
   },
   tasks: {
     listEnded: os.tasks.listEnded.handler((options) => {
       requireMockSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
 
-      return { tasks: [], runs: [], next: null };
+      return readMockEndedRuns(options.input);
     }),
     list: os.tasks.list.handler((options) => {
       requireMockSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
@@ -384,6 +374,7 @@ async function readStoredImage(image: Blob) {
 
 interface RecordStream {
   readonly afterSequence: number;
+  readonly clipPayloads?: boolean | undefined;
   readonly signal?: AbortSignal | undefined;
   readonly thread?: string | undefined;
 }
@@ -394,7 +385,11 @@ async function* streamRecordEvents(stream: RecordStream) {
   while (stream.signal?.aborted !== true) {
     for (const record of collectRecordsAfter(cursor.after, stream.thread)) {
       cursor.after = record.sequence;
-      yield withEventMeta({ record: toLogRecord(record) }, { id: String(record.sequence) });
+
+      yield withEventMeta(
+        { record: toClippedLogRecord(record, stream.clipPayloads) },
+        { id: String(record.sequence) },
+      );
     }
 
     await waitForRecord(stream.signal);

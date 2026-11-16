@@ -31,6 +31,7 @@ import {
 import { toolCalledCodec, toolResultCodec } from '@heynixie/tools';
 import { z } from 'zod';
 import { forgetToolName } from '../proposal/read-forget-body-fields';
+import { toWorkerView } from './to-worker-view';
 
 const messageKinds: ReadonlySet<RecordKind> = new Set(['owner_message', 'model.reply']);
 
@@ -86,6 +87,7 @@ export function toContractRecord(
   const proposal = lookups.proposals.get(record.sequence);
   const removal = record.kind === 'action.outcome' ? toRemoval(record, lookups) : undefined;
   const definitionNotice = lookups.definitionNotices.get(record.sequence);
+  const worker = toWorkerView(record);
 
   return {
     ...toSessionFields(record),
@@ -107,6 +109,7 @@ export function toContractRecord(
     ...(task === undefined ? {} : { task }),
     ...(taskMessage === undefined ? {} : { taskMessage }),
     ...(toolCall === undefined ? {} : { toolCall }),
+    ...(worker === undefined ? {} : { worker }),
   };
 }
 
@@ -198,6 +201,7 @@ const toolCodecs = [toolCalledCodec, toolResultCodec];
 
 interface ToolFields {
   readonly callID?: string | undefined;
+  readonly runID?: string | undefined;
   readonly tool?: string | undefined;
   readonly outcome?: string | undefined;
   readonly actionID?: string | null | undefined;
@@ -232,6 +236,7 @@ function toToolCall(
     ...(content === undefined ? {} : { content: { ...content } }),
     ...(isJSONObject(input) ? { input: { ...input } } : {}),
     ...(outcome === undefined ? {} : { outcome }),
+    ...(call.runID === undefined ? {} : { runID: call.runID }),
     ...(call.tool === undefined ? {} : { tool: call.tool }),
   };
 }

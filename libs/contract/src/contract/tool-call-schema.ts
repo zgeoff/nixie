@@ -7,5 +7,6 @@ export const toolCallSchema = z.object({
   content: jsonObjectSchema.optional(),
   input: jsonObjectSchema.optional(),
   outcome: z.string().optional(),
+  runID: z.string().optional(),
   tool: z.string().optional(),
 });

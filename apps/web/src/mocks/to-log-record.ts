@@ -1,4 +1,5 @@
 import type { LogRecord } from '@heynixie/contract';
+import { workerViewSchema } from '@heynixie/contract';
 import type { ReadonlyDeep } from '../types';
 import type { store } from './store';
 
@@ -34,6 +35,7 @@ export function toLogRecord(record: StoredRecord): LogRecord {
       : { taskMessage: structuredClone(record.taskMessage) }),
     thread: record.thread,
     ...(record.toolCall === undefined ? {} : { toolCall: structuredClone(record.toolCall) }),
+    ...(record.worker === undefined ? {} : { worker: workerViewSchema.parse(record.worker) }),
   };
 }
 

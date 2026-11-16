@@ -1,4 +1,5 @@
 import type { LogRecord as ContractRecord } from '@heynixie/contract';
+import { clipRecordPayloads } from '@heynixie/contract';
 import { subscribeToRecords } from '@heynixie/log';
 import { readAllRemovedSequences } from '@heynixie/memory';
 import invariant from 'tiny-invariant';
@@ -12,6 +13,7 @@ interface ThreadRecordsOptions {
   readonly afterSequence: number;
   readonly thread?: string | undefined;
   readonly signal?: AbortSignal | undefined;
+  readonly clipPayloads?: boolean | undefined;
 
   readonly buildUnauthorized: () => Error;
 }
@@ -62,7 +64,7 @@ export async function* subscribeToThreadRecords(
       const visible = toContractRecord(record, lookups);
 
       invariant(visible);
-      yield visible;
+      yield options.clipPayloads === true ? clipRecordPayloads(visible) : visible;
     }
   }
 }

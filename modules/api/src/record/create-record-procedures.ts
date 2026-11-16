@@ -3,6 +3,7 @@ import { withEventMeta } from '@orpc/server';
 import { requireCaller } from '../memory/require-caller';
 import type { APIContext } from '../types';
 import { apiImplementer } from '../utils/api-implementer';
+import { createReadPayloadProcedure } from './create-read-payload-procedure';
 import { subscribeToThreadRecords } from './subscribe-to-thread-records';
 
 export function createRecordProcedures(context: APIContext) {
@@ -19,13 +20,14 @@ export function createRecordProcedures(context: APIContext) {
       subscribeToThreadRecords(context, caller, {
         afterSequence: pickAfterSequence(options.input.afterSequence, options.lastEventId),
         thread: options.input.thread,
+        clipPayloads: options.input.clipPayloads,
         signal: options.signal,
         buildUnauthorized: options.errors.UNAUTHORIZED,
       }),
     );
   });
 
-  return { log: { follow }, records: { follow } };
+  return { log: { follow }, records: { follow, readPayload: createReadPayloadProcedure(context) } };
 }
 
 async function* streamRecordEvents(records: AsyncIterable<LogRecord>) {

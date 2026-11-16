@@ -20,6 +20,9 @@
                     "minimum": 0,
                     "maximum": 9007199254740991
                   },
+                  "clipPayloads": {
+                    "type": "boolean"
+                  },
                   "limit": {
                     "type": "integer",
                     "minimum": 1,
@@ -59,6 +62,44 @@
                       "items": {
                         "type": "object",
                         "properties": {
+                          "clipped": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "field": {
+                                  "enum": [
+                                    "toolCall.input",
+                                    "toolCall.content",
+                                    "worker.text",
+                                    "worker.detail"
+                                  ],
+                                  "type": "string"
+                                },
+                                "path": {
+                                  "type": "array",
+                                  "items": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string"
+                                      },
+                                      {
+                                        "type": "number"
+                                      }
+                                    ]
+                                  }
+                                },
+                                "bytes": {
+                                  "type": "number"
+                                }
+                              },
+                              "required": [
+                                "field",
+                                "path",
+                                "bytes"
+                              ]
+                            }
+                          },
                           "compaction": {
                             "type": "object",
                             "properties": {
@@ -621,12 +662,168 @@
                               "outcome": {
                                 "type": "string"
                               },
+                              "runID": {
+                                "type": "string"
+                              },
                               "tool": {
                                 "type": "string"
                               }
                             },
                             "required": [
                               "callID"
+                            ]
+                          },
+                          "worker": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "phase": {
+                                    "const": "started"
+                                  },
+                                  "workerRunID": {
+                                    "type": "string"
+                                  },
+                                  "shortID": {
+                                    "type": "string"
+                                  },
+                                  "callID": {
+                                    "type": "string"
+                                  },
+                                  "model": {
+                                    "type": "string"
+                                  },
+                                  "tools": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "limits": {
+                                    "type": "object",
+                                    "properties": {
+                                      "minutes": {
+                                        "type": "number"
+                                      },
+                                      "turns": {
+                                        "type": "number"
+                                      },
+                                      "tokens": {
+                                        "type": "number"
+                                      },
+                                      "dollars": {
+                                        "type": "number"
+                                      }
+                                    },
+                                    "required": [
+                                      "minutes",
+                                      "turns",
+                                      "tokens",
+                                      "dollars"
+                                    ]
+                                  },
+                                  "isTaskLimit": {
+                                    "type": "boolean"
+                                  }
+                                },
+                                "required": [
+                                  "phase",
+                                  "workerRunID",
+                                  "shortID",
+                                  "callID",
+                                  "model",
+                                  "tools",
+                                  "limits",
+                                  "isTaskLimit"
+                                ]
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "phase": {
+                                    "const": "turn"
+                                  },
+                                  "workerRunID": {
+                                    "type": "string"
+                                  },
+                                  "callID": {
+                                    "type": "string"
+                                  },
+                                  "turn": {
+                                    "type": "number"
+                                  },
+                                  "tokens": {
+                                    "type": "number"
+                                  },
+                                  "dollars": {
+                                    "type": "number"
+                                  },
+                                  "text": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "phase",
+                                  "workerRunID",
+                                  "callID",
+                                  "turn",
+                                  "tokens",
+                                  "dollars"
+                                ]
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "phase": {
+                                    "const": "ended"
+                                  },
+                                  "workerRunID": {
+                                    "type": "string"
+                                  },
+                                  "callID": {
+                                    "type": "string"
+                                  },
+                                  "outcome": {
+                                    "type": "string"
+                                  },
+                                  "limit": {
+                                    "type": "string"
+                                  },
+                                  "used": {
+                                    "type": "object",
+                                    "properties": {
+                                      "minutes": {
+                                        "type": "number"
+                                      },
+                                      "turns": {
+                                        "type": "number"
+                                      },
+                                      "tokens": {
+                                        "type": "number"
+                                      },
+                                      "dollars": {
+                                        "type": "number"
+                                      }
+                                    },
+                                    "required": [
+                                      "minutes",
+                                      "turns",
+                                      "tokens",
+                                      "dollars"
+                                    ]
+                                  },
+                                  "detail": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "phase",
+                                  "workerRunID",
+                                  "callID",
+                                  "outcome",
+                                  "used"
+                                ]
+                              }
                             ]
                           }
                         },
@@ -643,6 +840,44 @@
                         {
                           "type": "object",
                           "properties": {
+                            "clipped": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "field": {
+                                    "enum": [
+                                      "toolCall.input",
+                                      "toolCall.content",
+                                      "worker.text",
+                                      "worker.detail"
+                                    ],
+                                    "type": "string"
+                                  },
+                                  "path": {
+                                    "type": "array",
+                                    "items": {
+                                      "anyOf": [
+                                        {
+                                          "type": "string"
+                                        },
+                                        {
+                                          "type": "number"
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  "bytes": {
+                                    "type": "number"
+                                  }
+                                },
+                                "required": [
+                                  "field",
+                                  "path",
+                                  "bytes"
+                                ]
+                              }
+                            },
                             "compaction": {
                               "type": "object",
                               "properties": {
@@ -1205,12 +1440,168 @@
                                 "outcome": {
                                   "type": "string"
                                 },
+                                "runID": {
+                                  "type": "string"
+                                },
                                 "tool": {
                                   "type": "string"
                                 }
                               },
                               "required": [
                                 "callID"
+                              ]
+                            },
+                            "worker": {
+                              "anyOf": [
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "phase": {
+                                      "const": "started"
+                                    },
+                                    "workerRunID": {
+                                      "type": "string"
+                                    },
+                                    "shortID": {
+                                      "type": "string"
+                                    },
+                                    "callID": {
+                                      "type": "string"
+                                    },
+                                    "model": {
+                                      "type": "string"
+                                    },
+                                    "tools": {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "string"
+                                      }
+                                    },
+                                    "limits": {
+                                      "type": "object",
+                                      "properties": {
+                                        "minutes": {
+                                          "type": "number"
+                                        },
+                                        "turns": {
+                                          "type": "number"
+                                        },
+                                        "tokens": {
+                                          "type": "number"
+                                        },
+                                        "dollars": {
+                                          "type": "number"
+                                        }
+                                      },
+                                      "required": [
+                                        "minutes",
+                                        "turns",
+                                        "tokens",
+                                        "dollars"
+                                      ]
+                                    },
+                                    "isTaskLimit": {
+                                      "type": "boolean"
+                                    }
+                                  },
+                                  "required": [
+                                    "phase",
+                                    "workerRunID",
+                                    "shortID",
+                                    "callID",
+                                    "model",
+                                    "tools",
+                                    "limits",
+                                    "isTaskLimit"
+                                  ]
+                                },
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "phase": {
+                                      "const": "turn"
+                                    },
+                                    "workerRunID": {
+                                      "type": "string"
+                                    },
+                                    "callID": {
+                                      "type": "string"
+                                    },
+                                    "turn": {
+                                      "type": "number"
+                                    },
+                                    "tokens": {
+                                      "type": "number"
+                                    },
+                                    "dollars": {
+                                      "type": "number"
+                                    },
+                                    "text": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "phase",
+                                    "workerRunID",
+                                    "callID",
+                                    "turn",
+                                    "tokens",
+                                    "dollars"
+                                  ]
+                                },
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "phase": {
+                                      "const": "ended"
+                                    },
+                                    "workerRunID": {
+                                      "type": "string"
+                                    },
+                                    "callID": {
+                                      "type": "string"
+                                    },
+                                    "outcome": {
+                                      "type": "string"
+                                    },
+                                    "limit": {
+                                      "type": "string"
+                                    },
+                                    "used": {
+                                      "type": "object",
+                                      "properties": {
+                                        "minutes": {
+                                          "type": "number"
+                                        },
+                                        "turns": {
+                                          "type": "number"
+                                        },
+                                        "tokens": {
+                                          "type": "number"
+                                        },
+                                        "dollars": {
+                                          "type": "number"
+                                        }
+                                      },
+                                      "required": [
+                                        "minutes",
+                                        "turns",
+                                        "tokens",
+                                        "dollars"
+                                      ]
+                                    },
+                                    "detail": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "phase",
+                                    "workerRunID",
+                                    "callID",
+                                    "outcome",
+                                    "used"
+                                  ]
+                                }
                               ]
                             }
                           },
@@ -24308,6 +24699,9 @@
                     "minimum": 0,
                     "maximum": 9007199254740991
                   },
+                  "clipPayloads": {
+                    "type": "boolean"
+                  },
                   "thread": {
                     "type": "string",
                     "minLength": 1,
@@ -24340,6 +24734,44 @@
                             "record": {
                               "type": "object",
                               "properties": {
+                                "clipped": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "field": {
+                                        "enum": [
+                                          "toolCall.input",
+                                          "toolCall.content",
+                                          "worker.text",
+                                          "worker.detail"
+                                        ],
+                                        "type": "string"
+                                      },
+                                      "path": {
+                                        "type": "array",
+                                        "items": {
+                                          "anyOf": [
+                                            {
+                                              "type": "string"
+                                            },
+                                            {
+                                              "type": "number"
+                                            }
+                                          ]
+                                        }
+                                      },
+                                      "bytes": {
+                                        "type": "number"
+                                      }
+                                    },
+                                    "required": [
+                                      "field",
+                                      "path",
+                                      "bytes"
+                                    ]
+                                  }
+                                },
                                 "compaction": {
                                   "type": "object",
                                   "properties": {
@@ -24902,12 +25334,168 @@
                                     "outcome": {
                                       "type": "string"
                                     },
+                                    "runID": {
+                                      "type": "string"
+                                    },
                                     "tool": {
                                       "type": "string"
                                     }
                                   },
                                   "required": [
                                     "callID"
+                                  ]
+                                },
+                                "worker": {
+                                  "anyOf": [
+                                    {
+                                      "type": "object",
+                                      "properties": {
+                                        "phase": {
+                                          "const": "started"
+                                        },
+                                        "workerRunID": {
+                                          "type": "string"
+                                        },
+                                        "shortID": {
+                                          "type": "string"
+                                        },
+                                        "callID": {
+                                          "type": "string"
+                                        },
+                                        "model": {
+                                          "type": "string"
+                                        },
+                                        "tools": {
+                                          "type": "array",
+                                          "items": {
+                                            "type": "string"
+                                          }
+                                        },
+                                        "limits": {
+                                          "type": "object",
+                                          "properties": {
+                                            "minutes": {
+                                              "type": "number"
+                                            },
+                                            "turns": {
+                                              "type": "number"
+                                            },
+                                            "tokens": {
+                                              "type": "number"
+                                            },
+                                            "dollars": {
+                                              "type": "number"
+                                            }
+                                          },
+                                          "required": [
+                                            "minutes",
+                                            "turns",
+                                            "tokens",
+                                            "dollars"
+                                          ]
+                                        },
+                                        "isTaskLimit": {
+                                          "type": "boolean"
+                                        }
+                                      },
+                                      "required": [
+                                        "phase",
+                                        "workerRunID",
+                                        "shortID",
+                                        "callID",
+                                        "model",
+                                        "tools",
+                                        "limits",
+                                        "isTaskLimit"
+                                      ]
+                                    },
+                                    {
+                                      "type": "object",
+                                      "properties": {
+                                        "phase": {
+                                          "const": "turn"
+                                        },
+                                        "workerRunID": {
+                                          "type": "string"
+                                        },
+                                        "callID": {
+                                          "type": "string"
+                                        },
+                                        "turn": {
+                                          "type": "number"
+                                        },
+                                        "tokens": {
+                                          "type": "number"
+                                        },
+                                        "dollars": {
+                                          "type": "number"
+                                        },
+                                        "text": {
+                                          "type": "string"
+                                        }
+                                      },
+                                      "required": [
+                                        "phase",
+                                        "workerRunID",
+                                        "callID",
+                                        "turn",
+                                        "tokens",
+                                        "dollars"
+                                      ]
+                                    },
+                                    {
+                                      "type": "object",
+                                      "properties": {
+                                        "phase": {
+                                          "const": "ended"
+                                        },
+                                        "workerRunID": {
+                                          "type": "string"
+                                        },
+                                        "callID": {
+                                          "type": "string"
+                                        },
+                                        "outcome": {
+                                          "type": "string"
+                                        },
+                                        "limit": {
+                                          "type": "string"
+                                        },
+                                        "used": {
+                                          "type": "object",
+                                          "properties": {
+                                            "minutes": {
+                                              "type": "number"
+                                            },
+                                            "turns": {
+                                              "type": "number"
+                                            },
+                                            "tokens": {
+                                              "type": "number"
+                                            },
+                                            "dollars": {
+                                              "type": "number"
+                                            }
+                                          },
+                                          "required": [
+                                            "minutes",
+                                            "turns",
+                                            "tokens",
+                                            "dollars"
+                                          ]
+                                        },
+                                        "detail": {
+                                          "type": "string"
+                                        }
+                                      },
+                                      "required": [
+                                        "phase",
+                                        "workerRunID",
+                                        "callID",
+                                        "outcome",
+                                        "used"
+                                      ]
+                                    }
                                   ]
                                 }
                               },
@@ -25054,6 +25642,9 @@
                     "minimum": 0,
                     "maximum": 9007199254740991
                   },
+                  "clipPayloads": {
+                    "type": "boolean"
+                  },
                   "thread": {
                     "type": "string",
                     "minLength": 1,
@@ -25086,6 +25677,44 @@
                             "record": {
                               "type": "object",
                               "properties": {
+                                "clipped": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "field": {
+                                        "enum": [
+                                          "toolCall.input",
+                                          "toolCall.content",
+                                          "worker.text",
+                                          "worker.detail"
+                                        ],
+                                        "type": "string"
+                                      },
+                                      "path": {
+                                        "type": "array",
+                                        "items": {
+                                          "anyOf": [
+                                            {
+                                              "type": "string"
+                                            },
+                                            {
+                                              "type": "number"
+                                            }
+                                          ]
+                                        }
+                                      },
+                                      "bytes": {
+                                        "type": "number"
+                                      }
+                                    },
+                                    "required": [
+                                      "field",
+                                      "path",
+                                      "bytes"
+                                    ]
+                                  }
+                                },
                                 "compaction": {
                                   "type": "object",
                                   "properties": {
@@ -25648,12 +26277,168 @@
                                     "outcome": {
                                       "type": "string"
                                     },
+                                    "runID": {
+                                      "type": "string"
+                                    },
                                     "tool": {
                                       "type": "string"
                                     }
                                   },
                                   "required": [
                                     "callID"
+                                  ]
+                                },
+                                "worker": {
+                                  "anyOf": [
+                                    {
+                                      "type": "object",
+                                      "properties": {
+                                        "phase": {
+                                          "const": "started"
+                                        },
+                                        "workerRunID": {
+                                          "type": "string"
+                                        },
+                                        "shortID": {
+                                          "type": "string"
+                                        },
+                                        "callID": {
+                                          "type": "string"
+                                        },
+                                        "model": {
+                                          "type": "string"
+                                        },
+                                        "tools": {
+                                          "type": "array",
+                                          "items": {
+                                            "type": "string"
+                                          }
+                                        },
+                                        "limits": {
+                                          "type": "object",
+                                          "properties": {
+                                            "minutes": {
+                                              "type": "number"
+                                            },
+                                            "turns": {
+                                              "type": "number"
+                                            },
+                                            "tokens": {
+                                              "type": "number"
+                                            },
+                                            "dollars": {
+                                              "type": "number"
+                                            }
+                                          },
+                                          "required": [
+                                            "minutes",
+                                            "turns",
+                                            "tokens",
+                                            "dollars"
+                                          ]
+                                        },
+                                        "isTaskLimit": {
+                                          "type": "boolean"
+                                        }
+                                      },
+                                      "required": [
+                                        "phase",
+                                        "workerRunID",
+                                        "shortID",
+                                        "callID",
+                                        "model",
+                                        "tools",
+                                        "limits",
+                                        "isTaskLimit"
+                                      ]
+                                    },
+                                    {
+                                      "type": "object",
+                                      "properties": {
+                                        "phase": {
+                                          "const": "turn"
+                                        },
+                                        "workerRunID": {
+                                          "type": "string"
+                                        },
+                                        "callID": {
+                                          "type": "string"
+                                        },
+                                        "turn": {
+                                          "type": "number"
+                                        },
+                                        "tokens": {
+                                          "type": "number"
+                                        },
+                                        "dollars": {
+                                          "type": "number"
+                                        },
+                                        "text": {
+                                          "type": "string"
+                                        }
+                                      },
+                                      "required": [
+                                        "phase",
+                                        "workerRunID",
+                                        "callID",
+                                        "turn",
+                                        "tokens",
+                                        "dollars"
+                                      ]
+                                    },
+                                    {
+                                      "type": "object",
+                                      "properties": {
+                                        "phase": {
+                                          "const": "ended"
+                                        },
+                                        "workerRunID": {
+                                          "type": "string"
+                                        },
+                                        "callID": {
+                                          "type": "string"
+                                        },
+                                        "outcome": {
+                                          "type": "string"
+                                        },
+                                        "limit": {
+                                          "type": "string"
+                                        },
+                                        "used": {
+                                          "type": "object",
+                                          "properties": {
+                                            "minutes": {
+                                              "type": "number"
+                                            },
+                                            "turns": {
+                                              "type": "number"
+                                            },
+                                            "tokens": {
+                                              "type": "number"
+                                            },
+                                            "dollars": {
+                                              "type": "number"
+                                            }
+                                          },
+                                          "required": [
+                                            "minutes",
+                                            "turns",
+                                            "tokens",
+                                            "dollars"
+                                          ]
+                                        },
+                                        "detail": {
+                                          "type": "string"
+                                        }
+                                      },
+                                      "required": [
+                                        "phase",
+                                        "workerRunID",
+                                        "callID",
+                                        "outcome",
+                                        "used"
+                                      ]
+                                    }
                                   ]
                                 }
                               },
@@ -25743,6 +26528,233 @@
                         "message": {
                           "type": "string",
                           "default": "The device session is missing, lapsed or revoked"
+                        },
+                        "data": {}
+                      },
+                      "required": [
+                        "defined",
+                        "code",
+                        "status",
+                        "message"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "defined": {
+                          "const": false
+                        },
+                        "code": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "number"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "data": {}
+                      },
+                      "required": [
+                        "defined",
+                        "code",
+                        "status",
+                        "message"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/records/readPayload": {
+      "post": {
+        "operationId": "records.readPayload",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "thread": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "sequence": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "required": [
+                  "thread",
+                  "sequence"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "status": {
+                          "const": "readable"
+                        },
+                        "toolCall": {
+                          "type": "object",
+                          "properties": {
+                            "input": {
+                              "type": "object",
+                              "propertyNames": {
+                                "type": "string"
+                              },
+                              "additionalProperties": {}
+                            },
+                            "content": {
+                              "type": "object",
+                              "propertyNames": {
+                                "type": "string"
+                              },
+                              "additionalProperties": {}
+                            }
+                          }
+                        },
+                        "worker": {
+                          "type": "object",
+                          "properties": {
+                            "text": {
+                              "type": "string"
+                            },
+                            "detail": {
+                              "type": "string"
+                            }
+                          }
+                        }
+                      },
+                      "required": [
+                        "status"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "status": {
+                          "const": "forgotten"
+                        }
+                      },
+                      "required": [
+                        "status"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "status": {
+                          "const": "unreadable"
+                        }
+                      },
+                      "required": [
+                        "status"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "401",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "defined": {
+                          "const": true
+                        },
+                        "code": {
+                          "const": "UNAUTHORIZED"
+                        },
+                        "status": {
+                          "const": 401
+                        },
+                        "message": {
+                          "type": "string",
+                          "default": "The device session is missing, lapsed or revoked"
+                        },
+                        "data": {}
+                      },
+                      "required": [
+                        "defined",
+                        "code",
+                        "status",
+                        "message"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "defined": {
+                          "const": false
+                        },
+                        "code": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "number"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "data": {}
+                      },
+                      "required": [
+                        "defined",
+                        "code",
+                        "status",
+                        "message"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "defined": {
+                          "const": true
+                        },
+                        "code": {
+                          "const": "RECORD_NOT_FOUND"
+                        },
+                        "status": {
+                          "const": 404
+                        },
+                        "message": {
+                          "type": "string",
+                          "default": "No record on this thread has this sequence"
                         },
                         "data": {}
                       },

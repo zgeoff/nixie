@@ -204,8 +204,73 @@ test('it shows a failed tool result as cancelled when a stop cancelled its actio
   const page = await readThreadPage(ctx.context, { thread: 'conversation' });
 
   expect(page?.records.flatMap((record) => record.toolCall ?? [])).toStrictEqual([
-    { callID: 'call-1', outcome: 'cancelled' },
-    { callID: 'call-2', outcome: 'failed' },
+    { callID: 'call-1', outcome: 'cancelled', runID: 'conversation' },
+    { callID: 'call-2', outcome: 'failed', runID: 'conversation' },
+  ]);
+});
+
+test('it cuts a long payload string of a page read when the caller asks for clipping', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  await writeRecords(ctx.context.log, [
+    {
+      kind: 'tool_called',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: {
+        callID: 'call-1',
+        runID: 'conversation',
+        toolUseID: null,
+        tool: 'web.fetch',
+        model: 'test-model',
+        profile: 'test',
+      },
+      erasable: { input: { url: 'https://cafe-list.test/north', note: 'n'.repeat(9000) } },
+    },
+  ]);
+
+  const page = await readThreadPage(ctx.context, {
+    thread: 'conversation',
+    limit: 1,
+    clipPayloads: true,
+  });
+
+  expect(page?.records.map((record) => [record.toolCall?.input, record.clipped])).toStrictEqual([
+    [
+      { url: 'https://cafe-list.test/north', note: 'n'.repeat(4096) },
+      [{ field: 'toolCall.input', path: ['note'], bytes: 9000 }],
+    ],
+  ]);
+});
+
+test('it reads every payload field whole when the caller does not ask for clipping', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  await writeRecords(ctx.context.log, [
+    {
+      kind: 'tool_called',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: {
+        callID: 'call-1',
+        runID: 'conversation',
+        toolUseID: null,
+        tool: 'web.fetch',
+        model: 'test-model',
+        profile: 'test',
+      },
+      erasable: { input: { url: 'https://cafe-list.test/north', note: 'n'.repeat(9000) } },
+    },
+  ]);
+
+  const page = await readThreadPage(ctx.context, { thread: 'conversation', limit: 1 });
+
+  expect(page?.records.map((record) => [record.toolCall?.input, record.clipped])).toStrictEqual([
+    [{ url: 'https://cafe-list.test/north', note: 'n'.repeat(9000) }, undefined],
   ]);
 });
 
