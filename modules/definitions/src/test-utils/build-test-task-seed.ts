@@ -11,6 +11,7 @@ export function buildTestTaskSeed(): TaskSeedContext {
   const toolNames = [
     ...conversationTools,
     'files.write',
+    'log.read',
     'memory.recall',
     'memory.remember',
     'memory.edit',
