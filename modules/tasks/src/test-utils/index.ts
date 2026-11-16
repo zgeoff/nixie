@@ -25,6 +25,7 @@ export { readTestTimers } from './read-test-timers';
 export type { TaskStepsOptions } from './run-task-steps';
 export { runTaskSteps } from './run-task-steps';
 export type { ConversationStep } from './seed-conversation-step';
+export { seedConversationStep } from './seed-conversation-step';
 export type { PausedTaskSeed } from './seed-paused-task';
 export type { StartedTaskSeed } from './seed-task';
 export { startFaultPointFailure } from './start-fault-point-failure';

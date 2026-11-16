@@ -12,8 +12,19 @@ import {
   runNextStep,
   startTestSessionHost,
 } from '@heynixie/sessions/test-utils';
-import { claimTask, createConversationTask, writeInboxRecords } from '@heynixie/tasks';
-import { seedDefinitionTask, writeTestTriggerFire } from '@heynixie/tasks/test-utils';
+import {
+  claimTask,
+  createConversationTask,
+  readOpenRun,
+  readTaskDirectory,
+  writeInboxRecords,
+} from '@heynixie/tasks';
+import {
+  seedConversationStep,
+  seedDefinitionTask,
+  writeTestTaskMessage,
+  writeTestTriggerFire,
+} from '@heynixie/tasks/test-utils';
 import { buildTestClock } from '@heynixie/testing';
 import { buildToolRegistry, startToolEndpoint } from '@heynixie/tools';
 import { buildMockToolDefinition, withTestToolClient } from '@heynixie/tools/test-utils';
@@ -359,4 +370,67 @@ test('it wakes the conversation once for a fire and gives it a reminder with the
   expect(inputs[0]).toMatch(
     /<system-message type="reminder" id="[0-9a-f]+" at="Tue 9 Mar, 14:00, Sydney">\n\[#\d+\] Reminder you set: <model-text id="(?<block>[0-9a-f]+)">Call the dentist about the crown\.<\/model-text id="\k<block>">\nIt was set for Tue 9 Mar, 14:00, Sydney\.\n<\/system-message id="[0-9a-f]+">/u,
   );
+});
+
+test('it starts a task run of a wakeable definition task on a question from the conversation, and wakes the conversation with its reply', async () => {
+  const ctx = await setupTest();
+
+  await seedConversationStep(ctx.context);
+
+  const taskID = await seedDefinitionTask(
+    { ...ctx, writer: ctx.context.log.writer },
+    {
+      definitionID: 'water-the-tomatoes',
+      definitionHash: 'hash-1',
+      version: { wakeable: true },
+      policy: { wakeable: true },
+    },
+  );
+
+  const messaging = await readTaskDirectory(ctx.context, {
+    directory: [
+      {
+        taskID: 'conversation',
+        name: 'Conversation',
+        brief: 'Talks with the owner.',
+        wakeable: true,
+        speaker: 'conversation',
+      },
+    ],
+    hopLimit: 20,
+    ownerName: 'Robin',
+    agentName: null,
+  });
+
+  const question = await writeTestTaskMessage(ctx.context, messaging, {
+    from: 'conversation',
+    to: taskID,
+    kind: 'question',
+    body: 'Did the tomatoes get water this morning?',
+    replyTo: null,
+    onBehalfOf: [],
+    wake: true,
+  });
+
+  invariant(question.status === 'sent', 'the question was sent');
+
+  const claim = await claimTask(ctx.context, { holder: 'runner-b', leaseMs: 60_000, taskID });
+
+  invariant(claim, 'the question woke the task');
+
+  const run = await readOpenRun(ctx.context.log.writer.db, taskID);
+
+  const reply = await writeTestTaskMessage(ctx.context, messaging, {
+    from: taskID,
+    to: 'conversation',
+    kind: 'reply',
+    body: 'Yes, at 06:30.',
+    replyTo: question.messageID,
+    onBehalfOf: [],
+    wake: true,
+  });
+
+  expect(question.woke).toBe(true);
+  expect(run?.opened.origin.kind).toBe('message');
+  expect(reply).toMatchObject({ status: 'sent', woke: true });
 });
