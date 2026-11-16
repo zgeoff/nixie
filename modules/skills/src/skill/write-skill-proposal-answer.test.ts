@@ -12,6 +12,7 @@ import {
   writeWrittenSkill,
   writeWrittenSkillState,
 } from '@heynixie/definitions';
+import { buildTestTaskSeed } from '@heynixie/definitions/test-utils';
 import { readRecords, startWriter, withWriteTransaction, writeRecords } from '@heynixie/log';
 import { buildTestClock } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
@@ -129,7 +130,13 @@ test('it puts an approved skill in force, so the next task loads it', async () =
 
   await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 2\n');
   await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
-  await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => ctx.policy });
+
+  await runSeed({
+    tasks: buildTestTaskSeed(),
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => ctx.policy,
+  });
 
   const files = [
     {
@@ -189,7 +196,13 @@ test('it refuses a second approval over the same base as stale before the first 
 
   await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 2\n');
   await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
-  await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => ctx.policy });
+
+  await runSeed({
+    tasks: buildTestTaskSeed(),
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => ctx.policy,
+  });
 
   const byPort = [
     {
@@ -271,7 +284,13 @@ test("it refuses an approval over a retired version as stale before the retireme
   await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 2\n');
   await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
   await writeFile(join(ctx.root, 'skills', 'tide-tables', 'SKILL.md'), text);
-  await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => ctx.policy });
+
+  await runSeed({
+    tasks: buildTestTaskSeed(),
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => ctx.policy,
+  });
 
   const byPort = [{ path: 'SKILL.md', text: `${text}By port.\n` }];
   const byHour = [{ path: 'SKILL.md', text: `${text}By hour.\n` }];
@@ -691,6 +710,7 @@ test.each([
     );
 
     const seeded = await runSeed({
+      tasks: buildTestTaskSeed(),
       log: ctx.log,
       source: ctx.source,
       buildPolicy: () => ctx.policy,
@@ -722,7 +742,12 @@ test.each([
       '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n# Tides, by hour\n',
     );
 
-    await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => ctx.policy });
+    await runSeed({
+      tasks: buildTestTaskSeed(),
+      log: ctx.log,
+      source: ctx.source,
+      buildPolicy: () => ctx.policy,
+    });
 
     const refusal = await writeSkillProposalAnswer(ctx.context, {
       ...answer,

@@ -3,6 +3,7 @@ import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createPathSource, runSeed } from '@heynixie/definitions';
+import { buildTestTaskSeed } from '@heynixie/definitions/test-utils';
 import { readRecords, startWriter, writeRecords } from '@heynixie/log';
 import { buildTestClock } from '@heynixie/testing';
 import { buildToolRegistry } from '@heynixie/tools';
@@ -45,6 +46,7 @@ test('it proposes a new skill for review and records its files and the run that 
   await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
 
   const seeded = await runSeed({
+    tasks: buildTestTaskSeed(),
     log: ctx.log,
     source: ctx.source,
     buildPolicy: () => ({ rules: [], tools: [] }),
@@ -143,6 +145,7 @@ test('it records the version in force that a change to a skill would replace', a
   );
 
   const seeded = await runSeed({
+    tasks: buildTestTaskSeed(),
     log: ctx.log,
     source: ctx.source,
     buildPolicy: () => ({ rules: [], tools: [] }),
@@ -198,6 +201,7 @@ test('it records a destination the owner never typed and the definitions lack', 
   await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
 
   const seeded = await runSeed({
+    tasks: buildTestTaskSeed(),
     log: ctx.log,
     source: ctx.source,
     buildPolicy: () => ({ rules: [], tools: [] }),
@@ -267,6 +271,7 @@ test('it records an untyped destination that only a reference file holds', async
   await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
 
   const seeded = await runSeed({
+    tasks: buildTestTaskSeed(),
     log: ctx.log,
     source: ctx.source,
     buildPolicy: () => ({ rules: [], tools: [] }),
@@ -323,6 +328,7 @@ test('it refuses 2 files at one path, and records no proposal', async () => {
   await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
 
   const seeded = await runSeed({
+    tasks: buildTestTaskSeed(),
     log: ctx.log,
     source: ctx.source,
     buildPolicy: () => ({ rules: [], tools: [] }),
@@ -386,6 +392,7 @@ test('it records no untyped token for a destination that the persona holds', asy
   await writeFile(join(ctx.root, 'persona.md'), '# Persona\n\nCopy reports to ops@example.net.\n');
 
   const seeded = await runSeed({
+    tasks: buildTestTaskSeed(),
     log: ctx.log,
     source: ctx.source,
     buildPolicy: () => ({ rules: [], tools: [] }),
@@ -450,6 +457,7 @@ test('it records no untyped token for a destination that a skill in force holds 
   );
 
   const seeded = await runSeed({
+    tasks: buildTestTaskSeed(),
     log: ctx.log,
     source: ctx.source,
     buildPolicy: () => ({ rules: [], tools: [] }),
@@ -503,6 +511,7 @@ test('it refuses a skill that fails a seed check, and records no proposal', asyn
   await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
 
   const seeded = await runSeed({
+    tasks: buildTestTaskSeed(),
     log: ctx.log,
     source: ctx.source,
     buildPolicy: () => ({ rules: [], tools: [] }),
@@ -562,6 +571,7 @@ test('it refuses a skill with every problem the seed checks find, and records no
   await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
 
   const seeded = await runSeed({
+    tasks: buildTestTaskSeed(),
     log: ctx.log,
     source: ctx.source,
     buildPolicy: () => ({ rules: [], tools: [] }),
@@ -628,6 +638,7 @@ test('it refuses files that match the version in force', async () => {
   );
 
   const seeded = await runSeed({
+    tasks: buildTestTaskSeed(),
     log: ctx.log,
     source: ctx.source,
     buildPolicy: () => ({ rules: [], tools: [] }),

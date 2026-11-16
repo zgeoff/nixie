@@ -40,6 +40,20 @@ export { isDefinitionsPath } from './definition/is-definitions-path';
 export { loadSkillVersions } from './skill/load-skill-versions';
 export { loadSnapshotSkills } from './skill/load-snapshot-skills';
 export { probeWrittenSkillsPending } from './written/probe-written-skills-pending';
+export { readDefinitionVersion } from './task/read-definition-version';
+export type { CheckTaskStartOptions } from './task/make-check-task-start';
+export { makeCheckTaskStart } from './task/make-check-task-start';
+export { TaskSeedRefusedError } from './task/task-seed-refused-error';
+
+export type {
+  CheckTaskStart,
+  SeedFault,
+  SeedFaultCode,
+  TaskDefinition,
+  TaskDefinitionWarning,
+  TaskSeedContext,
+} from './task/types';
+
 export type { SeedOptions, SeedResult } from './rule/run-seed';
 export { runSeed } from './rule/run-seed';
 export { runInForceSeed } from './seed/run-in-force-seed';
@@ -76,6 +90,7 @@ export type {
   DefinitionsExportMove,
   DefinitionsExportSource,
   DefinitionsInForce,
+  DefinitionVersion,
   DefinitionsRepo,
   DefinitionsSkillOrigin,
   DefinitionsSnapshot,
@@ -92,6 +107,8 @@ export type {
   SkillVersion,
   Snapshot,
   SnapshotPolicy,
+  SnapshotTask,
+  SnapshotTasks,
   SourceKind,
   StoredRule,
   DueDefinitionsExport,

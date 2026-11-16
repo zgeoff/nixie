@@ -2,6 +2,7 @@ import { expect, onTestFinished, setSystemTime, test } from 'bun:test';
 import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { createPathSource, runSeed } from '@heynixie/definitions';
+import { buildTestTaskSeed } from '@heynixie/definitions/test-utils';
 import type { LogTables } from '@heynixie/log';
 import { readRecords, removeRecordKey, writeRecords } from '@heynixie/log';
 import { defaultGateLimits, defaultOwnerPronouns, startMemoryStore } from '@heynixie/memory';
@@ -31,6 +32,7 @@ async function setupTest() {
   );
 
   await runSeed({
+    tasks: buildTestTaskSeed(),
     log: api.context.log,
     source: createPathSource({ directory: root }),
     buildPolicy: () => ({ rules: [], tools: [] }),
@@ -338,6 +340,7 @@ test('#runSeed withdraws a rule change a defer kept open past its first lapse ti
   await rm(join(root, 'rules', 'web.yaml'));
 
   await runSeed({
+    tasks: buildTestTaskSeed(),
     log: ctx.api.context.log,
     source: createPathSource({ directory: root }),
     buildPolicy: () => ({ rules: [], tools: [] }),

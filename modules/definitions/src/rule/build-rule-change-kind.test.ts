@@ -9,6 +9,7 @@ import { writeRuntimeRule } from '../runtime/write-runtime-rule';
 import { runInForceSeed } from '../seed/run-in-force-seed';
 import { runDefinitionsExports } from '../skill/run-definitions-exports';
 import { buildStubDefinitionsRepo } from '../test-utils/build-stub-definitions-repo';
+import { buildTestTaskSeed } from '../test-utils/build-test-task-seed';
 import { buildRuleChangeKind } from './build-rule-change-kind';
 import { runSeed } from './run-seed';
 import { writeRuleResolution } from './write-rule-resolution';
@@ -53,6 +54,7 @@ async function setupTest() {
     },
     runSeed: () =>
       runSeed({
+        tasks: buildTestTaskSeed(),
         log,
         source: createPathSource({ directory: root }),
         buildPolicy: () => ({ rules: [], tools: [] }),

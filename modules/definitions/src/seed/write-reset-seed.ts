@@ -37,6 +37,14 @@ export async function writeResetSeed(
       .execute();
   }
 
+  if (seed.taskVersions.length > 0) {
+    await tx
+      .$extendTables<DefinitionsTables>()
+      .insertInto('task_definition_versions')
+      .values(seed.taskVersions)
+      .execute();
+  }
+
   if (seed.written.length > 0) {
     await tx
       .$extendTables<DefinitionsTables>()

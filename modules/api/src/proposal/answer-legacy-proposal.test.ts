@@ -2,6 +2,7 @@ import { expect, test } from 'bun:test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { createPathSource, readPendingRuleProposals, runSeed } from '@heynixie/definitions';
+import { buildTestTaskSeed } from '@heynixie/definitions/test-utils';
 import { buildTestClient } from '../test-utils/build-test-client';
 import { createDeviceSession } from '../test-utils/create-device-session';
 import { startTestAPI } from '../test-utils/start-test-api';
@@ -23,6 +24,7 @@ async function setupTest() {
   );
 
   await runSeed({
+    tasks: buildTestTaskSeed(),
     log: api.context.log,
     source: createPathSource({ directory: root }),
     buildPolicy: () => ({ rules: [], tools: [] }),

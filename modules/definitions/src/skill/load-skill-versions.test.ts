@@ -6,6 +6,7 @@ import { startWriter } from '@heynixie/log';
 import { sql } from 'kysely';
 import { createPathSource } from '../definition/create-path-source';
 import { runSeed } from '../rule/run-seed';
+import { buildTestTaskSeed } from '../test-utils/build-test-task-seed';
 import { loadSkillVersions } from './load-skill-versions';
 
 async function setupTest() {
@@ -49,6 +50,7 @@ test('it reads each seeded skill version by its content hash, with its frontmatt
   await writeFile(join(ctx.root, 'skills', 'tide-tables', 'SKILL.md'), skill);
 
   const seeded = await runSeed({
+    tasks: buildTestTaskSeed(),
     log: ctx.log,
     source: ctx.source,
     buildPolicy: () => ({ rules: [], tools: [] }),

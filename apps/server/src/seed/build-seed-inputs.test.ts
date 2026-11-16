@@ -1,5 +1,6 @@
 import { expect, test } from 'bun:test';
 import { buildDefinitionsSnapshot } from '@heynixie/definitions';
+import { buildMockTaskStartBounds } from '@heynixie/tasks/test-utils';
 import type { ToolDefinition } from '@heynixie/tools';
 import { buildTestModelsConfig } from '../test-utils/build-test-models-config';
 import { buildLogConnector } from '../test/build-log-connector';
@@ -13,7 +14,12 @@ test("it puts the queue check's tool declaration in the policy, beside the conve
   } as const;
 
   const tool = buildLogConnector(() => {}).tool;
-  const inputs = buildSeedInputs(config, { definitions: [], actions: { logConnector: { tool } } });
+
+  const inputs = buildSeedInputs(config, {
+    definitions: [],
+    actions: { logConnector: { tool } },
+    taskBounds: buildMockTaskStartBounds(),
+  });
 
   expect(inputs.buildPolicy({}).tools).toStrictEqual([
     {
@@ -44,10 +50,12 @@ test.each([
     const snapshot = buildDefinitionsSnapshot({
       skills: [],
       conversationSkills: [],
+      tasks: [],
       persona: '# P\n',
       policy: buildSeedInputs(config, {
         definitions: [],
         actions: { logConnector: { tool } },
+        taskBounds: buildMockTaskStartBounds(),
       }).buildPolicy({}),
       prompts: {},
     });
@@ -75,10 +83,12 @@ test("it changes the snapshot hash when the queue check's tool declaration chang
       buildDefinitionsSnapshot({
         skills: [],
         conversationSkills: [],
+        tasks: [],
         persona: '# Persona\n',
         policy: buildSeedInputs(config, {
           definitions: [],
           actions: { logConnector: { tool: logTool } },
+          taskBounds: buildMockTaskStartBounds(),
         }).buildPolicy({}),
         prompts: {},
       }).snapshotHash,
@@ -104,11 +114,17 @@ test.each([
   } as const;
 
   const tool = buildLogConnector(() => {}).tool;
-  const inputs = buildSeedInputs(config, { definitions: [], actions: { logConnector: { tool } } });
+
+  const inputs = buildSeedInputs(config, {
+    definitions: [],
+    actions: { logConnector: { tool } },
+    taskBounds: buildMockTaskStartBounds(),
+  });
 
   const snapshot = buildDefinitionsSnapshot({
     skills: [],
     conversationSkills: [],
+    tasks: [],
     persona: '# P\n',
     policy: inputs.buildPolicy(prompts),
     prompts,
@@ -127,12 +143,19 @@ test('it keeps the policy hash when only a prompt other than the checkers has an
   } as const;
 
   const tool = buildLogConnector(() => {}).tool;
-  const inputs = buildSeedInputs(config, { definitions: [], actions: { logConnector: { tool } } });
+
+  const inputs = buildSeedInputs(config, {
+    definitions: [],
+    actions: { logConnector: { tool } },
+    taskBounds: buildMockTaskStartBounds(),
+  });
+
   const prompts = { compaction: { parts: { safety: 'Quote the owner.' }, template: null } };
 
   const snapshot = buildDefinitionsSnapshot({
     skills: [],
     conversationSkills: [],
+    tasks: [],
     persona: '# P\n',
     policy: inputs.buildPolicy(prompts),
     prompts,
@@ -141,4 +164,26 @@ test('it keeps the policy hash when only a prompt other than the checkers has an
   expect(snapshot.policyHash).toBe(
     'fd8e0ff7d42741ec02559311ce15fa2ad93c2334c2af4a6d85b41beb2ce0cb52',
   );
+});
+
+test('it lets a file definition list a registered tool that a definition from chat cannot', () => {
+  const config = {
+    definitions: { source: { kind: 'path', path: '/srv/definitions' }, probeIntervalMs: 300_000 },
+    models: buildTestModelsConfig({ modelURL: 'https://models.example.test' }),
+    owner: { name: 'Marisol', pronouns: { they: 'she', their: 'her' } },
+  } as const;
+
+  const tool = buildLogConnector(() => {}).tool;
+
+  const inputs = buildSeedInputs(config, {
+    definitions: [],
+    actions: { logConnector: { tool } },
+    taskBounds: buildMockTaskStartBounds(),
+  });
+
+  const input = { name: 'Log a note', brief: 'Write one line.', tools: ['actions.log'] };
+
+  expect(inputs.tasks.toolNames).toStrictEqual(['actions.log']);
+  expect(inputs.tasks.checkTaskStart(input, 'file')).toStrictEqual({ status: 'planned' });
+  expect(inputs.tasks.checkTaskStart(input, 'conversation').status).toBe('refused');
 });

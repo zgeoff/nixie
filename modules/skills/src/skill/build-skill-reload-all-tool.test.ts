@@ -3,6 +3,7 @@ import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createPathSource, loadSkillVersions, runSeed } from '@heynixie/definitions';
+import { buildTestTaskSeed } from '@heynixie/definitions/test-utils';
 import { startWriter } from '@heynixie/log';
 import { buildTestClock } from '@heynixie/testing';
 import { buildToolRegistry } from '@heynixie/tools';
@@ -58,6 +59,7 @@ test('it reloads every skill on the list, with a result the output schema accept
   );
 
   const seeded = await runSeed({
+    tasks: buildTestTaskSeed(),
     log: ctx.log,
     source: ctx.source,
     buildPolicy: () => ({ rules: [], tools: [] }),
@@ -126,6 +128,7 @@ test('it moves a pinned skill to the version a later seed put in force', async (
   );
 
   const first = await runSeed({
+    tasks: buildTestTaskSeed(),
     log: ctx.log,
     source: ctx.source,
     buildPolicy: () => ({ rules: [], tools: [] }),
@@ -137,6 +140,7 @@ test('it moves a pinned skill to the version a later seed put in force', async (
     readInForce: () => first.inForce,
     refreshDefinitions: async () => {
       const seeded = await runSeed({
+        tasks: buildTestTaskSeed(),
         log: ctx.log,
         source: ctx.source,
         buildPolicy: () => ({ rules: [], tools: [] }),

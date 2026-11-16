@@ -21,7 +21,7 @@ export interface ServerPartValues {
   readonly web_fetch: Tools['webFetch'];
   readonly code_run: CodeRunPart;
   readonly actions: Tools['actions'];
-  readonly tool_endpoint: Pick<Tools, 'definitions' | 'endpoint'>;
+  readonly tool_endpoint: Pick<Tools, 'definitions' | 'endpoint' | 'taskBounds'>;
   readonly tools: Tools;
   readonly api_gate: APIGate;
   readonly http: number;

@@ -170,17 +170,20 @@ function parseTexts(
 ): ParsedDefinitions {
   const encoder = new TextEncoder();
 
-  return parseDefinitions({
-    contentHash: '',
-    files: new Map(
-      [...texts].flatMap(([path, text]): [string, Uint8Array][] =>
-        text === null ? [] : [[path, encoder.encode(text)]],
+  return parseDefinitions(
+    {
+      contentHash: '',
+      files: new Map(
+        [...texts].flatMap(([path, text]): [string, Uint8Array][] =>
+          text === null ? [] : [[path, encoder.encode(text)]],
+        ),
       ),
-    ),
-    revision,
-    repository: null,
-    skipped: [],
-  });
+      revision,
+      repository: null,
+      skipped: [],
+    },
+    null,
+  );
 }
 
 async function readClosingRules(

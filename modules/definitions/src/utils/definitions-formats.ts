@@ -12,4 +12,6 @@ export const definitionsFormats = {
   rules: 3,
 
   effects: 4,
+
+  tasks: 4,
 };

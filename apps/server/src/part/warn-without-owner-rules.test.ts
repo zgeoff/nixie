@@ -2,6 +2,7 @@ import { expect, mock, test } from 'bun:test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { createPathSource, runSeed } from '@heynixie/definitions';
+import { buildTestTaskSeed } from '@heynixie/definitions/test-utils';
 import { startTestServer } from '../test-utils/start-test-server';
 import { warnWithoutOwnerRules } from './warn-without-owner-rules';
 
@@ -19,6 +20,7 @@ async function setupTest() {
     log,
     runSeed: () =>
       runSeed({
+        tasks: buildTestTaskSeed(),
         log: server.context.log,
         source: createPathSource({ directory: root }),
         buildPolicy: () => ({ rules: [], tools: [] }),

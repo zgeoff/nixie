@@ -8,6 +8,7 @@ import {
   runSeed,
   writeWrittenSkill,
 } from '@heynixie/definitions';
+import { buildTestTaskSeed } from '@heynixie/definitions/test-utils';
 import { startWriter, withWriteTransaction, writeRecords } from '@heynixie/log';
 import { buildTestClock } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
@@ -58,6 +59,7 @@ test('it lists each pending proposal with the version of its skill in force, or 
   );
 
   const seeded = await runSeed({
+    tasks: buildTestTaskSeed(),
     log: ctx.log,
     source: ctx.source,
     buildPolicy: () => ({ rules: [], tools: [] }),
@@ -238,6 +240,7 @@ test('it marks a proposal stale once the version in force moves past its base', 
   );
 
   await runSeed({
+    tasks: buildTestTaskSeed(),
     log: ctx.log,
     source: ctx.source,
     buildPolicy: () => ({ rules: [], tools: [] }),
@@ -258,6 +261,7 @@ test('it marks a proposal stale once an approval of its skill commits, before th
   await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
 
   await runSeed({
+    tasks: buildTestTaskSeed(),
     log: ctx.log,
     source: ctx.source,
     buildPolicy: () => ({ rules: [], tools: [] }),

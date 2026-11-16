@@ -13,6 +13,8 @@ import { runSeed } from '../rule/run-seed';
 import { writeRuleProposalAnswer } from '../rule/write-rule-proposal-answer';
 import { checkSkillFiles } from '../skill/check-skill-files';
 import { loadSnapshotSkills } from '../skill/load-snapshot-skills';
+import { readDefinitionVersion } from '../task/read-definition-version';
+import { buildTestTaskSeed } from '../test-utils/build-test-task-seed';
 import { createStubGitSyncWorktree } from '../test-utils/create-stub-git-sync-worktree';
 import { writeWrittenSkill } from '../written/write-written-skill';
 import { writeWrittenSkillState } from '../written/write-written-skill-state';
@@ -61,6 +63,7 @@ test('it seeds the definitions in force again as the first record of the new log
   ]);
 
   const seeded = await runSeed({
+    tasks: buildTestTaskSeed(),
     log: ctx.log,
     source: ctx.source,
     buildPolicy: () => ({ rules: [], tools: [] }),
@@ -94,6 +97,7 @@ test('it puts the same definitions in force under the new record', async () => {
   ]);
 
   const seeded = await runSeed({
+    tasks: buildTestTaskSeed(),
     log: ctx.log,
     source: ctx.source,
     buildPolicy: () => ({ rules: [], tools: [] }),
@@ -136,6 +140,7 @@ test('it keeps the commit and the repository of a git-sync seed through a reset'
   ]);
 
   const seeded = await runSeed({
+    tasks: buildTestTaskSeed(),
     log: ctx.log,
     source: createPathSource({ directory: join(sync, 'current') }),
     buildPolicy: () => ({ rules: [], tools: [] }),
@@ -179,6 +184,7 @@ test('it seeds the skills in force again with their files', async () => {
   ]);
 
   const seeded = await runSeed({
+    tasks: buildTestTaskSeed(),
     log: ctx.log,
     source: ctx.source,
     buildPolicy: () => ({ rules: [], tools: [] }),
@@ -216,6 +222,7 @@ test("it keeps a skill's frontmatter fields through a reset", async () => {
   ]);
 
   const seeded = await runSeed({
+    tasks: buildTestTaskSeed(),
     log: ctx.log,
     source: ctx.source,
     buildPolicy: () => ({ rules: [], tools: [] }),
@@ -267,6 +274,7 @@ test("it keeps the conversation's skill list through storage and a reset", async
   ]);
 
   await runSeed({
+    tasks: buildTestTaskSeed(),
     log: ctx.log,
     source: ctx.source,
     buildPolicy: () => ({ rules: [], tools: [] }),
@@ -306,6 +314,7 @@ test('it keeps an empty conversation skill list through storage and a reset, bes
   ]);
 
   await runSeed({
+    tasks: buildTestTaskSeed(),
     log: ctx.log,
     source: ctx.source,
     buildPolicy: () => ({ rules: [], tools: [] }),
@@ -339,6 +348,7 @@ test('it leaves the next seed of the same definitions unchanged', async () => {
   ]);
 
   await runSeed({
+    tasks: buildTestTaskSeed(),
     log: ctx.log,
     source: ctx.source,
     buildPolicy: () => ({ rules: [], tools: [] }),
@@ -355,6 +365,7 @@ test('it leaves the next seed of the same definitions unchanged', async () => {
   });
 
   const next = await runSeed({
+    tasks: buildTestTaskSeed(),
     log: ctx.log,
     source: ctx.source,
     buildPolicy: () => ({ rules: [], tools: [] }),
@@ -378,7 +389,12 @@ test('it keeps a skill nixie wrote in force through a reset and the seed after i
 
   const policy = { rules: [], tools: [] };
 
-  await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
+  await runSeed({
+    tasks: buildTestTaskSeed(),
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => policy,
+  });
 
   const skill = checkSkillFiles('tide-tables', [{ path: 'SKILL.md', text: `${text}By port.\n` }]);
 
@@ -405,7 +421,12 @@ test('it keeps a skill nixie wrote in force through a reset and the seed after i
     },
   });
 
-  const next = await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
+  const next = await runSeed({
+    tasks: buildTestTaskSeed(),
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => policy,
+  });
 
   expect(next.status).toBe('unchanged');
 
@@ -429,7 +450,12 @@ test('it keeps a skill nixie wrote through a reset before its seed, and the seed
 
   const policy = { rules: [], tools: [] };
 
-  await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
+  await runSeed({
+    tasks: buildTestTaskSeed(),
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => policy,
+  });
 
   const skill = checkSkillFiles('tide-tables', [{ path: 'SKILL.md', text: `${text}By port.\n` }]);
 
@@ -476,7 +502,12 @@ test("it puts your definitions' version back after a reset when you retire nixie
 
   const policy = { rules: [], tools: [] };
 
-  const first = await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
+  const first = await runSeed({
+    tasks: buildTestTaskSeed(),
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => policy,
+  });
 
   const skill = checkSkillFiles('tide-tables', [{ path: 'SKILL.md', text: `${text}By port.\n` }]);
 
@@ -531,6 +562,7 @@ test('it keeps the rules in force through a reset that keeps the rule store', as
   ]);
 
   await runSeed({
+    tasks: buildTestTaskSeed(),
     log: ctx.log,
     source: ctx.source,
     buildPolicy: () => ({ rules: [], tools: [] }),
@@ -568,6 +600,7 @@ test('it proposes a pending widening again at the first seed after a reset', asy
   ]);
 
   await runSeed({
+    tasks: buildTestTaskSeed(),
     log: ctx.log,
     source: ctx.source,
     buildPolicy: () => ({ rules: [], tools: [] }),
@@ -584,6 +617,7 @@ test('it proposes a pending widening again at the first seed after a reset', asy
   });
 
   await runSeed({
+    tasks: buildTestTaskSeed(),
     log: ctx.log,
     source: ctx.source,
     buildPolicy: () => ({ rules: [], tools: [] }),
@@ -614,6 +648,7 @@ test('it asks again about no widening whose proposal passed its lapse time befor
   ]);
 
   await runSeed({
+    tasks: buildTestTaskSeed(),
     log: ctx.log,
     source: ctx.source,
     buildPolicy: () => ({ rules: [], tools: [] }),
@@ -630,6 +665,7 @@ test('it asks again about no widening whose proposal passed its lapse time befor
   });
 
   await runSeed({
+    tasks: buildTestTaskSeed(),
     log: ctx.log,
     source: ctx.source,
     buildPolicy: () => ({ rules: [], tools: [] }),
@@ -655,6 +691,7 @@ test('it asks again about no widening you rejected before a reset', async () => 
   ]);
 
   await runSeed({
+    tasks: buildTestTaskSeed(),
     log: ctx.log,
     source: ctx.source,
     buildPolicy: () => ({ rules: [], tools: [] }),
@@ -685,6 +722,7 @@ test('it asks again about no widening you rejected before a reset', async () => 
   });
 
   await runSeed({
+    tasks: buildTestTaskSeed(),
     log: ctx.log,
     source: ctx.source,
     buildPolicy: () => ({ rules: [], tools: [] }),
@@ -693,4 +731,49 @@ test('it asks again about no widening you rejected before a reset', async () => 
   const proposals = await readRuleProposals(ctx.writer.db);
 
   expect(proposals).toStrictEqual([]);
+});
+
+test('it carries the version of each task in force into the new database', async () => {
+  const ctx = await setupTest();
+
+  await Promise.all([
+    writeFile(join(ctx.root, 'nixie.yaml'), 'format: 4\n'),
+    writeFile(join(ctx.root, 'persona.md'), '# Persona\n\nCalm and short.\n'),
+    mkdir(join(ctx.root, 'tasks', 'rain-gauge'), { recursive: true }),
+  ]);
+
+  await writeFile(
+    join(ctx.root, 'tasks', 'rain-gauge', 'task.yaml'),
+    'name: Check the rain gauge\nbrief: Read it.\n',
+  );
+
+  await runSeed({
+    tasks: buildTestTaskSeed(),
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => ({ rules: [], tools: [] }),
+  });
+
+  const inForce = await readDefinitionsInForce(ctx.writer.db);
+
+  const hash = inForce?.tasks[0]?.hash;
+
+  invariant(hash !== undefined);
+
+  await runLogReset(ctx.log, {
+    keptTables: [],
+    readKept: (tx) => readResetSeed(tx, 0),
+    writeFirstRecords: async (tx, seed) => {
+      invariant(seed);
+
+      await writeResetSeed(tx, ctx.log, seed);
+    },
+  });
+
+  const version = await readDefinitionVersion(ctx.writer.db, hash);
+
+  expect(version).toMatchObject({
+    definitionID: 'rain-gauge',
+    name: 'Check the rain gauge',
+  });
 });

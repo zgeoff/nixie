@@ -1,6 +1,7 @@
 import type { Kysely } from 'kysely';
 import type { DefinitionsInForce, DefinitionsTables } from '../types';
 import { storedPromptsSchema } from './stored-prompts-schema';
+import { storedTasksSchema } from './stored-tasks-schema';
 
 export async function readDefinitionsInForce(
   db: Kysely<unknown>,
@@ -67,5 +68,6 @@ export async function readDefinitionsInForce(
     conversationSkills: skills
       .filter((skill) => skill.in_conversation === 1)
       .map((skill) => skill.name),
+    tasks: storedTasksSchema.parse(JSON.parse(row.form)).tasks,
   };
 }

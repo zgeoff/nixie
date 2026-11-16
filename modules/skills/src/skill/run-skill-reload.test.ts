@@ -3,6 +3,7 @@ import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createPathSource, runSeed } from '@heynixie/definitions';
+import { buildTestTaskSeed } from '@heynixie/definitions/test-utils';
 import { readRecords, startWriter } from '@heynixie/log';
 import { buildTestClock } from '@heynixie/testing';
 import { loadOrPinTaskSkills } from './load-or-pin-task-skills';
@@ -57,7 +58,12 @@ test('it moves one skill to the version a fresh seed holds and records its old a
 
   const policy = { rules: [], tools: [] };
 
-  const first = await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
+  const first = await runSeed({
+    tasks: buildTestTaskSeed(),
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => policy,
+  });
 
   const pinned = await loadOrPinTaskSkills(ctx.log, {
     thread: 'task-a',
@@ -81,9 +87,12 @@ test('it moves one skill to the version a fresh seed holds and records its old a
       clock: buildTestClock(0),
       readInForce: () => first.inForce,
       refreshDefinitions: () =>
-        runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy }).then(
-          (seeded) => seeded.inForce,
-        ),
+        runSeed({
+          tasks: buildTestTaskSeed(),
+          log: ctx.log,
+          source: ctx.source,
+          buildPolicy: () => policy,
+        }).then((seeded) => seeded.inForce),
       readSkillList: () => ['bird-log', 'tide-tables'],
     },
     {
@@ -157,7 +166,12 @@ test('it moves both skills when 2 reloads of one thread name different skills at
 
   const policy = { rules: [], tools: [] };
 
-  const first = await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
+  const first = await runSeed({
+    tasks: buildTestTaskSeed(),
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => policy,
+  });
 
   await loadOrPinTaskSkills(ctx.log, {
     thread: 'task-a',
@@ -180,7 +194,12 @@ test('it moves both skills when 2 reloads of one thread name different skills at
     clock: buildTestClock(0),
     readInForce: () => first.inForce,
     refreshDefinitions: async () => {
-      const seeded = await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
+      const seeded = await runSeed({
+        tasks: buildTestTaskSeed(),
+        log: ctx.log,
+        source: ctx.source,
+        buildPolicy: () => policy,
+      });
 
       return seeded.inForce;
     },
@@ -225,7 +244,12 @@ test('it runs the next reload of a thread after one fails, and gives the failure
 
   const policy = { rules: [], tools: [] };
 
-  const first = await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
+  const first = await runSeed({
+    tasks: buildTestTaskSeed(),
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => policy,
+  });
 
   await loadOrPinTaskSkills(ctx.log, {
     thread: 'task-a',
@@ -264,6 +288,7 @@ test('it runs the next reload of a thread after one fails, and gives the failure
       readInForce: () => first.inForce,
       refreshDefinitions: async () => {
         const seeded = await runSeed({
+          tasks: buildTestTaskSeed(),
           log: ctx.log,
           source: ctx.source,
           buildPolicy: () => policy,
@@ -312,7 +337,12 @@ test('it moves every skill, joins one the list gained and drops one the definiti
 
   const policy = { rules: [], tools: [] };
 
-  const first = await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
+  const first = await runSeed({
+    tasks: buildTestTaskSeed(),
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => policy,
+  });
 
   await loadOrPinTaskSkills(ctx.log, {
     thread: 'task-a',
@@ -328,9 +358,12 @@ test('it moves every skill, joins one the list gained and drops one the definiti
       clock: buildTestClock(0),
       readInForce: () => first.inForce,
       refreshDefinitions: () =>
-        runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy }).then(
-          (seeded) => seeded.inForce,
-        ),
+        runSeed({
+          tasks: buildTestTaskSeed(),
+          log: ctx.log,
+          source: ctx.source,
+          buildPolicy: () => policy,
+        }).then((seeded) => seeded.inForce),
       readSkillList: () => ['bird-log', 'tide-tables'],
     },
     {
@@ -385,7 +418,12 @@ test("it drops a pinned skill that left the caller's list when a reload names it
 
   const policy = { rules: [], tools: [] };
 
-  const seeded = await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
+  const seeded = await runSeed({
+    tasks: buildTestTaskSeed(),
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => policy,
+  });
 
   await loadOrPinTaskSkills(ctx.log, {
     thread: 'task-a',
@@ -452,7 +490,12 @@ test("it refuses a skill that is neither pinned nor on the caller's list, and re
 
   const policy = { rules: [], tools: [] };
 
-  const seeded = await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
+  const seeded = await runSeed({
+    tasks: buildTestTaskSeed(),
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => policy,
+  });
 
   const outcome = await runSkillReload(
     {

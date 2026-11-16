@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { startWriter } from '@heynixie/log';
 import { proposalLapseMs } from '@heynixie/proposals';
 import { createPathSource } from '../definition/create-path-source';
+import { buildTestTaskSeed } from '../test-utils/build-test-task-seed';
 import { readRuleProposals } from './read-rule-proposals';
 import { runSeed } from './run-seed';
 import { writeRuleProposalLapses } from './write-rule-proposal-lapses';
@@ -42,6 +43,7 @@ async function setupTest() {
     time,
     runSeed: () =>
       runSeed({
+        tasks: buildTestTaskSeed(),
         log,
         source: createPathSource({ directory: root }),
         buildPolicy: () => ({ rules: [], tools: [] }),

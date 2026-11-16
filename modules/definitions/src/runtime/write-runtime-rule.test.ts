@@ -9,6 +9,7 @@ import { readRuleProposals } from '../rule/read-rule-proposals';
 import { readRulesInForce } from '../rule/read-rules-in-force';
 import { runSeed } from '../rule/run-seed';
 import { runInForceSeed } from '../seed/run-in-force-seed';
+import { buildTestTaskSeed } from '../test-utils/build-test-task-seed';
 import { writeRuntimeRule } from './write-runtime-rule';
 
 async function setupTest() {
@@ -42,6 +43,7 @@ async function setupTest() {
     log,
     runSeed: () =>
       runSeed({
+        tasks: buildTestTaskSeed(),
         log,
         source: createPathSource({ directory: root }),
         buildPolicy: () => ({ rules: [], tools: [] }),

@@ -3,6 +3,7 @@ import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { checkSkillFiles, createPathSource, writeWrittenSkill } from '@heynixie/definitions';
+import { buildTestTaskSeed } from '@heynixie/definitions/test-utils';
 import { withWriteTransaction } from '@heynixie/log';
 import { buildTestRunSettings, buildTestTaskRunners } from '@heynixie/tasks/test-utils';
 import invariant from 'tiny-invariant';
@@ -48,6 +49,7 @@ test("it queues an approval's seed behind a definitions seed in flight, and the 
   const plain: SeedParts = {
     context: ctx.context.apiContext,
     source: createPathSource({ directory: ctx.root }),
+    tasks: buildTestTaskSeed(),
     buildPolicy: () => ({ rules: [], tools: [] }),
     inForce: ctx.context.inForce,
     state: buildStartState({ isReady: true, reason: null }),

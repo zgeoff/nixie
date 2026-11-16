@@ -19,6 +19,7 @@ test('it reads the persona, its hash and the policy hash from the definitions in
       recordSequence: 3,
       skills: [],
       conversationSkills: [],
+      tasks: [],
     }),
   ).toStrictEqual({
     persona: 'You are Wren, a calm helper.',

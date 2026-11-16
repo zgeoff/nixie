@@ -489,6 +489,12 @@ export interface NixieTables {
     readonly in_conversation: number;
     readonly approval_id: string | null;
   };
+  readonly task_definition_versions: {
+    readonly definition_hash: string;
+    readonly definition_id: string;
+    readonly form: string;
+    readonly files: string;
+  };
   readonly task_messages: {
     readonly message_id: string;
     readonly from_task: string;

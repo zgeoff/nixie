@@ -9,6 +9,8 @@ import { readDefinitionsInForce } from '../definition/read-definitions-in-force'
 import { readSeedPolicy } from '../seed/read-seed-policy';
 import { writeSeed } from '../seed/write-seed';
 import { writeAdoptedSkills } from '../skill/write-adopted-skills';
+import type { TaskDefinitionWarning, TaskSeedContext } from '../task/types';
+import { writeTaskVersions } from '../task/write-task-versions';
 import type {
   DefinitionsInForce,
   DefinitionsSnapshot,
@@ -31,6 +33,12 @@ export interface SeedOptions {
   readonly onRuleWarning?: (warning: RuleFileWarning) => void;
   readonly source: DefinitionsSource;
 
+  // The check of a task definition, and the names of the tools it may list
+  readonly tasks: TaskSeedContext;
+
+  // Takes each skipped definition and each dropped tool
+  readonly onTaskWarning?: (warning: TaskDefinitionWarning) => void;
+
   readonly buildPolicy: (prompts: PromptOverrides) => SnapshotPolicy;
 }
 
@@ -49,7 +57,7 @@ export type SeedResult =
 
 // The caller must run one seed at a time, or an older revision can commit after a newer one.
 export async function runSeed(options: SeedOptions): Promise<SeedResult> {
-  const read = await tryReadDefinitions(options.source);
+  const read = await tryReadDefinitions(options.source, options.tasks);
 
   if (read instanceof Error) {
     const inForce = await readDefinitionsInForce(options.log.writer.db);
@@ -59,6 +67,10 @@ export async function runSeed(options: SeedOptions): Promise<SeedResult> {
 
   for (const warning of read.parsed.ruleWarnings) {
     options.onRuleWarning?.(warning);
+  }
+
+  for (const warning of read.parsed.taskWarnings) {
+    options.onTaskWarning?.(warning);
   }
 
   return withWriteTransaction(options.log.writer, async (tx) => {
@@ -102,7 +114,14 @@ export async function runSeed(options: SeedOptions): Promise<SeedResult> {
       prompts: read.parsed.prompts,
       skills: overlay.skills,
       conversationSkills: overlay.conversationSkills,
+      tasks: read.parsed.tasks.map((task) => ({
+        id: task.id,
+        hash: task.hash,
+        origin: 'definitions',
+      })),
     });
+
+    await writeTaskVersions(tx, read.parsed.tasks);
 
     await writeAdoptedSkills(tx, {
       adopted: overlay.adopted,
@@ -156,11 +175,14 @@ interface ReadDefinitions {
   readonly parsed: ParsedDefinitions;
 }
 
-async function tryReadDefinitions(source: DefinitionsSource): Promise<ReadDefinitions | Error> {
+async function tryReadDefinitions(
+  source: DefinitionsSource,
+  tasks: TaskSeedContext,
+): Promise<ReadDefinitions | Error> {
   try {
     const snapshot = await source.snapshot();
 
-    return { snapshot, parsed: parseDefinitions(snapshot) };
+    return { snapshot, parsed: parseDefinitions(snapshot, tasks) };
   } catch (error) {
     return error instanceof Error ? error : new Error(String(error));
   }

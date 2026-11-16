@@ -9,6 +9,7 @@ import {
   readRulesInForce,
   runSeed,
 } from '@heynixie/definitions';
+import { buildTestTaskSeed } from '@heynixie/definitions/test-utils';
 import { readRecords, writeRecords } from '@heynixie/log';
 import { buildMockSandboxSpec } from '@heynixie/sandbox/test-utils';
 import { createConversationTask, startTaskClaimPools } from '@heynixie/tasks';
@@ -85,6 +86,7 @@ test('it keeps the rules in force and their revisions through a reset', async ()
   await writeFile(join(root, 'rules', 'shell.yaml'), 'deny-shell:\n  outcome: deny\n');
 
   await runSeed({
+    tasks: buildTestTaskSeed(),
     log: ctx.context.log,
     source: createPathSource({ directory: root }),
     buildPolicy: () => ({ rules: [], tools: [] }),
@@ -117,7 +119,12 @@ test('it keeps a widening that passed its lapse time closed through a reset', as
     'allow-web:\n  outcome: allow\n  tools: [web.fetch]\n',
   );
 
-  await runSeed({ log: ctx.context.log, source, buildPolicy: () => ({ rules: [], tools: [] }) });
+  await runSeed({
+    tasks: buildTestTaskSeed(),
+    log: ctx.context.log,
+    source,
+    buildPolicy: () => ({ rules: [], tools: [] }),
+  });
 
   const pending = await readRuleProposals(ctx.context.log.writer.db);
 
@@ -132,7 +139,12 @@ test('it keeps a widening that passed its lapse time closed through a reset', as
     log: () => {},
   });
 
-  await runSeed({ log: ctx.context.log, source, buildPolicy: () => ({ rules: [], tools: [] }) });
+  await runSeed({
+    tasks: buildTestTaskSeed(),
+    log: ctx.context.log,
+    source,
+    buildPolicy: () => ({ rules: [], tools: [] }),
+  });
 
   const proposals = await readRuleProposals(ctx.context.log.writer.db);
 

@@ -9,6 +9,7 @@ import {
   runInForceSeed,
   runSeed,
 } from '@heynixie/definitions';
+import { buildTestTaskSeed } from '@heynixie/definitions/test-utils';
 import { writeRecords } from '@heynixie/log';
 import type { PolicyCall } from '@heynixie/policy';
 import { buildActionProposalInput, makeDecisionPoint } from '@heynixie/policy';
@@ -28,6 +29,7 @@ async function setupTest() {
   await writeFile(join(root, 'persona.md'), '# Persona\n');
 
   await runSeed({
+    tasks: buildTestTaskSeed(),
     log: api.context.log,
     source: createPathSource({ directory: root }),
     buildPolicy: () => ({ rules: [], tools: [] }),

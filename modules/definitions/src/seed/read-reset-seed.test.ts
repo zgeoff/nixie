@@ -7,6 +7,7 @@ import invariant from 'tiny-invariant';
 import { buildDefinitionsSnapshot } from '../definition/build-definitions-snapshot';
 import { createPathSource } from '../definition/create-path-source';
 import { runSeed } from '../rule/run-seed';
+import { buildTestTaskSeed } from '../test-utils/build-test-task-seed';
 import { readResetSeed } from './read-reset-seed';
 
 async function setupTest() {
@@ -54,11 +55,17 @@ test('it reads the seed in force with its snapshot row and the payload of its re
 
   const policy = { rules: [{ id: 'allow-reads' }], tools: [] };
 
-  const seeded = await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
+  const seeded = await runSeed({
+    tasks: buildTestTaskSeed(),
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => policy,
+  });
 
   const built = buildDefinitionsSnapshot({
     skills: [],
     conversationSkills: [],
+    tasks: [],
     persona: '# Persona\n\nCalm and short.\n',
     prompts: {},
     policy,
@@ -97,5 +104,6 @@ test('it reads the seed in force with its snapshot row and the payload of its re
     beneath: [],
     rules: [],
     closedProposalHashes: [],
+    taskVersions: [],
   });
 });

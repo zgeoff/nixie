@@ -3,7 +3,7 @@ import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createPathSource, runSeed } from '@heynixie/definitions';
-import { buildStubDefinitionsRepo } from '@heynixie/definitions/test-utils';
+import { buildStubDefinitionsRepo, buildTestTaskSeed } from '@heynixie/definitions/test-utils';
 import { startWriter } from '@heynixie/log';
 import { buildMockCheckerAnswer } from '@heynixie/memory/test-utils';
 import { waitForCondition } from '@heynixie/testing';
@@ -92,6 +92,7 @@ test('it opens a pull request whose merge the seed accepts as a vendored skill, 
   await ctx.definitions.mergePullRequest(1);
 
   const seeded = await runSeed({
+    tasks: buildTestTaskSeed(),
     log: ctx.log,
     source: ctx.source,
     buildPolicy: () => ({ rules: [], tools: [] }),

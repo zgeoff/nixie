@@ -3,6 +3,9 @@ import { parseRuleDefinitions } from '../rule/parse-rule-definitions';
 import { manifestSchema } from '../skill/manifest-schema';
 import { parseConversationSkills } from '../skill/parse-conversation-skills';
 import { parseSkills } from '../skill/parse-skills';
+import { parseTaskDefinitions } from '../task/parse-task-definitions';
+import { TaskSeedRefusedError } from '../task/task-seed-refused-error';
+import type { TaskSeedContext } from '../task/types';
 import type { ParsedDefinitions, Snapshot } from '../types';
 import { definitionsFormats } from '../utils/definitions-formats';
 import type { ParseProblem } from '../utils/definitions-parse-error';
@@ -16,7 +19,11 @@ import { parseEffectDefinitions } from './parse-effect-definitions';
 
 const personaPath = 'persona.md';
 
-export function parseDefinitions(snapshot: Snapshot): ParsedDefinitions {
+// A null context leaves the task definitions unread, for a check that looks at other files.
+export function parseDefinitions(
+  snapshot: Snapshot,
+  tasks: TaskSeedContext | null,
+): ParsedDefinitions {
   const texts = decodeFiles(snapshot.files);
   const manifest = parseManifest(texts.get(manifestPath));
   const formatVersion = manifest.format;
@@ -40,15 +47,36 @@ export function parseDefinitions(snapshot: Snapshot): ParsedDefinitions {
       ? parseEffectDefinitions(texts, overrides.partFiles)
       : { effects: new Map<string, EffectOverride>(), paths: new Set<string>() };
 
+  const taskTexts = new Map(
+    [...texts].filter(([path]) => path.startsWith('tasks/') && !overrides.partFiles.has(path)),
+  );
+
+  const taskDefinitions =
+    tasks !== null && formatVersion >= definitionsFormats.tasks
+      ? parseTaskDefinitions(taskTexts, tasks)
+      : { definitions: [], warnings: [], faults: [], paths: new Set<string>() };
+
+  if (taskDefinitions.faults.length > 0) {
+    throw new TaskSeedRefusedError(taskDefinitions.faults);
+  }
+
   const unapplied = [...texts.keys()]
     .filter((path) => path !== manifestPath && path !== personaPath)
     .filter((path) => !hasSkills || !path.startsWith('skills/'))
     .filter((path) => !overrides.partFiles.has(path))
     .filter((path) => !rules.paths.has(path))
     .filter((path) => !effects.paths.has(path))
+    .filter((path) => !taskDefinitions.paths.has(path))
     .toSorted();
 
-  requireParsable(unapplied.map((path) => [path, texts.get(path) ?? '']));
+  // A file under tasks/ that no definition applies is listed and never read.
+  const readsTasks = formatVersion >= definitionsFormats.tasks;
+
+  requireParsable(
+    unapplied
+      .filter((path) => !readsTasks || !path.startsWith('tasks/'))
+      .map((path) => [path, texts.get(path) ?? '']),
+  );
 
   return {
     formatVersion,
@@ -59,6 +87,8 @@ export function parseDefinitions(snapshot: Snapshot): ParsedDefinitions {
     rules: rules.rules,
     ruleWarnings: rules.warnings,
     effects: effects.effects,
+    tasks: taskDefinitions.definitions,
+    taskWarnings: taskDefinitions.warnings,
     unapplied,
   };
 }

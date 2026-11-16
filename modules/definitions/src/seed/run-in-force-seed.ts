@@ -72,6 +72,7 @@ export function runInForceSeed(options: InForceSeedOptions): Promise<SeedResult>
       prompts: inForce.prompts,
       skills: overlay.skills,
       conversationSkills: overlay.conversationSkills,
+      tasks: inForce.tasks,
     });
 
     await writeAdoptedSkills(tx, {

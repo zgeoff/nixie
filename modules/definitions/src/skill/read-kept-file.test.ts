@@ -60,11 +60,11 @@ test('it refuses a file whose directory became a symlink outside the root since 
   const ctx = await setupTest();
 
   await writeFile(join(ctx.outside, 'morning.yaml'), 'id: morning\n');
-  await symlink(ctx.outside, join(ctx.root, 'jobs'));
+  await symlink(ctx.outside, join(ctx.root, 'tasks'));
 
-  expect(readKeptFile(ctx.root, 'jobs/morning.yaml', 1024)).rejects.toMatchObject({
+  expect(readKeptFile(ctx.root, 'tasks/morning.yaml', 1024)).rejects.toMatchObject({
     name: 'SnapshotError',
-    message: 'a symlink leads outside the definitions root: jobs/morning.yaml',
-    paths: ['jobs/morning.yaml'],
+    message: 'a symlink leads outside the definitions root: tasks/morning.yaml',
+    paths: ['tasks/morning.yaml'],
   });
 });

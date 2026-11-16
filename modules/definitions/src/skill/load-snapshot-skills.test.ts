@@ -8,6 +8,7 @@ import invariant from 'tiny-invariant';
 import { createPathSource } from '../definition/create-path-source';
 import { runSeed } from '../rule/run-seed';
 import { runInForceSeed } from '../seed/run-in-force-seed';
+import { buildTestTaskSeed } from '../test-utils/build-test-task-seed';
 import { writeWrittenSkill } from '../written/write-written-skill';
 import { checkSkillFiles } from './check-skill-files';
 import { loadSnapshotSkills } from './load-snapshot-skills';
@@ -50,7 +51,12 @@ test('it loads a skill that nixie wrote with origin nixie, its approval and its 
 
   const policy = { rules: [], tools: [] };
 
-  await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
+  await runSeed({
+    tasks: buildTestTaskSeed(),
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => policy,
+  });
 
   const skill = checkSkillFiles('tide-tables', [
     { path: 'SKILL.md', text: '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n' },
@@ -100,6 +106,7 @@ test('it reads each skill of a snapshot with its frontmatter, its files and no a
   await writeFile(join(ctx.root, 'skills', 'tide-tables', 'SKILL.md'), skill);
 
   const seeded = await runSeed({
+    tasks: buildTestTaskSeed(),
     log: ctx.log,
     source: ctx.source,
     buildPolicy: () => ({ rules: [], tools: [] }),
@@ -141,6 +148,7 @@ test('it refuses a stored skill whose files hold a value that is not text', asyn
   );
 
   const seeded = await runSeed({
+    tasks: buildTestTaskSeed(),
     log: ctx.log,
     source: ctx.source,
     buildPolicy: () => ({ rules: [], tools: [] }),
@@ -170,6 +178,7 @@ test('it refuses a stored skill whose frontmatter lacks a field', async () => {
   );
 
   const seeded = await runSeed({
+    tasks: buildTestTaskSeed(),
     log: ctx.log,
     source: ctx.source,
     buildPolicy: () => ({ rules: [], tools: [] }),

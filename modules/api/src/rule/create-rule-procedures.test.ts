@@ -2,6 +2,7 @@ import { expect, test } from 'bun:test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { createPathSource, runInForceSeed, runSeed } from '@heynixie/definitions';
+import { buildTestTaskSeed } from '@heynixie/definitions/test-utils';
 import { ORPCError } from '@orpc/client';
 import { createRouterClient } from '@orpc/server';
 import invariant from 'tiny-invariant';
@@ -36,6 +37,7 @@ async function setupTest() {
   const log = api.context.log;
 
   await runSeed({
+    tasks: buildTestTaskSeed(),
     log,
     source: createPathSource({ directory: root }),
     buildPolicy: () => ({ rules: [], tools: [] }),

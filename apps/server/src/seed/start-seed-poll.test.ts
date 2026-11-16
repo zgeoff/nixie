@@ -3,6 +3,7 @@ import { mkdir, mkdtemp, rename, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createPathSource } from '@heynixie/definitions';
+import { buildTestTaskSeed } from '@heynixie/definitions/test-utils';
 import { buildTestRunSettings, buildTestTaskRunners } from '@heynixie/tasks/test-utils';
 import { buildTestClock, waitForCondition } from '@heynixie/testing';
 import { refreshDefinitions } from '../definition/refresh-definitions';
@@ -78,6 +79,7 @@ test('it reports the definitions ready again once the source returns to its last
   const parts: SeedPollParts = {
     context: { ...context.apiContext, clock },
     source: createPathSource({ directory: root }),
+    tasks: buildTestTaskSeed(),
     buildPolicy: () => ({ rules: [], tools: [] }),
     inForce: context.inForce,
     state: buildStartState({ isReady: true, reason: null }),

@@ -13,6 +13,7 @@ import type {
   DefinitionsTables,
   SkillVersion,
   SnapshotRuleRow,
+  TaskVersionRow,
   WrittenSkillRow,
 } from '../types';
 
@@ -31,6 +32,8 @@ export interface ResetSeed {
 
   readonly rules: readonly SnapshotRuleRow[];
   readonly closedProposalHashes: readonly string[];
+
+  readonly taskVersions: readonly TaskVersionRow[];
 }
 
 type SeedRecordTables = Readonly<{
@@ -83,6 +86,19 @@ export async function readResetSeed(db: Kysely<unknown>, now: number): Promise<R
     .orderBy('rule_id')
     .execute();
 
+  const taskHashes = inForce.tasks.map((task) => task.hash);
+
+  const taskVersions =
+    taskHashes.length === 0
+      ? []
+      : await db
+          .$extendTables<DefinitionsTables>()
+          .selectFrom('task_definition_versions')
+          .selectAll()
+          .where('definition_hash', 'in', taskHashes)
+          .orderBy('definition_hash')
+          .execute();
+
   const proposals = await readRuleProposals(db);
 
   return {
@@ -97,6 +113,7 @@ export async function readResetSeed(db: Kysely<unknown>, now: number): Promise<R
     beneath: [...beneath.values()],
     rules,
     closedProposalHashes: collectClosedProposalHashes(proposals, now),
+    taskVersions,
   };
 }
 

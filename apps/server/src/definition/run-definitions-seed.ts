@@ -10,7 +10,16 @@ export function runDefinitionsSeed(parts: SeedParts): Promise<SeedResult> {
       onRuleWarning: (warning) => {
         parts.log('definitions.rule_field_unknown', { ...warning }, 'warn');
       },
+      onTaskWarning: (warning) => {
+        const event =
+          warning.kind === 'field_unknown'
+            ? 'definitions.task_skipped'
+            : 'definitions.task_tool_dropped';
+
+        parts.log(event, { ...warning }, 'warn');
+      },
       source: parts.source,
+      tasks: parts.tasks,
       buildPolicy: parts.buildPolicy,
     });
 

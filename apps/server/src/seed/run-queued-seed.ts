@@ -6,7 +6,7 @@ import { buildSeedLogFields } from './build-seed-log-fields';
 
 export type SeedParts = Pick<
   ServerParts,
-  'context' | 'source' | 'buildPolicy' | 'inForce' | 'state' | 'log'
+  'context' | 'source' | 'buildPolicy' | 'tasks' | 'inForce' | 'state' | 'log'
 >;
 
 const pendingSeeds = new WeakMap<SeedParts, Promise<void>>();
