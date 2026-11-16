@@ -11,6 +11,8 @@ export { pickReportMode } from './run/pick-report-mode';
 export { readEndedRuns } from './run/read-ended-runs';
 export { readOpenRun } from './run/read-open-run';
 export { readPreviousRun } from './run/read-previous-run';
+export type { RunSince } from './run/read-run-since';
+export { readRunSince } from './run/read-run-since';
 export { readRunRecords } from './run/read-run-records';
 export { readRunState } from './run/read-run-state';
 export { toRunEndCause } from './run/run-end-cause';

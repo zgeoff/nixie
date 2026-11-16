@@ -1,4 +1,4 @@
-import { readTaskBrief } from '@heynixie/tasks';
+import { readRunSince, readTaskBrief } from '@heynixie/tasks';
 import invariant from 'tiny-invariant';
 import { readRunTrigger } from '../task/read-run-trigger';
 import { isRunBlocksTurn, renderRunBlocks } from '../task/render-run-blocks';
@@ -61,9 +61,14 @@ async function readRunBlocks(step: SessionStep, isNewSession: boolean): Promise<
   const turn = { stepKey: step.input.stepKey, isNewSession };
 
   // a later step of a session that holds the blocks reads nothing
-  const trigger = isRunBlocksTurn(run, turn) ? await readRunTrigger(step.run, run) : null;
+  if (!isRunBlocksTurn(run, turn)) {
+    return null;
+  }
 
-  return renderRunBlocks(run, turn, trigger);
+  const trigger = await readRunTrigger(step.run, run);
+  const since = await readRunSince(step.run.context, run);
+
+  return renderRunBlocks(run, turn, trigger, since);
 }
 
 // a session resumes only after its opening, which keeps or gives its key

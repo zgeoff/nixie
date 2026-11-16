@@ -2619,3 +2619,108 @@ test('it resumes the session of the last task run of a definition task with a co
 
   expect(opened.map((record) => record.payload['kind'])).toStrictEqual(['first']);
 });
+
+test('it gives the first turn of a definition task run the time the definition was first enabled and the start of the run', async () => {
+  const ctx = await setupTest();
+
+  const taskID = await ctx.writeDefinitionTask({
+    definitionID: 'water-the-tomatoes',
+    definitionHash: 'hash-1',
+  });
+
+  await ctx.writeFire(taskID, 'hash-1', 'fire-1');
+
+  const runner = await ctx.startRunner();
+
+  await ctx.runNextStep(runner);
+
+  const [enabled] = await ctx.readKinds('task.definition_set');
+  const [opened] = await ctx.readKinds('task.run_opened');
+
+  const input = ctx.guest.turns[0]?.input.map((message) => message.text).join('\n') ?? '';
+
+  invariant(enabled && opened, 'the definition is enabled and its task run opened');
+
+  expect(input).toInclude(
+    `<input name="since">Your previous run started at ${enabled.recordedAt.toISOString()}. This run started at ${opened.recordedAt.toISOString()}. Read messages from the first time up to the second.</input>`,
+  );
+});
+
+test('it renders the since block once in the rebuilt session of a definition task run, and in no resumed turn', async () => {
+  const ctx = await setupTest();
+
+  const taskID = await ctx.writeDefinitionTask({
+    definitionID: 'water-the-tomatoes',
+    definitionHash: 'hash-1',
+    policy: { wakeable: true },
+  });
+
+  await ctx.writeFire(taskID, 'hash-1', 'fire-1');
+
+  const runner = await ctx.startRunner();
+
+  await ctx.runNextStep(runner);
+  await ctx.writeLegacyOpening(taskID);
+  await ctx.writeMessage(taskID, 'Only the morning tide, please.');
+  await ctx.runNextStep(runner);
+  await ctx.writeMessage(taskID, 'And the evening one.');
+  await ctx.runNextStep(runner);
+
+  const [first, rebuilt, resumed] = ctx.guest.turns.map((turn) =>
+    turn.input.map((message) => message.text).join('\n'),
+  );
+
+  expect(rebuilt?.split('<input name="since">')).toHaveLength(2);
+  expect(rebuilt).toInclude(first?.match(/<input name="since">.*<\/input>/u)?.[0] ?? 'no block');
+  expect(resumed).not.toInclude('<input name="since">');
+});
+
+test('it renders no since block at the first turn of a carried definition task run, which resumes the session that holds it', async () => {
+  const ctx = await setupTest();
+
+  const taskID = await ctx.writeDefinitionTask({
+    definitionID: 'water-the-tomatoes',
+    definitionHash: 'hash-1',
+    version: { model: 'second-look' },
+    policy: { limits: { turns: 25, dollars: 0.03, calls: {} } },
+  });
+
+  await ctx.writeFire(taskID, 'hash-1', 'fire-1');
+
+  const runner = await ctx.startRunner();
+
+  ctx.guest.addKindReplies('worker', {
+    text: 'Checking the soil.',
+    stopReason: 'tool_use',
+    usage: {
+      uncachedInputTokens: 10_000,
+      cacheReadTokens: 0,
+      cacheWrite5mTokens: 0,
+      cacheWrite1hTokens: 0,
+      outputTokens: 0,
+    },
+    gate: () =>
+      waitForCondition(() => ctx.guest.received.some((entry) => entry.frame.type === 'interrupt')),
+  });
+
+  await ctx.runNextStep(runner);
+
+  await writeTaskLimitRaise(ctx.context, { taskID, limits: { dollars: 1 } });
+
+  await ctx.runNextStep(runner);
+
+  const opened = await ctx.readKinds('task.run_opened');
+
+  const [first, carried] = ctx.guest.turns;
+  const firstInput = first?.input.map((message) => message.text).join('\n') ?? '';
+  const carriedInput = carried?.input.map((message) => message.text).join('\n') ?? '';
+
+  expect(opened.map((record) => record.payload['origin'])).toStrictEqual([
+    { kind: 'trigger', sequence: expect.any(Number) },
+    { kind: 'raise', sequence: expect.any(Number) },
+  ]);
+
+  expect(carried?.resume?.sessionID).toBeString();
+  expect(firstInput).toInclude('<input name="since">');
+  expect(carriedInput).not.toInclude('<input name="since">');
+});

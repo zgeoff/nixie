@@ -317,6 +317,13 @@ its own IANA zone. A schedule with the zone `owner`, and an `at` trigger, take t
 user's newest message recorded before the fire, else the configured default zone. A task run that a
 message opened, and a fire that polls, have no `trigger` block.
 
+Each task run of a definition gets a `since` block among its run blocks. It holds the start of the
+previous task run, or the time the definition was first enabled when there is none, and the start of
+this task run. A task run that a raise or a restart carried counts from the start of the first task
+run of its piece of work, so each task run reads from where the previous one's read ended. A
+scheduled task passes the first time as the `from` of `log.read` and the second as its `to`. A
+rebuilt session renders the block again, and a resumed session of a carried task run renders none.
+
 A fire of a definition with `target: conversation` writes its `trigger.fired` record on the
 conversation's thread and opens no task run. It wakes the conversation, which shows the user a
 reminder with the brief and the time it was set for, as

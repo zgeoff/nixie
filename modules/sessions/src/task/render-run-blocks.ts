@@ -1,4 +1,5 @@
-import type { TaskRun, TriggerDetails } from '@heynixie/tasks';
+import type { RunSince, TaskRun, TriggerDetails } from '@heynixie/tasks';
+import { renderSinceBlock } from './render-since-block';
 
 export interface RunBlocksTurn {
   readonly stepKey: string;
@@ -22,21 +23,24 @@ export function isRunBlocksTurn(run: TaskRun, turn: RunBlocksTurn): boolean {
   return turn.isNewSession || isFirstStep;
 }
 
-// The trigger block comes first, then the report shape. The report shape's fence is the start of the
-// run's ID, which the model never sees, so a rerun and a rebuild render the same block and no text
-// can close it early. The trigger block holds only code-made text, so it needs no fence.
+// The report shape's fence is the start of the run's ID, which the model never sees, so a rerun and
+// a rebuild render the same block and no text can close it early. The trigger and since blocks hold
+// only code-made text, so they need no fence.
 export function renderRunBlocks(
   run: TaskRun,
   turn: RunBlocksTurn,
   trigger: RunTrigger | null,
+  since: RunSince | null,
 ): string | null {
   if (!isRunBlocksTurn(run, turn)) {
     return null;
   }
 
-  const blocks = [renderTriggerBlock(trigger), renderShapeBlock(run)].filter(
-    (block) => block !== null,
-  );
+  const blocks = [
+    renderTriggerBlock(trigger),
+    renderShapeBlock(run),
+    since === null ? null : renderSinceBlock(since.previousStartedAt, since.startedAt),
+  ].filter((block) => block !== null);
 
   return blocks.length === 0 ? null : blocks.join('\n');
 }
