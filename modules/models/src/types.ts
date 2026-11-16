@@ -52,6 +52,19 @@ export interface WorkerRunLimits {
   readonly dollars: number;
 }
 
+export interface DayLimits {
+  readonly dollars: number;
+  readonly tokens: number;
+  readonly turns: number;
+  readonly turnCap: number;
+}
+
+export interface MonthLimits {
+  readonly dollars: number;
+  readonly tokens: number;
+  readonly turns: number;
+}
+
 export interface TaskRunLimits {
   readonly turns: number;
   readonly dollars: number;
@@ -69,6 +82,8 @@ export interface ModelsConfig {
   readonly limits: {
     readonly taskRun: { readonly default: TaskRunLimits; readonly max: TaskRunLimits };
     readonly workerRun: WorkerRunLimits;
+    readonly day: DayLimits;
+    readonly month: MonthLimits;
   };
 }
 

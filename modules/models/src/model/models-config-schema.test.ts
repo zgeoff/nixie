@@ -41,6 +41,8 @@ test('it reads a direct profile with its context tokens, cache lifetime and pric
     limits: {
       taskRun: { default: { turns: 25, dollars: 2 }, max: { turns: 100, dollars: 10 } },
       workerRun: { minutes: 10, turns: 25, tokens: 2_000_000, dollars: 2 },
+      day: { dollars: 60, tokens: 80_000_000, turns: 1000, turnCap: 2000 },
+      month: { dollars: 600, tokens: 600_000_000, turns: 20_000 },
     },
   });
 });
@@ -114,6 +116,8 @@ test('it reads an aggregator profile with its provider pin and the role map into
     limits: {
       taskRun: { default: { turns: 25, dollars: 2 }, max: { turns: 100, dollars: 10 } },
       workerRun: { minutes: 10, turns: 25, tokens: 2_000_000, dollars: 2 },
+      day: { dollars: 60, tokens: 80_000_000, turns: 1000, turnCap: 2000 },
+      month: { dollars: 600, tokens: 600_000_000, turns: 20_000 },
     },
   });
 });
@@ -341,6 +345,8 @@ test('it reads the selectable models and the task run limits into their typed sh
     limits: {
       taskRun: { default: { turns: 25, dollars: 1 }, max: { turns: 60, dollars: 10 } },
       workerRun: { minutes: 10, turns: 25, tokens: 2_000_000, dollars: 2 },
+      day: { dollars: 60, tokens: 80_000_000, turns: 1000, turnCap: 2000 },
+      month: { dollars: 600, tokens: 600_000_000, turns: 20_000 },
     },
   });
 });
@@ -411,6 +417,104 @@ test.each([
   expect(result.error?.issues).toPartiallyContain({
     path: ['limits', 'taskRun', 'default', key],
   });
+});
+
+test('it defaults the turn cap of the day to twice its turns', () => {
+  const result = modelsConfigSchema.safeParse({
+    profiles: {
+      'chat-direct': {
+        harness: 'agent-sdk',
+        base_url: 'https://api.anthropic.com',
+        credential: 'deployment:anthropic',
+        auth_header: 'x-api-key',
+        model: 'claude-test-1',
+        effort: 'medium',
+        prices: { input: 3, cache_write: 3.75, cache_write_1h: 6, cached_input: 0.3, output: 15 },
+      },
+    },
+    roles: { conversation: 'chat-direct' },
+    limits: { day: { turns: 300 } },
+  });
+
+  expect(result.data?.limits.day).toStrictEqual({
+    dollars: 60,
+    tokens: 80_000_000,
+    turns: 300,
+    turnCap: 600,
+  });
+});
+
+test('it reads the day and month limits that the config sets', () => {
+  const result = modelsConfigSchema.safeParse({
+    profiles: {
+      'chat-direct': {
+        harness: 'agent-sdk',
+        base_url: 'https://api.anthropic.com',
+        credential: 'deployment:anthropic',
+        auth_header: 'x-api-key',
+        model: 'claude-test-1',
+        effort: 'medium',
+        prices: { input: 3, cache_write: 3.75, cache_write_1h: 6, cached_input: 0.3, output: 15 },
+      },
+    },
+    roles: { conversation: 'chat-direct' },
+    limits: {
+      day: { dollars: 10, tokens: 1000, turns: 50, turnCap: 70 },
+      month: { dollars: 100, tokens: 10_000, turns: 500 },
+    },
+  });
+
+  expect({ day: result.data?.limits.day, month: result.data?.limits.month }).toStrictEqual({
+    day: { dollars: 10, tokens: 1000, turns: 50, turnCap: 70 },
+    month: { dollars: 100, tokens: 10_000, turns: 500 },
+  });
+});
+
+test('it refuses a day turn cap below the day turns', () => {
+  const result = modelsConfigSchema.safeParse({
+    profiles: {
+      'chat-direct': {
+        harness: 'agent-sdk',
+        base_url: 'https://api.anthropic.com',
+        credential: 'deployment:anthropic',
+        auth_header: 'x-api-key',
+        model: 'claude-test-1',
+        effort: 'medium',
+        prices: { input: 3, cache_write: 3.75, cache_write_1h: 6, cached_input: 0.3, output: 15 },
+      },
+    },
+    roles: { conversation: 'chat-direct' },
+    limits: { day: { turns: 100, turnCap: 99 } },
+  });
+
+  expect(result.error?.issues).toPartiallyContain({ path: ['limits', 'day', 'turnCap'] });
+});
+
+test.each([
+  ['day', 'dollars'],
+  ['day', 'tokens'],
+  ['day', 'turns'],
+  ['month', 'dollars'],
+  ['month', 'tokens'],
+  ['month', 'turns'],
+])('it refuses a %s limit of 0 %s', (period, measure) => {
+  const result = modelsConfigSchema.safeParse({
+    profiles: {
+      'chat-direct': {
+        harness: 'agent-sdk',
+        base_url: 'https://api.anthropic.com',
+        credential: 'deployment:anthropic',
+        auth_header: 'x-api-key',
+        model: 'claude-test-1',
+        effort: 'medium',
+        prices: { input: 3, cache_write: 3.75, cache_write_1h: 6, cached_input: 0.3, output: 15 },
+      },
+    },
+    roles: { conversation: 'chat-direct' },
+    limits: { [period]: { [measure]: 0 } },
+  });
+
+  expect(result.error?.issues).toPartiallyContain({ path: ['limits', period, measure] });
 });
 
 test('it refuses an unknown key, so a typo never passes as a default', () => {

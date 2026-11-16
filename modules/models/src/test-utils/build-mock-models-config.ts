@@ -30,6 +30,8 @@ export function buildMockModelsConfig(overrides: ModelsConfigOverrides = {}): Mo
     limits: {
       taskRun: { default: { turns: 25, dollars: 2 }, max: { turns: 100, dollars: 10 } },
       workerRun: { minutes: 10, turns: 25, tokens: 2_000_000, dollars: 2 },
+      day: { dollars: 60, tokens: 80_000_000, turns: 1000, turnCap: 2000 },
+      month: { dollars: 600, tokens: 600_000_000, turns: 20_000 },
     },
   };
 }

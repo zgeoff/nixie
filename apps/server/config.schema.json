@@ -419,24 +419,6 @@
           }
         },
         "limits": {
-          "default": {
-            "taskRun": {
-              "default": {
-                "turns": 25,
-                "dollars": 2
-              },
-              "max": {
-                "turns": 100,
-                "dollars": 10
-              }
-            },
-            "workerRun": {
-              "minutes": 10,
-              "turns": 25,
-              "tokens": 2000000,
-              "dollars": 2
-            }
-          },
           "type": "object",
           "properties": {
             "taskRun": {
@@ -527,6 +509,62 @@
                   "default": 2,
                   "type": "number",
                   "exclusiveMinimum": 0
+                }
+              },
+              "additionalProperties": false
+            },
+            "day": {
+              "type": "object",
+              "properties": {
+                "dollars": {
+                  "default": 60,
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                },
+                "tokens": {
+                  "default": 80000000,
+                  "type": "integer",
+                  "exclusiveMinimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "turns": {
+                  "default": 1000,
+                  "type": "integer",
+                  "exclusiveMinimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "turnCap": {
+                  "type": "integer",
+                  "exclusiveMinimum": 0,
+                  "maximum": 9007199254740991
+                }
+              },
+              "additionalProperties": false
+            },
+            "month": {
+              "default": {
+                "dollars": 600,
+                "tokens": 600000000,
+                "turns": 20000
+              },
+              "type": "object",
+              "properties": {
+                "dollars": {
+                  "default": 600,
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                },
+                "tokens": {
+                  "default": 600000000,
+                  "type": "integer",
+                  "exclusiveMinimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "turns": {
+                  "default": 20000,
+                  "type": "integer",
+                  "exclusiveMinimum": 0,
+                  "maximum": 9007199254740991
                 }
               },
               "additionalProperties": false
@@ -1696,6 +1734,29 @@
           }
         }
       },
+      "additionalProperties": false
+    },
+    "spendStop": {
+      "type": "object",
+      "properties": {
+        "control": {
+          "type": "string",
+          "format": "uri"
+        },
+        "token": {
+          "type": "string",
+          "pattern": "^deployment:.+$"
+        },
+        "modelURL": {
+          "type": "string",
+          "format": "uri"
+        }
+      },
+      "required": [
+        "control",
+        "token",
+        "modelURL"
+      ],
       "additionalProperties": false
     }
   },
