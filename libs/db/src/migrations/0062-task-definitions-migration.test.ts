@@ -7,7 +7,7 @@ import { runMigrations } from '../migration/run-migrations';
 import { nixieSchema } from '../schema/nixie-schema';
 import { buildSqliteWorkerDialect } from '../sqlite/build-sqlite-worker-dialect';
 import { readRunPrefix } from '../test-utils/read-run-prefix';
-import { taskDefinitionsMigration } from './0061-task-definitions-migration';
+import { taskDefinitionsMigration } from './0062-task-definitions-migration';
 
 async function setupTest() {
   const stack = new AsyncDisposableStack();
@@ -41,7 +41,7 @@ async function setupTest() {
 }
 
 test('it is the migration of version 61', () => {
-  expect(nixieSchema.migrations.indexOf(taskDefinitionsMigration) + 1).toBe(61);
+  expect(nixieSchema.migrations.indexOf(taskDefinitionsMigration) + 1).toBe(62);
 });
 
 test('it leaves the definition columns of a task empty', async () => {
