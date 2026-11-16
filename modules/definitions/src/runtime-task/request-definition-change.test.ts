@@ -2,6 +2,7 @@ import { expect, test } from 'bun:test';
 import { readRecords } from '@heynixie/log';
 import { readTestTasks, writeTestTriggerFire } from '@heynixie/tasks/test-utils';
 import invariant from 'tiny-invariant';
+import { readListedDefinitions } from '../task/read-listed-definitions';
 import { buildTestDefineInput } from '../test-utils/build-test-define-input';
 import { buildTestTaskYaml } from '../test-utils/build-test-task-yaml';
 import { startTestDefinitions } from '../test-utils/start-test-definitions';
@@ -61,6 +62,24 @@ test('it puts a defined definition in force at once and wakes the export', async
   ]);
 
   expect(ctx.readExportWakes()).toBe(1);
+});
+
+test('it lists a defined definition as nixie made it, created by its change record', async () => {
+  const ctx = await setupTest();
+
+  await ctx.seed();
+
+  await requestDefinitionChange(ctx.context, { kind: 'define', input: buildTestDefineInput({}) });
+
+  const [changed] = await ctx.readChanged();
+  const [listed] = await readListedDefinitions(ctx.writer.db);
+
+  invariant(changed);
+
+  expect([listed?.origin, listed?.createdBy]).toStrictEqual([
+    'nixie',
+    { sequence: changed.record.sequence, kind: 'definition.changed' },
+  ]);
 });
 
 test('it writes the change on the conversation thread with the version in an erasable field', async () => {
