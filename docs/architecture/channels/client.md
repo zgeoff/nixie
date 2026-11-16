@@ -275,9 +275,9 @@ The dashboard reads the task list and follows the live stream of every thread fr
 the list was read at. Each record that moves a task's state or last activity, such as a pause, a
 message of the user's or a `trigger.fired`, makes the dashboard read the list again. The live stream
 carries no pause or resume of nixie, and a task that wakes on a schedule changes with no record of
-its own, so the dashboard also reads the list every 60 seconds while the page is visible, and at
-once when the page becomes visible. A dropped stream reconnects from the last sequence it delivered,
-as the conversation view's stream does, so the dashboard misses no change.
+its own, so the dashboard also reads the list on a timer, `taskListRefetchMs`, while the page is
+visible, and at once when the page becomes visible. A dropped stream reconnects from the last
+sequence it delivered, as the conversation view's stream does, so the dashboard misses no change.
 
 Each task shows the controls that its runner offers and its state allows, as
 [controlling a task](./api.md#controlling-a-task) describes. Each control is a checked action, so a
