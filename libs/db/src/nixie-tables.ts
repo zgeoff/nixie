@@ -437,6 +437,23 @@ export interface NixieTables {
     readonly changed_at: number;
     readonly updated_at: number;
   };
+  readonly runtime_task_definitions: {
+    readonly change_id: string;
+    readonly short_id: string;
+    readonly definition_id: string;
+    readonly operation: string;
+    readonly definition_hash: string | null;
+    readonly previous_hash: string | null;
+    readonly base_hash: string | null;
+    readonly definitions_hash: string | null;
+    readonly replaces: string | null;
+    readonly undoes: string | null;
+    readonly caller: string;
+    readonly state: string;
+    readonly state_cause: string | null;
+    readonly changed_sequence: number;
+    readonly updated_sequence: number;
+  };
   readonly sandboxes: {
     readonly sandbox_id: string;
     readonly adapter: string;
@@ -486,6 +503,15 @@ export interface NixieTables {
     readonly origin: string;
     readonly in_conversation: number;
     readonly approval_id: string | null;
+  };
+  readonly task_definition_exports: {
+    readonly export_id: string;
+    readonly branch: string;
+    readonly state: string | null;
+    readonly pull_request_number: number | null;
+    readonly pull_request_url: string | null;
+    readonly attempt_started_sequence: number | null;
+    readonly updated_sequence: number;
   };
   readonly task_definition_versions: {
     readonly definition_hash: string;
