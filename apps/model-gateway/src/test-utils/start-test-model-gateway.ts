@@ -3,7 +3,7 @@ import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { ModelAPI } from '@heynixie/wire';
-import { createPeriodStore } from '../periods/create-period-store';
+import { parsePeriodStore } from '../periods/parse-period-store';
 import { startModelGateway } from '../proxy/start-model-gateway';
 import type { Measures } from '../types';
 import { createCounterStore } from '../usage/create-counter-store';
@@ -130,11 +130,7 @@ export async function startTestModelGateway(
   const readCount =
     periods === undefined
       ? await createLimitsCountReader(join(directory, 'counter.json'))
-      : await createPeriodsCountReader(
-          join(directory, 'counter.json'),
-          periods.zone,
-          periods.now ?? Date.now,
-        );
+      : createPeriodsCountReader(join(directory, 'counter.json'));
 
   return {
     url: gateway.url,
@@ -159,16 +155,13 @@ async function createLimitsCountReader(path: string): Promise<TestModelGateway['
   };
 }
 
-async function createPeriodsCountReader(
-  path: string,
-  zone: string,
-  now: () => number,
-): Promise<TestModelGateway['readCount']> {
-  const store = await createPeriodStore({ path, zone, now });
-
+function createPeriodsCountReader(path: string): TestModelGateway['readCount'] {
+  // a plain read of the file: a second store handle would write a reset beside the gateway's own
   return async () => {
-    const stored = await store.read();
+    const stored: unknown = await Bun.file(path).json();
 
-    return { dollars: stored.periods.day.dollars, tokens: stored.periods.day.tokens };
+    const store = parsePeriodStore(stored);
+
+    return { dollars: store.periods.day.dollars, tokens: store.periods.day.tokens };
   };
 }

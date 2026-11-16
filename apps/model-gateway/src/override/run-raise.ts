@@ -2,6 +2,7 @@ import { getLocalDate } from '../periods/get-local-date';
 import { getPeriodStart } from '../periods/get-period-start';
 import { loadProxyConfig } from '../proxy/load-proxy-config';
 import type { Override, PeriodName } from '../types';
+import { overrideSchema } from './override-schema';
 import { writeOverride } from './write-override';
 
 export interface RaiseOptions {
@@ -29,11 +30,11 @@ export async function runRaise(options: RaiseOptions): Promise<Override> {
 
   const today = getLocalDate(options.now(), config.periods.zone);
 
-  const override: Override = {
+  const override: Override = overrideSchema.parse({
     period: options.period,
     start: getPeriodStart(options.period, today),
     limit: { dollars: options.dollars, tokens: options.tokens },
-  };
+  });
 
   await writeOverride(config.periods.override, override);
 

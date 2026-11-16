@@ -129,3 +129,21 @@ test('it refuses a config with limits, which has no period to raise', async () =
     }),
   ).rejects.toThrow(/periods/u);
 });
+
+test.each([
+  ['a dollar limit of zero', 0, 1],
+  ['a negative dollar limit', -5, 1],
+  ['a token limit that is not a number', 1, Number.NaN],
+])('it refuses %s and writes no override', async (_name, dollars, tokens) => {
+  const ctx = await setupTest();
+
+  await ctx.writeConfig(ctx.periodsLines(ctx.overridePath));
+
+  await expect(
+    runRaise({ configPath: ctx.configPath, period: 'day', dollars, tokens, now: Date.now }),
+  ).rejects.toThrow();
+
+  const written = await Bun.file(ctx.overridePath).exists();
+
+  expect(written).toBeFalse();
+});
