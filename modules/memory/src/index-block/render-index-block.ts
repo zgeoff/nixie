@@ -139,7 +139,19 @@ function wrapWords(content: string, first: string): readonly string[] {
       isEmpty = true;
     }
 
-    current = isEmpty ? `${current}${word}` : `${current} ${word}`;
+    let rest = isEmpty ? word : ` ${word}`;
+
+    // A word wider than the room left is cut, so no line passes the width.
+    while (current.length + rest.length > lineWidth && lineWidth > current.length) {
+      const room = lineWidth - current.length;
+
+      lines.push(`${current}${rest.slice(0, room)}`);
+
+      current = hanging;
+      rest = rest.slice(room);
+    }
+
+    current = `${current}${rest}`;
     isEmpty = false;
   }
 

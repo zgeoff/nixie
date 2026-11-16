@@ -141,6 +141,31 @@ test('it wraps a long row under its own indent within 100 characters', () => {
   expect(row.slice(1)).toSatisfyAll((line: string) => line.startsWith(' '.repeat(12)));
 });
 
+test('it cuts an unbroken word that is wider than a line', () => {
+  const rows = [
+    {
+      itemID: '00000000-0000-4000-8000-000000000001',
+      shortID: 'h1garden01',
+      subject: 'owner' as const,
+      topic: 'household-and-garden-supplies-list',
+      gist: 'x'.repeat(250),
+      createdSequence: 1,
+    },
+  ];
+
+  const lines = renderIndexBlock(collectTopicRows(rows), {
+    budget: 3000,
+    openTopicItems: 25,
+    ownerName: 'Robin',
+  }).split('\n');
+
+  const row = lines.slice(2);
+
+  expect(row.length).toBeGreaterThan(2);
+  expect(row.map((line) => line.length)).toSatisfyAll((length) => length <= 100);
+  expect(row.join('').replaceAll(' ', '')).toContain('x'.repeat(250));
+});
+
 test('it stays within a budget by folding the topic with the most items first', () => {
   const rows = [...buildIndexRows('home', 20, 1), ...buildIndexRows('trips', 10, 100)];
 
