@@ -1,6 +1,7 @@
 import { parseJSONObject } from '@heynixie/log';
 import type { TaskState, TasksContext, TasksTables } from '../types';
 import { isWakingRecord } from '../utils/is-waking-record';
+import { probeDefinitionRunPending } from './probe-definition-run-pending';
 import { readOpenRun } from './read-open-run';
 import type { RunPhase, RunState } from './types';
 
@@ -18,7 +19,7 @@ export async function readRunState(
 
   const task = await tasks
     .selectFrom('tasks')
-    .select(['state', 'read_cursor'])
+    .select(['state', 'read_cursor', 'definition_id'])
     .where('task_id', '=', taskID)
     .executeTakeFirst();
 
@@ -36,6 +37,12 @@ export async function readRunState(
       .executeTakeFirst();
 
     return { kind: 'open', run, phase: pickRunPhase(wait !== undefined, task.state) };
+  }
+
+  if (task.definition_id !== null) {
+    const isDefinitionPending = await probeDefinitionRunPending(db, taskID);
+
+    return { kind: isDefinitionPending ? 'pending' : 'none' };
   }
 
   const unread = await tasks

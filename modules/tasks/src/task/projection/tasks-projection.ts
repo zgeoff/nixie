@@ -106,6 +106,8 @@ async function applyTaskRecord(
         step_hop: 0,
         started_by: parsed.startedBy ?? null,
         start_step: parsed.startStep ?? null,
+        definition_id: null,
+        definition_hash: null,
         pause_requested: 0,
         resume_state: null,
         created_sequence: record.sequence,
@@ -143,6 +145,10 @@ function buildTaskUpdate(
       step_errors: 0,
       session_boundary: committed.sessionBoundary,
       pause_requested: 0,
+    }))
+    .with({ kind: 'task.definition_set' }, (set) => ({
+      definition_id: set.definitionID,
+      definition_hash: set.definitionHash,
     }))
     .with({ kind: 'task.step_interrupted' }, () => ({ started_step_key: null }))
     .with({ kind: 'task.step_errored' }, (errored) => ({

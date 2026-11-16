@@ -15,7 +15,15 @@ export interface StartedTaskSetup {
   readonly options: TaskRunOptions | null;
 }
 
-export type TaskSetup = StartedTaskSetup | { readonly kind: 'fixed' };
+// A definition's task holds the hash in force, or null while the definition is out of force. Its
+// options come from a version, which each task run pins.
+export interface DefinitionTaskSetup {
+  readonly kind: 'definition';
+  readonly definitionID: string;
+  readonly definitionHash: string | null;
+}
+
+export type TaskSetup = StartedTaskSetup | DefinitionTaskSetup | { readonly kind: 'fixed' };
 
 export async function readTaskSetup(
   context: Pick<TasksContext, 'log' | 'runners'>,
@@ -26,12 +34,20 @@ export async function readTaskSetup(
   const row = await db
     .$extendTables<TasksTables>()
     .selectFrom('tasks')
-    .select(['started_by', 'created_sequence'])
+    .select(['started_by', 'created_sequence', 'definition_id', 'definition_hash'])
     .where('task_id', '=', taskID)
     .executeTakeFirst();
 
   if (row === undefined) {
     return null;
+  }
+
+  if (row.definition_id !== null) {
+    return {
+      kind: 'definition',
+      definitionID: row.definition_id,
+      definitionHash: row.definition_hash,
+    };
   }
 
   if (row.started_by === null) {

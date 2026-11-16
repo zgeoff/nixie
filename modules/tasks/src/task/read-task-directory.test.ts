@@ -2,6 +2,7 @@ import { expect, test } from 'bun:test';
 import { writeRecords } from '@heynixie/log';
 import { removeTestRecordKey } from '@heynixie/log/test-utils';
 import { seedConversationStep } from '../test-utils/seed-conversation-step';
+import { seedDefinitionTask } from '../test-utils/seed-definition-task';
 import { seedTask } from '../test-utils/seed-task';
 import { startTestTasks } from '../test-utils/start-test-tasks';
 import type { TaskMessaging } from '../types';
@@ -185,4 +186,47 @@ test('it lists a started task whose creation record names a brief message and ho
   expect(read.directory.map((task) => [task.taskID, task.name])).toStrictEqual([
     ['tide-1', 'Tide tables'],
   ]);
+});
+
+test('it lists the task of a definition in force with the name, the brief and the wake of its version', async () => {
+  const ctx = await setupTest();
+
+  const empty: Pick<TaskMessaging, 'directory'> = { directory: [] };
+
+  const taskID = await seedDefinitionTask(ctx, {
+    definitionID: 'water-the-tomatoes',
+    definitionHash: 'hash-1',
+    version: {
+      name: 'Water the tomatoes',
+      brief: 'Water the greenhouse beds.',
+      wakeable: true,
+      persona: 'none',
+    },
+  });
+
+  const directory = await readTaskDirectory(ctx.context, empty);
+
+  expect(directory).toStrictEqual({
+    directory: [
+      {
+        taskID,
+        name: 'Water the tomatoes',
+        brief: 'Water the greenhouse beds.',
+        isWokenByMessages: true,
+        speaker: 'plain_task',
+      },
+    ],
+  });
+});
+
+test('it leaves the task of a definition out of force out of the directory', async () => {
+  const ctx = await setupTest();
+
+  const empty: Pick<TaskMessaging, 'directory'> = { directory: [] };
+
+  await seedDefinitionTask(ctx, { definitionID: 'water-the-tomatoes', definitionHash: null });
+
+  const result = await readTaskDirectory(ctx.context, empty);
+
+  expect(result).toStrictEqual(empty);
 });

@@ -1,7 +1,11 @@
 import { expect, mock, test } from 'bun:test';
 import { createMemoryItem, startTestMemory } from '@heynixie/memory/test-utils';
 import { conversationTaskID } from '@heynixie/tasks';
-import { buildTestRunSettings, buildTestTaskRunners } from '@heynixie/tasks/test-utils';
+import {
+  buildTestDefinitionReaders,
+  buildTestRunSettings,
+  buildTestTaskRunners,
+} from '@heynixie/tasks/test-utils';
 import { runTurnInputForget } from './run-turn-input-forget';
 
 async function setupTest() {
@@ -22,6 +26,7 @@ async function setupTest() {
             clock: memory.log.writer.clock,
             definitions: () => ({ snapshotHash: 'sha256:test' }),
             runSettings: buildTestRunSettings(),
+            ...buildTestDefinitionReaders(),
             runners: buildTestTaskRunners(),
           },
           turnInputs: { closeCaptures, removeForgotten },

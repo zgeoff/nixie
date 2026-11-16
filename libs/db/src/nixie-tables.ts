@@ -532,6 +532,8 @@ export interface NixieTables {
     readonly start_step: string | null;
     readonly pause_requested: number;
     readonly resume_state: string | null;
+    readonly definition_id: string | null;
+    readonly definition_hash: string | null;
   };
   readonly threads: {
     readonly thread: string;

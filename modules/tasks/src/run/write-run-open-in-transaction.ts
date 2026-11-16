@@ -3,18 +3,21 @@ import { writeRecordsInTransaction } from '@heynixie/log';
 import type { Transaction } from 'kysely';
 import { readLimitRecords } from '../limit/read-limit-records';
 import { pickWakeSource } from '../step/pick-wake-source';
-import type { TasksContext, TasksTables } from '../types';
-import { pickCarriedLimits } from './pick-carried-limits';
+import type { TasksContext } from '../types';
 import { pickReportMode } from './pick-report-mode';
 import { pickRunOpening } from './pick-run-opening';
 import { pickRunOrigin } from './pick-run-origin';
-import { readPieceCounts } from './read-piece-counts';
+import { readCarriedOpened } from './read-carried-opened';
+import type { OpenedOrigin } from './read-carried-opened';
+import { readCarryingControl } from './read-carrying-control';
+import { readDefinitionRunFacts } from './read-definition-run-facts';
 import { readRunRows } from './read-run-rows';
 import { readRunSetup } from './read-run-setup';
 import type { RunSetup } from './read-run-setup';
-import { toRunEndCause } from './run-end-cause';
 import { taskRunOpenedCodec } from './task-run-opened-codec';
-import type { TaskRun, TaskRunOpened } from './types';
+import type { TaskRunOpened } from './types';
+import type { DefinitionRunOpenOutcome } from './write-definition-run-open-in-transaction';
+import { writeDefinitionRunOpenInTransaction } from './write-definition-run-open-in-transaction';
 
 export interface RunOpenRequest {
   readonly taskID: string;
@@ -22,15 +25,24 @@ export interface RunOpenRequest {
   readonly unread: readonly Pick<EnvelopeRecord, 'kind' | 'payload' | 'thread' | 'sequence'>[];
 }
 
-export type RunOpenOutcome = 'held' | 'ready';
+export type RunOpenOutcome = DefinitionRunOpenOutcome;
 
 // The caller holds the claim's write transaction. A task with an open task run runs its step in it,
 // so a rerun of a first step opens no second one.
 export async function writeRunOpenInTransaction(
   tx: Transaction<unknown>,
-  context: Pick<TasksContext, 'definitions' | 'log' | 'runSettings' | 'runners'>,
+  context: Pick<
+    TasksContext,
+    'definitions' | 'log' | 'runSettings' | 'runners' | 'readDefinitionRunPolicy'
+  >,
   request: RunOpenRequest,
 ): Promise<RunOpenOutcome> {
+  const definition = await readDefinitionRunFacts(tx, request.taskID);
+
+  if (definition !== null) {
+    return writeDefinitionRunOpenInTransaction(tx, context, request, definition);
+  }
+
   const setup = await readRunSetup(tx, request.taskID);
   const runs = await readRunRows(tx, request.taskID);
 
@@ -61,7 +73,7 @@ export async function writeRunOpenInTransaction(
       : await readCarriedOpened(tx, context, {
           runs,
           carries: opening.carries,
-          request,
+          stepKey: request.stepKey,
           origin: opening.origin,
         });
 
@@ -77,49 +89,10 @@ export async function writeRunOpenInTransaction(
   return 'ready';
 }
 
-const carriedCauses = new Set(['limit', 'stopped', 'failed']);
-
-// The newest raise or restart that is newer than the end of the newest task run, when that task run
-// ended with a cause that a raise or a restart continues.
-async function readCarryingControl(
-  tx: Transaction<unknown>,
-  taskID: string,
-  newest: TaskRun | null,
-): Promise<{ readonly kind: 'raise' | 'restart'; readonly sequence: number } | null> {
-  const ended = newest?.ended ?? null;
-
-  if (ended === null || !carriedCauses.has(toRunEndCause(ended.record.cause))) {
-    return null;
-  }
-
-  const control = await tx
-    .$extendTables<TasksTables>()
-    .selectFrom('records')
-    .select(['sequence', 'kind'])
-    .where('thread', '=', taskID)
-    .where('kind', 'in', ['task.limits_raised', 'task.restarted'])
-    .where('sequence', '>', ended.sequence)
-    .orderBy('sequence', 'desc')
-    .limit(1)
-    .executeTakeFirst();
-
-  return control === undefined
-    ? null
-    : {
-        kind: control.kind === 'task.limits_raised' ? 'raise' : 'restart',
-        sequence: control.sequence,
-      };
-}
-
 function pickWaking(request: RunOpenRequest) {
   const source = pickWakeSource(request.unread);
 
   return source === null ? null : pickRunOrigin(source);
-}
-
-interface OpenedOrigin {
-  readonly kind: string;
-  readonly sequence: number | null;
 }
 
 function buildFreshOpened(
@@ -143,36 +116,5 @@ function buildFreshOpened(
     report: { mode, target: mode === 'none' ? null : setup.startedBy },
     reportShape: setup.reportShape,
     limits: { ...setup.limits, calls: {} },
-  };
-}
-
-interface CarriedOpening {
-  readonly runs: readonly TaskRun[];
-  readonly carries: TaskRun;
-  readonly request: RunOpenRequest;
-  readonly origin: OpenedOrigin;
-}
-
-async function readCarriedOpened(
-  tx: Transaction<unknown>,
-  context: Pick<TasksContext, 'log' | 'runSettings' | 'runners'>,
-  opening: CarriedOpening,
-): Promise<TaskRunOpened> {
-  const carries = opening.carries;
-
-  const counts = await readPieceCounts(tx, context, opening.runs, carries);
-
-  return {
-    ...carries.opened,
-    runID: crypto.randomUUID(),
-    openedByStep: opening.request.stepKey,
-    origin: opening.origin,
-    carriesRunID: carries.runID,
-    limits: pickCarriedLimits({
-      kind: opening.origin.kind === 'restart' ? 'restart' : 'raise',
-      first: counts.first,
-      raised: counts.raised,
-      used: counts.used,
-    }),
   };
 }

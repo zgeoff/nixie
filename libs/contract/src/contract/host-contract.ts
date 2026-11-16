@@ -349,6 +349,10 @@ export const hostContract = {
     restart: taskControl,
     close: taskControl.errors({
       CONVERSATION_NEVER_CLOSES: { message: 'the conversation is never closed', status: 409 },
+      DEFINITION_TASK_NEVER_CLOSES: {
+        message: 'the task of a definition is never closed',
+        status: 409,
+      },
     }),
     interrupt: taskControl,
     raise: oc

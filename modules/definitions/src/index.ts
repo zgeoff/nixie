@@ -40,6 +40,7 @@ export { isDefinitionsPath } from './definition/is-definitions-path';
 export { loadSkillVersions } from './skill/load-skill-versions';
 export { loadSnapshotSkills } from './skill/load-snapshot-skills';
 export { probeWrittenSkillsPending } from './written/probe-written-skills-pending';
+export { makeReadDefinitionRunPolicy } from './task/make-read-definition-run-policy';
 export { readDefinitionVersion } from './task/read-definition-version';
 export type { CheckTaskStartOptions } from './task/make-check-task-start';
 export { makeCheckTaskStart } from './task/make-check-task-start';

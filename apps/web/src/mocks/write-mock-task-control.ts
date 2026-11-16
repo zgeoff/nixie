@@ -27,6 +27,7 @@ type TaskControlResult =
   | ({ readonly status: 'controlled' } & ControlledTask)
   | { readonly status: 'task_not_found' }
   | { readonly status: 'conversation_never_closes' }
+  | { readonly status: 'definition_task_never_closes' }
   | { readonly status: 'runner_lacks_control' }
   | {
       readonly status: 'state_refused';
@@ -75,6 +76,7 @@ export async function writeMockTaskControl(
   const plan = planTaskControl(control, {
     state: task.state,
     isConversation: task.taskID === 'conversation',
+    isDefinitionTask: false,
     isPauseRequested: task.isPauseRequested,
     hasUnread: false,
     resumeState: task.resumeState,
@@ -87,6 +89,9 @@ export async function writeMockTaskControl(
       .returnType<TaskControlResult>()
       .with({ reason: 'conversation_never_closes' }, () => ({
         status: 'conversation_never_closes',
+      }))
+      .with({ reason: 'definition_task_never_closes' }, () => ({
+        status: 'definition_task_never_closes',
       }))
       .with({ reason: 'runner_lacks_control' }, () => ({ status: 'runner_lacks_control' }))
       .with({ reason: 'unknown_task' }, { reason: 'not_allowed' }, { reason: 'at_limit' }, () => ({

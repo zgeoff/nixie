@@ -163,7 +163,7 @@ test('it ends a task run at a limit with the meter, holds the task, and wakes th
 
 test('it tells the starter of a limit end that the report did not wake, with a limit notice', async () => {
   const ctx = await setupTest();
-  const taskID = await ctx.startTask({ report: 'none', limits: { turns: 1, dollars: 2 } });
+  const taskID = await ctx.startTask({ report: 'next_turn', limits: { turns: 1, dollars: 2 } });
   const claim = await ctx.claim(taskID);
 
   await writeStepCommit(ctx.context, claim, {
@@ -176,6 +176,23 @@ test('it tells the starter of a limit end that the report did not wake, with a l
   const notices = await ctx.readKinds('task.limit_notice');
 
   expect(notices.map((notice) => notice.thread)).toStrictEqual(['conversation']);
+});
+
+test('it sends no limit notice for a task run that pinned no report target', async () => {
+  const ctx = await setupTest();
+  const taskID = await ctx.startTask({ report: 'none', limits: { turns: 1, dollars: 2 } });
+  const claim = await ctx.claim(taskID);
+
+  await writeStepCommit(ctx.context, claim, {
+    next: 'continue',
+    records: [],
+    acknowledged: [],
+    run: { activity: 'worked', limit: { meter: 'turns', used: 1, limit: 1 } },
+  });
+
+  const result = await ctx.readKinds('task.limit_notice');
+
+  expect(result).toStrictEqual([]);
 });
 
 test('it ends the open task run as stopped when the owner stops the task', async () => {

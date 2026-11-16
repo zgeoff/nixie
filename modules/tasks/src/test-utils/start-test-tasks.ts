@@ -8,6 +8,8 @@ import type { TestClock } from '@heynixie/testing';
 import { buildTestClock } from '@heynixie/testing';
 import { tasksProjections } from '../task/projection/tasks-projections';
 import type { TasksContext } from '../types';
+import type { TestDefinitionStore } from './build-test-definition-readers';
+import { buildTestDefinitionStore } from './build-test-definition-readers';
 import { buildTestRunSettings } from './build-test-run-settings';
 import { buildTestTaskRunners } from './build-test-task-runners';
 
@@ -17,6 +19,9 @@ export interface TestTasks {
   readonly writer: Writer;
   readonly clock: TestClock;
   readonly context: TasksContext;
+
+  // the versions and run policies that the context's definition readers answer with
+  readonly definitionStore: TestDefinitionStore;
 }
 
 export async function startTestTasks(): Promise<TestTasks> {
@@ -39,6 +44,7 @@ export async function startTestTasks(): Promise<TestTasks> {
 
   const log: Log = { writer, deploymentKey, projections: [...logProjections, ...tasksProjections] };
   const clock = buildTestClock(1_000_000);
+  const definitionStore = buildTestDefinitionStore();
 
   return {
     defer: (cleanup) => {
@@ -47,12 +53,15 @@ export async function startTestTasks(): Promise<TestTasks> {
     dataDir,
     writer,
     clock,
+    definitionStore,
     context: {
       log,
       clock,
       definitions: () => ({ snapshotHash: 'sha256:test' }),
       runSettings: buildTestRunSettings(),
       runners: buildTestTaskRunners(),
+      readDefinitionVersion: definitionStore.readDefinitionVersion,
+      readDefinitionRunPolicy: definitionStore.readDefinitionRunPolicy,
     },
   };
 }

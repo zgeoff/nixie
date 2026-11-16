@@ -15,6 +15,7 @@ export type TaskControl = 'pause' | 'resume' | 'stop' | 'restart' | 'close' | 'i
 export type TaskControlRefusal =
   | { readonly reason: 'unknown_task' }
   | { readonly reason: 'conversation_never_closes' }
+  | { readonly reason: 'definition_task_never_closes' }
   | { readonly reason: 'runner_lacks_control' }
   | {
       readonly reason: 'at_limit';
@@ -30,6 +31,9 @@ export type TaskControlRefusal =
 export interface TaskControlFacts {
   readonly state: TaskState;
   readonly isConversation: boolean;
+
+  // a task that a definition owns, which nixie never closes
+  readonly isDefinitionTask: boolean;
   readonly isPauseRequested: boolean;
   readonly hasUnread: boolean;
   readonly resumeState: ResumeState | null;

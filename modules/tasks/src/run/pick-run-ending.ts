@@ -17,6 +17,9 @@ export type RunEndingTrigger =
     }
   | { readonly kind: 'stopped' }
   | { readonly kind: 'closed' }
+
+  // the claim ends an idle task run of a definition's task to open the task run of a fire
+  | { readonly kind: 'claim' }
   | { readonly kind: 'failed' };
 
 export interface RunEnding {
@@ -26,6 +29,10 @@ export interface RunEnding {
 
 // The first row of the ending table that applies, or null when the task run stays open.
 export function pickRunEnding(trigger: RunEndingTrigger): RunEnding | null {
+  if (trigger.kind === 'claim') {
+    return { cause: 'no_report', limitMeter: null };
+  }
+
   if (trigger.kind !== 'step') {
     return { cause: trigger.kind, limitMeter: null };
   }

@@ -8,6 +8,7 @@ import { writeTaskStart } from '../task/start/write-task-start';
 import { makeStubStep } from '../test-utils/make-stub-step';
 import { seedClosedTask } from '../test-utils/seed-closed-task';
 import { seedConversationStep } from '../test-utils/seed-conversation-step';
+import { seedDefinitionTask } from '../test-utils/seed-definition-task';
 import { seedTask } from '../test-utils/seed-task';
 import { startTestTasks } from '../test-utils/start-test-tasks';
 import type { StartedClaim, StepInput, StepResult } from '../types';
@@ -432,4 +433,17 @@ test('it keeps no sandbox for an open started task whose runner does not keep th
   const resolved = await registry.readKeptSandboxOwners(ctx.context);
 
   expect(resolved).toStrictEqual([conversationTaskID]);
+});
+
+test('it resolves the task of a definition to the default runner', async () => {
+  const ctx = await setupTest();
+
+  const taskID = await seedDefinitionTask(ctx, {
+    definitionID: 'water-the-tomatoes',
+    definitionHash: 'hash-1',
+  });
+
+  const resolution = await ctx.context.runners.resolve(ctx.context, taskID);
+
+  expect(resolution).toStrictEqual({ status: 'found', definition: sandboxRunner });
 });

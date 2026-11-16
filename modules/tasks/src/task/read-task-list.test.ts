@@ -1,14 +1,20 @@
 import { expect, test } from 'bun:test';
+import { withWriteTransaction } from '@heynixie/log';
 import invariant from 'tiny-invariant';
 import { createConversationTask } from '../conversation/create-conversation-task';
+import { withdrawDefinitionTaskInTransaction } from '../definition/withdraw-definition-task-in-transaction';
 import { writeStepCommit } from '../step/write-step-commit';
 import { writeStepError } from '../step/write-step-error';
 import { seedConversationStep } from '../test-utils/seed-conversation-step';
+import { seedDefinitionTask } from '../test-utils/seed-definition-task';
 import { seedTask } from '../test-utils/seed-task';
 import { startTestTasks } from '../test-utils/start-test-tasks';
 import { writeTestTaskMessage } from '../test-utils/write-test-task-message';
+import { writeTestTriggerFire } from '../test-utils/write-test-trigger-fire';
+import type { TaskMessaging } from '../types';
 import { createSystemTask } from './create-system-task';
 import { claimTask } from './projection/claim-task';
+import { readTaskDirectory } from './read-task-directory';
 import { readTaskList } from './read-task-list';
 
 function setupTest() {
@@ -507,4 +513,70 @@ test('it clears the wait when the asked task stops on its errors', async () => {
       lastSentKind: 'question',
     },
   ]);
+});
+
+test('it lists the task of a definition in force with the name, the brief and the model of its version', async () => {
+  const ctx = await setupTest();
+
+  const empty: Pick<TaskMessaging, 'directory'> = { directory: [] };
+
+  const taskID = await seedDefinitionTask(ctx, {
+    definitionID: 'water-the-tomatoes',
+    definitionHash: 'hash-1',
+    version: { name: 'Water the tomatoes', brief: 'Water the beds.', model: 'fast' },
+  });
+
+  const directory = await readTaskDirectory(ctx.context, empty);
+  const tasks = await readTaskList(ctx.context, directory, { callerID: null, limit: 10 });
+
+  expect(tasks).toStrictEqual([
+    {
+      id: taskID,
+      name: 'Water the tomatoes',
+      state: 'waiting',
+      isPauseRequested: false,
+      brief: 'Water the beds.',
+      lastActivityAt: expect.toBeDate(),
+      model: 'fast',
+      lastSentKind: null,
+    },
+  ]);
+});
+
+test('it lists nothing for a task out of force with no task run pending or open', async () => {
+  const ctx = await setupTest();
+
+  const empty: Pick<TaskMessaging, 'directory'> = { directory: [] };
+
+  await seedDefinitionTask(ctx, { definitionID: 'water-the-tomatoes', definitionHash: null });
+
+  const directory = await readTaskDirectory(ctx.context, empty);
+  const result = await readTaskList(ctx.context, directory, { callerID: null, limit: 10 });
+
+  expect(result).toStrictEqual([]);
+});
+
+test('it lists a task out of force under the name of the version its pending task run pins', async () => {
+  const ctx = await setupTest();
+
+  const empty: Pick<TaskMessaging, 'directory'> = { directory: [] };
+
+  const taskID = await seedDefinitionTask(ctx, {
+    definitionID: 'water-the-tomatoes',
+    definitionHash: 'hash-1',
+    version: { name: 'Water the tomatoes' },
+  });
+
+  await writeTestTriggerFire(ctx.context, taskID, { definitionHash: 'hash-1' });
+  await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  await withWriteTransaction(ctx.writer, (tx) =>
+    withdrawDefinitionTaskInTransaction(tx, ctx.context, 'water-the-tomatoes'),
+  );
+
+  const directory = await readTaskDirectory(ctx.context, empty);
+  const tasks = await readTaskList(ctx.context, directory, { callerID: null, limit: 10 });
+
+  expect(directory.directory).toStrictEqual([]);
+  expect(tasks.map((task) => [task.id, task.name])).toStrictEqual([[taskID, 'Water the tomatoes']]);
 });

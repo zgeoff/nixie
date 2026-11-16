@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { startWriter, withWriteTransaction } from '@heynixie/log';
 import { buildCheckerRules } from '@heynixie/memory';
+import { tasksProjections } from '@heynixie/tasks';
 import { sql } from 'kysely';
 import invariant from 'tiny-invariant';
 import { createPathSource } from '../definition/create-path-source';
@@ -387,4 +388,43 @@ test('it keeps the tasks list of the seed in force when it seeds again from stor
   expect(again).toMatchObject({ status: 'seeded', inForce: { tasks: first.inForce.tasks } });
   expect(again.inForce?.snapshotHash).not.toBe(first.inForce.snapshotHash);
   expect(first.inForce.tasks).toHaveLength(1);
+});
+
+test('it binds a task to each definition in force with target task', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 4\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+  await mkdir(join(ctx.root, 'tasks', 'rain-gauge'), { recursive: true });
+
+  await writeFile(
+    join(ctx.root, 'tasks', 'rain-gauge', 'task.yaml'),
+    'name: Check the rain gauge\nbrief: Read it.\n',
+  );
+
+  await runSeed({
+    tasks: buildTestTaskSeed(),
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => ({ rules: [], tools: [] }),
+  });
+
+  const result = await runInForceSeed({
+    log: { ...ctx.log, projections: tasksProjections },
+    buildPolicy: () => ({ rules: [], tools: [] }),
+  });
+
+  const inForce = await readDefinitionsInForce(ctx.writer.db);
+
+  const tasks = await ctx.writer.db
+    .withTables<{ tasks: { definition_id: string | null; definition_hash: string | null } }>()
+    .selectFrom('tasks')
+    .select(['definition_id', 'definition_hash'])
+    .execute();
+
+  expect(result.status).toBe('unchanged');
+
+  expect(tasks).toStrictEqual([
+    { definition_id: 'rain-gauge', definition_hash: inForce?.tasks[0]?.hash ?? null },
+  ]);
 });

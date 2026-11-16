@@ -8,6 +8,7 @@ import { taskStepErroredCodec } from '../../utils/task-step-errored-codec';
 import { taskStepInterruptedCodec } from '../../utils/task-step-interrupted-codec';
 import { taskClosedCodec } from '../codec/task-closed-codec';
 import { taskCreatedCodec } from '../codec/task-created-codec';
+import { taskDefinitionSetCodec } from '../codec/task-definition-set-codec';
 import { taskInterruptedCodec } from '../codec/task-interrupted-codec';
 import { taskMarkSetCodec } from '../codec/task-mark-set-codec';
 import { taskPausedCodec } from '../codec/task-paused-codec';
@@ -37,6 +38,7 @@ export type TaskRecord =
   | DecodedRecord<typeof taskRestartedCodec>
   | DecodedRecord<typeof taskClosedCodec>
   | DecodedRecord<typeof taskMarkSetCodec>
+  | DecodedRecord<typeof taskDefinitionSetCodec>
   | DecodedRecord<typeof taskInterruptedCodec>
   | DecodedRecord<typeof timerFiredCodec>;
 
@@ -80,6 +82,10 @@ const taskRecordDecoders: {
   }),
   'task.closed': (payload) => ({ kind: 'task.closed', ...taskClosedCodec.decode(payload) }),
   'task.mark_set': (payload) => ({ kind: 'task.mark_set', ...taskMarkSetCodec.decode(payload) }),
+  'task.definition_set': (payload) => ({
+    kind: 'task.definition_set',
+    ...taskDefinitionSetCodec.decode(payload),
+  }),
   'task.interrupted': (payload) => ({
     kind: 'task.interrupted',
     ...taskInterruptedCodec.decode(payload),

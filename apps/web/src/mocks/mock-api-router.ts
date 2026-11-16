@@ -327,6 +327,10 @@ export const mockAPIRouter = os.router({
         throw options.errors.CONVERSATION_NEVER_CLOSES();
       }
 
+      if (result.status === 'definition_task_never_closes') {
+        throw options.errors.DEFINITION_TASK_NEVER_CLOSES();
+      }
+
       return toMockControlled(result, options.errors);
     }),
   },
@@ -479,9 +483,13 @@ function toMockControlled(result: MockControlResult, errors: MockControlOptions[
     .with({ status: 'runner_lacks_control' }, () => {
       throw errors.RUNNER_LACKS_CONTROL();
     })
-    .with({ status: 'conversation_never_closes' }, () => {
-      throw new Error('only a close refuses the conversation');
-    })
+    .with(
+      { status: 'conversation_never_closes' },
+      { status: 'definition_task_never_closes' },
+      () => {
+        throw new Error('only a close refuses the conversation or a definition task');
+      },
+    )
     .exhaustive();
 }
 

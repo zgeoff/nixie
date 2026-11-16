@@ -4,7 +4,11 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { logProjections, startWriter } from '@heynixie/log';
 import { createTask, tasksProjections, writeInboxRecords } from '@heynixie/tasks';
-import { buildTestRunSettings, buildTestTaskRunners } from '@heynixie/tasks/test-utils';
+import {
+  buildTestDefinitionReaders,
+  buildTestRunSettings,
+  buildTestTaskRunners,
+} from '@heynixie/tasks/test-utils';
 import { buildTestClock } from '@heynixie/testing';
 import { claimTestStep } from './claim-test-step';
 
@@ -32,6 +36,7 @@ async function setupTest() {
       clock: buildTestClock(1_000_000),
       definitions: () => ({ snapshotHash: 'sha256:test' }),
       runSettings: buildTestRunSettings(),
+      ...buildTestDefinitionReaders(),
       runners: buildTestTaskRunners(),
     },
   };

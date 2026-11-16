@@ -47,7 +47,7 @@ export function buildTaskRunnerRegistry(options: TaskRunnerRegistryOptions): Tas
     const row = await context.log.writer.db
       .$extendTables<TasksTables>()
       .selectFrom('tasks')
-      .select(['started_by', 'created_sequence'])
+      .select(['started_by', 'created_sequence', 'definition_id'])
       .where('task_id', '=', taskID)
       .executeTakeFirst();
 
@@ -65,7 +65,7 @@ export function buildTaskRunnerRegistry(options: TaskRunnerRegistryOptions): Tas
         : { status: 'found', definition: named };
     }
 
-    return row.started_by === null
+    return row.started_by === null && row.definition_id === null
       ? { status: 'none' }
       : { status: 'found', definition: defaultRunner };
   };

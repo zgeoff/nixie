@@ -36,7 +36,7 @@ const listedStates: Readonly<Record<TaskListFilter, readonly ListedTaskState[]>>
 };
 
 export function buildTasksListTool(
-  context: Pick<TasksContext, 'log'>,
+  context: Pick<TasksContext, 'log' | 'readDefinitionVersion'>,
   messaging: Pick<TaskMessaging, 'directory'>,
 ): ToolDefinition {
   return {

@@ -65,6 +65,7 @@ export async function writeTaskControlInTransaction(
   const plan = planTaskControl(request.control, {
     state: task.state,
     isConversation: task.is_conversation === 1,
+    isDefinitionTask: task.definition_id !== null,
     isPauseRequested: task.pause_requested === 1,
     hasUnread: task.last_inbox_sequence > task.read_cursor,
     resumeState: task.resume_state,

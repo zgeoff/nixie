@@ -1,8 +1,12 @@
 import type { APIContext, APISettings, CleanupRecordSessions } from '@heynixie/api';
 import { createPasskeyState, defaultAPISettings } from '@heynixie/api';
-import { readDefinitionsInForce } from '@heynixie/definitions';
+import {
+  makeReadDefinitionRunPolicy,
+  readDefinitionVersion,
+  readDefinitionsInForce,
+} from '@heynixie/definitions';
 import type { Writer } from '@heynixie/log';
-import type { RunSettings, TaskRunnerRegistry } from '@heynixie/tasks';
+import type { RunSettings, TaskLimits, TaskRunnerRegistry } from '@heynixie/tasks';
 import type { InForce } from '../types';
 import { buildServerLog } from './build-server-log';
 
@@ -14,6 +18,9 @@ export interface ServerContext {
 export interface ServerContextOptions {
   readonly runSettings: RunSettings;
   readonly runners: TaskRunnerRegistry;
+
+  // the limits that a definition's task run takes for each one its file leaves out
+  readonly taskRunLimits: TaskLimits;
   readonly settings?: APISettings;
 }
 
@@ -41,6 +48,8 @@ export async function createServerContext(
       definitions: () => ({ snapshotHash: inForce.read()?.snapshotHash ?? '' }),
       runSettings: options.runSettings,
       runners: options.runners,
+      readDefinitionVersion,
+      readDefinitionRunPolicy: makeReadDefinitionRunPolicy(options.taskRunLimits),
       settings: options.settings ?? defaultAPISettings,
       passkeys: createPasskeyState(),
       readSessionCleanup,

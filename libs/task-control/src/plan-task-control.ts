@@ -16,6 +16,10 @@ export function planTaskControl(
     return { reason: 'conversation_never_closes' };
   }
 
+  if (control === 'close' && facts.isDefinitionTask) {
+    return { reason: 'definition_task_never_closes' };
+  }
+
   if (!facts.controls.includes(control)) {
     return { reason: 'runner_lacks_control' };
   }

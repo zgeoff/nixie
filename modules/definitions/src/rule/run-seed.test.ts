@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { Projection } from '@heynixie/log';
 import { readRecords, startWriter, withWriteTransaction, writeRecords } from '@heynixie/log';
+import { tasksProjections } from '@heynixie/tasks';
 import { sql } from 'kysely';
 import invariant from 'tiny-invariant';
 import { buildDefinitionsSnapshot } from '../definition/build-definitions-snapshot';
@@ -2488,4 +2489,98 @@ test('it leaves the seed unchanged when the tasks stay the same', async () => {
   const again = await runSeed(seed);
 
   expect(again.status).toBe('unchanged');
+});
+
+test('it binds one task to a definition with target task, and an unchanged seed writes no binding', async () => {
+  const ctx = await setupTest({ projections: tasksProjections });
+
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 4\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+  await mkdir(join(ctx.root, 'tasks', 'rain-gauge'), { recursive: true });
+
+  await writeFile(
+    join(ctx.root, 'tasks', 'rain-gauge', 'task.yaml'),
+    'name: Check the rain gauge\nbrief: Read it.\n',
+  );
+
+  const options = {
+    tasks: buildTestTaskSeed(),
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => ({ rules: [], tools: [] }),
+  };
+
+  const first = await runSeed(options);
+  const second = await runSeed(options);
+  const inForce = await readDefinitionsInForce(ctx.writer.db);
+
+  const tasks = await ctx.writer.db
+    .withTables<{
+      tasks: { task_id: string; definition_id: string | null; definition_hash: string | null };
+    }>()
+    .selectFrom('tasks')
+    .select(['definition_id', 'definition_hash'])
+    .execute();
+
+  const bindings = await readRecords(ctx.log, { afterSequence: 0, kinds: ['task.definition_set'] });
+
+  expect(first.status).toBe('seeded');
+  expect(second.status).toBe('unchanged');
+
+  expect(tasks).toStrictEqual([
+    { definition_id: 'rain-gauge', definition_hash: inForce?.tasks[0]?.hash ?? null },
+  ]);
+
+  expect(bindings).toHaveLength(1);
+});
+
+test.each([
+  ['a disabled definition', 'name: Check\nbrief: Read it.\nenabled: false\n'],
+  [
+    'a definition with target conversation',
+    'name: Check\nbrief: Read it.\ntarget: conversation\ntrigger:\n  at: "2027-03-09T14:00:00Z"\n',
+  ],
+])('it binds no task to %s', async (_title, yaml) => {
+  const ctx = await setupTest({ projections: tasksProjections });
+
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 4\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+  await mkdir(join(ctx.root, 'tasks', 'rain-gauge'), { recursive: true });
+  await writeFile(join(ctx.root, 'tasks', 'rain-gauge', 'task.yaml'), yaml);
+
+  const result = await runSeed({
+    tasks: buildTestTaskSeed(),
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => ({ rules: [], tools: [] }),
+  });
+
+  const created = await readRecords(ctx.log, { afterSequence: 0, kinds: ['task.created'] });
+
+  expect(result.status).toBe('seeded');
+  expect(created).toStrictEqual([]);
+});
+
+test('it binds no task when the seed is refused', async () => {
+  const ctx = await setupTest({ projections: tasksProjections });
+
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 4\n');
+  await mkdir(join(ctx.root, 'tasks', 'rain-gauge'), { recursive: true });
+
+  await writeFile(
+    join(ctx.root, 'tasks', 'rain-gauge', 'task.yaml'),
+    'name: Check\nbrief: Read it.\n',
+  );
+
+  const result = await runSeed({
+    tasks: buildTestTaskSeed(),
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => ({ rules: [], tools: [] }),
+  });
+
+  const created = await readRecords(ctx.log, { afterSequence: 0, kinds: ['task.created'] });
+
+  expect(result.status).toBe('refused');
+  expect(created).toStrictEqual([]);
 });
