@@ -11,6 +11,7 @@ import { collectNestedUnknownFields } from './collect-nested-unknown-fields';
 import { definitionOnlyKeys, definitionOnlySchema, maxCallsSchema } from './definition-only-schema';
 import { formatIssue } from './format-issue';
 import { parseTrigger } from './parse-trigger';
+import { taskIDPattern } from './task-id-pattern';
 import type {
   SeedFault,
   TaskDefinition,
@@ -18,8 +19,6 @@ import type {
   TaskFolder,
   TaskSeedContext,
 } from './types';
-
-const idPattern = /^[a-z0-9-]{1,64}$/u;
 
 export interface FolderOutcome {
   readonly faults: readonly SeedFault[];
@@ -34,7 +33,7 @@ export function parseTaskFolder(folder: TaskFolder, context: TaskSeedContext): F
   const yaml = folder.files.get('task.yaml');
 
   const folderFaults: SeedFault[] = [
-    ...(idPattern.test(folder.id)
+    ...(taskIDPattern.test(folder.id)
       ? []
       : [{ path: `${root}/`, fault: 'bad_id' as const, reasons: [] }]),
     ...(yaml === undefined

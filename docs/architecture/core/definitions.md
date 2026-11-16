@@ -174,13 +174,14 @@ writes the skill's folder and removes each file that the folder holds at that co
 version lacks. It also removes a vendored skill's lock entry, so the seed after the merge reads the
 folder as the user's own skill and marks the written skill adopted.
 
-The export serves any kind of approved change, and nixie registers 3 kinds: a written skill, an
-approved [prompt override](./prompts.md), and the
-[runtime rule changes](../policy/rules.md#the-rule-export). Each change kind reads the approvals due
-for export and the exports to close, builds the branch, files, title and body of each pull request,
-and stores the state of its own exports. The export run marks, records and closes an export the same
-way for every kind. When the close of an export fails, the run skips any export due on the same
-branch until a later run closes it.
+The export serves any kind of approved change, and nixie registers 4 kinds: a written skill, an
+approved [prompt override](./prompts.md), the
+[runtime rule changes](../policy/rules.md#the-rule-export), and the
+[runtime task definition changes](#the-export-of-task-definitions). Each change kind reads the
+approvals due for export and the exports to close, builds the branch, files, title and body of each
+pull request, and stores the state of its own exports. The export run marks, records and closes an
+export the same way for every kind. When the close of an export fails, the run skips any export due
+on the same branch until a later run closes it.
 
 Every export run closes the export of each approval that left force, whether a seed adopted it, a
 later approval superseded it, or the user retired it. Export runs never overlap, so a seed and an
@@ -410,6 +411,34 @@ conflict answers `NOT_FOUND`.
 The `retireOneShot` that the server gives the trigger core also writes `definition.settled` as
 `retired`, with a null hash and the cause the core passes, when the spent one-shot has a runtime
 change in force.
+
+### The export of task definitions
+
+The export puts every runtime change in force into one pull request on the branch `nixie/tasks`,
+except a one-shot and a change whose version is unreadable. A one-shot retires after it fires, so
+the user's definitions never keep it. An unreadable version has lost its files, and the seed already
+leaves that definition out of force.
+
+The ID of an export hashes the branch, each exported change's ID with its base and definitions
+hashes, the count of changes that left force, and the snapshot hash in force. A new change, an undo,
+an adoption, a resolved conflict or a seed of another snapshot therefore starts a new export, which
+rewrites the same pull request and closes the one before.
+
+A defined version writes each file of its version at its path under `tasks/<id>/`, byte for byte,
+and deletes each path that the folder holds at the pinned commit and the version lacks. An undefine
+deletes every file that the folder holds. The export writes and deletes only paths under
+`tasks/<id>/` of its own definitions, and it throws on a version that holds any other path.
+
+The export fails, calls `onError` and opens no pull request when:
+
+- the repo's manifest reads a format below 4, which applies no task folder;
+- the seed's parse of the changed repo refuses a task folder;
+- no file of the change differs from the repo, because the repo already holds the changes and the
+  next seed adopts them.
+
+A failed export keeps its attempt mark, so the next run retries it. When no exported change is left,
+each open export closes its pull request on the branch, and a merged pull request stays. A pull
+request that the user closes by hand opens again at the next export.
 
 ## The snapshot hash
 

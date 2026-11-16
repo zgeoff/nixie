@@ -16,6 +16,7 @@ export { buildPromptChangeKind } from './prompt/build-prompt-change-kind';
 export type { PromptExportText } from './prompt/build-prompt-export-change';
 export { buildSkillChangeKind } from './skill/build-skill-change-kind';
 export { buildRuleChangeKind } from './rule/build-rule-change-kind';
+export { buildTaskChangeKind } from './runtime-task/build-task-change-kind';
 export type { PromptPartFile, PromptProposalInput } from './prompt/check-prompt-proposal';
 export { checkPromptProposal } from './prompt/check-prompt-proposal';
 export { checkSkillFiles } from './skill/check-skill-files';

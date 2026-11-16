@@ -208,6 +208,7 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
 
       return startDefinitionsExports({
         log: parts.context.log,
+        tasks: parts.tasks,
         settings: reader.get('inputs').options.definitionsExport,
         cleanup: parts.cleanup,
         logEvent: parts.log,
