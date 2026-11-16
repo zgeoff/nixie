@@ -1912,7 +1912,7 @@ test("it saves a task's memory from the user's message on the conversation's thr
     .$extendTables<MemoryTables>()
     .selectFrom('memory_versions')
     .innerJoin('memory_items', 'memory_items.item_id', 'memory_versions.item_id')
-    .select(['origin', 'task_id'])
+    .select(['memory_versions.item_id as item_id', 'origin', 'task_id'])
     .where('memory_items.short_id', '=', outcome.result['itemID'])
     .executeTakeFirstOrThrow();
 
@@ -1932,7 +1932,8 @@ test("it saves a task's memory from the user's message on the conversation's thr
 
   const pending = await ctx.memory.store.proposals.listPending();
 
-  expect(row).toStrictEqual({ origin: 'task', task_id: 'task-4' });
+  expect(row).toStrictEqual({ item_id: expect.any(String), origin: 'task', task_id: 'task-4' });
+  expect(added?.record.payload).toMatchObject({ itemID: row.item_id, version: 1 });
   expect(pending).toStrictEqual([]);
   expect(kinds).toContain('memory.version_added');
   expect(kinds).not.toContain('memory.proposed');
@@ -1950,7 +1951,7 @@ test("it saves a task's memory from the user's message on the conversation's thr
       proposed: 0,
       entries: [
         {
-          itemID: expect.toBeString(),
+          itemID: row.item_id,
           change: 'created',
           version: 1,
           proposalID: null,
@@ -1959,6 +1960,75 @@ test("it saves a task's memory from the user's message on the conversation's thr
       ],
     },
   ]);
+});
+
+test("it saves nothing of a granted task's save that fails inside its write transaction", async () => {
+  const gate = { check: () => Promise.resolve(buildMockCheckerAnswer({ verdict: 'asserted' })) };
+
+  const message = {
+    thread: 'conversation',
+    text: "I'm allergic to hazelnuts",
+    spans: [{ start: 0, end: 25, source: 'typed' as const }],
+  };
+
+  // The last definitions read of a save runs inside the write transaction, after the version
+  // record landed. A first save counts the reads.
+  const counted = { reads: 0 };
+
+  const dry = await setupTest({
+    gate,
+    definitions: () => {
+      counted.reads += 1;
+
+      return { snapshotHash: 'sha256:test' };
+    },
+  });
+
+  const dryEvent = await writeOwnerMessageRecord(dry.memory.log, message);
+
+  await dry.rememberAsTask(
+    { eventID: `#${String(dryEvent)}` },
+    { thread: 'task-4', logThread: 'conversation' },
+  );
+
+  const attempt = { reads: 0 };
+
+  const ctx = await setupTest({
+    gate,
+    definitions: () => {
+      attempt.reads += 1;
+
+      if (attempt.reads === counted.reads) {
+        throw new Error('the definitions read failed');
+      }
+
+      return { snapshotHash: 'sha256:test' };
+    },
+  });
+
+  const sequence = await writeOwnerMessageRecord(ctx.memory.log, message);
+
+  const save = ctx.rememberAsTask(
+    { eventID: `#${String(sequence)}` },
+    { thread: 'task-4', logThread: 'conversation' },
+  );
+
+  const [settled] = await Promise.allSettled([save]);
+
+  const versions = await ctx.memory.writer.db
+    .$extendTables<MemoryTables>()
+    .selectFrom('memory_versions')
+    .select('item_id')
+    .execute();
+
+  const kinds = await ctx.readRecordKinds(sequence);
+  const notices = await ctx.memory.store.readNotices('task-4');
+
+  expect(settled?.status).toBe('rejected');
+  expect(attempt.reads).toBe(counted.reads);
+  expect(versions).toStrictEqual([]);
+  expect(kinds).not.toContain('memory.version_added');
+  expect(notices).toStrictEqual([]);
 });
 
 test('it proposes a granted task save the checker does not assert, with one proposal record', async () => {
