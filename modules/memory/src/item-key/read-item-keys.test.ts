@@ -1,4 +1,6 @@
 import { expect, test } from 'bun:test';
+import { readFileSync, readdirSync } from 'node:fs';
+import { join, relative } from 'node:path';
 import { readRecords, removeRecordKey } from '@heynixie/log';
 import { buildMockProvenance } from '../test-utils/build-mock-provenance';
 import { createQuotedProposal } from '../test-utils/create-quoted-proposal';
@@ -249,4 +251,25 @@ test('it answers shredded to a writer when the item key is gone', async () => {
   const current = await readCurrentItemKey(ctx.memory.log, item.itemID);
 
   expect(current).toStrictEqual({ status: 'shredded' });
+});
+
+test('it is the only way a module file reads an item key, apart from the 4 listed files', () => {
+  const root = join(import.meta.dir, '..');
+
+  // each file here reads a key that is not an item's value key, or reads it as the writer
+  const allowed = new Map([
+    ['item-key/read-item-keys.ts', 'the lookup itself'],
+    ['item-key/read-current-item-key.ts', 'the writer variant, which reads one item key to seal'],
+    ['purge/read-bridge-quotes.ts', "reads the key of a quoted record, which no item's key seals"],
+    ['utils/record/read-held-record-keys.ts', 'reads the keys a cleanup deletes'],
+  ]);
+
+  const importers = readdirSync(root, { recursive: true, encoding: 'utf8' })
+    .filter((path) => path.endsWith('.ts') && !path.endsWith('.test.ts'))
+    .filter((path) => !path.startsWith('test-utils/'))
+    .filter((path) => readFileSync(join(root, path), 'utf8').includes('readRecordKeys'))
+    .map((path) => relative('.', path))
+    .toSorted();
+
+  expect(importers).toStrictEqual([...allowed.keys()].toSorted());
 });
