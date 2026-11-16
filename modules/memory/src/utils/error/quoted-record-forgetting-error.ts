@@ -5,7 +5,7 @@ export class QuotedRecordForgettingError extends Error {
 
   constructor(recordSequence: number) {
     super(
-      `the message at sequence ${String(recordSequence)} was removed, so a quote of it cannot back this write. Write it again with no quote`,
+      `the message at sequence ${String(recordSequence)} was removed, so a quote of it cannot back this write. Write it again with no quote and no event ID`,
     );
   }
 }

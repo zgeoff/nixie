@@ -6,12 +6,6 @@ export interface WriteGroup {
 }
 
 export function buildWriteGroup(caller: WriteCaller, newestMessage: number | null): WriteGroup {
-  if (caller.batchID !== undefined) {
-    const key = `batch/${caller.batchID}`;
-
-    return { capGroup: key, noticeKey: key };
-  }
-
   if (caller.origin === 'conversation' && newestMessage !== null) {
     const key = `turn/${caller.thread}/${String(newestMessage)}`;
 

@@ -103,7 +103,7 @@ test('it answers an end time that has passed with a tool error', async () => {
   });
 });
 
-test('it answers a quote of a message whose forget began with a tool error that says to write it again with no quote', async () => {
+test('it answers a quote of a message whose forget began with a tool error that says to write it again with no quote and no event ID', async () => {
   const memory = await startTestMemory({
     gate: { check: () => Promise.resolve(buildMockCheckerAnswer()) },
   });
@@ -133,7 +133,7 @@ test('it answers a quote of a message whose forget began with a tool error that 
 
   expect(outcome).toStrictEqual({
     status: 'error',
-    message: `the message at sequence ${String(sequence)} was removed, so a quote of it cannot back this write. Write it again with no quote`,
+    message: `the message at sequence ${String(sequence)} was removed, so a quote of it cannot back this write. Write it again with no quote and no event ID`,
   });
 });
 

@@ -27,7 +27,7 @@ export function renderMemoryLine(
 ): string {
   const owner = options.ownerName ?? 'the owner';
 
-  if (version.isBridge) {
+  if (version.isBridge === true) {
     return [
       `${version.shortID} v${version.shownVersion}`,
       formatMemoryDay(version.recordedAt, options),
