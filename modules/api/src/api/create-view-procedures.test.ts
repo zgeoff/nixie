@@ -244,44 +244,36 @@ test('#tasks.listEnded names a withdrawn task as tasks.read does, by the version
   expect([read.name, read.brief]).toStrictEqual(['Water the seedlings', 'Water the seed trays.']);
 });
 
-test('#tasks.listEnded gives the profile of its one task when newer withdrawn tasks have open runs', async () => {
+test('#tasks.listEnded gives the profile of its one task when 20 newer withdrawn tasks have open runs', async () => {
   const ctx = await setupTest();
+
+  const crowdIDs = Array.from({ length: 20 }, (_, index) => `prune-the-roses-${index}`);
 
   await ctx.writeDefinition(
     'water-the-tomatoes',
     'name: Water the tomatoes\nbrief: Water the beds.\n',
   );
 
-  await ctx.writeDefinition('prune-the-roses', 'name: Prune the roses\nbrief: Cut the wood.\n');
+  await Promise.all(
+    crowdIDs.map((id) => ctx.writeDefinition(id, `name: Prune ${id}\nbrief: Cut the wood.\n`)),
+  );
+
   await ctx.runSeed();
 
   const stored = await ctx.readDefinitions();
   const defined = await ctx.client.definitions.listTasks({});
 
   const tomatoes = stored.find((entry) => entry.definitionID === 'water-the-tomatoes');
-  const roses = stored.find((entry) => entry.definitionID === 'prune-the-roses');
 
   const tomatoesTask = defined.definitions.find(
     (entry) => entry.definitionID === 'water-the-tomatoes',
   )?.taskID;
 
-  const rosesTask = defined.definitions.find(
-    (entry) => entry.definitionID === 'prune-the-roses',
-  )?.taskID;
-
-  if (
-    tomatoes === undefined ||
-    roses === undefined ||
-    tomatoesTask === undefined ||
-    tomatoesTask === null ||
-    rosesTask === undefined ||
-    rosesTask === null
-  ) {
+  if (tomatoes === undefined || tomatoesTask === undefined || tomatoesTask === null) {
     throw new Error('the seed bound no task');
   }
 
   ctx.definitionStore.add(tomatoes.definitionHash, {});
-  ctx.definitionStore.add(roses.definitionHash, {});
 
   await ctx.seed.endedDefinitionRun({
     taskID: tomatoesTask,
@@ -289,14 +281,28 @@ test('#tasks.listEnded gives the profile of its one task when newer withdrawn ta
     definitionHash: tomatoes.definitionHash,
   });
 
-  await ctx.seed.openDefinitionRun({
-    taskID: rosesTask,
-    definitionID: 'prune-the-roses',
-    definitionHash: roses.definitionHash,
-  });
+  for (const definitionID of crowdIDs) {
+    const entry = stored.find((candidate) => candidate.definitionID === definitionID);
+
+    const taskID = defined.definitions.find(
+      (candidate) => candidate.definitionID === definitionID,
+    )?.taskID;
+
+    if (entry === undefined || taskID === undefined || taskID === null) {
+      throw new Error('the seed bound no task');
+    }
+
+    ctx.definitionStore.add(entry.definitionHash, {});
+
+    await ctx.seed.openDefinitionRun({
+      taskID,
+      definitionID,
+      definitionHash: entry.definitionHash,
+    });
+  }
 
   await ctx.removeDefinition('water-the-tomatoes');
-  await ctx.removeDefinition('prune-the-roses');
+  await Promise.all(crowdIDs.map((id) => ctx.removeDefinition(id)));
   await ctx.runSeed();
 
   const listed = await ctx.client.tasks.listEnded({ limit: 1 });
