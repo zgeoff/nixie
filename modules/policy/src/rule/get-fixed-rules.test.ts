@@ -7,3 +7,9 @@ test('it lists the test rule, then the queue check rule, in a test build', () =>
     'slice1.queue-check',
   ]);
 });
+
+test('it holds no rule that names task.define or task.undefine', () => {
+  const tools = getFixedRules().flatMap((entry) => entry.rule.tools ?? []);
+
+  expect(tools).not.toIncludeAnyMembers(['task.define', 'task.undefine']);
+});

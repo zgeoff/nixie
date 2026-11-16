@@ -320,6 +320,26 @@ test('it refuses a tool that only the conversation can use, though the starter h
   });
 });
 
+test.each(['task.define', 'task.undefine'])(
+  'it refuses a start that lists %s, which only the conversation holds',
+  (tool) => {
+    expect(
+      planTaskStart(
+        { tools: [tool] },
+        { tools: ['tasks.list', 'task.message', tool], memory: 'read', persona: 'default' },
+        buildMockTaskStartBounds({ conversationTools: ['task.define', 'task.undefine'] }),
+      ),
+    ).toStrictEqual({
+      status: 'refused',
+      refusal: {
+        reason: 'conversation_tools',
+        tools: [tool],
+        accepted: ['tasks.list', 'task.message'],
+      },
+    });
+  },
+);
+
 function setupTest() {
   const starter = {
     tools: [
