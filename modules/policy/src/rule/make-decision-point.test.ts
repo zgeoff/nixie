@@ -293,9 +293,9 @@ test('it grants a destination the rule permission without letting the rule decid
   });
 });
 
-test('it grants a destination the job permission from the definition that runs the call', async () => {
+test('it grants a destination the task permission from the definition that runs the call', async () => {
   const ctx = buildTestDecisionPoint({
-    jobDestinations: ['*@example.org'],
+    taskDestinations: ['*@example.org'],
     rules: [buildRuleEntry('allow-sends', { outcome: 'allow', effects: ['send'] })],
   });
 
@@ -307,13 +307,13 @@ test('it grants a destination the job permission from the definition that runs t
   );
 
   expect(decided.decision.destinations).toStrictEqual([
-    { value: 'sam@example.org', permission: 'job' },
+    { value: 'sam@example.org', permission: 'task' },
   ]);
 });
 
-test('it grants no job permission to a call with no definition', async () => {
+test('it grants no task permission to a call with no definition', async () => {
   const ctx = buildTestDecisionPoint({
-    jobDestinations: ['*@example.org'],
+    taskDestinations: ['*@example.org'],
     rules: [buildRuleEntry('allow-sends', { outcome: 'allow', effects: ['send'] })],
   });
 
@@ -398,7 +398,7 @@ test('it asks about test.send and allows actions.log in the release bundle, whic
       'const decide = makeDecisionPoint({',
       '  findDeclaration: () => declaration,',
       '  readInputs: async () => ({ rules: [], contacts: [], tools: new Map(), ownerDestinations: [] }),',
-      '  findJobDestinations: () => [],',
+      '  findTaskDestinations: () => [],',
       '  readConsent: async () => null,',
       '});',
       'const base = { context: "task", definitionID: null, args: {}, destinations: [], sources: [], at: 1, turnMessageSequence: null, onBehalfOf: [], snapshot: "s" };',

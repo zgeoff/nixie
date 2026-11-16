@@ -17,7 +17,7 @@ export interface TestDecisionPointOptions {
   readonly inputs?: Partial<PolicyInputs>;
   readonly messages?: readonly ConsentMessage[];
   readonly answer?: ConsentAnswer;
-  readonly jobDestinations?: readonly string[];
+  readonly taskDestinations?: readonly string[];
   readonly linkMaxAgeMs?: number;
 }
 
@@ -57,7 +57,7 @@ export function buildTestDecisionPoint(options: TestDecisionPointOptions = {}): 
         ownerDestinations: [],
         ...options.inputs,
       }),
-    findJobDestinations: () => options.jobDestinations ?? [],
+    findTaskDestinations: () => options.taskDestinations ?? [],
     readConsent: (call, facts) =>
       checkConsent(
         {

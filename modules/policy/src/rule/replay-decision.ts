@@ -5,7 +5,7 @@ import { makeDecisionPoint } from './make-decision-point';
 
 export type ReplayOptions = Pick<
   DecisionPointOptions,
-  'findDeclaration' | 'findJobDestinations' | 'readInputs'
+  'findDeclaration' | 'findTaskDestinations' | 'readInputs'
 >;
 
 // What a tool_called record holds: the call's input and destinations, the decision it stored and

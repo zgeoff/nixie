@@ -51,7 +51,7 @@ async function setupTest() {
       findDeclaration: () => forget.tool.declaration,
       readInputs: () =>
         Promise.resolve({ rules, contacts: [], tools: new Map(), ownerDestinations: [] }),
-      findJobDestinations: () => [],
+      findTaskDestinations: () => [],
       readConsent: () => Promise.resolve(null),
     });
 

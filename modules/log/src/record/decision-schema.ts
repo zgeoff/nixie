@@ -1,8 +1,13 @@
 import { z } from 'zod';
 import type { Decision } from '../types';
 
-const destinationSchema = z.object({ destination: z.string(), permission: z.string().nullable() });
-const permissionSchema = z.enum(['owner', 'reply_target', 'known_contact', 'job', 'rule']);
+const permissionSchema = z.enum(['owner', 'reply_target', 'known_contact', 'task', 'rule']);
+
+const destinationSchema = z.object({
+  destination: z.string(),
+  permission: permissionSchema.nullable(),
+});
+
 const contextSchema = z.enum(['conversation', 'task', 'coding']);
 const sourceSchema = z.enum(['owner', 'own_data', 'task', 'outside']);
 

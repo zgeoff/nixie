@@ -46,7 +46,7 @@ export function makeServerDecisions(options: ServerDecisionsOptions): DecisionPo
           ownerDestinations: [],
         };
       },
-      findJobDestinations: () => [],
+      findTaskDestinations: () => [],
       readConsent:
         overrides?.readConsent ??
         ((call, facts) =>

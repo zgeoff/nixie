@@ -7,7 +7,7 @@ export interface PermissionSources {
   readonly contacts: readonly KnownContact[];
 
   // the allowed destinations of the definition whose task run makes the call
-  readonly jobDestinations: readonly string[];
+  readonly taskDestinations: readonly string[];
 
   // the allow rules that match the whole call
   readonly allowRules: readonly Rule[];
@@ -37,8 +37,8 @@ function pickPermission(
     return 'known_contact';
   }
 
-  if (sources.jobDestinations.some((pattern) => isPatternMatch(pattern, destination.value))) {
-    return 'job';
+  if (sources.taskDestinations.some((pattern) => isPatternMatch(pattern, destination.value))) {
+    return 'task';
   }
 
   const isRuleCovered = sources.allowRules.some((rule) =>

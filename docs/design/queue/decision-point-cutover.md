@@ -105,8 +105,8 @@ type Decision = {
   defect?: 'direct_request' | 'repeat';
   destinations: Array<{
     value: string;
-    permission: 'owner' | 'reply_target' | 'known_contact' | 'job' | 'rule' | null;
-  }>; // 'job': the allowed destinations of the task definition
+    permission: 'owner' | 'reply_target' | 'known_contact' | 'task' | 'rule' | null;
+  }>; // 'task': the allowed destinations of the task definition
   consent?: {
     messageIDs: string[];
     codeCheck: 'pass' | 'fail';
@@ -366,9 +366,9 @@ nixie proposals reject k3x9m2p7qa --reason "Not this week"
   such as a new Cc on a reply to all, the action fails and sends to none of them. A message in Spam
   or Trash, or one whose From is your own account, gives no reply target.
 - Stage 5 gives each destination the first permission that covers it, in this order: `owner`,
-  `reply_target`, `known_contact`, `job`, `rule`.
-- `job` covers a destination that matches a pattern in the allowed destinations of the definition
-  whose task run makes the call. A call with no `definitionID` gets no `job` permission.
+  `reply_target`, `known_contact`, `task`, `rule`.
+- `task` covers a destination that matches a pattern in the allowed destinations of the definition
+  whose task run makes the call. A call with no `definitionID` gets no `task` permission.
 - `rule` covers a destination that matches a pattern of an allow rule that matches the whole call.
   At stage 5 that match gives only the permission; stage 7 still decides the call's outcome.
 - When a destination has no permission, stage 5 passes the call on only when consent holds: the code

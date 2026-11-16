@@ -42,7 +42,7 @@ export function readScenarioRunner(options: ScenarioOptions = {}) {
         tools: new Map(),
         ownerDestinations: ['owner'],
       }),
-    findJobDestinations: () => [],
+    findTaskDestinations: () => [],
     readConsent: (call, facts) =>
       checkConsent(
         {

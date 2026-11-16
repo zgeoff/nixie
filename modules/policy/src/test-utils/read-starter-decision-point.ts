@@ -20,7 +20,7 @@ export function readStarterDecisionPoint(
     findDeclaration,
     readInputs: () =>
       Promise.resolve({ rules, contacts: [], tools: new Map(), ownerDestinations: [] }),
-    findJobDestinations: () => [],
+    findTaskDestinations: () => [],
     readConsent: () => Promise.resolve(null),
     ...overrides,
   });
