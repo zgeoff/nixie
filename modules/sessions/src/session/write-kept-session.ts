@@ -58,6 +58,25 @@ export async function writeKeptSession(spec: KeptSessionSpec): Promise<void> {
   );
 }
 
+// True when the sandbox already holds the transcript, as a kept sandbox does after it took a turn.
+export async function holdsTranscript(
+  sandbox: Sandbox,
+  command: GuestCommand,
+  transcript: string,
+): Promise<boolean> {
+  const home = await sandbox.resolveHome(command.env);
+
+  const paths = await sandbox
+    .readFilePaths(join(home.copyPath, configProjectsDir), { maxDepth: 2 })
+    .catch((): readonly string[] => []);
+
+  return paths.some((path) => {
+    const parts = path.split('/');
+
+    return parts.length === 2 && parts[1] === transcript;
+  });
+}
+
 interface SessionFiles {
   readonly projectDir: string;
 

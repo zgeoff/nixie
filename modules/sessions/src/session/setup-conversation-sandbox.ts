@@ -42,16 +42,12 @@ export async function setupConversationSandbox(
 
   const target = await (kept ?? options.sandboxes.create(spec));
 
-  // A kept sandbox holds the newest session. A replaced one that survived an earlier failed destroy
-  // is older, so copying from it would overwrite the kept transcript.
-  if (kept === undefined) {
-    await writeReplacedSession({
-      ...options,
-      listSessionFiles: options.harness.session?.listFiles ?? null,
-      replaced,
-      target,
-    });
-  }
+  await writeReplacedSession({
+    ...options,
+    listSessionFiles: options.harness.session?.listFiles ?? null,
+    replaced,
+    target,
+  });
 
   await removeSandboxes(replaced, options.log);
 

@@ -4,7 +4,7 @@ import type { TasksContext } from '@heynixie/tasks';
 import { conversationTaskID, readSessionBoundary } from '@heynixie/tasks';
 import type { SessionPoint } from '@heynixie/wire';
 import { parseSessionBoundary } from '../utils/parse-session-boundary';
-import { writeKeptSession } from './write-kept-session';
+import { holdsTranscript, writeKeptSession } from './write-kept-session';
 
 export interface ReplacedSessionSpec {
   readonly context: TasksContext;
@@ -54,16 +54,27 @@ async function tryWriteKeptSession(spec: KeptSessionSource, from: Sandbox): Prom
     const resume = parseSessionBoundary(boundary);
 
     if (resume !== null) {
-      await writeKeptSession({
-        from,
-        to: spec.target,
-        command: spec.command,
-        files: spec.listSessionFiles(resume),
-      });
+      const files = spec.listSessionFiles(resume);
+
+      // A kept target that holds the transcript is newer than a replaced sandbox that survived a
+      // failed destroy, so a copy would overwrite its later turns.
+      if (!(await holdsTarget(spec, files))) {
+        await writeKeptSession({ from, to: spec.target, command: spec.command, files });
+      }
     }
 
     return null;
   } catch (error) {
     return `${from.id}: ${error instanceof Error ? error.message : String(error)}`;
   }
+}
+
+function holdsTarget(spec: ReplacedSessionSpec, files: readonly string[]): Promise<boolean> {
+  const [transcript] = files;
+
+  if (transcript === undefined) {
+    return Promise.resolve(false);
+  }
+
+  return holdsTranscript(spec.target, spec.command, transcript);
 }
