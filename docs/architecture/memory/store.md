@@ -2,8 +2,8 @@
 
 A memory item is one stored fact, such as "the spare key sits under the blue flowerpot", and every
 change to it adds a version that nixie never rewrites. Each item has its own key, and every version
-of the item's text is encrypted under it, so a forget deletes one key and every version becomes
-unreadable at once, in the database and in every backup of it, under
+of the item's text is encrypted under it, so a forget deletes the item's keys and every version
+becomes unreadable at once, in the database and in every backup of it, under
 [0007](../../decisions/0007-crypto-shredding.md). The model and the client reach memory through one
 interface whose verbs are recall, remember, retire, restore, undo, pin and forget. The
 `modules/memory` package holds the store.
@@ -147,18 +147,27 @@ Every reader finds a key through `readItemKeys`, which takes a version, a versio
 or a labels value and answers `readable`, `removed`, `shredded` or `unreadable`. It reads the key
 rows, then the keys, then the removal marks again, so a key that vanished while a purge was about to
 close reads `removed`, never `shredded`. A writer that seals a new value calls `readCurrentItemKey`,
-which answers for the item's current generation key. A test lists the files that call
-`readRecordKeys`, so no other file reads an item's key. The memory forget deletes the item's keys by
-the `<item UUID>/` prefix and the UUID itself.
+which answers for the item's current generation key. It sits in a file of its own beside the lookup,
+because a writer has no record sequence to resolve. The memory forget deletes the item's keys by the
+`<item UUID>/` prefix and the UUID itself.
+
+A test in `read-item-keys.test.ts` lists every file under `modules/memory/src` that calls
+`readRecordKeys`, and fails on any file outside its list. The list holds 4 files, each with its
+reason in the test:
+
+- the lookup and the writer variant, which read item keys;
+- the held record key reader, whose only callers are the key cleanups;
+- the bridge quote reader, which reads the key of a quoted record, a key that seals no item value.
 
 ### The evidence purge
 
 A purge removes the copies of a forgotten message that a memory item holds: its older versions and
 pending proposals. `memory.evidence_purge_started` fixes the items to purge. From then on every
-reader reads each older version and pending proposal of those items as removed, and a write that
-edits one of them fails with `ItemPurgingError`. A write that quotes a record whose forget has begun
-fails with `QuotedRecordForgettingError`, and an undo of a version that reads removed fails with
-`VERSION_REMOVED`.
+reader reads each older version and pending proposal of those items as removed, and every proposal
+write for one of those items fails with `ItemPurgingError` until its purge finishes. A write that
+quotes a record whose forget has begun fails with `QuotedRecordForgettingError`, and an undo of a
+version that reads removed fails with `VERSION_REMOVED`. [Memory writes](writes.md) gives when each
+refusal applies and what the tool tells the model.
 
 The purge of one item runs in one commit. It lapses the item's pending proposals, writes a bridge
 version under a new version key when the current text shared generation 0, closes the item's old
@@ -171,7 +180,11 @@ change or origin.
 `memory.evidence_purge_started`, `memory.evidence_purge_closed` and `memory.evidence_purged`, and
 hold what the lookup reads. The server start finishes every purge that a started record still owes,
 and the session cleanup of a record forget finishes the purge of that record's set before the forget
-writes `record.forgotten`. Nothing in the record forget writes `memory.evidence_purge_started` yet.
+writes `record.forgotten`. The record forget runs the session cleanup once for each record it
+destroys: the task start calls first, and the forgotten record last, so every session has rebuilt
+before a purge deletes a key. Each call finishes only the purge set of its own record, and a start
+call owns none. No record forget writes `memory.evidence_purge_started`, so the server start and the
+session cleanup finish only a purge set that the log already holds.
 
 ## Recall
 
@@ -331,7 +344,7 @@ durable operation in 2 parts:
 
 1. Under the delivery lock, nixie checks the item and its version, appends a record that marks the
    item forgetting, and drops the item from the index. From here no recall delivers the item.
-2. The cleanup deletes the item's key and checkpoints the key store, drops the index entry again,
+2. The cleanup deletes the item's keys and checkpoints the key store, drops the index entry again,
    runs the session cleanup for every live session, and appends the record that marks the item
    forgotten.
 

@@ -78,6 +78,13 @@ user did not write those words as their own. Inline quotation marks are left to 
 that holds a Unicode format character fails, so an invisible character never splits a word that the
 token check compares.
 
+A write whose quote names a message that a record forget has begun on fails with
+`QuotedRecordForgettingError`, and writes no item, version or proposal. The write transaction checks
+the message's `record.forget_started`, so a write that found its quote before the forget began fails
+too. The check covers the message the gate found for a quote or a retirement's intent quote, and the
+event ID the caller named, even when the gate stopped before it read that message. The tool answers
+the model that the message was removed and that it can write the fact again with no quote.
+
 ### The token check
 
 Code finds each destination-like token in the memory text and requires it in the quote: email
@@ -321,6 +328,12 @@ unreadable too. The plain columns hold the review reason, the checks and the pro
 of proposals by review reason decrypts nothing. The proposal record and its column keep the reason
 word for word, and every reader shows a reason the release does not know as `other`, because a
 rollback leaves a later release's proposals in the log and the table.
+
+A proposal for an item whose [evidence purge](store.md#the-evidence-purge) has not finished fails
+with `ItemPurgingError` and writes nothing. The proposal transaction also checks that the key the
+proposal was sealed under is still the item's current key, so a purge that closed between the seal
+and the commit refuses the proposal the same way. The tool tells the model the item is changing and
+to try again later.
 
 The user approves, edits or rejects each proposal against the hash of the operation they saw, and a
 hash that no longer matches refuses the answer. An approval applies the bound operation and records

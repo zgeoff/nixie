@@ -147,10 +147,12 @@ memory_item_keys, a projection, one row per key of an item
   removed_sequence       integer          -- the closing record that deleted it
 
 memory_evidence_purges, a projection, one row per item of a purge
-  record_sequence        integer not null -- (record_sequence, item_id) is the primary key
+  purge_key              text primary key -- '<record_sequence>/<item_id>'
+  record_sequence        integer not null -- the forgotten record; the started record's own sequence when no record forget owns the purge
   item_id                text not null
   closed_sequence        integer          -- its memory.evidence_purge_closed record
   purged_sequence        integer          -- its memory.evidence_purged record
+  bridge_version         integer          -- the bridge version, from the closed record; null with no bridge
   labels_revision        integer          -- the revision of the labels reseal, from the closed record
 ```
 
