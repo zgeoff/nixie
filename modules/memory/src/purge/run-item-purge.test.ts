@@ -3,6 +3,7 @@ import { readRecordKeys, readRecords, removeRecordKey } from '@heynixie/log';
 import { readTestRecordKeyRows } from '@heynixie/log/test-utils';
 import { buildTestClock } from '@heynixie/testing';
 import { buildMockProvenance } from '../test-utils/build-mock-provenance';
+import type { QuotedProposal } from '../test-utils/create-quoted-proposal';
 import { createQuotedProposal } from '../test-utils/create-quoted-proposal';
 import { seedBegunPurge } from '../test-utils/seed-begun-purge';
 import { seedForgettingMemoryItem } from '../test-utils/seed-forgetting-memory-item';
@@ -38,6 +39,18 @@ async function setupTest() {
 
       return entries.map((entry) => entry.record);
     },
+    readKeyIDs: async () => {
+      const rows = await readTestRecordKeyRows(memory.writer);
+
+      return new Set(rows.map((row) => row.key_id));
+    },
+    reject: (proposal: QuotedProposal, reason: string) =>
+      memory.store.proposals.reject({
+        proposalID: proposal.proposal.proposalID,
+        actionHash: proposal.proposal.actionHash,
+        identityID: 'identity-1',
+        reason,
+      }),
   };
 }
 
@@ -113,6 +126,98 @@ test('it deletes every closed key of the item and writes the last mark once', as
     bridgeVersion: 2,
     labelsRevision: 3,
   });
+});
+
+test("it deletes only the item's own keys and its rejection keys, and keeps every key of another item", async () => {
+  const ctx = await setupTest();
+  const forgotten = await ctx.writeMessage('I keep bees on the allotment.');
+  const kept = await ctx.writeMessage('I keep hens in the yard.');
+
+  const purged = await ctx.memory.store.remember({
+    text: 'Keeps bees on the allotment',
+    evidence: { recordSequence: forgotten, start: 0, end: 11 },
+    evidenceQuote: 'I keep bees',
+    labels: ctx.labels,
+    provenance: buildMockProvenance(),
+  });
+
+  const purgedNext = await ctx.memory.store.remember({
+    text: 'Keeps two hives on the allotment',
+    target: purged,
+    provenance: buildMockProvenance(),
+  });
+
+  const rejected = await createQuotedProposal(ctx.memory, {
+    message: 'I keep three hives now.',
+    text: 'Keeps three hives',
+    quote: 'I keep three hives',
+    target: purgedNext,
+  });
+
+  const beforeRejection = await ctx.readKeyIDs();
+
+  await ctx.reject(rejected, 'Still two hives');
+
+  const afterRejection = await ctx.readKeyIDs();
+
+  await createQuotedProposal(ctx.memory, {
+    message: 'I keep four hives now.',
+    text: 'Keeps four hives',
+    quote: 'I keep four hives',
+    target: purgedNext,
+  });
+
+  const beforeOther = await ctx.readKeyIDs();
+
+  const other = await ctx.memory.store.remember({
+    text: 'Keeps hens in the yard',
+    evidence: { recordSequence: kept, start: 0, end: 11 },
+    evidenceQuote: 'I keep hens',
+    labels: { gist: 'keeps hens', topic: 'garden', triggers: ['hens'] },
+    provenance: buildMockProvenance(),
+  });
+
+  const otherNext = await ctx.memory.store.remember({
+    text: 'Keeps six hens in the yard',
+    target: other,
+    provenance: buildMockProvenance(),
+  });
+
+  const otherRejected = await createQuotedProposal(ctx.memory, {
+    message: 'I keep seven hens now.',
+    text: 'Keeps seven hens',
+    quote: 'I keep seven hens',
+    target: otherNext,
+  });
+
+  await ctx.reject(otherRejected, 'Still six hens');
+
+  await createQuotedProposal(ctx.memory, {
+    message: 'I keep eight hens now.',
+    text: 'Keeps eight hens',
+    quote: 'I keep eight hens',
+    target: otherNext,
+  });
+
+  const beforePurge = await ctx.readKeyIDs();
+
+  await seedBegunPurge(ctx.memory.log, { recordSequence: forgotten, itemIDs: [purged.itemID] });
+
+  await ctx.memory.store.purgeItemEvidence({ recordSequence: forgotten, itemID: purged.itemID });
+
+  const afterPurge = await ctx.readKeyIDs();
+
+  const rejectionKeyIDs = [...afterRejection].filter((keyID) => !beforeRejection.has(keyID));
+  const otherKeyIDs = [...beforePurge].filter((keyID) => !beforeOther.has(keyID));
+
+  expect(rejectionKeyIDs).toHaveLength(1);
+  expect(otherKeyIDs).toIncludeAllMembers([other.itemID]);
+
+  expect([...beforePurge].filter((keyID) => !afterPurge.has(keyID)).toSorted()).toStrictEqual(
+    [purged.itemID, ...rejectionKeyIDs].toSorted(),
+  );
+
+  expect(otherKeyIDs.filter((keyID) => !afterPurge.has(keyID))).toStrictEqual([]);
 });
 
 test('it writes nothing when the purge runs again', async () => {
