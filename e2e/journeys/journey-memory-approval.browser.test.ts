@@ -51,6 +51,11 @@ test('it makes a memory the model proposed active once the user approves it on t
     'document.querySelector(\'li[aria-label="The user keeps bees on the allotment."] button[name="approve"]:not([disabled])\') !== null',
   );
 
+  // the expanded card's labels push the button below the window, and a click never scrolls
+  await ctx.view.evaluate(
+    'document.querySelector(\'li[aria-label="The user keeps bees on the allotment."] button[name="approve"]\').scrollIntoView()',
+  );
+
   await ctx.view.click(
     'li[aria-label="The user keeps bees on the allotment."] button[name="approve"]',
   );

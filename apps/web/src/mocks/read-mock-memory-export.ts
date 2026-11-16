@@ -81,7 +81,9 @@ function toExportItem(item: StoredMemoryItem) {
 // A mock item has no label edits, so its labels are the ones nixie derives for an item without any.
 function buildMockLabels(item: StoredMemoryItem, text: string) {
   return {
-    gist: [...text.replaceAll(/\s+/gu, ' ').trim()].slice(0, 80).join(''),
+    gist: Array.from(text.replaceAll(/\s+/gu, ' ').trim(), (character) => character)
+      .slice(0, 80)
+      .join(''),
     topic: item.subject,
     triggers: [],
   };

@@ -5,7 +5,11 @@ const emptyTextGist = 'memory item';
 
 export function buildDerivedLabels(text: string, subject: MemorySubject): Labels {
   const flattened = text.replaceAll(/\s+/gu, ' ').trim();
-  const gist = [...flattened].slice(0, gistLength).join('').trim();
+
+  const gist = Array.from(flattened, (character) => character)
+    .slice(0, gistLength)
+    .join('')
+    .trim();
 
   return { gist: gist === '' ? emptyTextGist : gist, topic: subject, triggers: [] };
 }

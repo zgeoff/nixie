@@ -11,7 +11,7 @@ export const labelsSchema = z.strictObject({
 function buildLine(minLength: number, maxLength: number) {
   return z.string().refine(
     (value) => {
-      const length = [...value].length;
+      const length = Array.from(value, (character) => character).length;
 
       return length >= minLength && length <= maxLength && !lineBreak.test(value);
     },
