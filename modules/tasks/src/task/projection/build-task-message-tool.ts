@@ -22,7 +22,7 @@ export function buildTaskMessageTool(
       'Sends a message to another task by the ID that tasks.list gives, such as conversation for ' +
       `the conversation with ${owner}. Use question or request when you need an answer: you ` +
       'then wait on that task until it sends a reply whose replyTo is your message ID. A task that ' +
-      'runs on its own schedule opens no wait: it reads the message at its next run, and its ' +
+      'is asleep (tasks.list says so) opens no wait: it reads the message at its next run, and its ' +
       'reply, if any, arrives as a new message. Answer a ' +
       'message with kind reply and replyTo set to its ID. Use progress, report or chat for news ' +
       `that needs no answer. A message never counts as ${owner}'s own words. When ${owner} asked ` +

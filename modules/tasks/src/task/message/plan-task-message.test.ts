@@ -124,21 +124,71 @@ test('it sends a message that reaches the limit exactly, and wakes the receiver'
   });
 });
 
-test('it holds a request for a scheduled receiver until its next run, and opens no wait', () => {
+test.each([
+  { kind: 'question', receiverState: 'waiting', hold: 'next_run', woke: false, opensWait: false },
+  { kind: 'request', receiverState: 'waiting', hold: 'next_run', woke: false, opensWait: false },
+  { kind: 'question', receiverState: 'running', hold: 'none', woke: true, opensWait: true },
+  { kind: 'request', receiverState: 'running', hold: 'none', woke: true, opensWait: true },
+  { kind: 'progress', receiverState: 'running', hold: 'none', woke: true, opensWait: false },
+] as const)(
+  'it plans a $kind to an asleep receiver in the $receiverState state as hold $hold',
+  (row) => {
+    expect(
+      planTaskMessage(
+        {
+          from: 'conversation',
+          to: 'sweeper',
+          kind: row.kind,
+          body: 'Skip the note about the bike.',
+          replyTo: null,
+          onBehalfOf: [],
+          wake: true,
+        },
+        {
+          senderHop: 0,
+          receiverState: row.receiverState,
+          isReplyToKnown: false,
+          ownerMessageIDs: new Set(),
+        },
+        {
+          directory: [
+            {
+              taskID: 'sweeper',
+              name: 'Sweeper',
+              brief: 'Saves.',
+              wakeable: false,
+              speaker: 'plain_task',
+            },
+          ],
+          hopLimit: 20,
+        },
+      ),
+    ).toStrictEqual({
+      status: 'send',
+      hop: 1,
+      woke: row.woke,
+      hold: row.hold,
+      opensWait: row.opensWait,
+      onBehalfOf: [],
+    });
+  },
+);
+
+test('it holds a message to a running asleep receiver past the hop limit', () => {
   expect(
     planTaskMessage(
       {
         from: 'conversation',
         to: 'sweeper',
-        kind: 'request',
+        kind: 'question',
         body: 'Skip the note about the bike.',
         replyTo: null,
         onBehalfOf: [],
         wake: true,
       },
       {
-        senderHop: 0,
-        receiverState: 'waiting',
+        senderHop: 3,
+        receiverState: 'running',
         isReplyToKnown: false,
         ownerMessageIDs: new Set(),
       },
@@ -152,15 +202,15 @@ test('it holds a request for a scheduled receiver until its next run, and opens 
             speaker: 'plain_task',
           },
         ],
-        hopLimit: 20,
+        hopLimit: 3,
       },
     ),
   ).toStrictEqual({
     status: 'send',
-    hop: 1,
+    hop: 4,
     woke: false,
-    hold: 'next_run',
-    opensWait: false,
+    hold: 'hop_limit',
+    opensWait: true,
     onBehalfOf: [],
   });
 });

@@ -123,7 +123,7 @@ test('it tells the sender, in a note, why a message past the hop limit did not w
   });
 });
 
-test('it tells the sender of a question to a task on its own schedule that a reply arrives as a new message', async () => {
+test('it tells the sender of a question to an asleep task that a reply arrives as a new message', async () => {
   const ctx = await setupTest();
 
   await createSystemTask(ctx.context, 'planner');
@@ -169,9 +169,7 @@ test('it tells the sender of a question to a task on its own schedule that a rep
       messageID: expect.toBeString(),
       woke: false,
       hop: 1,
-      note: expect.stringMatching(
-        /^Delivered to Sweeper as \w+\. .* You do not wait on them for an answer, and a reply, if any, arrives as a new message\. /u,
-      ),
+      note: 'Sweeper is asleep and reads this at its next run. A reply, if any, arrives as a new message.',
     },
   });
 });

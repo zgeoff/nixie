@@ -258,7 +258,7 @@ test('it leaves the receiver waiting for its next wake when the sender asks for 
   expect(next).toBeNull();
 });
 
-test('it holds a message for a task that runs on its own schedule, with no wake', async () => {
+test('it holds a message for an asleep task, with no wake', async () => {
   const ctx = await setupTest();
 
   await createSystemTask(ctx.context, 'planner');

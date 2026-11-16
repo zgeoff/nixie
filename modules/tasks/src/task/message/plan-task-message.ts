@@ -63,8 +63,9 @@ export function planTaskMessage(
   }
 
   const hop = facts.senderHop + 1;
-  const hold = pickHold(request.wake, hop > messaging.hopLimit, receiver?.wakeable);
-  const opensWait = isWaitingKind(request.kind) && receiver?.wakeable === true;
+  const isRunning = facts.receiverState === 'running';
+  const hold = pickHold(request.wake, hop > messaging.hopLimit, receiver?.wakeable, isRunning);
+  const opensWait = isWaitingKind(request.kind) && (receiver?.wakeable === true || isRunning);
 
   return {
     status: 'send',
@@ -113,12 +114,15 @@ function pickHold(
   wake: boolean,
   isOverLimit: boolean,
   wakeable: boolean | undefined,
+  isRunning: boolean,
 ): TaskMessageHold {
   if (!wake) {
     return 'none';
   }
 
-  if (wakeable === false) {
+  // A running task reads the message inside its open task run, so an asleep one is the only
+  // receiver that waits for its next run.
+  if (wakeable === false && !isRunning) {
     return 'next_run';
   }
 
