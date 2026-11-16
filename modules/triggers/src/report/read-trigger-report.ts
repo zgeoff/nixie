@@ -32,13 +32,18 @@ export async function readTriggerReport(
 ): Promise<readonly TriggerReportEntry[]> {
   const definitionID = query.definitionID;
 
-  // A slot is recorded at or after its time, so a record from before `sinceMs` holds no slot from it.
+  // The slot of a fire is a string and the newest slot of a skip is the last of an array. The
+  // slots are ISO instants in UTC, so they sort as text, and the filter in code decides the rest.
   const rows = await db
     .$extendTables<LogTables>()
     .selectFrom('records')
     .select(['sequence', 'kind', 'payload'])
     .where('kind', 'in', ['trigger.fired', 'trigger.skipped'])
-    .where('recorded_at', '>=', query.sinceMs)
+    .where(
+      sql`coalesce(json_extract(payload, '$.scheduledFor[#-1]'), json_extract(payload, '$.scheduledFor'))`,
+      '>=',
+      new Date(query.sinceMs).toISOString(),
+    )
     .$if(definitionID !== undefined, (builder) =>
       builder.where(sql`json_extract(payload, '$.definitionID')`, '=', definitionID ?? ''),
     )

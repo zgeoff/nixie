@@ -27,6 +27,7 @@ async function setupTest() {
     ...server.context,
     settings: defaultAPISettings,
     readSessionCleanup: () => null,
+    readZone: () => Promise.resolve('UTC'),
     passkeys: createPasskeyState(),
   };
 
@@ -240,6 +241,7 @@ test('it refuses a reset before any definitions are in force, and stops no work'
       ...server.context,
       settings: defaultAPISettings,
       readSessionCleanup: () => null,
+      readZone: () => Promise.resolve('UTC'),
       passkeys: createPasskeyState(),
     },
     adapter: server.sandboxes,

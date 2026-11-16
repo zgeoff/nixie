@@ -2,9 +2,11 @@ import { onTestFinished } from 'bun:test';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { actionsProjection } from '@heynixie/actions';
+import { readDefinitionVersion } from '@heynixie/definitions';
 import type { Writer } from '@heynixie/log';
 import { logProjections, startWriter } from '@heynixie/log';
 import { memoryProjections } from '@heynixie/memory';
+import type { ReadDefinitionVersion } from '@heynixie/tasks';
 import { tasksProjections } from '@heynixie/tasks';
 import {
   buildTestDefinitionStore,
@@ -13,6 +15,7 @@ import {
 } from '@heynixie/tasks/test-utils';
 import type { TestClock } from '@heynixie/testing';
 import { buildTestClock } from '@heynixie/testing';
+import { triggersProjections } from '@heynixie/triggers';
 import { apiProjections } from '../api/api-projections';
 import { createAPIApp } from '../api/create-api-app';
 import { createPasskeyState } from '../passkey/passkey-state';
@@ -79,6 +82,9 @@ async function createTestContext(
     'unwrapKey',
   ]);
 
+  const readStoredVersion: ReadDefinitionVersion = async (db, hash) =>
+    (await readDefinitionVersion(db, hash)) ?? definitionStore.readDefinitionVersion(db, hash);
+
   const context = {
     log: {
       writer,
@@ -90,18 +96,20 @@ async function createTestContext(
         ...apiProjections,
         ...memoryProjections,
         proposalsProjection,
+        ...triggersProjections,
       ],
     },
     clock: buildTestClock(1_000_000),
     definitions: () => ({ snapshotHash: 'sha256:test' }),
     runSettings: buildTestRunSettings(),
-    readDefinitionVersion: definitionStore.readDefinitionVersion,
     readDefinitionRunPolicy: definitionStore.readDefinitionRunPolicy,
     readDefinitionNextFire: definitionStore.readDefinitionNextFire,
+    readDefinitionVersion: readStoredVersion,
     runners: buildTestTaskRunners(),
     settings,
     passkeys: createPasskeyState(),
 
+    readZone: () => Promise.resolve('UTC'),
     readSessionCleanup: () => null,
   };
 

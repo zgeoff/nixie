@@ -269,6 +269,31 @@ the task's state allows. A started task whose name the user forgot shows under i
 returns one task with the same fields, whatever its place in the list, so a task's page shows a task
 past the cap.
 
+## Reading ended task runs, the trigger report and the definitions
+
+An ended task run is a task run that has ended with any cause. `tasks.listEnded` returns the ended
+task runs newest first, one page per call, each with its cause, who ended it, how it reported and
+what it used, and the sequence of its `task.run_ended` record. It also returns one listed task for
+each task of the page, with the same fields as a task read. A task of a definition that left force,
+with no task run open, shows under the name of the version that its newest ended task run pinned,
+and a task whose version is no longer stored has no entry, so a client shows its task runs by task
+ID. A page holds at most 100 task runs. Its `next` is the sequence of the last task run that the
+page holds, and the client sends it as `before` to read the page after. The last page has a `next`
+of null, so a client never reads an empty page.
+
+`triggers.report` returns the fires that came late and the fires that nixie skipped, newest first,
+from the start of a date in the user's zone. A late entry is a `trigger.fired` record that is a
+catch-up, with how many seconds late it fired. A skipped entry is a `trigger.skipped` record, with
+its reason, and its `scheduledFor` is the newest slot the record covers. An entry names its
+definition by the version that fired, then by the definition in force, then by the newest stored
+version, and last by the definition ID.
+
+`definitions.listTasks` returns each definition of the seed in force, with its trigger in words, the
+date of its next fire and the task bound to it. The next fire is null for a spent one-shot and for a
+definition with no armed trigger, such as a disabled one. A definition from the repo names the seed
+record that put its version in force, which is the oldest seed of the newest unbroken run of seeds
+that hold the same version.
+
 ## Reading and the live stream
 
 A conversation read returns the newest page of a thread before a sequence, and the log sequence it
