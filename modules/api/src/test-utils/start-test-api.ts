@@ -7,7 +7,7 @@ import { logProjections, startWriter } from '@heynixie/log';
 import { memoryProjections } from '@heynixie/memory';
 import { tasksProjections } from '@heynixie/tasks';
 import {
-  buildTestDefinitionReaders,
+  buildTestDefinitionStore,
   buildTestRunSettings,
   buildTestTaskRunners,
 } from '@heynixie/tasks/test-utils';
@@ -30,6 +30,7 @@ interface TestAPI {
   readonly writer: Writer;
   readonly clock: TestClock;
   readonly context: APIContext;
+  readonly definitionStore: ReturnType<typeof buildTestDefinitionStore>;
 
   readonly url: string;
 }
@@ -49,7 +50,9 @@ export async function startTestAPI(
 
   stack.defer(() => writer.stop());
 
-  const context = await createTestContext(writer, settings);
+  const definitionStore = buildTestDefinitionStore();
+
+  const context = await createTestContext(writer, settings, definitionStore);
 
   const served = startTestApp(context);
 
@@ -60,6 +63,7 @@ export async function startTestAPI(
     writer,
     clock: context.clock,
     context,
+    definitionStore,
     url: served.url,
     setMemory: served.setMemory,
   };
@@ -68,6 +72,7 @@ export async function startTestAPI(
 async function createTestContext(
   writer: Writer,
   settings: APIContext['settings'],
+  definitionStore: ReturnType<typeof buildTestDefinitionStore>,
 ): Promise<APIContext & { readonly clock: TestClock }> {
   const deploymentKey = await crypto.subtle.generateKey({ name: 'AES-KW', length: 256 }, false, [
     'wrapKey',
@@ -90,7 +95,9 @@ async function createTestContext(
     clock: buildTestClock(1_000_000),
     definitions: () => ({ snapshotHash: 'sha256:test' }),
     runSettings: buildTestRunSettings(),
-    ...buildTestDefinitionReaders(),
+    readDefinitionVersion: definitionStore.readDefinitionVersion,
+    readDefinitionRunPolicy: definitionStore.readDefinitionRunPolicy,
+    readDefinitionNextFire: definitionStore.readDefinitionNextFire,
     runners: buildTestTaskRunners(),
     settings,
     passkeys: createPasskeyState(),

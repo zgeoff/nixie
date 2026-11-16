@@ -63,6 +63,8 @@ export { buildTaskMessageTool } from './task/projection/build-task-message-tool'
 export { buildTaskStartTool } from './lease/build-task-start-tool';
 export { buildTaskCloseTool } from './task/build-task-close-tool';
 export { buildTasksListTool } from './task/build-tasks-list-tool';
+export { pickListedTaskState } from './task/pick-listed-task-state';
+export { readListedNextRun } from './task/read-listed-next-run';
 export { readOwnerMessageTakers } from './owner/read-owner-message-takers';
 export { readTaskBrief } from './task/read-task-brief';
 export { readTaskBriefs } from './task/read-task-briefs';

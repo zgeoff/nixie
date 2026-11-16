@@ -214,9 +214,11 @@ const listedTaskSchema = z.object({
   isTakingMessages: z.boolean(),
   lastActivityAt: z.date(),
   name: z.string(),
+  nextRunAt: z.string().optional(),
   runner: z.string(),
   state: taskStateSchema,
   taskID: threadSchema,
+  wakeable: z.boolean().optional(),
   waitingOn: threadSchema.optional(),
 });
 

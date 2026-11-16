@@ -15,7 +15,7 @@ function setupTest() {
                 taskID: 'k3vq8m2xpa',
                 name,
                 brief: 'Check the greenhouse.',
-                isWokenByMessages: true,
+                wakeable: true,
                 speaker: 'plain_task' as const,
               },
             ],

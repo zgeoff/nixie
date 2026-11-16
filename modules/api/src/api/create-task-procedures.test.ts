@@ -3,6 +3,7 @@ import { claimAction, runActionAttempt } from '@heynixie/actions';
 import { readRecords, writeRecords } from '@heynixie/log';
 import { registerFaultPointAction } from '@heynixie/memory/test-utils';
 import { createConversationTask, writeTaskControl } from '@heynixie/tasks';
+import { seedDefinitionTask } from '@heynixie/tasks/test-utils';
 import invariant from 'tiny-invariant';
 import { buildSeeder } from '../test-utils/build-seeder';
 import { buildTestClient } from '../test-utils/build-test-client';
@@ -74,6 +75,7 @@ test('#tasks.list lists the conversation and each started task with its name and
       runner: 'conversation',
       state: expect.toBeString(),
       taskID: 'conversation',
+      wakeable: true,
     },
     {
       actions: { cancelled: 0, queued: 0, started: 0 },
@@ -88,6 +90,7 @@ test('#tasks.list lists the conversation and each started task with its name and
       runner: 'sandbox',
       state: 'waiting',
       taskID: 'k3x9m2p7qa',
+      wakeable: true,
     },
   ]);
 });
@@ -271,6 +274,7 @@ test('#tasks.read gives one task as the list gives it', async () => {
     runner: 'sandbox',
     state: 'waiting',
     taskID: 'k3x9m2p7qa',
+    wakeable: true,
   });
 });
 
@@ -397,7 +401,7 @@ test('#tasks.list marks a task that runs on its own schedule as taking no messag
         taskID: 'sweeper',
         name: 'Sweeper',
         brief: 'Saves what you say as memory.',
-        isWokenByMessages: false,
+        wakeable: false,
         speaker: 'plain_task',
       },
     ],
@@ -421,6 +425,28 @@ test('#tasks.list marks a task that runs on its own schedule as taking no messag
   expect(listed.tasks.map((task) => [task.taskID, task.isTakingMessages])).toStrictEqual([
     ['sweeper', false],
   ]);
+});
+
+test('#tasks.read gives the next run of an asleep task and marks it not wakeable', async () => {
+  const api = await startTestAPI();
+  const laptop = await createDeviceSession(api.context, 'laptop');
+
+  const client = buildTestClient(api.url, laptop.token);
+
+  const taskID = await seedDefinitionTask(
+    { context: api.context, definitionStore: api.definitionStore, writer: api.writer },
+    {
+      definitionID: 'water-the-tomatoes',
+      definitionHash: 'hash-1',
+      version: { name: 'Water the tomatoes', brief: 'Water the beds.', wakeable: false },
+    },
+  );
+
+  api.definitionStore.setNextFire('water-the-tomatoes', '2026-06-04T07:00:00.000Z');
+
+  const listed = await client.tasks.read({ taskID });
+
+  expect([listed.wakeable, listed.nextRunAt]).toStrictEqual([false, '2026-06-04T07:00:00.000Z']);
 });
 
 test('#tasks.list refuses a caller with no session', async () => {

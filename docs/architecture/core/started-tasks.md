@@ -183,15 +183,20 @@ or size.
 A started task's step that leaves no unread input moves the task to the `waiting` task state,
 whether or not its work is done. The task state alone therefore can't tell a task that waits on a
 reply from a task with nothing left to do. So the list tool gives a task in the `waiting` task state
-one of 3 listed states, from its [message waits](./task-messages.md#message-waits) and the kind of
-the last task message it sent:
+one of 4 listed states, from its [message waits](./task-messages.md#message-waits), whether it is
+wakeable, and how its newest task run ended:
 
 - `waiting`: the task has an open wait on another task.
-- `finished`: the task has no open wait, and the last message it sent is a `report`.
-- `idle`: the task has no open wait, and it sent no message, or its last message is of another kind.
+- `asleep`: the task has no open wait, and no message wakes it. A definition's task that is asleep
+  and has a next fire also shows `nextRunAt`, in UTC.
+- `finished`: the task is wakeable, has no open wait, and its newest task run ended `reported`.
+- `idle`: the task is wakeable, has no open wait, and its newest task run ended another way or is
+  open.
 
-A task in any other task state lists under that state. The list tool also gives each task's model,
-or null for a task on the `task` role's profile.
+The list tool reads the end of the newest task run, never the last message the task sent, because a
+kept report sends none. The `waiting` filter lists `asleep` tasks too. A task in any other task
+state lists under that state. The list tool also gives each task's `wakeable` flag and its model, or
+null for a task on the `task` role's profile.
 
 A started task can wait with unread input, such as its brief. Only a waking inbox record moves a
 waiting task to ready, so such a task never runs. At each server start, after the server writes the

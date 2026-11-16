@@ -1,12 +1,6 @@
-import { readRecords } from '@heynixie/log';
-import type {
-  TaskMessageKind,
-  TaskMessaging,
-  TaskProfile,
-  TaskState,
-  TasksContext,
-  TasksTables,
-} from '../types';
+import { parseJSONObject, readRecords } from '@heynixie/log';
+import { taskRunEndedCodec } from '../run/task-run-ended-codec';
+import type { TaskMessaging, TaskProfile, TaskState, TasksContext, TasksTables } from '../types';
 import { taskCreatedCodec } from './codec/task-created-codec';
 import { readDefinitionTaskVersions } from './read-definition-task-versions';
 
@@ -24,7 +18,11 @@ export interface ListedTask {
   readonly lastActivityAt: Date;
 
   readonly model: string | null;
-  readonly lastSentKind: TaskMessageKind | null;
+  readonly wakeable: boolean;
+  readonly definitionID: string | null;
+
+  // the end cause of the newest task run, or null while it is open or when the task has none
+  readonly newestRunEnd: string | null;
 
   readonly waitingOn?: string;
 }
@@ -44,7 +42,7 @@ export async function readTaskList(
       taskID: entry.taskID,
       name: entry.version.name,
       brief: entry.version.brief,
-      isWokenByMessages: false,
+      wakeable: false,
       speaker: entry.version.persona === 'default' ? 'persona_task' : 'plain_task',
     }));
 
@@ -66,6 +64,7 @@ export async function readTaskList(
       'tasks.state',
       'tasks.pause_requested',
       'tasks.created_sequence',
+      'tasks.definition_id',
       'records.recorded_at',
     ])
     .where(
@@ -90,18 +89,23 @@ export async function readTaskList(
 
   const waitingOn = new Map(waits.map((wait) => [wait.from_task, wait.to_task]));
 
-  const sent = await db
-    .selectFrom('task_messages')
-    .select(['from_task', 'kind'])
+  const runRows = await db
+    .selectFrom('task_runs')
+    .select(['task_id', 'ended'])
     .where(
-      'from_task',
+      'task_id',
       'in',
       rows.map((row) => row.task_id),
     )
-    .orderBy('sent_sequence')
+    .orderBy('opened_sequence')
     .execute();
 
-  const lastSentKinds = new Map(sent.map((message) => [message.from_task, message.kind]));
+  const newestRunEnds = new Map(
+    runRows.map((run) => [
+      run.task_id,
+      run.ended === null ? null : taskRunEndedCodec.decode(parseJSONObject(run.ended)).cause,
+    ]),
+  );
 
   const created = await readRecords(context.log, {
     afterSequence: 0,
@@ -133,7 +137,9 @@ export async function readTaskList(
             brief: profile.brief,
             lastActivityAt: new Date(row.recorded_at),
             model: models.get(row.task_id) ?? null,
-            lastSentKind: lastSentKinds.get(row.task_id) ?? null,
+            wakeable: profile.wakeable,
+            definitionID: row.definition_id,
+            newestRunEnd: newestRunEnds.get(row.task_id) ?? null,
             ...(target === undefined ? {} : { waitingOn: target }),
           },
         ];

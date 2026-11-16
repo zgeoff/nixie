@@ -4,7 +4,9 @@ import { readRecords } from '@heynixie/log';
 import { modelsConfigSchema, resolveRoleProfile } from '@heynixie/models';
 import type { EffectDeclaration } from '@heynixie/policy';
 import { readStarterDecisionPoint } from '@heynixie/policy/test-utils';
-import { buildStubSandboxes } from '@heynixie/sandbox/test-utils';
+import type { SandboxAdapter } from '@heynixie/sandbox';
+import { buildSandboxRecorder } from '@heynixie/sandbox';
+import { buildStubGuestSandboxes, buildStubSandboxes } from '@heynixie/sandbox/test-utils';
 import { buildRunSettings, startConversationRunner, startSandboxRunner } from '@heynixie/sessions';
 import {
   buildStubMemory,
@@ -12,12 +14,35 @@ import {
   runNextStep,
   startTestSessionHost,
 } from '@heynixie/sessions/test-utils';
-import { claimTask, createConversationTask, writeInboxRecords } from '@heynixie/tasks';
-import { seedDefinitionTask, writeTestTriggerFire } from '@heynixie/tasks/test-utils';
+import {
+  buildTaskMessageTool,
+  claimTask,
+  createConversationTask,
+  readOpenRun,
+  readTaskDirectory,
+  writeInboxRecords,
+  writeStepCommit,
+} from '@heynixie/tasks';
+import {
+  seedConversationStep,
+  seedDefinitionTask,
+  writeTestTaskMessage,
+  writeTestTriggerFire,
+} from '@heynixie/tasks/test-utils';
 import { buildTestClock } from '@heynixie/testing';
+import type { ToolDefinition, ToolEndpoint } from '@heynixie/tools';
 import { buildToolRegistry, startToolEndpoint } from '@heynixie/tools';
-import { buildMockToolDefinition, withTestToolClient } from '@heynixie/tools/test-utils';
+import {
+  buildMockToolDefinition,
+  sendTestToolCall,
+  withTestToolClient,
+} from '@heynixie/tools/test-utils';
 import invariant from 'tiny-invariant';
+
+interface TaskRunnerRoute {
+  readonly sandboxes: SandboxAdapter;
+  readonly tools: Pick<ToolEndpoint, 'startRun'>;
+}
 
 async function setupTest() {
   const clock = buildTestClock(Date.parse('2027-03-08T21:15:00.000Z'));
@@ -87,15 +112,13 @@ async function setupTest() {
     },
   };
 
-  const registry = buildToolRegistry(
-    Object.entries(declarations).map(([name, declaration]) =>
-      buildMockToolDefinition({
-        name,
-        execution: declaration.effects.includes('read') ? 'direct' : 'queued',
-        input: { properties: { to: { type: 'string' }, body: { type: 'string' } }, required: [] },
-        declaration,
-      }),
-    ),
+  const mockTools = Object.entries(declarations).map(([name, declaration]) =>
+    buildMockToolDefinition({
+      name,
+      execution: declaration.effects.includes('read') ? 'direct' : 'queued',
+      input: { properties: { to: { type: 'string' }, body: { type: 'string' } }, required: [] },
+      declaration,
+    }),
   );
 
   const queued: string[] = [];
@@ -106,14 +129,14 @@ async function setupTest() {
     queued,
     runs: tools.runs,
     steps: tools.steps,
-    startTaskRunner: () =>
+    startTaskRunner: (route?: TaskRunnerRoute) =>
       startSandboxRunner({
         context: host.context,
         models,
         secrets,
-        sandboxes: host.sandboxes,
+        sandboxes: route?.sandboxes ?? host.sandboxes,
         images: { conversation: 'nixie-conversation-0123456789ab' },
-        tools: tools.endpoint,
+        tools: route?.tools ?? tools.endpoint,
         memory: () => memory,
         getDefinitions: () => definitions,
         memorySettings: {
@@ -146,7 +169,24 @@ async function setupTest() {
         clearFetchPauses: () => {},
         log: () => {},
       }),
-    startToolEndpoint: async () => {
+    startToolGuest: (endpoint: Pick<ToolEndpoint, 'getToolTarget'>) =>
+      buildStubGuestSandboxes({
+        recorder: buildSandboxRecorder({
+          log: host.context.log,
+          definitions: host.context.definitions,
+        }),
+        callTool: (call) =>
+          sendTestToolCall({
+            target: endpoint.getToolTarget({ id: call.sandboxID, owner: call.owner }),
+            token: call.token,
+            name: call.name,
+            input: call.input,
+          }),
+        countTokens: (text) => text.length,
+      }),
+    startToolEndpoint: async (extraTools: readonly ToolDefinition[] = []) => {
+      const registry = buildToolRegistry([...mockTools, ...extraTools]);
+
       const endpoint = await startToolEndpoint({
         socketDir: join(host.dataDir, 'run-tools'),
         registry,
@@ -359,4 +399,126 @@ test('it wakes the conversation once for a fire and gives it a reminder with the
   expect(inputs[0]).toMatch(
     /<system-message type="reminder" id="[0-9a-f]+" at="Tue 9 Mar, 14:00, Sydney">\n\[#\d+\] Reminder you set: <model-text id="(?<block>[0-9a-f]+)">Call the dentist about the crown\.<\/model-text id="\k<block>">\nIt was set for Tue 9 Mar, 14:00, Sydney\.\n<\/system-message id="[0-9a-f]+">/u,
   );
+});
+
+test('it starts a task run of a wakeable definition task on a question from the conversation, and wakes the conversation with its reply', async () => {
+  const ctx = await setupTest();
+  const conversationStep = await seedConversationStep(ctx.context);
+
+  const taskID = await seedDefinitionTask(
+    { ...ctx, writer: ctx.context.log.writer },
+    {
+      definitionID: 'water-the-tomatoes',
+      definitionHash: 'hash-1',
+      version: { wakeable: true, tools: ['task.message'] },
+      policy: { wakeable: true },
+    },
+  );
+
+  const messaging = await readTaskDirectory(ctx.context, {
+    directory: [
+      {
+        taskID: 'conversation',
+        name: 'Conversation',
+        brief: 'Talks with the owner.',
+        wakeable: true,
+        speaker: 'conversation',
+      },
+    ],
+    hopLimit: 20,
+    ownerName: 'Robin',
+    agentName: null,
+  });
+
+  const question = await writeTestTaskMessage(ctx.context, messaging, {
+    from: 'conversation',
+    to: taskID,
+    kind: 'question',
+    body: 'Did the tomatoes get water this morning?',
+    replyTo: null,
+    onBehalfOf: [],
+    wake: true,
+  });
+
+  invariant(question.status === 'sent', 'the question was sent');
+
+  await writeStepCommit(ctx.context, conversationStep.claim, {
+    next: 'wait',
+    records: [],
+    acknowledged: [conversationStep.messageSequence],
+  });
+
+  const endpoint = await ctx.startToolEndpoint([buildTaskMessageTool(ctx.context, messaging)]);
+
+  const taskGuest = ctx.startToolGuest(endpoint);
+
+  const taskRunner = await ctx.startTaskRunner({
+    sandboxes: taskGuest.adapter,
+    tools: endpoint,
+  });
+
+  ctx.defer(() => taskRunner.stop());
+
+  taskGuest.addKindReplies(
+    'worker',
+    {
+      toolUse: {
+        name: 'task.message',
+        input: {
+          to: 'conversation',
+          kind: 'reply',
+          body: 'Yes, at 06:30.',
+          replyTo: question.messageID,
+        },
+      },
+    },
+    { text: 'Replied.' },
+  );
+
+  await runNextStep(ctx.context, taskRunner.runStep);
+
+  const run = await readOpenRun(ctx.context.log.writer.db, taskID);
+
+  const taskInput = taskGuest.turns.map((turn) =>
+    turn.input.map((message) => message.text).join('\n'),
+  );
+
+  const sandboxes = buildStubSandboxes();
+
+  const conversationRunner = await ctx.startConversation(sandboxes);
+
+  ctx.defer(() => conversationRunner.stop());
+
+  sandboxes.setGuestScript((turn) => [
+    { type: 'read', uuids: turn.input.map((message) => message.uuid) },
+    {
+      type: 'assistant',
+      messageID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d012',
+      text: 'The tomatoes were watered at 06:30.',
+      toolUses: [],
+    },
+    {
+      type: 'ended',
+      boundary: {
+        harness: 'agent-sdk',
+        sessionID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d011',
+        messageID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d012',
+      },
+      outcome: 'finished',
+      stopReason: 'end_turn',
+      turns: 1,
+      usage: { inputTokens: 10, outputTokens: 5, cacheReadTokens: 0, cacheWriteTokens: 0 },
+    },
+  ]);
+
+  await runNextStep(ctx.context, conversationRunner.runStep);
+
+  const woken = sandboxes.turns.map((turn) => turn.input.map((message) => message.text).join('\n'));
+
+  expect(question.woke).toBe(true);
+  expect(run?.opened.origin.kind).toBe('message');
+  expect(taskInput).toHaveLength(1);
+  expect(taskInput[0]).toInclude('Did the tomatoes get water this morning?');
+  expect(woken).toHaveLength(1);
+  expect(woken[0]).toInclude('Yes, at 06:30.');
 });

@@ -2,14 +2,46 @@ import { expect, test } from 'bun:test';
 import { pickListedTaskState } from './pick-listed-task-state';
 
 test.each([
-  ['waiting', { state: 'waiting', waitingOn: 'conversation', lastSentKind: 'question' }],
-  ['waiting', { state: 'waiting', waitingOn: 'conversation', lastSentKind: 'report' }],
-  ['paused', { state: 'paused', waitingOn: 'conversation', lastSentKind: 'question' }],
-  ['finished', { state: 'waiting', lastSentKind: 'report' }],
-  ['idle', { state: 'waiting', lastSentKind: 'progress' }],
-  ['idle', { state: 'waiting', lastSentKind: null }],
-  ['running', { state: 'running', lastSentKind: 'report' }],
-  ['done', { state: 'done', lastSentKind: null }],
-] as const)('it lists the task as %s for %o', (expected, task) => {
-  expect(pickListedTaskState(task)).toBe(expected);
+  {
+    expected: 'running',
+    task: { state: 'running', wakeable: true, newestRunEnd: 'reported' },
+  },
+  {
+    expected: 'paused',
+    task: { state: 'paused', waitingOn: 'conversation', wakeable: false, newestRunEnd: null },
+  },
+  {
+    expected: 'done',
+    task: { state: 'done', wakeable: false, newestRunEnd: null },
+  },
+  {
+    expected: 'waiting',
+    task: { state: 'waiting', waitingOn: 'conversation', wakeable: false, newestRunEnd: null },
+  },
+  {
+    expected: 'waiting',
+    task: { state: 'waiting', waitingOn: 'conversation', wakeable: true, newestRunEnd: 'reported' },
+  },
+  {
+    expected: 'asleep',
+    task: { state: 'waiting', wakeable: false, newestRunEnd: 'reported' },
+  },
+  {
+    expected: 'asleep',
+    task: { state: 'waiting', wakeable: false, newestRunEnd: null },
+  },
+  {
+    expected: 'finished',
+    task: { state: 'waiting', wakeable: true, newestRunEnd: 'reported' },
+  },
+  {
+    expected: 'idle',
+    task: { state: 'waiting', wakeable: true, newestRunEnd: 'quiet' },
+  },
+  {
+    expected: 'idle',
+    task: { state: 'waiting', wakeable: true, newestRunEnd: null },
+  },
+] as const)('it lists a task as $expected for $task', (row) => {
+  expect(pickListedTaskState(row.task)).toBe(row.expected);
 });

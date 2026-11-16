@@ -42,23 +42,8 @@ test('it names the owner as the owner when the configuration names nobody', () =
   ).toInclude('with no message from the owner, timer or outside event');
 });
 
-test('it tells the sender a task on its own schedule reads the message at its next run', () => {
-  expect(
-    renderHeldNote({
-      hold: 'next_run',
-      kind: 'progress',
-      name: 'Sweeper',
-      messageID: 'k3vq8m2xpa',
-      hop: 1,
-      ownerName: 'Robin',
-    }),
-  ).toBe(
-    'Delivered to Sweeper as k3vq8m2xpa. It did not wake them, because Sweeper runs on its own schedule and reads messages only then. They will read it at their next run, with any earlier messages. Sending it again does not deliver it sooner.',
-  );
-});
-
-test.each(['question', 'request'] as const)(
-  'it tells the sender of a %s to a task on its own schedule that a reply arrives as a new message',
+test.each(['progress', 'question', 'request'] as const)(
+  'it tells the sender of a %s to an asleep task that it reads the message at its next run',
   (kind) => {
     expect(
       renderHeldNote({
@@ -70,7 +55,7 @@ test.each(['question', 'request'] as const)(
         ownerName: 'Robin',
       }),
     ).toBe(
-      'Delivered to Sweeper as k3vq8m2xpa. It did not wake them, because Sweeper runs on its own schedule and reads messages only then. They will read it at their next run, with any earlier messages. You do not wait on them for an answer, and a reply, if any, arrives as a new message. Sending it again does not deliver it sooner.',
+      'Sweeper is asleep and reads this at its next run. A reply, if any, arrives as a new message.',
     );
   },
 );

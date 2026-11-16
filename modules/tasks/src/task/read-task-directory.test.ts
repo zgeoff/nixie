@@ -42,7 +42,7 @@ test('it adds each started task to the directory, with the name and the brief a 
         taskID: 'conversation',
         name: 'Conversation',
         brief: 'Talks.',
-        isWokenByMessages: true,
+        wakeable: true,
         speaker: 'conversation',
       },
     ],
@@ -59,14 +59,14 @@ test('it adds each started task to the directory, with the name and the brief a 
         taskID: 'conversation',
         name: 'Conversation',
         brief: 'Talks.',
-        isWokenByMessages: true,
+        wakeable: true,
         speaker: 'conversation',
       },
       {
         taskID: 'k3x9m2p7qa',
         name: 'Garden plan',
         brief: 'Plan the beds.',
-        isWokenByMessages: true,
+        wakeable: true,
         speaker: 'plain_task',
       },
     ],
@@ -98,7 +98,7 @@ test.each([
         taskID,
         name: 'Tide tables',
         brief: 'Find the high tides for Saturday.',
-        isWokenByMessages: true,
+        wakeable: true,
         speaker,
       },
     ]);
@@ -134,7 +134,7 @@ test('it names a started task by its ID once its name is forgotten', async () =>
       taskID: 'k3x9m2p7qa',
       name: 'k3x9m2p7qa',
       brief: '',
-      isWokenByMessages: true,
+      wakeable: true,
       speaker: 'plain_task',
     },
   ]);
@@ -212,7 +212,7 @@ test('it lists the task of a definition in force with the name, the brief and th
         taskID,
         name: 'Water the tomatoes',
         brief: 'Water the greenhouse beds.',
-        isWokenByMessages: true,
+        wakeable: true,
         speaker: 'plain_task',
       },
     ],
@@ -229,4 +229,29 @@ test('it leaves the task of a definition out of force out of the directory', asy
   const result = await readTaskDirectory(ctx.context, empty);
 
   expect(result).toStrictEqual(empty);
+});
+
+test('it lists a task that task.start created as wakeable, with no key in its options', async () => {
+  const ctx = await setupTest();
+  const starter = await seedConversationStep(ctx.context);
+
+  const taskID = await seedTask(ctx.context, {
+    starter: starter.claim,
+    name: 'Seed list',
+    brief: 'List the seeds to order for spring.',
+  });
+
+  const directory = await readTaskDirectory<Pick<TaskMessaging, 'directory'>>(ctx.context, {
+    directory: [],
+  });
+
+  expect(directory.directory).toStrictEqual([
+    {
+      taskID,
+      name: 'Seed list',
+      brief: 'List the seeds to order for spring.',
+      wakeable: true,
+      speaker: 'plain_task',
+    },
+  ]);
 });

@@ -26,7 +26,7 @@ function setupTest() {
         taskID,
         name: taskID,
         brief: 'A held task.',
-        isWokenByMessages: true,
+        wakeable: true,
         speaker: 'plain_task' as const,
       }));
 

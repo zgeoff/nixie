@@ -63,8 +63,9 @@ export function planTaskMessage(
   }
 
   const hop = facts.senderHop + 1;
-  const hold = pickHold(request.wake, hop > messaging.hopLimit, receiver?.isWokenByMessages);
-  const opensWait = isWaitingKind(request.kind) && receiver?.isWokenByMessages === true;
+  const isRunning = facts.receiverState === 'running';
+  const hold = pickHold(request.wake, hop > messaging.hopLimit, receiver?.wakeable, isRunning);
+  const opensWait = isWaitingKind(request.kind) && (receiver?.wakeable === true || isRunning);
 
   return {
     status: 'send',
@@ -112,13 +113,16 @@ function pickRefusal(request: TaskMessageRequest, facts: RefusalFacts): TaskMess
 function pickHold(
   wake: boolean,
   isOverLimit: boolean,
-  isWokenByMessages: boolean | undefined,
+  wakeable: boolean | undefined,
+  isRunning: boolean,
 ): TaskMessageHold {
   if (!wake) {
     return 'none';
   }
 
-  if (isWokenByMessages === false) {
+  // A running task reads the message inside its open task run, so an asleep one is the only
+  // receiver that waits for its next run.
+  if (wakeable === false && !isRunning) {
     return 'next_run';
   }
 

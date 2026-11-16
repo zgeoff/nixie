@@ -1,10 +1,10 @@
 # Task messages
 
 A task message is a record that one task writes to another task's thread through the message tool.
-It lands in the receiver's inbox, and it wakes the receiver unless the receiver runs only on its
-schedule, its sender sent it with no wake, or the hop limit held it back. A question or a request
-can open a message wait, in which the sender waits on the receiver until a reply answers it. The
-tasks module owns the message tool, the list tool, the hop count and the waits.
+It lands in the receiver's inbox, and it wakes the receiver unless the receiver is asleep, its
+sender sent it with no wake, or the hop limit held it back. A question or a request can open a
+message wait, in which the sender waits on the receiver until a reply answers it. The tasks module
+owns the message tool, the list tool, the hop count and the waits.
 
 [Tasks](./tasks.md) covers the inbox and steps, and [started tasks](./started-tasks.md) covers the
 tasks that the conversation starts. [Conversation turns](./conversation-turns.md) covers the block
@@ -13,18 +13,21 @@ content gate never takes its body as the user's words.
 
 ## Sending a message
 
-The list tool shows a task the directory: each task it can message, with its brief and whether a
-message wakes it. The server builds the directory's built-in tasks from the deployment config, and
-each tool call and each conversation step adds the [started tasks](./started-tasks.md) from the log,
-so a task the conversation started a moment ago takes messages at once.
+The list tool shows a task the directory: each task it can message, with its brief and whether it is
+wakeable, which means a message wakes it. The server builds the directory's built-in tasks from the
+deployment config, and each tool call and each conversation step adds the
+[started tasks](./started-tasks.md) from the log, so a task the conversation started a moment ago
+takes messages at once.
 
 The conversation alone decides which task gets a message of the user's, and nixie keeps no record of
 where each message went. When the conversation needs to know whether a task already covers some
 work, it asks the list tool.
 
-The conversation wakes for a message. A task that runs only on its own schedule is not woken by one,
-so a message to it waits unread until its next scheduled session reads it, and that session marks it
-read. The message tool refuses these, with the refusal as the tool's answer:
+The conversation and every started task are wakeable. A definition's task is wakeable when its
+version declares it. A task that is not wakeable is asleep while it waits, and a message to it waits
+unread until its next task run reads it. A message to a running task that is not wakeable wakes it
+inside its open task run, so it reads the message in its next step, and the hop limit bounds those
+messages. The message tool refuses these, with the refusal as the tool's answer:
 
 - a message to the sender itself;
 - a message to a task outside the directory, or to one that has finished;
@@ -71,13 +74,14 @@ was claimed with, so a reply from it wakes the sender only when the turn's own h
 ## Message waits
 
 A task-messages projection keeps one row per message with its wait state. A question or a request to
-a task that wakes for messages opens a message wait, and any other message opens none. The tasks
-module checks each move between wait states against one table. A question or a request to a
-scheduled task opens no wait, because the task never finishes, so its wait would stay open until a
-reply that may never come. The tool's note tells the sender that a reply, if any, arrives as a new
-message. The message record holds whether the message opens a wait, so a rebuild of the projection
-keeps each wait as it was. A message record with no such field opens a wait for every question and
-request.
+a wakeable task, or to a running task that is not wakeable, opens a message wait, and any other
+message opens none. The tasks module checks each move between wait states against one table. A
+question or a request to an asleep task opens no wait, because the task never finishes, so its wait
+would stay open until a reply that may never come. The tool's note to the sender reads "<name> is
+asleep and reads this at its next run. A reply, if any, arrives as a new message." A message that
+wakes a running task gets no note. The message record holds whether the message opens a wait, so a
+rebuild of the projection keeps each wait as it was. A message record with no such field opens a
+wait for every question and request.
 
 A reply that names the question answers that wait. A step that commits as done, a task that fails,
 and a close release every open wait that names the task, and a stop releases the waits the stopped

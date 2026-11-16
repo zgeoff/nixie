@@ -148,11 +148,15 @@ never a state, so the conversation keeps answering you while it waits.
 - **Memory.** The memory content gate never takes the body of a task message as your words, so a
   quote that only a task message holds backs no memory.
 
-A scheduled task receives messages but is not woken by them. A message to one waits unread, and its
-next scheduled session reads it, so the sender gets `woke: false` with a note that says so. A
-scheduled task never finishes, so a wait on one would stay open until a reply that may never come. A
-question or a request to one therefore marks no wait, and its note tells the sender that a reply, if
-any, arrives as a new message.
+A task is wakeable when a message wakes it. Every started task is, and a definition's task is when
+its version declares it. A task that is not wakeable is asleep while it waits: a message to it waits
+unread until its next task run, so the sender gets `woke: false` with a note that says so. Such a
+task never finishes, so a wait on it would stay open until a reply that may never come. A question
+or a request to it therefore marks no wait, and its note tells the sender that a reply, if any,
+arrives as a new message. A message to such a task while it runs wakes it inside its open task run,
+opens a wait for a question or a request, and gets no note, because the task reads it in its next
+step. The list tool shows `wakeable`, the state `asleep`, and the next run of an asleep task that
+has a schedule.
 
 ### Silent turns
 

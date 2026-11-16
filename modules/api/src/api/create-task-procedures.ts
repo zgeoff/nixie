@@ -2,7 +2,9 @@
 import { readActionCounts, readTaskActions } from '@heynixie/actions';
 import type { TaskControl, TaskRunnerResolution, TasksTables } from '@heynixie/tasks';
 import {
+  pickListedTaskState,
   pickResolvedControls,
+  readListedNextRun,
   readOwnerMessageTakers,
   readTaskClosedBy,
   readTaskDirectory,
@@ -162,6 +164,12 @@ async function readListedTasks(context: APIContext, directory: TaskProfiles, lim
     taskIDs.map((taskID) => readTaskMark(context.log.writer.db, taskID)),
   );
 
+  const states = listed.map((task) => pickListedTaskState(task));
+
+  const nextRuns = await Promise.all(
+    listed.map((task, index) => readListedNextRun(context, task, states[index] ?? task.state)),
+  );
+
   const closedTasks = listed.filter((task) => task.state === 'closed');
 
   const closedByList = await Promise.all(
@@ -191,9 +199,11 @@ async function readListedTasks(context: APIContext, directory: TaskProfiles, lim
       isTakingMessages: takers.has(task.id),
       lastActivityAt: task.lastActivityAt,
       name: task.name,
+      nextRunAt: nextRuns[index] ?? undefined,
       runner: toRunnerKey(runner),
       state: task.state,
       taskID: task.id,
+      wakeable: task.wakeable,
       waitingOn: task.waitingOn,
     };
   });

@@ -845,7 +845,7 @@ test('it rebuilds the session of a task whose imp is gone with the messages the 
           taskID: 'conversation',
           name: 'Conversation',
           brief: 'Talks.',
-          isWokenByMessages: true,
+          wakeable: true,
           speaker: 'conversation',
         },
       ],

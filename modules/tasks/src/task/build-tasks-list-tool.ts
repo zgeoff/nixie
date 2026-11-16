@@ -4,6 +4,7 @@ import { z } from 'zod';
 import type { TaskMessaging, TasksContext } from '../types';
 import type { ListedTaskState } from './pick-listed-task-state';
 import { pickListedTaskState } from './pick-listed-task-state';
+import { readListedNextRun } from './read-listed-next-run';
 import { readTaskDirectory } from './read-task-directory';
 import type { ListedTask } from './read-task-list';
 import { readTaskList } from './read-task-list';
@@ -19,13 +20,14 @@ type TaskListFilter = NonNullable<z.infer<typeof listArguments>['state']>;
 
 const listedStates: Readonly<Record<TaskListFilter, readonly ListedTaskState[]>> = {
   active: ['ready', 'running'],
-  waiting: ['waiting', 'idle', 'paused', 'stopped'],
+  waiting: ['waiting', 'idle', 'asleep', 'paused', 'stopped'],
   done: ['finished', 'done', 'failed', 'closed'],
   all: [
     'ready',
     'running',
     'waiting',
     'idle',
+    'asleep',
     'paused',
     'stopped',
     'finished',
@@ -36,7 +38,7 @@ const listedStates: Readonly<Record<TaskListFilter, readonly ListedTaskState[]>>
 };
 
 export function buildTasksListTool(
-  context: Pick<TasksContext, 'log' | 'readDefinitionVersion'>,
+  context: Pick<TasksContext, 'log' | 'readDefinitionNextFire' | 'readDefinitionVersion'>,
   messaging: Pick<TaskMessaging, 'directory'>,
 ): ToolDefinition {
   return {
@@ -44,10 +46,11 @@ export function buildTasksListTool(
     description:
       'Lists the other tasks you can message with task.message, the most recently active first: ' +
       "each task's ID, name, state, model, brief and last activity, and the ID of the task it " +
-      'waits on for a reply. A task is waiting while it waits on a reply, idle when it waits ' +
-      'for a message, and finished once it sent its report and waits for nothing more. Pass ' +
-      'state to list only active, waiting or done tasks: waiting also lists idle, paused and ' +
-      'stopped tasks, and done also lists finished, failed and closed ones. A disposable task ' +
+      'waits on for a reply, and whether it is wakeable. A task is waiting while it waits on a ' +
+      'reply, idle when it waits for a message, asleep when no message wakes it and it waits ' +
+      'for its next run, which nextRunAt gives when it has a schedule, and finished once it ' +
+      'sent its report and waits for nothing more. Pass state to list only active, waiting ' +
+      'or done tasks: waiting also lists idle, asleep, paused and stopped tasks, and done also lists finished, failed and closed ones. A disposable task ' +
       'closes once it reports, and a kept one stays finished until you close it with task.close.',
     input: {
       type: 'object',
@@ -74,9 +77,15 @@ export function buildTasksListTool(
               },
               brief: { type: 'string' },
               lastActivityAt: { type: 'string', description: 'in UTC' },
+              wakeable: { type: 'boolean', description: 'whether a message wakes the task' },
+              nextRunAt: {
+                type: 'string',
+                description:
+                  'the next scheduled run, in UTC; only on an asleep task with a schedule',
+              },
               waitingOn: { type: 'string', description: 'the task this one waits on' },
             },
-            required: ['id', 'name', 'state', 'model', 'brief', 'lastActivityAt'],
+            required: ['id', 'name', 'state', 'model', 'brief', 'lastActivityAt', 'wakeable'],
             additionalProperties: false,
           },
         },
@@ -109,23 +118,36 @@ export function buildTasksListTool(
         .filter((entry) => states.includes(entry.state))
         .slice(0, input.limit ?? defaultLimit);
 
+      const nextRuns = await Promise.all(
+        listed.map((entry) => readListedNextRun(context, entry.task, entry.state)),
+      );
+
       return {
         status: 'ok',
-        result: { tasks: listed.map((entry) => toTaskJSON(entry.task, entry.state)) },
+        result: {
+          tasks: listed.map((entry, index) =>
+            toTaskJSON(entry.task, entry.state, nextRuns[index] ?? null),
+          ),
+        },
       };
     },
   };
 }
 
-function toTaskJSON(task: ListedTask, state: ListedTaskState): JSONObject {
-  const listed = {
+function toTaskJSON(
+  task: ListedTask,
+  state: ListedTaskState,
+  nextRunAt: string | null,
+): JSONObject {
+  return {
     id: task.id,
     name: task.name,
     state,
     model: task.model,
     brief: task.brief,
     lastActivityAt: task.lastActivityAt.toISOString(),
+    wakeable: task.wakeable,
+    ...(nextRunAt === null ? {} : { nextRunAt }),
+    ...(task.waitingOn === undefined ? {} : { waitingOn: task.waitingOn }),
   };
-
-  return task.waitingOn === undefined ? listed : { ...listed, waitingOn: task.waitingOn };
 }

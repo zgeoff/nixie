@@ -100,8 +100,8 @@ export async function writeStepCommit(
         isFirstStep: run?.opened.openedByStep === claim.stepKey,
         hasWork: nextState === 'ready' || hasOpenWait,
 
-        // every started task is woken by messages until the wake rule says otherwise, and a
-        // definition's task by what its pinned version declares
+        // a started task is always wakeable, and a definition's task is wakeable when its pinned
+        // version declares it
         isWakeable: await probeRunWakeable(tx, context, run, isDefinitionTask),
       },
       endedBy: `step:${claim.stepKey}`,

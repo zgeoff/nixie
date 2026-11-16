@@ -48,7 +48,7 @@ async function setupTest() {
                     taskID: 'task-reading',
                     name: 'morning-reading',
                     brief: 'Reads the morning news.',
-                    isWokenByMessages: false,
+                    wakeable: false,
                     speaker: 'plain_task',
                   },
                 ],
