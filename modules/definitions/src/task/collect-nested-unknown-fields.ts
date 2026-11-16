@@ -1,8 +1,6 @@
 import { scheduleSchema } from '@heynixie/contract';
 import { z } from 'zod';
 
-const recordSchema = z.record(z.string(), z.unknown());
-
 const knownKeys: Readonly<Record<string, readonly string[]>> = {
   trigger: ['schedule', 'at'],
   'trigger.schedule': Object.keys(scheduleSchema.shape),
@@ -15,16 +13,16 @@ const knownKeys: Readonly<Record<string, readonly string[]>> = {
 // The start schema and the definition-only schema read these objects without rejecting an extra
 // key, so this reads each one's keys.
 export function collectNestedUnknownFields(mapping: Readonly<Record<string, unknown>>): string[] {
-  const trigger = recordSchema.safeParse(mapping['trigger']);
-  const schedule = trigger.success ? recordSchema.safeParse(trigger.data['schedule']) : null;
-  const every = schedule?.success ? recordSchema.safeParse(schedule.data['every']) : null;
-  const window = schedule?.success ? recordSchema.safeParse(schedule.data['window']) : null;
+  const trigger = pickRecord(mapping['trigger']);
+  const schedule = trigger === null ? null : pickRecord(trigger['schedule']);
+  const every = schedule === null ? null : pickRecord(schedule['every']);
+  const window = schedule === null ? null : pickRecord(schedule['window']);
 
   const objects: readonly (readonly [string, Record<string, unknown> | null])[] = [
-    ['trigger', trigger.success ? trigger.data : null],
-    ['trigger.schedule', schedule?.success ? schedule.data : null],
-    ['trigger.schedule.every', every?.success ? every.data : null],
-    ['trigger.schedule.window', window?.success ? window.data : null],
+    ['trigger', trigger],
+    ['trigger.schedule', schedule],
+    ['trigger.schedule.every', every],
+    ['trigger.schedule.window', window],
     ['step', pickRecord(mapping['step'])],
     ['limits', pickRecord(mapping['limits'])],
   ];
@@ -37,6 +35,8 @@ export function collectNestedUnknownFields(mapping: Readonly<Record<string, unkn
       .map((key) => `${path}.${key}`);
   });
 }
+
+const recordSchema = z.record(z.string(), z.unknown());
 
 function pickRecord(value: unknown): Record<string, unknown> | null {
   const parsed = recordSchema.safeParse(value);

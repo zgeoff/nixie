@@ -2441,7 +2441,9 @@ test('it skips a definition with an unknown field, warns, and loads the rest', a
 
   const result = await runSeed({
     tasks: buildTestTaskSeed(),
-    onTaskWarning: (warning) => warnings.push(warning),
+    onTaskWarning: (warning) => {
+      warnings.push(warning);
+    },
     log: ctx.log,
     source: ctx.source,
     buildPolicy: () => ({ rules: [], tools: [] }),
