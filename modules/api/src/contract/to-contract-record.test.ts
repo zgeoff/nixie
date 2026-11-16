@@ -5,6 +5,7 @@ import { toContractRecord } from './to-contract-record';
 
 function setupTest() {
   const noLookups: RecordLookups = {
+    actionTools: new Map(),
     cancelledActionIDs: new Set(),
     proposals: new Map(),
     removedSequences: new Set(),
@@ -375,6 +376,7 @@ test('it shows a failed tool result as cancelled when its action is among the ca
   });
 
   const lookups = {
+    actionTools: new Map(),
     cancelledActionIDs: new Set(['action-1']),
     proposals: new Map(),
     removedSequences: new Set<number>(),
@@ -787,6 +789,7 @@ test('it carries a task message with its sender named from the directory', () =>
   });
 
   const lookups = {
+    actionTools: new Map(),
     cancelledActionIDs: new Set<string>(),
     proposals: new Map(),
     removedSequences: new Set<number>(),
@@ -866,6 +869,7 @@ test('it renders an exchange notice that names both tasks and links to the recei
   });
 
   const lookups = {
+    actionTools: new Map(),
     cancelledActionIDs: new Set<string>(),
     proposals: new Map(),
     removedSequences: new Set<number>(),
@@ -904,6 +908,7 @@ test('it lists the actions a stop cancelled on its record', () => {
   });
 
   const lookups = {
+    actionTools: new Map(),
     cancelledActionIDs: new Set<string>(),
     proposals: new Map(),
     removedSequences: new Set<number>(),
@@ -927,6 +932,7 @@ test('it marks a shredded record that a forget named as removed', () => {
   });
 
   const lookups = {
+    actionTools: new Map(),
     cancelledActionIDs: new Set<string>(),
     proposals: new Map(),
     removedSequences: new Set([12]),
@@ -949,6 +955,7 @@ test.each([
   });
 
   const lookups = {
+    actionTools: new Map(),
     cancelledActionIDs: new Set<string>(),
     proposals: new Map(),
     removedSequences,

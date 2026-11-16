@@ -19,6 +19,7 @@ export function toLogRecord(record: StoredRecord): LogRecord {
     ...(record.rating === undefined ? {} : { rating: toLogRating(record.rating) }),
     ...(record.recall === undefined ? {} : { recall: toLogRecall(record.recall) }),
     recordedAt: record.recordedAt,
+    ...(record.removal === undefined ? {} : { removal: { ...record.removal } }),
     sequence: record.sequence,
     ...(record.stop === undefined
       ? {}

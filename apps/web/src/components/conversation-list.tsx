@@ -7,6 +7,7 @@ import { buildActivity } from '../conversation/build-activity';
 import { isWorking } from '../conversation/is-working';
 import type { LiveRecord } from '../conversation/use-live-records';
 import { buildNoticePlacement } from '../notice/build-notice-placement';
+import { buildRemovalPlacement } from '../notice/build-removal-placement';
 import type { OutboxEntry } from '../outbox/use-outbox';
 import { css } from '../styled-system/css';
 import type { MemoryNotice as MemoryNoticeData, OutboxMessage } from '../types';
@@ -15,6 +16,7 @@ import { MemoryNotice } from './memory-notice';
 import { MomentKeptNotice } from './moment-kept-notice';
 import { OutboxItem } from './outbox-item';
 import { RecordItem } from './record-item';
+import { RemovalNotice } from './removal-notice';
 import { ResetMarker } from './reset-marker';
 import { StepGroup } from './step-group';
 import { StopMarker } from './stop-marker';
@@ -68,6 +70,7 @@ export function ConversationList(props: ConversationListProps): ReactNode {
 
   const activity = buildActivity(props.records);
   const placement = buildNoticePlacement(activity, props.notices);
+  const removals = buildRemovalPlacement(activity, props.records);
   const unshown = props.entries.filter((entry) => !shown.has(entry.message.clientMessageId));
 
   return (
@@ -82,6 +85,9 @@ export function ConversationList(props: ConversationListProps): ReactNode {
             />
             {placement.get(index)?.map((notice) => (
               <MemoryNotice key={notice.noticeKey} notice={notice} />
+            ))}
+            {removals.get(index)?.map((record) => (
+              <RemovalNotice key={record.sequence} record={record} />
             ))}
           </Fragment>
         ))}

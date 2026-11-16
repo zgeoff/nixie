@@ -32,10 +32,12 @@ import {
 } from '@heynixie/tasks';
 import { toolCalledCodec, toolResultCodec } from '@heynixie/tools';
 import { z } from 'zod';
+import { forgetToolName } from '../proposal/read-forget-body-fields';
 
 const messageKinds: ReadonlySet<RecordKind> = new Set(['owner_message', 'model.reply']);
 
 export interface RecordLookups {
+  readonly actionTools: ReadonlyMap<string, string>;
   readonly cancelledActionIDs: ReadonlySet<string>;
   readonly proposals: ReadonlyMap<
     number,
@@ -47,6 +49,7 @@ export interface RecordLookups {
 }
 
 const noLookups: RecordLookups = {
+  actionTools: new Map(),
   cancelledActionIDs: new Set(),
   proposals: new Map(),
   removedSequences: new Set(),
@@ -75,11 +78,12 @@ export function toContractRecord(
   const rating = record.kind === 'memory.rated' ? toRating(record) : undefined;
   const moment = record.kind === 'moment_kept' ? toKeptMoment(record) : undefined;
   const proposal = lookups.proposals.get(record.sequence);
+  const removal = record.kind === 'action.outcome' ? toRemoval(record, lookups) : undefined;
 
   return {
     ...toSessionFields(record),
     ...toForget(record),
-    ...toRemoval(record, lookups),
+    ...toGap(record, lookups),
     ...(exchangeNotice === undefined ? {} : { exchangeNotice }),
     kind: record.kind,
     ...(message === undefined ? {} : { message }),
@@ -88,6 +92,7 @@ export function toContractRecord(
     ...(rating === undefined ? {} : { rating }),
     ...(recall === undefined ? {} : { recall }),
     recordedAt: record.recordedAt,
+    ...(removal === undefined ? {} : { removal }),
     sequence: record.sequence,
     ...(stop === undefined ? {} : { stop }),
     thread: record.thread,
@@ -357,6 +362,31 @@ function toKeptMoment(record: LogRecord): KeptMoment | undefined {
   };
 }
 
+const removalOutcome = z.object({ actionID: z.string(), status: z.literal('done') });
+const removalResult = z.object({ removed: z.string().regex(/^\d+$/u), kind: z.string() });
+
+type Removal = NonNullable<ContractRecord['removal']>;
+
+// The outcome of a removal that finished names the record, and never holds its text. An outcome
+// whose result a forget erased names nothing.
+function toRemoval(record: LogRecord, lookups: RecordLookups): Removal | undefined {
+  const outcome = removalOutcome.safeParse(record.payload);
+
+  if (
+    !outcome.success ||
+    record.erasable.status !== 'readable' ||
+    lookups.actionTools.get(outcome.data.actionID) !== forgetToolName
+  ) {
+    return undefined;
+  }
+
+  const result = removalResult.safeParse(record.erasable.fields['result']);
+
+  return result.success
+    ? { kind: result.data.kind, sequence: Number(result.data.removed) }
+    : undefined;
+}
+
 type SessionFields = Pick<
   ContractRecord,
   'compaction' | 'compactionFailure' | 'context' | 'isSilentTurn' | 'summary'
@@ -447,7 +477,7 @@ function toForget(record: LogRecord): Pick<ContractRecord, 'forget'> {
   return sequence === undefined ? {} : { forget: { sequence } };
 }
 
-function toRemoval(record: LogRecord, lookups: RecordLookups): Pick<ContractRecord, 'isRemoved'> {
+function toGap(record: LogRecord, lookups: RecordLookups): Pick<ContractRecord, 'isRemoved'> {
   const isRemoved =
     record.erasable.status === 'shredded' && lookups.removedSequences.has(record.sequence);
 

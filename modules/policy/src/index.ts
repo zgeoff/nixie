@@ -100,7 +100,14 @@ export type {
 export type { AlwaysAllowFacts, AlwaysAllowRule } from './rule/build-always-allow-rule';
 export { buildAlwaysAllowRule } from './rule/build-always-allow-rule';
 export { buildActionProposalSentence } from './action/build-action-proposal-sentence';
-export type { ActionHandlerDeps, ApprovedActionFacts } from './action/make-action-proposal-handler';
+
+export type {
+  ActionHandlerDeps,
+  ApprovedActionFacts,
+  BodyFields,
+  BodyFieldsRequest,
+} from './action/make-action-proposal-handler';
+
 export { makeActionProposalHandler } from './action/make-action-proposal-handler';
 export { mapActionProposalRecord } from './action/map-action-proposal-record';
 export { buildActionHash } from './action/build-action-hash';
