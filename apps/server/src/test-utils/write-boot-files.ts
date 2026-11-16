@@ -12,6 +12,16 @@ export interface BootFiles {
   readonly deploymentKey: string;
 }
 
+export interface BootTaskDefinition {
+  readonly id: string;
+
+  // the text of task.yaml
+  readonly yaml: string;
+
+  // the text of instructions.md
+  readonly instructions: string;
+}
+
 export interface BootFileExtras {
   readonly config: readonly string[];
 
@@ -25,6 +35,9 @@ export interface BootFileExtras {
 
   // the definitions carry the starter rules, which a test then approves
   readonly hasStarterRules?: boolean;
+
+  // task definitions that the first seed reads, which put the definitions at format 4
+  readonly taskDefinitions?: readonly BootTaskDefinition[];
 
   readonly isBackupOn?: boolean;
 
@@ -44,7 +57,13 @@ export async function writeBootFiles(
   const deploymentKey = Buffer.from(crypto.getRandomValues(new Uint8Array(32))).toString('base64');
 
   await mkdir(dataDir);
-  await writeDefinitions(join(directory, 'definitions'), extras.hasStarterRules ?? false);
+
+  await writeDefinitions(
+    join(directory, 'definitions'),
+    extras.hasStarterRules ?? false,
+    extras.taskDefinitions ?? [],
+  );
+
   await writeSecrets(join(directory, 'secrets.yaml'), deploymentKey, extras);
   await writeManifest(join(directory, 'sandbox-manifest.json'));
   await writeStubSops(join(directory, 'sops'));
@@ -71,15 +90,41 @@ export async function writeBootFiles(
   };
 }
 
-async function writeDefinitions(definitionsDir: string, hasStarterRules: boolean): Promise<void> {
+async function writeDefinitions(
+  definitionsDir: string,
+  hasStarterRules: boolean,
+  taskDefinitions: readonly BootTaskDefinition[],
+): Promise<void> {
+  const format = pickDefinitionsFormat(hasStarterRules, taskDefinitions);
+
   await mkdir(definitionsDir);
-  await writeFile(join(definitionsDir, 'nixie.yaml'), `format: ${hasStarterRules ? 3 : 2}\n`);
+  await writeFile(join(definitionsDir, 'nixie.yaml'), `format: ${String(format)}\n`);
   await writeFile(join(definitionsDir, 'persona.md'), 'You are nixie.\n');
 
   if (hasStarterRules) {
     await mkdir(join(definitionsDir, 'rules'));
     await writeFile(join(definitionsDir, 'rules', 'starter.yaml'), readStarterRulesText());
   }
+
+  for (const definition of taskDefinitions) {
+    const taskDir = join(definitionsDir, 'tasks', definition.id);
+
+    await mkdir(taskDir, { recursive: true });
+    await writeFile(join(taskDir, 'task.yaml'), definition.yaml);
+    await writeFile(join(taskDir, 'instructions.md'), definition.instructions);
+  }
+}
+
+// Tasks need format 4, and the starter rules need 3.
+function pickDefinitionsFormat(
+  hasStarterRules: boolean,
+  taskDefinitions: readonly BootTaskDefinition[],
+): number {
+  if (taskDefinitions.length > 0) {
+    return 4;
+  }
+
+  return hasStarterRules ? 3 : 2;
 }
 
 async function writeSecrets(

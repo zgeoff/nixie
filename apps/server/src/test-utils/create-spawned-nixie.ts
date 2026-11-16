@@ -43,7 +43,7 @@ import { readTestRecords } from './read-test-records';
 import { runHostCommand } from './run-host-command';
 import type { AdvanceSteps, MatchRecord, RecoveredState, TestRecord } from './types';
 import { waitForMatch } from './wait-for-match';
-import type { BootFiles } from './write-boot-files';
+import type { BootFileExtras, BootFiles } from './write-boot-files';
 import { writeBootFiles } from './write-boot-files';
 
 export type { RecoveredState } from './types';
@@ -156,6 +156,9 @@ export interface SpawnedNixieOptions {
   readonly release?: string;
 
   readonly backups?: boolean;
+
+  // task definitions that the boot files hold, so the first seed arms their triggers
+  readonly taskDefinitions?: BootFileExtras['taskDefinitions'];
 }
 
 // A turn runs the real SDK in a guest process, which takes a few seconds on a slow host, and each
@@ -290,6 +293,7 @@ function buildBootExtras(options: SpawnedNixieOptions, doubles: TestDoubles) {
       : {}),
     ...(options.release === undefined ? {} : { sandboxAdapter: 'imp' as const }),
     ...(options.backups === undefined ? {} : { isBackupOn: options.backups }),
+    ...(options.taskDefinitions === undefined ? {} : { taskDefinitions: options.taskDefinitions }),
   };
 }
 

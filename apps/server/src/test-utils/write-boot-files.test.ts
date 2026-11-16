@@ -1,5 +1,5 @@
 import { expect, onTestFinished, test } from 'bun:test';
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, readdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { loadDeploymentConfig } from '../deployment/load-deployment-config';
@@ -260,4 +260,51 @@ test('it appends the extra lines to the secrets file', async () => {
   });
 
   expect(secrets.settings).toStrictEqual({ owner_name: 'Wren Halloway' });
+});
+
+test('it writes the definitions at format 2 with no task folder when no task definition is given', async () => {
+  const ctx = await setupTest();
+
+  await writeBootFiles(ctx.directory, 'http://127.0.0.1:4010', { config: [], secrets: [] });
+
+  const manifest = await readFile(join(ctx.directory, 'definitions', 'nixie.yaml'), 'utf8');
+  const entries = await readdir(join(ctx.directory, 'definitions'));
+
+  expect([manifest, entries.toSorted()]).toStrictEqual([
+    'format: 2\n',
+    ['nixie.yaml', 'persona.md'],
+  ]);
+});
+
+test('it writes each task definition into its folder and puts the definitions at format 4', async () => {
+  const ctx = await setupTest();
+
+  await writeBootFiles(ctx.directory, 'http://127.0.0.1:4010', {
+    config: [],
+    secrets: [],
+    hasStarterRules: true,
+    taskDefinitions: [
+      {
+        id: 'rain-gauge',
+        yaml: 'name: Check the rain gauge\nbrief: Note the total.\n',
+        instructions: 'Keep the note to one line.\n',
+      },
+    ],
+  });
+
+  const definitionsDir = join(ctx.directory, 'definitions');
+
+  const manifest = await readFile(join(definitionsDir, 'nixie.yaml'), 'utf8');
+  const taskYaml = await readFile(join(definitionsDir, 'tasks', 'rain-gauge', 'task.yaml'), 'utf8');
+
+  const instructions = await readFile(
+    join(definitionsDir, 'tasks', 'rain-gauge', 'instructions.md'),
+    'utf8',
+  );
+
+  expect([manifest, taskYaml, instructions]).toStrictEqual([
+    'format: 4\n',
+    'name: Check the rain gauge\nbrief: Note the total.\n',
+    'Keep the note to one line.\n',
+  ]);
 });
