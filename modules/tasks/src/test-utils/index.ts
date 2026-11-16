@@ -1,5 +1,6 @@
 export type { TestTaskRunOptions } from './build-test-task-run';
 export { buildTestTaskRun } from './build-test-task-run';
+export { buildTestTaskRunners } from './build-test-task-runners';
 export { buildMockTaskStartBounds } from './build-mock-task-start-bounds';
 export type { TestRunSettingsOptions } from './build-test-run-settings';
 export { buildTestRunSettings } from './build-test-run-settings';

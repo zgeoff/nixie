@@ -2,7 +2,7 @@ import type { Clock } from '@heynixie/clock';
 import { startWriter } from '@heynixie/log';
 import type { Writer } from '@heynixie/log';
 import type { TasksContext } from '@heynixie/tasks';
-import { buildTestRunSettings } from '@heynixie/tasks/test-utils';
+import { buildTestRunSettings, buildTestTaskRunners } from '@heynixie/tasks/test-utils';
 import { buildServerLog } from '../server/build-server-log';
 
 interface DataLogOptions {
@@ -35,6 +35,7 @@ export async function startDataLog(options: DataLogOptions): Promise<DataLog> {
       clock: options.clock,
       definitions: () => ({ snapshotHash: 'sha256:test' }),
       runSettings: buildTestRunSettings(),
+      runners: buildTestTaskRunners(),
     },
   };
 }

@@ -10,6 +10,7 @@ test('it builds bounds with no selectable model, the default limits, a set of me
       write: ['memory.remember', 'memory.edit', 'moment.keep', 'moment.edit'],
     },
     conversationTools: ['skill_read'],
+    reportDefaults: { start: 'wake', definition: 'next_turn' },
   });
 });
 

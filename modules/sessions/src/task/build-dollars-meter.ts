@@ -17,7 +17,8 @@ export function buildDollarsMeter(readPrices: ReadRunPrices): RunMeter {
     read: async (context, run) => {
       const setup = await readTaskSetup(context, run.taskID);
 
-      const prices = readPrices(setup?.options?.profile ?? null);
+      const options = setup?.kind === 'started' ? setup.options : null;
+      const prices = readPrices(options?.profile ?? null);
 
       const records = await readRunRecords(context, run, [
         modelTurnEndedCodec.kind,

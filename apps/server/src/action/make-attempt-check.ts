@@ -4,6 +4,7 @@ import type { Definitions, Log } from '@heynixie/log';
 import type { AskCause, EffectDeclaration, PolicyDecision } from '@heynixie/policy';
 import { buildActionProposalInput, makeFaultSafeDecisionPoint } from '@heynixie/policy';
 import type { ToolRegistry } from '@heynixie/tools';
+import { findToolDeclaration } from '@heynixie/tools';
 import invariant from 'tiny-invariant';
 import type { DecisionPointFactory } from '../utils/make-server-decisions';
 import type { StoredCall } from './read-stored-call';
@@ -29,10 +30,10 @@ export function makeAttemptCheck(options: AttemptCheckOptions): AttemptCheck {
       return { kind: 'go', destinations: [] };
     }
 
-    const declaration = options.registry.findTool(stored.tool)?.definition.declaration ?? null;
+    const declaration = findToolDeclaration(options.registry, stored.tool);
 
     const decide = makeFaultSafeDecisionPoint(
-      options.decisions((name) => options.registry.findTool(name)?.definition.declaration ?? null, {
+      options.decisions((name) => findToolDeclaration(options.registry, name), {
         readConsent: () => Promise.resolve(stored.consentCheck),
       }),
     );

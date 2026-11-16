@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import invariant from 'tiny-invariant';
 import { readTaskSetup } from '../task/read-task-setup';
 import type { TasksTables } from '../types';
 import { seedConversationStep } from './seed-conversation-step';
@@ -29,5 +30,8 @@ test('it leaves a started task paused at the limits it is given', async () => {
   const setup = await readTaskSetup(ctx.context, taskID);
 
   expect(row).toStrictEqual({ state: 'paused', pause_requested: 0 });
-  expect(setup?.limits).toStrictEqual({ turns: 3, dollars: 1 });
+
+  invariant(setup?.kind === 'started');
+
+  expect(setup.limits).toStrictEqual({ turns: 3, dollars: 1 });
 });

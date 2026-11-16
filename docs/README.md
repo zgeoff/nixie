@@ -50,8 +50,8 @@ holds the design for a piece of work that is not built yet, with its spikes in
   the database, and forgetting by destroying a key
 - [Tasks](architecture/core/tasks.md) — task states, the inbox and its read cursor, steps and their
   commit, and durable timers
-- [Started tasks](architecture/core/started-tasks.md) — the start and its options, the nixie runner,
-  limits and their raise
+- [Started tasks](architecture/core/started-tasks.md) — the start and its options, the sandbox
+  runner, limits and their raise
 - [Task messages](architecture/core/task-messages.md) — messages between tasks, the hop limit and
   message waits
 - [Leases and recovery](architecture/core/leases-and-recovery.md) — the one claim path, lease

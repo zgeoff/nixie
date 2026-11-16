@@ -1,15 +1,20 @@
 import { parseJSONObject } from '@heynixie/log';
 import type { Transaction } from 'kysely';
+import type { ReportShape } from '../report/types';
 import { taskCreatedCodec } from '../task/codec/task-created-codec';
-import type { TaskRunOptions, TasksTables } from '../types';
+import type { TaskLimits, TaskReport, TasksTables } from '../types';
 
 export interface RunSetup {
   readonly startedBy: string;
-  readonly options: TaskRunOptions;
+  readonly report: TaskReport;
+  readonly limits: TaskLimits;
+
+  // a runner that keeps its own options declares no report shape
+  readonly reportShape: ReportShape | null;
 }
 
-// A task that has no options, or whose starter is gone from its row, has no setup: nixie opens no
-// task run for it.
+// A task that has neither options nor an envelope, or whose starter is gone from its row, has no
+// setup: nixie opens no task run for it.
 export async function readRunSetup(
   tx: Transaction<unknown>,
   taskID: string,
@@ -27,7 +32,15 @@ export async function readRunSetup(
     return null;
   }
 
-  const options = taskCreatedCodec.decode(parseJSONObject(task.payload)).options;
+  const created = taskCreatedCodec.decode(parseJSONObject(task.payload));
+  const source = created.options ?? created.envelope;
 
-  return options === undefined ? null : { startedBy: task.started_by, options };
+  return source === undefined
+    ? null
+    : {
+        startedBy: task.started_by,
+        report: source.report,
+        limits: source.limits,
+        reportShape: created.options?.reportShape ?? null,
+      };
 }

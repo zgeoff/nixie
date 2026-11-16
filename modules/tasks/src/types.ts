@@ -14,6 +14,7 @@ import type { HarnessCapability } from '@heynixie/wire';
 import type { z } from 'zod';
 import type { ReportShape } from './report/types';
 import type { RunSettings, TaskRun } from './run/types';
+import type { TaskRunnerRegistry } from './runner/types';
 
 export interface TasksContext {
   readonly log: Log;
@@ -22,6 +23,9 @@ export interface TasksContext {
 
   // what a claim and the end of a task run read: the report defaults, the meters and the hop limit
   readonly runSettings: RunSettings;
+
+  // the runner of each task: the definitions, built once before any part starts
+  readonly runners: TaskRunnerRegistry;
 }
 
 export type {
@@ -121,6 +125,9 @@ export interface TaskStartBounds {
 
   readonly memoryTools: { readonly read: readonly string[]; readonly write: readonly string[] };
   readonly conversationTools: readonly string[];
+
+  // how a task reports when its start sets no report
+  readonly reportDefaults: RunSettings['reportDefaults'];
 }
 
 export interface TaskMessaging {

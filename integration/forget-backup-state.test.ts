@@ -24,7 +24,7 @@ import {
 } from '@heynixie/memory';
 import { runConversationReset } from '@heynixie/server';
 import { tasksProjections } from '@heynixie/tasks';
-import { buildTestRunSettings } from '@heynixie/tasks/test-utils';
+import { buildTestRunSettings, buildTestTaskRunners } from '@heynixie/tasks/test-utils';
 import { buildTestClock, waitForCondition } from '@heynixie/testing';
 import { createORPCClient } from '@orpc/client';
 import { RPCLink } from '@orpc/client/fetch';
@@ -65,6 +65,7 @@ async function setupTest() {
     clock,
     definitions: () => ({ snapshotHash: 'sha256:test' }),
     runSettings: buildTestRunSettings(),
+    runners: buildTestTaskRunners(),
     settings: defaultAPISettings,
     readSessionCleanup: () => null,
     passkeys: createPasskeyState(),

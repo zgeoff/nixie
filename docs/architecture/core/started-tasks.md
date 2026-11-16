@@ -3,7 +3,7 @@
 A started task is a task that the conversation starts through the start tool, for work that the user
 asks for and that no listed task covers. It runs on the same state machine, inbox and controls as
 every [task](./tasks.md), and this doc covers what only a started task has: the start and its
-options, the nixie runner that runs its steps, and its limits.
+options, the sandbox runner that runs its steps, and its limits.
 
 ## The start
 
@@ -42,7 +42,7 @@ The [selectable models](./model-profiles.md#selectable-models) give the choices 
 the tool's input schema lists with their descriptions. The conversation has the persona and reads
 memory, and a started task has each only when its own start gave it, so a task it starts never has
 more. The tools a task holds are its starter's tools that the start named, plus the list tool and
-the message tool, and so never more than its starter holds. The nixie runner adds the
+the message tool, and so never more than its starter holds. The sandbox runner adds the
 [silent end](./conversation-turns.md#a-turn-that-ends-with-nothing-sent) to every task's tool run,
 whatever its start named. A start with `memory: read` also gives the task each memory tool that only
 reads and that its starter holds. A task gets a memory tool that writes only when all 3 hold: the
@@ -71,9 +71,43 @@ The report mode decides how the task's report reaches its starter, as [reports](
 The start can also declare a `reportShape`: the fields the task must pass with its report, beside
 its summary. nixie checks that the fields match the shape and never that they are true.
 
-## The nixie runner
+## Task runners
 
-The server gives the steps of every started task to the nixie runner, the step function in
+A task runner is one definition in the server's list of task runners. The tasks module holds the
+list in a registry on its context, and each definition gives the registry its key, the
+[controls](./tasks.md#pause-stop-and-close) it offers, the variant of the start tool that picks it
+(or none), the fixed tasks it owns, and whether recovery keeps the sandboxes of its open tasks.
+
+| Key            | Controls | Start variant        | Fixed task   | Keeps sandboxes |
+| -------------- | -------- | -------------------- | ------------ | --------------- |
+| `conversation` | all 6    | none                 | conversation | yes             |
+| `sandbox`      | all 6    | `task.start/sandbox` | none         | yes             |
+| `queue-check`  | all 6    | none                 | queue check  | no              |
+
+Every start record names its task's runner in `runner`, and the registry finds the runner of a task
+in this order:
+
+1. A fixed task belongs to the runner that owns it.
+2. A task whose creation record names a `runner` belongs to that runner. A name with no definition
+   resolves as unknown, and the step for that task throws.
+3. A started task whose record names none belongs to the sandbox runner, the default, because
+   earlier records never named one.
+4. Any other task has no runner. It keeps all 6 controls, and the server's fallback step runs it.
+
+The start tool has one variant per runner that a start can pick. The input holds a `runner` field
+that picks the variant, and a start that leaves it out takes the sandbox variant. Each variant plans
+its own start. A refusal comes back as the tool's error before the policy decision, so a refused
+start writes no proposal. A rule matches a variant by the tool name `task.start/<key>`, and the name
+`task.start` matches every variant, as [rules](../policy/rules.md) describes.
+
+A control that the task's runner does not offer gets `runner_lacks_control`, which the API returns
+as `RUNNER_LACKS_CONTROL`. A runner that starts from the sandbox variant stores its built options in
+the creation record. Any other runner stores the shared envelope, with the report mode and limits,
+beside `runnerOptions` of its own.
+
+## The sandbox runner
+
+The server gives the steps of every started task to the sandbox runner, the step function in
 `modules/sessions` that runs a started task. The steps claim through a claim pool of their own, so
 the conversation never waits behind them
 ([leases and recovery](./leases-and-recovery.md#claim-pools)). Each step runs in a

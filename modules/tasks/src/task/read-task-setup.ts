@@ -1,19 +1,24 @@
 import { readRecords } from '@heynixie/log';
 import { readLimitRecords } from '../limit/read-limit-records';
-import type { TaskLimits, TaskRunOptions, TasksContext, TasksTables } from '../types';
+import type { TaskLimits, TaskReport, TaskRunOptions, TasksContext, TasksTables } from '../types';
 import { taskCreatedCodec } from './codec/task-created-codec';
 
-export interface TaskSetup {
+// report, limits and options are null for a task that the user started by moving a message to it.
+// options is also null for a task that another runner started, which keeps its own in
+// runnerOptions.
+export interface StartedTaskSetup {
+  readonly kind: 'started';
+  readonly runner: string;
   readonly startedBy: string;
-
-  // A task that the user started by moving a message to it holds none.
-  readonly options: TaskRunOptions | null;
-
+  readonly report: TaskReport | null;
   readonly limits: TaskLimits | null;
+  readonly options: TaskRunOptions | null;
 }
 
+export type TaskSetup = StartedTaskSetup | { readonly kind: 'fixed' };
+
 export async function readTaskSetup(
-  context: Pick<TasksContext, 'log'>,
+  context: Pick<TasksContext, 'log' | 'runners'>,
   taskID: string,
 ): Promise<TaskSetup | null> {
   const db = context.log.writer.db;
@@ -25,8 +30,12 @@ export async function readTaskSetup(
     .where('task_id', '=', taskID)
     .executeTakeFirst();
 
-  if (row === undefined || row.started_by === null) {
+  if (row === undefined) {
     return null;
+  }
+
+  if (row.started_by === null) {
+    return { kind: 'fixed' };
   }
 
   const [created] = await readRecords(context.log, {
@@ -34,16 +43,18 @@ export async function readTaskSetup(
     sequences: [row.created_sequence],
   });
 
-  const options =
-    created === undefined
-      ? null
-      : (taskCreatedCodec.decode(created.record.payload).options ?? null);
+  const payload = created === undefined ? null : taskCreatedCodec.decode(created.record.payload);
+  const options = payload?.options ?? null;
+  const envelope = payload?.envelope ?? null;
 
   const limitRecords = await readLimitRecords(db, taskID);
 
   return {
+    kind: 'started',
+    runner: payload?.runner ?? context.runners.defaultRunner.key,
     startedBy: row.started_by,
+    report: options?.report ?? envelope?.report ?? null,
+    limits: limitRecords.raised ?? options?.limits ?? envelope?.limits ?? null,
     options,
-    limits: limitRecords.raised ?? options?.limits ?? null,
   };
 }

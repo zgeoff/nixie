@@ -120,6 +120,68 @@ test('it lists a started task in the directory when its creation record holds no
   expect(messaging.directory.map((profile) => profile.taskID)).toStrictEqual(['t4m2']);
 });
 
+test('it lists a started task that names a runner, with an envelope and runner options in place of options', async () => {
+  const ctx = await setupTest();
+
+  await writeRecords(ctx.tasks.context.log, [
+    {
+      kind: 'task.created',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 't5w3',
+      payload: {
+        taskID: 't5w3',
+        isConversation: false,
+        state: 'ready',
+        startedBy: 'conversation',
+        startStep: 'conversation:1',
+        runner: 'night-watch',
+        envelope: { report: 'wake', limits: { turns: 4, dollars: 1 } },
+        runnerOptions: { target: 'build', depth: { levels: [1, 2] } },
+        briefMessageID: 'm9k4',
+      },
+      erasable: { name: 'Night watch' },
+    },
+    {
+      kind: 'task.created',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 't6s1',
+      payload: {
+        taskID: 't6s1',
+        isConversation: false,
+        state: 'ready',
+        startedBy: 'conversation',
+        startStep: 'conversation:2',
+        runner: 'sandbox',
+        options: {
+          model: null,
+          profile: null,
+          persona: 'none',
+          memory: 'none',
+          tools: [],
+          report: 'wake',
+          limits: { turns: 25, dollars: 2 },
+        },
+        briefMessageID: 'm3d8',
+      },
+      erasable: { name: 'Tide tables' },
+    },
+  ]);
+
+  const entries = await readRecords(ctx.tasks.context.log, {
+    afterSequence: 0,
+    kinds: ['task.created'],
+  });
+
+  const directory: readonly TaskProfile[] = [];
+
+  const messaging = await readTaskDirectory(ctx.tasks.context, { directory });
+
+  const decoded = entries.map((entry) => taskCreatedCodec.tryDecodePartial(entry.record.payload));
+
+  expect(messaging.directory.map((profile) => profile.taskID)).toStrictEqual(['t5w3', 't6s1']);
+  expect(decoded.map((payload) => payload?.taskID)).toStrictEqual(['t5w3', 't6s1']);
+});
+
 test('it reads the marks of a session whose opening holds a brief sequence', async () => {
   const ctx = await setupTest();
 

@@ -15,7 +15,7 @@ import {
   buildTasksListTool,
 } from '@heynixie/tasks';
 import type { ActionQueue, ToolDefinition, ToolEndpoint } from '@heynixie/tools';
-import { buildToolRegistry, startToolEndpoint } from '@heynixie/tools';
+import { buildToolRegistry, findToolDeclaration, startToolEndpoint } from '@heynixie/tools';
 import { buildContactTool } from '../cli/build-contact-tool';
 import { buildMandateTool } from '../rule/build-mandate-tool';
 import { buildTaskStartBounds } from '../task/build-task-start-bounds';
@@ -108,6 +108,7 @@ export async function startConversationEndpoint(
     options.config.models,
     buildConversationMemoryTools(memory),
     skills,
+    options.context.runSettings.reportDefaults,
   );
 
   const tasks = [
@@ -158,7 +159,7 @@ export async function startConversationEndpoint(
   const endpoint = await startToolEndpoint({
     socketDir: join(options.config.server.dataDir, 'run', 'tools'),
     registry,
-    decide: tools.makeDecide((name) => registry.findTool(name)?.definition.declaration ?? null),
+    decide: tools.makeDecide((name) => findToolDeclaration(registry, name)),
     log: options.context.log,
     definitions: options.context.definitions,
     queue: tools.queue,

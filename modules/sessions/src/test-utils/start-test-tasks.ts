@@ -6,7 +6,7 @@ import type { Log, Writer } from '@heynixie/log';
 import { logProjections, startWriter } from '@heynixie/log';
 import { tasksProjections } from '@heynixie/tasks';
 import type { TasksContext, TasksTables } from '@heynixie/tasks';
-import { buildTestRunSettings } from '@heynixie/tasks/test-utils';
+import { buildTestRunSettings, buildTestTaskRunners } from '@heynixie/tasks/test-utils';
 import type { TestClock } from '@heynixie/testing';
 import { buildTestClock } from '@heynixie/testing';
 import type { Kysely } from 'kysely';
@@ -50,6 +50,7 @@ export async function startTestTasks(): Promise<TestTasks> {
       clock,
       definitions: () => ({ snapshotHash: 'sha256:test' }),
       runSettings: buildTestRunSettings(),
+      runners: buildTestTaskRunners(),
     },
     db: writer.db.$extendTables<TasksTables>(),
   };

@@ -1,7 +1,7 @@
 import type { RunStep, TasksContext } from '@heynixie/tasks';
 import { buildStepRunID } from '@heynixie/tasks';
 import type { ActionQueue, ToolDefinition } from '@heynixie/tools';
-import { buildToolRegistry, runToolCall } from '@heynixie/tools';
+import { buildToolRegistry, findToolDeclaration, runToolCall } from '@heynixie/tools';
 import type { DecisionPointFactory } from '../utils/make-server-decisions';
 
 export interface QueueCheckStepOptions {
@@ -16,10 +16,7 @@ const noModel = { model: 'none', profile: 'none' };
 
 export function makeQueueCheckStep(options: QueueCheckStepOptions): RunStep {
   const registry = buildToolRegistry([options.tool]);
-
-  const decide = options.makeDecide(
-    (name) => registry.findTool(name)?.definition.declaration ?? null,
-  );
+  const decide = options.makeDecide((name) => findToolDeclaration(registry, name));
 
   return async (input) => {
     const wake = input.inbox.findLast((record) => record.kind === 'task.wake');

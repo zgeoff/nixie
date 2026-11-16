@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import invariant from 'tiny-invariant';
 import { seedConversationStep } from '../../test-utils/seed-conversation-step';
 import { seedPausedTask } from '../../test-utils/seed-paused-task';
 import { seedTask } from '../../test-utils/seed-task';
@@ -31,7 +32,9 @@ test('it resumes a task that its limit paused, under the raised limit', async ()
 
   const setup = await readTaskSetup(ctx.context, taskID);
 
-  expect(setup?.limits).toStrictEqual({ turns: 10, dollars: 1 });
+  invariant(setup?.kind === 'started');
+
+  expect(setup.limits).toStrictEqual({ turns: 10, dollars: 1 });
 });
 
 test('it lets a plain resume through once the limit is raised and the task paused again', async () => {

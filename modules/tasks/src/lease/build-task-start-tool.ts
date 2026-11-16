@@ -1,13 +1,11 @@
 import type { JSONObject } from '@heynixie/log';
-import type { ToolDefinition, ToolOutcome } from '@heynixie/tools';
-import { toSDKToolName } from '@heynixie/tools';
+import type { ToolContext, ToolDefinition, ToolOutcome } from '@heynixie/tools';
+import invariant from 'tiny-invariant';
 import { match } from 'ts-pattern';
-import { z } from 'zod';
-import { reportShapeKeywords } from '../report/check-report-shape';
-import { renderShapeFault } from '../report/render-shape-fault';
+import { parseTaskStartInput } from '../runner/parse-task-start-input';
+import { pickStartRunner } from '../runner/pick-start-runner';
+import type { StartableRunner } from '../runner/types';
 import { readTaskSetup } from '../task/read-task-setup';
-import type { TaskStartChoiceRefusal } from '../task/start/plan-task-start';
-import { planTaskStart } from '../task/start/plan-task-start';
 import type { TaskStartRefusal } from '../task/start/write-task-start';
 import { writeTaskStart } from '../task/start/write-task-start';
 import type {
@@ -20,26 +18,21 @@ import type {
 } from '../types';
 import { conversationTaskID } from '../utils/conversation-task-id';
 
-const startArguments = z.object({
-  name: z.string(),
-  brief: z.string(),
-  model: z.string().optional(),
-  persona: z.enum(['default', 'none']).optional(),
-  memory: z.enum(['none', 'read']).optional(),
-  tools: z.string().array().optional(),
-  report: z.enum(['wake', 'next_turn', 'none']).optional(),
-  reportShape: z.unknown().optional(),
-  limits: z
-    .object({ turns: z.int().positive().optional(), dollars: z.number().positive().optional() })
-    .optional(),
-});
+type StartToolContext = Pick<TasksContext, 'clock' | 'definitions' | 'log' | 'runners'>;
 
 export function buildTaskStartTool(
-  context: Pick<TasksContext, 'clock' | 'definitions' | 'log' | 'runSettings'>,
+  context: StartToolContext,
   messaging: Pick<TaskMessaging, 'hopLimit' | 'ownerName'>,
   bounds: TaskStartBounds,
 ): ToolDefinition {
   const owner = messaging.ownerName ?? 'the owner';
+  const registry = context.runners;
+  const startable = registry.startable;
+  const defaultStart = startable.find((runner) => runner.key === registry.defaultRunner.key)?.start;
+
+  invariant(defaultStart, 'the task.start tool needs the default runner to have a start');
+
+  const inputs = startable.map((runner) => runner.start.describeInput(bounds));
 
   return {
     name: 'task.start',
@@ -52,7 +45,10 @@ export function buildTaskStartTool(
       'unless you set persona to none, and reads your memory only when you set memory to read. ' +
       'It always holds tasks.list and task.message, and time.now unless you list its tools, ' +
       'which must be tools you hold yourself. A memory read tool also needs memory set to read.',
-    input: buildStartInput(bounds),
+    input:
+      inputs.length === 1 && inputs[0] !== undefined
+        ? inputs[0]
+        : { type: 'object', oneOf: inputs },
     output: {
       type: 'object',
       properties: {
@@ -63,35 +59,40 @@ export function buildTaskStartTool(
       required: ['taskID', 'name', 'note'],
       additionalProperties: false,
     },
-    declaration: {
-      effects: ['note'],
-      destinations: [],
-      amount: null,
-      content: ['name', 'brief'],
-      results: { taskID: 'owner_data', name: 'owner_data', note: 'owner_data' },
+    declaration: defaultStart.declaration,
+    variants: {
+      pick: (input) => pickStartRunner(input, registry).key,
+      declarations: Object.fromEntries(
+        startable.map((runner) => [runner.key, runner.start.declaration]),
+      ),
     },
     execution: 'direct',
+    resolvePolicyFacts: async (input, tool) => {
+      const planned = await planStart(context, bounds, input, tool);
+
+      return planned.status === 'refused'
+        ? { status: 'error', message: planned.sentence }
+        : { status: 'ok', sources: tool.run.session?.policy?.sources ?? [], args: input };
+    },
     run: async (call, tool): Promise<ToolOutcome> => {
-      const input = startArguments.parse(call.input);
+      const planned = await planStart(context, bounds, call.input, tool);
 
-      const access = await readStarterAccess(context, tool.run.thread);
-
-      const plan = planTaskStart(
-        input,
-        { tools: tool.run.tools, ...access },
-        bounds,
-        context.runSettings,
-      );
-
-      if (plan.status === 'refused') {
-        return { status: 'error', message: renderChoiceRefusal(plan.refusal) };
+      if (planned.status === 'refused') {
+        return { status: 'error', message: planned.sentence };
       }
+
+      const runner = planned.runner;
+      const plan = planned.plan;
+      const envelope = parseTaskStartInput(call.input, registry);
 
       const outcome = await writeTaskStart(context, {
         from: tool.run.thread,
-        name: input.name,
-        brief: input.brief,
-        options: plan.options,
+        name: envelope.name,
+        brief: envelope.brief,
+        runner: runner.key,
+        stored: runner.start.storesBuiltOptions
+          ? { kind: 'built', options: plan.options }
+          : { kind: 'enveloped', envelope: plan.envelope, runnerOptions: plan.options },
         hopLimit: messaging.hopLimit,
         stepRunID: tool.run.stepRunID ?? null,
       });
@@ -100,95 +101,46 @@ export function buildTaskStartTool(
         return { status: 'error', message: renderRefusal(outcome.refusal) };
       }
 
-      const name = input.name.trim();
+      const name = envelope.name.trim();
 
       return {
         status: 'ok',
         result: {
           taskID: outcome.taskID,
           name,
-          note: `The task starts on its brief now, and ${renderReportNote(plan.options.report)}`,
+          note: `The task starts on its brief now, and ${renderReportNote(plan.envelope.report)}`,
         },
       };
     },
   };
 }
 
-function buildStartInput(bounds: TaskStartBounds): JSONObject {
-  const limits = bounds.limits;
-  const choices = bounds.models.map((entry) => `${entry.name}: ${entry.description}`).join('; ');
+type PlannedStart =
+  | {
+      readonly status: 'planned';
+      readonly runner: StartableRunner;
+      readonly plan: Extract<
+        ReturnType<StartableRunner['start']['plan']>,
+        { readonly status: 'planned' }
+      >;
+    }
+  | { readonly status: 'refused'; readonly sentence: string };
 
-  const model: JSONObject | null =
-    bounds.models.length === 0
-      ? null
-      : {
-          type: 'string',
-          enum: bounds.models.map((entry) => entry.name),
-          description: `The model the task runs on; leave it out for the usual one. ${choices}`,
-        };
+// The runner that the input picks plans the start for its starter, so a refusal reaches the model
+// before the decision point and an approval never queues a start that nixie then refuses.
+async function planStart(
+  context: StartToolContext,
+  bounds: TaskStartBounds,
+  input: JSONObject,
+  tool: ToolContext,
+): Promise<PlannedStart> {
+  const runner = pickStartRunner(input, context.runners);
 
-  return {
-    type: 'object',
-    properties: {
-      name: { type: 'string', minLength: 1, maxLength: 80 },
-      brief: { type: 'string', minLength: 1, maxLength: 8000 },
-      ...(model === null ? {} : { model }),
-      persona: {
-        type: 'string',
-        enum: ['default', 'none'],
-        description: 'default speaks as you; none gives the task no persona',
-      },
-      memory: {
-        type: 'string',
-        enum: ['none', 'read'],
-        description:
-          'read gives the task your pinned memory, recall and the memory read tools; none ' +
-          'gives it none of them',
-      },
-      tools: {
-        type: 'array',
-        items: { type: 'string' },
-        uniqueItems: true,
-        maxItems: 50,
-        description:
-          'the names of tools you hold that the task may use, as your tool list shows them, such ' +
-          'as mcp__nixie__memory_recall, or as nixie names them, such as memory.recall',
-      },
-      report: {
-        type: 'string',
-        enum: ['wake', 'next_turn', 'none'],
-        description:
-          'how the result reaches you: wake wakes you, next_turn waits for your next turn, ' +
-          'none sends no report',
-      },
-      reportShape: {
-        type: 'object',
-        properties: {
-          properties: {
-            type: 'object',
-            description: `the fields your report must hold, by name, each a schema that takes only ${reportShapeKeywords.join(', ')}`,
-          },
-          required: { type: 'array', items: { type: 'string' } },
-        },
-        required: ['properties'],
-        additionalProperties: false,
-        description:
-          'the fields the task must pass with its report, beside its summary; nixie checks that ' +
-          'they match this shape and never that they are true',
-      },
-      limits: {
-        type: 'object',
-        properties: {
-          turns: { type: 'integer', minimum: 1 },
-          dollars: { type: 'number', exclusiveMinimum: 0 },
-        },
-        additionalProperties: false,
-        description: `the task's turns and model cost in dollars; ${String(limits.default.turns)} turns and $${String(limits.default.dollars)} unless you set them, and at most ${String(limits.max.turns)} turns and $${String(limits.max.dollars)}`,
-      },
-    },
-    required: ['name', 'brief'],
-    additionalProperties: false,
-  };
+  const access = await readStarterAccess(context, tool.run.thread);
+
+  const plan = runner.start.plan(input, { tools: tool.run.tools, ...access }, bounds);
+
+  return plan.status === 'refused' ? plan : { status: 'planned', runner, plan };
 }
 
 // The conversation reads memory. Any other starter reads it only when its own start said so.
@@ -200,7 +152,7 @@ interface StarterAccess {
 // The conversation has the persona and reads memory. Any other starter has each only when its own
 // start gave it, and a task that the user started holds no options, so it has neither.
 async function readStarterAccess(
-  context: Pick<TasksContext, 'log'>,
+  context: Pick<TasksContext, 'log' | 'runners'>,
   thread: string,
 ): Promise<StarterAccess> {
   if (thread === conversationTaskID) {
@@ -209,65 +161,9 @@ async function readStarterAccess(
 
   const setup = await readTaskSetup(context, thread);
 
-  return { memory: setup?.options?.memory ?? 'none', persona: setup?.options?.persona ?? 'none' };
-}
+  const options = setup?.kind === 'started' ? setup.options : null;
 
-function renderChoiceRefusal(refusal: TaskStartChoiceRefusal): string {
-  return match(refusal)
-    .with(
-      { reason: 'unknown_model' },
-      (unknown) => `${unknown.model} is not a model a task can run on, so nixie started nothing`,
-    )
-    .with(
-      { reason: 'harness_misfit' },
-      (misfit) =>
-        `${misfit.model} runs on a harness that lacks ${misfit.missing.join(', ')}, which a task needs, so nixie started nothing`,
-    )
-    .with(
-      { reason: 'stranger_with_memory' },
-      () => 'a task with persona none cannot read memory, so nixie started nothing',
-    )
-    .with(
-      { reason: 'wider_memory' },
-      () => 'you do not read memory, so a task you start cannot either, and nixie started nothing',
-    )
-    .with(
-      { reason: 'wider_persona' },
-      () =>
-        'you run with no persona, so a task you start cannot have one, and nixie started nothing',
-    )
-    .with(
-      { reason: 'over_limit' },
-      (over) =>
-        `a task's ${over.limit} limit is at most ${String(over.max)}, so nixie started nothing`,
-    )
-    .with({ reason: 'report_shape' }, (shape) => renderShapeFault(shape.fault))
-    .with(
-      { reason: 'wider_tools' },
-      (wider) =>
-        `a task gets only tools you hold, and you do not hold ${wider.tools.join(', ')}, so nixie started nothing. ${renderAcceptedTools(wider.accepted)}`,
-    )
-    .with(
-      { reason: 'memory_tools' },
-      (memory) =>
-        `a task gets ${memory.tools.join(', ')} only with memory set to read, so nixie started nothing. ${renderAcceptedTools(memory.accepted)}`,
-    )
-    .with(
-      { reason: 'conversation_tools' },
-      (conversation) =>
-        `only the conversation can use ${conversation.tools.join(', ')}, so nixie started nothing. ${renderAcceptedTools(conversation.accepted)}`,
-    )
-    .exhaustive();
-}
-
-function renderAcceptedTools(accepted: readonly string[]): string {
-  if (accepted.length === 0) {
-    return 'You hold no tool that this task can get.';
-  }
-
-  const names = accepted.map((tool) => `${tool} or ${toSDKToolName(tool)}`);
-
-  return `This task can get ${names.join(', ')}.`;
+  return { memory: options?.memory ?? 'none', persona: options?.persona ?? 'none' };
 }
 
 function renderRefusal(refusal: TaskStartRefusal): string {

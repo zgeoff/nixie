@@ -5,7 +5,7 @@ import type { ToolEndpoint } from '@heynixie/tools';
 import type { ConversationMemory, ConversationMemorySettings, SessionDefinitions } from '../types';
 import type { SystemTaskOptions } from './make-system-task-runner';
 
-export interface NixieRunnerOptions extends SystemTaskOptions {
+export interface SandboxRunnerOptions extends SystemTaskOptions {
   readonly context: TasksContext;
 
   readonly tools: Pick<ToolEndpoint, 'startRun'>;

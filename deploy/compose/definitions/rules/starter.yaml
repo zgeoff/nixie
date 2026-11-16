@@ -39,7 +39,7 @@ ask-exports:
 
 ask-stranger-with-memory:
   outcome: ask
-  tools: [task.start/nixie]
+  tools: [task.start/sandbox]
   checks:
     - { arg: persona, op: eq, value: none }
     - { arg: memory, op: eq, value: read }

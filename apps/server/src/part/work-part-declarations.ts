@@ -7,14 +7,21 @@ import { runGapChecks, runMandateExpiry, startMandateTimer } from '@heynixie/def
 import { toErrorFields } from '@heynixie/logger';
 import { startPromptLapseSweep } from '@heynixie/prompts';
 import type { RunStep } from '@heynixie/tasks';
-import { conversationTaskID, createConversationTask, reviveHeldTasks } from '@heynixie/tasks';
+import {
+  conversationRunner,
+  createConversationTask,
+  reviveHeldTasks,
+  sandboxRunner,
+} from '@heynixie/tasks';
 import { runDefinitionsSeed } from '../definition/run-definitions-seed';
 import { startDefinitionsExports } from '../definition/start-definitions-exports';
+import { queueCheckRunner } from '../queue/queue-check-runner';
+import { startQueueCheckTask } from '../queue/start-queue-check-task';
 import { runInForceSeedAndWake } from '../seed/run-in-force-seed-and-wake';
 import { startSeedPoll } from '../seed/start-seed-poll';
 import { startServerBackups } from '../server/start-server-backups';
 import { runUnknownTaskStep } from '../task/run-unknown-task-step';
-import { startNixieTaskRunner } from '../task/start-nixie-task-runner';
+import { startSandboxTaskRunner } from '../task/start-sandbox-task-runner';
 import { runTestTaskStep } from '../test/run-test-task-step';
 import type { AnyPartDeclaration } from '../types';
 import { writeStartRecord } from '../utils/write-start-record';
@@ -59,21 +66,18 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
     },
   },
   {
-    name: 'nixie_runner',
+    name: 'sandbox_runner',
     needs: ['server_parts', 'add_images'],
     uses: ['memory'],
-    start: makeRetriedStart('nixie_runner', (parts, reader) =>
-      startNixieTaskRunner(parts, () => reader.get('memory')),
+    start: makeRetriedStart('sandbox_runner', (parts, reader) =>
+      startSandboxTaskRunner(parts, () => reader.get('memory')),
     ),
   },
   {
     name: 'runners',
-    needs: ['inputs', 'server_parts', 'conversation_task', 'conversation_imp', 'nixie_runner'],
+    needs: ['inputs', 'server_parts', 'conversation_task', 'conversation_imp', 'sandbox_runner'],
     start: async (reader) => {
       const parts = reader.get('server_parts');
-
-      const systemSteps = new Map([[conversationTaskID, reader.get('conversation_imp').runStep]]);
-
       const harness = reader.get('inputs').options.harness;
 
       // A task that a crash test creates runs the test step, so its scenario needs no model.
@@ -82,10 +86,19 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
           ? (input) => Promise.resolve(runTestTaskStep(parts.context.clock, input))
           : runUnknownTaskStep;
 
-      await startRunners(parts, {
-        system: (input) => (systemSteps.get(input.taskID) ?? otherStep)(input),
-        started: reader.get('nixie_runner').runStep,
-      });
+      const checkStep = await startQueueCheckTask(parts);
+
+      const runStep = parts.context.runners.bindSteps(
+        parts.context,
+        [
+          { definition: conversationRunner, runStep: reader.get('conversation_imp').runStep },
+          { definition: sandboxRunner, runStep: reader.get('sandbox_runner').runStep },
+          { definition: queueCheckRunner, runStep: checkStep },
+        ],
+        otherStep,
+      );
+
+      await startRunners(parts, runStep);
 
       parts.state.update({ areRunnersStarted: true });
     },

@@ -8,7 +8,10 @@ test('it picks only the tasks that read memory for a forgotten memory item or a 
         {
           taskID: 'tide-tables',
           setup: {
+            kind: 'started',
+            runner: 'sandbox',
             startedBy: 'conversation',
+            report: 'wake',
             options: {
               model: null,
               profile: null,
@@ -24,7 +27,10 @@ test('it picks only the tasks that read memory for a forgotten memory item or a 
         {
           taskID: 'moon-phases',
           setup: {
+            kind: 'started',
+            runner: 'sandbox',
             startedBy: 'conversation',
+            report: 'wake',
             options: {
               model: null,
               profile: null,
@@ -37,7 +43,18 @@ test('it picks only the tasks that read memory for a forgotten memory item or a 
             limits: { turns: 25, dollars: 2 },
           },
         },
-        { taskID: 'moved-message', setup: { startedBy: 'owner', options: null, limits: null } },
+        {
+          taskID: 'moved-message',
+          setup: {
+            kind: 'started',
+            runner: 'sandbox',
+            startedBy: 'owner',
+            report: null,
+            options: null,
+            limits: null,
+          },
+        },
+        { taskID: 'the-conversation', setup: { kind: 'fixed' } },
         { taskID: 'gone', setup: null },
       ],
       null,
@@ -74,7 +91,10 @@ test.each([
   const candidates = memories.map((memory, index) => ({
     taskID: names[index] ?? 'extra',
     setup: {
-      startedBy: 'conversation' as const,
+      kind: 'started' as const,
+      runner: 'sandbox',
+      startedBy: 'conversation',
+      report: 'wake' as const,
       options: {
         model: null,
         profile: null,

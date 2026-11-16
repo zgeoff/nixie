@@ -339,6 +339,7 @@ test('it shows the model each selectable model as an enum value, with its descri
   );
 
   expect(tool.input['properties']).toStrictEqual({
+    runner: { type: 'string', const: 'sandbox' },
     name: expect.toBeObject(),
     brief: expect.toBeObject(),
     model: {
@@ -426,7 +427,9 @@ test('it starts a task with the report shape it is given, as its option', async 
 
   const setup = await readTaskSetup(ctx.context, taskID);
 
-  expect(setup?.options?.reportShape).toStrictEqual({
+  invariant(setup?.kind === 'started');
+
+  expect(setup.options?.reportShape).toStrictEqual({
     type: 'object',
     properties: { city: { type: 'string' } },
     required: ['city'],
@@ -491,7 +494,10 @@ test('it starts a stranger on a selectable model with the tools it asks for, and
   const setup = await readTaskSetup(ctx.context, taskID);
 
   expect(setup).toStrictEqual({
+    kind: 'started',
+    runner: 'sandbox',
     startedBy: 'conversation',
+    report: 'wake',
     options: {
       model: 'second-look',
       profile: 'router-b',
@@ -659,9 +665,9 @@ test.each(['mcp__nixie__memory_recall', 'memory.recall'])(
       },
     });
 
-    expect(setups.map((setup) => setup?.options?.tools)).toStrictEqual([
-      ['tasks.list', 'task.message', 'task.report', 'memory.recall'],
-    ]);
+    expect(
+      setups.map((setup) => (setup?.kind === 'started' ? setup.options?.tools : null)),
+    ).toStrictEqual([['tasks.list', 'task.message', 'task.report', 'memory.recall']]);
   },
 );
 

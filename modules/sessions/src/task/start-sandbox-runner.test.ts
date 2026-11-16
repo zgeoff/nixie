@@ -25,9 +25,9 @@ import { readRecordsByKind } from '../test-utils/read-records-by-kind';
 import { runNextStep } from '../test-utils/run-next-step';
 import { startTestSessionHost } from '../test-utils/start-test-session-host';
 import { buildRunSettings } from './build-run-settings';
-import type { NixieRunnerOptions } from './nixie-runner-options';
 import { readRunUsage } from './read-run-usage';
-import { startNixieRunner } from './start-nixie-runner';
+import type { SandboxRunnerOptions } from './sandbox-runner-options';
+import { startSandboxRunner } from './start-sandbox-runner';
 
 async function setupTest() {
   const clock = buildTestClock(1_000_000);
@@ -87,8 +87,10 @@ async function setupTest() {
     pinnedUse: { items: 0, tokens: 0, budget: 2000 },
   });
 
-  const startRunner = async (parts: Partial<Pick<NixieRunnerOptions, 'tools' | 'memory'>> = {}) => {
-    const runner = await startNixieRunner({
+  const startRunner = async (
+    parts: Partial<Pick<SandboxRunnerOptions, 'tools' | 'memory'>> = {},
+  ) => {
+    const runner = await startSandboxRunner({
       context: host.context,
       models,
       secrets,
@@ -693,7 +695,7 @@ test('it destroys the imps of closed tasks, and on a later pass the one whose de
   ctx.guest.failNextDestroy(stuck, 'the imp would not stop');
 
   await writeTaskControl(ctx.context, { taskID: stuck, control: 'close' });
-  await waitForCondition(() => ctx.events.includes('nixie_runner.task_remove_failed'));
+  await waitForCondition(() => ctx.events.includes('sandbox_runner.remove_failed'));
   await writeTaskControl(ctx.context, { taskID: other, control: 'close' });
 
   await waitForCondition(async () => {
@@ -708,10 +710,10 @@ test('it destroys the imps of closed tasks, and on a later pass the one whose de
     return sandboxes.length === 0;
   });
 
-  expect(ctx.events.filter((event) => event.startsWith('nixie_runner.task_'))).toStrictEqual([
-    'nixie_runner.task_remove_failed',
-    'nixie_runner.task_removed',
-    'nixie_runner.task_removed',
+  expect(ctx.events.filter((event) => event.startsWith('sandbox_runner.'))).toStrictEqual([
+    'sandbox_runner.remove_failed',
+    'sandbox_runner.task_removed',
+    'sandbox_runner.task_removed',
   ]);
 });
 

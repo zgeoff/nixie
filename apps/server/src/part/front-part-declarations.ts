@@ -5,6 +5,7 @@ import { runInForceSeedAndWake } from '../seed/run-in-force-seed-and-wake';
 import { buildServerReset } from '../server/build-server-reset';
 import { createServerContext } from '../server/create-server-context';
 import { startHTTPServer } from '../server/start-http-server';
+import { buildServerTaskRunners } from '../task/build-server-task-runners';
 import { startTurnInputs } from '../turn/start-turn-inputs';
 import type { AnyPartDeclaration } from '../types';
 import { buildAPIGate } from '../utils/build-api-gate';
@@ -37,6 +38,7 @@ export const frontPartDeclarations: readonly AnyPartDeclaration<ServerPartValues
             secrets: options.secrets.models,
             hopLimit: options.config.tasks.messaging.hopLimit,
           }),
+          runners: buildServerTaskRunners(),
           settings: {
             ...defaultAPISettings,
             isBackupEnabled: options.config.backup.isEnabled,

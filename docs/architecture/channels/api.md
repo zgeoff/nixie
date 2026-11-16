@@ -117,12 +117,13 @@ The 6 task controls are checked actions that name a task: pause, resume, stop, r
 interrupt, as [pause, stop and close](../core/tasks.md#pause-stop-and-close) describes. Each answers
 with the task's state, whether a pause waits on the running step, and when the control took effect.
 A control that the task's state does not allow gets `TASK_STATE_REFUSED` with the state it met, a
-close of the conversation gets `CONVERSATION_NEVER_CLOSES`, and a task that does not exist gets
-`TASK_NOT_FOUND`. A refusal keeps no result under its action ID, so a retry of the same action runs
-the control again against the state the task holds then. An action read lists a task's queued
-actions, which a stop cancels, apart from its started ones, which run on to their outcome, so a
-client shows what a stop does before the user confirms it. While nixie is paused, the resume control
-exempts the task from the pause, so the task runs while the rest stay paused.
+close of the conversation gets `CONVERSATION_NEVER_CLOSES`, a control that the task's runner does
+not offer gets `RUNNER_LACKS_CONTROL`, and a task that does not exist gets `TASK_NOT_FOUND`. A
+refusal keeps no result under its action ID, so a retry of the same action runs the control again
+against the state the task holds then. An action read lists a task's queued actions, which a stop
+cancels, apart from its started ones, which run on to their outcome, so a client shows what a stop
+does before the user confirms it. While nixie is paused, the resume control exempts the task from
+the pause, so the task runs while the rest stay paused.
 
 ## Pausing nixie
 
@@ -248,10 +249,11 @@ A task list read returns the most recently active tasks up to a cap, each with i
 state, last activity, whether it takes a message of the user's, the task it waits on, the controls
 its runner offers and its [action counts](../core/actions.md#cancelled-actions). It also gives the
 log sequence it read at, which it reads before the tasks, so a client that follows the log from that
-sequence sees every change the list leaves out. Every task runs on the nixie runner, which offers
-all 6 controls, and a client shows only the controls that the runner offers and the task's state
-allows. A started task whose name the user forgot shows under its ID. A task read returns one task
-with the same fields, whatever its place in the list, so a task's page shows a task past the cap.
+sequence sees every change the list leaves out. Each listed task also names its `runner`. A client
+shows only the controls that the task's [runner](../core/started-tasks.md#task-runners) offers and
+the task's state allows. A started task whose name the user forgot shows under its ID. A task read
+returns one task with the same fields, whatever its place in the list, so a task's page shows a task
+past the cap.
 
 ## Reading and the live stream
 
