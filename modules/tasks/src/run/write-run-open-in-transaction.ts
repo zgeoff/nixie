@@ -28,7 +28,7 @@ export type RunOpenOutcome = 'held' | 'ready';
 // so a rerun of a first step opens no second one.
 export async function writeRunOpenInTransaction(
   tx: Transaction<unknown>,
-  context: Pick<TasksContext, 'definitions' | 'log' | 'runSettings'>,
+  context: Pick<TasksContext, 'definitions' | 'log' | 'runSettings' | 'runners'>,
   request: RunOpenRequest,
 ): Promise<RunOpenOutcome> {
   const setup = await readRunSetup(tx, request.taskID);
@@ -128,7 +128,7 @@ function buildFreshOpened(
   request: RunOpenRequest,
   origin: OpenedOrigin,
 ): TaskRunOpened {
-  const mode = pickReportMode(setup.options.report, 'start', context.runSettings);
+  const mode = pickReportMode(setup.report, 'start', context.runSettings);
 
   return {
     taskID: request.taskID,
@@ -141,8 +141,8 @@ function buildFreshOpened(
     carriesRunID: null,
     briefID: null,
     report: { mode, target: mode === 'none' ? null : setup.startedBy },
-    reportShape: setup.options.reportShape ?? null,
-    limits: { ...setup.options.limits, calls: {} },
+    reportShape: setup.reportShape,
+    limits: { ...setup.limits, calls: {} },
   };
 }
 
@@ -155,7 +155,7 @@ interface CarriedOpening {
 
 async function readCarriedOpened(
   tx: Transaction<unknown>,
-  context: Pick<TasksContext, 'log' | 'runSettings'>,
+  context: Pick<TasksContext, 'log' | 'runSettings' | 'runners'>,
   opening: CarriedOpening,
 ): Promise<TaskRunOpened> {
   const carries = opening.carries;

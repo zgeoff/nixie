@@ -12,7 +12,7 @@ import type { ReceivedFrame, StubGuestSandboxes } from '@heynixie/sandbox/test-u
 import { buildStubGuestSandboxes } from '@heynixie/sandbox/test-utils';
 import type { RunSettings, TasksContext } from '@heynixie/tasks';
 import { tasksProjections } from '@heynixie/tasks';
-import { buildTestRunSettings } from '@heynixie/tasks/test-utils';
+import { buildTestRunSettings, buildTestTaskRunners } from '@heynixie/tasks/test-utils';
 import { buildToolRegistry, startToolEndpoint } from '@heynixie/tools';
 import { readTestToolNames, sendTestToolCall } from '@heynixie/tools/test-utils';
 import invariant from 'tiny-invariant';
@@ -84,6 +84,7 @@ export async function startTestSessionHost(
     clock: writer.clock,
     definitions: () => ({ snapshotHash: 'sha256:test' }),
     runSettings: options.runSettings ?? buildTestRunSettings(),
+    runners: buildTestTaskRunners(),
   };
 
   const socketDir = join(dataDir, 'tools');

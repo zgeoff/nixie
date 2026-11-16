@@ -5,7 +5,7 @@ import type { TaskResumeRequest } from './write-task-resume-in-transaction';
 import { writeTaskResumeInTransaction } from './write-task-resume-in-transaction';
 
 export function writeTaskResume(
-  context: Pick<TasksContext, 'log' | 'definitions' | 'runSettings'>,
+  context: Pick<TasksContext, 'log' | 'definitions' | 'runSettings' | 'runners'>,
   request: TaskResumeRequest,
 ): Promise<TaskControlOutcome> {
   return withWriteTransaction(context.log.writer, (tx) =>

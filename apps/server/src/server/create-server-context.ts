@@ -2,7 +2,7 @@ import type { APIContext, APISettings, CleanupRecordSessions } from '@heynixie/a
 import { createPasskeyState, defaultAPISettings } from '@heynixie/api';
 import { readDefinitionsInForce } from '@heynixie/definitions';
 import type { Writer } from '@heynixie/log';
-import type { RunSettings } from '@heynixie/tasks';
+import type { RunSettings, TaskRunnerRegistry } from '@heynixie/tasks';
 import type { InForce } from '../types';
 import { buildServerLog } from './build-server-log';
 
@@ -13,6 +13,7 @@ export interface ServerContext {
 
 export interface ServerContextOptions {
   readonly runSettings: RunSettings;
+  readonly runners: TaskRunnerRegistry;
   readonly settings?: APISettings;
 }
 
@@ -39,6 +40,7 @@ export async function createServerContext(
 
       definitions: () => ({ snapshotHash: inForce.read()?.snapshotHash ?? '' }),
       runSettings: options.runSettings,
+      runners: options.runners,
       settings: options.settings ?? defaultAPISettings,
       passkeys: createPasskeyState(),
       readSessionCleanup,

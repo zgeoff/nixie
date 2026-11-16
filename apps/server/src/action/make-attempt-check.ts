@@ -4,6 +4,7 @@ import type { Definitions, Log } from '@heynixie/log';
 import type { AskCause, EffectDeclaration, PolicyDecision } from '@heynixie/policy';
 import { buildActionProposalInput, makeFaultSafeDecisionPoint } from '@heynixie/policy';
 import type { ToolRegistry } from '@heynixie/tools';
+import { findToolDeclaration, pickPolicyToolName } from '@heynixie/tools';
 import invariant from 'tiny-invariant';
 import type { DecisionPointFactory } from '../utils/make-server-decisions';
 import type { StoredCall } from './read-stored-call';
@@ -29,16 +30,17 @@ export function makeAttemptCheck(options: AttemptCheckOptions): AttemptCheck {
       return { kind: 'go', destinations: [] };
     }
 
-    const declaration = options.registry.findTool(stored.tool)?.definition.declaration ?? null;
+    const policyTool = pickPolicyToolName(options.registry, stored.tool, stored.input);
+    const declaration = findToolDeclaration(options.registry, policyTool);
 
     const decide = makeFaultSafeDecisionPoint(
-      options.decisions((name) => options.registry.findTool(name)?.definition.declaration ?? null, {
+      options.decisions((name) => findToolDeclaration(options.registry, name), {
         readConsent: () => Promise.resolve(stored.consentCheck),
       }),
     );
 
     const policy = await decide({
-      tool: stored.tool,
+      tool: policyTool,
       toolList: stored.inputs.toolList,
       context: stored.inputs.context,
       definitionID: stored.inputs.definitionID,
@@ -51,13 +53,14 @@ export function makeAttemptCheck(options: AttemptCheckOptions): AttemptCheck {
       snapshot: options.definitions().snapshotHash,
     });
 
-    return buildVerdict(options, { policy, stored, declaration, input });
+    return buildVerdict(options, { policy, stored, policyTool, declaration, input });
   };
 }
 
 interface VerdictFacts {
   readonly policy: PolicyDecision;
   readonly stored: StoredCall;
+  readonly policyTool: string;
   readonly declaration: EffectDeclaration | null;
   readonly input: AttemptCheckInput;
 }
@@ -89,7 +92,8 @@ function buildVerdict(options: AttemptCheckOptions, facts: VerdictFacts): Attemp
     definitions: options.definitions(),
     thread: action.task_id,
     callSequence: invariantSequence(action.call_sequence),
-    tool: facts.stored.tool,
+    tool: facts.policyTool,
+    actionTool: facts.stored.tool,
     effects: facts.declaration.effects,
     cause,
     input: facts.input.arguments,

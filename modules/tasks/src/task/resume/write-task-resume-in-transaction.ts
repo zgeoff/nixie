@@ -17,7 +17,7 @@ export interface TaskResumeRequest {
 // together.
 export async function writeTaskResumeInTransaction(
   tx: Transaction<unknown>,
-  context: Pick<TasksContext, 'log' | 'definitions' | 'runSettings'>,
+  context: Pick<TasksContext, 'log' | 'definitions' | 'runSettings' | 'runners'>,
   request: TaskResumeRequest,
 ): Promise<TaskControlOutcome> {
   const db = tx.$extendTables<TasksTables>();

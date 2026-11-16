@@ -38,7 +38,7 @@ export type RunPhase = 'active' | 'waiting_reply' | 'idle';
 
 export interface RunMeter {
   readonly name: RunMeterName;
-  readonly read: (context: Pick<TasksContext, 'log'>, run: TaskRun) => Promise<number>;
+  readonly read: (context: Pick<TasksContext, 'log' | 'runners'>, run: TaskRun) => Promise<number>;
 
   // the limit as a person reads it, such as "$10.00" or "40 turns"
   readonly render: (limit: number) => string;

@@ -32,6 +32,27 @@ export type {
   TaskRunOpened,
 } from './run/types';
 
+export { buildTaskRunnerRegistry } from './runner/build-task-runner-registry';
+export type { TaskRunnerRegistryOptions } from './runner/build-task-runner-registry';
+export { conversationRunner } from './runner/conversation-runner';
+export { defineRunnerStart } from './runner/define-runner-start';
+export { pickResolvedControls } from './runner/pick-resolved-controls';
+export { parseTaskStartInput } from './runner/parse-task-start-input';
+export { sandboxRunner } from './runner/sandbox-runner';
+
+export type {
+  BoundStep,
+  RunnerStart,
+  RunnerStartPlan,
+  RunnerStartPort,
+  StartableRunner,
+  TaskRunnerDefinition,
+  TaskRunnerRegistry,
+  TaskRunnerResolution,
+  TaskStartEnvelope,
+} from './runner/types';
+
+export type { TaskStarter } from './task/start/plan-task-start';
 export { buildStepRunID } from './step/build-step-run-id';
 export { buildTaskMessageTool } from './task/projection/build-task-message-tool';
 export { buildTaskStartTool } from './lease/build-task-start-tool';
@@ -65,7 +86,7 @@ export { createConversationTask } from './conversation/create-conversation-task'
 export { createSystemTask } from './task/create-system-task';
 export { createTask } from './task/create-task';
 export { DEFAULT_MAX_STEP_ERRORS } from './step/default-max-step-errors';
-export { isFinishedState } from '@heynixie/task-control';
+export { isFinishedState, taskControls } from '@heynixie/task-control';
 export { isInboxRecord } from './utils/is-inbox-record';
 export { LeaseLostError } from './utils/lease-lost-error';
 export type { OwnerImageMediaType } from './owner/owner-message-codec';
@@ -78,7 +99,7 @@ export { readInbox } from './inbox/read-inbox';
 export { readSentTaskMessages } from './task/message/read-sent-task-messages';
 export type { StartedTasksQuery } from './task/read-started-task-ids';
 export { readStartedTaskIDs } from './task/read-started-task-ids';
-export type { TaskSetup } from './task/read-task-setup';
+export type { StartedTaskSetup, TaskSetup } from './task/read-task-setup';
 export { readTaskSetup } from './task/read-task-setup';
 export { startedTaskDefaultTools } from './task/started-task-default-tools';
 export { taskFailedTurnSpentCodec } from './task/codec/task-failed-turn-spent-codec';

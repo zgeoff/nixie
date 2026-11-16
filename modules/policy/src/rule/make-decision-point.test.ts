@@ -41,6 +41,26 @@ test("it denies a tool outside the caller's tool list at the scope stage", async
   });
 });
 
+test('it takes a tool variant as on the tool list when its tool is', async () => {
+  const ctx = buildTestDecisionPoint();
+
+  const decided = await ctx.decide(
+    buildPolicyCall({ tool: 'task.start/atc', toolList: ['task.start'] }),
+  );
+
+  expect(decided.decision.stage).toBeGreaterThan(2);
+});
+
+test('it denies a tool variant at the scope stage when its tool is not on the list', async () => {
+  const ctx = buildTestDecisionPoint();
+
+  const decided = await ctx.decide(
+    buildPolicyCall({ tool: 'task.start/atc', toolList: ['task.message'] }),
+  );
+
+  expect(decided.sentence).toBe("The tool task.start/atc is not on this run's tool list.");
+});
+
 test('it prefers the declaration in the snapshot to the one in code', async () => {
   const ctx = buildTestDecisionPoint({
     declaration: buildTestDeclaration({ effects: ['read'] }),

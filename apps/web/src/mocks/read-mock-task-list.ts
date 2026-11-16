@@ -26,6 +26,7 @@ export function readMockTaskList() {
         isTakingMessages: task.isTakingMessages,
         lastActivityAt: task.lastActivityAt,
         name: task.name,
+        runner: task.runner,
         state: task.state,
         taskID: task.taskID,
         waitingOn: task.waitingOn,

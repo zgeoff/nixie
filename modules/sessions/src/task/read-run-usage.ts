@@ -11,7 +11,7 @@ export interface RunUsageRead {
 // The newest sequence is read first, so a record that lands during the meters' read counts in the
 // late spend after it as well, which only shortens the turn.
 export async function readRunUsage(
-  context: Pick<TasksContext, 'log' | 'runSettings'>,
+  context: Pick<TasksContext, 'log' | 'runSettings' | 'runners'>,
   run: TaskRun,
 ): Promise<RunUsageRead> {
   const [newest] = await readRecords(context.log, {

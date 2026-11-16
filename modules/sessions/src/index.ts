@@ -59,9 +59,9 @@ export type {
 export { startSessionRunner } from './session/start-session-runner';
 export { startConversationRunner } from './session/start-conversation-runner';
 export { buildRunSettings } from './task/build-run-settings';
-export type { NixieRunnerOptions } from './task/nixie-runner-options';
-export type { NixieRunner } from './task/start-nixie-runner';
-export { startNixieRunner } from './task/start-nixie-runner';
+export type { SandboxRunnerOptions } from './task/sandbox-runner-options';
+export type { SandboxRunner } from './task/start-sandbox-runner';
+export { startSandboxRunner } from './task/start-sandbox-runner';
 export type { CheckerRunnerOptions } from './checker/start-checker-runner';
 export { startCheckerRunner } from './checker/start-checker-runner';
 export type { CheckerTask, CheckerTaskOptions } from './checker/start-checker-task';

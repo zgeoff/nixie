@@ -1,5 +1,6 @@
 import { expect, test } from 'bun:test';
 import { planTaskControl } from './plan-task-control';
+import { taskControls } from './task-controls';
 
 test.each([
   [
@@ -68,6 +69,7 @@ test.each([
     planTaskControl(control, {
       state,
       isConversation: false,
+      controls: taskControls,
       isPauseRequested: pause.isPauseRequested,
       hasUnread: false,
       isLimitHeld: false,
@@ -91,6 +93,7 @@ test.each([
     planTaskControl(control, {
       state,
       isConversation: false,
+      controls: taskControls,
       isPauseRequested,
       hasUnread: false,
       isLimitHeld: false,
@@ -104,6 +107,7 @@ test('it resumes a paused task to ready when input waits unread', () => {
     planTaskControl('resume', {
       state: 'paused',
       isConversation: false,
+      controls: taskControls,
       isPauseRequested: false,
       hasUnread: true,
       isLimitHeld: false,
@@ -117,6 +121,7 @@ test('it refuses to close the conversation', () => {
     planTaskControl('close', {
       state: 'waiting',
       isConversation: true,
+      controls: taskControls,
       isPauseRequested: false,
       hasUnread: false,
       isLimitHeld: false,
@@ -133,6 +138,7 @@ test.each([
     planTaskControl(control, {
       state,
       isConversation: false,
+      controls: taskControls,
       isPauseRequested: false,
       hasUnread: false,
       resumeState: 'ready',
@@ -146,10 +152,39 @@ test('it stops a task that its limit holds', () => {
     planTaskControl('stop', {
       state: 'paused',
       isConversation: false,
+      controls: taskControls,
       isPauseRequested: false,
       hasUnread: false,
       resumeState: 'ready',
       isLimitHeld: true,
     }),
   ).toStrictEqual({ kind: 'task.stopped', resumeState: 'ready' });
+});
+
+test('it refuses a control that the task runner lacks', () => {
+  expect(
+    planTaskControl('stop', {
+      state: 'waiting',
+      isConversation: false,
+      isPauseRequested: false,
+      hasUnread: false,
+      isLimitHeld: false,
+      resumeState: null,
+      controls: ['pause', 'resume'],
+    }),
+  ).toStrictEqual({ reason: 'runner_lacks_control' });
+});
+
+test('it refuses to close the conversation before it checks the runner controls', () => {
+  expect(
+    planTaskControl('close', {
+      state: 'waiting',
+      isConversation: true,
+      isPauseRequested: false,
+      hasUnread: false,
+      isLimitHeld: false,
+      resumeState: null,
+      controls: [],
+    }),
+  ).toStrictEqual({ reason: 'conversation_never_closes' });
 });

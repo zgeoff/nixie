@@ -163,7 +163,7 @@ test.each<[string, Rule, Partial<RuleCall>, boolean]>([
   [
     'a variant leaves another variant of the tool',
     { id: 'ask-coding-sessions', outcome: 'ask', tools: ['task.start/atc'] },
-    { tool: 'task.start/nixie', effects: ['note'] },
+    { tool: 'task.start/sandbox', effects: ['note'] },
     false,
   ],
   [
@@ -256,12 +256,12 @@ test.each([
   ['a start with memory off', { memory: 'none', model: 'glm' }, false],
   ['a start on a model outside the list', { memory: 'read', model: 'opus' }, false],
 ])(
-  'it matches the memory and model checks of task.start/nixie to %s: %p',
+  'it matches the memory and model checks of task.start/sandbox to %s: %p',
   (_label, args, isMatch) => {
     const rule: Rule = {
       id: 'ask-memory-off-claude',
       outcome: 'ask',
-      tools: ['task.start/nixie'],
+      tools: ['task.start/sandbox'],
       checks: [
         { arg: 'memory', op: 'eq', value: 'read' },
         { arg: 'model', op: 'in', value: ['glm', 'sol'] },
@@ -270,7 +270,7 @@ test.each([
 
     expect(
       isRuleMatch(rule, {
-        tool: 'task.start/nixie',
+        tool: 'task.start/sandbox',
         effects: ['note'],
         context: 'conversation',
         task: null,

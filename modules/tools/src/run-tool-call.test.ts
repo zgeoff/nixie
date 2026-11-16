@@ -6,9 +6,11 @@ import { readStarterDecisionPoint, readStarterRules } from '@heynixie/policy/tes
 import { waitForCondition } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
 import { buildToolRegistry } from './build-tool-registry';
+import { findToolDeclaration } from './policy-call/find-tool-declaration';
 import type { ToolCallOptions } from './run-tool-call';
 import { runToolCall } from './run-tool-call';
 import { buildMockToolDefinition } from './test-utils/build-mock-tool-definition';
+import { buildMockVariantToolDefinition } from './test-utils/build-mock-variant-tool-definition';
 import { buildStubActionQueue } from './test-utils/build-stub-action-queue';
 import { setupTestLog } from './test-utils/setup-test-log';
 import type { ToolContext } from './types';
@@ -31,23 +33,20 @@ async function setupTest(config: SetupConfig) {
 
   const options: ToolCallOptions = {
     registry,
-    decide: readStarterDecisionPoint(
-      (tool) => registry.findTool(tool)?.definition.declaration ?? null,
-      {
-        extraRules: config.rules ?? [],
-        ...(config.snapshotTools === undefined
-          ? {}
-          : {
-              readInputs: () =>
-                Promise.resolve({
-                  rules: [...readStarterRules(), ...(config.rules ?? [])],
-                  contacts: [],
-                  tools: config.snapshotTools ?? new Map(),
-                  ownerDestinations: [],
-                }),
-            }),
-      },
-    ),
+    decide: readStarterDecisionPoint((tool) => findToolDeclaration(registry, tool), {
+      extraRules: config.rules ?? [],
+      ...(config.snapshotTools === undefined
+        ? {}
+        : {
+            readInputs: () =>
+              Promise.resolve({
+                rules: [...readStarterRules(), ...(config.rules ?? [])],
+                contacts: [],
+                tools: config.snapshotTools ?? new Map(),
+                ownerDestinations: [],
+              }),
+          }),
+    }),
     ...(config.decisionDeadlineMs === undefined
       ? {}
       : { decisionDeadlineMs: config.decisionDeadlineMs }),
@@ -2137,4 +2136,183 @@ test('it proposes nothing for a call that repeats an approved action still open,
   );
 
   expect(ctx.queue.actions).toHaveLength(1);
+});
+
+test('it asks about a call under its variant name, so a rule on one variant leaves the other alone', async () => {
+  const ctx = await setupTest({
+    tools: [buildMockVariantToolDefinition()],
+    rules: [
+      {
+        id: 'ask-risky',
+        revision: 1,
+        rule: { id: 'ask-risky', outcome: 'ask' as const, tools: ['jobs_start/risky'] },
+      },
+    ],
+  });
+
+  const risky = await runToolCall(
+    { tool: 'jobs_start', input: { kind: 'risky', query: 'a' }, toolUseID: 'toolu_1' },
+    {
+      runID: 'run-1',
+      thread: 'task-1',
+      tools: ['jobs_start'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
+    ctx.options,
+  );
+
+  const plain = await runToolCall(
+    { tool: 'jobs_start', input: { kind: 'plain', query: 'b' }, toolUseID: 'toolu_2' },
+    {
+      runID: 'run-1',
+      thread: 'task-1',
+      tools: ['jobs_start'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
+    ctx.options,
+  );
+
+  expect(risky.isError).toBe(false);
+
+  expect(risky.content).toStrictEqual([
+    { type: 'text', text: expect.stringContaining('Waiting for approval as') },
+  ]);
+
+  expect(plain).toStrictEqual({ content: [], structuredContent: { text: 'a note' } });
+});
+
+test('it records a variant call and its proposal, naming the tool in the call and the variant in the proposal', async () => {
+  const ctx = await setupTest({
+    tools: [buildMockVariantToolDefinition()],
+    rules: [
+      {
+        id: 'ask-risky',
+        revision: 1,
+        rule: { id: 'ask-risky', outcome: 'ask' as const, tools: ['jobs_start/risky'] },
+      },
+    ],
+  });
+
+  await runToolCall(
+    { tool: 'jobs_start', input: { kind: 'risky', query: 'a' }, toolUseID: 'toolu_1' },
+    {
+      runID: 'run-1',
+      thread: 'task-1',
+      tools: ['jobs_start'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
+    ctx.options,
+  );
+
+  const entries = await readRecords(ctx.log, { afterSequence: 0 });
+
+  expect(entries[0]?.record).toMatchObject({
+    kind: 'tool_called',
+    payload: { tool: 'jobs_start' },
+    decision: { outcome: 'ask', rule: { id: 'ask-risky', revision: 1 } },
+  });
+
+  expect(entries[1]?.record).toMatchObject({
+    kind: 'policy.action_proposed',
+    payload: { tool: 'jobs_start/risky', effects: ['note'] },
+    erasable: { status: 'readable', fields: { input: { kind: 'risky', query: 'a' } } },
+  });
+});
+
+test('it refuses a call whose picked variant the tool does not declare', async () => {
+  const tool = buildMockVariantToolDefinition({
+    variants: { pick: () => 'ghost', declarations: {} },
+  });
+
+  const ctx = await setupTest({ tools: [tool] });
+
+  const result = await runToolCall(
+    { tool: 'jobs_start', input: { kind: 'plain', query: 'a' }, toolUseID: 'toolu_1' },
+    {
+      runID: 'run-1',
+      thread: 'task-1',
+      tools: ['jobs_start'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
+    ctx.options,
+  );
+
+  expect(result).toStrictEqual({
+    content: [{ type: 'text', text: 'the tool jobs_start has no variant ghost' }],
+    isError: true,
+  });
+});
+
+test('it proposes nothing for a variant call that repeats an approved action still open', async () => {
+  const ctx = await setupTest({
+    tools: [
+      buildMockVariantToolDefinition({
+        execution: 'queued',
+        declaration: { effects: ['send'] },
+        variants: {
+          pick: () => 'risky',
+          declarations: {
+            risky: {
+              effects: ['send'],
+              destinations: [],
+              amount: null,
+              content: ['query'],
+              results: { text: 'owner_data' },
+            },
+          },
+        },
+      }),
+    ],
+    rules: [
+      {
+        id: 'ask-risky',
+        revision: 1,
+        rule: { id: 'ask-risky', outcome: 'ask' as const, tools: ['jobs_start/risky'] },
+      },
+    ],
+  });
+
+  const run = {
+    runID: 'run-1',
+    thread: 'task-1',
+    tools: ['jobs_start'],
+    model: { model: 'model-a', profile: 'chat-direct' },
+  };
+
+  const call = { tool: 'jobs_start', input: { kind: 'risky', query: 'a' }, toolUseID: 'toolu_1' };
+
+  await runToolCall(call, run, ctx.options);
+
+  const written = await readRecords(ctx.log, { afterSequence: 0 });
+
+  const proposed = written.find((entry) => entry.record.kind === 'policy.action_proposed');
+  const proposedHash = proposed?.record.payload['actionHash'];
+
+  invariant(typeof proposedHash === 'string', 'the proposal record holds an action hash');
+
+  const earlierID = await ctx.queue.queue.enqueue({
+    call: { callID: 'call-0', tool: 'jobs_start', input: call.input, toolUseID: null },
+    run,
+    decision: { outcome: 'allow', stage: 3, rule: null },
+    callSequence: 1,
+    actionHash: proposedHash,
+    deadlineAt: null,
+    effects: ['send'],
+  });
+
+  const repeated = runToolCall({ ...call, toolUseID: 'toolu_2' }, run, ctx.options);
+
+  await waitForCondition(() => ctx.queue.waits.length === 1);
+
+  ctx.queue.drainWaits();
+
+  const result = await repeated;
+  const entries = await readRecords(ctx.log, { afterSequence: 0 });
+
+  expect(result).toStrictEqual({
+    content: [{ type: 'text', text: `queued as ${earlierID}` }],
+    isError: false,
+  });
+
+  expect(entries.filter((entry) => entry.record.kind === 'policy.action_proposed')).toHaveLength(1);
 });

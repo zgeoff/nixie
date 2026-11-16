@@ -51,6 +51,7 @@ test('#tasks.list lists the conversation and each started task with its name and
       isTakingMessages: true,
       lastActivityAt: expect.toBeValidDate(),
       name: 'Conversation',
+      runner: 'conversation',
       state: expect.toBeString(),
       taskID: 'conversation',
     },
@@ -63,6 +64,7 @@ test('#tasks.list lists the conversation and each started task with its name and
       isTakingMessages: true,
       lastActivityAt: expect.toBeValidDate(),
       name: 'Garden plan',
+      runner: 'sandbox',
       state: 'waiting',
       taskID: 'k3x9m2p7qa',
     },
@@ -244,6 +246,7 @@ test('#tasks.read gives one task as the list gives it', async () => {
     isTakingMessages: true,
     lastActivityAt: expect.toBeValidDate(),
     name: 'Garden plan',
+    runner: 'sandbox',
     state: 'waiting',
     taskID: 'k3x9m2p7qa',
   });

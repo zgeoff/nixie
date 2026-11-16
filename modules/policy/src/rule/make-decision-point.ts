@@ -49,7 +49,10 @@ export function makeDecisionPoint(options: DecisionPointOptions): DecisionPoint 
 
     progress.stage = 2;
 
-    if (!call.toolList.includes(call.tool)) {
+    // a variant such as task.start/atc is on the list when its tool is
+    const [listed = call.tool] = call.tool.split('/', 1);
+
+    if (!call.toolList.includes(call.tool) && !call.toolList.includes(listed)) {
       return buildStageDenial(call, 2, `The tool ${call.tool} is not on this run's tool list.`);
     }
 

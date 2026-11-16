@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { systemClock } from '@heynixie/clock';
 import { getDataFilePath, startWriter } from '@heynixie/log';
 import { StepFailedError, createConversationTask } from '@heynixie/tasks';
-import { buildTestRunSettings } from '@heynixie/tasks/test-utils';
+import { buildTestRunSettings, buildTestTaskRunners } from '@heynixie/tasks/test-utils';
 import { buildReadinessChecks } from '../server/build-readiness-checks';
 import { sendTestMessage } from '../test-utils/send-test-message';
 import { startTestLog } from '../test-utils/start-test-log';
@@ -29,6 +29,7 @@ async function setupTest() {
     clock: log.writer.clock,
     definitions: () => ({ snapshotHash: 'sha256:test' }),
     runSettings: buildTestRunSettings(),
+    runners: buildTestTaskRunners(),
   };
 
   return {

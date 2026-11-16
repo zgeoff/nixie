@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import type { Log } from '@heynixie/log';
 import { logProjections, startWriter } from '@heynixie/log';
 import { tasksProjections } from '@heynixie/tasks';
-import { buildTestRunSettings } from '@heynixie/tasks/test-utils';
+import { buildTestRunSettings, buildTestTaskRunners } from '@heynixie/tasks/test-utils';
 import type { TestTasks } from '@heynixie/tasks/test-utils';
 import { buildTestClock } from '@heynixie/testing';
 import { actionsProjection } from '../action/actions-projection';
@@ -48,6 +48,7 @@ export async function startTestActions(): Promise<TestTasks> {
       clock,
       definitions: () => ({ snapshotHash: 'sha256:test' }),
       runSettings: buildTestRunSettings(),
+      runners: buildTestTaskRunners(),
     },
   };
 }

@@ -11,6 +11,7 @@ export function buildMockTaskStartBounds(
       write: ['memory.remember', 'memory.edit', 'moment.keep', 'moment.edit'],
     },
     conversationTools: ['skill_read'],
+    reportDefaults: { start: 'wake', definition: 'next_turn' },
     ...overrides,
   };
 }

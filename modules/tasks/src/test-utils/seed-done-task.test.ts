@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import invariant from 'tiny-invariant';
 import { readTaskSetup } from '../task/read-task-setup';
 import type { TasksTables } from '../types';
 import { seedConversationStep } from './seed-conversation-step';
@@ -43,5 +44,7 @@ test('it starts the task with the options it is given', async () => {
 
   const setup = await readTaskSetup(ctx.context, taskID);
 
-  expect(setup?.limits).toStrictEqual({ turns: 3, dollars: 1 });
+  invariant(setup?.kind === 'started');
+
+  expect(setup.limits).toStrictEqual({ turns: 3, dollars: 1 });
 });

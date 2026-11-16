@@ -3,7 +3,7 @@ import { mkdir, mkdtemp, rename, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createPathSource } from '@heynixie/definitions';
-import { buildTestRunSettings } from '@heynixie/tasks/test-utils';
+import { buildTestRunSettings, buildTestTaskRunners } from '@heynixie/tasks/test-utils';
 import { buildTestClock, waitForCondition } from '@heynixie/testing';
 import { refreshDefinitions } from '../definition/refresh-definitions';
 import { createServerContext } from '../server/create-server-context';
@@ -70,6 +70,7 @@ test('it reports the definitions ready again once the source returns to its last
 
   const context = await createServerContext(log.writer, log.deploymentKey, () => null, {
     runSettings: buildTestRunSettings(),
+    runners: buildTestTaskRunners(),
   });
 
   const clock = buildTestClock(0);

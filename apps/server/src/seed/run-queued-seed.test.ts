@@ -3,7 +3,7 @@ import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createPathSource, runSeed } from '@heynixie/definitions';
-import { buildTestRunSettings } from '@heynixie/tasks/test-utils';
+import { buildTestRunSettings, buildTestTaskRunners } from '@heynixie/tasks/test-utils';
 import { createServerContext } from '../server/create-server-context';
 import { buildStubFailingLogger } from '../test-utils/build-stub-failing-logger';
 import { buildStubHeldSource } from '../test-utils/build-stub-held-source';
@@ -31,6 +31,7 @@ async function setupTest() {
 
   const context = await createServerContext(log.writer, log.deploymentKey, () => null, {
     runSettings: buildTestRunSettings(),
+    runners: buildTestTaskRunners(),
   });
 
   return { root, context };

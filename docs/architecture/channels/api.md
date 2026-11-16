@@ -102,14 +102,17 @@ only as hashes, so their retries answer with fresh values that replace the first
 
 A call whose token resolves to nobody gets a refusal record, which holds the channel, the external
 ID and the time and none of the call's content, because a stranger's input is untrusted content
-nobody asked nixie to keep. A revoked or lapsed session is refused under its session ID. Every token
-nixie never issued shares one external ID, so a stranger who sends fresh random tokens still gets
-one refusal per interval, and the record never holds the token. A refusals projection keeps the last
-refusal time for each external ID from the record's payload, and nixie writes at most one refusal
-per external ID per refusal interval, so a stranger who keeps calling cannot fill the log. nixie
-reads that time before it opens a write transaction, so a refused call inside the interval writes
-nothing. A call with no token at all is only signed out and writes nothing, because every signed-out
-page load and the web server's readiness check make such calls.
+nobody asked nixie to keep. A revoked or lapsed session is refused under its session ID.
+
+Every token nixie never issued shares one external ID, so a stranger who sends fresh random tokens
+still gets one refusal per interval, and the record never holds the token. A refusals projection
+keeps the last refusal time for each external ID from the record's payload, and nixie writes at most
+one refusal per external ID per refusal interval, so a stranger who keeps calling cannot fill the
+log. nixie reads that time before it opens a write transaction, so a refused call inside the
+interval writes nothing.
+
+A call with no token at all is only signed out and writes nothing, because every signed-out page
+load and the web server's readiness check make such calls.
 
 ## Controlling a task
 
@@ -117,12 +120,15 @@ The 6 task controls are checked actions that name a task: pause, resume, stop, r
 interrupt, as [pause, stop and close](../core/tasks.md#pause-stop-and-close) describes. Each answers
 with the task's state, whether a pause waits on the running step, and when the control took effect.
 A control that the task's state does not allow gets `TASK_STATE_REFUSED` with the state it met, a
-close of the conversation gets `CONVERSATION_NEVER_CLOSES`, and a task that does not exist gets
-`TASK_NOT_FOUND`. A refusal keeps no result under its action ID, so a retry of the same action runs
-the control again against the state the task holds then. An action read lists a task's queued
-actions, which a stop cancels, apart from its started ones, which run on to their outcome, so a
-client shows what a stop does before the user confirms it. While nixie is paused, the resume control
-exempts the task from the pause, so the task runs while the rest stay paused.
+close of the conversation gets `CONVERSATION_NEVER_CLOSES`, a control that the task's runner does
+not offer gets `RUNNER_LACKS_CONTROL`, and a task that does not exist gets `TASK_NOT_FOUND`. A
+refusal keeps no result under its action ID, so a retry of the same action runs the control again
+against the state the task holds then.
+
+An action read lists a task's queued actions, which a stop cancels, apart from its started ones,
+which run on to their outcome, so a client shows what a stop does before the user confirms it. While
+nixie is paused, the resume control exempts the task from the pause, so the task runs while the rest
+stay paused.
 
 ## Pausing nixie
 
@@ -151,12 +157,14 @@ predates the field reads the same states.
 The API writes the user's message as an `owner_message` record in the inbox of the task its thread
 names, in the transaction that keeps its client message ID, so a retry can never write it twice. The
 text, its spans and the label of the session it came from sit in the record's erasable fields under
-one key, so forgetting the message forgets how it arrived too. The message keeps the label its
-session had when it was sent, so a new label reaches the next message and leaves the earlier ones as
-they were. The payload holds the client message ID, the identity row it came through, whether the
-spans are the client's own, the sending device's time zone when the client sent one the server
-knows, and the time the device says the user wrote the message, which [time](../connectors/time.md)
-covers. A send to a thread whose task does not exist or has ended gets `THREAD_NOT_FOUND`.
+one key, so forgetting the message forgets how it arrived too.
+
+The message keeps the label its session had when it was sent, so a new label reaches the next
+message and leaves the earlier ones as they were. The payload holds the client message ID, the
+identity row it came through, whether the spans are the client's own, the sending device's time zone
+when the client sent one the server knows, and the time the device says the user wrote the message,
+which [time](../connectors/time.md) covers. A send to a thread whose task does not exist or has
+ended gets `THREAD_NOT_FOUND`.
 
 The API keeps the spans only when they run from the start of the text to its end in order, each
 non-empty, with no gap and no overlap, counted in UTF-16 code units. Otherwise the whole message
@@ -248,10 +256,11 @@ A task list read returns the most recently active tasks up to a cap, each with i
 state, last activity, whether it takes a message of the user's, the task it waits on, the controls
 its runner offers and its [action counts](../core/actions.md#cancelled-actions). It also gives the
 log sequence it read at, which it reads before the tasks, so a client that follows the log from that
-sequence sees every change the list leaves out. Every task runs on the nixie runner, which offers
-all 6 controls, and a client shows only the controls that the runner offers and the task's state
-allows. A started task whose name the user forgot shows under its ID. A task read returns one task
-with the same fields, whatever its place in the list, so a task's page shows a task past the cap.
+sequence sees every change the list leaves out. Each listed task also names its `runner`. A client
+shows only the controls that the task's [runner](../core/started-tasks.md#task-runners) offers and
+the task's state allows. A started task whose name the user forgot shows under its ID. A task read
+returns one task with the same fields, whatever its place in the list, so a task's page shows a task
+past the cap.
 
 ## Reading and the live stream
 

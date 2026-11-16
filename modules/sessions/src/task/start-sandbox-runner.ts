@@ -14,12 +14,12 @@ import type { GrantSpec, GuestCommand, Sandbox } from '@heynixie/sandbox';
 import { readSandboxOwners } from '@heynixie/sandbox';
 import type {
   RunStep,
+  StartedTaskSetup,
   StepInput,
   StepResult,
   TaskLimits,
   TaskRun,
   TaskRunOptions,
-  TaskSetup,
 } from '@heynixie/tasks';
 import {
   probePauseRequested,
@@ -53,7 +53,6 @@ import { createCallBudget } from './create-call-budget';
 import { getHarnessImage } from './get-harness-image';
 import type { SystemTaskSession } from './make-system-task-runner';
 import { makeSystemTaskRunner } from './make-system-task-runner';
-import type { NixieRunnerOptions } from './nixie-runner-options';
 import { isGuestPurged } from './pick-cleaned-task-ids';
 import { planTaskStep } from './plan-task-step';
 import { planTaskTurnEnd } from './plan-task-turn-end';
@@ -61,9 +60,10 @@ import { readCleanedTaskIDs } from './read-cleaned-task-ids';
 import { readLateSpend } from './read-late-spend';
 import { readRunUsage } from './read-run-usage';
 import { releaseTaskImp } from './release-task-imp';
+import type { SandboxRunnerOptions } from './sandbox-runner-options';
 import { writeTaskTurnSpend } from './write-task-turn-spend';
 
-export interface NixieRunner {
+export interface SandboxRunner {
   readonly runStep: RunStep;
 
   readonly cleanupSessions: (cause: SessionCleanupCause) => Promise<void>;
@@ -72,7 +72,7 @@ export interface NixieRunner {
 type TaskImpActor = Actor<typeof taskImpMachine>;
 
 interface TaskRunner {
-  readonly options: NixieRunnerOptions;
+  readonly options: SandboxRunnerOptions;
   readonly session: SystemTaskSession;
   readonly profiles: Readonly<Record<string, ResolvedProfile>>;
 
@@ -81,7 +81,7 @@ interface TaskRunner {
   readonly guards: Map<string, SessionGuard>;
 }
 
-export const startNixieRunner = makeSystemTaskRunner<NixieRunnerOptions, NixieRunner>({
+export const startSandboxRunner = makeSystemTaskRunner<SandboxRunnerOptions, SandboxRunner>({
   role: 'task',
   entry: 'turn',
   start: async (options, session) => {
@@ -171,14 +171,14 @@ function startEndedTaskWatch(runner: TaskRunner): EndedTaskWatch {
       try {
         await removeEndedTasks(runner);
       } catch (error) {
-        runner.options.log('nixie_runner.sweep_failed', toErrorFields(error), 'error');
+        runner.options.log('sandbox_runner.sweep_failed', toErrorFields(error), 'error');
       }
 
       return null;
     },
     run: async () => {},
     onError: (error) => {
-      runner.options.log('nixie_runner.watch_stopped', toErrorFields(error), 'error');
+      runner.options.log('sandbox_runner.watch_stopped', toErrorFields(error), 'error');
     },
   });
 
@@ -208,7 +208,7 @@ async function removeEndedTasks(runner: TaskRunner): Promise<void> {
     try {
       await removeEndedTask(runner, taskID);
     } catch (error) {
-      options.log('nixie_runner.task_remove_failed', { taskID, ...toErrorFields(error) }, 'error');
+      options.log('sandbox_runner.remove_failed', { taskID, ...toErrorFields(error) }, 'error');
     }
   }
 }
@@ -224,7 +224,7 @@ async function removeEndedTask(runner: TaskRunner, taskID: string): Promise<void
   runner.imps.delete(taskID);
   runner.guards.delete(taskID);
   imp.stop();
-  runner.options.log('nixie_runner.task_removed', { taskID, sandboxes });
+  runner.options.log('sandbox_runner.task_removed', { taskID, sandboxes });
 }
 
 function resolveTaskImp(runner: TaskRunner, taskID: string): TaskImpActor {
@@ -281,7 +281,7 @@ function buildTaskImpParts(runner: TaskRunner, taskID: string): TaskImpParts {
       return sandboxes.length;
     },
     onSleepFailed: (error) => {
-      options.log('nixie_runner.sleep_failed', { taskID, ...toErrorFields(error) }, 'error');
+      options.log('sandbox_runner.sleep_failed', { taskID, ...toErrorFields(error) }, 'error');
     },
   };
 }
@@ -298,12 +298,12 @@ interface StartedRun {
 async function readStartedRun(runner: TaskRunner, taskID: string): Promise<StartedRun> {
   const setup = await readTaskSetup(runner.options.context, taskID);
 
-  invariant(setup !== null, `the nixie runner runs started tasks only, not ${taskID}`);
+  invariant(setup?.kind === 'started', `the sandbox runner runs started tasks only, not ${taskID}`);
 
   return buildStartedRun(runner, setup);
 }
 
-function buildStartedRun(runner: TaskRunner, setup: TaskSetup): StartedRun {
+function buildStartedRun(runner: TaskRunner, setup: StartedTaskSetup): StartedRun {
   const defaultLimits = runner.options.models.limits.taskRun.default;
 
   // A task started by moving a message to it holds no options: no persona, no memory, default tools.
@@ -363,7 +363,7 @@ async function runGuardedStep(
 ): Promise<StepResult> {
   const context = runner.options.context;
 
-  invariant(input.run !== null, `the nixie runner runs a task run, and ${input.taskID} has none`);
+  invariant(input.run !== null, `the sandbox runner runs a task run, and ${input.taskID} has none`);
 
   const taskRun = input.run;
 

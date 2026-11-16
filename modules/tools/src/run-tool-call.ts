@@ -1,6 +1,12 @@
 import type { ContentSource, Decision, Definitions, JSONObject, Log } from '@heynixie/log';
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
-import type { CallDestination, DecisionPoint, PolicyCall, PolicyDecision } from '@heynixie/policy';
+import type {
+  CallDestination,
+  DecisionPoint,
+  EffectDeclaration,
+  PolicyCall,
+  PolicyDecision,
+} from '@heynixie/policy';
 import {
   buildActionHash,
   buildActionProposalInput,
@@ -64,15 +70,25 @@ export async function runToolCall(
   const call: ToolCall = { ...request, callID: crypto.randomUUID() };
   const definitions = options.definitions();
   const recorder = makeCallRecorder(call, run, options, definitions);
-  const registered = options.registry.findTool(call.tool);
-  const inputCheck = checkListedInput(registered, call, run);
+  const found = options.registry.findTool(call.tool);
+  const inputCheck = checkListedInput(found, call, run);
 
   if (!inputCheck.isValid) {
     return writeInvalidCall(recorder, inputCheck.errors);
   }
 
+  const isListed = found !== null && run.tools.includes(call.tool);
+  const variant = isListed ? pickVariant(found, call) : null;
+
+  if (variant?.status === 'error') {
+    return writeInvalidCall(recorder, variant.message);
+  }
+
+  const registered = variant?.status === 'picked' ? variant.registered : found;
+  const policyTool = variant?.status === 'picked' ? variant.policyTool : call.tool;
+
   const resolution =
-    registered !== null && run.tools.includes(call.tool)
+    registered !== null && isListed
       ? await resolveCallDestinations(registered, call.input, run)
       : { status: 'ok' as const, destinations: [] };
 
@@ -83,7 +99,7 @@ export async function runToolCall(
   const destinations = resolution.destinations;
 
   const deadline =
-    registered !== null && run.tools.includes(call.tool)
+    registered !== null && isListed
       ? await resolveCallDeadline(registered, call.input, run)
       : { status: 'ok' as const, deadlineAt: null };
 
@@ -94,7 +110,7 @@ export async function runToolCall(
   const deadlineAt = deadline.deadlineAt;
 
   const facts =
-    registered !== null && run.tools.includes(call.tool)
+    registered !== null && isListed
       ? await resolveCallPolicyFacts(registered, call.input, run)
       : null;
 
@@ -109,7 +125,7 @@ export async function runToolCall(
   const policyArgs = facts?.args ?? call.input;
 
   const policyCall = buildToolPolicyCall(run, {
-    tool: call.tool,
+    tool: policyTool,
     input: policyArgs,
     destinations,
     definitions,
@@ -143,6 +159,8 @@ export async function runToolCall(
     frame: policyCall,
     deadlineAt,
     repeatOf,
+    policyTool,
+    declaration: registered?.definition.declaration ?? null,
   });
 
   const settled = written.isCapped
@@ -181,6 +199,12 @@ interface CallPolicy {
   // the open action that an earlier approval of this same call queued, which the call asks no
   // second time
   readonly repeatOf: string | null;
+
+  // the name the decision point and an action proposal know the call by, which a variant extends
+  readonly policyTool: string;
+
+  // the declaration the decision point read: the variant's when the call picked one
+  readonly declaration: EffectDeclaration | null;
 }
 
 interface WrittenCall {
@@ -278,20 +302,21 @@ function makeCallRecorder(
           return { sequence: written.sequence, shortID: null, isCapped: false };
         }
 
-        const registered = options.registry.findTool(call.tool);
+        const declaration = decided.declaration;
 
-        invariant(registered, 'a tool that asks is registered');
+        invariant(declaration, 'a tool that asks is registered');
 
         const proposal = buildActionProposalInput({
           definitions,
           thread: run.thread,
           callSequence: written.sequence,
-          tool: call.tool,
-          effects: registered.definition.declaration.effects,
+          tool: decided.policyTool,
+          actionTool: call.tool,
+          effects: declaration.effects,
           cause,
           input: call.input,
           destinations,
-          content: registered.definition.declaration.content,
+          content: declaration.content,
           frame: decided.frame,
           deadlineAt: decided.deadlineAt,
           now: options.log.writer.clock.now(),
@@ -400,6 +425,33 @@ async function writeInvalidCall(recorder: CallRecorder, errors: string): Promise
     written.sequence,
     buildMessage('invalid', errors, { source: 'untrusted' }),
   );
+}
+
+type VariantPick =
+  | { readonly status: 'picked'; readonly registered: RegisteredTool; readonly policyTool: string }
+  | { readonly status: 'error'; readonly message: string }
+  | null;
+
+// A tool with variants runs as the variant that its input picks, under that variant's declaration.
+function pickVariant(registered: RegisteredTool, call: ToolCall): VariantPick {
+  const variants = registered.definition.variants;
+
+  if (variants === undefined) {
+    return null;
+  }
+
+  const name = variants.pick(call.input);
+  const declaration = variants.declarations[name];
+
+  if (declaration === undefined) {
+    return { status: 'error', message: `the tool ${call.tool} has no variant ${name}` };
+  }
+
+  return {
+    status: 'picked',
+    registered: { ...registered, definition: { ...registered.definition, declaration } },
+    policyTool: `${call.tool}/${name}`,
+  };
 }
 
 function renderCallCapRefusal(run: ToolRun, tool: string): string {

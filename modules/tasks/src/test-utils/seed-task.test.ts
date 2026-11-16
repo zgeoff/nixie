@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import invariant from 'tiny-invariant';
 import { readTaskSetup } from '../task/read-task-setup';
 import type { TasksTables } from '../types';
 import { seedConversationStep } from './seed-conversation-step';
@@ -46,7 +47,9 @@ test('it starts the task with the options it is given over the default ones', as
 
   const setup = await readTaskSetup(ctx.context, taskID);
 
-  expect(setup?.options).toStrictEqual({
+  invariant(setup?.kind === 'started');
+
+  expect(setup.options).toStrictEqual({
     model: 'second-look',
     profile: 'router-b',
     persona: 'none',

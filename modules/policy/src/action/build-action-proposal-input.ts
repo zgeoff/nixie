@@ -12,6 +12,10 @@ export interface ActionProposalFacts {
   readonly thread: string;
   readonly callSequence: number;
   readonly tool: string;
+
+  // the name the action hash knows the tool by, when it differs from `tool`: a tool with variants
+  // hashes under its registry name, so a repeat of the call finds the same action
+  readonly actionTool?: string;
   readonly effects: readonly Effect[];
   readonly cause: AskCause;
   readonly input: JSONObject;
@@ -84,7 +88,7 @@ export function buildActionProposalInput(facts: ActionProposalFacts): ActionProp
       tool: facts.tool,
       effects: [...facts.effects],
       actionHash: buildActionHash({
-        tool: facts.tool,
+        tool: facts.actionTool ?? facts.tool,
         input: facts.input,
         destinations: facts.destinations.map((destination) => destination.value),
         deadlineAt: facts.deadlineAt ?? null,

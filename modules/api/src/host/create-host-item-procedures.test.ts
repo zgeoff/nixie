@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test';
 import { createMemoryItem, startTestMemory } from '@heynixie/memory/test-utils';
-import { buildTestRunSettings } from '@heynixie/tasks/test-utils';
+import { buildTestRunSettings, buildTestTaskRunners } from '@heynixie/tasks/test-utils';
 import { createRouterClient } from '@orpc/server';
 import invariant from 'tiny-invariant';
 import { createPasskeyState } from '../passkey/passkey-state';
@@ -15,6 +15,7 @@ async function setupTest() {
     clock: memory.writer.clock,
     definitions: () => ({ snapshotHash: 'sha256:test' }),
     runSettings: buildTestRunSettings(),
+    runners: buildTestTaskRunners(),
     settings: defaultAPISettings,
     readSessionCleanup: () => null,
     passkeys: createPasskeyState(),

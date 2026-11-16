@@ -26,7 +26,6 @@
     "@heynixie/proposals": "workspace:*",
     "@heynixie/sessions": "workspace:*",
     "@heynixie/skills": "workspace:*",
-    "@heynixie/task-control": "workspace:*",
     "@heynixie/tasks": "workspace:*",
     "@heynixie/tools": "workspace:*",
     "@heynixie/turn-inputs": "workspace:*",

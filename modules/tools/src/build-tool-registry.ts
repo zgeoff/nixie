@@ -1,3 +1,4 @@
+import type { EffectDeclaration } from '@heynixie/policy';
 import { hasQueuedEffect } from '@heynixie/policy';
 import { buildSchemaParser } from './schema/build-schema-parser';
 import type { RegisteredTool, ToolDefinition, ToolRegistry } from './types';
@@ -27,21 +28,41 @@ function assertDefinition(definition: ToolDefinition): void {
     throw new Error(`the tool ${definition.name} needs an object input schema`);
   }
 
-  assertExecution(definition);
-  assertResultSources(definition);
+  assertDeclaration(definition, definition.declaration, definition.name);
+
+  for (const [variant, declaration] of Object.entries(definition.variants?.declarations ?? {})) {
+    assertDeclaration(definition, declaration, `${definition.name}/${variant}`);
+  }
 }
 
-function assertExecution(definition: ToolDefinition): void {
-  const execution = hasQueuedEffect(definition.declaration.effects) ? 'queued' : 'direct';
+function assertDeclaration(
+  definition: ToolDefinition,
+  declaration: EffectDeclaration,
+  name: string,
+): void {
+  assertExecution(definition, declaration, name);
+  assertResultSources(definition, declaration, name);
+}
+
+function assertExecution(
+  definition: ToolDefinition,
+  declaration: EffectDeclaration,
+  name: string,
+): void {
+  const execution = hasQueuedEffect(declaration.effects) ? 'queued' : 'direct';
 
   if (definition.execution !== execution) {
     throw new Error(
-      `the tool ${definition.name} runs ${definition.execution}, but its effects make it ${execution}`,
+      `the tool ${name} runs ${definition.execution}, but its effects make it ${execution}`,
     );
   }
 }
 
-function assertResultSources(definition: ToolDefinition): void {
+function assertResultSources(
+  definition: ToolDefinition,
+  declaration: EffectDeclaration,
+  name: string,
+): void {
   const properties = definition.output['properties'];
 
   const fields =
@@ -49,13 +70,13 @@ function assertResultSources(definition: ToolDefinition): void {
       ? Object.keys(properties)
       : [];
 
-  const sources = Object.keys(definition.declaration.results);
+  const sources = Object.keys(declaration.results);
   const unsourced = fields.filter((field) => !sources.includes(field));
   const unknown = sources.filter((field) => !fields.includes(field));
 
   if (definition.output['type'] !== 'object' || unsourced.length > 0 || unknown.length > 0) {
     throw new Error(
-      `the tool ${definition.name} needs an object result whose every field has a source: ` +
+      `the tool ${name} needs an object result whose every field has a source: ` +
         `unsourced [${unsourced.join(', ')}], unknown [${unknown.join(', ')}]`,
     );
   }

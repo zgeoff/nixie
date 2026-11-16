@@ -4,7 +4,6 @@ import { checkReportShape } from '../../report/check-report-shape';
 import { taskReportToolName } from '../../report/task-report-tool-name';
 import type { ShapeFault } from '../../report/types';
 import { pickReportMode } from '../../run/pick-report-mode';
-import type { RunSettings } from '../../run/types';
 import type {
   TaskLimits,
   TaskMemory,
@@ -63,7 +62,6 @@ export function planTaskStart(
   choice: TaskStartChoice,
   starter: TaskStarter,
   bounds: TaskStartBounds,
-  settings: Pick<RunSettings, 'reportDefaults'>,
 ): TaskStartPlan {
   const starterTools = starter.tools;
 
@@ -157,7 +155,7 @@ export function planTaskStart(
       tools: [...new Set(tools)].filter(
         (tool) => tool === taskReportToolName || starterTools.includes(tool),
       ),
-      report: pickReportMode(choice.report, 'start', settings),
+      report: pickReportMode(choice.report, 'start', bounds),
       limits,
       ...(shape === null ? {} : { reportShape: shape.shape }),
     },

@@ -61,13 +61,13 @@ test.each<[string, Rule, string]>([
     {
       id: 'ask-memory-off-claude',
       outcome: 'ask',
-      tools: ['task.start/nixie'],
+      tools: ['task.start/sandbox'],
       checks: [
         { arg: 'memory', op: 'eq', value: 'read' },
         { arg: 'model', op: 'in', value: ['glm', 'sol'] },
       ],
     },
-    '**Ask** before starting a task in nixie when `memory` is `read` and `model` is `glm` or `sol`.',
+    '**Ask** before starting a task in sandbox when `memory` is `read` and `model` is `glm` or `sol`.',
   ],
   [
     'ask-triage-sends',
@@ -147,7 +147,7 @@ test('it renders every rule of the starter template as one sentence', async () =
     ['ask-permanent-deletes', '**Ask** before a call when it has the effect `delete`.'],
     [
       'ask-stranger-with-memory',
-      '**Ask** before starting a task in nixie when `memory` is `read` and `persona` is `none`.',
+      '**Ask** before starting a task in sandbox when `memory` is `read` and `persona` is `none`.',
     ],
   ]);
 });

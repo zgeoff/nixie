@@ -9,6 +9,7 @@ export function buildTaskStartBounds(
   models: ModelsConfig<ModelProfile>,
   memoryTools: readonly ToolDefinition[],
   conversationTools: readonly ToolDefinition[],
+  reportDefaults: TaskStartBounds['reportDefaults'],
 ): TaskStartBounds {
   return {
     // An entry that asks needs a decision point that can ask, so until then no task runs on it.
@@ -34,6 +35,7 @@ export function buildTaskStartBounds(
     conversationTools: conversationTools
       .filter((tool) => tool.name !== mandateToolName)
       .map((tool) => tool.name),
+    reportDefaults,
   };
 }
 

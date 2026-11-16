@@ -1,16 +1,16 @@
 import type { StartedMemoryStore } from '@heynixie/memory';
-import type { NixieRunner } from '@heynixie/sessions';
-import { startNixieRunner } from '@heynixie/sessions';
+import type { SandboxRunner } from '@heynixie/sessions';
+import { startSandboxRunner } from '@heynixie/sessions';
 import { toImageNames } from '../sandbox/to-image-names';
 import type { ServerParts } from '../types';
 import { buildTaskMessaging } from '../utils/build-task-messaging';
 import { toSessionDefinitions } from '../utils/to-session-definitions';
 
-export async function startNixieTaskRunner(
+export async function startSandboxTaskRunner(
   parts: ServerParts,
   memory: () => StartedMemoryStore,
-): Promise<NixieRunner> {
-  const runner = await startNixieRunner({
+): Promise<SandboxRunner> {
+  const runner = await startSandboxRunner({
     context: parts.context,
     models: parts.config.models,
     secrets: parts.modelSecrets,

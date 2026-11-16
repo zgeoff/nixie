@@ -1,5 +1,5 @@
 import { faker } from '@faker-js/faker';
-import { nixieRunnerControls } from '@heynixie/task-control';
+import { taskControls } from '@heynixie/task-control';
 import { Collection } from '@msw/data';
 import { z } from 'zod';
 import { approvalRows } from './approval-rows';
@@ -392,12 +392,13 @@ const taskControlSchema = z.enum(['pause', 'resume', 'stop', 'restart', 'close',
 const tasks = new Collection({
   schema: z.object({
     brief: z.string().default(() => faker.lorem.sentence()),
-    controls: z.array(taskControlSchema).default(() => [...nixieRunnerControls]),
+    controls: z.array(taskControlSchema).default(() => [...taskControls]),
     isPauseRequested: z.boolean().default(false),
     isTakingMessages: z.boolean().default(true),
     lastActivityAt: z.date().default(() => new Date()),
     name: z.string().default(() => faker.lorem.words(2)),
     resumeState: z.enum(['ready', 'waiting']).nullable().default(null),
+    runner: z.string().default('sandbox'),
     state: z
       .enum(['ready', 'running', 'waiting', 'paused', 'stopped', 'done', 'failed', 'closed'])
       .default('waiting'),

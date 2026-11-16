@@ -1,6 +1,6 @@
 import type { TaskControl } from './types';
 
-export const nixieRunnerControls: readonly TaskControl[] = [
+export const taskControls: readonly TaskControl[] = [
   'pause',
   'resume',
   'stop',

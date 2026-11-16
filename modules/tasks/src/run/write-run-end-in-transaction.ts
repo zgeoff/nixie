@@ -39,7 +39,7 @@ export interface RunEndRequest {
   readonly errors?: number;
 }
 
-type EndContext = Pick<TasksContext, 'definitions' | 'log' | 'runSettings'>;
+type EndContext = Pick<TasksContext, 'definitions' | 'log' | 'runSettings' | 'runners'>;
 
 // The one function that ends a task run, and the tasks module does not export it. The caller holds
 // the write transaction, so the end commits with the records that caused it. A task with no open task

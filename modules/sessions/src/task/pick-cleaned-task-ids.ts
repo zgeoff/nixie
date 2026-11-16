@@ -14,7 +14,8 @@ export function pickCleanedTaskIDs(
   return candidates
     .filter(
       (candidate) =>
-        candidate.setup?.options?.memory === 'read' || candidate.taskID === recordThread,
+        (candidate.setup?.kind === 'started' && candidate.setup.options?.memory === 'read') ||
+        candidate.taskID === recordThread,
     )
     .map((candidate) => candidate.taskID);
 }

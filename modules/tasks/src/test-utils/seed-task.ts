@@ -1,4 +1,6 @@
 import invariant from 'tiny-invariant';
+import { taskRunOptionsSchema } from '../limit/task-run-options-schema';
+import { sandboxRunner } from '../runner/sandbox-runner';
 import { buildStepRunID } from '../step/build-step-run-id';
 import { writeTaskStart } from '../task/start/write-task-start';
 import { startedTaskDefaultTools } from '../task/started-task-default-tools';
@@ -17,15 +19,19 @@ export async function seedTask(context: TasksContext, seed: StartedTaskSeed): Pr
     from: seed.starter.lease.workID,
     name: seed.name,
     brief: seed.brief,
-    options: {
-      model: null,
-      profile: null,
-      persona: 'none',
-      memory: 'none',
-      tools: startedTaskDefaultTools,
-      report: 'wake',
-      limits: { turns: 25, dollars: 2 },
-      ...seed.options,
+    runner: sandboxRunner.key,
+    stored: {
+      kind: 'built',
+      options: taskRunOptionsSchema.parse({
+        model: null,
+        profile: null,
+        persona: 'none',
+        memory: 'none',
+        tools: startedTaskDefaultTools,
+        report: 'wake',
+        limits: { turns: 25, dollars: 2 },
+        ...seed.options,
+      }),
     },
     hopLimit: seed.hopLimit ?? 6,
     stepRunID: buildStepRunID(seed.starter),

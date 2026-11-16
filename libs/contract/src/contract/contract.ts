@@ -204,6 +204,7 @@ const listedTaskSchema = z.object({
   isTakingMessages: z.boolean(),
   lastActivityAt: z.date(),
   name: z.string(),
+  runner: z.string(),
   state: taskStateSchema,
   taskID: threadSchema,
   waitingOn: threadSchema.optional(),
@@ -223,6 +224,10 @@ const taskControl = checkedAction
       message: 'The task is in a state that does not take this control',
       status: 409,
       data: z.object({ isPauseRequested: z.boolean(), state: taskStateSchema }),
+    },
+    RUNNER_LACKS_CONTROL: {
+      message: 'The runner of the task does not take this control',
+      status: 409,
     },
   })
   .input(z.object({ clientActionID: clientActionIDSchema, taskID: threadSchema }))

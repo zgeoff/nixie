@@ -29,6 +29,7 @@ test('it offers each selectable model that does not ask, with what its harness l
     },
     [],
     [],
+    { start: 'wake', definition: 'next_turn' },
   );
 
   expect(bounds).toStrictEqual({
@@ -38,6 +39,7 @@ test('it offers each selectable model that does not ask, with what its harness l
     limits: { default: { turns: 25, dollars: 2 }, max: { turns: 100, dollars: 10 } },
     memoryTools: { read: [], write: [] },
     conversationTools: [],
+    reportDefaults: { start: 'wake', definition: 'next_turn' },
   });
 });
 
@@ -50,6 +52,7 @@ test('it sorts the memory tools into the ones that only read and the rest', () =
       buildMockToolDefinition({ name: 'moment.read', declaration: { effects: ['read'] } }),
     ],
     [],
+    { start: 'wake', definition: 'next_turn' },
   );
 
   expect(bounds.memoryTools).toStrictEqual({
@@ -66,6 +69,7 @@ test('it names each conversation tool by its name', () => {
       buildMockToolDefinition({ name: 'skill_read' }),
       buildMockToolDefinition({ name: 'skill_reload' }),
     ],
+    { start: 'wake', definition: 'next_turn' },
   );
 
   expect(bounds.conversationTools).toStrictEqual(['skill_read', 'skill_reload']);
@@ -79,6 +83,7 @@ test('it never offers a task the tool that proposes a mandate', () => {
       buildMockToolDefinition({ name: 'skills.list' }),
       buildMockToolDefinition({ name: 'rules.propose_mandate' }),
     ],
+    { start: 'wake', definition: 'next_turn' },
   );
 
   expect(bounds.conversationTools).toStrictEqual(['skills.list']);

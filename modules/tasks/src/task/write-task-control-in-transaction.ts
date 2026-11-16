@@ -8,7 +8,9 @@ import invariant from 'tiny-invariant';
 import { match } from 'ts-pattern';
 import { readLimitRecords } from '../limit/read-limit-records';
 import { taskPauseRequestedCodec } from '../pause/task-pause-requested-codec';
+import { toTransactionContext } from '../run/to-transaction-context';
 import { writeRunEndInTransaction } from '../run/write-run-end-in-transaction';
+import { pickResolvedControls } from '../runner/pick-resolved-controls';
 import type {
   TaskControl,
   TaskControlRefusal,
@@ -42,7 +44,7 @@ export type TaskControlOutcome =
 // record that moves it commit together.
 export async function writeTaskControlInTransaction(
   tx: Transaction<unknown>,
-  context: Pick<TasksContext, 'log' | 'definitions' | 'runSettings'>,
+  context: Pick<TasksContext, 'log' | 'definitions' | 'runSettings' | 'runners'>,
   request: TaskControlRequest,
 ): Promise<TaskControlOutcome> {
   const db = tx.$extendTables<TasksTables>();
@@ -58,6 +60,7 @@ export async function writeTaskControlInTransaction(
   }
 
   const limitRecords = await readLimitRecords(tx, task.task_id);
+  const resolution = await context.runners.resolve(toTransactionContext(context, tx), task.task_id);
 
   const plan = planTaskControl(request.control, {
     state: task.state,
@@ -66,6 +69,7 @@ export async function writeTaskControlInTransaction(
     hasUnread: task.last_inbox_sequence > task.read_cursor,
     resumeState: task.resume_state,
     isLimitHeld: limitRecords.heldAt !== null,
+    controls: pickResolvedControls(resolution),
   });
 
   if ('reason' in plan) {

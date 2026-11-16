@@ -5,30 +5,22 @@ import { startTaskClaimPools } from '@heynixie/tasks';
 import { buildToolRegistry } from '@heynixie/tools';
 import { makeAttemptCheck } from '../action/make-attempt-check';
 import { makeConversationFailureMarker } from '../conversation/make-conversation-failure-marker';
-import { startQueueCheckTask } from '../queue/start-queue-check-task';
 import type { ServerParts } from '../types';
 import { makeStepErrorLogger } from './make-step-error-logger';
 
-export interface RunnerSteps {
-  readonly system: RunStep;
-  readonly started: RunStep;
-}
-
-export async function startRunners(parts: ServerParts, runSteps: RunnerSteps): Promise<void> {
+export async function startRunners(parts: ServerParts, runStep: RunStep): Promise<void> {
   const onError = (error: unknown) => {
     parts.log('runner.failed', toErrorFields(error));
     parts.onFailure(error);
   };
 
-  const steps = await startQueueCheckTask(parts, runSteps.system);
-
   const logStepError = makeStepErrorLogger(parts.log);
   const markConversationFailure = makeConversationFailureMarker(parts.state);
 
   const tasks = startTaskClaimPools(parts.context, {
-    runStep: parts.tools.actions.trackSteps(steps),
+    runStep: parts.tools.actions.trackSteps(runStep),
     started: {
-      runStep: parts.tools.actions.trackSteps(runSteps.started),
+      runStep: parts.tools.actions.trackSteps(runStep),
       size: parts.config.tasks.startedClaimLoops,
     },
     onStepErrored: (errored) => {

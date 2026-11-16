@@ -1,10 +1,11 @@
 import { expect, test } from 'bun:test';
 import { readRecords } from '@heynixie/log';
 import { readInbox } from '../../inbox/read-inbox';
+import { taskRunOptionsSchema } from '../../limit/task-run-options-schema';
 import { buildStepRunID } from '../../step/build-step-run-id';
 import { seedConversationStep } from '../../test-utils/seed-conversation-step';
 import { startTestTasks } from '../../test-utils/start-test-tasks';
-import type { TaskRunOptions, TasksTables } from '../../types';
+import type { TasksTables } from '../../types';
 import { startedTaskDefaultTools } from '../started-task-default-tools';
 import { writeTaskStart } from './write-task-start';
 
@@ -14,7 +15,7 @@ async function setupTest() {
 
   const db = tasks.writer.db.$extendTables<TasksTables>();
 
-  const options: TaskRunOptions = {
+  const options = taskRunOptionsSchema.parse({
     model: null,
     profile: null,
     persona: 'none',
@@ -22,7 +23,7 @@ async function setupTest() {
     tools: startedTaskDefaultTools,
     report: 'wake',
     limits: { turns: 25, dollars: 2 },
-  };
+  });
 
   return {
     ...tasks,
@@ -31,7 +32,8 @@ async function setupTest() {
         from: 'conversation',
         name,
         brief,
-        options,
+        runner: 'sandbox',
+        stored: { kind: 'built', options },
         hopLimit: 7,
         stepRunID: buildStepRunID(starter.claim),
       }),

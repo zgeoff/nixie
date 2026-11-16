@@ -1,8 +1,8 @@
 // oxlint-disable new-cap -- oRPC names a procedure's typed errors by their upper-case codes
 import { readActionCounts, readTaskActions } from '@heynixie/actions';
-import { nixieRunnerControls } from '@heynixie/task-control';
-import type { TaskControl, TasksTables } from '@heynixie/tasks';
+import type { TaskControl, TaskRunnerResolution, TasksTables } from '@heynixie/tasks';
 import {
+  pickResolvedControls,
   readOwnerMessageTakers,
   readTaskDirectory,
   readTaskList,
@@ -114,25 +114,41 @@ async function readListedTasks(context: APIContext, directory: TaskProfiles, lim
   const counts = await readActionCounts(context, taskIDs);
   const pausedByNixie = await readTasksPausedByNixie(context.log.writer.db, taskIDs);
 
-  return listed.map((task) => {
+  const runners = await Promise.all(
+    taskIDs.map((taskID) => context.runners.resolve(context, taskID)),
+  );
+
+  return listed.map((task, index) => {
     const actions = counts.get(task.id);
+    const runner = runners[index];
 
     invariant(actions);
+    invariant(runner);
 
     return {
       actions,
       brief: task.brief,
-      controls: [...nixieRunnerControls],
+      controls: [...pickResolvedControls(runner)],
       isPauseRequested: task.isPauseRequested,
       isPausedByNixie: pausedByNixie.has(task.id),
       isTakingMessages: takers.has(task.id),
       lastActivityAt: task.lastActivityAt,
       name: task.name,
+      runner: toRunnerKey(runner),
       state: task.state,
       taskID: task.id,
       waitingOn: task.waitingOn,
     };
   });
+}
+
+// An unknown stored key lists as it is stored.
+function toRunnerKey(resolution: TaskRunnerResolution): string {
+  return match(resolution)
+    .with({ status: 'found' }, (found) => found.definition.key)
+    .with({ status: 'unknown' }, (unknown) => unknown.key)
+    .with({ status: 'none' }, () => '')
+    .exhaustive();
 }
 
 async function probeTaskExists(context: APIContext, taskID: string): Promise<boolean> {
@@ -178,6 +194,7 @@ function toControlledTask(result: CheckedTaskControlResult, errors: ControlOptio
             data: { isPauseRequested: refusal.isPauseRequested, state: refusal.state },
           }),
         )
+        .with({ reason: 'runner_lacks_control' }, () => errors.RUNNER_LACKS_CONTROL())
         .with({ reason: 'conversation_never_closes' }, () => {
           throw new Error('only a close refuses the conversation');
         })

@@ -1,17 +1,30 @@
 import { createShortID } from '@heynixie/db';
+import type { JSONObject } from '@heynixie/log';
 import { readRecords, withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import { writeBriefMessageInTransaction } from '../../brief/write-brief-message-in-transaction';
+import { taskRunOptionsSchema } from '../../limit/task-run-options-schema';
 import { readLeasedStepHop } from '../../step/read-leased-step-hop';
-import type { TaskRunOptions, TasksContext, TasksTables } from '../../types';
+import type { TaskLimits, TaskReport, TasksContext, TasksTables } from '../../types';
 import type { StepRunRef } from '../../utils/parse-step-run-id';
 import { parseStepRunID } from '../../utils/parse-step-run-id';
 import { taskCreatedCodec } from '../codec/task-created-codec';
+
+// What the start stores beside the runner's key: the built options, or the envelope and the options
+// that the runner keeps for itself.
+type StoredStart =
+  | { readonly kind: 'built'; readonly options: JSONObject }
+  | {
+      readonly kind: 'enveloped';
+      readonly envelope: { readonly report: TaskReport; readonly limits: TaskLimits };
+      readonly runnerOptions: JSONObject;
+    };
 
 export interface TaskStartRequest {
   readonly from: string;
   readonly name: string;
   readonly brief: string;
-  readonly options: TaskRunOptions;
+  readonly runner: string;
+  readonly stored: StoredStart;
   readonly hopLimit: number;
   readonly stepRunID: string | null;
 }
@@ -92,13 +105,9 @@ async function writeStartAttempt(
           kind: 'task.created',
           definitions: context.definitions(),
           thread: taskID,
-          payload: taskCreatedCodec.encode({
+          payload: buildCreatedPayload(request, {
             taskID,
-            isConversation: false,
-            state: 'ready',
-            startedBy: request.from,
             startStep: step.stepKey,
-            options: request.options,
             briefMessageID,
           }),
           erasable: { name: request.name },
@@ -156,4 +165,29 @@ async function readStartedTask(
     taskID: rows.find((row) => row.created_sequence === match?.record.sequence)?.task_id ?? null,
     stepTaskCount: rows.length,
   };
+}
+
+interface CreatedIDs {
+  readonly taskID: string;
+  readonly startStep: string;
+  readonly briefMessageID: string;
+}
+
+function buildCreatedPayload(request: TaskStartRequest, ids: CreatedIDs): JSONObject {
+  const created = taskCreatedCodec.encode({
+    taskID: ids.taskID,
+    isConversation: false,
+    state: 'ready',
+    startedBy: request.from,
+    startStep: ids.startStep,
+    runner: request.runner,
+    ...(request.stored.kind === 'built'
+      ? { options: taskRunOptionsSchema.parse(request.stored.options) }
+      : { envelope: request.stored.envelope }),
+    briefMessageID: ids.briefMessageID,
+  });
+
+  return request.stored.kind === 'built'
+    ? created
+    : { ...created, runnerOptions: request.stored.runnerOptions };
 }

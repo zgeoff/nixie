@@ -19,7 +19,7 @@ export interface PieceCounts {
 // The caller holds the write transaction, so the counts include what the transaction wrote.
 export async function readPieceCounts(
   tx: Transaction<unknown>,
-  context: Pick<TasksContext, 'log' | 'runSettings'>,
+  context: Pick<TasksContext, 'log' | 'runSettings' | 'runners'>,
   runs: readonly TaskRun[],
   last: TaskRun,
 ): Promise<PieceCounts> {
