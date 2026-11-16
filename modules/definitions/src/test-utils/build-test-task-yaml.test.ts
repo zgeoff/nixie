@@ -18,3 +18,9 @@ test('it takes the brief and the target that the caller names', () => {
     'brief: Soak them.\ntarget: task\n',
   );
 });
+
+test('it disables the task when the caller names it so', () => {
+  expect(buildTestTaskYaml({ isEnabled: false })).toContain(
+    'target: conversation\nenabled: false\n',
+  );
+});

@@ -1,4 +1,5 @@
 import { clientHeaderName, sessionCookieName } from '@heynixie/contract';
+import type { DefinitionsContext } from '@heynixie/definitions';
 import { RPCHandler } from '@orpc/server/fetch';
 import { ResponseHeadersPlugin } from '@orpc/server/plugins';
 import { Elysia } from 'elysia';
@@ -15,12 +16,16 @@ export function createAPIApp(
   context: APIContext,
   readMemory: ReadViewMemory,
   runInForceSeed: () => Promise<void>,
+  readDefinitions: () => DefinitionsContext | null,
 ) {
-  const handler = new RPCHandler(createAPIRouter(context, readMemory, runInForceSeed), {
-    // The web client treats a live stream that misses three keepalives in a row as dead.
-    eventIteratorKeepAliveInterval: 5000,
-    plugins: [new ResponseHeadersPlugin()],
-  });
+  const handler = new RPCHandler(
+    createAPIRouter(context, readMemory, runInForceSeed, readDefinitions),
+    {
+      // The web client treats a live stream that misses three keepalives in a row as dead.
+      eventIteratorKeepAliveInterval: 5000,
+      plugins: [new ResponseHeadersPlugin()],
+    },
+  );
 
   return new Elysia().all(
     '/rpc*',

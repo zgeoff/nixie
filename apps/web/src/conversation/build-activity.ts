@@ -95,6 +95,11 @@ export type ActivityItem =
       readonly notice: NonNullable<LiveRecord['exchangeNotice']>;
     }
   | {
+      readonly kind: 'definition';
+      readonly record: LiveRecord;
+      readonly notice: NonNullable<LiveRecord['definitionNotice']>;
+    }
+  | {
       readonly kind: 'reminder';
       readonly record: LiveRecord;
       readonly reminder: NonNullable<LiveRecord['reminder']>;
@@ -130,9 +135,10 @@ export function buildActivity(records: readonly LiveRecord[]): readonly Activity
     foldRecord(state, record);
   }
 
-  return state.pending.length === 0
-    ? state.items
-    : [...state.items, buildStep(state.pending, 'done')];
+  const items =
+    state.pending.length === 0 ? state.items : [...state.items, buildStep(state.pending, 'done')];
+
+  return supersedeDefinitionNotices(items);
 }
 
 const messageKinds: ReadonlySet<string> = new Set(['owner_message', 'model.reply']);
@@ -154,6 +160,8 @@ function foldRecord(state: ActivityState, record: LiveRecord): void {
     });
   } else if (record.exchangeNotice !== undefined) {
     state.items.push({ kind: 'exchange', record, notice: record.exchangeNotice });
+  } else if (record.definitionNotice !== undefined) {
+    state.items.push({ kind: 'definition', record, notice: record.definitionNotice });
   } else if (record.reminder !== undefined) {
     state.items.push({ kind: 'reminder', record, reminder: record.reminder });
   } else if (record.stop !== undefined) {
@@ -283,4 +291,40 @@ function foldRecordOutsideStep(state: ActivityState, record: LiveRecord): void {
 
 function pickStatus(record: LiveRecord, step: StepActivity): StepStatus {
   return stepEnds[record.kind] ?? step.status;
+}
+
+// A notice is read when its record is read, so a later change of the same definition leaves it
+// showing a state that no longer holds. Each notice that a later one follows reads as superseded.
+function supersedeDefinitionNotices(items: readonly ActivityItem[]): readonly ActivityItem[] {
+  const seen = new Set<string>();
+
+  const result: ActivityItem[] = [];
+
+  for (const item of items.toReversed()) {
+    if (item.kind !== 'definition') {
+      result.push(item);
+      continue;
+    }
+
+    const notice = item.notice;
+    const isLater = seen.has(notice.definitionID);
+    const isLive = notice.state === 'in_force' || notice.state === 'adopted';
+
+    seen.add(notice.definitionID);
+
+    const shown: ActivityItem =
+      isLater && isLive
+        ? { kind: 'definition', record: item.record, notice: buildSupersededNotice(notice) }
+        : item;
+
+    result.push(shown);
+  }
+
+  return result.toReversed();
+}
+
+function buildSupersededNotice(
+  notice: NonNullable<LiveRecord['definitionNotice']>,
+): NonNullable<LiveRecord['definitionNotice']> {
+  return { ...notice, state: 'superseded' as const, next: null };
 }

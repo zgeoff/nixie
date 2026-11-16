@@ -7,6 +7,7 @@ function setupTest() {
   const noLookups: RecordLookups = {
     actions: new Map(),
     cancelledActionIDs: new Set(),
+    definitionNotices: new Map(),
     proposals: new Map(),
     removedSequences: new Set(),
     stopCancelledActions: new Map(),
@@ -379,6 +380,7 @@ test('it shows a failed tool result as cancelled when its action is among the ca
   const lookups = {
     actions: new Map(),
     cancelledActionIDs: new Set(['action-1']),
+    definitionNotices: new Map(),
     proposals: new Map(),
     removedSequences: new Set<number>(),
     stopCancelledActions: new Map(),
@@ -717,6 +719,7 @@ test('it carries a task message with its sender named from the directory', () =>
   const lookups = {
     actions: new Map(),
     cancelledActionIDs: new Set<string>(),
+    definitionNotices: new Map(),
     proposals: new Map(),
     removedSequences: new Set<number>(),
     stopCancelledActions: new Map(),
@@ -798,6 +801,7 @@ test('it renders an exchange notice that names both tasks and links to the recei
   const lookups = {
     actions: new Map(),
     cancelledActionIDs: new Set<string>(),
+    definitionNotices: new Map(),
     proposals: new Map(),
     removedSequences: new Set<number>(),
     stopCancelledActions: new Map(),
@@ -838,6 +842,7 @@ test('it lists the actions a stop cancelled on its record', () => {
   const lookups = {
     actions: new Map(),
     cancelledActionIDs: new Set<string>(),
+    definitionNotices: new Map(),
     proposals: new Map(),
     removedSequences: new Set<number>(),
     stopCancelledActions: new Map([
@@ -863,6 +868,7 @@ test('it marks a shredded record that a forget named as removed', () => {
   const lookups = {
     actions: new Map(),
     cancelledActionIDs: new Set<string>(),
+    definitionNotices: new Map(),
     proposals: new Map(),
     removedSequences: new Set([12]),
     stopCancelledActions: new Map(),
@@ -887,6 +893,7 @@ test.each([
   const lookups = {
     actions: new Map(),
     cancelledActionIDs: new Set<string>(),
+    definitionNotices: new Map(),
     proposals: new Map(),
     removedSequences,
     stopCancelledActions: new Map(),
@@ -1068,4 +1075,46 @@ test.each([
   });
 
   expect(result?.reminder).toBeUndefined();
+});
+
+test('it carries the notice that the lookup holds for a definition change', () => {
+  const ctx = setupTest();
+
+  const record = buildMockLogRecord({
+    sequence: 12,
+    kind: 'definition.changed',
+    thread: 'conversation',
+  });
+
+  const notice = {
+    definitionID: 'water-the-tomatoes',
+    name: 'Water the tomatoes',
+    operation: 'add',
+    shortID: 'k3x9m2p7qa',
+    changeID: '0b9d8f0e-6f1c-4d2a-9b7e-3c5a1d2e4f60',
+    hasVersion: true,
+    rendered: 'every Friday at 08:00',
+    next: 'Fri 12 Mar',
+    state: 'in_force',
+    isUnreadable: false,
+  } as const;
+
+  const lookups: RecordLookups = {
+    ...ctx.noLookups,
+    definitionNotices: new Map([[12, notice]]),
+  };
+
+  expect(toContractRecord(record, lookups)?.definitionNotice).toStrictEqual(notice);
+});
+
+test('it carries no notice for a definition change that the lookup does not hold', () => {
+  const ctx = setupTest();
+
+  const record = buildMockLogRecord({
+    sequence: 12,
+    kind: 'definition.changed',
+    thread: 'conversation',
+  });
+
+  expect(toContractRecord(record, ctx.noLookups)).not.toHaveProperty('definitionNotice');
 });

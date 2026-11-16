@@ -5,6 +5,7 @@ import { buildTestDefinitionStore } from '@heynixie/tasks/test-utils';
 import invariant from 'tiny-invariant';
 import { buildSeeder } from '../test-utils/build-seeder';
 import { startTestAPI } from '../test-utils/start-test-api';
+import { startTestAPIDefinitions } from '../test-utils/start-test-api-definitions';
 import { readRecordLookups } from './read-record-lookups';
 
 async function setupTest() {
@@ -69,6 +70,7 @@ test('it reads the actions each stop cancelled and the names of the started task
   expect(lookups).toStrictEqual({
     actions: new Map(),
     cancelledActionIDs: new Set(),
+    definitionNotices: new Map(),
     proposals: new Map(),
     reminderBriefs: new Map(),
     removedSequences: new Set(),
@@ -232,4 +234,29 @@ test('it reads no brief for a fire on the thread of a task', async () => {
   );
 
   expect(lookups.reminderBriefs).toStrictEqual(new Map());
+});
+
+test('it reads the notice of each definition change by the sequence of its record', async () => {
+  const ctx = await setupTest();
+  const definitions = await startTestAPIDefinitions(ctx);
+  const added = await definitions.define();
+
+  const entries = await readRecords(ctx.context.log, {
+    afterSequence: 0,
+    kinds: ['definition.changed'],
+  });
+
+  const lookups = await readRecordLookups(
+    ctx.context,
+    entries.map((entry) => entry.record),
+  );
+
+  expect([...lookups.definitionNotices.values()]).toStrictEqual([
+    expect.objectContaining({
+      changeID: added.changeID,
+      name: 'Water the tomatoes',
+      operation: 'add',
+      state: 'in_force',
+    }),
+  ]);
 });

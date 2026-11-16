@@ -3,6 +3,7 @@ import { waitFor } from '@testing-library/react';
 import { runInPage } from '@zgeoff/rig';
 import { z } from 'zod';
 import { store } from '../mocks/store';
+import { buildMockDefinitionNotice } from '../test-utils/build-mock-definition-notice';
 import { setBrowserFiles } from '../test-utils/set-browser-files';
 import { setupBrowserTimeZone } from '../test-utils/setup-browser-time-zone';
 import { setupSignedInBrowser } from '../test-utils/setup-signed-in-browser';
@@ -302,6 +303,105 @@ test('it shows a reminder with its brief and the time it was set for', async () 
       expect(text).toMatch(/Set for(?=.*Tue)(?=.*Mar)(?=.*\b9\b)(?=.*\b0?3:00)/u);
     },
     { timeout: 10_000 },
+  );
+});
+
+test('it shows the notice of an added definition word for word, with an Undo that calls definitions.undo', async () => {
+  const ctx = await setupTest();
+  const session = await store.sessions.create({});
+
+  await store.records.create({
+    kind: 'definition.changed',
+    definitionNotice: buildMockDefinitionNotice(),
+  });
+
+  await setupSignedInBrowser(ctx.view, { appURL: ctx.appURL, token: session.token });
+
+  await ctx.view.navigate(`${ctx.appURL}/`);
+
+  await waitForPage(
+    ctx.view,
+    "document.body.innerText.includes('Scheduled: Water the tomatoes, every Friday at 08:00 (next: Fri 12 Mar).')",
+    10_000,
+  );
+
+  await ctx.view.click('button[name="undo-definition"]');
+
+  await waitFor(
+    () => {
+      const undone = store.records
+        .all()
+        .filter((record) => record.definitionNotice?.operation === 'undo');
+
+      expect(undone).toHaveLength(1);
+    },
+    { timeout: 10_000 },
+  );
+});
+
+test('it shows a superseded definition notice with no Undo', async () => {
+  const ctx = await setupTest();
+  const session = await store.sessions.create({});
+
+  await store.records.create({
+    kind: 'definition.changed',
+    definitionNotice: buildMockDefinitionNotice({ state: 'superseded', next: null }),
+  });
+
+  await setupSignedInBrowser(ctx.view, { appURL: ctx.appURL, token: session.token });
+
+  await ctx.view.navigate(`${ctx.appURL}/`);
+
+  await waitForPage(
+    ctx.view,
+    "document.body.innerText.includes('Scheduled: Water the tomatoes, every Friday at 08:00 (superseded).')",
+    10_000,
+  );
+
+  const buttons: unknown = await ctx.view.evaluate(
+    'document.querySelectorAll(\'button[name="undo-definition"]\').length',
+  );
+
+  expect(buttons).toBe(0);
+});
+
+test('it shows the REPLACED sentence with the short ID of the head when the Undo is refused', async () => {
+  const ctx = await setupTest();
+  const session = await store.sessions.create({});
+
+  await store.records.create({
+    kind: 'definition.changed',
+    definitionNotice: buildMockDefinitionNotice(),
+  });
+
+  // Another client made this change, on a thread this page does not read, so the page still shows
+  // the first notice as in force
+  await store.records.create({
+    kind: 'definition.changed',
+    thread: 'another-client',
+    definitionNotice: buildMockDefinitionNotice({
+      operation: 'change',
+      shortID: 'w5n1c8d3ra',
+      changeID: 'c-2',
+    }),
+  });
+
+  await setupSignedInBrowser(ctx.view, { appURL: ctx.appURL, token: session.token });
+
+  await ctx.view.navigate(`${ctx.appURL}/`);
+
+  await waitForPage(
+    ctx.view,
+    'document.querySelector(\'button[name="undo-definition"]\') !== null',
+    10_000,
+  );
+
+  await ctx.view.click('button[name="undo-definition"]');
+
+  await waitForPage(
+    ctx.view,
+    "document.body.innerText.includes('Change w5n1c8d3ra replaced this one. Undo that change instead.')",
+    10_000,
   );
 });
 

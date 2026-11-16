@@ -10,16 +10,16 @@ import type { StoredTaskDefinition } from './stored-task-definition';
 
 export interface TaskDefineInput {
   // names a definition to replace; without it, the ID is the slug of `name`
-  readonly definitionID?: string;
+  readonly definitionID?: string | undefined;
   readonly name: string;
   readonly brief: string;
   readonly target: 'task' | 'conversation';
   readonly trigger: Trigger;
-  readonly model?: string;
-  readonly persona?: 'default' | 'none';
-  readonly memory?: 'none' | 'read';
-  readonly tools?: readonly string[];
-  readonly report?: 'wake' | 'next_turn' | 'none';
+  readonly model?: string | undefined;
+  readonly persona?: 'default' | 'none' | undefined;
+  readonly memory?: 'none' | 'read' | undefined;
+  readonly tools?: readonly string[] | undefined;
+  readonly report?: 'wake' | 'next_turn' | 'none' | undefined;
 }
 
 export interface DefineVersionContext {

@@ -28,6 +28,7 @@
     "@heynixie/tasks": "workspace:*",
     "@heynixie/testing": "workspace:*",
     "@heynixie/tools": "workspace:*",
+    "@heynixie/triggers": "workspace:*",
     "@heynixie/wire": "workspace:*",
     "@impz/testing": "catalog:",
     "@modelcontextprotocol/server": "catalog:",

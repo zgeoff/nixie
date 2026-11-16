@@ -11,6 +11,7 @@ import { buildRemovalPlacement } from '../notice/build-removal-placement';
 import type { OutboxEntry } from '../outbox/use-outbox';
 import { css } from '../styled-system/css';
 import type { MemoryNotice as MemoryNoticeData, OutboxMessage } from '../types';
+import { DefinitionNotice } from './definition-notice';
 import { ExchangeNotice } from './exchange-notice';
 import { MemoryNotice } from './memory-notice';
 import { MomentKeptNotice } from './moment-kept-notice';
@@ -137,6 +138,7 @@ function ActivityEntry(props: ActivityEntryProps): ReactNode {
     .with({ kind: 'moment' }, (item) => <MomentKeptNotice moment={item.moment} />)
     .with({ kind: 'taskMessage' }, (item) => renderMessage(item.message))
     .with({ kind: 'exchange' }, (item) => <ExchangeNotice notice={item.notice} />)
+    .with({ kind: 'definition' }, (item) => <DefinitionNotice notice={item.notice} />)
     .with({ kind: 'reminder' }, (item) => <ReminderNotice reminder={item.reminder} />)
     .with({ kind: 'proposal' }, (item) => (
       <ThreadApprovalCard proposalID={item.proposal.proposalID} />

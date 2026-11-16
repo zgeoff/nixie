@@ -3,6 +3,8 @@ import {
   readCancelledActionIDs,
   readStopCancelledActions,
 } from '@heynixie/actions';
+import type { DefinitionNotice } from '@heynixie/contract';
+import { definitionChangedCodec } from '@heynixie/definitions';
 import type { LogRecord } from '@heynixie/log';
 import { readProposalsBySequence } from '@heynixie/proposals';
 import {
@@ -28,7 +30,7 @@ const namedKinds: ReadonlySet<string> = new Set([
 ]);
 
 export async function readRecordLookups(
-  context: Pick<APIContext, 'log' | 'readDefinitionVersion' | 'settings'>,
+  context: Pick<APIContext, 'log' | 'readDefinitionNotices' | 'readDefinitionVersion' | 'settings'>,
   records: readonly LogRecord[],
   known: { readonly removedSequences?: ReadonlySet<number> } = {},
 ): Promise<RecordLookups> {
@@ -68,6 +70,7 @@ export async function readRecordLookups(
   return {
     actions: await readActionCalls(context, outcomeActionIDs),
     cancelledActionIDs: await readCancelledActionIDs(context, failedActionIDs),
+    definitionNotices: await readNoticesBySequence(context, records),
     proposals: await readProposalsBySequence(
       context.log.writer.db,
       records.map((record) => record.sequence),
@@ -103,4 +106,37 @@ async function readReminderBriefs(
   }
 
   return briefs;
+}
+
+// The notice of each definition.changed record. A record whose change has no row gets none.
+async function readNoticesBySequence(
+  context: Pick<APIContext, 'log' | 'readDefinitionNotices'>,
+  records: readonly LogRecord[],
+): Promise<ReadonlyMap<number, DefinitionNotice>> {
+  const changed = records.flatMap((record) => {
+    const change =
+      record.kind === definitionChangedCodec.kind
+        ? definitionChangedCodec.tryDecodePartial(record.payload)
+        : undefined;
+
+    return typeof change?.changeID === 'string'
+      ? [{ sequence: record.sequence, changeID: change.changeID }]
+      : [];
+  });
+
+  const notices =
+    context.readDefinitionNotices === undefined || changed.length === 0
+      ? new Map<string, DefinitionNotice>()
+      : await context.readDefinitionNotices(
+          context.log.writer.db,
+          changed.map((entry) => entry.changeID),
+        );
+
+  return new Map(
+    changed.flatMap((entry) => {
+      const notice = notices.get(entry.changeID);
+
+      return notice === undefined ? [] : [[entry.sequence, notice] as const];
+    }),
+  );
 }

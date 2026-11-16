@@ -440,6 +440,43 @@ A failed export keeps its attempt mark, so the next run retries it. When no expo
 each open export closes its pull request on the branch, and a merged pull request stays. A pull
 request that the user closes by hand opens again at the next export.
 
+### Changes from the conversation
+
+The conversation holds 3 tools. `task.define` and `task.undefine` have the effect `schedule`, and
+`tasks.definitions` has the effect `read`. A task's tool list never holds the first 2: a
+`task.start` that names either is refused with `conversation_tools`, because the start bounds list
+them as conversation tools.
+
+- **`task.define`** takes a name, a brief, a target and a trigger, and returns the ID, the trigger
+  in words, the next fire and the short ID of the change. A schedule has a zone, and an `at` may
+  hold no offset. The tool reads the user's zone and gives that `at` the zone's offset at that time
+  before it calls `requestDefinitionChange`. A refusal comes back as `refused` with the code and
+  what the model needs to retry. A change that leaves out `model`, `persona`, `memory`, `tools` or
+  `report` puts each back to its default.
+- **`task.undefine`** takes a definition ID and answers the same way.
+- **`tasks.definitions`** lists every definition with its trigger in words and its next fire, and
+  marks a disabled, spent, removed or unreadable one as not in force. A definition from the repo
+  whose version names no tools lists the default task tools.
+
+A define over a definition whose version has an `instructions.md` file, a step file or a file-only
+key off its default (`context`, `wakeable`, `maxCalls`, `step`, `reportShape`, `log`,
+`destinations`) refuses with `FILE_ONLY_KEYS`. `requestDefinitionChange` reads the version in force
+inside its transaction and gives `pickDefinitionMove` a boolean for it. The check applies to a
+define only, so an undefine of such a definition goes through. The define refusals come in this
+order: `NOT_FOUND`, `ID_TAKEN`, `FILE_ONLY_KEYS`, `UNCHANGED`, `ONE_SHOT_OVER_REPO`.
+
+No fixed rule names `task.define` or `task.undefine`, so the decision point treats them like any
+tool of the `schedule` effect with no destination. The user's own request allows a call at stage 8,
+and any other call asks at stage 9.
+
+Each change shows in the conversation as a notice that carries an undo. A notice is not stored.
+`readDefinitionNotices` builds it for the `definition.changed` records that a read returns, from the
+change's row, its version, the definitions in force and the spent one-shots, and renders the trigger
+in the user's zone at read time. `next` has a value only while the change is `in_force` or
+`adopted`, is the version in force, is enabled, and its one-shot is not spent. An undo undoes the
+change as `undoDefinitionChange` decides, and runs a client action in the same write transaction, so
+a refused undo stores no client action and a retry with the same ID gets the first result.
+
 ## The snapshot hash
 
 The snapshot hash is the hash of one canonical form of the definitions in force. The persona enters

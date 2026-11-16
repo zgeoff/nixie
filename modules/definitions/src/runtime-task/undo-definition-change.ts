@@ -1,6 +1,6 @@
 import { triggerSchema } from '@heynixie/contract';
 import { withWriteTransaction } from '@heynixie/log';
-import type { Kysely } from 'kysely';
+import type { Kysely, Transaction } from 'kysely';
 import { z } from 'zod';
 import { readDefinitionsInForce } from '../definition/read-definitions-in-force';
 import type { SeedResult } from '../rule/run-seed';
@@ -14,6 +14,22 @@ import { readRepoMovedSeedSequence } from './read-repo-moved-seed-sequence';
 import type { DefinitionChangeResult, DefinitionsContext } from './types';
 import { writeDefinitionChange } from './write-definition-change';
 
+export interface UndoneChange {
+  readonly definitionID: string;
+  readonly changeID: string;
+  readonly restored: 'repo' | null;
+}
+
+// What the caller runs inside the undo's own write transaction
+export interface UndoHooks<Stop> {
+  // runs before the decision; a value that is not null ends the undo with that value and writes
+  // nothing, such as the stored result of a client action that already ran
+  readonly before: (tx: Transaction<unknown>) => Promise<Stop | null>;
+
+  // runs once the change is written and its seed has run, so what it writes commits with them
+  readonly after: (tx: Transaction<unknown>, change: UndoneChange) => Promise<void>;
+}
+
 interface WrittenUndo {
   readonly definitionID: string;
   readonly changeID: string;
@@ -22,65 +38,92 @@ interface WrittenUndo {
   readonly restored: 'repo' | null;
 }
 
+type UndoRun<Stop> =
+  | { readonly status: 'stopped'; readonly stop: Stop }
+  | { readonly status: 'refused'; readonly result: DefinitionChangeResult }
+  | ({ readonly status: 'written' } & WrittenUndo);
+
 // Only the definitions.undo procedure calls it. `changeID` is a change ID or a short ID.
-export async function undoDefinitionChange(
+export async function undoDefinitionChange<Stop = never>(
   context: DefinitionsContext,
   changeID: string,
-): Promise<DefinitionChangeResult> {
+  hooks?: UndoHooks<Stop>,
+): Promise<DefinitionChangeResult | Stop> {
   await context.runSeed().catch(() => null);
 
-  const written = await withWriteTransaction(
-    context.log.writer,
-    async (tx): Promise<DefinitionChangeResult | WrittenUndo> => {
-      const inForce = await readDefinitionsInForce(tx);
+  const run = await withWriteTransaction(context.log.writer, async (tx): Promise<UndoRun<Stop>> => {
+    const stop = hooks === undefined ? null : await hooks.before(tx);
 
-      if (inForce === null) {
-        throw new Error('no definitions are in force yet');
-      }
+    if (stop !== null) {
+      return { status: 'stopped', stop };
+    }
 
-      const named = await readNamedChange(tx, changeID);
+    const inForce = await readDefinitionsInForce(tx);
 
-      const definitionID = named?.definitionID ?? null;
-      const repo = definitionID === null ? null : await readRepoHash(tx, inForce, definitionID);
+    if (inForce === null) {
+      throw new Error('no definitions are in force yet');
+    }
 
-      const decision = pickDefinitionMove(
-        {
-          repo,
-          head: definitionID === null ? null : await readDefinitionHead(tx, definitionID),
-          now: context.log.writer.clock.now(),
-        },
-        {
-          kind: 'undo',
-          change: named?.change ?? null,
-          definitionID,
-          restoredOneShotAt: await readRestoredOneShotAt(tx, named?.change ?? null),
-          seedSequence:
-            named === null
-              ? inForce.recordSequence
-              : await readRepoMovedSeedSequence(tx, inForce, {
-                  changeID: named.change.changeID,
-                  hash: repo,
-                }),
-        },
-      );
+    const named = await readNamedChange(tx, changeID);
 
-      if (decision.status === 'refused') {
-        return decision;
-      }
+    const definitionID = named?.definitionID ?? null;
+    const repo = definitionID === null ? null : await readRepoHash(tx, inForce, definitionID);
 
-      const change = await writeDefinitionChange(tx, context, {
-        inForce,
-        move: decision,
-        version: null,
-      });
+    const decision = pickDefinitionMove(
+      {
+        repo,
+        head: definitionID === null ? null : await readDefinitionHead(tx, definitionID),
+        now: context.log.writer.clock.now(),
+        isFileOnly: false,
+      },
+      {
+        kind: 'undo',
+        change: named?.change ?? null,
+        definitionID,
+        restoredOneShotAt: await readRestoredOneShotAt(tx, named?.change ?? null),
+        seedSequence:
+          named === null
+            ? inForce.recordSequence
+            : await readRepoMovedSeedSequence(tx, inForce, {
+                changeID: named.change.changeID,
+                hash: repo,
+              }),
+      },
+    );
 
-      return { ...change, definitionID: decision.definitionID, restored: decision.restored };
-    },
-  );
+    if (decision.status === 'refused') {
+      return { status: 'refused', result: decision };
+    }
 
-  if (!('seed' in written)) {
-    return written;
+    const change = await writeDefinitionChange(tx, context, {
+      inForce,
+      move: decision,
+      version: null,
+    });
+
+    await hooks?.after(tx, {
+      definitionID: decision.definitionID,
+      changeID: change.changeID,
+      restored: decision.restored,
+    });
+
+    return {
+      status: 'written',
+      ...change,
+      definitionID: decision.definitionID,
+      restored: decision.restored,
+    };
+  });
+
+  if (run.status === 'stopped') {
+    return run.stop;
   }
+
+  if (run.status === 'refused') {
+    return run.result;
+  }
+
+  const written = run;
 
   context.onSeeded(written.seed);
   context.wakeExport();

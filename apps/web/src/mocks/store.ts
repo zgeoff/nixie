@@ -115,6 +115,19 @@ const exchangeNoticeSchema = z.object({
   text: z.string(),
 });
 
+const definitionNoticeSchema = z.object({
+  changeID: z.string(),
+  definitionID: z.string(),
+  hasVersion: z.boolean().default(true),
+  isUnreadable: z.boolean().default(false),
+  name: z.string().nullable(),
+  next: z.string().nullable().default(null),
+  operation: z.enum(['add', 'change', 'remove', 'undo']),
+  rendered: z.string().nullable().default(null),
+  shortID: z.string(),
+  state: z.enum(['in_force', 'superseded', 'adopted', 'retired']).default('in_force'),
+});
+
 const reminderSchema = z.object({
   brief: z.string(),
   lateBySeconds: z.number().nullable().default(null),
@@ -136,6 +149,7 @@ const records = new Collection({
     answer: answerSchema.optional(),
     compaction: compactionSchema.optional(),
     context: contextSchema.optional(),
+    definitionNotice: definitionNoticeSchema.optional(),
     exchangeNotice: exchangeNoticeSchema.optional(),
 
     forget: forgetSchema.optional(),

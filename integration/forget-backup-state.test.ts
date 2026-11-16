@@ -104,6 +104,7 @@ async function setupTest() {
     context,
     () => memory,
     () => Promise.resolve(),
+    () => null,
   ).listen({ hostname: '127.0.0.1', port: 0 });
 
   stack.defer(async () => {
@@ -119,6 +120,7 @@ async function setupTest() {
     offContext,
     () => memory,
     () => Promise.resolve(),
+    () => null,
   ).listen({ hostname: '127.0.0.1', port: 0 });
 
   stack.defer(async () => {

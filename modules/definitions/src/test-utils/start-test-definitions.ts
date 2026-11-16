@@ -24,6 +24,13 @@ import type { DefinitionsContext } from '../runtime-task/types';
 import type { DefinitionsSource } from '../types';
 import { buildTestTaskSeed } from './build-test-task-seed';
 
+// What the records of a runtime change of a task definition fold into, beside the tasks'
+export const definitionTaskProjections = [
+  ...triggersProjections,
+  runtimeTaskDefinitionsProjection,
+  taskDefinitionExportsProjection,
+];
+
 export interface TestDefinitions {
   // the folder of the repo
   readonly root: string;
@@ -44,8 +51,12 @@ export interface TestDefinitions {
 
   readonly readExportWakes: () => number;
 
-  // puts a task folder in the repo, with the text of its task.yaml
-  readonly writeRepoTask: (id: string, yaml: string) => Promise<void>;
+  // puts a task folder in the repo, with the text of its task.yaml and of each further file
+  readonly writeRepoTask: (
+    id: string,
+    yaml: string,
+    files?: Readonly<Record<string, string>>,
+  ) => Promise<void>;
 
   readonly removeRepoTask: (id: string) => Promise<void>;
   readonly seed: () => Promise<SeedResult>;
@@ -67,12 +78,7 @@ export async function startTestDefinitions(): Promise<TestDefinitions> {
 
   const log: Log = {
     ...base.log,
-    projections: [
-      ...tasksProjections,
-      ...triggersProjections,
-      runtimeTaskDefinitionsProjection,
-      taskDefinitionExportsProjection,
-    ],
+    projections: [...tasksProjections, ...definitionTaskProjections],
   };
 
   const source = createPathSource({ directory: root });
@@ -111,9 +117,13 @@ export async function startTestDefinitions(): Promise<TestDefinitions> {
       retireOneShot: makeRetireOneShot(tasksContext),
     },
     readExportWakes: () => wakes.count,
-    writeRepoTask: async (id, yaml) => {
+    writeRepoTask: async (id, yaml, files = {}) => {
       await mkdir(join(root, 'tasks', id), { recursive: true });
       await writeFile(join(root, 'tasks', id, 'task.yaml'), yaml);
+
+      for (const [name, text] of Object.entries(files)) {
+        await writeFile(join(root, 'tasks', id, name), text);
+      }
     },
     removeRepoTask: (id) => rm(join(root, 'tasks', id), { recursive: true, force: true }),
     context: {

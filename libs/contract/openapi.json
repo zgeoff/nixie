@@ -192,6 +192,86 @@
                               "window"
                             ]
                           },
+                          "definitionNotice": {
+                            "type": "object",
+                            "properties": {
+                              "definitionID": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "anyOf": [
+                                  {
+                                    "type": "string"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "operation": {
+                                "enum": [
+                                  "add",
+                                  "change",
+                                  "remove",
+                                  "undo"
+                                ],
+                                "type": "string"
+                              },
+                              "shortID": {
+                                "type": "string"
+                              },
+                              "changeID": {
+                                "type": "string"
+                              },
+                              "hasVersion": {
+                                "type": "boolean"
+                              },
+                              "rendered": {
+                                "anyOf": [
+                                  {
+                                    "type": "string"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "next": {
+                                "anyOf": [
+                                  {
+                                    "type": "string"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "state": {
+                                "enum": [
+                                  "in_force",
+                                  "superseded",
+                                  "adopted",
+                                  "retired"
+                                ],
+                                "type": "string"
+                              },
+                              "isUnreadable": {
+                                "type": "boolean"
+                              }
+                            },
+                            "required": [
+                              "definitionID",
+                              "name",
+                              "operation",
+                              "shortID",
+                              "changeID",
+                              "hasVersion",
+                              "rendered",
+                              "next",
+                              "state",
+                              "isUnreadable"
+                            ]
+                          },
                           "isRemoved": {
                             "const": true
                           },
@@ -694,6 +774,86 @@
                               "required": [
                                 "size",
                                 "window"
+                              ]
+                            },
+                            "definitionNotice": {
+                              "type": "object",
+                              "properties": {
+                                "definitionID": {
+                                  "type": "string"
+                                },
+                                "name": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "operation": {
+                                  "enum": [
+                                    "add",
+                                    "change",
+                                    "remove",
+                                    "undo"
+                                  ],
+                                  "type": "string"
+                                },
+                                "shortID": {
+                                  "type": "string"
+                                },
+                                "changeID": {
+                                  "type": "string"
+                                },
+                                "hasVersion": {
+                                  "type": "boolean"
+                                },
+                                "rendered": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "next": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "state": {
+                                  "enum": [
+                                    "in_force",
+                                    "superseded",
+                                    "adopted",
+                                    "retired"
+                                  ],
+                                  "type": "string"
+                                },
+                                "isUnreadable": {
+                                  "type": "boolean"
+                                }
+                              },
+                              "required": [
+                                "definitionID",
+                                "name",
+                                "operation",
+                                "shortID",
+                                "changeID",
+                                "hasVersion",
+                                "rendered",
+                                "next",
+                                "state",
+                                "isUnreadable"
                               ]
                             },
                             "isRemoved": {
@@ -16644,6 +16804,490 @@
         }
       }
     },
+    "/definitions/undo": {
+      "post": {
+        "operationId": "definitions.undo",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "clientActionID": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "changeID": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 64
+                  }
+                },
+                "required": [
+                  "clientActionID",
+                  "changeID"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "definitionID": {
+                      "type": "string"
+                    },
+                    "changeID": {
+                      "type": "string"
+                    },
+                    "restored": {
+                      "const": "repo"
+                    }
+                  },
+                  "required": [
+                    "definitionID",
+                    "changeID"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "401",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "defined": {
+                          "const": true
+                        },
+                        "code": {
+                          "const": "UNAUTHORIZED"
+                        },
+                        "status": {
+                          "const": 401
+                        },
+                        "message": {
+                          "type": "string",
+                          "default": "The device session is missing, lapsed or revoked"
+                        },
+                        "data": {}
+                      },
+                      "required": [
+                        "defined",
+                        "code",
+                        "status",
+                        "message"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "defined": {
+                          "const": false
+                        },
+                        "code": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "number"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "data": {}
+                      },
+                      "required": [
+                        "defined",
+                        "code",
+                        "status",
+                        "message"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "defined": {
+                          "const": true
+                        },
+                        "code": {
+                          "const": "NOT_FOUND"
+                        },
+                        "status": {
+                          "const": 404
+                        },
+                        "message": {
+                          "type": "string",
+                          "default": "No change has this ID"
+                        },
+                        "data": {}
+                      },
+                      "required": [
+                        "defined",
+                        "code",
+                        "status",
+                        "message"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "defined": {
+                          "const": false
+                        },
+                        "code": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "number"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "data": {}
+                      },
+                      "required": [
+                        "defined",
+                        "code",
+                        "status",
+                        "message"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "409",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "defined": {
+                          "const": true
+                        },
+                        "code": {
+                          "const": "CLIENT_ACTION_ID_REUSED"
+                        },
+                        "status": {
+                          "const": 409
+                        },
+                        "message": {
+                          "type": "string",
+                          "default": "The client action ID belongs to a different action"
+                        },
+                        "data": {}
+                      },
+                      "required": [
+                        "defined",
+                        "code",
+                        "status",
+                        "message"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "defined": {
+                          "const": true
+                        },
+                        "code": {
+                          "const": "REPLACED"
+                        },
+                        "status": {
+                          "const": 409
+                        },
+                        "message": {
+                          "type": "string",
+                          "default": "A later change replaced this one"
+                        },
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "head": {
+                              "type": "object",
+                              "properties": {
+                                "changeID": {
+                                  "type": "string"
+                                },
+                                "shortID": {
+                                  "type": "string"
+                                },
+                                "operation": {
+                                  "enum": [
+                                    "add",
+                                    "change",
+                                    "remove",
+                                    "undo"
+                                  ],
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "changeID",
+                                "shortID",
+                                "operation"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "head"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "defined",
+                        "code",
+                        "status",
+                        "message",
+                        "data"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "defined": {
+                          "const": true
+                        },
+                        "code": {
+                          "const": "REPO_MOVED"
+                        },
+                        "status": {
+                          "const": 409
+                        },
+                        "message": {
+                          "type": "string",
+                          "default": "The definitions repo changed this definition since"
+                        },
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "seedSequence": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            }
+                          },
+                          "required": [
+                            "seedSequence"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "defined",
+                        "code",
+                        "status",
+                        "message",
+                        "data"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "defined": {
+                          "const": true
+                        },
+                        "code": {
+                          "const": "NOT_IN_FORCE"
+                        },
+                        "status": {
+                          "const": 409
+                        },
+                        "message": {
+                          "type": "string",
+                          "default": "The change is no longer in force"
+                        },
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "cause": {
+                              "enum": [
+                                "one_shot_fired",
+                                "one_shot_skipped",
+                                "kept_repo"
+                              ],
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "cause"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "defined",
+                        "code",
+                        "status",
+                        "message",
+                        "data"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "defined": {
+                          "const": true
+                        },
+                        "code": {
+                          "const": "ONE_SHOT_OVER_REPO"
+                        },
+                        "status": {
+                          "const": 409
+                        },
+                        "message": {
+                          "type": "string",
+                          "default": "A one-time trigger cannot go back over a definition in the repo"
+                        },
+                        "data": {}
+                      },
+                      "required": [
+                        "defined",
+                        "code",
+                        "status",
+                        "message"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "defined": {
+                          "const": true
+                        },
+                        "code": {
+                          "const": "ONE_SHOT_PAST"
+                        },
+                        "status": {
+                          "const": 409
+                        },
+                        "message": {
+                          "type": "string",
+                          "default": "The time of that one-time trigger has passed"
+                        },
+                        "data": {}
+                      },
+                      "required": [
+                        "defined",
+                        "code",
+                        "status",
+                        "message"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "defined": {
+                          "const": false
+                        },
+                        "code": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "number"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "data": {}
+                      },
+                      "required": [
+                        "defined",
+                        "code",
+                        "status",
+                        "message"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "503",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "defined": {
+                          "const": true
+                        },
+                        "code": {
+                          "const": "NOT_STARTED"
+                        },
+                        "status": {
+                          "const": 503
+                        },
+                        "message": {
+                          "type": "string",
+                          "default": "Task definitions are not ready yet"
+                        },
+                        "data": {}
+                      },
+                      "required": [
+                        "defined",
+                        "code",
+                        "status",
+                        "message"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "defined": {
+                          "const": false
+                        },
+                        "code": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "number"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "data": {}
+                      },
+                      "required": [
+                        "defined",
+                        "code",
+                        "status",
+                        "message"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/rules/readRule": {
       "post": {
         "operationId": "rules.readRule",
@@ -23560,6 +24204,86 @@
                                     "window"
                                   ]
                                 },
+                                "definitionNotice": {
+                                  "type": "object",
+                                  "properties": {
+                                    "definitionID": {
+                                      "type": "string"
+                                    },
+                                    "name": {
+                                      "anyOf": [
+                                        {
+                                          "type": "string"
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ]
+                                    },
+                                    "operation": {
+                                      "enum": [
+                                        "add",
+                                        "change",
+                                        "remove",
+                                        "undo"
+                                      ],
+                                      "type": "string"
+                                    },
+                                    "shortID": {
+                                      "type": "string"
+                                    },
+                                    "changeID": {
+                                      "type": "string"
+                                    },
+                                    "hasVersion": {
+                                      "type": "boolean"
+                                    },
+                                    "rendered": {
+                                      "anyOf": [
+                                        {
+                                          "type": "string"
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ]
+                                    },
+                                    "next": {
+                                      "anyOf": [
+                                        {
+                                          "type": "string"
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ]
+                                    },
+                                    "state": {
+                                      "enum": [
+                                        "in_force",
+                                        "superseded",
+                                        "adopted",
+                                        "retired"
+                                      ],
+                                      "type": "string"
+                                    },
+                                    "isUnreadable": {
+                                      "type": "boolean"
+                                    }
+                                  },
+                                  "required": [
+                                    "definitionID",
+                                    "name",
+                                    "operation",
+                                    "shortID",
+                                    "changeID",
+                                    "hasVersion",
+                                    "rendered",
+                                    "next",
+                                    "state",
+                                    "isUnreadable"
+                                  ]
+                                },
                                 "isRemoved": {
                                   "const": true
                                 },
@@ -24224,6 +24948,86 @@
                                   "required": [
                                     "size",
                                     "window"
+                                  ]
+                                },
+                                "definitionNotice": {
+                                  "type": "object",
+                                  "properties": {
+                                    "definitionID": {
+                                      "type": "string"
+                                    },
+                                    "name": {
+                                      "anyOf": [
+                                        {
+                                          "type": "string"
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ]
+                                    },
+                                    "operation": {
+                                      "enum": [
+                                        "add",
+                                        "change",
+                                        "remove",
+                                        "undo"
+                                      ],
+                                      "type": "string"
+                                    },
+                                    "shortID": {
+                                      "type": "string"
+                                    },
+                                    "changeID": {
+                                      "type": "string"
+                                    },
+                                    "hasVersion": {
+                                      "type": "boolean"
+                                    },
+                                    "rendered": {
+                                      "anyOf": [
+                                        {
+                                          "type": "string"
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ]
+                                    },
+                                    "next": {
+                                      "anyOf": [
+                                        {
+                                          "type": "string"
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ]
+                                    },
+                                    "state": {
+                                      "enum": [
+                                        "in_force",
+                                        "superseded",
+                                        "adopted",
+                                        "retired"
+                                      ],
+                                      "type": "string"
+                                    },
+                                    "isUnreadable": {
+                                      "type": "boolean"
+                                    }
+                                  },
+                                  "required": [
+                                    "definitionID",
+                                    "name",
+                                    "operation",
+                                    "shortID",
+                                    "changeID",
+                                    "hasVersion",
+                                    "rendered",
+                                    "next",
+                                    "state",
+                                    "isUnreadable"
                                   ]
                                 },
                                 "isRemoved": {

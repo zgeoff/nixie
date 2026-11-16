@@ -8,6 +8,9 @@ export function toLogRecord(record: StoredRecord): LogRecord {
   return {
     ...(record.compaction === undefined ? {} : { compaction: toLogCompaction(record.compaction) }),
     ...(record.context === undefined ? {} : { context: { ...record.context } }),
+    ...(record.definitionNotice === undefined
+      ? {}
+      : { definitionNotice: { ...record.definitionNotice } }),
     ...(record.exchangeNotice === undefined
       ? {}
       : { exchangeNotice: structuredClone(record.exchangeNotice) }),

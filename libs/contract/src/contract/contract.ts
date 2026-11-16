@@ -2,6 +2,8 @@ import { eventIterator, oc } from '@orpc/contract';
 import { z } from 'zod';
 import { spanSchema } from '../span/span-schema';
 import { approvalContract } from './approval-contract';
+import { definitionNoticeSchema } from './definition-notice-schema';
+import { definitionsContract } from './definitions-contract';
 import { forgetBackupSchema } from './forget-backup-schema';
 import { imageLimits } from './image-limits';
 import { imageNotFoundError } from './image-not-found-error';
@@ -97,6 +99,8 @@ const recordSchema = z.object({
   forget: z.object({ sequence: sequenceSchema }).optional(),
 
   context: contextSchema.optional(),
+
+  definitionNotice: definitionNoticeSchema.optional(),
 
   isRemoved: z.literal(true).optional(),
 
@@ -377,7 +381,7 @@ export const contract = {
     readNotice: signedIn.output(z.object({ notice: backupNoticeSchema.nullable() })),
   },
   triggers: viewContract.triggers,
-  definitions: viewContract.definitions,
+  definitions: { ...viewContract.definitions, ...definitionsContract },
   rules: ruleContract,
   approvals: approvalContract,
   passkeys: passkeyContract,

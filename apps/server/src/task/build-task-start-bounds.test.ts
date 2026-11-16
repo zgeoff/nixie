@@ -89,3 +89,17 @@ test('it never offers a task the tool that proposes a mandate', () => {
 
   expect(bounds.conversationTools).toStrictEqual(['skills.list']);
 });
+
+test('it names the 2 tools that change a task definition as conversation tools', () => {
+  const bounds = buildTaskStartBounds(
+    buildMockModelsConfig({ profiles: { 'chat-direct': {} }, selectable: [] }),
+    [],
+    [
+      buildMockToolDefinition({ name: 'task.define' }),
+      buildMockToolDefinition({ name: 'task.undefine' }),
+    ],
+    { start: 'wake', definition: 'next_turn' },
+  );
+
+  expect(bounds.conversationTools).toStrictEqual(['task.define', 'task.undefine']);
+});

@@ -552,3 +552,44 @@ test('it leaves a call that declares note to the rules on note when a rule asks 
   expect([decided.decision.outcome, decided.decision.stage]).toStrictEqual(['allow', 7]);
   expect(decided.memoryWrite).toBeUndefined();
 });
+
+test('it allows a task.define at stage 8 when the owner asked for the schedule in typed words', async () => {
+  const ctx = buildTestDecisionPoint({
+    declaration: buildTestDeclaration({ effects: ['schedule'], destinations: [] }),
+    messages: [
+      buildTypedMessage(7, 'Remind me to water the tomatoes every Friday', 1_794_550_000_000),
+    ],
+  });
+
+  const decided = await ctx.decide(
+    buildPolicyCall({ tool: 'task.define', toolList: ['task.define'], turnMessageSequence: 7 }),
+  );
+
+  expect(decided.decision).toStrictEqual({
+    outcome: 'allow',
+    stage: 8,
+    rule: null,
+    destinations: [],
+    consent: { messageSequences: [7], codeCheck: 'pass', checker: 'yes' },
+    snapshot: 'snapshot-1',
+  });
+});
+
+test('it asks for a task.define at stage 9 when the owner did not ask for it', async () => {
+  const ctx = buildTestDecisionPoint({
+    declaration: buildTestDeclaration({ effects: ['schedule'], destinations: [] }),
+  });
+
+  const decided = await ctx.decide(
+    buildPolicyCall({ tool: 'task.define', toolList: ['task.define'] }),
+  );
+
+  expect(decided.decision).toStrictEqual({
+    outcome: 'ask',
+    stage: 9,
+    rule: null,
+    cause: 'no_rule',
+    destinations: [],
+    snapshot: 'snapshot-1',
+  });
+});

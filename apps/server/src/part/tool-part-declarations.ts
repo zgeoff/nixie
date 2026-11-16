@@ -1,6 +1,7 @@
 import { buildGitHubDefinitionsRepo } from '@heynixie/definitions-repo-github';
 import { buildKagiSearch } from '@heynixie/search-kagi';
 import { startConversationEndpoint } from '../conversation/start-conversation-endpoint';
+import { readDefinitionsContext } from '../definition/read-definitions-context';
 import { refreshDefinitions } from '../definition/refresh-definitions';
 import { addLogForget } from '../forget/add-log-forget';
 import { buildLogForgetTool } from '../forget/build-log-forget-tool';
@@ -77,7 +78,7 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
   {
     name: 'tool_endpoint',
     needs: ['inputs', 'context', 'web_fetch', 'code_run', 'actions', 'decisions'],
-    uses: ['memory', 'server_parts', 'checker'],
+    uses: ['memory', 'server_parts', 'checker', 'definitions_exports'],
     start: (parts) => {
       const options = parts.get('inputs').options;
       const inForce = parts.get('context').inForce;
@@ -114,6 +115,8 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
           readStore: () => parts.find('memory'),
           readInForce: () => inForce.read(),
           refreshDefinitions: () => refreshDefinitions(parts.find('server_parts'), inForce),
+          readDefinitions: () =>
+            readDefinitionsContext(parts.find('server_parts'), parts.find('definitions_exports')),
           vendor:
             definitionsExport === null
               ? null
