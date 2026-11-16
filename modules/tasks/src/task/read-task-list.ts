@@ -6,7 +6,12 @@ import { readDefinitionTaskVersions } from './read-definition-task-versions';
 
 export interface TaskListQuery {
   readonly callerID: string | null;
-  readonly limit: number;
+
+  // every task when absent
+  readonly limit?: number;
+
+  // lists only the tasks of this definition, which the limit then counts
+  readonly definitionID?: string;
 
   // lists only these tasks, which the limit then counts
   readonly taskIDs?: readonly string[];
@@ -79,8 +84,11 @@ export async function readTaskList(
       'in',
       profiles.map((profile) => profile.taskID),
     )
+    .$if(query.definitionID !== undefined, (builder) =>
+      builder.where('tasks.definition_id', '=', query.definitionID ?? ''),
+    )
     .orderBy('tasks.updated_sequence', 'desc')
-    .limit(query.limit)
+    .$if(query.limit !== undefined, (builder) => builder.limit(query.limit ?? 0))
     .execute();
 
   if (rows.length === 0) {

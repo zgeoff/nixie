@@ -12,6 +12,14 @@ export const taskStateSchema = z.enum([
   'closed',
 ]);
 
+export const listedStateSchema = z.enum([...taskStateSchema.options, 'idle', 'finished', 'asleep']);
+
+export const runFireSchema = z.object({
+  scheduledFor: z.string(),
+  firedAt: z.string(),
+  isCatchUp: z.boolean(),
+});
+
 const taskControlSchema = z.enum(['pause', 'resume', 'stop', 'restart', 'close', 'interrupt']);
 
 export const actionCountSchema = z.int().nonnegative();
@@ -25,11 +33,14 @@ export const listedTaskSchema = z.object({
   brief: z.string(),
   closedBy: z.enum(['owner', 'nixie', 'disposable']).optional(),
   controls: z.array(taskControlSchema),
+  definitionID: z.string().optional(),
   disposable: z.boolean().nullable(),
+  fire: runFireSchema.nullable().optional(),
   isPauseRequested: z.boolean(),
   isPausedByNixie: z.boolean(),
   isTakingMessages: z.boolean(),
   lastActivityAt: z.date(),
+  listedState: listedStateSchema.optional(),
   name: z.string(),
   nextRunAt: z.string().optional(),
   runner: z.string(),

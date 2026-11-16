@@ -29,6 +29,19 @@ async function setupTest() {
     appURL: app.url,
     view,
     readPageText: () => view.evaluate('document.body.innerText'),
+    readFilterValue: (label: string) =>
+      view.evaluate(
+        `[...document.querySelectorAll('label')].find((label) => label.textContent.startsWith('${label}')).querySelector('select').selectedOptions[0].textContent`,
+      ),
+    chooseFilter: (label: string, value: string) =>
+      view.evaluate(
+        `(() => {
+          const select = [...document.querySelectorAll('label')].find((label) => label.textContent.startsWith('${label}')).querySelector('select');
+          const option = [...select.options].find((candidate) => candidate.textContent === '${value}');
+          Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(select, option.value);
+          select.dispatchEvent(new Event('change', { bubbles: true }));
+        })()`,
+      ),
     readRowText: (name: string) =>
       view.evaluate(`document.querySelector('li[aria-label="${name}"]')?.innerText ?? ''`),
     clickButton: (label: string, within: string) =>
@@ -169,6 +182,191 @@ test('it shows the pause banner, each task as paused and the tasks to check, and
 
       expect(text).not.toInclude('nixie is paused');
       expect(text).not.toInclude('Paused by nixie');
+    },
+    { timeout: 10_000 },
+  );
+});
+
+test('it groups each listed state, and shows a catch-up fire with how late it fired', async () => {
+  const ctx = await setupTest();
+
+  // Chrome is already running with the host's zone, so the page takes its own
+  await ctx.view.cdp('Emulation.setTimezoneOverride', { timezoneId: 'America/Chicago' });
+
+  const session = await store.sessions.create({});
+
+  await store.tasks.create({ listedState: 'idle', name: 'Idle task', state: 'waiting' });
+  await store.tasks.create({ listedState: 'finished', name: 'Finished task', state: 'waiting' });
+  await store.tasks.create({ listedState: 'failed', name: 'Failed task', state: 'failed' });
+
+  await store.tasks.create({
+    definitionID: 'water-the-tomatoes',
+    listedState: 'asleep',
+    name: 'Water the tomatoes',
+    nextRunAt: '2027-03-12T13:00:00.000Z',
+    state: 'waiting',
+    fire: {
+      firedAt: '2027-03-11T21:20:00.000Z',
+      isCatchUp: true,
+      scheduledFor: '2027-03-11T21:00:00.000Z',
+    },
+  });
+
+  await setupSignedInBrowser(ctx.view, { appURL: ctx.appURL, token: session.token });
+
+  await ctx.view.navigate(`${ctx.appURL}/tasks`);
+
+  await waitFor(
+    async () => {
+      const working: unknown = await ctx.view.evaluate(
+        "document.querySelector('section[aria-label=\"Working\"]')?.innerText ?? ''",
+      );
+
+      const held: unknown = await ctx.view.evaluate(
+        "document.querySelector('section[aria-label=\"Held\"]')?.innerText ?? ''",
+      );
+
+      const tomatoesText = await ctx.readRowText('Water the tomatoes');
+
+      const tomatoes = String(tomatoesText).replaceAll(/\s/gu, ' ');
+
+      expect(working).toInclude('Idle task');
+      expect(working).toInclude('Finished task');
+      expect(working).toInclude('Sent its report');
+      expect(working).toInclude('Water the tomatoes');
+      expect(held).toInclude('Failed task');
+      expect(tomatoes).toInclude('Scheduled Mar 11, 3:00 PM, fired 20 minutes late');
+      expect(tomatoes).toInclude('Next run Mar 12, 7:00 AM');
+    },
+    { timeout: 10_000 },
+  );
+});
+
+test('it keeps the conversation in its own group while nixie is paused', async () => {
+  const ctx = await setupTest();
+  const session = await store.sessions.create({});
+
+  await store.tasks.create({
+    listedState: 'idle',
+    name: 'Conversation',
+    state: 'waiting',
+    taskID: 'conversation',
+  });
+
+  await store.tasks.create({ listedState: 'idle', name: 'Garden plan', state: 'waiting' });
+  await pauseStore.pauses.create({ cause: 'owner' });
+
+  await setupSignedInBrowser(ctx.view, { appURL: ctx.appURL, token: session.token });
+
+  await ctx.view.navigate(`${ctx.appURL}/tasks`);
+
+  await waitFor(
+    async () => {
+      const conversation: unknown = await ctx.view.evaluate(
+        "document.querySelector('section[aria-label=\"Conversation\"]')?.innerText ?? ''",
+      );
+
+      const held: unknown = await ctx.view.evaluate(
+        "document.querySelector('section[aria-label=\"Held\"]')?.innerText ?? ''",
+      );
+
+      expect(conversation).toInclude('Conversation');
+      expect(held).toInclude('Garden plan');
+      expect(held).not.toInclude('Conversation');
+    },
+    { timeout: 10_000 },
+  );
+});
+
+test('it keeps a filter and the filtered list after a reload', async () => {
+  const ctx = await setupTest();
+  const session = await store.sessions.create({});
+
+  await store.tasks.create({ listedState: 'failed', name: 'Seed order', state: 'failed' });
+  await store.tasks.create({ listedState: 'idle', name: 'Tiler booking', state: 'waiting' });
+
+  await setupSignedInBrowser(ctx.view, { appURL: ctx.appURL, token: session.token });
+
+  await ctx.view.navigate(`${ctx.appURL}/tasks`);
+
+  await waitFor(
+    async () => {
+      const text = await ctx.readPageText();
+
+      expect(text).toInclude('Tiler booking');
+    },
+    { timeout: 10_000 },
+  );
+
+  await ctx.chooseFilter('State', 'Failed');
+
+  await waitFor(
+    async () => {
+      const text = await ctx.readPageText();
+
+      expect(text).toInclude('Seed order');
+      expect(text).not.toInclude('Tiler booking');
+    },
+    { timeout: 10_000 },
+  );
+
+  const location = await ctx.view.evaluate('location.href');
+
+  const href = String(location);
+
+  await ctx.view.navigate(href);
+
+  await waitFor(
+    async () => {
+      const text = await ctx.readPageText();
+      const filter = await ctx.readFilterValue('State');
+
+      expect(filter).toBe('Failed');
+      expect(text).toInclude('Seed order');
+      expect(text).not.toInclude('Tiler booking');
+    },
+    { timeout: 10_000 },
+  );
+});
+
+test('it reads the list again when a trigger fires', async () => {
+  const ctx = await setupTest();
+  const session = await store.sessions.create({});
+
+  const task = await store.tasks.create({
+    definitionID: 'water-the-tomatoes',
+    listedState: 'asleep',
+    name: 'Water the tomatoes',
+    state: 'waiting',
+  });
+
+  await setupSignedInBrowser(ctx.view, { appURL: ctx.appURL, token: session.token });
+
+  await ctx.view.navigate(`${ctx.appURL}/tasks`);
+
+  await waitFor(
+    async () => {
+      const row = await ctx.readRowText('Water the tomatoes');
+
+      expect(row).toInclude('Asleep');
+    },
+    { timeout: 10_000 },
+  );
+
+  await store.tasks.update(task, {
+    data(draft) {
+      draft.listedState = 'running';
+      draft.state = 'running';
+    },
+  });
+
+  await store.records.create({ kind: 'trigger.fired', thread: task.taskID });
+
+  await waitFor(
+    async () => {
+      const row = await ctx.readRowText('Water the tomatoes');
+
+      expect(row).toInclude('Running');
     },
     { timeout: 10_000 },
   );

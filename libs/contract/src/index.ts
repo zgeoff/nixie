@@ -7,6 +7,7 @@ export { forgettableKinds } from './contract/forgettable-kinds';
 export { contract } from './contract/contract';
 export type { DefinitionNotice } from './contract/definition-notice-schema';
 export { hostContract } from './contract/host-contract';
+export { listedStateSchema, runFireSchema } from './contract/listed-task-schema';
 export { imageLimits } from './contract/image-limits';
 export { isTimeZone } from './contract/is-time-zone';
 export type { Schedule } from './contract/schedule-schema';

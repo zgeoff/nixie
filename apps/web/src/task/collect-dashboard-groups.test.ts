@@ -23,3 +23,47 @@ test('it gives no conversation when the list does not hold it', () => {
     working: [],
   });
 });
+
+test.each([
+  ['idle', 'working'],
+  ['asleep', 'working'],
+  ['finished', 'working'],
+  ['paused', 'held'],
+  ['stopped', 'held'],
+  ['failed', 'held'],
+] as const)('it puts a task listed %s in %s', (listedState, group) => {
+  const task = buildMockListedTask({ listedState, state: 'waiting', taskID: 'k3vq8m2xpa' });
+
+  expect(collectDashboardGroups([task])[group]).toStrictEqual([task]);
+});
+
+test('it leaves out a task listed done or closed', () => {
+  const done = buildMockListedTask({ listedState: 'done', state: 'done' });
+  const closed = buildMockListedTask({ listedState: 'closed', state: 'closed' });
+
+  expect(collectDashboardGroups([done, closed])).toStrictEqual({
+    conversation: undefined,
+    held: [],
+    working: [],
+  });
+});
+
+test('it groups a task with no listed state by its stored state', () => {
+  const task = buildMockListedTask({ state: 'paused' });
+
+  expect(collectDashboardGroups([task]).held).toStrictEqual([task]);
+});
+
+test('it keeps the conversation in its own group while nixie holds it paused', () => {
+  const conversation = buildMockListedTask({
+    listedState: 'paused',
+    state: 'waiting',
+    taskID: 'conversation',
+  });
+
+  expect(collectDashboardGroups([conversation])).toStrictEqual({
+    conversation,
+    held: [],
+    working: [],
+  });
+});

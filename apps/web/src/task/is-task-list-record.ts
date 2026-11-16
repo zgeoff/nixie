@@ -5,6 +5,7 @@ const listedKinds: ReadonlySet<string> = new Set([
   'owner_message',
   'task_message',
   'timer.fired',
+  'trigger.fired',
 ]);
 
 export function isTaskListRecord(kind: string): boolean {

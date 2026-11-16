@@ -6,9 +6,10 @@ import type { ContractClient } from '@heynixie/contract';
 import { skipReasonSchema } from '@heynixie/contract';
 import { createPathSource, readListedDefinitions, runSeed } from '@heynixie/definitions';
 import { buildTestTaskSeed, seedTaskVersions } from '@heynixie/definitions/test-utils';
-import { skipReasons } from '@heynixie/tasks';
+import { claimTask, skipReasons, writeStepCommit } from '@heynixie/tasks';
 import {
   buildTaskSeeder,
+  seedDefinitionTask,
   seedWithdrawnPendingTasks,
   writeTestTriggerFire,
   writeTestTriggerSkip,
@@ -101,6 +102,7 @@ test('#tasks.listEnded gives each run its fields and one task for its page', asy
       carriesRunID: null,
       reportID: expect.toBeString(),
       delivery: expect.toBeString(),
+      fire: null,
       used: { turns: expect.toBeNumber(), dollars: expect.toBeNumber() },
     },
   ]);
@@ -295,11 +297,18 @@ test(
         actions: { cancelled: 0, queued: 0, started: 0 },
         brief: 'Water the beds.',
         controls: ['pause', 'resume', 'stop', 'restart', 'close', 'interrupt'],
+        definitionID: 'water-the-tomatoes',
         disposable: null,
+        fire: {
+          scheduledFor: '2027-03-11T21:00:00.000Z',
+          firedAt: '2027-03-11T21:00:00.000Z',
+          isCatchUp: false,
+        },
         isPauseRequested: false,
         isPausedByNixie: false,
         isTakingMessages: false,
         lastActivityAt: expect.toBeValidDate(),
+        listedState: 'ready',
         name: 'Water the tomatoes',
         runner: 'sandbox',
         state: 'ready',
@@ -528,4 +537,45 @@ test.each([
 
 test('it keeps the skip reasons of the contract equal to those the tasks module records', () => {
   expect(skipReasonSchema.options).toStrictEqual([...skipReasons]);
+});
+
+test('#tasks.listEnded gives a trigger task run its fire, and a task run that no fire opened none', async () => {
+  const ctx = await setupTest();
+  const step = await ctx.seed.conversationStep();
+
+  await ctx.seed.doneTask({ starter: step.claim, name: 'Garden plan', brief: 'Plan the beds.' });
+
+  const taskID = await seedDefinitionTask(ctx, {
+    definitionID: 'water-the-tomatoes',
+    definitionHash: 'hash-1',
+  });
+
+  await writeTestTriggerFire(ctx.context, taskID, {
+    definitionHash: 'hash-1',
+    scheduledFor: '2027-03-11T21:00:00.000Z',
+    firedAt: '2027-03-11T21:20:00.000Z',
+    isCatchUp: true,
+  });
+
+  const claim = await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000, taskID });
+
+  invariant(claim, 'the fire is ready to claim');
+
+  await writeStepCommit(ctx.context, claim, {
+    next: 'wait',
+    records: [],
+    acknowledged: [],
+    run: { activity: 'worked', report: { summary: 'Done.' } },
+  });
+
+  const listed = await ctx.client.tasks.listEnded({ limit: 10 });
+
+  expect(listed.runs.map((run) => run.fire)).toStrictEqual([
+    {
+      scheduledFor: '2027-03-11T21:00:00.000Z',
+      firedAt: '2027-03-11T21:20:00.000Z',
+      isCatchUp: true,
+    },
+    null,
+  ]);
 });

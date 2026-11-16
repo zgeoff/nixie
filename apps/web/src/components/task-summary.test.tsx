@@ -118,3 +118,54 @@ test('it shows a done task as done while the pause is on', () => {
   expect(rendered.getByText('Done')).toBeVisible();
   expect(rendered.queryByText('Paused by nixie')).toBeNull();
 });
+
+test('it labels a task by its listed state', () => {
+  const garden = buildMockListedTask({
+    listedState: 'asleep',
+    name: 'Garden plan',
+    state: 'waiting',
+  });
+
+  const rendered = render(<TaskSummary isLinked task={garden} tasks={[garden]} />);
+
+  expect(rendered.getByText('Asleep')).toBeVisible();
+});
+
+test('it shows when a task run was scheduled and how late it fired', async () => {
+  const garden = buildMockListedTask({
+    fire: {
+      firedAt: '2027-03-11T21:20:00.000Z',
+      isCatchUp: true,
+      scheduledFor: '2027-03-11T21:00:00.000Z',
+    },
+    name: 'Garden plan',
+  });
+
+  const rendered = render(<TaskSummary isLinked task={garden} tasks={[garden]} />);
+
+  const scheduled = await rendered.findByText(/^Scheduled .*, fired 20 minutes late$/u);
+
+  expect(scheduled).toBeVisible();
+});
+
+test('it shows the next run of an asleep task and the report of a finished one', async () => {
+  const asleep = buildMockListedTask({
+    listedState: 'asleep',
+    nextRunAt: '2027-03-12T07:00:00.000Z',
+    state: 'waiting',
+  });
+
+  const finished = buildMockListedTask({ listedState: 'finished', state: 'waiting' });
+
+  const rendered = render(
+    <>
+      <TaskSummary isLinked task={asleep} tasks={[asleep]} />
+      <TaskSummary isLinked task={finished} tasks={[finished]} />
+    </>,
+  );
+
+  const nextRun = await rendered.findByText(/^Next run /u);
+
+  expect(nextRun).toBeVisible();
+  expect(rendered.getByText('Sent its report')).toBeVisible();
+});

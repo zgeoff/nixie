@@ -297,11 +297,30 @@ the task's state allows. A started task whose name the user forgot shows under i
 returns one task with the same fields, whatever its place in the list, so a task's page shows a task
 past the cap.
 
+Each listed task also gives `listedState`, the state that the model tool `tasks.list` reads: the
+stored state, or `idle`, `finished` or `asleep` for a task whose stored state is `waiting` with no
+open wait. While nixie's pause holds a task whose stored state is `ready`, `running`, `waiting` or
+`paused`, it lists as `paused`, and its stored state does not change. An exempt task, and a task
+that has stopped, failed, finished or closed, keeps its own listed state. The model tool does not
+apply the pause. A task of a definition also gives its `definitionID` and a `fire`: the scheduled
+time, the fire time and whether it was a catch-up, taken from the open task run, or from the newest
+one when none is open. The `fire` is null when that task run has no fire, which holds for a poll
+fire, a message and a fire that a reset of the log removed. A carrying task run gives the fire of
+the task run that it carries on from. A started task has no `fire` field.
+
+`tasks.list` takes an optional input with a `definitionID` and a `states` array of 1 to 11 distinct
+listed states. The server applies both before the cap of 100 tasks, so a filter finds a task that
+the unfiltered list leaves out. A call with no input or an empty one lists as before. Every new
+field is optional: a server of the release before strips the input and gives none of the fields, and
+a client then groups by `state` and shows the list unfiltered. A client of the release before
+ignores the fields.
+
 ## Reading ended task runs, the trigger report and the definitions
 
 An ended task run is a task run that has ended with any cause. `tasks.listEnded` returns the ended
 task runs newest first, one page per call, each with its cause, who ended it, how it reported and
-what it used, and the sequence of its `task.run_ended` record. It also returns one listed task for
+what it used, its `fire`, and the sequence of its `task.run_ended` record. The `fire` is the one
+that opened the task run's work, as a task list read gives it. It also returns one listed task for
 each task of the page, with the same fields as a task read. A task of a definition that left force,
 with no task run open, shows under the name of the version that its newest ended task run pinned,
 and a task whose version is no longer stored has no entry, so a client shows its task runs by task

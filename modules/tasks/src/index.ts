@@ -9,6 +9,7 @@ export type { FieldSchema, ReportShape, ShapeFault } from './report/types';
 export { pickRecordRun } from './run/pick-record-run';
 export { pickReportMode } from './run/pick-report-mode';
 export { readEndedRuns } from './run/read-ended-runs';
+export { readNewestRun } from './run/read-newest-run';
 export { readOpenRun } from './run/read-open-run';
 export { readPreviousRun } from './run/read-previous-run';
 export type { RunSince } from './run/read-run-since';
@@ -64,6 +65,7 @@ export { buildTaskMessageTool } from './task/projection/build-task-message-tool'
 export { buildTaskStartTool } from './lease/build-task-start-tool';
 export { buildTaskCloseTool } from './task/build-task-close-tool';
 export { buildTasksListTool } from './task/build-tasks-list-tool';
+export type { ListedTaskState } from './task/pick-listed-task-state';
 export { pickListedTaskState } from './task/pick-listed-task-state';
 export { readListedNextRun } from './task/read-listed-next-run';
 export { readOwnerMessageTakers } from './owner/read-owner-message-takers';

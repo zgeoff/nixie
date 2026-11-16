@@ -9,6 +9,7 @@ test.each([
   ['action.outcome', true],
   ['owner_message', true],
   ['timer.fired', true],
+  ['trigger.fired', true],
   ['log_reset', true],
   ['model.reply', false],
   ['tool_called', false],

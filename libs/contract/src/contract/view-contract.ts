@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { listedTaskSchema } from './listed-task-schema';
+import { listedTaskSchema, runFireSchema } from './listed-task-schema';
 import { sequenceSchema } from './sequence-schema';
 import { signedIn } from './signed-in';
 import { threadSchema } from './thread-schema';
@@ -31,6 +31,7 @@ const endedRunSchema = z.object({
   carriesRunID: z.string().nullable(),
   reportID: z.string(),
   delivery: z.enum(['wake', 'next_turn', 'kept']),
+  fire: runFireSchema.nullable(),
   used: z.object({ turns: z.number(), dollars: z.number() }),
 });
 

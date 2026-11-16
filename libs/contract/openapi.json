@@ -2699,6 +2699,44 @@
     "/tasks/list": {
       "post": {
         "operationId": "tasks.list",
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "definitionID": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "states": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 11,
+                    "items": {
+                      "enum": [
+                        "ready",
+                        "running",
+                        "waiting",
+                        "paused",
+                        "stopped",
+                        "done",
+                        "failed",
+                        "closed",
+                        "idle",
+                        "finished",
+                        "asleep"
+                      ],
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "OK",
@@ -2767,10 +2805,39 @@
                               "type": "string"
                             }
                           },
+                          "definitionID": {
+                            "type": "string"
+                          },
                           "disposable": {
                             "anyOf": [
                               {
                                 "type": "boolean"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "fire": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "scheduledFor": {
+                                    "type": "string"
+                                  },
+                                  "firedAt": {
+                                    "type": "string"
+                                  },
+                                  "isCatchUp": {
+                                    "type": "boolean"
+                                  }
+                                },
+                                "required": [
+                                  "scheduledFor",
+                                  "firedAt",
+                                  "isCatchUp"
+                                ]
                               },
                               {
                                 "type": "null"
@@ -2790,6 +2857,22 @@
                             "type": "string",
                             "format": "date-time",
                             "x-native-type": "date"
+                          },
+                          "listedState": {
+                            "enum": [
+                              "ready",
+                              "running",
+                              "waiting",
+                              "paused",
+                              "stopped",
+                              "done",
+                              "failed",
+                              "closed",
+                              "idle",
+                              "finished",
+                              "asleep"
+                            ],
+                            "type": "string"
                           },
                           "name": {
                             "type": "string"
@@ -2996,10 +3079,39 @@
                         "type": "string"
                       }
                     },
+                    "definitionID": {
+                      "type": "string"
+                    },
                     "disposable": {
                       "anyOf": [
                         {
                           "type": "boolean"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "fire": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "scheduledFor": {
+                              "type": "string"
+                            },
+                            "firedAt": {
+                              "type": "string"
+                            },
+                            "isCatchUp": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "scheduledFor",
+                            "firedAt",
+                            "isCatchUp"
+                          ]
                         },
                         {
                           "type": "null"
@@ -3019,6 +3131,22 @@
                       "type": "string",
                       "format": "date-time",
                       "x-native-type": "date"
+                    },
+                    "listedState": {
+                      "enum": [
+                        "ready",
+                        "running",
+                        "waiting",
+                        "paused",
+                        "stopped",
+                        "done",
+                        "failed",
+                        "closed",
+                        "idle",
+                        "finished",
+                        "asleep"
+                      ],
+                      "type": "string"
                     },
                     "name": {
                       "type": "string"
@@ -5845,10 +5973,39 @@
                               "type": "string"
                             }
                           },
+                          "definitionID": {
+                            "type": "string"
+                          },
                           "disposable": {
                             "anyOf": [
                               {
                                 "type": "boolean"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "fire": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "scheduledFor": {
+                                    "type": "string"
+                                  },
+                                  "firedAt": {
+                                    "type": "string"
+                                  },
+                                  "isCatchUp": {
+                                    "type": "boolean"
+                                  }
+                                },
+                                "required": [
+                                  "scheduledFor",
+                                  "firedAt",
+                                  "isCatchUp"
+                                ]
                               },
                               {
                                 "type": "null"
@@ -5868,6 +6025,22 @@
                             "type": "string",
                             "format": "date-time",
                             "x-native-type": "date"
+                          },
+                          "listedState": {
+                            "enum": [
+                              "ready",
+                              "running",
+                              "waiting",
+                              "paused",
+                              "stopped",
+                              "done",
+                              "failed",
+                              "closed",
+                              "idle",
+                              "finished",
+                              "asleep"
+                            ],
+                            "type": "string"
                           },
                           "name": {
                             "type": "string"
@@ -5986,6 +6159,32 @@
                             ],
                             "type": "string"
                           },
+                          "fire": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "scheduledFor": {
+                                    "type": "string"
+                                  },
+                                  "firedAt": {
+                                    "type": "string"
+                                  },
+                                  "isCatchUp": {
+                                    "type": "boolean"
+                                  }
+                                },
+                                "required": [
+                                  "scheduledFor",
+                                  "firedAt",
+                                  "isCatchUp"
+                                ]
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
                           "used": {
                             "type": "object",
                             "properties": {
@@ -6014,6 +6213,7 @@
                           "carriesRunID",
                           "reportID",
                           "delivery",
+                          "fire",
                           "used"
                         ]
                       }

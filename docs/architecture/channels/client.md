@@ -243,16 +243,41 @@ Deferred group is collapsed.
 ## The task dashboard
 
 The dashboard at `/tasks` lists every open task in three groups: the conversation, the working tasks
-that are ready, running or waiting, and the held tasks that are paused, stopped or failed. A done or
-closed task leaves the list. Each task shows its name, which links to its page, its state, the time
-of its last activity, its brief, the task it waits on, the tasks that wait on it, and how many of
-its actions are queued and started.
+and the held tasks. The conversation is the task with the ID `conversation`, and it stays in its own
+group in every state, a pause of nixie included. The other tasks group by their listed state, the
+state that the API's `tasks.list` gives in `listedState`. Working holds `ready`, `running`,
+`waiting`, `idle`, `asleep` and `finished`, and Held holds `paused`, `stopped` and `failed`. A
+`done` or `closed` task leaves the list. A task from a server that gives no listed state groups and
+shows by its stored state.
 
-The dashboard reads the task list once and follows the live stream of every thread from the log
-sequence the list was read at. Each record that moves a task's state or last activity, such as a
-pause or a message of the user's, makes the dashboard read the list again. A dropped stream
-reconnects from the last sequence it delivered, as the conversation view's stream does, so the
-dashboard misses no change.
+Each task shows its name, which links to its page, its state, the time of its last activity, its
+brief, the task it waits on, the tasks that wait on it, and how many of its actions are queued and
+started. The page also adds these lines, in the browser's time zone:
+
+- On a definition's task with a fire, "Scheduled" and the scheduled time. For a catch-up fire, the
+  line adds how late the fire fired, from `firedAt` less `scheduledFor`. A task that a held state
+  holds shows the fire of its newest task run. A task run that a poll fired shows no fire, because a
+  poll has no schedule to be late against.
+- On an `asleep` task with a `nextRunAt`, "Next run" and that time.
+- On a `finished` task, "Sent its report".
+
+The dashboard filters by definition and by state. Each filter is one select with an All option, so
+it takes one value. The route keeps them as the search parameters `definition` and `state`, so a
+reload or a shared link keeps them, and it drops a state that is not one of the 11 listed states.
+The definition filter lists each definition that has a task, by its name, from
+`definitions.listTasks`. It shows only while a listed task has a `definitionID` or a filter is set,
+so a server that gives no `definitionID` shows no definition filter. The filters go into the
+`tasks.list` input, so the server filters before its cap. With a filter set, the dashboard shows
+only the groups that hold a match, and a Clear filters button. With no match, it shows the
+empty-group text.
+
+The dashboard reads the task list and follows the live stream of every thread from the log sequence
+the list was read at. Each record that moves a task's state or last activity, such as a pause, a
+message of the user's or a `trigger.fired`, makes the dashboard read the list again. The live stream
+carries no pause or resume of nixie, and a task that wakes on a schedule changes with no record of
+its own, so the dashboard also reads the list on a timer, `taskListRefetchMs`, while the page is
+visible, and at once when the page becomes visible. A dropped stream reconnects from the last
+sequence it delivered, as the conversation view's stream does, so the dashboard misses no change.
 
 Each task shows the controls that its runner offers and its state allows, as
 [controlling a task](./api.md#controlling-a-task) describes. Each control is a checked action, so a
@@ -270,9 +295,9 @@ state on a timer and when the window gains focus, and reads the task list again 
 changes. The dashboard shows a Pause nixie button while nothing pauses nixie, and neither button
 asks to confirm.
 
-A ready, running, waiting or paused task that nixie's pause stops shows as paused by nixie and
-offers its own Resume, which runs that task alone. A done, stopped, failed or closed task shows its
-own state and no extra Resume.
+A ready, running, waiting or paused task that nixie's pause stops shows as paused by nixie, and its
+listed state is `paused`. It offers its own Resume, which runs that task alone. A done, stopped,
+failed or closed task shows its own state and no extra Resume.
 
 A task's page at `/tasks/<task_id>` shows that task's thread in the conversation view, under a
 header with the task's name, state and controls. The page reads that task on its own and never from

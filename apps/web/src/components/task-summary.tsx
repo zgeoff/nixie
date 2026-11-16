@@ -4,6 +4,7 @@ import { useIsHydrated } from '../conversation/use-is-hydrated';
 import { isTaskShownPaused } from '../pause/is-task-shown-paused';
 import { css } from '../styled-system/css';
 import { buildTaskHref } from '../task/build-task-href';
+import { formatFireLateness } from '../task/format-fire-lateness';
 import { formatTaskName } from '../task/format-task-name';
 import { formatTaskState } from '../task/format-task-state';
 import type { ListedTask } from '../task/use-live-task-list';
@@ -48,7 +49,9 @@ export function TaskSummary(props: TaskSummaryProps): ReactNode {
           <span className={title}>{task.name}</span>
         )}
         <span className={facts}>
-          {isTaskShownPaused(task) ? 'Paused by nixie' : formatTaskState(task.state)}
+          {isTaskShownPaused(task)
+            ? 'Paused by nixie'
+            : formatTaskState(task.listedState ?? task.state)}
         </span>
         {isHydrated ? (
           <span className={facts}>
@@ -56,6 +59,7 @@ export function TaskSummary(props: TaskSummaryProps): ReactNode {
           </span>
         ) : null}
       </div>
+      {isHydrated ? <TaskSchedule task={task} /> : null}
       {task.brief === '' ? null : <TaskBrief brief={task.brief} isExpandable={!props.isLinked} />}
       {task.waitingOn === undefined ? null : (
         <p className={facts}>Waiting on {formatTaskName(props.tasks, task.waitingOn)}</p>
@@ -72,6 +76,34 @@ export function TaskSummary(props: TaskSummaryProps): ReactNode {
       )}
       <TaskControls task={task} />
     </div>
+  );
+}
+
+interface TaskScheduleProps {
+  readonly task: ListedTask;
+}
+
+function TaskSchedule(props: TaskScheduleProps): ReactNode {
+  const task = props.task;
+  const fire = task.fire;
+  const lateness = fire === null || fire === undefined ? null : formatFireLateness(fire);
+  const state = task.listedState ?? task.state;
+
+  return (
+    <>
+      {fire === null || fire === undefined ? null : (
+        <p className={facts}>
+          Scheduled {new Date(fire.scheduledFor).toLocaleString(undefined, timeFormat)}
+          {lateness === null ? '' : `, ${lateness}`}
+        </p>
+      )}
+      {state === 'asleep' && task.nextRunAt !== undefined ? (
+        <p className={facts}>
+          Next run {new Date(task.nextRunAt).toLocaleString(undefined, timeFormat)}
+        </p>
+      ) : null}
+      {state === 'finished' ? <p className={facts}>Sent its report</p> : null}
+    </>
   );
 }
 
