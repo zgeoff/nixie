@@ -172,10 +172,33 @@ test('it lists a sandbox by its owner until it is destroyed', async () => {
   expect(ctx.stub.destroyed).toStrictEqual([sandbox.id]);
 });
 
-test('it refuses every file call but the guest spawn', async () => {
+test('it keeps the files that a caller copies in, lists them, moves one and reads it back', async () => {
   const ctx = setupTest();
 
   const sandbox = await ctx.stub.adapter.create(buildMockSandboxSpec());
+
+  await sandbox.copyIn([
+    { path: '/home/nixie/dir/a.txt', content: new TextEncoder().encode('tide') },
+  ]);
+
+  await sandbox.applyMove('/home/nixie/dir/a.txt', '/home/nixie/dir/b.txt');
+
+  const paths = await sandbox.readFilePaths('/home/nixie', { maxDepth: 2 });
+  const files = await sandbox.copyOut(['/home/nixie/dir/b.txt']);
+
+  expect(paths).toStrictEqual(['dir/b.txt']);
+
+  expect(files).toStrictEqual([
+    { path: '/home/nixie/dir/b.txt', content: new TextEncoder().encode('tide') },
+  ]);
+});
+
+test('it refuses every file call once the sandbox is destroyed', async () => {
+  const ctx = setupTest();
+
+  const sandbox = await ctx.stub.adapter.create(buildMockSandboxSpec());
+
+  await sandbox.destroy();
 
   const refused = await Promise.allSettled([
     sandbox.resolveHome({ HOME: '/home/nixie' }),
@@ -183,10 +206,12 @@ test('it refuses every file call but the guest spawn', async () => {
     sandbox.applyMove('/home/nixie/a', '/home/nixie/b'),
   ]);
 
+  const reason = new Error(`the stub sandbox ${sandbox.id} is destroyed`);
+
   expect(refused).toStrictEqual([
-    { status: 'rejected', reason: new Error('the stub sandbox only spawns the guest') },
-    { status: 'rejected', reason: new Error('the stub sandbox only spawns the guest') },
-    { status: 'rejected', reason: new Error('the stub sandbox only spawns the guest') },
+    { status: 'rejected', reason },
+    { status: 'rejected', reason },
+    { status: 'rejected', reason },
   ]);
 });
 

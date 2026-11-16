@@ -1,5 +1,6 @@
+import { join } from 'node:path';
 import type { GuestFrame, HostFrame } from '@heynixie/wire';
-import type { Sandbox, SandboxAdapter, SandboxSpec, SecretSpec } from '../types';
+import type { FileSpec, Sandbox, SandboxAdapter, SandboxSpec, SecretSpec } from '../types';
 import type { StubGuestScript, StubSummaryScript } from './start-stub-guest';
 import { startStubGuest } from './start-stub-guest';
 
@@ -140,6 +141,7 @@ interface StubSandboxHooks {
   readonly onTurn: StubGuestScript;
   readonly onSummary: StubSummaryScript;
   readonly onDestroy: (id: string) => Promise<void>;
+  readonly isDestroyed: (id: string) => boolean;
   readonly onPurge: (id: string) => readonly GuestFrame[];
 }
 
@@ -158,11 +160,7 @@ function buildStubSandbox(spec: SandboxSpec, hooks: StubSandboxHooks): Sandbox {
           onPurge: () => hooks.onPurge(id),
         }),
       ),
-    copyIn: requireSpawnOnly,
-    copyOut: requireSpawnOnly,
-    resolveHome: requireSpawnOnly,
-    readFilePaths: requireSpawnOnly,
-    applyMove: requireSpawnOnly,
+    ...buildStubFileOps(id, hooks),
     toolRoute: () => Promise.resolve({ url: 'http://127.0.0.1:8901' }),
     suspension: { kind: 'none' },
     readMemoryKills: () => Promise.resolve({ kind: 'unsupported' }),
@@ -173,6 +171,78 @@ function buildStubSandbox(spec: SandboxSpec, hooks: StubSandboxHooks): Sandbox {
 
 function requireSpawnOnly(): Promise<never> {
   return Promise.reject(new Error('the stub sandbox only spawns the guest'));
+}
+
+// A stub sandbox keeps its files in memory, and refuses every file call once it is destroyed, so a
+// test sees a copy that ran after the destroy.
+function buildStubFileOps(
+  id: string,
+  hooks: StubSandboxHooks,
+): Pick<Sandbox, 'copyIn' | 'copyOut' | 'resolveHome' | 'readFilePaths' | 'applyMove'> {
+  const files = new Map<string, Uint8Array<ArrayBuffer>>();
+
+  const requireLive = (): void => {
+    if (hooks.isDestroyed(id)) {
+      throw new Error(`the stub sandbox ${id} is destroyed`);
+    }
+  };
+
+  return {
+    copyIn: (specs) =>
+      Promise.try(() => {
+        requireLive();
+
+        for (const spec of specs) {
+          files.set(spec.path, spec.content);
+        }
+      }),
+    copyOut: (paths) =>
+      Promise.try(() => {
+        requireLive();
+
+        return paths.map((path): FileSpec => {
+          const content = files.get(path);
+
+          if (content === undefined) {
+            throw new Error(`ENOENT: no such file or directory, open '${path}'`);
+          }
+
+          return { path, content };
+        });
+      }),
+    resolveHome: () =>
+      Promise.try(() => {
+        requireLive();
+
+        return { copyPath: '/home/nixie', ownPath: '/home/nixie' };
+      }),
+    readFilePaths: (directory, options) =>
+      Promise.try(() => {
+        requireLive();
+
+        const prefix = join(directory, '/');
+
+        return [...files.keys()]
+          .filter((path) => path.startsWith(prefix))
+          .map((path) => path.slice(prefix.length))
+          .filter(
+            (path) => path.split('/').length <= (options?.maxDepth ?? Number.POSITIVE_INFINITY),
+          );
+      }),
+    applyMove: (from, to) =>
+      Promise.try(() => {
+        requireLive();
+
+        const content = files.get(from);
+
+        if (content === undefined) {
+          throw new Error(`ENOENT: no such file or directory, rename '${from}' -> '${to}'`);
+        }
+
+        files.delete(from);
+        files.set(to, content);
+      }),
+  };
 }
 
 interface RecordingState {
@@ -207,6 +277,7 @@ function buildHooks(state: RecordingState): StubSandboxHooks {
 
       return Promise.resolve();
     },
+    isDestroyed: (id) => state.destroyed.includes(id),
     onPurge: (id) => {
       state.purged.push(id);
 
