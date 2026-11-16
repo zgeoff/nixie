@@ -1,8 +1,15 @@
+import { sandboxKinds } from '../sandbox/sandbox-kinds';
 import type { SandboxSpec } from '../types';
 import { SandboxSpecRefusedError } from './sandbox-spec-refused-error';
 
 export function requireSandboxSpec(spec: SandboxSpec): void {
   requireExitRule(spec);
+
+  if (spec.egress.kind !== sandboxKinds[spec.kind].egress) {
+    throw new SandboxSpecRefusedError(
+      `${spec.egress.kind} egress for a ${spec.kind} sandbox, whose kind allows ${sandboxKinds[spec.kind].egress}`,
+    );
+  }
 
   if (spec.egress.kind === 'allow' && spec.egress.hosts.length === 0) {
     throw new SandboxSpecRefusedError('allowed egress with no hosts');

@@ -66,3 +66,21 @@ test('it goes through the proxy that the guest env names when it uses the broker
 
   expect(outcome).toBe('status=000 exit=5');
 });
+
+test('it sends the key header the caller names', async () => {
+  const ctx = await setupTest();
+
+  const answerRequest = mock((request: Request) => new Response(request.headers.get('x-api-key')));
+  const server = Bun.serve({ port: 0, fetch: answerRequest });
+
+  onTestFinished(() => server.stop(true));
+
+  const sandbox = await ctx.adapter.create(buildMockSandboxSpec({ toolRoute: false }));
+
+  await runProbe(sandbox, `http://127.0.0.1:${server.port}/`, {
+    viaBroker: false,
+    apiKey: 'sk-test-own',
+  });
+
+  expect(answerRequest.mock.calls[0]?.[0].headers.get('x-api-key')).toBe('sk-test-own');
+});

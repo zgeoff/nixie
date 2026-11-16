@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { buildWorkerRunOwner } from '@heynixie/sandbox';
+import { buildSandboxSpec, buildWorkerRunOwner } from '@heynixie/sandbox';
 import { buildMockGrantSpec, buildMockSandboxSpec } from '@heynixie/sandbox/test-utils';
 import { createImpClient } from '@impz/client';
 import invariant from 'tiny-invariant';
@@ -92,6 +92,47 @@ test.skipIf(!hasImpHost)(
     await sandbox.destroy();
 
     expect(outcome).toMatch(/^status=[1-5]\d\d exit=0$/u);
+  },
+);
+
+test.skipIf(!hasImpHost)(
+  'it gives a worker imp no answer from a direct request, with a key of its own or not',
+  async () => {
+    const ctx = await setupTest();
+
+    const modelGrant = buildMockGrantSpec({ secret: ctx.secret, host: 'api.anthropic.com' });
+    const owner = buildWorkerRunOwner(crypto.randomUUID());
+
+    const sandbox = await ctx.createSandbox(
+      buildSandboxSpec({
+        kind: 'worker',
+        owner,
+        image: ctx.image,
+        limits: { vcpus: 1, memoryMiB: 384, diskMiB: 4096 },
+        modelGrant,
+      }),
+    );
+
+    const viaBroker = await runProbe(sandbox, 'https://api.anthropic.com/v1/models', {
+      viaBroker: true,
+    });
+
+    const ownKey = await runProbe(sandbox, 'https://api.anthropic.com/v1/messages', {
+      viaBroker: false,
+      apiKey: 'sk-ant-own-key-test',
+    });
+
+    const otherHost = await runProbe(sandbox, 'https://example.com/', { viaBroker: false });
+    const literalAddress = await runProbe(sandbox, 'https://1.1.1.1/', { viaBroker: false });
+    const brokerOtherHost = await runProbe(sandbox, 'https://example.com/', { viaBroker: true });
+
+    await sandbox.destroy();
+
+    expect(viaBroker).toMatch(/^status=[1-5]\d\d exit=0$/u);
+    expect(ownKey).toMatch(/^status=000 exit=[1-9]\d*$/u);
+    expect(otherHost).toMatch(/^status=000 exit=[1-9]\d*$/u);
+    expect(literalAddress).toMatch(/^status=000 exit=[1-9]\d*$/u);
+    expect(brokerOtherHost).not.toMatch(/^status=[23]\d\d /u);
   },
 );
 

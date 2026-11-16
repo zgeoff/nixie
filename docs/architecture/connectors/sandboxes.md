@@ -167,6 +167,12 @@ and the secrets.
   addresses and the deployment's private address ranges, and the same lists go to impd and to nixie.
   The adapter refuses public egress when the list of host addresses is empty, or when impd cannot
   enforce public egress, because a public imp can reach any host address the list leaves out.
+- **Closed egress.** A sandbox with no egress, a worker's included, has no internet route except its
+  broker. The broker adds the model grant from the host side, so code in the sandbox that holds a
+  key of its own gets no answer from the model API's host when it connects directly. A worker reads
+  a page through `web_fetch`, which runs in the fetch sandbox. The adapter refuses a no-egress or
+  allowlist spec on an impd that does not enforce its firewall, before it writes anything, and a
+  spec whose egress is wider than its kind allows.
 - **Credentials at start.** In an imp with a grant, a command starts only once impd has set the
   broker's environment variables for that boot: its proxy, its bypass list and its certificate. impd
   refuses a command whose environment replaces one of them.

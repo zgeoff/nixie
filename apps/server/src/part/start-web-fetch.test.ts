@@ -1,8 +1,12 @@
 import { expect, onTestFinished, test } from 'bun:test';
 import { join } from 'node:path';
+import { modelsConfigSchema } from '@heynixie/models';
 import { sandboxCreatedCodec } from '@heynixie/sandbox';
 import { setupTestRecorder } from '@heynixie/sandbox/test-utils';
+import { startWorkerTool } from '@heynixie/sessions';
+import { startTestSessionHost } from '@heynixie/sessions/test-utils';
 import { waitForCondition } from '@heynixie/testing';
+import { buildMockToolContext } from '@heynixie/tools/test-utils';
 import invariant from 'tiny-invariant';
 import { createSandboxAdapter } from '../sandbox/create-sandbox-adapter';
 import { startWebFetch } from './start-web-fetch';
@@ -369,4 +373,120 @@ test('it creates the web fetch sandbox and the skill fetch sandbox at the fetch 
     { owner: 'web_fetch', limits: { vcpus: 1, memoryMiB: 192, diskMiB: 4096 } },
     { owner: 'skill_fetch', limits: { vcpus: 1, memoryMiB: 192, diskMiB: 4096 } },
   ]);
+});
+
+test('it gives a worker the page that its web fetch call reads in the fetch sandbox', async () => {
+  const ctx = await setupTest();
+
+  const fetchAdapter = createSandboxAdapter({
+    recorder: ctx.recorder,
+    toolTarget: () => ({ path: '/nonexistent.sock' }),
+    sandbox: { adapter: 'test' },
+    testRootDir: ctx.dataDir,
+    hostEnv: {},
+  });
+
+  const webFetch = startWebFetch({
+    adapter: fetchAdapter,
+    image: 'fetch',
+    argv: [process.execPath, join(import.meta.dir, '../test-utils/run-stub-fetcher.ts')],
+    deniedRanges: [],
+    log: ctx.log,
+    findSecret: () => null,
+    isOwnerTyped: () => Promise.resolve(false),
+    logger: () => {},
+  });
+
+  const host = await startTestSessionHost({ tools: [webFetch.tool] });
+
+  ctx.stack.defer(() => webFetch.stop());
+
+  const prices = { input: 3, cache_write: 3.75, cache_write_1h: 6, cached_input: 0.3, output: 15 };
+
+  const profile = {
+    harness: 'agent-sdk',
+    base_url: 'https://models.example.test',
+    credential: 'deployment:anthropic',
+    auth_header: 'x-api-key',
+    effort: 'low',
+    prices,
+  };
+
+  const models = modelsConfigSchema.parse({
+    profiles: {
+      'chat-direct': { ...profile, model: 'claude-test-1' },
+      'worker-direct': { ...profile, model: 'claude-test-worker' },
+    },
+    roles: { conversation: 'chat-direct', worker: 'worker-direct' },
+    limits: { workerRun: {} },
+  });
+
+  const worker = await startWorkerTool({
+    models,
+    secrets: { model_credentials: { anthropic: 'not-a-real-key' } },
+    sandboxes: host.sandboxes,
+    images: { conversation: 'nixie-conversation-0123456789ab' },
+    log: host.context.log,
+    definitions: host.context.definitions,
+    clock: host.context.clock,
+    logger: () => {},
+    readTools: () => ({ startRun: (options) => host.endpoint.startRun(options) }),
+  });
+
+  ctx.stack.defer(() => worker.stop());
+
+  const workerTool = worker.buildTool({
+    memoryTools: { read: ['memory.recall'], write: ['memory.remember'] },
+    conversationTools: ['log.forget'],
+  });
+
+  host.guest.addKindReplies(
+    'worker',
+    { toolUse: { name: 'web_fetch', input: { url: 'https://pages.test/files/17' } } },
+    { text: 'The page is 17 characters long.' },
+  );
+
+  const outcome = await workerTool.run(
+    {
+      callID: 'call-1',
+      tool: 'worker.run',
+      input: { question: 'Read the page.', tools: ['web_fetch'] },
+      toolUseID: null,
+    },
+    buildMockToolContext({
+      callSequence: 1,
+      run: {
+        thread: 'task-1',
+        logThread: 'task-1',
+        tools: ['web_fetch'],
+        stepRunID: 'step-a',
+        session: {
+          key: 'session-1',
+          invalidatedThrough: 0,
+          step: {
+            signal: new AbortController().signal,
+            interrupt: new AbortController().signal,
+            readLeftDollars: () => 1,
+            onSpend: () => {},
+          },
+        },
+      },
+    }),
+  );
+
+  const fetchRecords = await ctx.readSandboxRecords();
+
+  expect(outcome).toMatchObject({
+    status: 'ok',
+    result: { answer: 'The page is 17 characters long.' },
+  });
+
+  expect(host.toolResults.map((result) => result.name)).toStrictEqual(['web_fetch']);
+  expect(host.toolResults[0]?.result).toContain('x'.repeat(17));
+
+  expect(
+    fetchRecords
+      .filter((record) => record.kind === 'sandbox.created')
+      .map((record) => sandboxCreatedCodec.decode(record.payload).spec.kind),
+  ).toStrictEqual(['fetch']);
 });
