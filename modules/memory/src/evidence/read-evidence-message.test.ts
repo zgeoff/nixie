@@ -1,5 +1,6 @@
 import { expect, test } from 'bun:test';
 import { removeTestRecordKey } from '@heynixie/log/test-utils';
+import { seedBegunPurge } from '../test-utils/seed-begun-purge';
 import { startTestMemory } from '../test-utils/start-test-memory';
 import { writeOwnerMessageRecord } from '../test-utils/write-owner-message-record';
 import { readEvidenceMessage } from './read-evidence-message';
@@ -56,4 +57,20 @@ test('it reads a record with no text as missing', async () => {
   const message = await readEvidenceMessage(ctx.memory.log, 1);
 
   expect(message).toStrictEqual({ status: 'missing' });
+});
+
+test('it reads a message as shredded once its forget began, while its key still exists', async () => {
+  const ctx = await setupTest();
+
+  const sequence = await writeOwnerMessageRecord(ctx.memory.log, {
+    thread: 'conversation',
+    text: 'My sister Ana lives in Porto.',
+    spans: [{ start: 0, end: 29, source: 'typed' }],
+  });
+
+  await seedBegunPurge(ctx.memory.log, { recordSequence: sequence, itemIDs: [] });
+
+  const message = await readEvidenceMessage(ctx.memory.log, sequence);
+
+  expect(message).toStrictEqual({ status: 'shredded' });
 });

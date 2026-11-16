@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import { removeTestRecordKey } from '@heynixie/log/test-utils';
 import { makeGatedCall } from '@heynixie/testing';
 import { buildMockCheckerAnswer } from '../test-utils/build-mock-checker-answer';
 import { buildMockProvenance } from '../test-utils/build-mock-provenance';
@@ -144,6 +145,29 @@ test('it refuses a write that goes to review when its quote names a forgetting r
   const write = ctx.memory.store.writes.remember({
     text: 'Takes coffee black',
     quote: 'I take my coffee black',
+    caller: buildMockWriteCaller(),
+  });
+
+  const error = await write.catch((error_: unknown) => error_);
+
+  expect(error).toMatchObject({ code: 'QUOTED_RECORD_FORGETTING' });
+
+  const pending = await ctx.memory.store.proposals.listPending();
+
+  expect(pending).toStrictEqual([]);
+});
+
+test('it refuses a write that names its quote by event ID after the forget deleted the record key, and writes no proposal', async () => {
+  const ctx = await setupTest();
+
+  await ctx.beginForget();
+
+  await removeTestRecordKey(ctx.memory.log, ctx.sequence);
+
+  const write = ctx.memory.store.writes.remember({
+    text: 'Takes coffee black',
+    quote: 'I take my coffee black',
+    eventID: ctx.sequence,
     caller: buildMockWriteCaller(),
   });
 

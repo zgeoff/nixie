@@ -8,15 +8,22 @@ import { buildProposalHash } from './build-proposal-hash';
 import { encodeProposalText } from './encode-proposal-text';
 import type { SealedProposal } from './write-proposal-record';
 
+export interface KeyedSealedProposal {
+  readonly sealed: SealedProposal;
+
+  // the key the proposal is sealed under
+  readonly keyID: string;
+}
+
 export async function createSealedProposal(
   parts: StoreParts,
   plan: ProposalPlan,
-): Promise<SealedProposal> {
+): Promise<KeyedSealedProposal> {
   const itemID = plan.target?.itemID ?? crypto.randomUUID();
 
   const key = await readProposalKey(parts, plan, itemID);
 
-  return sealProposal(key, plan, itemID);
+  return { sealed: await sealProposal(key, plan, itemID), keyID: key.keyID };
 }
 
 interface ProposalKey {

@@ -8,6 +8,7 @@ import { readMatchingProposal } from '../proposal/read-matching-proposal';
 import type { PendingProposal } from '../proposal/write-proposal-record';
 import { writeProposalRecord } from '../proposal/write-proposal-record';
 import { requireItemNotPurging } from '../purge/require-item-not-purging';
+import { requireSealingKeyCurrent } from '../purge/require-sealing-key-current';
 import { buildMergeRecord } from '../record/build-merge-record';
 import type {
   Labels,
@@ -68,10 +69,12 @@ export async function writeMemoryProposal(
     return merged;
   }
 
-  const sealed = await createSealedProposal(parts, plan);
+  const keyed = await createSealedProposal(parts, plan);
+
+  const sealed = keyed.sealed;
 
   const written = await withWriteTransaction(log.writer, (tx) =>
-    writeProposalOrMerge(tx, parts, { plan, sealed }),
+    writeProposalOrMerge(tx, parts, { pending: { plan, sealed }, keyID: keyed.keyID }),
   ).catch(async (error: unknown) => {
     if (plan.target === null) {
       await removeRecordKey(log, sealed.itemID);
@@ -120,12 +123,26 @@ async function writePendingMerge(
   return { proposalID: match.proposal_id, merged: true };
 }
 
+interface KeyedPendingProposal {
+  readonly pending: PendingProposal;
+  readonly keyID: string;
+}
+
 async function writeProposalOrMerge(
   tx: Transaction<unknown>,
   parts: StoreParts,
-  pending: PendingProposal,
+  written: KeyedPendingProposal,
 ): Promise<WrittenProposal> {
+  const pending = written.pending;
+
   await requireProposalWritable(tx, pending.plan);
+
+  if (pending.plan.target !== null) {
+    await requireSealingKeyCurrent(tx, parts.context.log, {
+      itemID: pending.sealed.itemID,
+      keyID: written.keyID,
+    });
+  }
 
   const merged = await writePendingMerge(tx, parts, pending.plan);
 

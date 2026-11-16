@@ -3,6 +3,8 @@ import { readRecords } from '@heynixie/log';
 import { ownerMessageCodec } from '@heynixie/tasks';
 import { z } from 'zod';
 import type { ReviewReason } from '../gate/gate-context';
+import { readRemovedSequences } from '../record/read-removed-sequences';
+import { QuotedRecordForgettingError } from '../utils/error/quoted-record-forgetting-error';
 import type { QuoteEvidenceResult } from './read-quote-evidence';
 import { readSourceEvidence } from './read-source-evidence';
 import type { SourceMessage } from './source-message';
@@ -48,6 +50,13 @@ async function readEventMessage(
   }
 
   if (entry.record.erasable.status !== 'readable') {
+    // The record's key may be gone already, so the forget is read from the record's own sequence.
+    const forgetting = await readRemovedSequences(log.writer.db, [entry.record.sequence]);
+
+    if (forgetting.has(entry.record.sequence)) {
+      throw new QuotedRecordForgettingError(entry.record.sequence);
+    }
+
     return 'forgotten_evidence';
   }
 
