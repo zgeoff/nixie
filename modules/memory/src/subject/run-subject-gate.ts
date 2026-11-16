@@ -73,8 +73,8 @@ function runGateOfSubject(
   request: GatedRememberRequest,
   subjects: WriteSubjects,
 ): Promise<ContentGateResult> {
-  // an edit that keeps a self-note's subject writes in nixie's voice as a new one does
-  if ((subjects.newSubject ?? subjects.subject) === 'self') {
+  // any write to a self-note, or into self, writes in nixie's voice
+  if (subjects.subject === 'self' || subjects.newSubject === 'self') {
     requireSelfNoteCaller(request.caller);
   }
 

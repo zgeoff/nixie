@@ -339,6 +339,34 @@ test("it refuses a task's edit of a self-note, and writes nothing", async () => 
   expect(pending).toStrictEqual([]);
 });
 
+test("it refuses a task's edit that moves a self-note to another subject, and writes nothing", async () => {
+  const memory = await startTestMemory();
+
+  const note = await memory.store.remember({
+    text: 'I like tidy lists',
+    subject: 'self',
+    provenance: buildMockProvenance(),
+  });
+
+  const write = memory.store.writes.remember({
+    text: 'The owner likes tidy lists',
+    target: note,
+    subject: 'owner',
+    caller: buildMockWriteCaller({ origin: 'task', thread: 'task-1', taskID: 'task-1' }),
+  });
+
+  await Promise.allSettled([write]);
+
+  const pending = await memory.store.proposals.listPending();
+
+  expect(write).rejects.toThrowWithMessage(
+    SelfNoteError,
+    'only the conversation writes a self-note, and this write came from the task',
+  );
+
+  expect(pending).toStrictEqual([]);
+});
+
 test('it sends a shared item with no quote to review, as it does an item about the owner', async () => {
   const memory = await startTestMemory();
 

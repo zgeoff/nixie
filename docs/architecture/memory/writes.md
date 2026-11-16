@@ -16,7 +16,7 @@ no item, no version and no proposal. These are:
 - an edit, retirement or pin of a missing or forgotten item, or of a version that moved on;
 - an edit with no text and no label, or with labels only and a quote, event ID, end time or subject;
 - an end time that has already passed;
-- a task's write that creates a self-note, edits one's text or labels, or moves an item into self
+- a task's write that creates a self-note, edits one, or moves an item into or out of self
   ([self-notes](#self-notes));
 - an image source that points at no image of the user's in the thread;
 - a quote or an event ID that cites a message whose record forget has begun;
@@ -202,10 +202,10 @@ keeps the token verdict, so the review shows a destination the user never typed.
 self-note takes outside content as its source.
 
 Only the conversation writes a self-note, because only the conversation speaks as nixie's persona. A
-task's write that creates a self-note, edits one's text or labels, or moves an item into self fails
-and writes nothing. A proposal merges only with a pending proposal of the same subject, and its
-close match on approval looks only at items of its own subject, so an item about the user never
-revises a self-note.
+task's write that creates a self-note, edits one, or moves an item into or out of self fails and
+writes nothing. A proposal merges only with a pending proposal of the same subject, and its close
+match on approval looks only at items of its own subject, so an item about the user never revises a
+self-note.
 
 The conversation's retire of a self-note skips the intent gate and applies at once, with a notice
 entry whose undo brings the note back, because the note was nixie's own and a retirement only
