@@ -241,9 +241,8 @@ function collectChoiceChanges(change: KeywordChange): readonly string[] {
   );
 }
 
-// True when the current choices are the released ones, unchanged and in order, plus new ones, and
-// each choice requires one key whose const differs from every other choice's, such as a profile's
-// harness. No value then matches two choices, and every value a released choice took still passes.
+// JSON Schema compares a const by value and lets a choice without type object take null, which
+// matches every such choice, so only string tags on object choices keep the choices apart.
 function isAddedTaggedChoice(before: readonly unknown[], after: readonly unknown[]): boolean {
   const isKept = before.every((choice, index) => Bun.deepEquals(choice, after[index]));
   const [first] = after;
@@ -262,7 +261,12 @@ function isAddedTaggedChoice(before: readonly unknown[], after: readonly unknown
 function pickRequiredConst(choice: SchemaNode, key: string): unknown {
   const property = toNode(toNode(choice['properties'])[key]);
 
-  return toArray(choice['required']).includes(key) ? property['const'] : undefined;
+  const isTagged =
+    choice['type'] === 'object' &&
+    toArray(choice['required']).includes(key) &&
+    typeof property['const'] === 'string';
+
+  return isTagged ? property['const'] : undefined;
 }
 
 function collectAnyChange(change: KeywordChange): readonly string[] {

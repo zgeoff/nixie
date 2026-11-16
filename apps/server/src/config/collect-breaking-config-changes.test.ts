@@ -65,11 +65,11 @@ test.each([
   ],
   [
     'a new oneOf choice with its own required tag',
-    { oneOf: [{ properties: { kind: { const: 'a' } }, required: ['kind'] }] },
+    { oneOf: [{ type: 'object', properties: { kind: { const: 'a' } }, required: ['kind'] }] },
     {
       oneOf: [
-        { properties: { kind: { const: 'a' } }, required: ['kind'] },
-        { properties: { kind: { const: 'b' } }, required: ['kind'] },
+        { type: 'object', properties: { kind: { const: 'a' } }, required: ['kind'] },
+        { type: 'object', properties: { kind: { const: 'b' } }, required: ['kind'] },
       ],
     },
   ],
@@ -238,6 +238,30 @@ test.each([
     released: { type: 'object' },
     current: { type: 'object', properties: { label: { type: 'string' } } },
     expected: ['label: constrains a key that any value passed'],
+  },
+  {
+    label: 'a new tagged oneOf choice that also takes null',
+    released: { oneOf: [{ properties: { kind: { const: 'a' } }, required: ['kind'] }] },
+    current: {
+      oneOf: [
+        { properties: { kind: { const: 'a' } }, required: ['kind'] },
+        { properties: { kind: { const: 'b' } }, required: ['kind'] },
+      ],
+    },
+    expected: ['(root): changes the oneOf choices'],
+  },
+  {
+    label: 'a new oneOf choice with an equal object tag',
+    released: {
+      oneOf: [{ type: 'object', properties: { kind: { const: {} } }, required: ['kind'] }],
+    },
+    current: {
+      oneOf: [
+        { type: 'object', properties: { kind: { const: {} } }, required: ['kind'] },
+        { type: 'object', properties: { kind: { const: {} } }, required: ['kind'] },
+      ],
+    },
+    expected: ['(root): changes the oneOf choices'],
   },
   {
     label: 'a new oneOf choice whose tag another choice holds',
