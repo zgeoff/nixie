@@ -251,8 +251,7 @@ function buildTaskImpParts(runner: TaskRunner, taskID: string): TaskImpParts {
     startEndpoint: async () => {
       const run = await readStartedRun(runner, taskID);
 
-      // The start's record lists only the tools that start named, and every task can end a turn
-      // silently and report, whatever its start named, a task that an earlier release started too.
+      // The start's record lists only the tools it named, and every task also gets silent end and report.
       return options.tools.startRun({
         runID: taskID,
         thread: taskID,
@@ -271,6 +270,7 @@ function buildTaskImpParts(runner: TaskRunner, taskID: string): TaskImpParts {
         owner: taskID,
         limits: runner.session.limits,
         modelGrant: await resolveModelGrant(runner, run.profile),
+        log: options.log,
       });
     },
     removeSandboxes: async () => {

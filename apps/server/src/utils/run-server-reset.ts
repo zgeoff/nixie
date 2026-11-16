@@ -4,6 +4,7 @@ import type { ResetSeed } from '@heynixie/definitions';
 import { readResetSeed, ruleStoreTables, writeResetSeed } from '@heynixie/definitions';
 import type { LogReset, LogResetOptions } from '@heynixie/log';
 import { runLogReset, writeRecordsInTransaction } from '@heynixie/log';
+import type { Logger } from '@heynixie/logger';
 import type { StaleSandboxesOptions } from '@heynixie/sandbox';
 import { removeStaleSandboxes } from '@heynixie/sandbox';
 import { conversationTaskID } from '@heynixie/tasks';
@@ -12,6 +13,7 @@ import invariant from 'tiny-invariant';
 export interface ServerResetOptions {
   readonly context: APIContext;
   readonly adapter: StaleSandboxesOptions['adapter'];
+  readonly log: Logger;
 
   readonly stopWork: () => Promise<void>;
 }
@@ -33,11 +35,20 @@ export async function runServerReset(options: ServerResetOptions): Promise<Serve
 
   // The agent CLI keeps the conversation's transcript on its sandbox's disk, so a kept sandbox
   // would resume it.
-  await removeStaleSandboxes({
+  const stale = await removeStaleSandboxes({
     log: options.context.log,
+    logger: options.log,
     adapter: options.adapter,
     keptOwners: [],
+    currentImages: [],
+    imageExemptOwners: [],
   });
+
+  // The reset wipes the sandbox records, so a sandbox that stays would keep the transcript with
+  // nothing left to find it.
+  if (stale.failed.length > 0) {
+    throw new Error(`the reset could not destroy the sandboxes ${stale.failed.join(', ')}`);
+  }
 
   const kept = { sessions: 0 };
 

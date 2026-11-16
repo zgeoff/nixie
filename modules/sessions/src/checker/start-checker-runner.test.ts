@@ -88,3 +88,40 @@ test('it replaces the checker sandbox when the image changed', async () => {
 
   expect(sandboxes.destroyed).toHaveLength(1);
 });
+
+test('it logs a failed destroy of the old checker sandbox and still starts the checker', async () => {
+  const sandboxes = buildStubSandboxes();
+  const profile = { profile: buildMockModelProfile(), credential: 'not-a-real-key' };
+  const events: string[] = [];
+
+  await startCheckerRunner({
+    profile,
+    sandboxes: sandboxes.adapter,
+    image: 'nixie-conversation-0123456789ab',
+    limits: { vcpus: 1, memoryMiB: 1024, diskMiB: 2048 },
+    command: { argv: ['bun', '--no-install', '/app/conversation/check.js'], env: {} },
+    clock: buildTestClock(1_700_000_000_000),
+    log: () => {},
+  });
+
+  sandboxes.setDestroyError(new Error('the host is gone'));
+
+  await startCheckerRunner({
+    profile,
+    sandboxes: sandboxes.adapter,
+    image: 'nixie-conversation-ba9876543210',
+    limits: { vcpus: 1, memoryMiB: 1024, diskMiB: 2048 },
+    command: { argv: ['bun', '--no-install', '/app/conversation/check.js'], env: {} },
+    clock: buildTestClock(1_700_000_000_000),
+    log: (event) => {
+      events.push(event);
+    },
+  });
+
+  expect(events).toStrictEqual(['sandbox.remove_failed']);
+
+  expect(sandboxes.created.map((spec) => spec.image)).toStrictEqual([
+    'nixie-conversation-0123456789ab',
+    'nixie-conversation-ba9876543210',
+  ]);
+});

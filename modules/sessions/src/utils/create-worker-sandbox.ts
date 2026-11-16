@@ -1,5 +1,6 @@
+import type { Logger } from '@heynixie/logger';
 import type { GrantSpec, Sandbox, SandboxAdapter, SandboxLimits } from '@heynixie/sandbox';
-import { buildSandboxSpec, findKeptSandbox } from '@heynixie/sandbox';
+import { buildSandboxSpec, findKeptSandbox, removeSandboxes } from '@heynixie/sandbox';
 
 export interface WorkerSandboxSpec {
   readonly sandboxes: SandboxAdapter;
@@ -7,6 +8,7 @@ export interface WorkerSandboxSpec {
   readonly owner: string;
   readonly limits: SandboxLimits;
   readonly modelGrant: GrantSpec;
+  readonly log: Logger;
 }
 
 export interface WorkerSandbox {
@@ -29,8 +31,9 @@ export async function createWorkerSandbox(spec: WorkerSandboxSpec): Promise<Work
 
   const kept = findKeptSandbox(existing, wanted);
 
-  await Promise.all(
-    existing.filter((sandbox) => sandbox !== kept).map((sandbox) => sandbox.destroy()),
+  await removeSandboxes(
+    existing.filter((sandbox) => sandbox !== kept),
+    spec.log,
   );
 
   return kept === undefined

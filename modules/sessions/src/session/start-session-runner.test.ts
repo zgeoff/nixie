@@ -51,6 +51,7 @@ async function setupTest() {
         image: 'conversation',
         limits: { vcpus: 1, memoryMiB: 1024, diskMiB: 2048 },
         command: { argv: ['bun', '/opt/nixie/conversation/src/main.ts'], env: {} },
+        log: () => {},
       }),
   };
 }

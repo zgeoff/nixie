@@ -9,7 +9,7 @@ import type {
   SandboxLimits,
   SandboxSpec,
 } from '@heynixie/sandbox';
-import { buildSandboxSpec, findKeptSandbox } from '@heynixie/sandbox';
+import { buildSandboxSpec, findKeptSandbox, removeSandboxes } from '@heynixie/sandbox';
 import { runSandboxCheck } from '../sandbox/run-sandbox-check';
 import type { RunCheck } from './checker-request';
 import { makeChecker } from './make-checker';
@@ -43,7 +43,7 @@ export async function startCheckerRunner(options: CheckerRunnerOptions): Promise
     modelGrant: harness.buildGrant(secret),
   });
 
-  const sandbox = await createCheckerSandbox(options.sandboxes, spec);
+  const sandbox = await createCheckerSandbox(options.sandboxes, spec, options.log);
 
   const profile = options.profile.profile;
 
@@ -69,13 +69,15 @@ export async function startCheckerRunner(options: CheckerRunnerOptions): Promise
 async function createCheckerSandbox(
   sandboxes: SandboxAdapter,
   spec: SandboxSpec,
+  log: Logger,
 ): Promise<Sandbox> {
   const existing = await sandboxes.list(checkerOwner);
 
   const kept = findKeptSandbox(existing, spec);
 
-  await Promise.all(
-    existing.filter((sandbox) => sandbox !== kept).map((sandbox) => sandbox.destroy()),
+  await removeSandboxes(
+    existing.filter((sandbox) => sandbox !== kept),
+    log,
   );
 
   if (kept !== undefined) {

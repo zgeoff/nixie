@@ -43,6 +43,7 @@ interface RunnerConfig {
   readonly toolNames: readonly string[];
   readonly memory?: Pick<ConversationRunnerOptions, 'readTurnNote' | 'loadOrPinSkillCatalog'>;
 
+  readonly image?: string;
   readonly log?: ConversationRunnerOptions['log'];
   readonly clearFetchPauses?: ConversationRunnerOptions['clearFetchPauses'];
 
@@ -92,7 +93,7 @@ async function setupTest() {
         sandboxes: sandboxes.adapter,
         tools: tools.endpoint,
         toolNames: config.toolNames,
-        image: 'conversation',
+        image: config.image ?? 'conversation',
         limits: { vcpus: 1, memoryMiB: 1024, diskMiB: 2048 },
         command: { argv: ['bun', '/opt/nixie/conversation/src/main.ts'], env: {} },
         getDefinitions: config.getDefinitions ?? (() => testDefinitions),
@@ -2588,6 +2589,72 @@ test('it keeps the conversation sandbox across restarts on one profile and repla
   ]);
 
   expect(ctx.sandboxes.destroyed).toHaveLength(1);
+});
+
+test('it destroys the old conversation sandbox when the image changed', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  await ctx.startRunner({
+    models: buildMockModelsConfig(),
+    credential: 'not-a-real-key',
+    toolNames: ['notes_read'],
+    image: 'conversation-old',
+  });
+
+  await ctx.startRunner({
+    models: buildMockModelsConfig(),
+    credential: 'not-a-real-key',
+    toolNames: ['notes_read'],
+    image: 'conversation-new',
+  });
+
+  const live = await ctx.sandboxes.adapter.list('conversation');
+
+  expect(ctx.sandboxes.created.map((spec) => spec.image)).toStrictEqual([
+    'conversation-old',
+    'conversation-new',
+  ]);
+
+  expect(ctx.sandboxes.destroyed).toHaveLength(1);
+  expect(live.map((sandbox) => sandbox.spec.image)).toStrictEqual(['conversation-new']);
+});
+
+test('it logs a failed destroy of the old conversation sandbox and still starts the runner', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  await ctx.startRunner({
+    models: buildMockModelsConfig(),
+    credential: 'not-a-real-key',
+    toolNames: ['notes_read'],
+    image: 'conversation-old',
+  });
+
+  ctx.sandboxes.setDestroyError(new Error('the host is gone'));
+
+  const log = mock<ConversationRunnerOptions['log']>();
+
+  await ctx.startRunner({
+    models: buildMockModelsConfig(),
+    credential: 'not-a-real-key',
+    toolNames: ['notes_read'],
+    image: 'conversation-new',
+    log,
+  });
+
+  expect(log).toHaveBeenCalledExactlyOnceWith(
+    'sandbox.remove_failed',
+    { sandboxID: expect.toBeString(), error: 'Error', message: 'the host is gone' },
+    'error',
+  );
+
+  expect(ctx.sandboxes.created.map((spec) => spec.image)).toStrictEqual([
+    'conversation-old',
+    'conversation-new',
+  ]);
 });
 
 test('it tries every replaced sandbox for the session and logs one warning that names each', async () => {

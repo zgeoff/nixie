@@ -24,6 +24,9 @@ export interface StubSandboxes {
   readonly setSummaryScript: (script: StubSummaryScript) => void;
 
   readonly setPurgeAnswer: (frames: readonly GuestFrame[]) => void;
+
+  // makes every later destroy reject, or restores it with null
+  readonly setDestroyError: (error: Error | null) => void;
 }
 
 interface StubState {
@@ -37,6 +40,7 @@ interface StubState {
   script: StubGuestScript;
   summaryScript: StubSummaryScript;
   purgeAnswer: readonly GuestFrame[];
+  destroyError: Error | null;
 }
 
 export function buildStubSandboxes(): StubSandboxes {
@@ -51,6 +55,7 @@ export function buildStubSandboxes(): StubSandboxes {
     script: buildHelloTurn,
     summaryScript: buildSummary,
     purgeAnswer: [{ type: 'purged' }],
+    destroyError: null,
   };
 
   const buildSandbox = (spec: SandboxSpec): Sandbox => buildStubSandbox(spec, buildHooks(state));
@@ -90,6 +95,9 @@ export function buildStubSandboxes(): StubSandboxes {
     },
     setPurgeAnswer: (frames) => {
       state.purgeAnswer = frames;
+    },
+    setDestroyError: (error) => {
+      state.destroyError = error;
     },
   };
 }
@@ -131,7 +139,7 @@ function buildSummary(): readonly GuestFrame[] {
 interface StubSandboxHooks {
   readonly onTurn: StubGuestScript;
   readonly onSummary: StubSummaryScript;
-  readonly onDestroy: (id: string) => void;
+  readonly onDestroy: (id: string) => Promise<void>;
   readonly onPurge: (id: string) => readonly GuestFrame[];
 }
 
@@ -159,11 +167,7 @@ function buildStubSandbox(spec: SandboxSpec, hooks: StubSandboxHooks): Sandbox {
     suspension: { kind: 'none' },
     readMemoryKills: () => Promise.resolve({ kind: 'unsupported' }),
     isRetired: false,
-    destroy: () => {
-      hooks.onDestroy(id);
-
-      return Promise.resolve();
-    },
+    destroy: () => hooks.onDestroy(id),
   };
 }
 
@@ -179,6 +183,7 @@ interface RecordingState {
   readonly purged: string[];
   readonly script: StubGuestScript;
   readonly purgeAnswer: readonly GuestFrame[];
+  readonly destroyError: Error | null;
 }
 
 function buildHooks(state: RecordingState): StubSandboxHooks {
@@ -194,7 +199,13 @@ function buildHooks(state: RecordingState): StubSandboxHooks {
       return state.summaryScript(frame);
     },
     onDestroy: (id) => {
+      if (state.destroyError !== null) {
+        return Promise.reject(state.destroyError);
+      }
+
       state.destroyed.push(id);
+
+      return Promise.resolve();
     },
     onPurge: (id) => {
       state.purged.push(id);

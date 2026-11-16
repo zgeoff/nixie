@@ -7,7 +7,7 @@ import type {
   SandboxLimits,
   SecretSpec,
 } from '@heynixie/sandbox';
-import { buildSandboxSpec, findKeptSandbox } from '@heynixie/sandbox';
+import { buildSandboxSpec, findKeptSandbox, removeSandboxes } from '@heynixie/sandbox';
 import type { TasksContext } from '@heynixie/tasks';
 import { conversationTaskID } from '@heynixie/tasks';
 import { writeReplacedSession } from './write-replaced-session';
@@ -49,7 +49,7 @@ export async function setupConversationSandbox(
     target,
   });
 
-  await Promise.all(replaced.map((old) => old.destroy()));
+  await removeSandboxes(replaced, options.log);
 
   return target;
 }
