@@ -20,6 +20,8 @@ import invariant from 'tiny-invariant';
 import { runCLI } from '../cli/run-cli';
 import type { SandboxAdapterOptions } from '../sandbox/create-sandbox-adapter';
 import { approveStarterRules } from './approve-starter-rules';
+import type { FetchPage } from './build-fetch-page-sandboxes';
+import { buildFetchPageSandboxes } from './build-fetch-page-sandboxes';
 import type { BootSeeder } from './build-seeder';
 import { buildBootSeeder } from './build-seeder';
 import { readDataFiles } from './read-data-files';
@@ -50,6 +52,10 @@ export interface InProcessNixieOptions {
 
   // False leaves the allows of the starter rules waiting for a test to approve them.
   readonly isStarterApproved?: boolean;
+
+  // Pages that web_fetch serves, because the fetch guest refuses every address a test can serve.
+  // With none, a fetch sandbox goes to the stub guest like any other.
+  readonly fetchPages?: readonly FetchPage[];
 
   // Runs on the migrated data before the first start, so a test seeds state without a restart.
   readonly beforeStart?: (files: BootFiles, seed: BootSeeder) => Promise<void>;
@@ -216,6 +222,7 @@ async function startFirstRun(
     guest,
     toolResults,
     host,
+    fetchPages: options.fetchPages ?? [],
     stack,
     runBeforeCleanup,
     runs: [],
@@ -272,6 +279,7 @@ interface InProcessNixieFiles {
   readonly guest: StubGuestSandboxes;
   readonly toolResults: readonly TestToolResult[];
   readonly host: RunHost;
+  readonly fetchPages: readonly FetchPage[];
 
   readonly stack: AsyncDisposableStack;
   readonly runBeforeCleanup: RunBeforeCleanup;
@@ -297,7 +305,9 @@ function startNixieRun(start: InProcessNixieFiles): InProcessNixie {
         createSandboxAdapter: (options) => {
           start.host.attach(options);
 
-          return start.guest.adapter;
+          return start.fetchPages.length === 0
+            ? start.guest.adapter
+            : buildFetchPageSandboxes(start.guest.adapter, start.fetchPages);
         },
       });
     } finally {
