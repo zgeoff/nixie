@@ -82,6 +82,11 @@ has no session and no context window, so nixie sends it the whole history at eac
 system tasks only, and has no conversation row yet. The CLI also lists 3 MCP resource tools that
 nixie cannot remove, so a model on this harness sees them beside nixie's tools.
 
+The guest's config sets `tool_output_token_limit` to the wire library's `toolOutputLimitTokens`, the
+limit that the Agent SDK guest holds. A recall result of exactly the page limit, made of many small
+items beside a filler, reaches the model whole at that value. A tool server that does not answer
+within the guest config's `startup_timeout_sec` fails the turn with `tools_not_connected`.
+
 The wire library holds every harness ID and the features each harness declares, such as resuming a
 session at an entry or returning structured output. Each role declares the features its loop needs,
 and nixie checks a profile's harness against those needs in 2 places:

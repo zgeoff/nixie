@@ -12,7 +12,7 @@ import { z } from 'zod';
 async function setupTest() {
   const nixie = await startSpawnedNixie({
     routeModel: async (upstreamURL) => {
-      const gateway = await startTestModelGateway(upstreamURL);
+      const gateway = await startTestModelGateway({ upstreamURL });
 
       return {
         baseURL: gateway.baseURL,

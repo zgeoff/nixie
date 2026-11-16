@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import { toolOutputLimitTokens } from '@heynixie/wire';
 import { buildCodexConfig } from './build-codex-config';
 
 function setupTest() {
@@ -38,6 +39,7 @@ test('it makes nixie the only tool source, over HTTP with the step token, and ap
     'url = "http://127.0.0.1:8901/mcp"',
     'bearer_token_env_var = "NIXIE_TOKEN"',
     'required = true',
+    'startup_timeout_sec = 5',
     'default_tools_approval_mode = "approve"',
   ]);
 });
@@ -73,9 +75,12 @@ test('it turns off the text and the tools that the CLI adds unasked', () => {
   ]);
 });
 
-test('it sets no tool output limit', () => {
+test('it sets the tool output limit as a top-level key, before the first table', () => {
   const ctx = setupTest();
-  const config = ctx.buildConfig();
+  const lines = ctx.buildConfig().split('\n');
+  const limitAt = lines.indexOf(`tool_output_token_limit = ${String(toolOutputLimitTokens)}`);
+  const firstTableAt = lines.findIndex((line) => line.startsWith('['));
 
-  expect(config).not.toInclude('tool_output_token_limit');
+  expect(limitAt).toBeGreaterThan(-1);
+  expect(limitAt).toBeLessThan(firstTableAt);
 });

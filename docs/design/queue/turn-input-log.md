@@ -393,7 +393,10 @@ count. A step's end can wait up to `close_wait` for the gateway's `.part` files.
 
 ## Open questions
 
-- **Does the Codex CLI keep the tag segment?** The Codex case with
-  [the Codex gates](https://linear.app/zgeoff/issue/GEO-2546) settles it, on the CLI version that
-  the Codex image pins and with the base URL that a Codex profile holds. Until then, a Codex step
-  has no capture.
+- **Does the Codex CLI keep the tag segment?** Yes. The Codex gates ran a turn with the base URL
+  `<gateway>/<route>/~in.<tag>/v1` on the pinned CLI: the model saw `/v1/responses`, and the gateway
+  spooled one sealed capture. A Codex step has no capture until
+  [the ChatGPT plan login](https://linear.app/zgeoff/issue/GEO-2238) changes the Codex endpoint
+  match to `/^(?:\/v1)?\/responses$/` and the profile's base URL to `<gateway>/<route>`. Today a
+  Codex profile's base URL ends in `/v1`, so the capture tag would land after `/v1`, where the
+  gateway strips no tag and answers 403.

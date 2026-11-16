@@ -73,6 +73,10 @@ interface ImpSecretInput {
   readonly host: string;
   readonly header: string;
   readonly scheme: 'bearer' | 'raw';
+
+  // the origin that the broker sends the host's requests to, in place of the host; a test impd that
+  // cannot reach the model host by name sets it, and no product caller does
+  readonly upstream?: string;
 }
 
 export interface ImpPort {

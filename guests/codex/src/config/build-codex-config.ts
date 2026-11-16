@@ -1,4 +1,5 @@
 import type { codexEfforts } from '@heynixie/wire';
+import { toolOutputLimitTokens } from '@heynixie/wire';
 
 export interface CodexConfigInput {
   readonly model: string;
@@ -45,7 +46,7 @@ const disabledFeatures = [
 
 // Builds the Codex home's config.toml. The CLI gets no built-in tool, no command or file write,
 // none of its own skills, agents or project docs, and nixie's tool route as its only tool source.
-// The tool output limit is left out until the Codex gates set it.
+// A tool server that does not answer in 5 s fails the turn, where the CLI's 30 s would hold it.
 export function buildCodexConfig(input: CodexConfigInput): string {
   return `${[
     `model = ${JSON.stringify(input.model)}`,
@@ -60,6 +61,7 @@ export function buildCodexConfig(input: CodexConfigInput): string {
     'include_collaboration_mode_instructions = false',
     'project_doc_max_bytes = 0',
     'web_search = "disabled"',
+    `tool_output_token_limit = ${String(toolOutputLimitTokens)}`,
     '',
     `[model_providers.${providerName}]`,
     `name = ${JSON.stringify(providerName)}`,
@@ -72,6 +74,7 @@ export function buildCodexConfig(input: CodexConfigInput): string {
     `url = ${JSON.stringify(input.toolsURL)}`,
     `bearer_token_env_var = ${JSON.stringify(toolTokenVariable)}`,
     'required = true',
+    'startup_timeout_sec = 5',
     'default_tools_approval_mode = "approve"',
     '',
     '[tools.experimental_request_user_input]',
