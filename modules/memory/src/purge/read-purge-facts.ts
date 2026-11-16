@@ -4,7 +4,7 @@ import { sql } from 'kysely';
 import { buildPurgeKey } from '../item-key/build-purge-key';
 import type { MemoryItemRow, MemoryTables, MemoryVersionRow, PurgeRequest } from '../types';
 
-export interface KeyRow {
+interface KeyRow {
   readonly key_id: string;
   readonly kind: 'generation' | 'version';
   readonly version: number | null;
@@ -12,7 +12,7 @@ export interface KeyRow {
   readonly removed_sequence: number | null;
 }
 
-export interface PendingProposal {
+interface PendingProposal {
   readonly proposalID: string;
   readonly thread: string | null;
 }

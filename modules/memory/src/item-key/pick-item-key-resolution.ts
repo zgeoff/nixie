@@ -12,17 +12,6 @@ export type ItemKeyResolution =
       readonly isRemoved: boolean;
     };
 
-// The key that sealed a record's value is the item's generation key with the greatest
-// from_sequence below the record's sequence. Generation 0, the item's own ID, has no row until a
-// purge deletes it.
-export function pickGenerationKeyID(facts: ItemKeyFacts, itemID: string, sequence: number): string {
-  const generations = (facts.keyRows.get(itemID) ?? [])
-    .filter((row) => row.kind === 'generation' && row.from_sequence < sequence)
-    .toSorted((first, second) => second.from_sequence - first.from_sequence);
-
-  return generations[0]?.key_id ?? itemID;
-}
-
 export function pickItemKeyResolution(facts: ItemKeyFacts, ref: ItemValueRef): ItemKeyResolution {
   const rows = facts.keyRows.get(ref.itemID) ?? [];
   const isPurging = facts.purging.has(ref.itemID);
@@ -77,6 +66,17 @@ export function pickItemKeyResolution(facts: ItemKeyFacts, ref: ItemValueRef): I
 
 function findVersionRow(rows: readonly ItemKeyRow[], version: number): ItemKeyRow | undefined {
   return rows.find((row) => row.kind === 'version' && row.version === version);
+}
+
+// The key that sealed a record's value is the item's generation key with the greatest
+// from_sequence below the record's sequence. Generation 0, the item's own ID, has no row until a
+// purge deletes it.
+function pickGenerationKeyID(facts: ItemKeyFacts, itemID: string, sequence: number): string {
+  const generations = (facts.keyRows.get(itemID) ?? [])
+    .filter((row) => row.kind === 'generation' && row.from_sequence < sequence)
+    .toSorted((first, second) => second.from_sequence - first.from_sequence);
+
+  return generations[0]?.key_id ?? itemID;
 }
 
 function isMarkedRemoved(rows: readonly ItemKeyRow[], keyID: string): boolean {

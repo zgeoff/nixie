@@ -47,7 +47,7 @@ export interface VersionLabels {
 
 // A purge's bridge version holds its text under a key of its own. Each quote of another record
 // sits sealed twice in a record beside the version.
-export interface VersionBridge {
+interface VersionBridge {
   readonly keyID: string;
   readonly key: CryptoKey;
   readonly evidenceQuote: string | null;
