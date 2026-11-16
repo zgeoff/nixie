@@ -254,10 +254,31 @@ test('it closes a started task from the conversation with task.close, and shows 
   ctx.guest.addKindReplies(
     'conversation',
     { toolUse: { name: 'task.close', input: { taskID: garden.taskID } } },
-    { text: 'Closed it.' },
+    { text: 'Closed it.', gate: () => held.promise },
   );
 
-  await sendClientMessage(api.client, { text: 'You can drop the garden plan.' }, 'Closed it.');
+  const held = Promise.withResolvers<undefined>();
+
+  const sent = sendClientMessage(
+    api.client,
+    { text: 'You can drop the garden plan.' },
+    'Closed it.',
+  );
+
+  // The turn's token lists its tools only while the turn runs, so the reply holds it open.
+  await waitForCondition(() => ctx.toolResults.some((result) => result.name === 'task.close'));
+
+  const lastTurn = ctx.guest.received.findLast(
+    (received) => received.owner === 'conversation' && received.frame.type === 'turn',
+  );
+
+  invariant(lastTurn);
+
+  const tools = await ctx.readTools(lastTurn);
+
+  held.resolve(undefined);
+
+  await sent;
 
   const closeResult = ctx.toolResults.at(-1);
 
@@ -294,6 +315,32 @@ test('it closes a started task from the conversation with task.close, and shows 
       JSON.stringify(conversationThread.records),
     ].join('\n'),
   ).not.toMatch(/sandbox/iu);
+
+  const turns = ctx.guest.received.filter((received) => received.frame.type === 'turn');
+
+  const shown = JSON.stringify({
+    tools,
+    turns: turns.map((received) =>
+      received.frame.type === 'turn'
+        ? { systemPrompt: received.frame.systemPrompt, input: received.frame.input }
+        : null,
+    ),
+    results: ctx.toolResults,
+  });
+
+  const sandboxIDs = [
+    ...new Set([
+      ...ctx.guest.received.map((received) => received.sandboxID),
+      ...ctx.guest.readSandboxIDs(),
+    ]),
+  ];
+
+  expect(tools.map((tool) => z.object({ name: z.string() }).parse(tool).name)).toContain(
+    'task.close',
+  );
+
+  expect(sandboxIDs.length).toBeGreaterThan(1);
+  expect(sandboxIDs.filter((sandboxID) => shown.includes(sandboxID))).toStrictEqual([]);
 });
 
 test('it puts no task board in the turn after a task starts, and keeps the system prompt the same bytes between turns', async () => {
