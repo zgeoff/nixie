@@ -3,7 +3,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { ToolTarget } from '@heynixie/sandbox';
-import { SandboxSpecRefusedError } from '@heynixie/sandbox';
+import { SandboxSpecRefusedError, buildSandboxSpec } from '@heynixie/sandbox';
 import {
   buildMockGrantSpec,
   buildMockSandboxSpec,
@@ -151,6 +151,74 @@ test('it creates the imp with policy none, out of every backup, and leaves the g
       backup: false,
     },
   ]);
+});
+
+test('it creates a worker imp from the real spec builder with policy none and no host beside the broker', async () => {
+  const ctx = await setupTest();
+
+  const modelGrant = buildMockGrantSpec();
+
+  ctx.imp.secrets.set(modelGrant.secret, [modelGrant.host]);
+
+  const spec = buildSandboxSpec({
+    kind: 'worker',
+    image: 'worker',
+    owner: 'task-1:step-1',
+    limits: { vcpus: 1, memoryMiB: 384, diskMiB: 4096 },
+    modelGrant,
+    allowHosts: ['github.com'],
+  });
+
+  const sandbox = await ctx.adapter.create(spec);
+
+  expect(ctx.imp.created).toStrictEqual([
+    {
+      name: sandbox.id,
+      image: 'worker',
+      vcpus: 1,
+      memoryMib: 384,
+      diskMib: 4096,
+      policy: { mode: 'none', allow: [] },
+      backup: false,
+    },
+  ]);
+
+  expect(ctx.imp.calls).toContain(`grant ${sandbox.id} ${modelGrant.secret}`);
+});
+
+test.each([
+  ['a worker', { kind: 'worker', egress: { kind: 'none' } }],
+  ['a coding session', { kind: 'coding', egress: { kind: 'allow', hosts: ['github.com'] } }],
+] as const)(
+  'it refuses %s on an impd that does not enforce closed egress',
+  async (_name, shape) => {
+    const ctx = await setupTest();
+
+    ctx.imp.features = { publicEgress: true, isEgressEnforced: false, hasBackupOptOut: true };
+
+    expect(ctx.adapter.create(buildMockSandboxSpec({ ...shape, grants: [] }))).rejects.toThrow(
+      new SandboxSpecRefusedError('closed egress on an impd that does not enforce it'),
+    );
+
+    expect(ctx.imp.calls).toStrictEqual([]);
+    expect(ctx.imp.created).toStrictEqual([]);
+  },
+);
+
+test('it refuses a worker spec with wider egress than none', async () => {
+  const ctx = await setupTest();
+
+  const adapter = ctx.buildAdapter({
+    publicEgress: { hostAddresses: ['203.0.113.7/24'], egressDeny: ['198.51.100.0/24'] },
+  });
+
+  expect(
+    adapter.create(
+      buildMockSandboxSpec({ kind: 'worker', egress: { kind: 'public' }, grants: [] }),
+    ),
+  ).rejects.toThrow(SandboxSpecRefusedError);
+
+  expect(ctx.imp.created).toStrictEqual([]);
 });
 
 test('it refuses a sandbox on an impd that would back it up', async () => {
@@ -723,7 +791,7 @@ test('it adds an image again before a create when impd removed it after the add'
   ctx.imp.images.delete('nixie-fetch-aaaaaaaaaaaa');
 
   const sandbox = await ctx.adapter.create(
-    buildMockSandboxSpec({ kind: 'fetch', image: 'nixie-fetch-aaaaaaaaaaaa' }),
+    buildMockSandboxSpec({ kind: 'code_run', image: 'nixie-fetch-aaaaaaaaaaaa' }),
   );
 
   expect(ctx.imp.calls.slice(0, 3)).toStrictEqual([
@@ -742,7 +810,7 @@ test('it adds no image before a create when impd holds the image it added', asyn
   });
 
   const sandbox = await ctx.adapter.create(
-    buildMockSandboxSpec({ kind: 'fetch', image: 'nixie-fetch-aaaaaaaaaaaa' }),
+    buildMockSandboxSpec({ kind: 'code_run', image: 'nixie-fetch-aaaaaaaaaaaa' }),
   );
 
   expect(ctx.imp.calls.slice(0, 2)).toStrictEqual([

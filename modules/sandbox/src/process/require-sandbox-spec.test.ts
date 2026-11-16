@@ -95,3 +95,16 @@ test('it refuses allowed egress with no hosts', () => {
     requireSandboxSpec(spec);
   }).toThrow(new SandboxSpecRefusedError('allowed egress with no hosts'));
 });
+
+test.each([
+  ['worker', { kind: 'public' }],
+  ['worker', { kind: 'allow', hosts: ['github.com'] }],
+  ['conversation', { kind: 'public' }],
+  ['code_run', { kind: 'allow', hosts: ['github.com'] }],
+] as const)('it refuses a %s sandbox with egress wider than its kind allows', (kind, egress) => {
+  const spec = buildMockSandboxSpec({ kind, egress, grants: [] });
+
+  expect(() => {
+    requireSandboxSpec(spec);
+  }).toThrow(SandboxSpecRefusedError);
+});

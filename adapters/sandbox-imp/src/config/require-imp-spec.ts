@@ -16,6 +16,10 @@ export async function requireImpSpec(
     throw new SandboxSpecRefusedError('a sandbox on an impd that would back it up');
   }
 
+  if (spec.egress.kind !== 'public' && !features.isEgressEnforced) {
+    throw new SandboxSpecRefusedError('closed egress on an impd that does not enforce it');
+  }
+
   if (spec.egress.kind === 'public') {
     requirePublicEgress(features, publicEgress);
   }
