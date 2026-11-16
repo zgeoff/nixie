@@ -2,6 +2,7 @@ import { expect, test } from 'bun:test';
 import { removeTestRecordKey } from '@heynixie/log/test-utils';
 import invariant from 'tiny-invariant';
 import { buildMockWriteCaller } from '../test-utils/build-mock-write-caller';
+import { seedBegunPurge } from '../test-utils/seed-begun-purge';
 import { startTestMemory } from '../test-utils/start-test-memory';
 import { writeOwnerMessageRecord } from '../test-utils/write-owner-message-record';
 
@@ -38,6 +39,8 @@ test("it reads a version's provenance with the writer's and the checker's models
       origin: 'conversation',
       source: 'owner',
       recordedAt: expect.toBeNumber(),
+      isRemoved: false,
+      isBridge: false,
       taskID: 'conversation',
       proposalID: null,
       checks: {
@@ -188,6 +191,29 @@ test('it reads the message of a forgotten message as shredded', async () => {
   });
 });
 
+test('it reads the message as shredded once its forget began, before its key is deleted', async () => {
+  const ctx = await setupTest();
+
+  const sequence = await writeOwnerMessageRecord(ctx.memory.log, {
+    thread: 'conversation',
+    text: 'My sister Ana lives in Porto.',
+    spans: [{ start: 0, end: 29, source: 'typed' }],
+  });
+
+  const item = await ctx.memory.store.remember({
+    text: "The user's sister Ana lives in Porto",
+    evidenceQuote: 'My sister Ana lives in Porto',
+    evidence: { recordSequence: sequence, start: 0, end: 28 },
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  await seedBegunPurge(ctx.memory.log, { recordSequence: sequence, itemIDs: [] });
+
+  const detail = await ctx.memory.store.view.readItem(item.itemID);
+
+  expect(detail?.versions[0]?.evidence?.message).toStrictEqual({ status: 'shredded' });
+});
+
 test('it reads a forgotten item as dated gaps that show no message', async () => {
   const ctx = await setupTest();
 
@@ -219,6 +245,8 @@ test('it reads a forgotten item as dated gaps that show no message', async () =>
       {
         version: 1,
         recordedAt: expect.toBeNumber(),
+        isRemoved: false,
+        isBridge: false,
         status: 'shredded',
         evidenceQuote: null,
         evidence: { recordSequence: sequence, start: 0, end: 25, message: null },
@@ -319,4 +347,30 @@ test('it reads an item that does not exist as null', async () => {
   const detail = await ctx.memory.store.view.readItem('no-such-item');
 
   expect(detail).toBeNull();
+});
+
+test('it blanks the quote and shreds the message of a record whose forget began', async () => {
+  const ctx = await setupTest();
+
+  const sequence = await writeOwnerMessageRecord(ctx.memory.log, {
+    thread: 'conversation',
+    text: 'I collect amber pebbles',
+    spans: [{ start: 0, end: 23, source: 'typed' }],
+  });
+
+  const item = await ctx.memory.store.remember({
+    text: 'Collects amber pebbles',
+    evidenceQuote: 'I collect amber pebbles',
+    evidence: { recordSequence: sequence, start: 0, end: 23 },
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  await seedBegunPurge(ctx.memory.log, { recordSequence: sequence, itemIDs: [] });
+
+  const detail = await ctx.memory.store.view.readItem(item.itemID);
+
+  expect(detail?.versions[0]).toMatchObject({
+    evidenceQuote: null,
+    evidence: { recordSequence: sequence, message: { status: 'shredded' } },
+  });
 });

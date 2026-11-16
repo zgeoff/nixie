@@ -3,10 +3,11 @@ import type { MemoryTables } from '../types';
 import { ForgottenEvidenceError } from '../utils/error/forgotten-evidence-error';
 
 export async function requireLiveEvidence(
-  db: Kysely<MemoryTables>,
+  db: Kysely<unknown>,
   recordSequence: number,
 ): Promise<void> {
   const row = await db
+    .$extendTables<MemoryTables>()
     .selectFrom('memory_forgotten_evidence')
     .select('record_sequence')
     .where('record_sequence', '=', recordSequence)

@@ -10,6 +10,7 @@ export function buildMockRetiredForgetItem(
     changedAt: recordedAt,
     createdAt: recordedAt,
     forgottenAt: null,
+    isBridge: false,
     isPinned: false,
     itemID: faker.string.uuid(),
     kind: 'fact',

@@ -56,6 +56,8 @@ test('#read shows an item with its state and every version, oldest first', async
         origin: 'owner',
         source: 'owner',
         recordedAt: new Date(history.versions[0].recordedAt),
+        isRemoved: false,
+        isBridge: false,
         status: 'readable',
         text: 'Drinks oat milk',
       },

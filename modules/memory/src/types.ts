@@ -202,6 +202,9 @@ export interface RecalledVersion {
   readonly model: string | null;
 
   readonly approval: MemoryApproval | null;
+
+  // a version a purge wrote: its stored change and origin are not the owner's edit
+  readonly isBridge: boolean;
 }
 
 export interface RecalledItem extends RecalledVersion {
@@ -289,12 +292,26 @@ export interface MemoryStore {
   readonly forgetAll: (request: AllForgetRequest) => Promise<readonly string[]>;
 
   readonly finishForgets: (itemIDs: readonly string[]) => Promise<ForgetStatus>;
+
+  // Purges the evidence of one item of a purge set. Skipped: the item is forgetting or forgotten,
+  // or its purge is done.
+  readonly purgeItemEvidence: (request: PurgeRequest) => Promise<'purged' | 'skipped'>;
+
+  readonly finishEvidencePurges: (scope: PurgeScope) => Promise<void>;
   readonly readHistory: (itemID: string) => Promise<ItemHistory | null>;
 
   readonly readSubjectCounts: () => Promise<MemorySubjectCounts>;
 
   readonly view: MemoryView;
 }
+
+export interface PurgeRequest {
+  readonly recordSequence: number;
+  readonly itemID: string;
+}
+
+// The purges of one forgotten record, or the purges that no record forget owns
+export type PurgeScope = { readonly recordSequence: number } | { readonly isUnowned: true };
 
 export interface ItemIDStore {
   readonly readItemIDMap: (ids: readonly string[]) => Promise<ReadonlyMap<string, string>>;
@@ -408,6 +425,27 @@ interface MemoryProposalMergeTable {
   readonly recorded_at: number;
 }
 
+interface MemoryItemKeyTable {
+  readonly key_id: string;
+  readonly item_id: string;
+  readonly kind: 'generation' | 'version';
+  readonly version: number | null;
+  readonly sealed_evidence_quote: string | null;
+  readonly sealed_intent_quote: string | null;
+  readonly from_sequence: number;
+  readonly removed_sequence: number | null;
+}
+
+interface MemoryEvidencePurgeTable {
+  readonly purge_key: string;
+  readonly record_sequence: number;
+  readonly item_id: string;
+  readonly closed_sequence: number | null;
+  readonly purged_sequence: number | null;
+  readonly bridge_version: number | null;
+  readonly labels_revision: number | null;
+}
+
 // A type alias, because Kysely's table map needs the index signature that an interface lacks.
 export type MemoryTables = CheckedTables<
   Readonly<{
@@ -418,6 +456,8 @@ export type MemoryTables = CheckedTables<
     memory_proposal_merges: MemoryProposalMergeTable;
     memory_notice_entries: MemoryNoticeEntryTable;
     memory_forgotten_evidence: MemoryForgottenEvidenceTable;
+    memory_item_keys: MemoryItemKeyTable;
+    memory_evidence_purges: MemoryEvidencePurgeTable;
   }>
 >;
 

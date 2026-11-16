@@ -1,7 +1,8 @@
-import { readRecordKeys } from '@heynixie/log';
 import type { Kysely } from 'kysely';
 import { toReviewReason } from '../gate/to-review-reason';
 import { findImageSource } from '../image/find-image-source';
+import { isBridgeVersion, readBridgeMarks } from '../item-key/read-bridge-marks';
+import { readItemKeys } from '../item-key/read-item-keys';
 import { buildDerivedLabels } from '../label/build-derived-labels';
 import { itemLabelsCodec } from '../label/item-labels-codec';
 import type { LabelEntries } from '../label/make-label-entries';
@@ -22,14 +23,15 @@ import { isItemLapsed } from '../utils/item/is-item-lapsed';
 import { parseChecks } from '../utils/parse-checks';
 import type { ApprovedProposal } from '../version/build-version-approval';
 import { buildVersionApproval } from '../version/build-version-approval';
-import { decodeVersionText } from '../version/decode-version-text';
+import type { VersionValue } from '../version/read-version-values';
+import { readVersionValues } from '../version/read-version-values';
 
 export interface DeliverableQuery {
   readonly itemIDs: readonly string[];
   readonly states: readonly MemoryState[];
   readonly includeHistory: boolean;
 
-  readonly db?: Kysely<MemoryTables>;
+  readonly db?: Kysely<unknown>;
 }
 
 // The caller must hold the delivery lock, so no forget runs between this check and the delivery.
@@ -41,7 +43,7 @@ export async function readDeliverableItems(
     return [];
   }
 
-  const db = query.db ?? parts.context.log.writer.db.$extendTables<MemoryTables>();
+  const db = query.db ?? parts.context.log.writer.db;
   const now = parts.context.gate.clock.now();
 
   const storedStates: readonly MemoryState[] = query.states.includes('retired')
@@ -49,6 +51,7 @@ export async function readDeliverableItems(
     : query.states;
 
   const stored = await db
+    .$extendTables<MemoryTables>()
     .selectFrom('memory_items')
     .selectAll()
     .where('item_id', 'in', query.itemIDs)
@@ -59,21 +62,15 @@ export async function readDeliverableItems(
     .map((row) => toDeliveredRow(row, now))
     .filter((row) => query.states.includes(row.state));
 
-  const keys = await readRecordKeys(
-    parts.context.log,
-    rows.map((row) => row.item_id),
-  );
-
   const byID = new Map(rows.map((row) => [row.item_id, row]));
 
   const items = await Promise.all(
     query.itemIDs.map((itemID) => {
       const row = byID.get(itemID);
-      const key = keys.get(itemID);
 
-      return row === undefined || key === undefined || key === null
+      return row === undefined
         ? Promise.resolve(null)
-        : readItem(db, { row, key, includeHistory: query.includeHistory, labels: parts.labels });
+        : readItem(parts, db, { row, includeHistory: query.includeHistory, labels: parts.labels });
     }),
   );
 
@@ -86,16 +83,18 @@ function toDeliveredRow(row: MemoryItemRow, now: number): MemoryItemRow {
 
 interface ItemToRead {
   readonly row: MemoryItemRow;
-  readonly key: CryptoKey;
   readonly includeHistory: boolean;
 
   readonly labels: LabelEntries;
-
-  readonly db?: Kysely<MemoryTables>;
 }
 
-async function readItem(db: Kysely<MemoryTables>, item: ItemToRead): Promise<RecalledItem | null> {
+async function readItem(
+  parts: StoreParts,
+  db: Kysely<unknown>,
+  item: ItemToRead,
+): Promise<RecalledItem | null> {
   const versions = await db
+    .$extendTables<MemoryTables>()
     .selectFrom('memory_versions')
     .leftJoin('memory_proposals', 'memory_proposals.proposal_id', 'memory_versions.proposal_id')
     .selectAll('memory_versions')
@@ -107,8 +106,17 @@ async function readItem(db: Kysely<MemoryTables>, item: ItemToRead): Promise<Rec
     .orderBy('memory_versions.version')
     .execute();
 
+  const values = await readVersionValues(parts.context.log, db, versions);
+  const marks = await readBridgeMarks(db, [item.row.item_id]);
+
   try {
-    const readable = await Promise.all(versions.map((version) => readVersion(item.key, version)));
+    const readable = versions.flatMap((version, index) => {
+      const value = values[index];
+
+      return value?.status === 'readable'
+        ? [readVersion(version, value, isBridgeVersion(marks, version.item_id, version.version))]
+        : [];
+    });
 
     const current = readable.find((version) => version.version === item.row.version);
 
@@ -131,7 +139,7 @@ async function readItem(db: Kysely<MemoryTables>, item: ItemToRead): Promise<Rec
       ...current,
       ...(item.row.state === 'retired' ? { state: 'retired' as const } : {}),
       ...(item.includeHistory
-        ? { history: readable, labelHistory: await readLabelHistory(db, item) }
+        ? { history: readable, labelHistory: await readLabelHistory(parts, db, item) }
         : {}),
     };
   } catch {
@@ -144,12 +152,12 @@ interface ApprovableVersionRow extends MemoryVersionRow {
   readonly review_reason: string | null;
 }
 
-async function readVersion(key: CryptoKey, row: ApprovableVersionRow): Promise<RecalledVersion> {
-  const text = await decodeVersionText(
-    key,
-    { itemID: row.item_id, version: row.version },
-    row.sealed,
-  );
+function readVersion(
+  row: ApprovableVersionRow,
+  value: Extract<VersionValue, { status: 'readable' }>,
+  isBridge: boolean,
+): RecalledVersion {
+  const text = value.text;
 
   return {
     version: row.version,
@@ -163,6 +171,7 @@ async function readVersion(key: CryptoKey, row: ApprovableVersionRow): Promise<R
     image: row.checks === null ? null : findImageSource(parseChecks(row.checks)),
     model: row.model,
     approval: buildVersionApproval(toApprovedProposal(row)),
+    isBridge,
   };
 }
 
@@ -173,20 +182,34 @@ function toApprovedProposal(row: ApprovableVersionRow): ApprovedProposal | null 
 }
 
 async function readLabelHistory(
-  db: Kysely<MemoryTables>,
+  parts: StoreParts,
+  db: Kysely<unknown>,
   item: ItemToRead,
 ): Promise<readonly LabelRevision[]> {
   const rows = await db
+    .$extendTables<MemoryTables>()
     .selectFrom('memory_labels')
-    .select(['revision', 'sealed'])
+    .select(['revision', 'sealed', 'sequence'])
     .where('item_id', '=', item.row.item_id)
     .orderBy('sequence')
     .execute();
 
-  return Promise.all(
-    rows.map(async (row) => {
+  const keys = await readItemKeys(
+    parts.context.log,
+    rows.map((row) => ({ value: 'labels', itemID: item.row.item_id, sequence: row.sequence })),
+    db,
+  );
+
+  const revisions = await Promise.all(
+    rows.map(async (row, index): Promise<LabelRevision | null> => {
+      const key = keys[index];
+
+      if (key?.status !== 'readable') {
+        return null;
+      }
+
       const labels = await itemLabelsCodec.decode(
-        item.key,
+        key.key,
         { itemID: item.row.item_id, revision: row.revision },
         row.sealed,
       );
@@ -199,4 +222,6 @@ async function readLabelHistory(
       };
     }),
   );
+
+  return revisions.filter((revision) => revision !== null);
 }

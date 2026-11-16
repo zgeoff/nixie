@@ -1,5 +1,7 @@
 import type { Projection } from '@heynixie/log';
 import { memoryForgottenEvidenceProjection } from '../../forgotten/memory-forgotten-evidence-projection';
+import { memoryEvidencePurgesProjection } from '../../item-key/memory-evidence-purges-projection';
+import { memoryItemKeysProjection } from '../../item-key/memory-item-keys-projection';
 import { memoryItemsProjection } from '../../item/memory-items-projection';
 import { memoryLabelsProjection } from '../../label/memory-labels-projection';
 import { memoryProposalMergesProjection } from '../../proposal/memory-proposal-merges-projection';
@@ -19,6 +21,8 @@ export const memoryProjections: readonly Projection[] = [
   memoryProposalMergesProjection,
   memoryNoticesProjection,
   memoryForgottenEvidenceProjection,
+  memoryItemKeysProjection,
+  memoryEvidencePurgesProjection,
   momentsProjection,
   momentReflectionsProjection,
   momentLinksProjection,

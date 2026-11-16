@@ -1,7 +1,5 @@
 import type { MemorySubject, MemoryTables, StoreParts, VersionRef } from '../types';
-import { MemoryItemNotFoundError } from '../utils/error/memory-item-not-found-error';
 import { getRowSubject } from '../utils/get-row-subject';
-import { readItemKey } from '../utils/item/read-item-key';
 import { requireItem } from '../utils/item/require-item';
 import { readVersion } from '../version/read-version';
 
@@ -22,13 +20,11 @@ export async function readItemText(
   const db = parts.context.log.writer.db.$extendTables<MemoryTables>();
 
   const item = await requireItem(db, { target, operation, states: ['active'] });
-  const key = await readItemKey(parts.context.log, target.itemID);
 
-  if (key === null || key === undefined) {
-    throw new MemoryItemNotFoundError(target.itemID);
-  }
-
-  const version = await readVersion(db, key, { itemID: target.itemID, version: item.version });
+  const version = await readVersion(parts.context.log, parts.context.log.writer.db, {
+    itemID: target.itemID,
+    version: item.version,
+  });
 
   return {
     version: item.version,

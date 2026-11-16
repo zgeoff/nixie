@@ -1,9 +1,11 @@
 import { ImageSourceError } from './image-source-error';
+import { ItemPurgingError } from './item-purging-error';
 import { MemoryItemNotFoundError } from './memory-item-not-found-error';
 import { MemoryStateError } from './memory-state-error';
 import { NotPinnedError } from './not-pinned-error';
 import { PinnedCoreFullError } from './pinned-core-full-error';
 import { ProposalCapError } from './proposal-cap-error';
+import { QuotedRecordForgettingError } from './quoted-record-forgetting-error';
 import { SelfNoteError } from './self-note-error';
 import { StaleVersionError } from './stale-version-error';
 import { UntilPassedError } from './until-passed-error';
@@ -19,6 +21,8 @@ export function isWriteRefusal(error: unknown): error is Error {
     error instanceof ProposalCapError ||
     error instanceof SelfNoteError ||
     error instanceof ImageSourceError ||
+    error instanceof ItemPurgingError ||
+    error instanceof QuotedRecordForgettingError ||
     error instanceof UntilPassedError
   );
 }

@@ -171,6 +171,7 @@ test('it returns the items that match a query word for word, with their provenan
         image: null,
         model: null,
         approval: null,
+        isBridge: false,
       },
     ],
     next: null,

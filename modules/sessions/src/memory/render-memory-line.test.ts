@@ -17,6 +17,26 @@ test('it renders the target example for an approved conversation item from a pas
   ).toBe('b7kq2m9xza v3 · 13 Oct 2025 · you noted it · from a pasted page · Robin approved');
 });
 
+test('it renders a version a purge kept with no one who noted or said it', () => {
+  expect(
+    renderMemoryLine(
+      {
+        shortID: 'b7kq2m9xza',
+        shownVersion: 3,
+        recordedAt: Date.UTC(2025, 9, 13, 9, 30),
+        origin: 'owner',
+        source: 'owner',
+        approval: null,
+        isBridge: true,
+      },
+      { ownerName: 'Robin', defaultZone: 'UTC', now: new Date('2026-10-14T12:00:00Z') },
+      { ref: 'b7kq2m9xza v4', isRetirement: false },
+    ),
+  ).toBe(
+    'b7kq2m9xza v3 · 13 Oct 2025 · kept when a message it quoted was removed · replaced by b7kq2m9xza v4',
+  );
+});
+
 test.each([
   [{ origin: 'conversation', source: 'owner', approval: null }, 'you noted it · Robin said this'],
   [{ origin: 'conversation', source: 'untrusted', approval: null }, 'you noted it · unconfirmed'],

@@ -636,8 +636,8 @@ test("it forgets a started task's brief with the starter's recorded task.start c
   expect(outcome?.erasable.status).toBe('readable');
 
   expect(cleanupSessions.mock.calls).toStrictEqual([
-    [{ recordSequence: started.briefSequence }],
     [{ recordSequence: started.callSequence }],
+    [{ recordSequence: started.briefSequence }],
   ]);
 });
 
@@ -844,9 +844,9 @@ test('it forgets the request and the end of a report with its delivered message,
   ]);
 
   expect(cleanupSessions.mock.calls).toStrictEqual([
-    [{ recordSequence: delivered.sequence }],
     [{ recordSequence: requested.sequence }],
     [{ recordSequence: ended.sequence }],
+    [{ recordSequence: delivered.sequence }],
   ]);
 });
 

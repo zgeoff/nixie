@@ -132,10 +132,29 @@ export interface NixieTables {
     readonly epoch: number;
     readonly generation: number;
   };
+  readonly memory_evidence_purges: {
+    readonly purge_key: string;
+    readonly record_sequence: number;
+    readonly item_id: string;
+    readonly closed_sequence: number | null;
+    readonly purged_sequence: number | null;
+    readonly bridge_version: number | null;
+    readonly labels_revision: number | null;
+  };
   readonly memory_forgotten_evidence: {
     readonly evidence_key: string;
     readonly record_sequence: number;
     readonly item_id: string;
+  };
+  readonly memory_item_keys: {
+    readonly key_id: string;
+    readonly item_id: string;
+    readonly kind: string;
+    readonly version: number | null;
+    readonly sealed_evidence_quote: string | null;
+    readonly sealed_intent_quote: string | null;
+    readonly from_sequence: number;
+    readonly removed_sequence: number | null;
   };
   readonly memory_items: {
     readonly item_id: string;

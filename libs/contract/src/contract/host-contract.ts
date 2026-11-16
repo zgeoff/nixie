@@ -84,6 +84,8 @@ const historyVersionSchema = z.object({
   origin: memoryOriginSchema,
   source: contentSourceSchema,
   recordedAt: z.date(),
+  isRemoved: z.boolean(),
+  isBridge: z.boolean(),
   status: z.enum(['readable', 'shredded', 'unreadable']),
   text: z.string().nullable(),
 });

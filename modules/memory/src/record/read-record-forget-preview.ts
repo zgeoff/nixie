@@ -1,5 +1,5 @@
 import type { Log } from '@heynixie/log';
-import { readRecordKeys } from '@heynixie/log';
+import { readItemKeys } from '../item-key/read-item-keys';
 import type { MemoryTables } from '../types';
 import { decodeProposalText } from '../utils/decode-proposal-text';
 import type { MomentTables } from '../utils/moment-context';
@@ -75,23 +75,29 @@ async function readPurgeTexts(
   const proposals = await log.writer.db
     .$extendTables<MemoryTables>()
     .selectFrom('memory_proposals')
-    .select(['item_id', 'proposal_id', 'sealed'])
+    .select(['item_id', 'proposal_id', 'sealed', 'created_sequence'])
     .where('item_id', 'in', pendingIDs)
     .where('is_new_item', '=', 1)
     .where('status', '=', 'pending')
     .orderBy('created_sequence')
     .execute();
 
-  const keys = await readRecordKeys(
+  const keys = await readItemKeys(
     log,
-    proposals.map((row) => row.item_id),
+    proposals.map((row) => ({
+      value: 'proposal',
+      itemID: row.item_id,
+      sequence: row.created_sequence,
+    })),
   );
 
-  for (const row of proposals) {
-    const key = keys.get(row.item_id);
+  for (const [index, row] of proposals.entries()) {
+    const opened = keys[index];
 
-    if (key !== null && key !== undefined && !texts.has(row.item_id)) {
-      const decoded = await decodeProposalText(key, row.proposal_id, row.sealed).catch(() => null);
+    if (opened?.status === 'readable' && !texts.has(row.item_id)) {
+      const decoded = await decodeProposalText(opened.key, row.proposal_id, row.sealed).catch(
+        () => null,
+      );
 
       if (decoded !== null) {
         texts.set(row.item_id, decoded.text);

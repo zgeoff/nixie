@@ -1,5 +1,8 @@
 import type { Log } from '@heynixie/log';
-import { readRecordKeys } from '@heynixie/log';
+import { isBridgeLabels, isBridgeVersion, readBridgeMarks } from '../item-key/read-bridge-marks';
+import type { BridgeMarks } from '../item-key/read-bridge-marks';
+import { readItemKeys } from '../item-key/read-item-keys';
+import type { ItemValueKey } from '../item-key/types';
 import { itemLabelsCodec } from '../label/item-labels-codec';
 import { readMomentExport } from '../moment/read-moment-export';
 import type {
@@ -17,7 +20,8 @@ import { parseChecks } from '../utils/parse-checks';
 import { readPages } from '../utils/read-pages';
 import type { MemoryExport, MemoryExportItem } from '../utils/schema/memory-export-schema';
 import { memoryExportSchemaVersion } from '../utils/schema/memory-export-schema-version';
-import { readViewText } from '../view/read-view-text';
+import type { VersionValue } from '../version/read-version-values';
+import { readVersionValues } from '../version/read-version-values';
 
 export interface MemoryExportRequest {
   readonly exportedAt: number;
@@ -111,11 +115,29 @@ async function loadExportItems(
 ): Promise<readonly MemoryExportItem[]> {
   const readableIDs = rows.filter((row) => isReadable(row.state)).map((row) => row.item_id);
 
-  const [keys, versions, labels] = await Promise.all([
-    readRecordKeys(log, readableIDs),
+  const [versions, labels, marks] = await Promise.all([
     readVersionRows(log, readableIDs),
     readLabelRows(log, readableIDs),
+    readBridgeMarks(log.writer.db, readableIDs),
   ]);
+
+  const [values, labelKeys] = await Promise.all([
+    readVersionValues(log, log.writer.db, versions),
+    readItemKeys(
+      log,
+      labels.map((label) => ({
+        value: 'labels',
+        itemID: label.item_id,
+        sequence: label.sequence,
+      })),
+    ),
+  ]);
+
+  const valuesByVersion = new Map(
+    versions.map((version, index) => [buildVersionKey(version), values[index]]),
+  );
+
+  const keysByLabel = new Map(labels.map((label, index) => [label.sequence, labelKeys[index]]));
 
   const versionsByItem = Map.groupBy(versions, (row) => row.item_id);
   const labelsByItem = Map.groupBy(labels, (row) => row.item_id);
@@ -127,7 +149,9 @@ async function loadExportItems(
             { ...row, state: row.state },
             {
               log,
-              key: keys.get(row.item_id),
+              marks,
+              valuesByVersion,
+              keysByLabel,
               versions: versionsByItem.get(row.item_id) ?? [],
               labels: labelsByItem.get(row.item_id) ?? [],
             },
@@ -177,11 +201,17 @@ function readLabelRows(
     .execute();
 }
 
+function buildVersionKey(row: Pick<MemoryVersionRow, 'item_id' | 'version'>): string {
+  return `${row.item_id}/${String(row.version)}`;
+}
+
 type ReadableRow = Omit<ItemRow, 'state'> & { readonly state: 'active' | 'retired' };
 
 interface ItemParts {
   readonly log: ExportLog;
-  readonly key: CryptoKey | null | undefined;
+  readonly marks: BridgeMarks;
+  readonly valuesByVersion: ReadonlyMap<string, VersionValue | undefined>;
+  readonly keysByLabel: ReadonlyMap<number, ItemValueKey | undefined>;
   readonly versions: readonly MemoryVersionRow[];
   readonly labels: readonly MemoryLabelRow[];
 }
@@ -195,7 +225,7 @@ async function loadReadableItem(row: ReadableRow, parts: ItemParts): Promise<Mem
     state: row.state,
     isPinned: row.is_pinned === 1,
     subject: getRowSubject(row),
-    versions: await Promise.all(parts.versions.map((version) => loadExportVersion(version, parts))),
+    versions: parts.versions.map((version) => loadExportVersion(version, parts)),
     labels: labelHistory.at(-1)?.labels ?? null,
     labelHistory: labelHistory.map((entry) => entry.entry),
   };
@@ -210,19 +240,22 @@ interface ExportedLabels {
   readonly entry: LabelHistoryEntry;
 }
 
-// A label row that the item's key cannot open is left out, as a text version it cannot open reads
-// as no text.
-function readLabelHistory(itemID: string, parts: ItemParts): Promise<readonly ExportedLabels[]> {
-  const key = parts.key;
+// A label row that its key cannot open is left out, as a text version it cannot open reads as no
+// text.
+async function readLabelHistory(
+  itemID: string,
+  parts: ItemParts,
+): Promise<readonly ExportedLabels[]> {
+  const opened = await Promise.all(
+    parts.labels.map(async (row): Promise<ExportedLabels | null> => {
+      const key = parts.keysByLabel.get(row.sequence);
 
-  if (key === null || key === undefined) {
-    return Promise.resolve([]);
-  }
+      if (key?.status !== 'readable') {
+        return null;
+      }
 
-  return Promise.all(
-    parts.labels.map(async (row) => {
       const decoded = await itemLabelsCodec.decode(
-        key,
+        key.key,
         { itemID, revision: row.revision },
         row.sealed,
       );
@@ -231,29 +264,34 @@ function readLabelHistory(itemID: string, parts: ItemParts): Promise<readonly Ex
 
       return {
         labels,
-        entry: { revision: row.revision, version: row.version, change: row.change, ...labels },
+        entry: {
+          revision: row.revision,
+          version: row.version,
+          change: row.change,
+          isBridge: isBridgeLabels(parts.marks, itemID, row.revision),
+          ...labels,
+        },
       };
     }),
   );
+
+  return opened.filter((entry) => entry !== null);
 }
 
 type ExportVersion = Extract<MemoryExportItem, { versions: unknown }>['versions'][number];
 
-async function loadExportVersion(row: MemoryVersionRow, parts: ItemParts): Promise<ExportVersion> {
-  const opened = await readViewText(parts.key, {
-    itemID: row.item_id,
-    version: row.version,
-    sealed: row.sealed,
-  });
-
+function loadExportVersion(row: MemoryVersionRow, parts: ItemParts): ExportVersion {
+  const value = parts.valuesByVersion.get(buildVersionKey(row));
   const checks = row.checks === null ? null : parseChecks(row.checks);
 
   return {
     version: row.version,
     change: row.change,
     state: row.state,
-    text: opened.text.status === 'readable' ? opened.text.text : null,
-    evidenceQuote: opened.evidenceQuote,
+    text: value?.status === 'readable' ? value.text.text : null,
+    evidenceQuote: value?.status === 'readable' ? value.text.evidenceQuote : null,
+    isRemoved: value?.status === 'removed',
+    isBridge: isBridgeVersion(parts.marks, row.item_id, row.version),
     until: row.until === null ? null : new Date(row.until).toISOString(),
     provenance: {
       origin: row.origin,

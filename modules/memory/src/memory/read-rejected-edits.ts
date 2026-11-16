@@ -1,4 +1,4 @@
-import { readRecordKeys } from '@heynixie/log';
+import { readItemKeys } from '../item-key/read-item-keys';
 import type { MemoryTables, StoreParts } from '../types';
 import { decodeProposalText } from '../utils/decode-proposal-text';
 
@@ -19,6 +19,7 @@ export function readRejectedEdits(
         'memory_proposals.proposal_id',
         'memory_proposals.item_id',
         'memory_proposals.sealed',
+        'memory_proposals.created_sequence',
       ])
       .where('memory_proposals.proposal_id', 'in', proposalIDs)
       .where('memory_proposals.status', '=', 'rejected')
@@ -27,15 +28,19 @@ export function readRejectedEdits(
       .where('memory_items.state', 'in', ['active', 'retired'])
       .execute();
 
-    const keys = await readRecordKeys(
+    const keys = await readItemKeys(
       parts.context.log,
-      rows.map((row) => row.item_id),
+      rows.map((row) => ({
+        value: 'proposal',
+        itemID: row.item_id,
+        sequence: row.created_sequence,
+      })),
     );
 
-    const readable = rows.flatMap((row) => {
-      const key = keys.get(row.item_id);
+    const readable = rows.flatMap((row, index) => {
+      const opened = keys[index];
 
-      return key === undefined || key === null ? [] : [{ ...row, key }];
+      return opened?.status === 'readable' ? [{ ...row, key: opened.key }] : [];
     });
 
     const texts = await Promise.all(

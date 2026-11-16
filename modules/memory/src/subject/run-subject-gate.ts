@@ -8,10 +8,10 @@ import { requireImageSource } from '../image/require-image-source';
 import { runImageGate } from '../image/run-image-gate';
 import { collectLabelTexts } from '../label/collect-label-texts';
 import type { MemorySubject, MemoryTables, StoreParts } from '../types';
-import { SelfNoteError } from '../utils/error/self-note-error';
 import { getRowSubject } from '../utils/get-row-subject';
 import { requireItem } from '../utils/item/require-item';
 import { pickSubjectChangeReview } from './pick-subject-change-review';
+import { requireSelfNoteCaller } from './require-self-note-caller';
 
 export interface SubjectGateResult {
   readonly gate: ContentGateResult;
@@ -73,11 +73,9 @@ function runGateOfSubject(
   request: GatedRememberRequest,
   subjects: WriteSubjects,
 ): Promise<ContentGateResult> {
-  const isNewSelfNote =
-    subjects.newSubject === 'self' || (request.target === undefined && subjects.subject === 'self');
-
-  if (subjects.subject === 'self' || isNewSelfNote) {
-    requireSelfNoteWrite(request, isNewSelfNote);
+  // any write to a self-note, or into self, writes in nixie's voice
+  if (subjects.subject === 'self' || subjects.newSubject === 'self') {
+    requireSelfNoteCaller(request.caller);
   }
 
   const verdict = request.verdict;
@@ -91,7 +89,6 @@ function runGateOfSubject(
     labelTexts: request.labels === undefined ? [] : collectLabelTexts(request.labels),
     quote: request.quote ?? null,
     eventID: request.eventID ?? null,
-    isPinned: false,
     thread: request.caller.thread,
     logThread: request.caller.logThread,
     until: request.until ?? null,
@@ -118,12 +115,4 @@ function runGateOfSubject(
   }
 
   return runContentGate(parts.context, content, pickCoveringRule(verdict, 'none'));
-}
-
-function requireSelfNoteWrite(request: GatedRememberRequest, isNewSelfNote: boolean): void {
-  if (isNewSelfNote && request.caller.origin !== 'conversation') {
-    throw new SelfNoteError(
-      `only the conversation writes a self-note, and this write came from the ${request.caller.origin}`,
-    );
-  }
 }

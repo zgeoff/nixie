@@ -34,6 +34,7 @@ test('it finds an active item by a word in its text, with its keyword score', as
         version: 1,
         origin: 'owner',
         source: 'owner',
+        isBridge: false,
         createdAt: expect.toBeNumber(),
         changedAt: expect.toBeNumber(),
         forgottenAt: null,

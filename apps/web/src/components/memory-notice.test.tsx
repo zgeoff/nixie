@@ -255,6 +255,51 @@ test('it refuses an undo of an item that changed after the notice loaded, and ch
   ).toMatchObject([{ change: 'created' }, { change: 'edited' }]);
 });
 
+test('it refuses an undo whose earlier version was removed with a message it quoted, and changes nothing', async () => {
+  const ctx = await setupTest();
+
+  const message = await store.records.create({
+    kind: 'owner_message',
+    message: { text: 'I swim on Tuesdays' },
+  });
+
+  await store.records.create({ kind: 'model.reply', message: { text: 'Noted.' } });
+
+  const swims = await store.memoryItems.create({
+    shortID: 'q4m8tz',
+    versions: [
+      { isRemoved: true, text: 'Swims on Tuesdays' },
+      { change: 'edited', text: 'Swims on Thursdays' },
+    ],
+  });
+
+  await store.memoryNotices.create({
+    entries: [
+      { change: 'edited', itemID: swims.itemID, sequence: message.sequence + 1, version: 2 },
+    ],
+    kind: 'turn',
+    messageSequence: message.sequence,
+    noticeKey: `turn/conversation/${String(message.sequence)}`,
+  });
+
+  const rendered = render(<Conversation thread="conversation" />);
+
+  const notice = await rendered.findByRole('listitem', { name: 'Remembered 1 thing' });
+
+  await ctx.user.click(within(notice).getByRole('button', { name: 'View' }));
+  await ctx.user.click(within(notice).getByRole('button', { name: 'Undo' }));
+
+  const alert = await within(notice).findByRole('alert');
+
+  expect(alert).toHaveTextContent(
+    'Nothing changed: the earlier version was removed with a message it quoted.',
+  );
+
+  expect(
+    store.memoryItems.findFirst((query) => query.where({ itemID: swims.itemID }))?.versions,
+  ).toHaveLength(2);
+});
+
 test('it retires an item in one tap from the notice', async () => {
   const ctx = await setupTest();
 

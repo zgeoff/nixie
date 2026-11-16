@@ -213,6 +213,7 @@ const refusalNotices: Readonly<Record<string, string>> = {
   MEMORY_ITEM_NOT_FOUND: 'Nothing changed: this item is gone.',
   PINNED_CORE_FULL: 'Nothing changed: the pinned core has no room for the text this brings back.',
   STALE_VERSION: 'Nothing changed: this item changed after the notice.',
+  VERSION_REMOVED: 'Nothing changed: the earlier version was removed with a message it quoted.',
   WRONG_STATE: 'Nothing changed: this item moved to another state after the notice.',
 };
 

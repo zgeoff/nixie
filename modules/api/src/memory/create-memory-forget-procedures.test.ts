@@ -382,6 +382,7 @@ test('#memory.previewForgetRetired lists each retired item at its version with w
         changedAt: expect.toBeValidDate(),
         createdAt: expect.toBeValidDate(),
         forgottenAt: null,
+        isBridge: false,
         isPinned: false,
         itemID: item.itemID,
         kind: 'fact',

@@ -22,8 +22,10 @@ version and the snapshot hash of the definitions in force when the export ran, s
 the version before it reads the items. Each version also keeps the snapshot hash it was written
 under, because a version's checks only make sense against the definitions that ran them. A change to
 the shape raises the schema version, so a file from an older release holds the version of the shape
-it was written in. The schema reads only the current version, 10, so a file of an earlier version
-fails to read. Each span record carries a removal mark and an `images` list. The list holds a
+it was written in. The schema reads the current version, 11, and the version before it, 10, so a
+file of version 10 reads with no removed or bridge version. A file of any earlier version fails to
+read. Version 11 adds `isRemoved` and `isBridge` to each version and `isBridge` to each label
+history entry. Each span record carries a removal mark and an `images` list. The list holds a
 pointer to each image of an owner message, an `n` and a media type, and never the image's bytes. A
 file refuses a missing field that the version requires.
 

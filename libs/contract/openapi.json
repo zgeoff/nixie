@@ -6699,6 +6699,9 @@
                               }
                             ]
                           },
+                          "isBridge": {
+                            "type": "boolean"
+                          },
                           "isPinned": {
                             "type": "boolean"
                           },
@@ -6783,6 +6786,7 @@
                           "changedAt",
                           "createdAt",
                           "forgottenAt",
+                          "isBridge",
                           "isPinned",
                           "itemID",
                           "kind",
@@ -7057,6 +7061,9 @@
                               }
                             ]
                           },
+                          "isBridge": {
+                            "type": "boolean"
+                          },
                           "isPinned": {
                             "type": "boolean"
                           },
@@ -7147,6 +7154,7 @@
                           "changedAt",
                           "createdAt",
                           "forgottenAt",
+                          "isBridge",
                           "isPinned",
                           "itemID",
                           "kind",
@@ -7344,6 +7352,9 @@
                               }
                             ]
                           },
+                          "isBridge": {
+                            "type": "boolean"
+                          },
                           "isPinned": {
                             "type": "boolean"
                           },
@@ -7428,6 +7439,7 @@
                           "changedAt",
                           "createdAt",
                           "forgottenAt",
+                          "isBridge",
                           "isPinned",
                           "itemID",
                           "kind",
@@ -7632,6 +7644,9 @@
                           "type": "null"
                         }
                       ]
+                    },
+                    "isBridge": {
+                      "type": "boolean"
                     },
                     "isPinned": {
                       "type": "boolean"
@@ -7852,6 +7867,12 @@
                               }
                             ]
                           },
+                          "isBridge": {
+                            "type": "boolean"
+                          },
+                          "isRemoved": {
+                            "type": "boolean"
+                          },
                           "origin": {
                             "enum": [
                               "owner",
@@ -7936,6 +7957,8 @@
                           "evidence",
                           "evidenceQuote",
                           "image",
+                          "isBridge",
+                          "isRemoved",
                           "origin",
                           "proposalID",
                           "recordedAt",
@@ -7953,6 +7976,7 @@
                     "changedAt",
                     "createdAt",
                     "forgottenAt",
+                    "isBridge",
                     "isPinned",
                     "itemID",
                     "kind",
@@ -8943,6 +8967,9 @@
                                             }
                                           ]
                                         },
+                                        "isBridge": {
+                                          "type": "boolean"
+                                        },
                                         "isPinned": {
                                           "type": "boolean"
                                         },
@@ -9037,6 +9064,7 @@
                                         "changedAt",
                                         "createdAt",
                                         "forgottenAt",
+                                        "isBridge",
                                         "isPinned",
                                         "itemID",
                                         "kind",
@@ -9576,6 +9604,31 @@
                       "type": "object",
                       "properties": {
                         "defined": {
+                          "const": true
+                        },
+                        "code": {
+                          "const": "VERSION_REMOVED"
+                        },
+                        "status": {
+                          "const": 409
+                        },
+                        "message": {
+                          "type": "string",
+                          "default": "The earlier version was removed with a message it quoted"
+                        },
+                        "data": {}
+                      },
+                      "required": [
+                        "defined",
+                        "code",
+                        "status",
+                        "message"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "defined": {
                           "const": false
                         },
                         "code": {
@@ -10078,6 +10131,9 @@
                         }
                       ]
                     },
+                    "isBridge": {
+                      "type": "boolean"
+                    },
                     "isPinned": {
                       "type": "boolean"
                     },
@@ -10297,6 +10353,12 @@
                               }
                             ]
                           },
+                          "isBridge": {
+                            "type": "boolean"
+                          },
+                          "isRemoved": {
+                            "type": "boolean"
+                          },
                           "origin": {
                             "enum": [
                               "owner",
@@ -10381,6 +10443,8 @@
                           "evidence",
                           "evidenceQuote",
                           "image",
+                          "isBridge",
+                          "isRemoved",
                           "origin",
                           "proposalID",
                           "recordedAt",
@@ -10417,6 +10481,7 @@
                     "changedAt",
                     "createdAt",
                     "forgottenAt",
+                    "isBridge",
                     "isPinned",
                     "itemID",
                     "kind",
@@ -11130,6 +11195,9 @@
                               }
                             ]
                           },
+                          "isBridge": {
+                            "type": "boolean"
+                          },
                           "isPinned": {
                             "type": "boolean"
                           },
@@ -11233,6 +11301,7 @@
                           "changedAt",
                           "createdAt",
                           "forgottenAt",
+                          "isBridge",
                           "isPinned",
                           "itemID",
                           "kind",

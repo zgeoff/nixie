@@ -1,8 +1,9 @@
 import { createShortID } from '@heynixie/db';
 import { createRecordKey } from '@heynixie/log';
+import type { Kysely } from 'kysely';
+import { readCurrentItemKey } from '../item-key/read-current-item-key';
 import type { MemoryItemRow, StoreParts } from '../types';
 import { getItemShortID } from '../utils/item/get-item-short-id';
-import { readItemKey } from '../utils/item/read-item-key';
 
 export interface VersionKey {
   readonly itemID: string;
@@ -12,6 +13,7 @@ export interface VersionKey {
 
 export async function readVersionKey(
   parts: StoreParts,
+  db: Kysely<unknown>,
   newItemID: string | undefined,
   item: MemoryItemRow | null,
 ): Promise<VersionKey> {
@@ -19,7 +21,7 @@ export async function readVersionKey(
 
   const key = await (item === null && newItemID === undefined
     ? createItemKey(parts, itemID)
-    : requireKey(parts, itemID));
+    : requireKey(parts, db, itemID));
 
   return { itemID, key, shortID: item === null ? createShortID() : getItemShortID(item) };
 }
@@ -30,12 +32,16 @@ async function createItemKey(parts: StoreParts, itemID: string): Promise<CryptoK
   return created.key;
 }
 
-async function requireKey(parts: StoreParts, itemID: string): Promise<CryptoKey> {
-  const key = await readItemKey(parts.context.log, itemID);
+async function requireKey(
+  parts: StoreParts,
+  db: Kysely<unknown>,
+  itemID: string,
+): Promise<CryptoKey> {
+  const current = await readCurrentItemKey(parts.context.log, itemID, db);
 
-  if (key === null || key === undefined) {
+  if (current.status !== 'readable') {
     throw new Error(`memory item ${itemID} has no readable key`);
   }
 
-  return key;
+  return current.key;
 }

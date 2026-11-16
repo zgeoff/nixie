@@ -36,8 +36,9 @@ export async function runRecordForgetCleanup(
   }
 
   // Each destroyed record names its own cleanup, so the sessions of the started task and of the
-  // starter both rebuild.
-  for (const sequence of [recordSequence, ...startCalls]) {
+  // starter both rebuild. The forgotten record goes last, because its cleanup also purges the memory
+  // items that quote it, and every session must have rebuilt by then.
+  for (const sequence of [...startCalls, recordSequence]) {
     await cleanupSessions({ recordSequence: sequence });
   }
 

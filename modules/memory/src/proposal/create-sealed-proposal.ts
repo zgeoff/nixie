@@ -1,51 +1,62 @@
 import { createRecordKey } from '@heynixie/log';
+import { readCurrentItemKey } from '../item-key/read-current-item-key';
 import { proposalLabelsCodec } from '../label/proposal-labels-codec';
 import type { ProposalPlan } from '../memory/write-memory-proposal';
 import type { StoreParts } from '../types';
 import { MemoryItemNotFoundError } from '../utils/error/memory-item-not-found-error';
-import { readItemKey } from '../utils/item/read-item-key';
 import { buildProposalHash } from './build-proposal-hash';
 import { encodeProposalText } from './encode-proposal-text';
 import type { SealedProposal } from './write-proposal-record';
 
+export interface KeyedSealedProposal {
+  readonly sealed: SealedProposal;
+
+  // the key the proposal is sealed under
+  readonly keyID: string;
+}
+
 export async function createSealedProposal(
   parts: StoreParts,
   plan: ProposalPlan,
-): Promise<SealedProposal> {
+): Promise<KeyedSealedProposal> {
   const itemID = plan.target?.itemID ?? crypto.randomUUID();
 
   const key = await readProposalKey(parts, plan, itemID);
 
-  return sealProposal(key, plan, itemID);
+  return { sealed: await sealProposal(key, plan, itemID), keyID: key.keyID };
+}
+
+interface ProposalKey {
+  readonly keyID: string;
+  readonly key: CryptoKey;
 }
 
 async function readProposalKey(
   parts: StoreParts,
   plan: ProposalPlan,
   itemID: string,
-): Promise<CryptoKey> {
+): Promise<ProposalKey> {
   if (plan.target === null) {
-    const created = await createRecordKey(parts.context.log, itemID);
-
-    return created.key;
+    return createRecordKey(parts.context.log, itemID);
   }
 
-  const key = await readItemKey(parts.context.log, itemID);
+  const current = await readCurrentItemKey(parts.context.log, itemID);
 
-  if (key === null || key === undefined) {
+  if (current.status !== 'readable') {
     throw new MemoryItemNotFoundError(itemID);
   }
 
-  return key;
+  return current;
 }
 
 const saltBytes = 16;
 
 async function sealProposal(
-  key: CryptoKey,
+  proposalKey: ProposalKey,
   plan: ProposalPlan,
   itemID: string,
 ): Promise<SealedProposal> {
+  const key = proposalKey.key;
   const proposalID = crypto.randomUUID();
   const salt = Buffer.from(crypto.getRandomValues(new Uint8Array(saltBytes))).toString('base64');
 

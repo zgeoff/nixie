@@ -41,8 +41,10 @@ export function MemoryItemRow(props: MemoryItemRowProps): ReactNode {
       </p>
       <p className={meta}>
         {item.subject === 'self' ? <SelfNoteBadge /> : null}
-        {formatMemoryProvenance(item.origin, item.source)} · created{' '}
-        {formatMemoryDate(item.createdAt)}
+        {item.isBridge
+          ? 'kept when a message was removed'
+          : formatMemoryProvenance(item.origin, item.source)}{' '}
+        · created {formatMemoryDate(item.createdAt)}
         {item.isPinned ? ' · pinned' : ''}
       </p>
       {props.children}

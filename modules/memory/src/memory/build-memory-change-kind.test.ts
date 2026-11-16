@@ -7,7 +7,9 @@ import invariant from 'tiny-invariant';
 import { buildProposalAnswerKind } from '../proposal/build-proposal-answer-kind';
 import { createProposal } from '../test-utils/create-proposal';
 import { readItemShortID } from '../test-utils/read-item-short-id';
+import { seedBegunPurge } from '../test-utils/seed-begun-purge';
 import { startTestMemory } from '../test-utils/start-test-memory';
+import { writeOwnerMessageRecord } from '../test-utils/write-owner-message-record';
 import { buildMemoryChangeKind } from './build-memory-change-kind';
 
 async function setupTest() {
@@ -353,4 +355,38 @@ test('it leaves items a forget began out before the cap, so a later event still 
       ` · Avery approved your memory proposal ${buildShortIDFromUUID(proposal.proposalID)}: "Avery has two cats."`,
     ),
   ]);
+});
+
+test('it leaves out the bridge version that a purge wrote for an item changed outside the conversation', async () => {
+  const ctx = await setupTest();
+
+  const message = await writeOwnerMessageRecord(ctx.memory.log, {
+    thread: 'conversation',
+    text: 'I keep bees on the roof',
+    spans: [{ start: 0, end: 23, source: 'typed' }],
+  });
+
+  const item = await ctx.memory.store.remember({
+    text: 'Keeps bees on the roof',
+    evidence: { recordSequence: message, start: 0, end: 11 },
+    evidenceQuote: 'I keep bees',
+    provenance: {
+      origin: 'conversation',
+      source: 'owner',
+      taskID: 'conversation',
+      proposalID: null,
+      checks: null,
+    },
+  });
+
+  const registry = buildEventRegistry([buildMemoryChangeKind(ctx.memory.log, ctx.memory.store)]);
+  const settings = { ownerName: 'Avery', timeZone: 'UTC' };
+
+  await seedBegunPurge(ctx.memory.log, { recordSequence: message, itemIDs: [item.itemID] });
+
+  await ctx.memory.store.purgeItemEvidence({ recordSequence: message, itemID: item.itemID });
+
+  const after = await readEventsNote(registry, { after: 0, through: 100 }, settings);
+
+  expect(after).toBeNull();
 });

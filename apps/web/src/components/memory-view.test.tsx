@@ -356,3 +356,26 @@ test('it shows an item with who wrote it, from what, and when', async () => {
     /^Plays the celloby the conversation, from your own words · created Feb 1, 2026RetirePinForgetHistory$/u,
   );
 });
+
+test('it shows an item whose current version a purge kept as kept, never as your edit', async () => {
+  setupBrowserTimeZone('UTC');
+
+  await createDeviceSession();
+
+  await store.memoryItems.create({
+    shortID: 'k3m9qa',
+    versions: [
+      { isRemoved: true, recordedAt: new Date('2026-02-01T08:00:00Z'), text: 'Plays the cello' },
+      { change: 'edited', isBridge: true, origin: 'owner', text: 'Plays the cello on Thursdays' },
+    ],
+  });
+
+  const rendered = render(<MemoryView />);
+  const active = rendered.getByRole('region', { name: 'Active' });
+
+  const item = await within(active).findByRole('listitem', { name: 'k3m9qa' });
+
+  expect(item).toHaveTextContent(
+    /^Plays the cello on Thursdayskept when a message was removed · created Feb 1, 2026RetirePinForgetHistory$/u,
+  );
+});

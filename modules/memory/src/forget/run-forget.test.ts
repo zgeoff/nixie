@@ -80,6 +80,8 @@ test('it reads every version of a forgotten item as a gap', async () => {
         origin: 'owner',
         source: 'owner',
         recordedAt: expect.toBeNumber(),
+        isRemoved: false,
+        isBridge: false,
         status: 'shredded',
       },
       {
@@ -89,6 +91,8 @@ test('it reads every version of a forgotten item as a gap', async () => {
         origin: 'owner',
         source: 'owner',
         recordedAt: expect.toBeNumber(),
+        isRemoved: false,
+        isBridge: false,
         status: 'shredded',
       },
     ],

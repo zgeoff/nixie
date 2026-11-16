@@ -36,6 +36,7 @@ test('it reads a readable item with every version and a forgotten item as only i
             revision: 1,
             version: 1,
             change: 'backfilled',
+            isBridge: false,
             gist: 'Rents allotment plot 14',
             topic: 'owner',
             triggers: [],
@@ -48,6 +49,8 @@ test('it reads a readable item with every version and a forgotten item as only i
             state: 'active',
             text: 'Rents allotment plot 14',
             evidenceQuote: 'the allotment plot is number 14',
+            isRemoved: false,
+            isBridge: false,
             until: null,
             provenance: {
               origin: 'owner',
@@ -139,12 +142,12 @@ test('it reads a kept moment with its span', async () => {
   });
 });
 
-test('it heads the file with schema version 10, the export time and the mock snapshot hash', () => {
+test('it heads the file with schema version 11, the export time and the mock snapshot hash', () => {
   const chunks = readMockMemoryExport(new Date('2026-10-14T08:00:00.000Z'));
 
   expect(JSON.parse(chunks.join(''))).toStrictEqual({
     header: {
-      schemaVersion: 10,
+      schemaVersion: 11,
       exportedAt: '2026-10-14T08:00:00.000Z',
       snapshotHash: 'sha256:mock',
     },
@@ -162,5 +165,27 @@ test('it reads a version whose text fails to open with no text and no quote', as
 
   expect(JSON.parse(chunks.join(''))).toMatchObject({
     items: [{ versions: [{ text: null, evidenceQuote: null }] }],
+  });
+});
+
+test('it marks a removed version and a bridge version, and leaves the removed one with no text and no quote', async () => {
+  await store.memoryItems.create({
+    versions: [
+      { evidenceQuote: 'plot 14', isRemoved: true, text: 'Rents allotment plot 14' },
+      { change: 'edited', isBridge: true, text: 'Rents allotment plot 15' },
+    ],
+  });
+
+  const chunks = readMockMemoryExport(new Date('2026-10-14T08:00:00.000Z'));
+
+  expect(JSON.parse(chunks.join(''))).toMatchObject({
+    items: [
+      {
+        versions: [
+          { text: null, evidenceQuote: null, isRemoved: true, isBridge: false },
+          { text: 'Rents allotment plot 15', isRemoved: false, isBridge: true },
+        ],
+      },
+    ],
   });
 });

@@ -14,6 +14,7 @@ test('it builds a default entry for an item created at version 1', () => {
       changedAt: expect.toBeValidDate(),
       createdAt: expect.toBeValidDate(),
       forgottenAt: null,
+      isBridge: false,
       isPinned: false,
       itemID: expect.toBeString(),
       kind: 'fact',

@@ -4,6 +4,7 @@ import invariant from 'tiny-invariant';
 import { startTestMemory } from '../test-utils';
 import { buildMockCheckerAnswer } from '../test-utils/build-mock-checker-answer';
 import { buildMockToolContext } from '../test-utils/build-mock-tool-context';
+import { seedBegunPurge } from '../test-utils/seed-begun-purge';
 import { writeOwnerMessageRecord } from '../test-utils/write-owner-message-record';
 import type { MemoryTables } from '../types';
 import { buildRememberTool } from './build-remember-tool';
@@ -99,6 +100,40 @@ test('it answers an end time that has passed with a tool error', async () => {
   expect(outcome).toStrictEqual({
     status: 'error',
     message: 'the end time 2026-10-25T23:59:59.000Z has passed; it is now 2026-10-26T08:30:00.000Z',
+  });
+});
+
+test('it answers a quote of a message whose forget began with a tool error that says to write it again with no quote and no event ID', async () => {
+  const memory = await startTestMemory({
+    gate: { check: () => Promise.resolve(buildMockCheckerAnswer()) },
+  });
+
+  const sequence = await writeOwnerMessageRecord(memory.log, {
+    thread: 'conversation',
+    text: 'I grow chillies on the windowsill',
+    spans: [{ start: 0, end: 33, source: 'typed' }],
+  });
+
+  await seedBegunPurge(memory.log, { recordSequence: sequence, itemIDs: [] });
+
+  const outcome = await buildRememberTool(memory.store).run(
+    {
+      callID: 'call-1',
+      tool: 'memory.remember',
+      input: {
+        gist: 'a gist',
+        topic: 'a topic',
+        text: 'Grows chillies on the windowsill',
+        quote: 'I grow chillies on the windowsill',
+      },
+      toolUseID: null,
+    },
+    buildMockToolContext(),
+  );
+
+  expect(outcome).toStrictEqual({
+    status: 'error',
+    message: `the message at sequence ${String(sequence)} was removed, so a quote of it cannot back this write. Write it again with no quote and no event ID`,
   });
 });
 

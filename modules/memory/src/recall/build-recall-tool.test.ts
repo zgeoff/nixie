@@ -11,6 +11,7 @@ import type { TestMemoryOptions } from '../test-utils';
 import { buildMockProvenance } from '../test-utils/build-mock-provenance';
 import { buildMockWriteCaller } from '../test-utils/build-mock-write-caller';
 import { readItemShortID } from '../test-utils/read-item-short-id';
+import { seedBegunPurge } from '../test-utils/seed-begun-purge';
 import { startTestMemory } from '../test-utils/start-test-memory';
 import { writeOwnerMessageRecord } from '../test-utils/write-owner-message-record';
 
@@ -806,4 +807,51 @@ test.each([
   const ctx = await setupTest();
 
   expect(ctx.tool.parseInput(input)).toMatchObject({ isValid: false });
+});
+
+test('it shows the version a purge kept as kept, never as an edit the owner said', async () => {
+  const ctx = await setupTest();
+
+  const text = 'I keep bees on the allotment.';
+
+  const recordSequence = await writeOwnerMessageRecord(ctx.memory.log, {
+    thread: 'conversation',
+    text,
+    spans: [{ start: 0, end: text.length, source: 'typed' }],
+  });
+
+  const first = await ctx.memory.store.remember({
+    text: 'Keeps bees on the allotment',
+    evidence: { recordSequence, start: 0, end: 11 },
+    evidenceQuote: 'I keep bees',
+    provenance: buildMockProvenance(),
+  });
+
+  await ctx.memory.store.remember({
+    text: 'Keeps two hives on the allotment',
+    target: first,
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  await seedBegunPurge(ctx.memory.log, { recordSequence, itemIDs: [first.itemID] });
+
+  await ctx.memory.store.purgeItemEvidence({ recordSequence, itemID: first.itemID });
+
+  const shortID = await readItemShortID(ctx.memory.log, first.itemID);
+  const outcome = await ctx.recallOutcome({ itemIDs: [shortID], includeHistory: true });
+
+  invariant(outcome.status === 'ok');
+
+  const versionSchema = z.object({ change: z.string(), about: z.string() });
+  const itemSchema = versionSchema.extend({ history: z.array(versionSchema) });
+  const page = z.object({ items: z.array(itemSchema) }).parse(outcome.result);
+
+  const aboutPattern = new RegExp(
+    `^${shortID} v\\d+ · [^·]+ · kept when a message it quoted was removed$`,
+    'u',
+  );
+
+  const kept = { change: 'kept', about: expect.stringMatching(aboutPattern) };
+
+  expect(page.items).toStrictEqual([{ ...kept, history: [kept] }]);
 });

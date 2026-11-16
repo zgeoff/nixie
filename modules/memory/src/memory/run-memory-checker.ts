@@ -42,9 +42,5 @@ export async function runMemoryChecker(
     return buildGateReview(pickCheckerReviewReason(answer), detail);
   }
 
-  if (request.isPinned) {
-    return buildGateReview('pinned', detail);
-  }
-
   return { status: 'pass', source: 'owner', evidence: found.evidence, checks };
 }

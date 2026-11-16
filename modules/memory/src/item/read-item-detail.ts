@@ -1,14 +1,15 @@
 import type { Log, LogTables } from '@heynixie/log';
 import { readEvidenceMessage } from '../evidence/read-evidence-message';
 import { findImageSource } from '../image/find-image-source';
+import { isBridgeVersion, readBridgeMarks } from '../item-key/read-bridge-marks';
 import type { MemoryTables, MemoryVersionRow } from '../types';
 import { findCheckerModel } from '../utils/checker/find-checker-model';
-import { readItemKey } from '../utils/item/read-item-key';
 import { parseChecks } from '../utils/parse-checks';
 import { parseEvidence } from '../utils/parse-evidence';
 import type { EvidenceMessage, ViewItemDetail, ViewVersion } from '../view/memory-view';
 import { readViewItems } from '../view/read-view-items';
-import { readViewText } from '../view/read-view-text';
+import type { OpenedVersion } from '../view/read-view-texts';
+import { readViewTexts } from '../view/read-view-texts';
 
 export async function readItemDetail(
   log: Pick<Log, 'deploymentKey' | 'writer'>,
@@ -28,7 +29,8 @@ export async function readItemDetail(
     .orderBy('version')
     .execute();
 
-  const key = await readItemKey(log, itemID);
+  const opened = await readViewTexts(log, log.writer.db, rows);
+  const marks = await readBridgeMarks(log.writer.db, [itemID]);
 
   const messages = new Map<number, Promise<EvidenceMessage>>();
 
@@ -43,7 +45,14 @@ export async function readItemDetail(
   const readThread = (sequence: number): Promise<string | null> => readRecordThread(log, sequence);
 
   const versions = await Promise.all(
-    rows.map((row) => readViewVersion(row, { key, readMessage, readThread })),
+    rows.map((row, index) =>
+      readViewVersion(row, {
+        opened: opened[index],
+        isBridge: isBridgeVersion(marks, itemID, row.version),
+        readMessage,
+        readThread,
+      }),
+    ),
   );
 
   return { ...item, versions };
@@ -64,7 +73,8 @@ async function readRecordThread(
 }
 
 interface VersionReaders {
-  readonly key: CryptoKey | null | undefined;
+  readonly opened: OpenedVersion | undefined;
+  readonly isBridge: boolean;
   readonly readMessage: (sequence: number) => Promise<EvidenceMessage>;
   readonly readThread: (sequence: number) => Promise<string | null>;
 }
@@ -73,11 +83,11 @@ async function readViewVersion(
   row: MemoryVersionRow,
   readers: VersionReaders,
 ): Promise<ViewVersion> {
-  const opened = await readViewText(readers.key, {
-    itemID: row.item_id,
-    version: row.version,
-    sealed: row.sealed,
-  });
+  const opened = readers.opened ?? {
+    text: { status: 'unreadable' },
+    evidenceQuote: null,
+    isRemoved: false,
+  };
 
   const evidence = parseEvidence(row.evidence);
   const checks = row.checks === null ? null : parseChecks(row.checks);
@@ -109,6 +119,8 @@ async function readViewVersion(
                 : null,
           },
     image: image === null || thread === null ? null : { thread, ...image },
+    isRemoved: opened.isRemoved,
+    isBridge: readers.isBridge,
     ...opened.text,
   };
 }

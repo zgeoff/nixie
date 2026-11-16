@@ -10,7 +10,7 @@ export interface CloseMatchQuery {
 
   readonly subject?: MemorySubject;
 
-  readonly db?: Kysely<MemoryTables>;
+  readonly db?: Kysely<unknown>;
 }
 
 const candidateLimit = 5;
@@ -50,11 +50,12 @@ export async function readCloseMatch(
 async function readExcludedIDs(
   parts: StoreParts,
   subject: MemorySubject,
-  db: Kysely<MemoryTables> | undefined,
+  db: Kysely<unknown> | undefined,
 ): Promise<readonly string[]> {
   const now = parts.context.gate.clock.now();
 
-  const rows = await (db ?? parts.context.log.writer.db.$extendTables<MemoryTables>())
+  const rows = await (db ?? parts.context.log.writer.db)
+    .$extendTables<MemoryTables>()
     .selectFrom('memory_items')
     .select('item_id')
     .where('state', '=', 'active')
@@ -67,7 +68,7 @@ async function readExcludedIDs(
 async function readCandidates(
   parts: StoreParts,
   itemIDs: readonly string[],
-  db: Kysely<MemoryTables> | undefined,
+  db: Kysely<unknown> | undefined,
 ): Promise<readonly RecalledItem[]> {
   if (db !== undefined) {
     return readDeliverableItems(parts, { itemIDs, states: ['active'], includeHistory: false, db });

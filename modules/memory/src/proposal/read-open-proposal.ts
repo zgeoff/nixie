@@ -1,11 +1,11 @@
 import type { MemoryProposalRow, ProposalAnswer } from '../gate/gate-context';
+import { readItemKeys } from '../item-key/read-item-keys';
 import { proposalLabelsCodec } from '../label/proposal-labels-codec';
 import { requirePendingProposal } from '../pending/require-pending-proposal';
 import type { Labels, MemoryTables, StoreParts } from '../types';
 import type { ProposalText } from '../utils/codec/sealed-codec';
 import { decodeProposalText } from '../utils/decode-proposal-text';
 import { MemoryItemNotFoundError } from '../utils/error/memory-item-not-found-error';
-import { readItemKey } from '../utils/item/read-item-key';
 
 export interface OpenedProposal {
   readonly row: MemoryProposalRow;
@@ -28,11 +28,15 @@ export async function readOpenProposal(
     },
   );
 
-  const key = await readItemKey(parts.context.log, row.item_id);
+  const [opened] = await readItemKeys(parts.context.log, [
+    { value: 'proposal', itemID: row.item_id, sequence: row.created_sequence },
+  ]);
 
-  if (key === null || key === undefined) {
+  if (opened?.status !== 'readable') {
     throw new MemoryItemNotFoundError(row.item_id);
   }
+
+  const key = opened.key;
 
   const text = await decodeProposalText(key, row.proposal_id, row.sealed);
 

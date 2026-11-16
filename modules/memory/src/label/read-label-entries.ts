@@ -1,17 +1,23 @@
-import { readRecordKeys } from '@heynixie/log';
 import type { Kysely } from 'kysely';
+import { readItemKeys } from '../item-key/read-item-keys';
 import type { Labels, MemoryTables, StoreParts } from '../types';
 import { itemLabelsCodec } from './item-labels-codec';
 
 // The row with the highest sequence of each active or retired item holds its labels.
 export async function readLabelEntries(
   parts: Pick<StoreParts, 'context'>,
-  db: Kysely<MemoryTables> = parts.context.log.writer.db.$extendTables<MemoryTables>(),
+  db: Kysely<unknown> = parts.context.log.writer.db,
 ): Promise<ReadonlyMap<string, Labels>> {
   const rows = await db
+    .$extendTables<MemoryTables>()
     .selectFrom('memory_labels')
     .innerJoin('memory_items', 'memory_items.item_id', 'memory_labels.item_id')
-    .select(['memory_labels.item_id', 'memory_labels.revision', 'memory_labels.sealed'])
+    .select([
+      'memory_labels.item_id',
+      'memory_labels.revision',
+      'memory_labels.sealed',
+      'memory_labels.sequence',
+    ])
     .where('memory_items.state', 'in', ['active', 'retired'])
     .where('memory_labels.sequence', '=', (eb) =>
       eb
@@ -21,19 +27,20 @@ export async function readLabelEntries(
     )
     .execute();
 
-  const keys = await readRecordKeys(
+  const keys = await readItemKeys(
     parts.context.log,
-    rows.map((row) => row.item_id),
+    rows.map((row) => ({ value: 'labels', itemID: row.item_id, sequence: row.sequence })),
+    db,
   );
 
   const entries = new Map<string, Labels>();
 
-  for (const row of rows) {
-    const key = keys.get(row.item_id);
+  for (const [index, row] of rows.entries()) {
+    const opened = keys[index];
 
-    if (key !== null && key !== undefined) {
+    if (opened?.status === 'readable') {
       const labels = await itemLabelsCodec.decode(
-        key,
+        opened.key,
         { itemID: row.item_id, revision: row.revision },
         row.sealed,
       );

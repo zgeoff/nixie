@@ -14,6 +14,7 @@ interface ChangeErrors {
   readonly STALE_VERSION: () => Error;
   readonly WRONG_STATE: () => Error;
   readonly PINNED_CORE_FULL?: () => Error;
+  readonly VERSION_REMOVED?: () => Error;
 }
 
 interface ChangeCall {

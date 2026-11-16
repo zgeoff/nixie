@@ -177,8 +177,8 @@ test("it finishes a brief's forget on the pending-forget rerun after a crash tha
   ]);
 
   expect(cleanupSessions.mock.calls).toStrictEqual([
-    [{ recordSequence: started.briefSequence }],
     [{ recordSequence: started.callSequence }],
+    [{ recordSequence: started.briefSequence }],
   ]);
 
   expect(forgotten).toHaveLength(1);
@@ -277,8 +277,8 @@ test("it removes the key of the starter's start call when the process died befor
   ]);
 
   expect(cleanupSessions.mock.calls).toStrictEqual([
-    [{ recordSequence: started.briefSequence }],
     [{ recordSequence: started.callSequence }],
+    [{ recordSequence: started.briefSequence }],
   ]);
 
   expect(forgotten).toHaveLength(1);
@@ -339,8 +339,8 @@ test("it cleans the starter's session on the rerun of a forget whose unanswered 
   );
 
   expect(cleanupSessions.mock.calls).toStrictEqual([
-    [{ recordSequence: started.briefSequence }],
     [{ recordSequence: started.callSequence }],
+    [{ recordSequence: started.briefSequence }],
   ]);
 });
 

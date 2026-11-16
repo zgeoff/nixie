@@ -3,6 +3,7 @@ interface MemoryChangeErrors {
   readonly STALE_VERSION: () => Error;
   readonly WRONG_STATE?: () => Error;
   readonly PINNED_CORE_FULL?: () => Error;
+  readonly VERSION_REMOVED?: () => Error;
 }
 
 export function toMemoryChangeError(error: unknown, errors: MemoryChangeErrors): unknown {
@@ -14,6 +15,7 @@ export function toMemoryChangeError(error: unknown, errors: MemoryChangeErrors):
     WRONG_STATE: errors.WRONG_STATE,
     SELF_NOTE_REFUSED: errors.WRONG_STATE,
     PINNED_CORE_FULL: errors.PINNED_CORE_FULL,
+    VERSION_REMOVED: errors.VERSION_REMOVED,
   };
 
   const buildError = typeof code === 'string' ? byCode[code] : undefined;

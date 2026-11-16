@@ -23,7 +23,7 @@ export function writePin(
 
   return parts.lock(() =>
     withWriteTransaction(log.writer, async (tx) => {
-      await extras.requireInTransaction?.(tx.$extendTables<MemoryTables>());
+      await extras.requireInTransaction?.(tx);
       await request.writeInTransaction?.(tx);
 
       await requirePinnableItem(parts, tx, request);
@@ -66,7 +66,7 @@ async function requirePinnableItem(
   }
 
   if (request.isPinned) {
-    await requireItemJoinsCore(parts, db, { itemID: request.itemID, ...item });
+    await requireItemJoinsCore(parts, tx, { itemID: request.itemID, ...item });
   }
 }
 
@@ -76,7 +76,7 @@ interface PinnedItem extends ItemEnd {
 
 async function requireItemJoinsCore(
   parts: StoreParts,
-  db: Kysely<MemoryTables>,
+  db: Kysely<unknown>,
   item: PinnedItem,
 ): Promise<void> {
   const state = isItemLapsed(item, parts.context.gate.clock.now()) ? 'retired' : item.state;
@@ -90,7 +90,7 @@ async function requireItemJoinsCore(
 
 async function requireItemCoreRoom(
   parts: StoreParts,
-  db: Kysely<MemoryTables>,
+  db: Kysely<unknown>,
   itemID: string,
 ): Promise<void> {
   const pinned = await readPinnedItems(parts, db);

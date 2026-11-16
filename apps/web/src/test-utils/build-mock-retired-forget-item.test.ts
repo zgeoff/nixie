@@ -6,6 +6,7 @@ test('it builds a readable retired item at version 2 that destroys nothing beyon
     changedAt: expect.toBeValidDate(),
     createdAt: expect.toBeValidDate(),
     forgottenAt: null,
+    isBridge: false,
     isPinned: false,
     itemID: expect.toBeString(),
     kind: 'fact',

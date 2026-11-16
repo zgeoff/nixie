@@ -87,6 +87,8 @@ test('it exports an active item with its text, its quote and its provenance, and
           state: 'active',
           text: 'Rents allotment plot 14',
           evidenceQuote: 'the allotment plot is number 14',
+          isRemoved: false,
+          isBridge: false,
           until: null,
           provenance: {
             origin: 'conversation',
@@ -178,7 +180,7 @@ test("it heads the file with the export time, the schema version and the definit
 
   expect(JSON.parse(text)).toStrictEqual({
     header: {
-      schemaVersion: 10,
+      schemaVersion: 11,
       exportedAt: '2026-10-14T08:00:00.000Z',
       snapshotHash: 'sha256:4be1c0',
     },

@@ -75,8 +75,6 @@ export interface WriteCaller {
   readonly taskID: string;
   readonly runID: string;
   readonly model: string;
-
-  readonly batchID?: string;
 }
 
 export interface GatedRememberRequest {

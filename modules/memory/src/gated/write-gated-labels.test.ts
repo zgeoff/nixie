@@ -4,6 +4,7 @@ import invariant from 'tiny-invariant';
 import { buildMockWriteCaller, startTestMemory } from '../test-utils';
 import { buildMockProvenance } from '../test-utils/build-mock-provenance';
 import type { MemoryTables } from '../types';
+import { SelfNoteError } from '../utils/error/self-note-error';
 
 test('it records a pass for the token check when the labels add no number the text lacks', async () => {
   const memory = await startTestMemory();
@@ -304,4 +305,32 @@ test('it never runs the checker for a label-only edit', async () => {
   });
 
   expect(checked).toStrictEqual([]);
+});
+
+test("it refuses a task's label-only edit of a self-note, and writes nothing", async () => {
+  const memory = await startTestMemory();
+
+  const note = await memory.store.remember({
+    text: 'I like tidy lists',
+    subject: 'self',
+    labels: { gist: 'tidy lists', topic: 'self', triggers: [] },
+    provenance: buildMockProvenance(),
+  });
+
+  const write = memory.store.writes.editLabels({
+    target: note,
+    labels: { gist: 'tidy dated lists', topic: 'self', triggers: [] },
+    caller: buildMockWriteCaller({ origin: 'task', thread: 'task-1', taskID: 'task-1' }),
+  });
+
+  await Promise.allSettled([write]);
+
+  const pending = await memory.store.proposals.listPending();
+
+  expect(write).rejects.toThrowWithMessage(
+    SelfNoteError,
+    'only the conversation writes a self-note, and this write came from the task',
+  );
+
+  expect(pending).toStrictEqual([]);
 });

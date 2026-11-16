@@ -43,6 +43,7 @@ test('it reads every pinned active item in the order you pinned them', async () 
       image: null,
       model: null,
       approval: null,
+      isBridge: false,
     },
     {
       itemID: name.itemID,
@@ -64,6 +65,7 @@ test('it reads every pinned active item in the order you pinned them', async () 
       image: null,
       model: null,
       approval: null,
+      isBridge: false,
     },
   ]);
 });

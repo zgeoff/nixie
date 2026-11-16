@@ -11,7 +11,7 @@ export type PendingPin = Omit<CorePin, 'approval'> & Pick<Provenance, 'proposalI
 
 export async function requireVersionCoreRoom(
   parts: StoreParts,
-  db: Kysely<MemoryTables>,
+  db: Kysely<unknown>,
   pin: PendingPin,
 ): Promise<void> {
   const [pinned, approval] = await Promise.all([
@@ -23,7 +23,7 @@ export async function requireVersionCoreRoom(
 }
 
 async function readProposalApproval(
-  db: Kysely<MemoryTables>,
+  db: Kysely<unknown>,
   proposalID: string | null,
 ): Promise<MemoryApproval | null> {
   if (proposalID === null) {
@@ -31,6 +31,7 @@ async function readProposalApproval(
   }
 
   const proposal = await db
+    .$extendTables<MemoryTables>()
     .selectFrom('memory_proposals')
     .select(['operation', 'review_reason as reason'])
     .where('proposal_id', '=', proposalID)

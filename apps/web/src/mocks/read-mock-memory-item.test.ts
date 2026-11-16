@@ -38,6 +38,8 @@ test('it reads each version with its provenance and its quote inside the message
       },
       evidenceQuote: 'my sister Ana lives in Porto',
       image: null,
+      isBridge: false,
+      isRemoved: false,
       origin: 'conversation',
       proposalID: null,
       recordedAt: new Date('2026-03-01T09:00:00Z'),

@@ -37,6 +37,9 @@ export interface MemoryItem extends MemoryRef {
   readonly evidenceQuote: string | null;
 
   readonly approval: MemoryApproval | null;
+
+  // true for a version a purge wrote, which no one noted or said
+  readonly isBridge?: boolean;
 }
 
 export interface MemoryApproval {
