@@ -1,7 +1,8 @@
-import { expect, onTestFinished, test } from 'bun:test';
+import { expect, mock, onTestFinished, test } from 'bun:test';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import type { Logger } from '@heynixie/logger';
 import type { PeriodStore } from '../types';
 import { createPeriodStore } from './create-period-store';
 
@@ -12,13 +13,29 @@ async function setupTest(startAt: string) {
 
   const path = join(directory, 'counter.json');
   let current = Date.parse(startAt);
+  const log = mock<Logger>(() => {});
 
-  const store = await createPeriodStore({ path, zone: 'Europe/London', now: () => current });
+  const store = await createPeriodStore({
+    path,
+    zone: 'Europe/London',
+    now: () => current,
+    readOverride: () => Promise.resolve(null),
+    log,
+  });
 
   return {
     store,
     path,
     directory,
+    log,
+    startAgain: () =>
+      createPeriodStore({
+        path,
+        zone: 'Europe/London',
+        now: () => current,
+        readOverride: () => Promise.resolve(null),
+        log,
+      }),
     moveTo: (instant: string) => {
       current = Date.parse(instant);
     },
@@ -49,8 +66,22 @@ test('it starts a store with no limit, a zero count and the day and month in for
     version: 2,
     lost: false,
     periods: {
-      day: { start: '2026-11-13', dollars: 0, tokens: 0, limit: null, raise: null },
-      month: { start: '2026-11-01', dollars: 0, tokens: 0, limit: null, raise: null },
+      day: {
+        start: '2026-11-13',
+        dollars: 0,
+        tokens: 0,
+        limit: null,
+        raise: null,
+        trippedAt: null,
+      },
+      month: {
+        start: '2026-11-01',
+        dollars: 0,
+        tokens: 0,
+        limit: null,
+        raise: null,
+        trippedAt: null,
+      },
     },
     sandboxes: {},
   };
@@ -60,14 +91,70 @@ test('it starts a store with no limit, a zero count and the day and month in for
   expect(stored).toStrictEqual(expected);
 });
 
-test('it refuses to start on a file in the shape of a limits count', async () => {
+test('it rewrites a limits count file as a fresh periods store at start', async () => {
   const ctx = await setupTest('2026-11-13T10:00:00Z');
 
   await writeFile(ctx.path, '{"dollars":1,"tokens":2}');
 
-  expect(
-    createPeriodStore({ path: ctx.path, zone: 'Europe/London', now: () => 0 }),
-  ).rejects.toThrow();
+  await ctx.startAgain();
+
+  const stored = await ctx.readFile();
+
+  expect(stored).toStrictEqual({
+    version: 2,
+    periods: {
+      day: {
+        start: '2026-11-13',
+        dollars: 0,
+        tokens: 0,
+        limit: null,
+        raise: null,
+        trippedAt: null,
+      },
+      month: {
+        start: '2026-11-01',
+        dollars: 0,
+        tokens: 0,
+        limit: null,
+        raise: null,
+        trippedAt: null,
+      },
+    },
+    sandboxes: {},
+  });
+});
+
+test('it keeps the lost mark of a limits count file that it rewrites at start', async () => {
+  const ctx = await setupTest('2026-11-13T10:00:00Z');
+
+  await writeFile(ctx.path, '{"dollars":1,"tokens":2,"lost":true}');
+
+  const store = await ctx.startAgain();
+  const stored = await store.read();
+
+  expect(stored.lost).toBeTrue();
+});
+
+test('it logs the old totals when it rewrites a limits count file', async () => {
+  const ctx = await setupTest('2026-11-13T10:00:00Z');
+
+  await writeFile(ctx.path, '{"dollars":1,"tokens":2}');
+
+  await ctx.startAgain();
+
+  expect(ctx.log).toHaveBeenCalledWith(
+    'store.moved',
+    { dollars: 1, tokens: 2, lost: false },
+    'warn',
+  );
+});
+
+test('it refuses to start on a file in neither shape', async () => {
+  const ctx = await setupTest('2026-11-13T10:00:00Z');
+
+  await writeFile(ctx.path, '{"version":1}');
+
+  expect(ctx.startAgain()).rejects.toThrow();
 });
 
 test('it adds a reply to the day, the month and the sandbox in one write', async () => {
@@ -88,7 +175,7 @@ test('it counts a reply from a sandbox the store lacks on the day and the month 
   const ctx = await setupTest('2026-11-13T10:00:00Z');
   const after = await ctx.store.addSpend('ghost', { dollars: 1, tokens: 10 });
 
-  expect(after).toMatchObject({
+  expect(after.store).toMatchObject({
     periods: { day: { dollars: 1 }, month: { dollars: 1 } },
     sandboxes: {},
   });
@@ -137,6 +224,7 @@ test('it resets the day at local midnight in the zone and keeps its limit, drops
         tokens: 0,
         limit: { dollars: 60, tokens: 80_000_000 },
         raise: null,
+        trippedAt: null,
       },
       month: { start: '2026-06-01', dollars: 7 },
     },
@@ -204,7 +292,9 @@ test('it counts a reply after midnight in the new day and in the month once', as
 
   const after = await ctx.store.addSpend(null, { dollars: 2, tokens: 20 });
 
-  expect([after.periods.day.dollars, after.periods.month.dollars]).toStrictEqual([2, 3]);
+  expect([after.store.periods.day.dollars, after.store.periods.month.dollars]).toStrictEqual([
+    2, 3,
+  ]);
 });
 
 test('it keeps the lost mark through a reset and writes the field only while it stands', async () => {

@@ -2,15 +2,8 @@ import { timingSafeEqual } from 'node:crypto';
 import type { Logger } from '@heynixie/logger';
 import { toErrorFields } from '@heynixie/logger';
 import { z } from 'zod';
-import { readOverride } from '../override/read-override';
 import { sandboxNameSchema } from '../periods/sandbox-name-schema';
-import type {
-  Override,
-  PeriodChange,
-  PeriodStore,
-  PeriodStoreHandle,
-  PeriodsConfig,
-} from '../types';
+import type { PeriodChange, PeriodStore, PeriodStoreHandle, PeriodsConfig } from '../types';
 import { buildStatus } from './build-status';
 import type { ControlOutcome } from './control-outcome';
 import { pickLimitsChange } from './pick-limits-change';
@@ -49,21 +42,10 @@ const sandboxBodySchema = z.strictObject({ limit: positiveMeasuresSchema.nullabl
 export function makeControlHandler(
   deps: ControlHandlerDeps,
 ): (request: Request) => Promise<Response> {
-  const readCurrentOverride = async (): Promise<Override | null> => {
-    if (deps.config.override === null) {
-      return null;
-    }
-
-    const read = await readOverride(deps.config.override);
-
-    return read.kind === 'found' ? read.override : null;
-  };
-
   const answerStatus = async (): Promise<Response> => {
-    const store = await deps.store.read();
-    const override = await readCurrentOverride();
+    const held = await deps.store.readInForce();
 
-    return Response.json(buildStatus(store, override, deps.config, deps.now()));
+    return Response.json(buildStatus(held.store, held.override, deps.config, deps.now()));
   };
 
   const answerOutcome = (outcome: ControlOutcome): Promise<Response> => {

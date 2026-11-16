@@ -1,4 +1,4 @@
-import type { ModelPrices } from '@heynixie/models';
+import type { ModelPrices } from '@heynixie/models/prices';
 import type { ModelAPI } from '@heynixie/wire';
 
 export interface ProxyRoute {
@@ -81,6 +81,9 @@ export interface PeriodCount extends Measures {
 
   // the day's raise, always null on the month
   readonly raise: Measures | null;
+
+  // the ISO instant the count first reached its limit in force, null while it is under it
+  readonly trippedAt: string | null;
 }
 
 interface SandboxCount extends Measures {
@@ -108,16 +111,23 @@ export interface PeriodChange<T> {
   readonly result: T;
 }
 
+// the store and the override that one read found, so a caller judges both as of the same moment
+export interface PeriodRead {
+  readonly store: PeriodStore;
+  readonly override: Override | null;
+}
+
 export interface PeriodStoreHandle {
   // the store after each period that ended has reset
   readonly read: () => Promise<PeriodStore>;
+  readonly readInForce: () => Promise<PeriodRead>;
 
   // reads, resets, decides and writes in one turn
   readonly change: <T>(decide: (store: PeriodStore) => PeriodChange<T>) => Promise<T>;
 
   // adds the spend to the day, the month and the sandbox in one write; a sandbox the store lacks,
   // or null, counts on the periods only
-  readonly addSpend: (sandbox: string | null, spend: Measures) => Promise<PeriodStore>;
+  readonly addSpend: (sandbox: string | null, spend: Measures) => Promise<PeriodRead>;
   readonly markLost: () => Promise<void>;
 
   // resolves once every change made so far has written or failed

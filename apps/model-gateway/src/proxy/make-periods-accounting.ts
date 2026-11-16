@@ -1,19 +1,15 @@
 import type { Logger } from '@heynixie/logger';
 import { toErrorFields } from '@heynixie/logger';
-import { buildCallCost } from '@heynixie/models';
-import { readOverride } from '../override/read-override';
+import { buildCallCost } from '@heynixie/models/prices';
 import { collectTrips } from '../periods/collect-trips';
 import { pickPeriodsRefusal } from '../periods/pick-periods-refusal';
-import type { Override, PeriodStoreHandle } from '../types';
+import type { PeriodStoreHandle } from '../types';
 import { buildCallTokens } from '../usage/build-call-tokens';
 import type { Accounting } from './accounting';
 import { renderAPIError } from './render-api-error';
 
 export interface PeriodsAccountingDeps {
   readonly store: PeriodStoreHandle;
-
-  // null when the config names no override file
-  readonly overridePath: string | null;
   readonly countBySandbox: boolean;
   readonly log: Logger;
 }
@@ -23,7 +19,6 @@ export function makePeriodsAccounting(deps: PeriodsAccountingDeps): Accounting {
   // as with limits, the latch refuses in this process when the lost mark cannot be written
   let countFailed = false;
   let tripLogged = '';
-  let overrideFailureLogged = false;
 
   const loseCount = async (): Promise<void> => {
     countFailed = true;
@@ -33,30 +28,14 @@ export function makePeriodsAccounting(deps: PeriodsAccountingDeps): Accounting {
     });
   };
 
-  const readCurrentOverride = async (): Promise<Override | null> => {
-    if (deps.overridePath === null) {
-      return null;
-    }
-
-    const read = await readOverride(deps.overridePath);
-
-    if (read.kind === 'unreadable' && !overrideFailureLogged) {
-      overrideFailureLogged = true;
-
-      deps.log('override.unreadable', { reason: read.reason }, 'error');
-    }
-
-    return read.kind === 'found' ? read.override : null;
-  };
-
   const admit = async (sandbox: string | null): Promise<Response | null> => {
-    const store = await deps.store.read().catch((error: unknown) => {
+    const held = await deps.store.readInForce().catch((error: unknown) => {
       deps.log('counter.read_failed', toErrorFields(error), 'error');
 
       return null;
     });
 
-    if (store === null) {
+    if (held === null) {
       return renderAPIError(
         503,
         'api_error',
@@ -64,10 +43,8 @@ export function makePeriodsAccounting(deps: PeriodsAccountingDeps): Accounting {
       );
     }
 
-    const override = await readCurrentOverride();
-
-    const held = countFailed ? { ...store, lost: true } : store;
-    const refusal = pickPeriodsRefusal(held, override, sandbox, deps.countBySandbox);
+    const store = countFailed ? { ...held.store, lost: true } : held.store;
+    const refusal = pickPeriodsRefusal(store, held.override, sandbox, deps.countBySandbox);
 
     return refusal === null ? null : renderAPIError(refusal.status, refusal.type, refusal.message);
   };
@@ -86,14 +63,12 @@ export function makePeriodsAccounting(deps: PeriodsAccountingDeps): Accounting {
     }
 
     try {
-      const store = await deps.store.addSpend(sandbox, {
+      const counted = await deps.store.addSpend(sandbox, {
         dollars: buildCallCost(usage, route.prices),
         tokens: buildCallTokens(usage),
       });
 
-      const override = await readCurrentOverride();
-
-      const trips = collectTrips(store, override);
+      const trips = collectTrips(counted.store, counted.override);
       const key = trips.map((trip) => `${trip.period}:${trip.measure}`).join(',');
 
       if (key !== '' && key !== tripLogged) {

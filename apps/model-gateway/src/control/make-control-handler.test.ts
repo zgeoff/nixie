@@ -3,6 +3,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { Logger } from '@heynixie/logger';
+import { makeOverrideReader } from '../override/make-override-reader';
 import { writeOverride } from '../override/write-override';
 import { createPeriodStore } from '../periods/create-period-store';
 import { makeControlHandler } from './make-control-handler';
@@ -14,14 +15,18 @@ async function setupTest() {
 
   let current = Date.parse('2026-11-13T16:42:07Z');
   const now = () => current;
+  const overridePath = join(directory, 'override.json');
 
   const store = await createPeriodStore({
     path: join(directory, 'store.json'),
     zone: 'Europe/London',
     now,
+    readOverride: makeOverrideReader(
+      overridePath,
+      mock<Logger>(() => {}),
+    ),
+    log: mock<Logger>(() => {}),
   });
-
-  const overridePath = join(directory, 'override.json');
 
   const handler = makeControlHandler({
     store,
@@ -298,6 +303,71 @@ test('it reports a trip once the day count reaches its limit', async () => {
   expect(response.body).toMatchObject({
     tripped: { period: 'day', measure: 'dollars', at: '2026-11-13T16:42:07Z' },
     periods: { day: { spent: { dollars: 61.2, tokens: 51_200_000 } } },
+  });
+});
+
+test('it reports the instant the day first reached its limit on a status read made later', async () => {
+  const ctx = await setupTest();
+
+  await ctx.call('PUT', '/limits', ctx.limits);
+  await ctx.store.addSpend(null, { dollars: 61.2, tokens: 1 });
+
+  ctx.moveTo('2026-11-13T18:05:00Z');
+
+  await ctx.store.addSpend(null, { dollars: 1, tokens: 1 });
+
+  const response = await ctx.call('GET', '/status');
+
+  expect(response.body).toMatchObject({
+    tripped: { period: 'day', measure: 'dollars', at: '2026-11-13T16:42:07Z' },
+  });
+});
+
+test('it reports the instant a lowered limit put the day at its limit', async () => {
+  const ctx = await setupTest();
+
+  await ctx.call('PUT', '/limits', {
+    day: { dollars: 100, tokens: 80_000_000 },
+    month: ctx.limits.month,
+  });
+
+  await ctx.store.addSpend(null, { dollars: 61.2, tokens: 1 });
+
+  ctx.moveTo('2026-11-13T17:00:00Z');
+
+  await ctx.call('PUT', '/limits', ctx.limits);
+
+  ctx.moveTo('2026-11-13T18:05:00Z');
+
+  const response = await ctx.call('GET', '/status');
+
+  expect(response.body).toMatchObject({
+    tripped: { period: 'day', measure: 'dollars', at: '2026-11-13T17:00:00Z' },
+  });
+});
+
+test('it reports a new instant for a trip that a raise cleared and later spend reached again', async () => {
+  const ctx = await setupTest();
+
+  await ctx.call('PUT', '/limits', ctx.limits);
+  await ctx.store.addSpend(null, { dollars: 61.2, tokens: 1 });
+
+  await ctx.call('POST', '/raise', {
+    period: 'day',
+    start: '2026-11-13',
+    limit: { dollars: 90, tokens: 120_000_000 },
+  });
+
+  ctx.moveTo('2026-11-13T20:10:00Z');
+
+  await ctx.store.addSpend(null, { dollars: 30, tokens: 1 });
+
+  ctx.moveTo('2026-11-13T21:00:00Z');
+
+  const response = await ctx.call('GET', '/status');
+
+  expect(response.body).toMatchObject({
+    tripped: { period: 'day', measure: 'dollars', at: '2026-11-13T20:10:00Z' },
   });
 });
 

@@ -1,5 +1,5 @@
 import { isAbsolute } from 'node:path';
-import { modelPricesSchema } from '@heynixie/models';
+import { modelPricesSchema } from '@heynixie/models/prices';
 import { modelAPIs } from '@heynixie/wire';
 import { z } from 'zod';
 import type { ProxyConfig } from '../types';

@@ -1,6 +1,7 @@
 import { appendFileSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { $ } from 'bun';
+import { buildGatewayCompileArgs } from '../../apps/model-gateway/src/build-gateway-compile-args.ts';
 import { getStepEnv } from '../lib/get-step-env.ts';
 import { parseStepCommand } from '../lib/parse-step-command.ts';
 
@@ -19,7 +20,7 @@ async function runCLI(): Promise<void> {
   const tag = getStepEnv(process.env, 'TAG');
   const binaryPath = join(getStepEnv(process.env, 'RUNNER_TEMP'), 'model-gateway-linux-x64');
 
-  await $`bun build --compile --target=bun-linux-x64 --define NIXIE_TEST_BUILD=false apps/model-gateway/src/main.ts --outfile ${binaryPath}`;
+  await $`bun ${buildGatewayCompileArgs('apps/model-gateway/src/main.ts', binaryPath)}`;
 
   // --clobber, because a re-run replaces the binary of an earlier attempt
   await $`gh release upload ${tag} ${binaryPath} --clobber`;

@@ -3,6 +3,7 @@ import { toErrorFields } from '@heynixie/logger';
 import invariant from 'tiny-invariant';
 import type { ControlHandlerDeps } from '../control/make-control-handler';
 import { makeControlHandler } from '../control/make-control-handler';
+import { makeOverrideReader } from '../override/make-override-reader';
 import { createPeriodStore } from '../periods/create-period-store';
 import type { CounterStore, PeriodsConfig, ProxyConfig, ProxyLimits } from '../types';
 import { createCaptureSpool } from '../usage/create-capture-spool';
@@ -146,7 +147,14 @@ async function startPeriodsCounting(
   now: () => number,
   log: Logger,
 ): Promise<Counting> {
-  const store = await createPeriodStore({ path: config.store, zone: periods.zone, now });
+  const store = await createPeriodStore({
+    path: config.store,
+    zone: periods.zone,
+    now,
+    readOverride: makeOverrideReader(periods.override, log),
+    log,
+  });
+
   const tokenText = await Bun.file(periods.control.tokenFile).text();
 
   const token = tokenText.trim();
@@ -159,7 +167,6 @@ async function startPeriodsCounting(
     deps: {
       periods: {
         store,
-        overridePath: periods.override,
         countBySandbox: periods.countBySandbox,
         log,
       },

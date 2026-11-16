@@ -23,6 +23,7 @@ export function buildResetStore(store: PeriodStore, today: string): PeriodStore 
           tokens: 0,
           limit: store.periods[name].limit,
           raise: null,
+          trippedAt: null,
         }
       : store.periods[name];
 

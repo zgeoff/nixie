@@ -14,5 +14,5 @@ export function buildFreshStore(today: string): PeriodStore {
 }
 
 function buildEmptyCount(start: string): PeriodCount {
-  return { start, dollars: 0, tokens: 0, limit: null, raise: null };
+  return { start, dollars: 0, tokens: 0, limit: null, raise: null, trippedAt: null };
 }

@@ -22,6 +22,7 @@ function setupTest() {
         tokens: parts.day?.spent?.tokens ?? 0,
         limit: parts.day?.limit === undefined ? fallback : parts.day.limit,
         raise: parts.day?.raise ?? null,
+        trippedAt: null,
       },
       month: {
         start: '2026-11-01',
@@ -30,6 +31,7 @@ function setupTest() {
         limit:
           parts.month?.limit === undefined ? { dollars: 600, tokens: 10_000 } : parts.month.limit,
         raise: null,
+        trippedAt: null,
       },
     },
     sandboxes: parts.sandboxes ?? {},

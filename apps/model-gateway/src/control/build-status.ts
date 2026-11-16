@@ -22,8 +22,9 @@ export interface GatewayStatus {
   readonly tripped: StatusTrip | null;
 }
 
-// The status holds each period's limit in force. `at` is the time of the read that found the trip,
-// because the store keeps no time for it.
+// The status holds each period's limit in force. A limit trip's `at` is the instant the store first
+// saw the period at its limit. The store keeps no instant for the lost mark, which an operator
+// clears by deleting the field, so its `at` is the time of this read.
 export function buildStatus(
   store: PeriodStore,
   override: Override | null,
@@ -42,14 +43,17 @@ export function buildStatus(
     };
   };
 
-  const at = formatInstant(nowMs);
+  const readAt = formatInstant(nowMs);
   const [trip] = collectTrips(store, override);
   let tripped: StatusTrip | null = null;
 
   if (trip !== undefined) {
-    tripped = { ...trip, at };
+    // the override file can change between the store's stamp and this read
+    const stamped = store.periods[trip.period].trippedAt;
+
+    tripped = { ...trip, at: stamped === null ? readAt : formatInstant(Date.parse(stamped)) };
   } else if (store.lost) {
-    tripped = { lost: true, at };
+    tripped = { lost: true, at: readAt };
   }
 
   return {

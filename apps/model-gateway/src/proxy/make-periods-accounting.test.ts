@@ -15,6 +15,8 @@ async function setupTest() {
     path: join(directory, 'counter.json'),
     zone: 'Europe/London',
     now: () => Date.parse('2026-11-13T10:00:00Z'),
+    readOverride: () => Promise.resolve(null),
+    log: mock<Logger>(() => {}),
   });
 
   await store.change((held) => ({
@@ -49,7 +51,6 @@ async function setupTest() {
     }),
     accounting: makePeriodsAccounting({
       store,
-      overridePath: null,
       countBySandbox: true,
       log,
     }),

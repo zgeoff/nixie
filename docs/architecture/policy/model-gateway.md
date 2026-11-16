@@ -117,8 +117,14 @@ override: /var/lib/model-gateway/override.json # no path, no override
 A config with `periods` needs `control`, and the schema refuses a config that sets both `periods`
 and `limits`, or neither. It also refuses `caps`, `control`, `countBySandbox` and `override` in a
 config with `limits`. The store of a `periods` config is a file of its own, in version 2: the start,
-the count, the base limit and the raise of each period, and a count and a limit per sandbox. The
-gateway refuses to start on a store file in the shape of a `limits` count.
+the count, the base limit, the raise and the trip time of each period, and a count and a limit per
+sandbox. A period's trip time is the instant the gateway first found its count at its limit in
+force, and a reset or a raise that lifts the limit clears it.
+
+At start, the gateway rewrites a store file in the shape of a `limits` count as a version 2 store,
+in one write. The periods start at zero, because a total that never reset says nothing of today's
+spend or this month's. The lost mark carries over, and the gateway logs the old totals. The gateway
+refuses to start on a store file in any other shape.
 
 ### Admission and the reset
 
@@ -161,8 +167,9 @@ listener serves no control path.
 | `DELETE /sandboxes/<name>` | removes the sandbox; 204 also for a name the store lacks                                               |
 
 A refused call changes nothing. `tripped` is null while each count is under its limit in force and
-the lost mark is absent. Its `at` is the time of the read that found the trip, because the store
-keeps no time for it. While only the lost mark stands, `tripped` is `{ "lost": true, "at": … }`.
+the lost mark is absent. For a limit, its `at` is the period's trip time. While only the lost mark
+stands, `tripped` is `{ "lost": true, "at": … }`, and `at` is the time of the read, because an
+operator clears the mark by deleting one field and the store keeps no time beside it.
 
 ### The override
 
@@ -290,5 +297,7 @@ off before its whole usage arrives, so the gateway marks the count as lost befor
 reply.
 
 The release attaches the gateway as one compiled binary for Linux, so a host runs it without a Bun
-install. The [preview recipe](../../runbooks/preview.md#model-calls) covers how a preview names its
-route.
+install. The gateway imports prices from `@heynixie/models/prices` only, because the package's main
+entry also takes in the database code, whose migrations a compiled binary cannot read. The bundle
+test lane compiles the binary with the release's arguments and starts it. The
+[preview recipe](../../runbooks/preview.md#model-calls) covers how a preview names its route.

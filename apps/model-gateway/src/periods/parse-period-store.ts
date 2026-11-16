@@ -11,6 +11,7 @@ const periodCountSchema = z.strictObject({
   tokens: z.number().nonnegative(),
   limit: measuresSchema.nullable(),
   raise: measuresSchema.nullable(),
+  trippedAt: z.iso.datetime().nullable(),
 });
 
 const sandboxCountSchema = z.strictObject({

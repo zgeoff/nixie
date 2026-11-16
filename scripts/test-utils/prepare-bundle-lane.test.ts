@@ -19,7 +19,7 @@ async function setupTest() {
   };
 }
 
-test('it builds the web app and the backup job before the bundle lane runs', async () => {
+test('it builds the web app, the backup job and the gateway binary before the bundle lane runs', async () => {
   const ctx = await setupTest();
 
   createStubProgram(ctx.bunPath, { callsPath: ctx.callsPath });
@@ -41,5 +41,7 @@ test('it builds the web app and the backup job before the bundle lane runs', asy
 
   const calls = await readFile(ctx.callsPath, 'utf8');
 
-  expect(calls).toBe('bun run test:web-build\nbun run test:backup-job-build\n');
+  expect(calls).toBe(
+    'bun run test:web-build\nbun run test:backup-job-build\nbun run test:model-gateway-build\n',
+  );
 });

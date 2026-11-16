@@ -1,6 +1,6 @@
 import type { Logger } from '@heynixie/logger';
 import { toErrorFields } from '@heynixie/logger';
-import { buildCallCost } from '@heynixie/models';
+import { buildCallCost } from '@heynixie/models/prices';
 import type { CounterStore, ProxyLimits, SpendTotals, StoredCount } from '../types';
 import { buildCallTokens } from '../usage/build-call-tokens';
 import type { Accounting } from './accounting';
