@@ -397,7 +397,7 @@ test('#tasks.list marks a task that runs on its own schedule as taking no messag
         taskID: 'sweeper',
         name: 'Sweeper',
         brief: 'Saves what you say as memory.',
-        isWokenByMessages: false,
+        wakeable: false,
         speaker: 'plain_task',
       },
     ],

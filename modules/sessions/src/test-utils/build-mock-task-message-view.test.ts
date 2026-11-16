@@ -9,7 +9,7 @@ test('it builds the view of a step the owner woke, with the conversation in the 
           taskID: 'conversation',
           name: 'Conversation',
           brief: 'Talks with the owner.',
-          isWokenByMessages: true,
+          wakeable: true,
           speaker: 'conversation',
         },
       ],

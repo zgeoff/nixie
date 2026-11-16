@@ -14,7 +14,7 @@ export function buildTaskMessaging(config: MessagingConfig): TaskMessaging {
     taskID: conversationTaskID,
     name: 'Conversation',
     brief: `Talks with ${owner} and answers each message.`,
-    isWokenByMessages: true,
+    wakeable: true,
     speaker: 'conversation',
   };
 

@@ -7,5 +7,5 @@ export function canReplyWake(
 ): boolean {
   const sender = messaging.directory.find((profile) => profile.taskID === senderID);
 
-  return sender?.isWokenByMessages === true && wake.hop + 1 <= messaging.hopLimit;
+  return sender?.wakeable === true && wake.hop + 1 <= messaging.hopLimit;
 }

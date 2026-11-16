@@ -10,7 +10,7 @@ export function buildMockTaskMessageView(
           taskID: 'conversation',
           name: 'Conversation',
           brief: 'Talks with the owner.',
-          isWokenByMessages: true,
+          wakeable: true,
           speaker: 'conversation',
         },
       ],

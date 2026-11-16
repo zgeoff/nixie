@@ -28,7 +28,7 @@ export const defaultAPISettings: APISettings = {
       taskID: conversationTaskID,
       name: 'Conversation',
       brief: 'Talks with the owner and answers each message.',
-      isWokenByMessages: true,
+      wakeable: true,
       speaker: 'conversation',
     },
   ],

@@ -113,7 +113,7 @@ test.each([
               taskID: 'planner',
               name: 'Plans & "trips"',
               brief: 'Plans trips.',
-              isWokenByMessages: true,
+              wakeable: true,
               speaker,
             },
           ],

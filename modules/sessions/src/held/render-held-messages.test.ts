@@ -62,7 +62,7 @@ test('it counts the messages past the hop limit by their sender in one system me
             taskID: 'sweeper',
             name: 'Sweeper',
             brief: 'Saves memories.',
-            isWokenByMessages: true,
+            wakeable: true,
             speaker: 'plain_task',
           },
         ],

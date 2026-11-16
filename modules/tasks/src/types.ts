@@ -133,7 +133,7 @@ export interface TaskProfile {
   readonly taskID: string;
   readonly name: string;
   readonly brief: string;
-  readonly isWokenByMessages: boolean;
+  readonly wakeable: boolean;
 
   // who a message from the task speaks as: the conversation, a task with the persona, or a task
   // without it

@@ -44,7 +44,7 @@ export async function readTaskList(
       taskID: entry.taskID,
       name: entry.version.name,
       brief: entry.version.brief,
-      isWokenByMessages: false,
+      wakeable: false,
       speaker: entry.version.persona === 'default' ? 'persona_task' : 'plain_task',
     }));
 

@@ -63,8 +63,8 @@ export function planTaskMessage(
   }
 
   const hop = facts.senderHop + 1;
-  const hold = pickHold(request.wake, hop > messaging.hopLimit, receiver?.isWokenByMessages);
-  const opensWait = isWaitingKind(request.kind) && receiver?.isWokenByMessages === true;
+  const hold = pickHold(request.wake, hop > messaging.hopLimit, receiver?.wakeable);
+  const opensWait = isWaitingKind(request.kind) && receiver?.wakeable === true;
 
   return {
     status: 'send',
@@ -112,13 +112,13 @@ function pickRefusal(request: TaskMessageRequest, facts: RefusalFacts): TaskMess
 function pickHold(
   wake: boolean,
   isOverLimit: boolean,
-  isWokenByMessages: boolean | undefined,
+  wakeable: boolean | undefined,
 ): TaskMessageHold {
   if (!wake) {
     return 'none';
   }
 
-  if (isWokenByMessages === false) {
+  if (wakeable === false) {
     return 'next_run';
   }
 

@@ -24,7 +24,7 @@ export async function readTaskDirectory<Messaging extends Pick<TaskMessaging, 'd
       taskID: entry.taskID,
       name: entry.version.name,
       brief: entry.version.brief,
-      isWokenByMessages: entry.version.wakeable,
+      wakeable: entry.version.wakeable,
       speaker: entry.version.persona === 'default' ? 'persona_task' : 'plain_task',
     }));
 
@@ -55,7 +55,7 @@ export async function readTaskDirectory<Messaging extends Pick<TaskMessaging, 'd
       taskID: row.task_id,
       name: typeof name === 'string' ? name : row.task_id,
       brief: briefs.get(row.task_id)?.body ?? '',
-      isWokenByMessages: true,
+      wakeable: true,
       speaker: options?.options?.persona === 'default' ? 'persona_task' : 'plain_task',
     };
   });
