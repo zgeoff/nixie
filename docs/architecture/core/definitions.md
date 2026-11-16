@@ -299,6 +299,9 @@ definition, disables it or turns it into a reminder writes it with a null hash, 
 its history and any open task run outlive the definition. A task never closes, so the close control
 of a definition's task gets `definition_task_never_closes`.
 
+At every accepted seed, the same transaction also arms each definition that holds a trigger, and
+leaves out a spent one-shot, as [Triggers](./triggers.md#which-definitions-can-fire) describes.
+
 A fire opens a task run. The trigger core writes a `trigger.fired` record on the task's thread, with
 the hash that the fire pins. The next claim opens a task run for it, and the record
 `task.run_opened` holds the hash, the fire's dedupe key as the trigger key, the report mode and

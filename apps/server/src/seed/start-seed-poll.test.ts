@@ -72,6 +72,7 @@ test('it reports the definitions ready again once the source returns to its last
   const context = await createServerContext(log.writer, log.deploymentKey, () => null, {
     runSettings: buildTestRunSettings(),
     taskRunLimits: { turns: 25, dollars: 2 },
+    defaultZone: 'Europe/Lisbon',
     runners: buildTestTaskRunners(),
   });
 

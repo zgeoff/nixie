@@ -32,6 +32,10 @@ export interface TasksContext {
   // transaction passes it as the handle, so the read does not wait on that transaction.
   readonly readDefinitionVersion: ReadDefinitionVersion;
   readonly readDefinitionRunPolicy: ReadDefinitionRunPolicy;
+
+  // the next fire of a definition as an ISO instant, or null when no slot is left. The triggers
+  // module builds it.
+  readonly readDefinitionNextFire: ReadDefinitionNextFire;
 }
 
 export interface DefinitionVersion {
@@ -69,6 +73,11 @@ export interface DefinitionRunPolicy {
   readonly wakeable: boolean;
   readonly limits: RunLimits;
 }
+
+export type ReadDefinitionNextFire = (
+  db: Kysely<unknown>,
+  definitionID: string,
+) => Promise<string | null>;
 
 export type ReadDefinitionRunPolicy = (
   db: Kysely<unknown>,

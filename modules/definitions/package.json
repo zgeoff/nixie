@@ -21,6 +21,7 @@
     "@heynixie/proposals": "workspace:*",
     "@heynixie/tasks": "workspace:*",
     "@heynixie/tools": "workspace:*",
+    "@heynixie/triggers": "workspace:*",
     "kysely": "catalog:",
     "tiny-invariant": "catalog:",
     "ts-pattern": "catalog:",

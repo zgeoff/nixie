@@ -1,0 +1,198 @@
+import type { JSONValue, RecordInput } from '@heynixie/log';
+import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
+import type { DefinitionTaskAnswer } from '@heynixie/tasks';
+import {
+  triggerFiredCodec,
+  triggerSkippedCodec,
+  writeInboxRecordsInTransaction,
+} from '@heynixie/tasks';
+import type { Transaction } from 'kysely';
+import { triggerArmedCodec } from '../record/trigger-armed-codec';
+import { triggerDeliveredCodec } from '../record/trigger-delivered-codec';
+import type { TriggerBatch, TriggerCoreContext, TriggerEvent, TriggersTables } from '../types';
+import { buildSourceKey } from '../utils/build-source-key';
+import { toCanonicalJSON } from '../utils/to-canonical-json';
+import { catchUpThresholdMs, maxSkippedSlots } from './constants';
+import { isEventDeliverable } from './is-event-deliverable';
+import type { EventOutcome } from './pick-event-outcome';
+import { pickEventOutcome } from './pick-event-outcome';
+
+// One write transaction for one deliver call: each event writes its record and takes its key, and
+// the cursor is stored when it changed. Returns the number of events that wrote a record.
+export function deliverTriggerBatch(
+  core: TriggerCoreContext,
+  sourceID: string,
+  batch: TriggerBatch,
+): Promise<{ readonly delivered: number }> {
+  return withWriteTransaction(core.log.writer, async (tx) => {
+    let delivered = 0;
+
+    for (const event of batch.events) {
+      const isWritten = await writeEvent(tx, core, sourceID, event);
+
+      if (isWritten) {
+        delivered += 1;
+      }
+    }
+
+    await writeCursor(tx, core, sourceID, batch.cursor);
+
+    return { delivered };
+  });
+}
+
+async function writeEvent(
+  tx: Transaction<unknown>,
+  core: TriggerCoreContext,
+  sourceID: string,
+  event: TriggerEvent,
+): Promise<boolean> {
+  const db = tx.$extendTables<TriggersTables>();
+
+  const key = await db
+    .selectFrom('trigger_keys')
+    .select('source_key')
+    .where('source_key', '=', buildSourceKey(sourceID, event.dedupeKey))
+    .executeTakeFirst();
+
+  const row = await db
+    .selectFrom('trigger_definitions')
+    .select(['source_id', 'definition_hash', 'after', 'target'])
+    .where('definition_id', '=', event.definitionID)
+    .executeTakeFirst();
+
+  if (row === undefined || !isEventDeliverable(event, sourceID, row, key !== undefined)) {
+    return false;
+  }
+
+  const answer = row.target === 'task' ? await readTaskAnswer(tx, core, event.definitionID) : null;
+  const outcome = pickEventOutcome(event, answer);
+
+  if (outcome.kind === 'fire') {
+    await writeInboxRecordsInTransaction(tx, core, [
+      buildFired(core, sourceID, event, outcome.thread),
+    ]);
+  } else {
+    await writeRecordsInTransaction(tx, core.log, [buildSkipped(core, sourceID, event, outcome)]);
+  }
+
+  if (event.kind === 'at') {
+    await retireOneShot(tx, core, event.definitionID, outcome.kind);
+  }
+
+  return true;
+}
+
+async function readTaskAnswer(
+  tx: Transaction<unknown>,
+  core: TriggerCoreContext,
+  definitionID: string,
+): Promise<DefinitionTaskAnswer> {
+  const answer = await core.readDefinitionTask(tx, definitionID);
+
+  if (answer === null) {
+    throw new Error(
+      `the definition ${definitionID} has no task: the seed binds it before it arms it`,
+    );
+  }
+
+  return answer;
+}
+
+function buildFired(
+  core: TriggerCoreContext,
+  sourceID: string,
+  event: TriggerEvent,
+  thread: string,
+): RecordInput {
+  const firedAt = core.clock.now();
+
+  return {
+    kind: 'trigger.fired',
+    definitions: core.definitions(),
+    thread,
+    payload: triggerFiredCodec.encode({
+      definitionID: event.definitionID,
+      definitionHash: event.definitionHash,
+      source: sourceID,
+      dedupeKey: event.dedupeKey,
+      kind: event.kind,
+      scheduledFor: event.scheduledFor,
+      firedAt: new Date(firedAt).toISOString(),
+      isCatchUp: firedAt - Date.parse(event.scheduledFor) > catchUpThresholdMs,
+      skipped: event.missed,
+      skippedCount: event.missedCount,
+    }),
+  };
+}
+
+function buildSkipped(
+  core: TriggerCoreContext,
+  sourceID: string,
+  event: TriggerEvent,
+  outcome: Extract<EventOutcome, { readonly kind: 'skip' }>,
+): RecordInput {
+  return {
+    kind: 'trigger.skipped',
+    definitions: core.definitions(),
+    thread: outcome.thread,
+    payload: triggerSkippedCodec.encode({
+      definitionID: event.definitionID,
+      source: sourceID,
+      dedupeKey: event.dedupeKey,
+      scheduledFor: [...event.missed, event.scheduledFor].slice(-maxSkippedSlots),
+      count: event.missedCount + 1,
+      reason: outcome.reason,
+      recordedAt: new Date(core.clock.now()).toISOString(),
+    }),
+  };
+}
+
+// A one-shot is out of force with no seed: the arming row and the task's hash both go.
+async function retireOneShot(
+  tx: Transaction<unknown>,
+  core: TriggerCoreContext,
+  definitionID: string,
+  outcome: EventOutcome['kind'],
+): Promise<void> {
+  await writeRecordsInTransaction(tx, core.log, [
+    {
+      kind: 'trigger.armed',
+      definitions: core.definitions(),
+      payload: triggerArmedCodec.encode({ armed: [], withdrawn: [definitionID] }),
+    },
+  ]);
+
+  const cause = outcome === 'fire' ? 'one_shot_fired' : 'one_shot_skipped';
+
+  await core.retireOneShot(tx, definitionID, cause);
+}
+
+async function writeCursor(
+  tx: Transaction<unknown>,
+  core: TriggerCoreContext,
+  sourceID: string,
+  cursor: JSONValue,
+): Promise<void> {
+  const stored = await tx
+    .$extendTables<TriggersTables>()
+    .selectFrom('trigger_sources')
+    .select('cursor')
+    .where('source_id', '=', sourceID)
+    .executeTakeFirst();
+
+  const storedCursor: unknown =
+    stored?.cursor === undefined || stored.cursor === null ? null : JSON.parse(stored.cursor);
+
+  if (toCanonicalJSON(storedCursor) === toCanonicalJSON(cursor)) {
+    return;
+  }
+
+  await writeRecordsInTransaction(tx, core.log, [
+    {
+      kind: 'trigger.delivered',
+      definitions: core.definitions(),
+      payload: triggerDeliveredCodec.encode({ source: sourceID, cursor }),
+    },
+  ]);
+}

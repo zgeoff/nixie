@@ -551,6 +551,24 @@ export interface NixieTables {
     readonly fired_sequence: number | null;
     readonly withdrawn_sequence: number | null;
   };
+  readonly trigger_definitions: {
+    readonly definition_id: string;
+    readonly source_id: string;
+    readonly definition_hash: string | null;
+    readonly target: string;
+    readonly trigger: string;
+    readonly after: number;
+    readonly updated_sequence: number;
+  };
+  readonly trigger_keys: {
+    readonly source_key: string;
+    readonly sequence: number;
+  };
+  readonly trigger_sources: {
+    readonly source_id: string;
+    readonly cursor: string | null;
+    readonly updated_sequence: number;
+  };
   readonly turn_input_captures: {
     readonly capture_id: string;
     readonly task_id: string;

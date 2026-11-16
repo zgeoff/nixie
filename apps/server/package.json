@@ -43,6 +43,7 @@
     "@heynixie/tasks": "workspace:*",
     "@heynixie/testing": "workspace:*",
     "@heynixie/tools": "workspace:*",
+    "@heynixie/triggers": "workspace:*",
     "@heynixie/turn-inputs": "workspace:*",
     "@heynixie/wire": "workspace:*",
     "@orpc/client": "catalog:",

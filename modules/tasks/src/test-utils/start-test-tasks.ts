@@ -62,6 +62,7 @@ export async function startTestTasks(): Promise<TestTasks> {
       runners: buildTestTaskRunners(),
       readDefinitionVersion: definitionStore.readDefinitionVersion,
       readDefinitionRunPolicy: definitionStore.readDefinitionRunPolicy,
+      readDefinitionNextFire: definitionStore.readDefinitionNextFire,
     },
   };
 }

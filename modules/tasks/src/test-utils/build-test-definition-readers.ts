@@ -1,6 +1,7 @@
 import type {
   DefinitionRunPolicy,
   DefinitionVersion,
+  ReadDefinitionNextFire,
   ReadDefinitionRunPolicy,
   ReadDefinitionVersion,
 } from '../types';
@@ -8,11 +9,15 @@ import type {
 export interface TestDefinitionReaders {
   readonly readDefinitionVersion: ReadDefinitionVersion;
   readonly readDefinitionRunPolicy: ReadDefinitionRunPolicy;
+  readonly readDefinitionNextFire: ReadDefinitionNextFire;
 }
 
 export interface TestDefinitionStore extends TestDefinitionReaders {
   // stores the version and the policy that a hash names, over the defaults for each field
   readonly add: (hash: string, entry: TestDefinitionEntry) => void;
+
+  // the next fire that the reader answers for a definition, over the default of null
+  readonly setNextFire: (definitionID: string, nextFire: string | null) => void;
 }
 
 interface TestDefinitionEntry {
@@ -24,10 +29,16 @@ interface TestDefinitionEntry {
 export function buildTestDefinitionStore(): TestDefinitionStore {
   const versions = new Map<string, DefinitionVersion>();
   const policies = new Map<string, DefinitionRunPolicy>();
+  const nextFires = new Map<string, string | null>();
 
   return {
     readDefinitionVersion: (_db, hash) => Promise.resolve(versions.get(hash) ?? null),
     readDefinitionRunPolicy: (_db, _taskID, hash) => Promise.resolve(policies.get(hash) ?? null),
+    readDefinitionNextFire: (_db, definitionID) =>
+      Promise.resolve(nextFires.get(definitionID) ?? null),
+    setNextFire: (definitionID, nextFire) => {
+      nextFires.set(definitionID, nextFire);
+    },
     add: (hash, entry) => {
       versions.set(hash, {
         definitionID: 'water-the-tomatoes',
@@ -63,5 +74,6 @@ export function buildTestDefinitionReaders(): TestDefinitionReaders {
   return {
     readDefinitionVersion: store.readDefinitionVersion,
     readDefinitionRunPolicy: store.readDefinitionRunPolicy,
+    readDefinitionNextFire: store.readDefinitionNextFire,
   };
 }

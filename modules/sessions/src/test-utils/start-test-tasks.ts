@@ -59,6 +59,7 @@ export async function startTestTasks(): Promise<TestTasks> {
       runSettings: buildTestRunSettings(),
       readDefinitionVersion: definitionStore.readDefinitionVersion,
       readDefinitionRunPolicy: definitionStore.readDefinitionRunPolicy,
+      readDefinitionNextFire: definitionStore.readDefinitionNextFire,
       runners: buildTestTaskRunners(),
     },
     db: writer.db.$extendTables<TasksTables>(),

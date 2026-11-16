@@ -188,6 +188,7 @@ export { timersProjection } from './task/projection/timers-projection';
 export type {
   DefinitionRunPolicy,
   DefinitionVersion,
+  ReadDefinitionNextFire,
   ReadDefinitionRunPolicy,
   ReadDefinitionVersion,
   FaultPointContext,

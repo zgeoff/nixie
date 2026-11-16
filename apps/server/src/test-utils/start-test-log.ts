@@ -5,6 +5,7 @@ import { memoryProjections } from '@heynixie/memory';
 import { knownContactsProjection } from '@heynixie/policy';
 import { sandboxesProjection } from '@heynixie/sandbox';
 import { tasksProjections } from '@heynixie/tasks';
+import { triggersProjections } from '@heynixie/triggers';
 
 export async function startTestLog(dataDir: string): Promise<Log & { readonly writer: Writer }> {
   const writer = await startWriter({ dataDir });
@@ -20,6 +21,7 @@ export async function startTestLog(dataDir: string): Promise<Log & { readonly wr
     projections: [
       ...logProjections,
       ...tasksProjections,
+      ...triggersProjections,
       sandboxesProjection,
       ...memoryProjections,
       knownContactsProjection,

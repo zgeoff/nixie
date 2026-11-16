@@ -5,6 +5,8 @@ import { join } from 'node:path';
 import type { Projection } from '@heynixie/log';
 import { readRecords, startWriter, withWriteTransaction, writeRecords } from '@heynixie/log';
 import { tasksProjections } from '@heynixie/tasks';
+import { writeTestTriggerFire } from '@heynixie/tasks/test-utils';
+import { triggersProjections } from '@heynixie/triggers';
 import { sql } from 'kysely';
 import invariant from 'tiny-invariant';
 import { buildDefinitionsSnapshot } from '../definition/build-definitions-snapshot';
@@ -2598,6 +2600,114 @@ test('it binds one task to a definition with target task, and an unchanged seed 
   ]);
 
   expect(bindings).toHaveLength(1);
+});
+
+test('it arms a definition with a trigger, and an unchanged seed writes no second trigger.armed', async () => {
+  const ctx = await setupTest({ projections: [...tasksProjections, ...triggersProjections] });
+
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 4\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+  await mkdir(join(ctx.root, 'tasks', 'rain-gauge'), { recursive: true });
+
+  await writeFile(
+    join(ctx.root, 'tasks', 'rain-gauge', 'task.yaml'),
+    'name: Check the rain gauge\nbrief: Read it.\ntrigger:\n  schedule:\n    every: day\n    at: "08:00"\n',
+  );
+
+  const options = {
+    tasks: buildTestTaskSeed(),
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => ({ rules: [], tools: [] }),
+  };
+
+  await runSeed(options);
+
+  const second = await runSeed(options);
+  const inForce = await readDefinitionsInForce(ctx.writer.db);
+  const armed = await readRecords(ctx.log, { afterSequence: 0, kinds: ['trigger.armed'] });
+
+  const rows = await ctx.writer.db
+    .$extendTables<{
+      trigger_definitions: { definition_id: string; definition_hash: string | null };
+    }>()
+    .selectFrom('trigger_definitions')
+    .select(['definition_id', 'definition_hash'])
+    .execute();
+
+  expect(second.status).toBe('unchanged');
+  expect(armed).toHaveLength(1);
+
+  expect(rows).toStrictEqual([
+    { definition_id: 'rain-gauge', definition_hash: inForce?.tasks[0]?.hash ?? null },
+  ]);
+});
+
+test('it binds no task to a spent one-shot and arms nothing for it', async () => {
+  const ctx = await setupTest({ projections: [...tasksProjections, ...triggersProjections] });
+
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 4\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+  await mkdir(join(ctx.root, 'tasks', 'dentist'), { recursive: true });
+
+  await writeFile(
+    join(ctx.root, 'tasks', 'dentist', 'task.yaml'),
+    'name: Dentist\nbrief: Remind me.\ntrigger:\n  at: "2027-03-09T14:00:00Z"\n',
+  );
+
+  await writeTestTriggerFire(
+    { log: ctx.log, definitions: () => ({ snapshotHash: 'sha256:test' }) },
+    'earlier-thread',
+    {
+      definitionHash: 'hash-0',
+      definitionID: 'dentist',
+      kind: 'at',
+      dedupeKey: 'dentist|2027-03-09T14:00:00.000Z',
+      scheduledFor: '2027-03-09T14:00:00.000Z',
+    },
+  );
+
+  const result = await runSeed({
+    tasks: buildTestTaskSeed(),
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => ({ rules: [], tools: [] }),
+  });
+
+  const created = await readRecords(ctx.log, { afterSequence: 0, kinds: ['task.created'] });
+  const armed = await readRecords(ctx.log, { afterSequence: 0, kinds: ['trigger.armed'] });
+
+  expect(result.status).toBe('seeded');
+  expect(created).toStrictEqual([]);
+  expect(armed).toStrictEqual([]);
+});
+
+test('it arms a one-shot whose key is not taken, whatever its target', async () => {
+  const ctx = await setupTest({ projections: [...tasksProjections, ...triggersProjections] });
+
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 4\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+  await mkdir(join(ctx.root, 'tasks', 'dentist'), { recursive: true });
+
+  await writeFile(
+    join(ctx.root, 'tasks', 'dentist', 'task.yaml'),
+    'name: Dentist\nbrief: Remind me.\ntarget: conversation\ntrigger:\n  at: "2027-03-09T14:00:00Z"\n',
+  );
+
+  await runSeed({
+    tasks: buildTestTaskSeed(),
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => ({ rules: [], tools: [] }),
+  });
+
+  const armed = await readRecords(ctx.log, { afterSequence: 0, kinds: ['trigger.armed'] });
+
+  expect(armed.map((entry) => entry.record.payload['withdrawn'])).toStrictEqual([[]]);
+
+  expect(armed.map((entry) => entry.record.payload['armed'])).toMatchObject([
+    [{ definitionID: 'dentist', target: 'conversation', trigger: { at: '2027-03-09T14:00:00Z' } }],
+  ]);
 });
 
 test.each([

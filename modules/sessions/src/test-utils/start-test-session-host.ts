@@ -97,6 +97,7 @@ export async function startTestSessionHost(
     runners: buildTestTaskRunners(),
     readDefinitionVersion: definitionStore.readDefinitionVersion,
     readDefinitionRunPolicy: definitionStore.readDefinitionRunPolicy,
+    readDefinitionNextFire: definitionStore.readDefinitionNextFire,
   };
 
   const socketDir = join(dataDir, 'tools');

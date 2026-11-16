@@ -2,7 +2,6 @@ import type { Log, LogRecord } from '@heynixie/log';
 import { withWriteTransaction } from '@heynixie/log';
 import type { RuleFileWarning } from '@heynixie/policy';
 import type { PromptOverrides } from '@heynixie/prompts';
-import { writeDefinitionTasksInTransaction } from '@heynixie/tasks';
 import { buildDefinitionRule } from '../definition/build-definition-rule';
 import { buildDefinitionsSnapshot } from '../definition/build-definitions-snapshot';
 import { parseDefinitions } from '../definition/parse-definitions';
@@ -10,8 +9,8 @@ import { readDefinitionsInForce } from '../definition/read-definitions-in-force'
 import { readSeedPolicy } from '../seed/read-seed-policy';
 import { writeSeed } from '../seed/write-seed';
 import { writeAdoptedSkills } from '../skill/write-adopted-skills';
-import { readTaskDefinitionsInForce } from '../task/read-task-definitions-in-force';
 import type { TaskDefinitionWarning, TaskSeedContext } from '../task/types';
+import { writeTaskHooks } from '../task/write-task-hooks';
 import { writeTaskVersions } from '../task/write-task-versions';
 import type {
   DefinitionsInForce,
@@ -131,12 +130,10 @@ export async function runSeed(options: SeedOptions): Promise<SeedResult> {
       at: now,
     });
 
-    const taskDefinitions = await readTaskDefinitionsInForce(tx, built.tasks);
-
-    await writeDefinitionTasksInTransaction(
+    await writeTaskHooks(
       tx,
       { log: options.log, definitions: () => ({ snapshotHash: built.snapshotHash }) },
-      taskDefinitions,
+      built.tasks,
     );
 
     if (

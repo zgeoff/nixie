@@ -11,6 +11,7 @@ import { memoryProjections } from '@heynixie/memory';
 import { knownContactsProjection } from '@heynixie/policy';
 import { sandboxesProjection } from '@heynixie/sandbox';
 import { tasksProjections } from '@heynixie/tasks';
+import { triggersProjections } from '@heynixie/triggers';
 
 export function buildServerLog(writer: Writer, deploymentKey: CryptoKey): Log {
   return {
@@ -19,6 +20,7 @@ export function buildServerLog(writer: Writer, deploymentKey: CryptoKey): Log {
     projections: [
       ...logProjections,
       ...tasksProjections,
+      ...triggersProjections,
       actionsProjection,
       sandboxesProjection,
       ...apiProjections,
