@@ -161,6 +161,8 @@ holds the design for a piece of work that is not built yet, with its spikes in
   built-in prompt from your definitions, and the parts and paths each prompt has
 - [Consolidating memory with a task](guides/consolidating-memory-with-a-task.md) — add a weekly task
   that merges, rewrites or retires memory items, from an example folder
+- [Taking notes with a task](guides/taking-notes-with-a-task.md) — add a daily task that saves the
+  facts in your messages as memories, from an example folder
 - [Run nixie with Docker Compose](guides/compose.md) — the reference recipe, its placeholders and
   secrets, signing in, and how CI checks it
 - [Run nixie on Kubernetes](guides/kubernetes.md) — the reference manifests, their placeholders and

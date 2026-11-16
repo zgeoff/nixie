@@ -543,7 +543,8 @@ test('it lists every example folder of the guides among the folders the next tes
 
   const folders = readdirSync(examplesDir, { withFileTypes: true })
     .filter((entry) => entry.isDirectory())
-    .map((entry) => entry.name);
+    .map((entry) => entry.name)
+    .toSorted();
 
   expect(folders).toStrictEqual(exampleFolders);
 });
@@ -614,5 +615,28 @@ test('it seeds the moment reflection example with its daily schedule, read memor
     log: 'conversation',
     tools: ['moment.find', 'moment.read', 'moment.edit', 'log.read'],
     maxCalls: { 'moment.edit': 3 },
+  });
+});
+
+test('it seeds the note-taking example with its daily schedule, conversation log, read memory and 3 tools', () => {
+  const ctx = setupTest();
+  const folder = 'note-taking';
+  const directory = join(import.meta.dir, '../../../../docs/guides/examples', folder);
+
+  const files = Object.fromEntries(
+    readdirSync(directory).map((file) => [
+      `tasks/${folder}/${file}`,
+      readFileSync(join(directory, file), 'utf8'),
+    ]),
+  );
+
+  const parsed = ctx.parse(files);
+
+  expect(parsed.definitions[0]?.form).toMatchObject({
+    trigger: { schedule: { every: 'day', at: '21:00' } },
+    context: 'fresh',
+    memory: 'read',
+    log: 'conversation',
+    tools: ['log.read', 'memory.remember', 'memory.edit'],
   });
 });
