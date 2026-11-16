@@ -1,12 +1,22 @@
 import { expect, mock, onTestFinished, test } from 'bun:test';
-import { buildMockGrantSpec, buildMockSandboxSpec } from '@heynixie/sandbox/test-utils';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import {
+  buildMockGrantSpec,
+  buildMockSandboxSpec,
+  setupTestRecorder,
+  startStubToolEndpoint,
+} from '@heynixie/sandbox/test-utils';
 import { waitForCondition } from '@heynixie/testing';
 import { TEST_TOKEN, startTestImpd } from '@impz/testing';
 import invariant from 'tiny-invariant';
 import { attachTestGuests } from '../test-utils/attach-test-guests';
 import { setupIsolationAdapter } from '../test-utils/setup-isolation-adapter';
 import { startStubImpd } from '../test-utils/start-stub-impd';
+import type { ModelGateway } from '../types';
 import { buildImpPort } from './build-imp-port';
+import { buildImpSandboxAdapter } from './build-imp-sandbox-adapter';
 
 test('it refuses to read the features of an impd whose version the client does not speak', () => {
   const answerRequest = mock(() =>
@@ -817,3 +827,64 @@ test('it grants a model secret with no filter when no gateway counts', async () 
 
   expect(grants).toStrictEqual([{ secret: 'nixie-test-plain', filter: null }]);
 });
+
+test.each([
+  ['an imp made before the gateway counted', false, true],
+  ['an imp made while the gateway counted', true, false],
+] as const)(
+  'it retires %s when the gateway counts, so the caller replaces it',
+  async (_name, isGatewayAtCreate, isRetired) => {
+    const impd = await startTestImpd();
+
+    const port = attachTestGuests(impd, buildImpPort({ url: impd.url, token: TEST_TOKEN }));
+
+    const recorder = await setupTestRecorder();
+    const directory = await mkdtemp(join(tmpdir(), 'nixie-kept-'));
+
+    onTestFinished(() => rm(directory, { recursive: true, force: true }));
+    onTestFinished(impd.stop);
+    startStubToolEndpoint(join(directory, 'tools.sock'));
+
+    await impd.client.secrets.add({
+      name: 'nixie-test-kept',
+      kind: 'custom',
+      value: 'not-a-real-value',
+      rules: [
+        {
+          host: 'api.anthropic.com',
+          header: 'x-api-key',
+          scheme: 'raw',
+          upstream: 'http://10.1.2.3:18081',
+        },
+      ],
+    });
+
+    await impd.seedImage('tide-image');
+
+    const buildAdapter = (modelGateway?: ModelGateway) =>
+      buildImpSandboxAdapter({
+        port: port.port,
+        recorder: recorder.recorder,
+        config: { publicEgress: null },
+        toolTarget: () => ({ path: join(directory, 'tools.sock') }),
+        ...(modelGateway === undefined ? {} : { modelGateway }),
+      });
+
+    const gateway = { modelURL: 'http://10.1.2.3:18081' };
+    const creatorGateway = isGatewayAtCreate ? gateway : undefined;
+    const creator = buildAdapter(creatorGateway);
+
+    await creator.create(
+      buildMockSandboxSpec({
+        kind: 'conversation',
+        image: 'tide-image',
+        owner: 'conversation',
+        grants: [buildMockGrantSpec({ secret: 'nixie-test-kept', host: 'api.anthropic.com' })],
+      }),
+    );
+
+    const listed = await buildAdapter(gateway).list('conversation');
+
+    expect(listed.map((held) => held.isRetired)).toStrictEqual([isRetired]);
+  },
+);

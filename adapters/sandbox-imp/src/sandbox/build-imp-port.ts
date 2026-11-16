@@ -28,6 +28,11 @@ export function buildImpPort(connection: ImpConnection): ImpPort {
 
       return found ? found.rules.map((rule) => rule.upstream ?? null) : null;
     },
+    readGrants: async (name) => {
+      const grants = await client.grants.details({ name });
+
+      return grants.map((grant) => ({ secret: grant.secret, paths: grant.filter?.paths ?? null }));
+    },
     addGrant: async (name, secret, filter) => {
       await client.grants.add({
         name,

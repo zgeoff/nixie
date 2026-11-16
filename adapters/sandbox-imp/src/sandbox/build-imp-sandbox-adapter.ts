@@ -16,6 +16,7 @@ import type { ImpPort, ModelGateway } from '../types';
 import { buildImpPolicy } from './build-imp-policy';
 import type { SleepRegistry } from './build-imp-sandbox';
 import { buildImpSandbox } from './build-imp-sandbox';
+import { probeGatewayGrants } from './probe-gateway-grants';
 
 export interface ImpSandboxOptions {
   readonly port: ImpPort;
@@ -54,7 +55,7 @@ export function buildImpSandboxAdapter(options: ImpSandboxOptions): SandboxAdapt
       isRetired,
     });
 
-  const getRowSandbox = makeRowSandboxReader(options.port, options.recorder, sleeping, getSandbox);
+  const getRowSandbox = makeRowSandboxReader(options, sleeping, getSandbox);
 
   const images = new Map<string, SandboxImage>();
 
@@ -89,25 +90,38 @@ export function buildImpSandboxAdapter(options: ImpSandboxOptions): SandboxAdapt
   };
 }
 
-// A host can lose an imp with no destroy from nixie, so a row alone never proves the imp exists.
+// A host can lose an imp with no destroy from nixie, so a row alone never proves the imp exists. With
+// the gateway counting, an imp whose grants lack the gateway's path filter is retired, so the
+// caller replaces it.
 function makeRowSandboxReader(
-  port: ImpPort,
-  recorder: SandboxRecorder,
+  options: ImpSandboxOptions,
   sleeping: SleepRegistry,
   getSandbox: (id: string, spec: SandboxSpec, isRetired: boolean) => Sandbox,
 ): (row: SandboxRow) => Promise<Sandbox | null> {
   return async (row) => {
-    const isBackedUp = await port.readImpBackup(row.sandboxID);
+    const isBackedUp = await options.port.readImpBackup(row.sandboxID);
 
     if (isBackedUp === null) {
-      await recorder.write({ event: 'destroyed', sandboxID: row.sandboxID, reason: 'destroyed' });
+      await options.recorder.write({
+        event: 'destroyed',
+        sandboxID: row.sandboxID,
+        reason: 'destroyed',
+      });
 
       return null;
     }
 
     sleeping.setAsleep(row.sandboxID, row.state === 'sleeping');
 
-    return getSandbox(row.sandboxID, row.spec, isBackedUp);
+    const isWrongGrant =
+      options.modelGateway !== undefined &&
+      !(await probeGatewayGrants(options.port, {
+        sandboxID: row.sandboxID,
+        spec: row.spec,
+        modelURL: options.modelGateway.modelURL,
+      }));
+
+    return getSandbox(row.sandboxID, row.spec, isBackedUp || isWrongGrant);
   };
 }
 

@@ -89,6 +89,13 @@ interface GrantFilter {
   readonly paths: readonly string[];
 }
 
+export interface GrantRow {
+  readonly secret: string;
+
+  // the paths the grant is limited to, or null for a grant with no path filter
+  readonly paths: readonly string[] | null;
+}
+
 export interface ImpPort {
   readonly readFeatures: (signal?: AbortSignal) => Promise<ImpFeatures>;
   readonly createImp: (input: ImpCreateInput) => Promise<void>;
@@ -104,6 +111,7 @@ export interface ImpPort {
   // the origin that each rule of the secret sends to, in place of its host, or null for a rule with
   // none; null for a secret that impd lacks
   readonly readSecretUpstreams: (secret: string) => Promise<readonly (string | null)[] | null>;
+  readonly readGrants: (name: string) => Promise<readonly GrantRow[]>;
   readonly addGrant: (name: string, secret: string, filter?: GrantFilter) => Promise<void>;
   readonly addSecret: (secret: ImpSecretInput) => Promise<void>;
   readonly removeSecret: (name: string) => Promise<void>;
