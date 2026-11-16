@@ -58,8 +58,6 @@ export interface TurnContext {
   readonly preamble: readonly string[];
   readonly pinnedCore: readonly MemoryRef[];
   readonly retrieved: readonly MemoryRef[];
-
-  readonly retrievedMessages: readonly number[];
 }
 
 type TurnContextRun = Pick<
@@ -67,7 +65,7 @@ type TurnContextRun = Pick<
   'context' | 'frame' | 'memory' | 'memorySettings' | 'defaultZone' | 'messaging'
 >;
 
-const noRetrieval: TurnRetrieval = { items: [], selfNotes: [], messages: [] };
+const noRetrieval: TurnRetrieval = { items: [], selfNotes: [] };
 
 const continuationNote =
   'An interrupt stopped your last turn before its work was done. Continue the work that is not done yet.';
@@ -91,7 +89,7 @@ export async function readTurnContext(
   const retrieval =
     readMemory === undefined
       ? noRetrieval
-      : await readTurnMemory({ ...run, memory: readMemory }, query, lines);
+      : await readTurnMemory({ ...run, memory: readMemory }, query);
 
   const at = formatMessageTime(lines.now, null, lines);
   const pinnedMemory = memory === null ? null : renderPinnedMemory(core, lines);
@@ -113,7 +111,6 @@ export async function readTurnContext(
         continuation: query.isContinuation ? continuationNote : null,
         changes,
         retrieval,
-        thread: query.taskID,
         at,
         runBlocks: query.runBlocks,
         brief: pickPreambleBrief(run, query, lines),
@@ -122,7 +119,6 @@ export async function readTurnContext(
     ),
     pinnedCore: core.map((item) => toMemoryRef(item)),
     retrieved: [...retrieval.items, ...retrieval.selfNotes].map((item) => toMemoryRef(item)),
-    retrievedMessages: retrieval.messages.map((message) => message.sequence),
   };
 }
 

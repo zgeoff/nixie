@@ -281,7 +281,6 @@ test("it renders a started task's first turn with the task prompt, no start note
     preamble: [],
     pinnedCore: [],
     retrieved: [],
-    retrievedMessages: [],
   });
 });
 
@@ -469,7 +468,6 @@ test('it asks the memory once with the message text, and places nothing when it 
   ]);
 
   expect(context.retrieved).toStrictEqual([]);
-  expect(context.retrievedMessages).toStrictEqual([]);
   expect(context.preamble.join('\n')).not.toInclude('retrieved-');
 });
 
@@ -536,7 +534,6 @@ test('it asks nothing of a run with no memory', async () => {
   );
 
   expect(context.retrieved).toStrictEqual([]);
-  expect(context.retrievedMessages).toStrictEqual([]);
 });
 
 test('it places the items that the memory answers with, whatever the index showed', async () => {
@@ -569,7 +566,6 @@ test('it places the items that the memory answers with, whatever the index showe
   memory.readTurnMemory.mockResolvedValue({
     kind: 'placed',
     selfNotes: [],
-    messages: [],
     items: [
       {
         itemID: '0b4f4c8e-3d0a-4c39-9a51-6f1f1f2b8c01',

@@ -36,7 +36,7 @@ test('it answers each turn memory ask with none and keeps the ask it was given',
     text: 'canal locks',
     thread: 'conversation',
     excludedWords: [],
-    held: { readVersions: () => Promise.resolve([]), readMessages: () => Promise.resolve([]) },
+    held: { readVersions: () => Promise.resolve([]) },
   };
 
   const turnMemory = await memory.readTurnMemory(ask);

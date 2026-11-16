@@ -37,8 +37,6 @@ interface TurnMemoryRefs {
   readonly pinnedCore: readonly MemoryRef[];
   readonly retrieved: readonly MemoryRef[];
 
-  readonly retrievedMessages: readonly number[];
-
   readonly invalidatedThrough: number;
 }
 
@@ -149,7 +147,6 @@ function buildTurnRecords(source: ModelRecordSource, completed: StepTurn): reado
       ...(completed.isSilent ? { isSilent: true } : {}),
       pinnedCore: completed.memory.pinnedCore.map((ref) => ({ ...ref })),
       retrieved: completed.memory.retrieved.map((ref) => ({ ...ref })),
-      retrievedMessages: [...completed.memory.retrievedMessages],
       invalidatedThrough: completed.memory.invalidatedThrough,
       sessionImageBytes: completed.images.bytes,
       sessionImageCount: completed.images.count,

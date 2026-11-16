@@ -479,65 +479,6 @@ test('it keeps a recall that came after a compaction in the same step', async ()
   expect(delivered.versions).toStrictEqual([{ itemID: 'item-2', version: 2 }]);
 });
 
-test('it lists the past messages each ended turn of the session placed', async () => {
-  const ctx = await setupTest();
-
-  const definitions = { snapshotHash: 'sha256:test' };
-
-  await createConversationTask(ctx.tasks.context);
-
-  await writeRecords(ctx.tasks.context.log, [
-    {
-      kind: 'model.session_opened',
-      definitions,
-      thread: 'conversation',
-      payload: { heldFrom: 1 },
-    },
-    {
-      kind: 'model.turn_ended',
-      definitions,
-      thread: 'conversation',
-      payload: { retrieved: [], retrievedMessages: [4, 9] },
-    },
-    {
-      kind: 'model.turn_ended',
-      definitions,
-      thread: 'conversation',
-      payload: { retrieved: [], retrievedMessages: [12] },
-    },
-  ]);
-
-  const deliveries = await readSessionDeliveries(ctx.tasks.context, 'conversation');
-
-  expect(deliveries.messages).toStrictEqual([4, 9, 12]);
-});
-
-test('it drops the past messages an earlier session placed once an invalidation ends it', async () => {
-  const ctx = await setupTest();
-
-  const definitions = { snapshotHash: 'sha256:test' };
-
-  await createConversationTask(ctx.tasks.context);
-
-  await writeRecords(ctx.tasks.context.log, [
-    {
-      kind: 'model.turn_ended',
-      definitions,
-      thread: 'conversation',
-      payload: { retrieved: [], retrievedMessages: [4, 9] },
-    },
-    {
-      kind: 'model.session_invalidated',
-      definitions,
-      thread: 'conversation',
-    },
-  ]);
-
-  const deliveries = await readSessionDeliveries(ctx.tasks.context, 'conversation');
-
-  expect(deliveries.messages).toStrictEqual([]);
-});
-
 test('it lists exactly the 3 versions of one recall record that a turn end covers', async () => {
   const ctx = await setupTest();
 

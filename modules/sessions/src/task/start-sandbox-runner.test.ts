@@ -311,7 +311,6 @@ test.each([
         contextWindow: 200_000,
         pinnedCore: [],
         retrieved: [],
-        retrievedMessages: [],
         invalidatedThrough: 0,
         sessionImageBytes: 0,
         sessionImageCount: 0,

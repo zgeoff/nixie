@@ -12,7 +12,6 @@ import { memoryRecalledCodec } from '../utils/memory-recalled-codec';
 
 export interface SessionDeliveries {
   readonly versions: readonly MemoryRef[];
-  readonly messages: readonly number[];
 }
 
 interface PendingRecall {
@@ -23,15 +22,12 @@ interface PendingRecall {
 interface SessionState {
   readonly delivered: ReadonlyMap<string, MemoryRef>;
 
-  readonly messages: readonly number[];
-
   readonly pending: readonly PendingRecall[];
   readonly isCompacted: boolean;
 }
 
 const emptyState: SessionState = {
   delivered: new Map(),
-  messages: [],
   pending: [],
   isCompacted: false,
 };
@@ -48,7 +44,6 @@ export async function readSessionDeliveries(
 
   return {
     versions: [...state.current.delivered.values()],
-    messages: [...new Set(state.current.messages)],
   };
 }
 
@@ -142,7 +137,6 @@ function toRefs(refs: readonly MemoryRef[] | undefined): readonly MemoryRef[] {
 function buildTurnEnd(state: SessionState, record: LogRecord): SessionState {
   const turn = modelTurnEndedCodec.tryDecodePartial(record.payload);
   const retrieved = state.isCompacted ? [] : toRefs(turn?.retrieved);
-  const messages = state.isCompacted ? [] : (turn?.retrievedMessages ?? []);
   const through = turn?.recalledThrough ?? Number.MAX_SAFE_INTEGER;
 
   const recalled = state.pending
@@ -152,7 +146,6 @@ function buildTurnEnd(state: SessionState, record: LogRecord): SessionState {
   return {
     ...state,
     delivered: mergeRefs(state.delivered, [...recalled, ...retrieved]),
-    messages: [...state.messages, ...messages],
     pending: [],
   };
 }
@@ -169,7 +162,6 @@ function buildSessionReset(state: SessionState, record: LogRecord): SessionState
     return {
       ...state,
       delivered: new Map(),
-      messages: [],
       pending: isLostSession(record)
         ? state.pending.filter((recall) => recall.sequence > parseLostRecallsThrough(record))
         : state.pending,
@@ -182,13 +174,12 @@ function buildSessionReset(state: SessionState, record: LogRecord): SessionState
 
     return {
       delivered: new Map(),
-      messages: [],
       pending: state.pending.filter((recall) => recall.sequence > through),
       isCompacted: true,
     };
   }
 
-  return { ...state, delivered: new Map(), messages: [], pending: [] };
+  return { ...state, delivered: new Map(), pending: [] };
 }
 
 function isLostSession(record: LogRecord): boolean {
