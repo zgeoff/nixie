@@ -45,6 +45,15 @@ export interface VersionLabels {
   readonly change: 'written' | 'backfilled';
 }
 
+// A purge's bridge version holds its text under a key of its own. Each quote of another record
+// sits sealed twice in a record beside the version.
+export interface VersionBridge {
+  readonly keyID: string;
+  readonly key: CryptoKey;
+  readonly evidenceQuote: string | null;
+  readonly intentQuote: string | null;
+}
+
 export interface VersionPlan {
   readonly requirement: ItemRequirement | null;
   readonly provenance: Provenance;
@@ -60,6 +69,8 @@ export interface VersionPlan {
   readonly labels?: VersionLabels;
 
   readonly newItemID?: string;
+
+  readonly bridge?: VersionBridge;
 
   readonly noticeKey?: string;
 
@@ -108,7 +119,7 @@ export async function writeVersionInTransaction(
   const subject = next.subject ?? plan.subject ?? previousSubject ?? 'owner';
 
   const sealed = await encodePinnableVersion(parts, tx, {
-    key: versionKey.key,
+    key: plan.bridge?.key ?? versionKey.key,
     plan,
     ref,
     revision,
@@ -175,7 +186,9 @@ async function encodePinnableVersion(
     throw new MemoryStateError(version.ref.itemID, 'pin', version.next.state);
   }
 
-  if (version.next.state === 'active' && (isPinned || version.wasPinned)) {
+  const isBridge = version.plan.bridge !== undefined;
+
+  if (!isBridge && version.next.state === 'active' && (isPinned || version.wasPinned)) {
     const provenance = version.plan.provenance;
 
     await requireVersionCoreRoom(parts, db, {
@@ -270,6 +283,24 @@ function buildRecords(parts: StoreParts, written: SealedVersion): readonly Recor
       : [];
 
   const move = written.move;
+  const bridge = written.plan.bridge;
+
+  const keyed: readonly RecordInput[] =
+    bridge === undefined
+      ? []
+      : [
+          {
+            ...base,
+            kind: 'memory.version_keyed',
+            payload: {
+              itemID: written.ref.itemID,
+              version: written.ref.version,
+              keyID: bridge.keyID,
+              evidenceQuote: bridge.evidenceQuote,
+              intentQuote: bridge.intentQuote,
+            },
+          },
+        ];
 
   const changed: readonly RecordInput[] =
     move === null
@@ -285,6 +316,7 @@ function buildRecords(parts: StoreParts, written: SealedVersion): readonly Recor
   return [
     ...(approval === undefined ? [] : [approval.record]),
     version,
+    ...keyed,
     ...marked,
     ...changed,
     ...pinned,

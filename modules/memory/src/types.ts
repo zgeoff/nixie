@@ -289,12 +289,26 @@ export interface MemoryStore {
   readonly forgetAll: (request: AllForgetRequest) => Promise<readonly string[]>;
 
   readonly finishForgets: (itemIDs: readonly string[]) => Promise<ForgetStatus>;
+
+  // Purges the evidence of one item of a purge set. Skipped: the item is forgetting or forgotten,
+  // or its purge is done.
+  readonly purgeItemEvidence: (request: PurgeRequest) => Promise<'purged' | 'skipped'>;
+
+  readonly finishEvidencePurges: (scope: PurgeScope) => Promise<void>;
   readonly readHistory: (itemID: string) => Promise<ItemHistory | null>;
 
   readonly readSubjectCounts: () => Promise<MemorySubjectCounts>;
 
   readonly view: MemoryView;
 }
+
+export interface PurgeRequest {
+  readonly recordSequence: number;
+  readonly itemID: string;
+}
+
+// The purges of one forgotten record, or the purges that no record forget owns
+export type PurgeScope = { readonly recordSequence: number } | { readonly isUnowned: true };
 
 export interface ItemIDStore {
   readonly readItemIDMap: (ids: readonly string[]) => Promise<ReadonlyMap<string, string>>;

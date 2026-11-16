@@ -18,14 +18,14 @@ export interface ItemKeyRow {
 export interface ItemKeyFacts {
   readonly keyRows: ReadonlyMap<string, readonly ItemKeyRow[]>;
 
-  // the item's current text version and label revision
-  readonly items: ReadonlyMap<string, { readonly version: number; readonly revision: number }>;
+  // the item's current text version
+  readonly versions: ReadonlyMap<string, number>;
 
   // the items with a purge that has no memory.evidence_purged yet
   readonly purging: ReadonlySet<string>;
 
-  // the revision of each memory.labelled record, by sequence
-  readonly labelRevisions: ReadonlyMap<number, number>;
+  // the sequence of each item's newest memory.labelled record, which holds its current labels
+  readonly newestLabelSequences: ReadonlyMap<string, number>;
 
   // the key ID of each quoted record, by sequence; null when the record has none
   readonly quotedKeyIDs: ReadonlyMap<number, string | null>;
@@ -42,7 +42,10 @@ export async function readItemKeyFacts(
 ): Promise<ItemKeyFacts> {
   const tables = db.$extendTables<MemoryTables>();
   const itemIDs = [...new Set(refs.map((ref) => ref.itemID))];
-  const labelSequences = collectSequences(refs, 'labels');
+
+  const labelItemIDs = [
+    ...new Set(refs.flatMap((ref) => (ref.value === 'labels' ? [ref.itemID] : []))),
+  ];
 
   const quoteSequences = [
     ...new Set(refs.flatMap((ref) => (ref.value === 'version-quote' ? [ref.recordSequence] : []))),
@@ -56,7 +59,7 @@ export async function readItemKeyFacts(
       ? []
       : tables
           .selectFrom('memory_items')
-          .select(['item_id', 'version', 'label_edits'])
+          .select(['item_id', 'version'])
           .where('item_id', 'in', itemIDs)
           .execute(),
     itemIDs.length === 0
@@ -67,12 +70,13 @@ export async function readItemKeyFacts(
           .where('item_id', 'in', itemIDs)
           .where('purged_sequence', 'is', null)
           .execute(),
-    labelSequences.length === 0
+    labelItemIDs.length === 0
       ? []
       : tables
           .selectFrom('memory_labels')
-          .select(['sequence', 'revision'])
-          .where('sequence', 'in', labelSequences)
+          .select(['item_id', (eb) => eb.fn.max('sequence').as('sequence')])
+          .where('item_id', 'in', labelItemIDs)
+          .groupBy('item_id')
           .execute(),
     quoteSequences.length === 0
       ? []
@@ -93,19 +97,10 @@ export async function readItemKeyFacts(
 
   return {
     keyRows: rowsByItem,
-    items: new Map(
-      items.map((item) => [
-        item.item_id,
-        { version: item.version, revision: item.version + item.label_edits },
-      ]),
-    ),
+    versions: new Map(items.map((item) => [item.item_id, item.version])),
     purging: new Set(purges.map((row) => row.item_id)),
-    labelRevisions: new Map(labels.map((row) => [row.sequence, row.revision])),
+    newestLabelSequences: new Map(labels.map((row) => [row.item_id, row.sequence])),
     quotedKeyIDs: new Map(quoted.map((row) => [row.sequence, row.key_id])),
     forgettingSequences: forgetting,
   };
-}
-
-function collectSequences(refs: readonly ItemValueRef[], value: 'labels'): readonly number[] {
-  return [...new Set(refs.flatMap((ref) => (ref.value === value ? [ref.sequence] : [])))];
 }

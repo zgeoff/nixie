@@ -27,3 +27,5 @@ export type { ModelReplyRecord } from './write-model-reply-record';
 export { writeModelReplyRecord } from './write-model-reply-record';
 export type { QuotedProposal, QuotedProposalRequest } from './create-quoted-proposal';
 export { createQuotedProposal } from './create-quoted-proposal';
+export type { BegunPurge } from './seed-begun-purge';
+export { seedBegunPurge } from './seed-begun-purge';

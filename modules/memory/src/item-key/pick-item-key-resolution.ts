@@ -26,12 +26,12 @@ export function pickGenerationKeyID(facts: ItemKeyFacts, itemID: string, sequenc
 export function pickItemKeyResolution(facts: ItemKeyFacts, ref: ItemValueRef): ItemKeyResolution {
   const rows = facts.keyRows.get(ref.itemID) ?? [];
   const isPurging = facts.purging.has(ref.itemID);
-  const item = facts.items.get(ref.itemID);
+  const currentVersion = facts.versions.get(ref.itemID);
 
   if (ref.value === 'version') {
     const versionRow = findVersionRow(rows, ref.version);
     const keyID = versionRow?.key_id ?? pickGenerationKeyID(facts, ref.itemID, ref.sequence);
-    const isCurrent = item?.version === ref.version;
+    const isCurrent = currentVersion === ref.version;
 
     return {
       kind: 'resolved',
@@ -47,7 +47,7 @@ export function pickItemKeyResolution(facts: ItemKeyFacts, ref: ItemValueRef): I
       return { kind: 'unresolved' };
     }
 
-    const isCurrent = item?.version === ref.version;
+    const isCurrent = currentVersion === ref.version;
 
     return {
       kind: 'resolved',
@@ -66,13 +66,7 @@ export function pickItemKeyResolution(facts: ItemKeyFacts, ref: ItemValueRef): I
     return { kind: 'resolved', keyID, isRemoved: isMarkedRemoved(rows, keyID) || isPurging };
   }
 
-  const revision = facts.labelRevisions.get(ref.sequence);
-
-  if (revision === undefined) {
-    return { kind: 'unresolved' };
-  }
-
-  const isCurrent = item?.revision === revision;
+  const isCurrent = facts.newestLabelSequences.get(ref.itemID) === ref.sequence;
 
   return {
     kind: 'resolved',
