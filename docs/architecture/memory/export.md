@@ -66,7 +66,7 @@ settings say.
 
 ## The model's export tool
 
-The model's tools include `memory.export`, which declares the `export` effect. The fixed read-only
-rule denies every effect but read, fetch and note, so a model call to it is refused before it runs.
-The tool takes no destination, so a call that a later rule lets through still exports nothing, and
-its result is a sentence for the model: the user exports from the memory view.
+The model's tools include `memory.export`, which declares the `export` effect. The starter rule
+`ask-exports` asks before each call with that effect, so a model call to it waits for the user's
+approval. The tool takes no destination, so a call that a rule or an approval lets through still
+exports nothing, and its result is a sentence for the model: the user exports from the memory view.

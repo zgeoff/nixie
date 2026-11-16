@@ -63,10 +63,10 @@ turn, after it reads the span again.
 | `moment.find`   | `read` | Searches titles, notes and reflections by keyword and by meaning, or lists by date |
 | `moment.read`   | `read` | Returns the moment's text and its span in order, a page at a time                  |
 
-The read-only rule allows every moment tool, because each declares `note` or `read` and runs direct.
-The user's rules on `note` decide whether nixie keeps moments on its own. A model names a moment by
-its [short ID](../core/database.md#short-ids). A refusal returns to the model as the tool's error,
-in a fixed sentence that holds no moment text.
+Each moment tool declares `note` or `read` and runs direct, so the starter rules `allow-notes` and
+`allow-reads` allow every one. The user's rules on `note` decide whether nixie keeps moments on its
+own. A model names a moment by its [short ID](../core/database.md#short-ids). A refusal returns to
+the model as the tool's error, in a fixed sentence that holds no moment text.
 
 `moment.keep` returns the moment's short ID, the weekly count and a pending reflection, as JSON with
 no prose. `moment.find` decrypts every candidate's text in process memory, a batch at a time, and
