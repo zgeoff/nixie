@@ -362,7 +362,11 @@ test('it lapses a pending proposal for a new item and deletes its key', async ()
   expect(result).toBe('purged');
   expect(keys.has(quoted.proposal.itemID)).toBe(false);
   expect(pending).toStrictEqual([]);
-  expect(closed?.payload).toMatchObject({ closedKeyIDs: [], generationKeyID: null });
+
+  expect(closed?.payload).toMatchObject({
+    closedKeyIDs: [quoted.proposal.itemID],
+    generationKeyID: null,
+  });
 });
 
 test('it skips an item that is forgetting', async () => {
@@ -587,4 +591,35 @@ test('it counts the purge as done only after the key store checkpoint has cleare
   expect(finished).toBe('purged');
   expect(afterRelease).toMatchObject([{ purged_sequence: expect.toBeNumber() }]);
   expect(stat(keysWAL)).resolves.toMatchObject({ size: 0 });
+});
+
+test('it does not count the purge of a pending proposal for a new item as done while the key store checkpoint is blocked', async () => {
+  const ctx = await setupTest();
+
+  const quoted = await createQuotedProposal(ctx.memory, {
+    message: 'I keep bees on the allotment.',
+    text: 'The owner keeps bees.',
+    quote: 'I keep bees',
+  });
+
+  const request = { recordSequence: quoted.recordSequence, itemID: quoted.proposal.itemID };
+
+  await seedBegunPurge(ctx.memory.log, {
+    recordSequence: quoted.recordSequence,
+    itemIDs: [quoted.proposal.itemID],
+  });
+
+  const reader = await startKeyStoreReader(ctx.memory.dataDir);
+  const first = await ctx.memory.store.purgeItemEvidence(request).catch((error: unknown) => error);
+  const second = await ctx.memory.store.purgeItemEvidence(request).catch((error: unknown) => error);
+  const whileHeld = await readPurgeRows(ctx.memory.writer.db);
+
+  await reader.release();
+
+  const finished = await ctx.memory.store.purgeItemEvidence(request);
+
+  expect(first).toMatchObject({ name: 'KeyStoreBusyError' });
+  expect(second).toMatchObject({ name: 'KeyStoreBusyError' });
+  expect(whileHeld).toMatchObject([{ purged_sequence: null }]);
+  expect(finished).toBe('purged');
 });

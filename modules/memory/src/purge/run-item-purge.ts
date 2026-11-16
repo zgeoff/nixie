@@ -53,7 +53,7 @@ async function runItemClose(
     .with({ kind: 'lapse' }, async () => {
       await writeLapseClose(parts, facts);
 
-      return [];
+      return [facts.itemID];
     })
     .with({ kind: 'close' }, (close) => writeItemClose(parts, facts, close))
     .exhaustive();
