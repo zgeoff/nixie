@@ -87,8 +87,8 @@ limit that the Agent SDK guest holds. A recall result of exactly the page limit,
 items beside a filler, reaches the model whole at that value. A tool server that does not answer
 within the guest config's `startup_timeout_sec` fails the turn with `tools_not_connected`. The guest
 writes the turn frame's tool-call wait into `tool_timeout_sec` of nixie's tool server, in seconds,
-and writes nothing when the wait is null. The `codex` harness declares a wait of 900,000 ms, because
-the test imp lane proves that the CLI drops a tool call that outlasts the setting.
+and writes nothing when the wait is null. The `codex` harness record declares a wait, because the
+test imp lane proves that the CLI drops a tool call that outlasts the setting.
 
 The wire library holds every harness ID and the features each harness declares, such as resuming a
 session at an entry or returning structured output. Each role declares the features its loop needs,
