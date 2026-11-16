@@ -77,7 +77,6 @@ test('it lists the web fetch tool, the time tool, the log readers, the skill too
       readStore: () => null,
       clock: { now: () => Date.parse('2026-10-13T22:30:15.000Z') },
       ownerName: null,
-      agentName: null,
       defaultZone: 'Australia/Sydney',
     },
   );
@@ -94,7 +93,6 @@ test('it lists the web fetch tool, the time tool, the log readers, the skill too
     'skill_pending',
     'prompt_read',
     'memory.recall',
-    'memory.rate',
     'memory.pending',
     'memory.remember',
     'memory.edit',
@@ -207,7 +205,6 @@ test('it fails a memory call that runs before the memory store starts', async ()
       readStore: () => null,
       clock: { now: () => Date.parse('2026-10-13T22:30:15.000Z') },
       ownerName: null,
-      agentName: null,
       defaultZone: 'Australia/Sydney',
     },
   );
@@ -268,7 +265,6 @@ test('it allows the time tool, the log reader and each memory tool but export an
         readStore: () => null,
         clock: { now: () => Date.parse('2026-10-13T22:30:15.000Z') },
         ownerName: null,
-        agentName: null,
         defaultZone: 'Australia/Sydney',
       },
     ),
@@ -298,7 +294,6 @@ test('it allows the time tool, the log reader and each memory tool but export an
     'log.read',
     'log.read_image',
     'memory.recall',
-    'memory.rate',
     'memory.pending',
     'memory.remember',
     'memory.edit',
@@ -314,7 +309,6 @@ test('it allows the time tool, the log reader and each memory tool but export an
   );
 
   expect(decided.map((entry) => entry.decision.outcome)).toStrictEqual([
-    'allow',
     'allow',
     'allow',
     'allow',
@@ -372,7 +366,6 @@ test('it offers no tool that takes an action hash, which only the owner approves
       readStore: () => null,
       clock: { now: () => Date.parse('2026-10-13T22:30:15.000Z') },
       ownerName: null,
-      agentName: null,
       defaultZone: 'Australia/Sydney',
     },
   );
@@ -425,7 +418,6 @@ test('it asks about a model call to memory.export under the starter rules, so no
         readStore: () => null,
         clock: { now: () => Date.parse('2026-10-13T22:30:15.000Z') },
         ownerName: null,
-        agentName: null,
         defaultZone: 'Australia/Sydney',
       },
     ),

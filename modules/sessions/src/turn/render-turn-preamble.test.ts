@@ -24,17 +24,7 @@ test('it renders the continuation note, the change note, the facts, the self-not
       retrieval: {
         items: [fact],
         selfNotes: [{ ...fact, subject: 'self', model: 'claude-opus-5-5', text: 'I enjoy a pun' }],
-        messages: [
-          {
-            sequence: 4812,
-            thread: 'garden',
-            recordedAt: Date.UTC(2026, 9, 13, 9, 30),
-            text: 'The tomatoes need staking',
-            isCut: false,
-          },
-        ],
       },
-      thread: 'garden',
       at: 'Wed 14 Oct, 12:00, UTC',
       runBlocks: null,
       brief: null,
@@ -49,7 +39,6 @@ test('it renders the continuation note, the change note, the facts, the self-not
     'pinned-memory-changes',
     'retrieved-memory',
     'retrieved-self-notes',
-    'retrieved-messages',
   ]);
 });
 
@@ -59,8 +48,7 @@ test('it leaves out each block with nothing in it', () => {
       {
         continuation: null,
         changes: null,
-        retrieval: { items: [], selfNotes: [], messages: [] },
-        thread: 'garden',
+        retrieval: { items: [], selfNotes: [] },
         at: 'Wed 14 Oct, 12:00, UTC',
         runBlocks: null,
         brief: null,
@@ -76,8 +64,7 @@ test('it puts the blocks of the task run before the brief', () => {
       {
         continuation: null,
         changes: null,
-        retrieval: { items: [], selfNotes: [], messages: [] },
-        thread: 'garden',
+        retrieval: { items: [], selfNotes: [] },
         at: 'Wed 14 Oct, 12:00, UTC',
         runBlocks: '<report-shape fence="k3f9">\n</report-shape fence="k3f9">',
         brief: 'the brief',
@@ -92,8 +79,7 @@ test('it puts the brief that sits in no inbox record last', () => {
     {
       continuation: 'Continue the work.',
       changes: null,
-      retrieval: { items: [], selfNotes: [], messages: [] },
-      thread: 'garden',
+      retrieval: { items: [], selfNotes: [] },
       at: 'Wed 14 Oct, 12:00, UTC',
       runBlocks: null,
       brief: '<task-message id="t4m2">Find quiet cafes.</task-message>',

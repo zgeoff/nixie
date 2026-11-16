@@ -22,24 +22,21 @@ export function placeTurnMemory(
 
     const items = loaded.filter((item) => !item.isPinned);
 
-    if (items.length === 0 && selection.messages.length === 0) {
+    if (items.length === 0) {
       return { kind: 'none' };
     }
 
-    if (items.length > 0) {
-      await writeRecallRecord(parts, {
-        thread,
-        items,
-        picks: selection.picks,
-        searchMode: pickSearchMode(selection.searchModes),
-      });
-    }
+    await writeRecallRecord(parts, {
+      thread,
+      items,
+      picks: selection.picks,
+      searchMode: pickSearchMode(selection.searchModes),
+    });
 
     return {
       kind: 'placed',
       items: items.filter((item) => item.subject !== 'self'),
       selfNotes: items.filter((item) => item.subject === 'self'),
-      messages: selection.messages,
     };
   });
 }

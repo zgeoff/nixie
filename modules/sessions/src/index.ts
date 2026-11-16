@@ -88,7 +88,6 @@ export type {
   MemoryApproval,
   MemoryItem,
   MemoryRef,
-  PastMessage,
   MemoryLineOptions,
   NotedEvent,
   PinnedCoreUse,

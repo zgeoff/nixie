@@ -35,18 +35,6 @@ const versionRefSchema = z.object({
 
 const recallItemSchema = versionRefSchema.extend({ score: z.number().optional() });
 const recallSchema = z.object({ items: z.array(recallItemSchema) });
-
-const ratingItemSchema = versionRefSchema.extend({
-  hasNote: z.boolean(),
-  verdict: z.enum(['helpful', 'noise', 'misleading']),
-});
-
-const ratingSchema = z.object({
-  items: z.array(ratingItemSchema),
-  ratedBy: z.string().optional(),
-  recalledSequence: sequenceSchema,
-});
-
 const tokenCountSchema = z.int().nonnegative();
 const contextSchema = z.object({ size: tokenCountSchema, window: z.int().positive() });
 
@@ -64,16 +52,6 @@ const summarySchema = z.object({
 });
 
 const compactionFailureSchema = z.object({ failures: z.int().positive() });
-
-const ratingNoteRefSchema = z.object({
-  itemID: z.string().min(1).max(200),
-  sequence: sequenceSchema,
-});
-
-const ratingNoteSchema = ratingNoteRefSchema.extend({
-  status: z.enum(['readable', 'shredded', 'unreadable', 'missing']),
-  text: z.string().optional(),
-});
 
 const versionTextSchema = versionRefSchema.extend({
   status: z.enum(['readable', 'shredded', 'unreadable', 'missing']),
@@ -137,8 +115,6 @@ const recordSchema = z.object({
   moment: z
     .object({ momentID: z.string(), shortID: z.string(), title: z.string().optional() })
     .optional(),
-
-  rating: ratingSchema.optional(),
 
   proposal: z.object({ proposalID: z.string(), shortID: z.string() }).optional(),
 
@@ -406,10 +382,6 @@ export const contract = {
     readVersions: signedIn
       .input(z.object({ versions: z.array(versionRefSchema).min(1).max(100) }))
       .output(z.object({ versions: z.array(versionTextSchema) })),
-
-    readRatingNotes: signedIn
-      .input(z.object({ notes: z.array(ratingNoteRefSchema).min(1).max(100) }))
-      .output(z.object({ notes: z.array(ratingNoteSchema) })),
 
     writerStatus: signedIn.route({ deprecated: true }).output(
       z.object({

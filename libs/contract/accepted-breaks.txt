@@ -54,3 +54,5 @@ GEO-2363: POST /memory/previewForget removed the required property `isSensitive`
 GEO-2363: POST /memory/previewForgetRetired removed the required property `items/items/isSensitive` from the response with the `200` status
 GEO-2363: POST /memory/readItem removed the required property `isSensitive` from the response with the `200` status
 GEO-2363: POST /memory/readPinnedCore removed the required property `items/items/isSensitive` from the response with the `200` status
+# GEO-2550: a client of the last release still works, because its only call of readRatingNotes loads the note beside a rating verdict in the activity, and the new release sends no rating, so the call never runs and a row shows no verdict. A call that does run fails and the row shows its line without a note.
+GEO-2550: POST /memory/readRatingNotes api path removed without deprecation

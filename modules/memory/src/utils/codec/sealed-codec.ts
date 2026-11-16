@@ -7,8 +7,3 @@ export interface SealedCodec<Value> {
 }
 
 export type ProposalText = Readonly<z.output<typeof proposalTextSchema>>;
-
-export interface RatingNotePlace {
-  readonly ratingID: string;
-  readonly itemID: string;
-}

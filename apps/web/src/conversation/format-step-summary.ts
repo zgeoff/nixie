@@ -34,9 +34,8 @@ function formatStatus(step: StepActivity): readonly string[] {
 
 function formatMemoryCount(memories: readonly RecalledMemory[]): string {
   const count = memories.length === 1 ? '1 memory' : `${memories.length} memories`;
-  const noise = memories.filter((memory) => memory.rating?.verdict === 'noise').length;
 
-  return noise === 0 ? count : `${count} (${noise} noise)`;
+  return count;
 }
 
 function formatTools(step: StepActivity): string {

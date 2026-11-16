@@ -57,7 +57,6 @@ export function buildTestConversationTools(reply: FetchReply): TestConversationT
           readStore: () => stores.current,
           clock: context.clock,
           ownerName: null,
-          agentName: null,
           defaultZone: 'UTC',
         },
       );

@@ -21,7 +21,6 @@ async function setupTest(config: TestMemoryOptions = {}) {
     buildMemoryTools(memory.store, {
       clock: { now: () => Date.now() },
       ownerName: null,
-      agentName: null,
       defaultZone: 'UTC',
     }),
   );

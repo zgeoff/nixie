@@ -1,19 +1,14 @@
 import type { LogRecord } from '@heynixie/log';
-import { readHeldMessages } from '../held/read-held-messages';
 import { readSessionDeliveries } from '../session/read-session-deliveries';
-import type { ConversationRun, MemoryItem, MemoryLineOptions, PastMessage } from '../types';
+import type { ConversationRun, MemoryItem } from '../types';
 import type { TurnContextQuery } from './read-turn-context';
 
 export interface TurnRetrieval {
   readonly items: readonly MemoryItem[];
   readonly selfNotes: readonly MemoryItem[];
-  readonly messages: readonly PastMessage[];
 }
 
-type MemoryRun = Pick<
-  ConversationRun,
-  'context' | 'memorySettings' | 'frame' | 'messaging' | 'sinceSequence'
-> &
+type MemoryRun = Pick<ConversationRun, 'context' | 'memorySettings' | 'frame'> &
   Required<Pick<ConversationRun, 'memory'>>;
 
 // Asks the memory module once what the turn brings. The module decides which pushes run, so this
@@ -21,7 +16,6 @@ type MemoryRun = Pick<
 export async function readTurnMemory(
   run: MemoryRun,
   query: TurnContextQuery,
-  times: MemoryLineOptions,
 ): Promise<TurnRetrieval> {
   const settings = run.memorySettings;
   const deliveries = lazy(() => readSessionDeliveries(run.context, query.taskID));
@@ -43,32 +37,14 @@ export async function readTurnMemory(
 
         return delivered.versions;
       },
-      readMessages: async () => {
-        const held = await readHeldMessages(run.context, {
-          taskID: query.taskID,
-          isNewSession: query.isNewSession,
-          ...(run.sinceSequence === undefined ? {} : { afterSequence: run.sinceSequence }),
-          beforeSequence: Math.min(
-            Number.MAX_SAFE_INTEGER,
-            ...query.batch.map((record) => record.sequence),
-          ),
-          rebuildTokens: settings.rebuildTokens,
-          times,
-          messaging: run.messaging,
-        });
-
-        const delivered = query.isNewSession ? null : await deliveries();
-
-        return [...new Set([...held, ...(delivered?.messages ?? [])])];
-      },
     },
   });
 
   if (result.kind === 'none') {
-    return { items: [], selfNotes: [], messages: [] };
+    return { items: [], selfNotes: [] };
   }
 
-  return { items: result.items, selfNotes: result.selfNotes, messages: result.messages };
+  return { items: result.items, selfNotes: result.selfNotes };
 }
 
 function lazy<T>(read: () => Promise<T>): () => Promise<T> {

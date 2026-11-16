@@ -190,10 +190,8 @@ For the conversation, `logThread` equals `thread`.
 
 ### Other paths to your messages
 
-- Until [the similarity push cleanup](https://linear.app/zgeoff/issue/GEO-2550) lands, nixie adds
-  past messages of yours from every thread to each turn of a task with `memory: read`
-  ([what a turn brings](memory-turn-push.md#between-the-2-items)). The grant ships after that
-  cleanup. From then on, the grant is the only path from the conversation's log to a task.
+- nixie adds no past messages of yours to a turn of a task with `memory: read`. The grant is the
+  only path from the conversation's log to a task.
 - A memory item and a kept moment reach a task through `memory: read`, never through the grant.
 
 ### A forget

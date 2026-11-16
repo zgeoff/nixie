@@ -2,12 +2,7 @@ import type { ActionCall, ListedAction } from '@heynixie/actions';
 import type { LogRecord as ContractRecord } from '@heynixie/contract';
 import { spanSchema } from '@heynixie/contract';
 import type { JSONObject, JSONValue, LogRecord, RecordKind } from '@heynixie/log';
-import {
-  memoryRatedCodec,
-  momentKeptCodec,
-  recordForgetStartedCodec,
-  recordForgottenCodec,
-} from '@heynixie/memory';
+import { momentKeptCodec, recordForgetStartedCodec, recordForgottenCodec } from '@heynixie/memory';
 import {
   modelCompactedCodec,
   modelCompactionFailedCodec,
@@ -83,7 +78,6 @@ export function toContractRecord(
 
   const reminder = toReminder(record, lookups);
   const recall = record.kind === 'memory.recalled' ? toRecall(record) : undefined;
-  const rating = record.kind === 'memory.rated' ? toRating(record) : undefined;
   const moment = record.kind === 'moment_kept' ? toKeptMoment(record) : undefined;
   const proposal = lookups.proposals.get(record.sequence);
   const removal = record.kind === 'action.outcome' ? toRemoval(record, lookups) : undefined;
@@ -97,7 +91,6 @@ export function toContractRecord(
     ...(message === undefined ? {} : { message }),
     ...(moment === undefined ? {} : { moment }),
     ...(proposal === undefined ? {} : { proposal }),
-    ...(rating === undefined ? {} : { rating }),
     ...(reminder === undefined ? {} : { reminder }),
     ...(recall === undefined ? {} : { recall }),
     recordedAt: record.recordedAt,
@@ -354,27 +347,6 @@ function toRecallItem(item: RecallItem & { readonly similarity?: number }): Reca
   return item.score === undefined
     ? { itemID: item.itemID, version: item.version }
     : { itemID: item.itemID, version: item.version, score: item.score };
-}
-
-type Rating = NonNullable<ContractRecord['rating']>;
-
-function toRating(record: LogRecord): Rating | undefined {
-  const rated = memoryRatedCodec.tryDecodePartial(record.payload);
-
-  if (rated?.recalledSequence === undefined) {
-    return undefined;
-  }
-
-  return {
-    items: (rated.ratings ?? []).map((item) => ({
-      hasNote: item.sealedNote !== undefined,
-      itemID: item.itemID,
-      verdict: item.verdict,
-      version: item.version,
-    })),
-    ...(rated.ratedBy === undefined ? {} : { ratedBy: rated.ratedBy }),
-    recalledSequence: rated.recalledSequence,
-  };
 }
 
 type KeptMoment = NonNullable<ContractRecord['moment']>;

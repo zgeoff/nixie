@@ -8,7 +8,6 @@ import type {
   WriteInTransaction,
 } from '../types';
 import { readEvidenceSequences } from '../utils/read-evidence-sequences';
-import { removeMessageEntries } from '../utils/remove-message-entries';
 import { runForgetCleanup } from '../utils/run-forget-cleanup';
 
 export interface ForgetItems {
@@ -53,7 +52,6 @@ export async function runForgetItems(
 
       return {
         itemIDs: targets.map((target) => target.itemID),
-        evidenceSequences: [...new Set(sequences.flat())],
       };
     });
 
@@ -65,8 +63,6 @@ export async function runForgetItems(
 
       await parts.triggers.remove(itemID);
     }
-
-    await removeMessageEntries(parts, begun.evidenceSequences);
 
     return begun.itemIDs;
   });

@@ -9,38 +9,32 @@ import type { TurnMemorySettings } from './types';
 
 interface TurnOverrides {
   readonly trigger?: Partial<TurnMemorySettings['trigger']>;
-  readonly similarity?: Partial<TurnMemorySettings['similarity']>;
 }
 
 async function setupTest(overrides: TurnOverrides = {}) {
   const memory = await startTestMemory({
     turn: {
-      trigger: { items: 3, minScore: 0, minSimilarity: 1, ...overrides.trigger },
-      similarity: {
-        items: 0,
-        selfNotes: 0,
-        messages: 0,
+      trigger: {
+        items: 3,
         minScore: 0,
-        minSimilarity: 0.38,
-        ...overrides.similarity,
+        minSimilarity: 1,
+        ...overrides.trigger,
       },
     },
   });
 
   const readVersions = mock(() => Promise.resolve<readonly MemoryRef[]>([]));
-  const readMessages = mock(() => Promise.resolve<readonly number[]>([]));
 
   const buildAsk = (text: string, held: Partial<TurnMemoryAsk['held']> = {}): TurnMemoryAsk => ({
     text,
     thread: 'conversation',
     excludedWords: [],
-    held: { readVersions, readMessages, ...held },
+    held: { readVersions, ...held },
   });
 
   return {
     memory,
     readVersions,
-    readMessages,
     buildAsk,
     readRecalls: () => readRecords(memory.log, { afterSequence: 0, kinds: ['memory.recalled'] }),
     remember: (text: string, triggers: readonly string[], subject: 'owner' | 'self' = 'owner') =>
@@ -84,7 +78,11 @@ test('it places up to the cap of items whose trigger phrase matches, in one reco
   const result = await ctx.memory.store.readTurnMemory(ctx.buildAsk('is the piano in tune?'));
   const records = await ctx.readRecalls();
 
-  expect(result).toMatchObject({ kind: 'placed', items: [{}, {}], selfNotes: [], messages: [] });
+  expect(result).toMatchObject({
+    kind: 'placed',
+    items: [{}, {}],
+    selfNotes: [],
+  });
 
   expect(records.map((entry) => entry.record.payload)).toStrictEqual([
     {
@@ -163,53 +161,14 @@ test('it counts a self-note toward the cap', async () => {
   expect(placed).toHaveLength(2);
 });
 
-test('it places trigger items first and no item twice when both pushes match one item', async () => {
-  const ctx = await setupTest({ trigger: { items: 1, minScore: 0 }, similarity: { items: 2 } });
-
-  const [piano] = await Promise.all([
-    ctx.remember('Piano is tuned in spring', ['grand instrument']),
-    ctx.remember('Piano lessons are on Friday', []),
-  ]);
-
-  const result = await ctx.memory.store.readTurnMemory(ctx.buildAsk('grand piano lessons'));
-
-  const itemIDs = result.kind === 'placed' ? result.items.map((item) => item.itemID) : [];
-
-  expect(itemIDs).toStrictEqual([piano.itemID, expect.toBeString()]);
-});
-
-test('it drops a pick that was retired between the selection and the placing, and refills nothing', async () => {
-  const ctx = await setupTest({ trigger: { items: 1, minScore: 0 }, similarity: { messages: 1 } });
-
-  await ctx.rememberFillers();
-
-  const [best] = await Promise.all([
-    ctx.remember('Piano is tuned in spring', ['piano tuning']),
-    ctx.remember('Piano stool is broken', ['piano']),
-  ]);
-
-  // the similarity push reads the held messages after trigger push has picked
-  const result = await ctx.memory.store.readTurnMemory(
-    ctx.buildAsk('piano tuning', {
-      readMessages: async () => {
-        await ctx.memory.store.retire({ target: best, provenance: buildMockProvenance() });
-
-        return [];
-      },
-    }),
-  );
-
-  expect({ result, records: await ctx.readRecalls() }).toStrictEqual({
-    result: { kind: 'none' },
-    records: [],
-  });
-});
-
 test('it matches a restored item again and no retired one', async () => {
   const ctx = await setupTest();
   const piano = await ctx.remember('Piano is tuned in spring', ['piano tuning']);
 
-  await ctx.memory.store.retire({ target: piano, provenance: buildMockProvenance() });
+  await ctx.memory.store.retire({
+    target: piano,
+    provenance: buildMockProvenance(),
+  });
 
   const retired = await ctx.memory.store.readTurnMemory(ctx.buildAsk('piano tuning'));
 
@@ -220,7 +179,11 @@ test('it matches a restored item again and no retired one', async () => {
 
   const again = await ctx.memory.store.readTurnMemory(ctx.buildAsk('piano tuning'));
 
-  expect({ retired, restored: restored.itemID, placed: again.kind }).toStrictEqual({
+  expect({
+    retired,
+    restored: restored.itemID,
+    placed: again.kind,
+  }).toStrictEqual({
     retired: { kind: 'none' },
     restored: piano.itemID,
     placed: 'placed',
@@ -231,7 +194,10 @@ test('it never matches a forgotten item', async () => {
   const ctx = await setupTest();
   const piano = await ctx.remember('Piano is tuned in spring', ['piano tuning']);
 
-  await ctx.memory.store.forget({ target: piano, provenance: buildMockProvenance() });
+  await ctx.memory.store.forget({
+    target: piano,
+    provenance: buildMockProvenance(),
+  });
 
   const result = await ctx.memory.store.readTurnMemory(ctx.buildAsk('piano tuning'));
 
@@ -241,7 +207,7 @@ test('it never matches a forgotten item', async () => {
 test.each([
   ['every push is off', { trigger: { items: 0 } }, 'piano'],
   ['the text is blank', {}, '  \n '],
-])('it reads nothing from the held lists when %s', async (_label, turn, text) => {
+])('it reads nothing from the held list when %s', async (_label, turn, text) => {
   const ctx = await setupTest(turn);
 
   await ctx.remember('Piano is tuned in spring', ['piano tuning']);
@@ -251,8 +217,7 @@ test.each([
   expect({
     result,
     versionReads: ctx.readVersions.mock.calls.length,
-    messageReads: ctx.readMessages.mock.calls.length,
-  }).toStrictEqual({ result: { kind: 'none' }, versionReads: 0, messageReads: 0 });
+  }).toStrictEqual({ result: { kind: 'none' }, versionReads: 0 });
 });
 
 test('it records the keyword search mode with no encoder', async () => {
@@ -277,7 +242,6 @@ test('it records keyword-fallback when the trigger vectors are unavailable, what
   const next = await startNextTestMemory(ctx.memory, {
     turn: {
       trigger: { items: 3, minScore: 0, minSimilarity: 1 },
-      similarity: { items: 1, selfNotes: 0, messages: 0, minScore: 0, minSimilarity: 0.38 },
     },
     semanticSearch: {
       encoder: {
@@ -292,8 +256,12 @@ test('it records keyword-fallback when the trigger vectors are unavailable, what
 
   await next.store.waitForSemanticIndex();
 
-  const result = await next.store.readTurnMemory(ctx.buildAsk('call my sibling'));
-  const records = await readRecords(next.log, { afterSequence: 0, kinds: ['memory.recalled'] });
+  const result = await next.store.readTurnMemory(ctx.buildAsk('tractor hire'));
+
+  const records = await readRecords(next.log, {
+    afterSequence: 0,
+    kinds: ['memory.recalled'],
+  });
 
   expect(result).toMatchObject({ kind: 'placed', items: [{}] });
 

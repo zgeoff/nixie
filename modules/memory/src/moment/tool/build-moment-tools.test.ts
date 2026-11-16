@@ -19,7 +19,7 @@ async function setupTest() {
   const memory = await startTestMemory({ logClock: clock });
 
   const registry = buildToolRegistry(
-    buildMemoryTools(memory.store, { clock, ownerName: null, agentName: null, defaultZone: 'UTC' }),
+    buildMemoryTools(memory.store, { clock, ownerName: null, defaultZone: 'UTC' }),
   );
 
   return {

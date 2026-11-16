@@ -302,8 +302,8 @@ text the user typed, and the checker's judgment of whether the user meant the me
   version's checks record that rule.
 - An allow rule on `memory_write` retires an item at once with a notice, and skips the intent quote
   check and the retirement checker.
-- A pin, an unpin, a rating and a comment declare `note`, so no rule on `memory_write` reaches them.
-  A pin waits for review under every rule.
+- A pin, an unpin and a comment declare `note`, so no rule on `memory_write` reaches them. A pin
+  waits for review under every rule.
 - With the starter rules, no rule matches `memory_write`, so every write runs every check.
 
 ## Memory proposals

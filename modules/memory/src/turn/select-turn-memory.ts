@@ -1,4 +1,4 @@
-import type { PastMessage, TurnMemoryAsk } from '@heynixie/sessions';
+import type { TurnMemoryAsk } from '@heynixie/sessions';
 import type { SearchMode } from '../types';
 import { buildPushExclusions } from './build-push-exclusions';
 import { pickTurnPushes } from './pick-turn-pushes';
@@ -8,7 +8,6 @@ export type TurnSelection =
   | {
       readonly kind: 'selected';
       readonly picks: readonly PushPick[];
-      readonly messages: readonly PastMessage[];
       readonly searchModes: readonly SearchMode[];
     }
   | { readonly kind: 'none' };
@@ -31,7 +30,6 @@ export async function selectTurnMemory(
 
   const exclusions = buildPushExclusions(states, held);
   const picks: PushPick[] = [];
-  const messages: PastMessage[] = [];
   const searchModes: SearchMode[] = [];
 
   for (const push of pushes) {
@@ -42,11 +40,8 @@ export async function selectTurnMemory(
     });
 
     picks.push(...result.picks);
-    messages.push(...result.messages);
     searchModes.push(...result.searchModes);
   }
 
-  return picks.length === 0 && messages.length === 0
-    ? { kind: 'none' }
-    : { kind: 'selected', picks, messages, searchModes };
+  return picks.length === 0 ? { kind: 'none' } : { kind: 'selected', picks, searchModes };
 }

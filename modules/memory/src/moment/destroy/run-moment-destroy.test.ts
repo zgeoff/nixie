@@ -26,7 +26,6 @@ async function setupTest() {
     buildMemoryTools(memory.store, {
       clock: systemClock,
       ownerName: null,
-      agentName: null,
       defaultZone: 'UTC',
     }),
   );

@@ -52,26 +52,6 @@ export const memoryConfigSchema = z
       .min(-1)
       .max(1)
       .default(defaultTurnSettings.trigger.minSimilarity),
-    retrieval_items: z.int().nonnegative().max(100).default(defaultTurnSettings.similarity.items),
-    retrieval_self_notes: z
-      .int()
-      .nonnegative()
-      .max(20)
-      .default(defaultTurnSettings.similarity.selfNotes),
-    retrieval_messages: z
-      .int()
-      .nonnegative()
-      .max(20)
-      .default(defaultTurnSettings.similarity.messages),
-    retrieval_min_score: z.number().nonnegative().default(defaultTurnSettings.similarity.minScore),
-
-    // Over a sample of items, small talk such as "hello" scored near 0.38, and two thirds of the
-    // questions placed their item above it.
-    retrieval_min_similarity: z
-      .number()
-      .min(-1)
-      .max(1)
-      .default(defaultTurnSettings.similarity.minSimilarity),
     rebuild_tokens: z.int().nonnegative().default(30_000),
     index_tokens: indexTokensSchema.default(defaultIndexSettings.tokens),
     index_open_topic_items: countSchema.default(defaultIndexSettings.openTopicItems),
@@ -92,13 +72,6 @@ export const memoryConfigSchema = z
         items: config.trigger_items,
         minScore: config.trigger_min_score,
         minSimilarity: config.trigger_min_similarity,
-      },
-      similarity: {
-        items: config.retrieval_items,
-        selfNotes: config.retrieval_self_notes,
-        messages: config.retrieval_messages,
-        minScore: config.retrieval_min_score,
-        minSimilarity: config.retrieval_min_similarity,
       },
     },
     rebuildTokens: config.rebuild_tokens,

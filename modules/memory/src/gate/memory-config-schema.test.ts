@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test';
 import { memoryConfigSchema } from './memory-config-schema';
 
-test('it sets the gate, pinned core, retrieval and rebuild defaults', () => {
+test('it sets the gate, pinned core, trigger and rebuild defaults', () => {
   expect(memoryConfigSchema.safeParse({}).data).toStrictEqual({
     limits: {
       evidenceWindow: 20,
@@ -13,7 +13,6 @@ test('it sets the gate, pinned core, retrieval and rebuild defaults', () => {
     pinnedCoreTokens: 2000,
     turn: {
       trigger: { items: 3, minScore: 6.4, minSimilarity: 0.57 },
-      similarity: { items: 0, selfNotes: 0, messages: 0, minScore: 0.25, minSimilarity: 0.38 },
     },
     rebuildTokens: 30_000,
     index: { tokens: 3000, openTopicItems: 25, itemOrder: 'newest-first', topicPage: 200 },
@@ -59,11 +58,6 @@ test('it takes the values the file names', () => {
     trigger_items: 2,
     trigger_min_score: 4,
     trigger_min_similarity: 0.7,
-    retrieval_items: 3,
-    retrieval_self_notes: 0,
-    retrieval_messages: 1,
-    retrieval_min_score: 0.5,
-    retrieval_min_similarity: 0.45,
     rebuild_tokens: 20_000,
   });
 
@@ -71,7 +65,6 @@ test('it takes the values the file names', () => {
     pinnedCoreTokens: 1500,
     turn: {
       trigger: { items: 2, minScore: 4, minSimilarity: 0.7 },
-      similarity: { items: 3, selfNotes: 0, messages: 1, minScore: 0.5, minSimilarity: 0.45 },
     },
     rebuildTokens: 20_000,
   });
@@ -95,28 +88,10 @@ test('it refuses a pinned core with no budget', () => {
   expect(result.error?.issues).toPartiallyContain({ path: ['pinned_core_tokens'] });
 });
 
-test('it refuses a negative score floor', () => {
-  const result = memoryConfigSchema.safeParse({ retrieval_min_score: -1 });
-
-  expect(result.error?.issues).toPartiallyContain({ path: ['retrieval_min_score'] });
-});
-
 test('it refuses an unknown key', () => {
-  const result = memoryConfigSchema.safeParse({ retrieval_item: 5 });
+  const result = memoryConfigSchema.safeParse({ trigger_item: 5 });
 
-  expect(result.error?.issues).toPartiallyContain({ path: [], keys: ['retrieval_item'] });
-});
-
-test('it refuses a similarity floor above 1', () => {
-  const result = memoryConfigSchema.safeParse({ retrieval_min_similarity: 1.5 });
-
-  expect(result.error?.issues).toPartiallyContain({ path: ['retrieval_min_similarity'] });
-});
-
-test('it refuses more than 20 self-notes a turn', () => {
-  const result = memoryConfigSchema.safeParse({ retrieval_self_notes: 21 });
-
-  expect(result.error?.issues).toPartiallyContain({ path: ['retrieval_self_notes'] });
+  expect(result.error?.issues).toPartiallyContain({ path: [], keys: ['trigger_item'] });
 });
 
 test('it refuses a trigger similarity floor above 1', () => {

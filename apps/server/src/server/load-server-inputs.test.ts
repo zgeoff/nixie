@@ -110,3 +110,38 @@ test('it logs a warning that names each config key it does not know', async () =
     ['config.unknown_key', { key: 'tasks.runner' }, 'warn'],
   ]);
 });
+
+test('it loads a config that still holds the retired memory retrieval keys, and warns once for each', async () => {
+  const ctx = await setupTest();
+
+  const log = mock<Logger>();
+
+  const files = await writeBootFiles(ctx.directory, 'http://127.0.0.1:4010', {
+    config: [
+      'memory:',
+      '  retrieval_items: 5',
+      '  retrieval_self_notes: 2',
+      '  retrieval_messages: 3',
+      '  retrieval_min_score: 0.25',
+      '  retrieval_min_similarity: 0.38',
+    ],
+    secrets: [],
+  });
+
+  await loadServerInputs({
+    configPath: files.configPath,
+    manifestPath: files.manifestPath,
+    sopsArgv: [files.sopsPath],
+    log,
+  });
+
+  const warnings = log.mock.calls.filter(([event]) => event === 'config.unknown_key');
+
+  expect(warnings).toIncludeSameMembers([
+    ['config.unknown_key', { key: 'memory.retrieval_items' }, 'warn'],
+    ['config.unknown_key', { key: 'memory.retrieval_self_notes' }, 'warn'],
+    ['config.unknown_key', { key: 'memory.retrieval_messages' }, 'warn'],
+    ['config.unknown_key', { key: 'memory.retrieval_min_score' }, 'warn'],
+    ['config.unknown_key', { key: 'memory.retrieval_min_similarity' }, 'warn'],
+  ]);
+});

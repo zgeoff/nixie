@@ -1,5 +1,17 @@
-import type { MemoryLineOptions, PastMessage } from '../types';
-import { formatMemoryDay } from '../utils/format-memory-day';
+// The product no longer renders past messages. The logs this spike reads still hold turns that
+// showed them, so the spike keeps its own copy of the renderer to count their tokens.
+// @boundaries-ignore a spike imports the code it measures
+import { formatMemoryDay } from '../../../modules/sessions/src/utils/format-memory-day.ts';
+// @boundaries-ignore a spike imports the code it measures
+import type { MemoryLineOptions } from '../../../modules/sessions/src/types.ts';
+
+interface PastMessage {
+  readonly sequence: number;
+  readonly thread: string | null;
+  readonly recordedAt: number;
+  readonly text: string;
+  readonly isCut: boolean;
+}
 
 export function renderRetrievedMessages(
   messages: readonly PastMessage[],

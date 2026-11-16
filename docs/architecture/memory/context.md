@@ -1,15 +1,15 @@
 # Memory in context
 
 Memory reaches the conversation in 3 ways: the pinned core and the memory index open each new
-session in its first message, and the items and past messages that match the user's new messages go
-before those messages in the turn when the deployment turns that on. All come from the
-[memory store](./store.md), so a pin, an edit or a forget reaches the conversation on its next turn,
-or its next session for the index. A forget also cleans up every session copy that could still hold
-the item, and the next turn runs on a session rebuilt from the event log.
-[Conversation turns](../core/conversation-turns.md) covers the turn these parts fit into, and
-[session opening](../core/session-opening.md) covers what a new session opens with. The
-[memory in context](../../design/platform/memory/context.md) design covers what is not built: a
-search of a task's brief on its first turn, and a tool that searches past messages by meaning.
+session in its first message, and the items whose trigger phrases match the user's new messages go
+before those messages in the turn. All come from the [memory store](./store.md), so a pin, an edit
+or a forget reaches the conversation on its next turn, or its next session for the index. A forget
+also cleans up every session copy that could still hold the item, and the next turn runs on a
+session rebuilt from the event log. [Conversation turns](../core/conversation-turns.md) covers the
+turn these parts fit into, and [session opening](../core/session-opening.md) covers what a new
+session opens with. The [memory in context](../../design/platform/memory/context.md) design covers
+what is not built: a search of a task's brief on its first turn, and a tool that searches past
+messages by meaning.
 
 ## The pinned core
 
@@ -113,23 +113,18 @@ turn brings. The input is the readable text of the user's new messages, the thre
 leave out and two lazy lists of what the session already holds. The memory module decides which
 pushes run, picks the items and places them. A task run that has no memory asks nothing.
 
-Trigger push runs first. It matches the turn's text against each item's
-[trigger phrases](./store.md#the-indexes) and places at most `trigger_items` items, 3 by default,
-whose best phrase scores at or over the floor. A self-note counts toward the same cap. An item with
-no trigger phrase never matches, and `trigger_items` of 0 turns the push off. An item matches when
-its best phrase clears the keyword floor `trigger_min_score` or, with an encoder, the similarity
-floor `trigger_min_similarity`.
+Trigger push is the only push, and no other search places an item without a tool call. It matches
+the turn's text against each item's [trigger phrases](./store.md#the-indexes) and places at most
+`trigger_items` items, 3 by default, whose best phrase scores at or over the floor. A self-note
+counts toward the same cap. An item with no trigger phrase never matches, and `trigger_items` of 0
+turns the push off. An item matches when its best phrase clears the keyword floor
+`trigger_min_score` or, with an encoder, the similarity floor `trigger_min_similarity`.
 
-The similarity push runs second, and only when a deployment sets `retrieval_items`,
-`retrieval_self_notes` or `retrieval_messages` above 0. All 3 default to 0. It searches active items
-by keyword and by meaning, with each limit and floor its `retrieval_*` keys set. Items that trigger
-push placed take no second place, and each push applies only its own cap and floor.
-
-Neither push picks a pinned item, because the session's opening holds it, an item past its end time,
-or an item whose current text version the session already holds. With an encoder and an index of a
-few dozen phrases, a message such as "when is the boiler service due?" places the item whose trigger
+The push picks no pinned item, because the session's opening holds it, no item past its end time and
+no item whose current text version the session already holds. With an encoder and an index of a few
+dozen phrases, a message such as "when is the boiler service due?" places the item whose trigger
 phrase is "boiler service appointment", and a message that shares only function words with a phrase
-places nothing, as [the store](./store.md#the-indexes) explains. Both searches leave out the user's
+places nothing, as [the store](./store.md#the-indexes) explains. The search leaves out the user's
 name and the names the deployment configuration gives the agent, because nearly every item names one
 of them. The store drops each query word that the index stems the same as one of those names,
 whatever its case, and leaves the names out of the text it encodes. While the vector index rebuilds
@@ -144,7 +139,7 @@ lists the same references. Neither record holds the text, so a later forget leav
 of what a turn saw. The block rides in the message the guest sends and never in the user's message
 record, so a rebuilt session's recent turns leave retrieved text out.
 
-The defaults of both floors come from a measurement on invented items with the `mdbr-leaf-ir`
+The defaults of the floors come from a measurement on invented items with the `mdbr-leaf-ir`
 encoder, over indexes of 2, 19 and 52 trigger phrases. A message that shared one rare word with a
 phrase scored the same as a message that meant the phrase, so no keyword floor separates them. The
 default `trigger_min_score` of 6.4 sits above every such near miss, at the cost that a deployment
@@ -183,69 +178,31 @@ The retrieved block puts the user's items and the shared items each under a head
 the model reads a deal or a nickname as something between it and the user and never as a fact about
 the user alone.
 
-The similarity push places [self-notes](./writes.md#self-notes) beside the other items, up to a
-configurable number of their own, so a match about nixie never takes a fact's slot and facts never
-crowd the notes out. The notes go in a block of their own after the retrieved items, under a label
-that calls them the model's own notes about itself, which the user approved, and not instructions.
-Each note shows its text and one line with its short ID, version, date and the model that wrote it,
-so the model reads a note as an earlier model's view of itself and not as a fact about the user. The
-turn's records list the notes with the items, so a note the session holds takes no slot on the next
-turn.
+Trigger push places [self-notes](./writes.md#self-notes) beside the other items, and a self-note
+counts toward the same cap. The notes go in a block of their own after the retrieved items, under a
+label that calls them the model's own notes about itself, which the user approved, and not
+instructions. Each note shows its text and one line with its short ID, version, date and the model
+that wrote it, so the model reads a note as an earlier model's view of itself and not as a fact
+about the user. The turn's records list the notes with the items, so a note the session holds takes
+no slot on the next turn.
 
 The blocks before the first message keep one order: a new session's opening, the pinned-core change
-note, the retrieved items, the retrieved self-notes, the past messages, then
+note, the retrieved items, the retrieved self-notes, then
 [the events block](../core/conversation-turns.md#the-events-block). The user's own words come last,
 so the model reads each block as context for them.
-
-## Past messages in retrieval
-
-Each turn's retrieval also searches the user's past messages, so an earlier exchange that matches
-the new message reaches the model without a tool call. The search takes the same text, excluded
-names and floors as the item search, and places up to a configurable number of messages in their own
-block after the retrieved items. Each message shows the day it was sent, its thread and its event
-ID, so a memory write can quote it as it quotes a message from a log read.
-
-The store keeps a keyword index and a vector index over the user's messages, built as the item
-indexes are, with each entry keyed by the message's record sequence. Both live in process memory,
-and each start rebuilds them from every readable message, so a forgotten message's words never
-outlive the process. The indexes hold the user's messages on every thread, and never a reply, a tool
-result or a summary, because those are model text or outside content. Each entry holds only the
-spans the user typed, so a message matches on the user's own words and never on a paste or a drop. A
-message with labelled spans and no typed text has no entry. A message whose client labelled no span
-keeps its whole text in its entry. Before each search, the store indexes the messages recorded since
-the last one. While the vector index is ready, it waits for their vectors, so the message one turn
-sent matches by meaning on the next. While the vector index rebuilds after a start, the search
-places keyword matches alone and never waits for the rebuild.
-
-The indexes rank sequences and never supply the text. Under the delivery lock, the store reads each
-candidate again and leaves out a message whose key is gone or that backed a forgotten item, so a
-forget keeps the message out of retrieval even before its entry leaves the index. A forget of one
-message drops its entries before the session cleanup runs, and the store's forget of an item drops
-the entries of each message that backed it. A message renders as a rebuilt session's recent turns
-show it, with each paste in its own block. The store cuts a long message before it renders, so a cut
-never leaves a paste block open.
-
-Retrieval leaves out each past message the session already holds word for word, so a message never
-takes a slot to repeat what the model can read. A session holds the conversation's messages from the
-oldest of the recent turns its opening placed, and the opening record keeps that message's sequence.
-A new session's first turn reads the recent turns as its opening will. A session that opened before
-openings kept the sequence counts every message of the conversation as held. Retrieval also leaves
-out each message that an earlier turn of the session placed, which the turn-ended record lists by
-sequence. A compaction, an invalidation or a new opening empties that list, as it empties the item
-versions the session holds.
 
 ## Reading the log
 
 The conversation's model reads its own thread of the [event log](../core/event-log.md) with the
 `log.read` tool, so it can look back past what its session holds and propose memories from older
-messages. A read returns one page of the user's messages, the replies and the tool results, oldest
-first, each with its event ID, which is the record's sequence. A tool result also carries the event
-ID of the call it answers, as `callEventID`, because nothing else shows the model the ID of a call.
-The model narrows a read by a time range or by words that every entry must hold, and pages on with
-the cursor the read returns. Each read returns a bounded number of entries and decrypts a bounded
-number of records, so a search over a long thread can return a short page with a cursor to go on
-from. The tool reads only the calling run's thread. It declares only a read, so the starter rule
-`allow-reads` allows it.
+messages. Past messages reach the model only through this tool. A read returns one page of the
+user's messages, the replies and the tool results, oldest first, each with its event ID, which is
+the record's sequence. A tool result also carries the event ID of the call it answers, as
+`callEventID`, because nothing else shows the model the ID of a call. The model narrows a read by a
+time range or by words that every entry must hold, and pages on with the cursor the read returns.
+Each read returns a bounded number of entries and decrypts a bounded number of records, so a search
+over a long thread can return a short page with a cursor to go on from. The tool reads only the
+calling run's thread. It declares only a read, so the starter rule `allow-reads` allows it.
 
 The log holds outside text, such as fetched pages and pastes, so every entry counts as outside
 content to the decision point. A message of the user's reads as a rebuilt session's recent turns

@@ -428,10 +428,9 @@ reads.
   A merge names each of the conversation's pending proposals that another source proposed again, so
   the conversation knows its proposal merged and still waits. The block reads a listed item's text
   through a recall marked as a turn note's, and only after its cap, so the recall records no item
-  the block leaves out. A rating binds to the newest recall without that mark, so the item list the
-  turn's own recall gave stays the one the model rates. Memory's kinds leave out an item that a
-  forget has begun before the block applies its cap, so a forgotten item never takes the place of a
-  later event. The recall checks again, because a forget can begin between the read and the recall.
+  the block leaves out. Memory's kinds leave out an item that a forget has begun before the block
+  applies its cap, so a forgotten item never takes the place of a later event. The recall checks
+  again, because a forget can begin between the read and the recall.
 - **A proposal answer** reads each proposal the user approved or rejected, from any source, the
   conversation's own included. A listed approval quotes the version it wrote while that version is
   still current, through a recall of that version alone. The recall record then names only the text

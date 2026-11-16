@@ -47,14 +47,6 @@ export interface MemoryLineOptions extends MessageTimeOptions {
   readonly ownerName: string | null;
 }
 
-export interface PastMessage {
-  readonly sequence: number;
-  readonly thread: string | null;
-  readonly recordedAt: number;
-  readonly text: string;
-  readonly isCut: boolean;
-}
-
 export interface PinnedCoreUse {
   readonly items: number;
   readonly tokens: number;
@@ -87,9 +79,6 @@ export interface TurnMemoryAsk {
 export interface SessionHeld {
   // each read is lazy: the memory module calls it only when it needs the answer
   readonly readVersions: () => Promise<readonly MemoryRef[]>;
-
-  // the similarity push cleanup removes this
-  readonly readMessages: () => Promise<readonly number[]>;
 }
 
 export type TurnMemory =
@@ -97,9 +86,6 @@ export type TurnMemory =
       readonly kind: 'placed';
       readonly items: readonly MemoryItem[];
       readonly selfNotes: readonly MemoryItem[];
-
-      // empty once the similarity push is gone
-      readonly messages: readonly PastMessage[];
     }
   | { readonly kind: 'none' };
 

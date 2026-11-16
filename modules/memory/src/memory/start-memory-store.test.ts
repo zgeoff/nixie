@@ -1,8 +1,10 @@
 import { expect, mock, test } from 'bun:test';
+import { writeRecords } from '@heynixie/log';
 import { buildStubEncoder } from '../test-utils/build-stub-encoder';
 import { createMemoryItem } from '../test-utils/create-memory-item';
 import { startNextTestMemory } from '../test-utils/start-next-test-memory';
 import { startTestMemory } from '../test-utils/start-test-memory';
+import { memoryRatedCodec } from './memory-rated-codec';
 
 async function setupTest() {
   return { memory: await startTestMemory() };
@@ -95,4 +97,44 @@ test('it reports a failed rebuild and keeps search on keywords', async () => {
   expect(isReady).toBeFalse();
   expect(onError).toHaveBeenCalledExactlyOnceWith(failure);
   expect(result.searchMode).toBe('keyword-fallback');
+});
+
+test('it starts on a log that holds a memory.rated record and still places a trigger item', async () => {
+  const turn = { trigger: { items: 3, minScore: 0, minSimilarity: 1 } };
+  const ctx = { memory: await startTestMemory({ turn }) };
+
+  const piano = await ctx.memory.store.remember({
+    text: 'Piano is tuned in spring',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+    labels: { gist: 'Piano tuning', topic: 'general', triggers: ['piano tuning'] },
+  });
+
+  await writeRecords(ctx.memory.log, [
+    {
+      kind: memoryRatedCodec.kind,
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: memoryRatedCodec.encode({
+        ratingID: 'rating-1',
+        recalledSequence: 1,
+        runID: 'run-1',
+        ratings: [{ itemID: piano.itemID, version: piano.version, verdict: 'helpful' }],
+      }),
+    },
+  ]);
+
+  const restarted = await startNextTestMemory(ctx.memory, { turn });
+
+  const result = await restarted.store.readTurnMemory({
+    text: 'piano tuning',
+    thread: 'conversation',
+    excludedWords: [],
+    held: { readVersions: () => Promise.resolve([]) },
+  });
+
+  expect(result).toMatchObject({
+    kind: 'placed',
+    items: [{ itemID: piano.itemID }],
+    selfNotes: [],
+  });
 });

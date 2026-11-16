@@ -22,7 +22,7 @@ interface RunnerConfig {
 interface TestOptions {
   readonly tools?: Parameters<typeof startTestServer>[0];
   readonly encoderTopics?: readonly (readonly string[])[];
-  readonly similarity?: Partial<TurnMemorySettings['similarity']>;
+  readonly trigger?: Partial<TurnMemorySettings['trigger']>;
 }
 
 async function setupTest(options: TestOptions = {}) {
@@ -36,17 +36,7 @@ async function setupTest(options: TestOptions = {}) {
     context,
     (cause) => runners.last?.cleanupSessions(cause) ?? Promise.resolve(),
     options.encoderTopics,
-    {
-      trigger: { items: 0, minScore: 0, minSimilarity: 1 },
-      similarity: {
-        items: 5,
-        selfNotes: 2,
-        messages: 3,
-        minScore: 0.25,
-        minSimilarity: 0.38,
-        ...options.similarity,
-      },
-    },
+    { trigger: { items: 5, minScore: 0, minSimilarity: 1, ...options.trigger } },
   );
 
   return {
@@ -328,13 +318,13 @@ test('it removes every session file that holds a forgotten item', async () => {
   } as const;
 
   const [key] = await Promise.all([
-    ctx.memory.remember({ text: 'The spare key sits under the blue flowerpot', provenance }),
+    ctx.memory.remember({
+      text: 'The spare key sits under the blue flowerpot',
+      provenance,
+      labels: { gist: 'spare key', topic: 'home', triggers: ['spare key'] },
+    }),
     ctx.startRunner({ image: 'nixie-conversation-0123456789ab' }),
     createConversationTask(ctx.context),
-
-    // BM25 ranks nothing in an index of 1 or 2 items, so per-turn retrieval needs 3 to place the key
-    ctx.memory.remember({ text: 'Allergic to hazelnuts', provenance }),
-    ctx.memory.remember({ text: 'Prefers window seats on trains', provenance }),
   ]);
 
   ctx.guest.addReplies({ text: 'Under the flowerpot.' });
@@ -366,13 +356,13 @@ test('it runs the turn after a forget on a rebuilt session without the forgotten
   } as const;
 
   const [key] = await Promise.all([
-    ctx.memory.remember({ text: 'The spare key sits under the blue flowerpot', provenance }),
+    ctx.memory.remember({
+      text: 'The spare key sits under the blue flowerpot',
+      provenance,
+      labels: { gist: 'spare key', topic: 'home', triggers: ['spare key'] },
+    }),
     ctx.startRunner({ image: 'nixie-conversation-0123456789ab' }),
     createConversationTask(ctx.context),
-
-    // BM25 ranks nothing in an index of 1 or 2 items, so per-turn retrieval needs 3 to place the key
-    ctx.memory.remember({ text: 'Allergic to hazelnuts', provenance }),
-    ctx.memory.remember({ text: 'Prefers window seats on trains', provenance }),
   ]);
 
   ctx.guest.addReplies({ text: 'Under the flowerpot.' }, { text: 'You are welcome.' });
@@ -710,7 +700,7 @@ test('it starts a fresh session on the new sandbox when the old sandbox no longe
 });
 
 test('it gives the next best match the slot of an item the session already holds', async () => {
-  const ctx = await setupTest({ similarity: { items: 1 } });
+  const ctx = await setupTest({ trigger: { items: 1 } });
 
   const provenance = {
     origin: 'owner',
@@ -721,21 +711,18 @@ test('it gives the next best match the slot of an item the session already holds
   } as const;
 
   const [flowerpot, garage] = await Promise.all([
-    ctx.memory.remember({ text: 'The spare key sits under the blue flowerpot', provenance }),
-    ctx.memory.remember({ text: 'A second spare key hangs in the garage', provenance }),
-    ctx.startRunner({
-      image: 'nixie-conversation-0123456789ab',
+    ctx.memory.remember({
+      text: 'The spare key sits under the blue flowerpot',
+      provenance,
+      labels: { gist: 'spare key', topic: 'home', triggers: ['spare key flowerpot'] },
     }),
+    ctx.memory.remember({
+      text: 'A second spare key hangs in the garage',
+      provenance,
+      labels: { gist: 'second key', topic: 'home', triggers: ['spare key garage'] },
+    }),
+    ctx.startRunner({ image: 'nixie-conversation-0123456789ab' }),
     createConversationTask(ctx.context),
-
-    // BM25 scores a word in half the index at nothing, so both keys need 6 items beside them to
-    // pass the score floor
-    ctx.memory.remember({ text: 'Allergic to hazelnuts', provenance }),
-    ctx.memory.remember({ text: 'Prefers window seats on trains', provenance }),
-    ctx.memory.remember({ text: 'Plays the cello on Thursdays', provenance }),
-    ctx.memory.remember({ text: 'Drinks tea without milk', provenance }),
-    ctx.memory.remember({ text: 'Was born in Lisbon', provenance }),
-    ctx.memory.remember({ text: 'Runs a half marathon each spring', provenance }),
   ]);
 
   ctx.guest.addReplies({ text: 'Under the flowerpot.' }, { text: 'In the garage.' });
@@ -756,7 +743,7 @@ test('it gives the next best match the slot of an item the session already holds
   );
 });
 
-test('it retrieves a matching item of each subject, each under its own heading', async () => {
+test('it places a matching item of each subject, each under its own heading', async () => {
   const ctx = await setupTest();
 
   const provenance = {
@@ -767,29 +754,28 @@ test('it retrieves a matching item of each subject, each under its own heading',
     checks: null,
   } as const;
 
+  const labels = { gist: 'spare key', topic: 'home', triggers: ['spare key'] };
+
   const [owner, shared, self] = await Promise.all([
-    ctx.memory.remember({ text: 'The spare key sits under the blue flowerpot', provenance }),
+    ctx.memory.remember({
+      text: 'The spare key sits under the blue flowerpot',
+      provenance,
+      labels,
+    }),
     ctx.memory.remember({
       text: 'The owner and the assistant call the spare key the brass friend',
       subject: 'shared',
       provenance,
+      labels,
     }),
     ctx.memory.remember({
       text: 'I like the riddle of where the spare key went',
       subject: 'self',
       provenance,
+      labels,
     }),
     ctx.startRunner({ image: 'nixie-conversation-0123456789ab' }),
     createConversationTask(ctx.context),
-
-    // BM25 scores a word in half the index at nothing, so the keys need 6 items beside them to
-    // pass the score floor
-    ctx.memory.remember({ text: 'Allergic to hazelnuts', provenance }),
-    ctx.memory.remember({ text: 'Prefers window seats on trains', provenance }),
-    ctx.memory.remember({ text: 'Plays the cello on Thursdays', provenance }),
-    ctx.memory.remember({ text: 'Drinks tea without milk', provenance }),
-    ctx.memory.remember({ text: 'Was born in Lisbon', provenance }),
-    ctx.memory.remember({ text: 'Runs a half marathon each spring', provenance }),
   ]);
 
   ctx.guest.addReplies({ text: 'Under the flowerpot.' });
@@ -814,7 +800,7 @@ test('it retrieves a matching item of each subject, each under its own heading',
   expect(sent).toInclude('- I like the riddle of where the spare key went');
 });
 
-test('it retrieves an item again in the session that opens after a compaction', async () => {
+test('it places an item again in the session that opens after a compaction', async () => {
   const ctx = await setupTest();
 
   const provenance = {
@@ -826,11 +812,13 @@ test('it retrieves an item again in the session that opens after a compaction', 
   } as const;
 
   const [key] = await Promise.all([
-    ctx.memory.remember({ text: 'The spare key sits under the blue flowerpot', provenance }),
+    ctx.memory.remember({
+      text: 'The spare key sits under the blue flowerpot',
+      provenance,
+      labels: { gist: 'spare key', topic: 'home', triggers: ['spare key'] },
+    }),
     ctx.startRunner({ image: 'nixie-conversation-0123456789ab' }),
     createConversationTask(ctx.context),
-    ctx.memory.remember({ text: 'Allergic to hazelnuts', provenance }),
-    ctx.memory.remember({ text: 'Prefers window seats on trains', provenance }),
   ]);
 
   ctx.guest.setContextSize(170_000);
@@ -851,7 +839,7 @@ test('it retrieves an item again in the session that opens after a compaction', 
   ).toStrictEqual([[{ ...key }], [{ ...key }]]);
 });
 
-test('it retrieves an item again on a rebuilt session that lost the turn it came in', async () => {
+test('it places an item again on a rebuilt session that lost the turn it came in', async () => {
   const ctx = await setupTest();
 
   const provenance = {
@@ -863,11 +851,13 @@ test('it retrieves an item again on a rebuilt session that lost the turn it came
   } as const;
 
   const [key] = await Promise.all([
-    ctx.memory.remember({ text: 'The spare key sits under the blue flowerpot', provenance }),
+    ctx.memory.remember({
+      text: 'The spare key sits under the blue flowerpot',
+      provenance,
+      labels: { gist: 'spare key', topic: 'home', triggers: ['spare key'] },
+    }),
     ctx.startRunner({ image: 'nixie-conversation-0123456789ab' }),
     createConversationTask(ctx.context),
-    ctx.memory.remember({ text: 'Allergic to hazelnuts', provenance }),
-    ctx.memory.remember({ text: 'Prefers window seats on trains', provenance }),
   ]);
 
   await ctx.conversation.send('Where is the spare key?');
@@ -891,7 +881,7 @@ test('it retrieves an item again on a rebuilt session that lost the turn it came
   ).toStrictEqual([[{ ...key }], [{ ...key }]]);
 });
 
-test('it retrieves an edited item even though the session holds its earlier version', async () => {
+test('it places an edited item even though the session holds its earlier version', async () => {
   const ctx = await setupTest();
 
   const provenance = {
@@ -902,12 +892,16 @@ test('it retrieves an edited item even though the session holds its earlier vers
     checks: null,
   } as const;
 
+  const labels = { gist: 'spare key', topic: 'home', triggers: ['spare key'] };
+
   const [key] = await Promise.all([
-    ctx.memory.remember({ text: 'The spare key sits under the blue flowerpot', provenance }),
+    ctx.memory.remember({
+      text: 'The spare key sits under the blue flowerpot',
+      provenance,
+      labels,
+    }),
     ctx.startRunner({ image: 'nixie-conversation-0123456789ab' }),
     createConversationTask(ctx.context),
-    ctx.memory.remember({ text: 'Allergic to hazelnuts', provenance }),
-    ctx.memory.remember({ text: 'Prefers window seats on trains', provenance }),
   ]);
 
   ctx.guest.addReplies({ text: 'Under the flowerpot.' }, { text: 'Under the doormat.' });
@@ -943,21 +937,21 @@ test("it matches your message to an item on its other words and never on the age
   } as const;
 
   const [bun] = await Promise.all([
-    ctx.memory.remember({ text: 'Switched the server scripts from Node to Bun', provenance }),
+    ctx.memory.remember({
+      text: 'Switched the server scripts from Node to Bun',
+      provenance,
+      labels: { gist: 'bun', topic: 'work', triggers: ['bun'] },
+    }),
     ctx.startRunner({
       image: 'nixie-conversation-0123456789ab',
       memorySettings: { agentNames: ['Nix', 'Nixie'], ownerName: 'Avery' },
     }),
     createConversationTask(ctx.context),
-    ctx.memory.remember({ text: 'Nix booked the dentist for Tuesday', provenance }),
-
-    // BM25 scores a word in half the index at nothing, so each match needs items beside it to pass
-    // the score floor
-    ctx.memory.remember({ text: 'Allergic to hazelnuts', provenance }),
-    ctx.memory.remember({ text: 'Prefers window seats on trains', provenance }),
-    ctx.memory.remember({ text: 'Plays the cello on Thursdays', provenance }),
-    ctx.memory.remember({ text: 'Drinks tea without milk', provenance }),
-    ctx.memory.remember({ text: 'Was born in Lisbon', provenance }),
+    ctx.memory.remember({
+      text: 'Nix booked the dentist for Tuesday',
+      provenance,
+      labels: { gist: 'dentist', topic: 'health', triggers: ['nix dentist'] },
+    }),
   ]);
 
   ctx.guest.addReplies({ text: 'Bun is quick.' });
@@ -973,43 +967,10 @@ test("it matches your message to an item on its other words and never on the age
   ).toStrictEqual([[{ ...bun }]]);
 });
 
-test('it places an item by meaning on a turn whose message shares no word with it', async () => {
-  const ctx = await setupTest({
-    encoderTopics: [['boiler', 'heating', 'engineer'], ['hazelnuts']],
-  });
-
-  const provenance = {
-    origin: 'owner',
-    source: 'owner',
-    taskID: null,
-    proposalID: null,
-    checks: null,
-  } as const;
-
-  const [boiler] = await Promise.all([
-    ctx.memory.remember({ text: 'The boiler service is booked for the 14th', provenance }),
-    ctx.startRunner({ image: 'nixie-conversation-0123456789ab' }),
-    createConversationTask(ctx.context),
-    ctx.memory.remember({ text: 'Allergic to hazelnuts', provenance }),
-    ctx.memory.remember({ text: 'Prefers window seats on trains', provenance }),
-  ]);
-
-  await ctx.memory.waitForSemanticIndex();
-
-  ctx.guest.addReplies({ text: 'On the 14th.' });
-
-  await ctx.conversation.send('When is the heating engineer coming?');
-
-  const records = await ctx.readRecords();
-
-  expect(
-    records
-      .filter((record) => record.kind === 'model.turn_ended')
-      .map((record) => record.payload['retrieved']),
-  ).toStrictEqual([[{ ...boiler }]]);
-});
-
-test("it retrieves nothing for a message that is only the agent's name", async () => {
+test.each([
+  ["the agent's name", 'nix?', 'Nix booked the dentist for Tuesday', 'nix dentist'],
+  ['your name', "It's Avery.", 'Avery swims every Tuesday', 'avery swims'],
+])('it places nothing for a message that is only %s', async (_label, message, text, trigger) => {
   const ctx = await setupTest();
 
   const provenance = {
@@ -1026,55 +987,16 @@ test("it retrieves nothing for a message that is only the agent's name", async (
       memorySettings: { agentNames: ['Nix', 'Nixie'], ownerName: 'Avery' },
     }),
     createConversationTask(ctx.context),
-    ctx.memory.remember({ text: 'Nix booked the dentist for Tuesday', provenance }),
-    ctx.memory.remember({ text: 'Allergic to hazelnuts', provenance }),
-    ctx.memory.remember({ text: 'Prefers window seats on trains', provenance }),
-    ctx.memory.remember({ text: 'Plays the cello on Thursdays', provenance }),
-    ctx.memory.remember({ text: 'Drinks tea without milk', provenance }),
-    ctx.memory.remember({ text: 'Was born in Lisbon', provenance }),
-  ]);
-
-  ctx.guest.addReplies({ text: 'Yes?' });
-
-  await ctx.conversation.send('nix?');
-
-  const records = await ctx.readRecords();
-
-  expect(
-    records
-      .filter((record) => record.kind === 'model.turn_ended')
-      .map((record) => record.payload['retrieved']),
-  ).toStrictEqual([[]]);
-});
-
-test('it retrieves nothing for a message that is only your name', async () => {
-  const ctx = await setupTest();
-
-  const provenance = {
-    origin: 'owner',
-    source: 'owner',
-    taskID: null,
-    proposalID: null,
-    checks: null,
-  } as const;
-
-  await Promise.all([
-    ctx.startRunner({
-      image: 'nixie-conversation-0123456789ab',
-      memorySettings: { agentNames: ['Nix', 'Nixie'], ownerName: 'Avery' },
+    ctx.memory.remember({
+      text,
+      provenance,
+      labels: { gist: 'a gist', topic: 'a topic', triggers: [trigger] },
     }),
-    createConversationTask(ctx.context),
-    ctx.memory.remember({ text: 'Avery swims every Tuesday', provenance }),
-    ctx.memory.remember({ text: 'Allergic to hazelnuts', provenance }),
-    ctx.memory.remember({ text: 'Prefers window seats on trains', provenance }),
-    ctx.memory.remember({ text: 'Plays the cello on Thursdays', provenance }),
-    ctx.memory.remember({ text: 'Drinks tea without milk', provenance }),
-    ctx.memory.remember({ text: 'Was born in Lisbon', provenance }),
   ]);
 
   ctx.guest.addReplies({ text: 'Hello.' });
 
-  await ctx.conversation.send("It's Avery.");
+  await ctx.conversation.send(message);
 
   const records = await ctx.readRecords();
 
@@ -1085,8 +1007,8 @@ test('it retrieves nothing for a message that is only your name', async () => {
   ).toStrictEqual([[]]);
 });
 
-test('it places up to 2 self-notes in their own labelled block beside 5 facts', async () => {
-  const ctx = await setupTest({ similarity: { minScore: 0 } });
+test('it places a self-note in its own labelled block beside a fact', async () => {
+  const ctx = await setupTest();
 
   const provenance = {
     origin: 'owner',
@@ -1097,21 +1019,18 @@ test('it places up to 2 self-notes in their own labelled block beside 5 facts', 
   } as const;
 
   const note = { ...provenance, origin: 'conversation', model: 'claude-opus-5-5' } as const;
+  const labels = { gist: 'tea', topic: 'food', triggers: ['which tea'] };
 
   await Promise.all([
-    ctx.startRunner({
-      image: 'nixie-conversation-0123456789ab',
-    }),
+    ctx.startRunner({ image: 'nixie-conversation-0123456789ab' }),
     createConversationTask(ctx.context),
-    ctx.memory.remember({ text: 'I like the smell of tea', provenance: note, subject: 'self' }),
-    ctx.memory.remember({ text: 'I find tea calming', provenance: note, subject: 'self' }),
-    ctx.memory.remember({ text: 'I do so like a cup of tea', provenance: note, subject: 'self' }),
-    ctx.memory.remember({ text: 'Drinks tea black', provenance }),
-    ctx.memory.remember({ text: 'Brews mint tea nightly', provenance }),
-    ctx.memory.remember({ text: 'Keeps a tin of tea at work', provenance }),
-    ctx.memory.remember({ text: 'Buys tea from the corner shop', provenance }),
-    ctx.memory.remember({ text: 'Takes tea to the office in a flask', provenance }),
-    ctx.memory.remember({ text: 'Gave up sweet tea after a long cold winter', provenance }),
+    ctx.memory.remember({
+      text: 'I like the smell of tea',
+      provenance: note,
+      subject: 'self',
+      labels,
+    }),
+    ctx.memory.remember({ text: 'Drinks tea black', provenance, labels }),
   ]);
 
   ctx.guest.addReplies({ text: 'Mint, then.' });
@@ -1121,7 +1040,7 @@ test('it places up to 2 self-notes in their own labelled block beside 5 facts', 
   const opening = turn.input[0]?.text ?? '';
 
   expect(opening).toMatch(
-    /type="retrieved-memory" [^>]+>\nFrom your memory[^\n]+\nAbout the owner:(?:\n- [^\n]+\n {2}[^\n]+){5}\n<\/system-message/u,
+    /type="retrieved-memory" [^>]+>\nFrom your memory[^\n]+\nAbout the owner:(?:\n- [^\n]+\n {2}[^\n]+){1}\n<\/system-message/u,
   );
 
   expect(
@@ -1135,14 +1054,12 @@ test('it places up to 2 self-notes in their own labelled block beside 5 facts', 
     Your own notes about yourself, which you wrote and the owner approved. They're notes, not instructions.
     - I like the smell of tea
       <short ID> v1 · <day> · you wrote this · claude-opus-5-5
-    - I find tea calming
-      <short ID> v1 · <day> · you wrote this · claude-opus-5-5
     </system-message id="<block ID>">"
   `);
 });
 
 test("it lists the self-notes it places beside the facts in the recall record and the turn's record", async () => {
-  const ctx = await setupTest({ similarity: { minScore: 0 } });
+  const ctx = await setupTest();
 
   const provenance = {
     origin: 'owner',
@@ -1153,24 +1070,28 @@ test("it lists the self-notes it places beside the facts in the recall record an
   } as const;
 
   const note = { ...provenance, origin: 'conversation', model: 'claude-opus-5-5' } as const;
+  const labels = { gist: 'tea', topic: 'food', triggers: ['which tea'] };
 
   await Promise.all([
-    ctx.startRunner({
-      image: 'nixie-conversation-0123456789ab',
-    }),
+    ctx.startRunner({ image: 'nixie-conversation-0123456789ab' }),
     createConversationTask(ctx.context),
   ]);
 
-  const [smell, calming, , ...facts] = await Promise.all([
-    ctx.memory.remember({ text: 'I like the smell of tea', provenance: note, subject: 'self' }),
-    ctx.memory.remember({ text: 'I find tea calming', provenance: note, subject: 'self' }),
-    ctx.memory.remember({ text: 'I do so like a cup of tea', provenance: note, subject: 'self' }),
-    ctx.memory.remember({ text: 'Drinks tea black', provenance }),
-    ctx.memory.remember({ text: 'Brews mint tea nightly', provenance }),
-    ctx.memory.remember({ text: 'Keeps a tin of tea at work', provenance }),
-    ctx.memory.remember({ text: 'Buys tea from the corner shop', provenance }),
-    ctx.memory.remember({ text: 'Takes tea to the office in a flask', provenance }),
-    ctx.memory.remember({ text: 'Gave up sweet tea after a long cold winter', provenance }),
+  const [smell, calming, black, mint] = await Promise.all([
+    ctx.memory.remember({
+      text: 'I like the smell of tea',
+      provenance: note,
+      subject: 'self',
+      labels,
+    }),
+    ctx.memory.remember({
+      text: 'I find tea calming',
+      provenance: note,
+      subject: 'self',
+      labels,
+    }),
+    ctx.memory.remember({ text: 'Drinks tea black', provenance, labels }),
+    ctx.memory.remember({ text: 'Brews mint tea nightly', provenance, labels }),
   ]);
 
   ctx.guest.addReplies({ text: 'Mint, then.' });
@@ -1183,7 +1104,7 @@ test("it lists the self-notes it places beside the facts in the recall record an
     records
       .filter((record) => record.kind === 'model.turn_ended')
       .map((record) => record.payload['retrieved']),
-  ).toStrictEqual([expect.toIncludeSameMembers([smell, calming, ...facts.slice(0, 5)])]);
+  ).toStrictEqual([expect.toIncludeSameMembers([smell, calming, black, mint])]);
 
   expect(
     records
@@ -1191,112 +1112,9 @@ test("it lists the self-notes it places beside the facts in the recall record an
       .map((record) => record.payload['items']),
   ).toStrictEqual([
     expect.toIncludeSameMembers(
-      [smell, calming, ...facts.slice(0, 5)].map((ref): unknown => expect.objectContaining(ref)),
+      [smell, calming, black, mint].map((ref): unknown => expect.objectContaining(ref)),
     ),
   ]);
-});
-
-test('it places no self-note block when the cap is 0', async () => {
-  const ctx = await setupTest({ similarity: { selfNotes: 0, minScore: 0 } });
-
-  const provenance = {
-    origin: 'owner',
-    source: 'owner',
-    taskID: null,
-    proposalID: null,
-    checks: null,
-  } as const;
-
-  const note = { ...provenance, origin: 'conversation', model: 'claude-opus-5-5' } as const;
-
-  const [kettle] = await Promise.all([
-    ctx.memory.remember({ text: 'Keeps a tin of tea by the kettle', provenance }),
-    ctx.startRunner({
-      image: 'nixie-conversation-0123456789ab',
-    }),
-    createConversationTask(ctx.context),
-    ctx.memory.remember({ text: 'I find tea calming', provenance: note, subject: 'self' }),
-  ]);
-
-  ctx.guest.addReplies({ text: 'Mint, then.' });
-
-  const turn = await ctx.conversation.send('Which tea should I try?');
-  const records = await ctx.readRecords();
-
-  expect(
-    records
-      .filter((record) => record.kind === 'model.turn_ended')
-      .map((record) => record.payload['retrieved']),
-  ).toStrictEqual([[{ ...kettle }]]);
-
-  expect(turn.input[0]?.text).not.toInclude('retrieved-self-notes');
-});
-
-test('it places at most 3 of your past messages that match a new message by meaning, each with its thread and day', async () => {
-  const ctx = await setupTest({
-    encoderTopics: [['boiler', 'heating', 'radiator', 'furnace', 'engineer'], ['hazelnuts']],
-  });
-
-  await Promise.all([
-    ctx.startRunner({ image: 'nixie-conversation-0123456789ab' }),
-    createConversationTask(ctx.context),
-  ]);
-
-  const [clanks, cold, booked, old] = await ctx.writeOwnerMessages('garden', [
-    'The boiler clanks at night',
-    'The radiator in the hall stays cold',
-    'Booked the furnace check for Friday',
-    'Our boiler is fifteen years old',
-    'Allergic to hazelnuts',
-  ]);
-
-  await ctx.memory.waitForSemanticIndex();
-
-  ctx.guest.addReplies({ text: 'On Friday.' });
-
-  const turn = await ctx.conversation.send('When is the heating engineer coming?');
-  const records = await ctx.readRecords();
-
-  const matching = expect.toBeOneOf([clanks, cold, booked, old]);
-
-  expect(
-    records
-      .filter((record) => record.kind === 'model.turn_ended')
-      .map((record) => record.payload['retrievedMessages']),
-  ).toStrictEqual([[matching, matching, matching]]);
-
-  expect(turn.input[0]?.text).toMatch(
-    /<system-message type="retrieved-messages" id="(?<blockID>[\da-f]{12})" at="[^"]+">\nEarlier messages from the owner [^\n]+\n- \d{1,2} [A-Z][a-z]{2} · thread garden · event \d+\n {2}[^\n]+\n- [^<]+<\/system-message id="\k<blockID>">/u,
-  );
-});
-
-test('it leaves out a past message that the session already holds and places the next match', async () => {
-  const ctx = await setupTest({
-    encoderTopics: [['boiler', 'heating', 'furnace', 'engineer'], ['hazelnuts']],
-  });
-
-  await Promise.all([
-    ctx.startRunner({ image: 'nixie-conversation-0123456789ab' }),
-    createConversationTask(ctx.context),
-  ]);
-
-  await ctx.memory.waitForSemanticIndex();
-
-  ctx.guest.addReplies({ text: 'That sounds loud.' }, { text: 'On Friday.' });
-
-  await ctx.conversation.send('The boiler clanks at night');
-
-  const booked = await ctx.writeOwnerMessages('garden', ['Booked the furnace check for Friday']);
-
-  await ctx.conversation.send('When is the heating engineer coming?');
-
-  const records = await ctx.readRecords();
-
-  expect(
-    records
-      .filter((record) => record.kind === 'model.turn_ended')
-      .map((record) => record.payload['retrievedMessages']),
-  ).toStrictEqual([[], booked]);
 });
 
 test('it erases the summary when you destroy a moment, and leaves no readable record that holds its text', async () => {
@@ -1377,18 +1195,13 @@ test('it places no moment text in a turn whose message matches its title and ref
   } as const;
 
   const [item] = await Promise.all([
-    ctx.memory.remember({ text: 'Keeps the bramble shelter for hedgehogs', provenance }),
+    ctx.memory.remember({
+      text: 'Keeps the bramble shelter for hedgehogs',
+      provenance,
+      labels: { gist: 'hedgehogs', topic: 'garden', triggers: ['bramble shelter'] },
+    }),
     ctx.startRunner({ image: 'nixie-conversation-0123456789ab' }),
     createConversationTask(ctx.context),
-
-    // BM25 scores a word in half the index at nothing, so the item needs 6 items beside it to
-    // pass the score floor
-    ctx.memory.remember({ text: 'Allergic to hazelnuts', provenance }),
-    ctx.memory.remember({ text: 'Prefers window seats on trains', provenance }),
-    ctx.memory.remember({ text: 'Plays the cello on Thursdays', provenance }),
-    ctx.memory.remember({ text: 'Drinks tea without milk', provenance }),
-    ctx.memory.remember({ text: 'Was born in Lisbon', provenance }),
-    ctx.memory.remember({ text: 'Runs a half marathon each spring', provenance }),
   ]);
 
   ctx.guest.addReplies({ text: 'Noted.' });

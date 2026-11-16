@@ -74,20 +74,6 @@ const recallItemSchema = z.object({
 });
 
 const recallSchema = z.object({ items: z.array(recallItemSchema) });
-
-const ratingItemSchema = z.object({
-  hasNote: z.boolean().default(false),
-  itemID: z.string(),
-  verdict: z.enum(['helpful', 'noise', 'misleading']).default('helpful'),
-  version: z.int().nonnegative().default(1),
-});
-
-const ratingSchema = z.object({
-  items: z.array(ratingItemSchema),
-  ratedBy: z.string().optional(),
-  recalledSequence: z.int().nonnegative(),
-});
-
 const contextSchema = z.object({ size: z.int().nonnegative(), window: z.int().positive() });
 
 const compactionSchema = z.object({
@@ -157,7 +143,6 @@ const records = new Collection({
     kind: z.string().default('owner_message'),
     message: messageSchema.optional(),
     proposal: proposalRefSchema.optional(),
-    rating: ratingSchema.optional(),
     recall: recallSchema.optional(),
     recordedAt: z.date().default(() => new Date()),
     reminder: reminderSchema.optional(),
@@ -182,15 +167,6 @@ const memoryVersions = new Collection({
     status: z.enum(['readable', 'shredded', 'unreadable']).default('readable'),
     text: z.string().optional(),
     version: z.int().nonnegative().default(1),
-  }),
-});
-
-const ratingNotes = new Collection({
-  schema: z.object({
-    itemID: z.string().default(() => faker.string.uuid()),
-    sequence: z.int().nonnegative(),
-    status: z.enum(['readable', 'shredded', 'unreadable']).default('readable'),
-    text: z.string().optional(),
   }),
 });
 
@@ -473,7 +449,6 @@ export const store = {
   moments,
   passkeyChecks,
   passkeyRows,
-  ratingNotes,
   records,
   retryActions,
   rules,
@@ -503,7 +478,6 @@ export const store = {
       backupNotices,
       memoryVersions,
       moments,
-      ratingNotes,
       enrolmentCodes,
       sessions,
     ]) {

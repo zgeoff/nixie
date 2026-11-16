@@ -77,10 +77,10 @@ below that record's sequence, and generation 0 starts at 0. An item is **shared-
 current version has no version key, so its current text shares generation 0 with every other value.
 Every item that exists when stage 2 ships is shared-key until it gets a new version.
 
-Rating notes and the consolidator's changes, comments and summaries are values of features that
-[memory turn push](memory-turn-push.md) and [the task removal](no-built-in-memory-tasks.md) remove
-before stage 1 ships. No code from stage 1 on reads or writes them, and the purge names none of
-them. [The scrub](#the-scrub-of-the-removed-features) covers the one kind that a purge would miss.
+Rating notes and the consolidator's changes, comments and summaries are values of features that the
+similarity push cleanup and [the task removal](no-built-in-memory-tasks.md) remove before stage 1
+ships. No code from stage 1 on reads or writes them, and the purge names none of them.
+[The scrub](#the-scrub-of-the-removed-features) covers the one kind that a purge would miss.
 
 ### The lookup
 
@@ -380,10 +380,10 @@ const exportVersionSchema = z.strictObject({
 
 ### The 2 stages and a rollback
 
-- Both removals ship before stage 1: the rating cleanup of [memory turn push](memory-turn-push.md)
-  and the consolidator delete of [the task removal](no-built-in-memory-tasks.md). From stage 1 on,
-  no release writes a rating note or a consolidation value, and stage 2's oldest reader refuses
-  every release that did.
+- Both removals ship before stage 1: the rating cleanup of the similarity push cleanup and the
+  consolidator delete of [the task removal](no-built-in-memory-tasks.md). From stage 1 on, no
+  release writes a rating note or a consolidation value, and stage 2's oldest reader refuses every
+  release that did.
 - Stage 1 ships the lookup, both tables, the readers of the 4 record kinds, what readers show, the
   refusal of a write that quotes a forgetting record, `VERSION_REMOVED`, `ItemPurgingError` and the
   memory forget's delete by prefix. It also ships the purge, which only its start runs, to finish a

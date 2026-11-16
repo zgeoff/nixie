@@ -33,7 +33,6 @@ export function makeTriggerPush(trigger: TurnMemorySettings['trigger']): SelectP
 
     return {
       picks,
-      messages: [],
       searchModes: [found.searchMode],
     };
   };

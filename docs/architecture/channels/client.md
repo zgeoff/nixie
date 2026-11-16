@@ -141,15 +141,13 @@ as a rule across the feed with the context's size before it and the summary's ow
 the summary's text while a forget has not erased it.
 
 Opening the step shows one collapsible section per source: the step with its records, the memories
-with each one's match score, the first line of its text and the model's rating with its note, the
-context with each compaction, each call with its input and its result, and a failed step's error.
-Each section opens on its own. A recall record holds no text and a rating record holds its note
-sealed, so the memories section reads the texts and the notes each time it opens, and a memory
-forgotten since then shows as forgotten. A rating can arrive in a later step than the recall it
-rates, and the view shows it beside the memory in the step that recalled it. A long value shows its
-start and opens in full on demand, because a fetched page's text runs to many kilobytes. Its toggle
-sits above the text and sticks to the top of the view while the text scrolls past, so the user
-closes an open value without scrolling back to find the control.
+with each one's match score and the first line of its text, the context with each compaction, each
+call with its input and its result, and a failed step's error. Each section opens on its own. A
+recall record holds no text, so the memories section reads the texts each time it opens, and a
+memory forgotten since then shows as forgotten. A long value shows its start and opens in full on
+demand, because a fetched page's text runs to many kilobytes. Its toggle sits above the text and
+sticks to the top of the view while the text scrolls past, so the user closes an open value without
+scrolling back to find the control.
 
 Each message carries a forget control, which first asks and forgets only on the confirm. The result
 of a tool call on the conversation thread carries one under its Result line, and a task's records
