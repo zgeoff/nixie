@@ -11,6 +11,7 @@ import {
   readSnapshotPolicy,
   runSeed,
 } from '@heynixie/definitions';
+import { buildTestTaskSeed } from '@heynixie/definitions/test-utils';
 import { runProjectionRebuild, withWriteTransaction } from '@heynixie/log';
 import type { PolicyCall, RuleForm } from '@heynixie/policy';
 import { makeDecisionPoint } from '@heynixie/policy';
@@ -143,6 +144,7 @@ deny-old-names:
   return {
     runSeedAgain: () =>
       runSeed({
+        tasks: buildTestTaskSeed(),
         log: api.context.log,
         source: createPathSource({ directory: root }),
         buildPolicy: () => ({ rules: [], tools: [] }),

@@ -7,6 +7,7 @@ import invariant from 'tiny-invariant';
 import { createPathSource } from '../definition/create-path-source';
 import { runSeed } from '../rule/run-seed';
 import { checkSkillFiles } from '../skill/check-skill-files';
+import { buildTestTaskSeed } from '../test-utils/build-test-task-seed';
 import { readWrittenSkills } from './read-written-skills';
 import { writeWrittenSkill } from './write-written-skill';
 import { writeWrittenSkillBase } from './write-written-skill-base';
@@ -55,7 +56,13 @@ test("it makes the definitions' newest version the base, which closes the confli
   await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
   await mkdir(join(ctx.root, 'skills', 'tide-tables'), { recursive: true });
   await writeFile(join(ctx.root, 'skills', 'tide-tables', 'SKILL.md'), text);
-  await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
+
+  await runSeed({
+    tasks: buildTestTaskSeed(),
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => policy,
+  });
 
   const skill = checkSkillFiles('tide-tables', [{ path: 'SKILL.md', text: `${text}By port.\n` }]);
 
@@ -71,7 +78,13 @@ test("it makes the definitions' newest version the base, which closes the confli
   );
 
   await writeFile(join(ctx.root, 'skills', 'tide-tables', 'SKILL.md'), `${text}By hour.\n`);
-  await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
+
+  await runSeed({
+    tasks: buildTestTaskSeed(),
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => policy,
+  });
 
   const name = await withWriteTransaction(ctx.writer, (tx) =>
     writeWrittenSkillBase(tx, { approvalID: '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31', at: 2 }),

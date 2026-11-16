@@ -1,6 +1,12 @@
 import type { JSONObject } from '@heynixie/log';
 import type { PromptOverrides } from '@heynixie/prompts';
-import type { DefinitionsSnapshot, SkillRef, SnapshotPolicy, ToolDeclaration } from '../types';
+import type {
+  DefinitionsSnapshot,
+  SkillRef,
+  SnapshotPolicy,
+  SnapshotTasks,
+  ToolDeclaration,
+} from '../types';
 import { buildSHA256 } from '../utils/build-sha256';
 import { toCanonicalJSON } from '../utils/to-canonical-json';
 import { normalizeInstructions } from './normalize-instructions';
@@ -14,6 +20,7 @@ export interface DefinitionsSnapshotInput {
   readonly skills: readonly SnapshotSkillInput[];
 
   readonly conversationSkills: readonly string[];
+  readonly tasks: SnapshotTasks;
 }
 
 export function buildDefinitionsSnapshot(input: DefinitionsSnapshotInput): DefinitionsSnapshot {
@@ -32,12 +39,18 @@ export function buildDefinitionsSnapshot(input: DefinitionsSnapshotInput): Defin
   const conversation = { skills: [...new Set(input.conversationSkills)].toSorted() };
   const prompts = buildPromptsForm(input.prompts);
 
+  const tasks = sortUniqueBy(
+    input.tasks.map((task) => ({ id: task.id, hash: task.hash, origin: task.origin })),
+    'id',
+    (task) => task.id,
+  );
+
   const form = toCanonicalJSON({
     conversation,
-    jobs: [],
     persona: personaVersion,
     policy,
     skills,
+    tasks,
     ...(Object.keys(prompts).length === 0 ? {} : { prompts }),
   });
 
@@ -47,6 +60,7 @@ export function buildDefinitionsSnapshot(input: DefinitionsSnapshotInput): Defin
     policyHash,
     persona,
     prompts: input.prompts,
+    tasks,
     form,
   };
 }

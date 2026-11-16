@@ -1,5 +1,6 @@
 import { expect, test } from 'bun:test';
 import { parseDefinitions } from '../definition/parse-definitions';
+import { buildTestTaskSeed } from '../test-utils/build-test-task-seed';
 import { DefinitionsParseError } from '../utils/definitions-parse-error';
 import { checkPromptProposal } from './check-prompt-proposal';
 
@@ -231,7 +232,10 @@ test('it reports the problems that the definitions parse reports for the same en
 
   expect(
     Promise.try(() =>
-      parseDefinitions({ contentHash: 'c', files, revision: 'r', repository: null, skipped: [] }),
+      parseDefinitions(
+        { contentHash: 'c', files, revision: 'r', repository: null, skipped: [] },
+        buildTestTaskSeed(),
+      ),
     ),
   ).rejects.toStrictEqual(new DefinitionsParseError(problems));
 

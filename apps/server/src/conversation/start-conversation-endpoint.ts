@@ -8,6 +8,7 @@ import { buildLogReadImageTool, buildLogReadTool } from '@heynixie/memory';
 import { buildPromptReadTool, buildPromptWriteTool } from '@heynixie/prompts';
 import { buildSilentEndTool } from '@heynixie/sessions';
 import type { SkillVendorContext } from '@heynixie/skills';
+import type { TaskStartBounds } from '@heynixie/tasks';
 import {
   buildTaskCloseTool,
   buildTaskMessageTool,
@@ -55,6 +56,7 @@ export interface ConversationEndpointTools {
 export interface ConversationEndpoint {
   readonly endpoint: ToolEndpoint;
   readonly definitions: readonly ToolDefinition[];
+  readonly taskBounds: TaskStartBounds;
 }
 
 export async function startConversationEndpoint(
@@ -169,5 +171,5 @@ export async function startConversationEndpoint(
 
   await options.cleanup.defer(() => endpoint.stop());
 
-  return { endpoint, definitions: [...definitions, ...tools.testTools] };
+  return { endpoint, definitions: [...definitions, ...tools.testTools], taskBounds: bounds };
 }

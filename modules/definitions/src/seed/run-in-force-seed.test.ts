@@ -10,6 +10,7 @@ import { createPathSource } from '../definition/create-path-source';
 import { readDefinitionsInForce } from '../definition/read-definitions-in-force';
 import { runSeed } from '../rule/run-seed';
 import { checkSkillFiles } from '../skill/check-skill-files';
+import { buildTestTaskSeed } from '../test-utils/build-test-task-seed';
 import { writeWrittenSkill } from '../written/write-written-skill';
 import { writeWrittenSkillState } from '../written/write-written-skill-state';
 import { runInForceSeed } from './run-in-force-seed';
@@ -56,7 +57,12 @@ test('it puts an approved skill in force at once, on the revision in force', asy
 
   const policy = { rules: [], tools: [] };
 
-  const first = await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
+  const first = await runSeed({
+    tasks: buildTestTaskSeed(),
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => policy,
+  });
 
   const skill = checkSkillFiles('tide-tables', [
     { path: 'SKILL.md', text: '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n' },
@@ -106,7 +112,12 @@ test('it gives a retired written skill back to the version beneath it, in its li
 
   const policy = { rules: [], tools: [] };
 
-  const first = await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
+  const first = await runSeed({
+    tasks: buildTestTaskSeed(),
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => policy,
+  });
 
   const skill = checkSkillFiles('tide-tables', [{ path: 'SKILL.md', text: `${text}By port.\n` }]);
 
@@ -152,7 +163,12 @@ test('it names the newest approval when a later approval brings back an earlier 
 
   const policy = { rules: [], tools: [] };
 
-  await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
+  await runSeed({
+    tasks: buildTestTaskSeed(),
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => policy,
+  });
 
   const first = checkSkillFiles('tide-tables', [
     { path: 'SKILL.md', text: '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n' },
@@ -200,7 +216,13 @@ test('it writes nothing when the written skills already stand in force', async (
 
   const policy = { rules: [], tools: [] };
 
-  const first = await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
+  const first = await runSeed({
+    tasks: buildTestTaskSeed(),
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => policy,
+  });
+
   const result = await runInForceSeed({ log: ctx.log, buildPolicy: () => policy });
 
   invariant(first.inForce);
@@ -220,7 +242,12 @@ test('it marks an approval whose files your definitions already hold as yours, w
 
   const policy = { rules: [], tools: [] };
 
-  await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
+  await runSeed({
+    tasks: buildTestTaskSeed(),
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => policy,
+  });
 
   const skill = checkSkillFiles('tide-tables', [{ path: 'SKILL.md', text }]);
 
@@ -269,6 +296,7 @@ test('it keeps the prompt overrides in force and builds the policy from them whe
   await writeFile(join(ctx.root, 'prompts', 'checker-safety.md'), 'Refuse a guessed fact.\n');
 
   const first = await runSeed({
+    tasks: buildTestTaskSeed(),
     log: ctx.log,
     source: ctx.source,
     buildPolicy: (prompts) => ({
@@ -328,4 +356,35 @@ test('it refuses before the first seed', async () => {
     error: { message: 'no definitions are in force yet' },
     inForce: null,
   });
+});
+
+test('it keeps the tasks list of the seed in force when it seeds again from stored state', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 4\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+  await mkdir(join(ctx.root, 'tasks', 'rain-gauge'), { recursive: true });
+
+  await writeFile(
+    join(ctx.root, 'tasks', 'rain-gauge', 'task.yaml'),
+    'name: Check the rain gauge\nbrief: Read it.\n',
+  );
+
+  const first = await runSeed({
+    tasks: buildTestTaskSeed(),
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => ({ rules: [], tools: [] }),
+  });
+
+  invariant(first.inForce);
+
+  const again = await runInForceSeed({
+    log: ctx.log,
+    buildPolicy: () => ({ rules: [{ id: 'allow-reads' }], tools: [] }),
+  });
+
+  expect(again).toMatchObject({ status: 'seeded', inForce: { tasks: first.inForce.tasks } });
+  expect(again.inForce?.snapshotHash).not.toBe(first.inForce.snapshotHash);
+  expect(first.inForce.tasks).toHaveLength(1);
 });

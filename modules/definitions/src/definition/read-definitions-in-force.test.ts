@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { startWriter } from '@heynixie/log';
 import { runSeed } from '../rule/run-seed';
+import { buildTestTaskSeed } from '../test-utils/build-test-task-seed';
 import { createPathSource } from './create-path-source';
 import { readDefinitionsInForce } from './read-definitions-in-force';
 
@@ -52,10 +53,22 @@ test('it finds the definitions the newest seed put in force', async () => {
 
   const policy = { rules: [], tools: [] };
 
-  await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
+  await runSeed({
+    tasks: buildTestTaskSeed(),
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => policy,
+  });
+
   await writeFile(join(ctx.root, 'persona.md'), '# Persona, edited\n');
 
-  const newest = await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
+  const newest = await runSeed({
+    tasks: buildTestTaskSeed(),
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => policy,
+  });
+
   const inForce = await readDefinitionsInForce(ctx.writer.db);
 
   expect(inForce).toStrictEqual(newest.inForce);
@@ -68,6 +81,7 @@ test('it finds the persona text the newest seed holds', async () => {
   await writeFile(join(ctx.root, 'persona.md'), '# Persona\n\nWarm,  \nbrief.\n\n');
 
   await runSeed({
+    tasks: buildTestTaskSeed(),
     log: ctx.log,
     source: ctx.source,
     buildPolicy: () => ({ rules: [], tools: [] }),

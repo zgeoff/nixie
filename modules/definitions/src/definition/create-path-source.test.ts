@@ -22,16 +22,16 @@ test('it reads each definitions file under the root with its path relative to th
   const ctx = await setupTest();
 
   await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
-  await mkdir(join(ctx.root, 'jobs'));
-  await writeFile(join(ctx.root, 'jobs', 'morning.yaml'), 'id: morning\n');
+  await mkdir(join(ctx.root, 'tasks', 'morning'), { recursive: true });
+  await writeFile(join(ctx.root, 'tasks', 'morning', 'task.yaml'), 'name: Morning\n');
 
   const snapshot = await createPathSource({ directory: ctx.root }).snapshot();
 
-  const job = new TextEncoder().encode('id: morning\n');
+  const task = new TextEncoder().encode('name: Morning\n');
   const persona = new TextEncoder().encode('# Persona\n');
 
   const files = new Map([
-    ['jobs/morning.yaml', job],
+    ['tasks/morning/task.yaml', task],
     ['persona.md', persona],
   ]);
 
@@ -67,13 +67,13 @@ test('it skips every path with a part that starts with a dot', async () => {
   await writeFile(join(ctx.root, '.persona.md'), '# Draft\n');
   await mkdir(join(ctx.root, '.git'));
   await writeFile(join(ctx.root, '.git', 'config.json'), '{}');
-  await mkdir(join(ctx.root, 'jobs'));
-  await writeFile(join(ctx.root, 'jobs', '.draft.yaml'), 'id: draft\n');
+  await mkdir(join(ctx.root, 'tasks', 'morning'), { recursive: true });
+  await writeFile(join(ctx.root, 'tasks', 'morning', '.draft.yaml'), 'name: Draft\n');
 
   const snapshot = await createPathSource({ directory: ctx.root }).snapshot();
 
   expect([...snapshot.files.keys()]).toStrictEqual(['persona.md']);
-  expect(snapshot.skipped).toStrictEqual(['.git', '.persona.md', 'jobs/.draft.yaml']);
+  expect(snapshot.skipped).toStrictEqual(['.git', '.persona.md', 'tasks/morning/.draft.yaml']);
 });
 
 test('it skips every root entry outside the known definitions paths by name', async () => {
@@ -89,6 +89,19 @@ test('it skips every root entry outside the known definitions paths by name', as
 
   expect([...snapshot.files.keys()]).toStrictEqual(['persona.md']);
   expect(snapshot.skipped).toStrictEqual(['README.txt', 'rules.toml', 'scripts']);
+});
+
+test('it skips a jobs folder as a root entry outside the layout', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+  await mkdir(join(ctx.root, 'jobs'));
+  await writeFile(join(ctx.root, 'jobs', 'morning.yaml'), 'id: morning\n');
+
+  const snapshot = await createPathSource({ directory: ctx.root }).snapshot();
+
+  expect([...snapshot.files.keys()]).toStrictEqual(['persona.md']);
+  expect(snapshot.skipped).toStrictEqual(['jobs']);
 });
 
 test('it skips a file without a definitions extension under rules', async () => {

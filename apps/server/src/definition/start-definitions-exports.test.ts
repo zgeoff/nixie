@@ -19,6 +19,7 @@ import {
   readMockFiles,
   writeMockBranchFile,
 } from '@heynixie/definitions-repo-github/mocks';
+import { buildTestTaskSeed } from '@heynixie/definitions/test-utils';
 import { withWriteTransaction, writeRecords } from '@heynixie/log';
 import type { Logger } from '@heynixie/logger';
 import { promptsOverrideProposedCodec, writePromptProposalAnswer } from '@heynixie/prompts';
@@ -71,6 +72,7 @@ test('it exports a skill with the configured templates, the first agent name and
   const policy = { rules: [], tools: [] };
 
   await runSeed({
+    tasks: buildTestTaskSeed(),
     log: ctx.log,
     source: createPathSource({ directory: join(ctx.directory, 'definitions') }),
     buildPolicy: () => policy,
@@ -146,6 +148,7 @@ test('it exports a runtime rule change in a pull request on the rules branch', a
   await writeFile(join(definitions, 'rules', 'mail.yaml'), 'ask-mail:\n  outcome: ask\n');
 
   await runSeed({
+    tasks: buildTestTaskSeed(),
     log: ctx.log,
     source: createPathSource({ directory: definitions }),
     buildPolicy: () => ({ rules: [], tools: [] }),
@@ -225,6 +228,7 @@ test("it exports an approved prompt override beside the skills, with the part fi
   await writeFile(join(ctx.directory, 'definitions', 'nixie.yaml'), 'format: 3\n');
 
   await runSeed({
+    tasks: buildTestTaskSeed(),
     log: ctx.log,
     source: createPathSource({ directory: join(ctx.directory, 'definitions') }),
     buildPolicy: () => ({ rules: [], tools: [] }),

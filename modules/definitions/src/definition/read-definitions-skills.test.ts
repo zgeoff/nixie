@@ -7,6 +7,7 @@ import invariant from 'tiny-invariant';
 import { runSeed } from '../rule/run-seed';
 import { runInForceSeed } from '../seed/run-in-force-seed';
 import { checkSkillFiles } from '../skill/check-skill-files';
+import { buildTestTaskSeed } from '../test-utils/build-test-task-seed';
 import { writeWrittenSkill } from '../written/write-written-skill';
 import { createPathSource } from './create-path-source';
 import { readDefinitionsSkills } from './read-definitions-skills';
@@ -52,6 +53,7 @@ test('it reads each skill of your definitions under a snapshot with its list pla
   await writeFile(join(ctx.root, 'skills', 'tide-tables', 'SKILL.md'), tides);
 
   const seeded = await runSeed({
+    tasks: buildTestTaskSeed(),
     log: ctx.log,
     source: ctx.source,
     buildPolicy: () => ({ rules: [], tools: [] }),
@@ -82,6 +84,7 @@ test("it reads your definitions' version beneath a skill nixie wrote, and leaves
   await writeFile(join(ctx.root, 'skills', 'tide-tables', 'SKILL.md'), tides);
 
   await runSeed({
+    tasks: buildTestTaskSeed(),
     log: ctx.log,
     source: ctx.source,
     buildPolicy: () => ({ rules: [], tools: [] }),

@@ -15,6 +15,7 @@ import {
   writeMandateProposal,
   writeProposedRuleEdit,
 } from '@heynixie/definitions';
+import { buildTestTaskSeed } from '@heynixie/definitions/test-utils';
 import type { JSONObject, Log } from '@heynixie/log';
 import {
   logProjections,
@@ -114,6 +115,7 @@ export async function startTestRules(settings: APIContext['settings'] = defaultA
   await writeFile(join(root, 'persona.md'), '# Persona\n');
 
   await runSeed({
+    tasks: buildTestTaskSeed(),
     log,
     source: createPathSource({ directory: root }),
     buildPolicy: () => ({ rules: [], tools: [] }),

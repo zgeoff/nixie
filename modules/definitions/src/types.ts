@@ -2,7 +2,9 @@ import type { CheckedTables } from '@heynixie/db';
 import type { JSONObject } from '@heynixie/log';
 import type { EffectOverride, RuleFileEntry, RuleFileWarning, RuleForm } from '@heynixie/policy';
 import type { PromptOverrides } from '@heynixie/prompts';
+import type { TaskMemory, TaskPersona } from '@heynixie/tasks';
 import type { Generated, Kysely, Transaction } from 'kysely';
+import type { TaskDefinition, TaskDefinitionWarning } from './task/types';
 
 export interface DefinitionsSource {
   readonly id: string;
@@ -53,6 +55,7 @@ export interface DefinitionsSnapshot {
 
   readonly persona: string;
   readonly prompts: PromptOverrides;
+  readonly tasks: SnapshotTasks;
 
   readonly form: string;
 }
@@ -93,7 +96,36 @@ export interface ParsedDefinitions {
   readonly rules: readonly RuleFileEntry[];
   readonly ruleWarnings: readonly RuleFileWarning[];
   readonly effects: ReadonlyMap<string, EffectOverride>;
+  readonly tasks: readonly TaskDefinition[];
+  readonly taskWarnings: readonly TaskDefinitionWarning[];
   readonly unapplied: readonly string[];
+}
+
+export interface SnapshotTask {
+  readonly id: string;
+  readonly hash: string;
+  readonly origin: 'definitions';
+}
+
+export type SnapshotTasks = readonly SnapshotTask[];
+
+export interface DefinitionVersion {
+  readonly definitionID: string;
+  readonly name: string;
+  readonly brief: string;
+
+  // '' when the folder holds no instructions.md
+  readonly instructions: string;
+
+  // null: the model profile of the model role task
+  readonly model: string | null;
+  readonly profile: string | null;
+  readonly persona: TaskPersona;
+  readonly memory: TaskMemory;
+  readonly log: 'own' | 'conversation';
+  readonly tools: readonly string[];
+  readonly context: 'fresh' | 'continuing';
+  readonly wakeable: boolean;
 }
 
 export interface SkillRef {
@@ -121,6 +153,8 @@ export interface DefinitionsInForce {
   readonly skills: readonly SkillRef[];
 
   readonly conversationSkills: readonly string[];
+
+  readonly tasks: SnapshotTasks;
 }
 
 export type RuleOrigin = 'definitions' | 'nixie';
@@ -180,6 +214,13 @@ interface SeedRow {
   readonly format_version: number;
   readonly snapshot_hash: string;
   readonly record_sequence: number;
+}
+
+export interface TaskVersionRow {
+  readonly definition_hash: string;
+  readonly definition_id: string;
+  readonly form: string;
+  readonly files: string;
 }
 
 interface SkillVersionRow {
@@ -446,5 +487,6 @@ export type DefinitionsTables = CheckedTables<
     rule_exports: RuleExportRow;
     gap_answers: GapAnswerRow;
     gap_groups: GapGroupRow;
+    task_definition_versions: TaskVersionRow;
   }>
 >;

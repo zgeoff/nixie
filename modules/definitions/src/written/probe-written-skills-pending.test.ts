@@ -8,6 +8,7 @@ import { createPathSource } from '../definition/create-path-source';
 import { runSeed } from '../rule/run-seed';
 import { runInForceSeed } from '../seed/run-in-force-seed';
 import { checkSkillFiles } from '../skill/check-skill-files';
+import { buildTestTaskSeed } from '../test-utils/build-test-task-seed';
 import { probeWrittenSkillsPending } from './probe-written-skills-pending';
 import { writeWrittenSkill } from './write-written-skill';
 import { writeWrittenSkillState } from './write-written-skill-state';
@@ -57,7 +58,12 @@ test('it finds an approval pending until a seed puts its skill in force', async 
 
   const policy = { rules: [], tools: [] };
 
-  await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
+  await runSeed({
+    tasks: buildTestTaskSeed(),
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => policy,
+  });
 
   const skill = checkSkillFiles('tide-tables', [
     { path: 'SKILL.md', text: '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n' },
@@ -92,7 +98,12 @@ test('it finds a retirement pending while the snapshot in force still holds the 
 
   const policy = { rules: [], tools: [] };
 
-  await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
+  await runSeed({
+    tasks: buildTestTaskSeed(),
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => policy,
+  });
 
   const skill = checkSkillFiles('tide-tables', [
     { path: 'SKILL.md', text: '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n' },

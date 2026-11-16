@@ -3,6 +3,7 @@ import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createPathSource, runSeed } from '@heynixie/definitions';
+import { buildTestTaskSeed } from '@heynixie/definitions/test-utils';
 import { buildTestRunSettings, buildTestTaskRunners } from '@heynixie/tasks/test-utils';
 import { createServerContext } from '../server/create-server-context';
 import { buildStubFailingLogger } from '../test-utils/build-stub-failing-logger';
@@ -48,6 +49,7 @@ test('it starts a second seed over the same parts only after the first returns',
   const parts: SeedParts = {
     context: ctx.context.apiContext,
     source: stub.source,
+    tasks: buildTestTaskSeed(),
     buildPolicy: () => ({ rules: [], tools: [] }),
     inForce: ctx.context.inForce,
     state: buildStartState({ isReady: true, reason: null }),
@@ -55,7 +57,12 @@ test('it starts a second seed over the same parts only after the first returns',
   };
 
   const runPartsSeed = () =>
-    runSeed({ log: parts.context.log, source: parts.source, buildPolicy: parts.buildPolicy });
+    runSeed({
+      tasks: buildTestTaskSeed(),
+      log: parts.context.log,
+      source: parts.source,
+      buildPolicy: parts.buildPolicy,
+    });
 
   const seeds = [runQueuedSeed(parts, runPartsSeed), runQueuedSeed(parts, runPartsSeed)];
 
@@ -76,6 +83,7 @@ test('it puts the seeded definitions in force', async () => {
   const parts: SeedParts = {
     context: ctx.context.apiContext,
     source: createPathSource({ directory: ctx.root }),
+    tasks: buildTestTaskSeed(),
     buildPolicy: () => ({ rules: [], tools: [] }),
     inForce: ctx.context.inForce,
     state: buildStartState({ isReady: true, reason: null }),
@@ -83,7 +91,12 @@ test('it puts the seeded definitions in force', async () => {
   };
 
   const result = await runQueuedSeed(parts, () =>
-    runSeed({ log: parts.context.log, source: parts.source, buildPolicy: parts.buildPolicy }),
+    runSeed({
+      tasks: buildTestTaskSeed(),
+      log: parts.context.log,
+      source: parts.source,
+      buildPolicy: parts.buildPolicy,
+    }),
   );
 
   expect(ctx.context.inForce.read()).toStrictEqual(result.inForce);
@@ -114,6 +127,7 @@ test('it writes one operator log line at startup that names each prompt with its
   const parts: SeedParts = {
     context: ctx.context.apiContext,
     source: createPathSource({ directory: ctx.root }),
+    tasks: buildTestTaskSeed(),
     buildPolicy: () => ({ rules: [], tools: [] }),
     inForce: ctx.context.inForce,
     state: buildStartState({ isReady: true, reason: null }),
@@ -121,7 +135,12 @@ test('it writes one operator log line at startup that names each prompt with its
   };
 
   await runQueuedSeed(parts, () =>
-    runSeed({ log: parts.context.log, source: parts.source, buildPolicy: parts.buildPolicy }),
+    runSeed({
+      tasks: buildTestTaskSeed(),
+      log: parts.context.log,
+      source: parts.source,
+      buildPolicy: parts.buildPolicy,
+    }),
   );
 
   expect(log).toHaveBeenCalledWith('prompts.safety_missing', {
@@ -145,6 +164,7 @@ test('it writes the safety line once while the same definitions stay in force', 
   const parts: SeedParts = {
     context: ctx.context.apiContext,
     source: createPathSource({ directory: ctx.root }),
+    tasks: buildTestTaskSeed(),
     buildPolicy: () => ({ rules: [], tools: [] }),
     inForce: ctx.context.inForce,
     state: buildStartState({ isReady: true, reason: null }),
@@ -152,7 +172,12 @@ test('it writes the safety line once while the same definitions stay in force', 
   };
 
   const runPartsSeed = () =>
-    runSeed({ log: parts.context.log, source: parts.source, buildPolicy: parts.buildPolicy });
+    runSeed({
+      tasks: buildTestTaskSeed(),
+      log: parts.context.log,
+      source: parts.source,
+      buildPolicy: parts.buildPolicy,
+    });
 
   await runQueuedSeed(parts, runPartsSeed);
   await runQueuedSeed(parts, runPartsSeed);
@@ -179,6 +204,7 @@ test('it writes no safety line when every prompt keeps its safety part', async (
   const parts: SeedParts = {
     context: ctx.context.apiContext,
     source: createPathSource({ directory: ctx.root }),
+    tasks: buildTestTaskSeed(),
     buildPolicy: () => ({ rules: [], tools: [] }),
     inForce: ctx.context.inForce,
     state: buildStartState({ isReady: true, reason: null }),
@@ -186,7 +212,12 @@ test('it writes no safety line when every prompt keeps its safety part', async (
   };
 
   await runQueuedSeed(parts, () =>
-    runSeed({ log: parts.context.log, source: parts.source, buildPolicy: parts.buildPolicy }),
+    runSeed({
+      tasks: buildTestTaskSeed(),
+      log: parts.context.log,
+      source: parts.source,
+      buildPolicy: parts.buildPolicy,
+    }),
   );
 
   expect(log).not.toHaveBeenCalledWith('prompts.safety_missing', expect.anything());
@@ -203,6 +234,7 @@ test('it runs the next seed over the same parts after one fails, and gives the f
   const parts: SeedParts = {
     context: ctx.context.apiContext,
     source: createPathSource({ directory: ctx.root }),
+    tasks: buildTestTaskSeed(),
     buildPolicy: () => ({ rules: [], tools: [] }),
     inForce: ctx.context.inForce,
     state: buildStartState({ isReady: true, reason: null }),
@@ -210,7 +242,12 @@ test('it runs the next seed over the same parts after one fails, and gives the f
   };
 
   const runPartsSeed = () =>
-    runSeed({ log: parts.context.log, source: parts.source, buildPolicy: parts.buildPolicy });
+    runSeed({
+      tasks: buildTestTaskSeed(),
+      log: parts.context.log,
+      source: parts.source,
+      buildPolicy: parts.buildPolicy,
+    });
 
   const failed = runQueuedSeed(parts, runPartsSeed);
   const next = runQueuedSeed(parts, runPartsSeed);

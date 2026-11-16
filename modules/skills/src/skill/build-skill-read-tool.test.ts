@@ -3,6 +3,7 @@ import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createPathSource, runSeed } from '@heynixie/definitions';
+import { buildTestTaskSeed } from '@heynixie/definitions/test-utils';
 import { startWriter } from '@heynixie/log';
 import { buildTestClock } from '@heynixie/testing';
 import { buildToolRegistry } from '@heynixie/tools';
@@ -54,6 +55,7 @@ test('it returns the instructions without their frontmatter and the list of the 
   await writeFile(join(ctx.root, 'skills', 'tide-tables', 'convert.py'), 'print(1)\n');
 
   const seeded = await runSeed({
+    tasks: buildTestTaskSeed(),
     log: ctx.log,
     source: ctx.source,
     buildPolicy: () => ({ rules: [], tools: [] }),
@@ -130,6 +132,7 @@ test('it returns the file at a path inside the skill folder', async () => {
   await writeFile(join(ctx.root, 'skills', 'tide-tables', 'references', 'ports.md'), '# Ports\n');
 
   const seeded = await runSeed({
+    tasks: buildTestTaskSeed(),
     log: ctx.log,
     source: ctx.source,
     buildPolicy: () => ({ rules: [], tools: [] }),
@@ -194,6 +197,7 @@ test.each([
   );
 
   const seeded = await runSeed({
+    tasks: buildTestTaskSeed(),
     log: ctx.log,
     source: ctx.source,
     buildPolicy: () => ({ rules: [], tools: [] }),
@@ -238,6 +242,7 @@ test('it refuses a path the skill has no file at', async () => {
   );
 
   const seeded = await runSeed({
+    tasks: buildTestTaskSeed(),
     log: ctx.log,
     source: ctx.source,
     buildPolicy: () => ({ rules: [], tools: [] }),
@@ -293,6 +298,7 @@ test("it refuses a skill that is off the caller's skill list", async () => {
   );
 
   const seeded = await runSeed({
+    tasks: buildTestTaskSeed(),
     log: ctx.log,
     source: ctx.source,
     buildPolicy: () => ({ rules: [], tools: [] }),
@@ -338,7 +344,12 @@ test('it reads the version the task first loaded after a seed changes the skill'
 
   const policy = { rules: [], tools: [] };
 
-  const first = await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
+  const first = await runSeed({
+    tasks: buildTestTaskSeed(),
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => policy,
+  });
 
   const firstTool = buildSkillReadTool({
     log: ctx.log,
@@ -365,7 +376,12 @@ test('it reads the version the task first loaded after a seed changes the skill'
     '---\nname: tide-tables\ndescription: Reads a tide table by port.\n---\n# Tides by port\n',
   );
 
-  const second = await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
+  const second = await runSeed({
+    tasks: buildTestTaskSeed(),
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => policy,
+  });
 
   const secondTool = buildSkillReadTool({
     log: ctx.log,

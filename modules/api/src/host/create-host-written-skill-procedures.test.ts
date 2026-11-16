@@ -11,6 +11,7 @@ import {
   runSkillExports,
   writeWrittenSkill,
 } from '@heynixie/definitions';
+import { buildTestTaskSeed } from '@heynixie/definitions/test-utils';
 import { startWriter, withWriteTransaction } from '@heynixie/log';
 import { buildTestClock } from '@heynixie/testing';
 import { createRouterClient } from '@orpc/server';
@@ -69,7 +70,12 @@ test('#list shows a written skill whose definitions changed after the approval a
   await mkdir(join(ctx.root, 'skills', 'tide-tables'), { recursive: true });
   await writeFile(join(ctx.root, 'skills', 'tide-tables', 'SKILL.md'), text);
 
-  const first = await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => ctx.policy });
+  const first = await runSeed({
+    tasks: buildTestTaskSeed(),
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => ctx.policy,
+  });
 
   const skill = checkSkillFiles('tide-tables', [{ path: 'SKILL.md', text: `${text}By port.\n` }]);
 
@@ -85,7 +91,13 @@ test('#list shows a written skill whose definitions changed after the approval a
   );
 
   await writeFile(join(ctx.root, 'skills', 'tide-tables', 'SKILL.md'), `${text}By hour.\n`);
-  await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => ctx.policy });
+
+  await runSeed({
+    tasks: buildTestTaskSeed(),
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => ctx.policy,
+  });
 
   const base = first.inForce?.skills[0];
 
@@ -115,7 +127,13 @@ test('#list shows the pull request that carries a written skill to the definitio
 
   await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 2\n');
   await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
-  await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => ctx.policy });
+
+  await runSeed({
+    tasks: buildTestTaskSeed(),
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => ctx.policy,
+  });
 
   const skill = checkSkillFiles('tide-tables', [
     { path: 'SKILL.md', text: '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n' },
@@ -162,7 +180,13 @@ test('#resolve keeps the definitions version and lists the written skill no more
 
   await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 2\n');
   await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
-  await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => ctx.policy });
+
+  await runSeed({
+    tasks: buildTestTaskSeed(),
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => ctx.policy,
+  });
 
   const skill = checkSkillFiles('tide-tables', [
     { path: 'SKILL.md', text: '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n' },

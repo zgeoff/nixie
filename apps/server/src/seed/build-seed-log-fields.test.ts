@@ -8,6 +8,7 @@ import {
   createPathSource,
   runSeed,
 } from '@heynixie/definitions';
+import { buildTestTaskSeed } from '@heynixie/definitions/test-utils';
 import { startWriter } from '@heynixie/log';
 import { buildSeedLogFields } from './build-seed-log-fields';
 
@@ -41,6 +42,7 @@ async function setupTest() {
     },
     runSeed: async (policy: ReturnType<Parameters<typeof runSeed>[0]['buildPolicy']>) => {
       const result = await runSeed({
+        tasks: buildTestTaskSeed(),
         log: { writer, deploymentKey, projections: [] },
         source: createPathSource({ directory: root }),
         buildPolicy: () => policy,
@@ -69,6 +71,7 @@ test('it logs the revision, the content hash and the snapshot hash a seed put in
   const built = buildDefinitionsSnapshot({
     skills: [],
     conversationSkills: [],
+    tasks: [],
     persona: '# Persona\n',
     prompts: {},
     policy,
@@ -90,8 +93,15 @@ test('it logs the same fields for a seed of the same files', async () => {
   await ctx.write('nixie.yaml', 'format: 2\n');
   await ctx.write('persona.md', '# Persona\n');
 
-  const first = await ctx.runSeed({ rules: [{ id: 'allow-reads' }], tools: [] });
-  const second = await ctx.runSeed({ rules: [{ id: 'allow-reads' }], tools: [] });
+  const first = await ctx.runSeed({
+    rules: [{ id: 'allow-reads' }],
+    tools: [],
+  });
+
+  const second = await ctx.runSeed({
+    rules: [{ id: 'allow-reads' }],
+    tools: [],
+  });
 
   expect(second).toStrictEqual({ ...first, status: 'unchanged' });
 });
@@ -103,11 +113,17 @@ test('it logs a new revision and content hash for a changed file the seed leaves
   await ctx.write('persona.md', '# Persona\n');
   await ctx.write('rules/quiet.yaml', 'id: quiet\n');
 
-  const first = await ctx.runSeed({ rules: [{ id: 'allow-reads' }], tools: [] });
+  const first = await ctx.runSeed({
+    rules: [{ id: 'allow-reads' }],
+    tools: [],
+  });
 
   await ctx.write('rules/quiet.yaml', 'id: quieter\n');
 
-  const second = await ctx.runSeed({ rules: [{ id: 'allow-reads' }], tools: [] });
+  const second = await ctx.runSeed({
+    rules: [{ id: 'allow-reads' }],
+    tools: [],
+  });
 
   expect(second).toMatchObject({
     status: 'seeded',
@@ -124,11 +140,17 @@ test('it logs a new snapshot hash for a changed persona', async () => {
   await ctx.write('nixie.yaml', 'format: 2\n');
   await ctx.write('persona.md', '# Persona\n');
 
-  const first = await ctx.runSeed({ rules: [{ id: 'allow-reads' }], tools: [] });
+  const first = await ctx.runSeed({
+    rules: [{ id: 'allow-reads' }],
+    tools: [],
+  });
 
   await ctx.write('persona.md', '# Another persona\n');
 
-  const second = await ctx.runSeed({ rules: [{ id: 'allow-reads' }], tools: [] });
+  const second = await ctx.runSeed({
+    rules: [{ id: 'allow-reads' }],
+    tools: [],
+  });
 
   expect(second['inForceRevision']).not.toBe(first['inForceRevision']);
   expect(second['inForceContentHash']).not.toBe(first['inForceContentHash']);
@@ -141,11 +163,17 @@ test('it logs the error and the last good seed for a refused seed', async () => 
   await ctx.write('nixie.yaml', 'format: 2\n');
   await ctx.write('persona.md', '# Persona\n');
 
-  const first = await ctx.runSeed({ rules: [{ id: 'allow-reads' }], tools: [] });
+  const first = await ctx.runSeed({
+    rules: [{ id: 'allow-reads' }],
+    tools: [],
+  });
 
   await ctx.write('skills/notes/helper.pyc', new Uint8Array([0xff, 0xfe]));
 
-  const fields = await ctx.runSeed({ rules: [{ id: 'allow-reads' }], tools: [] });
+  const fields = await ctx.runSeed({
+    rules: [{ id: 'allow-reads' }],
+    tools: [],
+  });
 
   expect(fields).toStrictEqual({
     ...first,
@@ -160,7 +188,10 @@ test('it logs the message of a refused seed whose definitions directory is not c
 
   await rm(ctx.root, { recursive: true });
 
-  const fields = await ctx.runSeed({ rules: [{ id: 'allow-reads' }], tools: [] });
+  const fields = await ctx.runSeed({
+    rules: [{ id: 'allow-reads' }],
+    tools: [],
+  });
 
   expect(fields).toStrictEqual({
     status: 'refused',
@@ -177,7 +208,10 @@ test('it logs no definitions in force for a refused first seed', async () => {
 
   await ctx.write('nixie.yaml', 'format: 2\n');
 
-  const fields = await ctx.runSeed({ rules: [{ id: 'allow-reads' }], tools: [] });
+  const fields = await ctx.runSeed({
+    rules: [{ id: 'allow-reads' }],
+    tools: [],
+  });
 
   expect(fields).toStrictEqual({
     status: 'refused',

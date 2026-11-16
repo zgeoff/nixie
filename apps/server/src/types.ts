@@ -43,6 +43,7 @@ export interface ServerParts {
   readonly decisions: DecisionPointFactory;
   readonly source: DefinitionsSource;
   readonly buildPolicy: SeedInputs['buildPolicy'];
+  readonly tasks: SeedInputs['tasks'];
   readonly inForce: InForce;
   readonly modelSecrets: ModelSecrets;
   readonly turnInputs: TurnInputs;

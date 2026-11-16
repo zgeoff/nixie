@@ -88,6 +88,7 @@ export async function writeSeed(
     recordSequence: record.sequence,
     skills: plan.overlay.skills.map((skill) => toSkillRef(skill)),
     conversationSkills: plan.overlay.conversationSkills,
+    tasks: plan.built.tasks,
   };
 
   await writeSeedRow(tx, inForce);

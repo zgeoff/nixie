@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import { buildTestTaskSeed } from '../test-utils/build-test-task-seed';
 import { buildContentHash } from '../utils/build-content-hash';
 import { parseDefinitions } from './parse-definitions';
 
@@ -7,12 +8,15 @@ test('it reads the format version and the persona, and lists every other file un
     ['nixie.yaml', new TextEncoder().encode('format: 2\n')],
     ['persona.md', new TextEncoder().encode('# Persona\n')],
     ['rules/mail.yaml', new TextEncoder().encode('id: mail\noutcome: deny\n')],
-    ['jobs/morning.json', new TextEncoder().encode('{"id":"morning"}')],
+    ['tasks/morning/task.yaml', new TextEncoder().encode('name: Morning\nbrief: Plan the day.\n')],
     ['notes.md', new TextEncoder().encode('# Notes\n')],
   ]);
 
   expect(
-    parseDefinitions({ contentHash: 'c', files, revision: 'r', repository: null, skipped: [] }),
+    parseDefinitions(
+      { contentHash: 'c', files, revision: 'r', repository: null, skipped: [] },
+      buildTestTaskSeed(),
+    ),
   ).toStrictEqual({
     effects: new Map(),
     formatVersion: 2,
@@ -22,7 +26,9 @@ test('it reads the format version and the persona, and lists every other file un
     prompts: {},
     rules: [],
     ruleWarnings: [],
-    unapplied: ['jobs/morning.json', 'notes.md', 'rules/mail.yaml'],
+    tasks: [],
+    taskWarnings: [],
+    unapplied: ['notes.md', 'rules/mail.yaml', 'tasks/morning/task.yaml'],
   });
 });
 
@@ -30,7 +36,10 @@ test('it refuses definitions without a manifest', () => {
   const files = new Map([['persona.md', new TextEncoder().encode('# Persona\n')]]);
 
   expect(() =>
-    parseDefinitions({ contentHash: 'c', files, revision: 'r', repository: null, skipped: [] }),
+    parseDefinitions(
+      { contentHash: 'c', files, revision: 'r', repository: null, skipped: [] },
+      buildTestTaskSeed(),
+    ),
   ).toThrowWithMessage(Error, 'nixie.yaml: the definitions have no manifest');
 });
 
@@ -45,7 +54,10 @@ test.each([
   ]);
 
   expect(() =>
-    parseDefinitions({ contentHash: 'c', files, revision: 'r', repository: null, skipped: [] }),
+    parseDefinitions(
+      { contentHash: 'c', files, revision: 'r', repository: null, skipped: [] },
+      buildTestTaskSeed(),
+    ),
   ).toThrowWithMessage(
     Error,
     /^nixie\.yaml: format \d is not one this release reads, which is 2 or 3 or 4$/u,
@@ -63,7 +75,10 @@ test.each([
   ]);
 
   expect(() =>
-    parseDefinitions({ contentHash: 'c', files, revision: 'r', repository: null, skipped: [] }),
+    parseDefinitions(
+      { contentHash: 'c', files, revision: 'r', repository: null, skipped: [] },
+      buildTestTaskSeed(),
+    ),
   ).toThrowWithMessage(Error, 'nixie.yaml: format must be a whole number');
 });
 
@@ -71,7 +86,10 @@ test('it refuses definitions without a persona', () => {
   const files = new Map([['nixie.yaml', new TextEncoder().encode('format: 2\n')]]);
 
   expect(() =>
-    parseDefinitions({ contentHash: 'c', files, revision: 'r', repository: null, skipped: [] }),
+    parseDefinitions(
+      { contentHash: 'c', files, revision: 'r', repository: null, skipped: [] },
+      buildTestTaskSeed(),
+    ),
   ).toThrowWithMessage(Error, 'persona.md: the definitions have no persona');
 });
 
@@ -82,7 +100,10 @@ test('it refuses an empty persona', () => {
   ]);
 
   expect(() =>
-    parseDefinitions({ contentHash: 'c', files, revision: 'r', repository: null, skipped: [] }),
+    parseDefinitions(
+      { contentHash: 'c', files, revision: 'r', repository: null, skipped: [] },
+      buildTestTaskSeed(),
+    ),
   ).toThrowWithMessage(Error, 'persona.md: the persona is empty');
 });
 
@@ -93,7 +114,10 @@ test('it refuses a persona that is not UTF-8 text', () => {
   ]);
 
   expect(() =>
-    parseDefinitions({ contentHash: 'c', files, revision: 'r', repository: null, skipped: [] }),
+    parseDefinitions(
+      { contentHash: 'c', files, revision: 'r', repository: null, skipped: [] },
+      buildTestTaskSeed(),
+    ),
   ).toThrowWithMessage(Error, 'persona.md: the file is not UTF-8 text');
 });
 
@@ -105,7 +129,10 @@ test('it refuses an unapplied YAML file that fails to parse', () => {
   ]);
 
   expect(() =>
-    parseDefinitions({ contentHash: 'c', files, revision: 'r', repository: null, skipped: [] }),
+    parseDefinitions(
+      { contentHash: 'c', files, revision: 'r', repository: null, skipped: [] },
+      buildTestTaskSeed(),
+    ),
   ).toThrowWithMessage(Error, /^rules\/mail\.yaml: YAML Parse error/u);
 });
 
@@ -113,12 +140,15 @@ test('it refuses an unapplied JSON file that fails to parse', () => {
   const files = new Map([
     ['nixie.yaml', new TextEncoder().encode('format: 2\n')],
     ['persona.md', new TextEncoder().encode('# Persona\n')],
-    ['jobs/morning.json', new TextEncoder().encode('{"id":')],
+    ['rules/morning.json', new TextEncoder().encode('{"id":')],
   ]);
 
   expect(() =>
-    parseDefinitions({ contentHash: 'c', files, revision: 'r', repository: null, skipped: [] }),
-  ).toThrowWithMessage(Error, /^jobs\/morning\.json: JSON Parse error/u);
+    parseDefinitions(
+      { contentHash: 'c', files, revision: 'r', repository: null, skipped: [] },
+      buildTestTaskSeed(),
+    ),
+  ).toThrowWithMessage(Error, /^rules\/morning\.json: JSON Parse error/u);
 });
 
 test('it ignores the prompts map under format 2 and lists its part files as unapplied', () => {
@@ -134,7 +164,10 @@ test('it ignores the prompts map under format 2 and lists its part files as unap
   ]);
 
   expect(
-    parseDefinitions({ contentHash: 'c', files, revision: 'r', repository: null, skipped: [] }),
+    parseDefinitions(
+      { contentHash: 'c', files, revision: 'r', repository: null, skipped: [] },
+      buildTestTaskSeed(),
+    ),
   ).toStrictEqual({
     effects: new Map(),
     formatVersion: 2,
@@ -144,6 +177,8 @@ test('it ignores the prompts map under format 2 and lists its part files as unap
     prompts: {},
     rules: [],
     ruleWarnings: [],
+    tasks: [],
+    taskWarnings: [],
     unapplied: ['prompts/writer.md'],
   });
 });
@@ -156,7 +191,10 @@ test('it refuses a skill file that is not UTF-8 text', () => {
   ]);
 
   expect(() =>
-    parseDefinitions({ contentHash: 'c', files, revision: 'r', repository: null, skipped: [] }),
+    parseDefinitions(
+      { contentHash: 'c', files, revision: 'r', repository: null, skipped: [] },
+      buildTestTaskSeed(),
+    ),
   ).toThrowWithMessage(Error, 'skills/pdf-forms/form.pdf: the file is not UTF-8 text');
 });
 
@@ -177,7 +215,10 @@ test('it reads each skill under format 2, and lists none of its files as unappli
   ]);
 
   expect(
-    parseDefinitions({ contentHash: 'c', files, revision: 'r', repository: null, skipped: [] }),
+    parseDefinitions(
+      { contentHash: 'c', files, revision: 'r', repository: null, skipped: [] },
+      buildTestTaskSeed(),
+    ),
   ).toStrictEqual({
     effects: new Map(),
     formatVersion: 2,
@@ -205,6 +246,8 @@ test('it reads each skill under format 2, and lists none of its files as unappli
     prompts: {},
     rules: [],
     ruleWarnings: [],
+    tasks: [],
+    taskWarnings: [],
     unapplied: [],
   });
 });
@@ -223,13 +266,16 @@ test('it gives the conversation only the skills that the manifest lists', () => 
     ],
   ]);
 
-  const parsed = parseDefinitions({
-    contentHash: 'c',
-    files,
-    revision: 'r',
-    repository: null,
-    skipped: [],
-  });
+  const parsed = parseDefinitions(
+    {
+      contentHash: 'c',
+      files,
+      revision: 'r',
+      repository: null,
+      skipped: [],
+    },
+    buildTestTaskSeed(),
+  );
 
   expect(parsed.conversationSkills).toStrictEqual(['tide-tables']);
 });
@@ -251,13 +297,16 @@ test('it gives the conversation each listed skill once, in name order', () => {
     ],
   ]);
 
-  const parsed = parseDefinitions({
-    contentHash: 'c',
-    files,
-    revision: 'r',
-    repository: null,
-    skipped: [],
-  });
+  const parsed = parseDefinitions(
+    {
+      contentHash: 'c',
+      files,
+      revision: 'r',
+      repository: null,
+      skipped: [],
+    },
+    buildTestTaskSeed(),
+  );
 
   expect(parsed.conversationSkills).toStrictEqual(['bird-log', 'tide-tables']);
 });
@@ -273,7 +322,10 @@ test('it refuses a manifest skill list that names no skill', () => {
   ]);
 
   expect(() =>
-    parseDefinitions({ contentHash: 'c', files, revision: 'r', repository: null, skipped: [] }),
+    parseDefinitions(
+      { contentHash: 'c', files, revision: 'r', repository: null, skipped: [] },
+      buildTestTaskSeed(),
+    ),
   ).toThrowWithMessage(Error, 'nixie.yaml: skills: no skill is named tide-table');
 });
 
@@ -284,7 +336,10 @@ test('it refuses a manifest skill list that is not a list of names', () => {
   ]);
 
   expect(() =>
-    parseDefinitions({ contentHash: 'c', files, revision: 'r', repository: null, skipped: [] }),
+    parseDefinitions(
+      { contentHash: 'c', files, revision: 'r', repository: null, skipped: [] },
+      buildTestTaskSeed(),
+    ),
   ).toThrowWithMessage(Error, 'nixie.yaml: skills must be a list of skill names');
 });
 
@@ -296,7 +351,10 @@ test('it refuses a skill under format 2 whose SKILL.md fails a seed check', () =
   ]);
 
   expect(() =>
-    parseDefinitions({ contentHash: 'c', files, revision: 'r', repository: null, skipped: [] }),
+    parseDefinitions(
+      { contentHash: 'c', files, revision: 'r', repository: null, skipped: [] },
+      buildTestTaskSeed(),
+    ),
   ).toThrowWithMessage(
     Error,
     'skills/tide-tables/SKILL.md: the file does not open with YAML frontmatter between --- lines',
@@ -323,7 +381,10 @@ test('it reads a part override from its file and a template inline under format 
   ]);
 
   expect(
-    parseDefinitions({ contentHash: 'c', files, revision: 'r', repository: null, skipped: [] }),
+    parseDefinitions(
+      { contentHash: 'c', files, revision: 'r', repository: null, skipped: [] },
+      buildTestTaskSeed(),
+    ),
   ).toStrictEqual({
     effects: new Map(),
     formatVersion: 3,
@@ -336,6 +397,8 @@ test('it reads a part override from its file and a template inline under format 
     },
     rules: [],
     ruleWarnings: [],
+    tasks: [],
+    taskWarnings: [],
     unapplied: ['prompts/draft.md'],
   });
 });
@@ -353,8 +416,10 @@ test('it drops the final Windows line breaks of a part file', () => {
   ]);
 
   expect(
-    parseDefinitions({ contentHash: 'c', files, revision: 'r', repository: null, skipped: [] })
-      .prompts,
+    parseDefinitions(
+      { contentHash: 'c', files, revision: 'r', repository: null, skipped: [] },
+      buildTestTaskSeed(),
+    ).prompts,
   ).toStrictEqual({
     compaction: { parts: { safety: 'Quote every fact.\r\nKeep it short.' }, template: null },
   });
@@ -367,8 +432,10 @@ test('it reads no override under format 3 when the manifest has no prompts map',
   ]);
 
   expect(
-    parseDefinitions({ contentHash: 'c', files, revision: 'r', repository: null, skipped: [] })
-      .prompts,
+    parseDefinitions(
+      { contentHash: 'c', files, revision: 'r', repository: null, skipped: [] },
+      buildTestTaskSeed(),
+    ).prompts,
   ).toStrictEqual({});
 });
 
@@ -420,7 +487,10 @@ test.each([
   ]);
 
   expect(() =>
-    parseDefinitions({ contentHash: 'c', files, revision: 'r', repository: null, skipped: [] }),
+    parseDefinitions(
+      { contentHash: 'c', files, revision: 'r', repository: null, skipped: [] },
+      buildTestTaskSeed(),
+    ),
   ).toThrowWithMessage(Error, message);
 });
 
@@ -437,6 +507,9 @@ test('it refuses a part file that is not UTF-8 text', () => {
   ]);
 
   expect(() =>
-    parseDefinitions({ contentHash: 'c', files, revision: 'r', repository: null, skipped: [] }),
+    parseDefinitions(
+      { contentHash: 'c', files, revision: 'r', repository: null, skipped: [] },
+      buildTestTaskSeed(),
+    ),
   ).toThrowWithMessage(Error, 'prompts/writer.md: the file is not UTF-8 text');
 });

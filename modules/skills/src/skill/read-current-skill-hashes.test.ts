@@ -10,6 +10,7 @@ import {
   writeWrittenSkill,
   writeWrittenSkillState,
 } from '@heynixie/definitions';
+import { buildTestTaskSeed } from '@heynixie/definitions/test-utils';
 import { startWriter, withWriteTransaction } from '@heynixie/log';
 import invariant from 'tiny-invariant';
 import { readCurrentSkillHashes } from './read-current-skill-hashes';
@@ -65,6 +66,7 @@ test("it reads each skill nixie wrote over the snapshot's version, and the rest 
   await writeFile(join(ctx.root, 'skills', 'star-chart', 'SKILL.md'), stars);
 
   await runSeed({
+    tasks: buildTestTaskSeed(),
     log: ctx.log,
     source: ctx.source,
     buildPolicy: () => ({ rules: [], tools: [] }),
@@ -109,6 +111,7 @@ test("it reads your definitions' version of a retired skill nixie wrote before t
   await writeFile(join(ctx.root, 'skills', 'tide-tables', 'SKILL.md'), tides);
 
   await runSeed({
+    tasks: buildTestTaskSeed(),
     log: ctx.log,
     source: ctx.source,
     buildPolicy: () => ({ rules: [], tools: [] }),

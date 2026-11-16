@@ -2,6 +2,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { systemClock } from '@heynixie/clock';
 import { createPathSource, runInForceSeed, runSeed, writeRuntimeRule } from '@heynixie/definitions';
+import { buildTestTaskSeed } from '@heynixie/definitions/test-utils';
 import { startDataLog } from './start-data-log';
 import type { BootFiles } from './write-boot-files';
 
@@ -29,7 +30,12 @@ export async function seedRuleConflict(
   try {
     const log = testLog.context.log;
 
-    await runSeed({ log, source: createPathSource({ directory: definitions }), buildPolicy });
+    await runSeed({
+      tasks: buildTestTaskSeed(),
+      log,
+      source: createPathSource({ directory: definitions }),
+      buildPolicy,
+    });
 
     await writeRuntimeRule(
       {

@@ -9,6 +9,7 @@ import { createPathSource } from '../definition/create-path-source';
 import { runSeed } from '../rule/run-seed';
 import { runInForceSeed } from '../seed/run-in-force-seed';
 import { buildStubDefinitionsRepo } from '../test-utils/build-stub-definitions-repo';
+import { buildTestTaskSeed } from '../test-utils/build-test-task-seed';
 import type { DefinitionsChangeKind } from '../types';
 import { writeWrittenSkill } from '../written/write-written-skill';
 import { buildSkillChangeKind } from './build-skill-change-kind';
@@ -57,7 +58,12 @@ test('it exports a second change kind beside skills through the same pull reques
 
   const policy = { rules: [], tools: [] };
 
-  await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
+  await runSeed({
+    tasks: buildTestTaskSeed(),
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => policy,
+  });
 
   const skill = checkSkillFiles('moon-phases', [
     { path: 'SKILL.md', text: '---\nname: moon-phases\ndescription: Names a moon phase.\n---\n' },
@@ -280,7 +286,12 @@ test('it exports a good skill and reports the error of a skill whose stored file
 
   const policy = { rules: [], tools: [] };
 
-  await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
+  await runSeed({
+    tasks: buildTestTaskSeed(),
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => policy,
+  });
 
   const broken = checkSkillFiles('star-charts', [
     { path: 'SKILL.md', text: '---\nname: star-charts\ndescription: Reads a star chart.\n---\n' },

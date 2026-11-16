@@ -3,6 +3,7 @@ import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createPathSource, loadSnapshotSkills } from '@heynixie/definitions';
+import { buildTestTaskSeed } from '@heynixie/definitions/test-utils';
 import { buildTestRunSettings, buildTestTaskRunners } from '@heynixie/tasks/test-utils';
 import invariant from 'tiny-invariant';
 import type { SeedParts } from '../seed/run-queued-seed';
@@ -45,6 +46,7 @@ test('it seeds a new revision and returns the definitions it put in force', asyn
   const parts: SeedParts = {
     context: ctx.context.apiContext,
     source: createPathSource({ directory: ctx.root }),
+    tasks: buildTestTaskSeed(),
     buildPolicy: () => ({ rules: [], tools: [] }),
     inForce: ctx.context.inForce,
     state: buildStartState({ isReady: true, reason: null }),
@@ -71,6 +73,7 @@ test('it keeps the last good definitions in force when the source refuses a snap
   const parts: SeedParts = {
     context: ctx.context.apiContext,
     source: createPathSource({ directory: ctx.root }),
+    tasks: buildTestTaskSeed(),
     buildPolicy: () => ({ rules: [], tools: [] }),
     inForce: ctx.context.inForce,
     state: buildStartState({ isReady: true, reason: null }),

@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { startWriter, writeRecords } from '@heynixie/log';
 import { createPathSource } from '../definition/create-path-source';
+import { buildTestTaskSeed } from '../test-utils/build-test-task-seed';
 import { readRulesInForce } from './read-rules-in-force';
 import { ruleFiresProjection } from './rule-fires-projection';
 import { runSeed } from './run-seed';
@@ -39,6 +40,7 @@ async function setupTest() {
     log,
     runSeed: () =>
       runSeed({
+        tasks: buildTestTaskSeed(),
         log,
         source: createPathSource({ directory: root }),
         buildPolicy: () => ({ rules: [], tools: [] }),

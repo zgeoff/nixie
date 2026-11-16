@@ -136,6 +136,7 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
         endpoint: parts.get('tool_endpoint').endpoint,
         webFetch: parts.get('web_fetch'),
         definitions: parts.get('tool_endpoint').definitions,
+        taskBounds: parts.get('tool_endpoint').taskBounds,
         actions: parts.get('actions'),
       }),
   },

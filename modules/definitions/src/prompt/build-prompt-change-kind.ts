@@ -84,13 +84,16 @@ async function readPromptChange(
 
   // The seed refuses the whole snapshot when one file fails to parse, so a change that leaves the
   // definitions unparsable never reaches a pull request.
-  parseDefinitions({
-    contentHash: '',
-    files: await readChangedSnapshot(repo, revision, [...sizes.keys()], change.files),
-    revision,
-    repository: null,
-    skipped: [],
-  });
+  parseDefinitions(
+    {
+      contentHash: '',
+      files: await readChangedSnapshot(repo, revision, [...sizes.keys()], change.files),
+      revision,
+      repository: null,
+      skipped: [],
+    },
+    null,
+  );
 
   return change;
 }

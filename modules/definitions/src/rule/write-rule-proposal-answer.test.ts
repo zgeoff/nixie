@@ -8,6 +8,7 @@ import invariant from 'tiny-invariant';
 import { createPathSource } from '../definition/create-path-source';
 import { readSnapshotToolEffects } from '../seed/read-snapshot-tool-effects';
 import { runInForceSeed } from '../seed/run-in-force-seed';
+import { buildTestTaskSeed } from '../test-utils/build-test-task-seed';
 import { buildTestToolDeclaration } from '../test-utils/build-test-tool-declaration';
 import { readRuleProposals } from './read-rule-proposals';
 import { readRulesInForce } from './read-rules-in-force';
@@ -48,12 +49,14 @@ async function setupTest() {
     readProposals: () => readRuleProposals(writer.db),
     runSeed: () =>
       runSeed({
+        tasks: buildTestTaskSeed(),
         log,
         source: createPathSource({ directory: root }),
         buildPolicy: () => ({ rules: [], tools: [] }),
       }),
     runMailSeed: () =>
       runSeed({
+        tasks: buildTestTaskSeed(),
         log,
         source: createPathSource({ directory: root }),
         buildPolicy: () => ({ rules: [], tools: [buildTestToolDeclaration('mail.draft')] }),

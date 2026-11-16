@@ -1,5 +1,5 @@
 export class DefinitionsParseError extends Error {
-  override readonly name = 'DefinitionsParseError';
+  override readonly name: string = 'DefinitionsParseError';
 
   readonly problems: readonly ParseProblem[];
 

@@ -1,12 +1,12 @@
 # The definitions
 
-The definitions are the user's own configuration of nixie: the persona, jobs, rules and skills, kept
-outside the nixie repo in a definitions source such as a git repo or a local directory. nixie reads
-them as a snapshot of files, parses what it applies, and seeds them into the database under a
-snapshot hash. Every record in the [event log](./event-log.md) carries the snapshot hash of the
-definitions in force when it was written, so a replay of any decision can read exactly the persona
-and policy it ran under. `modules/definitions` owns sources, the seed and the snapshot hash. The
-seed applies the persona and the skills, and the
+The definitions are the user's own configuration of nixie: the persona, task definitions, rules and
+skills, kept outside the nixie repo in a definitions source such as a git repo or a local directory.
+nixie reads them as a snapshot of files, parses what it applies, and seeds them into the database
+under a snapshot hash. Every record in the [event log](./event-log.md) carries the snapshot hash of
+the definitions in force when it was written, so a replay of any decision can read exactly the
+persona and policy it ran under. `modules/definitions` owns sources, the seed and the snapshot hash.
+The seed applies the persona, the skills and the task definitions, and the
 [rules design](../../design/platform/policy/rules.md) covers the rule files it reads but does not
 apply.
 
@@ -43,7 +43,7 @@ same files seeds again. A checkout on a branch, or a directory with no git file,
 hash as its revision and names no repo.
 
 A source reads only the known definitions paths: the manifest and the persona at the root, and the
-jobs, rules and skills folders. It skips every other entry at the root by name, without reading or
+tasks, rules and skills folders. It skips every other entry at the root by name, without reading or
 entering it, so that entry never enters the content hash, never has to parse, and never counts
 towards the size limits. A definitions repo can then hold its own docs and scripts, and editing a
 readme never makes a new definitions version. The snapshot still lists every skipped root entry, so
@@ -52,10 +52,10 @@ without a trace.
 
 Within the known paths, every source applies one filter. It skips every path with a part that starts
 with a dot, such as `.git`. It keeps every file under `skills/`, whatever its extension, because a
-skill brings its scripts. It keeps only markdown, YAML and JSON files under `jobs/` and `rules/`.
-Every kept file must decode as UTF-8 text, so a binary file under `skills/` fails the snapshot. A
-snapshot past the per-file or the total size limit fails too, and its error lists the files at
-fault.
+skill brings its scripts. It keeps only `.yaml`, `.md` and `.ts` files under `tasks/`, and only
+markdown, YAML and JSON files under `rules/`. Every kept file must decode as UTF-8 text, so a binary
+file under `skills/` fails the snapshot. A snapshot past the per-file or the total size limit fails
+too, and its error lists the files at fault.
 
 The path source never follows a link out of the root: a symlink that stays inside the root is
 skipped, and one that leads outside it, or resolves nowhere, fails the snapshot. A file can change
@@ -81,8 +81,10 @@ and its files unapplied. Format 3 also applies each `rules/*.yaml` file as a rul
 [rules in force](../policy/rules.md#rules-in-force) describes, except a file that the `prompts:` map
 names as a prompt part. Format 3 therefore refuses a repo whose existing rule files fail the
 [rule format](../policy/rules.md#the-rule-format), and the error lists each file with its fault. The
-seed applies no other file, and lists each one in its record as unapplied. Each unapplied YAML or
-JSON file must still parse.
+seed applies each folder under `tasks/` as a [task definition](#task-definitions) from format 4, and
+lists the `tasks/` files of an older format as unapplied. A `jobs/` folder is a root entry outside
+the layout, so the seed skips it. The seed applies no other file, and lists each one in its record
+as unapplied. Each unapplied YAML or JSON file must still parse.
 
 nixie owns the format, and each release publishes the manifest's rules as a JSON Schema, the
 `definitions-manifest.schema.json` asset, so a definitions repo checks its manifest against the
@@ -215,16 +217,88 @@ notes that the export writes without a template. nixie refuses a configuration w
 any other placeholder, and names that placeholder. Without a message template, the commit holds the
 title alone and the pull request's body holds the notes.
 
+## Task definitions
+
+A task definition is a folder `tasks/<id>/`. Its name is the definition ID, 1 to 64 characters from
+`a-z`, `0-9` and `-`. The folder holds a required `task.yaml`, an optional `instructions.md`, and
+one step file, a `.ts` file that `step.file` names. The seed never runs a step file, and it hashes
+the file.
+
+`task.yaml` holds the keys of the `task.start` input of the sandbox runner (`name`, `brief`,
+`model`, `persona`, `memory`, `tools`, `report`, `reportShape`, `limits`) and these keys of the
+definition:
+
+| Key            | Value                                                                                             | Default |
+| -------------- | ------------------------------------------------------------------------------------------------- | ------- |
+| `enabled`      | boolean                                                                                           | `true`  |
+| `trigger`      | `{ schedule }` or `{ at }`, as the contract library's `Trigger` type defines them                 | none    |
+| `target`       | `task`, or `conversation` for a reminder that holds only `name`, `brief`, `trigger` and `enabled` | `task`  |
+| `context`      | `fresh` or `continuing`                                                                           | `fresh` |
+| `wakeable`     | boolean                                                                                           | `false` |
+| `step`         | `{ file, api: 1 }`                                                                                | none    |
+| `destinations` | a list of destination patterns, as a rule's `destinations` list takes them                        | `[]`    |
+| `maxCalls`     | a map from a listed tool name to a whole-number cap of 1 or more                                  | `{}`    |
+
+The parser takes the decoded texts of the files and never reads the source. For each folder, it
+checks in this order:
+
+1. The folder: a bad ID or a missing `task.yaml`.
+2. The YAML: text that is not YAML, or not a mapping.
+3. The unknown fields. A key that no schema of `task.yaml` knows, at any depth, skips the
+   definition: the seed loads no part of it, lists its files as unapplied, and logs a warning that
+   names the definition and the dotted path of the field. A `runner` key, or a trigger that holds
+   only `log` or `poll`, is an unknown field.
+4. Every other fault, which refuses the seed.
+
+A tool name in `tools` that is neither a registered tool nor the SDK name of one is dropped with a
+warning, before the hash is taken. The server passes the registered tool names, and passes the check
+of a start, which runs the sandbox runner's plan with the bounds of the conversation's `task.start`.
+A file definition may list any registered tool except the tools that a task started from chat may
+not hold.
+
+One fault refuses the whole seed, and the definitions of the last accepted seed stay in force. The
+refusal is a `TaskSeedRefusedError`, a kind of definitions parse error, whose problems and `faults`
+list each file's path and fault code:
+
+| Code                       | Path              | Cause                                                                                                 |
+| -------------------------- | ----------------- | ----------------------------------------------------------------------------------------------------- |
+| `bad_id`                   | the folder        | an ID outside the pattern                                                                             |
+| `missing_task_yaml`        | the folder        | a folder with no `task.yaml`                                                                          |
+| `unnamed_step_file`        | the `.ts` file    | a `.ts` file that `step.file` does not name                                                           |
+| `bad_slot`                 | `instructions.md` | a slot that the `task` prompt does not accept, which includes every `trigger.*` and `inputs.*` slot   |
+| `reminder_key`             | `task.yaml`       | a reminder with another key                                                                           |
+| `reminder_without_trigger` | `task.yaml`       | a reminder with no trigger                                                                            |
+| `bad_schedule`             | `task.yaml`       | a trigger that breaks a rule of `Schedule`                                                            |
+| `at_without_offset`        | `task.yaml`       | an `at` date-time with no offset or `Z`                                                               |
+| `start_refused`            | `task.yaml`       | start keys that fail the start schema, or a start that the check refuses                              |
+| `bad_max_calls`            | `task.yaml`       | a cap below 1, or a cap on a tool that `tools` lacks                                                  |
+| `bad_definition`           | `task.yaml`       | text that is not a mapping, a wrong value in a key of the definition, or a step file the folder lacks |
+
+A file directly under `tasks/`, a nested folder, and any `.yaml` or `.md` file other than
+`task.yaml` and `instructions.md` belong to no definition, and the seed lists them as unapplied.
+
+The definition hash covers the parsed `task.yaml` with the defaults filled, as canonical JSON, the
+hash of `instructions.md` after the same normalisation as the persona, and the hash of the step
+file. A comment in `task.yaml` leaves the hash unchanged, and an edit of `instructions.md` changes
+it. The form omits the start keys that a file leaves out, so nothing from the configuration enters
+the hash.
+
+The seed stores each accepted version in `task_definition_versions`, keyed by its hash, with its
+form and its files. nixie never deletes a row. `readDefinitionVersion` reads one by hash and fills
+what the file omits as a start from the file starter would: no model, no profile, the default
+persona, memory `none`, and the default tools.
+
 ## The snapshot hash
 
 The snapshot hash is the hash of one canonical form of the definitions in force. The persona enters
 that form by its own hash, its persona version, after nixie normalises it to Unicode NFC with LF
 line endings, no byte order mark and exactly one final newline. Trailing spaces stay, because two of
 them end a markdown line with a break. Each skill enters by its name, its content hash and whether
-it is vendored, sorted by name, so a change to any skill gives a new snapshot hash. The policy
-enters as the rules sorted by ID and the tool declarations sorted by name, each tool's effects
-sorted and without duplicates. Every object serialises as canonical JSON, with sorted keys and no
-whitespace, so the same definitions always give the same bytes.
+it is vendored, sorted by name, so a change to any skill gives a new snapshot hash. Each task
+definition enters as its ID, its definition hash and its origin, sorted by ID, whether or not it is
+enabled. The policy enters as the rules sorted by ID and the tool declarations sorted by name, each
+tool's effects sorted and without duplicates. Every object serialises as canonical JSON, with sorted
+keys and no whitespace, so the same definitions always give the same bytes.
 
 The policy holds the rules in code, the rules in force and every tool declaration in the build's
 registry. A rule enters with its revision, as [rules in force](../policy/rules.md#rules-in-force)
@@ -255,11 +329,12 @@ snapshot hash from it.
 | Unchanged | The newest seed holds the same source, repo, revision and both hashes, no written skill or runtime rule change becomes adopted, and no rule change proposal is withdrawn or proposed          | Only the record of an adopted skill that lacks it |
 | Refused   | The snapshot failed to read, parse or validate                                                                                                                                                | Nothing                                           |
 
-A refused seed comes back as a value with its error and the definitions still in force, never as a
-throw, so the caller reports the refusal while the last good seed keeps serving. A half-applied seed
-would leave definitions from two revisions in force at once. A failure inside the transaction, such
-as a projection's fold, therefore rolls the whole seed back and throws. The caller runs one seed at
-a time, because two overlapping seeds could commit an older revision after a newer one.
+A task definition that holds a fault refuses the seed too. A refused seed comes back as a value with
+its error and the definitions still in force, never as a throw, so the caller reports the refusal
+while the last good seed keeps serving. A half-applied seed would leave definitions from two
+revisions in force at once. A failure inside the transaction, such as a projection's fold, therefore
+rolls the whole seed back and throws. The caller runs one seed at a time, because two overlapping
+seeds could commit an older revision after a newer one.
 
 A seed's rules reach running tasks at once, because every tool call reads the rules in force at the
 call. A task keeps the skill versions it started with until a reload moves it on, as

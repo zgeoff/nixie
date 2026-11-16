@@ -10,6 +10,7 @@ import {
   runSeed,
   writeWrittenSkill,
 } from '@heynixie/definitions';
+import { buildTestTaskSeed } from '@heynixie/definitions/test-utils';
 import { readRecords, startWriter, withWriteTransaction } from '@heynixie/log';
 import { buildTestClock } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
@@ -66,7 +67,12 @@ test("it puts the definitions' version back in force when you keep it", async ()
   await mkdir(join(ctx.root, 'skills', 'tide-tables'), { recursive: true });
   await writeFile(join(ctx.root, 'skills', 'tide-tables', 'SKILL.md'), text);
 
-  const first = await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => ctx.policy });
+  const first = await runSeed({
+    tasks: buildTestTaskSeed(),
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => ctx.policy,
+  });
 
   const skill = checkSkillFiles('tide-tables', [{ path: 'SKILL.md', text: `${text}By port.\n` }]);
 
@@ -123,7 +129,13 @@ test("it puts the definitions' changed version in force, not the approval's base
   await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
   await mkdir(join(ctx.root, 'skills', 'tide-tables'), { recursive: true });
   await writeFile(join(ctx.root, 'skills', 'tide-tables', 'SKILL.md'), text);
-  await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => ctx.policy });
+
+  await runSeed({
+    tasks: buildTestTaskSeed(),
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => ctx.policy,
+  });
 
   const skill = checkSkillFiles('tide-tables', [{ path: 'SKILL.md', text: `${text}By port.\n` }]);
   const changed = checkSkillFiles('tide-tables', [{ path: 'SKILL.md', text: `${text}By hour.\n` }]);
@@ -142,7 +154,13 @@ test("it puts the definitions' changed version in force, not the approval's base
 
   await runInForceSeed({ log: ctx.log, buildPolicy: () => ctx.policy });
   await writeFile(join(ctx.root, 'skills', 'tide-tables', 'SKILL.md'), `${text}By hour.\n`);
-  await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => ctx.policy });
+
+  await runSeed({
+    tasks: buildTestTaskSeed(),
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => ctx.policy,
+  });
 
   await writeWrittenSkillResolution(ctx.context, {
     approvalID: '5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31',
@@ -165,7 +183,13 @@ test("it keeps nixie's version in force over a definitions change and closes the
   await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
   await mkdir(join(ctx.root, 'skills', 'tide-tables'), { recursive: true });
   await writeFile(join(ctx.root, 'skills', 'tide-tables', 'SKILL.md'), text);
-  await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => ctx.policy });
+
+  await runSeed({
+    tasks: buildTestTaskSeed(),
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => ctx.policy,
+  });
 
   const skill = checkSkillFiles('tide-tables', [{ path: 'SKILL.md', text: `${text}By port.\n` }]);
 
@@ -181,7 +205,13 @@ test("it keeps nixie's version in force over a definitions change and closes the
   );
 
   await writeFile(join(ctx.root, 'skills', 'tide-tables', 'SKILL.md'), `${text}By hour.\n`);
-  await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => ctx.policy });
+
+  await runSeed({
+    tasks: buildTestTaskSeed(),
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => ctx.policy,
+  });
 
   const writtenSeed = mock(() => Promise.resolve());
 

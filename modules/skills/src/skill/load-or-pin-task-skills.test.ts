@@ -3,6 +3,7 @@ import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createPathSource, runSeed } from '@heynixie/definitions';
+import { buildTestTaskSeed } from '@heynixie/definitions/test-utils';
 import { readRecords, startWriter } from '@heynixie/log';
 import { loadOrPinTaskSkills } from './load-or-pin-task-skills';
 
@@ -49,7 +50,12 @@ test('it keeps a task on the skill version it first loaded after a seed changes 
 
   const policy = { rules: [], tools: [] };
 
-  const first = await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
+  const first = await runSeed({
+    tasks: buildTestTaskSeed(),
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => policy,
+  });
 
   await loadOrPinTaskSkills(ctx.log, {
     thread: 'conversation',
@@ -62,7 +68,12 @@ test('it keeps a task on the skill version it first loaded after a seed changes 
     '---\nname: tide-tables\ndescription: Reads a tide table by port.\n---\n# Tides by port\n',
   );
 
-  const second = await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
+  const second = await runSeed({
+    tasks: buildTestTaskSeed(),
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => policy,
+  });
 
   const skills = await loadOrPinTaskSkills(ctx.log, {
     thread: 'conversation',
@@ -94,6 +105,7 @@ test('it pins a task on its first load to the skills on its list, and records th
   );
 
   const seeded = await runSeed({
+    tasks: buildTestTaskSeed(),
     log: ctx.log,
     source: ctx.source,
     buildPolicy: () => ({ rules: [], tools: [] }),
@@ -136,7 +148,12 @@ test("it pins a task that first loads after a seed to the new version, apart fro
 
   const policy = { rules: [], tools: [] };
 
-  const first = await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
+  const first = await runSeed({
+    tasks: buildTestTaskSeed(),
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => policy,
+  });
 
   await loadOrPinTaskSkills(ctx.log, {
     thread: 'task-a',
@@ -149,7 +166,12 @@ test("it pins a task that first loads after a seed to the new version, apart fro
     '---\nname: tide-tables\ndescription: Reads a tide table by port.\n---\n# Tides by port\n',
   );
 
-  const second = await runSeed({ log: ctx.log, source: ctx.source, buildPolicy: () => policy });
+  const second = await runSeed({
+    tasks: buildTestTaskSeed(),
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => policy,
+  });
 
   const taskA = await loadOrPinTaskSkills(ctx.log, {
     thread: 'task-a',

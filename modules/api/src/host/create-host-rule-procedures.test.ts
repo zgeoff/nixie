@@ -3,6 +3,7 @@ import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createPathSource, runInForceSeed, runSeed, writeRuntimeRule } from '@heynixie/definitions';
+import { buildTestTaskSeed } from '@heynixie/definitions/test-utils';
 import { startWriter } from '@heynixie/log';
 import { buildTestClock } from '@heynixie/testing';
 import { createRouterClient } from '@orpc/server';
@@ -50,12 +51,14 @@ async function setupTest() {
     client: createRouterClient(createHostRuleProcedures(context)),
     runSeed: () =>
       runSeed({
+        tasks: buildTestTaskSeed(),
         log,
         source: createPathSource({ directory: root }),
         buildPolicy: () => ({ rules: [], tools: [] }),
       }),
     runMailToolSeed: () =>
       runSeed({
+        tasks: buildTestTaskSeed(),
         log,
         source: createPathSource({ directory: root }),
         buildPolicy: () => ({

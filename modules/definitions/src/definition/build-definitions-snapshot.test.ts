@@ -9,6 +9,10 @@ test('it builds the canonical form and its hashes', () => {
       { name: 'pdf-forms', skillHash: 'b2', origin: 'vendored' },
     ],
     conversationSkills: ['tide-tables'],
+    tasks: [
+      { id: 'water-plants', hash: 'f2', origin: 'definitions' },
+      { id: 'book-dentist', hash: 'e1', origin: 'definitions' },
+    ],
     persona: '# Persona\n\nWarm, brief.\n',
     prompts: {},
     policy: {
@@ -19,7 +23,7 @@ test('it builds the canonical form and its hashes', () => {
 
   expect(snapshot).toMatchInlineSnapshot(`
     {
-      "form": "{"conversation":{"skills":["tide-tables"]},"jobs":[],"persona":"0cb77da5ed72ee52da2815cace63e7221ed3f3a3ca6bb1f8775f9e3f1b065575","policy":{"consent":{},"contacts":[],"rules":[{"effects":["read","fetch","note"],"id":"allow-reads","outcome":"allow"}],"tools":[{"destinations":[],"effects":["fetch"],"name":"web_fetch"}]},"skills":[{"name":"pdf-forms","origin":"vendored","skillHash":"b2"},{"name":"tide-tables","origin":"definitions","skillHash":"a1"}]}",
+      "form": "{"conversation":{"skills":["tide-tables"]},"persona":"0cb77da5ed72ee52da2815cace63e7221ed3f3a3ca6bb1f8775f9e3f1b065575","policy":{"consent":{},"contacts":[],"rules":[{"effects":["read","fetch","note"],"id":"allow-reads","outcome":"allow"}],"tools":[{"destinations":[],"effects":["fetch"],"name":"web_fetch"}]},"skills":[{"name":"pdf-forms","origin":"vendored","skillHash":"b2"},{"name":"tide-tables","origin":"definitions","skillHash":"a1"}],"tasks":[{"hash":"e1","id":"book-dentist","origin":"definitions"},{"hash":"f2","id":"water-plants","origin":"definitions"}]}",
       "persona": 
     "# Persona
 
@@ -29,7 +33,19 @@ test('it builds the canonical form and its hashes', () => {
       "personaVersion": "0cb77da5ed72ee52da2815cace63e7221ed3f3a3ca6bb1f8775f9e3f1b065575",
       "policyHash": "b9796c07c2f3ba58000b2aa073ef491a4321f5469944614944478d51b283a435",
       "prompts": {},
-      "snapshotHash": "15628f18c4392c3ac8ff001a032b233ec054b83b2644dd4457829236e20aeba9",
+      "snapshotHash": "79b25d4e67d465a687fbd835712aaf17ca1c079ec3d2bc8c53a2fbeec387ac00",
+      "tasks": [
+        {
+          "hash": "e1",
+          "id": "book-dentist",
+          "origin": "definitions",
+        },
+        {
+          "hash": "f2",
+          "id": "water-plants",
+          "origin": "definitions",
+        },
+      ],
     }
   `);
 });
@@ -41,6 +57,7 @@ test('it gives the same snapshot for the same definitions', () => {
     policy: { rules: [{ id: 'allow-reads' }], tools: [{ name: 'web_fetch', effects: [] }] },
     skills: [{ name: 'tide-tables', skillHash: 'hash-a', origin: 'definitions' as const }],
     conversationSkills: ['tide-tables'],
+    tasks: [],
   };
 
   expect(buildDefinitionsSnapshot(input)).toStrictEqual(buildDefinitionsSnapshot(input));
@@ -50,6 +67,7 @@ test('it hashes the canonical form for the snapshot and the persona text for its
   const snapshot = buildDefinitionsSnapshot({
     skills: [],
     conversationSkills: [],
+    tasks: [],
     persona: '# Persona',
     prompts: {},
     policy: { rules: [], tools: [] },
@@ -74,6 +92,7 @@ test('it gives a persona in NFD the snapshot hash of the same persona in NFC', (
   const nfd = buildDefinitionsSnapshot({
     skills: [],
     conversationSkills: [],
+    tasks: [],
     persona: 'Cafe\u0301 talk\n',
     prompts: {},
     policy,
@@ -82,6 +101,7 @@ test('it gives a persona in NFD the snapshot hash of the same persona in NFC', (
   const nfc = buildDefinitionsSnapshot({
     skills: [],
     conversationSkills: [],
+    tasks: [],
     persona: 'Caf\u00E9 talk\n',
     prompts: {},
     policy,
@@ -96,6 +116,7 @@ test('it gives a persona with CRLF endings the snapshot hash of the same persona
   const crlf = buildDefinitionsSnapshot({
     skills: [],
     conversationSkills: [],
+    tasks: [],
     persona: '# Persona\r\n\r\nWarm.\r\n',
     prompts: {},
     policy,
@@ -104,6 +125,7 @@ test('it gives a persona with CRLF endings the snapshot hash of the same persona
   const lf = buildDefinitionsSnapshot({
     skills: [],
     conversationSkills: [],
+    tasks: [],
     persona: '# Persona\n\nWarm.\n',
     prompts: {},
     policy,
@@ -118,6 +140,7 @@ test('it gives a persona with no final newline or several the hash of one with o
   const none = buildDefinitionsSnapshot({
     skills: [],
     conversationSkills: [],
+    tasks: [],
     persona: '# Persona',
     prompts: {},
     policy,
@@ -126,6 +149,7 @@ test('it gives a persona with no final newline or several the hash of one with o
   const several = buildDefinitionsSnapshot({
     skills: [],
     conversationSkills: [],
+    tasks: [],
     persona: '# Persona\n\n\n',
     prompts: {},
     policy,
@@ -134,6 +158,7 @@ test('it gives a persona with no final newline or several the hash of one with o
   const one = buildDefinitionsSnapshot({
     skills: [],
     conversationSkills: [],
+    tasks: [],
     persona: '# Persona\n',
     prompts: {},
     policy,
@@ -149,6 +174,7 @@ test('it keeps trailing spaces, so a markdown line break changes the snapshot ha
   const lineBreak = buildDefinitionsSnapshot({
     skills: [],
     conversationSkills: [],
+    tasks: [],
     persona: 'Warm,  \nbrief.\n',
     prompts: {},
     policy,
@@ -157,6 +183,7 @@ test('it keeps trailing spaces, so a markdown line break changes the snapshot ha
   const plain = buildDefinitionsSnapshot({
     skills: [],
     conversationSkills: [],
+    tasks: [],
     persona: 'Warm,\nbrief.\n',
     prompts: {},
     policy,
@@ -170,6 +197,7 @@ test('it gives declarations with keys in any order the same snapshot hash', () =
   const forward = buildDefinitionsSnapshot({
     skills: [],
     conversationSkills: [],
+    tasks: [],
     persona: '# Persona\n',
     prompts: {},
     policy: {
@@ -181,6 +209,7 @@ test('it gives declarations with keys in any order the same snapshot hash', () =
   const backward = buildDefinitionsSnapshot({
     skills: [],
     conversationSkills: [],
+    tasks: [],
     persona: '# Persona\n',
     prompts: {},
     policy: {
@@ -197,6 +226,7 @@ test('it sorts the rules by ID and the tools by name', () => {
   const snapshot = buildDefinitionsSnapshot({
     skills: [],
     conversationSkills: [],
+    tasks: [],
     persona: '# Persona\n',
     prompts: {},
     policy: {
@@ -220,6 +250,7 @@ test('it sorts each effect list and drops its duplicates', () => {
   const messy = buildDefinitionsSnapshot({
     skills: [],
     conversationSkills: [],
+    tasks: [],
     persona: '# Persona\n',
     prompts: {},
     policy: { rules: [], tools: [{ name: 'mail_send', effects: ['send', 'read', 'send'] }] },
@@ -228,6 +259,7 @@ test('it sorts each effect list and drops its duplicates', () => {
   const tidy = buildDefinitionsSnapshot({
     skills: [],
     conversationSkills: [],
+    tasks: [],
     persona: '# Persona\n',
     prompts: {},
     policy: { rules: [], tools: [{ name: 'mail_send', effects: ['read', 'send'] }] },
@@ -240,6 +272,7 @@ test('it changes the snapshot hash and the policy hash when a tool declaration c
   const before = buildDefinitionsSnapshot({
     skills: [],
     conversationSkills: [],
+    tasks: [],
     persona: '# Persona\n',
     prompts: {},
     policy: { rules: [], tools: [{ name: 'web_fetch', effects: ['fetch'] }] },
@@ -248,6 +281,7 @@ test('it changes the snapshot hash and the policy hash when a tool declaration c
   const after = buildDefinitionsSnapshot({
     skills: [],
     conversationSkills: [],
+    tasks: [],
     persona: '# Persona\n',
     prompts: {},
     policy: { rules: [], tools: [{ name: 'web_fetch', effects: ['fetch', 'send'] }] },
@@ -262,6 +296,7 @@ test('it refuses a policy with 2 rules under one ID', () => {
     buildDefinitionsSnapshot({
       skills: [],
       conversationSkills: [],
+      tasks: [],
       persona: '# Persona\n',
       prompts: {},
       policy: { rules: [{ id: 'allow-reads' }, { id: 'allow-reads' }], tools: [] },
@@ -274,6 +309,7 @@ test('it refuses a policy with 2 tools under one name', () => {
     buildDefinitionsSnapshot({
       skills: [],
       conversationSkills: [],
+      tasks: [],
       persona: '# Persona\n',
       prompts: {},
       policy: {

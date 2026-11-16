@@ -3,7 +3,7 @@ import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createPathSource } from '@heynixie/definitions';
-import { buildStubDefinitionsRepo } from '@heynixie/definitions/test-utils';
+import { buildStubDefinitionsRepo, buildTestTaskSeed } from '@heynixie/definitions/test-utils';
 import { buildTestRunSettings, buildTestTaskRunners } from '@heynixie/tasks/test-utils';
 import { buildTestClock } from '@heynixie/testing';
 import { buildToolRegistry } from '@heynixie/tools';
@@ -39,6 +39,7 @@ async function setupTest() {
   const parts: SeedParts = {
     context: context.apiContext,
     source: createPathSource({ directory: root }),
+    tasks: buildTestTaskSeed(),
     buildPolicy: () => ({ rules: [], tools: [] }),
     inForce: context.inForce,
     state: buildStartState({ isReady: true, reason: null }),

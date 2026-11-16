@@ -12,6 +12,7 @@ import { readDefinitionsInForce } from '../definition/read-definitions-in-force'
 import { runSeed } from '../rule/run-seed';
 import { runDefinitionsExports } from '../skill/run-definitions-exports';
 import { buildStubDefinitionsRepo } from '../test-utils/build-stub-definitions-repo';
+import { buildTestTaskSeed } from '../test-utils/build-test-task-seed';
 import { DefinitionsParseError } from '../utils/definitions-parse-error';
 import { buildPromptChangeKind } from './build-prompt-change-kind';
 import { checkPromptProposal } from './check-prompt-proposal';
@@ -66,6 +67,7 @@ test('it opens a pull request with the part files and the prompts entry, which a
   await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
 
   await runSeed({
+    tasks: buildTestTaskSeed(),
     log: ctx.log,
     source: ctx.source,
     buildPolicy: () => ({ rules: [], tools: [] }),
@@ -111,6 +113,7 @@ test('it opens a pull request with the part files and the prompts entry, which a
   await ctx.repo.mergePullRequest(pullRequest.number);
 
   await runSeed({
+    tasks: buildTestTaskSeed(),
     log: ctx.log,
     source: ctx.source,
     buildPolicy: () => ({ rules: [], tools: [] }),
@@ -171,6 +174,7 @@ test("it moves a part file that another prompt reads, and the seed after the mer
   await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
 
   await runSeed({
+    tasks: buildTestTaskSeed(),
     log: ctx.log,
     source: ctx.source,
     buildPolicy: () => ({ rules: [], tools: [] }),
@@ -216,6 +220,7 @@ test("it moves a part file that another prompt reads, and the seed after the mer
   await ctx.repo.mergePullRequest(pullRequest.number);
 
   await runSeed({
+    tasks: buildTestTaskSeed(),
     log: ctx.log,
     source: ctx.source,
     buildPolicy: () => ({ rules: [], tools: [] }),
@@ -242,6 +247,7 @@ test('it exports the edited entry and files that the approval holds', async () =
   await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
 
   await runSeed({
+    tasks: buildTestTaskSeed(),
     log: ctx.log,
     source: ctx.source,
     buildPolicy: () => ({ rules: [], tools: [] }),
@@ -303,6 +309,7 @@ test('it records the pull request on the thread of the proposal, for the answer 
   await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
 
   await runSeed({
+    tasks: buildTestTaskSeed(),
     log: ctx.log,
     source: ctx.source,
     buildPolicy: () => ({ rules: [], tools: [] }),
@@ -367,6 +374,7 @@ test('it exports each approval once', async () => {
   await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
 
   await runSeed({
+    tasks: buildTestTaskSeed(),
     log: ctx.log,
     source: ctx.source,
     buildPolicy: () => ({ rules: [], tools: [] }),
@@ -418,6 +426,7 @@ test('it records the pull request it already opened when an export mark outlives
   await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
 
   await runSeed({
+    tasks: buildTestTaskSeed(),
     log: ctx.log,
     source: ctx.source,
     buildPolicy: () => ({ rules: [], tools: [] }),
@@ -497,6 +506,7 @@ test('it opens one pull request when a retry follows a pull request write whose 
   await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
 
   await runSeed({
+    tasks: buildTestTaskSeed(),
     log: ctx.log,
     source: ctx.source,
     buildPolicy: () => ({ rules: [], tools: [] }),
@@ -581,6 +591,7 @@ test('it writes a later approval of the same prompt onto its open pull request a
   await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
 
   await runSeed({
+    tasks: buildTestTaskSeed(),
     log: ctx.log,
     source: ctx.source,
     buildPolicy: () => ({ rules: [], tools: [] }),
@@ -779,6 +790,7 @@ test('it passes an export to onError when the definitions after the change fail 
   await writeFile(join(ctx.root, 'rules', 'compaction.json'), 'Keep the open questions.\n');
 
   await runSeed({
+    tasks: buildTestTaskSeed(),
     log: ctx.log,
     source: ctx.source,
     buildPolicy: () => ({ rules: [], tools: [] }),
@@ -841,6 +853,7 @@ test('it opens a pull request beside a file that the seed skips, such as a hidde
   await writeFile(join(ctx.root, 'skills', '.gitkeep'), '');
 
   await runSeed({
+    tasks: buildTestTaskSeed(),
     log: ctx.log,
     source: ctx.source,
     buildPolicy: () => ({ rules: [], tools: [] }),

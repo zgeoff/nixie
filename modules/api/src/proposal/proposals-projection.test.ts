@@ -3,6 +3,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { nixieSchema, readQueryRows, removeTableRows } from '@heynixie/db';
 import { createPathSource, runSeed } from '@heynixie/definitions';
+import { buildTestTaskSeed } from '@heynixie/definitions/test-utils';
 import { withWriteTransaction, writeRecords } from '@heynixie/log';
 import { defaultGateLimits, defaultOwnerPronouns, startMemoryStore } from '@heynixie/memory';
 import { buildMockWriteCaller } from '@heynixie/memory/test-utils';
@@ -28,6 +29,7 @@ async function setupTest() {
   );
 
   await runSeed({
+    tasks: buildTestTaskSeed(),
     log: api.context.log,
     source: createPathSource({ directory: root }),
     buildPolicy: () => ({ rules: [], tools: [] }),

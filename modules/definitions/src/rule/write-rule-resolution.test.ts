@@ -7,6 +7,7 @@ import invariant from 'tiny-invariant';
 import { createPathSource } from '../definition/create-path-source';
 import { writeRuntimeRule } from '../runtime/write-runtime-rule';
 import { runInForceSeed } from '../seed/run-in-force-seed';
+import { buildTestTaskSeed } from '../test-utils/build-test-task-seed';
 import { readRuleConflicts } from './read-rule-conflicts';
 import { readRulesInForce } from './read-rules-in-force';
 import { runSeed } from './run-seed';
@@ -43,6 +44,7 @@ async function setupTest() {
     log,
     runSeed: () =>
       runSeed({
+        tasks: buildTestTaskSeed(),
         log,
         source: createPathSource({ directory: root }),
         buildPolicy: () => ({ rules: [], tools: [] }),

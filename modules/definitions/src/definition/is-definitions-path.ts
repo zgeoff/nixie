@@ -2,6 +2,7 @@ import { extname } from 'node:path/posix';
 import { definitionsLayout } from './definitions-layout';
 
 const definitionsExtensions = new Set(['.json', '.md', '.yaml', '.yml']);
+const taskExtensions = new Set(['.md', '.ts', '.yaml']);
 
 export function isDefinitionsPath(path: string): boolean {
   const parts = path.split('/');
@@ -20,5 +21,7 @@ export function isDefinitionsPath(path: string): boolean {
     return true;
   }
 
-  return definitionsLayout.folders.has(folder ?? '') && definitionsExtensions.has(extname(path));
+  const extensions = folder === 'tasks' ? taskExtensions : definitionsExtensions;
+
+  return definitionsLayout.folders.has(folder ?? '') && extensions.has(extname(path));
 }
