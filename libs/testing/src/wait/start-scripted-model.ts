@@ -52,6 +52,9 @@ type ScriptedMessage = (
       readonly toolUse: {
         readonly name: string;
 
+        // the namespace that the Responses API groups a tool under, such as an MCP server's
+        readonly namespace?: string;
+
         // a function builds the input from the request the reply answers, when a value in the
         // input, such as an ID, is known only from an earlier tool result in that request
         readonly input:
@@ -79,7 +82,18 @@ interface ScriptedAuthFailure extends ScriptedMatch {
   readonly gate?: Promise<void>;
 }
 
-export type ScriptedReply = ScriptedMessage | ScriptedRefusal | ScriptedAuthFailure;
+// an error answer with the status of the caller's choice, such as a 400 that a client does not
+// retry or a 500 that it does
+interface ScriptedFailure extends ScriptedMatch {
+  readonly failure: { readonly status: number; readonly message: string };
+  readonly gate?: Promise<void>;
+}
+
+export type ScriptedReply =
+  | ScriptedMessage
+  | ScriptedRefusal
+  | ScriptedAuthFailure
+  | ScriptedFailure;
 
 export interface ScriptedModelRequest {
   readonly path: string;
@@ -211,23 +225,43 @@ function resolveToolInput(reply: ScriptedReply, body: ScriptedModelBody): Script
     return reply;
   }
 
-  return { ...reply, toolUse: { name: reply.toolUse.name, input: reply.toolUse.input(body) } };
+  return { ...reply, toolUse: { ...reply.toolUse, input: reply.toolUse.input(body) } };
 }
 
 function buildResponsesReply(reply: ScriptedReply, model: string, isStream: boolean): Response {
-  if (!('text' in reply)) {
-    return renderRefusal('the scripted model answers the Responses endpoint only with text');
+  if ('failure' in reply) {
+    return Response.json(
+      { error: { type: 'invalid_request_error', code: null, message: reply.failure.message } },
+      { status: reply.failure.status },
+    );
+  }
+
+  if (!('text' in reply) && !('toolUse' in reply)) {
+    return renderRefusal(
+      'the scripted model answers the Responses endpoint only with text or a tool call',
+    );
   }
 
   // a client that follows each output item, such as the Codex CLI, reads its ID and its start and
   // end events, as the real API sends them
-  const item = {
-    type: 'message',
-    id: `msg_${crypto.randomUUID().replaceAll('-', '')}`,
-    role: 'assistant',
-    status: 'completed',
-    content: [{ type: 'output_text', text: reply.text, annotations: [] }],
-  };
+  const item =
+    'toolUse' in reply
+      ? {
+          type: 'function_call',
+          id: `fc_${crypto.randomUUID().replaceAll('-', '')}`,
+          call_id: `call_${crypto.randomUUID().replaceAll('-', '')}`,
+          name: reply.toolUse.name,
+          ...(reply.toolUse.namespace === undefined ? {} : { namespace: reply.toolUse.namespace }),
+          arguments: JSON.stringify(reply.toolUse.input),
+          status: 'completed',
+        }
+      : {
+          type: 'message',
+          id: `msg_${crypto.randomUUID().replaceAll('-', '')}`,
+          role: 'assistant',
+          status: 'completed',
+          content: [{ type: 'output_text', text: reply.text, annotations: [] }],
+        };
 
   const completed = {
     id: `resp_${crypto.randomUUID().replaceAll('-', '')}`,
@@ -252,7 +286,7 @@ function buildResponsesReply(reply: ScriptedReply, model: string, isStream: bool
       output_index: 0,
       item: { ...item, status: 'in_progress', content: [] },
     },
-    { type: 'response.output_text.delta', delta: reply.text },
+    ...('text' in reply ? [{ type: 'response.output_text.delta', delta: reply.text }] : []),
     { type: 'response.output_item.done', output_index: 0, item },
     { type: 'response.completed', response: completed },
   ];
@@ -283,6 +317,13 @@ function buildReplyResponse(reply: ScriptedReply, model: string, isStream: boole
 
   if ('authFailure' in reply) {
     return renderAuthFailure(reply.authFailure);
+  }
+
+  if ('failure' in reply) {
+    return Response.json(
+      { type: 'error', error: { type: 'api_error', message: reply.failure.message } },
+      { status: reply.failure.status },
+    );
   }
 
   return isStream ? renderStream(reply, model) : renderWhole(reply, model);

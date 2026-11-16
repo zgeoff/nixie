@@ -418,3 +418,98 @@ test('it builds a tool call input from the request the reply answers, streamed o
   expect(whole).toInclude('"input":{"name":"after-3-messages"}');
   expect(streamed).toInclude(String.raw`{\"name\":\"after-3-messages\"}`);
 });
+
+test('it answers the Responses endpoint with a function call in the tool namespace', async () => {
+  const ctx = setupTest();
+
+  ctx.model.addReplies({
+    toolUse: { name: 'ping', namespace: 'mcp__nixie', input: { who: 'a' } },
+  });
+
+  const response = await fetch(`${ctx.model.url}/v1/responses`, {
+    method: 'POST',
+    body: JSON.stringify({ model: 'model-o', input: 'Hi.' }),
+  });
+
+  const reply: unknown = await response.json();
+
+  expect(reply).toStrictEqual(
+    expect.objectContaining({
+      output: [
+        {
+          type: 'function_call',
+          id: expect.toStartWith('fc_'),
+          call_id: expect.toStartWith('call_'),
+          name: 'ping',
+          namespace: 'mcp__nixie',
+          arguments: '{"who":"a"}',
+          status: 'completed',
+        },
+      ],
+    }),
+  );
+});
+
+test('it streams a Responses function call with the events of its output item', async () => {
+  const ctx = setupTest();
+
+  ctx.model.addReplies({ toolUse: { name: 'ping', input: {} } });
+
+  const response = await fetch(`${ctx.model.url}/v1/responses`, {
+    method: 'POST',
+    body: JSON.stringify({ model: 'model-o', stream: true, input: 'Hi.' }),
+  });
+
+  const body = await response.text();
+
+  const events = body
+    .trim()
+    .split('\n\n')
+    .map((block) => block.split('\n')[0]);
+
+  expect(events).toStrictEqual([
+    'event: response.created',
+    'event: response.output_item.added',
+    'event: response.output_item.done',
+    'event: response.completed',
+  ]);
+});
+
+test('it answers the Responses endpoint with the status and error shape of a scripted failure', async () => {
+  const ctx = setupTest();
+
+  ctx.model.addReplies({ failure: { status: 503, message: 'overloaded' } });
+
+  const response = await fetch(`${ctx.model.url}/v1/responses`, {
+    method: 'POST',
+    body: JSON.stringify({ model: 'model-o', input: 'Hi.' }),
+  });
+
+  const body: unknown = await response.json();
+
+  expect(response.status).toBe(503);
+
+  expect(body).toStrictEqual({
+    error: { type: 'invalid_request_error', code: null, message: 'overloaded' },
+  });
+});
+
+test('it answers the messages endpoint with the status of a scripted failure', async () => {
+  const ctx = setupTest();
+
+  ctx.model.addReplies({ failure: { status: 500, message: 'broken' } });
+
+  const response = await fetch(`${ctx.model.url}/v1/messages`, {
+    method: 'POST',
+    body: JSON.stringify({ model: 'model-a', messages: [] }),
+  });
+
+  const body: unknown = await response.json();
+
+  expect(response.status).toBe(500);
+
+  expect(body).toStrictEqual({
+    type: 'error',
+    error: { type: 'api_error', message: 'broken' },
+  });
+});

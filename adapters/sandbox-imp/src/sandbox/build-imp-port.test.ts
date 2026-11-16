@@ -660,6 +660,34 @@ test('it adds a secret as the custom kind with no field beyond its name, value a
   ]);
 });
 
+test('it adds a secret whose rule sends the host to an upstream origin', async () => {
+  const impd = await startTestImpd();
+
+  onTestFinished(impd.stop);
+
+  const port = buildImpPort({ url: impd.url, token: TEST_TOKEN });
+
+  await port.addSecret({
+    name: 'nixie-test-relay',
+    value: 'not-a-real-value',
+    host: 'models.example.com',
+    header: 'authorization',
+    scheme: 'bearer',
+    upstream: 'http://10.1.2.3:18081',
+  });
+
+  const secrets = await impd.client.secrets.list();
+
+  expect(secrets.find((row) => row.name === 'nixie-test-relay')?.rules).toStrictEqual([
+    {
+      host: 'models.example.com',
+      header: 'authorization',
+      scheme: 'bearer',
+      upstream: 'http://10.1.2.3:18081',
+    },
+  ]);
+});
+
 test('it removes a secret by its name', async () => {
   const bodies: unknown[] = [];
 

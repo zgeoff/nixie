@@ -29,7 +29,14 @@ export function buildImpPort(connection: ImpConnection): ImpPort {
         name: secret.name,
         kind: 'custom',
         value: secret.value,
-        rules: [{ host: secret.host, header: secret.header, scheme: secret.scheme }],
+        rules: [
+          {
+            host: secret.host,
+            header: secret.header,
+            scheme: secret.scheme,
+            ...(secret.upstream === undefined ? {} : { upstream: secret.upstream }),
+          },
+        ],
       });
     },
     removeSecret: async (name) => {
