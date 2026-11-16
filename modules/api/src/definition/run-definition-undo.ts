@@ -19,7 +19,7 @@ const storedUndoSchema = z.object({
   restored: z.literal('repo').optional(),
 });
 
-export type StoredUndo = z.output<typeof storedUndoSchema>;
+type StoredUndo = z.output<typeof storedUndoSchema>;
 
 type UndoStop =
   | { readonly status: 'unauthorized' }
