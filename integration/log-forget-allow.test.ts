@@ -68,6 +68,7 @@ test('it removes the record with no approval when the rules allow the tool, and 
   expect(read.records.find((record) => record.removal !== undefined)?.removal).toStrictEqual({
     kind: 'owner_message',
     sequence: ctx.target,
+    callSequence: expect.any(Number),
   });
 });
 

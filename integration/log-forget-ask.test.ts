@@ -93,5 +93,6 @@ test('it asks first under the starter rules, with the record on the card, and re
   expect(records.find((record) => record.removal !== undefined)?.removal).toStrictEqual({
     kind: 'owner_message',
     sequence: ctx.target,
+    callSequence: expect.any(Number),
   });
 });

@@ -104,9 +104,11 @@ export function buildLogForgetTool(context: APIContext): LogForget {
       check: async (attempt) => {
         const target = await readTarget(context, attempt);
 
+        // A forget that started and has not finished still has cleanup to run, so only the
+        // finished one counts.
         if (
           (await readRecordForget(context.log.writer.db, {
-            kind: 'record.forget_started',
+            kind: 'record.forgotten',
             sequence: target.sequence,
           })) === null
         ) {

@@ -5,7 +5,7 @@ import { toContractRecord } from './to-contract-record';
 
 function setupTest() {
   const noLookups: RecordLookups = {
-    actionTools: new Map(),
+    actions: new Map(),
     cancelledActionIDs: new Set(),
     proposals: new Map(),
     removedSequences: new Set(),
@@ -376,7 +376,7 @@ test('it shows a failed tool result as cancelled when its action is among the ca
   });
 
   const lookups = {
-    actionTools: new Map(),
+    actions: new Map(),
     cancelledActionIDs: new Set(['action-1']),
     proposals: new Map(),
     removedSequences: new Set<number>(),
@@ -789,7 +789,7 @@ test('it carries a task message with its sender named from the directory', () =>
   });
 
   const lookups = {
-    actionTools: new Map(),
+    actions: new Map(),
     cancelledActionIDs: new Set<string>(),
     proposals: new Map(),
     removedSequences: new Set<number>(),
@@ -869,7 +869,7 @@ test('it renders an exchange notice that names both tasks and links to the recei
   });
 
   const lookups = {
-    actionTools: new Map(),
+    actions: new Map(),
     cancelledActionIDs: new Set<string>(),
     proposals: new Map(),
     removedSequences: new Set<number>(),
@@ -908,7 +908,7 @@ test('it lists the actions a stop cancelled on its record', () => {
   });
 
   const lookups = {
-    actionTools: new Map(),
+    actions: new Map(),
     cancelledActionIDs: new Set<string>(),
     proposals: new Map(),
     removedSequences: new Set<number>(),
@@ -932,7 +932,7 @@ test('it marks a shredded record that a forget named as removed', () => {
   });
 
   const lookups = {
-    actionTools: new Map(),
+    actions: new Map(),
     cancelledActionIDs: new Set<string>(),
     proposals: new Map(),
     removedSequences: new Set([12]),
@@ -955,7 +955,7 @@ test.each([
   });
 
   const lookups = {
-    actionTools: new Map(),
+    actions: new Map(),
     cancelledActionIDs: new Set<string>(),
     proposals: new Map(),
     removedSequences,
@@ -1010,6 +1010,15 @@ test.each([
     label: 'a finished removal names the record',
     status: 'done',
     tool: 'log.forget',
+    callSequence: 3,
+    erasable: { status: 'readable', fields: { result: { removed: '4190', kind: 'tool_result' } } },
+    removal: { kind: 'tool_result', sequence: 4190, callSequence: 3 },
+  },
+  {
+    label: 'a finished removal that no call made names no call',
+    status: 'done',
+    tool: 'log.forget',
+    callSequence: null,
     erasable: { status: 'readable', fields: { result: { removed: '4190', kind: 'tool_result' } } },
     removal: { kind: 'tool_result', sequence: 4190 },
   },
@@ -1017,6 +1026,7 @@ test.each([
     label: 'a failed removal names nothing',
     status: 'failed',
     tool: 'log.forget',
+    callSequence: 3,
     erasable: { status: 'readable', fields: { message: 'nixie cannot remove a session record' } },
     removal: undefined,
   },
@@ -1024,6 +1034,7 @@ test.each([
     label: 'the outcome of another tool names nothing',
     status: 'done',
     tool: 'mail.send',
+    callSequence: 3,
     erasable: { status: 'readable', fields: { result: { removed: '4190', kind: 'tool_result' } } },
     removal: undefined,
   },
@@ -1031,6 +1042,7 @@ test.each([
     label: 'an outcome with its result erased names nothing',
     status: 'done',
     tool: 'log.forget',
+    callSequence: 3,
     erasable: { status: 'shredded' },
     removal: undefined,
   },
@@ -1046,7 +1058,10 @@ test.each([
     erasable: row.erasable,
   });
 
-  const lookups = { ...ctx.noLookups, actionTools: new Map([['action-1', row.tool]]) };
+  const lookups = {
+    ...ctx.noLookups,
+    actions: new Map([['action-1', { tool: row.tool, callSequence: row.callSequence }]]),
+  };
 
   expect(toContractRecord(record, lookups)?.removal).toStrictEqual(row.removal);
 });

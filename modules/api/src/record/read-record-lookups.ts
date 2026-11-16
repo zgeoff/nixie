@@ -1,5 +1,5 @@
 import {
-  readActionTools,
+  readActionCalls,
   readCancelledActionIDs,
   readStopCancelledActions,
 } from '@heynixie/actions';
@@ -61,7 +61,7 @@ export async function readRecordLookups(
     readRemovedRecordSequences(context, records));
 
   return {
-    actionTools: await readActionTools(context, outcomeActionIDs),
+    actions: await readActionCalls(context, outcomeActionIDs),
     cancelledActionIDs: await readCancelledActionIDs(context, failedActionIDs),
     proposals: await readProposalsBySequence(
       context.log.writer.db,

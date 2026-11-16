@@ -66,7 +66,7 @@ test('it reads the actions each stop cancelled and the names of the started task
   );
 
   expect(lookups).toStrictEqual({
-    actionTools: new Map(),
+    actions: new Map(),
     cancelledActionIDs: new Set(),
     proposals: new Map(),
     removedSequences: new Set(),
@@ -146,5 +146,7 @@ test('it reads the tool of the action that each outcome record names', async () 
     entries.map((entry) => entry.record),
   );
 
-  expect(lookups.actionTools).toStrictEqual(new Map([[action.action_id, 'test.send']]));
+  expect(lookups.actions).toStrictEqual(
+    new Map([[action.action_id, { tool: 'test.send', callSequence: null }]]),
+  );
 });

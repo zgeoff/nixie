@@ -18,6 +18,10 @@ function setupTest() {
       kind: 'message' as const,
       record: buildMockLogRecord({ kind: 'owner_message', sequence: 10 }),
     },
+    laterReply: {
+      kind: 'message' as const,
+      record: buildMockLogRecord({ kind: 'model.reply', sequence: 11 }),
+    },
     outcome: buildMockLogRecord({
       kind: 'action.outcome',
       sequence: 6,
@@ -77,4 +81,26 @@ test('it places no notice for a record that names no removal', () => {
   );
 
   expect([...placement]).toStrictEqual([]);
+});
+
+test('it places a removal under the turn of its call when the owner approved it after a later turn', () => {
+  const ctx = setupTest();
+
+  const later = buildMockLogRecord({
+    kind: 'action.outcome',
+    sequence: 12,
+    removal: { kind: 'tool_result', sequence: 4, callSequence: 3 },
+  });
+
+  const placement = buildRemovalPlacement(
+    [ctx.firstMessage, ctx.step, ctx.reply, ctx.nextMessage, ctx.laterReply],
+    [later],
+  );
+
+  const placed = [...placement].map(([index, records]) => [
+    index,
+    records.map((record) => record.sequence),
+  ]);
+
+  expect(placed).toStrictEqual([[2, [12]]]);
 });

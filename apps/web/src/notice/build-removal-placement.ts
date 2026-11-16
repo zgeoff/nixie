@@ -3,8 +3,9 @@ import type { LiveRecord } from '../conversation/use-live-records';
 
 export type RemovalRecord = LiveRecord & { readonly removal: NonNullable<LiveRecord['removal']> };
 
-// A removal shows under the last item of the turn that its record was written in: the items from
-// the owner's message before it up to the next owner message.
+// A removal shows under the last item of the turn that made the call, which the owner may have
+// approved after later turns: the items from the owner's message before the call up to the next
+// owner message. An outcome that names no call stands for the turn it was written in.
 export function buildRemovalPlacement(
   activity: readonly ActivityItem[],
   records: readonly LiveRecord[],
@@ -16,7 +17,7 @@ export function buildRemovalPlacement(
       continue;
     }
 
-    const index = findTurnEnd(activity, record.sequence);
+    const index = findTurnEnd(activity, record.removal.callSequence ?? record.sequence);
 
     if (index !== null) {
       placement.set(index, [
