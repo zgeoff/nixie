@@ -189,6 +189,17 @@ async function setupTest() {
       });
     },
     readKinds: (kind: string) => readRecordsByKind(host.context.log, kind),
+    readBriefIDs: async (): Promise<string[]> => {
+      const records = await readRecordsByKind(host.context.log, 'task.run_opened');
+
+      return records.map((record) => {
+        const briefID = record.payload['briefID'];
+
+        invariant(typeof briefID === 'string', 'a task run opens with a brief ID');
+
+        return briefID;
+      });
+    },
     writeLegacyOpening: (taskID: string) =>
       writeRecords(host.context.log, [
         {
@@ -2740,13 +2751,13 @@ test("it sends no text for the fire that opens a definition task run, marks the 
   const input = ctx.guest.turns[0]?.input.map((message) => message.text).join('\n') ?? '';
 
   const progress = await readTestTaskProgress(ctx.context, taskID);
-  const [opened] = await ctx.readKinds('task.run_opened');
+  const [briefID] = await ctx.readBriefIDs();
 
   expect(input).not.toInclude('trigger.fired');
   expect(input).toInclude('<input name="trigger">');
 
   expect(input).toInclude(
-    `<task-message id="${String(opened?.payload['briefID'])}" from="task definition: Water the tomatoes" kind="request"`,
+    `<task-message id="${String(briefID)}" from="task definition: Water the tomatoes" kind="request"`,
   );
 
   expect(input).toMatch(/\nCheck the soil and water what is dry\.\n<\/task-message fence="\w+">$/u);
@@ -2798,13 +2809,13 @@ test('it renders the brief of a definition task run once, last in the preamble, 
   await ctx.runNextStepWithNoRetryDelay(runner);
   await ctx.runNextStep(runner);
 
-  const [opened] = await ctx.readKinds('task.run_opened');
+  const [briefID] = await ctx.readBriefIDs();
 
   const input = ctx.guest.turns[0]?.input.map((entry) => entry.text).join('\n') ?? '';
 
   expect(ctx.guest.turns).toHaveLength(1);
   expect(input.split('<task-message id="')).toHaveLength(2);
-  expect(input).toInclude(`<task-message id="${String(opened?.payload['briefID'])}"`);
+  expect(input).toInclude(`<task-message id="${String(briefID)}"`);
   expect(input.indexOf('Check the soil')).toBeLessThan(input.indexOf('Start with the greenhouse.'));
 });
 
@@ -2827,13 +2838,13 @@ test('it pins the brief and the run blocks of an open definition task run in the
   await ctx.writeMessage(taskID, 'Only the morning round, please.');
   await ctx.runNextStep(runner);
 
-  const [opened] = await ctx.readKinds('task.run_opened');
+  const [briefID] = await ctx.readBriefIDs();
 
   const rebuilt = ctx.guest.turns[1]?.input.map((entry) => entry.text).join('\n') ?? '';
   const preambleOnly = rebuilt.slice(rebuilt.lastIndexOf('Only the morning round, please.'));
 
   expect(rebuilt.split('<input name="trigger">')).toHaveLength(2);
-  expect(rebuilt.split(`<task-message id="${String(opened?.payload['briefID'])}"`)).toHaveLength(2);
+  expect(rebuilt.split(`<task-message id="${String(briefID)}"`)).toHaveLength(2);
 
   expect(rebuilt.indexOf('<input name="trigger">')).toBeLessThan(
     rebuilt.indexOf('<task-message id="'),
@@ -2879,7 +2890,7 @@ test('it pins in the opening of a rebuilt session the brief ID that a carried de
   await ctx.writeMessage(taskID, 'Only the morning round, please.');
   await ctx.runNextStep(runner);
 
-  const opened = await ctx.readKinds('task.run_opened');
+  const briefIDs = await ctx.readBriefIDs();
 
   const rebuilt =
     ctx.guest.turns
@@ -2887,10 +2898,7 @@ test('it pins in the opening of a rebuilt session the brief ID that a carried de
       ?.input.map((entry) => entry.text)
       .join('\n') ?? '';
 
-  expect(opened.map((record) => record.payload['briefID'])).toStrictEqual([
-    expect.toBeString(),
-    opened[0]?.payload['briefID'],
-  ]);
-
-  expect(rebuilt).toInclude(`<task-message id="${String(opened[0]?.payload['briefID'])}"`);
+  expect(briefIDs).toHaveLength(2);
+  expect(briefIDs[1]).toBe(briefIDs[0]);
+  expect(rebuilt).toInclude(`<task-message id="${String(briefIDs[0])}"`);
 });

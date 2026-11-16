@@ -289,7 +289,7 @@ test("it refuses a reply to the brief ID of a definition's task run, which names
 
   const briefID = run?.opened.briefID;
 
-  invariant(briefID);
+  invariant(briefID !== undefined && briefID !== '');
 
   const tool = buildTaskMessageTool(ctx.context, {
     directory: [
