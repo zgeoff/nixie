@@ -230,3 +230,28 @@ test('it leaves the task of a definition out of force out of the directory', asy
 
   expect(result).toStrictEqual(empty);
 });
+
+test('it lists a task that task.start created as wakeable, with no key in its options', async () => {
+  const ctx = await setupTest();
+  const starter = await seedConversationStep(ctx.context);
+
+  const taskID = await seedTask(ctx.context, {
+    starter: starter.claim,
+    name: 'Seed list',
+    brief: 'List the seeds to order for spring.',
+  });
+
+  const directory = await readTaskDirectory<Pick<TaskMessaging, 'directory'>>(ctx.context, {
+    directory: [],
+  });
+
+  expect(directory.directory).toStrictEqual([
+    {
+      taskID,
+      name: 'Seed list',
+      brief: 'List the seeds to order for spring.',
+      wakeable: true,
+      speaker: 'plain_task',
+    },
+  ]);
+});
