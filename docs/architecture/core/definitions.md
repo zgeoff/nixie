@@ -308,6 +308,20 @@ transaction. A task that is paused, stopped, failed or held at a limit holds the
 that works or has a fire waiting answers `still_running`. The trigger core reads that answer with
 `readDefinitionTaskInTransaction`.
 
+The first input of a definition's task run holds a `trigger` block before its report shape:
+`<input name="trigger">` with one sentence that gives the time the task run was scheduled for, the
+time it started, whether it is a catch-up and the skipped times, then the zone those times are in.
+The block comes from the fire that opened the first task run of the chain, so a task run that a
+raise or a restart carries shows the same block when its session is rebuilt. A schedule's zone is
+its own IANA zone. A schedule with the zone `owner`, and an `at` trigger, take the zone of the
+user's newest message recorded before the fire, else the configured default zone. A task run that a
+message opened, and a fire that polls, have no `trigger` block.
+
+A fire of a definition with `target: conversation` writes its `trigger.fired` record on the
+conversation's thread and opens no task run. It wakes the conversation, which shows the user a
+reminder with the brief and the time it was set for, as
+[system messages](./conversation-turns.md#system-messages) describes.
+
 The sandbox runner reads the version that the open task run pins, else the newest task run, else the
 hash in force. The version gives the persona, the memory, the tools and the model. A version that
 names no model runs on the profile of the model role `task`, and a version that names a selectable
