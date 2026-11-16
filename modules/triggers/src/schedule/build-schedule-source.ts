@@ -17,7 +17,7 @@ export interface ScheduleSourceInput {
   readonly readLastMessageAt: () => Promise<number | null>;
 }
 
-export const scheduleTickMs = 20_000;
+const scheduleTickMs = 20_000;
 
 // The source of `schedule` and `at` triggers. It holds nothing between ticks but its count of failed
 // ticks: each tick reads the armed rows and builds each event from them.

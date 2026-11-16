@@ -12,7 +12,7 @@ export interface BootFiles {
   readonly deploymentKey: string;
 }
 
-export interface BootTaskDefinition {
+interface BootTaskDefinition {
   readonly id: string;
 
   // the text of task.yaml
