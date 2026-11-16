@@ -13,7 +13,26 @@ import { defaultAPISettings } from '../utils/default-api-settings';
 async function setupTest() {
   const api = await startTestAPI();
 
-  return { ...api, seed: buildSeeder(api) };
+  return {
+    ...api,
+    seed: buildSeeder(api),
+    writeMarkedTask: () =>
+      writeRecords(api.context.log, [
+        {
+          kind: 'task.created',
+          definitions: { snapshotHash: 'sha256:test' },
+          thread: 'k3x9m2p7qa',
+          payload: {
+            taskID: 'k3x9m2p7qa',
+            isConversation: false,
+            state: 'waiting',
+            startedBy: 'conversation',
+            disposable: true,
+          },
+          erasable: { name: 'Garden plan', brief: 'Plan the beds.' },
+        },
+      ]),
+  };
 }
 
 test('#tasks.list lists the conversation and each started task with its name and brief', async () => {
@@ -592,6 +611,215 @@ test('#tasks.pause refuses a caller with no session', async () => {
     .pause({
       clientActionID: '8c0e2a4b-7d9f-4b1c-8e3a-5f6b7c8d9e0f',
       taskID: 'conversation',
+    })
+    .then(
+      () => null,
+      (error: unknown) => error,
+    );
+
+  expect(refused).toMatchObject({ code: 'UNAUTHORIZED' });
+});
+
+test('#tasks.list gives the mark of a started task and who closed a closed one', async () => {
+  const api = await setupTest();
+  const laptop = await createDeviceSession(api.context, 'laptop');
+
+  const client = buildTestClient(api.url, laptop.token);
+
+  await api.writeMarkedTask();
+
+  const marked = await client.tasks.read({ taskID: 'k3x9m2p7qa' });
+
+  await writeRecords(api.context.log, [
+    {
+      kind: 'task.closed',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'k3x9m2p7qa',
+      payload: { taskID: 'k3x9m2p7qa', stepKey: null, timerIDs: [], closedBy: 'disposable' },
+    },
+  ]);
+
+  const closed = await client.tasks.read({ taskID: 'k3x9m2p7qa' });
+
+  expect(marked).toMatchObject({ disposable: true, state: 'waiting' });
+  expect(marked).not.toHaveProperty('closedBy');
+  expect(closed).toMatchObject({ disposable: true, state: 'closed', closedBy: 'disposable' });
+});
+
+test('#tasks.setDisposable changes the mark and records the change on the task', async () => {
+  const api = await setupTest();
+  const laptop = await createDeviceSession(api.context, 'laptop');
+
+  const client = buildTestClient(api.url, laptop.token);
+
+  await api.writeMarkedTask();
+
+  const changed = await client.tasks.setDisposable({
+    clientActionID: '1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d',
+    taskID: 'k3x9m2p7qa',
+    disposable: false,
+  });
+
+  const read = await client.tasks.read({ taskID: 'k3x9m2p7qa' });
+
+  const entries = await readRecords(api.context.log, {
+    afterSequence: 0,
+    kinds: ['task.mark_set'],
+  });
+
+  expect(changed).toStrictEqual({
+    changedAt: expect.toBeValidDate(),
+    disposable: false,
+    taskID: 'k3x9m2p7qa',
+  });
+
+  expect(read.disposable).toBe(false);
+  expect(read.state).toBe('waiting');
+
+  expect(entries.map((entry) => entry.record.payload)).toStrictEqual([
+    { taskID: 'k3x9m2p7qa', disposable: false },
+  ]);
+});
+
+test('#tasks.setDisposable answers a repeat of the same action with the first result, and records once', async () => {
+  const api = await setupTest();
+  const laptop = await createDeviceSession(api.context, 'laptop');
+
+  const client = buildTestClient(api.url, laptop.token);
+
+  await api.writeMarkedTask();
+
+  const input = {
+    clientActionID: '2b3c4d5e-6f7a-4b8c-9d0e-1f2a3b4c5d6e',
+    taskID: 'k3x9m2p7qa',
+    disposable: false,
+  };
+
+  const first = await client.tasks.setDisposable(input);
+  const second = await client.tasks.setDisposable(input);
+
+  const entries = await readRecords(api.context.log, {
+    afterSequence: 0,
+    kinds: ['task.mark_set'],
+  });
+
+  expect(second).toStrictEqual(first);
+  expect(entries).toHaveLength(1);
+});
+
+test('#tasks.setDisposable refuses a client action ID that another change used', async () => {
+  const api = await setupTest();
+  const laptop = await createDeviceSession(api.context, 'laptop');
+
+  const client = buildTestClient(api.url, laptop.token);
+
+  await api.writeMarkedTask();
+
+  await client.tasks.setDisposable({
+    clientActionID: '3c4d5e6f-7a8b-4c9d-8e1f-2a3b4c5d6e7f',
+    taskID: 'k3x9m2p7qa',
+    disposable: false,
+  });
+
+  const refused = await client.tasks
+    .setDisposable({
+      clientActionID: '3c4d5e6f-7a8b-4c9d-8e1f-2a3b4c5d6e7f',
+      taskID: 'k3x9m2p7qa',
+      disposable: true,
+    })
+    .then(
+      () => null,
+      (error: unknown) => error,
+    );
+
+  expect(refused).toMatchObject({ code: 'CLIENT_ACTION_ID_REUSED' });
+});
+
+test('#tasks.setDisposable refuses a task that does not exist', async () => {
+  const api = await setupTest();
+  const laptop = await createDeviceSession(api.context, 'laptop');
+
+  const client = buildTestClient(api.url, laptop.token);
+
+  const refused = await client.tasks
+    .setDisposable({
+      clientActionID: '4d5e6f7a-8b9c-4d0e-9f2a-3b4c5d6e7f80',
+      taskID: 'nosuchtask',
+      disposable: true,
+    })
+    .then(
+      () => null,
+      (error: unknown) => error,
+    );
+
+  expect(refused).toMatchObject({ code: 'TASK_NOT_FOUND' });
+});
+
+test('#tasks.setDisposable refuses the conversation, which has no mark', async () => {
+  const api = await setupTest();
+  const laptop = await createDeviceSession(api.context, 'laptop');
+
+  const client = buildTestClient(api.url, laptop.token);
+
+  await createConversationTask(api.context);
+
+  const refused = await client.tasks
+    .setDisposable({
+      clientActionID: '5e6f7a8b-9c0d-4e1f-8a3b-4c5d6e7f8091',
+      taskID: 'conversation',
+      disposable: true,
+    })
+    .then(
+      () => null,
+      (error: unknown) => error,
+    );
+
+  expect(refused).toMatchObject({ code: 'TASK_HAS_NO_MARK' });
+});
+
+test('#tasks.setDisposable refuses a closed task, with its state, and writes nothing', async () => {
+  const api = await setupTest();
+  const laptop = await createDeviceSession(api.context, 'laptop');
+
+  const client = buildTestClient(api.url, laptop.token);
+
+  await api.writeMarkedTask();
+
+  await client.tasks.close({
+    clientActionID: '6f7a8b9c-0d1e-4f2a-9b4c-5d6e7f8091a2',
+    taskID: 'k3x9m2p7qa',
+  });
+
+  const refused = await client.tasks
+    .setDisposable({
+      clientActionID: '7a8b9c0d-1e2f-4a3b-8c5d-6e7f8091a2b3',
+      taskID: 'k3x9m2p7qa',
+      disposable: false,
+    })
+    .then(
+      () => null,
+      (error: unknown) => error,
+    );
+
+  const entries = await readRecords(api.context.log, {
+    afterSequence: 0,
+    kinds: ['task.mark_set'],
+  });
+
+  expect(refused).toMatchObject({ code: 'TASK_STATE_REFUSED', data: { state: 'closed' } });
+  expect(entries).toStrictEqual([]);
+});
+
+test('#tasks.setDisposable refuses a caller with no session', async () => {
+  const api = await setupTest();
+
+  const stranger = buildTestClient(api.url);
+
+  const refused = await stranger.tasks
+    .setDisposable({
+      clientActionID: '8b9c0d1e-2f3a-4b4c-9d6e-7f8091a2b3c4',
+      taskID: 'k3x9m2p7qa',
+      disposable: true,
     })
     .then(
       () => null,

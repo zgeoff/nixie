@@ -76,7 +76,7 @@ export function TaskMark(props: TaskMarkProps): ReactNode {
   };
 
   return (
-    <div className={mark}>
+    <div aria-label={`Mark for ${task.name}`} className={mark} role="group">
       <span>{task.disposable ? 'Closes when it finishes' : 'Kept open'}</span>
       {task.state === 'done' ? null : (
         <button disabled={sent.isPending} onClick={send} type="button">

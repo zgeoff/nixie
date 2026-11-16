@@ -214,3 +214,103 @@ test('it sends a message written on a task page to that task, not the conversati
     { timeout: 10_000 },
   );
 });
+
+test('it switches the mark of a task on its page, then closes the task from the same page', async () => {
+  const ctx = await setupTest();
+  const session = await store.sessions.create({});
+
+  await store.tasks.create({ disposable: true, name: 'Garden plan', taskID: 'k3vq8m2xpa' });
+
+  await setupSignedInBrowser(ctx.view, { appURL: ctx.appURL, token: session.token });
+
+  await ctx.view.navigate(`${ctx.appURL}/tasks/k3vq8m2xpa`);
+
+  const clickButton = (group: string, label: string) =>
+    runInPage(
+      ctx.view,
+      (target) => {
+        const button = [...document.querySelectorAll(`[aria-label="${target.group}"] button`)].find(
+          (candidate) => candidate.textContent === target.label,
+        );
+
+        if (button instanceof HTMLElement) {
+          button.click();
+        }
+
+        return button !== undefined;
+      },
+      { group, label },
+      z.boolean(),
+    );
+
+  await waitFor(
+    async () => {
+      const isClicked = await clickButton('Mark for Garden plan', 'Keep it open');
+
+      expect(isClicked).toBeTrue();
+    },
+    { timeout: 10_000 },
+  );
+
+  await waitFor(
+    () => {
+      expect(store.tasks.findFirst((query) => query.where({ taskID: 'k3vq8m2xpa' }))).toMatchObject(
+        { disposable: false, state: 'waiting' },
+      );
+    },
+    { timeout: 10_000 },
+  );
+
+  await waitFor(
+    async () => {
+      const isClicked = await clickButton('Controls for Garden plan', 'Close');
+
+      expect(isClicked).toBeTrue();
+    },
+    { timeout: 10_000 },
+  );
+
+  await waitFor(
+    async () => {
+      const isClicked = await clickButton('Close the task', 'Close the task');
+
+      expect(isClicked).toBeTrue();
+    },
+    { timeout: 10_000 },
+  );
+
+  await waitFor(
+    () => {
+      expect(store.tasks.findFirst((query) => query.where({ taskID: 'k3vq8m2xpa' }))).toMatchObject(
+        { disposable: false, state: 'closed' },
+      );
+    },
+    { timeout: 10_000 },
+  );
+});
+
+test('it says on the page of a closed task who closed it', async () => {
+  const ctx = await setupTest();
+  const session = await store.sessions.create({});
+
+  await store.tasks.create({
+    closedBy: 'nixie',
+    disposable: true,
+    name: 'Garden plan',
+    state: 'closed',
+    taskID: 'k3vq8m2xpa',
+  });
+
+  await setupSignedInBrowser(ctx.view, { appURL: ctx.appURL, token: session.token });
+
+  await ctx.view.navigate(`${ctx.appURL}/tasks/k3vq8m2xpa`);
+
+  await waitFor(
+    async () => {
+      const text: unknown = await ctx.view.evaluate('document.body.textContent');
+
+      expect(text).toInclude('Closed by nixie');
+    },
+    { timeout: 10_000 },
+  );
+});

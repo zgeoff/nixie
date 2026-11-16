@@ -2,7 +2,9 @@ import { expect, test } from 'bun:test';
 import { readRecords } from '@heynixie/log';
 import { buildMockToolCall, buildMockToolContext } from '@heynixie/tools/test-utils';
 import invariant from 'tiny-invariant';
+import { buildTaskStartTool } from '../lease/build-task-start-tool';
 import { buildStepRunID } from '../step/build-step-run-id';
+import { buildMockTaskStartBounds } from '../test-utils/build-mock-task-start-bounds';
 import { buildStartedDirectory } from '../test-utils/build-started-directory';
 import { buildTaskSeeder } from '../test-utils/build-task-seeder';
 import { seedConversationStep } from '../test-utils/seed-conversation-step';
@@ -11,6 +13,7 @@ import { startTestTasks } from '../test-utils/start-test-tasks';
 import { writeTestTaskMessage } from '../test-utils/write-test-task-message';
 import type { StartedClaim, TasksTables } from '../types';
 import { buildTaskCloseTool } from './build-task-close-tool';
+import { buildTasksListTool } from './build-tasks-list-tool';
 import { createTask } from './create-task';
 import { claimTask } from './projection/claim-task';
 import { writeTaskControl } from './write-task-control';
@@ -243,4 +246,42 @@ test('it leaves a closed task that takes no resume, no restart and no message', 
   expect(resumed).toMatchObject({ status: 'refused', refusal: { reason: 'not_allowed' } });
   expect(restarted).toMatchObject({ status: 'refused', refusal: { reason: 'not_allowed' } });
   expect(messaged).toMatchObject({ status: 'refused', refusal: { reason: 'finished' } });
+});
+
+test('it declares a note effect with no destination, so the starter rule allows it', async () => {
+  const ctx = await setupTest();
+
+  const tool = buildTaskCloseTool(ctx.context, buildStartedDirectory('placeholder'));
+
+  expect(tool.declaration).toStrictEqual({
+    effects: ['note'],
+    destinations: [],
+    amount: null,
+    content: [],
+    results: {
+      taskID: 'owner_data',
+      name: 'owner_data',
+      state: 'owner_data',
+      wasClosed: 'owner_data',
+    },
+  });
+});
+
+test('it shows the model no sandbox in the name, description or schema of a task tool', async () => {
+  const ctx = await setupTest();
+
+  const messaging = { hopLimit: 20, ownerName: null };
+
+  const tools = [
+    buildTaskCloseTool(ctx.context, buildStartedDirectory('x')),
+    buildTasksListTool(ctx.context, buildStartedDirectory('x')),
+    buildTaskStartTool(ctx.context, messaging, buildMockTaskStartBounds()),
+  ];
+
+  const shown = JSON.stringify(
+    tools.map((tool) => [tool.name, tool.description, tool.input, tool.output]),
+  );
+
+  // the start's runner key is the one place the word appears, as the name of the runner
+  expect(shown.replace('"const":"sandbox"', '')).not.toMatch(/sandbox/iu);
 });

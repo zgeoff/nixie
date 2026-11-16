@@ -45,3 +45,23 @@ test('it allows a sandbox task start that keeps the persona, under the starter r
 
   expect(decided.decision).toMatchObject({ outcome: 'allow', rule: { id: 'allow-notes' } });
 });
+
+test('it allows task.close with no approval, under the starter rule for notes', async () => {
+  const decide = readStarterDecisionPoint(() => ({
+    effects: ['note'],
+    destinations: [],
+    amount: null,
+    content: [],
+    results: {},
+  }));
+
+  const decided = await decide(
+    buildPolicyCall({
+      tool: 'task.close',
+      toolList: ['task.close'],
+      args: { taskID: 'k3x9m2p7qa' },
+    }),
+  );
+
+  expect(decided.decision).toMatchObject({ outcome: 'allow', rule: { id: 'allow-notes' } });
+});

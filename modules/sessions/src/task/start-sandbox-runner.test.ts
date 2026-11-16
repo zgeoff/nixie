@@ -717,6 +717,92 @@ test('it destroys the imps of closed tasks, and on a later pass the one whose de
   ]);
 });
 
+test('it destroys the imp of a disposable task once it reports, and leaves the imp of a kept task asleep', async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seed.conversationStep();
+
+  const disposableID = await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+    disposable: true,
+  });
+
+  const keptID = await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Ferry times',
+    brief: 'Find the last ferry on Sunday.',
+    disposable: false,
+  });
+
+  const runner = await ctx.startRunner();
+
+  await ctx.runNextStep(runner);
+  await ctx.runNextStep(runner);
+
+  const asleep = await ctx.sandboxes.list(disposableID);
+
+  for (const taskID of [disposableID, keptID]) {
+    const [message] = await ctx.writeMessage(taskID, 'Send me what you have.');
+    const claim = await claimTask(ctx.context, { holder: 'runner-b', leaseMs: 60_000, taskID });
+
+    invariant(claim && message, 'the woken task has a message to read and a claim');
+
+    await writeStepCommit(ctx.context, claim, {
+      next: 'done',
+      records: [],
+      acknowledged: [message.sequence],
+      run: { activity: 'worked', report: { summary: 'High tide is at 06:42.' } },
+    });
+  }
+
+  await waitForCondition(async () => {
+    const sandboxes = await ctx.sandboxes.list(disposableID);
+
+    return sandboxes.length === 0;
+  });
+
+  const kept = await ctx.sandboxes.list(keptID);
+  const closed = await ctx.readKinds('task.closed');
+
+  expect(asleep).toHaveLength(1);
+  expect(kept).toHaveLength(1);
+  expect(closed.map((record) => record.thread)).toStrictEqual([disposableID]);
+});
+
+test('it logs a destroy that fails, leaves the close committed, and destroys the imp on the next pass', async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seed.conversationStep();
+
+  const taskID = await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+  });
+
+  const runner = await ctx.startRunner();
+
+  await ctx.runNextStep(runner);
+
+  ctx.guest.failNextDestroy(taskID, 'the imp would not stop');
+
+  await writeTaskControl(ctx.context, { taskID, control: 'close' });
+  await waitForCondition(() => ctx.events.includes('sandbox_runner.remove_failed'));
+
+  const closed = await ctx.readKinds('task.closed');
+
+  await ctx.clock.advance(60_000);
+
+  await waitForCondition(async () => {
+    const sandboxes = await ctx.sandboxes.list(taskID);
+
+    return sandboxes.length === 0;
+  });
+
+  expect(ctx.events).toContain('sandbox.remove_failed');
+  expect(closed).toHaveLength(1);
+});
+
 test('it rebuilds the session of a task whose imp is gone with the messages the task sent', async () => {
   const ctx = await setupTest();
   const starter = await ctx.seed.conversationStep();

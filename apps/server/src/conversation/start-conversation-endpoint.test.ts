@@ -222,6 +222,80 @@ test('it holds a started task waiting with its message unread, and never fails i
   expect(after.tasks.find((task) => task.taskID === garden.taskID)?.state).toBe('waiting');
 });
 
+test('it closes a started task from the conversation with task.close, and shows the model no sandbox', async () => {
+  const ctx = await setupTest();
+  const api = await createTestClient(ctx);
+
+  ctx.guest.addKindReplies(
+    'conversation',
+    {
+      toolUse: {
+        name: 'task.start',
+        input: { name: 'Garden plan', brief: 'Plan four raised beds for a spring sowing.' },
+      },
+    },
+    { text: 'Started.' },
+  );
+
+  await sendClientMessage(api.client, { text: 'Plan the vegetable beds for spring.' }, 'Started.');
+
+  const listed = await api.client.tasks.list({});
+
+  const garden = listed.tasks.find((task) => task.name === 'Garden plan');
+
+  invariant(garden);
+
+  await waitForCondition(async () => {
+    const page = await api.client.conversation.read({ thread: garden.taskID });
+
+    return page.records.some((record) => record.kind === 'task.step_committed');
+  });
+
+  ctx.guest.addKindReplies(
+    'conversation',
+    { toolUse: { name: 'task.close', input: { taskID: garden.taskID } } },
+    { text: 'Closed it.' },
+  );
+
+  await sendClientMessage(api.client, { text: 'You can drop the garden plan.' }, 'Closed it.');
+
+  const closeResult = ctx.toolResults.at(-1);
+
+  invariant(closeResult);
+
+  const answer = z
+    .object({
+      structuredContent: z.object({
+        taskID: z.string(),
+        name: z.string(),
+        state: z.string(),
+        wasClosed: z.boolean(),
+      }),
+    })
+    .parse(JSON.parse(closeResult.result));
+
+  const after = await api.client.tasks.read({ taskID: garden.taskID });
+  const taskThread = await api.client.conversation.read({ thread: garden.taskID });
+  const conversationThread = await api.client.conversation.read({ thread: 'conversation' });
+
+  expect(answer.structuredContent).toStrictEqual({
+    taskID: garden.taskID,
+    name: 'Garden plan',
+    state: 'closed',
+    wasClosed: false,
+  });
+
+  expect(after).toMatchObject({ state: 'closed', closedBy: 'nixie' });
+
+  expect(
+    [
+      closeResult.result,
+      JSON.stringify(taskThread.records),
+      JSON.stringify(conversationThread.records),
+    ].join('\n'),
+  ).not.toMatch(/sandbox/iu);
+});
+
 test('it puts no task board in the turn after a task starts, and keeps the system prompt the same bytes between turns', async () => {
   const ctx = await setupTest();
   const api = await createTestClient(ctx);

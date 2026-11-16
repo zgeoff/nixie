@@ -29,14 +29,15 @@ start of the same step committed in between.
 The start tool takes these options beside the name and the brief. The start checks each one in code,
 writes nothing when one fails, and tells the model why:
 
-| Option    | Values                       | When the start leaves it out            | The start refuses                                                                                 |
-| --------- | ---------------------------- | --------------------------------------- | ------------------------------------------------------------------------------------------------- |
-| `model`   | a name of a selectable model | the `task` role's profile               | a name that is not a choice, or a model whose harness lacks what a task needs                     |
-| `persona` | `default` or `none`          | the starter's persona                   | `none` with `memory: read`, or `default` from a starter with none                                 |
-| `memory`  | `none` or `read`             | `none`                                  | a memory tool, read or write, that the value leaves out, or `read` from a starter that reads none |
-| `tools`   | names of tools               | the clock                               | a tool that the starter does not hold, under either of its names                                  |
-| `report`  | `wake`, `next_turn`, `none`  | `wake`                                  | nothing                                                                                           |
-| `limits`  | turns, dollars or both       | the defaults of `models.limits.taskRun` | a value above the max of `models.limits.taskRun`                                                  |
+| Option       | Values                       | When the start leaves it out            | The start refuses                                                                                 |
+| ------------ | ---------------------------- | --------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `model`      | a name of a selectable model | the `task` role's profile               | a name that is not a choice, or a model whose harness lacks what a task needs                     |
+| `persona`    | `default` or `none`          | the starter's persona                   | `none` with `memory: read`, or `default` from a starter with none                                 |
+| `memory`     | `none` or `read`             | `none`                                  | a memory tool, read or write, that the value leaves out, or `read` from a starter that reads none |
+| `tools`      | names of tools               | the clock                               | a tool that the starter does not hold, under either of its names                                  |
+| `report`     | `wake`, `next_turn`, `none`  | `wake`                                  | nothing                                                                                           |
+| `disposable` | `true` or `false`            | `true`                                  | nothing                                                                                           |
+| `limits`     | turns, dollars or both       | the defaults of `models.limits.taskRun` | a value above the max of `models.limits.taskRun`                                                  |
 
 The [selectable models](./model-profiles.md#selectable-models) give the choices of `model`, which
 the tool's input schema lists with their descriptions. The conversation has the persona and reads
@@ -132,8 +133,9 @@ The brief is an unread inbox message, so the task's first turn takes it as its i
 messages that wait. A task's plain text goes to nobody: it reaches its starter only through a
 `task.message` call. When the model ends a turn with text and no call, the text stays in its notes.
 The task ends its task run by calling `task.report`, as [reports](#reports) describes. After the
-step that reports, the task waits: a message to it wakes it again and opens a new task run, and the
-user closes it when its work is done.
+step that reports, a kept task waits: a message to it wakes it again and opens a new task run, and
+the user or nixie closes it when its work is done. A disposable task closes in the commit of that
+step instead, as [the mark](#the-mark-and-closing) describes.
 
 A session opening after the first pins the brief as a message right after its status, as the
 [session opening](./session-opening.md#the-brief) describes, so a rebuilt session still reads what
@@ -141,6 +143,34 @@ the task is for. A forget of the brief erases the brief and the starter's record
 call, which holds the same text, and rebuilds the sessions of both tasks. The forget finds those
 calls when it starts, while the brief is still readable, and its start record keeps their sequences,
 so a rerun after a crash erases the same calls.
+
+## The mark and closing
+
+A start marks its task disposable or kept, and `disposable` defaults to `true`. The mark sits on the
+task's `task.created` record, and the user's change of it is a `task.mark_set` record on the task's
+thread. The newest change wins. A `task.created` record with no mark, from the release before, reads
+as kept, so an upgrade closes no task. The conversation, the queue check, system tasks and any task
+that no start made carry no mark and never close by themselves.
+
+A disposable task closes in the transaction of the step commit that ends its task run as `reported`,
+`no_report` or `no_work`, when that commit leaves the task waiting with nothing unread and no open
+message wait. The report goes to the starter before the close. A task run that ends at a limit, a
+stop or a failure, and a commit that leaves the task ready, keep the task open with its sandbox. The
+user or nixie closes it later.
+
+`task.close` lets nixie close a started task that it no longer needs, by the ID that `tasks.list`
+gives. It closes a started task in any state but ready, running and closed, and it refuses:
+
+- an unknown ID, the conversation, and a task that no start made, such as a system task;
+- the task of the call itself;
+- a ready or running task, because it still works;
+- a call from a step that no longer holds its lease.
+
+A task that is already closed answers `wasClosed: true` and writes nothing, so a rerun of the step
+after a crash gets the same answer. A started task holds the tool only when its start names it in
+`tools`. The tool declares the `note` effect with no destination, so the starter rule `allow-notes`
+allows it with no approval. The tool, the model's records and the prompts hold no sandbox ID, image
+or size.
 
 ## The listed state
 

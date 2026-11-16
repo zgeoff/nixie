@@ -167,7 +167,11 @@ reaches the step at once.
 - **Close** ends a task for good, from any state but closed. It frees the lease, withdraws the
   pending timers and releases every message wait that names the task, on either side, and the inbox
   refuses later input. The conversation refuses a close, because every deployment needs it to
-  answer, but it takes a stop and a restart.
+  answer, but it takes a stop and a restart. The `task.closed` record names who closed the task in
+  `closedBy`: `owner` for the user's close control, `nixie` for the `task.close` tool, and
+  `disposable` for the commit that closes a disposable task after its report. A record with no
+  `closedBy` reads as `owner`. The [started tasks](./started-tasks.md#the-mark-and-closing) doc
+  describes the tool and the auto-close.
 - **Interrupt** of a running task records the step it interrupts, and the runner fires the step's
   interrupt signal. A conversation turn then ends at the last entry of its Agent SDK session and
   commits as usual, as [conversation turns](./conversation-turns.md#interrupts) describes. A started
