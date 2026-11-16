@@ -48,6 +48,17 @@ send one message with `conversation/send`, and read the conversation with `conve
 `owner_message`, each `model.reply`, `model.turn_ended` and the `task.step_*` records of its step.
 The [preview API check](preview-api-check.md) gives each request and a worked turn.
 
+## Scheduled task
+
+The preview's definitions hold one scheduled task, `preview-tick`, which runs every 5 minutes and
+reports to the conversation. Each task run and the conversation turn it wakes are real model calls
+on the preview's profile. [Preview API check](preview-api-check.md#see-the-scheduled-task-fire)
+shows how to see a task run's report.
+
+The preview holds no policy rules, so nixie holds each task run's `task.report` call for approval on
+the approvals page. The conversation turn that the task run wakes can add another held call. Each
+held call lapses after 3 days.
+
 ## Model calls
 
 The preview's model profile names a placeholder credential. A model call reaches the model's API

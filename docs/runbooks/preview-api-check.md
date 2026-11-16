@@ -100,6 +100,31 @@ To follow the records as nixie writes them, instead of repeating the read, call 
 with `afterSequence`. The API answers it with a live event stream, which the
 [API](../architecture/channels/api.md#reading-and-the-live-stream) describes.
 
+## See the scheduled task fire
+
+The preview runs the `preview-tick` task every 5 minutes, at each whole 5 minutes of the clock. To
+see a task run, do steps 1 to 3 of
+[Send one turn and read its records](#send-one-turn-and-read-its-records), then do step 5 and list
+the `task_message` records of kind `report` from the file:
+
+```bash
+jq -c '.json.records[] | select(.kind == "task_message" and .taskMessage.kind == "report")
+  | {sequence, from: .taskMessage.fromName, text: .taskMessage.text}' page.json
+```
+
+If the command prints nothing, wait a minute, then repeat step 5 and this command. A task run can
+take over a minute to report, and a task run that keeps failing takes longer, because each failed
+step waits before its retry.
+
+Expect a record from `Preview tick` whose `text` reads
+`summary: The run ended before it wrote a summary.` The preview holds no policy rules, so the task
+run's `task.report` call waits for approval, and the task run ends before it writes its own summary.
+
+A task run whose model calls kept failing, as when the preview has no model access, reports
+`summary: The run failed after 3 errors before it wrote a summary.` To see the model's answer,
+repeat step 5 with `thread` set to the record's `.taskMessage.from`. Expect a `model.reply` record
+on the task's thread.
+
 ## Start the next check from an empty log
 
 A reset removes every record, every memory, the conversation and every sandbox of the preview, and
