@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
+import { routeDataStaleTimeMs } from '../conversation/read-route-session';
 import { css } from '../styled-system/css';
 import { useNixieClient } from '../utils/use-nixie-client';
 import { PasskeyAddForm } from './passkey-add-form';
@@ -23,7 +24,12 @@ const heading = css({ fontSize: 'lg', fontWeight: 'bold', marginTop: '4' });
 // for each live one.
 export function PasskeyPage(props: PasskeyPageProps): ReactNode {
   const nixie = useNixieClient();
-  const list = useQuery(nixie.queryUtils.passkeys.list.queryOptions());
+
+  const list = useQuery({
+    ...nixie.queryUtils.passkeys.list.queryOptions(),
+    staleTime: routeDataStaleTimeMs,
+  });
+
   const hasLivePasskey = list.data?.passkeys.some((passkey) => passkey.revokedAt === null) ?? false;
 
   return (

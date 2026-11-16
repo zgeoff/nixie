@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
+import { routeDataStaleTimeMs } from '../conversation/read-route-session';
 import type { ListedTask } from '../task/use-live-task-list';
 import { useLiveTaskList } from '../task/use-live-task-list';
 import type { StartTimer } from '../utils/start-platform-timer';
@@ -20,9 +21,10 @@ export function TaskPage(props: TaskPageProps): ReactNode {
   const timerOptions = props.startTimer === undefined ? {} : { startTimer: props.startTimer };
   const listed = useLiveTaskList(timerOptions);
 
-  const read = useQuery(
-    nixie.queryUtils.tasks.read.queryOptions({ input: { taskID: props.taskID } }),
-  );
+  const read = useQuery({
+    ...nixie.queryUtils.tasks.read.queryOptions({ input: { taskID: props.taskID } }),
+    staleTime: routeDataStaleTimeMs,
+  });
 
   const task = read.data;
   const messageOptions = props.messageID === undefined ? {} : { messageID: props.messageID };

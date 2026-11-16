@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
+import { routeDataStaleTimeMs } from '../conversation/read-route-session';
 import { css } from '../styled-system/css';
 import { useNixieClient } from '../utils/use-nixie-client';
 import { useRevokePasskey } from './use-revoke-passkey';
@@ -18,7 +19,11 @@ const meta = css({ fontSize: 'sm', opacity: '0.8' });
 export function PasskeyList(): ReactNode {
   const nixie = useNixieClient();
   const revoker = useRevokePasskey();
-  const list = useQuery(nixie.queryUtils.passkeys.list.queryOptions());
+
+  const list = useQuery({
+    ...nixie.queryUtils.passkeys.list.queryOptions(),
+    staleTime: routeDataStaleTimeMs,
+  });
 
   if (list.isError) {
     return <p role="alert">The passkeys did not load. Reload to try again.</p>;
