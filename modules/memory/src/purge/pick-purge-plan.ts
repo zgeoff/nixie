@@ -1,7 +1,7 @@
 import type { PurgeFacts } from './read-purge-facts';
 
+// skip: the item is already purged, or the set holds no row for it
 export type PurgePlan =
-  // the item is already purged, or the set holds no row for it
   | { readonly kind: 'skip' }
 
   // the item's own forget began, and it deletes every key of the item

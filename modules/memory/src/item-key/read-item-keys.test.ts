@@ -14,6 +14,7 @@ import { startTestMemory } from '../test-utils/start-test-memory';
 import { writeOwnerMessageRecord } from '../test-utils/write-owner-message-record';
 import type { MemoryTables } from '../types';
 import { decodeProposalText } from '../utils/decode-proposal-text';
+import { readVersionValues } from '../version/read-version-values';
 import { readCurrentItemKey } from './read-current-item-key';
 import { readItemKeys } from './read-item-keys';
 
@@ -359,7 +360,7 @@ test('it is the only way a module file reads an item key, apart from the 4 liste
   expect(importers).toStrictEqual([...allowed.keys()].toSorted());
 });
 
-test('it leaves every label, proposal and rejection reason of an item readable under the item key alone', async () => {
+test('it leaves every value of an item no purge reached readable through the read path that 0.77.0 ships', async () => {
   const ctx = await setupTest();
   const sequence = await ctx.writeMessage('I keep bees on the allotment.');
   const item = await ctx.rememberQuoting(sequence);
@@ -395,15 +396,23 @@ test('it leaves every label, proposal and rejection reason of an item readable u
     caller: buildMockWriteCaller(),
   });
 
-  // The read path of a release before the lookup: the item's own key, and the unchanged codecs.
-  // Each version has a key of its own, so the values that keep the item key are all that it reads.
+  // 0.77.0 ships this version reader and the lookup unchanged. It reads each version under its own
+  // key; the labels, proposals and rejection keep the item key and the codecs of every release.
+  const db = ctx.memory.log.writer.db.$extendTables<MemoryTables>();
+
+  const versionRows = await db
+    .selectFrom('memory_versions')
+    .select(['item_id', 'version', 'sequence', 'sealed', 'evidence', 'intent_evidence'])
+    .where('item_id', '=', item.itemID)
+    .orderBy('version')
+    .execute();
+
+  const versions = await readVersionValues(ctx.memory.log, ctx.memory.log.writer.db, versionRows);
   const keys = await readRecordKeys(ctx.memory.log, [item.itemID]);
 
   const key = keys.get(item.itemID);
 
   invariant(key);
-
-  const db = ctx.memory.log.writer.db.$extendTables<MemoryTables>();
 
   const labels = await db
     .selectFrom('memory_labels')
@@ -436,6 +445,21 @@ test('it leaves every label, proposal and rejection reason of an item readable u
   const written = await readRecords(ctx.memory.log, { afterSequence: 0, limit: 200 });
 
   const rejection = written.find((entry) => entry.record.kind === 'memory.proposal_rejected');
+
+  expect(versions).toStrictEqual([
+    {
+      status: 'readable',
+      text: {
+        text: 'Keeps bees on the allotment',
+        evidenceQuote: 'I keep bees',
+        intentQuote: null,
+      },
+    },
+    {
+      status: 'readable',
+      text: { text: 'Keeps two hives on the allotment', evidenceQuote: null, intentQuote: null },
+    },
+  ]);
 
   expect(opened.map((labelSet) => labelSet.gist)).toStrictEqual(['keeps bees', 'keeps two hives']);
 
