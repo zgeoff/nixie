@@ -56,7 +56,6 @@ mean the trace stopped before it reached the bottom.
 | Rule conflicts                      | `nixie rules conflicts`                             | The rules whose repo version and nixie's version differ                   | None                                                                                                                                                             |
 | Rule proposals                      | `nixie proposals list`                              | The pending rule change proposals                                         | None                                                                                                                                                             |
 | Copy of the databases               | `nixie backup --to <directory>`                     | A copy of `nixie.db` and `keys.db`, the one way to copy the databases out | Writes the copies into a new directory. It never writes to the databases and never waits on the writer                                                           |
-| `memory/readRatingNotes`            | API read of a device session                        | The rating notes that the call asks for                                   | None known                                                                                                                                                       |
 | `memory/writerStatus`               | API read of a device session                        | A fixed answer, deprecated and kept for clients of earlier releases       | None. The handler returns a constant and reads no table                                                                                                          |
 | `memory/listMoments`                | API read of a device session                        | The page of moments that the call asks for                                | None known. A query refreshes the in-process search index and encodes the query text, which the trace did not follow past the encoder                            |
 | `memory/readMoment`                 | API read of a device session                        | One moment with its links, note and reflections                           | None                                                                                                                                                             |
@@ -65,14 +64,15 @@ mean the trace stopped before it reached the bottom.
 | Other API reads of a device session | `<group>/<procedure>`, listed below                 | The records, tasks, memory or backup notice that the procedure returns    | None known                                                                                                                                                       |
 
 The API read procedures of a device session are `conversation/read`, `conversation/readImage`,
-`tasks/list`, `tasks/read`, `tasks/readActions`, `memory/readVersions`, `memory/readRatingNotes`,
-`memory/writerStatus`, `memory/listItems`, `memory/findItems`, `memory/readPinnedCore`,
-`memory/readItem`, `memory/listNotices`, `memory/previewForget`, `memory/previewForgetRetired`,
-`memory/readForgetStatus`, `memory/listMoments`, `memory/readMoment`, `memory/readMomentSpan`,
-`memory/previewMomentDestroy`, `backups/readNotice`, `approvals/listItems`,
-`approvals/readProposals`, `rules/readRule`, `sessions/list`, `records/follow` and `log/follow`. The
-API marks `memory/writerStatus` and `log/follow` as deprecated, and serves them for clients of
-earlier releases.
+`conversation/previewForget`, `tasks/list`, `tasks/read`, `tasks/readActions`,
+`memory/readVersions`, `memory/writerStatus`, `memory/listItems`, `memory/findItems`,
+`memory/readPinnedCore`, `memory/readItem`, `memory/listNotices`, `memory/previewForget`,
+`memory/previewForgetRetired`, `memory/readForgetStatus`, `memory/listMoments`, `memory/readMoment`,
+`memory/readMomentSpan`, `memory/previewMomentDestroy`, `backups/readNotice`, `approvals/listItems`,
+`approvals/readProposals`, `rules/readRule`, `rules/listMandates`, `nixie/read`, `recovery/read`,
+`passkeys/list`, `sessions/list`, `records/follow` and `log/follow`. The API marks
+`memory/writerStatus` and `log/follow` as deprecated, and serves them for clients of earlier
+releases.
 
 An API read needs a device session, and getting one has side effects:
 
