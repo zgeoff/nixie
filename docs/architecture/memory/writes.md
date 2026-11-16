@@ -16,12 +16,14 @@ no item, no version and no proposal. These are:
 - an edit, retirement or pin of a missing or forgotten item, or of a version that moved on;
 - an edit with no text and no label, or with labels only and a quote, event ID, end time or subject;
 - an end time that has already passed;
-- a task's write that creates a self-note or moves an item into self ([self-notes](#self-notes));
+- a task's write that creates a self-note, edits one or moves an item into self
+  ([self-notes](#self-notes));
 - an image source that points at no image of the user's in the thread;
 - a quote or an event ID that cites a message whose record forget has begun;
 - a proposal for an item whose evidence purge has not finished, or one past the
   [proposal cap](#memory-proposals);
-- an edit of a pinned item whose new text no longer fits the pinned core's budget;
+- an edit of a pinned item that would apply with text that no longer fits the pinned core's budget.
+  An edit that goes to review instead fails the same way when the user approves it;
 - a pin of a retired item, and an unpin of an item outside the core ([pins](#pins)).
 
 [The memory store](./store.md) covers the items, versions and keys that a write changes, and
@@ -147,7 +149,7 @@ verdict of the prompt in force at its write.
 
 ## Retirement intent
 
-`memory.retire` takes an item, the version the thread read and an intent quote, with no replacement
+`memory.retire` takes an item, the revision the thread read and an intent quote, with no replacement
 text. The intent gate runs these steps:
 
 1. **The read check.** A recall record shows that the calling thread received the item at that
@@ -163,7 +165,7 @@ version copies the stored text with its source and evidence, and adds its own in
 ## Pins
 
 `memory.pin` asks to add an item the model already has to
-[the pinned core](./context.md#the-pinned-core), by the item and the version the thread read. A pin
+[the pinned core](./context.md#the-pinned-core), by the item and the revision the thread read. A pin
 is a proposal of its own with the pinned reason, because the core opens every session and costs
 every turn that reads it, so the user decides what goes in. A pin runs no quote check and no
 checker: it adds no text, so the gate has nothing of the user's to check. The pin and unpin tools
@@ -199,11 +201,11 @@ becomes a proposal with the reason `self_note` whatever the token check found, a
 keeps the token verdict, so the review shows a destination the user never typed. An approved
 self-note takes outside content as its source.
 
-Only the conversation creates a self-note, because only the conversation speaks as nixie's persona.
-A task's write that creates a self-note or moves an item into self fails and writes nothing. A
-task's edit of an existing self-note becomes a proposal like any other self-note write. A proposal
-merges only with a pending proposal of the same subject, and its close match on approval looks only
-at items of its own subject, so an item about the user never revises a self-note.
+Only the conversation writes a self-note, because only the conversation speaks as nixie's persona. A
+task's write that creates a self-note, edits one or moves an item into self fails and writes
+nothing. A proposal merges only with a pending proposal of the same subject, and its close match on
+approval looks only at items of its own subject, so an item about the user never revises a
+self-note.
 
 The conversation's retire of a self-note skips the intent gate and applies at once, with a notice
 entry whose undo brings the note back, because the note was nixie's own and a retirement only
@@ -347,12 +349,13 @@ of a proposal whose item moved on fails as stale and applies nothing, and the pr
 so the client can offer it against the current version. A rejection's reason is free text, so it
 sits in the rejection record's erasable fields under that record's key.
 
-A proposal holds its labels sealed under the item's key, in a record of its own. A label-only
-proposal binds to the item's revision, which counts label edits as well as text versions
-([labels and the revision](./store.md#labels-and-the-revision)), and every other proposal binds to a
-text version. An approval of a label-only proposal adds a label record and no version, and fails as
-stale when the revision moved on. A pending proposal for a new item with no labels, such as one an
-earlier release wrote, takes the labels nixie derives from its text when the user approves it.
+A proposal holds its labels sealed under the item's key, in a record of its own. A proposal that
+carries labels binds to the item's revision, which counts label edits as well as text versions
+([labels and the revision](./store.md#labels-and-the-revision)), so its approval fails as stale when
+either moved on. A proposal with no labels binds to its text version. An approval of a label-only
+proposal adds a label record and no version. A pending proposal for a new item with no labels, such
+as one an earlier release wrote, takes the labels nixie derives from its text when the user approves
+it.
 
 A write that makes the same change as a pending proposal merges into it instead of adding a second
 proposal. The same change matches on all of these:

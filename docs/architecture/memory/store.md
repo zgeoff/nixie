@@ -280,7 +280,9 @@ The result's `leftOut` lists what the page left out, so the model can recall tho
 `next` starts the plain list at the first omitted item. `searched` echoes the call's query or item
 IDs, cut so it always fits the page limit. A recall that finds nothing, from any caller, the turn
 search included, returns an empty `items` list and appends no record. The stored tool record holds
-`leftOut` by item ID and no `searched`, so the query text stays out of it.
+`leftOut` by item ID and no `searched`, so the query text stays out of it. A call passes `query` or
+`itemIDs`, never both, and passes `after` with neither. The tool refuses any other call before it
+reaches the store, so a refused call appends no record.
 
 ### Topic pages and the topic list
 
@@ -298,7 +300,9 @@ offset of the first entry left out, or `null`, and `leftOut.count` counts every 
 page. A topic with no item returns an empty `lines` list with `searched`. The stored tool record of
 a topic page holds the short IDs of its lines, and the UUIDs behind them under `hidden`, a field
 that never reaches the model ([short IDs](../core/database.md#short-ids)). The record of a topic
-list holds no topic name.
+list holds no topic name. The tool refuses a call that passes more than one of `query`, `itemIDs`,
+`topic` and `topics`, or passes `includeRetired`, `includeHistory` or `limit` with `topic` or
+`topics`.
 
 ### The indexes
 
