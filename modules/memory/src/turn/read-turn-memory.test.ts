@@ -14,7 +14,12 @@ interface TurnOverrides {
 async function setupTest(overrides: TurnOverrides = {}) {
   const memory = await startTestMemory({
     turn: {
-      trigger: { items: 3, minScore: 0, minSimilarity: 1, ...overrides.trigger },
+      trigger: {
+        items: 3,
+        minScore: 0,
+        minSimilarity: 1,
+        ...overrides.trigger,
+      },
     },
   });
 
@@ -73,7 +78,11 @@ test('it places up to the cap of items whose trigger phrase matches, in one reco
   const result = await ctx.memory.store.readTurnMemory(ctx.buildAsk('is the piano in tune?'));
   const records = await ctx.readRecalls();
 
-  expect(result).toMatchObject({ kind: 'placed', items: [{}, {}], selfNotes: [] });
+  expect(result).toMatchObject({
+    kind: 'placed',
+    items: [{}, {}],
+    selfNotes: [],
+  });
 
   expect(records.map((entry) => entry.record.payload)).toStrictEqual([
     {
@@ -152,11 +161,67 @@ test('it counts a self-note toward the cap', async () => {
   expect(placed).toHaveLength(2);
 });
 
+test('it drops a pick that was retired between the selection and the placing, and records nothing', async () => {
+  const ctx = await setupTest();
+  const piano = await ctx.remember('Piano is tuned in spring', ['piano tuning']);
+
+  // The trigger push encodes the turn text after the item states are read, and before the placing.
+  const retireOnEncode = mock<() => Promise<void>>();
+  const stub = buildStubEncoder([['piano']]);
+
+  const next = await startNextTestMemory(ctx.memory, {
+    turn: {
+      trigger: { items: 1, minScore: 0, minSimilarity: 0 },
+    },
+    semanticSearch: {
+      encoder: {
+        encode: async (texts, kind) => {
+          if (texts.includes('piano tuning in spring')) {
+            await retireOnEncode();
+          }
+
+          return stub.encode(texts, kind);
+        },
+      },
+      onError: mock<(error: unknown) => void>(),
+    },
+  });
+
+  retireOnEncode.mockImplementation(async () => {
+    await next.store.retire({
+      target: piano,
+      provenance: buildMockProvenance(),
+    });
+  });
+
+  await next.store.waitForSemanticIndex();
+
+  const result = await next.store.readTurnMemory(ctx.buildAsk('piano tuning in spring'));
+
+  const records = await readRecords(next.log, {
+    afterSequence: 0,
+    kinds: ['memory.recalled'],
+  });
+
+  expect({
+    result,
+    retiredDuringSearch: retireOnEncode.mock.calls.length,
+    records,
+  }).toStrictEqual({
+    result: { kind: 'none' },
+    retiredDuringSearch: 1,
+    records: [],
+  });
+});
+
 test('it matches a restored item again and no retired one', async () => {
   const ctx = await setupTest();
   const piano = await ctx.remember('Piano is tuned in spring', ['piano tuning']);
 
-  await ctx.memory.store.retire({ target: piano, provenance: buildMockProvenance() });
+  await ctx.memory.store.retire({
+    target: piano,
+    provenance: buildMockProvenance(),
+  });
 
   const retired = await ctx.memory.store.readTurnMemory(ctx.buildAsk('piano tuning'));
 
@@ -167,7 +232,11 @@ test('it matches a restored item again and no retired one', async () => {
 
   const again = await ctx.memory.store.readTurnMemory(ctx.buildAsk('piano tuning'));
 
-  expect({ retired, restored: restored.itemID, placed: again.kind }).toStrictEqual({
+  expect({
+    retired,
+    restored: restored.itemID,
+    placed: again.kind,
+  }).toStrictEqual({
     retired: { kind: 'none' },
     restored: piano.itemID,
     placed: 'placed',
@@ -178,7 +247,10 @@ test('it never matches a forgotten item', async () => {
   const ctx = await setupTest();
   const piano = await ctx.remember('Piano is tuned in spring', ['piano tuning']);
 
-  await ctx.memory.store.forget({ target: piano, provenance: buildMockProvenance() });
+  await ctx.memory.store.forget({
+    target: piano,
+    provenance: buildMockProvenance(),
+  });
 
   const result = await ctx.memory.store.readTurnMemory(ctx.buildAsk('piano tuning'));
 
@@ -238,7 +310,11 @@ test('it records keyword-fallback when the trigger vectors are unavailable, what
   await next.store.waitForSemanticIndex();
 
   const result = await next.store.readTurnMemory(ctx.buildAsk('tractor hire'));
-  const records = await readRecords(next.log, { afterSequence: 0, kinds: ['memory.recalled'] });
+
+  const records = await readRecords(next.log, {
+    afterSequence: 0,
+    kinds: ['memory.recalled'],
+  });
 
   expect(result).toMatchObject({ kind: 'placed', items: [{}] });
 
