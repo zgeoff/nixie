@@ -1,4 +1,7 @@
 import { expect, test } from 'bun:test';
+import { codexEfforts } from '@heynixie/wire';
+import { codexVersion } from '../codex-version';
+import snapshot from '../protocol/bundled-reasoning-efforts.json';
 import { buildModelCatalog } from './build-model-catalog';
 
 test('it holds one entry for the model with every tool switch off', () => {
@@ -29,4 +32,9 @@ test('it lists every reasoning effort that nixie takes', () => {
       ],
     }),
   );
+});
+
+test('it keeps the effort list beside the efforts that the pinned CLI bundles', () => {
+  expect(snapshot.codexVersion).toBe(codexVersion);
+  expect(snapshot.efforts).toIncludeAllMembers([...codexEfforts]);
 });

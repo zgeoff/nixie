@@ -24,10 +24,16 @@ codex image. Build the image into impd from `guests/codex/Dockerfile` with the r
 build folder, as step 1 does for the fetch image, and run the test with
 `NIXIE_IMP_TEST_CODEX_IMAGE=<codex_image_name>` set beside the first 2 variables of step 2.
 
-Two checks wait for a run on an imp host with the broker and the tool route, and the record of each
-stays open until that run: a full Codex turn that shows the model receives only nixie's tools and
-the 3 Codex resource tools, and that the secret reaches the model host as a bearer header. A probe
-of the largest turn sets the memory of the `codexTask` size row, which holds 384 MiB until then.
+The file also holds a turn test. It starts a scripted model and a one-tool MCP server on the test
+machine, runs one Codex turn in a sandbox on the codex image, and checks 2 facts: the first model
+request holds nixie's system prompt, the input, the 3 Codex resource tools and nixie's tools only,
+and the secret reaches the model host as a bearer header. It skips until
+`NIXIE_IMP_TEST_CODEX_MODEL_HOST` names the host that the broker dials to reach the scripted model's
+loopback port. The impd host must be the machine that runs the test, or reach it under that name.
+
+The record of both checks stays open until a run on an imp host with the broker and the tool route
+passes them. A probe of the largest turn sets the memory of the `codexTask` size row, which holds
+384 MiB until then.
 
 Expect `0 fail`, with no skipped test. The `test:imp` script runs the `*.imp.test.ts` files under
 the imp lane's limit per test.

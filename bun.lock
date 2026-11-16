@@ -163,7 +163,9 @@
       },
       "devDependencies": {
         "@faker-js/faker": "catalog:",
+        "@impz/client": "catalog:",
         "@modelcontextprotocol/client": "catalog:",
+        "@modelcontextprotocol/server": "catalog:",
         "ajv": "catalog:",
         "ajv-formats": "3.0.1",
         "release-please": "17.11.2",

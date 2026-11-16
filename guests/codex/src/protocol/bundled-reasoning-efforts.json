@@ -1,0 +1,11 @@
+{
+  "codexVersion": "0.166.0",
+  "efforts": [
+    "low",
+    "medium",
+    "high",
+    "xhigh",
+    "max",
+    "ultra"
+  ]
+}

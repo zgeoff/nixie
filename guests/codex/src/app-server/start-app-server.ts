@@ -64,6 +64,10 @@ export async function startAppServer(child: AppServerProcess): Promise<AppServer
   return client;
 }
 
+// How long a process may outlive its closed output before the client gives up on it. A crash ends
+// the output just before the exit, and the exit status then names the cause.
+const exitGraceMs = 500;
+
 function openClient(child: AppServerProcess): AppServerClient {
   const pending = new Map<number, PromiseWithResolvers<unknown>>();
 
@@ -133,7 +137,15 @@ function openClient(child: AppServerProcess): AppServerClient {
   };
 
   const diagnostics = readDiagnostics(child.stderr);
-  const reading = readLines(child.stdout, handleLine, close);
+
+  const reading = readLines(child.stdout, handleLine, close, async () => {
+    const exitCode = await Promise.race([child.exited, Bun.sleep(exitGraceMs).then(() => null)]);
+
+    if (exitCode === null) {
+      close('codex app-server closed its output and kept running');
+    }
+  });
+
   const exiting = waitForExit(child.exited, { reading, diagnostics, close });
 
   return {
@@ -208,6 +220,7 @@ async function readLines(
   stream: ReadableStream<Uint8Array>,
   onLine: (line: string) => void,
   onFailure: (detail: string) => void,
+  onEnd: () => Promise<void>,
 ): Promise<void> {
   const decoder = new TextDecoder();
 
@@ -227,7 +240,11 @@ async function readLines(
     }
   } catch (error) {
     onFailure(`the app-server stream failed: ${String(error)}`);
+
+    return;
   }
+
+  await onEnd();
 }
 
 const diagnosticsChars = 2000;

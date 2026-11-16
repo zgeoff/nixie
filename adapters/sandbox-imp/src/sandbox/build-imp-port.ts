@@ -32,6 +32,9 @@ export function buildImpPort(connection: ImpConnection): ImpPort {
         rules: [{ host: secret.host, header: secret.header, scheme: secret.scheme }],
       });
     },
+    removeSecret: async (name) => {
+      await client.secrets.delete({ name });
+    },
     listImages: async () => {
       const images = await client.images.list();
 
