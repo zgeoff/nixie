@@ -18,13 +18,13 @@ export interface BegunPurgeSeed {
   readonly proposalID: string;
 }
 
-// Leaves the data where a record forget stops after its first transaction: the forget began and the
-// purge set is fixed, and nothing else ran. No nixie may hold the data's writer lock.
 export interface BegunPurgeOptions {
   // False writes the purge set with no record forget behind it, as a scrub does
   readonly isOwned: boolean;
 }
 
+// Leaves the data where a record forget stops after its first transaction: the forget began and the
+// purge set is fixed, and nothing else ran. No nixie may hold the data's writer lock.
 export async function seedBegunPurge(
   nixie: Pick<BootFiles, 'dataDir' | 'deploymentKey'>,
   options?: BegunPurgeOptions,

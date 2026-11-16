@@ -29,18 +29,18 @@ test('it reads a version 10 file with every version and label entry marked neith
 
   const parsed = memoryExportSchema.safeParse(JSON.parse(text)).data;
   const readable = parsed?.items.filter((item) => 'versions' in item) ?? [];
+  const versions = readable.flatMap((item) => item.versions);
+  const labelEntries = readable.flatMap((item) => item.labelHistory);
 
   expect(parsed?.header.schemaVersion).toBe(10);
 
   expect(
-    readable
-      .flatMap((item) => item.versions)
-      .filter((version) => version.isRemoved || version.isBridge),
-  ).toStrictEqual([]);
+    versions.map((version) => ({ isRemoved: version.isRemoved, isBridge: version.isBridge })),
+  ).toStrictEqual(versions.map(() => ({ isRemoved: false, isBridge: false })));
 
-  expect(
-    readable.flatMap((item) => item.labelHistory).filter((entry) => entry.isBridge),
-  ).toStrictEqual([]);
+  expect(labelEntries.map((entry) => entry.isBridge)).toStrictEqual(labelEntries.map(() => false));
+  expect(versions.length).toBeGreaterThan(0);
+  expect(labelEntries.length).toBeGreaterThan(0);
 });
 
 test('it rejects a version 11 version with no removed mark', async () => {
@@ -115,7 +115,7 @@ test('it rejects a forgotten item that carries more than its ID and time', () =>
     moments: [],
   });
 
-  expect(result.success).toBe(false);
+  expect(result.error?.issues).toPartiallyContain({ path: ['items', 0] });
 });
 
 test('it rejects a readable item with no version', () => {
@@ -140,5 +140,5 @@ test('it rejects a readable item with no version', () => {
     moments: [],
   });
 
-  expect(result.success).toBe(false);
+  expect(result.error?.issues).toPartiallyContain({ path: ['items', 0, 'versions'] });
 });

@@ -9,8 +9,8 @@ export interface EvidencePurgeStart {
   readonly itemIDs: readonly string[];
 }
 
-// The one writer of the purge set. A record forget calls it in the transaction that writes
-// record.forget_started.
+// The one writer of the purge set. Call it in the transaction that writes record.forget_started,
+// so a crash leaves both records or neither.
 export async function writeEvidencePurgeStarted(
   tx: Transaction<unknown>,
   context: Pick<MemoryContext, 'log' | 'definitions'>,

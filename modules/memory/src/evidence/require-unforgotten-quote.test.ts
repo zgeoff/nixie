@@ -85,6 +85,81 @@ test('it refuses a remember that found its quote before the forget began, with n
   expect(pending).toStrictEqual([]);
 });
 
+test('it refuses an edit that found its quote before the forget began, and writes no version', async () => {
+  const checker = makeGatedCall(() => buildMockCheckerAnswer());
+
+  const memory = await startTestMemory({ gate: { check: checker.call } });
+
+  const sequence = await writeOwnerMessageRecord(memory.log, {
+    thread: 'conversation',
+    text: 'I take my coffee black',
+    spans: [{ start: 0, end: 22, source: 'typed' }],
+  });
+
+  const item = await memory.store.remember({
+    text: 'Drinks tea',
+    provenance: buildMockProvenance(),
+  });
+
+  const write = memory.store.writes.remember({
+    text: 'Takes coffee black',
+    quote: 'I take my coffee black',
+    target: item,
+    caller: buildMockWriteCaller(),
+  });
+
+  await checker.started;
+  await seedBegunPurge(memory.log, { recordSequence: sequence, itemIDs: [] });
+
+  checker.release();
+
+  const error = await write.catch((error_: unknown) => error_);
+
+  expect(error).toMatchObject({ code: 'QUOTED_RECORD_FORGETTING' });
+
+  const history = await memory.store.readHistory(item.itemID);
+
+  expect(history?.versions).toHaveLength(1);
+});
+
+test('it refuses a retirement that found its intent quote before the forget began, and keeps the item active', async () => {
+  const checker = makeGatedCall(() => buildMockCheckerAnswer());
+
+  const memory = await startTestMemory({ gate: { check: checker.call } });
+
+  const sequence = await writeOwnerMessageRecord(memory.log, {
+    thread: 'conversation',
+    text: 'I take my coffee black',
+    spans: [{ start: 0, end: 22, source: 'typed' }],
+  });
+
+  const item = await memory.store.remember({
+    text: 'Drinks coffee',
+    provenance: buildMockProvenance(),
+  });
+
+  await memory.store.recall({ query: 'coffee', thread: 'conversation' });
+
+  const write = memory.store.writes.retire({
+    target: item,
+    intentQuote: 'I take my coffee black',
+    caller: buildMockWriteCaller(),
+  });
+
+  await checker.started;
+  await seedBegunPurge(memory.log, { recordSequence: sequence, itemIDs: [] });
+
+  checker.release();
+
+  const error = await write.catch((error_: unknown) => error_);
+
+  expect(error).toMatchObject({ code: 'QUOTED_RECORD_FORGETTING' });
+
+  const history = await memory.store.readHistory(item.itemID);
+
+  expect(history?.versions.map((version) => version.state)).toStrictEqual(['active']);
+});
+
 test('it refuses an edit whose quote names a forgetting record, and writes no version', async () => {
   const ctx = await setupTest();
 

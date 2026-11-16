@@ -4,7 +4,9 @@ import { join, relative } from 'node:path';
 import { readRecordKeys, readRecords, removeRecordKey } from '@heynixie/log';
 import invariant from 'tiny-invariant';
 import { itemLabelsCodec } from '../label/item-labels-codec';
+import { proposalLabelsCodec } from '../label/proposal-labels-codec';
 import { buildMockProvenance } from '../test-utils/build-mock-provenance';
+import { buildMockWriteCaller } from '../test-utils/build-mock-write-caller';
 import { createQuotedProposal } from '../test-utils/create-quoted-proposal';
 import { seedBegunPurge } from '../test-utils/seed-begun-purge';
 import { startTestMemory } from '../test-utils/start-test-memory';
@@ -157,6 +159,60 @@ test('it answers removed for the key that a purge deleted, and readable for the 
   expect(keys.map((key) => key.status)).toStrictEqual(['removed', 'readable']);
 });
 
+test('it answers removed, never shredded, for a version whose purge closed and deleted its key between the lookup reads', async () => {
+  const ctx = await setupTest();
+  const recordSequence = await ctx.writeMessage('I keep bees on the allotment.');
+  const item = await ctx.rememberQuoting(recordSequence);
+  const [firstSequence] = await ctx.readSequences('memory.version_added');
+
+  const refs = [
+    { value: 'version' as const, itemID: item.itemID, version: 1, sequence: firstSequence ?? 0 },
+  ];
+
+  // A first lookup counts the queries of its 2 reads of the removal marks, so the second lookup
+  // can run the whole purge right after its first read, before it reads the keys.
+  const counted = { queries: 0 };
+
+  await readItemKeys(
+    ctx.memory.log,
+    refs,
+    ctx.memory.log.writer.db.withPlugin({
+      transformQuery: (args) => args.node,
+      transformResult: (args) => {
+        counted.queries += 1;
+
+        return Promise.resolve(args.result);
+      },
+    }),
+  );
+
+  const attempt = { queries: 0 };
+
+  const keys = await readItemKeys(
+    ctx.memory.log,
+    refs,
+    ctx.memory.log.writer.db.withPlugin({
+      transformQuery: (args) => args.node,
+      transformResult: async (args) => {
+        attempt.queries += 1;
+
+        if (attempt.queries === counted.queries / 2) {
+          await seedBegunPurge(ctx.memory.log, { recordSequence, itemIDs: [item.itemID] });
+
+          await ctx.memory.store.purgeItemEvidence({ recordSequence, itemID: item.itemID });
+        }
+
+        return args.result;
+      },
+    }),
+  );
+
+  const remaining = await readRecordKeys(ctx.memory.log, [item.itemID]);
+
+  expect(remaining.has(item.itemID)).toBe(false);
+  expect(keys).toStrictEqual([{ status: 'removed' }]);
+});
+
 test('it answers readable for the labels at the current revision and removed for an earlier one during a purge', async () => {
   const ctx = await setupTest();
   const recordSequence = await ctx.writeMessage('I keep bees on the allotment.');
@@ -287,6 +343,7 @@ test('it leaves every value of an item no purge reached readable under the item 
   const second = await ctx.memory.store.remember({
     text: 'Keeps two hives on the allotment',
     target: item,
+    labels: { gist: 'keeps two hives', topic: 'garden', triggers: ['hives'] },
     provenance: buildMockProvenance(),
   });
 
@@ -301,13 +358,17 @@ test('it leaves every value of an item no purge reached readable under the item 
     proposalID: rejected.proposal.proposalID,
     actionHash: rejected.proposal.actionHash,
     identityID: 'identity-1',
+    reason: 'Still two hives',
   });
 
-  const pending = await createQuotedProposal(ctx.memory, {
-    message: 'I keep four hives now.',
+  await ctx.writeMessage('I keep four hives now.');
+
+  await ctx.memory.store.writes.remember({
     text: 'Keeps four hives on the allotment',
     quote: 'I keep four hives',
     target: second,
+    labels: { gist: 'keeps four hives', topic: 'garden', triggers: ['hives'] },
+    caller: buildMockWriteCaller(),
   });
 
   // the read path of the release before the lookup: the item's own key, and the unchanged codecs
@@ -325,11 +386,16 @@ test('it leaves every value of an item no purge reached readable under the item 
     .orderBy('version')
     .execute();
 
-  const labels = await db.selectFrom('memory_labels').select(['revision', 'sealed']).execute();
+  const labels = await db
+    .selectFrom('memory_labels')
+    .select(['revision', 'sealed'])
+    .orderBy('revision')
+    .execute();
 
   const proposals = await db
     .selectFrom('memory_proposals')
-    .select(['proposal_id', 'sealed'])
+    .select(['proposal_id', 'sealed', 'sealed_labels'])
+    .orderBy('proposal_id')
     .execute();
 
   const texts = await Promise.all(
@@ -344,25 +410,50 @@ test('it leaves every value of an item no purge reached readable under the item 
     ),
   );
 
-  const proposalTexts = await Promise.all(
-    proposals.map((row) => decodeProposalText(key, row.proposal_id, row.sealed)),
+  const proposalValues = await Promise.all(
+    proposals.map(async (row) => ({
+      text: await decodeProposalText(key, row.proposal_id, row.sealed),
+      labels:
+        row.sealed_labels === null
+          ? null
+          : await proposalLabelsCodec.decode(key, row.proposal_id, row.sealed_labels),
+    })),
   );
 
   const written = await readRecords(ctx.memory.log, { afterSequence: 0, limit: 200 });
 
-  expect(texts.map((text) => text.text)).toStrictEqual([
-    'Keeps bees on the allotment',
-    'Keeps two hives on the allotment',
+  const rejection = written.find((entry) => entry.record.kind === 'memory.proposal_rejected');
+
+  expect(
+    texts.map((text) => ({ text: text.text, evidenceQuote: text.evidenceQuote })),
+  ).toStrictEqual([
+    { text: 'Keeps bees on the allotment', evidenceQuote: 'I keep bees' },
+    { text: 'Keeps two hives on the allotment', evidenceQuote: null },
   ]);
 
-  expect(opened.map((labelSet) => labelSet.gist)).toStrictEqual(['keeps bees']);
+  expect(opened.map((labelSet) => labelSet.gist)).toStrictEqual(['keeps bees', 'keeps two hives']);
 
-  expect(proposalTexts.map((text) => text.text).toSorted()).toStrictEqual([
-    'Keeps four hives on the allotment',
-    'Keeps three hives on the allotment',
+  expect(
+    proposalValues
+      .map((value) => ({
+        text: value.text.text,
+        quote: value.text.quote,
+        gist: value.labels?.gist ?? null,
+      }))
+      .toSorted((left, right) => left.text.localeCompare(right.text)),
+  ).toStrictEqual([
+    {
+      text: 'Keeps four hives on the allotment',
+      quote: 'I keep four hives',
+      gist: 'keeps four hives',
+    },
+    { text: 'Keeps three hives on the allotment', quote: 'I keep three hives', gist: null },
   ]);
 
-  expect(pending.proposal.proposalID).toBeString();
+  expect(rejection?.record.erasable).toStrictEqual({
+    status: 'readable',
+    fields: { reason: 'Still two hives' },
+  });
 
   expect(
     written

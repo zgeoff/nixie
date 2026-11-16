@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test';
 import type { BegunPurgeSeed } from '@heynixie/server/test-utils';
-import { readPurgeState, startInProcessNixie } from '@heynixie/server/test-utils';
+import { readPurgeState, readPurgedItem, startInProcessNixie } from '@heynixie/server/test-utils';
 import invariant from 'tiny-invariant';
 
 interface PurgeSetup {
@@ -51,6 +51,7 @@ async function setupTest(setup: PurgeSetup) {
           ].includes(kind),
         ),
     readState: () => readPurgeState(nixie),
+    readItem: () => readPurgedItem(nixie, seed.itemID),
   };
 }
 
@@ -97,6 +98,23 @@ test('it deletes the closed keys and keeps the next generation key and the bridg
 
   expect(keyIDs.filter((keyID) => keyID === ctx.seed.itemID)).toStrictEqual([]);
   expect(keyIDs.filter((keyID) => keyID.startsWith(`${ctx.seed.itemID}/`))).toHaveLength(2);
+});
+
+test('it keeps the current text and labels readable and reads the older version as removed', async () => {
+  const ctx = await setupTest({ isOwned: true });
+
+  await ctx.stop();
+
+  const item = await ctx.readItem();
+
+  expect(item).toStrictEqual({
+    versions: [
+      { version: 1, status: 'shredded', isRemoved: true, isBridge: false },
+      { version: 2, status: 'shredded', isRemoved: true, isBridge: false },
+      { version: 3, status: 'readable', isRemoved: false, isBridge: true },
+    ],
+    labels: { gist: 'keeps bees', topic: 'garden', triggers: ['bees'] },
+  });
 });
 
 test('it writes nothing when nixie starts again over a finished purge', async () => {
