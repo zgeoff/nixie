@@ -5,6 +5,7 @@ import { runOracle, startSpawnedNixie } from '@heynixie/server/test-utils';
 import type { ScriptedModelRequest } from '@heynixie/testing';
 import { waitForCondition } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
+import { z } from 'zod';
 import { readModelRequest } from './src/test-utils/read-model-request';
 
 type RequestBody = NonNullable<ScriptedModelRequest['body']>;
@@ -101,6 +102,34 @@ test('it fires the daily note-taking example and saves a memory that cites the m
     );
   });
 
+  // The conversation can recall memory, so a second message has it read the saved item back.
+  const requestsBefore = ctx.nixie.model.requests.length;
+
+  ctx.nixie.model.addReplies(
+    {
+      toolUse: { name: 'mcp__nixie__memory_recall', input: {} },
+      when: (body) => body.tools?.some((tool) => tool.name === 'mcp__nixie__task_start') === true,
+    },
+    {
+      text: 'Read it.',
+      when: (body) => body.tools?.some((tool) => tool.name === 'mcp__nixie__task_start') === true,
+    },
+  );
+
+  void process.request('sendMessage', { thread: 'conversation', text: 'What do you hold?' });
+
+  // The recall result sits before the system message that carries the report, so it is not the
+  // last message of the request.
+  const findRecalled = () =>
+    ctx.nixie.model.requests
+      .slice(requestsBefore)
+      .flatMap((request) => request.body?.messages ?? [])
+      .find((entry) => JSON.stringify(entry).includes('tool_result'));
+
+  await waitForCondition(() => findRecalled() !== undefined);
+
+  const recalled = findRecalled();
+
   await process.kill();
 
   const records = await ctx.nixie.readRecords();
@@ -147,6 +176,15 @@ test('it fires the daily note-taking example and saves a memory that cites the m
 
   expect(isBacked).toBe(true);
   expect(records.some((record) => record.kind === 'memory.batch_planned')).toBe(false);
+
+  const resultBlock = z.object({ content: z.string() });
+  const recalledMessage = z.object({ content: z.tuple([resultBlock]) });
+  const recalledItem = z.object({ quote: z.string() });
+  const recallResult = z.object({ items: z.array(recalledItem) });
+  const recalledContent = recalledMessage.parse(recalled).content[0].content;
+  const recalledItems = recallResult.parse(JSON.parse(recalledContent));
+
+  expect(recalledItems.items.map((item) => item.quote)).toStrictEqual([text]);
 
   expect(oracle).toStrictEqual({
     repeatedStepKeys: [],
