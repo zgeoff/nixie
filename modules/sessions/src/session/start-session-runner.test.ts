@@ -322,6 +322,7 @@ test('it opens the tool run for the system task on the profile model', async () 
       toolUseMetaKey: 'claudecode/toolUseId',
       runID: 'sweeper',
       thread: 'sweeper',
+      logThread: 'sweeper',
       tools: ['memory_write'],
       model: { model: 'claude-test-1', profile: 'chat-direct' },
     },

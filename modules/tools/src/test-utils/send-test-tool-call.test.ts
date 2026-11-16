@@ -41,6 +41,7 @@ test('it calls a tool on the run endpoint with the run token and returns its res
     toolUseMetaKey: null,
     runID: 'run-1',
     thread: 'task-1',
+    logThread: 'task-1',
     tools: ['notes_read'],
     model: { model: 'claude-test-1', profile: 'chat-direct' },
   });
@@ -78,6 +79,7 @@ test('it rejects a call that carries a token the endpoint does not know', async 
     toolUseMetaKey: null,
     runID: 'run-1',
     thread: 'task-1',
+    logThread: 'task-1',
     tools: ['notes_read'],
     model: { model: 'claude-test-1', profile: 'chat-direct' },
   });

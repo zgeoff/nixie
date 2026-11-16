@@ -169,6 +169,9 @@ export interface ToolRun {
 
   readonly thread: string;
 
+  // the thread of log.read, log.read_image and a cited message; nothing stores it
+  readonly logThread: string;
+
   readonly tools: readonly string[];
 
   readonly model: ToolRunModel;
@@ -176,7 +179,10 @@ export interface ToolRun {
   readonly stepRunID?: string;
 
   // the open task run, with the caps of its limits; a started task passes none
-  readonly taskRun?: { readonly runID: string; readonly calls: Readonly<Record<string, number>> };
+  readonly taskRun?: {
+    readonly runID: string;
+    readonly calls: Readonly<Record<string, number>>;
+  };
 
   // the conversation session the step's turn runs on; absent for a call under the run's own token
   readonly session?: ToolSession;
@@ -238,7 +244,10 @@ export interface QueuedAction {
 
 export type ActionOutcome =
   | { readonly outcome: 'done'; readonly result: JSONObject }
-  | { readonly outcome: 'failed' | 'unknown' | 'cancelled'; readonly reason: string };
+  | {
+      readonly outcome: 'failed' | 'unknown' | 'cancelled';
+      readonly reason: string;
+    };
 
 export interface RepeatQuery {
   readonly run: ToolRun;

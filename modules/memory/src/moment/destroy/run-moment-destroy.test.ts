@@ -57,6 +57,7 @@ test('it destroys a moment and leaves no readable copy of its title, note or ref
   const run = {
     runID: 'run-1',
     thread: 'conversation',
+    logThread: 'conversation',
     tools: [
       'memory.recall',
       'moment.keep',

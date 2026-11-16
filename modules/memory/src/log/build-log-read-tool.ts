@@ -21,7 +21,11 @@ const logReadInput = {
       pattern: utcTimePattern,
       description: 'read entries before this UTC date or time',
     },
-    query: { type: 'string', maxLength: 200, description: 'words every entry must hold' },
+    query: {
+      type: 'string',
+      maxLength: 200,
+      description: 'words every entry must hold',
+    },
     after: {
       type: 'string',
       pattern: '^[0-9]{1,15}$',
@@ -45,10 +49,22 @@ const logReadOutput = {
             type: 'string',
             description: 'on a tool result, the eventID of the call it answers',
           },
-          role: { type: 'string', enum: ['owner', 'assistant', 'tool', 'task'] },
-          recordedAt: { type: 'string', description: 'when the entry was recorded, in UTC' },
-          text: { type: ['string', 'null'], description: 'null once the owner forgot it' },
-          isCut: { type: 'boolean', description: 'the text runs on past what is shown' },
+          role: {
+            type: 'string',
+            enum: ['owner', 'assistant', 'tool', 'task'],
+          },
+          recordedAt: {
+            type: 'string',
+            description: 'when the entry was recorded, in UTC',
+          },
+          text: {
+            type: ['string', 'null'],
+            description: 'null once the owner forgot it',
+          },
+          isCut: {
+            type: 'boolean',
+            description: 'the text runs on past what is shown',
+          },
         },
         required: ['eventID', 'role', 'recordedAt', 'text', 'isCut'],
       },
@@ -74,7 +90,7 @@ export function buildLogReadTool(log: Pick<Log, 'deploymentKey' | 'writer'>): To
   return {
     name: 'log.read',
     description:
-      "Returns one page of this conversation's own history, oldest first: the owner's messages, " +
+      "Returns one page of the log you can read, oldest first: the owner's messages, " +
       'your replies, and tool results, each with its eventID and time. A tool result also holds the callEventID of the call it answers. Pass from and to for a ' +
       'time range, query for entries that hold every word, and after with the next cursor for ' +
       "the next page. In the owner's messages, text inside <pasted> or <dropped> blocks was not " +
@@ -96,14 +112,21 @@ export function buildLogReadTool(log: Pick<Log, 'deploymentKey' | 'writer'>): To
     recordInput: makeInputRecorder(['query']),
     run: async (call, context) => {
       const input = logReadArguments.parse(call.input);
-      const range = { from: parseUTCTime(input.from), to: parseUTCTime(input.to) };
+
+      const range = {
+        from: parseUTCTime(input.from),
+        to: parseUTCTime(input.to),
+      };
 
       if (Number.isNaN(range.from) || Number.isNaN(range.to)) {
-        return { status: 'error', message: 'from and to must be real UTC dates or times' };
+        return {
+          status: 'error',
+          message: 'from and to must be real UTC dates or times',
+        };
       }
 
       const page = await readLogPage(log, {
-        thread: context.run.thread,
+        thread: context.run.logThread,
         after: input.after === undefined ? 0 : Number(input.after),
         ...range,
         words: input.query === undefined ? [] : input.query.split(/\s+/u),
@@ -115,8 +138,14 @@ export function buildLogReadTool(log: Pick<Log, 'deploymentKey' | 'writer'>): To
 
       return {
         status: 'ok',
-        result: { entries: page.entries.map((entry) => toEntryJSON(entry)), next },
-        record: { eventIDs: page.entries.map((entry) => String(entry.sequence)), next },
+        result: {
+          entries: page.entries.map((entry) => toEntryJSON(entry)),
+          next,
+        },
+        record: {
+          eventIDs: page.entries.map((entry) => String(entry.sequence)),
+          next,
+        },
       };
     },
   };

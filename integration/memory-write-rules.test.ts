@@ -68,6 +68,7 @@ async function setupTest(config: SetupConfig = {}) {
         {
           runID: 'run-1',
           thread: 'conversation',
+          logThread: 'conversation',
           tools: ['memory.remember', 'memory.edit', 'memory.retire', 'memory.pin'],
           model: { model: 'model-a', profile: 'chat-direct' },
         },

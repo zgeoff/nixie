@@ -416,3 +416,59 @@ test('it claims and answers a message to the conversation while every claim loop
   expect(answered.map((record) => record.message?.text)).toContain('It is sunny at the quay.');
   expect(busy).toBe(2);
 });
+
+test("it gives a task with the conversation's log the conversation's records through log.read, and records its own call on its own thread", async () => {
+  const ctx = await setupTest();
+
+  ctx.nixie.guest.addKindReplies(
+    'conversation',
+    {
+      toolUse: {
+        name: 'task.start',
+        input: {
+          name: 'Note taker',
+          brief: 'Read the conversation and report what the owner asked.',
+          memory: 'read',
+          log: 'conversation',
+          tools: ['log.read'],
+        },
+      },
+    },
+    { text: 'Passed to the Note taker task.' },
+    { text: 'The note taker read the log.' },
+  );
+
+  ctx.nixie.guest.addKindReplies(
+    'worker',
+    { toolUse: { name: 'log.read', input: {} } },
+    {
+      toolUse: {
+        name: 'task.message',
+        input: { to: 'conversation', kind: 'report', body: 'Read the log.' },
+      },
+    },
+    { text: 'Reported.' },
+  );
+
+  await sendClientMessage(
+    ctx.api.client,
+    { text: 'Plan a lantern walk for Friday.' },
+    'Passed to the Note taker task.',
+  );
+
+  await waitForCondition(() => ctx.nixie.toolResults.some((result) => result.name === 'log.read'));
+
+  const taskID = ctx.readStartedTaskID();
+  const read = ctx.nixie.toolResults.find((result) => result.name === 'log.read');
+
+  const taskThread = await ctx.api.client.conversation.read({ thread: taskID });
+
+  expect(read?.result).toInclude('Plan a lantern walk for Friday.');
+  expect(read?.result).toInclude('"role":"owner"');
+
+  expect(
+    taskThread.records
+      .filter((record) => record.kind === 'tool_called' || record.kind === 'tool_result')
+      .map((record) => record.kind),
+  ).toIncludeAllMembers(['tool_called', 'tool_result']);
+});

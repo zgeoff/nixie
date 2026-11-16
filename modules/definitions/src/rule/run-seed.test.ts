@@ -2226,6 +2226,36 @@ test('it stores each accepted version under its hash and reads it back', async (
   });
 });
 
+test('it reads the conversation log of a definition file that sets it', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 4\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+  await mkdir(join(ctx.root, 'tasks', 'note-taker'), { recursive: true });
+
+  await writeFile(
+    join(ctx.root, 'tasks', 'note-taker', 'task.yaml'),
+    'name: Take notes\nbrief: Save what is worth keeping.\nlog: conversation\n',
+  );
+
+  await runSeed({
+    tasks: buildTestTaskSeed(),
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => ({ rules: [], tools: [] }),
+  });
+
+  const inForce = await readDefinitionsInForce(ctx.writer.db);
+
+  const hash = inForce?.tasks[0]?.hash;
+
+  invariant(hash !== undefined);
+
+  const version = await readDefinitionVersion(ctx.writer.db, hash);
+
+  expect(version?.log).toBe('conversation');
+});
+
 test('it fills a version with the file starter defaults when the file omits them', async () => {
   const ctx = await setupTest();
 

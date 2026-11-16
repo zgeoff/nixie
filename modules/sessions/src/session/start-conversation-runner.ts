@@ -72,7 +72,11 @@ const defaultMemorySettings: ConversationMemorySettings = {
   agentNames: [],
 };
 
-const defaultCompaction: CompactionSettings = { threshold: 0.8, headsUp: 0.7, summaryTokens: 2000 };
+const defaultCompaction: CompactionSettings = {
+  threshold: 0.8,
+  headsUp: 0.7,
+  summaryTokens: 2000,
+};
 
 const defaultMessaging: TaskMessaging = {
   directory: [],
@@ -99,6 +103,7 @@ export async function startConversationRunner(
   const endpoint = await options.tools.startRun({
     runID: conversationTaskID,
     thread: conversationTaskID,
+    logThread: conversationTaskID,
     tools: options.toolNames,
     model,
     toolUseMetaKey: harness.toolUseMetaKey,

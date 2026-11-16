@@ -8,6 +8,7 @@ test('it records each run it starts and hands back its token', async () => {
     toolUseMetaKey: null,
     runID: 'conversation',
     thread: 'conversation',
+    logThread: 'conversation',
     tools: ['notes_read'],
     model: { model: 'claude-test-1', profile: 'chat-direct' },
   };
@@ -25,6 +26,7 @@ test('it numbers each step token a run issues and records which ones stopped', a
     toolUseMetaKey: null,
     runID: 'conversation',
     thread: 'conversation',
+    logThread: 'conversation',
     tools: ['notes_read'],
     model: { model: 'claude-test-1', profile: 'chat-direct' },
   });
@@ -55,6 +57,7 @@ test('it rejects the first starts it is told to fail, then starts the run', asyn
     toolUseMetaKey: null,
     runID: 'k3vq8m2xpa',
     thread: 'k3vq8m2xpa',
+    logThread: 'k3vq8m2xpa',
     tools: ['time.now'],
     model: { model: 'claude-test-1', profile: 'chat-direct' },
   };

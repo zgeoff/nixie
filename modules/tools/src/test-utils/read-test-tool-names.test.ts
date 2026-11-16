@@ -39,6 +39,7 @@ test('it reads the names of the tools a run endpoint offers to the run token', a
     toolUseMetaKey: null,
     runID: 'run-1',
     thread: 'task-1',
+    logThread: 'task-1',
     tools: ['notes_read'],
     model: { model: 'claude-test-1', profile: 'chat-direct' },
   });

@@ -6,6 +6,7 @@ import type { ShapeFault } from '../../report/types';
 import { pickReportMode } from '../../run/pick-report-mode';
 import type {
   TaskLimits,
+  TaskLog,
   TaskMemory,
   TaskPersona,
   TaskReport,
@@ -18,11 +19,15 @@ export interface TaskStartChoice {
   readonly model?: string | undefined;
   readonly persona?: TaskPersona | undefined;
   readonly memory?: TaskMemory | undefined;
+  readonly log?: TaskLog | undefined;
   readonly tools?: readonly string[] | undefined;
   readonly report?: TaskReport | undefined;
   readonly reportShape?: unknown;
   readonly limits?:
-    | { readonly turns?: number | undefined; readonly dollars?: number | undefined }
+    | {
+        readonly turns?: number | undefined;
+        readonly dollars?: number | undefined;
+      }
     | undefined;
 }
 
@@ -43,8 +48,13 @@ export type TaskStartChoiceRefusal =
     }
   | { readonly reason: 'stranger_with_memory' }
   | { readonly reason: 'wider_memory' }
+  | { readonly reason: 'wider_log' }
   | { readonly reason: 'wider_persona' }
-  | { readonly reason: 'over_limit'; readonly limit: keyof TaskLimits; readonly max: number }
+  | {
+      readonly reason: 'over_limit';
+      readonly limit: keyof TaskLimits;
+      readonly max: number;
+    }
   | { readonly reason: 'report_shape'; readonly fault: ShapeFault }
   | ToolRefusal;
 
@@ -56,6 +66,7 @@ export interface TaskStarter {
   readonly tools: readonly string[];
   readonly memory: TaskMemory;
   readonly persona: TaskPersona;
+  readonly log: TaskLog;
 }
 
 export function planTaskStart(
@@ -75,7 +86,11 @@ export function planTaskStart(
   }
 
   if (model !== null && model.missing.length > 0) {
-    return refuse({ reason: 'harness_misfit', model: model.name, missing: model.missing });
+    return refuse({
+      reason: 'harness_misfit',
+      model: model.name,
+      missing: model.missing,
+    });
   }
 
   // A task gets the persona only when its starter has it, so a stranger's tasks are strangers too.
@@ -97,6 +112,13 @@ export function planTaskStart(
     return refuse({ reason: 'wider_memory' });
   }
 
+  // Like memory, the log reaches a task through its options and no tool.
+  const log = choice.log ?? 'own';
+
+  if (log === 'conversation' && starter.log !== 'conversation') {
+    return refuse({ reason: 'wider_log' });
+  }
+
   const shape = choice.reportShape === undefined ? null : checkReportShape(choice.reportShape);
 
   if (shape?.status === 'refused') {
@@ -111,7 +133,11 @@ export function planTaskStart(
   const over = (['turns', 'dollars'] as const).find((key) => limits[key] > bounds.limits.max[key]);
 
   if (over !== undefined) {
-    return refuse({ reason: 'over_limit', limit: over, max: bounds.limits.max[over] });
+    return refuse({
+      reason: 'over_limit',
+      limit: over,
+      max: bounds.limits.max[over],
+    });
   }
 
   const asked =
@@ -152,6 +178,7 @@ export function planTaskStart(
       profile: model?.profile ?? null,
       persona,
       memory,
+      log,
       tools: [...new Set(tools)].filter(
         (tool) => tool === taskReportToolName || starterTools.includes(tool),
       ),

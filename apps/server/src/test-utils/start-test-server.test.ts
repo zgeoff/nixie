@@ -127,6 +127,7 @@ test('it serves the tools it is given, and passes each call through the decision
     toolUseMetaKey: null,
     runID: 'run-1',
     thread: 'conversation',
+    logThread: 'conversation',
     tools: ['notes_read'],
     model: { model: 'claude-test-1', profile: 'chat-direct' },
   });

@@ -22,7 +22,12 @@ export function makeCheckTaskStart(options: CheckTaskStartOptions): CheckTaskSta
 
   return (input: SandboxStartInput, starter) => {
     const tools = starter === 'file' ? options.toolNames : options.conversationTools;
-    const plan = start.plan(input, { tools, memory: 'read', persona: 'default' }, options.bounds);
+
+    const plan = start.plan(
+      input,
+      { tools, memory: 'read', persona: 'default', log: 'conversation' },
+      options.bounds,
+    );
 
     return plan.status === 'refused'
       ? { status: 'refused', reasons: [plan.sentence] }

@@ -86,6 +86,7 @@ test('it lists each proposal that skill_write made, oldest first, as a new skill
   const run = {
     runID: 'run-1',
     thread: 'conversation',
+    logThread: 'conversation',
     tools: [],
     model: { model: 'test-model', profile: 'standard' },
   };
@@ -193,6 +194,7 @@ test('it declares read, runs direct, and writes no record, so it never changes a
   const run = {
     runID: 'run-1',
     thread: 'conversation',
+    logThread: 'conversation',
     tools: [],
     model: { model: 'test-model', profile: 'standard' },
   };
@@ -315,6 +317,7 @@ test('it leaves out a proposal that an approval, a rejection or a lapse closed',
       run: {
         runID: 'run-1',
         thread: 'conversation',
+        logThread: 'conversation',
         tools: [],
         model: { model: 'test-model', profile: 'standard' },
       },

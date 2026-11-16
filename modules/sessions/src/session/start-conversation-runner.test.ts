@@ -676,6 +676,7 @@ test('it clears every web fetch pause on a forget, so the next fetch of a paused
         run: {
           runID: 'conversation',
           thread: 'conversation',
+          logThread: 'conversation',
           tools: ['web_fetch'],
           model: { model: 'model-a', profile: 'chat-direct' },
           session: { key: 'session-a', invalidatedThrough: 0 },
@@ -765,6 +766,7 @@ test('it records the model and the profile on the turn end and on every tool cal
       toolUseMetaKey: 'claudecode/toolUseId',
       runID: 'conversation',
       thread: 'conversation',
+      logThread: 'conversation',
       tools: ['notes_read'],
       model: { model: 'claude-test-1', profile: 'chat-direct' },
     },

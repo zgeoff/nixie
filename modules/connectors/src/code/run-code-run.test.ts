@@ -37,6 +37,7 @@ async function setupTest() {
   const baseRun: ToolRun = {
     runID: 'run-1',
     thread: 'task-1',
+    logThread: 'task-1',
     tools: ['code.run'],
     model: { model: 'model-a', profile: 'chat-direct' },
   };

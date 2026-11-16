@@ -94,6 +94,7 @@ async function setupTest(answer: (url: string) => FetchReply, options: SetupOpti
             run: {
               runID: 'run-1',
               thread: 'conversation',
+              logThread: 'conversation',
               tools: [],
               model: { model: 'model-a', profile: 'chat-direct' },
             },

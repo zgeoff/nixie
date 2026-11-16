@@ -55,6 +55,7 @@ test("it fetches through a new fetcher process in a test build's fetch sandbox, 
       run: {
         runID: 'run-1',
         thread: 'conversation',
+        logThread: 'conversation',
         tools: ['web_fetch'],
         model: { model: 'model-a', profile: 'chat-direct' },
       },
@@ -174,6 +175,7 @@ test("it stores a page past the web fetch's text limit whole, in parts of that l
   const run = {
     runID: 'run-1',
     thread: 'conversation',
+    logThread: 'conversation',
     tools: ['web_fetch'],
     model: { model: 'model-a', profile: 'chat-direct' },
   };
@@ -272,6 +274,7 @@ test('it keeps the whole text of a page whose text decodes to 3 times its body b
       run: {
         runID: 'run-1',
         thread: 'conversation',
+        logThread: 'conversation',
         tools: ['web_fetch'],
         model: { model: 'model-a', profile: 'chat-direct' },
       },
@@ -343,6 +346,7 @@ test('it creates the web fetch sandbox and the skill fetch sandbox at the fetch 
       run: {
         runID: 'run-1',
         thread: 'conversation',
+        logThread: 'conversation',
         tools: ['web_fetch'],
         model: { model: 'model-a', profile: 'chat-direct' },
       },

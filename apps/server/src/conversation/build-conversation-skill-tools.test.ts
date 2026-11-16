@@ -105,6 +105,7 @@ test("it reads a skill on the conversation's list for the conversation", async (
       run: {
         runID: 'run-1',
         thread: 'conversation',
+        logThread: 'conversation',
         tools: [],
         model: { model: 'test-model', profile: 'standard' },
       },
@@ -138,6 +139,7 @@ test('it refuses a skill to a run on another thread of the endpoint', async () =
       run: {
         runID: 'run-2',
         thread: 'task-a',
+        logThread: 'task-a',
         tools: [],
         model: { model: 'test-model', profile: 'standard' },
       },
@@ -173,6 +175,7 @@ test('it reads the new text of a skill after a reload that seeds the changed fil
   const run = {
     runID: 'run-1',
     thread: 'conversation',
+    logThread: 'conversation',
     tools: [],
     model: { model: 'test-model', profile: 'standard' },
   };

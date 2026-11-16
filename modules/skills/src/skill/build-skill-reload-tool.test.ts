@@ -84,6 +84,7 @@ test('it reloads the skill its input names, with a result the output schema acce
       run: {
         runID: 'run-1',
         thread: 'task-a',
+        logThread: 'task-a',
         tools: [],
         model: { model: 'test-model', profile: 'standard' },
       },

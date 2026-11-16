@@ -39,6 +39,7 @@ test('it reads the starter, the options and the limits of a started task', async
       profile: null,
       persona: 'default',
       memory: 'read',
+      log: 'own',
       tools: ['tasks.list', 'task.message', 'task.report', 'time.now'],
       report: 'wake',
       limits: { turns: 12, dollars: 3 },

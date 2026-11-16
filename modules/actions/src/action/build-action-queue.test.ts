@@ -41,6 +41,7 @@ test('it queues a call that a step makes under that step and returns its action 
       run: {
         runID: stepInput.taskID,
         thread: stepInput.taskID,
+        logThread: stepInput.taskID,
         tools: ['test.send'],
         model: { model: 'model-a', profile: 'chat-direct' },
         stepRunID: buildStepRunID(stepInput),
@@ -94,6 +95,7 @@ test('it returns the action a step queued when its rerun makes the same call', a
       run: {
         runID: stepInput.taskID,
         thread: stepInput.taskID,
+        logThread: stepInput.taskID,
         tools: ['test.send'],
         model: { model: 'model-a', profile: 'chat-direct' },
         stepRunID: buildStepRunID(stepInput),
@@ -145,6 +147,7 @@ test('it refuses a call on a thread where no step runs', async () => {
       run: {
         runID: stepInput.taskID,
         thread: stepInput.taskID,
+        logThread: stepInput.taskID,
         tools: ['test.send'],
         model: { model: 'model-a', profile: 'chat-direct' },
         stepRunID: buildStepRunID(stepInput),
@@ -188,6 +191,7 @@ test('it forgets the step once it ends, so a later call queues nothing', async (
       run: {
         runID: stepInput.taskID,
         thread: stepInput.taskID,
+        logThread: stepInput.taskID,
         tools: ['test.send'],
         model: { model: 'model-a', profile: 'chat-direct' },
         stepRunID: buildStepRunID(stepInput),
@@ -230,6 +234,7 @@ test('it refuses a call from a step whose claim a takeover replaced, and queues 
       run: {
         runID: stepInput.taskID,
         thread: stepInput.taskID,
+        logThread: stepInput.taskID,
         tools: ['test.send'],
         model: { model: 'model-a', profile: 'chat-direct' },
         stepRunID: buildStepRunID(stepInput),
@@ -277,6 +282,7 @@ test('it refuses a call that carries no step run ID, and queues nothing', async 
       run: {
         runID: stepInput.taskID,
         thread: stepInput.taskID,
+        logThread: stepInput.taskID,
         tools: ['test.send'],
         model: { model: 'model-a', profile: 'chat-direct' },
       },
@@ -323,6 +329,7 @@ test('it gives no outcome for an action still pending when the wait ends', async
       run: {
         runID: stepInput.taskID,
         thread: stepInput.taskID,
+        logThread: stepInput.taskID,
         tools: ['test.send'],
         model: { model: 'model-a', profile: 'chat-direct' },
         stepRunID: buildStepRunID(stepInput),
@@ -385,6 +392,7 @@ test.each([
         run: {
           runID: stepInput.taskID,
           thread: stepInput.taskID,
+          logThread: stepInput.taskID,
           tools: ['test.send'],
           model: { model: 'model-a', profile: 'chat-direct' },
           stepRunID: buildStepRunID(stepInput),
@@ -441,6 +449,7 @@ test('it gives a cancelled outcome for an action that a stop of its task cancell
       run: {
         runID: stepInput.taskID,
         thread: stepInput.taskID,
+        logThread: stepInput.taskID,
         tools: ['test.send'],
         model: { model: 'model-a', profile: 'chat-direct' },
         stepRunID: buildStepRunID(stepInput),

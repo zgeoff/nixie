@@ -34,13 +34,16 @@ const logReadImageOutput = {
   additionalProperties: false,
 };
 
-const logReadImageArguments = z.object({ eventID: z.string(), number: z.int() });
+const logReadImageArguments = z.object({
+  eventID: z.string(),
+  number: z.int(),
+});
 
 export function buildLogReadImageTool(log: Pick<Log, 'deploymentKey' | 'writer'>): ToolDefinition {
   return {
     name: 'log.read_image',
     description:
-      'Shows you one image the owner attached to a message in this conversation, by the eventID ' +
+      'Shows you one image the owner attached to a message of the thread that log.read reads, by the eventID ' +
       'of the message and the number of the image: the n of its <dropped-image> marker (log.read), or ' +
       'the n an image of a moment.read record or a memory.recall item names. Open an image only when seeing it would change your ' +
       'answer. It returns image unavailable once the owner forgot the message, when the ' +
@@ -53,7 +56,11 @@ export function buildLogReadImageTool(log: Pick<Log, 'deploymentKey' | 'writer'>
       destinations: [],
       amount: null,
       content: [],
-      results: { eventID: 'owner_data', number: 'owner_data', mediaType: 'owner_data' },
+      results: {
+        eventID: 'owner_data',
+        number: 'owner_data',
+        mediaType: 'owner_data',
+      },
     },
     execution: 'direct',
 
@@ -62,7 +69,7 @@ export function buildLogReadImageTool(log: Pick<Log, 'deploymentKey' | 'writer'>
       const eventID = input.eventID.replace(/^#/u, '');
 
       const image = await readOwnerImage(log, {
-        thread: context.run.thread,
+        thread: context.run.logThread,
         sequence: Number(eventID),
         position: input.number - 1,
       });

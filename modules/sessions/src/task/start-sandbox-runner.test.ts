@@ -449,9 +449,30 @@ test("it runs a started task's tool run on its own ID with the tools it is given
       toolUseMetaKey: 'claudecode/toolUseId',
       runID: taskID,
       thread: taskID,
+      logThread: taskID,
       tools: ['tasks.list', 'task.message', 'task.report', 'time.now', 'turn.end_silently'],
       model: { model: 'claude-test-errands', profile: 'errands' },
     },
+  ]);
+});
+
+test("it runs a started task with the conversation's log on the conversation's log thread, and its own thread", async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seed.conversationStep();
+
+  const taskID = await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Note taker',
+    brief: 'Save what is worth keeping.',
+    options: { log: 'conversation' },
+  });
+
+  const runner = await ctx.startRunner();
+
+  await ctx.runNextStep(runner);
+
+  expect(ctx.runs).toStrictEqual([
+    expect.objectContaining({ runID: taskID, thread: taskID, logThread: 'conversation' }),
   ]);
 });
 
@@ -922,6 +943,7 @@ test("it runs a task on its chosen model's profile, through that profile's host,
       toolUseMetaKey: 'claudecode/toolUseId',
       runID: taskID,
       thread: taskID,
+      logThread: taskID,
       tools: ['tasks.list', 'task.message', 'web_fetch', 'turn.end_silently', 'task.report'],
       model: { model: 'other-family-test-3', profile: 'router-b' },
     },

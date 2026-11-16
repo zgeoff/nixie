@@ -17,6 +17,7 @@ test('it picks only the tasks that read memory for a forgotten memory item or a 
               profile: null,
               persona: 'default',
               memory: 'read',
+              log: 'own',
               tools: ['tasks.list', 'task.message'],
               report: 'wake',
               limits: { turns: 25, dollars: 2 },
@@ -36,6 +37,7 @@ test('it picks only the tasks that read memory for a forgotten memory item or a 
               profile: null,
               persona: 'none',
               memory: 'none',
+              log: 'own',
               tools: ['tasks.list', 'task.message'],
               report: 'wake',
               limits: { turns: 25, dollars: 2 },
@@ -118,6 +120,7 @@ test.each([
         profile: null,
         persona: 'default' as const,
         memory,
+        log: 'own' as const,
         tools: ['tasks.list', 'task.message'],
         report: 'wake' as const,
         limits: { turns: 25, dollars: 2 },
@@ -125,6 +128,37 @@ test.each([
       limits: { turns: 25, dollars: 2 },
     },
   }));
+
+  expect(pickCleanedTaskIDs(candidates, thread)).toStrictEqual(expected);
+});
+
+test.each([
+  ['a conversation record and a task with the grant', 'conversation', 'conversation', ['wave-log']],
+  ['a conversation record and a task without the grant', 'conversation', 'own', []],
+  ['a record of another thread and a task with the grant', 'reef-census', 'conversation', []],
+] as const)('it picks the tasks for %s', (_title, thread, log, expected) => {
+  const candidates = [
+    {
+      taskID: 'wave-log',
+      setup: {
+        kind: 'started' as const,
+        runner: 'sandbox',
+        startedBy: 'conversation',
+        report: 'wake' as const,
+        options: {
+          model: null,
+          profile: null,
+          persona: 'default' as const,
+          memory: 'none' as const,
+          log,
+          tools: ['tasks.list', 'task.message'],
+          report: 'wake' as const,
+          limits: { turns: 25, dollars: 2 },
+        },
+        limits: { turns: 25, dollars: 2 },
+      },
+    },
+  ];
 
   expect(pickCleanedTaskIDs(candidates, thread)).toStrictEqual(expected);
 });

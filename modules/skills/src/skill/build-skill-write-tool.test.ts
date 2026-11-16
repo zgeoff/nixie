@@ -85,6 +85,7 @@ test('it proposes a new skill for review and records its files and the run that 
       run: {
         runID: 'run-1',
         thread: 'conversation',
+        logThread: 'conversation',
         tools: [],
         model: { model: 'test-model', profile: 'standard' },
       },
@@ -178,6 +179,7 @@ test('it records the version in force that a change to a skill would replace', a
       run: {
         runID: 'run-1',
         thread: 'conversation',
+        logThread: 'conversation',
         tools: [],
         model: { model: 'test-model', profile: 'standard' },
       },
@@ -248,6 +250,7 @@ test('it records a destination the owner never typed and the definitions lack', 
       run: {
         runID: 'run-1',
         thread: 'conversation',
+        logThread: 'conversation',
         tools: [],
         model: { model: 'test-model', profile: 'standard' },
       },
@@ -305,6 +308,7 @@ test('it records an untyped destination that only a reference file holds', async
       run: {
         runID: 'run-1',
         thread: 'conversation',
+        logThread: 'conversation',
         tools: [],
         model: { model: 'test-model', profile: 'standard' },
       },
@@ -365,6 +369,7 @@ test('it refuses 2 files at one path, and records no proposal', async () => {
       run: {
         runID: 'run-1',
         thread: 'conversation',
+        logThread: 'conversation',
         tools: [],
         model: { model: 'test-model', profile: 'standard' },
       },
@@ -425,6 +430,7 @@ test('it records no untyped token for a destination that the persona holds', asy
       run: {
         runID: 'run-1',
         thread: 'conversation',
+        logThread: 'conversation',
         tools: [],
         model: { model: 'test-model', profile: 'standard' },
       },
@@ -490,6 +496,7 @@ test('it records no untyped token for a destination that a skill in force holds 
       run: {
         runID: 'run-1',
         thread: 'conversation',
+        logThread: 'conversation',
         tools: [],
         model: { model: 'test-model', profile: 'standard' },
       },
@@ -544,6 +551,7 @@ test('it refuses a skill that fails a seed check, and records no proposal', asyn
       run: {
         runID: 'run-1',
         thread: 'conversation',
+        logThread: 'conversation',
         tools: [],
         model: { model: 'test-model', profile: 'standard' },
       },
@@ -605,6 +613,7 @@ test('it refuses a skill with every problem the seed checks find, and records no
       run: {
         runID: 'run-1',
         thread: 'conversation',
+        logThread: 'conversation',
         tools: [],
         model: { model: 'test-model', profile: 'standard' },
       },
@@ -671,6 +680,7 @@ test('it refuses files that match the version in force', async () => {
       run: {
         runID: 'run-1',
         thread: 'conversation',
+        logThread: 'conversation',
         tools: [],
         model: { model: 'test-model', profile: 'standard' },
       },
@@ -713,6 +723,7 @@ test('it refuses a write before the first seed', async () => {
       run: {
         runID: 'run-1',
         thread: 'conversation',
+        logThread: 'conversation',
         tools: [],
         model: { model: 'test-model', profile: 'standard' },
       },

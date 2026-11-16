@@ -10,6 +10,7 @@ export function buildMockToolContext(overrides: MockToolContextOverrides = {}): 
     run: {
       runID: faker.string.uuid(),
       thread: 'conversation',
+      logThread: 'conversation',
       tools: [],
       model: { model: 'test-model', profile: 'standard' },
       ...overrides.run,

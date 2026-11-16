@@ -51,7 +51,7 @@ export interface DefinitionVersion {
   readonly profile: string | null;
   readonly persona: TaskPersona;
   readonly memory: TaskMemory;
-  readonly log: 'own' | 'conversation';
+  readonly log: TaskLog;
   readonly tools: readonly string[];
   readonly context: 'fresh' | 'continuing';
   readonly wakeable: boolean;
@@ -153,12 +153,15 @@ export interface TaskLimits {
   readonly dollars: number;
 }
 
+export type TaskLog = 'own' | 'conversation';
+
 export interface TaskRunOptions {
   readonly model: string | null;
 
   readonly profile: string | null;
   readonly persona: TaskPersona;
   readonly memory: TaskMemory;
+  readonly log: TaskLog;
   readonly tools: readonly string[];
   readonly report: TaskReport;
   readonly limits: TaskLimits;
@@ -180,7 +183,10 @@ export interface TaskStartBounds {
   readonly models: readonly TaskModelChoice[];
   readonly limits: { readonly default: TaskLimits; readonly max: TaskLimits };
 
-  readonly memoryTools: { readonly read: readonly string[]; readonly write: readonly string[] };
+  readonly memoryTools: {
+    readonly read: readonly string[];
+    readonly write: readonly string[];
+  };
   readonly conversationTools: readonly string[];
 
   // how a task reports when its start sets no report
@@ -217,7 +223,10 @@ export interface StepResult {
       readonly used: number;
       readonly limit: number;
     };
-    readonly report?: { readonly summary: string; readonly fields?: JSONObject };
+    readonly report?: {
+      readonly summary: string;
+      readonly fields?: JSONObject;
+    };
   };
   readonly records: readonly RecordInput[];
   readonly acknowledged: readonly number[];

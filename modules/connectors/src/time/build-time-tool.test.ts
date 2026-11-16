@@ -10,6 +10,7 @@ test('it answers in the zone of the newest message', async () => {
     run: {
       runID: 'run-1',
       thread: 'conversation',
+      logThread: 'conversation',
       tools: ['time.now'],
       model: { model: 'model-a', profile: 'chat-direct' },
     },
@@ -42,6 +43,7 @@ test('it answers in the configured default zone when no message carries a zone',
     run: {
       runID: 'run-1',
       thread: 'conversation',
+      logThread: 'conversation',
       tools: ['time.now'],
       model: { model: 'model-a', profile: 'chat-direct' },
     },
@@ -74,6 +76,7 @@ test('it gives a zone at UTC itself an offset of +00:00', async () => {
     run: {
       runID: 'run-1',
       thread: 'conversation',
+      logThread: 'conversation',
       tools: ['time.now'],
       model: { model: 'model-a', profile: 'chat-direct' },
     },
@@ -99,6 +102,7 @@ test('it passes the registry rules, with a result the output schema accepts', as
     run: {
       runID: 'run-1',
       thread: 'conversation',
+      logThread: 'conversation',
       tools: ['time.now'],
       model: { model: 'model-a', profile: 'chat-direct' },
     },

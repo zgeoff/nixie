@@ -14,6 +14,7 @@ test('it serves notes_read, which returns the note given', async () => {
       run: {
         runID: 'run-1',
         thread: 'conversation',
+        logThread: 'conversation',
         tools: ['notes_read'],
         model: { model: 'claude-test-1', profile: 'chat-direct' },
       },

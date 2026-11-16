@@ -47,6 +47,7 @@ test("it lists only the run's tools, each with its name, description and input s
     toolUseMetaKey: null,
     runID: 'run-1',
     thread: 'task-1',
+    logThread: 'task-1',
     tools: ['notes_read'],
     model: { model: 'model-a', profile: 'chat-direct' },
   });
@@ -80,6 +81,7 @@ test('it denies a registered tool missing from the run list at the scope stage w
     toolUseMetaKey: null,
     runID: 'run-1',
     thread: 'task-1',
+    logThread: 'task-1',
     tools: ['notes_read'],
     model: { model: 'model-a', profile: 'chat-direct' },
   });
@@ -105,6 +107,7 @@ test("it records the tool-use ID that the call carries under the run's _meta key
     runID: 'run-1',
     toolUseMetaKey: 'example/toolUseId',
     thread: 'task-1',
+    logThread: 'task-1',
     tools: ['notes_read'],
     model: { model: 'model-a', profile: 'chat-direct' },
   });
@@ -134,6 +137,7 @@ test('it records no tool-use ID for a run whose guest sends none', async () => {
     runID: 'run-1',
     toolUseMetaKey: null,
     thread: 'task-1',
+    logThread: 'task-1',
     tools: ['notes_read'],
     model: { model: 'model-a', profile: 'chat-direct' },
   });
@@ -163,6 +167,7 @@ test('it returns a typed result to the client as structured content with no text
     toolUseMetaKey: null,
     runID: 'run-1',
     thread: 'task-1',
+    logThread: 'task-1',
     tools: ['notes_read'],
     model: { model: 'model-a', profile: 'chat-direct' },
   });
@@ -180,6 +185,7 @@ test('it refuses a request with no bearer token', async () => {
     toolUseMetaKey: null,
     runID: 'run-1',
     thread: 'task-1',
+    logThread: 'task-1',
     tools: ['notes_read'],
     model: { model: 'model-a', profile: 'chat-direct' },
   });
@@ -201,6 +207,7 @@ test("it refuses another run's token on this run's socket", async () => {
     toolUseMetaKey: null,
     runID: 'run-a',
     thread: 'task-a',
+    logThread: 'task-a',
     tools: ['notes_read'],
     model: { model: 'model-a', profile: 'chat-direct' },
   });
@@ -209,6 +216,7 @@ test("it refuses another run's token on this run's socket", async () => {
     toolUseMetaKey: null,
     runID: 'run-b',
     thread: 'task-b',
+    logThread: 'task-b',
     tools: ['notes_read'],
     model: { model: 'model-a', profile: 'chat-direct' },
   });
@@ -230,6 +238,7 @@ test('it revokes the run token when the run ends, so a restarted run refuses the
     toolUseMetaKey: null,
     runID: 'run-1',
     thread: 'task-1',
+    logThread: 'task-1',
     tools: ['notes_read'],
     model: { model: 'model-a', profile: 'chat-direct' },
   });
@@ -240,6 +249,7 @@ test('it revokes the run token when the run ends, so a restarted run refuses the
     toolUseMetaKey: null,
     runID: 'run-1',
     thread: 'task-1',
+    logThread: 'task-1',
     tools: ['notes_read'],
     model: { model: 'model-a', profile: 'chat-direct' },
   });
@@ -264,6 +274,7 @@ test('it hands each call the run identity of the step whose token the call carri
     toolUseMetaKey: null,
     runID: 'run-1',
     thread: 'task-1',
+    logThread: 'task-1',
     tools: ['notes_read'],
     model: { model: 'model-a', profile: 'chat-direct' },
   });
@@ -278,6 +289,7 @@ test('it hands each call the run identity of the step whose token the call carri
     run: {
       runID: 'run-1',
       thread: 'task-1',
+      logThread: 'task-1',
       tools: ['notes_read'],
       model: { model: 'model-a', profile: 'chat-direct' },
       stepRunID: 'task-1:3@2',
@@ -294,6 +306,7 @@ test('it hands each call the session its step token names', async () => {
     toolUseMetaKey: null,
     runID: 'run-1',
     thread: 'task-1',
+    logThread: 'task-1',
     tools: ['notes_read'],
     model: { model: 'model-a', profile: 'chat-direct' },
   });
@@ -308,6 +321,7 @@ test('it hands each call the session its step token names', async () => {
     run: {
       runID: 'run-1',
       thread: 'task-1',
+      logThread: 'task-1',
       tools: ['notes_read'],
       model: { model: 'model-a', profile: 'chat-direct' },
       stepRunID: 'task-1:3@2',
@@ -325,6 +339,7 @@ test('it hands a call under the run token no step run identity', async () => {
     toolUseMetaKey: null,
     runID: 'run-1',
     thread: 'task-1',
+    logThread: 'task-1',
     tools: ['notes_read'],
     model: { model: 'model-a', profile: 'chat-direct' },
   });
@@ -339,6 +354,7 @@ test('it hands a call under the run token no step run identity', async () => {
     run: {
       runID: 'run-1',
       thread: 'task-1',
+      logThread: 'task-1',
       tools: ['notes_read'],
       model: { model: 'model-a', profile: 'chat-direct' },
     },
@@ -352,6 +368,7 @@ test('it refuses a step token once its step stops', async () => {
     toolUseMetaKey: null,
     runID: 'run-1',
     thread: 'task-1',
+    logThread: 'task-1',
     tools: ['notes_read'],
     model: { model: 'model-a', profile: 'chat-direct' },
   });
@@ -377,6 +394,7 @@ test('it keeps the run token when a step stops', async () => {
     toolUseMetaKey: null,
     runID: 'run-1',
     thread: 'task-1',
+    logThread: 'task-1',
     tools: ['notes_read'],
     model: { model: 'model-a', profile: 'chat-direct' },
   });
@@ -398,6 +416,7 @@ test("it keeps another step's token when one step stops", async () => {
     toolUseMetaKey: null,
     runID: 'run-1',
     thread: 'task-1',
+    logThread: 'task-1',
     tools: ['notes_read'],
     model: { model: 'model-a', profile: 'chat-direct' },
   });
@@ -420,6 +439,7 @@ test('it stops listening on the run socket when the run ends', async () => {
     toolUseMetaKey: null,
     runID: 'run-1',
     thread: 'task-1',
+    logThread: 'task-1',
     tools: ['notes_read'],
     model: { model: 'model-a', profile: 'chat-direct' },
   });
@@ -442,6 +462,7 @@ test('it refuses a second endpoint for a run that has one', async () => {
     toolUseMetaKey: null,
     runID: 'run-1',
     thread: 'task-1',
+    logThread: 'task-1',
     tools: ['notes_read'],
     model: { model: 'model-a', profile: 'chat-direct' },
   });
@@ -451,6 +472,7 @@ test('it refuses a second endpoint for a run that has one', async () => {
       toolUseMetaKey: null,
       runID: 'run-1',
       thread: 'task-1',
+      logThread: 'task-1',
       tools: ['notes_read'],
       model: { model: 'model-a', profile: 'chat-direct' },
     }),
@@ -480,6 +502,7 @@ test("it leaves a later writer's socket for the same run in place when its run s
     toolUseMetaKey: null,
     runID: 'conversation',
     thread: 'conversation',
+    logThread: 'conversation',
     tools: ['notes_read'],
     model: { model: 'model-a', profile: 'chat-direct' },
   });
@@ -488,6 +511,7 @@ test("it leaves a later writer's socket for the same run in place when its run s
     toolUseMetaKey: null,
     runID: 'conversation',
     thread: 'conversation',
+    logThread: 'conversation',
     tools: ['notes_read'],
     model: { model: 'model-a', profile: 'chat-direct' },
   });
@@ -511,6 +535,7 @@ test('it gives a sandbox the socket of the run that owns it', async () => {
     toolUseMetaKey: null,
     runID: 'run-1',
     thread: 'task-1',
+    logThread: 'task-1',
     tools: ['notes_read'],
     model: { model: 'model-a', profile: 'chat-direct' },
   });
@@ -543,6 +568,7 @@ test('it gives a sandbox the socket of a run that another endpoint of the same w
     toolUseMetaKey: null,
     runID: 'sweeper',
     thread: 'sweeper',
+    logThread: 'sweeper',
     tools: ['notes_read'],
     model: { model: 'model-a', profile: 'chat-direct' },
   });
@@ -559,6 +585,7 @@ test('it sends the listen acknowledgement while the listen stream stays open', a
     toolUseMetaKey: null,
     runID: 'run-1',
     thread: 'task-1',
+    logThread: 'task-1',
     tools: ['notes_read'],
     model: { model: 'model-a', profile: 'chat-direct' },
   });

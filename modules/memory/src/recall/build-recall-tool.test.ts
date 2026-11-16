@@ -35,6 +35,7 @@ async function setupTest(config: TestMemoryOptions = {}) {
     run: {
       runID: 'run-1',
       thread: 'conversation',
+      logThread: 'conversation',
       tools: [],
       model: { model: 'test-model', profile: 'standard' },
     },

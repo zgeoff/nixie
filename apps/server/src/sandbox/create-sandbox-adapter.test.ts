@@ -103,6 +103,7 @@ test("it routes a guest to its run's endpoint in a test build, passing each chun
     toolUseMetaKey: null,
     runID: 'run-1',
     thread: 'task-1',
+    logThread: 'task-1',
     tools: [],
     model,
   });

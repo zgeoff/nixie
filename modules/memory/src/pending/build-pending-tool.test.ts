@@ -60,6 +60,7 @@ test('it lists a pending proposal from the conversation and one from a task, eac
     {
       runID: 'run-1',
       thread: 'conversation',
+      logThread: 'conversation',
       tools: ['memory.pending'],
       model: { model: 'test-model', profile: 'standard' },
     },
@@ -113,6 +114,7 @@ test('it leaves out a proposal the owner approved and one the owner rejected', a
     {
       runID: 'run-1',
       thread: 'conversation',
+      logThread: 'conversation',
       tools: ['memory.pending'],
       model: { model: 'test-model', profile: 'standard' },
     },
@@ -152,6 +154,7 @@ test('it names both proposers of a conversation write that merged into a task pr
     {
       runID: 'run-1',
       thread: 'conversation',
+      logThread: 'conversation',
       tools: ['memory.pending'],
       model: { model: 'test-model', profile: 'standard' },
     },
@@ -185,6 +188,7 @@ test('it names the item that a pending edit changes by its short ID, and the ver
     {
       runID: 'run-1',
       thread: 'conversation',
+      logThread: 'conversation',
       tools: ['memory.pending'],
       model: { model: 'test-model', profile: 'standard' },
     },
@@ -228,6 +232,7 @@ test('it lists a pending retirement with the text of the item it retires', async
     {
       runID: 'run-1',
       thread: 'conversation',
+      logThread: 'conversation',
       tools: ['memory.pending'],
       model: { model: 'test-model', profile: 'standard' },
     },
@@ -268,6 +273,7 @@ test('it lists a pending pin with the text of the item it pins', async () => {
     {
       runID: 'run-1',
       thread: 'conversation',
+      logThread: 'conversation',
       tools: ['memory.pending'],
       model: { model: 'test-model', profile: 'standard' },
     },
@@ -308,6 +314,7 @@ test.each([
     {
       runID: 'run-1',
       thread: 'conversation',
+      logThread: 'conversation',
       tools: ['memory.pending'],
       model: { model: 'test-model', profile: 'standard' },
     },
@@ -325,6 +332,7 @@ test('it lists nothing when no proposal waits', async () => {
     {
       runID: 'run-1',
       thread: 'conversation',
+      logThread: 'conversation',
       tools: ['memory.pending'],
       model: { model: 'test-model', profile: 'standard' },
     },
@@ -343,6 +351,7 @@ test('it records only the proposal IDs, never the proposed text', async () => {
     {
       runID: 'run-1',
       thread: 'conversation',
+      logThread: 'conversation',
       tools: ['memory.pending'],
       model: { model: 'test-model', profile: 'standard' },
     },
@@ -376,6 +385,7 @@ test('it maps the short ID of each proposal to its UUID under hidden, outside th
     {
       runID: 'run-1',
       thread: 'conversation',
+      logThread: 'conversation',
       tools: ['memory.pending'],
       model: { model: 'test-model', profile: 'standard' },
     },
@@ -406,6 +416,7 @@ test('it stores no hidden field when no proposal waits', async () => {
     {
       runID: 'run-1',
       thread: 'conversation',
+      logThread: 'conversation',
       tools: ['memory.pending'],
       model: { model: 'test-model', profile: 'standard' },
     },

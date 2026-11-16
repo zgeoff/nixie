@@ -1,3 +1,4 @@
+import { conversationTaskID } from '@heynixie/tasks';
 import type { TaskSetup } from '@heynixie/tasks';
 
 export interface CleanupCandidate {
@@ -5,9 +6,9 @@ export interface CleanupCandidate {
   readonly setup: TaskSetup | null;
 }
 
-// A task is picked for 1 of 3 reasons: it reads memory, so it can hold a forgotten item in its
-// session, it is a definition's task, whose version may read memory in a later task run, or its
-// thread holds the forgotten record, so its session holds that record's text.
+// A task is picked when it reads memory, is a definition's task, whose version may read memory in a
+// later task run, holds the forgotten record on its thread, or holds the log grant while the record
+// sits on the conversation's thread. Each way leaves the record's text in its session.
 export function pickCleanedTaskIDs(
   candidates: readonly CleanupCandidate[],
   recordThread: string | null,
@@ -17,6 +18,9 @@ export function pickCleanedTaskIDs(
       (candidate) =>
         (candidate.setup?.kind === 'started' && candidate.setup.options?.memory === 'read') ||
         candidate.setup?.kind === 'definition' ||
+        (candidate.setup?.kind === 'started' &&
+          candidate.setup.options?.log === 'conversation' &&
+          recordThread === conversationTaskID) ||
         candidate.taskID === recordThread,
     )
     .map((candidate) => candidate.taskID);

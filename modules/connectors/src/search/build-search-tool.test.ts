@@ -51,6 +51,7 @@ test('it returns each hit with a link ID and a date only on a dated hit, and kee
       run: {
         runID: 'run-1',
         thread: 'conversation',
+        logThread: 'conversation',
         tools: ['search'],
         model: { model: 'model-a', profile: 'chat-direct' },
         session: { key: 'session-a', invalidatedThrough: 0 },
@@ -111,6 +112,7 @@ test('it numbers a hit after the links the session already holds, and gives a kn
       run: {
         runID: 'run-1',
         thread: 'conversation',
+        logThread: 'conversation',
         tools: ['search'],
         model: { model: 'model-a', profile: 'chat-direct' },
         session: { key: 'session-a', invalidatedThrough: 0 },
@@ -159,6 +161,7 @@ test('it gives two hits with one URL the same link ID', async () => {
       run: {
         runID: 'run-1',
         thread: 'conversation',
+        logThread: 'conversation',
         tools: ['search'],
         model: { model: 'model-a', profile: 'chat-direct' },
         session: { key: 'session-a', invalidatedThrough: 0 },
@@ -204,6 +207,7 @@ test('it keys the link IDs of a call under the run token by the run', async () =
       run: {
         runID: 'run-1',
         thread: 'task',
+        logThread: 'task',
         tools: ['search'],
         model: { model: 'model-a', profile: 'chat-direct' },
       },
@@ -250,6 +254,7 @@ test('it refuses a search whose session a forget ended, and stores no link', asy
       run: {
         runID: 'run-1',
         thread: 'conversation',
+        logThread: 'conversation',
         tools: ['search'],
         model: { model: 'model-a', profile: 'chat-direct' },
         session: { key: 'session-a', invalidatedThrough: 0 },
@@ -298,6 +303,7 @@ test.each([
       run: {
         runID: 'run-1',
         thread: 'conversation',
+        logThread: 'conversation',
         tools: ['search'],
         model: { model: 'model-a', profile: 'chat-direct' },
       },
@@ -334,6 +340,7 @@ test('it asks the provider for 10 hits from any site at any time when the call s
       run: {
         runID: 'run-1',
         thread: 'conversation',
+        logThread: 'conversation',
         tools: ['search'],
         model: { model: 'model-a', profile: 'chat-direct' },
       },
@@ -381,6 +388,7 @@ test('it passes the limit, the sites and the freshness the call sets to the prov
       run: {
         runID: 'run-1',
         thread: 'conversation',
+        logThread: 'conversation',
         tools: ['search'],
         model: { model: 'model-a', profile: 'chat-direct' },
       },
@@ -419,6 +427,7 @@ test('it refuses the call past 200 in a day, names the cap and when it resets, a
         run: {
           runID: 'run-1',
           thread: 'conversation',
+          logThread: 'conversation',
           tools: ['search'],
           model: { model: 'model-a', profile: 'chat-direct' },
         },
@@ -434,6 +443,7 @@ test('it refuses the call past 200 in a day, names the cap and when it resets, a
       run: {
         runID: 'run-1',
         thread: 'conversation',
+        logThread: 'conversation',
         tools: ['search'],
         model: { model: 'model-a', profile: 'chat-direct' },
       },
@@ -468,6 +478,7 @@ test('it counts afresh from local midnight', async () => {
       run: {
         runID: 'run-1',
         thread: 'conversation',
+        logThread: 'conversation',
         tools: ['search'],
         model: { model: 'model-a', profile: 'chat-direct' },
       },
@@ -482,6 +493,7 @@ test('it counts afresh from local midnight', async () => {
       run: {
         runID: 'run-1',
         thread: 'conversation',
+        logThread: 'conversation',
         tools: ['search'],
         model: { model: 'model-a', profile: 'chat-direct' },
       },
@@ -513,6 +525,7 @@ test('it refuses a second call before local midnight under a cap of 1', async ()
       run: {
         runID: 'run-1',
         thread: 'conversation',
+        logThread: 'conversation',
         tools: ['search'],
         model: { model: 'model-a', profile: 'chat-direct' },
       },
@@ -527,6 +540,7 @@ test('it refuses a second call before local midnight under a cap of 1', async ()
       run: {
         runID: 'run-1',
         thread: 'conversation',
+        logThread: 'conversation',
         tools: ['search'],
         model: { model: 'model-a', profile: 'chat-direct' },
       },
@@ -562,6 +576,7 @@ test("it returns the provider's failure as an error the model reads", async () =
       run: {
         runID: 'run-1',
         thread: 'conversation',
+        logThread: 'conversation',
         tools: ['search'],
         model: { model: 'model-a', profile: 'chat-direct' },
       },

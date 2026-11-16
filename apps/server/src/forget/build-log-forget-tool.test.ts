@@ -61,6 +61,7 @@ async function setupTest() {
       {
         runID: 'run-1',
         thread: 'conversation',
+        logThread: 'conversation',
         tools: ['log.forget'],
         model: { model: 'claude-test-1', profile: 'chat-direct' },
       },

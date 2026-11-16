@@ -6,6 +6,7 @@ test('it builds a default tool context', () => {
     run: {
       runID: expect.toBeString(),
       thread: 'conversation',
+      logThread: 'conversation',
       tools: [],
       model: { model: expect.toStartWith('claude-'), profile: 'standard' },
     },
@@ -19,6 +20,7 @@ test('it applies overrides on top of the defaults', () => {
     run: {
       runID: expect.toBeString(),
       thread: 'task-3',
+      logThread: 'conversation',
       tools: [],
       model: { model: 'model-a', profile: 'fast' },
     },

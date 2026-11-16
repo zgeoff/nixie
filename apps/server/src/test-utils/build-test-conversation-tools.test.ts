@@ -42,6 +42,7 @@ test('it returns the reply given from every web fetch', async () => {
       run: {
         runID: 'run-1',
         thread: 'conversation',
+        logThread: 'conversation',
         tools: ['web_fetch'],
         model: { model: 'claude-test-1', profile: 'chat-direct' },
       },
@@ -100,6 +101,7 @@ test('it refuses a memory tool call before the store is set', async () => {
         run: {
           runID: 'run-1',
           thread: 'conversation',
+          logThread: 'conversation',
           tools: ['memory.remember'],
           model: { model: 'claude-test-1', profile: 'chat-direct' },
         },
@@ -133,6 +135,7 @@ test('it runs a memory tool call on the store set', async () => {
       run: {
         runID: 'run-1',
         thread: 'conversation',
+        logThread: 'conversation',
         tools: ['memory.remember'],
         model: { model: 'claude-test-1', profile: 'chat-direct' },
       },

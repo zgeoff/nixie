@@ -210,6 +210,7 @@ export type {
   TaskControl,
   TaskControlRefusal,
   TaskLimits,
+  TaskLog,
   TaskMemory,
   TaskMessageKind,
   TaskModelChoice,

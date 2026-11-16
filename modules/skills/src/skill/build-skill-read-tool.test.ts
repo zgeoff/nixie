@@ -75,6 +75,7 @@ test('it returns the instructions without their frontmatter and the list of the 
       run: {
         runID: 'run-1',
         thread: 'conversation',
+        logThread: 'conversation',
         tools: [],
         model: { model: 'test-model', profile: 'standard' },
       },
@@ -157,6 +158,7 @@ test('it returns the file at a path inside the skill folder', async () => {
       run: {
         runID: 'run-1',
         thread: 'conversation',
+        logThread: 'conversation',
         tools: [],
         model: { model: 'test-model', profile: 'standard' },
       },
@@ -217,6 +219,7 @@ test.each([
       run: {
         runID: 'run-1',
         thread: 'conversation',
+        logThread: 'conversation',
         tools: [],
         model: { model: 'test-model', profile: 'standard' },
       },
@@ -267,6 +270,7 @@ test('it refuses a path the skill has no file at', async () => {
       run: {
         runID: 'run-1',
         thread: 'conversation',
+        logThread: 'conversation',
         tools: [],
         model: { model: 'test-model', profile: 'standard' },
       },
@@ -318,6 +322,7 @@ test("it refuses a skill that is off the caller's skill list", async () => {
       run: {
         runID: 'run-1',
         thread: 'task-a',
+        logThread: 'task-a',
         tools: [],
         model: { model: 'test-model', profile: 'standard' },
       },
@@ -365,6 +370,7 @@ test('it reads the version the task first loaded after a seed changes the skill'
       run: {
         runID: 'run-1',
         thread: 'task-a',
+        logThread: 'task-a',
         tools: [],
         model: { model: 'test-model', profile: 'standard' },
       },
@@ -397,6 +403,7 @@ test('it reads the version the task first loaded after a seed changes the skill'
       run: {
         runID: 'run-1',
         thread: 'task-a',
+        logThread: 'task-a',
         tools: [],
         model: { model: 'test-model', profile: 'standard' },
       },

@@ -92,6 +92,7 @@ async function setupTest() {
         {
           runID: 'run-1',
           thread: 'conversation',
+          logThread: 'conversation',
           tools: ['tasks.list', 'task.message', 'task.start', 'time.now'],
           stepRunID: buildStepRunID(step.claim),
           model: { model: 'model-a', profile: 'chat-direct' },

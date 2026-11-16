@@ -98,6 +98,7 @@ test('it moves one skill to the version a fresh seed holds and records its old a
     {
       runID: 'run-1',
       thread: 'task-a',
+      logThread: 'task-a',
       tools: [],
       model: { model: 'test-model', profile: 'standard' },
     },
@@ -209,6 +210,7 @@ test('it moves both skills when 2 reloads of one thread name different skills at
   const run = {
     runID: 'run-1',
     thread: 'task-a',
+    logThread: 'task-a',
     tools: [],
     model: { model: 'test-model', profile: 'standard' as const },
   };
@@ -265,6 +267,7 @@ test('it runs the next reload of a thread after one fails, and gives the failure
   const run = {
     runID: 'run-1',
     thread: 'task-a',
+    logThread: 'task-a',
     tools: [],
     model: { model: 'test-model', profile: 'standard' as const },
   };
@@ -369,6 +372,7 @@ test('it moves every skill, joins one the list gained and drops one the definiti
     {
       runID: 'run-1',
       thread: 'task-a',
+      logThread: 'task-a',
       tools: [],
       model: { model: 'test-model', profile: 'standard' },
     },
@@ -442,6 +446,7 @@ test("it drops a pinned skill that left the caller's list when a reload names it
     {
       runID: 'run-1',
       thread: 'task-a',
+      logThread: 'task-a',
       tools: [],
       model: { model: 'test-model', profile: 'standard' },
     },
@@ -508,6 +513,7 @@ test("it refuses a skill that is neither pinned nor on the caller's list, and re
     {
       runID: 'run-1',
       thread: 'task-a',
+      logThread: 'task-a',
       tools: [],
       model: { model: 'test-model', profile: 'standard' },
     },
@@ -538,6 +544,7 @@ test('it fails a reload before the first seed', async () => {
     {
       runID: 'run-1',
       thread: 'task-a',
+      logThread: 'task-a',
       tools: [],
       model: { model: 'test-model', profile: 'standard' },
     },
