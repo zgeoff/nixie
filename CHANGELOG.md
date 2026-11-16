@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.76.0](https://github.com/zgeoff/nixie/compare/v0.75.0...v0.76.0) (2026-11-16)
+
+
+### Features
+
+* **definitions:** load task definitions in the seed ([#1129](https://github.com/zgeoff/nixie/issues/1129)) ([a0a7ed0](https://github.com/zgeoff/nixie/commit/a0a7ed00326244bb5658e365067b1b2494510af8))
+* **tasks:** close finished disposable tasks and add task.close ([#1128](https://github.com/zgeoff/nixie/issues/1128)) ([411c098](https://github.com/zgeoff/nixie/commit/411c098238ee89416a0ccab7a526a361e4c87c62))
+
+
+### Bug Fixes
+
+* clamp negative sleeps and turn off onnx runtime telemetry ([#1134](https://github.com/zgeoff/nixie/issues/1134)) ([ff2e235](https://github.com/zgeoff/nixie/commit/ff2e235d9553252e6ef0ed938232562802d027e3))
+
 ## [0.75.0](https://github.com/zgeoff/nixie/compare/v0.74.0...v0.75.0) (2026-11-16)
 
 
