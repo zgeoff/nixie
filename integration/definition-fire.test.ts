@@ -12,12 +12,14 @@ import {
   runNextStep,
   startTestSessionHost,
 } from '@heynixie/sessions/test-utils';
+import type { TaskMessageOutcome } from '@heynixie/tasks';
 import {
   claimTask,
   createConversationTask,
   readOpenRun,
   readTaskDirectory,
   writeInboxRecords,
+  writeStepCommit,
 } from '@heynixie/tasks';
 import {
   seedConversationStep,
@@ -374,8 +376,7 @@ test('it wakes the conversation once for a fire and gives it a reminder with the
 
 test('it starts a task run of a wakeable definition task on a question from the conversation, and wakes the conversation with its reply', async () => {
   const ctx = await setupTest();
-
-  await seedConversationStep(ctx.context);
+  const conversationStep = await seedConversationStep(ctx.context);
 
   const taskID = await seedDefinitionTask(
     { ...ctx, writer: ctx.context.log.writer },
@@ -414,23 +415,79 @@ test('it starts a task run of a wakeable definition task on a question from the 
 
   invariant(question.status === 'sent', 'the question was sent');
 
-  const claim = await claimTask(ctx.context, { holder: 'runner-b', leaseMs: 60_000, taskID });
+  await writeStepCommit(ctx.context, conversationStep.claim, {
+    next: 'wait',
+    records: [],
+    acknowledged: [conversationStep.messageSequence],
+  });
 
-  invariant(claim, 'the question woke the task');
+  const taskRunner = await ctx.startTaskRunner();
+
+  ctx.defer(() => taskRunner.stop());
+  ctx.guest.addKindReplies('worker', { text: 'Yes, at 06:30.' });
+
+  const replies: TaskMessageOutcome[] = [];
+
+  // The reply goes out while the task holds its lease, as a tool call of the task's turn would.
+  await runNextStep(ctx.context, async (input) => {
+    const reply = await writeTestTaskMessage(ctx.context, messaging, {
+      from: taskID,
+      to: 'conversation',
+      kind: 'reply',
+      body: 'Yes, at 06:30.',
+      replyTo: question.messageID,
+      onBehalfOf: [],
+      wake: true,
+    });
+
+    replies.push(reply);
+
+    return taskRunner.runStep(input);
+  });
 
   const run = await readOpenRun(ctx.context.log.writer.db, taskID);
 
-  const reply = await writeTestTaskMessage(ctx.context, messaging, {
-    from: taskID,
-    to: 'conversation',
-    kind: 'reply',
-    body: 'Yes, at 06:30.',
-    replyTo: question.messageID,
-    onBehalfOf: [],
-    wake: true,
-  });
+  const taskInput = ctx.guest.turns.map((turn) =>
+    turn.input.map((message) => message.text).join('\n'),
+  );
+
+  const sandboxes = buildStubSandboxes();
+
+  const conversationRunner = await ctx.startConversation(sandboxes);
+
+  ctx.defer(() => conversationRunner.stop());
+
+  sandboxes.setGuestScript((turn) => [
+    { type: 'read', uuids: turn.input.map((message) => message.uuid) },
+    {
+      type: 'assistant',
+      messageID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d012',
+      text: 'The tomatoes were watered at 06:30.',
+      toolUses: [],
+    },
+    {
+      type: 'ended',
+      boundary: {
+        harness: 'agent-sdk',
+        sessionID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d011',
+        messageID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d012',
+      },
+      outcome: 'finished',
+      stopReason: 'end_turn',
+      turns: 1,
+      usage: { inputTokens: 10, outputTokens: 5, cacheReadTokens: 0, cacheWriteTokens: 0 },
+    },
+  ]);
+
+  await runNextStep(ctx.context, conversationRunner.runStep);
+
+  const woken = sandboxes.turns.map((turn) => turn.input.map((message) => message.text).join('\n'));
 
   expect(question.woke).toBe(true);
   expect(run?.opened.origin.kind).toBe('message');
-  expect(reply).toMatchObject({ status: 'sent', woke: true });
+  expect(taskInput).toHaveLength(1);
+  expect(taskInput[0]).toInclude('Did the tomatoes get water this morning?');
+  expect(replies).toMatchObject([{ status: 'sent', woke: true }]);
+  expect(woken).toHaveLength(1);
+  expect(woken[0]).toInclude('Yes, at 06:30.');
 });

@@ -10,6 +10,7 @@ import { seedDefinitionTask } from '../test-utils/seed-definition-task';
 import { seedTask } from '../test-utils/seed-task';
 import { startTestTasks } from '../test-utils/start-test-tasks';
 import { writeTestTaskMessage } from '../test-utils/write-test-task-message';
+import { writeTestTriggerFire } from '../test-utils/write-test-trigger-fire';
 import type { TaskClaim } from '../types';
 import { buildTasksListTool } from './build-tasks-list-tool';
 import { createSystemTask } from './create-system-task';
@@ -641,6 +642,54 @@ test('it lists a wakeable definition task as idle with no next run', async () =>
           id: taskID,
           name: 'Water the tomatoes',
           state: 'idle',
+          model: null,
+          brief: 'Water the beds.',
+          lastActivityAt: expect.toBeString(),
+          wakeable: true,
+        },
+      ],
+    },
+  });
+});
+
+test('it lists a wakeable definition task as finished when its newest task run reported and sent no message', async () => {
+  const ctx = await setupTest();
+
+  const taskID = await seedDefinitionTask(ctx, {
+    definitionID: 'water-the-tomatoes',
+    definitionHash: 'hash-1',
+    version: { name: 'Water the tomatoes', brief: 'Water the beds.', wakeable: true },
+    policy: { wakeable: true, report: 'none' },
+  });
+
+  await writeTestTriggerFire(ctx.context, taskID, { definitionHash: 'hash-1' });
+
+  const claim = await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000, taskID });
+
+  invariant(claim, 'the fire made the task ready');
+
+  await writeStepCommit(ctx.context, claim, {
+    next: 'wait',
+    records: [],
+    acknowledged: await ctx.readUnreadSequences(claim),
+    run: { activity: 'worked', report: { summary: 'The beds are watered.' } },
+  });
+
+  const tool = buildTasksListTool(ctx.context, { directory: [] });
+
+  const outcome = await tool.run(
+    buildMockToolCall({ tool: 'tasks.list', input: {} }),
+    buildMockToolContext({ run: { thread: 'conversation' } }),
+  );
+
+  expect(outcome).toStrictEqual({
+    status: 'ok',
+    result: {
+      tasks: [
+        {
+          id: taskID,
+          name: 'Water the tomatoes',
+          state: 'finished',
           model: null,
           brief: 'Water the beds.',
           lastActivityAt: expect.toBeString(),

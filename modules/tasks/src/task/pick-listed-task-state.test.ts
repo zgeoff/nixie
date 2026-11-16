@@ -45,9 +45,3 @@ test.each([
 ] as const)('it lists a task as $expected for $task', (row) => {
   expect(pickListedTaskState(row.task)).toBe(row.expected);
 });
-
-test('it lists a wakeable task whose newest task run reported under the mode none as finished', () => {
-  expect(pickListedTaskState({ state: 'waiting', wakeable: true, newestRunEnd: 'reported' })).toBe(
-    'finished',
-  );
-});
