@@ -187,8 +187,8 @@ ID of the call it answers, as `callEventID`, because nothing else shows the mode
 The model narrows a read by a time range or by words that every entry must hold, and pages on with
 the cursor the read returns. Each read returns a bounded number of entries and decrypts a bounded
 number of records, so a search over a long thread can return a short page with a cursor to go on
-from. The tool reads only the calling run's thread, and the read-only rule allows it because it
-declares only a read.
+from. The tool reads only the calling run's thread. It declares only a read, so the starter rule
+`allow-reads` allows it.
 
 The log holds outside text, such as fetched pages and pastes, so every entry counts as outside
 content to the decision point. A message of the user's reads as a rebuilt session's recent turns

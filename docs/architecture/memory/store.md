@@ -378,8 +378,15 @@ past version's line names the version that replaced or retired it. A stale versi
 or a wrong state returns to the model as the tool's refusal, so the model reads the item again. The
 model can retire, pin and unpin an item and can never restore, undo or forget one
 ([pins](./writes.md#pins)). The server registers the memory tools and the log reader beside web
-fetch, and the conversation's tool list names them. The read-only rule allows them, because they
-declare `read` and `note` and run direct.
+fetch, and the conversation's tool list names them. Each runs direct, and the user's rules decide
+each call by the tool's declared effect:
+
+- A tool that only reads declares `read`, which the starter rule `allow-reads` allows.
+- A tool that only marks an item, such as a pin, an unpin or a rating, declares `note`, which the
+  starter rule `allow-notes` allows.
+- `memory.remember`, `memory.edit` and `memory.retire` declare `memory_write`, which no starter rule
+  allows, so the memory gate decides them
+  ([rules on memory writes](./writes.md#rules-on-memory-writes)).
 
 `memory.pending` lists every pending proposal, the model's own and a task's, so the model knows what
 it proposed after a compaction drops the turn it proposed in, and never proposes a change that

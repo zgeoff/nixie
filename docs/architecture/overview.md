@@ -39,15 +39,15 @@ the tool endpoint of the run that owns the sandbox ([sandboxes](./connectors/san
 socket a connection arrives on decides its run, so a guest can never act as another run. The
 endpoint lists only the tools on the run's tool list, checks each call's input, asks the decision
 point, and records the call with its decision before the tool runs
-([tool calls](./connectors/tool-calls.md)). The decision point allows a call only when the tool's
-declared effects are reads, fetches or notes, and denies the rest, because it has no way to ask the
-user about them ([the decision point](./policy/decision-point.md)).
+([tool calls](./connectors/tool-calls.md)). The decision point decides each call from the user's
+rules: a deny rule beats an ask rule, an ask rule beats an allow rule, and a call that no rule
+covers asks the user ([the decision point](./policy/decision-point.md)).
 
 A tool with effects outside nixie, such as a send or a write, never runs inside the turn. The call
 becomes an action whose ID is also the idempotency key the connector sends to its provider, and a
 pool of action runners attempts it apart from the task runners ([actions](./core/actions.md)). The
 turn waits a bounded time for the outcome. The outcome reaches the task's inbox either way, so the
-task's next step reads it. The read-only rule denies every such call from a model, so the queue
+task's next step reads it. Besides the calls that a rule or the user's approval allows, the queue
 carries the action that the queue check queues at each start, and the crash tests' send tool in a
 test build.
 
