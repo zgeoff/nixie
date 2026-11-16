@@ -125,6 +125,10 @@ async function applyRemember(
       requireInTransaction: async (db) => {
         requireCheckerSnapshot(parts.context, passed.gate.checks);
 
+        if (request.eventID !== undefined) {
+          await requireUnforgottenQuote(db, request.eventID);
+        }
+
         if (evidence !== null) {
           await requireUnforgottenQuote(db, evidence.recordSequence);
           await requireLiveEvidence(db, evidence.recordSequence);

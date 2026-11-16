@@ -1,6 +1,7 @@
 import { expect, test } from 'bun:test';
 import { removeTestRecordKey } from '@heynixie/log/test-utils';
 import { makeGatedCall } from '@heynixie/testing';
+import { buildAllowVerdict } from '../test-utils/build-allow-verdict';
 import { buildMockCheckerAnswer } from '../test-utils/build-mock-checker-answer';
 import { buildMockProvenance } from '../test-utils/build-mock-provenance';
 import { buildMockWriteCaller } from '../test-utils/build-mock-write-caller';
@@ -178,6 +179,30 @@ test('it refuses a write that names a forgetting record by event ID when its tex
   const pending = await ctx.memory.store.proposals.listPending();
 
   expect(pending).toStrictEqual([]);
+});
+
+test('it refuses a write under an allow rule that names a forgetting record by event ID, and writes no item', async () => {
+  const ctx = await setupTest();
+
+  await ctx.beginForget();
+
+  const write = ctx.memory.store.writes.remember({
+    text: 'Takes coffee black',
+    quote: 'I take my coffee black',
+    eventID: ctx.sequence,
+    caller: buildMockWriteCaller(),
+    verdict: buildAllowVerdict(),
+  });
+
+  const error = await write.catch((error_: unknown) => error_);
+
+  expect(error).toMatchObject({ code: 'QUOTED_RECORD_FORGETTING' });
+
+  const items = await ctx.memory.store.readSubjectCounts();
+
+  const zero = { owner: 0, self: 0, shared: 0 };
+
+  expect(items).toStrictEqual({ items: zero, proposals: zero });
 });
 
 test('it refuses a write that names its quote by event ID after the forget deleted the record key, and writes no proposal', async () => {
