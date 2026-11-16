@@ -21,19 +21,55 @@ suites check that an imp reaches nothing else.
 
 `apps/server/src/part/list-image-needs.imp.test.ts` runs the pinned Codex CLI in a sandbox on the
 codex image. Build the image into impd from `guests/codex/Dockerfile` with the repo root as the
-build folder, as step 1 does for the fetch image, and run the test with
-`NIXIE_IMP_TEST_CODEX_IMAGE=<codex_image_name>` set beside the first 2 variables of step 2.
+build folder, as step 1 does for the fetch image, and set
+`NIXIE_IMP_TEST_CODEX_IMAGE=<codex_image_name>` beside the first 2 variables of step 2. Rebuild it
+after each change under `guests/codex/`.
 
-The file also holds a turn test. It starts a scripted model and a one-tool MCP server on the test
-machine, runs one Codex turn in a sandbox on the codex image, and checks 2 facts: the first model
-request holds nixie's system prompt, the input, the 3 Codex resource tools and nixie's tools only,
-and the secret reaches the model host as a bearer header. It skips until
-`NIXIE_IMP_TEST_CODEX_MODEL_HOST` names the host that the broker dials to reach the scripted model's
-loopback port. The impd host must be the machine that runs the test, or reach it under that name.
+### The codex gates
 
-The record of both checks stays open until a run on an imp host with the broker and the tool route
-passes them. A probe of the largest turn sets the memory of the `codexTask` size row, which holds
-384 MiB until then.
+`integration/codex-gates.imp.test.ts` runs each release gate of the Codex harness against scripted
+model replies, through the real model gateway: the first request, the bearer header, a turn that
+calls a tool, a failed call, a retried call, a compaction inside one turn, a down tool server, a
+recall result of the page limit, the capture tag segment, and the memory of the `codexTask` size
+row. Each case asserts that the gateway's count equals the sum of the turn's `call` frames. The
+memory case prints one probe line: `oom_kill` from `/proc/vmstat`, the cgroup's `memory.peak` and
+`memory.events`, and `MemTotal`. It passes when the turn ends with no out-of-memory kill. Set
+`NIXIE_IMP_TEST_CODEX_MEMORY_MIB` to probe another size. It defaults to the row's figure.
+
+The suite skips until it has 2 more variables:
+
+- `NIXIE_IMP_TEST_CODEX_RELAY`: the origin of the relay, `http://<relay_address>:18081`.
+- `NIXIE_IMP_TEST_CODEX_GATEWAY_PORT`: the fixed loopback port that the suite's model gateway binds.
+
+An impd on another host cannot reach this machine, and an imp reaches only `https://` hosts that its
+policy grants, through the broker. Each case therefore gives its secret a host name of its own,
+`models-<id>.example.com`, and an `upstream` that points the broker at a relay imp. The relay passes
+each connection through a reverse forward to the gateway on this machine.
+
+1. Create the relay on the codex image with no egress:
+   `impz new --image <codex_image_name> --policy none agent-test-relay-<id>`.
+2. Bring the relay's port 18080 to the gateway's port on this machine, and leave the command
+   running: `impz proxy agent-test-relay-<id> --reverse 18080:<gateway_port>`.
+3. Copy `integration/test-utils/relay-forward.ts` into the relay, and start it:
+   `impz cp integration/test-utils/relay-forward.ts agent-test-relay-<id>:/tmp/relay-forward.ts`,
+   then `impz exec agent-test-relay-<id> -- bun /tmp/relay-forward.ts 18081 18080`. Leave it
+   running.
+4. Read the relay's address from `impz ls --json`, and set `NIXIE_IMP_TEST_CODEX_RELAY` to
+   `http://<relay_address>:18081`.
+5. Run the suite from the repo root with `NIXIE_IMP_TEST_URL`, `NIXIE_IMP_TEST_TOKEN`,
+   `NIXIE_IMP_TEST_CODEX_IMAGE`, the 2 variables above and
+   `bun run test:imp integration/codex-gates.imp.test.ts apps/server/src/part/list-image-needs.imp.test.ts`.
+
+To check that the path works before a run, call `https://models-<id>.example.com/` from a second imp
+on the codex image that holds a grant of a secret with that host and the relay's `upstream`. The
+request must reach a listener on the gateway's port with `authorization: Bearer <secret value>`.
+
+Every `impz` call takes its target from `IMP_URL` and `IMP_TOKEN`, set on the command, never from a
+saved host. Each case creates its own imp, named `nixie-<id>` by the adapter, and its own secret
+named `nixie-test-<id>`. A stopped run leaves them behind. When the run ends, remove the relay, the
+`impz proxy` and `bun relay-forward.ts` processes, and any imp, secret or image that the run
+recorded, each by its exact name and never by a pattern, because the impd holds other people's
+`nixie-*` imps.
 
 Expect `0 fail`, with no skipped test. The `test:imp` script runs the `*.imp.test.ts` files under
 the imp lane's limit per test.

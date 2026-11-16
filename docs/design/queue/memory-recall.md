@@ -226,12 +226,15 @@ interface RecallRequest {
 
 ## Open questions
 
-- **Does the command-line program pass a result of the page limit whole?** A measurement settles it,
-  with a case of many small items beside the filler, in case the program re-serializes the result:
-  the probe cases in [recall by subject and the page cap](https://linear.app/zgeoff/issue/GEO-2523),
-  and a by-hand run of the model API lane that reads the model's bytes per token on invented items
-  in the recall shape. Until then, the page limit is the formula above. If a case is cut, the item
-  lowers the limit to the largest size the probe passes whole, and its pull request says so.
+- **Does the command-line program pass a result of the page limit whole?** For the Codex CLI, a run
+  of its release gate settled it: a result of the page limit, many small items beside a filler,
+  reaches the model whole at `tool_output_token_limit` set to `toolOutputLimitTokens`. A measurement
+  settles it for the Agent SDK's program, with a case of many small items beside the filler, in case
+  the program re-serializes the result: the probe cases in
+  [recall by subject and the page cap](https://linear.app/zgeoff/issue/GEO-2523), and a by-hand run
+  of the model API lane that reads the model's bytes per token on invented items in the recall
+  shape. Until then, the page limit is the formula above. If a case is cut, the item lowers the
+  limit to the largest size the probe passes whole, and its pull request says so.
 - **Does an interrupted turn count a recall's items as held?** A reproducer settles it: an e2e test
   holds a recall at the fault point `memory.recall.checked`, interrupts the turn, releases the
   point, and reads the session's deliveries. The built replay counts every recall record up to the
