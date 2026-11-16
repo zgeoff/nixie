@@ -1,5 +1,54 @@
 # Changelog
 
+## [0.77.0](https://github.com/zgeoff/nixie/compare/v0.76.0...v0.77.0) (2026-11-16)
+
+
+### ⚠ BREAKING CHANGES
+
+* **memory:** remove the similarity push and memory.rate ([#1152](https://github.com/zgeoff/nixie/issues/1152))
+* **policy:** rename the job destination permission to task ([#1140](https://github.com/zgeoff/nixie/issues/1140))
+* **memory:** remove the sensitive flag and its columns ([#1130](https://github.com/zgeoff/nixie/issues/1130))
+
+### Features
+
+* **api:** serve the views of ended task runs, triggers and definitions ([#1160](https://github.com/zgeoff/nixie/issues/1160)) ([ff53ccd](https://github.com/zgeoff/nixie/commit/ff53ccd66d55d3b184110f073cdce5b82fe42fc9))
+* **codex:** set the tool output limit and run the codex gates ([#1135](https://github.com/zgeoff/nixie/issues/1135)) ([684c604](https://github.com/zgeoff/nixie/commit/684c6046f3ec4b861d20165fab6387550ede671f))
+* **codex:** set the tool-call wait in the tool server config ([#1142](https://github.com/zgeoff/nixie/issues/1142)) ([ec4111c](https://github.com/zgeoff/nixie/commit/ec4111c2dc1a80bfbeb5d43dc70685b18eda8a0f))
+* **definitions:** add the runtime layer of task definitions ([#1156](https://github.com/zgeoff/nixie/issues/1156)) ([27486af](https://github.com/zgeoff/nixie/commit/27486afb1e6b6cd9a7bbbfd01685ea9153974f41))
+* **definitions:** define and undo tasks from the conversation ([#1162](https://github.com/zgeoff/nixie/issues/1162)) ([8bf7250](https://github.com/zgeoff/nixie/commit/8bf7250c05868d5eafa38e9bd4825a49e0524e18))
+* **definitions:** export task definitions to one pull request ([#1161](https://github.com/zgeoff/nixie/issues/1161)) ([30d12f6](https://github.com/zgeoff/nixie/commit/30d12f61c1e681021fb70e9a64feb03f6ad4fe11))
+* **memory:** open sessions with a memory index and recall by topic ([#1143](https://github.com/zgeoff/nixie/issues/1143)) ([f3a7da0](https://github.com/zgeoff/nixie/commit/f3a7da0f54e709c7de4fed83da10bd8a6518bd0b))
+* **memory:** place memory items by trigger phrase on each turn ([#1148](https://github.com/zgeoff/nixie/issues/1148)) ([d5f06dc](https://github.com/zgeoff/nixie/commit/d5f06dc0051555207646b19211df96e82d085d6a))
+* **memory:** read a granted task's cited event on the log thread ([#1163](https://github.com/zgeoff/nixie/issues/1163)) ([02f478e](https://github.com/zgeoff/nixie/commit/02f478eff89d6fe89f33b26e79d2c79bb1ba706b))
+* **memory:** read every item key through one lookup and purge evidence ([#1167](https://github.com/zgeoff/nixie/issues/1167)) ([e622140](https://github.com/zgeoff/nixie/commit/e622140a88bbbe9e2d0942fc2e84c95402572eb0))
+* **model-gateway:** count a day and a month under host-only caps ([#1173](https://github.com/zgeoff/nixie/issues/1173)) ([476a2f3](https://github.com/zgeoff/nixie/commit/476a2f3a0a8693eb9d606751da527c840acdf028))
+* **preview:** run a scheduled task every 5 minutes ([#1175](https://github.com/zgeoff/nixie/issues/1175)) ([8d1a405](https://github.com/zgeoff/nixie/commit/8d1a4054cd984e868bddb6f413c9e2c714167ea6))
+* **sandbox-imp:** refuse closed egress on a host that cannot enforce it ([#1170](https://github.com/zgeoff/nixie/issues/1170)) ([56114b8](https://github.com/zgeoff/nixie/commit/56114b8a4d77878d2a8be80e75714fdef551ea2a))
+* **tasks:** give a definition's task run its brief and the frame its report line ([#1149](https://github.com/zgeoff/nixie/issues/1149)) ([d0808e4](https://github.com/zgeoff/nixie/commit/d0808e4359624bf44152fe9290ef2480be60ddfe))
+* **tasks:** give a task the conversation's log through a log grant ([#1159](https://github.com/zgeoff/nixie/issues/1159)) ([ae36138](https://github.com/zgeoff/nixie/commit/ae3613878db57bc26b8ada02da73313c7c986097))
+* **tasks:** give each task definition a task that its fires run in ([#1139](https://github.com/zgeoff/nixie/issues/1139)) ([0d6351c](https://github.com/zgeoff/nixie/commit/0d6351c2de1845a4f099e04403b2db3c4d67ad90))
+* **tasks:** give each task run of a definition a since block ([#1146](https://github.com/zgeoff/nixie/issues/1146)) ([e560675](https://github.com/zgeoff/nixie/commit/e560675d0acc8afb13cee0fb808be0ade43c7c88))
+* **tasks:** show a fire's times in a trigger block and a reminder in the conversation ([#1147](https://github.com/zgeoff/nixie/issues/1147)) ([9a79598](https://github.com/zgeoff/nixie/commit/9a79598a80a7f3b94080dd469e9776c063b2240e))
+* **tasks:** wake waiting tasks and list asleep tasks ([#1153](https://github.com/zgeoff/nixie/issues/1153)) ([8c06ec0](https://github.com/zgeoff/nixie/commit/8c06ec0c8e7d9c856b9a2d7fde5928691fdaef55))
+* **tools:** add worker tool for one-question helper runs ([#1165](https://github.com/zgeoff/nixie/issues/1165)) ([cbf8e80](https://github.com/zgeoff/nixie/commit/cbf8e80a9b3c3730d4cd1f8b7c9348591b3d7229))
+* **triggers:** add the schedule source ([#1150](https://github.com/zgeoff/nixie/issues/1150)) ([06d5b74](https://github.com/zgeoff/nixie/commit/06d5b746a02edbe4d594676b65861e8adfcbbdc4))
+* **triggers:** add the trigger core ([#1145](https://github.com/zgeoff/nixie/issues/1145)) ([a462e6c](https://github.com/zgeoff/nixie/commit/a462e6cd8d03ed64c8e48f2d12ad2b527b65b50b))
+* **web:** add ended-runs and definitions views and a worker line ([#1172](https://github.com/zgeoff/nixie/issues/1172)) ([e9b6e60](https://github.com/zgeoff/nixie/commit/e9b6e6080f0d492d964847f22f52d09e66bdcfd0))
+* **web:** group the task dashboard by listed state with fires and filters ([#1164](https://github.com/zgeoff/nixie/issues/1164)) ([2450255](https://github.com/zgeoff/nixie/commit/2450255133ba8c1cd285b71a0ad7e4574bbe897f))
+
+
+### Bug Fixes
+
+* **tasks:** keep tasks.definitions for the conversation only ([#1174](https://github.com/zgeoff/nixie/issues/1174)) ([05b1284](https://github.com/zgeoff/nixie/commit/05b1284603b0ad13241d424dc674722a2a1c6b45))
+* **web:** load each list before the passkey, mandate and task pages render ([#1137](https://github.com/zgeoff/nixie/issues/1137)) ([aa0eed7](https://github.com/zgeoff/nixie/commit/aa0eed70b22feea46f86ef331b7da9f7f9b20136))
+
+
+### Code Refactoring
+
+* **memory:** remove the sensitive flag and its columns ([#1130](https://github.com/zgeoff/nixie/issues/1130)) ([3066af0](https://github.com/zgeoff/nixie/commit/3066af0ac9fdbfef90c6b7c9b1b53009d9313040))
+* **memory:** remove the similarity push and memory.rate ([#1152](https://github.com/zgeoff/nixie/issues/1152)) ([ec52c9a](https://github.com/zgeoff/nixie/commit/ec52c9afcbddcfcf8260983b8b64a4a977e05e35))
+* **policy:** rename the job destination permission to task ([#1140](https://github.com/zgeoff/nixie/issues/1140)) ([d04eb3e](https://github.com/zgeoff/nixie/commit/d04eb3ed15df87b43776c363eec0334c919751b3))
+
 ## [0.76.0](https://github.com/zgeoff/nixie/compare/v0.75.0...v0.76.0) (2026-11-16)
 
 
