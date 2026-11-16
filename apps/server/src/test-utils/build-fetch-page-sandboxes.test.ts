@@ -15,7 +15,10 @@ function setupTest() {
     base,
     adapter,
     askFetcher: async (url: string) => {
-      const sandbox = await adapter.create(buildMockSandboxSpec({ kind: 'fetch' }));
+      const sandbox = await adapter.create(
+        buildMockSandboxSpec({ kind: 'fetch', egress: { kind: 'public' } }),
+      );
+
       const stream = await sandbox.spawn({ argv: ['fetcher'], maxMessageBytes: 100_000 });
 
       await stream.send(
@@ -92,7 +95,7 @@ test('it reads and lists a fetch sandbox it made', async () => {
   const ctx = setupTest();
 
   const sandbox = await ctx.adapter.create(
-    buildMockSandboxSpec({ kind: 'fetch', owner: 'web_fetch' }),
+    buildMockSandboxSpec({ kind: 'fetch', egress: { kind: 'public' }, owner: 'web_fetch' }),
   );
 
   const read = await ctx.adapter.read(sandbox.id);
