@@ -537,40 +537,57 @@ test('it reads no definition from a folder outside tasks', () => {
   expect(parsed.definitions).toStrictEqual([]);
 });
 
-test('it seeds every example folder of the guides with no fault, no warning and one definition', () => {
-  const ctx = setupTest();
+test('it lists every example folder of the guides among the folders the next test reads', () => {
   const examplesDir = join(import.meta.dir, '../../../../docs/guides/examples');
 
   const folders = readdirSync(examplesDir, { withFileTypes: true })
     .filter((entry) => entry.isDirectory())
     .map((entry) => entry.name);
 
-  expect(folders).toContain('memory-consolidation');
+  expect(folders).toStrictEqual(['memory-consolidation']);
+});
 
-  for (const folder of folders) {
+test.each([['memory-consolidation']])(
+  'it seeds the %s example folder with no fault, no warning and one definition',
+  (folder) => {
+    const ctx = setupTest();
+    const directory = join(import.meta.dir, '../../../../docs/guides/examples', folder);
+
     const files = Object.fromEntries(
-      readdirSync(join(examplesDir, folder)).map((file) => [
+      readdirSync(directory).map((file) => [
         `tasks/${folder}/${file}`,
-        readFileSync(join(examplesDir, folder, file), 'utf8'),
+        readFileSync(join(directory, file), 'utf8'),
       ]),
     );
 
     const parsed = ctx.parse(files);
 
-    expect({ folder, faults: parsed.faults, warnings: parsed.warnings }).toStrictEqual({
-      folder,
+    expect({ faults: parsed.faults, warnings: parsed.warnings }).toStrictEqual({
       faults: [],
       warnings: [],
     });
 
     expect(parsed.definitions.map((definition) => definition.id)).toStrictEqual([folder]);
+  },
+);
 
-    if (folder === 'memory-consolidation') {
-      expect(parsed.definitions[0]?.form).toMatchObject({
-        trigger: { schedule: { every: 'week', on: 'sun', at: '03:00' } },
-        memory: 'read',
-        tools: ['memory.recall', 'memory.edit', 'memory.retire'],
-      });
-    }
-  }
+test('it seeds the memory consolidation example with its schedule, read memory and 3 tools', () => {
+  const ctx = setupTest();
+  const folder = 'memory-consolidation';
+  const directory = join(import.meta.dir, '../../../../docs/guides/examples', folder);
+
+  const files = Object.fromEntries(
+    readdirSync(directory).map((file) => [
+      `tasks/${folder}/${file}`,
+      readFileSync(join(directory, file), 'utf8'),
+    ]),
+  );
+
+  const parsed = ctx.parse(files);
+
+  expect(parsed.definitions[0]?.form).toMatchObject({
+    trigger: { schedule: { every: 'week', on: 'sun', at: '03:00' } },
+    memory: 'read',
+    tools: ['memory.recall', 'memory.edit', 'memory.retire'],
+  });
 });

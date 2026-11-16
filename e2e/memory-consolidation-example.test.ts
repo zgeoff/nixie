@@ -134,9 +134,10 @@ test('it fires the weekly memory consolidation example and holds each edit as a 
   const items = await ctx.nixie.readMemoryItems();
   const oracle = await runOracle(ctx.nixie);
 
+  // A task's request holds no task_start, which every conversation request holds.
   const taskRequest = ctx.nixie.model.requests.find(
     (request) =>
-      request.body?.tools?.some((tool) => tool.name === 'mcp__nixie__memory_retire') === true,
+      request.body?.tools?.some((tool) => tool.name === 'mcp__nixie__task_start') === false,
   );
 
   const toolNames = taskRequest?.body?.tools?.map((tool) => tool.name) ?? [];
