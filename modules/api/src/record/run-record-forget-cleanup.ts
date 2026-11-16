@@ -1,5 +1,5 @@
 import { removeRecordKey, withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
-import { recordForgottenCodec, removeImageOfferKeys } from '@heynixie/memory';
+import { recordForgottenCodec, removeImageOfferKeys, writeRecordPurgeSet } from '@heynixie/memory';
 import invariant from 'tiny-invariant';
 import { readForgetStartCalls } from '../forget/read-forget-start-calls';
 import type { APIContext, APITables } from '../types';
@@ -14,6 +14,12 @@ export async function runRecordForgetCleanup(
   ) {
     return;
   }
+
+  // A forget that an earlier release began has no purge set. It gets one before any key goes,
+  // because the set reads the evidence of items that the purge then removes.
+  await withWriteTransaction(context.log.writer, (tx) =>
+    writeRecordPurgeSet(tx, context, recordSequence),
+  );
 
   const startCalls = await readForgetStartCalls(context, recordSequence);
 

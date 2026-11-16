@@ -5,6 +5,7 @@ import invariant from 'tiny-invariant';
 
 interface PurgeSetup {
   readonly isOwned: boolean;
+  readonly isSharedKey?: boolean;
 }
 
 async function setupTest(setup: PurgeSetup) {
@@ -55,8 +56,21 @@ async function setupTest(setup: PurgeSetup) {
   };
 }
 
-test('it finishes a begun purge at the start: the lapse, the bridge, the closing record, the labels, then the last mark, then record.forgotten', async () => {
+test('it finishes a begun purge at the start: the lapse, the closing record, the labels, then the last mark, then record.forgotten', async () => {
   const ctx = await setupTest({ isOwned: true });
+  const records = await ctx.stop();
+
+  expect(ctx.readKinds(records)).toStrictEqual([
+    'memory.proposal_lapsed',
+    'memory.evidence_purge_closed',
+    'memory.labelled',
+    'memory.evidence_purged',
+    'record.forgotten',
+  ]);
+});
+
+test('it writes the bridge version of a shared-key item before the closing record', async () => {
+  const ctx = await setupTest({ isOwned: true, isSharedKey: true });
   const records = await ctx.stop();
 
   expect(ctx.readKinds(records)).toStrictEqual([
@@ -87,7 +101,7 @@ test('it marks the purge closed and purged for the item', async () => {
   ]);
 });
 
-test('it deletes the closed keys and keeps the next generation key and the bridge key', async () => {
+test('it deletes the closed keys and keeps the next generation key and the current version key', async () => {
   const ctx = await setupTest({ isOwned: true });
 
   await ctx.stop();
@@ -110,11 +124,24 @@ test('it keeps the current text and labels readable and reads the older version 
   expect(item).toStrictEqual({
     versions: [
       { version: 1, status: 'shredded', isRemoved: true, isBridge: false },
-      { version: 2, status: 'shredded', isRemoved: true, isBridge: false },
-      { version: 3, status: 'readable', isRemoved: false, isBridge: true },
+      { version: 2, status: 'readable', isRemoved: false, isBridge: false },
     ],
     labels: { gist: 'keeps bees', topic: 'garden', triggers: ['bees'] },
   });
+});
+
+test('it shows the bridge version of a shared-key item as a bridge, and the older versions as removed', async () => {
+  const ctx = await setupTest({ isOwned: true, isSharedKey: true });
+
+  await ctx.stop();
+
+  const item = await ctx.readItem();
+
+  expect(item.versions).toStrictEqual([
+    { version: 1, status: 'shredded', isRemoved: true, isBridge: false },
+    { version: 2, status: 'shredded', isRemoved: true, isBridge: false },
+    { version: 3, status: 'readable', isRemoved: false, isBridge: true },
+  ]);
 });
 
 test('it writes nothing when nixie starts again over a finished purge', async () => {
@@ -140,8 +167,6 @@ test('it finishes a purge that no record forget owns, and writes no record.forgo
 
   expect(ctx.readKinds(records)).toStrictEqual([
     'memory.proposal_lapsed',
-    'memory.version_added',
-    'memory.version_keyed',
     'memory.evidence_purge_closed',
     'memory.labelled',
     'memory.evidence_purged',

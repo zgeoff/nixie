@@ -5,6 +5,7 @@ import {
   readTestRecordRows,
   removeTestRecordKey,
 } from '@heynixie/log/test-utils';
+import { recordForgetStartedCodec } from '@heynixie/memory';
 import { writeImageOfferRecord } from '@heynixie/memory/test-utils';
 import { createConversationTask } from '@heynixie/tasks';
 import invariant from 'tiny-invariant';
@@ -12,8 +13,10 @@ import type { ForgetTarget } from '../forget/write-forget-start';
 import { writeForgetStart } from '../forget/write-forget-start';
 import { writeOwnerMessage } from '../kept/write-owner-message';
 import { createDeviceSession } from '../test-utils/create-device-session';
+import { seedQuotedMemoryItems } from '../test-utils/seed-quoted-memory-items';
 import { seedTaskStartCall, seedUnansweredStartCall } from '../test-utils/seed-task-start-call';
 import { startTestAPI } from '../test-utils/start-test-api';
+import { startTestMemoryForgets } from '../test-utils/start-test-memory-forgets';
 import type { CleanupRecordSessions } from '../types';
 import { readBriefStartCalls } from './read-brief-start-calls';
 import { runPendingRecordForgets } from './run-pending-record-forgets';
@@ -526,4 +529,61 @@ test('it deletes no key and writes no forgotten record when a code sandbox will 
   expect(failed).toMatchObject({ status: 'rejected', reason: new Error('impd is down') });
   expect(keysAfterFailure).toHaveLength(1);
   expect(keysAfterRerun).toStrictEqual([]);
+});
+
+test('it gives a forget that an earlier release began its purge set first, and purges each quoting item before record.forgotten', async () => {
+  const api = await startTestAPI();
+  const forgets = await startTestMemoryForgets(api.context);
+  const seeded = await seedQuotedMemoryItems(api.context, forgets.memory);
+
+  await writeRecords(api.context.log, [
+    {
+      kind: recordForgetStartedCodec.kind,
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: recordForgetStartedCodec.encode({ recordSequence: seeded.sequence }),
+    },
+  ]);
+
+  await runRecordForgetCleanup(forgets.forgetContext, seeded.sequence);
+
+  const entries = await readRecords(api.context.log, { afterSequence: 0 });
+  const history = await forgets.memory.readHistory(seeded.quoting.itemID);
+
+  expect(entries.map((entry) => entry.record.kind).slice(-4)).toStrictEqual([
+    'memory.evidence_purge_started',
+    'memory.evidence_purge_closed',
+    'memory.evidence_purged',
+    'record.forgotten',
+  ]);
+
+  expect(history?.versions).toMatchObject([
+    { version: 1, status: 'shredded', isRemoved: true },
+    { version: 2, status: 'readable', isRemoved: false },
+  ]);
+});
+
+test('it writes nothing more when the cleanup of a forget that an earlier release began runs again', async () => {
+  const api = await startTestAPI();
+  const forgets = await startTestMemoryForgets(api.context);
+  const seeded = await seedQuotedMemoryItems(api.context, forgets.memory);
+
+  await writeRecords(api.context.log, [
+    {
+      kind: recordForgetStartedCodec.kind,
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: recordForgetStartedCodec.encode({ recordSequence: seeded.sequence }),
+    },
+  ]);
+
+  await runRecordForgetCleanup(forgets.forgetContext, seeded.sequence);
+
+  const first = await readRecords(api.context.log, { afterSequence: 0 });
+
+  await runRecordForgetCleanup(forgets.forgetContext, seeded.sequence);
+
+  const second = await readRecords(api.context.log, { afterSequence: 0 });
+
+  expect(second).toHaveLength(first.length);
 });
