@@ -1004,3 +1004,49 @@ test('it leaves the proposal off a record that created none', () => {
     thread: 'conversation',
   });
 });
+
+test.each([
+  {
+    label: 'a finished removal names the record',
+    status: 'done',
+    tool: 'log.forget',
+    erasable: { status: 'readable', fields: { result: { removed: '4190', kind: 'tool_result' } } },
+    removal: { kind: 'tool_result', sequence: 4190 },
+  },
+  {
+    label: 'a failed removal names nothing',
+    status: 'failed',
+    tool: 'log.forget',
+    erasable: { status: 'readable', fields: { message: 'nixie cannot remove a session record' } },
+    removal: undefined,
+  },
+  {
+    label: 'the outcome of another tool names nothing',
+    status: 'done',
+    tool: 'mail.send',
+    erasable: { status: 'readable', fields: { result: { removed: '4190', kind: 'tool_result' } } },
+    removal: undefined,
+  },
+  {
+    label: 'an outcome with its result erased names nothing',
+    status: 'done',
+    tool: 'log.forget',
+    erasable: { status: 'shredded' },
+    removal: undefined,
+  },
+] as const)('it $label', (row) => {
+  const ctx = setupTest();
+
+  const record = buildMockLogRecord({
+    sequence: 12,
+    recordedAt: new Date('2026-10-10T12:00:00Z'),
+    kind: 'action.outcome',
+    thread: 'conversation',
+    payload: { actionID: 'action-1', status: row.status, attempt: 1, reason: null },
+    erasable: row.erasable,
+  });
+
+  const lookups = { ...ctx.noLookups, actionTools: new Map([['action-1', row.tool]]) };
+
+  expect(toContractRecord(record, lookups)?.removal).toStrictEqual(row.removal);
+});

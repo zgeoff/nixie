@@ -199,3 +199,44 @@ test('it refuses a date range with a day past the end of its month, which a pars
     message: 'from and to must be real UTC dates or times',
   });
 });
+
+test('it gives a tool result the eventID of the call it answers', async () => {
+  const ctx = await setupTest();
+
+  const [call] = await writeRecords(ctx.log, [
+    {
+      kind: 'tool_called',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { input: { url: 'https://lockers.test/' } },
+    },
+  ]);
+
+  const [result] = await writeRecords(ctx.log, [
+    {
+      kind: 'tool_result',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      parent: call?.sequence ?? 0,
+      erasable: { result: { page: 'The locker code is 2291.' } },
+    },
+  ]);
+
+  const outcome = await ctx.tool.run(
+    { callID: 'call-1', tool: 'log.read', input: {}, toolUseID: null },
+    buildMockToolContext(),
+  );
+
+  expect(outcome).toMatchObject({
+    status: 'ok',
+    result: {
+      entries: [
+        {
+          eventID: String(result?.sequence),
+          callEventID: String(call?.sequence),
+          role: 'tool',
+        },
+      ],
+    },
+  });
+});

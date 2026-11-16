@@ -121,3 +121,30 @@ test('it reads no started task for records that name no task', async () => {
 
   expect(lookups.taskDirectory.map((profile) => profile.taskID)).toStrictEqual(['conversation']);
 });
+
+test('it reads the tool of the action that each outcome record names', async () => {
+  const ctx = await setupTest();
+  const step = await ctx.seed.conversationStep();
+  const action = await ctx.seed.action({ step: step.claim });
+
+  const [outcome] = await writeRecords(ctx.context.log, [
+    {
+      kind: 'action.outcome',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: { actionID: action.action_id, status: 'done', attempt: 1, reason: null },
+      erasable: { result: {} },
+    },
+  ]);
+
+  invariant(outcome);
+
+  const entries = await readRecords(ctx.context.log, { afterSequence: outcome.sequence - 1 });
+
+  const lookups = await readRecordLookups(
+    ctx.context,
+    entries.map((entry) => entry.record),
+  );
+
+  expect(lookups.actionTools).toStrictEqual(new Map([[action.action_id, 'test.send']]));
+});
