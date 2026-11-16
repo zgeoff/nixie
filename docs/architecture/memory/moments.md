@@ -136,8 +136,8 @@ ID, as [reading the log](./context.md#reading-the-log) says.
 `memory.recall` returns each item's links to active moments as short IDs and titles, and its result
 record holds the item and the linked moments' short IDs only, with their UUIDs under `hidden`. The
 tool descriptions of `memory.recall` and `moment.read` tell the model to read a linked moment when
-the reason behind a fact matters. Per-turn retrieval calls the store's recall directly, without the
-links that the `memory.recall` tool adds, and never searches moments, so a turn never receives
+the reason behind a fact matters. Per-turn retrieval loads items from the store directly, without
+the links that the `memory.recall` tool adds, and never searches moments, so a turn never receives
 moment text that way.
 
 nixie counts the moments kept over the week before an instant, across every thread, and leaves out
