@@ -72,6 +72,7 @@ test('it returns the instructions without their frontmatter and the list of the 
   const outcome = await tool.run(
     { callID: 'call-1', tool: 'skill_read', input: { name: 'tide-tables' }, toolUseID: null },
     {
+      callSequence: 1,
       run: {
         runID: 'run-1',
         thread: 'conversation',
@@ -155,6 +156,7 @@ test('it returns the file at a path inside the skill folder', async () => {
       toolUseID: null,
     },
     {
+      callSequence: 1,
       run: {
         runID: 'run-1',
         thread: 'conversation',
@@ -216,6 +218,7 @@ test.each([
   const outcome = await tool.run(
     { callID: 'call-1', tool: 'skill_read', input: { name: 'tide-tables', path }, toolUseID: null },
     {
+      callSequence: 1,
       run: {
         runID: 'run-1',
         thread: 'conversation',
@@ -267,6 +270,7 @@ test('it refuses a path the skill has no file at', async () => {
       toolUseID: null,
     },
     {
+      callSequence: 1,
       run: {
         runID: 'run-1',
         thread: 'conversation',
@@ -319,6 +323,7 @@ test("it refuses a skill that is off the caller's skill list", async () => {
   const outcome = await tool.run(
     { callID: 'call-1', tool: 'skill_read', input: { name: 'bird-log' }, toolUseID: null },
     {
+      callSequence: 1,
       run: {
         runID: 'run-1',
         thread: 'task-a',
@@ -367,6 +372,7 @@ test('it reads the version the task first loaded after a seed changes the skill'
   await firstTool.run(
     { callID: 'call-1', tool: 'skill_read', input: { name: 'tide-tables' }, toolUseID: null },
     {
+      callSequence: 1,
       run: {
         runID: 'run-1',
         thread: 'task-a',
@@ -400,6 +406,7 @@ test('it reads the version the task first loaded after a seed changes the skill'
   const outcome = await secondTool.run(
     { callID: 'call-2', tool: 'skill_read', input: { name: 'tide-tables' }, toolUseID: null },
     {
+      callSequence: 1,
       run: {
         runID: 'run-1',
         thread: 'task-a',

@@ -150,7 +150,7 @@ export function buildRememberTool(
 function buildRememberRequest(
   input: z.infer<typeof rememberArguments>,
   until: number | null | undefined,
-  context: ToolContext,
+  context: Pick<ToolContext, 'run' | 'verdict'>,
 ): GatedRememberRequest {
   return {
     text: input.text,

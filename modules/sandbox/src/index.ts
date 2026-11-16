@@ -7,7 +7,10 @@ export { createProcessSandboxAdapter } from './process/create-process-sandbox-ad
 export { readStreamOutput } from './exec/read-stream-output';
 export { createSandboxID } from './sandbox/create-sandbox-id';
 export { execOutputLimitBytes } from './exec/exec-output-limit-bytes';
+export { buildWorkerRunOwner } from './sandbox/build-worker-run-owner';
 export { findKeptSandbox } from './sandbox/find-kept-sandbox';
+export { findWorkerRunID } from './sandbox/find-worker-run-id';
+export { workerRunOwnerPrefix } from './sandbox/worker-run-owner-prefix';
 export { isTestSandbox } from './sandbox/is-test-sandbox';
 export { mergeExecEnv } from './process/merge-exec-env';
 export type { RemovedSandboxes } from './sandbox/remove-sandboxes';

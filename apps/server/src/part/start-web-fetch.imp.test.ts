@@ -75,6 +75,7 @@ async function setupTest() {
       webFetch.tool.run(
         { callID: 'call-1', tool: 'web_fetch', input: { url }, toolUseID: null },
         {
+          callSequence: 1,
           run: {
             runID: 'run-1',
             thread: 'conversation',
@@ -139,6 +140,7 @@ test.skipIf(!hasImpHost)(
         toolUseID: null,
       },
       {
+        callSequence: 1,
         run: {
           runID: 'run-1',
           thread: 'conversation',

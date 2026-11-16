@@ -6,7 +6,7 @@ import type { GuestToolRun } from './types';
 
 // oxlint-disable-next-line typescript/no-deprecated -- McpServer answers a call to a tool it does not list itself, so the scope stage would never see it
 export function createRunServer(guestRun: GuestToolRun, options: ToolCallOptions): Server {
-  const { toolUseMetaKey, ...run } = guestRun;
+  const { toolUseMetaKey, parent, ...run } = guestRun;
 
   // oxlint-disable-next-line typescript/no-deprecated -- as above
   const server = new Server(
@@ -38,6 +38,7 @@ export function createRunServer(guestRun: GuestToolRun, options: ToolCallOptions
 
         // oxlint-disable-next-line no-underscore-dangle -- _meta is the MCP field's name
         toolUseID: findToolUseID(request.params._meta, toolUseMetaKey),
+        ...(parent === undefined ? {} : { parent }),
       },
       run,
       options,

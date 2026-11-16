@@ -2,7 +2,7 @@ import { conversationTaskID } from '@heynixie/tasks';
 import type { ToolContext } from '@heynixie/tools';
 import type { WriteCaller } from '../gate/gate-context';
 
-export function buildWriteCaller(context: ToolContext): WriteCaller {
+export function buildWriteCaller(context: Pick<ToolContext, 'run'>): WriteCaller {
   const thread = context.run.thread;
 
   return {

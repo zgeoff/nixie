@@ -37,6 +37,7 @@ export type {
   ResolvedProfile,
   SelectableModel,
   TaskRunLimits,
+  WorkerRunLimits,
 } from './types';
 
 export type { ModelsRecordKind } from './model/models-record-kind';

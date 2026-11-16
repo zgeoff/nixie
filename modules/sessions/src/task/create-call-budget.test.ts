@@ -112,3 +112,49 @@ test('it rejects a call when the read of late spend fails, and keeps the call in
 
   expect(budget.getSpentDollars()).toBe(0.01);
 });
+
+test('it aborts its signal when the spend of a worker reaches the dollars left', () => {
+  const budget = createCallBudget(null, 0.02, () => Promise.resolve(0));
+
+  budget.onSpend(0.01);
+
+  const isReachedAfterFirst = budget.signal.aborted;
+
+  budget.onSpend(0.01);
+
+  expect({ isReachedAfterFirst, isReached: budget.signal.aborted }).toStrictEqual({
+    isReachedAfterFirst: false,
+    isReached: true,
+  });
+});
+
+test('it lowers the dollars left by the calls, the late spend and the spend of a worker, and counts only the calls as spent', async () => {
+  const budget = createCallBudget(
+    { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
+    1,
+    () => Promise.resolve(0.1),
+  );
+
+  await budget.onCall({
+    uncachedInputTokens: 10_000,
+    cacheReadTokens: 0,
+    cacheWrite5mTokens: 0,
+    cacheWrite1hTokens: 0,
+    outputTokens: 0,
+  });
+
+  budget.onSpend(0.25);
+
+  expect({ left: budget.getLeftDollars(), spent: budget.getSpentDollars() }).toStrictEqual({
+    left: 0.64,
+    spent: 0.01,
+  });
+});
+
+test('it never reports fewer than no dollars left', () => {
+  const budget = createCallBudget(null, 0.5, () => Promise.resolve(0));
+
+  budget.onSpend(2);
+
+  expect(budget.getLeftDollars()).toBe(0);
+});

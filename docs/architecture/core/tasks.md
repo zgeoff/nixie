@@ -197,6 +197,43 @@ The conversation starts a task through the start tool when the user asks for wor
 task covers. [Started tasks](./started-tasks.md) covers the start and its options, the sandbox
 runner that runs a started task's steps, and its limits.
 
+## Workers
+
+A model turn of the conversation, or of a started task whose start lists the tool and whose starter
+holds it, calls `worker.run` with a question and an optional list of tools. The call starts one
+worker: a model loop in a sandbox of its own, on the worker role's profile, with a fresh session and
+the question as its only input. The call waits for the worker's last reply and returns it as the
+answer, with the minutes, turns, tokens and dollars the worker used.
+
+A worker holds only tools that its caller holds. It never holds a tool that starts a task, sends a
+message, closes a task, lists tasks or task definitions, reports, ends a turn silently or starts a
+worker, and it never holds a memory tool or a conversation-only tool. A call that names such a tool,
+or one that its caller does not hold, gets an error sentence and starts nothing.
+
+Four limits stop a worker, each with a sentence that tells the caller which limit it reached:
+
+- `limits.workerRun` in the models config sets the minutes, turns, tokens and dollars. The config
+  refuses a worker role whose profile sets no prices or no tool call wait, and a minutes limit that
+  exceeds what the caller's tool call wait leaves.
+- A worker's dollar limit is the smaller of its own limit and what its caller's task run has left.
+- `tasks.workerRuns` sets how many workers run at once, and whether a call past that cap waits for a
+  slot or gets an error. With no setting, no cap applies.
+- A call that the calling step's signal aborts rejects, so the step ends as it would for any call
+  that loses its lease.
+
+A worker run writes 3 kinds of record on its caller's thread, each with the calling `tool_called`
+record as its parent: `worker.run_started`, one `worker.turn_ended` after each model call, and one
+`worker.run_ended`. Every way out of a worker run writes the end record once, stops the worker's
+tool run, destroys its sandbox and frees its slot. The destroy runs after the call has its result,
+and a destroy that fails is tried again before the next worker creates its sandbox. A rebuilt
+session leaves the worker records out.
+
+A worker's model calls count in the dollars of the caller's task run, and in no turn. Each call
+lowers the calling turn's budget at once, so a worker can end the turn at its dollar limit. A later
+step of the same task run reads the calls of a worker that another step started as late spend.
+[Sandboxes](../connectors/sandboxes.md#records-and-recovery) covers how recovery removes the sandbox
+of a worker that a crash cut off.
+
 ## Timers
 
 A step asks for timers in its result, and its commit sets them. A timer runner beside the task

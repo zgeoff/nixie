@@ -60,6 +60,9 @@ export interface ToolCallRequest {
   readonly tool: string;
   readonly input: JSONObject;
   readonly toolUseID: string | null;
+
+  // the record that the call's tool_called takes as its parent
+  readonly parent?: number;
 }
 
 export async function runToolCall(
@@ -67,9 +70,10 @@ export async function runToolCall(
   run: ToolRun,
   options: ToolCallOptions,
 ): Promise<CallToolResult> {
-  const call: ToolCall = { ...request, callID: crypto.randomUUID() };
+  const { parent, ...fields } = request;
+  const call: ToolCall = { ...fields, callID: crypto.randomUUID() };
   const definitions = options.definitions();
-  const recorder = makeCallRecorder(call, run, options, definitions);
+  const recorder = makeCallRecorder(call, run, options, { definitions, parent });
   const found = options.registry.findTool(call.tool);
   const inputCheck = checkListedInput(found, call, run);
 
@@ -222,12 +226,20 @@ interface CallRecorder {
   readonly writeResult: (callSequence: number, settled: Settled) => Promise<CallToolResult>;
 }
 
+interface CallRecordFields {
+  readonly definitions: Definitions;
+  readonly parent: number | undefined;
+}
+
 function makeCallRecorder(
   call: ToolCall,
   run: ToolRun,
   options: ToolCallOptions,
-  definitions: Definitions,
+  fields: CallRecordFields,
 ): CallRecorder {
+  const definitions = fields.definitions;
+  const parent = fields.parent;
+
   const ids = {
     callID: call.callID,
     runID: run.runID,
@@ -249,6 +261,7 @@ function makeCallRecorder(
             kind: 'tool_called',
             definitions,
             thread: run.thread,
+            ...(parent === undefined ? {} : { parent }),
             payload: toolCalledCodec.encode({
               ...ids,
               tool: call.tool,
@@ -555,6 +568,7 @@ function runAllowedCall(allowed: AllowedCall): Promise<Settled> {
 async function runDirect(allowed: AllowedCall): Promise<Settled> {
   const outcome = await allowed.registered.definition.run(allowed.call, {
     run: allowed.run,
+    callSequence: allowed.callSequence,
     ...(allowed.verdict === undefined ? {} : { verdict: allowed.verdict }),
   });
 

@@ -58,6 +58,14 @@ export async function runLiveTurn(
       reserveImages: makeImageReserver(opening.images),
       endSilently: silence.end,
       policy: buildStepPolicyFrame(run.frame, opening.batch.records),
+      step: {
+        signal: plan.signal,
+        interrupt: input.interrupt,
+        readLeftDollars: () => run.budget?.getLeftDollars() ?? null,
+        onSpend: (dollars) => {
+          run.budget?.onSpend(dollars);
+        },
+      },
     },
     taskRun,
   );

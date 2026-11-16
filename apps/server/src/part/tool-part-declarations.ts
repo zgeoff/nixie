@@ -12,6 +12,7 @@ import type { ServerPartValues } from './server-part-values';
 import { startCodeRunPart } from './start-code-run-part';
 import { startSandboxAdapterPart } from './start-sandbox-adapter-part';
 import { startWebFetchPart } from './start-web-fetch-part';
+import { startWorkerPart } from './start-worker-part';
 
 export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>[] = [
   {
@@ -60,6 +61,19 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
       }),
   },
   {
+    name: 'worker',
+    needs: ['inputs', 'context', 'sandbox_adapter'],
+    uses: ['tool_endpoint'],
+    start: (parts) =>
+      startWorkerPart({
+        options: parts.get('inputs').options,
+        adapter: parts.get('sandbox_adapter'),
+        log: parts.get('context').apiContext.log,
+        definitions: parts.get('context').apiContext.definitions,
+        readTools: () => parts.find('tool_endpoint')?.endpoint ?? null,
+      }),
+  },
+  {
     name: 'actions',
     needs: ['inputs', 'context'],
     start: (parts) => {
@@ -77,7 +91,7 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
   },
   {
     name: 'tool_endpoint',
-    needs: ['inputs', 'context', 'web_fetch', 'code_run', 'actions', 'decisions'],
+    needs: ['inputs', 'context', 'web_fetch', 'code_run', 'worker', 'actions', 'decisions'],
     uses: ['memory', 'server_parts', 'checker', 'definitions_exports'],
     start: (parts) => {
       const options = parts.get('inputs').options;
@@ -94,6 +108,7 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
           webFetch: parts.get('web_fetch').tool,
           codeRun: parts.get('code_run').tool,
           forget: parts.get('actions').forget.tool,
+          worker: parts.get('worker'),
           search:
             options.search === null
               ? null

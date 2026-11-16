@@ -11,6 +11,7 @@ test('it serves notes_read, which returns the note given', async () => {
   const outcome = await tool?.run(
     { callID: 'call-1', tool: 'notes_read', input: {}, toolUseID: null },
     {
+      callSequence: 1,
       run: {
         runID: 'run-1',
         thread: 'conversation',

@@ -16,6 +16,10 @@ type EndedFrame = Extract<GuestFrame, { type: 'ended' }>;
 
 type FailedFrame = Extract<GuestFrame, { type: 'failed' }>;
 
+interface GuestCallReplies {
+  readonly text: string;
+}
+
 export interface GuestTurnSpec {
   readonly harness: Harness;
   readonly sandbox: Sandbox;
@@ -30,8 +34,10 @@ export interface GuestTurnSpec {
 
   readonly readRecallMark?: () => Promise<number>;
 
-  // runs on each model API call the guest reports, before the host reads the guest's next frame
-  readonly onCall?: (usage: ModelCallUsage) => Promise<void>;
+  // runs on each model API call the guest reports, before the host reads the guest's next frame,
+  // with the text of the replies the guest sent since the call before. The guest sends a call's
+  // replies before the frame that reports the call.
+  readonly onCall?: (usage: ModelCallUsage, replies: GuestCallReplies) => Promise<void>;
 }
 
 export interface GuestTurn {
@@ -183,11 +189,19 @@ async function readTurn(
     settled: { assistants: 0, read: 0 },
   };
 
+  let repliedThrough = 0;
+
   for await (const message of stream.messages) {
     const frame = decodeTurnFrame(guestFrameSchema, message);
 
     if (frame.type === 'call') {
-      await spec.onCall?.(frame.usage);
+      const replies = turn.assistants.slice(repliedThrough);
+
+      repliedThrough = turn.assistants.length;
+
+      await spec.onCall?.(frame.usage, {
+        text: replies.map((reply) => reply.text).join('\n\n'),
+      });
 
       continue;
     }

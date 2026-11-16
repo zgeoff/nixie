@@ -3,14 +3,15 @@ import type { ModelPrices } from '@heynixie/models';
 import { buildCallCost, modelSessionSummarizedCodec, modelTurnEndedCodec } from '@heynixie/models';
 import type { RunMeter } from '@heynixie/tasks';
 import { readRunRecords, readTaskSetup, taskFailedTurnSpentCodec } from '@heynixie/tasks';
+import { workerTurnEndedCodec } from '../worker/worker-turn-ended-codec';
 
 // The profile a task runs on gives the prices, and a task with no profile of its own runs on the
 // task role's.
 export type ReadRunPrices = (profile: string | null) => ModelPrices | null;
 
 // A turn and the summary of a session count by their tokens, and a turn with no turn record counts
-// through its failed turn's spend. A tally committed beside a turn record counts only what exceeds
-// that record. Another task run's spend never reaches this one.
+// through its failed turn's spend. A tally beside a turn record counts only what exceeds it. A worker
+// call counts by the dollars its record stores, and another task run's spend never counts.
 export function buildDollarsMeter(readPrices: ReadRunPrices): RunMeter {
   return {
     name: 'dollars',
@@ -24,6 +25,7 @@ export function buildDollarsMeter(readPrices: ReadRunPrices): RunMeter {
         modelTurnEndedCodec.kind,
         modelSessionSummarizedCodec.kind,
         taskFailedTurnSpentCodec.kind,
+        workerTurnEndedCodec.kind,
       ]);
 
       let total = 0;
@@ -59,6 +61,10 @@ function buildRecordDollars(record: LogRecord, prices: ModelPrices | null): numb
 
   if (record.kind === taskFailedTurnSpentCodec.kind) {
     return taskFailedTurnSpentCodec.decode(record.payload).dollars;
+  }
+
+  if (record.kind === workerTurnEndedCodec.kind) {
+    return workerTurnEndedCodec.decode(record.payload).dollars;
   }
 
   return buildTokensCost(

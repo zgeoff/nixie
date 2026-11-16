@@ -12,6 +12,7 @@ import type { MemoryToolStore } from '@heynixie/memory';
 import { buildLogReadImageTool, buildLogReadTool } from '@heynixie/memory';
 import { buildPromptReadTool, buildPromptWriteTool } from '@heynixie/prompts';
 import { buildSilentEndTool } from '@heynixie/sessions';
+import type { WorkerTool } from '@heynixie/sessions';
 import type { SkillVendorContext } from '@heynixie/skills';
 import type { TaskStartBounds } from '@heynixie/tasks';
 import {
@@ -44,6 +45,9 @@ export interface ConversationEndpointTools {
   readonly codeRun: ToolDefinition;
   readonly forget: ToolDefinition;
   readonly search: ConversationSearch | null;
+
+  // absent when the deployment sets no worker role
+  readonly worker: WorkerTool | null;
 
   readonly testTools: readonly ToolDefinition[];
 
@@ -156,6 +160,8 @@ export async function startConversationEndpoint(
           }),
         ];
 
+  const worker = tools.worker === null ? [] : [tools.worker.buildTool(bounds)];
+
   const definitions = [
     ...buildConversationTools(
       {
@@ -173,6 +179,7 @@ export async function startConversationEndpoint(
     ...search,
     ...definitionTools,
     buildTasksDefinitionsTool(definitionToolOptions),
+    ...worker,
     buildContactTool(options.context, tools.refreshDefinitions),
     buildMandateTool({
       context: options.context,

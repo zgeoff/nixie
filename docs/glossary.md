@@ -12,8 +12,8 @@ one person a nixie deployment works for, and the architecture docs call that per
 | task run                 | One stretch of a started task's work, from the claim that opens it to its one report             |
 | report                   | What ends a task run: a summary and the fields of the report shape, sent to the starter          |
 | report shape             | The fields a started task must pass with its report, which nixie checks and never trusts         |
-| worker                   | A disposable unit of work behind one tool call, which runs in its own imp                        |
-| worker run               | One execution of a worker, from the tool call to its result                                      |
+| worker                   | A disposable model loop behind one `worker.run` call, which answers one question in its own imp  |
+| worker run               | One execution of a worker, from the tool call to its result, with its own limits and records     |
 | task definition          | A definition in the `tasks` folder: a trigger, instructions and a tool list                      |
 | task run of a definition | One task run of a task definition, which is itself a task                                        |
 | trigger                  | What starts a task run of a definition without you, such as a schedule, a webhook or a new email |

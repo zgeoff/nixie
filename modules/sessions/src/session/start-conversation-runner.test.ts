@@ -532,6 +532,12 @@ test("it gives each turn a step token of the step's run identity, and stops it o
         },
         reserveImages: expect.any(Function),
         endSilently: expect.any(Function),
+        step: {
+          signal: expect.any(AbortSignal),
+          interrupt: expect.any(AbortSignal),
+          readLeftDollars: expect.any(Function),
+          onSpend: expect.any(Function),
+        },
       },
       token: 'step-token-1',
       isStopped: true,
@@ -550,6 +556,12 @@ test("it gives each turn a step token of the step's run identity, and stops it o
         },
         reserveImages: expect.any(Function),
         endSilently: expect.any(Function),
+        step: {
+          signal: expect.any(AbortSignal),
+          interrupt: expect.any(AbortSignal),
+          readLeftDollars: expect.any(Function),
+          onSpend: expect.any(Function),
+        },
       },
       token: 'step-token-2',
       isStopped: true,
@@ -681,6 +693,7 @@ test('it clears every web fetch pause on a forget, so the next fetch of a paused
           model: { model: 'model-a', profile: 'chat-direct' },
           session: { key: 'session-a', invalidatedThrough: 0 },
         },
+        callSequence: 1,
       },
     );
 

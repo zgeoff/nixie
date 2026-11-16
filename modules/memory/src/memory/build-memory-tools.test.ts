@@ -273,6 +273,7 @@ test('it returns a proposal with the sentence for its reason, not an error, for 
       toolUseID: null,
     },
     {
+      callSequence: 1,
       run: {
         runID: 'run-1',
         thread: 'conversation',
@@ -401,6 +402,7 @@ test.each(['shared', 'self'] as const)(
         toolUseID: null,
       },
       {
+        callSequence: 1,
         run: {
           runID: 'run-1',
           thread: 'conversation',
@@ -730,6 +732,7 @@ test('it returns a stale edit to the model as an error that names the item by it
       toolUseID: null,
     },
     {
+      callSequence: 1,
       run: {
         runID: 'run-1',
         thread: 'conversation',
@@ -761,6 +764,7 @@ test('it returns an edit of an ID that names no item to the model as an error wi
       toolUseID: null,
     },
     {
+      callSequence: 1,
       run: {
         runID: 'run-1',
         thread: 'conversation',
@@ -810,6 +814,7 @@ test('it retires the item its short ID names when the model read it and you aske
       toolUseID: null,
     },
     {
+      callSequence: 1,
       run: {
         runID: 'run-1',
         thread: 'conversation',
@@ -853,6 +858,7 @@ test('it returns a full proposal cap to the model as an error', async () => {
   };
 
   const context = {
+    callSequence: 1,
     run: {
       runID: 'run-1',
       thread: 'conversation',
@@ -895,6 +901,7 @@ test('it recalls items with a result that its output schema accepts', async () =
       toolUseID: null,
     },
     {
+      callSequence: 1,
       run: {
         runID: 'run-1',
         thread: 'conversation',

@@ -48,6 +48,7 @@ test('it returns each hit with a link ID and a date only on a dated hit, and kee
   const outcome = await tool.run(
     { callID: 'call-1', tool: 'search', input: { query: 'tide times' }, toolUseID: null },
     {
+      callSequence: 1,
       run: {
         runID: 'run-1',
         thread: 'conversation',
@@ -109,6 +110,7 @@ test('it numbers a hit after the links the session already holds, and gives a kn
   const outcome = await tool.run(
     { callID: 'call-1', tool: 'search', input: { query: 'ferry' }, toolUseID: null },
     {
+      callSequence: 1,
       run: {
         runID: 'run-1',
         thread: 'conversation',
@@ -158,6 +160,7 @@ test('it gives two hits with one URL the same link ID', async () => {
   const outcome = await tool.run(
     { callID: 'call-1', tool: 'search', input: { query: 'ferry fares' }, toolUseID: null },
     {
+      callSequence: 1,
       run: {
         runID: 'run-1',
         thread: 'conversation',
@@ -204,6 +207,7 @@ test('it keys the link IDs of a call under the run token by the run', async () =
   await tool.run(
     { callID: 'call-1', tool: 'search', input: { query: 'tide times' }, toolUseID: null },
     {
+      callSequence: 1,
       run: {
         runID: 'run-1',
         thread: 'task',
@@ -251,6 +255,7 @@ test('it refuses a search whose session a forget ended, and stores no link', asy
   const outcome = await tool.run(
     { callID: 'call-1', tool: 'search', input: { query: 'tide times' }, toolUseID: null },
     {
+      callSequence: 1,
       run: {
         runID: 'run-1',
         thread: 'conversation',
@@ -300,6 +305,7 @@ test.each([
   const outcome = await tool.run(
     { callID: 'call-1', tool: 'search', input: { query: 'tide times' }, toolUseID: null },
     {
+      callSequence: 1,
       run: {
         runID: 'run-1',
         thread: 'conversation',
@@ -337,6 +343,7 @@ test('it asks the provider for 10 hits from any site at any time when the call s
   await tool.run(
     { callID: 'call-1', tool: 'search', input: { query: 'tide times' }, toolUseID: null },
     {
+      callSequence: 1,
       run: {
         runID: 'run-1',
         thread: 'conversation',
@@ -385,6 +392,7 @@ test('it passes the limit, the sites and the freshness the call sets to the prov
       toolUseID: null,
     },
     {
+      callSequence: 1,
       run: {
         runID: 'run-1',
         thread: 'conversation',
@@ -424,6 +432,7 @@ test('it refuses the call past 200 in a day, names the cap and when it resets, a
     await tool.run(
       { callID: `call-${index}`, tool: 'search', input: { query: 'tides' }, toolUseID: null },
       {
+        callSequence: 1,
         run: {
           runID: 'run-1',
           thread: 'conversation',
@@ -440,6 +449,7 @@ test('it refuses the call past 200 in a day, names the cap and when it resets, a
   const outcome = await tool.run(
     { callID: 'call-201', tool: 'search', input: { query: 'tides' }, toolUseID: null },
     {
+      callSequence: 1,
       run: {
         runID: 'run-1',
         thread: 'conversation',
@@ -475,6 +485,7 @@ test('it counts afresh from local midnight', async () => {
   await tool.run(
     { callID: 'call-1', tool: 'search', input: { query: 'tides' }, toolUseID: null },
     {
+      callSequence: 1,
       run: {
         runID: 'run-1',
         thread: 'conversation',
@@ -490,6 +501,7 @@ test('it counts afresh from local midnight', async () => {
   const outcome = await tool.run(
     { callID: 'call-2', tool: 'search', input: { query: 'tides' }, toolUseID: null },
     {
+      callSequence: 1,
       run: {
         runID: 'run-1',
         thread: 'conversation',
@@ -522,6 +534,7 @@ test('it refuses a second call before local midnight under a cap of 1', async ()
   await tool.run(
     { callID: 'call-1', tool: 'search', input: { query: 'tides' }, toolUseID: null },
     {
+      callSequence: 1,
       run: {
         runID: 'run-1',
         thread: 'conversation',
@@ -537,6 +550,7 @@ test('it refuses a second call before local midnight under a cap of 1', async ()
   const outcome = await tool.run(
     { callID: 'call-2', tool: 'search', input: { query: 'tides' }, toolUseID: null },
     {
+      callSequence: 1,
       run: {
         runID: 'run-1',
         thread: 'conversation',
@@ -573,6 +587,7 @@ test("it returns the provider's failure as an error the model reads", async () =
   const outcome = await tool.run(
     { callID: 'call-1', tool: 'search', input: { query: 'tides' }, toolUseID: null },
     {
+      callSequence: 1,
       run: {
         runID: 'run-1',
         thread: 'conversation',

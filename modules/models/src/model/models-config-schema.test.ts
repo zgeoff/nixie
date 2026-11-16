@@ -40,6 +40,7 @@ test('it reads a direct profile with its context tokens, cache lifetime and pric
     selectable: [],
     limits: {
       taskRun: { default: { turns: 25, dollars: 2 }, max: { turns: 100, dollars: 10 } },
+      workerRun: { minutes: 10, turns: 25, tokens: 2_000_000, dollars: 2 },
     },
   });
 });
@@ -112,6 +113,7 @@ test('it reads an aggregator profile with its provider pin and the role map into
     selectable: [],
     limits: {
       taskRun: { default: { turns: 25, dollars: 2 }, max: { turns: 100, dollars: 10 } },
+      workerRun: { minutes: 10, turns: 25, tokens: 2_000_000, dollars: 2 },
     },
   });
 });
@@ -338,6 +340,7 @@ test('it reads the selectable models and the task run limits into their typed sh
     ],
     limits: {
       taskRun: { default: { turns: 25, dollars: 1 }, max: { turns: 60, dollars: 10 } },
+      workerRun: { minutes: 10, turns: 25, tokens: 2_000_000, dollars: 2 },
     },
   });
 });

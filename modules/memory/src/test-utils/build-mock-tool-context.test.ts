@@ -10,6 +10,7 @@ test('it builds a default tool context', () => {
       tools: [],
       model: { model: expect.toStartWith('claude-'), profile: 'standard' },
     },
+    callSequence: 1,
   });
 });
 
@@ -24,6 +25,7 @@ test('it applies overrides on top of the defaults', () => {
       tools: [],
       model: { model: 'model-a', profile: 'fast' },
     },
+    callSequence: 1,
   });
 });
 

@@ -46,7 +46,9 @@ export async function readTurnRecalledThrough(
     limit: windowSize,
   });
 
-  return pickHeldRecallSequence(entries.map((entry) => entry.record));
+  return pickHeldRecallSequence(
+    entries.map((entry) => entry.record).filter((record) => isSessionRecord(record, input.taskID)),
+  );
 }
 
 interface HeldWalk {
@@ -87,4 +89,12 @@ function collectHeld(walk: HeldWalk, record: LogRecord): HeldWalk {
   return isTurnNote
     ? { ...walk, held: [...walk.held, record.sequence] }
     : { ...walk, awaiting: [...walk.awaiting, record.sequence] };
+}
+
+// A worker's tool calls sit on the caller's thread under the worker run's UUID, and they belong to
+// no recall of the session.
+function isSessionRecord(record: LogRecord, taskID: string): boolean {
+  const runID = record.payload['runID'];
+
+  return typeof runID !== 'string' || runID === taskID;
 }

@@ -32,6 +32,7 @@ async function setupTest(config: TestMemoryOptions = {}) {
   invariant(retireTool);
 
   const context = {
+    callSequence: 1,
     run: {
       runID: 'run-1',
       thread: 'conversation',

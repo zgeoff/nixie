@@ -29,6 +29,8 @@ import { buildStubToolEndpoint } from '../test-utils/build-stub-tool-endpoint';
 import { readRecordsByKind } from '../test-utils/read-records-by-kind';
 import { runNextStep } from '../test-utils/run-next-step';
 import { startTestSessionHost } from '../test-utils/start-test-session-host';
+import { workerRunStartedCodec } from '../worker/worker-run-started-codec';
+import { workerTurnEndedCodec } from '../worker/worker-turn-ended-codec';
 import { buildRunSettings } from './build-run-settings';
 import { readRunUsage } from './read-run-usage';
 import type { SandboxRunnerOptions } from './sandbox-runner-options';
@@ -2382,6 +2384,206 @@ test('it interrupts a task turn at its own spend that, with a spend recorded aft
     used: { turns: 1, dollars: expect.toBeWithin(0.03, 0.0301) },
     limits: { turns: 25, dollars: 0.03 },
   });
+});
+
+test("it lowers the dollars left of a task turn by the spend of a worker that another step started, which a call's priced tokens do not count", async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seed.conversationStep();
+
+  const taskID = await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+    options: {
+      model: 'second-look',
+      profile: 'router-b',
+      report: 'none',
+      limits: { turns: 25, dollars: 0.04 },
+    },
+  });
+
+  const runner = await ctx.startRunner();
+
+  ctx.guest.addKindReplies(
+    'worker',
+    {
+      text: 'The high tides on Saturday are at six and at half past six.',
+      usage: {
+        uncachedInputTokens: 3334,
+        cacheReadTokens: 0,
+        cacheWrite5mTokens: 0,
+        cacheWrite1hTokens: 0,
+        outputTokens: 0,
+      },
+      gate: async () => {
+        const run = await readOpenRun(ctx.context.log.writer.db, taskID);
+
+        invariant(run !== null, 'the claim opened a task run');
+
+        await writeRecords(ctx.context.log, [
+          {
+            kind: workerTurnEndedCodec.kind,
+            definitions: ctx.context.definitions(),
+            thread: taskID,
+            payload: workerTurnEndedCodec.encode({
+              workerRunID: crypto.randomUUID(),
+              callID: crypto.randomUUID(),
+              taskRunID: run.runID,
+              model: 'claude-test-worker',
+              profile: 'worker',
+              turn: 1,
+              inputTokens: 100,
+              outputTokens: 10,
+              cacheReadTokens: 0,
+              cacheWriteTokens: 0,
+              dollars: 0.01,
+            }),
+            erasable: { text: 'Found 3 cafes.' },
+          },
+        ]);
+
+        await ctx.writeMessage(taskID, 'And the evening tide?');
+
+        await waitForCondition(() =>
+          ctx.guest.received.some((entry) => entry.frame.type === 'message'),
+        );
+      },
+    },
+    {
+      text: 'The evening tide is at seven.',
+      usage: {
+        uncachedInputTokens: 3334,
+        cacheReadTokens: 0,
+        cacheWrite5mTokens: 0,
+        cacheWrite1hTokens: 0,
+        outputTokens: 0,
+      },
+    },
+  );
+
+  await ctx.runNextStep(runner);
+
+  const hold = ctx.steps.at(-1)?.session?.step;
+
+  invariant(hold, 'the task turn gave its step a hold');
+
+  expect(hold.readLeftDollars()).toBeCloseTo(0.04 - 2 * 0.010002 - 0.01, 6);
+});
+
+test("it counts once the spend of a worker that the turn started, in the turn's dollars left and in the task run's dollars", async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seed.conversationStep();
+
+  const taskID = await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+    options: {
+      model: 'second-look',
+      profile: 'router-b',
+      report: 'none',
+      limits: { turns: 25, dollars: 0.04 },
+    },
+  });
+
+  const runner = await ctx.startRunner();
+
+  ctx.guest.addKindReplies(
+    'worker',
+    {
+      text: 'The high tides on Saturday are at six and at half past six.',
+      usage: {
+        uncachedInputTokens: 3334,
+        cacheReadTokens: 0,
+        cacheWrite5mTokens: 0,
+        cacheWrite1hTokens: 0,
+        outputTokens: 0,
+      },
+      gate: async () => {
+        const run = await readOpenRun(ctx.context.log.writer.db, taskID);
+
+        const step = ctx.steps.at(-1);
+
+        invariant(run !== null, 'the claim opened a task run');
+        invariant(step?.session?.step, 'the task turn gave its step a hold');
+
+        const workerRunID = crypto.randomUUID();
+        const callID = crypto.randomUUID();
+
+        await writeRecords(ctx.context.log, [
+          {
+            kind: workerRunStartedCodec.kind,
+            definitions: ctx.context.definitions(),
+            thread: taskID,
+            payload: workerRunStartedCodec.encode({
+              workerRunID,
+              shortID: 'w3k8',
+              callID,
+              stepRunID: step.stepRunID,
+              taskRunID: run.runID,
+              model: 'claude-test-worker',
+              profile: 'worker',
+              tools: [],
+              limits: { minutes: 10, turns: 25, tokens: 2_000_000, dollars: 2 },
+              isTaskLimit: false,
+            }),
+          },
+          {
+            kind: workerTurnEndedCodec.kind,
+            definitions: ctx.context.definitions(),
+            thread: taskID,
+            payload: workerTurnEndedCodec.encode({
+              workerRunID,
+              callID,
+              taskRunID: run.runID,
+              model: 'claude-test-worker',
+              profile: 'worker',
+              turn: 1,
+              inputTokens: 100,
+              outputTokens: 10,
+              cacheReadTokens: 0,
+              cacheWriteTokens: 0,
+              dollars: 0.01,
+            }),
+            erasable: { text: 'Found 3 cafes.' },
+          },
+        ]);
+
+        step.session.step.onSpend(0.01);
+
+        await ctx.writeMessage(taskID, 'And the evening tide?');
+
+        await waitForCondition(() =>
+          ctx.guest.received.some((entry) => entry.frame.type === 'message'),
+        );
+      },
+    },
+    {
+      text: 'The evening tide is at seven.',
+      usage: {
+        uncachedInputTokens: 3334,
+        cacheReadTokens: 0,
+        cacheWrite5mTokens: 0,
+        cacheWrite1hTokens: 0,
+        outputTokens: 0,
+      },
+    },
+  );
+
+  await ctx.runNextStep(runner);
+
+  const run = await readOpenRun(ctx.context.log.writer.db, taskID);
+
+  invariant(run !== null, 'the task run is still open');
+
+  const usage = await readRunUsage(ctx.context, run);
+
+  const hold = ctx.steps.at(-1)?.session?.step;
+
+  invariant(hold, 'the task turn gave its step a hold');
+
+  expect(hold.readLeftDollars()).toBeCloseTo(0.04 - 2 * 0.010002 - 0.01, 6);
+  expect(usage.used.dollars).toBeWithin(0.01, 0.02);
 });
 
 test('it caps each task turn at 100 model calls', async () => {

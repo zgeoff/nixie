@@ -43,7 +43,7 @@ export interface BootFileExtras {
 
   readonly modelCredential?: 'secrets-file' | 'sandbox-backend';
 
-  readonly roleModelURLs?: Readonly<Partial<Record<'checker' | 'task', string>>>;
+  readonly roleModelURLs?: Readonly<Partial<Record<'checker' | 'task' | 'worker', string>>>;
 
   readonly selectableModelURLs?: Readonly<Record<string, string>>;
 }

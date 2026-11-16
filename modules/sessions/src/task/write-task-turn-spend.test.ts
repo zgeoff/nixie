@@ -38,7 +38,7 @@ test("it counts the spend of a step that threw after its lease expired, under th
     { failedDollars: 0.03 },
   );
 
-  const spent = await readLateSpend(ctx.context, run, 0);
+  const spent = await readLateSpend(ctx.context, run, 0, 'step-a');
 
   expect(spent).toBeCloseTo(0.03, 10);
 });
@@ -67,7 +67,7 @@ test('it writes nothing for a step that spent nothing', async () => {
     { failedDollars: null },
   );
 
-  const spent = await readLateSpend(ctx.context, run, 0);
+  const spent = await readLateSpend(ctx.context, run, 0, 'step-a');
 
   expect(spent).toBe(0);
 });

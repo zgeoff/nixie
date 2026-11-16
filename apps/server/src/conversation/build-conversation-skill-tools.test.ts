@@ -102,6 +102,7 @@ test("it reads a skill on the conversation's list for the conversation", async (
   const outcome = await read.definition.run(
     { callID: 'call-1', tool: 'skill_read', input: { name: 'tide-tables' }, toolUseID: null },
     {
+      callSequence: 1,
       run: {
         runID: 'run-1',
         thread: 'conversation',
@@ -136,6 +137,7 @@ test('it refuses a skill to a run on another thread of the endpoint', async () =
   const outcome = await read.definition.run(
     { callID: 'call-1', tool: 'skill_read', input: { name: 'tide-tables' }, toolUseID: null },
     {
+      callSequence: 1,
       run: {
         runID: 'run-2',
         thread: 'task-a',
@@ -182,7 +184,7 @@ test('it reads the new text of a skill after a reload that seeds the changed fil
 
   await read.definition.run(
     { callID: 'call-1', tool: 'skill_read', input: { name: 'tide-tables' }, toolUseID: null },
-    { run },
+    { callSequence: 1, run },
   );
 
   await writeFile(
@@ -192,12 +194,12 @@ test('it reads the new text of a skill after a reload that seeds the changed fil
 
   await reload.definition.run(
     { callID: 'call-2', tool: 'skill_reload', input: { name: 'tide-tables' }, toolUseID: null },
-    { run },
+    { callSequence: 1, run },
   );
 
   const outcome = await read.definition.run(
     { callID: 'call-3', tool: 'skill_read', input: { name: 'tide-tables' }, toolUseID: null },
-    { run },
+    { callSequence: 1, run },
   );
 
   expect(outcome).toMatchObject({ status: 'ok', result: { text: '# Tides by port\n' } });

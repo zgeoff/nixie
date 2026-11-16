@@ -20,8 +20,14 @@ export interface ToolCall {
   readonly toolUseID: string | null;
 }
 
-export interface ToolContext {
+// What a tool reads before its call has a record.
+export interface ToolResolveContext {
   readonly run: ToolRun;
+}
+
+export interface ToolContext extends ToolResolveContext {
+  // the sequence of this call's tool_called record
+  readonly callSequence: number;
 
   // What the decision point said about a call to a tool that declares memory_write. A call with no
   // verdict runs every check of the tool's own gate.
@@ -102,14 +108,14 @@ export interface ToolDefinition {
   // declaration names as a destination.
   readonly resolveDestinations?: (
     input: JSONObject,
-    context: ToolContext,
+    context: ToolResolveContext,
   ) => Promise<DestinationResolution>;
 
   // Resolves the time after which the call's action must not start, on the host, for a tool whose
   // provider limits when it may run. The model never supplies it. A tool without it has no deadline.
   readonly resolveDeadline?: (
     input: JSONObject,
-    context: ToolContext,
+    context: ToolResolveContext,
   ) => Promise<DeadlineResolution>;
 
   // Sets the call's policy sources and arguments on the host before the decision point runs, for a
@@ -117,7 +123,7 @@ export interface ToolDefinition {
   // without it takes the step's sources and its raw input.
   readonly resolvePolicyFacts?: (
     input: JSONObject,
-    context: ToolContext,
+    context: ToolResolveContext,
   ) => Promise<PolicyFactsResolution>;
 
   // Variants of the tool, each with a declaration of its own. A call to a tool with variants asks
@@ -205,6 +211,24 @@ export interface ToolSession {
 
   // what the step's calls pass to the decision point beyond the tool and its input
   readonly policy?: StepPolicyFrame;
+
+  // what a call that starts more model work needs from the turn that makes it; a worker's own step
+  // token never gives it
+  readonly step?: ToolStepHold;
+}
+
+export interface ToolStepHold {
+  // the step lost its lease or was ended: the call returns nothing
+  readonly signal: AbortSignal;
+
+  // the turn was interrupted or reached its budget: the call stops and answers
+  readonly interrupt: AbortSignal;
+
+  // null for a caller with no dollar limit
+  readonly readLeftDollars: () => number | null;
+
+  // lowers what is left of the calling turn's budget
+  readonly onSpend: (dollars: number) => void;
 }
 
 export interface StepPolicyFrame {
@@ -292,6 +316,9 @@ export interface GuestToolRun extends ToolRun {
   // the MCP _meta key that carries the model's tool-use ID on each call, or null when the guest
   // sends none
   readonly toolUseMetaKey: string | null;
+
+  // the sequence that each tool_called of this tool run takes as its parent
+  readonly parent?: number;
 }
 
 export interface ToolEndpoint {

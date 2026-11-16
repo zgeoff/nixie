@@ -429,6 +429,12 @@
                 "turns": 100,
                 "dollars": 10
               }
+            },
+            "workerRun": {
+              "minutes": 10,
+              "turns": 25,
+              "tokens": 2000000,
+              "dollars": 2
             }
           },
           "type": "object",
@@ -487,6 +493,40 @@
                     }
                   },
                   "additionalProperties": false
+                }
+              },
+              "additionalProperties": false
+            },
+            "workerRun": {
+              "default": {
+                "minutes": 10,
+                "turns": 25,
+                "tokens": 2000000,
+                "dollars": 2
+              },
+              "type": "object",
+              "properties": {
+                "minutes": {
+                  "default": 10,
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                },
+                "turns": {
+                  "default": 25,
+                  "type": "integer",
+                  "exclusiveMinimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "tokens": {
+                  "default": 2000000,
+                  "type": "integer",
+                  "exclusiveMinimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "dollars": {
+                  "default": 2,
+                  "type": "number",
+                  "exclusiveMinimum": 0
                 }
               },
               "additionalProperties": false
@@ -1273,6 +1313,28 @@
               "maximum": 9007199254740991
             }
           },
+          "additionalProperties": false
+        },
+        "workerRuns": {
+          "type": "object",
+          "properties": {
+            "max": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "maximum": 9007199254740991
+            },
+            "whenFull": {
+              "type": "string",
+              "enum": [
+                "wait",
+                "error"
+              ]
+            }
+          },
+          "required": [
+            "max",
+            "whenFull"
+          ],
           "additionalProperties": false
         }
       },

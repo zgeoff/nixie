@@ -159,7 +159,7 @@ function buildEditRequest(
   input: z.infer<typeof editArguments>,
   itemID: string,
   until: number | null | undefined,
-  context: ToolContext,
+  context: Pick<ToolContext, 'run' | 'verdict'>,
 ): GatedRememberRequest {
   return {
     text: input.text ?? '',

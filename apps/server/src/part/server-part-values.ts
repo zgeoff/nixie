@@ -1,7 +1,7 @@
 import type { CleanupRecordSessions } from '@heynixie/api';
 import type { DefinitionsExportSweep, SeedResult } from '@heynixie/definitions';
 import type { StartedMemoryStore } from '@heynixie/memory';
-import type { CheckerTask, SandboxRunner } from '@heynixie/sessions';
+import type { CheckerTask, SandboxRunner, WorkerTool } from '@heynixie/sessions';
 import type { TurnInputs } from '@heynixie/turn-inputs';
 import type { ConversationImp } from '../conversation/start-conversation-imp';
 import type { ServerResetControl } from '../server/build-server-reset';
@@ -20,6 +20,7 @@ export interface ServerPartValues {
   readonly sandbox_adapter: Tools['adapter'];
   readonly web_fetch: Tools['webFetch'];
   readonly code_run: CodeRunPart;
+  readonly worker: WorkerTool | null;
   readonly actions: Tools['actions'];
   readonly tool_endpoint: Pick<Tools, 'definitions' | 'endpoint' | 'taskBounds'>;
   readonly tools: Tools;

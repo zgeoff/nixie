@@ -52,6 +52,7 @@ test("it fetches through a new fetcher process in a test build's fetch sandbox, 
   const outcome = await webFetch.tool.run(
     { callID: 'call-1', tool: 'web_fetch', input: { url: 'https://localhost/' }, toolUseID: null },
     {
+      callSequence: 1,
       run: {
         runID: 'run-1',
         thread: 'conversation',
@@ -187,7 +188,7 @@ test("it stores a page past the web fetch's text limit whole, in parts of that l
       input: { url: 'https://pages.test/files/30000' },
       toolUseID: null,
     },
-    { run },
+    { callSequence: 1, run },
   );
 
   invariant(first.status === 'ok' && typeof first.result['page'] === 'string');
@@ -199,7 +200,7 @@ test("it stores a page past the web fetch's text limit whole, in parts of that l
       input: { page: first.result['page'], part: 2 },
       toolUseID: null,
     },
-    { run },
+    { callSequence: 1, run },
   );
 
   expect(first.result).toStrictEqual({
@@ -271,6 +272,7 @@ test('it keeps the whole text of a page whose text decodes to 3 times its body b
       toolUseID: null,
     },
     {
+      callSequence: 1,
       run: {
         runID: 'run-1',
         thread: 'conversation',
@@ -343,6 +345,7 @@ test('it creates the web fetch sandbox and the skill fetch sandbox at the fetch 
   await webFetch.tool.run(
     { callID: 'call-1', tool: 'web_fetch', input: { url: 'https://localhost/' }, toolUseID: null },
     {
+      callSequence: 1,
       run: {
         runID: 'run-1',
         thread: 'conversation',

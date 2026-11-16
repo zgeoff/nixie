@@ -727,3 +727,43 @@ test('it lists a started task whose creation record holds the conversation log o
   expect(taskCreatedCodec.tryDecodePartial(created.payload)?.taskID).toBe('t8p6');
   expect(messaging.directory.map((profile) => profile.taskID)).toStrictEqual(['t8p6']);
 });
+
+test('it reads past the worker records that a newer release wrote on a thread', async () => {
+  const ctx = await setupTest();
+
+  const definitions = { snapshotHash: 'sha256:test' };
+
+  await writeRecords(ctx.tasks.context.log, [
+    {
+      kind: 'worker.run_started',
+      definitions,
+      thread: 'conversation',
+      payload: {
+        workerRunID: crypto.randomUUID(),
+        shortID: 'w3k8',
+        callID: crypto.randomUUID(),
+        stepRunID: 'step-a',
+        model: 'claude-test-1',
+        profile: 'worker',
+        tools: [],
+        limits: { minutes: 10, turns: 25, tokens: 2_000_000, dollars: 2 },
+        isTaskLimit: false,
+      },
+    },
+    {
+      kind: 'worker.turn_ended',
+      definitions,
+      thread: 'conversation',
+      payload: { workerRunID: crypto.randomUUID(), turn: 1, dollars: 0.01 },
+      erasable: { text: 'Found 3 cafes.' },
+    },
+  ]);
+
+  const started = await readStartedTaskIDs(ctx.tasks.context, { end: 'open' });
+  const marks = await readSessionMarks(ctx.tasks.context, 'conversation');
+
+  expect({ started, hasOpening: marks.hasOpening }).toStrictEqual({
+    started: [],
+    hasOpening: false,
+  });
+});

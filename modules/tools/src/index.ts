@@ -38,8 +38,10 @@ export type {
   ToolOutcome,
   ToolRegistry,
   ToolRun,
+  ToolResolveContext,
   ToolRunModel,
   ToolSession,
+  ToolStepHold,
   ToolVariants,
 } from './types';
 

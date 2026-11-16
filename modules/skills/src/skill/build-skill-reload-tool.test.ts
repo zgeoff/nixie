@@ -81,6 +81,7 @@ test('it reloads the skill its input names, with a result the output schema acce
   const outcome = await tool.definition.run(
     { callID: 'call-1', tool: 'skill_reload', input: { name: 'bird-log' }, toolUseID: null },
     {
+      callSequence: 1,
       run: {
         runID: 'run-1',
         thread: 'task-a',

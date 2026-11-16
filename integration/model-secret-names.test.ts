@@ -55,6 +55,7 @@ test('it uses the secret impd holds under the fixed name of a profile with no cr
       selectable: [],
       limits: {
         taskRun: { default: { turns: 25, dollars: 2 }, max: { turns: 100, dollars: 10 } },
+        workerRun: { minutes: 10, turns: 25, tokens: 2_000_000, dollars: 2 },
       },
     },
     {},
@@ -96,6 +97,7 @@ test('it refuses the fixed-name secret of a profile with no credential in the se
       selectable: [],
       limits: {
         taskRun: { default: { turns: 25, dollars: 2 }, max: { turns: 100, dollars: 10 } },
+        workerRun: { minutes: 10, turns: 25, tokens: 2_000_000, dollars: 2 },
       },
     },
     {},

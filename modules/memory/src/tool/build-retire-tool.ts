@@ -74,7 +74,7 @@ export function buildRetireTool(memory: ModelWriteStore & ItemIDStore): ToolDefi
 function buildRetireRequest(
   input: z.infer<typeof retireArguments>,
   itemID: string,
-  context: ToolContext,
+  context: Pick<ToolContext, 'run' | 'verdict'>,
 ): GatedRetireRequest {
   return {
     target: { itemID, version: input.version },
@@ -87,7 +87,7 @@ function buildRetireRequest(
 async function runRetireCall(
   memory: ModelWriteStore & ItemIDStore,
   call: ToolCall,
-  context: ToolContext,
+  context: Pick<ToolContext, 'run' | 'verdict'>,
 ): Promise<ToolOutcome> {
   const input = retireArguments.parse(call.input);
 
