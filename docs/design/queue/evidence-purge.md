@@ -319,10 +319,13 @@ const exportVersionSchema = z.strictObject({
   between. It deletes the closed keys after it releases the lock.
 - It creates the next generation key in keys.db first, and for a shared-key item a version key for
   the bridge.
-- It writes one transaction:
+- It writes one transaction, in this order:
   - `memory.proposal_lapsed` for each pending proposal of the item;
   - for a shared-key item, the bridge's `memory.version_added` and its `memory.version_keyed`;
-  - `memory.evidence_purge_closed`.
+  - `memory.evidence_purge_closed`, with `labelsRevision`;
+  - one `memory.labelled` that reseals the current labels under the next generation key, at revision
+    R+2 with a bridge and R+1 without, so its sequence lies above the new key's `from_sequence`. The
+    labels read as the purge's, never as your edit.
 - After the commit, it deletes each key in `closedKeyIDs` and `closedRecordKeyIDs` with
   `removeRecordKey`, which also clears the key store's write-ahead log, then writes
   `memory.evidence_purged`.

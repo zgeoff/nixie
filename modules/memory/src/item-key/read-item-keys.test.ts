@@ -2,11 +2,16 @@ import { expect, test } from 'bun:test';
 import { readFileSync, readdirSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { readRecordKeys, readRecords, removeRecordKey } from '@heynixie/log';
+import invariant from 'tiny-invariant';
+import { itemLabelsCodec } from '../label/item-labels-codec';
 import { buildMockProvenance } from '../test-utils/build-mock-provenance';
 import { createQuotedProposal } from '../test-utils/create-quoted-proposal';
 import { seedBegunPurge } from '../test-utils/seed-begun-purge';
 import { startTestMemory } from '../test-utils/start-test-memory';
 import { writeOwnerMessageRecord } from '../test-utils/write-owner-message-record';
+import type { MemoryTables } from '../types';
+import { decodeProposalText } from '../utils/decode-proposal-text';
+import { decodeVersionText } from '../version/decode-version-text';
 import { readCurrentItemKey } from './read-current-item-key';
 import { readItemKeys } from './read-item-keys';
 
@@ -274,56 +279,101 @@ test('it is the only way a module file reads an item key, apart from the 4 liste
   expect(importers).toStrictEqual([...allowed.keys()].toSorted());
 });
 
-test('it seals every value of an item no purge reached under the key the release before reads', async () => {
+test('it leaves every value of an item no purge reached readable under the item key alone', async () => {
   const ctx = await setupTest();
   const sequence = await ctx.writeMessage('I keep bees on the allotment.');
   const item = await ctx.rememberQuoting(sequence);
 
-  await ctx.memory.store.remember({
+  const second = await ctx.memory.store.remember({
     text: 'Keeps two hives on the allotment',
     target: item,
     provenance: buildMockProvenance(),
   });
 
-  const proposal = await createQuotedProposal(ctx.memory, {
+  const rejected = await createQuotedProposal(ctx.memory, {
     message: 'I keep three hives now.',
     text: 'Keeps three hives on the allotment',
     quote: 'I keep three hives',
-    target: { itemID: item.itemID, version: 2 },
+    target: second,
   });
 
-  const versions = await ctx.readSequences('memory.version_added');
-  const proposals = await ctx.readSequences('memory.proposed');
-  const labelled = await ctx.readSequences('memory.labelled');
-  const olderKeys = await readRecordKeys(ctx.memory.log, [item.itemID]);
+  await ctx.memory.store.proposals.reject({
+    proposalID: rejected.proposal.proposalID,
+    actionHash: rejected.proposal.actionHash,
+    identityID: 'identity-1',
+  });
 
-  const keys = await readItemKeys(ctx.memory.log, [
-    { value: 'version', itemID: item.itemID, version: 1, sequence: versions[0] ?? 0 },
-    { value: 'version', itemID: item.itemID, version: 2, sequence: versions[1] ?? 0 },
-    { value: 'proposal', itemID: item.itemID, sequence: proposals[0] ?? 0 },
-    { value: 'labels', itemID: item.itemID, sequence: labelled[0] ?? 0 },
+  const pending = await createQuotedProposal(ctx.memory, {
+    message: 'I keep four hives now.',
+    text: 'Keeps four hives on the allotment',
+    quote: 'I keep four hives',
+    target: second,
+  });
+
+  // the read path of the release before the lookup: the item's own key, and the unchanged codecs
+  const keys = await readRecordKeys(ctx.memory.log, [item.itemID]);
+
+  const key = keys.get(item.itemID);
+
+  invariant(key);
+
+  const db = ctx.memory.log.writer.db.$extendTables<MemoryTables>();
+
+  const versions = await db
+    .selectFrom('memory_versions')
+    .select(['version', 'sealed'])
+    .orderBy('version')
+    .execute();
+
+  const labels = await db.selectFrom('memory_labels').select(['revision', 'sealed']).execute();
+
+  const proposals = await db
+    .selectFrom('memory_proposals')
+    .select(['proposal_id', 'sealed'])
+    .execute();
+
+  const texts = await Promise.all(
+    versions.map((row) =>
+      decodeVersionText(key, { itemID: item.itemID, version: row.version }, row.sealed),
+    ),
+  );
+
+  const opened = await Promise.all(
+    labels.map((row) =>
+      itemLabelsCodec.decode(key, { itemID: item.itemID, revision: row.revision }, row.sealed),
+    ),
+  );
+
+  const proposalTexts = await Promise.all(
+    proposals.map((row) => decodeProposalText(key, row.proposal_id, row.sealed)),
+  );
+
+  const written = await readRecords(ctx.memory.log, { afterSequence: 0, limit: 200 });
+
+  expect(texts.map((text) => text.text)).toStrictEqual([
+    'Keeps bees on the allotment',
+    'Keeps two hives on the allotment',
   ]);
 
-  const kinds = await readRecords(ctx.memory.log, { afterSequence: 0, limit: 100 });
+  expect(opened.map((labelSet) => labelSet.gist)).toStrictEqual(['keeps bees']);
 
-  expect(proposal).toBeDefined();
-  expect(olderKeys.get(item.itemID)).toBeInstanceOf(CryptoKey);
-
-  expect(keys.map((key) => (key.status === 'readable' ? key.keyID : key.status))).toStrictEqual([
-    item.itemID,
-    item.itemID,
-    item.itemID,
-    item.itemID,
+  expect(proposalTexts.map((text) => text.text).toSorted()).toStrictEqual([
+    'Keeps four hives on the allotment',
+    'Keeps three hives on the allotment',
   ]);
+
+  expect(pending.proposal.proposalID).toBeString();
 
   expect(
-    kinds.filter((entry) =>
-      [
-        'memory.version_keyed',
-        'memory.evidence_purge_started',
-        'memory.evidence_purge_closed',
-        'memory.evidence_purged',
-      ].includes(entry.record.kind),
-    ),
+    written
+      .map((entry) => entry.record.kind)
+      .filter((kind) =>
+        [
+          'memory.version_keyed',
+          'memory.evidence_purge_started',
+          'memory.evidence_purge_closed',
+          'memory.evidence_purged',
+        ].includes(kind),
+      ),
   ).toStrictEqual([]);
 });

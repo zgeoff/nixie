@@ -153,24 +153,25 @@ the `<item UUID>/` prefix and the UUID itself.
 
 ### The evidence purge
 
-When a record forget removes a message that items quote, it writes `record.forget_started` and
-`memory.evidence_purge_started` in one transaction, which fixes the items to purge. From then on
-every reader reads each older version and pending proposal of those items as removed. The purge of
-one item runs in one commit: it lapses the item's pending proposals, writes a bridge version under a
-new version key when the current text shared generation 0, closes the item's old keys with
-`memory.evidence_purge_closed`, and reseals the current labels under the next generation key with a
-`memory.labelled`. After the commit it deletes the closed keys and writes `memory.evidence_purged`.
-The bridge shows in the history as the purge's version, with its text and no change or origin.
-`memory_item_keys` and `memory_evidence_purges` are projections of the 4 record kinds
-(`memory.version_keyed`, `memory.evidence_purge_started`, `memory.evidence_purge_closed` and
-`memory.evidence_purged`) and hold what the lookup reads. The server start finishes every purge that
-a started record still owes, before it serves a turn, and a record forget that began one writes
-`record.forgotten` only after the purge of every item in its set ends.
+A purge removes the copies of a forgotten message that a memory item holds: its older versions and
+pending proposals. `memory.evidence_purge_started` fixes the items to purge. From then on every
+reader reads each older version and pending proposal of those items as removed, and a write that
+edits one of them fails with `ItemPurgingError`. A write that quotes a record whose forget has begun
+fails with `QuotedRecordForgettingError`, and an undo of a version that reads removed fails with
+`VERSION_REMOVED`.
 
-A write that quotes a record whose forget has begun fails with `QuotedRecordForgettingError`, and a
-write that edits an item still purging fails with `ItemPurgingError`. Both are refusals the model
-reads as tool errors, and neither falls back to a proposal. An undo of a version that reads removed
-fails with `VERSION_REMOVED`.
+The purge of one item runs in one commit. It lapses the item's pending proposals, writes a bridge
+version under a new version key when the current text shared generation 0, closes the item's old
+keys with `memory.evidence_purge_closed`, and reseals the current labels under the next generation
+key with a `memory.labelled`. After the commit it deletes the closed keys and writes
+`memory.evidence_purged`. The history shows the bridge as the purge's version, with its text and no
+change or origin.
+
+`memory_item_keys` and `memory_evidence_purges` are projections of `memory.version_keyed`,
+`memory.evidence_purge_started`, `memory.evidence_purge_closed` and `memory.evidence_purged`, and
+hold what the lookup reads. The server start finishes every purge that a started record still owes,
+and the session cleanup of a record forget finishes the purge of that record's set before the forget
+writes `record.forgotten`. Nothing in the record forget writes `memory.evidence_purge_started` yet.
 
 ## Recall
 
