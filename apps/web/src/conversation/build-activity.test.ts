@@ -690,3 +690,48 @@ test('it keeps a definition change as an item of its own with its notice', () =>
 
   expect(buildActivity([changed])).toStrictEqual([{ kind: 'definition', record: changed, notice }]);
 });
+
+test('it reads an earlier definition notice as superseded once a later change of the same definition follows', () => {
+  const notice = {
+    definitionID: 'water-the-tomatoes',
+    name: 'Water the tomatoes',
+    operation: 'add',
+    shortID: 'k3x9m2p7qa',
+    changeID: 'change-one',
+    rendered: 'every Friday at 08:00',
+    next: 'Fri 12 Mar',
+    state: 'in_force',
+    isUnreadable: false,
+  } as const;
+
+  const first = buildMockLogRecord({
+    kind: 'definition.changed',
+    definitionNotice: notice,
+    sequence: 1,
+    thread: 'conversation',
+  });
+
+  const secondNotice = {
+    ...notice,
+    operation: 'change',
+    shortID: 'w5n1c8d3ra',
+    changeID: 'change-two',
+  } as const;
+
+  const second = buildMockLogRecord({
+    kind: 'definition.changed',
+    definitionNotice: {
+      ...notice,
+      operation: 'change',
+      shortID: 'w5n1c8d3ra',
+      changeID: 'change-two',
+    },
+    sequence: 2,
+    thread: 'conversation',
+  });
+
+  expect(buildActivity([first, second])).toStrictEqual([
+    { kind: 'definition', record: first, notice: { ...notice, state: 'superseded', next: null } },
+    { kind: 'definition', record: second, notice: secondNotice },
+  ]);
+});
