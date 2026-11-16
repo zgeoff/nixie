@@ -145,7 +145,13 @@ async function keepApprovedCallsReady(
 ): Promise<StepResult> {
   const isEnding = result.next === 'wait' || result.next === 'done';
 
-  if (!isEnding || !(await run.inStepActions?.probePending(taskID))) {
+  if (!isEnding) {
+    return result;
+  }
+
+  const probe = await run.inStepActions?.probePending(taskID);
+
+  if (probe !== true) {
     return result;
   }
 
