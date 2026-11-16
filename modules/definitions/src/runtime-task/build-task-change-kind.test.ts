@@ -152,7 +152,12 @@ test('it fails the export and opens no pull request when a task folder of the re
   await ctx.writeRepoFiles({ 'tasks/feed-the-cat/task.yaml': 'name: [\n' });
   await ctx.runExports();
 
-  expect(ctx.onError).toHaveBeenCalledTimes(1);
+  const fault = expect.objectContaining({ path: expect.stringMatching(/^tasks\/feed-the-cat\//u) });
+
+  expect(ctx.onError.mock.calls).toStrictEqual([
+    [expect.objectContaining({ name: 'TaskSeedRefusedError', faults: [fault] })],
+  ]);
+
   expect(ctx.repo.readPullRequests()).toStrictEqual([]);
 });
 
