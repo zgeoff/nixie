@@ -31,6 +31,7 @@ export type {
 export { writeContactMarked } from './contact/write-contact-marked';
 export { writeContactUnmarked } from './contact/write-contact-unmarked';
 export { effectNames } from './utils/effect-names';
+export { hasQueuedEffect } from './utils/has-queued-effect';
 export { getFixedRules } from './rule/get-fixed-rules';
 export type { DecisionPointOptions } from './rule/make-decision-point';
 export { makeDecisionPoint } from './rule/make-decision-point';

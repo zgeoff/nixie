@@ -14,6 +14,7 @@ import invariant from 'tiny-invariant';
 import { z } from 'zod';
 import { ruleBodySchema } from '../rule/rule-body-schema';
 import type { Rule } from '../types';
+import { hasQueuedEffect } from '../utils/has-queued-effect';
 import { actionAnsweredCodec } from './action-answered-codec';
 import { actionLapsedCodec } from './action-lapsed-codec';
 import { actionProposalLapseMs } from './action-proposal-lapse-ms';
@@ -206,7 +207,9 @@ async function writeAnswer(
     return { status: 'refused', refusal: { error: 'NOT_ALLOWED', reason: 'rule_gone' } };
   }
 
-  const queued = isDeclined ? null : await queueAction(deps, tx, { row, proposed, payload });
+  // a tool that runs inside the turn never enters the action queue, which has no connector for it
+  const isQueued = !isDeclined && hasQueuedEffect(payload.effects);
+  const queued = isQueued ? await queueAction(deps, tx, { row, proposed, payload }) : null;
 
   if (queued !== null && queued.status === 'refused') {
     return { status: 'refused', refusal: queued.refusal };

@@ -92,7 +92,9 @@ time past a row's deadline.
 An approval queues the action once. The approved proposal's ID becomes the action's ID, and the
 proposal row's `usedBy` names it, so a second tap on the same approval finds the action and queues
 nothing. The inbox record for the approval reads "Approved `<id>`. Queued as `<id>`.". Declining or
-letting the proposal lapse closes an action that was held for it.
+letting the proposal lapse closes an action that was held for it. Approving a call to a tool that
+runs inside the turn queues nothing, because only a tool whose effects reach outside nixie runs as
+an action.
 
 ## Policy before each attempt
 
