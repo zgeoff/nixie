@@ -1,11 +1,15 @@
-import { removeRecordKey, withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
+import {
+  removeRecordKeyFamily,
+  withWriteTransaction,
+  writeRecordsInTransaction,
+} from '@heynixie/log';
 import { waitAtFaultPoint } from '@heynixie/tasks';
 import type { MemoryTables, StoreParts } from '../types';
 
 export async function runForgetCleanup(parts: StoreParts, itemID: string): Promise<void> {
   const log = parts.context.log;
 
-  await removeRecordKey(log, itemID);
+  await removeRecordKeyFamily(log, itemID);
 
   if (NIXIE_TEST_BUILD) {
     await waitAtFaultPoint('memory.forget.key_removed', { kind: 'memory', id: itemID });

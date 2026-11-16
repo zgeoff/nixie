@@ -18,6 +18,7 @@ export { readRecords } from './record/read-records';
 export { readThreadNewestFirst } from './thread/read-thread-newest-first';
 export { readRecordAttachments } from './record/read-record-attachments';
 export { removeRecordKey } from './record/remove-record-key';
+export { removeRecordKeyFamily } from './record/remove-record-key-family';
 export { removeThreadKeys } from './record/remove-thread-keys';
 export { claimBackupLock } from './data/claim-backup-lock';
 export { localDataStorage } from './writer/local-data-storage';
