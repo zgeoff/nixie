@@ -206,9 +206,9 @@ start in each of these cases:
   holds the cap.
 
 When the gateway does not answer, the server starts, logs `spend.limits_unsent`, and sends the
-limits every 5 seconds until the gateway answers. Until then the gateway holds no limit and refuses
-every model request. A late send checks the zone first, and sends nothing to a gateway in another
-zone.
+limits on a fixed short interval until the gateway answers. Until then the gateway holds no limit
+and refuses every model request. A late send checks the zone first, and sends nothing to a gateway
+in another zone.
 
 ### The route of a request
 
