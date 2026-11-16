@@ -53,7 +53,7 @@ interface TasksListEndedInput {
 interface TasksListEndedOutput {
   tasks: ListedTask[]; // built: listedTaskSchema. One entry per task of the page's task runs.
   runs: EndedRun[]; // the task runs and reports work owns EndedRun, which carries its sequence. The
-  // dashboard work adds `fire` to each run: live-view-dashboard.md#contracts
+  // each run also carries `fire`, as the API architecture doc describes
   next: number | null; // the `before` of the next page; null when no ended task run is left
 }
 
