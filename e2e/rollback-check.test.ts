@@ -37,8 +37,8 @@ test('it fails with the refusal when the release cannot take the writer lock', a
   });
 });
 
-// While the oldest reader is above what the previous release writes, the check answers 'declared'
-// and the previous release never opens the seeded items; the memory fixture test covers the read.
+// A previous release that reads this schema starts on the seeded items. While the oldest reader is
+// above what it writes, the check answers 'declared' and it never opens them.
 test('it does not fail the previous release on data that holds memory items with 2 versions, labels and proposals', async () => {
   const previous = await readPreviousReleaseBuild();
   const result = await runRollbackCheck({ previous, seed: seedMemoryItems });

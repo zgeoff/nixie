@@ -33,6 +33,16 @@ async function setupTest() {
     await Bun.write(join(repoRoot, 'apps', 'server', 'src', 'run-release-build.ts'), script);
 
     await Bun.write(
+      join(repoRoot, 'apps', 'server', 'src', 'release', 'write-release-bundle.ts'),
+      `import { mkdir } from 'node:fs/promises';
+export async function writeReleaseBundle(outdir: string, isTestBuild: boolean) {
+  await mkdir(outdir, { recursive: true });
+  await Bun.write(outdir + '/main.js', 'console.log("previous test build: ' + String(isTestBuild) + '");');
+}
+`,
+    );
+
+    await Bun.write(
       join(repoRoot, 'modules', 'sandbox', 'src', 'sandbox', 'sandbox-image-keys.ts'),
       `export const sandboxImageKeys = ${JSON.stringify(imageKeys)} as const;\n`,
     );
@@ -68,27 +78,30 @@ await Bun.write(outdir + '/main.js', 'console.log("previous release");');
   };
 }
 
-test('it builds the previous release from a worktree of its tag and removes the worktree', async () => {
+test('it builds the previous release and its test build from a checkout of its tag, with no worktree', async () => {
   const ctx = await setupTest();
 
   await ctx.tagWorkingRelease();
 
   const build = await readPreviousReleaseBuild(ctx.location);
   const entryText = await Bun.file(build.entry).text();
+  const testEntryText = await Bun.file(build.testEntry).text();
   const worktreeCount = await ctx.countWorktrees();
 
   expect(build).toStrictEqual({
     tag: 'v1.0.0',
     entry: expect.stringMatching(/\/out\/main\.js$/u),
+    testEntry: expect.stringMatching(/\/out\/test\/main\.js$/u),
     imageKeys: ['conversation', 'fetch'],
     times: {
-      worktreeMs: expect.toBeNumber(),
+      checkoutMs: expect.toBeNumber(),
       installMs: expect.toBeNumber(),
       buildMs: expect.toBeNumber(),
     },
   });
 
   expect(entryText).toBe('console.log("previous release");');
+  expect(testEntryText).toBe('console.log("previous test build: true");');
   expect(worktreeCount).toBe(1);
 });
 
@@ -103,6 +116,7 @@ test('it reuses a cached build and reports that no phase ran', async () => {
   expect(second).toStrictEqual({
     tag: 'v1.0.0',
     entry: first.entry,
+    testEntry: first.testEntry,
     imageKeys: ['conversation', 'fetch'],
     times: null,
   });
@@ -118,7 +132,7 @@ test("it gives the image keys of the release's own tuple at its tag", async () =
   expect(build.imageKeys).toStrictEqual(['conversation', 'fetch', 'code']);
 });
 
-test('it removes the worktree and caches nothing when the build fails', async () => {
+test('it leaves no worktree and caches nothing when the build fails', async () => {
   const ctx = await setupTest();
 
   await ctx.tagFailingRelease();
