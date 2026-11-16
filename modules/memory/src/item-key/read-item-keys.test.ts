@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test';
 import { readFileSync, readdirSync } from 'node:fs';
 import { join, relative } from 'node:path';
-import { readRecordKeys, readRecords, removeRecordKey } from '@heynixie/log';
+import { readRecordKeys, readRecords, removeRecordKeyFamily } from '@heynixie/log';
 import invariant from 'tiny-invariant';
 import { itemLabelsCodec } from '../label/item-labels-codec';
 import { proposalLabelsCodec } from '../label/proposal-labels-codec';
@@ -9,11 +9,11 @@ import { buildMockProvenance } from '../test-utils/build-mock-provenance';
 import { buildMockWriteCaller } from '../test-utils/build-mock-write-caller';
 import { createQuotedProposal } from '../test-utils/create-quoted-proposal';
 import { seedBegunPurge } from '../test-utils/seed-begun-purge';
+import { seedSharedKeyVersion } from '../test-utils/seed-shared-key-version';
 import { startTestMemory } from '../test-utils/start-test-memory';
 import { writeOwnerMessageRecord } from '../test-utils/write-owner-message-record';
 import type { MemoryTables } from '../types';
 import { decodeProposalText } from '../utils/decode-proposal-text';
-import { decodeVersionText } from '../version/decode-version-text';
 import { readCurrentItemKey } from './read-current-item-key';
 import { readItemKeys } from './read-item-keys';
 
@@ -39,6 +39,12 @@ async function setupTest() {
 
       return entries.map((entry) => entry.record.sequence);
     },
+    writeSharedQuoting: (recordSequence: number) =>
+      seedSharedKeyVersion(memory.log, {
+        text: 'Keeps bees on the allotment',
+        evidence: { recordSequence, start: 0, end: 11 },
+        evidenceQuote: 'I keep bees',
+      }),
     rememberQuoting: (recordSequence: number) =>
       memory.store.remember({
         text: 'Keeps bees on the allotment',
@@ -50,7 +56,19 @@ async function setupTest() {
   };
 }
 
-test('it opens the key of a version that no purge touched, which is the item ID', async () => {
+test('it opens the item ID as the key of a shared-key version that no purge touched', async () => {
+  const ctx = await setupTest();
+  const item = await seedSharedKeyVersion(ctx.memory.log, { text: 'Walks to work' });
+  const [sequence] = await ctx.readSequences('memory.version_added');
+
+  const [key] = await readItemKeys(ctx.memory.log, [
+    { value: 'version', itemID: item.itemID, version: 1, sequence: sequence ?? 0 },
+  ]);
+
+  expect(key).toStrictEqual({ status: 'readable', keyID: item.itemID, key: expect.any(CryptoKey) });
+});
+
+test('it opens a key of its own for a version a release with version keys wrote', async () => {
   const ctx = await setupTest();
 
   const item = await ctx.memory.store.remember({
@@ -64,7 +82,11 @@ test('it opens the key of a version that no purge touched, which is the item ID'
     { value: 'version', itemID: item.itemID, version: 1, sequence: sequence ?? 0 },
   ]);
 
-  expect(key).toStrictEqual({ status: 'readable', keyID: item.itemID, key: expect.any(CryptoKey) });
+  expect(key).toStrictEqual({
+    status: 'readable',
+    keyID: expect.stringMatching(new RegExp(`^${item.itemID}/.+`, 'u')),
+    key: expect.any(CryptoKey),
+  });
 });
 
 test('it answers shredded when the key is gone and no purge says why', async () => {
@@ -77,7 +99,7 @@ test('it answers shredded when the key is gone and no purge says why', async () 
 
   const [sequence] = await ctx.readSequences('memory.version_added');
 
-  await removeRecordKey(ctx.memory.log, item.itemID);
+  await removeRecordKeyFamily(ctx.memory.log, item.itemID);
 
   const keys = await readItemKeys(ctx.memory.log, [
     { value: 'version', itemID: item.itemID, version: 1, sequence: sequence ?? 0 },
@@ -111,7 +133,7 @@ test('it answers unreadable when the key does not unwrap', async () => {
 test('it answers removed for each older version and proposal of an item with an unfinished purge, and readable for its current text', async () => {
   const ctx = await setupTest();
   const recordSequence = await ctx.writeMessage('I keep bees on the allotment.');
-  const first = await ctx.rememberQuoting(recordSequence);
+  const first = await ctx.writeSharedQuoting(recordSequence);
 
   const second = await ctx.memory.store.remember({
     text: 'Keeps two hives on the allotment',
@@ -143,7 +165,7 @@ test('it answers removed for each older version and proposal of an item with an 
 test('it answers removed for the key that a purge deleted, and readable for the bridge version under its own key', async () => {
   const ctx = await setupTest();
   const recordSequence = await ctx.writeMessage('I keep bees on the allotment.');
-  const item = await ctx.rememberQuoting(recordSequence);
+  const item = await ctx.writeSharedQuoting(recordSequence);
 
   await seedBegunPurge(ctx.memory.log, { recordSequence, itemIDs: [item.itemID] });
 
@@ -162,7 +184,7 @@ test('it answers removed for the key that a purge deleted, and readable for the 
 test('it answers removed, never shredded, for a version whose purge closed and deleted its key between the lookup reads', async () => {
   const ctx = await setupTest();
   const recordSequence = await ctx.writeMessage('I keep bees on the allotment.');
-  const item = await ctx.rememberQuoting(recordSequence);
+  const item = await ctx.writeSharedQuoting(recordSequence);
   const [firstSequence] = await ctx.readSequences('memory.version_added');
 
   const refs = [
@@ -241,14 +263,13 @@ test("it answers removed for a bridge version's quote once a forget began on the
   const ctx = await setupTest();
   const removedSequence = await ctx.writeMessage('I keep bees on the allotment.');
   const quotedSequence = await ctx.writeMessage('The hives sit by the shed.');
-  const first = await ctx.rememberQuoting(removedSequence);
+  const first = await ctx.writeSharedQuoting(removedSequence);
 
-  const second = await ctx.memory.store.remember({
-    text: 'Keeps hives by the shed',
+  const second = await seedSharedKeyVersion(ctx.memory.log, {
     target: first,
+    text: 'Keeps hives by the shed',
     evidence: { recordSequence: quotedSequence, start: 4, end: 9 },
     evidenceQuote: 'hives',
-    provenance: buildMockProvenance(),
   });
 
   await seedBegunPurge(ctx.memory.log, {
@@ -307,7 +328,7 @@ test('it answers shredded to a writer when the item key is gone', async () => {
     provenance: buildMockProvenance(),
   });
 
-  await removeRecordKey(ctx.memory.log, item.itemID);
+  await removeRecordKeyFamily(ctx.memory.log, item.itemID);
 
   const current = await readCurrentItemKey(ctx.memory.log, item.itemID);
 
@@ -321,7 +342,10 @@ test('it is the only way a module file reads an item key, apart from the 4 liste
   const allowed = new Map([
     ['item-key/read-item-keys.ts', 'the lookup itself'],
     ['item-key/read-current-item-key.ts', 'the writer variant, which reads one item key to seal'],
-    ['purge/read-bridge-quotes.ts', "reads the key of a quoted record, which no item's key seals"],
+    [
+      'version/read-version-quote-seals.ts',
+      "reads the key of a quoted record, which no item's key seals",
+    ],
     ['utils/record/read-held-record-keys.ts', 'reads the keys a cleanup deletes'],
   ]);
 
@@ -335,7 +359,7 @@ test('it is the only way a module file reads an item key, apart from the 4 liste
   expect(importers).toStrictEqual([...allowed.keys()].toSorted());
 });
 
-test('it leaves every value of an item no purge reached readable under the item key alone', async () => {
+test('it leaves every label, proposal and rejection reason of an item readable under the item key alone', async () => {
   const ctx = await setupTest();
   const sequence = await ctx.writeMessage('I keep bees on the allotment.');
   const item = await ctx.rememberQuoting(sequence);
@@ -371,7 +395,8 @@ test('it leaves every value of an item no purge reached readable under the item 
     caller: buildMockWriteCaller(),
   });
 
-  // the read path of the release before the lookup: the item's own key, and the unchanged codecs
+  // The read path of a release before the lookup: the item's own key, and the unchanged codecs.
+  // Each version has a key of its own, so the values that keep the item key are all that it reads.
   const keys = await readRecordKeys(ctx.memory.log, [item.itemID]);
 
   const key = keys.get(item.itemID);
@@ -379,12 +404,6 @@ test('it leaves every value of an item no purge reached readable under the item 
   invariant(key);
 
   const db = ctx.memory.log.writer.db.$extendTables<MemoryTables>();
-
-  const versions = await db
-    .selectFrom('memory_versions')
-    .select(['version', 'sealed'])
-    .orderBy('version')
-    .execute();
 
   const labels = await db
     .selectFrom('memory_labels')
@@ -397,12 +416,6 @@ test('it leaves every value of an item no purge reached readable under the item 
     .select(['proposal_id', 'sealed', 'sealed_labels'])
     .orderBy('proposal_id')
     .execute();
-
-  const texts = await Promise.all(
-    versions.map((row) =>
-      decodeVersionText(key, { itemID: item.itemID, version: row.version }, row.sealed),
-    ),
-  );
 
   const opened = await Promise.all(
     labels.map((row) =>
@@ -423,13 +436,6 @@ test('it leaves every value of an item no purge reached readable under the item 
   const written = await readRecords(ctx.memory.log, { afterSequence: 0, limit: 200 });
 
   const rejection = written.find((entry) => entry.record.kind === 'memory.proposal_rejected');
-
-  expect(
-    texts.map((text) => ({ text: text.text, evidenceQuote: text.evidenceQuote })),
-  ).toStrictEqual([
-    { text: 'Keeps bees on the allotment', evidenceQuote: 'I keep bees' },
-    { text: 'Keeps two hives on the allotment', evidenceQuote: null },
-  ]);
 
   expect(opened.map((labelSet) => labelSet.gist)).toStrictEqual(['keeps bees', 'keeps two hives']);
 
@@ -454,17 +460,4 @@ test('it leaves every value of an item no purge reached readable under the item 
     status: 'readable',
     fields: { reason: 'Still two hives' },
   });
-
-  expect(
-    written
-      .map((entry) => entry.record.kind)
-      .filter((kind) =>
-        [
-          'memory.version_keyed',
-          'memory.evidence_purge_started',
-          'memory.evidence_purge_closed',
-          'memory.evidence_purged',
-        ].includes(kind),
-      ),
-  ).toStrictEqual([]);
 });

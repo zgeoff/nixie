@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { removeRecordKey } from '@heynixie/log';
+import { removeRecordKeyFamily } from '@heynixie/log';
 import invariant from 'tiny-invariant';
 import { buildMockProvenance } from '../test-utils/build-mock-provenance';
 import { buildMockWriteCaller } from '../test-utils/build-mock-write-caller';
@@ -152,7 +152,7 @@ test('it leaves out an item whose text does not read', async () => {
     provenance: buildMockProvenance(),
   });
 
-  await removeRecordKey(ctx.memory.log, item.itemID);
+  await removeRecordKeyFamily(ctx.memory.log, item.itemID);
 
   const preview = await readRecordForgetPreview(ctx.memory.log, {
     thread: 'conversation',

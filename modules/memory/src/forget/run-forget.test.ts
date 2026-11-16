@@ -138,6 +138,7 @@ test('it runs the session cleanup and then records the forget as complete', asyn
 
   expect(records.map((entry) => entry.record)).toMatchObject([
     { kind: 'memory.version_added', payload: { itemID: item.itemID, version: 1 } },
+    { kind: 'memory.version_keyed', payload: { itemID: item.itemID, version: 1 } },
     { kind: 'memory.forget_started', payload: { itemID: item.itemID, version: 1 } },
     { kind: 'memory.forgotten', payload: { itemID: item.itemID } },
   ]);
@@ -241,7 +242,11 @@ test('it commits the caller’s own write with the forget’s start, and its ref
   expect(refused).toMatchObject({ message: 'the action is settled' });
   expect(ctx.cleanupSessions).not.toHaveBeenCalled();
   expect(detail).toMatchObject({ state: 'active', status: 'readable' });
-  expect(records.map((entry) => entry.record.kind)).toStrictEqual(['memory.version_added']);
+
+  expect(records.map((entry) => entry.record.kind)).toStrictEqual([
+    'memory.version_added',
+    'memory.version_keyed',
+  ]);
 });
 
 test('it clears the end time of the item it forgets', async () => {

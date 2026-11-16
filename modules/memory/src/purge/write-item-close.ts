@@ -11,7 +11,6 @@ import { updateVersionIndex } from '../version/update-version-index';
 import type { VersionPlan } from '../version/write-version-in-transaction';
 import { writeVersionInTransaction } from '../version/write-version-in-transaction';
 import type { PurgePlan } from './pick-purge-plan';
-import { readBridgeQuotes } from './read-bridge-quotes';
 import type { CurrentLabels } from './read-current-labels';
 import { readCurrentLabels } from './read-current-labels';
 import type { PurgeFacts } from './read-purge-facts';
@@ -120,21 +119,15 @@ async function readBridge(
     return null;
   }
 
-  const versionKey = await createRecordKey(log, `${facts.itemID}/${crypto.randomUUID()}`);
-
   const version = item.version + 1;
-
-  const quotes = await readBridgeQuotes(log, log.writer.db, {
-    row,
-    text: value.text,
-    recordSequence: facts.recordSequence,
-    version,
-    versionKey: versionKey.key,
-  });
-
   const evidence = keepEvidence(row.evidence, facts.recordSequence);
   const intentEvidence = keepEvidence(row.intent_evidence, facts.recordSequence);
-  const text: VersionText = { text: value.text.text, evidenceQuote: null, intentQuote: null };
+
+  const text: VersionText = {
+    text: value.text.text,
+    evidenceQuote: evidence === null ? null : value.text.evidenceQuote,
+    intentQuote: intentEvidence === null ? null : value.text.intentQuote,
+  };
 
   return {
     version,
@@ -162,7 +155,7 @@ async function readBridge(
           intentEvidence,
           until: row.until,
         }),
-      bridge: { keyID: versionKey.keyID, key: versionKey.key, ...quotes },
+      isBridge: true,
     },
   };
 }

@@ -1,6 +1,7 @@
 import { expect, test } from 'bun:test';
 import { createMemoryItem } from './create-memory-item';
 import { startTestMemory } from './start-test-memory';
+import { writeOwnerMessageRecord } from './write-owner-message-record';
 
 async function setupTest() {
   const memory = await startTestMemory();
@@ -37,9 +38,18 @@ test('it writes an item with the origin and source the request gives', async () 
 test('it writes an item with the quote the request gives', async () => {
   const ctx = await setupTest();
 
+  const quote = 'the bees are back on the roof';
+
+  const recordSequence = await writeOwnerMessageRecord(ctx.memory.log, {
+    thread: 'conversation',
+    text: quote,
+    spans: [{ start: 0, end: quote.length, source: 'typed' }],
+  });
+
   const item = await createMemoryItem(ctx.memory.store, {
     text: 'Keeps bees',
-    quote: 'the bees are back on the roof',
+    quote,
+    evidence: { recordSequence, start: 0, end: quote.length },
   });
 
   const recalled = await ctx.memory.store.recall({ itemIDs: [item.itemID] });

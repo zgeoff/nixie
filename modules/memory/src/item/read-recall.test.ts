@@ -812,6 +812,7 @@ test('it holds a forget until a recall that checked the item has recorded its de
 
   expect(records.map((entry) => entry.record)).toMatchObject([
     { kind: 'memory.version_added' },
+    { kind: 'memory.version_keyed' },
     { kind: 'memory.recalled', payload: { items: [{ itemID: item.itemID, version: 1 }] } },
     { kind: 'memory.forget_started' },
     { kind: 'memory.forgotten' },

@@ -43,6 +43,7 @@ test('it resumes a forget that a crash cut short after the key went, and complet
 
   expect(records.map((entry) => entry.record.kind)).toStrictEqual([
     'memory.version_added',
+    'memory.version_keyed',
     'memory.forget_started',
     'memory.forgotten',
   ]);

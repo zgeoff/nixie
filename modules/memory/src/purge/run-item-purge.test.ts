@@ -7,9 +7,10 @@ import type { QuotedProposal } from '../test-utils/create-quoted-proposal';
 import { createQuotedProposal } from '../test-utils/create-quoted-proposal';
 import { seedBegunPurge } from '../test-utils/seed-begun-purge';
 import { seedForgettingMemoryItem } from '../test-utils/seed-forgetting-memory-item';
+import { seedSharedKeyVersion } from '../test-utils/seed-shared-key-version';
 import { startTestMemory } from '../test-utils/start-test-memory';
 import { writeOwnerMessageRecord } from '../test-utils/write-owner-message-record';
-import type { VersionRef } from '../types';
+import type { MemoryTables } from '../types';
 
 async function setupTest() {
   const clock = buildTestClock(Date.parse('2026-11-02T09:00:00Z'));
@@ -54,29 +55,25 @@ async function setupTest() {
   };
 }
 
-test('it purges an item that quotes the record: the older version reads removed, the current text stays under a bridge version, and the labels stay readable', async () => {
+test('it purges a shared-key item that quotes the record: the older version reads removed, and the current text stays under a bridge version', async () => {
   const ctx = await setupTest();
   const recordSequence = await ctx.writeMessage('I keep bees on the allotment.');
 
-  const first = await ctx.memory.store.remember({
+  const first = await seedSharedKeyVersion(ctx.memory.log, {
     text: 'Keeps bees on the allotment',
     evidence: { recordSequence, start: 0, end: 11 },
     evidenceQuote: 'I keep bees',
-    labels: ctx.labels,
-    provenance: buildMockProvenance(),
   });
 
-  const second = await ctx.memory.store.remember({
-    text: 'Keeps two hives on the allotment',
+  await seedSharedKeyVersion(ctx.memory.log, {
     target: first,
-    provenance: buildMockProvenance(),
+    text: 'Keeps two hives on the allotment',
   });
 
   await seedBegunPurge(ctx.memory.log, { recordSequence, itemIDs: [first.itemID] });
 
   const result = await ctx.memory.store.purgeItemEvidence({ recordSequence, itemID: first.itemID });
   const history = await ctx.memory.store.readHistory(first.itemID);
-  const recalled = await ctx.memory.store.recall({ itemIDs: [first.itemID], limit: 1 });
 
   expect(result).toBe('purged');
 
@@ -91,12 +88,51 @@ test('it purges an item that quotes the record: the older version reads removed,
       isBridge: true,
     },
   ]);
-
-  expect(recalled.items.map((item) => item.gist)).toStrictEqual(['keeps bees']);
-  expect(second.version).toBe(2);
 });
 
-test('it deletes every closed key of the item and writes the last mark once', async () => {
+test('it purges a version-keyed item that quotes the record: the older version reads removed, the current text stays, and the labels stay readable', async () => {
+  const ctx = await setupTest();
+  const recordSequence = await ctx.writeMessage('I keep bees on the allotment.');
+
+  const first = await ctx.memory.store.remember({
+    text: 'Keeps bees on the allotment',
+    evidence: { recordSequence, start: 0, end: 11 },
+    evidenceQuote: 'I keep bees',
+    labels: ctx.labels,
+    provenance: buildMockProvenance(),
+  });
+
+  await ctx.memory.store.remember({
+    text: 'Keeps two hives on the allotment',
+    target: first,
+    provenance: buildMockProvenance(),
+  });
+
+  await seedBegunPurge(ctx.memory.log, { recordSequence, itemIDs: [first.itemID] });
+
+  const result = await ctx.memory.store.purgeItemEvidence({ recordSequence, itemID: first.itemID });
+  const history = await ctx.memory.store.readHistory(first.itemID);
+  const recalled = await ctx.memory.store.recall({ itemIDs: [first.itemID], limit: 1 });
+  const [closed] = await ctx.readKinds(['memory.evidence_purge_closed']);
+
+  expect(result).toBe('purged');
+
+  expect(history?.versions).toMatchObject([
+    { version: 1, status: 'shredded', isRemoved: true, isBridge: false },
+    {
+      version: 2,
+      status: 'readable',
+      text: 'Keeps two hives on the allotment',
+      isRemoved: false,
+      isBridge: false,
+    },
+  ]);
+
+  expect(recalled.items.map((item) => item.gist)).toStrictEqual(['keeps bees']);
+  expect(closed?.payload).toMatchObject({ bridgeVersion: null });
+});
+
+test('it deletes the generation key of an item with a version key and writes the last mark once', async () => {
   const ctx = await setupTest();
   const recordSequence = await ctx.writeMessage('I keep bees on the allotment.');
 
@@ -123,8 +159,8 @@ test('it deletes every closed key of the item and writes the last mark once', as
     recordSequence,
     itemID: item.itemID,
     closedKeyIDs: [item.itemID],
-    bridgeVersion: 2,
-    labelsRevision: 3,
+    bridgeVersion: null,
+    labelsRevision: 2,
   });
 });
 
@@ -210,11 +246,25 @@ test("it deletes only the item's own keys and its rejection keys, and keeps ever
   const rejectionKeyIDs = [...afterRejection].filter((keyID) => !beforeRejection.has(keyID));
   const otherKeyIDs = [...beforePurge].filter((keyID) => !beforeOther.has(keyID));
 
+  const versionKeys = await ctx.memory.log.writer.db
+    .$extendTables<MemoryTables>()
+    .selectFrom('memory_item_keys')
+    .select(['key_id', 'version'])
+    .where('item_id', '=', purged.itemID)
+    .where('kind', '=', 'version')
+    .orderBy('version')
+    .execute();
+
   expect(rejectionKeyIDs).toHaveLength(1);
+  expect(versionKeys).toHaveLength(2);
   expect(otherKeyIDs).toIncludeAllMembers([other.itemID]);
 
   expect([...beforePurge].filter((keyID) => !afterPurge.has(keyID)).toSorted()).toStrictEqual(
-    [purged.itemID, ...rejectionKeyIDs].toSorted(),
+    [
+      purged.itemID,
+      ...versionKeys.slice(0, 1).map((row) => row.key_id),
+      ...rejectionKeyIDs,
+    ].toSorted(),
   );
 
   expect(otherKeyIDs.filter((keyID) => !afterPurge.has(keyID))).toStrictEqual([]);
@@ -336,15 +386,14 @@ test('it skips an item that no purge set names', async () => {
   expect(result).toBe('skipped');
 });
 
-test('it writes no bridge for an item whose current text does not open, and deletes its keys', async () => {
+test('it writes no bridge for a shared-key item whose current text does not open, and deletes its keys', async () => {
   const ctx = await setupTest();
   const recordSequence = await ctx.writeMessage('I keep bees on the allotment.');
 
-  const item = await ctx.memory.store.remember({
+  const item = await seedSharedKeyVersion(ctx.memory.log, {
     text: 'Keeps bees on the allotment',
     evidence: { recordSequence, start: 0, end: 11 },
     evidenceQuote: 'I keep bees',
-    provenance: buildMockProvenance(),
   });
 
   await removeRecordKey(ctx.memory.log, item.itemID);
@@ -364,19 +413,17 @@ test("it keeps a bridge version's quote of another record while that record has 
   const removedSequence = await ctx.writeMessage('I keep bees on the allotment.');
   const keptSequence = await ctx.writeMessage('The hives sit by the shed.');
 
-  const first = await ctx.memory.store.remember({
+  const first = await seedSharedKeyVersion(ctx.memory.log, {
     text: 'Keeps bees on the allotment',
     evidence: { recordSequence: removedSequence, start: 0, end: 11 },
     evidenceQuote: 'I keep bees',
-    provenance: buildMockProvenance(),
   });
 
-  const second = await ctx.memory.store.remember({
-    text: 'Keeps hives by the shed',
+  const second = await seedSharedKeyVersion(ctx.memory.log, {
     target: first,
+    text: 'Keeps hives by the shed',
     evidence: { recordSequence: keptSequence, start: 4, end: 9 },
     evidenceQuote: 'hives',
-    provenance: buildMockProvenance(),
   });
 
   await seedBegunPurge(ctx.memory.log, {
@@ -404,16 +451,15 @@ test("it keeps a bridge version's quote of another record while that record has 
   expect(afterDetail?.versions.at(-1)?.evidenceQuote).toBeNull();
 });
 
-test('it needs no bridge for an item that a purge already gave a version key', async () => {
+test('it needs no bridge for a shared-key item that an earlier purge gave a version key', async () => {
   const ctx = await setupTest();
   const firstSequence = await ctx.writeMessage('I keep bees on the allotment.');
   const secondSequence = await ctx.writeMessage('The hives sit by the shed.');
 
-  const item: VersionRef = await ctx.memory.store.remember({
+  const item = await seedSharedKeyVersion(ctx.memory.log, {
     text: 'Keeps bees on the allotment',
     evidence: { recordSequence: firstSequence, start: 0, end: 11 },
     evidenceQuote: 'I keep bees',
-    provenance: buildMockProvenance(),
   });
 
   await seedBegunPurge(ctx.memory.log, { recordSequence: firstSequence, itemIDs: [item.itemID] });

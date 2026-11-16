@@ -44,6 +44,7 @@ test('it completes a forget whose cleanup failed after the key went', async () =
 
   expect(records.map((entry) => entry.record.kind)).toStrictEqual([
     'memory.version_added',
+    'memory.version_keyed',
     'memory.forget_started',
     'memory.forgotten',
   ]);

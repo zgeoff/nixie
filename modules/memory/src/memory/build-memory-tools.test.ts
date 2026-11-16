@@ -947,10 +947,19 @@ test('it recalls a version with its quote, its model and the line that says wher
   setSystemTime(new Date(Date.UTC(2026, 9, 1, 9, 30)));
   onTestFinished(() => setSystemTime());
 
+  const quote = 'Gerald the starter needs feeding again';
+
+  const recordSequence = await writeOwnerMessageRecord(ctx.memory.log, {
+    thread: 'conversation',
+    text: quote,
+    spans: [{ start: 0, end: quote.length, source: 'typed' }],
+  });
+
   const item = await ctx.memory.store.remember({
     labels: { gist: 'a gist', topic: 'a topic', triggers: ['a trigger'] },
     text: 'Keeps a sourdough starter called Gerald',
-    evidenceQuote: 'Gerald the starter needs feeding again',
+    evidenceQuote: quote,
+    evidence: { recordSequence, start: 0, end: quote.length },
     provenance: {
       origin: 'conversation',
       source: 'owner',

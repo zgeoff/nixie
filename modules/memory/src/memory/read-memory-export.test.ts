@@ -56,9 +56,18 @@ test('it exports an active item with its text, its quote and its provenance, and
 
   setSystemTime(new Date('2026-10-12T09:00:00.000Z'));
 
+  const quote = 'the allotment plot is number 14';
+
+  const recordSequence = await writeOwnerMessageRecord(ctx.memory.log, {
+    thread: 'conversation',
+    text: quote,
+    spans: [{ start: 0, end: quote.length, source: 'typed' }],
+  });
+
   const item = await ctx.memory.store.remember({
     text: 'Rents allotment plot 14',
-    evidenceQuote: 'the allotment plot is number 14',
+    evidenceQuote: quote,
+    evidence: { recordSequence, start: 0, end: quote.length },
     provenance: {
       origin: 'conversation',
       source: 'owner',
