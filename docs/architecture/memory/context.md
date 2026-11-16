@@ -185,7 +185,7 @@ messages. A read returns one page of the user's messages, the replies and the to
 first, each with its event ID, which is the record's sequence. A tool result also carries the event
 ID of the call it answers, as `callEventID`, because nothing else shows the model the ID of a call.
 The model narrows a read by a time range or by words that every entry must hold, and pages on with
-the cursor the read returns. The tool never returns the whole log at once: a read decrypts a bounded
+the cursor the read returns. Each read returns a bounded number of entries and decrypts a bounded
 number of records, so a search over a long thread can return a short page with a cursor to go on
 from. The tool reads only the calling run's thread, and the read-only rule allows it because it
 declares only a read.
