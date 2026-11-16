@@ -122,6 +122,7 @@ test('it keeps the current text and labels readable and reads the older version 
   const item = await ctx.readItem();
 
   expect(item).toStrictEqual({
+    currentText: 'Keeps two hives on the allotment',
     versions: [
       { version: 1, status: 'shredded', isRemoved: true, isBridge: false },
       { version: 2, status: 'readable', isRemoved: false, isBridge: false },

@@ -29,4 +29,5 @@ export { startWebFetch } from '../part/start-web-fetch';
 export { readPurgeState } from './read-purge-state';
 export { readPurgedItem } from './read-purged-item';
 export type { BegunPurgeSeed } from './seed-begun-purge';
+export { seedBegunPurge } from './seed-begun-purge';
 export { seedMemoryItems } from './seed-memory-items';
