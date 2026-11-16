@@ -1,4 +1,6 @@
 import { expect, test } from 'bun:test';
+import { readFileSync, readdirSync } from 'node:fs';
+import { join } from 'node:path';
 import { buildTestTaskSeed } from '../test-utils/build-test-task-seed';
 import { parseTaskDefinitions } from './parse-task-definitions';
 import type { SeedFaultCode } from './types';
@@ -533,4 +535,42 @@ test('it reads no definition from a folder outside tasks', () => {
   });
 
   expect(parsed.definitions).toStrictEqual([]);
+});
+
+test('it seeds every example folder of the guides with no fault, no warning and one definition', () => {
+  const ctx = setupTest();
+  const examplesDir = join(import.meta.dir, '../../../../docs/guides/examples');
+
+  const folders = readdirSync(examplesDir, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name);
+
+  expect(folders).toContain('memory-consolidation');
+
+  for (const folder of folders) {
+    const files = Object.fromEntries(
+      readdirSync(join(examplesDir, folder)).map((file) => [
+        `tasks/${folder}/${file}`,
+        readFileSync(join(examplesDir, folder, file), 'utf8'),
+      ]),
+    );
+
+    const parsed = ctx.parse(files);
+
+    expect({ folder, faults: parsed.faults, warnings: parsed.warnings }).toStrictEqual({
+      folder,
+      faults: [],
+      warnings: [],
+    });
+
+    expect(parsed.definitions.map((definition) => definition.id)).toStrictEqual([folder]);
+
+    if (folder === 'memory-consolidation') {
+      expect(parsed.definitions[0]?.form).toMatchObject({
+        trigger: { schedule: { every: 'week', on: 'sun', at: '03:00' } },
+        memory: 'read',
+        tools: ['memory.recall', 'memory.edit', 'memory.retire'],
+      });
+    }
+  }
 });

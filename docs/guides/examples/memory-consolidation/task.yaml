@@ -1,0 +1,13 @@
+name: Tidy memory
+brief: Read the memory items and merge, rewrite or retire the ones that need it.
+trigger:
+  schedule:
+    every: week
+    on: sun
+    at: '03:00'
+context: fresh
+memory: read
+tools:
+  - memory.recall
+  - memory.edit
+  - memory.retire
