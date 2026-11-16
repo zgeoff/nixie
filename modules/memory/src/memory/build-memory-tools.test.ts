@@ -1916,6 +1916,12 @@ test("it saves a task's memory from the user's message on the conversation's thr
     .where('memory_items.short_id', '=', outcome.result['itemID'])
     .executeTakeFirstOrThrow();
 
+  const [added, ...others] = await readRecords(ctx.memory.log, {
+    afterSequence: sequence,
+    kinds: ['memory.version_added'],
+  });
+
+  const notices = await ctx.memory.store.readNotices('task-4');
   const kinds = await ctx.readRecordKinds(sequence);
 
   expect(outcome.result).toStrictEqual({
@@ -1930,6 +1936,29 @@ test("it saves a task's memory from the user's message on the conversation's thr
   expect(pending).toStrictEqual([]);
   expect(kinds).toContain('memory.version_added');
   expect(kinds).not.toContain('memory.proposed');
+
+  invariant(added);
+
+  expect(others).toStrictEqual([]);
+
+  expect(notices).toStrictEqual([
+    {
+      noticeKey: expect.toStartWith('run/'),
+      thread: 'task-4',
+      remembered: 1,
+      retired: 0,
+      proposed: 0,
+      entries: [
+        {
+          itemID: expect.toBeString(),
+          change: 'created',
+          version: 1,
+          proposalID: null,
+          sequence: added.record.sequence,
+        },
+      ],
+    },
+  ]);
 });
 
 test('it proposes a granted task save the checker does not assert, with one proposal record', async () => {
@@ -1950,9 +1979,13 @@ test('it proposes a granted task save the checker does not assert, with one prop
 
   const kinds = await ctx.readRecordKinds(sequence);
 
-  expect(outcome).toMatchObject({
-    status: 'ok',
-    result: { status: 'proposed', proposalID: expect.toBeString() },
+  invariant(outcome.status === 'ok');
+
+  expect(outcome.result).toStrictEqual({
+    status: 'proposed',
+    proposalID: expect.toBeString(),
+    merged: false,
+    reason: expect.toStartWith('checker_unsure:'),
   });
 
   expect(kinds.filter((kind) => kind === 'memory.proposed')).toHaveLength(1);
@@ -1974,9 +2007,13 @@ test("it proposes a granted task save that cites a reply on the conversation's t
     { thread: 'task-4', logThread: 'conversation' },
   );
 
-  expect(outcome).toMatchObject({
-    status: 'ok',
-    result: { status: 'proposed', reason: expect.toStartWith('quote_not_typed:') },
+  invariant(outcome.status === 'ok');
+
+  expect(outcome.result).toStrictEqual({
+    status: 'proposed',
+    proposalID: expect.toBeString(),
+    merged: false,
+    reason: expect.toStartWith('quote_not_typed:'),
   });
 });
 
@@ -1996,9 +2033,13 @@ test('it proposes a granted task save that cites an event on a third thread as n
     { thread: 'task-4', logThread: 'conversation' },
   );
 
-  expect(outcome).toMatchObject({
-    status: 'ok',
-    result: { status: 'proposed', reason: expect.toStartWith('no_quote:') },
+  invariant(outcome.status === 'ok');
+
+  expect(outcome.result).toStrictEqual({
+    status: 'proposed',
+    proposalID: expect.toBeString(),
+    merged: false,
+    reason: expect.toStartWith('no_quote:'),
   });
 });
 
@@ -2015,9 +2056,13 @@ test("it searches only the task's own thread for a granted task quote with no ev
 
   const outcome = await ctx.rememberAsTask({}, { thread: 'task-4', logThread: 'conversation' });
 
-  expect(outcome).toMatchObject({
-    status: 'ok',
-    result: { status: 'proposed', reason: expect.toStartWith('no_quote:') },
+  invariant(outcome.status === 'ok');
+
+  expect(outcome.result).toStrictEqual({
+    status: 'proposed',
+    proposalID: expect.toBeString(),
+    merged: false,
+    reason: expect.toStartWith('no_quote:'),
   });
 });
 
@@ -2046,9 +2091,13 @@ test('it proposes a granted task save whose cited message backed an item the use
     { thread: 'task-4', logThread: 'conversation' },
   );
 
-  expect(outcome).toMatchObject({
-    status: 'ok',
-    result: { status: 'proposed', reason: expect.toStartWith('forgotten_evidence:') },
+  invariant(outcome.status === 'ok');
+
+  expect(outcome.result).toStrictEqual({
+    status: 'proposed',
+    proposalID: expect.toBeString(),
+    merged: false,
+    reason: expect.toStartWith('forgotten_evidence:'),
   });
 });
 
@@ -2068,9 +2117,13 @@ test("it proposes a save from a run whose log thread is the task's own that cite
     { thread: 'task-4', logThread: 'task-4' },
   );
 
-  expect(outcome).toMatchObject({
-    status: 'ok',
-    result: { status: 'proposed', reason: expect.toStartWith('no_quote:') },
+  invariant(outcome.status === 'ok');
+
+  expect(outcome.result).toStrictEqual({
+    status: 'proposed',
+    proposalID: expect.toBeString(),
+    merged: false,
+    reason: expect.toStartWith('no_quote:'),
   });
 });
 
@@ -2090,8 +2143,12 @@ test("it proposes a save in a step run after the grant left the task's setup, wh
 
   const outcome = await ctx.rememberAsTask({ eventID }, stepRun);
 
-  expect(outcome).toMatchObject({
-    status: 'ok',
-    result: { status: 'proposed', reason: expect.toStartWith('no_quote:') },
+  invariant(outcome.status === 'ok');
+
+  expect(outcome.result).toStrictEqual({
+    status: 'proposed',
+    proposalID: expect.toBeString(),
+    merged: false,
+    reason: expect.toStartWith('no_quote:'),
   });
 });
