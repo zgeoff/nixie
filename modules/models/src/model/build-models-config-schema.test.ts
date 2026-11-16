@@ -4,11 +4,12 @@ import { agentSDKHarnessDefinition } from '../agent/agent-sdk-harness-definition
 import { codexHarnessDefinition } from '../codex/codex-harness-definition';
 import { buildModelsConfigSchema } from './build-models-config-schema';
 
-function setupTest(capabilities = harnessCapabilities) {
+function setupTest(capabilities = harnessCapabilities, readToolCallWaitMs?: () => number | null) {
   return {
     schema: buildModelsConfigSchema(
       [agentSDKHarnessDefinition, codexHarnessDefinition],
       capabilities,
+      readToolCallWaitMs,
     ),
   };
 }
@@ -322,4 +323,212 @@ test('it loads a profile outside Claude on the conversation role when the checke
   });
 
   expect(result.success).toBe(true);
+});
+
+test('it accepts the worker role with the default worker run limits', () => {
+  const ctx = setupTest();
+
+  const result = ctx.schema.safeParse({
+    profiles: {
+      'chat-direct': {
+        harness: 'agent-sdk',
+        base_url: 'https://api.anthropic.com',
+        credential: 'deployment:anthropic',
+        auth_header: 'x-api-key',
+        model: 'claude-test-1',
+        effort: 'medium',
+        prices: { input: 3, cache_write: 3.75, cache_write_1h: 6, cached_input: 0.3, output: 15 },
+      },
+    },
+    roles: { conversation: 'chat-direct', worker: 'chat-direct' },
+  });
+
+  expect(result.data?.limits.workerRun).toStrictEqual({
+    minutes: 10,
+    turns: 25,
+    tokens: 2_000_000,
+    dollars: 2,
+  });
+});
+
+test('it accepts a worker run limit of minutes longer than the wait when no worker role is set', () => {
+  const ctx = setupTest();
+
+  const result = ctx.schema.safeParse({
+    profiles: {
+      'chat-direct': {
+        harness: 'agent-sdk',
+        base_url: 'https://api.anthropic.com',
+        credential: 'deployment:anthropic',
+        auth_header: 'x-api-key',
+        model: 'claude-test-1',
+        effort: 'medium',
+        prices: { input: 3, cache_write: 3.75, cache_write_1h: 6, cached_input: 0.3, output: 15 },
+      },
+    },
+    roles: { conversation: 'chat-direct' },
+    limits: { workerRun: { minutes: 60 } },
+  });
+
+  expect(result.error).toBeUndefined();
+});
+
+test('it refuses a worker run limit of minutes longer than the caller harness wait less 30 seconds, giving both figures', () => {
+  const ctx = setupTest();
+
+  const result = ctx.schema.safeParse({
+    profiles: {
+      'chat-direct': {
+        harness: 'agent-sdk',
+        base_url: 'https://api.anthropic.com',
+        credential: 'deployment:anthropic',
+        auth_header: 'x-api-key',
+        model: 'claude-test-1',
+        effort: 'medium',
+        prices: { input: 3, cache_write: 3.75, cache_write_1h: 6, cached_input: 0.3, output: 15 },
+      },
+    },
+    roles: { conversation: 'chat-direct', worker: 'chat-direct' },
+    limits: { workerRun: { minutes: 15 } },
+  });
+
+  expect(result.error?.issues).toStrictEqual([
+    expect.objectContaining({
+      path: ['limits', 'workerRun', 'minutes'],
+      message:
+        'the worker run limit of 15 minutes is longer than the 14.5 minutes that the agent-sdk harness of the profile chat-direct gives a tool call (its wait of 15 minutes less 30 seconds)',
+    }),
+  ]);
+});
+
+test('it accepts a worker run limit of minutes equal to the caller harness wait less 30 seconds', () => {
+  const ctx = setupTest();
+
+  const result = ctx.schema.safeParse({
+    profiles: {
+      'chat-direct': {
+        harness: 'agent-sdk',
+        base_url: 'https://api.anthropic.com',
+        credential: 'deployment:anthropic',
+        auth_header: 'x-api-key',
+        model: 'claude-test-1',
+        effort: 'medium',
+        prices: { input: 3, cache_write: 3.75, cache_write_1h: 6, cached_input: 0.3, output: 15 },
+      },
+    },
+    roles: { conversation: 'chat-direct', worker: 'chat-direct' },
+    limits: { workerRun: { minutes: 14.5 } },
+  });
+
+  expect(result.error).toBeUndefined();
+});
+
+test('it reads the wait from the loaded harness, so a shorter wait refuses a shorter limit', () => {
+  const ctx = setupTest(harnessCapabilities, () => 300_000);
+
+  const result = ctx.schema.safeParse({
+    profiles: {
+      'chat-direct': {
+        harness: 'agent-sdk',
+        base_url: 'https://api.anthropic.com',
+        credential: 'deployment:anthropic',
+        auth_header: 'x-api-key',
+        model: 'claude-test-1',
+        effort: 'medium',
+        prices: { input: 3, cache_write: 3.75, cache_write_1h: 6, cached_input: 0.3, output: 15 },
+      },
+    },
+    roles: { conversation: 'chat-direct', worker: 'chat-direct' },
+  });
+
+  expect(result.error?.issues).toStrictEqual([
+    expect.objectContaining({
+      path: ['limits', 'workerRun', 'minutes'],
+      message:
+        'the worker run limit of 10 minutes is longer than the 4.5 minutes that the agent-sdk harness of the profile chat-direct gives a tool call (its wait of 5 minutes less 30 seconds)',
+    }),
+  ]);
+});
+
+test('it refuses the worker role when a caller harness has a null tool call wait, naming the harness', () => {
+  const ctx = setupTest(harnessCapabilities, () => null);
+
+  const result = ctx.schema.safeParse({
+    profiles: {
+      'chat-direct': {
+        harness: 'agent-sdk',
+        base_url: 'https://api.anthropic.com',
+        credential: 'deployment:anthropic',
+        auth_header: 'x-api-key',
+        model: 'claude-test-1',
+        effort: 'medium',
+        prices: { input: 3, cache_write: 3.75, cache_write_1h: 6, cached_input: 0.3, output: 15 },
+      },
+    },
+    roles: { conversation: 'chat-direct', worker: 'chat-direct' },
+  });
+
+  expect(result.error?.issues).toStrictEqual([
+    expect.objectContaining({
+      path: ['roles', 'worker'],
+      message:
+        "the worker role is set, and the agent-sdk harness of the profile chat-direct has no tool call wait, so a worker's limit error could miss its caller",
+    }),
+  ]);
+});
+
+test('it accepts a null tool call wait when no worker role is set', () => {
+  const ctx = setupTest(harnessCapabilities, () => null);
+
+  const result = ctx.schema.safeParse({
+    profiles: {
+      'chat-direct': {
+        harness: 'agent-sdk',
+        base_url: 'https://api.anthropic.com',
+        credential: 'deployment:anthropic',
+        auth_header: 'x-api-key',
+        model: 'claude-test-1',
+        effort: 'medium',
+        prices: { input: 3, cache_write: 3.75, cache_write_1h: 6, cached_input: 0.3, output: 15 },
+      },
+    },
+    roles: { conversation: 'chat-direct' },
+  });
+
+  expect(result.error).toBeUndefined();
+});
+
+test('it refuses the worker role on a profile with no price table', () => {
+  const ctx = setupTest();
+
+  const result = ctx.schema.safeParse({
+    profiles: {
+      'chat-direct': {
+        harness: 'agent-sdk',
+        base_url: 'https://api.anthropic.com',
+        credential: 'deployment:anthropic',
+        auth_header: 'x-api-key',
+        model: 'claude-test-1',
+        effort: 'medium',
+        prices: { input: 3, cache_write: 3.75, cache_write_1h: 6, cached_input: 0.3, output: 15 },
+      },
+      'worker-bare': {
+        harness: 'agent-sdk',
+        base_url: 'https://api.anthropic.com',
+        credential: 'deployment:anthropic',
+        auth_header: 'x-api-key',
+        model: 'claude-test-1',
+        effort: 'medium',
+      },
+    },
+    roles: { conversation: 'chat-direct', worker: 'worker-bare' },
+  });
+
+  expect(result.error?.issues).toStrictEqual([
+    expect.objectContaining({
+      path: ['roles', 'worker'],
+      message:
+        'the worker role names the profile worker-bare, which sets no prices, and a worker run counts its cost against its dollar limit',
+    }),
+  ]);
 });

@@ -26,6 +26,7 @@ test('it builds a default models config', () => {
     selectable: [],
     limits: {
       taskRun: { default: { turns: 25, dollars: 2 }, max: { turns: 100, dollars: 10 } },
+      workerRun: { minutes: 10, turns: 25, tokens: 2_000_000, dollars: 2 },
     },
   });
 });

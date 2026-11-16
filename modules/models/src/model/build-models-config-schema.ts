@@ -65,11 +65,26 @@ const taskRunSchema = z
     }
   });
 
-const limitsSchema = z.strictObject({ taskRun: taskRunSchema.default(taskRunSchema.parse({})) });
+const workerRunDefaults = { minutes: 10, turns: 25, tokens: 2_000_000, dollars: 2 };
+
+const workerRunSchema = z.strictObject({
+  minutes: z.number().positive().default(workerRunDefaults.minutes),
+  turns: turnsSchema.default(workerRunDefaults.turns),
+  tokens: z.int().positive().default(workerRunDefaults.tokens),
+  dollars: dollarsSchema.default(workerRunDefaults.dollars),
+});
+
+const limitsSchema = z.strictObject({
+  taskRun: taskRunSchema.default(taskRunSchema.parse({})),
+  workerRun: workerRunSchema.default(workerRunSchema.parse({})),
+});
+
+type ReadToolCallWaitMs = (profile: HarnessProfile) => number | null;
 
 export function buildModelsConfigSchema(
   entries: readonly [HarnessSchemaEntry, ...HarnessSchemaEntry[]],
   capabilities: HarnessCapabilities = harnessCapabilities,
+  readToolCallWaitMs: ReadToolCallWaitMs = readHarnessToolCallWaitMs,
 ) {
   const [first, ...rest] = entries;
   const ids = entries.map((entry) => entry.id);
@@ -152,6 +167,8 @@ export function buildModelsConfigSchema(
         });
       }
 
+      addWorkerIssues(issues, config, readToolCallWaitMs);
+
       // A check removes no block of the CLI, so a profile outside Claude cannot run it.
       const checkerProfileID = config.roles.checker ?? config.roles.conversation;
 
@@ -207,6 +224,10 @@ export function buildModelsConfigSchema(
     }));
 }
 
+function readHarnessToolCallWaitMs(profile: HarnessProfile): number | null {
+  return bindHarness(profile).toolCallWaitMs;
+}
+
 function formatHarnessIssue(
   path: readonly PropertyKey[],
   input: unknown,
@@ -242,5 +263,68 @@ function addMisfitIssue(issues: z.core.$RefinementCtx, check: MisfitCheck): void
       path: [...check.path],
       message: `${check.subject} runs on the profile ${check.profileID}, whose ${check.profile.harness} harness lacks ${fit.missing.join(', ')}`,
     });
+  }
+}
+
+// A worker's limit error has to reach its caller before the runtime gives up on the call.
+const workerWaitMarginMs = 30_000;
+
+interface WorkerConfig {
+  readonly profiles: Readonly<Record<string, ProfileFields>>;
+  readonly roles: z.infer<typeof rolesSchema>;
+  readonly limits: z.infer<typeof limitsSchema>;
+}
+
+// The worker role takes these checks and no other config does, because without it no tool starts a
+// worker.
+function addWorkerIssues(
+  issues: z.core.$RefinementCtx,
+  config: WorkerConfig,
+  readToolCallWaitMs: ReadToolCallWaitMs,
+): void {
+  const workerProfileID = config.roles.worker;
+
+  if (workerProfileID === undefined) {
+    return;
+  }
+
+  if (config.profiles[workerProfileID]?.prices === null) {
+    issues.addIssue({
+      code: 'custom',
+      path: ['roles', 'worker'],
+      message: `the worker role names the profile ${workerProfileID}, which sets no prices, and a worker run counts its cost against its dollar limit`,
+    });
+  }
+
+  const callerIDs = new Set(
+    [config.roles.conversation, config.roles.task ?? config.roles.conversation].filter(
+      (id) => id !== undefined,
+    ),
+  );
+
+  const minutes = config.limits.workerRun.minutes;
+
+  for (const profileID of callerIDs) {
+    const profile = config.profiles[profileID];
+
+    if (profile === undefined) {
+      continue;
+    }
+
+    const waitMs = readToolCallWaitMs({ id: profileID, ...profile });
+
+    if (waitMs === null) {
+      issues.addIssue({
+        code: 'custom',
+        path: ['roles', 'worker'],
+        message: `the worker role is set, and the ${profile.harness} harness of the profile ${profileID} has no tool call wait, so a worker's limit error could miss its caller`,
+      });
+    } else if (minutes * 60_000 > waitMs - workerWaitMarginMs) {
+      issues.addIssue({
+        code: 'custom',
+        path: ['limits', 'workerRun', 'minutes'],
+        message: `the worker run limit of ${String(minutes)} minutes is longer than the ${String((waitMs - workerWaitMarginMs) / 60_000)} minutes that the ${profile.harness} harness of the profile ${profileID} gives a tool call (its wait of ${String(waitMs / 60_000)} minutes less 30 seconds)`,
+      });
+    }
   }
 }

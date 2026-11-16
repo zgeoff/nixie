@@ -45,6 +45,13 @@ export interface SelectableModel {
   readonly isAsked: boolean;
 }
 
+export interface WorkerRunLimits {
+  readonly minutes: number;
+  readonly turns: number;
+  readonly tokens: number;
+  readonly dollars: number;
+}
+
 export interface TaskRunLimits {
   readonly turns: number;
   readonly dollars: number;
@@ -61,6 +68,7 @@ export interface ModelsConfig {
   readonly selectable: readonly SelectableModel[];
   readonly limits: {
     readonly taskRun: { readonly default: TaskRunLimits; readonly max: TaskRunLimits };
+    readonly workerRun: WorkerRunLimits;
   };
 }
 
