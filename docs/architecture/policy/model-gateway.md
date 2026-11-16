@@ -85,11 +85,100 @@ last whole count. It adds one reply at a time, so two replies that end together 
 
 ## The limit
 
+A config sets either `limits`, which this section describes, or `periods`, which
+[the periods](#the-periods) describes. A preview's config sets `limits`.
+
 The configured limit names dollars, tokens or both, and the gateway refuses a request once either
 total reaches its limit. The refusal is a 403 in the model API's error shape, with a message that
 names the totals and the limit, so the model client stops instead of retrying. Requests already in
 flight when the count crosses the limit finish and count, so the totals can pass the limit by the
 replies that were running at that moment.
+
+## The periods
+
+A config with `periods` counts a day and a month in place of one total. Each resets at local
+midnight in `periods.zone`, an IANA zone that equals the deployment's default time zone. The server
+sets the limits and the gateway's own config sets the caps above them, so code in the deployment
+cannot move a cap.
+
+```yaml
+periods:
+  zone: Europe/London
+caps: # default: twice nixie's default day and month limits
+  day: { dollars: 120, tokens: 160000000 }
+  month: { dollars: 1200, tokens: 1200000000 }
+control:
+  listen: { hostname: 127.0.0.1, port: 8790 } # an address no sandbox reaches
+  tokenFile: /run/secrets/gateway-control-token # one line
+countBySandbox: true # default false
+override: /var/lib/model-gateway/override.json # no path, no override
+```
+
+A config with `periods` needs `control`, and the schema refuses a config that sets both `periods`
+and `limits`, or neither. It also refuses `caps`, `control`, `countBySandbox` and `override` in a
+config with `limits`. The store of a `periods` config is a file of its own, in version 2: the start,
+the count, the base limit, the raise and the trip time of each period, and a count and a limit per
+sandbox. A period's trip time is the instant the gateway first found its count at its limit in
+force, and a reset or a raise that lifts the limit clears it.
+
+At start, the gateway rewrites a store file in the shape of a `limits` count as a version 2 store,
+in one write. The periods start at zero, because a total that never reset says nothing of today's
+spend or this month's. The lost mark carries over, and the gateway logs the old totals. The gateway
+refuses to start on a store file in any other shape.
+
+### Admission and the reset
+
+Before each admission the gateway reads the store and the override file, and answers:
+
+- a 503 while the lost mark stands, or while either period's base limit is null, so a gateway that
+  the server never set sends nothing upstream;
+- a 403 for a sandbox that the store lacks, when the config counts by sandbox;
+- the limit 403 when a period's count has reached its limit in force. That limit is the override
+  when it applies to the period's current start, and otherwise the larger of the base limit and the
+  day's raise;
+- the limit 403 when a sandbox's count has reached its own limit.
+
+Each read of the store, for an admission, a reply or a control call, first resets each period whose
+next start in the zone has passed: the count goes to zero, the start moves, and the raise drops. The
+base limit and the lost mark stay. A reset therefore needs no model request, and a `/status` read
+after midnight shows the new day. The store runs one change at a time, so a reply counted after
+midnight lands in the new day and the month once. A reply adds its dollars and tokens to the day,
+the month and its sandbox in one write.
+
+### Count by sandbox
+
+With `countBySandbox`, a path is `/<sandbox>/<route>/[~in.<tag>/]<path>`. The gateway takes the
+sandbox from the first segment and the route from the second, and strips both, and the capture tag,
+before it calls the model API. Without it the path is as [the routes](#routes) describe.
+
+### The control listener
+
+A second listener on `control.listen` serves the server alone. It answers 401 to any request without
+`Authorization: Bearer <token>`, with the token read from `control.tokenFile` at start. The model
+listener serves no control path.
+
+| Call                       | Effect                                                                                                 |
+| -------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `GET /status`              | the zone, the lost mark, each period's start, reset time, count, limit in force and cap, and `tripped` |
+| `PUT /limits`              | sets the base limits of both periods; 409 `above_cap` past a cap                                       |
+| `POST /raise`              | raises the day for its start; 409 `above_cap`, or 409 `period_ended` for another start                 |
+| `PUT /sandboxes/<name>`    | sets the sandbox's limit, or `null` to count only, and sets its count to zero                          |
+| `GET /sandboxes/<name>`    | the sandbox's count and whether it is past its limit; 404 for a name the store lacks                   |
+| `DELETE /sandboxes/<name>` | removes the sandbox; 204 also for a name the store lacks                                               |
+
+A refused call changes nothing. `tripped` is null while each count is under its limit in force and
+the lost mark is absent. For a limit, its `at` is the period's trip time. While only the lost mark
+stands, `tripped` is `{ "lost": true, "at": … }`, and `at` is the time of the read, because an
+operator clears the mark by deleting one field and the store keeps no time beside it.
+
+### The override
+
+`model-gateway raise --config <file> --period day|month --dollars <n> --tokens <n>` is the only way
+past a cap. It writes the override file for the period now in force in the config's zone, through a
+second file and a rename, and the limit it names may pass the cap. The gateway ignores an override
+whose start is not the period's current start, and an override file that it cannot read. The control
+listener has no call that writes the override, and the server has no path to the override, the store
+or the config. A config with no `override` path makes the command refuse to run.
 
 ## The capture
 
@@ -184,8 +273,10 @@ The gateway treats a counter store it cannot use, and a count it has lost, as a 
 room. A lost count is one that fell behind the spend, and the gateway marks it as lost in the store
 itself. While the lost mark stands, the gateway answers every request with a 503 and sends nothing
 upstream, across restarts, until an operator removes the `lost` field from the store file. The mark
-survives a restart because a restart cannot recover the spend the count missed. When the mark cannot
-be written, the gateway still refuses every later request until it exits.
+survives a restart because a restart cannot recover the spend the count missed. From the moment a
+count is lost until its mark is in the store, the gateway refuses every request in its own process,
+also while a second mark is still being written. When a mark cannot be written, the gateway refuses
+every later request until it exits.
 
 - **The store cannot be read.** A missing store file, a missing directory or a file that holds no
   count fails the read, and the gateway answers the request with a 503 and sends nothing upstream.
@@ -208,5 +299,7 @@ off before its whole usage arrives, so the gateway marks the count as lost befor
 reply.
 
 The release attaches the gateway as one compiled binary for Linux, so a host runs it without a Bun
-install. The [preview recipe](../../runbooks/preview.md#model-calls) covers how a preview names its
-route.
+install. The gateway imports prices from `@heynixie/models/prices` only, because the package's main
+entry also takes in the database code, whose migrations a compiled binary cannot read. The bundle
+test lane compiles the binary with the release's arguments and starts it. The
+[preview recipe](../../runbooks/preview.md#model-calls) covers how a preview names its route.

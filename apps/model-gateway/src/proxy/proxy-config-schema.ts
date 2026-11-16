@@ -1,8 +1,38 @@
 import { isAbsolute } from 'node:path';
-import { modelPricesSchema } from '@heynixie/models';
+import { modelPricesSchema } from '@heynixie/models/prices';
 import { modelAPIs } from '@heynixie/wire';
 import { z } from 'zod';
 import type { ProxyConfig } from '../types';
+
+const measuresSchema = z.strictObject({
+  dollars: z.number().positive(),
+  tokens: z.number().positive(),
+});
+
+const periodsSchema = z.strictObject({
+  zone: z.string().refine(isZone, { message: 'the zone is not an IANA zone' }),
+});
+
+// twice nixie's default day and month limits
+const defaultCaps = {
+  day: { dollars: 120, tokens: 160_000_000 },
+  month: { dollars: 1200, tokens: 1_200_000_000 },
+};
+
+const capsSchema = z.strictObject({
+  day: measuresSchema.default(defaultCaps.day),
+  month: measuresSchema.default(defaultCaps.month),
+});
+
+const controlSchema = z.strictObject({
+  listen: z.strictObject({
+    hostname: z.string().min(1).default('127.0.0.1'),
+    port: z.int().min(0).max(65_535),
+  }),
+  tokenFile: z.string().refine((path) => isAbsolute(path), {
+    message: 'the control token file is an absolute path',
+  }),
+});
 
 const routeIDSchema = z.string().regex(/^[a-z0-9][a-z0-9-]*$/u, 'a route ID is a lowercase slug');
 
@@ -37,7 +67,15 @@ export const proxyConfigSchema = z
       port: z.int().min(0).max(65_535),
     }),
     store: z.string().min(1),
-    limits: limitsSchema,
+    limits: limitsSchema.optional(),
+    periods: periodsSchema.optional(),
+    caps: capsSchema.optional(),
+    control: controlSchema.optional(),
+    countBySandbox: z.boolean().optional(),
+    override: z
+      .string()
+      .refine((path) => isAbsolute(path), { message: 'the override file is an absolute path' })
+      .optional(),
     capture: captureSchema.optional(),
     routes: z
       .record(routeIDSchema, routeSchema)
@@ -45,10 +83,60 @@ export const proxyConfigSchema = z
         message: 'the proxy names no route',
       }),
   })
+  .superRefine((config, ctx) => {
+    if (config.limits !== undefined && config.periods !== undefined) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['periods'],
+        message: 'the config sets both limits and periods, and it sets exactly one',
+      });
+    }
+
+    if (config.limits === undefined && config.periods === undefined) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['periods'],
+        message: 'the config sets neither limits nor periods, and it sets exactly one',
+      });
+    }
+
+    if (config.periods !== undefined && config.control === undefined) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['control'],
+        message: 'a config with periods needs a control listener',
+      });
+    }
+
+    if (config.periods === undefined) {
+      for (const key of ['caps', 'control', 'countBySandbox', 'override'] as const) {
+        if (config[key] !== undefined) {
+          ctx.addIssue({
+            code: 'custom',
+            path: [key],
+            message: `${key} needs periods, and a limits config sets none of these keys`,
+          });
+        }
+      }
+    }
+  })
   .transform((config): ProxyConfig => ({
     listen: config.listen,
     store: config.store,
-    limits: { dollars: config.limits.dollars ?? null, tokens: config.limits.tokens ?? null },
+    limits:
+      config.limits === undefined
+        ? null
+        : { dollars: config.limits.dollars ?? null, tokens: config.limits.tokens ?? null },
+    periods:
+      config.periods === undefined || config.control === undefined
+        ? null
+        : {
+            zone: config.periods.zone,
+            caps: config.caps ?? defaultCaps,
+            control: config.control,
+            countBySandbox: config.countBySandbox ?? false,
+            override: config.override ?? null,
+          },
     capture:
       config.capture === undefined
         ? null
@@ -69,3 +157,13 @@ export const proxyConfigSchema = z
       ]),
     ),
   }));
+
+function isZone(zone: string): boolean {
+  try {
+    const formatter = new Intl.DateTimeFormat('en-US', { timeZone: zone });
+
+    return formatter.resolvedOptions().timeZone !== '';
+  } catch {
+    return false;
+  }
+}

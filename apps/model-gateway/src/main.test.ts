@@ -95,3 +95,90 @@ test('it exits 1 for a config with no limit', async () => {
 
   expect(code).toBe(1);
 });
+
+test('it writes the override for the period in force from the raise command and exits 0', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(
+    join(ctx.directory, 'proxy.yaml'),
+    [
+      'listen: { port: 0 }',
+      `store: ${join(ctx.directory, 'counter.json')}`,
+      'periods: { zone: Europe/London }',
+      `control: { listen: { port: 0 }, tokenFile: ${join(ctx.directory, 'token')} }`,
+      `override: ${join(ctx.directory, 'override.json')}`,
+      'routes:',
+      '  preview:',
+      `    upstream: ${ctx.model.url}`,
+      '    model: model-small',
+      '    prices: { input: 1, cache_write: 1.25, cache_write_1h: 2, cached_input: 0.1, output: 5 }',
+    ].join('\n'),
+  );
+
+  const child = Bun.spawn(
+    [
+      process.execPath,
+      ctx.entry,
+      'raise',
+      '--config',
+      join(ctx.directory, 'proxy.yaml'),
+      '--period',
+      'day',
+      '--dollars',
+      '200',
+      '--tokens',
+      '250000000',
+    ],
+    { stdin: 'ignore', stdout: 'ignore', stderr: 'ignore' },
+  );
+
+  const code = await child.exited;
+  const written: unknown = await Bun.file(join(ctx.directory, 'override.json')).json();
+
+  expect(code).toBe(0);
+
+  expect(written).toStrictEqual({
+    period: 'day',
+    start: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/u),
+    limit: { dollars: 200, tokens: 250_000_000 },
+  });
+});
+
+test('it exits 1 from the raise command for a config with no override file', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(
+    join(ctx.directory, 'proxy.yaml'),
+    [
+      'listen: { port: 0 }',
+      `store: ${join(ctx.directory, 'counter.json')}`,
+      'limits: { dollars: 1 }',
+      'routes:',
+      '  preview:',
+      `    upstream: ${ctx.model.url}`,
+      '    model: model-small',
+      '    prices: { input: 1, cache_write: 1.25, cache_write_1h: 2, cached_input: 0.1, output: 5 }',
+    ].join('\n'),
+  );
+
+  const child = Bun.spawn(
+    [
+      process.execPath,
+      ctx.entry,
+      'raise',
+      '--config',
+      join(ctx.directory, 'proxy.yaml'),
+      '--period',
+      'day',
+      '--dollars',
+      '1',
+      '--tokens',
+      '1',
+    ],
+    { stdin: 'ignore', stdout: 'ignore', stderr: 'ignore' },
+  );
+
+  const code = await child.exited;
+
+  expect(code).toBe(1);
+});

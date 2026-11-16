@@ -1,7 +1,6 @@
 import type { Logger } from '@heynixie/logger';
 import { toErrorFields } from '@heynixie/logger';
-import { buildCallCost } from '@heynixie/models';
-import type { ModelAPIEndpointName, ModelCallUsage } from '@heynixie/wire';
+import type { ModelAPIEndpointName } from '@heynixie/wire';
 import {
   captureAnswerSchema,
   capturePath,
@@ -9,18 +8,19 @@ import {
   parseJSONOrNull,
 } from '@heynixie/wire';
 import invariant from 'tiny-invariant';
-import type { CounterStore, ProxyLimits, ProxyRoute, SpendTotals, StoredCount } from '../types';
-import { buildCallTokens } from '../usage/build-call-tokens';
+import type { CounterStore, ProxyLimits, ProxyRoute } from '../types';
 import { buildCountedStream } from '../usage/build-counted-stream';
 import type { CaptureSpool } from '../usage/create-capture-spool';
 import { usageDialects } from '../usage/usage-dialects';
 import { isRecord } from '../utils/is-record';
 import { findProxyEndpoint } from './find-proxy-endpoint';
+import { makeLimitsAccounting } from './make-limits-accounting';
+import type { PeriodsAccountingDeps } from './make-periods-accounting';
+import { makePeriodsAccounting } from './make-periods-accounting';
+import { renderAPIError } from './render-api-error';
 
-export interface ProxyHandlerDeps {
+interface ProxyHandlerBaseDeps {
   readonly routes: Readonly<Record<string, ProxyRoute>>;
-  readonly limits: ProxyLimits;
-  readonly store: CounterStore;
 
   // null when the config holds no capture key
   readonly capture: CaptureSpool | null;
@@ -28,57 +28,21 @@ export interface ProxyHandlerDeps {
   readonly log: Logger;
 }
 
+// a config with limits counts one total; a config with periods counts a day, a month and, with
+// countBySandbox, each sandbox, which the first path segment names
+export type ProxyHandlerDeps = ProxyHandlerBaseDeps &
+  (
+    | { readonly limits: ProxyLimits; readonly store: CounterStore }
+    | { readonly periods: PeriodsAccountingDeps }
+  );
+
 export function makeProxyHandler(deps: ProxyHandlerDeps): (request: Request) => Promise<Response> {
-  // a count that failed to write, or a reply lost before its usage arrived, leaves the store behind
-  // the spend, so the store keeps a mark that refuses every later request, across a restart, until
-  // an operator clears it; the latch refuses in this process when the mark cannot be written
-  let countFailed = false;
-  let limitLogged = false;
+  const accounting =
+    'periods' in deps
+      ? makePeriodsAccounting(deps.periods)
+      : makeLimitsAccounting({ limits: deps.limits, store: deps.store, log: deps.log });
 
-  const loseCount = async (): Promise<void> => {
-    countFailed = true;
-
-    await deps.store.markLost().catch((error: unknown) => {
-      deps.log('counter.mark_failed', toErrorFields(error), 'error');
-    });
-  };
-
-  // required marks a reply that spent for certain, or may have, so one with no usage the proxy
-  // can read leaves the count behind
-  const count = async (
-    route: ProxyRoute,
-    usage: ModelCallUsage | null,
-    required: boolean,
-  ): Promise<void> => {
-    if (usage === null && required) {
-      deps.log('count.lost', {}, 'error');
-
-      await loseCount();
-
-      return;
-    }
-
-    if (usage === null) {
-      return;
-    }
-
-    try {
-      const totals = await deps.store.add({
-        dollars: buildCallCost(usage, route.prices),
-        tokens: buildCallTokens(usage),
-      });
-
-      if (!limitLogged && isLimitReached(totals, deps.limits)) {
-        limitLogged = true;
-
-        deps.log('limit.reached', { ...totals }, 'warn');
-      }
-    } catch (error) {
-      deps.log('counter.write_failed', toErrorFields(error), 'error');
-
-      await loseCount();
-    }
-  };
+  const countBySandbox = 'periods' in deps && deps.periods.countBySandbox;
 
   return async (request) => {
     const receivedAt = Date.now();
@@ -90,7 +54,7 @@ export function makeProxyHandler(deps: ProxyHandlerDeps): (request: Request) => 
       return answerCaptureAsk(deps.capture, request, url);
     }
 
-    const target = findRouteTarget(deps.routes, url.pathname);
+    const target = findRouteTarget(deps.routes, url.pathname, countBySandbox);
 
     if (target === null) {
       return renderAPIError(
@@ -110,26 +74,10 @@ export function makeProxyHandler(deps: ProxyHandlerDeps): (request: Request) => 
       );
     }
 
-    const totals = await readTotals(deps);
+    const refusal = await accounting.admit(target.sandbox);
 
-    if (totals === null) {
-      return renderAPIError(
-        503,
-        'api_error',
-        'the model gateway cannot read its counter store, so it refuses every request',
-      );
-    }
-
-    if (countFailed || totals.lost) {
-      return renderAPIError(
-        503,
-        'api_error',
-        'the model gateway lost the count of a reply, so it refuses every request until an operator clears the mark in its counter store',
-      );
-    }
-
-    if (isLimitReached(totals, deps.limits)) {
-      return renderAPIError(403, 'permission_error', formatLimitRefusal(totals, deps.limits));
+    if (refusal !== null) {
+      return refusal;
     }
 
     const rule = endpoint.body;
@@ -200,7 +148,7 @@ export function makeProxyHandler(deps: ProxyHandlerDeps): (request: Request) => 
     // a connection can break after the model API took the call, so the model may have spent
     if (upstream === null) {
       if (endpoint.spends) {
-        await loseCount();
+        await accounting.loseCount();
       }
 
       return renderAPIError(502, 'api_error', 'the model gateway could not reach the model API');
@@ -217,7 +165,7 @@ export function makeProxyHandler(deps: ProxyHandlerDeps): (request: Request) => 
     const dialect = usageDialects[target.route.api];
 
     if (upstream.body === null) {
-      await count(target.route, null, spent);
+      await accounting.count(target.route, target.sandbox, null, spent);
 
       return new Response(null, init);
     }
@@ -226,7 +174,7 @@ export function makeProxyHandler(deps: ProxyHandlerDeps): (request: Request) => 
     if (upstream.headers.get('content-type')?.startsWith('text/event-stream') === true) {
       return new Response(
         buildCountedStream(upstream.body, dialect, (usage, complete) =>
-          count(target.route, usage, spent || !complete),
+          accounting.count(target.route, target.sandbox, usage, spent || !complete),
         ),
         init,
       );
@@ -241,23 +189,21 @@ export function makeProxyHandler(deps: ProxyHandlerDeps): (request: Request) => 
     // the model may have spent on a reply whose usage never arrived, so the count is behind
     if (text === null) {
       if (endpoint.spends) {
-        await loseCount();
+        await accounting.loseCount();
       }
 
       return renderAPIError(502, 'api_error', 'the model gateway lost the reply of the model API');
     }
 
-    await count(target.route, dialect.parseUsage(findBodyUsage(text)), spent);
+    await accounting.count(
+      target.route,
+      target.sandbox,
+      dialect.parseUsage(findBodyUsage(text)),
+      spent,
+    );
 
     return new Response(text, init);
   };
-}
-
-function isLimitReached(totals: SpendTotals, limits: ProxyLimits): boolean {
-  return (
-    (limits.dollars !== null && totals.dollars >= limits.dollars) ||
-    (limits.tokens !== null && totals.tokens >= limits.tokens)
-  );
 }
 
 async function answerCaptureAsk(
@@ -288,11 +234,9 @@ async function answerCaptureAsk(
   return Response.json(captureAnswerSchema.parse({ canCapture }));
 }
 
-function renderAPIError(status: number, type: string, message: string): Response {
-  return Response.json({ type: 'error', error: { type, message } }, { status });
-}
-
 interface RouteTarget {
+  // the sandbox segment before the route, or null when the gateway does not count by sandbox
+  readonly sandbox: string | null;
   readonly routeID: string;
   readonly route: ProxyRoute;
 
@@ -311,44 +255,31 @@ const captureTagPrefix = '~in.';
 function findRouteTarget(
   routes: Readonly<Record<string, ProxyRoute>>,
   pathname: string,
+  countBySandbox: boolean,
 ): RouteTarget | null {
-  const [, routeID = '', ...rest] = pathname.split('/');
+  const [, first = '', ...afterFirst] = pathname.split('/');
+
+  // with countBySandbox the path is /<sandbox>/<route>/[~in.<tag>/]<path>
+  const sandbox = countBySandbox ? first : null;
+  const [routeID = '', ...rest] = countBySandbox ? afterFirst : [first, ...afterFirst];
   const route = Object.hasOwn(routes, routeID) ? routes[routeID] : undefined;
 
   if (route === undefined) {
     return null;
   }
 
-  const first = rest[0] ?? '';
-  const isTagged = first.startsWith(captureTagPrefix);
+  const head = rest[0] ?? '';
+  const isTagged = head.startsWith(captureTagPrefix);
   const kept = isTagged ? rest.slice(1) : rest;
 
   return {
+    sandbox,
     routeID,
     route,
     path: kept.length === 0 ? '' : `/${kept.join('/')}`,
     rawPath: rest.length === 0 ? '' : `/${rest.join('/')}`,
-    tag: isTagged ? first.slice(captureTagPrefix.length) : null,
+    tag: isTagged ? head.slice(captureTagPrefix.length) : null,
   };
-}
-
-async function readTotals(deps: ProxyHandlerDeps): Promise<StoredCount | null> {
-  try {
-    return await deps.store.read();
-  } catch (error) {
-    deps.log('counter.read_failed', toErrorFields(error), 'error');
-
-    return null;
-  }
-}
-
-function formatLimitRefusal(totals: SpendTotals, limits: ProxyLimits): string {
-  const spent = [
-    limits.dollars === null ? null : `$${totals.dollars.toFixed(4)} of $${String(limits.dollars)}`,
-    limits.tokens === null ? null : `${String(totals.tokens)} of ${String(limits.tokens)} tokens`,
-  ].filter((part) => part !== null);
-
-  return `the model gateway reached its spending limit (${spent.join(', ')}), so it refuses every further request`;
 }
 
 function isCapturableEndpoint(name: ModelAPIEndpointName): name is 'messages' | 'responses' {

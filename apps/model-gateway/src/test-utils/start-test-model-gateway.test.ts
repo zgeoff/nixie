@@ -103,3 +103,79 @@ test('it answers the capture ask with no when capture is off', async () => {
 
   expect(body).toStrictEqual({ canCapture: false });
 });
+
+test('it serves a control listener with the token it is given when it counts periods', async () => {
+  const model = startScriptedModel();
+
+  onTestFinished(() => model.stop());
+
+  const gateway = await startTestModelGateway({
+    upstreamURL: model.url,
+    periods: { zone: 'Europe/London', countBySandbox: true },
+  });
+
+  const status = await fetch(`${gateway.control?.url ?? ''}/status`, {
+    headers: { authorization: `Bearer ${gateway.control?.token ?? ''}` },
+  });
+
+  const body: unknown = await status.json();
+
+  expect(body).toMatchObject({
+    zone: 'Europe/London',
+    periods: { day: { limit: null, cap: { dollars: 120 } } },
+  });
+});
+
+test('it reads the day count of a gateway with periods', async () => {
+  const model = startScriptedModel();
+
+  onTestFinished(() => model.stop());
+
+  model.addReplies({ text: 'done', usage: { input_tokens: 600, output_tokens: 400 } });
+
+  const gateway = await startTestModelGateway({
+    upstreamURL: model.url,
+    model: 'model-small',
+    periods: { zone: 'Europe/London' },
+  });
+
+  const control = { authorization: `Bearer ${gateway.control?.token ?? ''}` };
+
+  await fetch(`${gateway.control?.url ?? ''}/limits`, {
+    method: 'PUT',
+    headers: control,
+    body: JSON.stringify({
+      day: { dollars: 60, tokens: 80_000_000 },
+      month: { dollars: 600, tokens: 600_000_000 },
+    }),
+  });
+
+  const reply = await fetch(`${gateway.baseURL}/v1/messages`, {
+    method: 'POST',
+    body: JSON.stringify({ model: 'model-small', messages: [] }),
+  });
+
+  await reply.text();
+
+  const probeCounted = async () => {
+    const counted = await gateway.readCount();
+
+    return counted.tokens === 1000;
+  };
+
+  await waitForCondition(probeCounted);
+
+  const count = await gateway.readCount();
+
+  expect(count).toStrictEqual({ dollars: expect.toBeNumber(), tokens: 1000 });
+});
+
+test('it has no control listener when it counts limits', async () => {
+  const model = startScriptedModel();
+
+  onTestFinished(() => model.stop());
+
+  const gateway = await startTestModelGateway({ upstreamURL: model.url });
+
+  expect(gateway.control).toBeNull();
+});

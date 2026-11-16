@@ -119,6 +119,7 @@
     "test:web-build": "bun apps/web/src/test-utils/read-web-build.ts",
     "test:guest-bundles": "bun guests/conversation/src/test-utils/read-guest-bundles.ts",
     "test:backup-job-build": "bun apps/backup-job/src/test-utils/read-backup-job-bundle.ts",
+    "test:model-gateway-build": "bun apps/model-gateway/src/test-utils/read-model-gateway-binary.ts",
     "build:browser": "bun apps/web/src/test-utils/write-browser-build.ts",
     "test:browser": "rig browser --path-ignore-patterns='e2e/journeys/**' --path-ignore-patterns='e2e/src/**'",
     "test:agent-sdk": "rig agent-sdk",

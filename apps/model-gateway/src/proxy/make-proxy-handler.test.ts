@@ -1046,6 +1046,110 @@ test('it refuses every later request once a message call fails before its reply 
   expect(sendUpstream).toHaveBeenCalledOnce();
 });
 
+test('it admits a request again once an operator removes the lost mark, with no restart', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(ctx.storePath, '{"dollars":0,"tokens":0}');
+
+  const store = await createCounterStore(ctx.storePath);
+
+  const sendUpstream = mock<(url: string, init: RequestInit) => Promise<Response>>(() =>
+    Promise.reject(new Error('connection reset')),
+  );
+
+  const handler = makeProxyHandler({
+    routes: {
+      preview: {
+        api: 'anthropic-messages',
+        upstream: 'http://model.test',
+        model: 'model-small',
+        prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
+      },
+    },
+    limits: { dollars: 1, tokens: null },
+    store,
+    capture: null,
+    sendUpstream,
+    log: ctx.log,
+  });
+
+  const sendRequest = () =>
+    handler(
+      new Request('http://proxy.test/preview/v1/messages', {
+        method: 'POST',
+        body: JSON.stringify({ model: 'model-small', messages: [] }),
+      }),
+    );
+
+  await sendRequest();
+  await writeFile(ctx.storePath, '{"dollars":0,"tokens":0}');
+  await sendRequest();
+
+  expect(sendUpstream).toHaveBeenCalledTimes(2);
+});
+
+test('it refuses a request that arrives while the lost mark is still being written', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(ctx.storePath, '{"dollars":0,"tokens":0}');
+
+  const counter = await createCounterStore(ctx.storePath);
+
+  const markWrite = Promise.withResolvers<undefined>();
+  const markCalled = Promise.withResolvers<undefined>();
+
+  const store = {
+    ...counter,
+    markLost: async () => {
+      markCalled.resolve(undefined);
+
+      await markWrite.promise;
+
+      await counter.markLost();
+    },
+  };
+
+  const sendUpstream = mock<(url: string, init: RequestInit) => Promise<Response>>(() =>
+    Promise.reject(new Error('connection reset')),
+  );
+
+  const handler = makeProxyHandler({
+    routes: {
+      preview: {
+        api: 'anthropic-messages',
+        upstream: 'http://model.test',
+        model: 'model-small',
+        prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
+      },
+    },
+    limits: { dollars: 1, tokens: null },
+    store,
+    capture: null,
+    sendUpstream,
+    log: ctx.log,
+  });
+
+  const sendRequest = () =>
+    handler(
+      new Request('http://proxy.test/preview/v1/messages', {
+        method: 'POST',
+        body: JSON.stringify({ model: 'model-small', messages: [] }),
+      }),
+    );
+
+  const failed = sendRequest();
+
+  await markCalled.promise;
+
+  const during = await sendRequest();
+
+  markWrite.resolve(undefined);
+
+  await failed;
+
+  expect(during.status).toBe(503);
+});
+
 test('it refuses every request after a restart once a lost count marks its store', async () => {
   const ctx = await setupTest();
 
