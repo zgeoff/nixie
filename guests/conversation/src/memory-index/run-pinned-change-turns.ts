@@ -100,9 +100,10 @@ function createMemoryToolServer(): McpSdkServerConfigWithInstance {
 
 const at = 'Tue 14 Oct, 22:50, Sydney';
 
-// A full pinned core and a full index, each near its default budget: 2,000 and 3,000 tokens.
+// A full pinned core and a full index, each just under its default budget of 2,000 and 3,000
+// tokens. nixie's token counter measured them at 1,983 and 2,983 for these sizes.
 function buildOpening(): string {
-  const pinned = ["[w8d2n5rt1c] The owner's code word is APPLE.", buildFiller(1900, 'pinned')].join(
+  const pinned = ["[w8d2n5rt1c] The owner's code word is APPLE.", buildFiller(3250, 'pinned')].join(
     '\n',
   );
 
@@ -110,7 +111,7 @@ function buildOpening(): string {
     renderSystemMessage({
       type: 'status',
       at,
-      body: '- Memory index: 160 items\n- Memory index tokens: 2950 of 3000',
+      body: '- Memory index: 240 items\n- Memory index tokens: 2983 of 3000',
     }),
     renderSystemMessage({ type: 'pinned-memory', at, body: pinned }),
     renderSystemMessage({ type: 'memory-index', at, body: buildIndex() }),
@@ -118,7 +119,7 @@ function buildOpening(): string {
 }
 
 function buildIndex(): string {
-  const rows = Array.from({ length: 40 }, (_, row) => {
+  const rows = Array.from({ length: 60 }, (_, row) => {
     const items = Array.from(
       { length: 4 },
       (_item, item) =>
