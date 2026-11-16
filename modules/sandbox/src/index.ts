@@ -10,6 +10,8 @@ export { execOutputLimitBytes } from './exec/exec-output-limit-bytes';
 export { findKeptSandbox } from './sandbox/find-kept-sandbox';
 export { isTestSandbox } from './sandbox/is-test-sandbox';
 export { mergeExecEnv } from './process/merge-exec-env';
+export type { RemovedSandboxes } from './sandbox/remove-sandboxes';
+export { removeSandboxes } from './sandbox/remove-sandboxes';
 export type { StaleSandboxesOptions } from './sandbox/remove-stale-sandboxes';
 export { readSandboxOwners } from './sandbox/read-sandbox-owners';
 export { removeStaleSandboxes } from './sandbox/remove-stale-sandboxes';

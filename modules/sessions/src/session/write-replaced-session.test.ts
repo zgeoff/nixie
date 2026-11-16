@@ -89,6 +89,42 @@ test('it carries only the session files the harness lists into the replacement s
   ]);
 });
 
+test('it leaves the target transcript alone and logs the failure when it cannot list the target', async () => {
+  const ctx = await setupTest();
+  const from = await ctx.adapter.create(ctx.spec);
+  const to = await ctx.adapter.create(ctx.spec);
+
+  const sessionID = crypto.randomUUID();
+  const path = `/home/nixie/.claude/projects/-home-nixie-conversation/${sessionID}.jsonl`;
+
+  await ctx.writeSessionBoundary(
+    JSON.stringify({ harness: 'agent-sdk', sessionID, messageID: crypto.randomUUID() }),
+  );
+
+  await from.copyIn([{ path, content: new TextEncoder().encode('{"uuid":"older"}\n') }]);
+  await to.copyIn([{ path, content: new TextEncoder().encode('{"uuid":"newer"}\n') }]);
+
+  const log = mock(() => {});
+
+  await writeReplacedSession({
+    context: ctx.context,
+    command: { argv: ['guest'], env: { HOME: '/home/nixie' } },
+    listSessionFiles: (point) => [`${point.sessionID}.jsonl`],
+    log,
+    replaced: [from],
+    target: { ...to, readFilePaths: () => Promise.reject(new Error('the listing timed out')) },
+  });
+
+  const [file] = await to.copyOut([path]);
+
+  expect(new TextDecoder().decode(file?.content)).toBe('{"uuid":"newer"}\n');
+
+  expect(log).toHaveBeenCalledWith('conversation.session_copy_failed', {
+    toSandboxID: to.id,
+    reason: `${from.id}: the listing timed out`,
+  });
+});
+
 test('it carries nothing for a harness that keeps no session a new sandbox can resume', async () => {
   const ctx = await setupTest();
   const from = await ctx.adapter.create(ctx.spec);

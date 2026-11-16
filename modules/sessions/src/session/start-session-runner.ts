@@ -1,3 +1,4 @@
+import type { Logger } from '@heynixie/logger';
 import { bindHarness, deriveModelSecret } from '@heynixie/models';
 import type { Harness, ModelRole, ResolvedProfile } from '@heynixie/models';
 import type { GuestCommand, Sandbox, SandboxAdapter, SandboxLimits } from '@heynixie/sandbox';
@@ -26,6 +27,8 @@ export interface SessionRunnerOptions {
   // the turn-input log, and the role its roles list names this runner by
   readonly turnInputs?: StepCapturePort;
   readonly captureRole: ModelRole;
+
+  readonly log: Logger;
 }
 
 export interface SessionInput {
@@ -62,6 +65,7 @@ export async function startSessionRunner(options: SessionRunnerOptions): Promise
     owner: options.taskID,
     limits: options.limits,
     modelGrant: harness.buildGrant(secret),
+    log: options.log,
   });
 
   const model: ToolRunModel = {

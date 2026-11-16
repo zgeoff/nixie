@@ -46,6 +46,7 @@ test('it starts the new log with the definitions in force, then the reset on the
     context: ctx.context,
     adapter: ctx.sandboxes,
     stopWork: () => Promise.resolve(),
+    log: () => {},
   });
 
   const read = await readRecords(ctx.context.log, { afterSequence: 0 });
@@ -93,6 +94,7 @@ test('it keeps the rules in force and their revisions through a reset', async ()
     context: ctx.context,
     adapter: ctx.sandboxes,
     stopWork: () => Promise.resolve(),
+    log: () => {},
   });
 
   const rules = await readRulesInForce(ctx.context.log.writer.db);
@@ -127,6 +129,7 @@ test('it keeps a widening that passed its lapse time closed through a reset', as
     context: { ...ctx.context, clock: monthLater },
     adapter: ctx.sandboxes,
     stopWork: () => Promise.resolve(),
+    log: () => {},
   });
 
   await runSeed({ log: ctx.context.log, source, buildPolicy: () => ({ rules: [], tools: [] }) });
@@ -151,6 +154,7 @@ test('it destroys every sandbox before it resets', async () => {
     context: ctx.context,
     adapter: ctx.sandboxes,
     stopWork: () => Promise.resolve(),
+    log: () => {},
   });
 
   const after = await ctx.readSandboxIDs();
@@ -184,17 +188,22 @@ test('it removes nothing from the database or the key store when a sandbox destr
       id: 'process',
       list: () =>
         Promise.resolve([
-          { destroy: () => Promise.reject(new Error('the runtime refused the destroy')) },
+          {
+            id: 'nixie-stuck',
+            spec: buildMockSandboxSpec({ owner: 'conversation' }),
+            destroy: () => Promise.reject(new Error('the runtime refused the destroy')),
+          },
         ]),
     },
     stopWork: () => Promise.resolve(),
+    log: () => {},
   });
 
   await Promise.allSettled([reset]);
 
   const read = await readRecords(ctx.context.log, { afterSequence: 0 });
 
-  expect(reset).rejects.toThrowWithMessage(Error, 'the runtime refused the destroy');
+  expect(reset).rejects.toThrowWithMessage(Error, /nixie-stuck/u);
 
   expect(read.map((entry) => [entry.record.sequence, entry.record.kind])).toStrictEqual([
     [1, 'definitions_seeded'],
@@ -223,6 +232,7 @@ test('it refuses a reset before any definitions are in force, and stops no work'
     },
     adapter: server.sandboxes,
     stopWork,
+    log: () => {},
   });
 
   await Promise.allSettled([reset]);
@@ -276,6 +286,7 @@ test('it commits nothing of a turn still running at the end of the stop grace', 
     context: ctx.context,
     adapter: ctx.sandboxes,
     stopWork: () => runners.stop(50),
+    log: () => {},
   });
 
   turn.release();
@@ -296,6 +307,7 @@ test('it folds the reset on the conversation thread, which the conversation task
     context: ctx.context,
     adapter: ctx.sandboxes,
     stopWork: () => Promise.resolve(),
+    log: () => {},
   });
 
   await createConversationTask(ctx.context);
@@ -327,6 +339,7 @@ test('it keeps each live passkey and deletes each revoked one through a reset', 
     context: ctx.context,
     adapter: ctx.sandboxes,
     stopWork: () => Promise.resolve(),
+    log: () => {},
   });
 
   const kept = await readAllPasskeys(ctx.context.log.writer.db);

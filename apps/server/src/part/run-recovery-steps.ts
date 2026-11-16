@@ -14,8 +14,13 @@ export async function runRecoverySteps(parts: ServerParts): Promise<void> {
 
         await removeStaleSandboxes({
           log: parts.context.log,
+          logger: parts.log,
           adapter: parts.tools.adapter,
           keptOwners: [conversationTaskID, checkerOwner, ...started],
+          currentImages: Object.values(parts.images).map((image) => image.name),
+
+          // The conversation's own setup replaces its old-image sandbox after it copies the session out.
+          imageExemptOwners: [conversationTaskID],
         });
       },
     },

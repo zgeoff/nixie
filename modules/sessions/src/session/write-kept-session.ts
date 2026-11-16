@@ -58,6 +58,24 @@ export async function writeKeptSession(spec: KeptSessionSpec): Promise<void> {
   );
 }
 
+export async function probeTranscriptHeld(
+  sandbox: Sandbox,
+  command: GuestCommand,
+  transcript: string,
+): Promise<boolean> {
+  const home = await sandbox.resolveHome(command.env);
+
+  const paths = await sandbox.readFilePaths(join(home.copyPath, configProjectsDir), {
+    maxDepth: 2,
+  });
+
+  return paths.some((path) => {
+    const parts = path.split('/');
+
+    return parts.length === 2 && parts[1] === transcript;
+  });
+}
+
 interface SessionFiles {
   readonly projectDir: string;
 

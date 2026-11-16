@@ -43,6 +43,7 @@ interface RunnerConfig {
   readonly toolNames: readonly string[];
   readonly memory?: Pick<ConversationRunnerOptions, 'readTurnNote' | 'loadOrPinSkillCatalog'>;
 
+  readonly image?: string;
   readonly log?: ConversationRunnerOptions['log'];
   readonly clearFetchPauses?: ConversationRunnerOptions['clearFetchPauses'];
 
@@ -92,7 +93,7 @@ async function setupTest() {
         sandboxes: sandboxes.adapter,
         tools: tools.endpoint,
         toolNames: config.toolNames,
-        image: 'conversation',
+        image: config.image ?? 'conversation',
         limits: { vcpus: 1, memoryMiB: 1024, diskMiB: 2048 },
         command: { argv: ['bun', '/opt/nixie/conversation/src/main.ts'], env: {} },
         getDefinitions: config.getDefinitions ?? (() => testDefinitions),
@@ -2588,6 +2589,274 @@ test('it keeps the conversation sandbox across restarts on one profile and repla
   ]);
 
   expect(ctx.sandboxes.destroyed).toHaveLength(1);
+});
+
+test('it copies the session into the new conversation sandbox and then destroys the old one when the image changed', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  const before = await ctx.startRunner({
+    models: buildMockModelsConfig(),
+    credential: 'not-a-real-key',
+    toolNames: ['notes_read'],
+    image: 'conversation-old',
+  });
+
+  ctx.sandboxes.setGuestScript(() => [
+    {
+      type: 'ended',
+      boundary: {
+        harness: 'agent-sdk',
+        sessionID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d001',
+        messageID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d002',
+      },
+      outcome: 'finished',
+      stopReason: 'end_turn',
+      turns: 1,
+      usage: { inputTokens: 10, outputTokens: 5, cacheReadTokens: 0, cacheWriteTokens: 0 },
+    },
+  ]);
+
+  await ctx.sendMessage(before, 'Hi.');
+
+  const [old] = await ctx.sandboxes.adapter.list('conversation');
+
+  invariant(old !== undefined, 'the old sandbox is live');
+
+  await old.copyIn([
+    {
+      path: '/home/nixie/.claude/projects/-home-nixie-conversation/7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d001.jsonl',
+      content: new TextEncoder().encode('{"uuid":"old-turn"}\n'),
+    },
+  ]);
+
+  const log = mock<ConversationRunnerOptions['log']>();
+
+  await ctx.startRunner({
+    models: buildMockModelsConfig(),
+    credential: 'not-a-real-key',
+    toolNames: ['notes_read'],
+    image: 'conversation-new',
+    log,
+  });
+
+  const live = await ctx.sandboxes.adapter.list('conversation');
+  const liveNow = await ctx.sandboxes.adapter.list('conversation');
+
+  const newSandbox = liveNow.find((sandbox) => sandbox.spec.image === 'conversation-new');
+
+  invariant(newSandbox !== undefined, 'the new sandbox is live');
+
+  const [file] = await newSandbox.copyOut([
+    '/home/nixie/.claude/projects/-home-nixie-conversation/7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d001.jsonl',
+  ]);
+
+  const transcript = new TextDecoder().decode(file?.content);
+
+  expect(ctx.sandboxes.created.map((spec) => spec.image)).toStrictEqual([
+    'conversation-old',
+    'conversation-new',
+  ]);
+
+  // a stub sandbox refuses file calls once destroyed, so this copy ran before the destroy
+  expect(transcript).toBe('{"uuid":"old-turn"}\n');
+  expect(log).not.toHaveBeenCalled();
+  expect(ctx.sandboxes.destroyed).toStrictEqual([old.id]);
+  expect(live.map((sandbox) => sandbox.spec.image)).toStrictEqual(['conversation-new']);
+});
+
+test('it keeps the newer transcript of the kept conversation sandbox when an older one survived a failed destroy', async () => {
+  const ctx = await setupTest();
+
+  const models = buildMockModelsConfig();
+
+  await createConversationTask(ctx.context);
+
+  const first = await ctx.startRunner({
+    models,
+    credential: 'not-a-real-key',
+    toolNames: ['notes_read'],
+    image: 'conversation-old',
+  });
+
+  ctx.sandboxes.setGuestScript(() => [
+    {
+      type: 'ended',
+      boundary: {
+        harness: 'agent-sdk',
+        sessionID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d001',
+        messageID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d002',
+      },
+      outcome: 'finished',
+      stopReason: 'end_turn',
+      turns: 1,
+      usage: { inputTokens: 10, outputTokens: 5, cacheReadTokens: 0, cacheWriteTokens: 0 },
+    },
+  ]);
+
+  await ctx.sendMessage(first, 'Hi.');
+
+  const [old] = await ctx.sandboxes.adapter.list('conversation');
+
+  invariant(old !== undefined, 'the old sandbox is live');
+
+  await old.copyIn([
+    {
+      path: '/home/nixie/.claude/projects/-home-nixie-conversation/7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d001.jsonl',
+      content: new TextEncoder().encode('{"uuid":"old-turn"}\n'),
+    },
+  ]);
+
+  ctx.sandboxes.setDestroyError(new Error('the host is gone'));
+
+  await ctx.startRunner({
+    models,
+    credential: 'not-a-real-key',
+    toolNames: ['notes_read'],
+    image: 'conversation-new',
+  });
+
+  const liveKept = await ctx.sandboxes.adapter.list('conversation');
+
+  const kept = liveKept.find((sandbox) => sandbox.spec.image === 'conversation-new');
+
+  invariant(kept !== undefined, 'the new sandbox is live');
+
+  await kept.copyIn([
+    {
+      path: '/home/nixie/.claude/projects/-home-nixie-conversation/7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d001.jsonl',
+      content: new TextEncoder().encode('{"uuid":"old-turn"}\n{"uuid":"later-turn"}\n'),
+    },
+  ]);
+
+  await ctx.startRunner({
+    models,
+    credential: 'not-a-real-key',
+    toolNames: ['notes_read'],
+    image: 'conversation-new',
+  });
+
+  const liveNow = await ctx.sandboxes.adapter.list('conversation');
+
+  const newSandbox = liveNow.find((sandbox) => sandbox.spec.image === 'conversation-new');
+
+  invariant(newSandbox !== undefined, 'the new sandbox is live');
+
+  const [file] = await newSandbox.copyOut([
+    '/home/nixie/.claude/projects/-home-nixie-conversation/7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d001.jsonl',
+  ]);
+
+  const transcript = new TextDecoder().decode(file?.content);
+
+  expect(transcript).toBe('{"uuid":"old-turn"}\n{"uuid":"later-turn"}\n');
+});
+
+test('it copies the session into the kept conversation sandbox when it holds no transcript and an older one survived', async () => {
+  const ctx = await setupTest();
+
+  const models = buildMockModelsConfig();
+
+  await createConversationTask(ctx.context);
+
+  const first = await ctx.startRunner({
+    models,
+    credential: 'not-a-real-key',
+    toolNames: ['notes_read'],
+    image: 'conversation-old',
+  });
+
+  ctx.sandboxes.setGuestScript(() => [
+    {
+      type: 'ended',
+      boundary: {
+        harness: 'agent-sdk',
+        sessionID: '5b2e8f14-6c1d-4a7e-8f3b-2d9c0e1a4b01',
+        messageID: '5b2e8f14-6c1d-4a7e-8f3b-2d9c0e1a4b02',
+      },
+      outcome: 'finished',
+      stopReason: 'end_turn',
+      turns: 1,
+      usage: { inputTokens: 10, outputTokens: 5, cacheReadTokens: 0, cacheWriteTokens: 0 },
+    },
+  ]);
+
+  await ctx.sendMessage(first, 'Hi.');
+
+  const [old] = await ctx.sandboxes.adapter.list('conversation');
+
+  invariant(old !== undefined, 'the old sandbox is live');
+
+  ctx.sandboxes.setDestroyError(new Error('the host is gone'));
+
+  await ctx.startRunner({
+    models,
+    credential: 'not-a-real-key',
+    toolNames: ['notes_read'],
+    image: 'conversation-new',
+  });
+
+  await old.copyIn([
+    {
+      path: '/home/nixie/.claude/projects/-home-nixie-conversation/5b2e8f14-6c1d-4a7e-8f3b-2d9c0e1a4b01.jsonl',
+      content: new TextEncoder().encode('{"uuid":"old-turn"}\n'),
+    },
+  ]);
+
+  await ctx.startRunner({
+    models,
+    credential: 'not-a-real-key',
+    toolNames: ['notes_read'],
+    image: 'conversation-new',
+  });
+
+  const live = await ctx.sandboxes.adapter.list('conversation');
+
+  const kept = live.find((sandbox) => sandbox.spec.image === 'conversation-new');
+
+  invariant(kept !== undefined, 'the new sandbox is live');
+
+  const [file] = await kept.copyOut([
+    '/home/nixie/.claude/projects/-home-nixie-conversation/5b2e8f14-6c1d-4a7e-8f3b-2d9c0e1a4b01.jsonl',
+  ]);
+
+  expect(new TextDecoder().decode(file?.content)).toBe('{"uuid":"old-turn"}\n');
+});
+
+test('it logs a failed destroy of the old conversation sandbox and still starts the runner', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  await ctx.startRunner({
+    models: buildMockModelsConfig(),
+    credential: 'not-a-real-key',
+    toolNames: ['notes_read'],
+    image: 'conversation-old',
+  });
+
+  ctx.sandboxes.setDestroyError(new Error('the host is gone'));
+
+  const log = mock<ConversationRunnerOptions['log']>();
+
+  await ctx.startRunner({
+    models: buildMockModelsConfig(),
+    credential: 'not-a-real-key',
+    toolNames: ['notes_read'],
+    image: 'conversation-new',
+    log,
+  });
+
+  expect(log).toHaveBeenCalledExactlyOnceWith(
+    'sandbox.remove_failed',
+    { sandboxID: expect.toBeString(), error: 'Error', message: 'the host is gone' },
+    'error',
+  );
+
+  expect(ctx.sandboxes.created.map((spec) => spec.image)).toStrictEqual([
+    'conversation-old',
+    'conversation-new',
+  ]);
 });
 
 test('it tries every replaced sandbox for the session and logs one warning that names each', async () => {

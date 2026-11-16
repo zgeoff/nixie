@@ -318,7 +318,11 @@ test('it removes nothing when the conversation sandbox destroy fails', async () 
       id: 'process',
       list: () =>
         Promise.resolve([
-          { destroy: () => Promise.reject(new Error('the runtime refused the destroy')) },
+          {
+            id: 'nixie-stuck',
+            spec: buildMockSandboxSpec({ owner: 'conversation' }),
+            destroy: () => Promise.reject(new Error('the runtime refused the destroy')),
+          },
         ]),
     },
     stopWork: () => Promise.resolve(),
@@ -404,7 +408,11 @@ test('it removes no key when a code sandbox will not go', async () => {
         id: 'process',
         list: (owner) => {
           const refusing = [
-            { destroy: () => Promise.reject(new Error('the runtime refused the destroy')) },
+            {
+              id: 'nixie-stuck',
+              spec: buildMockSandboxSpec({ owner: 'conversation' }),
+              destroy: () => Promise.reject(new Error('the runtime refused the destroy')),
+            },
           ];
 
           const sandboxes = owner === 'code_run:call-1' ? refusing : [];

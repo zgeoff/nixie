@@ -78,8 +78,12 @@ removes what it made and records the sandbox destroyed. From a row's stored spec
 the in-process handle that reaches the sandbox, so an adapter in a later process can destroy what
 the last process made. Crash recovery destroys every sandbox whose owner no longer runs, each
 through the adapter that made it, and leaves another adapter's sandboxes alone
-([leases and recovery](../core/leases-and-recovery.md#crash-recovery)). A spec holds each grant's
-placeholders and never its credential, so a sandbox record never holds a credential.
+([leases and recovery](../core/leases-and-recovery.md#crash-recovery)). Recovery also destroys the
+sandbox of a kept owner when its image is not one the release's manifest holds, except the
+conversation's, which its own setup replaces after it copies the session out. A destroy that fails
+is logged and tried again at the next start. A replace of a kept owner's sandbox, such as after an
+image change, logs a failed destroy of the old sandbox and goes on with the new one. A spec holds
+each grant's placeholders and never its credential, so a sandbox record never holds a credential.
 
 ### A started task's sandbox
 
@@ -94,7 +98,8 @@ creates the sandbox at the task's first step. Its life follows the task:
 2. The next step of the task wakes the sandbox.
 3. Crash recovery keeps the sandbox while the task is not done or closed, so the task's session
    survives a restart of nixie. This covers a stopped or failed task too, because a restart of the
-   task carries on in the same session.
+   task carries on in the same session. A sandbox on an image that the release no longer holds goes
+   at the start, and the task's next step creates a new one.
 4. When the task is done or closed, the runner destroys the sandbox.
 
 A close of an idle task runs no step, so no step can tell the runner that the task ended. The runner
