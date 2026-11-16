@@ -295,7 +295,7 @@ test("it refuses a reply to the brief ID of a definition's task run, which names
         taskID: 'conversation',
         name: 'Conversation',
         brief: 'Talks.',
-        isWokenByMessages: true,
+        wakeable: true,
         speaker: 'conversation',
       },
     ],
