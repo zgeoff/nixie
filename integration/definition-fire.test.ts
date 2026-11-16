@@ -98,9 +98,12 @@ async function setupTest() {
     ),
   );
 
+  const queued: string[] = [];
+
   return {
     ...host,
     clock,
+    queued,
     runs: tools.runs,
     steps: tools.steps,
     startTaskRunner: () =>
@@ -158,7 +161,11 @@ async function setupTest() {
         log: host.context.log,
         definitions: host.context.definitions,
         queue: {
-          enqueue: () => Promise.resolve('action-1'),
+          enqueue: () => {
+            queued.push('action-1');
+
+            return Promise.resolve('action-1');
+          },
           readOpenRepeat: () => Promise.resolve(null),
           waitForOutcome: () => Promise.resolve(null),
         },
@@ -267,6 +274,13 @@ test('it starts the task run of a fire untrusted, holds it to its version tools 
   });
 
   expect(decisions).toStrictEqual(['deny', 'ask']);
+
+  expect(calls.past).toMatchObject({
+    isError: false,
+    content: [{ type: 'text', text: expect.stringContaining('Waiting for approval') }],
+  });
+
+  expect(ctx.queued).toStrictEqual([]);
 
   expect(turn?.input.map((message) => message.text).join('\n')).toInclude(
     '<input name="trigger">\nThis task run was scheduled for Tue 9 Mar, 06:30 and started at 08:15 as a catch-up. Skipped: Mon 8 Mar, 06:30. Times are in Australia/Sydney.\n</input>',

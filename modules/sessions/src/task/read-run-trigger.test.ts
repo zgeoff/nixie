@@ -24,15 +24,15 @@ test('it reads the times of the first fire for a task run that carries on after 
     definitionHash: 'hash-1',
     version: {
       trigger: {
-        schedule: { every: 'day', at: '06:30', zone: 'Australia/Sydney', catchUp: 'once' },
+        schedule: { every: 'day', at: '06:30', zone: 'Pacific/Auckland', catchUp: 'once' },
       },
     },
   });
 
   const sequence = await writeTestTriggerFire(ctx.context, taskID, {
     definitionHash: 'hash-1',
-    scheduledFor: '2026-06-03T20:30:00.000Z',
-    firedAt: '2026-06-03T20:30:00.000Z',
+    scheduledFor: '2026-06-03T18:30:00.000Z',
+    firedAt: '2026-06-03T18:30:00.000Z',
   });
 
   const claim = await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000, taskID });
@@ -55,7 +55,7 @@ test('it reads the times of the first fire for a task run that carries on after 
 
   const trigger = await ctx.readTrigger(carried);
 
-  expect(trigger?.zone).toBe('Australia/Sydney');
-  expect(trigger?.details.scheduledFor).toBe('2026-06-04T06:30:00+10:00');
+  expect(trigger?.zone).toBe('Pacific/Auckland');
+  expect(trigger?.details.scheduledFor).toBe('2026-06-04T06:30:00+12:00');
   expect(trigger?.details.sentence).toStartWith('This task run was scheduled for Thu 4 Jun, 06:30');
 });
