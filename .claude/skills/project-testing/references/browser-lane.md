@@ -75,8 +75,11 @@ another in one test process. Every file shares one Chrome and one global object:
     `document.body.innerText.includes('Nothing here yet')` for the empty-list text. An expression
     that returns the text itself never counts as `true`.
   - When the page fetches no data, wait for the click target to exist.
-  - React renders fetched data only after hydration, so this wait also shows that the page hydrated.
-    Don't check `_reactListening` on `document` for hydration: React sets that key before it
+  - On a page that fetches its data in the browser, React renders that data only after hydration, so
+    this wait also shows that the page hydrated. A page whose route `loader` reads its data, such as
+    the passkeys page, renders the data on the server. There the data shows before hydration, so the
+    wait shows nothing about hydration.
+  - Don't check `_reactListening` on `document` for hydration: React sets that key before it
     hydrates the page's components.
 - **To check that a control does not move when the page's data arrives, delay the stub API's answer
   to that data's request.** Without the delay, the data can arrive before the first paint, and the
