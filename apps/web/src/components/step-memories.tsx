@@ -1,7 +1,7 @@
 import { useQueries } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import { useState } from 'react';
-import type { MemoryRating, RecalledMemory } from '../conversation/build-activity';
+import type { RecalledMemory } from '../conversation/build-activity';
 import { css } from '../styled-system/css';
 import { useNixieClient } from '../utils/use-nixie-client';
 import { StepSection } from './step-section';
@@ -46,8 +46,6 @@ function MemoryList(props: StepMemoriesProps): ReactNode {
     ),
   });
 
-  const byNote = useRatingNotes(props.memories);
-
   const byVersion = new Map(
     texts.versions.map((version) => [buildVersionKey(version), formatMemoryText(version)]),
   );
@@ -60,11 +58,6 @@ function MemoryList(props: StepMemoriesProps): ReactNode {
         <MemoryRow
           key={`${buildVersionKey(memory)}#${index}`}
           memory={memory}
-          note={
-            memory.rating === undefined
-              ? undefined
-              : byNote.get(buildNoteKey(memory.rating.sequence, memory.itemID))
-          }
           text={byVersion.get(buildVersionKey(memory)) ?? fallback}
         />
       ))}
@@ -89,56 +82,9 @@ function splitBatches<Ref>(refs: readonly Ref[]): Ref[][] {
   );
 }
 
-function useRatingNotes(
-  memories: readonly RecalledMemory[],
-): ReadonlyMap<string, string | undefined> {
-  const nixie = useNixieClient();
-
-  const refs = [
-    ...new Map(
-      memories.flatMap((memory) =>
-        memory.rating?.hasNote === true
-          ? [
-              [
-                buildNoteKey(memory.rating.sequence, memory.itemID),
-                { itemID: memory.itemID, sequence: memory.rating.sequence },
-              ] as const,
-            ]
-          : [],
-      ),
-    ).values(),
-  ];
-
-  const notes = useQueries({
-    combine: (results) =>
-      results.flatMap((result) =>
-        result.isSuccess && !result.isFetching ? result.data.notes : [],
-      ),
-    queries: splitBatches(refs).map((batch) =>
-      nixie.queryUtils.memory.readRatingNotes.queryOptions({ input: { notes: batch } }),
-    ),
-  });
-
-  return new Map(
-    notes.map((note) => [buildNoteKey(note.sequence, note.itemID), formatNoteText(note)]),
-  );
-}
-
-function buildNoteKey(sequence: number, itemID: string): string {
-  return `${sequence}:${itemID}`;
-}
-
 interface VersionText {
   readonly status: 'readable' | 'shredded' | 'unreadable' | 'missing';
   readonly text?: string | undefined;
-}
-
-function formatNoteText(note: VersionText): string | undefined {
-  if (note.status === 'readable') {
-    return `"${note.text ?? ''}"`;
-  }
-
-  return note.status === 'shredded' ? '(note forgotten)' : undefined;
 }
 
 function formatMemoryText(version: VersionText): string {
@@ -152,7 +98,6 @@ function formatMemoryText(version: VersionText): string {
 interface MemoryRowProps {
   readonly memory: RecalledMemory;
 
-  readonly note: string | undefined;
   readonly text: string;
 }
 
@@ -163,11 +108,7 @@ function MemoryRow(props: MemoryRowProps): ReactNode {
   return (
     <li>
       <details aria-label={props.memory.itemID}>
-        <summary className={css({ cursor: 'pointer' })}>
-          {props.memory.rating === undefined
-            ? line
-            : `${line}  ${formatRating(props.memory.rating, props.note)}`}
-        </summary>
+        <summary className={css({ cursor: 'pointer' })}>{line}</summary>
         <p className={css({ whiteSpace: 'pre-wrap' })}>{props.text}</p>
       </details>
     </li>
@@ -187,10 +128,4 @@ function formatOneLine(text: string): string {
   const isClipped = firstLine.length > lineLimit || firstLine.length < text.trimEnd().length;
 
   return isClipped ? `${firstLine.slice(0, lineLimit)}…` : firstLine;
-}
-
-function formatRating(rating: MemoryRating, note: string | undefined): string {
-  const by = rating.ratedBy ?? 'agent';
-
-  return note === undefined ? `[${by}: ${rating.verdict}]` : `[${by}: ${rating.verdict} · ${note}]`;
 }

@@ -16,7 +16,6 @@ export function toLogRecord(record: StoredRecord): LogRecord {
     kind: record.kind,
     ...(record.message === undefined ? {} : { message: toLogMessage(record.message) }),
     ...(record.proposal === undefined ? {} : { proposal: { ...record.proposal } }),
-    ...(record.rating === undefined ? {} : { rating: toLogRating(record.rating) }),
     ...(record.recall === undefined ? {} : { recall: toLogRecall(record.recall) }),
     recordedAt: record.recordedAt,
     ...(record.reminder === undefined ? {} : { reminder: { ...record.reminder } }),
@@ -61,21 +60,6 @@ function toLogMessage(message: NonNullable<StoredRecord['message']>): LogMessage
     ...(images === undefined ? {} : { images }),
     ...(spans === undefined ? {} : { spans }),
     text: message.text,
-  };
-}
-
-type LogRating = NonNullable<LogRecord['rating']>;
-
-function toLogRating(rating: NonNullable<StoredRecord['rating']>): LogRating {
-  return {
-    items: rating.items.map((item) => ({
-      hasNote: item.hasNote,
-      itemID: item.itemID,
-      verdict: item.verdict,
-      version: item.version,
-    })),
-    ...(rating.ratedBy === undefined ? {} : { ratedBy: rating.ratedBy }),
-    recalledSequence: rating.recalledSequence,
   };
 }
 

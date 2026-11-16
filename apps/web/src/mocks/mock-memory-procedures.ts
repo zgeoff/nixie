@@ -6,7 +6,6 @@ import { readMockMemoryItem } from './read-mock-memory-item';
 import { readMockMemoryNotices } from './read-mock-memory-notices';
 import { readMockMemoryPage } from './read-mock-memory-page';
 import { readMockPinnedCore } from './read-mock-pinned-core';
-import { readRatingNote } from './read-rating-note';
 import { requireMockSession } from './require-mock-session';
 import { writeMockMemoryChange } from './write-mock-memory-change';
 
@@ -17,12 +16,6 @@ export const mockMemoryProcedures = {
     requireMockSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
 
     return { versions: options.input.versions.map((ref) => readMemoryVersion(ref)) };
-  }),
-
-  readRatingNotes: memory.readRatingNotes.handler((options) => {
-    requireMockSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
-
-    return { notes: options.input.notes.map((ref) => readRatingNote(ref)) };
   }),
 
   writerStatus: memory.writerStatus.handler((options) => {

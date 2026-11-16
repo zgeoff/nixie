@@ -17,16 +17,8 @@ export interface ToolActivity {
   readonly tool: string;
 }
 
-export interface MemoryRating {
-  readonly hasNote: boolean;
-  readonly ratedBy?: string | undefined;
-  readonly sequence: number;
-  readonly verdict: 'helpful' | 'noise' | 'misleading';
-}
-
 export interface RecalledMemory {
   readonly itemID: string;
-  readonly rating?: MemoryRating | undefined;
   readonly score?: number | undefined;
   readonly version: number;
 }
@@ -119,11 +111,8 @@ export type ActivityItem =
     }
   | StepActivity;
 
-type Ratings = Readonly<Record<string, MemoryRating>>;
-
 interface ActivityState {
   readonly items: ActivityItem[];
-  readonly ratings: Ratings;
 
   open: StepActivity | null;
 
@@ -135,7 +124,6 @@ export function buildActivity(records: readonly LiveRecord[]): readonly Activity
     items: [],
     open: null,
     pending: [],
-    ratings: collectRatings(records),
   };
 
   for (const record of records) {
@@ -144,39 +132,7 @@ export function buildActivity(records: readonly LiveRecord[]): readonly Activity
 
   return state.pending.length === 0
     ? state.items
-    : [...state.items, buildStep(state.pending, 'done', state.ratings)];
-}
-
-function collectRatings(records: readonly LiveRecord[]): Ratings {
-  return Object.fromEntries(
-    records.flatMap((record) => {
-      const rating = record.rating;
-
-      if (rating === undefined) {
-        return [];
-      }
-
-      return rating.items.map(
-        (item) =>
-          [
-            buildRatingKey(rating.recalledSequence, item),
-            {
-              hasNote: item.hasNote,
-              ...(rating.ratedBy === undefined ? {} : { ratedBy: rating.ratedBy }),
-              sequence: record.sequence,
-              verdict: item.verdict,
-            },
-          ] as const,
-      );
-    }),
-  );
-}
-
-function buildRatingKey(
-  recallSequence: number,
-  item: Pick<RecalledMemory, 'itemID' | 'version'>,
-): string {
-  return `${recallSequence}:${item.itemID}@${item.version}`;
+    : [...state.items, buildStep(state.pending, 'done')];
 }
 
 const messageKinds: ReadonlySet<string> = new Set(['owner_message', 'model.reply']);
@@ -203,7 +159,7 @@ function foldRecord(state: ActivityState, record: LiveRecord): void {
   } else if (record.stop !== undefined) {
     state.items.push({ kind: 'stop', record, stop: record.stop });
   } else if (record.kind === 'task.step_started') {
-    state.open = buildStep([...state.pending, record], 'running', state.ratings);
+    state.open = buildStep([...state.pending, record], 'running');
     state.pending = [];
 
     state.items.push(state.open);
@@ -211,12 +167,7 @@ function foldRecord(state: ActivityState, record: LiveRecord): void {
     foldRecordOutsideStep(state, record);
   } else {
     const index = state.items.indexOf(state.open);
-
-    const step = buildStep(
-      [...state.open.records, record],
-      pickStatus(record, state.open),
-      state.ratings,
-    );
+    const step = buildStep([...state.open.records, record], pickStatus(record, state.open));
 
     state.items[index] = step;
     state.open = step.status === 'running' ? step : null;
@@ -236,11 +187,7 @@ function toReceivedMessage(message: NonNullable<LiveRecord['taskMessage']>): Tas
   };
 }
 
-function buildStep(
-  records: readonly LiveRecord[],
-  status: StepStatus,
-  ratings: Ratings,
-): StepActivity {
+function buildStep(records: readonly LiveRecord[], status: StepStatus): StepActivity {
   const task = records.find((record) => record.task !== undefined)?.task;
   const stepKey = records.find((record) => record.task?.stepKey !== undefined)?.task?.stepKey;
   const error = records.find((record) => record.task?.error !== undefined)?.task?.error;
@@ -271,7 +218,7 @@ function buildStep(
     kind: 'step',
     ...(recalls.length === 0
       ? {}
-      : { memories: recalls.flatMap((record) => collectMemories(record, ratings)) }),
+      : { memories: recalls.flatMap((record) => record.recall?.items ?? []) }),
     records,
     ...(sentMessages.length === 0 ? {} : { sentMessages }),
     status,
@@ -322,23 +269,13 @@ function collectCalls(records: readonly LiveRecord[]): readonly ToolActivity[] {
   return [...calls.values()];
 }
 
-function collectMemories(record: LiveRecord, ratings: Ratings): readonly RecalledMemory[] {
-  return (record.recall?.items ?? []).map((item) => {
-    const rating = ratings[buildRatingKey(record.sequence, item)];
-
-    return rating === undefined
-      ? item
-      : { itemID: item.itemID, rating, score: item.score, version: item.version };
-  });
-}
-
 function foldRecordOutsideStep(state: ActivityState, record: LiveRecord): void {
   const endStatus = stepEnds[record.kind];
 
   if (endStatus === undefined) {
     state.pending.push(record);
   } else {
-    state.items.push(buildStep([...state.pending, record], endStatus, state.ratings));
+    state.items.push(buildStep([...state.pending, record], endStatus));
 
     state.pending = [];
   }
