@@ -1,0 +1,16 @@
+name: Reflect on moments
+brief: Write a reflection on each kept moment that has none, at most 3 in a task run.
+trigger:
+  schedule:
+    every: day
+    at: '04:00'
+context: fresh
+memory: read
+log: conversation
+tools:
+  - moment.find
+  - moment.read
+  - moment.edit
+  - log.read
+maxCalls:
+  moment.edit: 3

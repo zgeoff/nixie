@@ -2,6 +2,7 @@ import { expect, test } from 'bun:test';
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { buildTestTaskSeed } from '../test-utils/build-test-task-seed';
+import { exampleFolders } from '../test-utils/example-folders';
 import { parseTaskDefinitions } from './parse-task-definitions';
 import type { SeedFaultCode } from './types';
 
@@ -544,10 +545,10 @@ test('it lists every example folder of the guides among the folders the next tes
     .filter((entry) => entry.isDirectory())
     .map((entry) => entry.name);
 
-  expect(folders).toStrictEqual(['memory-consolidation']);
+  expect(folders).toStrictEqual(exampleFolders);
 });
 
-test.each([['memory-consolidation']])(
+test.each(exampleFolders.map((folder) => [folder]))(
   'it seeds the %s example folder with no fault, no warning and one definition',
   (folder) => {
     const ctx = setupTest();
@@ -589,5 +590,29 @@ test('it seeds the memory consolidation example with its schedule, read memory a
     trigger: { schedule: { every: 'week', on: 'sun', at: '03:00' } },
     memory: 'read',
     tools: ['memory.recall', 'memory.edit', 'memory.retire'],
+  });
+});
+
+test('it seeds the moment reflection example with its daily schedule, read memory and 4 tools', () => {
+  const ctx = setupTest();
+  const folder = 'moment-reflection';
+  const directory = join(import.meta.dir, '../../../../docs/guides/examples', folder);
+
+  const files = Object.fromEntries(
+    readdirSync(directory).map((file) => [
+      `tasks/${folder}/${file}`,
+      readFileSync(join(directory, file), 'utf8'),
+    ]),
+  );
+
+  const parsed = ctx.parse(files);
+
+  expect(parsed.definitions[0]?.form).toMatchObject({
+    trigger: { schedule: { every: 'day', at: '04:00' } },
+    context: 'fresh',
+    memory: 'read',
+    log: 'conversation',
+    tools: ['moment.find', 'moment.read', 'moment.edit', 'log.read'],
+    maxCalls: { 'moment.edit': 3 },
   });
 });
