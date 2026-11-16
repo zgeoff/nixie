@@ -28,9 +28,14 @@ async function setupTest() {
         .where('sequence', '=', sequence)
         .executeTakeFirst();
 
-      invariant(row?.key_id, `record ${String(sequence)} has no key`);
+      const keyID = row?.key_id;
 
-      await removeRecordKey(memory.log, row.key_id);
+      invariant(
+        keyID !== undefined && keyID !== null && keyID !== '',
+        `record ${String(sequence)} has no key`,
+      );
+
+      await removeRecordKey(memory.log, keyID);
     },
     readQuotes: async (itemID: string) => {
       const detail = await memory.store.view.readItem(itemID);
