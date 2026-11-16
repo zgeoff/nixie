@@ -85,6 +85,7 @@ test('it reloads every skill on the list, with a result the output schema accept
       run: {
         runID: 'run-1',
         thread: 'task-a',
+        logThread: 'task-a',
         tools: [],
         model: { model: 'test-model', profile: 'standard' },
       },
@@ -157,6 +158,7 @@ test('it moves a pinned skill to the version a later seed put in force', async (
     run: {
       runID: 'run-1',
       thread: 'task-a',
+      logThread: 'task-a',
       tools: [],
       model: { model: 'test-model', profile: 'standard' },
     },

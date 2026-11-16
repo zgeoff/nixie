@@ -17,6 +17,7 @@ test('it picks only the tasks that read memory for a forgotten memory item or a 
               profile: null,
               persona: 'default',
               memory: 'read',
+              log: 'own',
               tools: ['tasks.list', 'task.message'],
               report: 'wake',
               limits: { turns: 25, dollars: 2 },
@@ -36,6 +37,7 @@ test('it picks only the tasks that read memory for a forgotten memory item or a 
               profile: null,
               persona: 'none',
               memory: 'none',
+              log: 'own',
               tools: ['tasks.list', 'task.message'],
               report: 'wake',
               limits: { turns: 25, dollars: 2 },
@@ -62,23 +64,29 @@ test('it picks only the tasks that read memory for a forgotten memory item or a 
   ).toStrictEqual(['tide-tables']);
 });
 
-test('it picks the task of a definition whether or not its version reads memory', () => {
-  expect(
-    pickCleanedTaskIDs(
-      [
-        {
-          taskID: 'water-tomatoes',
-          setup: { kind: 'definition', definitionID: 'water-the-tomatoes', definitionHash: 'h1' },
-        },
-        {
-          taskID: 'spent-errand',
-          setup: { kind: 'definition', definitionID: 'spent-errand', definitionHash: null },
-        },
-      ],
-      null,
-    ),
-  ).toStrictEqual(['water-tomatoes', 'spent-errand']);
-});
+test.each([
+  ['no record thread', null],
+  ["the conversation's thread", 'conversation'],
+] as const)(
+  'it picks the task of a definition for %s, whatever its versions set for memory and the log',
+  (_title, thread) => {
+    expect(
+      pickCleanedTaskIDs(
+        [
+          {
+            taskID: 'water-tomatoes',
+            setup: { kind: 'definition', definitionID: 'water-the-tomatoes', definitionHash: 'h1' },
+          },
+          {
+            taskID: 'spent-errand',
+            setup: { kind: 'definition', definitionID: 'spent-errand', definitionHash: null },
+          },
+        ],
+        thread,
+      ),
+    ).toStrictEqual(['water-tomatoes', 'spent-errand']);
+  },
+);
 
 test.each([
   [0, false],
@@ -118,6 +126,7 @@ test.each([
         profile: null,
         persona: 'default' as const,
         memory,
+        log: 'own' as const,
         tools: ['tasks.list', 'task.message'],
         report: 'wake' as const,
         limits: { turns: 25, dollars: 2 },
@@ -125,6 +134,37 @@ test.each([
       limits: { turns: 25, dollars: 2 },
     },
   }));
+
+  expect(pickCleanedTaskIDs(candidates, thread)).toStrictEqual(expected);
+});
+
+test.each([
+  ['a conversation record and a task with the grant', 'conversation', 'conversation', ['wave-log']],
+  ['a conversation record and a task without the grant', 'conversation', 'own', []],
+  ['a record of another thread and a task with the grant', 'reef-census', 'conversation', []],
+] as const)('it picks the tasks for %s', (_title, thread, log, expected) => {
+  const candidates = [
+    {
+      taskID: 'wave-log',
+      setup: {
+        kind: 'started' as const,
+        runner: 'sandbox',
+        startedBy: 'conversation',
+        report: 'wake' as const,
+        options: {
+          model: null,
+          profile: null,
+          persona: 'default' as const,
+          memory: 'none' as const,
+          log,
+          tools: ['tasks.list', 'task.message'],
+          report: 'wake' as const,
+          limits: { turns: 25, dollars: 2 },
+        },
+        limits: { turns: 25, dollars: 2 },
+      },
+    },
+  ];
 
   expect(pickCleanedTaskIDs(candidates, thread)).toStrictEqual(expected);
 });

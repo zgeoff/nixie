@@ -351,6 +351,7 @@ test('it shows the model each selectable model as an enum value, with its descri
     },
     persona: expect.toBeObject(),
     memory: expect.toBeObject(),
+    log: expect.toBeObject(),
     tools: expect.toBeObject(),
     report: expect.toBeObject(),
     reportShape: expect.toBeObject(),
@@ -505,6 +506,7 @@ test('it starts a stranger on a selectable model with the tools it asks for, and
       profile: 'router-b',
       persona: 'none',
       memory: 'none',
+      log: 'own',
       tools: ['tasks.list', 'task.message', 'task.report', 'web_fetch'],
       report: 'wake',
       limits: { turns: 6, dollars: 0.5 },
@@ -849,4 +851,164 @@ test('it starts a task that is kept open when the start sets disposable to false
     undefined,
     false,
   ]);
+});
+
+test("it starts nothing with the conversation's log for a started task that does not hold it", async () => {
+  const ctx = await setupTest();
+  const starter = await seedConversationStep(ctx.context);
+
+  const taskID = await seedTask(ctx.context, {
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+    options: { log: 'own', tools: ['tasks.list', 'task.message', 'task.start'] },
+  });
+
+  const claim = await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000, taskID });
+
+  invariant(claim);
+
+  const tool = buildTaskStartTool(
+    ctx.context,
+    { hopLimit: 20, ownerName: 'Robin' },
+    buildMockTaskStartBounds(),
+  );
+
+  const outcome = await tool.run(
+    buildMockToolCall({
+      tool: 'task.start',
+      input: { name: 'Look back', brief: 'Read the conversation.', log: 'conversation' },
+    }),
+    buildMockToolContext({
+      run: {
+        thread: taskID,
+        stepRunID: buildStepRunID(claim),
+        tools: ['tasks.list', 'task.message', 'task.start'],
+      },
+    }),
+  );
+
+  const started = await ctx.db
+    .selectFrom('tasks')
+    .select('task_id')
+    .where('started_by', '=', taskID)
+    .execute();
+
+  expect(outcome).toStrictEqual({
+    status: 'error',
+    message:
+      "You can give a task the conversation's log only when you hold it yourself, and you do not.",
+  });
+
+  expect(started).toStrictEqual([]);
+});
+
+test("it starts a task with the conversation's log for a started task that holds it", async () => {
+  const ctx = await setupTest();
+  const starter = await seedConversationStep(ctx.context);
+
+  const taskID = await seedTask(ctx.context, {
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+    options: { log: 'conversation', tools: ['tasks.list', 'task.message', 'task.start'] },
+  });
+
+  const claim = await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000, taskID });
+
+  invariant(claim);
+
+  const tool = buildTaskStartTool(
+    ctx.context,
+    { hopLimit: 20, ownerName: 'Robin' },
+    buildMockTaskStartBounds(),
+  );
+
+  await tool.run(
+    buildMockToolCall({
+      tool: 'task.start',
+      input: { name: 'Look back', brief: 'Read the conversation.', log: 'conversation' },
+    }),
+    buildMockToolContext({
+      run: {
+        thread: taskID,
+        stepRunID: buildStepRunID(claim),
+        tools: ['tasks.list', 'task.message', 'task.start'],
+      },
+    }),
+  );
+
+  const started = await ctx.db
+    .selectFrom('tasks')
+    .select('task_id')
+    .where('started_by', '=', taskID)
+    .executeTakeFirstOrThrow();
+
+  const setup = await readTaskSetup(ctx.context, started.task_id);
+
+  invariant(setup?.kind === 'started');
+
+  expect(setup.options?.log).toBe('conversation');
+});
+
+test("it starts a task with the conversation's log from the conversation", async () => {
+  const ctx = await setupTest();
+  const claim = await createTestConversationClaim(ctx.context, 'Keep notes from now on.');
+
+  const tool = buildTaskStartTool(
+    ctx.context,
+    { hopLimit: 20, ownerName: 'Robin' },
+    buildMockTaskStartBounds(),
+  );
+
+  await tool.run(
+    buildMockToolCall({
+      tool: 'task.start',
+      input: { name: 'Note taker', brief: 'Save what is worth keeping.', log: 'conversation' },
+    }),
+    buildMockToolContext({ run: { thread: 'conversation', stepRunID: buildStepRunID(claim) } }),
+  );
+
+  const task = await ctx.db
+    .selectFrom('tasks')
+    .select('task_id')
+    .where('is_conversation', '=', 0)
+    .executeTakeFirstOrThrow();
+
+  const setup = await readTaskSetup(ctx.context, task.task_id);
+
+  invariant(setup?.kind === 'started');
+
+  expect(setup.options?.log).toBe('conversation');
+});
+
+test('it starts a task with the own log when the start sets none', async () => {
+  const ctx = await setupTest();
+  const claim = await createTestConversationClaim(ctx.context, 'Keep notes from now on.');
+
+  const tool = buildTaskStartTool(
+    ctx.context,
+    { hopLimit: 20, ownerName: 'Robin' },
+    buildMockTaskStartBounds(),
+  );
+
+  await tool.run(
+    buildMockToolCall({
+      tool: 'task.start',
+      input: { name: 'Note taker', brief: 'Save what is worth keeping.' },
+    }),
+    buildMockToolContext({ run: { thread: 'conversation', stepRunID: buildStepRunID(claim) } }),
+  );
+
+  const task = await ctx.db
+    .selectFrom('tasks')
+    .select('task_id')
+    .where('is_conversation', '=', 0)
+    .executeTakeFirstOrThrow();
+
+  const setup = await readTaskSetup(ctx.context, task.task_id);
+
+  invariant(setup?.kind === 'started');
+
+  expect(setup.options?.log).toBe('own');
 });

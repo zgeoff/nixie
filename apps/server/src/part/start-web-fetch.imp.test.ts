@@ -78,6 +78,7 @@ async function setupTest() {
           run: {
             runID: 'run-1',
             thread: 'conversation',
+            logThread: 'conversation',
             tools: ['web_fetch'],
             model: { model: 'model-a', profile: 'chat-direct' },
           },
@@ -141,6 +142,7 @@ test.skipIf(!hasImpHost)(
         run: {
           runID: 'run-1',
           thread: 'conversation',
+          logThread: 'conversation',
           tools: ['web_fetch'],
           model: { model: 'model-a', profile: 'chat-direct' },
         },

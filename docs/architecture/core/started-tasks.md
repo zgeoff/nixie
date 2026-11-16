@@ -37,6 +37,7 @@ writes nothing when one fails, and tells the model why:
 | `model`      | a name of a selectable model | the `task` role's profile               | a name that is not a choice, or a model whose harness lacks what a task needs                     |
 | `persona`    | `default` or `none`          | the starter's persona                   | `none` with `memory: read`, or `default` from a starter with none                                 |
 | `memory`     | `none` or `read`             | `none`                                  | a memory tool, read or write, that the value leaves out, or `read` from a starter that reads none |
+| `log`        | `own` or `conversation`      | `own`                                   | `conversation` from a starter that does not hold the conversation's log                           |
 | `tools`      | names of tools               | the clock                               | a tool that the starter does not hold, under either of its names                                  |
 | `report`     | `wake`, `next_turn`, `none`  | `wake`                                  | nothing                                                                                           |
 | `disposable` | `true` or `false`            | `true`                                  | nothing                                                                                           |
@@ -52,6 +53,20 @@ whatever its start named. A start with `memory: read` also gives the task each m
 reads and that its starter holds. A task gets a memory tool that writes only when all 3 hold: the
 start names it in `tools`, the starter holds it, and the start sets `memory: read`. A start never
 gives a write tool by default. A start with `memory: none` may name no memory tool at all.
+
+The `log` option is the log grant. With `log: conversation`, the task's `log.read` and
+`log.read_image` read the conversation's thread of the [event log](../core/event-log.md), and with
+`own` they read only the task's own thread. The conversation holds the grant, and a started task
+holds it only when its own start gave it, so a chain of starts passes the grant on and a task
+without it never gives it. A definition's task and a task that the user started by moving a message
+to it hold no grant as starters, as they hold no memory and no persona. The grant follows the
+runner's `logThread` of the tool run ([reading the log](../memory/context.md#reading-the-log)), and
+nothing else of the conversation's log reaches a task: memory retrieval adds no past message to a
+task's turn. A start that sets the grant beside a tool that sends data outside nixie passes the
+decision point as it would without the grant. The task's `log.read` records its call and its result
+on the task's own thread. A forget of a record on the conversation's thread cleans the open task
+with the grant, as it cleans an open task that reads memory, because the task's session can hold the
+record's text from a read.
 
 Each write from a task goes through the same [write gate](../memory/writes.md) as the
 conversation's. A task's `memory.remember` or text edit cites no message of the user on its own

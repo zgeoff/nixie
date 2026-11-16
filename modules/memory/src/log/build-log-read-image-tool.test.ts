@@ -418,3 +418,71 @@ test('it refuses a photo that a moment.read record points to when the moment is 
 
   expect(outcome).toStrictEqual({ status: 'error', message: 'image unavailable' });
 });
+
+test('it opens an image of the log thread of the run, not of its own thread', async () => {
+  const ctx = await setupTest();
+
+  const [photo] = await writeRecords(ctx.log, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      contentSource: 'owner',
+      payload: { images: [{ mediaType: 'image/png' }] },
+      erasable: { text: 'The shelf plan', spans: [{ start: 0, end: 14, source: 'typed' }] },
+      attachments: [new TextEncoder().encode('shelf-plan-A')],
+    },
+  ]);
+
+  invariant(photo);
+
+  const outcome = await ctx.tool.run(
+    {
+      callID: 'call-1',
+      tool: 'log.read_image',
+      input: { eventID: String(photo.sequence), number: 1 },
+      toolUseID: null,
+    },
+    buildMockToolContext({
+      thread: 'task-1',
+      logThread: 'conversation',
+      session: { key: 'session-a', invalidatedThrough: 0, reserveImages: () => true },
+    }),
+  );
+
+  expect(outcome).toMatchObject({ status: 'ok', result: { number: 1, mediaType: 'image/png' } });
+});
+
+test('it returns image unavailable for a conversation image to a run whose log thread is its own', async () => {
+  const ctx = await setupTest();
+
+  const [photo] = await writeRecords(ctx.log, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      contentSource: 'owner',
+      payload: { images: [{ mediaType: 'image/png' }] },
+      erasable: { text: 'The shelf plan', spans: [{ start: 0, end: 14, source: 'typed' }] },
+      attachments: [new TextEncoder().encode('shelf-plan-A')],
+    },
+  ]);
+
+  invariant(photo);
+
+  const outcome = await ctx.tool.run(
+    {
+      callID: 'call-1',
+      tool: 'log.read_image',
+      input: { eventID: String(photo.sequence), number: 1 },
+      toolUseID: null,
+    },
+    buildMockToolContext({
+      thread: 'task-1',
+      logThread: 'task-1',
+      session: { key: 'session-a', invalidatedThrough: 0, reserveImages: () => true },
+    }),
+  );
+
+  expect(outcome).toStrictEqual({ status: 'error', message: 'image unavailable' });
+});

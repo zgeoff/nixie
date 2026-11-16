@@ -34,6 +34,13 @@ export function buildSandboxStartInput(bounds: TaskStartBounds): JSONObject {
           'read gives the task your pinned memory, recall and the memory read tools; none ' +
           'gives it none of them',
       },
+      log: {
+        type: 'string',
+        enum: ['own', 'conversation'],
+        description:
+          "conversation lets the task read the conversation's log with log.read and " +
+          'log.read_image; own, the default, gives it only its own',
+      },
       tools: {
         type: 'array',
         items: { type: 'string' },

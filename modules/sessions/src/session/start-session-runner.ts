@@ -76,6 +76,7 @@ export async function startSessionRunner(options: SessionRunnerOptions): Promise
   const endpoint = await options.tools.startRun({
     runID: options.taskID,
     thread: options.taskID,
+    logThread: options.taskID,
     tools: options.toolNames,
     model,
     toolUseMetaKey: harness.toolUseMetaKey,
@@ -106,7 +107,10 @@ async function runSession(run: SessionRun, session: SessionInput): Promise<Sessi
   const step = run.endpoint.startStep(session.stepRunID);
 
   try {
-    return await runStepSession(run, session, { url: route.url, token: step.token });
+    return await runStepSession(run, session, {
+      url: route.url,
+      token: step.token,
+    });
   } finally {
     await step.stop();
   }
@@ -164,7 +168,10 @@ async function runCapturedSession(
     command: run.command,
     turn: {
       type: 'turn',
-      profile: { ...harness.toTurnProfile('one-off'), baseURL: captured.baseURL },
+      profile: {
+        ...harness.toTurnProfile('one-off'),
+        baseURL: captured.baseURL,
+      },
       tools,
       ...(harness.capabilities.has('resume') ? { resume: null } : {}),
       systemPrompt: session.systemPrompt,

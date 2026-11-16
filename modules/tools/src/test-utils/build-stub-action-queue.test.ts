@@ -9,6 +9,7 @@ test('it gives each new action its own ID and holds the action under it', async 
     run: {
       runID: 'run-1',
       thread: 'task-1',
+      logThread: 'task-1',
       tools: ['test.send'],
       model: { model: 'm', profile: 'p' },
     },
@@ -24,6 +25,7 @@ test('it gives each new action its own ID and holds the action under it', async 
     run: {
       runID: 'run-1',
       thread: 'task-1',
+      logThread: 'task-1',
       tools: ['test.send'],
       model: { model: 'm', profile: 'p' },
     },
@@ -50,6 +52,7 @@ test("it gives a repeat of an earlier action's tool and input that action's ID",
     run: {
       runID: 'run-1',
       thread: 'task-1',
+      logThread: 'task-1',
       tools: ['test.send'],
       model: { model: 'm', profile: 'p' },
     },
@@ -65,6 +68,7 @@ test("it gives a repeat of an earlier action's tool and input that action's ID",
     run: {
       runID: 'run-2',
       thread: 'task-1',
+      logThread: 'task-1',
       tools: ['test.send'],
       model: { model: 'm', profile: 'p' },
     },
@@ -87,6 +91,7 @@ test("it gives another task's call with the same tool and input its own ID", asy
     run: {
       runID: 'run-1',
       thread: 'task-1',
+      logThread: 'task-1',
       tools: ['test.send'],
       model: { model: 'm', profile: 'p' },
     },
@@ -102,6 +107,7 @@ test("it gives another task's call with the same tool and input its own ID", asy
     run: {
       runID: 'run-2',
       thread: 'task-2',
+      logThread: 'task-2',
       tools: ['test.send'],
       model: { model: 'm', profile: 'p' },
     },
@@ -124,6 +130,7 @@ test('it answers a pending wait with the outcome written for its action', async 
     run: {
       runID: 'run-1',
       thread: 'task-1',
+      logThread: 'task-1',
       tools: ['test.send'],
       model: { model: 'm', profile: 'p' },
     },
@@ -149,6 +156,7 @@ test('it answers a wait that starts after the action settled with its outcome', 
     run: {
       runID: 'run-1',
       thread: 'task-1',
+      logThread: 'task-1',
       tools: ['test.send'],
       model: { model: 'm', profile: 'p' },
     },
@@ -174,6 +182,7 @@ test('it ends a pending wait with null once the waits drain', async () => {
     run: {
       runID: 'run-1',
       thread: 'task-1',
+      logThread: 'task-1',
       tools: ['test.send'],
       model: { model: 'm', profile: 'p' },
     },
@@ -199,6 +208,7 @@ test('it records each wait with the timeout it was given', async () => {
     run: {
       runID: 'run-1',
       thread: 'task-1',
+      logThread: 'task-1',
       tools: ['test.send'],
       model: { model: 'm', profile: 'p' },
     },
@@ -233,6 +243,7 @@ test('it rejects a pending wait once stopped', async () => {
     run: {
       runID: 'run-1',
       thread: 'task-1',
+      logThread: 'task-1',
       tools: ['test.send'],
       model: { model: 'm', profile: 'p' },
     },
@@ -261,6 +272,7 @@ test('it rejects an action queued once stopped', () => {
       run: {
         runID: 'run-1',
         thread: 'task-1',
+        logThread: 'task-1',
         tools: ['test.send'],
         model: { model: 'm', profile: 'p' },
       },

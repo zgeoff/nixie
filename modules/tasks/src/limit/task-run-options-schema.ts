@@ -8,6 +8,7 @@ export const taskRunOptionsSchema = z.object({
   profile: z.string().nullable(),
   persona: z.enum(['default', 'none']),
   memory: z.enum(['none', 'read']),
+  log: z.enum(['own', 'conversation']).default('own'),
   tools: z.string().array(),
   report: z.enum(['wake', 'next_turn', 'none']),
   limits: taskLimitsSchema,

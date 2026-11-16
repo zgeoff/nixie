@@ -76,6 +76,7 @@ test('it returns the page the fetch sandbox reads at the URL as the typed result
       run: {
         runID: 'run-1',
         thread: 'conversation',
+        logThread: 'conversation',
         tools: ['web_fetch'],
         model: { model: 'model-a', profile: 'chat-direct' },
         session: { key: 'session-a', invalidatedThrough: 0 },
@@ -143,6 +144,7 @@ test("it writes each link in the page's text as an ID the session numbers from 1
       run: {
         runID: 'conversation',
         thread: 'conversation',
+        logThread: 'conversation',
         tools: ['web_fetch'],
         model: { model: 'model-a', profile: 'chat-direct' },
         session: { key: 'session-a', invalidatedThrough: 0 },
@@ -220,6 +222,7 @@ test('it gives a URL one ID across the pages of one session', async () => {
   const run = {
     runID: 'conversation',
     thread: 'conversation',
+    logThread: 'conversation',
     tools: ['web_fetch'],
     model: { model: 'model-a', profile: 'chat-direct' },
     session: { key: 'session-a', invalidatedThrough: 0 },
@@ -309,6 +312,7 @@ test('it shows the host and path, with no query string, only for a link that lea
       run: {
         runID: 'conversation',
         thread: 'conversation',
+        logThread: 'conversation',
         tools: ['web_fetch'],
         model: { model: 'model-a', profile: 'chat-direct' },
         session: { key: 'session-a', invalidatedThrough: 0 },
@@ -388,6 +392,7 @@ test('it fetches the page a link ID names, and returns the URL the fetch ended a
   const run = {
     runID: 'conversation',
     thread: 'conversation',
+    logThread: 'conversation',
     tools: ['web_fetch'],
     model: { model: 'model-a', profile: 'chat-direct' },
     session: { key: 'session-a', invalidatedThrough: 0 },
@@ -490,6 +495,7 @@ test("it fetches the URL of a search hit by the hit's link ID", async () => {
   const run = {
     runID: 'conversation',
     thread: 'conversation',
+    logThread: 'conversation',
     tools: ['search', 'web_fetch'],
     model: { model: 'model-a', profile: 'chat-direct' },
     session: { key: 'session-a', invalidatedThrough: 0 },
@@ -554,6 +560,7 @@ test.each([
   const run = {
     runID: 'conversation',
     thread: 'conversation',
+    logThread: 'conversation',
     tools: ['web_fetch'],
     model: { model: 'model-a', profile: 'chat-direct' },
     session: { key: 'session-a', invalidatedThrough: 0 },
@@ -616,6 +623,7 @@ test('it reads the whole tag of a link to an IPv6 host, as a page showed it, as 
   const run = {
     runID: 'conversation',
     thread: 'conversation',
+    logThread: 'conversation',
     tools: ['web_fetch'],
     model: { model: 'model-a', profile: 'chat-direct' },
     session: { key: 'session-a', invalidatedThrough: 0 },
@@ -693,6 +701,7 @@ test('it refuses the ID of a link an earlier session numbered, and fetches nothi
       run: {
         runID: 'conversation',
         thread: 'conversation',
+        logThread: 'conversation',
         tools: ['web_fetch'],
         model: { model: 'model-a', profile: 'chat-direct' },
         session: { key: 'session-a', invalidatedThrough: 0 },
@@ -706,6 +715,7 @@ test('it refuses the ID of a link an earlier session numbered, and fetches nothi
       run: {
         runID: 'conversation',
         thread: 'conversation',
+        logThread: 'conversation',
         tools: ['web_fetch'],
         model: { model: 'model-a', profile: 'chat-direct' },
         session: { key: 'session-b', invalidatedThrough: 0 },
@@ -769,6 +779,7 @@ test('it refuses a page whose session a forget ended while it was fetched, and s
       run: {
         runID: 'conversation',
         thread: 'conversation',
+        logThread: 'conversation',
         tools: ['web_fetch'],
         model: { model: 'model-a', profile: 'chat-direct' },
         session: { key: 'session-a', invalidatedThrough: 0 },
@@ -874,6 +885,7 @@ test("it numbers a new session's links from 1 again", async () => {
       run: {
         runID: 'conversation',
         thread: 'conversation',
+        logThread: 'conversation',
         tools: ['web_fetch'],
         model: { model: 'model-a', profile: 'chat-direct' },
         session: { key: 'session-a', invalidatedThrough: 0 },
@@ -892,6 +904,7 @@ test("it numbers a new session's links from 1 again", async () => {
       run: {
         runID: 'conversation',
         thread: 'conversation',
+        logThread: 'conversation',
         tools: ['web_fetch'],
         model: { model: 'model-a', profile: 'chat-direct' },
         session: { key: 'session-b', invalidatedThrough: 0 },
@@ -953,6 +966,7 @@ test('it keys the links of a call under the run token by the run', async () => {
   const run = {
     runID: 'conversation',
     thread: 'conversation',
+    logThread: 'conversation',
     tools: ['web_fetch'],
     model: { model: 'model-a', profile: 'chat-direct' },
   };
@@ -1009,6 +1023,7 @@ test.each([
       run: {
         runID: 'conversation',
         thread: 'conversation',
+        logThread: 'conversation',
         tools: ['web_fetch'],
         model: { model: 'model-a', profile: 'chat-direct' },
         session: { key: 'session-a', invalidatedThrough: 0 },
@@ -1056,6 +1071,7 @@ test('it refuses a link that does not read as a link ID', async () => {
       run: {
         runID: 'conversation',
         thread: 'conversation',
+        logThread: 'conversation',
         tools: ['web_fetch'],
         model: { model: 'model-a', profile: 'chat-direct' },
         session: { key: 'session-a', invalidatedThrough: 0 },
@@ -1123,6 +1139,7 @@ test('it cuts the link text of a long page full of links from about 42,000 chara
       run: {
         runID: 'conversation',
         thread: 'conversation',
+        logThread: 'conversation',
         tools: ['web_fetch'],
         model: { model: 'model-a', profile: 'chat-direct' },
         session: { key: 'session-a', invalidatedThrough: 0 },
@@ -1201,6 +1218,7 @@ test('it returns the reason the bot protection blocked a page in a result the sc
       run: {
         runID: 'run-1',
         thread: 'conversation',
+        logThread: 'conversation',
         tools: ['web_fetch'],
         model: { model: 'model-a', profile: 'chat-direct' },
       },
@@ -1267,6 +1285,7 @@ test('it returns a page result that the registry checks against the output schem
       run: {
         runID: 'run-1',
         thread: 'conversation',
+        logThread: 'conversation',
         tools: ['web_fetch'],
         model: { model: 'model-a', profile: 'chat-direct' },
       },
@@ -1355,6 +1374,7 @@ test('it returns a binary page with no text', async () => {
       run: {
         runID: 'run-1',
         thread: 'conversation',
+        logThread: 'conversation',
         tools: ['web_fetch'],
         model: { model: 'model-a', profile: 'chat-direct' },
       },
@@ -1417,6 +1437,7 @@ test.each([
       run: {
         runID: 'run-1',
         thread: 'conversation',
+        logThread: 'conversation',
         tools: ['web_fetch'],
         model: { model: 'model-a', profile: 'chat-direct' },
       },
@@ -1613,6 +1634,7 @@ test('it reads part 2 of a page longer than one part by its page ID, with no new
   const run = {
     runID: 'conversation',
     thread: 'conversation',
+    logThread: 'conversation',
     tools: ['web_fetch'],
     model: { model: 'model-a', profile: 'chat-direct' },
     session: { key: 'session-a', invalidatedThrough: 0 },
@@ -1703,6 +1725,7 @@ test('it fits every part, once its links read as tags, in the text limit, and ne
   const run = {
     runID: 'conversation',
     thread: 'conversation',
+    logThread: 'conversation',
     tools: ['web_fetch'],
     model: { model: 'model-a', profile: 'chat-direct' },
     session: { key: 'session-a', invalidatedThrough: 0 },
@@ -1812,6 +1835,7 @@ test('it fetches the page again for a url with a part, and returns that part', a
       run: {
         runID: 'conversation',
         thread: 'conversation',
+        logThread: 'conversation',
         tools: ['web_fetch'],
         model: { model: 'model-a', profile: 'chat-direct' },
         session: { key: 'session-a', invalidatedThrough: 0 },
@@ -1875,6 +1899,7 @@ test('it refuses a part past the end of a page, and names its count of parts', a
   const run = {
     runID: 'conversation',
     thread: 'conversation',
+    logThread: 'conversation',
     tools: ['web_fetch'],
     model: { model: 'model-a', profile: 'chat-direct' },
     session: { key: 'session-a', invalidatedThrough: 0 },
@@ -1942,6 +1967,7 @@ test('it returns the part that holds the first match of find, with every match, 
   const run = {
     runID: 'conversation',
     thread: 'conversation',
+    logThread: 'conversation',
     tools: ['web_fetch'],
     model: { model: 'model-a', profile: 'chat-direct' },
     session: { key: 'session-a', invalidatedThrough: 0 },
@@ -2026,6 +2052,7 @@ test('it says a find with no match found none, with the count of parts', async (
   const run = {
     runID: 'conversation',
     thread: 'conversation',
+    logThread: 'conversation',
     tools: ['web_fetch'],
     model: { model: 'model-a', profile: 'chat-direct' },
     session: { key: 'session-a', invalidatedThrough: 0 },
@@ -2088,6 +2115,7 @@ test('it refuses a page ID no session stored, and fetches nothing', async () => 
       run: {
         runID: 'conversation',
         thread: 'conversation',
+        logThread: 'conversation',
         tools: ['web_fetch'],
         model: { model: 'model-a', profile: 'chat-direct' },
         session: { key: 'session-a', invalidatedThrough: 0 },
@@ -2150,6 +2178,7 @@ test('it refuses the page ID of an earlier session, and never returns another pa
       run: {
         runID: 'conversation',
         thread: 'conversation',
+        logThread: 'conversation',
         tools: ['web_fetch'],
         model: { model: 'model-a', profile: 'chat-direct' },
         session: { key: 'session-a', invalidatedThrough: 0 },
@@ -2167,6 +2196,7 @@ test('it refuses the page ID of an earlier session, and never returns another pa
       run: {
         runID: 'conversation',
         thread: 'conversation',
+        logThread: 'conversation',
         tools: ['web_fetch'],
         model: { model: 'model-a', profile: 'chat-direct' },
         session: { key: 'session-b', invalidatedThrough: 0 },
@@ -2235,6 +2265,7 @@ test("it refuses a page ID the store limit removed, once the session's newer pag
   const run = {
     runID: 'conversation',
     thread: 'conversation',
+    logThread: 'conversation',
     tools: ['web_fetch'],
     model: { model: 'model-a', profile: 'chat-direct' },
     session: { key: 'session-a', invalidatedThrough: 0 },
@@ -2324,6 +2355,7 @@ test('it refuses a page ID given as a link, and names the kind it expected', asy
       run: {
         runID: 'conversation',
         thread: 'conversation',
+        logThread: 'conversation',
         tools: ['web_fetch'],
         model: { model: 'model-a', profile: 'chat-direct' },
         session: { key: 'session-a', invalidatedThrough: 0 },
@@ -2371,6 +2403,7 @@ test.each([
         run: {
           runID: 'conversation',
           thread: 'conversation',
+          logThread: 'conversation',
           tools: ['web_fetch'],
           model: { model: 'model-a', profile: 'chat-direct' },
           session: { key: 'session-a', invalidatedThrough: 0 },
@@ -2408,6 +2441,7 @@ test('it refuses a link ID given as a page, and names the kind it expected', asy
       run: {
         runID: 'conversation',
         thread: 'conversation',
+        logThread: 'conversation',
         tools: ['web_fetch'],
         model: { model: 'model-a', profile: 'chat-direct' },
         session: { key: 'session-a', invalidatedThrough: 0 },
@@ -2458,6 +2492,7 @@ test('it refuses the page ID of a thread a forget cleared', async () => {
   const run = {
     runID: 'conversation',
     thread: 'conversation',
+    logThread: 'conversation',
     tools: ['web_fetch'],
     model: { model: 'model-a', profile: 'chat-direct' },
     session: { key: 'session-a', invalidatedThrough: 0 },
@@ -2547,6 +2582,7 @@ test('it returns a PNG under the image limit as image content with its media typ
       run: {
         runID: 'run-1',
         thread: 'conversation',
+        logThread: 'conversation',
         tools: ['web_fetch'],
         model: { model: 'model-a', profile: 'chat-direct' },
         session: { key: 'session-a', invalidatedThrough: 0, reserveImages: () => true },
@@ -2618,6 +2654,7 @@ test('it returns a result with no image, marked truncated, for an image the fetc
       run: {
         runID: 'run-1',
         thread: 'conversation',
+        logThread: 'conversation',
         tools: ['web_fetch'],
         model: { model: 'model-a', profile: 'chat-direct' },
         session: { key: 'session-a', invalidatedThrough: 0, reserveImages: () => true },
@@ -2685,6 +2722,7 @@ test('it returns an image past the long edge downscaled to fit it', async () => 
       run: {
         runID: 'run-1',
         thread: 'conversation',
+        logThread: 'conversation',
         tools: ['web_fetch'],
         model: { model: 'model-a', profile: 'chat-direct' },
         session: { key: 'session-a', invalidatedThrough: 0, reserveImages: () => true },
@@ -2756,6 +2794,7 @@ test('it counts the image it returns against the session image budget', async ()
       run: {
         runID: 'run-1',
         thread: 'conversation',
+        logThread: 'conversation',
         tools: ['web_fetch'],
         model: { model: 'model-a', profile: 'chat-direct' },
         session: { key: 'session-a', invalidatedThrough: 0, reserveImages },
@@ -2811,6 +2850,7 @@ test('it returns an error, with no image, once the session holds as many images 
       run: {
         runID: 'run-1',
         thread: 'conversation',
+        logThread: 'conversation',
         tools: ['web_fetch'],
         model: { model: 'model-a', profile: 'chat-direct' },
         session: { key: 'session-a', invalidatedThrough: 0, reserveImages: () => false },
@@ -2869,6 +2909,7 @@ test('it returns an error, with no image, for an image fetched under the run tok
       run: {
         runID: 'run-1',
         thread: 'conversation',
+        logThread: 'conversation',
         tools: ['web_fetch'],
         model: { model: 'model-a', profile: 'chat-direct' },
       },
@@ -2925,6 +2966,7 @@ test('it returns an error for an image body that is no image the model can see',
       run: {
         runID: 'run-1',
         thread: 'conversation',
+        logThread: 'conversation',
         tools: ['web_fetch'],
         model: { model: 'model-a', profile: 'chat-direct' },
         session: { key: 'session-a', invalidatedThrough: 0, reserveImages: () => true },
@@ -3005,6 +3047,7 @@ test('it fetches the rewritten URL for a link ID whose target a rule matches', a
   const run = {
     runID: 'conversation',
     thread: 'conversation',
+    logThread: 'conversation',
     tools: ['web_fetch'],
     model: { model: 'model-a', profile: 'chat-direct' },
     session: { key: 'session-a', invalidatedThrough: 0 },
@@ -3070,6 +3113,7 @@ test('it returns the stored page for a link call inside the cache time, and fetc
   const run = {
     runID: 'run-1',
     thread: 'conversation',
+    logThread: 'conversation',
     tools: ['web_fetch'],
     model: { model: 'model-a', profile: 'chat-direct' },
     session: { key: 'session-a', invalidatedThrough: 0 },
@@ -3120,6 +3164,7 @@ test.each([
       run: {
         runID: 'run-1',
         thread: 'conversation',
+        logThread: 'conversation',
         tools: ['web_fetch'],
         model: { model: 'model-a', profile: 'chat-direct' },
         session: { key: 'session-a', invalidatedThrough: 0 },
@@ -3167,6 +3212,7 @@ test('it refuses a fresh that is no boolean, and fetches nothing', async () => {
       run: {
         runID: 'run-1',
         thread: 'conversation',
+        logThread: 'conversation',
         tools: ['web_fetch'],
         model: { model: 'model-a', profile: 'chat-direct' },
       },

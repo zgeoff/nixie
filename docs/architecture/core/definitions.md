@@ -224,8 +224,8 @@ one step file, a `.ts` file that `step.file` names. The seed never runs a step f
 the file.
 
 `task.yaml` holds the keys of the `task.start` input of the sandbox runner (`name`, `brief`,
-`model`, `persona`, `memory`, `tools`, `report`, `reportShape`, `limits`) and these keys of the
-definition:
+`model`, `persona`, `memory`, `log`, `tools`, `report`, `reportShape`, `limits`) and these keys of
+the definition:
 
 | Key            | Value                                                                                             | Default |
 | -------------- | ------------------------------------------------------------------------------------------------- | ------- |
@@ -287,7 +287,7 @@ enters the hash.
 The seed stores each accepted version in `task_definition_versions`, keyed by its hash, with its
 form and its files. nixie never deletes a row. `readDefinitionVersion` reads one by hash and fills
 what the file omits as a start from the file starter would: no model, no profile, the default
-persona, memory `none`, and the default tools.
+persona, memory `none`, the own log, and the default tools.
 
 ## The task of a definition
 
@@ -342,10 +342,11 @@ reminder with the brief and the time it was set for, as
 [system messages](./conversation-turns.md#system-messages) describes.
 
 The sandbox runner reads the version that the open task run pins, else the newest task run, else the
-hash in force. The version gives the persona, the memory, the tools and the model. A version that
-names no model runs on the profile of the model role `task`, and a version that names a selectable
-model runs on that model's profile. A task run that pins another hash than the running endpoint
-started with gets a new endpoint, so the tool list of a version applies from its first task run.
+hash in force. The version gives the persona, the memory, the log, the tools and the model. A
+version that names no model runs on the profile of the model role `task`, and a version that names a
+selectable model runs on that model's profile. A task run that pins another hash than the running
+endpoint started with gets a new endpoint, so the tool list of a version applies from its first task
+run.
 
 Under `context: fresh`, each piece of work opens a session of its own: a task run that a raise or a
 restart carries resumes the session of the task run it carries, and any other task run starts one.

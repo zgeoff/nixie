@@ -99,6 +99,7 @@ test('it runs the default tool to one note', async () => {
       run: {
         runID: 'run-1',
         thread: 'task-1',
+        logThread: 'task-1',
         tools: [definition.name],
         model: { model: 'model-a', profile: 'chat-direct' },
       },

@@ -9,6 +9,7 @@ import { readTaskSetup } from '../task/read-task-setup';
 import type { TaskStartRefusal } from '../task/start/write-task-start';
 import { writeTaskStart } from '../task/start/write-task-start';
 import type {
+  TaskLog,
   TaskMemory,
   TaskMessaging,
   TaskPersona,
@@ -44,7 +45,8 @@ export function buildTaskStartTool(
       'tasks.list, and pass the work to that task with task.message instead. The task speaks as you ' +
       'unless you set persona to none, and reads your memory only when you set memory to read. ' +
       'It always holds tasks.list and task.message, and time.now unless you list its tools, ' +
-      'which must be tools you hold yourself. A memory read tool also needs memory set to read.',
+      'which must be tools you hold yourself. A memory read tool also needs memory set to read. ' +
+      "Set log to conversation to let the task read the conversation's log.",
     input:
       inputs.length === 1 && inputs[0] !== undefined
         ? inputs[0]
@@ -72,7 +74,11 @@ export function buildTaskStartTool(
 
       return planned.status === 'refused'
         ? { status: 'error', message: planned.sentence }
-        : { status: 'ok', sources: tool.run.session?.policy?.sources ?? [], args: input };
+        : {
+            status: 'ok',
+            sources: tool.run.session?.policy?.sources ?? [],
+            args: input,
+          };
     },
     run: async (call, tool): Promise<ToolOutcome> => {
       const planned = await planStart(context, bounds, call.input, tool);
@@ -93,7 +99,11 @@ export function buildTaskStartTool(
         runner: runner.key,
         stored: runner.start.storesBuiltOptions
           ? { kind: 'built', options: plan.options }
-          : { kind: 'enveloped', envelope: plan.envelope, runnerOptions: plan.options },
+          : {
+              kind: 'enveloped',
+              envelope: plan.envelope,
+              runnerOptions: plan.options,
+            },
         hopLimit: messaging.hopLimit,
         stepRunID: tool.run.stepRunID ?? null,
         disposable,
@@ -149,6 +159,7 @@ async function planStart(
 interface StarterAccess {
   readonly memory: TaskMemory;
   readonly persona: TaskPersona;
+  readonly log: TaskLog;
 }
 
 // The conversation has the persona and reads memory. Any other starter has each only when its own
@@ -158,14 +169,18 @@ async function readStarterAccess(
   thread: string,
 ): Promise<StarterAccess> {
   if (thread === conversationTaskID) {
-    return { memory: 'read', persona: 'default' };
+    return { memory: 'read', persona: 'default', log: 'conversation' };
   }
 
   const setup = await readTaskSetup(context, thread);
 
   const options = setup?.kind === 'started' ? setup.options : null;
 
-  return { memory: options?.memory ?? 'none', persona: options?.persona ?? 'none' };
+  return {
+    memory: options?.memory ?? 'none',
+    persona: options?.persona ?? 'none',
+    log: options?.log ?? 'own',
+  };
 }
 
 function renderRefusal(refusal: TaskStartRefusal): string {

@@ -39,6 +39,7 @@ test('it runs the callback with a client connected to the run endpoint and retur
     toolUseMetaKey: null,
     runID: 'run-1',
     thread: 'task-1',
+    logThread: 'task-1',
     tools: ['notes_read'],
     model: { model: 'claude-test-1', profile: 'chat-direct' },
   });

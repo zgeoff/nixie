@@ -29,6 +29,7 @@ async function setupTest() {
     run: {
       runID: 'run-1',
       thread: 'conversation',
+      logThread: 'conversation',
       tools: [
         'memory.recall',
         'moment.keep',

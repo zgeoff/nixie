@@ -1,6 +1,7 @@
 import { expect, test } from 'bun:test';
 import { buildMockTaskStartBounds } from '../../test-utils/build-mock-task-start-bounds';
 import { planTaskStart } from './plan-task-start';
+import { renderChoiceRefusal } from './render-choice-refusal';
 
 test('it plans a start with no options as the persona, no memory, the default tools and the default limits', () => {
   expect(
@@ -10,6 +11,7 @@ test('it plans a start with no options as the persona, no memory, the default to
         tools: ['tasks.list', 'task.message', 'task.start', 'time.now', 'web_fetch'],
         memory: 'read',
         persona: 'default',
+        log: 'own',
       },
       buildMockTaskStartBounds(),
     ),
@@ -20,6 +22,7 @@ test('it plans a start with no options as the persona, no memory, the default to
       profile: null,
       persona: 'default',
       memory: 'none',
+      log: 'own',
       tools: ['tasks.list', 'task.message', 'task.report', 'time.now'],
       report: 'wake',
       limits: { turns: 25, dollars: 2 },
@@ -34,6 +37,7 @@ test('it plans a stranger on a selectable model with the tools asked for and the
         model: 'second-look',
         persona: 'none',
         memory: 'none',
+        log: 'own',
         tools: ['web_fetch'],
         report: 'next_turn',
         limits: { turns: 8 },
@@ -42,6 +46,7 @@ test('it plans a stranger on a selectable model with the tools asked for and the
         tools: ['tasks.list', 'task.message', 'time.now', 'web_fetch'],
         memory: 'read',
         persona: 'default',
+        log: 'own',
       },
       buildMockTaskStartBounds({
         models: [
@@ -56,6 +61,7 @@ test('it plans a stranger on a selectable model with the tools asked for and the
       profile: 'router-b',
       persona: 'none',
       memory: 'none',
+      log: 'own',
       tools: ['tasks.list', 'task.message', 'task.report', 'web_fetch'],
       report: 'next_turn',
       limits: { turns: 8, dollars: 2 },
@@ -70,6 +76,7 @@ test('it gives a task that reads memory the memory read tools that its starter h
       tools: ['tasks.list', 'task.message', 'memory.recall', 'memory.remember'],
       memory: 'read',
       persona: 'default',
+      log: 'own',
     },
     buildMockTaskStartBounds(),
   );
@@ -81,6 +88,7 @@ test('it gives a task that reads memory the memory read tools that its starter h
       profile: null,
       persona: 'default',
       memory: 'read',
+      log: 'own',
       tools: ['tasks.list', 'task.message', 'task.report', 'memory.recall'],
       report: 'wake',
       limits: { turns: 25, dollars: 2 },
@@ -91,7 +99,7 @@ test('it gives a task that reads memory the memory read tools that its starter h
 test('it leaves out each base tool that its starter lacks', () => {
   const plan = planTaskStart(
     { tools: [] },
-    { tools: ['task.message'], memory: 'read', persona: 'default' },
+    { tools: ['task.message'], memory: 'read', persona: 'default', log: 'own' },
     buildMockTaskStartBounds(),
   );
 
@@ -102,6 +110,7 @@ test('it leaves out each base tool that its starter lacks', () => {
       profile: null,
       persona: 'default',
       memory: 'none',
+      log: 'own',
       tools: ['task.message', 'task.report'],
       report: 'wake',
       limits: { turns: 25, dollars: 2 },
@@ -113,7 +122,7 @@ test('it refuses a model that is not selectable', () => {
   expect(
     planTaskStart(
       { model: 'opus-high' },
-      { tools: ['tasks.list', 'task.message'], memory: 'read', persona: 'default' },
+      { tools: ['tasks.list', 'task.message'], memory: 'read', persona: 'default', log: 'own' },
       buildMockTaskStartBounds({
         models: [
           { name: 'second-look', profile: 'router-b', description: 'Another family', missing: [] },
@@ -131,6 +140,7 @@ test('it refuses a tool list wider than its starter holds', () => {
         tools: ['tasks.list', 'task.message', 'task.report', 'time.now'],
         memory: 'read',
         persona: 'default',
+        log: 'own',
       },
       buildMockTaskStartBounds(),
     ),
@@ -151,7 +161,7 @@ test.each([
   expect(
     planTaskStart(
       { limits },
-      { tools: ['tasks.list', 'task.message'], memory: 'read', persona: 'default' },
+      { tools: ['tasks.list', 'task.message'], memory: 'read', persona: 'default', log: 'own' },
       buildMockTaskStartBounds(),
     ),
   ).toStrictEqual({ status: 'refused', refusal: { reason: 'over_limit', limit, max } });
@@ -161,7 +171,7 @@ test('it plans limits at the max', () => {
   expect(
     planTaskStart(
       { limits: { turns: 100, dollars: 10 } },
-      { tools: ['tasks.list', 'task.message'], memory: 'read', persona: 'default' },
+      { tools: ['tasks.list', 'task.message'], memory: 'read', persona: 'default', log: 'own' },
       buildMockTaskStartBounds(),
     ),
   ).toStrictEqual({
@@ -171,6 +181,7 @@ test('it plans limits at the max', () => {
       profile: null,
       persona: 'default',
       memory: 'none',
+      log: 'own',
       tools: ['tasks.list', 'task.message', 'task.report'],
       report: 'wake',
       limits: { turns: 100, dollars: 10 },
@@ -186,7 +197,7 @@ test('it refuses a report shape that uses a keyword outside the table', () => {
           properties: { city: { type: 'string', pattern: '^[A-Z]' } },
         },
       },
-      { tools: ['tasks.list', 'task.message'], memory: 'none', persona: 'default' },
+      { tools: ['tasks.list', 'task.message'], memory: 'none', persona: 'default', log: 'own' },
       buildMockTaskStartBounds(),
     ),
   ).toStrictEqual({
@@ -202,7 +213,7 @@ test('it refuses a stranger that reads memory', () => {
   expect(
     planTaskStart(
       { persona: 'none', memory: 'read' },
-      { tools: ['tasks.list', 'task.message'], memory: 'read', persona: 'default' },
+      { tools: ['tasks.list', 'task.message'], memory: 'read', persona: 'default', log: 'own' },
       buildMockTaskStartBounds(),
     ),
   ).toStrictEqual({ status: 'refused', refusal: { reason: 'stranger_with_memory' } });
@@ -212,7 +223,12 @@ test('it refuses a task that reads memory for a starter that does not', () => {
   expect(
     planTaskStart(
       { persona: 'default', memory: 'read' },
-      { tools: ['tasks.list', 'task.message', 'task.start'], memory: 'none', persona: 'default' },
+      {
+        tools: ['tasks.list', 'task.message', 'task.start'],
+        memory: 'none',
+        persona: 'default',
+        log: 'own',
+      },
       buildMockTaskStartBounds(),
     ),
   ).toStrictEqual({ status: 'refused', refusal: { reason: 'wider_memory' } });
@@ -222,7 +238,12 @@ test('it refuses the persona for a task whose starter runs with none', () => {
   expect(
     planTaskStart(
       { persona: 'default' },
-      { tools: ['tasks.list', 'task.message', 'task.start'], memory: 'none', persona: 'none' },
+      {
+        tools: ['tasks.list', 'task.message', 'task.start'],
+        memory: 'none',
+        persona: 'none',
+        log: 'own',
+      },
       buildMockTaskStartBounds(),
     ),
   ).toStrictEqual({ status: 'refused', refusal: { reason: 'wider_persona' } });
@@ -232,7 +253,12 @@ test("it plans a start with no persona from a starter that runs with none as the
   expect(
     planTaskStart(
       {},
-      { tools: ['tasks.list', 'task.message', 'task.start'], memory: 'none', persona: 'none' },
+      {
+        tools: ['tasks.list', 'task.message', 'task.start'],
+        memory: 'none',
+        persona: 'none',
+        log: 'own',
+      },
       buildMockTaskStartBounds(),
     ),
   ).toStrictEqual({
@@ -242,6 +268,7 @@ test("it plans a start with no persona from a starter that runs with none as the
       profile: null,
       persona: 'none',
       memory: 'none',
+      log: 'own',
       tools: ['tasks.list', 'task.message', 'task.report'],
       report: 'wake',
       limits: { turns: 25, dollars: 2 },
@@ -257,6 +284,7 @@ test('it refuses a memory tool for a task with no memory', () => {
         tools: ['tasks.list', 'task.message', 'memory.recall'],
         memory: 'read',
         persona: 'default',
+        log: 'own',
       },
       buildMockTaskStartBounds(),
     ),
@@ -274,7 +302,12 @@ test('it refuses a tool that only the conversation can use, though the starter h
   expect(
     planTaskStart(
       { tools: ['skill_read'] },
-      { tools: ['tasks.list', 'task.message', 'skill_read'], memory: 'read', persona: 'default' },
+      {
+        tools: ['tasks.list', 'task.message', 'skill_read'],
+        memory: 'read',
+        persona: 'default',
+        log: 'own',
+      },
       buildMockTaskStartBounds(),
     ),
   ).toStrictEqual({
@@ -300,6 +333,7 @@ function setupTest() {
     ],
     memory: 'read',
     persona: 'default',
+    log: 'own',
   } as const;
 
   const readOptions = (tools: readonly string[]) => ({
@@ -307,6 +341,7 @@ function setupTest() {
     profile: null,
     persona: starter.persona,
     memory: starter.memory,
+    log: 'own' as const,
     tools,
     report: 'wake' as const,
     limits: { turns: 25, dollars: 2 },
@@ -389,6 +424,7 @@ test('it refuses a memory write tool that the starter lacks, though the task rea
         tools: ['tasks.list', 'task.message', 'memory.recall'],
         memory: 'read',
         persona: 'default',
+        log: 'own',
       },
       buildMockTaskStartBounds(),
     ),
@@ -457,4 +493,49 @@ test('it gives a task that reads memory no write tool when the start names none'
       'memory.pending',
     ]),
   });
+});
+
+test.each([
+  ['conversation', 'conversation'],
+  ['own', 'own'],
+  [undefined, 'own'],
+] as const)('it plans a start with the log choice %s as the log %s', (choice, planned) => {
+  const plan = planTaskStart(
+    { log: choice },
+    {
+      tools: ['tasks.list', 'task.message'],
+      memory: 'none',
+      persona: 'default',
+      log: 'conversation',
+    },
+    buildMockTaskStartBounds(),
+  );
+
+  expect(plan).toMatchObject({ status: 'planned', options: { log: planned } });
+});
+
+test('it refuses the conversation log from a starter without it', () => {
+  expect(
+    planTaskStart(
+      { log: 'conversation' },
+      { tools: ['tasks.list', 'task.message'], memory: 'none', persona: 'default', log: 'own' },
+      buildMockTaskStartBounds(),
+    ),
+  ).toStrictEqual({ status: 'refused', refusal: { reason: 'wider_log' } });
+});
+
+test('it plans the own log for a starter without the grant when the start names none', () => {
+  expect(
+    planTaskStart(
+      {},
+      { tools: ['tasks.list', 'task.message'], memory: 'none', persona: 'default', log: 'own' },
+      buildMockTaskStartBounds(),
+    ),
+  ).toMatchObject({ status: 'planned', options: { log: 'own' } });
+});
+
+test('it renders the wider log refusal as the sentence the model reads', () => {
+  expect(renderChoiceRefusal({ reason: 'wider_log' })).toBe(
+    "You can give a task the conversation's log only when you hold it yourself, and you do not.",
+  );
 });

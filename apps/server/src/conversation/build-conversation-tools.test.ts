@@ -218,6 +218,7 @@ test('it fails a memory call that runs before the memory store starts', async ()
         run: {
           runID: 'run-1',
           thread: 'conversation',
+          logThread: 'conversation',
           tools: [],
           model: { model: 'claude-test-1', profile: 'chat-direct' },
         },
@@ -428,6 +429,7 @@ test('it asks about a model call to memory.export under the starter rules, so no
     {
       runID: 'run-1',
       thread: 'conversation',
+      logThread: 'conversation',
       tools: ['memory.export'],
       model: { model: 'claude-test-1', profile: 'chat-direct' },
     },

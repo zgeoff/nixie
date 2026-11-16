@@ -67,6 +67,7 @@ test('it returns an allowed direct call the typed result as structured content a
     {
       runID: 'run-1',
       thread: 'task-1',
+      logThread: 'task-1',
       tools: ['notes_read'],
       model: { model: 'model-a', profile: 'chat-direct' },
     },
@@ -86,6 +87,7 @@ test('it writes the call with its decision, the tool-use ID and the run model pr
     {
       runID: 'run-1',
       thread: 'task-1',
+      logThread: 'task-1',
       tools: ['notes_read'],
       model: { model: 'glm-5.3', profile: 'chat-aggregator' },
     },
@@ -131,6 +133,7 @@ test('it writes the result with the source of each field, under the call it answ
     {
       runID: 'run-1',
       thread: 'task-1',
+      logThread: 'task-1',
       tools: ['web_fetch'],
       model: { model: 'model-a', profile: 'chat-direct' },
     },
@@ -174,6 +177,7 @@ test('it returns the model the whole result and records the record form the tool
     {
       runID: 'run-1',
       thread: 'task-1',
+      logThread: 'task-1',
       tools: ['notes_read'],
       model: { model: 'model-a', profile: 'chat-direct' },
     },
@@ -217,6 +221,7 @@ test.each([
     {
       runID: 'run-1',
       thread: 'task-1',
+      logThread: 'task-1',
       tools: ['notes_read'],
       model: { model: 'model-a', profile: 'chat-direct' },
     },
@@ -256,6 +261,7 @@ test.each([
     {
       runID: 'run-1',
       thread: 'task-1',
+      logThread: 'task-1',
       tools: ['notes_read'],
       model: { model: 'model-a', profile: 'chat-direct' },
     },
@@ -297,6 +303,7 @@ test('it returns the model the images of a direct result as image blocks beside 
     {
       runID: 'run-1',
       thread: 'task-1',
+      logThread: 'task-1',
       tools: ['notes_read'],
       model: { model: 'model-a', profile: 'chat-direct' },
     },
@@ -331,6 +338,7 @@ test('it records the result of a direct call that returns images without their b
     {
       runID: 'run-1',
       thread: 'task-1',
+      logThread: 'task-1',
       tools: ['notes_read'],
       model: { model: 'model-a', profile: 'chat-direct' },
     },
@@ -361,6 +369,7 @@ test("it records the call's input in the record form the tool gives", async () =
     {
       runID: 'run-1',
       thread: 'task-1',
+      logThread: 'task-1',
       tools: ['notes_write'],
       model: { model: 'model-a', profile: 'chat-direct' },
     },
@@ -392,6 +401,7 @@ test('it hashes the action proposal of an ask over the whole input, whatever the
     {
       runID: 'run-1',
       thread: 'task-1',
+      logThread: 'task-1',
       tools: ['files_delete'],
       model: { model: 'model-a', profile: 'chat-direct' },
     },
@@ -422,6 +432,7 @@ test('it gives the record form the input the model sent when the input fails the
     {
       runID: 'run-1',
       thread: 'task-1',
+      logThread: 'task-1',
       tools: ['notes_write'],
       model: { model: 'model-a', profile: 'chat-direct' },
     },
@@ -453,6 +464,7 @@ test('it returns an allowed queued call the action outcome once the action is do
     {
       runID: 'run-1',
       thread: 'task-1',
+      logThread: 'task-1',
       tools: ['test.send'],
       model: { model: 'model-a', profile: 'chat-direct' },
     },
@@ -487,6 +499,7 @@ test('it queues an allowed queued call with its call, its run, its decision and 
     {
       runID: 'run-1',
       thread: 'task-1',
+      logThread: 'task-1',
       tools: ['test.send'],
       model: { model: 'model-a', profile: 'chat-direct' },
     },
@@ -506,6 +519,7 @@ test('it queues an allowed queued call with its call, its run, its decision and 
         run: {
           runID: 'run-1',
           thread: 'task-1',
+          logThread: 'task-1',
           tools: ['test.send'],
           model: { model: 'model-a', profile: 'chat-direct' },
         },
@@ -532,6 +546,7 @@ test('it waits for the outcome of the action it queued for the configured time',
     {
       runID: 'run-1',
       thread: 'task-1',
+      logThread: 'task-1',
       tools: ['test.send'],
       model: { model: 'model-a', profile: 'chat-direct' },
     },
@@ -567,6 +582,7 @@ test('it returns "queued as" the action ID when the action is still pending afte
     {
       runID: 'run-1',
       thread: 'task-1',
+      logThread: 'task-1',
       tools: ['test.send'],
       model: { model: 'model-a', profile: 'chat-direct' },
     },
@@ -601,6 +617,7 @@ test('it returns a failed action outcome as text that is no tool error', async (
     {
       runID: 'run-1',
       thread: 'task-1',
+      logThread: 'task-1',
       tools: ['test.send'],
       model: { model: 'model-a', profile: 'chat-direct' },
     },
@@ -640,6 +657,7 @@ test('it returns an action that a stop cancelled as cancelled, never as failed',
     {
       runID: 'run-1',
       thread: 'task-1',
+      logThread: 'task-1',
       tools: ['test.send'],
       model: { model: 'model-a', profile: 'chat-direct' },
     },
@@ -689,6 +707,7 @@ test('it denies a call that a deny rule matches with the rule ID, revision and s
     {
       runID: 'run-1',
       thread: 'task-1',
+      logThread: 'task-1',
       tools: ['gmail_send'],
       model: { model: 'model-a', profile: 'chat-direct' },
     },
@@ -729,6 +748,7 @@ test('it records the deciding rule of a denied call, and queues nothing', async 
     {
       runID: 'run-1',
       thread: 'task-1',
+      logThread: 'task-1',
       tools: ['gmail_send'],
       model: { model: 'model-a', profile: 'chat-direct' },
     },
@@ -763,6 +783,7 @@ test('it writes one action proposal beside the call of an ask, and tells the mod
     {
       runID: 'run-1',
       thread: 'task-1',
+      logThread: 'task-1',
       tools: ['files_delete'],
       model: { model: 'model-a', profile: 'chat-direct' },
     },
@@ -811,6 +832,7 @@ test('it records an ask with the cause, the proposal and a queued result with no
     {
       runID: 'run-1',
       thread: 'task-1',
+      logThread: 'task-1',
       tools: ['files_delete'],
       model: { model: 'model-a', profile: 'chat-direct' },
     },
@@ -850,6 +872,7 @@ test('it denies a call with a fault when the decision point runs past its deadli
     {
       runID: 'run-1',
       thread: 'task-1',
+      logThread: 'task-1',
       tools: ['notes_read'],
       model: { model: 'model-a', profile: 'chat-direct' },
     },
@@ -882,6 +905,7 @@ test('it denies a call with a fault when the decision point throws', async () =>
     {
       runID: 'run-1',
       thread: 'task-1',
+      logThread: 'task-1',
       tools: ['notes_read'],
       model: { model: 'model-a', profile: 'chat-direct' },
     },
@@ -912,6 +936,7 @@ test('it resolves the destinations a declaration names before the decision point
     {
       runID: 'run-1',
       thread: 'task-1',
+      logThread: 'task-1',
       tools: ['mail_send'],
       model: { model: 'model-a', profile: 'chat-direct' },
     },
@@ -948,6 +973,7 @@ test('it returns the error of a destination that cannot resolve, and never asks 
     {
       runID: 'run-1',
       thread: 'task-1',
+      logThread: 'task-1',
       tools: ['mail_send'],
       model: { model: 'model-a', profile: 'chat-direct' },
     },
@@ -977,6 +1003,7 @@ test('it rejects invalid input with the schema errors before the decision point'
     {
       runID: 'run-1',
       thread: 'task-1',
+      logThread: 'task-1',
       tools: ['notes_read'],
       model: { model: 'model-a', profile: 'chat-direct' },
     },
@@ -1006,6 +1033,7 @@ test('it denies a tool the registry does not hold at the registry stage', async 
     {
       runID: 'run-1',
       thread: 'task-1',
+      logThread: 'task-1',
       tools: ['notes_read', 'shell'],
       model: { model: 'model-a', profile: 'chat-direct' },
     },
@@ -1036,6 +1064,7 @@ test("it returns a tool's error as an error and records it as outside content", 
     {
       runID: 'run-1',
       thread: 'task-1',
+      logThread: 'task-1',
       tools: ['notes_read'],
       model: { model: 'model-a', profile: 'chat-direct' },
     },
@@ -1067,6 +1096,7 @@ test('it refuses a typed result outside the output schema', async () => {
     {
       runID: 'run-1',
       thread: 'task-1',
+      logThread: 'task-1',
       tools: ['notes_read'],
       model: { model: 'model-a', profile: 'chat-direct' },
     },
@@ -1096,6 +1126,7 @@ test('it writes a result record for a tool that throws, as outside content', asy
     {
       runID: 'run-1',
       thread: 'task-1',
+      logThread: 'task-1',
       tools: ['notes_read'],
       model: { model: 'model-a', profile: 'chat-direct' },
     },
@@ -1133,6 +1164,7 @@ test('it returns "queued as" the action ID when the wait for the outcome fails',
     {
       runID: 'run-1',
       thread: 'task-1',
+      logThread: 'task-1',
       tools: ['test.send'],
       model: { model: 'model-a', profile: 'chat-direct' },
     },
@@ -1159,6 +1191,7 @@ test('it denies an unlisted tool at the scope stage without checking its input',
     {
       runID: 'run-1',
       thread: 'task-1',
+      logThread: 'task-1',
       tools: [],
       model: { model: 'model-a', profile: 'chat-direct' },
     },
@@ -1181,6 +1214,7 @@ test('it records a scope denial, which repeats the tool name, as outside content
     {
       runID: 'run-1',
       thread: 'task-1',
+      logThread: 'task-1',
       tools: [],
       model: { model: 'model-a', profile: 'chat-direct' },
     },
@@ -1214,6 +1248,7 @@ test('it runs a memory write that no rule decides with the gate verdict, and wri
     {
       runID: 'run-1',
       thread: 'conversation',
+      logThread: 'conversation',
       tools: ['memory.remember'],
       model: { model: 'model-a', profile: 'chat-direct' },
     },
@@ -1272,6 +1307,7 @@ test('it runs a memory write that allow rules decide with every rule that matche
     {
       runID: 'run-1',
       thread: 'conversation',
+      logThread: 'conversation',
       tools: ['memory.remember'],
       model: { model: 'model-a', profile: 'chat-direct' },
     },
@@ -1334,6 +1370,7 @@ test('it reads the sources a tool sets, so an allow rule on owner leaves a write
     {
       runID: 'run-1',
       thread: 'conversation',
+      logThread: 'conversation',
       tools: ['memory.remember'],
       model: { model: 'model-a', profile: 'chat-direct' },
     },
@@ -1372,6 +1409,7 @@ test('it runs a memory write that an ask rule decides with the ask verdict, and 
     {
       runID: 'run-1',
       thread: 'conversation',
+      logThread: 'conversation',
       tools: ['memory.remember'],
       model: { model: 'model-a', profile: 'chat-direct' },
     },
@@ -1429,6 +1467,7 @@ test('it records the arguments the decision read, so a replay of the stored deci
     {
       runID: 'run-1',
       thread: 'conversation',
+      logThread: 'conversation',
       tools: ['memory.edit'],
       model: { model: 'model-a', profile: 'chat-direct' },
     },
@@ -1472,6 +1511,7 @@ test('it denies a memory write that a deny rule matches, and never runs the tool
     {
       runID: 'run-1',
       thread: 'conversation',
+      logThread: 'conversation',
       tools: ['memory.remember'],
       model: { model: 'model-a', profile: 'chat-direct' },
     },
@@ -1506,6 +1546,7 @@ test('it returns the error of a tool that cannot set its policy facts, and never
     {
       runID: 'run-1',
       thread: 'conversation',
+      logThread: 'conversation',
       tools: ['memory.remember'],
       model: { model: 'model-a', profile: 'chat-direct' },
     },
@@ -1548,6 +1589,7 @@ test('it gives a tool no verdict when the decision read a snapshot declaration t
     {
       runID: 'run-1',
       thread: 'conversation',
+      logThread: 'conversation',
       tools: ['memory.remember'],
       model: { model: 'model-a', profile: 'chat-direct' },
     },
@@ -1595,6 +1637,7 @@ test('it writes an action proposal for an ask rule on note when the snapshot dec
     {
       runID: 'run-1',
       thread: 'conversation',
+      logThread: 'conversation',
       tools: ['memory.remember'],
       model: { model: 'model-a', profile: 'chat-direct' },
     },
@@ -1646,6 +1689,7 @@ test('it gates a memory write when the snapshot declaration keeps note beside me
     {
       runID: 'run-1',
       thread: 'conversation',
+      logThread: 'conversation',
       tools: ['memory.remember'],
       model: { model: 'model-a', profile: 'chat-direct' },
     },
@@ -1671,6 +1715,7 @@ test('it denies the call one past its task run cap and never runs the tool', asy
   const run = {
     runID: 'run-1',
     thread: 'task-1',
+    logThread: 'task-1',
     tools: ['moment.edit'],
     model: { model: 'model-a', profile: 'chat-direct' },
     taskRun: { runID: 'a3f9c2d4', calls: { 'moment.edit': 3 } },
@@ -1717,6 +1762,7 @@ test('it counts no call that came back invalid toward the cap', async () => {
   const run = {
     runID: 'run-1',
     thread: 'task-1',
+    logThread: 'task-1',
     tools: ['moment.edit'],
     model: { model: 'model-a', profile: 'chat-direct' },
     taskRun: { runID: 'a3f9c2d4', calls: { 'moment.edit': 1 } },
@@ -1743,6 +1789,7 @@ test('it counts no call that came back with an error toward the cap', async () =
   const run = {
     runID: 'run-1',
     thread: 'task-1',
+    logThread: 'task-1',
     tools: ['moment.edit'],
     model: { model: 'model-a', profile: 'chat-direct' },
     taskRun: { runID: 'a3f9c2d4', calls: { 'moment.edit': 1 } },
@@ -1773,6 +1820,7 @@ test('it runs the other tools of the next step of a task run whose cap denied a 
 
   const base = {
     thread: 'task-1',
+    logThread: 'task-1',
     tools: ['moment.edit', 'moment.find'],
     model: { model: 'model-a', profile: 'chat-direct' },
     taskRun: { runID: 'a3f9c2d4', calls: { 'moment.edit': 1 } },
@@ -1810,6 +1858,7 @@ test('it counts a call only against the task run that made it', async () => {
   const base = {
     runID: 'run-1',
     thread: 'task-1',
+    logThread: 'task-1',
     tools: ['moment.edit'],
     model: { model: 'model-a', profile: 'chat-direct' },
   };
@@ -1849,6 +1898,7 @@ test('it seals the attachments of a result under the result record, in order', a
     {
       runID: 'run-1',
       thread: 'task-1',
+      logThread: 'task-1',
       tools: ['notes_read'],
       model: { model: 'model-a', profile: 'chat-direct' },
     },
@@ -1907,6 +1957,7 @@ test('it runs writeBeside in the result transaction with the result sequence', a
     {
       runID: 'run-1',
       thread: 'task-1',
+      logThread: 'task-1',
       tools: ['notes_read'],
       model: { model: 'model-a', profile: 'chat-direct' },
     },
@@ -1951,6 +2002,7 @@ test('it writes an error result with no attachments when writeBeside refuses the
     {
       runID: 'run-1',
       thread: 'task-1',
+      logThread: 'task-1',
       tools: ['notes_read'],
       model: { model: 'model-a', profile: 'chat-direct' },
     },
@@ -1987,6 +2039,7 @@ test('it queues a call with the deadline the tool resolved on the host and a has
     {
       runID: 'run-1',
       thread: 'task-1',
+      logThread: 'task-1',
       tools: ['test.send'],
       model: { model: 'model-a', profile: 'chat-direct' },
     },
@@ -2033,6 +2086,7 @@ test('it lapses the proposal of an ask at the deadline of the call when that com
     {
       runID: 'run-1',
       thread: 'task-1',
+      logThread: 'task-1',
       tools: ['files_delete'],
       model: { model: 'model-a', profile: 'chat-direct' },
     },
@@ -2066,6 +2120,7 @@ test('it returns the error of a deadline that cannot resolve, and never asks the
     {
       runID: 'run-1',
       thread: 'task-1',
+      logThread: 'task-1',
       tools: ['test.send'],
       model: { model: 'model-a', profile: 'chat-direct' },
     },
@@ -2094,6 +2149,7 @@ test('it proposes nothing for a call that repeats an approved action still open,
   const run = {
     runID: 'run-1',
     thread: 'task-1',
+    logThread: 'task-1',
     tools: ['files_delete'],
     model: { model: 'model-a', profile: 'chat-direct' },
   };
@@ -2155,6 +2211,7 @@ test('it asks about a call under its variant name, so a rule on one variant leav
     {
       runID: 'run-1',
       thread: 'task-1',
+      logThread: 'task-1',
       tools: ['jobs_start'],
       model: { model: 'model-a', profile: 'chat-direct' },
     },
@@ -2166,6 +2223,7 @@ test('it asks about a call under its variant name, so a rule on one variant leav
     {
       runID: 'run-1',
       thread: 'task-1',
+      logThread: 'task-1',
       tools: ['jobs_start'],
       model: { model: 'model-a', profile: 'chat-direct' },
     },
@@ -2198,6 +2256,7 @@ test('it records a variant call and its proposal, naming the tool in the call an
     {
       runID: 'run-1',
       thread: 'task-1',
+      logThread: 'task-1',
       tools: ['jobs_start'],
       model: { model: 'model-a', profile: 'chat-direct' },
     },
@@ -2231,6 +2290,7 @@ test('it refuses a call whose picked variant the tool does not declare', async (
     {
       runID: 'run-1',
       thread: 'task-1',
+      logThread: 'task-1',
       tools: ['jobs_start'],
       model: { model: 'model-a', profile: 'chat-direct' },
     },
@@ -2275,6 +2335,7 @@ test('it proposes nothing for a variant call that repeats an approved action sti
   const run = {
     runID: 'run-1',
     thread: 'task-1',
+    logThread: 'task-1',
     tools: ['jobs_start'],
     model: { model: 'model-a', profile: 'chat-direct' },
   };

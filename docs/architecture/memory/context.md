@@ -201,8 +201,11 @@ the record's sequence. A tool result also carries the event ID of the call it an
 `callEventID`, because nothing else shows the model the ID of a call. The model narrows a read by a
 time range or by words that every entry must hold, and pages on with the cursor the read returns.
 Each read returns a bounded number of entries and decrypts a bounded number of records, so a search
-over a long thread can return a short page with a cursor to go on from. The tool reads only the
-calling run's thread. It declares only a read, so the starter rule `allow-reads` allows it.
+over a long thread can return a short page with a cursor to go on from. The tool reads only the log
+thread of the calling run: the run's own thread, or the conversation's thread for a
+[task with the log grant](../core/started-tasks.md#start-options). Each entry keeps its role, so a
+granted task tells the user's words from a task report. It declares only a read, so the starter rule
+`allow-reads` allows it.
 
 The log holds outside text, such as fetched pages and pastes, so every entry counts as outside
 content to the decision point. A message of the user's reads as a rebuilt session's recent turns
@@ -226,11 +229,11 @@ holds it and the image's number in that message, which comes from the message's 
 marker in `log.read`, or from the `images` of a record that
 [`moment.read`](./moments.md#reading-moments-back) returns. The tool returns the image to the model
 as image input beside its media type, through the [tool calls](../connectors/tool-calls.md) path
-that keeps the bytes out of the result record. It reads only the calling run's thread, and it
-refuses with "image unavailable" once the user forgot the message, or when the record is not one of
-the user's messages or holds no image of that number. The image counts against the session's
-[image caps](../core/conversation-turns.md#inbox-records-as-messages), and the tool refuses an image
-that would pass either cap.
+that keeps the bytes out of the result record. It reads only the log thread of the calling run, as
+`log.read` does, and it refuses with "image unavailable" once the user forgot the message, or when
+the record is not one of the user's messages or holds no image of that number. The image counts
+against the session's [image caps](../core/conversation-turns.md#inbox-records-as-messages), and the
+tool refuses an image that would pass either cap.
 
 A memory write that quotes a message passes that message's event ID with its quote, from the
 message's stamp in the session or from a log read entry. The content gate then checks the quote
@@ -265,8 +268,10 @@ record it ran for. The cleanup runs in order:
 The cleanup then runs the same steps on the thread and in the sandbox of each open
 [started task](../core/started-tasks.md) that reads memory, one task at a time. A forget of a record
 also cleans the open task whose thread holds the record, whatever its memory setting, because that
-task's session holds the record's text. A task that reads no memory never received an item, so a
-memory item forget or a moment destroy leaves its session as it is.
+task's session holds the record's text, and a record on the conversation's thread also cleans each
+open task with the log grant, because its session can hold the record's text from a log read. A task
+that reads no memory never received an item, so a memory item forget or a moment destroy leaves its
+session as it is.
 
 A turn and a cleanup never overlap: a turn that starts while a cleanup runs waits for it, and each
 cleanup waits for the one before it. Turns never wait for each other, because a runner that took a

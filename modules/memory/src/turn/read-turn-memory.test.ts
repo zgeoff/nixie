@@ -5,6 +5,7 @@ import { buildMockProvenance } from '../test-utils/build-mock-provenance';
 import { buildStubEncoder } from '../test-utils/build-stub-encoder';
 import { startNextTestMemory } from '../test-utils/start-next-test-memory';
 import { startTestMemory } from '../test-utils/start-test-memory';
+import { writeOwnerMessageRecord } from '../test-utils/write-owner-message-record';
 import type { TurnMemorySettings } from './types';
 
 interface TurnOverrides {
@@ -268,4 +269,21 @@ test('it records keyword-fallback when the trigger vectors are unavailable, what
   expect(records.map((entry) => entry.record.payload['searchMode'])).toStrictEqual([
     'keyword-fallback',
   ]);
+});
+
+test('it places no conversation message in the turn of a task that holds no log grant', async () => {
+  const ctx = await setupTest();
+
+  await writeOwnerMessageRecord(ctx.memory.log, {
+    thread: 'conversation',
+    text: 'The piano is tuned in spring',
+    spans: [{ start: 0, end: 28, source: 'typed' }],
+  });
+
+  const result = await ctx.memory.store.readTurnMemory({
+    ...ctx.buildAsk('is the piano tuned in spring?'),
+    thread: 'task-1',
+  });
+
+  expect(result).toStrictEqual({ kind: 'none' });
 });

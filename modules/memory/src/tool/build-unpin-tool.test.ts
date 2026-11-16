@@ -46,6 +46,7 @@ test('it unpins the item at once, with a pinned record that names the thread of 
     {
       runID: 'run-1',
       thread: 'conversation',
+      logThread: 'conversation',
       tools: ['memory.unpin'],
       model: { model: 'test-model', profile: 'standard' },
     },
@@ -90,6 +91,7 @@ test('it answers an unpin of an item outside the pinned core with an error, and 
     {
       runID: 'run-1',
       thread: 'conversation',
+      logThread: 'conversation',
       tools: ['memory.unpin'],
       model: { model: 'test-model', profile: 'standard' },
     },
@@ -122,6 +124,7 @@ test('it answers an unpin of an item that does not exist with an error', async (
     {
       runID: 'run-1',
       thread: 'conversation',
+      logThread: 'conversation',
       tools: ['memory.unpin'],
       model: { model: 'test-model', profile: 'standard' },
     },

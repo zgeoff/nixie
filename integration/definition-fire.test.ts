@@ -262,6 +262,7 @@ test('it starts the task run of a fire untrusted, holds it to its version tools 
     runID: 'run-fire',
     toolUseMetaKey: null,
     thread: taskID,
+    logThread: taskID,
     tools: offered,
     model: { model: 'claude-test-errands', profile: 'errands' },
   });

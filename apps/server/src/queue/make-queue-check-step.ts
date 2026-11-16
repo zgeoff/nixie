@@ -27,6 +27,7 @@ export function makeQueueCheckStep(options: QueueCheckStepOptions): RunStep {
         {
           runID: input.taskID,
           thread: input.taskID,
+          logThread: input.taskID,
           tools: [options.tool.name],
           model: noModel,
           stepRunID: buildStepRunID(input),

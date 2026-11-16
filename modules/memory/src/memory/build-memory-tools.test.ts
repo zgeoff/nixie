@@ -246,6 +246,7 @@ test('it returns a proposal with the sentence for its reason, not an error, for 
       run: {
         runID: 'run-1',
         thread: 'conversation',
+        logThread: 'conversation',
         tools: [],
         model: { model: 'test-model', profile: 'standard' },
       },
@@ -373,6 +374,7 @@ test.each(['shared', 'self'] as const)(
         run: {
           runID: 'run-1',
           thread: 'conversation',
+          logThread: 'conversation',
           tools: [],
           model: { model: 'test-model', profile: 'standard' },
         },
@@ -410,6 +412,7 @@ test('it gives the token sentence for a fact with a number its typed quote lacks
     {
       runID: 'run-1',
       thread: 'conversation',
+      logThread: 'conversation',
       tools: ['memory.remember'],
       model: { model: 'test-model', profile: 'standard' },
     },
@@ -448,6 +451,7 @@ test('it gives the token sentence under an allow rule when the owner never typed
     {
       runID: 'run-1',
       thread: 'conversation',
+      logThread: 'conversation',
       tools: ['memory.remember'],
       model: { model: 'test-model', profile: 'standard' },
     },
@@ -509,6 +513,7 @@ test("it names the gate's configured window in the sentence for a quote older th
     {
       runID: 'run-1',
       thread: 'conversation',
+      logThread: 'conversation',
       tools: ['memory.remember'],
       model: { model: 'test-model', profile: 'standard' },
     },
@@ -558,6 +563,7 @@ test('it applies a backed edit of the item its short ID names as a new version a
     {
       runID: 'run-1',
       thread: 'conversation',
+      logThread: 'conversation',
       tools: ['memory.edit'],
       model: { model: 'test-model', profile: 'standard' },
     },
@@ -595,6 +601,7 @@ test('it turns an edit with no backing words into a proposal with the sentence f
     {
       runID: 'run-1',
       thread: 'conversation',
+      logThread: 'conversation',
       tools: ['memory.edit'],
       model: { model: 'test-model', profile: 'standard' },
     },
@@ -647,6 +654,7 @@ test('it records an edit call with neither its text nor its quote, which the gat
     {
       runID: 'run-1',
       thread: 'conversation',
+      logThread: 'conversation',
       tools: ['memory.edit'],
       model: { model: 'test-model', profile: 'standard' },
     },
@@ -695,6 +703,7 @@ test('it returns a stale edit to the model as an error that names the item by it
       run: {
         runID: 'run-1',
         thread: 'conversation',
+        logThread: 'conversation',
         tools: [],
         model: { model: 'test-model', profile: 'standard' },
       },
@@ -725,6 +734,7 @@ test('it returns an edit of an ID that names no item to the model as an error wi
       run: {
         runID: 'run-1',
         thread: 'conversation',
+        logThread: 'conversation',
         tools: [],
         model: { model: 'test-model', profile: 'standard' },
       },
@@ -773,6 +783,7 @@ test('it retires the item its short ID names when the model read it and you aske
       run: {
         runID: 'run-1',
         thread: 'conversation',
+        logThread: 'conversation',
         tools: [],
         model: { model: 'test-model', profile: 'standard' },
       },
@@ -815,6 +826,7 @@ test('it returns a full proposal cap to the model as an error', async () => {
     run: {
       runID: 'run-1',
       thread: 'conversation',
+      logThread: 'conversation',
       tools: [],
       model: { model: 'test-model', profile: 'standard' },
     },
@@ -856,6 +868,7 @@ test('it recalls items with a result that its output schema accepts', async () =
       run: {
         runID: 'run-1',
         thread: 'conversation',
+        logThread: 'conversation',
         tools: [],
         model: { model: 'test-model', profile: 'standard' },
       },
@@ -918,6 +931,7 @@ test('it recalls a version with its quote, its model and the line that says wher
     {
       runID: 'run-1',
       thread: 'conversation',
+      logThread: 'conversation',
       tools: ['memory.recall'],
       model: { model: 'test-model', profile: 'standard' },
     },
@@ -972,6 +986,7 @@ test('it recalls a version made from a photo with the event and number of its im
     {
       runID: 'run-1',
       thread: 'conversation',
+      logThread: 'conversation',
       tools: ['memory.recall'],
       model: { model: 'test-model', profile: 'standard' },
     },
@@ -1023,6 +1038,7 @@ test('it recalls a version with no quote or model without them', async () => {
     {
       runID: 'run-1',
       thread: 'conversation',
+      logThread: 'conversation',
       tools: ['memory.recall'],
       model: { model: 'test-model', profile: 'standard' },
     },
@@ -1072,6 +1088,7 @@ test('it recalls an approved proposal as approved by the owner, with its stored 
     {
       runID: 'run-1',
       thread: 'conversation',
+      logThread: 'conversation',
       tools: ['memory.recall'],
       model: { model: 'test-model', profile: 'standard' },
     },
@@ -1121,6 +1138,7 @@ test('it recalls each past version with the version that replaced it', async () 
     {
       runID: 'run-1',
       thread: 'conversation',
+      logThread: 'conversation',
       tools: ['memory.recall'],
       model: { model: 'test-model', profile: 'standard' },
     },
@@ -1169,6 +1187,7 @@ test('it recalls the item its short ID names', async () => {
     {
       runID: 'run-1',
       thread: 'conversation',
+      logThread: 'conversation',
       tools: ['memory.recall'],
       model: { model: 'test-model', profile: 'standard' },
     },
@@ -1196,6 +1215,7 @@ test('it recalls an item by the item ID the model read before short IDs, under i
     {
       runID: 'run-1',
       thread: 'conversation',
+      logThread: 'conversation',
       tools: ['memory.recall'],
       model: { model: 'test-model', profile: 'standard' },
     },
@@ -1222,6 +1242,7 @@ test('it gives the model a recalled item and leaves no readable copy once the it
     {
       runID: 'run-1',
       thread: 'conversation',
+      logThread: 'conversation',
       tools: ['memory.recall'],
       model: { model: 'test-model', profile: 'standard' },
     },
@@ -1277,6 +1298,7 @@ test('it applies a remembered fact and leaves no readable copy of its text once 
     {
       runID: 'run-1',
       thread: 'conversation',
+      logThread: 'conversation',
       tools: ['memory.remember'],
       model: { model: 'test-model', profile: 'standard' },
     },
@@ -1315,6 +1337,7 @@ test('it leaves no readable label of a forgotten item in a record, a column or t
   const run = {
     runID: 'run-1',
     thread: 'conversation',
+    logThread: 'conversation',
     tools: ['memory.remember', 'memory.edit'],
     model: { model: 'test-model', profile: 'standard' },
   };
@@ -1498,6 +1521,7 @@ test('it recalls an item at its revision after a label edit, in its memory line 
     {
       runID: 'run-1',
       thread: 'conversation',
+      logThread: 'conversation',
       tools: ['memory.recall'],
       model: { model: 'test-model', profile: 'standard' },
     },
@@ -1545,6 +1569,7 @@ test('it lists a text edit proposed after a label edit at the revision it read, 
     {
       runID: 'run-1',
       thread: 'conversation',
+      logThread: 'conversation',
       tools: ['memory.pending'],
       model: { model: 'test-model', profile: 'standard' },
     },
@@ -1578,6 +1603,7 @@ test('it names the revision in the stale error for an edit that read the version
     {
       runID: 'run-1',
       thread: 'conversation',
+      logThread: 'conversation',
       tools: ['memory.edit'],
       model: { model: 'test-model', profile: 'standard' },
     },
@@ -1641,6 +1667,7 @@ test('it retires an item at its revision when the model read its text before a l
     {
       runID: 'run-1',
       thread: 'conversation',
+      logThread: 'conversation',
       tools: ['memory.retire'],
       model: { model: 'test-model', profile: 'standard' },
     },
@@ -1708,6 +1735,7 @@ test('it records a remember call with neither its text nor its quote, which the 
     {
       runID: 'run-1',
       thread: 'conversation',
+      logThread: 'conversation',
       tools: ['memory.remember'],
       model: { model: 'test-model', profile: 'standard' },
     },
@@ -1797,6 +1825,7 @@ test.each([
         {
           runID: 'run-1',
           thread: 'conversation',
+          logThread: 'conversation',
           tools: [tool],
           model: { model: 'test-model', profile: 'standard' },
         },

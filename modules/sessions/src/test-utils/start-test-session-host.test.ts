@@ -98,6 +98,7 @@ test("it sends a tool call of the stub guest's turn to the run endpoint of the s
     toolUseMetaKey: null,
     runID: 'task-1',
     thread: 'task-1',
+    logThread: 'task-1',
     tools: ['notes_read'],
     model: { model: 'claude-test-1', profile: 'chat-direct' },
   });
@@ -145,6 +146,7 @@ test('it reads the names of the tools a turn of the stub guest is offered', asyn
     toolUseMetaKey: null,
     runID: 'task-1',
     thread: 'task-1',
+    logThread: 'task-1',
     tools: ['notes_search'],
     model: { model: 'claude-test-1', profile: 'chat-direct' },
   });

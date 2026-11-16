@@ -14,6 +14,7 @@ import type { GrantSpec, Sandbox } from '@heynixie/sandbox';
 import { readSandboxOwners } from '@heynixie/sandbox';
 import type { RunStep, StepInput, StepResult, TaskLimits, TaskRun } from '@heynixie/tasks';
 import {
+  conversationTaskID,
   probePauseRequested,
   readStartedTaskIDs,
   startClaimPool,
@@ -231,7 +232,9 @@ function resolveTaskImp(runner: TaskRunner, taskID: string): TaskImpActor {
     return held;
   }
 
-  const imp = createActor(taskImpMachine, { input: buildTaskImpParts(runner, taskID) });
+  const imp = createActor(taskImpMachine, {
+    input: buildTaskImpParts(runner, taskID),
+  });
 
   imp.start();
   runner.imps.set(taskID, imp);
@@ -254,6 +257,7 @@ function buildTaskImpParts(runner: TaskRunner, taskID: string): TaskImpParts {
       return options.tools.startRun({
         runID: taskID,
         thread: taskID,
+        logThread: run.options.log === 'conversation' ? conversationTaskID : taskID,
         tools: [...new Set([...run.options.tools, silentEndToolName, taskReportToolName])],
         model: run.model,
         toolUseMetaKey: run.harness.toolUseMetaKey,
@@ -335,7 +339,10 @@ async function runGuardedStep(
       records: [],
       acknowledged: [],
       sessionBoundary: input.sessionBoundary,
-      run: { activity: 'none', limit: buildReachedLimit(plan.meter, usage.used, limits) },
+      run: {
+        activity: 'none',
+        limit: buildReachedLimit(plan.meter, usage.used, limits),
+      },
     };
   }
 
@@ -426,7 +433,10 @@ async function runTaskTurn(
         ? {
             limit: buildReachedLimit(
               'dollars',
-              { turns: parts.used.turns, dollars: parts.used.dollars + budget.getSpentDollars() },
+              {
+                turns: parts.used.turns,
+                dollars: parts.used.dollars + budget.getSpentDollars(),
+              },
               limits,
             ),
           }
@@ -475,7 +485,11 @@ function buildTaskRun(runner: TaskRunner, parts: TaskRunParts): ConversationRun 
 
   return {
     context: options.context,
-    frame: { kind: 'task', startedBy: parts.run.startedBy, report: parts.run.options.report },
+    frame: {
+      kind: 'task',
+      startedBy: parts.run.startedBy,
+      report: parts.run.options.report,
+    },
     ...(parts.run.sinceSequence === null ? {} : { sinceSequence: parts.run.sinceSequence }),
     profile: parts.run.profile,
     harness: parts.run.harness,
@@ -570,7 +584,11 @@ async function runTaskGuestPurge(runner: TaskRunner, taskID: string): Promise<vo
   try {
     const run = await readStartedRun(runner, taskID);
 
-    await runGuestPurge({ harness: run.harness, sandbox: held.sandbox, command: run.command });
+    await runGuestPurge({
+      harness: run.harness,
+      sandbox: held.sandbox,
+      command: run.command,
+    });
   } finally {
     await releaseTaskImp(imp);
   }

@@ -46,6 +46,7 @@ test("it proposes a pin of the item a short ID names, for the owner's review", a
     {
       runID: 'run-1',
       thread: 'conversation',
+      logThread: 'conversation',
       tools: ['memory.pin'],
       model: { model: 'test-model', profile: 'standard' },
     },
@@ -84,6 +85,7 @@ test('it answers a pin of a retired item with an error that names its short ID',
     {
       runID: 'run-1',
       thread: 'conversation',
+      logThread: 'conversation',
       tools: ['memory.pin'],
       model: { model: 'test-model', profile: 'standard' },
     },
@@ -123,6 +125,7 @@ test('it answers a pin of a version the item moved past with an error, and write
     {
       runID: 'run-1',
       thread: 'conversation',
+      logThread: 'conversation',
       tools: ['memory.pin'],
       model: { model: 'test-model', profile: 'standard' },
     },

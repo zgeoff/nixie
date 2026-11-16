@@ -23,6 +23,11 @@ export function renderChoiceRefusal(refusal: TaskStartChoiceRefusal): string {
       () => 'you do not read memory, so a task you start cannot either, and nixie started nothing',
     )
     .with(
+      { reason: 'wider_log' },
+      () =>
+        "You can give a task the conversation's log only when you hold it yourself, and you do not.",
+    )
+    .with(
       { reason: 'wider_persona' },
       () =>
         'you run with no persona, so a task you start cannot have one, and nixie started nothing',

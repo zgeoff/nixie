@@ -229,7 +229,7 @@ test("it reads the calling run's own thread", async () => {
 
   const outcome = await ctx.tool.run(
     { callID: 'call-1', tool: 'log.read', input: {}, toolUseID: null },
-    buildMockToolContext({ thread: 'task-garden' }),
+    buildMockToolContext({ thread: 'task-garden', logThread: 'task-garden' }),
   );
 
   expect(outcome).toStrictEqual({
@@ -306,4 +306,49 @@ test('it gives a tool result the eventID of the call it answers', async () => {
       ],
     },
   });
+});
+
+test('it reads the log thread of the run, not its own thread', async () => {
+  const ctx = await setupTest();
+
+  const eventID = await writeOwnerMessageRecord(ctx.log, {
+    thread: 'conversation',
+    text: 'Bread is in the oven',
+    spans: [{ start: 0, end: 20, source: 'typed' }],
+  });
+
+  const outcome = await ctx.tool.run(
+    { callID: 'call-1', tool: 'log.read', input: {}, toolUseID: null },
+    buildMockToolContext({ thread: 'task-1', logThread: 'conversation' }),
+  );
+
+  expect(outcome).toMatchObject({
+    status: 'ok',
+    result: {
+      entries: [
+        {
+          eventID: String(eventID),
+          role: 'owner',
+          text: 'Bread is in the oven',
+        },
+      ],
+    },
+  });
+});
+
+test('it returns no conversation record to a run whose log thread is its own', async () => {
+  const ctx = await setupTest();
+
+  await writeOwnerMessageRecord(ctx.log, {
+    thread: 'conversation',
+    text: 'Bread is in the oven',
+    spans: [{ start: 0, end: 20, source: 'typed' }],
+  });
+
+  const outcome = await ctx.tool.run(
+    { callID: 'call-1', tool: 'log.read', input: {}, toolUseID: null },
+    buildMockToolContext({ thread: 'task-1', logThread: 'task-1' }),
+  );
+
+  expect(outcome).toMatchObject({ status: 'ok', result: { entries: [] } });
 });

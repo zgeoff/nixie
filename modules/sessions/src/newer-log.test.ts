@@ -687,3 +687,43 @@ test('it lists a started task whose log holds a disposable mark, a change of the
   expect(messaging.directory.map((profile) => profile.taskID)).toStrictEqual(['t2n7']);
   expect(ended).toStrictEqual(['t2n7']);
 });
+
+test('it lists a started task whose creation record holds the conversation log option', async () => {
+  const ctx = await setupTest();
+
+  const [created] = await writeRecords(ctx.tasks.context.log, [
+    {
+      kind: 'task.created',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 't8p6',
+      payload: {
+        taskID: 't8p6',
+        isConversation: false,
+        state: 'ready',
+        startedBy: 'conversation',
+        startStep: 'conversation:1',
+        options: {
+          model: null,
+          profile: null,
+          persona: 'default',
+          memory: 'read',
+          log: 'conversation',
+          tools: [],
+          report: 'wake',
+          limits: { turns: 25, dollars: 2 },
+        },
+        briefMessageID: 'm5r1',
+      },
+      erasable: { name: 'Note taker' },
+    },
+  ]);
+
+  invariant(created);
+
+  const directory: readonly TaskProfile[] = [];
+
+  const messaging = await readTaskDirectory(ctx.tasks.context, { directory });
+
+  expect(taskCreatedCodec.tryDecodePartial(created.payload)?.taskID).toBe('t8p6');
+  expect(messaging.directory.map((profile) => profile.taskID)).toStrictEqual(['t8p6']);
+});

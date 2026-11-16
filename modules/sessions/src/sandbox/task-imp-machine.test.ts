@@ -52,6 +52,7 @@ function setupTest() {
     toolUseMetaKey: null,
     runID: 'k3vq8m2xpa',
     thread: 'k3vq8m2xpa',
+    logThread: 'k3vq8m2xpa',
     tools: ['time.now'],
     model: { model: 'claude-test-1', profile: 'errands' },
   };

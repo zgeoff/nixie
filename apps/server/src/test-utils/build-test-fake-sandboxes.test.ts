@@ -59,6 +59,7 @@ test("it gives a tool use of the guest's reply the result of the run's real endp
     toolUseMetaKey: null,
     runID: 'conversation',
     thread: 'conversation',
+    logThread: 'conversation',
     tools: ['notes_read'],
     model: { model: 'claude-test-1', profile: 'chat-direct' },
   });

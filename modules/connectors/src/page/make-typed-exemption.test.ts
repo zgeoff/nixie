@@ -8,6 +8,7 @@ function setupTest(isTyped: boolean, covers: 'named_url' | 'redirects') {
   const run: ToolRun = {
     runID: 'run-1',
     thread: 'conversation',
+    logThread: 'conversation',
     tools: [],
     model: { model: 'model-a', profile: 'chat-direct' },
   };
