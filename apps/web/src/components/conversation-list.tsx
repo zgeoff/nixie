@@ -16,6 +16,7 @@ import { MemoryNotice } from './memory-notice';
 import { MomentKeptNotice } from './moment-kept-notice';
 import { OutboxItem } from './outbox-item';
 import { RecordItem } from './record-item';
+import { ReminderNotice } from './reminder-notice';
 import { RemovalNotice } from './removal-notice';
 import { ResetMarker } from './reset-marker';
 import { StepGroup } from './step-group';
@@ -136,6 +137,7 @@ function ActivityEntry(props: ActivityEntryProps): ReactNode {
     .with({ kind: 'moment' }, (item) => <MomentKeptNotice moment={item.moment} />)
     .with({ kind: 'taskMessage' }, (item) => renderMessage(item.message))
     .with({ kind: 'exchange' }, (item) => <ExchangeNotice notice={item.notice} />)
+    .with({ kind: 'reminder' }, (item) => <ReminderNotice reminder={item.reminder} />)
     .with({ kind: 'proposal' }, (item) => (
       <ThreadApprovalCard proposalID={item.proposal.proposalID} />
     ))

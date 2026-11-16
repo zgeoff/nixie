@@ -272,6 +272,35 @@ test('it opens the conversation at a message that a hop-limit notice links, behi
   );
 });
 
+test('it shows a reminder with its brief and the time it was set for', async () => {
+  const ctx = await setupTest();
+  const session = await store.sessions.create({});
+
+  await store.records.create({
+    kind: 'trigger.fired',
+    reminder: {
+      brief: 'Call the dentist about the crown.',
+      lateBySeconds: 7500,
+      scheduledFor: '2027-03-09T03:00:00.000Z',
+    },
+    thread: 'conversation',
+  });
+
+  await setupSignedInBrowser(ctx.view, { appURL: ctx.appURL, token: session.token });
+
+  await ctx.view.navigate(`${ctx.appURL}/`);
+
+  await waitFor(
+    async () => {
+      const text: unknown = await ctx.view.evaluate('document.body.innerText');
+
+      expect(text).toInclude('Reminder: Call the dentist about the crown.');
+      expect(text).toInclude('(2 hours 5 minutes late)');
+    },
+    { timeout: 10_000 },
+  );
+});
+
 test('it shows a card from its records when the model reply claims the action is done, then Approved after the answer', async () => {
   const ctx = await setupTest();
   const session = await store.sessions.create({});
