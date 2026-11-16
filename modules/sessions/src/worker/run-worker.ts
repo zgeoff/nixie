@@ -48,6 +48,9 @@ interface Held {
   // a create that a stop beat, whose sandbox the exit block destroys if it ever arrives
   lateSandbox: Promise<Sandbox> | null;
   endpoint: RunEndpoint | null;
+
+  // the gateway counts the sandbox, so the run may have spent on it
+  isRegistered: boolean;
   isStarted: boolean;
   stage: 'starting' | 'running';
 }
@@ -77,6 +80,7 @@ export async function runWorker(deps: WorkerDeps, plan: WorkerPlan): Promise<Wor
       sandbox: null,
       lateSandbox: null,
       endpoint: null,
+      isRegistered: false,
       isStarted: false,
       stage: 'starting',
     },
@@ -170,6 +174,8 @@ async function runStages(deps: WorkerDeps, plan: WorkerPlan, run: WorkerRun): Pr
     run.held.sandbox = await createSandbox(deps, run);
 
     await registerGatewaySandbox(deps, plan, run.held.sandbox);
+
+    run.held.isRegistered = deps.gateway !== undefined;
 
     run.held.endpoint = await startToolRun(deps, plan, run);
 
@@ -362,7 +368,7 @@ async function readGatewayCount(
 ): Promise<SandboxCount | null> {
   const sandbox = run.held.sandbox;
 
-  if (deps.gateway === undefined || sandbox === null) {
+  if (deps.gateway === undefined || sandbox === null || !run.held.isRegistered) {
     return null;
   }
 

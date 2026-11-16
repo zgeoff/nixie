@@ -673,6 +673,17 @@ test('it fails the run and starts no model request when the gateway refuses the 
   expect(ctx.guest.received.filter((entry) => entry.frame.type === 'turn')).toStrictEqual([]);
 });
 
+test('it charges the calling task nothing when the gateway refuses the registration', async () => {
+  const ctx = await setupTest({ isGatewayOn: true, limits: { dollars: 0.75 } });
+
+  ctx.gateway.putSandbox.mockResolvedValue({ kind: 'unreachable', reason: 'no answer' });
+  ctx.gateway.readSandbox.mockResolvedValue({ kind: 'unreachable', reason: 'no answer' });
+
+  await ctx.callWorker({ question: 'Which cafes are open?' });
+
+  expect(ctx.spent).toStrictEqual([]);
+});
+
 test('it states the gateway numbers in the result of an answered run', async () => {
   const ctx = await setupTest({ isGatewayOn: true });
 
