@@ -20,6 +20,10 @@ interface SetupConfig {
   // the first sandbox's create never returns
   readonly isFirstCreateStuck?: boolean;
 
+  // the worker's first read of the definitions after its first priced call throws, which fails
+  // the end record of a run of one model call
+  readonly isEndWriteFailing?: boolean;
+
   readonly limits?: Readonly<Record<string, number>>;
   readonly workerRuns?: { readonly max: number; readonly whenFull: 'wait' | 'error' };
 }
@@ -98,16 +102,42 @@ async function setupTest(config: SetupConfig = {}) {
     },
   };
 
+  const spent: number[] = [];
+  const stoppedRuns: string[] = [];
+  const endWrite = { hasFailed: false };
+
+  const readDefinitions: typeof host.context.definitions = () => {
+    if (config.isEndWriteFailing === true && spent.length > 0 && !endWrite.hasFailed) {
+      endWrite.hasFailed = true;
+      throw new Error('the definitions could not be read');
+    }
+
+    return host.context.definitions();
+  };
+
   const worker = await startWorkerTool({
     models,
     secrets: { model_credentials: { anthropic: 'not-a-real-key' } },
     sandboxes,
     images: { conversation: 'nixie-conversation-0123456789ab' },
     log: host.context.log,
-    definitions: host.context.definitions,
+    definitions: readDefinitions,
     clock,
     logger: () => {},
-    readTools: () => host.endpoint,
+    readTools: () => ({
+      startRun: async (options) => {
+        const run = await host.endpoint.startRun(options);
+
+        return {
+          ...run,
+          stop: async () => {
+            stoppedRuns.push(run.runID);
+
+            await run.stop();
+          },
+        };
+      },
+    }),
     ...(config.workerRuns === undefined ? {} : { workerRuns: config.workerRuns }),
   });
 
@@ -134,8 +164,6 @@ async function setupTest(config: SetupConfig = {}) {
   });
 
   invariant(parent, 'the call has a record to hang its worker on');
-
-  const spent: number[] = [];
 
   const caller = new AbortController();
   const interrupt = new AbortController();
@@ -176,6 +204,7 @@ async function setupTest(config: SetupConfig = {}) {
     clock,
     spent,
     destroys,
+    stoppedRuns,
     caller,
     interrupt,
     callWorker,
@@ -519,5 +548,58 @@ test('it frees the slot of a run whose sandbox create never returns, when its mi
         dollars: expect.toBeNumber(),
       },
     },
+  });
+});
+
+test('it frees the tool run, the stops, the sandbox and the slot when the end record fails to write', async () => {
+  const ctx = await setupTest({
+    isEndWriteFailing: true,
+    workerRuns: { max: 1, whenFull: 'error' },
+  });
+
+  ctx.guest.addKindReplies(
+    'worker',
+    {
+      text: 'First.',
+      usage: {
+        uncachedInputTokens: 1000,
+        cacheReadTokens: 0,
+        cacheWrite5mTokens: 0,
+        cacheWrite1hTokens: 0,
+        outputTokens: 0,
+      },
+    },
+    { text: 'Second.' },
+  );
+
+  const [first] = await Promise.allSettled([ctx.callWorker({ question: 'First?' })]);
+
+  expect(first).toStrictEqual({
+    status: 'rejected',
+    reason: expect.toBeObject(),
+  });
+
+  const [owner] = await ctx.readOwners();
+
+  invariant(typeof owner === 'string', 'the run created a sandbox');
+
+  await waitForCondition(async () => {
+    const remaining = await ctx.sandboxes.list(owner);
+
+    return remaining.length === 0;
+  });
+
+  const ended = await ctx.readKinds(['worker.run_ended']);
+
+  const stoppedRuns = ctx.stoppedRuns.length;
+  const sleepers = ctx.clock.countSleepers();
+
+  const second = await ctx.callWorker({ question: 'Second?' });
+
+  expect({ ended: ended.length, stoppedRuns, sleepers, second: second.status }).toStrictEqual({
+    ended: 0,
+    stoppedRuns: 1,
+    sleepers: 0,
+    second: 'ok',
   });
 });
