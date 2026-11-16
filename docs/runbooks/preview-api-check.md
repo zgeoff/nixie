@@ -117,9 +117,9 @@ over a minute to report, and a run that keeps failing takes longer, because each
 before its retry.
 
 Expect a record from `Preview tick`. A report that holds the task's own summary means the run
-worked. A report that starts with "The run" is code-made, so the run did not work. "The run failed
-after 3 errors before it wrote a summary." follows model calls that kept failing, as when the
-preview has no model access.
+worked. A code-made report means the run did not work. Its `text` holds a `summary:` line with a
+fixed sentence, such as `summary: The run failed after 3 errors before it wrote a summary.`, which
+follows model calls that kept failing, as when the preview has no model access.
 
 ## Start the next check from an empty log
 
