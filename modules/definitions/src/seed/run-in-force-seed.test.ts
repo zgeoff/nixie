@@ -2,9 +2,11 @@ import { expect, onTestFinished, test } from 'bun:test';
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { startWriter, withWriteTransaction } from '@heynixie/log';
+import { readRecords, startWriter, withWriteTransaction } from '@heynixie/log';
 import { buildCheckerRules } from '@heynixie/memory';
 import { tasksProjections } from '@heynixie/tasks';
+import { writeTestTriggerFire } from '@heynixie/tasks/test-utils';
+import { triggersProjections } from '@heynixie/triggers';
 import { sql } from 'kysely';
 import invariant from 'tiny-invariant';
 import { createPathSource } from '../definition/create-path-source';
@@ -427,4 +429,56 @@ test('it binds a task to each definition in force with target task', async () =>
   expect(tasks).toStrictEqual([
     { definition_id: 'rain-gauge', definition_hash: inForce?.tasks[0]?.hash ?? null },
   ]);
+});
+
+test('it withdraws a one-shot that fired between 2 seeds from both hooks', async () => {
+  const ctx = await setupTest();
+
+  const log = { ...ctx.log, projections: [...tasksProjections, ...triggersProjections] };
+
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 4\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+  await mkdir(join(ctx.root, 'tasks', 'rain-gauge'), { recursive: true });
+  await mkdir(join(ctx.root, 'tasks', 'dentist'), { recursive: true });
+
+  await writeFile(
+    join(ctx.root, 'tasks', 'rain-gauge', 'task.yaml'),
+    'name: Check the rain gauge\nbrief: Read it.\ntrigger:\n  schedule:\n    every: day\n    at: "08:00"\n',
+  );
+
+  await writeFile(
+    join(ctx.root, 'tasks', 'dentist', 'task.yaml'),
+    'name: Dentist\nbrief: Remind me.\ntrigger:\n  at: "2027-03-09T14:00:00Z"\n',
+  );
+
+  await runSeed({
+    tasks: buildTestTaskSeed(),
+    log,
+    source: ctx.source,
+    buildPolicy: () => ({ rules: [], tools: [] }),
+  });
+
+  await writeTestTriggerFire(
+    { log, definitions: () => ({ snapshotHash: 'sha256:test' }) },
+    'earlier-thread',
+    {
+      definitionHash: 'hash-0',
+      definitionID: 'dentist',
+      kind: 'at',
+      dedupeKey: 'dentist|2027-03-09T14:00:00.000Z',
+      scheduledFor: '2027-03-09T14:00:00.000Z',
+    },
+  );
+
+  await runInForceSeed({ log, buildPolicy: () => ({ rules: [], tools: [] }) });
+
+  const armed = await readRecords(log, { afterSequence: 0, kinds: ['trigger.armed'] });
+  const bindings = await readRecords(log, { afterSequence: 0, kinds: ['task.definition_set'] });
+
+  expect(armed.at(-1)?.record.payload).toStrictEqual({ armed: [], withdrawn: ['dentist'] });
+
+  expect(bindings.at(-1)?.record.payload).toMatchObject({
+    definitionID: 'dentist',
+    definitionHash: null,
+  });
 });
