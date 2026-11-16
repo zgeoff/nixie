@@ -116,10 +116,14 @@ If the command prints nothing, wait a minute, then repeat step 5 and this comman
 take over a minute to report, and a task run that keeps failing takes longer, because each failed
 step waits before its retry.
 
-Expect a record from `Preview tick`. A report that holds the task's own summary means the task run
-worked. A code-made report means the task run did not work. Its `text` holds a `summary:` line with
-a fixed sentence, such as `summary: The run failed after 3 errors before it wrote a summary.`, which
-follows model calls that kept failing, as when the preview has no model access.
+Expect a record from `Preview tick` whose `text` reads
+`summary: The run ended before it wrote a summary.` The preview holds no policy rules, so the task
+run's `task.report` call waits for approval, and the task run ends before it writes its own summary.
+
+A task run whose model calls kept failing, as when the preview has no model access, reports
+`summary: The run failed after 3 errors before it wrote a summary.` To see the model's answer, read
+the task's own thread: repeat step 5 with `thread` set to the record's `.taskMessage.from`, and
+expect a `model.reply` record.
 
 ## Start the next check from an empty log
 
