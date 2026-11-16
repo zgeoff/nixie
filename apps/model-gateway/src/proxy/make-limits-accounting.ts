@@ -20,13 +20,18 @@ export function makeLimitsAccounting(deps: LimitsAccountingDeps): Accounting {
   let countFailed = false;
   let limitLogged = false;
 
+  // the latch refuses while the mark is written, and stays only when the write fails, so an
+  // operator who deletes a written mark restores service with no restart
   const loseCount = async (): Promise<void> => {
-    await deps.store.markLost().catch((error: unknown) => {
-      // with no mark in the store, only this process can refuse, until a restart
-      countFailed = true;
+    countFailed = true;
 
+    try {
+      await deps.store.markLost();
+
+      countFailed = false;
+    } catch (error) {
       deps.log('counter.mark_failed', toErrorFields(error), 'error');
-    });
+    }
   };
 
   const admit = async (): Promise<Response | null> => {
