@@ -1,5 +1,6 @@
 import { expect, onTestFinished, setSystemTime, test } from 'bun:test';
 import { writeRecords } from '@heynixie/log';
+import invariant from 'tiny-invariant';
 import { startTestMemory } from '../test-utils';
 import { buildMockToolContext } from '../test-utils/build-mock-tool-context';
 import { writeOwnerMessageRecord } from '../test-utils/write-owner-message-record';
@@ -68,6 +69,72 @@ test('it reads one page of a date range, with the cursor of the next page', asyn
     },
     record: { eventIDs: [String(first)], next: String(first) },
   });
+});
+
+test('it reads each entry once across a call up to a time and a call from it, when the time has milliseconds', async () => {
+  const ctx = await setupTest();
+
+  const time = new Date('2026-10-12T08:15:30.250Z');
+
+  setSystemTime(new Date(time.getTime() - 1));
+
+  await writeOwnerMessageRecord(ctx.log, {
+    thread: 'conversation',
+    text: 'Just before',
+    spans: [{ start: 0, end: 11, source: 'typed' }],
+  });
+
+  setSystemTime(time);
+
+  await writeOwnerMessageRecord(ctx.log, {
+    thread: 'conversation',
+    text: 'Exactly at',
+    spans: [{ start: 0, end: 10, source: 'typed' }],
+  });
+
+  setSystemTime(new Date(time.getTime() + 1));
+
+  await writeOwnerMessageRecord(ctx.log, {
+    thread: 'conversation',
+    text: 'Just after',
+    spans: [{ start: 0, end: 10, source: 'typed' }],
+  });
+
+  const before = await ctx.tool.run(
+    {
+      callID: 'call-1',
+      tool: 'log.read',
+      input: { from: '2026-10-12', to: time.toISOString() },
+      toolUseID: null,
+    },
+    buildMockToolContext(),
+  );
+
+  const after = await ctx.tool.run(
+    {
+      callID: 'call-2',
+      tool: 'log.read',
+      input: { from: time.toISOString(), to: '2026-10-13' },
+      toolUseID: null,
+    },
+    buildMockToolContext(),
+  );
+
+  invariant(before.status === 'ok' && after.status === 'ok', 'both reads are accepted');
+
+  expect([before.result, after.result]).toStrictEqual([
+    {
+      entries: [expect.objectContaining({ text: 'Just before' })],
+      next: null,
+    },
+    {
+      entries: [
+        expect.objectContaining({ text: 'Exactly at' }),
+        expect.objectContaining({ text: 'Just after' }),
+      ],
+      next: null,
+    },
+  ]);
 });
 
 test('it reads one page of the entries that hold every word of a search', async () => {
