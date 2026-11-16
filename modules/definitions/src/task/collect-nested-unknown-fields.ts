@@ -6,6 +6,7 @@ const recordSchema = z.record(z.string(), z.unknown());
 const knownKeys: Readonly<Record<string, readonly string[]>> = {
   trigger: ['schedule', 'at'],
   'trigger.schedule': Object.keys(scheduleSchema.shape),
+  'trigger.schedule.every': ['minutes'],
   'trigger.schedule.window': ['from', 'until'],
   step: ['file', 'api'],
   limits: ['turns', 'dollars'],
@@ -16,11 +17,13 @@ const knownKeys: Readonly<Record<string, readonly string[]>> = {
 export function collectNestedUnknownFields(mapping: Readonly<Record<string, unknown>>): string[] {
   const trigger = recordSchema.safeParse(mapping['trigger']);
   const schedule = trigger.success ? recordSchema.safeParse(trigger.data['schedule']) : null;
+  const every = schedule?.success ? recordSchema.safeParse(schedule.data['every']) : null;
   const window = schedule?.success ? recordSchema.safeParse(schedule.data['window']) : null;
 
   const objects: readonly (readonly [string, Record<string, unknown> | null])[] = [
     ['trigger', trigger.success ? trigger.data : null],
     ['trigger.schedule', schedule?.success ? schedule.data : null],
+    ['trigger.schedule.every', every?.success ? every.data : null],
     ['trigger.schedule.window', window?.success ? window.data : null],
     ['step', pickRecord(mapping['step'])],
     ['limits', pickRecord(mapping['limits'])],

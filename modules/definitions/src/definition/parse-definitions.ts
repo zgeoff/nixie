@@ -69,7 +69,14 @@ export function parseDefinitions(
     .filter((path) => !taskDefinitions.paths.has(path))
     .toSorted();
 
-  requireParsable(unapplied.map((path) => [path, texts.get(path) ?? '']));
+  // A file under tasks/ that no definition applies is listed and never read.
+  const readsTasks = formatVersion >= definitionsFormats.tasks;
+
+  requireParsable(
+    unapplied
+      .filter((path) => !readsTasks || !path.startsWith('tasks/'))
+      .map((path) => [path, texts.get(path) ?? '']),
+  );
 
   return {
     formatVersion,

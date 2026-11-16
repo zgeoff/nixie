@@ -32,6 +32,24 @@ test('it reads the format version and the persona, and lists every other file un
   });
 });
 
+test('it lists a malformed yaml file under tasks/ unapplied and refuses nothing', () => {
+  const files = new Map([
+    ['nixie.yaml', new TextEncoder().encode('format: 4\n')],
+    ['persona.md', new TextEncoder().encode('# Persona\n')],
+    ['tasks/unused.yaml', new TextEncoder().encode('value: [')],
+    ['tasks/morning/task.yaml', new TextEncoder().encode('name: Morning\nbrief: Plan the day.\n')],
+    ['tasks/morning/spare.yaml', new TextEncoder().encode('value: [')],
+  ]);
+
+  const parsed = parseDefinitions(
+    { contentHash: 'c', files, revision: 'r', repository: null, skipped: [] },
+    buildTestTaskSeed(),
+  );
+
+  expect(parsed.unapplied).toStrictEqual(['tasks/morning/spare.yaml', 'tasks/unused.yaml']);
+  expect(parsed.tasks.map((task) => task.id)).toStrictEqual(['morning']);
+});
+
 test('it refuses definitions without a manifest', () => {
   const files = new Map([['persona.md', new TextEncoder().encode('# Persona\n')]]);
 

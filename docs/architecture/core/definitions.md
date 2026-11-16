@@ -275,13 +275,15 @@ list each file's path and fault code:
 | `bad_definition`           | `task.yaml`       | text that is not a mapping, a wrong value in a key of the definition, or a step file the folder lacks |
 
 A file directly under `tasks/`, a nested folder, and any `.yaml` or `.md` file other than
-`task.yaml` and `instructions.md` belong to no definition, and the seed lists them as unapplied.
+`task.yaml` and `instructions.md` belong to no definition, and the seed lists them as unapplied
+without reading them, so a malformed one is no fault.
 
-The definition hash covers the parsed `task.yaml` with the defaults filled, as canonical JSON, the
-hash of `instructions.md` after the same normalisation as the persona, and the hash of the step
-file. A comment in `task.yaml` leaves the hash unchanged, and an edit of `instructions.md` changes
-it. The form omits the start keys that a file leaves out, so nothing from the configuration enters
-the hash.
+The definition hash covers the folder name, the parsed `task.yaml` with the defaults filled, as
+canonical JSON, the hash of `instructions.md` after the same normalisation as the persona, and the
+hash of the step file. Two folders with the same content hash differently, because the folder name
+is in the hash. A comment in `task.yaml` leaves the hash unchanged, and an edit of `instructions.md`
+changes it. The form omits the start keys that a file leaves out, so nothing from the configuration
+enters the hash.
 
 The seed stores each accepted version in `task_definition_versions`, keyed by its hash, with its
 form and its files. nixie never deletes a row. `readDefinitionVersion` reads one by hash and fills

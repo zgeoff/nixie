@@ -299,6 +299,7 @@ function buildTaskDefinition(
   }
 
   const parts = {
+    id: folder.id,
     form,
     instructions:
       instructions === undefined ? null : buildSHA256(normalizeInstructions(instructions)),

@@ -354,6 +354,11 @@ test.each([
     'trigger.schedule.cron',
   ],
   [
+    'trigger.schedule.every.extra',
+    'trigger:\n  schedule:\n    every:\n      minutes: 10\n      extra: true\n',
+    'trigger.schedule.every.extra',
+  ],
+  [
     'trigger.schedule.window.step',
     'trigger:\n  schedule:\n    every: day\n    window:\n      from: "08:00"\n      until: "09:00"\n      step: 5\n',
     'trigger.schedule.window.step',
@@ -446,6 +451,14 @@ test('it gives a definition another hash after an edit of its instructions', () 
   });
 
   expect(after.definitions[0]?.hash).not.toBe(before.definitions[0]?.hash);
+});
+
+test('it gives two folders with the same task.yaml their own hashes', () => {
+  const ctx = setupTest();
+  const yaml = 'name: Check the rain gauge\nbrief: Read the gauge and note the total.\n';
+  const parsed = ctx.parse({ 'tasks/first/task.yaml': yaml, 'tasks/second/task.yaml': yaml });
+
+  expect(parsed.definitions[0]?.hash).not.toBe(parsed.definitions[1]?.hash);
 });
 
 test('it gives a definition the same hash after a comment in its task.yaml', () => {
