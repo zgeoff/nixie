@@ -34,6 +34,7 @@ async function setupTest() {
     },
     defaultZone: 'Europe/London',
     credentialCount: 0,
+    pathProfileIDs: [],
     log: () => {},
     signal: stopping.signal,
   };

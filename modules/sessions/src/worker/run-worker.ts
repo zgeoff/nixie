@@ -123,6 +123,8 @@ async function runOpenWorker(
 
   const count = await readGatewayCount(deps, run);
 
+  chargeGatewayExcess(plan, run, count);
+
   const end = pickGatewayEnd(stagesEnd, count, plan.limits);
   const used = buildUsed(deps, plan, run, count);
 
@@ -370,6 +372,14 @@ async function readGatewayCount(deps: WorkerDeps, run: WorkerRun): Promise<Sandb
   );
 
   return null;
+}
+
+// The gateway's dollars are the count that holds, so the calling task pays what the guest's own
+// usage reports left out.
+function chargeGatewayExcess(plan: WorkerPlan, run: WorkerRun, count: SandboxCount | null): void {
+  if (count !== null && count.dollars > run.tally.dollars) {
+    plan.hold.onSpend(count.dollars - run.tally.dollars);
+  }
 }
 
 function buildUsed(

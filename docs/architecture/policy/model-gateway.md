@@ -214,10 +214,12 @@ zone.
 
 Each turn frame's base URL is the profile's base URL followed by `/<sandbox name>/<profile ID>`. The
 server builds it for the conversation, each task run, each worker run and the consent checker, and
-the guest changes nothing. The sandbox name is the sandbox's ID, which is also its name in the
-sandbox host. The profile ID is the gateway's route ID. The [capture](#the-tag) tag follows the
-profile ID, in the order the gateway parses. The secret still names the profile's own host, so the
-credential broker matches the request by host and sends it to the secret's upstream.
+the guest changes nothing. The gateway reads the sandbox name from the first path segment, so the
+server refuses to start when a profile's base URL has a path. The sandbox name is the sandbox's ID,
+which is also its name in the sandbox host. The profile ID is the gateway's route ID. The
+[capture](#the-tag) tag follows the profile ID, in the order the gateway parses. The secret still
+names the profile's own host, so the credential broker matches the request by host and sends it to
+the secret's upstream.
 
 ### The count of a sandbox
 

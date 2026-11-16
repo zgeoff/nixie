@@ -8,6 +8,7 @@ export interface SpendLimitsOptions {
   readonly limits: GatewayLimits;
   readonly defaultZone: string;
   readonly credentialCount: number;
+  readonly pathProfileIDs: readonly string[];
   readonly log: Logger;
   readonly signal: AbortSignal;
 
@@ -21,6 +22,7 @@ export interface SpendLimitsOptions {
 export async function startSpendLimits(options: SpendLimitsOptions): Promise<void> {
   const refusal = pickStartRefusal({
     credentialCount: options.credentialCount,
+    pathProfileIDs: options.pathProfileIDs,
     gatewayZone: null,
     defaultZone: options.defaultZone,
   });
@@ -59,6 +61,7 @@ async function tryLimits(options: SpendLimitsOptions): Promise<Attempt> {
 
   const refusal = pickStartRefusal({
     credentialCount: options.credentialCount,
+    pathProfileIDs: options.pathProfileIDs,
     gatewayZone: status.value.zone,
     defaultZone: options.defaultZone,
   });

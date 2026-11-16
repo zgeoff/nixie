@@ -21,6 +21,7 @@ function setupTest() {
     limits,
     defaultZone: 'UTC',
     credentialCount: 0,
+    pathProfileIDs: [],
     log,
     signal: stopping.signal,
     retryMs: 5,

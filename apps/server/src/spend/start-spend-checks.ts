@@ -6,7 +6,7 @@ import type { SpendInputs } from './create-spend-inputs';
 export interface SpendChecksInputs {
   readonly spend: SpendInputs | null;
   readonly config: {
-    readonly models: Pick<ModelsConfig, 'limits'>;
+    readonly models: Pick<ModelsConfig, 'limits' | 'profiles'>;
     readonly time: { readonly default_zone: string };
   };
   readonly secrets: { readonly models: ModelSecrets };
@@ -33,7 +33,14 @@ export async function startSpendChecks(
     },
     defaultZone: inputs.config.time.default_zone,
     credentialCount: Object.keys(inputs.secrets.models.model_credentials ?? {}).length,
+    pathProfileIDs: collectPathProfileIDs(inputs.config.models.profiles),
     log: inputs.log,
     signal,
   });
+}
+
+function collectPathProfileIDs(profiles: ModelsConfig['profiles']): string[] {
+  return Object.values(profiles)
+    .filter((profile) => new URL(profile.baseURL).pathname.replace(/\/+$/u, '') !== '')
+    .map((profile) => profile.id);
 }

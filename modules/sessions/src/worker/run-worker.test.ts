@@ -693,6 +693,8 @@ test('it states the gateway numbers in the result of an answered run', async () 
       used: { minutes: 0, turns: 0, tokens: 7777, dollars: 0.42 },
     },
   });
+
+  expect(ctx.spent.reduce((sum, value) => sum + value, 0)).toBe(0.42);
 });
 
 test('it ends a run at a dollar limit when the gateway found its sandbox past it', async () => {
