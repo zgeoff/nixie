@@ -17,6 +17,7 @@ import {
   startTestTasks,
 } from '@heynixie/tasks/test-utils';
 import { buildToolRegistry, findToolDeclaration, runToolCall } from '@heynixie/tools';
+import invariant from 'tiny-invariant';
 import { z } from 'zod';
 
 async function setupTest() {
@@ -120,7 +121,9 @@ async function setupTest() {
         kinds: ['task.created'],
       });
 
-      return entries.map((entry) => entry.record.payload).filter((payload) => payload['startedBy']);
+      return entries
+        .map((entry) => entry.record.payload)
+        .filter((payload) => payload['startedBy'] !== undefined);
     },
     readProposals: () =>
       readRecords(context.log, { afterSequence: 0, kinds: ['policy.action_proposed'] }),
@@ -163,6 +166,8 @@ test('it plans a second runner start with its own plan, and writes the envelope 
 
   const taskID = created?.['taskID'];
 
+  invariant(typeof taskID === 'string', 'the created record holds a task ID');
+
   expect(result.isError).toBeUndefined();
 
   expect(created).toStrictEqual(
@@ -175,7 +180,7 @@ test('it plans a second runner start with its own plan, and writes the envelope 
 
   expect(created).not.toHaveProperty('options');
 
-  const setup = await readTaskSetup(ctx.context, String(taskID));
+  const setup = await readTaskSetup(ctx.context, taskID);
 
   expect(setup).toStrictEqual({
     kind: 'started',

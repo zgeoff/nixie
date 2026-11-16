@@ -2286,13 +2286,16 @@ test('it proposes nothing for a variant call that repeats an approved action sti
   const written = await readRecords(ctx.log, { afterSequence: 0 });
 
   const proposed = written.find((entry) => entry.record.kind === 'policy.action_proposed');
+  const proposedHash = proposed?.record.payload['actionHash'];
+
+  invariant(typeof proposedHash === 'string', 'the proposal record holds an action hash');
 
   const earlierID = await ctx.queue.queue.enqueue({
     call: { callID: 'call-0', tool: 'jobs_start', input: call.input, toolUseID: null },
     run,
     decision: { outcome: 'allow', stage: 3, rule: null },
     callSequence: 1,
-    actionHash: String(proposed?.record.payload['actionHash']),
+    actionHash: proposedHash,
     deadlineAt: null,
     effects: ['send'],
   });
