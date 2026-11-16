@@ -100,6 +100,21 @@ To follow the records as nixie writes them, instead of repeating the read, call 
 with `afterSequence`. The API answers it with a live event stream, which the
 [API](../architecture/channels/api.md#reading-and-the-live-stream) describes.
 
+## See the scheduled task fire
+
+The preview runs the `preview-tick` task every 5 minutes, at each whole 5 minutes of the clock. To
+see a run, do steps 1 to 3 of
+[Send one turn and read its records](#send-one-turn-and-read-its-records), wait 6 minutes, which
+always holds one run, and do step 5. List the `task_message` records of kind `report` from the file:
+
+```bash
+jq -c '.json.records[] | select(.kind == "task_message" and .taskMessage.kind == "report")
+  | {sequence, from: .taskMessage.fromName, text: .taskMessage.text}' page.json
+```
+
+Expect at least one record from `Preview tick`. A run and the turn it wakes call the model, so a
+preview with no model access prints nothing.
+
 ## Start the next check from an empty log
 
 A reset removes every record, every memory, the conversation and every sandbox of the preview, and

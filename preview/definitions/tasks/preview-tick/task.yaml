@@ -1,0 +1,6 @@
+name: Preview tick
+brief: Say that the preview's schedule fired.
+trigger:
+  schedule:
+    every: { minutes: 5 }
+report: wake
