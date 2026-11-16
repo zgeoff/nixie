@@ -21,14 +21,12 @@ export function formatDefinitionNotice(notice: Notice): string {
 
   const name = notice.name ?? '';
 
-  if (notice.operation === 'remove') {
-    return `${verb}: ${name}${marker}.`;
+  if (notice.operation === 'undo' && !notice.hasVersion) {
+    return `${verb}: ${name}, removed${marker}.`;
   }
 
-  if (notice.rendered === null) {
-    return notice.operation === 'undo'
-      ? `${verb}: ${name}, removed.`
-      : `${verb}: ${name}${marker}.`;
+  if (notice.operation === 'remove' || notice.rendered === null) {
+    return `${verb}: ${name}${marker}.`;
   }
 
   const trigger = notice.operation === 'undo' ? `now ${notice.rendered}` : notice.rendered;

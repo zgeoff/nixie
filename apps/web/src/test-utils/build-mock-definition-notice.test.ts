@@ -8,6 +8,7 @@ test('it builds the notice of an add that is in force', () => {
     operation: 'add',
     shortID: 'k3x9m2p7qa',
     changeID: expect.any(String),
+    hasVersion: true,
     rendered: 'every Friday at 08:00',
     next: 'Fri 12 Mar',
     state: 'in_force',

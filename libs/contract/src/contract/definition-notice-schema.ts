@@ -12,6 +12,9 @@ export const definitionNoticeSchema = z.object({
   shortID: z.string(),
   changeID: z.string(),
 
+  // false when the change leaves the definition with no version: a removal, or an undo of an add
+  hasVersion: z.boolean(),
+
   // the words of the change's own version; null with no trigger or when unreadable
   rendered: z.string().nullable(),
 

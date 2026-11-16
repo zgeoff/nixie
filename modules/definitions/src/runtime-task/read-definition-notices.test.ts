@@ -45,6 +45,7 @@ test('it gives an added change in force its words and its next fire', async () =
     operation: 'add',
     shortID: added.shortID,
     changeID: added.changeID,
+    hasVersion: true,
     rendered: 'every Friday at 08:00',
     next: 'Fri 12 Mar',
     state: 'in_force',
@@ -98,8 +99,36 @@ test('it gives an undo of an add the name of the definition and no trigger', asy
   expect(notices.get(undone.changeID)).toMatchObject({
     operation: 'undo',
     name: 'Water the tomatoes',
+    hasVersion: false,
     rendered: null,
     next: null,
+  });
+});
+
+test('it gives an undo that restores a file definition with no trigger its version', async () => {
+  const ctx = await setupTest();
+
+  await ctx.writeRepoTask('check-weather', 'name: Check weather\nbrief: Check it.\ntarget: task\n');
+  await ctx.seed();
+
+  const removed = await requestDefinitionChange(ctx.context, {
+    kind: 'undefine',
+    definitionID: 'check-weather',
+  });
+
+  invariant(removed.status === 'changed');
+
+  const undone = await undoDefinitionChange(ctx.context, removed.changeID);
+
+  invariant(undone.status === 'changed');
+
+  const notices = await ctx.readNotices([undone.changeID]);
+
+  expect(notices.get(undone.changeID)).toMatchObject({
+    operation: 'undo',
+    name: 'Check weather',
+    hasVersion: true,
+    rendered: null,
   });
 });
 

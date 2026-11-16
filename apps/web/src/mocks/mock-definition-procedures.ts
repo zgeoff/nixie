@@ -61,6 +61,7 @@ export const mockDefinitionProcedures = {
         name: target.notice.name,
         operation: 'undo',
         shortID: changeID.slice(0, 8),
+        hasVersion: target.notice.operation !== 'add',
         rendered: null,
         next: null,
         state: 'in_force',

@@ -277,9 +277,11 @@ while the server holds no definitions context, and each refusal of the undo is a
 | `ONE_SHOT_PAST`      | 409    | none                                   |
 
 A `definition.changed` record reaches the client with a `definitionNotice` field: the definition ID,
-its name, the operation, the change's IDs, the trigger in words, the next fire, the state of the
-change and whether its version is unreadable. The record kinds in the stream do not change, and a
-client that does not know the field ignores it.
+its name, the operation, the change's IDs, whether the change leaves a version, the trigger in
+words, the next fire, the state of the change and whether its version is unreadable. A client tells
+an undo that removes the definition from an undo that restores a version with no trigger by
+`hasVersion`, because both carry no trigger words. The record kinds in the stream do not change, and
+a client that does not know the field ignores it.
 
 ## Reading tasks
 

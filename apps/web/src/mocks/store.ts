@@ -118,6 +118,7 @@ const exchangeNoticeSchema = z.object({
 const definitionNoticeSchema = z.object({
   changeID: z.string(),
   definitionID: z.string(),
+  hasVersion: z.boolean().default(true),
   isUnreadable: z.boolean().default(false),
   name: z.string().nullable(),
   next: z.string().nullable().default(null),

@@ -25,7 +25,12 @@ test.each([
   ],
   [
     'a removal',
-    buildMockDefinitionNotice({ operation: 'remove', rendered: null, next: null }),
+    buildMockDefinitionNotice({
+      operation: 'remove',
+      hasVersion: false,
+      rendered: null,
+      next: null,
+    }),
     'Removed: Water the tomatoes.',
   ],
   [
@@ -35,8 +40,24 @@ test.each([
   ],
   [
     'an undo that removes the definition',
-    buildMockDefinitionNotice({ operation: 'undo', rendered: null, next: null }),
+    buildMockDefinitionNotice({ operation: 'undo', hasVersion: false, rendered: null, next: null }),
     'Undone: Water the tomatoes, removed.',
+  ],
+  [
+    'an undo that restores a version with no trigger',
+    buildMockDefinitionNotice({ operation: 'undo', rendered: null, next: null }),
+    'Undone: Water the tomatoes.',
+  ],
+  [
+    'a superseded undo that removed the definition',
+    buildMockDefinitionNotice({
+      operation: 'undo',
+      hasVersion: false,
+      rendered: null,
+      next: null,
+      state: 'superseded',
+    }),
+    'Undone: Water the tomatoes, removed (superseded).',
   ],
   [
     'a superseded add',

@@ -77,6 +77,7 @@ export async function readDefinitionNotices(
       operation: row.operation,
       shortID: row.short_id,
       changeID: row.change_id,
+      hasVersion: row.definition_hash !== null,
       rendered: rendered.rendered,
       next: isLive ? rendered.next : null,
       state: row.state,

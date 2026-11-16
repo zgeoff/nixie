@@ -223,6 +223,9 @@
                               "changeID": {
                                 "type": "string"
                               },
+                              "hasVersion": {
+                                "type": "boolean"
+                              },
                               "rendered": {
                                 "anyOf": [
                                   {
@@ -262,6 +265,7 @@
                               "operation",
                               "shortID",
                               "changeID",
+                              "hasVersion",
                               "rendered",
                               "next",
                               "state",
@@ -803,6 +807,9 @@
                                 "changeID": {
                                   "type": "string"
                                 },
+                                "hasVersion": {
+                                  "type": "boolean"
+                                },
                                 "rendered": {
                                   "anyOf": [
                                     {
@@ -842,6 +849,7 @@
                                 "operation",
                                 "shortID",
                                 "changeID",
+                                "hasVersion",
                                 "rendered",
                                 "next",
                                 "state",
@@ -24227,6 +24235,9 @@
                                     "changeID": {
                                       "type": "string"
                                     },
+                                    "hasVersion": {
+                                      "type": "boolean"
+                                    },
                                     "rendered": {
                                       "anyOf": [
                                         {
@@ -24266,6 +24277,7 @@
                                     "operation",
                                     "shortID",
                                     "changeID",
+                                    "hasVersion",
                                     "rendered",
                                     "next",
                                     "state",
@@ -24969,6 +24981,9 @@
                                     "changeID": {
                                       "type": "string"
                                     },
+                                    "hasVersion": {
+                                      "type": "boolean"
+                                    },
                                     "rendered": {
                                       "anyOf": [
                                         {
@@ -25008,6 +25023,7 @@
                                     "operation",
                                     "shortID",
                                     "changeID",
+                                    "hasVersion",
                                     "rendered",
                                     "next",
                                     "state",
