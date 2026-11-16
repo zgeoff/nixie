@@ -1,4 +1,4 @@
-import { readRatingNotes, readVersionTexts } from '@heynixie/memory';
+import { readVersionTexts } from '@heynixie/memory';
 import type { APIContext } from '../types';
 import { apiImplementer } from '../utils/api-implementer';
 import { requireCaller } from './require-caller';
@@ -11,14 +11,6 @@ export function createMemoryProcedures(context: APIContext) {
       const versions = await readVersionTexts(context.log, options.input.versions);
 
       return { versions: [...versions] };
-    }),
-
-    readRatingNotes: apiImplementer.memory.readRatingNotes.handler(async (options) => {
-      await requireCaller(context, options.context.sessionToken, options.errors.UNAUTHORIZED);
-
-      const notes = await readRatingNotes(context.log, options.input.notes);
-
-      return { notes: [...notes] };
     }),
 
     writerStatus: apiImplementer.memory.writerStatus.handler(async (options) => {

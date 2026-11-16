@@ -102,7 +102,6 @@ export async function startConversationEndpoint(
     readStore: tools.readStore,
     clock: options.context.clock,
     ownerName: options.config.owner.name,
-    agentName: options.config.agent.names[0] ?? null,
     defaultZone: options.config.time.default_zone,
   };
 

@@ -33,15 +33,13 @@ export const memoryPartDeclarations: readonly AnyPartDeclaration<ServerPartValue
   },
   {
     name: 'session_cleanup',
-    needs: ['server_parts', 'conversation_imp', 'sandbox_runner', 'memory'],
+    needs: ['server_parts', 'conversation_imp', 'sandbox_runner'],
     start: (reader) => {
       const parts = reader.get('server_parts');
-      const store = reader.get('memory');
       const conversation = reader.get('conversation_imp');
       const tasks = reader.get('sandbox_runner');
 
       return Promise.resolve(async (cause) => {
-        await store.removeMessages([cause.recordSequence]);
         await conversation.cleanupSessions(cause);
         await tasks.cleanupSessions(cause);
 

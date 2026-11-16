@@ -7,7 +7,6 @@ export interface ConversationMemory {
   readonly readStore: () => MemoryToolStore | null;
   readonly clock: Pick<Clock, 'now'>;
   readonly ownerName: string | null;
-  readonly agentName: string | null;
   readonly defaultZone: string;
 }
 
@@ -27,7 +26,6 @@ export function buildConversationMemoryTools(
   return buildMemoryTools(
     {
       recall: (request) => requireStore().recall(request),
-      rate: (request) => requireStore().rate(request),
       readTopicLines: (request) => requireStore().readTopicLines(request),
       readTopicCounts: (request) => requireStore().readTopicCounts(request),
       proposals: { listPending: () => requireStore().proposals.listPending() },
@@ -60,7 +58,6 @@ export function buildConversationMemoryTools(
     {
       clock: memory.clock,
       ownerName: memory.ownerName,
-      agentName: memory.agentName,
       defaultZone: memory.defaultZone,
     },
   );

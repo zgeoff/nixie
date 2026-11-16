@@ -1346,35 +1346,6 @@
           "minimum": -1,
           "maximum": 1
         },
-        "retrieval_items": {
-          "default": 0,
-          "type": "integer",
-          "minimum": 0,
-          "maximum": 100
-        },
-        "retrieval_self_notes": {
-          "default": 0,
-          "type": "integer",
-          "minimum": 0,
-          "maximum": 20
-        },
-        "retrieval_messages": {
-          "default": 0,
-          "type": "integer",
-          "minimum": 0,
-          "maximum": 20
-        },
-        "retrieval_min_score": {
-          "default": 0.25,
-          "type": "number",
-          "minimum": 0
-        },
-        "retrieval_min_similarity": {
-          "default": 0.38,
-          "type": "number",
-          "minimum": -1,
-          "maximum": 1
-        },
         "rebuild_tokens": {
           "default": 30000,
           "type": "integer",
