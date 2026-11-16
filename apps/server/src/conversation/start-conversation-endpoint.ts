@@ -34,6 +34,7 @@ interface ConversationSearch {
 export interface ConversationEndpointTools {
   readonly webFetch: ToolDefinition;
   readonly codeRun: ToolDefinition;
+  readonly forget: ToolDefinition;
   readonly search: ConversationSearch | null;
 
   readonly testTools: readonly ToolDefinition[];
@@ -132,6 +133,7 @@ export async function startConversationEndpoint(
       {
         webFetch: tools.webFetch,
         codeRun: tools.codeRun,
+        forget: tools.forget,
         time,
         logReaders,
         skills,

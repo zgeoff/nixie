@@ -364,6 +364,28 @@
                             "format": "date-time",
                             "x-native-type": "date"
                           },
+                          "removal": {
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string"
+                              },
+                              "sequence": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 9007199254740991
+                              },
+                              "callSequence": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 9007199254740991
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "sequence"
+                            ]
+                          },
                           "sequence": {
                             "type": "integer",
                             "minimum": 0,
@@ -870,6 +892,28 @@
                               "type": "string",
                               "format": "date-time",
                               "x-native-type": "date"
+                            },
+                            "removal": {
+                              "type": "object",
+                              "properties": {
+                                "kind": {
+                                  "type": "string"
+                                },
+                                "sequence": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 9007199254740991
+                                },
+                                "callSequence": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 9007199254740991
+                                }
+                              },
+                              "required": [
+                                "kind",
+                                "sequence"
+                              ]
                             },
                             "sequence": {
                               "type": "integer",
@@ -22816,6 +22860,28 @@
                                   "format": "date-time",
                                   "x-native-type": "date"
                                 },
+                                "removal": {
+                                  "type": "object",
+                                  "properties": {
+                                    "kind": {
+                                      "type": "string"
+                                    },
+                                    "sequence": {
+                                      "type": "integer",
+                                      "minimum": 0,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "callSequence": {
+                                      "type": "integer",
+                                      "minimum": 0,
+                                      "maximum": 9007199254740991
+                                    }
+                                  },
+                                  "required": [
+                                    "kind",
+                                    "sequence"
+                                  ]
+                                },
                                 "sequence": {
                                   "type": "integer",
                                   "minimum": 0,
@@ -23484,6 +23550,28 @@
                                   "type": "string",
                                   "format": "date-time",
                                   "x-native-type": "date"
+                                },
+                                "removal": {
+                                  "type": "object",
+                                  "properties": {
+                                    "kind": {
+                                      "type": "string"
+                                    },
+                                    "sequence": {
+                                      "type": "integer",
+                                      "minimum": 0,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "callSequence": {
+                                      "type": "integer",
+                                      "minimum": 0,
+                                      "maximum": 9007199254740991
+                                    }
+                                  },
+                                  "required": [
+                                    "kind",
+                                    "sequence"
+                                  ]
                                 },
                                 "sequence": {
                                   "type": "integer",

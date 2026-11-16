@@ -19,6 +19,7 @@ import type { Transaction } from 'kysely';
 import type { APISettings, ReadViewMemory } from '../types';
 import { defaultApprovalSettings, defaultPolicySettings } from '../utils/default-api-settings';
 import { proposalsProjection } from './proposals-projection';
+import { readForgetBodyFields } from './read-forget-body-fields';
 
 export type ProposalAPIContext = ProposalContext & {
   readonly settings?: Pick<APISettings, 'approvals' | 'policy'>;
@@ -47,6 +48,7 @@ export function buildProposalCoreDeps(
     makeActionProposalHandler({
       log: context.log,
       definitions: context.definitions,
+      readBodyFields: (_db, request) => readForgetBodyFields(context.log, request),
       writeThreadRecord,
       queueApproved: (tx, approved) => createApprovedAction(tx, context, approved),
       failHeld: (tx, row, reason) => failHeldAction(tx, context, { proposalID: row.id, reason }),

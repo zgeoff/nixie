@@ -35,6 +35,9 @@ export interface LogEntry {
   readonly recordedAt: number;
   readonly text: string | null;
   readonly isCut: boolean;
+
+  // the sequence of the tool call that a tool result answers
+  readonly callSequence?: number;
 }
 
 export interface LogPage {
@@ -195,8 +198,16 @@ function buildScannedEntry(record: LogRecord, lookup: ShortIDLookup): ScannedEnt
 
   const text = formatEntryText(record, fields, lookup);
 
+  const callSequence =
+    record.kind === 'tool_result' && record.parent !== null ? { callSequence: record.parent } : {};
+
   return {
-    entry: { ...base, role: record.kind === 'model.reply' ? 'assistant' : 'tool', text },
+    entry: {
+      ...base,
+      role: record.kind === 'model.reply' ? 'assistant' : 'tool',
+      text,
+      ...callSequence,
+    },
     plain: text,
   };
 }

@@ -153,3 +153,47 @@ test('it shows how full the context stood after a turn and marks its compaction 
   expect(marker).toHaveTextContent('compacted (auto) · 384k → 42k tokens');
   expect(list.children.item(0)?.contains(marker)).toBe(true);
 });
+
+test("it shows a removal under the turn's last reply, before the next message of yours", () => {
+  const rendered = render(
+    <ConversationList
+      entries={[]}
+      notices={[]}
+      onDiscard={() => {}}
+      onRetry={() => Promise.resolve()}
+      records={[
+        buildMockLogRecord({
+          kind: 'owner_message',
+          sequence: 1,
+          message: { text: 'Forget the locker code.' },
+        }),
+        buildMockLogRecord({ kind: 'task.step_started', sequence: 2 }),
+        buildMockLogRecord({
+          kind: 'action.outcome',
+          sequence: 3,
+          removal: { kind: 'tool_result', sequence: 2 },
+        }),
+        buildMockLogRecord({ kind: 'model.reply', sequence: 4, message: { text: 'Done.' } }),
+        buildMockLogRecord({ kind: 'task.step_committed', sequence: 5 }),
+        buildMockLogRecord({
+          kind: 'owner_message',
+          sequence: 6,
+          message: { text: 'Thanks.' },
+        }),
+      ]}
+      taskMessageLayout="line"
+    />,
+  );
+
+  const list = rendered.getByRole('list', { name: 'Conversation' });
+  const items = Array.from(list.children, (item) => item.textContent ?? '');
+
+  const positions = {
+    reply: items.findIndex((text) => text.includes('Done.')),
+    removal: items.findIndex((text) => text.includes('Removed a tool result (#2)')),
+    next: items.findIndex((text) => text.includes('Thanks.')),
+  };
+
+  expect(positions.removal).toBe(positions.reply + 1);
+  expect(positions.next).toBe(positions.removal + 1);
+});

@@ -137,6 +137,12 @@ const recordSchema = z.object({
   recall: recallSchema.optional(),
   recordedAt: z.date(),
 
+  // set on the outcome of an action that removed a record for good, which names the record and the
+  // call that asked for it
+  removal: z
+    .object({ kind: z.string(), sequence: sequenceSchema, callSequence: sequenceSchema.optional() })
+    .optional(),
+
   sequence: sequenceSchema,
 
   stop: z.object({ cancelledActions: z.array(listedActionSchema) }).optional(),

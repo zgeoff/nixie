@@ -2,6 +2,8 @@ import { buildGitHubDefinitionsRepo } from '@heynixie/definitions-repo-github';
 import { buildKagiSearch } from '@heynixie/search-kagi';
 import { startConversationEndpoint } from '../conversation/start-conversation-endpoint';
 import { refreshDefinitions } from '../definition/refresh-definitions';
+import { addLogForget } from '../forget/add-log-forget';
+import { buildLogForgetTool } from '../forget/build-log-forget-tool';
 import { buildActions } from '../test/build-actions';
 import type { AnyPartDeclaration } from '../types';
 import { buildTestSendTool, testSendKinds } from '../utils/build-test-send-tool';
@@ -59,16 +61,18 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
   {
     name: 'actions',
     needs: ['inputs', 'context'],
-    start: (parts) =>
-      Promise.resolve(
-        buildActions(parts.get('context').apiContext, {
-          log: parts.get('inputs').options.log,
-          ownerName: parts.get('inputs').options.config.owner.name,
-          testProviderURL: NIXIE_TEST_BUILD
-            ? (parts.get('inputs').options.harness?.providerURL ?? null)
-            : null,
-        }),
-      ),
+    start: (parts) => {
+      const options = parts.get('inputs').options;
+      const apiContext = parts.get('context').apiContext;
+
+      const actions = buildActions(apiContext, {
+        log: options.log,
+        ownerName: options.config.owner.name,
+        testProviderURL: NIXIE_TEST_BUILD ? (options.harness?.providerURL ?? null) : null,
+      });
+
+      return Promise.resolve(addLogForget(actions, buildLogForgetTool(apiContext)));
+    },
   },
   {
     name: 'tool_endpoint',
@@ -88,6 +92,7 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
         {
           webFetch: parts.get('web_fetch').tool,
           codeRun: parts.get('code_run').tool,
+          forget: parts.get('actions').forget.tool,
           search:
             options.search === null
               ? null

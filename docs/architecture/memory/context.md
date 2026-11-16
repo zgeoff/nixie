@@ -182,11 +182,13 @@ versions the session holds.
 The conversation's model reads its own thread of the [event log](../core/event-log.md) with the
 `log.read` tool, so it can look back past what its session holds and propose memories from older
 messages. A read returns one page of the user's messages, the replies and the tool results, oldest
-first, each with its event ID, which is the record's sequence. The model narrows a read by a time
-range or by words that every entry must hold, and pages on with the cursor the read returns. The
-tool never returns the whole log at once: a read decrypts a bounded number of records, so a search
-over a long thread can return a short page with a cursor to go on from. The tool reads only the
-calling run's thread, and the read-only rule allows it because it declares only a read.
+first, each with its event ID, which is the record's sequence. A tool result also carries the event
+ID of the call it answers, as `callEventID`, because nothing else shows the model the ID of a call.
+The model narrows a read by a time range or by words that every entry must hold, and pages on with
+the cursor the read returns. Each read returns a bounded number of entries and decrypts a bounded
+number of records, so a search over a long thread can return a short page with a cursor to go on
+from. The tool reads only the calling run's thread, and the read-only rule allows it because it
+declares only a read.
 
 The log holds outside text, such as fetched pages and pastes, so every entry counts as outside
 content to the decision point. A message of the user's reads as a rebuilt session's recent turns

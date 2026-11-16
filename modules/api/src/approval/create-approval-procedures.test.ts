@@ -803,3 +803,68 @@ test('#approvals.readProposals reads a row by its short ID and leaves out an ID 
     item.proposal.proposalID,
   ]);
 });
+
+test('#approvals.listItems shows the kind and the text of the record that a log.forget ask removes, with the counts', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.api.context);
+
+  const [message] = await writeRecords(ctx.api.context.log, [
+    {
+      kind: 'owner_message',
+      definitions: ctx.api.context.definitions(),
+      thread: 'conversation',
+      erasable: { text: 'The shed key sits under the blue pot.', spans: [] },
+    },
+  ]);
+
+  invariant(message);
+
+  const proposed = buildActionProposalInput({
+    definitions: ctx.api.context.definitions(),
+    thread: 'conversation',
+    callSequence: 1,
+    tool: 'log.forget',
+    effects: ['delete'],
+    cause: 'ask_rule',
+    input: { record: String(message.sequence) },
+    destinations: [],
+  });
+
+  await writeRecords(ctx.api.context.log, [proposed.record]);
+
+  const listed = await ctx.client.approvals.listItems();
+
+  const item = listed.items.find((entry) => entry.proposal.shortID === proposed.shortID);
+
+  expect(item?.body?.fields).toStrictEqual({
+    record: String(message.sequence),
+    kind: 'owner_message',
+    text: 'The shed key sits under the blue pot.',
+    moments: '0',
+    'memory items': '0',
+  });
+});
+
+test('#approvals.listItems shows a log.forget ask with no body when its record is not on the thread', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.api.context);
+
+  const proposed = buildActionProposalInput({
+    definitions: ctx.api.context.definitions(),
+    thread: 'conversation',
+    callSequence: 1,
+    tool: 'log.forget',
+    effects: ['delete'],
+    cause: 'ask_rule',
+    input: { record: '99999' },
+    destinations: [],
+  });
+
+  await writeRecords(ctx.api.context.log, [proposed.record]);
+
+  const read = await ctx.client.approvals.readProposals({ proposalIDs: [proposed.shortID] });
+
+  expect(read.proposals.map((entry) => entry.body)).toStrictEqual([null]);
+});

@@ -1,17 +1,15 @@
 import { CodeSandboxDestroyError } from '@heynixie/connectors';
 import { withWriteTransaction } from '@heynixie/log';
 import { ORPCError } from '@orpc/server';
-import { writeForgetStart } from '../forget/write-forget-start';
 import type { APIContext, Identity } from '../types';
 import { buildInputHash } from '../utils/build-input-hash';
 import { probeLiveIdentity } from '../utils/probe-live-identity';
 import type { ClientAction } from '../utils/read-client-action';
 import { readClientAction } from '../utils/read-client-action';
 import { writeClientAction } from '../utils/write-client-action';
-import { probeUnfinishedQueuedAction } from './probe-unfinished-queued-action';
-import { readBriefStartCalls } from './read-brief-start-calls';
-import { readReportRecords } from './read-report-records';
+import { readRecordStartCalls } from './read-record-start-calls';
 import { runRecordForgetCleanup } from './run-record-forget-cleanup';
+import { writeRecordForgetStart } from './write-record-forget-start';
 
 interface RecordForgetInput {
   readonly clientActionID: string;
@@ -31,14 +29,7 @@ export async function writeRecordForget(
   caller: Identity,
   input: RecordForgetInput,
 ): Promise<RecordForgetResult> {
-  // The search reads the brief's text, which the cleanup destroys, so it runs before the forget
-  // starts and the forget's start record keeps what it found.
-  const briefCalls = await readBriefStartCalls(context, input.sequence);
-  const reportRecords = await readReportRecords(context, input.sequence);
-
-  // The start record names each other record that the forget destroys with its target, whatever
-  // part of a task's work it holds.
-  const startCalls = [...briefCalls, ...reportRecords].toSorted((left, right) => left - right);
+  const startCalls = await readRecordStartCalls(context, input.sequence);
 
   const result = await withWriteTransaction(context.log.writer, async (tx) => {
     const [live, earlier] = await Promise.all([
@@ -53,15 +44,13 @@ export async function writeRecordForget(
       return settled;
     }
 
-    const isActionUnfinished = await probeUnfinishedQueuedAction(tx, input);
+    const start = await writeRecordForgetStart(tx, context, input, startCalls);
 
-    if (isActionUnfinished) {
-      return { status: 'action_not_finished' } as const;
+    if (start.status === 'action_not_finished') {
+      return start;
     }
 
-    const forgottenAt = await writeForgetStart(tx, context, input, startCalls);
-
-    if (forgottenAt === null) {
+    if (start.status !== 'forgotten') {
       return { status: 'not_found' } as const;
     }
 
@@ -70,11 +59,11 @@ export async function writeRecordForget(
       procedure: 'conversation.forget',
       identityID: caller.identityID,
       inputHash,
-      result: { forgottenAt },
+      result: { forgottenAt: start.forgottenAt },
       recordedAt: context.clock.now(),
     });
 
-    return { status: 'forgotten', forgottenAt } as const;
+    return start;
   });
 
   if (result.status === 'forgotten') {

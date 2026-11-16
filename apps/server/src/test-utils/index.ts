@@ -1,4 +1,5 @@
 export { buildTestConversationTools } from './build-test-conversation-tools';
+export { approveStarterRules } from './approve-starter-rules';
 export { createTestClient } from './create-test-client';
 export type { NixieOperationArgs } from '../part/build-nixie-operation-schemas';
 export { readDataFiles } from './read-data-files';
@@ -11,6 +12,7 @@ export { sendClientMessage } from './send-client-message';
 export type { ServerRecordKind } from '../part/server-record-kind';
 export type { BootFileExtras, BootFiles } from './write-boot-files';
 export { writeBootFiles } from './write-boot-files';
+export { startInProcessNixie } from './start-in-process-nixie';
 export { startTestConversation } from './start-test-conversation';
 export { createSpawnedNixie } from './create-spawned-nixie';
 export { startSpawnedNixie } from './start-spawned-nixie';

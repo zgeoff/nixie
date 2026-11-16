@@ -129,6 +129,12 @@ const exchangeNoticeSchema = z.object({
   text: z.string(),
 });
 
+const removalSchema = z.object({
+  kind: z.string(),
+  sequence: z.int(),
+  callSequence: z.int().optional(),
+});
+
 const listedActionSchema = z.object({ actionID: z.string(), tool: z.string() });
 const stopSchema = z.object({ cancelledActions: z.array(listedActionSchema) });
 const proposalRefSchema = z.object({ proposalID: z.string(), shortID: z.string() });
@@ -148,6 +154,7 @@ const records = new Collection({
     rating: ratingSchema.optional(),
     recall: recallSchema.optional(),
     recordedAt: z.date().default(() => new Date()),
+    removal: removalSchema.optional(),
     sequence: z.int().default(() => {
       mockSequence.lastSequence += 1;
 

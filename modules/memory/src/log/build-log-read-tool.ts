@@ -41,6 +41,10 @@ const logReadOutput = {
         type: 'object',
         properties: {
           eventID: { type: 'string' },
+          callEventID: {
+            type: 'string',
+            description: 'on a tool result, the eventID of the call it answers',
+          },
           role: { type: 'string', enum: ['owner', 'assistant', 'tool', 'task'] },
           recordedAt: { type: 'string', description: 'when the entry was recorded, in UTC' },
           text: { type: ['string', 'null'], description: 'null once the owner forgot it' },
@@ -71,7 +75,7 @@ export function buildLogReadTool(log: Pick<Log, 'deploymentKey' | 'writer'>): To
     name: 'log.read',
     description:
       "Returns one page of this conversation's own history, oldest first: the owner's messages, " +
-      'your replies, and tool results, each with its eventID and time. Pass from and to for a ' +
+      'your replies, and tool results, each with its eventID and time. A tool result also holds the callEventID of the call it answers. Pass from and to for a ' +
       'time range, query for entries that hold every word, and after with the next cursor for ' +
       "the next page. In the owner's messages, text inside <pasted> or <dropped> blocks was not " +
       'typed, and a <dropped-image> line stands for an image they attached, which the page ' +
@@ -121,6 +125,7 @@ export function buildLogReadTool(log: Pick<Log, 'deploymentKey' | 'writer'>): To
 function toEntryJSON(entry: LogEntry): JSONObject {
   return {
     eventID: String(entry.sequence),
+    ...(entry.callSequence === undefined ? {} : { callEventID: String(entry.callSequence) }),
     role: entry.role,
     recordedAt: formatRecordedAt(entry.recordedAt),
     text: entry.text,

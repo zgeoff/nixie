@@ -25,6 +25,8 @@ export type { QueuedAction } from './action/create-allowed-action';
 export { createAllowedAction } from './action/create-allowed-action';
 export { pickOutcome } from './action/pick-outcome';
 export { probeActionUnfinished } from './action/probe-action-unfinished';
+export type { ActionCall } from './action/read-action-calls';
+export { readActionCalls } from './action/read-action-calls';
 export { readActionCounts } from './action/read-action-counts';
 export { readCancelledActionIDs } from './action/read-cancelled-action-ids';
 export { readStopCancelledActions } from './action/read-stop-cancelled-actions';

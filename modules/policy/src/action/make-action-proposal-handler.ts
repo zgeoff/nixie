@@ -43,9 +43,29 @@ export interface ApprovedActionFacts {
   readonly deadlineAt: number | null;
 }
 
+export interface BodyFieldsRequest {
+  readonly tool: string;
+  readonly thread: string | null;
+  readonly input: JSONObject;
+}
+
+// Card fields that a tool's own records supply when the card's body is read, never stored with the
+// proposal. A tool with none answers none, and a tool whose fields cannot be read answers
+// unreadable, which leaves the card without a body.
+export type BodyFields =
+  | { readonly status: 'none' }
+  | { readonly status: 'fields'; readonly fields: Readonly<Record<string, string>> }
+  | { readonly status: 'unreadable' };
+
 export interface ActionHandlerDeps {
   readonly log: Log;
   readonly definitions: () => Definitions;
+
+  // Reads the extra card fields of a call, from the db the body is read on. Absent, no tool has any.
+  readonly readBodyFields?: (
+    db: Parameters<ProposalKindHandler['readBodies']>[0],
+    request: BodyFieldsRequest,
+  ) => Promise<BodyFields>;
 
   // Writes a record on the proposal's thread. A task that is still open takes it as an inbox record.
   readonly writeThreadRecord: (tx: Transaction<unknown>, input: RecordInput) => Promise<void>;
@@ -86,7 +106,11 @@ export function makeActionProposalHandler(deps: ActionHandlerDeps): ProposalKind
     readBodies: async (db, rows) => {
       const records = await readProposedRecords(deps, db, rows);
 
-      return new Map(rows.map((row) => [row.id, toBody(records.get(row.createdSequence))]));
+      const bodies = await Promise.all(
+        rows.map(async (row) => [row.id, await readBody(deps, db, row, records)] as const),
+      );
+
+      return new Map(bodies);
     },
     readHashes: (_db, row) => Promise.resolve({ action: row.actionHash, rule: row.ruleHash }),
     approve: (run, row, answer) => writeAnswer(deps, run, row, answer),
@@ -135,7 +159,13 @@ async function readRecordsBySequence(
   return new Map(read.map((entry) => [entry.record.sequence, entry.record]));
 }
 
-function toBody(record: LogRecord | undefined): ProposalBody | null {
+async function readBody(
+  deps: ActionHandlerDeps,
+  db: Parameters<ProposalKindHandler['readBodies']>[0],
+  row: SharedProposal,
+  records: ReadonlyMap<number, LogRecord>,
+): Promise<ProposalBody | null> {
+  const record = records.get(row.createdSequence);
   const erasable = record === undefined ? null : findErasable(record);
 
   // A forget shreds the arguments and destinations, and a card without them shows another action.
@@ -144,16 +174,16 @@ function toBody(record: LogRecord | undefined): ProposalBody | null {
   }
 
   const payload = actionProposedCodec.decode(record.payload);
-  const destinations = erasable.destinations.map((destination) => destination.value);
 
-  return {
-    sentence: buildActionProposalSentence(payload.tool, payload.effects, destinations),
-    fields: Object.fromEntries(
-      Object.entries(erasable.input).map(([name, value]) => [name, toFieldText(value)]),
-    ),
-    ruleSentence: erasable.ruleSentence ?? null,
-    approveLabel: buildActionApproveLabel(payload.tool, destinations[0]),
-  };
+  const read = await deps.readBodyFields?.(db, {
+    tool: payload.tool,
+    thread: row.thread,
+    input: toJSONObject(erasable.input),
+  });
+
+  const extra = read ?? { status: 'none' };
+
+  return extra.status === 'unreadable' ? null : toBody(payload, erasable, extra);
 }
 
 const erasableSchema = z.object({
@@ -170,6 +200,30 @@ function findErasable(record: LogRecord): z.output<typeof erasableSchema> | null
   }
 
   return erasableSchema.parse(record.erasable.fields);
+}
+
+function toJSONObject(value: Record<string, unknown>): JSONObject {
+  return JSON_OBJECT_SCHEMA.parse(value);
+}
+
+function toBody(
+  payload: ReturnType<typeof actionProposedCodec.decode>,
+  erasable: NonNullable<ReturnType<typeof findErasable>>,
+  extra: Exclude<BodyFields, { readonly status: 'unreadable' }>,
+): ProposalBody {
+  const destinations = erasable.destinations.map((destination) => destination.value);
+
+  return {
+    sentence: buildActionProposalSentence(payload.tool, payload.effects, destinations),
+    fields: {
+      ...Object.fromEntries(
+        Object.entries(erasable.input).map(([name, value]) => [name, toFieldText(value)]),
+      ),
+      ...(extra.status === 'fields' ? extra.fields : {}),
+    },
+    ruleSentence: erasable.ruleSentence ?? null,
+    approveLabel: buildActionApproveLabel(payload.tool, destinations[0]),
+  };
 }
 
 function toFieldText(value: unknown): string {
@@ -342,8 +396,4 @@ async function queueAction(
   });
 
   return { status: 'queued', actionID };
-}
-
-function toJSONObject(value: Record<string, unknown>): JSONObject {
-  return JSON_OBJECT_SCHEMA.parse(value);
 }
