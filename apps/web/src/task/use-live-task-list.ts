@@ -75,6 +75,14 @@ export function useLiveTaskList(options: LiveTaskListOptions = {}): LiveTaskList
               { cancelRefetch: false },
             );
           }
+
+          // A new task can be a definition's task, which the definition filter then offers.
+          if (record.kind === 'task.created') {
+            void queryClient.invalidateQueries(
+              { queryKey: queryUtils.definitions.listTasks.key() },
+              { cancelRefetch: false },
+            );
+          }
         },
         signal: following.signal,
         startTimer,
