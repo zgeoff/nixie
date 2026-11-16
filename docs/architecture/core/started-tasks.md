@@ -14,7 +14,10 @@ task's first [message](./task-messages.md): a `task_message` record on the task'
 the same transaction, which the creation record names by its message ID. The creation record holds
 which task started it, and the tasks projection keeps that on the task's row, so the directory finds
 every started task. A forget of the name leaves the task listed under its ID. The creation record
-holds the task's [start options](#start-options) in its plain payload too.
+holds no copy of the brief, so a forget has one record to reach. A rollback to the release before
+therefore loses the briefs of the tasks that this release started, because that release reads a
+brief only from the creation record. The creation record holds the task's
+[start options](#start-options) in its plain payload too.
 
 The creation record also holds the step key of the step that started the task. After a crash, that
 step runs again under the same key, and its model can call the start again. The start then gives
@@ -118,10 +121,13 @@ profile's credential, and the turn goes to that profile's base URL, so a profile
 [model gateway](../policy/model-gateway.md#routes) route has its replies priced on that route. The
 step runs the same turn code as the conversation's steps, with these changes:
 
-- The system prompt is the `task` prompt. In its default parts, the frame holds the task's name and
-  brief, the persona part holds the persona unless the start set `persona: none`, and the inputs and
-  instructions parts are empty. A deployment can
-  [override any of these parts](./prompts.md#overrides-from-the-definitions).
+- The system prompt is the `task` prompt. In its default parts, the frame holds the task's name, the
+  rule that nobody reads the task's plain text, and a last paragraph that tells the task to call
+  `task.report` when its brief is done and, unless the report mode is `none`, names where the report
+  goes by that target's envelope label. The persona part holds the persona unless the start set
+  `persona: none`, and the inputs and instructions parts are empty. The default frame holds no
+  brief, and the prompt is the same text on every task run and in every session of a task. A
+  deployment can [override any of these parts](./prompts.md#overrides-from-the-definitions).
 - A task started with `memory: read` gets the pinned memory and memory retrieval in its turn, as the
   conversation does. Its retrieval searches for the body of each task message it receives, its brief
   included. Any other task gets neither.

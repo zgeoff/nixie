@@ -1,5 +1,8 @@
 import { expect, mock, test } from 'bun:test';
 import { readRecords, writeRecords } from '@heynixie/log';
+import { buildTestTaskRun } from '@heynixie/tasks/test-utils';
+import { renderRunBlocks } from '../task/render-run-blocks';
+import { buildMockDefinitionBrief } from '../test-utils/build-mock-definition-brief';
 import { buildStubMemory } from '../test-utils/build-stub-memory';
 import { startTestTasks } from '../test-utils/start-test-tasks';
 import { readTurnContext } from './read-turn-context';
@@ -617,3 +620,139 @@ test('it places the items that the memory answers with, whatever the index showe
 
   expect(memory.readIndex).not.toHaveBeenCalled();
 });
+
+test("it renders the first turn of a fire-opened definition's task run with its run blocks in order, then its brief last, and names the report target in the prompt", async () => {
+  const ctx = await setupTest();
+
+  const base = buildTestTaskRun({ runID: 'k3f9c2d4-0000-0000-0000-000000000000' });
+
+  const run = {
+    ...base,
+    opened: {
+      ...base.opened,
+      reportShape: {
+        type: 'object',
+        additionalProperties: false,
+        properties: { city: { type: 'string' } },
+      } as const,
+    },
+  };
+
+  const runBlocks = renderRunBlocks(
+    run,
+    { stepKey: 'tide-tables:1', isNewSession: true },
+    {
+      zone: 'UTC',
+      details: {
+        kind: 'schedule',
+        scheduledFor: '2026-06-04T06:30:00Z',
+        startedAt: '2026-06-04T06:30:01Z',
+        isCatchUp: false,
+        skipped: [],
+        skippedCount: 0,
+        sentence: 'This task run was scheduled for Thu 4 Jun, 06:30 and started at 06:30.',
+      },
+    },
+    {
+      previousStartedAt: new Date('2026-06-03T06:30:01Z'),
+      startedAt: new Date('2026-06-04T06:30:01Z'),
+    },
+  );
+
+  const context = await readTurnContext(
+    {
+      context: ctx.tasks.context,
+      frame: { kind: 'task', startedBy: 'conversation', report: 'wake' },
+      memorySettings: ctx.memorySettings,
+      messaging: {
+        directory: [
+          {
+            taskID: 'conversation',
+            name: 'Conversation',
+            brief: 'Talks with the owner.',
+            isWokenByMessages: true,
+            speaker: 'conversation',
+          },
+          {
+            taskID: 'k3x9m2p7qa',
+            name: 'Tide tables',
+            brief: 'Find the high tides.',
+            isWokenByMessages: true,
+            speaker: 'plain_task',
+          },
+        ],
+        hopLimit: 20,
+        ownerName: 'Robin',
+        agentName: 'Aria',
+      },
+      defaultZone: 'UTC',
+    },
+    {
+      taskID: 'k3x9m2p7qa',
+      persona: '',
+      prompts: {},
+      skillCatalog: null,
+      report: { mode: 'wake', target: 'conversation' },
+      runBlocks,
+      batch: [],
+      brief: buildMockDefinitionBrief(),
+      briefPlace: 'preamble',
+      previousCore: null,
+      isNewSession: true,
+      isFirstSession: true,
+      isContinuation: false,
+    },
+  );
+
+  const tags = context.preamble
+    .join('\n')
+    .matchAll(/^<(?<tag>input name="[a-z-]+"|report-shape|task-message)/gmu);
+
+  expect([...tags].map((match) => match.groups?.['tag'])).toStrictEqual([
+    'input name="trigger"',
+    'report-shape',
+    'input name="since"',
+    'task-message',
+  ]);
+
+  expect(context.preamble.at(-1)).toStartWith(
+    '<task-message id="d4h9" from="task definition: Tide tables" kind="request"',
+  );
+
+  expect(context.systemPrompt).toInclude(
+    'with a short summary. Your report goes to Aria, in the chat with Robin. Calling it ends the task.',
+  );
+});
+
+test.each(['pinned', 'none'] as const)(
+  "it leaves a definition's brief out of the preamble when its place is %s",
+  async (briefPlace) => {
+    const ctx = await setupTest();
+
+    const context = await readTurnContext(
+      {
+        context: ctx.tasks.context,
+        frame: { kind: 'task', startedBy: 'conversation', report: 'none' },
+        memorySettings: ctx.memorySettings,
+        messaging: { directory: [], hopLimit: 20, ownerName: null, agentName: null },
+        defaultZone: 'UTC',
+      },
+      {
+        taskID: 'k3x9m2p7qa',
+        persona: '',
+        prompts: {},
+        skillCatalog: null,
+        runBlocks: null,
+        batch: [],
+        brief: buildMockDefinitionBrief(),
+        briefPlace,
+        previousCore: null,
+        isNewSession: true,
+        isFirstSession: false,
+        isContinuation: false,
+      },
+    );
+
+    expect(context.preamble).toStrictEqual([]);
+  },
+);

@@ -1,9 +1,11 @@
 import type { LogRecord } from '@heynixie/log';
 import type { PromptOverrides } from '@heynixie/prompts';
-import type { TaskBrief } from '@heynixie/tasks';
+import type { TaskBrief, TaskRunOpened } from '@heynixie/tasks';
 import { renderPinnedMemory } from '../memory/render-pinned-memory';
 import { formatMessageTime } from '../message/format-message-time';
+import type { BriefPlace } from '../session/pick-brief-place';
 import { renderBriefEnvelope } from '../session/render-brief-envelope';
+import { renderSessionPrompt } from '../session/render-session-prompt';
 import type {
   ConversationMemory,
   ConversationRun,
@@ -11,7 +13,6 @@ import type {
   MemoryLineOptions,
   MemoryRef,
 } from '../types';
-import { renderSessionPrompt } from '../utils/render-session-prompt';
 import { isCoreChanged } from './is-core-changed';
 import type { TurnRetrieval } from './read-turn-memory';
 import { readTurnMemory } from './read-turn-memory';
@@ -29,6 +30,13 @@ export interface TurnContextQuery {
 
   // the task's own brief, or null for a task with none
   readonly brief: TaskBrief | null;
+
+  // where the turn puts the brief of a definition's task run; a turn with none leaves it out
+  readonly briefPlace?: BriefPlace;
+
+  // the report of the open task run, which the task prompt names a target from; a turn with none
+  // leaves it out
+  readonly report?: TaskRunOpened['report'] | null;
 
   // the blocks of the task run, or null when the turn carries none
   readonly runBlocks: string | null;
@@ -97,6 +105,7 @@ export async function readTurnContext(
       ownerName: lines.ownerName,
       messaging: run.messaging,
       prompts: query.prompts,
+      report: query.report ?? null,
     }),
     pinnedMemory,
     preamble: renderTurnPreamble(
@@ -144,15 +153,26 @@ async function readCoreChanges(
   return renderCoreChanges(previousCore, pinned.core, { ...pinned.lines, unpinnedShortIDs, use });
 }
 
-// A brief that the release before wrote sits in no inbox record, so the first turn carries it as
-// the last block of its preamble.
+// A brief that the release before wrote and a definition's brief sit in no inbox record, so the
+// turn that their place names carries them as the last block of its preamble.
 function pickPreambleBrief(
   run: Pick<ConversationRun, 'messaging'>,
   query: TurnContextQuery,
   lines: MemoryLineOptions,
 ): string | null {
-  return query.brief?.origin === 'created' && query.isFirstSession
-    ? renderBriefEnvelope(query.brief, lines, run.messaging)
+  const brief = query.brief;
+
+  if (brief === null) {
+    return null;
+  }
+
+  const isInPreamble =
+    brief.origin === 'definition'
+      ? query.briefPlace === 'preamble'
+      : brief.origin === 'created' && query.isFirstSession;
+
+  return isInPreamble
+    ? renderBriefEnvelope(brief, { taskID: query.taskID, times: lines, messaging: run.messaging })
     : null;
 }
 

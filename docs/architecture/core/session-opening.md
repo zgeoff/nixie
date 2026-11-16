@@ -112,12 +112,42 @@ them with no free text.
 
 ## The brief
 
-A started task's opening holds its brief as a `<task-message>` envelope, placed after the status and
-before the summary. The brief shows there when no earlier session read it and the turn's inbox does
-not hold it, and it shows again in every rebuilt session, so the task never loses what it is for. A
-brief the turn's batch already holds renders there only. A task that started on the release before
-the brief became a message has its brief in its creation record, and its first session renders it
-from there.
+A task reads its brief once per session, before any other message of its thread. Where it reads it
+depends on the brief's origin:
+
+- A started task's brief is a `task_message` record. The first turn takes it as the first message of
+  its batch. A rebuilt session holds it in its recent turns when they reach back that far, and
+  otherwise pins it in the opening as a `<task-message>` envelope, placed after the memory blocks
+  and before the summary.
+- A definition's task run has a brief with no record. It is built from the open task run: the
+  `brief` of the version the task run pins, the task run's brief ID as its message ID, and the time
+  the task run opened as its time. It renders in an envelope from the label
+  `task definition: {name}`, as a request with no `reply-to`. The text sits only in the store of
+  definition versions, so a forget has no key to destroy. A definition's task with no open task run
+  has no brief, and nixie never shows the brief of an ended task run. While a definition is out of
+  force and its task has an open task run, the task shows the version that task run pins.
+- A task that the release before started holds its brief in its creation record. It renders last in
+  the preamble of the first session, and pinned in every rebuilt one.
+
+A definition's brief renders by the first row that applies:
+
+| The case                                                                           | Where the brief renders |
+| ---------------------------------------------------------------------------------- | ----------------------- |
+| the first turn of a carried task run, in a session that it resumes                 | not rendered            |
+| a session that opens as a rebuild or after a compaction                            | pinned in the opening   |
+| the first turn of a task run, in a new first session or at the step that opened it | last in the preamble    |
+| any later turn of a resumed session                                                | not rendered            |
+
+One function decides the row once per turn, and the preamble and the opening both follow its answer,
+so the model reads the brief at most once. A rerun of a task run's first step renders the same brief
+ID, because the ID belongs to the task run. A carried task run copies the ID of the task run it
+carries.
+
+A rebuilt or compacted session also pins the open task run's run blocks, in the order trigger,
+report shape, since, right after the memory blocks and before the brief, so a summary of the turns
+cannot drop the times that the task run's log reads need. That turn's preamble then holds no run
+blocks. A first session and a resumed turn keep the run blocks in the preamble, which comes before
+the brief that has no record.
 
 ## The opening record
 

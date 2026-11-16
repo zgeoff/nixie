@@ -151,3 +151,43 @@ test('it reads a session with no images as having room for any message', async (
 
   expect(isFull).toBeFalse();
 });
+
+test('it reads the session as full when a silent fire comes before the first message that takes its images past 100', async () => {
+  const ctx = await setupTest();
+
+  const inbox = await writeRecords(ctx.run.context.log, [
+    {
+      kind: 'trigger.fired',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'water-the-tomatoes',
+      payload: {
+        definitionID: 'call-the-dentist',
+        definitionHash: 'hash-1',
+        source: 'at',
+        dedupeKey: 'key-1',
+        kind: 'at',
+        scheduledFor: '2027-03-09T03:00:00.000Z',
+        firedAt: '2027-03-09T03:00:00.000Z',
+        isCatchUp: false,
+        skipped: [],
+        skippedCount: 0,
+      },
+    },
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: { images: [{ mediaType: 'image/png' }] },
+      erasable: { text: 'One more icon.' },
+      attachments: [new Uint8Array(6).fill(1)],
+    },
+  ]);
+
+  const isFull = await probeSessionImagesFull(ctx.run, {
+    inbox,
+    wake: { hop: 0, cause: { kind: 'owner' } },
+    images: { bytes: 800, count: 100 },
+  });
+
+  expect(isFull).toBeTrue();
+});

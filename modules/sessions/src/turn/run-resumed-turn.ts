@@ -4,7 +4,7 @@ import { runOverflowCompaction } from '../compaction/run-overflow-compaction';
 import { probeSessionImagesFull } from '../session/probe-session-images-full';
 import { readSessionTurn } from '../session/read-session-turn';
 import { buildStepResult } from '../step/build-step-result';
-import type { InboxPlan, SessionStep } from '../types';
+import type { InboxPlan, SessionStart, SessionStep } from '../types';
 import { isContextOverflow } from '../utils/is-context-overflow';
 import { runOpenedTurn } from './run-opened-turn';
 import { runPlannedTurn } from './run-planned-turn';
@@ -32,15 +32,17 @@ async function runRebuiltTurn(
   session: ResumedSession,
   reason: 'lost' | 'images',
 ): Promise<StepResult> {
-  const opened = await readSessionTurn(step, true);
+  const start: SessionStart = {
+    kind: 'rebuild',
+    reason,
+    lostSessionID: step.run.harness.session?.nameSession(session.boundary) ?? null,
+  };
+
+  const opened = await readSessionTurn(step, start);
 
   return runOpenedTurn(opened, {
     source: { definitions: step.run.context.definitions, model: step.run.model },
-    start: {
-      kind: 'rebuild',
-      reason,
-      lostSessionID: step.run.harness.session?.nameSession(session.boundary) ?? null,
-    },
+    start,
     before: session.plan.before,
   });
 }
@@ -48,7 +50,7 @@ async function runRebuiltTurn(
 async function runBoundaryTurn(step: SessionStep, session: ResumedSession): Promise<StepResult> {
   const source = { definitions: step.run.context.definitions, model: step.run.model };
 
-  const turn = await readSessionTurn(step, false);
+  const turn = await readSessionTurn(step, null);
   const resumed = await runPlannedTurn(turn, { resume: session.boundary });
 
   const ended = resumed.completed.turn.ended.at(-1);

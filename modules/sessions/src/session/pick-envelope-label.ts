@@ -1,8 +1,8 @@
 import type { TaskMessaging } from '@heynixie/tasks';
 import { match } from 'ts-pattern';
 import { envelopeLabels } from './envelope-labels';
+import { formatEnvelopeLabel } from './format-envelope-label';
 
-// Fills one pass over the template, so a task name that holds a slot such as {owner} stays text.
 export function pickEnvelopeLabel(
   messaging: Pick<TaskMessaging, 'agentName' | 'directory' | 'ownerName'>,
   senderID: string,
@@ -15,13 +15,5 @@ export function pickEnvelopeLabel(
     .with('plain_task', () => envelopeLabels.plainTask)
     .exhaustive();
 
-  const values: Readonly<Record<string, string>> = {
-    agent: messaging.agentName ?? 'nixie',
-    owner: messaging.ownerName ?? 'the owner',
-    name: sender?.name ?? senderID,
-  };
-
-  return template.replaceAll(/\{(?<slot>agent|owner|name)\}/gu, (_slot, key: string) =>
-    String(values[key]),
-  );
+  return formatEnvelopeLabel(template, messaging, sender?.name ?? senderID);
 }

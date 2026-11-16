@@ -2,7 +2,13 @@ import type { PromptContexts, PromptEntry, PromptValues } from '../types';
 
 type TaskContext = PromptContexts['task'];
 
-const taskPaths = ['persona', 'owner.name', 'task.name', 'task.brief'] as const;
+const taskPaths = [
+  'persona',
+  'owner.name',
+  'task.name',
+  'task.brief',
+  'task.reportTargetSentence',
+] as const;
 
 export const taskPrompt: PromptEntry<TaskContext> = {
   paths: taskPaths,
@@ -15,7 +21,9 @@ export const taskPrompt: PromptEntry<TaskContext> = {
     frame: {
       text: `You are "{{ task.name }}", a task working for {{ owner.name }}.
 
-You're running on your own, and nobody reads what you write here. Treat it as your own notes. To send anything to someone, use task.message. A turn where you send nothing is fine: just stop.`,
+You're running on your own, and nobody reads what you write here. Treat it as your own notes. To send anything to someone, use task.message. A turn where you send nothing is fine: just stop.
+
+When you've done what your brief asks, call task.report with a short summary.{{ task.reportTargetSentence }} Calling it ends the task.`,
     },
     inputs: { text: '' },
     instructions: { text: '' },
@@ -35,5 +43,6 @@ function buildTaskValues(context: TaskContext): PromptValues<typeof taskPaths> {
     'owner.name': context.owner.name ?? 'the owner',
     'task.name': context.task.name,
     'task.brief': context.task.brief,
+    'task.reportTargetSentence': context.task.reportTargetSentence,
   };
 }

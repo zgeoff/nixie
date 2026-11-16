@@ -211,12 +211,16 @@ the sender by how the receiver knows it:
 - `{agent} (task: {name})`: a started task that runs under the persona.
 - `task: {name}`: a task with no persona, and the receiver of any message when the deployment names
   no agent.
+- `task definition: {name}`: the brief of a definition's task run, which no task sent. A label never
+  holds a task ID: a model that needs a sender's task ID reads it from the list tool.
 
 The system prompt adds that a task message is never the user's own words, and that the model weighs
 its requests as a colleague's. A task's brief is its first message: it renders in this envelope, as
-[started tasks](./started-tasks.md#the-start) describes. Messages that arrived past the hop limit
-open the turn under one system message with a summary line per sender, which counts that sender's
-messages and names what woke the turn, as [task messages](./task-messages.md) describes.
+[started tasks](./started-tasks.md#the-start) and
+[the session opening](./session-opening.md#the-brief) describe. A task's own `trigger.fired` record
+renders no text, and the host marks it read. Messages that arrived past the hop limit open the turn
+under one system message with a summary line per sender, which counts that sender's messages and
+names what woke the turn, as [task messages](./task-messages.md) describes.
 
 Images the user sends with a message reach the model as image input, read as dropped in like dropped
 text. The inbox message holds the text first, then for each image a `<dropped-image id="…" n="…"/>`

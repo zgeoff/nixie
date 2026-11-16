@@ -34,7 +34,10 @@ read. The message tool refuses these, with the refusal as the tool's answer:
 The record's body is erasable. A task's brief is the first message of its thread: a message of kind
 `request` at hop 0 from the task that started it, which the start writes in the same transaction as
 the task's creation record. A reply to a brief answers the starter, and the reply is known without
-the starter naming it.
+the starter naming it. The brief has hop 0, so a chain of tasks does not reach the hop limit one
+message sooner. nixie sets no limit on the depth of a chain of starts: each task's own limits, the
+rule that a start never widens its starter's tools, and the deployment's spend budget bound a
+chain's cost.
 
 A message of kind `report` is written by the end of a started task's task run, which
 [reports](./started-tasks.md#reports) describes, and the message tool treats a message of that kind

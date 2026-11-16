@@ -22,7 +22,13 @@ export interface PromptContexts {
   readonly task: {
     readonly persona: string;
     readonly owner: PromptOwner;
-    readonly task: { readonly name: string; readonly brief: string };
+    readonly task: {
+      readonly name: string;
+      readonly brief: string;
+
+      // ' Your report goes to {label}.', or '' when the task run reports to no one
+      readonly reportTargetSentence: string;
+    };
   };
 }
 

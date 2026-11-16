@@ -16,6 +16,7 @@ import {
   writeTaskLimitRaise,
 } from '@heynixie/tasks';
 import {
+  readTestTaskProgress,
   seedDefinitionTask,
   writeTestTaskMessage,
   writeTestTriggerFire,
@@ -188,6 +189,17 @@ async function setupTest() {
       });
     },
     readKinds: (kind: string) => readRecordsByKind(host.context.log, kind),
+    readBriefIDs: async (): Promise<string[]> => {
+      const records = await readRecordsByKind(host.context.log, 'task.run_opened');
+
+      return records.map((record) => {
+        const briefID = record.payload['briefID'];
+
+        invariant(typeof briefID === 'string', 'a task run opens with a brief ID');
+
+        return briefID;
+      });
+    },
     writeLegacyOpening: (taskID: string) =>
       writeRecords(host.context.log, [
         {
@@ -2717,5 +2729,176 @@ test('it renders no since block at the first turn of a carried definition task r
 
   expect(carried?.resume?.sessionID).toBeString();
   expect(firstInput).toInclude('<input name="since">');
+  expect(firstInput).toInclude('<task-message id="');
   expect(carriedInput).not.toInclude('<input name="since">');
+  expect(carriedInput).not.toInclude('<task-message id="');
+});
+
+test("it sends no text for the fire that opens a definition task run, marks the fire read, and renders the run's blocks and brief", async () => {
+  const ctx = await setupTest();
+
+  const taskID = await ctx.writeDefinitionTask({
+    definitionID: 'water-the-tomatoes',
+    definitionHash: 'hash-1',
+    version: { name: 'Water the tomatoes', brief: 'Check the soil and water what is dry.' },
+  });
+
+  const fire = await ctx.writeFire(taskID, 'hash-1', 'fire-1');
+  const runner = await ctx.startRunner();
+
+  await ctx.runNextStep(runner);
+
+  const input = ctx.guest.turns[0]?.input.map((message) => message.text).join('\n') ?? '';
+
+  const progress = await readTestTaskProgress(ctx.context, taskID);
+  const [briefID] = await ctx.readBriefIDs();
+
+  expect(input).not.toInclude('trigger.fired');
+  expect(input).toInclude('<input name="trigger">');
+
+  expect(input).toInclude(
+    `<task-message id="${String(briefID)}" from="task definition: Water the tomatoes" kind="request"`,
+  );
+
+  expect(input).toMatch(/\nCheck the soil and water what is dry\.\n<\/task-message fence="\w+">$/u);
+  expect(progress.readCursor).toBeGreaterThanOrEqual(fire);
+});
+
+test("it renders a message that waits behind a fire, and marks both read, in the first turn of a definition task run's session", async () => {
+  const ctx = await setupTest();
+
+  const taskID = await ctx.writeDefinitionTask({
+    definitionID: 'water-the-tomatoes',
+    definitionHash: 'hash-1',
+    version: { name: 'Water the tomatoes', brief: 'Check the soil and water what is dry.' },
+    policy: { wakeable: true },
+  });
+
+  await ctx.writeFire(taskID, 'hash-1', 'fire-1');
+
+  const [message] = await ctx.writeMessage(taskID, 'Skip the front bed.');
+  const runner = await ctx.startRunner();
+
+  await ctx.runNextStep(runner);
+
+  const input = ctx.guest.turns[0]?.input.map((entry) => entry.text).join('\n') ?? '';
+
+  const progress = await readTestTaskProgress(ctx.context, taskID);
+
+  expect(input).not.toInclude('trigger.fired');
+  expect(input.indexOf('Check the soil')).toBeLessThan(input.indexOf('Skip the front bed.'));
+  expect(progress.readCursor).toBeGreaterThanOrEqual(message?.sequence ?? Infinity);
+});
+
+test('it renders the brief of a definition task run once, last in the preamble, before the message that opened it, and renders the same brief ID on the rerun of its first step', async () => {
+  const ctx = await setupTest();
+
+  const failing = buildStubToolEndpoint({ failedStarts: 1 });
+
+  const taskID = await ctx.writeDefinitionTask({
+    definitionID: 'water-the-tomatoes',
+    definitionHash: 'hash-1',
+    version: { name: 'Water the tomatoes', brief: 'Check the soil and water what is dry.' },
+    policy: { wakeable: true },
+  });
+
+  await ctx.writeMessage(taskID, 'Start with the greenhouse.');
+
+  const runner = await ctx.startRunner({ tools: failing.endpoint });
+
+  await ctx.runNextStepWithNoRetryDelay(runner);
+  await ctx.runNextStep(runner);
+
+  const [briefID] = await ctx.readBriefIDs();
+
+  const input = ctx.guest.turns[0]?.input.map((entry) => entry.text).join('\n') ?? '';
+
+  expect(ctx.guest.turns).toHaveLength(1);
+  expect(input.split('<task-message id="')).toHaveLength(2);
+  expect(input).toInclude(`<task-message id="${String(briefID)}"`);
+  expect(input.indexOf('Check the soil')).toBeLessThan(input.indexOf('Start with the greenhouse.'));
+});
+
+test('it pins the brief and the run blocks of an open definition task run in the opening of its rebuilt session, and leaves the preamble none', async () => {
+  const ctx = await setupTest();
+
+  const taskID = await ctx.writeDefinitionTask({
+    definitionID: 'water-the-tomatoes',
+    definitionHash: 'hash-1',
+    version: { name: 'Water the tomatoes', brief: 'Check the soil and water what is dry.' },
+    policy: { wakeable: true },
+  });
+
+  await ctx.writeFire(taskID, 'hash-1', 'fire-1');
+
+  const runner = await ctx.startRunner();
+
+  await ctx.runNextStep(runner);
+  await ctx.writeLegacyOpening(taskID);
+  await ctx.writeMessage(taskID, 'Only the morning round, please.');
+  await ctx.runNextStep(runner);
+
+  const [briefID] = await ctx.readBriefIDs();
+
+  const rebuilt = ctx.guest.turns[1]?.input.map((entry) => entry.text).join('\n') ?? '';
+  const preambleOnly = rebuilt.slice(rebuilt.lastIndexOf('Only the morning round, please.'));
+
+  expect(rebuilt.split('<input name="trigger">')).toHaveLength(2);
+  expect(rebuilt.split(`<task-message id="${String(briefID)}"`)).toHaveLength(2);
+
+  expect(rebuilt.indexOf('<input name="trigger">')).toBeLessThan(
+    rebuilt.indexOf('<task-message id="'),
+  );
+
+  expect(preambleOnly).not.toInclude('<input name=');
+});
+
+test('it pins in the opening of a rebuilt session the brief ID that a carried definition task run copies from the run it carries', async () => {
+  const ctx = await setupTest();
+
+  const taskID = await ctx.writeDefinitionTask({
+    definitionID: 'water-the-tomatoes',
+    definitionHash: 'hash-1',
+    version: { model: 'second-look', brief: 'Check the soil and water what is dry.' },
+    policy: { limits: { turns: 25, dollars: 0.03, calls: {} }, wakeable: true },
+  });
+
+  await ctx.writeFire(taskID, 'hash-1', 'fire-1');
+
+  const runner = await ctx.startRunner();
+
+  ctx.guest.addKindReplies('worker', {
+    text: 'Checking the soil.',
+    stopReason: 'tool_use',
+    usage: {
+      uncachedInputTokens: 10_000,
+      cacheReadTokens: 0,
+      cacheWrite5mTokens: 0,
+      cacheWrite1hTokens: 0,
+      outputTokens: 0,
+    },
+    gate: () =>
+      waitForCondition(() => ctx.guest.received.some((entry) => entry.frame.type === 'interrupt')),
+  });
+
+  await ctx.runNextStep(runner);
+
+  await writeTaskLimitRaise(ctx.context, { taskID, limits: { dollars: 1 } });
+
+  await ctx.runNextStep(runner);
+  await ctx.writeLegacyOpening(taskID);
+  await ctx.writeMessage(taskID, 'Only the morning round, please.');
+  await ctx.runNextStep(runner);
+
+  const briefIDs = await ctx.readBriefIDs();
+
+  const rebuilt =
+    ctx.guest.turns
+      .at(-1)
+      ?.input.map((entry) => entry.text)
+      .join('\n') ?? '';
+
+  expect(briefIDs).toHaveLength(2);
+  expect(briefIDs[1]).toBe(briefIDs[0]);
+  expect(rebuilt).toInclude(`<task-message id="${String(briefIDs[0])}"`);
 });

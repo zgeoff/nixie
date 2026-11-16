@@ -1,8 +1,8 @@
 import type { CompactionRequest } from '@heynixie/compaction';
 import type { SessionPoint } from '@heynixie/wire';
 import { formatMessageTime } from '../message/format-message-time';
+import { renderSessionPrompt } from '../session/render-session-prompt';
 import type { SessionStep } from '../types';
-import { renderSessionPrompt } from '../utils/render-session-prompt';
 
 export interface CompactionCause {
   readonly resume: SessionPoint;
@@ -34,6 +34,7 @@ export function buildCompactionRequest(
       ownerName,
       messaging: run.messaging,
       prompts: step.definitions.prompts,
+      report: step.input.run?.opened.report ?? null,
     }),
     at: formatMessageTime(now, null, { defaultZone: run.defaultZone, now }),
     ownerName,

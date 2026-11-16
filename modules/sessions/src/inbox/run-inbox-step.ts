@@ -32,7 +32,7 @@ async function runSessionTurn(step: SessionStep, plan: InboxPlan): Promise<StepR
     await removeSummaryKeys(step.run.context.log, step.input.taskID);
   }
 
-  const opened = await readSessionTurn(step, true);
+  const opened = await readSessionTurn(step, start);
 
   const source = { definitions: step.run.context.definitions, model: step.run.model };
 

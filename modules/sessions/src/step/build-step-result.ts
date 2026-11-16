@@ -20,6 +20,10 @@ export interface CompletedTurn {
 
   readonly sent: ReadonlySet<number>;
 
+  // the sequences among those sent that render no text, so the guest never reports them read and
+  // the host acknowledges them itself
+  readonly silent: ReadonlySet<number>;
+
   readonly hasMore: boolean;
 
   readonly notedThrough: number | null;
@@ -77,9 +81,14 @@ export function buildStepResult(
   return {
     next: completed.hasMore ? 'continue' : 'wait',
     records: [...before, ...buildTurnRecords(source, completed)],
-    acknowledged: completed.turn.read
-      .map((uuid) => decodeInboxUUID(uuid))
-      .filter((sequence): sequence is number => sequence !== null && completed.sent.has(sequence)),
+    acknowledged: [
+      ...completed.turn.read
+        .map((uuid) => decodeInboxUUID(uuid))
+        .filter(
+          (sequence): sequence is number => sequence !== null && completed.sent.has(sequence),
+        ),
+      ...completed.silent,
+    ],
     sessionBoundary: completed.harness.session === null ? null : JSON.stringify(last.boundary),
   };
 }

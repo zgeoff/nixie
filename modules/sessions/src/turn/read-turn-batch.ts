@@ -5,18 +5,20 @@ import { readInboxMessages } from '../inbox/read-inbox-messages';
 import { pickTurnInbox } from './pick-turn-inbox';
 
 export interface TurnBatch {
+  // the records that the turn takes, in order, the silent ones included
   readonly records: readonly LogRecord[];
   readonly messages: readonly InboxMessage[];
+
+  // the records among them that render no message, which the host marks read itself
+  readonly silent: readonly LogRecord[];
 }
 
-export async function readTurnBatch(
+export function readTurnBatch(
   context: InboxContext,
   inbox: readonly LogRecord[],
   read: InboxRead,
 ): Promise<TurnBatch> {
   const picked = pickTurnInbox(inbox);
 
-  const messages = await readInboxMessages(context, picked, read);
-
-  return { records: picked.slice(0, messages.length), messages };
+  return readInboxMessages(context, picked, read);
 }

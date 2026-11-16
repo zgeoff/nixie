@@ -3,10 +3,22 @@ import { readRecords } from '@heynixie/log';
 import type { TaskBrief } from '../brief/task-brief';
 import type { TasksContext, TasksTables } from '../types';
 import { taskCreatedCodec } from './codec/task-created-codec';
+import { readDefinitionBriefs } from './read-definition-briefs';
 
-// The brief of each started task among the given IDs. A task with no startedBy, such as the
+// The brief of each task among the given IDs: a started task's from its record, and a definition's
+// task's from the version it shows. A task with no startedBy that is no definition's, such as the
 // conversation, the memory tasks and a harness-created task, has none and is left out.
 export async function readTaskBriefs(
+  context: Pick<TasksContext, 'log' | 'readDefinitionVersion'>,
+  taskIDs: readonly string[],
+): Promise<ReadonlyMap<string, TaskBrief>> {
+  const started = await readStartedBriefs(context, taskIDs);
+  const definitions = await readDefinitionBriefs(context, taskIDs);
+
+  return new Map([...started, ...definitions]);
+}
+
+async function readStartedBriefs(
   context: Pick<TasksContext, 'log'>,
   taskIDs: readonly string[],
 ): Promise<ReadonlyMap<string, TaskBrief>> {
