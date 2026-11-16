@@ -90,6 +90,7 @@ export interface SpawnedNixie extends BootFiles {
   readonly model: ScriptedModel;
 
   readonly checkerModel: ScriptedModel;
+  readonly workerModel: ScriptedModel;
   readonly provider: ProviderDouble;
   readonly readRecords: () => Promise<readonly TestRecord[]>;
 
@@ -144,6 +145,9 @@ interface ModelRoute {
 
 export interface SpawnedNixieOptions {
   readonly isCheckerScripted?: boolean;
+
+  // sets the worker role, on its own scripted model
+  readonly isWorkerScripted?: boolean;
 
   readonly extraConfig?: readonly string[];
 
@@ -253,7 +257,7 @@ export async function createSpawnedNixie(
   };
 }
 
-type TestDoubles = Pick<SpawnedNixie, 'model' | 'provider' | 'checkerModel'>;
+type TestDoubles = Pick<SpawnedNixie, 'model' | 'provider' | 'checkerModel' | 'workerModel'>;
 
 function startDoubles(stack: AsyncDisposableStack): TestDoubles {
   const model = startScriptedModel();
@@ -264,11 +268,15 @@ function startDoubles(stack: AsyncDisposableStack): TestDoubles {
 
   stack.defer(() => checkerModel.stop());
 
+  const workerModel = startScriptedModel();
+
+  stack.defer(() => workerModel.stop());
+
   const provider = startProviderDouble();
 
   stack.defer(() => provider.stop());
 
-  return { model, checkerModel, provider };
+  return { model, checkerModel, workerModel, provider };
 }
 
 const checkerTimeoutMs = 60 * 60 * 1000;
@@ -288,13 +296,20 @@ function buildBootExtras(options: SpawnedNixieOptions, doubles: TestDoubles) {
     definitions: [],
     hasStarterRules: true,
     ...(options.logLevel === undefined ? {} : { logLevel: options.logLevel }),
-    ...(options.isCheckerScripted === true
-      ? { roleModelURLs: { checker: doubles.checkerModel.url } }
-      : {}),
+    ...buildRoleModelExtras(options, doubles),
     ...(options.release === undefined ? {} : { sandboxAdapter: 'imp' as const }),
     ...(options.backups === undefined ? {} : { isBackupOn: options.backups }),
     ...(options.taskDefinitions === undefined ? {} : { taskDefinitions: options.taskDefinitions }),
   };
+}
+
+function buildRoleModelExtras(options: SpawnedNixieOptions, doubles: TestDoubles) {
+  const urls = {
+    ...(options.isCheckerScripted === true ? { checker: doubles.checkerModel.url } : {}),
+    ...(options.isWorkerScripted === true ? { worker: doubles.workerModel.url } : {}),
+  };
+
+  return Object.keys(urls).length === 0 ? {} : { roleModelURLs: urls };
 }
 
 type LogReader = Pick<

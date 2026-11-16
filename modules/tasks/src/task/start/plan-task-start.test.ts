@@ -564,3 +564,38 @@ test('it renders the wider log refusal as the sentence the model reads', () => {
     "You can give a task the conversation's log only when you hold it yourself, and you do not.",
   );
 });
+
+test('it gives a task worker.run only when its start lists it and its starter holds it', () => {
+  const starter = {
+    tools: ['tasks.list', 'task.message', 'time.now', 'worker.run'],
+    memory: 'none',
+    persona: 'default',
+    log: 'own',
+  } as const;
+
+  const listed = planTaskStart({ tools: ['worker.run'] }, starter, buildMockTaskStartBounds());
+  const unlisted = planTaskStart({}, starter, buildMockTaskStartBounds());
+
+  expect({
+    listed: listed.status === 'planned' ? listed.options.tools : listed,
+    unlisted: unlisted.status === 'planned' ? unlisted.options.tools : unlisted,
+  }).toStrictEqual({
+    listed: ['tasks.list', 'task.message', 'task.report', 'worker.run'],
+    unlisted: ['tasks.list', 'task.message', 'task.report', 'time.now'],
+  });
+});
+
+test('it refuses worker.run for a task whose starter lacks it', () => {
+  const planned = planTaskStart(
+    { tools: ['worker.run'] },
+    {
+      tools: ['tasks.list', 'task.message', 'time.now'],
+      memory: 'none',
+      persona: 'default',
+      log: 'own',
+    },
+    buildMockTaskStartBounds(),
+  );
+
+  expect(planned).toMatchObject({ status: 'refused', refusal: { reason: 'wider_tools' } });
+});
