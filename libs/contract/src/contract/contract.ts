@@ -8,7 +8,12 @@ import { forgetBackupSchema } from './forget-backup-schema';
 import { imageLimits } from './image-limits';
 import { imageNotFoundError } from './image-not-found-error';
 import { imageRefusedError } from './image-refused-error';
-import { actionCountSchema, listedTaskSchema, taskStateSchema } from './listed-task-schema';
+import {
+  actionCountSchema,
+  listedStateSchema,
+  listedTaskSchema,
+  taskStateSchema,
+} from './listed-task-schema';
 import { memoryViewContract } from './memory-view-contract';
 import { passkeyContract } from './passkey-contract';
 import { pauseStateSchema } from './pause-state-schema';
@@ -300,9 +305,23 @@ export const contract = {
       .output(z.object({ forgottenAt: z.date(), backup: forgetBackupSchema })),
   },
   tasks: {
-    list: signedIn.output(
-      z.object({ readAtSequence: sequenceSchema, tasks: z.array(listedTaskSchema) }),
-    ),
+    list: signedIn
+      .input(
+        z
+          .object({
+            definitionID: z.string().min(1).max(200).optional(),
+            states: z
+              .array(listedStateSchema)
+              .min(1)
+              .max(11)
+              .refine((states) => new Set(states).size === states.length, {
+                message: 'Each state may appear once',
+              })
+              .optional(),
+          })
+          .optional(),
+      )
+      .output(z.object({ readAtSequence: sequenceSchema, tasks: z.array(listedTaskSchema) })),
     read: signedIn
       .errors({ TASK_NOT_FOUND: { message: 'No task has this ID', status: 404 } })
       .input(z.object({ taskID: threadSchema }))

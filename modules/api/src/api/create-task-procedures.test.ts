@@ -2,8 +2,15 @@ import { expect, test } from 'bun:test';
 import { claimAction, runActionAttempt } from '@heynixie/actions';
 import { readRecords, writeRecords } from '@heynixie/log';
 import { registerFaultPointAction } from '@heynixie/memory/test-utils';
-import { createConversationTask, writeTaskControl } from '@heynixie/tasks';
-import { seedDefinitionTask } from '@heynixie/tasks/test-utils';
+import {
+  claimTask,
+  createConversationTask,
+  runTaskStep,
+  writeStepCommit,
+  writeTaskControl,
+  writeTaskLimitRaise,
+} from '@heynixie/tasks';
+import { seedDefinitionTask, writeTestTriggerFire } from '@heynixie/tasks/test-utils';
 import invariant from 'tiny-invariant';
 import { buildSeeder } from '../test-utils/build-seeder';
 import { buildTestClient } from '../test-utils/build-test-client';
@@ -13,10 +20,39 @@ import { defaultAPISettings } from '../utils/default-api-settings';
 
 async function setupTest() {
   const api = await startTestAPI();
+  const laptop = await createDeviceSession(api.context, 'laptop');
 
   return {
     ...api,
+    client: buildTestClient(api.url, laptop.token),
     seed: buildSeeder(api),
+
+    // fires the definition's task and runs its task run through a step that reports, then waits
+    reportDefinitionRun: async (taskID: string, definitionHash: string) => {
+      await writeTestTriggerFire(api.context, taskID, {
+        definitionHash,
+        dedupeKey: `${taskID}|${crypto.randomUUID()}`,
+      });
+
+      const claim = await claimTask(api.context, { holder: 'runner-a', leaseMs: 60_000, taskID });
+
+      invariant(claim, 'the fire is ready to claim');
+
+      await runTaskStep(api.context, claim, {
+        runStep: (input) =>
+          Promise.resolve({
+            next: 'wait',
+            records: [],
+            acknowledged: input.inbox.map((record) => record.sequence),
+            run: { activity: 'worked', report: { summary: 'Done.' } },
+          }),
+        leaseMs: 60_000,
+        logger: () => {},
+        maxStepErrors: 3,
+        retryDelayMs: 30_000,
+        maxRetryDelayMs: 300_000,
+      });
+    },
     writeMarkedTask: () =>
       writeRecords(api.context.log, [
         {
@@ -71,6 +107,7 @@ test('#tasks.list lists the conversation and each started task with its name and
       isPausedByNixie: false,
       isTakingMessages: true,
       lastActivityAt: expect.toBeValidDate(),
+      listedState: expect.toBeString(),
       name: 'Conversation',
       runner: 'conversation',
       state: expect.toBeString(),
@@ -86,6 +123,7 @@ test('#tasks.list lists the conversation and each started task with its name and
       isPausedByNixie: false,
       isTakingMessages: true,
       lastActivityAt: expect.toBeValidDate(),
+      listedState: 'idle',
       name: 'Garden plan',
       runner: 'sandbox',
       state: 'waiting',
@@ -270,6 +308,7 @@ test('#tasks.read gives one task as the list gives it', async () => {
     isPausedByNixie: false,
     isTakingMessages: true,
     lastActivityAt: expect.toBeValidDate(),
+    listedState: 'idle',
     name: 'Garden plan',
     runner: 'sandbox',
     state: 'waiting',
@@ -891,4 +930,237 @@ test('#tasks.setDisposable refuses a caller with no session', async () => {
     );
 
   expect(refused).toMatchObject({ code: 'UNAUTHORIZED' });
+});
+
+test('#tasks.list gives each task its listed state, and idle, finished and asleep apart', async () => {
+  const ctx = await setupTest();
+  const step = await ctx.seed.conversationStep();
+  const running = await ctx.seed.runningTask({ starter: step.claim, name: 'Run', brief: 'Runs.' });
+  const idle = await ctx.seed.waitingTask({ starter: step.claim, name: 'Idle', brief: 'Idles.' });
+
+  const finished = await seedDefinitionTask(ctx, {
+    definitionID: 'water-the-tomatoes',
+    definitionHash: 'hash-1',
+    version: { wakeable: true },
+    policy: { wakeable: true },
+  });
+
+  const asleep = await seedDefinitionTask(ctx, {
+    definitionID: 'prune-the-roses',
+    definitionHash: 'hash-2',
+    version: { wakeable: false },
+    policy: { wakeable: false },
+  });
+
+  await ctx.reportDefinitionRun(finished, 'hash-1');
+  await ctx.reportDefinitionRun(asleep, 'hash-2');
+
+  const listed = await ctx.client.tasks.list({});
+
+  expect(
+    listed.tasks.map((task) => [task.taskID, task.state, task.listedState]),
+  ).toIncludeAllMembers([
+    [running, 'running', 'running'],
+    [idle, 'waiting', 'idle'],
+    [finished, 'waiting', 'finished'],
+    [asleep, 'waiting', 'asleep'],
+  ]);
+});
+
+test('#tasks.list lists every task that nixie holds as paused, and keeps the stored state and an exempt task', async () => {
+  const ctx = await setupTest();
+  const step = await ctx.seed.conversationStep();
+
+  const waiting = await ctx.seed.waitingTask({
+    starter: step.claim,
+    name: 'Wait',
+    brief: 'Waits.',
+  });
+
+  const exempt = await ctx.seed.waitingTask({ starter: step.claim, name: 'Keep', brief: 'Keeps.' });
+
+  const stopped = await ctx.seed.stoppedTask({
+    starter: step.claim,
+    name: 'Stop',
+    brief: 'Stops.',
+  });
+
+  await createConversationTask(ctx.context);
+
+  await ctx.client.nixie.pause({ clientActionID: '4b2d6f8a-1c3e-4a5b-9d7f-0e2c4a6b8d1f' });
+
+  await ctx.client.tasks.resume({
+    taskID: exempt,
+    clientActionID: '7c1e3a5b-9d2f-4b6a-8e0c-2f4a6b8d1c3e',
+  });
+
+  const listed = await ctx.client.tasks.list({});
+
+  expect(
+    listed.tasks.map((task) => [task.taskID, task.state, task.listedState]),
+  ).toIncludeAllMembers([
+    ['conversation', expect.toBeString(), 'paused'],
+    [waiting, 'waiting', 'paused'],
+    [exempt, 'waiting', 'idle'],
+    [stopped, 'stopped', 'stopped'],
+  ]);
+});
+
+test('#tasks.list gives a trigger task run its fire, with a catch-up marked', async () => {
+  const ctx = await setupTest();
+
+  const taskID = await seedDefinitionTask(ctx, {
+    definitionID: 'water-the-tomatoes',
+    definitionHash: 'hash-1',
+  });
+
+  await writeTestTriggerFire(ctx.context, taskID, {
+    definitionHash: 'hash-1',
+    scheduledFor: '2027-03-11T21:00:00.000Z',
+    firedAt: '2027-03-11T21:20:00.000Z',
+    isCatchUp: true,
+  });
+
+  await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000, taskID });
+
+  const task = await ctx.client.tasks.read({ taskID });
+
+  expect([task.definitionID, task.fire]).toStrictEqual([
+    'water-the-tomatoes',
+    {
+      scheduledFor: '2027-03-11T21:00:00.000Z',
+      firedAt: '2027-03-11T21:20:00.000Z',
+      isCatchUp: true,
+    },
+  ]);
+});
+
+test('#tasks.list gives a task run that a limit raise carries the fire of its first task run', async () => {
+  const ctx = await setupTest();
+
+  const taskID = await seedDefinitionTask(ctx, {
+    definitionID: 'water-the-tomatoes',
+    definitionHash: 'hash-1',
+  });
+
+  await writeTestTriggerFire(ctx.context, taskID, {
+    definitionHash: 'hash-1',
+    scheduledFor: '2027-03-11T21:00:00.000Z',
+    firedAt: '2027-03-11T21:00:00.000Z',
+  });
+
+  const claim = await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000, taskID });
+
+  invariant(claim, 'the fire is ready to claim');
+
+  await writeStepCommit(ctx.context, claim, {
+    next: 'continue',
+    records: [],
+    acknowledged: [],
+    run: { activity: 'worked', limit: { meter: 'turns', used: 3, limit: 3 } },
+  });
+
+  await writeTaskLimitRaise(ctx.context, { taskID, limits: { turns: 6 } });
+  await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000, taskID });
+
+  const task = await ctx.client.tasks.read({ taskID });
+
+  expect(task.fire).toStrictEqual({
+    scheduledFor: '2027-03-11T21:00:00.000Z',
+    firedAt: '2027-03-11T21:00:00.000Z',
+    isCatchUp: false,
+  });
+});
+
+test('#tasks.list gives a definition task whose task run no fire opened a null fire, and a started task none', async () => {
+  const ctx = await setupTest();
+  const step = await ctx.seed.conversationStep();
+
+  const started = await ctx.seed.waitingTask({
+    starter: step.claim,
+    name: 'Wait',
+    brief: 'Waits.',
+  });
+
+  const taskID = await seedDefinitionTask(ctx, {
+    definitionID: 'water-the-tomatoes',
+    definitionHash: 'hash-1',
+  });
+
+  const listed = await ctx.client.tasks.list({});
+
+  expect(listed.tasks.find((task) => task.taskID === taskID)?.fire).toBeNull();
+  expect(listed.tasks.find((task) => task.taskID === started)).not.toHaveProperty('fire');
+});
+
+test('#tasks.list finds a task of a definition past the cap when it filters by the definition', async () => {
+  const ctx = await setupTest();
+
+  const taskID = await seedDefinitionTask(ctx, {
+    definitionID: 'water-the-tomatoes',
+    definitionHash: 'hash-1',
+  });
+
+  await writeRecords(
+    ctx.context.log,
+    Array.from({ length: 101 }, (_, index) => ({
+      kind: 'task.created',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: `garden-${index}`,
+      payload: {
+        taskID: `garden-${index}`,
+        isConversation: false,
+        state: 'waiting',
+        startedBy: 'conversation',
+      },
+      erasable: { name: `Garden bed ${index}`, brief: 'Plan one bed.' },
+    })),
+  );
+
+  const unfiltered = await ctx.client.tasks.list({});
+  const filtered = await ctx.client.tasks.list({ definitionID: 'water-the-tomatoes' });
+
+  expect(unfiltered.tasks.map((task) => task.taskID)).not.toContain(taskID);
+  expect(filtered.tasks.map((task) => task.taskID)).toStrictEqual([taskID]);
+});
+
+test('#tasks.list finds a task in a state past the cap when it filters by the state', async () => {
+  const ctx = await setupTest();
+  const step = await ctx.seed.conversationStep();
+
+  const stopped = await ctx.seed.stoppedTask({
+    starter: step.claim,
+    name: 'Stop',
+    brief: 'Stops.',
+  });
+
+  await writeRecords(
+    ctx.context.log,
+    Array.from({ length: 101 }, (_, index) => ({
+      kind: 'task.created',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: `garden-${index}`,
+      payload: {
+        taskID: `garden-${index}`,
+        isConversation: false,
+        state: 'waiting',
+        startedBy: 'conversation',
+      },
+      erasable: { name: `Garden bed ${index}`, brief: 'Plan one bed.' },
+    })),
+  );
+
+  const unfiltered = await ctx.client.tasks.list({});
+  const filtered = await ctx.client.tasks.list({ states: ['stopped', 'failed'] });
+
+  expect(unfiltered.tasks.map((task) => task.taskID)).not.toContain(stopped);
+  expect(filtered.tasks.map((task) => task.taskID)).toStrictEqual([stopped]);
+});
+
+test('#tasks.list answers a call with no input as it answers an empty input', async () => {
+  const ctx = await setupTest();
+  const withNone = await ctx.client.tasks.list();
+  const withEmpty = await ctx.client.tasks.list({});
+
+  expect(withNone.tasks).toStrictEqual(withEmpty.tasks);
 });

@@ -15,6 +15,7 @@ import { requireCaller } from '../memory/require-caller';
 import type { APIContext } from '../types';
 import { apiImplementer } from '../utils/api-implementer';
 import { readListedTasks } from './read-listed-tasks';
+import { readTaskRunFire } from './read-task-run-fire';
 
 export function createViewProcedures(context: APIContext) {
   return {
@@ -35,9 +36,11 @@ export function createViewProcedures(context: APIContext) {
         const page = read.slice(0, limit);
         const last = page.at(-1)?.ended ?? null;
 
+        const runs = await Promise.all(page.map((run) => readEndedRun(context, run)));
+
         return {
           tasks: await readPageTasks(context, page),
-          runs: page.flatMap((run) => toEndedRuns(run)),
+          runs: runs.flat(),
           next: read.length > limit && last !== null ? last.sequence : null,
         };
       }),
@@ -139,6 +142,32 @@ export function createViewProcedures(context: APIContext) {
   };
 }
 
+async function readEndedRun(context: APIContext, run: TaskRun) {
+  const ended = run.ended;
+
+  if (ended === null) {
+    return [];
+  }
+
+  return [
+    {
+      runID: run.runID,
+      taskID: run.taskID,
+      definitionID: ended.record.definitionID,
+      startedAt: run.startedAt,
+      endedAt: ended.endedAt,
+      sequence: ended.sequence,
+      cause: ended.record.cause,
+      endedBy: ended.record.endedBy,
+      carriesRunID: ended.record.carriesRunID,
+      reportID: ended.record.reportID,
+      delivery: ended.record.delivery,
+      fire: await readTaskRunFire(context, run),
+      used: { turns: ended.record.used.turns, dollars: ended.record.used.dollars },
+    },
+  ];
+}
+
 // One entry per distinct task of the page. A task of a definition that left force, with no open task
 // run, is in no directory, so its profile comes from the version that its newest ended task run pins.
 // A task with an open task run takes the profile that the task read gives it.
@@ -159,7 +188,7 @@ async function readPageTasks(context: APIContext, runs: readonly TaskRun[]) {
 
   const pinned = await readPinnedProfiles(context, runs, missing);
 
-  return readListedTasks(context, [...messaging.directory, ...pinned], taskIDs.length, taskIDs);
+  return readListedTasks(context, [...messaging.directory, ...pinned], taskIDs.length, { taskIDs });
 }
 
 async function readPinnedProfiles(
@@ -190,31 +219,6 @@ async function readPinnedProfiles(
   }
 
   return profiles;
-}
-
-function toEndedRuns(run: TaskRun) {
-  const ended = run.ended;
-
-  if (ended === null) {
-    return [];
-  }
-
-  return [
-    {
-      runID: run.runID,
-      taskID: run.taskID,
-      definitionID: ended.record.definitionID,
-      startedAt: run.startedAt,
-      endedAt: ended.endedAt,
-      sequence: ended.sequence,
-      cause: ended.record.cause,
-      endedBy: ended.record.endedBy,
-      carriesRunID: ended.record.carriesRunID,
-      reportID: ended.record.reportID,
-      delivery: ended.record.delivery,
-      used: { turns: ended.record.used.turns, dollars: ended.record.used.dollars },
-    },
-  ];
 }
 
 // A late entry names the version that fired. A skip holds no version, so it takes the name from the

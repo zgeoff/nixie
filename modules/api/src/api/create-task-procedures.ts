@@ -29,7 +29,12 @@ export function createTaskProcedures(context: APIContext) {
         directory: context.settings.taskDirectory,
       });
 
-      const listed = await readListedTasks(context, messaging.directory, listLimit);
+      const listed = await readListedTasks(
+        context,
+        messaging.directory,
+        listLimit,
+        options.input ?? {},
+      );
 
       return { tasks: listed, readAtSequence };
     }),

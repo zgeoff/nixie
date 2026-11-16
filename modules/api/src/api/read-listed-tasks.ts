@@ -1,9 +1,11 @@
 import { readActionCounts } from '@heynixie/actions';
-import type { TaskRunnerResolution, readTaskDirectory } from '@heynixie/tasks';
+import type { ListedTaskState, TaskRunnerResolution, readTaskDirectory } from '@heynixie/tasks';
 import {
   pickListedTaskState,
   pickResolvedControls,
   readListedNextRun,
+  readNewestRun,
+  readOpenRun,
   readOwnerMessageTakers,
   readTaskClosedBy,
   readTaskList,
@@ -14,20 +16,43 @@ import {
 import invariant from 'tiny-invariant';
 import { match } from 'ts-pattern';
 import type { APIContext } from '../types';
+import { pickShownTaskState } from './pick-shown-task-state';
+import { readTaskRunFire } from './read-task-run-fire';
 
 export type TaskProfiles = Awaited<ReturnType<typeof readTaskDirectory>>['directory'];
+
+export interface ListedTaskFilter {
+  readonly taskIDs?: readonly string[] | undefined;
+  readonly definitionID?: string | undefined;
+  readonly states?: readonly ListedTaskState[] | undefined;
+}
 
 export async function readListedTasks(
   context: APIContext,
   directory: TaskProfiles,
   limit: number,
-  taskIDs?: readonly string[],
+  filter: ListedTaskFilter = {},
 ) {
-  const listed = await readTaskList(
+  const states = filter.states;
+  const taskIDs = filter.taskIDs;
+
+  // A listed state exists only after the read, so a state filter reads every task, keeps the
+  // matches and then cuts to the limit.
+  const read = await readTaskList(
     context,
     { directory },
-    { callerID: null, limit, ...(taskIDs === undefined ? {} : { taskIDs }) },
+    {
+      callerID: null,
+      ...(states === undefined ? { limit } : {}),
+      ...(taskIDs === undefined ? {} : { taskIDs }),
+      ...(filter.definitionID === undefined ? {} : { definitionID: filter.definitionID }),
+    },
   );
+
+  const listed =
+    states === undefined
+      ? read
+      : await keepStates(context, read, states).then((kept) => kept.slice(0, limit));
 
   if (NIXIE_TEST_BUILD) {
     await waitAtFaultPoint('task_list.read.after', { kind: 'task', id: null });
@@ -47,10 +72,14 @@ export async function readListedTasks(
     listedIDs.map((taskID) => readTaskMark(context.log.writer.db, taskID)),
   );
 
-  const states = listed.map((task) => pickListedTaskState(task));
+  const ownStates = listed.map((task) => pickListedTaskState(task));
 
   const nextRuns = await Promise.all(
-    listed.map((task, index) => readListedNextRun(context, task, states[index] ?? task.state)),
+    listed.map((task, index) => readListedNextRun(context, task, ownStates[index] ?? task.state)),
+  );
+
+  const fires = await Promise.all(
+    listed.map((task) => (task.definitionID === null ? undefined : readTaskFire(context, task.id))),
   );
 
   const closedTasks = listed.filter((task) => task.state === 'closed');
@@ -76,11 +105,18 @@ export async function readListedTasks(
       brief: task.brief,
       closedBy: closedBy ?? undefined,
       controls: [...pickResolvedControls(runner)],
+      definitionID: task.definitionID ?? undefined,
       disposable: marks[index]?.disposable ?? null,
+      fire: fires[index],
       isPauseRequested: task.isPauseRequested,
       isPausedByNixie: pausedByNixie.has(task.id),
       isTakingMessages: takers.has(task.id),
       lastActivityAt: task.lastActivityAt,
+      listedState: pickShownTaskState(
+        task.state,
+        ownStates[index] ?? task.state,
+        pausedByNixie.has(task.id),
+      ),
       name: task.name,
       nextRunAt: nextRuns[index] ?? undefined,
       runner: toRunnerKey(runner),
@@ -90,6 +126,37 @@ export async function readListedTasks(
       waitingOn: task.waitingOn,
     };
   });
+}
+
+async function keepStates(
+  context: APIContext,
+  tasks: Awaited<ReturnType<typeof readTaskList>>,
+  states: readonly ListedTaskState[],
+) {
+  const paused = await readTasksPausedByNixie(
+    context.log.writer.db,
+    tasks.map((task) => task.id),
+  );
+
+  return tasks.filter((task) =>
+    states.includes(pickShownTaskState(task.state, pickListedTaskState(task), paused.has(task.id))),
+  );
+}
+
+// The fire of the open task run, else of the newest one. Null when it has no fire or the task has
+// no task run.
+async function readTaskFire(context: APIContext, taskID: string) {
+  const db = context.log.writer.db;
+
+  const open = await readOpenRun(db, taskID);
+
+  if (open !== null) {
+    return readTaskRunFire(context, open);
+  }
+
+  const newest = await readNewestRun(db, taskID);
+
+  return newest === null ? null : readTaskRunFire(context, newest);
 }
 
 // An unknown stored key lists as it is stored.
