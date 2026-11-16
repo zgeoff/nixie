@@ -33,12 +33,14 @@ again after you change the web client: each command builds the client once, when
 - **Clear the cookies before each test.** Every view shares the one Chrome's cookie jar, across
   files too.
 - **Before each click, call [`waitForPage`](../../../../apps/web/src/test-utils/wait-for-page.ts)
-  with the text of the data that the page fetches in the browser, such as a list row or the
-  empty-list text.** When the data arrives, React renders the list and moves each element below the
-  list. `view.click` measures where its target is, then clicks at that point a moment later. A move
-  between the two sends the click to another element. React renders fetched data only after
-  hydration, so this wait also shows that the page hydrated. Leave out `_reactListening` on
-  `document`: React sets that key before it hydrates the page's components.
+  with an expression that turns `true` once the page shows the data it fetches in the browser.**
+  Check for a list row, or for the empty-list text with `document.body.innerText.includes(...)`. The
+  helper waits for exactly `true`, so pass a check, never the text itself. When the data arrives,
+  React renders the list and moves each element below the list. `view.click` measures where its
+  target is, then clicks at that point a moment later. A move between the two sends the click to
+  another element. React renders fetched data only after hydration, so this wait also shows that the
+  page hydrated. Leave out `_reactListening` on `document`: React sets that key before it hydrates
+  the page's components.
 - **Undo in `onTestFinished` each change your suite makes to `globalThis`, such as a stubbed
   `fetch`.** The next file runs in the same process, and the preloads in the root `bunfig.toml`
   reset only what they set up.
