@@ -262,6 +262,45 @@ test('it refuses a message to a task the caller cannot message, pointing at task
   });
 });
 
+test("it refuses a reply to a brief ID of a definition's task run, which names no message", async () => {
+  const ctx = await setupTest();
+
+  await createSystemTask(ctx.context, 'planner');
+  await createConversationTask(ctx.context);
+
+  const claim = await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  invariant(claim);
+
+  const tool = buildTaskMessageTool(ctx.context, {
+    directory: [
+      {
+        taskID: 'conversation',
+        name: 'Conversation',
+        brief: 'Talks.',
+        isWokenByMessages: true,
+        speaker: 'conversation',
+      },
+    ],
+    hopLimit: 20,
+    ownerName: 'Robin',
+    agentName: null,
+  });
+
+  const outcome = await tool.run(
+    buildMockToolCall({
+      tool: 'task.message',
+      input: { to: 'conversation', kind: 'reply', body: 'Done.', replyTo: 'q4v8k2m7xt' },
+    }),
+    buildMockToolContext({ run: { thread: 'planner', stepRunID: buildStepRunID(claim) } }),
+  );
+
+  expect(outcome).toStrictEqual({
+    status: 'error',
+    message: 'replyTo names q4v8k2m7xt, which is no message sent to you',
+  });
+});
+
 test('it refuses a call that comes from no step, and sends nothing', async () => {
   const ctx = await setupTest();
 
