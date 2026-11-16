@@ -181,3 +181,27 @@ test('it offers prompt_read alone to the conversation guest when no definitions 
   expect(names).toContain('prompt_read');
   expect(names).not.toContain('prompt_write');
 });
+
+test('it keeps every tool module away from what retries an action or sets its outcome', async () => {
+  const root = join(import.meta.dir, '..', '..', '..', '..');
+
+  const writers =
+    /writeUnknownAnswer|createApprovedAction|failHeldAction|writeUnknownOutcomes|runActionAttempt|runReconcileCheck/u;
+
+  const reachers: string[] = [];
+
+  for await (const path of new Bun.Glob('{modules,adapters}/*/src/**/*.ts').scan({ cwd: root })) {
+    const isSource = !path.endsWith('.test.ts');
+    const isActionCode = /^modules\/(?:actions|api|policy)\//u.test(path);
+
+    if (isSource && !isActionCode) {
+      const text = await Bun.file(join(root, path)).text();
+
+      if (text.includes('ToolDefinition') && writers.test(text)) {
+        reachers.push(path);
+      }
+    }
+  }
+
+  expect(reachers).toStrictEqual([]);
+});

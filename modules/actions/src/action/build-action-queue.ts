@@ -2,8 +2,8 @@ import type { RunStep, TaskClaim, TasksContext } from '@heynixie/tasks';
 import { buildStepRunID } from '@heynixie/tasks';
 import type { ActionOutcome, ActionQueue } from '@heynixie/tools';
 import type { ModelView } from '../types';
-import { buildActionHash } from './build-action-hash';
 import { createAllowedAction } from './create-allowed-action';
+import { readOpenRepeat } from './read-open-repeat';
 import { waitForActionOutcome } from './wait-for-action-outcome';
 
 export interface ActionQueueBridge {
@@ -12,7 +12,14 @@ export interface ActionQueueBridge {
   readonly trackSteps: (runStep: RunStep) => RunStep;
 }
 
-export function buildActionQueue(context: TasksContext): ActionQueueBridge {
+export interface ActionQueueOptions {
+  readonly ownerName: string | null;
+}
+
+export function buildActionQueue(
+  context: TasksContext,
+  options?: ActionQueueOptions,
+): ActionQueueBridge {
   const steps = new Map<string, TaskClaim>();
 
   return {
@@ -33,15 +40,28 @@ export function buildActionQueue(context: TasksContext): ActionQueueBridge {
         const queued = await createAllowedAction(context, {
           step,
           tool: action.call.tool,
-          actionHash: buildActionHash(action.call.tool, action.call.input),
+          actionHash: action.actionHash,
           arguments: action.call.input,
           decision: action.decision,
+          callSequence: action.callSequence,
+          deadlineAt: action.deadlineAt,
+          effects: action.effects,
         });
 
         return queued.actionID;
       },
+      readOpenRepeat: (query) =>
+        readOpenRepeat(context, {
+          taskID: query.run.thread,
+          tool: query.tool,
+          arguments: query.input,
+          actionHash: query.actionHash,
+        }),
       waitForOutcome: async (actionID, timeoutMs) => {
-        const view = await waitForActionOutcome(context, actionID, { timeoutMs });
+        const view = await waitForActionOutcome(context, actionID, {
+          timeoutMs,
+          ownerName: options?.ownerName ?? null,
+        });
 
         return toActionOutcome(view);
       },

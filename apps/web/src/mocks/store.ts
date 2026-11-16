@@ -6,6 +6,7 @@ import { approvalRows } from './approval-rows';
 import { mockSequence } from './mock-sequence';
 import { passkeyChecks, passkeyRows } from './passkey-rows';
 import { pauseStore } from './pause-store';
+import { unknownOutcomeRows } from './unknown-outcome-rows';
 
 const sessions = new Collection({
   schema: z.object({
@@ -453,6 +454,7 @@ export const store = {
   retryActions,
   rules,
   approvalRows,
+  unknownOutcomeRows,
 
   // Clears records before the sessions and codes they reference; the order is deliberate.
   reset: (): void => {
@@ -468,6 +470,7 @@ export const store = {
       memoryNotices,
       memoryProposals,
       approvalRows,
+      unknownOutcomeRows,
       passkeyChecks,
       passkeyRows,
       rules,

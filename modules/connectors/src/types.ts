@@ -5,7 +5,10 @@ export type ProviderResponse =
   | { readonly kind: 'success'; readonly result: JSONObject }
   | { readonly kind: 'refused'; readonly reason: string }
   | { readonly kind: 'refused_retryable'; readonly reason: string; readonly retryAfterMs?: number }
-  | { readonly kind: 'ambiguous'; readonly reason: string };
+  | { readonly kind: 'ambiguous'; readonly reason: string }
+
+  // The provider's own execution would send to a different set than the one the policy checked.
+  | { readonly kind: 'destinations_changed'; readonly reason: string };
 
 export interface ActionAttempt {
   readonly actionID: string;
@@ -13,17 +16,41 @@ export interface ActionAttempt {
   readonly arguments: JSONObject;
   readonly attempt: number;
   readonly idempotencyKey: string;
+
+  // the destinations the policy checked for the call
+  readonly destinations: readonly string[];
 }
+
+// What a read-only check of the provider found.
+export type CheckResponse =
+  | { readonly kind: 'found'; readonly result: JSONObject }
+  | { readonly kind: 'not_found' }
+  | { readonly kind: 'inconclusive' };
 
 export interface ActionConnector {
   readonly run: (attempt: ActionAttempt) => Promise<ProviderResponse>;
   readonly retryDelaysMs?: readonly number[];
+
+  // how an action of this connector whose outcome is unknown is settled; none when absent
+  readonly reconcile?: Reconcile;
+
+  // Reads the provider and never writes to it. A connector that declares a check has it.
+  readonly check?: (attempt: ActionAttempt) => Promise<CheckResponse>;
 }
 
+// How a connector action settles an unknown outcome: a retry under the provider's idempotency key, a
+// read-only check, or none, which asks the owner. A not-found check counts after trustNegativeAfterMs.
 export type Reconcile =
-  | { readonly kind: 'idempotency_key'; readonly where: string; readonly keptFor: string }
-  | { readonly kind: 'check'; readonly action: string; readonly settleAfter: string }
+  | { readonly kind: 'idempotency_key'; readonly where: string; readonly keptForMs: number }
+  | {
+      readonly kind: 'check';
+      readonly tool: string;
+      readonly trustNegativeAfterMs?: number;
+      readonly onNotFound?: 'retry' | 'ask';
+    }
   | { readonly kind: 'none' };
+
+export const defaultTrustNegativeAfterMs = 60_000;
 
 export type ActionResponse =
   | { readonly kind: 'done'; readonly result: JSONObject }

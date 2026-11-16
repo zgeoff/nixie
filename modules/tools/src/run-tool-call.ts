@@ -1,14 +1,8 @@
-import type {
-  ContentSource,
-  Decision,
-  Definitions,
-  JSONObject,
-  Log,
-  WriteTransaction,
-} from '@heynixie/log';
+import type { ContentSource, Decision, Definitions, JSONObject, Log } from '@heynixie/log';
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import type { CallDestination, DecisionPoint, PolicyCall, PolicyDecision } from '@heynixie/policy';
 import {
+  buildActionHash,
   buildActionProposalInput,
   makeFaultSafeDecisionPoint,
   toStoredDecision,
@@ -17,21 +11,26 @@ import type { CallToolResult } from '@modelcontextprotocol/server';
 import invariant from 'tiny-invariant';
 import { callCapRefusal } from './cap/call-cap-refusal';
 import { countCapCalls } from './cap/count-cap-calls';
+import { buildMemoryVerdict, isMemoryRuleAsk } from './policy-call/build-memory-verdict';
 import { buildToolPolicyCall } from './policy-call/build-tool-policy-call';
+import { readAskedRepeat } from './policy-call/read-asked-repeat';
+import { resolveCallDeadline } from './policy-call/resolve-call-deadline';
 import { resolveCallDestinations } from './policy-call/resolve-call-destinations';
 import { resolveCallPolicyFacts } from './policy-call/resolve-call-policy-facts';
+import { toStepKey } from './policy-call/to-step-key';
+import { buildMessage } from './settle/build-message';
+import { buildTypedResult } from './settle/build-typed-result';
+import { readQueuedResult } from './settle/read-queued-result';
+import type { Settled } from './settle/types';
 import { toolCalledCodec } from './tool-called-codec';
 import { toolResultCodec } from './tool-result-codec';
 import { ToolResultRefusedError } from './types';
 import type {
   ActionQueue,
-  DirectResult,
   MemoryWriteVerdict,
   RegisteredTool,
-  ResultSources,
   SchemaCheck,
   ToolCall,
-  ToolImage,
   ToolRegistry,
   ToolRun,
 } from './types';
@@ -83,6 +82,17 @@ export async function runToolCall(
 
   const destinations = resolution.destinations;
 
+  const deadline =
+    registered !== null && run.tools.includes(call.tool)
+      ? await resolveCallDeadline(registered, call.input, run)
+      : { status: 'ok' as const, deadlineAt: null };
+
+  if (deadline.status === 'error') {
+    return writeInvalidCall(recorder, deadline.message);
+  }
+
+  const deadlineAt = deadline.deadlineAt;
+
   const facts =
     registered !== null && run.tools.includes(call.tool)
       ? await resolveCallPolicyFacts(registered, call.input, run)
@@ -92,10 +102,10 @@ export async function runToolCall(
     return writeInvalidCall(recorder, facts.message);
   }
 
-  const deadline =
+  const decisionTimeout =
     options.decisionDeadlineMs === undefined ? {} : { deadlineMs: options.decisionDeadlineMs };
 
-  const decide = makeFaultSafeDecisionPoint(options.decide, deadline);
+  const decide = makeFaultSafeDecisionPoint(options.decide, decisionTimeout);
   const policyArgs = facts?.args ?? call.input;
 
   const policyCall = buildToolPolicyCall(run, {
@@ -111,12 +121,28 @@ export async function runToolCall(
 
   const stored = toStoredDecision(policy.decision, policyCall);
 
+  const repeatOf = await readAskedRepeat({
+    registered,
+    policy,
+    call,
+    run,
+    queue: options.queue,
+    actionHash: buildActionHash({
+      tool: call.tool,
+      input: call.input,
+      destinations: destinations.map((destination) => destination.value),
+      deadlineAt,
+    }),
+  });
+
   const written = await recorder.writeCall({
     policy,
     stored,
     destinations,
     args: policyArgs,
     frame: policyCall,
+    deadlineAt,
+    repeatOf,
   });
 
   const settled = written.isCapped
@@ -129,32 +155,13 @@ export async function runToolCall(
         run,
         callSequence: written.sequence,
         shortID: written.shortID,
+        repeatOf,
+        destinations,
+        deadlineAt,
         options,
       });
 
   return recorder.writeResult(written.sequence, settled);
-}
-
-type SettledOutcome = 'result' | 'invalid' | 'denied' | 'error' | 'queued' | 'failed' | 'unknown';
-
-interface Settled {
-  readonly outcome: SettledOutcome;
-  readonly actionID: string | null;
-  readonly sources: ResultSources;
-  readonly content: JSONObject;
-  readonly reply:
-    | {
-        readonly kind: 'typed';
-        readonly result: JSONObject;
-        readonly images: readonly ToolImage[];
-      }
-    | { readonly kind: 'text'; readonly text: string; readonly isError: boolean };
-
-  // sealed under the result record's key, in order
-  readonly attachments?: readonly Uint8Array<ArrayBuffer>[];
-
-  // runs in the transaction that writes the result record
-  readonly writeBeside?: (tx: WriteTransaction, resultSequence: number) => Promise<void>;
 }
 
 interface CallPolicy {
@@ -167,6 +174,13 @@ interface CallPolicy {
 
   // the frame the call ran under, which a no_rule ask records
   readonly frame: Pick<PolicyCall, 'context' | 'definitionID' | 'sources'>;
+
+  // the time after which the call's action must not start, null when it has none
+  readonly deadlineAt: number | null;
+
+  // the open action that an earlier approval of this same call queued, which the call asks no
+  // second time
+  readonly repeatOf: string | null;
 }
 
 interface WrittenCall {
@@ -216,6 +230,9 @@ function makeCallRecorder(
               tool: call.tool,
               model: run.model.model,
               profile: run.model.profile,
+              ...(decided === null || decided.deadlineAt === null
+                ? {}
+                : { deadlineAt: decided.deadlineAt }),
             }),
             erasable: {
               input,
@@ -255,7 +272,8 @@ function makeCallRecorder(
           decided === null ||
           decided.policy.decision.outcome !== 'ask' ||
           cause === undefined ||
-          isMemoryRuleAsk(decided.policy)
+          isMemoryRuleAsk(decided.policy) ||
+          decided.repeatOf !== null
         ) {
           return { sequence: written.sequence, shortID: null, isCapped: false };
         }
@@ -275,6 +293,9 @@ function makeCallRecorder(
           destinations,
           content: registered.definition.declaration.content,
           frame: decided.frame,
+          deadlineAt: decided.deadlineAt,
+          now: options.log.writer.clock.now(),
+          ...(run.stepRunID === undefined ? {} : { stepKey: toStepKey(run.stepRunID) }),
         });
 
         await writeRecordsInTransaction(tx, options.log, [proposal.record]);
@@ -330,17 +351,6 @@ function makeCallRecorder(
   };
 }
 
-// An ask rule on memory_write makes the write a memory proposal, which the memory gate writes, so
-// the call writes no action proposal.
-function isMemoryRuleAsk(policy: PolicyDecision): boolean {
-  return (
-    policy.memoryWrite !== undefined &&
-    policy.decision.outcome === 'ask' &&
-    policy.decision.cause === 'ask_rule' &&
-    policy.decision.rule !== null
-  );
-}
-
 const trustOrder: readonly ContentSource[] = ['untrusted', 'owner_data', 'owner'];
 
 function pickLeastTrusted(sources: readonly ContentSource[]): ContentSource | null {
@@ -368,32 +378,6 @@ function toCallToolResult(settled: Settled): CallToolResult {
       })),
     ],
   };
-}
-
-interface MessageOptions {
-  readonly source?: ContentSource;
-  readonly isError?: boolean;
-  readonly actionID?: string;
-  readonly hidden?: JSONObject | undefined;
-}
-
-function buildMessage(
-  outcome: SettledOutcome,
-  message: string,
-  messageOptions: MessageOptions = {},
-): Settled {
-  return {
-    outcome,
-    actionID: messageOptions.actionID ?? null,
-    sources: { message: messageOptions.source ?? 'owner_data' },
-    content: buildHiddenFields({ message }, messageOptions.hidden),
-    reply: { kind: 'text', text: message, isError: messageOptions.isError ?? true },
-  };
-}
-
-// hidden is stored only when the tool set it to an object with 1 key or more
-function buildHiddenFields(fields: JSONObject, hidden: JSONObject | undefined): JSONObject {
-  return hidden !== undefined && Object.keys(hidden).length > 0 ? { ...fields, hidden } : fields;
 }
 
 // A tool missing from the run's list skips the schema, so its errors never show the tool to the
@@ -432,13 +416,23 @@ interface DecidedCall {
   readonly run: ToolRun;
   readonly callSequence: number;
   readonly shortID: string | null;
+  readonly repeatOf: string | null;
+  readonly destinations: readonly CallDestination[];
+  readonly deadlineAt: number | null;
   readonly options: ToolCallOptions;
 }
 
 function runDecidedCall(decided: DecidedCall): Promise<Settled> {
-  const { policy, stored, registered, shortID, ...rest } = decided;
+  const { policy, stored, registered, shortID, repeatOf, ...rest } = decided;
 
   if (policy.decision.outcome === 'ask' && !isMemoryRuleAsk(policy)) {
+    if (repeatOf !== null && registered !== null) {
+      return readQueuedResult(registered, rest.options.queue, {
+        actionID: repeatOf,
+        timeoutMs: rest.options.queuedWaitMs,
+      });
+    }
+
     return Promise.resolve(buildAskMessage(shortID));
   }
 
@@ -476,28 +470,6 @@ function buildAskMessage(shortID: string | null): Settled {
   );
 }
 
-// What the decision point said about a memory write, for the tool's own gate. A decision from a
-// declaration that did not hold memory_write, such as a snapshot from before the release that
-// changed it, gives no verdict, and the tool runs every check.
-function buildMemoryVerdict(policy: PolicyDecision): MemoryWriteVerdict | undefined {
-  const facts = policy.memoryWrite;
-  const decision = policy.decision;
-
-  if (facts === undefined) {
-    return undefined;
-  }
-
-  if (decision.outcome === 'allow' && decision.rule !== null) {
-    return { kind: 'rule-allow', rules: facts.allowing };
-  }
-
-  if (isMemoryRuleAsk(policy) && decision.rule !== null) {
-    return { kind: 'rule-ask', rule: { id: decision.rule.id, revision: decision.rule.revision } };
-  }
-
-  return { kind: 'gate' };
-}
-
 interface AllowedCall {
   readonly registered: RegisteredTool;
   readonly decision: Decision;
@@ -505,6 +477,8 @@ interface AllowedCall {
   readonly run: ToolRun;
 
   readonly callSequence: number;
+  readonly destinations: readonly CallDestination[];
+  readonly deadlineAt: number | null;
   readonly options: ToolCallOptions;
 
   readonly verdict?: MemoryWriteVerdict;
@@ -538,65 +512,24 @@ async function runDirect(allowed: AllowedCall): Promise<Settled> {
     : buildTypedResult(allowed.registered, outcome, null);
 }
 
-function buildTypedResult(
-  registered: RegisteredTool,
-  typed: DirectResult,
-  actionID: string | null,
-): Settled {
-  const result = typed.result;
-
-  if (!registered.parseOutput(result).isValid) {
-    const messageOptions = actionID === null ? {} : { actionID };
-
-    return buildMessage(
-      'error',
-      `the tool ${registered.definition.name} returned a result outside its output schema`,
-      messageOptions,
-    );
-  }
-
-  return {
-    outcome: 'result',
-    actionID,
-    sources: registered.definition.declaration.results,
-    content: buildResultFields(typed, result),
-    reply: { kind: 'typed', result, images: typed.images ?? [] },
-    ...(typed.attachments === undefined ? {} : { attachments: typed.attachments }),
-    ...(typed.writeBeside === undefined ? {} : { writeBeside: typed.writeBeside }),
-  };
-}
-
-function buildResultFields(typed: DirectResult, result: JSONObject): JSONObject {
-  return buildHiddenFields({ result: typed.record ?? result }, typed.hidden);
-}
-
 async function runQueued(allowed: AllowedCall): Promise<Settled> {
   const actionID = await allowed.options.queue.enqueue({
     call: allowed.call,
     run: allowed.run,
     decision: allowed.decision,
     callSequence: allowed.callSequence,
+    actionHash: buildActionHash({
+      tool: allowed.call.tool,
+      input: allowed.call.input,
+      destinations: allowed.destinations.map((destination) => destination.value),
+      deadlineAt: allowed.deadlineAt,
+    }),
+    deadlineAt: allowed.deadlineAt,
+    effects: allowed.registered.definition.declaration.effects,
   });
 
-  const outcome = await allowed.options.queue
-    .waitForOutcome(actionID, allowed.options.queuedWaitMs)
-    .catch(() => null);
-
-  if (outcome === null) {
-    return buildMessage('queued', `queued as ${actionID}`, { isError: false, actionID });
-  }
-
-  if (outcome.outcome === 'done') {
-    return buildTypedResult(allowed.registered, outcome, actionID);
-  }
-
-  // The tool result record keeps a cancel under failed, because the release before refuses an
-  // outcome its record codec does not list, and only the text names the cancel.
-  const recorded = outcome.outcome === 'cancelled' ? 'failed' : outcome.outcome;
-
-  return buildMessage(recorded, `action ${actionID} ${outcome.outcome}: ${outcome.reason}`, {
-    source: 'untrusted',
-    isError: false,
+  return readQueuedResult(allowed.registered, allowed.options.queue, {
     actionID,
+    timeoutMs: allowed.options.queuedWaitMs,
   });
 }

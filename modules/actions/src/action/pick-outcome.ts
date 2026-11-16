@@ -14,6 +14,10 @@ export function pickOutcome(
     return { status: 'failed', reason: 'refused' };
   }
 
+  if (response.kind === 'destinations_changed') {
+    return { status: 'failed', reason: 'destinations_changed' };
+  }
+
   if (response.kind === 'ambiguous') {
     return { status: 'unknown', reason: 'ambiguous' };
   }

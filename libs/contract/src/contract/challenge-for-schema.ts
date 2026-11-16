@@ -10,6 +10,11 @@ export const challengeForSchema = z.discriminatedUnion('kind', [
     choice: choiceSchema,
     ruleHash: z.string().optional(),
   }),
+  z.object({
+    kind: z.literal('unknown_outcome'),
+    actionID: z.string().min(1).max(200),
+    choice: z.literal('retry'),
+  }),
   z.object({ kind: z.literal('register') }),
   z.object({ kind: z.literal('revoke'), passkeyID: z.string().min(1).max(200) }),
 ]);

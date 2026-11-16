@@ -35,7 +35,7 @@ export function mapActionProposalRecord(record: EnvelopeRecord): ProposalChange 
       type: 'close',
       proposalID: answered.proposalID,
       state: answered.answer,
-      usedBy: null,
+      usedBy: answered.actionID ?? null,
       answeredBy: answered.identityID ?? null,
     };
   }

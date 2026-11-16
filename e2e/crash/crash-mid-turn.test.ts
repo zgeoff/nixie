@@ -152,7 +152,15 @@ test('it leaves the action unknown and calls no provider when nixie dies after t
 
   expect(
     records.filter((record) => record.kind === 'action.outcome').map((record) => record.payload),
-  ).toStrictEqual([{ actionID, status: 'unknown', attempt: 1, reason: 'attempt_without_result' }]);
+  ).toStrictEqual([
+    {
+      actionID,
+      status: 'unknown',
+      attempt: 1,
+      reason: 'attempt_without_result',
+      ownerReason: 'no_reconcile',
+    },
+  ]);
 
   expect(
     records
@@ -233,7 +241,15 @@ test('it leaves the action unknown and calls the provider once when nixie dies b
 
   expect(
     records.filter((record) => record.kind === 'action.outcome').map((record) => record.payload),
-  ).toStrictEqual([{ actionID, status: 'unknown', attempt: 1, reason: 'attempt_without_result' }]);
+  ).toStrictEqual([
+    {
+      actionID,
+      status: 'unknown',
+      attempt: 1,
+      reason: 'attempt_without_result',
+      ownerReason: 'no_reconcile',
+    },
+  ]);
 
   expect(
     records

@@ -1,7 +1,6 @@
 import type { ActionConnector, ProviderResponse } from '@heynixie/connectors';
-import type { JSONObject, RecordInput } from '@heynixie/log';
-import { readRecords, withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
-import { planBackoffDelay } from '@heynixie/retry';
+import type { JSONObject } from '@heynixie/log';
+import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import type { Lease, TasksContext } from '@heynixie/tasks';
 import {
   LeaseLostError,
@@ -11,23 +10,19 @@ import {
   startLeaseRenewal,
   waitAtFaultPoint,
 } from '@heynixie/tasks';
-import type { ActionRow, ActionsTables, Outcome } from '../types';
+import type { ActionRow, ActionsTables, OutcomeReason } from '../types';
+import type { ActionAttemptOptions } from './action-attempt-options';
+import type { AttemptVerdict } from './attempt-check';
 import { buildCancelledCheck } from './build-cancelled-check';
 import { buildHeldCheck } from './build-held-check';
-import { isJSONObject } from './is-json-object';
+import { buildUnknownRecords } from './build-unknown-records';
+import { defaultRetryDelaysMs } from './default-retry-delays-ms';
+import { isKeyExpired } from './is-key-expired';
+import type { Attempt, Settlement } from './leased-records';
+import { buildOutcomeRecord, readArguments, writeLeasedRecords } from './leased-records';
+import { pickAttemptStep } from './pick-attempt-step';
 import { pickOutcome } from './pick-outcome';
-
-export interface ActionAttemptOptions {
-  readonly connectors: ReadonlyMap<string, ActionConnector>;
-  readonly leaseMs: number;
-}
-
-type SettledOutcome = Exclude<Outcome, { readonly status: 'pending' }>;
-
-const attemptWithoutResult: SettledOutcome = {
-  status: 'unknown',
-  reason: 'attempt_without_result',
-};
+import { runReconcileCheck } from './run-reconcile-check';
 
 export async function runActionAttempt(
   context: TasksContext,
@@ -42,13 +37,16 @@ export async function runActionAttempt(
     .executeTakeFirstOrThrow();
 
   try {
-    await (action.attempt_open === 1
-      ? writeOutcome(
-          context,
-          { lease, action, attempt: action.attempt_count },
-          { outcome: attemptWithoutResult },
-        )
-      : runAttempt(context, { lease, action }, options));
+    if (action.status === 'unknown') {
+      await runReconcileCheck(context, { lease, action }, options);
+    } else if (action.attempt_open === 1) {
+      await writeUnknown(context, { lease, action }, options, {
+        reason: 'attempt_without_result',
+        details: {},
+      });
+    } else {
+      await runAttempt(context, { lease, action }, options);
+    }
   } catch (error) {
     if (!(error instanceof LeaseLostError)) {
       throw error;
@@ -56,72 +54,56 @@ export async function runActionAttempt(
   }
 }
 
-interface Settlement {
-  readonly outcome: SettledOutcome;
+interface UnknownResult {
+  readonly reason: OutcomeReason;
+  readonly details: JSONObject;
 
-  readonly details?: JSONObject;
+  // absent when the claim found an attempt with no result
+  readonly attempt?: number;
+
+  // when the attempt started, which the claimed row predates
+  readonly startedAt?: number;
 }
 
-interface Attempt {
-  readonly lease: Lease;
-  readonly action: ActionRow;
-  readonly attempt: number;
-}
-
-async function writeOutcome(
+// An unknown outcome is settled by what the connector declares: a retry under the same key, a
+// read-only check, or the owner's answer.
+async function writeUnknown(
   context: TasksContext,
-  attempt: Attempt,
-  settlement: Settlement,
+  claimed: Omit<Attempt, 'attempt'>,
+  options: ActionAttemptOptions,
+  unknown: UnknownResult,
 ): Promise<void> {
-  const actionID = attempt.action.action_id;
-  const outcome = settlement.outcome;
+  const attempt = {
+    ...claimed,
+    attempt: unknown.attempt ?? claimed.action.attempt_count,
+  };
 
-  await writeLeasedRecord(context, attempt.lease, {
-    record: {
-      kind: 'action.outcome',
-      definitions: context.definitions(),
-      thread: attempt.action.task_id,
-      payload: {
-        actionID,
-        status: outcome.status,
-        attempt: attempt.attempt,
-        reason: outcome.status === 'done' ? null : outcome.reason,
-      },
-      erasable: settlement.details ?? {},
+  const lastAttemptAt = unknown.startedAt ?? claimed.action.last_attempt_at;
+
+  const records = buildUnknownRecords(context, {
+    action: {
+      ...claimed.action,
+      last_attempt_at: lastAttemptAt,
+      first_attempt_at: claimed.action.first_attempt_at ?? lastAttemptAt,
     },
-    reset: true,
+    attempt: attempt.attempt,
+    reason: unknown.reason,
+    details: unknown.details,
+    connector: options.connectors.get(claimed.action.tool),
+    now: context.clock.now(),
   });
+
+  await writeLeasedRecords(context, claimed.lease, { records, reset: true });
 
   if (NIXIE_TEST_BUILD) {
-    await waitAtFaultPoint('attempt.result.after', { kind: 'action', id: actionID });
-    await waitAtFaultPoint('inbox.write.after', { kind: 'task', id: attempt.action.task_id });
+    await waitAtFaultPoint('attempt.result.after', {
+      kind: 'action',
+      id: claimed.action.action_id,
+    });
+
+    await waitAtFaultPoint('inbox.write.after', { kind: 'task', id: claimed.action.task_id });
   }
 }
-
-interface LeasedRecord {
-  readonly record: RecordInput;
-
-  readonly reset: boolean;
-}
-
-async function writeLeasedRecord(
-  context: TasksContext,
-  lease: Lease,
-  leased: LeasedRecord,
-): Promise<void> {
-  await withWriteTransaction(context.log.writer, async (tx) => {
-    await requireLease(tx, lease, context.clock.now());
-    await writeRecordsInTransaction(tx, context.log, [leased.record]);
-
-    if (leased.reset) {
-      await resetLease(tx, lease);
-    }
-  });
-}
-
-export const defaultRetryDelaysMs: readonly number[] = [1, 2, 3, 4].map((failures) =>
-  planBackoffDelay(failures, { firstMs: 30_000, maxMs: 1_800_000, factor: 4 }),
-);
 
 async function runAttempt(
   context: TasksContext,
@@ -141,79 +123,191 @@ async function runAttempt(
     return;
   }
 
-  const isStarted = await writeAttemptStarted(context, attempt);
+  if (isPastDeadline(claimed.action, context.clock.now())) {
+    await writeFailure(context, attempt, 'deadline_passed', 'the action passed its deadline');
 
-  if (!isStarted) {
     return;
   }
 
-  const response = await runConnector(context, attempt, { connector, args, options });
+  if (isKeyExpired(claimed.action, connector, context.clock.now())) {
+    await writeOutcome(
+      context,
+      { ...attempt, attempt: claimed.action.attempt_count },
+      {
+        outcome: { status: 'unknown', reason: 'ambiguous' },
+        ownerReason: 'key_expired',
+      },
+    );
+
+    return;
+  }
+
+  const verdict: AttemptVerdict =
+    options.checkAttempt === undefined
+      ? { kind: 'go', destinations: [] }
+      : await options.checkAttempt({
+          action: claimed.action,
+          arguments: args,
+          proposalID:
+            claimed.action.is_approved === 1 ? crypto.randomUUID() : claimed.action.action_id,
+        });
+
+  const step = pickAttemptStep(verdict, claimed.action);
+
+  if (step.kind === 'deny') {
+    await writeOutcome(context, attempt, {
+      outcome: { status: 'failed', reason: 'rule_denied' },
+      details: { message: step.verdict.message },
+      rule: step.verdict.rule,
+    });
+
+    return;
+  }
+
+  if (step.kind === 'hold') {
+    await writeLeasedRecords(context, attempt.lease, {
+      records: [
+        step.verdict.record,
+        {
+          kind: 'action.held',
+          definitions: context.definitions(),
+          thread: claimed.action.task_id,
+          payload: { actionID: claimed.action.action_id, proposalID: step.verdict.proposalID },
+        },
+      ],
+      reset: true,
+    });
+
+    return;
+  }
+
+  const start = await writeAttemptStarted(context, attempt);
+
+  if (start === 'past_deadline') {
+    await writeFailure(context, attempt, 'deadline_passed', 'the action passed its deadline');
+
+    return;
+  }
+
+  if (start === 'barred') {
+    return;
+  }
+
+  const startedAt = context.clock.now();
+
+  const response = await runConnector(context, attempt, {
+    connector,
+    args,
+    destinations: step.destinations,
+    options,
+  });
 
   await writeAttemptResult(context, attempt, {
     response,
+    connector,
     retryDelaysMs: connector.retryDelaysMs ?? defaultRetryDelaysMs,
+    startedAt,
+    options,
   });
 }
 
-async function readArguments(context: TasksContext, sequence: number): Promise<JSONObject | null> {
-  const [entry] = await readRecords(context.log, { afterSequence: sequence - 1, limit: 1 });
+async function writeOutcome(
+  context: TasksContext,
+  attempt: Attempt,
+  settlement: Settlement,
+): Promise<void> {
+  const actionID = attempt.action.action_id;
 
-  const erasable = entry?.record.erasable;
-  const args = erasable?.status === 'readable' ? erasable.fields['arguments'] : undefined;
-
-  return isJSONObject(args) ? args : null;
-}
-
-// A stop, a pause, a close or a pause of all of nixie can commit between the claim and the attempt's
-// start, so the start reads the cancel, the hold and the nixie pause again in its own transaction,
-// and frees the lease of an action that must not start.
-async function writeAttemptStarted(context: TasksContext, attempt: Attempt): Promise<boolean> {
-  const isStarted = await withWriteTransaction(context.log.writer, async (tx) => {
-    await requireLease(tx, attempt.lease, context.clock.now());
-
-    const action = await tx
-      .$extendTables<ActionsTables>()
-      .selectFrom('actions')
-      .innerJoin('tasks', 'tasks.task_id', 'actions.task_id')
-      .select((eb) => eb.or([buildCancelledCheck(eb), buildHeldCheck(eb)]).as('is_barred'))
-      .where('actions.action_id', '=', attempt.action.action_id)
-      .executeTakeFirstOrThrow();
-
-    const isPaused = await probeTaskPaused(tx, attempt.action.task_id);
-
-    const isBarred = action.is_barred === 1 || action.is_barred === true;
-
-    if (isBarred || isPaused) {
-      await resetLease(tx, attempt.lease);
-
-      return false;
-    }
-
-    await writeRecordsInTransaction(tx, context.log, [
-      {
-        kind: 'action.attempt_started',
-        definitions: context.definitions(),
-        thread: attempt.action.task_id,
-        payload: { actionID: attempt.action.action_id, attempt: attempt.attempt },
-      },
-    ]);
-
-    return true;
+  await writeLeasedRecords(context, attempt.lease, {
+    records: [buildOutcomeRecord(context, attempt, settlement)],
+    reset: true,
   });
 
-  if (isStarted && NIXIE_TEST_BUILD) {
+  if (NIXIE_TEST_BUILD) {
+    await waitAtFaultPoint('attempt.result.after', { kind: 'action', id: actionID });
+    await waitAtFaultPoint('inbox.write.after', { kind: 'task', id: attempt.action.task_id });
+  }
+}
+
+function isPastDeadline(action: Pick<ActionRow, 'deadline_at'>, now: number): boolean {
+  return action.deadline_at !== null && now >= action.deadline_at;
+}
+
+function writeFailure(
+  context: TasksContext,
+  attempt: Attempt,
+  reason: OutcomeReason,
+  message: string,
+): Promise<void> {
+  return writeOutcome(context, attempt, {
+    outcome: { status: 'failed', reason },
+    details: { message },
+  });
+}
+
+type AttemptStart = 'started' | 'barred' | 'past_deadline';
+
+// A stop, a pause, a close or a pause of all of nixie can commit, and the deadline can pass, while
+// the policy check runs, so the start reads them again in its own transaction. An action past its
+// deadline keeps its lease for the failure.
+async function writeAttemptStarted(context: TasksContext, attempt: Attempt): Promise<AttemptStart> {
+  const start = await withWriteTransaction(
+    context.log.writer,
+    async (tx): Promise<AttemptStart> => {
+      const now = context.clock.now();
+
+      await requireLease(tx, attempt.lease, now);
+
+      const action = await tx
+        .$extendTables<ActionsTables>()
+        .selectFrom('actions')
+        .innerJoin('tasks', 'tasks.task_id', 'actions.task_id')
+        .select((eb) => eb.or([buildCancelledCheck(eb), buildHeldCheck(eb)]).as('is_barred'))
+        .select(['actions.held_by_proposal_id', 'actions.deadline_at'])
+        .where('actions.action_id', '=', attempt.action.action_id)
+        .executeTakeFirstOrThrow();
+
+      const isPaused = await probeTaskPaused(tx, attempt.action.task_id);
+
+      const isBarred = action.is_barred === 1 || action.is_barred === true;
+
+      if (isBarred || isPaused || action.held_by_proposal_id !== null) {
+        await resetLease(tx, attempt.lease);
+
+        return 'barred';
+      }
+
+      if (isPastDeadline(action, now)) {
+        return 'past_deadline';
+      }
+
+      await writeRecordsInTransaction(tx, context.log, [
+        {
+          kind: 'action.attempt_started',
+          definitions: context.definitions(),
+          thread: attempt.action.task_id,
+          payload: { actionID: attempt.action.action_id, attempt: attempt.attempt },
+        },
+      ]);
+
+      return 'started';
+    },
+  );
+
+  if (start === 'started' && NIXIE_TEST_BUILD) {
     await waitAtFaultPoint('attempt.record.after', {
       kind: 'action',
       id: attempt.action.action_id,
     });
   }
 
-  return isStarted;
+  return start;
 }
 
 interface ConnectorCall {
   readonly connector: ActionConnector;
   readonly args: JSONObject;
+  readonly destinations: readonly string[];
   readonly options: ActionAttemptOptions;
 }
 
@@ -232,6 +326,7 @@ async function runConnector(
       arguments: call.args,
       attempt: attempt.attempt,
       idempotencyKey: attempt.action.action_id,
+      destinations: call.destinations,
     });
   } catch (error) {
     return { kind: 'ambiguous', reason: error instanceof Error ? error.message : String(error) };
@@ -242,7 +337,10 @@ async function runConnector(
 
 interface AttemptResult {
   readonly response: ProviderResponse;
+  readonly connector: ActionConnector;
   readonly retryDelaysMs: readonly number[];
+  readonly startedAt: number;
+  readonly options: ActionAttemptOptions;
 }
 
 async function writeAttemptResult(
@@ -260,25 +358,38 @@ async function writeAttemptResult(
     });
   }
 
+  if (outcome.status === 'unknown') {
+    await writeUnknown(context, attempt, result.options, {
+      reason: outcome.reason,
+      details,
+      attempt: attempt.attempt,
+      startedAt: result.startedAt,
+    });
+
+    return;
+  }
+
   if (outcome.status !== 'pending') {
     await writeOutcome(context, attempt, { outcome, details });
 
     return;
   }
 
-  await writeLeasedRecord(context, attempt.lease, {
-    record: {
-      kind: 'action.retry_scheduled',
-      definitions: context.definitions(),
-      thread: attempt.action.task_id,
-      payload: {
-        actionID: attempt.action.action_id,
-        attempt: attempt.attempt,
-        nextAttemptAt: context.clock.now() + outcome.delayMs,
-        reason: outcome.reason,
+  await writeLeasedRecords(context, attempt.lease, {
+    records: [
+      {
+        kind: 'action.retry_scheduled',
+        definitions: context.definitions(),
+        thread: attempt.action.task_id,
+        payload: {
+          actionID: attempt.action.action_id,
+          attempt: attempt.attempt,
+          nextAttemptAt: context.clock.now() + outcome.delayMs,
+          reason: outcome.reason,
+        },
+        erasable: details,
       },
-      erasable: details,
-    },
+    ],
     reset: true,
   });
 

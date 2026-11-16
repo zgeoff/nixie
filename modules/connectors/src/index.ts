@@ -24,6 +24,7 @@ export type {
   ActionCall,
   ActionConnector,
   ActionResponse,
+  CheckResponse,
   Connector,
   ConnectorAction,
   HealthReport,
@@ -36,6 +37,7 @@ export type {
   SearchRequest,
 } from './types';
 
+export { defaultTrustNegativeAfterMs } from './types';
 export type { SearchConfig } from './search/search-config-schema';
 export { searchConfigSchema } from './search/search-config-schema';
 export { webFetchConfigSchema } from './web/web-fetch-config-schema';

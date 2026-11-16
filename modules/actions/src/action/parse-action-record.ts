@@ -1,5 +1,12 @@
 import type { EnvelopeRecord, JSONValue } from '@heynixie/log';
-import type { ActionStatus, OutcomeReason } from '../types';
+import type {
+  ActionRiskClass,
+  ActionStatus,
+  CheckAnswer,
+  OutcomeReason,
+  OwnerReason,
+  UnknownChoice,
+} from '../types';
 
 export type ActionRecord =
   | {
@@ -10,6 +17,10 @@ export type ActionRecord =
       readonly tool: string;
       readonly actionHash: string;
       readonly nextAttemptAt: number;
+      readonly callSequence: number | null;
+      readonly riskClass: ActionRiskClass;
+      readonly deadlineAt: number | null;
+      readonly isApproved: boolean;
     }
   | { readonly kind: 'action.attempt_started'; readonly actionID: string; readonly attempt: number }
   | {
@@ -19,18 +30,46 @@ export type ActionRecord =
       readonly reason: OutcomeReason;
     }
   | {
+      readonly kind: 'action.reconcile_scheduled';
+      readonly actionID: string;
+      readonly step: 'retry' | 'check';
+      readonly at: number;
+    }
+  | {
+      readonly kind: 'action.reconcile_checked';
+      readonly actionID: string;
+      readonly answer: CheckAnswer;
+      readonly nextAttemptAt: number | null;
+    }
+  | {
+      readonly kind: 'action.held';
+      readonly actionID: string;
+      readonly proposalID: string;
+    }
+  | {
+      readonly kind: 'action.released';
+      readonly actionID: string;
+      readonly riskClass: ActionRiskClass | null;
+    }
+  | {
+      readonly kind: 'action.unknown_answered';
+      readonly actionID: string;
+      readonly choice: UnknownChoice;
+      readonly nextAttemptAt: number | null;
+    }
+  | {
       readonly kind: 'action.outcome';
       readonly actionID: string;
       readonly status: Exclude<ActionStatus, 'pending'>;
       readonly reason: OutcomeReason | null;
+      readonly ownerReason: OwnerReason | null;
     };
 
 type GetField = (key: string) => JSONValue;
 
-const actionRecordParsers: ReadonlyMap<string, (getField: GetField) => ActionRecord> = new Map<
-  string,
-  (getField: GetField) => ActionRecord
->([
+type Parser = (getField: GetField) => ActionRecord;
+
+const actionRecordParsers: ReadonlyMap<string, Parser> = new Map<string, Parser>([
   [
     'action.queued',
     (getField) => ({
@@ -41,6 +80,10 @@ const actionRecordParsers: ReadonlyMap<string, (getField: GetField) => ActionRec
       tool: toString(getField('tool')),
       actionHash: toString(getField('actionHash')),
       nextAttemptAt: toNumber(getField('nextAttemptAt')),
+      callSequence: toOptionalNumber(getField('callSequence')),
+      riskClass: toOptionalRiskClass(getField('riskClass')),
+      deadlineAt: toOptionalNumber(getField('deadlineAt')),
+      isApproved: getField('isApproved') === true,
     }),
   ],
   [
@@ -61,14 +104,67 @@ const actionRecordParsers: ReadonlyMap<string, (getField: GetField) => ActionRec
     }),
   ],
   [
+    'action.reconcile_scheduled',
+    (getField) => ({
+      kind: 'action.reconcile_scheduled',
+      actionID: toString(getField('actionID')),
+      step: toEnum(getField('step'), ['retry', 'check']),
+      at: toNumber(getField('at')),
+    }),
+  ],
+  [
+    'action.reconcile_checked',
+    (getField) => ({
+      kind: 'action.reconcile_checked',
+      actionID: toString(getField('actionID')),
+      answer: toEnum(getField('answer'), ['found', 'not_found', 'inconclusive']),
+      nextAttemptAt: toOptionalNumber(getField('nextAttemptAt')),
+    }),
+  ],
+  [
+    'action.held',
+    (getField) => ({
+      kind: 'action.held',
+      actionID: toString(getField('actionID')),
+      proposalID: toString(getField('proposalID')),
+    }),
+  ],
+  [
+    'action.released',
+    (getField) => ({
+      kind: 'action.released',
+      actionID: toString(getField('actionID')),
+      riskClass: toOptionalRiskClass(getField('riskClass')),
+    }),
+  ],
+  [
+    'action.unknown_answered',
+    (getField) => ({
+      kind: 'action.unknown_answered',
+      actionID: toString(getField('actionID')),
+      choice: toEnum(getField('choice'), ['happened', 'retry', 'drop']),
+      nextAttemptAt: toOptionalNumber(getField('nextAttemptAt')),
+    }),
+  ],
+  [
     'action.outcome',
     (getField) => ({
       kind: 'action.outcome',
       actionID: toString(getField('actionID')),
       status: toSettledStatus(getField('status')),
       reason: getField('reason') === null ? null : toReason(getField('reason')),
+      ownerReason: toOptionalOwnerReason(getField('ownerReason')),
     }),
   ],
+]);
+
+const optionalFields: ReadonlySet<string> = new Set([
+  'callSequence',
+  'riskClass',
+  'deadlineAt',
+  'isApproved',
+  'ownerReason',
+  'nextAttemptAt',
 ]);
 
 export function parseActionRecord(record: EnvelopeRecord): ActionRecord | null {
@@ -81,7 +177,12 @@ export function parseActionRecord(record: EnvelopeRecord): ActionRecord | null {
   return parse((key) => {
     const value = record.payload[key];
 
+    // A field that came after the first release is optional, so a record from before it reads null.
     if (value === undefined) {
+      if (optionalFields.has(key)) {
+        return null;
+      }
+
       throw new Error(`record ${record.sequence} of kind ${record.kind} lacks ${key}`);
     }
 
@@ -105,29 +206,48 @@ function toNumber(value: JSONValue): number {
   return value;
 }
 
-function toReason(value: JSONValue): OutcomeReason {
-  const reason = toString(value);
-  const known = outcomeReasons.find((candidate) => candidate === reason);
+function toOptionalNumber(value: JSONValue): number | null {
+  return value === null ? null : toNumber(value);
+}
+
+function toOptionalRiskClass(value: JSONValue): ActionRiskClass {
+  return value === null ? 'routine' : toEnum(value, ['routine', 'always_ask', 'lifting']);
+}
+
+function toEnum<Member extends string>(
+  value: JSONValue,
+  members: readonly Member[],
+  label = `one of ${members.join(', ')}`,
+): Member {
+  const text = toString(value);
+  const known = members.find((candidate) => candidate === text);
 
   if (known === undefined) {
-    throw new TypeError(`expected an outcome reason, got ${reason}`);
+    throw new TypeError(`expected ${label}, got ${text}`);
   }
 
   return known;
 }
 
-function toSettledStatus(value: JSONValue): Exclude<ActionStatus, 'pending'> {
-  const status = toString(value);
-  const settled = settledStatuses.find((candidate) => candidate === status);
-
-  if (settled === undefined) {
-    throw new TypeError(`expected a settled action status, got ${status}`);
-  }
-
-  return settled;
+function toReason(value: JSONValue): OutcomeReason {
+  return toEnum(value, outcomeReasons, 'an outcome reason');
 }
 
-const settledStatuses: readonly Exclude<ActionStatus, 'pending'>[] = ['done', 'failed', 'unknown'];
+function toSettledStatus(value: JSONValue): Exclude<ActionStatus, 'pending'> {
+  return toEnum(value, ['done', 'failed', 'unknown'], 'a settled action status');
+}
+
+function toOptionalOwnerReason(value: JSONValue): OwnerReason | null {
+  return value === null ? null : toEnum(value, ownerReasons);
+}
+
+const ownerReasons: readonly OwnerReason[] = [
+  'inconclusive',
+  'unknown_streak',
+  'no_reconcile',
+  'key_expired',
+  'not_found_ask',
+];
 
 const outcomeReasons: readonly OutcomeReason[] = [
   'refused',
@@ -137,4 +257,10 @@ const outcomeReasons: readonly OutcomeReason[] = [
   'attempt_without_result',
   'unknown_tool',
   'arguments_unreadable',
+  'deadline_passed',
+  'rule_denied',
+  'declined',
+  'lapsed',
+  'destinations_changed',
+  'dropped',
 ];

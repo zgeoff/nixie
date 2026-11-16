@@ -1,5 +1,6 @@
 import { useQueries, useQuery } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
+import type { UnknownOutcomeItem } from '../types';
 import { useNixieClient } from '../utils/use-nixie-client';
 import type { DeferSettings } from './build-defer-times';
 import { collectProposalIDBatches } from './collect-proposal-id-batches';
@@ -9,6 +10,7 @@ import { applyApprovalReads, mergeSeenApprovals } from './merge-seen-approvals';
 export interface ApprovalDigestState {
   readonly status: 'pending' | 'failed' | 'ready';
   readonly entries: readonly SeenApproval[];
+  readonly unknownOutcomes: readonly UnknownOutcomeItem[];
   readonly defer: DeferSettings | null;
   readonly refresh: () => void;
 }
@@ -29,6 +31,7 @@ export function useApprovalDigest(): ApprovalDigestState {
 
   const [seen, setSeen] = useState<readonly SeenApproval[]>([]);
   const items = listed.data?.items;
+  const unknownOutcomes = listed.data?.unknownOutcomes ?? [];
   const merged = useMemo(() => mergeSeenApprovals(seen, items ?? []), [seen, items]);
 
   useEffect(() => {
@@ -82,6 +85,7 @@ export function useApprovalDigest(): ApprovalDigestState {
   return {
     status: pickStatus(listed),
     entries,
+    unknownOutcomes,
     defer: listed.data?.defer ?? null,
     refresh: () => {
       void refetchList();

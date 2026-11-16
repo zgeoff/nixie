@@ -105,6 +105,13 @@ export interface ToolDefinition {
     context: ToolContext,
   ) => Promise<DestinationResolution>;
 
+  // Resolves the time after which the call's action must not start, on the host, for a tool whose
+  // provider limits when it may run. The model never supplies it. A tool without it has no deadline.
+  readonly resolveDeadline?: (
+    input: JSONObject,
+    context: ToolContext,
+  ) => Promise<DeadlineResolution>;
+
   // Sets the call's policy sources and arguments on the host before the decision point runs, for a
   // tool whose sources depend on its input, such as a memory write that rests on a quote. A tool
   // without it takes the step's sources and its raw input.
@@ -122,6 +129,10 @@ export type PolicyFactsResolution =
       readonly sources: readonly RuleSource[];
       readonly args: JSONObject;
     }
+  | { readonly status: 'error'; readonly message: string };
+
+export type DeadlineResolution =
+  | { readonly status: 'ok'; readonly deadlineAt: number | null }
   | { readonly status: 'error'; readonly message: string };
 
 export type DestinationResolution =
@@ -205,14 +216,31 @@ export interface QueuedAction {
   readonly decision: Decision;
 
   readonly callSequence: number;
+
+  // the hash of the operation the policy checked: tool, input, destinations and deadline
+  readonly actionHash: string;
+  readonly deadlineAt: number | null;
+
+  // the effects the tool declares, which the owner reads in a question about the action
+  readonly effects: readonly string[];
 }
 
 export type ActionOutcome =
   | { readonly outcome: 'done'; readonly result: JSONObject }
   | { readonly outcome: 'failed' | 'unknown' | 'cancelled'; readonly reason: string };
 
+export interface RepeatQuery {
+  readonly run: ToolRun;
+  readonly tool: string;
+  readonly input: JSONObject;
+  readonly actionHash: string;
+}
+
 export interface ActionQueue {
   readonly enqueue: (action: QueuedAction) => Promise<string>;
+
+  // the ID of the pending or unknown action that the same call already queued, or null
+  readonly readOpenRepeat: (query: RepeatQuery) => Promise<string | null>;
 
   readonly waitForOutcome: (actionID: string, timeoutMs: number) => Promise<ActionOutcome | null>;
 }

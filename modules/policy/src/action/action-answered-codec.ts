@@ -14,5 +14,8 @@ export const actionAnsweredCodec = defineRecordCodec(
 
     // the gap group of a no_rule Approve or Decline, never of Always allow
     groupHash: z.string().exactOptional(),
+
+    // the action that an approval queued or released
+    actionID: z.string().exactOptional(),
   }),
 );

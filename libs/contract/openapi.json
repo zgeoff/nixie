@@ -18325,11 +18325,178 @@
                           "passkeyChoices"
                         ]
                       }
+                    },
+                    "unknownOutcomes": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "group": {
+                            "const": "unknown_outcome"
+                          },
+                          "action": {
+                            "type": "object",
+                            "properties": {
+                              "actionID": {
+                                "type": "string"
+                              },
+                              "tool": {
+                                "type": "string"
+                              },
+                              "sentence": {
+                                "type": "string"
+                              },
+                              "fields": {
+                                "type": "object",
+                                "propertyNames": {
+                                  "type": "string"
+                                },
+                                "additionalProperties": {
+                                  "type": "string"
+                                }
+                              },
+                              "riskClass": {
+                                "enum": [
+                                  "routine",
+                                  "always_ask",
+                                  "lifting"
+                                ],
+                                "type": "string"
+                              },
+                              "reason": {
+                                "enum": [
+                                  "inconclusive",
+                                  "unknown_streak",
+                                  "no_reconcile",
+                                  "key_expired",
+                                  "not_found_ask"
+                                ],
+                                "type": "string"
+                              },
+                              "becameUnknownAt": {
+                                "type": "string",
+                                "format": "date-time",
+                                "x-native-type": "date"
+                              },
+                              "attempts": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "attempt": {
+                                      "type": "integer",
+                                      "minimum": 0,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "at": {
+                                      "type": "string",
+                                      "format": "date-time",
+                                      "x-native-type": "date"
+                                    }
+                                  },
+                                  "required": [
+                                    "attempt",
+                                    "at"
+                                  ]
+                                }
+                              },
+                              "checks": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "answer": {
+                                      "enum": [
+                                        "found",
+                                        "not_found",
+                                        "inconclusive"
+                                      ],
+                                      "type": "string"
+                                    },
+                                    "at": {
+                                      "type": "string",
+                                      "format": "date-time",
+                                      "x-native-type": "date"
+                                    }
+                                  },
+                                  "required": [
+                                    "answer",
+                                    "at"
+                                  ]
+                                }
+                              }
+                            },
+                            "required": [
+                              "actionID",
+                              "tool",
+                              "sentence",
+                              "fields",
+                              "riskClass",
+                              "reason",
+                              "becameUnknownAt",
+                              "attempts",
+                              "checks"
+                            ]
+                          },
+                          "task": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string"
+                                  },
+                                  "name": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "name"
+                                ]
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "choices": {
+                            "type": "array",
+                            "items": {
+                              "enum": [
+                                "happened",
+                                "retry",
+                                "drop"
+                              ],
+                              "type": "string"
+                            }
+                          },
+                          "passkeyChoices": {
+                            "type": "array",
+                            "items": {
+                              "enum": [
+                                "happened",
+                                "retry",
+                                "drop"
+                              ],
+                              "type": "string"
+                            }
+                          }
+                        },
+                        "required": [
+                          "group",
+                          "action",
+                          "task",
+                          "choices",
+                          "passkeyChoices"
+                        ]
+                      }
                     }
                   },
                   "required": [
                     "defer",
-                    "items"
+                    "items",
+                    "unknownOutcomes"
                   ]
                 }
               }
@@ -19702,6 +19869,425 @@
         }
       }
     },
+    "/approvals/answerUnknownOutcome": {
+      "post": {
+        "operationId": "approvals.answerUnknownOutcome",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "actionID": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "choice": {
+                    "enum": [
+                      "happened",
+                      "retry",
+                      "drop"
+                    ],
+                    "type": "string"
+                  },
+                  "clientActionID": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "passkey": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 20000
+                      },
+                      "rawId": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 20000
+                      },
+                      "response": {
+                        "type": "object",
+                        "properties": {
+                          "clientDataJSON": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 20000
+                          },
+                          "authenticatorData": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 20000
+                          },
+                          "signature": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 20000
+                          },
+                          "userHandle": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 20000
+                          }
+                        },
+                        "required": [
+                          "clientDataJSON",
+                          "authenticatorData",
+                          "signature"
+                        ]
+                      },
+                      "authenticatorAttachment": {
+                        "enum": [
+                          "cross-platform",
+                          "platform"
+                        ],
+                        "type": "string"
+                      },
+                      "clientExtensionResults": {
+                        "type": "object"
+                      },
+                      "type": {
+                        "const": "public-key"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "rawId",
+                      "response",
+                      "clientExtensionResults",
+                      "type"
+                    ]
+                  }
+                },
+                "required": [
+                  "actionID",
+                  "choice",
+                  "clientActionID"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "actionID": {
+                      "type": "string"
+                    },
+                    "choice": {
+                      "enum": [
+                        "happened",
+                        "retry",
+                        "drop"
+                      ],
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "actionID",
+                    "choice"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "401",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "defined": {
+                          "const": true
+                        },
+                        "code": {
+                          "const": "UNAUTHORIZED"
+                        },
+                        "status": {
+                          "const": 401
+                        },
+                        "message": {
+                          "type": "string",
+                          "default": "The device session is missing, lapsed or revoked"
+                        },
+                        "data": {}
+                      },
+                      "required": [
+                        "defined",
+                        "code",
+                        "status",
+                        "message"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "defined": {
+                          "const": false
+                        },
+                        "code": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "number"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "data": {}
+                      },
+                      "required": [
+                        "defined",
+                        "code",
+                        "status",
+                        "message"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "403",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "defined": {
+                          "const": true
+                        },
+                        "code": {
+                          "const": "NOT_ALLOWED"
+                        },
+                        "status": {
+                          "const": 403
+                        },
+                        "message": {
+                          "type": "string",
+                          "default": "The action waits for no answer about its outcome"
+                        },
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "reason": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "reason"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "defined",
+                        "code",
+                        "status",
+                        "message",
+                        "data"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "defined": {
+                          "const": true
+                        },
+                        "code": {
+                          "const": "PASSKEY_REQUIRED"
+                        },
+                        "status": {
+                          "const": 403
+                        },
+                        "message": {
+                          "type": "string",
+                          "default": "This answer needs a passkey check"
+                        },
+                        "data": {}
+                      },
+                      "required": [
+                        "defined",
+                        "code",
+                        "status",
+                        "message"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "defined": {
+                          "const": true
+                        },
+                        "code": {
+                          "const": "NO_PASSKEY"
+                        },
+                        "status": {
+                          "const": 403
+                        },
+                        "message": {
+                          "type": "string",
+                          "default": "No passkey is registered"
+                        },
+                        "data": {}
+                      },
+                      "required": [
+                        "defined",
+                        "code",
+                        "status",
+                        "message"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "defined": {
+                          "const": true
+                        },
+                        "code": {
+                          "const": "PASSKEY_FAILED"
+                        },
+                        "status": {
+                          "const": 403
+                        },
+                        "message": {
+                          "type": "string",
+                          "default": "The passkey check failed"
+                        },
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "reason": {
+                              "enum": [
+                                "unknown_challenge",
+                                "binding",
+                                "unknown_passkey",
+                                "origin",
+                                "no_user_verification",
+                                "signature",
+                                "counter"
+                              ],
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "reason"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "defined",
+                        "code",
+                        "status",
+                        "message",
+                        "data"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "defined": {
+                          "const": false
+                        },
+                        "code": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "number"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "data": {}
+                      },
+                      "required": [
+                        "defined",
+                        "code",
+                        "status",
+                        "message"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "409",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "defined": {
+                          "const": true
+                        },
+                        "code": {
+                          "const": "CLIENT_ACTION_ID_REUSED"
+                        },
+                        "status": {
+                          "const": 409
+                        },
+                        "message": {
+                          "type": "string",
+                          "default": "The client action ID belongs to a different action"
+                        },
+                        "data": {}
+                      },
+                      "required": [
+                        "defined",
+                        "code",
+                        "status",
+                        "message"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "defined": {
+                          "const": false
+                        },
+                        "code": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "number"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "data": {}
+                      },
+                      "required": [
+                        "defined",
+                        "code",
+                        "status",
+                        "message"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/approvals/answerProposals": {
       "post": {
         "operationId": "approvals.answerProposals",
@@ -20141,6 +20727,27 @@
                           "kind",
                           "proposalID",
                           "actionHash",
+                          "choice"
+                        ]
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "const": "unknown_outcome"
+                          },
+                          "actionID": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 200
+                          },
+                          "choice": {
+                            "const": "retry"
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "actionID",
                           "choice"
                         ]
                       },

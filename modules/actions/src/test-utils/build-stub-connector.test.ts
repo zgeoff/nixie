@@ -10,6 +10,7 @@ test('it answers each call with the response the test set, and records the call'
     arguments: { to: 'someone' },
     attempt: 1,
     idempotencyKey: 'action-1',
+    destinations: [],
   });
 
   expect(response).toStrictEqual({ kind: 'success', result: { messageID: 'm-1' } });
@@ -21,6 +22,7 @@ test('it answers each call with the response the test set, and records the call'
       arguments: { to: 'someone' },
       attempt: 1,
       idempotencyKey: 'action-1',
+      destinations: [],
     },
   ]);
 });
@@ -36,7 +38,45 @@ test('it rejects the call when the response throws, as a dropped connection does
     arguments: {},
     attempt: 1,
     idempotencyKey: 'action-1',
+    destinations: [],
   });
 
   expect(call).rejects.toThrowWithMessage(Error, 'socket hang up');
+});
+
+test('it declares how an unknown outcome settles, and answers and records each check', async () => {
+  const stub = buildStubConnector(() => ({ kind: 'ambiguous', reason: 'timed out' }), {
+    reconcile: { kind: 'check', tool: 'test.send' },
+    answerCheck: () => ({ kind: 'not_found' }),
+  });
+
+  const answer = await stub.connector.check?.({
+    actionID: 'action-1',
+    tool: 'test.send',
+    arguments: {},
+    attempt: 1,
+    idempotencyKey: 'action-1',
+    destinations: [],
+  });
+
+  expect(stub.connector.reconcile).toStrictEqual({ kind: 'check', tool: 'test.send' });
+  expect(answer).toStrictEqual({ kind: 'not_found' });
+  expect(stub.checks.map((check) => check.actionID)).toStrictEqual(['action-1']);
+});
+
+test('it answers a check inconclusive when the test gave no answer', async () => {
+  const stub = buildStubConnector(() => ({ kind: 'ambiguous', reason: 'timed out' }), {
+    reconcile: { kind: 'check', tool: 'test.send' },
+  });
+
+  const answer = await stub.connector.check?.({
+    actionID: 'action-1',
+    tool: 'test.send',
+    arguments: {},
+    attempt: 1,
+    idempotencyKey: 'action-1',
+    destinations: [],
+  });
+
+  expect(answer).toStrictEqual({ kind: 'inconclusive' });
 });

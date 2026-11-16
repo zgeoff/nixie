@@ -5,6 +5,7 @@ import type { AskCause, CallDestination, Effect, PolicyCall } from '../types';
 import { actionProposedCodec } from './action-proposed-codec';
 import { buildActionHash } from './build-action-hash';
 import { buildGapGroupHash } from './build-gap-group-hash';
+import { pickActionLapse } from './pick-action-lapse';
 
 export interface ActionProposalFacts {
   readonly definitions: Definitions;
@@ -21,6 +22,18 @@ export interface ActionProposalFacts {
 
   // the call's frame, which a no_rule ask records so its answer can join a gap group
   readonly frame?: Pick<PolicyCall, 'context' | 'definitionID' | 'sources'>;
+
+  // the time after which the action must not start; the proposal lapses no later than it
+  readonly deadlineAt?: number | null;
+  readonly now?: number;
+
+  // the step of the task that made the call, which an approved action queues under
+  readonly stepKey?: string;
+
+  // For a proposal that reopens an action that already exists, such as an approved action that has
+  // newly fallen in the always-ask set. The row takes the proposal ID, and the action's ID is
+  // `actionID`.
+  readonly reopen?: { readonly proposalID: string; readonly actionID: string };
 }
 
 export interface ActionProposalInput {
@@ -65,7 +78,7 @@ export function buildActionProposalInput(facts: ActionProposalFacts): ActionProp
     parent: facts.callSequence,
     promptCause: facts.cause,
     payload: actionProposedCodec.encode({
-      proposalID: crypto.randomUUID(),
+      proposalID: facts.reopen?.proposalID ?? crypto.randomUUID(),
       shortID,
       callSequence: facts.callSequence,
       tool: facts.tool,
@@ -74,11 +87,17 @@ export function buildActionProposalInput(facts: ActionProposalFacts): ActionProp
         tool: facts.tool,
         input: facts.input,
         destinations: facts.destinations.map((destination) => destination.value),
+        deadlineAt: facts.deadlineAt ?? null,
       }),
       cause: facts.cause,
       riskClass: facts.cause === 'always_ask' ? 'always_ask' : 'routine',
       rule: alwaysAllow === null ? null : { hash: alwaysAllow.hash },
       ...gap,
+      ...(facts.reopen === undefined ? {} : { actionID: facts.reopen.actionID }),
+      ...(facts.stepKey === undefined ? {} : { stepKey: facts.stepKey }),
+      ...(facts.deadlineAt === undefined || facts.deadlineAt === null || facts.now === undefined
+        ? {}
+        : { deadlineAt: facts.deadlineAt, lapsesAt: pickActionLapse(facts.now, facts.deadlineAt) }),
     }),
     erasable: {
       ...(alwaysAllow === null

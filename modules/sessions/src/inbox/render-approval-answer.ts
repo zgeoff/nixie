@@ -4,15 +4,14 @@ import { renderSystemMessage } from '@heynixie/wire';
 import { formatMessageTime } from '../message/format-message-time';
 import type { MessageTimeOptions } from '../types';
 
-// The owner's answer to a proposal that the task's own call asked for. An approval runs nothing yet,
-// so the message says so.
+// The owner's answer to a proposal that the task's own call asked for. An approval names the action it queued.
 export function renderApprovalAnswer(record: LogRecord, times: MessageTimeOptions): string {
   const answer = actionAnsweredCodec.decode(record.payload);
   const reason = pickReason(record);
 
   const text =
     answer.answer === 'approved'
-      ? `Approved \`${answer.shortID}\`. nixie runs approved actions in a later release, so this one did not run.`
+      ? `Approved \`${answer.shortID}\`.${answer.actionID === undefined ? '' : ` Queued as \`${answer.actionID}\`.`}`
       : `Declined \`${answer.shortID}\`.${reason === null ? '' : ` ${reason}`}`;
 
   return renderSystemMessage({

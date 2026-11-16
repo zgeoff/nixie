@@ -13,6 +13,7 @@ import invariant from 'tiny-invariant';
 import { createTestStep } from '../test-utils/create-test-step';
 import { startTestActions } from '../test-utils/start-test-actions';
 import type { ActionsTables } from '../types';
+import { buildActionHash } from './build-action-hash';
 import { createAllowedAction } from './create-allowed-action';
 
 async function setupTest() {
@@ -332,4 +333,30 @@ test('it keeps both queue fault points in a test bundle', async () => {
   const texts = await Promise.all(build.outputs.map((output) => output.text()));
 
   expect(texts.join('\n')).toIncludeMultiple(['queue.commit.before', 'queue.commit.after']);
+});
+
+test('it queues nothing for the rerun of a step whose action holds the hash from before destinations joined it', async () => {
+  const ctx = await setupTest();
+  const step = await createTestStep(ctx.context);
+
+  const first = await createAllowedAction(ctx.context, {
+    step,
+    tool: 'test.send',
+    actionHash: buildActionHash('test.send', { to: 'team' }),
+    arguments: { to: 'team' },
+    decision: { outcome: 'allow', stage: 4, rule: { id: 'test-rule', revision: 1 } },
+  });
+
+  const rerun = await createAllowedAction(ctx.context, {
+    step,
+    tool: 'test.send',
+    actionHash: 'a-hash-that-covers-destinations-and-the-deadline',
+    arguments: { to: 'team' },
+    decision: { outcome: 'allow', stage: 4, rule: { id: 'test-rule', revision: 1 } },
+  });
+
+  const actions = await ctx.db.selectFrom('actions').select('action_id').execute();
+
+  expect(rerun).toStrictEqual({ actionID: first.actionID, status: 'pending', isRepeat: true });
+  expect(actions).toHaveLength(1);
 });

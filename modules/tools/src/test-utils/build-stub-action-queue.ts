@@ -47,6 +47,16 @@ export function buildStubActionQueue(): StubActionQueue {
 
         return Promise.resolve(actionID);
       },
+      readOpenRepeat: (query) => {
+        const earlier = actions.find(
+          (entry) =>
+            entry.action.run.thread === query.run.thread &&
+            entry.action.actionHash === query.actionHash &&
+            !outcomes.hasOutcome(entry.actionID),
+        );
+
+        return Promise.resolve(earlier?.actionID ?? null);
+      },
       waitForOutcome: (actionID, timeoutMs) =>
         actions.some((entry) => entry.actionID === actionID)
           ? outcomes.waitFor(actionID, timeoutMs)
@@ -71,6 +81,7 @@ function buildOutcomeWaits() {
   return {
     waits,
     isStopped: () => state.stopped,
+    hasOutcome: (actionID: string) => outcomes.has(actionID),
     waitFor: (actionID: string, timeoutMs: number): Promise<ActionOutcome | null> => {
       const outcome = outcomes.get(actionID);
       const wait = Promise.withResolvers<ActionOutcome | null>();

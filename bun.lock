@@ -429,15 +429,17 @@
         "@heynixie/connectors": "workspace:*",
         "@heynixie/db": "workspace:*",
         "@heynixie/log": "workspace:*",
+        "@heynixie/policy": "workspace:*",
         "@heynixie/retry": "workspace:*",
         "@heynixie/tasks": "workspace:*",
         "@heynixie/tools": "workspace:*",
         "kysely": "catalog:",
+        "tiny-invariant": "catalog:",
+        "ts-pattern": "catalog:",
         "zod": "catalog:",
       },
       "devDependencies": {
         "@heynixie/testing": "workspace:*",
-        "tiny-invariant": "catalog:",
       },
     },
     "modules/api": {

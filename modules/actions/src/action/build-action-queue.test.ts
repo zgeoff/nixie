@@ -47,6 +47,9 @@ test('it queues a call that a step makes under that step and returns its action 
       },
       decision: { outcome: 'allow', stage: 3, rule: { id: 'test.allow-send', revision: 1 } },
       callSequence: 1,
+      actionHash: 'hash-1',
+      deadlineAt: null,
+      effects: ['send'],
     });
 
     return { next: 'wait', records: [], acknowledged: [], sessionBoundary: actionID };
@@ -60,7 +63,7 @@ test('it queues a call that a step makes under that step and returns its action 
       action_id: result.sessionBoundary,
       task_id: stepInput.taskID,
       step_key: stepInput.stepKey,
-      action_hash: `sha256:${new Bun.CryptoHasher('sha256').update('{"arguments":{"to":"team"},"tool":"test.send"}').digest('hex')}`,
+      action_hash: 'hash-1',
       tool: 'test.send',
       status: 'pending',
     },
@@ -97,6 +100,9 @@ test('it returns the action a step queued when its rerun makes the same call', a
       },
       decision: { outcome: 'allow', stage: 3, rule: { id: 'test.allow-send', revision: 1 } },
       callSequence: 1,
+      actionHash: 'hash-1',
+      deadlineAt: null,
+      effects: ['send'],
     });
 
   const step = queue.trackSteps(async () => {
@@ -145,6 +151,9 @@ test('it refuses a call on a thread where no step runs', async () => {
       },
       decision: { outcome: 'allow', stage: 3, rule: { id: 'test.allow-send', revision: 1 } },
       callSequence: 1,
+      actionHash: 'hash-1',
+      deadlineAt: null,
+      effects: ['send'],
     }),
   ).rejects.toThrow(`no step of ${stepInput.taskID} runs, so its call queues nothing`);
 });
@@ -185,6 +194,9 @@ test('it forgets the step once it ends, so a later call queues nothing', async (
       },
       decision: { outcome: 'allow', stage: 3, rule: { id: 'test.allow-send', revision: 1 } },
       callSequence: 1,
+      actionHash: 'hash-1',
+      deadlineAt: null,
+      effects: ['send'],
     }),
   ).rejects.toThrow(`no step of ${stepInput.taskID} runs, so its call queues nothing`);
 });
@@ -224,6 +236,9 @@ test('it refuses a call from a step whose claim a takeover replaced, and queues 
       },
       decision: { outcome: 'allow', stage: 3, rule: { id: 'test.allow-send', revision: 1 } },
       callSequence: 1,
+      actionHash: 'hash-1',
+      deadlineAt: null,
+      effects: ['send'],
     });
 
     return { next: 'wait', records: [], acknowledged: [] };
@@ -267,6 +282,9 @@ test('it refuses a call that carries no step run ID, and queues nothing', async 
       },
       decision: { outcome: 'allow', stage: 3, rule: { id: 'test.allow-send', revision: 1 } },
       callSequence: 1,
+      actionHash: 'hash-1',
+      deadlineAt: null,
+      effects: ['send'],
     });
 
     return { next: 'wait', records: [], acknowledged: [] };
@@ -311,6 +329,9 @@ test('it gives no outcome for an action still pending when the wait ends', async
       },
       decision: { outcome: 'allow', stage: 3, rule: { id: 'test.allow-send', revision: 1 } },
       callSequence: 1,
+      actionHash: 'hash-1',
+      deadlineAt: null,
+      effects: ['send'],
     });
 
     return { next: 'wait', records: [], acknowledged: [], sessionBoundary: actionID };
@@ -336,7 +357,7 @@ test.each([
   [
     'unknown',
     { kind: 'ambiguous', reason: 'the connection dropped' },
-    { outcome: 'unknown', reason: 'you were asked whether this happened' },
+    { outcome: 'unknown', reason: 'the owner was asked whether this happened' },
   ],
 ] as const)(
   'it gives the outcome of an action that settled as %s',
@@ -370,6 +391,9 @@ test.each([
         },
         decision: { outcome: 'allow', stage: 3, rule: { id: 'test.allow-send', revision: 1 } },
         callSequence: 1,
+        actionHash: 'hash-1',
+        deadlineAt: null,
+        effects: ['send'],
       });
 
       return { next: 'wait', records: [], acknowledged: [], sessionBoundary: actionID };
@@ -423,6 +447,9 @@ test('it gives a cancelled outcome for an action that a stop of its task cancell
       },
       decision: { outcome: 'allow', stage: 3, rule: { id: 'test.allow-send', revision: 1 } },
       callSequence: 1,
+      actionHash: 'hash-1',
+      deadlineAt: null,
+      effects: ['send'],
     });
 
     return { next: 'wait', records: [], acknowledged: [], sessionBoundary: actionID };

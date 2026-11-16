@@ -8,6 +8,7 @@ import { buildModelView } from './build-model-view';
 
 export interface WaitForActionOutcomeOptions {
   readonly timeoutMs?: number;
+  readonly ownerName?: string | null;
 }
 
 const DEFAULT_TIMEOUT_MS = 10_000;
@@ -26,7 +27,7 @@ export async function waitForActionOutcome(
   try {
     const row = await waitForSettledRow(context, { actionID, deadline, wake });
 
-    return await readModelView(context, row);
+    return await readModelView(context, row, options.ownerName ?? null);
   } finally {
     wake.stop();
   }
@@ -57,8 +58,9 @@ async function waitForSettledRow(context: TasksContext, wait: SettledWait): Prom
 
     const row = { ...action, isCancelled: isCancelled === 1 || isCancelled === true };
     const remainingMs = wait.deadline - context.clock.now();
+    const isReconciling = row.status === 'unknown' && row.outcome_sequence === null;
 
-    if (row.status !== 'pending' || row.isCancelled || remainingMs <= 0) {
+    if ((row.status !== 'pending' && !isReconciling) || row.isCancelled || remainingMs <= 0) {
       return row;
     }
 
@@ -81,7 +83,11 @@ async function waitForCommit(wake: RecordWake, wait: CommitWait): Promise<void> 
   }
 }
 
-async function readModelView(context: TasksContext, row: SettledRow): Promise<ModelView> {
+async function readModelView(
+  context: TasksContext,
+  row: SettledRow,
+  ownerName: string | null,
+): Promise<ModelView> {
   const sequence = row.outcome_sequence;
 
   const [entry] =
@@ -89,5 +95,5 @@ async function readModelView(context: TasksContext, row: SettledRow): Promise<Mo
       ? []
       : await readRecords(context.log, { afterSequence: sequence - 1, limit: 1 });
 
-  return buildModelView(row, entry?.record ?? null);
+  return buildModelView(row, entry?.record ?? null, { ownerName });
 }

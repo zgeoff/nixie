@@ -1,4 +1,4 @@
-import type { Effect } from '@heynixie/policy';
+import { hasQueuedEffect } from '@heynixie/policy';
 import { buildSchemaParser } from './schema/build-schema-parser';
 import type { RegisteredTool, ToolDefinition, ToolRegistry } from './types';
 
@@ -31,12 +31,8 @@ function assertDefinition(definition: ToolDefinition): void {
   assertResultSources(definition);
 }
 
-const queuedEffects: ReadonlySet<Effect> = new Set(['write', 'delete', 'send', 'spend', 'device']);
-
 function assertExecution(definition: ToolDefinition): void {
-  const execution = definition.declaration.effects.some((effect) => queuedEffects.has(effect))
-    ? 'queued'
-    : 'direct';
+  const execution = hasQueuedEffect(definition.declaration.effects) ? 'queued' : 'direct';
 
   if (definition.execution !== execution) {
     throw new Error(

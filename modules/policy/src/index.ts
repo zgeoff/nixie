@@ -31,6 +31,7 @@ export type {
 export { writeContactMarked } from './contact/write-contact-marked';
 export { writeContactUnmarked } from './contact/write-contact-unmarked';
 export { effectNames } from './utils/effect-names';
+export { hasQueuedEffect } from './utils/has-queued-effect';
 export { getFixedRules } from './rule/get-fixed-rules';
 export type { DecisionPointOptions } from './rule/make-decision-point';
 export { makeDecisionPoint } from './rule/make-decision-point';
@@ -99,9 +100,10 @@ export type {
 export type { AlwaysAllowFacts, AlwaysAllowRule } from './rule/build-always-allow-rule';
 export { buildAlwaysAllowRule } from './rule/build-always-allow-rule';
 export { buildActionProposalSentence } from './action/build-action-proposal-sentence';
-export type { ActionHandlerDeps } from './action/make-action-proposal-handler';
+export type { ActionHandlerDeps, ApprovedActionFacts } from './action/make-action-proposal-handler';
 export { makeActionProposalHandler } from './action/make-action-proposal-handler';
 export { mapActionProposalRecord } from './action/map-action-proposal-record';
+export { buildActionHash } from './action/build-action-hash';
 export { alwaysAskEffects } from './effect/always-ask-effects';
 export type { GapGroupKey } from './action/build-gap-group-hash';
 export { buildGapGroupHash } from './action/build-gap-group-hash';

@@ -122,6 +122,7 @@ export function ApprovalControls(props: ApprovalControlsProps): ReactNode {
       ) : null}
       {choices.includes('defer') ? (
         <ApprovalDeferMenu
+          deadlineAt={props.item.proposal.deadlineAt}
           isDisabled={isBusy}
           onDefer={(until, deferNote) => {
             props.answerer.send({

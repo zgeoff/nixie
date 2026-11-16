@@ -14,6 +14,9 @@ test('it gives each new action its own ID and holds the action under it', async 
     },
     decision: { outcome: 'allow', stage: 3, rule: null },
     callSequence: 1,
+    actionHash: 'hash-1',
+    deadlineAt: null,
+    effects: ['send'],
   });
 
   const second = await stub.queue.enqueue({
@@ -26,6 +29,9 @@ test('it gives each new action its own ID and holds the action under it', async 
     },
     decision: { outcome: 'allow', stage: 3, rule: null },
     callSequence: 3,
+    actionHash: 'hash-1',
+    deadlineAt: null,
+    effects: ['send'],
   });
 
   expect(first).not.toBe(second);
@@ -49,6 +55,9 @@ test("it gives a repeat of an earlier action's tool and input that action's ID",
     },
     decision: { outcome: 'allow', stage: 3, rule: null },
     callSequence: 1,
+    actionHash: 'hash-1',
+    deadlineAt: null,
+    effects: ['send'],
   });
 
   const repeat = await stub.queue.enqueue({
@@ -61,6 +70,9 @@ test("it gives a repeat of an earlier action's tool and input that action's ID",
     },
     decision: { outcome: 'allow', stage: 3, rule: null },
     callSequence: 5,
+    actionHash: 'hash-1',
+    deadlineAt: null,
+    effects: ['send'],
   });
 
   expect(repeat).toBe(first);
@@ -80,6 +92,9 @@ test("it gives another task's call with the same tool and input its own ID", asy
     },
     decision: { outcome: 'allow', stage: 3, rule: null },
     callSequence: 1,
+    actionHash: 'hash-1',
+    deadlineAt: null,
+    effects: ['send'],
   });
 
   const other = await stub.queue.enqueue({
@@ -92,6 +107,9 @@ test("it gives another task's call with the same tool and input its own ID", asy
     },
     decision: { outcome: 'allow', stage: 3, rule: null },
     callSequence: 5,
+    actionHash: 'hash-1',
+    deadlineAt: null,
+    effects: ['send'],
   });
 
   expect(other).not.toBe(first);
@@ -111,6 +129,9 @@ test('it answers a pending wait with the outcome written for its action', async 
     },
     decision: { outcome: 'allow', stage: 3, rule: null },
     callSequence: 1,
+    actionHash: 'hash-1',
+    deadlineAt: null,
+    effects: ['send'],
   });
 
   const wait = stub.queue.waitForOutcome(actionID, 10_000);
@@ -133,6 +154,9 @@ test('it answers a wait that starts after the action settled with its outcome', 
     },
     decision: { outcome: 'allow', stage: 3, rule: null },
     callSequence: 1,
+    actionHash: 'hash-1',
+    deadlineAt: null,
+    effects: ['send'],
   });
 
   stub.writeOutcome(actionID, { outcome: 'failed', reason: 'the provider refused it' });
@@ -155,6 +179,9 @@ test('it ends a pending wait with null once the waits drain', async () => {
     },
     decision: { outcome: 'allow', stage: 3, rule: null },
     callSequence: 1,
+    actionHash: 'hash-1',
+    deadlineAt: null,
+    effects: ['send'],
   });
 
   const wait = stub.queue.waitForOutcome(actionID, 10_000);
@@ -177,6 +204,9 @@ test('it records each wait with the timeout it was given', async () => {
     },
     decision: { outcome: 'allow', stage: 3, rule: null },
     callSequence: 1,
+    actionHash: 'hash-1',
+    deadlineAt: null,
+    effects: ['send'],
   });
 
   stub.writeOutcome(actionID, { outcome: 'done', result: {} });
@@ -208,6 +238,9 @@ test('it rejects a pending wait once stopped', async () => {
     },
     decision: { outcome: 'allow', stage: 3, rule: null },
     callSequence: 1,
+    actionHash: 'hash-1',
+    deadlineAt: null,
+    effects: ['send'],
   });
 
   const wait = stub.queue.waitForOutcome(actionID, 10_000);
@@ -233,6 +266,9 @@ test('it rejects an action queued once stopped', () => {
       },
       decision: { outcome: 'allow', stage: 3, rule: null },
       callSequence: 1,
+      actionHash: 'hash-1',
+      deadlineAt: null,
+      effects: ['send'],
     }),
   ).rejects.toThrowWithMessage(Error, 'the action queue stopped');
 });

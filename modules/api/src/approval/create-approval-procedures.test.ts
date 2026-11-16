@@ -6,6 +6,7 @@ import type { LogTables } from '@heynixie/log';
 import { readRecords, removeRecordKey, writeRecords } from '@heynixie/log';
 import { defaultGateLimits, defaultOwnerPronouns, startMemoryStore } from '@heynixie/memory';
 import { buildMockWriteCaller } from '@heynixie/memory/test-utils';
+import type { Effect } from '@heynixie/policy';
 import { buildActionProposalInput } from '@heynixie/policy';
 import { readProposal, runProposalLapses, runProposalReturns } from '@heynixie/proposals';
 import { createConversationTask, readInbox } from '@heynixie/tasks';
@@ -511,6 +512,49 @@ test('#approvals.answerProposal puts the note of a declined action in the inbox 
       ]),
   ).toStrictEqual([['declined', 'The harbour office is closed this week.']]);
 });
+
+test.each<{ tool: string; effects: Effect[]; queued: string[] }>([
+  { tool: 'memory.export', effects: ['export'], queued: [] },
+  { tool: 'mail.send', effects: ['send'], queued: ['mail.send'] },
+])(
+  '#approvals.answerProposal queues an approved $tool only when it runs outside the turn',
+  async (row) => {
+    const ctx = await setupTest();
+
+    await createConversationTask(ctx.api.context);
+
+    const proposed = buildActionProposalInput({
+      definitions: ctx.api.context.definitions(),
+      thread: 'conversation',
+      callSequence: 1,
+      tool: row.tool,
+      effects: row.effects,
+      cause: 'ask_rule',
+      input: {},
+      destinations: [],
+    });
+
+    await writeRecords(ctx.api.context.log, [proposed.record]);
+
+    const listed = await ctx.client.approvals.listItems();
+
+    const item = listed.items.find((entry) => entry.proposal.shortID === proposed.shortID);
+
+    await ctx.client.approvals.answerProposal({
+      proposalID: proposed.shortID,
+      actionHash: item?.proposal.actionHash ?? 'missing',
+      choice: 'approve',
+      clientActionID: crypto.randomUUID(),
+    });
+
+    const read = await readRecords(ctx.api.context.log, {
+      afterSequence: 0,
+      kinds: ['action.queued'],
+    });
+
+    expect(read.map((entry) => entry.record.payload['tool'])).toStrictEqual(row.queued);
+  },
+);
 
 test('#approvals.answerProposal puts a defer and its note in the inbox of the task that asked', async () => {
   const ctx = await setupTest();

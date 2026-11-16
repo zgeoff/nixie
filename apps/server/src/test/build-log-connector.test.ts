@@ -10,6 +10,7 @@ test('it writes one log line with the action ID and the attempt, and reports suc
     arguments: { wake: 12 },
     attempt: 2,
     idempotencyKey: 'action-7',
+    destinations: [],
   });
 
   expect(log).toHaveBeenCalledExactlyOnceWith('action.logged', {

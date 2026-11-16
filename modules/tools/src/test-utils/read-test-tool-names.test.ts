@@ -30,7 +30,7 @@ test('it reads the names of the tools a run endpoint offers to the run token', a
     log: ctx.log,
     definitions: () => ({ snapshotHash: 'sha256:test' }),
 
-    queue: { enqueue: mock(), waitForOutcome: mock() },
+    queue: { enqueue: mock(), readOpenRepeat: mock(), waitForOutcome: mock() },
   });
 
   onTestFinished(() => endpoint.stop());

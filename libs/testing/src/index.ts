@@ -40,7 +40,14 @@ export type {
 } from './nixie/start-nixie-process';
 
 export { startNixieProcess } from './nixie/start-nixie-process';
-export type { ProviderCall, ProviderDouble, ProviderReply } from './wait/start-provider-double';
+
+export type {
+  ProviderCall,
+  ProviderCheckReply,
+  ProviderDouble,
+  ProviderReply,
+} from './wait/start-provider-double';
+
 export { startProviderDouble } from './wait/start-provider-double';
 export type { FaultPointArm, FaultPointWork, HarnessMessage, NixieMessage } from './types';
 export { probeProcessGone } from './process/probe-process-gone';

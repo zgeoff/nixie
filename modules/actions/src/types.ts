@@ -11,7 +11,27 @@ export type OutcomeReason =
   | 'ambiguous'
   | 'attempt_without_result'
   | 'unknown_tool'
-  | 'arguments_unreadable';
+  | 'arguments_unreadable'
+  | 'deadline_passed'
+  | 'rule_denied'
+  | 'declined'
+  | 'lapsed'
+  | 'destinations_changed'
+  | 'dropped';
+
+// Why an action whose outcome is unknown came to the owner.
+export type OwnerReason =
+  | 'inconclusive'
+  | 'unknown_streak'
+  | 'no_reconcile'
+  | 'key_expired'
+  | 'not_found_ask';
+
+export type ActionRiskClass = 'routine' | 'always_ask' | 'lifting';
+
+export type CheckAnswer = 'found' | 'not_found' | 'inconclusive';
+
+export type UnknownChoice = 'happened' | 'retry' | 'drop';
 
 export type Outcome =
   | { readonly status: 'done' }
@@ -25,6 +45,11 @@ export interface AllowedCall {
   readonly actionHash: string;
   readonly arguments: JSONObject;
   readonly decision: Decision;
+
+  // the tool_called record of the call, which the check before each attempt reads again
+  readonly callSequence?: number;
+  readonly deadlineAt?: number | null;
+  readonly effects?: readonly string[];
 }
 
 export type ModelView =
@@ -60,6 +85,15 @@ interface ActionTable {
   readonly outcome_sequence: number | null;
   readonly updated_sequence: number;
   readonly cancelled_sequence: number | null;
+  readonly call_sequence: number | null;
+  readonly deadline_at: number | null;
+  readonly risk_class: ActionRiskClass;
+  readonly is_approved: 0 | 1;
+  readonly held_by_proposal_id: string | null;
+  readonly unknown_streak: number;
+  readonly first_attempt_at: number | null;
+  readonly last_attempt_at: number | null;
+  readonly reconcile_at: number | null;
 }
 
 export type ActionRow = ActionTable;

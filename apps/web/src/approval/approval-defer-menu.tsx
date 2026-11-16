@@ -2,11 +2,14 @@ import type { ReactNode } from 'react';
 import { useState } from 'react';
 import { css } from '../styled-system/css';
 import type { DeferSettings } from './build-defer-times';
-import { buildDeferTimes, isDeferInRange } from './build-defer-times';
+import { buildDeferTimes, isDeferBeforeDeadline, isDeferInRange } from './build-defer-times';
 
 export interface ApprovalDeferMenuProps {
   readonly settings: DeferSettings;
   readonly isDisabled: boolean;
+
+  // the action's deadline, after which no time is offered
+  readonly deadlineAt?: Date | null;
   readonly onDefer: (until: Date, note: string | null) => void;
 }
 
@@ -38,7 +41,11 @@ export function ApprovalDeferMenu(props: ApprovalDeferMenuProps): ReactNode {
   const times = buildDeferTimes(now, props.settings);
   const trimmed = note.trim();
   const customUntil = custom === '' ? null : new Date(custom);
-  const isCustomValid = customUntil !== null && isDeferInRange(now, customUntil);
+  const deadlineAt = props.deadlineAt ?? null;
+  const isOffered = (until: Date): boolean => isDeferBeforeDeadline(until, deadlineAt);
+
+  const isCustomValid =
+    customUntil !== null && isDeferInRange(now, customUntil) && isOffered(customUntil);
 
   const send = (until: Date): void => {
     const sentNote = trimmed === '' ? null : trimmed;
@@ -59,34 +66,40 @@ export function ApprovalDeferMenu(props: ApprovalDeferMenuProps): ReactNode {
         />
       </label>
       <div className={options}>
-        <button
-          disabled={props.isDisabled}
-          name="defer-default"
-          onClick={() => {
-            send(times.inDefaultMinutes);
-          }}
-          type="button"
-        >
-          {formatDefaultLabel(props.settings.defaultMinutes)}
-        </button>
-        <button
-          disabled={props.isDisabled}
-          onClick={() => {
-            send(times.thisEvening);
-          }}
-          type="button"
-        >
-          This evening
-        </button>
-        <button
-          disabled={props.isDisabled}
-          onClick={() => {
-            send(times.tomorrowMorning);
-          }}
-          type="button"
-        >
-          Tomorrow morning
-        </button>
+        {isOffered(times.inDefaultMinutes) ? (
+          <button
+            disabled={props.isDisabled}
+            name="defer-default"
+            onClick={() => {
+              send(times.inDefaultMinutes);
+            }}
+            type="button"
+          >
+            {formatDefaultLabel(props.settings.defaultMinutes)}
+          </button>
+        ) : null}
+        {isOffered(times.thisEvening) ? (
+          <button
+            disabled={props.isDisabled}
+            onClick={() => {
+              send(times.thisEvening);
+            }}
+            type="button"
+          >
+            This evening
+          </button>
+        ) : null}
+        {isOffered(times.tomorrowMorning) ? (
+          <button
+            disabled={props.isDisabled}
+            onClick={() => {
+              send(times.tomorrowMorning);
+            }}
+            type="button"
+          >
+            Tomorrow morning
+          </button>
+        ) : null}
       </div>
       <div className={options}>
         <label className={field}>
@@ -120,7 +133,7 @@ export function ApprovalDeferMenu(props: ApprovalDeferMenuProps): ReactNode {
         </button>
       </div>
       {custom !== '' && !isCustomValid ? (
-        <p role="alert">Pick a time from 1 minute to 30 days ahead.</p>
+        <p role="alert">Pick a time from 1 minute to 30 days ahead, before any deadline.</p>
       ) : null}
     </div>
   );

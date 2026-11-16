@@ -79,6 +79,7 @@ async function setupTest(config: SetupConfig = {}) {
           definitions: () => ({ snapshotHash: 'sha256:test' }),
           queue: {
             enqueue: () => Promise.reject(new Error('every memory tool runs direct')),
+            readOpenRepeat: () => Promise.resolve(null),
             waitForOutcome: () => Promise.resolve(null),
           },
           queuedWaitMs: 1000,

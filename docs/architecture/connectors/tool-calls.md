@@ -99,6 +99,16 @@ each image. The result record holds the typed result alone, so an image's bytes 
 Claude Code also saves each image to a file in the session's config directory, which a forget
 removes with the rest of the session state.
 
+A tool that queues can declare `resolveDeadline`, which the host calls when the call arrives to read
+the time after which the effect must not start. An error from it makes the call an invalid call. The
+deadline joins the action hash and the call record, and [actions](../core/actions.md#deadlines)
+covers what it does.
+
+A connector declares how an unknown outcome of its actions is settled: a retry under the same key, a
+check with the provider, or nothing, which sends the outcome to the user. The test build's 3 send
+tools, `test.send`, `test.send_keyed` and `test.send_checked`, declare one each, so the crash tests
+cover every path. [Actions](../core/actions.md#reconciling-an-unknown-outcome) covers the paths.
+
 An action that failed or went unknown is no tool error: the call was allowed and the action ran, so
 the model reads its outcome as a result.
 

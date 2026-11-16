@@ -1,11 +1,26 @@
 export type { ActionsConfig } from './action/actions-config-schema';
 export { actionsConfigSchema } from './action/actions-config-schema';
 export { actionsProjection } from './action/actions-projection';
-export type { ActionQueueBridge } from './action/build-action-queue';
+export type { ActionQueueBridge, ActionQueueOptions } from './action/build-action-queue';
 export { buildActionQueue } from './action/build-action-queue';
 export { buildModelView } from './action/build-model-view';
 export type { ClaimActionOptions } from './action/claim-action';
 export { claimAction } from './action/claim-action';
+export type { ApprovedAction, ApprovedActionContext } from './action/create-approved-action';
+export { createApprovedAction } from './action/create-approved-action';
+export { failHeldAction } from './action/fail-held-action';
+
+export type {
+  UnknownOutcome,
+  UnknownOutcomeAttempt,
+  UnknownOutcomeCheck,
+} from './action/read-unknown-outcomes';
+
+export { readUnknownOutcomes } from './action/read-unknown-outcomes';
+export { readUnknownWaiting } from './action/read-unknown-waiting';
+export type { UnknownAnswer } from './action/write-unknown-answer';
+export { writeUnknownAnswer } from './action/write-unknown-answer';
+export type { AttemptCheck, AttemptCheckInput, AttemptVerdict } from './action/attempt-check';
 export type { QueuedAction } from './action/create-allowed-action';
 export { createAllowedAction } from './action/create-allowed-action';
 export { pickOutcome } from './action/pick-outcome';
@@ -19,6 +34,8 @@ export { readTaskActions } from './action/read-task-actions';
 
 export type {
   ActionCounts,
+  ActionRiskClass,
+  CheckAnswer,
   ActionRow,
   ActionStatus,
   ActionsTables,
@@ -27,10 +44,13 @@ export type {
   ModelView,
   Outcome,
   OutcomeReason,
+  OwnerReason,
+  UnknownChoice,
 } from './types';
 
-export type { ActionAttemptOptions } from './action/run-action-attempt';
-export { defaultRetryDelaysMs, runActionAttempt } from './action/run-action-attempt';
+export type { ActionAttemptOptions } from './action/action-attempt-options';
+export { defaultRetryDelaysMs } from './action/default-retry-delays-ms';
+export { runActionAttempt } from './action/run-action-attempt';
 export type { ActionRunnersOptions } from './action/start-action-runners';
 export { startActionRunners } from './action/start-action-runners';
 export type { WaitForActionOutcomeOptions } from './action/wait-for-action-outcome';

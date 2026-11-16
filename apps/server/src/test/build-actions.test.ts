@@ -13,19 +13,26 @@ test('it gives the test send tool a connector when the test build names a provid
 
   const actions = buildActions(ctx.context, {
     log: mock(() => {}),
+    ownerName: null,
     testProviderURL: 'http://127.0.0.1:9',
   });
 
   expect([...actions.connectors.keys()]).toStrictEqual([
     actions.logConnector.tool.name,
     'test.send',
+    'test.send_keyed',
+    'test.send_checked',
   ]);
 });
 
 test('it gives only the log tool a connector when no provider is named', async () => {
   const ctx = await setupTest();
 
-  const actions = buildActions(ctx.context, { log: mock(() => {}), testProviderURL: null });
+  const actions = buildActions(ctx.context, {
+    log: mock(() => {}),
+    ownerName: null,
+    testProviderURL: null,
+  });
 
   expect([...actions.connectors.keys()]).toStrictEqual([actions.logConnector.tool.name]);
 });

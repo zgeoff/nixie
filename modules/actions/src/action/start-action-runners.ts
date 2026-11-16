@@ -2,12 +2,16 @@ import type { ActionConnector } from '@heynixie/connectors';
 import { subscribeToRecordCommits } from '@heynixie/log';
 import type { ClaimPool, TasksContext } from '@heynixie/tasks';
 import { startClaimPool } from '@heynixie/tasks';
+import type { AttemptCheck } from './attempt-check';
 import { claimAction } from './claim-action';
 import { runActionAttempt } from './run-action-attempt';
 
 export interface ActionRunnersOptions {
   readonly connectors: ReadonlyMap<string, ActionConnector>;
   readonly onError: (error: unknown) => void;
+
+  // decides an action again before each attempt
+  readonly checkAttempt?: AttemptCheck;
 
   readonly size?: number;
   readonly holder?: string;
@@ -30,7 +34,12 @@ export function startActionRunners(
     size: options.size ?? DEFAULT_SIZE,
     pollMs: options.pollMs ?? DEFAULT_POLL_MS,
     claim: () => claimAction(context, { holder, leaseMs }),
-    run: (lease) => runActionAttempt(context, lease, { connectors: options.connectors, leaseMs }),
+    run: (lease) =>
+      runActionAttempt(context, lease, {
+        connectors: options.connectors,
+        leaseMs,
+        ...(options.checkAttempt === undefined ? {} : { checkAttempt: options.checkAttempt }),
+      }),
     onError: options.onError,
   });
 

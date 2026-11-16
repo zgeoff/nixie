@@ -4,13 +4,21 @@ import { getTypedQuote, readOwnerMessagesBySequence } from '@heynixie/memory';
 import type {
   ConsentAnswer,
   DecisionPoint,
+  DecisionPointOptions,
   EffectDeclaration,
   RunConsentCheck,
 } from '@heynixie/policy';
 import { checkConsent, makeDecisionPoint, readKnownContacts } from '@heynixie/policy';
 
+// A decision point that rereads a stored call passes the consent answer the call recorded, because
+// the consent checker is a model.
+interface DecisionOverrides {
+  readonly readConsent: DecisionPointOptions['readConsent'];
+}
+
 export type DecisionPointFactory = (
   findDeclaration: (tool: string) => EffectDeclaration | null,
+  overrides?: DecisionOverrides,
 ) => DecisionPoint;
 
 export interface ServerDecisionsOptions {
@@ -24,7 +32,7 @@ export interface ServerDecisionsOptions {
 const unavailable: ConsentAnswer = { verdict: 'unsure', failure: 'error' };
 
 export function makeServerDecisions(options: ServerDecisionsOptions): DecisionPointFactory {
-  return (findDeclaration) =>
+  return (findDeclaration, overrides) =>
     makeDecisionPoint({
       findDeclaration,
       readInputs: async (snapshot) => {
@@ -39,17 +47,19 @@ export function makeServerDecisions(options: ServerDecisionsOptions): DecisionPo
         };
       },
       findJobDestinations: () => [],
-      readConsent: (call, facts) =>
-        checkConsent(
-          {
-            readOwnerMessages: (sequences) => readOwnerMessagesBySequence(options.log, sequences),
-            isTypedText: (message, text) =>
-              getTypedQuote({ ...message, timeZone: null }, text).status === 'typed',
-            runCheck: (request) => options.readCheck()?.(request) ?? Promise.resolve(unavailable),
-            getLinkMaxAgeMs: () => options.linkMaxAgeMs,
-          },
-          call,
-          facts,
-        ),
+      readConsent:
+        overrides?.readConsent ??
+        ((call, facts) =>
+          checkConsent(
+            {
+              readOwnerMessages: (sequences) => readOwnerMessagesBySequence(options.log, sequences),
+              isTypedText: (message, text) =>
+                getTypedQuote({ ...message, timeZone: null }, text).status === 'typed',
+              runCheck: (request) => options.readCheck()?.(request) ?? Promise.resolve(unavailable),
+              getLinkMaxAgeMs: () => options.linkMaxAgeMs,
+            },
+            call,
+            facts,
+          )),
     });
 }

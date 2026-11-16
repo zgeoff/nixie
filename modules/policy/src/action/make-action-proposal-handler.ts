@@ -1,11 +1,12 @@
-import type { Definitions, Log, LogRecord, RecordInput } from '@heynixie/log';
-import { readRecords, writeRecordsInTransaction } from '@heynixie/log';
+import type { Definitions, JSONObject, Log, LogRecord, RecordInput } from '@heynixie/log';
+import { JSON_OBJECT_SCHEMA, readRecords, writeRecordsInTransaction } from '@heynixie/log';
 import type {
   ApplyOutcome,
   ApplyRun,
   ProposalAnswerInput,
   ProposalBody,
   ProposalKindHandler,
+  ProposalRefusal,
   SharedProposal,
 } from '@heynixie/proposals';
 import type { Transaction } from 'kysely';
@@ -13,16 +14,33 @@ import invariant from 'tiny-invariant';
 import { z } from 'zod';
 import { ruleBodySchema } from '../rule/rule-body-schema';
 import type { Rule } from '../types';
+import { hasQueuedEffect } from '../utils/has-queued-effect';
 import { actionAnsweredCodec } from './action-answered-codec';
 import { actionLapsedCodec } from './action-lapsed-codec';
 import { actionProposalLapseMs } from './action-proposal-lapse-ms';
 import { actionProposedCodec } from './action-proposed-codec';
+import { buildActionHash } from './build-action-hash';
 import { buildActionProposalSentence } from './build-action-proposal-sentence';
 
 interface AlwaysAllowChange {
   readonly ruleID: string;
   readonly rule: Omit<Rule, 'id'>;
   readonly reason: string;
+}
+
+// What an approval of an action proposal answers, for the queue to run.
+export interface ApprovedActionFacts {
+  // the proposal's ID, which is also the ID of the action it queues
+  readonly proposalID: string;
+  readonly taskID: string;
+  readonly stepKey: string | null;
+  readonly tool: string;
+  readonly effects: readonly string[];
+  readonly actionHash: string;
+  readonly arguments: JSONObject;
+  readonly callSequence: number;
+  readonly riskClass: SharedProposal['riskClass'];
+  readonly deadlineAt: number | null;
 }
 
 export interface ActionHandlerDeps {
@@ -34,6 +52,20 @@ export interface ActionHandlerDeps {
 
   // Adds the rule as a runtime change in the caller's transaction.
   readonly writeRule: (tx: Transaction<unknown>, change: AlwaysAllowChange) => Promise<void>;
+
+  // Queues the approved action in the answer's transaction, or releases the action that the row
+  // held, and returns the action's ID.
+  readonly queueApproved: (
+    tx: Transaction<unknown>,
+    approved: ApprovedActionFacts,
+  ) => Promise<string>;
+
+  // Fails the action that a declined or lapsed row held, in the same transaction.
+  readonly failHeld: (
+    tx: Transaction<unknown>,
+    row: SharedProposal,
+    reason: 'declined' | 'lapsed',
+  ) => Promise<void>;
 
   // runs after the answer commits, so a rule takes effect at once
   readonly runAfterRule: () => Promise<unknown>;
@@ -68,26 +100,36 @@ export function makeActionProposalHandler(deps: ActionHandlerDeps): ProposalKind
           payload: actionLapsedCodec.encode({ proposalID: row.id }),
         },
       ]);
+
+      await deps.failHeld(tx, row, 'lapsed');
     },
   };
 }
 
-async function readProposedRecords(
+function readProposedRecords(
   deps: ActionHandlerDeps,
   db: Parameters<ProposalKindHandler['readBodies']>[0],
   rows: readonly SharedProposal[],
 ): Promise<ReadonlyMap<number, LogRecord>> {
-  if (rows.length === 0) {
+  return readRecordsBySequence(
+    deps,
+    db,
+    rows.map((row) => row.createdSequence),
+  );
+}
+
+async function readRecordsBySequence(
+  deps: ActionHandlerDeps,
+  db: Parameters<ProposalKindHandler['readBodies']>[0],
+  sequences: readonly number[],
+): Promise<ReadonlyMap<number, LogRecord>> {
+  if (sequences.length === 0) {
     return new Map();
   }
 
   const read = await readRecords(
     { ...deps.log, writer: { ...deps.log.writer, db } },
-    {
-      afterSequence: 0,
-      sequences: rows.map((row) => row.createdSequence),
-      limit: rows.length,
-    },
+    { afterSequence: 0, sequences: [...sequences], limit: sequences.length },
   );
 
   return new Map(read.map((entry) => [entry.record.sequence, entry.record]));
@@ -165,6 +207,18 @@ async function writeAnswer(
     return { status: 'refused', refusal: { error: 'NOT_ALLOWED', reason: 'rule_gone' } };
   }
 
+  // a tool that runs inside the turn never enters the action queue, which has no connector for it
+  const isQueued = !isDeclined && hasQueuedEffect(payload.effects);
+  const queued = isQueued ? await queueAction(deps, tx, { row, proposed, payload }) : null;
+
+  if (queued !== null && queued.status === 'refused') {
+    return { status: 'refused', refusal: queued.refusal };
+  }
+
+  if (isDeclined) {
+    await deps.failHeld(tx, row, 'declined');
+  }
+
   await deps.writeThreadRecord(tx, {
     kind: actionAnsweredCodec.kind,
     definitions: deps.definitions(),
@@ -177,6 +231,7 @@ async function writeAnswer(
       identityID: answer.identityID,
       choice: answer.choice,
       ...(groupHash === undefined ? {} : { groupHash }),
+      ...(queued === null ? {} : { actionID: queued.actionID }),
     }),
     ...(isDeclined && answer.note !== undefined ? { erasable: { reason: answer.note } } : {}),
   });
@@ -234,4 +289,61 @@ function findRule(
   const { id: _id, ...body } = fields.rule;
 
   return { ruleID: fields.ruleID, rule: ruleBodySchema.parse(body) };
+}
+
+interface QueueRequest {
+  readonly row: SharedProposal;
+  readonly proposed: LogRecord;
+  readonly payload: ReturnType<typeof actionProposedCodec.decode>;
+}
+
+type Queued =
+  | { readonly status: 'queued'; readonly actionID: string }
+  | { readonly status: 'refused'; readonly refusal: ProposalRefusal };
+
+// An approval queues the action it answered, once: the answer's transaction is the guard, because a
+// second answer finds the row closed.
+async function queueAction(
+  deps: ActionHandlerDeps,
+  tx: Transaction<unknown>,
+  request: QueueRequest,
+): Promise<Queued> {
+  const row = request.row;
+  const payload = request.payload;
+  const erasable = findErasable(request.proposed);
+
+  // A forget shreds the arguments, and an action without them would run another.
+  if (erasable === null || row.thread === null) {
+    return { status: 'refused', refusal: { error: 'NOT_ALLOWED', reason: 'arguments_gone' } };
+  }
+
+  const hash = buildActionHash({
+    tool: payload.tool,
+    input: toJSONObject(erasable.input),
+    destinations: erasable.destinations.map((destination) => destination.value),
+    deadlineAt: payload.deadlineAt ?? null,
+  });
+
+  if (hash !== row.actionHash) {
+    return { status: 'refused', refusal: { error: 'NOT_ALLOWED', reason: 'action_changed' } };
+  }
+
+  const actionID = await deps.queueApproved(tx, {
+    proposalID: row.id,
+    taskID: row.thread,
+    stepKey: payload.stepKey ?? null,
+    tool: payload.tool,
+    effects: payload.effects,
+    actionHash: row.actionHash,
+    arguments: toJSONObject(erasable.input),
+    callSequence: payload.callSequence,
+    riskClass: row.riskClass,
+    deadlineAt: payload.deadlineAt ?? null,
+  });
+
+  return { status: 'queued', actionID };
+}
+
+function toJSONObject(value: Record<string, unknown>): JSONObject {
+  return JSON_OBJECT_SCHEMA.parse(value);
 }
