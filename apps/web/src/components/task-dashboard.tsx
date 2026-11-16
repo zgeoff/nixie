@@ -3,12 +3,18 @@ import { css } from '../styled-system/css';
 import { collectDashboardGroups } from '../task/collect-dashboard-groups';
 import type { ListedTask } from '../task/use-live-task-list';
 import { useLiveTaskList } from '../task/use-live-task-list';
+import { useTaskDefinitions } from '../task/use-task-definitions';
 import type { StartTimer } from '../utils/start-platform-timer';
 import { PauseNixieButton } from './pause-nixie-button';
+import { TaskFilters } from './task-filters';
+import type { DashboardFilters } from './task-filters';
 import { TaskSummary } from './task-summary';
 
 export interface TaskDashboardProps {
+  readonly filters: DashboardFilters;
   readonly startTimer?: StartTimer;
+
+  readonly onFiltersChange: (filters: DashboardFilters) => void;
 }
 
 const page = css({
@@ -24,14 +30,38 @@ const page = css({
 const notice = css({ color: 'textMuted', fontSize: 'sm' });
 
 export function TaskDashboard(props: TaskDashboardProps): ReactNode {
-  const timerOptions = props.startTimer === undefined ? {} : { startTimer: props.startTimer };
-  const listed = useLiveTaskList(timerOptions);
+  const filters = props.filters;
+
+  const listed = useLiveTaskList({
+    ...(props.startTimer === undefined ? {} : { startTimer: props.startTimer }),
+    ...(filters.definition === undefined ? {} : { definitionID: filters.definition }),
+    ...(filters.state === undefined ? {} : { state: filters.state }),
+  });
+
+  const definitions = useTaskDefinitions();
   const groups = collectDashboardGroups(listed.tasks);
+  const isFiltered = filters.definition !== undefined || filters.state !== undefined;
+
+  // The state filter hides tasks, so a list with none of a definition says nothing of whether
+  // the server knows definitions.
+  const isDefinitionShown =
+    isFiltered || listed.tasks.some((task) => task.definitionID !== undefined);
+
+  const hasMatch =
+    groups.conversation !== undefined || groups.working.length > 0 || groups.held.length > 0;
+
+  const isGroupShown = (count: number) => !isFiltered || !hasMatch || count > 0;
 
   return (
     <main className={page}>
       <h1>Tasks</h1>
       <PauseNixieButton />
+      <TaskFilters
+        definitions={definitions}
+        filters={filters}
+        isDefinitionShown={isDefinitionShown}
+        onFiltersChange={props.onFiltersChange}
+      />
       {listed.unavailable ? (
         <p className={notice} role="status">
           Live updates unavailable
@@ -49,8 +79,12 @@ export function TaskDashboard(props: TaskDashboardProps): ReactNode {
       {groups.conversation === undefined ? null : (
         <TaskGroup label="Conversation" tasks={[groups.conversation]} listed={listed.tasks} />
       )}
-      <TaskGroup label="Working" tasks={groups.working} listed={listed.tasks} />
-      <TaskGroup label="Held" tasks={groups.held} listed={listed.tasks} />
+      {isGroupShown(groups.working.length) ? (
+        <TaskGroup label="Working" tasks={groups.working} listed={listed.tasks} />
+      ) : null}
+      {isGroupShown(groups.held.length) ? (
+        <TaskGroup label="Held" tasks={groups.held} listed={listed.tasks} />
+      ) : null}
     </main>
   );
 }

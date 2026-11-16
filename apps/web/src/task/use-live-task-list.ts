@@ -7,6 +7,7 @@ import type { StartTimer } from '../utils/start-platform-timer';
 import { startPlatformTimer } from '../utils/start-platform-timer';
 import { useNixieClient } from '../utils/use-nixie-client';
 import { isTaskListRecord } from './is-task-list-record';
+import type { ListedState } from './listed-state';
 
 export type ListedTask = ContractOutputs['tasks']['list']['tasks'][number];
 
@@ -20,13 +21,30 @@ export interface LiveTaskList {
 
 export interface LiveTaskListOptions {
   readonly startTimer?: StartTimer;
+
+  // lists only the tasks of this definition
+  readonly definitionID?: string;
+
+  // lists only the tasks in this listed state
+  readonly state?: ListedState;
 }
+
+// The dashboard reads the list again on this period while the page is visible, because a task
+// that wakes on a schedule changes with no record of its own.
+export const taskListRefetchMs = 60_000;
 
 export function useLiveTaskList(options: LiveTaskListOptions = {}): LiveTaskList {
   const nixie = useNixieClient();
 
   const listed = useQuery({
-    ...nixie.queryUtils.tasks.list.queryOptions(),
+    ...nixie.queryUtils.tasks.list.queryOptions({
+      input: {
+        ...(options.definitionID === undefined ? {} : { definitionID: options.definitionID }),
+        ...(options.state === undefined ? {} : { states: [options.state] }),
+      },
+    }),
+    refetchInterval: taskListRefetchMs,
+    refetchOnWindowFocus: 'always',
     staleTime: routeDataStaleTimeMs,
   });
 

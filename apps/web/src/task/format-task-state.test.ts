@@ -10,6 +10,9 @@ test.each([
   ['failed', 'Failed'],
   ['done', 'Done'],
   ['closed', 'Closed'],
+  ['idle', 'Idle'],
+  ['finished', 'Finished'],
+  ['asleep', 'Asleep'],
 ] as const)('it labels a %s task %s', (state, expected) => {
   expect(formatTaskState(state)).toBe(expected);
 });

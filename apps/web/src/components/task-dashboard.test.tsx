@@ -1,4 +1,4 @@
-import { expect, test } from 'bun:test';
+import { expect, mock, test } from 'bun:test';
 import { waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { pauseStore } from '../mocks/pause-store';
@@ -30,7 +30,9 @@ test('it lists the conversation, then the working and the held tasks, with who w
   await store.tasks.create({ name: 'Seed order', state: 'paused', taskID: 'p7hd2wq9zn' });
   await store.tasks.create({ name: 'Tiler booking', state: 'done', taskID: 'r5bn1cy6tf' });
 
-  const rendered = render(<TaskDashboard startTimer={ctx.timer.startTimer} />);
+  const rendered = render(
+    <TaskDashboard filters={{}} onFiltersChange={() => {}} startTimer={ctx.timer.startTimer} />,
+  );
 
   const working = await rendered.findByRole('region', { name: 'Working' });
 
@@ -56,7 +58,9 @@ test('it pauses a task from the dashboard', async () => {
 
   await store.tasks.create({ name: 'Garden plan', state: 'waiting', taskID: 'k3vq8m2xpa' });
 
-  const rendered = render(<TaskDashboard startTimer={ctx.timer.startTimer} />);
+  const rendered = render(
+    <TaskDashboard filters={{}} onFiltersChange={() => {}} startTimer={ctx.timer.startTimer} />,
+  );
 
   const row = await rendered.findByRole('group', { name: 'Controls for Garden plan' });
 
@@ -82,7 +86,9 @@ test('it shows a pause of a running task as requested until the step ends', asyn
 
   await store.tasks.create({ name: 'Garden plan', state: 'running', taskID: 'k3vq8m2xpa' });
 
-  const rendered = render(<TaskDashboard startTimer={ctx.timer.startTimer} />);
+  const rendered = render(
+    <TaskDashboard filters={{}} onFiltersChange={() => {}} startTimer={ctx.timer.startTimer} />,
+  );
 
   const row = await rendered.findByRole('group', { name: 'Controls for Garden plan' });
 
@@ -102,7 +108,9 @@ test('it lists what a stop cancels, and stops the task once you confirm', async 
   await store.taskActions.create({ taskID: 'k3vq8m2xpa', tool: 'mail.send' });
   await store.taskActions.create({ attempts: 1, taskID: 'k3vq8m2xpa', tool: 'web.fetch' });
 
-  const rendered = render(<TaskDashboard startTimer={ctx.timer.startTimer} />);
+  const rendered = render(
+    <TaskDashboard filters={{}} onFiltersChange={() => {}} startTimer={ctx.timer.startTimer} />,
+  );
 
   const row = await rendered.findByRole('group', { name: 'Controls for Garden plan' });
 
@@ -145,7 +153,9 @@ test('it closes a task only once you confirm', async () => {
 
   await store.tasks.create({ name: 'Garden plan', state: 'waiting', taskID: 'k3vq8m2xpa' });
 
-  const rendered = render(<TaskDashboard startTimer={ctx.timer.startTimer} />);
+  const rendered = render(
+    <TaskDashboard filters={{}} onFiltersChange={() => {}} startTimer={ctx.timer.startTimer} />,
+  );
 
   const row = await rendered.findByRole('group', { name: 'Controls for Garden plan' });
 
@@ -171,7 +181,9 @@ test('it interrupts the turn of a running task', async () => {
 
   await store.tasks.create({ name: 'Garden plan', state: 'running', taskID: 'k3vq8m2xpa' });
 
-  const rendered = render(<TaskDashboard startTimer={ctx.timer.startTimer} />);
+  const rendered = render(
+    <TaskDashboard filters={{}} onFiltersChange={() => {}} startTimer={ctx.timer.startTimer} />,
+  );
 
   const row = await rendered.findByRole('group', { name: 'Controls for Garden plan' });
 
@@ -196,7 +208,9 @@ test('it offers only the controls the runner of a task offers', async () => {
     taskID: 'k3vq8m2xpa',
   });
 
-  const rendered = render(<TaskDashboard startTimer={ctx.timer.startTimer} />);
+  const rendered = render(
+    <TaskDashboard filters={{}} onFiltersChange={() => {}} startTimer={ctx.timer.startTimer} />,
+  );
 
   const row = await rendered.findByRole('group', { name: 'Controls for Garden plan' });
 
@@ -218,7 +232,9 @@ test('it reads the list again when a task record arrives on the live stream', as
     taskID: 'k3vq8m2xpa',
   });
 
-  const rendered = render(<TaskDashboard startTimer={ctx.timer.startTimer} />);
+  const rendered = render(
+    <TaskDashboard filters={{}} onFiltersChange={() => {}} startTimer={ctx.timer.startTimer} />,
+  );
 
   await rendered.findByRole('listitem', { name: 'Garden plan' });
 
@@ -248,7 +264,9 @@ test('it reads the list again when a message of yours arrives on the live stream
     taskID: 'k3vq8m2xpa',
   });
 
-  const rendered = render(<TaskDashboard startTimer={ctx.timer.startTimer} />);
+  const rendered = render(
+    <TaskDashboard filters={{}} onFiltersChange={() => {}} startTimer={ctx.timer.startTimer} />,
+  );
 
   const row = await rendered.findByRole('listitem', { name: 'Garden plan' });
 
@@ -272,7 +290,9 @@ test('it offers Pause nixie on the dashboard, and shows each task paused once ni
 
   await store.tasks.create({ name: 'Garden plan', state: 'waiting', taskID: 'k3vq8m2xpa' });
 
-  const rendered = render(<TaskDashboard startTimer={ctx.timer.startTimer} />);
+  const rendered = render(
+    <TaskDashboard filters={{}} onFiltersChange={() => {}} startTimer={ctx.timer.startTimer} />,
+  );
 
   const pauseButton = await rendered.findByRole('button', { name: 'Pause nixie' });
 
@@ -286,4 +306,82 @@ test('it offers Pause nixie on the dashboard, and shows each task paused once ni
 
   expect(pauseStore.pauses.all()).toHaveLength(1);
   expect(rendered.queryByRole('button', { name: 'Pause nixie' })).toBeNull();
+});
+
+test('it lists a task by its listed state, and offers a definition and a state filter', async () => {
+  const ctx = setupTest();
+  const picked = mock<(filters: unknown) => void>();
+
+  await createDeviceSession();
+
+  await store.tasks.create({
+    definitionID: 'water-the-tomatoes',
+    listedState: 'asleep',
+    name: 'Water the tomatoes',
+    state: 'waiting',
+    taskID: 'k3vq8m2xpa',
+  });
+
+  const rendered = render(
+    <TaskDashboard filters={{}} onFiltersChange={picked} startTimer={ctx.timer.startTimer} />,
+  );
+
+  const working = await rendered.findByRole('region', { name: 'Working' });
+
+  expect(within(working).getByRole('listitem', { name: 'Water the tomatoes' })).toHaveTextContent(
+    'Asleep',
+  );
+
+  const stateFilter = await rendered.findByLabelText('State');
+
+  await ctx.user.selectOptions(stateFilter, 'Asleep');
+
+  expect(picked).toHaveBeenLastCalledWith({ state: 'asleep' });
+
+  await ctx.user.selectOptions(rendered.getByLabelText('Definition'), 'Water the tomatoes');
+
+  expect(picked).toHaveBeenLastCalledWith({ definition: 'water-the-tomatoes' });
+});
+
+test('it shows only the groups that hold a match under a filter, and clears the filters', async () => {
+  const ctx = setupTest();
+  const changed = mock<(filters: unknown) => void>();
+
+  await createDeviceSession();
+
+  await store.tasks.create({ listedState: 'failed', name: 'Seed order', state: 'failed' });
+  await store.tasks.create({ listedState: 'idle', name: 'Tiler booking', state: 'waiting' });
+
+  const rendered = render(
+    <TaskDashboard
+      filters={{ state: 'failed' }}
+      onFiltersChange={changed}
+      startTimer={ctx.timer.startTimer}
+    />,
+  );
+
+  await rendered.findByRole('region', { name: 'Held' });
+
+  expect(rendered.queryByRole('region', { name: 'Working' })).toBeNull();
+  expect(rendered.queryByText('Tiler booking')).toBeNull();
+
+  await ctx.user.click(rendered.getByRole('button', { name: 'Clear filters' }));
+
+  expect(changed).toHaveBeenCalledWith({});
+});
+
+test('it hides the definition filter while no task has a definition', async () => {
+  const ctx = setupTest();
+
+  await createDeviceSession();
+
+  await store.tasks.create({ name: 'Seed order', state: 'waiting' });
+
+  const rendered = render(
+    <TaskDashboard filters={{}} onFiltersChange={() => {}} startTimer={ctx.timer.startTimer} />,
+  );
+
+  await rendered.findByText('Seed order');
+
+  expect(rendered.queryByLabelText('Definition')).toBeNull();
 });

@@ -271,7 +271,24 @@ export const mockAPIRouter = os.router({
     listTasks: os.definitions.listTasks.handler((options) => {
       requireMockSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
 
-      return { definitions: [] };
+      const owners = store.tasks.all().filter((task) => task.definitionID !== undefined);
+
+      return {
+        definitions: owners.map((task) => ({
+          definitionID: task.definitionID ?? '',
+          name: task.name,
+          enabled: true,
+          target: 'task' as const,
+          trigger: null,
+          rendered: null,
+          next: null,
+          tools: [],
+          origin: 'definitions' as const,
+          createdBy: { sequence: 1, kind: 'definitions_seeded' as const },
+          taskID: task.taskID,
+          isUnreadable: false,
+        })),
+      };
     }),
   },
   tasks: {
@@ -283,7 +300,7 @@ export const mockAPIRouter = os.router({
     list: os.tasks.list.handler((options) => {
       requireMockSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
 
-      return readMockTaskList();
+      return readMockTaskList(options.input);
     }),
     read: os.tasks.read.handler((options) => {
       requireMockSession(options.context.sessionToken, options.errors.UNAUTHORIZED);

@@ -36,15 +36,20 @@ test('it lists each task, most recently active first, with its action counts', a
         brief: 'Order seeds.',
         closedBy: undefined,
         controls: ['stop'],
+        definitionID: undefined,
         disposable: null,
+        fire: undefined,
         isPauseRequested: false,
         isPausedByNixie: false,
         isTakingMessages: true,
         lastActivityAt: new Date('2026-10-02T09:00:00Z'),
+        listedState: undefined,
         name: 'Seed order',
+        nextRunAt: undefined,
         runner: 'sandbox',
         state: 'running',
         taskID: 'w5n1c8d3ra',
+        wakeable: undefined,
         waitingOn: undefined,
       },
       {
@@ -52,15 +57,20 @@ test('it lists each task, most recently active first, with its action counts', a
         brief: 'Plan the beds.',
         closedBy: undefined,
         controls: ['pause', 'resume', 'stop', 'restart', 'close', 'interrupt'],
+        definitionID: undefined,
         disposable: null,
+        fire: undefined,
         isPauseRequested: false,
         isPausedByNixie: false,
         isTakingMessages: true,
         lastActivityAt: new Date('2026-10-01T09:00:00Z'),
+        listedState: undefined,
         name: 'Garden plan',
+        nextRunAt: undefined,
         runner: 'sandbox',
         state: 'waiting',
         taskID: 'k3x9m2p7qa',
+        wakeable: undefined,
         waitingOn: 'conversation',
       },
     ],
@@ -79,4 +89,39 @@ test('it marks each task as paused by nixie while the pause holds, except an exe
     ['k3x9m2p7qa', true],
     ['w5n1c8d3ra', false],
   ]);
+});
+
+test('it lists a paused task as paused while nixie is paused, and an ended one as it is', async () => {
+  await store.tasks.create({ listedState: 'idle', state: 'waiting', taskID: 'k3x9m2p7qa' });
+  await store.tasks.create({ listedState: 'failed', state: 'failed', taskID: 'w5n1c8d3ra' });
+  await pauseStore.pauses.create({ cause: 'owner' });
+
+  const states = readMockTaskList().tasks.map((task) => [task.taskID, task.listedState]);
+
+  expect(states).toIncludeSameMembers([
+    ['k3x9m2p7qa', 'paused'],
+    ['w5n1c8d3ra', 'failed'],
+  ]);
+});
+
+test('it filters by definition and by listed state, before the limit of 100', async () => {
+  await store.tasks.create({
+    definitionID: 'water-the-tomatoes',
+    lastActivityAt: new Date('2026-09-01T09:00:00Z'),
+    listedState: 'asleep',
+    taskID: 'k3x9m2p7qa',
+  });
+
+  for (let index = 0; index < 101; index += 1) {
+    await store.tasks.create({
+      lastActivityAt: new Date('2026-10-01T09:00:00Z'),
+      listedState: 'idle',
+    });
+  }
+
+  const byDefinition = readMockTaskList({ definitionID: 'water-the-tomatoes' });
+  const byState = readMockTaskList({ states: ['asleep', 'failed'] });
+
+  expect(byDefinition.tasks.map((task) => task.taskID)).toStrictEqual(['k3x9m2p7qa']);
+  expect(byState.tasks.map((task) => task.taskID)).toStrictEqual(['k3x9m2p7qa']);
 });

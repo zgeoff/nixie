@@ -149,7 +149,7 @@ test('it shows each task as paused when the pause begins after the list loaded',
     <>
       <PauseBanner />
       <PauseReader />
-      <TaskDashboard startTimer={ctx.timer.startTimer} />
+      <TaskDashboard filters={{}} onFiltersChange={() => {}} startTimer={ctx.timer.startTimer} />
     </>,
   );
 
@@ -193,7 +193,7 @@ test('it shows a task as running again when another client resumed it alone', as
     <>
       <PauseBanner />
       <PauseReader />
-      <TaskDashboard startTimer={ctx.timer.startTimer} />
+      <TaskDashboard filters={{}} onFiltersChange={() => {}} startTimer={ctx.timer.startTimer} />
     </>,
   );
 

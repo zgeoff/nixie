@@ -1,9 +1,12 @@
-import type { TaskState } from '@heynixie/task-control';
+import type { ListedState } from './listed-state';
 
-const stateLabels: Readonly<Record<TaskState, string>> = {
+const stateLabels: Readonly<Record<ListedState, string>> = {
   ready: 'Ready',
   running: 'Running',
   waiting: 'Waiting',
+  idle: 'Idle',
+  finished: 'Finished',
+  asleep: 'Asleep',
   paused: 'Paused',
   stopped: 'Stopped',
   failed: 'Failed',
@@ -11,6 +14,6 @@ const stateLabels: Readonly<Record<TaskState, string>> = {
   closed: 'Closed',
 };
 
-export function formatTaskState(state: TaskState): string {
+export function formatTaskState(state: ListedState): string {
   return stateLabels[state];
 }
