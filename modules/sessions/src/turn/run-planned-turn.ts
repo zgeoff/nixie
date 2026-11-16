@@ -82,6 +82,7 @@ function readOpening(
       Number.MAX_SAFE_INTEGER,
       ...turn.input.inbox.map((record) => record.sequence),
     ),
+    ...(turn.run.sinceSequence === undefined ? {} : { afterSequence: turn.run.sinceSequence }),
     rebuildTokens: turn.run.memorySettings.rebuildTokens,
     times,
     zone: findNewestZone(turn.input.inbox),

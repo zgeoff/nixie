@@ -4,6 +4,10 @@ import { writeDefinitionTasksInTransaction } from '../definition/write-definitio
 import type { DefinitionRunPolicy, DefinitionVersion, TasksTables } from '../types';
 import type { TestTasks } from './start-test-tasks';
 
+interface DefinitionTaskHost extends Pick<TestTasks, 'context' | 'definitionStore'> {
+  readonly writer: TestTasks['context']['log']['writer'];
+}
+
 export interface DefinitionTaskSeed {
   readonly definitionID: string;
 
@@ -16,7 +20,7 @@ export interface DefinitionTaskSeed {
 // Binds a task to the definition through the seed's hook, keeping the other definitions in force, and stores the version and the policy
 // that the hash names. Returns the task's ID.
 export async function seedDefinitionTask(
-  tasks: TestTasks,
+  tasks: DefinitionTaskHost,
   seed: DefinitionTaskSeed,
 ): Promise<string> {
   const hash = seed.definitionHash ?? `${seed.definitionID}-spent`;

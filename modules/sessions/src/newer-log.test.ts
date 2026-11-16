@@ -259,6 +259,71 @@ test('it renders a brief record in the inbox with its text', async () => {
   ).toInclude('Find 3 quiet cafes near the station.');
 });
 
+test('it reads a definition task whose log holds its binding and a trigger fire', async () => {
+  const ctx = await setupTest();
+
+  const written = await writeRecords(ctx.tasks.context.log, [
+    {
+      kind: 'task.created',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'w4t7r2n9ka',
+      payload: { taskID: 'w4t7r2n9ka', isConversation: false, state: 'waiting' },
+    },
+    {
+      kind: 'task.definition_set',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'w4t7r2n9ka',
+      payload: {
+        taskID: 'w4t7r2n9ka',
+        definitionID: 'water-the-tomatoes',
+        definitionHash: 'hash-1',
+      },
+    },
+    {
+      kind: 'trigger.fired',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'w4t7r2n9ka',
+      payload: {
+        definitionID: 'water-the-tomatoes',
+        definitionHash: 'hash-1',
+        source: 'schedule',
+        dedupeKey: 'water-the-tomatoes:2027-03-11T21:00:00.000Z',
+        kind: 'schedule',
+        scheduledFor: '2027-03-11T21:00:00.000Z',
+        firedAt: '2027-03-11T21:00:00.000Z',
+        isCatchUp: false,
+        skipped: [],
+        skippedCount: 0,
+      },
+    },
+  ]);
+
+  const fire = written.at(2);
+
+  invariant(fire, 'the log wrote no fire record');
+
+  const [entry] = await readRecords(ctx.tasks.context.log, {
+    afterSequence: 0,
+    sequences: [fire.sequence],
+  });
+
+  invariant(entry, 'the log holds the fire record');
+
+  const marks = await readSessionMarks(ctx.tasks.context, 'w4t7r2n9ka');
+  const open = await readStartedTaskIDs(ctx.tasks.context, { end: 'open' });
+
+  expect(marks.sessionKey).toBeNull();
+  expect(open).toStrictEqual(['w4t7r2n9ka']);
+
+  expect(
+    renderInboxMessage(
+      entry.record,
+      { defaultZone: 'UTC', now: new Date() },
+      buildMockTaskMessageView(),
+    ),
+  ).toInclude('trigger.fired');
+});
+
 test('it lists and reads a started task whose log holds task run records, a report shape and task run IDs on its calls', async () => {
   const ctx = await setupTest();
 

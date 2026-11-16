@@ -15,7 +15,7 @@ export interface TestDefinitionStore extends TestDefinitionReaders {
   readonly add: (hash: string, entry: TestDefinitionEntry) => void;
 }
 
-export interface TestDefinitionEntry {
+interface TestDefinitionEntry {
   readonly version?: Partial<DefinitionVersion>;
   readonly policy?: Partial<DefinitionRunPolicy>;
 }

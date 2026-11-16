@@ -12,6 +12,7 @@ export interface HeldMessagesQuery {
   readonly isNewSession: boolean;
 
   readonly beforeSequence: number;
+  readonly afterSequence?: number;
 
   readonly rebuildTokens: number;
   readonly times: MessageTimeOptions;
@@ -42,12 +43,15 @@ async function readRecentStart(
   context: Pick<TasksContext, 'log'>,
   query: HeldMessagesQuery,
 ): Promise<number> {
-  const summary = await readSessionSummary(context, query.taskID);
+  const found = await readSessionSummary(context, query.taskID);
+
+  const since = query.afterSequence ?? 0;
+  const summary = found !== null && found.sequence > since ? found : null;
 
   const recent = await readRecentTurns(context, {
     taskID: query.taskID,
     beforeSequence: query.beforeSequence,
-    afterSequence: summary?.throughSequence ?? 0,
+    afterSequence: Math.max(since, summary?.throughSequence ?? 0),
     tokens: query.rebuildTokens,
     times: query.times,
     messaging: query.messaging,

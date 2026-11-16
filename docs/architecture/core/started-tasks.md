@@ -200,6 +200,9 @@ when the task reports, reaches a limit, stops, closes or fails. The 3 records `t
 `task.run_report_requested` and `task.run_ended` hold it, and the `task_runs` projection folds them
 into one row per task run with the open run first in the unique `task_runs_open` index.
 
+A definition's task opens its task runs on a fire, as
+[the task of a definition](definitions.md#the-task-of-a-definition) describes.
+
 A task run pins what it needs when it opens: the report mode and its target, the report shape, and
 its limits. A raise or a restart opens a task run that carries the one before it, as
 [limits](#limits) describes. A task has at most one open task run, and a rerun of a step joins it,

@@ -43,16 +43,33 @@ export interface SessionMarks {
 export async function readSessionMarks(
   context: Pick<TasksContext, 'log'>,
   taskID: string,
+  afterSequence = 0,
 ): Promise<SessionMarks> {
   const [invalidated, lastTurns, opened, summarized, failed, cliCompacted] = await Promise.all([
-    readNewest(context, { thread: taskID, kinds: ['model.session_invalidated'], limit: 1 }),
-    readNewest(context, { thread: taskID, kinds: ['model.turn_ended'], limit: 1 }),
-    readNewest(context, { thread: taskID, kinds: ['model.session_opened'], limit: 1 }),
-    readNewest(context, { thread: taskID, kinds: ['model.session_summarized'], limit: 1 }),
-    readNewest(context, { thread: taskID, kinds: ['model.compaction_failed'], limit: 1 }),
+    readNewest(context, afterSequence, {
+      thread: taskID,
+      kinds: ['model.session_invalidated'],
+      limit: 1,
+    }),
+    readNewest(context, afterSequence, { thread: taskID, kinds: ['model.turn_ended'], limit: 1 }),
+    readNewest(context, afterSequence, {
+      thread: taskID,
+      kinds: ['model.session_opened'],
+      limit: 1,
+    }),
+    readNewest(context, afterSequence, {
+      thread: taskID,
+      kinds: ['model.session_summarized'],
+      limit: 1,
+    }),
+    readNewest(context, afterSequence, {
+      thread: taskID,
+      kinds: ['model.compaction_failed'],
+      limit: 1,
+    }),
 
     // A log can hold this kind from a guest whose CLI compacted the transcript itself.
-    readNewest(context, { thread: taskID, kinds: ['model.compacted'], limit: 1 }),
+    readNewest(context, afterSequence, { thread: taskID, kinds: ['model.compacted'], limit: 1 }),
   ]);
 
   const [turn] = lastTurns;
@@ -80,9 +97,10 @@ export async function readSessionMarks(
 
 async function readNewest(
   context: Pick<TasksContext, 'log'>,
+  afterSequence: number,
   query: Pick<ReadRecordsOptions, 'thread' | 'kinds' | 'limit'>,
 ): Promise<readonly LogRecord[]> {
-  const entries = await readRecords(context.log, { ...query, afterSequence: 0, order: 'newest' });
+  const entries = await readRecords(context.log, { ...query, afterSequence, order: 'newest' });
 
   return entries.map((entry) => entry.record);
 }

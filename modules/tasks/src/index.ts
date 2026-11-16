@@ -105,6 +105,8 @@ export type { StartedTasksQuery } from './task/read-started-task-ids';
 export { readStartedTaskIDs } from './task/read-started-task-ids';
 export type { DefinitionTaskSetup, StartedTaskSetup, TaskSetup } from './task/read-task-setup';
 export { readTaskSetup } from './task/read-task-setup';
+export type { DefinitionRunContext } from './task/read-definition-run-context';
+export { readDefinitionRunContext } from './task/read-definition-run-context';
 export { startedTaskDefaultTools } from './task/started-task-default-tools';
 export { taskFailedTurnSpentCodec } from './task/codec/task-failed-turn-spent-codec';
 export { taskLimitNoticeCodec } from './limit/task-limit-notice-codec';

@@ -71,7 +71,7 @@ export async function writeDefinitionTasksInTransaction(
   return written;
 }
 
-export interface DefinitionTaskRow {
+interface DefinitionTaskRow {
   readonly definitionID: string;
   readonly taskID: string;
   readonly definitionHash: string | null;
