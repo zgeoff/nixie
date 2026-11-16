@@ -1,8 +1,16 @@
 import type { PurgeFacts } from './read-purge-facts';
 
 export type PurgePlan =
+  // the item is already purged, or the set holds no row for it
   | { readonly kind: 'skip' }
+
+  // the item's own forget began, and it deletes every key of the item
+  | { readonly kind: 'forget' }
+
+  // the closing record is in the log, so the keys go and the last mark follows
   | { readonly kind: 'finish'; readonly closedSequence: number }
+
+  // a pending proposal for a new item lapses, and nothing else of the item exists
   | { readonly kind: 'lapse' }
   | {
       readonly kind: 'close';
@@ -14,9 +22,6 @@ export type PurgePlan =
       readonly isShared: boolean;
     };
 
-// skip: the item is forgetting, forgotten or already purged, or the set holds no row for it.
-// finish: the closing record is in the log, so the keys go and the last mark follows.
-// lapse: a pending proposal for a new item lapses, and nothing else of the item exists.
 export function pickPurgePlan(facts: PurgeFacts): PurgePlan {
   if (facts.purge === null || facts.purge.purgedSequence !== null) {
     return { kind: 'skip' };
@@ -31,7 +36,7 @@ export function pickPurgePlan(facts: PurgeFacts): PurgePlan {
   }
 
   if (facts.item.state === 'forgetting' || facts.item.state === 'forgotten') {
-    return { kind: 'skip' };
+    return { kind: 'forget' };
   }
 
   const open = facts.keyRows.filter((row) => row.removed_sequence === null);

@@ -625,3 +625,46 @@ test.each(['record.forget.started', 'record.forget.purged'] as const)(
     ]);
   },
 );
+
+test('it deletes every key of a quoting item whose own forget stopped before its key delete, before record.forgotten', async () => {
+  const api = await startTestAPI();
+  const forgets = await startTestMemoryForgets(api.context);
+  const seeded = await seedQuotedMemoryItems(api.context, forgets.memory);
+
+  await withWriteTransaction(api.context.log.writer, (tx) =>
+    writeForgetStart(tx, api.context, { thread: 'conversation', sequence: seeded.sequence }, []),
+  );
+
+  // the item's own forget committed its first record and stopped before it deleted any key
+  await writeRecords(api.context.log, [
+    {
+      kind: 'memory.forget_started',
+      definitions: { snapshotHash: 'sha256:test' },
+      payload: {
+        itemID: seeded.quoting.itemID,
+        version: seeded.quoting.version,
+        evidenceSequences: [seeded.sequence],
+      },
+    },
+  ]);
+
+  await runRecordForgetCleanup(forgets.forgetContext, seeded.sequence);
+
+  const keyRows = await readTestRecordKeyRows(api.writer);
+  const entries = await readRecords(api.context.log, { afterSequence: 0 });
+
+  const kinds = entries.map((entry) => entry.record.kind);
+
+  expect(
+    keyRows.filter(
+      (row) =>
+        row.key_id === seeded.quoting.itemID || row.key_id.startsWith(`${seeded.quoting.itemID}/`),
+    ),
+  ).toStrictEqual([]);
+
+  expect(kinds.slice(-3)).toStrictEqual([
+    'memory.forgotten',
+    'memory.evidence_purged',
+    'record.forgotten',
+  ]);
+});
