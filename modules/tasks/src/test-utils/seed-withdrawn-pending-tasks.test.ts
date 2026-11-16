@@ -47,7 +47,7 @@ test('it withdraws its own definitions and keeps the definitions already in forc
     { definitionID: 'prune-the-roses', definitionHash: 'hash-2' },
   ]);
 
-  invariant(pruned);
+  invariant(typeof pruned === 'string');
 
   const bindings = await ctx.readBindings();
 

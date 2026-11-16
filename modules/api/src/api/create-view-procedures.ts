@@ -1,4 +1,3 @@
-// oxlint-disable new-cap -- oRPC names a procedure's typed errors by their upper-case codes
 import type { Trigger } from '@heynixie/contract';
 import type { ListedDefinition } from '@heynixie/definitions';
 import { readListedDefinitions, readNewestDefinitionName } from '@heynixie/definitions';

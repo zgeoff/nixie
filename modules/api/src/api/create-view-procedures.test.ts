@@ -264,7 +264,7 @@ test(
     const tomatoesTask = defined.definitions[0]?.taskID;
 
     invariant(tomatoes);
-    invariant(tomatoesTask);
+    invariant(typeof tomatoesTask === 'string');
 
     ctx.definitionStore.add(tomatoes.definitionHash, {});
 
