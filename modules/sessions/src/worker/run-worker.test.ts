@@ -348,7 +348,8 @@ test('it gives the cap sentence to a call past the cap that errors', async () =>
   const ctx = await setupTest({ workerRuns: { max: 1, whenFull: 'error' } });
 
   ctx.guest.addKindReplies('worker', { text: 'First.', gate: () => new Promise<void>(() => {}) });
-  void ctx.callWorker({ question: 'First?' });
+
+  const first = ctx.callWorker({ question: 'First?' });
 
   await waitForCondition(() => ctx.guest.received.some((entry) => entry.frame.type === 'turn'));
 
@@ -360,6 +361,8 @@ test('it gives the cap sentence to a call past the cap that errors', async () =>
   });
 
   ctx.caller.abort(new Error('the step ended'));
+
+  expect(first).rejects.toThrowWithMessage(Error, 'the step ended');
 });
 
 test("it rejects the call of an aborted step, and writes the end record with the outcome 'aborted'", async () => {
