@@ -488,6 +488,7 @@ test.skipIf(!hasRelay)(
     ctx.model.addReplies({ text: 'done' });
 
     const turn = await ctx.runTurn({ baseURLSegment: `/~in.${tag}`, tools: { ping: 'pong' } });
+    const counts = await ctx.readCounted(turn.frames);
     const names = await readdir(ctx.gateway.spoolDir);
 
     const kept = names.filter((name) => parseSpoolFileName(name)?.kind === 'cap');
@@ -497,6 +498,7 @@ test.skipIf(!hasRelay)(
 
     expect(turn.frames.at(-1)).toMatchObject({ type: 'ended', outcome: 'finished' });
     expect(ctx.model.requests.map((request) => request.path)).toStrictEqual(['/v1/responses']);
+    expect(counts.counted.tokens).toBe(counts.expected.tokens);
     expect(kept).toHaveLength(1);
     expect(new TextDecoder().decode(opened?.body)).toInclude('USER INPUT MARKER');
   },
@@ -527,6 +529,7 @@ test.skipIf(!hasRelay)(
     );
 
     const turn = await ctx.runTurn({ tools: { recall: result, ping: 'pong' }, memoryMiB });
+    const counts = await ctx.readCounted(turn.frames);
 
     const probeScript = String.raw`echo "oom_kill=$(awk '/^oom_kill/{print $2}' /proc/vmstat) peak=$(cat /sys/fs/cgroup/memory.peak 2>/dev/null) events=$(tr '\n' ' ' </sys/fs/cgroup/memory.events 2>/dev/null) memtotal=$(awk '/MemTotal/{print $2}' /proc/meminfo)"`;
 
@@ -541,6 +544,7 @@ test.skipIf(!hasRelay)(
     console.log(`codexTask probe at ${String(memoryMiB)} MiB: ${line}`);
 
     expect(turn.frames.at(-1)).toMatchObject({ type: 'ended' });
+    expect(counts.counted.tokens).toBe(counts.expected.tokens);
     expect(line).toStartWith('oom_kill=0 ');
     expect(line).not.toMatch(/oom_kill [1-9]/u);
   },

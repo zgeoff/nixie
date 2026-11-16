@@ -29,6 +29,12 @@ export interface TestModelGatewayOptions {
 
   // a fixed port on the loopback address, for a caller that a relay must reach
   readonly port?: number;
+
+  // whether it spools captured requests, which is on unless a caller turns it off
+  readonly capture?: boolean;
+
+  // what it counts against, which is 100 dollars unless a caller names its own
+  readonly limits?: { readonly dollars?: number; readonly tokens?: number };
 }
 
 // the prices of its route, per million tokens
@@ -50,14 +56,16 @@ export async function startTestModelGateway(
 
   await mkdir(spoolDir);
 
+  const limits = options.limits ?? { dollars: 100 };
+  const limitEntries = Object.entries(limits).map(([name, value]) => `${name}: ${String(value)}`);
+
   await writeFile(
     join(directory, 'proxy.yaml'),
     [
       `listen: { port: ${String(options.port ?? 0)} }`,
       `store: ${join(directory, 'counter.json')}`,
-      'limits: { dollars: 100 }',
-      'capture:',
-      `  spool: ${spoolDir}`,
+      `limits: { ${limitEntries.join(', ')} }`,
+      ...(options.capture === false ? [] : ['capture:', `  spool: ${spoolDir}`]),
       'routes:',
       '  scripted:',
       `    api: ${options.api ?? 'anthropic-messages'}`,

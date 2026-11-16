@@ -1,5 +1,6 @@
 import { expect, mock, onTestFinished, test } from 'bun:test';
 import { startScriptedModel, waitForCondition } from '@heynixie/testing';
+import { capturePath } from '@heynixie/wire';
 import { startTestModelGateway } from './start-test-model-gateway';
 
 test('it counts the tokens of a Responses reply on a route that names its API and model', async () => {
@@ -49,4 +50,56 @@ test('it listens on the port it is given', async () => {
   const gateway = await startTestModelGateway({ upstreamURL: model.url, port });
 
   expect(gateway.url).toBe(`http://127.0.0.1:${String(port)}`);
+});
+
+test('it refuses a request once the tokens counted reach the limit it is given', async () => {
+  const model = startScriptedModel();
+
+  onTestFinished(() => model.stop());
+
+  model.addReplies({ text: 'done', responsesUsage: { input_tokens: 10, output_tokens: 5 } });
+
+  const gateway = await startTestModelGateway({
+    upstreamURL: model.url,
+    api: 'openai-responses',
+    limits: { tokens: 15 },
+  });
+
+  const ask = () =>
+    fetch(`${gateway.baseURL}/v1/responses`, {
+      method: 'POST',
+      body: JSON.stringify({ model: 'claude-test-1', input: 'Hi.' }),
+    });
+
+  const first = await ask();
+
+  await first.text();
+
+  const probeCounted = async () => {
+    const counted = await gateway.readCount();
+
+    return counted.tokens === 15;
+  };
+
+  await waitForCondition(probeCounted);
+
+  const refused = await ask();
+
+  expect(refused.status).toBe(403);
+});
+
+test('it answers the capture ask with no when capture is off', async () => {
+  const model = startScriptedModel();
+
+  onTestFinished(() => model.stop());
+
+  const gateway = await startTestModelGateway({ upstreamURL: model.url, capture: false });
+
+  const answer = await fetch(
+    `${gateway.url}${capturePath}?spool=${encodeURIComponent(gateway.spoolDir)}`,
+  );
+
+  const body = await answer.json();
+
+  expect(body).toStrictEqual({ canCapture: false });
 });
