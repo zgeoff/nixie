@@ -6,5 +6,5 @@ import { codexVersion } from './codex-version';
 test('it pins the CLI version that the Dockerfile downloads', async () => {
   const dockerfile = await readFile(join(import.meta.dir, '..', 'Dockerfile'), 'utf8');
 
-  expect(dockerfile.split('\n')).toContain(`ARG CODEX_VERSION=${codexVersion}`);
+  expect(dockerfile).toInclude(`/releases/download/rust-v${codexVersion}/`);
 });
