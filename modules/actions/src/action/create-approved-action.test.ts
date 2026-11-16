@@ -1,6 +1,7 @@
 import { expect, test } from 'bun:test';
 import { withWriteTransaction } from '@heynixie/log';
 import { buildActionProposalInput } from '@heynixie/policy';
+import { writeStepCommit } from '@heynixie/tasks';
 import { buildStubConnector } from '../test-utils/build-stub-connector';
 import { claimTestAction } from '../test-utils/claim-test-action';
 import { createTestStep } from '../test-utils/create-test-step';
@@ -103,6 +104,17 @@ test('it queues an approved action under the step of the call that asked', async
   const rows = await ctx.readActions();
 
   expect(rows).toMatchObject([{ step_key: 'task-1:3', call_sequence: 1 }]);
+});
+
+test('it queues an approved action after the step of the call that asked has committed', async () => {
+  const ctx = await setupTest();
+
+  await writeStepCommit(ctx.context, ctx.step, { next: 'wait', records: [], acknowledged: [] });
+
+  const actionID = await ctx.approve({ stepKey: ctx.step.stepKey });
+  const action = await ctx.readAction(actionID);
+
+  expect(action).toMatchObject({ status: 'pending', step_key: ctx.step.stepKey });
 });
 
 test('it fails an approved action that the owner approved past its deadline', async () => {

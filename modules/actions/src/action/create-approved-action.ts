@@ -73,7 +73,6 @@ export async function createApprovedAction(
       kind: 'action.queued',
       definitions: context.definitions(),
       thread: approved.taskID,
-      ...(approved.stepKey === null ? {} : { stepKey: approved.stepKey }),
       payload: {
         actionID: approved.proposalID,
         taskID: approved.taskID,
