@@ -28,6 +28,11 @@ export interface ProposalPlan {
   readonly quote: string | null;
   readonly reason: ReviewReason;
   readonly evidence: QuoteEvidence | null;
+
+  // the record a quote names by its event ID, which a gate that stops before reading the record
+  // leaves out of the evidence
+  readonly quotedEventID?: number;
+
   readonly checks: JSONObject;
   readonly checkerReason: string | null;
   readonly caller: WriteCaller;
@@ -98,6 +103,10 @@ async function requireProposalWritable(
 ): Promise<void> {
   if (plan.evidence !== null) {
     await requireUnforgottenQuote(tx, plan.evidence.recordSequence);
+  }
+
+  if (plan.quotedEventID !== undefined) {
+    await requireUnforgottenQuote(tx, plan.quotedEventID);
   }
 
   if (plan.target !== null) {

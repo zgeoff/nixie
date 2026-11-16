@@ -164,6 +164,7 @@ async function writeRememberProposal(
     quote: request.image === undefined ? (request.quote ?? null) : null,
     reason: review.reason,
     evidence: review.evidence,
+    ...(request.eventID === undefined ? {} : { quotedEventID: request.eventID }),
     checks: review.checks,
     checkerReason: review.checkerReason,
     caller: request.caller,
