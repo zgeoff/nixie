@@ -17,6 +17,7 @@ import {
 } from '@heynixie/wire';
 import { Server, createMcpHandler } from '@modelcontextprotocol/server';
 import invariant from 'tiny-invariant';
+import { z } from 'zod';
 
 // These tests need a real impd on a host with /dev/kvm and the codex image built into it.
 // docs/runbooks/imp-isolation-tests.md names the variables that turn them on.
@@ -210,8 +211,22 @@ test.skipIf(!hasModelHost)(
       'ping',
     ]);
 
-    expect(JSON.stringify(first.body.input)).toContain('SYSTEM PROMPT MARKER');
-    expect(JSON.stringify(first.body.input)).toContain('USER INPUT MARKER');
+    // The first request holds the system prompt and the input and nothing else: any other message
+    // would be an instruction that nixie did not send.
+    const textPartSchema = z.looseObject({ text: z.string() });
+    const messageSchema = z.looseObject({ role: z.string(), content: textPartSchema.array() });
+    const inputItems = z.looseObject({ type: z.string() }).array().parse(first.body.input);
+
+    const messages = inputItems
+      .filter((item) => item.type === 'message')
+      .map((item) => messageSchema.parse(item))
+      .map((item) => ({ role: item.role, texts: item.content.map((part) => part.text) }));
+
+    expect(messages).toStrictEqual([
+      { role: 'developer', texts: ['SYSTEM PROMPT MARKER'] },
+      { role: 'user', texts: ['USER INPUT MARKER'] },
+    ]);
+
     expect(first.headers['authorization']).toBe(`Bearer ${secretValue}`);
   },
 );

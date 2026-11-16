@@ -36,5 +36,10 @@ test('it lists every reasoning effort that nixie takes', () => {
 
 test('it keeps the effort list beside the efforts that the pinned CLI bundles', () => {
   expect(snapshot.codexVersion).toBe(codexVersion);
-  expect(snapshot.efforts).toIncludeAllMembers([...codexEfforts]);
+
+  // The CLI's protocol types name an effort as an open string, so the effort list that the CLI
+  // bundles is the source. nixie leaves out `ultra`, which its other harness does not take either.
+  const bundled = snapshot.efforts.filter((effort) => effort !== 'ultra');
+
+  expect(new Set<string>(codexEfforts)).toStrictEqual(new Set(bundled));
 });
