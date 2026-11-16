@@ -5,6 +5,13 @@
   [the gate reads a granted task's cited event](https://linear.app/zgeoff/issue/GEO-2552),
   [the photos in a kept moment](https://linear.app/zgeoff/issue/GEO-1913)
 
+The log grant is built: the `log` option, `logThread` on a tool run, `log.read` and
+`log.read_image`, and the forget cleanup.
+[Started tasks](../../architecture/core/started-tasks.md#start-options),
+[definitions](../../architecture/core/definitions.md) and
+[reading the log](../../architecture/memory/context.md#reading-the-log) hold its facts. The gate's
+read of a cited message and the photos in a kept moment still build from this design.
+
 nixie's [event log](../../architecture/core/event-log.md) keeps each task's records on a thread of
 its own, named by the task ID. The conversation's records sit on the thread `'conversation'`, which
 the code names `conversationTaskID`. Each tool that returns records of the log reads one thread, and
