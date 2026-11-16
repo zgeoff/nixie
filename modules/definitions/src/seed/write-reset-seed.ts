@@ -45,6 +45,14 @@ export async function writeResetSeed(
       .execute();
   }
 
+  if (seed.runtimeTasks.length > 0) {
+    await tx
+      .$extendTables<DefinitionsTables>()
+      .insertInto('runtime_task_definitions')
+      .values(seed.runtimeTasks)
+      .execute();
+  }
+
   if (seed.written.length > 0) {
     await tx
       .$extendTables<DefinitionsTables>()

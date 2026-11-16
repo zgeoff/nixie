@@ -1,7 +1,7 @@
 import { parseJSONObject } from '@heynixie/log';
 import type { Kysely } from 'kysely';
 import { z } from 'zod';
-import type { DefinitionsInForce } from '../types';
+import type { DefinitionsInForce, DefinitionsTables } from '../types';
 import { definitionRepoMovedCodec } from './definition-repo-moved-codec';
 
 type RecordTables = Readonly<{
@@ -25,10 +25,20 @@ export async function readRepoMovedSeedSequence(
 ): Promise<number> {
   const tables = db.$extendTables<RecordTables>();
 
+  const change = await db
+    .$extendTables<DefinitionsTables>()
+    .selectFrom('runtime_task_definitions')
+    .select(['state', 'updated_sequence'])
+    .where('change_id', '=', found.changeID)
+    .executeTakeFirst();
+
+  const adoptedAt = change?.state === 'adopted' ? change.updated_sequence : 0;
+
   const moves = await tables
     .selectFrom('records')
     .select(['sequence', 'payload'])
     .where('kind', '=', definitionRepoMovedCodec.kind)
+    .where('sequence', '>', adoptedAt)
     .orderBy('sequence', 'desc')
     .execute();
 

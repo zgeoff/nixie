@@ -9,7 +9,7 @@ import { writeRuntimeTaskState } from './write-runtime-task-state';
 
 // One row per runtime change of a task definition. The body of a version sits in
 // task_definition_versions, which the writer of the change fills, because a fold reads no erasable
-// field.
+// field. writeTaskVersionRestore fills it again from the records after a rebuild.
 export const runtimeTaskDefinitionsProjection: Projection = {
   table: 'runtime_task_definitions',
   keyColumn: 'change_id',

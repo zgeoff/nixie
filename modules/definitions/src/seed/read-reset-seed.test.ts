@@ -1,6 +1,7 @@
 import { expect, test } from 'bun:test';
 import { writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { runLogReset } from '@heynixie/log';
 import invariant from 'tiny-invariant';
 import { buildDefinitionsSnapshot } from '../definition/build-definitions-snapshot';
 import { runSeed } from '../rule/run-seed';
@@ -8,8 +9,10 @@ import { requestDefinitionChange } from '../runtime-task/request-definition-chan
 import { buildTestDefineInput } from '../test-utils/build-test-define-input';
 import { buildTestTaskSeed } from '../test-utils/build-test-task-seed';
 import { buildTestTaskYaml } from '../test-utils/build-test-task-yaml';
+import { readTestRuntimeTasks } from '../test-utils/read-test-runtime-tasks';
 import { startTestDefinitions } from '../test-utils/start-test-definitions';
 import { readResetSeed } from './read-reset-seed';
+import { writeResetSeed } from './write-reset-seed';
 
 function setupTest() {
   return startTestDefinitions();
@@ -81,6 +84,7 @@ test('it reads the seed in force with its snapshot row and the payload of its re
     rules: [],
     closedProposalHashes: [],
     taskVersions: [],
+    runtimeTasks: [],
   });
 });
 
@@ -108,4 +112,37 @@ test('it covers the repo version and the runtime version of a replaced definitio
   expect(seed?.payload['repoTasks']).toStrictEqual([
     { id: 'water-the-tomatoes', hash: expect.any(String) },
   ]);
+});
+
+test('it keeps a runtime change in force through a reset and the seed after it', async () => {
+  const ctx = await setupTest();
+
+  await ctx.seed();
+
+  await requestDefinitionChange(ctx.context, {
+    kind: 'define',
+    input: buildTestDefineInput(),
+  });
+
+  await runLogReset(ctx.log, {
+    keptTables: [],
+    readKept: (tx) => readResetSeed(tx, 0),
+    writeFirstRecords: async (tx, seed) => {
+      invariant(seed);
+
+      await writeResetSeed(tx, ctx.log, seed);
+    },
+  });
+
+  const afterReset = await readTestRuntimeTasks(ctx.writer);
+
+  await ctx.seed();
+
+  const afterSeed = await readTestRuntimeTasks(ctx.writer);
+
+  expect(afterReset.map((row) => [row['definition_id'], row['state']])).toStrictEqual([
+    ['water-the-tomatoes', 'in_force'],
+  ]);
+
+  expect(afterSeed).toStrictEqual(afterReset);
 });

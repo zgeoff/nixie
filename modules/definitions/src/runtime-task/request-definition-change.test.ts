@@ -411,6 +411,37 @@ test('it refuses an undo of a change that a later change replaced', async () => 
   });
 });
 
+test('it names the last accepted seed when an undo meets a repo that moved back after the adoption', async () => {
+  const ctx = await setupTest();
+
+  await ctx.writeRepoTask('water-the-tomatoes', buildTestTaskYaml({ brief: 'Original.' }));
+  await ctx.seed();
+
+  const changed = await requestDefinitionChange(ctx.context, {
+    kind: 'define',
+    input: buildTestDefineInput({ definitionID: 'water-the-tomatoes' }),
+  });
+
+  invariant(changed.status === 'changed');
+
+  await ctx.writeRepoTask('water-the-tomatoes', buildTestTaskYaml({ brief: 'Soak them.' }));
+  await ctx.seed();
+  await ctx.writeRepoTask('water-the-tomatoes', buildTestTaskYaml());
+  await ctx.seed();
+  await ctx.writeRepoTask('water-the-tomatoes', buildTestTaskYaml({ brief: 'Soak them.' }));
+
+  const lastSeed = await ctx.seed();
+
+  invariant(lastSeed.status === 'seeded');
+
+  const undone = await undoDefinitionChange(ctx.context, changed.changeID);
+
+  expect(undone).toStrictEqual({
+    status: 'refused',
+    refusal: { code: 'REPO_MOVED', seedSequence: lastSeed.inForce.recordSequence },
+  });
+});
+
 test('it refuses an undo of a change that does not exist', async () => {
   const ctx = await setupTest();
 

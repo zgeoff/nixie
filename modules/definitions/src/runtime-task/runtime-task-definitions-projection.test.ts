@@ -5,10 +5,12 @@ import invariant from 'tiny-invariant';
 import { buildTestDefineInput } from '../test-utils/build-test-define-input';
 import { buildTestTaskYaml } from '../test-utils/build-test-task-yaml';
 import { readTestRuntimeTasks } from '../test-utils/read-test-runtime-tasks';
+import { seedLostTaskVersions } from '../test-utils/seed-lost-task-versions';
 import { startTestDefinitions } from '../test-utils/start-test-definitions';
 import { definitionSettledCodec } from './definition-settled-codec';
 import { requestDefinitionChange } from './request-definition-change';
 import { writeDefinitionResolution } from './write-definition-resolution';
+import { writeTaskVersionRestore } from './write-task-version-restore';
 
 async function setupTest() {
   const ctx = await startTestDefinitions();
@@ -215,4 +217,23 @@ test('it rebuilds the same rows from the records', async () => {
   const rows = await ctx.readRows();
 
   expect(rows).toStrictEqual(before);
+});
+
+test('it restores the version of a change from its record when the versions table lacks it', async () => {
+  const ctx = await setupTest();
+
+  await ctx.seed();
+
+  await requestDefinitionChange(ctx.context, { kind: 'define', input: buildTestDefineInput() });
+
+  const [row] = await ctx.readRows();
+
+  await seedLostTaskVersions(ctx.writer);
+  await runProjectionRebuild(ctx.log);
+  await writeTaskVersionRestore(ctx.log);
+
+  const versions = await sql`select definition_id from task_definition_versions
+    where definition_hash = ${String(row?.['definition_hash'])}`.execute(ctx.writer.db);
+
+  expect(versions.rows).toStrictEqual([{ definition_id: 'water-the-tomatoes' }]);
 });

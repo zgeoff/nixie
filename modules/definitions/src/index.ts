@@ -180,6 +180,7 @@ export { readMandateEndReason, readMandateTitles } from './mandate/read-mandate-
 export { writeMandateEnd } from './mandate/write-mandate-end';
 export type { DefinitionTaskRecordKind } from './runtime-task/definition-task-record-kind';
 export { runtimeTaskDefinitionsProjection } from './runtime-task/runtime-task-definitions-projection';
+export { writeTaskVersionRestore } from './runtime-task/write-task-version-restore';
 export { taskDefinitionExportsProjection } from './runtime-task/task-definition-exports-projection';
 export type { TaskDefineInput } from './runtime-task/build-define-version';
 
