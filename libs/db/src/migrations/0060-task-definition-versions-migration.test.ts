@@ -7,7 +7,7 @@ import { runMigrations } from '../migration/run-migrations';
 import { nixieSchema } from '../schema/nixie-schema';
 import { buildSqliteWorkerDialect } from '../sqlite/build-sqlite-worker-dialect';
 import { readRunPrefix } from '../test-utils/read-run-prefix';
-import { taskDefinitionVersionsMigration } from './0059-task-definition-versions-migration';
+import { taskDefinitionVersionsMigration } from './0060-task-definition-versions-migration';
 
 async function setupTest() {
   const stack = new AsyncDisposableStack();
@@ -30,8 +30,8 @@ async function setupTest() {
   return { db };
 }
 
-test('it is the migration of version 59', () => {
-  expect(nixieSchema.migrations.indexOf(taskDefinitionVersionsMigration) + 1).toBe(59);
+test('it is the migration of version 60', () => {
+  expect(nixieSchema.migrations.indexOf(taskDefinitionVersionsMigration) + 1).toBe(60);
 });
 
 test('it creates the table of task definition versions', async () => {
