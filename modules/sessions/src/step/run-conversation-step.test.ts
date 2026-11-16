@@ -2,7 +2,8 @@ import { expect, test } from 'bun:test';
 import type { RecordKind } from '@heynixie/log';
 import { readRecords, writeRecords } from '@heynixie/log';
 import type { Harness } from '@heynixie/models';
-import { buildMockModelProfile, buildStubCodexHarness } from '@heynixie/models/test-utils';
+import { bindHarness } from '@heynixie/models';
+import { buildMockCodexProfile, buildMockModelProfile } from '@heynixie/models/test-utils';
 import type { StubGuestScript } from '@heynixie/sandbox/test-utils';
 import { buildStubSandboxes } from '@heynixie/sandbox/test-utils';
 import { createConversationTask, writeInboxRecords } from '@heynixie/tasks';
@@ -828,7 +829,7 @@ test('it opens each later step on a harness with no session as an unkept rebuild
     2000,
     () => Promise.resolve(null),
     undefined,
-    buildStubCodexHarness(),
+    bindHarness(buildMockCodexProfile()),
   );
 
   ctx.sandboxes.setGuestScript((turn) => [
@@ -871,7 +872,7 @@ test('it fails the step of a turn that overflows on a harness with no session, a
     2000,
     () => Promise.resolve(null),
     undefined,
-    buildStubCodexHarness(),
+    bindHarness(buildMockCodexProfile()),
   );
 
   const usage = { inputTokens: 10, outputTokens: 5, cacheReadTokens: 0, cacheWriteTokens: 0 };
@@ -921,7 +922,7 @@ test('it sends no live message frame on a harness without live messages, and lea
     2000,
     () => Promise.resolve(null),
     undefined,
-    buildStubCodexHarness(),
+    bindHarness(buildMockCodexProfile()),
   );
 
   const delivered: InboxMessage[] = [];

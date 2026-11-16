@@ -179,7 +179,7 @@ function buildFakeImageCalls(state: FakeState, updateCallLog: UpdateCallLog): Fa
   };
 }
 
-type FakeSecretCalls = Pick<ImpPort, 'readSecretHosts' | 'addGrant' | 'addSecret'>;
+type FakeSecretCalls = Pick<ImpPort, 'readSecretHosts' | 'addGrant' | 'addSecret' | 'removeSecret'>;
 
 function buildFakeSecretCalls(state: FakeState, updateCallLog: UpdateCallLog): FakeSecretCalls {
   return {
@@ -189,6 +189,11 @@ function buildFakeSecretCalls(state: FakeState, updateCallLog: UpdateCallLog): F
       await updateCallLog(`secret ${secret.name} ${secret.host} ${secret.header} ${secret.scheme}`);
 
       state.secrets.set(secret.name, [secret.host]);
+    },
+    removeSecret: async (name) => {
+      await updateCallLog(`remove secret ${name}`);
+
+      state.secrets.delete(name);
     },
   };
 }

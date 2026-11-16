@@ -1,10 +1,13 @@
 import { faker } from '@faker-js/faker';
-import type { HostFrame, TurnProfile } from '../utils/host-frame';
+import type { AgentSDKTurnProfile, HostFrame } from '../utils/host-frame';
 
-type TurnFrame = Extract<HostFrame, { type: 'turn' }>;
+// the frame of a mock whose profile is the Agent SDK's
+type TurnFrame = Omit<Extract<HostFrame, { type: 'turn' }>, 'profile'> & {
+  readonly profile: AgentSDKTurnProfile;
+};
 
 export interface TurnFrameOverrides {
-  readonly profile?: Partial<TurnProfile>;
+  readonly profile?: Partial<AgentSDKTurnProfile>;
   readonly tools?: Partial<TurnFrame['tools']>;
   readonly resume?: TurnFrame['resume'];
   readonly systemPrompt?: string;

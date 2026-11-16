@@ -174,7 +174,9 @@ test('it keeps 5-minute cache entries on a profile that sets a 1-hour lifetime',
     stepRunID: 'sweeper:1@1',
   });
 
-  expect(ctx.sandboxes.turns.map((turn) => turn.profile.cacheTTL)).toStrictEqual(['5m']);
+  expect(ctx.sandboxes.turns.map((turn) => turn.profile)).toStrictEqual([
+    expect.objectContaining({ cacheTTL: '5m' }),
+  ]);
 });
 
 test('it throws when the guest fails the session', async () => {
@@ -415,5 +417,8 @@ test('it marks the capture of a step on a profile outside Claude as rewritten', 
   });
 
   expect(opened.map((input) => input.isRewritten)).toStrictEqual([true]);
-  expect(ctx.sandboxes.turns[0]?.profile.requestRewrite).toStrictEqual({ providerPin: null });
+
+  expect(ctx.sandboxes.turns[0]?.profile).toStrictEqual(
+    expect.objectContaining({ requestRewrite: { providerPin: null } }),
+  );
 });

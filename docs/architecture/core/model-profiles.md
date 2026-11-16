@@ -71,9 +71,16 @@ type. The record holds:
   frame, or null when the harness declares none.
 
 A definition gives a session exactly when the harness declares both `resume` and `resume-at-entry`,
-and the type of the definition enforces it. Only the `agent-sdk` harness has a definition, and its
-profile schema holds only the keys its loop reads, so the schema refuses a profile on any other
-harness and a key it does not read.
+and the type of the definition enforces it. The `agent-sdk` and `codex` harnesses have a definition.
+Each profile schema holds only the keys its loop reads, so the schema refuses a key it does not
+read.
+
+A `codex` profile holds `harness`, `base_url`, `credential`, `model`, `effort` and `prices`.
+`effort` is one of `low`, `medium`, `high`, `xhigh` and `max`. The harness runs the Codex CLI's app
+server in a sandbox on the codex image, with nixie's tool route as the CLI's only tool source. It
+has no session and no context window, so nixie sends it the whole history at each step. It runs
+system tasks only, and has no conversation row yet. The CLI also lists 3 MCP resource tools that
+nixie cannot remove, so a model on this harness sees them beside nixie's tools.
 
 The wire library holds every harness ID and the features each harness declares, such as resuming a
 session at an entry or returning structured output. Each role declares the features its loop needs,

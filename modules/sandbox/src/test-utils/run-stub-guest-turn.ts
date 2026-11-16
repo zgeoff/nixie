@@ -473,6 +473,10 @@ function buildEnded(
       cacheReadTokens: 0,
       cacheWriteTokens: 0,
     },
-    context: { size: countTokens(entries), window: turn.profile.contextTokens ?? defaultWindow },
+    context: {
+      size: countTokens(entries),
+      window:
+        (turn.profile.harness === 'agent-sdk' ? turn.profile.contextTokens : null) ?? defaultWindow,
+    },
   };
 }

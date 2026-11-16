@@ -659,3 +659,29 @@ test('it adds a secret as the custom kind with no field beyond its name, value a
     },
   ]);
 });
+
+test('it removes a secret by its name', async () => {
+  const bodies: unknown[] = [];
+
+  const recordBody = mock(async (request: Request) => {
+    const body: unknown = await request.json();
+
+    bodies.push(body);
+
+    return Response.json({ json: null });
+  });
+
+  const impd = Bun.serve({
+    port: 0,
+    hostname: '127.0.0.1',
+    fetch: recordBody,
+  });
+
+  onTestFinished(() => impd.stop(true));
+
+  const port = buildImpPort({ url: impd.url.href, token: 'not-a-real-token' });
+
+  await port.removeSecret('model-key');
+
+  expect(bodies).toStrictEqual([{ json: { name: 'model-key' } }]);
+});

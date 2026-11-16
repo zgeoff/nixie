@@ -88,6 +88,7 @@ export interface ImpPort {
   readonly readSecretHosts: (secret: string) => Promise<readonly string[] | null>;
   readonly addGrant: (name: string, secret: string) => Promise<void>;
   readonly addSecret: (secret: ImpSecretInput) => Promise<void>;
+  readonly removeSecret: (name: string) => Promise<void>;
 
   readonly listImages: () => Promise<readonly ImpImage[]>;
 

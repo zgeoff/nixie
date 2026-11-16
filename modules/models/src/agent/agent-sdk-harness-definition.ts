@@ -37,6 +37,7 @@ export const agentSDKHarnessDefinition: HarnessDefinition<'agent-sdk', AgentSDKP
     }),
     guest: { package: 'conversation', entries: { turn: 'main', check: 'check' } },
     imageKey: 'conversation',
+    sizeRows: { conversation: 'conversation', systemTask: 'systemTask' },
     toolUseMetaKey: 'claudecode/toolUseId',
 
     // the CLI's per-server tool-call timeout, which the tool-call wait probe proves

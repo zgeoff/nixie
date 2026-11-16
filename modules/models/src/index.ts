@@ -19,6 +19,7 @@ export { modelsConfigSchema } from './model/models-config-schema';
 export { resolveModelCredentials } from './model/resolve-model-credentials';
 export { getCLIContextWindow } from './agent/get-cli-context-window';
 export type { AgentSDKProfile } from './agent/agent-sdk-harness-definition';
+export type { CodexProfile } from './codex/codex-harness-definition';
 export { bindHarness, harnesses } from './model/bind-harness';
 export type { Harness, HarnessEntry, HarnessGuest, HarnessSession } from './model/harness';
 export { modelRoles } from './role/model-roles';

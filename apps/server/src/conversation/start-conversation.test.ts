@@ -189,7 +189,7 @@ test('it opens a session and passes the context cap of the profile to the guest 
   const turn = await ctx.conversation.send('Name a fruit.');
   const records = await ctx.readRecords();
 
-  expect(turn.profile.contextTokens).toBe(200_000);
+  expect(turn.profile).toStrictEqual(expect.objectContaining({ contextTokens: 200_000 }));
 
   expect(records.filter((record) => record.kind === 'model.session_opened')).toMatchObject([
     { payload: { kind: 'first' } },

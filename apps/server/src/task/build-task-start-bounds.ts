@@ -1,4 +1,4 @@
-import type { ModelProfile, ModelsConfig } from '@heynixie/models';
+import type { ModelsConfig } from '@heynixie/models';
 import { checkHarnessFit, roleNeeds } from '@heynixie/models';
 import type { TaskStartBounds } from '@heynixie/tasks';
 import type { ToolDefinition } from '@heynixie/tools';
@@ -6,7 +6,7 @@ import invariant from 'tiny-invariant';
 import { mandateToolName } from '../rule/build-mandate-tool';
 
 export function buildTaskStartBounds(
-  models: ModelsConfig<ModelProfile>,
+  models: ModelsConfig,
   memoryTools: readonly ToolDefinition[],
   conversationTools: readonly ToolDefinition[],
   reportDefaults: TaskStartBounds['reportDefaults'],

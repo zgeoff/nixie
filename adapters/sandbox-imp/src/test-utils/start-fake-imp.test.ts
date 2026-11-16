@@ -478,3 +478,26 @@ test('it runs an exec on the host when its argv only contains the memory kills a
 
   expect(imp.calls).not.toContain('memory-kills nixie-a');
 });
+
+test('it forgets a secret that a test removes and logs the call', async () => {
+  const imp = await startFakeImp();
+
+  await imp.port.addSecret({
+    name: 'model-chat-1',
+    value: 'not-a-real-key',
+    host: 'gateway.example',
+    header: 'authorization',
+    scheme: 'bearer',
+  });
+
+  await imp.port.removeSecret('model-chat-1');
+
+  const hosts = await imp.port.readSecretHosts('model-chat-1');
+
+  expect(hosts).toBeNull();
+
+  expect(imp.calls).toStrictEqual([
+    'secret model-chat-1 gateway.example authorization bearer',
+    'remove secret model-chat-1',
+  ]);
+});

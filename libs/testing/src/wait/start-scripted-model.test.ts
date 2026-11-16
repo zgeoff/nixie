@@ -181,11 +181,19 @@ test('it answers the Responses endpoint with the reply text and its Responses us
     output: [
       {
         type: 'message',
+        id: expect.toStartWith('msg_'),
         role: 'assistant',
+        status: 'completed',
         content: [{ type: 'output_text', text: 'answered', annotations: [] }],
       },
     ],
-    usage: { input_tokens: 900, output_tokens: 40, input_tokens_details: { cached_tokens: 600 } },
+    usage: {
+      input_tokens: 900,
+      output_tokens: 40,
+      total_tokens: 940,
+      input_tokens_details: { cached_tokens: 600 },
+      output_tokens_details: { reasoning_tokens: 0 },
+    },
   });
 });
 
@@ -207,9 +215,41 @@ test('it streams a Responses reply that ends with its usage in the completed eve
     type: 'response.completed',
     response: expect.objectContaining({
       status: 'completed',
-      usage: { input_tokens: 10, output_tokens: 5 },
+      usage: {
+        input_tokens: 10,
+        output_tokens: 5,
+        total_tokens: 15,
+        input_tokens_details: { cached_tokens: 0 },
+        output_tokens_details: { reasoning_tokens: 0 },
+      },
     }),
   });
+});
+
+test('it streams a Responses reply with the start and end events of its output item', async () => {
+  const ctx = setupTest();
+
+  ctx.model.addReplies({ text: 'streamed' });
+
+  const response = await fetch(`${ctx.model.url}/v1/responses`, {
+    method: 'POST',
+    body: JSON.stringify({ model: 'model-o', stream: true, input: 'Hi.' }),
+  });
+
+  const body = await response.text();
+
+  const events = body
+    .trim()
+    .split('\n\n')
+    .map((block) => block.split('\n')[0]);
+
+  expect(events).toStrictEqual([
+    'event: response.created',
+    'event: response.output_item.added',
+    'event: response.output_text.delta',
+    'event: response.output_item.done',
+    'event: response.completed',
+  ]);
 });
 
 test('it refuses a request past the end of its script with a 400', async () => {

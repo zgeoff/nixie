@@ -164,6 +164,7 @@
       "devDependencies": {
         "@faker-js/faker": "catalog:",
         "@modelcontextprotocol/client": "catalog:",
+        "@modelcontextprotocol/server": "catalog:",
         "ajv": "catalog:",
         "ajv-formats": "3.0.1",
         "release-please": "17.11.2",
@@ -272,6 +273,18 @@
       },
       "devDependencies": {
         "tiny-invariant": "catalog:",
+      },
+    },
+    "guests/codex": {
+      "name": "@heynixie/codex",
+      "version": "0.0.0",
+      "dependencies": {
+        "@heynixie/wire": "workspace:*",
+        "ts-pattern": "catalog:",
+        "zod": "catalog:",
+      },
+      "devDependencies": {
+        "@heynixie/testing": "workspace:*",
       },
     },
     "guests/conversation": {
@@ -611,7 +624,7 @@
         "@heynixie/sandbox": "workspace:*",
         "@heynixie/tools": "workspace:*",
         "@heynixie/wire": "workspace:*",
-        "tiny-invariant": "catalog:",
+        "ts-pattern": "catalog:",
         "zod": "catalog:",
       },
       "devDependencies": {
@@ -1264,6 +1277,8 @@
     "@heynixie/backup-job": ["@heynixie/backup-job@workspace:apps/backup-job"],
 
     "@heynixie/clock": ["@heynixie/clock@workspace:libs/clock"],
+
+    "@heynixie/codex": ["@heynixie/codex@workspace:guests/codex"],
 
     "@heynixie/compaction": ["@heynixie/compaction@workspace:modules/compaction"],
 

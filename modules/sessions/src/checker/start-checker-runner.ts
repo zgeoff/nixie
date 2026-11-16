@@ -10,6 +10,7 @@ import type {
   SandboxSpec,
 } from '@heynixie/sandbox';
 import { buildSandboxSpec, findKeptSandbox, removeSandboxes } from '@heynixie/sandbox';
+import invariant from 'tiny-invariant';
 import { runSandboxCheck } from '../sandbox/run-sandbox-check';
 import type { RunCheck } from './checker-request';
 import { makeChecker } from './make-checker';
@@ -46,6 +47,10 @@ export async function startCheckerRunner(options: CheckerRunnerOptions): Promise
   const sandbox = await createCheckerSandbox(options.sandboxes, spec, options.log);
 
   const profile = options.profile.profile;
+  const turnProfile = harness.toTurnProfile('one-off');
+
+  // the models config refuses the checker role on any harness but the Agent SDK
+  invariant(turnProfile.harness === 'agent-sdk', `the ${harness.id} harness runs no check`);
 
   return makeChecker({
     model: profile.model,
@@ -58,7 +63,7 @@ export async function startCheckerRunner(options: CheckerRunnerOptions): Promise
         signal,
         log: options.log,
         request: {
-          profile: harness.toTurnProfile('one-off'),
+          profile: turnProfile,
           systemPrompt: request.prompt,
           input: request.input,
         },

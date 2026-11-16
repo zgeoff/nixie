@@ -222,13 +222,16 @@ function collectSubschemaChanges(change: KeywordChange, segment: string): readon
 }
 
 // oneOf refuses a value that matches two choices, and any change to a choice can make a value that
-// matched one choice match two, so every oneOf change counts
+// matched one choice match two, so every oneOf change counts, except an added choice that no value
+// of another choice can match
 function collectChoiceChanges(change: KeywordChange): readonly string[] {
   const before = toArray(change.before);
   const after = toArray(change.after);
 
   if (change.keyword === 'oneOf') {
-    return [`${formatPath(change.path)}: changes the oneOf choices`];
+    return isAddedTaggedChoice(before, after)
+      ? []
+      : [`${formatPath(change.path)}: changes the oneOf choices`];
   }
 
   return before.flatMap((choice, index) =>
@@ -236,6 +239,34 @@ function collectChoiceChanges(change: KeywordChange): readonly string[] {
       ? collectNodeChanges(toNode(choice), toNode(after[index]), change.path)
       : [`${formatPath(change.path)}: drops ${change.keyword} choice ${index + 1}`],
   );
+}
+
+// JSON Schema compares a const by value and lets a choice without type object take null, which
+// matches every such choice, so only string tags on object choices keep the choices apart.
+function isAddedTaggedChoice(before: readonly unknown[], after: readonly unknown[]): boolean {
+  const isKept = before.every((choice, index) => Bun.deepEquals(choice, after[index]));
+  const [first] = after;
+
+  if (!isKept || after.length <= before.length || first === undefined) {
+    return false;
+  }
+
+  return Object.keys(toNode(toNode(first)['properties'])).some((key) => {
+    const tags = after.map((choice) => pickRequiredConst(toNode(choice), key));
+
+    return tags.every((tag) => tag !== undefined) && new Set(tags).size === tags.length;
+  });
+}
+
+function pickRequiredConst(choice: SchemaNode, key: string): unknown {
+  const property = toNode(toNode(choice['properties'])[key]);
+
+  const isTagged =
+    choice['type'] === 'object' &&
+    toArray(choice['required']).includes(key) &&
+    typeof property['const'] === 'string';
+
+  return isTagged ? property['const'] : undefined;
 }
 
 function collectAnyChange(change: KeywordChange): readonly string[] {

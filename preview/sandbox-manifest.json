@@ -1,5 +1,6 @@
 {
   "conversation": "ghcr.io/example/nixie-conversation@sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
   "fetch": "ghcr.io/example/nixie-fetch@sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
-  "code": "ghcr.io/example/nixie-code@sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+  "code": "ghcr.io/example/nixie-code@sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+  "codex": "ghcr.io/example/nixie-codex@sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
 }

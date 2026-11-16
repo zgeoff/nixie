@@ -1,10 +1,13 @@
 import { expect, test } from 'bun:test';
 import { bindHarness } from '@heynixie/models';
-import { buildMockModelProfile, buildStubCodexHarness } from '@heynixie/models/test-utils';
+import { buildMockCodexProfile, buildMockModelProfile } from '@heynixie/models/test-utils';
 import { buildStepResult } from './build-step-result';
 
 function setupTest() {
-  return { agentSDK: bindHarness(buildMockModelProfile()), codex: buildStubCodexHarness() };
+  return {
+    agentSDK: bindHarness(buildMockModelProfile()),
+    codex: bindHarness(buildMockCodexProfile()),
+  };
 }
 
 test('it records no reply with the error of a silent turn that the model API refused', () => {

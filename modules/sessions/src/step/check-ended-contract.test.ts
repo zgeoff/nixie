@@ -1,12 +1,12 @@
 import { expect, test } from 'bun:test';
 import { bindHarness } from '@heynixie/models';
-import { buildMockModelProfile, buildStubCodexHarness } from '@heynixie/models/test-utils';
+import { buildMockCodexProfile, buildMockModelProfile } from '@heynixie/models/test-utils';
 import { checkEndedContract } from './check-ended-contract';
 
 function setupTest() {
   return {
     agentSDK: bindHarness(buildMockModelProfile()),
-    codex: buildStubCodexHarness(),
+    codex: bindHarness(buildMockCodexProfile()),
   };
 }
 

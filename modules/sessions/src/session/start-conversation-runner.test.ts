@@ -387,7 +387,9 @@ test('it sends the guest the profile context tokens with every turn', async () =
 
   await ctx.sendMessage(runner, 'Hi.');
 
-  expect(ctx.sandboxes.turns.map((turn) => turn.profile.contextTokens)).toStrictEqual([400_000]);
+  expect(ctx.sandboxes.turns.map((turn) => turn.profile)).toStrictEqual([
+    expect.objectContaining({ contextTokens: 400_000 }),
+  ]);
 });
 
 test('it sends the guest the profile cache lifetime with every turn', async () => {
@@ -405,7 +407,9 @@ test('it sends the guest the profile cache lifetime with every turn', async () =
 
   await ctx.sendMessage(runner, 'Hi.');
 
-  expect(ctx.sandboxes.turns.map((turn) => turn.profile.cacheTTL)).toStrictEqual(['1h']);
+  expect(ctx.sandboxes.turns.map((turn) => turn.profile)).toStrictEqual([
+    expect.objectContaining({ cacheTTL: '1h' }),
+  ]);
 });
 
 test("it gives each turn a step token of the step's run identity, and stops it once the turn ends", async () => {

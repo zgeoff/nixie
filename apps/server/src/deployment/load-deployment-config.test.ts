@@ -213,7 +213,9 @@ test("it loads the preview's configuration on the test sandbox, with its invente
   expect(config.models.roles).toStrictEqual({ conversation: 'preview' });
 
   // the host's credential broker replaces only the authorization header
-  expect(config.models.profiles['preview']?.authHeader).toBe('bearer');
+  expect(config.models.profiles['preview']).toStrictEqual(
+    expect.objectContaining({ authHeader: 'bearer' }),
+  );
 });
 
 test("it reads the list prices of the preview's model, with the long-prompt set above 100,000 tokens", async () => {

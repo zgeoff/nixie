@@ -1,9 +1,10 @@
 import { faker } from '@faker-js/faker';
-import type { HarnessProfile, ModelsConfig } from '../types';
+import type { AgentSDKProfile } from '../agent/agent-sdk-harness-definition';
+import type { ModelsConfig } from '../types';
 import { buildMockModelProfile } from './build-mock-model-profile';
 
 interface ModelsConfigOverrides {
-  readonly profiles?: Readonly<Record<string, Partial<HarnessProfile>>>;
+  readonly profiles?: Readonly<Record<string, Partial<AgentSDKProfile>>>;
   readonly roles?: Partial<ModelsConfig['roles']>;
   readonly selectable?: ModelsConfig['selectable'];
 }
