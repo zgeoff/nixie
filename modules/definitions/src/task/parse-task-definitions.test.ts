@@ -543,7 +543,8 @@ test('it lists every example folder of the guides among the folders the next tes
 
   const folders = readdirSync(examplesDir, { withFileTypes: true })
     .filter((entry) => entry.isDirectory())
-    .map((entry) => entry.name);
+    .map((entry) => entry.name)
+    .toSorted();
 
   expect(folders).toStrictEqual(exampleFolders);
 });
