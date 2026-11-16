@@ -9,6 +9,10 @@ once the browser has a session, the form never shows. When step 3 shows the conv
 the form, start a new browser: on `local`, run `bun verify up --restart`; on `preview`, which you
 never stop, run `bun verify detach`, then `bun verify attach`.
 
+Run it again after each `up --restart`, which starts a browser with no session. When your change
+leaves this feature unchanged, skip `done` on that run, then run `bun verify use --feature <name>`
+with the feature you check.
+
 ## Journey
 
 1. Record the next commands under this feature:
