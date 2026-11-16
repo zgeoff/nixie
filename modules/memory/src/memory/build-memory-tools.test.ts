@@ -33,6 +33,43 @@ async function setupTest(config: TestMemoryOptions = {}) {
   return {
     memory,
     registry,
+    createRelabelledItem: async (text: string) => {
+      const item = await memory.store.remember({
+        text,
+        labels: { gist: 'a first gist', topic: 'home', triggers: [] },
+        provenance: {
+          origin: 'owner',
+          source: 'owner',
+          taskID: null,
+          proposalID: null,
+          checks: null,
+        },
+      });
+
+      await memory.store.writes.editLabels({
+        target: item,
+        labels: { gist: 'a second gist', topic: 'home', triggers: ['reminder'] },
+        caller: {
+          origin: 'conversation',
+          thread: 'conversation',
+          taskID: 'conversation',
+          runID: 'conversation',
+          model: 'test-model',
+        },
+      });
+
+      const [proposal] = await memory.store.proposals.listPending();
+
+      invariant(proposal, 'the label-only edit left no proposal');
+
+      await memory.store.proposals.approve({
+        proposalID: proposal.proposalID,
+        actionHash: proposal.actionHash,
+        identityID: 'host',
+      });
+
+      return { itemID: item.itemID, shortID: await readItemShortID(memory.log, item.itemID) };
+    },
     toolCallOptions: {
       registry,
 
@@ -1488,6 +1525,197 @@ test('it leaves no readable label of a forgotten item in a record, a column or t
   expect(keys.size).toBe(0);
   expect(sealedLabels).toHaveLength(2);
   expect(recalled.structuredContent).toMatchObject({ items: [{ topic: 'INSTRUMENT-CARE' }] });
+});
+
+test('it recalls an item at its revision after a label edit, in its memory line too, and records the text version', async () => {
+  const ctx = await setupTest();
+  const item = await ctx.createRelabelledItem('The piano is tuned each March');
+
+  const result = await runToolCall(
+    { tool: 'memory.recall', input: { itemIDs: [item.shortID] }, toolUseID: null },
+    {
+      runID: 'run-1',
+      thread: 'conversation',
+      tools: ['memory.recall'],
+      model: { model: 'test-model', profile: 'standard' },
+    },
+    ctx.toolCallOptions,
+  );
+
+  const entries = await readRecords(ctx.memory.log, { afterSequence: 0, limit: 1000 });
+
+  expect(result.structuredContent).toMatchObject({
+    items: [
+      {
+        itemID: item.shortID,
+        version: 2,
+        gist: 'a second gist',
+        topic: 'home',
+        triggers: ['reminder'],
+        about: expect.toStartWith(`${item.shortID} v2 `),
+      },
+    ],
+  });
+
+  expect(entries.find((entry) => entry.record.kind === 'tool_result')?.record).toMatchObject({
+    erasable: { fields: { result: { items: [{ itemID: item.shortID, version: 1 }] } } },
+  });
+});
+
+test('it lists a text edit proposed after a label edit at the revision it read, and stores the text version', async () => {
+  const ctx = await setupTest();
+  const item = await ctx.createRelabelledItem('The piano is tuned each March');
+
+  await ctx.memory.store.writes.remember({
+    text: 'The piano is tuned each April',
+    target: { itemID: item.itemID, version: 2 },
+    caller: {
+      origin: 'conversation',
+      thread: 'conversation',
+      taskID: 'conversation',
+      runID: 'conversation',
+      model: 'test-model',
+    },
+  });
+
+  const result = await runToolCall(
+    { tool: 'memory.pending', input: {}, toolUseID: null },
+    {
+      runID: 'run-1',
+      thread: 'conversation',
+      tools: ['memory.pending'],
+      model: { model: 'test-model', profile: 'standard' },
+    },
+    ctx.toolCallOptions,
+  );
+
+  const row = await ctx.memory.writer.db
+    .$extendTables<MemoryTables>()
+    .selectFrom('memory_proposals')
+    .select('target_version')
+    .where('status', '=', 'pending')
+    .executeTakeFirstOrThrow();
+
+  expect(result.structuredContent).toMatchObject({
+    proposals: [{ itemID: item.shortID, version: 2 }],
+  });
+
+  expect(row.target_version).toBe(1);
+});
+
+test('it names the revision in the stale error for an edit that read the version before a label edit', async () => {
+  const ctx = await setupTest();
+  const item = await ctx.createRelabelledItem('The piano is tuned each March');
+
+  const result = await runToolCall(
+    {
+      tool: 'memory.edit',
+      input: { itemID: item.shortID, version: 1, text: 'The piano is tuned each April' },
+      toolUseID: null,
+    },
+    {
+      runID: 'run-1',
+      thread: 'conversation',
+      tools: ['memory.edit'],
+      model: { model: 'test-model', profile: 'standard' },
+    },
+    ctx.toolCallOptions,
+  );
+
+  expect(JSON.stringify(result)).toInclude(
+    `memory item ${item.shortID} is at version 2, not the version 1 the caller read`,
+  );
+});
+
+test('it retires an item at its revision when the model read its text before a label edit', async () => {
+  const ctx = await setupTest({
+    gate: { check: () => Promise.resolve(buildMockCheckerAnswer({ verdict: 'asserted' })) },
+  });
+
+  const item = await ctx.memory.store.remember({
+    text: 'Lives on Elm Street',
+    labels: { gist: 'home street', topic: 'home', triggers: [] },
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const shortID = await readItemShortID(ctx.memory.log, item.itemID);
+
+  await writeOwnerMessageRecord(ctx.memory.log, {
+    thread: 'conversation',
+    text: 'I moved out of Elm Street',
+    spans: [{ start: 0, end: 25, source: 'typed' }],
+  });
+
+  await ctx.memory.store.recall({ itemIDs: [item.itemID], thread: 'conversation' });
+
+  await ctx.memory.store.writes.editLabels({
+    target: item,
+    labels: { gist: 'old street', topic: 'home', triggers: [] },
+    caller: {
+      origin: 'conversation',
+      thread: 'conversation',
+      taskID: 'conversation',
+      runID: 'conversation',
+      model: 'test-model',
+    },
+  });
+
+  const [proposal] = await ctx.memory.store.proposals.listPending();
+
+  invariant(proposal);
+
+  await ctx.memory.store.proposals.approve({
+    proposalID: proposal.proposalID,
+    actionHash: proposal.actionHash,
+    identityID: 'host',
+  });
+
+  const result = await runToolCall(
+    {
+      tool: 'memory.retire',
+      input: { itemID: shortID, version: 2, intentQuote: 'I moved out of Elm Street' },
+      toolUseID: null,
+    },
+    {
+      runID: 'run-1',
+      thread: 'conversation',
+      tools: ['memory.retire'],
+      model: { model: 'test-model', profile: 'standard' },
+    },
+    ctx.toolCallOptions,
+  );
+
+  expect(result.structuredContent).toStrictEqual({
+    status: 'applied',
+    itemID: shortID,
+    version: 3,
+  });
+});
+
+test('it pins, unpins and forgets an item by the revision a recall shows, and records the text version', async () => {
+  const ctx = await setupTest();
+  const item = await ctx.createRelabelledItem('The piano is tuned each March');
+
+  const provenance = {
+    origin: 'owner' as const,
+    source: 'owner' as const,
+    taskID: null,
+    proposalID: null,
+    checks: null,
+  };
+
+  await ctx.memory.store.pin({ itemID: item.itemID, isPinned: true, version: 2, provenance });
+  await ctx.memory.store.pin({ itemID: item.itemID, isPinned: false, version: 2, provenance });
+  await ctx.memory.store.forget({ target: { itemID: item.itemID, version: 2 }, provenance });
+
+  const started = await readRecords(ctx.memory.log, {
+    afterSequence: 0,
+    kinds: ['memory.forget_started'],
+  });
+
+  expect(started.map((entry) => entry.record.payload)).toMatchObject([
+    { itemID: item.itemID, version: 1 },
+  ]);
 });
 
 test('it records a remember call with neither its text nor its quote, which the gate has not checked', async () => {

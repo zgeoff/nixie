@@ -78,6 +78,41 @@ test('#approvals.listItems lists a pending rule change with the choices it takes
   ]);
 });
 
+test('#approvals.listItems shows the labels and the labels reason of a label-only memory proposal', async () => {
+  const ctx = await setupTest();
+
+  const item = await ctx.memory.remember({
+    text: 'The piano is tuned each March',
+    labels: { gist: 'piano tuned each March', topic: 'home', triggers: [] },
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  await ctx.memory.writes.editLabels({
+    target: item,
+    labels: { gist: 'piano tuning', topic: 'home/music', triggers: ['tuner'] },
+    caller: buildMockWriteCaller(),
+  });
+
+  const listed = await ctx.client.approvals.listItems();
+
+  const memory = listed.items.flatMap((entry) =>
+    'memory' in entry.body && entry.body.memory !== null ? [entry.body.memory] : [],
+  );
+
+  expect(memory).toMatchObject([
+    {
+      itemID: item.itemID,
+      reason: 'labels',
+      labels: {
+        gist: 'piano tuning',
+        topic: 'home/music',
+        triggers: ['tuner'],
+        isLabelOnly: true,
+      },
+    },
+  ]);
+});
+
 test('#approvals.answerProposal refuses a stale hash with CONFLICT and keeps the row open', async () => {
   const ctx = await setupTest();
   const listed = await ctx.client.approvals.listItems();
