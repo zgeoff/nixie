@@ -31,7 +31,7 @@ export interface LabelWrite {
 // Every memory.labelled record comes from here, so the in-memory entries never miss one. The
 // caller's transaction must hold the delivery lock.
 export async function writeLabelsInTransaction(
-  parts: Pick<StoreParts, 'context' | 'labels'>,
+  parts: Pick<StoreParts, 'context' | 'labels' | 'triggers'>,
   tx: Transaction<unknown>,
   write: LabelWrite,
 ): Promise<void> {
@@ -67,4 +67,6 @@ export async function writeLabelsInTransaction(
   ]);
 
   parts.labels.set(write.itemID, write.labels);
+
+  await parts.triggers.set(write.itemID, write.labels.triggers);
 }

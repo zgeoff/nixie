@@ -1,4 +1,5 @@
 import { expect, mock, test } from 'bun:test';
+import type { TurnMemorySettings } from '@heynixie/memory';
 import { startTestMemoryStore } from '@heynixie/memory/test-utils';
 import { sandboxCreatedCodec } from '@heynixie/sandbox';
 import { conversationTaskID, createConversationTask } from '@heynixie/tasks';
@@ -21,6 +22,7 @@ interface RunnerConfig {
 interface TestOptions {
   readonly tools?: Parameters<typeof startTestServer>[0];
   readonly encoderTopics?: readonly (readonly string[])[];
+  readonly similarity?: Partial<TurnMemorySettings['similarity']>;
 }
 
 async function setupTest(options: TestOptions = {}) {
@@ -34,6 +36,17 @@ async function setupTest(options: TestOptions = {}) {
     context,
     (cause) => runners.last?.cleanupSessions(cause) ?? Promise.resolve(),
     options.encoderTopics,
+    {
+      trigger: { items: 0, minScore: 0, minSimilarity: 1 },
+      similarity: {
+        items: 5,
+        selfNotes: 2,
+        messages: 3,
+        minScore: 0.25,
+        minSimilarity: 0.38,
+        ...options.similarity,
+      },
+    },
   );
 
   return {
@@ -47,12 +60,7 @@ async function setupTest(options: TestOptions = {}) {
       runners.last = await startConversation({
         context,
         models: buildTestModelsConfig({ modelURL: 'http://127.0.0.1:1', ...config }),
-        memorySettings: {
-          retrievalItems: 5,
-          retrievalSelfNotes: 2,
-          retrievalMessages: 3,
-          ...config.memorySettings,
-        },
+        ...(config.memorySettings === undefined ? {} : { memorySettings: config.memorySettings }),
         secrets: { model_credentials: { anthropic: 'not-a-real-key' } },
         sandboxes: server.sandboxes,
         tools: server.endpoint,
@@ -702,7 +710,7 @@ test('it starts a fresh session on the new sandbox when the old sandbox no longe
 });
 
 test('it gives the next best match the slot of an item the session already holds', async () => {
-  const ctx = await setupTest();
+  const ctx = await setupTest({ similarity: { items: 1 } });
 
   const provenance = {
     origin: 'owner',
@@ -717,7 +725,6 @@ test('it gives the next best match the slot of an item the session already holds
     ctx.memory.remember({ text: 'A second spare key hangs in the garage', provenance }),
     ctx.startRunner({
       image: 'nixie-conversation-0123456789ab',
-      memorySettings: { retrievalItems: 1 },
     }),
     createConversationTask(ctx.context),
 
@@ -1079,7 +1086,7 @@ test('it retrieves nothing for a message that is only your name', async () => {
 });
 
 test('it places up to 2 self-notes in their own labelled block beside 5 facts', async () => {
-  const ctx = await setupTest();
+  const ctx = await setupTest({ similarity: { minScore: 0 } });
 
   const provenance = {
     origin: 'owner',
@@ -1094,7 +1101,6 @@ test('it places up to 2 self-notes in their own labelled block beside 5 facts', 
   await Promise.all([
     ctx.startRunner({
       image: 'nixie-conversation-0123456789ab',
-      memorySettings: { retrievalMinScore: 0 },
     }),
     createConversationTask(ctx.context),
     ctx.memory.remember({ text: 'I like the smell of tea', provenance: note, subject: 'self' }),
@@ -1136,7 +1142,7 @@ test('it places up to 2 self-notes in their own labelled block beside 5 facts', 
 });
 
 test("it lists the self-notes it places beside the facts in the recall record and the turn's record", async () => {
-  const ctx = await setupTest();
+  const ctx = await setupTest({ similarity: { minScore: 0 } });
 
   const provenance = {
     origin: 'owner',
@@ -1151,7 +1157,6 @@ test("it lists the self-notes it places beside the facts in the recall record an
   await Promise.all([
     ctx.startRunner({
       image: 'nixie-conversation-0123456789ab',
-      memorySettings: { retrievalMinScore: 0 },
     }),
     createConversationTask(ctx.context),
   ]);
@@ -1192,7 +1197,7 @@ test("it lists the self-notes it places beside the facts in the recall record an
 });
 
 test('it places no self-note block when the cap is 0', async () => {
-  const ctx = await setupTest();
+  const ctx = await setupTest({ similarity: { selfNotes: 0, minScore: 0 } });
 
   const provenance = {
     origin: 'owner',
@@ -1208,7 +1213,6 @@ test('it places no self-note block when the cap is 0', async () => {
     ctx.memory.remember({ text: 'Keeps a tin of tea by the kettle', provenance }),
     ctx.startRunner({
       image: 'nixie-conversation-0123456789ab',
-      memorySettings: { retrievalSelfNotes: 0, retrievalMinScore: 0 },
     }),
     createConversationTask(ctx.context),
     ctx.memory.remember({ text: 'I find tea calming', provenance: note, subject: 'self' }),

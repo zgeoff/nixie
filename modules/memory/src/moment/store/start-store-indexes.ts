@@ -4,6 +4,8 @@ import type { MemoryIndex } from '../../memory/start-memory-index';
 import { startMemoryIndex } from '../../memory/start-memory-index';
 import type { MessageCursor } from '../../message/make-message-cursor';
 import { makeMessageCursor } from '../../message/make-message-cursor';
+import type { TriggerIndex } from '../../turn/start-trigger-index';
+import { startTriggerIndex } from '../../turn/start-trigger-index';
 import type { MemoryContext } from '../../types';
 import type { DeliveryLock } from '../../utils/make-delivery-lock';
 import { makeDeliveryLock } from '../../utils/make-delivery-lock';
@@ -32,6 +34,8 @@ export interface StoreIndexes {
 
   readonly labels: LabelEntries;
 
+  readonly triggers: TriggerIndex;
+
   readonly vectors: VectorIndex | null;
   readonly messages: MessageIndexes;
   readonly moments: MomentIndexes;
@@ -46,6 +50,7 @@ export async function startStoreIndexes(context: MemoryContext): Promise<StoreIn
   return {
     index,
     labels: makeLabelEntries(),
+    triggers: await startTriggerIndex(semantic),
     vectors: semantic === undefined ? null : startVectorIndex(semantic.encoder, semantic.onError),
     messages: {
       index: messageIndex,

@@ -44,6 +44,8 @@ export async function runForget(parts: StoreParts, request: ForgetRequest): Prom
     parts.labels.remove(itemID);
     parts.vectors?.remove(itemID);
 
+    await parts.triggers.remove(itemID);
+
     await removeMessageEntries(parts, evidenceSequences);
   });
 

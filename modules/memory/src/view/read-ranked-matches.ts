@@ -23,8 +23,10 @@ export interface RankedMatches {
   readonly searchMode: SearchMode;
 }
 
+type RankedParts = Pick<StoreParts, 'index' | 'vectors'>;
+
 export async function readRankedMatches(
-  parts: StoreParts,
+  parts: RankedParts,
   query: RankQuery,
 ): Promise<RankedMatches> {
   const [keywordMatches, vectorMatches] = await Promise.all([
@@ -44,7 +46,7 @@ export async function readRankedMatches(
 }
 
 function readVectorMatches(
-  parts: StoreParts,
+  parts: RankedParts,
   query: RankQuery,
 ): Promise<readonly VectorMatch[] | null> {
   if (parts.vectors === null) {
@@ -59,7 +61,7 @@ function readVectorMatches(
 }
 
 function pickSearchMode(
-  parts: StoreParts,
+  parts: RankedParts,
   vectorMatches: readonly VectorMatch[] | null,
 ): SearchMode {
   if (parts.vectors === null) {

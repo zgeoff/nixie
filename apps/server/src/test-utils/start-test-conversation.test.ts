@@ -35,7 +35,7 @@ test('it serves the tools named to the turn and reads the memory given at each t
 
   const ctx = await setupTest({ tools: notes.tools });
 
-  const recall = mock(() => Promise.resolve({ items: [] }));
+  const readTurnMemory = mock(() => Promise.resolve({ kind: 'none' as const }));
 
   const conversation = await startTestConversation(ctx.server, {
     context: ctx.server.context,
@@ -44,8 +44,7 @@ test('it serves the tools named to the turn and reads the memory given at each t
       readPinnedCore: () => Promise.resolve([]),
       readPinnedCoreUse: () => Promise.resolve({ items: 0, tokens: 0, budget: 2000 }),
       readIndex: () => Promise.resolve({ text: '', items: 0, tokens: 0, budget: 0 }),
-      recall,
-      recallMessages: () => Promise.resolve({ messages: [] }),
+      readTurnMemory,
       readShortIDs: () => Promise.resolve(new Map()),
     }),
   });
@@ -69,5 +68,5 @@ test('it serves the tools named to the turn and reads the memory given at each t
     { decision: { outcome: 'allow' } },
   ]);
 
-  expect(recall).toHaveBeenCalledOnce();
+  expect(readTurnMemory).toHaveBeenCalledOnce();
 });

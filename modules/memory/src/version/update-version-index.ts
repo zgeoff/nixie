@@ -10,9 +10,13 @@ export async function updateVersionIndex(
     await parts.index.update({ itemID, text: next.text.text });
 
     parts.vectors?.update({ itemID, text: next.text.text });
+
+    await parts.triggers.set(itemID, parts.labels.find(itemID)?.triggers ?? []);
   } else {
     await parts.index.remove(itemID);
 
     parts.vectors?.remove(itemID);
+
+    await parts.triggers.remove(itemID);
   }
 }

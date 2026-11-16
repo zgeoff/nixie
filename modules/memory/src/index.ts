@@ -11,6 +11,7 @@ export { buildMomentStatus } from './moment/build-moment-status';
 export { defaultGateLimits } from './gate/default-gate-limits';
 export { defaultOwnerPronouns } from './owner/default-owner-pronouns';
 export type { MemoryConfig } from './gate/memory-config-schema';
+export type { TurnMemorySettings } from './turn/types';
 export { memoryConfigSchema } from './gate/memory-config-schema';
 export { MemoryProposalNotFoundError } from './utils/error/memory-proposal-not-found-error';
 export { ProposalCapError } from './utils/error/proposal-cap-error';
