@@ -103,3 +103,15 @@ export type {
 } from './types';
 
 export type { SessionsRecordKind } from './session/sessions-record-kind';
+export type { WorkerRecordKind } from './worker/worker-record-kind';
+export type { WorkerTool, WorkerToolOptions } from './worker/start-worker-tool';
+export { startWorkerTool } from './worker/start-worker-tool';
+export { workerRunToolName } from './worker/worker-run-tool-name';
+export { workerRunEndedCodec } from './worker/worker-run-ended-codec';
+export { workerRunStartedCodec } from './worker/worker-run-started-codec';
+export { workerTurnEndedCodec } from './worker/worker-turn-ended-codec';
+export type { WorkerUsed } from './worker/worker-used';
+export type { WorkerOutcome } from './worker/to-worker-outcome';
+export { toWorkerOutcome } from './worker/to-worker-outcome';
+export type { WorkerLimit } from './worker/to-worker-limit';
+export { toWorkerLimit } from './worker/to-worker-limit';
