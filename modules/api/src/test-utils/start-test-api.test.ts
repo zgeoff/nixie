@@ -1,4 +1,4 @@
-import { expect, onTestFinished, test } from 'bun:test';
+import { expect, mock, onTestFinished, test } from 'bun:test';
 import { existsSync } from 'node:fs';
 import { createAllowedAction } from '@heynixie/actions';
 import { clientHeaderName } from '@heynixie/contract';
@@ -141,4 +141,20 @@ test('it reads back an action that the actions module created', async () => {
     queued: [{ actionID: queued.actionID, tool: 'test.send' }],
     started: [],
   });
+});
+
+test('it gives a record forget no session cleanup until the test sets one', async () => {
+  const ctx = await startTestAPI();
+
+  expect(ctx.context.readSessionCleanup()).toBeNull();
+});
+
+test('it gives a record forget the session cleanup the test sets', async () => {
+  const ctx = await startTestAPI();
+
+  const cleanup = mock(() => Promise.resolve());
+
+  ctx.setSessionCleanup(cleanup);
+
+  expect(ctx.context.readSessionCleanup()).toBe(cleanup);
 });
