@@ -30,6 +30,7 @@ import { buildStubToolEndpoint } from '../test-utils/build-stub-tool-endpoint';
 import { readRecordsByKind } from '../test-utils/read-records-by-kind';
 import { runNextStep } from '../test-utils/run-next-step';
 import { startTestSessionHost } from '../test-utils/start-test-session-host';
+import type { InStepActions } from '../types';
 import type { StepCaptureInput } from '../utils/open-step-capture';
 import { workerRunStartedCodec } from '../worker/worker-run-started-codec';
 import { workerTurnEndedCodec } from '../worker/worker-turn-ended-codec';
@@ -97,7 +98,9 @@ async function setupTest() {
   });
 
   const startRunner = async (
-    parts: Partial<Pick<SandboxRunnerOptions, 'tools' | 'memory' | 'gateway' | 'turnInputs'>> = {},
+    parts: Partial<
+      Pick<SandboxRunnerOptions, 'tools' | 'memory' | 'gateway' | 'turnInputs' | 'inStepActions'>
+    > = {},
   ) => {
     const runner = await startSandboxRunner({
       context: host.context,
@@ -127,6 +130,7 @@ async function setupTest() {
       log: (event) => {
         events.push(event);
       },
+      ...(parts.inStepActions === undefined ? {} : { inStepActions: parts.inStepActions }),
     });
 
     host.defer(() => runner.stop());
@@ -1751,6 +1755,108 @@ test('it runs on at once the work of a task turn that the user interrupted with 
 
   expect(ctx.guest.turns).toHaveLength(2);
   expect(input).toInclude('Continue the work that is not done yet.');
+});
+
+test('it runs a call approved while a task turn ran, in the step that continues the turn the user interrupted, and that turn reads its result', async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seed.conversationStep();
+
+  const taskID = await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+  });
+
+  const approval = { isPending: false, runs: 0 };
+
+  const inStepActions: InStepActions = {
+    probePending: () => Promise.resolve(approval.isPending),
+    run: async (request) => {
+      if (!approval.isPending) {
+        return [];
+      }
+
+      approval.isPending = false;
+      approval.runs += 1;
+
+      await request.runCall({
+        actionID: 'action-1',
+        tool: 'memory.export',
+        input: {},
+        callSequence: 1,
+        actionHash: 'sha256:any',
+      });
+
+      const [result] = await writeRecords(ctx.context.log, [
+        {
+          kind: 'tool_result',
+          definitions: ctx.context.definitions(),
+          thread: taskID,
+          payload: {
+            callID: 'call-1',
+            runID: taskID,
+            toolUseID: null,
+            outcome: 'result',
+            actionID: 'action-1',
+            sources: { text: 'owner_data' },
+          },
+          erasable: { result: { text: 'the high tide is at 06:12' } },
+          contentSource: 'owner_data',
+        },
+      ]);
+
+      const [outcome] = await writeInboxRecords(ctx.context, [
+        {
+          kind: 'action.outcome',
+          definitions: ctx.context.definitions(),
+          thread: taskID,
+          payload: {
+            actionID: 'action-1',
+            status: 'done',
+            attempt: 1,
+            reason: null,
+            resultSequence: result?.sequence ?? 0,
+          },
+          erasable: {},
+        },
+      ]);
+
+      return [{ outcomeSequence: outcome?.sequence ?? 0, images: [] }];
+    },
+  };
+
+  const tools = buildStubToolEndpoint({
+    runApproved: () => Promise.resolve({ status: 'done', resultSequence: 0, images: [] }),
+  });
+
+  const runner = await ctx.startRunner({ tools: tools.endpoint, inStepActions });
+
+  ctx.guest.addKindReplies('worker', {
+    text: 'Checking the tides.',
+    stopReason: 'tool_use',
+    gate: async () => {
+      approval.isPending = true;
+
+      await writeTaskControl(ctx.context, { taskID, control: 'interrupt' });
+
+      await waitForCondition(() =>
+        ctx.guest.received.some((entry) => entry.frame.type === 'interrupt'),
+      );
+    },
+  });
+
+  await ctx.runNextStep(runner);
+  await ctx.runNextStep(runner);
+
+  const input =
+    ctx.guest.turns
+      .at(-1)
+      ?.input.map((message) => message.text)
+      .join('\n') ?? '';
+
+  expect(ctx.guest.turns).toHaveLength(2);
+  expect(approval.runs).toBe(1);
+  expect(input).toInclude('the high tide is at 06:12');
 });
 
 test('it keeps awake the imp of a task whose turn the user interrupted with no pause', async () => {

@@ -247,7 +247,7 @@ test('it reports a pending approved call, and none once the call settled', async
   expect([before, after]).toStrictEqual([true, false]);
 });
 
-test('it runs the call again after the owner answers retry to the unknown outcome, and wakes the task', async () => {
+test('it runs the call once more after the owner answers retry to the unknown outcome, and wakes the task', async () => {
   const ctx = await setupTest();
   const queued = await ctx.seed.inStepAction({ step: ctx.step });
 
@@ -268,11 +268,14 @@ test('it runs the call again after the owner answers retry to the unknown outcom
   const retried = await readTestAction(ctx.writer, queued.action_id);
 
   await ctx.runStep({ runCall: ctx.runCall({ status: 'done', resultSequence: 8, images: [] }) });
+  await ctx.runStep({ runCall: ctx.runCall({ status: 'done', resultSequence: 9, images: [] }) });
 
   const kinds = await readRecords(ctx.context.log, { afterSequence: 0 });
+  const settled = await readTestAction(ctx.writer, queued.action_id);
 
   expect(answered).toBe(true);
   expect(retried).toMatchObject({ status: 'pending', attempt_open: 0 });
   expect(ctx.calls).toHaveLength(1);
+  expect(settled).toMatchObject({ status: 'done', attempt_open: 0 });
   expect(kinds.map((entry) => entry.record.kind)).toContain('task.wake');
 });
