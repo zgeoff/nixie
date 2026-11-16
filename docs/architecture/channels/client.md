@@ -236,7 +236,7 @@ reset. When the read fails, the control shows the failure with a retry and the c
 `/tasks/ended` lists the ended task runs from `tasks.listEnded`, newest first, with a control for
 the next page. Each task run links to its task's thread and, when a fire started it, names the fire.
 The route also shows the trigger report from `triggers.report`, with each late fire and each skipped
-fire and its reason or lateness. The report starts 7 days back, counted on the browser's calendar.
+fire and its reason or lateness. The report starts a week back, counted on the browser's calendar.
 
 `/definitions` lists each definition from `definitions.listTasks` with its name, rendered trigger,
 next fire, origin, whether it is enabled, and the kind and sequence of the record that created it. A

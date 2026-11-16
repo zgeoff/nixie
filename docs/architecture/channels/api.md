@@ -352,8 +352,8 @@ gets every field whole.
 - The server cuts each string whose UTF-8 size passes `payloadClipBytes` (4,096) to its first
   `payloadClipBytes` bytes, on a code point boundary. It lists each cut string in the record's
   `clipped`, with its field, its path inside the field and its whole size.
-- When a field's JSON still passes 64 KiB after those cuts, the server leaves the field out and
-  lists it with an empty path. A field of many short strings can reach that size.
+- When a field's JSON still passes its size limit after those cuts, the server leaves the field out
+  and lists it with an empty path. A field of many short strings can reach that size.
 - Every field outside the 4 payload fields arrives whole, such as a message's text. The step end
   that a page read returns beside its records is never cut, because the failure notice reads its
   error from it.
