@@ -58,7 +58,7 @@ function formatTools(step: StepActivity): string {
 
 const targetLimit = 60;
 
-function formatTarget(call: ToolActivity): string | undefined {
+export function formatTarget(call: ToolActivity): string | undefined {
   const text = findFinalURL(call) ?? findInputText(call.input);
 
   if (text === undefined || text === '') {
@@ -94,7 +94,7 @@ function formatShortURL(url: URL): string {
   return `${host}${path}`;
 }
 
-function formatToolName(tool: string): string {
+export function formatToolName(tool: string): string {
   return tool.replaceAll(/[_.]+/gu, ' ');
 }
 

@@ -1,9 +1,11 @@
 import type { ReactNode, Ref } from 'react';
 import { match } from 'ts-pattern';
 import type { TaskMessageActivity } from '../conversation/build-activity';
+import { useWholePayloads } from '../conversation/use-whole-payloads';
 import { css } from '../styled-system/css';
 import { buildTaskHref } from '../task/build-task-href';
 import { useTaskName } from '../task/use-task-name';
+import { WholeValueControl } from './whole-value-control';
 
 export type TaskMessageLayout = 'line' | 'block';
 
@@ -33,6 +35,10 @@ export function TaskMessageEntry(props: TaskMessageEntryProps): ReactNode {
   const message = props.message;
   const name = useTaskName(message.taskID, message.taskName);
   const id = `task-message-${message.messageID}`;
+  const cut = message.cut === undefined ? [] : [message.cut];
+  const whole = useWholePayloads(cut);
+  const loaded = whole.payloads.get(message.cut?.sequence ?? -1)?.toolCall?.input?.['body'];
+  const shownText = typeof loaded === 'string' ? loaded : message.text;
   const label = `Message ${message.direction === 'received' ? 'from' : 'to'} ${name}`;
 
   return match(props.layout)
@@ -52,7 +58,8 @@ export function TaskMessageEntry(props: TaskMessageEntryProps): ReactNode {
           {message.hop}
           {message.woke ? '' : ' · did not wake its receiver'}
         </span>
-        <span className={body}>{message.text ?? 'This message was forgotten.'}</span>
+        <span className={body}>{shownText ?? 'This message was forgotten.'}</span>
+        {message.cut === undefined ? null : <WholeValueControl whole={whole} />}
       </li>
     ))
     .exhaustive();
