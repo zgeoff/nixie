@@ -58,6 +58,17 @@ test('it refuses to close the conversation', async () => {
   expect(result).toStrictEqual({ status: 'conversation_never_closes' });
 });
 
+test('it refuses a control that the runner of the task lacks', async () => {
+  await store.tasks.create({ taskID: 'k3x9m2p7qa', controls: ['pause'], state: 'waiting' });
+
+  const result = await writeMockTaskControl('stop', {
+    clientActionID: '1a3c5e7f-9b2d-4f6a-8c0e-2d4f6a8b0c1e',
+    taskID: 'k3x9m2p7qa',
+  });
+
+  expect(result).toStrictEqual({ status: 'runner_lacks_control' });
+});
+
 test('it refuses a control of a task the store does not hold', async () => {
   const result = await writeMockTaskControl('stop', {
     clientActionID: '1a3c5e7f-9b2d-4f6a-8c0e-2d4f6a8b0c1e',

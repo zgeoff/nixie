@@ -306,6 +306,10 @@ const taskControl = oc
       message: 'the task is in a state that does not take this control',
       status: 409,
     },
+    RUNNER_LACKS_CONTROL: {
+      message: 'the runner of the task does not take this control',
+      status: 409,
+    },
   })
   .input(z.strictObject({ taskID: z.string().min(1) }))
   .output(

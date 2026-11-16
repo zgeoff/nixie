@@ -96,6 +96,11 @@ function toHostControlled(
         message: `task ${taskID} reached its limit, and only a raise of the limit resumes it`,
       }),
     )
+    .with({ reason: 'runner_lacks_control' }, () =>
+      errors.RUNNER_LACKS_CONTROL({
+        message: `the runner of task ${taskID} does not take this control`,
+      }),
+    )
     .with({ reason: 'conversation_never_closes' }, () => {
       throw new Error('only a close refuses the conversation');
     })

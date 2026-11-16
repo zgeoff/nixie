@@ -34,7 +34,7 @@ import {
 import type { ProposalAnswerInput } from '@heynixie/proposals';
 import { answerProposal, readProposal } from '@heynixie/proposals';
 import { createConversationTask, tasksProjections } from '@heynixie/tasks';
-import { buildTestRunSettings } from '@heynixie/tasks/test-utils';
+import { buildTestRunSettings, buildTestTaskRunners } from '@heynixie/tasks/test-utils';
 import { buildTestClock } from '@heynixie/testing';
 import { sql } from 'kysely';
 import invariant from 'tiny-invariant';
@@ -99,6 +99,7 @@ export async function startTestRules(settings: APIContext['settings'] = defaultA
     clock,
     definitions: () => ({ snapshotHash: 'sha256:test' }),
     runSettings: buildTestRunSettings(),
+    runners: buildTestTaskRunners(),
     settings,
     passkeys: createPasskeyState(),
     readSessionCleanup: () => null,

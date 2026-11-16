@@ -244,6 +244,7 @@ test('#tasks.read gives one task as the list gives it', async () => {
     isTakingMessages: true,
     lastActivityAt: expect.toBeValidDate(),
     name: 'Garden plan',
+    runner: 'sandbox',
     state: 'waiting',
     taskID: 'k3x9m2p7qa',
   });

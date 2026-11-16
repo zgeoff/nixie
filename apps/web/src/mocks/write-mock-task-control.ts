@@ -1,5 +1,6 @@
 import type { TaskControl } from '@heynixie/task-control';
 import { buildControlledFields, planTaskControl } from '@heynixie/task-control';
+import { match } from 'ts-pattern';
 import { pauseStore } from './pause-store';
 import { probeMockTaskPaused } from './probe-mock-task-paused';
 import { store } from './store';
@@ -26,6 +27,7 @@ type TaskControlResult =
   | ({ readonly status: 'controlled' } & ControlledTask)
   | { readonly status: 'task_not_found' }
   | { readonly status: 'conversation_never_closes' }
+  | { readonly status: 'runner_lacks_control' }
   | {
       readonly status: 'state_refused';
       readonly state: MockTaskState;
@@ -77,12 +79,22 @@ export async function writeMockTaskControl(
     hasUnread: false,
     resumeState: task.resumeState,
     isLimitHeld: false,
+    controls: task.controls,
   });
 
   if ('reason' in plan) {
-    return plan.reason === 'conversation_never_closes'
-      ? { status: 'conversation_never_closes' }
-      : { status: 'state_refused', state: task.state, isPauseRequested: task.isPauseRequested };
+    return match(plan)
+      .returnType<TaskControlResult>()
+      .with({ reason: 'conversation_never_closes' }, () => ({
+        status: 'conversation_never_closes',
+      }))
+      .with({ reason: 'runner_lacks_control' }, () => ({ status: 'runner_lacks_control' }))
+      .with({ reason: 'unknown_task' }, { reason: 'not_allowed' }, { reason: 'at_limit' }, () => ({
+        status: 'state_refused',
+        state: task.state,
+        isPauseRequested: task.isPauseRequested,
+      }))
+      .exhaustive();
   }
 
   const fields = buildControlledFields(plan);

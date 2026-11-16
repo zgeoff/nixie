@@ -15,6 +15,7 @@ export type TaskControl = 'pause' | 'resume' | 'stop' | 'restart' | 'close' | 'i
 export type TaskControlRefusal =
   | { readonly reason: 'unknown_task' }
   | { readonly reason: 'conversation_never_closes' }
+  | { readonly reason: 'runner_lacks_control' }
   | {
       readonly reason: 'at_limit';
       readonly state: TaskState;
@@ -34,6 +35,9 @@ export interface TaskControlFacts {
   readonly resumeState: ResumeState | null;
 
   readonly isLimitHeld: boolean;
+
+  // the controls that the task's runner takes
+  readonly controls: readonly TaskControl[];
 }
 
 export type TaskControlPlan =

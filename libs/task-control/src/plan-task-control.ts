@@ -16,6 +16,10 @@ export function planTaskControl(
     return { reason: 'conversation_never_closes' };
   }
 
+  if (!facts.controls.includes(control)) {
+    return { reason: 'runner_lacks_control' };
+  }
+
   if (!isControlAllowed(control, facts)) {
     return { reason: 'not_allowed', state: facts.state, isPauseRequested: facts.isPauseRequested };
   }

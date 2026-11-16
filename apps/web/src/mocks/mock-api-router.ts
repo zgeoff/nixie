@@ -450,6 +450,9 @@ function toMockControlled(result: MockControlResult, errors: MockControlOptions[
     .with({ status: 'reused' }, () => {
       throw errors.CLIENT_ACTION_ID_REUSED();
     })
+    .with({ status: 'runner_lacks_control' }, () => {
+      throw errors.RUNNER_LACKS_CONTROL();
+    })
     .with({ status: 'conversation_never_closes' }, () => {
       throw new Error('only a close refuses the conversation');
     })
