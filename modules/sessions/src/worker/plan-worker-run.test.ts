@@ -93,6 +93,7 @@ test.each([
   'task.message',
   'task.close',
   'tasks.list',
+  'tasks.definitions',
   'task.report',
   'turn.end_silently',
   'worker.run',

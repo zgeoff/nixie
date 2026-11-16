@@ -7,14 +7,15 @@ import { silentEndToolName } from '../turn/build-silent-end-tool';
 import type { WorkerPlan } from './types';
 import { workerRunToolName } from './worker-run-tool-name';
 
-// The tools that a worker never holds, whoever calls: a worker starts no task, sends no message,
-// closes none of the tasks its caller started, reports for no task, and starts no worker of its
-// own.
+// A worker starts, messages, closes and lists no task, reports for none and starts no worker. The
+// definitions list belongs to the conversation alone, yet a started task may hold it, so the start
+// bounds leave it out.
 const neverHeldTools: ReadonlySet<string> = new Set([
   'task.start',
   'task.message',
   'task.close',
   'tasks.list',
+  'tasks.definitions',
   taskReportToolName,
   silentEndToolName,
   workerRunToolName,
