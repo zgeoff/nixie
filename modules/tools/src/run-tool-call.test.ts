@@ -13,7 +13,7 @@ import { buildMockToolDefinition } from './test-utils/build-mock-tool-definition
 import { buildMockVariantToolDefinition } from './test-utils/build-mock-variant-tool-definition';
 import { buildStubActionQueue } from './test-utils/build-stub-action-queue';
 import { setupTestLog } from './test-utils/setup-test-log';
-import type { ToolContext } from './types';
+import type { ToolCall, ToolContext } from './types';
 import { ToolResultRefusedError } from './types';
 
 interface SetupConfig {
@@ -2376,4 +2376,83 @@ test('it proposes nothing for a variant call that repeats an approved action sti
   });
 
   expect(entries.filter((entry) => entry.record.kind === 'policy.action_proposed')).toHaveLength(1);
+});
+
+test('it gives a direct tool the sequence of its own call record', async () => {
+  const run = mock((call: ToolCall, context: ToolContext) =>
+    Promise.resolve({
+      status: 'ok' as const,
+      result: { text: `${call.tool} ${context.run.runID}` },
+    }),
+  );
+
+  const ctx = await setupTest({ tools: [buildMockToolDefinition({ name: 'notes_read', run })] });
+
+  await runToolCall(
+    { tool: 'notes_read', input: { query: 'milk' }, toolUseID: null },
+    {
+      runID: 'run-1',
+      thread: 'task-1',
+      logThread: 'task-1',
+      tools: ['notes_read'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
+    ctx.options,
+  );
+
+  const [called] = await readRecords(ctx.log, { afterSequence: 0, kinds: ['tool_called'] });
+
+  expect(run.mock.calls[0]?.[1].callSequence).toBe(called?.record.sequence);
+});
+
+test('it writes a call with the parent its request names', async () => {
+  const ctx = await setupTest({ tools: [buildMockToolDefinition({ name: 'notes_read' })] });
+
+  const run = {
+    runID: 'run-1',
+    thread: 'task-1',
+    logThread: 'task-1',
+    tools: ['notes_read'],
+    model: { model: 'model-a', profile: 'chat-direct' },
+  };
+
+  await runToolCall(
+    { tool: 'notes_read', input: { query: 'a' }, toolUseID: null },
+    run,
+    ctx.options,
+  );
+
+  const [first] = await readRecords(ctx.log, { afterSequence: 0, kinds: ['tool_called'] });
+
+  invariant(first, 'the first call wrote a record');
+
+  await runToolCall(
+    { tool: 'notes_read', input: { query: 'b' }, toolUseID: null, parent: first.record.sequence },
+    run,
+    ctx.options,
+  );
+
+  const called = await readRecords(ctx.log, { afterSequence: 0, kinds: ['tool_called'] });
+
+  expect(called.map((entry) => entry.record.parent)).toStrictEqual([null, first.record.sequence]);
+});
+
+test('it writes a call with no parent when its request names none', async () => {
+  const ctx = await setupTest({ tools: [buildMockToolDefinition({ name: 'notes_read' })] });
+
+  await runToolCall(
+    { tool: 'notes_read', input: { query: 'milk' }, toolUseID: null },
+    {
+      runID: 'run-1',
+      thread: 'task-1',
+      logThread: 'task-1',
+      tools: ['notes_read'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
+    ctx.options,
+  );
+
+  const [called] = await readRecords(ctx.log, { afterSequence: 0, kinds: ['tool_called'] });
+
+  expect(called?.record.parent).toBeNull();
 });

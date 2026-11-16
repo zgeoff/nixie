@@ -1,5 +1,5 @@
 import type { JSONObject } from '@heynixie/log';
-import type { ToolContext, ToolDefinition, ToolOutcome } from '@heynixie/tools';
+import type { ToolDefinition, ToolOutcome, ToolResolveContext } from '@heynixie/tools';
 import invariant from 'tiny-invariant';
 import { match } from 'ts-pattern';
 import { parseTaskStartInput } from '../runner/parse-task-start-input';
@@ -144,7 +144,7 @@ async function planStart(
   context: StartToolContext,
   bounds: TaskStartBounds,
   input: JSONObject,
-  tool: ToolContext,
+  tool: ToolResolveContext,
 ): Promise<PlannedStart> {
   const runner = pickStartRunner(input, context.runners);
 

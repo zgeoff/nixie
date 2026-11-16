@@ -1,6 +1,7 @@
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { mkdir, rm } from 'node:fs/promises';
 import { join } from 'node:path';
+import { findWorkerRunID } from '@heynixie/sandbox';
 import { createMcpHandler } from '@modelcontextprotocol/server';
 import { createRunServer } from './create-run-server';
 import type { ToolCallOptions } from './run-tool-call';
@@ -46,7 +47,10 @@ export async function startToolEndpoint(options: ToolEndpointOptions): Promise<T
         return endpoint;
       }),
 
-    getToolTarget: (sandbox) => ({ path: getSocketPath(sandbox.owner) }),
+    // A worker's sandbox is owned by its worker run, whose tool run takes the run's UUID.
+    getToolTarget: (sandbox) => ({
+      path: getSocketPath(findWorkerRunID(sandbox.owner) ?? sandbox.owner),
+    }),
     stop: async () => {
       await Promise.all([...runs.values()].map((endpoint) => endpoint.stop()));
     },

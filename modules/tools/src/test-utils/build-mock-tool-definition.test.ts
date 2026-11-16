@@ -103,6 +103,7 @@ test('it runs the default tool to one note', async () => {
         tools: [definition.name],
         model: { model: 'model-a', profile: 'chat-direct' },
       },
+      callSequence: 7,
     },
   );
 

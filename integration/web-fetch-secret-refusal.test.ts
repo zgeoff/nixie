@@ -77,13 +77,13 @@ async function setupTest() {
 
       const outcome = await webFetch.tool.run(
         { callID: 'call-1', tool: 'web_fetch', input: { url }, toolUseID: null },
-        { run },
+        { callSequence: 1, run },
       );
 
       const reread = (page: string) =>
         webFetch.tool.run(
           { callID: 'call-2', tool: 'web_fetch', input: { page, part: 1 }, toolUseID: null },
-          { run },
+          { callSequence: 1, run },
         );
 
       return { outcome, adapter, reread };

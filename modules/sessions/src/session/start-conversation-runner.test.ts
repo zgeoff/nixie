@@ -681,6 +681,7 @@ test('it clears every web fetch pause on a forget, so the next fetch of a paused
           model: { model: 'model-a', profile: 'chat-direct' },
           session: { key: 'session-a', invalidatedThrough: 0 },
         },
+        callSequence: 1,
       },
     );
 

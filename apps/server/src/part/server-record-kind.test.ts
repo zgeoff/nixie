@@ -38,6 +38,8 @@ function setupTest() {
     'task.step_errored': ['message'],
     task_message: ['body'],
     tool_called: ['input', 'destinations'],
+    'worker.run_ended': ['detail'],
+    'worker.turn_ended': ['text'],
 
     // The fields of a result are the content its tool declares, so they differ by tool.
     tool_result: [],

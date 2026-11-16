@@ -294,6 +294,7 @@ test('it hands each call the run identity of the step whose token the call carri
       model: { model: 'model-a', profile: 'chat-direct' },
       stepRunID: 'task-1:3@2',
     },
+    callSequence: expect.toBePositive(),
   });
 });
 
@@ -327,6 +328,7 @@ test('it hands each call the session its step token names', async () => {
       stepRunID: 'task-1:3@2',
       session: { key: 'session-a', invalidatedThrough: 12 },
     },
+    callSequence: expect.toBePositive(),
   });
 });
 
@@ -358,6 +360,7 @@ test('it hands a call under the run token no step run identity', async () => {
       tools: ['notes_read'],
       model: { model: 'model-a', profile: 'chat-direct' },
     },
+    callSequence: expect.toBePositive(),
   });
 });
 
@@ -543,6 +546,66 @@ test('it gives a sandbox the socket of the run that owns it', async () => {
   expect(ctx.endpoint.getToolTarget({ id: 'nixie-0123', owner: 'run-1' })).toStrictEqual(
     run.target,
   );
+});
+
+test('it gives the sandbox of a worker run the socket of the tool run that takes the worker run UUID', async () => {
+  const ctx = await setupTest({ tools: [buildMockToolDefinition({ name: 'notes_read' })] });
+
+  const run = await ctx.endpoint.startRun({
+    toolUseMetaKey: null,
+    runID: '0d9c6a52-3f5e-4b6a-9a52-2f0f4f2b7c11',
+    thread: 'task-1',
+    logThread: 'task-1',
+    tools: ['notes_read'],
+    model: { model: 'model-a', profile: 'chat-direct' },
+  });
+
+  expect(
+    ctx.endpoint.getToolTarget({
+      id: 'nixie-0123',
+      owner: 'worker_run:0d9c6a52-3f5e-4b6a-9a52-2f0f4f2b7c11',
+    }),
+  ).toStrictEqual(run.target);
+});
+
+test('it records each call of a tool run that names a parent under that parent', async () => {
+  const ctx = await setupTest({ tools: [buildMockToolDefinition({ name: 'notes_read' })] });
+
+  const caller = await ctx.endpoint.startRun({
+    toolUseMetaKey: null,
+    runID: 'run-1',
+    thread: 'task-1',
+    logThread: 'task-1',
+    tools: ['notes_read'],
+    model: { model: 'model-a', profile: 'chat-direct' },
+  });
+
+  const callerClient = await startRunClient(caller);
+
+  await callerClient.callTool({ name: 'notes_read', arguments: { query: 'a' } });
+
+  const [parent] = await readRecords(ctx.log, { afterSequence: 0, kinds: ['tool_called'] });
+
+  const worker = await ctx.endpoint.startRun({
+    toolUseMetaKey: null,
+    runID: 'run-2',
+    thread: 'task-1',
+    logThread: 'task-1',
+    tools: ['notes_read'],
+    model: { model: 'model-b', profile: 'worker' },
+    parent: parent?.record.sequence ?? 0,
+  });
+
+  const workerClient = await startRunClient(worker);
+
+  await workerClient.callTool({ name: 'notes_read', arguments: { query: 'b' } });
+
+  const called = await readRecords(ctx.log, { afterSequence: 0, kinds: ['tool_called'] });
+
+  expect(called.map((entry) => entry.record.parent)).toStrictEqual([
+    null,
+    parent?.record.sequence ?? 0,
+  ]);
 });
 
 test('it gives a sandbox the socket of a run that another endpoint of the same writer owns', async () => {

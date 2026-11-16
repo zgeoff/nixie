@@ -17,6 +17,7 @@ export function buildMockToolContext(
       },
       ...overrides,
     },
+    callSequence: 1,
     ...(verdict === undefined ? {} : { verdict }),
   };
 }

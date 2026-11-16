@@ -7,6 +7,7 @@ import { buildTimeTool } from './build-time-tool';
 
 test('it answers in the zone of the newest message', async () => {
   const context: ToolContext = {
+    callSequence: 1,
     run: {
       runID: 'run-1',
       thread: 'conversation',
@@ -40,6 +41,7 @@ test('it answers in the zone of the newest message', async () => {
 
 test('it answers in the configured default zone when no message carries a zone', async () => {
   const context: ToolContext = {
+    callSequence: 1,
     run: {
       runID: 'run-1',
       thread: 'conversation',
@@ -73,6 +75,7 @@ test('it answers in the configured default zone when no message carries a zone',
 
 test('it gives a zone at UTC itself an offset of +00:00', async () => {
   const context: ToolContext = {
+    callSequence: 1,
     run: {
       runID: 'run-1',
       thread: 'conversation',
@@ -99,6 +102,7 @@ test('it gives a zone at UTC itself an offset of +00:00', async () => {
 
 test('it passes the registry rules, with a result the output schema accepts', async () => {
   const context: ToolContext = {
+    callSequence: 1,
     run: {
       runID: 'run-1',
       thread: 'conversation',

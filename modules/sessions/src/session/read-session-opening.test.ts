@@ -753,6 +753,81 @@ test('it rebuilds a session from a thread that holds a record of a kind no modul
   expect(opening.record.recentRecords).toBe(2);
 });
 
+test('it rebuilds a session from a thread that holds the records of a worker run, and leaves each of them out', async () => {
+  const ctx = await setupTest();
+
+  const workerRunID = '0d9c6a52-3f5e-4b6a-9a52-2f0f4f2b7c11';
+
+  await writeRecords(ctx.tasks.context.log, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'Did the parcel come?' },
+    },
+    {
+      kind: 'tool_called',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: {
+        callID: 'c9a1',
+        runID: workerRunID,
+        toolUseID: null,
+        tool: 'web.fetch',
+        model: 'claude-worker-1',
+        profile: 'worker',
+      },
+      erasable: { input: { url: 'https://parcels.test/status' } },
+    },
+    {
+      kind: 'worker.turn_ended',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: {
+        workerRunID,
+        callID: 'c9a0',
+        model: 'claude-worker-1',
+        profile: 'worker',
+        turn: 1,
+        inputTokens: 100,
+        outputTokens: 10,
+        cacheReadTokens: 0,
+        cacheWriteTokens: 0,
+        dollars: 0.01,
+      },
+      erasable: { text: 'The parcel page says it came at noon.' },
+    },
+    {
+      kind: 'model.reply',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'It came at noon.' },
+    },
+  ]);
+
+  const opening = await readSessionOpening(ctx.tasks.context, {
+    taskID: 'conversation',
+    start: { kind: 'rebuild', reason: 'lost', lostSessionID: 'a-lost-session' },
+    beforeSequence: Number.MAX_SAFE_INTEGER,
+    rebuildTokens: 30_000,
+    brief: null,
+    isFirstSession: false,
+    inbox: [],
+    messaging: buildMockTaskMessageView().messaging,
+    times: { defaultZone: 'Australia/Sydney', now: new Date() },
+    pinnedMemory: 'Nothing is pinned in your memory.',
+    model: 'claude-test-1',
+    status: [buildStartStatus()],
+  });
+
+  const text = opening.blocks.join('\n');
+
+  expect(text).toInclude('It came at noon.');
+  expect(text).not.toInclude('parcels.test');
+  expect(text).not.toInclude('The parcel page says');
+  expect(opening.record.recentRecords).toBe(2);
+});
+
 test('it places the memory index right after the pinned memory and adds its 2 status lines', async () => {
   const ctx = await setupTest();
 

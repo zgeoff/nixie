@@ -39,6 +39,7 @@ test('it returns the reply given from every web fetch', async () => {
       toolUseID: null,
     },
     {
+      callSequence: 1,
       run: {
         runID: 'run-1',
         thread: 'conversation',
@@ -98,6 +99,7 @@ test('it refuses a memory tool call before the store is set', async () => {
         toolUseID: null,
       },
       {
+        callSequence: 1,
         run: {
           runID: 'run-1',
           thread: 'conversation',
@@ -132,6 +134,7 @@ test('it runs a memory tool call on the store set', async () => {
       toolUseID: null,
     },
     {
+      callSequence: 1,
       run: {
         runID: 'run-1',
         thread: 'conversation',

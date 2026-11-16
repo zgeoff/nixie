@@ -14,6 +14,7 @@ import type { GrantSpec, Sandbox } from '@heynixie/sandbox';
 import { readSandboxOwners } from '@heynixie/sandbox';
 import type { RunStep, StepInput, StepResult, TaskLimits, TaskRun } from '@heynixie/tasks';
 import {
+  buildStepRunID,
   conversationTaskID,
   probePauseRequested,
   readStartedTaskIDs,
@@ -378,7 +379,7 @@ async function runTaskTurn(
   const budget = createCallBudget(
     run.profile.profile.prices,
     limits.dollars - parts.used.dollars,
-    () => readLateSpend(context, parts.taskRun, parts.throughSequence),
+    () => readLateSpend(context, parts.taskRun, parts.throughSequence, buildStepRunID(input)),
   );
 
   const ended = await runConversationStep(buildTaskRun(runner, { ...parts, ...held, budget }), {
@@ -500,6 +501,7 @@ function buildTaskRun(runner: TaskRunner, parts: TaskRunParts): ConversationRun 
     command: parts.run.command,
     modelCallLimit: taskModelCallLimit,
     onModelCall: parts.budget.onCall,
+    budget: parts.budget,
     ...(options.turnInputs === undefined ? {} : { turnInputs: options.turnInputs }),
     getDefinitions: () =>
       parts.run.options.persona === 'default'

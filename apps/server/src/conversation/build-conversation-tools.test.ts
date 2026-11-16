@@ -215,6 +215,7 @@ test('it fails a memory call that runs before the memory store starts', async ()
     recall?.run(
       { callID: 'call-1', tool: 'memory.recall', input: {}, toolUseID: null },
       {
+        callSequence: 1,
         run: {
           runID: 'run-1',
           thread: 'conversation',

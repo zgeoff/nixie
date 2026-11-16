@@ -82,6 +82,7 @@ test('it proposes a new skill for review and records its files and the run that 
       toolUseID: null,
     },
     {
+      callSequence: 1,
       run: {
         runID: 'run-1',
         thread: 'conversation',
@@ -176,6 +177,7 @@ test('it records the version in force that a change to a skill would replace', a
       toolUseID: null,
     },
     {
+      callSequence: 1,
       run: {
         runID: 'run-1',
         thread: 'conversation',
@@ -247,6 +249,7 @@ test('it records a destination the owner never typed and the definitions lack', 
       toolUseID: null,
     },
     {
+      callSequence: 1,
       run: {
         runID: 'run-1',
         thread: 'conversation',
@@ -305,6 +308,7 @@ test('it records an untyped destination that only a reference file holds', async
       toolUseID: null,
     },
     {
+      callSequence: 1,
       run: {
         runID: 'run-1',
         thread: 'conversation',
@@ -366,6 +370,7 @@ test('it refuses 2 files at one path, and records no proposal', async () => {
       toolUseID: null,
     },
     {
+      callSequence: 1,
       run: {
         runID: 'run-1',
         thread: 'conversation',
@@ -427,6 +432,7 @@ test('it records no untyped token for a destination that the persona holds', asy
       toolUseID: null,
     },
     {
+      callSequence: 1,
       run: {
         runID: 'run-1',
         thread: 'conversation',
@@ -493,6 +499,7 @@ test('it records no untyped token for a destination that a skill in force holds 
       toolUseID: null,
     },
     {
+      callSequence: 1,
       run: {
         runID: 'run-1',
         thread: 'conversation',
@@ -548,6 +555,7 @@ test('it refuses a skill that fails a seed check, and records no proposal', asyn
       toolUseID: null,
     },
     {
+      callSequence: 1,
       run: {
         runID: 'run-1',
         thread: 'conversation',
@@ -610,6 +618,7 @@ test('it refuses a skill with every problem the seed checks find, and records no
       toolUseID: null,
     },
     {
+      callSequence: 1,
       run: {
         runID: 'run-1',
         thread: 'conversation',
@@ -677,6 +686,7 @@ test('it refuses files that match the version in force', async () => {
       toolUseID: null,
     },
     {
+      callSequence: 1,
       run: {
         runID: 'run-1',
         thread: 'conversation',
@@ -720,6 +730,7 @@ test('it refuses a write before the first seed', async () => {
       toolUseID: null,
     },
     {
+      callSequence: 1,
       run: {
         runID: 'run-1',
         thread: 'conversation',

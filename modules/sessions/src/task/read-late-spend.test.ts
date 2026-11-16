@@ -1,8 +1,11 @@
 import { expect, test } from 'bun:test';
+import { writeRecords } from '@heynixie/log';
 import { claimTask, readOpenRun, writeFailedTurnSpend } from '@heynixie/tasks';
 import invariant from 'tiny-invariant';
 import { buildSeeder } from '../test-utils/build-seeder';
 import { startTestTasks } from '../test-utils/start-test-tasks';
+import { workerRunStartedCodec } from '../worker/worker-run-started-codec';
+import { workerTurnEndedCodec } from '../worker/worker-turn-ended-codec';
 import { readLateSpend } from './read-late-spend';
 import { readRunUsage } from './read-run-usage';
 
@@ -66,7 +69,7 @@ test('it sums only the spend of the task run past the sequence', async () => {
     dollars: 0.02,
   });
 
-  const dollars = await readLateSpend(ctx.tasks.context, run, usage.throughSequence);
+  const dollars = await readLateSpend(ctx.tasks.context, run, usage.throughSequence, 'step-a');
 
   expect(dollars).toBeCloseTo(0.03, 10);
 });
@@ -82,7 +85,101 @@ test('it reads no spend when none was recorded past the sequence', async () => {
   });
 
   const usage = await readRunUsage(ctx.tasks.context, run);
-  const dollars = await readLateSpend(ctx.tasks.context, run, usage.throughSequence);
+  const dollars = await readLateSpend(ctx.tasks.context, run, usage.throughSequence, 'step-a');
+
+  expect(dollars).toBe(0);
+});
+
+test('it counts the dollars of a worker that another step started, and none of a worker the calling step started', async () => {
+  const ctx = await setupTest();
+  const run = await ctx.startRun();
+
+  const otherWorkerRunID = crypto.randomUUID();
+  const ownWorkerRunID = crypto.randomUUID();
+  const definitions = { snapshotHash: 'sha256:test' };
+
+  await writeRecords(
+    ctx.tasks.context.log,
+    [
+      { workerRunID: otherWorkerRunID, stepRunID: 'step-b' },
+      { workerRunID: ownWorkerRunID, stepRunID: 'step-a' },
+    ].map((worker) => ({
+      kind: 'worker.run_started' as const,
+      definitions,
+      thread: run.taskID,
+      payload: workerRunStartedCodec.encode({
+        workerRunID: worker.workerRunID,
+        shortID: 'w3k8',
+        callID: crypto.randomUUID(),
+        stepRunID: worker.stepRunID,
+        taskRunID: run.runID,
+        model: 'claude-test-1',
+        profile: 'worker',
+        tools: [],
+        limits: { minutes: 10, turns: 25, tokens: 2_000_000, dollars: 2 },
+        isTaskLimit: false,
+      }),
+    })),
+  );
+
+  const usage = await readRunUsage(ctx.tasks.context, run);
+
+  await writeRecords(
+    ctx.tasks.context.log,
+    [otherWorkerRunID, ownWorkerRunID].map((workerRunID) => ({
+      kind: 'worker.turn_ended' as const,
+      definitions,
+      thread: run.taskID,
+      payload: workerTurnEndedCodec.encode({
+        workerRunID,
+        callID: crypto.randomUUID(),
+        taskRunID: run.runID,
+        model: 'claude-test-1',
+        profile: 'worker',
+        turn: 1,
+        inputTokens: 100,
+        outputTokens: 10,
+        cacheReadTokens: 0,
+        cacheWriteTokens: 0,
+        dollars: 0.01,
+      }),
+      erasable: { text: 'Found 3 cafes.' },
+    })),
+  );
+
+  const dollars = await readLateSpend(ctx.tasks.context, run, usage.throughSequence, 'step-a');
+
+  expect(dollars).toBeCloseTo(0.01, 10);
+});
+
+test('it counts no dollars of a worker that a task run other than this one started', async () => {
+  const ctx = await setupTest();
+  const run = await ctx.startRun();
+  const usage = await readRunUsage(ctx.tasks.context, run);
+
+  await writeRecords(ctx.tasks.context.log, [
+    {
+      kind: 'worker.turn_ended',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: run.taskID,
+      payload: workerTurnEndedCodec.encode({
+        workerRunID: crypto.randomUUID(),
+        callID: crypto.randomUUID(),
+        taskRunID: 'an-earlier-run',
+        model: 'claude-test-1',
+        profile: 'worker',
+        turn: 1,
+        inputTokens: 100,
+        outputTokens: 10,
+        cacheReadTokens: 0,
+        cacheWriteTokens: 0,
+        dollars: 0.5,
+      }),
+      erasable: { text: 'Found 3 cafes.' },
+    },
+  ]);
+
+  const dollars = await readLateSpend(ctx.tasks.context, run, usage.throughSequence, 'step-a');
 
   expect(dollars).toBe(0);
 });

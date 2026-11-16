@@ -322,6 +322,57 @@ test('it hands each model call to the caller before it reads the next frame, so 
   expect(events).toStrictEqual(['call 900', 'interrupt', 'call 30']);
 });
 
+test('it gives each call the text of the replies the guest sent since the call before', async () => {
+  const ctx = setupTest();
+
+  const sandbox = await ctx.stub.adapter.create(buildMockSandboxSpec({ kind: 'conversation' }));
+
+  const callUsage = {
+    uncachedInputTokens: 10,
+    cacheReadTokens: 0,
+    cacheWrite5mTokens: 0,
+    cacheWrite1hTokens: 0,
+    outputTokens: 1,
+  };
+
+  ctx.stub.setGuestScript(() =>
+    Promise.resolve([
+      { type: 'assistant', messageID: 'm1', text: 'Looking.', toolUses: [] },
+      { type: 'assistant', messageID: 'm2', text: 'Still looking.', toolUses: [] },
+      { type: 'call', usage: callUsage },
+      { type: 'assistant', messageID: 'm3', text: 'Found it.', toolUses: [] },
+      { type: 'call', usage: callUsage },
+      {
+        type: 'ended',
+        outcome: 'finished',
+        stopReason: 'end_turn',
+        turns: 2,
+        usage: { inputTokens: 20, outputTokens: 2, cacheReadTokens: 0, cacheWriteTokens: 0 },
+      },
+    ]),
+  );
+
+  const texts: string[] = [];
+
+  await runGuestTurn({
+    harness: ctx.harness,
+    sandbox,
+    command: { argv: ['guest'], env: {} },
+    turn: buildMockTurnFrame({
+      input: [{ uuid: '6e697869-0000-8000-8000-000000000002', text: 'Hi.' }],
+    }),
+    messages: [],
+    signal: new AbortController().signal,
+    onCall: (_usage, replies) => {
+      texts.push(replies.text);
+
+      return Promise.resolve();
+    },
+  });
+
+  expect(texts).toStrictEqual(['Looking.\n\nStill looking.', 'Found it.']);
+});
+
 test('it waits for the caller to finish with a model call before it reads the next frame', async () => {
   const ctx = setupTest();
 

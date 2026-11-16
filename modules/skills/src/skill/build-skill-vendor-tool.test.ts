@@ -42,6 +42,7 @@ async function setupTest() {
     source: createPathSource({ directory: root }),
     definitions: buildStubDefinitionsRepo(root),
     context: {
+      callSequence: 1,
       run: {
         runID: 'run-1',
         thread: 'conversation',

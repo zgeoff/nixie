@@ -73,6 +73,7 @@ test('it returns the page the fetch sandbox reads at the URL as the typed result
   const outcome = await tool.run(
     { callID: 'call-1', tool: 'web_fetch', input: { url: 'https://site.test/' }, toolUseID: null },
     {
+      callSequence: 1,
       run: {
         runID: 'run-1',
         thread: 'conversation',
@@ -141,6 +142,7 @@ test("it writes each link in the page's text as an ID the session numbers from 1
       toolUseID: null,
     },
     {
+      callSequence: 1,
       run: {
         runID: 'conversation',
         thread: 'conversation',
@@ -235,7 +237,7 @@ test('it gives a URL one ID across the pages of one session', async () => {
       input: { url: 'https://bakery.test/news' },
       toolUseID: null,
     },
-    { run },
+    { callSequence: 1, run },
   );
 
   const outcome = await tool.run(
@@ -245,7 +247,7 @@ test('it gives a URL one ID across the pages of one session', async () => {
       input: { url: 'https://bakery.test/about' },
       toolUseID: null,
     },
-    { run },
+    { callSequence: 1, run },
   );
 
   expect(outcome).toStrictEqual({
@@ -309,6 +311,7 @@ test('it shows the host and path, with no query string, only for a link that lea
       toolUseID: null,
     },
     {
+      callSequence: 1,
       run: {
         runID: 'conversation',
         thread: 'conversation',
@@ -405,12 +408,12 @@ test('it fetches the page a link ID names, and returns the URL the fetch ended a
       input: { url: 'https://bakery.test/news' },
       toolUseID: null,
     },
-    { run },
+    { callSequence: 1, run },
   );
 
   const outcome = await tool.run(
     { callID: 'call-2', tool: 'web_fetch', input: { link: 'L1' }, toolUseID: null },
-    { run },
+    { callSequence: 1, run },
   );
 
   expect(readPage).toHaveBeenLastCalledWith('https://bakery.test/bread', {
@@ -503,12 +506,12 @@ test("it fetches the URL of a search hit by the hit's link ID", async () => {
 
   await search.run(
     { callID: 'call-1', tool: 'search', input: { query: 'sourdough' }, toolUseID: null },
-    { run },
+    { callSequence: 1, run },
   );
 
   await tool.run(
     { callID: 'call-2', tool: 'web_fetch', input: { link: 'L1' }, toolUseID: null },
-    { run },
+    { callSequence: 1, run },
   );
 
   expect(readPage).toHaveBeenCalledExactlyOnceWith('https://bakery.test/breads/sourdough', {
@@ -573,12 +576,12 @@ test.each([
       input: { url: 'https://bakery.test/news' },
       toolUseID: null,
     },
-    { run },
+    { callSequence: 1, run },
   );
 
   await tool.run(
     { callID: 'call-2', tool: 'web_fetch', input: { link }, toolUseID: null },
-    { run },
+    { callSequence: 1, run },
   );
 
   expect(readPage).toHaveBeenLastCalledWith('https://bakery.test/bread', {
@@ -636,7 +639,7 @@ test('it reads the whole tag of a link to an IPv6 host, as a page showed it, as 
       input: { url: 'https://bakery.test/news' },
       toolUseID: null,
     },
-    { run },
+    { callSequence: 1, run },
   );
 
   invariant(page.status === 'ok' && typeof page.result['text'] === 'string');
@@ -648,7 +651,7 @@ test('it reads the whole tag of a link to an IPv6 host, as a page showed it, as 
       input: { link: page.result['text'].slice('Bread'.length) },
       toolUseID: null,
     },
-    { run },
+    { callSequence: 1, run },
   );
 
   expect(readPage).toHaveBeenLastCalledWith('https://[2001:db8::1]/breads', {
@@ -698,6 +701,7 @@ test('it refuses the ID of a link an earlier session numbered, and fetches nothi
       toolUseID: null,
     },
     {
+      callSequence: 1,
       run: {
         runID: 'conversation',
         thread: 'conversation',
@@ -712,6 +716,7 @@ test('it refuses the ID of a link an earlier session numbered, and fetches nothi
   const outcome = await tool.run(
     { callID: 'call-2', tool: 'web_fetch', input: { link: 'L1' }, toolUseID: null },
     {
+      callSequence: 1,
       run: {
         runID: 'conversation',
         thread: 'conversation',
@@ -776,6 +781,7 @@ test('it refuses a page whose session a forget ended while it was fetched, and s
       toolUseID: null,
     },
     {
+      callSequence: 1,
       run: {
         runID: 'conversation',
         thread: 'conversation',
@@ -882,6 +888,7 @@ test("it numbers a new session's links from 1 again", async () => {
       toolUseID: null,
     },
     {
+      callSequence: 1,
       run: {
         runID: 'conversation',
         thread: 'conversation',
@@ -901,6 +908,7 @@ test("it numbers a new session's links from 1 again", async () => {
       toolUseID: null,
     },
     {
+      callSequence: 1,
       run: {
         runID: 'conversation',
         thread: 'conversation',
@@ -978,12 +986,12 @@ test('it keys the links of a call under the run token by the run', async () => {
       input: { url: 'https://bakery.test/news' },
       toolUseID: null,
     },
-    { run },
+    { callSequence: 1, run },
   );
 
   await tool.run(
     { callID: 'call-2', tool: 'web_fetch', input: { link: 'L1' }, toolUseID: null },
-    { run },
+    { callSequence: 1, run },
   );
 
   expect(readPage).toHaveBeenLastCalledWith('https://bakery.test/bread', {
@@ -1020,6 +1028,7 @@ test.each([
   const outcome = await tool.run(
     { callID: 'call-1', tool: 'web_fetch', input, toolUseID: null },
     {
+      callSequence: 1,
       run: {
         runID: 'conversation',
         thread: 'conversation',
@@ -1068,6 +1077,7 @@ test('it refuses a link that does not read as a link ID', async () => {
       toolUseID: null,
     },
     {
+      callSequence: 1,
       run: {
         runID: 'conversation',
         thread: 'conversation',
@@ -1136,6 +1146,7 @@ test('it cuts the link text of a long page full of links from about 42,000 chara
       toolUseID: null,
     },
     {
+      callSequence: 1,
       run: {
         runID: 'conversation',
         thread: 'conversation',
@@ -1215,6 +1226,7 @@ test('it returns the reason the bot protection blocked a page in a result the sc
   const outcome = await registered.definition.run(
     { callID: 'call-1', tool: 'web_fetch', input: { url: 'https://site.test/' }, toolUseID: null },
     {
+      callSequence: 1,
       run: {
         runID: 'run-1',
         thread: 'conversation',
@@ -1282,6 +1294,7 @@ test('it returns a page result that the registry checks against the output schem
   const outcome = await registered.definition.run(
     { callID: 'call-1', tool: 'web_fetch', input: { url: 'https://site.test/' }, toolUseID: null },
     {
+      callSequence: 1,
       run: {
         runID: 'run-1',
         thread: 'conversation',
@@ -1371,6 +1384,7 @@ test('it returns a binary page with no text', async () => {
       toolUseID: null,
     },
     {
+      callSequence: 1,
       run: {
         runID: 'run-1',
         thread: 'conversation',
@@ -1434,6 +1448,7 @@ test.each([
   const outcome = await tool.run(
     { callID: 'call-1', tool: 'web_fetch', input: { url: 'http://example.com/' }, toolUseID: null },
     {
+      callSequence: 1,
       run: {
         runID: 'run-1',
         thread: 'conversation',
@@ -1647,7 +1662,7 @@ test('it reads part 2 of a page longer than one part by its page ID, with no new
       input: { url: 'https://harbour.test/ferries' },
       toolUseID: null,
     },
-    { run },
+    { callSequence: 1, run },
   );
 
   invariant(first.status === 'ok' && typeof first.result['page'] === 'string');
@@ -1656,12 +1671,12 @@ test('it reads part 2 of a page longer than one part by its page ID, with no new
 
   const second = await tool.run(
     { callID: 'call-2', tool: 'web_fetch', input: { page, part: 2 }, toolUseID: null },
-    { run },
+    { callSequence: 1, run },
   );
 
   const third = await tool.run(
     { callID: 'call-3', tool: 'web_fetch', input: { page, part: 2 }, toolUseID: null },
-    { run },
+    { callSequence: 1, run },
   );
 
   expect(second).toStrictEqual({
@@ -1738,7 +1753,7 @@ test('it fits every part, once its links read as tags, in the text limit, and ne
       input: { url: 'https://harbour.test/piers' },
       toolUseID: null,
     },
-    { run },
+    { callSequence: 1, run },
   );
 
   invariant(
@@ -1758,7 +1773,7 @@ test('it fits every part, once its links read as tags, in the text limit, and ne
           input: { page, part: index + 1 },
           toolUseID: null,
         },
-        { run },
+        { callSequence: 1, run },
       ),
     ),
   );
@@ -1832,6 +1847,7 @@ test('it fetches the page again for a url with a part, and returns that part', a
       toolUseID: null,
     },
     {
+      callSequence: 1,
       run: {
         runID: 'conversation',
         thread: 'conversation',
@@ -1912,7 +1928,7 @@ test('it refuses a part past the end of a page, and names its count of parts', a
       input: { url: 'https://harbour.test/ferries' },
       toolUseID: null,
     },
-    { run },
+    { callSequence: 1, run },
   );
 
   invariant(first.status === 'ok' && typeof first.result['page'] === 'string');
@@ -1921,7 +1937,7 @@ test('it refuses a part past the end of a page, and names its count of parts', a
 
   const outcome = await tool.run(
     { callID: 'call-2', tool: 'web_fetch', input: { page, part: 3 }, toolUseID: null },
-    { run },
+    { callSequence: 1, run },
   );
 
   expect(outcome).toStrictEqual({
@@ -1980,7 +1996,7 @@ test('it returns the part that holds the first match of find, with every match, 
       input: { url: 'https://harbour.test/ferries' },
       toolUseID: null,
     },
-    { run },
+    { callSequence: 1, run },
   );
 
   invariant(first.status === 'ok' && typeof first.result['page'] === 'string');
@@ -1989,7 +2005,7 @@ test('it returns the part that holds the first match of find, with every match, 
 
   const outcome = await tool.run(
     { callID: 'call-2', tool: 'web_fetch', input: { page, find: 'island' }, toolUseID: null },
-    { run },
+    { callSequence: 1, run },
   );
 
   expect(outcome).toStrictEqual({
@@ -2065,7 +2081,7 @@ test('it says a find with no match found none, with the count of parts', async (
       input: { url: 'https://harbour.test/piers' },
       toolUseID: null,
     },
-    { run },
+    { callSequence: 1, run },
   );
 
   invariant(first.status === 'ok' && typeof first.result['page'] === 'string');
@@ -2074,7 +2090,7 @@ test('it says a find with no match found none, with the count of parts', async (
 
   const outcome = await tool.run(
     { callID: 'call-2', tool: 'web_fetch', input: { page, find: 'Grok' }, toolUseID: null },
-    { run },
+    { callSequence: 1, run },
   );
 
   expect(outcome).toStrictEqual({
@@ -2112,6 +2128,7 @@ test('it refuses a page ID no session stored, and fetches nothing', async () => 
       toolUseID: null,
     },
     {
+      callSequence: 1,
       run: {
         runID: 'conversation',
         thread: 'conversation',
@@ -2175,6 +2192,7 @@ test('it refuses the page ID of an earlier session, and never returns another pa
       toolUseID: null,
     },
     {
+      callSequence: 1,
       run: {
         runID: 'conversation',
         thread: 'conversation',
@@ -2193,6 +2211,7 @@ test('it refuses the page ID of an earlier session, and never returns another pa
   const outcome = await tool.run(
     { callID: 'call-2', tool: 'web_fetch', input: { page, part: 1 }, toolUseID: null },
     {
+      callSequence: 1,
       run: {
         runID: 'conversation',
         thread: 'conversation',
@@ -2278,7 +2297,7 @@ test("it refuses a page ID the store limit removed, once the session's newer pag
       input: { url: 'https://harbour.test/a' },
       toolUseID: null,
     },
-    { run },
+    { callSequence: 1, run },
   );
 
   const newest = await tool.run(
@@ -2288,7 +2307,7 @@ test("it refuses a page ID the store limit removed, once the session's newer pag
       input: { url: 'https://harbour.test/b' },
       toolUseID: null,
     },
-    { run },
+    { callSequence: 1, run },
   );
 
   invariant(
@@ -2305,7 +2324,7 @@ test("it refuses a page ID the store limit removed, once the session's newer pag
       input: { page: oldest.result['page'], part: 1 },
       toolUseID: null,
     },
-    { run },
+    { callSequence: 1, run },
   );
 
   const newestRead = await tool.run(
@@ -2315,7 +2334,7 @@ test("it refuses a page ID the store limit removed, once the session's newer pag
       input: { page: newest.result['page'], part: 1 },
       toolUseID: null,
     },
-    { run },
+    { callSequence: 1, run },
   );
 
   expect(oldestRead).toStrictEqual({
@@ -2352,6 +2371,7 @@ test('it refuses a page ID given as a link, and names the kind it expected', asy
   const outcome = await tool.run(
     { callID: 'call-1', tool: 'web_fetch', input: { link: 'qx7f2m9kpa' }, toolUseID: null },
     {
+      callSequence: 1,
       run: {
         runID: 'conversation',
         thread: 'conversation',
@@ -2400,6 +2420,7 @@ test.each([
     const outcome = await tool.run(
       { callID: 'call-1', tool: 'web_fetch', input, toolUseID: null },
       {
+        callSequence: 1,
         run: {
           runID: 'conversation',
           thread: 'conversation',
@@ -2438,6 +2459,7 @@ test('it refuses a link ID given as a page, and names the kind it expected', asy
   const outcome = await tool.run(
     { callID: 'call-1', tool: 'web_fetch', input: { page: 'L12', part: 2 }, toolUseID: null },
     {
+      callSequence: 1,
       run: {
         runID: 'conversation',
         thread: 'conversation',
@@ -2505,7 +2527,7 @@ test('it refuses the page ID of a thread a forget cleared', async () => {
       input: { url: 'https://harbour.test/ferries' },
       toolUseID: null,
     },
-    { run },
+    { callSequence: 1, run },
   );
 
   invariant(first.status === 'ok' && typeof first.result['page'] === 'string');
@@ -2519,7 +2541,7 @@ test('it refuses the page ID of a thread a forget cleared', async () => {
       input: { page: first.result['page'], part: 1 },
       toolUseID: null,
     },
-    { run },
+    { callSequence: 1, run },
   );
 
   expect(outcome).toStrictEqual({
@@ -2579,6 +2601,7 @@ test('it returns a PNG under the image limit as image content with its media typ
       toolUseID: null,
     },
     {
+      callSequence: 1,
       run: {
         runID: 'run-1',
         thread: 'conversation',
@@ -2651,6 +2674,7 @@ test('it returns a result with no image, marked truncated, for an image the fetc
       toolUseID: null,
     },
     {
+      callSequence: 1,
       run: {
         runID: 'run-1',
         thread: 'conversation',
@@ -2719,6 +2743,7 @@ test('it returns an image past the long edge downscaled to fit it', async () => 
       toolUseID: null,
     },
     {
+      callSequence: 1,
       run: {
         runID: 'run-1',
         thread: 'conversation',
@@ -2791,6 +2816,7 @@ test('it counts the image it returns against the session image budget', async ()
       toolUseID: null,
     },
     {
+      callSequence: 1,
       run: {
         runID: 'run-1',
         thread: 'conversation',
@@ -2847,6 +2873,7 @@ test('it returns an error, with no image, once the session holds as many images 
       toolUseID: null,
     },
     {
+      callSequence: 1,
       run: {
         runID: 'run-1',
         thread: 'conversation',
@@ -2906,6 +2933,7 @@ test('it returns an error, with no image, for an image fetched under the run tok
       toolUseID: null,
     },
     {
+      callSequence: 1,
       run: {
         runID: 'run-1',
         thread: 'conversation',
@@ -2963,6 +2991,7 @@ test('it returns an error for an image body that is no image the model can see',
       toolUseID: null,
     },
     {
+      callSequence: 1,
       run: {
         runID: 'run-1',
         thread: 'conversation',
@@ -3060,12 +3089,12 @@ test('it fetches the rewritten URL for a link ID whose target a rule matches', a
       input: { url: 'https://bakery.test/news' },
       toolUseID: null,
     },
-    { run },
+    { callSequence: 1, run },
   );
 
   const outcome = await tool.run(
     { callID: 'call-2', tool: 'web_fetch', input: { link: 'L1' }, toolUseID: null },
-    { run },
+    { callSequence: 1, run },
   );
 
   expect(requestedURLs.at(-1)).toBe('https://pypi.org/pypi/reefkit/json');
@@ -3120,7 +3149,10 @@ test('it returns the stored page for a link call inside the cache time, and fetc
   };
 
   const callTool = (input: Record<string, string | number | boolean>) =>
-    tool.run({ callID: 'call', tool: 'web_fetch', input, toolUseID: null }, { run });
+    tool.run(
+      { callID: 'call', tool: 'web_fetch', input, toolUseID: null },
+      { callSequence: 1, run },
+    );
 
   await callTool({ url: 'https://bakery.test/news' });
 
@@ -3161,6 +3193,7 @@ test.each([
   const outcome = await tool.run(
     { callID: 'call-1', tool: 'web_fetch', input, toolUseID: null },
     {
+      callSequence: 1,
       run: {
         runID: 'run-1',
         thread: 'conversation',
@@ -3209,6 +3242,7 @@ test('it refuses a fresh that is no boolean, and fetches nothing', async () => {
       toolUseID: null,
     },
     {
+      callSequence: 1,
       run: {
         runID: 'run-1',
         thread: 'conversation',

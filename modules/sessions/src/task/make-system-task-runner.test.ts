@@ -36,6 +36,7 @@ test('it starts the task on its role profile, in a sandbox with the shared limit
           auth_header: 'x-api-key',
           model: 'claude-test-writer',
           effort: 'low',
+          prices: { input: 3, cache_write: 3.75, cache_write_1h: 6, cached_input: 0.3, output: 15 },
         },
       },
       roles: { conversation: 'chat-direct', worker: 'worker-direct' },

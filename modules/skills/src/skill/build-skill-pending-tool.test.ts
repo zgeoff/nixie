@@ -109,7 +109,7 @@ test('it lists each proposal that skill_write made, oldest first, as a new skill
         },
         toolUseID: null,
       },
-      { run },
+      { callSequence: 1, run },
     );
 
     invariant(outcome.status === 'ok');
@@ -123,7 +123,7 @@ test('it lists each proposal that skill_write made, oldest first, as a new skill
 
   const outcome = await pending.definition.run(
     { callID: 'call-3', tool: 'skill_pending', input: {}, toolUseID: null },
-    { run },
+    { callSequence: 1, run },
   );
 
   const [newID, versionID] = written;
@@ -199,8 +199,8 @@ test('it declares read, runs direct, and writes no record, so it never changes a
     model: { model: 'test-model', profile: 'standard' },
   };
 
-  const first = await pending.definition.run(call, { run });
-  const second = await pending.definition.run(call, { run });
+  const first = await pending.definition.run(call, { callSequence: 1, run });
+  const second = await pending.definition.run(call, { callSequence: 1, run });
   const after = await readRecords(ctx.log, { afterSequence: 0 });
 
   expect([pending.definition.declaration, pending.definition.execution]).toStrictEqual([
@@ -314,6 +314,7 @@ test('it leaves out a proposal that an approval, a rejection or a lapse closed',
   const outcome = await pending.definition.run(
     { callID: 'call-2', tool: 'skill_pending', input: {}, toolUseID: null },
     {
+      callSequence: 1,
       run: {
         runID: 'run-1',
         thread: 'conversation',

@@ -10,12 +10,16 @@ test('it builds the context of a run on the conversation thread with no tools', 
       tools: [],
       model: { model: 'test-model', profile: 'standard' },
     },
+    callSequence: expect.toBePositive(),
   });
 });
 
 test('it builds the context of a run with the fields it is given', () => {
   expect(
-    buildMockToolContext({ run: { runID: 'run-1', thread: 'task-1', tools: ['prompt_read'] } }),
+    buildMockToolContext({
+      run: { runID: 'run-1', thread: 'task-1', tools: ['prompt_read'] },
+      callSequence: 12,
+    }),
   ).toStrictEqual({
     run: {
       runID: 'run-1',
@@ -24,5 +28,6 @@ test('it builds the context of a run with the fields it is given', () => {
       tools: ['prompt_read'],
       model: { model: 'test-model', profile: 'standard' },
     },
+    callSequence: 12,
   });
 });

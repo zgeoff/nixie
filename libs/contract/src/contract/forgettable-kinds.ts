@@ -29,4 +29,6 @@ export const forgettableKinds = [
   'task_message',
   'tool_called',
   'tool_result',
+  'worker.run_ended',
+  'worker.turn_ended',
 ] as const;

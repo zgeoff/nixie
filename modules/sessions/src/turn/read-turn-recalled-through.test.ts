@@ -21,6 +21,33 @@ async function setupTest() {
     return written.sequence;
   };
 
+  const writeWorkerCall = async () => {
+    const [written] = await writeRecords(tasks.context.log, [
+      {
+        kind: 'tool_called',
+        definitions,
+        thread,
+        payload: { runID: '0d9c6a52-3f5e-4b6a-9a52-2f0f4f2b7c11' },
+      },
+    ]);
+
+    invariant(written);
+
+    return written.sequence;
+  };
+
+  const writeWorkerResult = async (callSequence: number) => {
+    await writeRecords(tasks.context.log, [
+      {
+        kind: 'tool_result',
+        definitions,
+        thread,
+        parent: callSequence,
+        payload: { runID: '0d9c6a52-3f5e-4b6a-9a52-2f0f4f2b7c11' },
+      },
+    ]);
+  };
+
   const writeResult = async (callSequence: number) => {
     await writeRecords(tasks.context.log, [
       { kind: 'tool_result', definitions, thread, parent: callSequence, payload: {} },
@@ -43,6 +70,8 @@ async function setupTest() {
     writeRecall: () => writeSequence('memory.recalled', { items: [] }),
     writeTurnNote: () => writeSequence('memory.recalled', { items: [], isTurnNote: true }),
     writeCall: () => writeSequence('tool_called', {}),
+    writeWorkerCall,
+    writeWorkerResult,
     writeResult,
     writeInterrupt,
     readThrough: (stepKey: string) =>
@@ -119,4 +148,19 @@ test('it counts a turn note, which has no tool call', async () => {
   const through = await ctx.readThrough('conversation:2');
 
   expect(through).toBe(note);
+});
+
+test('it leaves out a recall whose tool result comes after the interrupt, though a worker call and its result sit before it', async () => {
+  const ctx = await setupTest();
+  const call = await ctx.writeCall();
+  const workerCall = await ctx.writeWorkerCall();
+
+  await ctx.writeWorkerResult(workerCall);
+  await ctx.writeRecall();
+  await ctx.writeInterrupt('conversation:2');
+  await ctx.writeResult(call);
+
+  const through = await ctx.readThrough('conversation:2');
+
+  expect(through).toBe(0);
 });

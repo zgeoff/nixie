@@ -9,8 +9,16 @@ export interface CallBudget {
   // aborts once the priced calls and the late spend reach the dollars left
   readonly signal: AbortSignal;
 
-  // the turn's own spend, which leaves out the late spend that its record would count twice
+  // adds the dollars a worker run that the turn started spent, and aborts the signal once the
+  // dollars left are reached
+  readonly onSpend: (dollars: number) => void;
+
+  // the turn's own spend, which leaves out the late spend that its record would count twice, and
+  // the spend of its workers, which their own records count
   readonly getSpentDollars: () => number;
+
+  // what the turn may still spend, counting its calls, the late spend and its workers' spend
+  readonly getLeftDollars: () => number;
 }
 
 // A profile with no prices prices each call as nothing, so its turns never reach the budget and
@@ -24,6 +32,10 @@ export function createCallBudget(
 
   let spentDollars = 0;
   let lateDollars = 0;
+  let workerDollars = 0;
+
+  const getLeftDollars = () =>
+    Math.max(0, leftDollars - spentDollars - lateDollars - workerDollars);
 
   return {
     onCall: async (usage) => {
@@ -39,11 +51,19 @@ export function createCallBudget(
 
       lateDollars = Math.max(lateDollars, readDollars);
 
-      if (spentDollars + lateDollars >= leftDollars) {
+      if (spentDollars + lateDollars + workerDollars >= leftDollars) {
+        reached.abort();
+      }
+    },
+    onSpend: (dollars) => {
+      workerDollars += dollars;
+
+      if (spentDollars + lateDollars + workerDollars >= leftDollars) {
         reached.abort();
       }
     },
     signal: reached.signal,
     getSpentDollars: () => spentDollars,
+    getLeftDollars,
   };
 }

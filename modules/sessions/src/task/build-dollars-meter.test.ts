@@ -10,7 +10,13 @@ import {
 import invariant from 'tiny-invariant';
 import { buildSeeder } from '../test-utils/build-seeder';
 import { startTestTasks } from '../test-utils/start-test-tasks';
+import { workerTurnEndedCodec } from '../worker/worker-turn-ended-codec';
 import { buildDollarsMeter } from './build-dollars-meter';
+
+interface WorkerSpend {
+  readonly taskRunID: string;
+  readonly dollars: number;
+}
 
 async function setupTest() {
   const tasks = await startTestTasks();
@@ -57,6 +63,28 @@ async function setupTest() {
             sessionImageBytes: 0,
             sessionImageCount: 0,
           }),
+        },
+      ]),
+    writeWorkerTurn: (worker: WorkerSpend) =>
+      writeRecords(tasks.context.log, [
+        {
+          kind: workerTurnEndedCodec.kind,
+          definitions: { snapshotHash: 'sha256:test' },
+          thread: taskID,
+          payload: workerTurnEndedCodec.encode({
+            workerRunID: crypto.randomUUID(),
+            callID: crypto.randomUUID(),
+            taskRunID: worker.taskRunID,
+            model: 'claude-worker-test',
+            profile: 'worker-direct',
+            turn: 1,
+            inputTokens: 5_000_000,
+            outputTokens: 0,
+            cacheReadTokens: 0,
+            cacheWriteTokens: 0,
+            dollars: worker.dollars,
+          }),
+          erasable: { text: 'Found 3 cafes.' },
         },
       ]),
     readDollars: () =>
@@ -158,4 +186,26 @@ test('it counts a limit-ending turn once, though its commit holds the turn recor
   const dollars = await ctx.readDollars();
 
   expect(dollars).toBeCloseTo(3, 10);
+});
+
+test("it adds the stored dollars of a worker call, never its tokens priced on the task's profile", async () => {
+  const ctx = await setupTest();
+
+  await ctx.writeTurn({ input: 1_000_000 });
+  await ctx.writeWorkerTurn({ taskRunID: ctx.run.runID, dollars: 0.06 });
+  await ctx.writeWorkerTurn({ taskRunID: ctx.run.runID, dollars: 0.04 });
+
+  const dollars = await ctx.readDollars();
+
+  expect(dollars).toBeCloseTo(3.1, 10);
+});
+
+test("it leaves out the dollars of another task run's worker call", async () => {
+  const ctx = await setupTest();
+
+  await ctx.writeWorkerTurn({ taskRunID: 'an-earlier-run', dollars: 0.5 });
+
+  const dollars = await ctx.readDollars();
+
+  expect(dollars).toBe(0);
 });
