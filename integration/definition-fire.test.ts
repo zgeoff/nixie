@@ -4,7 +4,9 @@ import { readRecords } from '@heynixie/log';
 import { modelsConfigSchema, resolveRoleProfile } from '@heynixie/models';
 import type { EffectDeclaration } from '@heynixie/policy';
 import { readStarterDecisionPoint } from '@heynixie/policy/test-utils';
-import { buildStubSandboxes } from '@heynixie/sandbox/test-utils';
+import type { SandboxAdapter } from '@heynixie/sandbox';
+import { buildSandboxRecorder } from '@heynixie/sandbox';
+import { buildStubGuestSandboxes, buildStubSandboxes } from '@heynixie/sandbox/test-utils';
 import { buildRunSettings, startConversationRunner, startSandboxRunner } from '@heynixie/sessions';
 import {
   buildStubMemory,
@@ -12,8 +14,8 @@ import {
   runNextStep,
   startTestSessionHost,
 } from '@heynixie/sessions/test-utils';
-import type { TaskMessageOutcome } from '@heynixie/tasks';
 import {
+  buildTaskMessageTool,
   claimTask,
   createConversationTask,
   readOpenRun,
@@ -28,9 +30,19 @@ import {
   writeTestTriggerFire,
 } from '@heynixie/tasks/test-utils';
 import { buildTestClock } from '@heynixie/testing';
+import type { ToolDefinition, ToolEndpoint } from '@heynixie/tools';
 import { buildToolRegistry, startToolEndpoint } from '@heynixie/tools';
-import { buildMockToolDefinition, withTestToolClient } from '@heynixie/tools/test-utils';
+import {
+  buildMockToolDefinition,
+  sendTestToolCall,
+  withTestToolClient,
+} from '@heynixie/tools/test-utils';
 import invariant from 'tiny-invariant';
+
+interface TaskRunnerRoute {
+  readonly sandboxes: SandboxAdapter;
+  readonly tools: Pick<ToolEndpoint, 'startRun'>;
+}
 
 async function setupTest() {
   const clock = buildTestClock(Date.parse('2027-03-08T21:15:00.000Z'));
@@ -100,15 +112,13 @@ async function setupTest() {
     },
   };
 
-  const registry = buildToolRegistry(
-    Object.entries(declarations).map(([name, declaration]) =>
-      buildMockToolDefinition({
-        name,
-        execution: declaration.effects.includes('read') ? 'direct' : 'queued',
-        input: { properties: { to: { type: 'string' }, body: { type: 'string' } }, required: [] },
-        declaration,
-      }),
-    ),
+  const mockTools = Object.entries(declarations).map(([name, declaration]) =>
+    buildMockToolDefinition({
+      name,
+      execution: declaration.effects.includes('read') ? 'direct' : 'queued',
+      input: { properties: { to: { type: 'string' }, body: { type: 'string' } }, required: [] },
+      declaration,
+    }),
   );
 
   const queued: string[] = [];
@@ -119,14 +129,14 @@ async function setupTest() {
     queued,
     runs: tools.runs,
     steps: tools.steps,
-    startTaskRunner: () =>
+    startTaskRunner: (route?: TaskRunnerRoute) =>
       startSandboxRunner({
         context: host.context,
         models,
         secrets,
-        sandboxes: host.sandboxes,
+        sandboxes: route?.sandboxes ?? host.sandboxes,
         images: { conversation: 'nixie-conversation-0123456789ab' },
-        tools: tools.endpoint,
+        tools: route?.tools ?? tools.endpoint,
         memory: () => memory,
         getDefinitions: () => definitions,
         memorySettings: {
@@ -159,7 +169,24 @@ async function setupTest() {
         clearFetchPauses: () => {},
         log: () => {},
       }),
-    startToolEndpoint: async () => {
+    startToolGuest: (endpoint: Pick<ToolEndpoint, 'getToolTarget'>) =>
+      buildStubGuestSandboxes({
+        recorder: buildSandboxRecorder({
+          log: host.context.log,
+          definitions: host.context.definitions,
+        }),
+        callTool: (call) =>
+          sendTestToolCall({
+            target: endpoint.getToolTarget({ id: call.sandboxID, owner: call.owner }),
+            token: call.token,
+            name: call.name,
+            input: call.input,
+          }),
+        countTokens: (text) => text.length,
+      }),
+    startToolEndpoint: async (extraTools: readonly ToolDefinition[] = []) => {
+      const registry = buildToolRegistry([...mockTools, ...extraTools]);
+
       const endpoint = await startToolEndpoint({
         socketDir: join(host.dataDir, 'run-tools'),
         registry,
@@ -383,7 +410,7 @@ test('it starts a task run of a wakeable definition task on a question from the 
     {
       definitionID: 'water-the-tomatoes',
       definitionHash: 'hash-1',
-      version: { wakeable: true },
+      version: { wakeable: true, tools: ['task.message'] },
       policy: { wakeable: true },
     },
   );
@@ -421,33 +448,38 @@ test('it starts a task run of a wakeable definition task on a question from the 
     acknowledged: [conversationStep.messageSequence],
   });
 
-  const taskRunner = await ctx.startTaskRunner();
+  const endpoint = await ctx.startToolEndpoint([buildTaskMessageTool(ctx.context, messaging)]);
+
+  const taskGuest = ctx.startToolGuest(endpoint);
+
+  const taskRunner = await ctx.startTaskRunner({
+    sandboxes: taskGuest.adapter,
+    tools: endpoint,
+  });
 
   ctx.defer(() => taskRunner.stop());
-  ctx.guest.addKindReplies('worker', { text: 'Yes, at 06:30.' });
 
-  const replies: TaskMessageOutcome[] = [];
+  taskGuest.addKindReplies(
+    'worker',
+    {
+      toolUse: {
+        name: 'task.message',
+        input: {
+          to: 'conversation',
+          kind: 'reply',
+          body: 'Yes, at 06:30.',
+          replyTo: question.messageID,
+        },
+      },
+    },
+    { text: 'Replied.' },
+  );
 
-  // The reply goes out while the task holds its lease, as a tool call of the task's turn would.
-  await runNextStep(ctx.context, async (input) => {
-    const reply = await writeTestTaskMessage(ctx.context, messaging, {
-      from: taskID,
-      to: 'conversation',
-      kind: 'reply',
-      body: 'Yes, at 06:30.',
-      replyTo: question.messageID,
-      onBehalfOf: [],
-      wake: true,
-    });
-
-    replies.push(reply);
-
-    return taskRunner.runStep(input);
-  });
+  await runNextStep(ctx.context, taskRunner.runStep);
 
   const run = await readOpenRun(ctx.context.log.writer.db, taskID);
 
-  const taskInput = ctx.guest.turns.map((turn) =>
+  const taskInput = taskGuest.turns.map((turn) =>
     turn.input.map((message) => message.text).join('\n'),
   );
 
@@ -487,7 +519,6 @@ test('it starts a task run of a wakeable definition task on a question from the 
   expect(run?.opened.origin.kind).toBe('message');
   expect(taskInput).toHaveLength(1);
   expect(taskInput[0]).toInclude('Did the tomatoes get water this morning?');
-  expect(replies).toMatchObject([{ status: 'sent', woke: true }]);
   expect(woken).toHaveLength(1);
   expect(woken[0]).toInclude('Yes, at 06:30.');
 });
