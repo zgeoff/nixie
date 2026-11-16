@@ -4,7 +4,11 @@ import { sql } from 'kysely';
 
 const ownerMessageKind: TasksRecordKind = 'owner_message';
 
-export async function readMessageTimeZone(log: Pick<Log, 'writer'>): Promise<string | null> {
+// With beforeSequence, only the owner messages recorded before that sequence count.
+export async function readMessageTimeZone(
+  log: Pick<Log, 'writer'>,
+  beforeSequence?: number,
+): Promise<string | null> {
   const timeZone = sql`json_extract(payload, '$.timeZone')`;
 
   const row = await log.writer.db
@@ -13,6 +17,7 @@ export async function readMessageTimeZone(log: Pick<Log, 'writer'>): Promise<str
     .select(timeZone.as('timeZone'))
     .where('kind', '=', ownerMessageKind)
     .where(timeZone, 'is not', null)
+    .$if(beforeSequence !== undefined, (query) => query.where('sequence', '<', beforeSequence ?? 0))
     .orderBy('sequence', 'desc')
     .limit(1)
     .executeTakeFirst();

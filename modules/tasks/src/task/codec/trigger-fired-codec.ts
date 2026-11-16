@@ -8,19 +8,27 @@ const countSchema = z.int().nonnegative();
 
 // One fire of a definition's trigger, written on the thread of the task or the conversation that
 // the fire opens a task run on.
-export const triggerFiredCodec = defineRecordCodec(
-  'trigger.fired',
-  z.object({
-    definitionID: z.string(),
-    definitionHash: z.string(),
-    source: z.string(),
-    dedupeKey: z.string(),
-    kind: z.enum(triggerFiredKinds),
-    polled: polledSchema.exactOptional(),
-    scheduledFor: z.string(),
-    firedAt: z.string(),
-    isCatchUp: z.boolean(),
-    skipped: skippedSchema,
-    skippedCount: countSchema,
-  }),
-);
+const triggerFiredSchema = z.object({
+  definitionID: z.string(),
+  definitionHash: z.string(),
+  source: z.string(),
+  dedupeKey: z.string(),
+  kind: z.enum(triggerFiredKinds),
+  polled: polledSchema.exactOptional(),
+  scheduledFor: z.string(),
+  firedAt: z.string(),
+  isCatchUp: z.boolean(),
+  skipped: skippedSchema,
+  skippedCount: countSchema,
+});
+
+export const triggerFiredCodec = defineRecordCodec('trigger.fired', triggerFiredSchema);
+
+export type TriggerFired = ReturnType<typeof triggerFiredCodec.decode>;
+
+// The fire a payload holds, or null when it decodes to none, such as an unknown kind.
+export function parseTriggerFired(payload: unknown): TriggerFired | null {
+  const parsed = triggerFiredSchema.safeParse(payload);
+
+  return parsed.success ? triggerFiredCodec.decode(parsed.data) : null;
+}
