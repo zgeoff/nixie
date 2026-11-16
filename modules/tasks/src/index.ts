@@ -39,6 +39,8 @@ export { defineRunnerStart } from './runner/define-runner-start';
 export { pickResolvedControls } from './runner/pick-resolved-controls';
 export { parseTaskStartInput } from './runner/parse-task-start-input';
 export { sandboxRunner } from './runner/sandbox-runner';
+export type { SandboxStartInput } from './runner/sandbox-start-schema';
+export { sandboxStartSchema } from './runner/sandbox-start-schema';
 
 export type {
   BoundStep,

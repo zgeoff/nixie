@@ -1,27 +1,11 @@
 import { taskControls } from '@heynixie/task-control';
-import { z } from 'zod';
 import { taskRunOptionsSchema } from '../limit/task-run-options-schema';
 import { planTaskStart } from '../task/start/plan-task-start';
 import { renderChoiceRefusal } from '../task/start/render-choice-refusal';
 import { buildSandboxStartInput } from './build-sandbox-start-input';
 import { defineRunnerStart } from './define-runner-start';
+import { sandboxStartSchema } from './sandbox-start-schema';
 import type { StartDeclaration, TaskRunnerDefinition } from './types';
-
-const sandboxStartSchema = z.strictObject({
-  runner: z.literal('sandbox').optional(),
-  name: z.string(),
-  brief: z.string(),
-  model: z.string().optional(),
-  persona: z.enum(['default', 'none']).optional(),
-  memory: z.enum(['none', 'read']).optional(),
-  tools: z.string().array().optional(),
-  report: z.enum(['wake', 'next_turn', 'none']).optional(),
-  reportShape: z.unknown().optional(),
-  disposable: z.boolean().optional(),
-  limits: z
-    .object({ turns: z.int().positive().optional(), dollars: z.number().positive().optional() })
-    .optional(),
-});
 
 const sandboxStartDeclaration: StartDeclaration = {
   effects: ['note'],
