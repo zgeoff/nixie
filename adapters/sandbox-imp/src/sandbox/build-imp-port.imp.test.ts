@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import { buildWorkerRunOwner } from '@heynixie/sandbox';
 import { buildMockGrantSpec, buildMockSandboxSpec } from '@heynixie/sandbox/test-utils';
 import { createImpClient } from '@impz/client';
 import invariant from 'tiny-invariant';
@@ -62,6 +63,33 @@ test.skipIf(!hasImpHost)(
     const outcome = await runProbe(sandbox, 'https://api.anthropic.com/v1/models', {
       viaBroker: true,
     });
+
+    expect(outcome).toMatch(/^status=[1-5]\d\d exit=0$/u);
+  },
+);
+
+test.skipIf(!hasImpHost)(
+  'it lets a worker imp reach the model host through the broker, and destroys it',
+  async () => {
+    const ctx = await setupTest();
+
+    const owner = buildWorkerRunOwner(crypto.randomUUID());
+
+    const sandbox = await ctx.createSandbox(
+      buildMockSandboxSpec({
+        kind: 'worker',
+        owner,
+        image: ctx.image,
+        grants: [buildMockGrantSpec({ secret: ctx.secret, host: 'api.anthropic.com' })],
+        limits: { vcpus: 1, memoryMiB: 384, diskMiB: 4096 },
+      }),
+    );
+
+    const outcome = await runProbe(sandbox, 'https://api.anthropic.com/v1/models', {
+      viaBroker: true,
+    });
+
+    await sandbox.destroy();
 
     expect(outcome).toMatch(/^status=[1-5]\d\d exit=0$/u);
   },

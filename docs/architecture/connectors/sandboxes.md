@@ -34,8 +34,9 @@ route from the kind:
 
 The owner is the ID that crash recovery checks to decide whether the sandbox still has work. For a
 model loop, the owner is the ID that the loop's tool calls run under, such as the conversation's ID
-or a started task's ID. For other work, the owner is the task step or the tool call that the sandbox
-belongs to.
+or a started task's ID. A worker's owner is `worker_run:` and the worker run's ID, which no runner
+keeps, so recovery destroys a worker's sandbox and spares its caller's. For other work, the owner is
+the task step or the tool call that the sandbox belongs to.
 
 Every grant is an exit for whatever the sandbox holds: a guest that can make an authenticated
 request can carry its data out in it. Every adapter therefore checks a spec before it writes a
