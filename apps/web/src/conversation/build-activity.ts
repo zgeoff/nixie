@@ -289,22 +289,19 @@ function collectCalls(records: readonly LiveRecord[]): readonly ToolActivity[] {
 
     if (toolCall !== undefined) {
       const earlier = calls.get(toolCall.callID);
-      const isCut = record.isRemoved !== true && (record.clipped?.length ?? 0) > 0;
+      const clips = record.isRemoved === true ? [] : (record.clipped ?? []);
+      const isInputCut = clips.some((clip) => clip.field === 'toolCall.input');
+      const isContentCut = clips.some((clip) => clip.field === 'toolCall.content');
 
       calls.set(toolCall.callID, {
         ...earlier,
         callID: toolCall.callID,
         ...(record.isRemoved === true ? { isRemoved: true } : {}),
         ...(toolCall.runID === undefined ? {} : { runID: toolCall.runID }),
-        ...(record.kind === 'tool_called'
-          ? { called: { sequence: record.sequence, thread: record.thread } }
+        ...(isInputCut
+          ? { called: { sequence: record.sequence, thread: record.thread }, isInputCut: true }
           : {}),
-        ...(isCut && record.clipped?.some((clip) => clip.field === 'toolCall.input')
-          ? { isInputCut: true }
-          : {}),
-        ...(isCut && record.clipped?.some((clip) => clip.field === 'toolCall.content')
-          ? { isContentCut: true }
-          : {}),
+        ...(isContentCut ? { isContentCut: true } : {}),
         tool: toolCall.tool ?? earlier?.tool ?? 'tool',
         ...(toolCall.input === undefined ? {} : { input: toolCall.input }),
         ...(toolCall.outcome === undefined ? {} : { outcome: toolCall.outcome }),

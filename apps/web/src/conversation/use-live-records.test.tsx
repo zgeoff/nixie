@@ -96,7 +96,7 @@ test('it catches up after the stream drops, with no gap and no repeat', async ()
   );
 
   expect(ctx.follows).toHaveBeenLastCalledWith({
-    json: { afterSequence: one.sequence, thread: 'conversation' },
+    json: { afterSequence: one.sequence, clipPayloads: true, thread: 'conversation' },
   });
 });
 

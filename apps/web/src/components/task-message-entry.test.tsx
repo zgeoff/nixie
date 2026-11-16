@@ -1,4 +1,6 @@
 import { expect, test } from 'bun:test';
+import { waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { store } from '../mocks/store';
 import { createDeviceSession } from '../test-utils/create-device-session';
 import { render } from '../test-utils/render';
@@ -123,4 +125,45 @@ test('it marks a message that did not wake its receiver, and one since forgotten
   expect(rendered.getByRole('listitem')).toHaveTextContent(
     'From Garden plan · report · hop 21 · did not wake its receiverThis message was forgotten.',
   );
+});
+
+test('it loads the whole text of a sent message that the server cut, in place of the cut one', async () => {
+  const user = userEvent.setup();
+
+  await createDeviceSession();
+
+  const call = await store.records.create({
+    kind: 'tool_called',
+    thread: 'p7hd2wq9zn',
+    toolCall: {
+      callID: 'call-1',
+      input: { to: 'k3vq8m2xpa', kind: 'chat', body: 'the whole text of the message' },
+      tool: 'task.message',
+    },
+  });
+
+  const rendered = render(
+    <TaskMessageEntry
+      layout="block"
+      message={{
+        cut: { sequence: call.sequence, thread: 'p7hd2wq9zn' },
+        direction: 'sent',
+        hop: 1,
+        kind: 'chat',
+        messageID: 'm7q2x9k4pa',
+        taskID: 'k3vq8m2xpa',
+        taskName: 'Garden plan',
+        text: 'the cut start of the message',
+        woke: true,
+      }}
+    />,
+  );
+
+  await user.click(rendered.getByRole('button', { name: 'Load the whole value' }));
+
+  await waitFor(() => {
+    expect(rendered.getByRole('listitem', { name: 'Message to Garden plan' })).toHaveTextContent(
+      'the whole text of the message',
+    );
+  });
 });

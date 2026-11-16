@@ -153,9 +153,9 @@ test('it stops reading earlier pages after one fails, and reads it again on a re
   expect(readsAfterFocus).toBe(2);
 
   expect(reads.mock.calls.map(([body]) => body)).toStrictEqual([
-    { json: { beforeSequence: 40, thread: 'p7hd2wq9zn' } },
+    { json: { beforeSequence: 40, clipPayloads: true, thread: 'p7hd2wq9zn' } },
     { json: { thread: 'p7hd2wq9zn' } },
-    { json: { beforeSequence: 40, thread: 'p7hd2wq9zn' } },
+    { json: { beforeSequence: 40, clipPayloads: true, thread: 'p7hd2wq9zn' } },
     { json: { thread: 'p7hd2wq9zn' } },
   ]);
 });
@@ -235,9 +235,9 @@ test('it asks again for the later page that failed when you retry, and finds the
   expect(hook.result.current.isFailed).toBe(false);
 
   expect(bodies.mock.calls.map(([body]) => body)).toStrictEqual([
-    { json: { beforeSequence: 90, thread: 'p7hd2wq9zn' } },
-    { json: { beforeSequence: 40, thread: 'p7hd2wq9zn' } },
-    { json: { beforeSequence: 40, thread: 'p7hd2wq9zn' } },
+    { json: { beforeSequence: 90, clipPayloads: true, thread: 'p7hd2wq9zn' } },
+    { json: { beforeSequence: 40, clipPayloads: true, thread: 'p7hd2wq9zn' } },
+    { json: { beforeSequence: 40, clipPayloads: true, thread: 'p7hd2wq9zn' } },
   ]);
 });
 

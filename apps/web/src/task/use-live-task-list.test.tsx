@@ -35,7 +35,9 @@ test('it follows every thread from the sequence the list read at', async () => {
   const hook = renderHook(() => useLiveTaskList({ startTimer: ctx.timer.startTimer }));
 
   await waitFor(() => {
-    expect(ctx.follows).toHaveBeenCalledWith({ json: { afterSequence: read.sequence } });
+    expect(ctx.follows).toHaveBeenCalledWith({
+      json: { afterSequence: read.sequence, clipPayloads: true },
+    });
   });
 
   expect(hook.result.current.status).toBe('loaded');

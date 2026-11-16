@@ -2,6 +2,188 @@ import { expect, test } from 'bun:test';
 import { buildMockLogRecord } from '../test-utils/build-mock-log-record';
 import { buildActivity } from './build-activity';
 
+test('it gives a worker run one line in the step of its call, and leaves its tool calls out of the step', () => {
+  const started = buildMockLogRecord({
+    kind: 'task.step_started',
+    sequence: 1,
+    task: { stepKey: 'step-1', taskID: 'k3vq8m2xpa' },
+  });
+
+  const call = buildMockLogRecord({
+    kind: 'tool_called',
+    sequence: 2,
+    thread: 'k3vq8m2xpa',
+    toolCall: {
+      callID: 'call-1',
+      input: { question: 'Which seeds came?' },
+      runID: 'step-run',
+      tool: 'worker.run',
+    },
+  });
+
+  const workerStarted = buildMockLogRecord({
+    kind: 'worker.run_started',
+    sequence: 3,
+    worker: {
+      phase: 'started',
+      workerRunID: 'w1',
+      shortID: 'w7k2m9qa4x',
+      callID: 'call-1',
+      model: 'test-model',
+      tools: ['web_fetch'],
+      limits: { minutes: 5, turns: 8, tokens: 100_000, dollars: 0.5 },
+      isTaskLimit: false,
+    },
+  });
+
+  const sourceCall = buildMockLogRecord({
+    kind: 'tool_called',
+    sequence: 4,
+    toolCall: {
+      callID: 'call-2',
+      input: { url: 'https://seeds.test/list' },
+      runID: 'w1',
+      tool: 'web_fetch',
+    },
+  });
+
+  const sourceResult = buildMockLogRecord({
+    kind: 'tool_result',
+    sequence: 5,
+    toolCall: {
+      callID: 'call-2',
+      content: { result: { status: 200 } },
+      outcome: 'result',
+      runID: 'w1',
+    },
+  });
+
+  const turn = buildMockLogRecord({
+    kind: 'worker.turn_ended',
+    sequence: 6,
+    thread: 'k3vq8m2xpa',
+    worker: {
+      phase: 'turn',
+      workerRunID: 'w1',
+      callID: 'call-1',
+      turn: 1,
+      tokens: 120,
+      dollars: 0.01,
+      text: 'The peas came.',
+    },
+  });
+
+  const items = buildActivity([started, call, workerStarted, sourceCall, sourceResult, turn]);
+  const step = items.find((item) => item.kind === 'step');
+
+  expect({
+    calls: step?.calls.map((candidate) => candidate.callID),
+    workers: step?.workers?.map((worker) => [
+      worker.workerRunID,
+      worker.shortID,
+      worker.call.callID,
+      worker.calls.map((source) => source.callID),
+      worker.turns.map((candidate) => candidate.text),
+    ]),
+  }).toStrictEqual({
+    calls: ['call-1'],
+    workers: [['w1', 'w7k2m9qa4x', 'call-1', ['call-2'], ['The peas came.']]],
+  });
+});
+
+test('it gives each worker run of a step its own line', () => {
+  const records = ['call-1', 'call-2'].flatMap((callID, index) => [
+    buildMockLogRecord({
+      kind: 'tool_called',
+      sequence: 10 + index * 3,
+      toolCall: { callID, input: { question: 'Q' }, tool: 'worker.run' },
+    }),
+    buildMockLogRecord({
+      kind: 'worker.run_started',
+      sequence: 11 + index * 3,
+      worker: {
+        phase: 'started',
+        workerRunID: `w${index}`,
+        shortID: `short${index}`,
+        callID,
+        model: 'test-model',
+        tools: [],
+        limits: { minutes: 5, turns: 8, tokens: 100_000, dollars: 0.5 },
+        isTaskLimit: false,
+      },
+    }),
+    buildMockLogRecord({
+      kind: 'worker.run_ended',
+      sequence: 12 + index * 3,
+      worker: {
+        phase: 'ended',
+        workerRunID: `w${index}`,
+        callID,
+        outcome: 'answered',
+        used: { minutes: 1, turns: 1, tokens: 10, dollars: 0.01 },
+      },
+    }),
+  ]);
+
+  const step = buildActivity([
+    buildMockLogRecord({ kind: 'task.step_started', sequence: 1 }),
+    ...records,
+  ]).find((item) => item.kind === 'step');
+
+  expect(step?.workers?.map((worker) => worker.end?.outcome)).toStrictEqual([
+    'answered',
+    'answered',
+  ]);
+});
+
+test('it keeps a worker record on the step by its kind when its worker.run call is not on the page', () => {
+  const step = buildActivity([
+    buildMockLogRecord({ kind: 'task.step_started', sequence: 1 }),
+    buildMockLogRecord({
+      kind: 'worker.turn_ended',
+      sequence: 2,
+      worker: {
+        phase: 'turn',
+        workerRunID: 'w1',
+        callID: 'call-gone',
+        turn: 1,
+        tokens: 5,
+        dollars: 0,
+      },
+    }),
+  ]).find((item) => item.kind === 'step');
+
+  expect(step?.workers).toBeUndefined();
+
+  expect(step?.records.map((record) => record.kind)).toStrictEqual([
+    'task.step_started',
+    'worker.turn_ended',
+  ]);
+});
+
+test('it marks a call whose input the server cut, with the record that holds it', () => {
+  const step = buildActivity([
+    buildMockLogRecord({ kind: 'task.step_started', sequence: 1 }),
+    buildMockLogRecord({
+      clipped: [{ field: 'toolCall.input', path: ['body'], bytes: 9000 }],
+      kind: 'tool_called',
+      sequence: 2,
+      thread: 'k3vq8m2xpa',
+      toolCall: { callID: 'call-1', input: { body: 'cut' }, tool: 'task.message' },
+    }),
+  ]).find((item) => item.kind === 'step');
+
+  expect(step?.calls).toStrictEqual([
+    {
+      called: { sequence: 2, thread: 'k3vq8m2xpa' },
+      callID: 'call-1',
+      input: { body: 'cut' },
+      isInputCut: true,
+      tool: 'task.message',
+    },
+  ]);
+});
+
 test('it keeps each message on its own and folds a step into one group', () => {
   const question = buildMockLogRecord({
     kind: 'owner_message',
