@@ -79,9 +79,7 @@ export async function readListedTasks(
   );
 
   const fires = await Promise.all(
-    listed.map(async (task) =>
-      task.definitionID === null ? undefined : await readTaskFire(context, task.id),
-    ),
+    listed.map((task) => (task.definitionID === null ? undefined : readTaskFire(context, task.id))),
   );
 
   const closedTasks = listed.filter((task) => task.state === 'closed');
