@@ -6,6 +6,7 @@ import type { Clock } from '@heynixie/clock';
 import { countTextTokens } from '@heynixie/compaction';
 import type { Log, Projection } from '@heynixie/log';
 import { logProjections, startWriter } from '@heynixie/log';
+import { readStarterDecisionPoint } from '@heynixie/policy/test-utils';
 import type { SandboxAdapter } from '@heynixie/sandbox';
 import { buildSandboxRecorder, sandboxesProjection } from '@heynixie/sandbox';
 import type { ReceivedFrame, StubGuestSandboxes } from '@heynixie/sandbox/test-utils';
@@ -18,6 +19,7 @@ import {
   buildTestRunSettings,
   buildTestTaskRunners,
 } from '@heynixie/tasks/test-utils';
+import type { ToolDefinition, ToolEndpoint } from '@heynixie/tools';
 import { buildToolRegistry, startToolEndpoint } from '@heynixie/tools';
 import { readTestToolNames, sendTestToolCall } from '@heynixie/tools/test-utils';
 import invariant from 'tiny-invariant';
@@ -40,6 +42,9 @@ export interface TestSessionHost {
 
   readonly toolResults: readonly TestToolResult[];
 
+  // the endpoint that serves the sandboxes' tool calls
+  readonly endpoint: ToolEndpoint;
+
   readonly readToolNames: (received: ReceivedFrame) => Promise<readonly string[]>;
 
   readonly socketDir: string;
@@ -51,6 +56,10 @@ export interface TestSessionHostOptions {
   readonly projections?: readonly Projection[];
   readonly clock?: Clock;
   readonly runSettings?: RunSettings;
+
+  // the tools the endpoint serves, each allowed by the starter's rules; with none, every call is
+  // denied
+  readonly tools?: readonly ToolDefinition[];
 }
 
 export async function startTestSessionHost(
@@ -101,21 +110,17 @@ export async function startTestSessionHost(
   };
 
   const socketDir = join(dataDir, 'tools');
+  const registry = buildToolRegistry(options.tools ?? []);
 
   const endpoint = await startToolEndpoint({
     socketDir,
-    registry: buildToolRegistry([]),
-    decide: () =>
-      Promise.resolve({
-        decision: {
-          outcome: 'deny',
-          stage: 1,
-          rule: null,
-          destinations: [],
-          snapshot: 'sha256:test',
-        },
-        sentence: 'No tool is registered.',
-      }),
+    registry,
+    decide:
+      options.tools === undefined
+        ? decideDenyAll
+        : readStarterDecisionPoint(
+            (tool) => registry.findTool(tool)?.definition.declaration ?? null,
+          ),
     log,
     definitions: context.definitions,
     queue: {
@@ -153,6 +158,7 @@ export async function startTestSessionHost(
     sandboxes: guest.adapter,
     guest,
     toolResults,
+    endpoint,
     readToolNames: (received) => {
       invariant(received.frame.type === 'turn', 'only a turn frame carries a tool route');
 
@@ -166,4 +172,17 @@ export async function startTestSessionHost(
       stack.defer(stop);
     },
   };
+}
+
+function decideDenyAll(): ReturnType<Parameters<typeof startToolEndpoint>[0]['decide']> {
+  return Promise.resolve({
+    decision: {
+      outcome: 'deny',
+      stage: 1,
+      rule: null,
+      destinations: [],
+      snapshot: 'sha256:test',
+    },
+    sentence: 'No tool is registered.',
+  });
 }
