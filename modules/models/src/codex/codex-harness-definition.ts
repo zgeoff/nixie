@@ -28,7 +28,9 @@ export const codexHarnessDefinition: HarnessDefinition<'codex', CodexProfile> = 
     imageKey: 'codex',
     sizeRows: { conversation: null, systemTask: 'codexTask' },
     toolUseMetaKey: 'callId',
-    toolCallWaitMs: null,
+
+    // the CLI's per-server tool-call timeout, which the tool-call wait probe proves
+    toolCallWaitMs: 900_000,
     capabilities: harnessCapabilities.codex,
 
     // The ChatGPT plan login confirms this on a real model.
