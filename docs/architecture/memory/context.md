@@ -151,10 +151,13 @@ default `trigger_min_score` of 6.4 sits above every such near miss, at the cost 
 with a small index rarely matches by keyword: BM25 weighs a word by how few phrases hold it, and in
 an index of 1 or 2 phrases every score is about 0.
 
-Until the index grows, the similarity floor carries trigger push. A near miss reached a similarity
-of 0.56, above the 0.3 floor of a search the model asks for, so `trigger_min_similarity` defaults to
-0.57. Messages that only paraphrase a phrase score from 0.39 to 0.46 and place nothing at these
-floors. A floor set for one encoder is wrong for another, because scores depend on the encoder.
+Until the index grows, only the similarity floor can place an item, and it still misses some
+messages that use a phrase's words: on an index of 2 phrases, "is the piano tuned again?" scored a
+similarity of 0.55 against the piano item's phrases and placed nothing. A near miss reached a
+similarity of 0.56, above the 0.3 floor of a search the model asks for, so `trigger_min_similarity`
+defaults to 0.57. Messages that only paraphrase a phrase score from 0.39 to 0.46 and place nothing
+at these floors. A floor set for one encoder is wrong for another, because scores depend on the
+encoder.
 
 The conversation finds the versions a session holds by replaying the thread's records from the start
 of the step that wrote its last opening or invalidation, and only when the memory module asks for
