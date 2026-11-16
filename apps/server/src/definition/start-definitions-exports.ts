@@ -1,8 +1,9 @@
-import type { DefinitionsExportSweep } from '@heynixie/definitions';
+import type { DefinitionsExportSweep, TaskSeedContext } from '@heynixie/definitions';
 import {
   buildPromptChangeKind,
   buildRuleChangeKind,
   buildSkillChangeKind,
+  buildTaskChangeKind,
   startDefinitionsExportSweep,
 } from '@heynixie/definitions';
 import { buildGitHubDefinitionsRepo } from '@heynixie/definitions-repo-github';
@@ -14,6 +15,7 @@ import type { DefinitionsExportSettings } from './resolve-definitions-export';
 
 export interface DefinitionsExportsOptions {
   readonly log: Log;
+  readonly tasks: TaskSeedContext;
   readonly settings: DefinitionsExportSettings | null;
   readonly cleanup: Cleanup;
 
@@ -36,6 +38,7 @@ export async function startDefinitionsExports(
       buildSkillChangeKind(text),
       buildPromptChangeKind(options.log, text),
       buildRuleChangeKind(),
+      buildTaskChangeKind({ log: options.log, tasks: options.tasks }),
     ],
     onError: (error) => {
       options.logEvent('definitions.export_failed', toErrorFields(error), 'error');

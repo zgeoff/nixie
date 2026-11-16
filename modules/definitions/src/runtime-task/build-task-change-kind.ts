@@ -1,0 +1,360 @@
+import type { Log } from '@heynixie/log';
+import { writeRecordsInTransaction } from '@heynixie/log';
+import type { Kysely, Transaction } from 'kysely';
+import invariant from 'tiny-invariant';
+import { isDefinitionsPath } from '../definition/is-definitions-path';
+import { parseDefinitions } from '../definition/parse-definitions';
+import { readDefinitionsInForce } from '../definition/read-definitions-in-force';
+import type { TaskSeedContext } from '../task/types';
+import type {
+  ClosingDefinitionsExport,
+  DefinitionsChange,
+  DefinitionsChangeKind,
+  DefinitionsExportMove,
+  DefinitionsExportState,
+  DefinitionsRepo,
+  DefinitionsTables,
+  DueDefinitionsExport,
+} from '../types';
+import { buildSHA256 } from '../utils/build-sha256';
+import { canMoveDefinitionsExport } from '../utils/can-move-definitions-export';
+import { definitionsFormats } from '../utils/definitions-formats';
+import { toCanonicalJSON } from '../utils/to-canonical-json';
+import type { TaskExportChange } from './build-task-export-change';
+import { buildTaskExportChange, taskExportBranch } from './build-task-export-change';
+import { definitionExportMovedCodec } from './definition-export-moved-codec';
+import { isExportedDefinition } from './is-exported-definition';
+import type { StoredTaskDefinition } from './stored-task-definition';
+
+export interface TaskChangeKindInput {
+  readonly log: Log;
+
+  // the context the seed parses task folders with
+  readonly tasks: TaskSeedContext;
+}
+
+// Every runtime change of a task definition in force, but a one-shot, goes into one pull request
+// on one branch. The ID of an export hashes its changes, so a new change starts the next export,
+// which rewrites the same pull request.
+export function buildTaskChangeKind(input: TaskChangeKindInput): DefinitionsChangeKind {
+  return {
+    readDue: (db) => readDueTasks(db, input.tasks),
+    readClosing: readClosingTasks,
+    probeInForce: probeTaskExportInForce,
+    probePullRequestHeld: probeTaskPullRequestHeld,
+    writeState: (tx, move) => writeTaskState(tx, input.log, move),
+  };
+}
+
+async function readDueTasks(
+  db: Kysely<unknown>,
+  tasks: TaskSeedContext,
+): Promise<readonly DueDefinitionsExport[]> {
+  const current = await readTaskExport(db);
+
+  if (current === null) {
+    return [];
+  }
+
+  const row = await db
+    .$extendTables<DefinitionsTables>()
+    .selectFrom('task_definition_exports')
+    .select(['state', 'attempt_started_sequence'])
+    .where('export_id', '=', current.exportID)
+    .executeTakeFirst();
+
+  if (row !== undefined && row.state !== null && row.attempt_started_sequence === null) {
+    return [];
+  }
+
+  return [
+    {
+      approvalID: current.exportID,
+      branch: taskExportBranch,
+      baseHash: null,
+      readSource: () =>
+        Promise.resolve({
+          readChange: (repo, revision) => readTaskChange(repo, revision, current.changes, tasks),
+        }),
+    },
+  ];
+}
+
+interface TaskExport {
+  readonly exportID: string;
+  readonly changes: readonly TaskExportChange[];
+}
+
+async function readTaskExport(db: Kysely<unknown>): Promise<TaskExport | null> {
+  const tables = db.$extendTables<DefinitionsTables>();
+
+  const rows = await tables
+    .selectFrom('runtime_task_definitions')
+    .select(['change_id', 'definition_id', 'operation', 'definition_hash', 'base_hash'])
+    .select('definitions_hash')
+    .where('state', '=', 'in_force')
+    .orderBy('definition_id')
+    .execute();
+
+  const versions = await readVersions(
+    db,
+    rows.flatMap((row) => row.definition_hash ?? []),
+  );
+
+  const changes = rows.flatMap((row): TaskExportChange[] => {
+    const version =
+      row.definition_hash === null ? null : (versions.get(row.definition_hash) ?? null);
+
+    // A change whose version has no row lost its files, and the seed already puts that definition
+    // out of force, so exporting it would write nothing a merge could keep.
+    if (row.definition_hash !== null && version === null) {
+      return [];
+    }
+
+    if (!isExportedDefinition(version)) {
+      return [];
+    }
+
+    return [
+      {
+        changeID: row.change_id,
+        definitionID: row.definition_id,
+        operation: row.operation,
+        version,
+        base: row.base_hash,
+        definitions: row.definitions_hash,
+      },
+    ];
+  });
+
+  if (changes.length === 0) {
+    return null;
+  }
+
+  const left = await tables
+    .selectFrom('runtime_task_definitions')
+    .select((eb) => eb.fn.countAll<number>().as('leftCount'))
+    .where('state', '!=', 'in_force')
+    .executeTakeFirstOrThrow();
+
+  const inForce = await readDefinitionsInForce(db);
+
+  // A change that left force, a resolution and a new seed each change the ID, so a set that
+  // returns to an earlier state starts a new export in place of the closed one.
+  const exportID = buildSHA256(
+    toCanonicalJSON({
+      branch: taskExportBranch,
+      changes: changes.map((change) => ({
+        changeID: change.changeID,
+        base: change.base,
+        definitions: change.definitions,
+      })),
+      leftCount: left.leftCount,
+      snapshotHash: inForce?.snapshotHash ?? null,
+    }),
+  );
+
+  return { exportID, changes };
+}
+
+async function readVersions(
+  db: Kysely<unknown>,
+  hashes: readonly string[],
+): Promise<ReadonlyMap<string, StoredTaskDefinition>> {
+  if (hashes.length === 0) {
+    return new Map();
+  }
+
+  const rows = await db
+    .$extendTables<DefinitionsTables>()
+    .selectFrom('task_definition_versions')
+    .select(['definition_hash', 'definition_id', 'form', 'files'])
+    .where('definition_hash', 'in', hashes)
+    .execute();
+
+  return new Map(
+    rows.map((row): [string, StoredTaskDefinition] => [
+      row.definition_hash,
+      {
+        definitionID: row.definition_id,
+        hash: row.definition_hash,
+        form: JSON.parse(row.form),
+        files: JSON.parse(row.files),
+      },
+    ]),
+  );
+}
+
+async function readTaskChange(
+  repo: DefinitionsRepo,
+  revision: string,
+  changes: readonly TaskExportChange[],
+  tasks: TaskSeedContext,
+): Promise<DefinitionsChange> {
+  const folderEntries = await Promise.all(
+    changes.map(async (change): Promise<[string, readonly string[]]> => {
+      const paths = await repo.readFolder(`tasks/${change.definitionID}`, revision);
+
+      return [change.definitionID, paths];
+    }),
+  );
+
+  const folders = new Map(folderEntries);
+
+  const change = buildTaskExportChange({ changes, folders });
+
+  const sizes = await repo.readFileSizes(revision);
+
+  const textEntries = await Promise.all(
+    [...sizes.keys()]
+      .filter((path) => isDefinitionsPath(path))
+      .map(async (path): Promise<[string, string | null]> => {
+        const text = await repo.readFile(path, revision);
+
+        return [path, text];
+      }),
+  );
+
+  const texts = new Map(textEntries);
+
+  const manifest = texts.get('nixie.yaml') ?? '';
+  const formatMatch = /^format:\s*(?<format>\d+)/mu.exec(manifest);
+  const format = Number(formatMatch?.groups?.['format'] ?? 0);
+
+  if (format < definitionsFormats.tasks) {
+    throw new Error(
+      `the definitions repo reads format ${String(format)}, which applies no task folder`,
+    );
+  }
+
+  const isChanged = [...change.files].some(([path, text]) => (texts.get(path) ?? null) !== text);
+
+  if (!isChanged) {
+    throw new Error(
+      'the definitions repo already holds these task changes, and the next seed adopts them',
+    );
+  }
+
+  // The seed refuses the whole snapshot when a task folder has a fault, so a change that leaves
+  // one never reaches a pull request.
+  const encoder = new TextEncoder();
+
+  parseDefinitions(
+    {
+      contentHash: '',
+      files: new Map(
+        [...texts, ...change.files].flatMap(([path, text]): [string, Uint8Array][] =>
+          text === null ? [] : [[path, encoder.encode(text)]],
+        ),
+      ),
+      revision,
+      repository: null,
+      skipped: [],
+    },
+    tasks,
+  );
+
+  return change;
+}
+
+async function readClosingTasks(
+  db: Kysely<unknown>,
+  exportID: string | null,
+): Promise<readonly ClosingDefinitionsExport[]> {
+  const current = await readTaskExport(db);
+
+  const query = db
+    .$extendTables<DefinitionsTables>()
+    .selectFrom('task_definition_exports')
+    .select(['export_id', 'branch'])
+    .where('export_id', '!=', current?.exportID ?? '')
+    .where((eb) =>
+      eb.or([eb('state', '=', 'opened'), eb('attempt_started_sequence', 'is not', null)]),
+    );
+
+  const rows = await (
+    exportID === null ? query : query.where('export_id', '=', exportID)
+  ).execute();
+
+  // While a later export holds changes, it rewrites the same pull request, so a close leaves the
+  // branch to it. Once none is left, only a pull request still open on the branch closes.
+  return rows.map((row) => ({
+    approvalID: row.export_id,
+    branch: row.branch,
+    recordedPullRequest: null,
+    isBranchRead: current === null,
+  }));
+}
+
+async function probeTaskExportInForce(db: Kysely<unknown>, exportID: string): Promise<boolean> {
+  const current = await readTaskExport(db);
+
+  return current?.exportID === exportID;
+}
+
+async function probeTaskPullRequestHeld(
+  db: Kysely<unknown>,
+  pullRequestNumber: number,
+  exportID: string,
+): Promise<boolean> {
+  const holder = await db
+    .$extendTables<DefinitionsTables>()
+    .selectFrom('task_definition_exports')
+    .select('export_id')
+    .where('state', '=', 'opened')
+    .where('pull_request_number', '=', pullRequestNumber)
+    .where('export_id', '!=', exportID)
+    .executeTakeFirst();
+
+  return holder !== undefined;
+}
+
+async function writeTaskState(
+  tx: Transaction<unknown>,
+  log: Log,
+  move: DefinitionsExportMove,
+): Promise<void> {
+  const row = await tx
+    .$extendTables<DefinitionsTables>()
+    .selectFrom('task_definition_exports')
+    .select(['branch', 'state', 'attempt_started_sequence'])
+    .where('export_id', '=', move.approvalID)
+    .executeTakeFirst();
+
+  const current = pickExportState(row);
+
+  if (current !== null && !canMoveDefinitionsExport(current, move.to)) {
+    throw new Error(
+      `the task export ${move.approvalID} is ${current}, so it cannot become ${move.to}`,
+    );
+  }
+
+  const inForce = await readDefinitionsInForce(tx);
+
+  invariant(inForce, 'an export of task definitions needs definitions in force');
+
+  await writeRecordsInTransaction(tx, log, [
+    {
+      kind: definitionExportMovedCodec.kind,
+      definitions: { snapshotHash: inForce.snapshotHash, personaVersion: inForce.personaVersion },
+      payload: definitionExportMovedCodec.encode({
+        exportID: move.approvalID,
+        branch: row?.branch ?? taskExportBranch,
+        to: move.to,
+        pullRequest: move.to === 'exporting' ? null : move.pullRequest,
+      }),
+    },
+  ]);
+}
+
+function pickExportState(
+  row:
+    | { state: DefinitionsExportState | null; attempt_started_sequence: number | null }
+    | undefined,
+): DefinitionsExportState | null {
+  if (row === undefined) {
+    return null;
+  }
+
+  return row.attempt_started_sequence === null ? row.state : 'exporting';
+}

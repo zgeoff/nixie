@@ -105,6 +105,7 @@ test('it exports a skill with the configured templates, the first agent name and
 
   await startDefinitionsExports({
     log: ctx.log,
+    tasks: buildTestTaskSeed(),
     settings: inputs.definitionsExport,
     cleanup: ctx.cleanup,
     logEvent: mock<Logger>(),
@@ -202,6 +203,7 @@ test('it exports a runtime rule change in a pull request on the rules branch', a
 
   await startDefinitionsExports({
     log: ctx.log,
+    tasks: buildTestTaskSeed(),
     settings: inputs.definitionsExport,
     cleanup: ctx.cleanup,
     logEvent: mock<Logger>(),
@@ -288,6 +290,7 @@ test("it exports an approved prompt override beside the skills, with the part fi
 
   await startDefinitionsExports({
     log: ctx.log,
+    tasks: buildTestTaskSeed(),
     settings: inputs.definitionsExport,
     cleanup: ctx.cleanup,
     logEvent: mock<Logger>(),
