@@ -13,13 +13,21 @@ export function buildTestTaskSeed(): TaskSeedContext {
     'files.write',
     'memory.recall',
     'memory.remember',
+    'memory.edit',
+    'memory.retire',
     'web.fetch',
   ];
 
   return {
     toolNames,
     checkTaskStart: makeCheckTaskStart({
-      bounds: buildMockTaskStartBounds({ conversationTools: ['task.define'] }),
+      bounds: buildMockTaskStartBounds({
+        conversationTools: ['task.define'],
+        memoryTools: {
+          read: ['memory.recall', 'memory.pending', 'moment.read'],
+          write: ['memory.remember', 'memory.edit', 'memory.retire', 'moment.keep', 'moment.edit'],
+        },
+      }),
       toolNames,
       conversationTools,
     }),

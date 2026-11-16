@@ -159,6 +159,8 @@ holds the design for a piece of work that is not built yet, with its spikes in
   a pinned commit, compute its content hash and add its lock entry
 - [Overriding a prompt](guides/overriding-a-prompt.md) — replace a part or the template of a
   built-in prompt from your definitions, and the parts and paths each prompt has
+- [Consolidating memory with a task](guides/consolidating-memory-with-a-task.md) — add a weekly task
+  that merges, rewrites or retires memory items, from an example folder
 - [Run nixie with Docker Compose](guides/compose.md) — the reference recipe, its placeholders and
   secrets, signing in, and how CI checks it
 - [Run nixie on Kubernetes](guides/kubernetes.md) — the reference manifests, their placeholders and
