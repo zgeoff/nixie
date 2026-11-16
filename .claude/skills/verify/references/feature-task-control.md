@@ -70,7 +70,8 @@ Before you start:
    bun verify browser snapshot
    ```
 
-   Expect: the page shows "Waiting", and the group "Controls for Tide tables" holds a Pause button.
+   Expect: the page shows "Idle", and the group "Controls for Tide tables" holds a Pause button. The
+   page labels a `waiting` task that has nothing to do as "Idle".
 
 5. Pause the task:
 
