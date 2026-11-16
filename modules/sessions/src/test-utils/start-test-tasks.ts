@@ -7,7 +7,7 @@ import { logProjections, startWriter } from '@heynixie/log';
 import { tasksProjections } from '@heynixie/tasks';
 import type { TasksContext, TasksTables } from '@heynixie/tasks';
 import {
-  buildTestDefinitionReaders,
+  buildTestDefinitionStore,
   buildTestRunSettings,
   buildTestTaskRunners,
 } from '@heynixie/tasks/test-utils';
@@ -20,6 +20,7 @@ interface TestTasks {
   readonly writer: Writer;
   readonly clock: TestClock;
   readonly context: TasksContext;
+  readonly definitionStore: ReturnType<typeof buildTestDefinitionStore>;
 
   readonly db: Kysely<TasksTables>;
 }
@@ -44,17 +45,20 @@ export async function startTestTasks(): Promise<TestTasks> {
 
   const log: Log = { writer, deploymentKey, projections: [...logProjections, ...tasksProjections] };
   const clock = buildTestClock(1_000_000);
+  const definitionStore = buildTestDefinitionStore();
 
   return {
     dataDir,
     writer,
     clock,
+    definitionStore,
     context: {
       log,
       clock,
       definitions: () => ({ snapshotHash: 'sha256:test' }),
       runSettings: buildTestRunSettings(),
-      ...buildTestDefinitionReaders(),
+      readDefinitionVersion: definitionStore.readDefinitionVersion,
+      readDefinitionRunPolicy: definitionStore.readDefinitionRunPolicy,
       runners: buildTestTaskRunners(),
     },
     db: writer.db.$extendTables<TasksTables>(),

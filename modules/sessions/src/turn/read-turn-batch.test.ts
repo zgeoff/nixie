@@ -7,7 +7,7 @@ import { readTurnBatch } from './read-turn-batch';
 async function setupTest() {
   const tasks = await startTestTasks();
 
-  return { log: tasks.context.log };
+  return { log: tasks.context.log, context: tasks.context };
 }
 
 test('it takes the oldest 64 records of a longer inbox', async () => {
@@ -23,7 +23,7 @@ test('it takes the oldest 64 records of a longer inbox', async () => {
     })),
   );
 
-  const batch = await readTurnBatch(ctx.log, records, {
+  const batch = await readTurnBatch(ctx.context, records, {
     times: { defaultZone: 'Australia/Sydney', now: new Date('2026-10-13T05:00:00Z') },
     view: buildMockTaskMessageView(),
     imageBudget: { bytes: 24 * 1024 * 1024, count: 100 },
@@ -48,7 +48,7 @@ test('it leaves a record for the next turn when its images would pass 24 MiB wit
     })),
   );
 
-  const batch = await readTurnBatch(ctx.log, records, {
+  const batch = await readTurnBatch(ctx.context, records, {
     times: { defaultZone: 'Australia/Sydney', now: new Date('2026-10-13T05:00:00Z') },
     view: buildMockTaskMessageView(),
     imageBudget: { bytes: 24 * 1024 * 1024, count: 100 },

@@ -7,7 +7,24 @@ import { readInboxMessages } from './read-inbox-messages';
 async function setupTest() {
   const tasks = await startTestTasks();
 
-  return { log: tasks.context.log };
+  return {
+    log: tasks.context.log,
+    context: tasks.context,
+    addVersion: tasks.definitionStore.add,
+    buildFirePayload: (overrides: Record<string, unknown>) => ({
+      definitionID: 'call-the-dentist',
+      definitionHash: 'hash-1',
+      source: 'at',
+      dedupeKey: 'key-1',
+      kind: 'at',
+      scheduledFor: '2027-03-09T03:00:00.000Z',
+      firedAt: '2027-03-09T03:00:00.000Z',
+      isCatchUp: false,
+      skipped: [],
+      skippedCount: 0,
+      ...overrides,
+    }),
+  };
 }
 
 test('it reads each record with the images its attachments hold', async () => {
@@ -30,7 +47,7 @@ test('it reads each record with the images its attachments hold', async () => {
     },
   ]);
 
-  const messages = await readInboxMessages(ctx.log, records, {
+  const messages = await readInboxMessages(ctx.context, records, {
     times: { defaultZone: 'Australia/Sydney', now: new Date('2026-10-13T05:00:00Z') },
     view: buildMockTaskMessageView(),
     imageBudget: { bytes: 1024, count: 100 },
@@ -71,7 +88,7 @@ test('it stops before the record whose images would pass the budget', async () =
     },
   ]);
 
-  const messages = await readInboxMessages(ctx.log, records, {
+  const messages = await readInboxMessages(ctx.context, records, {
     times: { defaultZone: 'Australia/Sydney', now: new Date('2026-10-13T05:00:00Z') },
     view: buildMockTaskMessageView(),
     imageBudget: { bytes: 12, count: 100 },
@@ -104,7 +121,7 @@ test('it stops before the record whose images would pass the count, however few 
     },
   ]);
 
-  const messages = await readInboxMessages(ctx.log, records, {
+  const messages = await readInboxMessages(ctx.context, records, {
     times: { defaultZone: 'Australia/Sydney', now: new Date('2026-10-13T05:00:00Z') },
     view: buildMockTaskMessageView(),
     imageBudget: { bytes: 1024, count: 2 },
@@ -135,7 +152,7 @@ test('it reads a record with no images past a budget the images before it spent'
     },
   ]);
 
-  const messages = await readInboxMessages(ctx.log, records, {
+  const messages = await readInboxMessages(ctx.context, records, {
     times: { defaultZone: 'Australia/Sydney', now: new Date('2026-10-13T05:00:00Z') },
     view: buildMockTaskMessageView(),
     imageBudget: { bytes: 4, count: 100 },
@@ -161,7 +178,7 @@ test('it reads the first record whatever its images, so a large message still re
     },
   ]);
 
-  const messages = await readInboxMessages(ctx.log, records, {
+  const messages = await readInboxMessages(ctx.context, records, {
     times: { defaultZone: 'Australia/Sydney', now: new Date('2026-10-13T05:00:00Z') },
     view: buildMockTaskMessageView(),
     imageBudget: { bytes: 0, count: 0 },
@@ -195,7 +212,7 @@ test('it passes over a record of a kind no module registers and keeps the record
     },
   ]);
 
-  const messages = await readInboxMessages(ctx.log, records, {
+  const messages = await readInboxMessages(ctx.context, records, {
     times: { defaultZone: 'Australia/Sydney', now: new Date('2026-10-13T05:00:00Z') },
     view: buildMockTaskMessageView(),
     imageBudget: { bytes: 1024, count: 100 },
@@ -205,4 +222,71 @@ test('it passes over a record of a kind no module registers and keeps the record
     expect.stringContaining('Before.'),
     expect.stringContaining('After.'),
   ]);
+});
+
+test.each([
+  ['the brief of the pinned version', 'hash-1', 'Call the dentist about the crown.'],
+  ['a note for a version that is no longer stored', 'hash-gone', 'no longer stored'],
+])(
+  'it reads a fire on the conversation thread as a reminder with %s',
+  async (_name, hash, text) => {
+    const ctx = await setupTest();
+
+    ctx.addVersion('hash-1', {
+      version: {
+        brief: 'Call the dentist about the crown.',
+        trigger: { at: '2027-03-09T14:00:00+11:00' },
+      },
+    });
+
+    const records = await writeRecords(ctx.log, [
+      {
+        kind: 'trigger.fired',
+        definitions: { snapshotHash: 'sha256:test' },
+        thread: 'conversation',
+        payload: ctx.buildFirePayload({ definitionHash: hash }),
+      },
+    ]);
+
+    const messages = await readInboxMessages(ctx.context, records, {
+      times: { defaultZone: 'Australia/Sydney', now: new Date('2027-03-09T03:30:00Z') },
+      view: buildMockTaskMessageView(),
+      imageBudget: { bytes: 1024, count: 100 },
+    });
+
+    expect(messages).toStrictEqual([
+      {
+        uuid: expect.toBeString(),
+        text: expect.stringContaining(`type="reminder"`),
+      },
+    ]);
+
+    expect(messages[0]?.text).toInclude(text);
+    expect(messages[0]?.text).toInclude('It was set for Tue 9 Mar, 14:00, Sydney.');
+  },
+);
+
+test.each([
+  ['a fire on the thread of a task', 'water-the-tomatoes', {}],
+  ['a poll fire on the conversation thread', 'conversation', { kind: 'poll', polled: [1] }],
+  ['a fire of an unknown kind', 'conversation', { kind: 'webhook' }],
+])('it keeps the fallback line for %s', async (_name, thread, overrides) => {
+  const ctx = await setupTest();
+
+  const records = await writeRecords(ctx.log, [
+    {
+      kind: 'trigger.fired',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread,
+      payload: ctx.buildFirePayload(overrides),
+    },
+  ]);
+
+  const messages = await readInboxMessages(ctx.context, records, {
+    times: { defaultZone: 'Australia/Sydney', now: new Date('2027-03-09T03:30:00Z') },
+    view: buildMockTaskMessageView(),
+    imageBudget: { bytes: 1024, count: 100 },
+  });
+
+  expect(messages[0]?.text).toStartWith('A trigger.fired record arrived:');
 });

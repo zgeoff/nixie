@@ -13,11 +13,14 @@ import { renderLimitNotice } from './render-limit-notice';
 import { renderProposalDecline } from './render-proposal-decline';
 import { renderProposalDefer } from './render-proposal-defer';
 import { renderRecoveryNotice } from './render-recovery-notice';
+import type { ReminderRead } from './render-reminder-notice';
+import { renderReminderNotice } from './render-reminder-notice';
 
 export function renderInboxMessage(
   record: LogRecord,
   times: MessageTimeOptions,
   view: TaskMessageView,
+  reminder: ReminderRead | null = null,
 ): string {
   if (record.kind === 'owner_message') {
     return renderOwnerMessage(record, times, view.messaging.ownerName);
@@ -45,6 +48,10 @@ export function renderInboxMessage(
 
   if (record.kind === 'policy.action_answered') {
     return renderApprovalAnswer(record, times);
+  }
+
+  if (record.kind === 'trigger.fired' && reminder !== null) {
+    return renderReminderNotice(record, times, reminder);
   }
 
   // memory and skills register these kinds, and sessions depends on neither

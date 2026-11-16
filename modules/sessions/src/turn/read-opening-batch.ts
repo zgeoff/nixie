@@ -1,5 +1,5 @@
-import type { Log } from '@heynixie/log';
 import type { StepInput } from '@heynixie/tasks';
+import type { InboxContext } from '../inbox/read-inbox-messages';
 import type { LiveImages } from '../inbox/read-live-inbox';
 import type { TaskMessageView } from '../task/render-task-message';
 import type { ImageTally, MessageTimeOptions } from '../types';
@@ -23,11 +23,11 @@ interface OpeningRead {
 }
 
 export async function readOpeningBatch(
-  log: Pick<Log, 'deploymentKey' | 'writer'>,
+  context: InboxContext,
   inbox: StepInput['inbox'],
   read: OpeningRead,
 ): Promise<OpeningBatch> {
-  const batch = await readTurnBatch(log, inbox, {
+  const batch = await readTurnBatch(context, inbox, {
     times: read.times,
     view: read.view,
     imageBudget: {

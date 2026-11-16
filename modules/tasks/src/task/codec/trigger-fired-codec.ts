@@ -32,3 +32,12 @@ export function parseTriggerFired(payload: unknown): TriggerFired | null {
 
   return parsed.success ? triggerFiredCodec.decode(parsed.data) : null;
 }
+
+// How late a catch-up fire arrives after the time it was set for, or null for a fire on time.
+export function findLateBySeconds(
+  fire: Pick<TriggerFired, 'isCatchUp' | 'scheduledFor' | 'firedAt'>,
+): number | null {
+  return fire.isCatchUp
+    ? Math.round((Date.parse(fire.firedAt) - Date.parse(fire.scheduledFor)) / 1000)
+    : null;
+}

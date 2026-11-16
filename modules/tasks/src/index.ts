@@ -141,6 +141,7 @@ export { taskDefinitionSetCodec } from './task/codec/task-definition-set-codec';
 export type { TriggerFired } from './task/codec/trigger-fired-codec';
 
 export {
+  findLateBySeconds,
   parseTriggerFired,
   triggerFiredCodec,
   triggerFiredKinds,

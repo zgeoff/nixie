@@ -6,19 +6,26 @@ import type { MessageTimeOptions } from '../types';
 import { renderImageMarkers } from '../utils/render-image-markers';
 import { encodeInboxUUID } from './encode-inbox-uuid';
 import { renderInboxMessage } from './render-inbox-message';
+import type { ReminderRead } from './render-reminder-notice';
+
+// What the inbox read fetched beside the record: the bytes of its images and the data of a reminder.
+export interface InboxExtras {
+  readonly attachments: readonly Uint8Array[];
+  readonly reminder: ReminderRead | null;
+}
 
 export function toInboxMessage(
   record: LogRecord,
   times: MessageTimeOptions,
   view: TaskMessageView,
-  attachments: readonly Uint8Array[] = [],
+  extras: InboxExtras,
 ): InboxMessage {
   const message = {
     uuid: encodeInboxUUID(record.sequence),
-    text: renderInboxMessage(record, times, view),
+    text: renderInboxMessage(record, times, view, extras.reminder),
   };
 
-  const images = buildInboxImages(record, attachments);
+  const images = buildInboxImages(record, extras.attachments);
 
   return images.length === 0 ? message : { ...message, images };
 }
