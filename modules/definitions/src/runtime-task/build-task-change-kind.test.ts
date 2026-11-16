@@ -216,3 +216,38 @@ test('it leaves a merged pull request merged once the repo adopts the change', a
 
   expect(exports.map((row) => row.state)).toStrictEqual(['closed']);
 });
+
+test('it exports when the manifest writes its format in flow style', async () => {
+  const ctx = await setupTest();
+
+  await ctx.seed();
+
+  await requestDefinitionChange(ctx.context, { kind: 'define', input: buildTestDefineInput() });
+
+  await ctx.writeRepoFiles({ 'nixie.yaml': '{format: 4}\n' });
+  await ctx.runExports();
+
+  expect(ctx.onError).not.toHaveBeenCalled();
+  expect(ctx.repo.readPullRequests().map((request) => request.state)).toStrictEqual(['open']);
+});
+
+test('it opens a pull request that deletes the invalid folder of an undefined definition', async () => {
+  const ctx = await setupTest();
+
+  await ctx.writeRepoTask('water-the-tomatoes', buildTestTaskYaml());
+  await ctx.seed();
+  await ctx.writeRepoFiles({ 'tasks/water-the-tomatoes/task.yaml': 'name: [\n' });
+
+  await requestDefinitionChange(ctx.context, {
+    kind: 'undefine',
+    definitionID: 'water-the-tomatoes',
+  });
+
+  await ctx.runExports();
+
+  expect(ctx.onError).not.toHaveBeenCalled();
+
+  expect(ctx.readOpenFiles()).toStrictEqual({
+    'tasks/water-the-tomatoes/task.yaml': null,
+  });
+});

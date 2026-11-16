@@ -2,6 +2,7 @@ import type { Log } from '@heynixie/log';
 import { writeRecordsInTransaction } from '@heynixie/log';
 import type { Kysely, Transaction } from 'kysely';
 import invariant from 'tiny-invariant';
+import { z } from 'zod';
 import { isDefinitionsPath } from '../definition/is-definitions-path';
 import { parseDefinitions } from '../definition/parse-definitions';
 import { readDefinitionsInForce } from '../definition/read-definitions-in-force';
@@ -217,11 +218,10 @@ async function readTaskChange(
 
   const texts = new Map(textEntries);
 
-  const manifest = texts.get('nixie.yaml') ?? '';
-  const formatMatch = /^format:\s*(?<format>\d+)/mu.exec(manifest);
-  const format = Number(formatMatch?.groups?.['format'] ?? 0);
+  const format = readManifestFormat(texts.get('nixie.yaml'));
 
-  if (format < definitionsFormats.tasks) {
+  // A manifest the seed cannot parse is left to parseDefinitions below, which names its fault.
+  if (format !== null && format < definitionsFormats.tasks) {
     throw new Error(
       `the definitions repo reads format ${String(format)}, which applies no task folder`,
     );
@@ -238,12 +238,21 @@ async function readTaskChange(
   // The seed refuses the whole snapshot when a task folder has a fault, so a change that leaves
   // one never reaches a pull request.
   const encoder = new TextEncoder();
+  const snapshot = new Map(texts);
+
+  for (const [path, text] of change.files) {
+    if (text === null) {
+      snapshot.delete(path);
+    } else {
+      snapshot.set(path, text);
+    }
+  }
 
   parseDefinitions(
     {
       contentHash: '',
       files: new Map(
-        [...texts, ...change.files].flatMap(([path, text]): [string, Uint8Array][] =>
+        [...snapshot].flatMap(([path, text]): [string, Uint8Array][] =>
           text === null ? [] : [[path, encoder.encode(text)]],
         ),
       ),
@@ -255,6 +264,22 @@ async function readTaskChange(
   );
 
   return change;
+}
+
+const manifestFormatSchema = z.looseObject({ format: z.number() });
+
+function readManifestFormat(manifest: string | null | undefined): number | null {
+  if (manifest === undefined || manifest === null) {
+    return null;
+  }
+
+  try {
+    const parsed = manifestFormatSchema.safeParse(Bun.YAML.parse(manifest));
+
+    return parsed.success ? parsed.data.format : null;
+  } catch {
+    return null;
+  }
 }
 
 async function readClosingTasks(

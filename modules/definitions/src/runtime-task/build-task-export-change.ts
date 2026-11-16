@@ -1,3 +1,4 @@
+import { taskIDPattern } from '../task/task-id-pattern';
 import type { DefinitionsChange } from '../types';
 import type { StoredTaskDefinition } from './stored-task-definition';
 
@@ -23,8 +24,6 @@ export interface TaskExportInput {
   readonly folders: ReadonlyMap<string, readonly string[]>;
 }
 
-const definitionIDPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u;
-
 // Every write and delete stays inside tasks/<id>/ of its own definition, so an export never
 // touches a file of another definition or of any other kind of definition.
 export function buildTaskExportChange(input: TaskExportInput): DefinitionsChange {
@@ -33,7 +32,7 @@ export function buildTaskExportChange(input: TaskExportInput): DefinitionsChange
   for (const change of input.changes) {
     const folder = `tasks/${change.definitionID}/`;
 
-    if (!definitionIDPattern.test(change.definitionID)) {
+    if (!taskIDPattern.test(change.definitionID)) {
       throw new Error(`${change.definitionID} is not a definition ID, so it names no folder`);
     }
 
