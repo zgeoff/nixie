@@ -31,9 +31,5 @@ export async function runRuleGate(
     return buildGateReview('token_missing', { checks: { rule, tokens: 'fail' } });
   }
 
-  if (request.isPinned) {
-    return buildGateReview('pinned', { checks: { rule, tokens: 'pass' } });
-  }
-
   return { status: 'pass', source: 'untrusted', evidence: null, checks: { rule, tokens: 'pass' } };
 }

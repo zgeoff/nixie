@@ -10,7 +10,6 @@ export interface ContentGateRequest {
   readonly quote: string | null;
 
   readonly eventID: number | null;
-  readonly isPinned: boolean;
   readonly thread: string;
 
   // the thread a cited event is read from
