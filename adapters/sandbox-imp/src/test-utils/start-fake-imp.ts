@@ -179,11 +179,16 @@ function buildFakeImageCalls(state: FakeState, updateCallLog: UpdateCallLog): Fa
   };
 }
 
-type FakeSecretCalls = Pick<ImpPort, 'readSecretHosts' | 'addGrant' | 'addSecret' | 'removeSecret'>;
+type FakeSecretCalls = Pick<
+  ImpPort,
+  'readSecretHosts' | 'readSecretUpstreams' | 'addGrant' | 'addSecret' | 'removeSecret'
+>;
 
 function buildFakeSecretCalls(state: FakeState, updateCallLog: UpdateCallLog): FakeSecretCalls {
   return {
     readSecretHosts: (secret) => Promise.resolve(state.secrets.get(secret) ?? null),
+    readSecretUpstreams: (secret) =>
+      Promise.resolve(state.secrets.get(secret)?.map(() => null) ?? null),
     addGrant: (name, secret) => updateCallLog(`grant ${name} ${secret}`),
     addSecret: async (secret) => {
       await updateCallLog(`secret ${secret.name} ${secret.host} ${secret.header} ${secret.scheme}`);

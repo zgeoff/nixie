@@ -9,7 +9,7 @@ import type { ServerPartsOptions } from '../server/start-server';
 export interface WorkerPartInputs {
   readonly options: Pick<
     ServerPartsOptions,
-    'cleanup' | 'config' | 'harness' | 'images' | 'log' | 'secrets'
+    'cleanup' | 'config' | 'harness' | 'images' | 'log' | 'secrets' | 'spend'
   >;
   readonly adapter: SandboxAdapter;
   readonly log: Log;
@@ -41,6 +41,7 @@ export async function startWorkerPart(inputs: WorkerPartInputs): Promise<WorkerT
     clock,
     logger: inputs.options.log,
     readTools: inputs.readTools,
+    ...(inputs.options.spend === null ? {} : { gateway: inputs.options.spend.gateway }),
     ...(config.tasks.workerRuns === undefined ? {} : { workerRuns: config.tasks.workerRuns }),
   });
 

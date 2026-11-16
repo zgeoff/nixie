@@ -3,6 +3,7 @@ import { readLinkTarget } from '@heynixie/connectors';
 import type { Definitions, RecordInput } from '@heynixie/log';
 import { writeRecords } from '@heynixie/log';
 import { modelsConfigSchema } from '@heynixie/models';
+import { buildStubSpendGateway } from '@heynixie/spend/test-utils';
 import {
   claimTask,
   createConversationTask,
@@ -29,6 +30,7 @@ import { buildStubToolEndpoint } from '../test-utils/build-stub-tool-endpoint';
 import { readRecordsByKind } from '../test-utils/read-records-by-kind';
 import { runNextStep } from '../test-utils/run-next-step';
 import { startTestSessionHost } from '../test-utils/start-test-session-host';
+import type { StepCaptureInput } from '../utils/open-step-capture';
 import { workerRunStartedCodec } from '../worker/worker-run-started-codec';
 import { workerTurnEndedCodec } from '../worker/worker-turn-ended-codec';
 import { buildRunSettings } from './build-run-settings';
@@ -95,7 +97,7 @@ async function setupTest() {
   });
 
   const startRunner = async (
-    parts: Partial<Pick<SandboxRunnerOptions, 'tools' | 'memory'>> = {},
+    parts: Partial<Pick<SandboxRunnerOptions, 'tools' | 'memory' | 'gateway' | 'turnInputs'>> = {},
   ) => {
     const runner = await startSandboxRunner({
       context: host.context,
@@ -105,6 +107,8 @@ async function setupTest() {
       images: { conversation: 'nixie-conversation-0123456789ab' },
       tools: parts.tools ?? tools.endpoint,
       memory: parts.memory ?? (() => noMemory),
+      ...(parts.gateway === undefined ? {} : { gateway: parts.gateway }),
+      ...(parts.turnInputs === undefined ? {} : { turnInputs: parts.turnInputs }),
       getDefinitions: () => ({
         persona: 'You are Pip.',
         prompts: {},
@@ -950,6 +954,64 @@ test("it runs a task on its chosen model's profile, through that profile's host,
       model: { model: 'other-family-test-3', profile: 'router-b' },
     },
   ]);
+});
+
+test("it sends a task turn to its profile's base URL with the sandbox name and the profile ID when the gateway counts", async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seed.conversationStep();
+
+  const taskID = await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+    options: { model: 'second-look', profile: 'router-b', tools: ['tasks.list'] },
+  });
+
+  const runner = await ctx.startRunner({ gateway: buildStubSpendGateway() });
+
+  await ctx.runNextStep(runner);
+
+  const [sandbox] = await ctx.sandboxes.list(taskID);
+
+  const [turn] = ctx.guest.turns;
+
+  expect(turn?.profile.baseURL).toBe(
+    `https://router.example.test/anthropic/${sandbox?.id ?? ''}/router-b`,
+  );
+});
+
+test('it opens the capture of a task step on the routed base URL, so the tag follows the profile ID', async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seed.conversationStep();
+
+  const taskID = await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+    options: { model: 'second-look', profile: 'router-b', tools: ['tasks.list'] },
+  });
+
+  const openCapture = mock((input: StepCaptureInput) =>
+    Promise.resolve({
+      baseURL: `${input.profile.baseURL}/~in.tag`,
+      close: () => Promise.resolve(),
+    }),
+  );
+
+  const runner = await ctx.startRunner({
+    gateway: buildStubSpendGateway(),
+    turnInputs: { openCapture },
+  });
+
+  await ctx.runNextStep(runner);
+
+  const [sandbox] = await ctx.sandboxes.list(taskID);
+
+  const [turn] = ctx.guest.turns;
+
+  expect(turn?.profile.baseURL).toBe(
+    `https://router.example.test/anthropic/${sandbox?.id ?? ''}/router-b/~in.tag`,
+  );
 });
 
 test('it gives a stranger no persona text and no memory item', async () => {

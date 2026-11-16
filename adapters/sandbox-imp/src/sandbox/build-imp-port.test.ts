@@ -713,3 +713,107 @@ test('it removes a secret by its name', async () => {
 
   expect(bodies).toStrictEqual([{ json: { name: 'model-key' } }]);
 });
+
+test('it reads the upstream of each rule of a secret, and null for a rule with none', async () => {
+  const impd = await startTestImpd();
+
+  onTestFinished(impd.stop);
+
+  const port = buildImpPort({ url: impd.url, token: TEST_TOKEN });
+
+  await port.addSecret({
+    name: 'nixie-test-routed',
+    value: 'not-a-real-value',
+    host: 'models.example.com',
+    header: 'authorization',
+    scheme: 'bearer',
+    upstream: 'http://10.1.2.3:18081',
+  });
+
+  await port.addSecret({
+    name: 'nixie-test-direct',
+    value: 'not-a-real-value',
+    host: 'models.example.com',
+    header: 'authorization',
+    scheme: 'bearer',
+  });
+
+  const upstreams = await Promise.all([
+    port.readSecretUpstreams('nixie-test-routed'),
+    port.readSecretUpstreams('nixie-test-direct'),
+    port.readSecretUpstreams('nixie-test-absent'),
+  ]);
+
+  expect(upstreams).toStrictEqual([['http://10.1.2.3:18081'], [null], null]);
+});
+
+test('it grants a model secret to a sandbox with the path filter of its own name when the gateway counts', async () => {
+  const impd = await startTestImpd();
+
+  const guested = attachTestGuests(impd, buildImpPort({ url: impd.url, token: TEST_TOKEN }));
+
+  const started = setupIsolationAdapter({
+    port: guested.port,
+    removeSecret: async (name) => {
+      await impd.client.secrets.delete({ name });
+    },
+    publicEgress: null,
+    secret: 'nixie-test-counted',
+    modelGateway: { modelURL: 'http://10.1.2.3:18081' },
+  });
+
+  onTestFinished(impd.stop);
+
+  const isolation = await started;
+
+  await impd.seedImage('tide-image');
+
+  const sandbox = await isolation.createSandbox(
+    buildMockSandboxSpec({
+      kind: 'conversation',
+      image: 'tide-image',
+      grants: [buildMockGrantSpec({ secret: 'nixie-test-counted', host: 'api.anthropic.com' })],
+      toolRoute: true,
+    }),
+  );
+
+  const grants = await impd.client.grants.details({ name: sandbox.id });
+
+  expect(grants).toStrictEqual([
+    { secret: 'nixie-test-counted', filter: { paths: [`/${sandbox.id}/**`] } },
+  ]);
+});
+
+test('it grants a model secret with no filter when no gateway counts', async () => {
+  const impd = await startTestImpd();
+
+  const guested = attachTestGuests(impd, buildImpPort({ url: impd.url, token: TEST_TOKEN }));
+
+  const started = setupIsolationAdapter({
+    port: guested.port,
+    removeSecret: async (name) => {
+      await impd.client.secrets.delete({ name });
+    },
+    publicEgress: null,
+    secret: 'nixie-test-plain',
+  });
+
+  onTestFinished(impd.stop);
+
+  const isolation = await started;
+
+  await impd.seedImage('tide-image');
+
+  const sandbox = await isolation.createSandbox(
+    buildMockSandboxSpec({
+      kind: 'conversation',
+      image: 'tide-image',
+      grants: [buildMockGrantSpec({ secret: 'nixie-test-plain', host: 'api.anthropic.com' })],
+      toolRoute: true,
+    }),
+  );
+
+  const grants = await impd.client.grants.details({ name: sandbox.id });
+
+  expect(grants).toStrictEqual([{ secret: 'nixie-test-plain', filter: null }]);
+});

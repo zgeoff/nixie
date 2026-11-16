@@ -27,6 +27,7 @@ export const startCheckerTask = makeSystemTaskRunner<CheckerTaskOptions, Checker
       command: session.command,
       timeoutMs: options.timeoutMs,
       clock: options.clock,
+      ...(options.gateway === undefined ? {} : { gateway: options.gateway }),
       log: options.log,
     });
 

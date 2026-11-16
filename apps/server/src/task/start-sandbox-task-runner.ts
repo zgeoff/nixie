@@ -28,6 +28,7 @@ export async function startSandboxTaskRunner(
     defaultZone: parts.config.time.default_zone,
     messaging: buildTaskMessaging(parts.config),
     turnInputs: parts.turnInputs,
+    ...(parts.spend === null ? {} : { gateway: parts.spend.gateway }),
     clearFetchPauses: parts.tools.webFetch.clearPauses,
     log: parts.log,
   });

@@ -82,7 +82,7 @@ export async function startServer(options: ServerOptions): Promise<Server> {
       ...(options.harness === undefined ? {} : { clock: options.harness.link.clock }),
     });
 
-    await startSpendChecks(inputs, cleanup);
+    await startSpendChecks(inputs, cleanup.signal);
 
     return await startServerWork({ ...options, ...inputs, writer, cleanup });
   } catch (error) {

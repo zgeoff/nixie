@@ -59,6 +59,7 @@ export const startWorkerTool = makeSystemTaskRunner<WorkerToolOptions, WorkerToo
       slots: makeWorkerSlots(options.workerRuns),
       failedDestroys: [],
       cleanups: new Set(),
+      ...(options.gateway === undefined ? {} : { gateway: options.gateway }),
     };
 
     session.defer(async () => {

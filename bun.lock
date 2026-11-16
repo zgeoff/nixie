@@ -757,6 +757,7 @@
         "@heynixie/prompts": "workspace:*",
         "@heynixie/proposals": "workspace:*",
         "@heynixie/sandbox": "workspace:*",
+        "@heynixie/spend": "workspace:*",
         "@heynixie/tasks": "workspace:*",
         "@heynixie/tools": "workspace:*",
         "@heynixie/wire": "workspace:*",
@@ -802,11 +803,9 @@
       "dependencies": {
         "@heynixie/logger": "workspace:*",
         "@heynixie/sandbox": "workspace:*",
-        "ts-pattern": "catalog:",
       },
       "devDependencies": {
         "@heynixie/testing": "workspace:*",
-        "tiny-invariant": "catalog:",
       },
     },
     "modules/tasks": {

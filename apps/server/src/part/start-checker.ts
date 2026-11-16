@@ -10,6 +10,7 @@ export async function startChecker(parts: ServerParts): Promise<CheckerTask> {
     sandboxes: parts.tools.adapter,
     images: toImageNames(parts.images),
     timeoutMs: parts.config.memory.checkerTimeoutMs,
+    ...(parts.spend === null ? {} : { gateway: parts.spend.gateway }),
     clock: parts.context.clock,
     log: parts.log,
   });

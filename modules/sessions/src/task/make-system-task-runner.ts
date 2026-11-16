@@ -13,6 +13,7 @@ import type {
   SandboxLimits,
 } from '@heynixie/sandbox';
 import { sandboxSizes } from '@heynixie/sandbox';
+import type { SpendGateway } from '@heynixie/spend';
 import invariant from 'tiny-invariant';
 import type { StepCapturePort } from '../utils/open-step-capture';
 import { buildGuestCommand } from './build-guest-command';
@@ -28,6 +29,9 @@ export interface SystemTaskOptions {
 
   // the turn-input log, for the steps of this runner
   readonly turnInputs?: StepCapturePort;
+
+  // set when every model request goes through the gateway, which counts it under its sandbox
+  readonly gateway?: SpendGateway;
 }
 
 export interface SystemTaskSession {

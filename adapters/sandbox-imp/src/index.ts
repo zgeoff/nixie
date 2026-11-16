@@ -6,4 +6,4 @@ export type { ImpSection } from './config/imp-config-schema';
 export { impConfigSchema } from './config/imp-config-schema';
 export type { ImpConfig, PublicEgressConfig } from './config/parse-imp-config';
 export { parseImpConfig } from './config/parse-imp-config';
-export type { ImpPort } from './types';
+export type { ImpPort, ModelGateway } from './types';

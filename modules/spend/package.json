@@ -12,11 +12,9 @@
   },
   "dependencies": {
     "@heynixie/logger": "workspace:*",
-    "@heynixie/sandbox": "workspace:*",
-    "ts-pattern": "catalog:"
+    "@heynixie/sandbox": "workspace:*"
   },
   "devDependencies": {
-    "@heynixie/testing": "workspace:*",
-    "tiny-invariant": "catalog:"
+    "@heynixie/testing": "workspace:*"
   }
 }

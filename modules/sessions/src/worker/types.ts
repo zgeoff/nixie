@@ -9,6 +9,7 @@ import type {
   SandboxAdapter,
   SandboxLimits,
 } from '@heynixie/sandbox';
+import type { SpendGateway } from '@heynixie/spend';
 import type { ToolEndpoint, ToolRun, ToolStepHold } from '@heynixie/tools';
 import type { WorkerUsed } from './worker-used';
 
@@ -106,4 +107,7 @@ export interface WorkerDeps {
 
   // the destroys in flight, which a stop waits for
   readonly cleanups: Set<Promise<void>>;
+
+  // set when every model request goes through the gateway, which counts the worker's sandbox
+  readonly gateway?: SpendGateway;
 }

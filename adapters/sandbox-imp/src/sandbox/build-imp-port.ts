@@ -21,8 +21,19 @@ export function buildImpPort(connection: ImpConnection): ImpPort {
 
       return found ? found.rules.map((rule) => rule.host) : null;
     },
-    addGrant: async (name, secret) => {
-      await client.grants.add({ name, secret });
+    readSecretUpstreams: async (secret) => {
+      const secrets = await client.secrets.list();
+
+      const found = secrets.find((row) => row.name === secret);
+
+      return found ? found.rules.map((rule) => rule.upstream ?? null) : null;
+    },
+    addGrant: async (name, secret, filter) => {
+      await client.grants.add({
+        name,
+        secret,
+        ...(filter === undefined ? {} : { filter: { paths: [...filter.paths] } }),
+      });
     },
     addSecret: async (secret) => {
       await client.secrets.add({

@@ -79,6 +79,16 @@ interface ImpSecretInput {
   readonly upstream?: string;
 }
 
+// The gateway that counts every model request: a model secret must send to its model URL, and each
+// grant covers only the path of its own sandbox.
+export interface ModelGateway {
+  readonly modelURL: string;
+}
+
+interface GrantFilter {
+  readonly paths: readonly string[];
+}
+
 export interface ImpPort {
   readonly readFeatures: (signal?: AbortSignal) => Promise<ImpFeatures>;
   readonly createImp: (input: ImpCreateInput) => Promise<void>;
@@ -90,7 +100,11 @@ export interface ImpPort {
   readonly wakeImp: (name: string) => Promise<void>;
 
   readonly readSecretHosts: (secret: string) => Promise<readonly string[] | null>;
-  readonly addGrant: (name: string, secret: string) => Promise<void>;
+
+  // the origin that each rule of the secret sends to, in place of its host, or null for a rule with
+  // none; null for a secret that impd lacks
+  readonly readSecretUpstreams: (secret: string) => Promise<readonly (string | null)[] | null>;
+  readonly addGrant: (name: string, secret: string, filter?: GrantFilter) => Promise<void>;
   readonly addSecret: (secret: ImpSecretInput) => Promise<void>;
   readonly removeSecret: (name: string) => Promise<void>;
 

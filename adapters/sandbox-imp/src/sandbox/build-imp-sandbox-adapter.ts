@@ -12,7 +12,7 @@ import type { PublicEgressConfig } from '../config/parse-imp-config';
 import { requireImpSpec } from '../config/require-imp-spec';
 import { buildRouteRegistry } from '../routing/build-route-registry';
 import { buildSleepRegistry } from '../routing/build-sleep-registry';
-import type { ImpPort } from '../types';
+import type { ImpPort, ModelGateway } from '../types';
 import { buildImpPolicy } from './build-imp-policy';
 import type { SleepRegistry } from './build-imp-sandbox';
 import { buildImpSandbox } from './build-imp-sandbox';
@@ -23,6 +23,8 @@ export interface ImpSandboxOptions {
   readonly config: { readonly publicEgress: PublicEgressConfig | null };
 
   readonly toolTarget: ToolTargetResolver;
+
+  readonly modelGateway?: ModelGateway;
 
   readonly guestToolPort?: number;
   readonly killGraceMs?: number;
@@ -169,7 +171,12 @@ async function createImpSandbox(
   spec: SandboxSpec,
   sandboxes: ImpSandboxes,
 ): Promise<Sandbox> {
-  await requireImpSpec(options.port, options.config.publicEgress, spec);
+  await requireImpSpec(
+    options.port,
+    options.config.publicEgress,
+    spec,
+    options.modelGateway ?? null,
+  );
 
   const image = sandboxes.images.get(spec.image);
 
@@ -210,7 +217,10 @@ async function setupImp(options: ImpSandboxOptions, sandbox: Sandbox): Promise<S
   });
 
   for (const grant of sandbox.spec.grants) {
-    await options.port.addGrant(sandbox.id, grant.secret);
+    const filter =
+      options.modelGateway === undefined ? undefined : { paths: [`/${sandbox.id}/**`] };
+
+    await options.port.addGrant(sandbox.id, grant.secret, filter);
 
     await options.recorder.write({
       event: 'granted',

@@ -52,14 +52,14 @@ export interface WorkerRunLimits {
   readonly dollars: number;
 }
 
-export interface DayLimits {
+interface DayLimits {
   readonly dollars: number;
   readonly tokens: number;
   readonly turns: number;
   readonly turnCap: number;
 }
 
-export interface MonthLimits {
+interface MonthLimits {
   readonly dollars: number;
   readonly tokens: number;
   readonly turns: number;
