@@ -51,9 +51,9 @@ The [preview API check](preview-api-check.md) gives each request and a worked tu
 ## Scheduled task
 
 The preview's definitions hold one scheduled task, `preview-tick`, which runs every 5 minutes and
-reports to the conversation. Each run and the conversation turn it wakes are real model calls on the
-preview's profile. [Preview API check](preview-api-check.md#see-the-scheduled-task-fire) shows how
-to see a run's report.
+reports to the conversation. Each task run and the conversation turn it wakes are real model calls
+on the preview's profile. [Preview API check](preview-api-check.md#see-the-scheduled-task-fire)
+shows how to see a task run's report.
 
 ## Model calls
 
