@@ -18,11 +18,8 @@ export const actionReconciliationMigration: Migration = {
     const additions: readonly (readonly [string, string])[] = [
       ['call_sequence', 'integer'],
       ['deadline_at', 'integer'],
-      [
-        'risk_class',
-        `text not null default 'routine' check (risk_class in ('routine', 'always_ask', 'lifting'))`,
-      ],
-      ['is_approved', 'integer not null default 0 check (is_approved in (0, 1))'],
+      ['risk_class', `text not null default 'routine'`],
+      ['is_approved', 'integer not null default 0'],
       ['held_by_proposal_id', 'text'],
       ['unknown_streak', 'integer not null default 0'],
       ['first_attempt_at', 'integer'],
