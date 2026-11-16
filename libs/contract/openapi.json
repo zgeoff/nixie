@@ -5712,6 +5712,9 @@
                           "name": {
                             "type": "string"
                           },
+                          "nextRunAt": {
+                            "type": "string"
+                          },
                           "runner": {
                             "type": "string"
                           },
@@ -5732,6 +5735,9 @@
                             "type": "string",
                             "minLength": 1,
                             "maxLength": 200
+                          },
+                          "wakeable": {
+                            "type": "boolean"
                           },
                           "waitingOn": {
                             "type": "string",

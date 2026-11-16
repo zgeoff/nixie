@@ -83,8 +83,11 @@ async function createTestContext(
     'unwrapKey',
   ]);
 
-  const readStoredVersion: ReadDefinitionVersion = async (db, hash) =>
-    (await readDefinitionVersion(db, hash)) ?? definitionStore.readDefinitionVersion(db, hash);
+  const readStoredVersion: ReadDefinitionVersion = async (db, hash) => {
+    const stored = await readDefinitionVersion(db, hash);
+
+    return stored ?? definitionStore.readDefinitionVersion(db, hash);
+  };
 
   const context = {
     log: {

@@ -650,7 +650,7 @@ test('it names a task out of force by its open task run over a profile that the 
           taskID,
           name: 'An older name',
           brief: 'An older brief.',
-          isWokenByMessages: false,
+          wakeable: false,
           speaker: 'plain_task',
         },
       ],

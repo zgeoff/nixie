@@ -304,6 +304,7 @@ test(
         runner: 'sandbox',
         state: 'ready',
         taskID: tomatoesTask,
+        wakeable: false,
       },
     ]);
   },

@@ -184,7 +184,7 @@ async function readPinnedProfiles(
         taskID,
         name: version.name,
         brief: version.brief,
-        isWokenByMessages: false,
+        wakeable: false,
         speaker: version.persona === 'default' ? 'persona_task' : 'plain_task',
       });
     }
