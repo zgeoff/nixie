@@ -98,6 +98,29 @@ test('it starts a thread with the model, the working directory and the system pr
   ]);
 });
 
+test('it writes the turn frame tool-call wait into the tool server config in seconds', async () => {
+  const ctx = await setupTest();
+
+  const server = startFakeAppServer(makeTurnAnswer(undefined));
+  const running = ctx.runGuest(server);
+
+  await ctx.sendFrame(
+    buildMockCodexTurnFrame({ limits: { modelCalls: null, toolCallWaitMs: 2000 } }),
+  );
+
+  await waitForCondition(() => server.requests.length === 2);
+
+  await ctx.endInput();
+
+  server.close(0);
+
+  await running;
+
+  const config = await readFile(join(ctx.home, '.codex', 'config.toml'), 'utf8');
+
+  expect(config.split('\n')).toContain('tool_timeout_sec = 2');
+});
+
 test('it sends one read frame of every input message when the turn starts', async () => {
   const ctx = await setupTest();
 

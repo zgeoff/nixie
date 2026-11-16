@@ -30,7 +30,7 @@ test('it binds the Codex record, which speaks the OpenAI Responses API', () => {
     imageKey: 'codex',
     sizeRows: { conversation: null, systemTask: 'codexTask' },
     toolUseMetaKey: 'callId',
-    toolCallWaitMs: null,
+    toolCallWaitMs: 900_000,
     secretHeader: 'bearer',
     contextWindow: null,
     rewritesRequests: false,
