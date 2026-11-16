@@ -2,7 +2,7 @@ import { removeSummaryKeys } from '@heynixie/compaction';
 import { removeWebFetchThread } from '@heynixie/connectors';
 import { subscribeToRecordCommits, writeRecords } from '@heynixie/log';
 import { toErrorFields } from '@heynixie/logger';
-import type { Harness, ResolvedProfile } from '@heynixie/models';
+import type { ResolvedProfile } from '@heynixie/models';
 import {
   bindHarness,
   deriveModelSecret,
@@ -10,26 +10,16 @@ import {
   modelSessionInvalidatedCodec,
   resolveModelCredentials,
 } from '@heynixie/models';
-import type { GrantSpec, GuestCommand, Sandbox } from '@heynixie/sandbox';
+import type { GrantSpec, Sandbox } from '@heynixie/sandbox';
 import { readSandboxOwners } from '@heynixie/sandbox';
-import type {
-  RunStep,
-  StartedTaskSetup,
-  StepInput,
-  StepResult,
-  TaskLimits,
-  TaskRun,
-  TaskRunOptions,
-} from '@heynixie/tasks';
+import type { RunStep, StepInput, StepResult, TaskLimits, TaskRun } from '@heynixie/tasks';
 import {
   probePauseRequested,
   readStartedTaskIDs,
-  readTaskSetup,
   startClaimPool,
-  startedTaskDefaultTools,
   taskReportToolName,
 } from '@heynixie/tasks';
-import type { RunEndpoint, ToolRunModel } from '@heynixie/tools';
+import type { RunEndpoint } from '@heynixie/tools';
 import invariant from 'tiny-invariant';
 import type { Actor } from 'xstate';
 import { createActor } from 'xstate';
@@ -45,7 +35,6 @@ import type { SessionGuard } from '../utils/make-session-guard';
 import { makeSessionGuard } from '../utils/make-session-guard';
 import { runGuestPurge } from '../utils/run-guest-purge';
 import { sessionImageBudget } from '../utils/session-image-budget';
-import { buildGuestCommand } from './build-guest-command';
 import { buildReachedLimit } from './build-reached-limit';
 import { buildSpendRecord } from './build-spend-record';
 import type { CallBudget } from './create-call-budget';
@@ -59,6 +48,8 @@ import { planTaskTurnEnd } from './plan-task-turn-end';
 import { readCleanedTaskIDs } from './read-cleaned-task-ids';
 import { readLateSpend } from './read-late-spend';
 import { readRunUsage } from './read-run-usage';
+import type { StartedRun } from './read-started-run';
+import { readStartedRun } from './read-started-run';
 import { releaseTaskImp } from './release-task-imp';
 import { removeTaskSandboxes } from './remove-task-sandboxes';
 import type { SandboxRunnerOptions } from './sandbox-runner-options';
@@ -79,6 +70,9 @@ interface TaskRunner {
 
   readonly grants: Map<string, Promise<GrantSpec>>;
   readonly imps: Map<string, TaskImpActor>;
+
+  // the version hash that each running endpoint started with, null for a task that has none
+  readonly endpointHashes: Map<string, string | null>;
   readonly guards: Map<string, SessionGuard>;
 }
 
@@ -92,6 +86,7 @@ export const startSandboxRunner = makeSystemTaskRunner<SandboxRunnerOptions, San
       profiles: resolveModelCredentials(options.models, options.secrets),
       grants: new Map(),
       imps: new Map(),
+      endpointHashes: new Map(),
       guards: new Map(),
     };
 
@@ -223,6 +218,7 @@ async function removeEndedTask(runner: TaskRunner, taskID: string): Promise<void
   const sandboxes = await removed.promise;
 
   runner.imps.delete(taskID);
+  runner.endpointHashes.delete(taskID);
   runner.guards.delete(taskID);
   imp.stop();
   runner.options.log('sandbox_runner.task_removed', { taskID, sandboxes });
@@ -252,6 +248,8 @@ function buildTaskImpParts(runner: TaskRunner, taskID: string): TaskImpParts {
     startEndpoint: async () => {
       const run = await readStartedRun(runner, taskID);
 
+      runner.endpointHashes.set(taskID, run.definitionHash);
+
       // The start's record lists only the tools it named, and every task also gets silent end and report.
       return options.tools.startRun({
         runID: taskID,
@@ -278,54 +276,6 @@ function buildTaskImpParts(runner: TaskRunner, taskID: string): TaskImpParts {
     onSleepFailed: (error) => {
       options.log('sandbox_runner.sleep_failed', { taskID, ...toErrorFields(error) }, 'error');
     },
-  };
-}
-
-interface StartedRun {
-  readonly startedBy: string;
-  readonly options: TaskRunOptions;
-  readonly profile: ResolvedProfile;
-  readonly harness: Harness;
-  readonly command: GuestCommand;
-  readonly model: ToolRunModel;
-}
-
-async function readStartedRun(runner: TaskRunner, taskID: string): Promise<StartedRun> {
-  const setup = await readTaskSetup(runner.options.context, taskID);
-
-  invariant(setup?.kind === 'started', `the sandbox runner runs started tasks only, not ${taskID}`);
-
-  return buildStartedRun(runner, setup);
-}
-
-function buildStartedRun(runner: TaskRunner, setup: StartedTaskSetup): StartedRun {
-  const defaultLimits = runner.options.models.limits.taskRun.default;
-
-  // A task started by moving a message to it holds no options: no persona, no memory, default tools.
-  const options: TaskRunOptions = setup.options ?? {
-    model: null,
-    profile: null,
-    persona: 'none',
-    memory: 'none',
-    tools: startedTaskDefaultTools,
-    report: 'wake',
-    limits: defaultLimits,
-  };
-
-  const profile =
-    options.profile === null ? runner.session.profile : runner.profiles[options.profile];
-
-  invariant(profile, `the task's profile ${options.profile ?? ''} is not defined`);
-
-  const harness = bindHarness(profile.profile);
-
-  return {
-    startedBy: setup.startedBy,
-    options,
-    profile,
-    harness,
-    command: buildGuestCommand(runner.options.sandboxes, harness.guest),
-    model: { model: profile.profile.model, profile: profile.profile.id },
   };
 }
 
@@ -405,6 +355,8 @@ async function runTaskTurn(
   input: StepInput,
   parts: TaskTurnParts,
 ): Promise<StepResult> {
+  await renewStaleImp(runner, input.taskID, parts.run.definitionHash);
+
   const imp = resolveTaskImp(runner, input.taskID);
   const acquired = Promise.withResolvers<TaskImp>();
 
@@ -483,6 +435,30 @@ async function runTaskTurn(
   };
 }
 
+// An endpoint keeps the tool list of the version it started with. A task run that pins another
+// version gets a new endpoint, and the imp's sandbox carries over by its owner.
+async function renewStaleImp(
+  runner: TaskRunner,
+  taskID: string,
+  definitionHash: string | null,
+): Promise<void> {
+  const held = runner.imps.get(taskID);
+
+  if (
+    held === undefined ||
+    !runner.endpointHashes.has(taskID) ||
+    runner.endpointHashes.get(taskID) === definitionHash
+  ) {
+    return;
+  }
+
+  runner.imps.delete(taskID);
+  runner.endpointHashes.delete(taskID);
+  held.stop();
+
+  await held.getSnapshot().context.endpoint?.stop();
+}
+
 interface TaskRunParts {
   readonly run: StartedRun;
   readonly budget: CallBudget;
@@ -500,6 +476,7 @@ function buildTaskRun(runner: TaskRunner, parts: TaskRunParts): ConversationRun 
   return {
     context: options.context,
     frame: { kind: 'task', startedBy: parts.run.startedBy, report: parts.run.options.report },
+    ...(parts.run.sinceSequence === null ? {} : { sinceSequence: parts.run.sinceSequence }),
     profile: parts.run.profile,
     harness: parts.run.harness,
     turnProfile: parts.run.harness.toTurnProfile('kept'),

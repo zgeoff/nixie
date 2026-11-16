@@ -7,7 +7,11 @@ import { readTestActions } from '@heynixie/actions/test-utils';
 import { logProjections, startWriter } from '@heynixie/log';
 import { readStarterDecisionPoint } from '@heynixie/policy/test-utils';
 import { tasksProjections, writeInboxRecords } from '@heynixie/tasks';
-import { buildTestRunSettings, buildTestTaskRunners } from '@heynixie/tasks/test-utils';
+import {
+  buildTestDefinitionReaders,
+  buildTestRunSettings,
+  buildTestTaskRunners,
+} from '@heynixie/tasks/test-utils';
 import { buildTestClock } from '@heynixie/testing';
 import { makeQueueCheckStep } from '../queue/make-queue-check-step';
 import { buildActions } from '../test/build-actions';
@@ -41,6 +45,7 @@ async function setupTest() {
     clock: buildTestClock(1_000_000),
     definitions: () => ({ snapshotHash: 'sha256:test' }),
     runSettings: buildTestRunSettings(),
+    ...buildTestDefinitionReaders(),
     runners: buildTestTaskRunners(),
   };
 

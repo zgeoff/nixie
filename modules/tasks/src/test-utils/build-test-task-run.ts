@@ -6,6 +6,8 @@ export interface TestTaskRunOptions {
   readonly limits?: { readonly turns: number; readonly dollars: number };
   readonly originSequence?: number | null;
   readonly carriesRunID?: string | null;
+  readonly definitionHash?: string | null;
+  readonly triggerKey?: string | null;
 }
 
 // A plain task run with no report shape and a wake report to a starter, for the tests of code that
@@ -24,8 +26,8 @@ export function buildTestTaskRun(options: TestTaskRunOptions = {}): TaskRun {
       openedByStep: 'tide-tables:1',
       origin: { kind: 'brief', sequence: options.originSequence ?? null },
       definitionID: null,
-      definitionHash: null,
-      triggerKey: null,
+      definitionHash: options.definitionHash ?? null,
+      triggerKey: options.triggerKey ?? null,
       carriesRunID: options.carriesRunID ?? null,
       briefID: null,
       report: { mode: 'wake', target: 'conversation' },

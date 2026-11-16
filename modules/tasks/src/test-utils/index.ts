@@ -1,5 +1,12 @@
 export type { TestTaskRunOptions } from './build-test-task-run';
 export { buildTestTaskRun } from './build-test-task-run';
+export type { TestDefinitionReaders, TestDefinitionStore } from './build-test-definition-readers';
+
+export {
+  buildTestDefinitionReaders,
+  buildTestDefinitionStore,
+} from './build-test-definition-readers';
+
 export { buildTestTaskRunners } from './build-test-task-runners';
 export { buildMockTaskStartBounds } from './build-mock-task-start-bounds';
 export type { TestRunSettingsOptions } from './build-test-run-settings';
@@ -25,3 +32,6 @@ export { startNextTestWriter } from './start-next-test-writer';
 export type { TestTasks } from './start-test-tasks';
 export { startTestTasks } from './start-test-tasks';
 export { writeTestTaskMessage } from './write-test-task-message';
+export type { DefinitionTaskSeed } from './seed-definition-task';
+export { seedDefinitionTask } from './seed-definition-task';
+export { writeTestTriggerFire } from './write-test-trigger-fire';

@@ -12,7 +12,11 @@ import {
   writeStepCommit,
   writeStepError,
 } from '@heynixie/tasks';
-import { buildTestRunSettings, buildTestTaskRunners } from '@heynixie/tasks/test-utils';
+import {
+  buildTestDefinitionReaders,
+  buildTestRunSettings,
+  buildTestTaskRunners,
+} from '@heynixie/tasks/test-utils';
 import { buildTestClock } from '@heynixie/testing';
 import type { TestStep } from '../test-utils/claim-test-step';
 import { claimTestStep } from '../test-utils/claim-test-step';
@@ -46,6 +50,7 @@ async function setupTest() {
     clock,
     definitions: () => ({ snapshotHash: 'sha256:test' }),
     runSettings: buildTestRunSettings(),
+    ...buildTestDefinitionReaders(),
     runners: buildTestTaskRunners(),
   };
 

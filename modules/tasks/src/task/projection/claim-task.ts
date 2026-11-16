@@ -63,7 +63,6 @@ async function readClaimableTask(
 ): Promise<ClaimCandidate | null> {
   const tasks = options.tasks ?? null;
   const taskID = options.taskID;
-  const startedBy = tasks === 'started' ? 'is not' : 'is';
 
   const row = await tx
     .$extendTables<TasksTables>()
@@ -75,7 +74,16 @@ async function readClaimableTask(
     .where('tasks.claimable_at', '<=', now)
     .where('tasks.state', 'in', ['ready', 'running'])
     .where((eb) => eb.or([eb('leases.holder', 'is', null), eb('leases.expires_at', '<=', now)]))
-    .$if(tasks !== null, (query) => query.where('tasks.started_by', startedBy, null))
+    .$if(tasks !== null, (query) =>
+      query.where((eb) => {
+        const isStarted = eb.or([
+          eb('tasks.started_by', 'is not', null),
+          eb('tasks.definition_id', 'is not', null),
+        ]);
+
+        return tasks === 'started' ? isStarted : eb.not(isStarted);
+      }),
+    )
     .where((eb) => buildPauseCheck(eb, 'tasks.task_id'))
     .where((eb) => (taskID === undefined ? eb.and([]) : eb('tasks.task_id', '=', taskID)))
     .orderBy('tasks.updated_sequence')

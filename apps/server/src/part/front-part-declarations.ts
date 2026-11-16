@@ -39,6 +39,7 @@ export const frontPartDeclarations: readonly AnyPartDeclaration<ServerPartValues
             hopLimit: options.config.tasks.messaging.hopLimit,
           }),
           runners: buildServerTaskRunners(),
+          taskRunLimits: options.config.models.limits.taskRun.default,
           settings: {
             ...defaultAPISettings,
             isBackupEnabled: options.config.backup.isEnabled,

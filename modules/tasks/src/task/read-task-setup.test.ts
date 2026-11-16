@@ -3,6 +3,7 @@ import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import invariant from 'tiny-invariant';
 import { buildStepRunID } from '../step/build-step-run-id';
 import { seedConversationStep } from '../test-utils/seed-conversation-step';
+import { seedDefinitionTask } from '../test-utils/seed-definition-task';
 import { seedPausedTask } from '../test-utils/seed-paused-task';
 import { seedTask } from '../test-utils/seed-task';
 import { startTestTasks } from '../test-utils/start-test-tasks';
@@ -142,5 +143,39 @@ test('it reads the runner, report and limits of a start that stored an envelope,
     report: 'next_turn',
     limits: { turns: 4, dollars: 1 },
     options: null,
+  });
+});
+
+test('it reads the definition and the hash in force of a definition task', async () => {
+  const ctx = await setupTest();
+
+  const taskID = await seedDefinitionTask(ctx, {
+    definitionID: 'water-the-tomatoes',
+    definitionHash: 'hash-1',
+  });
+
+  const result = await readTaskSetup(ctx.context, taskID);
+
+  expect(result).toStrictEqual({
+    kind: 'definition',
+    definitionID: 'water-the-tomatoes',
+    definitionHash: 'hash-1',
+  });
+});
+
+test('it reads a null hash for a definition task out of force', async () => {
+  const ctx = await setupTest();
+
+  const taskID = await seedDefinitionTask(ctx, {
+    definitionID: 'water-the-tomatoes',
+    definitionHash: null,
+  });
+
+  const result = await readTaskSetup(ctx.context, taskID);
+
+  expect(result).toStrictEqual({
+    kind: 'definition',
+    definitionID: 'water-the-tomatoes',
+    definitionHash: null,
   });
 });

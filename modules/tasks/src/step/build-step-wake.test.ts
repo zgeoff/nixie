@@ -149,3 +149,9 @@ test('it leaves out a message that did not wake the task', () => {
 test('it carries the hop of the step before when nothing new woke the step', () => {
   expect(buildStepWake([], 6)).toStrictEqual({ hop: 6, cause: { kind: 'carried' } });
 });
+
+test('it counts a step woken by a trigger fire as hop 0, from an outside event', () => {
+  expect(
+    buildStepWake([{ kind: 'trigger.fired', thread: 'planner', payload: {} }], 7),
+  ).toStrictEqual({ hop: 0, cause: { kind: 'event' } });
+});

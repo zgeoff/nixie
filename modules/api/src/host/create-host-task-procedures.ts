@@ -54,6 +54,13 @@ export function createHostTaskProcedures(context: APIContext) {
         throw options.errors.CONVERSATION_NEVER_CLOSES();
       }
 
+      if (
+        outcome.status === 'refused' &&
+        outcome.refusal.reason === 'definition_task_never_closes'
+      ) {
+        throw options.errors.DEFINITION_TASK_NEVER_CLOSES();
+      }
+
       return toHostControlled(options.input.taskID, outcome, options.errors);
     }),
   };
@@ -101,8 +108,12 @@ function toHostControlled(
         message: `the runner of task ${taskID} does not take this control`,
       }),
     )
-    .with({ reason: 'conversation_never_closes' }, () => {
-      throw new Error('only a close refuses the conversation');
-    })
+    .with(
+      { reason: 'conversation_never_closes' },
+      { reason: 'definition_task_never_closes' },
+      () => {
+        throw new Error('only a close refuses the conversation or a definition task');
+      },
+    )
     .exhaustive();
 }

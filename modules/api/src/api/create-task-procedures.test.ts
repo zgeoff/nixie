@@ -602,6 +602,44 @@ test('#tasks.close refuses to close the conversation', async () => {
   expect(refused).toMatchObject({ code: 'CONVERSATION_NEVER_CLOSES' });
 });
 
+test('#tasks.close refuses to close the task of a definition', async () => {
+  const api = await startTestAPI();
+  const laptop = await createDeviceSession(api.context, 'laptop');
+
+  const client = buildTestClient(api.url, laptop.token);
+
+  await writeRecords(api.context.log, [
+    {
+      kind: 'task.created',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'w4t7r2n9ka',
+      payload: { taskID: 'w4t7r2n9ka', isConversation: false, state: 'waiting' },
+    },
+    {
+      kind: 'task.definition_set',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'w4t7r2n9ka',
+      payload: {
+        taskID: 'w4t7r2n9ka',
+        definitionID: 'water-the-tomatoes',
+        definitionHash: 'hash-1',
+      },
+    },
+  ]);
+
+  const refused = await client.tasks
+    .close({
+      clientActionID: '7b9d1f3a-6c8e-4a0b-9d2f-4e5a6b7c8d9f',
+      taskID: 'w4t7r2n9ka',
+    })
+    .then(
+      () => null,
+      (error: unknown) => error,
+    );
+
+  expect(refused).toMatchObject({ code: 'DEFINITION_TASK_NEVER_CLOSES' });
+});
+
 test('#tasks.pause refuses a caller with no session', async () => {
   const api = await startTestAPI();
 

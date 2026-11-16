@@ -1,4 +1,5 @@
 export { buildTaskReportTool } from './report/build-task-report-tool';
+export { reportShapeSchema } from './report/report-shape-schema';
 export { checkReportShape } from './report/check-report-shape';
 export { codeMadeSummaries } from './report/code-made-summaries';
 export { listReportRecords } from './report/list-report-records';
@@ -102,8 +103,10 @@ export { readInbox } from './inbox/read-inbox';
 export { readSentTaskMessages } from './task/message/read-sent-task-messages';
 export type { StartedTasksQuery } from './task/read-started-task-ids';
 export { readStartedTaskIDs } from './task/read-started-task-ids';
-export type { StartedTaskSetup, TaskSetup } from './task/read-task-setup';
+export type { DefinitionTaskSetup, StartedTaskSetup, TaskSetup } from './task/read-task-setup';
 export { readTaskSetup } from './task/read-task-setup';
+export type { DefinitionRunContext } from './task/read-definition-run-context';
+export { readDefinitionRunContext } from './task/read-definition-run-context';
 export { startedTaskDefaultTools } from './task/started-task-default-tools';
 export { taskFailedTurnSpentCodec } from './task/codec/task-failed-turn-spent-codec';
 export { taskLimitNoticeCodec } from './limit/task-limit-notice-codec';
@@ -134,6 +137,25 @@ export { StepAlreadyCommittedError } from './step/step-already-committed-error';
 export type { StepFailure } from './step/step-failed-error';
 export { StepFailedError } from './step/step-failed-error';
 export { taskCreatedCodec } from './task/codec/task-created-codec';
+export { taskDefinitionSetCodec } from './task/codec/task-definition-set-codec';
+export { triggerFiredCodec, triggerFiredKinds } from './task/codec/trigger-fired-codec';
+export type { SkipReason } from './task/codec/trigger-skipped-codec';
+export { skipReasons, triggerSkippedCodec } from './task/codec/trigger-skipped-codec';
+
+export type {
+  DefinitionInForce,
+  DefinitionTasksWritten,
+} from './definition/write-definition-tasks-in-transaction';
+
+export { writeDefinitionTasksInTransaction } from './definition/write-definition-tasks-in-transaction';
+
+export type {
+  DefinitionFire,
+  DefinitionTaskAnswer,
+} from './definition/read-definition-task-in-transaction';
+
+export { readDefinitionTaskInTransaction } from './definition/read-definition-task-in-transaction';
+export { withdrawDefinitionTaskInTransaction } from './definition/withdraw-definition-task-in-transaction';
 export { taskLeaseExpiredCodec } from './utils/task-lease-expired-codec';
 export { taskRevivedCodec } from './utils/task-revived-codec';
 export { taskStepCommittedCodec } from './utils/task-step-committed-codec';
@@ -149,6 +171,10 @@ export { timerFiredCodec } from './task/codec/timer-fired-codec';
 export { timersProjection } from './task/projection/timers-projection';
 
 export type {
+  DefinitionRunPolicy,
+  DefinitionVersion,
+  ReadDefinitionRunPolicy,
+  ReadDefinitionVersion,
   FaultPointContext,
   FaultPointHandler,
   FaultPointID,

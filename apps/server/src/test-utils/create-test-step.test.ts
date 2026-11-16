@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { logProjections, startWriter } from '@heynixie/log';
 import { tasksProjections } from '@heynixie/tasks';
 import {
+  buildTestDefinitionReaders,
   buildTestRunSettings,
   buildTestTaskRunners,
   readTestTasks,
@@ -37,6 +38,7 @@ async function setupTest() {
       clock: buildTestClock(1_000_000),
       definitions: () => ({ snapshotHash: 'sha256:test' }),
       runSettings: buildTestRunSettings(),
+      ...buildTestDefinitionReaders(),
       runners: buildTestTaskRunners(),
     },
   };

@@ -3,6 +3,7 @@ import invariant from 'tiny-invariant';
 import { readInbox } from '../inbox/read-inbox';
 import { writeStepCommit } from '../step/write-step-commit';
 import { seedConversationStep } from '../test-utils/seed-conversation-step';
+import { seedDefinitionTask } from '../test-utils/seed-definition-task';
 import { seedTask } from '../test-utils/seed-task';
 import { startTestTasks } from '../test-utils/start-test-tasks';
 import type { TasksTables } from '../types';
@@ -211,4 +212,17 @@ test('it revives nothing on a second run', async () => {
   const revived = await ctx.reviveHeldTasks();
 
   expect(revived).toBe(0);
+});
+
+test('it revives no definition task, though it waits with no session boundary', async () => {
+  const ctx = await setupTest();
+
+  await seedDefinitionTask(ctx, {
+    definitionID: 'water-the-tomatoes',
+    definitionHash: 'hash-1',
+  });
+
+  const result = await reviveHeldTasks(ctx.context);
+
+  expect(result).toBe(0);
 });

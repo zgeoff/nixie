@@ -11,7 +11,7 @@ import { renderHeldNote } from '../render-held-note';
 import { writeTaskMessage } from './write-task-message';
 
 export function buildTaskMessageTool(
-  context: Pick<TasksContext, 'clock' | 'definitions' | 'log'>,
+  context: Pick<TasksContext, 'clock' | 'definitions' | 'log' | 'readDefinitionVersion'>,
   messaging: TaskMessaging,
 ): ToolDefinition {
   const owner = messaging.ownerName ?? 'the owner';

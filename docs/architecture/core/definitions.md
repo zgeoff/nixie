@@ -289,6 +289,35 @@ form and its files. nixie never deletes a row. `readDefinitionVersion` reads one
 what the file omits as a start from the file starter would: no model, no profile, the default
 persona, memory `none`, and the default tools.
 
+## The task of a definition
+
+Each definition with `target: task` and `enabled: true` has one task, which `task.definition_set`
+binds to the definition. The seed creates it in the seed's own transaction, with a `task.created`
+record that has no starter, and the record `task.definition_set` then holds the definition ID and
+the hash in force. A seed that changes the hash writes the record again. A seed that drops the
+definition, disables it or turns it into a reminder writes it with a null hash, and the task stays:
+its history and any open task run outlive the definition. A task never closes, so the close control
+of a definition's task gets `definition_task_never_closes`.
+
+A fire opens a task run. The trigger core writes a `trigger.fired` record on the task's thread, with
+the hash that the fire pins. The next claim opens a task run for it, and the record
+`task.run_opened` holds the hash, the fire's dedupe key as the trigger key, the report mode and
+target, the report shape, and the limits of the version's file over the defaults. An idle task run
+ends with the cause `no_report` when a fire arrives, and the new task run opens in the same
+transaction. A task that is paused, stopped, failed or held at a limit holds the fire, and a task
+that works or has a fire waiting answers `still_running`. The trigger core reads that answer with
+`readDefinitionTaskInTransaction`.
+
+The sandbox runner reads the version that the open task run pins, else the newest task run, else the
+hash in force. The version gives the persona, the memory, the tools and the model. A version that
+names no model runs on the profile of the model role `task`, and a version that names a selectable
+model runs on that model's profile. A task run that pins another hash than the running endpoint
+started with gets a new endpoint, so the tool list of a version applies from its first task run.
+
+Under `context: fresh`, each piece of work opens a session of its own: a task run that a raise or a
+restart carries resumes the session of the task run it carries, and any other task run starts one.
+Under `continuing`, each step resumes the session that the task last kept.
+
 ## The snapshot hash
 
 The snapshot hash is the hash of one canonical form of the definitions in force. The persona enters

@@ -7,7 +7,11 @@ import { readRecords, writeRecords } from '@heynixie/log';
 import type { SandboxAdapter } from '@heynixie/sandbox';
 import type { StubGuestSandboxes } from '@heynixie/sandbox/test-utils';
 import type { TasksContext } from '@heynixie/tasks';
-import { buildTestRunSettings, buildTestTaskRunners } from '@heynixie/tasks/test-utils';
+import {
+  buildTestDefinitionReaders,
+  buildTestRunSettings,
+  buildTestTaskRunners,
+} from '@heynixie/tasks/test-utils';
 import type { ToolDefinition, ToolEndpoint, ToolEndpointOptions } from '@heynixie/tools';
 import { buildToolRegistry, startToolEndpoint } from '@heynixie/tools';
 import { getSandboxRootDir } from '../part/get-sandbox-root-dir';
@@ -87,6 +91,7 @@ export async function startTestServer(
     clock: log.writer.clock,
     definitions: () => ({ snapshotHash: 'sha256:test' }),
     runSettings: buildTestRunSettings(),
+    ...buildTestDefinitionReaders(),
     runners: buildTestTaskRunners(),
   };
 

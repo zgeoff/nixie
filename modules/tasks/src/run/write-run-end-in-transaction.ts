@@ -94,7 +94,7 @@ export async function writeRunEndInTransaction(
   if (ending.cause === 'limit') {
     await writeLimitHold(tx, context, run, {
       stepKey: request.stepKey,
-      starter: task.started_by,
+      target: target ?? task.started_by,
       isReportWake: delivery.delivery === 'wake',
     });
   }
@@ -289,14 +289,16 @@ function renderCodeMadeSummary(
 
 interface LimitHold {
   readonly stepKey: string | null;
-  readonly starter: string | null;
+
+  // the report target that the task run pinned, else the starter of a started task, or null
+  readonly target: string | null;
 
   // whether the report wakes its target, which then needs no notice
   readonly isReportWake: boolean;
 }
 
 // The step that meets the limit still holds its lease, so the pause is a request that the commit
-// carries out, and the hold and the starter's notice commit with the end of the task run.
+// carries out, and the hold and the target's notice commit with the end of the task run.
 async function writeLimitHold(
   tx: Transaction<unknown>,
   context: EndContext,
@@ -332,18 +334,18 @@ async function writeLimitHold(
     limits,
   });
 
-  if (hold.isReportWake || hold.starter === null) {
+  if (hold.isReportWake || hold.target === null) {
     return;
   }
 
-  const starter = await readTaskState(tx, hold.starter);
+  const targetState = await readTaskState(tx, hold.target);
 
-  if (starter !== null && !isFinishedState(starter)) {
+  if (targetState !== null && !isFinishedState(targetState)) {
     await writeInboxRecordsInTransaction(tx, context, [
       {
         kind: 'task.limit_notice',
         definitions: context.definitions(),
-        thread: hold.starter,
+        thread: hold.target,
         payload: taskLimitNoticeCodec.encode({ taskID, used, limits }),
       },
     ]);

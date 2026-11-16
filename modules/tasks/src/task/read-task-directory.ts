@@ -1,10 +1,11 @@
 import { readRecords } from '@heynixie/log';
 import type { TaskMessaging, TaskProfile, TasksContext, TasksTables } from '../types';
 import { taskCreatedCodec } from './codec/task-created-codec';
+import { readDefinitionTaskVersions } from './read-definition-task-versions';
 import { readTaskBriefs } from './read-task-briefs';
 
 export async function readTaskDirectory<Messaging extends Pick<TaskMessaging, 'directory'>>(
-  context: Pick<TasksContext, 'log'>,
+  context: Pick<TasksContext, 'log' | 'readDefinitionVersion'>,
   messaging: Messaging,
 ): Promise<Messaging> {
   const rows = await context.log.writer.db
@@ -15,8 +16,20 @@ export async function readTaskDirectory<Messaging extends Pick<TaskMessaging, 'd
     .orderBy('created_sequence')
     .execute();
 
+  const versions = await readDefinitionTaskVersions(context);
+
+  const definitions = versions
+    .filter((entry) => entry.isInForce)
+    .map((entry): TaskProfile => ({
+      taskID: entry.taskID,
+      name: entry.version.name,
+      brief: entry.version.brief,
+      isWokenByMessages: entry.version.wakeable,
+      speaker: entry.version.persona === 'default' ? 'persona_task' : 'plain_task',
+    }));
+
   if (rows.length === 0) {
-    return messaging;
+    return { ...messaging, directory: [...messaging.directory, ...definitions] };
   }
 
   const created = await readRecords(context.log, {
@@ -47,5 +60,5 @@ export async function readTaskDirectory<Messaging extends Pick<TaskMessaging, 'd
     };
   });
 
-  return { ...messaging, directory: [...messaging.directory, ...started] };
+  return { ...messaging, directory: [...messaging.directory, ...started, ...definitions] };
 }

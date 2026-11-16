@@ -15,7 +15,11 @@ import {
   writeTaskControl,
   writeTaskLimitRaise,
 } from '@heynixie/tasks';
-import { writeTestTaskMessage } from '@heynixie/tasks/test-utils';
+import {
+  seedDefinitionTask,
+  writeTestTaskMessage,
+  writeTestTriggerFire,
+} from '@heynixie/tasks/test-utils';
 import { buildTestClock, waitForCondition } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
 import { buildSeeder } from '../test-utils/build-seeder';
@@ -137,6 +141,10 @@ async function setupTest() {
     clearFetchPauses,
     startRunner,
     seed: buildSeeder(host),
+    writeDefinitionTask: (seed: Parameters<typeof seedDefinitionTask>[1]) =>
+      seedDefinitionTask({ ...host, writer: host.context.log.writer }, seed),
+    writeFire: (taskID: string, definitionHash: string, dedupeKey: string) =>
+      writeTestTriggerFire(host.context, taskID, { definitionHash, dedupeKey }),
     writeMessage: (taskID: string, text: string) =>
       writeInboxRecords(host.context, [
         {
@@ -2418,4 +2426,137 @@ test('it runs the next turn of a task paused at its turn limit once the limit is
 
   expect(ctx.guest.turns).toHaveLength(2);
   expect(input).toInclude('Only the morning tide, please.');
+});
+
+test('it runs a definition task that names no model on the profile of the model role task', async () => {
+  const ctx = await setupTest();
+
+  const taskID = await ctx.writeDefinitionTask({
+    definitionID: 'water-the-tomatoes',
+    definitionHash: 'hash-1',
+  });
+
+  await ctx.writeFire(taskID, 'hash-1', 'fire-1');
+
+  const runner = await ctx.startRunner();
+
+  await ctx.runNextStep(runner);
+
+  expect(ctx.runs.map((run) => run.model)).toStrictEqual([
+    { model: 'claude-test-errands', profile: 'errands' },
+  ]);
+});
+
+test('it runs a definition task on the profile of the selectable model its version names', async () => {
+  const ctx = await setupTest();
+
+  const taskID = await ctx.writeDefinitionTask({
+    definitionID: 'water-the-tomatoes',
+    definitionHash: 'hash-1',
+    version: { model: 'second-look' },
+  });
+
+  await ctx.writeFire(taskID, 'hash-1', 'fire-2');
+
+  const runner = await ctx.startRunner();
+
+  await ctx.runNextStep(runner);
+
+  expect(ctx.runs.map((run) => run.model)).toStrictEqual([
+    { model: 'other-family-test-3', profile: 'router-b' },
+  ]);
+});
+
+test('it starts the tool list of a definition task from the version its task run pins', async () => {
+  const ctx = await setupTest();
+
+  const taskID = await ctx.writeDefinitionTask({
+    definitionID: 'water-the-tomatoes',
+    definitionHash: 'hash-1',
+    version: { tools: ['tasks.list'] },
+  });
+
+  await ctx.writeFire(taskID, 'hash-1', 'fire-3');
+
+  const runner = await ctx.startRunner();
+
+  await ctx.runNextStep(runner);
+
+  expect(ctx.runs.map((run) => run.tools)).toStrictEqual([
+    ['tasks.list', 'turn.end_silently', 'task.report'],
+  ]);
+});
+
+test('it starts a new endpoint for a task run that pins another version of a definition task', async () => {
+  const ctx = await setupTest();
+
+  const taskID = await ctx.writeDefinitionTask({
+    definitionID: 'water-the-tomatoes',
+    definitionHash: 'hash-1',
+    version: { tools: ['tasks.list'] },
+  });
+
+  await ctx.writeFire(taskID, 'hash-1', 'fire-4');
+
+  const runner = await ctx.startRunner();
+
+  await ctx.runNextStep(runner);
+
+  await ctx.writeDefinitionTask({
+    definitionID: 'water-the-tomatoes',
+    definitionHash: 'hash-2',
+    version: { tools: ['tasks.list', 'task.message'] },
+  });
+
+  await ctx.writeFire(taskID, 'hash-2', 'fire-5');
+  await ctx.runNextStep(runner);
+
+  expect(ctx.runs.map((run) => run.tools)).toStrictEqual([
+    ['tasks.list', 'turn.end_silently', 'task.report'],
+    ['tasks.list', 'task.message', 'turn.end_silently', 'task.report'],
+  ]);
+});
+
+test('it opens a fresh session at each task run of a definition task with a fresh context', async () => {
+  const ctx = await setupTest();
+
+  const taskID = await ctx.writeDefinitionTask({
+    definitionID: 'water-the-tomatoes',
+    definitionHash: 'hash-1',
+    version: { context: 'fresh' },
+  });
+
+  await ctx.writeFire(taskID, 'hash-1', 'fire-6');
+
+  const runner = await ctx.startRunner();
+
+  await ctx.runNextStep(runner);
+  await ctx.writeFire(taskID, 'hash-1', 'fire-7');
+  await ctx.runNextStep(runner);
+
+  const opened = await ctx.readKinds('model.session_opened');
+
+  expect(opened.map((record) => record.payload['kind'])).toStrictEqual(['first', 'first']);
+});
+
+test('it resumes the session of the last task run of a definition task with a continuing context', async () => {
+  const ctx = await setupTest();
+
+  const taskID = await ctx.writeDefinitionTask({
+    definitionID: 'water-the-tomatoes',
+    definitionHash: 'hash-1',
+    version: { context: 'continuing' },
+  });
+
+  await ctx.writeFire(taskID, 'hash-1', 'fire-8');
+
+  const runner = await ctx.startRunner();
+
+  await ctx.runNextStep(runner);
+  await ctx.writeFire(taskID, 'hash-1', 'fire-9');
+  await ctx.runNextStep(runner);
+
+  const opened = await ctx.readKinds('model.session_opened');
+
+  expect(opened.map((record) => record.payload['kind'])).toStrictEqual(['first']);
 });

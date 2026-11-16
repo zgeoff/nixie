@@ -130,6 +130,10 @@ export function createTaskProcedures(context: APIContext) {
         throw options.errors.CONVERSATION_NEVER_CLOSES();
       }
 
+      if (result.status === 'refused' && result.refusal.reason === 'definition_task_never_closes') {
+        throw options.errors.DEFINITION_TASK_NEVER_CLOSES();
+      }
+
       return toControlledTask(result, options.errors);
     }),
   };
@@ -248,9 +252,13 @@ function toControlledTask(result: CheckedTaskControlResult, errors: ControlOptio
           }),
         )
         .with({ reason: 'runner_lacks_control' }, () => errors.RUNNER_LACKS_CONTROL())
-        .with({ reason: 'conversation_never_closes' }, () => {
-          throw new Error('only a close refuses the conversation');
-        })
+        .with(
+          { reason: 'conversation_never_closes' },
+          { reason: 'definition_task_never_closes' },
+          () => {
+            throw new Error('only a close refuses the conversation or a definition task');
+          },
+        )
         .exhaustive();
     })
     .with({ status: 'reused' }, () => {

@@ -10,7 +10,10 @@ import { writeTaskClose } from './write-task-close';
 const closeArguments = z.object({ taskID: z.string() });
 
 export function buildTaskCloseTool(
-  context: Pick<TasksContext, 'clock' | 'definitions' | 'log' | 'runSettings' | 'runners'>,
+  context: Pick<
+    TasksContext,
+    'clock' | 'definitions' | 'log' | 'readDefinitionVersion' | 'runSettings' | 'runners'
+  >,
   messaging: Pick<TaskMessaging, 'directory'>,
 ): ToolDefinition {
   return {

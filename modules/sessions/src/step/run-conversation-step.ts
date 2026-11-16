@@ -56,7 +56,7 @@ function runSessionTurn(conversation: ConversationRun, input: StepInput): Promis
       messaging: await readTaskDirectory(conversation.context, conversation.messaging),
     };
 
-    const marks = await readSessionMarks(run.context, input.taskID);
+    const marks = await readSessionMarks(run.context, input.taskID, run.sinceSequence);
     const catalog = await run.loadOrPinSkillCatalog?.(input.taskID);
 
     const skillCatalog = catalog ?? null;
@@ -65,7 +65,12 @@ function runSessionTurn(conversation: ConversationRun, input: StepInput): Promis
       marks,
       personaHash: definitions.personaHash,
       isTask: run.frame.kind === 'task',
-      boundary: parseSessionBoundary(input.sessionBoundary),
+
+      // A run of a fresh window that has opened no session yet holds a point of an earlier run's.
+      boundary:
+        run.sinceSequence !== undefined && !marks.hasOpening
+          ? null
+          : parseSessionBoundary(input.sessionBoundary),
       session: run.harness.session,
       capabilities: run.harness.capabilities,
       threshold: run.compaction.threshold,

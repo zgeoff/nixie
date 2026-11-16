@@ -10,7 +10,10 @@ export interface TurnRetrieval {
   readonly messages: readonly PastMessage[];
 }
 
-type RetrievalRun = Pick<ConversationRun, 'context' | 'memorySettings' | 'frame' | 'messaging'> &
+type RetrievalRun = Pick<
+  ConversationRun,
+  'context' | 'memorySettings' | 'frame' | 'messaging' | 'sinceSequence'
+> &
   Required<Pick<ConversationRun, 'memory'>>;
 
 export async function readTurnRetrieval(
@@ -122,6 +125,7 @@ async function readRetrievedMessages(
   const held = await readHeldMessages(run.context, {
     taskID: query.taskID,
     isNewSession: query.isNewSession,
+    ...(run.sinceSequence === undefined ? {} : { afterSequence: run.sinceSequence }),
     beforeSequence: Math.min(
       Number.MAX_SAFE_INTEGER,
       ...query.batch.map((record) => record.sequence),

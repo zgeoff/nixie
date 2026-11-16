@@ -2,6 +2,7 @@ import type { Log } from '@heynixie/log';
 import { withWriteTransaction } from '@heynixie/log';
 import { effectNames } from '@heynixie/policy';
 import type { PromptOverrides } from '@heynixie/prompts';
+import { writeDefinitionTasksInTransaction } from '@heynixie/tasks';
 import type { Transaction } from 'kysely';
 import { z } from 'zod';
 import { buildDefinitionsSnapshot } from '../definition/build-definitions-snapshot';
@@ -10,6 +11,7 @@ import { readDefinitionsSkills } from '../definition/read-definitions-skills';
 import { readRuleProposalChange } from '../rule/read-rule-proposal-change';
 import type { SeedResult } from '../rule/run-seed';
 import { writeAdoptedSkills } from '../skill/write-adopted-skills';
+import { readTaskDefinitionsInForce } from '../task/read-task-definitions-in-force';
 import type { SnapshotPolicy } from '../types';
 import { buildRuleRevisions } from '../utils/build-rule-revisions';
 import { buildRuleSeedPlan } from '../utils/build-rule-seed-plan';
@@ -80,6 +82,14 @@ export function runInForceSeed(options: InForceSeedOptions): Promise<SeedResult>
       skills: definitions.skills,
       at: now,
     });
+
+    const taskDefinitions = await readTaskDefinitionsInForce(tx, inForce.tasks);
+
+    await writeDefinitionTasksInTransaction(
+      tx,
+      { log: options.log, definitions: () => ({ snapshotHash: built.snapshotHash }) },
+      taskDefinitions,
+    );
 
     if (
       overlay.adopted.length === 0 &&

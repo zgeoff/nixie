@@ -1,9 +1,13 @@
 import { expect, test } from 'bun:test';
+import { withWriteTransaction } from '@heynixie/log';
 import invariant from 'tiny-invariant';
+import { withdrawDefinitionTaskInTransaction } from '../definition/withdraw-definition-task-in-transaction';
 import { readInbox } from '../inbox/read-inbox';
 import { writeStepCommit } from '../step/write-step-commit';
 import { buildTaskSeeder } from '../test-utils/build-task-seeder';
+import { seedDefinitionTask } from '../test-utils/seed-definition-task';
 import { startTestTasks } from '../test-utils/start-test-tasks';
+import { writeTestTriggerFire } from '../test-utils/write-test-trigger-fire';
 import { claimTask } from './projection/claim-task';
 import { readStartedTaskIDs } from './read-started-task-ids';
 import { writeTaskControl } from './write-task-control';
@@ -112,4 +116,75 @@ test('it reads no task among no IDs', async () => {
   const open = await readStartedTaskIDs(ctx.context, { end: 'open', among: [] });
 
   expect(open).toStrictEqual([]);
+});
+
+test('it reads the task of a definition in force as open', async () => {
+  const ctx = await setupTest();
+
+  const taskID = await seedDefinitionTask(ctx, {
+    definitionID: 'water-the-tomatoes',
+    definitionHash: 'hash-1',
+  });
+
+  const result2 = await readStartedTaskIDs(ctx.context, { end: 'open' });
+
+  expect(result2).toStrictEqual([taskID]);
+
+  const result = await readStartedTaskIDs(ctx.context, { end: 'ended' });
+
+  expect(result).toStrictEqual([]);
+});
+
+test('it reads the task of a definition out of force with nothing pending as ended', async () => {
+  const ctx = await setupTest();
+
+  const taskID = await seedDefinitionTask(ctx, {
+    definitionID: 'water-the-tomatoes',
+    definitionHash: null,
+  });
+
+  const result2 = await readStartedTaskIDs(ctx.context, { end: 'ended' });
+
+  expect(result2).toStrictEqual([taskID]);
+
+  const result = await readStartedTaskIDs(ctx.context, { end: 'open' });
+
+  expect(result).toStrictEqual([]);
+});
+
+test('it reads the task of a definition out of force as open while a fire is pending', async () => {
+  const ctx = await setupTest();
+
+  const taskID = await seedDefinitionTask(ctx, {
+    definitionID: 'water-the-tomatoes',
+    definitionHash: null,
+  });
+
+  await writeTestTriggerFire(ctx.context, taskID, {
+    definitionHash: 'water-the-tomatoes-spent',
+  });
+
+  const result = await readStartedTaskIDs(ctx.context, { end: 'open' });
+
+  expect(result).toStrictEqual([taskID]);
+});
+
+test('it reads the task of a definition out of force as open while its task run is open', async () => {
+  const ctx = await setupTest();
+
+  const taskID = await seedDefinitionTask(ctx, {
+    definitionID: 'water-the-tomatoes',
+    definitionHash: 'hash-1',
+  });
+
+  await writeTestTriggerFire(ctx.context, taskID, { definitionHash: 'hash-1' });
+  await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  await withWriteTransaction(ctx.writer, (tx) =>
+    withdrawDefinitionTaskInTransaction(tx, ctx.context, 'water-the-tomatoes'),
+  );
+
+  const result = await readStartedTaskIDs(ctx.context, { end: 'open' });
+
+  expect(result).toStrictEqual([taskID]);
 });

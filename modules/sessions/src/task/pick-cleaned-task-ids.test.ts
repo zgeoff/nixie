@@ -62,6 +62,24 @@ test('it picks only the tasks that read memory for a forgotten memory item or a 
   ).toStrictEqual(['tide-tables']);
 });
 
+test('it picks the task of a definition whether or not its version reads memory', () => {
+  expect(
+    pickCleanedTaskIDs(
+      [
+        {
+          taskID: 'water-tomatoes',
+          setup: { kind: 'definition', definitionID: 'water-the-tomatoes', definitionHash: 'h1' },
+        },
+        {
+          taskID: 'spent-errand',
+          setup: { kind: 'definition', definitionID: 'spent-errand', definitionHash: null },
+        },
+      ],
+      null,
+    ),
+  ).toStrictEqual(['water-tomatoes', 'spent-errand']);
+});
+
 test.each([
   [0, false],
   [1, true],

@@ -12,7 +12,12 @@ import type { ReceivedFrame, StubGuestSandboxes } from '@heynixie/sandbox/test-u
 import { buildStubGuestSandboxes } from '@heynixie/sandbox/test-utils';
 import type { RunSettings, TasksContext } from '@heynixie/tasks';
 import { tasksProjections } from '@heynixie/tasks';
-import { buildTestRunSettings, buildTestTaskRunners } from '@heynixie/tasks/test-utils';
+import type { TestDefinitionStore } from '@heynixie/tasks/test-utils';
+import {
+  buildTestDefinitionStore,
+  buildTestRunSettings,
+  buildTestTaskRunners,
+} from '@heynixie/tasks/test-utils';
 import { buildToolRegistry, startToolEndpoint } from '@heynixie/tools';
 import { readTestToolNames, sendTestToolCall } from '@heynixie/tools/test-utils';
 import invariant from 'tiny-invariant';
@@ -26,6 +31,9 @@ interface TestToolResult {
 export interface TestSessionHost {
   readonly dataDir: string;
   readonly context: TasksContext;
+
+  // the versions and run policies that the context's definition readers answer with
+  readonly definitionStore: TestDefinitionStore;
 
   readonly sandboxes: SandboxAdapter;
   readonly guest: StubGuestSandboxes;
@@ -79,12 +87,16 @@ export async function startTestSessionHost(
     ],
   };
 
+  const definitionStore = buildTestDefinitionStore();
+
   const context: TasksContext = {
     log,
     clock: writer.clock,
     definitions: () => ({ snapshotHash: 'sha256:test' }),
     runSettings: options.runSettings ?? buildTestRunSettings(),
     runners: buildTestTaskRunners(),
+    readDefinitionVersion: definitionStore.readDefinitionVersion,
+    readDefinitionRunPolicy: definitionStore.readDefinitionRunPolicy,
   };
 
   const socketDir = join(dataDir, 'tools');
@@ -136,6 +148,7 @@ export async function startTestSessionHost(
   return {
     dataDir,
     context,
+    definitionStore,
     sandboxes: guest.adapter,
     guest,
     toolResults,

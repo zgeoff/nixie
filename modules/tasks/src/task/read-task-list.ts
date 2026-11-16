@@ -2,11 +2,13 @@ import { readRecords } from '@heynixie/log';
 import type {
   TaskMessageKind,
   TaskMessaging,
+  TaskProfile,
   TaskState,
   TasksContext,
   TasksTables,
 } from '../types';
 import { taskCreatedCodec } from './codec/task-created-codec';
+import { readDefinitionTaskVersions } from './read-definition-task-versions';
 
 export interface TaskListQuery {
   readonly callerID: string | null;
@@ -28,11 +30,27 @@ export interface ListedTask {
 }
 
 export async function readTaskList(
-  context: Pick<TasksContext, 'log'>,
+  context: Pick<TasksContext, 'log' | 'readDefinitionVersion'>,
   messaging: Pick<TaskMessaging, 'directory'>,
   query: TaskListQuery,
 ): Promise<readonly ListedTask[]> {
-  const profiles = messaging.directory.filter((profile) => profile.taskID !== query.callerID);
+  const definitions = await readDefinitionTaskVersions(context);
+
+  // A definition's task out of force is in no directory, and shows while a task run of it is
+  // pending or open, under the name of the version that task run pins.
+  const outOfForce = definitions
+    .filter((entry) => !entry.isInForce)
+    .map((entry): TaskProfile => ({
+      taskID: entry.taskID,
+      name: entry.version.name,
+      brief: entry.version.brief,
+      isWokenByMessages: false,
+      speaker: entry.version.persona === 'default' ? 'persona_task' : 'plain_task',
+    }));
+
+  const profiles = [...messaging.directory, ...outOfForce].filter(
+    (profile) => profile.taskID !== query.callerID,
+  );
 
   if (profiles.length === 0) {
     return [];
@@ -91,13 +109,14 @@ export async function readTaskList(
     limit: rows.length,
   });
 
-  const models = new Map(
-    created.map((entry) => {
+  const models = new Map([
+    ...created.map((entry) => {
       const payload = taskCreatedCodec.decode(entry.record.payload);
 
-      return [payload.taskID, payload.options?.model ?? null];
+      return [payload.taskID, payload.options?.model ?? null] as const;
     }),
-  );
+    ...definitions.map((entry) => [entry.taskID, entry.version.model] as const),
+  ]);
 
   return rows.flatMap((row) => {
     const profile = profiles.find((candidate) => candidate.taskID === row.task_id);

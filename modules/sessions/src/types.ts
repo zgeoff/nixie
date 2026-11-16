@@ -146,6 +146,10 @@ export type SessionFrame =
 export interface ConversationRun {
   readonly context: TasksContext;
   readonly frame: SessionFrame;
+
+  // the log the session reads starts after this sequence, which gives a fresh session to each task
+  // run of a definition's task
+  readonly sinceSequence?: number;
   readonly profile: ResolvedProfile;
 
   readonly harness: Harness;

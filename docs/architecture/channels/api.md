@@ -120,10 +120,11 @@ The 6 task controls are checked actions that name a task: pause, resume, stop, r
 interrupt, as [pause, stop and close](../core/tasks.md#pause-stop-and-close) describes. Each answers
 with the task's state, whether a pause waits on the running step, and when the control took effect.
 A control that the task's state does not allow gets `TASK_STATE_REFUSED` with the state it met, a
-close of the conversation gets `CONVERSATION_NEVER_CLOSES`, a control that the task's runner does
-not offer gets `RUNNER_LACKS_CONTROL`, and a task that does not exist gets `TASK_NOT_FOUND`. A
-refusal keeps no result under its action ID, so a retry of the same action runs the control again
-against the state the task holds then.
+close of the conversation gets `CONVERSATION_NEVER_CLOSES`, a close of a definition's task gets
+`DEFINITION_TASK_NEVER_CLOSES`, a control that the task's runner does not offer gets
+`RUNNER_LACKS_CONTROL`, and a task that does not exist gets `TASK_NOT_FOUND`. A refusal keeps no
+result under its action ID, so a retry of the same action runs the control again against the state
+the task holds then.
 
 A seventh checked action, `tasks.setDisposable`, takes a task ID and a `disposable` value and writes
 a `task.mark_set` record. It gets `TASK_NOT_FOUND` for an unknown task, `TASK_HAS_NO_MARK` for a

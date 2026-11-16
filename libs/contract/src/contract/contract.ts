@@ -367,6 +367,10 @@ export const contract = {
     restart: taskControl,
     close: taskControl.errors({
       CONVERSATION_NEVER_CLOSES: { message: 'The conversation is never closed', status: 409 },
+      DEFINITION_TASK_NEVER_CLOSES: {
+        message: 'The task of a definition is never closed',
+        status: 409,
+      },
     }),
     interrupt: taskControl,
     setDisposable: checkedAction

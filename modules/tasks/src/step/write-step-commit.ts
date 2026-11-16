@@ -51,7 +51,13 @@ export async function writeStepCommit(
 
     // A started task that reported waits for its starter's next message, and is never done.
     const reportedNext = hasReport && result.next === 'done' ? 'wait' : result.next;
-    const nextState = pickNextState(reportedNext, cursor.hasUnread);
+
+    const isDefinitionTask = await probeDefinitionTask(tx, taskID);
+
+    const nextState = pickNextState(reportedNext, {
+      hasUnread: cursor.hasUnread,
+      isDefinitionTask,
+    });
 
     const isPauseRequested = await probePauseRequested(tx, taskID);
 
@@ -94,8 +100,9 @@ export async function writeStepCommit(
         isFirstStep: run?.opened.openedByStep === claim.stepKey,
         hasWork: nextState === 'ready' || hasOpenWait,
 
-        // every started task is woken by messages until the wake rule says otherwise
-        isWakeable: true,
+        // every started task is woken by messages until the wake rule says otherwise, and a
+        // definition's task by what its pinned version declares
+        isWakeable: await probeRunWakeable(tx, context, run, isDefinitionTask),
       },
       endedBy: `step:${claim.stepKey}`,
       stepKey: claim.stepKey,
@@ -143,12 +150,36 @@ function requireStepResult(result: StepResult): void {
   }
 }
 
-function pickNextState(next: StepResult['next'], hasUnread: boolean): TaskState {
+async function probeDefinitionTask(tx: Transaction<unknown>, taskID: string): Promise<boolean> {
+  const row = await tx
+    .$extendTables<TasksTables>()
+    .selectFrom('tasks')
+    .select('definition_id')
+    .where('task_id', '=', taskID)
+    .executeTakeFirst();
+
+  return row?.definition_id !== null && row?.definition_id !== undefined;
+}
+
+interface NextStateFacts {
+  readonly hasUnread: boolean;
+
+  // a definition's task never ends: it waits where a started task is done
+  readonly isDefinitionTask: boolean;
+}
+
+function pickNextState(next: StepResult['next'], facts: NextStateFacts): TaskState {
   return match(next)
     .with('continue', () => 'ready' as const)
     .with('hold', () => 'waiting' as const)
-    .with('wait', () => (hasUnread ? 'ready' : 'waiting'))
-    .with('done', () => (hasUnread ? 'ready' : 'done'))
+    .with('wait', () => (facts.hasUnread ? 'ready' : 'waiting'))
+    .with('done', () => {
+      if (facts.hasUnread) {
+        return 'ready' as const;
+      }
+
+      return facts.isDefinitionTask ? ('waiting' as const) : ('done' as const);
+    })
     .exhaustive();
 }
 
@@ -202,6 +233,27 @@ async function probeOpenWait(tx: Transaction<unknown>, taskID: string): Promise<
     .executeTakeFirst();
 
   return wait !== undefined;
+}
+
+async function probeRunWakeable(
+  tx: Transaction<unknown>,
+  context: TasksContext,
+  run: TaskRun | null,
+  isDefinitionTask: boolean,
+): Promise<boolean> {
+  if (!isDefinitionTask) {
+    return true;
+  }
+
+  const hash = run?.opened.definitionHash ?? null;
+
+  if (run === null || hash === null) {
+    return false;
+  }
+
+  const policy = await context.readDefinitionRunPolicy(tx, run.taskID, hash);
+
+  return policy?.wakeable ?? false;
 }
 
 // A limit end pauses the task so the owner can raise the limit, so only these causes close it.

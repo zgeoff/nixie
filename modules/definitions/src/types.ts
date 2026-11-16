@@ -2,7 +2,6 @@ import type { CheckedTables } from '@heynixie/db';
 import type { JSONObject } from '@heynixie/log';
 import type { EffectOverride, RuleFileEntry, RuleFileWarning, RuleForm } from '@heynixie/policy';
 import type { PromptOverrides } from '@heynixie/prompts';
-import type { TaskMemory, TaskPersona } from '@heynixie/tasks';
 import type { Generated, Kysely, Transaction } from 'kysely';
 import type { TaskDefinition, TaskDefinitionWarning } from './task/types';
 
@@ -109,24 +108,7 @@ export interface SnapshotTask {
 
 export type SnapshotTasks = readonly SnapshotTask[];
 
-export interface DefinitionVersion {
-  readonly definitionID: string;
-  readonly name: string;
-  readonly brief: string;
-
-  // '' when the folder holds no instructions.md
-  readonly instructions: string;
-
-  // null: the model profile of the model role task
-  readonly model: string | null;
-  readonly profile: string | null;
-  readonly persona: TaskPersona;
-  readonly memory: TaskMemory;
-  readonly log: 'own' | 'conversation';
-  readonly tools: readonly string[];
-  readonly context: 'fresh' | 'continuing';
-  readonly wakeable: boolean;
-}
+export type { DefinitionVersion } from '@heynixie/tasks';
 
 export interface SkillRef {
   readonly name: string;

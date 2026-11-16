@@ -69,6 +69,7 @@ test.each([
     planTaskControl(control, {
       state,
       isConversation: false,
+      isDefinitionTask: false,
       controls: taskControls,
       isPauseRequested: pause.isPauseRequested,
       hasUnread: false,
@@ -93,6 +94,7 @@ test.each([
     planTaskControl(control, {
       state,
       isConversation: false,
+      isDefinitionTask: false,
       controls: taskControls,
       isPauseRequested,
       hasUnread: false,
@@ -107,6 +109,7 @@ test('it resumes a paused task to ready when input waits unread', () => {
     planTaskControl('resume', {
       state: 'paused',
       isConversation: false,
+      isDefinitionTask: false,
       controls: taskControls,
       isPauseRequested: false,
       hasUnread: true,
@@ -121,6 +124,7 @@ test('it refuses to close the conversation', () => {
     planTaskControl('close', {
       state: 'waiting',
       isConversation: true,
+      isDefinitionTask: false,
       controls: taskControls,
       isPauseRequested: false,
       hasUnread: false,
@@ -130,6 +134,40 @@ test('it refuses to close the conversation', () => {
   ).toStrictEqual({ reason: 'conversation_never_closes' });
 });
 
+test('it refuses to close the task of a definition', () => {
+  expect(
+    planTaskControl('close', {
+      state: 'waiting',
+      isConversation: false,
+      isDefinitionTask: true,
+      controls: taskControls,
+      isPauseRequested: false,
+      hasUnread: false,
+      isLimitHeld: false,
+      resumeState: null,
+    }),
+  ).toStrictEqual({ reason: 'definition_task_never_closes' });
+});
+
+test.each(['pause', 'resume', 'stop', 'restart', 'interrupt'] as const)(
+  'it plans a %s of the task of a definition as it plans one of a started task',
+  (control) => {
+    const facts = {
+      state: 'paused',
+      isConversation: false,
+      controls: taskControls,
+      isPauseRequested: false,
+      hasUnread: false,
+      isLimitHeld: false,
+      resumeState: 'waiting',
+    } as const;
+
+    expect(planTaskControl(control, { ...facts, isDefinitionTask: true })).toStrictEqual(
+      planTaskControl(control, { ...facts, isDefinitionTask: false }),
+    );
+  },
+);
+
 test.each([
   ['resume', 'paused'],
   ['restart', 'stopped'],
@@ -138,6 +176,7 @@ test.each([
     planTaskControl(control, {
       state,
       isConversation: false,
+      isDefinitionTask: false,
       controls: taskControls,
       isPauseRequested: false,
       hasUnread: false,
@@ -152,6 +191,7 @@ test('it stops a task that its limit holds', () => {
     planTaskControl('stop', {
       state: 'paused',
       isConversation: false,
+      isDefinitionTask: false,
       controls: taskControls,
       isPauseRequested: false,
       hasUnread: false,
@@ -166,6 +206,7 @@ test('it refuses a control that the task runner lacks', () => {
     planTaskControl('stop', {
       state: 'waiting',
       isConversation: false,
+      isDefinitionTask: false,
       isPauseRequested: false,
       hasUnread: false,
       isLimitHeld: false,
@@ -180,6 +221,7 @@ test('it refuses to close the conversation before it checks the runner controls'
     planTaskControl('close', {
       state: 'waiting',
       isConversation: true,
+      isDefinitionTask: false,
       isPauseRequested: false,
       hasUnread: false,
       isLimitHeld: false,

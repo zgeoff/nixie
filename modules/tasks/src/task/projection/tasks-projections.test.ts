@@ -14,6 +14,7 @@ import {
   writeTaskControl,
 } from '../../index';
 import { createTestClaim } from '../../test-utils/create-test-claim';
+import { seedDefinitionTask } from '../../test-utils/seed-definition-task';
 import { startTestTasks } from '../../test-utils/start-test-tasks';
 import { writeTestTaskMessage } from '../../test-utils/write-test-task-message';
 import { tasksProjections } from './tasks-projections';
@@ -409,4 +410,21 @@ test('it opens a wait for a question recorded before messages said whether they 
     .executeTakeFirstOrThrow();
 
   expect(row.wait_state).toBe('open');
+});
+
+test('it rebuilds the tasks table equal to the live one after a bind, a new hash and a withdrawal', async () => {
+  const ctx = await setupTest();
+
+  await seedDefinitionTask(ctx, { definitionID: 'water-the-tomatoes', definitionHash: 'hash-1' });
+  await seedDefinitionTask(ctx, { definitionID: 'water-the-tomatoes', definitionHash: 'hash-2' });
+  await seedDefinitionTask(ctx, { definitionID: 'mow-the-lawn', definitionHash: null });
+
+  const live = await ctx.db.selectFrom('tasks').selectAll().orderBy('task_id').execute();
+
+  await runProjectionRebuild(ctx.context.log);
+
+  const rebuilt = await ctx.db.selectFrom('tasks').selectAll().orderBy('task_id').execute();
+
+  expect(live.map((task) => task.definition_hash)).toIncludeSameMembers(['hash-2', null]);
+  expect(rebuilt).toStrictEqual(live);
 });

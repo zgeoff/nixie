@@ -31,6 +31,7 @@ async function setupTest() {
 
   const context = await createServerContext(log.writer, log.deploymentKey, () => null, {
     runSettings: buildTestRunSettings(),
+    taskRunLimits: { turns: 25, dollars: 2 },
     runners: buildTestTaskRunners(),
   });
 

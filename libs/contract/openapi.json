@@ -4926,6 +4926,31 @@
                       "type": "object",
                       "properties": {
                         "defined": {
+                          "const": true
+                        },
+                        "code": {
+                          "const": "DEFINITION_TASK_NEVER_CLOSES"
+                        },
+                        "status": {
+                          "const": 409
+                        },
+                        "message": {
+                          "type": "string",
+                          "default": "The task of a definition is never closed"
+                        },
+                        "data": {}
+                      },
+                      "required": [
+                        "defined",
+                        "code",
+                        "status",
+                        "message"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "defined": {
                           "const": false
                         },
                         "code": {

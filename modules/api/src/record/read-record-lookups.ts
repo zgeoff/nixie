@@ -25,7 +25,7 @@ const namedKinds: ReadonlySet<string> = new Set([
 ]);
 
 export async function readRecordLookups(
-  context: Pick<APIContext, 'log' | 'settings'>,
+  context: Pick<APIContext, 'log' | 'readDefinitionVersion' | 'settings'>,
   records: readonly LogRecord[],
   known: { readonly removedSequences?: ReadonlySet<number> } = {},
 ): Promise<RecordLookups> {

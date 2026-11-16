@@ -11,9 +11,10 @@ import type {
 } from '@heynixie/log';
 import type { ResumeState, TaskState } from '@heynixie/task-control';
 import type { HarnessCapability } from '@heynixie/wire';
+import type { Kysely } from 'kysely';
 import type { z } from 'zod';
 import type { ReportShape } from './report/types';
-import type { RunSettings, TaskRun } from './run/types';
+import type { RunLimits, RunSettings, TaskRun } from './run/types';
 import type { TaskRunnerRegistry } from './runner/types';
 
 export interface TasksContext {
@@ -26,7 +27,51 @@ export interface TasksContext {
 
   // the runner of each task: the definitions, built once before any part starts
   readonly runners: TaskRunnerRegistry;
+
+  // the version a definition hash names, or null when no row holds it. A caller inside a write
+  // transaction passes it as the handle, so the read does not wait on that transaction.
+  readonly readDefinitionVersion: ReadDefinitionVersion;
+  readonly readDefinitionRunPolicy: ReadDefinitionRunPolicy;
 }
+
+export interface DefinitionVersion {
+  readonly definitionID: string;
+  readonly name: string;
+  readonly brief: string;
+
+  // '' when the folder holds no instructions.md
+  readonly instructions: string;
+
+  // null: the model profile of the model role task
+  readonly model: string | null;
+  readonly profile: string | null;
+  readonly persona: TaskPersona;
+  readonly memory: TaskMemory;
+  readonly log: 'own' | 'conversation';
+  readonly tools: readonly string[];
+  readonly context: 'fresh' | 'continuing';
+  readonly wakeable: boolean;
+}
+
+export type ReadDefinitionVersion = (
+  db: Kysely<unknown>,
+  definitionHash: string,
+) => Promise<DefinitionVersion | null>;
+
+// What a task run of a definition's version pins when it opens, and what the end of a step reads.
+export interface DefinitionRunPolicy {
+  // null: the definition declares none, and the claim takes the default for a definition
+  readonly report: TaskReport | null;
+  readonly reportShape: ReportShape | null;
+  readonly wakeable: boolean;
+  readonly limits: RunLimits;
+}
+
+export type ReadDefinitionRunPolicy = (
+  db: Kysely<unknown>,
+  taskID: string,
+  definitionHash: string,
+) => Promise<DefinitionRunPolicy | null>;
 
 export type {
   ResumeState,
@@ -251,6 +296,8 @@ interface TaskTable {
   readonly step_hop: number;
   readonly started_by: string | null;
   readonly start_step: string | null;
+  readonly definition_id: string | null;
+  readonly definition_hash: string | null;
   readonly pause_requested: number;
   readonly resume_state: ResumeState | null;
   readonly created_sequence: number;
