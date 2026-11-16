@@ -1,8 +1,8 @@
 # The evidence purge
 
 - **Status:** draft
-- **Work items:** [the key lookup](https://linear.app/zgeoff/issue/GEO-2637), stage 1;
-  [the purge](https://linear.app/zgeoff/issue/GEO-2605), stage 2. Part 5 of
+- **Work items:** [the key lookup](https://linear.app/zgeoff/issue/GEO-2637) and
+  [the purge](https://linear.app/zgeoff/issue/GEO-2605), one release. Part 5 of
   [redaction](redaction.md)
 
 You remove one record of a conversation with `conversation.forget`, the record forget of
@@ -18,20 +18,17 @@ removed, you forget the item from the memory view.
 The purge deletes keys and never stores a new key under the ID an old key had, so no reader ever
 tries to decrypt an old value under a new key. Each item gets 3 kinds of key:
 
-- **A version key** seals one version's text, from stage 2 on, so the purge can keep the current
-  text and delete the rest.
+- **A version key** seals one version's text, so the purge can keep the current text and delete the
+  rest.
 - **A generation key** seals every other value of the item. The purge deletes it and creates the
   next one.
 - **The quoted record's key** seals a quote inside its version key, so the record forget deletes the
   quote with the record.
 
-The purge ships in 2 stages, one release apart:
-
-1. **The key lookup:** every memory reader and writer finds its key through one lookup that knows
-   generation keys, version keys and purges. Stage 1 starts no purge. After a rollback from stage 2,
-   it finishes any purge that stage 2 left unfinished.
-2. **The purge:** each new version gets its own version key, and the record forget purges each item
-   before it writes `record.forgotten`.
+The purge ships in one release. Every memory reader and writer finds its key through one lookup that
+knows generation keys, version keys and purges. Each new version gets its own version key, the
+record forget purges each item before it writes `record.forgotten`, and the server start finishes
+any purge a stop left unfinished.
 
 ## Shape
 
@@ -57,29 +54,30 @@ flowchart LR
 // records naming the newer ones. Each ID is random, as the key store's IDs must be
 // (database.md, "Key store IDs").
 type ItemKeyID =
-  | ItemID // generation 0: the item's one key before stage 2, which seals every value written then
+  | ItemID // generation 0: the item's one key before its first purge, which seals every value written then
   | `${ItemID}/${string}`; // a later generation key or a version key: `${itemID}/${crypto.randomUUID()}`
 ```
 
 ### What each key seals
 
-| Value                                                      | Sealed under                                                 |
-| ---------------------------------------------------------- | ------------------------------------------------------------ |
-| A version's text, written from stage 2                     | its version key                                              |
-| A version's text, written before stage 2                   | the generation key in force at its record                    |
-| A version's evidence or intent quote, written from stage 2 | the quoted record's key inside, then the version key outside |
-| A proposal                                                 | the item's generation key in force when its record commits   |
-| A proposal for a new item                                  | generation 0 of that item                                    |
-| A rejection's reason                                       | the rejection record's own key                               |
+| Value                                                    | Sealed under                                                 |
+| -------------------------------------------------------- | ------------------------------------------------------------ |
+| A version's text, written with a version key             | its version key                                              |
+| A version's text, written before its item's first purge  | the generation key in force at its record                    |
+| A version's evidence or intent quote, with a version key | the quoted record's key inside, then the version key outside |
+| A proposal                                               | the item's generation key in force when its record commits   |
+| An item's labels                                         | the item's generation key in force when their record commits |
+| A proposal for a new item                                | generation 0 of that item                                    |
+| A rejection's reason                                     | the rejection record's own key                               |
 
 A record's generation key in force is the item's generation key with the greatest `from_sequence`
 below that record's sequence, and generation 0 starts at 0. An item is **shared-key** while its
 current version has no version key, so its current text shares generation 0 with every other value.
-Every item that exists when stage 2 ships is shared-key until it gets a new version.
+Every item that exists before the release is shared-key until it gets a new version.
 
 Rating notes and the consolidator's changes, comments and summaries are values of features that the
-similarity push cleanup and [the task removal](no-built-in-memory-tasks.md) remove before stage 1
-ships. No code from stage 1 on reads or writes them, and the purge names none of them.
+similarity push cleanup and [the task removal](no-built-in-memory-tasks.md) remove before this
+release ships. No code from this release on reads or writes them, and the purge names none of them.
 [The scrub](#the-scrub-of-the-removed-features) covers the one kind that a purge would miss.
 
 ### The lookup
@@ -94,8 +92,9 @@ const [proposal] = await readItemKeys(log, [
 //   or { status: 'unreadable' } // the key fails to unwrap
 
 // memory module: the one lookup for every key that seals an item's values, the quoted record's
-// key included. Every file that reads an item's key through readItemKey, readVersionKey or
-// readRecordKeys(log, itemIDs) calls it, readers and writers alike.
+// key included. A reader calls it. A writer that seals a new value calls readCurrentItemKey, which
+// answers with the item's current generation key and the same statuses. A test lists the files
+// that call readRecordKeys, so no other file reads an item's key.
 declare function readItemKeys(
   log: Pick<Log, 'deploymentKey' | 'writer'>,
   refs: readonly ItemValueRef[],
@@ -118,6 +117,12 @@ type ItemValueRef =
       recordSequence: number; // the quoted record
     }
   | {
+      // the item's labels as of one labels record
+      value: 'labels';
+      itemID: string;
+      sequence: number; // the record that holds the ciphertext
+    }
+  | {
       // 'proposal' covers a new item's proposal and a rejected edit. A rejection's reason stays a
       // field of its own record, which the log reads.
       value: 'proposal';
@@ -131,7 +136,7 @@ type ItemValueKey =
 ```
 
 ```text
-memory_item_keys, a projection that stage 1 adds, one row per key of an item
+memory_item_keys, a projection, one row per key of an item
   key_id                 text primary key -- an ItemKeyID; generation 0 gets its row when a purge deletes it
   item_id                text not null
   kind                   text not null    -- 'generation' or 'version'; no check, under the migration rule (database.md)
@@ -141,21 +146,22 @@ memory_item_keys, a projection that stage 1 adds, one row per key of an item
   from_sequence          integer not null -- the closing record that created the key; 0 for generation 0
   removed_sequence       integer          -- the closing record that deleted it
 
-memory_evidence_purges, a projection that stage 1 adds, one row per item of a purge
+memory_evidence_purges, a projection, one row per item of a purge
   record_sequence        integer not null -- (record_sequence, item_id) is the primary key
   item_id                text not null
   closed_sequence        integer          -- its memory.evidence_purge_closed record
   purged_sequence        integer          -- its memory.evidence_purged record
+  labels_revision        integer          -- the revision of the labels reseal, from the closed record
 ```
 
 ### The records
 
 ```ts
-// memory module. Each is a record kind of its own, so the release before stage 1 skips it, and the
+// memory module. Each is a record kind of its own, so the release before this one skips it, and the
 // existing records keep the strict shapes that release parses. The subject and sensitive marks
 // follow the same rule (store.md, "Items and versions").
 
-// Stage 2 writes it in the transaction of each memory.version_added it writes.
+// The purge writes it in the transaction of each bridge memory.version_added it writes.
 interface VersionKeyed {
   itemID: string;
   version: number;
@@ -164,7 +170,7 @@ interface VersionKeyed {
   intentQuote: string | null;
 }
 
-// The API module of stage 2 writes it in the transaction that writes record.forget_started. The
+// The API module writes it in the transaction that writes record.forget_started. The
 // scrub writes it with recordSequence null, and its later records carry the sequence of this record.
 interface EvidencePurgeStarted {
   recordSequence: number | null;
@@ -180,6 +186,8 @@ interface EvidencePurgeClosed {
   // can quote the record
   generationKeyID: string; // the next generation key, created in keys.db before this commits
   bridgeVersion: number | null; // set for a shared-key item whose current text decrypts
+  labelsRevision: number | null; // the revision of the memory.labelled that reseals the current labels
+  // under the next generation key, in the same commit; null for an item with no labels
 }
 
 interface EvidencePurged {
@@ -207,7 +215,7 @@ await store.purgeItemEvidence({ recordSequence: 4190, itemID: 'c1f0…' });
 ```ts
 // The memory.version_added that a purge writes for a shared-key item, so its current text survives
 // under a version key. It copies the current version's provenance (writes.md, "Provenance"), and
-// takes only fields and values that the release before stage 1 parses.
+// takes only fields and values that the release before this one parses.
 const bridge = {
   change: 'edited',
   state: current.state,
@@ -241,13 +249,13 @@ const historyVersionSchema = z.object({
 ```
 
 ```ts
-// memory module: stage 1 adds one field to the export's version and raises the export's schema
+// memory module: the release adds 2 fields to the export's version and raises the export's schema
 // version by one (redaction.md, "The export version, shared with the photos work")
 const exportVersionSchema = z.strictObject({
   // …existing fields
   isRemoved: z.boolean(), // text and evidenceQuote are null because a purge removed them
   isBridge: z.boolean(), // a purge wrote this version; its change and origin are not your edit
-}); // the release before stage 1 refuses such a file, because it parses each version strictly
+}); // the release before this one refuses such a file, because it parses each version strictly
 ```
 
 ## Constraints
@@ -276,7 +284,7 @@ const exportVersionSchema = z.strictObject({
   memory forget's evidence keeps today's proposal.
 - Each write checks for the record's `record.forget_started` inside its own transaction, the
   proposal writer included. A write that found its quote before the forget started therefore fails
-  the same check, and the remember's fallback never turns that failure into a proposal. Stage 1
+  the same check, and the remember's fallback never turns that failure into a proposal. The release
   ships this refusal for every record forget.
 - From the first transaction, every reader reads each value of an item in the set as removed, except
   the current version's text and its quotes of other records.
@@ -295,11 +303,11 @@ const exportVersionSchema = z.strictObject({
   for a due forget set and
   [a forget's backup state](../../architecture/deployment/backups.md#a-forgets-backup-state), which
   both read `record.forgotten`, cover every key the purge deletes.
-- When a server start of stage 2 finishes a forget that stage 1 began, the forget has no
+- When a server start finishes a forget that an earlier release began, the forget has no
   `memory.evidence_purge_started`. The start writes the purge set first, then purges, because the
   forget has not written `record.forgotten` yet.
-- A record forget that writes `record.forgotten` with no purge set, before stage 2 or during a
-  rollback to stage 1, leaves its quotes in memory items.
+- A record forget that writes `record.forgotten` with no purge set, in an earlier release, leaves
+  its quotes in memory items.
 - `readPurgeSet` ships with whichever of this work and
   [the removal control](https://linear.app/zgeoff/issue/GEO-2560) lands first, and the other calls
   it.
@@ -336,7 +344,7 @@ const exportVersionSchema = z.strictObject({
 - Every reader that shows who changed a version reads `isBridge` before `change` and `origin`: the
   history, the export, the change line and the notices. A bridge shows as the purge's version, never
   as your edit. The record keeps `change: 'edited'` and `origin: 'owner'` only because the strict
-  parser of `memory.version_added`, unchanged since the release before stage 1, accepts no other
+  parser of `memory.version_added`, unchanged since the release before this one, accepts no other
   marker.
 
 | A kill after                          | The start finds                                    | The start does                          |
@@ -378,36 +386,20 @@ const exportVersionSchema = z.strictObject({
 - The history shows each removed version with its date and provenance and no text. Every other API
   status reports a removed value as `shredded`, so the API contract only grows.
 
-### The 2 stages and a rollback
+### One release and a rollback
 
-- Both removals ship before stage 1: the rating cleanup of the similarity push cleanup and the
-  consolidator delete of [the task removal](no-built-in-memory-tasks.md). From stage 1 on, no
-  release writes a rating note or a consolidation value, and stage 2's oldest reader refuses every
-  release that did.
-- Stage 1 ships the lookup, both tables, the readers of the 4 record kinds, what readers show, the
-  refusal of a write that quotes a forgetting record, `VERSION_REMOVED`, `ItemPurgingError` and the
-  memory forget's delete by prefix. It also ships the purge, which only its start runs, to finish a
-  purge that stage 2 began.
-- Stage 1's record forget writes no `memory.evidence_purge_started`, so stage 1 starts no purge, and
-  new values written from stage 1 get no version key.
-- Stage 1 seals each new value under the item's current generation key. For an item that no purge
-  has reached, that key is the UUID, so the release before stage 1 reads every value stage 1 writes
-  on it.
-- Stage 1's server start finishes every purge that a `memory.evidence_purge_started` owes, bridge
-  included, before it writes `record.forgotten`. Only a stage 2 forget writes that record, and the
-  release before stage 1 refuses a stage 2 database, so that release never meets what the purge
-  writes.
-- Stage 2 turns on version keys and the purge in the record forget. It raises
-  `nixieSchema.oldestReader` to stage 1's schema version and carries a migration of its own, so the
-  stored oldest reader rises and the release before stage 1 refuses to start, with the existing
-  error ([the database](../../architecture/core/database.md)).
-- A rollback from stage 2 to stage 1 takes no step: stage 1's start finishes every purge.
-- A rollback from stage 1 to the release before it takes no step: stage 1 writes nothing that
-  release cannot read, and that release never meets the 2 tables.
-- Stage 1's start finishes a scrub that stage 2 began, as it finishes a purge.
-- Stage 1 holds the stage 2 writes of a new forget behind one constant that is off. Its tests turn
-  the constant on to write each stage 2 record and each kill point's state, then read and finish
-  them with it off.
+- Both removals ship before this release: the rating cleanup of the similarity push cleanup and the
+  consolidator delete of [the task removal](no-built-in-memory-tasks.md). From this release on, no
+  release writes a rating note or a consolidation value.
+- The release ships the lookup, both tables, the 4 record kinds, version keys, the purge, what
+  readers show, the refusal of a write that quotes a forgetting record, `VERSION_REMOVED`,
+  `ItemPurgingError` and the memory forget's delete by prefix, with no constant that holds any of it
+  back.
+- The server start finishes every purge that a `memory.evidence_purge_started` owes, bridge and
+  labels reseal included, before it writes `record.forgotten`.
+- A rollback to the release before this one relies on the stored oldest reader that
+  [the purge](https://linear.app/zgeoff/issue/GEO-2605) sets. That release refuses a database that
+  holds a purge, so the rollback needs no step of its own here.
 
 ### The scrub of the removed features
 
@@ -417,9 +409,9 @@ const exportVersionSchema = z.strictObject({
 - A merge change and its comments sit under the key of its first input only. When another input
   quotes a record, a purge of that input leaves the change readable. The scrub closes that case
   once.
-- Stage 2's server start scrubs, before it serves a turn. It finds each change with more than one
-  input whose first input's generation key in force is still in keys.db, and lists those first
-  inputs in one `memory.evidence_purge_started` with `recordSequence` null.
+- The server start scrubs, before it serves a turn. It finds each change with more than one input
+  whose first input's generation key in force is still in keys.db, and lists those first inputs in
+  one `memory.evidence_purge_started` with `recordSequence` null.
 - It runs the session cleanup once, then the purge of each listed item, with the same steps, kill
   table and finish as a record forget's purge. The bridge keeps all of its evidence, and nothing
   writes `record.forgotten`.
@@ -464,12 +456,13 @@ before a purge with the newest key copy, which lacks the keys the purge deleted:
 - **Every reader treats what the purge deletes as removed from the forget's first transaction.** An
   agent's call on 13 Nov: a session or a writer that runs before the keys go then never copies the
   text under a key that survives.
-- **The purge ships in 2 stages, one release apart.** An agent's call on 13 Nov: the release before
-  each stage then reads everything that stage writes, so neither rollback takes a step.
+- **The purge ships in one release.** The owner's rule: a rollback relies on the stored oldest
+  reader, so the design keeps no second constant and no second release. This replaces the 2-release
+  call of 13 Nov.
 - **The removed features get one scrub, and the purge names none of their values.** An agent's call
   on 13 Nov: their values die with generation 0, except a merge change under another input's key,
-  and the scrub at stage 2's start purges each such first input once. Each scrubbed item loses its
-  older versions and its pending proposals at upgrade, with no removal of yours.
+  and the scrub at the start purges each such first input once. Each scrubbed item loses its older
+  versions and its pending proposals at upgrade, with no removal of yours.
 - **A record forgotten with no purge set keeps its quotes.** An agent's call on 13 Nov: a catch-up
   purge would finish after its `record.forgotten`, outside the forget's backup state. You forget
   such an item from the memory view.
@@ -479,7 +472,6 @@ before a purge with the newest key copy, which lacks the keys the purge deleted:
 - The internal names, and the additional-data strings each sealed value binds.
 - How the build keeps `readRecordKeys` out of the memory module outside the lookup and the key
   cleanups: a lint rule, or a test that lists the files that import it.
-- The migration stage 2 carries to raise the stored oldest reader.
 - The wording of `VERSION_REMOVED`, of `ItemPurgingError`, and of the history's removed and bridge
   versions.
 - The layout of the tests, and the fault points of the kill tests.

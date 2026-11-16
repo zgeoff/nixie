@@ -137,6 +137,41 @@ wraps it, as it wraps every record key. Every version is encrypted under its ite
 item ID and the version number as additional data, so a sealed value copied under another item or
 another version fails to decrypt.
 
+An item holds 3 kinds of key. Generation 0 is the item's UUID and seals every value of an item that
+no purge has reached. A later generation key and each version key have an ID of the form
+`<item UUID>/<random UUID>`, so a forget finds every key of an item by that prefix in the key store
+alone. A version key seals one version's text, and the generation key in force seals the item's
+proposals and labels.
+
+Every reader finds a key through `readItemKeys`, which takes a version, a version quote, a proposal
+or a labels value and answers `readable`, `removed`, `shredded` or `unreadable`. It reads the key
+rows, then the keys, then the removal marks again, so a key that vanished while a purge was about to
+close reads `removed`, never `shredded`. A writer that seals a new value calls `readCurrentItemKey`,
+which answers for the item's current generation key. A test lists the files that call
+`readRecordKeys`, so no other file reads an item's key. The memory forget deletes the item's keys by
+the `<item UUID>/` prefix and the UUID itself.
+
+### The evidence purge
+
+When a record forget removes a message that items quote, it writes `record.forget_started` and
+`memory.evidence_purge_started` in one transaction, which fixes the items to purge. From then on
+every reader reads each older version and pending proposal of those items as removed. The purge of
+one item runs in one commit: it lapses the item's pending proposals, writes a bridge version under a
+new version key when the current text shared generation 0, closes the item's old keys with
+`memory.evidence_purge_closed`, and reseals the current labels under the next generation key with a
+`memory.labelled`. After the commit it deletes the closed keys and writes `memory.evidence_purged`.
+The bridge shows in the history as the purge's version, with its text and no change or origin.
+`memory_item_keys` and `memory_evidence_purges` are projections of the 4 record kinds
+(`memory.version_keyed`, `memory.evidence_purge_started`, `memory.evidence_purge_closed` and
+`memory.evidence_purged`) and hold what the lookup reads. The server start finishes every purge that
+a started record still owes, before it serves a turn, and a record forget that began one writes
+`record.forgotten` only after the purge of every item in its set ends.
+
+A write that quotes a record whose forget has begun fails with `QuotedRecordForgettingError`, and a
+write that edits an item still purging fails with `ItemPurgingError`. Both are refusals the model
+reads as tool errors, and neither falls back to a proposal. An undo of a version that reads removed
+fails with `VERSION_REMOVED`.
+
 ## Recall
 
 Recall takes a query, a list of item IDs, or neither, which lists every active item a page at a time

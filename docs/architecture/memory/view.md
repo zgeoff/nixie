@@ -42,11 +42,13 @@ history holds every version, oldest first, each with its provenance: its change 
 origin and source, the task and proposal behind it, the verdict of each write check, the model of
 the call that wrote it and the model of the checker that judged its quote. The source labels the
 version's text, so an approved proposal reads as outside content beside a quote from the user's
-message ([provenance](./writes.md#provenance)). A version with evidence carries the quote's offsets
-and the text of the message the offsets point into, so the view shows the quote inside its message.
-The view reads that message only while the version's own text is readable. A forgotten item
-therefore never shows the words it came from, even while the user's message still holds them. A
-message forgotten on its own reads as a gap beside a readable version.
+message ([provenance](./writes.md#provenance)). A version that a purge removed carries `isRemoved`,
+shows its date and provenance with no text, and its status reads `shredded`. A version a purge wrote
+carries `isBridge` and shows as the purge's version, never as the user's edit. A version with
+evidence carries the quote's offsets and the text of the message the offsets point into, so the view
+shows the quote inside its message. The view reads that message only while the version's own text is
+readable. A forgotten item therefore never shows the words it came from, even while the user's
+message still holds them. A message forgotten on its own reads as a gap beside a readable version.
 
 A version [from a photo](./writes.md#writes-from-a-photo) carries the photo's event ID, its number
 and the thread of the message that holds it, and the web view shows the photo beside the version as
