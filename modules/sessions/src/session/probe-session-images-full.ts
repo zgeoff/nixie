@@ -1,4 +1,6 @@
+import { isInboxRecord } from '@heynixie/tasks';
 import type { StepInput } from '@heynixie/tasks';
+import { isSilentFire } from '../inbox/is-silent-fire';
 import { readInboxMessages } from '../inbox/read-inbox-messages';
 import type { ConversationRun, ImageTally } from '../types';
 import { countImages } from '../utils/count-images';
@@ -19,9 +21,17 @@ export async function probeSessionImagesFull(
     return false;
   }
 
+  const firstVisible = session.inbox.find(
+    (record) => isInboxRecord(record) && !isSilentFire(record),
+  );
+
+  if (firstVisible === undefined) {
+    return false;
+  }
+
   const times = { defaultZone: run.defaultZone, now: new Date(run.context.clock.now()) };
 
-  const read = await readInboxMessages(run.context, session.inbox.slice(0, 1), {
+  const read = await readInboxMessages(run.context, [firstVisible], {
     times,
     view: { messaging: run.messaging, wake: session.wake },
     imageBudget: { bytes: 0, count: 0 },

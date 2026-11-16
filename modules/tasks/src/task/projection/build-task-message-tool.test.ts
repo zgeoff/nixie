@@ -3,11 +3,14 @@ import { readRecords, writeRecords } from '@heynixie/log';
 import { buildMockToolCall, buildMockToolContext } from '@heynixie/tools/test-utils';
 import invariant from 'tiny-invariant';
 import { createConversationTask } from '../../conversation/create-conversation-task';
+import { readRunRows } from '../../run/read-run-rows';
 import { buildStepRunID } from '../../step/build-step-run-id';
 import { createTestConversationClaim } from '../../test-utils/create-test-conversation-claim';
 import { seedConversationStep } from '../../test-utils/seed-conversation-step';
+import { seedDefinitionTask } from '../../test-utils/seed-definition-task';
 import { seedTask } from '../../test-utils/seed-task';
 import { startTestTasks } from '../../test-utils/start-test-tasks';
+import { writeTestTriggerFire } from '../../test-utils/write-test-trigger-fire';
 import type { TasksTables } from '../../types';
 import { createSystemTask } from '../create-system-task';
 import { buildTaskMessageTool } from './build-task-message-tool';
@@ -262,15 +265,31 @@ test('it refuses a message to a task the caller cannot message, pointing at task
   });
 });
 
-test("it refuses a reply to a brief ID of a definition's task run, which names no message", async () => {
+test("it refuses a reply to the brief ID of a definition's task run, which names no message", async () => {
   const ctx = await setupTest();
 
-  await createSystemTask(ctx.context, 'planner');
+  const taskID = await seedDefinitionTask(ctx, {
+    definitionID: 'water-the-tomatoes',
+    definitionHash: 'hash-1',
+    version: { name: 'Water the tomatoes', brief: 'Water the tomatoes at dawn.' },
+  });
+
   await createConversationTask(ctx.context);
 
-  const claim = await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+  await writeTestTriggerFire(ctx.context, taskID, {
+    definitionHash: 'hash-1',
+    dedupeKey: 'fire-1',
+  });
+
+  const claim = await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000, taskID });
 
   invariant(claim);
+
+  const [run] = await readRunRows(ctx.writer.db, taskID);
+
+  const briefID = run?.opened.briefID;
+
+  invariant(briefID);
 
   const tool = buildTaskMessageTool(ctx.context, {
     directory: [
@@ -290,14 +309,14 @@ test("it refuses a reply to a brief ID of a definition's task run, which names n
   const outcome = await tool.run(
     buildMockToolCall({
       tool: 'task.message',
-      input: { to: 'conversation', kind: 'reply', body: 'Done.', replyTo: 'q4v8k2m7xt' },
+      input: { to: 'conversation', kind: 'reply', body: 'Done.', replyTo: briefID },
     }),
-    buildMockToolContext({ run: { thread: 'planner', stepRunID: buildStepRunID(claim) } }),
+    buildMockToolContext({ run: { thread: taskID, stepRunID: buildStepRunID(claim) } }),
   );
 
   expect(outcome).toStrictEqual({
     status: 'error',
-    message: 'replyTo names q4v8k2m7xt, which is no message sent to you',
+    message: `replyTo names ${briefID}, which is no message sent to you`,
   });
 });
 
