@@ -2,7 +2,6 @@ import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import type { ForgetRequest, MemoryTables, StoreParts } from '../types';
 import { requireItem } from '../utils/item/require-item';
 import { readEvidenceSequences } from '../utils/read-evidence-sequences';
-import { removeMessageEntries } from '../utils/remove-message-entries';
 import { runForgetCleanup } from '../utils/run-forget-cleanup';
 
 export async function runForget(parts: StoreParts, request: ForgetRequest): Promise<void> {
@@ -10,7 +9,7 @@ export async function runForget(parts: StoreParts, request: ForgetRequest): Prom
   const itemID = request.target.itemID;
 
   await parts.lock(async () => {
-    const evidenceSequences = await withWriteTransaction(log.writer, async (tx) => {
+    await withWriteTransaction(log.writer, async (tx) => {
       const db = tx.$extendTables<MemoryTables>();
 
       await request.writeInTransaction?.(tx);
@@ -35,8 +34,6 @@ export async function runForget(parts: StoreParts, request: ForgetRequest): Prom
           },
         },
       ]);
-
-      return sequences;
     });
 
     await parts.index.remove(itemID);
@@ -45,8 +42,6 @@ export async function runForget(parts: StoreParts, request: ForgetRequest): Prom
     parts.vectors?.remove(itemID);
 
     await parts.triggers.remove(itemID);
-
-    await removeMessageEntries(parts, evidenceSequences);
   });
 
   await runForgetCleanup(parts, itemID);

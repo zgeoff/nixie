@@ -2,8 +2,6 @@ import type { LabelEntries } from '../../label/make-label-entries';
 import { makeLabelEntries } from '../../label/make-label-entries';
 import type { MemoryIndex } from '../../memory/start-memory-index';
 import { startMemoryIndex } from '../../memory/start-memory-index';
-import type { MessageCursor } from '../../message/make-message-cursor';
-import { makeMessageCursor } from '../../message/make-message-cursor';
 import type { TriggerIndex } from '../../turn/start-trigger-index';
 import { startTriggerIndex } from '../../turn/start-trigger-index';
 import type { MemoryContext } from '../../types';
@@ -11,15 +9,6 @@ import type { DeliveryLock } from '../../utils/make-delivery-lock';
 import { makeDeliveryLock } from '../../utils/make-delivery-lock';
 import type { VectorIndex } from '../../view/start-vector-index';
 import { startVectorIndex } from '../../view/start-vector-index';
-
-interface MessageIndexes {
-  readonly index: MemoryIndex;
-
-  readonly vectors: VectorIndex | null;
-  readonly cursor: MessageCursor;
-
-  readonly lock: DeliveryLock;
-}
 
 export interface MomentIndexes {
   readonly vectors: VectorIndex | null;
@@ -37,13 +26,11 @@ export interface StoreIndexes {
   readonly triggers: TriggerIndex;
 
   readonly vectors: VectorIndex | null;
-  readonly messages: MessageIndexes;
   readonly moments: MomentIndexes;
 }
 
 export async function startStoreIndexes(context: MemoryContext): Promise<StoreIndexes> {
   const index = await startMemoryIndex();
-  const messageIndex = await startMemoryIndex();
 
   const semantic = context.semanticSearch;
 
@@ -52,12 +39,6 @@ export async function startStoreIndexes(context: MemoryContext): Promise<StoreIn
     labels: makeLabelEntries(),
     triggers: await startTriggerIndex(semantic),
     vectors: semantic === undefined ? null : startVectorIndex(semantic.encoder, semantic.onError),
-    messages: {
-      index: messageIndex,
-      vectors: semantic === undefined ? null : startVectorIndex(semantic.encoder, semantic.onError),
-      cursor: makeMessageCursor(),
-      lock: makeDeliveryLock(),
-    },
     moments: {
       vectors: semantic === undefined ? null : startVectorIndex(semantic.encoder, semantic.onError),
       cursor: { through: 0 },

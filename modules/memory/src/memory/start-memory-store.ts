@@ -40,7 +40,6 @@ export async function startMemoryStore(context: MemoryContext): Promise<StartedM
       await Promise.all([
         parts.vectors?.waitForIdle(),
         parts.triggers.waitForIdle(),
-        parts.messages.vectors?.waitForIdle(),
         parts.moments.vectors?.waitForIdle(),
       ]);
 
@@ -75,8 +74,6 @@ async function stopIndexes(parts: StoreParts): Promise<void> {
     parts.index.stop(),
     parts.triggers.stop(),
     parts.vectors?.stop(),
-    parts.messages.index.stop(),
-    parts.messages.vectors?.stop(),
     parts.moments.vectors?.stop(),
   ]);
 }

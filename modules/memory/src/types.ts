@@ -19,8 +19,6 @@ import type { TopicCount } from './index-block/collect-topic-counts';
 import type { IndexLine } from './index-block/collect-topic-lines';
 import type { MemoryIndexConfig } from './index-block/default-index-settings';
 import type { EntryPage, TopicRequest } from './index-block/types';
-import type { RateRequest } from './memory/memory-rating';
-import type { MessageRecallRequest, MessageRecallResult } from './message/message-recall-request';
 import type { StoreIndexes } from './moment/store/start-store-indexes';
 import type { TurnMemorySettings } from './turn/types';
 import type { DeliveryLock } from './utils/make-delivery-lock';
@@ -264,9 +262,6 @@ export interface MemoryStore {
 
   readonly recall: (request: RecallRequest) => Promise<RecallResult>;
 
-  readonly recallMessages: (request: MessageRecallRequest) => Promise<MessageRecallResult>;
-
-  readonly removeMessages: (sequences: readonly number[]) => Promise<void>;
   readonly remember: (request: RememberRequest) => Promise<VersionRef>;
   readonly retire: (request: RetireRequest) => Promise<VersionRef>;
 
@@ -297,8 +292,6 @@ export interface MemoryStore {
   readonly readHistory: (itemID: string) => Promise<ItemHistory | null>;
 
   readonly readSubjectCounts: () => Promise<MemorySubjectCounts>;
-
-  readonly rate: (request: RateRequest) => Promise<void>;
 
   readonly view: MemoryView;
 }

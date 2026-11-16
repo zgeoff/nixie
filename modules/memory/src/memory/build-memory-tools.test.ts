@@ -25,7 +25,6 @@ async function setupTest(config: TestMemoryOptions = {}) {
     buildMemoryTools(memory.store, {
       clock: { now: () => Date.now() },
       ownerName: null,
-      agentName: null,
       defaultZone: 'UTC',
     }),
   );
@@ -98,7 +97,6 @@ test('it declares read for the reads, export for export, memory_write for rememb
     'memory.retire',
     'memory.pin',
     'memory.unpin',
-    'memory.rate',
     'memory.export',
     'moment.keep',
     'moment.edit',
@@ -116,7 +114,6 @@ test('it declares read for the reads, export for export, memory_write for rememb
     ['memory.retire', ['memory_write']],
     ['memory.pin', ['note']],
     ['memory.unpin', ['note']],
-    ['memory.rate', ['note']],
     ['memory.export', ['export']],
     ['moment.keep', ['note']],
     ['moment.edit', ['note']],
@@ -803,7 +800,6 @@ test('it returns a full proposal cap to the model as an error', async () => {
     buildMemoryTools(memory.store, {
       clock: { now: () => Date.now() },
       ownerName: null,
-      agentName: null,
       defaultZone: 'UTC',
     }),
   ).findTool('memory.remember');

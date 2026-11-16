@@ -11,8 +11,7 @@ import { renderPinnedMemory } from '../../../modules/sessions/src/memory/render-
 import { renderCoreChanges } from '../../../modules/sessions/src/turn/render-core-changes.ts';
 // @boundaries-ignore a spike imports the code it measures
 import { renderRetrievedItems } from '../../../modules/sessions/src/retrieved/render-retrieved-items.ts';
-// @boundaries-ignore a spike imports the code it measures
-import { renderRetrievedMessages } from '../../../modules/sessions/src/retrieved/render-retrieved-messages.ts';
+import { renderRetrievedMessages } from './render-retrieved-messages.ts';
 // @boundaries-ignore a spike imports the code it measures
 import { renderRetrievedSelfNotes } from '../../../modules/sessions/src/retrieved/render-retrieved-self-notes.ts';
 // @boundaries-ignore a spike imports the code it measures
