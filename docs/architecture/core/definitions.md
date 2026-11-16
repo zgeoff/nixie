@@ -43,19 +43,19 @@ same files seeds again. A checkout on a branch, or a directory with no git file,
 hash as its revision and names no repo.
 
 A source reads only the known definitions paths: the manifest and the persona at the root, and the
-tasks, rules and skills folders. It skips every other entry at the root by name, without reading or
-entering it, so that entry never enters the content hash, never has to parse, and never counts
-towards the size limits. A definitions repo can then hold its own docs and scripts, and editing a
-readme never makes a new definitions version. The snapshot still lists every skipped root entry, so
-a misnamed folder such as `rule/` shows in the seed's record instead of its rules going unread
-without a trace.
+`effects`, `prompts`, `rules`, `skills` and `tasks` folders. It skips every other entry at the root
+by name, without reading or entering it, so that entry never enters the content hash, never has to
+parse, and never counts towards the size limits. A definitions repo can then hold its own docs and
+scripts, and editing a readme never makes a new definitions version. The snapshot still lists every
+skipped root entry, so a misnamed folder such as `rule/` shows in the seed's record instead of its
+rules going unread without a trace.
 
 Within the known paths, every source applies one filter. It skips every path with a part that starts
 with a dot, such as `.git`. It keeps every file under `skills/`, whatever its extension, because a
 skill brings its scripts. It keeps only `.yaml`, `.md` and `.ts` files under `tasks/`, and only
-markdown, YAML and JSON files under `rules/`. Every kept file must decode as UTF-8 text, so a binary
-file under `skills/` fails the snapshot. A snapshot past the per-file or the total size limit fails
-too, and its error lists the files at fault.
+markdown, YAML and JSON files under `effects/`, `prompts/` and `rules/`. Every kept file must decode
+as UTF-8 text, so a binary file under `skills/` fails the snapshot. A snapshot past the per-file or
+the total size limit fails too, and its error lists the files at fault.
 
 The path source never follows a link out of the root: a symlink that stays inside the root is
 skipped, and one that leads outside it, or resolves nowhere, fails the snapshot. A file can change
@@ -82,9 +82,8 @@ and its files unapplied. Format 3 also applies each `rules/*.yaml` file as a rul
 names as a prompt part. Format 3 therefore refuses a repo whose existing rule files fail the
 [rule format](../policy/rules.md#the-rule-format), and the error lists each file with its fault. The
 seed applies each folder under `tasks/` as a [task definition](#task-definitions) from format 4, and
-lists the `tasks/` files of an older format as unapplied. A `jobs/` folder is a root entry outside
-the layout, so the seed skips it. The seed applies no other file, and lists each one in its record
-as unapplied. Each unapplied YAML or JSON file must still parse.
+lists the `tasks/` files of an older format as unapplied. The seed applies no other file, and lists
+each one in its record as unapplied. Each unapplied YAML or JSON file must still parse.
 
 nixie owns the format, and each release publishes the manifest's rules as a JSON Schema, the
 `definitions-manifest.schema.json` asset, so a definitions repo checks its manifest against the
