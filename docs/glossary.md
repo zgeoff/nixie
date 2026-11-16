@@ -5,47 +5,47 @@ one person a nixie deployment works for, and the architecture docs call that per
 
 ## Work
 
-| Term             | Meaning                                                                                    |
-| ---------------- | ------------------------------------------------------------------------------------------ |
-| conversation     | Your single chat with nixie. It is a task that never closes, and it routes work to tasks   |
-| task             | A durable piece of work with its own context, which you can open and talk to               |
-| task run         | One stretch of a started task's work, from the claim that opens it to its one report       |
-| report           | What ends a task run: a summary and the fields of the report shape, sent to the starter    |
-| report shape     | The fields a started task must pass with its report, which nixie checks and never trusts   |
-| worker           | A disposable unit of work behind one tool call, which runs in its own imp                  |
-| worker run       | One execution of a worker, from the tool call to its result                                |
-| job              | A definition: a schedule or trigger, instructions and a tool list                          |
-| job run          | One execution of a job, which is itself a task                                             |
-| trigger          | What starts a job run without you, such as a schedule, a webhook or a new email            |
-| code run         | One program that the code tool runs in a disposable imp with no grants                     |
-| wait             | What a task waits on: your answer, a timer, an action's outcome or a trigger event         |
-| inbox            | A task's queue of messages and events that reach it between task runs                      |
-| lease            | A task's claim on the runner, which expires so that a crashed task run can restart         |
-| supervised agent | An agent nixie starts and steers but that runs under its own rules, such as an atc session |
-| model profile    | A named route to one model: endpoint, credential, model, effort and prices                 |
-| model role       | A part a model plays for nixie, such as the conversation or the checker, with its profile  |
+| Term                     | Meaning                                                                                          |
+| ------------------------ | ------------------------------------------------------------------------------------------------ |
+| conversation             | Your single chat with nixie. It is a task that never closes, and it routes work to tasks         |
+| task                     | A durable piece of work with its own context, which you can open and talk to                     |
+| task run                 | One stretch of a started task's work, from the claim that opens it to its one report             |
+| report                   | What ends a task run: a summary and the fields of the report shape, sent to the starter          |
+| report shape             | The fields a started task must pass with its report, which nixie checks and never trusts         |
+| worker                   | A disposable unit of work behind one tool call, which runs in its own imp                        |
+| worker run               | One execution of a worker, from the tool call to its result                                      |
+| task definition          | A definition in the `tasks` folder: a trigger, instructions and a tool list                      |
+| task run of a definition | One task run of a task definition, which is itself a task                                        |
+| trigger                  | What starts a task run of a definition without you, such as a schedule, a webhook or a new email |
+| code run                 | One program that the code tool runs in a disposable imp with no grants                           |
+| wait                     | What a task waits on: your answer, a timer, an action's outcome or a trigger event               |
+| inbox                    | A task's queue of messages and events that reach it between task runs                            |
+| lease                    | A task's claim on the runner, which expires so that a crashed task run can restart               |
+| supervised agent         | An agent nixie starts and steers but that runs under its own rules, such as an atc session       |
+| model profile            | A named route to one model: endpoint, credential, model, effort and prices                       |
+| model role               | A part a model plays for nixie, such as the conversation or the checker, with its profile        |
 
 ## Policy
 
-| Term            | Meaning                                                                                |
-| --------------- | -------------------------------------------------------------------------------------- |
-| tool            | Anything the model can call. Every action goes through one                             |
-| effect          | What a tool declares it does, such as read, send or spend                              |
-| action          | A tool call with side effects outside nixie, which runs on the action queue            |
-| action queue    | The durable queue that runs actions and records each outcome: done, failed or unknown  |
-| rule            | An allow, ask or deny, matched on the tool, its effects and the context                |
-| always-ask set  | Spending money, widening rules or approvals, and raising a budget                      |
-| lift            | A bounded rule that lifts the always-ask set                                           |
-| mandate         | Rules that share an expiry, such as "full authority to ship until 6 pm", ended as one  |
-| consent checker | A checker model that confirms your own message asked for an action                     |
-| prompt cause    | Why a prompt reached you, recorded with every prompt                                   |
-| proposal        | An action that waits for your answer                                                   |
-| approval        | Your yes to one proposal, bound to that exact action and used once                     |
-| card            | A proposal shown in its thread, with Approve, Always allow, Defer and Decline          |
-| defer           | Your answer "not now": the proposal stays pending and returns at the time you pick     |
-| approval digest | Everything that waits on your answer, gathered in one place                            |
-| notice          | A quiet line in a thread that says what nixie did, such as a memory write or a new job |
-| untrusted       | Content that did not come from your own words or your own data                         |
+| Term            | Meaning                                                                                            |
+| --------------- | -------------------------------------------------------------------------------------------------- |
+| tool            | Anything the model can call. Every action goes through one                                         |
+| effect          | What a tool declares it does, such as read, send or spend                                          |
+| action          | A tool call with side effects outside nixie, which runs on the action queue                        |
+| action queue    | The durable queue that runs actions and records each outcome: done, failed or unknown              |
+| rule            | An allow, ask or deny, matched on the tool, its effects and the context                            |
+| always-ask set  | Spending money, widening rules or approvals, and raising a budget                                  |
+| lift            | A bounded rule that lifts the always-ask set                                                       |
+| mandate         | Rules that share an expiry, such as "full authority to ship until 6 pm", ended as one              |
+| consent checker | A checker model that confirms your own message asked for an action                                 |
+| prompt cause    | Why a prompt reached you, recorded with every prompt                                               |
+| proposal        | An action that waits for your answer                                                               |
+| approval        | Your yes to one proposal, bound to that exact action and used once                                 |
+| card            | A proposal shown in its thread, with Approve, Always allow, Defer and Decline                      |
+| defer           | Your answer "not now": the proposal stays pending and returns at the time you pick                 |
+| approval digest | Everything that waits on your answer, gathered in one place                                        |
+| notice          | A quiet line in a thread that says what nixie did, such as a memory write or a new task definition |
+| untrusted       | Content that did not come from your own words or your own data                                     |
 
 ## Memory and definitions
 
@@ -60,7 +60,7 @@ one person a nixie deployment works for, and the architecture docs call that per
 | forget             | Destroy a memory item's key, so the item is unreadable everywhere                            |
 | moment             | A range of records in one thread that nixie keeps whole, with a title, note and reflections  |
 | reflection         | A model's reading of a moment, labelled with its model ID and date                           |
-| definitions        | Your persona, jobs, skills and policy seed                                                   |
+| definitions        | Your persona, task definitions, skills and policy seed                                       |
 | definitions source | Where nixie reads the definitions from, such as a git repo, a local path or bucket storage   |
 | skill              | A procedure in your definitions: instructions, references and scripts, which grants nothing  |
 | skill catalog      | The name and description of each skill a caller may load, in its system prompt               |
@@ -100,7 +100,7 @@ one person a nixie deployment works for, and the architecture docs call that per
 
 | Term           | Meaning                                                                                                                                                                                  |
 | -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| backup job     | The separate container, apart from a `job`, that ships each backup set to the restic repositories                                                                                        |
+| backup job     | The separate container that ships each backup set to the restic repositories                                                                                                             |
 | backup set     | One `nixie.db` copy and one `keys.db` copy that nixie stages in one folder of the staging folder                                                                                         |
 | publish number | The positive integer that one publish gives to both the data snapshot and the key snapshot it writes, planned in [GEO-2570](https://linear.app/zgeoff/issue/GEO-2570)                    |
 | backup pair    | The key snapshot and the data snapshot that the fetch picks to restore from, planned in [GEO-2562](https://linear.app/zgeoff/issue/GEO-2562)                                             |

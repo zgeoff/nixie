@@ -1,7 +1,7 @@
 # Scope
 
 nixie's scope is a set of requirements in 3 tiers and a list of non-goals. Each requirement traces
-to a kind of job nixie runs, a [principle](principles.md), the case for nixie, or a gap that a
+to a kind of task nixie runs, a [principle](principles.md), the case for nixie, or a gap that a
 survey of existing assistants and frameworks found. Where a decision record settles how nixie meets
 a requirement, the requirement links it.
 
@@ -32,7 +32,7 @@ adding it later means a redesign.
 | Brokered credentials, no new destination for a task that reads untrusted content, and safe network defaults                                                                                                      | Untrusted content cannot reach a new destination alone; survey | [0005](decisions/0005-untrusted-conversation.md) | ★   |
 | Long-term memory you can read, edit and export                                                                                                                                                                   | Nothing is hidden; capture and recall                          |                                                  | ★   |
 | The connector interface, with one connector                                                                                                                                                                      | Upkeep of a service you use                                    | [0010](decisions/0010-oauth-clients.md)          |     |
-| Persona, jobs, and policy supplied by the deployment                                                                                                                                                             | Behaviour is data                                              |                                                  |     |
+| Persona, task definitions, and policy supplied by the deployment                                                                                                                                                 | Behaviour is data                                              |                                                  |     |
 | A hard spending stop                                                                                                                                                                                             | Survey                                                         | [0012](decisions/0012-spending-stop.md)          |     |
 
 ### Tier 2
@@ -44,13 +44,13 @@ adding it later means a redesign.
 | The Android app, built with Expo React Native                                                                                    | Why nixie                    |                                                                                | ★   |
 | Execution that resumes at its last step after a restart, with every action safe to repeat                                        | Background work; survey      | [0001](decisions/0001-durable-layer.md), [0002](decisions/0002-approvals.md)   | ★   |
 | Review of memory writes, and memory upkeep that merges, settles contradictions, and prunes                                       | Survey                       | [0008](decisions/0008-memory-write-review.md)                                  | ★   |
-| Versioned definitions of persona, jobs, and policy, with the version stored in every record                                      | Survey                       |                                                                                | ★   |
+| Versioned definitions of persona, task definitions, and policy, with the version stored in every record                          | Survey                       |                                                                                | ★   |
 | Event triggers, a cheap periodic check, and read-only defaults for work that nixie starts itself                                 | Reminders; survey            | [0005](decisions/0005-untrusted-conversation.md)                               |     |
 | The full live view: finished tasks, what each task did and why, the memory tap-through, and a report of skipped or late triggers | Nothing is hidden; survey    |                                                                                |     |
-| Steering coding sessions through atc, run as a task, and the MCP proxy for outside servers                                       | Jobs                         | [0009](decisions/0009-mcp-proxy.md)                                            |     |
+| Steering coding sessions through atc, run as a task, and the MCP proxy for outside servers                                       | Task definitions             | [0009](decisions/0009-mcp-proxy.md)                                            |     |
 | Approval choices: once, always, rules set in advance, a default for an unanswered request, and take-over of a sensitive step     | The owner has root; survey   |                                                                                |     |
 | Undo for reversible actions through checkpoints, and least privilege for each tool                                               | Survey                       | [0005](decisions/0005-untrusted-conversation.md)                               |     |
-| Budgets per job, a model tier per job, and a limit on concurrent work                                                            | Survey                       |                                                                                |     |
+| Budgets per task definition, a model tier per task definition, and a limit on concurrent work                                    | Survey                       |                                                                                |     |
 | Health checks reported through another channel, safe upgrades with rollback, and backups of personal data                        | Your data stays home; survey |                                                                                |     |
 | Trust rules for skills: signed, pinned, scanned, with review of skills that nixie writes itself                                  | Survey                       |                                                                                |     |
 

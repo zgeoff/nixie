@@ -32,9 +32,9 @@ the latest.
 A call that declares `memory_write` skips the checker of stage 8 and the ask of stage 9: it gets the
 outcome `gate` at stage 8, as [memory writes](#memory-writes) says.
 
-The caller's tool list is the run's own: the job's list for a job run, and the subset its caller
-passed for a worker. A tool that the registry knows but the run was not given is therefore denied,
-even though the model can name it.
+The caller's tool list is the run's own: the task definition's list for a task run of a definition,
+and the subset its caller passed for a worker. A tool that the registry knows but the run was not
+given is therefore denied, even though the model can name it.
 
 A rule's effects are the tool's declared effects, so the same tool gets the same answer under the
 same rules unless a rule also names argument checks, a context or a source of content. When several
@@ -72,7 +72,8 @@ Stage 5 gives each destination of a call the first permission that holds:
    `nixie contacts mark-known <destination>` marks one, and `nixie contacts unmark <contactID>`
    removes it. A record forget of the marking record removes the contact's details, so the contact
    then grants nothing.
-4. `job`: the job definition that runs the call names the destination. No definition names one yet.
+4. `job`: the task definition whose task run makes the call names the destination. No definition
+   names one yet.
 5. `rule`: an allow rule that matches the call names the destination.
 
 A destination with none of them asks at stage 5 unless consent covers it. A call reads the contacts

@@ -59,9 +59,8 @@ Paste `bun verify report --human` last, untouched.
 ## Checks
 
 <!--
-One ticked line per review you ran: `<review> (<who>): <n> fixed,
-<n> declined`, where <who> names the model, and may be left out for a
-review your own session ran. Keep the chex, Cold read and Deslop lines
+One ticked line per review you ran: `<review>: <n> fixed,
+<n> declined`. Keep the chex, Cold read and Deslop lines
 only when the PR changes a skill's SKILL.md or a file under its
 references/. Under "Declined:", give each declined finding one line: the
 review that found it, the finding, then why not or the issue it went
@@ -69,7 +68,7 @@ to. Or write "Declined: none." A fixed finding shows in the diff; don't
 list it.
 -->
 
-- [ ] Second opinion (<model>, <effort>): <n> fixed, <n> declined
+- [ ] Second opinion: <n> fixed, <n> declined
 - [ ] chex prose, links and skill: cleared
 - [ ] Cold read: <n> fixed, <n> declined
 - [ ] Deslop: <n> edits
