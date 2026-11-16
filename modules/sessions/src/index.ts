@@ -42,7 +42,7 @@ export { renderMemoryItem } from './memory/render-memory-item';
 export type { NextVersion } from './memory/render-memory-line';
 export { renderMemoryLine } from './memory/render-memory-line';
 export type { SubjectItem } from './memory/render-subject-groups';
-export { renderSubjectGroups } from './memory/render-subject-groups';
+export { renderSubjectGroups, renderSubjectHeading } from './memory/render-subject-groups';
 
 export type {
   ConversationRunner,
@@ -90,6 +90,7 @@ export type {
   NotedEvent,
   PinnedCoreUse,
   SessionCleanupCause,
+  SessionIndex,
   SessionDefinitions,
   TurnNote,
   TurnNoteRange,

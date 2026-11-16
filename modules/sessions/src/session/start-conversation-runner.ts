@@ -67,9 +67,9 @@ export interface ConversationRunner {
 }
 
 const defaultMemorySettings: ConversationMemorySettings = {
-  retrievalItems: 5,
-  retrievalSelfNotes: 2,
-  retrievalMessages: 3,
+  retrievalItems: 0,
+  retrievalSelfNotes: 0,
+  retrievalMessages: 0,
   retrievalMinScore: 0.25,
   retrievalMinSimilarity: 0.38,
   rebuildTokens: 30_000,

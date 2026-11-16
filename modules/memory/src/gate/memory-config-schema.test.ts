@@ -11,13 +11,47 @@ test('it sets the gate, pinned core, retrieval and rebuild defaults', () => {
     },
     checkerTimeoutMs: 20_000,
     pinnedCoreTokens: 2000,
-    retrievalItems: 5,
-    retrievalSelfNotes: 2,
-    retrievalMessages: 3,
+    retrievalItems: 0,
+    retrievalSelfNotes: 0,
+    retrievalMessages: 0,
     retrievalMinScore: 0.25,
     retrievalMinSimilarity: 0.38,
     rebuildTokens: 30_000,
+    index: { tokens: 3000, openTopicItems: 25, itemOrder: 'newest-first', topicPage: 200 },
   });
+});
+
+test.each([1, 2999, -1])('it refuses an index budget of %d', (tokens) => {
+  const result = memoryConfigSchema.safeParse({ index_tokens: tokens });
+
+  expect(result.error?.issues).toPartiallyContain({ path: ['index_tokens'] });
+});
+
+test.each([0, 3000, 5000])('it takes an index budget of %d', (tokens) => {
+  const result = memoryConfigSchema.safeParse({ index_tokens: tokens });
+
+  expect(result.data?.index.tokens).toBe(tokens);
+});
+
+test('it takes the index keys the file names', () => {
+  const result = memoryConfigSchema.safeParse({
+    index_open_topic_items: 10,
+    index_item_order: 'newest-first',
+    index_topic_page: 50,
+  });
+
+  expect(result.data?.index).toStrictEqual({
+    tokens: 3000,
+    openTopicItems: 10,
+    itemOrder: 'newest-first',
+    topicPage: 50,
+  });
+});
+
+test('it refuses an index item order other than newest first', () => {
+  const result = memoryConfigSchema.safeParse({ index_item_order: 'oldest-first' });
+
+  expect(result.error?.issues).toPartiallyContain({ path: ['index_item_order'] });
 });
 
 test('it takes the values the file names', () => {

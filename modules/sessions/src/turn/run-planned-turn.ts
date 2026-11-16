@@ -70,11 +70,13 @@ export async function runPlannedTurn(
   return { completed, opening: opening?.record ?? null };
 }
 
-function readOpening(
+async function readOpening(
   turn: SessionTurn,
   start: SessionStart,
   times: MessageTimeOptions,
 ): Promise<SessionOpening> {
+  const index = turn.run.memory === undefined ? null : await turn.run.memory().readIndex();
+
   return readSessionOpening(turn.run.context, {
     taskID: turn.input.taskID,
     start,
@@ -87,6 +89,7 @@ function readOpening(
     times,
     zone: findNewestZone(turn.input.inbox),
     pinnedMemory: turn.context.pinnedMemory,
+    index,
     brief: turn.brief,
     isFirstSession: turn.isFirstSession,
     messaging: turn.run.messaging,

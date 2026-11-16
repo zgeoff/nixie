@@ -14,6 +14,7 @@ export async function startMemory(
     definitions: parts.context.definitions,
     cleanupSessions,
     pinnedCoreTokens: parts.config.memory.pinnedCoreTokens,
+    index: parts.config.memory.index,
     ...(parts.encoder === null
       ? {}
       : {

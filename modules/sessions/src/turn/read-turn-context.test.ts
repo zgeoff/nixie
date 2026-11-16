@@ -30,6 +30,7 @@ test('it renders the system prompt with the session prompt override in force', a
       memory: () => ({
         readPinnedCore: () => Promise.resolve([]),
         readPinnedCoreUse: () => Promise.resolve({ items: 0, tokens: 0, budget: 2000 }),
+        readIndex: () => Promise.resolve({ text: '', items: 0, tokens: 0, budget: 0 }),
         readShortIDs: () => Promise.resolve(new Map<string, string>()),
         recall: () => Promise.resolve({ items: [] }),
         recallMessages: () => Promise.resolve({ messages: [] }),
@@ -81,6 +82,7 @@ test("it puts no task board in the conversation's turn, with a started task in t
       memory: () => ({
         readPinnedCore: () => Promise.resolve([]),
         readPinnedCoreUse: () => Promise.resolve({ items: 0, tokens: 0, budget: 2000 }),
+        readIndex: () => Promise.resolve({ text: '', items: 0, tokens: 0, budget: 0 }),
         readShortIDs: () => Promise.resolve(new Map<string, string>()),
         recall: () => Promise.resolve({ items: [] }),
         recallMessages: () => Promise.resolve({ messages: [] }),
@@ -146,6 +148,7 @@ test('it reads the pinned figures for no turn whose pinned core is unchanged', a
         },
       ]),
     readPinnedCoreUse,
+    readIndex: () => Promise.resolve({ text: '', items: 0, tokens: 0, budget: 0 }),
     readShortIDs,
     recall: () => Promise.resolve({ items: [] }),
     recallMessages: () => Promise.resolve({ messages: [] }),
@@ -204,6 +207,7 @@ test('it reads the pinned figures once for a turn whose pinned core changed, and
         },
       ]),
     readPinnedCoreUse,
+    readIndex: () => Promise.resolve({ text: '', items: 0, tokens: 0, budget: 0 }),
     readShortIDs: () => Promise.resolve(new Map<string, string>()),
     recall: () => Promise.resolve({ items: [] }),
     recallMessages: () => Promise.resolve({ messages: [] }),

@@ -7,9 +7,15 @@ import { formatMessageTime } from '../message/format-message-time';
 import type { HistoryTurn } from '../turn/read-recent-turns';
 import { readRecentTurns } from '../turn/read-recent-turns';
 import { readTurnNoteRange } from '../turn/read-turn-note-range';
-import type { ConversationRun, MessageTimeOptions, SessionStart, TurnNote } from '../types';
+import type {
+  ConversationRun,
+  MessageTimeOptions,
+  SessionIndex,
+  SessionStart,
+  TurnNote,
+} from '../types';
 import { readRecalledThrough } from '../utils/read-recalled-through';
-import type { StatusRegistry } from './build-status-registry';
+import type { StatusLine, StatusRegistry } from './build-status-registry';
 import { pickPinnedBrief } from './pick-pinned-brief';
 import { renderBriefEnvelope } from './render-brief-envelope';
 import { renderSessionHistory } from './render-session-history';
@@ -29,6 +35,9 @@ export interface SessionOpeningQuery {
   readonly zone?: string | null;
 
   readonly pinnedMemory: string | null;
+
+  // the index the memory read for this opening, or null for a session with no memory
+  readonly index?: SessionIndex | null;
 
   readonly model: string;
   readonly status: StatusRegistry;
@@ -112,16 +121,27 @@ export async function readSessionOpening(
   const mint = query.mintBlockID ?? mintBlockID;
   const memoryBlock = renderOpeningMessage('pinned-memory', at, query.pinnedMemory, mint);
 
+  const indexBlock = renderOpeningMessage(
+    'memory-index',
+    at,
+    pickIndexText(query.index ?? null),
+    mint,
+  );
+
+  const indexLines = buildIndexStatus(query.index ?? null);
+  const allStatus = [...status, ...indexLines];
+
   const statusBlock = renderOpeningMessage(
     'status',
     at,
-    status.map((read) => `- ${read.line.text}`).join('\n'),
+    allStatus.map((read) => `- ${read.line.text}`).join('\n'),
     mint,
   );
 
   const blocks = [
     statusBlock,
     memoryBlock,
+    indexBlock,
     brief.pinned === null
       ? null
       : renderBriefEnvelope(brief.pinned, query.times, query.messaging, mint),
@@ -147,7 +167,7 @@ export async function readSessionOpening(
       recentEvents: replayed?.eventCount ?? 0,
       recalledThrough,
       briefSequence: brief.briefSequence,
-      status: Object.fromEntries(status.map((read) => [read.name, read.line.value])),
+      status: Object.fromEntries(allStatus.map((read) => [read.name, read.line.value])),
     },
   };
 }
@@ -178,4 +198,34 @@ function renderOpeningMessage(
   mint: () => string,
 ): string | null {
   return body === null ? null : renderSystemMessage({ type, at, body }, mint());
+}
+
+function pickIndexText(index: SessionIndex | null): string | null {
+  return index === null || index.text === '' ? null : index.text;
+}
+
+// With no budget the index shows neither line.
+function buildIndexStatus(
+  index: SessionIndex | null,
+): readonly { readonly name: string; readonly line: StatusLine }[] {
+  if (index === null || index.budget === 0) {
+    return [];
+  }
+
+  return [
+    {
+      name: 'index_items',
+      line: {
+        value: index.items,
+        text: `Memory index: ${String(index.items)} ${index.items === 1 ? 'item' : 'items'}`,
+      },
+    },
+    {
+      name: 'index_tokens',
+      line: {
+        value: index.tokens,
+        text: `Memory index tokens: ${String(index.tokens)} of ${String(index.budget)}`,
+      },
+    },
+  ];
 }

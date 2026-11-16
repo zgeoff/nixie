@@ -1,5 +1,8 @@
 import { readMemorySubjectCounts } from '@heynixie/db';
 import { buildForgetStore } from '../forget/build-forget-store';
+import { readIndex } from '../index-block/read-index';
+import { readTopicCounts } from '../index-block/read-topic-counts';
+import { readTopicLines } from '../index-block/read-topic-lines';
 import { readItemHistory } from '../item/read-item-history';
 import { runItemLapses } from '../item/run-item-lapses';
 import { writeRememberedItem } from '../item/write-remembered-item';
@@ -26,6 +29,9 @@ export function buildMemoryStore(parts: StoreParts): MemoryStore {
     pin: (request) => writePin(parts, request),
     readPinnedCore: () => readPinnedCore(parts),
     readPinnedCoreUse: () => readPinnedCoreUse(parts),
+    readIndex: () => readIndex(parts),
+    readTopicLines: (request) => readTopicLines(parts, request),
+    readTopicCounts: (request) => readTopicCounts(parts, request),
     readHistory: (itemID) => readItemHistory(parts, itemID),
     readSubjectCounts: () => readMemorySubjectCounts(parts.context.log.writer.db),
   };

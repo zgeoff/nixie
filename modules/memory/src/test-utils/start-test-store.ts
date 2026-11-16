@@ -1,6 +1,7 @@
 import type { Log } from '@heynixie/log';
 import { logProjections, startWriter } from '@heynixie/log';
 import { defaultGateLimits } from '../gate/default-gate-limits';
+import { defaultIndexSettings } from '../index-block/default-index-settings';
 import { startMemoryStore } from '../memory/start-memory-store';
 import { memoryProjections } from '../moment/projection/memory-projections';
 import { defaultOwnerPronouns } from '../owner/default-owner-pronouns';
@@ -31,6 +32,9 @@ export async function startTestStore(
     definitions: options.definitions ?? (() => ({ snapshotHash: 'sha256:test' })),
     cleanupSessions: options.cleanupSessions ?? (() => Promise.resolve()),
     ...(options.semanticSearch === undefined ? {} : { semanticSearch: options.semanticSearch }),
+    ...(options.index === undefined
+      ? {}
+      : { index: { ...defaultIndexSettings, ...options.index } }),
     gate: {
       check:
         options.gate?.check ??

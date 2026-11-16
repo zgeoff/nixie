@@ -96,6 +96,7 @@ async function setupTest() {
         memory: () => ({
           readPinnedCore: () => Promise.resolve([]),
           readPinnedCoreUse: () => Promise.resolve({ items: 0, tokens: 0, budget: 2000 }),
+          readIndex: () => Promise.resolve({ text: '', items: 0, tokens: 0, budget: 0 }),
           recall: () =>
             Promise.resolve({
               items: [],
