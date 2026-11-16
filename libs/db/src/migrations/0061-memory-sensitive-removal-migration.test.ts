@@ -9,7 +9,7 @@ import { readQueryRows } from '../read-query-rows';
 import { nixieSchema } from '../schema/nixie-schema';
 import { buildSqliteWorkerDialect } from '../sqlite/build-sqlite-worker-dialect';
 import { readRunPrefix } from '../test-utils/read-run-prefix';
-import { memorySensitiveRemovalMigration } from './0060-memory-sensitive-removal-migration';
+import { memorySensitiveRemovalMigration } from './0061-memory-sensitive-removal-migration';
 
 interface TaskSequences {
   readonly created: number;
@@ -112,7 +112,7 @@ async function setupTest() {
 }
 
 test('it moves the schema to version 60', () => {
-  expect(nixieSchema.migrations.indexOf(memorySensitiveRemovalMigration) + 1).toBe(60);
+  expect(nixieSchema.migrations.indexOf(memorySensitiveRemovalMigration) + 1).toBe(61);
 });
 
 test('it drops the flag and keeps every other column of an item and of a pending proposal', async () => {
