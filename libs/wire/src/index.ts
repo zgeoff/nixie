@@ -32,6 +32,7 @@ export { modelAPIs } from './spool/model-api';
 
 export type {
   AgentSDKTurnProfile,
+  CodexTurnProfile,
   HostFrame,
   InboxImage,
   InboxMessage,

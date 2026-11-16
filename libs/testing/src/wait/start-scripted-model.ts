@@ -37,6 +37,7 @@ const scriptedModelBodySchema = z.looseObject({
   system: z.unknown().exactOptional(),
   messages: scriptedMessageSchema.array().exactOptional(),
   tools: scriptedToolSchema.array().exactOptional(),
+  input: z.unknown().exactOptional(),
 });
 
 type ScriptedModelBody = z.infer<typeof scriptedModelBodySchema>;
@@ -218,19 +219,23 @@ function buildResponsesReply(reply: ScriptedReply, model: string, isStream: bool
     return renderRefusal('the scripted model answers the Responses endpoint only with text');
   }
 
+  // a client that follows each output item, such as the Codex CLI, reads its ID and its start and
+  // end events, as the real API sends them
+  const item = {
+    type: 'message',
+    id: `msg_${crypto.randomUUID().replaceAll('-', '')}`,
+    role: 'assistant',
+    status: 'completed',
+    content: [{ type: 'output_text', text: reply.text, annotations: [] }],
+  };
+
   const completed = {
     id: `resp_${crypto.randomUUID().replaceAll('-', '')}`,
     object: 'response',
     model,
     status: 'completed',
-    output: [
-      {
-        type: 'message',
-        role: 'assistant',
-        content: [{ type: 'output_text', text: reply.text, annotations: [] }],
-      },
-    ],
-    usage: reply.responsesUsage ?? { input_tokens: 10, output_tokens: 5 },
+    output: [item],
+    usage: buildResponsesUsage(reply.responsesUsage),
   };
 
   if (!isStream) {
@@ -238,8 +243,17 @@ function buildResponsesReply(reply: ScriptedReply, model: string, isStream: bool
   }
 
   const events = [
-    { type: 'response.created', response: { ...completed, status: 'in_progress', usage: null } },
+    {
+      type: 'response.created',
+      response: { ...completed, status: 'in_progress', output: [], usage: null },
+    },
+    {
+      type: 'response.output_item.added',
+      output_index: 0,
+      item: { ...item, status: 'in_progress', content: [] },
+    },
     { type: 'response.output_text.delta', delta: reply.text },
+    { type: 'response.output_item.done', output_index: 0, item },
     { type: 'response.completed', response: completed },
   ];
 
@@ -247,6 +261,19 @@ function buildResponsesReply(reply: ScriptedReply, model: string, isStream: bool
     events.map((event) => `event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`).join(''),
     { headers: { 'content-type': 'text/event-stream' } },
   );
+}
+
+// a client such as the Codex CLI reads the total, and the detail objects, from the usage as the real
+// API sends it
+function buildResponsesUsage(usage: ScriptedResponsesUsage | undefined) {
+  const given = usage ?? { input_tokens: 10, output_tokens: 5 };
+
+  return {
+    ...given,
+    total_tokens: given.input_tokens + given.output_tokens,
+    input_tokens_details: given.input_tokens_details ?? { cached_tokens: 0 },
+    output_tokens_details: given.output_tokens_details ?? { reasoning_tokens: 0 },
+  };
 }
 
 function buildReplyResponse(reply: ScriptedReply, model: string, isStream: boolean): Response {

@@ -274,6 +274,18 @@
         "tiny-invariant": "catalog:",
       },
     },
+    "guests/codex": {
+      "name": "@heynixie/codex",
+      "version": "0.0.0",
+      "dependencies": {
+        "@heynixie/wire": "workspace:*",
+        "ts-pattern": "catalog:",
+        "zod": "catalog:",
+      },
+      "devDependencies": {
+        "@heynixie/testing": "workspace:*",
+      },
+    },
     "guests/conversation": {
       "name": "@heynixie/conversation",
       "version": "0.0.0",
@@ -611,7 +623,6 @@
         "@heynixie/sandbox": "workspace:*",
         "@heynixie/tools": "workspace:*",
         "@heynixie/wire": "workspace:*",
-        "tiny-invariant": "catalog:",
         "ts-pattern": "catalog:",
         "zod": "catalog:",
       },
@@ -1265,6 +1276,8 @@
     "@heynixie/backup-job": ["@heynixie/backup-job@workspace:apps/backup-job"],
 
     "@heynixie/clock": ["@heynixie/clock@workspace:libs/clock"],
+
+    "@heynixie/codex": ["@heynixie/codex@workspace:guests/codex"],
 
     "@heynixie/compaction": ["@heynixie/compaction@workspace:modules/compaction"],
 

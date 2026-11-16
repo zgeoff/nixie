@@ -54,9 +54,11 @@ const codexTurnProfileSchema = z
   })
   .readonly();
 
+export type CodexTurnProfile = z.infer<typeof codexTurnProfileSchema>;
+
 export type AgentSDKTurnProfile = z.infer<typeof agentSDKTurnProfileSchema>;
 
-export const turnProfileSchema = z.discriminatedUnion('harness', [
+const turnProfileSchema = z.discriminatedUnion('harness', [
   agentSDKTurnProfileSchema,
   codexTurnProfileSchema,
 ]);

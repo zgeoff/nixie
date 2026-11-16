@@ -15,7 +15,7 @@
   "ignoreDependencies": ["@stylistic/eslint-plugin", "@zgeoff/agent-hooks", "@zgeoff/diet"],
   // the prod target reads the cluster with the kubectl on the caller's PATH, which no package
   // provides
-  "ignoreBinaries": ["kubectl"],
+  "ignoreBinaries": ["kubectl", "codex"],
   "workspaces": {
     // a test spawns the stub program as its own process, so no import reaches it
     "modules/log": { "entry": ["src/test-utils/run-stub-*.ts"] },
@@ -62,6 +62,9 @@
         "src/test-utils/read-guest-bundles.ts"
       ]
     },
+    // the image build bundles the guest's entry and runs the bundle script by its path, so no import
+    // reaches them
+    "guests/codex": { "entry": ["src/main.ts", "src/write-guest-bundle.ts"] },
     // an eval run is a script a contributor runs by its path
     "evals": { "entry": ["*/run-*-eval.ts"] },
     // TanStack Router loads each route file by its path, and Vite loads the PostCSS config by its
