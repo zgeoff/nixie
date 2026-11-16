@@ -200,6 +200,8 @@ test('it skips a null-hash definition set before the first one that holds a hash
 
   const taskID = await ctx.enableDefinition();
 
+  invariant(taskID === 'tomato01', 'the definition binds the task that held no hash');
+
   ctx.setNow(1_060_000);
 
   await ctx.openRun(taskID);
@@ -209,8 +211,6 @@ test('it skips a null-hash definition set before the first one that holds a hash
   invariant(run);
 
   const since = await readRunSince(ctx.context, run);
-
-  expect(taskID).toBe('tomato01');
 
   expect(since).toStrictEqual({
     previousStartedAt: new Date(1_030_000),
