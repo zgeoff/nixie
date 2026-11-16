@@ -7,7 +7,7 @@ import { runMigrations } from '../migration/run-migrations';
 import { nixieSchema } from '../schema/nixie-schema';
 import { buildSqliteWorkerDialect } from '../sqlite/build-sqlite-worker-dialect';
 import { readRunPrefix } from '../test-utils/read-run-prefix';
-import { triggersMigration } from './0063-triggers-migration';
+import { triggersMigration } from './0064-triggers-migration';
 
 async function setupTest() {
   const stack = new AsyncDisposableStack();
@@ -34,8 +34,8 @@ async function setupTest() {
   };
 }
 
-test('it is the migration of version 63', () => {
-  expect(nixieSchema.migrations.indexOf(triggersMigration) + 1).toBe(63);
+test('it is the migration of version 64', () => {
+  expect(nixieSchema.migrations.indexOf(triggersMigration) + 1).toBe(64);
 });
 
 test('it creates the 3 tables empty', async () => {
