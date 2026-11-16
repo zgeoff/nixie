@@ -1,5 +1,6 @@
 import type { Log } from '@heynixie/log';
 import type { Selectable } from 'kysely';
+import { isBridgeVersion, readBridgeMarks } from '../item-key/read-bridge-marks';
 import type { MemoryTables } from '../types';
 import { getRowSubject } from '../utils/get-row-subject';
 import { getItemShortID } from '../utils/item/get-item-short-id';
@@ -58,8 +59,11 @@ export async function readViewItems(
   const found = itemIDs.flatMap((itemID) => byID.get(itemID) ?? []);
 
   const opened = await readViewTexts(log, log.writer.db, found);
+  const marks = await readBridgeMarks(log.writer.db, itemIDs);
 
-  return found.map((row, index) => buildViewItem(row, opened[index]));
+  return found.map((row, index) =>
+    buildViewItem(row, opened[index], isBridgeVersion(marks, row.item_id, row.version)),
+  );
 }
 
 interface ViewItemRow {
@@ -83,7 +87,11 @@ interface ViewItemRow {
   readonly until: number | null;
 }
 
-function buildViewItem(row: ViewItemRow, opened: OpenedVersion | undefined): ViewItem {
+function buildViewItem(
+  row: ViewItemRow,
+  opened: OpenedVersion | undefined,
+  isBridge: boolean,
+): ViewItem {
   return {
     itemID: row.item_id,
     shortID: getItemShortID(row),
@@ -93,6 +101,7 @@ function buildViewItem(row: ViewItemRow, opened: OpenedVersion | undefined): Vie
     version: row.version + row.label_edits,
     origin: row.origin,
     source: row.source,
+    isBridge,
     createdAt: row.created_at,
     changedAt: row.changed_at,
     forgottenAt: row.forgotten_at,

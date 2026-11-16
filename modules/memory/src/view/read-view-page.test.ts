@@ -1,5 +1,8 @@
 import { expect, test } from 'bun:test';
+import { buildMockProvenance } from '../test-utils/build-mock-provenance';
+import { seedBegunPurge } from '../test-utils/seed-begun-purge';
 import { startTestMemory } from '../test-utils/start-test-memory';
+import { writeOwnerMessageRecord } from '../test-utils/write-owner-message-record';
 
 async function setupTest() {
   return { memory: await startTestMemory() };
@@ -32,6 +35,7 @@ test('it lists each active item with its text, origin, source and age', async ()
         version: 1,
         origin: 'conversation',
         source: 'owner',
+        isBridge: false,
         createdAt: expect.toBeNumber(),
         changedAt: expect.toBeNumber(),
         forgottenAt: null,
@@ -124,6 +128,7 @@ test('it lists a forgotten item as a gap with the time its forget completed', as
       version: 1,
       origin: 'owner',
       source: 'owner',
+      isBridge: false,
       createdAt: expect.toBeNumber(),
       changedAt: expect.toBeNumber(),
       forgottenAt: expect.toBeNumber(),
@@ -264,4 +269,45 @@ test('it rejects a cursor that no page returned', async () => {
   await page.catch(() => {});
 
   expect(page).rejects.toMatchObject({ code: 'INVALID_CURSOR' });
+});
+
+test('it marks an item whose current version a purge kept as a bridge, apart from an edit', async () => {
+  const ctx = await setupTest();
+
+  const text = 'I keep bees on the allotment.';
+
+  const recordSequence = await writeOwnerMessageRecord(ctx.memory.log, {
+    thread: 'conversation',
+    text,
+    spans: [{ start: 0, end: text.length, source: 'typed' }],
+  });
+
+  const first = await ctx.memory.store.remember({
+    text: 'Keeps bees on the allotment',
+    evidence: { recordSequence, start: 0, end: 11 },
+    evidenceQuote: 'I keep bees',
+    provenance: buildMockProvenance(),
+  });
+
+  await ctx.memory.store.remember({
+    text: 'Keeps two hives on the allotment',
+    target: first,
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const edited = await ctx.memory.store.remember({
+    text: 'Grows leeks on the allotment',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  await seedBegunPurge(ctx.memory.log, { recordSequence, itemIDs: [first.itemID] });
+
+  await ctx.memory.store.purgeItemEvidence({ recordSequence, itemID: first.itemID });
+
+  const page = await ctx.memory.store.view.readPage({ state: 'active' });
+
+  expect(page.items.map((item) => [item.itemID, item.isBridge])).toIncludeSameMembers([
+    [first.itemID, true],
+    [edited.itemID, false],
+  ]);
 });

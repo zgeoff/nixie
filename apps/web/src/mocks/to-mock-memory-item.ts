@@ -21,6 +21,7 @@ export function toMockMemoryItem(item: StoredMemoryItem): MemoryItem {
     changedAt: current.recordedAt,
     createdAt: first.recordedAt,
     forgottenAt: item.forgottenAt,
+    isBridge: current.isBridge === true,
     isPinned: item.isPinned,
     itemID: item.itemID,
     kind: item.subject === 'self' ? ('self' as const) : ('fact' as const),

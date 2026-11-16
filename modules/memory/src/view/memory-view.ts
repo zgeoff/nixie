@@ -57,6 +57,9 @@ export type ViewItem = ViewText & {
   readonly version: number;
   readonly origin: MemoryOrigin;
   readonly source: ContentSource;
+
+  // a purge wrote the current version, so its origin is not the owner's edit
+  readonly isBridge: boolean;
   readonly createdAt: number;
   readonly changedAt: number;
 

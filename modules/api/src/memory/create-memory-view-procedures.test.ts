@@ -61,6 +61,7 @@ test('#memory.listItems lists each active item with its text, origin, source and
         version: 1,
         origin: 'owner',
         source: 'owner',
+        isBridge: false,
         createdAt: expect.toBeValidDate(),
         changedAt: expect.toBeValidDate(),
         forgottenAt: null,

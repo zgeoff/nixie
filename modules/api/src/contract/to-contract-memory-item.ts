@@ -12,6 +12,7 @@ export function toContractMemoryItem(item: ViewItem) {
     version: item.version,
     origin: item.origin,
     source: item.source,
+    isBridge: item.isBridge,
     createdAt: new Date(item.createdAt),
     changedAt: new Date(item.changedAt),
     forgottenAt: item.forgottenAt === null ? null : new Date(item.forgottenAt),

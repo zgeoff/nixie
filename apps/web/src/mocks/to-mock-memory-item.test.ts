@@ -20,6 +20,7 @@ test('it lists an item at its current version, with the times of its first and l
     changedAt: new Date('2026-04-01T09:00:00Z'),
     createdAt: new Date('2026-03-01T09:00:00Z'),
     forgottenAt: null,
+    isBridge: false,
     isPinned: false,
     itemID: item.itemID,
     kind: 'fact',

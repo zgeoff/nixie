@@ -26,6 +26,7 @@ const memoryItemSchema = z.object({
   changedAt: z.date(),
   createdAt: z.date(),
   forgottenAt: z.date().nullable(),
+  isBridge: z.boolean(),
   isPinned: z.boolean(),
   itemID: z.string(),
   kind: kindSchema,
