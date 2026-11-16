@@ -158,16 +158,20 @@ async function readListedTasks(context: APIContext, directory: TaskProfiles, lim
     taskIDs.map((taskID) => readTaskMark(context.log.writer.db, taskID)),
   );
 
-  const closers = await Promise.all(
-    listed.map((task) =>
-      task.state === 'closed' ? readTaskClosedBy(context.log.writer.db, task.id) : null,
+  const closedTasks = listed.filter((task) => task.state === 'closed');
+
+  const closedByList = await Promise.all(
+    closedTasks.map(
+      async (task) => [task.id, await readTaskClosedBy(context.log.writer.db, task.id)] as const,
     ),
   );
+
+  const closedByTask = new Map(closedByList);
 
   return listed.map((task, index) => {
     const actions = counts.get(task.id);
     const runner = runners[index];
-    const closedBy = closers[index];
+    const closedBy = closedByTask.get(task.id);
 
     invariant(actions);
     invariant(runner);

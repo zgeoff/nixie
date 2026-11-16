@@ -791,7 +791,7 @@ test('it logs a destroy that fails, leaves the close committed, and destroys the
 
   const closed = await ctx.readKinds('task.closed');
 
-  await ctx.clock.advance(60_000);
+  ctx.clock.advance(60_000);
 
   await waitForCondition(async () => {
     const sandboxes = await ctx.sandboxes.list(taskID);
