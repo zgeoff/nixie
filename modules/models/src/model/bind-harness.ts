@@ -1,23 +1,22 @@
-import type { HarnessID } from '@heynixie/wire';
-import invariant from 'tiny-invariant';
+import { match } from 'ts-pattern';
 import { agentSDKHarnessDefinition } from '../agent/agent-sdk-harness-definition';
+import { codexHarnessDefinition } from '../codex/codex-harness-definition';
 import type { HarnessProfile } from '../types';
-import type { Harness, HarnessDefinition, HarnessSession } from './harness';
+import type { Harness } from './harness';
 
 // Every harness definition. The models config reads each one's profile schema.
-type AnyHarnessDefinition = Omit<HarnessDefinition<HarnessID, HarnessProfile>, 'session'> & {
-  readonly session: HarnessSession | null;
-};
+export const harnesses = [agentSDKHarnessDefinition, codexHarnessDefinition] as const;
 
-export const harnesses: readonly [AnyHarnessDefinition, ...AnyHarnessDefinition[]] = [
-  agentSDKHarnessDefinition,
-];
-
-// The models config refuses a profile on a harness with no definition, so only a bug gives one.
 export function bindHarness(profile: HarnessProfile): Harness {
-  const definition = harnesses.find((candidate) => candidate.id === profile.harness);
-
-  invariant(definition, `the harness ${profile.harness} has no definition`);
-
-  return { ...definition.bind(profile), session: definition.session };
+  return match(profile)
+    .returnType<Harness>()
+    .with({ harness: 'agent-sdk' }, (agentProfile) => ({
+      ...agentSDKHarnessDefinition.bind(agentProfile),
+      session: agentSDKHarnessDefinition.session,
+    }))
+    .with({ harness: 'codex' }, (codexProfile) => ({
+      ...codexHarnessDefinition.bind(codexProfile),
+      session: codexHarnessDefinition.session,
+    }))
+    .exhaustive();
 }

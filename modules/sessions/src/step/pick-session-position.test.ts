@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test';
 import { bindHarness } from '@heynixie/models';
-import { buildMockModelProfile, buildStubCodexHarness } from '@heynixie/models/test-utils';
+import { buildMockCodexProfile, buildMockModelProfile } from '@heynixie/models/test-utils';
 import { sessionPointSchema } from '@heynixie/wire';
 import { buildCapabilitiesWithout } from '@heynixie/wire/test-utils';
 import { pickSessionPosition } from './pick-session-position';
@@ -8,7 +8,7 @@ import { pickSessionPosition } from './pick-session-position';
 function setupTest() {
   return {
     agentSDK: bindHarness(buildMockModelProfile()),
-    codex: buildStubCodexHarness(),
+    codex: bindHarness(buildMockCodexProfile()),
     point: {
       harness: 'agent-sdk',
       sessionID: '5d0c8f3e-2a41-4c6b-9f7e-1b2d3c4e5f60',

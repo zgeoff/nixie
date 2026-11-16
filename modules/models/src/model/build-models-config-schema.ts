@@ -3,24 +3,25 @@ import { harnessCapabilities } from '@heynixie/wire';
 import { z } from 'zod';
 import { modelRoles } from '../role/model-roles';
 import { roleNeeds } from '../role/role-needs';
-import type { HarnessProfile, ModelProfile, ModelsConfig, SelectableModel } from '../types';
+import type {
+  HarnessProfile,
+  ModelProfile,
+  ModelsConfig,
+  ProfileFields,
+  SelectableModel,
+} from '../types';
+import { bindHarness } from './bind-harness';
 import { checkHarnessFit } from './check-harness-fit';
-import type { Harness } from './harness';
 
 type HarnessCapabilities = Readonly<Record<HarnessID, ReadonlySet<HarnessCapability>>>;
 
 // Each harness's profile schema names the harness under the key the union reads.
 export type HarnessProfileSchema<Profile extends ModelProfile = HarnessProfile> =
-  z.core.$ZodTypeDiscriminable & z.ZodType<Omit<Profile, 'id'>>;
+  z.core.$ZodTypeDiscriminable & z.ZodType<ProfileFields<Profile>>;
 
-export interface HarnessSchemaEntry<Profile extends ModelProfile = HarnessProfile> {
+export interface HarnessSchemaEntry {
   readonly id: HarnessID;
-  readonly profileSchema: HarnessProfileSchema<Profile>;
-
-  // the part of the harness record that a load rule reads
-  readonly bind: (
-    profile: { readonly id: string } & Omit<Profile, 'id'>,
-  ) => Pick<Harness, 'rewritesRequests'>;
+  readonly profileSchema: HarnessProfileSchema;
 }
 
 const profileIDSchema = z
@@ -66,8 +67,8 @@ const taskRunSchema = z
 
 const limitsSchema = z.strictObject({ taskRun: taskRunSchema.default(taskRunSchema.parse({})) });
 
-export function buildModelsConfigSchema<Profile extends ModelProfile = HarnessProfile>(
-  entries: readonly [HarnessSchemaEntry<Profile>, ...HarnessSchemaEntry<Profile>[]],
+export function buildModelsConfigSchema(
+  entries: readonly [HarnessSchemaEntry, ...HarnessSchemaEntry[]],
   capabilities: HarnessCapabilities = harnessCapabilities,
 ) {
   const [first, ...rest] = entries;
@@ -157,12 +158,10 @@ export function buildModelsConfigSchema<Profile extends ModelProfile = HarnessPr
       const checkerProfile =
         checkerProfileID === undefined ? undefined : config.profiles[checkerProfileID];
 
-      const checkerEntry = entries.find((entry) => entry.id === checkerProfile?.harness);
-
       if (
         checkerProfileID !== undefined &&
         checkerProfile !== undefined &&
-        checkerEntry?.bind({ id: checkerProfileID, ...checkerProfile }).rewritesRequests === true
+        bindHarness({ id: checkerProfileID, ...checkerProfile }).rewritesRequests
       ) {
         issues.addIssue({
           code: 'custom',
@@ -188,7 +187,7 @@ export function buildModelsConfigSchema<Profile extends ModelProfile = HarnessPr
         }
       }
     })
-    .transform((config): ModelsConfig<Profile> => ({
+    .transform((config): ModelsConfig => ({
       profiles: Object.fromEntries(
         Object.entries(config.profiles).map(([id, profile]) => [id, { id, ...profile }]),
       ),

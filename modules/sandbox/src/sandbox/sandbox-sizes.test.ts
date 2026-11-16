@@ -14,6 +14,10 @@ test('it holds the fetch row', () => {
   expect(sandboxSizes.fetch).toStrictEqual({ vcpus: 1, memoryMiB: 192, diskMiB: 4096 });
 });
 
+test('it holds the codex task row', () => {
+  expect(sandboxSizes.codexTask).toStrictEqual({ vcpus: 1, memoryMiB: 384, diskMiB: 4096 });
+});
+
 test('it gives every row an even memory figure of 128 MiB or more', () => {
   const rows = Object.values(sandboxSizes);
 

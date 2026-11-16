@@ -1,5 +1,5 @@
 import type { McpServerConfig, Options } from '@anthropic-ai/claude-agent-sdk';
-import type { HostFrame } from '@heynixie/wire';
+import type { AgentSDKTurnProfile, HostFrame } from '@heynixie/wire';
 import { toolOutputLimitTokens } from '@heynixie/wire';
 import { buildToolServerEntry } from '../utils/build-tool-server-entry';
 import { findCLIPath } from '../utils/find-cli-path';
@@ -8,9 +8,15 @@ import { getHome } from './get-home';
 import { getWorkDir } from './get-work-dir';
 import { toolServerName } from './tool-server-name';
 
-export type TurnFrame = Extract<HostFrame, { type: 'turn' }>;
+// The guest runs only a turn whose profile is the Agent SDK's, and refuses any other before it
+// starts.
+export type TurnFrame = Omit<Extract<HostFrame, { type: 'turn' }>, 'profile'> & {
+  readonly profile: AgentSDKTurnProfile;
+};
 
-export type SummarizeFrame = Extract<HostFrame, { type: 'summarize' }>;
+export type SummarizeFrame = Omit<Extract<HostFrame, { type: 'summarize' }>, 'profile'> & {
+  readonly profile: AgentSDKTurnProfile;
+};
 
 export interface QueryContext {
   readonly env: Readonly<Record<string, string | undefined>>;

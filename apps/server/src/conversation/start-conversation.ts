@@ -57,6 +57,10 @@ export function startConversation(options: ConversationOptions): Promise<Convers
   invariant(resolved, `the conversation profile ${profile.id} was never resolved`);
 
   const harness = bindHarness(profile);
+  const conversationRow = harness.sizeRows.conversation;
+
+  // the models config refuses the conversation role on a harness that serves no conversation
+  invariant(conversationRow, `the ${harness.id} harness serves no conversation`);
 
   return startConversationRunner({
     context: options.context,
@@ -66,7 +70,7 @@ export function startConversation(options: ConversationOptions): Promise<Convers
     tools: options.tools,
     toolNames: options.toolNames,
     image: getHarnessImage(options.images, harness.imageKey),
-    limits: sandboxSizes.conversation,
+    limits: sandboxSizes[conversationRow],
     command: buildGuestCommand(options.sandboxes, harness.guest),
     getDefinitions: options.getDefinitions,
     ...(options.readTurnNote === undefined ? {} : { readTurnNote: options.readTurnNote }),

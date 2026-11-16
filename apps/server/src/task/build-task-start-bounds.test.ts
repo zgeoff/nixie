@@ -23,6 +23,7 @@ test('it offers each selectable model that does not ask, with what its harness l
           baseURL: 'https://models.example.test',
           credential: 'deployment:openai',
           model: 'gpt-test-1',
+          effort: 'medium',
           prices: null,
         },
       },

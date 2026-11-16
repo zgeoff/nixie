@@ -1,7 +1,7 @@
 import { expect, mock, test } from 'bun:test';
 import { once } from 'node:events';
 import { bindHarness } from '@heynixie/models';
-import { buildMockModelProfile, buildStubCodexHarness } from '@heynixie/models/test-utils';
+import { buildMockCodexProfile, buildMockModelProfile } from '@heynixie/models/test-utils';
 import { buildMockSandboxSpec, buildStubSandboxes } from '@heynixie/sandbox/test-utils';
 import { waitForCondition } from '@heynixie/testing';
 import type { InboxMessage } from '@heynixie/wire';
@@ -480,7 +480,7 @@ test('it sends nothing and fails when the turn frame holds a field its harness d
   const sandbox = await ctx.stub.adapter.create(buildMockSandboxSpec({ kind: 'conversation' }));
 
   const run = runGuestTurn({
-    harness: buildStubCodexHarness(),
+    harness: bindHarness(buildMockCodexProfile()),
     sandbox,
     command: { argv: ['guest'], env: {} },
     turn: buildMockTurnFrame({ resume: null }),
@@ -507,7 +507,10 @@ test('it fails the turn, and sends the guest no live message, on a harness witho
   });
 
   const turn = runGuestTurn({
-    harness: buildStubCodexHarness({ capabilities: new Set(['tools', 'fresh-session', 'resume']) }),
+    harness: {
+      ...bindHarness(buildMockCodexProfile()),
+      capabilities: new Set(['tools', 'fresh-session', 'resume']),
+    },
     sandbox,
     command: { argv: ['guest'], env: {} },
     turn: buildMockTurnFrame(),
@@ -534,7 +537,10 @@ test('it fails the turn, and sends the guest no interrupt, on a harness without 
   });
 
   const turn = runGuestTurn({
-    harness: buildStubCodexHarness({ capabilities: new Set(['tools', 'fresh-session', 'resume']) }),
+    harness: {
+      ...bindHarness(buildMockCodexProfile()),
+      capabilities: new Set(['tools', 'fresh-session', 'resume']),
+    },
     sandbox,
     command: { argv: ['guest'], env: {} },
     turn: buildMockTurnFrame(),

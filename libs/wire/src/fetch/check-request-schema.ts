@@ -1,9 +1,9 @@
 import { z } from 'zod';
-import { turnProfileSchema } from '../utils/host-frame';
+import { agentSDKTurnProfileSchema } from '../utils/host-frame';
 
 export const checkRequestSchema = z
   .object({
-    profile: turnProfileSchema,
+    profile: agentSDKTurnProfileSchema,
     systemPrompt: z.string().min(1),
     input: z.string().min(1),
   })

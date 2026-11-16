@@ -15,6 +15,8 @@
     "apps/web/src/routeTree.gen.ts",
     // written by panda codegen on install
     "apps/web/src/styled-system/**",
+    // written by `codex app-server generate-ts` for the pinned CLI
+    "guests/codex/src/protocol/**",
     // written by the secret scan lib's rule builder, and the pin check compares its bytes
     "libs/secret-scan/src/generated/public-rules.generated.ts"
   ],

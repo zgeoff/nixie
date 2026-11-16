@@ -1,7 +1,7 @@
 import { faker } from '@faker-js/faker';
-import type { HarnessProfile } from '../types';
+import type { AgentSDKProfile } from '../agent/agent-sdk-harness-definition';
 
-export function buildMockModelProfile(overrides: Partial<HarnessProfile> = {}): HarnessProfile {
+export function buildMockModelProfile(overrides: Partial<AgentSDKProfile> = {}): AgentSDKProfile {
   return {
     id: faker.helpers.slugify(faker.lorem.words(2)),
     harness: 'agent-sdk',

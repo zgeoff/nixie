@@ -84,14 +84,18 @@ test.each(['kept', 'one-off'] as const)(
       buildMockModelProfile({ outsideClaude: true, providerPin: 'z-ai' }),
     );
 
-    expect(harness.toTurnProfile(use).requestRewrite).toStrictEqual({ providerPin: 'z-ai' });
+    expect(harness.toTurnProfile(use)).toStrictEqual(
+      expect.objectContaining({ requestRewrite: { providerPin: 'z-ai' } }),
+    );
   },
 );
 
 test('#toTurnProfile carries a null pin for a profile outside Claude with no pin', () => {
   const harness = bindHarness(buildMockModelProfile({ outsideClaude: true, providerPin: null }));
 
-  expect(harness.toTurnProfile('kept').requestRewrite).toStrictEqual({ providerPin: null });
+  expect(harness.toTurnProfile('kept')).toStrictEqual(
+    expect.objectContaining({ requestRewrite: { providerPin: null } }),
+  );
 });
 
 test.each([false, null] as const)(
@@ -99,7 +103,9 @@ test.each([false, null] as const)(
   (outsideClaude) => {
     const harness = bindHarness(buildMockModelProfile({ outsideClaude }));
 
-    expect(harness.toTurnProfile('kept').requestRewrite).toBeNull();
+    expect(harness.toTurnProfile('kept')).toStrictEqual(
+      expect.objectContaining({ requestRewrite: null }),
+    );
   },
 );
 
@@ -114,7 +120,9 @@ test.each([
 test('#toTurnProfile sets the 5-minute cache for a one-off session', () => {
   const harness = bindHarness(buildMockModelProfile({ cacheTTL: '1h' }));
 
-  expect(harness.toTurnProfile('one-off').cacheTTL).toBe('5m');
+  expect(harness.toTurnProfile('one-off')).toStrictEqual(
+    expect.objectContaining({ cacheTTL: '5m' }),
+  );
 });
 
 test('#session.owns accepts a point of the Agent SDK', () => {

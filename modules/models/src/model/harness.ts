@@ -1,4 +1,4 @@
-import type { GrantSpec, SandboxImageKey, SecretSpec } from '@heynixie/sandbox';
+import type { GrantSpec, SandboxImageKey, SandboxSizeRow, SecretSpec } from '@heynixie/sandbox';
 import type {
   HarnessCapability,
   HarnessID,
@@ -41,6 +41,13 @@ export interface Harness {
   // the key of the guest's image in the sandbox manifest
   readonly imageKey: SandboxImageKey;
 
+  // the size row of each role's sandbox: conversation is null on a harness that serves no
+  // conversation, and systemTask serves a system task and a worker
+  readonly sizeRows: {
+    readonly conversation: SandboxSizeRow | null;
+    readonly systemTask: SandboxSizeRow;
+  };
+
   // the MCP _meta key under which the guest sends the model's tool-use ID on each tool call
   readonly toolUseMetaKey: string | null;
 
@@ -69,6 +76,7 @@ export interface Harness {
 export interface HarnessDefinition<ID extends HarnessID, Profile extends ModelProfile> {
   readonly id: ID;
   readonly profileSchema: HarnessProfileSchema;
+
   readonly bind: (profile: Profile) => Omit<Harness, 'session'>;
   readonly session: HasSession<ID> extends true ? HarnessSession : null;
 }

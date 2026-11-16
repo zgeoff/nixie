@@ -47,6 +47,10 @@ test('it prints each sandbox image with the name nixie gives it in impd', async 
           name: 'nixie-code-dddddddddddd',
           ref: `ghcr.io/example/nixie-code@sha256:${'d'.repeat(64)}`,
         },
+        codex: {
+          name: 'nixie-codex-eeeeeeeeeeee',
+          ref: `ghcr.io/example/nixie-codex@sha256:${'e'.repeat(64)}`,
+        },
       }),
     ],
   ]);

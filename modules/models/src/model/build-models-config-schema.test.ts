@@ -1,27 +1,13 @@
 import { expect, test } from 'bun:test';
 import { harnessCapabilities } from '@heynixie/wire';
-import { agentSDKProfileSchema } from '../agent/agent-sdk-profile-schema';
-import { buildStubCodexProfileSchema } from '../test-utils/build-stub-codex-profile-schema';
-import type { ModelProfile } from '../types';
+import { agentSDKHarnessDefinition } from '../agent/agent-sdk-harness-definition';
+import { codexHarnessDefinition } from '../codex/codex-harness-definition';
 import { buildModelsConfigSchema } from './build-models-config-schema';
 
 function setupTest(capabilities = harnessCapabilities) {
   return {
-    schema: buildModelsConfigSchema<ModelProfile>(
-      [
-        {
-          id: 'agent-sdk',
-          profileSchema: agentSDKProfileSchema,
-          bind: (profile) => ({
-            rewritesRequests: 'outsideClaude' in profile && profile.outsideClaude === true,
-          }),
-        },
-        {
-          id: 'codex',
-          profileSchema: buildStubCodexProfileSchema(),
-          bind: () => ({ rewritesRequests: false }),
-        },
-      ],
+    schema: buildModelsConfigSchema(
+      [agentSDKHarnessDefinition, codexHarnessDefinition],
       capabilities,
     ),
   };
@@ -34,6 +20,7 @@ test('it refuses the conversation role on a harness that lacks resume at an entr
     profiles: {
       'chat-codex': {
         harness: 'codex',
+        effort: 'medium',
         base_url: 'https://models.example.test',
         credential: 'deployment:openai',
         model: 'gpt-test-1',
@@ -56,6 +43,7 @@ test("it refuses an unset role on the conversation's profile when that profile's
     profiles: {
       'chat-codex': {
         harness: 'codex',
+        effort: 'medium',
         base_url: 'https://models.example.test',
         credential: 'deployment:openai',
         model: 'gpt-test-1',
@@ -87,6 +75,7 @@ test('it refuses the checker role on a profile whose harness lacks structured ou
       },
       'chat-codex': {
         harness: 'codex',
+        effort: 'medium',
         base_url: 'https://models.example.test',
         credential: 'deployment:openai',
         model: 'gpt-test-1',
@@ -145,6 +134,7 @@ test('it refuses a task role whose profile sets no prices, though its harness fi
       },
       'task-codex': {
         harness: 'codex',
+        effort: 'medium',
         base_url: 'https://models.example.test',
         credential: 'deployment:openai',
         model: 'gpt-test-1',
@@ -177,6 +167,7 @@ test('it accepts a selectable model on a profile whose harness has everything a 
       },
       'task-codex': {
         harness: 'codex',
+        effort: 'medium',
         base_url: 'https://models.example.test',
         credential: 'deployment:openai',
         model: 'gpt-test-1',
@@ -202,6 +193,7 @@ test.each(['conversation', 'task'] as const)(
       profiles: {
         'chat-codex': {
           harness: 'codex',
+          effort: 'medium',
           base_url: 'https://models.example.test',
           credential: 'deployment:openai',
           model: 'gpt-test-1',

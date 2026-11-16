@@ -62,7 +62,7 @@ export function makeSystemTaskRunner<Options extends SystemTaskOptions, Task ext
         role: spec.role,
         profile,
         image: getHarnessImage(options.images, harness.imageKey),
-        limits: sandboxSizes.systemTask,
+        limits: sandboxSizes[harness.sizeRows.systemTask],
         command: buildGuestCommand(options.sandboxes, harness.guest, spec.entry),
         defer: (stop) => {
           started.defer(stop);

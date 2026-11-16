@@ -445,7 +445,7 @@ test('it refuses a profile that names no harness, and names the profile and the 
   expect(result.error?.issues).toStrictEqual([
     expect.objectContaining({
       path: ['profiles', 'chat-direct', 'harness'],
-      message: 'the profile chat-direct names no harness; add harness: agent-sdk',
+      message: 'the profile chat-direct names no harness; add harness: agent-sdk or harness: codex',
     }),
   ]);
 });
@@ -454,11 +454,10 @@ test('it refuses a profile on a harness that has no record', () => {
   const result = modelsConfigSchema.safeParse({
     profiles: {
       'chat-direct': {
-        harness: 'codex',
-        base_url: 'https://api.openai.example.test',
-        credential: 'deployment:openai',
-        auth_header: 'bearer',
-        model: 'gpt-test-1',
+        harness: 'gemini',
+        base_url: 'https://api.gemini.example.test',
+        credential: 'deployment:gemini',
+        model: 'gem-test-1',
         effort: 'medium',
       },
     },
@@ -469,9 +468,120 @@ test('it refuses a profile on a harness that has no record', () => {
     expect.objectContaining({
       path: ['profiles', 'chat-direct', 'harness'],
       message:
-        'the profile chat-direct names the harness codex, which nixie does not run; use harness: agent-sdk',
+        'the profile chat-direct names the harness gemini, which nixie does not run; use harness: agent-sdk or harness: codex',
     }),
   ]);
+});
+
+test('it refuses a codex profile on the conversation role, naming each missing feature', () => {
+  const result = modelsConfigSchema.safeParse({
+    profiles: {
+      'chat-codex': {
+        harness: 'codex',
+        base_url: 'https://api.openai.example.test',
+        credential: 'deployment:openai',
+        model: 'gpt-test-1',
+        effort: 'medium',
+        prices: { input: 1, cache_write: 1, cache_write_1h: 1, cached_input: 1, output: 1 },
+      },
+    },
+    roles: { conversation: 'chat-codex' },
+  });
+
+  expect(result.error?.issues).toPartiallyContain(
+    expect.objectContaining({
+      path: ['roles', 'conversation'],
+      message:
+        'the conversation role runs on the profile chat-codex, whose codex harness lacks resume, resume-at-entry, live-messages, summarize, context-window',
+    }),
+  );
+});
+
+test('it refuses a codex profile on the checker role', () => {
+  const result = modelsConfigSchema.safeParse({
+    profiles: {
+      chat: {
+        harness: 'agent-sdk',
+        base_url: 'https://api.anthropic.example.test',
+        credential: 'deployment:anthropic',
+        auth_header: 'x-api-key',
+        model: 'claude-test-1',
+        effort: 'medium',
+      },
+      'check-codex': {
+        harness: 'codex',
+        base_url: 'https://api.openai.example.test',
+        credential: 'deployment:openai',
+        model: 'gpt-test-1',
+        effort: 'medium',
+        prices: { input: 1, cache_write: 1, cache_write_1h: 1, cached_input: 1, output: 1 },
+      },
+    },
+    roles: { conversation: 'chat', checker: 'check-codex' },
+  });
+
+  expect(result.error?.issues).toPartiallyContain(
+    expect.objectContaining({
+      path: ['roles', 'checker'],
+      message:
+        'the checker role runs on the profile check-codex, whose codex harness lacks structured-output',
+    }),
+  );
+});
+
+test('it accepts a codex profile on the task and worker roles', () => {
+  const result = modelsConfigSchema.safeParse({
+    profiles: {
+      chat: {
+        harness: 'agent-sdk',
+        base_url: 'https://api.anthropic.example.test',
+        credential: 'deployment:anthropic',
+        auth_header: 'x-api-key',
+        model: 'claude-test-1',
+        effort: 'medium',
+      },
+      'work-codex': {
+        harness: 'codex',
+        base_url: 'https://api.openai.example.test',
+        credential: 'deployment:openai',
+        model: 'gpt-test-1',
+        effort: 'medium',
+        prices: { input: 1, cache_write: 1, cache_write_1h: 1, cached_input: 1, output: 1 },
+      },
+    },
+    roles: { conversation: 'chat', task: 'work-codex', worker: 'work-codex' },
+  });
+
+  expect(result.error).toBeUndefined();
+});
+
+test('it refuses a codex profile that holds auth_header', () => {
+  const result = modelsConfigSchema.safeParse({
+    profiles: {
+      chat: {
+        harness: 'agent-sdk',
+        base_url: 'https://api.anthropic.example.test',
+        credential: 'deployment:anthropic',
+        auth_header: 'x-api-key',
+        model: 'claude-test-1',
+        effort: 'medium',
+      },
+      'work-codex': {
+        harness: 'codex',
+        base_url: 'https://api.openai.example.test',
+        credential: 'deployment:openai',
+        auth_header: 'bearer',
+        model: 'gpt-test-1',
+        effort: 'medium',
+        prices: { input: 1, cache_write: 1, cache_write_1h: 1, cached_input: 1, output: 1 },
+      },
+    },
+    roles: { conversation: 'chat', task: 'work-codex' },
+  });
+
+  expect(result.error?.issues).toPartiallyContain(
+    expect.objectContaining({ code: 'unrecognized_keys', keys: ['auth_header'] }),
+  );
 });
 
 test('it refuses a profile with no outside_claude and a model ID without claude', () => {

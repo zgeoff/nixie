@@ -24,7 +24,7 @@ export type InboxMessage = z.infer<typeof inboxMessageSchema>;
 
 // The guest never sees the profile's credential: the sandbox's grant injects it, and the guest holds
 // a placeholder.
-const agentSDKTurnProfileSchema = z
+export const agentSDKTurnProfileSchema = z
   .object({
     harness: z.literal('agent-sdk'),
     model: z.string().min(1),
@@ -41,7 +41,25 @@ const agentSDKTurnProfileSchema = z
   })
   .readonly();
 
-export const turnProfileSchema = z.discriminatedUnion('harness', [agentSDKTurnProfileSchema]);
+// The reasoning efforts that the pinned Codex CLI's bundled catalog lists. The CLI's protocol types
+// name an effort as an open string, so the codex guest's unit test checks this list instead.
+export const codexEfforts = ['low', 'medium', 'high', 'xhigh', 'max'] as const;
+
+const codexTurnProfileSchema = z
+  .object({
+    harness: z.literal('codex'),
+    model: z.string().min(1),
+    baseURL: z.url(),
+    effort: z.enum(codexEfforts),
+  })
+  .readonly();
+
+export type AgentSDKTurnProfile = z.infer<typeof agentSDKTurnProfileSchema>;
+
+export const turnProfileSchema = z.discriminatedUnion('harness', [
+  agentSDKTurnProfileSchema,
+  codexTurnProfileSchema,
+]);
 
 export type TurnProfile = z.infer<typeof turnProfileSchema>;
 

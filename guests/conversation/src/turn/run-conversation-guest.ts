@@ -71,17 +71,31 @@ async function runFirstFrame(
     return;
   }
 
+  const profile = frame.profile;
+
+  if (profile.harness !== 'agent-sdk') {
+    await run.emit({
+      type: 'failed',
+      reason: 'error',
+      detail: `the conversation guest runs the agent-sdk harness, and the profile names ${profile.harness}`,
+    });
+
+    return;
+  }
+
   if (frame.type === 'summarize') {
-    await runSummary(frame, { env: run.io.env, emit: run.emit });
+    await runSummary({ ...frame, profile }, { env: run.io.env, emit: run.emit });
 
     return;
   }
 
   const interrupt = new AbortController();
 
-  await runTurn(frame, {
+  const turn: TurnFrame = { ...frame, profile };
+
+  await runTurn(turn, {
     env: run.io.env,
-    toolServer: (run.io.createToolServer ?? buildHTTPToolServer)(frame),
+    toolServer: (run.io.createToolServer ?? buildHTTPToolServer)(turn),
     messages: readMessages(run.frames, interrupt),
     interrupt: interrupt.signal,
     emit: run.emit,

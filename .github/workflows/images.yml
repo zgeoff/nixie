@@ -112,6 +112,20 @@ jobs:
           dockerfile: guests/code/Dockerfile
           cache-scope: code
 
+      - name: Build the codex image
+        id: codex
+        uses: ./.github/actions/build-image
+        with:
+          repository: ${{ env.REGISTRY }}/nixie-codex
+          dockerfile: guests/codex/Dockerfile
+          cache-scope: codex
+
+      # the image runs only the Codex CLI version that its guest accepts
+      - name: Check that the codex image runs its pinned CLI
+        env:
+          CODEX: ${{ env.REGISTRY }}/nixie-codex@${{ steps.codex.outputs.digest }}
+        run: bun run --silent ci:images:check-codex-image
+
       - name: Build the backup image
         id: backup
         uses: ./.github/actions/build-image

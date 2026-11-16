@@ -29,9 +29,17 @@ export { harnessCapabilities, harnessCapabilityLists, harnessIDs } from './host/
 export { findModelAPIEndpoint } from './spool/find-model-api-endpoint';
 export type { ModelAPI, ModelAPIEndpointName } from './spool/model-api';
 export { modelAPIs } from './spool/model-api';
-export type { HostFrame, InboxImage, InboxMessage, TurnProfile } from './utils/host-frame';
+
+export type {
+  AgentSDKTurnProfile,
+  HostFrame,
+  InboxImage,
+  InboxMessage,
+  TurnProfile,
+} from './utils/host-frame';
+
 export { hostFrameLimitBytes } from './host/host-frame-limit-bytes';
-export { hostFrameSchema } from './utils/host-frame';
+export { codexEfforts, hostFrameSchema } from './utils/host-frame';
 export type { FrameDecoder } from './frame/make-frame-decoder';
 export { makeFrameDecoder } from './frame/make-frame-decoder';
 export { mintBlockID } from './backup/mint-block-id';
