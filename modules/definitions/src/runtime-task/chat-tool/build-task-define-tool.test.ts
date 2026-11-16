@@ -202,7 +202,7 @@ test('it resets the model to the default when a change omits it', async () => {
 
   const forms = stored.rows.map((row) => z.object({ form: z.string() }).parse(row).form);
 
-  expect(forms.map((form) => JSON.parse(form))).not.toContainEqual(
+  expect(forms.map((form): unknown => JSON.parse(form))).not.toContainEqual(
     expect.objectContaining({ model: expect.anything() }),
   );
 });

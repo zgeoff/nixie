@@ -88,13 +88,17 @@ export function buildTaskDefineTool(options: ChatToolOptions): ToolDefinition {
 
       const notice = notices.get(result.changeID);
 
-      invariant(notice?.rendered, 'a define writes a change that holds a trigger');
+      invariant(notice, 'a define writes a change that has a notice');
+
+      const rendered = notice.rendered;
+
+      invariant(rendered !== null, 'a define writes a change that holds a trigger');
 
       return {
         status: 'ok',
         result: {
           definitionID: result.definitionID,
-          rendered: notice.rendered,
+          rendered,
           next: notice.next,
           changeID: result.shortID,
         },

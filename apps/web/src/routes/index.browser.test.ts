@@ -374,8 +374,11 @@ test('it shows the REPLACED sentence with the short ID of the head when the Undo
     definitionNotice: buildMockDefinitionNotice(),
   });
 
+  // Another client made this change, on a thread this page does not read, so the page still shows
+  // the first notice as in force
   await store.records.create({
     kind: 'definition.changed',
+    thread: 'another-client',
     definitionNotice: buildMockDefinitionNotice({
       operation: 'change',
       shortID: 'w5n1c8d3ra',

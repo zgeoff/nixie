@@ -23,5 +23,10 @@ export function formatDefinitionRefusal(error: unknown): string {
     ONE_SHOT_PAST: 'The time of that one-time trigger has passed.',
   };
 
-  return sentences[error.code] ?? 'The undo did not finish. Try again.';
+  const code: unknown = error.code;
+
+  return (
+    (typeof code === 'string' ? sentences[code] : undefined) ??
+    'The undo did not finish. Try again.'
+  );
 }

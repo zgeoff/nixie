@@ -17,7 +17,6 @@ import {
 } from '@heynixie/tasks/test-utils';
 import type { TestClock } from '@heynixie/testing';
 import { buildTestClock } from '@heynixie/testing';
-import { triggersProjections } from '@heynixie/triggers';
 import type { Kysely } from 'kysely';
 import { apiProjections } from '../api/api-projections';
 import { createAPIApp } from '../api/create-api-app';
@@ -103,7 +102,6 @@ async function createTestContext(
         ...apiProjections,
         ...memoryProjections,
         proposalsProjection,
-        ...triggersProjections,
       ],
     },
     clock: buildTestClock(1_000_000),

@@ -124,7 +124,7 @@ test('it puts a conversation reminder in force from chat, writes its notice reco
 
   invariant(record);
 
-  const notice = await ctx.readNotice(String(record.record.payload['changeID']));
+  const notice = await ctx.readNotice(z.string().parse(record.record.payload['changeID']));
 
   await ctx.runFiresUntil('2027-03-12T08:01:00Z', 1);
 
@@ -247,7 +247,10 @@ test('it refuses an undo of a one-shot from chat once it fired, as no longer in 
   await ctx.runFiresUntil('2027-03-12T08:01:00Z', 1);
   await ctx.waitForSettled();
 
-  const undone = await undoDefinitionChange(ctx.context, String(outcome.result['changeID']));
+  const undone = await undoDefinitionChange(
+    ctx.context,
+    z.string().parse(outcome.result['changeID']),
+  );
 
   expect(undone).toStrictEqual({
     status: 'refused',

@@ -186,10 +186,12 @@ test('#undo refuses a one-time trigger whose time has passed with ONE_SHOT_PAST'
 
   const [changed] = await ctx.readOverlay();
 
-  invariant(changed?.changeID);
+  const changeID = changed?.changeID ?? null;
+
+  invariant(changeID !== null);
 
   const refusal = await ctx.readRefusal(
-    ctx.client.undo({ clientActionID: crypto.randomUUID(), changeID: changed.changeID }),
+    ctx.client.undo({ clientActionID: crypto.randomUUID(), changeID }),
   );
 
   expect(refusal).toStrictEqual({ code: 'ONE_SHOT_PAST', data: undefined });
