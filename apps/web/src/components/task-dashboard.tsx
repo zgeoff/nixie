@@ -8,8 +8,6 @@ import { PauseNixieButton } from './pause-nixie-button';
 import { TaskSummary } from './task-summary';
 
 export interface TaskDashboardProps {
-  readonly navigation?: ReactNode;
-
   readonly startTimer?: StartTimer;
 }
 
@@ -32,7 +30,6 @@ export function TaskDashboard(props: TaskDashboardProps): ReactNode {
 
   return (
     <main className={page}>
-      {props.navigation}
       <h1>Tasks</h1>
       <PauseNixieButton />
       {listed.unavailable ? (

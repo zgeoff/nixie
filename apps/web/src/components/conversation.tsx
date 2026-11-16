@@ -19,8 +19,6 @@ import { VoiceTypingControl } from './voice-typing-control';
 export interface ConversationProps {
   readonly thread: string;
 
-  readonly navigation?: ReactNode;
-
   readonly taskHeader?: ReactNode;
 
   readonly composerNotice?: ReactNode;
@@ -30,7 +28,12 @@ export interface ConversationProps {
   readonly startTimer?: StartTimer;
 }
 
-const layout = css({ display: 'flex', flexDirection: 'column', height: '100dvh' });
+const layout = css({
+  display: 'flex',
+  flexDirection: 'column',
+  height: 'calc(100dvh - token(sizes.appBar))',
+});
+
 const header = css({ borderBottomWidth: '1px', paddingBlock: '1' });
 
 const headerRow = css({
@@ -138,7 +141,6 @@ export function Conversation(props: ConversationProps): ReactNode {
     <main className={layout}>
       <header className={header}>
         <div className={headerRow}>
-          {props.navigation}
           <div className={headerControls}>
             <VoiceTypingControl />
             <ThemePicker />

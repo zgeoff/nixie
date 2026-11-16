@@ -9,7 +9,6 @@ import { TaskSummary } from './task-summary';
 
 export interface TaskPageProps {
   readonly taskID: string;
-  readonly navigation: ReactNode;
 
   readonly messageID?: string;
   readonly startTimer?: StartTimer;
@@ -33,7 +32,6 @@ export function TaskPage(props: TaskPageProps): ReactNode {
       composerNotice={renderComposerNotice(task, read.isError, () => {
         void read.refetch();
       })}
-      navigation={props.navigation}
       taskHeader={
         task === undefined ? undefined : (
           <TaskSummary isLinked={false} task={task} tasks={listed.tasks} />

@@ -18,6 +18,7 @@ export default defineConfig({
   shorthands: false,
   theme: {
     extend: {
+      tokens: { sizes: { appBar: { value: '3rem' } } },
       semanticTokens: {
         colors: Object.fromEntries(
           Object.entries(themePalette).map(([name, colours]) => [

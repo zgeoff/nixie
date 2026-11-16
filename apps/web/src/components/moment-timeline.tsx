@@ -6,10 +6,6 @@ import { css } from '../styled-system/css';
 import type { MomentSummary } from '../types';
 import { useNixieClient } from '../utils/use-nixie-client';
 
-export interface MomentTimelineProps {
-  readonly navigation?: ReactNode;
-}
-
 const layout = css({
   marginInline: 'auto',
   maxWidth: '3xl',
@@ -28,7 +24,7 @@ const search = css({
   marginBlock: '3',
 });
 
-export function MomentTimeline(props: MomentTimelineProps): ReactNode {
+export function MomentTimeline(): ReactNode {
   const [text, setText] = useState('');
   const [query, setQuery] = useState('');
   const [includeRetired, setIncludeRetired] = useState(false);
@@ -37,7 +33,6 @@ export function MomentTimeline(props: MomentTimelineProps): ReactNode {
     <main className={layout}>
       <header className={header}>
         <h1 className={css({ fontSize: 'xl', fontWeight: 'bold' })}>Moments</h1>
-        {props.navigation}
       </header>
       <div className={controls}>
         <form

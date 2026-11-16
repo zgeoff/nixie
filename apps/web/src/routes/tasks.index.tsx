@@ -1,9 +1,8 @@
-import { Link, createFileRoute, useRouter } from '@tanstack/react-router';
+import { createFileRoute, useRouter } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import { SignedInPage } from '../components/signed-in-page';
 import { TaskDashboard } from '../components/task-dashboard';
 import { readRouteSession } from '../conversation/read-route-session';
-import { css } from '../styled-system/css';
 
 export const Route = createFileRoute('/tasks/')({
   component: Tasks,
@@ -21,23 +20,7 @@ function Tasks(): ReactNode {
       }}
       session={data.session}
     >
-      <TaskDashboard
-        navigation={
-          <nav className={css({ display: 'flex', gap: '3' })}>
-            <Link className={link} to="/">
-              Conversation
-            </Link>
-            <Link className={link} to="/memory">
-              Memory
-            </Link>
-            <Link className={link} to="/moments">
-              Moments
-            </Link>
-          </nav>
-        }
-      />
+      <TaskDashboard />
     </SignedInPage>
   );
 }
-
-const link = css({ color: 'link', textDecoration: 'underline' });

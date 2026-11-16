@@ -1,10 +1,9 @@
-import { Link, createFileRoute, useLocation, useRouter } from '@tanstack/react-router';
+import { createFileRoute, useLocation, useRouter } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import { Conversation } from '../components/conversation';
 import { SignedInPage } from '../components/signed-in-page';
 import { parseLinkedMessage } from '../conversation/parse-linked-message';
 import { readSessionState } from '../conversation/read-session-state';
-import { css } from '../styled-system/css';
 
 const thread = 'conversation';
 
@@ -33,25 +32,7 @@ function Home(): ReactNode {
       }}
       session={data.session}
     >
-      <Conversation
-        {...messageOptions}
-        navigation={
-          <nav className={css({ display: 'flex', gap: '3' })}>
-            <Link className={link} to="/tasks">
-              Tasks
-            </Link>
-            <Link className={link} to="/memory">
-              Memory
-            </Link>
-            <Link className={link} to="/moments">
-              Moments
-            </Link>
-          </nav>
-        }
-        thread={thread}
-      />
+      <Conversation {...messageOptions} thread={thread} />
     </SignedInPage>
   );
 }
-
-const link = css({ color: 'link', textDecoration: 'underline' });
