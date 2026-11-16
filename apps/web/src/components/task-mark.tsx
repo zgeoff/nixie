@@ -77,10 +77,17 @@ export function TaskMark(props: TaskMarkProps): ReactNode {
 
   return (
     <div aria-label={`Mark for ${task.name}`} className={mark} role="group">
-      <span>{task.disposable ? 'Closes when it finishes' : 'Kept open'}</span>
-      {task.state === 'done' ? null : (
-        <button disabled={sent.isPending} onClick={send} type="button">
-          {task.disposable ? 'Keep it open' : 'Close it when it finishes'}
+      {task.state === 'done' ? (
+        <span>{task.disposable ? 'Closes when it finishes' : 'Kept open'}</span>
+      ) : (
+        <button
+          aria-checked={task.disposable}
+          disabled={sent.isPending}
+          onClick={send}
+          role="switch"
+          type="button"
+        >
+          Close when it finishes
         </button>
       )}
       {sent.isError ? <span role="alert">The change did not finish. Try again.</span> : null}

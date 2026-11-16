@@ -107,6 +107,7 @@ export async function writeStepCommit(
       ending !== null &&
       isDisposableEnd(ending.cause) &&
       nextState === 'waiting' &&
+      !cursor.hasUnreadInput &&
       resumeState === null &&
       !hasOpenWait &&
       mark?.disposable === true

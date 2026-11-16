@@ -545,6 +545,46 @@ test('it keeps a disposable task open when input arrived that it did not read', 
   expect(closed).toStrictEqual([]);
 });
 
+test('it keeps a disposable task open when a message that did not wake it is unread', async () => {
+  const ctx = await setupTest();
+  const task = await ctx.startTask(true);
+
+  await writeInboxRecords(ctx.context, [
+    {
+      kind: 'task_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: task.taskID,
+      payload: {
+        messageID: 'p7rw2c9tln',
+        from: 'conversation',
+        to: task.taskID,
+        kind: 'chat',
+        replyTo: null,
+        onBehalfOf: [],
+        hop: 1,
+        hopLimit: 20,
+        wake: true,
+        woke: false,
+        source: 'task:conversation',
+      },
+      erasable: { body: 'read this on your next run' },
+    },
+  ]);
+
+  await writeStepCommit(ctx.context, task.claim, {
+    next: 'done',
+    records: [],
+    acknowledged: task.brief,
+    run: { activity: 'worked', report: { summary: 'High tide is at 06:42.' } },
+  });
+
+  const closed = await ctx.readKinds('task.closed');
+  const currentState = await ctx.readState(task.taskID);
+
+  expect(currentState).toBe('waiting');
+  expect(closed).toStrictEqual([]);
+});
+
 test('it keeps a disposable task open while it waits on a reply', async () => {
   const ctx = await setupTest();
   const task = await ctx.startTask(true);

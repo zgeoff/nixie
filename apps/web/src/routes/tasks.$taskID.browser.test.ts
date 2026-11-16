@@ -243,9 +243,29 @@ test('it switches the mark of a task on its page, then closes the task from the 
       z.boolean(),
     );
 
+  const readSwitchChecked = () =>
+    runInPage(
+      ctx.view,
+      (target) =>
+        document
+          .querySelector(`[aria-label="${target.group}"] [role="switch"]`)
+          ?.getAttribute('aria-checked') ?? null,
+      { group: 'Mark for Garden plan' },
+      z.string().nullable(),
+    );
+
   await waitFor(
     async () => {
-      const isClicked = await clickButton('Mark for Garden plan', 'Keep it open');
+      const checked = await readSwitchChecked();
+
+      expect(checked).toBe('true');
+    },
+    { timeout: 10_000 },
+  );
+
+  await waitFor(
+    async () => {
+      const isClicked = await clickButton('Mark for Garden plan', 'Close when it finishes');
 
       expect(isClicked).toBeTrue();
     },
@@ -257,6 +277,15 @@ test('it switches the mark of a task on its page, then closes the task from the 
       expect(store.tasks.findFirst((query) => query.where({ taskID: 'k3vq8m2xpa' }))).toMatchObject(
         { disposable: false, state: 'waiting' },
       );
+    },
+    { timeout: 10_000 },
+  );
+
+  await waitFor(
+    async () => {
+      const checked = await readSwitchChecked();
+
+      expect(checked).toBe('false');
     },
     { timeout: 10_000 },
   );
