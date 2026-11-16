@@ -374,6 +374,7 @@ test('#memory.readItem reads an approved photo version with the thread, sequence
     caller: {
       origin: 'conversation',
       thread: 'conversation',
+      logThread: 'conversation',
       taskID: 'conversation',
       runID: 'conversation',
       model: 'test-model',

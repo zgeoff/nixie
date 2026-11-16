@@ -42,6 +42,7 @@ test('it rejects a proposal and drops the key of the item it would have created'
     caller: {
       origin: 'conversation',
       thread: 'conversation',
+      logThread: 'conversation',
       taskID: 'conversation',
       runID: 'conversation',
       model: 'claude-opus-5-5',
@@ -147,6 +148,7 @@ test('it keeps the key of an existing item when you reject an edit of it', async
     caller: {
       origin: 'conversation',
       thread: 'conversation',
+      logThread: 'conversation',
       taskID: 'conversation',
       runID: 'conversation',
       model: 'claude-opus-5-5',

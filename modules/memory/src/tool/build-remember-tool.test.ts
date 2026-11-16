@@ -247,3 +247,32 @@ test('it reads the source outside for a write from a photo, whatever its quote',
     args: { ...input, subject: 'owner' },
   });
 });
+
+test("it reads the owner source of a granted task's remember from the event on the conversation's thread", async () => {
+  const memory = await startTestMemory();
+
+  const sequence = await writeOwnerMessageRecord(memory.log, {
+    thread: 'conversation',
+    text: 'I take my coffee black',
+    spans: [{ start: 0, end: 22, source: 'typed' }],
+  });
+
+  const input = {
+    text: 'Takes coffee black',
+    gist: 'black coffee',
+    topic: 'food',
+    quote: 'I take my coffee black',
+    eventID: `#${String(sequence)}`,
+  };
+
+  const facts = await buildRememberTool(memory.store).resolvePolicyFacts?.(
+    input,
+    buildMockToolContext({ thread: 'task-1', logThread: 'conversation' }),
+  );
+
+  expect(facts).toStrictEqual({
+    status: 'ok',
+    sources: ['owner', 'task'],
+    args: { ...input, subject: 'owner' },
+  });
+});

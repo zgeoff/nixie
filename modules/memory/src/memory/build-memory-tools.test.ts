@@ -3,6 +3,7 @@ import { buildShortIDFromUUID } from '@heynixie/db';
 import type { JSONObject, LogTables } from '@heynixie/log';
 import { readRecordKeys, readRecords } from '@heynixie/log';
 import { buildAllowingDecisionPoint } from '@heynixie/policy/test-utils';
+import type { ToolRun } from '@heynixie/tools';
 import { buildToolRegistry, runToolCall } from '@heynixie/tools';
 import invariant from 'tiny-invariant';
 import { defaultGateLimits } from '../gate/default-gate-limits';
@@ -13,7 +14,9 @@ import {
   readItemShortID,
   startTestMemory,
 } from '../test-utils';
+import { buildMockProvenance } from '../test-utils/build-mock-provenance';
 import { buildMockToolContext } from '../test-utils/build-mock-tool-context';
+import { writeModelReplyRecord } from '../test-utils/write-model-reply-record';
 import { writeOwnerMessageRecord } from '../test-utils/write-owner-message-record';
 import type { MemoryTables } from '../types';
 import { buildMemoryTools } from './build-memory-tools';
@@ -32,6 +35,32 @@ async function setupTest(config: TestMemoryOptions = {}) {
   return {
     memory,
     registry,
+    rememberAsTask: (input: Record<string, string>, run: Partial<ToolRun>) => {
+      const tool = registry.findTool('memory.remember');
+
+      invariant(tool);
+
+      return tool.definition.run(
+        {
+          callID: 'call-1',
+          tool: 'memory.remember',
+          input: {
+            gist: 'a gist',
+            topic: 'a topic',
+            text: 'Allergic to hazelnuts',
+            quote: "I'm allergic to hazelnuts",
+            ...input,
+          },
+          toolUseID: null,
+        },
+        buildMockToolContext(run),
+      );
+    },
+    readRecordKinds: async (afterSequence: number) => {
+      const entries = await readRecords(memory.log, { afterSequence, limit: 1000 });
+
+      return entries.map((entry) => entry.record.kind);
+    },
     createRelabelledItem: async (text: string) => {
       const item = await memory.store.remember({
         text,
@@ -51,6 +80,7 @@ async function setupTest(config: TestMemoryOptions = {}) {
         caller: {
           origin: 'conversation',
           thread: 'conversation',
+          logThread: 'conversation',
           taskID: 'conversation',
           runID: 'conversation',
           model: 'test-model',
@@ -1558,6 +1588,7 @@ test('it lists a text edit proposed after a label edit at the revision it read, 
     caller: {
       origin: 'conversation',
       thread: 'conversation',
+      logThread: 'conversation',
       taskID: 'conversation',
       runID: 'conversation',
       model: 'test-model',
@@ -1642,6 +1673,7 @@ test('it retires an item at its revision when the model read its text before a l
     caller: {
       origin: 'conversation',
       thread: 'conversation',
+      logThread: 'conversation',
       taskID: 'conversation',
       runID: 'conversation',
       model: 'test-model',
@@ -1857,3 +1889,209 @@ test.each([
     });
   },
 );
+
+test("it saves a task's memory from the user's message on the conversation's thread with no proposal", async () => {
+  const ctx = await setupTest({
+    gate: { check: () => Promise.resolve(buildMockCheckerAnswer({ verdict: 'asserted' })) },
+  });
+
+  const sequence = await writeOwnerMessageRecord(ctx.memory.log, {
+    thread: 'conversation',
+    text: "I'm allergic to hazelnuts",
+    spans: [{ start: 0, end: 25, source: 'typed' }],
+  });
+
+  const outcome = await ctx.rememberAsTask(
+    { eventID: `#${String(sequence)}` },
+    { thread: 'task-4', logThread: 'conversation' },
+  );
+
+  invariant(outcome.status === 'ok' && typeof outcome.result['itemID'] === 'string');
+
+  const row = await ctx.memory.writer.db
+    .$extendTables<MemoryTables>()
+    .selectFrom('memory_versions')
+    .innerJoin('memory_items', 'memory_items.item_id', 'memory_versions.item_id')
+    .select(['origin', 'task_id'])
+    .where('memory_items.short_id', '=', outcome.result['itemID'])
+    .executeTakeFirstOrThrow();
+
+  const kinds = await ctx.readRecordKinds(sequence);
+
+  expect(outcome.result).toStrictEqual({
+    status: 'applied',
+    itemID: expect.toBeString(),
+    version: 1,
+  });
+
+  const pending = await ctx.memory.store.proposals.listPending();
+
+  expect(row).toStrictEqual({ origin: 'task', task_id: 'task-4' });
+  expect(pending).toStrictEqual([]);
+  expect(kinds).toContain('memory.version_added');
+  expect(kinds).not.toContain('memory.proposed');
+});
+
+test('it proposes a granted task save the checker does not assert, with one proposal record', async () => {
+  const ctx = await setupTest({
+    gate: { check: () => Promise.resolve(buildMockCheckerAnswer({ verdict: 'unsure' })) },
+  });
+
+  const sequence = await writeOwnerMessageRecord(ctx.memory.log, {
+    thread: 'conversation',
+    text: "I'm allergic to hazelnuts",
+    spans: [{ start: 0, end: 25, source: 'typed' }],
+  });
+
+  const outcome = await ctx.rememberAsTask(
+    { eventID: `#${String(sequence)}` },
+    { thread: 'task-4', logThread: 'conversation' },
+  );
+
+  const kinds = await ctx.readRecordKinds(sequence);
+
+  expect(outcome).toMatchObject({
+    status: 'ok',
+    result: { status: 'proposed', proposalID: expect.toBeString() },
+  });
+
+  expect(kinds.filter((kind) => kind === 'memory.proposed')).toHaveLength(1);
+  expect(kinds).not.toContain('memory.version_added');
+});
+
+test("it proposes a granted task save that cites a reply on the conversation's thread as not typed", async () => {
+  const ctx = await setupTest({
+    gate: { check: () => Promise.resolve(buildMockCheckerAnswer({ verdict: 'asserted' })) },
+  });
+
+  const sequence = await writeModelReplyRecord(ctx.memory.log, {
+    thread: 'conversation',
+    text: "I'm allergic to hazelnuts",
+  });
+
+  const outcome = await ctx.rememberAsTask(
+    { eventID: `#${String(sequence)}` },
+    { thread: 'task-4', logThread: 'conversation' },
+  );
+
+  expect(outcome).toMatchObject({
+    status: 'ok',
+    result: { status: 'proposed', reason: expect.toStartWith('quote_not_typed:') },
+  });
+});
+
+test('it proposes a granted task save that cites an event on a third thread as no quote', async () => {
+  const ctx = await setupTest({
+    gate: { check: () => Promise.resolve(buildMockCheckerAnswer({ verdict: 'asserted' })) },
+  });
+
+  const sequence = await writeOwnerMessageRecord(ctx.memory.log, {
+    thread: 'task-9',
+    text: "I'm allergic to hazelnuts",
+    spans: [{ start: 0, end: 25, source: 'typed' }],
+  });
+
+  const outcome = await ctx.rememberAsTask(
+    { eventID: `#${String(sequence)}` },
+    { thread: 'task-4', logThread: 'conversation' },
+  );
+
+  expect(outcome).toMatchObject({
+    status: 'ok',
+    result: { status: 'proposed', reason: expect.toStartWith('no_quote:') },
+  });
+});
+
+test("it searches only the task's own thread for a granted task quote with no event ID", async () => {
+  const ctx = await setupTest({
+    gate: { check: () => Promise.resolve(buildMockCheckerAnswer({ verdict: 'asserted' })) },
+  });
+
+  await writeOwnerMessageRecord(ctx.memory.log, {
+    thread: 'conversation',
+    text: "I'm allergic to hazelnuts",
+    spans: [{ start: 0, end: 25, source: 'typed' }],
+  });
+
+  const outcome = await ctx.rememberAsTask({}, { thread: 'task-4', logThread: 'conversation' });
+
+  expect(outcome).toMatchObject({
+    status: 'ok',
+    result: { status: 'proposed', reason: expect.toStartWith('no_quote:') },
+  });
+});
+
+test('it proposes a granted task save whose cited message backed an item the user forgot', async () => {
+  const ctx = await setupTest({
+    gate: { check: () => Promise.resolve(buildMockCheckerAnswer({ verdict: 'asserted' })) },
+  });
+
+  const sequence = await writeOwnerMessageRecord(ctx.memory.log, {
+    thread: 'conversation',
+    text: "I'm allergic to hazelnuts",
+    spans: [{ start: 0, end: 25, source: 'typed' }],
+  });
+
+  const forgotten = await ctx.memory.store.remember({
+    text: 'Allergic to nuts',
+    evidenceQuote: "I'm allergic to hazelnuts",
+    evidence: { recordSequence: sequence, start: 0, end: 25 },
+    provenance: buildMockProvenance(),
+  });
+
+  await ctx.memory.store.forget({ target: forgotten, provenance: buildMockProvenance() });
+
+  const outcome = await ctx.rememberAsTask(
+    { eventID: `#${String(sequence)}` },
+    { thread: 'task-4', logThread: 'conversation' },
+  );
+
+  expect(outcome).toMatchObject({
+    status: 'ok',
+    result: { status: 'proposed', reason: expect.toStartWith('forgotten_evidence:') },
+  });
+});
+
+test("it proposes a save from a run whose log thread is the task's own that cites the conversation's event", async () => {
+  const ctx = await setupTest({
+    gate: { check: () => Promise.resolve(buildMockCheckerAnswer({ verdict: 'asserted' })) },
+  });
+
+  const sequence = await writeOwnerMessageRecord(ctx.memory.log, {
+    thread: 'conversation',
+    text: "I'm allergic to hazelnuts",
+    spans: [{ start: 0, end: 25, source: 'typed' }],
+  });
+
+  const outcome = await ctx.rememberAsTask(
+    { eventID: `#${String(sequence)}` },
+    { thread: 'task-4', logThread: 'task-4' },
+  );
+
+  expect(outcome).toMatchObject({
+    status: 'ok',
+    result: { status: 'proposed', reason: expect.toStartWith('no_quote:') },
+  });
+});
+
+test("it proposes a save in a step run after the grant left the task's setup, which the runner builds with the task's own log thread", async () => {
+  const ctx = await setupTest({
+    gate: { check: () => Promise.resolve(buildMockCheckerAnswer({ verdict: 'asserted' })) },
+  });
+
+  const sequence = await writeOwnerMessageRecord(ctx.memory.log, {
+    thread: 'conversation',
+    text: "I'm allergic to hazelnuts",
+    spans: [{ start: 0, end: 25, source: 'typed' }],
+  });
+
+  const stepRun = { thread: 'task-4', logThread: 'task-4' };
+  const eventID = `#${String(sequence)}`;
+
+  const outcome = await ctx.rememberAsTask({ eventID }, stepRun);
+
+  expect(outcome).toMatchObject({
+    status: 'ok',
+    result: { status: 'proposed', reason: expect.toStartWith('no_quote:') },
+  });
+});

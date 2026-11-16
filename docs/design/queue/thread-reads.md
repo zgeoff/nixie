@@ -10,7 +10,9 @@ The log grant is built: the `log` option, `logThread` on a tool run, `log.read` 
 [Started tasks](../../architecture/core/started-tasks.md#start-options),
 [definitions](../../architecture/core/definitions.md) and
 [reading the log](../../architecture/memory/context.md#reading-the-log) hold its facts. The gate's
-read of a cited message and the photos in a kept moment still build from this design.
+read of a cited message is built too, and
+[the content gate](../../architecture/memory/writes.md#the-content-gate) describes it. Only the
+photos in a kept moment still build from this design.
 
 nixie's [event log](../../architecture/core/event-log.md) keeps each task's records on a thread of
 its own, named by the task ID. The conversation's records sit on the thread `'conversation'`, which

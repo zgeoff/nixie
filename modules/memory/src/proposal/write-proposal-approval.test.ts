@@ -834,6 +834,7 @@ test('it refuses an answer that names another action hash', async () => {
     caller: {
       origin: 'conversation',
       thread: 'conversation',
+      logThread: 'conversation',
       taskID: 'conversation',
       runID: 'conversation',
       model: 'claude-opus-5-5',
@@ -863,6 +864,7 @@ test('it refuses a second approval of one proposal', async () => {
     caller: {
       origin: 'conversation',
       thread: 'conversation',
+      logThread: 'conversation',
       taskID: 'conversation',
       runID: 'conversation',
       model: 'claude-opus-5-5',
@@ -903,6 +905,7 @@ test("it refuses an approval after the proposal's lapse time", async () => {
     caller: {
       origin: 'conversation',
       thread: 'conversation',
+      logThread: 'conversation',
       taskID: 'conversation',
       runID: 'conversation',
       model: 'claude-opus-5-5',
@@ -953,6 +956,7 @@ test('it refuses edited text for a retirement proposal', async () => {
     caller: {
       origin: 'conversation',
       thread: 'conversation',
+      logThread: 'conversation',
       taskID: 'conversation',
       runID: 'conversation',
       model: 'claude-opus-5-5',
@@ -988,6 +992,7 @@ test('it retires an item when you approve a retirement proposal', async () => {
     caller: {
       origin: 'conversation',
       thread: 'conversation',
+      logThread: 'conversation',
       taskID: 'conversation',
       runID: 'conversation',
       model: 'claude-opus-5-5',

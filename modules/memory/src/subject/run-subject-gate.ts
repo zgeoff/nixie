@@ -93,6 +93,7 @@ function runGateOfSubject(
     eventID: request.eventID ?? null,
     isPinned: false,
     thread: request.caller.thread,
+    logThread: request.caller.logThread,
     until: request.until ?? null,
   };
 

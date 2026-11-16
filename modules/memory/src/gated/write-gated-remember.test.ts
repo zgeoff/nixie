@@ -2019,3 +2019,38 @@ test('it refuses a photo source that names a message that is not yours', async (
 
   expect(write).rejects.toMatchObject({ code: 'IMAGE_SOURCE_REFUSED' });
 });
+
+test("it reads a cited event on the caller's log thread and the quote window on its own thread", async () => {
+  const memory = await startTestMemory({
+    gate: { check: () => Promise.resolve(buildMockCheckerAnswer()) },
+  });
+
+  const sequence = await writeOwnerMessageRecord(memory.log, {
+    thread: 'conversation',
+    text: 'I take my coffee black',
+    spans: [{ start: 0, end: 22, source: 'typed' }],
+  });
+
+  const caller = buildMockWriteCaller({
+    origin: 'task',
+    thread: 'task-4',
+    logThread: 'conversation',
+    taskID: 'task-4',
+  });
+
+  const cited = await memory.store.writes.remember({
+    text: 'Takes coffee black',
+    quote: 'I take my coffee black',
+    eventID: sequence,
+    caller,
+  });
+
+  const windowed = await memory.store.writes.remember({
+    text: 'Drinks black coffee',
+    quote: 'I take my coffee black',
+    caller,
+  });
+
+  expect(cited).toMatchObject({ status: 'applied' });
+  expect(windowed).toMatchObject({ status: 'proposed', reason: 'no_quote' });
+});

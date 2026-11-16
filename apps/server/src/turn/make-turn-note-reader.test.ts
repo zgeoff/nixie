@@ -87,6 +87,7 @@ test('it carries an answered proposal the model saw into the recent turns of a r
     caller: {
       origin: 'conversation',
       thread: 'conversation',
+      logThread: 'conversation',
       taskID: 'conversation',
       runID: 'conversation',
       model: 'claude-test-1',

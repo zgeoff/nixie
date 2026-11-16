@@ -144,6 +144,7 @@ test('#memory.retire takes and returns the revision of an item after a label edi
     caller: {
       origin: 'conversation',
       thread: 'conversation',
+      logThread: 'conversation',
       taskID: 'conversation',
       runID: 'conversation',
       model: 'test-model',
@@ -191,6 +192,7 @@ test('#memory.retire refuses the version an item had before a label edit', async
     caller: {
       origin: 'conversation',
       thread: 'conversation',
+      logThread: 'conversation',
       taskID: 'conversation',
       runID: 'conversation',
       model: 'test-model',
