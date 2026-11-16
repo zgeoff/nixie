@@ -339,8 +339,7 @@ decides:
 
 This design replaces these parts of
 [the trigger source design](../platform/channels/trigger-source.md). The owner approved all 5 on 13
-Nov, and [the trigger source baseline](https://linear.app/zgeoff/issue/GEO-2538) rewrites that doc
-to match once the schedule source is built:
+Nov, and the trigger source design now describes the built port and schedule source:
 
 - A durable timer per next fire: nixie computes the next fire from the watermark and stores no
   timer.
