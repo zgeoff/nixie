@@ -7,11 +7,11 @@ import { setupSignedInBrowser } from '../test-utils/setup-signed-in-browser';
 import { startBuiltWeb } from '../test-utils/start-built-web';
 import { startFrontProxy } from '../test-utils/start-front-proxy';
 import { startStubAPI } from '../test-utils/start-stub-api';
+import { waitForPage } from '../test-utils/wait-for-page';
 
 async function setupTest() {
   const authenticatorSchema = z.object({ authenticatorId: z.string() });
   const credentialsSchema = z.object({ credentials: z.array(z.unknown()) });
-  const hydrated = "Object.keys(document).some((key) => key.startsWith('_reactListening'))";
   const api = startStubAPI();
 
   const web = await startBuiltWeb(api.url);
@@ -59,19 +59,11 @@ async function setupTest() {
     view.close();
   });
 
-  const waitForPage = (expression: string) =>
-    waitFor(
-      async () => {
-        const holds: unknown = await view.evaluate(expression);
-
-        expect(holds).toBeTrue();
-      },
-      { timeout: 8000 },
-    );
+  const waitInView = (expression: string) => waitForPage(view, expression, 8000);
 
   return {
     view,
-    waitForPage,
+    waitForPage: waitInView,
     findRow: (proposalID: string) =>
       store.approvalRows.findFirst((query) => query.where({ proposalID })),
     countCredentials: async () => {
@@ -84,20 +76,21 @@ async function setupTest() {
     registerPasskey: async () => {
       await view.navigate(`${appURL}/passkeys`);
 
-      await waitForPage(
-        `${hydrated} && document.querySelector('form[aria-label="Add a passkey"]') !== null`,
+      // The list's arrival moves the form down, and a click lands where the button was
+      await waitInView(
+        `document.body.innerText.includes('No passkey is set up yet.') && document.querySelector('form[aria-label="Add a passkey"]') !== null`,
       );
 
       await view.click('form[aria-label="Add a passkey"] label:nth-of-type(2) input');
       await view.type(mockPasskeyCode);
       await view.click('form[aria-label="Add a passkey"] button[type=submit]');
 
-      await waitForPage(`document.querySelector('ul[aria-label="Passkeys"] li') !== null`);
+      await waitInView(`document.querySelector('ul[aria-label="Passkeys"] li') !== null`);
     },
     openLine: async (sentence: string) => {
       await view.navigate(`${appURL}/memory/proposals`);
 
-      await waitForPage(`document.querySelector('li[aria-label="${sentence}"] summary') !== null`);
+      await waitInView(`document.querySelector('li[aria-label="${sentence}"] summary') !== null`);
 
       await view.click(`li[aria-label="${sentence}"] summary`);
     },

@@ -2,8 +2,8 @@
 
 Write, run and debug the web app's browser suites, the `*.browser.test.ts` files, with the rules
 below. Each suite drives a headless Chrome or Chromium through `Bun.WebView`. The traps: a suite
-started outside the lane has no web build, a later view's options never reach Chrome, and every file
-shares one Chrome and one global object.
+started outside the lane has no web build, a later view's options never reach Chrome, every file
+shares one Chrome and one global object, and a click misses when the page moves just before it.
 
 rig, the test runner `@zgeoff/rig`, runs the lane:
 
@@ -32,6 +32,15 @@ again after you change the web client: each command builds the client once, when
   first view, which rig's preload opens, and Bun ignores the options of each later view.
 - **Clear the cookies before each test.** Every view shares the one Chrome's cookie jar, across
   files too.
+- **Before each click, call [`waitForPage`](../../../../apps/web/src/test-utils/wait-for-page.ts)
+  with an expression that turns `true` once the page shows the data it fetches in the browser.**
+  Check for a list row, or for the empty-list text with `document.body.innerText.includes(...)`. The
+  helper waits for exactly `true`, so pass a check, never the text itself. When the data arrives,
+  React renders the list and moves each element below the list. `view.click` measures where its
+  target is, then clicks at that point a moment later. A move between the two sends the click to
+  another element. React renders fetched data only after hydration, so this wait also shows that the
+  page hydrated. Leave out `_reactListening` on `document`: React sets that key before it hydrates
+  the page's components.
 - **Undo in `onTestFinished` each change your suite makes to `globalThis`, such as a stubbed
   `fetch`.** The next file runs in the same process, and the preloads in the root `bunfig.toml`
   reset only what they set up.
@@ -53,3 +62,5 @@ serves the web build and opens its page.
    `@zgeoff/rig`. `pageFunction` is an arrow function that sees only `argument` and the page's
    globals, and `schema` is a zod schema for its result. Keep `view.evaluate` for a one-line
    expression.
+4. Click with `view.click`, which clicks the way a user does. Before each click, wait for the page's
+   fetched data. [Traps](#traps) gives the reason.
