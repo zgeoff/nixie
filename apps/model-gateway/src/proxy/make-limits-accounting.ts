@@ -4,6 +4,7 @@ import { buildCallCost } from '@heynixie/models/prices';
 import type { CounterStore, ProxyLimits, SpendTotals, StoredCount } from '../types';
 import { buildCallTokens } from '../usage/build-call-tokens';
 import type { Accounting } from './accounting';
+import { makeLostLatch } from './make-lost-latch';
 import { renderAPIError } from './render-api-error';
 
 export interface LimitsAccountingDeps {
@@ -16,23 +17,10 @@ export interface LimitsAccountingDeps {
 export function makeLimitsAccounting(deps: LimitsAccountingDeps): Accounting {
   // a count that failed to write, or a reply lost before its usage arrived, leaves the store behind
   // the spend, so the store keeps a mark that refuses every later request, across a restart, until
-  // an operator clears it; the latch refuses in this process when the mark cannot be written
-  let countFailed = false;
+  // an operator clears it
   let limitLogged = false;
-
-  // the latch refuses while the mark is written, and stays only when the write fails, so an
-  // operator who deletes a written mark restores service with no restart
-  const loseCount = async (): Promise<void> => {
-    countFailed = true;
-
-    try {
-      await deps.store.markLost();
-
-      countFailed = false;
-    } catch (error) {
-      deps.log('counter.mark_failed', toErrorFields(error), 'error');
-    }
-  };
+  const latch = makeLostLatch(deps.store.markLost, deps.log);
+  const loseCount = latch.loseCount;
 
   const admit = async (): Promise<Response | null> => {
     const totals = await readTotals(deps);
@@ -45,7 +33,7 @@ export function makeLimitsAccounting(deps: LimitsAccountingDeps): Accounting {
       );
     }
 
-    if (countFailed || totals.lost) {
+    if (latch.isHeld() || totals.lost) {
       return renderAPIError(
         503,
         'api_error',

@@ -273,8 +273,10 @@ The gateway treats a counter store it cannot use, and a count it has lost, as a 
 room. A lost count is one that fell behind the spend, and the gateway marks it as lost in the store
 itself. While the lost mark stands, the gateway answers every request with a 503 and sends nothing
 upstream, across restarts, until an operator removes the `lost` field from the store file. The mark
-survives a restart because a restart cannot recover the spend the count missed. When the mark cannot
-be written, the gateway still refuses every later request until it exits.
+survives a restart because a restart cannot recover the spend the count missed. From the moment a
+count is lost until its mark is in the store, the gateway refuses every request in its own process,
+also while a second mark is still being written. When a mark cannot be written, the gateway refuses
+every later request until it exits.
 
 - **The store cannot be read.** A missing store file, a missing directory or a file that holds no
   count fails the read, and the gateway answers the request with a 503 and sends nothing upstream.

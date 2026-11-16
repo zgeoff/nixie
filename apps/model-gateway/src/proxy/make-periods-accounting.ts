@@ -6,6 +6,7 @@ import { pickPeriodsRefusal } from '../periods/pick-periods-refusal';
 import type { PeriodStoreHandle } from '../types';
 import { buildCallTokens } from '../usage/build-call-tokens';
 import type { Accounting } from './accounting';
+import { makeLostLatch } from './make-lost-latch';
 import { renderAPIError } from './render-api-error';
 
 export interface PeriodsAccountingDeps {
@@ -16,23 +17,9 @@ export interface PeriodsAccountingDeps {
 
 // the count of a config with periods: a day, a month and each sandbox, read before each admission
 export function makePeriodsAccounting(deps: PeriodsAccountingDeps): Accounting {
-  // as with limits, the latch refuses in this process when the lost mark cannot be written
-  let countFailed = false;
   let tripLogged = '';
-
-  // the latch refuses while the mark is written, and stays only when the write fails, so an
-  // operator who deletes a written mark restores service with no restart
-  const loseCount = async (): Promise<void> => {
-    countFailed = true;
-
-    try {
-      await deps.store.markLost();
-
-      countFailed = false;
-    } catch (error) {
-      deps.log('counter.mark_failed', toErrorFields(error), 'error');
-    }
-  };
+  const latch = makeLostLatch(deps.store.markLost, deps.log);
+  const loseCount = latch.loseCount;
 
   const admit = async (sandbox: string | null): Promise<Response | null> => {
     const held = await deps.store.readInForce().catch((error: unknown) => {
@@ -49,7 +36,7 @@ export function makePeriodsAccounting(deps: PeriodsAccountingDeps): Accounting {
       );
     }
 
-    const store = countFailed ? { ...held.store, lost: true } : held.store;
+    const store = latch.isHeld() ? { ...held.store, lost: true } : held.store;
     const refusal = pickPeriodsRefusal(store, held.override, sandbox, deps.countBySandbox);
 
     return refusal === null ? null : renderAPIError(refusal.status, refusal.type, refusal.message);
