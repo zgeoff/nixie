@@ -104,16 +104,22 @@ with `afterSequence`. The API answers it with a live event stream, which the
 
 The preview runs the `preview-tick` task every 5 minutes, at each whole 5 minutes of the clock. To
 see a run, do steps 1 to 3 of
-[Send one turn and read its records](#send-one-turn-and-read-its-records), wait 6 minutes, which
-always holds one run, and do step 5. List the `task_message` records of kind `report` from the file:
+[Send one turn and read its records](#send-one-turn-and-read-its-records), then do step 5 and list
+the `task_message` records of kind `report` from the file:
 
 ```bash
 jq -c '.json.records[] | select(.kind == "task_message" and .taskMessage.kind == "report")
   | {sequence, from: .taskMessage.fromName, text: .taskMessage.text}' page.json
 ```
 
-Expect at least one record from `Preview tick`. A run and the turn it wakes call the model, so a
-preview with no model access prints nothing.
+If the command prints nothing, wait a minute, then repeat step 5 and this command. A run can take
+over a minute to report, and a run that keeps failing takes longer, because each failed step waits
+before its retry.
+
+Expect a record from `Preview tick`. A report that holds the task's own summary means the run
+worked. A report that starts with "The run" is code-made, so the run did not work. "The run failed
+after 3 errors before it wrote a summary." follows model calls that kept failing, as when the
+preview has no model access.
 
 ## Start the next check from an empty log
 
