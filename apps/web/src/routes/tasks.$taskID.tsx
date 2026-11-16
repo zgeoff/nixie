@@ -3,11 +3,25 @@ import type { ReactNode } from 'react';
 import { SignedInPage } from '../components/signed-in-page';
 import { TaskPage } from '../components/task-page';
 import { parseLinkedMessage } from '../conversation/parse-linked-message';
-import { readRouteSession } from '../conversation/read-route-session';
+import { readRouteSession, routeDataStaleTimeMs } from '../conversation/read-route-session';
 
 export const Route = createFileRoute('/tasks/$taskID')({
   component: Task,
-  loader: (options) => readRouteSession(options.context),
+  loader: (options) =>
+    readRouteSession(options.context, [
+      () =>
+        options.context.queryClient.query({
+          ...options.context.queryUtils.tasks.read.queryOptions({
+            input: { taskID: options.params.taskID },
+          }),
+          staleTime: routeDataStaleTimeMs,
+        }),
+      () =>
+        options.context.queryClient.query({
+          ...options.context.queryUtils.tasks.list.queryOptions(),
+          staleTime: routeDataStaleTimeMs,
+        }),
+    ]),
 });
 
 function Task(): ReactNode {

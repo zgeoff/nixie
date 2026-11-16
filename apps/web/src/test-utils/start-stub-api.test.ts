@@ -32,6 +32,29 @@ test('it records the credentials each request carried', async () => {
   ]);
 });
 
+test('it holds back the answer to a delayed path and not the others', async () => {
+  const api = startStubAPI();
+
+  api.delayPath('/rpc/sessions/list', 300);
+
+  const send = async (path: string) => {
+    const startedAt = performance.now();
+
+    await fetch(`${api.url}${path}`, {
+      body: '{}',
+      headers: { 'content-type': 'application/json', 'x-nixie-client': 'web' },
+      method: 'POST',
+    });
+
+    return performance.now() - startedAt;
+  };
+
+  const delayedMs = await send('/rpc/sessions/list');
+  const otherMs = await send('/rpc/tasks/list');
+
+  expect([delayedMs >= 290, otherMs < 290]).toStrictEqual([true, true]);
+});
+
 test('it stops the server when the test finishes', () => {
   const api = startStubAPI();
 

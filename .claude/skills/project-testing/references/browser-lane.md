@@ -41,6 +41,9 @@ again after you change the web client: each command builds the client once, when
   another element. React renders fetched data only after hydration, so this wait also shows that the
   page hydrated. Leave out `_reactListening` on `document`: React sets that key before it hydrates
   the page's components.
+- **A test that checks a control stays put while data loads must delay that read.** Call `delayPath`
+  on the stub API from `startStubAPI` for the data's path, by about 500 ms, so the page paints
+  before the data lands. Without the delay the read finishes first and the test cannot fail.
 - **Undo in `onTestFinished` each change your suite makes to `globalThis`, such as a stubbed
   `fetch`.** The next file runs in the same process, and the preloads in the root `bunfig.toml`
   reset only what they set up.
