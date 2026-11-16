@@ -125,6 +125,8 @@ export function EndedTasks(props: EndedTasksProps): ReactNode {
                 · {run.cause} · {run.used.turns} {run.used.turns === 1 ? 'turn' : 'turns'} · $
                 {run.used.dollars.toFixed(2)} · ended{' '}
                 {isHydrated ? run.endedAt.toLocaleString('en') : ''}
+                {run.fire === null ? '' : ` · started by the fire of ${run.fire.scheduledFor}`}
+                {run.fire?.isCatchUp === true ? ' (a catch-up)' : ''}
               </span>
             </li>
           ))}

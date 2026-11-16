@@ -1,5 +1,5 @@
 import { faker } from '@faker-js/faker';
-import { triggerSchema } from '@heynixie/contract';
+import { runFireSchema, triggerSchema } from '@heynixie/contract';
 import { Collection } from '@msw/data';
 import { z } from 'zod';
 import { mockSequence } from './mock-sequence';
@@ -22,6 +22,7 @@ const endedRuns = new Collection({
     delivery: z.enum(['wake', 'next_turn', 'kept']).default('wake'),
     endedAt: z.date().default(() => new Date()),
     endedBy: z.string().default('task'),
+    fire: runFireSchema.nullable().default(null),
     reportID: z.string().default(buildShortID),
     runID: z.string().default(() => faker.string.uuid()),
     sequence: z.int().default(nextSequence),

@@ -1,6 +1,5 @@
 import { faker } from '@faker-js/faker';
-import { listedStateSchema } from '@heynixie/contract';
-import { workerViewSchema } from '@heynixie/contract';
+import { listedStateSchema, workerViewSchema } from '@heynixie/contract';
 import { taskControls } from '@heynixie/task-control';
 import { Collection } from '@msw/data';
 import { z } from 'zod';
