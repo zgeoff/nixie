@@ -119,6 +119,11 @@ that the purge finishes and the current text of each item still reads.
 | `memory.purge.keys_removed` | after the key deletes, before `memory.evidence_purged`    |
 | `record.forget.purged`      | after every item's purge, before `record.forgotten`       |
 
+The suite also starts the previous release on the data after each kill, and checks that it finishes
+the purge too, so a rollback by one release in the middle of a forget loses nothing. It runs that
+release's test build, which the e2e lane builds from the release's tag, because the release build
+stops at the parts of a start that need a real sandbox.
+
 ## Coverage
 
 The [crash tests design](../../design/platform/core/crash-tests.md#slice-1-tests) lists the slice 1

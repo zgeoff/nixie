@@ -200,6 +200,11 @@ The bridge and the new labelling each raise the revision, so a change bound to t
 the purge fails as stale. After the commit the purge deletes the closed keys and writes
 `memory.evidence_purged`.
 
+An item whose own [forget](#forgetting) has begun gets no closing commit, because that forget
+deletes every key of the item. The purge runs the forget's cleanup to its end, then writes
+`memory.evidence_purged`. So `record.forgotten` always follows the delete of every key that holds
+the record's text, even when the item's forget stopped before its key delete.
+
 The memory view's history shows a bridge with its text and "Kept when a message was removed", with
 no change or origin. Recall shows its change as `kept`, with the line "kept when a message it quoted
 was removed".
