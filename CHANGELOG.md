@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.75.0](https://github.com/zgeoff/nixie/compare/v0.74.0...v0.75.0) (2026-11-16)
+
+
+### Features
+
+* **actions:** run approved actions once under policy and reconcile unknown outcomes ([#1115](https://github.com/zgeoff/nixie/issues/1115)) ([4031011](https://github.com/zgeoff/nixie/commit/4031011d8ae75a0ca7e3af609e69ac2a83f1bdc5))
+* **memory:** give memory items labels and a revision ([#1125](https://github.com/zgeoff/nixie/issues/1125)) ([6f8b005](https://github.com/zgeoff/nixie/commit/6f8b005f3b44674d25da173f317a4fb63effcbc3))
+* **memory:** let nixie remove a record through the log.forget tool ([#1123](https://github.com/zgeoff/nixie/issues/1123)) ([2394fbe](https://github.com/zgeoff/nixie/commit/2394fbe6fba8bd52b9b29eded7bfa3857daa4b2b))
+* **models:** run tasks on the codex harness ([#1127](https://github.com/zgeoff/nixie/issues/1127)) ([5d3cf18](https://github.com/zgeoff/nixie/commit/5d3cf18d543c39bd39058afd3e16fe9984c3a057))
+* **policy:** propose rules from repeated approvals and add mandates ([#1110](https://github.com/zgeoff/nixie/issues/1110)) ([cacc0b1](https://github.com/zgeoff/nixie/commit/cacc0b10361a2b1afb25529683851e8fdac7d178))
+* **tasks:** run each started task on a runner from a registry ([#1124](https://github.com/zgeoff/nixie/issues/1124)) ([e06e4c7](https://github.com/zgeoff/nixie/commit/e06e4c7fbb4bfb02a8bb7c65a0b9ce24a8747e4b))
+* **web:** add an app shell with a nav bar and a mobile menu ([#1114](https://github.com/zgeoff/nixie/issues/1114)) ([172cabf](https://github.com/zgeoff/nixie/commit/172cabf3216407184cedd0d4e3e8d5bdec4be7c5))
+
+
+### Bug Fixes
+
+* **sandbox:** destroy sandboxes on images the release no longer holds ([#1118](https://github.com/zgeoff/nixie/issues/1118)) ([18259a8](https://github.com/zgeoff/nixie/commit/18259a812641ca5ddf59b93181c92aa124cdee2f))
+
 ## [0.74.0](https://github.com/zgeoff/nixie/compare/v0.73.0...v0.74.0) (2026-11-15)
 
 
