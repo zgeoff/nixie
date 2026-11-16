@@ -1,5 +1,6 @@
 import { expect, mock, onTestFinished, test } from 'bun:test';
-import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
+import { execFileSync } from 'node:child_process';
+import { mkdir, mkdtemp, open, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { Logger } from '@heynixie/logger';
@@ -30,7 +31,10 @@ async function setupTest() {
 
     // a gateway with periods, a control listener and a route to the scripted model; the config
     // lines in `extra` follow the route and may name a capture
-    startPeriods: async (extra: readonly string[] = []) => {
+    startPeriods: async (
+      extra: readonly string[] = [],
+      waitForDrainDeadline: () => Promise<void> = () => Promise.resolve(),
+    ) => {
       await writeFile(join(directory, 'token'), 'control-secret\n');
 
       await writeFile(
@@ -56,7 +60,7 @@ async function setupTest() {
         configPath: join(directory, 'proxy.yaml'),
         log,
         now: () => current,
-        waitForDrainDeadline: () => Promise.resolve(),
+        waitForDrainDeadline,
       });
 
       onTestFinished(() => proxy.stop());
@@ -870,4 +874,37 @@ test('it refuses to start when the control token file holds no token', async () 
       waitForDrainDeadline: () => Promise.resolve(),
     }),
   ).rejects.toThrow(/token/u);
+});
+
+test('it lets a control reply under way finish before a stop resolves', async () => {
+  const ctx = await setupTest();
+
+  // the deadline never passes, so the stop resolves only once the control reply has ended
+  const deadline = Promise.withResolvers<undefined>();
+  const overridePath = join(ctx.directory, 'override.json');
+
+  // a read of a named pipe waits for a writer, which holds the status reply under way
+  execFileSync('mkfifo', [overridePath]);
+
+  const gateway = await ctx.startPeriods([], () => deadline.promise);
+
+  onTestFinished(() => {
+    deadline.resolve(undefined);
+  });
+
+  const reply = gateway.control('GET', '/status');
+
+  // opening the pipe for writing returns once the handler has opened it for reading
+  const writer = await open(overridePath, 'w');
+
+  const stopped = gateway.proxy.stop();
+
+  await writer.writeFile('{}');
+  await writer.close();
+
+  await stopped;
+
+  const answered = await reply;
+
+  expect(answered.status).toBe(200);
 });

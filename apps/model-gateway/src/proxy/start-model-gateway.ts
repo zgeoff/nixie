@@ -90,9 +90,11 @@ export async function startModelGateway(options: ModelGatewayOptions): Promise<M
       // the spend of a call under way reaches the count before the process exits
       const drained = server.stop();
 
-      // the control listener serves short calls, so it needs no drain
-      await control?.stop(true);
-      await Promise.race([drained, options.waitForDrainDeadline()]);
+      // the control listener drains the same way, so a limits, raise or sandbox reply under way
+      // reaches its caller before the process exits
+      const controlDrained = control?.stop();
+
+      await Promise.race([Promise.all([drained, controlDrained]), options.waitForDrainDeadline()]);
 
       // a reply still open at the deadline is cut off before its whole usage arrives, so the store
       // keeps the count's mark as lost for the next start to refuse
@@ -105,6 +107,7 @@ export async function startModelGateway(options: ModelGatewayOptions): Promise<M
       }
 
       await server.stop(true);
+      await control?.stop(true);
       await capture?.settle();
       await counting.settle();
     },
