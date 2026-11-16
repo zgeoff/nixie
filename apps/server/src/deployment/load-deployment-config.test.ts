@@ -210,7 +210,14 @@ test("it loads the preview's configuration on the test sandbox, with its invente
 
   expect(config.sandbox).toStrictEqual({ adapter: 'test' });
   expect(config.owner.name).toBe('Juniper Vale');
-  expect(config.models.roles).toStrictEqual({ conversation: 'preview' });
+  expect(config.models.roles).toStrictEqual({ conversation: 'preview', worker: 'preview' });
+
+  expect(config.models.limits.workerRun).toStrictEqual({
+    minutes: 5,
+    turns: 10,
+    tokens: 500_000,
+    dollars: 0.5,
+  });
 
   // the host's credential broker replaces only the authorization header
   expect(config.models.profiles['preview']).toStrictEqual(

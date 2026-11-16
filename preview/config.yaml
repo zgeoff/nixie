@@ -36,6 +36,16 @@ models:
           output: 2.5
   roles:
     conversation: preview
+    # the preview's worker runs on the same profile, so a started task can hand a question to a worker
+    worker: preview
+  limits:
+    workerRun:
+      # one worker run stops at the first of these; the minutes must sit under the tool call wait
+      # of the conversation's harness, which the config schema checks
+      minutes: 5
+      turns: 10
+      tokens: 500000
+      dollars: 0.5
 sandbox:
   adapter: test
 # the preview runs no backup job, so nixie stages no backup set
