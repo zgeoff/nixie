@@ -47,7 +47,12 @@ async function setupTest(options: TestOptions = {}) {
       runners.last = await startConversation({
         context,
         models: buildTestModelsConfig({ modelURL: 'http://127.0.0.1:1', ...config }),
-        ...(config.memorySettings === undefined ? {} : { memorySettings: config.memorySettings }),
+        memorySettings: {
+          retrievalItems: 5,
+          retrievalSelfNotes: 2,
+          retrievalMessages: 3,
+          ...config.memorySettings,
+        },
         secrets: { model_credentials: { anthropic: 'not-a-real-key' } },
         sandboxes: server.sandboxes,
         tools: server.endpoint,

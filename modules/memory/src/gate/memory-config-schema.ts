@@ -1,4 +1,6 @@
 import { z } from 'zod';
+import type { MemoryIndexConfig } from '../index-block/default-index-settings';
+import { defaultIndexSettings } from '../index-block/default-index-settings';
 import { defaultGateLimits } from './default-gate-limits';
 import type { GateLimits } from './gate-context';
 
@@ -15,7 +17,18 @@ export interface MemoryConfig {
   readonly retrievalMinScore: number;
   readonly retrievalMinSimilarity: number;
   readonly rebuildTokens: number;
+  readonly index: MemoryIndexConfig;
 }
+
+const minIndexTokens = 3000;
+
+// 0 omits the block, and a budget below 3000 could not hold the block's opening and closing lines.
+const indexTokensSchema = z
+  .int()
+  .nonnegative()
+  .refine((tokens) => tokens === 0 || tokens >= minIndexTokens, {
+    message: `must be 0 or at least ${minIndexTokens}`,
+  });
 
 export const memoryConfigSchema = z
   .strictObject({
@@ -27,15 +40,19 @@ export const memoryConfigSchema = z
     // A live check took about 9 s, so 20 s keeps a slow check inside the timeout.
     checker_timeout_ms: countSchema.default(20_000),
     pinned_core_tokens: z.int().positive().default(2000),
-    retrieval_items: z.int().nonnegative().max(100).default(5),
-    retrieval_self_notes: z.int().nonnegative().max(20).default(2),
-    retrieval_messages: z.int().nonnegative().max(20).default(3),
+    retrieval_items: z.int().nonnegative().max(100).default(0),
+    retrieval_self_notes: z.int().nonnegative().max(20).default(0),
+    retrieval_messages: z.int().nonnegative().max(20).default(0),
     retrieval_min_score: z.number().nonnegative().default(0.25),
 
     // Over a sample of items, small talk such as "hello" scored near 0.38, and two thirds of the
     // questions placed their item above it.
     retrieval_min_similarity: z.number().min(-1).max(1).default(0.38),
     rebuild_tokens: z.int().nonnegative().default(30_000),
+    index_tokens: indexTokensSchema.default(defaultIndexSettings.tokens),
+    index_open_topic_items: countSchema.default(defaultIndexSettings.openTopicItems),
+    index_item_order: z.literal('newest-first').default(defaultIndexSettings.itemOrder),
+    index_topic_page: countSchema.default(defaultIndexSettings.topicPage),
   })
   .transform((config): MemoryConfig => ({
     limits: {
@@ -52,4 +69,10 @@ export const memoryConfigSchema = z
     retrievalMinScore: config.retrieval_min_score,
     retrievalMinSimilarity: config.retrieval_min_similarity,
     rebuildTokens: config.rebuild_tokens,
+    index: {
+      tokens: config.index_tokens,
+      openTopicItems: config.index_open_topic_items,
+      itemOrder: config.index_item_order,
+      topicPage: config.index_topic_page,
+    },
   }));

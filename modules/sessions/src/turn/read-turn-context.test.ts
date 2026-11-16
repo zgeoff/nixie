@@ -1,5 +1,6 @@
 import { expect, mock, test } from 'bun:test';
-import { writeRecords } from '@heynixie/log';
+import { readRecords, writeRecords } from '@heynixie/log';
+import { buildStubMemory } from '../test-utils/build-stub-memory';
 import { startTestTasks } from '../test-utils/start-test-tasks';
 import { readTurnContext } from './read-turn-context';
 
@@ -30,6 +31,7 @@ test('it renders the system prompt with the session prompt override in force', a
       memory: () => ({
         readPinnedCore: () => Promise.resolve([]),
         readPinnedCoreUse: () => Promise.resolve({ items: 0, tokens: 0, budget: 2000 }),
+        readIndex: () => Promise.resolve({ text: '', items: 0, tokens: 0, budget: 0 }),
         readShortIDs: () => Promise.resolve(new Map<string, string>()),
         recall: () => Promise.resolve({ items: [] }),
         recallMessages: () => Promise.resolve({ messages: [] }),
@@ -81,6 +83,7 @@ test("it puts no task board in the conversation's turn, with a started task in t
       memory: () => ({
         readPinnedCore: () => Promise.resolve([]),
         readPinnedCoreUse: () => Promise.resolve({ items: 0, tokens: 0, budget: 2000 }),
+        readIndex: () => Promise.resolve({ text: '', items: 0, tokens: 0, budget: 0 }),
         readShortIDs: () => Promise.resolve(new Map<string, string>()),
         recall: () => Promise.resolve({ items: [] }),
         recallMessages: () => Promise.resolve({ messages: [] }),
@@ -146,6 +149,7 @@ test('it reads the pinned figures for no turn whose pinned core is unchanged', a
         },
       ]),
     readPinnedCoreUse,
+    readIndex: () => Promise.resolve({ text: '', items: 0, tokens: 0, budget: 0 }),
     readShortIDs,
     recall: () => Promise.resolve({ items: [] }),
     recallMessages: () => Promise.resolve({ messages: [] }),
@@ -204,6 +208,7 @@ test('it reads the pinned figures once for a turn whose pinned core changed, and
         },
       ]),
     readPinnedCoreUse,
+    readIndex: () => Promise.resolve({ text: '', items: 0, tokens: 0, budget: 0 }),
     readShortIDs: () => Promise.resolve(new Map<string, string>()),
     recall: () => Promise.resolve({ items: [] }),
     recallMessages: () => Promise.resolve({ messages: [] }),
@@ -422,4 +427,135 @@ test('it tells a started task whose cut work it carries on to continue that work
       /^<system-message type="task-continue" [^>]+>\nAn interrupt stopped your last turn before its work was done\. Continue the work that is not done yet\.\n<\/system-message/u,
     ),
   ]);
+});
+
+test('it asks the memory for no retrieved block at limits of 0', async () => {
+  const ctx = await setupTest();
+
+  await writeRecords(ctx.tasks.context.log, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'Where did I leave the bike pump?' },
+    },
+  ]);
+
+  const written = await readRecords(ctx.tasks.context.log, { afterSequence: 0 });
+
+  const batch = written.map((entry) => entry.record);
+  const memory = buildStubMemory({ pinned: [], pinnedUse: { items: 0, tokens: 0, budget: 2000 } });
+
+  const context = await readTurnContext(
+    {
+      context: ctx.tasks.context,
+      frame: { kind: 'conversation' } as const,
+      memory: () => memory,
+      memorySettings: {
+        ...ctx.memorySettings,
+        retrievalItems: 0,
+        retrievalSelfNotes: 0,
+        retrievalMessages: 0,
+      },
+      messaging: { directory: [], hopLimit: 20, ownerName: null, agentName: null },
+      defaultZone: 'UTC',
+    },
+    {
+      taskID: 'conversation',
+      persona: 'You are Pip.',
+      prompts: {},
+      skillCatalog: null,
+      runBlocks: null,
+      batch,
+      brief: null,
+      previousCore: null,
+      isNewSession: true,
+      isFirstSession: false,
+      isContinuation: false,
+    },
+  );
+
+  expect(memory.recall).toHaveBeenCalledWith(
+    expect.objectContaining({ limit: 0, selfNoteLimit: 0 }),
+  );
+
+  expect(memory.recallMessages).not.toHaveBeenCalled();
+  expect(context.retrieved).toStrictEqual([]);
+  expect(context.retrievedMessages).toStrictEqual([]);
+  expect(context.preamble.join('\n')).not.toInclude('retrieved-');
+});
+
+test('it places an item in the turn search when its limits are above 0, whatever the index showed', async () => {
+  const ctx = await setupTest();
+
+  await writeRecords(ctx.tasks.context.log, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'Where did I leave the bike pump?' },
+    },
+  ]);
+
+  const written = await readRecords(ctx.tasks.context.log, { afterSequence: 0 });
+
+  const batch = written.map((entry) => entry.record);
+
+  const memory = buildStubMemory({
+    pinned: [],
+    pinnedUse: { items: 0, tokens: 0, budget: 2000 },
+    index: {
+      text: 'About the owner:\n  home (1)  [b7kq2m9xza] spare bike pump behind the shed door',
+      items: 1,
+      tokens: 20,
+      budget: 3000,
+    },
+  });
+
+  memory.recall.mockResolvedValue({
+    items: [
+      {
+        itemID: '0b4f4c8e-3d0a-4c39-9a51-6f1f1f2b8c01',
+        shortID: 'b7kq2m9xza',
+        version: 1,
+        revision: 1,
+        subject: 'owner',
+        text: 'The spare bike pump is behind the shed door',
+        origin: 'owner',
+        source: 'owner',
+        model: null,
+        recordedAt: 1_000_000,
+        evidenceQuote: null,
+        approval: null,
+      },
+    ],
+  });
+
+  const context = await readTurnContext(
+    {
+      context: ctx.tasks.context,
+      frame: { kind: 'conversation' } as const,
+      memory: () => memory,
+      memorySettings: ctx.memorySettings,
+      messaging: { directory: [], hopLimit: 20, ownerName: null, agentName: null },
+      defaultZone: 'UTC',
+    },
+    {
+      taskID: 'conversation',
+      persona: 'You are Pip.',
+      prompts: {},
+      skillCatalog: null,
+      runBlocks: null,
+      batch,
+      brief: null,
+      previousCore: null,
+      isNewSession: true,
+      isFirstSession: false,
+      isContinuation: false,
+    },
+  );
+
+  expect(context.preamble.join('\n')).toInclude('The spare bike pump is behind the shed door');
+  expect(memory.recall).toHaveBeenCalledWith(expect.objectContaining({ excludedVersions: [] }));
+  expect(memory.readIndex).not.toHaveBeenCalled();
 });

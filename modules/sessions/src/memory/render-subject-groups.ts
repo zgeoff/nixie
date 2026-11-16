@@ -11,11 +11,17 @@ const headings: Readonly<Record<MemoryItem['subject'], (owner: string) => string
   self: () => 'About yourself, in your own words:',
 };
 
+export function renderSubjectHeading(
+  subject: MemoryItem['subject'],
+  ownerName: string | null,
+): string {
+  return headings[subject](ownerName ?? 'the owner');
+}
+
 export function renderSubjectGroups(
   items: readonly SubjectItem[],
   options: MemoryLineOptions,
 ): readonly string[] {
-  const owner = options.ownerName ?? 'the owner';
   const lines: string[] = [];
 
   for (const subject of subjectOrder) {
@@ -23,7 +29,7 @@ export function renderSubjectGroups(
 
     if (group.length > 0) {
       lines.push(
-        headings[subject](owner),
+        renderSubjectHeading(subject, options.ownerName),
         ...group.flatMap((item) => renderMemoryItem(item, options)),
       );
     }

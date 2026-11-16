@@ -1,5 +1,5 @@
 import type { ContentSource } from '@heynixie/log';
-import type { MemoryOrigin, MemoryStore, VersionRef } from '../types';
+import type { Labels, MemoryOrigin, MemoryStore, MemorySubject, VersionRef } from '../types';
 
 export interface MemoryItemRequest {
   readonly text: string;
@@ -8,6 +8,10 @@ export interface MemoryItemRequest {
   readonly source?: ContentSource;
 
   readonly quote?: string;
+
+  readonly labels?: Labels;
+  readonly isPinned?: boolean;
+  readonly subject?: MemorySubject;
 }
 
 export function createMemoryItem(
@@ -19,6 +23,9 @@ export function createMemoryItem(
   return store.remember({
     text: request.text,
     ...(request.quote === undefined ? {} : { evidenceQuote: request.quote }),
+    ...(request.labels === undefined ? {} : { labels: request.labels }),
+    ...(request.isPinned === undefined ? {} : { isPinned: request.isPinned }),
+    ...(request.subject === undefined ? {} : { subject: request.subject }),
     provenance: {
       origin,
       source: request.source ?? 'owner',

@@ -43,6 +43,7 @@ test('it serves the tools named to the turn and reads the memory given at each t
     memory: () => ({
       readPinnedCore: () => Promise.resolve([]),
       readPinnedCoreUse: () => Promise.resolve({ items: 0, tokens: 0, budget: 2000 }),
+      readIndex: () => Promise.resolve({ text: '', items: 0, tokens: 0, budget: 0 }),
       recall,
       recallMessages: () => Promise.resolve({ messages: [] }),
       readShortIDs: () => Promise.resolve(new Map()),

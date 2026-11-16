@@ -2,6 +2,7 @@ import { mintBlockID } from './mint-block-id';
 
 export type SystemMessageType =
   | 'pinned-memory'
+  | 'memory-index'
   | 'status'
   | 'summary'
   | 'compaction'

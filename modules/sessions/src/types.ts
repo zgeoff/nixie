@@ -87,7 +87,22 @@ export interface PinnedCoreUse {
   readonly budget: number;
 }
 
+export interface SessionIndex {
+  // the block's text; '' when the block is omitted
+  readonly text: string;
+
+  // the active items that are not pinned
+  readonly items: number;
+
+  // the block's counted tokens
+  readonly tokens: number;
+
+  // the index's token budget
+  readonly budget: number;
+}
+
 export interface ConversationMemory {
+  readonly readIndex: () => Promise<SessionIndex>;
   readonly readPinnedCore: () => Promise<readonly MemoryItem[]>;
   readonly readPinnedCoreUse: () => Promise<PinnedCoreUse>;
   readonly recall: (request: MemoryRetrieval) => Promise<{ readonly items: readonly MemoryItem[] }>;

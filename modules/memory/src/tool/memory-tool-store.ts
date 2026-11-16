@@ -11,7 +11,10 @@ export type MomentToolStore = Omit<
   'readView' | 'readDestroyPreview' | 'destroy' | 'finishDestroy'
 >;
 
-export type MemoryToolStore = Pick<StartedMemoryStore, 'recall' | 'rate'> & {
+export type MemoryToolStore = Pick<
+  StartedMemoryStore,
+  'recall' | 'rate' | 'readTopicLines' | 'readTopicCounts'
+> & {
   readonly moments: MomentToolStore;
 } & PendingToolStore &
   ModelWriteStore &

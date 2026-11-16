@@ -46,3 +46,20 @@ test('it writes an item with the quote the request gives', async () => {
 
   expect(recalled.items).toMatchObject([{ evidenceQuote: 'the bees are back on the roof' }]);
 });
+
+test('it writes an item with the labels, the pin and the subject the request gives', async () => {
+  const ctx = await setupTest();
+
+  const item = await createMemoryItem(ctx.memory.store, {
+    text: 'Keeps bees',
+    labels: { gist: 'keeps bees', topic: 'garden/bees', triggers: [] },
+    isPinned: true,
+    subject: 'shared',
+  });
+
+  const recalled = await ctx.memory.store.recall({ itemIDs: [item.itemID] });
+
+  expect(recalled.items).toMatchObject([
+    { gist: 'keeps bees', topic: 'garden/bees', isPinned: true, subject: 'shared' },
+  ]);
+});

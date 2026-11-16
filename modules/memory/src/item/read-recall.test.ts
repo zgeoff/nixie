@@ -1629,3 +1629,33 @@ test('it names the IDs past the limit that it would have returned, in the order 
     pastTwo.itemID,
   ]);
 });
+
+test('it returns no item and writes no recall record for a search with both limits at 0', async () => {
+  const ctx = await setupTest();
+
+  await ctx.memory.store.remember({
+    text: 'The garden hose leaks at the tap',
+    provenance: buildMockProvenance(),
+  });
+
+  await ctx.memory.store.remember({
+    text: 'I enjoy hearing about the garden',
+    subject: 'self',
+    provenance: buildMockProvenance(),
+  });
+
+  const result = await ctx.memory.store.recall({
+    query: 'garden',
+    limit: 0,
+    selfNoteLimit: 0,
+    excludePinned: true,
+  });
+
+  const records = await readRecords(ctx.memory.log, {
+    afterSequence: 0,
+    kinds: ['memory.recalled'],
+  });
+
+  expect(result.items).toStrictEqual([]);
+  expect(records).toStrictEqual([]);
+});

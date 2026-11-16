@@ -485,7 +485,7 @@ test('it applies a remembered fact cited by the event ID its stamp showed, with 
 });
 
 test('it keeps the ratings the model gives two retrieved items against the turn that retrieved them', async () => {
-  const ctx = await setupTest();
+  const ctx = await startInProcessNixie({ extraConfig: ['memory:', '  retrieval_items: 5'] });
   const api = await createTestClient(ctx);
 
   // retrieval scores a word by how few items hold it, so memory holds 3 items beside the 2 rated

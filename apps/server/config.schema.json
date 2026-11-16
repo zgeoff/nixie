@@ -1330,19 +1330,19 @@
           "maximum": 9007199254740991
         },
         "retrieval_items": {
-          "default": 5,
+          "default": 0,
           "type": "integer",
           "minimum": 0,
           "maximum": 100
         },
         "retrieval_self_notes": {
-          "default": 2,
+          "default": 0,
           "type": "integer",
           "minimum": 0,
           "maximum": 20
         },
         "retrieval_messages": {
-          "default": 3,
+          "default": 0,
           "type": "integer",
           "minimum": 0,
           "maximum": 20
@@ -1362,6 +1362,29 @@
           "default": 30000,
           "type": "integer",
           "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "index_tokens": {
+          "default": 3000,
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "index_open_topic_items": {
+          "default": 25,
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
+        "index_item_order": {
+          "default": "newest-first",
+          "type": "string",
+          "const": "newest-first"
+        },
+        "index_topic_page": {
+          "default": 200,
+          "type": "integer",
+          "exclusiveMinimum": 0,
           "maximum": 9007199254740991
         }
       },

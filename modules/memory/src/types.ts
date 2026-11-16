@@ -1,6 +1,6 @@
 import type { CheckedTables, MemorySubjectCounts } from '@heynixie/db';
 import type { ContentSource, Definitions, JSONObject, Log } from '@heynixie/log';
-import type { MemoryApproval, PinnedCoreUse } from '@heynixie/sessions';
+import type { MemoryApproval, PinnedCoreUse, SessionIndex } from '@heynixie/sessions';
 import type { Selectable, Transaction } from 'kysely';
 import type {
   GateContext,
@@ -9,6 +9,10 @@ import type {
   MemoryNoticeEntryTable,
   MemoryProposalTable,
 } from './gate/gate-context';
+import type { TopicCount } from './index-block/collect-topic-counts';
+import type { IndexLine } from './index-block/collect-topic-lines';
+import type { MemoryIndexConfig } from './index-block/default-index-settings';
+import type { EntryPage, TopicRequest } from './index-block/types';
 import type { RateRequest } from './memory/memory-rating';
 import type { MessageRecallRequest, MessageRecallResult } from './message/message-recall-request';
 import type { StoreIndexes } from './moment/store/start-store-indexes';
@@ -272,6 +276,14 @@ export interface MemoryStore {
   readonly readPinnedCore: () => Promise<readonly RecalledItem[]>;
   readonly readPinnedCoreUse: () => Promise<PinnedCoreUse>;
 
+  readonly readIndex: () => Promise<SessionIndex>;
+
+  readonly readTopicLines: (
+    request: TopicRequest & { readonly topic: string },
+  ) => Promise<EntryPage<IndexLine>>;
+
+  readonly readTopicCounts: (request: TopicRequest) => Promise<EntryPage<TopicCount>>;
+
   readonly forget: (request: ForgetRequest) => Promise<void>;
 
   readonly forgetRetired: (request: RetiredForgetRequest) => Promise<void>;
@@ -318,6 +330,8 @@ export interface MemoryContext {
   readonly gate: GateContext;
 
   readonly pinnedCoreTokens?: number;
+
+  readonly index?: MemoryIndexConfig;
 
   readonly semanticSearch?: SemanticSearch;
 }
