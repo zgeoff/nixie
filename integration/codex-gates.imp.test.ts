@@ -448,6 +448,10 @@ test.skipIf(!hasRelay)(
 
     expect(outputs).toInclude('function_call_output');
     expect(outputs).not.toInclude('SLOW RESULT MARKER');
+
+    // A transport failure also sends an output without the marker, so the output has to name a
+    // timeout. The pattern leaves the CLI's exact wording free.
+    expect(outputs).toMatch(/time[ds]?[ -]?out/iu);
   },
 );
 
