@@ -1,4 +1,4 @@
-import { expect, test } from 'bun:test';
+import { expect, onTestFinished, test } from 'bun:test';
 import { triggerSchema } from '@heynixie/contract';
 import type { JSONValue } from '@heynixie/log';
 import { readRecords } from '@heynixie/log';
@@ -6,6 +6,7 @@ import {
   claimTask,
   createConversationTask,
   readInbox,
+  setFaultPointHandler,
   writeStepCommit,
   writeTaskControl,
 } from '@heynixie/tasks';
@@ -575,4 +576,32 @@ test('it writes no cursor record for a missing row and a null cursor', async () 
   const records = await ctx.readTriggerRecords();
 
   expect(records).toStrictEqual([]);
+});
+
+test('it reaches trigger.batch.before ahead of the write and trigger.batch.after behind it', async () => {
+  const ctx = await setupTest();
+
+  await seedDefinitionTask(ctx, { definitionID: 'water-the-tomatoes', definitionHash: 'hash-1' });
+  await seedArmedDefinitions(ctx, [buildTestArmedDefinition()]);
+
+  const reached: unknown[] = [];
+
+  setFaultPointHandler(async (id, context) => {
+    const records = await ctx.readTriggerRecords();
+
+    reached.push([id, context, records.filter((record) => record.kind === 'trigger.fired').length]);
+  });
+
+  onTestFinished(() => {
+    setFaultPointHandler(null);
+  });
+
+  await ctx.deliver([
+    { scheduledFor: '2027-03-09T21:00:00.000Z', dedupeKey: 'water-the-tomatoes|2027-03-10T08:00' },
+  ]);
+
+  expect(reached).toStrictEqual([
+    ['trigger.batch.before', { kind: 'trigger', id: 'schedule' }, 0],
+    ['trigger.batch.after', { kind: 'trigger', id: 'schedule' }, 1],
+  ]);
 });

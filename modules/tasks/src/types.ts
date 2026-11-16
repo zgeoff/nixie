@@ -256,7 +256,10 @@ export interface SandboxCleanup {
 }
 
 export type FaultPointID =
+  | 'claim.before'
   | 'claim.after'
+  | 'trigger.batch.before'
+  | 'trigger.batch.after'
   | 'renew.before'
   | 'renew.after'
   | 'step.commit.before'
@@ -285,7 +288,7 @@ export type FaultPointID =
   | 'backup.set.copied';
 
 export interface FaultPointContext {
-  readonly kind: LeaseKind | 'recovery' | 'pool' | 'memory' | 'backup';
+  readonly kind: LeaseKind | 'recovery' | 'pool' | 'memory' | 'backup' | 'trigger';
   readonly id: string | null;
 }
 

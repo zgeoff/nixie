@@ -4,6 +4,7 @@ import type { DefinitionTaskAnswer } from '@heynixie/tasks';
 import {
   triggerFiredCodec,
   triggerSkippedCodec,
+  waitAtFaultPoint,
   writeInboxRecordsInTransaction,
 } from '@heynixie/tasks';
 import type { Transaction } from 'kysely';
@@ -19,12 +20,16 @@ import { pickEventOutcome } from './pick-event-outcome';
 
 // One write transaction for one deliver call: each event writes its record and takes its key, and
 // the cursor is stored when it changed. Returns the number of events that wrote a record.
-export function deliverTriggerBatch(
+export async function deliverTriggerBatch(
   core: TriggerCoreContext,
   sourceID: string,
   batch: TriggerBatch,
 ): Promise<{ readonly delivered: number }> {
-  return withWriteTransaction(core.log.writer, async (tx) => {
+  if (NIXIE_TEST_BUILD) {
+    await waitAtFaultPoint('trigger.batch.before', { kind: 'trigger', id: sourceID });
+  }
+
+  const result = await withWriteTransaction(core.log.writer, async (tx) => {
     let delivered = 0;
 
     for (const event of batch.events) {
@@ -39,6 +44,12 @@ export function deliverTriggerBatch(
 
     return { delivered };
   });
+
+  if (NIXIE_TEST_BUILD) {
+    await waitAtFaultPoint('trigger.batch.after', { kind: 'trigger', id: sourceID });
+  }
+
+  return result;
 }
 
 async function writeEvent(

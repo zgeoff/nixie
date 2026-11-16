@@ -180,7 +180,32 @@ test('it reaches the claim.after fault point once the claim commits', async () =
     readCandidate: () => Promise.resolve({ workID: 'work-1', taskID: 'work-1' }),
   });
 
-  expect(reached).toStrictEqual([{ id: 'claim.after', context: { kind: 'action', id: 'work-1' } }]);
+  expect(reached.filter((arrival) => arrival.id === 'claim.after')).toStrictEqual([
+    { id: 'claim.after', context: { kind: 'action', id: 'work-1' } },
+  ]);
+});
+
+test('it reaches the claim.before fault point before it looks for work, also when it finds none', async () => {
+  const ctx = await setupTest();
+
+  const reached: { id: FaultPointID; context: FaultPointContext }[] = [];
+
+  setFaultPointHandler((id, context) => {
+    reached.push({ id, context });
+  });
+
+  onTestFinished(() => {
+    setFaultPointHandler(null);
+  });
+
+  await claimLease(ctx.context, {
+    kind: 'task',
+    holder: 'runner-a',
+    durationMs: 60_000,
+    readCandidate: () => Promise.resolve(null),
+  });
+
+  expect(reached).toStrictEqual([{ id: 'claim.before', context: { kind: 'task', id: null } }]);
 });
 
 test('it throws under the test build when a candidate query returns the work of a paused task, and writes no lease', async () => {
