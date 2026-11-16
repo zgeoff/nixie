@@ -2,7 +2,8 @@ import { onTestFinished } from 'bun:test';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { actionsProjection } from '@heynixie/actions';
-import { readDefinitionVersion } from '@heynixie/definitions';
+import { readDefinitionNotices, readDefinitionVersion } from '@heynixie/definitions';
+import { definitionTaskProjections } from '@heynixie/definitions/test-utils';
 import type { Writer } from '@heynixie/log';
 import { logProjections, startWriter } from '@heynixie/log';
 import { memoryProjections } from '@heynixie/memory';
@@ -17,6 +18,7 @@ import {
 import type { TestClock } from '@heynixie/testing';
 import { buildTestClock } from '@heynixie/testing';
 import { triggersProjections } from '@heynixie/triggers';
+import type { Kysely } from 'kysely';
 import { apiProjections } from '../api/api-projections';
 import { createAPIApp } from '../api/create-api-app';
 import { createPasskeyState } from '../passkey/passkey-state';
@@ -96,6 +98,7 @@ async function createTestContext(
       projections: [
         ...logProjections,
         ...tasksProjections,
+        ...definitionTaskProjections,
         actionsProjection,
         ...apiProjections,
         ...memoryProjections,
@@ -106,6 +109,11 @@ async function createTestContext(
     clock: buildTestClock(1_000_000),
     definitions: () => ({ snapshotHash: 'sha256:test' }),
     runSettings: buildTestRunSettings(),
+    readDefinitionNotices: (db: Kysely<unknown>, changeIDs: readonly string[]) =>
+      readDefinitionNotices(db, changeIDs, {
+        now: writer.clock.now(),
+        readZone: () => Promise.resolve('UTC'),
+      }),
     readDefinitionRunPolicy: definitionStore.readDefinitionRunPolicy,
     readDefinitionNextFire: definitionStore.readDefinitionNextFire,
     readDefinitionVersion: readStoredVersion,
@@ -130,6 +138,7 @@ function startTestApp(
     context,
     () => memory.store,
     () => Promise.resolve(),
+    () => null,
   ).listen({
     hostname: '127.0.0.1',
     port: 0,

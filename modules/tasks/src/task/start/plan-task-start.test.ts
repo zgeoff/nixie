@@ -326,7 +326,12 @@ test.each(['task.define', 'task.undefine'])(
     expect(
       planTaskStart(
         { tools: [tool] },
-        { tools: ['tasks.list', 'task.message', tool], memory: 'read', persona: 'default' },
+        {
+          tools: ['tasks.list', 'task.message', tool],
+          memory: 'read',
+          persona: 'default',
+          log: 'own',
+        },
         buildMockTaskStartBounds({ conversationTools: ['task.define', 'task.undefine'] }),
       ),
     ).toStrictEqual({

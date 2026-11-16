@@ -22,6 +22,9 @@ export function buildTestTaskSeed(): TaskSeedContext {
     toolNames,
     checkTaskStart: makeCheckTaskStart({
       bounds: buildMockTaskStartBounds({
+        models: [
+          { name: 'second-look', profile: 'router-b', description: 'Another family', missing: [] },
+        ],
         conversationTools: ['task.define'],
         memoryTools: {
           read: ['memory.recall', 'memory.pending', 'moment.read'],

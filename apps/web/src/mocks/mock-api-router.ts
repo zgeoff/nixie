@@ -5,6 +5,7 @@ import { match } from 'ts-pattern';
 import type { ReadonlyDeep } from '../types';
 import { isForgettableKind } from './is-forgettable-kind';
 import { mockApprovalProcedures } from './mock-approval-procedures';
+import { mockDefinitionProcedures } from './mock-definition-procedures';
 import { mockImplementer } from './mock-implementer';
 import { mockMandateProcedures } from './mock-mandate-procedures';
 import { mockMemoryRouter } from './mock-memory-router';
@@ -43,6 +44,7 @@ export const mockAPIRouter = os.router({
       return readMockBackupNotice();
     }),
   },
+  definitions: mockDefinitionProcedures,
   conversation: {
     read: os.conversation.read.handler((options) => {
       requireMockSession(options.context.sessionToken, options.errors.UNAUTHORIZED);

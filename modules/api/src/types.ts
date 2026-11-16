@@ -1,5 +1,5 @@
 import type { ForgetBackup } from '@heynixie/backup';
-import type { ImageMediaType } from '@heynixie/contract';
+import type { DefinitionNotice, ImageMediaType } from '@heynixie/contract';
 import type { CheckedTables } from '@heynixie/db';
 import type { DefinitionsContext } from '@heynixie/definitions';
 import type { RecordKind } from '@heynixie/log';
@@ -16,6 +16,7 @@ import type { TaskProfile, TasksContext } from '@heynixie/tasks';
 import type { ReadZone } from '@heynixie/triggers';
 import type { TurnInputs } from '@heynixie/turn-inputs';
 import type { ResponseHeadersPluginContext } from '@orpc/server/plugins';
+import type { Kysely } from 'kysely';
 import type { PasskeyState } from './passkey/passkey-state';
 
 export interface APISettings {
@@ -76,6 +77,13 @@ export interface APIContext extends TasksContext {
   readonly readZone: ReadZone;
 
   readonly readSessionCleanup: () => CleanupRecordSessions | null;
+
+  // the notice of each named change, by change ID, in the owner's zone at read time
+  // Absent, no record carries a notice.
+  readonly readDefinitionNotices?: (
+    db: Kysely<unknown>,
+    changeIDs: readonly string[],
+  ) => Promise<ReadonlyMap<string, DefinitionNotice>>;
 
   // Destroys the code sandboxes of the tool calls that the records name, and throws when one will
   // not go. A forget runs it before it deletes any key. Null, or absent, means the server holds no

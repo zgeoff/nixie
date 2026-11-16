@@ -1,5 +1,5 @@
 import type { ActionCall, ListedAction } from '@heynixie/actions';
-import type { LogRecord as ContractRecord } from '@heynixie/contract';
+import type { LogRecord as ContractRecord, DefinitionNotice } from '@heynixie/contract';
 import { spanSchema } from '@heynixie/contract';
 import type { JSONObject, JSONValue, LogRecord, RecordKind } from '@heynixie/log';
 import { momentKeptCodec, recordForgetStartedCodec, recordForgottenCodec } from '@heynixie/memory';
@@ -37,6 +37,9 @@ const messageKinds: ReadonlySet<RecordKind> = new Set(['owner_message', 'model.r
 export interface RecordLookups {
   readonly actions: ReadonlyMap<string, ActionCall>;
   readonly cancelledActionIDs: ReadonlySet<string>;
+
+  // the notice of each definition.changed record, keyed by its record's sequence
+  readonly definitionNotices: ReadonlyMap<number, DefinitionNotice>;
   readonly proposals: ReadonlyMap<
     number,
     { readonly proposalID: string; readonly shortID: string }
@@ -52,6 +55,7 @@ export interface RecordLookups {
 const noLookups: RecordLookups = {
   actions: new Map(),
   cancelledActionIDs: new Set(),
+  definitionNotices: new Map(),
   proposals: new Map(),
   reminderBriefs: new Map(),
   removedSequences: new Set(),
@@ -81,11 +85,13 @@ export function toContractRecord(
   const moment = record.kind === 'moment_kept' ? toKeptMoment(record) : undefined;
   const proposal = lookups.proposals.get(record.sequence);
   const removal = record.kind === 'action.outcome' ? toRemoval(record, lookups) : undefined;
+  const definitionNotice = lookups.definitionNotices.get(record.sequence);
 
   return {
     ...toSessionFields(record),
     ...toForget(record),
     ...toGap(record, lookups),
+    ...(definitionNotice === undefined ? {} : { definitionNotice }),
     ...(exchangeNotice === undefined ? {} : { exchangeNotice }),
     kind: record.kind,
     ...(message === undefined ? {} : { message }),

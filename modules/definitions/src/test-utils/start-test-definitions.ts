@@ -24,6 +24,13 @@ import type { DefinitionsContext } from '../runtime-task/types';
 import type { DefinitionsSource } from '../types';
 import { buildTestTaskSeed } from './build-test-task-seed';
 
+// What the records of a runtime change of a task definition fold into, beside the tasks'
+export const definitionTaskProjections = [
+  ...triggersProjections,
+  runtimeTaskDefinitionsProjection,
+  taskDefinitionExportsProjection,
+];
+
 export interface TestDefinitions {
   // the folder of the repo
   readonly root: string;
@@ -71,12 +78,7 @@ export async function startTestDefinitions(): Promise<TestDefinitions> {
 
   const log: Log = {
     ...base.log,
-    projections: [
-      ...tasksProjections,
-      ...triggersProjections,
-      runtimeTaskDefinitionsProjection,
-      taskDefinitionExportsProjection,
-    ],
+    projections: [...tasksProjections, ...definitionTaskProjections],
   };
 
   const source = createPathSource({ directory: root });

@@ -1,8 +1,13 @@
 import { join } from 'node:path';
 import type { SearchProvider } from '@heynixie/connectors';
 import { buildSearchTool, buildTimeTool, readMessageTimeZone } from '@heynixie/connectors';
-import type { DefinitionsInForce } from '@heynixie/definitions';
-import { checkPromptProposal } from '@heynixie/definitions';
+import type { DefinitionsContext, DefinitionsInForce } from '@heynixie/definitions';
+import {
+  buildTaskDefineTool,
+  buildTaskUndefineTool,
+  buildTasksDefinitionsTool,
+  checkPromptProposal,
+} from '@heynixie/definitions';
 import type { MemoryToolStore } from '@heynixie/memory';
 import { buildLogReadImageTool, buildLogReadTool } from '@heynixie/memory';
 import { buildPromptReadTool, buildPromptWriteTool } from '@heynixie/prompts';
@@ -20,6 +25,7 @@ import type { ActionQueue, ToolDefinition, ToolEndpoint } from '@heynixie/tools'
 import { buildToolRegistry, findToolDeclaration, startToolEndpoint } from '@heynixie/tools';
 import { buildContactTool } from '../cli/build-contact-tool';
 import { buildMandateTool } from '../rule/build-mandate-tool';
+import { makeReadZone } from '../server/make-read-zone';
 import { buildTaskStartBounds } from '../task/build-task-start-bounds';
 import type { ServerParts } from '../types';
 import { buildTaskMessaging } from '../utils/build-task-messaging';
@@ -47,6 +53,9 @@ export interface ConversationEndpointTools {
 
   readonly readInForce: () => DefinitionsInForce | null;
   readonly refreshDefinitions: () => Promise<DefinitionsInForce | null>;
+
+  // null before the server parts start
+  readonly readDefinitions: () => DefinitionsContext | null;
 
   readonly vendor: SkillVendorContext | null;
 
@@ -105,11 +114,26 @@ export async function startConversationEndpoint(
     defaultZone: options.config.time.default_zone,
   };
 
-  // A started task's thread has no skill list, so a skill tool would refuse its every call.
+  const definitionToolOptions = {
+    readDefinitions: tools.readDefinitions,
+    readZone: makeReadZone(
+      options.context.log.writer,
+      options.context.log.writer.db,
+      options.config.time.default_zone,
+    ),
+  };
+
+  const definitionTools = [
+    buildTaskDefineTool(definitionToolOptions),
+    buildTaskUndefineTool(definitionToolOptions),
+  ];
+
+  // A started task's thread has no skill list, so a skill tool would refuse its every call. The
+  // tools that change a task definition belong to the conversation alone.
   const bounds = buildTaskStartBounds(
     options.config.models,
     buildConversationMemoryTools(memory),
-    skills,
+    [...skills, ...definitionTools],
     options.context.runSettings.reportDefaults,
   );
 
@@ -147,6 +171,8 @@ export async function startConversationEndpoint(
       memory,
     ),
     ...search,
+    ...definitionTools,
+    buildTasksDefinitionsTool(definitionToolOptions),
     buildContactTool(options.context, tools.refreshDefinitions),
     buildMandateTool({
       context: options.context,

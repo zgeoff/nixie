@@ -1,4 +1,6 @@
+import type { DefinitionsContext } from '@heynixie/definitions';
 import { createApprovalProcedures } from '../approval/create-approval-procedures';
+import { createDefinitionProcedures } from '../definition/create-definition-procedures';
 import { createMemoryProcedures } from '../memory/create-memory-procedures';
 import { createMemoryViewRouter } from '../memory/create-memory-view-router';
 import { createPasskeyProcedures } from '../passkey/create-passkey-procedures';
@@ -21,6 +23,7 @@ export function createAPIRouter(
   context: APIContext,
   readMemory: ReadViewMemory,
   runInForceSeed: () => Promise<void>,
+  readDefinitions: () => DefinitionsContext | null,
 ) {
   const views = createViewProcedures(context);
 
@@ -28,6 +31,7 @@ export function createAPIRouter(
     approvals: createApprovalProcedures(context, { readMemory, runInForceSeed }),
     backups: createBackupProcedures(context),
     conversation: createConversationProcedures(context),
+    definitions: createDefinitionProcedures(context, readDefinitions),
     memory: {
       ...createMemoryProcedures(context),
       ...createMemoryViewRouter(context, readMemory),

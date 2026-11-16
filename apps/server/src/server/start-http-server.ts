@@ -1,5 +1,6 @@
 import type { APIContext, ReadViewMemory } from '@heynixie/api';
 import { createAPIApp } from '@heynixie/api';
+import type { DefinitionsContext } from '@heynixie/definitions';
 import type { Writer } from '@heynixie/log';
 import type { Logger } from '@heynixie/logger';
 import { Elysia } from 'elysia';
@@ -23,6 +24,9 @@ export interface HTTPServerOptions {
 
   readonly runInForceSeed: () => Promise<void>;
 
+  // null before the server parts start
+  readonly readDefinitions: () => DefinitionsContext | null;
+
   readonly gate: APIGate;
 }
 
@@ -39,7 +43,14 @@ export async function startHTTPServer(options: HTTPServerOptions): Promise<numbe
 
   const app = new Elysia()
     .use(health)
-    .use(createAPIApp(options.apiContext, options.readMemory, options.runInForceSeed));
+    .use(
+      createAPIApp(
+        options.apiContext,
+        options.readMemory,
+        options.runInForceSeed,
+        options.readDefinitions,
+      ),
+    );
 
   const answerRequest = (request: Request) =>
     options.gate.run(request, (passed) => app.handle(passed));

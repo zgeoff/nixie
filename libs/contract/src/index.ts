@@ -5,6 +5,7 @@ export { buildSpanState } from './span/build-span-state';
 export { clientHeaderName } from './contract/client-header-name';
 export { forgettableKinds } from './contract/forgettable-kinds';
 export { contract } from './contract/contract';
+export type { DefinitionNotice } from './contract/definition-notice-schema';
 export { hostContract } from './contract/host-contract';
 export { imageLimits } from './contract/image-limits';
 export { isTimeZone } from './contract/is-time-zone';

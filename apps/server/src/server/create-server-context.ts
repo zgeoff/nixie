@@ -2,6 +2,7 @@ import type { APIContext, APISettings, CleanupRecordSessions } from '@heynixie/a
 import { createPasskeyState, defaultAPISettings } from '@heynixie/api';
 import {
   makeReadDefinitionRunPolicy,
+  readDefinitionNotices,
   readDefinitionVersion,
   readDefinitionsInForce,
 } from '@heynixie/definitions';
@@ -57,6 +58,11 @@ export async function createServerContext(
       readDefinitionRunPolicy: makeReadDefinitionRunPolicy(options.taskRunLimits),
       readDefinitionNextFire: (db, definitionID) =>
         readDefinitionNextFire(db, makeReadZone(writer, db, options.defaultZone), definitionID),
+      readDefinitionNotices: (db, changeIDs) =>
+        readDefinitionNotices(db, changeIDs, {
+          now: writer.clock.now(),
+          readZone: makeReadZone(writer, db, options.defaultZone),
+        }),
       settings: options.settings ?? defaultAPISettings,
       passkeys: createPasskeyState(),
       readZone: makeReadZone(writer, writer.db, options.defaultZone),
