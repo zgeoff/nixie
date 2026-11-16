@@ -73,11 +73,9 @@ function runGateOfSubject(
   request: GatedRememberRequest,
   subjects: WriteSubjects,
 ): Promise<ContentGateResult> {
-  const isNewSelfNote =
-    subjects.newSubject === 'self' || (request.target === undefined && subjects.subject === 'self');
-
-  if (subjects.subject === 'self' || isNewSelfNote) {
-    requireSelfNoteWrite(request, isNewSelfNote);
+  // an edit that keeps a self-note's subject writes in nixie's voice as a new one does
+  if ((subjects.newSubject ?? subjects.subject) === 'self') {
+    requireSelfNoteWrite(request);
   }
 
   const verdict = request.verdict;
@@ -120,8 +118,8 @@ function runGateOfSubject(
   return runContentGate(parts.context, content, pickCoveringRule(verdict, 'none'));
 }
 
-function requireSelfNoteWrite(request: GatedRememberRequest, isNewSelfNote: boolean): void {
-  if (isNewSelfNote && request.caller.origin !== 'conversation') {
+function requireSelfNoteWrite(request: GatedRememberRequest): void {
+  if (request.caller.origin !== 'conversation') {
     throw new SelfNoteError(
       `only the conversation writes a self-note, and this write came from the ${request.caller.origin}`,
     );
