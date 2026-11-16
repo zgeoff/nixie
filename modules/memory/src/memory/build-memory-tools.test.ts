@@ -1708,10 +1708,20 @@ test('it pins, unpins and forgets an item by the revision a recall shows, and re
   await ctx.memory.store.pin({ itemID: item.itemID, isPinned: false, version: 2, provenance });
   await ctx.memory.store.forget({ target: { itemID: item.itemID, version: 2 }, provenance });
 
+  const pins = await readRecords(ctx.memory.log, {
+    afterSequence: 0,
+    kinds: ['memory.pinned'],
+  });
+
   const started = await readRecords(ctx.memory.log, {
     afterSequence: 0,
     kinds: ['memory.forget_started'],
   });
+
+  expect(pins.map((entry) => entry.record.payload)).toStrictEqual([
+    { itemID: item.itemID, isPinned: true },
+    { itemID: item.itemID, isPinned: false },
+  ]);
 
   expect(started.map((entry) => entry.record.payload)).toMatchObject([
     { itemID: item.itemID, version: 1 },
