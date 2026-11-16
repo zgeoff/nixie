@@ -1350,7 +1350,7 @@ test('it pauses a task at its turn limit with no turn, and tells its starter in 
     starter: starter.claim,
     name: 'Tide tables',
     brief: 'Find the high tides for Saturday.',
-    options: { report: 'next_turn', limits: { turns: 1, dollars: 2 } },
+    options: { report: 'none', limits: { turns: 1, dollars: 2 } },
   });
 
   const runner = await ctx.startRunner();
@@ -1410,7 +1410,7 @@ test("it pauses a task at its dollar limit, priced on its model's profile", asyn
     options: {
       model: 'second-look',
       profile: 'router-b',
-      report: 'next_turn',
+      report: 'none',
       limits: { turns: 25, dollars: 1e-6 },
     },
   });
@@ -1443,7 +1443,7 @@ test('it interrupts a task turn whose model calls reach its dollar limit, and pa
     options: {
       model: 'second-look',
       profile: 'router-b',
-      report: 'next_turn',
+      report: 'none',
       limits: { turns: 25, dollars: 0.03 },
     },
   });
@@ -1901,7 +1901,7 @@ test('it interrupts a task turn on the call that reaches its dollar limit with t
     options: {
       model: 'second-look',
       profile: 'router-b',
-      report: 'next_turn',
+      report: 'none',
       limits: { turns: 25, dollars: 0.03 },
     },
   });
@@ -1946,7 +1946,7 @@ test('it pauses a task whose guest fails after its calls reach the dollar limit,
     options: {
       model: 'second-look',
       profile: 'router-b',
-      report: 'next_turn',
+      report: 'none',
       limits: { turns: 25, dollars: 0.03 },
     },
   });
@@ -1994,7 +1994,7 @@ test("it gives the retry of a failed turn only the dollars that the turn's spend
     options: {
       model: 'second-look',
       profile: 'router-b',
-      report: 'next_turn',
+      report: 'none',
       limits: { turns: 25, dollars: 0.03 },
     },
   });
@@ -2054,7 +2054,7 @@ test('it interrupts the retry of a turn whose guest failed below the dollar limi
     options: {
       model: 'second-look',
       profile: 'router-b',
-      report: 'next_turn',
+      report: 'none',
       limits: { turns: 25, dollars: 0.04 },
     },
   });
@@ -2233,7 +2233,7 @@ test('it interrupts a task turn at its own spend that, with a spend recorded aft
     options: {
       model: 'second-look',
       profile: 'router-b',
-      report: 'next_turn',
+      report: 'none',
       limits: { turns: 25, dollars: 0.03 },
     },
   });

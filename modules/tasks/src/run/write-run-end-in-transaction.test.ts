@@ -180,7 +180,7 @@ test('it tells the starter of a limit end that the report did not wake, with a l
   expect(notices.map((notice) => notice.thread)).toStrictEqual(['conversation']);
 });
 
-test('it sends no limit notice for a started task run that pinned no report target', async () => {
+test('it tells the starter of a started task run that pinned no report target, with a limit notice', async () => {
   const ctx = await setupTest();
   const taskID = await ctx.startTask({ report: 'none', limits: { turns: 1, dollars: 2 } });
   const claim = await ctx.claim(taskID);
@@ -194,7 +194,7 @@ test('it sends no limit notice for a started task run that pinned no report targ
 
   const result = await ctx.readKinds('task.limit_notice');
 
-  expect(result).toStrictEqual([]);
+  expect(result.map((notice) => notice.thread)).toStrictEqual(['conversation']);
 });
 
 test('it sends no limit notice for a task run of a definition that pinned no report target', async () => {
