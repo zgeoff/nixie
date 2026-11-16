@@ -174,7 +174,8 @@ version under a new version key when the current text shared generation 0, close
 keys with `memory.evidence_purge_closed`, and reseals the current labels under the next generation
 key with a `memory.labelled`. After the commit it deletes the closed keys and writes
 `memory.evidence_purged`. The history shows the bridge as the purge's version, with its text and no
-change or origin.
+change or origin. Recall shows the bridge's change as `kept`, and its line names no one who noted or
+said it.
 
 `memory_item_keys` and `memory_evidence_purges` are projections of `memory.version_keyed`,
 `memory.evidence_purge_started`, `memory.evidence_purge_closed` and `memory.evidence_purged`, and

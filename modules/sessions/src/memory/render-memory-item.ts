@@ -13,6 +13,7 @@ export function renderMemoryItem(
     | 'approval'
     | 'text'
     | 'evidenceQuote'
+    | 'isBridge'
   >,
   options: MemoryLineOptions,
 ): readonly string[] {

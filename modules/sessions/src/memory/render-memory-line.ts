@@ -15,7 +15,10 @@ const notedWords: Readonly<Record<MemoryOrigin, string | null>> = {
 };
 
 export function renderMemoryLine(
-  version: Pick<MemoryItem, 'shortID' | 'recordedAt' | 'origin' | 'source' | 'approval'> & {
+  version: Pick<
+    MemoryItem,
+    'shortID' | 'recordedAt' | 'origin' | 'source' | 'approval' | 'isBridge'
+  > & {
     // the number the line shows: an item's revision, or a past version's text version
     readonly shownVersion: number;
   },
@@ -23,6 +26,17 @@ export function renderMemoryLine(
   next: NextVersion | null = null,
 ): string {
   const owner = options.ownerName ?? 'the owner';
+
+  if (version.isBridge) {
+    return [
+      `${version.shortID} v${version.shownVersion}`,
+      formatMemoryDay(version.recordedAt, options),
+      'kept when a message it quoted was removed',
+      next === null ? null : formatNext(next),
+    ]
+      .filter((part) => part !== null)
+      .join(' · ');
+  }
 
   const parts = [
     `${version.shortID} v${version.shownVersion}`,
@@ -34,6 +48,10 @@ export function renderMemoryLine(
   ];
 
   return parts.filter((part) => part !== null).join(' · ');
+}
+
+function formatNext(next: NextVersion): string {
+  return next.isRetirement ? `retired in ${next.ref}` : `replaced by ${next.ref}`;
 }
 
 function formatBacking(
@@ -50,8 +68,4 @@ function formatBacking(
   }
 
   return approval?.isQuotePasted === true ? 'from a pasted page' : 'unconfirmed';
-}
-
-function formatNext(next: NextVersion): string {
-  return next.isRetirement ? `retired in ${next.ref}` : `replaced by ${next.ref}`;
 }

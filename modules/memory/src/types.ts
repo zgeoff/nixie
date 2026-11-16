@@ -202,6 +202,9 @@ export interface RecalledVersion {
   readonly model: string | null;
 
   readonly approval: MemoryApproval | null;
+
+  // a version a purge wrote: its stored change and origin are not the owner's edit
+  readonly isBridge: boolean;
 }
 
 export interface RecalledItem extends RecalledVersion {

@@ -324,7 +324,7 @@ function toVersionJSON(
 
   return {
     ...line.number,
-    change: version.change,
+    change: version.isBridge ? 'kept' : version.change,
     state: version.state,
     text: version.text,
     about: renderMemoryLine({ ...version, shownVersion }, lines, line.next),

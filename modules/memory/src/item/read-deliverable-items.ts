@@ -1,6 +1,7 @@
 import type { Kysely } from 'kysely';
 import { toReviewReason } from '../gate/to-review-reason';
 import { findImageSource } from '../image/find-image-source';
+import { isBridgeVersion, readBridgeMarks } from '../item-key/read-bridge-marks';
 import { readItemKeys } from '../item-key/read-item-keys';
 import { buildDerivedLabels } from '../label/build-derived-labels';
 import { itemLabelsCodec } from '../label/item-labels-codec';
@@ -106,12 +107,15 @@ async function readItem(
     .execute();
 
   const values = await readVersionValues(parts.context.log, db, versions);
+  const marks = await readBridgeMarks(db, [item.row.item_id]);
 
   try {
     const readable = versions.flatMap((version, index) => {
       const value = values[index];
 
-      return value?.status === 'readable' ? [readVersion(version, value)] : [];
+      return value?.status === 'readable'
+        ? [readVersion(version, value, isBridgeVersion(marks, version.item_id, version.version))]
+        : [];
     });
 
     const current = readable.find((version) => version.version === item.row.version);
@@ -151,6 +155,7 @@ interface ApprovableVersionRow extends MemoryVersionRow {
 function readVersion(
   row: ApprovableVersionRow,
   value: Extract<VersionValue, { status: 'readable' }>,
+  isBridge: boolean,
 ): RecalledVersion {
   const text = value.text;
 
@@ -166,6 +171,7 @@ function readVersion(
     image: row.checks === null ? null : findImageSource(parseChecks(row.checks)),
     model: row.model,
     approval: buildVersionApproval(toApprovedProposal(row)),
+    isBridge,
   };
 }
 
