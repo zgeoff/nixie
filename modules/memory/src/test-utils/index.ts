@@ -29,3 +29,5 @@ export type { QuotedProposal, QuotedProposalRequest } from './create-quoted-prop
 export { createQuotedProposal } from './create-quoted-proposal';
 export type { BegunPurge } from './seed-begun-purge';
 export { seedBegunPurge } from './seed-begun-purge';
+export type { PurgeRow } from './read-purge-rows';
+export { readPurgeRows } from './read-purge-rows';

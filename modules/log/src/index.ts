@@ -72,6 +72,7 @@ export type {
   PauseSince,
   TaskToCheck,
   LogRecord,
+  KeyStoreTables,
   LogTables,
   Projection,
   ProjectionChange,

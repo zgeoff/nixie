@@ -26,3 +26,5 @@ export { readPreviousReleaseBuild } from './read-previous-release-build';
 export type { ReleaseStartOutcome } from './read-release-start-outcome';
 export { readReleaseStartOutcome } from './read-release-start-outcome';
 export { startWebFetch } from '../part/start-web-fetch';
+export { readPurgeState } from './read-purge-state';
+export type { BegunPurgeSeed } from './seed-begun-purge';
