@@ -41,3 +41,6 @@ export function findLateBySeconds(
     ? Math.round((Date.parse(fire.firedAt) - Date.parse(fire.scheduledFor)) / 1000)
     : null;
 }
+
+// The brief of a reminder whose definition version is no longer stored.
+export const missingReminderBrief = '[a reminder whose text is no longer stored]';

@@ -1,6 +1,7 @@
 import { expect, test } from 'bun:test';
 import { readRecords, writeRecords } from '@heynixie/log';
 import { createConversationTask, writeTaskControl } from '@heynixie/tasks';
+import { buildTestDefinitionStore } from '@heynixie/tasks/test-utils';
 import invariant from 'tiny-invariant';
 import { buildSeeder } from '../test-utils/build-seeder';
 import { startTestAPI } from '../test-utils/start-test-api';
@@ -69,6 +70,7 @@ test('it reads the actions each stop cancelled and the names of the started task
     actions: new Map(),
     cancelledActionIDs: new Set(),
     proposals: new Map(),
+    reminderBriefs: new Map(),
     removedSequences: new Set(),
     stopCancelledActions: new Map([
       [stop.sequence, [{ actionID: action.action_id, tool: 'test.send' }]],
@@ -149,4 +151,85 @@ test('it reads the tool of the action that each outcome record names', async () 
   expect(lookups.actions).toStrictEqual(
     new Map([[action.action_id, { tool: 'test.send', callSequence: null }]]),
   );
+});
+
+test.each([
+  ['the brief of the pinned version', 'hash-1', 'Call the dentist about the crown.'],
+  [
+    'a note for a version that is no longer stored',
+    'hash-gone',
+    '[a reminder whose text is no longer stored]',
+  ],
+])('it reads %s for a fire on the conversation thread', async (_name, hash, brief) => {
+  const ctx = await setupTest();
+
+  const store = buildTestDefinitionStore();
+
+  store.add('hash-1', { version: { brief: 'Call the dentist about the crown.' } });
+
+  const [fire] = await writeRecords(ctx.context.log, [
+    {
+      kind: 'trigger.fired',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: {
+        definitionID: 'call-the-dentist',
+        definitionHash: hash,
+        source: 'at',
+        dedupeKey: 'key-1',
+        kind: 'at',
+        scheduledFor: '2027-03-09T03:00:00.000Z',
+        firedAt: '2027-03-09T03:00:00.000Z',
+        isCatchUp: false,
+        skipped: [],
+        skippedCount: 0,
+      },
+    },
+  ]);
+
+  invariant(fire);
+
+  const lookups = await readRecordLookups(
+    { ...ctx.context, readDefinitionVersion: store.readDefinitionVersion },
+    [fire],
+  );
+
+  expect(lookups.reminderBriefs).toStrictEqual(new Map([[fire.sequence, brief]]));
+});
+
+test('it reads no brief for a fire on the thread of a task', async () => {
+  const ctx = await setupTest();
+
+  const store = buildTestDefinitionStore();
+
+  store.add('hash-1', { version: { brief: 'Water the tomatoes.' } });
+
+  const [fire] = await writeRecords(ctx.context.log, [
+    {
+      kind: 'trigger.fired',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'water-the-tomatoes',
+      payload: {
+        definitionID: 'water-the-tomatoes',
+        definitionHash: 'hash-1',
+        source: 'schedule',
+        dedupeKey: 'key-1',
+        kind: 'schedule',
+        scheduledFor: '2027-03-09T03:00:00.000Z',
+        firedAt: '2027-03-09T03:00:00.000Z',
+        isCatchUp: false,
+        skipped: [],
+        skippedCount: 0,
+      },
+    },
+  ]);
+
+  invariant(fire);
+
+  const lookups = await readRecordLookups(
+    { ...ctx.context, readDefinitionVersion: store.readDefinitionVersion },
+    [fire],
+  );
+
+  expect(lookups.reminderBriefs).toStrictEqual(new Map());
 });

@@ -1,5 +1,5 @@
 import type { LogRecord } from '@heynixie/log';
-import { findLateBySeconds } from '@heynixie/tasks';
+import { findLateBySeconds, missingReminderBrief } from '@heynixie/tasks';
 import type { TriggerFired } from '@heynixie/tasks';
 import { mintBlockID, renderSystemMessage } from '@heynixie/wire';
 import { formatMessageTime } from '../message/format-message-time';
@@ -16,8 +16,6 @@ export interface ReminderRead {
   readonly zone: string;
 }
 
-const missingBrief = '[a reminder whose text is no longer stored]';
-
 // The brief is text the model wrote, so it sits in a block of its own with a fresh random ID that
 // no closing tag inside the brief can match.
 export function renderReminderNotice(
@@ -27,7 +25,7 @@ export function renderReminderNotice(
   mint: () => string = mintBlockID,
 ): string {
   const blockID = mint();
-  const brief = reminder.brief ?? missingBrief;
+  const brief = reminder.brief ?? missingReminderBrief;
   const setFor = formatMessageTime(new Date(reminder.fire.scheduledFor), reminder.zone, times);
   const lateBySeconds = findLateBySeconds(reminder.fire);
 

@@ -118,6 +118,33 @@
                               "text"
                             ]
                           },
+                          "reminder": {
+                            "type": "object",
+                            "properties": {
+                              "brief": {
+                                "type": "string"
+                              },
+                              "scheduledFor": {
+                                "type": "string",
+                                "format": "date-time"
+                              },
+                              "lateBySeconds": {
+                                "anyOf": [
+                                  {
+                                    "type": "number"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              }
+                            },
+                            "required": [
+                              "brief",
+                              "scheduledFor",
+                              "lateBySeconds"
+                            ]
+                          },
                           "compactionFailure": {
                             "type": "object",
                             "properties": {
@@ -645,6 +672,33 @@
                               "required": [
                                 "link",
                                 "text"
+                              ]
+                            },
+                            "reminder": {
+                              "type": "object",
+                              "properties": {
+                                "brief": {
+                                  "type": "string"
+                                },
+                                "scheduledFor": {
+                                  "type": "string",
+                                  "format": "date-time"
+                                },
+                                "lateBySeconds": {
+                                  "anyOf": [
+                                    {
+                                      "type": "number"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "brief",
+                                "scheduledFor",
+                                "lateBySeconds"
                               ]
                             },
                             "compactionFailure": {
@@ -22836,6 +22890,33 @@
                                     "text"
                                   ]
                                 },
+                                "reminder": {
+                                  "type": "object",
+                                  "properties": {
+                                    "brief": {
+                                      "type": "string"
+                                    },
+                                    "scheduledFor": {
+                                      "type": "string",
+                                      "format": "date-time"
+                                    },
+                                    "lateBySeconds": {
+                                      "anyOf": [
+                                        {
+                                          "type": "number"
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  "required": [
+                                    "brief",
+                                    "scheduledFor",
+                                    "lateBySeconds"
+                                  ]
+                                },
                                 "compactionFailure": {
                                   "type": "object",
                                   "properties": {
@@ -23525,6 +23606,33 @@
                                   "required": [
                                     "link",
                                     "text"
+                                  ]
+                                },
+                                "reminder": {
+                                  "type": "object",
+                                  "properties": {
+                                    "brief": {
+                                      "type": "string"
+                                    },
+                                    "scheduledFor": {
+                                      "type": "string",
+                                      "format": "date-time"
+                                    },
+                                    "lateBySeconds": {
+                                      "anyOf": [
+                                        {
+                                          "type": "number"
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  "required": [
+                                    "brief",
+                                    "scheduledFor",
+                                    "lateBySeconds"
                                   ]
                                 },
                                 "compactionFailure": {
