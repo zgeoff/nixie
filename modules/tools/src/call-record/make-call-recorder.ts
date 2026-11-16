@@ -19,7 +19,7 @@ import { toolResultCodec } from '../tool-result-codec';
 import { ToolResultRefusedError } from '../types';
 import type { OpenRepeat, ToolCall, ToolRun } from '../types';
 
-export interface CallPolicy {
+interface CallPolicy {
   readonly policy: PolicyDecision;
   readonly stored: Decision;
   readonly destinations: readonly CallDestination[];
@@ -47,7 +47,7 @@ export interface CallPolicy {
   readonly declaration: EffectDeclaration | null;
 }
 
-export interface WrittenCall {
+interface WrittenCall {
   readonly sequence: number;
 
   // the short ID of the action proposal that an ask wrote, and null for any other call
@@ -57,7 +57,7 @@ export interface WrittenCall {
   readonly isCapped: boolean;
 }
 
-export interface WrittenResult {
+interface WrittenResult {
   readonly sequence: number;
 
   // what the record holds: the result, or the error that replaced it when the write was refused

@@ -24,7 +24,7 @@ export interface StubActionQueue {
   readonly stop: () => void;
 }
 
-export interface OpenProposal {
+interface OpenProposal {
   readonly thread: string;
   readonly actionHash: string;
   readonly shortID: string;

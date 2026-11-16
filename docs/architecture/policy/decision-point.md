@@ -101,11 +101,15 @@ the model reads "Waiting for approval as `<shortID>`". The model keeps working. 
 `outside_steering`, `always_ask`, `ask_rule`, `no_rule`, `direct_request` or `repeat`.
 
 `nixie proposals approve <shortID>` and `nixie proposals reject <shortID>`, or the page for actions,
-answer it. The answer lands in the inbox of the task that asked. Approving runs nothing yet: the
-model reads that the action did not run. A proposal lapses after a fixed time without an answer.
-[Approvals](approvals.md) describes the row and the answer path. `contacts.mark_known` is a tool
-that declares `policy_widen`, so it always asks, and until approved actions run only the CLI marks a
-contact.
+answer it. The answer lands in the inbox of the task that asked. Approving queues the call once, and
+the call runs as [actions](../core/actions.md#approved-actions) describes. A proposal lapses after a
+fixed time without an answer. [Approvals](approvals.md) describes the row and the answer path.
+`contacts.mark_known` is a tool that declares `policy_widen`, so it always asks, and approving it
+marks the contact.
+
+A call that asks again while its proposal is open, or while its approval is unused, writes no second
+proposal. The model reads "Waiting for approval as `<shortID>`" with the open proposal's short ID,
+or the status of the approved action.
 
 ## Faults
 
