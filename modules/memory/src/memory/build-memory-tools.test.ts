@@ -1,7 +1,7 @@
 import { expect, onTestFinished, setSystemTime, test } from 'bun:test';
 import { buildShortIDFromUUID } from '@heynixie/db';
-import type { JSONObject } from '@heynixie/log';
-import { readRecords } from '@heynixie/log';
+import type { JSONObject, LogTables } from '@heynixie/log';
+import { readRecordKeys, readRecords } from '@heynixie/log';
 import { buildAllowingDecisionPoint } from '@heynixie/policy/test-utils';
 import { buildToolRegistry, runToolCall } from '@heynixie/tools';
 import invariant from 'tiny-invariant';
@@ -1306,6 +1306,188 @@ test('it applies a remembered fact and leaves no readable copy of its text once 
   });
 
   expect(JSON.stringify(entries)).not.toInclude('Allergic to hazelnuts');
+});
+
+test('it leaves no readable label of a forgotten item in a record, a column or the label entries', async () => {
+  const ctx = await setupTest({
+    gate: { check: () => Promise.resolve(buildMockCheckerAnswer({ verdict: 'asserted' })) },
+  });
+
+  const run = {
+    runID: 'run-1',
+    thread: 'conversation',
+    tools: ['memory.remember', 'memory.edit'],
+    model: { model: 'test-model', profile: 'standard' },
+  };
+
+  const labelTexts = [
+    'Tuner visits each March',
+    'instrument-care',
+    'piano tuner',
+    'Tuner now visits each April',
+    'tuning day',
+    'Tuner visit moved to May',
+    'instrument-care-later',
+    'tuning reminder',
+  ];
+
+  await writeOwnerMessageRecord(ctx.memory.log, {
+    thread: 'conversation',
+    text: 'The piano is tuned each March',
+    spans: [{ start: 0, end: 29, source: 'typed' }],
+  });
+
+  await runToolCall(
+    {
+      tool: 'memory.remember',
+      input: {
+        gist: 'Tuner visits each March',
+        topic: 'instrument-care',
+        triggers: ['piano tuner'],
+        text: 'The piano is tuned each March',
+        quote: 'The piano is tuned each March',
+      },
+      toolUseID: null,
+    },
+    run,
+    ctx.toolCallOptions,
+  );
+
+  const [item] = await ctx.memory.writer.db
+    .$extendTables<MemoryTables>()
+    .selectFrom('memory_items')
+    .select(['item_id', 'short_id'])
+    .execute();
+
+  invariant(item, 'the remember applied no item');
+
+  await runToolCall(
+    {
+      tool: 'memory.edit',
+      input: {
+        itemID: item.short_id,
+        version: 1,
+        gist: 'Tuner now visits each April',
+        triggers: ['piano tuner', 'tuning day'],
+      },
+      toolUseID: null,
+    },
+    run,
+    ctx.toolCallOptions,
+  );
+
+  const [approvable] = await ctx.memory.store.proposals.listPending();
+
+  invariant(approvable, 'the label-only edit left no proposal');
+
+  await ctx.memory.store.proposals.approve({
+    proposalID: approvable.proposalID,
+    actionHash: approvable.actionHash,
+    identityID: 'host',
+  });
+
+  await runToolCall(
+    {
+      tool: 'memory.edit',
+      input: {
+        itemID: item.short_id,
+        version: 2,
+        gist: 'Tuner visit moved to May',
+        topic: 'instrument-care-later',
+        triggers: ['tuning reminder'],
+      },
+      toolUseID: null,
+    },
+    run,
+    ctx.toolCallOptions,
+  );
+
+  const readLabelStores = async () => {
+    const db = ctx.memory.writer.db;
+
+    return JSON.stringify({
+      decoded: await readRecords(ctx.memory.log, { afterSequence: 0, limit: 1000 }),
+      stored: await db.$extendTables<LogTables>().selectFrom('records').select('payload').execute(),
+      labels: await db
+        .$extendTables<MemoryTables>()
+        .selectFrom('memory_labels')
+        .selectAll()
+        .execute(),
+      proposals: await db
+        .$extendTables<MemoryTables>()
+        .selectFrom('memory_proposals')
+        .selectAll()
+        .execute(),
+    });
+  };
+
+  const shown = await runToolCall(
+    {
+      tool: 'memory.recall',
+      input: { itemIDs: [item.short_id], includeHistory: true },
+      toolUseID: null,
+    },
+    { ...run, tools: ['memory.recall'] },
+    ctx.toolCallOptions,
+  );
+
+  const waiting = await runToolCall(
+    { tool: 'memory.pending', input: {}, toolUseID: null },
+    { ...run, tools: ['memory.pending'] },
+    ctx.toolCallOptions,
+  );
+
+  await ctx.memory.store.forget({
+    target: { itemID: item.item_id, version: 2 },
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  await ctx.memory.store.finishForgets([item.item_id]);
+
+  const after = await readLabelStores();
+  const keys = await readRecordKeys(ctx.memory.log, [item.item_id]);
+
+  const sealedLabels = await ctx.memory.writer.db
+    .$extendTables<MemoryTables>()
+    .selectFrom('memory_labels')
+    .select('sealed')
+    .execute();
+
+  await writeOwnerMessageRecord(ctx.memory.log, {
+    thread: 'conversation',
+    text: 'The violin is restrung each June',
+    spans: [{ start: 0, end: 32, source: 'typed' }],
+  });
+
+  await runToolCall(
+    {
+      tool: 'memory.remember',
+      input: {
+        gist: 'Another gist',
+        topic: 'INSTRUMENT-CARE',
+        text: 'The violin is restrung each June',
+        quote: 'The violin is restrung each June',
+      },
+      toolUseID: null,
+    },
+    run,
+    ctx.toolCallOptions,
+  );
+
+  const recalled = await runToolCall(
+    { tool: 'memory.recall', input: { query: 'violin restrung' }, toolUseID: null },
+    { ...run, tools: ['memory.recall'] },
+    ctx.toolCallOptions,
+  );
+
+  expect(labelTexts).toSatisfyAll((text: string) =>
+    JSON.stringify([shown, waiting]).includes(text),
+  );
+
+  expect(labelTexts).toSatisfyAll((text: string) => !after.includes(text));
+  expect(keys.size).toBe(0);
+  expect(sealedLabels).toHaveLength(2);
+  expect(recalled.structuredContent).toMatchObject({ items: [{ topic: 'INSTRUMENT-CARE' }] });
 });
 
 test('it records a remember call with neither its text nor its quote, which the gate has not checked', async () => {

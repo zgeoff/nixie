@@ -93,3 +93,54 @@ test('it reads a proposed entry with no item while its item does not exist yet',
     { proposed: 1, entries: [{ change: 'proposed', version: null, item: null }] },
   ]);
 });
+
+test('it shows a notice entry at the revision the item had when its text was written', async () => {
+  const ctx = await setupTest();
+
+  await writeOwnerMessageRecord(ctx.memory.log, {
+    thread: 'conversation',
+    text: 'The piano is tuned each March. Actually each April.',
+    spans: [{ start: 0, end: 51, source: 'typed' }],
+  });
+
+  const written = await ctx.memory.store.writes.remember({
+    text: 'The piano is tuned each March',
+    quote: 'The piano is tuned each March',
+    caller: buildMockWriteCaller(),
+  });
+
+  invariant(written.status === 'applied');
+
+  await ctx.memory.store.writes.editLabels({
+    target: { itemID: written.itemID, version: 1 },
+    labels: { gist: 'piano tuning', topic: 'home', triggers: [] },
+    caller: buildMockWriteCaller(),
+  });
+
+  const [proposal] = await ctx.memory.store.proposals.listPending();
+
+  invariant(proposal);
+
+  await ctx.memory.store.proposals.approve({
+    proposalID: proposal.proposalID,
+    actionHash: proposal.actionHash,
+    identityID: 'host',
+  });
+
+  const edited = await ctx.memory.store.writes.remember({
+    text: 'The piano is tuned each April',
+    quote: 'Actually each April.',
+    target: { itemID: written.itemID, version: 2 },
+    caller: buildMockWriteCaller(),
+  });
+
+  invariant(edited.status === 'applied');
+
+  const [notice] = await ctx.memory.store.view.readNotices('conversation');
+
+  expect(notice?.entries.map((entry) => [entry.version, entry.item?.version])).toStrictEqual([
+    [1, 3],
+    [null, 3],
+    [3, 3],
+  ]);
+});

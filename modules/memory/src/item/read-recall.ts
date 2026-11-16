@@ -432,23 +432,35 @@ interface TrimmedItem {
   readonly versions: number;
 }
 
-// Keeps the current version and the newest past versions that fit. The current version stays even
-// when it alone passes the budget.
+// Keeps the current version and the newest past versions that fit, then the newest label revision
+// and the newest past label revisions that fit. The current version and the newest label revision
+// stay even when they alone pass the budget.
 async function trimFirstItem(item: RecalledItem, budget: Budget): Promise<TrimmedItem> {
   const history = item.history ?? [];
   const past = history.filter((version) => version.version !== item.version);
   const current = history.find((version) => version.version === item.version);
-
-  if (current === undefined || past.length === 0) {
-    return { item, versions: 0 };
-  }
-
+  const labelHistory = item.labelHistory ?? [];
   let lastTried: TrimmedItem = { item, versions: 0 };
 
-  for (let dropped = 1; dropped <= past.length; dropped += 1) {
+  if (current !== undefined) {
+    for (let dropped = 1; dropped <= past.length; dropped += 1) {
+      lastTried = {
+        item: { ...item, history: [...past.slice(dropped), current] },
+        versions: dropped,
+      };
+
+      if ((await budget.measureItem(lastTried.item)) <= budget.byteBudget) {
+        return lastTried;
+      }
+    }
+  }
+
+  const droppedVersions = lastTried.versions;
+
+  for (let dropped = 1; dropped < labelHistory.length; dropped += 1) {
     lastTried = {
-      item: { ...item, history: [...past.slice(dropped), current] },
-      versions: dropped,
+      item: { ...lastTried.item, labelHistory: labelHistory.slice(dropped) },
+      versions: droppedVersions + dropped,
     };
 
     if ((await budget.measureItem(lastTried.item)) <= budget.byteBudget) {

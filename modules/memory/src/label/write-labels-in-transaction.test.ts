@@ -24,12 +24,6 @@ async function setupTest() {
         .select(['revision', 'version', 'change'])
         .orderBy('sequence')
         .execute(),
-    readSealedLabels: () =>
-      memory.writer.db
-        .$extendTables<MemoryTables>()
-        .selectFrom('memory_labels')
-        .select('sealed')
-        .execute(),
     approveOnlyProposal: async () => {
       const [proposal] = await memory.store.proposals.listPending();
 
@@ -153,21 +147,4 @@ test('it exports the labels and the label history of an item with an edited labe
       ],
     },
   ]);
-});
-
-test('it keeps no readable copy of the labels once the item is forgotten', async () => {
-  const ctx = await setupTest();
-
-  const item = await ctx.memory.store.remember({
-    text: 'The piano is tuned each March by the same tuner',
-    labels: { gist: 'piano tuned each March', topic: 'home', triggers: ['piano'] },
-    provenance: buildMockProvenance(),
-  });
-
-  await ctx.memory.store.forget({ target: item, provenance: buildMockProvenance() });
-  await ctx.memory.store.finishForgets([item.itemID]);
-
-  const sealed = await ctx.readSealedLabels();
-
-  expect(JSON.stringify(sealed)).not.toInclude('piano');
 });

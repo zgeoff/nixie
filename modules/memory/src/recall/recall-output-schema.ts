@@ -125,7 +125,8 @@ export const recallOutputSchema = {
         },
         versions: {
           type: 'integer',
-          description: 'the past versions of the first item that the result leaves out',
+          description:
+            'the past versions and past label revisions of the first item that the result leaves out',
         },
       },
       required: ['count', 'itemIDs', 'versions'],

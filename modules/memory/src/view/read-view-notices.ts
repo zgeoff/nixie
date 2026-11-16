@@ -22,9 +22,10 @@ export async function readViewNotices(
     ...new Set(notices.flatMap((notice) => notice.entries.map((entry) => entry.itemID))),
   ];
 
-  const [items, changes] = await Promise.all([
+  const [items, changes, labelEdits] = await Promise.all([
     readViewItems(log, itemIDs),
     readCurrentChanges(log, itemIDs),
+    readLabelEdits(log, itemIDs),
   ]);
 
   const byID = new Map(items.map((item) => [item.itemID, item]));
@@ -36,6 +37,7 @@ export async function readViewNotices(
         const change = changes.get(entry.itemID);
 
         return Object.assign(entry, {
+          version: toEntryRevision(entry, labelEdits),
           item: item === undefined || change === undefined ? null : Object.assign(item, { change }),
         });
       }),
@@ -81,4 +83,41 @@ async function readCurrentChanges(
     .execute();
 
   return new Map(rows.map((row) => [row.item_id, row.change]));
+}
+
+interface LabelEdit {
+  readonly itemID: string;
+  readonly version: number;
+}
+
+async function readLabelEdits(
+  log: Pick<Log, 'writer'>,
+  itemIDs: readonly string[],
+): Promise<readonly LabelEdit[]> {
+  if (itemIDs.length === 0) {
+    return [];
+  }
+
+  const rows = await log.writer.db
+    .$extendTables<MemoryTables>()
+    .selectFrom('memory_labels')
+    .select(['item_id', 'version'])
+    .where('item_id', 'in', itemIDs)
+    .where('change', '=', 'edited')
+    .execute();
+
+  return rows.map((row) => ({ itemID: row.item_id, version: row.version }));
+}
+
+function toEntryRevision(entry: NoticeEntry, labelEdits: readonly LabelEdit[]): number | null {
+  if (entry.version === null) {
+    return null;
+  }
+
+  const textVersion = entry.version;
+
+  return (
+    textVersion +
+    labelEdits.filter((edit) => edit.itemID === entry.itemID && edit.version < textVersion).length
+  );
 }

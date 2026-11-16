@@ -5,14 +5,17 @@ import { buildToolRegistry } from '@heynixie/tools';
 import { recallPageLimitBytes } from '@heynixie/wire';
 import invariant from 'tiny-invariant';
 import { z } from 'zod';
+import { defaultGateLimits } from '../gate/default-gate-limits';
 import { buildMemoryTools } from '../memory/build-memory-tools';
+import type { TestMemoryOptions } from '../test-utils';
 import { buildMockProvenance } from '../test-utils/build-mock-provenance';
+import { buildMockWriteCaller } from '../test-utils/build-mock-write-caller';
 import { readItemShortID } from '../test-utils/read-item-short-id';
 import { startTestMemory } from '../test-utils/start-test-memory';
 import { writeOwnerMessageRecord } from '../test-utils/write-owner-message-record';
 
-async function setupTest() {
-  const memory = await startTestMemory();
+async function setupTest(config: TestMemoryOptions = {}) {
+  const memory = await startTestMemory(config);
 
   const registry = buildToolRegistry(
     buildMemoryTools(memory.store, {
@@ -38,7 +41,15 @@ async function setupTest() {
     },
   };
 
-  const itemSchema = z.object({ itemID: z.string(), text: z.string(), subject: z.string() });
+  const revisionSchema = z.object({ revision: z.number() });
+
+  const itemSchema = z.object({
+    itemID: z.string(),
+    text: z.string(),
+    subject: z.string(),
+    labelHistory: z.array(revisionSchema).default([]),
+  });
+
   const searchedSchema = z.record(z.string(), z.unknown());
   const leftOutShape = { count: z.number(), itemIDs: z.array(z.string()), versions: z.number() };
 
@@ -298,6 +309,45 @@ test('it fits one item of 40 long versions to the page limit and records only th
   expect(page.leftOut?.versions).toBeGreaterThan(0);
   expect(page.leftOut?.count).toBe(0);
   expect(recorded).toHaveLength(40 - (page.leftOut?.versions ?? 0));
+});
+
+test('it fits one item with 60 label edits to the page limit and keeps its newest label revision', async () => {
+  const ctx = await setupTest({
+    gate: { limits: { ...defaultGateLimits, proposalCap: 100 } },
+  });
+
+  const item = await ctx.memory.store.remember({
+    text: 'The piano is tuned each March by the same tuner',
+    labels: { gist: 'piano tuned each March', topic: 'home', triggers: [] },
+    provenance: buildMockProvenance(),
+  });
+
+  const triggers = ['p', 'q', 'r', 's', 't'].map((letter) => letter.repeat(60));
+
+  for (let index = 1; index <= 60; index += 1) {
+    await ctx.memory.store.writes.editLabels({
+      target: { itemID: item.itemID, version: index },
+      labels: { gist: `${'g'.repeat(70)} ${index}`, topic: 'home', triggers },
+      caller: buildMockWriteCaller(),
+    });
+
+    const [proposal] = await ctx.memory.store.proposals.listPending();
+
+    invariant(proposal);
+
+    await ctx.memory.store.proposals.approve({
+      proposalID: proposal.proposalID,
+      actionHash: proposal.actionHash,
+      identityID: 'host',
+    });
+  }
+
+  const shortID = await readItemShortID(ctx.memory.log, item.itemID);
+  const page = await ctx.readPage({ itemIDs: [shortID], includeHistory: true });
+
+  expect(page.bytes).toBeLessThanOrEqual(recallPageLimitBytes);
+  expect(page.leftOut?.versions).toBeGreaterThan(0);
+  expect(page.items[0]?.labelHistory.at(-1)).toMatchObject({ revision: 61 });
 });
 
 test.each([
