@@ -60,6 +60,7 @@ import { readCleanedTaskIDs } from './read-cleaned-task-ids';
 import { readLateSpend } from './read-late-spend';
 import { readRunUsage } from './read-run-usage';
 import { releaseTaskImp } from './release-task-imp';
+import { removeTaskSandboxes } from './remove-task-sandboxes';
 import type { SandboxRunnerOptions } from './sandbox-runner-options';
 import { writeTaskTurnSpend } from './write-task-turn-spend';
 
@@ -273,13 +274,7 @@ function buildTaskImpParts(runner: TaskRunner, taskID: string): TaskImpParts {
         log: options.log,
       });
     },
-    removeSandboxes: async () => {
-      const sandboxes = await options.sandboxes.list(taskID);
-
-      await Promise.all(sandboxes.map((sandbox) => sandbox.destroy()));
-
-      return sandboxes.length;
-    },
+    removeSandboxes: () => removeTaskSandboxes(options, taskID),
     onSleepFailed: (error) => {
       options.log('sandbox_runner.sleep_failed', { taskID, ...toErrorFields(error) }, 'error');
     },

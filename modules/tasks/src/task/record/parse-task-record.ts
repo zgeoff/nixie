@@ -9,6 +9,7 @@ import { taskStepInterruptedCodec } from '../../utils/task-step-interrupted-code
 import { taskClosedCodec } from '../codec/task-closed-codec';
 import { taskCreatedCodec } from '../codec/task-created-codec';
 import { taskInterruptedCodec } from '../codec/task-interrupted-codec';
+import { taskMarkSetCodec } from '../codec/task-mark-set-codec';
 import { taskPausedCodec } from '../codec/task-paused-codec';
 import { taskRestartedCodec } from '../codec/task-restarted-codec';
 import { taskResumedCodec } from '../codec/task-resumed-codec';
@@ -35,6 +36,7 @@ export type TaskRecord =
   | DecodedRecord<typeof taskStoppedCodec>
   | DecodedRecord<typeof taskRestartedCodec>
   | DecodedRecord<typeof taskClosedCodec>
+  | DecodedRecord<typeof taskMarkSetCodec>
   | DecodedRecord<typeof taskInterruptedCodec>
   | DecodedRecord<typeof timerFiredCodec>;
 
@@ -77,6 +79,7 @@ const taskRecordDecoders: {
     ...taskRestartedCodec.decode(payload),
   }),
   'task.closed': (payload) => ({ kind: 'task.closed', ...taskClosedCodec.decode(payload) }),
+  'task.mark_set': (payload) => ({ kind: 'task.mark_set', ...taskMarkSetCodec.decode(payload) }),
   'task.interrupted': (payload) => ({
     kind: 'task.interrupted',
     ...taskInterruptedCodec.decode(payload),

@@ -70,3 +70,22 @@ test('it refuses a task record whose payload does not fit its kind, naming the r
     }),
   ).toThrowWithMessage(Error, 'record 9 of kind task.step_started does not fit its payload');
 });
+
+test('it reads the change of a task mark', () => {
+  const parsed = parseTaskRecord({
+    sequence: 12,
+    recordedAt: new Date(0),
+    kind: 'task.mark_set',
+    definitions: { snapshotHash: 'sha256:test' },
+    thread: 'task-1',
+    stepKey: null,
+    parent: null,
+    contentSource: null,
+    decision: null,
+    promptCause: null,
+    approval: null,
+    payload: { taskID: 'task-1', disposable: false },
+  });
+
+  expect(parsed).toStrictEqual({ kind: 'task.mark_set', taskID: 'task-1', disposable: false });
+});

@@ -43,22 +43,22 @@ type EndContext = Pick<TasksContext, 'definitions' | 'log' | 'runSettings' | 'ru
 
 // The one function that ends a task run, and the tasks module does not export it. The caller holds
 // the write transaction, so the end commits with the records that caused it. A task with no open task
-// run gets nothing written.
+// run gets nothing written and returns null, as does an end that leaves the task run open.
 export async function writeRunEndInTransaction(
   tx: Transaction<unknown>,
   context: EndContext,
   request: RunEndRequest,
-): Promise<void> {
+): Promise<RunEnding | null> {
   const run = await readOpenRun(tx, request.taskID);
 
   if (run === null) {
-    return;
+    return null;
   }
 
   const ending = pickRunEnding(request.trigger);
 
   if (ending === null) {
-    return;
+    return null;
   }
 
   const inTransaction = toTransactionContext(context, tx);
@@ -146,6 +146,8 @@ export async function writeRunEndInTransaction(
       erasable: { body },
     },
   ]);
+
+  return ending;
 }
 
 interface RunUsed {

@@ -448,3 +448,14 @@ test('it releases every wait of a closed task', async () => {
     { from_task: 'conversation', wait_state: 'released' },
   ]);
 });
+
+test('it records that the owner closed a closed task', async () => {
+  const ctx = await setupTest();
+  const task = await createTestTaskInState(ctx.context, 'waiting');
+
+  await writeTaskControl(ctx.context, { taskID: task.taskID, control: 'close' });
+
+  const entries = await readRecords(ctx.context.log, { afterSequence: 0, kinds: ['task.closed'] });
+
+  expect(entries.map((entry) => entry.record.payload['closedBy'])).toStrictEqual(['owner']);
+});

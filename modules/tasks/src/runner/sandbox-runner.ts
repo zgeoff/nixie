@@ -17,6 +17,7 @@ const sandboxStartSchema = z.strictObject({
   tools: z.string().array().optional(),
   report: z.enum(['wake', 'next_turn', 'none']).optional(),
   reportShape: z.unknown().optional(),
+  disposable: z.boolean().optional(),
   limits: z
     .object({ turns: z.int().positive().optional(), dollars: z.number().positive().optional() })
     .optional(),

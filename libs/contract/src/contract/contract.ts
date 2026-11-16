@@ -198,7 +198,9 @@ const listedTaskSchema = z.object({
     started: actionCountSchema,
   }),
   brief: z.string(),
+  closedBy: z.enum(['owner', 'nixie', 'disposable']).optional(),
   controls: z.array(taskControlSchema),
+  disposable: z.boolean().nullable(),
   isPauseRequested: z.boolean(),
   isPausedByNixie: z.boolean(),
   isTakingMessages: z.boolean(),
@@ -232,6 +234,12 @@ const taskControl = checkedAction
   })
   .input(z.object({ clientActionID: clientActionIDSchema, taskID: threadSchema }))
   .output(controlledTaskSchema);
+
+const markedTaskSchema = z.object({
+  changedAt: z.date(),
+  disposable: z.boolean(),
+  taskID: threadSchema,
+});
 
 const nixieControl = checkedAction
   .input(z.object({ clientActionID: clientActionIDSchema }))
@@ -361,6 +369,24 @@ export const contract = {
       CONVERSATION_NEVER_CLOSES: { message: 'The conversation is never closed', status: 409 },
     }),
     interrupt: taskControl,
+    setDisposable: checkedAction
+      .errors({
+        TASK_NOT_FOUND: { message: 'No task has this ID', status: 404 },
+        TASK_HAS_NO_MARK: { message: 'The task has no disposable mark', status: 409 },
+        TASK_STATE_REFUSED: {
+          message: 'The task is in a state that does not take this change',
+          status: 409,
+          data: z.object({ state: taskStateSchema }),
+        },
+      })
+      .input(
+        z.object({
+          clientActionID: clientActionIDSchema,
+          disposable: z.boolean(),
+          taskID: threadSchema,
+        }),
+      )
+      .output(markedTaskSchema),
   },
   memory: {
     readVersions: signedIn

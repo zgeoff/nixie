@@ -84,6 +84,7 @@ export function buildTaskStartTool(
       const runner = planned.runner;
       const plan = planned.plan;
       const envelope = parseTaskStartInput(call.input, registry);
+      const disposable = envelope.disposable ?? true;
 
       const outcome = await writeTaskStart(context, {
         from: tool.run.thread,
@@ -95,6 +96,7 @@ export function buildTaskStartTool(
           : { kind: 'enveloped', envelope: plan.envelope, runnerOptions: plan.options },
         hopLimit: messaging.hopLimit,
         stepRunID: tool.run.stepRunID ?? null,
+        disposable,
       });
 
       if (outcome.status === 'refused') {
@@ -108,7 +110,7 @@ export function buildTaskStartTool(
         result: {
           taskID: outcome.taskID,
           name,
-          note: `The task starts on its brief now, and ${renderReportNote(plan.envelope.report)}`,
+          note: `The task starts on its brief now, and ${renderReportNote(plan.envelope.report, disposable)}`,
         },
       };
     },
@@ -177,10 +179,14 @@ function renderRefusal(refusal: TaskStartRefusal): string {
     .exhaustive();
 }
 
-function renderReportNote(report: TaskReport): string {
-  return match(report)
+function renderReportNote(report: TaskReport, disposable: boolean): string {
+  const delivery = match(report)
     .with('wake', () => 'its report comes back to you as a task message.')
     .with('next_turn', () => 'its report waits for your next turn as a task message.')
     .with('none', () => 'it sends you no report.')
     .exhaustive();
+
+  return disposable
+    ? `${delivery} The task closes when its work ends; start a task with disposable set to false to keep it open.`
+    : delivery;
 }

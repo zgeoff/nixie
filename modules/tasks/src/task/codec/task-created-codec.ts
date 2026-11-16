@@ -23,5 +23,6 @@ export const taskCreatedCodec = defineRecordCodec(
     runner: z.string().exactOptional(),
     envelope: envelopeSchema.exactOptional(),
     briefMessageID: z.string().exactOptional(),
+    disposable: z.boolean().exactOptional(),
   }),
 );

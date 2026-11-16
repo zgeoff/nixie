@@ -9,6 +9,7 @@ import { buildPromptReadTool, buildPromptWriteTool } from '@heynixie/prompts';
 import { buildSilentEndTool } from '@heynixie/sessions';
 import type { SkillVendorContext } from '@heynixie/skills';
 import {
+  buildTaskCloseTool,
   buildTaskMessageTool,
   buildTaskReportTool,
   buildTaskStartTool,
@@ -115,6 +116,7 @@ export async function startConversationEndpoint(
     buildTasksListTool(options.context, messaging),
     buildTaskMessageTool(options.context, messaging),
     buildTaskStartTool(options.context, messaging, bounds),
+    buildTaskCloseTool(options.context, messaging),
   ];
 
   const search =

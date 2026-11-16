@@ -27,6 +27,9 @@ export interface TaskStartRequest {
   readonly stored: StoredStart;
   readonly hopLimit: number;
   readonly stepRunID: string | null;
+
+  // a disposable task closes when its work ends; a kept one waits for a close
+  readonly disposable: boolean;
 }
 
 export type TaskStartRefusal =
@@ -185,6 +188,7 @@ function buildCreatedPayload(request: TaskStartRequest, ids: CreatedIDs): JSONOb
       ? { options: taskRunOptionsSchema.parse(request.stored.options) }
       : { envelope: request.stored.envelope }),
     briefMessageID: ids.briefMessageID,
+    disposable: request.disposable,
   });
 
   return request.stored.kind === 'built'

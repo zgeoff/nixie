@@ -34,7 +34,9 @@ test('it lists each task, most recently active first, with its action counts', a
       {
         actions: { cancelled: 0, queued: 0, started: 0 },
         brief: 'Order seeds.',
+        closedBy: undefined,
         controls: ['stop'],
+        disposable: null,
         isPauseRequested: false,
         isPausedByNixie: false,
         isTakingMessages: true,
@@ -48,7 +50,9 @@ test('it lists each task, most recently active first, with its action counts', a
       {
         actions: { cancelled: 1, queued: 1, started: 1 },
         brief: 'Plan the beds.',
+        closedBy: undefined,
         controls: ['pause', 'resume', 'stop', 'restart', 'close', 'interrupt'],
+        disposable: null,
         isPauseRequested: false,
         isPausedByNixie: false,
         isTakingMessages: true,

@@ -47,7 +47,8 @@ export function buildTasksListTool(
       'waits on for a reply. A task is waiting while it waits on a reply, idle when it waits ' +
       'for a message, and finished once it sent its report and waits for nothing more. Pass ' +
       'state to list only active, waiting or done tasks: waiting also lists idle, paused and ' +
-      'stopped tasks, and done also lists finished, failed and closed ones.',
+      'stopped tasks, and done also lists finished, failed and closed ones. A disposable task ' +
+      'closes once it reports, and a kept one stays finished until you close it with task.close.',
     input: {
       type: 'object',
       properties: {

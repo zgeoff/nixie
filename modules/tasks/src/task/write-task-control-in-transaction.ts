@@ -19,12 +19,12 @@ import type {
   TasksContext,
   TasksTables,
 } from '../types';
-import { taskClosedCodec } from './codec/task-closed-codec';
 import { taskInterruptedCodec } from './codec/task-interrupted-codec';
 import { taskPausedCodec } from './codec/task-paused-codec';
 import { taskRestartedCodec } from './codec/task-restarted-codec';
 import { taskResumedCodec } from './codec/task-resumed-codec';
 import { taskStoppedCodec } from './codec/task-stopped-codec';
+import { writeTaskCloseInTransaction } from './write-task-close-in-transaction';
 
 export interface TaskControlRequest {
   readonly taskID: string;
@@ -76,10 +76,20 @@ export async function writeTaskControlInTransaction(
     return { status: 'refused', refusal: plan };
   }
 
-  const isEnding = plan.kind === 'task.stopped' || plan.kind === 'task.closed';
-  const timerIDs = isEnding ? await readPendingTimers(tx, task.task_id) : [];
+  if (plan.kind === 'task.closed') {
+    const sequence = await writeTaskCloseInTransaction(tx, context, {
+      taskID: task.task_id,
+      stepKey: task.started_step_key,
+      closedBy: 'owner',
+      endedBy: 'control:close',
+    });
 
-  if (isEnding) {
+    return readControlled(tx, task.task_id, sequence);
+  }
+
+  const timerIDs = plan.kind === 'task.stopped' ? await readPendingTimers(tx, task.task_id) : [];
+
+  if (plan.kind === 'task.stopped') {
     await removeTaskLease(tx, task.task_id);
   }
 
@@ -94,26 +104,35 @@ export async function writeTaskControlInTransaction(
 
   invariant(record, 'the control writes its record');
 
-  if (plan.kind === 'task.stopped' || plan.kind === 'task.closed') {
+  if (plan.kind === 'task.stopped') {
     await writeRunEndInTransaction(tx, context, {
       taskID: task.task_id,
-      trigger: { kind: plan.kind === 'task.stopped' ? 'stopped' : 'closed' },
-      endedBy: plan.kind === 'task.stopped' ? 'control:stop' : 'control:close',
+      trigger: { kind: 'stopped' },
+      endedBy: 'control:stop',
       stepKey: null,
     });
   }
 
-  const row = await db
+  return readControlled(tx, task.task_id, record.sequence);
+}
+
+async function readControlled(
+  tx: Transaction<unknown>,
+  taskID: string,
+  sequence: number,
+): Promise<TaskControlOutcome> {
+  const row = await tx
+    .$extendTables<TasksTables>()
     .selectFrom('tasks')
     .select(['state', 'pause_requested'])
-    .where('task_id', '=', task.task_id)
+    .where('task_id', '=', taskID)
     .executeTakeFirstOrThrow();
 
   return {
     status: 'controlled',
     state: row.state,
     isPauseRequested: row.pause_requested === 1,
-    sequence: record.sequence,
+    sequence,
   };
 }
 
@@ -171,9 +190,9 @@ function buildControlPayload(
     .with({ kind: 'task.restarted' }, (restarted) =>
       taskRestartedCodec.encode({ taskID, nextState: restarted.nextState }),
     )
-    .with({ kind: 'task.closed' }, () =>
-      taskClosedCodec.encode({ taskID, stepKey: task.started_step_key, timerIDs: [...timerIDs] }),
-    )
+    .with({ kind: 'task.closed' }, () => {
+      throw new Error('the close writes its own record');
+    })
     .with({ kind: 'task.interrupted' }, () =>
       taskInterruptedCodec.encode({ taskID, stepKey: requireStepKey(task) }),
     )
