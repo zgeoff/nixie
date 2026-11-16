@@ -35,7 +35,7 @@ function setupTest() {
 
       const first = await stream.messages[Symbol.asyncIterator]().next();
 
-      const message = first.done ? new Uint8Array() : first.value;
+      const message = first.done === true ? new Uint8Array() : first.value;
 
       return decodeFetchReply(message);
     },
