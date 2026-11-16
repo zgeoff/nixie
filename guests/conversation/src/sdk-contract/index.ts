@@ -8,6 +8,7 @@ export type { ContractQuery, ContractRun } from './run-contract-query';
 export { runContractQuery } from './run-contract-query';
 export { runMissingSessionProbe } from './run-missing-session-probe';
 export { runModPolicyProbe } from './run-mod-policy-probe';
+export { runMemoryIndexProbe } from './run-memory-index-probe';
 export { runOwnerInputProbe } from './run-owner-input-probe';
 export { runOverflowForkProbe } from './run-overflow-fork-probe';
 export { runOverflowProbe } from './run-overflow-probe';
