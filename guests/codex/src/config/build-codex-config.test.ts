@@ -4,13 +4,14 @@ import { buildCodexConfig } from './build-codex-config';
 
 function setupTest() {
   return {
-    buildConfig: () =>
+    buildConfig: (toolCallWaitMs: number | null = null) =>
       buildCodexConfig({
         model: 'gpt-test-1',
         effort: 'high',
         baseURL: 'https://models.example.test/v1',
         toolsURL: 'http://127.0.0.1:8901/mcp',
         catalogPath: '/home/nixie/.codex/model-catalog.json',
+        toolCallWaitMs,
       }),
   };
 }
@@ -83,4 +84,24 @@ test('it sets the tool output limit as a top-level key, before the first table',
 
   expect(limitAt).toBeGreaterThan(-1);
   expect(limitAt).toBeLessThan(firstTableAt);
+});
+
+test.each([
+  [2000, 'tool_timeout_sec = 2'],
+  [900_000, 'tool_timeout_sec = 900'],
+])('it sets the tool server timeout in seconds from a tool-call wait of %d ms', (waitMs, line) => {
+  const ctx = setupTest();
+  const lines = ctx.buildConfig(waitMs).split('\n');
+  const tableStart = lines.indexOf('[mcp_servers.nixie]');
+  const tableEnd = lines.findIndex((entry, index) => index > tableStart && entry.startsWith('['));
+
+  expect(lines.slice(tableStart, tableEnd)).toContain(line);
+});
+
+test('it writes no tool server timeout when the tool-call wait is null', () => {
+  const ctx = setupTest();
+
+  expect(ctx.buildConfig(null).split('\n')).not.toSatisfyAny((line) =>
+    line.startsWith('tool_timeout_sec'),
+  );
 });

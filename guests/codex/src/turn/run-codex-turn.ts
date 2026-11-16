@@ -59,6 +59,7 @@ export async function runCodexTurn(
     effort: turn.profile.effort,
     baseURL: turn.profile.baseURL,
     toolsURL: new URL('/mcp', turn.tools.url).href,
+    toolCallWaitMs: turn.limits.toolCallWaitMs,
   });
 
   const input = buildTurnInput(turn.input, workDir);

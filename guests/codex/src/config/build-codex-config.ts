@@ -7,6 +7,9 @@ export interface CodexConfigInput {
   readonly baseURL: string;
   readonly toolsURL: string;
   readonly catalogPath: string;
+
+  // Milliseconds; the turn frame's value. Null leaves the CLI's own tool-call timeout.
+  readonly toolCallWaitMs: number | null;
 }
 
 const providerName = 'nixie';
@@ -75,6 +78,9 @@ export function buildCodexConfig(input: CodexConfigInput): string {
     `bearer_token_env_var = ${JSON.stringify(toolTokenVariable)}`,
     'required = true',
     'startup_timeout_sec = 5',
+    ...(input.toolCallWaitMs === null
+      ? []
+      : [`tool_timeout_sec = ${String(input.toolCallWaitMs / 1000)}`]),
     'default_tools_approval_mode = "approve"',
     '',
     '[tools.experimental_request_user_input]',

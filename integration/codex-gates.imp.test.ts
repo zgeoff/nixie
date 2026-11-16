@@ -46,6 +46,12 @@ interface TurnOptions {
 
   // the results the tool server serves by tool name; no server starts when it is left out
   readonly tools?: Readonly<Record<string, string>>;
+
+  // how long the tool server holds each named tool's answer, in milliseconds
+  readonly toolDelaysMs?: Readonly<Record<string, number>>;
+
+  // sent as the turn frame's tool-call wait; null leaves the CLI's own timeout
+  readonly toolCallWaitMs?: number | null;
   readonly memoryMiB?: number;
 }
 
@@ -114,7 +120,11 @@ async function setupTest() {
   stack.defer(() => port.removeSecret(secretName));
 
   // Serves the given tools over MCP on the socket that the sandbox's tool route reaches.
-  const startToolServer = (token: string, results: Readonly<Record<string, string>>) => {
+  const startToolServer = (
+    token: string,
+    results: Readonly<Record<string, string>>,
+    delaysMs: Readonly<Record<string, number>>,
+  ) => {
     const handler = createMcpHandler(() => {
       // oxlint-disable-next-line typescript/no-deprecated -- the Server class that nixie's tool endpoint serves
       const server = new Server(
@@ -130,9 +140,16 @@ async function setupTest() {
         })),
       }));
 
-      server.setRequestHandler('tools/call', (request) => ({
-        content: [{ type: 'text', text: results[request.params.name] ?? '' }],
-      }));
+      server.setRequestHandler('tools/call', async (request) => {
+        // the delay is the timing that the case probes
+        const answerDelay = Promise.withResolvers<void>();
+
+        setTimeout(answerDelay.resolve, delaysMs[request.params.name] ?? 0);
+
+        await answerDelay.promise;
+
+        return { content: [{ type: 'text', text: results[request.params.name] ?? '' }] };
+      });
 
       return server;
     });
@@ -159,7 +176,7 @@ async function setupTest() {
     );
 
     if (options.tools !== undefined) {
-      startToolServer(toolToken, options.tools);
+      startToolServer(toolToken, options.tools, options.toolDelaysMs ?? {});
     }
 
     const sandbox = await adapter.create(
@@ -203,7 +220,7 @@ async function setupTest() {
         tools: { url: route.url, token: toolToken },
         systemPrompt: 'SYSTEM PROMPT MARKER',
         input: [{ uuid: crypto.randomUUID(), text: 'USER INPUT MARKER' }],
-        limits: { modelCalls: null, toolCallWaitMs: null },
+        limits: { modelCalls: null, toolCallWaitMs: options.toolCallWaitMs ?? null },
       }),
     );
 
@@ -377,6 +394,60 @@ test.skipIf(!hasRelay)(
     expect(outputs).toInclude('pong');
     expect(counts.counted.tokens).toBe(counts.expected.tokens);
     expect(counts.counted.dollars).toBeCloseTo(counts.expected.dollars, 9);
+  },
+);
+
+test.skipIf(!hasRelay)(
+  'it gives the model a tool result that arrives inside the tool-call wait',
+  async () => {
+    const ctx = await setupTest();
+
+    ctx.model.addReplies(
+      { toolUse: { name: 'slow', namespace: 'mcp__nixie', input: {} } },
+      { text: 'done' },
+    );
+
+    const turn = await ctx.runTurn({
+      tools: { slow: 'SLOW RESULT MARKER' },
+      toolDelaysMs: { slow: 1000 },
+      toolCallWaitMs: 2000,
+    });
+
+    const outputs = ctx.readRequestText(1);
+
+    expect(turn.frames.at(-1)).toMatchObject({ type: 'ended', outcome: 'finished' });
+    expect(outputs).toInclude('function_call_output');
+    expect(outputs).toInclude('SLOW RESULT MARKER');
+  },
+);
+
+test.skipIf(!hasRelay)(
+  'it gives the model no tool result that arrives after the tool-call wait',
+  async () => {
+    const ctx = await setupTest();
+
+    ctx.model.addReplies(
+      { toolUse: { name: 'slow', namespace: 'mcp__nixie', input: {} } },
+      { text: 'done' },
+    );
+
+    const turn = await ctx.runTurn({
+      tools: { slow: 'SLOW RESULT MARKER' },
+      toolDelaysMs: { slow: 3000 },
+      toolCallWaitMs: 2000,
+    });
+
+    const outputs = ctx.readRequestText(1);
+
+    console.log(`tool-call wait probe: last frame ${JSON.stringify(turn.frames.at(-1))}`);
+    console.log(`tool-call wait probe: second request input ${outputs}`);
+
+    expect(turn.frames.at(-1)).toSatisfy(
+      (frame: GuestFrame | undefined) => frame?.type === 'ended' || frame?.type === 'failed',
+    );
+
+    expect(outputs).toInclude('function_call_output');
+    expect(outputs).not.toInclude('SLOW RESULT MARKER');
   },
 );
 
