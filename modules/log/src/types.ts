@@ -80,7 +80,7 @@ export interface Decision {
   // The first release wrote destinations and consent in these shapes; nothing writes them now.
   readonly destinations?: readonly {
     readonly destination: string;
-    readonly permission: string | null;
+    readonly permission: DestinationPermission | null;
   }[];
 
   readonly consent?: { readonly messageSequence: number; readonly verdict: string };
