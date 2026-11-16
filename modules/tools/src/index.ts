@@ -1,5 +1,6 @@
 export { buildSchemaParser } from './schema/build-schema-parser';
 export { buildToolRegistry } from './build-tool-registry';
+export { findToolDeclaration } from './policy-call/find-tool-declaration';
 export { callCapRefusal } from './cap/call-cap-refusal';
 export { countCapCalls } from './cap/count-cap-calls';
 export type { ToolCallOptions, ToolCallRequest } from './run-tool-call';
@@ -37,6 +38,7 @@ export type {
   ToolRun,
   ToolRunModel,
   ToolSession,
+  ToolVariants,
 } from './types';
 
 export { ToolResultRefusedError } from './types';

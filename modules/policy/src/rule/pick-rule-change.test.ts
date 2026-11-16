@@ -92,11 +92,11 @@ test.each<[string, Rule | null, Rule | null, RuleChange]>([
   ],
   [
     'a check added to an allow',
-    { id: 'allow-starts', outcome: 'allow', tools: ['task.start/nixie'] },
+    { id: 'allow-starts', outcome: 'allow', tools: ['task.start/sandbox'] },
     {
       id: 'allow-starts',
       outcome: 'allow',
-      tools: ['task.start/nixie'],
+      tools: ['task.start/sandbox'],
       checks: [{ arg: 'memory', op: 'eq', value: 'none' }],
     },
     'narrowing',
@@ -106,13 +106,13 @@ test.each<[string, Rule | null, Rule | null, RuleChange]>([
     {
       id: 'allow-models',
       outcome: 'allow',
-      tools: ['task.start/nixie'],
+      tools: ['task.start/sandbox'],
       checks: [{ arg: 'model', op: 'in', value: ['glm', 'sol'] }],
     },
     {
       id: 'allow-models',
       outcome: 'allow',
-      tools: ['task.start/nixie'],
+      tools: ['task.start/sandbox'],
       checks: [{ arg: 'model', op: 'eq', value: 'glm' }],
     },
     'narrowing',
@@ -120,7 +120,7 @@ test.each<[string, Rule | null, Rule | null, RuleChange]>([
   [
     'an allow narrowed from a tool to one of its variants',
     { id: 'allow-starts', outcome: 'allow', tools: ['task.start'] },
-    { id: 'allow-starts', outcome: 'allow', tools: ['task.start/nixie'] },
+    { id: 'allow-starts', outcome: 'allow', tools: ['task.start/sandbox'] },
     'narrowing',
   ],
   [

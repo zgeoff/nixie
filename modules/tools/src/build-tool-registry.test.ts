@@ -95,3 +95,47 @@ test('it accepts an input that meets the input schema', () => {
 
   expect(registered?.parseInput({ query: 'milk' })).toStrictEqual({ isValid: true });
 });
+
+test('it refuses a variant whose effects make the tool run another way', () => {
+  expect(() =>
+    buildToolRegistry([
+      buildMockToolDefinition({
+        name: 'jobs_start',
+        variants: {
+          pick: () => 'send',
+          declarations: {
+            send: {
+              effects: ['send'],
+              destinations: [],
+              amount: null,
+              content: [],
+              results: { text: 'owner_data' },
+            },
+          },
+        },
+      }),
+    ]),
+  ).toThrowWithMessage(
+    Error,
+    'the tool jobs_start/send runs direct, but its effects make it queued',
+  );
+});
+
+test('it refuses a variant whose result sources miss a field of the result', () => {
+  expect(() =>
+    buildToolRegistry([
+      buildMockToolDefinition({
+        name: 'jobs_start',
+        variants: {
+          pick: () => 'plain',
+          declarations: {
+            plain: { effects: ['read'], destinations: [], amount: null, content: [], results: {} },
+          },
+        },
+      }),
+    ]),
+  ).toThrowWithMessage(
+    Error,
+    'the tool jobs_start/plain needs an object result whose every field has a source: unsourced [text], unknown []',
+  );
+});

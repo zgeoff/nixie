@@ -119,6 +119,17 @@ export interface ToolDefinition {
     input: JSONObject,
     context: ToolContext,
   ) => Promise<PolicyFactsResolution>;
+
+  // Variants of the tool, each with a declaration of its own. A call to a tool with variants asks
+  // the decision point about `<name>/<variant>`, under that variant's declaration, and every record
+  // and cap still names the tool.
+  readonly variants?: ToolVariants;
+}
+
+export interface ToolVariants {
+  // the variant that a call whose input passed the tool's schema takes
+  readonly pick: (input: unknown) => string;
+  readonly declarations: Readonly<Record<string, EffectDeclaration>>;
 }
 
 // The sources and arguments that the decision point reads for a call, when the frame's sources and
