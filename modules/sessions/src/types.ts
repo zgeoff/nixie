@@ -131,7 +131,7 @@ export type SessionFrame =
   | { readonly kind: 'conversation' }
   | { readonly kind: 'task'; readonly startedBy: string; readonly report: TaskReport };
 
-export interface TurnBudget {
+interface TurnBudget {
   readonly getLeftDollars: () => number;
   readonly onSpend: (dollars: number) => void;
 }

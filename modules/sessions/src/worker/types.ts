@@ -30,7 +30,7 @@ export interface WorkerPlan {
   readonly caller: WorkerCaller;
 }
 
-export interface WorkerCaller {
+interface WorkerCaller {
   readonly callID: string;
   readonly callSequence: number;
   readonly stepRunID: string;

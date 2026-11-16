@@ -16,7 +16,7 @@ type EndedFrame = Extract<GuestFrame, { type: 'ended' }>;
 
 type FailedFrame = Extract<GuestFrame, { type: 'failed' }>;
 
-export interface GuestCallReplies {
+interface GuestCallReplies {
   readonly text: string;
 }
 
