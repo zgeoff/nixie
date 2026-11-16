@@ -327,6 +327,15 @@ run of its piece of work, so each task run reads from where the previous one's r
 scheduled task passes the first time as the `from` of `log.read` and the second as its `to`. A
 rebuilt session renders the block again, and a resumed session of a carried task run renders none.
 
+A definition's task run has a brief with no record: the `brief` of the version that the task run
+pins, which the model reads in an envelope from the label `task definition: {name}`, last in the
+first message's preamble, as [the session opening](./session-opening.md#the-brief) describes. The
+`trigger.fired` record that opened the task run renders no text on the task's own thread, because
+the `trigger` block already tells the model, and the step that opens the task run marks the record
+read itself, so the guest need not report it. A fire that lands during a turn stays unread for the
+step that opens its task run. A `task.message` call that passes the brief ID as `replyTo` gets the
+refusal for an unknown message ID, because the ID names no message.
+
 A fire of a definition with `target: conversation` writes its `trigger.fired` record on the
 conversation's thread and opens no task run. It wakes the conversation, which shows the user a
 reminder with the brief and the time it was set for, as
