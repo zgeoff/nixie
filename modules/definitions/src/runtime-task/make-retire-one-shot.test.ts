@@ -32,7 +32,7 @@ async function setupTest() {
     await source.start({
       cursor: null,
       deliver: (batch) => deliverTriggerBatch(ctx.core, 'schedule', batch),
-      reportHealth: () => null,
+      reportHealth: () => {},
       signal: controller.signal,
     });
   };

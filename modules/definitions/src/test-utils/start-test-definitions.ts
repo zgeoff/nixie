@@ -106,7 +106,7 @@ export async function startTestDefinitions(): Promise<TestDefinitions> {
       log,
       clock: base.clock,
       definitions: tasksContext.definitions,
-      logEvent: () => null,
+      logEvent: () => {},
       readDefinitionTask: readDefinitionTaskInTransaction,
       retireOneShot: makeRetireOneShot(tasksContext),
     },

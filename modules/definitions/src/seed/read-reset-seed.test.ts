@@ -140,7 +140,7 @@ test('it keeps a runtime change in force through a reset and the seed after it',
 
   const afterSeed = await readTestRuntimeTasks(ctx.writer);
 
-  expect(afterReset.map((row) => [row['definition_id'], row['state']])).toStrictEqual([
+  expect(afterReset.map((row) => [row.definition_id, row.state])).toStrictEqual([
     ['water-the-tomatoes', 'in_force'],
   ]);
 

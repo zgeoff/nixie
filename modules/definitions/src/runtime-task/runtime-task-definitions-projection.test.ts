@@ -38,12 +38,12 @@ test('it supersedes the change in force when a later change arrives', async () =
 
   const rows = await ctx.readRows();
 
-  expect(rows.map((row) => [row['operation'], row['state'], row['state_cause']])).toStrictEqual([
+  expect(rows.map((row) => [row.operation, row.state, row.state_cause])).toStrictEqual([
     ['add', 'superseded', 'later_change'],
     ['change', 'in_force', null],
   ]);
 
-  expect(rows[0]?.['updated_sequence']).toBe(rows[1]?.['changed_sequence']);
+  expect(rows[0]?.updated_sequence).toBe(rows[1]?.changed_sequence);
 });
 
 test('it stores the version of a change in the versions table', async () => {
@@ -56,7 +56,7 @@ test('it stores the version of a change in the versions table', async () => {
   const [row] = await ctx.readRows();
 
   const versions = await sql`select definition_id from task_definition_versions
-    where definition_hash = ${String(row?.['definition_hash'])}`.execute(ctx.writer.db);
+    where definition_hash = ${String(row?.definition_hash)}`.execute(ctx.writer.db);
 
   expect(versions.rows).toStrictEqual([{ definition_id: 'water-the-tomatoes' }]);
 });
@@ -96,8 +96,8 @@ test('it records the repo version that differs from the base of a change in forc
 
   const [row] = await ctx.readRows();
 
-  expect(row?.['state']).toBe('in_force');
-  expect(row?.['definitions_hash']).not.toBe(row?.['base_hash']);
+  expect(row?.state).toBe('in_force');
+  expect(row?.definitions_hash).not.toBe(row?.base_hash);
 });
 
 test('it ends a conflict in favour of nixie by moving the base to the repo version', async () => {
@@ -125,8 +125,8 @@ test('it ends a conflict in favour of nixie by moving the base to the repo versi
 
   const [row] = await ctx.readRows();
 
-  expect(row?.['state']).toBe('in_force');
-  expect(row?.['base_hash']).toBe(row?.['definitions_hash']);
+  expect(row?.state).toBe('in_force');
+  expect(row?.base_hash).toBe(row?.definitions_hash);
 });
 
 test('it retires a change when you keep the repo version', async () => {
@@ -176,7 +176,7 @@ test('it refuses a move that the transition table forbids', async () => {
       kind: definitionSettledCodec.kind,
       definitions: { snapshotHash: 'sha256:test' },
       payload: definitionSettledCodec.encode({
-        changeID: String(row['change_id']),
+        changeID: row.change_id,
         definitionID: 'water-the-tomatoes',
         outcome: 'retired',
         cause: 'one_shot_fired',
@@ -231,7 +231,7 @@ test('it restores the version of a change from its record when the versions tabl
   await runProjectionRebuild(ctx.log);
 
   const versions = await sql`select definition_id from task_definition_versions
-    where definition_hash = ${String(row?.['definition_hash'])}`.execute(ctx.writer.db);
+    where definition_hash = ${String(row?.definition_hash)}`.execute(ctx.writer.db);
 
   expect(versions.rows).toStrictEqual([{ definition_id: 'water-the-tomatoes' }]);
 });

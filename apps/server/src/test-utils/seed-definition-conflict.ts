@@ -43,8 +43,8 @@ export async function seedDefinitionConflict(
       toolNames: tasks.toolNames,
       runSeed: runDefinitionsSeed,
       inForceSeed: { log, buildPolicy },
-      onSeeded: () => null,
-      wakeExport: () => null,
+      onSeeded: () => {},
+      wakeExport: () => {},
     };
 
     await requestDefinitionChange(context, {
