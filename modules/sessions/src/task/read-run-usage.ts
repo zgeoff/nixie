@@ -1,31 +1,37 @@
-import { readRecords } from '@heynixie/log';
+import { readRecords, withWriteTransaction } from '@heynixie/log';
 import type { TaskLimits, TaskRun, TasksContext } from '@heynixie/tasks';
+import { toTransactionContext } from '@heynixie/tasks';
 
 export interface RunUsageRead {
   readonly used: TaskLimits;
 
-  // the sequence of the newest record of the task when the read began, or 0 when it has none
+  // the sequence of the newest record of the task in the same snapshot as the meters, or 0 when it
+  // has none
   readonly throughSequence: number;
 }
 
-// The newest sequence is read first, so a record that lands during the meters' read counts in the
-// late spend after it as well, which only shortens the turn.
-export async function readRunUsage(
+// The newest sequence and the meters read in one transaction, so a record that lands during the read
+// counts in the meters or in the late spend after it, never in both and never in neither.
+export function readRunUsage(
   context: Pick<TasksContext, 'log' | 'runSettings' | 'runners'>,
   run: TaskRun,
 ): Promise<RunUsageRead> {
-  const [newest] = await readRecords(context.log, {
-    afterSequence: 0,
-    thread: run.taskID,
-    order: 'newest',
-    limit: 1,
+  return withWriteTransaction(context.log.writer, async (tx) => {
+    const inTransaction = toTransactionContext(context, tx);
+
+    const [newest] = await readRecords(inTransaction.log, {
+      afterSequence: 0,
+      thread: run.taskID,
+      order: 'newest',
+      limit: 1,
+    });
+
+    const used = { turns: 0, dollars: 0 };
+
+    for (const meter of context.runSettings.meters) {
+      used[meter.name] = await meter.read(inTransaction, run);
+    }
+
+    return { used, throughSequence: newest?.record.sequence ?? 0 };
   });
-
-  const used = { turns: 0, dollars: 0 };
-
-  for (const meter of context.runSettings.meters) {
-    used[meter.name] = await meter.read(context, run);
-  }
-
-  return { used, throughSequence: newest?.record.sequence ?? 0 };
 }

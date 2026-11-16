@@ -156,7 +156,7 @@ async function runStages(deps: WorkerDeps, plan: WorkerPlan, run: WorkerRun): Pr
   };
 
   try {
-    await removeFailedDestroys(deps);
+    await raceStop(removeFailedDestroys(deps), run.stops.hard);
 
     run.held.sandbox = await createSandbox(deps, run);
     run.held.endpoint = await startToolRun(deps, plan, run);
@@ -379,24 +379,23 @@ async function releaseWorkerRun(deps: WorkerDeps, run: WorkerRun): Promise<void>
 
   if (sandbox !== null) {
     startWorkerRemoval(deps, sandbox, free);
-  } else if (lateSandbox === null) {
-    free();
-  } else {
-    void removeLateSandbox(deps, lateSandbox, free);
+
+    return;
+  }
+
+  free();
+
+  if (lateSandbox !== null) {
+    void removeLateSandbox(deps, lateSandbox);
   }
 }
 
-// A create that a stop beat may still hand over a sandbox, and the slot waits for its destroy.
-async function removeLateSandbox(
-  deps: WorkerDeps,
-  creating: Promise<Sandbox>,
-  release: () => void,
-): Promise<void> {
-  try {
-    const late = await creating;
+// A create that a stop beat may still hand over a sandbox, which goes at once. The slot is already
+// free, because a create that never returns must not hold it.
+async function removeLateSandbox(deps: WorkerDeps, creating: Promise<Sandbox>): Promise<void> {
+  const late = await creating.catch(() => null);
 
-    startWorkerRemoval(deps, late, release);
-  } catch {
-    release();
+  if (late !== null) {
+    startWorkerRemoval(deps, late, () => {});
   }
 }

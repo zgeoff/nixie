@@ -14,6 +14,7 @@ export { readPreviousRun } from './run/read-previous-run';
 export type { RunSince } from './run/read-run-since';
 export { readRunSince } from './run/read-run-since';
 export { readRunRecords } from './run/read-run-records';
+export { toTransactionContext } from './run/to-transaction-context';
 export { readRunState } from './run/read-run-state';
 export { toRunEndCause } from './run/run-end-cause';
 export type { RunEndCause } from './run/run-end-cause';

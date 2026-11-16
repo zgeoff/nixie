@@ -1,11 +1,14 @@
 import { expect, test } from 'bun:test';
 import { writeRecords } from '@heynixie/log';
+import type { RunMeter } from '@heynixie/tasks';
 import { claimTask, readOpenRun, writeFailedTurnSpend } from '@heynixie/tasks';
+import { waitForCondition } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
 import { buildSeeder } from '../test-utils/build-seeder';
 import { startTestTasks } from '../test-utils/start-test-tasks';
 import { workerRunStartedCodec } from '../worker/worker-run-started-codec';
 import { workerTurnEndedCodec } from '../worker/worker-turn-ended-codec';
+import { buildDollarsMeter } from './build-dollars-meter';
 import { readLateSpend } from './read-late-spend';
 import { readRunUsage } from './read-run-usage';
 
@@ -182,4 +185,51 @@ test('it counts no dollars of a worker that a task run other than this one start
   const dollars = await readLateSpend(ctx.tasks.context, run, usage.throughSequence, 'step-a');
 
   expect(dollars).toBe(0);
+});
+
+test('it counts a charge that lands while the meters read once, in the meters or in the late spend', async () => {
+  const ctx = await setupTest();
+  const run = await ctx.startRun();
+
+  const landing: Promise<unknown>[] = [];
+  const state = { isLanded: false };
+  const realDollars = buildDollarsMeter(() => null);
+
+  const dollars: RunMeter = {
+    ...realDollars,
+    read: async (readContext, readRun) => {
+      landing.push(
+        (async () => {
+          await writeFailedTurnSpend(ctx.tasks.context, {
+            taskID: run.taskID,
+            taskRunID: run.runID,
+            dollars: 0.01,
+          });
+
+          state.isLanded = true;
+        })(),
+      );
+
+      // A read that holds the writer keeps the charge from landing, so the wait ends at its limit.
+      await waitForCondition(() => state.isLanded, { timeoutMs: 200 }).catch(() => {});
+
+      return realDollars.read(readContext, readRun);
+    },
+  };
+
+  const context = {
+    ...ctx.tasks.context,
+    runSettings: {
+      ...ctx.tasks.context.runSettings,
+      meters: [ctx.tasks.context.runSettings.meters[0], dollars] as const,
+    },
+  };
+
+  const usage = await readRunUsage(context, run);
+
+  await Promise.all(landing);
+
+  const late = await readLateSpend(ctx.tasks.context, run, usage.throughSequence, 'step-a');
+
+  expect(usage.used.dollars + late).toBeCloseTo(0.01, 10);
 });

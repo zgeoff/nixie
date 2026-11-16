@@ -14,6 +14,12 @@ interface SetupConfig {
   // the first sandbox's first destroy fails
   readonly isFirstDestroyFailing?: boolean;
 
+  // the failed destroy's second try never ends
+  readonly isRetryStuck?: boolean;
+
+  // the first sandbox's create never returns
+  readonly isFirstCreateStuck?: boolean;
+
   readonly limits?: Readonly<Record<string, number>>;
   readonly workerRuns?: { readonly max: number; readonly whenFull: 'wait' | 'error' };
 }
@@ -61,6 +67,12 @@ async function setupTest(config: SetupConfig = {}) {
   const sandboxes: typeof host.sandboxes = {
     ...host.sandboxes,
     create: async (spec) => {
+      if (config.isFirstCreateStuck === true && !state.isCreated) {
+        state.isCreated = true;
+
+        return new Promise<never>(() => {});
+      }
+
       const sandbox = await host.sandboxes.create(spec);
 
       const isFailing = config.isFirstDestroyFailing === true && !state.isCreated;
@@ -74,6 +86,10 @@ async function setupTest(config: SetupConfig = {}) {
 
           if (isFailing && destroys.length === 1) {
             throw new Error('the daemon did not answer');
+          }
+
+          if (config.isRetryStuck === true && destroys.length === 2) {
+            await new Promise<never>(() => {});
           }
 
           await sandbox.destroy();
@@ -407,4 +423,101 @@ test('it tries a failed destroy again before the next run creates its sandbox', 
   const remaining = await ctx.sandboxes.list(first);
 
   expect(remaining).toStrictEqual([]);
+});
+
+test('it ends a run whose failed-destroy retry never ends, when its minutes pass', async () => {
+  const ctx = await setupTest({
+    isFirstDestroyFailing: true,
+    isRetryStuck: true,
+    limits: { minutes: 1 },
+  });
+
+  ctx.guest.addKindReplies('worker', { text: 'One.' });
+
+  await ctx.callWorker({ question: 'First?' });
+
+  await waitForCondition(() => ctx.destroys.length === 1);
+
+  const second = ctx.callWorker({ question: 'Second?' });
+
+  await waitForCondition(() => ctx.destroys.length === 2);
+
+  ctx.clock.advance(60_000);
+
+  const outcome = await second;
+  const ended = await ctx.readKinds(['worker.run_ended']);
+
+  expect(outcome).toStrictEqual({
+    status: 'error',
+    message: expect.toInclude('stopped at its minutes limit of 1'),
+  });
+
+  expect(ended).toHaveLength(2);
+});
+
+test('it ends a run whose failed-destroy retry never ends, when its step aborts', async () => {
+  const ctx = await setupTest({ isFirstDestroyFailing: true, isRetryStuck: true });
+
+  ctx.guest.addKindReplies('worker', { text: 'One.' });
+
+  await ctx.callWorker({ question: 'First?' });
+
+  await waitForCondition(() => ctx.destroys.length === 1);
+
+  const second = ctx.callWorker({ question: 'Second?' });
+
+  await waitForCondition(() => ctx.destroys.length === 2);
+
+  ctx.caller.abort(new Error('the step ended'));
+
+  expect(second).rejects.toThrowWithMessage(Error, 'the step ended');
+
+  await second.catch(() => {});
+
+  const ended = await ctx.readKinds(['worker.run_ended']);
+
+  expect(ended).toHaveLength(2);
+});
+
+test('it frees the slot of a run whose sandbox create never returns, when its minutes pass', async () => {
+  const ctx = await setupTest({
+    isFirstCreateStuck: true,
+    limits: { minutes: 1 },
+    workerRuns: { max: 1, whenFull: 'error' },
+  });
+
+  ctx.guest.addKindReplies('worker', { text: 'Second.' });
+
+  const first = ctx.callWorker({ question: 'First?' });
+
+  await waitForCondition(async () => {
+    const started = await ctx.readKinds(['worker.run_started']);
+
+    return started.length === 1;
+  });
+
+  ctx.clock.advance(60_000);
+
+  const stopped = await first;
+
+  expect(stopped).toStrictEqual({
+    status: 'error',
+    message: expect.toInclude('stopped at its minutes limit of 1'),
+  });
+
+  const second = await ctx.callWorker({ question: 'Second?' });
+
+  expect(second).toStrictEqual({
+    status: 'ok',
+    result: {
+      workerRunID: expect.toBeString(),
+      answer: 'Second.',
+      used: {
+        minutes: 0,
+        turns: expect.toBeNumber(),
+        tokens: expect.toBeNumber(),
+        dollars: expect.toBeNumber(),
+      },
+    },
+  });
 });
