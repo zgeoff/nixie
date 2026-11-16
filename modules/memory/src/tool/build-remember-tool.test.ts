@@ -1,5 +1,6 @@
 import { expect, test } from 'bun:test';
 import { buildTestClock } from '@heynixie/testing';
+import invariant from 'tiny-invariant';
 import { startTestMemory } from '../test-utils';
 import { buildMockCheckerAnswer } from '../test-utils/build-mock-checker-answer';
 import { buildMockToolContext } from '../test-utils/build-mock-tool-context';
@@ -245,5 +246,78 @@ test('it reads the source outside for a write from a photo, whatever its quote',
     status: 'ok',
     sources: ['outside'],
     args: { ...input, subject: 'owner' },
+  });
+});
+
+test("it reads the owner source of a granted task's remember from the event on the conversation's thread", async () => {
+  const memory = await startTestMemory();
+
+  const sequence = await writeOwnerMessageRecord(memory.log, {
+    thread: 'conversation',
+    text: 'I take my coffee black',
+    spans: [{ start: 0, end: 22, source: 'typed' }],
+  });
+
+  const input = {
+    text: 'Takes coffee black',
+    gist: 'black coffee',
+    topic: 'food',
+    quote: 'I take my coffee black',
+    eventID: `#${String(sequence)}`,
+  };
+
+  const facts = await buildRememberTool(memory.store).resolvePolicyFacts?.(
+    input,
+    buildMockToolContext({ thread: 'task-1', logThread: 'conversation' }),
+  );
+
+  expect(facts).toStrictEqual({
+    status: 'ok',
+    sources: ['owner', 'task'],
+    args: { ...input, subject: 'owner' },
+  });
+});
+
+test("it reads the source outside and the gate finds no quote when a granted task's quote has no event and sits only on the conversation's thread", async () => {
+  const memory = await startTestMemory({
+    gate: { check: () => Promise.resolve(buildMockCheckerAnswer({ verdict: 'asserted' })) },
+  });
+
+  await writeOwnerMessageRecord(memory.log, {
+    thread: 'conversation',
+    text: 'I take my coffee black',
+    spans: [{ start: 0, end: 22, source: 'typed' }],
+  });
+
+  const input = {
+    text: 'Takes coffee black',
+    gist: 'black coffee',
+    topic: 'food',
+    quote: 'I take my coffee black',
+  };
+
+  const context = buildMockToolContext({ thread: 'task-1', logThread: 'conversation' });
+  const tool = buildRememberTool(memory.store);
+
+  const facts = await tool.resolvePolicyFacts?.(input, context);
+
+  const outcome = await tool.run(
+    { callID: 'call-1', tool: 'memory.remember', input, toolUseID: null },
+    context,
+  );
+
+  expect(facts).toStrictEqual({
+    status: 'ok',
+    sources: ['outside', 'task'],
+    args: { ...input, subject: 'owner' },
+  });
+
+  invariant(outcome.status === 'ok');
+
+  expect(outcome.result).toStrictEqual({
+    status: 'proposed',
+    proposalID: expect.toBeString(),
+    merged: false,
+    reason: expect.toStartWith('no_quote:'),
   });
 });

@@ -346,6 +346,7 @@ test('it names who made a proposal from outside the conversation, without its re
     caller: {
       origin: 'task',
       thread: 'task-garden',
+      logThread: 'task-garden',
       taskID: 'task-garden',
       runID: 'task-garden',
       model: 'claude-test-1',

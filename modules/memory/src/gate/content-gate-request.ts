@@ -13,6 +13,9 @@ export interface ContentGateRequest {
   readonly isPinned: boolean;
   readonly thread: string;
 
+  // the thread a cited event is read from
+  readonly logThread: string;
+
   readonly until: number | null;
 }
 

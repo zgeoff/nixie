@@ -311,6 +311,7 @@ test('it proposes a retirement of an item the thread never read', async () => {
     caller: {
       origin: 'conversation',
       thread: 'conversation',
+      logThread: 'conversation',
       taskID: 'conversation',
       runID: 'conversation',
       model: 'claude-opus-5-5',
@@ -335,6 +336,7 @@ test('it proposes a retirement that cites no intent quote', async () => {
     caller: {
       origin: 'conversation',
       thread: 'conversation',
+      logThread: 'conversation',
       taskID: 'conversation',
       runID: 'conversation',
       model: 'claude-opus-5-5',
@@ -378,6 +380,7 @@ test('it proposes a retirement the checker does not confirm', async () => {
     caller: {
       origin: 'conversation',
       thread: 'conversation',
+      logThread: 'conversation',
       taskID: 'conversation',
       runID: 'conversation',
       model: 'claude-opus-5-5',
@@ -446,6 +449,7 @@ test('it refuses a retirement of a retired item before any check runs', async ()
     caller: {
       origin: 'conversation',
       thread: 'conversation',
+      logThread: 'conversation',
       taskID: 'conversation',
       runID: 'conversation',
       model: 'claude-opus-5-5',
@@ -471,6 +475,7 @@ test('it seals a retirement proposal with the item text you review', async () =>
     caller: {
       origin: 'conversation',
       thread: 'conversation',
+      logThread: 'conversation',
       taskID: 'conversation',
       runID: 'conversation',
       model: 'claude-opus-5-5',

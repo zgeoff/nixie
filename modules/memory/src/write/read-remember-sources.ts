@@ -41,7 +41,7 @@ async function probeRememberQuote(
           window: parts.context.gate.limits.evidenceWindow,
         })
       : await readEventEvidence(log, {
-          thread: request.caller.thread,
+          thread: request.caller.logThread,
           quote,
           eventID: request.eventID,
         });

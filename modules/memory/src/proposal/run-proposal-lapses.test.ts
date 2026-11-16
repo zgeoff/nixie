@@ -50,6 +50,7 @@ test('it never lapses a proposal before its lapse time', async () => {
     caller: {
       origin: 'conversation',
       thread: 'conversation',
+      logThread: 'conversation',
       taskID: 'conversation',
       runID: 'conversation',
       model: 'claude-opus-5-5',

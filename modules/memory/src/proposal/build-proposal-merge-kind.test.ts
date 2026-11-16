@@ -18,6 +18,7 @@ test("it renders a write from outside that merged into the conversation's pendin
   const caller = {
     origin: 'conversation' as const,
     thread: 'conversation',
+    logThread: 'conversation',
     taskID: 'conversation',
     runID: 'run-1',
     model: 'claude-test-1',
@@ -29,7 +30,7 @@ test("it renders a write from outside that merged into the conversation's pendin
 
   await ctx.memory.store.writes.remember({
     text: 'Keeps bees',
-    caller: { ...caller, origin: 'task', thread: 'task-7', taskID: 'task-7' },
+    caller: { ...caller, origin: 'task', thread: 'task-7', logThread: 'task-7', taskID: 'task-7' },
   });
 
   const note = await readEventsNote(
@@ -54,6 +55,7 @@ test('it names the owner in general terms when the configuration sets no name', 
   const caller = {
     origin: 'conversation' as const,
     thread: 'conversation',
+    logThread: 'conversation',
     taskID: 'conversation',
     runID: 'run-1',
     model: 'claude-test-1',
@@ -67,6 +69,7 @@ test('it names the owner in general terms when the configuration sets no name', 
       ...caller,
       origin: 'task',
       thread: 'task-1',
+      logThread: 'task-1',
       taskID: 'task-1',
     },
   });
@@ -90,6 +93,7 @@ test('it leaves out a merge into a proposal that closed before the next turn', a
   const caller = {
     origin: 'conversation' as const,
     thread: 'conversation',
+    logThread: 'conversation',
     taskID: 'conversation',
     runID: 'run-1',
     model: 'claude-test-1',
@@ -99,7 +103,7 @@ test('it leaves out a merge into a proposal that closed before the next turn', a
 
   await ctx.memory.store.writes.remember({
     text: 'Keeps bees',
-    caller: { ...caller, origin: 'task', thread: 'task-7', taskID: 'task-7' },
+    caller: { ...caller, origin: 'task', thread: 'task-7', logThread: 'task-7', taskID: 'task-7' },
   });
 
   const [pending] = await ctx.memory.store.proposals.listPending();

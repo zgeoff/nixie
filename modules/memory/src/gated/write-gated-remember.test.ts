@@ -2019,3 +2019,53 @@ test('it refuses a photo source that names a message that is not yours', async (
 
   expect(write).rejects.toMatchObject({ code: 'IMAGE_SOURCE_REFUSED' });
 });
+
+test("it reads a cited event on the caller's log thread", async () => {
+  const memory = await startTestMemory({
+    gate: { check: () => Promise.resolve(buildMockCheckerAnswer()) },
+  });
+
+  const sequence = await writeOwnerMessageRecord(memory.log, {
+    thread: 'conversation',
+    text: 'I take my coffee black',
+    spans: [{ start: 0, end: 22, source: 'typed' }],
+  });
+
+  const outcome = await memory.store.writes.remember({
+    text: 'Takes coffee black',
+    quote: 'I take my coffee black',
+    eventID: sequence,
+    caller: buildMockWriteCaller({ origin: 'task', thread: 'task-4', logThread: 'conversation' }),
+  });
+
+  expect(outcome).toStrictEqual({
+    status: 'applied',
+    itemID: expect.toBeString(),
+    version: 1,
+  });
+});
+
+test("it reads the quote window of a write on the caller's own thread, not its log thread", async () => {
+  const memory = await startTestMemory({
+    gate: { check: () => Promise.resolve(buildMockCheckerAnswer()) },
+  });
+
+  await writeOwnerMessageRecord(memory.log, {
+    thread: 'conversation',
+    text: 'I take my coffee black',
+    spans: [{ start: 0, end: 22, source: 'typed' }],
+  });
+
+  const outcome = await memory.store.writes.remember({
+    text: 'Takes coffee black',
+    quote: 'I take my coffee black',
+    caller: buildMockWriteCaller({ origin: 'task', thread: 'task-4', logThread: 'conversation' }),
+  });
+
+  expect(outcome).toStrictEqual({
+    status: 'proposed',
+    proposalID: expect.toBeString(),
+    merged: false,
+    reason: 'no_quote',
+  });
+});

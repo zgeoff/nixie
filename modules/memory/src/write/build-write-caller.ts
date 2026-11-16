@@ -8,6 +8,7 @@ export function buildWriteCaller(context: ToolContext): WriteCaller {
   return {
     origin: thread === conversationTaskID ? 'conversation' : 'task',
     thread,
+    logThread: context.run.logThread,
     taskID: thread,
     runID: context.run.runID,
     model: context.run.model.model,

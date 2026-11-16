@@ -69,6 +69,9 @@ export type ReviewReason = (typeof reviewReasons)[number];
 export interface WriteCaller {
   readonly origin: 'conversation' | 'task';
   readonly thread: string;
+
+  // the thread a cited event is read from: ToolRun.logThread
+  readonly logThread: string;
   readonly taskID: string;
   readonly runID: string;
   readonly model: string;

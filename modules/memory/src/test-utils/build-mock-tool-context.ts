@@ -9,7 +9,7 @@ export function buildMockToolContext(
     run: {
       runID: faker.string.uuid(),
       thread: 'conversation',
-      logThread: 'conversation',
+      logThread: overrides.thread ?? 'conversation',
       tools: [],
       model: {
         model: `claude-${faker.lorem.word()}-${String(faker.number.int({ min: 1, max: 9 }))}`,

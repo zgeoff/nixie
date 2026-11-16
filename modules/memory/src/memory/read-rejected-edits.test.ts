@@ -77,6 +77,7 @@ test('it leaves out a rejected edit from outside the conversation', async () => 
     caller: {
       origin: 'task',
       thread: 'task-garden',
+      logThread: 'task-garden',
       taskID: 'task-garden',
       runID: 'task-garden',
       model: 'claude-test-1',

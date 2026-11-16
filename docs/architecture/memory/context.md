@@ -238,10 +238,12 @@ tool refuses an image that would pass either cap.
 A memory write that quotes a message passes that message's event ID with its quote, from the
 message's stamp in the session or from a log read entry. The content gate then checks the quote
 against that one record in place of the recent window, under the same quote rules: the record must
-be a message the user sent in the calling thread, and the quote must lie in text the user typed. A
-reply or a tool result never backs a write, because nobody typed it, so a quote that only a fetched
-page holds becomes a proposal. The token check and the checker run as for any other write
-([the content gate](./writes.md#the-content-gate)).
+be a message the user sent on the thread the caller may read (its own, or the conversation's under
+the log grant), and the quote must lie in text the user typed. A reply or a tool result never backs
+a write, because nobody typed it, so a quote that only a fetched page holds becomes a proposal. The
+token check and the checker run as for any other write
+([the content gate](./writes.md#the-content-gate)). An uncited quote from a task with the grant
+searches the task's own thread, so it becomes a proposal with `no_quote`.
 
 ## Forgetting and the live session
 

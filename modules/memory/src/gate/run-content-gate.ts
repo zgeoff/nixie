@@ -36,7 +36,7 @@ export async function runContentGate(
           window: context.gate.limits.evidenceWindow,
         })
       : await readEventEvidence(context.log, {
-          thread: request.thread,
+          thread: request.logThread,
           quote: request.quote,
           eventID: request.eventID,
         });

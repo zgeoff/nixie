@@ -20,7 +20,7 @@ test('it applies overrides on top of the defaults', () => {
     run: {
       runID: expect.toBeString(),
       thread: 'task-3',
-      logThread: 'conversation',
+      logThread: 'task-3',
       tools: [],
       model: { model: 'model-a', profile: 'fast' },
     },
