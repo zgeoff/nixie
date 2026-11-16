@@ -13,6 +13,7 @@ import {
   writeTestTriggerFire,
   writeTestTriggerSkip,
 } from '@heynixie/tasks/test-utils';
+import invariant from 'tiny-invariant';
 import { buildTestClient } from '../test-utils/build-test-client';
 import { createDeviceSession } from '../test-utils/create-device-session';
 import { startTestAPI } from '../test-utils/start-test-api';
@@ -262,9 +263,8 @@ test(
 
     const tomatoesTask = defined.definitions[0]?.taskID;
 
-    if (tomatoes === undefined || tomatoesTask === undefined || tomatoesTask === null) {
-      throw new Error('the seed bound no task');
-    }
+    invariant(tomatoes);
+    invariant(tomatoesTask);
 
     ctx.definitionStore.add(tomatoes.definitionHash, {});
 
@@ -290,8 +290,21 @@ test(
 
     const listed = await ctx.client.tasks.listEnded({ limit: 1 });
 
-    expect(listed.tasks.map((task) => [task.taskID, task.name])).toStrictEqual([
-      [tomatoesTask, 'Water the tomatoes'],
+    expect(listed.tasks).toStrictEqual([
+      {
+        actions: { cancelled: 0, queued: 0, started: 0 },
+        brief: 'Water the beds.',
+        controls: ['pause', 'resume', 'stop', 'restart', 'close', 'interrupt'],
+        disposable: null,
+        isPauseRequested: false,
+        isPausedByNixie: false,
+        isTakingMessages: false,
+        lastActivityAt: expect.toBeValidDate(),
+        name: 'Water the tomatoes',
+        runner: 'sandbox',
+        state: 'ready',
+        taskID: tomatoesTask,
+      },
     ]);
   },
   // oxlint-disable-next-line zgeoff/max-test-timeout -- 9 s locally; floor: 1,001 tasks write 4 log records each at about 1.5 ms a record
