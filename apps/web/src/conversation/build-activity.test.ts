@@ -667,3 +667,26 @@ test('it makes an activity item of the record that created a proposal', () => {
     { kind: 'proposal', record, proposal: { proposalID: 'c3d7e9a1', shortID: 'xk3p9q2w7a' } },
   ]);
 });
+
+test('it keeps a definition change as an item of its own with its notice', () => {
+  const notice = {
+    definitionID: 'water-the-tomatoes',
+    name: 'Water the tomatoes',
+    operation: 'add',
+    shortID: 'k3x9m2p7qa',
+    changeID: '0b9d8f0e-6f1c-4d2a-9b7e-3c5a1d2e4f60',
+    rendered: 'every Friday at 08:00',
+    next: 'Fri 12 Mar',
+    state: 'in_force',
+    isUnreadable: false,
+  } as const;
+
+  const changed = buildMockLogRecord({
+    kind: 'definition.changed',
+    definitionNotice: notice,
+    sequence: 1,
+    thread: 'conversation',
+  });
+
+  expect(buildActivity([changed])).toStrictEqual([{ kind: 'definition', record: changed, notice }]);
+});
