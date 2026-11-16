@@ -101,7 +101,7 @@ test.each([
 test('it writes no tool server timeout when the tool-call wait is null', () => {
   const ctx = setupTest();
 
-  expect(ctx.buildConfig(null).split('\n')).not.toSatisfyAny((line) =>
+  expect(ctx.buildConfig(null).split('\n')).not.toSatisfyAny((line: string) =>
     line.startsWith('tool_timeout_sec'),
   );
 });
