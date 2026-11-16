@@ -63,6 +63,16 @@ test.each([
     { anyOf: [{ type: 'string' }] },
     { anyOf: [{ type: 'string' }, { type: 'null' }] },
   ],
+  [
+    'a new oneOf choice with its own required tag',
+    { oneOf: [{ properties: { kind: { const: 'a' } }, required: ['kind'] }] },
+    {
+      oneOf: [
+        { properties: { kind: { const: 'a' } }, required: ['kind'] },
+        { properties: { kind: { const: 'b' } }, required: ['kind'] },
+      ],
+    },
+  ],
 ])('it finds no breaking change in %s', (_label, released, current) => {
   expect(collectBreakingConfigChanges(released, current)).toStrictEqual([]);
 });
@@ -228,6 +238,39 @@ test.each([
     released: { type: 'object' },
     current: { type: 'object', properties: { label: { type: 'string' } } },
     expected: ['label: constrains a key that any value passed'],
+  },
+  {
+    label: 'a new oneOf choice whose tag another choice holds',
+    released: { oneOf: [{ properties: { kind: { const: 'a' } }, required: ['kind'] }] },
+    current: {
+      oneOf: [
+        { properties: { kind: { const: 'a' } }, required: ['kind'] },
+        { properties: { kind: { const: 'a' } }, required: ['kind'] },
+      ],
+    },
+    expected: ['(root): changes the oneOf choices'],
+  },
+  {
+    label: 'a new oneOf choice whose tag is optional',
+    released: { oneOf: [{ properties: { kind: { const: 'a' } }, required: ['kind'] }] },
+    current: {
+      oneOf: [
+        { properties: { kind: { const: 'a' } }, required: ['kind'] },
+        { properties: { kind: { const: 'b' } } },
+      ],
+    },
+    expected: ['(root): changes the oneOf choices'],
+  },
+  {
+    label: 'a changed oneOf choice beside a new tagged one',
+    released: { oneOf: [{ properties: { kind: { const: 'a' } }, required: ['kind'] }] },
+    current: {
+      oneOf: [
+        { properties: { kind: { const: 'a' } }, required: [] },
+        { properties: { kind: { const: 'b' } }, required: ['kind'] },
+      ],
+    },
+    expected: ['(root): changes the oneOf choices'],
   },
   {
     label: 'a new oneOf choice',
