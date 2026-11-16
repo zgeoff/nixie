@@ -34,6 +34,7 @@ import { readRecordsByKind } from '../test-utils/read-records-by-kind';
 import { runNextStep } from '../test-utils/run-next-step';
 import { startTestTasks } from '../test-utils/start-test-tasks';
 import { takeGuestMessages } from '../test-utils/take-guest-messages';
+import type { ConversationMemory, SessionIndex } from '../types';
 import type { ConversationRunnerOptions } from './start-conversation-runner';
 import { startConversationRunner } from './start-conversation-runner';
 
@@ -43,6 +44,7 @@ interface RunnerConfig {
   readonly toolNames: readonly string[];
   readonly memory?: Pick<ConversationRunnerOptions, 'readTurnNote' | 'loadOrPinSkillCatalog'>;
 
+  readonly index?: SessionIndex;
   readonly image?: string;
   readonly log?: ConversationRunnerOptions['log'];
   readonly clearFetchPauses?: ConversationRunnerOptions['clearFetchPauses'];
@@ -66,6 +68,11 @@ async function setupTest() {
 
   const sandboxes = buildStubSandboxes();
   const tools = buildStubToolEndpoint();
+  const recall = mock<ConversationMemory['recall']>(() => Promise.resolve({ items: [] }));
+
+  const recallMessages = mock<ConversationMemory['recallMessages']>(() =>
+    Promise.resolve({ messages: [] }),
+  );
 
   const writeMessage = (text: string) =>
     writeInboxRecords(tasks.context, [
@@ -81,6 +88,8 @@ async function setupTest() {
     ...tasks,
     seed: buildSeeder(tasks),
     sandboxes,
+    recall,
+    recallMessages,
     runs: tools.runs,
     steps: tools.steps,
     startRunner: (config: RunnerConfig) =>
@@ -101,14 +110,10 @@ async function setupTest() {
         memory: () => ({
           readPinnedCore: () => Promise.resolve([]),
           readPinnedCoreUse: () => Promise.resolve({ items: 0, tokens: 0, budget: 2000 }),
-          readIndex: () => Promise.resolve({ text: '', items: 0, tokens: 0, budget: 0 }),
-          recall: () =>
-            Promise.resolve({
-              items: [],
-              next: null,
-              omitted: { items: [], count: 0, versions: 0 },
-            }),
-          recallMessages: () => Promise.resolve({ messages: [] }),
+          readIndex: () =>
+            Promise.resolve(config.index ?? { text: '', items: 0, tokens: 0, budget: 0 }),
+          recall,
+          recallMessages,
           readShortIDs: () => Promise.resolve(new Map()),
         }),
         clearFetchPauses: config.clearFetchPauses ?? (() => {}),
@@ -125,6 +130,85 @@ async function setupTest() {
     readKinds: (kind: string) => readRecordsByKind(tasks.context.log, kind),
   };
 }
+
+test('it searches memory for no similar item, self-note or message unless the settings ask for one', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  const runner = await ctx.startRunner({
+    models: buildMockModelsConfig(),
+    credential: 'not-a-real-key',
+    toolNames: ['notes_read'],
+  });
+
+  await ctx.sendMessage(runner, 'Where is the bike pump?');
+
+  expect(ctx.recall).toHaveBeenCalledWith(expect.objectContaining({ limit: 0, selfNoteLimit: 0 }));
+  expect(ctx.recallMessages).not.toHaveBeenCalled();
+});
+
+test('it opens a conversation with the memory index right after the pinned memory, and writes no recall record', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  const runner = await ctx.startRunner({
+    models: buildMockModelsConfig(),
+    credential: 'not-a-real-key',
+    toolNames: ['notes_read'],
+    index: {
+      text: 'Your memory index.\nAbout the owner:\n  home (1)  [b7kq2m9xza] spare pump',
+      items: 1,
+      tokens: 28,
+      budget: 3000,
+    },
+  });
+
+  await ctx.sendMessage(runner, 'Hi.');
+
+  const opened = await ctx.readKinds('model.session_opened');
+  const recalled = await ctx.readKinds('memory.recalled');
+
+  const [turn] = ctx.sandboxes.turns;
+  const text = turn?.input.map((message) => message.text).join('\n') ?? '';
+
+  expect(
+    [...text.matchAll(/<system-message type="(?<type>[a-z-]+)"/gu)].map(
+      (match) => match.groups?.['type'],
+    ),
+  ).toStrictEqual(['status', 'pinned-memory', 'memory-index']);
+
+  expect(text).toInclude('- Memory index: 1 item\n- Memory index tokens: 28 of 3000\n');
+  expect(text).toInclude('home (1)  [b7kq2m9xza] spare pump');
+  expect(opened).toMatchObject([{ payload: { status: { index_items: 1, index_tokens: 28 } } }]);
+  expect(recalled).toStrictEqual([]);
+});
+
+test('it opens a conversation with no index block and no index status line at a budget of 0', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  const runner = await ctx.startRunner({
+    models: buildMockModelsConfig(),
+    credential: 'not-a-real-key',
+    toolNames: ['notes_read'],
+    index: { text: '', items: 4, tokens: 0, budget: 0 },
+  });
+
+  await ctx.sendMessage(runner, 'Hi.');
+
+  const opened = await ctx.readKinds('model.session_opened');
+
+  const [turn] = ctx.sandboxes.turns;
+  const text = turn?.input.map((message) => message.text).join('\n') ?? '';
+
+  expect(text).not.toInclude('memory-index');
+  expect(text).not.toInclude('Memory index');
+  expect(opened).toMatchObject([{ payload: { status: { start: 'first' } } }]);
+  expect(opened[0]?.payload).not.toHaveProperty('status.index_items');
+});
 
 test('it records each reply with the model and the profile in force, never what the model claims', async () => {
   const ctx = await setupTest();

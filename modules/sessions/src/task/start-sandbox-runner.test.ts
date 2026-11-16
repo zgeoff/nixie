@@ -1010,6 +1010,65 @@ test('it gives another me the persona and the pinned memory', async () => {
   expect(input).toInclude('Keeps bees on the allotment');
 });
 
+test('it places the memory index after the pinned memory in the opening of a task that reads memory', async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seed.conversationStep();
+
+  await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+    options: { persona: 'default', memory: 'read' },
+  });
+
+  const memory = buildStubMemory({
+    pinned: [],
+    pinnedUse: { items: 0, tokens: 0, budget: 2000 },
+    index: {
+      text: 'Your memory index.\nAbout Robin:\n  boats (1)  [q8w2e4r6ty] canoe stored at the lake',
+      items: 1,
+      tokens: 30,
+      budget: 3000,
+    },
+  });
+
+  const runner = await ctx.startRunner({ memory: () => memory });
+
+  await ctx.runNextStep(runner);
+
+  const [turn] = ctx.guest.turns;
+  const input = turn?.input.map((message) => message.text).join('\n') ?? '';
+
+  expect(
+    [...input.matchAll(/<system-message type="(?<type>[a-z-]+)"/gu)].map(
+      (match) => match.groups?.['type'],
+    ),
+  ).toStrictEqual(['status', 'pinned-memory', 'memory-index']);
+
+  expect(input).toInclude('canoe stored at the lake');
+  expect(memory.readIndex).toHaveBeenCalledOnce();
+});
+
+test('it calls no memory index read for a task with no memory', async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seed.conversationStep();
+
+  await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+    options: { persona: 'default', memory: 'none' },
+  });
+
+  const memory = buildStubMemory({ pinned: [], pinnedUse: { items: 0, tokens: 0, budget: 2000 } });
+
+  const runner = await ctx.startRunner({ memory: () => memory });
+
+  await ctx.runNextStep(runner);
+
+  expect(memory.readIndex).not.toHaveBeenCalled();
+});
+
 test("it searches memory for the brief of a task that reads memory, on the task's first turn", async () => {
   const ctx = await setupTest();
   const starter = await ctx.seed.conversationStep();

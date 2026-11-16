@@ -749,3 +749,89 @@ test('it rebuilds a session from a thread that holds a record of a kind no modul
   expect(text).not.toInclude('harbour.unknown_kind');
   expect(opening.record.recentRecords).toBe(2);
 });
+
+test('it places the memory index right after the pinned memory and adds its 2 status lines', async () => {
+  const ctx = await setupTest();
+
+  const opening = await readSessionOpening(ctx.tasks.context, {
+    taskID: 'conversation',
+    start: { kind: 'first' },
+    beforeSequence: Number.MAX_SAFE_INTEGER,
+    rebuildTokens: 30_000,
+    brief: null,
+    isFirstSession: false,
+    inbox: [],
+    messaging: buildMockTaskMessageView().messaging,
+    times: { defaultZone: 'Australia/Sydney', now: new Date() },
+    pinnedMemory: 'Nothing is pinned in your memory.',
+    index: { text: 'Your memory index.', items: 103, tokens: 2870, budget: 3000 },
+    model: 'claude-test-1',
+    status: [buildStartStatus()],
+  });
+
+  expect(
+    [...opening.blocks.join('\n').matchAll(/<system-message type="(?<type>[a-z-]+)"/gu)].map(
+      (match) => match.groups?.['type'],
+    ),
+  ).toStrictEqual(['status', 'pinned-memory', 'memory-index']);
+
+  expect(opening.blocks.at(0)).toInclude(
+    '- Memory index: 103 items\n- Memory index tokens: 2870 of 3000\n',
+  );
+
+  expect(opening.record.status).toStrictEqual({
+    start: 'first',
+    index_items: 103,
+    index_tokens: 2870,
+  });
+});
+
+test('it leaves out the memory index block and its status lines at a budget of 0', async () => {
+  const ctx = await setupTest();
+
+  const opening = await readSessionOpening(ctx.tasks.context, {
+    taskID: 'conversation',
+    start: { kind: 'first' },
+    beforeSequence: Number.MAX_SAFE_INTEGER,
+    rebuildTokens: 30_000,
+    brief: null,
+    isFirstSession: false,
+    inbox: [],
+    messaging: buildMockTaskMessageView().messaging,
+    times: { defaultZone: 'Australia/Sydney', now: new Date() },
+    pinnedMemory: 'Nothing is pinned in your memory.',
+    index: { text: '', items: 12, tokens: 0, budget: 0 },
+    model: 'claude-test-1',
+    status: [buildStartStatus()],
+  });
+
+  expect(opening.blocks.join('\n')).not.toInclude('Memory index');
+  expect(opening.blocks.join('\n')).not.toInclude('memory-index');
+  expect(opening.record.status).toStrictEqual({ start: 'first' });
+});
+
+test('it keeps the 2 status lines but leaves out the block when no item is listed under a budget', async () => {
+  const ctx = await setupTest();
+
+  const opening = await readSessionOpening(ctx.tasks.context, {
+    taskID: 'conversation',
+    start: { kind: 'first' },
+    beforeSequence: Number.MAX_SAFE_INTEGER,
+    rebuildTokens: 30_000,
+    brief: null,
+    isFirstSession: false,
+    inbox: [],
+    messaging: buildMockTaskMessageView().messaging,
+    times: { defaultZone: 'Australia/Sydney', now: new Date() },
+    pinnedMemory: null,
+    index: { text: '', items: 0, tokens: 0, budget: 3000 },
+    model: 'claude-test-1',
+    status: [],
+  });
+
+  expect(opening.blocks.join('\n')).not.toInclude('type="memory-index"');
+
+  expect(opening.blocks.at(0)).toInclude(
+    '- Memory index: 0 items\n- Memory index tokens: 0 of 3000',
+  );
+});
