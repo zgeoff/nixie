@@ -161,8 +161,12 @@ test('it fires the weekly memory consolidation example and holds each edit as a 
     { origin: 'task', reviewReason: 'no_quote' },
   ]);
 
-  expect(proposals.map((record) => record.payload['itemID']).toSorted()).toStrictEqual(
-    items.map((item) => item.itemID).toSorted(),
+  expect(
+    proposals
+      .map((record) => String(record.payload['itemID']))
+      .toSorted((first, second) => first.localeCompare(second)),
+  ).toStrictEqual(
+    items.map((item) => item.itemID).toSorted((first, second) => first.localeCompare(second)),
   );
 
   expect(records.some((record) => record.kind === 'memory.consolidation_proposed')).toBe(false);
