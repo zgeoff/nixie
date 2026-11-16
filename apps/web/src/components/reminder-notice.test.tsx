@@ -1,8 +1,11 @@
 import { expect, test } from 'bun:test';
 import { render } from '../test-utils/render';
+import { setupBrowserTimeZone } from '../test-utils/setup-browser-time-zone';
 import { ReminderNotice } from './reminder-notice';
 
 test('it shows the brief as plain text with the set time', () => {
+  setupBrowserTimeZone('Europe/Lisbon');
+
   const rendered = render(
     <ReminderNotice
       reminder={{
@@ -15,6 +18,10 @@ test('it shows the brief as plain text with the set time', () => {
 
   expect(rendered.getByRole('note')).toHaveTextContent(
     'Reminder: Call the dentist about the **crown**. Set for',
+  );
+
+  expect(rendered.getByRole('note')).toHaveTextContent(
+    /Set for(?=.*Tue)(?=.*Mar)(?=.*\b9\b)(?=.*\b0?3:00)/u,
   );
 
   expect(rendered.getByRole('note')).not.toHaveTextContent('late');

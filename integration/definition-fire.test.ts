@@ -1,7 +1,8 @@
 import { expect, test } from 'bun:test';
+import { join } from 'node:path';
 import { readRecords } from '@heynixie/log';
 import { modelsConfigSchema, resolveRoleProfile } from '@heynixie/models';
-import type { PolicyCall } from '@heynixie/policy';
+import type { EffectDeclaration } from '@heynixie/policy';
 import { readStarterDecisionPoint } from '@heynixie/policy/test-utils';
 import { buildStubSandboxes } from '@heynixie/sandbox/test-utils';
 import { buildRunSettings, startConversationRunner, startSandboxRunner } from '@heynixie/sessions';
@@ -14,6 +15,8 @@ import {
 import { claimTask, createConversationTask, writeInboxRecords } from '@heynixie/tasks';
 import { seedDefinitionTask, writeTestTriggerFire } from '@heynixie/tasks/test-utils';
 import { buildTestClock } from '@heynixie/testing';
+import { buildToolRegistry, startToolEndpoint } from '@heynixie/tools';
+import { buildMockToolDefinition, withTestToolClient } from '@heynixie/tools/test-utils';
 import invariant from 'tiny-invariant';
 
 async function setupTest() {
@@ -60,16 +63,39 @@ async function setupTest() {
     policyHash: 'sha256:policy-test',
   };
 
-  const decide = readStarterDecisionPoint((tool) =>
-    tool === 'test.send'
-      ? {
-          effects: ['send'],
-          destinations: ['to'],
-          amount: null,
-          content: ['body'],
-          results: { delivered: 'untrusted' },
-        }
-      : null,
+  const declarations: Record<string, EffectDeclaration> = {
+    'tasks.list': {
+      effects: ['read'],
+      destinations: [],
+      amount: null,
+      content: [],
+      results: { text: 'owner_data' },
+    },
+    'test.send': {
+      effects: ['send'],
+      destinations: ['to'],
+      amount: null,
+      content: ['body'],
+      results: { text: 'untrusted' },
+    },
+    'test.wipe': {
+      effects: ['delete'],
+      destinations: [],
+      amount: null,
+      content: [],
+      results: { text: 'owner_data' },
+    },
+  };
+
+  const registry = buildToolRegistry(
+    Object.entries(declarations).map(([name, declaration]) =>
+      buildMockToolDefinition({
+        name,
+        execution: declaration.effects.includes('read') ? 'direct' : 'queued',
+        input: { properties: { to: { type: 'string' }, body: { type: 'string' } }, required: [] },
+        declaration,
+      }),
+    ),
   );
 
   return {
@@ -122,17 +148,26 @@ async function setupTest() {
         clearFetchPauses: () => {},
         log: () => {},
       }),
-    decide: (call: Pick<PolicyCall, 'tool' | 'toolList' | 'context' | 'definitionID'>) =>
-      decide({
-        args: { to: 'harbour-office@example.org', body: 'The mooring fee is paid.' },
-        destinations: [{ value: 'harbour-office@example.org', replyTarget: false }],
-        sources: [],
-        at: clock.now(),
-        turnMessageSequence: null,
-        onBehalfOf: [],
-        snapshot: 'sha256:test',
-        ...call,
-      }),
+    startToolEndpoint: async () => {
+      const endpoint = await startToolEndpoint({
+        socketDir: join(host.dataDir, 'run-tools'),
+        registry,
+        decide: readStarterDecisionPoint(
+          (tool) => registry.findTool(tool)?.definition.declaration ?? null,
+        ),
+        log: host.context.log,
+        definitions: host.context.definitions,
+        queue: {
+          enqueue: () => Promise.resolve('action-1'),
+          readOpenRepeat: () => Promise.resolve(null),
+          waitForOutcome: () => Promise.resolve(null),
+        },
+      });
+
+      host.defer(() => endpoint.stop());
+
+      return endpoint;
+    },
   };
 }
 
@@ -173,21 +208,52 @@ test('it starts the task run of a fire untrusted, holds it to its version tools 
     sequences: [fireSequence],
   });
 
-  const policy = ctx.steps[0]?.session?.policy;
+  const session = ctx.steps[0]?.session;
 
-  invariant(policy, 'the step opened a session with a policy frame');
+  invariant(session?.policy, 'the step opened a session with a policy frame');
 
   const offered = ctx.runs[0]?.tools ?? [];
 
-  const outside = await ctx.decide({ tool: 'test.send', toolList: ['tasks.list'], ...policy });
-  const past = await ctx.decide({ tool: 'test.send', toolList: offered, ...policy });
+  const endpoint = await ctx.startToolEndpoint();
+
+  const run = await endpoint.startRun({
+    runID: 'run-fire',
+    toolUseMetaKey: null,
+    thread: taskID,
+    tools: offered,
+    model: { model: 'claude-test-errands', profile: 'errands' },
+  });
+
+  const step = run.startStep('step-fire', session);
+
+  const calls = await withTestToolClient(
+    { target: run.target, token: step.token },
+    async (client) => {
+      const listed = await client.listTools();
+      const outside = await client.callTool({ name: 'test.wipe', arguments: {} });
+
+      const past = await client.callTool({
+        name: 'test.send',
+        arguments: { to: 'harbour-office@example.org', body: 'The mooring fee is paid.' },
+      });
+
+      return { listed: listed.tools.map((tool) => tool.name), outside, past };
+    },
+  );
+
+  const after = await readRecords(ctx.context.log, { afterSequence: fireSequence });
+
+  const decisions = after
+    .filter((entry) => entry.record.kind === 'tool_called')
+    .map((entry) => entry.record.decision?.outcome);
 
   const [turn] = ctx.guest.turns;
 
   expect(fire?.record.contentSource).toBeNull();
   expect(offered).toStrictEqual(['tasks.list', 'test.send', 'turn.end_silently', 'task.report']);
+  expect(calls.listed).toStrictEqual(['tasks.list', 'test.send']);
 
-  expect(policy).toStrictEqual({
+  expect(session.policy).toStrictEqual({
     context: 'task',
     definitionID: null,
     onBehalfOf: [],
@@ -195,8 +261,12 @@ test('it starts the task run of a fire untrusted, holds it to its version tools 
     turnMessageSequence: null,
   });
 
-  expect(outside.decision.outcome).toBe('deny');
-  expect(past.decision.outcome).toBe('ask');
+  expect(calls.outside).toMatchObject({
+    isError: true,
+    content: [{ type: 'text', text: "denied: The tool test.wipe is not on this run's tool list." }],
+  });
+
+  expect(decisions).toStrictEqual(['deny', 'ask']);
 
   expect(turn?.input.map((message) => message.text).join('\n')).toInclude(
     '<input name="trigger">\nThis task run was scheduled for Tue 9 Mar, 06:30 and started at 08:15 as a catch-up. Skipped: Mon 8 Mar, 06:30. Times are in Australia/Sydney.\n</input>',

@@ -4,6 +4,7 @@ import { runInPage } from '@zgeoff/rig';
 import { z } from 'zod';
 import { store } from '../mocks/store';
 import { setBrowserFiles } from '../test-utils/set-browser-files';
+import { setupBrowserTimeZone } from '../test-utils/setup-browser-time-zone';
 import { setupSignedInBrowser } from '../test-utils/setup-signed-in-browser';
 import { startBuiltWeb } from '../test-utils/start-built-web';
 import { startFrontProxy } from '../test-utils/start-front-proxy';
@@ -273,6 +274,8 @@ test('it opens the conversation at a message that a hop-limit notice links, behi
 });
 
 test('it shows a reminder with its brief and the time it was set for', async () => {
+  setupBrowserTimeZone('Europe/Lisbon');
+
   const ctx = await setupTest();
   const session = await store.sessions.create({});
 
@@ -296,6 +299,7 @@ test('it shows a reminder with its brief and the time it was set for', async () 
 
       expect(text).toInclude('Reminder: Call the dentist about the crown.');
       expect(text).toInclude('(2 hours 5 minutes late)');
+      expect(text).toMatch(/Set for(?=.*Tue)(?=.*Mar)(?=.*\b9\b)(?=.*\b0?3:00)/u);
     },
     { timeout: 10_000 },
   );
