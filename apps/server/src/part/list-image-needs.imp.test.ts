@@ -194,33 +194,58 @@ test.skipIf(!hasModelHost)(
 
     invariant(first?.body, 'the scripted model received a request');
 
-    // The CLI sends its tools as function and custom items, the nixie tools inside a namespace item
-    // of an additional_tools input item, so a scan of the request's JSON reads them all.
-    const toolNames = [
-      ...JSON.stringify(first.body).matchAll(
-        /"type":"(?:function|custom)","name":"(?<name>[^"]+)"/gu,
-      ),
-    ].map((match) => match.groups?.['name']);
+    // The CLI sends no top-level tools: every tool reaches the model inside the additional_tools
+    // input item, as a namespace of tools. Every tool the model can call is a leaf of that tree.
+    const toolSchema: z.ZodType<RequestTool> = z.lazy(() =>
+      z.looseObject({
+        type: z.string(),
+        name: z.string().nullable().optional(),
+        tools: toolSchema.array().optional(),
+      }),
+    );
+
+    const inputItemSchema = z.looseObject({
+      type: z.string(),
+      role: z.string().optional(),
+      content: z.looseObject({ type: z.string(), text: z.string() }).array().optional(),
+      tools: toolSchema.array().optional(),
+    });
+
+    const body = z
+      .looseObject({ tools: toolSchema.array().optional(), input: inputItemSchema.array() })
+      .parse(first.body);
+
+    // Each tool the model can call, as its namespaces, then its type and name.
+    const listToolPaths = (tools: readonly RequestTool[], prefix = ''): string[] =>
+      tools.flatMap((tool) =>
+        tool.tools === undefined
+          ? [`${prefix}${tool.type}:${tool.name ?? ''}`]
+          : listToolPaths(tool.tools, `${prefix}${tool.name ?? tool.type}/`),
+      );
+
+    const additional = body.input.filter((item) => item.type === 'additional_tools');
+
+    const messages = body.input
+      .filter((item) => item.type === 'message')
+      .map((item) => ({ role: item.role, texts: item.content?.map((part) => part.text) }));
 
     expect(frames).toContain('ended');
+    expect(body.tools ?? []).toStrictEqual([]);
 
-    expect(toolNames).toIncludeSameMembers([
-      'list_mcp_resource_templates',
-      'list_mcp_resources',
-      'read_mcp_resource',
-      'ping',
+    // The first request holds the tools, the system prompt and the input and nothing else: any
+    // other item would be an instruction that nixie did not send.
+    expect(body.input.map((item) => item.type)).toStrictEqual([
+      'additional_tools',
+      'message',
+      'message',
     ]);
 
-    // The first request holds the system prompt and the input and nothing else: any other message
-    // would be an instruction that nixie did not send.
-    const textPartSchema = z.looseObject({ text: z.string() });
-    const messageSchema = z.looseObject({ role: z.string(), content: textPartSchema.array() });
-    const inputItems = z.looseObject({ type: z.string() }).array().parse(first.body.input);
-
-    const messages = inputItems
-      .filter((item) => item.type === 'message')
-      .map((item) => messageSchema.parse(item))
-      .map((item) => ({ role: item.role, texts: item.content.map((part) => part.text) }));
+    expect(additional.flatMap((item) => listToolPaths(item.tools ?? []))).toStrictEqual([
+      'functions/function:list_mcp_resources',
+      'functions/function:list_mcp_resource_templates',
+      'functions/function:read_mcp_resource',
+      'mcp__nixie/function:ping',
+    ]);
 
     expect(messages).toStrictEqual([
       { role: 'developer', texts: ['SYSTEM PROMPT MARKER'] },
@@ -230,3 +255,9 @@ test.skipIf(!hasModelHost)(
     expect(first.headers['authorization']).toBe(`Bearer ${secretValue}`);
   },
 );
+
+interface RequestTool {
+  readonly type: string;
+  readonly name?: string | null | undefined;
+  readonly tools?: readonly RequestTool[] | undefined;
+}

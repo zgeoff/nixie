@@ -1,0 +1,54 @@
+{
+  "codexVersion": "0.166.0",
+  "command": "codex debug models --bundled",
+  "models": [
+    {
+      "slug": "gpt-6-astra",
+      "efforts": ["low", "medium", "high", "xhigh", "max", "ultra"]
+    },
+    {
+      "slug": "gpt-6.1-sol",
+      "efforts": ["low", "medium", "high", "xhigh", "max", "ultra"]
+    },
+    {
+      "slug": "gpt-6.1-terra",
+      "efforts": ["low", "medium", "high", "xhigh", "max", "ultra"]
+    },
+    {
+      "slug": "gpt-6-sol",
+      "efforts": ["low", "medium", "high", "xhigh", "max", "ultra"]
+    },
+    {
+      "slug": "gpt-6-luna",
+      "efforts": ["low", "medium", "high", "xhigh", "max"]
+    },
+    {
+      "slug": "gpt-5.6-sol",
+      "efforts": ["low", "medium", "high", "xhigh", "max", "ultra"]
+    },
+    {
+      "slug": "gpt-5.6-terra",
+      "efforts": ["low", "medium", "high", "xhigh", "max", "ultra"]
+    },
+    {
+      "slug": "gpt-5.6-luna",
+      "efforts": ["low", "medium", "high", "xhigh", "max"]
+    },
+    {
+      "slug": "gpt-daybreak-blue-latest",
+      "efforts": ["low", "medium", "high", "xhigh", "max", "ultra"]
+    },
+    {
+      "slug": "gpt-daybreak-red-latest",
+      "efforts": ["low", "medium", "high", "xhigh", "max", "ultra"]
+    },
+    {
+      "slug": "gpt-5.5",
+      "efforts": ["low", "medium", "high", "xhigh"]
+    },
+    {
+      "slug": "codex-auto-review",
+      "efforts": ["low", "medium", "high", "xhigh", "max"]
+    }
+  ]
+}

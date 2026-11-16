@@ -1,8 +1,8 @@
 import { expect, test } from 'bun:test';
 import { codexEfforts } from '@heynixie/wire';
 import { codexVersion } from '../codex-version';
-import snapshot from '../protocol/bundled-reasoning-efforts.json';
 import { buildModelCatalog } from './build-model-catalog';
+import bundled from './codex-0.166.0-bundled-efforts.json';
 
 test('it holds one entry for the model with every tool switch off', () => {
   expect(buildModelCatalog('house-model-1')).toStrictEqual({
@@ -34,12 +34,16 @@ test('it lists every reasoning effort that nixie takes', () => {
   );
 });
 
-test('it keeps the effort list beside the efforts that the pinned CLI bundles', () => {
-  expect(snapshot.codexVersion).toBe(codexVersion);
+// The CLI's protocol types and JSON schema give an effort as an open string. Its only list is
+// its bundled model catalog: the fixture is the output of `codex debug models --bundled` on the
+// pinned CLI, named by its version, so a new pin writes a new fixture.
+test('it takes the efforts that the pinned CLI bundles, less ultra', () => {
+  expect(bundled.codexVersion).toBe(codexVersion);
 
-  // The CLI's protocol types name an effort as an open string, so the effort list that the CLI
-  // bundles is the source. nixie leaves out `ultra`, which its other harness does not take either.
-  const bundled = snapshot.efforts.filter((effort) => effort !== 'ultra');
+  // nixie leaves out `ultra`, which its other harness does not take either.
+  const efforts = new Set(bundled.models.flatMap((model) => model.efforts));
 
-  expect(new Set<string>(codexEfforts)).toStrictEqual(new Set(bundled));
+  efforts.delete('ultra');
+
+  expect(new Set<string>(codexEfforts)).toStrictEqual(efforts);
 });
