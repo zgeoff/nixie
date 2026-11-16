@@ -11,6 +11,12 @@ import { buildSqliteWorkerDialect } from '../sqlite/build-sqlite-worker-dialect'
 import { readRunPrefix } from '../test-utils/read-run-prefix';
 import { memorySensitiveRemovalMigration } from './0060-memory-sensitive-removal-migration';
 
+interface TaskSequences {
+  readonly created: number;
+  readonly lastInbox: number;
+  readonly updated: number;
+}
+
 async function setupTest() {
   const stack = new AsyncDisposableStack();
 
@@ -74,6 +80,13 @@ async function setupTest() {
         values (${proposalID}, 'item1', 1, 'remember', 0, ${reason}, 'pending',
           ${`hash-${proposalID}`}, 'sealed', 'conversation', 'owner', 'cap', ${sequence}, 1000,
           2000, 1)`.execute(db);
+    },
+    writeTask: async (taskID: string, sequences: TaskSequences): Promise<void> => {
+      await sql`insert into tasks (task_id, is_conversation, state, read_cursor,
+          last_inbox_sequence, committed_steps, step_errors, claimable_at, created_sequence,
+          updated_sequence)
+        values (${taskID}, 1, 'waiting', 0, ${sequences.lastInbox}, 0, 0, 0, ${sequences.created},
+          ${sequences.updated})`.execute(db);
     },
     writeCall: (tool: string): Promise<number> =>
       writeRecord('tool_called', { callID: 'c', runID: 'r', toolUseID: null, tool }),
@@ -317,4 +330,82 @@ test('it changes nothing when it runs a second time', async () => {
   const columns = await ctx.readColumns('memory_items');
 
   expect(columns).not.toContain('is_sensitive');
+});
+
+test("it moves a task that names a removed answer back to the task's earlier inbox record", async () => {
+  const ctx = await setupTest();
+  const earlier = await ctx.writeRecord('owner_message', {});
+
+  await ctx.writeChange(earlier, 'tasks', 'conversation', {
+    task_id: 'conversation',
+    created_sequence: earlier,
+    last_inbox_sequence: earlier,
+    updated_sequence: earlier,
+  });
+
+  const call = await ctx.writeCall('memory.mark_sensitive');
+
+  await ctx.writeRecord('policy.action_proposed', { proposalID: 'a1', callSequence: call });
+
+  const answered = await ctx.writeRecord('policy.action_answered', {
+    proposalID: 'a1',
+    answer: 'approved',
+  });
+
+  const kept = await ctx.writeRecord('task.step_committed', {});
+
+  await ctx.writeChange(kept, 'tasks', 'conversation', {
+    task_id: 'conversation',
+    created_sequence: earlier,
+    last_inbox_sequence: answered,
+    updated_sequence: kept,
+  });
+
+  await ctx.writeTask('conversation', { created: earlier, lastInbox: answered, updated: kept });
+  await ctx.runMigration();
+
+  const change = await readQueryRows(
+    sql`select row from projection_changes where sequence = ${kept} and projection = 'tasks'`,
+    ctx.db,
+    z.object({ row: z.string() }),
+  );
+
+  const task = await readQueryRows(
+    sql`select last_inbox_sequence, updated_sequence from tasks`,
+    ctx.db,
+    z.object({ last_inbox_sequence: z.number(), updated_sequence: z.number() }),
+  );
+
+  expect(change.map((row) => JSON.parse(row.row))).toStrictEqual([
+    {
+      task_id: 'conversation',
+      created_sequence: earlier,
+      last_inbox_sequence: earlier,
+      updated_sequence: kept,
+    },
+  ]);
+
+  expect(task).toStrictEqual([{ last_inbox_sequence: earlier, updated_sequence: kept }]);
+});
+
+test("it removes the gap answer of a removed call's proposal", async () => {
+  const ctx = await setupTest();
+  const call = await ctx.writeCall('memory.mark_sensitive');
+
+  await ctx.writeRecord('policy.action_proposed', { proposalID: 'a1', callSequence: call });
+
+  const answered = await ctx.writeRecord('policy.action_answered', {
+    proposalID: 'a1',
+    answer: 'approved',
+    groupHash: 'g1',
+  });
+
+  await sql`insert into gap_answers (proposal_id, group_hash, answer, answered_at, answered_sequence)
+    values ('a1', 'g1', 'approved', 1, ${answered})`.execute(ctx.db);
+
+  await ctx.runMigration();
+
+  const rows = await sql`select proposal_id from gap_answers`.execute(ctx.db);
+
+  expect(rows.rows).toStrictEqual([]);
 });

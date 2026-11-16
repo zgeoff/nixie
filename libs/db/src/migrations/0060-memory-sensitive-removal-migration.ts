@@ -31,6 +31,7 @@ export const memorySensitiveRemovalMigration: Migration = {
       await requireNoOrphans(tx, removedSet);
       await removeRecords(tx, [...removedSet]);
       await removeProposalRows(tx, proposals.ids);
+      await rewriteTaskSequences(tx, removedSet);
       await requireNoProjectionOrphans(tx, removedSet);
 
       if (removedSet.size > 0) {
@@ -174,11 +175,148 @@ async function removeProposalRows(
       where projection = 'proposals' and row_key in (${sql.join(chunk)})`.execute(tx);
 
     await sql`delete from proposals where proposal_id in (${sql.join(chunk)})`.execute(tx);
+
+    await sql`delete from projection_changes
+      where projection = 'gap_answers' and row_key in (${sql.join(chunk)})`.execute(tx);
+
+    await sql`delete from gap_answers where proposal_id in (${sql.join(chunk)})`.execute(tx);
   }
 }
 
+// An answer to a removed call's proposal is an inbox record, so a task row and its later changes
+// can name it as the last inbox record or the last update. Each such field takes the value it held
+// before that record, from the task's earlier change, or the task's creation when none is left.
+const taskChangeSchema = z.object({ sequence: z.number(), row_key: z.string(), row: z.string() });
+
+const taskRowSchema = z.object({
+  task_id: z.string(),
+  created_sequence: z.number(),
+  last_inbox_sequence: z.number(),
+  updated_sequence: z.number(),
+});
+
+async function rewriteTaskSequences(
+  tx: Transaction<unknown>,
+  removed: ReadonlySet<number>,
+): Promise<void> {
+  if (removed.size === 0) {
+    return;
+  }
+
+  const changes = await readQueryRows(
+    sql`select sequence, row_key, row from projection_changes
+      where projection = 'tasks' and row is not null order by sequence`,
+    tx,
+    taskChangeSchema,
+  );
+
+  const tasks = await readQueryRows(
+    sql`select task_id, created_sequence, last_inbox_sequence, updated_sequence from tasks`,
+    tx,
+    taskRowSchema,
+  );
+
+  const plan = collectTaskSequencePlan(changes, tasks, removed);
+
+  for (const change of plan.changes) {
+    await sql`update projection_changes set row = ${change.row}
+      where sequence = ${change.sequence} and projection = 'tasks'
+        and row_key = ${change.row_key}`.execute(tx);
+  }
+
+  for (const task of plan.tasks) {
+    await sql`update tasks set last_inbox_sequence = ${task.last_inbox_sequence},
+      updated_sequence = ${task.updated_sequence}
+      where task_id = ${task.task_id}`.execute(tx);
+  }
+}
+
+const taskSequenceFields = ['last_inbox_sequence', 'updated_sequence'] as const;
+
+type TaskSequenceField = (typeof taskSequenceFields)[number];
+
+type TaskSequences = Readonly<Record<TaskSequenceField, number>>;
+
+type TaskChange = z.output<typeof taskChangeSchema>;
+
 // A parse with named keys moves them ahead of the others, which would reorder a canonical form.
 const recordSchema = z.record(z.string(), z.unknown());
+
+function collectTaskSequencePlan(
+  changes: readonly TaskChange[],
+  tasks: readonly z.output<typeof taskRowSchema>[],
+  removed: ReadonlySet<number>,
+): { changes: TaskChange[]; tasks: z.output<typeof taskRowSchema>[] } {
+  const latest = new Map<string, TaskSequences>();
+
+  const rewrittenChanges: TaskChange[] = [];
+
+  for (const change of changes) {
+    const row = recordSchema.parse(JSON.parse(change.row));
+    const fallback = latest.get(change.row_key) ?? buildCreatedSequences(row['created_sequence']);
+
+    const next = Object.fromEntries(
+      Object.entries(row).map(([key, value]) => [
+        key,
+        pickTaskSequence(key, value, fallback, removed),
+      ]),
+    );
+
+    latest.set(change.row_key, {
+      last_inbox_sequence: toSequence(next['last_inbox_sequence']),
+      updated_sequence: toSequence(next['updated_sequence']),
+    });
+
+    const text = JSON.stringify(next);
+
+    if (text !== change.row) {
+      rewrittenChanges.push({ ...change, row: text });
+    }
+  }
+
+  const rewrittenTasks = tasks
+    .filter((task) => taskSequenceFields.some((field) => removed.has(task[field])))
+    .map((task) => {
+      const fallback = latest.get(task.task_id) ?? buildCreatedSequences(task.created_sequence);
+
+      return {
+        task_id: task.task_id,
+        created_sequence: task.created_sequence,
+        last_inbox_sequence: removed.has(task.last_inbox_sequence)
+          ? fallback.last_inbox_sequence
+          : task.last_inbox_sequence,
+        updated_sequence: removed.has(task.updated_sequence)
+          ? fallback.updated_sequence
+          : task.updated_sequence,
+      };
+    });
+
+  return { changes: rewrittenChanges, tasks: rewrittenTasks };
+}
+
+function buildCreatedSequences(createdSequence: unknown): TaskSequences {
+  return {
+    last_inbox_sequence: 0,
+    updated_sequence: toSequence(createdSequence),
+  };
+}
+
+function toSequence(value: unknown): number {
+  return typeof value === 'number' ? value : 0;
+}
+
+function pickTaskSequence(
+  key: string,
+  value: unknown,
+  fallback: TaskSequences,
+  removed: ReadonlySet<number>,
+): unknown {
+  if (key === 'last_inbox_sequence' || key === 'updated_sequence') {
+    return typeof value === 'number' && removed.has(value) ? fallback[key] : value;
+  }
+
+  return value;
+}
 
 async function rewriteProposedRecords(tx: Transaction<unknown>): Promise<void> {
   const rows = await readQueryRows(
