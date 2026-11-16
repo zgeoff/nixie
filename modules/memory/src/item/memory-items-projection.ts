@@ -5,7 +5,6 @@ import type { MemoryTables } from '../types';
 import { parseLabelRecord } from '../utils/record/parse-label-record';
 import type { MemoryRecord } from '../utils/record/parse-memory-record';
 import { parseMemoryRecord } from '../utils/record/parse-memory-record';
-import { parseSensitiveRecord } from '../utils/record/parse-sensitive-record';
 import { parseSubjectRecord } from '../utils/record/parse-subject-record';
 
 export const memoryItemsProjection: Projection = {
@@ -23,19 +22,6 @@ export const memoryItemsProjection: Projection = {
         .execute();
 
       return [marked.itemID];
-    }
-
-    const sensitive = parseSensitiveRecord(record);
-
-    if (sensitive?.target === 'item') {
-      await tx
-        .$extendTables<MemoryTables>()
-        .updateTable('memory_items')
-        .set({ is_sensitive: sensitive.isSensitive ? 1 : 0 })
-        .where('item_id', '=', sensitive.itemID)
-        .execute();
-
-      return [sensitive.itemID];
     }
 
     const labelled = parseLabelRecord(record);
@@ -90,7 +76,6 @@ async function applyMemoryRecord(
         kind: 'fact',
         subject: 'owner',
         until: parsed.until,
-        is_sensitive: 0,
         label_edits: 0,
       })
       .execute();

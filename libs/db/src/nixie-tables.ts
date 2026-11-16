@@ -150,7 +150,6 @@ export interface NixieTables {
     readonly kind: string;
     readonly subject: string | null;
     readonly until: number | null;
-    readonly is_sensitive: number;
     readonly label_edits: number;
   };
   readonly memory_labels: {
@@ -214,7 +213,6 @@ export interface NixieTables {
     readonly resolved_sequence: number | null;
     readonly kind: string;
     readonly subject: string | null;
-    readonly is_sensitive: number;
     readonly new_subject: string | null;
     readonly sealed_labels: string | null;
     readonly target_revision: number | null;

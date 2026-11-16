@@ -216,7 +216,6 @@ test('it edits a memory proposal before approving it from the digest, and applie
       evidence: null,
       image: null,
       isPinned: false,
-      isSensitive: false,
       itemID: 'e8a4d2c6-1f3b-4a7e-9c5d-0b6f2e8a1d47',
       kind: 'fact',
       labels: null,
@@ -267,7 +266,6 @@ test('it shows the labels of a label-only memory proposal and the sentence of it
       evidence: null,
       image: null,
       isPinned: false,
-      isSensitive: false,
       itemID: 'c2d81f7a-5b3e-4d9a-8e61-3a7f0b2c9d54',
       kind: 'fact',
       labels: {

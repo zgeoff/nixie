@@ -14,7 +14,7 @@ export interface MemoryItemActionsProps {
   readonly onSettled: (notice: string | null) => void;
 }
 
-type MemoryChange = 'retire' | 'restore' | 'pin' | 'unpin' | 'mark' | 'unmark';
+type MemoryChange = 'retire' | 'restore' | 'pin' | 'unpin';
 
 interface PendingChange {
   readonly change: MemoryChange;
@@ -27,8 +27,6 @@ const labels = {
   restore: 'Restore',
   retire: 'Retire',
   unpin: 'Unpin',
-  mark: 'Mark sensitive',
-  unmark: 'Clear sensitive',
 };
 
 const controls = css({
@@ -89,17 +87,15 @@ function pickChanges(item: MemoryItem): readonly MemoryChange[] {
     return [];
   }
 
-  const sensitive = item.isSensitive ? 'unmark' : 'mark';
-
   if (item.state === 'retired') {
-    return item.isPinned ? ['restore', 'unpin', sensitive] : ['restore', sensitive];
+    return item.isPinned ? ['restore', 'unpin'] : ['restore'];
   }
 
   if (item.isPinned) {
-    return ['retire', 'unpin', sensitive];
+    return ['retire', 'unpin'];
   }
 
-  return ['retire', 'pin', sensitive];
+  return ['retire', 'pin'];
 }
 
 const questions = {
@@ -107,8 +103,6 @@ const questions = {
   restore: 'Restore this item? Recalls find it again.',
   retire: 'Retire this item? Recalls stop finding it, and you can restore it.',
   unpin: 'Unpin this item? Sessions stop opening with it.',
-  mark: 'Mark this item sensitive? Turns stop bringing it up, and nixie finds it only when a request needs it.',
-  unmark: 'Clear the sensitive mark? Turns bring this item up again when a message matches it.',
 };
 
 interface ChangeConfirmationProps {
@@ -127,8 +121,6 @@ const groupLabels = {
   restore: 'Restore this item',
   retire: 'Retire this item',
   unpin: 'Unpin this item',
-  mark: 'Mark this item sensitive',
-  unmark: 'Clear the sensitive mark',
 };
 
 const confirmation = css({
@@ -193,13 +185,6 @@ async function sendChange(client: NixieClient, props: ChangeConfirmationProps): 
     .with('retire', () => client.memory.retire(input))
     .with('restore', () => client.memory.restore(input))
     .with('pin', 'unpin', (change) => client.memory.pin({ ...input, isPinned: change === 'pin' }))
-    .with('mark', 'unmark', (change) =>
-      client.memory.markSensitive({
-        clientActionID: props.actionID,
-        itemID: props.itemID,
-        isSensitive: change === 'mark',
-      }),
-    )
     .exhaustive();
 }
 

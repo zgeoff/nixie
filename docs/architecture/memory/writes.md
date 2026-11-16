@@ -161,17 +161,6 @@ the calling thread, and adds no version, so the store's undo never reaches it an
 item again from the memory view. An unpin of an item outside the core fails and writes nothing. The
 next turn's change note names the unpinned item ([the pinned core](./context.md#the-pinned-core)).
 
-## Sensitive marks
-
-`memory.mark_sensitive` marks an item [sensitive](./store.md#sensitive-items), or clears the mark,
-by the item alone. The mark applies at once and needs no review, because it changes no text and the
-item stays in memory, where the model's own recall still finds it. It records the calling thread,
-adds no version, and fails on a forgotten item. The user changes the mark again from the memory
-view.
-
-A proposal carries a sensitive mark in a record of its own, and an approval marks the item in the
-transaction that creates it. A pending proposal merges only with one that carries the same mark.
-
 ## Self-notes
 
 A self-note is an item whose subject is self: nixie writes it about itself, in its own voice, such

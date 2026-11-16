@@ -24,14 +24,11 @@ const reasonSentences: Readonly<Record<ReviewReason, (words: ReviewWords) => str
     `The message you quoted backed a memory that ${words.owner} forgot, so it can't back a write again.`,
   ambiguous_target: () => "You haven't recalled this version of the item here.",
   pinned: (words) => `Pinned items always wait for ${words.their} review.`,
-  other: () =>
-    'A newer release of nixie sent it to review, for a reason this release does not name.',
+  other: () => 'nixie sent it to review for a reason this release does not name.',
   self_note: (words) =>
     `It's a self-note, which you write about yourself, and every self-note waits for ${words.their} review.`,
   from_photo: (words) =>
     `It comes from a photo, and a memory from a photo waits for ${words.their} review.`,
-  sensitive: (words) =>
-    `It's marked sensitive, and a sensitive memory waits for ${words.their} review.`,
   subject_change: (words) =>
     `It changes whose fact the item is, and every subject change waits for ${words.their} review.`,
   labels: (words) =>

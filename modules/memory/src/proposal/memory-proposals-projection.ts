@@ -6,7 +6,6 @@ import { getRowSubject } from '../utils/get-row-subject';
 import { parseLabelRecord } from '../utils/record/parse-label-record';
 import type { ProposalRecord } from '../utils/record/parse-proposal-record';
 import { parseProposalRecord } from '../utils/record/parse-proposal-record';
-import { parseSensitiveRecord } from '../utils/record/parse-sensitive-record';
 import { parseSubjectRecord } from '../utils/record/parse-subject-record';
 
 export const memoryProposalsProjection: Projection = {
@@ -49,19 +48,6 @@ export const memoryProposalsProjection: Projection = {
         .execute();
 
       return [marked.proposalID];
-    }
-
-    const sensitive = parseSensitiveRecord(record);
-
-    if (sensitive?.target === 'proposal') {
-      await tx
-        .$extendTables<MemoryTables>()
-        .updateTable('memory_proposals')
-        .set({ is_sensitive: 1 })
-        .where('proposal_id', '=', sensitive.proposalID)
-        .execute();
-
-      return [sensitive.proposalID];
     }
 
     const labelled = parseLabelRecord(record);
@@ -158,7 +144,6 @@ async function writeProposalRow(
       created_at: record.recordedAt.getTime(),
       lapse_at: parsed.lapseAt,
       resolved_sequence: null,
-      is_sensitive: 0,
       new_subject: null,
       sealed_labels: null,
       target_revision: null,

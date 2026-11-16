@@ -1,6 +1,6 @@
 {
   "header": {
-    "schemaVersion": 9,
+    "schemaVersion": 10,
     "exportedAt": "2026-10-14T08:00:00.000Z",
     "snapshotHash": "sha256:4be1c0"
   },
@@ -10,7 +10,6 @@
       "shortID": "k3x9m2p7qa",
       "state": "active",
       "isPinned": true,
-      "isSensitive": false,
       "subject": "owner",
       "versions": [
         {
@@ -69,7 +68,6 @@
       "shortID": "w8n4c6t1rb",
       "state": "retired",
       "isPinned": false,
-      "isSensitive": true,
       "subject": "owner",
       "versions": [
         {
@@ -132,7 +130,6 @@
       "shortID": "q4wz8n2kpa",
       "state": "active",
       "isPinned": false,
-      "isSensitive": false,
       "subject": "self",
       "versions": [
         {

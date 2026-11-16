@@ -11,7 +11,6 @@ export function buildMockRetiredForgetItem(
     createdAt: recordedAt,
     forgottenAt: null,
     isPinned: false,
-    isSensitive: false,
     itemID: faker.string.uuid(),
     kind: 'fact',
     lost: { evidenceMessages: 0, proposals: 0 },

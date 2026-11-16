@@ -3,14 +3,13 @@
 The memory export writes every memory item, with its whole history, into one JSON file that the user
 saves where they pick. The file holds a header and then each item in the order it was created. An
 active or retired item carries its subject, owner, shared or [self](./writes.md#self-notes), whether
-it is pinned or [sensitive](./store.md#sensitive-items), and every version, oldest first, with its
-text, the quote it was saved from and its provenance. A forgotten item carries only its ID and the
-time its forget completed, so the file never holds a forgotten item's words. The
-[moments](./moments.md) follow the items, each with its span's records decrypted, every field of a
-tool result included, even what the model never reads, so a tool call keeps its tool's name and a
-result its outcome. A destroyed moment carries only its ID and the time its destroy completed. Only
-the user exports: the model's export tool is denied, and nixie never sends the file anywhere but the
-device that asked.
+it is pinned, and every version, oldest first, with its text, the quote it was saved from and its
+provenance. A forgotten item carries only its ID and the time its forget completed, so the file
+never holds a forgotten item's words. The [moments](./moments.md) follow the items, each with its
+span's records decrypted, every field of a tool result included, even what the model never reads, so
+a tool call keeps its tool's name and a result its outcome. A destroyed moment carries only its ID
+and the time its destroy completed. Only the user exports: the model's export tool is denied, and
+nixie never sends the file anywhere but the device that asked.
 
 [The memory store](./store.md) covers the items, versions and states the export reads, and
 [the memory view](./view.md) covers the page the export button sits on.
@@ -23,19 +22,15 @@ version and the snapshot hash of the definitions in force when the export ran, s
 the version before it reads the items. Each version also keeps the snapshot hash it was written
 under, because a version's checks only make sense against the definitions that ran them. A change to
 the shape raises the schema version, so a file from an older release holds the version of the shape
-it was written in. The schema takes the shape of each version from 5 up, and it never reads a file
-that names an origin this release does not write, so a file that an older release wrote can fail to
-read. In a file of an older shape, the schema reads each item from before the sensitive mark as not
-sensitive. It reads each span record from before version 7, which adds the removal mark, as not
-removed, and each span record from before version 8, which adds the `images` list, as holding no
-images. The list holds a pointer to each image of an owner message, an `n` and a media type, and
-never the image's bytes. A file refuses a field that its version predates, and refuses a missing
-field that its version requires.
+it was written in. The schema reads only the current version, 10, so a file of an earlier version
+fails to read. Each span record carries a removal mark and an `images` list. The list holds a
+pointer to each image of an owner message, an `n` and a media type, and never the image's bytes. A
+file refuses a missing field that the version requires.
 
-From version 9, each readable item carries its current labels and a label history: for each
-labelling, the revision, the text version, whether it was written, edited or backfilled, and the
-gist, topic and triggers. A version 9 file refuses an item with no `labels` field, and an older file
-refuses one that holds it. An item whose labels fail to open exports with no labels.
+Each readable item carries its current labels and a label history: for each labelling, the revision,
+the text version, whether it was written, edited or backfilled, and the gist, topic and triggers. A
+file refuses an item with no `labels` field. An item whose labels fail to open exports with no
+labels.
 
 A version whose key or ciphertext fails exports with no text and no quote, as the memory view shows
 it unreadable. An item a forget began exports as a forgotten one even before the forget's cleanup

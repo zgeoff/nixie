@@ -13,10 +13,9 @@ test.each([
   ['forgotten_evidence', 'The message it quotes was forgotten.'],
   ['ambiguous_target', 'It is unclear which item it changes.'],
   ['pinned', 'It changes a pinned item.'],
-  ['other', 'A newer release of nixie sent it to review.'],
+  ['other', 'nixie sent it to review.'],
   ['self_note', 'nixie wrote it about itself, and every self-note waits for your review.'],
   ['from_photo', 'It comes from a photo you sent, and nixie never takes a photo as your words.'],
-  ['sensitive', 'It was marked sensitive, and every sensitive item waits for your review.'],
   [
     'subject_change',
     'It changes whose fact the item is, and every subject change waits for your review.',

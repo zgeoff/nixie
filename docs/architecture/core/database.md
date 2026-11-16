@@ -94,13 +94,15 @@ included. The copy just written always stays. A restore of older data can leave 
 schema version beside it, and without this rule they would push out the one copy that matches the
 data.
 
-Every migration expands the schema: a new table, a column with a default, or an index. A removal or
-a rename waits until the release before no longer needs the old shape. The schema version therefore
-carries its oldest reader, the oldest schema version whose build can still read and write the
-database. A build that meets a newer schema runs on it unchanged when its own version reaches that
-oldest reader, so reverting one release needs no restore and loses no writes. A release that breaks
-the release before raises the oldest reader. A build older than that refuses to start, and its error
-points at the newest pre-migration copy it can read, or at a backup when no copy exists.
+A migration expands the schema with a new table, a column with a default, or an index. A migration
+that removes or renames what the release before reads or writes, such as a dropped column that the
+release before still inserts, raises the oldest reader in the same release, and the migration
+rewrites the stored data to the current shape. The schema version carries its oldest reader, the
+oldest schema version whose build can still read and write the database. A build that meets a newer
+schema runs on it unchanged when its own version reaches that oldest reader, so reverting one
+release needs no restore and loses no writes. A release that breaks the release before raises the
+oldest reader. A build older than that refuses to start, and its error points at the newest
+pre-migration copy it can read, or at a backup when no copy exists.
 
 A pause of all of nixie raises the stored oldest reader, the reader gate, so a release that has no
 pause refuses the database with the same error. The transaction that pauses saves the open value in

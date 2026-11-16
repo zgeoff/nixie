@@ -51,33 +51,6 @@ test('it exports a self-note with its subject', async () => {
   ]);
 });
 
-test('it exports the sensitive mark of each item, and the file parses back with each mark', async () => {
-  const ctx = await setupTest();
-
-  const sensitive = await ctx.memory.store.remember({
-    text: 'The door code for the spare key box is 4417',
-    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
-  });
-
-  await ctx.memory.store.markSensitive({
-    itemID: sensitive.itemID,
-    isSensitive: true,
-    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
-  });
-
-  const plain = await ctx.memory.store.remember({
-    text: 'The spare key sits under the blue flowerpot',
-    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
-  });
-
-  const text = await ctx.readExportText(Date.parse('2026-10-14T08:00:00.000Z'));
-
-  expect(memoryExportSchema.safeParse(JSON.parse(text)).data?.items).toMatchObject([
-    { itemID: sensitive.itemID, isSensitive: true },
-    { itemID: plain.itemID, isSensitive: false },
-  ]);
-});
-
 test('it exports an active item with its text, its quote and its provenance, and the file matches the schema', async () => {
   const ctx = await setupTest();
 
@@ -104,7 +77,6 @@ test('it exports an active item with its text, its quote and its provenance, and
       shortID: expect.toBeString(),
       state: 'active',
       isPinned: false,
-      isSensitive: false,
       subject: 'owner',
       labels: null,
       labelHistory: [],
@@ -206,7 +178,7 @@ test("it heads the file with the export time, the schema version and the definit
 
   expect(JSON.parse(text)).toStrictEqual({
     header: {
-      schemaVersion: 9,
+      schemaVersion: 10,
       exportedAt: '2026-10-14T08:00:00.000Z',
       snapshotHash: 'sha256:4be1c0',
     },

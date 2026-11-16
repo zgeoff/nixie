@@ -7,7 +7,6 @@ test('it builds a readable retired item at version 2 that destroys nothing beyon
     createdAt: expect.toBeValidDate(),
     forgottenAt: null,
     isPinned: false,
-    isSensitive: false,
     itemID: expect.toBeString(),
     kind: 'fact',
     lost: { evidenceMessages: 0, proposals: 0 },

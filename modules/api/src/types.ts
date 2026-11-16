@@ -113,7 +113,6 @@ export type ViewMemoryStore = Pick<
   | 'undo'
   | 'keep'
   | 'pin'
-  | 'markSensitive'
   | 'forget'
   | 'forgetRetired'
   | 'finishForgets'

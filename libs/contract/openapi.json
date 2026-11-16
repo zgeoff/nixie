@@ -6157,9 +6157,6 @@
                           "isPinned": {
                             "type": "boolean"
                           },
-                          "isSensitive": {
-                            "type": "boolean"
-                          },
                           "itemID": {
                             "type": "string"
                           },
@@ -6242,7 +6239,6 @@
                           "createdAt",
                           "forgottenAt",
                           "isPinned",
-                          "isSensitive",
                           "itemID",
                           "kind",
                           "origin",
@@ -6519,9 +6515,6 @@
                           "isPinned": {
                             "type": "boolean"
                           },
-                          "isSensitive": {
-                            "type": "boolean"
-                          },
                           "itemID": {
                             "type": "string"
                           },
@@ -6610,7 +6603,6 @@
                           "createdAt",
                           "forgottenAt",
                           "isPinned",
-                          "isSensitive",
                           "itemID",
                           "kind",
                           "origin",
@@ -6810,9 +6802,6 @@
                           "isPinned": {
                             "type": "boolean"
                           },
-                          "isSensitive": {
-                            "type": "boolean"
-                          },
                           "itemID": {
                             "type": "string"
                           },
@@ -6895,7 +6884,6 @@
                           "createdAt",
                           "forgottenAt",
                           "isPinned",
-                          "isSensitive",
                           "itemID",
                           "kind",
                           "origin",
@@ -7101,9 +7089,6 @@
                       ]
                     },
                     "isPinned": {
-                      "type": "boolean"
-                    },
-                    "isSensitive": {
                       "type": "boolean"
                     },
                     "itemID": {
@@ -7424,7 +7409,6 @@
                     "createdAt",
                     "forgottenAt",
                     "isPinned",
-                    "isSensitive",
                     "itemID",
                     "kind",
                     "origin",
@@ -8417,9 +8401,6 @@
                                         "isPinned": {
                                           "type": "boolean"
                                         },
-                                        "isSensitive": {
-                                          "type": "boolean"
-                                        },
                                         "itemID": {
                                           "type": "string"
                                         },
@@ -8512,7 +8493,6 @@
                                         "createdAt",
                                         "forgottenAt",
                                         "isPinned",
-                                        "isSensitive",
                                         "itemID",
                                         "kind",
                                         "origin",
@@ -9556,9 +9536,6 @@
                     "isPinned": {
                       "type": "boolean"
                     },
-                    "isSensitive": {
-                      "type": "boolean"
-                    },
                     "itemID": {
                       "type": "string"
                     },
@@ -9896,7 +9873,6 @@
                     "createdAt",
                     "forgottenAt",
                     "isPinned",
-                    "isSensitive",
                     "itemID",
                     "kind",
                     "origin",
@@ -10612,9 +10588,6 @@
                           "isPinned": {
                             "type": "boolean"
                           },
-                          "isSensitive": {
-                            "type": "boolean"
-                          },
                           "itemID": {
                             "type": "string"
                           },
@@ -10716,7 +10689,6 @@
                           "createdAt",
                           "forgottenAt",
                           "isPinned",
-                          "isSensitive",
                           "itemID",
                           "kind",
                           "origin",
@@ -11819,354 +11791,6 @@
                         "message": {
                           "type": "string",
                           "default": "The pin takes the pinned core past its budget"
-                        },
-                        "data": {}
-                      },
-                      "required": [
-                        "defined",
-                        "code",
-                        "status",
-                        "message"
-                      ]
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "defined": {
-                          "const": false
-                        },
-                        "code": {
-                          "type": "string"
-                        },
-                        "status": {
-                          "type": "number"
-                        },
-                        "message": {
-                          "type": "string"
-                        },
-                        "data": {}
-                      },
-                      "required": [
-                        "defined",
-                        "code",
-                        "status",
-                        "message"
-                      ]
-                    }
-                  ]
-                }
-              }
-            }
-          },
-          "503": {
-            "description": "503",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "oneOf": [
-                    {
-                      "type": "object",
-                      "properties": {
-                        "defined": {
-                          "const": true
-                        },
-                        "code": {
-                          "const": "MEMORY_NOT_STARTED"
-                        },
-                        "status": {
-                          "const": 503
-                        },
-                        "message": {
-                          "type": "string",
-                          "default": "The memory store has not started yet"
-                        },
-                        "data": {}
-                      },
-                      "required": [
-                        "defined",
-                        "code",
-                        "status",
-                        "message"
-                      ]
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "defined": {
-                          "const": false
-                        },
-                        "code": {
-                          "type": "string"
-                        },
-                        "status": {
-                          "type": "number"
-                        },
-                        "message": {
-                          "type": "string"
-                        },
-                        "data": {}
-                      },
-                      "required": [
-                        "defined",
-                        "code",
-                        "status",
-                        "message"
-                      ]
-                    }
-                  ]
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/memory/markSensitive": {
-      "post": {
-        "operationId": "memory.markSensitive",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "clientActionID": {
-                    "type": "string",
-                    "format": "uuid"
-                  },
-                  "isSensitive": {
-                    "type": "boolean"
-                  },
-                  "itemID": {
-                    "type": "string",
-                    "minLength": 1,
-                    "maxLength": 200
-                  }
-                },
-                "required": [
-                  "clientActionID",
-                  "isSensitive",
-                  "itemID"
-                ]
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "isSensitive": {
-                      "type": "boolean"
-                    },
-                    "itemID": {
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "isSensitive",
-                    "itemID"
-                  ]
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "401",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "oneOf": [
-                    {
-                      "type": "object",
-                      "properties": {
-                        "defined": {
-                          "const": true
-                        },
-                        "code": {
-                          "const": "UNAUTHORIZED"
-                        },
-                        "status": {
-                          "const": 401
-                        },
-                        "message": {
-                          "type": "string",
-                          "default": "The device session is missing, lapsed or revoked"
-                        },
-                        "data": {}
-                      },
-                      "required": [
-                        "defined",
-                        "code",
-                        "status",
-                        "message"
-                      ]
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "defined": {
-                          "const": false
-                        },
-                        "code": {
-                          "type": "string"
-                        },
-                        "status": {
-                          "type": "number"
-                        },
-                        "message": {
-                          "type": "string"
-                        },
-                        "data": {}
-                      },
-                      "required": [
-                        "defined",
-                        "code",
-                        "status",
-                        "message"
-                      ]
-                    }
-                  ]
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "404",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "oneOf": [
-                    {
-                      "type": "object",
-                      "properties": {
-                        "defined": {
-                          "const": true
-                        },
-                        "code": {
-                          "const": "MEMORY_ITEM_NOT_FOUND"
-                        },
-                        "status": {
-                          "const": 404
-                        },
-                        "message": {
-                          "type": "string",
-                          "default": "No memory item has this ID"
-                        },
-                        "data": {}
-                      },
-                      "required": [
-                        "defined",
-                        "code",
-                        "status",
-                        "message"
-                      ]
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "defined": {
-                          "const": false
-                        },
-                        "code": {
-                          "type": "string"
-                        },
-                        "status": {
-                          "type": "number"
-                        },
-                        "message": {
-                          "type": "string"
-                        },
-                        "data": {}
-                      },
-                      "required": [
-                        "defined",
-                        "code",
-                        "status",
-                        "message"
-                      ]
-                    }
-                  ]
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "409",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "oneOf": [
-                    {
-                      "type": "object",
-                      "properties": {
-                        "defined": {
-                          "const": true
-                        },
-                        "code": {
-                          "const": "CLIENT_ACTION_ID_REUSED"
-                        },
-                        "status": {
-                          "const": 409
-                        },
-                        "message": {
-                          "type": "string",
-                          "default": "The client action ID belongs to a different action"
-                        },
-                        "data": {}
-                      },
-                      "required": [
-                        "defined",
-                        "code",
-                        "status",
-                        "message"
-                      ]
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "defined": {
-                          "const": true
-                        },
-                        "code": {
-                          "const": "STALE_VERSION"
-                        },
-                        "status": {
-                          "const": 409
-                        },
-                        "message": {
-                          "type": "string",
-                          "default": "The memory item has moved past that version"
-                        },
-                        "data": {}
-                      },
-                      "required": [
-                        "defined",
-                        "code",
-                        "status",
-                        "message"
-                      ]
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "defined": {
-                          "const": true
-                        },
-                        "code": {
-                          "const": "WRONG_STATE"
-                        },
-                        "status": {
-                          "const": 409
-                        },
-                        "message": {
-                          "type": "string",
-                          "default": "The memory item is not in a state that change takes"
                         },
                         "data": {}
                       },
@@ -18629,9 +18253,6 @@
                                   "isPinned": {
                                     "type": "boolean"
                                   },
-                                  "isSensitive": {
-                                    "type": "boolean"
-                                  },
                                   "itemID": {
                                     "type": "string"
                                   },
@@ -18740,7 +18361,6 @@
                                       "other",
                                       "self_note",
                                       "from_photo",
-                                      "sensitive",
                                       "subject_change",
                                       "labels",
                                       "ask_rule"
@@ -18834,7 +18454,6 @@
                                   "evidence",
                                   "image",
                                   "isPinned",
-                                  "isSensitive",
                                   "itemID",
                                   "kind",
                                   "labels",
@@ -19477,9 +19096,6 @@
                                       "isPinned": {
                                         "type": "boolean"
                                       },
-                                      "isSensitive": {
-                                        "type": "boolean"
-                                      },
                                       "itemID": {
                                         "type": "string"
                                       },
@@ -19588,7 +19204,6 @@
                                           "other",
                                           "self_note",
                                           "from_photo",
-                                          "sensitive",
                                           "subject_change",
                                           "labels",
                                           "ask_rule"
@@ -19682,7 +19297,6 @@
                                       "evidence",
                                       "image",
                                       "isPinned",
-                                      "isSensitive",
                                       "itemID",
                                       "kind",
                                       "labels",

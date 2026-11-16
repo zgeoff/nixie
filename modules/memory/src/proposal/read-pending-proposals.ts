@@ -63,7 +63,6 @@ export async function readPendingProposals(
         isPinned: row.is_pinned === 1,
         subject: getRowSubject(row),
         newSubject: row.new_subject,
-        isSensitive: row.is_sensitive === 1,
         reason: toReviewReason(row.review_reason),
         actionHash: row.action_hash,
         origin: row.origin,

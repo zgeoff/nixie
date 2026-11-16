@@ -353,6 +353,6 @@ test('it shows an item with who wrote it, from what, and when', async () => {
   const item = await within(active).findByRole('listitem', { name: 'k3m9qa' });
 
   expect(item).toHaveTextContent(
-    /^Plays the celloby the conversation, from your own words · created Feb 1, 2026RetirePinMark sensitiveForgetHistory$/u,
+    /^Plays the celloby the conversation, from your own words · created Feb 1, 2026RetirePinForgetHistory$/u,
   );
 });
