@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test';
 import { readFileSync, readdirSync } from 'node:fs';
 import { join, relative } from 'node:path';
-import { readRecords, removeRecordKey } from '@heynixie/log';
+import { readRecordKeys, readRecords, removeRecordKey } from '@heynixie/log';
 import { buildMockProvenance } from '../test-utils/build-mock-provenance';
 import { createQuotedProposal } from '../test-utils/create-quoted-proposal';
 import { seedBegunPurge } from '../test-utils/seed-begun-purge';
@@ -272,4 +272,58 @@ test('it is the only way a module file reads an item key, apart from the 4 liste
     .toSorted();
 
   expect(importers).toStrictEqual([...allowed.keys()].toSorted());
+});
+
+test('it seals every value of an item no purge reached under the key the release before reads', async () => {
+  const ctx = await setupTest();
+  const sequence = await ctx.writeMessage('I keep bees on the allotment.');
+  const item = await ctx.rememberQuoting(sequence);
+
+  await ctx.memory.store.remember({
+    text: 'Keeps two hives on the allotment',
+    target: item,
+    provenance: buildMockProvenance(),
+  });
+
+  const proposal = await createQuotedProposal(ctx.memory, {
+    message: 'I keep three hives now.',
+    text: 'Keeps three hives on the allotment',
+    quote: 'I keep three hives',
+    target: { itemID: item.itemID, version: 2 },
+  });
+
+  const versions = await ctx.readSequences('memory.version_added');
+  const proposals = await ctx.readSequences('memory.proposed');
+  const labelled = await ctx.readSequences('memory.labelled');
+  const olderKeys = await readRecordKeys(ctx.memory.log, [item.itemID]);
+
+  const keys = await readItemKeys(ctx.memory.log, [
+    { value: 'version', itemID: item.itemID, version: 1, sequence: versions[0] ?? 0 },
+    { value: 'version', itemID: item.itemID, version: 2, sequence: versions[1] ?? 0 },
+    { value: 'proposal', itemID: item.itemID, sequence: proposals[0] ?? 0 },
+    { value: 'labels', itemID: item.itemID, sequence: labelled[0] ?? 0 },
+  ]);
+
+  const kinds = await readRecords(ctx.memory.log, { afterSequence: 0, limit: 100 });
+
+  expect(proposal).toBeDefined();
+  expect(olderKeys.get(item.itemID)).toBeInstanceOf(CryptoKey);
+
+  expect(keys.map((key) => (key.status === 'readable' ? key.keyID : key.status))).toStrictEqual([
+    item.itemID,
+    item.itemID,
+    item.itemID,
+    item.itemID,
+  ]);
+
+  expect(
+    kinds.filter((entry) =>
+      [
+        'memory.version_keyed',
+        'memory.evidence_purge_started',
+        'memory.evidence_purge_closed',
+        'memory.evidence_purged',
+      ].includes(entry.record.kind),
+    ),
+  ).toStrictEqual([]);
 });

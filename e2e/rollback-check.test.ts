@@ -1,5 +1,9 @@
 import { expect, test } from 'bun:test';
-import { readPreviousReleaseBuild, readTestBundle } from '@heynixie/server/test-utils';
+import {
+  readPreviousReleaseBuild,
+  readTestBundle,
+  seedMemoryItems,
+} from '@heynixie/server/test-utils';
 import { runRollbackCheck } from './src/test-utils/run-rollback-check';
 
 test('it starts the previous release on the data this build wrote', async () => {
@@ -31,4 +35,11 @@ test('it fails with the refusal when the release cannot take the writer lock', a
     previous: 'this build',
     output: expect.stringContaining('writer lock held by another process'),
   });
+});
+
+test('it starts the previous release on data that holds memory items with 2 versions, labels and proposals', async () => {
+  const previous = await readPreviousReleaseBuild();
+  const result = await runRollbackCheck({ previous, seed: seedMemoryItems });
+
+  expect(result).not.toMatchObject({ verdict: 'fail' });
 });

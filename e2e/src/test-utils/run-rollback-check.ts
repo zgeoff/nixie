@@ -1,5 +1,6 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import { nixieSchema } from '@heynixie/db';
+import type { BootFiles } from '@heynixie/server/test-utils';
 import {
   readReleaseStartOutcome,
   readTestBundle,
@@ -25,6 +26,10 @@ interface RollbackCheckOptions {
   // Leaves the build under check running while the previous release starts, which only a test of
   // the fail path wants
   readonly keepBuildRunning?: boolean;
+
+  // Writes values into the data once the build under check has stopped, so the previous release
+  // reads more than an empty database
+  readonly seed?: (files: BootFiles) => Promise<unknown>;
 }
 
 const waitMs = 10_000;
@@ -60,6 +65,8 @@ export async function runRollbackCheck(
       );
     }
   }
+
+  await options.seed?.(nixie);
 
   const imageKeys = options.previous.imageKeys;
 

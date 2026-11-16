@@ -1,5 +1,4 @@
 import { systemClock } from '@heynixie/clock';
-import { defaultGateLimits, defaultOwnerPronouns, startMemoryStore } from '@heynixie/memory';
 import {
   createProposal,
   seedBegunPurge as seedMemoryBegunPurge,
@@ -7,6 +6,7 @@ import {
 } from '@heynixie/memory/test-utils';
 import { buildTaskSeeder } from '@heynixie/tasks/test-utils';
 import { startDataLog } from './start-data-log';
+import { startSeedMemory } from './start-seed-memory';
 import type { BootFiles } from './write-boot-files';
 
 export interface BegunPurgeSeed {
@@ -38,26 +38,7 @@ export async function seedBegunPurge(
   try {
     await buildTaskSeeder({ context: testLog.context }).conversationStep();
 
-    const memory = await startMemoryStore({
-      log: testLog.context.log,
-      definitions: testLog.context.definitions,
-      cleanupSessions: () => Promise.resolve(),
-      gate: {
-        check: () =>
-          Promise.resolve({
-            verdict: 'unsure',
-            reason: 'no checker is wired',
-            model: 'no-checker',
-            failure: 'error',
-          }),
-        clock: systemClock,
-        defaultZone: 'UTC',
-        limits: defaultGateLimits,
-        ownerName: null,
-        ownerPronouns: defaultOwnerPronouns,
-        getPromptsInForce: () => ({ snapshotHash: 'sha256:test', prompts: {} }),
-      },
-    });
+    const memory = await startSeedMemory(testLog.context);
 
     try {
       const message = 'I keep bees on the allotment.';
