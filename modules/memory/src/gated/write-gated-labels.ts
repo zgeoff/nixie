@@ -3,7 +3,9 @@ import type { GatedLabelEditRequest, ReviewReason, WriteOutcome } from '../gate/
 import { collectLabelTexts } from '../label/collect-label-texts';
 import { writeMemoryProposal } from '../memory/write-memory-proposal';
 import { readNewestMessage } from '../message/read-newest-message';
+import { requireSelfNoteCaller } from '../subject/require-self-note-caller';
 import type { MemoryTables, StoreParts } from '../types';
+import { getRowSubject } from '../utils/get-row-subject';
 import { requireItem } from '../utils/item/require-item';
 import { readVersion } from '../version/read-version';
 import { buildWriteGroup } from '../write/build-write-group';
@@ -25,6 +27,10 @@ export async function writeGatedLabels(
     operation: 'edit',
     states: ['active', 'retired'],
   });
+
+  if (getRowSubject(item) === 'self') {
+    requireSelfNoteCaller(request.caller);
+  }
 
   const current = await readVersion(log, log.writer.db, {
     itemID: item.item_id,

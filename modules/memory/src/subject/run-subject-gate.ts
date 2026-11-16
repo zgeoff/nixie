@@ -8,10 +8,10 @@ import { requireImageSource } from '../image/require-image-source';
 import { runImageGate } from '../image/run-image-gate';
 import { collectLabelTexts } from '../label/collect-label-texts';
 import type { MemorySubject, MemoryTables, StoreParts } from '../types';
-import { SelfNoteError } from '../utils/error/self-note-error';
 import { getRowSubject } from '../utils/get-row-subject';
 import { requireItem } from '../utils/item/require-item';
 import { pickSubjectChangeReview } from './pick-subject-change-review';
+import { requireSelfNoteCaller } from './require-self-note-caller';
 
 export interface SubjectGateResult {
   readonly gate: ContentGateResult;
@@ -75,7 +75,7 @@ function runGateOfSubject(
 ): Promise<ContentGateResult> {
   // an edit that keeps a self-note's subject writes in nixie's voice as a new one does
   if ((subjects.newSubject ?? subjects.subject) === 'self') {
-    requireSelfNoteWrite(request);
+    requireSelfNoteCaller(request.caller);
   }
 
   const verdict = request.verdict;
@@ -116,12 +116,4 @@ function runGateOfSubject(
   }
 
   return runContentGate(parts.context, content, pickCoveringRule(verdict, 'none'));
-}
-
-function requireSelfNoteWrite(request: GatedRememberRequest): void {
-  if (request.caller.origin !== 'conversation') {
-    throw new SelfNoteError(
-      `only the conversation writes a self-note, and this write came from the ${request.caller.origin}`,
-    );
-  }
 }
