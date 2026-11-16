@@ -348,3 +348,29 @@ test('it reads an item that does not exist as null', async () => {
 
   expect(detail).toBeNull();
 });
+
+test('it blanks the quote and shreds the message of a record whose forget began', async () => {
+  const ctx = await setupTest();
+
+  const sequence = await writeOwnerMessageRecord(ctx.memory.log, {
+    thread: 'conversation',
+    text: 'I collect amber pebbles',
+    spans: [{ start: 0, end: 23, source: 'typed' }],
+  });
+
+  const item = await ctx.memory.store.remember({
+    text: 'Collects amber pebbles',
+    evidenceQuote: 'I collect amber pebbles',
+    evidence: { recordSequence: sequence, start: 0, end: 23 },
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  await seedBegunPurge(ctx.memory.log, { recordSequence: sequence, itemIDs: [] });
+
+  const detail = await ctx.memory.store.view.readItem(item.itemID);
+
+  expect(detail?.versions[0]).toMatchObject({
+    evidenceQuote: null,
+    evidence: { recordSequence: sequence, message: { status: 'shredded' } },
+  });
+});

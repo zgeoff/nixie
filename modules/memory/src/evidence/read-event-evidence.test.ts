@@ -2,7 +2,7 @@ import { expect, test } from 'bun:test';
 import { writeRecords } from '@heynixie/log';
 import { removeTestRecordKey } from '@heynixie/log/test-utils';
 import invariant from 'tiny-invariant';
-import { startTestMemory } from '../test-utils';
+import { seedBegunPurge, startTestMemory } from '../test-utils';
 import { writeOwnerMessageRecord } from '../test-utils/write-owner-message-record';
 import { readEventEvidence } from './read-event-evidence';
 
@@ -151,4 +151,24 @@ test('it refuses a message whose text a forget erased', async () => {
   });
 
   expect(found).toStrictEqual({ status: 'review', reason: 'forgotten_evidence' });
+});
+
+test('it refuses the event ID of a forgetting record whatever thread the caller names', async () => {
+  const memory = await startTestMemory();
+
+  const sequence = await writeOwnerMessageRecord(memory.log, {
+    thread: 'conversation',
+    text: 'The shed code is 4471',
+    spans: [{ start: 0, end: 21, source: 'typed' }],
+  });
+
+  await seedBegunPurge(memory.log, { recordSequence: sequence, itemIDs: [] });
+
+  const error = await readEventEvidence(memory.log, {
+    thread: 'task-garden',
+    quote: 'The shed code is 4471',
+    eventID: sequence,
+  }).catch((error_: unknown) => error_);
+
+  expect(error).toMatchObject({ code: 'QUOTED_RECORD_FORGETTING' });
 });

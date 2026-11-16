@@ -3,10 +3,9 @@ import { readRecords } from '@heynixie/log';
 import { ownerMessageCodec } from '@heynixie/tasks';
 import { z } from 'zod';
 import type { ReviewReason } from '../gate/gate-context';
-import { readRemovedSequences } from '../record/read-removed-sequences';
-import { QuotedRecordForgettingError } from '../utils/error/quoted-record-forgetting-error';
 import type { QuoteEvidenceResult } from './read-quote-evidence';
 import { readSourceEvidence } from './read-source-evidence';
+import { requireUnforgottenQuote } from './require-unforgotten-quote';
 import type { SourceMessage } from './source-message';
 
 export interface EventSearch {
@@ -16,10 +15,14 @@ export interface EventSearch {
   readonly eventID: number;
 }
 
+// The event ID is the record's sequence, so the forget is read from it before the record is read: a
+// forget that began leaves the record's key behind for a moment, then removes it.
 export async function readEventEvidence(
   log: Pick<Log, 'deploymentKey' | 'writer'>,
   search: EventSearch,
 ): Promise<QuoteEvidenceResult> {
+  await requireUnforgottenQuote(log.writer.db, search.eventID);
+
   const source = await readEventMessage(log, search);
 
   return typeof source === 'string'
@@ -50,13 +53,6 @@ async function readEventMessage(
   }
 
   if (entry.record.erasable.status !== 'readable') {
-    // The record's key may be gone already, so the forget is read from the record's own sequence.
-    const forgetting = await readRemovedSequences(log.writer.db, [entry.record.sequence]);
-
-    if (forgetting.has(entry.record.sequence)) {
-      throw new QuotedRecordForgettingError(entry.record.sequence);
-    }
-
     return 'forgotten_evidence';
   }
 
