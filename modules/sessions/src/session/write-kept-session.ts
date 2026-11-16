@@ -59,7 +59,7 @@ export async function writeKeptSession(spec: KeptSessionSpec): Promise<void> {
 }
 
 // True when the sandbox already holds the transcript, as a kept sandbox does after it took a turn.
-export async function holdsTranscript(
+export async function probeTranscriptHeld(
   sandbox: Sandbox,
   command: GuestCommand,
   transcript: string,

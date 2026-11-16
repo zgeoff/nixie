@@ -2752,6 +2752,77 @@ test('it keeps the newer transcript of the kept conversation sandbox when an old
   expect(transcript).toBe('{"uuid":"old-turn"}\n{"uuid":"later-turn"}\n');
 });
 
+test('it copies the session into the kept conversation sandbox when it holds no transcript and an older one survived', async () => {
+  const ctx = await setupTest();
+
+  const models = buildMockModelsConfig();
+
+  await createConversationTask(ctx.context);
+
+  const first = await ctx.startRunner({
+    models,
+    credential: 'not-a-real-key',
+    toolNames: ['notes_read'],
+    image: 'conversation-old',
+  });
+
+  ctx.sandboxes.setGuestScript(() => [
+    {
+      type: 'ended',
+      boundary: {
+        harness: 'agent-sdk',
+        sessionID: '5b2e8f14-6c1d-4a7e-8f3b-2d9c0e1a4b01',
+        messageID: '5b2e8f14-6c1d-4a7e-8f3b-2d9c0e1a4b02',
+      },
+      outcome: 'finished',
+      stopReason: 'end_turn',
+      turns: 1,
+      usage: { inputTokens: 10, outputTokens: 5, cacheReadTokens: 0, cacheWriteTokens: 0 },
+    },
+  ]);
+
+  await ctx.sendMessage(first, 'Hi.');
+
+  const [old] = await ctx.sandboxes.adapter.list('conversation');
+
+  invariant(old !== undefined, 'the old sandbox is live');
+
+  ctx.sandboxes.setDestroyError(new Error('the host is gone'));
+
+  await ctx.startRunner({
+    models,
+    credential: 'not-a-real-key',
+    toolNames: ['notes_read'],
+    image: 'conversation-new',
+  });
+
+  await old.copyIn([
+    {
+      path: '/home/nixie/.claude/projects/-home-nixie-conversation/5b2e8f14-6c1d-4a7e-8f3b-2d9c0e1a4b01.jsonl',
+      content: new TextEncoder().encode('{"uuid":"old-turn"}\n'),
+    },
+  ]);
+
+  await ctx.startRunner({
+    models,
+    credential: 'not-a-real-key',
+    toolNames: ['notes_read'],
+    image: 'conversation-new',
+  });
+
+  const live = await ctx.sandboxes.adapter.list('conversation');
+
+  const kept = live.find((sandbox) => sandbox.spec.image === 'conversation-new');
+
+  invariant(kept !== undefined, 'the new sandbox is live');
+
+  const [file] = await kept.copyOut([
+    '/home/nixie/.claude/projects/-home-nixie-conversation/5b2e8f14-6c1d-4a7e-8f3b-2d9c0e1a4b01.jsonl',
+  ]);
+
+  expect(new TextDecoder().decode(file?.content)).toBe('{"uuid":"old-turn"}\n');
+});
+
 test('it logs a failed destroy of the old conversation sandbox and still starts the runner', async () => {
   const ctx = await setupTest();
 
