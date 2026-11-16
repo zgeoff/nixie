@@ -4,9 +4,12 @@ import { seedConversationStep } from './seed-conversation-step';
 import { seedDoneConversationTask } from './seed-done-conversation-task';
 import { seedDoneTask } from './seed-done-task';
 import { seedDriftedTask } from './seed-drifted-task';
+import { seedEndedDefinitionRun } from './seed-ended-definition-run';
 import { seedFailedConversationTurn } from './seed-failed-conversation-turn';
 import { seedFailedTask } from './seed-failed-task';
 import { seedGoneHolderLease } from './seed-gone-holder-lease';
+import type { DefinitionRunSeed } from './seed-open-definition-run';
+import { seedOpenDefinitionRun } from './seed-open-definition-run';
 import { seedPausedTask } from './seed-paused-task';
 import type { PausedTaskSeed } from './seed-paused-task';
 import { seedRunningTask } from './seed-running-task';
@@ -36,6 +39,8 @@ export function buildTaskSeeder(deps: TaskSeederDeps) {
     systemTaskAtHop: (input: SystemTaskAtHopSeed) => seedSystemTaskAtHop(deps.context, input),
     failedTask: (input: StartedTaskSeed) => seedFailedTask(deps.context, input),
     doneTask: (input: StartedTaskSeed) => seedDoneTask(deps.context, input),
+    openDefinitionRun: (input: DefinitionRunSeed) => seedOpenDefinitionRun(deps.context, input),
+    endedDefinitionRun: (input: DefinitionRunSeed) => seedEndedDefinitionRun(deps.context, input),
     closedTask: (input: StartedTaskSeed) => seedClosedTask(deps.context, input),
   };
 }

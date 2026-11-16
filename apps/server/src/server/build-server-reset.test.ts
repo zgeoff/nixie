@@ -14,6 +14,7 @@ async function setupTest() {
       ...server.context,
       settings: defaultAPISettings,
       readSessionCleanup: () => null,
+      readZone: () => Promise.resolve('UTC'),
       passkeys: createPasskeyState(),
     },
     work: buildCleanup(),

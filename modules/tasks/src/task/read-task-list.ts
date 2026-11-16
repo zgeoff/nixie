@@ -7,6 +7,9 @@ import { readDefinitionTaskVersions } from './read-definition-task-versions';
 export interface TaskListQuery {
   readonly callerID: string | null;
   readonly limit: number;
+
+  // lists only these tasks, which the limit then counts
+  readonly taskIDs?: readonly string[];
 }
 
 export interface ListedTask {
@@ -46,8 +49,12 @@ export async function readTaskList(
       speaker: entry.version.persona === 'default' ? 'persona_task' : 'plain_task',
     }));
 
-  const profiles = [...messaging.directory, ...outOfForce].filter(
-    (profile) => profile.taskID !== query.callerID,
+  // A profile of the directory is a fallback for a task out of force, so the version that its task
+  // run pins wins.
+  const profiles = [...outOfForce, ...messaging.directory].filter(
+    (profile) =>
+      profile.taskID !== query.callerID &&
+      (query.taskIDs === undefined || query.taskIDs.includes(profile.taskID)),
   );
 
   if (profiles.length === 0) {

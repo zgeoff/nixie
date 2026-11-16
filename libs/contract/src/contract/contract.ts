@@ -6,19 +6,21 @@ import { forgetBackupSchema } from './forget-backup-schema';
 import { imageLimits } from './image-limits';
 import { imageNotFoundError } from './image-not-found-error';
 import { imageRefusedError } from './image-refused-error';
+import { actionCountSchema, listedTaskSchema, taskStateSchema } from './listed-task-schema';
 import { memoryViewContract } from './memory-view-contract';
 import { passkeyContract } from './passkey-contract';
 import { pauseStateSchema } from './pause-state-schema';
 import { recoverySchema } from './recovery-schema';
 import { reusedIDErrors } from './reused-id-errors';
 import { ruleContract } from './rule-contract';
+import { sequenceSchema } from './sequence-schema';
 import { signedIn } from './signed-in';
 import { taskSchema } from './task-schema';
+import { threadSchema } from './thread-schema';
 import { toolCallSchema } from './tool-call-schema';
+import { viewContract } from './view-contract';
 
 const clientActionIDSchema = z.uuid();
-const sequenceSchema = z.int().nonnegative();
-const threadSchema = z.string().min(1).max(200);
 const imageSchema = z.object({ mediaType: z.enum(imageLimits.mediaTypes) });
 const imageFilesSchema = z.array(z.file());
 
@@ -154,48 +156,11 @@ const sessionSchema = z.object({
 });
 
 const checkedAction = signedIn.errors(reusedIDErrors);
-
-const taskStateSchema = z.enum([
-  'ready',
-  'running',
-  'waiting',
-  'paused',
-  'stopped',
-  'done',
-  'failed',
-  'closed',
-]);
-
-const taskControlSchema = z.enum(['pause', 'resume', 'stop', 'restart', 'close', 'interrupt']);
-const actionCountSchema = z.int().nonnegative();
 const forgetPreviewItemSchema = z.object({ itemID: z.string(), text: z.string() });
 
 const recordForgetPreviewSchema = z.object({
   momentCount: actionCountSchema,
   memoryItems: z.array(forgetPreviewItemSchema),
-});
-
-const listedTaskSchema = z.object({
-  actions: z.object({
-    cancelled: actionCountSchema,
-    queued: actionCountSchema,
-    started: actionCountSchema,
-  }),
-  brief: z.string(),
-  closedBy: z.enum(['owner', 'nixie', 'disposable']).optional(),
-  controls: z.array(taskControlSchema),
-  disposable: z.boolean().nullable(),
-  isPauseRequested: z.boolean(),
-  isPausedByNixie: z.boolean(),
-  isTakingMessages: z.boolean(),
-  lastActivityAt: z.date(),
-  name: z.string(),
-  nextRunAt: z.string().optional(),
-  runner: z.string(),
-  state: taskStateSchema,
-  taskID: threadSchema,
-  wakeable: z.boolean().optional(),
-  waitingOn: threadSchema.optional(),
 });
 
 const controlledTaskSchema = z.object({
@@ -377,6 +342,8 @@ export const contract = {
         }),
       )
       .output(markedTaskSchema),
+
+    ...viewContract.tasks,
   },
   memory: {
     readVersions: signedIn
@@ -409,6 +376,8 @@ export const contract = {
   backups: {
     readNotice: signedIn.output(z.object({ notice: backupNoticeSchema.nullable() })),
   },
+  triggers: viewContract.triggers,
+  definitions: viewContract.definitions,
   rules: ruleContract,
   approvals: approvalContract,
   passkeys: passkeyContract,

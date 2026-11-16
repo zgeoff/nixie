@@ -2,10 +2,13 @@ import { onTestFinished } from 'bun:test';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { actionsProjection } from '@heynixie/actions';
+import { readDefinitionVersion } from '@heynixie/definitions';
 import type { Writer } from '@heynixie/log';
 import { logProjections, startWriter } from '@heynixie/log';
 import { memoryProjections } from '@heynixie/memory';
+import type { ReadDefinitionVersion } from '@heynixie/tasks';
 import { tasksProjections } from '@heynixie/tasks';
+import type { TestDefinitionStore } from '@heynixie/tasks/test-utils';
 import {
   buildTestDefinitionStore,
   buildTestRunSettings,
@@ -13,6 +16,7 @@ import {
 } from '@heynixie/tasks/test-utils';
 import type { TestClock } from '@heynixie/testing';
 import { buildTestClock } from '@heynixie/testing';
+import { triggersProjections } from '@heynixie/triggers';
 import { apiProjections } from '../api/api-projections';
 import { createAPIApp } from '../api/create-api-app';
 import { createPasskeyState } from '../passkey/passkey-state';
@@ -30,7 +34,7 @@ interface TestAPI {
   readonly writer: Writer;
   readonly clock: TestClock;
   readonly context: APIContext;
-  readonly definitionStore: ReturnType<typeof buildTestDefinitionStore>;
+  readonly definitionStore: TestDefinitionStore;
 
   readonly url: string;
 }
@@ -72,12 +76,18 @@ export async function startTestAPI(
 async function createTestContext(
   writer: Writer,
   settings: APIContext['settings'],
-  definitionStore: ReturnType<typeof buildTestDefinitionStore>,
+  definitionStore: TestDefinitionStore,
 ): Promise<APIContext & { readonly clock: TestClock }> {
   const deploymentKey = await crypto.subtle.generateKey({ name: 'AES-KW', length: 256 }, false, [
     'wrapKey',
     'unwrapKey',
   ]);
+
+  const readStoredVersion: ReadDefinitionVersion = async (db, hash) => {
+    const stored = await readDefinitionVersion(db, hash);
+
+    return stored ?? definitionStore.readDefinitionVersion(db, hash);
+  };
 
   const context = {
     log: {
@@ -90,18 +100,20 @@ async function createTestContext(
         ...apiProjections,
         ...memoryProjections,
         proposalsProjection,
+        ...triggersProjections,
       ],
     },
     clock: buildTestClock(1_000_000),
     definitions: () => ({ snapshotHash: 'sha256:test' }),
     runSettings: buildTestRunSettings(),
-    readDefinitionVersion: definitionStore.readDefinitionVersion,
     readDefinitionRunPolicy: definitionStore.readDefinitionRunPolicy,
     readDefinitionNextFire: definitionStore.readDefinitionNextFire,
+    readDefinitionVersion: readStoredVersion,
     runners: buildTestTaskRunners(),
     settings,
     passkeys: createPasskeyState(),
 
+    readZone: () => Promise.resolve('UTC'),
     readSessionCleanup: () => null,
   };
 

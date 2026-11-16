@@ -59,6 +59,7 @@ export async function createServerContext(
         readDefinitionNextFire(db, makeReadZone(writer, db, options.defaultZone), definitionID),
       settings: options.settings ?? defaultAPISettings,
       passkeys: createPasskeyState(),
+      readZone: makeReadZone(writer, writer.db, options.defaultZone),
       readSessionCleanup,
     },
   };

@@ -13,6 +13,7 @@ import type {
 import type { PromptsInForce } from '@heynixie/prompts';
 import type { QuietHours } from '@heynixie/proposals';
 import type { TaskProfile, TasksContext } from '@heynixie/tasks';
+import type { ReadZone } from '@heynixie/triggers';
 import type { TurnInputs } from '@heynixie/turn-inputs';
 import type { ResponseHeadersPluginContext } from '@orpc/server/plugins';
 import type { PasskeyState } from './passkey/passkey-state';
@@ -70,6 +71,9 @@ export interface APIContext extends TasksContext {
 
   // challenges, registration options and the host code, which a restart drops
   readonly passkeys: PasskeyState;
+
+  // resolves 'owner' to the zone of the newest message, or to the configured default
+  readonly readZone: ReadZone;
 
   readonly readSessionCleanup: () => CleanupRecordSessions | null;
 

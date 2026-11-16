@@ -15,12 +15,15 @@ import { createBackupProcedures } from './create-backup-procedures';
 import { createEnrolProcedure } from './create-enrol-procedure';
 import { createRevokeProcedure } from './create-revoke-procedure';
 import { createTaskProcedures } from './create-task-procedures';
+import { createViewProcedures } from './create-view-procedures';
 
 export function createAPIRouter(
   context: APIContext,
   readMemory: ReadViewMemory,
   runInForceSeed: () => Promise<void>,
 ) {
+  const views = createViewProcedures(context);
+
   return apiImplementer.router({
     approvals: createApprovalProcedures(context, { readMemory, runInForceSeed }),
     backups: createBackupProcedures(context),
@@ -42,6 +45,8 @@ export function createAPIRouter(
       revoke: createRevokeProcedure(context),
       ...createSessionProcedures(context),
     },
-    tasks: createTaskProcedures(context),
+    tasks: { ...createTaskProcedures(context), ...views.tasks },
+    triggers: views.triggers,
+    definitions: views.definitions,
   });
 }

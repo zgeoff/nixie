@@ -7,6 +7,7 @@ import { writeStepCommit } from '../step/write-step-commit';
 import { writeStepError } from '../step/write-step-error';
 import { seedConversationStep } from '../test-utils/seed-conversation-step';
 import { seedDefinitionTask } from '../test-utils/seed-definition-task';
+import { seedOpenDefinitionRun } from '../test-utils/seed-open-definition-run';
 import { seedTask } from '../test-utils/seed-task';
 import { startTestTasks } from '../test-utils/start-test-tasks';
 import { writeTestTaskMessage } from '../test-utils/write-test-task-message';
@@ -597,6 +598,67 @@ test('it lists a task out of force under the name of the version its open task r
 
   expect(directory.directory).toStrictEqual([]);
   expect(tasks.map((task) => [task.id, task.name])).toStrictEqual([[taskID, 'Water the tomatoes']]);
+});
+
+test('it lists only the tasks it is asked for, and counts the limit among them', async () => {
+  const ctx = await setupTest();
+
+  const empty: Pick<TaskMessaging, 'directory'> = { directory: [] };
+
+  const wanted = await seedDefinitionTask(ctx, {
+    definitionID: 'water-the-tomatoes',
+    definitionHash: 'hash-1',
+  });
+
+  await seedDefinitionTask(ctx, { definitionID: 'prune-the-roses', definitionHash: 'hash-2' });
+
+  const directory = await readTaskDirectory(ctx.context, empty);
+
+  const tasks = await readTaskList(ctx.context, directory, {
+    callerID: null,
+    limit: 1,
+    taskIDs: [wanted],
+  });
+
+  expect(tasks.map((task) => task.id)).toStrictEqual([wanted]);
+});
+
+test('it names a task out of force by its open task run over a profile that the directory holds', async () => {
+  const ctx = await setupTest();
+
+  const taskID = await seedDefinitionTask(ctx, {
+    definitionID: 'water-the-tomatoes',
+    definitionHash: 'hash-1',
+    version: { name: 'Water the tomatoes' },
+  });
+
+  await seedOpenDefinitionRun(ctx.context, {
+    taskID,
+    definitionID: 'water-the-tomatoes',
+    definitionHash: 'hash-1',
+  });
+
+  await withWriteTransaction(ctx.writer, (tx) =>
+    withdrawDefinitionTaskInTransaction(tx, ctx.context, 'water-the-tomatoes'),
+  );
+
+  const tasks = await readTaskList(
+    ctx.context,
+    {
+      directory: [
+        {
+          taskID,
+          name: 'An older name',
+          brief: 'An older brief.',
+          wakeable: false,
+          speaker: 'plain_task',
+        },
+      ],
+    },
+    { callerID: null, limit: 10 },
+  );
+
+  expect(tasks.map((task) => task.name)).toStrictEqual(['Water the tomatoes']);
 });
 
 test('it lists a task out of force under the name of the version its pending task run pins', async () => {

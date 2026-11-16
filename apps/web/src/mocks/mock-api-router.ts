@@ -258,7 +258,26 @@ export const mockAPIRouter = os.router({
       return { revokedAt };
     }),
   },
+  triggers: {
+    report: os.triggers.report.handler((options) => {
+      requireMockSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
+
+      return { entries: [] };
+    }),
+  },
+  definitions: {
+    listTasks: os.definitions.listTasks.handler((options) => {
+      requireMockSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
+
+      return { definitions: [] };
+    }),
+  },
   tasks: {
+    listEnded: os.tasks.listEnded.handler((options) => {
+      requireMockSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
+
+      return { tasks: [], runs: [], next: null };
+    }),
     list: os.tasks.list.handler((options) => {
       requireMockSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
 

@@ -12,6 +12,7 @@ export type { Schedule } from './contract/schedule-schema';
 export { scheduleSchema } from './contract/schedule-schema';
 export type { Trigger } from './contract/trigger-schema';
 export { triggerAtSchema, triggerSchema } from './contract/trigger-schema';
+export { skipReasonSchema } from './contract/view-contract';
 export { pickSpanSource } from './span/pick-span-source';
 export { renderSessionCookie } from './contract/render-session-cookie';
 export { sessionCookieName } from './contract/session-cookie-name';
