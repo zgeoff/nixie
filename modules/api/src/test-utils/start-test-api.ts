@@ -8,6 +8,7 @@ import { logProjections, startWriter } from '@heynixie/log';
 import { memoryProjections } from '@heynixie/memory';
 import type { ReadDefinitionVersion } from '@heynixie/tasks';
 import { tasksProjections } from '@heynixie/tasks';
+import type { TestDefinitionStore } from '@heynixie/tasks/test-utils';
 import {
   buildTestDefinitionStore,
   buildTestRunSettings,
@@ -33,7 +34,7 @@ interface TestAPI {
   readonly writer: Writer;
   readonly clock: TestClock;
   readonly context: APIContext;
-  readonly definitionStore: ReturnType<typeof buildTestDefinitionStore>;
+  readonly definitionStore: TestDefinitionStore;
 
   readonly url: string;
 }
@@ -75,7 +76,7 @@ export async function startTestAPI(
 async function createTestContext(
   writer: Writer,
   settings: APIContext['settings'],
-  definitionStore: ReturnType<typeof buildTestDefinitionStore>,
+  definitionStore: TestDefinitionStore,
 ): Promise<APIContext & { readonly clock: TestClock }> {
   const deploymentKey = await crypto.subtle.generateKey({ name: 'AES-KW', length: 256 }, false, [
     'wrapKey',

@@ -6,23 +6,15 @@ import type { ContractClient } from '@heynixie/contract';
 import { skipReasonSchema } from '@heynixie/contract';
 import { createPathSource, readListedDefinitions, runSeed } from '@heynixie/definitions';
 import { buildTestTaskSeed } from '@heynixie/definitions/test-utils';
-import type { RecordInput } from '@heynixie/log';
-import { writeRecords } from '@heynixie/log';
+import { skipReasons } from '@heynixie/tasks';
 import {
-  skipReasons,
-  taskRunEndedCodec,
-  taskRunOpenedCodec,
-  triggerSkippedCodec,
-} from '@heynixie/tasks';
-import { writeTestTriggerFire } from '@heynixie/tasks/test-utils';
+  buildTaskSeeder,
+  writeTestTriggerFire,
+  writeTestTriggerSkip,
+} from '@heynixie/tasks/test-utils';
 import { buildTestClient } from '../test-utils/build-test-client';
 import { createDeviceSession } from '../test-utils/create-device-session';
 import { startTestAPI } from '../test-utils/start-test-api';
-
-interface PinnedDefinition {
-  readonly id: string;
-  readonly hash: string;
-}
 
 async function setupTest() {
   const api = await startTestAPI();
@@ -38,56 +30,10 @@ async function setupTest() {
   await writeFile(join(root, 'persona.md'), '# Persona\n');
 
   const source = createPathSource({ directory: root });
-  const definitions = api.context.definitions();
-
-  const buildEndedRunRecords = (
-    taskID: string,
-    runID: string,
-    definition: PinnedDefinition | undefined,
-  ): RecordInput[] => [
-    {
-      kind: 'task.run_opened',
-      definitions,
-      thread: taskID,
-      payload: taskRunOpenedCodec.encode({
-        taskID,
-        runID,
-        openedByStep: `${taskID}:1`,
-        origin: { kind: 'brief', sequence: null },
-        definitionID: definition?.id ?? null,
-        definitionHash: definition?.hash ?? null,
-        triggerKey: null,
-        carriesRunID: null,
-        briefID: null,
-        report: { mode: 'wake', target: 'conversation' },
-        reportShape: null,
-        limits: { turns: 25, dollars: 2, calls: {} },
-      }),
-    },
-    {
-      kind: 'task.run_ended',
-      definitions,
-      thread: taskID,
-      payload: taskRunEndedCodec.encode({
-        taskID,
-        runID,
-        cause: 'reported',
-        detail: {},
-        endedBy: `step:${taskID}:1`,
-        definitionID: definition?.id ?? null,
-        triggerKey: null,
-        carriesRunID: null,
-        used: { turns: 3, dollars: 0.5, calls: { 'web.fetch': 2 } },
-        reportID: `report-${runID}`,
-        reportTo: 'conversation',
-        delivery: 'wake',
-      }),
-      erasable: { body: 'Done.' },
-    },
-  ];
 
   return {
     ...api,
+    seed: buildTaskSeeder({ context: api.context }),
     client: buildTestClient(api.url, laptop.token),
     stranger: buildTestClient(api.url),
     writeDefinition: async (id: string, yaml: string) => {
@@ -110,76 +56,87 @@ async function setupTest() {
       return result.record.sequence;
     },
     readDefinitions: () => readListedDefinitions(api.writer.db),
-    writeEndedRuns: (taskID: string, count: number, definition?: PinnedDefinition) =>
-      writeRecords(
-        api.context.log,
-        Array.from({ length: count }, (_unused, index) =>
-          buildEndedRunRecords(taskID, `${definition?.id ?? 'run'}-${index}`, definition),
-        ).flat(),
-      ),
-    writeTask: (taskID: string) =>
-      writeRecords(api.context.log, [
-        {
-          kind: 'task.created',
-          definitions: { snapshotHash: 'sha256:test' },
-          thread: taskID,
-          payload: { taskID, isConversation: false, state: 'waiting', startedBy: 'conversation' },
-          erasable: { name: 'Garden plan', brief: 'Plan the beds.' },
-        },
-      ]),
   };
 }
 
-test('#tasks.listEnded pages through 101 ended task runs newest first, and ends with a null next', async () => {
+test('#tasks.listEnded pages through ended task runs newest first, and ends with a null next', async () => {
   const ctx = await setupTest();
+  const step = await ctx.seed.conversationStep();
+  const first = await ctx.seed.doneTask({ starter: step.claim, name: 'First', brief: 'One.' });
+  const second = await ctx.seed.doneTask({ starter: step.claim, name: 'Second', brief: 'Two.' });
+  const third = await ctx.seed.doneTask({ starter: step.claim, name: 'Third', brief: 'Three.' });
+  const newest = await ctx.client.tasks.listEnded({ limit: 2 });
+  const oldest = await ctx.client.tasks.listEnded({ limit: 2, before: newest.next ?? 0 });
 
-  await ctx.writeTask('k3x9m2p7qa');
-  await ctx.writeEndedRuns('k3x9m2p7qa', 101);
-
-  const first = await ctx.client.tasks.listEnded({ limit: 100 });
-  const second = await ctx.client.tasks.listEnded({ limit: 100, before: first.next ?? 0 });
-
-  expect(first.runs).toHaveLength(100);
-  expect(first.runs[0]?.runID).toBe('run-100');
-  expect(first.runs[99]?.runID).toBe('run-1');
-  expect(first.next).toBe(first.runs[99]?.sequence ?? -1);
-  expect(second.runs.map((run) => run.runID)).toStrictEqual(['run-0']);
-  expect(second.next).toBeNull();
+  expect(newest.runs.map((run) => run.taskID)).toStrictEqual([third, second]);
+  expect(newest.next).toBe(newest.runs[1]?.sequence ?? -1);
+  expect(oldest.runs.map((run) => run.taskID)).toStrictEqual([first]);
+  expect(oldest.next).toBeNull();
 });
 
 test('#tasks.listEnded gives each run its fields and one task for its page', async () => {
   const ctx = await setupTest();
+  const step = await ctx.seed.conversationStep();
 
-  await ctx.writeTask('k3x9m2p7qa');
-  await ctx.writeEndedRuns('k3x9m2p7qa', 2);
+  const taskID = await ctx.seed.doneTask({
+    starter: step.claim,
+    name: 'Garden plan',
+    brief: 'Plan the beds.',
+  });
 
   const listed = await ctx.client.tasks.listEnded({ limit: 10 });
 
-  expect(listed.runs[0]).toStrictEqual({
-    runID: 'run-1',
-    taskID: 'k3x9m2p7qa',
-    definitionID: null,
-    startedAt: expect.toBeValidDate(),
-    endedAt: expect.toBeValidDate(),
-    sequence: expect.toBeNumber(),
-    cause: 'reported',
-    endedBy: 'step:k3x9m2p7qa:1',
-    carriesRunID: null,
-    reportID: 'report-run-1',
-    delivery: 'wake',
-    used: { turns: 3, dollars: 0.5 },
-  });
+  expect(listed.runs).toStrictEqual([
+    {
+      runID: expect.toBeString(),
+      taskID,
+      definitionID: null,
+      startedAt: expect.toBeValidDate(),
+      endedAt: expect.toBeValidDate(),
+      sequence: expect.toBeNumber(),
+      cause: 'no_report',
+      endedBy: expect.toBeString(),
+      carriesRunID: null,
+      reportID: expect.toBeString(),
+      delivery: expect.toBeString(),
+      used: { turns: expect.toBeNumber(), dollars: expect.toBeNumber() },
+    },
+  ]);
 
-  expect(listed.tasks.map((task) => task.taskID)).toStrictEqual(['k3x9m2p7qa']);
-  expect(listed.tasks[0]?.name).toBe('Garden plan');
+  expect(listed.tasks.map((task) => [task.taskID, task.name])).toStrictEqual([
+    [taskID, 'Garden plan'],
+  ]);
 });
 
 test('#tasks.listEnded keeps only the runs of the definition that the query names', async () => {
   const ctx = await setupTest();
+  const step = await ctx.seed.conversationStep();
 
-  await ctx.writeTask('k3x9m2p7qa');
-  await ctx.writeEndedRuns('k3x9m2p7qa', 1, { id: 'water-the-tomatoes', hash: 'hash-1' });
-  await ctx.writeEndedRuns('k3x9m2p7qa', 1);
+  await ctx.writeDefinition(
+    'water-the-tomatoes',
+    'name: Water the tomatoes\nbrief: Water the beds.\n',
+  );
+
+  await ctx.runSeed();
+
+  const [definition] = await ctx.readDefinitions();
+  const defined = await ctx.client.definitions.listTasks({});
+
+  const taskID = defined.definitions[0]?.taskID;
+
+  if (definition === undefined || taskID === undefined || taskID === null) {
+    throw new Error('the seed bound no task');
+  }
+
+  ctx.definitionStore.add(definition.definitionHash, {});
+
+  await ctx.seed.endedDefinitionRun({
+    taskID,
+    definitionID: 'water-the-tomatoes',
+    definitionHash: definition.definitionHash,
+  });
+
+  await ctx.seed.doneTask({ starter: step.claim, name: 'Garden plan', brief: 'Plan the beds.' });
 
   const listed = await ctx.client.tasks.listEnded({
     limit: 10,
@@ -208,9 +165,12 @@ test('#tasks.listEnded lists a task whose definition left force, under the name 
     throw new Error('the seed bound no task');
   }
 
-  await ctx.writeEndedRuns(taskID, 1, {
-    id: 'water-the-tomatoes',
-    hash: definition.definitionHash,
+  ctx.definitionStore.add(definition.definitionHash, {});
+
+  await ctx.seed.endedDefinitionRun({
+    taskID,
+    definitionID: 'water-the-tomatoes',
+    definitionHash: definition.definitionHash,
   });
 
   await ctx.removeDefinition('water-the-tomatoes');
@@ -220,6 +180,129 @@ test('#tasks.listEnded lists a task whose definition left force, under the name 
 
   expect(listed.tasks.map((task) => [task.taskID, task.name, task.brief])).toStrictEqual([
     [taskID, 'Water the tomatoes', 'Water the beds.'],
+  ]);
+});
+
+test('#tasks.listEnded names a withdrawn task as tasks.read does, by the version of its open run and not its ended one', async () => {
+  const ctx = await setupTest();
+
+  await ctx.writeDefinition(
+    'water-the-tomatoes',
+    'name: Water the tomatoes\nbrief: Water the beds.\n',
+  );
+
+  await ctx.runSeed();
+
+  const [first] = await ctx.readDefinitions();
+  const defined = await ctx.client.definitions.listTasks({});
+
+  const taskID = defined.definitions[0]?.taskID;
+
+  if (first === undefined || taskID === undefined || taskID === null) {
+    throw new Error('the seed bound no task');
+  }
+
+  ctx.definitionStore.add(first.definitionHash, {});
+
+  await ctx.seed.endedDefinitionRun({
+    taskID,
+    definitionID: 'water-the-tomatoes',
+    definitionHash: first.definitionHash,
+  });
+
+  await ctx.writeDefinition(
+    'water-the-tomatoes',
+    'name: Water the seedlings\nbrief: Water the seed trays.\n',
+  );
+
+  await ctx.runSeed();
+
+  const [second] = await ctx.readDefinitions();
+
+  if (second === undefined) {
+    throw new Error('the seed stored no second version');
+  }
+
+  ctx.definitionStore.add(second.definitionHash, {});
+
+  await ctx.seed.openDefinitionRun({
+    taskID,
+    definitionID: 'water-the-tomatoes',
+    definitionHash: second.definitionHash,
+  });
+
+  await ctx.removeDefinition('water-the-tomatoes');
+  await ctx.runSeed();
+
+  const listed = await ctx.client.tasks.listEnded({ limit: 10 });
+  const read = await ctx.client.tasks.read({ taskID });
+
+  expect(listed.tasks.map((task) => [task.name, task.brief])).toStrictEqual([
+    ['Water the seedlings', 'Water the seed trays.'],
+  ]);
+
+  expect([read.name, read.brief]).toStrictEqual(['Water the seedlings', 'Water the seed trays.']);
+});
+
+test('#tasks.listEnded gives the profile of its one task when newer withdrawn tasks have open runs', async () => {
+  const ctx = await setupTest();
+
+  await ctx.writeDefinition(
+    'water-the-tomatoes',
+    'name: Water the tomatoes\nbrief: Water the beds.\n',
+  );
+
+  await ctx.writeDefinition('prune-the-roses', 'name: Prune the roses\nbrief: Cut the wood.\n');
+  await ctx.runSeed();
+
+  const stored = await ctx.readDefinitions();
+  const defined = await ctx.client.definitions.listTasks({});
+
+  const tomatoes = stored.find((entry) => entry.definitionID === 'water-the-tomatoes');
+  const roses = stored.find((entry) => entry.definitionID === 'prune-the-roses');
+
+  const tomatoesTask = defined.definitions.find(
+    (entry) => entry.definitionID === 'water-the-tomatoes',
+  )?.taskID;
+
+  const rosesTask = defined.definitions.find(
+    (entry) => entry.definitionID === 'prune-the-roses',
+  )?.taskID;
+
+  if (
+    tomatoes === undefined ||
+    roses === undefined ||
+    tomatoesTask === undefined ||
+    tomatoesTask === null ||
+    rosesTask === undefined ||
+    rosesTask === null
+  ) {
+    throw new Error('the seed bound no task');
+  }
+
+  ctx.definitionStore.add(tomatoes.definitionHash, {});
+  ctx.definitionStore.add(roses.definitionHash, {});
+
+  await ctx.seed.endedDefinitionRun({
+    taskID: tomatoesTask,
+    definitionID: 'water-the-tomatoes',
+    definitionHash: tomatoes.definitionHash,
+  });
+
+  await ctx.seed.openDefinitionRun({
+    taskID: rosesTask,
+    definitionID: 'prune-the-roses',
+    definitionHash: roses.definitionHash,
+  });
+
+  await ctx.removeDefinition('water-the-tomatoes');
+  await ctx.removeDefinition('prune-the-roses');
+  await ctx.runSeed();
+
+  const listed = await ctx.client.tasks.listEnded({ limit: 1 });
+
+  expect(listed.tasks.map((task) => [task.taskID, task.name])).toStrictEqual([
+    [tomatoesTask, 'Water the tomatoes'],
   ]);
 });
 
@@ -252,22 +335,13 @@ test('#triggers.report holds a skipped fire and a late catch-up from the date, a
     isCatchUp: true,
   });
 
-  const [skipped] = await writeRecords(ctx.context.log, [
-    {
-      kind: 'trigger.skipped',
-      definitions: ctx.context.definitions(),
-      thread: taskID,
-      payload: triggerSkippedCodec.encode({
-        definitionID: 'water-the-tomatoes',
-        source: 'schedule',
-        dedupeKey: 'water-the-tomatoes|2027-03-10T21:00:00.000Z',
-        scheduledFor: ['2027-03-09T21:00:00.000Z', '2027-03-10T21:00:00.000Z'],
-        count: 2,
-        reason: 'task_held',
-        recordedAt: '2027-03-11T09:00:00.000Z',
-      }),
-    },
-  ]);
+  const skipped = await writeTestTriggerSkip(ctx.context, taskID, {
+    definitionID: 'water-the-tomatoes',
+    dedupeKey: 'water-the-tomatoes|2027-03-10T21:00:00.000Z',
+    scheduledFor: ['2027-03-09T21:00:00.000Z', '2027-03-10T21:00:00.000Z'],
+    count: 2,
+    reason: 'task_held',
+  });
 
   await writeTestTriggerFire(ctx.context, taskID, {
     definitionHash: hash,
@@ -306,7 +380,7 @@ test('#triggers.report holds a skipped fire and a late catch-up from the date, a
       firedAt: null,
       lateBySeconds: null,
       reason: 'task_held',
-      sequence: skipped?.sequence ?? -1,
+      sequence: skipped,
     },
   ]);
 });
@@ -321,22 +395,16 @@ test('#triggers.report names a skip by the definition in force, and by its ID wh
 
   await ctx.runSeed();
 
-  await writeRecords(
-    ctx.context.log,
-    ['prune-the-roses', 'mow-the-lawn'].map((definitionID): RecordInput => ({
-      kind: 'trigger.skipped',
-      definitions: ctx.context.definitions(),
-      payload: triggerSkippedCodec.encode({
-        definitionID,
-        source: 'schedule',
-        dedupeKey: `${definitionID}|2027-03-10T21:00:00.000Z`,
-        scheduledFor: ['2027-03-10T21:00:00.000Z'],
-        count: 1,
-        reason: 'too_late',
-        recordedAt: '2027-03-11T09:00:00.000Z',
-      }),
-    })),
-  );
+  const defined = await ctx.client.definitions.listTasks({});
+
+  const taskID = defined.definitions[0]?.taskID;
+
+  if (taskID === undefined || taskID === null) {
+    throw new Error('the seed bound no task');
+  }
+
+  await writeTestTriggerSkip(ctx.context, taskID, { definitionID: 'prune-the-roses' });
+  await writeTestTriggerSkip(ctx.context, taskID, { definitionID: 'mow-the-lawn' });
 
   const report = await ctx.client.triggers.report({ since: '2027-03-01' });
 

@@ -17,25 +17,34 @@ import type { APIContext } from '../types';
 
 export type TaskProfiles = Awaited<ReturnType<typeof readTaskDirectory>>['directory'];
 
-export async function readListedTasks(context: APIContext, directory: TaskProfiles, limit: number) {
-  const listed = await readTaskList(context, { directory }, { callerID: null, limit });
+export async function readListedTasks(
+  context: APIContext,
+  directory: TaskProfiles,
+  limit: number,
+  taskIDs?: readonly string[],
+) {
+  const listed = await readTaskList(
+    context,
+    { directory },
+    { callerID: null, limit, ...(taskIDs === undefined ? {} : { taskIDs }) },
+  );
 
   if (NIXIE_TEST_BUILD) {
     await waitAtFaultPoint('task_list.read.after', { kind: 'task', id: null });
   }
 
-  const taskIDs = listed.map((task) => task.id);
+  const listedIDs = listed.map((task) => task.id);
 
-  const takers = await readOwnerMessageTakers(context, taskIDs);
-  const counts = await readActionCounts(context, taskIDs);
-  const pausedByNixie = await readTasksPausedByNixie(context.log.writer.db, taskIDs);
+  const takers = await readOwnerMessageTakers(context, listedIDs);
+  const counts = await readActionCounts(context, listedIDs);
+  const pausedByNixie = await readTasksPausedByNixie(context.log.writer.db, listedIDs);
 
   const runners = await Promise.all(
-    taskIDs.map((taskID) => context.runners.resolve(context, taskID)),
+    listedIDs.map((taskID) => context.runners.resolve(context, taskID)),
   );
 
   const marks = await Promise.all(
-    taskIDs.map((taskID) => readTaskMark(context.log.writer.db, taskID)),
+    listedIDs.map((taskID) => readTaskMark(context.log.writer.db, taskID)),
   );
 
   const states = listed.map((task) => pickListedTaskState(task));

@@ -140,16 +140,13 @@ export function createViewProcedures(context: APIContext) {
   };
 }
 
-// A page holds at most 100 task runs. The room above that covers the tasks out of force that the
-// task list adds while a task run of them is open.
-const pageTaskLimit = 1000;
-
 // One entry per distinct task of the page. A task of a definition that left force, with no open task
 // run, is in no directory, so its profile comes from the version that its newest ended task run pins.
+// A task with an open task run takes the profile that the task read gives it.
 async function readPageTasks(context: APIContext, runs: readonly TaskRun[]) {
-  const taskIDs = new Set(runs.map((run) => run.taskID));
+  const taskIDs = [...new Set(runs.map((run) => run.taskID))];
 
-  if (taskIDs.size === 0) {
+  if (taskIDs.length === 0) {
     return [];
   }
 
@@ -157,16 +154,13 @@ async function readPageTasks(context: APIContext, runs: readonly TaskRun[]) {
     directory: context.settings.taskDirectory,
   });
 
-  const known = messaging.directory.filter((profile) => taskIDs.has(profile.taskID));
+  const knownIDs = new Set(messaging.directory.map((profile) => profile.taskID));
 
-  const knownIDs = new Set(known.map((profile) => profile.taskID));
-
-  const missing = [...taskIDs].filter((taskID) => !knownIDs.has(taskID));
+  const missing = taskIDs.filter((taskID) => !knownIDs.has(taskID));
 
   const pinned = await readPinnedProfiles(context, runs, missing);
-  const listed = await readListedTasks(context, [...known, ...pinned], pageTaskLimit);
 
-  return listed.filter((task) => taskIDs.has(task.taskID));
+  return readListedTasks(context, [...messaging.directory, ...pinned], taskIDs.length, taskIDs);
 }
 
 async function readPinnedProfiles(
