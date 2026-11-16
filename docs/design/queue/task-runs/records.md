@@ -253,8 +253,7 @@ These rows leave the task run open, and the task takes the next state the step a
   ([mail and calendar polls](../mail-and-calendar-polls.md#event-waits));
 - a quiet turn, when the task is wakeable.
 
-- Until [the wake rule](https://linear.app/zgeoff/issue/GEO-1865) renames it, "wakeable" reads the
-  built `TaskProfile.wakeable`.
+- "Wakeable" reads `TaskProfile.wakeable`.
 - A started task that reported waits and is wakeable. It is never `done`, because a `done` task
   refuses messages and has no sandbox.
 - A definition's task is never `done`, because it keeps one thread for the life of its definition,
