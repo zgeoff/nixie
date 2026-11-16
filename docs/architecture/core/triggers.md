@@ -4,9 +4,8 @@ A definition with a `schedule` trigger fires at repeating times in a time zone, 
 trigger fires once. Every trigger source hands its fires to one piece of code, the trigger core,
 which takes each fire at most once. It writes the fire's record, wakes the task and stores the
 source's cursor in one write transaction, so a crash leaves either all of that or none of it. The
-triggers module holds the core, the arming hook and the pure time code. No trigger source is built
-yet: the server starts the core with an empty list, and
-[the schedule source](https://linear.app/zgeoff/issue/GEO-1835) is the first to join it.
+triggers module holds the core, the arming hook, the pure time code and the schedule source, the one
+trigger source the server starts.
 
 ## What a source hands over
 
@@ -98,3 +97,44 @@ at most once when the zone changes that day. The key of any other fire is
 when the slot is already past, and null for a missing or withdrawn row or a spent one-shot. The
 server resolves the zone `owner` through `ReadZone`: the zone of the newest message that carries
 one, else the configured default zone.
+
+## The schedule source
+
+`buildScheduleSource` returns the source of `schedule` and `at` triggers, with the ID `schedule`. It
+is an xstate machine that ticks at once when it starts, then every 20 seconds on the writer's clock.
+Each tick runs as tracked work, so the crash harness's settled advance waits for it and its
+delivery. A tick reads the armed definitions, the time, the time of the newest owner message and the
+zone of each definition, builds at most one event per definition, and delivers all the events of the
+tick in one batch. A tick with no event delivers nothing. The source keeps no state between ticks,
+so a fire is within 60 seconds of its slot when nixie is running.
+
+The pure function `pickScheduleEvent` builds an event. It walks the slots from the watermark up to
+now. The newest due slot is the event's `scheduledFor` and its key. The earlier due slots are
+`missed`, the 20 newest of them oldest first, and `missedCount` is their full number. The first row
+of this table that fits decides, where late is the time since the newest slot:
+
+| #   | Trigger                             | When                                                       | Event                    |
+| --- | ----------------------------------- | ---------------------------------------------------------- | ------------------------ |
+| 1   | `at`                                | its instant is at or before now, however late              | fire, never a skip       |
+| 2   | window with `idleMinutes`           | now is at or before `until`, and the owner is idle         | fire                     |
+| 3   | window with `idleMinutes`           | now is at or before `until`, and the owner is not idle yet | none; a later tick tries |
+| 4   | window with `idleMinutes`           | now is after `until`                                       | skip `window_closed`     |
+| 5   | window without `idleMinutes`        | now is at or before `until`                                | fire                     |
+| 6   | any other schedule                  | late by at most 60 seconds                                 | fire                     |
+| 7   | any other schedule, `catchUp: skip` | late by more than 60 seconds                               | skip `catch_up_off`      |
+| 8   | any other schedule, `catchUp: once` | late by more than 60 seconds, at most half the interval    | fire, a catch-up         |
+| 9   | any other schedule, `catchUp: once` | late by more than half the interval                        | skip `too_late`          |
+
+The owner is idle when no message exists or the newest is at least `idleMinutes` old. The interval
+is 24 hours for `day`, 7 days for `week`, 1 hour for `hour` and the number of minutes for a minutes
+schedule. A window without `idleMinutes` that is past `until` takes rows 6 to 9, with its lateness
+measured from `window.from`. An event whose newest slot is on time still carries the earlier missed
+slots, under either `catchUp` value.
+
+A slot whose key is taken, such as a local slot that a zone change brings round again, builds the
+same event at each tick until the next slot, and the core writes nothing for it.
+
+The source reports `running` at start. After 3 failed ticks in a row, from any failed read or
+delivery, it reports `unhealthy`, and the next good tick reports `running` again. A failed tick
+never stops the loop, and a source built after a restart counts from 0. `stop` aborts the sleep,
+waits for a tick in flight and reports `stopped`.

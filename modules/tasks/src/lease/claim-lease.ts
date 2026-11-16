@@ -18,6 +18,10 @@ export async function claimLease(
   context: Pick<TasksContext, 'clock' | 'log'>,
   request: ClaimRequest,
 ): Promise<Lease | null> {
+  if (NIXIE_TEST_BUILD) {
+    await waitAtFaultPoint('claim.before', { kind: request.kind, id: null });
+  }
+
   const lease = await withWriteTransaction(context.log.writer, async (tx) => {
     const now = context.clock.now();
 

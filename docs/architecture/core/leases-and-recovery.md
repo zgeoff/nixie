@@ -90,6 +90,10 @@ commits or the moment before a step commit. In a test build, the crash harness i
 that holds the runner at a fault point, then kills the process or releases it
 ([crash tests](./crash-tests.md)). The restore pause has 2: `recovery.pause.committed` after the
 pause commits, and `recovery.pause.marker_cleared` after the marker goes
-([the start sequence](../deployment/server.md#the-start-sequence)). Every fault point sits behind
-the test-build flag, so the release bundle holds none of them and no release code path can stop at
-one.
+([the start sequence](../deployment/server.md#the-start-sequence)). The trigger core has 2, which
+hold a delivery outside its write transaction: `trigger.batch.before` before the transaction opens,
+and `trigger.batch.after` after it commits, both with the kind `trigger` and the source's ID. A
+claim has `claim.before`, which holds a runner before its claim transaction opens, so a test can
+keep a task's runner from claiming the record that a commit has just woken it for. Every fault point
+sits behind the test-build flag, so the release bundle holds none of them and no release code path
+can stop at one.

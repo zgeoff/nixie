@@ -8,6 +8,8 @@ export { writeArmedDefinitions } from './arm/write-armed-definitions';
 export { deliverTriggerBatch } from './core/deliver-trigger-batch';
 export type { TriggerSources } from './core/start-trigger-sources';
 export { startTriggerSources } from './core/start-trigger-sources';
+export type { ScheduleSourceInput } from './schedule/build-schedule-source';
+export { buildScheduleSource } from './schedule/build-schedule-source';
 export { triggersProjections } from './projection/triggers-projections';
 export { triggerArmedCodec } from './record/trigger-armed-codec';
 export { triggerDeliveredCodec } from './record/trigger-delivered-codec';

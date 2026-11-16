@@ -1,7 +1,10 @@
 import type { FaultPointID } from '@heynixie/tasks';
 
 const faultPointTexts: Readonly<Record<FaultPointID, string>> = {
+  'claim.before': 'claim.before',
   'claim.after': 'claim.after',
+  'trigger.batch.before': 'trigger.batch.before',
+  'trigger.batch.after': 'trigger.batch.after',
   'renew.before': 'renew.before',
   'renew.after': 'renew.after',
   'step.commit.before': 'step.commit.before',
