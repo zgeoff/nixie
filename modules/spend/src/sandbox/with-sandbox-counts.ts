@@ -44,14 +44,14 @@ export function withSandboxCounts(
     get suspension() {
       return sandbox.suspension;
     },
-    destroy: async () => {
-      try {
-        await sandbox.destroy();
-      } finally {
-        registered.delete(sandbox.id);
 
-        await removeCount(options, sandbox);
-      }
+    // a sandbox whose destroy failed may still run, so it keeps its count until a destroy ends
+    destroy: async () => {
+      await sandbox.destroy();
+
+      registered.delete(sandbox.id);
+
+      await removeCount(options, sandbox);
     },
   });
 

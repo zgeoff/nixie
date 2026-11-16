@@ -233,8 +233,9 @@ Before a sandbox's first model request, the server registers it with `PUT /sandb
 A worker run's planned limit is the worker's configured limit, held to what the calling task run has
 left, so the gateway and nixie hold one number. A registration that fails fails the sandbox's start.
 A sandbox that an earlier server process made registers the first time this process reads it, so a
-sandbox kept across a restart has its count. When a sandbox is destroyed, the server deletes its
-entry. A delete that fails is logged, and the destroy goes on.
+sandbox kept across a restart has its count. Once a sandbox's destroy succeeds, the server deletes
+its entry. A sandbox whose destroy fails keeps its entry, because it may still run. A delete that
+fails is logged.
 
 ### Worker limits
 
@@ -243,7 +244,9 @@ at `workerRun.minutes`. The gateway ends it at the sandbox's dollar and token li
 a worker run the server reads `GET /sandboxes/<name>`. The `worker.run_ended` record holds the
 gateway's dollars and tokens, and a sandbox the gateway found past its limit ends the run with the
 limit `dollars` or `tokens`, unless the run ended with an answer, a stop, its minutes or a failed
-start first. The run's dollars still count toward the calling task run's dollar limit. A task run
+start first. When the gateway does not answer that read, the record holds the run's planned dollars
+and tokens, where the gateway starts to refuse the sandbox's requests, because the guest's own count
+can miss spend. The run's dollars still count toward the calling task run's dollar limit. A task run
 has no token limit: it ends at its turns and its dollars.
 
 ## The capture

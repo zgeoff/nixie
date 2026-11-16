@@ -122,7 +122,7 @@ async function runOpenWorker(
         })
       : await runStages(deps, plan, run);
 
-  const count = await readGatewayCount(deps, run);
+  const count = await readGatewayCount(deps, plan, run);
 
   await chargeGatewayExcess(deps, plan, run, count);
 
@@ -352,8 +352,14 @@ function summarizeTurn(turn: GuestTurn): WorkerTurnFacts {
   };
 }
 
-// The gateway's count of the worker's sandbox, or null when it counts none or does not answer.
-async function readGatewayCount(deps: WorkerDeps, run: WorkerRun): Promise<SandboxCount | null> {
+// The gateway's count of the worker's sandbox, or null when no gateway counts. When the gateway does
+// not answer, the count is the planned limit, where the gateway starts to refuse the sandbox, because
+// the guest's own tally can miss spend that the calling task must still pay.
+async function readGatewayCount(
+  deps: WorkerDeps,
+  plan: WorkerPlan,
+  run: WorkerRun,
+): Promise<SandboxCount | null> {
   const sandbox = run.held.sandbox;
 
   if (deps.gateway === undefined || sandbox === null) {
@@ -372,7 +378,11 @@ async function readGatewayCount(deps: WorkerDeps, run: WorkerRun): Promise<Sandb
     'warn',
   );
 
-  return null;
+  return {
+    dollars: Math.max(plan.limits.dollars, run.tally.dollars),
+    tokens: Math.max(plan.limits.tokens, run.tally.tokens),
+    tripped: false,
+  };
 }
 
 // The gateway's dollars are the count that holds, so the calling task pays what the guest's own

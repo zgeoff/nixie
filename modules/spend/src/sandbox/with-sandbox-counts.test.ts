@@ -73,6 +73,20 @@ test('it removes the count when the sandbox is destroyed', async () => {
   expect(ctx.gateway.removeSandbox.mock.calls).toStrictEqual([[sandbox.id]]);
 });
 
+test('it keeps the count of a sandbox whose destroy fails', async () => {
+  const ctx = setupTest();
+
+  const sandbox = await ctx.adapter.create(
+    buildMockSandboxSpec({ kind: 'conversation', owner: 'c' }),
+  );
+
+  ctx.sandboxes.setDestroyError(new Error('impd did not answer'));
+
+  await sandbox.destroy().catch(() => {});
+
+  expect(ctx.gateway.removeSandbox.mock.calls).toStrictEqual([]);
+});
+
 test('it logs a failed removal and still destroys the sandbox', async () => {
   const ctx = setupTest();
 

@@ -714,6 +714,26 @@ test('it records the dollars the gateway counted beyond the priced calls of the 
   expect(records.map((record) => record.payload['dollars'])).toStrictEqual([0.42]);
 });
 
+test('it charges the calling task the planned dollars when the gateway does not answer the count', async () => {
+  const ctx = await setupTest({ isGatewayOn: true, limits: { dollars: 0.75, tokens: 9000 } });
+
+  ctx.gateway.readSandbox.mockResolvedValue({ kind: 'unreachable', reason: 'no answer' });
+  ctx.guest.addKindReplies('worker', { text: 'Done.' });
+
+  const outcome = await ctx.callWorker({ question: 'Which cafes are open?' });
+
+  expect(outcome).toStrictEqual({
+    status: 'ok',
+    result: {
+      workerRunID: expect.toBeString(),
+      answer: 'Done.',
+      used: { minutes: 0, turns: 0, tokens: 9000, dollars: 0.75 },
+    },
+  });
+
+  expect(ctx.spent.reduce((sum, value) => sum + value, 0)).toBe(0.75);
+});
+
 test('it records no gateway charge when the priced calls cover the gateway count', async () => {
   const ctx = await setupTest();
 
