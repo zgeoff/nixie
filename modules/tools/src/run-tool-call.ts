@@ -311,6 +311,7 @@ function makeCallRecorder(
           thread: run.thread,
           callSequence: written.sequence,
           tool: decided.policyTool,
+          actionTool: call.tool,
           effects: declaration.effects,
           cause,
           input: call.input,

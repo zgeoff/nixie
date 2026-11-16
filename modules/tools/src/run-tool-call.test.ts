@@ -2242,3 +2242,74 @@ test('it refuses a call whose picked variant the tool does not declare', async (
     isError: true,
   });
 });
+
+test('it proposes nothing for a variant call that repeats an approved action still open', async () => {
+  const ctx = await setupTest({
+    tools: [
+      buildMockVariantToolDefinition({
+        execution: 'queued',
+        declaration: { effects: ['send'] },
+        variants: {
+          pick: () => 'risky',
+          declarations: {
+            risky: {
+              effects: ['send'],
+              destinations: [],
+              amount: null,
+              content: ['query'],
+              results: { text: 'owner_data' },
+            },
+          },
+        },
+      }),
+    ],
+    rules: [
+      {
+        id: 'ask-risky',
+        revision: 1,
+        rule: { id: 'ask-risky', outcome: 'ask' as const, tools: ['jobs_start/risky'] },
+      },
+    ],
+  });
+
+  const run = {
+    runID: 'run-1',
+    thread: 'task-1',
+    tools: ['jobs_start'],
+    model: { model: 'model-a', profile: 'chat-direct' },
+  };
+
+  const call = { tool: 'jobs_start', input: { kind: 'risky', query: 'a' }, toolUseID: 'toolu_1' };
+
+  await runToolCall(call, run, ctx.options);
+
+  const written = await readRecords(ctx.log, { afterSequence: 0 });
+
+  const proposed = written.find((entry) => entry.record.kind === 'policy.action_proposed');
+
+  const earlierID = await ctx.queue.queue.enqueue({
+    call: { callID: 'call-0', tool: 'jobs_start', input: call.input, toolUseID: null },
+    run,
+    decision: { outcome: 'allow', stage: 3, rule: null },
+    callSequence: 1,
+    actionHash: String(proposed?.record.payload['actionHash']),
+    deadlineAt: null,
+    effects: ['send'],
+  });
+
+  const repeated = runToolCall({ ...call, toolUseID: 'toolu_2' }, run, ctx.options);
+
+  await waitForCondition(() => ctx.queue.waits.length === 1);
+
+  ctx.queue.drainWaits();
+
+  const result = await repeated;
+  const entries = await readRecords(ctx.log, { afterSequence: 0 });
+
+  expect(result).toStrictEqual({
+    content: [{ type: 'text', text: `queued as ${earlierID}` }],
+    isError: false,
+  });
+
+  expect(entries.filter((entry) => entry.record.kind === 'policy.action_proposed')).toHaveLength(1);
+});
