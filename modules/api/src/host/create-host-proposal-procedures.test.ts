@@ -29,7 +29,6 @@ test('#list lists each pending proposal with its text and the hash an answer bin
       isPinned: false,
       subject: 'owner',
       newSubject: null,
-      isSensitive: false,
       kind: 'fact',
       reason: 'no_quote',
       actionHash: proposal.actionHash,

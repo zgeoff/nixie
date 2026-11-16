@@ -75,11 +75,7 @@ export function buildProposalRecords(
   }
 
   const subject = plan.subject ?? 'owner';
-
-  const markKinds = [
-    ...(subject === 'owner' ? [] : [proposalMarkKinds[subject]]),
-    ...(plan.isSensitive === true ? ['memory.proposal_sensitive_noted' as const] : []),
-  ];
+  const markKinds = subject === 'owner' ? [] : [proposalMarkKinds[subject]];
 
   return [
     proposed,

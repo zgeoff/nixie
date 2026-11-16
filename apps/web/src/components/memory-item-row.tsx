@@ -44,7 +44,6 @@ export function MemoryItemRow(props: MemoryItemRowProps): ReactNode {
         {formatMemoryProvenance(item.origin, item.source)} · created{' '}
         {formatMemoryDate(item.createdAt)}
         {item.isPinned ? ' · pinned' : ''}
-        {item.isSensitive ? ' · sensitive' : ''}
       </p>
       {props.children}
       <ItemHistory itemID={item.itemID} />

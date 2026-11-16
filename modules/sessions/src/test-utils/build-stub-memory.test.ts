@@ -39,7 +39,6 @@ test('it answers each search with no item and keeps the query it was given', asy
     minScore: 0.25,
     minSimilarity: 0.38,
     excludePinned: true,
-    excludeSensitive: true,
     excludedVersions: [],
     excludedWords: [],
     thread: 'conversation',

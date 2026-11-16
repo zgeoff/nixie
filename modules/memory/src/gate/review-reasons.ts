@@ -14,7 +14,6 @@ export const reviewReasons = [
   'other',
   'self_note',
   'from_photo',
-  'sensitive',
   'subject_change',
   'labels',
   'ask_rule',

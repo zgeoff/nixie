@@ -9,7 +9,6 @@ import { readMockPinnedCore } from './read-mock-pinned-core';
 import { readRatingNote } from './read-rating-note';
 import { requireMockSession } from './require-mock-session';
 import { writeMockMemoryChange } from './write-mock-memory-change';
-import { writeMockSensitiveMark } from './write-mock-sensitive-mark';
 
 const memory = mockImplementer.memory;
 
@@ -141,18 +140,6 @@ export const mockMemoryProcedures = {
     }
 
     return { isPinned: options.input.isPinned, itemID: options.input.itemID };
-  }),
-
-  markSensitive: memory.markSensitive.handler(async (options) => {
-    requireMockSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
-
-    const result = await writeMockSensitiveMark(options.input);
-
-    if (result !== 'applied') {
-      throw buildRefusal(result, options.errors);
-    }
-
-    return { isSensitive: options.input.isSensitive, itemID: options.input.itemID };
   }),
 };
 

@@ -37,7 +37,6 @@ export function buildConversationMemoryTools(
         retire: (request) => requireStore().writes.retire(request),
         pin: (request) => requireStore().writes.pin(request),
         unpin: (request) => requireStore().writes.unpin(request),
-        markSensitive: (request) => requireStore().writes.markSensitive(request),
         readRememberSources: (request) => requireStore().writes.readRememberSources(request),
         readRetireSources: (request) => requireStore().writes.readRetireSources(request),
         readItemSubject: (itemID) => requireStore().writes.readItemSubject(itemID),

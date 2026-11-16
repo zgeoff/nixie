@@ -30,7 +30,6 @@ test('it finds an active item by a word in its text, with its keyword score', as
         shortID: expect.toBeString(),
         state: 'active',
         isPinned: false,
-        isSensitive: false,
         subject: 'owner',
         version: 1,
         origin: 'owner',

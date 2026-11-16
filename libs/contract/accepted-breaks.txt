@@ -42,3 +42,14 @@ GEO-2588: POST /tasks/stop added `subschema #3` to the response body `oneOf` lis
 # GEO-2549: a client of the last release still works, because the reason only says why a write waits for review, and it shows the item and its text without the new reason line.
 GEO-2549: POST /approvals/listItems added the new `labels` enum value to the `items/items/body/memory/reason` response property for the response status `200`
 GEO-2549: POST /approvals/readProposals added the new `labels` enum value to the `proposals/items/body/anyOf[subschema #1]/memory/reason` response property for the response status `200`
+# GEO-2363: a client of the last release still works. Its only call of markSensitive is the memory view toggle, which an older tab loses. It reads no field the new release stops sending in a way that breaks a screen, and a stored sensitive reason now arrives as other, a value it already shows.
+GEO-2363: POST /approvals/listItems removed the required property `items/items/body/memory/isSensitive` from the response with the `200` status
+GEO-2363: POST /approvals/readProposals removed the required property `proposals/items/body/anyOf[subschema #1]/memory/isSensitive` from the response with the `200` status
+GEO-2363: POST /memory/findItems removed the required property `items/items/isSensitive` from the response with the `200` status
+GEO-2363: POST /memory/listItems removed the required property `items/items/isSensitive` from the response with the `200` status
+GEO-2363: POST /memory/listNotices removed the required property `notices/items/entries/items/item/anyOf[subschema #1]/isSensitive` from the response with the `200` status
+GEO-2363: POST /memory/markSensitive api path removed without deprecation
+GEO-2363: POST /memory/previewForget removed the required property `isSensitive` from the response with the `200` status
+GEO-2363: POST /memory/previewForgetRetired removed the required property `items/items/isSensitive` from the response with the `200` status
+GEO-2363: POST /memory/readItem removed the required property `isSensitive` from the response with the `200` status
+GEO-2363: POST /memory/readPinnedCore removed the required property `items/items/isSensitive` from the response with the `200` status

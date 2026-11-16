@@ -9,7 +9,6 @@ import { readPinnedCoreUse } from '../pinned/read-pinned-core-use';
 import { buildRecallStore } from '../recall/build-recall-store';
 import { writeRetirement } from '../retirement/write-retirement';
 import type { MemoryStore, StoreParts } from '../types';
-import { writeSensitiveMark } from '../utils/write-sensitive-mark';
 import { writeKeep } from './write-keep';
 import { writeRestoration } from './write-restoration';
 import { writeUndo } from './write-undo';
@@ -25,7 +24,6 @@ export function buildMemoryStore(parts: StoreParts): MemoryStore {
     undo: (request) => writeUndo(parts, request),
     keep: (request) => writeKeep(parts, request),
     pin: (request) => writePin(parts, request),
-    markSensitive: (request) => writeSensitiveMark(parts, request),
     readPinnedCore: () => readPinnedCore(parts),
     readPinnedCoreUse: () => readPinnedCoreUse(parts),
     readHistory: (itemID) => readItemHistory(parts, itemID),

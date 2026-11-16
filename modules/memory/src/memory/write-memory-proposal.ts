@@ -35,8 +35,6 @@ export interface ProposalPlan {
 
   readonly newSubject?: MemorySubject;
 
-  readonly isSensitive?: boolean;
-
   readonly until?: number | null;
 
   // the whole label set the approval applies; a proposal with none writes no label record

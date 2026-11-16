@@ -11,7 +11,6 @@ export function toContractProposal(proposal: ViewProposal) {
     itemID: proposal.itemID,
     targetVersion: proposal.targetVersion,
     isPinned: proposal.isPinned,
-    isSensitive: proposal.isSensitive,
     kind: toContractKind(proposal.subject),
     labels:
       proposal.labels === null

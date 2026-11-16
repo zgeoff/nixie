@@ -216,7 +216,6 @@ const memoryItems = new Collection({
   schema: z.object({
     forgottenAt: z.date().nullable().default(null),
     isPinned: z.boolean().default(false),
-    isSensitive: z.boolean().default(false),
     subject: z.enum(['owner', 'self', 'shared']).default('owner'),
 
     failsForgetCleanup: z.boolean().default(false),
@@ -295,7 +294,6 @@ const memoryProposals = new Collection({
     evidence: proposalEvidenceSchema.nullable().default(null),
     image: ownerImageSchema.nullable().default(null),
     isPinned: z.boolean().default(false),
-    isSensitive: z.boolean().default(false),
     itemID: z.uuid().default(() => faker.string.uuid()),
     subject: z.enum(['owner', 'self', 'shared']).default('owner'),
     newSubject: z.enum(['owner', 'self', 'shared']).nullable().default(null),
@@ -319,7 +317,6 @@ const memoryProposals = new Collection({
         'pinned',
         'self_note',
         'from_photo',
-        'sensitive',
         'subject_change',
         'labels',
         'ask_rule',

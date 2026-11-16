@@ -28,8 +28,6 @@ export interface ProposedChange {
 
   readonly newSubject?: MemorySubject;
 
-  readonly isSensitive?: boolean;
-
   readonly checks?: JSONObject | null;
 
   readonly until?: number | null;
@@ -54,7 +52,6 @@ export async function readMatchingProposal(
 
   const target = change.target;
   const isPinned = change.isPinned ? 1 : 0;
-  const isSensitive = change.isSensitive === true ? 1 : 0;
 
   const pending = db
     .selectFrom('memory_proposals')
@@ -79,7 +76,6 @@ export async function readMatchingProposal(
       ? sameLabelled
           .where('is_new_item', '=', 1)
           .where(subjectColumn, '=', change.subject ?? 'owner')
-          .where('is_sensitive', '=', isSensitive)
       : sameLabelled
           .where('item_id', '=', target.itemID)
           .where('target_version', '=', target.version)

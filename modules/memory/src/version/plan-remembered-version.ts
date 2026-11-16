@@ -15,7 +15,6 @@ export function planRememberedVersion(request: RememberRequest): VersionPlan {
       ? {}
       : { labels: { labels: request.labels, change: 'written' as const } }),
     ...(request.isPinned === undefined ? {} : { isPinned: request.isPinned }),
-    ...(request.isSensitive === undefined ? {} : { isSensitive: request.isSensitive }),
   };
 
   if (request.target === undefined) {

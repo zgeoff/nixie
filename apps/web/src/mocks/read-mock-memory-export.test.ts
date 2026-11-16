@@ -29,7 +29,6 @@ test('it reads a readable item with every version and a forgotten item as only i
         shortID: active.shortID,
         state: 'active',
         isPinned: false,
-        isSensitive: false,
         subject: 'owner',
         labels: { gist: 'Rents allotment plot 14', topic: 'owner', triggers: [] },
         labelHistory: [
@@ -68,17 +67,6 @@ test('it reads a readable item with every version and a forgotten item as only i
     ],
     moments: [],
   });
-});
-
-test('it reads the sensitive mark of an item', async () => {
-  await store.memoryItems.create({
-    isSensitive: true,
-    versions: [{ text: 'The door code for the spare key box is 4417' }],
-  });
-
-  const chunks = readMockMemoryExport(new Date('2026-10-14T08:00:00.000Z'));
-
-  expect(JSON.parse(chunks.join(''))).toMatchObject({ items: [{ isSensitive: true }] });
 });
 
 test('it reads a destroyed moment as only its ID and its destroy time', async () => {
@@ -151,12 +139,12 @@ test('it reads a kept moment with its span', async () => {
   });
 });
 
-test('it heads the file with schema version 9, the export time and the mock snapshot hash', () => {
+test('it heads the file with schema version 10, the export time and the mock snapshot hash', () => {
   const chunks = readMockMemoryExport(new Date('2026-10-14T08:00:00.000Z'));
 
   expect(JSON.parse(chunks.join(''))).toStrictEqual({
     header: {
-      schemaVersion: 9,
+      schemaVersion: 10,
       exportedAt: '2026-10-14T08:00:00.000Z',
       snapshotHash: 'sha256:mock',
     },

@@ -65,9 +65,6 @@ export function ApprovalMemoryBody(props: ApprovalMemoryBodyProps): ReactNode {
           Moves it from {formatSubject(memory.subject)} to {formatSubject(memory.newSubject)}.
         </p>
       )}
-      {memory.isSensitive ? (
-        <p className={meta}>Sensitive: once kept, it comes up only when a request needs it.</p>
-      ) : null}
       {memory.until === null ? null : (
         <p className={meta}>Lasts until {formatMemoryDate(memory.until)}</p>
       )}

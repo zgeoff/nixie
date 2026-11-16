@@ -38,7 +38,6 @@ const reviewReasonSchema = z.enum([
   'other',
   'self_note',
   'from_photo',
-  'sensitive',
   'subject_change',
   'labels',
   'ask_rule',
@@ -58,7 +57,6 @@ const pendingProposalSchema = z.object({
   isPinned: z.boolean(),
   subject: z.enum(['owner', 'self', 'shared']),
   newSubject: z.enum(['owner', 'self', 'shared']).nullable(),
-  isSensitive: z.boolean(),
 
   kind: z.enum(['fact', 'self']),
   reason: reviewReasonSchema,

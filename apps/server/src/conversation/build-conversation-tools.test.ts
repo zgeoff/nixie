@@ -101,7 +101,6 @@ test('it lists the web fetch tool, the time tool, the log readers, the skill too
     'memory.retire',
     'memory.pin',
     'memory.unpin',
-    'memory.mark_sensitive',
     'memory.export',
     'moment.keep',
     'moment.edit',
@@ -306,7 +305,6 @@ test('it allows the time tool, the log reader and each memory tool but export an
     'memory.retire',
     'memory.pin',
     'memory.unpin',
-    'memory.mark_sensitive',
   ];
 
   const toolList = ['web.fetch', ...readTools, 'files.write'];
@@ -325,7 +323,6 @@ test('it allows the time tool, the log reader and each memory tool but export an
     'gate',
     'gate',
     'gate',
-    'allow',
     'allow',
     'allow',
   ]);

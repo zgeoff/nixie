@@ -123,12 +123,6 @@ export interface UnpinRequest {
   readonly caller: WriteCaller;
 }
 
-export interface SensitiveMarkRequest {
-  readonly itemID: string;
-  readonly isSensitive: boolean;
-  readonly caller: WriteCaller;
-}
-
 export type WriteOutcome =
   | { readonly status: 'applied'; readonly itemID: string; readonly version: number }
   | {
@@ -149,7 +143,6 @@ export interface MemoryWrites {
   readonly retire: (request: GatedRetireRequest) => Promise<WriteOutcome>;
   readonly pin: (request: GatedPinRequest) => Promise<WriteOutcome>;
   readonly unpin: (request: UnpinRequest) => Promise<WriteOutcome>;
-  readonly markSensitive: (request: SensitiveMarkRequest) => Promise<WriteOutcome>;
 
   // the sources that the decision point reads for a write, from the quote the gate finds
   readonly readRememberSources: (request: GatedRememberRequest) => Promise<readonly WriteSource[]>;
@@ -175,7 +168,6 @@ export interface ModelWriteStore {
     | 'retire'
     | 'pin'
     | 'unpin'
-    | 'markSensitive'
     | 'readRememberSources'
     | 'readRetireSources'
     | 'readItemSubject'
@@ -195,7 +187,6 @@ export interface MemoryProposal {
   readonly subject: MemorySubject;
   readonly newSubject: MemorySubject | null;
 
-  readonly isSensitive: boolean;
   readonly reason: ReviewReason;
   readonly actionHash: string;
   readonly origin: ProposalOrigin;
@@ -325,7 +316,6 @@ export interface MemoryProposalTable {
 
   readonly kind: 'fact' | 'self';
   readonly subject: MemorySubject | null;
-  readonly is_sensitive: number;
   readonly new_subject: MemorySubject | null;
 
   readonly sealed_labels: string | null;

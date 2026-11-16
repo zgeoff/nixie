@@ -45,11 +45,10 @@ const readableItemSchema = z.strictObject({
   shortID: z.string(),
   state: z.enum(['active', 'retired']),
   isPinned: z.boolean(),
-  isSensitive: z.boolean().exactOptional(),
   subject: z.enum(['owner', 'self', 'shared']),
   versions: z.array(versionSchema).min(1),
-  labels: z.strictObject(labelFieldsShape).nullable().exactOptional(),
-  labelHistory: z.array(labelHistorySchema).exactOptional(),
+  labels: z.strictObject(labelFieldsShape).nullable(),
+  labelHistory: z.array(labelHistorySchema),
 });
 
 const forgottenItemSchema = z.strictObject({
@@ -79,8 +78,8 @@ const spanRecordSchema = z.strictObject({
   decision: z.enum(['allow', 'ask', 'deny']).nullable(),
   text: z.string().nullable(),
   isGap: z.boolean(),
-  isRemoved: z.boolean().exactOptional(),
-  images: z.array(imagePointerSchema).exactOptional(),
+  isRemoved: z.boolean(),
+  images: z.array(imagePointerSchema),
 });
 
 const readableMomentSchema = z.strictObject({
@@ -107,107 +106,15 @@ const destroyedMomentSchema = z.strictObject({
   destroyedAt: z.iso.datetime().nullable(),
 });
 
-const firstReadableVersion = 5;
-
-// A version 5 file predates the sensitive mark, so its items read as not sensitive.
-const sensitiveMarkVersion = 6;
-
-// A file before version 7 predates the removal mark, so its span records read as not removed.
-const removalMarkVersion = 7;
-
-// A file before version 8 predates the image pointers, so its span records read with no images.
-const imagesVersion = 8;
-
-export const memoryExportSchema = z
-  .strictObject({
-    header: z.strictObject({
-      schemaVersion: z.literal([
-        firstReadableVersion,
-        sensitiveMarkVersion,
-        removalMarkVersion,
-        imagesVersion,
-        memoryExportSchemaVersion,
-      ]),
-      exportedAt: z.iso.datetime(),
-      snapshotHash: z.string(),
-    }),
-    items: z.array(z.union([readableItemSchema, forgottenItemSchema])),
-    moments: z.array(z.union([readableMomentSchema, destroyedMomentSchema])),
-  })
-  .superRefine((file, ctx) => {
-    const isMarkRequired = file.header.schemaVersion >= sensitiveMarkVersion;
-    const isRemovalRequired = file.header.schemaVersion >= removalMarkVersion;
-    const isImagesRequired = file.header.schemaVersion >= imagesVersion;
-    const isLabelsRequired = file.header.schemaVersion >= memoryExportSchemaVersion;
-
-    for (const [index, item] of file.items.entries()) {
-      if ('versions' in item && 'isSensitive' in item !== isMarkRequired) {
-        ctx.addIssue({
-          code: 'custom',
-          message: `schema version ${file.header.schemaVersion} items ${isMarkRequired ? 'need' : 'have no'} a sensitive mark`,
-          path: ['items', index, 'isSensitive'],
-        });
-      }
-
-      if ('versions' in item && 'labels' in item !== isLabelsRequired) {
-        ctx.addIssue({
-          code: 'custom',
-          message: `schema version ${file.header.schemaVersion} items ${isLabelsRequired ? 'need' : 'have no'} labels`,
-          path: ['items', index, 'labels'],
-        });
-      }
-
-      if ('versions' in item && 'labelHistory' in item !== isLabelsRequired) {
-        ctx.addIssue({
-          code: 'custom',
-          message: `schema version ${file.header.schemaVersion} items ${isLabelsRequired ? 'need' : 'have no'} a label history`,
-          path: ['items', index, 'labelHistory'],
-        });
-      }
-    }
-
-    for (const [momentIndex, moment] of file.moments.entries()) {
-      if (!('records' in moment)) {
-        continue;
-      }
-
-      for (const [index, record] of moment.records.entries()) {
-        if ('isRemoved' in record !== isRemovalRequired) {
-          ctx.addIssue({
-            code: 'custom',
-            message: `schema version ${file.header.schemaVersion} span records ${isRemovalRequired ? 'need' : 'have no'} a removal mark`,
-            path: ['moments', momentIndex, 'records', index, 'isRemoved'],
-          });
-        }
-
-        if ('images' in record !== isImagesRequired) {
-          ctx.addIssue({
-            code: 'custom',
-            message: `schema version ${file.header.schemaVersion} span records ${isImagesRequired ? 'need' : 'have no'} an image list`,
-            path: ['moments', momentIndex, 'records', index, 'images'],
-          });
-        }
-      }
-    }
-  })
-  .transform((file) => ({
-    ...file,
-    items: file.items.map((item) =>
-      'versions' in item ? { ...item, isSensitive: item.isSensitive ?? false } : item,
-    ),
-    moments: file.moments.map((moment) =>
-      'records' in moment
-        ? {
-            ...moment,
-            records: moment.records.map((record) => ({
-              ...record,
-              isRemoved: record.isRemoved ?? false,
-              images: record.images ?? [],
-            })),
-          }
-        : moment,
-    ),
-  }));
+export const memoryExportSchema = z.strictObject({
+  header: z.strictObject({
+    schemaVersion: z.literal(memoryExportSchemaVersion),
+    exportedAt: z.iso.datetime(),
+    snapshotHash: z.string(),
+  }),
+  items: z.array(z.union([readableItemSchema, forgottenItemSchema])),
+  moments: z.array(z.union([readableMomentSchema, destroyedMomentSchema])),
+});
 
 export type MemoryExport = z.infer<typeof memoryExportSchema>;
 

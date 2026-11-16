@@ -5,7 +5,6 @@ import { writeGatedPin } from '../gated/write-gated-pin';
 import { writeGatedRemember } from '../gated/write-gated-remember';
 import { writeGatedRetirement } from '../gated/write-gated-retirement';
 import { readItemLabels } from '../label/read-item-labels';
-import { writeCallerSensitiveMark } from '../sensitive/write-caller-sensitive-mark';
 import type { StoreParts } from '../types';
 import { readItemSubject } from '../write/read-item-subject';
 import { readRememberSources } from '../write/read-remember-sources';
@@ -19,7 +18,6 @@ export function buildMemoryWrites(parts: StoreParts): MemoryWrites {
     retire: (request) => withFreshChecker(() => writeGatedRetirement(parts, request)),
     pin: (request) => writeGatedPin(parts, request),
     unpin: (request) => writeUnpin(parts, request),
-    markSensitive: (request) => writeCallerSensitiveMark(parts, request),
     readRememberSources: (request) => readRememberSources(parts, request),
     readRetireSources: (request) => readRetireSources(parts, request),
     readItemSubject: (itemID) => readItemSubject(parts, itemID),

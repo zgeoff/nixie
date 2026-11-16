@@ -62,7 +62,6 @@ test('#recall returns no moment text to per-turn retrieval when a moment matches
     selfNoteLimit: 2,
     minSimilarity: 0.38,
     excludePinned: true,
-    excludeSensitive: true,
     thread: 'conversation',
   });
 
