@@ -9,7 +9,7 @@ import { readQueryRows } from '../read-query-rows';
 import { nixieSchema } from '../schema/nixie-schema';
 import { buildSqliteWorkerDialect } from '../sqlite/build-sqlite-worker-dialect';
 import { readRunPrefix } from '../test-utils/read-run-prefix';
-import { taskDestinationPermissionMigration } from './0062-task-destination-permission-migration';
+import { taskDestinationPermissionMigration } from './0063-task-destination-permission-migration';
 
 async function setupTest() {
   const stack = new AsyncDisposableStack();
@@ -47,9 +47,9 @@ async function setupTest() {
   };
 }
 
-test('it moves the schema to version 62, which the release before cannot read', () => {
-  expect(nixieSchema.migrations.indexOf(taskDestinationPermissionMigration) + 1).toBe(62);
-  expect(nixieSchema.oldestReader).toBeGreaterThanOrEqual(62);
+test('it moves the schema to version 63, which the release before cannot read', () => {
+  expect(nixieSchema.migrations.indexOf(taskDestinationPermissionMigration) + 1).toBe(63);
+  expect(nixieSchema.oldestReader).toBeGreaterThanOrEqual(63);
 });
 
 test.each([
