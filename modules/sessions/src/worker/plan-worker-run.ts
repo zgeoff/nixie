@@ -8,8 +8,7 @@ import type { WorkerPlan } from './types';
 import { workerRunToolName } from './worker-run-tool-name';
 
 // A worker starts, messages, closes and lists no task, reports for none and starts no worker. The
-// definitions list belongs to the conversation alone, yet a started task may hold it, so the start
-// bounds leave it out.
+// definitions list belongs to the conversation alone.
 const neverHeldTools: ReadonlySet<string> = new Set([
   'task.start',
   'task.message',

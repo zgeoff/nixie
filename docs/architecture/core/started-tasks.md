@@ -73,8 +73,11 @@ conversation's. A task's `memory.remember` or text edit cites no message of the 
 thread, so it waits for review with the reason `no_quote`, unless an allow rule covers it. A task's
 `memory.unpin` applies at once, as the conversation's does. A start may name no skill tool either,
 because only the conversation's thread has a skill list, so a skill tool would refuse every call of
-the task. The starter rule that asks before a stranger reads memory needs a decision point that can
-ask, so until then the start refuses that combination
+the task. A start may name none of the 3 tools that list or change the task definitions, which only
+the conversation holds, as
+[changes from the conversation](definitions.md#changes-from-the-conversation) says. The starter rule
+that asks before a stranger reads memory needs a decision point that can ask, so until then the
+start refuses that combination
 ([GEO-1803](https://linear.app/zgeoff/issue/GEO-1803/nixie-policy-the-full-decision-point-with-destination-limits-known)).
 
 Each tool has 2 names. nixie registers a tool under its nixie name, such as `memory.recall`. The

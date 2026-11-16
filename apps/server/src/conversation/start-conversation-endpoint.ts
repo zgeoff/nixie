@@ -128,12 +128,13 @@ export async function startConversationEndpoint(
   };
 
   const definitionTools = [
+    buildTasksDefinitionsTool(definitionToolOptions),
     buildTaskDefineTool(definitionToolOptions),
     buildTaskUndefineTool(definitionToolOptions),
   ];
 
   // A started task's thread has no skill list, so a skill tool would refuse its every call. The
-  // tools that change a task definition belong to the conversation alone.
+  // tools that list or change the task definitions belong to the conversation alone.
   const bounds = buildTaskStartBounds(
     options.config.models,
     buildConversationMemoryTools(memory),
@@ -178,7 +179,6 @@ export async function startConversationEndpoint(
     ),
     ...search,
     ...definitionTools,
-    buildTasksDefinitionsTool(definitionToolOptions),
     ...worker,
     buildContactTool(options.context, tools.refreshDefinitions),
     buildMandateTool({
