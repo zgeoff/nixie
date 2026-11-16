@@ -1,4 +1,5 @@
 import { expect, mock, test } from 'bun:test';
+import type { Logger } from '@heynixie/logger';
 import { buildWorkerRunOwner } from '@heynixie/sandbox';
 import { buildMockSandboxSpec, buildStubSandboxes } from '@heynixie/sandbox/test-utils';
 import { buildStubSpendGateway } from '../test-utils';
@@ -7,7 +8,7 @@ import { withSandboxCounts } from './with-sandbox-counts';
 function setupTest() {
   const sandboxes = buildStubSandboxes();
   const gateway = buildStubSpendGateway();
-  const log = mock();
+  const log = mock<Logger>(() => {});
 
   return {
     sandboxes,

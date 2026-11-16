@@ -10,6 +10,7 @@ const everyJourney = [
   'adapters/definitions-repo-github/**',
   'adapters/encoder-onnx/**',
   'adapters/search-kagi/**',
+  'adapters/spend-model-gateway/**',
   'nixie-test-build.d.ts',
   'bun-serve-options.d.ts',
 ] as const;

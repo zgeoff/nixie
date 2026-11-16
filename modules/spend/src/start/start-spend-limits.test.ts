@@ -1,4 +1,5 @@
 import { expect, mock, onTestFinished, test } from 'bun:test';
+import type { Logger } from '@heynixie/logger';
 import { waitForCondition } from '@heynixie/testing';
 import { buildMockGatewayStatus, buildStubSpendGateway } from '../test-utils';
 import { startSpendLimits } from './start-spend-limits';
@@ -10,11 +11,13 @@ function setupTest() {
   };
 
   const gateway = buildStubSpendGateway();
-  const log = mock();
+  const log = mock<Logger>(() => {});
 
   const stopping = new AbortController();
 
-  onTestFinished(() => stopping.abort());
+  onTestFinished(() => {
+    stopping.abort();
+  });
 
   const options = {
     gateway,

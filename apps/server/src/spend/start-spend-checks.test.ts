@@ -1,11 +1,12 @@
 import { expect, mock, test } from 'bun:test';
+import type { Logger } from '@heynixie/logger';
 import { buildMockModelsConfig } from '@heynixie/models/test-utils';
 import { buildStubSpendGateway } from '@heynixie/spend/test-utils';
 import invariant from 'tiny-invariant';
 import { startSpendChecks } from './start-spend-checks';
 
 test('it calls no gateway when the config sets no spendStop', async () => {
-  const log = mock();
+  const log = mock<Logger>(() => {});
 
   await startSpendChecks(
     {

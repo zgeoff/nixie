@@ -12,7 +12,9 @@ async function setupTest() {
 
   const stopping = new AbortController();
 
-  onTestFinished(() => stopping.abort());
+  onTestFinished(() => {
+    stopping.abort();
+  });
 
   const gateway = await startTestModelGateway({
     upstreamURL: model.url,
