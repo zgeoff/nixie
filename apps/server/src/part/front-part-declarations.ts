@@ -40,6 +40,7 @@ export const frontPartDeclarations: readonly AnyPartDeclaration<ServerPartValues
           }),
           runners: buildServerTaskRunners(),
           taskRunLimits: options.config.models.limits.taskRun.default,
+          defaultZone: options.config.time.default_zone,
           settings: {
             ...defaultAPISettings,
             isBackupEnabled: options.config.backup.isEnabled,

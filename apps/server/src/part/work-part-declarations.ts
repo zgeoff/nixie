@@ -10,9 +10,12 @@ import type { RunStep } from '@heynixie/tasks';
 import {
   conversationRunner,
   createConversationTask,
+  readDefinitionTaskInTransaction,
   reviveHeldTasks,
   sandboxRunner,
+  withdrawDefinitionTaskInTransaction,
 } from '@heynixie/tasks';
+import { startTriggerSources } from '@heynixie/triggers';
 import { runDefinitionsSeed } from '../definition/run-definitions-seed';
 import { startDefinitionsExports } from '../definition/start-definitions-exports';
 import { queueCheckRunner } from '../queue/queue-check-runner';
@@ -63,6 +66,26 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
       if (revived > 0) {
         parts.log('tasks.held_revived', { tasks: revived });
       }
+    },
+  },
+  {
+    name: 'trigger_sources',
+    needs: ['server_parts', 'conversation_task'],
+    start: async (reader) => {
+      const parts = reader.get('server_parts');
+
+      // No trigger source exists yet, so the core starts with an empty list.
+      const sources = await startTriggerSources([], {
+        log: parts.context.log,
+        clock: parts.context.clock,
+        definitions: parts.context.definitions,
+        logEvent: parts.log,
+        readDefinitionTask: readDefinitionTaskInTransaction,
+        retireOneShot: (tx, definitionID) =>
+          withdrawDefinitionTaskInTransaction(tx, parts.context, definitionID),
+      });
+
+      await parts.cleanup.defer(() => sources.stop());
     },
   },
   {
