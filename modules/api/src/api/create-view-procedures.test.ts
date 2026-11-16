@@ -5,10 +5,11 @@ import { join } from 'node:path';
 import type { ContractClient } from '@heynixie/contract';
 import { skipReasonSchema } from '@heynixie/contract';
 import { createPathSource, readListedDefinitions, runSeed } from '@heynixie/definitions';
-import { buildTestTaskSeed } from '@heynixie/definitions/test-utils';
+import { buildTestTaskSeed, seedTaskVersions } from '@heynixie/definitions/test-utils';
 import { skipReasons } from '@heynixie/tasks';
 import {
   buildTaskSeeder,
+  seedWithdrawnPendingTasks,
   writeTestTriggerFire,
   writeTestTriggerSkip,
 } from '@heynixie/tasks/test-utils';
@@ -244,73 +245,58 @@ test('#tasks.listEnded names a withdrawn task as tasks.read does, by the version
   expect([read.name, read.brief]).toStrictEqual(['Water the seedlings', 'Water the seed trays.']);
 });
 
-test('#tasks.listEnded gives the profile of its one task when 20 newer withdrawn tasks have open runs', async () => {
-  const ctx = await setupTest();
+test(
+  '#tasks.listEnded gives the profile of its one task when 1,001 newer withdrawn tasks have pending runs',
+  async () => {
+    const ctx = await setupTest();
 
-  const crowdIDs = Array.from({ length: 20 }, (_, index) => `prune-the-roses-${index}`);
+    await ctx.writeDefinition(
+      'water-the-tomatoes',
+      'name: Water the tomatoes\nbrief: Water the beds.\n',
+    );
 
-  await ctx.writeDefinition(
-    'water-the-tomatoes',
-    'name: Water the tomatoes\nbrief: Water the beds.\n',
-  );
+    await ctx.runSeed();
 
-  await Promise.all(
-    crowdIDs.map((id) => ctx.writeDefinition(id, `name: Prune ${id}\nbrief: Cut the wood.\n`)),
-  );
+    const [tomatoes] = await ctx.readDefinitions();
+    const defined = await ctx.client.definitions.listTasks({});
 
-  await ctx.runSeed();
+    const tomatoesTask = defined.definitions[0]?.taskID;
 
-  const stored = await ctx.readDefinitions();
-  const defined = await ctx.client.definitions.listTasks({});
-
-  const tomatoes = stored.find((entry) => entry.definitionID === 'water-the-tomatoes');
-
-  const tomatoesTask = defined.definitions.find(
-    (entry) => entry.definitionID === 'water-the-tomatoes',
-  )?.taskID;
-
-  if (tomatoes === undefined || tomatoesTask === undefined || tomatoesTask === null) {
-    throw new Error('the seed bound no task');
-  }
-
-  ctx.definitionStore.add(tomatoes.definitionHash, {});
-
-  await ctx.seed.endedDefinitionRun({
-    taskID: tomatoesTask,
-    definitionID: 'water-the-tomatoes',
-    definitionHash: tomatoes.definitionHash,
-  });
-
-  for (const definitionID of crowdIDs) {
-    const entry = stored.find((candidate) => candidate.definitionID === definitionID);
-
-    const taskID = defined.definitions.find(
-      (candidate) => candidate.definitionID === definitionID,
-    )?.taskID;
-
-    if (entry === undefined || taskID === undefined || taskID === null) {
+    if (tomatoes === undefined || tomatoesTask === undefined || tomatoesTask === null) {
       throw new Error('the seed bound no task');
     }
 
-    ctx.definitionStore.add(entry.definitionHash, {});
+    ctx.definitionStore.add(tomatoes.definitionHash, {});
 
-    await ctx.seed.openDefinitionRun({
-      taskID,
-      definitionID,
-      definitionHash: entry.definitionHash,
+    await ctx.seed.endedDefinitionRun({
+      taskID: tomatoesTask,
+      definitionID: 'water-the-tomatoes',
+      definitionHash: tomatoes.definitionHash,
     });
-  }
 
-  await ctx.removeDefinition('water-the-tomatoes');
-  await Promise.all(crowdIDs.map((id) => ctx.removeDefinition(id)));
-  await ctx.runSeed();
+    await ctx.removeDefinition('water-the-tomatoes');
+    await ctx.runSeed();
 
-  const listed = await ctx.client.tasks.listEnded({ limit: 1 });
+    const crowd = await seedTaskVersions(
+      ctx.writer,
+      Array.from({ length: 1001 }, (_, index) => ({
+        definitionID: `prune-the-roses-${index}`,
+        name: `Prune the roses ${index}`,
+        brief: 'Cut the old wood.',
+      })),
+    );
 
-  expect(listed.tasks.map((task) => [task.taskID, task.name])).toStrictEqual([
-    [tomatoesTask, 'Water the tomatoes'],
-  ]);
-});
+    await seedWithdrawnPendingTasks(ctx.context, crowd);
+
+    const listed = await ctx.client.tasks.listEnded({ limit: 1 });
+
+    expect(listed.tasks.map((task) => [task.taskID, task.name])).toStrictEqual([
+      [tomatoesTask, 'Water the tomatoes'],
+    ]);
+  },
+  // oxlint-disable-next-line zgeoff/max-test-timeout -- 9 s locally; floor: 1,001 tasks write 4 log records each at about 1.5 ms a record
+  { timeout: 15_000 },
+);
 
 test('#triggers.report holds a skipped fire and a late catch-up from the date, and leaves out an on-time fire and an earlier entry', async () => {
   const ctx = await setupTest();
