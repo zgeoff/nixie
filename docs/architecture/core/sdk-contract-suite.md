@@ -40,10 +40,6 @@ watchdog to fire.
   keeps the tools it listed until a `notifications/tools/list_changed` makes it list them again.
   [A changed tool in a running task](../../design/platform/connectors/mcp-proxy.md#a-changed-tool-in-a-running-task)
   relies on the resume, and on the snapshot staying off.
-- `memory-index`: with a full pinned block and a full memory index in the first message, a resumed
-  turn that carries a `pinned-memory-changes` block answers with the changed value, on each of 2
-  resumed turns. The model reads the newest value of a pinned item, and the large index does not
-  hide it.
 - `owner-input`: a `next` message sent during a tool call reaches the model after that call, in the
   same turn, on an assistant message stamped with the message's `uuid`. An interrupt keeps a queued
   message, which starts the next turn.
