@@ -31,7 +31,7 @@ export function createAPIRouter(
     approvals: createApprovalProcedures(context, { readMemory, runInForceSeed }),
     backups: createBackupProcedures(context),
     conversation: createConversationProcedures(context),
-    definitions: createDefinitionProcedures(context, readDefinitions),
+    definitions: { ...createDefinitionProcedures(context, readDefinitions), ...views.definitions },
     memory: {
       ...createMemoryProcedures(context),
       ...createMemoryViewRouter(context, readMemory),
@@ -51,6 +51,5 @@ export function createAPIRouter(
     },
     tasks: { ...createTaskProcedures(context), ...views.tasks },
     triggers: views.triggers,
-    definitions: views.definitions,
   });
 }

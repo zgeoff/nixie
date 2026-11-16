@@ -6,7 +6,7 @@ import type { TriggerViewOptions } from './read-definition-forms';
 import { readDefinitionForms, readRenderedTrigger } from './read-definition-forms';
 import { readTaskDefinitionsOverlay } from './read-task-definitions-overlay';
 
-export interface ListedDefinition {
+export interface DefinitionListing {
   readonly definitionID: string;
 
   // null when unreadable
@@ -31,10 +31,10 @@ export interface ListedDefinition {
 }
 
 // Every task definition the layer touches or the repo holds, in order of ID
-export async function readListedDefinitions(
+export async function readDefinitionListings(
   db: Kysely<unknown>,
   options: TriggerViewOptions,
-): Promise<readonly ListedDefinition[]> {
+): Promise<readonly DefinitionListing[]> {
   const overlay = await readTaskDefinitionsOverlay(db);
 
   const removed = overlay.filter((definition) => definition.hash === null);
@@ -65,7 +65,7 @@ export async function readListedDefinitions(
 
   const spent = await readSpentOneShots(db, candidates);
 
-  const listed: ListedDefinition[] = [];
+  const listed: DefinitionListing[] = [];
 
   for (const definition of overlay) {
     const hash = shownHash(definition.definitionID, definition.hash);

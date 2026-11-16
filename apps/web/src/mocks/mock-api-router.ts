@@ -44,7 +44,6 @@ export const mockAPIRouter = os.router({
       return readMockBackupNotice();
     }),
   },
-  definitions: mockDefinitionProcedures,
   conversation: {
     read: os.conversation.read.handler((options) => {
       requireMockSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
@@ -268,6 +267,7 @@ export const mockAPIRouter = os.router({
     }),
   },
   definitions: {
+    ...mockDefinitionProcedures,
     listTasks: os.definitions.listTasks.handler((options) => {
       requireMockSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
 

@@ -217,4 +217,4 @@ export { buildTasksDefinitionsTool } from './runtime-task/chat-tool/build-tasks-
 export type { UndoHooks, UndoneChange } from './runtime-task/undo-definition-change';
 export { definitionChangedCodec } from './runtime-task/definition-changed-codec';
 export { readDefinitionNotices } from './runtime-task/read-definition-notices';
-export type { ListedDefinition } from './runtime-task/read-listed-definitions';
+export type { DefinitionListing } from './runtime-task/read-definition-listings';

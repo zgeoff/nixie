@@ -1,6 +1,6 @@
 import { parseJSONObject } from '@heynixie/log';
 import type { ToolDefinition } from '@heynixie/tools';
-import { readListedDefinitions } from '../read-listed-definitions';
+import { readDefinitionListings } from '../read-definition-listings';
 import type { ChatToolOptions } from './chat-tool-options';
 import { notReadyMessage } from './chat-tool-options';
 
@@ -68,7 +68,7 @@ export function buildTasksDefinitionsTool(options: ChatToolOptions): ToolDefinit
         return { status: 'error', message: notReadyMessage };
       }
 
-      const definitions = await readListedDefinitions(context.log.writer.db, {
+      const definitions = await readDefinitionListings(context.log.writer.db, {
         now: context.log.writer.clock.now(),
         readZone: options.readZone,
       });
