@@ -103,7 +103,7 @@ test('it refuses a config that names no override file', async () => {
 
   await ctx.writeConfig(ctx.periodsLines(null));
 
-  await expect(
+  expect(
     runRaise({
       configPath: ctx.configPath,
       period: 'day',
@@ -119,7 +119,7 @@ test('it refuses a config with limits, which has no period to raise', async () =
 
   await ctx.writeConfig(['limits: { dollars: 5 }']);
 
-  await expect(
+  expect(
     runRaise({
       configPath: ctx.configPath,
       period: 'day',
@@ -139,7 +139,7 @@ test.each([
 
   await ctx.writeConfig(ctx.periodsLines(ctx.overridePath));
 
-  await expect(
+  expect(
     runRaise({ configPath: ctx.configPath, period: 'day', dollars, tokens, now: Date.now }),
   ).rejects.toThrow();
 

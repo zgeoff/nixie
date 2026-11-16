@@ -65,7 +65,7 @@ test('it refuses to start on a file in the shape of a limits count', async () =>
 
   await writeFile(ctx.path, '{"dollars":1,"tokens":2}');
 
-  await expect(
+  expect(
     createPeriodStore({ path: ctx.path, zone: 'Europe/London', now: () => 0 }),
   ).rejects.toThrow();
 });

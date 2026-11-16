@@ -867,7 +867,7 @@ test('it refuses to start when the control token file holds no token', async () 
     ].join('\n'),
   );
 
-  await expect(
+  expect(
     startModelGateway({
       configPath: join(ctx.directory, 'proxy.yaml'),
       log: ctx.log,
