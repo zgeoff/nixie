@@ -18,7 +18,7 @@ export const Route = createFileRoute('/tasks/$taskID')({
         }),
       () =>
         options.context.queryClient.query({
-          ...options.context.queryUtils.tasks.list.queryOptions(),
+          ...options.context.queryUtils.tasks.list.queryOptions({ input: {} }),
           staleTime: routeDataStaleTimeMs,
         }),
     ]),
