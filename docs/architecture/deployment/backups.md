@@ -179,6 +179,23 @@ failed state keeps the forget open, and the next scheduled set covers the forget
 backup interval. An abandoned set leaves the forget due, so the next pass stages a new forget set. A
 set that never gets its receipt keeps the forget pending.
 
+## An older data copy and a purge
+
+An `older-data` restore pairs a data copy from before an
+[evidence purge](../memory/store.md#the-evidence-purge) with the newest key copy, which lacks the
+keys the purge deleted. The data copy holds no purge record, so a value reads shredded, never
+removed:
+
+| The item in the data copy | Unchanged between the copy and the purge              | Edited between them        |
+| ------------------------- | ----------------------------------------------------- | -------------------------- |
+| shared-key                | every value reads shredded, the current text included | every value reads shredded |
+| with a version key        | only the current text reads                           | every value reads shredded |
+
+An item is unchanged when its current version in the data copy is still current when the purge runs.
+A shared-key item loses its current text because that text needs generation 0, which the purge
+deleted, and the data copy holds no bridge version. An item that no purge reached keeps its keys and
+reads as before. A pending proposal whose key is gone stays out of the proposal list.
+
 ## Backup health
 
 nixie judges its backups from the receipts it records, because the backup job serves no health

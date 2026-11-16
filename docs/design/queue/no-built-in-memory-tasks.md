@@ -173,8 +173,9 @@ its only trace.
 - A second run changes no row.
 - A pending proposal stays pending, with its review state. An open consolidation diff is dropped,
   because nothing reads it once the consolidator is gone.
-- This release ships before [the evidence purge](evidence-purge.md#one-release-and-a-rollback),
-  whose start scrubs each merge change once.
+- This release ships before
+  [the evidence purge](../../architecture/memory/store.md#the-evidence-purge), which needs no scrub,
+  because the migration leaves no merge change.
 
 ### The task directory
 

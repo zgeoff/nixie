@@ -204,10 +204,13 @@ nothing, so the same client action ID succeeds once the action has run or a stop
 runs as a durable operation in 2 parts, as a [memory forget](../memory/store.md#forgetting) does:
 
 1. In the transaction that keeps the action's result, the API commits a `record.forget_started`
-   record on the record's thread, which names the record by its sequence. A second forget of the
-   same record answers with the first forget's time and commits no second start.
+   record on the record's thread, which names the record by its sequence, and a
+   `memory.evidence_purge_started` record that lists the memory items to purge, when any item quotes
+   the record. A second forget of the same record answers with the first forget's time and commits
+   no second start.
 2. The cleanup deletes the record's key and checkpoints the key store, runs the conversation's
-   [session cleanup](../memory/context.md#forgetting-and-the-live-session), and commits
+   [session cleanup](../memory/context.md#forgetting-and-the-live-session), which also purges the
+   [evidence](../memory/store.md#the-evidence-purge) of each listed item, and commits
    `record.forgotten`.
 
 The key goes before the session cleanup, so the session the next turn rebuilds reads the record as a

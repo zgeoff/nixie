@@ -8,11 +8,11 @@
 
 Forgetting is crypto-shredding. nixie encrypts each memory item with its own family of keys, and
 forgetting the item deletes every key in the family. The
-[evidence purge](../design/queue/evidence-purge.md) deletes only the keys of an item's older
-versions and its quotes of a forgotten record, so the item's current text stays readable. A forget
-stays pending until local cleanup finishes and every registered backup drops its copies of the keys.
-It reports completion only when the item is unreadable across that scope. A model provider that
-already received the text in a turn sits outside that scope.
+[evidence purge](../architecture/memory/store.md#the-evidence-purge) deletes only the keys of an
+item's older versions and its quotes of a forgotten record, so the item's current text stays
+readable. A forget stays pending until local cleanup finishes and every registered backup drops its
+copies of the keys. It reports completion only when the item is unreadable across that scope. A
+model provider that already received the text in a turn sits outside that scope.
 
 ## Why
 

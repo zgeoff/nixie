@@ -284,10 +284,11 @@ interface DataRestore {
   a restore from published copies
   ([erasable fields](../../architecture/core/erasable-fields.md#the-key-store)), and a replay shows
   a gap where a forgotten item was ([0007](../../decisions/0007-crypto-shredding.md)).
-- An item whose evidence nixie [purged](evidence-purge.md#backups) after the data snapshot of an
-  `older-data` pair loses its text in the restore, unless its current version had a version key of
-  its own and stayed current until the purge. The restore steps that offer an `older-data` pair warn
-  of it.
+- An item whose evidence nixie
+  [purged](../../architecture/deployment/backups.md#an-older-data-copy-and-a-purge) after the data
+  snapshot of an `older-data` pair loses its text in the restore, unless its current version had a
+  version key of its own and stayed current until the purge. The restore steps that offer an
+  `older-data` pair warn of it.
 - The restore steps that name `--data-snapshot` warn that a data snapshot named under a key snapshot
   with no publish number is checked only by its `set-` number.
 - A record with no key in an `older-data` pair does not prove a forget. Besides a forget, the
