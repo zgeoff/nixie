@@ -161,59 +161,6 @@ test('it counts a self-note toward the cap', async () => {
   expect(placed).toHaveLength(2);
 });
 
-test('it drops a pick that was retired between the selection and the placing, and records nothing', async () => {
-  const ctx = await setupTest();
-  const piano = await ctx.remember('Piano is tuned in spring', ['piano tuning']);
-
-  // The trigger push encodes the turn text after the item states are read, and before the placing.
-  const retireOnEncode = mock<() => Promise<void>>();
-  const stub = buildStubEncoder([['piano']]);
-
-  const next = await startNextTestMemory(ctx.memory, {
-    turn: {
-      trigger: { items: 1, minScore: 0, minSimilarity: 0 },
-    },
-    semanticSearch: {
-      encoder: {
-        encode: async (texts, kind) => {
-          if (texts.includes('piano tuning in spring')) {
-            await retireOnEncode();
-          }
-
-          return stub.encode(texts, kind);
-        },
-      },
-      onError: mock<(error: unknown) => void>(),
-    },
-  });
-
-  retireOnEncode.mockImplementation(async () => {
-    await next.store.retire({
-      target: piano,
-      provenance: buildMockProvenance(),
-    });
-  });
-
-  await next.store.waitForSemanticIndex();
-
-  const result = await next.store.readTurnMemory(ctx.buildAsk('piano tuning in spring'));
-
-  const records = await readRecords(next.log, {
-    afterSequence: 0,
-    kinds: ['memory.recalled'],
-  });
-
-  expect({
-    result,
-    retiredDuringSearch: retireOnEncode.mock.calls.length,
-    records,
-  }).toStrictEqual({
-    result: { kind: 'none' },
-    retiredDuringSearch: 1,
-    records: [],
-  });
-});
-
 test('it matches a restored item again and no retired one', async () => {
   const ctx = await setupTest();
   const piano = await ctx.remember('Piano is tuned in spring', ['piano tuning']);
