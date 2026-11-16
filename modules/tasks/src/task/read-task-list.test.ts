@@ -68,7 +68,9 @@ test('it lists the other tasks in the directory, the most recently active first'
       isPauseRequested: false,
       lastActivityAt: expect.toBeValidDate(),
       model: null,
-      lastSentKind: null,
+      wakeable: true,
+      definitionID: null,
+      newestRunEnd: null,
     },
     {
       id: 'planner',
@@ -78,7 +80,9 @@ test('it lists the other tasks in the directory, the most recently active first'
       isPauseRequested: false,
       lastActivityAt: expect.toBeValidDate(),
       model: null,
-      lastSentKind: null,
+      wakeable: true,
+      definitionID: null,
+      newestRunEnd: null,
     },
   ]);
 });
@@ -171,7 +175,9 @@ test('it lists each task with the model it started on and the kind of the last m
       isPauseRequested: false,
       lastActivityAt: expect.toBeValidDate(),
       model: 'second-look',
-      lastSentKind: 'progress',
+      wakeable: true,
+      definitionID: null,
+      newestRunEnd: null,
     },
   ]);
 });
@@ -227,7 +233,9 @@ test('it shows a task that asked a question as waiting on the task it asked', as
       isPauseRequested: false,
       lastActivityAt: expect.toBeValidDate(),
       model: null,
-      lastSentKind: 'question',
+      wakeable: true,
+      definitionID: null,
+      newestRunEnd: null,
       waitingOn: 'conversation',
     },
   ]);
@@ -294,7 +302,9 @@ test.each(['question', 'request'] as const)(
         isPauseRequested: false,
         lastActivityAt: expect.toBeValidDate(),
         model: null,
-        lastSentKind: kind,
+        wakeable: true,
+        definitionID: null,
+        newestRunEnd: null,
       },
     ]);
   },
@@ -377,7 +387,9 @@ test('it clears the wait when the asked task replies to the question, by its ID'
       isPauseRequested: false,
       lastActivityAt: expect.toBeValidDate(),
       model: null,
-      lastSentKind: 'question',
+      wakeable: true,
+      definitionID: null,
+      newestRunEnd: null,
     },
   ]);
 });
@@ -438,7 +450,9 @@ test('it clears the wait when the task that asked finishes', async () => {
       isPauseRequested: false,
       lastActivityAt: expect.toBeValidDate(),
       model: null,
-      lastSentKind: 'request',
+      wakeable: true,
+      definitionID: null,
+      newestRunEnd: null,
     },
   ]);
 });
@@ -510,7 +524,9 @@ test('it clears the wait when the asked task stops on its errors', async () => {
       isPauseRequested: false,
       lastActivityAt: expect.toBeValidDate(),
       model: null,
-      lastSentKind: 'question',
+      wakeable: true,
+      definitionID: null,
+      newestRunEnd: null,
     },
   ]);
 });
@@ -538,7 +554,9 @@ test('it lists the task of a definition in force with the name, the brief and th
       brief: 'Water the beds.',
       lastActivityAt: expect.toBeDate(),
       model: 'fast',
-      lastSentKind: null,
+      wakeable: false,
+      definitionID: 'water-the-tomatoes',
+      newestRunEnd: null,
     },
   ]);
 });

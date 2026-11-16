@@ -6,6 +6,7 @@ import { createConversationTask } from '../conversation/create-conversation-task
 import { readInbox } from '../inbox/read-inbox';
 import { writeStepCommit } from '../step/write-step-commit';
 import { seedConversationStep } from '../test-utils/seed-conversation-step';
+import { seedDefinitionTask } from '../test-utils/seed-definition-task';
 import { seedTask } from '../test-utils/seed-task';
 import { startTestTasks } from '../test-utils/start-test-tasks';
 import { writeTestTaskMessage } from '../test-utils/write-test-task-message';
@@ -69,6 +70,7 @@ test('it lists the tasks other than the caller, with each last activity in UTC',
           model: null,
           brief: 'Plans the week.',
           lastActivityAt: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/u),
+          wakeable: true,
         },
       ],
     },
@@ -123,6 +125,7 @@ test('it lists a started task with the name and brief it started with', async ()
           model: null,
           brief: 'Plan the beds.',
           lastActivityAt: expect.toBeString(),
+          wakeable: true,
         },
       ],
     },
@@ -170,6 +173,7 @@ test('it lists only as many tasks as the limit asks for', async () => {
           model: null,
           brief: 'Checks plans.',
           lastActivityAt: expect.toBeString(),
+          wakeable: true,
         },
       ],
     },
@@ -221,6 +225,7 @@ test('it lists each task with the model it runs on', async () => {
           model: null,
           brief: 'List the seeds to order for spring.',
           lastActivityAt: expect.toBeString(),
+          wakeable: true,
         },
         {
           id: secondLook,
@@ -229,6 +234,7 @@ test('it lists each task with the model it runs on', async () => {
           model: 'second-look',
           brief: 'Find the weak points in the plan.',
           lastActivityAt: expect.toBeString(),
+          wakeable: true,
         },
       ],
     },
@@ -236,12 +242,17 @@ test('it lists each task with the model it runs on', async () => {
 });
 
 test.each([
-  ['idle', 'progress', {}],
-  ['finished', 'report', {}],
-  ['waiting', 'question', { waitingOn: 'conversation' }],
+  ['idle', 'progress', {}, {}],
+  [
+    'finished',
+    'report',
+    { run: { activity: 'worked', report: { summary: 'Order the early peas.' } } },
+    {},
+  ],
+  ['waiting', 'question', {}, { waitingOn: 'conversation' }],
 ] as const)(
   'it lists as %s a started task whose turn ended after it sent a %s',
-  async (state, kind, wait) => {
+  async (state, kind, run, wait) => {
     const ctx = await setupTest();
     const starter = await seedConversationStep(ctx.context);
 
@@ -282,6 +293,7 @@ test.each([
       next: 'wait',
       records: [],
       acknowledged: await ctx.readUnreadSequences(claim),
+      ...run,
     });
 
     const tool = buildTasksListTool(ctx.context, messaging);
@@ -302,90 +314,8 @@ test.each([
             model: null,
             brief: 'List the seeds to order for spring.',
             lastActivityAt: expect.toBeString(),
+            wakeable: true,
             ...wait,
-          },
-        ],
-      },
-    });
-  },
-);
-
-test.each([
-  ['finished', 'progress', 'report'],
-  ['idle', 'report', 'progress'],
-] as const)(
-  'it lists as %s a started task that sent a %s and then a %s in its turn',
-  async (state, first, last) => {
-    const ctx = await setupTest();
-    const starter = await seedConversationStep(ctx.context);
-
-    const messaging = {
-      directory: [
-        {
-          taskID: 'conversation',
-          name: 'Conversation',
-          brief: 'Talks.',
-          wakeable: true,
-          speaker: 'conversation' as const,
-        },
-      ],
-      hopLimit: 20,
-    };
-
-    const taskID = await seedTask(ctx.context, {
-      starter: starter.claim,
-      name: 'Seed list',
-      brief: 'List the seeds to order for spring.',
-    });
-
-    const claim = await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000, taskID });
-
-    invariant(claim);
-
-    await writeTestTaskMessage(ctx.context, messaging, {
-      from: taskID,
-      to: 'conversation',
-      kind: first,
-      body: 'The early peas go in first.',
-      replyTo: null,
-      onBehalfOf: [],
-      wake: false,
-    });
-
-    await writeTestTaskMessage(ctx.context, messaging, {
-      from: taskID,
-      to: 'conversation',
-      kind: last,
-      body: 'Order the dwarf beans as well.',
-      replyTo: null,
-      onBehalfOf: [],
-      wake: false,
-    });
-
-    await writeStepCommit(ctx.context, claim, {
-      next: 'wait',
-      records: [],
-      acknowledged: await ctx.readUnreadSequences(claim),
-    });
-
-    const tool = buildTasksListTool(ctx.context, messaging);
-
-    const outcome = await tool.run(
-      buildMockToolCall({ tool: 'tasks.list', input: {} }),
-      buildMockToolContext({ run: { thread: 'conversation' } }),
-    );
-
-    expect(outcome).toStrictEqual({
-      status: 'ok',
-      result: {
-        tasks: [
-          {
-            id: taskID,
-            name: 'Seed list',
-            state,
-            model: null,
-            brief: 'List the seeds to order for spring.',
-            lastActivityAt: expect.toBeString(),
           },
         ],
       },
@@ -430,20 +360,11 @@ test('it lists a finished task under done within the limit, behind a newer idle 
 
   invariant(finished);
 
-  await writeTestTaskMessage(ctx.context, messaging, {
-    from: finishedID,
-    to: 'conversation',
-    kind: 'report',
-    body: 'Order the early peas and the dwarf beans.',
-    replyTo: null,
-    onBehalfOf: [],
-    wake: false,
-  });
-
   await writeStepCommit(ctx.context, finished, {
     next: 'wait',
     records: [],
     acknowledged: await ctx.readUnreadSequences(finished),
+    run: { activity: 'worked', report: { summary: 'Order the early peas.' } },
   });
 
   const idle = await claimTask(ctx.context, {
@@ -478,6 +399,7 @@ test('it lists a finished task under done within the limit, behind a newer idle 
           model: null,
           brief: 'List the seeds to order for spring.',
           lastActivityAt: expect.toBeString(),
+          wakeable: true,
         },
       ],
     },
@@ -552,6 +474,7 @@ test.each([
           ...task,
           model: null,
           lastActivityAt: expect.toBeString(),
+          wakeable: true,
         })),
       },
     });
@@ -562,99 +485,168 @@ test.each([
   [
     'waiting',
     [
+      { id: 'critic', name: 'Critic', state: 'idle', brief: 'Checks plans.' },
       { id: 'planner', name: 'Planner', state: 'idle', brief: 'Plans the week.' },
       { id: 'conversation', name: 'Conversation', state: 'idle', brief: 'Talks.' },
     ],
   ],
-  ['done', [{ id: 'critic', name: 'Critic', state: 'finished', brief: 'Checks plans.' }]],
-] as const)(
-  'it lists under %s the idle and finished tasks that belong there',
-  async (state, expected) => {
-    const ctx = await setupTest();
+  ['done', []],
+] as const)('it lists under %s the idle tasks that belong there', async (state, expected) => {
+  const ctx = await setupTest();
 
-    const messaging = {
-      directory: [
+  const messaging = {
+    directory: [
+      {
+        taskID: 'planner',
+        name: 'Planner',
+        brief: 'Plans the week.',
+        wakeable: true,
+        speaker: 'plain_task' as const,
+      },
+      {
+        taskID: 'critic',
+        name: 'Critic',
+        brief: 'Checks plans.',
+        wakeable: true,
+        speaker: 'plain_task' as const,
+      },
+      {
+        taskID: 'conversation',
+        name: 'Conversation',
+        brief: 'Talks.',
+        wakeable: true,
+        speaker: 'conversation' as const,
+      },
+    ],
+    hopLimit: 20,
+  };
+
+  await createConversationTask(ctx.context);
+  await createSystemTask(ctx.context, 'planner');
+  await createSystemTask(ctx.context, 'critic');
+
+  const planner = await claimTask(ctx.context, {
+    holder: 'runner-a',
+    leaseMs: 60_000,
+    taskID: 'planner',
+  });
+
+  const critic = await claimTask(ctx.context, {
+    holder: 'runner-a',
+    leaseMs: 60_000,
+    taskID: 'critic',
+  });
+
+  invariant(planner && critic);
+
+  await writeStepCommit(ctx.context, planner, {
+    next: 'wait',
+    records: [],
+    acknowledged: await ctx.readUnreadSequences(planner),
+  });
+
+  await writeStepCommit(ctx.context, critic, {
+    next: 'wait',
+    records: [],
+    acknowledged: await ctx.readUnreadSequences(critic),
+  });
+
+  const tool = buildTasksListTool(ctx.context, messaging);
+
+  const outcome = await tool.run(
+    buildMockToolCall({ tool: 'tasks.list', input: { state } }),
+    buildMockToolContext({ run: { thread: 'sorter' } }),
+  );
+
+  expect(outcome).toStrictEqual({
+    status: 'ok',
+    result: {
+      tasks: expected.map((task) => ({
+        ...task,
+        model: null,
+        lastActivityAt: expect.toBeString(),
+        wakeable: true,
+      })),
+    },
+  });
+});
+
+test.each([
+  {
+    label: 'with a schedule shows its next run',
+    nextFire: '2026-06-04T07:00:00.000Z',
+    shown: { nextRunAt: '2026-06-04T07:00:00.000Z' },
+  },
+  { label: 'with no slot left shows no next run', nextFire: null, shown: {} },
+] as const)('it lists an asleep definition task $label', async (row) => {
+  const ctx = await setupTest();
+
+  const taskID = await seedDefinitionTask(ctx, {
+    definitionID: 'water-the-tomatoes',
+    definitionHash: 'hash-1',
+    version: { name: 'Water the tomatoes', brief: 'Water the beds.' },
+  });
+
+  ctx.definitionStore.setNextFire('water-the-tomatoes', row.nextFire);
+
+  const tool = buildTasksListTool(ctx.context, { directory: [] });
+
+  const outcome = await tool.run(
+    buildMockToolCall({ tool: 'tasks.list', input: { state: 'waiting' } }),
+    buildMockToolContext({ run: { thread: 'conversation' } }),
+  );
+
+  expect(outcome).toStrictEqual({
+    status: 'ok',
+    result: {
+      tasks: [
         {
-          taskID: 'planner',
-          name: 'Planner',
-          brief: 'Plans the week.',
-          wakeable: true,
-          speaker: 'plain_task' as const,
-        },
-        {
-          taskID: 'critic',
-          name: 'Critic',
-          brief: 'Checks plans.',
-          wakeable: true,
-          speaker: 'plain_task' as const,
-        },
-        {
-          taskID: 'conversation',
-          name: 'Conversation',
-          brief: 'Talks.',
-          wakeable: true,
-          speaker: 'conversation' as const,
+          id: taskID,
+          name: 'Water the tomatoes',
+          state: 'asleep',
+          model: null,
+          brief: 'Water the beds.',
+          lastActivityAt: expect.toBeString(),
+          wakeable: false,
+          ...row.shown,
         },
       ],
-      hopLimit: 20,
-    };
+    },
+  });
+});
 
-    await createConversationTask(ctx.context);
-    await createSystemTask(ctx.context, 'planner');
-    await createSystemTask(ctx.context, 'critic');
+test('it lists a wakeable definition task as idle with no next run', async () => {
+  const ctx = await setupTest();
 
-    const planner = await claimTask(ctx.context, {
-      holder: 'runner-a',
-      leaseMs: 60_000,
-      taskID: 'planner',
-    });
+  const taskID = await seedDefinitionTask(ctx, {
+    definitionID: 'water-the-tomatoes',
+    definitionHash: 'hash-1',
+    version: { name: 'Water the tomatoes', brief: 'Water the beds.', wakeable: true },
+  });
 
-    const critic = await claimTask(ctx.context, {
-      holder: 'runner-a',
-      leaseMs: 60_000,
-      taskID: 'critic',
-    });
+  ctx.definitionStore.setNextFire('water-the-tomatoes', '2026-06-04T07:00:00.000Z');
 
-    invariant(planner && critic);
+  const tool = buildTasksListTool(ctx.context, { directory: [] });
 
-    await writeTestTaskMessage(ctx.context, messaging, {
-      from: 'critic',
-      to: 'conversation',
-      kind: 'report',
-      body: 'The plan holds up.',
-      replyTo: null,
-      onBehalfOf: [],
-      wake: false,
-    });
+  const outcome = await tool.run(
+    buildMockToolCall({ tool: 'tasks.list', input: {} }),
+    buildMockToolContext({ run: { thread: 'conversation' } }),
+  );
 
-    await writeStepCommit(ctx.context, planner, {
-      next: 'wait',
-      records: [],
-      acknowledged: await ctx.readUnreadSequences(planner),
-    });
-
-    await writeStepCommit(ctx.context, critic, {
-      next: 'wait',
-      records: [],
-      acknowledged: await ctx.readUnreadSequences(critic),
-    });
-
-    const tool = buildTasksListTool(ctx.context, messaging);
-
-    const outcome = await tool.run(
-      buildMockToolCall({ tool: 'tasks.list', input: { state } }),
-      buildMockToolContext({ run: { thread: 'sorter' } }),
-    );
-
-    expect(outcome).toStrictEqual({
-      status: 'ok',
-      result: {
-        tasks: expected.map((task) => ({
-          ...task,
+  expect(outcome).toStrictEqual({
+    status: 'ok',
+    result: {
+      tasks: [
+        {
+          id: taskID,
+          name: 'Water the tomatoes',
+          state: 'idle',
           model: null,
+          brief: 'Water the beds.',
           lastActivityAt: expect.toBeString(),
-        })),
-      },
-    });
-  },
-);
+          wakeable: true,
+        },
+      ],
+    },
+  });
+});
