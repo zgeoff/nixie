@@ -13,10 +13,9 @@ import type {
   StoreParts,
   VersionRef,
 } from '../types';
-import { getRowSubject } from '../utils/get-row-subject';
 import { subjectColumn } from '../utils/subject-column';
 import type { MatchScores } from '../view/merge-rankings';
-import type { RankQuery, RankedMatches } from '../view/read-ranked-matches';
+import type { RankQuery } from '../view/read-ranked-matches';
 import { readRankedMatches } from '../view/read-ranked-matches';
 import { parseItemCursor } from './parse-item-cursor';
 import { readDeliverableItems } from './read-deliverable-items';
@@ -47,11 +46,7 @@ export async function readRecall(parts: StoreParts, request: RecallRequest): Pro
       }),
     ]);
 
-    const excluded = buildVersionKeys(request.excludedVersions ?? []);
-
     const isDelivered = (item: RecalledItem): boolean =>
-      !(request.excludePinned === true && item.isPinned) &&
-      !excluded.has(buildVersionKey(item)) &&
       isAtNamedVersion(item, request) &&
       (request.subjects === undefined || request.subjects.includes(item.subject));
 
@@ -163,24 +158,14 @@ interface QueryCandidates extends CandidateQuery {
 async function readQueryCandidates(parts: StoreParts, query: QueryCandidates): Promise<Candidates> {
   const request = query.request;
 
-  const [pinned, held, others, lapsed] = await Promise.all([
-    request.excludePinned === true ? readPinnedItemIDs(parts) : [],
-    readCurrentItemIDs(parts, request.excludedVersions ?? []),
+  const [others, lapsed] = await Promise.all([
     request.subjects === undefined ? [] : readOtherSubjectIDs(parts, request.subjects),
     query.lapsedBefore === null ? [] : readLapsedItemIDs(parts, query.lapsedBefore),
   ]);
 
-  const excludedIDs = [...pinned, ...held, ...others, ...lapsed];
-  const selfLimit = request.selfNoteLimit;
+  const excludedIDs = [...others, ...lapsed];
 
-  const ranked =
-    selfLimit === undefined
-      ? await readRankedMatches(parts, buildRankQuery(request, query.limit, excludedIDs))
-      : await readSubjectRankedMatches(parts, {
-          request,
-          limits: { others: query.limit, self: Math.min(selfLimit, recallLimits.max) },
-          excludedIDs,
-        });
+  const ranked = await readRankedMatches(parts, buildRankQuery(request, query.limit, excludedIDs));
 
   return {
     itemIDs: ranked.matches.map((match) => match.itemID),
@@ -189,50 +174,6 @@ async function readQueryCandidates(parts: StoreParts, query: QueryCandidates): P
     scores: new Map(ranked.matches.map((match) => [match.itemID, match])),
     searchMode: ranked.searchMode,
   };
-}
-
-async function readPinnedItemIDs(parts: StoreParts): Promise<readonly string[]> {
-  const now = parts.context.gate.clock.now();
-
-  const rows = await parts.context.log.writer.db
-    .$extendTables<MemoryTables>()
-    .selectFrom('memory_items')
-    .select('item_id')
-    .where('is_pinned', '=', 1)
-    .where((row) => row.or([row('until', 'is', null), row('until', '>', now)]))
-    .execute();
-
-  return rows.map((row) => row.item_id);
-}
-
-async function readCurrentItemIDs(
-  parts: StoreParts,
-  refs: readonly VersionRef[],
-): Promise<readonly string[]> {
-  if (refs.length === 0) {
-    return [];
-  }
-
-  const keys = buildVersionKeys(refs);
-
-  const rows = await parts.context.log.writer.db
-    .$extendTables<MemoryTables>()
-    .selectFrom('memory_items')
-    .select(['item_id', 'version'])
-    .where('item_id', 'in', [...new Set(refs.map((ref) => ref.itemID))])
-    .execute();
-
-  return rows
-    .filter((row) => keys.has(buildVersionKey({ itemID: row.item_id, version: row.version })))
-    .map((row) => row.item_id);
-}
-
-function buildVersionKeys(refs: readonly VersionRef[]): ReadonlySet<string> {
-  return new Set(refs.map((ref) => buildVersionKey(ref)));
-}
-
-function buildVersionKey(ref: VersionRef): string {
-  return `${ref.itemID}@${ref.version}`;
 }
 
 async function readOtherSubjectIDs(
@@ -274,48 +215,6 @@ function buildRankQuery(
     ...(request.excludedWords === undefined ? {} : { excludedWords: request.excludedWords }),
     ...(request.minScore === undefined ? {} : { minScore: request.minScore }),
     ...(request.minSimilarity === undefined ? {} : { minSimilarity: request.minSimilarity }),
-  };
-}
-
-interface SubjectRanking {
-  readonly request: QueryCandidates['request'];
-
-  readonly limits: { readonly others: number; readonly self: number };
-  readonly excludedIDs: readonly string[];
-}
-
-async function readSubjectRankedMatches(
-  parts: StoreParts,
-  ranking: SubjectRanking,
-): Promise<RankedMatches> {
-  const rows = await parts.context.log.writer.db
-    .$extendTables<MemoryTables>()
-    .selectFrom('memory_items')
-    .select(['item_id', 'kind', 'subject'])
-    .where('state', '=', 'active')
-    .execute();
-
-  const selfIDs = rows.filter((row) => getRowSubject(row) === 'self').map((row) => row.item_id);
-  const otherIDs = rows.filter((row) => getRowSubject(row) !== 'self').map((row) => row.item_id);
-
-  const othersQuery = buildRankQuery(ranking.request, ranking.limits.others, [
-    ...ranking.excludedIDs,
-    ...selfIDs,
-  ]);
-
-  const selfQuery = buildRankQuery(ranking.request, ranking.limits.self, [
-    ...ranking.excludedIDs,
-    ...otherIDs,
-  ]);
-
-  const [facts, notes] = await Promise.all([
-    readRankedMatches(parts, othersQuery),
-    selfQuery.limit === 0 ? null : readRankedMatches(parts, selfQuery),
-  ]);
-
-  return {
-    matches: [...facts.matches, ...(notes?.matches ?? [])],
-    searchMode: facts.searchMode,
   };
 }
 

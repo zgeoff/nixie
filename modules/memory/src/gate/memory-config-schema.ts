@@ -1,6 +1,8 @@
 import { z } from 'zod';
 import type { MemoryIndexConfig } from '../index-block/default-index-settings';
 import { defaultIndexSettings } from '../index-block/default-index-settings';
+import { defaultTurnSettings } from '../turn/default-turn-settings';
+import type { TurnMemorySettings } from '../turn/types';
 import { defaultGateLimits } from './default-gate-limits';
 import type { GateLimits } from './gate-context';
 
@@ -11,11 +13,7 @@ export interface MemoryConfig {
   readonly limits: GateLimits;
   readonly checkerTimeoutMs: number;
   readonly pinnedCoreTokens: number;
-  readonly retrievalItems: number;
-  readonly retrievalSelfNotes: number;
-  readonly retrievalMessages: number;
-  readonly retrievalMinScore: number;
-  readonly retrievalMinSimilarity: number;
+  readonly turn: TurnMemorySettings;
   readonly rebuildTokens: number;
   readonly index: MemoryIndexConfig;
 }
@@ -40,14 +38,40 @@ export const memoryConfigSchema = z
     // A live check took about 9 s, so 20 s keeps a slow check inside the timeout.
     checker_timeout_ms: countSchema.default(20_000),
     pinned_core_tokens: z.int().positive().default(2000),
-    retrieval_items: z.int().nonnegative().max(100).default(0),
-    retrieval_self_notes: z.int().nonnegative().max(20).default(0),
-    retrieval_messages: z.int().nonnegative().max(20).default(0),
-    retrieval_min_score: z.number().nonnegative().default(0.25),
+    trigger_items: z.int().nonnegative().max(20).default(defaultTurnSettings.trigger.items),
+
+    // On invented items with the shipped encoder, near misses scored up to 6.32 in an index of 52
+    // phrases, and matches to the phrase meant scored from 3.75. The floor sits above the near
+    // misses, so a deployment with few phrases matches by meaning.
+    trigger_min_score: z.number().nonnegative().default(defaultTurnSettings.trigger.minScore),
+
+    // A near miss reached 0.56, above the 0.3 of a search that a request asks for, and the
+    // matches that meant their phrase scored from 0.43. The floor sits above the near misses.
+    trigger_min_similarity: z
+      .number()
+      .min(-1)
+      .max(1)
+      .default(defaultTurnSettings.trigger.minSimilarity),
+    retrieval_items: z.int().nonnegative().max(100).default(defaultTurnSettings.similarity.items),
+    retrieval_self_notes: z
+      .int()
+      .nonnegative()
+      .max(20)
+      .default(defaultTurnSettings.similarity.selfNotes),
+    retrieval_messages: z
+      .int()
+      .nonnegative()
+      .max(20)
+      .default(defaultTurnSettings.similarity.messages),
+    retrieval_min_score: z.number().nonnegative().default(defaultTurnSettings.similarity.minScore),
 
     // Over a sample of items, small talk such as "hello" scored near 0.38, and two thirds of the
     // questions placed their item above it.
-    retrieval_min_similarity: z.number().min(-1).max(1).default(0.38),
+    retrieval_min_similarity: z
+      .number()
+      .min(-1)
+      .max(1)
+      .default(defaultTurnSettings.similarity.minSimilarity),
     rebuild_tokens: z.int().nonnegative().default(30_000),
     index_tokens: indexTokensSchema.default(defaultIndexSettings.tokens),
     index_open_topic_items: countSchema.default(defaultIndexSettings.openTopicItems),
@@ -63,11 +87,20 @@ export const memoryConfigSchema = z
     },
     checkerTimeoutMs: config.checker_timeout_ms,
     pinnedCoreTokens: config.pinned_core_tokens,
-    retrievalItems: config.retrieval_items,
-    retrievalSelfNotes: config.retrieval_self_notes,
-    retrievalMessages: config.retrieval_messages,
-    retrievalMinScore: config.retrieval_min_score,
-    retrievalMinSimilarity: config.retrieval_min_similarity,
+    turn: {
+      trigger: {
+        items: config.trigger_items,
+        minScore: config.trigger_min_score,
+        minSimilarity: config.trigger_min_similarity,
+      },
+      similarity: {
+        items: config.retrieval_items,
+        selfNotes: config.retrieval_self_notes,
+        messages: config.retrieval_messages,
+        minScore: config.retrieval_min_score,
+        minSimilarity: config.retrieval_min_similarity,
+      },
+    },
     rebuildTokens: config.rebuild_tokens,
     index: {
       tokens: config.index_tokens,

@@ -59,9 +59,7 @@ test('#recall returns no moment text to per-turn retrieval when a moment matches
   const result = await ctx.memory.store.recall({
     query: 'heating engineer visit',
     limit: 5,
-    selfNoteLimit: 2,
     minSimilarity: 0.38,
-    excludePinned: true,
     thread: 'conversation',
   });
 

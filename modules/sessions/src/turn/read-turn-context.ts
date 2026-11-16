@@ -13,8 +13,8 @@ import type {
 } from '../types';
 import { renderSessionPrompt } from '../utils/render-session-prompt';
 import { isCoreChanged } from './is-core-changed';
-import type { TurnRetrieval } from './read-turn-retrieval';
-import { readTurnRetrieval } from './read-turn-retrieval';
+import type { TurnRetrieval } from './read-turn-memory';
+import { readTurnMemory } from './read-turn-memory';
 import { renderCoreChanges } from './render-core-changes';
 import { renderTurnPreamble } from './render-turn-preamble';
 
@@ -83,7 +83,7 @@ export async function readTurnContext(
   const retrieval =
     readMemory === undefined
       ? noRetrieval
-      : await readTurnRetrieval({ ...run, memory: readMemory }, query, lines);
+      : await readTurnMemory({ ...run, memory: readMemory }, query, lines);
 
   const at = formatMessageTime(lines.now, null, lines);
   const pinnedMemory = memory === null ? null : renderPinnedMemory(core, lines);

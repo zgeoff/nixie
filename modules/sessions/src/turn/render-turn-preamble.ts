@@ -4,7 +4,7 @@ import { renderRetrievedItems } from '../retrieved/render-retrieved-items';
 import { renderRetrievedMessages } from '../retrieved/render-retrieved-messages';
 import { renderRetrievedSelfNotes } from '../retrieved/render-retrieved-self-notes';
 import type { MemoryLineOptions } from '../types';
-import type { TurnRetrieval } from './read-turn-retrieval';
+import type { TurnRetrieval } from './read-turn-memory';
 
 export interface TurnPreamble {
   readonly continuation: string | null;

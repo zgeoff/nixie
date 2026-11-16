@@ -117,11 +117,6 @@ async function setupTest() {
         memory: () => memory,
         getDefinitions: () => definitions,
         memorySettings: {
-          retrievalItems: 5,
-          retrievalSelfNotes: 2,
-          retrievalMessages: 3,
-          retrievalMinScore: 0.25,
-          retrievalMinSimilarity: 0.38,
           rebuildTokens: 30_000,
           ownerName: 'Robin',
           agentNames: [],

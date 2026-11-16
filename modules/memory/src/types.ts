@@ -1,6 +1,12 @@
 import type { CheckedTables, MemorySubjectCounts } from '@heynixie/db';
 import type { ContentSource, Definitions, JSONObject, Log } from '@heynixie/log';
-import type { MemoryApproval, PinnedCoreUse, SessionIndex } from '@heynixie/sessions';
+import type {
+  MemoryApproval,
+  PinnedCoreUse,
+  SessionIndex,
+  TurnMemory,
+  TurnMemoryAsk,
+} from '@heynixie/sessions';
 import type { Selectable, Transaction } from 'kysely';
 import type {
   GateContext,
@@ -16,6 +22,7 @@ import type { EntryPage, TopicRequest } from './index-block/types';
 import type { RateRequest } from './memory/memory-rating';
 import type { MessageRecallRequest, MessageRecallResult } from './message/message-recall-request';
 import type { StoreIndexes } from './moment/store/start-store-indexes';
+import type { TurnMemorySettings } from './turn/types';
 import type { DeliveryLock } from './utils/make-delivery-lock';
 import type { ItemHistory, MemoryView } from './view/memory-view';
 
@@ -165,17 +172,11 @@ export interface RecallRequest {
 
   readonly minSimilarity?: number;
 
-  readonly excludePinned?: boolean;
-
-  readonly excludedVersions?: readonly VersionRef[];
-
   readonly excludedWords?: readonly string[];
 
   readonly thread?: string;
 
   readonly isTurnNote?: boolean;
-
-  readonly selfNoteLimit?: number;
 
   readonly subjects?: readonly MemorySubject[];
 
@@ -259,6 +260,8 @@ export interface RecallResult {
 }
 
 export interface MemoryStore {
+  readonly readTurnMemory: (ask: TurnMemoryAsk) => Promise<TurnMemory>;
+
   readonly recall: (request: RecallRequest) => Promise<RecallResult>;
 
   readonly recallMessages: (request: MessageRecallRequest) => Promise<MessageRecallResult>;
@@ -334,6 +337,10 @@ export interface MemoryContext {
   readonly index?: MemoryIndexConfig;
 
   readonly semanticSearch?: SemanticSearch;
+
+  // What a turn brings. Without it, trigger push runs on its config defaults and no similarity
+  // limit is above 0.
+  readonly turn?: TurnMemorySettings;
 }
 
 export interface StoreParts extends StoreIndexes {

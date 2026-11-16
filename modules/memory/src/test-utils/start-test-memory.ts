@@ -7,6 +7,7 @@ import type { Log, Writer } from '@heynixie/log';
 import type { GateContext } from '../gate/gate-context';
 import type { MemoryIndexConfig } from '../index-block/default-index-settings';
 import type { StartedMemoryStore } from '../memory/start-memory-store';
+import type { TurnMemorySettings } from '../turn/types';
 import type { CleanupSessions, MemoryContext, SemanticSearch } from '../types';
 import { startTestStore } from './start-test-store';
 
@@ -31,6 +32,8 @@ export interface TestMemoryOptions {
   readonly semanticSearch?: SemanticSearch;
 
   readonly index?: Partial<MemoryIndexConfig>;
+
+  readonly turn?: TurnMemorySettings;
 
   readonly keyStoreBusyTimeoutMs?: number;
 }

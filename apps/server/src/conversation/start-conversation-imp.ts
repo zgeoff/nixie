@@ -69,7 +69,7 @@ export async function startConversationImp(
     ]),
     memory,
     memorySettings: {
-      ...parts.config.memory,
+      rebuildTokens: parts.config.memory.rebuildTokens,
       ownerName: parts.config.owner.name,
       agentNames: parts.config.agent.names,
     },

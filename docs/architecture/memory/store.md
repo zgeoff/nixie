@@ -263,6 +263,15 @@ at one byte a number, and ranks items by their dot product with the query's vect
 the excluded words out of the query text it encodes, because a name that nearly every item holds
 pulls every item toward the query.
 
+The trigger index is a second pair of indexes, built as the item indexes are but over trigger
+phrases. It holds one keyword row and one vector for each phrase of an active item, keyed by the
+item and the phrase's position, and ranks an item by its best phrase. A phrase's rows live in
+process memory only. Each start rebuilds the index from each active item's newest labels, and a
+label write, a retire, a restore and a forget keep it current, as they keep the item indexes. An
+item that is retired but still labelled can hold phrases, so the turn's selection also checks that
+an item is active. [Per-turn retrieval](./context.md#per-turn-retrieval) explains how a turn uses
+it.
+
 The vector index rebuilds after the store starts, in the background, because encoding every item
 takes seconds, and every query searches keywords alone until it ends. After a version's record
 commits, the store drops the item's vector and queues its current text for encoding outside the

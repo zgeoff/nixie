@@ -98,7 +98,6 @@ test.skipIf(isModelMissing)(
       limit: 5,
       minScore: 0.25,
       minSimilarity: 0.38,
-      excludePinned: true,
       thread: 'conversation',
     });
 
@@ -128,7 +127,6 @@ test.skipIf(isModelMissing)(
       query: 'when is the heating engineer coming',
       limit: 5,
       minScore: 0.25,
-      excludePinned: true,
     });
 
     expect(result.items).toStrictEqual([]);

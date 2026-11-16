@@ -62,6 +62,8 @@ export async function runForgetItems(
 
       parts.labels.remove(itemID);
       parts.vectors?.remove(itemID);
+
+      await parts.triggers.remove(itemID);
     }
 
     await removeMessageEntries(parts, begun.evidenceSequences);

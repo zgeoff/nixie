@@ -16,6 +16,7 @@ export async function runForgetCleanup(parts: StoreParts, itemID: string): Promi
   parts.labels.remove(itemID);
   parts.vectors?.remove(itemID);
 
+  await parts.triggers.remove(itemID);
   await parts.context.cleanupSessions({ itemID });
 
   await withWriteTransaction(log.writer, async (tx) => {

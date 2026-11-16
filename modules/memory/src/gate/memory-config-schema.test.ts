@@ -11,11 +11,10 @@ test('it sets the gate, pinned core, retrieval and rebuild defaults', () => {
     },
     checkerTimeoutMs: 20_000,
     pinnedCoreTokens: 2000,
-    retrievalItems: 0,
-    retrievalSelfNotes: 0,
-    retrievalMessages: 0,
-    retrievalMinScore: 0.25,
-    retrievalMinSimilarity: 0.38,
+    turn: {
+      trigger: { items: 3, minScore: 6.4, minSimilarity: 0.57 },
+      similarity: { items: 0, selfNotes: 0, messages: 0, minScore: 0.25, minSimilarity: 0.38 },
+    },
     rebuildTokens: 30_000,
     index: { tokens: 3000, openTopicItems: 25, itemOrder: 'newest-first', topicPage: 200 },
   });
@@ -57,6 +56,9 @@ test('it refuses an index item order other than newest first', () => {
 test('it takes the values the file names', () => {
   const result = memoryConfigSchema.safeParse({
     pinned_core_tokens: 1500,
+    trigger_items: 2,
+    trigger_min_score: 4,
+    trigger_min_similarity: 0.7,
     retrieval_items: 3,
     retrieval_self_notes: 0,
     retrieval_messages: 1,
@@ -67,13 +69,24 @@ test('it takes the values the file names', () => {
 
   expect(result.data).toMatchObject({
     pinnedCoreTokens: 1500,
-    retrievalItems: 3,
-    retrievalSelfNotes: 0,
-    retrievalMessages: 1,
-    retrievalMinScore: 0.5,
-    retrievalMinSimilarity: 0.45,
+    turn: {
+      trigger: { items: 2, minScore: 4, minSimilarity: 0.7 },
+      similarity: { items: 3, selfNotes: 0, messages: 1, minScore: 0.5, minSimilarity: 0.45 },
+    },
     rebuildTokens: 20_000,
   });
+});
+
+test('it refuses more than 20 trigger items a turn', () => {
+  const result = memoryConfigSchema.safeParse({ trigger_items: 21 });
+
+  expect(result.error?.issues).toPartiallyContain({ path: ['trigger_items'] });
+});
+
+test('it refuses a negative trigger floor', () => {
+  const result = memoryConfigSchema.safeParse({ trigger_min_score: -1 });
+
+  expect(result.error?.issues).toPartiallyContain({ path: ['trigger_min_score'] });
 });
 
 test('it refuses a pinned core with no budget', () => {
@@ -104,4 +117,10 @@ test('it refuses more than 20 self-notes a turn', () => {
   const result = memoryConfigSchema.safeParse({ retrieval_self_notes: 21 });
 
   expect(result.error?.issues).toPartiallyContain({ path: ['retrieval_self_notes'] });
+});
+
+test('it refuses a trigger similarity floor above 1', () => {
+  const result = memoryConfigSchema.safeParse({ trigger_min_similarity: 1.5 });
+
+  expect(result.error?.issues).toPartiallyContain({ path: ['trigger_min_similarity'] });
 });

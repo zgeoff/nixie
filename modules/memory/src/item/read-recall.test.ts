@@ -14,53 +14,6 @@ async function setupTest() {
   return { memory: await startTestMemory() };
 }
 
-test('it returns up to the limit of facts and up to the self-note limit of self-notes from one ranking, in one recall record', async () => {
-  const ctx = await setupTest();
-
-  const facts = [
-    'The garden hose leaks at the tap',
-    'The garden gate sticks after rain',
-    'The garden fence needs paint',
-    'The library closes at six on Sundays',
-    'The dentist is on the high street',
-    'The bins go out on Tuesday',
-  ];
-
-  const notes = ['I enjoy hearing about the garden', 'My garden tips landed well last spring'];
-
-  await Promise.all([
-    ...facts.map((text) => ctx.memory.store.remember({ text, provenance: buildMockProvenance() })),
-    ...notes.map((text) =>
-      ctx.memory.store.remember({ text, subject: 'self', provenance: buildMockProvenance() }),
-    ),
-  ]);
-
-  const result = await ctx.memory.store.recall({ query: 'garden', limit: 2, selfNoteLimit: 1 });
-
-  const records = await readRecords(ctx.memory.log, {
-    afterSequence: 0,
-    kinds: ['memory.recalled'],
-  });
-
-  expect(result.items.map((item) => item.subject).toSorted()).toStrictEqual([
-    'owner',
-    'owner',
-    'self',
-  ]);
-
-  expect(result.items.map((item) => item.text)).toSatisfyAll((text: string) =>
-    text.includes('garden'),
-  );
-
-  expect(records.map((entry) => entry.record.payload['items'])).toMatchObject([
-    [
-      { itemID: expect.toBeString() },
-      { itemID: expect.toBeString() },
-      { itemID: expect.toBeString() },
-    ],
-  ]);
-});
-
 test('it returns only the items of the subjects the recall names', async () => {
   const ctx = await setupTest();
 
@@ -160,30 +113,6 @@ test('it fills a limited recall of named items with the subjects it names when a
   });
 
   expect(result.items.map((item) => item.itemID)).toStrictEqual([shared.itemID]);
-});
-
-test('it returns a matching self-note when more facts match than the largest recall holds', async () => {
-  const ctx = await setupTest();
-
-  await Promise.all([
-    ...Array.from({ length: 101 }, (_, index) =>
-      ctx.memory.store.remember({
-        text: `The garden bed ${index} needs water`,
-        provenance: buildMockProvenance(),
-      }),
-    ),
-    ctx.memory.store.remember({
-      text: 'I enjoy hearing about the garden',
-      subject: 'self',
-      provenance: buildMockProvenance(),
-    }),
-  ]);
-
-  const result = await ctx.memory.store.recall({ query: 'garden', limit: 100, selfNoteLimit: 1 });
-
-  expect(result.items.filter((item) => item.subject === 'self')).toMatchObject([
-    { text: 'I enjoy hearing about the garden' },
-  ]);
 });
 
 test('it returns up to the limit across every subject when the recall sets no self-note limit', async () => {
@@ -294,29 +223,6 @@ test('it never returns a session summary whose text matches the query', async ()
   expect(result.items.map((recalled) => recalled.itemID)).toStrictEqual([item.itemID]);
 });
 
-test('it leaves pinned items out of a query when asked', async () => {
-  const ctx = await setupTest();
-
-  await ctx.memory.store.remember({
-    text: 'Goes by Sam, and the spare key is with Sam',
-    isPinned: true,
-    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
-  });
-
-  const unpinned = await ctx.memory.store.remember({
-    text: 'The spare key sits under the blue flowerpot',
-    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
-  });
-
-  const result = await ctx.memory.store.recall({
-    query: 'spare key',
-    limit: 1,
-    excludePinned: true,
-  });
-
-  expect(result.items.map((recalled) => recalled.itemID)).toStrictEqual([unpinned.itemID]);
-});
-
 test('it leaves the excluded words of a query out of the match when asked', async () => {
   const ctx = await setupTest();
 
@@ -336,39 +242,6 @@ test('it leaves the excluded words of a query out of the match when asked', asyn
   });
 
   expect(result.items.map((recalled) => recalled.itemID)).toStrictEqual([bun.itemID]);
-});
-
-test('it finds an unpinned match when more pinned matches rank first than the recall returns', async () => {
-  const ctx = await setupTest();
-
-  await Promise.all(
-    Array.from({ length: 3 }, (_, index) =>
-      ctx.memory.store.remember({
-        text: `Spare key ${index}`,
-        isPinned: true,
-        provenance: {
-          origin: 'owner',
-          source: 'owner',
-          taskID: null,
-          proposalID: null,
-          checks: null,
-        },
-      }),
-    ),
-  );
-
-  const unpinned = await ctx.memory.store.remember({
-    text: 'The spare key sits under the blue flowerpot by the door',
-    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
-  });
-
-  const result = await ctx.memory.store.recall({
-    query: 'spare key',
-    limit: 1,
-    excludePinned: true,
-  });
-
-  expect(result.items.map((recalled) => recalled.itemID)).toStrictEqual([unpinned.itemID]);
 });
 
 test('it leaves out a match below the score floor', async () => {
@@ -394,49 +267,6 @@ test('it leaves out a match below the score floor', async () => {
   const result = await ctx.memory.store.recall({ query: 'Tuesday flowerpot', minScore: 0.25 });
 
   expect(result.items.map((recalled) => recalled.itemID)).toStrictEqual([flowerpot.itemID]);
-});
-
-test('it ranks the next match in place of an excluded version', async () => {
-  const ctx = await setupTest();
-
-  const flowerpot = await ctx.memory.store.remember({
-    text: 'The spare key sits under the blue flowerpot',
-    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
-  });
-
-  const garage = await ctx.memory.store.remember({
-    text: 'A second spare key hangs in the garage',
-    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
-  });
-
-  const result = await ctx.memory.store.recall({
-    query: 'spare key flowerpot',
-    limit: 1,
-    excludedVersions: [flowerpot],
-  });
-
-  expect(result.items.map((recalled) => recalled.itemID)).toStrictEqual([garage.itemID]);
-});
-
-test('it returns the current version of an item whose earlier version is excluded', async () => {
-  const ctx = await setupTest();
-
-  const first = await ctx.memory.store.remember({
-    text: 'The spare key sits under the blue flowerpot',
-    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
-  });
-
-  const edited = await ctx.memory.store.remember({
-    text: 'The spare key sits under the doormat',
-    target: first,
-    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
-  });
-
-  const result = await ctx.memory.store.recall({ query: 'spare key', excludedVersions: [first] });
-
-  expect(
-    result.items.map((recalled) => ({ itemID: recalled.itemID, version: recalled.version })),
-  ).toStrictEqual([edited]);
 });
 
 test('it recalls none of 3 items for a message unrelated to them', async () => {
@@ -469,7 +299,6 @@ test('it recalls none of 3 items for a message unrelated to them', async () => {
     query: 'What should I cook for dinner tonight?',
     limit: 5,
     minScore: 0.25,
-    excludePinned: true,
   });
 
   expect(result.items).toStrictEqual([]);
@@ -505,7 +334,6 @@ test('it recalls only the 1 of 3 items that a message bears on', async () => {
     query: 'When is my sister visiting from Lisbon?',
     limit: 5,
     minScore: 0.25,
-    excludePinned: true,
   });
 
   expect(result.items.map((recalled) => recalled.itemID)).toStrictEqual([sister.itemID]);
@@ -536,7 +364,6 @@ test('it recalls neither of 2 items, which BM25 cannot rank, above a score floor
     query: 'Is it too late for a coffee now? The message can wait',
     limit: 5,
     minScore: 0.25,
-    excludePinned: true,
   });
 
   expect(result.items).toStrictEqual([]);
@@ -586,7 +413,6 @@ test('it recalls only the train item of 10 for a message that shares function wo
     query: 'I need to book a train to Manchester next week',
     limit: 5,
     minScore: 0.25,
-    excludePinned: true,
   });
 
   expect(result.items.map((recalled) => recalled.itemID)).toStrictEqual([train.itemID]);
@@ -633,7 +459,6 @@ test('it recalls only the coffee item of 10 for a message that shares function w
     query: 'Is it too late for a coffee now?',
     limit: 5,
     minScore: 0.25,
-    excludePinned: true,
   });
 
   expect(result.items.map((recalled) => recalled.itemID)).toStrictEqual([coffee.itemID]);
@@ -1060,7 +885,6 @@ test('it recalls the keyword matches alone while the vector index rebuilds', asy
 
   const result = await memory.store.recall({
     query: 'where does my sister live now',
-    excludePinned: true,
     minSimilarity: 0.38,
   });
 
@@ -1140,30 +964,6 @@ test('it leaves out a semantic match below the similarity floor the request sets
   });
 
   expect(result.items).toStrictEqual([]);
-});
-
-test('it keeps a pinned item out of the vector matches when the request leaves pinned items out', async () => {
-  const memory = await startTestMemory({
-    semanticSearch: {
-      encoder: buildStubEncoder([['sister', 'sibling']]),
-      onError: mock<(error: unknown) => void>(),
-    },
-  });
-
-  const pinned = await createMemoryItem(memory.store, { text: 'Ana is my sibling' });
-  const other = await createMemoryItem(memory.store, { text: 'Ana is my only sibling' });
-
-  await memory.store.pin({
-    itemID: pinned.itemID,
-    isPinned: true,
-    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
-  });
-
-  await memory.store.waitForSemanticIndex();
-
-  const result = await memory.store.recall({ query: 'my sister', excludePinned: true, limit: 1 });
-
-  expect(result.items.map((recalled) => recalled.itemID)).toStrictEqual([other.itemID]);
 });
 
 test('it ranks the next semantic match in place of a retired item', async () => {
@@ -1302,31 +1102,6 @@ test('it ranks a live match in place of a better match past its end time', async
   ]);
 });
 
-test('it returns a pinned item past its end time to a query that leaves pinned items out and includes retired items', async () => {
-  const clock = buildTestClock(Date.parse('2026-10-19T09:00:00Z'));
-
-  const memory = await startTestMemory({ gate: { clock } });
-
-  const item = await memory.store.remember({
-    text: 'Is in Lisbon this week',
-    until: Date.parse('2026-10-19T22:59:59Z'),
-    isPinned: true,
-    provenance: buildMockProvenance(),
-  });
-
-  clock.advance(Date.parse('2026-10-20T00:41:00Z') - clock.now());
-
-  const searched = await memory.store.recall({
-    query: 'Lisbon',
-    excludePinned: true,
-    includeRetired: true,
-  });
-
-  expect(searched.items).toMatchObject([
-    { itemID: item.itemID, state: 'retired', isPinned: false },
-  ]);
-});
-
 test('it returns an item past its end time as retired to a recall that includes retired items', async () => {
   const clock = buildTestClock(Date.parse('2026-10-19T09:00:00Z'));
 
@@ -1393,8 +1168,6 @@ test('it returns no moment text to the recall that per-turn retrieval makes, eve
   const result = await ctx.memory.store.recall({
     query: 'kettle noise ruling',
     limit: 5,
-    selfNoteLimit: 2,
-    excludePinned: true,
     thread: 'conversation',
   });
 
@@ -1525,15 +1298,6 @@ test('it rejects and records nothing when measuring an item fails', async () => 
 
 test.each([
   ['a query recall', { query: 'zucchini', thread: 'conversation' }],
-  [
-    'a turn search',
-    {
-      query: 'zucchini',
-      selfNoteLimit: 2,
-      excludePinned: true,
-      thread: 'conversation',
-    },
-  ],
   ['a list of subjects with no item', { subjects: ['shared' as const], thread: 'conversation' }],
 ])('it writes no recall record for %s that finds nothing', async (_label, request) => {
   const ctx = await setupTest();
@@ -1628,34 +1392,4 @@ test('it names the IDs past the limit that it would have returned, in the order 
     past.itemID,
     pastTwo.itemID,
   ]);
-});
-
-test('it returns no item and writes no recall record for a search with both limits at 0', async () => {
-  const ctx = await setupTest();
-
-  await ctx.memory.store.remember({
-    text: 'The garden hose leaks at the tap',
-    provenance: buildMockProvenance(),
-  });
-
-  await ctx.memory.store.remember({
-    text: 'I enjoy hearing about the garden',
-    subject: 'self',
-    provenance: buildMockProvenance(),
-  });
-
-  const result = await ctx.memory.store.recall({
-    query: 'garden',
-    limit: 0,
-    selfNoteLimit: 0,
-    excludePinned: true,
-  });
-
-  const records = await readRecords(ctx.memory.log, {
-    afterSequence: 0,
-    kinds: ['memory.recalled'],
-  });
-
-  expect(result.items).toStrictEqual([]);
-  expect(records).toStrictEqual([]);
 });

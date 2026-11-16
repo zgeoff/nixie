@@ -29,41 +29,26 @@ test('it answers the pinned items and their use it is given', async () => {
   expect(use).toStrictEqual({ items: 1, tokens: 9, budget: 2000 });
 });
 
-test('it answers each search with no item and keeps the query it was given', async () => {
+test('it answers each turn memory ask with none and keeps the ask it was given', async () => {
   const memory = buildStubMemory({ pinned: [], pinnedUse: { items: 0, tokens: 0, budget: 2000 } });
 
-  const request = {
-    query: 'canal locks',
-    limit: 5,
-    selfNoteLimit: 2,
-    minScore: 0.25,
-    minSimilarity: 0.38,
-    excludePinned: true,
-    excludedVersions: [],
-    excludedWords: [],
+  const ask = {
+    text: 'canal locks',
     thread: 'conversation',
-  } as const;
+    excludedWords: [],
+    held: { readVersions: () => Promise.resolve([]), readMessages: () => Promise.resolve([]) },
+  };
 
-  const found = await memory.recall(request);
+  const turnMemory = await memory.readTurnMemory(ask);
 
-  expect(found).toStrictEqual({ items: [] });
-  expect(memory.recall.mock.calls).toStrictEqual([[request]]);
+  expect(turnMemory).toStrictEqual({ kind: 'none' });
+  expect(memory.readTurnMemory.mock.calls).toStrictEqual([[ask]]);
 });
 
-test('it answers each message search with no message and each short ID lookup with none', async () => {
+test('it answers each short ID lookup with none', async () => {
   const memory = buildStubMemory({ pinned: [], pinnedUse: { items: 0, tokens: 0, budget: 2000 } });
-
-  const messages = await memory.recallMessages({
-    query: 'canal locks',
-    limit: 3,
-    minScore: 0.25,
-    minSimilarity: 0.38,
-    excludedSequences: [],
-    excludedWords: [],
-  });
 
   const shortIDs = await memory.readShortIDs(['2f6c0d1e-8a4b-4c7d-9e2f-5b1a3c8d7e60']);
 
-  expect(messages).toStrictEqual({ messages: [] });
   expect(shortIDs).toStrictEqual(new Map());
 });
