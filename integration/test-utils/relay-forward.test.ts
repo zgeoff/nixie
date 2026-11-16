@@ -16,7 +16,9 @@ test('it passes the bytes of a connection to the target port and the reply back'
     targetPort: target.port ?? 0,
   });
 
-  onTestFinished(() => relay.stop());
+  onTestFinished(() => {
+    relay.stop();
+  });
 
   const response = await fetch(`http://127.0.0.1:${String(relay.port)}/`, {
     method: 'POST',
@@ -41,7 +43,9 @@ test('it ends a connection whose target refuses it', async () => {
     targetPort: refusedPort,
   });
 
-  onTestFinished(() => relay.stop());
+  onTestFinished(() => {
+    relay.stop();
+  });
 
   expect(fetch(`http://127.0.0.1:${String(relay.port)}/`)).rejects.toThrow();
 });

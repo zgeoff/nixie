@@ -540,7 +540,6 @@ test.skipIf(!hasRelay)(
 
     const line = new TextDecoder().decode(probe.stdout.bytes).trim();
 
-    // oxlint-disable-next-line no-console -- the probe line is the run's evidence
     console.log(`codexTask probe at ${String(memoryMiB)} MiB: ${line}`);
 
     expect(turn.frames.at(-1)).toMatchObject({ type: 'ended' });

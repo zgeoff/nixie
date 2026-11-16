@@ -70,7 +70,12 @@ export function startRelayForward(input: RelayForwardInput): RelayForward {
     },
   });
 
-  return { port: listener.port, stop: () => listener.stop(true) };
+  return {
+    port: listener.port,
+    stop: () => {
+      listener.stop(true);
+    },
+  };
 }
 
 if (import.meta.main) {
