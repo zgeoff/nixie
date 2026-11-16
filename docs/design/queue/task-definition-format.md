@@ -79,7 +79,7 @@ interface DefinitionOnly {
   step: { file: string; api: 1 } | null; // default null. The seed hashes the file; no code runs it.
   destinations: string[]; // default []. Patterns in the rule format, where `*` is the only wildcard.
   // Stage 5 of the decision point gives a matching destination of the definition's task run the
-  // permission `job`: decision-point-cutover.md
+  // permission `task`: decision-point-cutover.md
   // maxCalls: added by the task run limits work, with its own seed check and fault code
 }
 
