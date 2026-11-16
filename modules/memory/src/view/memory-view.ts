@@ -22,10 +22,19 @@ export type HistoryVersion = Omit<
   RecalledVersion,
   'text' | 'evidenceQuote' | 'image' | 'model' | 'approval'
 > &
+  PurgeMarks &
   (
     | { readonly status: 'readable'; readonly text: string }
     | { readonly status: 'shredded' | 'unreadable' }
   );
+
+interface PurgeMarks {
+  // a purge removed the text, which the status reports as shredded
+  readonly isRemoved: boolean;
+
+  // a purge wrote this version, so its change and origin are not the owner's edit
+  readonly isBridge: boolean;
+}
 
 export interface ItemHistory {
   readonly itemID: string;
@@ -97,26 +106,27 @@ export interface ViewEvidence extends QuoteEvidence {
   readonly message: EvidenceMessage | null;
 }
 
-export type ViewVersion = ViewText & {
-  readonly version: number;
-  readonly change: MemoryChange;
-  readonly state: VersionState;
-  readonly origin: MemoryOrigin;
-  readonly source: ContentSource;
-  readonly recordedAt: number;
+export type ViewVersion = ViewText &
+  PurgeMarks & {
+    readonly version: number;
+    readonly change: MemoryChange;
+    readonly state: VersionState;
+    readonly origin: MemoryOrigin;
+    readonly source: ContentSource;
+    readonly recordedAt: number;
 
-  readonly taskID: string | null;
-  readonly proposalID: string | null;
+    readonly taskID: string | null;
+    readonly proposalID: string | null;
 
-  readonly checks: JSONObject | null;
-  readonly writerModel: string | null;
-  readonly checkerModel: string | null;
+    readonly checks: JSONObject | null;
+    readonly writerModel: string | null;
+    readonly checkerModel: string | null;
 
-  readonly evidenceQuote: string | null;
-  readonly evidence: ViewEvidence | null;
+    readonly evidenceQuote: string | null;
+    readonly evidence: ViewEvidence | null;
 
-  readonly image: ProposalImage | null;
-};
+    readonly image: ProposalImage | null;
+  };
 
 export type ViewItemDetail = ViewItem & { readonly versions: readonly ViewVersion[] };
 

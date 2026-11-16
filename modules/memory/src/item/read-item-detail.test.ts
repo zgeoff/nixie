@@ -38,6 +38,8 @@ test("it reads a version's provenance with the writer's and the checker's models
       origin: 'conversation',
       source: 'owner',
       recordedAt: expect.toBeNumber(),
+      isRemoved: false,
+      isBridge: false,
       taskID: 'conversation',
       proposalID: null,
       checks: {
@@ -219,6 +221,8 @@ test('it reads a forgotten item as dated gaps that show no message', async () =>
       {
         version: 1,
         recordedAt: expect.toBeNumber(),
+        isRemoved: false,
+        isBridge: false,
         status: 'shredded',
         evidenceQuote: null,
         evidence: { recordSequence: sequence, start: 0, end: 25, message: null },

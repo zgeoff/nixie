@@ -63,7 +63,7 @@ export interface VersionPlan {
 
   readonly noticeKey?: string;
 
-  readonly requireInTransaction?: (db: Kysely<MemoryTables>) => Promise<void>;
+  readonly requireInTransaction?: (db: Kysely<unknown>) => Promise<void>;
 
   readonly writeInTransaction?: WriteInTransaction;
 
@@ -95,10 +95,10 @@ export async function writeVersionInTransaction(
   const item = plan.requirement === null ? null : await requireItem(db, plan.requirement);
   const current = item?.version ?? 0;
 
-  const versionKey = await readVersionKey(parts, plan.newItemID, item);
+  const versionKey = await readVersionKey(parts, tx, plan.newItemID, item);
 
   const next = await plan.readNextVersion(
-    (version) => readVersion(db, versionKey.key, { itemID: versionKey.itemID, version }),
+    (version) => readVersion(parts.context.log, tx, { itemID: versionKey.itemID, version }),
     current,
   );
 
@@ -107,7 +107,7 @@ export async function writeVersionInTransaction(
   const previousSubject = item === null ? null : getRowSubject(item);
   const subject = next.subject ?? plan.subject ?? previousSubject ?? 'owner';
 
-  const sealed = await encodePinnableVersion(parts, db, {
+  const sealed = await encodePinnableVersion(parts, tx, {
     key: versionKey.key,
     plan,
     ref,
@@ -148,7 +148,7 @@ export async function writeVersionInTransaction(
 }
 
 async function runCallerSteps(plan: VersionPlan, tx: Transaction<unknown>): Promise<void> {
-  await plan.requireInTransaction?.(tx.$extendTables<MemoryTables>());
+  await plan.requireInTransaction?.(tx);
   await plan.writeInTransaction?.(tx);
 }
 
@@ -166,7 +166,7 @@ interface PinnableVersion {
 
 async function encodePinnableVersion(
   parts: StoreParts,
-  db: Kysely<MemoryTables>,
+  db: Kysely<unknown>,
   version: PinnableVersion,
 ): Promise<string> {
   const isPinned = version.plan.isPinned === true;

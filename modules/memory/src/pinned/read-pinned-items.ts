@@ -4,9 +4,10 @@ import type { MemoryTables, RecalledItem, StoreParts } from '../types';
 
 export async function readPinnedItems(
   parts: StoreParts,
-  db: Kysely<MemoryTables> = parts.context.log.writer.db.$extendTables<MemoryTables>(),
+  db: Kysely<unknown> = parts.context.log.writer.db,
 ): Promise<readonly RecalledItem[]> {
   const rows = await db
+    .$extendTables<MemoryTables>()
     .selectFrom('memory_items')
     .select('item_id')
     .where('is_pinned', '=', 1)

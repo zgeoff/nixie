@@ -1,11 +1,11 @@
 import type { Log } from '@heynixie/log';
-import { readRecordKeys } from '@heynixie/log';
 import type { Selectable } from 'kysely';
 import type { MemoryTables } from '../types';
 import { getRowSubject } from '../utils/get-row-subject';
 import { getItemShortID } from '../utils/item/get-item-short-id';
 import type { ViewItem } from './memory-view';
-import { readViewText } from './read-view-text';
+import type { OpenedVersion } from './read-view-texts';
+import { readViewTexts } from './read-view-texts';
 
 export async function readViewItems(
   log: Pick<Log, 'deploymentKey' | 'writer'>,
@@ -43,6 +43,9 @@ export async function readViewItems(
       'current.origin',
       'current.source',
       'current.sealed',
+      'current.sequence',
+      'current.evidence',
+      'current.intent_evidence',
       'current.recorded_at as changed_at',
       'first.recorded_at as created_at',
       'forgotten.recorded_at as forgotten_at',
@@ -50,16 +53,13 @@ export async function readViewItems(
     .where('item.item_id', 'in', itemIDs)
     .execute();
 
-  const keys = await readRecordKeys(
-    log,
-    rows.map((row) => row.item_id),
-  );
-
   const byID = new Map(rows.map((row) => [row.item_id, row]));
 
   const found = itemIDs.flatMap((itemID) => byID.get(itemID) ?? []);
 
-  return Promise.all(found.map((row) => openViewItem(row, keys.get(row.item_id))));
+  const opened = await readViewTexts(log, log.writer.db, found);
+
+  return found.map((row, index) => buildViewItem(row, opened[index]));
 }
 
 interface ViewItemRow {
@@ -74,22 +74,16 @@ interface ViewItemRow {
   readonly origin: ViewItem['origin'];
   readonly source: ViewItem['source'];
   readonly sealed: string;
+  readonly sequence: number;
+  readonly evidence: string | null;
+  readonly intent_evidence: string | null;
   readonly changed_at: number;
   readonly created_at: number;
   readonly forgotten_at: number | null;
   readonly until: number | null;
 }
 
-async function openViewItem(
-  row: ViewItemRow,
-  key: CryptoKey | null | undefined,
-): Promise<ViewItem> {
-  const opened = await readViewText(key, {
-    itemID: row.item_id,
-    version: row.version,
-    sealed: row.sealed,
-  });
-
+function buildViewItem(row: ViewItemRow, opened: OpenedVersion | undefined): ViewItem {
   return {
     itemID: row.item_id,
     shortID: getItemShortID(row),
@@ -103,6 +97,6 @@ async function openViewItem(
     changedAt: row.changed_at,
     forgottenAt: row.forgotten_at,
     until: row.until,
-    ...opened.text,
+    ...(opened?.text ?? { status: 'unreadable' }),
   };
 }

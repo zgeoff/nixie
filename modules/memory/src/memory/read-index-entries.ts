@@ -1,6 +1,5 @@
-import { readRecordKeys } from '@heynixie/log';
 import type { MemoryContext, MemoryTables } from '../types';
-import { decodeVersionText } from '../version/decode-version-text';
+import { readVersionValues } from '../version/read-version-values';
 import type { IndexEntry } from './start-memory-index';
 
 export async function readIndexEntries(context: MemoryContext): Promise<readonly IndexEntry[]> {
@@ -12,36 +11,22 @@ export async function readIndexEntries(context: MemoryContext): Promise<readonly
         .onRef('memory_versions.item_id', '=', 'memory_items.item_id')
         .onRef('memory_versions.version', '=', 'memory_items.version'),
     )
-    .select(['memory_items.item_id', 'memory_items.version', 'memory_versions.sealed'])
+    .select([
+      'memory_items.item_id',
+      'memory_versions.version',
+      'memory_versions.sequence',
+      'memory_versions.sealed',
+      'memory_versions.evidence',
+      'memory_versions.intent_evidence',
+    ])
     .where('memory_items.state', '=', 'active')
     .execute();
 
-  const keys = await readRecordKeys(
-    context.log,
-    rows.map((row) => row.item_id),
-  );
+  const values = await readVersionValues(context.log, context.log.writer.db, rows);
 
-  const entries = await Promise.all(
-    rows.map(async (row) => {
-      const key = keys.get(row.item_id);
+  return rows.flatMap((row, index) => {
+    const value = values[index];
 
-      if (key === undefined || key === null) {
-        return null;
-      }
-
-      try {
-        const text = await decodeVersionText(
-          key,
-          { itemID: row.item_id, version: row.version },
-          row.sealed,
-        );
-
-        return { itemID: row.item_id, text: text.text };
-      } catch {
-        return null;
-      }
-    }),
-  );
-
-  return entries.filter((entry) => entry !== null);
+    return value?.status === 'readable' ? [{ itemID: row.item_id, text: value.text.text }] : [];
+  });
 }

@@ -1,5 +1,8 @@
 export type MemoryRecordKind =
   | 'memory.approval_recorded'
+  | 'memory.evidence_purge_closed'
+  | 'memory.evidence_purge_started'
+  | 'memory.evidence_purged'
   | 'memory.forget_started'
   | 'memory.forgotten'
   | 'memory.image_offered'
@@ -18,6 +21,7 @@ export type MemoryRecordKind =
   | 'memory.shared_noted'
   | 'memory.subject_changed'
   | 'memory.version_added'
+  | 'memory.version_keyed'
   | 'moment_destroyed'
   | 'moment_edited'
   | 'moment_kept'

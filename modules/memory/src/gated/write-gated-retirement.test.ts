@@ -8,8 +8,6 @@ import { buildMockWriteCaller } from '../test-utils/build-mock-write-caller';
 import { readVersionChecks } from '../test-utils/read-version-checks';
 import { startTestMemory } from '../test-utils/start-test-memory';
 import { writeOwnerMessageRecord } from '../test-utils/write-owner-message-record';
-import type { MemoryTables } from '../types';
-import { readItemKey } from '../utils/item/read-item-key';
 import { readVersion } from '../version/read-version';
 
 test('it retires an item you asked to retire, with your intent quote and the checks', async () => {
@@ -229,11 +227,7 @@ test("it keeps no intent quote on the conversation's retirement of a self-note",
 
   invariant(outcome.status === 'applied');
 
-  const key = await readItemKey(memory.log, note.itemID);
-
-  invariant(key);
-
-  const retired = await readVersion(memory.writer.db.$extendTables<MemoryTables>(), key, outcome);
+  const retired = await readVersion(memory.log, memory.writer.db, outcome);
 
   expect(retired.text).toStrictEqual({
     text: 'I like opening with a question',

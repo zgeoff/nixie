@@ -1,5 +1,6 @@
-import { readRecordKeys, withWriteTransaction } from '@heynixie/log';
+import { withWriteTransaction } from '@heynixie/log';
 import type { Kysely } from 'kysely';
+import { readCurrentItemKey } from '../item-key/read-current-item-key';
 import type { MemoryItemRow, MemoryTables, StoreParts } from '../types';
 import { getRowSubject } from '../utils/get-row-subject';
 import { readVersion } from '../version/read-version';
@@ -20,36 +21,29 @@ export async function runLabelBackfill(parts: StoreParts): Promise<void> {
       return;
     }
 
-    const keys = await readRecordKeys(
-      log,
-      unlabelled.map((item) => item.item_id),
+    const currents = await Promise.all(
+      unlabelled.map((item) => readCurrentItemKey(log, item.item_id)),
     );
 
-    const readable = unlabelled.filter((item) => {
-      const key = keys.get(item.item_id);
-
-      return key !== null && key !== undefined;
-    });
+    const readable = unlabelled.filter((_, index) => currents[index]?.status === 'readable');
 
     if (readable.length === 0) {
       return;
     }
 
     await withWriteTransaction(log.writer, async (tx) => {
-      const db = tx.$extendTables<MemoryTables>();
-
       for (const item of readable) {
-        const key = keys.get(item.item_id);
+        const labelKey = await readCurrentItemKey(log, item.item_id, tx);
 
-        if (key === null || key === undefined) {
+        if (labelKey.status !== 'readable') {
           continue;
         }
 
-        const current = await readVersion(db, key, { itemID: item.item_id, version: item.version });
+        const current = await readVersion(log, tx, { itemID: item.item_id, version: item.version });
 
         await writeLabelsInTransaction(parts, tx, {
           itemID: item.item_id,
-          key,
+          key: labelKey.key,
           revision: item.version + item.label_edits,
           version: item.version,
           change: 'backfilled',

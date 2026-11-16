@@ -408,6 +408,27 @@ interface MemoryProposalMergeTable {
   readonly recorded_at: number;
 }
 
+interface MemoryItemKeyTable {
+  readonly key_id: string;
+  readonly item_id: string;
+  readonly kind: 'generation' | 'version';
+  readonly version: number | null;
+  readonly sealed_evidence_quote: string | null;
+  readonly sealed_intent_quote: string | null;
+  readonly from_sequence: number;
+  readonly removed_sequence: number | null;
+}
+
+interface MemoryEvidencePurgeTable {
+  readonly purge_key: string;
+  readonly record_sequence: number;
+  readonly item_id: string;
+  readonly closed_sequence: number | null;
+  readonly purged_sequence: number | null;
+  readonly bridge_version: number | null;
+  readonly labels_revision: number | null;
+}
+
 // A type alias, because Kysely's table map needs the index signature that an interface lacks.
 export type MemoryTables = CheckedTables<
   Readonly<{
@@ -418,6 +439,8 @@ export type MemoryTables = CheckedTables<
     memory_proposal_merges: MemoryProposalMergeTable;
     memory_notice_entries: MemoryNoticeEntryTable;
     memory_forgotten_evidence: MemoryForgottenEvidenceTable;
+    memory_item_keys: MemoryItemKeyTable;
+    memory_evidence_purges: MemoryEvidencePurgeTable;
   }>
 >;
 

@@ -1,7 +1,6 @@
 import type { Log } from '@heynixie/log';
 import type { MemoryTables, VersionRef } from '../types';
-import { readItemKey } from '../utils/item/read-item-key';
-import { decodeVersionText } from './decode-version-text';
+import { readVersionValues } from './read-version-values';
 
 export type VersionTextResult = VersionRef &
   (
@@ -16,6 +15,7 @@ export function readVersionTexts(
   return Promise.all(refs.map((ref) => readVersionText(log, ref)));
 }
 
+// A version that a purge removed reads as shredded, as every API status does.
 async function readVersionText(
   log: Pick<Log, 'deploymentKey' | 'writer'>,
   ref: VersionRef,
@@ -25,7 +25,7 @@ async function readVersionText(
   const row = await log.writer.db
     .$extendTables<MemoryTables>()
     .selectFrom('memory_versions')
-    .select('sealed')
+    .select(['item_id', 'version', 'sequence', 'sealed', 'evidence', 'intent_evidence'])
     .where('item_id', '=', ref.itemID)
     .where('version', '=', ref.version)
     .executeTakeFirst();
@@ -34,25 +34,11 @@ async function readVersionText(
     return { ...base, status: 'missing' };
   }
 
-  const key = await readItemKey(log, ref.itemID);
+  const [value] = await readVersionValues(log, log.writer.db, [row]);
 
-  if (key === undefined) {
-    return { ...base, status: 'shredded' };
+  if (value?.status === 'readable') {
+    return { ...base, status: 'readable', text: value.text.text };
   }
 
-  return key === null ? { ...base, status: 'unreadable' } : decodeText(key, base, row.sealed);
-}
-
-async function decodeText(
-  key: CryptoKey,
-  ref: VersionRef,
-  sealed: string,
-): Promise<VersionTextResult> {
-  try {
-    const text = await decodeVersionText(key, ref, sealed);
-
-    return { ...ref, status: 'readable', text: text.text };
-  } catch {
-    return { ...ref, status: 'unreadable' };
-  }
+  return { ...base, status: value?.status === 'unreadable' ? 'unreadable' : 'shredded' };
 }

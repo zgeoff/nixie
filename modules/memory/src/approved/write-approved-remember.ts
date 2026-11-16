@@ -3,7 +3,7 @@ import type { MemoryProposalRow, ProposalAnswer } from '../gate/gate-context';
 import { writeRememberedItem } from '../item/write-remembered-item';
 import { buildDerivedLabels } from '../label/build-derived-labels';
 import type { OpenedProposal } from '../proposal/read-open-proposal';
-import type { MemorySubject, MemoryTables, StoreParts, VersionRef } from '../types';
+import type { MemorySubject, StoreParts, VersionRef } from '../types';
 import { ProposalClosedError } from '../utils/error/proposal-closed-error';
 import { UntilPassedError } from '../utils/error/until-passed-error';
 import { getRowSubject } from '../utils/get-row-subject';
@@ -18,7 +18,7 @@ export interface ApprovedRemember {
 
   readonly target: VersionRef | null;
 
-  readonly requireInTransaction?: (db: Kysely<MemoryTables>) => Promise<void>;
+  readonly requireInTransaction?: (db: Kysely<unknown>) => Promise<void>;
 }
 
 export async function writeApprovedRemember(
@@ -50,7 +50,7 @@ function writeApprovedVersion(parts: StoreParts, approved: ApprovedRemember): Pr
 
   const extras = {
     ...approvalExtras,
-    requireInTransaction: async (db: Kysely<MemoryTables>) => {
+    requireInTransaction: async (db: Kysely<unknown>) => {
       await approvalExtras.requireInTransaction?.(db);
       await approved.requireInTransaction?.(db);
     },

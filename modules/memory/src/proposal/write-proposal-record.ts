@@ -8,6 +8,7 @@ import { buildProposalRecords } from './build-proposal-records';
 export interface SealedProposal {
   readonly proposalID: string;
   readonly itemID: string;
+
   readonly sealed: string;
   readonly actionHash: string;
 

@@ -1,6 +1,9 @@
 import { ownerImageMediaTypes } from '@heynixie/tasks';
 import { z } from 'zod';
-import { memoryExportSchemaVersion } from './memory-export-schema-version';
+import {
+  earlierMemoryExportSchemaVersion,
+  memoryExportSchemaVersion,
+} from './memory-export-schema-version';
 
 const originSchema = z.enum(['owner', 'conversation', 'task', 'lapse']);
 const sourceSchema = z.enum(['owner', 'owner_data', 'untrusted']);
@@ -17,7 +20,7 @@ const provenanceSchema = z.strictObject({
   recordedAt: z.iso.datetime(),
 });
 
-const versionSchema = z.strictObject({
+const versionShape = {
   version: z.int().positive(),
   change: z.enum(['created', 'edited', 'retired', 'restored', 'undone']),
   state: z.enum(['active', 'retired']),
@@ -25,7 +28,17 @@ const versionSchema = z.strictObject({
   evidenceQuote: z.string().nullable(),
   until: z.iso.datetime().nullable(),
   provenance: provenanceSchema,
-});
+};
+
+// A purge removed the text and the quote of a removed version, and wrote a bridge version, whose
+// change and origin are not the owner's edit.
+const purgeMarksShape = {
+  isRemoved: z.boolean(),
+  isBridge: z.boolean(),
+};
+
+const versionSchema = z.strictObject({ ...versionShape, ...purgeMarksShape });
+const earlierVersionSchema = z.strictObject(versionShape);
 
 const labelFieldsShape = {
   gist: z.string(),
@@ -33,22 +46,35 @@ const labelFieldsShape = {
   triggers: z.array(z.string()),
 };
 
-const labelHistorySchema = z.strictObject({
+const labelHistoryShape = {
   revision: z.int().positive(),
   version: z.int().positive(),
   change: z.enum(['written', 'edited', 'backfilled']),
   ...labelFieldsShape,
-});
+};
 
-const readableItemSchema = z.strictObject({
+const labelHistorySchema = z.strictObject({ ...labelHistoryShape, isBridge: z.boolean() });
+const earlierLabelHistorySchema = z.strictObject(labelHistoryShape);
+
+const itemShape = {
   itemID: z.string(),
   shortID: z.string(),
   state: z.enum(['active', 'retired']),
   isPinned: z.boolean(),
   subject: z.enum(['owner', 'self', 'shared']),
-  versions: z.array(versionSchema).min(1),
   labels: z.strictObject(labelFieldsShape).nullable(),
+};
+
+const readableItemSchema = z.strictObject({
+  ...itemShape,
+  versions: z.array(versionSchema).min(1),
   labelHistory: z.array(labelHistorySchema),
+});
+
+const earlierReadableItemSchema = z.strictObject({
+  ...itemShape,
+  versions: z.array(earlierVersionSchema).min(1),
+  labelHistory: z.array(earlierLabelHistorySchema),
 });
 
 const forgottenItemSchema = z.strictObject({
@@ -106,17 +132,47 @@ const destroyedMomentSchema = z.strictObject({
   destroyedAt: z.iso.datetime().nullable(),
 });
 
-export const memoryExportSchema = z.strictObject({
-  header: z.strictObject({
-    schemaVersion: z.literal(memoryExportSchemaVersion),
-    exportedAt: z.iso.datetime(),
-    snapshotHash: z.string(),
-  }),
+const headerShape = {
+  exportedAt: z.iso.datetime(),
+  snapshotHash: z.string(),
+};
+
+const currentExportSchema = z.strictObject({
+  header: z.strictObject({ schemaVersion: z.literal(memoryExportSchemaVersion), ...headerShape }),
   items: z.array(z.union([readableItemSchema, forgottenItemSchema])),
   moments: z.array(z.union([readableMomentSchema, destroyedMomentSchema])),
 });
 
-export type MemoryExport = z.infer<typeof memoryExportSchema>;
+// The file of the version before reads as if no purge had touched it.
+const earlierExportSchema = z
+  .strictObject({
+    header: z.strictObject({
+      schemaVersion: z.literal(earlierMemoryExportSchemaVersion),
+      ...headerShape,
+    }),
+    items: z.array(z.union([earlierReadableItemSchema, forgottenItemSchema])),
+    moments: z.array(z.union([readableMomentSchema, destroyedMomentSchema])),
+  })
+  .transform((file) => ({
+    ...file,
+    items: file.items.map((item) =>
+      'versions' in item
+        ? {
+            ...item,
+            versions: item.versions.map((version) => ({
+              ...version,
+              isRemoved: false,
+              isBridge: false,
+            })),
+            labelHistory: item.labelHistory.map((entry) => ({ ...entry, isBridge: false })),
+          }
+        : item,
+    ),
+  }));
+
+export const memoryExportSchema = z.union([currentExportSchema, earlierExportSchema]);
+
+export type MemoryExport = z.infer<typeof currentExportSchema>;
 
 export type MemoryExportItem = MemoryExport['items'][number];
 

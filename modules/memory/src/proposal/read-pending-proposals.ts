@@ -1,4 +1,3 @@
-import { readRecordKeys } from '@heynixie/log';
 import type {
   MemoryProposal,
   MemoryProposalRow,
@@ -8,6 +7,7 @@ import type {
 } from '../gate/gate-context';
 import { toReviewReason } from '../gate/to-review-reason';
 import { findImageSource } from '../image/find-image-source';
+import { readItemKeys } from '../item-key/read-item-keys';
 import { proposalLabelsCodec } from '../label/proposal-labels-codec';
 import type { MemoryTables, StoreParts } from '../types';
 import { decodeProposalText } from '../utils/decode-proposal-text';
@@ -32,21 +32,27 @@ export async function readPendingProposals(
     .orderBy('created_sequence')
     .execute();
 
-  const keys = await readRecordKeys(
+  const keys = await readItemKeys(
     log,
-    rows.map((row) => row.item_id),
+    rows.map((row) => ({
+      value: 'proposal',
+      itemID: row.item_id,
+      sequence: row.created_sequence,
+    })),
   );
 
   const merges = await readMergeSources(parts, rows);
   const labelEdits = await readLabelEdits(parts, rows);
 
   const proposals = await Promise.all(
-    rows.map(async (row) => {
-      const key = keys.get(row.item_id);
+    rows.map(async (row, index) => {
+      const opened = keys[index];
 
-      if (key === null || key === undefined) {
+      if (opened?.status !== 'readable') {
         return null;
       }
+
+      const key = opened.key;
 
       const text = await decodeProposalText(key, row.proposal_id, row.sealed);
 

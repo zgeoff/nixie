@@ -10,7 +10,6 @@ import { buildMergeRecord } from '../record/build-merge-record';
 import type {
   Labels,
   MemorySubject,
-  MemoryTables,
   ProposalOperationKind,
   QuoteEvidence,
   StoreParts,
@@ -87,7 +86,7 @@ async function writePendingMerge(
   parts: StoreParts,
   plan: ProposalPlan,
 ): Promise<WrittenProposal | null> {
-  const match = await readMatchingProposal(tx.$extendTables<MemoryTables>(), parts, plan);
+  const match = await readMatchingProposal(tx, parts, plan);
 
   if (match === null) {
     return null;

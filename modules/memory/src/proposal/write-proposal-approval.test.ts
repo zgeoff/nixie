@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { readRecords } from '@heynixie/log';
+import { readRecordKeys, readRecords } from '@heynixie/log';
 import { buildTestClock } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
 import { buildMockWriteCaller } from '../test-utils/build-mock-write-caller';
@@ -9,7 +9,6 @@ import { startTestMemory } from '../test-utils/start-test-memory';
 import { writeOwnerMessageRecord } from '../test-utils/write-owner-message-record';
 import type { MemoryTables } from '../types';
 import { SelfNoteError } from '../utils/error/self-note-error';
-import { readItemKey } from '../utils/item/read-item-key';
 
 test('it applies an approved proposal as proposed, keeping its outside source', async () => {
   const memory = await startTestMemory();
@@ -821,6 +820,8 @@ test.each([
         origin,
         source: 'untrusted',
         recordedAt: expect.toBeNumber(),
+        isRemoved: false,
+        isBridge: false,
       },
     ]);
   },
@@ -1207,10 +1208,10 @@ test('it applies a held proposal as a revision of the close match, and drops the
     revisionOf: { itemID: item.itemID, version: 1 },
   });
 
-  const [history, remaining, key] = await Promise.all([
+  const [history, remaining, keys] = await Promise.all([
     memory.store.readHistory(item.itemID),
     memory.store.proposals.listPending(),
-    readItemKey(memory.log, pending.itemID),
+    readRecordKeys(memory.log, [pending.itemID]),
   ]);
 
   expect(result).toStrictEqual({ status: 'applied', itemID: item.itemID, version: 2 });
@@ -1222,7 +1223,7 @@ test('it applies a held proposal as a revision of the close match, and drops the
   });
 
   expect(remaining).toStrictEqual([]);
-  expect(key).toBeUndefined();
+  expect(keys.get(pending.itemID)).toBeUndefined();
 });
 
 test('it applies a held proposal as a new item when your answer ignores the close match', async () => {

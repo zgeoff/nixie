@@ -1,9 +1,9 @@
 import type { JSONObject } from '@heynixie/log';
-import { readRecordKeys } from '@heynixie/log';
 import type { Kysely } from 'kysely';
 import { z } from 'zod';
 import type { ImageRef, MemoryProposalRow } from '../gate/gate-context';
 import { findImageSource } from '../image/find-image-source';
+import { readItemKeys } from '../item-key/read-item-keys';
 import { proposalLabelsCodec } from '../label/proposal-labels-codec';
 import type {
   Labels,
@@ -42,7 +42,7 @@ export interface ProposedChange {
 const checksColumn = z.record(z.string(), z.json());
 
 export async function readMatchingProposal(
-  db: Kysely<MemoryTables>,
+  db: Kysely<unknown>,
   parts: Pick<StoreParts, 'context'>,
   change: ProposedChange,
 ): Promise<MemoryProposalRow | null> {
@@ -54,6 +54,7 @@ export async function readMatchingProposal(
   const isPinned = change.isPinned ? 1 : 0;
 
   const pending = db
+    .$extendTables<MemoryTables>()
     .selectFrom('memory_proposals')
     .selectAll()
     .where('status', '=', 'pending')
@@ -91,7 +92,7 @@ export async function readMatchingProposal(
     return isSameImage(findImageSource(checks), image);
   });
 
-  return readSameText(parts, samePhoto, {
+  return readSameText(parts, db, samePhoto, {
     text: normalizeFactText(change.text),
     until: change.until ?? null,
     labels: change.labels ?? null,
@@ -110,6 +111,7 @@ interface WantedText {
 
 async function readSameText(
   parts: Pick<StoreParts, 'context'>,
+  db: Kysely<unknown>,
   rows: readonly MemoryProposalRow[],
   wanted: WantedText,
 ): Promise<MemoryProposalRow | null> {
@@ -117,18 +119,25 @@ async function readSameText(
     return null;
   }
 
-  const keys = await readRecordKeys(
+  const keys = await readItemKeys(
     parts.context.log,
-    rows.map((row) => row.item_id),
+    rows.map((row) => ({
+      value: 'proposal',
+      itemID: row.item_id,
+      sequence: row.created_sequence,
+    })),
+    db,
   );
 
   const proposalTexts = await Promise.all(
-    rows.map(async (row) => {
-      const key = keys.get(row.item_id);
+    rows.map(async (row, index) => {
+      const readable = keys[index];
 
-      if (key === null || key === undefined) {
+      if (readable?.status !== 'readable') {
         return null;
       }
+
+      const key = readable.key;
 
       const opened = await decodeProposalText(key, row.proposal_id, row.sealed);
 

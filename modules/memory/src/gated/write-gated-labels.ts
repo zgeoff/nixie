@@ -4,8 +4,6 @@ import { collectLabelTexts } from '../label/collect-label-texts';
 import { writeMemoryProposal } from '../memory/write-memory-proposal';
 import { readNewestMessage } from '../message/read-newest-message';
 import type { MemoryTables, StoreParts } from '../types';
-import { MemoryItemNotFoundError } from '../utils/error/memory-item-not-found-error';
-import { readItemKey } from '../utils/item/read-item-key';
 import { requireItem } from '../utils/item/require-item';
 import { readVersion } from '../version/read-version';
 import { buildWriteGroup } from '../write/build-write-group';
@@ -28,13 +26,10 @@ export async function writeGatedLabels(
     states: ['active', 'retired'],
   });
 
-  const key = await readItemKey(log, request.target.itemID);
-
-  if (key === null || key === undefined) {
-    throw new MemoryItemNotFoundError(request.target.itemID);
-  }
-
-  const current = await readVersion(db, key, { itemID: item.item_id, version: item.version });
+  const current = await readVersion(log, log.writer.db, {
+    itemID: item.item_id,
+    version: item.version,
+  });
 
   const labelText = collectLabelTexts(request.labels).join('\n');
   const reason: ReviewReason = invisible.test(labelText) ? 'invisible_character' : 'labels';

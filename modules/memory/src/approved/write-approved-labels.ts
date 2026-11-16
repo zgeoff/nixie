@@ -1,11 +1,11 @@
 import { withWriteTransaction } from '@heynixie/log';
 import type { ProposalAnswer } from '../gate/gate-context';
+import { readCurrentItemKey } from '../item-key/read-current-item-key';
 import { LabelEditError } from '../label/label-edit-error';
 import { writeLabelsInTransaction } from '../label/write-labels-in-transaction';
 import type { OpenedProposal } from '../proposal/read-open-proposal';
 import type { MemoryTables, StoreParts, VersionRef } from '../types';
 import { MemoryItemNotFoundError } from '../utils/error/memory-item-not-found-error';
-import { readItemKey } from '../utils/item/read-item-key';
 import { requireItem } from '../utils/item/require-item';
 import { buildApprovalExtras } from './build-approval-extras';
 import { buildApprovedProvenance } from './build-approved-provenance';
@@ -34,7 +34,7 @@ export async function writeApprovedLabels(
     withWriteTransaction(log.writer, async (tx) => {
       const db = tx.$extendTables<MemoryTables>();
 
-      await extras.requireInTransaction?.(db);
+      await extras.requireInTransaction?.(tx);
       await answer.writeInTransaction?.(tx);
 
       const item = await requireItem(db, {
@@ -43,9 +43,9 @@ export async function writeApprovedLabels(
         states: ['active', 'retired'],
       });
 
-      const key = await readItemKey(log, row.item_id);
+      const current = await readCurrentItemKey(log, row.item_id, tx);
 
-      if (key === null || key === undefined) {
+      if (current.status !== 'readable') {
         throw new MemoryItemNotFoundError(row.item_id);
       }
 
@@ -53,7 +53,7 @@ export async function writeApprovedLabels(
 
       await writeLabelsInTransaction(parts, tx, {
         itemID: row.item_id,
-        key,
+        key: current.key,
         revision,
         version: item.version,
         change: 'edited',
