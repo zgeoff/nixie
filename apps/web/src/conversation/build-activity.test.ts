@@ -145,6 +145,30 @@ test('it keeps a task message, an exchange notice and a stop each on its own lin
   ]);
 });
 
+test('it keeps a reminder on its own line', () => {
+  const reminder = buildMockLogRecord({
+    kind: 'trigger.fired',
+    reminder: {
+      brief: 'Call the dentist.',
+      lateBySeconds: null,
+      scheduledFor: '2027-03-09T03:00:00.000Z',
+    },
+    sequence: 1,
+  });
+
+  expect(buildActivity([reminder])).toStrictEqual([
+    {
+      kind: 'reminder',
+      record: reminder,
+      reminder: {
+        brief: 'Call the dentist.',
+        lateBySeconds: null,
+        scheduledFor: '2027-03-09T03:00:00.000Z',
+      },
+    },
+  ]);
+});
+
 test('it takes the sender of a received task message as its other end', () => {
   const message = buildMockLogRecord({
     kind: 'task_message',

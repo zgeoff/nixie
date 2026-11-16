@@ -10,6 +10,7 @@ function setupTest() {
     proposals: new Map(),
     removedSequences: new Set(),
     stopCancelledActions: new Map(),
+    reminderBriefs: new Map(),
     taskDirectory: [],
   };
 
@@ -381,6 +382,7 @@ test('it shows a failed tool result as cancelled when its action is among the ca
     proposals: new Map(),
     removedSequences: new Set<number>(),
     stopCancelledActions: new Map(),
+    reminderBriefs: new Map(),
     taskDirectory: [],
   };
 
@@ -794,6 +796,7 @@ test('it carries a task message with its sender named from the directory', () =>
     proposals: new Map(),
     removedSequences: new Set<number>(),
     stopCancelledActions: new Map(),
+    reminderBriefs: new Map(),
     taskDirectory: [
       {
         taskID: 'k3x9m2p7qa',
@@ -874,6 +877,7 @@ test('it renders an exchange notice that names both tasks and links to the recei
     proposals: new Map(),
     removedSequences: new Set<number>(),
     stopCancelledActions: new Map(),
+    reminderBriefs: new Map(),
     taskDirectory: [
       {
         taskID: 'k3x9m2p7qa',
@@ -915,6 +919,7 @@ test('it lists the actions a stop cancelled on its record', () => {
     stopCancelledActions: new Map([
       [19, [{ actionID: '5d7f9b1c-3e2a-4c6d-8f0b-1a3c5e7d9f24', tool: 'test.send' }]],
     ]),
+    reminderBriefs: new Map(),
     taskDirectory: [],
   };
 
@@ -937,6 +942,7 @@ test('it marks a shredded record that a forget named as removed', () => {
     proposals: new Map(),
     removedSequences: new Set([12]),
     stopCancelledActions: new Map(),
+    reminderBriefs: new Map(),
     taskDirectory: [],
   };
 
@@ -960,6 +966,7 @@ test.each([
     proposals: new Map(),
     removedSequences,
     stopCancelledActions: new Map(),
+    reminderBriefs: new Map(),
     taskDirectory: [],
   };
 
@@ -1064,4 +1071,77 @@ test.each([
   };
 
   expect(toContractRecord(record, lookups)?.removal).toStrictEqual(row.removal);
+});
+
+test.each([
+  [false, '2027-03-09T03:00:00.000Z', null],
+  [true, '2027-03-09T05:05:00.000Z', 7500],
+])(
+  'it carries a reminder for a fire on the conversation thread (catch-up: %p)',
+  (isCatchUp, firedAt, lateBySeconds) => {
+    const ctx = setupTest();
+
+    const record = buildMockLogRecord({
+      sequence: 40,
+      recordedAt: new Date(firedAt),
+      kind: 'trigger.fired',
+      thread: 'conversation',
+      payload: {
+        definitionID: 'call-the-dentist',
+        definitionHash: 'hash-1',
+        source: 'at',
+        dedupeKey: 'key-1',
+        kind: 'at',
+        scheduledFor: '2027-03-09T03:00:00.000Z',
+        firedAt,
+        isCatchUp,
+        skipped: [],
+        skippedCount: 0,
+      },
+    });
+
+    const result = toContractRecord(record, {
+      ...ctx.noLookups,
+      reminderBriefs: new Map([[40, 'Call the dentist about the crown.']]),
+    });
+
+    expect(result?.reminder).toStrictEqual({
+      brief: 'Call the dentist about the crown.',
+      scheduledFor: '2027-03-09T03:00:00.000Z',
+      lateBySeconds,
+    });
+  },
+);
+
+test.each([
+  ['a fire on the thread of a task', 'water-the-tomatoes', 'schedule'],
+  ['a poll fire', 'conversation', 'poll'],
+])('it carries no reminder for %s', (_name, thread, kind) => {
+  const ctx = setupTest();
+
+  const record = buildMockLogRecord({
+    sequence: 41,
+    recordedAt: new Date('2027-03-09T03:00:00Z'),
+    kind: 'trigger.fired',
+    thread,
+    payload: {
+      definitionID: 'call-the-dentist',
+      definitionHash: 'hash-1',
+      source: 'at',
+      dedupeKey: 'key-1',
+      kind,
+      scheduledFor: '2027-03-09T03:00:00.000Z',
+      firedAt: '2027-03-09T03:00:00.000Z',
+      isCatchUp: false,
+      skipped: [],
+      skippedCount: 0,
+    },
+  });
+
+  const result = toContractRecord(record, {
+    ...ctx.noLookups,
+    reminderBriefs: new Map([[41, 'Call the dentist.']]),
+  });
+
+  expect(result?.reminder).toBeUndefined();
 });

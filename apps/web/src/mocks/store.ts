@@ -129,6 +129,12 @@ const exchangeNoticeSchema = z.object({
   text: z.string(),
 });
 
+const reminderSchema = z.object({
+  brief: z.string(),
+  lateBySeconds: z.number().nullable().default(null),
+  scheduledFor: z.string(),
+});
+
 const removalSchema = z.object({
   kind: z.string(),
   sequence: z.int(),
@@ -154,6 +160,7 @@ const records = new Collection({
     rating: ratingSchema.optional(),
     recall: recallSchema.optional(),
     recordedAt: z.date().default(() => new Date()),
+    reminder: reminderSchema.optional(),
     removal: removalSchema.optional(),
     sequence: z.int().default(() => {
       mockSequence.lastSequence += 1;

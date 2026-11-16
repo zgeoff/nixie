@@ -16,7 +16,13 @@ test('it passes each image of your message in base64 after its marker, and leave
     record,
     { defaultZone: 'Australia/Sydney', now: new Date('2026-10-13T05:00:00Z') },
     buildMockTaskMessageView(),
-    [new Uint8Array([0x89, 0x50, 0x4e, 0x47]), new Uint8Array([0xff, 0xd8, 0xff, 0xe0])],
+    {
+      attachments: [
+        new Uint8Array([0x89, 0x50, 0x4e, 0x47]),
+        new Uint8Array([0xff, 0xd8, 0xff, 0xe0]),
+      ],
+      reminder: null,
+    },
   );
 
   expect(message).toStrictEqual({
@@ -46,6 +52,7 @@ test('it passes a message with no images as its text alone', () => {
       record,
       { defaultZone: 'Australia/Sydney', now: new Date('2026-10-13T05:00:00Z') },
       buildMockTaskMessageView(),
+      { attachments: [], reminder: null },
     ),
   ).toStrictEqual({
     uuid: expect.toBeString(),
@@ -66,7 +73,7 @@ test('it leaves out an image whose bytes did not read', () => {
     record,
     { defaultZone: 'Australia/Sydney', now: new Date('2026-10-13T05:00:00Z') },
     buildMockTaskMessageView(),
-    [],
+    { attachments: [], reminder: null },
   );
 
   expect(message.images).toBeUndefined();

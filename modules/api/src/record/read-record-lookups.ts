@@ -6,6 +6,9 @@ import {
 import type { LogRecord } from '@heynixie/log';
 import { readProposalsBySequence } from '@heynixie/proposals';
 import {
+  conversationTaskID,
+  missingReminderBrief,
+  parseTriggerFired,
   readTaskDirectory,
   taskExchangeLimitedCodec,
   taskMessageCodec,
@@ -60,6 +63,8 @@ export async function readRecordLookups(
   const removedSequences = await (known.removedSequences ??
     readRemovedRecordSequences(context, records));
 
+  const reminderBriefs = await readReminderBriefs(context, records);
+
   return {
     actions: await readActionCalls(context, outcomeActionIDs),
     cancelledActionIDs: await readCancelledActionIDs(context, failedActionIDs),
@@ -67,8 +72,35 @@ export async function readRecordLookups(
       context.log.writer.db,
       records.map((record) => record.sequence),
     ),
+    reminderBriefs,
     removedSequences,
     stopCancelledActions: await readStopCancelledActions(context, stopSequences),
     taskDirectory: named.directory,
   };
+}
+
+// The brief of the version that each reminder fire pins, or a note when the version is gone.
+async function readReminderBriefs(
+  context: Pick<APIContext, 'log' | 'readDefinitionVersion'>,
+  records: readonly LogRecord[],
+): Promise<ReadonlyMap<number, string>> {
+  const briefs = new Map<number, string>();
+
+  for (const record of records) {
+    const fire =
+      record.kind === 'trigger.fired' && record.thread === conversationTaskID
+        ? parseTriggerFired(record.payload)
+        : null;
+
+    if (fire !== null && fire.kind !== 'poll') {
+      const version = await context.readDefinitionVersion(
+        context.log.writer.db,
+        fire.definitionHash,
+      );
+
+      briefs.set(record.sequence, version?.brief ?? missingReminderBrief);
+    }
+  }
+
+  return briefs;
 }

@@ -39,7 +39,7 @@ export async function runLiveTurn(
   input: StepInput,
   plan: LiveTurnPlan,
 ): Promise<CompletedTurn> {
-  const opening = await readOpeningBatch(run.context.log, input.inbox, {
+  const opening = await readOpeningBatch(run.context, input.inbox, {
     ...plan,
     imageBudget: run.imageBudget,
   });

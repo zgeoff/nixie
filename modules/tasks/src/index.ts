@@ -138,7 +138,20 @@ export type { StepFailure } from './step/step-failed-error';
 export { StepFailedError } from './step/step-failed-error';
 export { taskCreatedCodec } from './task/codec/task-created-codec';
 export { taskDefinitionSetCodec } from './task/codec/task-definition-set-codec';
-export { triggerFiredCodec, triggerFiredKinds } from './task/codec/trigger-fired-codec';
+export type { TriggerFired } from './task/codec/trigger-fired-codec';
+
+export {
+  findLateBySeconds,
+  missingReminderBrief,
+  parseTriggerFired,
+  triggerFiredCodec,
+  triggerFiredKinds,
+} from './task/codec/trigger-fired-codec';
+
+export type { DatedFire, TriggerDetails } from './trigger/build-trigger-details';
+export { buildTriggerDetails } from './trigger/build-trigger-details';
+export type { RunFire } from './trigger/read-run-fire';
+export { readRunFire } from './trigger/read-run-fire';
 export type { SkipReason } from './task/codec/trigger-skipped-codec';
 export { skipReasons, triggerSkippedCodec } from './task/codec/trigger-skipped-codec';
 

@@ -4,6 +4,7 @@ import { runInPage } from '@zgeoff/rig';
 import { z } from 'zod';
 import { store } from '../mocks/store';
 import { setBrowserFiles } from '../test-utils/set-browser-files';
+import { setupBrowserTimeZone } from '../test-utils/setup-browser-time-zone';
 import { setupSignedInBrowser } from '../test-utils/setup-signed-in-browser';
 import { startBuiltWeb } from '../test-utils/start-built-web';
 import { startFrontProxy } from '../test-utils/start-front-proxy';
@@ -269,6 +270,38 @@ test('it opens the conversation at a message that a hop-limit notice links, behi
     ctx.view,
     "(() => { const box = document.getElementById('task-message-m7q2x9k4pa')?.getBoundingClientRect(); return box !== undefined && box.top >= 0 && box.bottom <= innerHeight; })()",
     8000,
+  );
+});
+
+test('it shows a reminder with its brief and the time it was set for', async () => {
+  setupBrowserTimeZone('Europe/Lisbon');
+
+  const ctx = await setupTest();
+  const session = await store.sessions.create({});
+
+  await store.records.create({
+    kind: 'trigger.fired',
+    reminder: {
+      brief: 'Call the dentist about the crown.',
+      lateBySeconds: 7500,
+      scheduledFor: '2027-03-09T03:00:00.000Z',
+    },
+    thread: 'conversation',
+  });
+
+  await setupSignedInBrowser(ctx.view, { appURL: ctx.appURL, token: session.token });
+
+  await ctx.view.navigate(`${ctx.appURL}/`);
+
+  await waitFor(
+    async () => {
+      const text: unknown = await ctx.view.evaluate('document.body.innerText');
+
+      expect(text).toInclude('Reminder: Call the dentist about the crown.');
+      expect(text).toInclude('(2 hours 5 minutes late)');
+      expect(text).toMatch(/Set for(?=.*Tue)(?=.*Mar)(?=.*\b9\b)(?=.*\b0?3:00)/u);
+    },
+    { timeout: 10_000 },
   );
 });
 

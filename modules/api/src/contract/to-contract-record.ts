@@ -17,8 +17,11 @@ import {
 import { memoryRecalledCodec } from '@heynixie/sessions';
 import type { TaskProfile } from '@heynixie/tasks';
 import {
+  conversationTaskID,
+  findLateBySeconds,
   getTaskName,
   ownerMessageCodec,
+  parseTriggerFired,
   renderExchangeNotice,
   taskCreatedCodec,
   taskExchangeLimitedCodec,
@@ -43,6 +46,9 @@ export interface RecordLookups {
     number,
     { readonly proposalID: string; readonly shortID: string }
   >;
+
+  // the brief of each reminder fire, keyed by its record's sequence
+  readonly reminderBriefs: ReadonlyMap<number, string>;
   readonly removedSequences: ReadonlySet<number>;
   readonly stopCancelledActions: ReadonlyMap<number, readonly ListedAction[]>;
   readonly taskDirectory: readonly TaskProfile[];
@@ -52,6 +58,7 @@ const noLookups: RecordLookups = {
   actions: new Map(),
   cancelledActionIDs: new Set(),
   proposals: new Map(),
+  reminderBriefs: new Map(),
   removedSequences: new Set(),
   stopCancelledActions: new Map(),
   taskDirectory: [],
@@ -74,6 +81,7 @@ export function toContractRecord(
   const exchangeNotice =
     record.kind === 'task.exchange_limited' ? toExchangeNotice(record, lookups) : undefined;
 
+  const reminder = toReminder(record, lookups);
   const recall = record.kind === 'memory.recalled' ? toRecall(record) : undefined;
   const rating = record.kind === 'memory.rated' ? toRating(record) : undefined;
   const moment = record.kind === 'moment_kept' ? toKeptMoment(record) : undefined;
@@ -90,6 +98,7 @@ export function toContractRecord(
     ...(moment === undefined ? {} : { moment }),
     ...(proposal === undefined ? {} : { proposal }),
     ...(rating === undefined ? {} : { rating }),
+    ...(reminder === undefined ? {} : { reminder }),
     ...(recall === undefined ? {} : { recall }),
     recordedAt: record.recordedAt,
     ...(removal === undefined ? {} : { removal }),
@@ -305,6 +314,29 @@ function toExchangeNotice(record: LogRecord, lookups: RecordLookups): ExchangeNo
   return {
     link: { label: rendered.link.label, messageID: rendered.link.messageID, taskID: notice.to },
     text: rendered.text,
+  };
+}
+
+type Reminder = NonNullable<ContractRecord['reminder']>;
+
+// A schedule or at fire on the conversation's thread shows as a reminder. A fire on a task's thread
+// and a poll fire show as no reminder.
+function toReminder(record: LogRecord, lookups: RecordLookups): Reminder | undefined {
+  if (record.kind !== 'trigger.fired' || record.thread !== conversationTaskID) {
+    return undefined;
+  }
+
+  const fire = parseTriggerFired(record.payload);
+  const brief = lookups.reminderBriefs.get(record.sequence);
+
+  if (fire === null || fire.kind === 'poll' || brief === undefined) {
+    return undefined;
+  }
+
+  return {
+    brief,
+    scheduledFor: new Date(fire.scheduledFor).toISOString(),
+    lateBySeconds: findLateBySeconds(fire),
   };
 }
 

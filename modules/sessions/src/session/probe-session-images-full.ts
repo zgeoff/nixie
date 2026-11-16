@@ -21,7 +21,7 @@ export async function probeSessionImagesFull(
 
   const times = { defaultZone: run.defaultZone, now: new Date(run.context.clock.now()) };
 
-  const [first] = await readInboxMessages(run.context.log, session.inbox.slice(0, 1), {
+  const [first] = await readInboxMessages(run.context, session.inbox.slice(0, 1), {
     times,
     view: { messaging: run.messaging, wake: session.wake },
     imageBudget: { bytes: 0, count: 0 },

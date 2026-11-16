@@ -18,6 +18,7 @@ export type SystemMessageType =
   | 'task-continue'
   | 'task-limit'
   | 'approval'
+  | 'reminder'
   | 'restore';
 
 export interface SystemMessage {

@@ -34,7 +34,7 @@ export interface LiveInbox {
 }
 
 export async function* readLiveInbox(
-  context: Pick<TasksContext, 'log'>,
+  context: Pick<TasksContext, 'log' | 'readDefinitionVersion'>,
 
   live: LiveInbox,
 ): AsyncGenerator<InboxMessage> {
@@ -81,11 +81,11 @@ interface LiveRead {
 }
 
 async function readLiveMessage(
-  context: Pick<TasksContext, 'log'>,
+  context: Pick<TasksContext, 'log' | 'readDefinitionVersion'>,
   live: LiveRead,
   record: LogRecord,
 ): Promise<InboxMessage | null> {
-  const [message] = await readInboxMessages(context.log, [record], {
+  const [message] = await readInboxMessages(context, [record], {
     times: live.times,
     view: live.view,
     imageBudget: { bytes: 0, count: 0 },

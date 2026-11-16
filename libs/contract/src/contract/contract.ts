@@ -99,10 +99,18 @@ const exchangeNoticeSchema = z.object({
   text: z.string(),
 });
 
+const reminderSchema = z.object({
+  brief: z.string(),
+  scheduledFor: z.iso.datetime({ offset: true }),
+  lateBySeconds: z.number().nullable(),
+});
+
 const recordSchema = z.object({
   compaction: compactionSchema.optional(),
 
   exchangeNotice: exchangeNoticeSchema.optional(),
+
+  reminder: reminderSchema.optional(),
 
   compactionFailure: compactionFailureSchema.optional(),
 

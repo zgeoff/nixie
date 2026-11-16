@@ -1,36 +1,51 @@
 import { expect, test } from 'bun:test';
-import { triggerFiredCodec } from './trigger-fired-codec';
+import { findLateBySeconds, parseTriggerFired } from './trigger-fired-codec';
 
-test('it decodes the payload a writer encodes', () => {
-  const fire = {
-    definitionID: 'water-the-tomatoes',
-    definitionHash: 'sha256:aaa',
-    source: 'schedule',
-    dedupeKey: 'water-the-tomatoes:2027-03-11T21:00:00.000Z',
-    kind: 'schedule',
-    scheduledFor: '2027-03-11T21:00:00.000Z',
-    firedAt: '2027-03-11T21:00:01.000Z',
-    isCatchUp: false,
-    skipped: [],
-    skippedCount: 0,
-  } as const;
-
-  expect(triggerFiredCodec.decode(triggerFiredCodec.encode(fire))).toStrictEqual(fire);
-});
-
-test('it refuses a kind the codec does not know', () => {
-  expect(() =>
-    triggerFiredCodec.decode({
-      definitionID: 'water-the-tomatoes',
-      definitionHash: 'sha256:aaa',
-      source: 'webhook',
+function setupTest() {
+  return {
+    payload: {
+      definitionID: 'call-the-dentist',
+      definitionHash: 'hash-1',
+      source: 'at',
       dedupeKey: 'key-1',
-      kind: 'webhook',
-      scheduledFor: '2027-03-11T21:00:00.000Z',
-      firedAt: '2027-03-11T21:00:01.000Z',
+      kind: 'at',
+      scheduledFor: '2026-03-09T03:00:00.000Z',
+      firedAt: '2026-03-09T03:00:02.000Z',
       isCatchUp: false,
       skipped: [],
       skippedCount: 0,
-    }),
-  ).toThrow(/"path": \[\s+"kind"\s+\]/u);
+    },
+  };
+}
+
+test('it parses the payload of a fire', () => {
+  const ctx = setupTest();
+
+  expect(parseTriggerFired(ctx.payload)).toMatchObject({ kind: 'at', definitionHash: 'hash-1' });
+});
+
+test('it parses a poll fire, which its callers pass over', () => {
+  const ctx = setupTest();
+
+  expect(parseTriggerFired({ ...ctx.payload, kind: 'poll' })).toMatchObject({ kind: 'poll' });
+});
+
+test.each([['webhook'], [42]])('it parses a payload with the kind %p as null', (kind) => {
+  const ctx = setupTest();
+
+  expect(parseTriggerFired({ ...ctx.payload, kind })).toBeNull();
+});
+
+test('it gives no lateness to a fire on time', () => {
+  const ctx = setupTest();
+
+  expect(findLateBySeconds({ ...ctx.payload, isCatchUp: false })).toBeNull();
+});
+
+test('it gives the seconds between the set time and the arrival of a catch-up', () => {
+  const ctx = setupTest();
+
+  expect(
+    findLateBySeconds({ ...ctx.payload, isCatchUp: true, firedAt: '2026-03-09T05:05:00.400Z' }),
+  ).toBe(7500);
 });
