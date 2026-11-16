@@ -1,8 +1,12 @@
-import { withWriteTransaction } from '@heynixie/log';
+import { parseJSONObject, withWriteTransaction } from '@heynixie/log';
+import type { Kysely } from 'kysely';
+import { z } from 'zod';
 import { readDefinitionsInForce } from '../definition/read-definitions-in-force';
 import type { SeedResult } from '../rule/run-seed';
+import type { DefinitionsTables } from '../types';
 import type { TaskDefineInput } from './build-define-version';
 import { buildDefineVersion } from './build-define-version';
+import { isFileOnlyVersion } from './is-file-only-version';
 import type { DefinitionRequest } from './pick-definition-move';
 import { pickDefinitionMove } from './pick-definition-move';
 import { readDefinitionHead } from './read-definition-head';
@@ -46,11 +50,17 @@ export async function requestDefinitionChange(
         throw new Error('no definitions are in force yet');
       }
 
+      const repo = await readRepoHash(tx, inForce, target.definitionID);
+      const head = await readDefinitionHead(tx, target.definitionID);
+
+      const hashInForce = head?.state === 'in_force' ? head.hash : repo;
+
       const decision = pickDefinitionMove(
         {
-          repo: await readRepoHash(tx, inForce, target.definitionID),
-          head: await readDefinitionHead(tx, target.definitionID),
+          repo,
+          head,
           now: context.log.writer.clock.now(),
+          isFileOnly: await probeFileOnly(tx, hashInForce),
         },
         target.request,
       );
@@ -128,4 +138,27 @@ function buildTarget(context: DefinitionsContext, request: DefinitionChangeReque
     },
     version: built.definition,
   };
+}
+
+// Whether the body of the version in force holds what task.define cannot set
+async function probeFileOnly(db: Kysely<unknown>, hash: string | null): Promise<boolean> {
+  if (hash === null) {
+    return false;
+  }
+
+  const row = await db
+    .$extendTables<DefinitionsTables>()
+    .selectFrom('task_definition_versions')
+    .select(['form', 'files'])
+    .where('definition_hash', '=', hash)
+    .executeTakeFirst();
+
+  if (row === undefined) {
+    return false;
+  }
+
+  return isFileOnlyVersion({
+    form: parseJSONObject(row.form),
+    files: z.record(z.string(), z.string()).parse(JSON.parse(row.files)),
+  });
 }

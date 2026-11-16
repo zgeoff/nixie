@@ -124,6 +124,59 @@ test('it refuses a replacement that holds the version in force', async () => {
   expect(result).toStrictEqual({ status: 'refused', refusal: { code: 'UNCHANGED' } });
 });
 
+test('it refuses a replacement of a definition that holds an instructions file', async () => {
+  const ctx = await setupTest();
+
+  await ctx.writeRepoTask('water-the-tomatoes', buildTestTaskYaml({ target: 'task' }), {
+    'instructions.md': 'Water the tomatoes at the roots.\n',
+  });
+
+  await ctx.seed();
+
+  const result = await requestDefinitionChange(ctx.context, {
+    kind: 'define',
+    input: buildTestDefineInput({ definitionID: 'water-the-tomatoes', brief: 'Water them well.' }),
+  });
+
+  expect(result).toStrictEqual({ status: 'refused', refusal: { code: 'FILE_ONLY_KEYS' } });
+});
+
+test('it refuses a replacement of a definition that holds a file-only key at a non-default value', async () => {
+  const ctx = await setupTest();
+
+  await ctx.writeRepoTask(
+    'water-the-tomatoes',
+    `${buildTestTaskYaml({ target: 'task' })}wakeable: true\n`,
+  );
+
+  await ctx.seed();
+
+  const result = await requestDefinitionChange(ctx.context, {
+    kind: 'define',
+    input: buildTestDefineInput({ definitionID: 'water-the-tomatoes', brief: 'Water them well.' }),
+  });
+
+  expect(result).toStrictEqual({ status: 'refused', refusal: { code: 'FILE_ONLY_KEYS' } });
+});
+
+test('it replaces a definition that holds file-only keys at their defaults', async () => {
+  const ctx = await setupTest();
+
+  await ctx.writeRepoTask(
+    'water-the-tomatoes',
+    `${buildTestTaskYaml({ target: 'task' })}wakeable: false\ncontext: fresh\ndestinations: []\n`,
+  );
+
+  await ctx.seed();
+
+  const result = await requestDefinitionChange(ctx.context, {
+    kind: 'define',
+    input: buildTestDefineInput({ definitionID: 'water-the-tomatoes', brief: 'Water them well.' }),
+  });
+
+  expect(result).toMatchObject({ status: 'changed' });
+});
+
 test('it refuses a replacement of a definition that does not exist', async () => {
   const ctx = await setupTest();
 

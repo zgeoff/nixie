@@ -48,6 +48,7 @@ export async function undoDefinitionChange(
           repo,
           head: definitionID === null ? null : await readDefinitionHead(tx, definitionID),
           now: context.log.writer.clock.now(),
+          isFileOnly: false,
         },
         {
           kind: 'undo',

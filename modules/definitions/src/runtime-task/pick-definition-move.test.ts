@@ -13,7 +13,7 @@ test('#pickDefinitionMove refuses an undo of a change that a later change replac
   });
 
   const decision = pickDefinitionMove(
-    { repo: 'h-r', head, now: 0 },
+    { repo: 'h-r', head, now: 0, isFileOnly: false },
     {
       kind: 'undo',
       change: first,
@@ -41,7 +41,7 @@ test('#pickDefinitionMove puts the earlier version in force when the change repl
   });
 
   const decision = pickDefinitionMove(
-    { repo: 'h-r', head: change, now: 0 },
+    { repo: 'h-r', head: change, now: 0, isFileOnly: false },
     {
       kind: 'undo',
       change,
@@ -70,7 +70,7 @@ test('#pickDefinitionMove puts the base in force when the change replaced none a
   const change = buildTestDefinitionChange();
 
   const decision = pickDefinitionMove(
-    { repo: 'h-r', head: change, now: 0 },
+    { repo: 'h-r', head: change, now: 0, isFileOnly: false },
     {
       kind: 'undo',
       change,
@@ -104,7 +104,7 @@ test('#pickDefinitionMove puts nothing in force when the undone change added the
   });
 
   const decision = pickDefinitionMove(
-    { repo: null, head: change, now: 0 },
+    { repo: null, head: change, now: 0, isFileOnly: false },
     {
       kind: 'undo',
       change,
@@ -121,7 +121,7 @@ test('#pickDefinitionMove puts the repo version in force when the repo moved (ro
   const change = buildTestDefinitionChange({ definitions: 'h-r2' });
 
   const decision = pickDefinitionMove(
-    { repo: 'h-r2', head: change, now: 0 },
+    { repo: 'h-r2', head: change, now: 0, isFileOnly: false },
     {
       kind: 'undo',
       change,
@@ -144,7 +144,7 @@ test('#pickDefinitionMove puts the earlier version in force over a merged change
   const change = buildTestDefinitionChange({ state: 'adopted', cause: 'seed' });
 
   const decision = pickDefinitionMove(
-    { repo: 'h-c1', head: change, now: 0 },
+    { repo: 'h-c1', head: change, now: 0, isFileOnly: false },
     {
       kind: 'undo',
       change,
@@ -174,7 +174,7 @@ test('#pickDefinitionMove removes the definition when an undo of a merged add ha
   });
 
   const decision = pickDefinitionMove(
-    { repo: 'h-c1', head: change, now: 0 },
+    { repo: 'h-c1', head: change, now: 0, isFileOnly: false },
     {
       kind: 'undo',
       change,
@@ -191,7 +191,7 @@ test('#pickDefinitionMove refuses with the seed record when the repo moved after
   const change = buildTestDefinitionChange({ state: 'adopted', cause: 'seed' });
 
   const decision = pickDefinitionMove(
-    { repo: 'h-r3', head: change, now: 0 },
+    { repo: 'h-r3', head: change, now: 0, isFileOnly: false },
     {
       kind: 'undo',
       change,
@@ -213,7 +213,7 @@ test.each(['one_shot_fired', 'one_shot_skipped', 'kept_repo'] as const)(
     const change = buildTestDefinitionChange({ state: 'retired', cause });
 
     const decision = pickDefinitionMove(
-      { repo: 'h-r', head: change, now: 0 },
+      { repo: 'h-r', head: change, now: 0, isFileOnly: false },
       {
         kind: 'undo',
         change,
@@ -232,7 +232,7 @@ test.each(['one_shot_fired', 'one_shot_skipped', 'kept_repo'] as const)(
 
 test('#pickDefinitionMove refuses an undo of a change that does not exist', () => {
   const decision = pickDefinitionMove(
-    { repo: 'h-r', head: null, now: 0 },
+    { repo: 'h-r', head: null, now: 0, isFileOnly: false },
     { kind: 'undo', change: null, definitionID: null, restoredOneShotAt: null, seedSequence: 7 },
   );
 
@@ -247,7 +247,7 @@ test('#pickDefinitionMove refuses to restore a one-shot over a definition the re
   });
 
   const decision = pickDefinitionMove(
-    { repo: 'h-r', head: change, now: 1000 },
+    { repo: 'h-r', head: change, now: 1000, isFileOnly: false },
     {
       kind: 'undo',
       change,
@@ -274,7 +274,7 @@ test('#pickDefinitionMove refuses to restore a one-shot whose time is before the
   });
 
   const decision = pickDefinitionMove(
-    { repo: null, head: change, now: 1000 },
+    { repo: null, head: change, now: 1000, isFileOnly: false },
     {
       kind: 'undo',
       change,
@@ -298,7 +298,7 @@ test('#pickDefinitionMove restores a one-shot whose time has not come', () => {
   });
 
   const decision = pickDefinitionMove(
-    { repo: null, head: change, now: 1000 },
+    { repo: null, head: change, now: 1000, isFileOnly: false },
     {
       kind: 'undo',
       change,
@@ -313,7 +313,7 @@ test('#pickDefinitionMove restores a one-shot whose time has not come', () => {
 
 test('#pickDefinitionMove adds a definition that no repo or runtime change holds', () => {
   const decision = pickDefinitionMove(
-    { repo: null, head: null, now: 0 },
+    { repo: null, head: null, now: 0, isFileOnly: false },
     {
       kind: 'define',
       definitionID: 'water-the-tomatoes',
@@ -339,7 +339,7 @@ test('#pickDefinitionMove adds a definition that no repo or runtime change holds
 
 test('#pickDefinitionMove changes a repo definition and keeps the repo version as the base', () => {
   const decision = pickDefinitionMove(
-    { repo: 'h-r', head: null, now: 0 },
+    { repo: 'h-r', head: null, now: 0, isFileOnly: false },
     {
       kind: 'define',
       definitionID: 'water-the-tomatoes',
@@ -362,7 +362,7 @@ test('#pickDefinitionMove replaces a change in force and keeps its base', () => 
   const head = buildTestDefinitionChange({ base: 'h-b', definitions: 'h-r' });
 
   const decision = pickDefinitionMove(
-    { repo: 'h-r', head, now: 0 },
+    { repo: 'h-r', head, now: 0, isFileOnly: false },
     {
       kind: 'define',
       definitionID: 'water-the-tomatoes',
@@ -381,7 +381,7 @@ test('#pickDefinitionMove replaces a change in force and keeps its base', () => 
 
 test('#pickDefinitionMove refuses an ID that the repo holds', () => {
   const decision = pickDefinitionMove(
-    { repo: 'h-r', head: null, now: 0 },
+    { repo: 'h-r', head: null, now: 0, isFileOnly: false },
     {
       kind: 'define',
       definitionID: 'water-the-tomatoes',
@@ -402,7 +402,7 @@ test('#pickDefinitionMove refuses an ID that a runtime change in force holds', (
   });
 
   const decision = pickDefinitionMove(
-    { repo: null, head, now: 0 },
+    { repo: null, head, now: 0, isFileOnly: false },
     {
       kind: 'define',
       definitionID: 'water-the-tomatoes',
@@ -424,7 +424,7 @@ test('#pickDefinitionMove frees an ID whose runtime definition an undefine remov
   });
 
   const decision = pickDefinitionMove(
-    { repo: null, head, now: 0 },
+    { repo: null, head, now: 0, isFileOnly: false },
     {
       kind: 'define',
       definitionID: 'water-the-tomatoes',
@@ -438,7 +438,7 @@ test('#pickDefinitionMove frees an ID whose runtime definition an undefine remov
 
 test('#pickDefinitionMove refuses to replace a definition that does not exist', () => {
   const decision = pickDefinitionMove(
-    { repo: null, head: null, now: 0 },
+    { repo: null, head: null, now: 0, isFileOnly: false },
     {
       kind: 'define',
       definitionID: 'water-the-tomatoes',
@@ -452,7 +452,7 @@ test('#pickDefinitionMove refuses to replace a definition that does not exist', 
 
 test('#pickDefinitionMove refuses a version that holds the hash in force', () => {
   const decision = pickDefinitionMove(
-    { repo: 'h-r', head: null, now: 0 },
+    { repo: 'h-r', head: null, now: 0, isFileOnly: false },
     {
       kind: 'define',
       definitionID: 'water-the-tomatoes',
@@ -466,7 +466,7 @@ test('#pickDefinitionMove refuses a version that holds the hash in force', () =>
 
 test('#pickDefinitionMove refuses a one-shot over a repo definition', () => {
   const decision = pickDefinitionMove(
-    { repo: 'h-r', head: null, now: 0 },
+    { repo: 'h-r', head: null, now: 0, isFileOnly: false },
     {
       kind: 'define',
       definitionID: 'water-the-tomatoes',
@@ -483,7 +483,7 @@ test('#pickDefinitionMove refuses a one-shot over a repo definition', () => {
 
 test('#pickDefinitionMove removes a repo definition with an undefine that holds a null hash', () => {
   const decision = pickDefinitionMove(
-    { repo: 'h-r', head: null, now: 0 },
+    { repo: 'h-r', head: null, now: 0, isFileOnly: false },
     { kind: 'undefine', definitionID: 'water-the-tomatoes' },
   );
 
@@ -499,9 +499,46 @@ test('#pickDefinitionMove removes a repo definition with an undefine that holds 
 
 test('#pickDefinitionMove refuses an undefine of a definition that does not exist', () => {
   const decision = pickDefinitionMove(
-    { repo: null, head: null, now: 0 },
+    { repo: null, head: null, now: 0, isFileOnly: false },
     { kind: 'undefine', definitionID: 'water-the-tomatoes' },
   );
 
   expect(decision).toStrictEqual({ status: 'refused', refusal: { code: 'NOT_FOUND' } });
+});
+
+test('#pickDefinitionMove refuses a replacement of a definition that holds a file-only key', () => {
+  const decision = pickDefinitionMove(
+    { repo: 'h-r', head: null, now: 0, isFileOnly: true },
+    {
+      kind: 'define',
+      definitionID: 'water-the-tomatoes',
+      isReplace: true,
+      version: { hash: 'h-new', oneShotAt: null },
+    },
+  );
+
+  expect(decision).toStrictEqual({ status: 'refused', refusal: { code: 'FILE_ONLY_KEYS' } });
+});
+
+test('#pickDefinitionMove refuses an ID taken before it checks the file-only keys', () => {
+  const decision = pickDefinitionMove(
+    { repo: 'h-r', head: null, now: 0, isFileOnly: true },
+    {
+      kind: 'define',
+      definitionID: 'water-the-tomatoes',
+      isReplace: false,
+      version: { hash: 'h-new', oneShotAt: null },
+    },
+  );
+
+  expect(decision).toStrictEqual({ status: 'refused', refusal: { code: 'ID_TAKEN' } });
+});
+
+test('#pickDefinitionMove allows an undefine of a definition that holds a file-only key', () => {
+  const decision = pickDefinitionMove(
+    { repo: 'h-r', head: null, now: 0, isFileOnly: true },
+    { kind: 'undefine', definitionID: 'water-the-tomatoes' },
+  );
+
+  expect(decision).toMatchObject({ status: 'move', operation: 'remove' });
 });

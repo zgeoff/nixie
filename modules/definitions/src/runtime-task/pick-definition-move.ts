@@ -25,6 +25,10 @@ export interface DefinitionState {
 
   // the clock reading the caller passes in, epoch milliseconds
   readonly now: number;
+
+  // true when the version in force holds a file-only key at a non-default value, or a file; a
+  // define over it is refused
+  readonly isFileOnly: boolean;
 }
 
 export type DefinitionRequest =
@@ -106,6 +110,10 @@ export function pickDefinitionMove(
 
   if (!request.isReplace && isTaken) {
     return refuse({ code: 'ID_TAKEN' });
+  }
+
+  if (request.isReplace && state.isFileOnly) {
+    return refuse({ code: 'FILE_ONLY_KEYS' });
   }
 
   if (request.version.hash === hashInForce) {
