@@ -23,11 +23,12 @@ test('it returns one match for an item whose phrases both match', async () => {
     ]),
   );
 
-  const matches = await ctx.triggers.readMatches('piano tuning fork', ctx.options);
+  const result = await ctx.triggers.readMatches('piano tuning fork', ctx.options);
 
-  expect(matches).toStrictEqual([
-    { itemID: 'item-piano', score: expect.toBeNumber(), searchMode: 'keyword' },
-  ]);
+  expect(result).toStrictEqual({
+    matches: [{ itemID: 'item-piano', score: expect.toBeNumber() }],
+    searchMode: 'keyword',
+  });
 });
 
 test('it keeps the best phrase of an item so its other phrases never fill the limit', async () => {
@@ -40,9 +41,9 @@ test('it keeps the best phrase of an item so its other phrases never fill the li
     ]),
   );
 
-  const matches = await ctx.triggers.readMatches('piano', { ...ctx.options, limit: 2 });
+  const result = await ctx.triggers.readMatches('piano', { ...ctx.options, limit: 2 });
 
-  expect(matches.map((match) => match.itemID).toSorted()).toStrictEqual([
+  expect(result.matches.map((match) => match.itemID).toSorted()).toStrictEqual([
     'item-organ',
     'item-piano',
   ]);
@@ -59,7 +60,10 @@ test('it replaces the old phrases of an item when it sets new ones', async () =>
     ctx.triggers.readMatches('organ', ctx.options),
   ]);
 
-  expect({ old, current: current.map((match) => match.itemID) }).toStrictEqual({
+  expect({
+    old: old.matches,
+    current: current.matches.map((match) => match.itemID),
+  }).toStrictEqual({
     old: [],
     current: ['item-piano'],
   });
@@ -71,9 +75,9 @@ test('it drops the phrases of an item it removes', async () => {
   await ctx.triggers.set('item-piano', ['piano tuning']);
   await ctx.triggers.remove('item-piano');
 
-  const matches = await ctx.triggers.readMatches('piano', ctx.options);
+  const result = await ctx.triggers.readMatches('piano', ctx.options);
 
-  expect(matches).toStrictEqual([]);
+  expect(result.matches).toStrictEqual([]);
 });
 
 test('it leaves out the items it is told to exclude', async () => {
@@ -82,12 +86,12 @@ test('it leaves out the items it is told to exclude', async () => {
   await ctx.triggers.set('item-piano', ['piano tuning']);
   await ctx.triggers.set('item-organ', ['piano organ']);
 
-  const matches = await ctx.triggers.readMatches('piano', {
+  const result = await ctx.triggers.readMatches('piano', {
     ...ctx.options,
     excludedIDs: ['item-piano'],
   });
 
-  expect(matches.map((match) => match.itemID)).toStrictEqual(['item-organ']);
+  expect(result.matches.map((match) => match.itemID)).toStrictEqual(['item-organ']);
 });
 
 test('it leaves a match below the floor out', async () => {
@@ -95,9 +99,9 @@ test('it leaves a match below the floor out', async () => {
 
   await ctx.triggers.set('item-piano', ['piano tuning']);
 
-  const matches = await ctx.triggers.readMatches('piano', { ...ctx.options, minScore: 1000 });
+  const result = await ctx.triggers.readMatches('piano', { ...ctx.options, minScore: 1000 });
 
-  expect(matches).toStrictEqual([]);
+  expect(result.matches).toStrictEqual([]);
 });
 
 test('it ignores a name word the caller excludes', async () => {
@@ -105,12 +109,12 @@ test('it ignores a name word the caller excludes', async () => {
 
   await ctx.triggers.set('item-name', ['Robin birthday']);
 
-  const matches = await ctx.triggers.readMatches('Robin', {
+  const result = await ctx.triggers.readMatches('Robin', {
     ...ctx.options,
     excludedWords: ['Robin'],
   });
 
-  expect(matches).toStrictEqual([]);
+  expect(result.matches).toStrictEqual([]);
 });
 
 test('it matches a phrase by meaning through the encoder once the vectors are rebuilt', async () => {
@@ -124,14 +128,15 @@ test('it matches a phrase by meaning through the encoder once the vectors are re
   await ctx.triggers.updateAll(phrases);
   await ctx.triggers.rebuildVectors(phrases);
 
-  const matches = await ctx.triggers.readMatches('call my sibling', {
+  const result = await ctx.triggers.readMatches('call my sibling', {
     ...ctx.options,
     minScore: 1000,
   });
 
-  expect(matches).toStrictEqual([
-    { itemID: 'item-family', similarity: expect.toBeNumber(), searchMode: 'hybrid' },
-  ]);
+  expect(result).toStrictEqual({
+    matches: [{ itemID: 'item-family', similarity: expect.toBeNumber() }],
+    searchMode: 'hybrid',
+  });
 });
 
 test('it falls back to keywords and says so while the vectors are not rebuilt', async () => {
@@ -142,7 +147,23 @@ test('it falls back to keywords and says so while the vectors are not rebuilt', 
 
   await ctx.triggers.set('item-family', ['my sister']);
 
-  const matches = await ctx.triggers.readMatches('sister', ctx.options);
+  const result = await ctx.triggers.readMatches('sister', ctx.options);
 
-  expect(matches).toMatchObject([{ itemID: 'item-family', searchMode: 'keyword-fallback' }]);
+  expect(result).toMatchObject({
+    matches: [{ itemID: 'item-family' }],
+    searchMode: 'keyword-fallback',
+  });
+});
+
+test('it reports keyword-fallback when nothing matches while the vectors are not rebuilt', async () => {
+  const ctx = await setupTest({
+    encoder: buildStubEncoder([['sister', 'sibling']]),
+    onError: mock<(error: unknown) => void>(),
+  });
+
+  await ctx.triggers.set('item-family', ['my sister']);
+
+  const result = await ctx.triggers.readMatches('tractor', ctx.options);
+
+  expect(result).toStrictEqual({ matches: [], searchMode: 'keyword-fallback' });
 });

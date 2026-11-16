@@ -10,8 +10,12 @@ import { startVectorIndex } from '../view/start-vector-index';
 
 interface TriggerMatch extends MatchScores {
   readonly itemID: string;
+}
 
-  // how the search that found the match ran
+interface TriggerMatches {
+  readonly matches: readonly TriggerMatch[];
+
+  // how the search ran, which holds when it found nothing
   readonly searchMode: SearchMode;
 }
 
@@ -27,10 +31,7 @@ interface TriggerMatchOptions {
 // An in-memory search over trigger phrases, rebuilt at each start.
 export interface TriggerIndex {
   // one match per item, scored by its best trigger phrase
-  readonly readMatches: (
-    text: string,
-    options: TriggerMatchOptions,
-  ) => Promise<readonly TriggerMatch[]>;
+  readonly readMatches: (text: string, options: TriggerMatchOptions) => Promise<TriggerMatches>;
 
   readonly set: (itemID: string, phrases: readonly string[]) => Promise<void>;
   readonly remove: (itemID: string) => Promise<void>;
@@ -84,7 +85,7 @@ async function readTriggerMatches(
   state: TriggerState,
   text: string,
   options: TriggerMatchOptions,
-): Promise<readonly TriggerMatch[]> {
+): Promise<TriggerMatches> {
   const excludedKeys = options.excludedIDs.flatMap((itemID) => state.keysByItem.get(itemID) ?? []);
 
   // Every phrase must fit under the limit, so that one item's phrases never fill it.
@@ -109,9 +110,12 @@ async function readTriggerMatches(
   const vectorItems = pickBestPerItem(state, vectorMatches ?? []);
   const searchMode = pickSearchMode(state, vectorMatches);
 
-  return mergeRankings(keywordItems, vectorItems)
-    .slice(0, options.limit)
-    .map((match) => toTriggerMatch(match, searchMode));
+  return {
+    matches: mergeRankings(keywordItems, vectorItems)
+      .slice(0, options.limit)
+      .map((match) => toTriggerMatch(match)),
+    searchMode,
+  };
 }
 
 function pickBestPerItem<Match extends { readonly itemID: string }>(
@@ -139,12 +143,11 @@ function pickSearchMode(state: TriggerState, vectorMatches: readonly unknown[] |
   return vectorMatches === null ? 'keyword-fallback' : 'hybrid';
 }
 
-function toTriggerMatch(match: RankedMatch, searchMode: SearchMode): TriggerMatch {
+function toTriggerMatch(match: RankedMatch): TriggerMatch {
   return {
     itemID: match.itemID,
     ...(match.score === undefined ? {} : { score: match.score }),
     ...(match.similarity === undefined ? {} : { similarity: match.similarity }),
-    searchMode,
   };
 }
 

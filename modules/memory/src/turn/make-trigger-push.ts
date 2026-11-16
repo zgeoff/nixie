@@ -4,7 +4,7 @@ export function makeTriggerPush(trigger: TurnMemorySettings['trigger']): SelectP
   return async (sources, turn) => {
     const states = new Map(turn.states.map((state) => [state.itemID, state]));
 
-    const matches = await sources.triggers.readMatches(turn.text, {
+    const found = await sources.triggers.readMatches(turn.text, {
       limit: Number.MAX_SAFE_INTEGER,
       minScore: trigger.minScore,
       minSimilarity: trigger.minSimilarity,
@@ -13,7 +13,7 @@ export function makeTriggerPush(trigger: TurnMemorySettings['trigger']): SelectP
     });
 
     // A retired item can still hold phrases, so only an active item takes a slot.
-    const picks = matches
+    const picks = found.matches
       .flatMap((match): readonly PushPick[] => {
         const state = states.get(match.itemID);
 
@@ -34,7 +34,7 @@ export function makeTriggerPush(trigger: TurnMemorySettings['trigger']): SelectP
     return {
       picks,
       messages: [],
-      searchModes: matches.slice(0, 1).map((match) => match.searchMode),
+      searchModes: [found.searchMode],
     };
   };
 }
