@@ -3,6 +3,13 @@ import { expect, test } from 'bun:test';
 import { removeSummaryKeys } from '@heynixie/compaction';
 import { readRecordAttachments, writeRecords } from '@heynixie/log';
 import { buildLogSeeder, removeTestRecordKey } from '@heynixie/log/test-utils';
+import {
+  workerRunEndedCodec,
+  workerRunStartedCodec,
+  workerTurnEndedCodec,
+} from '@heynixie/sessions';
+import { taskMessageCodec } from '@heynixie/tasks';
+import { toolCalledCodec, toolResultCodec } from '@heynixie/tools';
 import invariant from 'tiny-invariant';
 import { startTestMemory } from '../../test-utils/start-test-memory';
 import { writeOwnerMessageRecord } from '../../test-utils/write-owner-message-record';
@@ -420,4 +427,159 @@ test('it keeps the whole image list of a record cut by a small cap and drops its
 
   expect([entry.isCut, entry.payload, entry.images.length]).toStrictEqual([true, null, 80]);
   expect(Math.ceil(JSON.stringify(entry).length / 4)).toBeLessThanOrEqual(1100);
+});
+
+test("it reads each record of a task's thread that a worker run wrote, in order, with its kind and its source", async () => {
+  const ctx = await setupTest();
+
+  const definitions = { snapshotHash: 'sha256:test' };
+  const thread = 'task-glaze';
+  const workerRunID = crypto.randomUUID();
+  const workerCallID = crypto.randomUUID();
+  const fetchCallID = crypto.randomUUID();
+  const taskRunID = crypto.randomUUID();
+  const used = { minutes: 0.1, turns: 1, tokens: 120, dollars: 0.001 };
+
+  const written = await writeRecords(ctx.memory.log, [
+    {
+      kind: 'tool_called',
+      definitions,
+      thread,
+      payload: toolCalledCodec.encode({
+        callID: workerCallID,
+        runID: 'step-1',
+        toolUseID: null,
+        tool: 'worker.run',
+        taskRunID,
+      }),
+      erasable: { input: { question: 'What does the page say?', tools: ['web_fetch'] } },
+    },
+    {
+      kind: 'worker.run_started',
+      definitions,
+      thread,
+      payload: workerRunStartedCodec.encode({
+        workerRunID,
+        shortID: 'w3k8',
+        callID: workerCallID,
+        stepRunID: 'step-1',
+        taskRunID,
+        model: 'claude-test-1',
+        profile: 'worker',
+        tools: ['web_fetch'],
+        limits: { minutes: 10, turns: 25, tokens: 2_000_000, dollars: 2 },
+        isTaskLimit: false,
+      }),
+    },
+    {
+      kind: 'tool_called',
+      definitions,
+      thread,
+      payload: toolCalledCodec.encode({
+        callID: fetchCallID,
+        runID: workerRunID,
+        toolUseID: null,
+        tool: 'web_fetch',
+        taskRunID,
+      }),
+      erasable: { input: { url: 'https://kiln-notes.test/celadon' } },
+    },
+    {
+      kind: 'tool_result',
+      definitions,
+      thread,
+      contentSource: 'untrusted',
+      payload: toolResultCodec.encode({
+        callID: fetchCallID,
+        runID: workerRunID,
+        toolUseID: null,
+        outcome: 'result',
+        actionID: null,
+        sources: { text: 'untrusted' },
+        taskRunID,
+      }),
+      erasable: { result: { text: 'Celadon glaze notes' } },
+    },
+    {
+      kind: 'worker.turn_ended',
+      definitions,
+      thread,
+      contentSource: 'untrusted',
+      payload: workerTurnEndedCodec.encode({
+        workerRunID,
+        callID: workerCallID,
+        taskRunID,
+        model: 'claude-test-1',
+        profile: 'worker',
+        turn: 1,
+        inputTokens: 100,
+        outputTokens: 20,
+        cacheReadTokens: 0,
+        cacheWriteTokens: 0,
+        dollars: 0.001,
+      }),
+      erasable: { text: 'The page holds glaze notes.' },
+    },
+    {
+      kind: 'worker.run_ended',
+      definitions,
+      thread,
+      payload: workerRunEndedCodec.encode({
+        workerRunID,
+        callID: workerCallID,
+        taskRunID,
+        model: 'claude-test-1',
+        profile: 'worker',
+        outcome: 'answered',
+        used,
+      }),
+    },
+    {
+      kind: 'task_message',
+      definitions,
+      thread,
+      payload: taskMessageCodec.encode({
+        messageID: 'm3x9',
+        from: 'task-glaze',
+        to: 'conversation',
+        kind: 'report',
+        replyTo: null,
+        onBehalfOf: [],
+        hop: 1,
+        hopLimit: 20,
+        wake: true,
+        woke: true,
+        opensWait: false,
+        source: 'task:task-glaze',
+      }),
+      erasable: { body: 'report:\n  summary: The page holds glaze notes.' },
+    },
+  ]);
+
+  const [first] = written;
+  const last = written.at(-1);
+
+  invariant(first && last);
+
+  const page = await readMomentSpanPage(ctx.memory.log, {
+    thread,
+    firstSequence: first.sequence,
+    lastSequence: last.sequence,
+    after: null,
+    tokenCap: 6000,
+    records: 'all',
+    reader: 'model',
+  });
+
+  expect(page.next).toBeNull();
+
+  expect(page.entries.map((entry) => [entry.sequence, entry.kind, entry.source])).toStrictEqual([
+    [first.sequence, 'tool_called', 'nixie'],
+    [first.sequence + 1, 'worker.run_started', 'nixie'],
+    [first.sequence + 2, 'tool_called', 'nixie'],
+    [first.sequence + 3, 'tool_result', 'untrusted'],
+    [first.sequence + 4, 'worker.turn_ended', 'untrusted'],
+    [first.sequence + 5, 'worker.run_ended', 'nixie'],
+    [first.sequence + 6, 'task_message', 'nixie'],
+  ]);
 });
