@@ -18,7 +18,7 @@ async function setupTest() {
   return {
     ...triggers,
     zones,
-    readNextFire: (definitionID: string) =>
+    readDefinitionNextFire: (definitionID: string) =>
       readDefinitionNextFire(
         triggers.writer.db,
         (zone) => {
@@ -38,7 +38,7 @@ test('it gives the next slot of a scheduled definition as an ISO instant in UTC'
 
   await seedArmedDefinitions(ctx, [buildTestArmedDefinition()]);
 
-  const result = await ctx.readNextFire('water-the-tomatoes');
+  const result = await ctx.readDefinitionNextFire('water-the-tomatoes');
 
   expect(result).toBe('2027-03-09T21:00:00.000Z');
 });
@@ -52,7 +52,7 @@ test('it resolves the zone of the schedule through the reader', async () => {
     }),
   ]);
 
-  const result = await ctx.readNextFire('water-the-tomatoes');
+  const result = await ctx.readDefinitionNextFire('water-the-tomatoes');
 
   expect([result, ctx.zones]).toStrictEqual(['2027-03-09T21:00:00.000Z', ['owner']]);
 });
@@ -64,14 +64,14 @@ test('it gives a slot that is already past', async () => {
 
   ctx.clock.advance(10 * 86_400_000);
 
-  const result = await ctx.readNextFire('water-the-tomatoes');
+  const result = await ctx.readDefinitionNextFire('water-the-tomatoes');
 
   expect(result).toBe('2027-03-09T21:00:00.000Z');
 });
 
 test('it gives null for a definition with no row', async () => {
   const ctx = await setupTest();
-  const result = await ctx.readNextFire('water-the-tomatoes');
+  const result = await ctx.readDefinitionNextFire('water-the-tomatoes');
 
   expect(result).toBeNull();
 });
@@ -82,7 +82,7 @@ test('it gives null for a withdrawn definition', async () => {
   await seedArmedDefinitions(ctx, [buildTestArmedDefinition()]);
   await seedArmedDefinitions(ctx, []);
 
-  const result = await ctx.readNextFire('water-the-tomatoes');
+  const result = await ctx.readDefinitionNextFire('water-the-tomatoes');
 
   expect(result).toBeNull();
 });
@@ -97,7 +97,7 @@ test('it gives the instant of a one-shot that has not fired', async () => {
     }),
   ]);
 
-  const result = await ctx.readNextFire('dentist');
+  const result = await ctx.readDefinitionNextFire('dentist');
 
   expect([result, ctx.zones]).toStrictEqual(['2027-03-09T16:00:00.000Z', ['owner']]);
 });
@@ -126,7 +126,7 @@ test('it gives null for a one-shot that fired', async () => {
     ],
   });
 
-  const result = await ctx.readNextFire('dentist');
+  const result = await ctx.readDefinitionNextFire('dentist');
 
   expect(result).toBeNull();
 });

@@ -15,7 +15,7 @@ export type { TriggersRecordKind } from './record/triggers-record-kind';
 export { buildInstantKey } from './time/build-instant-key';
 export { buildSlotKey } from './time/build-slot-key';
 export type { NextFire } from './time/pick-next-fire';
-export { pickNextFire, pickNextFire as readNextFire } from './time/pick-next-fire';
+export { pickNextFire } from './time/pick-next-fire';
 export type { RenderedTrigger } from './time/render-trigger';
 export { renderTrigger } from './time/render-trigger';
 
