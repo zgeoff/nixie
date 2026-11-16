@@ -844,6 +844,7 @@ test('it gives a stranger no persona text and no memory item', async () => {
       {
         itemID: '7c1d1f0e-5b7a-4f43-9a1e-2f0c4b8d9e11',
         version: 1,
+        revision: 1,
         shortID: 'm4k2p8w1qz',
         subject: 'owner',
         text: 'Keeps bees on the allotment',
@@ -889,6 +890,7 @@ test('it gives another me the persona and the pinned memory', async () => {
       {
         itemID: '7c1d1f0e-5b7a-4f43-9a1e-2f0c4b8d9e11',
         version: 1,
+        revision: 1,
         shortID: 'm4k2p8w1qz',
         subject: 'owner',
         text: 'Keeps bees on the allotment',

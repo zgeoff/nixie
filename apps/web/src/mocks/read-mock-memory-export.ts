@@ -3,7 +3,7 @@ import type { StoredMemoryItem } from './to-mock-memory-item';
 
 export function readMockMemoryExport(exportedAt: Date): readonly string[] {
   const header = {
-    schemaVersion: 8,
+    schemaVersion: 9,
     exportedAt: exportedAt.toISOString(),
     snapshotHash: 'sha256:mock',
   };
@@ -32,6 +32,11 @@ function toExportItem(item: StoredMemoryItem) {
     return { itemID: item.itemID, forgottenAt: item.forgottenAt?.toISOString() ?? null };
   }
 
+  const latest = item.versions.at(-1);
+
+  const labels =
+    latest === undefined || latest.isUnreadable ? null : buildMockLabels(item, latest.text);
+
   return {
     itemID: item.itemID,
     shortID: item.shortID,
@@ -39,6 +44,18 @@ function toExportItem(item: StoredMemoryItem) {
     isPinned: item.isPinned,
     isSensitive: item.isSensitive,
     subject: item.subject,
+    labels,
+    labelHistory:
+      labels === null
+        ? []
+        : [
+            {
+              revision: item.versions.length,
+              version: item.versions.length,
+              change: 'backfilled',
+              ...labels,
+            },
+          ],
     versions: item.versions.map((version, index) => ({
       version: index + 1,
       change: version.change,
@@ -58,6 +75,17 @@ function toExportItem(item: StoredMemoryItem) {
         recordedAt: version.recordedAt.toISOString(),
       },
     })),
+  };
+}
+
+// A mock item has no label edits, so its labels are the ones nixie derives for an item without any.
+function buildMockLabels(item: StoredMemoryItem, text: string) {
+  return {
+    gist: Array.from(text.replaceAll(/\s+/gu, ' ').trim(), (character) => character)
+      .slice(0, 80)
+      .join(''),
+    topic: item.subject,
+    triggers: [],
   };
 }
 

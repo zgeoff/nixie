@@ -27,6 +27,19 @@ const versionSchema = z.strictObject({
   provenance: provenanceSchema,
 });
 
+const labelFieldsShape = {
+  gist: z.string(),
+  topic: z.string(),
+  triggers: z.array(z.string()),
+};
+
+const labelHistorySchema = z.strictObject({
+  revision: z.int().positive(),
+  version: z.int().positive(),
+  change: z.enum(['written', 'edited', 'backfilled']),
+  ...labelFieldsShape,
+});
+
 const readableItemSchema = z.strictObject({
   itemID: z.string(),
   shortID: z.string(),
@@ -35,6 +48,8 @@ const readableItemSchema = z.strictObject({
   isSensitive: z.boolean().exactOptional(),
   subject: z.enum(['owner', 'self', 'shared']),
   versions: z.array(versionSchema).min(1),
+  labels: z.strictObject(labelFieldsShape).nullable().exactOptional(),
+  labelHistory: z.array(labelHistorySchema).exactOptional(),
 });
 
 const forgottenItemSchema = z.strictObject({
@@ -123,6 +138,7 @@ export const memoryExportSchema = z
     const isMarkRequired = file.header.schemaVersion >= sensitiveMarkVersion;
     const isRemovalRequired = file.header.schemaVersion >= removalMarkVersion;
     const isImagesRequired = file.header.schemaVersion >= imagesVersion;
+    const isLabelsRequired = file.header.schemaVersion >= memoryExportSchemaVersion;
 
     for (const [index, item] of file.items.entries()) {
       if ('versions' in item && 'isSensitive' in item !== isMarkRequired) {
@@ -130,6 +146,22 @@ export const memoryExportSchema = z
           code: 'custom',
           message: `schema version ${file.header.schemaVersion} items ${isMarkRequired ? 'need' : 'have no'} a sensitive mark`,
           path: ['items', index, 'isSensitive'],
+        });
+      }
+
+      if ('versions' in item && 'labels' in item !== isLabelsRequired) {
+        ctx.addIssue({
+          code: 'custom',
+          message: `schema version ${file.header.schemaVersion} items ${isLabelsRequired ? 'need' : 'have no'} labels`,
+          path: ['items', index, 'labels'],
+        });
+      }
+
+      if ('versions' in item && 'labelHistory' in item !== isLabelsRequired) {
+        ctx.addIssue({
+          code: 'custom',
+          message: `schema version ${file.header.schemaVersion} items ${isLabelsRequired ? 'need' : 'have no'} a label history`,
+          path: ['items', index, 'labelHistory'],
         });
       }
     }

@@ -16,14 +16,14 @@ test("it renders each self-note as its text and a line with its day and model, u
     [
       {
         shortID: 'q4wz8n2kpa',
-        version: 1,
+        revision: 1,
         recordedAt: Date.UTC(2026, 9, 13, 9, 30),
         text: 'I enjoy a well-made pun',
         model: 'claude-opus-5-5',
       },
       {
         shortID: 'm3cv7t5rye',
-        version: 2,
+        revision: 2,
         recordedAt: Date.UTC(2025, 10, 2, 18, 0),
         text: 'Long lists of chores leave me flat',
         model: null,
@@ -46,7 +46,7 @@ test('it names the owner as the owner when no name is configured', () => {
     [
       {
         shortID: 'q4wz8n2kpa',
-        version: 1,
+        revision: 1,
         recordedAt: Date.UTC(2026, 9, 13, 9, 30),
         text: 'I enjoy a well-made pun',
         model: 'claude-opus-5-5',

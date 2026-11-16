@@ -31,7 +31,13 @@ export async function writeGatedRemember(
   const subject = checked.subject;
 
   if (gate.status === 'pass') {
-    return applyPassedRemember(parts, request, { gate, group, subject, until: checked.until });
+    return applyPassedRemember(parts, request, {
+      gate,
+      group,
+      subject,
+      until: checked.until,
+      textVersion: checked.textVersion,
+    });
   }
 
   return writeRememberProposal(parts, request, {
@@ -40,10 +46,12 @@ export async function writeGatedRemember(
     subject,
     newSubject: checked.newSubject,
     until: checked.until,
+    textVersion: checked.textVersion,
   });
 }
 
 interface PassedRemember {
+  readonly textVersion: number | null;
   readonly gate: Extract<ContentGateResult, { readonly status: 'pass' }>;
   readonly group: WriteGroup;
   readonly subject: MemorySubject;
@@ -78,6 +86,7 @@ async function applyPassedRemember(
       subject: passed.subject,
       newSubject: null,
       until: passed.until,
+      textVersion: passed.textVersion,
     });
   }
 }
@@ -104,6 +113,7 @@ async function applyRemember(
         model: caller.model,
       },
       ...(request.target === undefined ? { subject: passed.subject } : { target: request.target }),
+      ...(request.labels === undefined ? {} : { labels: request.labels }),
       ...(evidence === null || request.quote === undefined
         ? {}
         : { evidence, evidenceQuote: request.quote }),
@@ -130,6 +140,7 @@ interface ReviewedRemember {
   readonly subject: MemorySubject;
   readonly newSubject: MemorySubject | null;
   readonly until: number | null;
+  readonly textVersion: number | null;
 }
 
 async function writeRememberProposal(
@@ -141,7 +152,10 @@ async function writeRememberProposal(
 
   const written = await writeMemoryProposal(parts, {
     operation: 'remember',
-    target: request.target ?? null,
+    target:
+      reviewed.textVersion === null || request.target === undefined
+        ? null
+        : { itemID: request.target.itemID, version: reviewed.textVersion },
     isPinned: false,
     text: request.text,
 
@@ -155,6 +169,12 @@ async function writeRememberProposal(
     subject: reviewed.subject,
     ...(reviewed.newSubject === null ? {} : { newSubject: reviewed.newSubject }),
     until: reviewed.until,
+    ...(request.labels === undefined
+      ? {}
+      : {
+          labels: request.labels,
+          ...(request.target === undefined ? {} : { targetRevision: request.target.version }),
+        }),
   });
 
   return { status: 'proposed', ...written, reason: review.reason };

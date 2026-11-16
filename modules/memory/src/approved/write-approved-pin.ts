@@ -5,6 +5,7 @@ import type { OpenedProposal } from '../proposal/read-open-proposal';
 import type { StoreParts, VersionRef } from '../types';
 import { buildApprovalExtras } from './build-approval-extras';
 import { buildApprovedProvenance } from './build-approved-provenance';
+import { readApprovalTarget } from './read-approval-target';
 
 export async function writeApprovedPin(
   parts: StoreParts,
@@ -17,7 +18,8 @@ export async function writeApprovedPin(
     throw new PinEditError(row.proposal_id);
   }
 
-  const target = { itemID: row.item_id, version: row.target_version ?? 0 };
+  const target = await readApprovalTarget(parts, row);
+
   const extras = buildApprovalExtras(parts, row, answer);
 
   await writePin(

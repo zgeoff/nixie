@@ -1,1 +1,1 @@
-export const memoryExportSchemaVersion = 8;
+export const memoryExportSchemaVersion = 9;

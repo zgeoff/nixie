@@ -1,12 +1,14 @@
 import type { Kysely } from 'kysely';
 import type { MemoryProposalRow, ProposalAnswer } from '../gate/gate-context';
 import { writeRememberedItem } from '../item/write-remembered-item';
+import { buildDerivedLabels } from '../label/build-derived-labels';
 import type { OpenedProposal } from '../proposal/read-open-proposal';
 import type { MemorySubject, MemoryTables, StoreParts, VersionRef } from '../types';
 import { ProposalClosedError } from '../utils/error/proposal-closed-error';
 import { UntilPassedError } from '../utils/error/until-passed-error';
 import { getRowSubject } from '../utils/get-row-subject';
 import { parseEvidence } from '../utils/parse-evidence';
+import type { VersionLabels } from '../version/write-version-in-transaction';
 import { buildApprovalExtras } from './build-approval-extras';
 import { buildApprovedProvenance } from './build-approved-provenance';
 
@@ -43,6 +45,8 @@ function writeApprovedVersion(parts: StoreParts, approved: ApprovedRemember): Pr
   const evidence = isEdited ? null : parseEvidence(row.evidence);
   const approvalExtras = buildApprovalExtras(parts, row, answer);
   const until = opened.text.until;
+  const text = answer.editedText ?? opened.text.text;
+  const labels = pickApprovedLabels(opened, { text, isCreation: target === null });
 
   const extras = {
     ...approvalExtras,
@@ -51,12 +55,13 @@ function writeApprovedVersion(parts: StoreParts, approved: ApprovedRemember): Pr
       await approved.requireInTransaction?.(db);
     },
     ...(target === null ? { newItemID: row.item_id } : {}),
+    ...(labels === null ? {} : { labels }),
   };
 
   return writeRememberedItem(
     parts,
     {
-      text: answer.editedText ?? opened.text.text,
+      text,
       provenance: buildApprovedProvenance(row, isEdited),
       ...(target === null ? {} : { target }),
       ...(evidence === null || opened.text.quote === null
@@ -69,6 +74,26 @@ function writeApprovedVersion(parts: StoreParts, approved: ApprovedRemember): Pr
     },
     extras,
   );
+}
+
+interface ApprovedText {
+  readonly text: string;
+  readonly isCreation: boolean;
+}
+
+// A creating proposal from before labels has no label record, so its item gets the derived labels
+// in the same transaction as its version.
+function pickApprovedLabels(opened: OpenedProposal, approved: ApprovedText): VersionLabels | null {
+  if (opened.labels !== null) {
+    return { labels: opened.labels, change: 'written' };
+  }
+
+  return approved.isCreation
+    ? {
+        labels: buildDerivedLabels(approved.text, getRowSubject(opened.row)),
+        change: 'backfilled',
+      }
+    : null;
 }
 
 function pickApprovedSubject(

@@ -29,7 +29,12 @@ test('it approves a proposal with your text, then edits, retires, restores and p
   const api = await createTestClient(ctx);
 
   ctx.guest.addReplies(
-    { toolUse: { name: 'memory.remember', input: { text: 'Likes jaz' } } },
+    {
+      toolUse: {
+        name: 'memory.remember',
+        input: { gist: 'a gist', topic: 'a topic', text: 'Likes jaz' },
+      },
+    },
     { text: 'Noted.' },
   );
 
@@ -86,7 +91,12 @@ test('it rejects a proposal with your reason, which the next turn reads in its e
   const api = await createTestClient(ctx);
 
   ctx.guest.addReplies(
-    { toolUse: { name: 'memory.remember', input: { text: 'Plays the oboe' } } },
+    {
+      toolUse: {
+        name: 'memory.remember',
+        input: { gist: 'a gist', topic: 'a topic', text: 'Plays the oboe' },
+      },
+    },
     { text: 'Noted.' },
     { text: 'Understood.' },
   );

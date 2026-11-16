@@ -18287,6 +18287,39 @@
                                     ],
                                     "type": "string"
                                   },
+                                  "labels": {
+                                    "anyOf": [
+                                      {
+                                        "type": "object",
+                                        "properties": {
+                                          "gist": {
+                                            "type": "string"
+                                          },
+                                          "isLabelOnly": {
+                                            "type": "boolean"
+                                          },
+                                          "topic": {
+                                            "type": "string"
+                                          },
+                                          "triggers": {
+                                            "type": "array",
+                                            "items": {
+                                              "type": "string"
+                                            }
+                                          }
+                                        },
+                                        "required": [
+                                          "gist",
+                                          "isLabelOnly",
+                                          "topic",
+                                          "triggers"
+                                        ]
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  },
                                   "lapseAt": {
                                     "type": "string",
                                     "format": "date-time",
@@ -18354,6 +18387,7 @@
                                       "from_photo",
                                       "sensitive",
                                       "subject_change",
+                                      "labels",
                                       "ask_rule"
                                     ],
                                     "type": "string"
@@ -18448,6 +18482,7 @@
                                   "isSensitive",
                                   "itemID",
                                   "kind",
+                                  "labels",
                                   "lapseAt",
                                   "newSubject",
                                   "operation",
@@ -19100,6 +19135,39 @@
                                         ],
                                         "type": "string"
                                       },
+                                      "labels": {
+                                        "anyOf": [
+                                          {
+                                            "type": "object",
+                                            "properties": {
+                                              "gist": {
+                                                "type": "string"
+                                              },
+                                              "isLabelOnly": {
+                                                "type": "boolean"
+                                              },
+                                              "topic": {
+                                                "type": "string"
+                                              },
+                                              "triggers": {
+                                                "type": "array",
+                                                "items": {
+                                                  "type": "string"
+                                                }
+                                              }
+                                            },
+                                            "required": [
+                                              "gist",
+                                              "isLabelOnly",
+                                              "topic",
+                                              "triggers"
+                                            ]
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ]
+                                      },
                                       "lapseAt": {
                                         "type": "string",
                                         "format": "date-time",
@@ -19167,6 +19235,7 @@
                                           "from_photo",
                                           "sensitive",
                                           "subject_change",
+                                          "labels",
                                           "ask_rule"
                                         ],
                                         "type": "string"
@@ -19261,6 +19330,7 @@
                                       "isSensitive",
                                       "itemID",
                                       "kind",
+                                      "labels",
                                       "lapseAt",
                                       "newSubject",
                                       "operation",

@@ -34,6 +34,8 @@ const reasonSentences: Readonly<Record<ReviewReason, (words: ReviewWords) => str
     `It's marked sensitive, and a sensitive memory waits for ${words.their} review.`,
   subject_change: (words) =>
     `It changes whose fact the item is, and every subject change waits for ${words.their} review.`,
+  labels: (words) =>
+    `It changes how the item is listed or what brings it up, and every such change waits for ${words.their} review.`,
   ask_rule: (words) => `A rule of ${words.owner}'s asks before this write applies.`,
 };
 

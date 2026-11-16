@@ -26,6 +26,8 @@ test('it stores a backed fact with the end time it is given, as a time in UTC', 
       callID: 'call-1',
       tool: 'memory.remember',
       input: {
+        gist: 'a gist',
+        topic: 'a topic',
         text: 'Is in Lisbon this week',
         quote: "I'm in Lisbon this week",
         until: '2026-10-25T23:59:59+00:00',
@@ -52,6 +54,8 @@ test('it refuses an end time that names no real day, and writes nothing', async 
       callID: 'call-1',
       tool: 'memory.remember',
       input: {
+        gist: 'a gist',
+        topic: 'a topic',
         text: 'Is in Lisbon until the end of the month',
         until: '2026-02-31T23:59:59+00:00',
       },
@@ -80,7 +84,12 @@ test('it answers an end time that has passed with a tool error', async () => {
     {
       callID: 'call-1',
       tool: 'memory.remember',
-      input: { text: 'Is in Lisbon this week', until: '2026-10-25T23:59:59+00:00' },
+      input: {
+        gist: 'a gist',
+        topic: 'a topic',
+        text: 'Is in Lisbon this week',
+        until: '2026-10-25T23:59:59+00:00',
+      },
       toolUseID: null,
     },
     buildMockToolContext(),
@@ -110,7 +119,12 @@ test('it reads the sources of a remember from the quote in text the owner typed'
     spans: [{ start: 0, end: 22, source: 'typed' }],
   });
 
-  const input = { text: 'Takes coffee black', quote: 'I take my coffee black' };
+  const input = {
+    text: 'Takes coffee black',
+    gist: 'black coffee',
+    topic: 'food',
+    quote: 'I take my coffee black',
+  };
 
   const facts = await buildRememberTool(memory.store).resolvePolicyFacts?.(
     input,
@@ -128,14 +142,29 @@ test.each<['typed' | 'pasted', string, Record<string, string>]>([
   [
     'pasted',
     'a quote in a pasted span',
-    { text: 'Takes coffee black', quote: 'I take my coffee black' },
+    {
+      gist: 'a gist',
+      topic: 'a topic',
+      text: 'Takes coffee black',
+      quote: 'I take my coffee black',
+    },
   ],
-  ['typed', 'no quote', { text: 'Takes coffee black' }],
-  ['typed', 'a quote the thread never held', { text: 'Likes jazz', quote: 'I like jazz' }],
+  ['typed', 'no quote', { gist: 'a gist', topic: 'a topic', text: 'Takes coffee black' }],
+  [
+    'typed',
+    'a quote the thread never held',
+    { gist: 'a gist', topic: 'a topic', text: 'Likes jazz', quote: 'I like jazz' },
+  ],
   [
     'typed',
     'a self-note whose quote the owner typed',
-    { text: 'I like quiet mornings', subject: 'self', quote: 'I take my coffee black' },
+    {
+      gist: 'a gist',
+      topic: 'a topic',
+      text: 'I like quiet mornings',
+      subject: 'self',
+      quote: 'I take my coffee black',
+    },
   ],
 ])(
   'it reads the source outside when the message is %s, for %s',
@@ -170,7 +199,12 @@ test('it adds the source task to a remember that a task run makes', async () => 
     spans: [{ start: 0, end: 22, source: 'typed' }],
   });
 
-  const input = { text: 'Takes coffee black', quote: 'I take my coffee black' };
+  const input = {
+    text: 'Takes coffee black',
+    gist: 'black coffee',
+    topic: 'food',
+    quote: 'I take my coffee black',
+  };
 
   const facts = await buildRememberTool(memory.store).resolvePolicyFacts?.(
     input,
@@ -196,6 +230,8 @@ test('it reads the source outside for a write from a photo, whatever its quote',
 
   const input = {
     text: 'Takes coffee black',
+    gist: 'black coffee',
+    topic: 'food',
     quote: 'I take my coffee black',
     image: { eventID: String(photo), number: 1 },
   };

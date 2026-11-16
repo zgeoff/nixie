@@ -8,6 +8,7 @@ const closedStates: Readonly<Record<string, SharedProposalState | undefined>> = 
 };
 
 const memoryRefusals: ReadonlySet<string> = new Set([
+  'LABEL_EDIT',
   'PIN_EDIT',
   'PINNED_CORE_FULL',
   'RETIREMENT_EDIT',

@@ -194,7 +194,10 @@ export function ApprovalCard(props: ApprovalCardProps): ReactNode {
           defer={props.defer}
           editedText={editedText}
           isApprovable={!isLifting || hasSeenBounds}
-          isEditable={memory?.operation === 'remember' || proposedRule !== undefined}
+          isEditable={
+            (memory?.operation === 'remember' && memory.labels?.isLabelOnly !== true) ||
+            proposedRule !== undefined
+          }
           isEditing={draft !== null || ruleDraft !== null}
           isRuleProposal={proposal.cause === 'proposed_rule'}
           item={item}

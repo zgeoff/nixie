@@ -1,6 +1,7 @@
 import { expect, onTestFinished, test } from 'bun:test';
 import type { PinnedCoreView } from '@heynixie/memory';
 import { defaultGateLimits, defaultOwnerPronouns, startMemoryStore } from '@heynixie/memory';
+import invariant from 'tiny-invariant';
 import { buildTestClient } from '../test-utils/build-test-client';
 import { createDeviceSession } from '../test-utils/create-device-session';
 import { startTestAPI } from '../test-utils/start-test-api';
@@ -123,6 +124,98 @@ test('#memory.retire refuses a version the item moved past, and retires nothing'
 
   expect(retire).rejects.toMatchObject({ code: 'STALE_VERSION' });
   expect(history?.state).toBe('active');
+});
+
+test('#memory.retire takes and returns the revision of an item after a label edit, and the view lists it at that revision', async () => {
+  const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+
+  const client = buildTestClient(ctx.url, laptop.token);
+
+  const item = await ctx.memory.remember({
+    text: 'Rents a flat on Mill Lane',
+    labels: { gist: 'flat on Mill Lane', topic: 'home', triggers: [] },
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  await ctx.memory.writes.editLabels({
+    target: item,
+    labels: { gist: 'rented flat', topic: 'home', triggers: ['rent'] },
+    caller: {
+      origin: 'conversation',
+      thread: 'conversation',
+      taskID: 'conversation',
+      runID: 'conversation',
+      model: 'test-model',
+    },
+  });
+
+  const [proposal] = await ctx.memory.proposals.listPending();
+
+  invariant(proposal);
+
+  await ctx.memory.proposals.approve({
+    proposalID: proposal.proposalID,
+    actionHash: proposal.actionHash,
+    identityID: 'host',
+  });
+
+  const page = await client.memory.listItems({ state: 'active' });
+
+  const retired = await client.memory.retire({
+    clientActionID: '0b8e4c2a-6d1f-4a7e-9c3b-2f5d8e1a4c69',
+    itemID: item.itemID,
+    version: 2,
+  });
+
+  const history = await ctx.memory.readHistory(item.itemID);
+
+  expect(page.items).toMatchObject([{ itemID: item.itemID, version: 2 }]);
+  expect(retired).toStrictEqual({ itemID: item.itemID, version: 3 });
+  expect(history?.versions.map((version) => version.version)).toStrictEqual([1, 2]);
+});
+
+test('#memory.retire refuses the version an item had before a label edit', async () => {
+  const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+
+  const item = await ctx.memory.remember({
+    text: 'Rents a flat on Mill Lane',
+    labels: { gist: 'flat on Mill Lane', topic: 'home', triggers: [] },
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  await ctx.memory.writes.editLabels({
+    target: item,
+    labels: { gist: 'rented flat', topic: 'home', triggers: [] },
+    caller: {
+      origin: 'conversation',
+      thread: 'conversation',
+      taskID: 'conversation',
+      runID: 'conversation',
+      model: 'test-model',
+    },
+  });
+
+  const [proposal] = await ctx.memory.proposals.listPending();
+
+  invariant(proposal);
+
+  await ctx.memory.proposals.approve({
+    proposalID: proposal.proposalID,
+    actionHash: proposal.actionHash,
+    identityID: 'host',
+  });
+
+  const retire = buildTestClient(ctx.url, laptop.token).memory.retire({
+    clientActionID: '7a3c9e1f-2b4d-4f6a-8c0e-5d1b3f7a9e24',
+    itemID: item.itemID,
+    version: 1,
+  });
+
+  await retire.catch(() => {});
+
+  expect(retire).rejects.toMatchObject({ code: 'STALE_VERSION' });
 });
 
 test('#memory.retire refuses an item that does not exist', async () => {

@@ -51,7 +51,7 @@ async function requirePinnableItem(
 
   const item = await db
     .selectFrom('memory_items')
-    .select(['state', 'version', 'until'])
+    .select(['state', 'version', 'label_edits', 'until'])
     .where('item_id', '=', request.itemID)
     .executeTakeFirst();
 
@@ -59,8 +59,10 @@ async function requirePinnableItem(
     throw new MemoryItemNotFoundError(request.itemID);
   }
 
-  if (request.version !== undefined && request.version !== item.version) {
-    throw new StaleVersionError({ itemID: request.itemID, version: request.version }, item.version);
+  const revision = item.version + item.label_edits;
+
+  if (request.version !== undefined && request.version !== revision) {
+    throw new StaleVersionError({ itemID: request.itemID, version: request.version }, revision);
   }
 
   if (request.isPinned) {

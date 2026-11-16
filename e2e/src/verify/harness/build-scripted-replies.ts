@@ -15,7 +15,14 @@ export function buildScriptedReplies(
   const memory =
     reply.memory === undefined
       ? []
-      : [{ toolUse: { name: 'mcp__nixie__memory_remember', input: { text: reply.memory } } }];
+      : [
+          {
+            toolUse: {
+              name: 'mcp__nixie__memory_remember',
+              input: { text: reply.memory, gist: 'a scripted note', topic: 'verify' },
+            },
+          },
+        ];
 
   const memoryExport =
     reply.export === true ? [{ toolUse: { name: 'mcp__nixie__memory_export', input: {} } }] : [];

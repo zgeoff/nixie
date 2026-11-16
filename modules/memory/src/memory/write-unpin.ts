@@ -8,7 +8,7 @@ export async function writeUnpin(parts: StoreParts, request: UnpinRequest): Prom
   const item = await parts.context.log.writer.db
     .$extendTables<MemoryTables>()
     .selectFrom('memory_items')
-    .select(['state', 'version', 'is_pinned'])
+    .select(['state', 'version', 'label_edits', 'is_pinned'])
     .where('item_id', '=', request.itemID)
     .executeTakeFirst();
 
@@ -36,5 +36,5 @@ export async function writeUnpin(parts: StoreParts, request: UnpinRequest): Prom
     },
   });
 
-  return { status: 'applied', itemID: request.itemID, version: item.version };
+  return { status: 'applied', itemID: request.itemID, version: item.version + item.label_edits };
 }

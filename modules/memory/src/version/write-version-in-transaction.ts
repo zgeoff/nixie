@@ -1,7 +1,9 @@
 import type { Approval, ContentSource, JSONObject, RecordInput } from '@heynixie/log';
 import { writeRecordsInTransaction } from '@heynixie/log';
 import type { Kysely, Transaction } from 'kysely';
+import { writeLabelsInTransaction } from '../label/write-labels-in-transaction';
 import type {
+  Labels,
   MemoryChange,
   MemorySubject,
   MemoryTables,
@@ -38,6 +40,11 @@ export interface NewVersion {
 
 type ReadEarlierVersion = (version: number) => Promise<ReadableVersion>;
 
+export interface VersionLabels {
+  readonly labels: Labels;
+  readonly change: 'written' | 'backfilled';
+}
+
 export interface VersionPlan {
   readonly requirement: ItemRequirement | null;
   readonly provenance: Provenance;
@@ -51,6 +58,8 @@ export interface VersionPlan {
   readonly subject?: MemorySubject;
 
   readonly isSensitive?: boolean;
+
+  readonly labels?: VersionLabels;
 
   readonly newItemID?: string;
 
@@ -68,6 +77,9 @@ export interface VersionPlan {
 
 export interface WrittenVersion {
   readonly ref: VersionRef;
+
+  // the item's revision once the version lands
+  readonly revision: number;
   readonly next: NewVersion;
 }
 
@@ -93,6 +105,7 @@ export async function writeVersionInTransaction(
   );
 
   const ref = { itemID: versionKey.itemID, version: current + 1 };
+  const revision = ref.version + (item?.label_edits ?? 0);
   const previousSubject = item === null ? null : getRowSubject(item);
   const subject = next.subject ?? plan.subject ?? previousSubject ?? 'owner';
 
@@ -100,6 +113,7 @@ export async function writeVersionInTransaction(
     key: versionKey.key,
     plan,
     ref,
+    revision,
     shortID: versionKey.shortID,
     subject,
     next,
@@ -115,7 +129,24 @@ export async function writeVersionInTransaction(
     buildRecords(parts, { plan, ref, shortID: versionKey.shortID, next, sealed, move }),
   );
 
-  return { ref, next };
+  if (plan.labels !== undefined) {
+    await writeLabelsInTransaction(parts, tx, {
+      itemID: ref.itemID,
+      key: versionKey.key,
+      revision,
+      version: ref.version,
+      change: plan.labels.change,
+      labels: plan.labels.labels,
+      origin: plan.labels.change === 'backfilled' ? 'migration' : plan.provenance.origin,
+      source: next.source ?? plan.provenance.source,
+      taskID: plan.provenance.taskID,
+      proposalID: plan.provenance.proposalID,
+      model: plan.provenance.model ?? null,
+      ...(plan.provenance.thread === undefined ? {} : { thread: plan.provenance.thread }),
+    });
+  }
+
+  return { ref, revision, next };
 }
 
 async function runCallerSteps(plan: VersionPlan, tx: Transaction<unknown>): Promise<void> {
@@ -127,6 +158,7 @@ interface PinnableVersion {
   readonly key: CryptoKey;
   readonly plan: VersionPlan;
   readonly ref: VersionRef;
+  readonly revision: number;
   readonly shortID: string;
   readonly subject: MemorySubject;
   readonly next: NewVersion;
@@ -153,6 +185,7 @@ async function encodePinnableVersion(
       shortID: version.shortID,
       subject: version.subject,
       version: version.ref.version,
+      revision: version.revision,
       text: version.next.text.text,
       origin: provenance.origin,
       source: version.next.source ?? provenance.source,

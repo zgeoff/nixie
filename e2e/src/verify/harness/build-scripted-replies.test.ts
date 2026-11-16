@@ -11,7 +11,12 @@ test('it queues the memory tool call before the reply', () => {
   expect(
     buildScriptedReplies({ text: 'I will ask first.', memory: 'The user keeps bees.' }),
   ).toStrictEqual([
-    { toolUse: { name: 'mcp__nixie__memory_remember', input: { text: 'The user keeps bees.' } } },
+    {
+      toolUse: {
+        name: 'mcp__nixie__memory_remember',
+        input: { text: 'The user keeps bees.', gist: 'a scripted note', topic: 'verify' },
+      },
+    },
     { text: 'I will ask first.' },
   ]);
 });

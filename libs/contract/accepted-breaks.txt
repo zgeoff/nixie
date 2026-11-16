@@ -39,3 +39,6 @@ GEO-2588: POST /tasks/pause added `subschema #3` to the response body `oneOf` li
 GEO-2588: POST /tasks/restart added `subschema #3` to the response body `oneOf` list for the response status `409`
 GEO-2588: POST /tasks/resume added `subschema #3` to the response body `oneOf` list for the response status `409`
 GEO-2588: POST /tasks/stop added `subschema #3` to the response body `oneOf` list for the response status `409`
+# GEO-2549: a client of the last release still works, because the reason only says why a write waits for review, and it shows the item and its text without the new reason line.
+GEO-2549: POST /approvals/listItems added the new `labels` enum value to the `items/items/body/memory/reason` response property for the response status `200`
+GEO-2549: POST /approvals/readProposals added the new `labels` enum value to the `proposals/items/body/anyOf[subschema #1]/memory/reason` response property for the response status `200`

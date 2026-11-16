@@ -31,7 +31,16 @@ runs these steps in order:
 5. **Apply.** nixie writes the version, its record and the turn's notice entry in one transaction.
 
 A memory text that holds a Unicode format character, such as a zero-width space or a bidirectional
-control, fails before any check runs.
+control, fails before any check runs. The hidden-character and token checks read the text and the
+labels together, so a label cannot carry what the text could not. The checker model reads the text
+and never sees a label.
+
+`memory.remember` needs a gist and a topic, and takes up to 5 trigger phrases. `memory.edit` takes
+them too, and keeps a label it leaves out. An edit with no text changes labels only. No quote can
+back a label, so a label-only edit always becomes a proposal, whoever writes it and whatever rule
+covers it. It counts toward the proposal cap, and its review reason is `labels`, or
+`invisible_character` for a label that holds a hidden character. The token verdict is kept with the
+proposal's checks.
 
 These steps are the full gate. [A rule on `memory_write`](#rules-on-memory-writes) can skip the
 quote check and the checker, or send the write to review.
@@ -330,6 +339,13 @@ stays pending so the client can offer it against the current version. A rejectio
 reason when they give one. The reason is free text, so it sits in the rejection record's erasable
 fields under that record's own key, and a rejected new item keeps its reason after the rejection
 deletes the item's key.
+
+A proposal holds its labels sealed under the item's key, in a record of its own, and a label-only
+proposal binds to the item's revision where other proposals bind to a text version. An approval of a
+label-only proposal adds a label record and no version. An approval of a proposal made before labels
+existed also writes a derived label for the new item. An approval fails as stale when the revision
+differs from the one the proposal bound to. A pending proposal matches a new write only when the
+labels, the label-only mark and the target revision match too.
 
 A write that proposes the same change as a pending proposal merges into it instead of adding a
 second proposal. The same change means the same operation on the same target, or on a new item for

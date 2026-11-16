@@ -13,6 +13,15 @@ export function toContractProposal(proposal: ViewProposal) {
     isPinned: proposal.isPinned,
     isSensitive: proposal.isSensitive,
     kind: toContractKind(proposal.subject),
+    labels:
+      proposal.labels === null
+        ? null
+        : {
+            gist: proposal.labels.gist,
+            topic: proposal.labels.topic,
+            triggers: [...proposal.labels.triggers],
+            isLabelOnly: proposal.labels.isLabelOnly,
+          },
     subject: proposal.subject,
     newSubject: proposal.newSubject,
     reason: proposal.reason,

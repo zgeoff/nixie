@@ -1,3 +1,5 @@
+import type { LabelEntries } from '../../label/make-label-entries';
+import { makeLabelEntries } from '../../label/make-label-entries';
 import type { MemoryIndex } from '../../memory/start-memory-index';
 import { startMemoryIndex } from '../../memory/start-memory-index';
 import type { MessageCursor } from '../../message/make-message-cursor';
@@ -28,6 +30,8 @@ export interface MomentIndexes {
 export interface StoreIndexes {
   readonly index: MemoryIndex;
 
+  readonly labels: LabelEntries;
+
   readonly vectors: VectorIndex | null;
   readonly messages: MessageIndexes;
   readonly moments: MomentIndexes;
@@ -41,6 +45,7 @@ export async function startStoreIndexes(context: MemoryContext): Promise<StoreIn
 
   return {
     index,
+    labels: makeLabelEntries(),
     vectors: semantic === undefined ? null : startVectorIndex(semantic.encoder, semantic.onError),
     messages: {
       index: messageIndex,

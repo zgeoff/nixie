@@ -6,6 +6,8 @@ import { requireItem } from '../utils/item/require-item';
 import { readVersion } from '../version/read-version';
 
 export interface ActiveItem {
+  // the text version, which the records and the read check hold
+  readonly version: number;
   readonly text: string;
   readonly subject: MemorySubject;
   readonly isPinned: boolean;
@@ -26,9 +28,10 @@ export async function readItemText(
     throw new MemoryItemNotFoundError(target.itemID);
   }
 
-  const version = await readVersion(db, key, target);
+  const version = await readVersion(db, key, { itemID: target.itemID, version: item.version });
 
   return {
+    version: item.version,
     text: version.text.text,
     subject: getRowSubject(item),
     isPinned: item.is_pinned === 1,

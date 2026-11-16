@@ -1,8 +1,10 @@
 import { withFreshChecker } from '../checker/with-fresh-checker';
 import type { MemoryWrites } from '../gate/gate-context';
+import { writeGatedLabels } from '../gated/write-gated-labels';
 import { writeGatedPin } from '../gated/write-gated-pin';
 import { writeGatedRemember } from '../gated/write-gated-remember';
 import { writeGatedRetirement } from '../gated/write-gated-retirement';
+import { readItemLabels } from '../label/read-item-labels';
 import { writeCallerSensitiveMark } from '../sensitive/write-caller-sensitive-mark';
 import type { StoreParts } from '../types';
 import { readItemSubject } from '../write/read-item-subject';
@@ -13,6 +15,7 @@ import { writeUnpin } from './write-unpin';
 export function buildMemoryWrites(parts: StoreParts): MemoryWrites {
   return {
     remember: (request) => withFreshChecker(() => writeGatedRemember(parts, request)),
+    editLabels: (request) => writeGatedLabels(parts, request),
     retire: (request) => withFreshChecker(() => writeGatedRetirement(parts, request)),
     pin: (request) => writeGatedPin(parts, request),
     unpin: (request) => writeUnpin(parts, request),
@@ -20,5 +23,7 @@ export function buildMemoryWrites(parts: StoreParts): MemoryWrites {
     readRememberSources: (request) => readRememberSources(parts, request),
     readRetireSources: (request) => readRetireSources(parts, request),
     readItemSubject: (itemID) => readItemSubject(parts, itemID),
+    readItemLabels: (itemID) => readItemLabels(parts, itemID),
+    readTopics: (excludedItemID) => Promise.resolve(parts.labels.collectTopics(excludedItemID)),
   };
 }

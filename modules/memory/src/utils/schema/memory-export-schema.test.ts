@@ -2,6 +2,38 @@ import { expect, test } from 'bun:test';
 import { join } from 'node:path';
 import { memoryExportSchema } from './memory-export-schema';
 
+test('it accepts the version 9 export file the fixture holds, with the labels and the label history of each item', async () => {
+  const fixture: unknown = await Bun.file(
+    join(import.meta.dir, '..', '..', 'fixtures', 'memory-export-v9.json'),
+  ).json();
+
+  const parsed: unknown = memoryExportSchema.safeParse(fixture).data;
+
+  expect(parsed).toStrictEqual(fixture);
+});
+
+test('it rejects a version 9 item with no labels', async () => {
+  const text = await Bun.file(
+    join(import.meta.dir, '..', '..', 'fixtures', 'memory-export-v9.json'),
+  ).text();
+
+  const fixture: unknown = JSON.parse(text.replace(/"labels": \{[^}]*\},\s*/u, ''));
+  const result = memoryExportSchema.safeParse(fixture);
+
+  expect(result.error?.issues).toPartiallyContain({ path: ['items', 0, 'labels'] });
+});
+
+test('it rejects a version 8 item that holds labels', async () => {
+  const text = await Bun.file(
+    join(import.meta.dir, '..', '..', 'fixtures', 'memory-export-v9.json'),
+  ).text();
+
+  const fixture: unknown = JSON.parse(text.replace('"schemaVersion": 9', '"schemaVersion": 8'));
+  const result = memoryExportSchema.safeParse(fixture);
+
+  expect(result.error?.issues).toPartiallyContain({ path: ['items', 0, 'labels'] });
+});
+
 test('it accepts the version 8 export file the fixture holds, a message with 2 images, a removed record and another gap included', async () => {
   const fixture: unknown = await Bun.file(
     join(import.meta.dir, '..', '..', 'fixtures', 'memory-export-v8.json'),

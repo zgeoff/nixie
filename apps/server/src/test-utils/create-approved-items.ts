@@ -17,7 +17,9 @@ export async function createApprovedItems(
   texts: readonly [string, ...string[]],
 ): Promise<readonly [ApprovedItem, ...ApprovedItem[]]> {
   nixie.guest.addReplies(
-    ...texts.map((text) => ({ toolUse: { name: 'memory.remember', input: { text } } })),
+    ...texts.map((text) => ({
+      toolUse: { name: 'memory.remember', input: { gist: 'a gist', topic: 'a topic', text } },
+    })),
     { text: 'Noted them down.' },
   );
 

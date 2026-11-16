@@ -151,6 +151,21 @@ export interface NixieTables {
     readonly subject: string | null;
     readonly until: number | null;
     readonly is_sensitive: number;
+    readonly label_edits: number;
+  };
+  readonly memory_labels: {
+    readonly item_id: string;
+    readonly revision: number;
+    readonly version: number;
+    readonly change: string;
+    readonly sealed: string;
+    readonly origin: string;
+    readonly source: string;
+    readonly task_id: string | null;
+    readonly proposal_id: string | null;
+    readonly model: string | null;
+    readonly sequence: number;
+    readonly recorded_at: number;
   };
   readonly memory_notice_entries: {
     readonly entry_key: string;
@@ -201,6 +216,9 @@ export interface NixieTables {
     readonly subject: string | null;
     readonly is_sensitive: number;
     readonly new_subject: string | null;
+    readonly sealed_labels: string | null;
+    readonly target_revision: number | null;
+    readonly is_label_only: number;
   };
   readonly memory_versions: {
     readonly version_key: string;

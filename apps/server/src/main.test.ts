@@ -384,7 +384,12 @@ test('it applies a remembered fact that the owner typed, with their words as its
     {
       toolUse: {
         name: 'memory.remember',
-        input: { text: 'Sister Ada lives in Leeds', quote: 'my sister Ada lives in Leeds' },
+        input: {
+          gist: 'a gist',
+          topic: 'a topic',
+          text: 'Sister Ada lives in Leeds',
+          quote: 'my sister Ada lives in Leeds',
+        },
       },
     },
     { text: 'Noted.' },
@@ -448,6 +453,8 @@ test('it applies a remembered fact cited by the event ID its stamp showed, with 
       toolUse: {
         name: 'memory.remember',
         input: {
+          gist: 'a gist',
+          topic: 'a topic',
           text: 'Bike lock code 3906',
           quote: 'bike lock code is 3906',
           eventID: `#${eventID}`,
@@ -492,7 +499,10 @@ test('it keeps the ratings the model gives two retrieved items against the turn 
 
   ctx.guest.addReplies(
     ...quotes.map((quote) => ({
-      toolUse: { name: 'memory.remember', input: { text: quote, quote } },
+      toolUse: {
+        name: 'memory.remember',
+        input: { gist: 'a gist', topic: 'a topic', text: quote, quote },
+      },
     })),
     { text: 'Noted all five.' },
   );
@@ -546,7 +556,12 @@ test('it lists the proposal the model made when the model calls the pending tool
   const api = await createTestClient(ctx);
 
   ctx.guest.addReplies(
-    { toolUse: { name: 'memory.remember', input: { text: 'Keeps two cats' } } },
+    {
+      toolUse: {
+        name: 'memory.remember',
+        input: { gist: 'a gist', topic: 'a topic', text: 'Keeps two cats' },
+      },
+    },
     { text: 'Noted.' },
     { toolUse: { name: 'memory.pending', input: {} } },
     { text: 'One proposal waits.' },
@@ -813,7 +828,12 @@ test('it lists a pending memory proposal and approves it through the memory comm
   const api = await createTestClient(ctx);
 
   ctx.guest.addReplies(
-    { toolUse: { name: 'memory.remember', input: { text: 'Likes jazz' } } },
+    {
+      toolUse: {
+        name: 'memory.remember',
+        input: { gist: 'a gist', topic: 'a topic', text: 'Likes jazz' },
+      },
+    },
     { text: 'Noted.' },
   );
 
@@ -853,7 +873,12 @@ test('it shows the conversation your reason for a proposal you rejected in the w
   const api = await createTestClient(ctx);
 
   ctx.guest.addReplies(
-    { toolUse: { name: 'memory.remember', input: { text: 'Plays squash daily' } } },
+    {
+      toolUse: {
+        name: 'memory.remember',
+        input: { gist: 'a gist', topic: 'a topic', text: 'Plays squash daily' },
+      },
+    },
     { text: 'Noted.' },
     { text: 'Understood.' },
   );
@@ -1137,7 +1162,12 @@ test('it forgets every memory item through a reset of the memories, and keeps th
     {
       toolUse: {
         name: 'memory.remember',
-        input: { text: 'Brother Tomas keeps goats', quote: 'my brother Tomas keeps goats' },
+        input: {
+          gist: 'a gist',
+          topic: 'a topic',
+          text: 'Brother Tomas keeps goats',
+          quote: 'my brother Tomas keeps goats',
+        },
       },
     },
     { text: 'Noted-reply-2HX' },
@@ -1194,7 +1224,12 @@ test('it shreds the conversation through a reset of the conversations, and keeps
     {
       toolUse: {
         name: 'memory.remember',
-        input: { text: 'Aunt Mira bakes on Sundays', quote: 'my aunt Mira bakes on Sundays' },
+        input: {
+          gist: 'a gist',
+          topic: 'a topic',
+          text: 'Aunt Mira bakes on Sundays',
+          quote: 'my aunt Mira bakes on Sundays',
+        },
       },
     },
     { text: 'Saffron-reply-5JD' },

@@ -98,6 +98,9 @@ test('it keeps each proposal of a database it upgrades, and the merges that name
       resolved_sequence: 2,
       kind: 'preference',
       subject: 'shared',
+      sealed_labels: null,
+      target_revision: null,
+      is_label_only: 0,
     },
   ]);
 

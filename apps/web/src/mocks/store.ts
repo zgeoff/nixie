@@ -321,6 +321,7 @@ const memoryProposals = new Collection({
         'from_photo',
         'sensitive',
         'subject_change',
+        'labels',
         'ask_rule',
       ])
       .default('no_quote'),

@@ -6,6 +6,7 @@ import type { RunCheck } from '@heynixie/sessions';
 import type { MemoryWriteVerdict } from '@heynixie/tools';
 import type { Selectable } from 'kysely';
 import type {
+  Labels,
   MemoryChange,
   MemorySubject,
   ProposalOperationKind,
@@ -79,6 +80,9 @@ export interface GatedRememberRequest {
   readonly text: string;
   readonly quote?: string;
 
+  // the whole label set of the write, as the tool merged it
+  readonly labels?: Labels;
+
   readonly eventID?: number;
   readonly target?: VersionRef;
 
@@ -91,6 +95,15 @@ export interface GatedRememberRequest {
 
   // what the decision point said; a write with none runs every check
   readonly verdict?: MemoryWriteVerdict;
+}
+
+export interface GatedLabelEditRequest {
+  // the revision the caller read
+  readonly target: VersionRef;
+
+  // the whole label set the approval applies
+  readonly labels: Labels;
+  readonly caller: WriteCaller;
 }
 
 export interface GatedRetireRequest {
@@ -132,6 +145,7 @@ export interface ImageRef {
 
 export interface MemoryWrites {
   readonly remember: (request: GatedRememberRequest) => Promise<WriteOutcome>;
+  readonly editLabels: (request: GatedLabelEditRequest) => Promise<WriteOutcome>;
   readonly retire: (request: GatedRetireRequest) => Promise<WriteOutcome>;
   readonly pin: (request: GatedPinRequest) => Promise<WriteOutcome>;
   readonly unpin: (request: UnpinRequest) => Promise<WriteOutcome>;
@@ -143,6 +157,12 @@ export interface MemoryWrites {
 
   // the subject of an item, which a rule reads when a call leaves it out
   readonly readItemSubject: (itemID: string) => Promise<MemorySubject>;
+
+  // the labels of an item, which a call that names only some of them keeps the rest of
+  readonly readItemLabels: (itemID: string) => Promise<Labels>;
+
+  // the topics that exist, so a write reuses the spelling of one that does
+  readonly readTopics: (excludedItemID: string | null) => Promise<readonly string[]>;
 }
 
 export type WriteSource = Extract<RuleSource, 'owner' | 'outside' | 'task'>;
@@ -151,6 +171,7 @@ export interface ModelWriteStore {
   readonly writes: Pick<
     MemoryWrites,
     | 'remember'
+    | 'editLabels'
     | 'retire'
     | 'pin'
     | 'unpin'
@@ -158,6 +179,8 @@ export interface ModelWriteStore {
     | 'readRememberSources'
     | 'readRetireSources'
     | 'readItemSubject'
+    | 'readItemLabels'
+    | 'readTopics'
   >;
   readonly renderReviewReason: (reason: ReviewReason) => string;
 }
@@ -189,6 +212,12 @@ export interface MemoryProposal {
   readonly image: ProposalImage | null;
 
   readonly until: number | null;
+
+  readonly labels: ProposalLabels | null;
+}
+
+interface ProposalLabels extends Labels {
+  readonly isLabelOnly: boolean;
 }
 
 export interface ProposalImage extends ImageRef {
@@ -298,6 +327,10 @@ export interface MemoryProposalTable {
   readonly subject: MemorySubject | null;
   readonly is_sensitive: number;
   readonly new_subject: MemorySubject | null;
+
+  readonly sealed_labels: string | null;
+  readonly target_revision: number | null;
+  readonly is_label_only: number;
 }
 
 export interface MemoryNoticeEntryTable {

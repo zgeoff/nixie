@@ -20,7 +20,11 @@ test('it makes a memory the model proposed active once the user approves it on t
     {
       toolUse: {
         name: 'mcp__nixie__memory_remember',
-        input: { text: 'The user keeps bees on the allotment.' },
+        input: {
+          text: 'The user keeps bees on the allotment.',
+          gist: 'keeps bees',
+          topic: 'allotment',
+        },
       },
     },
     { text: 'I will ask you before I remember that.' },
@@ -45,6 +49,11 @@ test('it makes a memory the model proposed active once the user approves it on t
   await waitForPage(
     ctx.view,
     'document.querySelector(\'li[aria-label="The user keeps bees on the allotment."] button[name="approve"]:not([disabled])\') !== null',
+  );
+
+  // the expanded card's labels push the button below the window, and a click never scrolls
+  await ctx.view.evaluate(
+    'document.querySelector(\'li[aria-label="The user keeps bees on the allotment."] button[name="approve"]\').scrollIntoView()',
   );
 
   await ctx.view.click(

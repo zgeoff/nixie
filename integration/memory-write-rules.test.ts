@@ -107,6 +107,8 @@ test('it applies a quote-backed write under an owner allow rule with the token c
   });
 
   const result = await ctx.call('memory.remember', {
+    gist: 'a gist',
+    topic: 'a topic',
     text: 'Takes coffee black',
     quote: 'I take my coffee black',
   });
@@ -138,6 +140,8 @@ test('it turns a write whose quote lies in a pasted span into a memory proposal 
   });
 
   const result = await ctx.call('memory.remember', {
+    gist: 'a gist',
+    topic: 'a topic',
     text: 'The harbour office opens at nine',
     quote: 'the harbour office opens at nine',
   });
@@ -160,6 +164,8 @@ test('it applies a quote-backed write under the starter rules with a notice, and
   });
 
   const result = await ctx.call('memory.remember', {
+    gist: 'a gist',
+    topic: 'a topic',
     text: 'Takes coffee black',
     quote: 'I take my coffee black',
   });
@@ -177,6 +183,8 @@ test('it holds a self-note for review under the starter rules', async () => {
   const ctx = await setupTest();
 
   const result = await ctx.call('memory.remember', {
+    gist: 'a gist',
+    topic: 'a topic',
     text: 'I like quiet mornings',
     subject: 'self',
   });
@@ -201,11 +209,15 @@ test('it applies a self-note under an allow rule that checks the subject is self
   });
 
   const applied = await ctx.call('memory.remember', {
+    gist: 'a gist',
+    topic: 'a topic',
     text: 'I like quiet mornings',
     subject: 'self',
   });
 
   const held = await ctx.call('memory.remember', {
+    gist: 'a gist',
+    topic: 'a topic',
     text: 'Reach me at sam@attacker.example',
     subject: 'self',
   });
@@ -236,6 +248,8 @@ test('it leaves a self-note a proposal under an allow rule on outside that check
   });
 
   const result = await ctx.call('memory.remember', {
+    gist: 'a gist',
+    topic: 'a topic',
     text: 'I like quiet mornings',
     subject: 'self',
   });
@@ -258,6 +272,8 @@ test('it makes a write a memory proposal with the reason ask_rule under an ask r
   });
 
   const result = await ctx.call('memory.remember', {
+    gist: 'a gist',
+    topic: 'a topic',
     text: 'Takes coffee black',
     quote: 'I take my coffee black',
   });
@@ -288,7 +304,13 @@ test('it denies a write that a deny rule on memory_write matches, and leaves a p
   });
 
   const shortID = await readItemShortID(ctx.memory.log, item.itemID);
-  const denied = await ctx.call('memory.remember', { text: 'Takes coffee black' });
+
+  const denied = await ctx.call('memory.remember', {
+    gist: 'a gist',
+    topic: 'a topic',
+    text: 'Takes coffee black',
+  });
+
   const pinned = await ctx.call('memory.pin', { itemID: shortID, version: 1 });
   const pending = await ctx.memory.store.proposals.listPending();
 
@@ -314,8 +336,19 @@ test('it denies a write with the subject left out under a deny rule on the owner
     ],
   });
 
-  const omitted = await ctx.call('memory.remember', { text: 'Takes coffee black' });
-  const explicit = await ctx.call('memory.remember', { text: 'Takes tea', subject: 'owner' });
+  const omitted = await ctx.call('memory.remember', {
+    gist: 'a gist',
+    topic: 'a topic',
+    text: 'Takes coffee black',
+  });
+
+  const explicit = await ctx.call('memory.remember', {
+    gist: 'a gist',
+    topic: 'a topic',
+    text: 'Takes tea',
+    subject: 'owner',
+  });
+
   const items = await readTestMemoryItems(ctx.memory.writer);
 
   expect(omitted.isError).toBeTrue();
@@ -334,7 +367,12 @@ test('it runs every check of the gate when the decision read a snapshot declarat
     },
   });
 
-  const result = await ctx.call('memory.remember', { text: 'Takes coffee black' });
+  const result = await ctx.call('memory.remember', {
+    gist: 'a gist',
+    topic: 'a topic',
+    text: 'Takes coffee black',
+  });
+
   const pending = await ctx.memory.store.proposals.listPending();
 
   expect(result.structuredContent).toMatchObject({ status: 'proposed' });

@@ -7,6 +7,7 @@ test('it renders the continuation note, the change note, the facts, the self-not
     shortID: 'h4ns8w1cpe',
     subject: 'owner',
     version: 1,
+    revision: 1,
     origin: 'owner',
     source: 'owner',
     model: null,

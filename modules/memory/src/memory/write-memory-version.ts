@@ -6,7 +6,7 @@ import { writeVersionInTransaction } from '../version/write-version-in-transacti
 
 export type VersionExtras = Pick<
   VersionPlan,
-  'newItemID' | 'noticeKey' | 'requireInTransaction' | 'writeInTransaction' | 'approval'
+  'newItemID' | 'labels' | 'noticeKey' | 'requireInTransaction' | 'writeInTransaction' | 'approval'
 >;
 
 export function writeMemoryVersion(parts: StoreParts, plan: VersionPlan): Promise<VersionRef> {
@@ -17,6 +17,6 @@ export function writeMemoryVersion(parts: StoreParts, plan: VersionPlan): Promis
 
     await updateVersionIndex(parts, written.ref.itemID, written.next);
 
-    return written.ref;
+    return { itemID: written.ref.itemID, version: written.revision };
   });
 }

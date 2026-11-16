@@ -1,8 +1,10 @@
 import type { Log } from '@heynixie/log';
 import { readRecordKeys } from '@heynixie/log';
+import { itemLabelsCodec } from '../label/item-labels-codec';
 import { readMomentExport } from '../moment/read-moment-export';
 import type {
   MemoryContext,
+  MemoryLabelRow,
   MemoryState,
   MemorySubject,
   MemoryTables,
@@ -111,19 +113,26 @@ async function loadExportItems(
 ): Promise<readonly MemoryExportItem[]> {
   const readableIDs = rows.filter((row) => isReadable(row.state)).map((row) => row.item_id);
 
-  const [keys, versions] = await Promise.all([
+  const [keys, versions, labels] = await Promise.all([
     readRecordKeys(log, readableIDs),
     readVersionRows(log, readableIDs),
+    readLabelRows(log, readableIDs),
   ]);
 
   const versionsByItem = Map.groupBy(versions, (row) => row.item_id);
+  const labelsByItem = Map.groupBy(labels, (row) => row.item_id);
 
   return Promise.all(
     rows.map((row) =>
       isReadable(row.state)
         ? loadReadableItem(
             { ...row, state: row.state },
-            { log, key: keys.get(row.item_id), versions: versionsByItem.get(row.item_id) ?? [] },
+            {
+              log,
+              key: keys.get(row.item_id),
+              versions: versionsByItem.get(row.item_id) ?? [],
+              labels: labelsByItem.get(row.item_id) ?? [],
+            },
           )
         : Promise.resolve({ itemID: row.item_id, forgottenAt: toISOTime(row.forgotten_at) }),
     ),
@@ -152,15 +161,36 @@ function readVersionRows(
     .execute();
 }
 
+function readLabelRows(
+  log: ExportLog,
+  itemIDs: readonly string[],
+): Promise<readonly MemoryLabelRow[]> {
+  if (itemIDs.length === 0) {
+    return Promise.resolve([]);
+  }
+
+  return log.writer.db
+    .$extendTables<MemoryTables>()
+    .selectFrom('memory_labels')
+    .selectAll()
+    .where('item_id', 'in', itemIDs)
+    .orderBy('item_id')
+    .orderBy('sequence')
+    .execute();
+}
+
 type ReadableRow = Omit<ItemRow, 'state'> & { readonly state: 'active' | 'retired' };
 
 interface ItemParts {
   readonly log: ExportLog;
   readonly key: CryptoKey | null | undefined;
   readonly versions: readonly MemoryVersionRow[];
+  readonly labels: readonly MemoryLabelRow[];
 }
 
 async function loadReadableItem(row: ReadableRow, parts: ItemParts): Promise<MemoryExportItem> {
+  const labelHistory = await readLabelHistory(row.item_id, parts);
+
   return {
     itemID: row.item_id,
     shortID: getItemShortID(row),
@@ -169,7 +199,45 @@ async function loadReadableItem(row: ReadableRow, parts: ItemParts): Promise<Mem
     isSensitive: row.is_sensitive === 1,
     subject: getRowSubject(row),
     versions: await Promise.all(parts.versions.map((version) => loadExportVersion(version, parts))),
+    labels: labelHistory.at(-1)?.labels ?? null,
+    labelHistory: labelHistory.map((entry) => entry.entry),
   };
+}
+
+type LabelHistoryEntry = NonNullable<
+  Extract<MemoryExportItem, { versions: unknown }>['labelHistory']
+>[number];
+
+interface ExportedLabels {
+  readonly labels: { readonly gist: string; readonly topic: string; readonly triggers: string[] };
+  readonly entry: LabelHistoryEntry;
+}
+
+// A label row that the item's key cannot open is left out, as a text version it cannot open reads
+// as no text.
+function readLabelHistory(itemID: string, parts: ItemParts): Promise<readonly ExportedLabels[]> {
+  const key = parts.key;
+
+  if (key === null || key === undefined) {
+    return Promise.resolve([]);
+  }
+
+  return Promise.all(
+    parts.labels.map(async (row) => {
+      const decoded = await itemLabelsCodec.decode(
+        key,
+        { itemID, revision: row.revision },
+        row.sealed,
+      );
+
+      const labels = { gist: decoded.gist, topic: decoded.topic, triggers: [...decoded.triggers] };
+
+      return {
+        labels,
+        entry: { revision: row.revision, version: row.version, change: row.change, ...labels },
+      };
+    }),
+  );
 }
 
 type ExportVersion = Extract<MemoryExportItem, { versions: unknown }>['versions'][number];

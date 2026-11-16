@@ -1,4 +1,6 @@
 import { buildItemIDStore } from '../item/build-item-id-store';
+import { readLabelEntries } from '../label/read-label-entries';
+import { runLabelBackfill } from '../label/run-label-backfill';
 import type { MomentStore } from '../moment/store/build-moment-store';
 import { buildMomentStore } from '../moment/store/build-moment-store';
 import { startStoreIndexes } from '../moment/store/start-store-indexes';
@@ -52,6 +54,12 @@ async function runStartSteps(parts: StoreParts): Promise<UpdatedIndexes> {
     await runPendingForgets(parts);
     await runPendingDestroys(parts.context);
     await removeLeftKeys(parts);
+
+    const entries = await readLabelEntries(parts);
+
+    parts.labels.replaceAll(entries);
+
+    await runLabelBackfill(parts);
 
     return await updateStoreIndexes(parts);
   } catch (error) {

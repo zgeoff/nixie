@@ -34,7 +34,19 @@ const pendingOutput = {
             type: 'string',
             description:
               'the proposed text, the item a retirement drops, or the item a pin adds to the ' +
-              'pinned core',
+              'pinned core; a proposal that changes labels only has none',
+          },
+          gist: { type: 'string', description: 'the proposed gist' },
+          topic: { type: 'string', description: 'the proposed topic' },
+          triggers: {
+            type: 'array',
+            items: { type: 'string' },
+            description: 'the proposed trigger phrases',
+          },
+          isLabelOnly: {
+            type: 'boolean',
+            description:
+              'true for a proposal that changes labels only, which has no text of its own',
           },
           notedBy: {
             type: 'array',
@@ -51,7 +63,7 @@ const pendingOutput = {
           reason: { type: 'string', description: 'why it waits for review' },
           age: { type: 'string', description: 'how long it has waited, such as 3 days' },
         },
-        required: ['proposalID', 'change', 'text', 'notedBy', 'subject', 'reason', 'age'],
+        required: ['proposalID', 'change', 'notedBy', 'subject', 'reason', 'age'],
       },
     },
   },
@@ -120,7 +132,15 @@ function toPendingJSON(proposal: MemoryProposal, shortID: string, now: number): 
     ...(proposal.targetVersion === null
       ? {}
       : { itemID: shortID, version: proposal.targetVersion }),
-    text: proposal.text,
+    ...(proposal.labels?.isLabelOnly === true ? {} : { text: proposal.text }),
+    ...(proposal.labels === null
+      ? {}
+      : {
+          gist: proposal.labels.gist,
+          topic: proposal.labels.topic,
+          triggers: [...proposal.labels.triggers],
+          isLabelOnly: proposal.labels.isLabelOnly,
+        }),
     notedBy: buildNotedBy(proposal),
     subject: proposal.subject,
     reason: proposal.reason,

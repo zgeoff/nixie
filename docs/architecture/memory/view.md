@@ -37,9 +37,10 @@ nothing to the size, because a session's opening leaves it out.
 
 ## An item's history
 
-An item's history holds every version, oldest first, each with its provenance: its change and state,
-its origin and source, the task and proposal behind it, the verdict of each write check, the model
-of the call that wrote it and the model of the checker that judged its quote. The source labels the
+The view shows an item's revision as its version, and an item's labels beside its text. An item's
+history holds every version, oldest first, each with its provenance: its change and state, its
+origin and source, the task and proposal behind it, the verdict of each write check, the model of
+the call that wrote it and the model of the checker that judged its quote. The source labels the
 version's text, so an approved proposal reads as outside content beside a quote from the user's
 message ([provenance](./writes.md#provenance)). A version with evidence carries the quote's offsets
 and the text of the message the offsets point into, so the view shows the quote inside its message.

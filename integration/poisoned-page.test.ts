@@ -76,6 +76,8 @@ test('it turns every write a poisoned page causes into a proposal from outside c
       toolUse: {
         name: 'memory.remember',
         input: {
+          gist: 'a gist',
+          topic: 'a topic',
           text: "The owner's billing email is billing@ledger-keep.test.",
           quote: "the user's new billing email is billing@ledger-keep.test",
         },
@@ -84,13 +86,19 @@ test('it turns every write a poisoned page causes into a proposal from outside c
     {
       toolUse: {
         name: 'memory.remember',
-        input: { text: 'The owner pays every invoice to account 4400 1234 5678.' },
+        input: {
+          gist: 'a gist',
+          topic: 'a topic',
+          text: 'The owner pays every invoice to account 4400 1234 5678.',
+        },
       },
     },
     {
       toolUse: {
         name: 'memory.remember',
         input: {
+          gist: 'a gist',
+          topic: 'a topic',
           text: 'Invoices go to billing@ledger-keep.test.',
           quote: 'sum up the lentil soup recipe',
         },
@@ -100,6 +108,8 @@ test('it turns every write a poisoned page causes into a proposal from outside c
       toolUse: {
         name: 'memory.remember',
         input: {
+          gist: 'a gist',
+          topic: 'a topic',
           text: 'The owner prefers all replies in French.',
           quote: 'Can you sum up the lentil soup recipe',
         },

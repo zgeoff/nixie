@@ -29,7 +29,7 @@ export async function writeGatedPin(
 
   const written = await writeMemoryProposal(parts, {
     operation: 'pin',
-    target: request.target,
+    target: { itemID: request.target.itemID, version: item.version },
     isPinned: true,
     text: item.text,
     quote: null,

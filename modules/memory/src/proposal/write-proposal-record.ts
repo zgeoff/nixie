@@ -10,6 +10,9 @@ export interface SealedProposal {
   readonly itemID: string;
   readonly sealed: string;
   readonly actionHash: string;
+
+  // the plan's labels under the item's key, for a proposal that has them
+  readonly sealedLabels?: string;
 }
 
 export interface PendingProposal {

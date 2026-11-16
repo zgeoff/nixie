@@ -4,6 +4,9 @@ import type { ReviewReason } from './gate-context';
 
 export interface ContentGateRequest {
   readonly text: string;
+
+  // the gist, the topic and each trigger phrase, which the checks read beside the text
+  readonly labelTexts?: readonly string[];
   readonly quote: string | null;
 
   readonly eventID: number | null;

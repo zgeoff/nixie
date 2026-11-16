@@ -255,6 +255,80 @@ test('it proposes a write whose text holds a token the quote lacks', async () =>
   expect(outcome).toMatchObject({ status: 'proposed', reason: 'token_missing' });
 });
 
+test('it proposes a write whose gist holds a hidden character with the invisible character reason', async () => {
+  const check = mock(() => Promise.resolve(buildMockCheckerAnswer()));
+
+  const memory = await startTestMemory({ gate: { check } });
+
+  await writeOwnerMessageRecord(memory.log, {
+    thread: 'conversation',
+    text: 'The piano is tuned each March',
+    spans: [{ start: 0, end: 29, source: 'typed' }],
+  });
+
+  const outcome = await memory.store.writes.remember({
+    text: 'The piano is tuned each March',
+    quote: 'The piano is tuned each March',
+    labels: { gist: 'piano​tuning', topic: 'home', triggers: [] },
+    caller: buildMockWriteCaller(),
+  });
+
+  expect(outcome).toMatchObject({ status: 'proposed', reason: 'invisible_character' });
+});
+
+test('it proposes a write whose trigger phrase holds a link its quote lacks with the token reason', async () => {
+  const check = mock(() => Promise.resolve(buildMockCheckerAnswer()));
+
+  const memory = await startTestMemory({ gate: { check } });
+
+  await writeOwnerMessageRecord(memory.log, {
+    thread: 'conversation',
+    text: 'The piano is tuned each March',
+    spans: [{ start: 0, end: 29, source: 'typed' }],
+  });
+
+  const outcome = await memory.store.writes.remember({
+    text: 'The piano is tuned each March',
+    quote: 'The piano is tuned each March',
+    labels: {
+      gist: 'piano tuned each March',
+      topic: 'home',
+      triggers: ['book at https://tuner.example/book'],
+    },
+    caller: buildMockWriteCaller(),
+  });
+
+  expect(outcome).toMatchObject({ status: 'proposed', reason: 'token_missing' });
+});
+
+test('it applies a write whose labels and text pass with a typed quote, and gives the checker no label', async () => {
+  const check = mock(() => Promise.resolve(buildMockCheckerAnswer()));
+
+  const memory = await startTestMemory({ gate: { check } });
+
+  await writeOwnerMessageRecord(memory.log, {
+    thread: 'conversation',
+    text: 'The piano is tuned each March',
+    spans: [{ start: 0, end: 29, source: 'typed' }],
+  });
+
+  const outcome = await memory.store.writes.remember({
+    text: 'The piano is tuned each March',
+    quote: 'The piano is tuned each March',
+    labels: { gist: 'yearly tuning visit', topic: 'household', triggers: ['tuner'] },
+    caller: buildMockWriteCaller(),
+  });
+
+  const sent = JSON.stringify(check.mock.calls);
+
+  expect(outcome).toMatchObject({ status: 'applied' });
+  expect(check).toHaveBeenCalledTimes(1);
+
+  expect(['yearly tuning visit', 'household', 'tuner']).toSatisfyAll(
+    (label: string) => !sent.includes(label),
+  );
+});
+
 test.each([
   { label: 'not asserted', verdict: 'not_asserted', failure: null, reason: 'checker_not_asserted' },
   { label: 'unsure', verdict: 'unsure', failure: null, reason: 'checker_unsure' },

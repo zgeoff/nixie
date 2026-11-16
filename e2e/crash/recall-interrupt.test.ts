@@ -34,6 +34,8 @@ test('it counts only the recall whose result reached the model as held when its 
         name: 'mcp__nixie__memory_remember',
         input: {
           subject: 'owner',
+          gist: 'a gist',
+          topic: 'a topic',
           text: 'Your dentist is on Marsh Lane.',
           quote: 'dentist is on Marsh Lane',
         },
@@ -44,6 +46,8 @@ test('it counts only the recall whose result reached the model as held when its 
         name: 'mcp__nixie__memory_remember',
         input: {
           subject: 'owner',
+          gist: 'a gist',
+          topic: 'a topic',
           text: 'Your bakery is called Crumb Corner.',
           quote: 'bakery is called Crumb Corner',
         },

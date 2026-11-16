@@ -6,8 +6,9 @@ import type { StoreParts, VersionRef } from '../types';
 import { parseEvidence } from '../utils/parse-evidence';
 import { buildApprovalExtras } from './build-approval-extras';
 import { buildApprovedProvenance } from './build-approved-provenance';
+import { readApprovalTarget } from './read-approval-target';
 
-export function writeApprovedRetirement(
+export async function writeApprovedRetirement(
   parts: StoreParts,
   opened: OpenedProposal,
   answer: ProposalAnswer,
@@ -15,15 +16,17 @@ export function writeApprovedRetirement(
   const row = opened.row;
 
   if (answer.editedText !== undefined) {
-    return Promise.reject(new RetirementEditError(row.proposal_id));
+    throw new RetirementEditError(row.proposal_id);
   }
+
+  const target = await readApprovalTarget(parts, row);
 
   const evidence = parseEvidence(row.evidence);
 
   return writeRetirement(
     parts,
     {
-      target: { itemID: row.item_id, version: row.target_version ?? 0 },
+      target,
       provenance: buildApprovedProvenance(row, false),
       ...(opened.text.quote === null ? {} : { intentQuote: opened.text.quote }),
       ...(evidence === null ? {} : { intentEvidence: evidence }),

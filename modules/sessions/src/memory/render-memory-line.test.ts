@@ -6,7 +6,7 @@ test('it renders the target example for an approved conversation item from a pas
     renderMemoryLine(
       {
         shortID: 'b7kq2m9xza',
-        version: 3,
+        shownVersion: 3,
         recordedAt: Date.UTC(2025, 9, 13, 9, 30),
         origin: 'conversation',
         source: 'untrusted',
@@ -50,7 +50,7 @@ test.each([
     renderMemoryLine(
       {
         shortID: 'h4ns8w1cpe',
-        version: 2,
+        shownVersion: 2,
         recordedAt: Date.parse('2026-10-13T09:30:00Z'),
         ...provenance,
       },
@@ -64,7 +64,7 @@ test('it names the owner as the owner when no name is set', () => {
     renderMemoryLine(
       {
         shortID: 'h4ns8w1cpe',
-        version: 2,
+        shownVersion: 2,
         recordedAt: Date.UTC(2026, 9, 13, 9, 30),
         origin: 'conversation',
         source: 'owner',
@@ -80,7 +80,7 @@ test('it names the version that replaced a past version last', () => {
     renderMemoryLine(
       {
         shortID: 'h4ns8w1cpe',
-        version: 4,
+        shownVersion: 4,
         recordedAt: Date.UTC(2026, 2, 2, 9, 30),
         origin: 'conversation',
         source: 'owner',
@@ -97,7 +97,7 @@ test('it names the version that retired a past version last as a retirement', ()
     renderMemoryLine(
       {
         shortID: 'h4ns8w1cpe',
-        version: 4,
+        shownVersion: 4,
         recordedAt: Date.parse('2026-03-02T09:30:00Z'),
         origin: 'conversation',
         source: 'owner',

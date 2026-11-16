@@ -39,6 +39,7 @@ export async function readViewItems(
       'item.kind',
       'item.subject',
       'item.version',
+      'item.label_edits',
       'item.until',
       'current.origin',
       'current.source',
@@ -71,6 +72,7 @@ interface ViewItemRow {
   readonly kind: 'fact' | 'self';
   readonly subject: ViewItem['subject'] | null;
   readonly version: number;
+  readonly label_edits: number;
   readonly origin: ViewItem['origin'];
   readonly source: ViewItem['source'];
   readonly sealed: string;
@@ -97,7 +99,7 @@ async function openViewItem(
     isPinned: row.is_pinned === 1,
     isSensitive: row.is_sensitive === 1,
     subject: getRowSubject(row),
-    version: row.version,
+    version: row.version + row.label_edits,
     origin: row.origin,
     source: row.source,
     createdAt: row.created_at,

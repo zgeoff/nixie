@@ -4,7 +4,9 @@ import type { Kysely } from 'kysely';
 import { z } from 'zod';
 import type { ImageRef, MemoryProposalRow } from '../gate/gate-context';
 import { findImageSource } from '../image/find-image-source';
+import { proposalLabelsCodec } from '../label/proposal-labels-codec';
 import type {
+  Labels,
   MemorySubject,
   MemoryTables,
   ProposalOperationKind,
@@ -31,6 +33,12 @@ export interface ProposedChange {
   readonly checks?: JSONObject | null;
 
   readonly until?: number | null;
+
+  readonly labels?: Labels;
+
+  readonly targetRevision?: number;
+
+  readonly isLabelOnly?: boolean;
 }
 
 const checksColumn = z.record(z.string(), z.json());
@@ -56,13 +64,23 @@ export async function readMatchingProposal(
     .where('operation', '=', change.operation)
     .where('is_pinned', '=', isPinned);
 
+  const isLabelled = change.labels !== undefined;
+  const isLabelOnly = change.isLabelOnly === true ? 1 : 0;
+
+  const sameLabelled = isLabelled
+    ? pending
+        .where('sealed_labels', 'is not', null)
+        .where('is_label_only', '=', isLabelOnly)
+        .where('target_revision', 'is', change.targetRevision ?? null)
+    : pending.where('sealed_labels', 'is', null);
+
   const sameTarget =
     target === null
-      ? pending
+      ? sameLabelled
           .where('is_new_item', '=', 1)
           .where(subjectColumn, '=', change.subject ?? 'owner')
           .where('is_sensitive', '=', isSensitive)
-      : pending
+      : sameLabelled
           .where('item_id', '=', target.itemID)
           .where('target_version', '=', target.version)
           .where('new_subject', 'is', change.newSubject ?? null);
@@ -80,6 +98,7 @@ export async function readMatchingProposal(
   return readSameText(parts, samePhoto, {
     text: normalizeFactText(change.text),
     until: change.until ?? null,
+    labels: change.labels ?? null,
   });
 }
 
@@ -90,6 +109,7 @@ function isSameImage(left: ImageRef | null, right: ImageRef | null): boolean {
 interface WantedText {
   readonly text: string;
   readonly until: number | null;
+  readonly labels: Labels | null;
 }
 
 async function readSameText(
@@ -116,7 +136,12 @@ async function readSameText(
 
       const opened = await decodeProposalText(key, row.proposal_id, row.sealed);
 
-      return opened;
+      const labels =
+        row.sealed_labels === null
+          ? null
+          : await proposalLabelsCodec.decode(key, row.proposal_id, row.sealed_labels);
+
+      return { ...opened, labels };
     }),
   );
 
@@ -128,8 +153,22 @@ async function readSameText(
         opened !== null &&
         opened !== undefined &&
         normalizeFactText(opened.text) === wanted.text &&
-        (opened.until ?? null) === wanted.until
+        (opened.until ?? null) === wanted.until &&
+        isSameLabels(opened.labels, wanted.labels)
       );
     }) ?? null
+  );
+}
+
+function isSameLabels(left: Labels | null, right: Labels | null): boolean {
+  if (left === null || right === null) {
+    return left === right;
+  }
+
+  return (
+    left.gist === right.gist &&
+    left.topic === right.topic &&
+    left.triggers.length === right.triggers.length &&
+    left.triggers.every((trigger, index) => trigger === right.triggers[index])
   );
 }
