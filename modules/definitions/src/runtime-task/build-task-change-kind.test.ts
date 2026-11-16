@@ -142,6 +142,20 @@ test('it fails the export and opens no pull request when the repo already holds 
   expect(ctx.repo.readPullRequests()).toStrictEqual([]);
 });
 
+test('it fails the export and opens no pull request when a task folder of the repo has a fault', async () => {
+  const ctx = await setupTest();
+
+  await ctx.seed();
+
+  await requestDefinitionChange(ctx.context, { kind: 'define', input: buildTestDefineInput() });
+
+  await ctx.writeRepoFiles({ 'tasks/feed-the-cat/task.yaml': 'name: [\n' });
+  await ctx.runExports();
+
+  expect(ctx.onError).toHaveBeenCalledTimes(1);
+  expect(ctx.repo.readPullRequests()).toStrictEqual([]);
+});
+
 test('it rewrites the same pull request for a second runtime change', async () => {
   const ctx = await setupTest();
 
