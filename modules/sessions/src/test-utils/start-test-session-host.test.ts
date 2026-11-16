@@ -92,7 +92,7 @@ test("it sends a tool call of the stub guest's turn to the run endpoint of the s
     queue: {
       enqueue: mock(),
       readOpenRepeat: mock(),
-      readOpenProposal: mock(),
+      readOpenAsk: mock(),
       waitForOutcome: mock(),
     },
   });
@@ -145,7 +145,7 @@ test('it reads the names of the tools a turn of the stub guest is offered', asyn
     queue: {
       enqueue: mock(),
       readOpenRepeat: mock(),
-      readOpenProposal: mock(),
+      readOpenAsk: mock(),
       waitForOutcome: mock(),
     },
   });

@@ -40,7 +40,7 @@ export async function runLiveTurn(
   stepInput: StepInput,
   plan: LiveTurnPlan,
 ): Promise<CompletedTurn> {
-  const approved = await runApprovedCalls(run, stepInput, plan.session);
+  const approved = await runApprovedCalls(run, stepInput, plan);
 
   const input = approved.input;
 
@@ -60,7 +60,7 @@ export async function runLiveTurn(
       reserveImages: makeImageReserver(opening.images),
       endSilently: silence.end,
       policy: buildStepPolicyFrame(run.frame, opening.batch.records),
-      step: { ...buildStepHold(run, input), signal: plan.signal },
+      step: buildStepHold(run, input, plan.signal),
     },
     taskRun,
   );

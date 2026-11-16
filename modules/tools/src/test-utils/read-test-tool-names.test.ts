@@ -33,7 +33,7 @@ test('it reads the names of the tools a run endpoint offers to the run token', a
     queue: {
       enqueue: mock(),
       readOpenRepeat: mock(),
-      readOpenProposal: mock(),
+      readOpenAsk: mock(),
       waitForOutcome: mock(),
     },
   });

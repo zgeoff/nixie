@@ -52,13 +52,24 @@ export function buildActionQueue(
         return queued.actionID;
       },
       readOpenRepeat: (query) =>
-        readOpenRepeat(context, {
+        readOpenRepeat(context.log.writer.db, {
           taskID: query.run.thread,
           tool: query.tool,
           arguments: query.input,
           actionHash: query.actionHash,
         }),
-      readOpenProposal: async (tx, query) => {
+      readOpenAsk: async (tx, query) => {
+        const repeat = await readOpenRepeat(tx, {
+          taskID: query.run.thread,
+          tool: query.tool,
+          arguments: query.input,
+          actionHash: query.actionHash,
+        });
+
+        if (repeat !== null) {
+          return { kind: 'action', repeat };
+        }
+
         const open = await readOpenProposals(tx, context.clock.now());
 
         const proposal = open.find(
@@ -68,7 +79,7 @@ export function buildActionQueue(
             row.actionHash === query.actionHash,
         );
 
-        return proposal?.shortID ?? null;
+        return proposal === undefined ? null : { kind: 'proposal', shortID: proposal.shortID };
       },
       waitForOutcome: async (actionID, timeoutMs) => {
         const view = await waitForActionOutcome(context, actionID, {

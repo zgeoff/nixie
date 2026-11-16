@@ -12,13 +12,21 @@ export interface ApprovedCalls {
   readonly images: ReadonlyMap<number, readonly ToolImage[]>;
 }
 
+export interface ApprovedCallsPlan {
+  // the session the calls run on
+  readonly session: ToolSession;
+
+  // the turn's signal, which a forget aborts, so a worker stays inside the turn's bounds
+  readonly signal: AbortSignal;
+}
+
 // The step that holds the task runs the calls its owner approved before its model turn, so one
 // turn reads the approval and the results. A call runs under the step's own hold on the turn's
 // budget and under its task run's bounds, as a call the model made in the turn would.
 export async function runApprovedCalls(
   run: ConversationRun,
   input: StepInput,
-  session: ToolSession,
+  plan: ApprovedCallsPlan,
 ): Promise<ApprovedCalls> {
   const actions = run.inStepActions;
 
@@ -29,13 +37,13 @@ export async function runApprovedCalls(
   const token = run.endpoint.startStep(
     buildStepRunID(input),
     {
-      ...session,
+      ...plan.session,
       reserveImages: makeImageReserver({
         spent: { bytes: 0, count: 0 },
         budget: run.imageBudget,
         isCapped: false,
       }),
-      step: buildStepHold(run, input),
+      step: buildStepHold(run, input, plan.signal),
     },
     buildTaskRun(input),
   );
@@ -63,9 +71,13 @@ export async function runApprovedCalls(
   }
 }
 
-export function buildStepHold(run: ConversationRun, input: StepInput): ToolStepHold {
+export function buildStepHold(
+  run: ConversationRun,
+  input: StepInput,
+  signal: AbortSignal,
+): ToolStepHold {
   return {
-    signal: input.signal,
+    signal,
     interrupt: input.interrupt,
     readLeftDollars: () => run.budget?.getLeftDollars() ?? null,
     onSpend: (dollars) => {

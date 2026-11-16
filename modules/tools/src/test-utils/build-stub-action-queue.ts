@@ -1,4 +1,11 @@
-import type { ActionOutcome, ActionQueue, QueuedAction } from '../types';
+import type {
+  ActionOutcome,
+  ActionQueue,
+  OpenAsk,
+  OpenRepeat,
+  QueuedAction,
+  RepeatQuery,
+} from '../types';
 
 interface QueuedEntry {
   readonly actionID: string;
@@ -36,11 +43,32 @@ export interface StubActionQueueOptions {
 
   // the tools whose approved actions the task's step runs
   readonly stepTools?: readonly string[];
+
+  // How many repeat reads miss an open action, as when an approval commits after the call read.
+  // The read in the proposal's transaction still finds it.
+  readonly missedRepeatReads?: number;
 }
 
 export function buildStubActionQueue(options: StubActionQueueOptions = {}): StubActionQueue {
   const actions: QueuedEntry[] = [];
   const outcomes = buildOutcomeWaits();
+  const reads = { missed: 0 };
+
+  const findOpen = (query: RepeatQuery): OpenRepeat | null => {
+    const earlier = actions.find(
+      (entry) =>
+        entry.action.run.thread === query.run.thread &&
+        entry.action.actionHash === query.actionHash &&
+        !outcomes.hasOutcome(entry.actionID),
+    );
+
+    return earlier === undefined
+      ? null
+      : {
+          actionID: earlier.actionID,
+          runsInStep: options.stepTools?.includes(earlier.action.call.tool) === true,
+        };
+  };
 
   return {
     queue: {
@@ -62,30 +90,30 @@ export function buildStubActionQueue(options: StubActionQueueOptions = {}): Stub
         return Promise.resolve(actionID);
       },
       readOpenRepeat: (query) => {
-        const earlier = actions.find(
-          (entry) =>
-            entry.action.run.thread === query.run.thread &&
-            entry.action.actionHash === query.actionHash &&
-            !outcomes.hasOutcome(entry.actionID),
+        if (reads.missed < (options.missedRepeatReads ?? 0)) {
+          reads.missed += 1;
+
+          return Promise.resolve(null);
+        }
+
+        return Promise.resolve(findOpen(query));
+      },
+      readOpenAsk: (_tx, query) => {
+        const repeat = findOpen(query);
+
+        if (repeat !== null) {
+          return Promise.resolve({ kind: 'action', repeat });
+        }
+
+        const proposal = options.openProposals?.find(
+          (open) => open.thread === query.run.thread && open.actionHash === query.actionHash,
         );
 
-        const open =
-          earlier === undefined
-            ? null
-            : {
-                actionID: earlier.actionID,
-                runsInStep: options.stepTools?.includes(earlier.action.call.tool) === true,
-              };
+        const ask: OpenAsk | null =
+          proposal === undefined ? null : { kind: 'proposal', shortID: proposal.shortID };
 
-        return Promise.resolve(open);
+        return Promise.resolve(ask);
       },
-      readOpenProposal: (_tx, query) =>
-        Promise.resolve(
-          options.openProposals?.find(
-            (proposal) =>
-              proposal.thread === query.run.thread && proposal.actionHash === query.actionHash,
-          )?.shortID ?? null,
-        ),
       waitForOutcome: (actionID, timeoutMs) =>
         actions.some((entry) => entry.actionID === actionID)
           ? outcomes.waitFor(actionID, timeoutMs)

@@ -166,7 +166,7 @@ export async function runToolCall(
         run,
         callSequence: written.sequence,
         shortID: written.shortID,
-        repeatOf,
+        repeatOf: written.repeatOf,
         destinations,
         deadlineAt,
         options,

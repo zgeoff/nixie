@@ -308,3 +308,33 @@ test('it answers a wait with no time at once, with no outcome', async () => {
 
   expect(outcome).toBeNull();
 });
+
+test('it hides an open action from the first repeat reads that the option names, and shows it to the next', async () => {
+  const stub = buildStubActionQueue({ missedRepeatReads: 1 });
+
+  const run = {
+    runID: 'run-1',
+    thread: 'task-1',
+    logThread: 'task-1',
+    tools: ['test.send'],
+    model: { model: 'm', profile: 'p' },
+  };
+
+  const actionID = await stub.queue.enqueue({
+    call: { callID: 'call-1', tool: 'test.send', input: { to: 'a' }, toolUseID: null },
+    run,
+    decision: { outcome: 'allow', stage: 3, rule: null },
+    callSequence: 1,
+    actionHash: 'hash-1',
+    deadlineAt: null,
+    effects: ['send'],
+  });
+
+  const query = { run, tool: 'test.send', input: { to: 'a' }, actionHash: 'hash-1' };
+
+  const first = await stub.queue.readOpenRepeat(query);
+  const second = await stub.queue.readOpenRepeat(query);
+
+  expect(first).toBeNull();
+  expect(second).toStrictEqual({ actionID, runsInStep: false });
+});

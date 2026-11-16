@@ -289,15 +289,20 @@ export interface OpenRepeat {
   readonly runsInStep: boolean;
 }
 
+export type OpenAsk =
+  | { readonly kind: 'action'; readonly repeat: OpenRepeat }
+  | { readonly kind: 'proposal'; readonly shortID: string };
+
 export interface ActionQueue {
   readonly enqueue: (action: QueuedAction) => Promise<string>;
 
   // the pending or unknown action that the same call already queued, or null
   readonly readOpenRepeat: (query: RepeatQuery) => Promise<OpenRepeat | null>;
 
-  // The short ID of the open proposal that asks the owner about the same call, or null. It reads in
-  // the transaction that would write a second proposal, so two identical calls cannot both ask.
-  readonly readOpenProposal: (tx: WriteTransaction, query: RepeatQuery) => Promise<string | null>;
+  // What the same call already has open, or null: an approved action no run has settled, or the
+  // proposal that asks the owner about it. It reads in the transaction that would write a second
+  // proposal, so no call proposes beside an approval it has not used.
+  readonly readOpenAsk: (tx: WriteTransaction, query: RepeatQuery) => Promise<OpenAsk | null>;
 
   readonly waitForOutcome: (actionID: string, timeoutMs: number) => Promise<ActionOutcome | null>;
 }

@@ -55,6 +55,10 @@ interface WrittenCall {
 
   // whether the call is one more than its task run's cap on the tool
   readonly isCapped: boolean;
+
+  // the approved action that the call repeats: the one the decision found, or one that an approval
+  // queued while the call was being written
+  readonly repeatOf: OpenRepeat | null;
 }
 
 interface WrittenResult {
@@ -142,7 +146,12 @@ export function makeCallRecorder(
           });
 
           if (earlier >= cap) {
-            return { sequence: written.sequence, shortID: null, isCapped: true };
+            return {
+              sequence: written.sequence,
+              shortID: null,
+              isCapped: true,
+              repeatOf: decided?.repeatOf ?? null,
+            };
           }
         }
 
@@ -155,24 +164,44 @@ export function makeCallRecorder(
           isMemoryRuleAsk(decided.policy) ||
           decided.repeatOf !== null
         ) {
-          return { sequence: written.sequence, shortID: null, isCapped: false };
+          return {
+            sequence: written.sequence,
+            shortID: null,
+            isCapped: false,
+            repeatOf: decided?.repeatOf ?? null,
+          };
         }
 
         const declaration = decided.declaration;
 
         invariant(declaration, 'a tool that asks is registered');
 
-        // A call that repeats a question the owner has not answered asks nothing more, and the
-        // reply names the open proposal.
-        const open = await options.queue.readOpenProposal(tx, {
+        // A call that repeats a question the owner has not answered asks nothing more, and a call
+        // beside an approval no run has used proposes nothing; an approval can commit after the
+        // repeat read.
+        const open = await options.queue.readOpenAsk(tx, {
           run,
           tool: call.tool,
           input: call.input,
           actionHash: decided.actionHash,
         });
 
-        if (open !== null) {
-          return { sequence: written.sequence, shortID: open, isCapped: false };
+        if (open?.kind === 'action') {
+          return {
+            sequence: written.sequence,
+            shortID: null,
+            isCapped: false,
+            repeatOf: open.repeat,
+          };
+        }
+
+        if (open?.kind === 'proposal') {
+          return {
+            sequence: written.sequence,
+            shortID: open.shortID,
+            isCapped: false,
+            repeatOf: null,
+          };
         }
 
         const proposal = buildActionProposalInput({
@@ -194,7 +223,12 @@ export function makeCallRecorder(
 
         await writeRecordsInTransaction(tx, options.log, [proposal.record]);
 
-        return { sequence: written.sequence, shortID: proposal.shortID, isCapped: false };
+        return {
+          sequence: written.sequence,
+          shortID: proposal.shortID,
+          isCapped: false,
+          repeatOf: null,
+        };
       }),
     writeSettled: async (callSequence, settled) => {
       const writeSettled = (toWrite: Settled): Promise<number> => {

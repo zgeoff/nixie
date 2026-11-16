@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import { withWriteTransaction } from '@heynixie/log';
 import type { StepInput } from '@heynixie/tasks';
 import { buildStepRunID, writeTaskControl } from '@heynixie/tasks';
 import { buildActionSeeder } from '../test-utils/build-action-seeder';
@@ -506,4 +507,35 @@ test.each([
   });
 
   expect(repeat).toStrictEqual({ actionID: queued.action_id, runsInStep });
+});
+
+test('it reports an approved action that no run has settled to the transaction that would write a proposal', async () => {
+  const ctx = await setupTest();
+  const step = await createTestStep(ctx.context);
+
+  const seed = buildActionSeeder({ context: ctx.context });
+
+  const queued = await seed.action({ step, actionHash: 'sha256:send-1' });
+
+  const queue = buildActionQueue(ctx.context);
+
+  const open = await withWriteTransaction(ctx.context.log.writer, (tx) =>
+    queue.queue.readOpenAsk(tx, {
+      run: {
+        runID: step.lease.workID,
+        thread: step.lease.workID,
+        logThread: step.lease.workID,
+        tools: ['test.send'],
+        model: { model: 'model-a', profile: 'chat-direct' },
+      },
+      tool: 'test.send',
+      input: {},
+      actionHash: queued.action_hash,
+    }),
+  );
+
+  expect(open).toStrictEqual({
+    kind: 'action',
+    repeat: { actionID: queued.action_id, runsInStep: false },
+  });
 });

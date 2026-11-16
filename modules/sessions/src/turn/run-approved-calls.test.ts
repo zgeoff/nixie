@@ -21,6 +21,9 @@ interface PendingCall {
 
   // a message that reaches the inbox while the call runs
   readonly messageDuringRun?: string;
+
+  // runs while the call does
+  readonly duringRun?: () => void;
 }
 
 async function setupTest() {
@@ -57,6 +60,8 @@ async function setupTest() {
           callSequence: 1,
           actionHash: 'sha256:any',
         });
+
+        call.duringRun?.();
 
         if (call.messageDuringRun !== undefined) {
           await writeInboxRecords(tasks.context, [
@@ -359,4 +364,33 @@ test('it keeps the task ready through a compaction step, and runs the call in th
 
   expect(afterCompaction.state).toBe('ready');
   expect(last).toContain('the memory export is ready');
+});
+
+test('it aborts the approved call when a forget invalidates the session, as it aborts the turn', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  const runner = await ctx.startRunner();
+
+  const forgets: Promise<void>[] = [];
+
+  ctx.sandboxes.setGuestScript(buildStubTurnScript(() => ({ reply: 'Done.' })));
+
+  ctx.state.pending.push({
+    text: 'ready',
+    duringRun: () => {
+      forgets.push(runner.cleanupSessions({ itemID: 'item-1' }));
+    },
+  });
+
+  await ctx.writeMessage('Export my memory.');
+
+  await runNextStep(ctx.context, runner.runStep);
+
+  await Promise.all(forgets);
+
+  const [approved] = ctx.tools.steps;
+
+  expect(approved?.session?.step?.signal.aborted).toBe(true);
 });

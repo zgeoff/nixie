@@ -33,7 +33,7 @@ test('it runs the callback with a client connected to the run endpoint and retur
     queue: {
       enqueue: mock(),
       readOpenRepeat: mock(),
-      readOpenProposal: mock(),
+      readOpenAsk: mock(),
       waitForOutcome: mock(),
     },
   });

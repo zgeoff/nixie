@@ -35,7 +35,7 @@ test('it calls a tool on the run endpoint with the run token and returns its res
     queue: {
       enqueue: mock(),
       readOpenRepeat: mock(),
-      readOpenProposal: mock(),
+      readOpenAsk: mock(),
       waitForOutcome: mock(),
     },
   });
@@ -78,7 +78,7 @@ test('it rejects a call that carries a token the endpoint does not know', async 
     queue: {
       enqueue: mock(),
       readOpenRepeat: mock(),
-      readOpenProposal: mock(),
+      readOpenAsk: mock(),
       waitForOutcome: mock(),
     },
   });

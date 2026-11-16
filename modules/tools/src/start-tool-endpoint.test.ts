@@ -31,7 +31,7 @@ async function setupTest(config: SetupConfig) {
     queue: {
       enqueue: mock(),
       readOpenRepeat: mock(() => Promise.resolve(null)),
-      readOpenProposal: mock(() => Promise.resolve(null)),
+      readOpenAsk: mock(() => Promise.resolve(null)),
       waitForOutcome: mock(),
     },
   });
@@ -505,7 +505,7 @@ test("it leaves a later writer's socket for the same run in place when its run s
     queue: {
       enqueue: mock(),
       readOpenRepeat: mock(() => Promise.resolve(null)),
-      readOpenProposal: mock(() => Promise.resolve(null)),
+      readOpenAsk: mock(() => Promise.resolve(null)),
       waitForOutcome: mock(),
     },
   });
@@ -636,7 +636,7 @@ test('it gives a sandbox the socket of a run that another endpoint of the same w
     queue: {
       enqueue: mock(),
       readOpenRepeat: mock(() => Promise.resolve(null)),
-      readOpenProposal: mock(() => Promise.resolve(null)),
+      readOpenAsk: mock(() => Promise.resolve(null)),
       waitForOutcome: mock(),
     },
   });

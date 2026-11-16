@@ -17,6 +17,7 @@ export { toSDKToolName } from './to-sdk-tool-name';
 export type {
   ActionOutcome,
   ActionQueue,
+  OpenAsk,
   OpenRepeat,
   DeadlineResolution,
   GuestToolRun,

@@ -445,7 +445,7 @@ test('it asks about a model call to memory.export under the starter rules, so no
       queue: {
         enqueue: () => Promise.reject(new Error('a denied call reached the queue')),
         readOpenRepeat: () => Promise.resolve(null),
-        readOpenProposal: () => Promise.resolve(null),
+        readOpenAsk: () => Promise.resolve(null),
         waitForOutcome: () => Promise.resolve(null),
       },
       queuedWaitMs: 1000,
