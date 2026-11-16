@@ -1,3 +1,4 @@
+import { parseJSONObject } from '@heynixie/log';
 import type { LogTables } from '@heynixie/log';
 import type { Kysely } from 'kysely';
 import invariant from 'tiny-invariant';
@@ -17,7 +18,7 @@ export async function readClosedKeyIDs(
 
   invariant(row !== undefined, `the closing record ${String(closedSequence)} is missing`);
 
-  const closed = memoryEvidencePurgeClosedCodec.decode(JSON.parse(row.payload));
+  const closed = memoryEvidencePurgeClosedCodec.decode(parseJSONObject(row.payload));
 
   return [...closed.closedKeyIDs, ...closed.closedRecordKeyIDs];
 }

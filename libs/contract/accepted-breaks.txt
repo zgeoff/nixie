@@ -56,3 +56,5 @@ GEO-2363: POST /memory/readItem removed the required property `isSensitive` from
 GEO-2363: POST /memory/readPinnedCore removed the required property `items/items/isSensitive` from the response with the `200` status
 # GEO-2550: a client of the last release still works, because its only call of readRatingNotes loads the note beside a rating verdict in the activity, and the new release sends no rating, so the call never runs and a row shows no verdict. A call that does run fails and the row shows its line without a note.
 GEO-2550: POST /memory/readRatingNotes api path removed without deprecation
+# GEO-2605: a client of the last release still works, because it already handles a 409 refusal it does not know as a failed undo, and the new refusal only says that the earlier version was removed.
+GEO-2605: POST /memory/undo added `subschema #5` to the response body `oneOf` list for the response status `409`

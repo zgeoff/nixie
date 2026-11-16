@@ -32,13 +32,15 @@ test('it reads a version 10 file with every version and label entry marked neith
 
   expect(parsed?.header.schemaVersion).toBe(10);
 
-  expect(readable.flatMap((item) => item.versions)).toSatisfyAll(
-    (version) => version.isRemoved === false && version.isBridge === false,
-  );
+  expect(
+    readable
+      .flatMap((item) => item.versions)
+      .filter((version) => version.isRemoved || version.isBridge),
+  ).toStrictEqual([]);
 
-  expect(readable.flatMap((item) => item.labelHistory)).toSatisfyAll(
-    (entry) => entry.isBridge === false,
-  );
+  expect(
+    readable.flatMap((item) => item.labelHistory).filter((entry) => entry.isBridge),
+  ).toStrictEqual([]);
 });
 
 test('it rejects a version 11 version with no removed mark', async () => {
