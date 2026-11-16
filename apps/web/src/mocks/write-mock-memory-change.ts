@@ -12,7 +12,9 @@ interface MemoryChangeInput {
 
 type MemoryChangeResult =
   | { readonly status: 'applied' }
-  | { readonly status: 'reused' | 'not_found' | 'stale' | 'wrong_state' | 'core_full' };
+  | {
+      readonly status: 'reused' | 'not_found' | 'stale' | 'wrong_state' | 'core_full' | 'removed';
+    };
 
 export async function writeMockMemoryChange(input: MemoryChangeInput): Promise<MemoryChangeResult> {
   const bound = JSON.stringify([input.change, input.itemID, input.version, input.isPinned]);
@@ -57,6 +59,10 @@ function readRefusal(input: MemoryChangeInput): Refusal | null {
 
   if (item.versions.length !== input.version) {
     return 'stale';
+  }
+
+  if (input.change === 'undo' && item.versions.at(-2)?.isRemoved === true) {
+    return 'removed';
   }
 
   const isPin = input.change === 'pin' && input.isPinned === true;

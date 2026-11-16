@@ -142,9 +142,10 @@ interface RefusalErrors {
   readonly STALE_VERSION: () => Error;
   readonly WRONG_STATE: () => Error;
   readonly PINNED_CORE_FULL?: () => Error;
+  readonly VERSION_REMOVED?: () => Error;
 }
 
-type RefusalStatus = 'reused' | 'not_found' | 'stale' | 'wrong_state' | 'core_full';
+type RefusalStatus = 'reused' | 'not_found' | 'stale' | 'wrong_state' | 'core_full' | 'removed';
 
 function buildRefusal(status: RefusalStatus, errors: RefusalErrors): Error {
   const buildError = {
@@ -153,6 +154,7 @@ function buildRefusal(status: RefusalStatus, errors: RefusalErrors): Error {
     stale: errors.STALE_VERSION,
     wrong_state: errors.WRONG_STATE,
     core_full: errors.PINNED_CORE_FULL ?? errors.WRONG_STATE,
+    removed: errors.VERSION_REMOVED ?? errors.WRONG_STATE,
   }[status];
 
   return buildError();
