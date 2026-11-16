@@ -1,6 +1,7 @@
 import type { ForgetBackup } from '@heynixie/backup';
 import type { ImageMediaType } from '@heynixie/contract';
 import type { CheckedTables } from '@heynixie/db';
+import type { DefinitionsContext } from '@heynixie/definitions';
 import type { RecordKind } from '@heynixie/log';
 import type {
   HostMemoryStore,
@@ -92,6 +93,9 @@ export interface HostRouterOptions {
   readonly runConversationReset: () => Promise<HostConversationReset>;
 
   readonly runInForceSeed: () => Promise<void>;
+
+  // the context of a runtime change of a task definition; null before the server holds its parts
+  readonly readDefinitions: () => DefinitionsContext | null;
 
   readonly readInForce: () => PromptsInForce | null;
   readonly wakeExports: () => void;

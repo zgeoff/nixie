@@ -11,11 +11,13 @@ import { loadSnapshotSkills } from '../skill/load-snapshot-skills';
 import type {
   DefinitionsInForce,
   DefinitionsTables,
+  RuntimeTaskDefinitionRow,
   SkillVersion,
   SnapshotRuleRow,
   TaskVersionRow,
   WrittenSkillRow,
 } from '../types';
+import { readRepoTasks } from './read-repo-tasks';
 
 export interface ResetSeed {
   readonly inForce: DefinitionsInForce;
@@ -34,6 +36,7 @@ export interface ResetSeed {
   readonly closedProposalHashes: readonly string[];
 
   readonly taskVersions: readonly TaskVersionRow[];
+  readonly runtimeTasks: readonly RuntimeTaskDefinitionRow[];
 }
 
 type SeedRecordTables = Readonly<{
@@ -86,7 +89,25 @@ export async function readResetSeed(db: Kysely<unknown>, now: number): Promise<R
     .orderBy('rule_id')
     .execute();
 
-  const taskHashes = inForce.tasks.map((task) => task.hash);
+  const repoTasks = await readRepoTasks(db, inForce);
+
+  const runtime = await db
+    .$extendTables<DefinitionsTables>()
+    .selectFrom('runtime_task_definitions')
+    .selectAll()
+    .where('state', '=', 'in_force')
+    .orderBy('definition_id')
+    .execute();
+
+  const taskHashes = [
+    ...new Set([
+      ...inForce.tasks.map((task) => task.hash),
+      ...repoTasks.map((task) => task.hash),
+      ...runtime.flatMap((row) =>
+        [row.definition_hash, row.previous_hash].flatMap((hash) => (hash === null ? [] : [hash])),
+      ),
+    ]),
+  ];
 
   const taskVersions =
     taskHashes.length === 0
@@ -114,6 +135,7 @@ export async function readResetSeed(db: Kysely<unknown>, now: number): Promise<R
     rules,
     closedProposalHashes: collectClosedProposalHashes(proposals, now),
     taskVersions,
+    runtimeTasks: runtime,
   };
 }
 

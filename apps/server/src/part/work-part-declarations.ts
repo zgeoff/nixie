@@ -3,7 +3,12 @@ import {
   createFirstEnrolmentCode,
   defaultPolicySettings,
 } from '@heynixie/api';
-import { runGapChecks, runMandateExpiry, startMandateTimer } from '@heynixie/definitions';
+import {
+  makeRetireOneShot,
+  runGapChecks,
+  runMandateExpiry,
+  startMandateTimer,
+} from '@heynixie/definitions';
 import { toErrorFields } from '@heynixie/logger';
 import { startPromptLapseSweep } from '@heynixie/prompts';
 import type { RunStep } from '@heynixie/tasks';
@@ -13,7 +18,6 @@ import {
   readDefinitionTaskInTransaction,
   reviveHeldTasks,
   sandboxRunner,
-  withdrawDefinitionTaskInTransaction,
 } from '@heynixie/tasks';
 import { buildScheduleSource, startTriggerSources } from '@heynixie/triggers';
 import { runDefinitionsSeed } from '../definition/run-definitions-seed';
@@ -90,8 +94,7 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
         definitions: parts.context.definitions,
         logEvent: parts.log,
         readDefinitionTask: readDefinitionTaskInTransaction,
-        retireOneShot: (tx, definitionID) =>
-          withdrawDefinitionTaskInTransaction(tx, parts.context, definitionID),
+        retireOneShot: makeRetireOneShot(parts.context),
       });
 
       await parts.cleanup.defer(() => sources.stop());

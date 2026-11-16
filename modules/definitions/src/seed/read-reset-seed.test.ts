@@ -1,43 +1,21 @@
-import { expect, onTestFinished, test } from 'bun:test';
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
+import { expect, test } from 'bun:test';
+import { writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { startWriter } from '@heynixie/log';
+import { runLogReset } from '@heynixie/log';
 import invariant from 'tiny-invariant';
 import { buildDefinitionsSnapshot } from '../definition/build-definitions-snapshot';
-import { createPathSource } from '../definition/create-path-source';
 import { runSeed } from '../rule/run-seed';
+import { requestDefinitionChange } from '../runtime-task/request-definition-change';
+import { buildTestDefineInput } from '../test-utils/build-test-define-input';
 import { buildTestTaskSeed } from '../test-utils/build-test-task-seed';
+import { buildTestTaskYaml } from '../test-utils/build-test-task-yaml';
+import { readTestRuntimeTasks } from '../test-utils/read-test-runtime-tasks';
+import { startTestDefinitions } from '../test-utils/start-test-definitions';
 import { readResetSeed } from './read-reset-seed';
+import { writeResetSeed } from './write-reset-seed';
 
-async function setupTest() {
-  const stack = new AsyncDisposableStack();
-
-  onTestFinished(() => stack.disposeAsync());
-
-  const directory = await mkdtemp(join(tmpdir(), 'nixie-reset-seed-'));
-
-  stack.defer(() => rm(directory, { recursive: true, force: true }));
-
-  const root = join(directory, 'definitions');
-
-  const writer = await startWriter({ dataDir: directory });
-
-  stack.defer(() => writer.stop());
-
-  await mkdir(root);
-
-  const deploymentKey = await crypto.subtle.generateKey({ name: 'AES-KW', length: 256 }, false, [
-    'wrapKey',
-    'unwrapKey',
-  ]);
-
-  return {
-    root,
-    writer,
-    log: { writer, deploymentKey, projections: [] },
-    source: createPathSource({ directory: root }),
-  };
+function setupTest() {
+  return startTestDefinitions();
 }
 
 test('it finds nothing before the first seed', async () => {
@@ -95,6 +73,7 @@ test('it reads the seed in force with its snapshot row and the payload of its re
       adoptedSkills: [],
       effects: {},
       heldEffects: [],
+      repoTasks: [],
       unapplied: [],
       skipped: [],
       rules: { revisions: [], applied: [], held: [], adopted: [], conflicts: [], proposalID: null },
@@ -105,5 +84,65 @@ test('it reads the seed in force with its snapshot row and the payload of its re
     rules: [],
     closedProposalHashes: [],
     taskVersions: [],
+    runtimeTasks: [],
   });
+});
+
+test('it covers the repo version and the runtime version of a replaced definition', async () => {
+  const ctx = await setupTest();
+
+  await ctx.writeRepoTask('water-the-tomatoes', buildTestTaskYaml());
+  await ctx.seed();
+
+  await requestDefinitionChange(ctx.context, {
+    kind: 'define',
+    input: buildTestDefineInput({
+      definitionID: 'water-the-tomatoes',
+      brief: 'Water them well.',
+    }),
+  });
+
+  const seed = await readResetSeed(ctx.writer.db, 0);
+
+  expect(seed?.taskVersions.map((version) => version.definition_id)).toStrictEqual([
+    'water-the-tomatoes',
+    'water-the-tomatoes',
+  ]);
+
+  expect(seed?.payload['repoTasks']).toStrictEqual([
+    { id: 'water-the-tomatoes', hash: expect.any(String) },
+  ]);
+});
+
+test('it keeps a runtime change in force through a reset and the seed after it', async () => {
+  const ctx = await setupTest();
+
+  await ctx.seed();
+
+  await requestDefinitionChange(ctx.context, {
+    kind: 'define',
+    input: buildTestDefineInput(),
+  });
+
+  await runLogReset(ctx.log, {
+    keptTables: [],
+    readKept: (tx) => readResetSeed(tx, 0),
+    writeFirstRecords: async (tx, seed) => {
+      invariant(seed);
+
+      await writeResetSeed(tx, ctx.log, seed);
+    },
+  });
+
+  const afterReset = await readTestRuntimeTasks(ctx.writer);
+
+  await ctx.seed();
+
+  const afterSeed = await readTestRuntimeTasks(ctx.writer);
+
+  expect(afterReset.map((row) => [row.definition_id, row.state])).toStrictEqual([
+    ['water-the-tomatoes', 'in_force'],
+  ]);
+
+  expect(afterSeed).toStrictEqual(afterReset);
 });

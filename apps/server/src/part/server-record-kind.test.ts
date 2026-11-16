@@ -11,6 +11,7 @@ function setupTest() {
     'action.queued': ['arguments'],
     'action.reconcile_checked': ['result', 'message'],
     'action.retry_scheduled': ['result', 'message'],
+    'definition.changed': ['version'],
     'memory.image_offered': ['text'],
     'memory.proposal_rejected': ['reason'],
     'model.compaction_failed': ['message'],
@@ -42,8 +43,12 @@ function setupTest() {
     tool_result: [],
   } as const satisfies Record<ErasableRecordKind, readonly string[]>;
 
+  // A forget refuses these records, so their erasable fields stay for as long as the log does.
+  const unforgettableKinds = ['definition.changed'];
+
   const groups: readonly (readonly string[])[] = [
     forgettableKinds,
+    unforgettableKinds,
     momentErasableKinds,
     memoryItemErasableKinds,
   ];
@@ -51,7 +56,7 @@ function setupTest() {
   return { erasableKinds: Object.keys(erasableFieldNames), groups };
 }
 
-test('it holds each erasable kind in exactly one of the 3 groups', () => {
+test('it holds each erasable kind in exactly one of the 4 groups', () => {
   const ctx = setupTest();
 
   const misplaced = ctx.erasableKinds.filter(
@@ -61,14 +66,14 @@ test('it holds each erasable kind in exactly one of the 3 groups', () => {
   expect(misplaced).toStrictEqual([]);
 });
 
-test('it keeps a kind that carries no erasable fields out of the 3 groups', () => {
+test('it keeps a kind that carries no erasable fields out of the 4 groups', () => {
   const ctx = setupTest();
   const stray = ctx.groups.flat().filter((kind) => !ctx.erasableKinds.includes(kind));
 
   expect(stray).toStrictEqual([]);
 });
 
-test('it lists no kind twice across the 3 groups', () => {
+test('it lists no kind twice across the 4 groups', () => {
   const ctx = setupTest();
   const kinds = ctx.groups.flat();
 

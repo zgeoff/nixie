@@ -3,6 +3,7 @@ import { ORPCError, os } from '@orpc/server';
 import type { HostRouterOptions } from '../types';
 import { createHostActionProcedures } from './create-host-action-procedures';
 import { createHostContactProcedures } from './create-host-contact-procedures';
+import { createHostDefinitionProcedures } from './create-host-definition-procedures';
 import { createHostItemProcedures } from './create-host-item-procedures';
 import { createHostMandateProcedures } from './create-host-mandate-procedures';
 import { createHostNixieProcedures } from './create-host-nixie-procedures';
@@ -71,6 +72,9 @@ export function createHostRouter(options: HostRouterOptions) {
       .router(
         createHostMandateProcedures({ ...options.context, runInForceSeed: options.runInForceSeed }),
       ),
+    definitions: hostImplementer.definitions
+      .use(gated)
+      .router(createHostDefinitionProcedures(options.readDefinitions)),
     actions: hostImplementer.actions.use(gated).router(createHostActionProcedures(options.context)),
     contacts: hostImplementer.contacts
       .use(gated)

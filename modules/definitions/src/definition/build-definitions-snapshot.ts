@@ -4,6 +4,7 @@ import type {
   DefinitionsSnapshot,
   SkillRef,
   SnapshotPolicy,
+  SnapshotTask,
   SnapshotTasks,
   ToolDeclaration,
 } from '../types';
@@ -40,7 +41,7 @@ export function buildDefinitionsSnapshot(input: DefinitionsSnapshotInput): Defin
   const prompts = buildPromptsForm(input.prompts);
 
   const tasks = sortUniqueBy(
-    input.tasks.map((task) => ({ id: task.id, hash: task.hash, origin: task.origin })),
+    input.tasks.map((task) => buildTaskForm(task)),
     'id',
     (task) => task.id,
   );
@@ -105,4 +106,10 @@ function buildPromptsForm(prompts: PromptOverrides): JSONObject {
       override === undefined ? [] : [[id, { parts: override.parts, template: override.template }]],
     ),
   );
+}
+
+function buildTaskForm(task: SnapshotTask): SnapshotTask {
+  return task.origin === 'nixie'
+    ? { id: task.id, hash: task.hash, origin: 'nixie', changeID: task.changeID }
+    : { id: task.id, hash: task.hash, origin: 'definitions' };
 }

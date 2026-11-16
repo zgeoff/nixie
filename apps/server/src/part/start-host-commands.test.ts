@@ -31,6 +31,7 @@ async function setupTest() {
       apiContext: api.context,
       readMemory: () => null,
       runInForceSeed: () => Promise.resolve(),
+      readDefinitions: () => null,
       readInForce: () => null,
       wakeExports: () => {},
       runReset,

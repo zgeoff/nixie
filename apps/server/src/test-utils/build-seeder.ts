@@ -4,6 +4,7 @@ import { systemClock } from '@heynixie/clock';
 import { buildConnectorSeeder } from '@heynixie/connectors/test-utils';
 import type { TasksContext } from '@heynixie/tasks';
 import { buildTaskSeeder } from '@heynixie/tasks/test-utils';
+import { seedDefinitionConflict } from './seed-definition-conflict';
 import { seedHeldTasks } from './seed-held-tasks';
 import { seedRuleConflict } from './seed-rule-conflict';
 import { startDataLog } from './start-data-log';
@@ -29,6 +30,7 @@ export function buildBootSeeder(files: BootSeederFiles) {
   return {
     heldTasks: () => seedHeldTasks(files),
     ruleConflict: () => seedRuleConflict(files),
+    definitionConflict: () => seedDefinitionConflict(files),
     driftedTask: (taskID: string) =>
       runInDataLog(files, (context) => buildTaskSeeder({ context }).driftedTask(taskID)),
     goneHolderLease: (taskID: string) =>

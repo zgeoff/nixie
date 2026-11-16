@@ -1,8 +1,7 @@
 import { waitForSettled } from '@heynixie/async';
 import type { SeedResult } from '@heynixie/definitions';
-import { buildPromptSafetyLogFields } from '../prompt/build-prompt-safety-log-fields';
 import type { ServerParts } from '../types';
-import { buildSeedLogFields } from './build-seed-log-fields';
+import { recordSeedResult } from './record-seed-result';
 
 export type SeedParts = Pick<
   ServerParts,
@@ -22,8 +21,6 @@ export function runQueuedSeed(
   return queued;
 }
 
-const checkedSnapshots = new WeakMap<SeedParts, string>();
-
 async function waitThenSeed(
   previous: Promise<void> | undefined,
   parts: SeedParts,
@@ -33,21 +30,7 @@ async function waitThenSeed(
 
   const result = await seed();
 
-  if (result.inForce !== null) {
-    parts.inForce.set(result.inForce);
-  }
-
-  parts.log('definitions.seeded', buildSeedLogFields(result));
-
-  if (result.inForce !== null && checkedSnapshots.get(parts) !== result.inForce.snapshotHash) {
-    checkedSnapshots.set(parts, result.inForce.snapshotHash);
-
-    const fields = buildPromptSafetyLogFields(result.inForce.prompts);
-
-    if (fields !== null) {
-      parts.log('prompts.safety_missing', fields);
-    }
-  }
+  recordSeedResult(parts, result);
 
   return result;
 }

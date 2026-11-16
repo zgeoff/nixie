@@ -178,3 +178,31 @@ export type { ProposedRuleEdit } from './proposed-rule/write-proposed-rule-edit'
 export { writeProposedRuleEdit } from './proposed-rule/write-proposed-rule-edit';
 export { readMandateEndReason, readMandateTitles } from './mandate/read-mandate-titles';
 export { writeMandateEnd } from './mandate/write-mandate-end';
+export type { DefinitionTaskRecordKind } from './runtime-task/definition-task-record-kind';
+export { runtimeTaskDefinitionsProjection } from './runtime-task/runtime-task-definitions-projection';
+export { writeTaskVersionRestore } from './runtime-task/write-task-version-restore';
+export { taskDefinitionExportsProjection } from './runtime-task/task-definition-exports-projection';
+export type { TaskDefineInput } from './runtime-task/build-define-version';
+
+export type {
+  DefinitionChangeResult,
+  DefinitionRefusal,
+  DefinitionsContext,
+} from './runtime-task/types';
+
+export type { DefinitionChangeRequest } from './runtime-task/request-definition-change';
+export { requestDefinitionChange } from './runtime-task/request-definition-change';
+export { undoDefinitionChange } from './runtime-task/undo-definition-change';
+
+export type {
+  DefinitionResolution,
+  DefinitionResolutionResult,
+} from './runtime-task/write-definition-resolution';
+
+export { writeDefinitionResolution } from './runtime-task/write-definition-resolution';
+export { makeRetireOneShot } from './runtime-task/make-retire-one-shot';
+export { readTaskDefinitionsOverlay } from './runtime-task/read-task-definitions-overlay';
+export type { OverlaidTaskDefinition } from './utils/build-task-seed-plan';
+export type { InForceSeedOptions } from './seed/run-in-force-seed';
+export { seedInForceInTransaction } from './seed/run-in-force-seed';
+export type { RepoTask } from './types';

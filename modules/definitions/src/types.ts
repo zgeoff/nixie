@@ -100,10 +100,19 @@ export interface ParsedDefinitions {
   readonly unapplied: readonly string[];
 }
 
-export interface SnapshotTask {
+export type SnapshotTask =
+  | { readonly id: string; readonly hash: string; readonly origin: 'definitions' }
+  | {
+      readonly id: string;
+      readonly hash: string;
+      readonly origin: 'nixie';
+      readonly changeID: string;
+    };
+
+// A task definition as the repo holds it, with no runtime change laid over it
+export interface RepoTask {
   readonly id: string;
   readonly hash: string;
-  readonly origin: 'definitions';
 }
 
 export type SnapshotTasks = readonly SnapshotTask[];
@@ -238,6 +247,43 @@ export interface WrittenSkillRow {
 }
 
 export type RuntimeChangeState = 'in_force' | 'adopted' | 'superseded' | 'retired';
+
+export type DefinitionOperation = 'add' | 'change' | 'remove' | 'undo';
+
+export type RuntimeTaskCause =
+  | 'later_change'
+  | 'seed'
+  | 'one_shot_fired'
+  | 'one_shot_skipped'
+  | 'kept_repo';
+
+export interface RuntimeTaskDefinitionRow {
+  readonly change_id: string;
+  readonly short_id: string;
+  readonly definition_id: string;
+  readonly operation: DefinitionOperation;
+  readonly definition_hash: string | null;
+  readonly previous_hash: string | null;
+  readonly base_hash: string | null;
+  readonly definitions_hash: string | null;
+  readonly replaces: string | null;
+  readonly undoes: string | null;
+  readonly caller: 'conversation' | 'owner';
+  readonly state: RuntimeChangeState;
+  readonly state_cause: RuntimeTaskCause | null;
+  readonly changed_sequence: number;
+  readonly updated_sequence: number;
+}
+
+interface TaskDefinitionExportRow {
+  readonly export_id: string;
+  readonly branch: string;
+  readonly state: Exclude<DefinitionsExportState, 'exporting'> | null;
+  readonly pull_request_number: number | null;
+  readonly pull_request_url: string | null;
+  readonly attempt_started_sequence: number | null;
+  readonly updated_sequence: number;
+}
 
 interface SkillExportRow {
   readonly approval_id: string;
@@ -470,5 +516,7 @@ export type DefinitionsTables = CheckedTables<
     gap_answers: GapAnswerRow;
     gap_groups: GapGroupRow;
     task_definition_versions: TaskVersionRow;
+    runtime_task_definitions: RuntimeTaskDefinitionRow;
+    task_definition_exports: TaskDefinitionExportRow;
   }>
 >;

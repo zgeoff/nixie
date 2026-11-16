@@ -351,6 +351,65 @@ Under `context: fresh`, each piece of work opens a session of its own: a task ru
 restart carries resumes the session of the task run it carries, and any other task run starts one.
 Under `continuing`, each step resumes the session that the task last kept.
 
+## The runtime layer of task definitions
+
+nixie holds changes of task definitions that no repo commit made, such as a definition the
+conversation creates. Each change is a runtime change, and it lies over the repo's definitions until
+a seed reads the same version in the repo, the user ends it, or nixie retires it. Nothing stores the
+list of definitions in force. Each read lays the runtime changes in force over the repo's task list
+of the last accepted seed, so the repo's version stays recoverable underneath.
+
+Two projections hold the layer, and a fold writes each row from its records:
+
+| Table                      | Row                            | Records folded                                                                                      |
+| -------------------------- | ------------------------------ | --------------------------------------------------------------------------------------------------- |
+| `runtime_task_definitions` | one runtime change             | `definition.changed`, `definition.settled`, `definition.repo_moved`, `definition.conflict_resolved` |
+| `task_definition_exports`  | one export of task definitions | `definition.export_moved`                                                                           |
+
+A change is `in_force`, then moves once to `superseded`, `adopted` or `retired`, as
+`canMoveRuntimeChange` allows. A partial unique index holds each definition to one change in force,
+and a move the table forbids throws in the fold. `definition.changed` sits on the conversation's
+thread and holds the version in an erasable field. A fold reads no erasable field, so the writer of
+the change stores the version in `task_definition_versions` in the same transaction. A forget of
+`definition.changed` is refused, so the key of a version stays until the log goes.
+
+The seed record carries the repo's own task list, which the snapshot's list cannot give: the
+snapshot lists the definitions in force, runtime ones included, with origin `nixie` and the change
+ID. An in-force seed reads the repo's list from the seed record it carries forward. A seed record
+from before the list falls back to the snapshot entries with origin `definitions`.
+
+At each seed, for each runtime change in force:
+
+- When the repo holds the change's version, the hash included when both are null, the seed writes
+  `definition.settled` as `adopted`.
+- When the repo holds another version than the one the change last read, the seed writes
+  `definition.repo_moved`. A seed that finds the same version again writes nothing.
+- A change whose base differs from the repo's version is a conflict. nixie stores no flag, because
+  the base and the repo's version in the row show it, and the change stays in force.
+- A change whose version has no readable body leaves the definition out of force, and the row stays.
+
+A change with a null hash, an undefine, removes the definition from the list even when the repo
+holds it.
+
+`requestDefinitionChange` and `undoDefinitionChange` make a change. One pure decision,
+`pickDefinitionMove`, covers a define, an undefine and an undo, so every caller meets the same
+refusals. An undefine and an undo first run the seed of the definitions source, and go on with the
+repo version last read when that seed fails. In one write transaction the function then decides the
+move, writes `definition.changed` and runs `seedInForceInTransaction`, the body of the in-force
+seed, so the seed's hooks bind the task and arm the trigger at the commit. A seed that refuses
+throws, and the transaction leaves no record. After the commit the function wakes the export without
+waiting for it. A fire written before the change keeps the hash it holds, because a record never
+changes.
+
+`nixie definitions resolve <id> --keep nixie|repo` ends a conflict. `nixie` moves the base to the
+repo's version. `repo` retires the change, and the seed in the same transaction puts the repo's
+version in force at the commit. Both write `definition.conflict_resolved`. A definition with no
+conflict answers `NOT_FOUND`.
+
+The `retireOneShot` that the server gives the trigger core also writes `definition.settled` as
+`retired`, with a null hash and the cause the core passes, when the spent one-shot has a runtime
+change in force.
+
 ## The snapshot hash
 
 The snapshot hash is the hash of one canonical form of the definitions in force. The persona enters
@@ -386,11 +445,11 @@ repo it names and its revision to both hashes. A persona, a snapshot or a skill 
 keeps its first row. The definitions in force are the newest seed, and every record takes its
 snapshot hash from it.
 
-| Result    | When                                                                                                                                                                                          | Writes                                            |
-| --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
-| Seeded    | The source, repo, revision, content hash or snapshot hash differs from the last, a written skill or a runtime rule change becomes adopted, or a rule change proposal is withdrawn or proposed | The rows                                          |
-| Unchanged | The newest seed holds the same source, repo, revision and both hashes, no written skill or runtime rule change becomes adopted, and no rule change proposal is withdrawn or proposed          | Only the record of an adopted skill that lacks it |
-| Refused   | The snapshot failed to read, parse or validate                                                                                                                                                | Nothing                                           |
+| Result    | When                                                                                                                                                                                                                                                                 | Writes                                            |
+| --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
+| Seeded    | The source, repo, revision, content hash or snapshot hash differs from the last, a written skill, a runtime rule change or a runtime task change becomes adopted, a runtime task change finds a new repo version, or a rule change proposal is withdrawn or proposed | The rows                                          |
+| Unchanged | The newest seed holds the same source, repo, revision and both hashes, no written skill or runtime change becomes adopted, no runtime task change finds a new repo version, and no rule change proposal is withdrawn or proposed                                     | Only the record of an adopted skill that lacks it |
+| Refused   | The snapshot failed to read, parse or validate                                                                                                                                                                                                                       | Nothing                                           |
 
 A task definition that holds a fault refuses the seed too. A refused seed comes back as a value with
 its error and the definitions still in force, never as a throw, so the caller reports the refusal

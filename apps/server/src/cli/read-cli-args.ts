@@ -66,6 +66,12 @@ const RULE_RESOLVE_OPTIONS = {
   keep: { type: 'enum', choices: ['nixie', 'repo'], required: true },
 } as const;
 
+const DEFINITION_RESOLVE_OPTIONS = {
+  ...CLI_OPTIONS,
+  definitionID: { type: 'positional', required: true },
+  keep: { type: 'enum', choices: ['nixie', 'repo'], required: true },
+} as const;
+
 const PROPOSAL_ID_OPTIONS = {
   ...CLI_OPTIONS,
   proposalID: { type: 'positional', required: true },
@@ -96,6 +102,7 @@ const CONTACT_UNMARK_OPTIONS = {
 type ActionOptions =
   | typeof CLI_OPTIONS
   | typeof RULE_RESOLVE_OPTIONS
+  | typeof DEFINITION_RESOLVE_OPTIONS
   | typeof PROPOSAL_ID_OPTIONS
   | typeof MANDATE_ID_OPTIONS
   | typeof CONTACT_MARK_OPTIONS
@@ -104,6 +111,7 @@ type ActionOptions =
 
 const ACTION_OPTIONS: Readonly<Record<string, ActionOptions>> = {
   'rules resolve': RULE_RESOLVE_OPTIONS,
+  'definitions resolve': DEFINITION_RESOLVE_OPTIONS,
   'proposals approve': PROPOSAL_ID_OPTIONS,
   'proposals reject': PROPOSAL_ID_OPTIONS,
   'mandates end': MANDATE_ID_OPTIONS,

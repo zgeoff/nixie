@@ -12,6 +12,7 @@ import type {
   DefinitionsInForce,
   DefinitionsSnapshot,
   DefinitionsTables,
+  RepoTask,
   SkillRef,
   SkillVersion,
   SourceKind,
@@ -44,6 +45,12 @@ export interface SeedPlan {
   readonly rules: RuleStoreWrite;
   readonly proposals: RuleProposalChange;
   readonly built: DefinitionsSnapshot;
+
+  // the task definitions that the repo holds, before any runtime change
+  readonly repoTasks: readonly RepoTask[];
+
+  // the settles and moves of runtime task changes, written after the seed record
+  readonly taskRecords: readonly RecordInput[];
 
   readonly previous: DefinitionsInForce | null;
 }
@@ -215,6 +222,7 @@ async function writeSeedRecord(
           tool: held.tool,
           remove: [...held.remove],
         })),
+        repoTasks: plan.repoTasks.map((task) => ({ id: task.id, hash: task.hash })),
         unapplied: [...plan.unapplied],
         skipped: [...plan.skipped],
         rules: {
@@ -238,6 +246,7 @@ async function writeSeedRecord(
       },
     },
     ...buildProposalRecords(plan),
+    ...plan.taskRecords,
   ]);
 
   invariant(record);
