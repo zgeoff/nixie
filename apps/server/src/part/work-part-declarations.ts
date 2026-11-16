@@ -15,13 +15,15 @@ import {
   sandboxRunner,
   withdrawDefinitionTaskInTransaction,
 } from '@heynixie/tasks';
-import { startTriggerSources } from '@heynixie/triggers';
+import { buildScheduleSource, startTriggerSources } from '@heynixie/triggers';
 import { runDefinitionsSeed } from '../definition/run-definitions-seed';
 import { startDefinitionsExports } from '../definition/start-definitions-exports';
 import { queueCheckRunner } from '../queue/queue-check-runner';
 import { startQueueCheckTask } from '../queue/start-queue-check-task';
 import { runInForceSeedAndWake } from '../seed/run-in-force-seed-and-wake';
 import { startSeedPoll } from '../seed/start-seed-poll';
+import { makeReadLastMessageAt } from '../server/make-read-last-message-at';
+import { makeReadZone } from '../server/make-read-zone';
 import { startServerBackups } from '../server/start-server-backups';
 import { runUnknownTaskStep } from '../task/run-unknown-task-step';
 import { startSandboxTaskRunner } from '../task/start-sandbox-task-runner';
@@ -73,9 +75,16 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
     needs: ['server_parts', 'conversation_task'],
     start: async (reader) => {
       const parts = reader.get('server_parts');
+      const writer = parts.context.log.writer;
 
-      // No trigger source exists yet, so the core starts with an empty list.
-      const sources = await startTriggerSources([], {
+      const scheduleSource = buildScheduleSource({
+        db: writer.db,
+        clock: parts.context.clock,
+        readZone: makeReadZone(writer, writer.db, parts.config.time.default_zone),
+        readLastMessageAt: makeReadLastMessageAt(writer),
+      });
+
+      const sources = await startTriggerSources([scheduleSource], {
         log: parts.context.log,
         clock: parts.context.clock,
         definitions: parts.context.definitions,
