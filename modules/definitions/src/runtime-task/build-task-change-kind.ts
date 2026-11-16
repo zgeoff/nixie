@@ -158,6 +158,9 @@ async function readTaskExport(db: Kysely<unknown>): Promise<TaskExport | null> {
   return { exportID, changes };
 }
 
+const storedFormSchema = z.record(z.string(), z.json());
+const storedFilesSchema = z.record(z.string(), z.string());
+
 async function readVersions(
   db: Kysely<unknown>,
   hashes: readonly string[],
@@ -179,8 +182,8 @@ async function readVersions(
       {
         definitionID: row.definition_id,
         hash: row.definition_hash,
-        form: JSON.parse(row.form),
-        files: JSON.parse(row.files),
+        form: storedFormSchema.parse(JSON.parse(row.form)),
+        files: storedFilesSchema.parse(JSON.parse(row.files)),
       },
     ]),
   );

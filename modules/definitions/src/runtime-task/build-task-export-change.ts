@@ -72,7 +72,8 @@ export function buildTaskExportChange(input: TaskExportInput): DefinitionsChange
 
 function renderBody(changes: readonly TaskExportChange[]): string {
   const lines = changes.map((change) => {
-    const name = change.version === null ? '' : ` (${String(change.version.form['name'])})`;
+    const formName = change.version?.form['name'];
+    const name = typeof formName === 'string' ? ` (${formName})` : '';
 
     return `- \`${change.definitionID}\`: ${change.operation}${name}`;
   });

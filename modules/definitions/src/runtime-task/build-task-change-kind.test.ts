@@ -177,7 +177,7 @@ test('it rewrites the same pull request for a second runtime change', async () =
 
   const exports = await readTestTaskDefinitionExports(ctx.writer);
 
-  expect(exports.map((row) => row.state).toSorted()).toStrictEqual(['closed', 'opened']);
+  expect(exports.map((row) => row.state)).toIncludeSameMembers(['closed', 'opened']);
 });
 
 test('it closes the open pull request once the repo adopts the last change', async () => {
