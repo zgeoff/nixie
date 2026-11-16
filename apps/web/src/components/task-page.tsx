@@ -5,6 +5,7 @@ import { useLiveTaskList } from '../task/use-live-task-list';
 import type { StartTimer } from '../utils/start-platform-timer';
 import { useNixieClient } from '../utils/use-nixie-client';
 import { Conversation } from './conversation';
+import { TaskMark } from './task-mark';
 import { TaskSummary } from './task-summary';
 
 export interface TaskPageProps {
@@ -34,7 +35,10 @@ export function TaskPage(props: TaskPageProps): ReactNode {
       })}
       taskHeader={
         task === undefined ? undefined : (
-          <TaskSummary isLinked={false} task={task} tasks={listed.tasks} />
+          <>
+            <TaskSummary isLinked={false} task={task} tasks={listed.tasks} />
+            <TaskMark task={task} />
+          </>
         )
       }
       thread={props.taskID}

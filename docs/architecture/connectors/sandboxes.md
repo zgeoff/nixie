@@ -102,12 +102,14 @@ system task's row; each harness record names its rows in `sizeRows`. Its life fo
    survives a restart of nixie. This covers a stopped or failed task too, because a restart of the
    task carries on in the same session. A sandbox on an image that the release no longer holds goes
    at the start, and the task's next step creates a new one.
-4. When the task is done or closed, the runner destroys the sandbox.
+4. When the task is done or closed, the runner destroys the sandbox. A disposable task closes after
+   its report, so its sandbox goes then, and a kept task's sandbox sleeps until the task closes.
 
 A close of an idle task runs no step, so no step can tell the runner that the task ended. The runner
 looks for done and closed tasks among the sandbox owners once when it starts, and again after each
-record commit. A destroy that fails stays for the next look, and the other ended tasks' sandboxes go
-at once.
+record commit. A destroy that fails is logged as `sandbox.remove_failed`, and the close stays
+committed. The task stays for the next look and for the next start's recovery, and the other ended
+tasks' sandboxes go at once.
 
 A sandbox can still go missing, such as when the host loses the imp. The next step of the task then
 creates a new sandbox, and the guest opens a new session from the log.

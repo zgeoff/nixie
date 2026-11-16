@@ -26,7 +26,11 @@ test('it moves the cursor over the contiguous run of acknowledged inbox records'
     readStepCursor(tx, claim.lease.workID, [first.sequence, third.sequence]),
   );
 
-  expect(cursor).toStrictEqual({ readCursor: first.sequence, hasUnread: true });
+  expect(cursor).toStrictEqual({
+    readCursor: first.sequence,
+    hasUnread: true,
+    hasUnreadInput: true,
+  });
 });
 
 test('it leaves nothing unread once the step acknowledges every inbox record', async () => {
@@ -48,7 +52,11 @@ test('it leaves nothing unread once the step acknowledges every inbox record', a
     readStepCursor(tx, claim.lease.workID, [message.sequence]),
   );
 
-  expect(cursor).toStrictEqual({ readCursor: message.sequence, hasUnread: false });
+  expect(cursor).toStrictEqual({
+    readCursor: message.sequence,
+    hasUnread: false,
+    hasUnreadInput: false,
+  });
 });
 
 test('it leaves nothing unread when only a message that did not wake the task stays unread', async () => {
@@ -89,5 +97,5 @@ test('it leaves nothing unread when only a message that did not wake the task st
     readStepCursor(tx, claim.lease.workID, [wake.sequence]),
   );
 
-  expect(cursor).toStrictEqual({ readCursor: 0, hasUnread: false });
+  expect(cursor).toStrictEqual({ readCursor: 0, hasUnread: false, hasUnreadInput: true });
 });

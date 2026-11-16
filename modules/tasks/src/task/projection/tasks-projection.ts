@@ -25,7 +25,7 @@ export const tasksProjection: Projection = {
 
     const parsed = parseTaskRecord(record);
 
-    if (parsed === null || parsed.kind === 'timer.fired') {
+    if (parsed === null || parsed.kind === 'timer.fired' || parsed.kind === 'task.mark_set') {
       return [];
     }
 
@@ -79,7 +79,10 @@ async function updateInbox(
   return row === undefined ? [] : [taskID];
 }
 
-type TaskRowRecord = Exclude<TaskRecord, { readonly kind: 'timer.fired' }>;
+type TaskRowRecord = Exclude<
+  TaskRecord,
+  { readonly kind: 'timer.fired' } | { readonly kind: 'task.mark_set' }
+>;
 
 async function applyTaskRecord(
   db: Transaction<TasksTables>,

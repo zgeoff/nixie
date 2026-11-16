@@ -12,6 +12,9 @@ export interface StartedTaskSeed {
   readonly brief: string;
   readonly options?: Partial<TaskRunOptions>;
   readonly hopLimit?: number;
+
+  // a seeded task stays open unless the seed marks it disposable
+  readonly disposable?: boolean;
 }
 
 export async function seedTask(context: TasksContext, seed: StartedTaskSeed): Promise<string> {
@@ -35,6 +38,7 @@ export async function seedTask(context: TasksContext, seed: StartedTaskSeed): Pr
     },
     hopLimit: seed.hopLimit ?? 6,
     stepRunID: buildStepRunID(seed.starter),
+    disposable: seed.disposable ?? false,
   });
 
   invariant(outcome.status === 'started', 'the seeded start is valid');

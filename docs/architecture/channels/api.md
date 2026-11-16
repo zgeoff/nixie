@@ -125,6 +125,12 @@ not offer gets `RUNNER_LACKS_CONTROL`, and a task that does not exist gets `TASK
 refusal keeps no result under its action ID, so a retry of the same action runs the control again
 against the state the task holds then.
 
+A seventh checked action, `tasks.setDisposable`, takes a task ID and a `disposable` value and writes
+a `task.mark_set` record. It gets `TASK_NOT_FOUND` for an unknown task, `TASK_HAS_NO_MARK` for a
+task that carries no mark, such as the conversation, and `TASK_STATE_REFUSED` with the state for a
+closed or done task. A change never closes a task: the close control does. The listed task holds
+`disposable`, which is `null` for a task with no mark, and `closedBy` for a closed task.
+
 An action read lists a task's queued actions, which a stop cancels, apart from its started ones,
 which run on to their outcome, so a client shows what a stop does before the user confirms it. While
 nixie is paused, the resume control exempts the task from the pause, so the task runs while the rest

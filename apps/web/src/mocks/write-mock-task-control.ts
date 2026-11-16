@@ -112,6 +112,10 @@ export async function writeMockTaskControl(
       draft.isPauseRequested = controlled.isPauseRequested;
       draft.resumeState = fields.resumeState === undefined ? draft.resumeState : fields.resumeState;
       draft.lastActivityAt = controlled.controlledAt;
+
+      if (plan.kind === 'task.closed') {
+        draft.closedBy = 'owner';
+      }
     },
   });
 

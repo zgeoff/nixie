@@ -65,6 +65,13 @@ export function buildSandboxStartInput(bounds: TaskStartBounds): JSONObject {
           'the fields the task must pass with its report, beside its summary; nixie checks that ' +
           'they match this shape and never that they are true',
       },
+      disposable: {
+        type: 'boolean',
+        description:
+          'true unless you set it: a disposable task closes once it reports and takes no more ' +
+          'messages. Set it to false for a task you will message again with more work, and ' +
+          'close that task with task.close when you no longer need it',
+      },
       limits: {
         type: 'object',
         properties: {

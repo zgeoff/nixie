@@ -53,6 +53,7 @@ async function setupTest() {
         },
         hopLimit: 6,
         stepRunID: buildStepRunID(starter),
+        disposable: false,
       });
 
       invariant(outcome.status === 'started');

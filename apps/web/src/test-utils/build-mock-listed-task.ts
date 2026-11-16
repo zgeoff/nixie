@@ -9,6 +9,7 @@ export function buildMockListedTask(overrides: Partial<ListedTask> = {}): Listed
     actions: { cancelled: 0, queued: 0, started: 0 },
     brief: faker.lorem.sentence(),
     controls: [...taskControls],
+    disposable: null,
     isPauseRequested: false,
     isPausedByNixie: false,
     isTakingMessages: true,

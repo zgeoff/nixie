@@ -54,3 +54,21 @@ test('it refuses a state outside the task states', () => {
     taskCreatedCodec.decode({ taskID: 'task-1', isConversation: false, state: 'sleeping' }),
   ).toThrow(/"path": \[\s+"state"\s+\]/u);
 });
+
+test('it decodes the mark of a started task', () => {
+  const payload = taskCreatedCodec.encode({
+    taskID: 'k3x9m2p7qa',
+    isConversation: false,
+    state: 'ready',
+    startedBy: 'conversation',
+    disposable: true,
+  });
+
+  expect(taskCreatedCodec.decode(payload)).toStrictEqual({
+    taskID: 'k3x9m2p7qa',
+    isConversation: false,
+    state: 'ready',
+    startedBy: 'conversation',
+    disposable: true,
+  });
+});

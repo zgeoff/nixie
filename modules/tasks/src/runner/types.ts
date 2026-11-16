@@ -13,6 +13,7 @@ export interface TaskStartEnvelope {
   readonly name: string;
   readonly brief: string;
   readonly report?: TaskReport | undefined;
+  readonly disposable?: boolean | undefined;
   readonly limits?:
     | { readonly turns?: number | undefined; readonly dollars?: number | undefined }
     | undefined;

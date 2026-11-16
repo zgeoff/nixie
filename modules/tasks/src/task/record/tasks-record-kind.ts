@@ -12,6 +12,7 @@ export type TasksRecordKind =
   | 'task.stopped'
   | 'task.restarted'
   | 'task.closed'
+  | 'task.mark_set'
   | 'task.interrupted'
   | 'task.limit_reached'
   | 'task.failed_turn_spent'

@@ -24,6 +24,7 @@ import { writeMockNixieControl } from './write-mock-nixie-control';
 import { writeMockRetry } from './write-mock-retry';
 import type { MockTaskControl } from './write-mock-task-control';
 import { writeMockTaskControl } from './write-mock-task-control';
+import { writeMockTaskMark } from './write-mock-task-mark';
 
 const os = mockImplementer;
 
@@ -292,6 +293,31 @@ export const mockAPIRouter = os.router({
     stop: os.tasks.stop.handler((options) => runMockControl('stop', options)),
     restart: os.tasks.restart.handler((options) => runMockControl('restart', options)),
     interrupt: os.tasks.interrupt.handler((options) => runMockControl('interrupt', options)),
+    setDisposable: os.tasks.setDisposable.handler(async (options) => {
+      requireMockSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
+
+      const result = await writeMockTaskMark(options.input);
+
+      return match(result)
+        .with({ status: 'marked' }, (marked) => ({
+          changedAt: marked.changedAt,
+          disposable: marked.disposable,
+          taskID: marked.taskID,
+        }))
+        .with({ status: 'task_not_found' }, () => {
+          throw options.errors.TASK_NOT_FOUND();
+        })
+        .with({ status: 'no_mark' }, () => {
+          throw options.errors.TASK_HAS_NO_MARK();
+        })
+        .with({ status: 'state_refused' }, (refused) => {
+          throw options.errors.TASK_STATE_REFUSED({ data: { state: refused.state } });
+        })
+        .with({ status: 'reused' }, () => {
+          throw options.errors.CLIENT_ACTION_ID_REUSED();
+        })
+        .exhaustive();
+    }),
     close: os.tasks.close.handler(async (options) => {
       requireMockSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
 

@@ -8,6 +8,7 @@ import { planReadCursor } from './plan-read-cursor';
 interface StepCursor {
   readonly readCursor: number;
   readonly hasUnread: boolean;
+  readonly hasUnreadInput: boolean;
 }
 
 export async function readStepCursor(
@@ -41,6 +42,10 @@ export async function readStepCursor(
     acknowledged,
   );
 
+  const hasUnreadInput = inbox.some(
+    (record) => record.sequence > readCursor && !read.has(record.sequence),
+  );
+
   // A message that did not wake the task waits for its next wake, so only waking input left
   // unread makes the task ready again.
   const hasUnread = inbox.some(
@@ -50,5 +55,5 @@ export async function readStepCursor(
       isWakingRecord({ ...record, payload: parseJSONObject(record.payload) }),
   );
 
-  return { readCursor, hasUnread };
+  return { readCursor, hasUnread, hasUnreadInput };
 }

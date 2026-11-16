@@ -7,10 +7,13 @@ import { requireLease } from '../lease/require-lease';
 import { waitAtFaultPoint } from '../lease/wait-at-fault-point';
 import { probePauseRequested } from '../pause/probe-pause-requested';
 import { readOpenRun } from '../run/read-open-run';
+import type { RunEndCause } from '../run/run-end-cause';
 import { taskRunReportRequestedCodec } from '../run/task-run-report-requested-codec';
 import type { TaskRun } from '../run/types';
 import { writeRunEndInTransaction } from '../run/write-run-end-in-transaction';
+import { readTaskMark } from '../task/read-task-mark';
 import { buildPausedRecord } from '../task/record/build-paused-record';
+import { writeTaskCloseInTransaction } from '../task/write-task-close-in-transaction';
 import type {
   ResumeState,
   StepResult,
@@ -80,7 +83,7 @@ export async function writeStepCommit(
 
     const hasOpenWait = await probeOpenWait(tx, taskID);
 
-    await writeRunEndInTransaction(tx, context, {
+    const ending = await writeRunEndInTransaction(tx, context, {
       taskID,
       trigger: {
         kind: 'step',
@@ -97,6 +100,25 @@ export async function writeStepCommit(
       endedBy: `step:${claim.stepKey}`,
       stepKey: claim.stepKey,
     });
+
+    const mark = ending === null ? null : await readTaskMark(tx, taskID);
+
+    if (
+      ending !== null &&
+      isDisposableEnd(ending.cause) &&
+      nextState === 'waiting' &&
+      !cursor.hasUnreadInput &&
+      resumeState === null &&
+      !hasOpenWait &&
+      mark?.disposable === true
+    ) {
+      await writeTaskCloseInTransaction(tx, context, {
+        taskID,
+        stepKey: claim.stepKey,
+        closedBy: 'disposable',
+        endedBy: `step:${claim.stepKey}`,
+      });
+    }
 
     await resetLease(tx, claim.lease);
   }).catch((error: unknown) => {
@@ -180,6 +202,11 @@ async function probeOpenWait(tx: Transaction<unknown>, taskID: string): Promise<
     .executeTakeFirst();
 
   return wait !== undefined;
+}
+
+// A limit end pauses the task so the owner can raise the limit, so only these causes close it.
+function isDisposableEnd(cause: RunEndCause): boolean {
+  return cause === 'reported' || cause === 'no_report' || cause === 'no_work';
 }
 
 function isStepKeyConflict(error: unknown): boolean {

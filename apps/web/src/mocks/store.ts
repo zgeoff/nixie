@@ -393,7 +393,9 @@ const taskControlSchema = z.enum(['pause', 'resume', 'stop', 'restart', 'close',
 const tasks = new Collection({
   schema: z.object({
     brief: z.string().default(() => faker.lorem.sentence()),
+    closedBy: z.enum(['owner', 'nixie', 'disposable']).optional(),
     controls: z.array(taskControlSchema).default(() => [...taskControls]),
+    disposable: z.boolean().nullable().default(null),
     isPauseRequested: z.boolean().default(false),
     isTakingMessages: z.boolean().default(true),
     lastActivityAt: z.date().default(() => new Date()),
@@ -425,6 +427,15 @@ const taskControlActions = new Collection({
     controlledAt: z.date(),
     isPauseRequested: z.boolean(),
     state: z.enum(['ready', 'running', 'waiting', 'paused', 'stopped', 'done', 'failed', 'closed']),
+    taskID: z.string(),
+  }),
+});
+
+const taskMarkActions = new Collection({
+  schema: z.object({
+    changedAt: z.date(),
+    clientActionID: z.uuid(),
+    disposable: z.boolean(),
     taskID: z.string(),
   }),
 });
@@ -472,6 +483,7 @@ export const store = {
       forgetActions,
       retryActions,
       taskControlActions,
+      taskMarkActions,
       taskActions,
       tasks,
       memoryActions,
@@ -501,5 +513,6 @@ export const store = {
   sessions,
   taskActions,
   taskControlActions,
+  taskMarkActions,
   tasks,
 };

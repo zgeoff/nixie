@@ -36,6 +36,7 @@ async function setupTest() {
         stored: { kind: 'built', options },
         hopLimit: 7,
         stepRunID: buildStepRunID(starter.claim),
+        disposable: false,
       }),
     readStartRecords: async (afterSequence: number) => {
       const entries = await readRecords(tasks.context.log, {
@@ -77,7 +78,11 @@ test('it writes the task and its brief record in one start, with the brief unrea
   expect(records.map((record) => record.kind)).toStrictEqual(['task.created', 'task_message']);
 
   expect(created).toMatchObject({
-    payload: { startedBy: 'conversation', briefMessageID: brief?.payload['messageID'] },
+    payload: {
+      startedBy: 'conversation',
+      briefMessageID: brief?.payload['messageID'],
+      disposable: false,
+    },
     erasable: { status: 'readable', fields: { name: 'Tide tables' } },
   });
 

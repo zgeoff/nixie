@@ -11,7 +11,11 @@ import type { ReceivedFrame, StubGuestSandboxes } from '@heynixie/sandbox/test-u
 import { buildStubGuestSandboxes } from '@heynixie/sandbox/test-utils';
 import type { ScriptedModel } from '@heynixie/testing';
 import { createRunTemplate, startScriptedModel, waitForCondition } from '@heynixie/testing';
-import { readTestToolNames, sendTestToolCall } from '@heynixie/tools/test-utils';
+import {
+  readTestToolNames,
+  sendTestToolCall,
+  withTestToolClient,
+} from '@heynixie/tools/test-utils';
 import invariant from 'tiny-invariant';
 import { runCLI } from '../cli/run-cli';
 import type { SandboxAdapterOptions } from '../sandbox/create-sandbox-adapter';
@@ -73,6 +77,9 @@ export interface InProcessNixie extends BootFiles {
   readonly toolResults: readonly TestToolResult[];
 
   readonly readToolNames: (received: ReceivedFrame) => Promise<readonly string[]>;
+
+  // The tool list as the guest's model reads it: each tool's name, description and schemas.
+  readonly readTools: (received: ReceivedFrame) => Promise<readonly unknown[]>;
 
   // Calls a tool as the guest of a turn does, and returns the result text.
   readonly callTool: (
@@ -313,6 +320,20 @@ function startNixieRun(start: InProcessNixieFiles): InProcessNixie {
       return readTestToolNames({
         target: start.host.toolTarget({ id: received.sandboxID, owner: received.owner }),
         token: received.frame.tools.token,
+      });
+    },
+    readTools: (received) => {
+      invariant(received.frame.type === 'turn', 'only a turn frame carries a tool route');
+
+      const route = {
+        target: start.host.toolTarget({ id: received.sandboxID, owner: received.owner }),
+        token: received.frame.tools.token,
+      };
+
+      return withTestToolClient(route, async (client) => {
+        const listed = await client.listTools();
+
+        return listed.tools;
       });
     },
     callTool: (received, name, input) => {

@@ -1,12 +1,17 @@
 import { expect, onTestFinished, test } from 'bun:test';
 import { readRecords } from '@heynixie/log';
 import invariant from 'tiny-invariant';
+import { readInbox } from '../inbox/read-inbox';
 import { setFaultPointHandler } from '../lease/set-fault-point-handler';
 import { claimTask } from '../task/projection/claim-task';
 import { writeInboxRecords } from '../task/projection/write-inbox-records';
 import { writeTaskControl } from '../task/write-task-control';
+import { buildStartedDirectory } from '../test-utils/build-started-directory';
 import { createTestClaim } from '../test-utils/create-test-claim';
+import { seedConversationStep } from '../test-utils/seed-conversation-step';
+import { seedTask } from '../test-utils/seed-task';
 import { startTestTasks } from '../test-utils/start-test-tasks';
+import { writeTestTaskMessage } from '../test-utils/write-test-task-message';
 import type { FaultPointID, TasksTables } from '../types';
 import { StepAlreadyCommittedError } from './step-already-committed-error';
 import { writeStepCommit } from './write-step-commit';
@@ -18,7 +23,46 @@ async function setupTest() {
     TasksTables & Readonly<{ records: { readonly step_key: string | null } }>
   >();
 
-  return { ...tasks, db };
+  return {
+    ...tasks,
+    db,
+    startTask: async (disposable: boolean) => {
+      const starter = await seedConversationStep(tasks.context);
+
+      const taskID = await seedTask(tasks.context, {
+        starter: starter.claim,
+        name: 'Tide tables',
+        brief: 'Find the high tides for Saturday.',
+        disposable,
+      });
+
+      const claim = await claimTask(tasks.context, {
+        holder: 'runner-a',
+        leaseMs: 60_000,
+        taskID,
+      });
+
+      invariant(claim, 'the started task is ready to claim');
+
+      const inbox = await readInbox(tasks.context, taskID);
+
+      return { taskID, claim, brief: inbox.map((record) => record.sequence) };
+    },
+    readState: async (taskID: string) => {
+      const task = await db
+        .selectFrom('tasks')
+        .select('state')
+        .where('task_id', '=', taskID)
+        .executeTakeFirstOrThrow();
+
+      return task.state;
+    },
+    readKinds: async (kind: 'task.closed' | 'task_message' | 'task.run_ended') => {
+      const entries = await readRecords(tasks.context.log, { afterSequence: 0, kinds: [kind] });
+
+      return entries.map((entry) => entry.record);
+    },
+  };
 }
 
 test('it moves a task that waits with nothing unread to waiting', async () => {
@@ -386,4 +430,185 @@ test('it lets a task whose pause waited on its last step finish as done', async 
   const task = await ctx.db.selectFrom('tasks').select('state').executeTakeFirstOrThrow();
 
   expect(task.state).toBe('done');
+});
+
+test('it closes a disposable task whose task run ends reported, and still sends its report', async () => {
+  const ctx = await setupTest();
+  const task = await ctx.startTask(true);
+
+  await writeStepCommit(ctx.context, task.claim, {
+    next: 'done',
+    records: [],
+    acknowledged: task.brief,
+    run: { activity: 'worked', report: { summary: 'High tide is at 06:42.' } },
+  });
+
+  const closed = await ctx.readKinds('task.closed');
+  const ended = await ctx.readKinds('task.run_ended');
+  const messages = await ctx.readKinds('task_message');
+  const currentState = await ctx.readState(task.taskID);
+
+  expect(currentState).toBe('closed');
+
+  expect(closed.map((record) => record.payload)).toStrictEqual([
+    {
+      taskID: task.taskID,
+      stepKey: task.claim.stepKey,
+      timerIDs: [],
+      closedBy: 'disposable',
+    },
+  ]);
+
+  expect(ended.map((record) => record.payload['cause'])).toStrictEqual(['reported']);
+  expect(messages.map((record) => record.payload['kind'])).toStrictEqual(['request', 'report']);
+});
+
+test('it closes a disposable task whose first step did no work', async () => {
+  const ctx = await setupTest();
+  const task = await ctx.startTask(true);
+
+  await writeStepCommit(ctx.context, task.claim, {
+    next: 'wait',
+    records: [],
+    acknowledged: task.brief,
+    run: { activity: 'none' },
+  });
+
+  const ended = await ctx.readKinds('task.run_ended');
+  const currentState = await ctx.readState(task.taskID);
+
+  expect(currentState).toBe('closed');
+  expect(ended.map((record) => record.payload['cause'])).toStrictEqual(['no_work']);
+});
+
+test('it keeps a kept task open after its task run ends reported', async () => {
+  const ctx = await setupTest();
+  const task = await ctx.startTask(false);
+
+  await writeStepCommit(ctx.context, task.claim, {
+    next: 'done',
+    records: [],
+    acknowledged: task.brief,
+    run: { activity: 'worked', report: { summary: 'High tide is at 06:42.' } },
+  });
+
+  const closed = await ctx.readKinds('task.closed');
+  const currentState = await ctx.readState(task.taskID);
+
+  expect(currentState).toBe('waiting');
+  expect(closed).toStrictEqual([]);
+});
+
+test('it keeps a disposable task open when the task run ends at a limit', async () => {
+  const ctx = await setupTest();
+  const task = await ctx.startTask(true);
+
+  await writeStepCommit(ctx.context, task.claim, {
+    next: 'wait',
+    records: [],
+    acknowledged: task.brief,
+    run: { activity: 'worked', limit: { meter: 'turns', used: 25, limit: 25 } },
+  });
+
+  const closed = await ctx.readKinds('task.closed');
+  const currentState = await ctx.readState(task.taskID);
+
+  expect(currentState).toBe('paused');
+  expect(closed).toStrictEqual([]);
+});
+
+test('it keeps a disposable task open when input arrived that it did not read', async () => {
+  const ctx = await setupTest();
+  const task = await ctx.startTask(true);
+
+  await writeInboxRecords(ctx.context, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: task.taskID,
+      contentSource: 'owner',
+      erasable: { text: 'one more thing' },
+    },
+  ]);
+
+  await writeStepCommit(ctx.context, task.claim, {
+    next: 'done',
+    records: [],
+    acknowledged: task.brief,
+    run: { activity: 'worked', report: { summary: 'High tide is at 06:42.' } },
+  });
+
+  const closed = await ctx.readKinds('task.closed');
+  const currentState = await ctx.readState(task.taskID);
+
+  expect(currentState).toBe('ready');
+  expect(closed).toStrictEqual([]);
+});
+
+test('it keeps a disposable task open when a message that did not wake it is unread', async () => {
+  const ctx = await setupTest();
+  const task = await ctx.startTask(true);
+
+  await writeInboxRecords(ctx.context, [
+    {
+      kind: 'task_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: task.taskID,
+      payload: {
+        messageID: 'p7rw2c9tln',
+        from: 'conversation',
+        to: task.taskID,
+        kind: 'chat',
+        replyTo: null,
+        onBehalfOf: [],
+        hop: 1,
+        hopLimit: 20,
+        wake: true,
+        woke: false,
+        source: 'task:conversation',
+      },
+      erasable: { body: 'read this on your next run' },
+    },
+  ]);
+
+  await writeStepCommit(ctx.context, task.claim, {
+    next: 'done',
+    records: [],
+    acknowledged: task.brief,
+    run: { activity: 'worked', report: { summary: 'High tide is at 06:42.' } },
+  });
+
+  const closed = await ctx.readKinds('task.closed');
+  const currentState = await ctx.readState(task.taskID);
+
+  expect(currentState).toBe('waiting');
+  expect(closed).toStrictEqual([]);
+});
+
+test('it keeps a disposable task open while it waits on a reply', async () => {
+  const ctx = await setupTest();
+  const task = await ctx.startTask(true);
+
+  await writeTestTaskMessage(ctx.context, buildStartedDirectory(task.taskID), {
+    from: task.taskID,
+    to: 'conversation',
+    kind: 'question',
+    body: 'Which harbour?',
+    replyTo: null,
+    onBehalfOf: [],
+    wake: true,
+  });
+
+  await writeStepCommit(ctx.context, task.claim, {
+    next: 'done',
+    records: [],
+    acknowledged: task.brief,
+    run: { activity: 'worked', report: { summary: 'Asked which harbour.' } },
+  });
+
+  const closed = await ctx.readKinds('task.closed');
+  const currentState = await ctx.readState(task.taskID);
+
+  expect(currentState).toBe('waiting');
+  expect(closed).toStrictEqual([]);
 });

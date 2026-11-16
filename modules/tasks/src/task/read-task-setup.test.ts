@@ -128,6 +128,7 @@ test('it reads the runner, report and limits of a start that stored an envelope,
     },
     hopLimit: 6,
     stepRunID: buildStepRunID(starter.claim),
+    disposable: false,
   });
 
   invariant(outcome.status === 'started');

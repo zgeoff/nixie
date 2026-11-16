@@ -20,3 +20,25 @@ test('it refuses a payload that names no task', () => {
     /"path": \[\s+"taskID"\s+\]/u,
   );
 });
+
+test('it decodes who closed the task', () => {
+  const payload = taskClosedCodec.encode({
+    taskID: 'k3x9m2p7qa',
+    stepKey: null,
+    timerIDs: [],
+    closedBy: 'nixie',
+  });
+
+  expect(taskClosedCodec.decode(payload)).toStrictEqual({
+    taskID: 'k3x9m2p7qa',
+    stepKey: null,
+    timerIDs: [],
+    closedBy: 'nixie',
+  });
+});
+
+test('it refuses a closer that nixie does not know', () => {
+  expect(() =>
+    taskClosedCodec.decode({ taskID: 'k3x9m2p7qa', stepKey: null, timerIDs: [], closedBy: 'time' }),
+  ).toThrow(/"path": \[\s+"closedBy"\s+\]/u);
+});

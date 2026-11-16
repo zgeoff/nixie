@@ -4,8 +4,10 @@ import type { TaskControl, TaskRunnerResolution, TasksTables } from '@heynixie/t
 import {
   pickResolvedControls,
   readOwnerMessageTakers,
+  readTaskClosedBy,
   readTaskDirectory,
   readTaskList,
+  readTaskMark,
   readTasksPausedByNixie,
   waitAtFaultPoint,
 } from '@heynixie/tasks';
@@ -13,6 +15,7 @@ import invariant from 'tiny-invariant';
 import { match } from 'ts-pattern';
 import type { CheckedTaskControlResult } from '../kept/write-checked-task-control';
 import { writeCheckedTaskControl } from '../kept/write-checked-task-control';
+import { writeCheckedTaskMark } from '../kept/write-checked-task-mark';
 import { requireCaller } from '../memory/require-caller';
 import type { APIContext } from '../types';
 import { apiImplementer } from '../utils/api-implementer';
@@ -78,6 +81,39 @@ export function createTaskProcedures(context: APIContext) {
     restart: tasks.restart.handler((options) => runControl(context, 'restart', options)),
     interrupt: tasks.interrupt.handler((options) => runControl(context, 'interrupt', options)),
 
+    setDisposable: tasks.setDisposable.handler(async (options) => {
+      const caller = await requireCaller(
+        context,
+        options.context.sessionToken,
+        options.errors.UNAUTHORIZED,
+      );
+
+      const result = await writeCheckedTaskMark(context, caller, options.input);
+
+      return match(result)
+        .with({ status: 'marked' }, (marked) => ({
+          changedAt: new Date(marked.changedAt),
+          disposable: marked.disposable,
+          taskID: marked.taskID,
+        }))
+        .with({ status: 'unknown_task' }, () => {
+          throw options.errors.TASK_NOT_FOUND();
+        })
+        .with({ status: 'no_mark' }, () => {
+          throw options.errors.TASK_HAS_NO_MARK();
+        })
+        .with({ status: 'state_refused' }, (refused) => {
+          throw options.errors.TASK_STATE_REFUSED({ data: { state: refused.state } });
+        })
+        .with({ status: 'reused' }, () => {
+          throw options.errors.CLIENT_ACTION_ID_REUSED();
+        })
+        .with({ status: 'unauthorized' }, () => {
+          throw options.errors.UNAUTHORIZED();
+        })
+        .exhaustive();
+    }),
+
     close: tasks.close.handler(async (options) => {
       const caller = await requireCaller(
         context,
@@ -118,9 +154,24 @@ async function readListedTasks(context: APIContext, directory: TaskProfiles, lim
     taskIDs.map((taskID) => context.runners.resolve(context, taskID)),
   );
 
+  const marks = await Promise.all(
+    taskIDs.map((taskID) => readTaskMark(context.log.writer.db, taskID)),
+  );
+
+  const closedTasks = listed.filter((task) => task.state === 'closed');
+
+  const closedByList = await Promise.all(
+    closedTasks.map(
+      async (task) => [task.id, await readTaskClosedBy(context.log.writer.db, task.id)] as const,
+    ),
+  );
+
+  const closedByTask = new Map(closedByList);
+
   return listed.map((task, index) => {
     const actions = counts.get(task.id);
     const runner = runners[index];
+    const closedBy = closedByTask.get(task.id);
 
     invariant(actions);
     invariant(runner);
@@ -128,7 +179,9 @@ async function readListedTasks(context: APIContext, directory: TaskProfiles, lim
     return {
       actions,
       brief: task.brief,
+      closedBy: closedBy ?? undefined,
       controls: [...pickResolvedControls(runner)],
+      disposable: marks[index]?.disposable ?? null,
       isPauseRequested: task.isPauseRequested,
       isPausedByNixie: pausedByNixie.has(task.id),
       isTakingMessages: takers.has(task.id),

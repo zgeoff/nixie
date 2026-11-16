@@ -57,7 +57,7 @@ test('it starts a task with its name and brief, and tells the model how its repo
     result: {
       taskID: task.task_id,
       name: 'Garden plan',
-      note: 'The task starts on its brief now, and its report comes back to you as a task message.',
+      note: 'The task starts on its brief now, and its report comes back to you as a task message. The task closes when its work ends; start a task with disposable set to false to keep it open.',
     },
   });
 
@@ -76,6 +76,7 @@ test('it starts a task with its name and brief, and tells the model how its repo
         isConversation: false,
         state: 'ready',
         startedBy: 'conversation',
+        disposable: true,
       },
       erasable: { status: 'readable', fields: { name: 'Garden plan' } },
     },
@@ -353,6 +354,7 @@ test('it shows the model each selectable model as an enum value, with its descri
     tools: expect.toBeObject(),
     report: expect.toBeObject(),
     reportShape: expect.toBeObject(),
+    disposable: expect.toBeObject(),
     limits: expect.toBeObject(),
   });
 });
@@ -661,7 +663,7 @@ test.each(['mcp__nixie__memory_recall', 'memory.recall'])(
       result: {
         taskID: expect.toBeString(),
         name: 'Bed notes',
-        note: 'The task starts on its brief now, and its report comes back to you as a task message.',
+        note: 'The task starts on its brief now, and its report comes back to you as a task message. The task closes when its work ends; start a task with disposable set to false to keep it open.',
       },
     });
 
@@ -806,7 +808,45 @@ test('it tells the model that a task started with no report sends none', async (
     result: {
       taskID: expect.toBeString(),
       name: 'Seed list',
-      note: 'The task starts on its brief now, and it sends you no report.',
+      note: 'The task starts on its brief now, and it sends you no report. The task closes when its work ends; start a task with disposable set to false to keep it open.',
     },
   });
+});
+
+test('it starts a task that is kept open when the start sets disposable to false', async () => {
+  const ctx = await setupTest();
+  const claim = await createTestConversationClaim(ctx.context, 'Track the parcel to Lyon.');
+
+  const tool = buildTaskStartTool(
+    ctx.context,
+    { hopLimit: 20, ownerName: null },
+    buildMockTaskStartBounds(),
+  );
+
+  const outcome = await tool.run(
+    buildMockToolCall({
+      tool: 'task.start',
+      input: { name: 'Parcel', brief: 'Track the parcel.', disposable: false },
+    }),
+    buildMockToolContext({ run: { thread: 'conversation', stepRunID: buildStepRunID(claim) } }),
+  );
+
+  const records = await readRecords(ctx.context.log, {
+    afterSequence: 0,
+    kinds: ['task.created'],
+  });
+
+  expect(outcome).toStrictEqual({
+    status: 'ok',
+    result: {
+      taskID: expect.toBeString(),
+      name: 'Parcel',
+      note: 'The task starts on its brief now, and its report comes back to you as a task message.',
+    },
+  });
+
+  expect(records.map((entry) => entry.record.payload['disposable'])).toStrictEqual([
+    undefined,
+    false,
+  ]);
 });

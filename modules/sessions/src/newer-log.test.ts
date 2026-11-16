@@ -5,6 +5,7 @@ import { modelSessionOpenedCodec } from '@heynixie/models';
 import type { TaskProfile } from '@heynixie/tasks';
 import {
   claimTask,
+  readStartedTaskIDs,
   readTaskDirectory,
   taskCreatedCodec,
   writeTaskLimitRaise,
@@ -567,4 +568,57 @@ test('it raises the limit of a task that a limit end paused, and claims it again
   });
 
   expect(claim?.lease.workID).toBe('t8q6');
+});
+
+test('it lists a started task whose log holds a disposable mark, a change of the mark and a close by nixie', async () => {
+  const ctx = await setupTest();
+
+  const definitions = { snapshotHash: 'sha256:test' };
+
+  await writeRecords(ctx.tasks.context.log, [
+    {
+      kind: 'task.created',
+      definitions,
+      thread: 't2n7',
+      payload: {
+        taskID: 't2n7',
+        isConversation: false,
+        state: 'ready',
+        startedBy: 'conversation',
+        startStep: 'conversation:1',
+        options: {
+          model: null,
+          profile: null,
+          persona: 'none',
+          memory: 'none',
+          tools: ['tasks.list', 'task.message', 'task.report'],
+          report: 'wake',
+          limits: { turns: 25, dollars: 2 },
+        },
+        briefMessageID: 'm3k8',
+        disposable: true,
+      },
+      erasable: { name: 'Market prices' },
+    },
+    {
+      kind: 'task.mark_set',
+      definitions,
+      thread: 't2n7',
+      payload: { taskID: 't2n7', disposable: false },
+    },
+    {
+      kind: 'task.closed',
+      definitions,
+      thread: 't2n7',
+      payload: { taskID: 't2n7', stepKey: null, timerIDs: [], closedBy: 'nixie' },
+    },
+  ]);
+
+  const directory: readonly TaskProfile[] = [];
+
+  const messaging = await readTaskDirectory(ctx.tasks.context, { directory });
+  const ended = await readStartedTaskIDs(ctx.tasks.context, { end: 'ended' });
+
+  expect(messaging.directory.map((profile) => profile.taskID)).toStrictEqual(['t2n7']);
+  expect(ended).toStrictEqual(['t2n7']);
 });
