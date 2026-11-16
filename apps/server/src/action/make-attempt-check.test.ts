@@ -59,7 +59,7 @@ async function setupTest() {
         findDeclaration,
         readInputs: () =>
           Promise.resolve({ rules, contacts: [], tools: new Map(), ownerDestinations: [] }),
-        findJobDestinations: () => [],
+        findTaskDestinations: () => [],
         readConsent: overrides?.readConsent ?? (() => Promise.resolve(null)),
       }),
   });

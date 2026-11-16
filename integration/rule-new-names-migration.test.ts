@@ -137,7 +137,7 @@ deny-old-names:
 
       return { rules: read.rules, contacts: [], tools: read.tools, ownerDestinations: [] };
     },
-    findJobDestinations: () => [],
+    findTaskDestinations: () => [],
     readConsent: () => Promise.resolve(null),
   });
 

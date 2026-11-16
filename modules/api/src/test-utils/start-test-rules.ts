@@ -149,7 +149,7 @@ export async function startTestRules(settings: APIContext['settings'] = defaultA
 
       return { rules: read.rules, contacts: [], tools: read.tools, ownerDestinations: [] };
     },
-    findJobDestinations: () => [],
+    findTaskDestinations: () => [],
   };
 
   const decide = makeDecisionPoint({ ...pointOptions, readConsent: () => Promise.resolve(null) });

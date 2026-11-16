@@ -27,7 +27,7 @@ export interface DecisionPointOptions {
   // the declarations in code, which a snapshot's declaration overrides
   readonly findDeclaration: (tool: string) => EffectDeclaration | null;
   readonly readInputs: (snapshot: string) => Promise<PolicyInputs>;
-  readonly findJobDestinations: (definitionID: string) => readonly string[];
+  readonly findTaskDestinations: (definitionID: string) => readonly string[];
   readonly readConsent: (call: PolicyCall, facts: ConsentFacts) => Promise<ConsentCheck | null>;
 }
 
@@ -125,8 +125,8 @@ async function runRuleStages(run: StageRun): Promise<PolicyDecision> {
   const permissions = pickDestinationPermissions(call.destinations, {
     ownerDestinations: run.inputs.ownerDestinations,
     contacts: run.inputs.contacts,
-    jobDestinations:
-      call.definitionID === null ? [] : run.options.findJobDestinations(call.definitionID),
+    taskDestinations:
+      call.definitionID === null ? [] : run.options.findTaskDestinations(call.definitionID),
     allowRules: allowing.map((entry) => entry.rule),
   });
 

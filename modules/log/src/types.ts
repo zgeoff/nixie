@@ -49,7 +49,7 @@ export type PromptCause =
   | 'ask_rule'
   | 'no_rule';
 
-export type DestinationPermission = 'owner' | 'reply_target' | 'known_contact' | 'job' | 'rule';
+export type DestinationPermission = 'owner' | 'reply_target' | 'known_contact' | 'task' | 'rule';
 
 export type CheckerResult = 'yes' | 'no' | 'unsure' | 'unreachable';
 
