@@ -7,6 +7,7 @@ import { renderIndexBlock } from './render-index-block';
 test('it shows each topic as one row with its count and its items as ID and gist', () => {
   const rows = [
     {
+      itemID: '00000000-0000-4000-8000-000000000065',
       shortID: 'b7kq2m9xza',
       subject: 'owner' as const,
       topic: 'home',
@@ -14,6 +15,7 @@ test('it shows each topic as one row with its count and its items as ID and gist
       createdSequence: 1,
     },
     {
+      itemID: '00000000-0000-4000-8000-000000000032',
       shortID: 'c2hd81mmqa',
       subject: 'owner' as const,
       topic: 'home',
@@ -21,6 +23,7 @@ test('it shows each topic as one row with its count and its items as ID and gist
       createdSequence: 2,
     },
     {
+      itemID: '00000000-0000-4000-8000-000000000030',
       shortID: 'k1n0zz8w2p',
       subject: 'shared' as const,
       topic: 'home',
@@ -98,6 +101,7 @@ test('it folds a topic with no sub-topic to its newest items alone', () => {
 test('it makes two topics that differ by case one row, spelled as its newest item spells it', () => {
   const rows = [
     {
+      itemID: '00000000-0000-4000-8000-000000000058',
       shortID: 'a000000001',
       subject: 'owner' as const,
       topic: 'Garden',
@@ -105,6 +109,7 @@ test('it makes two topics that differ by case one row, spelled as its newest ite
       createdSequence: 1,
     },
     {
+      itemID: '00000000-0000-4000-8000-000000000098',
       shortID: 'a000000002',
       subject: 'owner' as const,
       topic: 'garden',

@@ -28,6 +28,8 @@ export function buildConversationMemoryTools(
     {
       recall: (request) => requireStore().recall(request),
       rate: (request) => requireStore().rate(request),
+      readTopicLines: (request) => requireStore().readTopicLines(request),
+      readTopicCounts: (request) => requireStore().readTopicCounts(request),
       proposals: { listPending: () => requireStore().proposals.listPending() },
       readItemIDMap: (ids) => requireStore().readItemIDMap(ids),
       readShortIDs: (itemIDs) => requireStore().readShortIDs(itemIDs),

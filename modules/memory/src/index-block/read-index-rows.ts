@@ -2,6 +2,7 @@ import type { MemorySubject, MemoryTables, StoreParts } from '../types';
 import { getRowSubject } from '../utils/get-row-subject';
 
 export interface IndexRow {
+  readonly itemID: string;
   readonly shortID: string;
   readonly subject: MemorySubject;
   readonly topic: string;
@@ -34,6 +35,7 @@ export async function readIndexRows(parts: StoreParts): Promise<readonly IndexRo
 
     return [
       {
+        itemID: row.item_id,
         shortID: row.short_id,
         subject: getRowSubject(row),
         topic: labels.topic,

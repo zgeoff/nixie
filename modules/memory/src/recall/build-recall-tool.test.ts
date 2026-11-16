@@ -473,3 +473,336 @@ test('it fits the page limit when 100 unknown IDs padded with control characters
   expect(page.bytes).toBeLessThanOrEqual(recallPageLimitBytes);
   expect(page.isValid).toMatchObject({ isValid: true });
 });
+
+test('it returns an empty topic page with its search and no recall record when no item holds the topic', async () => {
+  const ctx = await setupTest();
+
+  await ctx.memory.store.remember({
+    text: 'The hose leaks',
+    labels: { gist: 'hose leaks', topic: 'home', triggers: [] },
+    provenance: buildMockProvenance(),
+  });
+
+  const outcome = await ctx.recallOutcome({ topic: 'garden' });
+  const records = await ctx.readRecallRecords();
+
+  expect(outcome).toStrictEqual({
+    status: 'ok',
+    result: { lines: [], next: null, searched: { topic: 'garden' } },
+    record: { lines: [], next: null },
+  });
+
+  invariant(outcome.status === 'ok');
+
+  expect(ctx.tool.parseOutput(outcome.result)).toStrictEqual({ isValid: true });
+  expect(records).toStrictEqual([]);
+});
+
+test('it lists the gist of each item under a topic and its sub-topics, ignoring case, newest first', async () => {
+  const ctx = await setupTest();
+
+  const gists = [
+    ['People/Friends', 'old friend'],
+    ['people', 'general note'],
+    ['people/friends/close', 'close friend'],
+    ['peopleish', 'not under people'],
+  ] as const;
+
+  for (const [topic, gist] of gists) {
+    await ctx.memory.store.remember({
+      text: `Fact: ${gist}`,
+      labels: { gist, topic, triggers: [] },
+      provenance: buildMockProvenance(),
+    });
+  }
+
+  const outcome = await ctx.recallOutcome({ topic: 'PEOPLE' });
+
+  invariant(outcome.status === 'ok');
+
+  expect(outcome.result).toStrictEqual({
+    lines: [
+      { itemID: expect.toBeString(), gist: 'close friend', subject: 'owner' },
+      { itemID: expect.toBeString(), gist: 'general note', subject: 'owner' },
+      { itemID: expect.toBeString(), gist: 'old friend', subject: 'owner' },
+    ],
+    next: null,
+    searched: { topic: 'PEOPLE' },
+  });
+});
+
+test('it narrows a topic page to the subjects the call names', async () => {
+  const ctx = await setupTest();
+
+  await ctx.memory.store.remember({
+    text: 'Likes the garden',
+    labels: { gist: 'likes the garden', topic: 'garden', triggers: [] },
+    provenance: buildMockProvenance(),
+  });
+
+  await ctx.memory.store.remember({
+    text: 'I like to hear about gardens',
+    subject: 'self',
+    labels: { gist: 'hears about gardens', topic: 'garden', triggers: [] },
+    provenance: buildMockProvenance(),
+  });
+
+  const outcome = await ctx.recallOutcome({ topic: 'garden', subjects: ['self'] });
+
+  invariant(outcome.status === 'ok');
+
+  expect(outcome.result).toStrictEqual({
+    lines: [{ itemID: expect.toBeString(), gist: 'hears about gardens', subject: 'self' }],
+    next: null,
+    searched: { topic: 'garden', subjects: ['self'] },
+  });
+});
+
+test('it leaves a pinned item out of a topic page', async () => {
+  const ctx = await setupTest();
+
+  await ctx.memory.store.remember({
+    text: 'Lives on Elm Street',
+    isPinned: true,
+    labels: { gist: 'lives on Elm Street', topic: 'home', triggers: [] },
+    provenance: buildMockProvenance(),
+  });
+
+  const outcome = await ctx.recallOutcome({ topic: 'home' });
+
+  invariant(outcome.status === 'ok');
+
+  expect(outcome.result).toMatchObject({ lines: [] });
+});
+
+test('it ends a topic page at the topic page size with the omitted count and a next that the following call starts at', async () => {
+  const ctx = await setupTest({ index: { topicPage: 2 } });
+
+  for (const gist of ['one', 'two', 'three', 'four', 'five']) {
+    await ctx.memory.store.remember({
+      text: `Fact ${gist}`,
+      labels: { gist, topic: 'garden', triggers: [] },
+      provenance: buildMockProvenance(),
+    });
+  }
+
+  const first = await ctx.recallOutcome({ topic: 'garden' });
+  const second = await ctx.recallOutcome({ topic: 'garden', after: '2' });
+  const last = await ctx.recallOutcome({ topic: 'garden', after: '4' });
+
+  invariant(first.status === 'ok' && second.status === 'ok' && last.status === 'ok');
+
+  expect(first.result).toStrictEqual({
+    lines: [
+      { itemID: expect.toBeString(), gist: 'five', subject: 'owner' },
+      { itemID: expect.toBeString(), gist: 'four', subject: 'owner' },
+    ],
+    next: '2',
+    searched: { topic: 'garden' },
+    leftOut: { count: 3, itemIDs: [], versions: 0 },
+  });
+
+  expect(second.result).toStrictEqual({
+    lines: [
+      { itemID: expect.toBeString(), gist: 'three', subject: 'owner' },
+      { itemID: expect.toBeString(), gist: 'two', subject: 'owner' },
+    ],
+    next: '4',
+    searched: { topic: 'garden' },
+    leftOut: { count: 1, itemIDs: [], versions: 0 },
+  });
+
+  expect(last.result).toStrictEqual({
+    lines: [{ itemID: expect.toBeString(), gist: 'one', subject: 'owner' }],
+    next: null,
+    searched: { topic: 'garden' },
+  });
+});
+
+test('it cuts a topic page to the page limit in bytes and continues from the first entry it left out', async () => {
+  const ctx = await setupTest({ index: { topicPage: 400 } });
+
+  for (let count = 0; count < 260; count += 1) {
+    await ctx.memory.store.remember({
+      text: `Fact ${String(count)}`,
+      labels: {
+        gist: `${String(count).padStart(3, '0')} ${'w'.repeat(76)}`,
+        topic: 'garden',
+        triggers: [],
+      },
+      provenance: buildMockProvenance(),
+    });
+  }
+
+  const first = await ctx.recallOutcome({ topic: 'garden' });
+
+  invariant(first.status === 'ok');
+
+  const lineSchema = z.object({ gist: z.string() });
+  const pageSchema = z.object({ lines: z.array(lineSchema), next: z.string() });
+  const page = pageSchema.parse(first.result);
+
+  const second = await ctx.recallOutcome({ topic: 'garden', after: page.next });
+
+  invariant(second.status === 'ok');
+
+  const secondPage = pageSchema.omit({ next: true }).parse(second.result);
+
+  expect(Buffer.byteLength(JSON.stringify(first.result))).toBeLessThanOrEqual(recallPageLimitBytes);
+  expect(page.lines.length).toBeLessThan(260);
+  expect(page.lines.length).toBeGreaterThan(100);
+
+  expect(first.result).toMatchObject({
+    leftOut: { count: 260 - page.lines.length, itemIDs: [], versions: 0 },
+  });
+
+  expect(page.next).toBe(String(page.lines.length));
+  expect(page.lines.at(0)?.gist.slice(0, 3)).toBe('259');
+
+  expect(secondPage.lines.at(0)?.gist.slice(0, 3)).toBe(
+    String(259 - page.lines.length).padStart(3, '0'),
+  );
+});
+
+test('it stores the short IDs of a topic page in its record and the UUIDs only under hidden', async () => {
+  const ctx = await setupTest({ index: { topicPage: 1 } });
+
+  await ctx.memory.store.remember({
+    text: 'Keeps bees',
+    labels: { gist: 'keeps bees', topic: 'garden', triggers: [] },
+    provenance: buildMockProvenance(),
+  });
+
+  await ctx.memory.store.remember({
+    text: 'Grows beans',
+    labels: { gist: 'grows beans', topic: 'garden', triggers: [] },
+    provenance: buildMockProvenance(),
+  });
+
+  const outcome = await ctx.recallOutcome({ topic: 'garden' });
+
+  invariant(outcome.status === 'ok');
+
+  const itemSchema = z.object({ itemID: z.string() });
+  const page = z.object({ lines: z.array(itemSchema) }).parse(outcome.result);
+  const [line] = page.lines;
+
+  invariant(line);
+
+  const uuids = await ctx.readUUIDs([line.itemID]);
+
+  expect(outcome.record).toStrictEqual({
+    lines: [{ itemID: line.itemID }],
+    next: '1',
+    leftOut: { count: 1, itemIDs: [], versions: 0 },
+  });
+
+  expect(outcome.hidden).toStrictEqual({ uuids: Object.fromEntries(uuids) });
+  expect(JSON.stringify(outcome.record)).not.toInclude('grows beans');
+  expect(JSON.stringify(outcome.record)).not.toInclude('garden');
+});
+
+test('it lists each topic with its subject and item count in the order of the memory index', async () => {
+  const ctx = await setupTest();
+
+  const items = [
+    ['owner', 'people/friends', 'a friend'],
+    ['owner', 'People/Friends', 'another friend'],
+    ['owner', 'home', 'a pump'],
+    ['shared', 'home', 'a joke'],
+    ['self', 'habits', 'short replies'],
+  ] as const;
+
+  for (const [subject, topic, gist] of items) {
+    await ctx.memory.store.remember({
+      text: `Fact: ${gist}`,
+      subject,
+      labels: { gist, topic, triggers: [] },
+      provenance: buildMockProvenance(),
+    });
+  }
+
+  const outcome = await ctx.recallOutcome({ topics: true });
+  const records = await ctx.readRecallRecords();
+
+  expect(outcome).toStrictEqual({
+    status: 'ok',
+    result: {
+      topics: [
+        { topic: 'home', subject: 'owner', items: 1 },
+        { topic: 'People/Friends', subject: 'owner', items: 2 },
+        { topic: 'home', subject: 'shared', items: 1 },
+        { topic: 'habits', subject: 'self', items: 1 },
+      ],
+      next: null,
+      searched: { topics: true },
+    },
+    record: { next: null },
+  });
+
+  expect(records).toStrictEqual([]);
+});
+
+test('it narrows the topic list to the subjects the call names', async () => {
+  const ctx = await setupTest();
+
+  await ctx.memory.store.remember({
+    text: 'Fact: a pump',
+    labels: { gist: 'a pump', topic: 'home', triggers: [] },
+    provenance: buildMockProvenance(),
+  });
+
+  await ctx.memory.store.remember({
+    text: 'Fact: short replies',
+    subject: 'self',
+    labels: { gist: 'short replies', topic: 'habits', triggers: [] },
+    provenance: buildMockProvenance(),
+  });
+
+  const outcome = await ctx.recallOutcome({ topics: true, subjects: ['self'] });
+
+  invariant(outcome.status === 'ok');
+
+  expect(outcome.result).toStrictEqual({
+    topics: [{ topic: 'habits', subject: 'self', items: 1 }],
+    next: null,
+    searched: { topics: true, subjects: ['self'] },
+  });
+});
+
+test.each([
+  ['a topic with a query', { topic: 'home', query: 'pump' }],
+  ['a topic with itemIDs', { topic: 'home', itemIDs: ['b7kq2m9xza'] }],
+  ['a topic with topics', { topic: 'home', topics: true }],
+  ['topics with a query', { topics: true, query: 'pump' }],
+  ['a topic with includeRetired', { topic: 'home', includeRetired: true }],
+  ['a topic with includeHistory', { topic: 'home', includeHistory: true }],
+  ['a topic with a limit', { topic: 'home', limit: 5 }],
+  ['topics with a limit', { topics: true, limit: 5 }],
+  ['a query with after', { query: 'pump', after: '3' }],
+  ['itemIDs with after', { itemIDs: ['b7kq2m9xza'], after: '3' }],
+])('it refuses %s and writes no recall record', async (_title, input) => {
+  const ctx = await setupTest();
+
+  await ctx.memory.store.remember({
+    text: 'A spare pump',
+    labels: { gist: 'a pump', topic: 'home', triggers: [] },
+    provenance: buildMockProvenance(),
+  });
+
+  const outcome = await ctx.recallOutcome(input);
+  const records = await ctx.readRecallRecords();
+
+  expect(outcome).toStrictEqual({ status: 'error', message: expect.stringMatching(/^refused: /u) });
+  expect(records).toStrictEqual([]);
+});
+
+test.each([
+  ['an empty topic', { topic: '' }],
+  ['a topic of 41 characters', { topic: 'x'.repeat(41) }],
+  ['topics set to false', { topics: false }],
+])('it rejects %s in its input schema', async (_title, input) => {
+  const ctx = await setupTest();
+
+  expect(ctx.tool.parseInput(input)).toMatchObject({ isValid: false });
+});

@@ -21,6 +21,7 @@ import { readItemIDs } from '../utils/item/read-item-ids';
 import { makeInputRecorder } from '../utils/make-input-recorder';
 import { recallLimits } from './recall-limits';
 import { recallOutputSchema } from './recall-output-schema';
+import { runTopicCall } from './run-topic-call';
 
 // Long enough for a UUID.
 const itemIDMaxLength = 64;
@@ -43,6 +44,19 @@ const recallInput = {
       description: 'the next cursor from the page before',
     },
     limit: { type: 'integer', minimum: 1, maximum: 100 },
+    topic: {
+      type: 'string',
+      minLength: 1,
+      maxLength: 40,
+      description:
+        'a topic of the memory index, such as home or people/friends: lists the gist of every ' +
+        'item under it, ignoring case',
+    },
+    topics: {
+      type: 'boolean',
+      enum: [true],
+      description: 'list every topic of the memory index with its subject and item count',
+    },
     subjects: {
       type: 'array',
       items: { type: 'string', enum: ['owner', 'self', 'shared'] },
@@ -61,11 +75,14 @@ export interface RecallLineOptions {
   readonly clock: Pick<Clock, 'now'>;
 }
 
+type RecallDependencies = Pick<
+  StartedMemoryStore,
+  'recall' | 'readTopicLines' | 'readTopicCounts'
+> &
+  Pick<ItemIDStore, 'readItemIDMap'> & { readonly moments: Pick<MomentStore, 'readLinks'> };
+
 export function buildRecallTool(
-  memory: Pick<StartedMemoryStore, 'recall'> &
-    Pick<ItemIDStore, 'readItemIDMap'> & {
-      readonly moments: Pick<MomentStore, 'readLinks'>;
-    },
+  memory: RecallDependencies,
   options: RecallLineOptions,
 ): ToolDefinition {
   return {
@@ -74,12 +91,14 @@ export function buildRecallTool(
       'Returns stored memory items word for word, each with a line that says its ID, version, ' +
       'date, who noted it, what backs it and who confirmed it, the quote it came from and the ' +
       'model that wrote it. Pass a query to search, itemIDs ' +
-      'to read items by ID, or neither to list every active item a page at a time. Pass one ' +
-      'of query and itemIDs in a call, never both. Pass subjects to narrow the recall to ' +
-      'some subjects. A page is capped in size: leftOut says how many items it left out and ' +
-      'lists their IDs. For a list, next continues from the first item left out. For itemIDs ' +
-      'or a query, recall the IDs in leftOut.itemIDs to read them. An empty items list means ' +
-      'the search found nothing. Answer ' +
+      'to read items by ID, or none of these to list every active item a page at a time. Pass ' +
+      'topic to list the gist of every unpinned item under a topic of the memory index, a ' +
+      'sub-topic such as people/friends included, or topics to list the topics with their item ' +
+      'counts. Pass at most one of query, itemIDs, topic and topics in a call. Pass subjects to ' +
+      'narrow the recall to some subjects. A page is capped in size: leftOut says how many ' +
+      'entries it left out. For a list, a topic or topics, next continues from the first entry ' +
+      'left out. For itemIDs or a query, recall the IDs in leftOut.itemIDs to read them. An ' +
+      'empty items, lines or topics list means the search found nothing. Answer ' +
       'questions about memory from these items, never from a summary. Use it when you ' +
       'half-remember something said, or when a detail from before would change your answer. ' +
       'An item linked to a moment lists its momentID and title: read the moment with ' +
@@ -95,6 +114,8 @@ export function buildRecallTool(
       content: ['query'],
       results: {
         items: 'untrusted',
+        lines: 'untrusted',
+        topics: 'untrusted',
         next: 'owner_data',
         searched: 'owner_data',
         leftOut: 'owner_data',
@@ -112,9 +133,6 @@ interface RecallCall {
   readonly thread: string;
 }
 
-type RecallDependencies = Pick<StartedMemoryStore, 'recall'> &
-  Pick<ItemIDStore, 'readItemIDMap'> & { readonly moments: Pick<MomentStore, 'readLinks'> };
-
 const recallArguments = z.object({
   query: z.string().optional(),
   itemIDs: z.array(z.string().max(itemIDMaxLength)).optional(),
@@ -122,6 +140,8 @@ const recallArguments = z.object({
   includeHistory: z.boolean().optional(),
   after: z.string().optional(),
   limit: z.int().optional(),
+  topic: z.string().min(1).max(40).optional(),
+  topics: z.literal(true).optional(),
   subjects: z
     .array(z.enum(['owner', 'self', 'shared']))
     .min(1)
@@ -140,6 +160,10 @@ async function runRecallCall(
 
   if (refusal !== null) {
     return { status: 'error', message: refusal };
+  }
+
+  if (input.topic !== undefined || input.topics === true) {
+    return runTopicCall(memory, input);
   }
 
   const lines = {
@@ -190,12 +214,25 @@ async function runRecallCall(
 type RecallInput = z.infer<typeof recallArguments>;
 
 function pickRefusal(input: RecallInput): string | null {
-  if (input.query !== undefined && input.itemIDs !== undefined) {
-    return 'refused: pass either query or itemIDs in one call, never both';
+  const kinds = [input.query, input.itemIDs, input.topic, input.topics].filter(
+    (kind) => kind !== undefined,
+  );
+
+  if (kinds.length > 1) {
+    return 'refused: pass at most one of query, itemIDs, topic and topics in one call';
+  }
+
+  if (
+    (input.topic !== undefined || input.topics !== undefined) &&
+    (input.includeRetired !== undefined ||
+      input.includeHistory !== undefined ||
+      input.limit !== undefined)
+  ) {
+    return 'refused: topic and topics take none of includeRetired, includeHistory and limit';
   }
 
   if (input.after !== undefined && (input.query !== undefined || input.itemIDs !== undefined)) {
-    return 'refused: after continues a list, so pass it with neither query nor itemIDs';
+    return 'refused: after continues a list, a topic or topics, so pass it with neither query nor itemIDs';
   }
 
   return null;

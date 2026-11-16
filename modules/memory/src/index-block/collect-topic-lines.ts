@@ -7,6 +7,9 @@ export interface IndexLine {
   readonly itemID: string;
   readonly gist: string;
   readonly subject: MemorySubject;
+
+  // the item's UUID, which the model never reads
+  readonly itemUUID: string;
 }
 
 // `people` matches `people` and every topic under it, and the match ignores case. Lines come in
@@ -29,5 +32,10 @@ export function collectTopicLines(
         subjectOrder.indexOf(left.subject) - subjectOrder.indexOf(right.subject) ||
         compareNewestFirst(left, right),
     )
-    .map((row) => ({ itemID: row.shortID, gist: row.gist, subject: row.subject }));
+    .map((row) => ({
+      itemID: row.shortID,
+      gist: row.gist,
+      subject: row.subject,
+      itemUUID: row.itemID,
+    }));
 }

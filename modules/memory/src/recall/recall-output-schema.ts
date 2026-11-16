@@ -102,13 +102,44 @@ export const recallOutputSchema = {
         ],
       },
     },
+    lines: {
+      type: 'array',
+      description: 'the items under the topic, each by its ID and gist',
+      items: {
+        type: 'object',
+        properties: {
+          itemID: { type: 'string' },
+          gist: { type: 'string' },
+          subject: { type: 'string', enum: ['owner', 'self', 'shared'] },
+        },
+        required: ['itemID', 'gist', 'subject'],
+        additionalProperties: false,
+      },
+    },
+    topics: {
+      type: 'array',
+      description: 'every topic of the memory index with its subject and item count',
+      items: {
+        type: 'object',
+        properties: {
+          topic: { type: 'string' },
+          subject: { type: 'string', enum: ['owner', 'self', 'shared'] },
+          items: { type: 'integer' },
+        },
+        required: ['topic', 'subject', 'items'],
+        additionalProperties: false,
+      },
+    },
     next: { type: ['string', 'null'] },
     searched: {
       type: 'object',
-      description: 'the search of the call, copied: its query or itemIDs, and its subjects',
+      description:
+        'the search of the call, copied: its query, itemIDs, topic or topics, and its subjects',
       properties: {
         query: { type: 'string' },
         itemIDs: { type: 'array', items: { type: 'string' } },
+        topic: { type: 'string' },
+        topics: { type: 'boolean' },
         subjects: { type: 'array', items: { type: 'string', enum: ['owner', 'self', 'shared'] } },
       },
       additionalProperties: false,
@@ -133,6 +164,7 @@ export const recallOutputSchema = {
       additionalProperties: false,
     },
   },
-  required: ['items', 'searched'],
+  required: ['searched'],
+  anyOf: [{ required: ['items'] }, { required: ['lines'] }, { required: ['topics'] }],
   additionalProperties: false,
 };
