@@ -765,7 +765,7 @@ test('it places the memory index right after the pinned memory and adds its 2 st
     times: { defaultZone: 'Australia/Sydney', now: new Date() },
     pinnedMemory: 'Nothing is pinned in your memory.',
     index: { text: 'Your memory index.', items: 103, tokens: 2870, budget: 3000 },
-    model: 'claude-test-1',
+    model: 'test-model-1',
     status: [buildStartStatus()],
   });
 
@@ -801,7 +801,7 @@ test('it leaves out the memory index block and its status lines at a budget of 0
     times: { defaultZone: 'Australia/Sydney', now: new Date() },
     pinnedMemory: 'Nothing is pinned in your memory.',
     index: { text: '', items: 12, tokens: 0, budget: 0 },
-    model: 'claude-test-1',
+    model: 'test-model-1',
     status: [buildStartStatus()],
   });
 
@@ -825,7 +825,7 @@ test('it keeps the 2 status lines but leaves out the block when no item is liste
     times: { defaultZone: 'Australia/Sydney', now: new Date() },
     pinnedMemory: null,
     index: { text: '', items: 0, tokens: 0, budget: 3000 },
-    model: 'claude-test-1',
+    model: 'test-model-1',
     status: [],
   });
 
