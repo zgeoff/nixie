@@ -9,14 +9,18 @@ import { readDefinitionsInForce } from '../definition/read-definitions-in-force'
 import { readDefinitionsSkills } from '../definition/read-definitions-skills';
 import { readRuleProposalChange } from '../rule/read-rule-proposal-change';
 import type { SeedResult } from '../rule/run-seed';
+import { buildTaskSeedRecords } from '../runtime-task/build-task-seed-records';
+import { readTaskSeedInput } from '../runtime-task/read-task-seed-input';
 import { writeAdoptedSkills } from '../skill/write-adopted-skills';
 import { writeTaskHooks } from '../task/write-task-hooks';
 import type { SnapshotPolicy } from '../types';
 import { buildRuleRevisions } from '../utils/build-rule-revisions';
 import { buildRuleSeedPlan } from '../utils/build-rule-seed-plan';
 import { buildSkillOverlay } from '../utils/build-skill-overlay';
+import { buildTaskSeedPlan } from '../utils/build-task-seed-plan';
 import { readRuleStore } from '../utils/read-rule-store';
 import { readWrittenSkills } from '../written/read-written-skills';
+import { readRepoTasks } from './read-repo-tasks';
 import { readSeedPolicy } from './read-seed-policy';
 import { writeSeed } from './write-seed';
 
@@ -26,106 +30,124 @@ export interface InForceSeedOptions {
 }
 
 export function runInForceSeed(options: InForceSeedOptions): Promise<SeedResult> {
-  return withWriteTransaction(options.log.writer, async (tx) => {
-    const inForce = await readDefinitionsInForce(tx);
+  return withWriteTransaction(options.log.writer, (tx) => seedInForceInTransaction(tx, options));
+}
 
-    if (inForce === null) {
-      return { status: 'refused', error: new Error('no definitions are in force yet'), inForce };
-    }
+// The caller owns the transaction, so a runtime change and its seed commit or roll back together.
+// oxlint-disable-next-line zgeoff/function-verb -- the design names the in-force seed this way
+export async function seedInForceInTransaction(
+  tx: Transaction<unknown>,
+  options: InForceSeedOptions,
+): Promise<SeedResult> {
+  const inForce = await readDefinitionsInForce(tx);
 
-    const definitions = await readDefinitionsSkills(tx, inForce.snapshotHash);
+  if (inForce === null) {
+    return { status: 'refused', error: new Error('no definitions are in force yet'), inForce };
+  }
 
-    const overlay = buildSkillOverlay({
-      skills: definitions.skills,
-      conversationSkills: definitions.conversationSkills,
-      written: await readWrittenSkills(tx),
-    });
+  const definitions = await readDefinitionsSkills(tx, inForce.snapshotHash);
 
-    const store = await readRuleStore(tx);
-
-    const rules = buildRuleSeedPlan({
-      definitions: store.definitions,
-      seeded: store.seeded,
-      runtime: store.runtime,
-    });
-
-    const revisions = buildRuleRevisions(store.current, rules.inForce);
-    const now = options.log.writer.clock.now();
-
-    const lists = await readSeedLists(tx, inForce.recordSequence);
-
-    const policy = await readSeedPolicy(tx, {
-      base: options.buildPolicy(inForce.prompts),
-      overrides: lists.effects,
-      inForce,
-      rules: revisions.inForce,
-    });
-
-    if (policy.status === 'refused') {
-      return { status: 'refused', error: policy.error, inForce };
-    }
-
-    const proposals = await readRuleProposalChange(tx, rules.held, policy.held, now);
-
-    const built = buildDefinitionsSnapshot({
-      persona: inForce.persona,
-      policy: policy.policy,
-      prompts: inForce.prompts,
-      skills: overlay.skills,
-      conversationSkills: overlay.conversationSkills,
-      tasks: inForce.tasks,
-    });
-
-    await writeAdoptedSkills(tx, {
-      adopted: overlay.adopted,
-      skills: definitions.skills,
-      at: now,
-    });
-
-    await writeTaskHooks(
-      tx,
-      { log: options.log, definitions: () => ({ snapshotHash: built.snapshotHash }) },
-      inForce.tasks,
-    );
-
-    if (
-      overlay.adopted.length === 0 &&
-      rules.adopted.length === 0 &&
-      proposals.withdrawn === null &&
-      proposals.proposed === null &&
-      built.snapshotHash === inForce.snapshotHash
-    ) {
-      return { status: 'unchanged', inForce };
-    }
-
-    const written = await writeSeed(tx, options.log, {
-      source: {
-        id: inForce.sourceID,
-        kind: inForce.sourceKind,
-        repository: inForce.sourceRepository,
-        revision: inForce.revision,
-        contentHash: inForce.contentHash,
-      },
-      formatVersion: inForce.formatVersion,
-      effects: lists.effects,
-      heldEffects: policy.held,
-      unapplied: lists.unapplied,
-      skipped: lists.skipped,
-      versions: [],
-      overlay,
-      rules: {
-        plan: rules,
-        definitions: null,
-        revisions,
-        at: now,
-      },
-      proposals,
-      built,
-      previous: inForce,
-    });
-
-    return { status: 'seeded', ...written };
+  const overlay = buildSkillOverlay({
+    skills: definitions.skills,
+    conversationSkills: definitions.conversationSkills,
+    written: await readWrittenSkills(tx),
   });
+
+  const store = await readRuleStore(tx);
+
+  const rules = buildRuleSeedPlan({
+    definitions: store.definitions,
+    seeded: store.seeded,
+    runtime: store.runtime,
+  });
+
+  const revisions = buildRuleRevisions(store.current, rules.inForce);
+  const now = options.log.writer.clock.now();
+
+  const lists = await readSeedLists(tx, inForce.recordSequence);
+
+  const policy = await readSeedPolicy(tx, {
+    base: options.buildPolicy(inForce.prompts),
+    overrides: lists.effects,
+    inForce,
+    rules: revisions.inForce,
+  });
+
+  if (policy.status === 'refused') {
+    return { status: 'refused', error: policy.error, inForce };
+  }
+
+  const proposals = await readRuleProposalChange(tx, rules.held, policy.held, now);
+  const repoTasks = await readRepoTasks(tx, inForce);
+  const taskInput = await readTaskSeedInput(tx, repoTasks);
+
+  const taskPlan = buildTaskSeedPlan(taskInput);
+
+  const built = buildDefinitionsSnapshot({
+    persona: inForce.persona,
+    policy: policy.policy,
+    prompts: inForce.prompts,
+    skills: overlay.skills,
+    conversationSkills: overlay.conversationSkills,
+    tasks: taskPlan.tasks,
+  });
+
+  await writeAdoptedSkills(tx, {
+    adopted: overlay.adopted,
+    skills: definitions.skills,
+    at: now,
+  });
+
+  await writeTaskHooks(
+    tx,
+    { log: options.log, definitions: () => ({ snapshotHash: built.snapshotHash }) },
+    built.tasks,
+  );
+
+  if (
+    overlay.adopted.length === 0 &&
+    rules.adopted.length === 0 &&
+    proposals.withdrawn === null &&
+    proposals.proposed === null &&
+    taskPlan.adopted.length === 0 &&
+    taskPlan.moved.length === 0 &&
+    built.snapshotHash === inForce.snapshotHash
+  ) {
+    return { status: 'unchanged', inForce };
+  }
+
+  const written = await writeSeed(tx, options.log, {
+    source: {
+      id: inForce.sourceID,
+      kind: inForce.sourceKind,
+      repository: inForce.sourceRepository,
+      revision: inForce.revision,
+      contentHash: inForce.contentHash,
+    },
+    formatVersion: inForce.formatVersion,
+    effects: lists.effects,
+    heldEffects: policy.held,
+    unapplied: lists.unapplied,
+    skipped: lists.skipped,
+    versions: [],
+    overlay,
+    rules: {
+      plan: rules,
+      definitions: null,
+      revisions,
+      at: now,
+    },
+    proposals,
+    built,
+    repoTasks,
+    taskRecords: buildTaskSeedRecords(taskPlan, {
+      snapshotHash: built.snapshotHash,
+      personaVersion: built.personaVersion,
+    }),
+    previous: inForce,
+  });
+
+  return { status: 'seeded', ...written };
 }
 
 const effectNameSchema = z.enum(effectNames);

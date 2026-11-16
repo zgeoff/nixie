@@ -6,6 +6,8 @@ import { buildDefinitionRule } from '../definition/build-definition-rule';
 import { buildDefinitionsSnapshot } from '../definition/build-definitions-snapshot';
 import { parseDefinitions } from '../definition/parse-definitions';
 import { readDefinitionsInForce } from '../definition/read-definitions-in-force';
+import { buildTaskSeedRecords } from '../runtime-task/build-task-seed-records';
+import { readTaskSeedInput } from '../runtime-task/read-task-seed-input';
 import { readSeedPolicy } from '../seed/read-seed-policy';
 import { writeSeed } from '../seed/write-seed';
 import { writeAdoptedSkills } from '../skill/write-adopted-skills';
@@ -23,6 +25,7 @@ import type {
 import { buildRuleRevisions } from '../utils/build-rule-revisions';
 import { buildRuleSeedPlan } from '../utils/build-rule-seed-plan';
 import { buildSkillOverlay } from '../utils/build-skill-overlay';
+import { buildTaskSeedPlan } from '../utils/build-task-seed-plan';
 import { readRuleStore } from '../utils/read-rule-store';
 import { readWrittenSkills } from '../written/read-written-skills';
 import { readRuleProposalChange } from './read-rule-proposal-change';
@@ -109,20 +112,22 @@ export async function runSeed(options: SeedOptions): Promise<SeedResult> {
 
     const proposals = await readRuleProposalChange(tx, rules.held, policy.held, now);
 
+    await writeTaskVersions(tx, read.parsed.tasks);
+
+    const repoTasks = read.parsed.tasks.map((task) => ({ id: task.id, hash: task.hash }));
+
+    const taskInput = await readTaskSeedInput(tx, repoTasks);
+
+    const taskPlan = buildTaskSeedPlan(taskInput);
+
     const built = buildDefinitionsSnapshot({
       persona: read.parsed.persona,
       policy: policy.policy,
       prompts: read.parsed.prompts,
       skills: overlay.skills,
       conversationSkills: overlay.conversationSkills,
-      tasks: read.parsed.tasks.map((task) => ({
-        id: task.id,
-        hash: task.hash,
-        origin: 'definitions',
-      })),
+      tasks: taskPlan.tasks,
     });
-
-    await writeTaskVersions(tx, read.parsed.tasks);
 
     await writeAdoptedSkills(tx, {
       adopted: overlay.adopted,
@@ -142,6 +147,8 @@ export async function runSeed(options: SeedOptions): Promise<SeedResult> {
       rules.adopted.length === 0 &&
       proposals.withdrawn === null &&
       proposals.proposed === null &&
+      taskPlan.adopted.length === 0 &&
+      taskPlan.moved.length === 0 &&
       isSameSeed(inForce, { ...read, built, sourceID: options.source.id })
     ) {
       return { status: 'unchanged', inForce };
@@ -170,6 +177,11 @@ export async function runSeed(options: SeedOptions): Promise<SeedResult> {
       },
       proposals,
       built,
+      repoTasks,
+      taskRecords: buildTaskSeedRecords(taskPlan, {
+        snapshotHash: built.snapshotHash,
+        personaVersion: built.personaVersion,
+      }),
       previous: inForce,
     });
 

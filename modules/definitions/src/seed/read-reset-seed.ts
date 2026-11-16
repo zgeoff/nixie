@@ -16,6 +16,7 @@ import type {
   TaskVersionRow,
   WrittenSkillRow,
 } from '../types';
+import { readRepoTasks } from './read-repo-tasks';
 
 export interface ResetSeed {
   readonly inForce: DefinitionsInForce;
@@ -86,7 +87,22 @@ export async function readResetSeed(db: Kysely<unknown>, now: number): Promise<R
     .orderBy('rule_id')
     .execute();
 
-  const taskHashes = inForce.tasks.map((task) => task.hash);
+  const repoTasks = await readRepoTasks(db, inForce);
+
+  const runtime = await db
+    .$extendTables<DefinitionsTables>()
+    .selectFrom('runtime_task_definitions')
+    .select('definition_hash')
+    .where('state', '=', 'in_force')
+    .execute();
+
+  const taskHashes = [
+    ...new Set([
+      ...inForce.tasks.map((task) => task.hash),
+      ...repoTasks.map((task) => task.hash),
+      ...runtime.flatMap((row) => (row.definition_hash === null ? [] : [row.definition_hash])),
+    ]),
+  ];
 
   const taskVersions =
     taskHashes.length === 0

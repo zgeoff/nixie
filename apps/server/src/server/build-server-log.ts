@@ -4,6 +4,8 @@ import {
   gapAnswersProjection,
   gapGroupsProjection,
   ruleFiresProjection,
+  runtimeTaskDefinitionsProjection,
+  taskDefinitionExportsProjection,
 } from '@heynixie/definitions';
 import type { Log, Writer } from '@heynixie/log';
 import { logProjections } from '@heynixie/log';
@@ -28,6 +30,8 @@ export function buildServerLog(writer: Writer, deploymentKey: CryptoKey): Log {
       ruleFiresProjection,
       gapAnswersProjection,
       gapGroupsProjection,
+      runtimeTaskDefinitionsProjection,
+      taskDefinitionExportsProjection,
       knownContactsProjection,
       proposalsProjection,
     ],
