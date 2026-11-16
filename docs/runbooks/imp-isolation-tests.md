@@ -1,10 +1,11 @@
 # Run the imp isolation tests
 
 The test in `adapters/sandbox-imp/src/sandbox/build-imp-port.imp.test.ts` checks that a conversation
-imp made through the imp adapter on a real impd reaches the model host through the broker. The test
-skips unless the variables below are set, and it needs a host with `/dev/kvm` and impd. The imp
-port's other cases run in the unit run on the test impd from `@impz/testing`, and impz's own e2e
-suites check that an imp reaches nothing else.
+imp made through the imp adapter on a real impd reaches the model host through the broker. It also
+checks that a worker imp gets no answer from a direct request to the model host with a key of its
+own, to another host, or to a literal address. The tests skip unless the variables below are set,
+and they need a host with `/dev/kvm` and impd. The imp port's other cases run in the unit run on the
+test impd from `@impz/testing`, and impz's own e2e suites check that an imp reaches nothing else.
 
 1. Start an impd that you can create imps and secrets on, and get a token with manage scope for it.
 2. Import an image that holds `sh` and `curl`, such as `ubuntu:24.04` with `curl` installed.

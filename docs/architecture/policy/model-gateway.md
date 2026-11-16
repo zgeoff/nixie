@@ -10,6 +10,10 @@ gateway is the first part of the hard spending stop that the
 [budgets design](../../design/platform/policy/budgets.md#the-hard-spending-stop) describes, and a
 preview host runs one per preview with a small limit.
 
+A sandbox reaches the model API only through its credential broker, so every model call from a
+worker's sandbox passes through the gateway.
+[The imp adapter](../connectors/sandboxes.md#the-imp-adapter) gives the sandbox no other route.
+
 ```mermaid
 flowchart LR
   N["deployment"] -->|"/route/v1/messages"| P["model gateway"]
