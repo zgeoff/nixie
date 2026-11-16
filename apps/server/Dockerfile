@@ -49,6 +49,10 @@ COPY --from=build /out/app/ /app/
 COPY --from=build /out/encoder/ /app/encoder/
 COPY apps/server/sandbox-manifest.json /app/sandbox-manifest.json
 
+# ONNX Runtime reads this from the process environment when it loads, so it sends no telemetry and
+# prints no telemetry warning to the log, which must hold one JSON object per line
+ENV ORT_DISABLE_TELEMETRY=1
+
 # nixie on the PATH runs a command by its name, so a deployment's scripts call nixie health or nixie
 # enrol-code and never name a file in /app
 RUN printf '#!/bin/sh\nexec bun /app/main.js "$@"\n' > /usr/local/bin/nixie \

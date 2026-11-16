@@ -16,7 +16,9 @@ export const systemClock: Clock = {
       sleep.resolve();
     };
 
-    timer.id = setTimeout(stopSleep, durationMs);
+    // A caller's deadline minus now can fall below zero, and the runtime prints a warning to stderr
+    // for a negative timeout.
+    timer.id = setTimeout(stopSleep, Math.max(0, durationMs));
     signal?.addEventListener('abort', stopSleep, { once: true });
 
     await sleep.promise;
