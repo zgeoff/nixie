@@ -110,7 +110,7 @@ that" in chat retires an item with undo, and only a checked action in the client
 
 The conversation runs on the SDK's session, and nixie compacts it itself
 ([0015](decisions/0015-own-compaction.md)). Retrieval uses local embeddings and keyword search over
-memory and past messages, and a compaction summary never becomes memory
+memory, and a compaction summary never becomes memory
 ([the memory store](architecture/memory/store.md), [compaction](architecture/core/compaction.md)).
 Every record carries a hash of the definitions in force
 ([the definitions](architecture/core/definitions.md)).

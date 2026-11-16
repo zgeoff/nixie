@@ -364,24 +364,12 @@ The model reaches memory through these tools over the same interface:
 | `memory.retire`   | `note` | Retires an item at a version it read, with an intent quote  |
 | `memory.pin`      | `note` | Asks to pin an item at a version it read                    |
 | `memory.unpin`    | `note` | Takes an item out of the pinned core                        |
-| `memory.rate`     | `note` | Rates how the items of the thread's latest recall worked    |
 
 Creating and editing are separate tools because the tool list is where the model learns what it can
-do, and a model that finds editing only in the description of a create tool can miss it. Rating has
-its own tool for the same reason.
+do, and a model that finds editing only in the description of a create tool can miss it.
 
-A rating tells the user whether a recalled item helped the model, was noise, or misled it, with an
-optional one-line note. It is no memory write, so it passes no gate and changes no item, and nothing
-acts on it. Each call binds to the thread's latest recall record and refuses an item that recall did
-not deliver, with a plain reason the model reads, so a rating always names an item the model was
-given on that turn. A turn note's recall record says it belongs to a turn note, and a rating binds
-past it, because the turn note reads its items after the turn's retrieval and would otherwise hide
-the retrieval from the rating. One rating record holds the call's ratings, each by item and the
-newest version the recall delivered, and names the recall it rates, so the user sees the rating
-beside that turn's memories. The note is free text the model can copy an item's words into, so the
-record seals it under the rated item's key and a forget leaves the note unreadable. The call's own
-record keeps only item IDs and known verdicts, and a refusal names an item only by its stored short
-ID, so no copy of the model's words outlives a forget.
+An older log can hold `memory.rated` records, which an earlier release wrote when the model rated a
+recall. They stay readable, the store skips them at start, and nothing writes one now.
 
 Each write tool runs its gate, and returns either the version it applied or the proposal it became,
 with its review reason. A missing quote is no tool error, because the gate turns it into a proposal.
@@ -405,8 +393,8 @@ fetch, and the conversation's tool list names them. Each runs direct, and the us
 each call by the tool's declared effect:
 
 - A tool that only reads declares `read`, which the starter rule `allow-reads` allows.
-- A tool that only marks an item, such as a pin, an unpin or a rating, declares `note`, which the
-  starter rule `allow-notes` allows.
+- A tool that only marks an item, such as a pin or an unpin, declares `note`, which the starter rule
+  `allow-notes` allows.
 - `memory.remember`, `memory.edit` and `memory.retire` declare `memory_write`, which no starter rule
   allows, so the memory gate decides them
   ([rules on memory writes](./writes.md#rules-on-memory-writes)).
