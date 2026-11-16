@@ -13,7 +13,7 @@ covers the turn, the fork on each resume and when a turn opens a new session,
 
 ## The slots
 
-A new session opens with six slots, from what defines the model to the current turn:
+A new session opens with seven slots, from what defines the model to the current turn:
 
 1. **Persona.** The system prompt holds the persona, the catalog of the conversation's
    [skills](./skills.md#the-catalog), the rule for pasted and dropped text and images, and the rule
@@ -24,17 +24,20 @@ A new session opens with six slots, from what defines the model to the current t
 2. **Status.** A readout taken when the session opens.
 3. **Pinned memory.** The pinned core as it stands when the session opens, each item with the line
    that says where it came from, or a line that says nothing is pinned.
-4. **Summary.** The newest summary that is still readable.
-5. **Recent turns.** The user's messages and the replies after that summary, with the events over
+4. **Memory index.** Every active item that is not pinned, one row per topic, with the gist of each
+   item. [The index](../memory/context.md#the-memory-index) covers its layout and budget. The slot
+   is empty, and the block left out, when no such item exists or the budget is 0.
+5. **Summary.** The newest summary that is still readable.
+6. **Recent turns.** The user's messages and the replies after that summary, with the events over
    the same span of the log, memory changes included.
-6. **The current turn.** The retrieved items, the turn's own notes and the user's messages.
+7. **The current turn.** The retrieved items, the turn's own notes and the user's messages.
 
-Slots 2 to 5 render as system messages, of types `status`, `pinned-memory`, `summary` and
-`recent-turns`, before the current turn's blocks in the session's first user message. Each turn
-resumes on a fork that copies the whole history, so the first message needs no store of its own. A
-pin therefore leaves the system prompt and the cached prefix of the whole history as they were. A
-pin, an edit or an unpin during the session arrives as the pinned-core change note, which overrides
-the opening's copy of the item, and the next session opens with the new core.
+Slots 2 to 6 render as system messages, of types `status`, `pinned-memory`, `memory-index`,
+`summary` and `recent-turns`, before the current turn's blocks in the session's first user message.
+Each turn resumes on a fork that copies the whole history, so the first message needs no store of
+its own. A pin therefore leaves the system prompt and the cached prefix of the whole history as they
+were. A pin, an edit or an unpin during the session arrives as the pinned-core change note, which
+overrides the opening's copy of the item, and the next session opens with the new core.
 
 The CLI's own compaction would summarize the first message away with the rest of the history, so the
 guest turns every CLI compaction off. A session therefore keeps its opening until nixie's compactor
@@ -44,11 +47,11 @@ closes it, and the session after it opens with the whole pinned core again.
 
 The builder reads the newest summary that is still readable, then the thread's messages and replies
 after the sequence that summary covers, newest back to the rebuild budget. That one read gives every
-start its slots. The first session finds no summary and no turns, so it opens with the status and
-the pinned memory alone. A rebuild after a lost or a full session, or after a persona change, finds
-the turns after the newest summary. A forget erases every summary, so a rebuild after a forget finds
-none and reads turns back to the budget. A session that opens after a compaction finds a summary
-that covers every turn, so its slot 5 is empty.
+start its slots. The first session finds no summary and no turns, so it opens with the status, the
+pinned memory and the memory index alone. A rebuild after a lost or a full session, or after a
+persona change, finds the turns after the newest summary. A forget erases every summary, so a
+rebuild after a forget finds none and reads turns back to the budget. A session that opens after a
+compaction finds a summary that covers every turn, so its slot 6 is empty.
 
 The summary record keeps its text in erasable fields and the last sequence it covers in its payload.
 The builder passes over a summary whose key is gone to the next one that is still readable, so a
@@ -71,7 +74,7 @@ The events block reads a range of the log from a cursor, so a rebuild renders it
 of the recent turns: from where the note of the oldest kept turn started, through where the last
 turn's note ended. The span starts at that note, not at the turn's first record, because the note
 covers what happened before the turn's message. The current turn's own note starts where the span
-ends, so an event the model saw before the rebuild appears once, in slot 5, and an event that
+ends, so an event the model saw before the rebuild appears once, in slot 6, and an event that
 happened since appears once, in the current turn's note. A replayed note says that it covers the
 recent turns, not the time since the last turn.
 
@@ -96,12 +99,16 @@ order the status shows:
 | The pinned items   | the memory package   | how many items the pinned core holds                                   |
 | The pinned tokens  | the memory package   | the pinned core's tokens against its budget                            |
 | The week's moments | the memory package   | the [moments](../memory/moments.md) kept over the past week, by keeper |
+| The index items    | the sessions package | how many active items that are not pinned the index covers             |
+| The index tokens   | the sessions package | the index block's tokens against its budget                            |
 
 The kind of start says that earlier history is in the event log. After a forget, it says that the
 forget erased the summary of earlier sessions, so the model reads the gap as deliberate. The start
 time is labelled as the time the session started, because each input that starts a turn carries its
-own stamp, and the model must never read the status time as the time now. Every value is a name, a
-time or a count, so the opening record holds them with no free text.
+own stamp, and the model must never read the status time as the time now. The two index lines come
+last, and only when the index budget is above 0. They come from the same read of the memory as the
+index block, so they match it. Every value is a name, a time or a count, so the opening record holds
+them with no free text.
 
 ## The brief
 
@@ -116,7 +123,7 @@ from there.
 
 The step writes one session-opened record for every new session, in the same commit as the turn. Its
 payload holds the kind of start and its reason, the session it replaced when the step knew one, the
-sequence of the summary it used, the count of records and events in slot 5, each status value under
+sequence of the summary it used, the count of records and events in slot 6, each status value under
 its entry's name, the hashes of the persona and the policy in force when the session opened, and the
 sequence of the brief the opening accounted for, or null when the task has none. A started task
 whose newest opening has no such field opened before briefs were messages, so its next step rebuilds

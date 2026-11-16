@@ -212,6 +212,24 @@ size is at most 4,000 bytes, so the echoed search always fits the page limit. A 
 or `itemIDs`, never both, and passes `after` with neither. The tool refuses anything else before it
 calls the store, so a refused call writes no record.
 
+### Topic pages and the topic list
+
+A call with `topic` returns the gist of every active item that is not pinned and holds that topic or
+a topic under it, such as `people` for `people/friends`, ignoring case. A call with `topics` returns
+one entry per topic as its items hold it, with its subject and item count. Both read the in-memory
+label entries and the item projection under the delivery lock, decrypt nothing and write no recall
+record. Entries come in the order of [the memory index](./context.md#the-memory-index): by subject,
+then topic, or newest first for the lines of a topic. A call can pass `subjects`, and `after` is the
+decimal offset of the first entry to return.
+
+A page holds at most `index_topic_page` entries and then the entries that fit the page limit, with
+the first entry always kept. `next` is the offset of the first entry left out, or `null`, and
+`leftOut.count` counts every entry after the page. A topic with no item returns an empty `lines`
+list with `searched`. The stored tool record of a topic page holds the short IDs of its lines and
+the UUIDs under `hidden`, and the record of a topic list holds no topic name. The tool refuses a
+call that passes more than one of `query`, `itemIDs`, `topic` and `topics`, and refuses
+`includeRetired`, `includeHistory` and `limit` with `topic` or `topics`.
+
 ### The indexes
 
 The keyword index is an FTS5 table with the porter tokenizer in an in-memory SQLite database. It
@@ -328,16 +346,16 @@ rest for the store's start.
 
 The model reaches memory through these tools over the same interface:
 
-| Tool              | Effect | Does                                                       |
-| ----------------- | ------ | ---------------------------------------------------------- |
-| `memory.recall`   | `read` | Recalls items by query, by ID or a page at a time          |
-| `memory.pending`  | `read` | Lists the proposals that wait for the user's review        |
-| `memory.remember` | `note` | Creates an item, with a quote or a photo as its source     |
-| `memory.edit`     | `note` | Edits an item at a version it read, with a quote           |
-| `memory.retire`   | `note` | Retires an item at a version it read, with an intent quote |
-| `memory.pin`      | `note` | Asks to pin an item at a version it read                   |
-| `memory.unpin`    | `note` | Takes an item out of the pinned core                       |
-| `memory.rate`     | `note` | Rates how the items of the thread's latest recall worked   |
+| Tool              | Effect | Does                                                        |
+| ----------------- | ------ | ----------------------------------------------------------- |
+| `memory.recall`   | `read` | Recalls items by query, by ID, by topic or a page at a time |
+| `memory.pending`  | `read` | Lists the proposals that wait for the user's review         |
+| `memory.remember` | `note` | Creates an item, with a quote or a photo as its source      |
+| `memory.edit`     | `note` | Edits an item at a version it read, with a quote            |
+| `memory.retire`   | `note` | Retires an item at a version it read, with an intent quote  |
+| `memory.pin`      | `note` | Asks to pin an item at a version it read                    |
+| `memory.unpin`    | `note` | Takes an item out of the pinned core                        |
+| `memory.rate`     | `note` | Rates how the items of the thread's latest recall worked    |
 
 Creating and editing are separate tools because the tool list is where the model learns what it can
 do, and a model that finds editing only in the description of a create tool can miss it. Rating has

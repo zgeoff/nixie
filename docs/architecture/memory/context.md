@@ -1,10 +1,11 @@
 # Memory in context
 
-Memory reaches the conversation in 2 ways: the pinned core opens each new session in its first
-message, and the items and past messages that match the user's new messages go before those messages
-in the turn. Both come from the [memory store](./store.md) at the start of each turn, so a pin, an
-edit or a forget reaches the conversation on its next turn. A forget also cleans up every session
-copy that could still hold the item, and the next turn runs on a session rebuilt from the event log.
+Memory reaches the conversation in 3 ways: the pinned core and the memory index open each new
+session in its first message, and the items and past messages that match the user's new messages go
+before those messages in the turn when the deployment turns that on. All come from the
+[memory store](./store.md), so a pin, an edit or a forget reaches the conversation on its next turn,
+or its next session for the index. A forget also cleans up every session copy that could still hold
+the item, and the next turn runs on a session rebuilt from the event log.
 [Conversation turns](../core/conversation-turns.md) covers the turn these parts fit into, and
 [session opening](../core/session-opening.md) covers what a new session opens with. The
 [memory in context](../../design/platform/memory/context.md) design covers what is not built: a
@@ -48,6 +49,34 @@ budget, through two entries that the memory package owns
 ([status](../core/session-opening.md#status)), and the change note repeats the figures after the
 core changes. The figures inform and block nothing: only the budget refuses a pin.
 
+## The memory index
+
+A new session's first message holds a `memory-index` block right after the pinned core. It lists
+every active item that is not pinned and has not lapsed, grouped by subject (the user's items, then
+the shared items, then self-notes) and then by topic. Each topic is one row with its item count and
+its items, each as its short ID and gist, newest first. A topic belongs to one subject, so `home`
+under the user and `home` under the shared items are 2 rows. A topic's row is the part of the item's
+topic before its first `/`, ignoring case, spelled as the row's newest item spells it. The part
+after the first `/` is a sub-topic.
+
+The block opens with a line that says what the index is, that `memory.recall` with `itemIDs` reads
+an item in full, and that `memory.recall` with `topic` opens a folded topic or a sub-topic such as
+`people/friends`. The store builds it from the in-memory label entries and one read of the item
+projection under the store lock, so it decrypts nothing and writes no record. The session renders
+the block once, when it opens. An item that lands later reaches the model through a recall, the
+per-turn search or the next session's index.
+
+The block has its own token budget, `index_tokens`, apart from the pinned core's. The store counts
+every line of the block with the same estimate it uses for the core. While the count is over the
+budget, it folds the open topic with the most items, which then shows its count, its 3 newest items
+and its sub-topics with their counts. A topic with 3 items or fewer shows them all when folded, so
+the store never folds it. A topic with more than `index_open_topic_items` items starts folded. When
+every foldable topic is folded and the count is still over, the store drops topics into a closing
+line that gives their number and their items, the topic with the fewest items first. A tie in either
+step goes to the later topic in the block's order. `memory.recall` with `topics` lists every topic,
+so a dropped topic stays reachable. A budget of 0 turns the block and its status lines off, and the
+schema refuses a budget from 1 to 2,999.
+
 ## How an item reads
 
 The pinned core and the retrieved block both speak to the model as its own memory, under a header
@@ -79,7 +108,9 @@ answering with it.
 
 ## Per-turn retrieval
 
-Before each turn, the conversation searches memory with the readable text of the user's new
+The deployment turns the search on by setting `retrieval_items`, `retrieval_self_notes` or
+`retrieval_messages` above 0. All 3 default to 0, because the index shows the model where to look.
+Before each turn, the conversation then searches memory with the readable text of the user's new
 messages. The search is the store's recall over active items, by keyword and by meaning, with pinned
 items left out because the session's opening already holds them. A message such as "when is the
 heating engineer coming" therefore places the item about the boiler service, though the two share no
