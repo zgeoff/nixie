@@ -3,8 +3,8 @@
 A nixie release is one version, cut from one commit on `main`, that publishes every nixie image to
 GitHub Container Registry (GHCR). release-please opens a release pull request from the Conventional
 Commits since the last release, and merging it creates the `v<version>` tag and the GitHub release.
-The release workflow then builds the conversation, fetch, code and backup images, the nixie image
-with the sandbox digests inside it, and the web image, in that order. Each image gets a build
+The release workflow then builds the conversation, fetch, code, codex and backup images, the nixie
+image with the sandbox digests inside it, and the web image, in that order. Each image gets a build
 provenance attestation as it is pushed, and the version tag reaches every image only after all of
 them exist. The release then publishes `release.json` and `config.schema.json`, the contract a
 deployment reads in place of nixie's tree. Pull-request CI checks the 2 compatibility rules that a
@@ -22,8 +22,8 @@ checks and verification that later slices add.
 
 Each image builds for `linux/amd64` only, from the Dockerfile in the package it ships, and lives in
 one flat GHCR namespace: `nixie` for the server and `nixie-<image>` for the conversation, fetch,
-code, backup and web images. One release-please component at the repository root versions the whole
-repo, so one version covers every image. Conventional Commits drive the bump under Semantic
+code, codex, backup and web images. One release-please component at the repository root versions the
+whole repo, so one version covers every image. Conventional Commits drive the bump under Semantic
 Versioning, the first release is `0.1.0`, and before 1.0 a breaking change bumps the minor version.
 The release pull request bumps the version in the server's source as well as in the manifest, so the
 server knows the release it runs without reading a tag.
@@ -46,11 +46,13 @@ flowchart LR
   rp[release-please] --> conv[conversation image]
     rp --> fetch[fetch image]
   rp --> code[code image]
+  rp --> codex[codex image]
   rp --> backup[backup image]
 
   conv --> nixie[nixie image]
   fetch --> nixie
   code --> nixie
+  codex --> nixie
     nixie --> web[web image]
   web --> notes[release notes]
   backup --> notes
@@ -60,9 +62,12 @@ flowchart LR
   assets --> npm[npm packages]
 ```
 
-1. **Sandbox and backup images.** The conversation, fetch, code and backup images build in parallel,
-   and each pushes by digest only. The backup image downloads restic at the version its package pins
-   and refuses a download whose checksum differs from the pinned one.
+1. **Sandbox and backup images.** The conversation, fetch, code, codex and backup images build in
+   parallel, and each pushes by digest only. The backup image downloads restic at the version its
+   package pins and refuses a download whose checksum differs from the pinned one. The codex image
+   downloads the Codex CLI the same way, and `codexVersion` in `guests/codex/src/codex-version.ts`
+   equals the version in its Dockerfile. When you change that version, also change the checksum, and
+   rerun the app-server spike's script before the pull request merges.
 2. **The nixie image.** The workflow builds the sandbox manifest from the stage 1 digests, writes it
    into the build context, then builds and pushes the nixie image by digest.
 3. **The web image.** The web image builds and pushes by digest.

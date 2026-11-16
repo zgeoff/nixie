@@ -17,6 +17,18 @@ suites check that an imp reaches nothing else.
    bun run test:imp adapters/sandbox-imp/
    ```
 
+### The codex image
+
+`apps/server/src/part/list-image-needs.imp.test.ts` runs the pinned Codex CLI in a sandbox on the
+codex image. Build the image into impd from `guests/codex/Dockerfile` with the repo root as the
+build folder, as step 1 does for the fetch image, and run the test with
+`NIXIE_IMP_TEST_CODEX_IMAGE=<codex_image_name>` set beside the first 2 variables of step 2.
+
+Two checks wait for a run on an imp host with the broker and the tool route, and the record of each
+stays open until that run: a full Codex turn that shows the model receives only nixie's tools and
+the 3 Codex resource tools, and that the secret reaches the model host as a bearer header. A probe
+of the largest turn sets the memory of the `codexTask` size row, which holds 384 MiB until then.
+
 Expect `0 fail`, with no skipped test. The `test:imp` script runs the `*.imp.test.ts` files under
 the imp lane's limit per test.
 

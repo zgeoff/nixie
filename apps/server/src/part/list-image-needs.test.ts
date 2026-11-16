@@ -2,6 +2,7 @@ import { expect, onTestFinished, test } from 'bun:test';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { buildMockCodexProfile } from '@heynixie/models/test-utils';
 import { loadDeploymentConfig } from '../deployment/load-deployment-config';
 import { writeBootFiles } from '../test-utils/write-boot-files';
 import type { BootFileExtras } from '../test-utils/write-boot-files';
@@ -76,5 +77,26 @@ test('it needs no image for a declaration that names none', async () => {
 
   expect(listImageNeeds(config, declarations)).toStrictEqual([
     { key: 'conversation', neededBy: 'the profile scripted on the agent-sdk harness' },
+  ]);
+});
+
+test('it needs the codex image for a system task profile on the codex harness', async () => {
+  const ctx = await setupTest();
+  const loaded = await ctx.loadConfig({});
+
+  const profile = buildMockCodexProfile({ id: 'task-codex' });
+
+  const config = {
+    ...loaded,
+    models: {
+      ...loaded.models,
+      profiles: { ...loaded.models.profiles, [profile.id]: profile },
+      roles: { ...loaded.models.roles, checker: profile.id },
+    },
+  };
+
+  expect(listImageNeeds(config, [])).toStrictEqual([
+    { key: 'conversation', neededBy: 'the profile scripted on the agent-sdk harness' },
+    { key: 'codex', neededBy: 'the profile task-codex on the codex harness' },
   ]);
 });

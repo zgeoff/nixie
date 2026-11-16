@@ -90,7 +90,9 @@ each grant's placeholders and never its credential, so a sandbox record never ho
 Each task that the conversation starts runs in a worker sandbox of its own, on the conversation
 image, with the limits of a system task's sandbox. The task's ID is the sandbox's owner. The
 [sandbox runner](../core/started-tasks.md#the-sandbox-runner), which runs the steps of started
-tasks, creates the sandbox at the task's first step. Its life follows the task:
+tasks, creates the sandbox at the task's first step. A task whose profile runs on the `codex`
+harness uses the codex image and the `codexTask` size row in place of the conversation image and the
+system task's row; each harness record names its rows in `sizeRows`. Its life follows the task:
 
 1. When a step's commit leaves the task waiting or paused, the runner puts the sandbox to sleep, if
    its adapter can. A task that waits for days then holds no host memory. A sleep that fails leaves
