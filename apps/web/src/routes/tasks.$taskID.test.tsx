@@ -1,5 +1,7 @@
 import { expect, onTestFinished, spyOn, test } from 'bun:test';
+import { buildQueryUtils } from '@heynixie/contract';
 import { waitFor } from '@testing-library/react';
+import { buildBrowserClient } from '../client/build-browser-client';
 import { store } from '../mocks/store';
 import { createDeviceSession } from '../test-utils/create-device-session';
 import { renderRoute } from '../test-utils/render-route';
@@ -64,4 +66,25 @@ test('it renders a task page around a record of a kind the page does not know, w
   const message = await rendered.findByText('Check the seed order.', {}, { timeout: 4000 });
 
   expect(message).toBeTruthy();
+});
+
+test('it keeps the task that the route read, with no second read when the page mounts', async () => {
+  const queryUtils = buildQueryUtils(buildBrowserClient());
+
+  await createDeviceSession();
+
+  await store.tasks.create({ name: 'Seed order', state: 'waiting', taskID: 'p7hd2wq9zn' });
+
+  const rendered = renderRoute('/tasks/p7hd2wq9zn');
+
+  await rendered.findByText('Seed order', {}, { timeout: 4000 });
+
+  const state = rendered.queryClient.getQueryState(
+    queryUtils.tasks.read.queryKey({ input: { taskID: 'p7hd2wq9zn' } }),
+  );
+
+  expect({
+    dataUpdateCount: state?.dataUpdateCount,
+    fetchStatus: state?.fetchStatus,
+  }).toStrictEqual({ dataUpdateCount: 1, fetchStatus: 'idle' });
 });
