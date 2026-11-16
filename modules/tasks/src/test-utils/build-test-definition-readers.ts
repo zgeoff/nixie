@@ -42,6 +42,7 @@ export function buildTestDefinitionStore(): TestDefinitionStore {
         tools: [],
         context: 'fresh',
         wakeable: false,
+        trigger: null,
         ...entry.version,
       });
 

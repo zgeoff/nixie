@@ -2220,6 +2220,7 @@ test('it stores each accepted version under its hash and reads it back', async (
     tools: ['memory.recall'],
     context: 'fresh',
     wakeable: false,
+    trigger: null,
   });
 });
 
@@ -2257,6 +2258,71 @@ test('it fills a version with the file starter defaults when the file omits them
     persona: 'default',
     memory: 'none',
     tools: expect.arrayContaining(['time.now']),
+  });
+});
+
+test('it reads the brief and the at trigger of a conversation reminder', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 4\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+  await mkdir(join(ctx.root, 'tasks', 'dentist'), { recursive: true });
+
+  await writeFile(
+    join(ctx.root, 'tasks', 'dentist', 'task.yaml'),
+    'name: Call the dentist\nbrief: Call the dentist about the crown.\ntarget: conversation\ntrigger:\n  at: "2026-06-04T06:30:00+10:00"\n',
+  );
+
+  await runSeed({
+    tasks: buildTestTaskSeed(),
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => ({ rules: [], tools: [] }),
+  });
+
+  const inForce = await readDefinitionsInForce(ctx.writer.db);
+
+  const hash = inForce?.tasks[0]?.hash;
+
+  invariant(hash !== undefined);
+
+  const version = await readDefinitionVersion(ctx.writer.db, hash);
+
+  expect(version).toMatchObject({
+    brief: 'Call the dentist about the crown.',
+    trigger: { at: '2026-06-04T06:30:00+10:00' },
+  });
+});
+
+test('it reads the schedule of a version with the zone filled', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 4\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+  await mkdir(join(ctx.root, 'tasks', 'dentist'), { recursive: true });
+
+  await writeFile(
+    join(ctx.root, 'tasks', 'dentist', 'task.yaml'),
+    'name: Call the dentist\nbrief: Call the dentist.\ntrigger:\n  schedule:\n    every: day\n    at: "06:30"\n',
+  );
+
+  await runSeed({
+    tasks: buildTestTaskSeed(),
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => ({ rules: [], tools: [] }),
+  });
+
+  const inForce = await readDefinitionsInForce(ctx.writer.db);
+
+  const hash = inForce?.tasks[0]?.hash;
+
+  invariant(hash !== undefined);
+
+  const version = await readDefinitionVersion(ctx.writer.db, hash);
+
+  expect(version).toMatchObject({
+    trigger: { schedule: { every: 'day', at: '06:30', zone: 'owner', catchUp: 'once' } },
   });
 });
 

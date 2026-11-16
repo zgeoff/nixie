@@ -1,5 +1,5 @@
 import type { Clock } from '@heynixie/clock';
-import type { taskMessageKindSchema } from '@heynixie/contract';
+import type { Trigger, taskMessageKindSchema } from '@heynixie/contract';
 import type { CheckedTables } from '@heynixie/db';
 import type {
   Definitions,
@@ -51,6 +51,9 @@ export interface DefinitionVersion {
   readonly tools: readonly string[];
   readonly context: 'fresh' | 'continuing';
   readonly wakeable: boolean;
+
+  // null: the definition fires by no trigger
+  readonly trigger: Trigger | null;
 }
 
 export type ReadDefinitionVersion = (

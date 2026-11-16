@@ -1,3 +1,4 @@
+import { triggerSchema } from '@heynixie/contract';
 import { startedTaskDefaultTools } from '@heynixie/tasks';
 import type { Kysely } from 'kysely';
 import { z } from 'zod';
@@ -13,6 +14,7 @@ const formSchema = z.looseObject({
   tools: z.string().array().optional(),
   context: z.enum(['fresh', 'continuing']),
   wakeable: z.boolean(),
+  trigger: triggerSchema.nullish(),
 });
 
 const filesSchema = z.record(z.string(), z.string());
@@ -50,5 +52,6 @@ export async function readDefinitionVersion(
     tools: form.tools ?? startedTaskDefaultTools,
     context: form.context,
     wakeable: form.wakeable,
+    trigger: form.trigger ?? null,
   };
 }
