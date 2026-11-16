@@ -55,9 +55,9 @@ reports to the conversation. Each task run and the conversation turn it wakes ar
 on the preview's profile. [Preview API check](preview-api-check.md#see-the-scheduled-task-fire)
 shows how to see a task run's report.
 
-The preview holds no policy rules, so nixie holds each tool call for approval. Each task run's
-`task.report` call waits on the approvals page, and the conversation turn it wakes can add another
-held call. Each held call lapses after 3 days.
+The preview holds no policy rules, so nixie holds each task run's `task.report` call for approval on
+the approvals page. The conversation turn that the task run wakes can add another held call. Each
+held call lapses after 3 days.
 
 ## Model calls
 

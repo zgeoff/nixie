@@ -121,9 +121,9 @@ Expect a record from `Preview tick` whose `text` reads
 run's `task.report` call waits for approval, and the task run ends before it writes its own summary.
 
 A task run whose model calls kept failing, as when the preview has no model access, reports
-`summary: The run failed after 3 errors before it wrote a summary.` To see the model's answer, read
-the task's own thread: repeat step 5 with `thread` set to the record's `.taskMessage.from`, and
-expect a `model.reply` record.
+`summary: The run failed after 3 errors before it wrote a summary.` To see the model's answer,
+repeat step 5 with `thread` set to the record's `.taskMessage.from`. Expect a `model.reply` record
+on the task's thread.
 
 ## Start the next check from an empty log
 
