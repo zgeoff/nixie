@@ -1,0 +1,244 @@
+import { timingSafeEqual } from 'node:crypto';
+import type { Logger } from '@heynixie/logger';
+import { toErrorFields } from '@heynixie/logger';
+import { z } from 'zod';
+import { readOverride } from '../override/read-override';
+import { sandboxNameSchema } from '../periods/sandbox-name-schema';
+import type {
+  Override,
+  PeriodChange,
+  PeriodStore,
+  PeriodStoreHandle,
+  PeriodsConfig,
+} from '../types';
+import { buildStatus } from './build-status';
+import type { ControlOutcome } from './control-outcome';
+import { pickLimitsChange } from './pick-limits-change';
+import { pickRaiseChange } from './pick-raise-change';
+import { pickSandboxRemoveChange } from './pick-sandbox-remove-change';
+import { pickSandboxSetChange } from './pick-sandbox-set-change';
+
+export interface ControlHandlerDeps {
+  readonly store: PeriodStoreHandle;
+  readonly config: PeriodsConfig;
+
+  // the one line of the token file
+  readonly token: string;
+  readonly now: () => number;
+  readonly log: Logger;
+}
+
+const positiveMeasuresSchema = z.strictObject({
+  dollars: z.number().positive(),
+  tokens: z.number().positive(),
+});
+
+const limitsBodySchema = z.strictObject({
+  day: positiveMeasuresSchema,
+  month: positiveMeasuresSchema,
+});
+
+const raiseBodySchema = z.strictObject({
+  period: z.literal('day'),
+  start: z.string().regex(/^\d{4}-\d{2}-\d{2}$/u),
+  limit: positiveMeasuresSchema,
+});
+
+const sandboxBodySchema = z.strictObject({ limit: positiveMeasuresSchema.nullable() });
+
+export function makeControlHandler(
+  deps: ControlHandlerDeps,
+): (request: Request) => Promise<Response> {
+  const readCurrentOverride = async (): Promise<Override | null> => {
+    if (deps.config.override === null) {
+      return null;
+    }
+
+    const read = await readOverride(deps.config.override);
+
+    return read.kind === 'found' ? read.override : null;
+  };
+
+  const answerStatus = async (): Promise<Response> => {
+    const store = await deps.store.read();
+    const override = await readCurrentOverride();
+
+    return Response.json(buildStatus(store, override, deps.config, deps.now()));
+  };
+
+  const answerOutcome = (outcome: ControlOutcome): Promise<Response> => {
+    if (outcome.kind === 'above_cap') {
+      return Promise.resolve(
+        Response.json(
+          { error: 'above_cap', period: outcome.period, cap: outcome.cap },
+          { status: 409 },
+        ),
+      );
+    }
+
+    if (outcome.kind === 'period_ended') {
+      return Promise.resolve(Response.json({ error: 'period_ended' }, { status: 409 }));
+    }
+
+    return answerStatus();
+  };
+
+  const changeStore = (decide: (store: PeriodStore) => PeriodChange<ControlOutcome>) =>
+    deps.store.change(decide);
+
+  const answerLimits = async (request: Request): Promise<Response> => {
+    const body = await readBody(request, limitsBodySchema);
+
+    if (body.kind === 'invalid') {
+      return renderInvalid(body.message);
+    }
+
+    const outcome = await changeStore((store) =>
+      pickLimitsChange(store, deps.config.caps, body.data),
+    );
+
+    return answerOutcome(outcome);
+  };
+
+  const answerRaise = async (request: Request): Promise<Response> => {
+    const body = await readBody(request, raiseBodySchema);
+
+    if (body.kind === 'invalid') {
+      return renderInvalid(body.message);
+    }
+
+    const raise = { start: body.data.start, limit: body.data.limit };
+
+    const outcome = await changeStore((store) => pickRaiseChange(store, deps.config.caps, raise));
+
+    return answerOutcome(outcome);
+  };
+
+  const answerSandboxRead = async (name: string): Promise<Response> => {
+    const store = await deps.store.read();
+
+    if (!Object.hasOwn(store.sandboxes, name)) {
+      return Response.json({ error: 'not_found' }, { status: 404 });
+    }
+
+    const held = store.sandboxes[name];
+
+    return Response.json({
+      dollars: held?.dollars ?? 0,
+      tokens: held?.tokens ?? 0,
+      tripped:
+        held?.limit !== undefined &&
+        held.limit !== null &&
+        (held.dollars >= held.limit.dollars || held.tokens >= held.limit.tokens),
+    });
+  };
+
+  const answerSandbox = async (request: Request, rawName: string): Promise<Response> => {
+    const name = sandboxNameSchema.safeParse(decodeSegment(rawName));
+
+    if (!name.success) {
+      return renderInvalid('the sandbox name is not a valid name');
+    }
+
+    if (request.method === 'PUT') {
+      const body = await readBody(request, sandboxBodySchema);
+
+      if (body.kind === 'invalid') {
+        return renderInvalid(body.message);
+      }
+
+      await changeStore((store) => pickSandboxSetChange(store, name.data, body.data.limit));
+
+      return new Response(null, { status: 204 });
+    }
+
+    if (request.method === 'DELETE') {
+      await changeStore((store) => pickSandboxRemoveChange(store, name.data));
+
+      return new Response(null, { status: 204 });
+    }
+
+    return request.method === 'GET' ? answerSandboxRead(name.data) : renderMethodNotAllowed();
+  };
+
+  const answerRoute = (request: Request, pathname: string): Promise<Response> | Response => {
+    if (pathname === '/status') {
+      return request.method === 'GET' ? answerStatus() : renderMethodNotAllowed();
+    }
+
+    if (pathname === '/limits') {
+      return request.method === 'PUT' ? answerLimits(request) : renderMethodNotAllowed();
+    }
+
+    if (pathname === '/raise') {
+      return request.method === 'POST' ? answerRaise(request) : renderMethodNotAllowed();
+    }
+
+    const sandbox = /^\/sandboxes\/(?<name>[^/]+)$/u.exec(pathname)?.groups?.['name'];
+
+    return sandbox === undefined
+      ? Response.json({ error: 'not_found' }, { status: 404 })
+      : answerSandbox(request, sandbox);
+  };
+
+  const answerControl = async (request: Request): Promise<Response> => {
+    if (!isAuthorized(request, deps.token)) {
+      return Response.json({ error: 'unauthorized' }, { status: 401 });
+    }
+
+    try {
+      return await answerRoute(request, new URL(request.url).pathname);
+    } catch (error) {
+      deps.log('control.failed', toErrorFields(error), 'error');
+
+      return Response.json({ error: 'store_unavailable' }, { status: 503 });
+    }
+  };
+
+  return answerControl;
+}
+
+type BodyRead<T> =
+  | { readonly kind: 'valid'; readonly data: T }
+  | { readonly kind: 'invalid'; readonly message: string };
+
+async function readBody<T>(request: Request, schema: z.ZodType<T>): Promise<BodyRead<T>> {
+  const text = await request.text();
+
+  let json: unknown;
+
+  try {
+    json = JSON.parse(text);
+  } catch {
+    return { kind: 'invalid', message: 'the body is not JSON' };
+  }
+
+  const parsed = schema.safeParse(json);
+
+  return parsed.success
+    ? { kind: 'valid', data: parsed.data }
+    : { kind: 'invalid', message: z.prettifyError(parsed.error) };
+}
+
+function renderInvalid(message: string): Response {
+  return Response.json({ error: 'invalid_request', message }, { status: 400 });
+}
+
+function decodeSegment(segment: string): string {
+  try {
+    return decodeURIComponent(segment);
+  } catch {
+    return segment;
+  }
+}
+
+function renderMethodNotAllowed(): Response {
+  return Response.json({ error: 'method_not_allowed' }, { status: 405 });
+}
+
+function isAuthorized(request: Request, token: string): boolean {
+  const given = Buffer.from(request.headers.get('authorization') ?? '');
+  const expected = Buffer.from(`Bearer ${token}`);
+
+  return given.length === expected.length && timingSafeEqual(given, expected);
+}

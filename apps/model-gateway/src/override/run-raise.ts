@@ -1,0 +1,41 @@
+import { getLocalDate } from '../periods/get-local-date';
+import { getPeriodStart } from '../periods/get-period-start';
+import { loadProxyConfig } from '../proxy/load-proxy-config';
+import type { Override, PeriodName } from '../types';
+import { writeOverride } from './write-override';
+
+export interface RaiseOptions {
+  readonly configPath: string;
+  readonly period: PeriodName;
+  readonly dollars: number;
+  readonly tokens: number;
+  readonly now: () => number;
+}
+
+// The host command: writes the override for the period in force in the config's zone, and returns
+// what it wrote. The override may pass the cap, because only a host command writes it.
+export async function runRaise(options: RaiseOptions): Promise<Override> {
+  const config = await loadProxyConfig(options.configPath);
+
+  if (config.periods === null) {
+    throw new Error('the config sets no periods, so there is no limit to raise');
+  }
+
+  if (config.periods.override === null) {
+    throw new Error(
+      'the config names no override file, so the gateway reads no raise from the host',
+    );
+  }
+
+  const today = getLocalDate(options.now(), config.periods.zone);
+
+  const override: Override = {
+    period: options.period,
+    start: getPeriodStart(options.period, today),
+    limit: { dollars: options.dollars, tokens: options.tokens },
+  };
+
+  await writeOverride(config.periods.override, override);
+
+  return override;
+}

@@ -1,5 +1,7 @@
 import { makeLogger, startLineLog, toErrorFields } from '@heynixie/logger';
 import { cli, define } from 'gunshi';
+import { z } from 'zod';
+import { runRaise } from './override/run-raise';
 import { startModelGateway } from './proxy/start-model-gateway';
 
 const received = Promise.withResolvers<string>();
@@ -22,8 +24,8 @@ const log = makeLogger();
 // still under way
 const drainTimeoutMs = 30_000;
 
-const command = define({
-  name: 'model-gateway',
+const serve = define({
+  name: 'serve',
   description: 'Counts the spend of each model reply and refuses requests past the limit',
   args: { config: { type: 'string', required: true, description: 'the proxy config file' } },
   run: async (ctx) => {
@@ -39,8 +41,40 @@ const command = define({
   },
 });
 
+const raise = define({
+  name: 'raise',
+  description:
+    'Writes the override file that raises a period past its cap, for the period now in force',
+  args: {
+    config: { type: 'string', required: true, description: 'the proxy config file' },
+    period: { type: 'enum', choices: ['day', 'month'], required: true },
+    dollars: { type: 'number', required: true, description: 'the dollar limit to set' },
+    tokens: { type: 'number', required: true, description: 'the token limit to set' },
+  },
+  run: async (ctx) => {
+    const override = await runRaise({
+      configPath: ctx.values.config,
+      period: z.enum(['day', 'month']).parse(ctx.values.period),
+      dollars: ctx.values.dollars,
+      tokens: ctx.values.tokens,
+      now: Date.now,
+    });
+
+    log('override.written', {
+      period: override.period,
+      start: override.start,
+      dollars: override.limit.dollars,
+      tokens: override.limit.tokens,
+    });
+  },
+});
+
 try {
-  await cli(process.argv.slice(2), command);
+  // with no subcommand the command serves, as each host's unit and the release run it
+  await cli(process.argv.slice(2), serve, {
+    name: 'model-gateway',
+    subCommands: { serve, raise },
+  });
 
   process.exit(0);
 } catch (error) {

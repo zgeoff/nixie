@@ -55,6 +55,7 @@ test('it reads a config into its typed shape, with a trailing slash cut from the
     listen: { hostname: '0.0.0.0', port: 18_090 },
     store: '/var/lib/model-gateway/counter.json',
     limits: { dollars: 5, tokens: null },
+    periods: null,
     capture: null,
     routes: {
       preview: {
@@ -261,4 +262,141 @@ test('it rejects a capture key it does not know', () => {
       },
     }).success,
   ).toBeFalse();
+});
+
+function setupTest() {
+  return {
+    periodsConfig: {
+      listen: { port: 18_090 },
+      store: '/var/lib/model-gateway/counter.json',
+      periods: { zone: 'Europe/London' },
+      control: { listen: { port: 18_091 }, tokenFile: '/run/secrets/gateway-control-token' },
+      routes: {
+        preview: {
+          upstream: 'https://models.example.com',
+          model: 'model-small',
+          prices: { input: 1, cache_write: 1.25, cache_write_1h: 2, cached_input: 0.1, output: 5 },
+        },
+      },
+    },
+  };
+}
+
+test('it reads periods with the default caps, a loopback control listener and no override', () => {
+  const ctx = setupTest();
+  const result = proxyConfigSchema.safeParse(ctx.periodsConfig);
+
+  expect(result.data).toMatchObject({
+    limits: null,
+    periods: {
+      zone: 'Europe/London',
+      caps: {
+        day: { dollars: 120, tokens: 160_000_000 },
+        month: { dollars: 1200, tokens: 1_200_000_000 },
+      },
+      control: {
+        listen: { hostname: '127.0.0.1', port: 18_091 },
+        tokenFile: '/run/secrets/gateway-control-token',
+      },
+      countBySandbox: false,
+      override: null,
+    },
+  });
+});
+
+test('it reads each periods key the config names', () => {
+  const ctx = setupTest();
+
+  const result = proxyConfigSchema.safeParse({
+    ...ctx.periodsConfig,
+    caps: { day: { dollars: 50, tokens: 1000 } },
+    countBySandbox: true,
+    override: '/var/lib/model-gateway/override.json',
+  });
+
+  expect(result.data?.periods).toMatchObject({
+    caps: { day: { dollars: 50, tokens: 1000 }, month: { dollars: 1200 } },
+    countBySandbox: true,
+    override: '/var/lib/model-gateway/override.json',
+  });
+});
+
+test('it rejects a config that sets both limits and periods', () => {
+  const ctx = setupTest();
+  const result = proxyConfigSchema.safeParse({ ...ctx.periodsConfig, limits: { dollars: 5 } });
+
+  expect(result.success).toBeFalse();
+});
+
+test('it rejects a config that sets neither limits nor periods', () => {
+  const ctx = setupTest();
+  const { periods: _periods, control: _control, ...neither } = ctx.periodsConfig;
+
+  expect(proxyConfigSchema.safeParse(neither).success).toBeFalse();
+});
+
+test('it rejects periods with no control listener', () => {
+  const ctx = setupTest();
+  const { control: _control, ...noControl } = ctx.periodsConfig;
+  const result = proxyConfigSchema.safeParse(noControl);
+
+  expect(result.error?.issues).toPartiallyContain({ path: ['control'] });
+});
+
+test('it rejects a zone that is not an IANA zone', () => {
+  const ctx = setupTest();
+
+  const result = proxyConfigSchema.safeParse({
+    ...ctx.periodsConfig,
+    periods: { zone: 'Mars/Olympus' },
+  });
+
+  expect(result.error?.issues).toPartiallyContain({ path: ['periods', 'zone'] });
+});
+
+test.each([
+  ['caps', { day: { dollars: 1, tokens: 1 } }],
+  ['countBySandbox', true],
+  ['override', '/var/lib/model-gateway/override.json'],
+])('it rejects %s in a limits config, which sets none of the periods keys', (key, value) => {
+  const ctx = setupTest();
+
+  const result = proxyConfigSchema.safeParse({
+    listen: { port: 18_090 },
+    store: '/var/lib/model-gateway/counter.json',
+    limits: { dollars: 5 },
+    [key]: value,
+    routes: ctx.periodsConfig.routes,
+  });
+
+  expect(result.error?.issues).toPartiallyContain({ path: [key] });
+});
+
+test('it rejects a relative override path', () => {
+  const ctx = setupTest();
+  const result = proxyConfigSchema.safeParse({ ...ctx.periodsConfig, override: 'override.json' });
+
+  expect(result.error?.issues).toPartiallyContain({ path: ['override'] });
+});
+
+test('it rejects a relative control token file', () => {
+  const ctx = setupTest();
+
+  const result = proxyConfigSchema.safeParse({
+    ...ctx.periodsConfig,
+    control: { listen: { port: 18_091 }, tokenFile: 'token' },
+  });
+
+  expect(result.error?.issues).toPartiallyContain({ path: ['control', 'tokenFile'] });
+});
+
+test('it rejects a cap of zero', () => {
+  const ctx = setupTest();
+
+  const result = proxyConfigSchema.safeParse({
+    ...ctx.periodsConfig,
+    caps: { month: { dollars: 0, tokens: 1 } },
+  });
+
+  expect(result.error?.issues).toPartiallyContain({ path: ['caps', 'month', 'dollars'] });
 });

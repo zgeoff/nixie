@@ -17,7 +17,88 @@ async function setupTest() {
 
   onTestFinished(() => model.stop());
 
-  return { directory, model, log: mock<Logger>(() => {}) };
+  const log = mock<Logger>(() => {});
+  let current = Date.parse('2026-11-13T10:00:00Z');
+
+  return {
+    directory,
+    model,
+    log,
+    moveTo: (instant: string) => {
+      current = Date.parse(instant);
+    },
+
+    // a gateway with periods, a control listener and a route to the scripted model; the config
+    // lines in `extra` follow the route and may name a capture
+    startPeriods: async (extra: readonly string[] = []) => {
+      await writeFile(join(directory, 'token'), 'control-secret\n');
+
+      await writeFile(
+        join(directory, 'proxy.yaml'),
+        [
+          'listen: { port: 0 }',
+          `store: ${join(directory, 'counter.json')}`,
+          'periods: { zone: Europe/London }',
+          'caps: { day: { dollars: 120, tokens: 160000000 } }',
+          `control: { listen: { port: 0 }, tokenFile: ${join(directory, 'token')} }`,
+          'countBySandbox: true',
+          `override: ${join(directory, 'override.json')}`,
+          ...extra,
+          'routes:',
+          '  preview:',
+          `    upstream: ${model.url}`,
+          '    model: model-small',
+          '    prices: { input: 1, cache_write: 1.25, cache_write_1h: 2, cached_input: 0.1, output: 5 }',
+        ].join('\n'),
+      );
+
+      const proxy = await startModelGateway({
+        configPath: join(directory, 'proxy.yaml'),
+        log,
+        now: () => current,
+        waitForDrainDeadline: () => Promise.resolve(),
+      });
+
+      onTestFinished(() => proxy.stop());
+
+      const controlURL = proxy.controlURL ?? '';
+
+      return {
+        proxy,
+        send: (sandbox: string, path = 'preview/v1/messages') =>
+          fetch(`${proxy.url}/${sandbox}/${path}`, {
+            method: 'POST',
+            body: JSON.stringify({ model: 'model-small', messages: [] }),
+          }),
+        control: async (method: string, path: string, body?: unknown) => {
+          const response = await fetch(`${controlURL}${path}`, {
+            method,
+            headers: { authorization: 'Bearer control-secret' },
+            body: body === undefined ? null : JSON.stringify(body),
+          });
+
+          const text = await response.text();
+
+          return { status: response.status, body: text };
+        },
+        exchange: async (sandbox: string, path = 'preview/v1/messages') => {
+          const response = await fetch(`${proxy.url}/${sandbox}/${path}`, {
+            method: 'POST',
+            body: JSON.stringify({ model: 'model-small', messages: [] }),
+          });
+
+          await response.text();
+
+          return response.status;
+        },
+        limits: {
+          day: { dollars: 60, tokens: 80_000_000 },
+          month: { dollars: 600, tokens: 600_000_000 },
+        },
+        readStore: (): Promise<unknown> => Bun.file(join(directory, 'counter.json')).json(),
+      };
+    },
+  };
 }
 
 test('it serves its routes from a config file and writes each count to its store', async () => {
@@ -458,4 +539,335 @@ test('it refuses to start when its capture spool is not a folder it can write', 
   });
 
   expect(starting).rejects.toThrow();
+});
+
+test('it refuses every request with a 503 and sends nothing upstream while no limit is set', async () => {
+  const ctx = await setupTest();
+  const gateway = await ctx.startPeriods();
+
+  await gateway.control('PUT', '/sandboxes/alpha', { limit: null });
+
+  const response = await gateway.send('alpha');
+
+  expect(response.status).toBe(503);
+  expect(ctx.model.requests).toHaveLength(0);
+});
+
+test('it counts a reply on the day, the month and the sandbox in one write', async () => {
+  const ctx = await setupTest();
+  const gateway = await ctx.startPeriods();
+
+  ctx.model.addReplies({ text: 'counted', usage: { input_tokens: 600, output_tokens: 400 } });
+
+  await gateway.control('PUT', '/limits', gateway.limits);
+  await gateway.control('PUT', '/sandboxes/alpha', { limit: null });
+
+  const response = await gateway.send('alpha');
+
+  await response.text();
+
+  const stored = await gateway.readStore();
+
+  expect(stored).toMatchObject({
+    periods: { day: { dollars: 0.0026, tokens: 1000 }, month: { dollars: 0.0026, tokens: 1000 } },
+    sandboxes: { alpha: { dollars: 0.0026, tokens: 1000 } },
+  });
+});
+
+test('it strips the sandbox and route segments before it calls the model', async () => {
+  const ctx = await setupTest();
+  const gateway = await ctx.startPeriods();
+
+  ctx.model.addReplies({ text: 'ok', usage: { input_tokens: 1, output_tokens: 1 } });
+
+  await gateway.control('PUT', '/limits', gateway.limits);
+  await gateway.control('PUT', '/sandboxes/alpha', { limit: null });
+  await gateway.exchange('alpha');
+
+  expect(ctx.model.requests.map((request) => request.path)).toStrictEqual(['/v1/messages']);
+});
+
+test('it refuses with a 403 a sandbox the store lacks and sends nothing upstream', async () => {
+  const ctx = await setupTest();
+  const gateway = await ctx.startPeriods();
+
+  await gateway.control('PUT', '/limits', gateway.limits);
+
+  const response = await gateway.send('ghost');
+
+  expect(response.status).toBe(403);
+  expect(ctx.model.requests).toHaveLength(0);
+});
+
+test('it refuses a sandbox past its own limit with the limit 403 while another sandbox still passes', async () => {
+  const ctx = await setupTest();
+  const gateway = await ctx.startPeriods();
+
+  ctx.model.addReplies(
+    { text: 'first', usage: { input_tokens: 600, output_tokens: 400 } },
+    { text: 'other', usage: { input_tokens: 1, output_tokens: 1 } },
+  );
+
+  await gateway.control('PUT', '/limits', gateway.limits);
+  await gateway.control('PUT', '/sandboxes/alpha', { limit: { dollars: 2, tokens: 1000 } });
+  await gateway.control('PUT', '/sandboxes/beta', { limit: null });
+  await gateway.exchange('alpha');
+
+  const refused = await gateway.send('alpha');
+  const other = await gateway.send('beta');
+
+  expect(refused.status).toBe(403);
+  expect(other.status).toBe(200);
+});
+
+test('it refuses with the limit 403 once a period reaches its limit and passes again once a raise lifts it', async () => {
+  const ctx = await setupTest();
+  const gateway = await ctx.startPeriods();
+
+  ctx.model.addReplies(
+    { text: 'first', usage: { input_tokens: 600, output_tokens: 400 } },
+    { text: 'second', usage: { input_tokens: 1, output_tokens: 1 } },
+  );
+
+  await gateway.control('PUT', '/limits', {
+    day: { dollars: 60, tokens: 1000 },
+    month: gateway.limits.month,
+  });
+
+  await gateway.control('PUT', '/sandboxes/alpha', { limit: null });
+  await gateway.exchange('alpha');
+
+  const refused = await gateway.send('alpha');
+
+  await gateway.control('POST', '/raise', {
+    period: 'day',
+    start: '2026-11-13',
+    limit: { dollars: 90, tokens: 5000 },
+  });
+
+  const passed = await gateway.send('alpha');
+
+  expect([refused.status, passed.status]).toStrictEqual([403, 200]);
+});
+
+test('it keeps refusing a raise past the cap, and so the stop, while the cap holds', async () => {
+  const ctx = await setupTest();
+  const gateway = await ctx.startPeriods();
+
+  ctx.model.addReplies({ text: 'first', usage: { input_tokens: 600, output_tokens: 400 } });
+
+  await gateway.control('PUT', '/limits', {
+    day: { dollars: 60, tokens: 1000 },
+    month: gateway.limits.month,
+  });
+
+  await gateway.control('PUT', '/sandboxes/alpha', { limit: null });
+  await gateway.exchange('alpha');
+
+  const raise = await gateway.control('POST', '/raise', {
+    period: 'day',
+    start: '2026-11-13',
+    limit: { dollars: 90, tokens: 160_000_001 },
+  });
+
+  const refused = await gateway.send('alpha');
+
+  expect([raise.status, refused.status]).toStrictEqual([409, 403]);
+});
+
+test('it lets a request pass above the cap once the host override lifts the limit, and ignores the override the next day', async () => {
+  const ctx = await setupTest();
+  const gateway = await ctx.startPeriods();
+
+  ctx.model.addReplies(
+    { text: 'first', usage: { input_tokens: 600, output_tokens: 400 } },
+    { text: 'second', usage: { input_tokens: 1, output_tokens: 1 } },
+    { text: 'third', usage: { input_tokens: 1, output_tokens: 1 } },
+  );
+
+  await gateway.control('PUT', '/limits', {
+    day: { dollars: 60, tokens: 1000 },
+    month: gateway.limits.month,
+  });
+
+  await gateway.control('PUT', '/sandboxes/alpha', { limit: null });
+  await gateway.exchange('alpha');
+
+  await writeFile(
+    join(ctx.directory, 'override.json'),
+    JSON.stringify({
+      period: 'day',
+      start: '2026-11-13',
+      limit: { dollars: 500, tokens: 900_000_000 },
+    }),
+  );
+
+  const lifted = await gateway.send('alpha');
+
+  await lifted.text();
+
+  // the next day the override is stale, and the new day starts from zero under the base limit
+  ctx.moveTo('2026-11-14T09:00:00Z');
+
+  const nextDay = await gateway.send('alpha');
+
+  expect([lifted.status, nextDay.status]).toStrictEqual([200, 200]);
+
+  const stored = await gateway.readStore();
+
+  expect(stored).toMatchObject({
+    periods: { day: { start: '2026-11-14', tokens: 2 } },
+  });
+});
+
+test('it refuses again a day later at the base limit once a stale override no longer applies', async () => {
+  const ctx = await setupTest();
+  const gateway = await ctx.startPeriods();
+
+  ctx.model.addReplies(
+    { text: 'first', usage: { input_tokens: 600, output_tokens: 400 } },
+    { text: 'second', usage: { input_tokens: 600, output_tokens: 400 } },
+    { text: 'third', usage: { input_tokens: 600, output_tokens: 400 } },
+  );
+
+  await gateway.control('PUT', '/limits', {
+    day: { dollars: 60, tokens: 1000 },
+    month: gateway.limits.month,
+  });
+
+  await gateway.control('PUT', '/sandboxes/alpha', { limit: null });
+
+  await writeFile(
+    join(ctx.directory, 'override.json'),
+    JSON.stringify({
+      period: 'day',
+      start: '2026-11-13',
+      limit: { dollars: 500, tokens: 900_000_000 },
+    }),
+  );
+
+  await gateway.exchange('alpha');
+  await gateway.exchange('alpha');
+
+  ctx.moveTo('2026-11-14T09:00:00Z');
+
+  const nextDayFirst = await gateway.send('alpha');
+
+  await nextDayFirst.text();
+
+  const nextDaySecond = await gateway.send('alpha');
+
+  expect([nextDayFirst.status, nextDaySecond.status]).toStrictEqual([200, 403]);
+});
+
+test('it reaches the reset with no request: a status read after midnight shows a zero count', async () => {
+  const ctx = await setupTest();
+  const gateway = await ctx.startPeriods();
+
+  ctx.model.addReplies({ text: 'first', usage: { input_tokens: 600, output_tokens: 400 } });
+
+  await gateway.control('PUT', '/limits', gateway.limits);
+  await gateway.control('PUT', '/sandboxes/alpha', { limit: null });
+  await gateway.exchange('alpha');
+
+  ctx.moveTo('2026-11-14T00:00:00Z');
+
+  const status = await gateway.control('GET', '/status');
+
+  expect(JSON.parse(status.body)).toMatchObject({
+    periods: {
+      day: { start: '2026-11-14', spent: { dollars: 0, tokens: 0 } },
+      month: { spent: { tokens: 1000 } },
+    },
+  });
+});
+
+test('it keeps a capture tag working after the route when the path starts with a sandbox', async () => {
+  const ctx = await setupTest();
+
+  const spool = join(ctx.directory, 'spool');
+
+  await mkdir(spool);
+
+  const gateway = await ctx.startPeriods(['capture:', `  spool: ${spool}`]);
+
+  ctx.model.addReplies({ text: 'captured', usage: { input_tokens: 6, output_tokens: 4 } });
+
+  await gateway.control('PUT', '/limits', gateway.limits);
+  await gateway.control('PUT', '/sandboxes/alpha', { limit: null });
+
+  const recipient = await createSpoolRecipient();
+
+  const segment = encodeCaptureTag({
+    captureID: '3f9c2a54-7b1e-4d68-9a0f-5e2c81b6d7a3',
+    sealTo: recipient.sealTo,
+  });
+
+  const response = await gateway.send('alpha', `preview/~in.${segment}/v1/messages`);
+
+  await response.text();
+  await gateway.proxy.stop();
+
+  const names = await readdir(spool);
+
+  expect(ctx.model.requests.map((request) => request.path)).toStrictEqual(['/v1/messages']);
+  expect(names.map((name) => parseSpoolFileName(name)?.kind)).toStrictEqual(['cap']);
+});
+
+test('it serves no control path on the model listener', async () => {
+  const ctx = await setupTest();
+  const gateway = await ctx.startPeriods();
+
+  const bare = await fetch(`${gateway.proxy.url}/status`, {
+    headers: { authorization: 'Bearer control-secret' },
+  });
+
+  const underSandbox = await fetch(`${gateway.proxy.url}/alpha/status`, {
+    headers: { authorization: 'Bearer control-secret' },
+  });
+
+  const limits = await fetch(`${gateway.proxy.url}/limits`, {
+    method: 'PUT',
+    headers: { authorization: 'Bearer control-secret' },
+    body: JSON.stringify(gateway.limits),
+  });
+
+  expect([bare.status, underSandbox.status, limits.status]).toStrictEqual([404, 404, 404]);
+});
+
+test('it answers a control request with no token with a 401 on the control listener', async () => {
+  const ctx = await setupTest();
+  const gateway = await ctx.startPeriods();
+  const response = await fetch(`${gateway.proxy.controlURL ?? ''}/status`);
+
+  expect(response.status).toBe(401);
+});
+
+test('it refuses to start when the control token file holds no token', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(join(ctx.directory, 'token'), '\n');
+
+  await writeFile(
+    join(ctx.directory, 'proxy.yaml'),
+    [
+      'listen: { port: 0 }',
+      `store: ${join(ctx.directory, 'counter.json')}`,
+      'periods: { zone: Europe/London }',
+      `control: { listen: { port: 0 }, tokenFile: ${join(ctx.directory, 'token')} }`,
+      'routes:',
+      '  preview:',
+      `    upstream: ${ctx.model.url}`,
+      '    model: model-small',
+      '    prices: { input: 1, cache_write: 1.25, cache_write_1h: 2, cached_input: 0.1, output: 5 }',
+    ].join('\n'),
+  );
+
+  await expect(
+    startModelGateway({
+      configPath: join(ctx.directory, 'proxy.yaml'),
+      log: ctx.log,
+      waitForDrainDeadline: () => Promise.resolve(),
+    }),
+  ).rejects.toThrow(/token/u);
 });
