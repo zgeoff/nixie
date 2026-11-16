@@ -93,7 +93,7 @@ test('it refuses a memory tool call before the store is set', async () => {
       {
         callID: 'call-1',
         tool: 'memory.remember',
-        input: { text: 'Bakes rye bread on Sundays.' },
+        input: { text: 'Bakes rye bread on Sundays.', gist: 'rye bread', topic: 'food' },
         toolUseID: null,
       },
       {
@@ -126,7 +126,7 @@ test('it runs a memory tool call on the store set', async () => {
     {
       callID: 'call-1',
       tool: 'memory.remember',
-      input: { text: 'Bakes rye bread on Sundays.' },
+      input: { text: 'Bakes rye bread on Sundays.', gist: 'rye bread', topic: 'food' },
       toolUseID: null,
     },
     {

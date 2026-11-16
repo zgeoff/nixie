@@ -31,6 +31,17 @@ test('it reads a readable item with every version and a forgotten item as only i
         isPinned: false,
         isSensitive: false,
         subject: 'owner',
+        labels: { gist: 'Rents allotment plot 14', topic: 'owner', triggers: [] },
+        labelHistory: [
+          {
+            revision: 1,
+            version: 1,
+            change: 'backfilled',
+            gist: 'Rents allotment plot 14',
+            topic: 'owner',
+            triggers: [],
+          },
+        ],
         versions: [
           {
             version: 1,
@@ -140,12 +151,12 @@ test('it reads a kept moment with its span', async () => {
   });
 });
 
-test('it heads the file with schema version 6, the export time and the mock snapshot hash', () => {
+test('it heads the file with schema version 9, the export time and the mock snapshot hash', () => {
   const chunks = readMockMemoryExport(new Date('2026-10-14T08:00:00.000Z'));
 
   expect(JSON.parse(chunks.join(''))).toStrictEqual({
     header: {
-      schemaVersion: 8,
+      schemaVersion: 9,
       exportedAt: '2026-10-14T08:00:00.000Z',
       snapshotHash: 'sha256:mock',
     },

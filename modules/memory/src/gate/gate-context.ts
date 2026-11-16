@@ -216,7 +216,7 @@ export interface MemoryProposal {
   readonly labels: ProposalLabels | null;
 }
 
-export interface ProposalLabels extends Labels {
+interface ProposalLabels extends Labels {
   readonly isLabelOnly: boolean;
 }
 

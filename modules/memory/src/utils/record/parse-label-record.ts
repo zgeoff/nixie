@@ -24,7 +24,7 @@ const proposalLabelled = z.strictObject({
   isLabelOnly: z.boolean(),
 });
 
-export interface LabelledRecord {
+interface LabelledRecord {
   readonly kind: 'memory.labelled';
   readonly itemID: string;
   readonly revision: number;
@@ -38,7 +38,7 @@ export interface LabelledRecord {
   readonly model: string | null;
 }
 
-export interface ProposalLabelledRecord {
+interface ProposalLabelledRecord {
   readonly kind: 'memory.proposal_labelled';
   readonly proposalID: string;
   readonly itemID: string;

@@ -29,6 +29,8 @@ test('it holds the edit of a started task that reads memory as a proposal, made 
         name: 'mcp__nixie__memory_remember',
         input: {
           subject: 'owner',
+          gist: 'a gist',
+          topic: 'a topic',
           text: 'Your dentist is on Marsh Lane.',
           quote: 'dentist is on Marsh Lane',
         },

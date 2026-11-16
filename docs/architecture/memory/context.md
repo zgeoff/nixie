@@ -28,8 +28,9 @@ such as unconfirmed reaches the model with the edit. It names each unpinned item
 states the rule that the note wins over the opening's copy and anything said earlier, and ends with
 the core's item count and its tokens against the budget. A new session's first turn gets no note,
 because it opens with the current core. The turn-ended record lists the core's item and version
-references, and the next turn compares the current core against them, so the note survives a restart
-and needs no state outside the log.
+references, where the version is the item's revision, so a label edit shows in the note, and the
+next turn compares the current core against them, so the note survives a restart and needs no state
+outside the log.
 
 The core has a token budget, configurable in the deployment configuration, because it rides in the
 cached prefix of every session and a long core costs every turn that reads it. The store refuses a

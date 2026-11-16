@@ -30,6 +30,7 @@ test('it starts a log with the tasks, sandboxes and memory projections and a fre
     'sandboxes',
     'memory_items',
     'memory_versions',
+    'memory_labels',
     'memory_proposals',
     'memory_proposal_merges',
     'memory_notice_entries',

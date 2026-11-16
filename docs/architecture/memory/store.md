@@ -49,6 +49,26 @@ table therefore reads only the envelope and the payload, as every fold must, and
 log gives the live rows. The sealed value is ciphertext under the item's key, never free text, so
 the log's copy of each version falls to the same forget as the table's copy.
 
+## Labels and the revision
+
+Each item has labels: a gist of 1 to 80 characters, a topic of 1 to 40 and up to 5 trigger phrases
+of 1 to 60, each on one line. The gist says what the item is, the topic groups it, and a trigger
+phrase names what should bring it up. Recall lists items by their labels, so the model can choose
+which items to open. The labels sit sealed under the item's key, in a `memory_labels` table with one
+row per labelling, written by a `memory.labelled` record. The store keeps the current labels of
+every item in memory, loads them at start, and drops an item's entry when a forget removes its key.
+
+A label edit adds no text version. The item's revision is its text version plus the count of its
+label edits, computed on read and never stored. The model, the API and the view call the revision
+`version`, and a change binds to it, so an edit of labels makes a stale read fail like any other
+edit. Records, projections, the history and a proposal's hash keep the text version.
+
+An item with no label row, such as one written before labels existed, shows labels that nixie
+derives from its text: the gist is the text with its spacing collapsed and cut to 80 characters, the
+topic is the subject, and there are no triggers. A data step at start writes a `backfilled` label
+for each such item, and runs again with no effect. A new item takes the topic's spelling from an
+existing item when the two differ only in case.
+
 ## States
 
 An item is in one of 4 states:
@@ -81,6 +101,7 @@ transaction makes.
 - **Undo** adds a version with the text and state of the version before the one it undoes. Undo
   binds to the version it undoes, so an undo after a later edit fails as stale instead of discarding
   that edit. An undo of a first version retires the item, because no earlier text exists.
+- **Edit labels** adds a label record and no version, and raises the revision by 1.
 - **Pin** changes where the item shows and not its text, so it appends a record and adds no version.
   A pin that names the version its caller read fails as stale once the item moved past it. Only an
   active item can be pinned, whatever its subject. An unpin always applies. A pin, or an edit of a

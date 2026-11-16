@@ -32,6 +32,11 @@ images. The list holds a pointer to each image of an owner message, an `n` and a
 never the image's bytes. A file refuses a field that its version predates, and refuses a missing
 field that its version requires.
 
+From version 9, each readable item carries its current labels and a label history: for each
+labelling, the revision, the text version, whether it was written, edited or backfilled, and the
+gist, topic and triggers. A version 9 file refuses an item with no `labels` field, and an older file
+refuses one that holds it. An item whose labels fail to open exports with no labels.
+
 A version whose key or ciphertext fails exports with no text and no quote, as the memory view shows
 it unreadable. An item a forget began exports as a forgotten one even before the forget's cleanup
 removes its key, and its forget time stays empty until the forget completes. The quote's message is

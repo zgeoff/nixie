@@ -424,3 +424,5 @@ export type MemoryTables = CheckedTables<
 export type MemoryItemRow = Selectable<MemoryItemTable>;
 
 export type MemoryVersionRow = Selectable<MemoryVersionTable>;
+
+export type MemoryLabelRow = Selectable<MemoryLabelTable>;

@@ -111,7 +111,12 @@ test('it applies a backed fact with the caller and model of the run, never of th
     {
       callID: 'call-1',
       tool: 'memory.remember',
-      input: { text: 'Allergic to hazelnuts', quote: "I'm allergic to hazelnuts" },
+      input: {
+        gist: 'a gist',
+        topic: 'a topic',
+        text: 'Allergic to hazelnuts',
+        quote: "I'm allergic to hazelnuts",
+      },
       toolUseID: null,
     },
     buildMockToolContext({
@@ -174,6 +179,8 @@ test('it applies a fact quoted from a message outside the window by its event ID
       callID: 'call-1',
       tool: 'memory.remember',
       input: {
+        gist: 'a gist',
+        topic: 'a topic',
         text: 'Bike is the green one',
         quote: 'My bike is the green one',
         eventID: String(sequence),
@@ -200,7 +207,7 @@ test('it returns a proposal with the sentence for its reason, not an error, for 
     {
       callID: 'call-1',
       tool: 'memory.remember',
-      input: { text: 'Allergic to hazelnuts' },
+      input: { gist: 'a gist', topic: 'a topic', text: 'Allergic to hazelnuts' },
       toolUseID: null,
     },
     {
@@ -245,6 +252,8 @@ test('it returns a proposal with the photo sentence for a fact from an image of 
       callID: 'call-1',
       tool: 'memory.remember',
       input: {
+        gist: 'a gist',
+        topic: 'a topic',
         text: 'Rides a green cargo bike',
         quote: 'I ride this green cargo bike',
         image: { eventID: `#${String(photo)}`, number: 1 },
@@ -290,7 +299,12 @@ test('it returns an image source that is no image of the owner to the model as a
     {
       callID: 'call-1',
       tool: 'memory.remember',
-      input: { text: 'Rides a green cargo bike', image: { eventID: String(message), number: 1 } },
+      input: {
+        gist: 'a gist',
+        topic: 'a topic',
+        text: 'Rides a green cargo bike',
+        image: { eventID: String(message), number: 1 },
+      },
       toolUseID: null,
     },
     buildMockToolContext(),
@@ -315,7 +329,12 @@ test.each(['shared', 'self'] as const)(
       {
         callID: 'call-1',
         tool: 'memory.remember',
-        input: { text: 'Calls the garden shed the cabin', subject },
+        input: {
+          gist: 'a gist',
+          topic: 'a topic',
+          text: 'Calls the garden shed the cabin',
+          subject,
+        },
         toolUseID: null,
       },
       {
@@ -348,7 +367,12 @@ test('it gives the token sentence for a fact with a number its typed quote lacks
   const result = await runToolCall(
     {
       tool: 'memory.remember',
-      input: { text: 'Phone number is 0412 555 019', quote: 'My phone number changed' },
+      input: {
+        gist: 'a gist',
+        topic: 'a topic',
+        text: 'Phone number is 0412 555 019',
+        quote: 'My phone number changed',
+      },
       toolUseID: null,
     },
     {
@@ -381,7 +405,12 @@ test('it gives the token sentence under an allow rule when the owner never typed
   const result = await runToolCall(
     {
       tool: 'memory.remember',
-      input: { text: 'Phone number is 0412 555 019', quote: 'Phone number is 0412 555 019' },
+      input: {
+        gist: 'a gist',
+        topic: 'a topic',
+        text: 'Phone number is 0412 555 019',
+        quote: 'Phone number is 0412 555 019',
+      },
       toolUseID: null,
     },
     {
@@ -437,7 +466,12 @@ test("it names the gate's configured window in the sentence for a quote older th
   const result = await runToolCall(
     {
       tool: 'memory.remember',
-      input: { text: 'Keeps bees on the roof', quote: 'I keep bees on the roof' },
+      input: {
+        gist: 'a gist',
+        topic: 'a topic',
+        text: 'Keeps bees on the roof',
+        quote: 'I keep bees on the roof',
+      },
       toolUseID: null,
     },
     {
@@ -742,7 +776,7 @@ test('it returns a full proposal cap to the model as an error', async () => {
   const call = {
     callID: 'call-1',
     tool: 'memory.remember',
-    input: { text: 'Likes jazz' },
+    input: { gist: 'a gist', topic: 'a topic', text: 'Likes jazz' },
     toolUseID: null,
   };
 
@@ -760,7 +794,7 @@ test('it returns a full proposal cap to the model as an error', async () => {
   await tool.definition.run(call, context);
 
   const outcome = await tool.definition.run(
-    { ...call, callID: 'call-2', input: { text: 'Likes opera' } },
+    { ...call, callID: 'call-2', input: { text: 'Likes opera', gist: 'opera', topic: 'music' } },
     context,
   );
 
@@ -775,6 +809,7 @@ test('it recalls items with a result that its output schema accepts', async () =
   invariant(tool);
 
   await ctx.memory.store.remember({
+    labels: { gist: 'a gist', topic: 'a topic', triggers: ['a trigger'] },
     text: 'Allergic to hazelnuts',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
@@ -801,7 +836,16 @@ test('it recalls items with a result that its output schema accepts', async () =
   expect(tool.parseOutput(outcome.result)).toStrictEqual({ isValid: true });
 
   expect(outcome.result).toMatchObject({
-    items: [{ text: 'Allergic to hazelnuts', history: [{ version: 1 }] }],
+    items: [
+      {
+        text: 'Allergic to hazelnuts',
+        history: [{ textVersion: 1 }],
+        gist: 'a gist',
+        topic: 'a topic',
+        triggers: ['a trigger'],
+        version: 1,
+      },
+    ],
     next: null,
   });
 });
@@ -823,6 +867,7 @@ test('it recalls a version with its quote, its model and the line that says wher
   onTestFinished(() => setSystemTime());
 
   const item = await ctx.memory.store.remember({
+    labels: { gist: 'a gist', topic: 'a topic', triggers: ['a trigger'] },
     text: 'Keeps a sourdough starter called Gerald',
     evidenceQuote: 'Gerald the starter needs feeding again',
     provenance: {
@@ -854,6 +899,9 @@ test('it recalls a version with its quote, its model and the line that says wher
         itemID: shortID,
         isPinned: false,
         subject: 'owner',
+        gist: 'a gist',
+        topic: 'a topic',
+        triggers: ['a trigger'],
         version: 1,
         change: 'created',
         state: 'active',
@@ -875,6 +923,7 @@ test('it recalls a version made from a photo with the event and number of its im
   onTestFinished(() => setSystemTime());
 
   const item = await ctx.memory.store.remember({
+    labels: { gist: 'a gist', topic: 'a topic', triggers: ['a trigger'] },
     text: 'Paddles a red kayak',
     provenance: {
       origin: 'owner',
@@ -904,6 +953,9 @@ test('it recalls a version made from a photo with the event and number of its im
         itemID: shortID,
         isPinned: false,
         subject: 'owner',
+        gist: 'a gist',
+        topic: 'a topic',
+        triggers: ['a trigger'],
         version: 1,
         change: 'created',
         state: 'active',
@@ -928,6 +980,7 @@ test('it recalls a version with no quote or model without them', async () => {
   });
 
   const item = await ctx.memory.store.remember({
+    labels: { gist: 'a gist', topic: 'a topic', triggers: ['a trigger'] },
     text: 'Plays the cello on Sundays',
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
@@ -951,6 +1004,9 @@ test('it recalls a version with no quote or model without them', async () => {
         itemID: shortID,
         isPinned: false,
         subject: 'owner',
+        gist: 'a gist',
+        topic: 'a topic',
+        triggers: ['a trigger'],
         version: 1,
         change: 'created',
         state: 'active',
@@ -1211,7 +1267,12 @@ test('it applies a remembered fact and leaves no readable copy of its text once 
   const result = await runToolCall(
     {
       tool: 'memory.remember',
-      input: { text: 'Allergic to hazelnuts', quote: "I'm allergic to hazelnuts" },
+      input: {
+        gist: 'a gist',
+        topic: 'a topic',
+        text: 'Allergic to hazelnuts',
+        quote: "I'm allergic to hazelnuts",
+      },
       toolUseID: null,
     },
     {
@@ -1254,6 +1315,8 @@ test('it records a remember call with neither its text nor its quote, which the 
     {
       tool: 'memory.remember',
       input: {
+        gist: 'a gist',
+        topic: 'a topic',
         text: 'Sister Ada lives in Leeds',
         quote: 'Sister Ada lives in Leeds',
         subject: 'owner',
@@ -1285,7 +1348,18 @@ test.each([
   ['a remember with no text', 'memory.remember', { quote: 'x' }],
   ['an edit with no version', 'memory.edit', { itemID: 'item-a', text: 'x' }],
   ['an edit with no itemID', 'memory.edit', { version: 1, text: 'x' }],
-  ['an edit with no text', 'memory.edit', { itemID: 'item-a', version: 1 }],
+  ['a remember with no gist', 'memory.remember', { text: 'x', topic: 'a topic' }],
+  ['a remember with no topic', 'memory.remember', { text: 'x', gist: 'a gist' }],
+  [
+    'a remember with a gist that spans 2 lines',
+    'memory.remember',
+    { text: 'x', gist: 'first\nsecond', topic: 'a topic' },
+  ],
+  [
+    'a remember with 6 trigger phrases',
+    'memory.remember',
+    { text: 'x', gist: 'a gist', topic: 'a topic', triggers: ['a', 'b', 'c', 'd', 'e', 'f'] },
+  ],
   ['an edit with a pin', 'memory.edit', { itemID: 'item-a', version: 1, text: 'x', pin: true }],
   ['a remember with a pin', 'memory.remember', { text: 'x', pin: true }],
   ['a retire with no version', 'memory.retire', { itemID: 'item-a' }],
@@ -1315,7 +1389,7 @@ test.each([
 });
 
 test.each([
-  ['memory.remember', { text: 'Keeps a brass compass' }],
+  ['memory.remember', { text: 'Keeps a brass compass', gist: 'brass compass', topic: 'gear' }],
   ['memory.edit', { version: 1, text: 'Keeps a silver compass' }],
   ['memory.retire', { version: 1 }],
   ['memory.pin', { version: 1 }],

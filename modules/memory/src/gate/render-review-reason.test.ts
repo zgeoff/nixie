@@ -28,6 +28,7 @@ test("it renders each reason's full sentence with the owner's name and pronouns"
       "from_photo: Saved as a proposal for Avery to review. It comes from a photo, and a memory from a photo waits for her review.",
       "sensitive: Saved as a proposal for Avery to review. It's marked sensitive, and a sensitive memory waits for her review.",
       "subject_change: Saved as a proposal for Avery to review. It changes whose fact the item is, and every subject change waits for her review.",
+      "labels: Saved as a proposal for Avery to review. It changes how the item is listed or what brings it up, and every such change waits for her review.",
       "ask_rule: Saved as a proposal for Avery to review. A rule of Avery's asks before this write applies.",
     ]
   `);

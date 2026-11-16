@@ -44,6 +44,18 @@ export function ApprovalMemoryBody(props: ApprovalMemoryBodyProps): ReactNode {
           </label>
         )}
       </div>
+      {memory.labels === null ? null : (
+        <dl aria-label="Labels" className={css({ fontSize: 'sm' })}>
+          <dt>Gist</dt>
+          <dd>{memory.labels.gist}</dd>
+          <dt>Topic</dt>
+          <dd>{memory.labels.topic}</dd>
+          <dt>Trigger phrases</dt>
+          <dd>
+            {memory.labels.triggers.length === 0 ? 'None' : memory.labels.triggers.join(', ')}
+          </dd>
+        </dl>
+      )}
       <p className={meta}>
         {memory.subject === 'self' ? <SelfNoteBadge /> : null}
         {formatReviewReason(memory.reason)}
@@ -76,7 +88,9 @@ function formatMemoryText(memory: MemoryProposal): string {
   return match(memory.operation)
     .with('retire', () => `Retire: ${memory.text}`)
     .with('pin', () => `Pin: ${memory.text}`)
-    .with('remember', () => memory.text)
+    .with('remember', () =>
+      memory.labels?.isLabelOnly === true ? 'Change the labels' : memory.text,
+    )
     .exhaustive();
 }
 

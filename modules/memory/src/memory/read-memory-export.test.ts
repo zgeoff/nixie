@@ -106,6 +106,8 @@ test('it exports an active item with its text, its quote and its provenance, and
       isPinned: false,
       isSensitive: false,
       subject: 'owner',
+      labels: null,
+      labelHistory: [],
       versions: [
         {
           version: 1,
@@ -204,7 +206,7 @@ test("it heads the file with the export time, the schema version and the definit
 
   expect(JSON.parse(text)).toStrictEqual({
     header: {
-      schemaVersion: 8,
+      schemaVersion: 9,
       exportedAt: '2026-10-14T08:00:00.000Z',
       snapshotHash: 'sha256:4be1c0',
     },

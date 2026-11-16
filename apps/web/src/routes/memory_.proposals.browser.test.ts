@@ -256,6 +256,65 @@ test('it edits a memory proposal before approving it from the digest, and applie
   );
 });
 
+test('it shows the labels of a label-only memory proposal and the sentence of its reason, and offers no text edit', async () => {
+  const ctx = await setupTest();
+
+  await store.approvalRows.create({
+    kind: 'memory_write',
+    memory: {
+      actionHash: 'sha256:memory-labels',
+      createdAt: new Date('2026-11-14T01:00:00Z'),
+      evidence: null,
+      image: null,
+      isPinned: false,
+      isSensitive: false,
+      itemID: 'c2d81f7a-5b3e-4d9a-8e61-3a7f0b2c9d54',
+      kind: 'fact',
+      labels: {
+        gist: 'piano tuned each March',
+        isLabelOnly: true,
+        topic: 'home/music',
+        triggers: ['piano', 'out of tune'],
+      },
+      lapseAt: new Date('2026-11-20T01:00:00Z'),
+      newSubject: null,
+      operation: 'remember',
+      origin: 'conversation',
+      proposalID: 'b1c2d3e4-0000-4000-8000-000000000002',
+      quote: null,
+      reason: 'labels',
+      source: 'untrusted',
+      sources: [],
+      subject: 'owner',
+      targetVersion: 2,
+      text: 'The piano is tuned each March by the same tuner.',
+      until: null,
+    },
+    approveLabel: 'Save to memory',
+    sentence: 'Change the labels',
+  });
+
+  await ctx.openDigest();
+  await ctx.openLine('Change the labels');
+
+  await ctx.waitForPage(
+    `document.body.innerText.includes('It changes how the item is listed or what brings it up, and every such change waits for your review.')`,
+  );
+
+  const labels: unknown = await ctx.view.evaluate(
+    `document.querySelector('dl[aria-label="Labels"]').innerText`,
+  );
+
+  const hasEditButton: unknown = await ctx.view.evaluate(
+    `document.querySelector('button[name="edit-text"]') !== null`,
+  );
+
+  expect([labels, hasEditButton]).toStrictEqual([
+    'Gist\npiano tuned each March\nTopic\nhome/music\nTrigger phrases\npiano, out of tune',
+    false,
+  ]);
+});
+
 test('it collapses an item answered on another session to its state with that device name', async () => {
   const ctx = await setupTest();
   const tablet = await store.sessions.create({ deviceName: 'kitchen tablet' });
