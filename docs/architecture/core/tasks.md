@@ -185,6 +185,21 @@ reaches the step at once.
 with a cursor. Its `taskID` input gives one task's whole brief. The
 [started tasks](./started-tasks.md#the-listed-state) doc describes the tool.
 
+`tasks.runs` lists the task runs that have ended, newest first, from the `task_runs` rows that the
+`/tasks/ended` page reads, and needs no approval. It covers the task runs of started tasks and of
+definitions, including a definition whose target is the conversation. Each entry gives the task, its
+name, a source (`started`, `schedule` or `one-off`), the start and end times, an outcome and the
+first line of the report, clipped to 200 characters. The outcome groups the stored end cause: `done`
+for `reported`, `no_report` and `no_work`, `closed` for `closed` and `stopped`, and `failed` for
+`failed`, `limit` and any cause no release knows. The ID of a task run is its report ID, the short
+ID that the delivered report message carries, because the model never sees the UUID. A task that
+left the definitions list keeps its name from the version its newest ended task run pinned. The
+filters are `definition`, `outcome` and `since`, and `cursor` pages by the sequence of the end
+through a page that fills to the byte budget of a recall page. Its `run` input gives one task run
+with the whole report, its fields, the stored cause, the reason a failed task run failed, and its
+steps, turns and dollars. Only the conversation holds the tool: a started task and a worker never
+hold it.
+
 While a task is paused or closed, nixie claims none of its [actions](./actions.md) that have not
 started an attempt, so a pause keeps the queued actions with the task. A stop
 [cancels](./actions.md#cancelled-actions) each queued action that has not started an attempt, so a

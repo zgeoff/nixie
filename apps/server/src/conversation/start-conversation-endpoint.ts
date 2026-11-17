@@ -21,6 +21,7 @@ import {
   buildTaskReportTool,
   buildTaskStartTool,
   buildTasksListTool,
+  buildTasksRunsTool,
 } from '@heynixie/tasks';
 import type { ActionQueue, ToolDefinition, ToolEndpoint } from '@heynixie/tools';
 import { buildToolRegistry, findToolDeclaration, startToolEndpoint } from '@heynixie/tools';
@@ -129,6 +130,7 @@ export async function startConversationEndpoint(
 
   const definitionTools = [
     buildTasksDefinitionsTool(definitionToolOptions),
+    buildTasksRunsTool(options.context, messaging),
     buildTaskDefineTool(definitionToolOptions),
     buildTaskUndefineTool(definitionToolOptions),
   ];

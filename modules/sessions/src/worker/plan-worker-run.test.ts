@@ -99,6 +99,7 @@ test.each([
   'task.close',
   'tasks.list',
   'tasks.definitions',
+  'tasks.runs',
   'task.report',
   'turn.end_silently',
   'worker.run',

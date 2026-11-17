@@ -1,8 +1,8 @@
 import type { Trigger } from '@heynixie/contract';
 import type { ListedDefinition } from '@heynixie/definitions';
 import { readListedDefinitions, readNewestDefinitionName } from '@heynixie/definitions';
-import type { TaskProfile, TaskRun, TasksTables } from '@heynixie/tasks';
-import { readEndedRuns, readTaskDirectory } from '@heynixie/tasks';
+import type { TaskRun, TasksTables } from '@heynixie/tasks';
+import { readEndedRuns, readPinnedProfiles, readTaskDirectory } from '@heynixie/tasks';
 import {
   buildDayStart,
   readArmedDefinitions,
@@ -189,36 +189,6 @@ async function readPageTasks(context: APIContext, runs: readonly TaskRun[]) {
   const pinned = await readPinnedProfiles(context, runs, missing);
 
   return readListedTasks(context, [...messaging.directory, ...pinned], taskIDs.length, { taskIDs });
-}
-
-async function readPinnedProfiles(
-  context: APIContext,
-  runs: readonly TaskRun[],
-  taskIDs: readonly string[],
-): Promise<TaskProfile[]> {
-  const profiles: TaskProfile[] = [];
-
-  for (const taskID of taskIDs) {
-    const hash = runs.find((run) => run.taskID === taskID && run.opened.definitionHash !== null)
-      ?.opened.definitionHash;
-
-    const version =
-      hash === undefined || hash === null
-        ? null
-        : await context.readDefinitionVersion(context.log.writer.db, hash);
-
-    if (version !== null) {
-      profiles.push({
-        taskID,
-        name: version.name,
-        brief: version.brief,
-        wakeable: false,
-        speaker: version.persona === 'default' ? 'persona_task' : 'plain_task',
-      });
-    }
-  }
-
-  return profiles;
 }
 
 // A late entry names the version that fired. A skip holds no version, so it takes the name from the

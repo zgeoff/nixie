@@ -15,6 +15,7 @@ const neverHeldTools: ReadonlySet<string> = new Set([
   'task.close',
   'tasks.list',
   'tasks.definitions',
+  'tasks.runs',
   taskReportToolName,
   silentEndToolName,
   workerRunToolName,

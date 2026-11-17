@@ -3,6 +3,7 @@ import type { ToolDefinition } from '@heynixie/tools';
 import { recallPageLimitBytes } from '@heynixie/wire';
 import { z } from 'zod';
 import type { TaskMessaging, TasksContext } from '../types';
+import { clipBrief } from '../utils/clip-brief';
 import type { ListedTaskState } from './pick-listed-task-state';
 import { pickListedTaskState } from './pick-listed-task-state';
 import { readListedNextRun } from './read-listed-next-run';
@@ -281,12 +282,12 @@ async function fillPage(
 
     const nextRunAt = await readListedNextRun(context, candidate.task, candidate.state);
 
-    const json = toTaskJSON(
-      candidate.task,
-      candidate.state,
-      nextRunAt,
-      clipBrief(candidate.task.brief),
-    );
+    const clipped = clipBrief(candidate.task.brief);
+
+    const json = toTaskJSON(candidate.task, candidate.state, nextRunAt, {
+      brief: clipped.text,
+      isBriefClipped: clipped.isClipped,
+    });
 
     const size = Buffer.byteLength(JSON.stringify(json)) + 1;
 
@@ -300,23 +301,6 @@ async function fillPage(
   }
 
   return { entries, hasMore: entries.length < candidates.length };
-}
-
-const briefClipLength = 200;
-
-const graphemeSegmenter = new Intl.Segmenter();
-
-// The first line of the brief, trimmed and cut to the clip length with a trailing ellipsis.
-function clipBrief(brief: string): BriefView {
-  const trimmed = brief.trim();
-  const firstLine = (trimmed.split(/\r?\n/u)[0] ?? '').trim();
-  const characters = Array.from(graphemeSegmenter.segment(firstLine), (part) => part.segment);
-
-  if (characters.length > briefClipLength) {
-    return { brief: `${characters.slice(0, briefClipLength).join('')}…`, isBriefClipped: true };
-  }
-
-  return { brief: firstLine, isBriefClipped: firstLine !== trimmed };
 }
 
 function buildCursor(task: ListedTask): string {
