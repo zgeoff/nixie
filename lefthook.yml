@@ -74,6 +74,8 @@ pre-push:
       run: bun run boundaries
     - name: prose
       run: bun run prose
+    - name: task.yaml format
+      run: bun run --silent ci:definitions:check-task-yaml-format
     # The baseline's chex-test job runs rig related alone, so exclude_tags
     # drops it and this job runs test:related, which builds the models and the
     # test bundles first. lefthook runs it before the baseline's jobs, so an

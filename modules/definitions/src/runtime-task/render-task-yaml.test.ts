@@ -1,7 +1,4 @@
-import { expect, onTestFinished, test } from 'bun:test';
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { dirname, join } from 'node:path';
+import { expect, test } from 'bun:test';
 import { parseTaskFolder } from '../task/parse-task-folder';
 import { buildTestTaskSeed } from '../test-utils/build-test-task-seed';
 import { buildDefineVersion } from './build-define-version';
@@ -112,42 +109,4 @@ test('it stores each task as block YAML with one final newline, and the same for
   expect(rows.map((row) => [row.title, row.actual])).toStrictEqual(
     rows.map((row) => [row.title, row.expected]),
   );
-});
-
-test('it stores a task.yaml that the default oxfmt check accepts, for every fixture', async () => {
-  const ctx = setupTest();
-
-  const directory = await mkdtemp(join(tmpdir(), 'nixie-render-task-yaml-'));
-
-  onTestFinished(() => rm(directory, { recursive: true, force: true }));
-
-  // an empty config keeps this repo's own formatter settings away, as in the definitions repo
-  await writeFile(join(directory, '.oxfmtrc.json'), '{}\n');
-
-  // each fixture gets its own folder, because every built definition names its file the same way
-  const entries = ctx.fixtures.flatMap((fixture, index) =>
-    Object.entries(ctx.buildVersion(fixture.input).files).map(
-      (entry) => [join(`fixture-${String(index)}`, entry[0]), entry[1]] as const,
-    ),
-  );
-
-  for (const entry of entries) {
-    await mkdir(join(directory, dirname(entry[0])), { recursive: true });
-    await writeFile(join(directory, entry[0]), entry[1]);
-  }
-
-  const oxfmt = join(import.meta.dir, '..', '..', '..', '..', 'node_modules', '.bin', 'oxfmt');
-
-  const run = Bun.spawn([oxfmt, '--check', '.'], {
-    cwd: directory,
-    stdout: 'pipe',
-    stderr: 'pipe',
-  });
-
-  const exitCode = await run.exited;
-
-  expect({ filesChecked: entries.length === ctx.fixtures.length, exitCode }).toStrictEqual({
-    filesChecked: true,
-    exitCode: 0,
-  });
 });
