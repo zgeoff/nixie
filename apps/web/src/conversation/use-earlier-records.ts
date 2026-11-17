@@ -7,6 +7,8 @@ import type { LiveRecord } from './use-live-records';
 export interface EarlierRecordsRequest {
   readonly thread: string;
   readonly messageID: string | undefined;
+
+  readonly isWanted?: boolean | undefined;
   readonly page:
     | { readonly hasEarlier: boolean; readonly records: readonly LiveRecord[] }
     | undefined;
@@ -27,6 +29,7 @@ export function useEarlierRecords(request: EarlierRecordsRequest): EarlierRecord
   const isInPage = messageID !== undefined && hasTaskMessage(pageRecords, messageID);
   const oldest = request.page?.hasEarlier === true ? pageRecords[0]?.sequence : undefined;
   const isLinked = messageID !== undefined && oldest !== undefined && !isInPage;
+  const isWanted = request.isWanted === true && oldest !== undefined;
 
   const earlier = useInfiniteQuery({
     ...nixie.queryUtils.conversation.read.infiniteOptions({
@@ -37,7 +40,7 @@ export function useEarlierRecords(request: EarlierRecordsRequest): EarlierRecord
       // A page read for one link holds text a later forget erases, so it leaves with the view.
       gcTime: 0,
     }),
-    enabled: isLinked,
+    enabled: isLinked || isWanted,
 
     // A failed page waits for the user's retry, so nothing else reads the thread again.
     refetchOnMount: false,
@@ -55,11 +58,15 @@ export function useEarlierRecords(request: EarlierRecordsRequest): EarlierRecord
   const fetchNextPage = earlier.fetchNextPage;
   const isFailed = earlier.isError;
 
+  // A linked message keeps loading until it shows. The owner's view loads one page at a time, for
+  // as long as the list leaves the view's top showing.
   useEffect(() => {
-    if (isLinked && !isFound && !isFailed && hasNextPage && !isFetching) {
+    const isNeeded = (isLinked && !isFound) || isWanted;
+
+    if (isNeeded && !isFailed && hasNextPage && !isFetching) {
       void fetchNextPage();
     }
-  }, [fetchNextPage, hasNextPage, isFailed, isFetching, isFound, isLinked]);
+  }, [fetchNextPage, hasNextPage, isFailed, isFetching, isFound, isLinked, isWanted]);
 
   return {
     records,

@@ -23,6 +23,8 @@ export interface ConversationRecords {
 
 export interface ConversationRecordsOptions extends LiveRecordsOptions {
   readonly messageID?: string;
+
+  readonly isEarlierWanted?: boolean;
 }
 
 export function useConversationRecords(
@@ -31,7 +33,14 @@ export function useConversationRecords(
 ): ConversationRecords {
   const page = useConversationPage(thread);
   const live = useLiveRecords(thread, page.data?.readAtSequence, options);
-  const earlier = useEarlierRecords({ messageID: options.messageID, page: page.data, thread });
+
+  const earlier = useEarlierRecords({
+    isWanted: options.isEarlierWanted,
+    messageID: options.messageID,
+    page: page.data,
+    thread,
+  });
+
   const merged = mergeRecords([...earlier.records, ...(page.data?.records ?? [])], live.records);
 
   if (page.data === undefined) {

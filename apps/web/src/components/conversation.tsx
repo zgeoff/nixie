@@ -90,10 +90,12 @@ const notice = css({
 export function Conversation(props: ConversationProps): ReactNode {
   const liveOptions = props.startTimer === undefined ? {} : { startTimer: props.startTimer };
   const messageOptions = props.messageID === undefined ? {} : { messageID: props.messageID };
+  const [isEarlierWanted, setEarlierWanted] = useState(false);
 
   const conversation = useConversationRecords(props.thread, {
     ...liveOptions,
     ...messageOptions,
+    isEarlierWanted,
   });
 
   const messageID = props.messageID;
@@ -163,7 +165,9 @@ export function Conversation(props: ConversationProps): ReactNode {
       {notices.isFailed ? <MemoryNoticesFailure onRetry={notices.retry} /> : null}
       <ConversationScroller
         arrivals={records.length + entries.length + notices.notices.length}
+        onEarlierWanted={setEarlierWanted}
         sends={sends}
+        startKey={records[0]?.sequence}
       >
         <ThreadApprovalsContext value={approvals}>
           <ConversationList
