@@ -62,3 +62,6 @@ GEO-2637: POST /memory/undo added `subschema #5` to the response body `oneOf` li
 GEO-2682: POST /memory/listNotices added the new `labelled` enum value to the `notices/items/entries/items/change` response property for the response status `200`
 GEO-2682: POST /memory/listNotices added the new `pinned` enum value to the `notices/items/entries/items/change` response property for the response status `200`
 GEO-2682: POST /memory/listNotices added the new `unpinned` enum value to the `notices/items/entries/items/change` response property for the response status `200`
+# GEO-1811: a client of the last release still works, because it already handles a 409 refusal it does not know as a failed resume, and the new refusal only says that the spending stop stands.
+GEO-1811: POST /nixie/resume added `subschema #2` to the response body `oneOf` list for the response status `409`
+GEO-1811: POST /tasks/resume added `subschema #4` to the response body `oneOf` list for the response status `409`

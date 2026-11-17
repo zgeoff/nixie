@@ -66,7 +66,7 @@ test('it refuses a spend stop row with an id other than 1', async () => {
 
   await Promise.allSettled([insert]);
 
-  await expect(insert).rejects.toThrow();
+  expect(insert).rejects.toThrowWithMessage(Error, /CHECK constraint failed/u);
 });
 
 test('it counts the turn records of the log into 15-minute buckets', async () => {
