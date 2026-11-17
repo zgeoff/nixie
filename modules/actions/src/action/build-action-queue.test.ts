@@ -3,6 +3,7 @@ import { withWriteTransaction } from '@heynixie/log';
 import type { StepInput } from '@heynixie/tasks';
 import { buildStepRunID, writeTaskControl } from '@heynixie/tasks';
 import invariant from 'tiny-invariant';
+import { z } from 'zod';
 import { buildActionSeeder } from '../test-utils/build-action-seeder';
 import { createTestStep } from '../test-utils/create-test-step';
 import { startTestActions } from '../test-utils/start-test-actions';
@@ -127,7 +128,7 @@ test('it returns the action a step queued when its rerun makes the same call', a
   const result = await step(stepInput);
   const actions = await ctx.db.selectFrom('actions').select('action_id').execute();
 
-  const [first, rerun] = JSON.parse(String(result.sessionBoundary));
+  const [first, rerun] = z.array(z.unknown()).parse(JSON.parse(String(result.sessionBoundary)));
 
   expect(actions).toHaveLength(1);
   expect(rerun).toStrictEqual(first);

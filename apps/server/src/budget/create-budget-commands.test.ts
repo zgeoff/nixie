@@ -30,7 +30,10 @@ test('it lists each budget in force with its limit, period, spent and reset', as
   const ctx = await setupTest();
   const listed = await runHostCommand(ctx.configPath, ['budgets', 'list']);
 
-  expect({ exitCode: listed.exitCode, budgets: JSON.parse(listed.stdout) }).toStrictEqual({
+  expect({
+    exitCode: listed.exitCode,
+    budgets: z.array(z.unknown()).parse(JSON.parse(listed.stdout)),
+  }).toStrictEqual({
     exitCode: 0,
     budgets: [
       {
