@@ -9,7 +9,7 @@ import { readQueryRows } from '../read-query-rows';
 import { nixieSchema } from '../schema/nixie-schema';
 import { buildSqliteWorkerDialect } from '../sqlite/build-sqlite-worker-dialect';
 import { readRunPrefix } from '../test-utils/read-run-prefix';
-import { remindersMigration } from './0068-reminders-migration';
+import { remindersMigration } from './0070-reminders-migration';
 
 async function setupTest() {
   const stack = new AsyncDisposableStack();
@@ -97,9 +97,9 @@ async function setupTest() {
   };
 }
 
-test('it moves the schema to version 68, which the release before cannot read', () => {
-  expect(nixieSchema.migrations.indexOf(remindersMigration) + 1).toBe(68);
-  expect(nixieSchema.oldestReader).toBeGreaterThanOrEqual(68);
+test('it moves the schema to version 70, which the release before cannot read', () => {
+  expect(nixieSchema.migrations.indexOf(remindersMigration) + 1).toBe(70);
+  expect(nixieSchema.oldestReader).toBeGreaterThanOrEqual(70);
 });
 
 test('it keeps the version of a conversation definition as a reminder version and removes it from the definitions', async () => {
