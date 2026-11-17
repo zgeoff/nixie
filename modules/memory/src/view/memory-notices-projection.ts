@@ -2,7 +2,6 @@ import type { EnvelopeRecord, Projection } from '@heynixie/log';
 import type { Kysely } from 'kysely';
 import type { MemoryTables } from '../types';
 import { buildVersionKey } from '../utils/key/build-version-key';
-import { parseLabelRecord } from '../utils/record/parse-label-record';
 import { parseMemoryRecord } from '../utils/record/parse-memory-record';
 import { parseProposalRecord } from '../utils/record/parse-proposal-record';
 
@@ -53,31 +52,7 @@ function buildNoticeEntry(record: EnvelopeRecord): NoticeEntryValues | null {
     };
   }
 
-  if (version?.kind === 'memory.pinned' && version.noticeKey !== null) {
-    return {
-      entry_key: `pin/${String(record.sequence)}`,
-      notice_key: version.noticeKey,
-      item_id: version.itemID,
-      version: null,
-      change: version.isPinned ? 'pinned' : 'unpinned',
-      proposal_id: null,
-    };
-  }
-
-  const labelled = version === null ? parseLabelRecord(record) : null;
-
-  if (labelled?.kind === 'memory.labelled' && labelled.noticeKey !== null) {
-    return {
-      entry_key: `labelled/${labelled.itemID}/${String(labelled.revision)}`,
-      notice_key: labelled.noticeKey,
-      item_id: labelled.itemID,
-      version: null,
-      change: 'labelled',
-      proposal_id: null,
-    };
-  }
-
-  const proposal = version === null && labelled === null ? parseProposalRecord(record) : null;
+  const proposal = version === null ? parseProposalRecord(record) : null;
 
   if (proposal?.kind === 'memory.proposal_merged' && proposal.noticeKey !== null) {
     return {

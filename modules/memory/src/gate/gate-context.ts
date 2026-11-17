@@ -7,6 +7,7 @@ import type { MemoryWriteVerdict } from '@heynixie/tools';
 import type { Selectable } from 'kysely';
 import type {
   Labels,
+  MemoryChange,
   MemorySubject,
   NoticeChange,
   ProposalOperationKind,
@@ -336,8 +337,19 @@ export interface MemoryNoticeEntryTable {
   readonly thread: string | null;
   readonly item_id: string;
   readonly version: number | null;
-  readonly change: NoticeChange;
+  readonly change: MemoryChange | 'proposed';
   readonly proposal_id: string | null;
+  readonly sequence: number;
+  readonly recorded_at: number;
+}
+
+// the notice entries of the writes that add no text version: a label edit, a pin and an unpin
+export interface MemoryChangeNoticeTable {
+  readonly entry_key: string;
+  readonly notice_key: string;
+  readonly thread: string | null;
+  readonly item_id: string;
+  readonly change: Exclude<NoticeChange, MemoryChange | 'proposed'>;
   readonly sequence: number;
   readonly recorded_at: number;
 }

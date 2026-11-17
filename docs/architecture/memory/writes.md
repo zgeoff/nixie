@@ -460,8 +460,10 @@ the memory view, or to the proposals page for a proposal.
 
 An entry for a label edit, a pin or an unpin shows the change and links to the item. It offers no
 undo, keep or retire, because the [memory page](./view.md#an-items-history) already offers an unpin
-and shows the label history. Any other entry whose item still stands at the version it wrote offers
-undo, keep and retire, each a [checked action](../channels/api.md#checked-actions) bound to that
-version, so an item that changed after the notice refuses the change as stale. Undo writes the
-store's undo version, retire writes a retirement, and keep writes no version: the API stores the
-keep as a checked action's result, and reads those results back to show the entry as kept.
+and shows the label history. nixie keeps these entries in a table of their own, so the release
+before reads the table of every other entry unchanged, and a rollback by one release still starts.
+Any other entry whose item still stands at the version it wrote offers undo, keep and retire, each a
+[checked action](../channels/api.md#checked-actions) bound to that version, so an item that changed
+after the notice refuses the change as stale. Undo writes the store's undo version, retire writes a
+retirement, and keep writes no version: the API stores the keep as a checked action's result, and
+reads those results back to show the entry as kept.

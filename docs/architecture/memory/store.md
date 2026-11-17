@@ -114,11 +114,13 @@ the writer's epoch that stops an older nixie process from writing
   version retires the item, because no earlier text exists.
 - **Edit labels** adds a `memory.labelled` record and no version, and raises the revision by 1.
 - **Pin** and **unpin** change where the item shows and not its text, so each appends a
-  `memory.pinned` record and adds no version. A pin from the model or the client carries the
-  revision its caller read, and fails as stale once the item moved past it. Only an active item can
-  be pinned, whatever its subject. A pin, or an edit of a pinned item, fails when it would take
-  [the pinned core](./context.md#the-pinned-core) past its budget. An unpin fails only when the item
-  is not pinned.
+  `memory.pinned` record and adds no version. A pin or unpin that joins a
+  [notice](./writes.md#notices) also appends a `memory.pin_noticed` record that holds the notice
+  key, because the release before refuses a `memory.pinned` record with any other field. A pin from
+  the model or the client carries the revision its caller read, and fails as stale once the item
+  moved past it. Only an active item can be pinned, whatever its subject. A pin, or an edit of a
+  pinned item, fails when it would take [the pinned core](./context.md#the-pinned-core) past its
+  budget. An unpin fails only when the item is not pinned.
 
 ## End times
 

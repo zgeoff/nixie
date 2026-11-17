@@ -11,6 +11,7 @@ import type { Selectable, Transaction } from 'kysely';
 import type {
   GateContext,
   ImageRef,
+  MemoryChangeNoticeTable,
   MemoryForgottenEvidenceTable,
   MemoryNoticeEntryTable,
   MemoryProposalTable,
@@ -461,6 +462,7 @@ export type MemoryTables = CheckedTables<
     memory_proposals: MemoryProposalTable;
     memory_proposal_merges: MemoryProposalMergeTable;
     memory_notice_entries: MemoryNoticeEntryTable;
+    memory_change_notices: MemoryChangeNoticeTable;
     memory_forgotten_evidence: MemoryForgottenEvidenceTable;
     memory_item_keys: MemoryItemKeyTable;
     memory_evidence_purges: MemoryEvidencePurgeTable;

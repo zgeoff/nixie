@@ -73,7 +73,7 @@ test('it unpins the item at once, with a pinned record that names the thread of 
 
   expect(records.map((entry) => [entry.record.thread, entry.record.payload])).toStrictEqual([
     [null, { itemID: item.itemID, isPinned: true }],
-    ['conversation', { itemID: item.itemID, isPinned: false, noticeKey: 'run/run-1' }],
+    ['conversation', { itemID: item.itemID, isPinned: false }],
   ]);
 });
 

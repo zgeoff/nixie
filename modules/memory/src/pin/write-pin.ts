@@ -35,12 +35,27 @@ export function writePin(
           definitions: parts.context.definitions(),
           ...(request.provenance.thread === undefined ? {} : { thread: request.provenance.thread }),
           ...(approval === undefined ? {} : { approval: approval.envelope }),
-          payload: {
-            itemID: request.itemID,
-            isPinned: request.isPinned,
-            ...(request.noticeKey === undefined ? {} : { noticeKey: request.noticeKey }),
-          },
+          payload: { itemID: request.itemID, isPinned: request.isPinned },
         },
+
+        // the release before reads memory.pinned strictly, so the notice key rides a record of
+        // its own that it skips
+        ...(request.noticeKey === undefined
+          ? []
+          : [
+              {
+                kind: 'memory.pin_noticed' as const,
+                definitions: parts.context.definitions(),
+                ...(request.provenance.thread === undefined
+                  ? {}
+                  : { thread: request.provenance.thread }),
+                payload: {
+                  itemID: request.itemID,
+                  isPinned: request.isPinned,
+                  noticeKey: request.noticeKey,
+                },
+              },
+            ]),
       ]);
     }),
   );

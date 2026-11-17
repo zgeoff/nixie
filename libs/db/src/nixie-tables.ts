@@ -197,6 +197,15 @@ export interface NixieTables {
     readonly sequence: number;
     readonly recorded_at: number;
   };
+  readonly memory_change_notices: {
+    readonly entry_key: string;
+    readonly notice_key: string;
+    readonly thread: string | null;
+    readonly item_id: string;
+    readonly change: string;
+    readonly sequence: number;
+    readonly recorded_at: number;
+  };
   readonly memory_proposal_merges: {
     readonly merge_id: string;
     readonly proposal_id: string;

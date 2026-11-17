@@ -20,6 +20,7 @@ test('it starts a store over a log that folds the memory projections, with no re
     'memory_proposals',
     'memory_proposal_merges',
     'memory_notice_entries',
+    'memory_change_notices',
     'memory_forgotten_evidence',
     'memory_item_keys',
     'memory_evidence_purges',

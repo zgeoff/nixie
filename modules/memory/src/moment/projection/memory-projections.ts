@@ -7,6 +7,7 @@ import { memoryLabelsProjection } from '../../label/memory-labels-projection';
 import { memoryProposalMergesProjection } from '../../proposal/memory-proposal-merges-projection';
 import { memoryProposalsProjection } from '../../proposal/memory-proposals-projection';
 import { memoryVersionsProjection } from '../../version/memory-versions-projection';
+import { memoryChangeNoticesProjection } from '../../view/memory-change-notices-projection';
 import { memoryNoticesProjection } from '../../view/memory-notices-projection';
 import { momentLinksProjection } from './moment-links-projection';
 import { momentReflectionsProjection } from './moment-reflections-projection';
@@ -20,6 +21,7 @@ export const memoryProjections: readonly Projection[] = [
   memoryProposalsProjection,
   memoryProposalMergesProjection,
   memoryNoticesProjection,
+  memoryChangeNoticesProjection,
   memoryForgottenEvidenceProjection,
   memoryItemKeysProjection,
   memoryEvidencePurgesProjection,
