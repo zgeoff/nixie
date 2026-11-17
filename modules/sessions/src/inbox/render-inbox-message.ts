@@ -8,6 +8,7 @@ import { renderTaskMessage } from '../task/render-task-message';
 import type { MessageTimeOptions } from '../types';
 import { findSessionLabel } from '../utils/find-session-label';
 import { renderOwnerText } from '../utils/render-owner-text';
+import { renderActionFailure } from './render-action-failure';
 import type { ActionResultBlock } from './render-action-result';
 import { renderApprovalAnswer } from './render-approval-answer';
 import { renderLimitNotice } from './render-limit-notice';
@@ -115,10 +116,15 @@ function renderRecordMessage(
   result: ActionResultBlock | null = null,
 ): string {
   const line = `[#${record.sequence}] ${recordSummaries[type]}: ${JSON.stringify(record.payload)}`;
+  const failure = type === 'outcome' ? renderActionFailure(record) : null;
 
   return renderSystemMessage({
     type,
     at: formatMessageTime(record.recordedAt, null, times),
-    body: result === null ? line : `${line}\n${result.text}`,
+    body: [
+      line,
+      ...(failure === null ? [] : [failure]),
+      ...(result === null ? [] : [result.text]),
+    ].join('\n'),
   });
 }

@@ -220,6 +220,33 @@ test('it renders an action outcome as an outcome system message at the time it s
   );
 });
 
+test('it adds a line that names the call and why it failed under the outcome of a failed action', () => {
+  const record = buildMockLogRecord({
+    sequence: 48_214,
+    kind: 'action.outcome',
+    recordedAt: new Date('2026-10-13T03:40:00Z'),
+    payload: {
+      actionID: 'a-2',
+      tool: 'task.define',
+      status: 'failed',
+      attempt: 1,
+      reason: 'rule_denied',
+    },
+    erasable: { status: 'none' },
+  });
+
+  const rendered = renderInboxMessage(
+    record,
+    { defaultZone: 'Australia/Sydney', now: new Date('2026-10-13T05:00:00Z') },
+    buildMockTaskMessageView(),
+  );
+
+  expect(rendered.split('\n').slice(1, -1)).toStrictEqual([
+    '[#48214] An action settled: {"actionID":"a-2","tool":"task.define","status":"failed","attempt":1,"reason":"rule_denied"}',
+    'The call `task.define` (`a-2`) failed: a rule denied it.',
+  ]);
+});
+
 test('it renders a fired timer from an earlier year with the year in its time', () => {
   const record = buildMockLogRecord({
     sequence: 48_213,

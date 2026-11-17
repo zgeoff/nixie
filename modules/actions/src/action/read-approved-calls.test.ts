@@ -72,7 +72,7 @@ test('it falls back to the sentence for the reason code after a forget', async (
 
   expect(calls.get(failed.action_id)).toStrictEqual({
     state: 'failed',
-    reason: 'the service refused it',
+    reason: 'the call was refused',
   });
 });
 
