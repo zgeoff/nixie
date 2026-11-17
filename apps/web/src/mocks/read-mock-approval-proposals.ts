@@ -25,6 +25,7 @@ export function readMockApprovalProposals(proposalIDs: readonly string[], caller
 
     return {
       answeredOn: device?.deviceName ?? null,
+      call: row.call,
       body: row.isBodyGone ? null : toMockApprovalBody(row),
       choices: isOpen ? [...row.choices] : [],
       isAnsweredHere: answeredBy === callerSessionID,

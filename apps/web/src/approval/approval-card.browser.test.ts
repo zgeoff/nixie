@@ -397,3 +397,31 @@ test('it saves an edited proposed rule as a new proposal and withdraws the old o
     { outcome: 'allow', tools: ['mail.send', 'mail.draft'] },
   ]);
 });
+
+test.each([
+  [{ state: 'applied', reason: null }, 'Approved, applied'],
+  [
+    { state: 'failed', reason: 'the harbour office is closed' },
+    'Approved, failed: the harbour office is closed',
+  ],
+  [{ state: 'waiting', reason: null }, 'Approved, waiting to run'],
+] as const)('it shows an approved action by what became of its call: %s', async (call, text) => {
+  const ctx = await setupTest();
+
+  await store.approvalRows.create({
+    call,
+    choices: ['approve', 'defer', 'decline'],
+    sentence: 'Send the berth invoice.',
+  });
+
+  await ctx.openLine('Send the berth invoice.');
+  await ctx.waitForPage(`document.querySelector('button[name="approve"]') !== null`);
+  await ctx.view.click('button[name="approve"]');
+  await ctx.waitForPage(`document.body.innerText.includes(${JSON.stringify(text)})`);
+
+  const shown = await ctx.view.evaluate(
+    `Array.from(document.querySelectorAll('li[aria-label="Send the berth invoice."] *'), (node) => node.children.length === 0 ? node.textContent.trim() : '').filter((part) => part.startsWith('Approved'))`,
+  );
+
+  expect(shown).toStrictEqual([text]);
+});

@@ -176,6 +176,7 @@ async function writeApproval(
       draft.answeredBy = callerSessionID;
       draft.appliedText = answer.memory?.editedText ?? row.memory?.text ?? row.sentence;
       draft.state = 'approved';
+      draft.call = row.kind === 'action' ? (row.call ?? { state: 'waiting', reason: null }) : null;
     },
   });
 

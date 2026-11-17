@@ -6,6 +6,7 @@ import type { DeferSettings } from './build-defer-times';
 import { collectProposalIDBatches } from './collect-proposal-id-batches';
 import type { SeenApproval } from './merge-seen-approvals';
 import { applyApprovalReads, mergeSeenApprovals } from './merge-seen-approvals';
+import { pickReadRefetchInterval } from './pick-read-refetch-interval';
 
 export interface ApprovalDigestState {
   readonly status: 'pending' | 'failed' | 'ready';
@@ -56,7 +57,10 @@ export function useApprovalDigest(): ApprovalDigestState {
       },
     }),
     queries: collectProposalIDBatches(departedIDs).map((proposalIDs) =>
-      nixie.queryUtils.approvals.readProposals.queryOptions({ input: { proposalIDs } }),
+      nixie.queryUtils.approvals.readProposals.queryOptions({
+        input: { proposalIDs },
+        refetchInterval: (query) => pickReadRefetchInterval(query.state.data, refreshIntervalMs),
+      }),
     ),
   });
 
