@@ -1,9 +1,9 @@
 import { sql } from 'kysely';
 import type { Migration } from '../types';
 
-// The spend tables are projections that the log folds into rows, so a log that holds no spend
-// records leaves them empty. The turn count has one row per 15-minute bucket, so a count of a day
-// or a month in any zone sums whole buckets.
+// The turn count has one row per 15-minute bucket, so a count of a day or a month in any zone sums
+// whole buckets. It starts from the turn records the log holds, so an upgrade mid-period keeps the
+// count.
 export const spendStopMigration: Migration = {
   name: 'add the spending stop tables',
   up: async (tx) => {
@@ -33,5 +33,11 @@ export const spendStopMigration: Migration = {
       bucket_start integer primary key,
       turns integer not null
     ) strict`.execute(tx);
+
+    await sql`insert into spend_turns (bucket_start, turns)
+      select recorded_at / 900000 * 900000, count(*)
+      from records
+      where kind in ('model.turn_ended', 'worker.turn_ended')
+      group by recorded_at / 900000 * 900000`.execute(tx);
   },
 };

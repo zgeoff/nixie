@@ -199,6 +199,26 @@ test('it sends the limits again when the gateway holds none', async () => {
   expect(ctx.gateway.putLimits.mock.calls).toStrictEqual([[ctx.limits]]);
 });
 
+test('it counts a failed limits send as no answer and trips after 30 seconds', async () => {
+  const ctx = await setupTest();
+
+  const state = { noAnswerSince: null, isLimitsPending: true };
+
+  ctx.gateway.readStatus.mockResolvedValue({ kind: 'ok', value: buildMockGatewayStatus() });
+  ctx.gateway.putLimits.mockResolvedValue({ kind: 'unreachable', reason: 'no answer' });
+
+  await ctx.poll(state);
+
+  ctx.clock.advance(30_000);
+
+  await ctx.poll(state);
+
+  expect([state.isLimitsPending, await readSpendStopRow(ctx.writer.db)]).toMatchObject([
+    true,
+    { reason: 'unreachable' },
+  ]);
+});
+
 test('it sends no limits to a gateway that holds them', async () => {
   const ctx = await setupTest();
 

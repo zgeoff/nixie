@@ -63,7 +63,12 @@ async function runWatchLoop(options: SpendWatcherOptions, state: WatchState): Pr
 export async function runSpendPoll(options: SpendWatcherOptions, state: WatchState): Promise<void> {
   const context = options.context;
 
-  const facts = await readAnsweredFacts(options);
+  const read = await readAnsweredFacts(options);
+
+  const facts =
+    read.status === null
+      ? read
+      : await sendWhatIsMissing(options, state, { ...read, status: read.status });
 
   if (facts.status === null) {
     state.noAnswerSince ??= facts.now;
@@ -77,9 +82,7 @@ export async function runSpendPoll(options: SpendWatcherOptions, state: WatchSta
 
   state.noAnswerSince = null;
 
-  const status = await sendWhatIsMissing(options, state, { ...facts, status: facts.status });
-
-  await settleSpendStop(context, { ...facts, status });
+  await settleSpendStop(context, facts);
 }
 
 // A gateway that counts its periods in another zone resets them at another midnight, so its answer
@@ -101,12 +104,13 @@ async function readAnsweredFacts(options: SpendWatcherOptions): Promise<SpendFac
 }
 
 // The limits go out once the gateway answers, and a raise that it has not applied goes out again.
-// The status that it answers with replaces the one read, so the stop clears in the same poll.
+// The status that it answers with replaces the one read, so the stop clears in the same poll. A
+// gateway that holds no limits after a failed send counts as no answer, so the stop stands.
 async function sendWhatIsMissing(
   options: SpendWatcherOptions,
   state: WatchState,
   facts: SpendFacts & { readonly status: GatewayStatus },
-): Promise<GatewayStatus> {
+): Promise<SpendFacts> {
   const gateway = options.context.gateway;
   const periods = facts.status.periods;
 
@@ -129,6 +133,10 @@ async function sendWhatIsMissing(
         'error',
       );
     }
+
+    if (put.kind !== 'ok') {
+      return { ...facts, status: null };
+    }
   }
 
   const resend = pickRaiseResend({ ...facts, status: status.current }, options.context.zone);
@@ -141,5 +149,5 @@ async function sendWhatIsMissing(
     }
   }
 
-  return status.current;
+  return { ...facts, status: status.current };
 }

@@ -26,6 +26,15 @@ test.each([
     },
     expected: { dollars: 120, tokens: 80_000_000, turns: 1000 },
   },
+  {
+    name: 'turns that the host raised above the cap, held at the cap',
+    stop: {
+      measure: 'dollars',
+      used: { dollars: 61.2, tokens: 5, turns: 5 },
+      limits: { dollars: 60, tokens: 80_000_000, turns: 3000 },
+    },
+    expected: { dollars: 90, tokens: 80_000_000, turns: 2000 },
+  },
 ] as const)('it offers $name', (row) => {
   const offer = pickRaiseOffer({
     state: 'tripped',

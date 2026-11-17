@@ -68,3 +68,44 @@ test('it refuses a spend stop row with an id other than 1', async () => {
 
   await expect(insert).rejects.toThrow();
 });
+
+test('it counts the turn records of the log into 15-minute buckets', async () => {
+  const stack = new AsyncDisposableStack();
+
+  onTestFinished(() => stack.disposeAsync());
+
+  const prefix = await readRunPrefix();
+  const directory = await mkdtemp(join(tmpdir(), `${prefix}nixie-spend-backfill-`));
+
+  stack.defer(() => rm(directory, { recursive: true, force: true }));
+
+  const db = new Kysely<unknown>({
+    dialect: buildSqliteWorkerDialect(join(directory, 'nixie.db')),
+  });
+
+  stack.defer(() => db.destroy());
+
+  const migrate = (count: number) =>
+    runMigrations(db, {
+      schema: { migrations: nixieSchema.migrations.slice(0, count), oldestReader: 0 },
+      copyDir: directory,
+    });
+
+  await migrate(nixieSchema.migrations.indexOf(spendStopMigration));
+
+  await sql`insert into records (sequence, recorded_at, kind, snapshot_hash, payload)
+    values (1, 1767225600000, 'model.turn_ended', 'snapshot-a', '{}'),
+      (2, 1767225660000, 'worker.turn_ended', 'snapshot-a', '{}'),
+      (3, 1767226500000, 'model.turn_ended', 'snapshot-a', '{}'),
+      (4, 1767226500000, 'task.created', 'snapshot-a', '{}')`.execute(db);
+
+  await migrate(nixieSchema.migrations.indexOf(spendStopMigration) + 1);
+
+  const buckets = await sql`select bucket_start, turns from spend_turns
+    order by bucket_start`.execute(db);
+
+  expect(buckets.rows).toStrictEqual([
+    { bucket_start: 1_767_225_600_000, turns: 2 },
+    { bucket_start: 1_767_226_500_000, turns: 1 },
+  ]);
+});
