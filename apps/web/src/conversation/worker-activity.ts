@@ -36,6 +36,9 @@ export interface WorkerActivity {
   // the worker's own tool calls
   readonly calls: readonly ToolActivity[];
   readonly end?: WorkerEndActivity;
+
+  // the model ID of the profile the worker ran on
+  readonly model?: string;
   readonly shortID?: string;
   readonly turns: readonly WorkerTurnActivity[];
   readonly workerRunID: string;

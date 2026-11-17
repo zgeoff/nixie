@@ -187,8 +187,8 @@ test('it shows one worker line for each worker run of a step', async () => {
       );
 
       expect(lines).toStrictEqual([
-        'worker worker0 · Question 0 · answered · 1.0 min · 1 turn · 100 tokens · $0.01',
-        'worker worker1 · Question 1 · answered · 1.0 min · 1 turn · 100 tokens · $0.01',
+        'worker worker0 · test-model · Question 0 · answered · 1.0 min · 1 turn · 100 tokens · $0.01',
+        'worker worker1 · test-model · Question 1 · answered · 1.0 min · 1 turn · 100 tokens · $0.01',
       ]);
     },
     { timeout: 10_000 },

@@ -36,6 +36,7 @@ export function collectWorkers(
 
 interface RunParts {
   readonly end?: WorkerEndActivity;
+  readonly model?: string;
   readonly shortID?: string;
   readonly turns: readonly WorkerTurnActivity[];
 }
@@ -78,7 +79,7 @@ function collectRunParts(records: readonly LiveRecord[]): RunParts {
           },
         }
       : {}),
-    ...(started?.phase === 'started' ? { shortID: started.shortID } : {}),
+    ...(started?.phase === 'started' ? { model: started.model, shortID: started.shortID } : {}),
     turns: turns.toSorted((left, right) => left.turn - right.turn),
   };
 }
