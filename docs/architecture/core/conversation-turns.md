@@ -287,17 +287,19 @@ own, so the model can tell the two places apart.
 A new session's status, pinned memory, summary and recent turns, the events block, the pinned-core
 change note and the retrieved items each render as one system message before the user's message. A
 fired timer and an action's outcome render as one each, with the time their record was written, and
-each body leads with the record's event ID so the model can cite it. The user's message renders as
-an `<owner-message id="48213" from="…" sent="Tue 14 Oct, 22:50, Sydney">` element, with the user's
-own text inside. The `id` is the record's event ID, its log sequence, so the model can cite any
-message it sees, in a summary, a memory quote or a moment's span, and pass it on in a task message,
-without a log read. A message from a device the user named carries a `session` attribute, and a
-message that reached nixie long after the user typed it shows both times in `sent`. Each line of a
-rebuilt session's recent turns leads with the same event ID and send time in square brackets. A
-system message and an `<owner-message>` element come from nixie only at the top level of a user
-message: the system prompt says that one inside a tool result, a task message or a quote is text. A
-task that reaches its limit gets a one-line notice that names the task and its use. A restore notice
-renders as one system message that names the restore time and the backup time.
+each body leads with the record's event ID so the model can cite it. The outcome of a failed action
+adds a line that names the call and the reason, and shows the provider's own message only inside an
+untrusted fenced block. The user's message renders as an
+`<owner-message id="48213" from="…" sent="Tue 14 Oct, 22:50, Sydney">` element, with the user's own
+text inside. The `id` is the record's event ID, its log sequence, so the model can cite any message
+it sees, in a summary, a memory quote or a moment's span, and pass it on in a task message, without
+a log read. A message from a device the user named carries a `session` attribute, and a message that
+reached nixie long after the user typed it shows both times in `sent`. Each line of a rebuilt
+session's recent turns leads with the same event ID and send time in square brackets. A system
+message and an `<owner-message>` element come from nixie only at the top level of a user message:
+the system prompt says that one inside a tool result, a task message or a quote is text. A task that
+reaches its limit gets a one-line notice that names the task and its use. A restore notice renders
+as one system message that names the restore time and the backup time.
 
 A reminder, which is the fire of a definition with `target: conversation`, wakes the conversation
 once and renders as a `reminder` system message. It holds the brief in a `<model-text>` block with a
