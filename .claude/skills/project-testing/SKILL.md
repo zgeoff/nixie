@@ -107,11 +107,10 @@ test file, run each one that the file needs, from the repo root:
 - Pass the file's path to the lane's command, such as `bun run test:agent-sdk <path>`. The test
   runner `@zgeoff/rig`, called rig, runs only the lane's own files among the paths you pass. Never
   run such a file with a bare `bun test`. That gives the file the unit lane's limit, and skips the
-  start hook that rig runs before the bundle, restic and Agent SDK lanes to build what their tests
-  read.
+  start hook that builds what the bundle, restic and Agent SDK lanes read.
 - For one file under `e2e/`, follow
-  [The e2e, bundle, journeys and restic lanes](./references/e2e-and-restic-lanes.md).
-  `bun run test:e2e` and `bun run test:journeys` narrow nothing when you add a path.
+  [The e2e, bundle, journeys and restic lanes](./references/e2e-and-restic-lanes.md). Never add a
+  path to `bun run test:e2e`: the script passes it only to `test:bundle`, which then fails.
 
 ### Lanes that need a real system
 
