@@ -1,13 +1,15 @@
 # Memory writes
 
-A model write to memory applies at once only when the user's own typed words back it. Every other
-write waits for the user's review as a memory proposal. `memory.remember` and `memory.edit` pass a
-content gate, and `memory.retire` passes an intent gate. Each gate runs code checks on a quote from
-a message the user typed, then asks a separate checker model whether the message asserts the memory.
-The first check that fails ends the gate, and the write becomes a proposal with that check as its
-review reason, so nothing the model writes reaches memory on the model's word alone. A pin of an
-item outside the pinned core always waits for review, and an unpin applies at once ([pins](#pins)).
-A write from a task passes the same gates as a write from the conversation.
+A model write to memory applies at once in 2 cases: the user's own typed words back it, or an allow
+rule of the user's covers it ([rules on memory writes](#rules-on-memory-writes)). Every other write
+waits for the user's review as a memory proposal. With no covering rule, `memory.remember` and
+`memory.edit` pass a content gate, and `memory.retire` passes an intent gate. Each gate runs code
+checks on a quote from a message the user typed, then asks a separate checker model whether the
+message asserts the memory. The first check that fails ends the gate, and the write becomes a
+proposal with that check as its review reason, so nothing the model writes reaches memory on the
+model's word alone. A pin of an item outside the pinned core waits for review unless an allow rule
+covers it, and an unpin applies at once ([pins](#pins)). A write from a task passes the same gates
+as a write from the conversation.
 
 A few writes fail outright instead. The tool returns an error to the model, and nothing is written:
 no item, no version and no proposal. These are:
@@ -18,8 +20,8 @@ no item, no version and no proposal. These are:
 - an edit of labels only that also passes a quote, an event ID, an end time or a subject, because
   each of those backs or changes text, and the edit has none;
 - an end time that has already passed;
-- a task's write that creates a self-note, edits one, or moves an item into or out of self
-  ([self-notes](#self-notes));
+- a task's write that creates a self-note, edits one, or moves an item into or out of self, when no
+  allow rule covers it ([self-notes](#self-notes));
 - an image source that points at no image of the user's in the thread;
 - a quote or an event ID that cites a message whose removal from the event log has begun
   ([forgotten evidence](#forgotten-evidence));
@@ -27,7 +29,8 @@ no item, no version and no proposal. These are:
   one past the [proposal cap](#memory-proposals);
 - an edit of a pinned item that would apply with text that no longer fits the pinned core's budget.
   An edit that goes to review instead fails the same way when the user approves it;
-- a pin of a retired item, and an unpin of an item outside the core ([pins](#pins)).
+- a pin of a retired item, a pin that a rule applies when the core has no room, and an unpin of an
+  item outside the core ([pins](#pins)).
 
 [The memory store](./store.md) covers the items, versions and keys that a write changes, and
 [0008](../../decisions/0008-memory-write-review.md) records the choice of gates.
@@ -62,15 +65,15 @@ about the user or a shared item, it runs these steps in order:
 6. **Apply.** nixie writes the version, its record and its [notice](#notices) entry in one
    transaction.
 
-A matching ask rule sends the write to review before step 1, and a covering allow rule replaces
-steps 2 to 5 with a token check against everything the user typed in the evidence window
-([rules on memory writes](#rules-on-memory-writes)). A self-note, a write from a photo and a
-[subject change](#subject-changes) each run their own checks.
+A matching ask rule sends the write to review before step 1, and a covering allow rule keeps step 1
+and skips steps 2 to 5 ([rules on memory writes](#rules-on-memory-writes)). A self-note, a write
+from a photo and a [subject change](#subject-changes) each run their own checks.
 
-An edit with no text changes labels only, and always becomes a proposal, whatever allow or ask rule
-matches it, because a quote backs text and never a label. Its review reason is `labels`, or
-`invisible_character` when a label holds a hidden character. Its token check compares the labels
-with the item's current text, and the proposal keeps that verdict.
+An edit with no text changes labels only. A quote backs text and never a label, so with no covering
+allow rule the edit becomes a proposal. Its review reason is `labels`, or `invisible_character` when
+a label holds a hidden character, and `ask_rule` under an ask rule. Its token check compares the
+labels with the item's current text, and the proposal keeps that verdict. A covering allow rule
+applies the labels at once, after the hidden-character check, with a [notice](#notices) entry.
 
 ### End times on writes
 
@@ -176,56 +179,79 @@ version copies the stored text with its source and evidence, and adds its own in
 
 `memory.pin` asks to add an item the model already has to
 [the pinned core](./context.md#the-pinned-core), by the item and the revision the thread read. A pin
-is a proposal of its own with the reason `pinned`, because the core opens every session and costs
-every turn that reads it, so the user decides what goes in. A pin runs no quote check and no
-checker: it adds no text, so the gate has nothing of the user's to check. The pin and unpin tools
-declare the `note` effect, so a rule on `memory_write` never matches them
-([memory_write](../policy/approvals.md#memory_write)), and a pin waits for review under every rule.
+declares the `memory_write` effect and sets its `subject` from the item, so the user's rules decide
+it as they decide any memory write ([rules on memory writes](#rules-on-memory-writes)). The core
+opens every session and costs every turn that reads it, so the user decides what goes in, and a pin
+becomes a proposal of its own unless a rule says otherwise. A pin runs no quote check and no
+checker: it adds no text, so the gate has nothing of the user's to check. What a pin does under each
+answer of the rules:
+
+| The rules for the pin                | What the pin does                                                |
+| ------------------------------------ | ---------------------------------------------------------------- |
+| A deny rule matches                  | Nothing: the decision point denies the call before the tool runs |
+| An ask rule matches                  | A pin proposal with the reason `ask_rule`                        |
+| A covering allow rule matches        | The item joins the core at once, with a notice entry             |
+| No rule matches, or no answer at all | A pin proposal with the reason `pinned`                          |
+
+The starter rules hold no rule on `memory_write`, so a pin on a starter deployment waits for review.
+A pin from a task carries the source `task` and a pin from the conversation carries none, so an
+allow rule whose `sources` lists `owner` never covers a pin. A snapshot of definitions from before
+`memory.pin` declared `memory_write` gives the call no answer from the rules, so such a pin stays a
+proposal.
 
 An active item past its [end time](./store.md#end-times) counts as retired, so its pin fails. A pin
 of an item already in the core applies at once and writes nothing. An approval pins the item through
 the store, bound to the proposal's version, so an approval fails as stale once the item moved on,
 fails as retired once its end time passed, and fails with `PINNED_CORE_FULL` when the core has no
-room left in its budget.
+room left in its budget. A pin that a rule applies at once fails the same way, as a tool error that
+writes nothing.
 
 `memory.unpin` takes an item out of the core at once and needs no review, because the item stays in
-memory and recall still finds it. It adds no version, so the store's undo never reaches it.
+memory and recall still finds it. It declares the `note` effect, so a rule on `memory_write` never
+matches it, and a rule on its tool name still decides it through the usual path
+([memory_write](../policy/approvals.md#memory_write)). It writes a [notice](#notices) entry. It adds
+no version, so the store's undo never reaches it.
 
 ## Self-notes
 
-Every self-note waits for the user's review unless
-[an allow rule covers it](#rules-on-memory-writes). nixie writes a self-note about itself, in its
-own voice, such as its tastes or how something landed with the user. An item's subject is whose it
-is ([items and versions](./store.md#items-and-versions)): `owner` for a fact about the user,
-`shared` for something between the user and nixie, such as a deal or a nickname, and `self` for a
-self-note. `memory.remember` takes the subject, `owner` by default. An item keeps its subject until
-an approved [subject change](#subject-changes) moves it, so an edit that keeps a self-note's subject
-is a self-note write.
+A self-note waits for the user's review unless [an allow rule covers it](#rules-on-memory-writes).
+nixie writes a self-note about itself, in its own voice, such as its tastes or how something landed
+with the user. An item's subject is whose it is
+([items and versions](./store.md#items-and-versions)): `owner` for a fact about the user, `shared`
+for something between the user and nixie, such as a deal or a nickname, and `self` for a self-note.
+`memory.remember` takes the subject, `owner` by default. An item keeps its subject until an approved
+[subject change](#subject-changes) moves it, so an edit that keeps a self-note's subject is a
+self-note write.
 
 Nothing of the user's backs a self-note, so the gate skips the quote check and the checker. It runs
 the hidden-character check, and a token check that compares the note's destination-like tokens with
-everything the user typed in the evidence window, as under an allow rule. Without a covering rule,
-the write becomes a proposal with the reason `self_note` whatever the token check found, and the
-proposal keeps the token verdict, so the review shows a destination the user never typed.
+everything the user typed in the evidence window. Without a covering rule, the write becomes a
+proposal with the reason `self_note` whatever the token check found, and the proposal keeps the
+token verdict, so the review shows a destination the user never typed.
 
 Only the conversation writes a self-note, because only the conversation speaks as nixie's persona. A
-task's write that creates a self-note, edits one, or moves an item into or out of self fails and
-writes nothing. A proposal merges only with a pending proposal of the same subject. When the user
-approves a proposal for a new item, the search for a [close match](#memory-proposals) looks only at
-items of the proposal's subject, so a fact about the user never becomes a revision of a self-note.
+task's write that creates a self-note, edits one, edits its labels, or moves an item into or out of
+self fails and writes nothing, unless an allow rule covers it. A covering rule is the user's consent
+to nixie's own notes, so a task may then write them. Under an ask rule, or with no rule, a task's
+self-note write still fails. A proposal merges only with a pending proposal of the same subject.
+When the user approves a proposal for a new item, the search for a [close match](#memory-proposals)
+looks only at items of the proposal's subject, so a fact about the user never becomes a revision of
+a self-note.
 
 Unless an ask rule matches, the conversation's retire of a self-note skips the intent gate and
 applies at once, with a notice entry whose undo brings the note back, because the note was nixie's
 own and a retirement only narrows what the conversation reads. Its version records no intent quote.
-A task's retire of a self-note runs the intent gate as any retirement does.
+A task's retire of a self-note runs the intent gate as any retirement does, unless an allow rule
+that checks `subject` `eq` `self` covers it.
 
 ## Subject changes
 
 `memory.edit` takes an optional subject, and a subject other than the item's own moves the item to
 it, so nixie can fix an item filed under the wrong subject. A subject change changes whose fact the
-item is, so it always waits for the user's review. The gate runs the checks of the subject the item
-moves to: a move into self runs the self-note checks, and a move to `owner` or `shared` runs the
-content gate. The review reason depends on how those checks ended:
+item is, so it waits for the user's review unless an allow rule covers it. Without a covering rule,
+the gate runs the checks of the subject the item moves to: a move into self runs the self-note
+checks, and a move to `owner` or `shared` runs the content gate. The review reason depends on how
+those checks ended:
 
 | The checks of the new subject                  | Review reason                           |
 | ---------------------------------------------- | --------------------------------------- |
@@ -233,6 +259,11 @@ content gate. The review reason depends on how those checks ended:
 | A move into self whose token check passed      | `subject_change`                        |
 | A move into self whose token check failed      | `self_note`                             |
 | Any other check failed, or an ask rule matched | That check's reason, such as `no_quote` |
+
+A covering rule applies the move at once, after the hidden-character check, as it applies any other
+edit. A move into self needs a rule that checks `subject` `eq` `self`, and a move out of self needs
+what the subject it moves to needs. The applied move writes the version, its subject change record
+and a notice entry, and checks the pinned core budget against the new subject, as an approval does.
 
 The proposal holds the subject its item has and the subject the item moves to, and the new subject
 sits in a record of its own after the proposal record
@@ -295,37 +326,61 @@ write from a photo keeps outside content, because the fact still comes from the 
 
 ## Rules on memory writes
 
-`memory.remember`, `memory.edit` and `memory.retire` declare the `memory_write` effect, so the
-user's rules decide a memory write before the gate does
-([memory_write](../policy/approvals.md#memory_write)).
-[The decision point](../policy/decision-point.md#memory-writes) sets the write's sources from its
-quote, runs the rules, and hands the gate its answer:
+`memory.remember`, `memory.edit`, `memory.retire` and `memory.pin` declare the `memory_write`
+effect, so the user's rules decide a memory write before the gate does
+([memory_write](../policy/approvals.md#memory_write)). A rule that matches by tool name and a rule
+that matches by the effect cover the same writes.
+[The decision point](../policy/decision-point.md#memory-writes) sets the write's sources and its
+`subject`, runs the rules, and hands the tool its answer:
 
-| The rules for the write | What the gate does                                                                         |
-| ----------------------- | ------------------------------------------------------------------------------------------ |
-| A deny rule matches     | Nothing: the decision point denies the call before the tool runs                           |
-| An ask rule matches     | The write becomes a proposal with the review reason `ask_rule`, whose checks name the rule |
-| An allow rule matches   | The hidden-character and token checks run, and the quote check and the checker are skipped |
-| No rule matches         | The gate runs every check                                                                  |
+| The rules for the write | What the tool does                                                                            |
+| ----------------------- | --------------------------------------------------------------------------------------------- |
+| A deny rule matches     | Nothing: the decision point denies the call before the tool runs                              |
+| An ask rule matches     | The write becomes a proposal with the review reason `ask_rule`, whose checks name the rule    |
+| An allow rule matches   | The write applies at once, if a matching rule covers it and the hidden-character check passes |
+| No rule matches         | The tool runs every check                                                                     |
 
-Under an allow rule, the token check compares against everything the user typed in the evidence
-window. A write that passes applies with a notice and takes outside content as its source, and a
-write that fails the token check becomes a proposal with the reason `token_missing`. A write that
-holds a hidden character becomes a proposal with `invisible_character` first. The decision point
-gives a write the source `owner` only when it finds the quote in text the user typed, and adds the
-source `task` to a write from a task run. An allow rule whose `sources` lists only `owner` therefore
-covers only a conversation write whose quote the user typed, and under it the gate skips the
-checker's judgment of whether the message asserts the memory.
+An allow rule covers a write when it matches and holds the checks that the write needs:
 
-- A self-note is covered only when a matching allow rule checks `subject` `eq` `self`, and a write
-  from a photo only when one checks an `image` argument
-  ([writes from a photo](#writes-from-a-photo)).
-- When several allow rules match a self-note or a photo write, one covering rule is enough, and the
-  version's checks record that rule.
+| The write                                                    | What the rule needs                |
+| ------------------------------------------------------------ | ---------------------------------- |
+| A new fact, a text edit, a pin, a retirement or a label edit | Nothing beyond the match           |
+| Any write whose subject is self, or that moves into self     | A check that `subject` `eq` `self` |
+| A write from a photo                                         | A check on an `image` argument     |
+| A self-note from a photo                                     | Both checks                        |
+| A move out of self                                           | What the subject it moves to needs |
+
+When several allow rules match, one covering rule is enough, and the version's checks record that
+rule. A covered write applies from the conversation or from a task, takes outside content as its
+source, and adds a [notice](#notices) entry. The covered kinds are a new fact, a text edit, a label
+edit, a subject change, a self-note write, a pin, an unpin and a retirement. The one check that
+stays under every rule is the hidden-character check: a covered text or label write that holds a
+hidden character becomes a proposal with the reason `invisible_character`. A covered write skips the
+quote check, the checker and the token check, because the rule is the user's consent. A pin, an
+unpin and a retirement add no text, so they run no check.
+
+The decision point gives a write the source `owner` only when it finds the quote in text the user
+typed, and adds the source `task` to a write from a task run. An allow rule whose `sources` lists
+only `owner` therefore covers only a conversation write whose quote the user typed.
+
+- A self-note, a label-only edit and a write from a photo carry no quote, so the source `owner`
+  never reaches them. A pin carries the source `task` from a task and no source from the
+  conversation.
 - Under an allow rule, nixie retires an item at once with a notice, and skips the read check, the
   intent quote check and the retirement checker.
 - The starter rules, the rule set that the definitions scaffold ships, hold no rule on
-  `memory_write`, so every write runs every check.
+  `memory_write`, so every write runs every check, and a pin and a label-only edit wait for review.
+
+### What a rule will not cover
+
+Before nixie writes a mandate, it reads which memory writes each of its rules will not cover. The
+mandate tool's result lists them in `memoryGaps`, one entry per rule that reaches memory, with the
+rule's number and a short phrase for each kind of write. The approval card shows the same phrases in
+a field `rule N will not cover`, for a mandate and for a proposed rule. A kind of write is listed
+when the rule does not match its best case, or when the rule matches and lacks a check that the kind
+needs. The list drops a rule's expiry and every check except those on `subject` and `image`, because
+a check on another argument, such as `text`, narrows a rule in a way the list cannot know. A rule
+that is not an allow rule, or that reaches no memory tool, lists nothing.
 
 ## Memory proposals
 
@@ -396,15 +451,17 @@ that applies it as a revision of another item.
 
 ## Notices
 
-Each applied write and each proposal adds an entry to its group's notice. A conversation write's
-group is its turn, keyed by the user's newest message in the thread, and a task's write's group is
-its task run. The client shows a turn's notice at the end of that turn, before the user's next
-message. It shows a task run's notice in the task's thread, after the last record that came before
-the notice's newest entry. Each entry links to its item in the memory view, or to the proposals page
-for a proposal.
+Each applied write, each proposal, each unpin and each at-once label edit or pin adds an entry to
+its group's notice. A conversation write's group is its turn, keyed by the user's newest message in
+the thread, and a task's write's group is its task run. The client shows a turn's notice at the end
+of that turn, before the user's next message. It shows a task run's notice in the task's thread,
+after the last record that came before the notice's newest entry. Each entry links to its item in
+the memory view, or to the proposals page for a proposal.
 
-An entry whose item still stands at the version it wrote offers undo, keep and retire, each a
-[checked action](../channels/api.md#checked-actions) bound to that version, so an item that changed
-after the notice refuses the change as stale. Undo writes the store's undo version, retire writes a
-retirement, and keep writes no version: the API stores the keep as a checked action's result, and
-reads those results back to show the entry as kept.
+An entry for a label edit, a pin or an unpin shows the change and links to the item. It offers no
+undo, keep or retire, because the [memory page](./view.md#an-items-history) already offers an unpin
+and shows the label history. Any other entry whose item still stands at the version it wrote offers
+undo, keep and retire, each a [checked action](../channels/api.md#checked-actions) bound to that
+version, so an item that changed after the notice refuses the change as stale. Undo writes the
+store's undo version, retire writes a retirement, and keep writes no version: the API stores the
+keep as a checked action's result, and reads those results back to show the entry as kept.

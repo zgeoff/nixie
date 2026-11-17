@@ -483,12 +483,13 @@ then runs as in a bulk forget of retired items.
 | `memory.remember` | `memory_write` | Creates an item, with a quote or a photo as its source      |
 | `memory.edit`     | `memory_write` | Edits an item at a revision it read, with a quote           |
 | `memory.retire`   | `memory_write` | Retires an item at a revision it read, with an intent quote |
-| `memory.pin`      | `note`         | Asks to pin an item at a revision it read                   |
+| `memory.pin`      | `memory_write` | Pins an item at a revision it read, or asks to              |
 | `memory.unpin`    | `note`         | Takes an item out of the pinned core                        |
 
-Each tool runs direct, and the user's rules decide each call by its effect. The starter rules
-`allow-reads` and `allow-notes` allow `read` and `note`. No starter rule allows `memory_write`, so
-the memory gate decides those calls ([rules on memory writes](./writes.md#rules-on-memory-writes)).
+Each tool runs direct, and the user's rules decide each call by its effect or its name. The starter
+rules `allow-reads` and `allow-notes` allow `read` and `note`. No starter rule allows
+`memory_write`, so the memory gate decides those calls
+([rules on memory writes](./writes.md#rules-on-memory-writes)).
 
 Each write tool runs its gate, and returns either the revision it applied or the proposal it became,
 with its review reason. A missing quote never fails the tool, because the gate turns it into a

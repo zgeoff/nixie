@@ -114,20 +114,26 @@ the evening and morning times that clients offer.
 
 ## memory_write
 
-`memory_write` is an effect name. `memory.remember`, `memory.edit` and `memory.retire` declare it,
-in the conversation and a task run alike. Every other memory tool declares `note`, so a rule on
-`memory_write` never reaches a pin or an unpin.
+`memory_write` is an effect name. `memory.remember`, `memory.edit`, `memory.retire` and `memory.pin`
+declare it, in the conversation and a task run alike. `memory.unpin` declares `note`, so a rule on
+`memory_write` never reaches an unpin. A rule on the tool name `memory.unpin` still decides it, and
+with the starter rules it applies at once. A rule that matches by tool name and a rule that matches
+by the `memory_write` effect cover the same memory writes.
 
 A rule on `memory_write` matches as a rule on any other effect does:
 
 - A deny rule denies the write, and the model reads the rule's sentence.
 - An ask rule makes the write a memory proposal with the review reason `ask_rule`. The call writes
   no action proposal, because the memory proposal is the user's review.
-- An allow rule lets the memory gate run the token check alone.
+- An allow rule applies the write at once, with a notice, when it covers the write. The memory gate
+  then runs the hidden-character check alone. Whether a rule covers a write depends on its checks on
+  `subject` and on the `image` arguments
+  ([memory writes](../memory/writes.md#rules-on-memory-writes)).
 
 [The decision point](./decision-point.md#memory-writes) gives a write that no rule decides the
 outcome `gate`, and the memory gate then runs every check. With the starter rules, no rule matches
-`memory_write`, so every memory write runs every check.
+`memory_write`, so every memory write runs every check, and a pin or a label-only edit waits for
+review.
 
 [Memory writes](../memory/writes.md#rules-on-memory-writes) describes what the gate does under each
 answer.

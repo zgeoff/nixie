@@ -81,8 +81,8 @@ every problem as an error. A skill that passes becomes a proposal record on the 
 which holds the files, the version in force it would replace, the run and the call that wrote it,
 and the outcome of the token check. The model reads the proposal by its short ID.
 
-The token check is the one that memory writes run under an allow rule, in
-[the content gate](../memory/writes.md#the-content-gate): every destination-like token in the files
+The token check is the one that the memory content gate runs, in
+[the token check](../memory/writes.md#the-token-check): every destination-like token in the files
 appears in what the user typed in their latest messages on the thread, or in the persona or a skill
 in force. The proposal records the first token that fails, so the review shows a destination the
 user never named.

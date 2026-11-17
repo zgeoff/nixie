@@ -216,7 +216,9 @@ user's time zone. The rule store refuses a past or too late expiry.
 
 The proposal is a row of the `rule_change` family, with the cause `mandate`, the `lifting` risk
 class when a rule lifts the always-ask set and `always_ask` otherwise. Its deadline is the expiry,
-so a late approval starts nothing. The card shows the title, each rule's sentence and the end time.
+so a late approval starts nothing. The card shows the title, each rule's sentence and the end time,
+and, for a rule that reaches memory, the memory writes it will not cover
+([what a rule will not cover](../memory/writes.md#what-a-rule-will-not-cover)).
 
 - An approval writes each rule as a new runtime rule with the ID `<mandate ID>-<number>`, with
   `mandate` and `expires` set, and `rules.mandate_started`, in one transaction. A seed of the
