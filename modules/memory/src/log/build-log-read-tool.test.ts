@@ -1,9 +1,13 @@
 import { expect, onTestFinished, setSystemTime, test } from 'bun:test';
 import { writeRecords } from '@heynixie/log';
+import { removeTestRecordKey } from '@heynixie/log/test-utils';
+import { recallPageLimitBytes } from '@heynixie/wire';
 import invariant from 'tiny-invariant';
+import { z } from 'zod';
 import { startTestMemory } from '../test-utils';
 import { buildMockToolContext } from '../test-utils/build-mock-tool-context';
 import { writeOwnerMessageRecord } from '../test-utils/write-owner-message-record';
+import { writeReplyRecord } from '../test-utils/write-reply-record';
 import { buildLogReadTool } from './build-log-read-tool';
 
 async function setupTest() {
@@ -351,4 +355,186 @@ test('it returns no conversation record to a run whose log thread is its own', a
   );
 
   expect(outcome).toMatchObject({ status: 'ok', result: { entries: [] } });
+});
+
+test('it marks an entry longer than 2,000 characters in a list and leaves a short one', async () => {
+  const ctx = await setupTest();
+
+  await writeReplyRecord(ctx.log, 'a'.repeat(2500));
+  await writeReplyRecord(ctx.log, 'short');
+
+  const outcome = await ctx.tool.run(
+    { callID: 'call-1', tool: 'log.read', input: {}, toolUseID: null },
+    buildMockToolContext(),
+  );
+
+  expect(outcome).toMatchObject({
+    status: 'ok',
+    result: {
+      entries: [
+        { text: 'a'.repeat(2000), isCut: true },
+        { text: 'short', isCut: false },
+      ],
+    },
+  });
+});
+
+test('it reads a 40,000-character entry whole in pages under the byte limit', async () => {
+  const ctx = await setupTest();
+
+  const full = 'He said "go" 日本語\n😀 '.repeat(2000);
+
+  const eventID = await writeReplyRecord(ctx.log, full);
+
+  const pageEntry = z.object({ text: z.string(), isCut: z.boolean() });
+  const pageResult = z.object({ entries: z.array(pageEntry), next: z.string().nullable() });
+  const pages: { text: string; isCut: boolean }[] = [];
+  const sizes: number[] = [];
+  let after: string | undefined;
+
+  do {
+    const outcome = await ctx.tool.run(
+      {
+        callID: 'call-1',
+        tool: 'log.read',
+        input: { record: String(eventID), ...(after === undefined ? {} : { after }) },
+        toolUseID: null,
+      },
+      buildMockToolContext(),
+    );
+
+    invariant(outcome.status === 'ok', 'the read is accepted');
+
+    sizes.push(JSON.stringify(outcome.result).length);
+
+    const parsed = pageResult.parse(outcome.result);
+    const [entry] = parsed.entries;
+
+    invariant(entry !== undefined, 'the page holds the entry');
+
+    pages.push(entry);
+
+    after = parsed.next ?? undefined;
+  } while (after !== undefined);
+
+  expect(pages.length).toBeGreaterThan(1);
+  expect(sizes).toSatisfyAll((size: number) => size <= recallPageLimitBytes);
+  expect(pages.map((page) => page.text).join('')).toBe(full);
+  expect(pages.map((page) => page.isCut)).toStrictEqual([...pages.slice(1).map(() => true), false]);
+});
+
+test('it reads a short entry whole in one page', async () => {
+  const ctx = await setupTest();
+  const eventID = await writeReplyRecord(ctx.log, 'A short reply');
+
+  const outcome = await ctx.tool.run(
+    {
+      callID: 'call-1',
+      tool: 'log.read',
+      input: { record: `#${String(eventID)}` },
+      toolUseID: null,
+    },
+    buildMockToolContext(),
+  );
+
+  expect(outcome).toStrictEqual({
+    status: 'ok',
+    result: {
+      entries: [
+        {
+          eventID: String(eventID),
+          role: 'assistant',
+          recordedAt: expect.toBeString(),
+          text: 'A short reply',
+          isCut: false,
+        },
+      ],
+      next: null,
+    },
+    record: { eventIDs: [String(eventID)], next: null },
+  });
+});
+
+test.each([
+  { name: 'from', extra: { from: '2026-10-12' } },
+  { name: 'to', extra: { to: '2026-10-12' } },
+  { name: 'query', extra: { query: 'reply' } },
+  { name: 'limit', extra: { limit: 5 } },
+])('it refuses record beside $name', async (row) => {
+  const ctx = await setupTest();
+  const eventID = await writeReplyRecord(ctx.log, 'A short reply');
+
+  const outcome = await ctx.tool.run(
+    {
+      callID: 'call-1',
+      tool: 'log.read',
+      input: { record: String(eventID), ...row.extra },
+      toolUseID: null,
+    },
+    buildMockToolContext(),
+  );
+
+  expect(outcome).toStrictEqual({ status: 'error', message: 'record takes only after beside it' });
+});
+
+test('it reports no such entry for a record on another thread and for an unknown eventID', async () => {
+  const ctx = await setupTest();
+  const eventID = await writeReplyRecord(ctx.log, 'A conversation reply');
+
+  const context = buildMockToolContext({ thread: 'task-1', logThread: 'task-1' });
+
+  const other = await ctx.tool.run(
+    { callID: 'call-1', tool: 'log.read', input: { record: String(eventID) }, toolUseID: null },
+    context,
+  );
+
+  const unknown = await ctx.tool.run(
+    { callID: 'call-2', tool: 'log.read', input: { record: '99999' }, toolUseID: null },
+    buildMockToolContext(),
+  );
+
+  expect(other).toStrictEqual({ status: 'error', message: 'no such entry' });
+  expect(unknown).toStrictEqual({ status: 'error', message: 'no such entry' });
+});
+
+test('it refuses an after past the end of the entry', async () => {
+  const ctx = await setupTest();
+  const eventID = await writeReplyRecord(ctx.log, 'short');
+
+  const outcome = await ctx.tool.run(
+    {
+      callID: 'call-1',
+      tool: 'log.read',
+      input: { record: String(eventID), after: '6' },
+      toolUseID: null,
+    },
+    buildMockToolContext(),
+  );
+
+  expect(outcome).toStrictEqual({
+    status: 'error',
+    message: 'after is past the end of the entry',
+  });
+});
+
+test('it reads a forgotten entry whole with no text', async () => {
+  const ctx = await setupTest();
+
+  const eventID = await writeOwnerMessageRecord(ctx.log, {
+    thread: 'conversation',
+    text: 'The gate code is 4471',
+    spans: [{ start: 0, end: 21, source: 'typed' }],
+  });
+
+  await removeTestRecordKey(ctx.log, eventID);
+
+  const outcome = await ctx.tool.run(
+    { callID: 'call-1', tool: 'log.read', input: { record: String(eventID) }, toolUseID: null },
+    buildMockToolContext(),
+  );
+
+  expect(outcome).toMatchObject({
+    status: 'ok',
+    result: { entries: [{ text: null, isCut: false }], next: null },
+  });
 });

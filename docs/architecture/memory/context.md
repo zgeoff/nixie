@@ -201,9 +201,13 @@ the record's sequence. A tool result also carries the event ID of the call it an
 `callEventID`, because nothing else shows the model the ID of a call. The model narrows a read by a
 time range or by words that every entry must hold, and pages on with the cursor the read returns.
 Each read returns a bounded number of entries and decrypts a bounded number of records, so a search
-over a long thread can return a short page with a cursor to go on from. The tool reads only the log
-thread of the calling run: the run's own thread, or the conversation's thread for a
-[task with the log grant](../core/started-tasks.md#start-options). Each entry keeps its role, so a
+over a long thread can return a short page with a cursor to go on from. A list clips each entry's
+text at 2,000 characters and marks the entry `isCut`. A read with `record`, the event ID of one
+entry, returns that entry whole, in pages under the same byte limit as `memory.recall`, and the
+`next` cursor of each page is the offset of the one after it. A read with `record` refuses an entry
+outside the log thread it reads, with the same answer as for an entry that does not exist. The tool
+reads only the log thread of the calling run: the run's own thread, or the conversation's thread for
+a [task with the log grant](../core/started-tasks.md#start-options). Each entry keeps its role, so a
 granted task tells the user's words from a task report. It declares only a read, so the starter rule
 `allow-reads` allows it.
 
