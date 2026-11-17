@@ -277,6 +277,7 @@ test('it declares a missing device session and a reused action ID for a nixie pa
   expect(contract.nixie.resume['~orpc'].errorMap).toContainAllKeys([
     'UNAUTHORIZED',
     'CLIENT_ACTION_ID_REUSED',
+    'SPEND_STOP_STANDS',
   ]);
 });
 

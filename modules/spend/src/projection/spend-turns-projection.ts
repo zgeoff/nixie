@@ -3,7 +3,7 @@ import { sql } from 'kysely';
 import type { SpendTurnKind } from '../record/spend-record-kind';
 import type { SpendTables } from '../types';
 
-export const spendBucketMs = 15 * 60 * 1000;
+const spendBucketMs = 15 * 60 * 1000;
 
 // Each model call writes one of these 2 records, so a record is a turn. The count sits in buckets of
 // 15 minutes, because every zone's offset is a multiple of 15 minutes, so a day or a month in any
