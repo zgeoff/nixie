@@ -211,8 +211,14 @@ the sender by how the receiver knows it:
 - `{agent} (task: {name})`: a started task that runs under the persona.
 - `task: {name}`: a task with no persona, and the receiver of any message when the deployment names
   no agent.
-- `task definition: {name}`: the brief of a definition's task run, which no task sent. A label never
-  holds a task ID: a model that needs a sender's task ID reads it from the list tool.
+- `task definition: {name}`: the brief of a definition's task run, which no task sent.
+
+The name of a definition's task comes from the version its newest task run pinned, so the label
+keeps the name after the task run ended and the definition left force. A report's label also holds
+the sender's task ID after the name, as `task: {name} ({id})` and `{agent} (task: {name} ({id}))`. A
+sender with no name, which includes a started task whose name was forgotten, shows its task ID alone
+in a report: `task: {id}` and `{agent} (task: {id})`. Any other label holds no task ID: a model that
+needs that sender's task ID reads it from the list tool.
 
 The system prompt adds that a task message is never the user's own words, and that the model weighs
 its requests as a colleague's. A task's brief is its first message: it renders in this envelope, as
