@@ -362,7 +362,7 @@ test('it pages 90 runs with long reports under the output limit, listing each on
   const ctx = await setupTest();
   const taskID = await ctx.createDefinitionTask('water-the-tomatoes', 'hash-1');
 
-  const longReport = `${'Watered the beds. '.repeat(300)}`;
+  const longReport = 'Watered the beds. '.repeat(300);
 
   for (let count = 0; count < 90; count += 1) {
     await ctx.endDefinitionRun(taskID, 'water-the-tomatoes', 'hash-1', longReport);
