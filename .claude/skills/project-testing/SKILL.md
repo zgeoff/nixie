@@ -26,16 +26,16 @@ metadata:
 
 ## Facts
 
-| Fact       | Where                                                                                                                                                                                                                                                                                                                                                          |
-| ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Lanes      | [`rig.config.ts`](../../../rig.config.ts) for the lanes nixie adds or changes, and their limits; the table in the testing skill's [Lanes](../testing/references/slow-tests.md#lanes) for every other lane, the model-api lane included; the `test:e2e` script in the root [`package.json`](../../../package.json), whose `--timeout` sets the e2e lane's limit |
-| Test utils | [`libs/testing/src/`](../../../libs/testing/src/) for a harness that 2 server packages share; otherwise the `src/test-utils/` folder of the package that owns what the helper starts, builds or fakes. A server package is any package the nixie server runs: the server app, a module, an adapter or a lib                                                    |
+| Fact       | Where                                                                                                                                                                                                                                                                                                                                                                   |
+| ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Lanes      | [`rig.config.ts`](../../../rig.config.ts) for the lanes nixie adds or changes, and their limits; the table in the testing skill's [slow tests reference](../testing/references/slow-tests.md) for every other lane, the model-api lane included; the `test:e2e` script in the root [`package.json`](../../../package.json), whose `--timeout` sets the e2e lane's limit |
+| Test utils | [`libs/testing/src/`](../../../libs/testing/src/) for a harness that 2 server packages share; otherwise the `src/test-utils/` folder of the package that owns what the helper starts, builds or fakes. A server package is any package the nixie server runs: the server app, a module, an adapter or a lib                                                             |
 
 ## Departures
 
-- Run the `*.model-api.test.ts` files by hand, never in CI. This replaces the rule in
-  [Lanes](../testing/references/slow-tests.md#lanes) to run the `model-api` lane nightly and on an
-  SDK bump, because nixie's CI holds no model credential. The files form the
+- Run the `*.model-api.test.ts` files by hand, never in CI. This replaces the rule in the testing
+  skill's [slow tests reference](../testing/references/slow-tests.md) to run the `model-api` lane
+  nightly and on an SDK bump, because nixie's CI holds no model credential. The files form the
   [SDK contract suite](../../../docs/architecture/core/sdk-contract-suite.md), and the Agent SDK
   bump rule in [AGENTS.md](../../../AGENTS.md) says when to run it and where its output goes.
 - Build no MSW server of your own. The shared rule in
@@ -95,9 +95,9 @@ whose script runs `bun test` itself.
     [the in-process harness](./references/nixie-harnesses.md#the-in-process-harness) describes.
 - To test one file of any other lane, pass the file's path to the lane's command, such as
   `bun run test:agent-sdk <path>`. rig runs only the lane's own files among the paths you pass.
-  Never test such a file with a bare `bun test`. It gives the file the unit limit, and skips the
-  start hook that rig runs before the bundle, restic and Agent SDK lanes to build what their tests
-  read.
+  Never test such a file with a bare `bun test`. It gives the file the 5 s timeout of
+  `bun run test`, and skips the start hook that rig runs before the bundle, restic and Agent SDK
+  lanes to build what their tests read.
 - To test one e2e file, run the commands of the `test:e2e` script up to its `bun test`. Then run
   that `bun test` with the file's path in place of `e2e/`. `bun run test:e2e` passes a path you add
   only to its last command.
