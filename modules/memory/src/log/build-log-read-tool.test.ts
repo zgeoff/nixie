@@ -405,7 +405,7 @@ test('it reads a 40,000-character entry whole in pages under the byte limit', as
 
     invariant(outcome.status === 'ok', 'the read is accepted');
 
-    sizes.push(JSON.stringify(outcome.result).length);
+    sizes.push(Buffer.byteLength(JSON.stringify(outcome.result)));
 
     const parsed = pageResult.parse(outcome.result);
     const [entry] = parsed.entries;
@@ -514,6 +514,26 @@ test('it refuses an after past the end of the entry', async () => {
   expect(outcome).toStrictEqual({
     status: 'error',
     message: 'after is past the end of the entry',
+  });
+});
+
+test('it refuses an after that falls inside a surrogate pair', async () => {
+  const ctx = await setupTest();
+  const eventID = await writeReplyRecord(ctx.log, '😀tail');
+
+  const outcome = await ctx.tool.run(
+    {
+      callID: 'call-1',
+      tool: 'log.read',
+      input: { record: String(eventID), after: '1' },
+      toolUseID: null,
+    },
+    buildMockToolContext(),
+  );
+
+  expect(outcome).toStrictEqual({
+    status: 'error',
+    message: 'after is inside a character; use a next cursor as given',
   });
 });
 

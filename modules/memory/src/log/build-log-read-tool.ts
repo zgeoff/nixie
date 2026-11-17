@@ -210,6 +210,10 @@ async function readWholeEntry(
     return { status: 'error', message: 'after is past the end of the entry' };
   }
 
+  if (isInsideSurrogatePair(text, offset)) {
+    return { status: 'error', message: 'after is inside a character; use a next cursor as given' };
+  }
+
   const envelope = measureEntryEnvelope(entry);
   const page = cutTextPage(text, offset, recallPageLimitBytes - envelope);
   const next = page.next === null ? null : String(page.next);
@@ -230,6 +234,10 @@ async function readWholeEntry(
   };
 }
 
+function isInsideSurrogatePair(text: string, offset: number): boolean {
+  return offset > 0 && (text.codePointAt(offset - 1) ?? 0) > 0xff_ff;
+}
+
 // The bytes of a result around the text slice, with the longest cursor the page can carry.
 function measureEntryEnvelope(entry: LogEntry): number {
   const shell = {
@@ -237,7 +245,7 @@ function measureEntryEnvelope(entry: LogEntry): number {
     next: '9'.repeat(16),
   };
 
-  return JSON.stringify(shell).length;
+  return Buffer.byteLength(JSON.stringify(shell));
 }
 
 function toEntryJSON(entry: LogEntry): JSONObject {
