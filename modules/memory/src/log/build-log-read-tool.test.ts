@@ -455,6 +455,38 @@ test('it reads a short entry whole in one page', async () => {
   });
 });
 
+test('it reads a conversation entry whole for a run whose log thread is the conversation', async () => {
+  const ctx = await setupTest();
+
+  const eventID = await writeOwnerMessageRecord(ctx.log, {
+    thread: 'conversation',
+    text: 'Bread is in the oven',
+    spans: [{ start: 0, end: 20, source: 'typed' }],
+  });
+
+  const outcome = await ctx.tool.run(
+    { callID: 'call-1', tool: 'log.read', input: { record: String(eventID) }, toolUseID: null },
+    buildMockToolContext({ thread: 'task-1', logThread: 'conversation' }),
+  );
+
+  expect(outcome).toStrictEqual({
+    status: 'ok',
+    result: {
+      entries: [
+        {
+          eventID: String(eventID),
+          role: 'owner',
+          recordedAt: expect.toBeString(),
+          text: 'Bread is in the oven',
+          isCut: false,
+        },
+      ],
+      next: null,
+    },
+    record: { eventIDs: [String(eventID)], next: null },
+  });
+});
+
 test.each([
   { name: 'from', extra: { from: '2026-10-12' } },
   { name: 'to', extra: { to: '2026-10-12' } },
