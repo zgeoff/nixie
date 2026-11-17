@@ -186,3 +186,28 @@ test('it keeps the turns that an earlier raise set above what this raise holds',
 
   expect(raises).toMatchObject([{ turns: 3000 }]);
 });
+
+test('it keeps the larger totals when two raises land at once', async () => {
+  const ctx = await setupTest();
+
+  await ctx.trip();
+
+  ctx.gateway.postRaise.mockResolvedValue({ kind: 'ok', value: buildMockGatewayStatus() });
+
+  await Promise.all([
+    ctx.raise({ dollars: 110, tokens: 110_000_000, turns: 1900 }),
+    ctx.raise({ dollars: 90, tokens: 100_000_000, turns: 1200 }),
+  ]);
+
+  const raises = await ctx.readRaises();
+
+  expect(raises).toStrictEqual([
+    {
+      start: '2026-10-16',
+      dollars: 110,
+      tokens: 110_000_000,
+      turns: 1900,
+      raised_by: 'session-a',
+    },
+  ]);
+});

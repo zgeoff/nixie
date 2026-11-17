@@ -1,5 +1,4 @@
 import { readSpendFacts } from '../stop/read-spend-facts';
-import { readSpendRaise } from '../stop/read-spend-raise';
 import { settleSpendStop } from '../stop/settle-spend-stop';
 import type { SpendContext, SpendTriple } from '../types';
 import type { RaiseRequest } from './pick-raise-refusal';
@@ -32,19 +31,11 @@ export async function writeSpendRaise(
     return refusal;
   }
 
-  const earlier = await readSpendRaise(context.log.writer.db, request.start);
-
-  await writeSpendRaiseRecord(context, {
-    start: request.start,
-    by: request.by,
-    dollars: Math.max(request.dollars, earlier?.dollars ?? 0),
-    tokens: Math.max(request.tokens, earlier?.tokens ?? 0),
-    turns: Math.max(request.turns, earlier?.turns ?? 0),
-  });
+  const written = await writeSpendRaiseRecord(context, request);
 
   const posted = await context.gateway.postRaise({
     start: request.start,
-    limit: { dollars: request.dollars, tokens: request.tokens },
+    limit: { dollars: written.dollars, tokens: written.tokens },
   });
 
   if (posted.kind === 'above_cap') {

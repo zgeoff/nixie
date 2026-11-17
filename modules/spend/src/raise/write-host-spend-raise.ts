@@ -36,11 +36,10 @@ export async function writeHostSpendRaise(
     turns: request.turns,
   };
 
-  await writeSpendRaiseRecord(context, { ...raise, by: 'host' });
-
+  const written = await writeSpendRaiseRecord(context, { ...raise, by: 'host' });
   const facts = await readSpendFacts(context);
 
   await settleSpendStop(context, facts);
 
-  return raise;
+  return written;
 }
