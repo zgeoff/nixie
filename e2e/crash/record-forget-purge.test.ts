@@ -7,11 +7,29 @@ import {
   startSpawnedNixie,
 } from '@heynixie/server/test-utils';
 
-async function setupTest() {
+async function setupTest(isItemForgetting = false) {
   const nixie = await startSpawnedNixie();
-  const seed = await seedBegunPurge(nixie, { isOwned: true });
+  const seed = await seedBegunPurge(nixie, { isOwned: true, isItemForgetting });
 
-  return { nixie, seed };
+  return {
+    nixie,
+    seed,
+
+    // A release before the task.yaml text migration writes schema 69, and the migrated data needs
+    // a build that writes schema 70, so it refuses with the schema and the way back: restore a copy.
+    expectRefusalNamingRollback: async (
+      previous: ReturnType<typeof nixie.harness.startRelease>,
+    ) => {
+      const run = await previous.waitForExit();
+
+      expect({ hasFailed: run.exit.code !== 0, output: previous.readOutput() }).toStrictEqual({
+        hasFailed: true,
+        output: expect.stringMatching(
+          /database schema 70 needs a build that writes schema 70 or later, and this build writes schema 69: .*restore/u,
+        ),
+      });
+    },
+  };
 }
 
 test.each([
@@ -54,42 +72,29 @@ test.each([
   },
 );
 
-test('it marks purged, on the next start after the previous release ended the record forget, an item whose own forget nixie was killed during', async () => {
-  const nixie = await startSpawnedNixie();
-  const seed = await seedBegunPurge(nixie, { isOwned: true, isItemForgetting: true });
+test('it marks purged, on the next start after the previous release refused the migrated data, an item whose own forget nixie was killed during', async () => {
+  const ctx = await setupTest(true);
   const previous = await readPreviousReleaseBuild();
 
-  const killed = nixie.harness.start([{ point: 'memory.forget.key_removed', kind: 'memory' }]);
+  const killed = ctx.nixie.harness.start([{ point: 'memory.forget.key_removed', kind: 'memory' }]);
 
   await killed.waitForArrival('memory.forget.key_removed');
   await killed.kill();
+  await ctx.expectRefusalNamingRollback(ctx.nixie.harness.startRelease(previous.testEntry));
 
-  const rolledBack = nixie.harness.startRelease(previous.testEntry);
-
-  await nixie.waitForRecord((record) => record.kind === 'record.forgotten');
-  await rolledBack.kill();
-
-  const rolledBackState = await readPurgeState(nixie);
-
-  const restarted = nixie.harness.start();
+  const restarted = ctx.nixie.harness.start();
 
   await restarted.ready;
 
-  await nixie.waitForRecord((record) => record.kind === 'memory.evidence_purged');
+  await ctx.nixie.waitForRecord((record) => record.kind === 'memory.evidence_purged');
   await restarted.kill();
 
-  const state = await readPurgeState(nixie);
-
-  expect(
-    rolledBackState.keyIDs.filter(
-      (keyID) => keyID === seed.itemID || keyID.startsWith(`${seed.itemID}/`),
-    ),
-  ).toStrictEqual([]);
+  const state = await readPurgeState(ctx.nixie);
 
   expect(state.purges).toStrictEqual([
     {
-      record_sequence: seed.recordSequence,
-      item_id: seed.itemID,
+      record_sequence: ctx.seed.recordSequence,
+      item_id: ctx.seed.itemID,
       closed_sequence: null,
       purged_sequence: expect.toBeNumber(),
     },
@@ -103,7 +108,7 @@ test.each([
   'memory.purge.keys_removed',
   'record.forget.purged',
 ] as const)(
-  'it finishes, on a start of the previous release, the purge of a record forget that nixie was killed during at %s',
+  'it refuses a start of the previous release, and the next start finishes the purge of a record forget that nixie was killed during at %s',
   async (point) => {
     const ctx = await setupTest();
     const previous = await readPreviousReleaseBuild();
@@ -112,8 +117,11 @@ test.each([
 
     await killed.waitForArrival(point);
     await killed.kill();
+    await ctx.expectRefusalNamingRollback(ctx.nixie.harness.startRelease(previous.testEntry));
 
-    const restarted = ctx.nixie.harness.startRelease(previous.testEntry);
+    const restarted = ctx.nixie.harness.start();
+
+    await restarted.ready;
 
     await ctx.nixie.waitForRecord((record) => record.kind === 'record.forgotten');
     await restarted.kill();
