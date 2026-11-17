@@ -1,4 +1,4 @@
-import { expect, test } from 'bun:test';
+import { expect, onTestFinished, test } from 'bun:test';
 import { buildSandboxSpec, buildWorkerRunOwner } from '@heynixie/sandbox';
 import { buildMockGrantSpec, buildMockSandboxSpec } from '@heynixie/sandbox/test-utils';
 import { createImpClient } from '@impz/client';
@@ -29,6 +29,27 @@ async function setupTest() {
 
   const client = createImpClient({ url: config.url, token: config.token });
   const secret = `nixie-test-${crypto.randomUUID().slice(0, 8)}`;
+  const upstreamHost = process.env['NIXIE_IMP_TEST_UPSTREAM_HOST'];
+  const requests: { readonly path: string; readonly apiKey: string | null }[] = [];
+
+  // Bun clears a request's URL once its response is sent, so the stand-in copies what it checks.
+  const answerRequest = (request: Request): Response => {
+    requests.push({
+      path: new URL(request.url).pathname,
+      apiKey: request.headers.get('x-api-key'),
+    });
+
+    return Response.json({ ok: true });
+  };
+
+  // A relay imp that forwards a fixed port back to this machine needs the stand-in on that port.
+  const upstream = Bun.serve({
+    hostname: '0.0.0.0',
+    port: Number(process.env['NIXIE_IMP_TEST_UPSTREAM_PORT'] ?? '0'),
+    fetch: answerRequest,
+  });
+
+  onTestFinished(() => upstream.stop(true));
 
   const isolation = await setupIsolationAdapter({
     port: buildImpPort(config),
@@ -37,10 +58,14 @@ async function setupTest() {
     },
     publicEgress: config.publicEgress,
     secret,
+    ...(upstreamHost === undefined
+      ? {}
+      : { modelGateway: { modelURL: `http://${upstreamHost}:${upstream.port}` } }),
   });
 
   return {
     secret,
+    requests,
     image: process.env['NIXIE_IMP_TEST_IMAGE'] ?? '',
     createSandbox: isolation.createSandbox,
   };
@@ -174,5 +199,54 @@ test.skipIf(!hasImpHost)(
     });
 
     expect(after).toStrictEqual(before);
+  },
+);
+
+test.skipIf(!hasImpHost || (process.env['NIXIE_IMP_TEST_UPSTREAM_HOST'] ?? '') === '').each([
+  ['a Claude route', 'claude-route', 'openrouter-route'],
+  ['an OpenRouter route', 'openrouter-route', 'claude-route'],
+] as const)(
+  'it sends no credential of %s to the other route of the gateway',
+  async (_name, ownRoute, otherRoute) => {
+    const ctx = await setupTest();
+
+    const sandbox = await ctx.createSandbox(
+      buildMockSandboxSpec({
+        kind: 'conversation',
+        image: ctx.image,
+        grants: [
+          buildMockGrantSpec({ secret: ctx.secret, host: 'api.anthropic.com', route: ownRoute }),
+        ],
+        limits: { vcpus: 1, memoryMiB: 1024, diskMiB: 4096 },
+      }),
+    );
+
+    const own = await runProbe(
+      sandbox,
+      `https://api.anthropic.com/${sandbox.id}/${ownRoute}/v1/messages`,
+      {
+        viaBroker: true,
+      },
+    );
+
+    const other = await runProbe(
+      sandbox,
+      `https://api.anthropic.com/${sandbox.id}/${otherRoute}/v1/messages`,
+      {
+        viaBroker: true,
+      },
+    );
+
+    expect({
+      own,
+      other,
+      paths: ctx.requests.map((request) => request.path),
+      credentials: ctx.requests.map((request) => request.apiKey),
+    }).toStrictEqual({
+      own: expect.stringMatching(/^status=200 /u),
+      other: expect.stringMatching(/^status=403 /u),
+      paths: [`/${sandbox.id}/${ownRoute}/v1/messages`],
+      credentials: ['nixie-isolation-dummy'],
+    });
   },
 );

@@ -1,0 +1,88 @@
+{
+  "model": "model-small",
+  "messages": [
+    {
+      "role": "user",
+      "content": "Repudiandae catena sortitus apud vomito aspernatur autem vix vilis sordeo."
+    },
+    {
+      "role": "system",
+      "content": [
+        {
+          "type": "text",
+          "text": "# Environment\nYou have been invoked in a test sandbox.",
+          "cache_control": {
+            "type": "ephemeral"
+          }
+        }
+      ]
+    }
+  ],
+  "system": [
+    {
+      "type": "text",
+      "text": "You are nixie.",
+      "cache_control": {
+        "type": "ephemeral"
+      }
+    }
+  ],
+  "tools": [
+    {
+      "name": "mcp__nixie__note_read",
+      "description": "Reads a note by its name.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": ["name"],
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      }
+    },
+    {
+      "name": "DeferredToolPlaceholder",
+      "description": "Reserved placeholder that keeps deferred tool loading active; never call this tool.",
+      "input_schema": {
+        "type": "object",
+        "properties": {}
+      },
+      "defer_loading": true
+    },
+    {
+      "name": "mcp__nixie__note_wait",
+      "description": "Waits for a note to change.",
+      "input_schema": {
+        "type": "object",
+        "properties": {},
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      }
+    }
+  ],
+  "metadata": {
+    "user_id": "{\"device_id\":\"9d2e9d2e9d2e9d2e9d2e9d2e9d2e9d2e9d2e9d2e9d2e9d2e9d2e9d2e9d2e9d2e\",\"account_uuid\":\"\",\"session_id\":\"924da529-81f1-4ea8-977b-f89195915301\"}"
+  },
+  "max_tokens": 32000,
+  "thinking": {
+    "type": "adaptive",
+    "display": "summarized"
+  },
+  "context_management": {
+    "edits": [
+      {
+        "type": "clear_thinking_20251015",
+        "keep": "all"
+      }
+    ]
+  },
+  "output_config": {
+    "effort": "medium"
+  },
+  "stream": true,
+  "provider": {
+    "order": ["z-ai"],
+    "allow_fallbacks": false
+  }
+}

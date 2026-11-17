@@ -40,6 +40,7 @@ const routeSchema = z.strictObject({
   api: z.enum(modelAPIs).default('anthropic-messages'),
   upstream: z.url({ protocol: /^https?$/u }),
   model: z.string().min(1),
+  providerPin: z.string().min(1).optional(),
   prices: modelPricesSchema,
 });
 
@@ -152,6 +153,7 @@ export const proxyConfigSchema = z
           api: route.api,
           upstream: route.upstream.replace(/\/+$/u, ''),
           model: route.model,
+          providerPin: route.providerPin ?? null,
           prices: route.prices,
         },
       ]),

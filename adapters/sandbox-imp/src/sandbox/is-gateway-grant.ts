@@ -1,5 +1,6 @@
 import type { SandboxSpec } from '@heynixie/sandbox';
 import type { GrantRow } from '../types';
+import { buildGrantPath } from './build-grant-path';
 
 export interface GatewayGrantFacts {
   readonly sandboxID: string;
@@ -12,19 +13,21 @@ export interface GatewayGrantFacts {
 }
 
 // Whether an imp that already exists holds each grant of its spec the way the gateway needs: limited
-// to the path of its own sandbox, on a secret that sends to the gateway. A sandbox made before the
+// to the path of its own sandbox and route, on a secret that sends to the gateway. A sandbox made before the
 // gateway was set fails this, and is replaced.
 export function isGatewayGrant(facts: GatewayGrantFacts): boolean {
-  const expected = `/${facts.sandboxID}/**`;
   const modelOrigin = URL.parse(facts.modelURL)?.origin;
 
   return facts.spec.grants.every((grant) => {
     const held = facts.grants.find((row) => row.secret === grant.secret);
     const upstreams = facts.upstreams[grant.secret] ?? null;
 
+    // a grant stored without a route was made before a grant held one, and a grant with a null
+    // route has no route to limit its filter to, so either filter reaches every route
     return (
+      typeof grant.route === 'string' &&
       held?.paths?.length === 1 &&
-      held.paths[0] === expected &&
+      held.paths[0] === buildGrantPath(facts.sandboxID, grant.route) &&
       upstreams !== null &&
       upstreams.every(
         (upstream) =>

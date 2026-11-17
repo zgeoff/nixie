@@ -8,11 +8,13 @@ import type {
   ToolTargetResolver,
 } from '@heynixie/sandbox';
 import { createSandboxID, stopGraceMs } from '@heynixie/sandbox';
+import invariant from 'tiny-invariant';
 import type { PublicEgressConfig } from '../config/parse-imp-config';
 import { requireImpSpec } from '../config/require-imp-spec';
 import { buildRouteRegistry } from '../routing/build-route-registry';
 import { buildSleepRegistry } from '../routing/build-sleep-registry';
 import type { ImpPort, ModelGateway } from '../types';
+import { buildGrantPath } from './build-grant-path';
 import { buildImpPolicy } from './build-imp-policy';
 import type { SleepRegistry } from './build-imp-sandbox';
 import { buildImpSandbox } from './build-imp-sandbox';
@@ -231,8 +233,17 @@ async function setupImp(options: ImpSandboxOptions, sandbox: Sandbox): Promise<S
   });
 
   for (const grant of sandbox.spec.grants) {
+    const route = grant.route ?? null;
+
+    invariant(
+      options.modelGateway === undefined || route !== null,
+      'the spec check refuses a grant with no route when the gateway counts',
+    );
+
     const filter =
-      options.modelGateway === undefined ? undefined : { paths: [`/${sandbox.id}/**`] };
+      options.modelGateway === undefined || route === null
+        ? undefined
+        : { paths: [buildGrantPath(sandbox.id, route)] };
 
     await options.port.addGrant(sandbox.id, grant.secret, filter);
 

@@ -1,5 +1,5 @@
+import { buildProviderOrder } from '@heynixie/wire';
 import { z } from 'zod';
-import { buildProviderOrder } from './build-provider-order';
 
 export type RewriteResult =
   | { readonly ok: true; readonly body: string }

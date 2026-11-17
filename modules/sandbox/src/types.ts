@@ -10,6 +10,11 @@ export type Egress =
 export interface GrantSpec {
   readonly secret: string;
   readonly host: string;
+
+  // the model gateway route the grant reaches, which is the profile ID of a model grant, and null
+  // for any other grant. A spec stored before a grant held a route has no key, which marks a legacy
+  // grant that an adapter replaces.
+  readonly route?: string | null;
   readonly env: Readonly<Record<string, string>>;
 }
 

@@ -17,6 +17,14 @@ interface HandlerOptions {
   readonly sendUpstream: (url: string, init: RequestInit) => Promise<Response>;
   readonly api?: ModelAPI;
   readonly storeText?: string;
+  readonly providerPin?: string;
+}
+
+interface Ask {
+  readonly body: Readonly<Record<string, unknown>>;
+  readonly bodyText?: string;
+  readonly providerPin?: string;
+  readonly headers?: Readonly<Record<string, string>>;
 }
 
 async function setupTest() {
@@ -38,6 +46,27 @@ async function setupTest() {
 
   const captureID = '3f9c2a54-7b1e-4d68-9a0f-5e2c81b6d7a3';
 
+  const makeHandler = async (options: HandlerOptions) => {
+    await writeFile(storePath, options.storeText ?? '{"dollars":0,"tokens":0}');
+
+    return makeProxyHandler({
+      routes: {
+        preview: {
+          api: options.api ?? 'anthropic-messages',
+          upstream: 'http://model.test',
+          model: 'model-small',
+          providerPin: options.providerPin ?? null,
+          prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
+        },
+      },
+      limits: { dollars: 1, tokens: null },
+      store: await createCounterStore(storePath),
+      capture: options.capture,
+      sendUpstream: options.sendUpstream,
+      log,
+    });
+  };
+
   return {
     directory,
     model,
@@ -52,25 +81,32 @@ async function setupTest() {
         config: { spool: spoolDir, maxBytes: 1_000_000, maxPending: 16 },
         log,
       }),
-    makeHandler: async (options: HandlerOptions) => {
-      await writeFile(storePath, options.storeText ?? '{"dollars":0,"tokens":0}');
+    ask: async (ask: Ask) => {
+      let upstreamCalls = 0;
 
-      return makeProxyHandler({
-        routes: {
-          preview: {
-            api: options.api ?? 'anthropic-messages',
-            upstream: 'http://model.test',
-            model: 'model-small',
-            prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
-          },
+      const handler = await makeHandler({
+        capture: null,
+        ...(ask.providerPin === undefined ? {} : { providerPin: ask.providerPin }),
+        sendUpstream: () => {
+          upstreamCalls += 1;
+
+          return Promise.resolve(
+            Response.json({ id: 'msg_1', usage: { input_tokens: 10, output_tokens: 2 } }),
+          );
         },
-        limits: { dollars: 1, tokens: null },
-        store: await createCounterStore(storePath),
-        capture: options.capture,
-        sendUpstream: options.sendUpstream,
-        log,
       });
+
+      const response = await handler(
+        new Request('http://proxy.test/preview/v1/messages', {
+          method: 'POST',
+          headers: ask.headers ?? {},
+          body: ask.bodyText ?? JSON.stringify({ model: 'model-small', messages: [], ...ask.body }),
+        }),
+      );
+
+      return { response, upstreamCalls };
     },
+    makeHandler,
   };
 }
 
@@ -98,6 +134,7 @@ test('it prices a reply through its route profile, the 1-hour cache write price 
         api: 'anthropic-messages',
         upstream: ctx.model.url,
         model: 'model-small',
+        providerPin: null,
         prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
       },
     },
@@ -147,6 +184,7 @@ test('it prices a streamed reply from its message start and its last delta', asy
         api: 'anthropic-messages',
         upstream: ctx.model.url,
         model: 'model-small',
+        providerPin: null,
         prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
       },
     },
@@ -202,6 +240,7 @@ test.each([
           api: 'openai-responses',
           upstream: ctx.model.url,
           model: 'model-o',
+          providerPin: null,
           prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
         },
       },
@@ -238,6 +277,7 @@ test('it refuses a background Responses request, whose reply holds no usage, and
         api: 'openai-responses',
         upstream: ctx.model.url,
         model: 'model-o',
+        providerPin: null,
         prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
       },
     },
@@ -281,6 +321,7 @@ test('it refuses a Messages request on a Responses route and sends nothing on', 
         api: 'openai-responses',
         upstream: ctx.model.url,
         model: 'model-o',
+        providerPin: null,
         prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
       },
     },
@@ -321,6 +362,7 @@ test('it refuses every request once the replies it counted reach its dollar limi
         api: 'anthropic-messages',
         upstream: ctx.model.url,
         model: 'model-small',
+        providerPin: null,
         prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
       },
     },
@@ -378,6 +420,7 @@ test('it refuses every request once the replies it counted reach its token limit
         api: 'anthropic-messages',
         upstream: ctx.model.url,
         model: 'model-small',
+        providerPin: null,
         prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
       },
     },
@@ -419,6 +462,7 @@ test('it logs the limit once when a count reaches it', async () => {
         api: 'anthropic-messages',
         upstream: ctx.model.url,
         model: 'model-small',
+        providerPin: null,
         prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
       },
     },
@@ -462,6 +506,7 @@ test('it refuses every request when its counter store is down', async () => {
         api: 'anthropic-messages',
         upstream: ctx.model.url,
         model: 'model-small',
+        providerPin: null,
         prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
       },
     },
@@ -509,6 +554,7 @@ test('it refuses every request when its counter store holds no count it can read
         api: 'anthropic-messages',
         upstream: ctx.model.url,
         model: 'model-small',
+        providerPin: null,
         prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
       },
     },
@@ -558,6 +604,7 @@ test('it answers a 502 and refuses every later request when a reply body breaks 
         api: 'anthropic-messages',
         upstream: 'http://model.test',
         model: 'model-small',
+        providerPin: null,
         prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
       },
     },
@@ -610,6 +657,7 @@ test('it refuses every later request when a streamed reply breaks before its usa
         api: 'anthropic-messages',
         upstream: 'http://model.test',
         model: 'model-small',
+        providerPin: null,
         prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
       },
     },
@@ -662,6 +710,7 @@ test('it refuses every later request once a count fails to write, even after the
         api: 'anthropic-messages',
         upstream: ctx.model.url,
         model: 'model-small',
+        providerPin: null,
         prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
       },
     },
@@ -710,6 +759,7 @@ test('it refuses a request for a model its route does not price', async () => {
         api: 'anthropic-messages',
         upstream: ctx.model.url,
         model: 'model-small',
+        providerPin: null,
         prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
       },
     },
@@ -756,6 +806,7 @@ test('it refuses a message request whose body names no model', async () => {
         api: 'anthropic-messages',
         upstream: ctx.model.url,
         model: 'model-small',
+        providerPin: null,
         prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
       },
     },
@@ -806,6 +857,7 @@ test.each([
         api: 'anthropic-messages',
         upstream: ctx.model.url,
         model: 'model-small',
+        providerPin: null,
         prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
       },
     },
@@ -835,6 +887,7 @@ test('it sends on a request for the model list', async () => {
         api: 'anthropic-messages',
         upstream: ctx.model.url,
         model: 'model-small',
+        providerPin: null,
         prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
       },
     },
@@ -863,6 +916,7 @@ test('it answers a path outside every route with a 404 and sends nothing on', as
         api: 'anthropic-messages',
         upstream: ctx.model.url,
         model: 'model-small',
+        providerPin: null,
         prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
       },
     },
@@ -897,6 +951,7 @@ test('it sends a request on with its path past the route, its query and its cred
         api: 'anthropic-messages',
         upstream: ctx.model.url,
         model: 'model-small',
+        providerPin: null,
         prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
       },
     },
@@ -946,6 +1001,7 @@ test('it passes an upstream error through without counting it', async () => {
         api: 'anthropic-messages',
         upstream: ctx.model.url,
         model: 'model-small',
+        providerPin: null,
         prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
       },
     },
@@ -983,6 +1039,7 @@ test('it answers a 502 when the upstream cannot be reached', async () => {
         api: 'anthropic-messages',
         upstream: 'http://127.0.0.1:1',
         model: 'model-small',
+        providerPin: null,
         prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
       },
     },
@@ -1020,6 +1077,7 @@ test('it refuses every later request once a message call fails before its reply 
         api: 'anthropic-messages',
         upstream: 'http://model.test',
         model: 'model-small',
+        providerPin: null,
         prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
       },
     },
@@ -1063,6 +1121,7 @@ test('it admits a request again once an operator removes the lost mark, with no 
         api: 'anthropic-messages',
         upstream: 'http://model.test',
         model: 'model-small',
+        providerPin: null,
         prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
       },
     },
@@ -1119,6 +1178,7 @@ test('it refuses a request that arrives while the lost mark is still being writt
         api: 'anthropic-messages',
         upstream: 'http://model.test',
         model: 'model-small',
+        providerPin: null,
         prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
       },
     },
@@ -1167,6 +1227,7 @@ test('it refuses every request after a restart once a lost count marks its store
         api: 'anthropic-messages',
         upstream: 'http://model.test',
         model: 'model-small',
+        providerPin: null,
         prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
       },
     },
@@ -1191,6 +1252,7 @@ test('it refuses every request after a restart once a lost count marks its store
         api: 'anthropic-messages',
         upstream: 'http://model.test',
         model: 'model-small',
+        providerPin: null,
         prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
       },
     },
@@ -1247,6 +1309,7 @@ test('it refuses every later request once a successful message reply holds usage
         api: 'anthropic-messages',
         upstream: 'http://model.test',
         model: 'model-small',
+        providerPin: null,
         prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
       },
     },
@@ -1290,6 +1353,7 @@ test('it keeps sending on after a call that spends nothing fails', async () => {
         api: 'anthropic-messages',
         upstream: 'http://model.test',
         model: 'model-small',
+        providerPin: null,
         prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
       },
     },
@@ -1740,12 +1804,14 @@ test.each([
         api: 'anthropic-messages',
         upstream: 'http://model.test',
         model: 'model-small',
+        providerPin: null,
         prices,
       },
       router: {
         api: 'anthropic-messages',
         upstream: 'http://router.test',
         model: 'model-small',
+        providerPin: 'z-ai',
         prices,
       },
     },
@@ -1767,4 +1833,307 @@ test.each([
   await handler(new Request(`http://proxy.test/${route}/v1/messages`, { method: 'POST', body }));
 
   expect(sent).toStrictEqual([body]);
+});
+
+test.each([
+  ['models', { models: ['model-large'] }],
+  ['fallbacks', { fallbacks: ['model-large'] }],
+  ['route', { route: 'fallback' }],
+  ['plugins', { plugins: [{ id: 'fusion' }] }],
+])('it refuses a request that sets %s and sends nothing on', async (_field, body) => {
+  const ctx = await setupTest();
+  const answer = await ctx.ask({ body });
+
+  expect({ status: answer.response.status, upstreamCalls: answer.upstreamCalls }).toStrictEqual({
+    status: 400,
+    upstreamCalls: 0,
+  });
+});
+
+test.each([
+  ['a route with no pin', undefined, { order: ['example-host'], allow_fallbacks: false }],
+  ['another pin', 'example-host', { order: ['other-host'], allow_fallbacks: false }],
+  [
+    'a second order entry',
+    'example-host',
+    { order: ['example-host', 'other-host'], allow_fallbacks: false },
+  ],
+  ['fallbacks on', 'example-host', { order: ['example-host'], allow_fallbacks: true }],
+  [
+    'an extra key',
+    'example-host',
+    { order: ['example-host'], allow_fallbacks: false, sort: 'price' },
+  ],
+  ['an empty order', 'example-host', { order: [], allow_fallbacks: false }],
+  ['a string for an object', 'example-host', 'example-host'],
+])('it refuses a provider with %s and sends nothing on', async (_title, providerPin, provider) => {
+  const ctx = await setupTest();
+
+  const answer = await ctx.ask({
+    body: { provider },
+    ...(providerPin === undefined ? {} : { providerPin }),
+  });
+
+  expect({ status: answer.response.status, upstreamCalls: answer.upstreamCalls }).toStrictEqual({
+    status: 400,
+    upstreamCalls: 0,
+  });
+});
+
+test.each([
+  ['a second model', '{"model":"model-large","messages":[],"model":"model-small"}'],
+  [
+    'a second model under an escaped key',
+    String.raw`{"model":"model-large","messages":[],"model":"model-small"}`,
+  ],
+  [
+    'a second provider',
+    '{"model":"model-small","messages":[],"provider":{"order":["other-host"]},"provider":{"order":["example-host"],"allow_fallbacks":false}}',
+  ],
+  [
+    'a tool entry with a second type',
+    '{"model":"model-small","messages":[],"tools":[{"name":"ask","input_schema":{},"type":"image_generation","type":"custom"}]}',
+  ],
+])(
+  'it refuses a body that repeats a key to hide %s, and sends nothing on',
+  async (_title, bodyText) => {
+    const ctx = await setupTest();
+    const answer = await ctx.ask({ body: {}, bodyText, providerPin: 'example-host' });
+
+    expect({ status: answer.response.status, upstreamCalls: answer.upstreamCalls }).toStrictEqual({
+      status: 400,
+      upstreamCalls: 0,
+    });
+  },
+);
+
+test('it sends on and counts a request that holds the exact pinned provider', async () => {
+  const ctx = await setupTest();
+
+  const answer = await ctx.ask({
+    body: { provider: { order: ['example-host'], allow_fallbacks: false } },
+    providerPin: 'example-host',
+  });
+
+  const store = await createCounterStore(ctx.storePath);
+  const totals = await store.read();
+
+  expect({
+    status: answer.response.status,
+    upstreamCalls: answer.upstreamCalls,
+    totals,
+  }).toStrictEqual({
+    status: 200,
+    upstreamCalls: 1,
+    totals: { dollars: 0.00002, tokens: 12, lost: false },
+  });
+});
+
+test.each([
+  ['speed fast', { speed: 'fast' }],
+  ['service tier priority', { service_tier: 'priority' }],
+  ['service tier flex', { service_tier: 'flex' }],
+  ['service tier scale', { service_tier: 'scale' }],
+  ['inference geo us', { inference_geo: 'us' }],
+])('it refuses a request with %s and sends nothing on', async (_title, body) => {
+  const ctx = await setupTest();
+  const answer = await ctx.ask({ body });
+
+  expect({ status: answer.response.status, upstreamCalls: answer.upstreamCalls }).toStrictEqual({
+    status: 400,
+    upstreamCalls: 0,
+  });
+});
+
+test.each([
+  ['speed standard', { speed: 'standard' }],
+  ['speed null', { speed: null }],
+  ['service tier auto', { service_tier: 'auto' }],
+  ['service tier standard_only', { service_tier: 'standard_only' }],
+  ['service tier default', { service_tier: 'default' }],
+  ['service tier null', { service_tier: null }],
+  ['inference geo global', { inference_geo: 'global' }],
+  ['inference geo null', { inference_geo: null }],
+  [
+    'a namespace of function tools',
+    {
+      tools: [
+        {
+          type: 'namespace',
+          name: 'nixie',
+          tools: [{ type: 'function', name: 'note_read', parameters: {} }],
+        },
+      ],
+    },
+  ],
+])('it sends on a request with %s', async (_title, body) => {
+  const ctx = await setupTest();
+  const answer = await ctx.ask({ body });
+
+  expect({ status: answer.response.status, upstreamCalls: answer.upstreamCalls }).toStrictEqual({
+    status: 200,
+    upstreamCalls: 1,
+  });
+});
+
+test.each([
+  [
+    'an advisor tool that names another model',
+    {
+      tools: [{ type: 'advisor_20260301', name: 'advisor', model: 'model-large' }],
+      tool_choice: { type: 'tool', name: 'advisor' },
+    },
+  ],
+  ['an advisor tool with no model', { tools: [{ type: 'advisor_20260301', name: 'advisor' }] }],
+  ['an openrouter server tool', { tools: [{ type: 'openrouter:web_search' }] }],
+  ['a tool with a model key', { tools: [{ name: 'ask', model: 'model-large', input_schema: {} }] }],
+  ['an image generation tool with no model key', { tools: [{ type: 'image_generation' }] }],
+  ['a web search server tool', { tools: [{ type: 'web_search_20250305', name: 'web_search' }] }],
+  [
+    'a namespace that holds a server tool',
+    { tools: [{ type: 'namespace', name: 'nixie', tools: [{ type: 'image_generation' }] }] },
+  ],
+  ['a tool that is not an object', { tools: ['image_generation'] }],
+])('it refuses %s and sends nothing on', async (_title, body) => {
+  const ctx = await setupTest();
+  const answer = await ctx.ask({ body });
+
+  expect({ status: answer.response.status, upstreamCalls: answer.upstreamCalls }).toStrictEqual({
+    status: 400,
+    upstreamCalls: 0,
+  });
+});
+
+test.each([
+  [
+    'a custom tool whose input schema has a model property',
+    {
+      tools: [
+        {
+          name: 'run_worker',
+          description: 'Run a worker.',
+          input_schema: { type: 'object', properties: { model: { type: 'string' } } },
+        },
+      ],
+    },
+  ],
+  [
+    'a message whose tool use input holds a model key',
+    {
+      messages: [
+        {
+          role: 'assistant',
+          content: [
+            {
+              type: 'tool_use',
+              id: 'toolu_1',
+              name: 'run_worker',
+              input: { model: 'model-large' },
+            },
+          ],
+        },
+      ],
+    },
+  ],
+])('it sends on %s', async (_title, body) => {
+  const ctx = await setupTest();
+  const answer = await ctx.ask({ body });
+
+  expect({ status: answer.response.status, upstreamCalls: answer.upstreamCalls }).toStrictEqual({
+    status: 200,
+    upstreamCalls: 1,
+  });
+});
+
+test.each([
+  ['authorization first', { authorization: 'Bearer placeholder', 'x-api-key': 'guest-key' }],
+  ['x-api-key first', { 'x-api-key': 'guest-key', authorization: 'Bearer placeholder' }],
+])(
+  'it refuses a request with 2 credential headers, %s, and sends nothing on',
+  async (_title, headers) => {
+    const ctx = await setupTest();
+    const answer = await ctx.ask({ body: {}, headers });
+
+    expect({ status: answer.response.status, upstreamCalls: answer.upstreamCalls }).toStrictEqual({
+      status: 400,
+      upstreamCalls: 0,
+    });
+  },
+);
+
+test.each([
+  ['authorization', { authorization: 'Bearer placeholder' }],
+  ['x-api-key', { 'x-api-key': 'placeholder' }],
+])('it sends on a request with only %s', async (_title, headers) => {
+  const ctx = await setupTest();
+  const answer = await ctx.ask({ body: {}, headers });
+
+  expect({ status: answer.response.status, upstreamCalls: answer.upstreamCalls }).toStrictEqual({
+    status: 200,
+    upstreamCalls: 1,
+  });
+});
+
+// Each fixture is a body that a pinned CLI sent through nixie's own guest, with only the
+// environment text, paths and device IDs replaced and the model renamed to the route's.
+test.each([
+  {
+    title: "the Agent SDK CLI's conversation turn",
+    fixture: 'claude-cli-messages.json',
+    api: 'anthropic-messages',
+    path: '/v1/messages?beta=true',
+    headers: { 'x-api-key': 'placeholder' },
+    pin: {},
+  },
+  {
+    title: "the Agent SDK CLI's turn with a provider pin",
+    fixture: 'claude-cli-pinned-provider.json',
+    api: 'anthropic-messages',
+    path: '/v1/messages?beta=true',
+    headers: { 'x-api-key': 'placeholder' },
+    pin: { providerPin: 'z-ai' },
+  },
+  {
+    title: "the Codex CLI's turn",
+    fixture: 'codex-cli-responses.json',
+    api: 'openai-responses',
+    path: '/v1/responses',
+    headers: { authorization: 'Bearer placeholder' },
+    pin: {},
+  },
+] as const)('it sends on and counts the exact body of $title', async (row) => {
+  const ctx = await setupTest();
+  const bodyText = await readFile(join(import.meta.dir, '..', 'fixtures', row.fixture), 'utf8');
+
+  const sent: string[] = [];
+
+  const handler = await ctx.makeHandler({
+    capture: null,
+    api: row.api,
+    ...row.pin,
+    sendUpstream: async (_url, init) => {
+      const text = await new Response(init.body).text();
+
+      sent.push(text);
+
+      return Response.json({ id: 'reply_1', usage: { input_tokens: 10, output_tokens: 2 } });
+    },
+  });
+
+  const response = await handler(
+    new Request(`http://proxy.test/preview${row.path}`, {
+      method: 'POST',
+      headers: row.headers,
+      body: bodyText,
+    }),
+  );
+
+  const store = await createCounterStore(ctx.storePath);
+  const totals = await store.read();
+
+  expect({ status: response.status, sent, totals }).toStrictEqual({
+    status: 200,
+    sent: [bodyText],
+    totals: { dollars: 0.00002, tokens: 12, lost: false },
+  });
 });

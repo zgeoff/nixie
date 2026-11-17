@@ -62,6 +62,7 @@ test('it reads a config into its typed shape, with a trailing slash cut from the
         api: 'anthropic-messages',
         upstream: 'https://models.example.com',
         model: 'model-small',
+        providerPin: null,
         prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
       },
     },
@@ -399,4 +400,40 @@ test('it rejects a cap of zero', () => {
   });
 
   expect(result.error?.issues).toPartiallyContain({ path: ['caps', 'month', 'dollars'] });
+});
+
+test('it reads the provider pin of a route', () => {
+  const result = proxyConfigSchema.safeParse({
+    listen: { port: 18_090 },
+    store: '/var/lib/model-gateway/counter.json',
+    limits: { dollars: 5 },
+    routes: {
+      review: {
+        upstream: 'https://models.example.com',
+        model: 'model-small',
+        providerPin: 'example-host',
+        prices: { input: 1, cache_write: 1.25, cache_write_1h: 2, cached_input: 0.1, output: 5 },
+      },
+    },
+  });
+
+  expect(result.data?.routes['review']?.providerPin).toBe('example-host');
+});
+
+test('it rejects an empty provider pin', () => {
+  const result = proxyConfigSchema.safeParse({
+    listen: { port: 18_090 },
+    store: '/var/lib/model-gateway/counter.json',
+    limits: { dollars: 5 },
+    routes: {
+      review: {
+        upstream: 'https://models.example.com',
+        model: 'model-small',
+        providerPin: '',
+        prices: { input: 1, cache_write: 1.25, cache_write_1h: 2, cached_input: 0.1, output: 5 },
+      },
+    },
+  });
+
+  expect(result.error?.issues).toPartiallyContain({ path: ['routes', 'review', 'providerPin'] });
 });

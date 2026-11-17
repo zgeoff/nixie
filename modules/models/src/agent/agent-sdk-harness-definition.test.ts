@@ -7,7 +7,7 @@ test.each([
   ['bearer', { ANTHROPIC_AUTH_TOKEN: 'nixie-broker-placeholder' }],
   ['x-api-key', { ANTHROPIC_API_KEY: 'nixie-broker-placeholder' }],
 ] as const)('#buildGrant puts a placeholder where the CLI reads a %s credential', (header, env) => {
-  const harness = bindHarness(buildMockModelProfile());
+  const harness = bindHarness(buildMockModelProfile({ id: 'claude-main' }));
 
   expect(
     harness.buildGrant({
@@ -16,7 +16,12 @@ test.each([
       host: 'api.anthropic.com',
       header,
     }),
-  ).toStrictEqual({ secret: 'model-chat-1', host: 'api.anthropic.com', env });
+  ).toStrictEqual({
+    secret: 'model-chat-1',
+    host: 'api.anthropic.com',
+    route: 'claude-main',
+    env,
+  });
 });
 
 test('it binds the Agent SDK record, which speaks the Anthropic Messages API', () => {

@@ -4,7 +4,7 @@ import { bindHarness } from '../model/bind-harness';
 import { buildMockCodexProfile } from '../test-utils/build-mock-codex-profile';
 
 test('#buildGrant puts a placeholder where the CLI reads the credential', () => {
-  const harness = bindHarness(buildMockCodexProfile());
+  const harness = bindHarness(buildMockCodexProfile({ id: 'codex-main' }));
 
   expect(
     harness.buildGrant({
@@ -16,6 +16,7 @@ test('#buildGrant puts a placeholder where the CLI reads the credential', () => 
   ).toStrictEqual({
     secret: 'model-work-1',
     host: 'api.openai.example.test',
+    route: 'codex-main',
     env: { OPENAI_API_KEY: 'nixie-broker-placeholder' },
   });
 });

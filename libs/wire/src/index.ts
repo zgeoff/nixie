@@ -26,6 +26,7 @@ export type { GuestFrame, ModelAPIErrorKind, TurnOutcome } from './frame/guest-f
 export { guestFrameSchema, turnOutcomeSchema } from './frame/guest-frame';
 export type { HarnessCapability, HarnessID, HasSession } from './host/harness-ids';
 export { harnessCapabilities, harnessCapabilityLists, harnessIDs } from './host/harness-ids';
+export { buildProviderOrder } from './spool/build-provider-order';
 export { findModelAPIEndpoint } from './spool/find-model-api-endpoint';
 export type { ModelAPI, ModelAPIEndpointName } from './spool/model-api';
 export { modelAPIs } from './spool/model-api';
