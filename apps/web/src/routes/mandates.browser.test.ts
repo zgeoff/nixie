@@ -76,7 +76,9 @@ test('it proposes a mandate that then waits on the approvals page', async () => 
 
   expect(rows.map((row) => [row.cause, row.state])).toStrictEqual([['mandate', 'pending']]);
 
-  await ctx.view.evaluate(`document.querySelector('p[role="status"] a').click()`);
+  // A real click lands on a point in the viewport, and the status line renders below the viewport
+  await ctx.view.evaluate(`document.querySelector('p[role="status"] a').scrollIntoView()`);
+  await ctx.view.click('p[role="status"] a');
 
   await ctx.waitForPage(
     `location.pathname === '/proposals' && document.querySelector('li[aria-label=' + JSON.stringify(${JSON.stringify(rows[0]?.sentence)}) + ']') !== null`,
