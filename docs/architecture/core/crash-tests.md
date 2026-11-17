@@ -122,7 +122,8 @@ that the purge finishes and the current text of each item still reads.
 The suite also starts the previous release on the data after each kill, and checks that it finishes
 the purge too, so a rollback by one release in the middle of a forget loses nothing. It runs that
 release's test build, which the e2e lane builds from the release's tag, because the release build
-stops at the parts of a start that need a real sandbox.
+stops at the parts of a start that need a real sandbox. While this build's oldest reader is above
+the schema that release writes, the release refuses the data, so the suite skips those tests.
 
 ## Coverage
 
