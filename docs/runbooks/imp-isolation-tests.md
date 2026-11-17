@@ -22,6 +22,11 @@ test impd from `@impz/testing`, and impz's own e2e suites check that an imp reac
    stand-in upstream on that address of the test host, which impd must reach, and checks that a
    sandbox granted the model secret of one route reaches no other route of the gateway.
 
+   When impd cannot reach the test host, use a relay imp as [the codex gates](#the-codex-gates) do.
+   Pick a free port `<port>`. Forward the relay's port 18080 to `<port>` on this machine, and run
+   `relay-forward.ts <port> 18080` in the relay. Then set `NIXIE_IMP_TEST_UPSTREAM_HOST` to the
+   relay's address and `NIXIE_IMP_TEST_UPSTREAM_PORT=<port>`, so the stand-in listens on `<port>`.
+
 ### The codex image
 
 `apps/server/src/part/list-image-needs.imp.test.ts` runs the pinned Codex CLI in a sandbox on the

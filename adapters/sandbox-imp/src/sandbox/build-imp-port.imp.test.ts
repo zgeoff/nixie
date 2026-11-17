@@ -30,15 +30,24 @@ async function setupTest() {
   const client = createImpClient({ url: config.url, token: config.token });
   const secret = `nixie-test-${crypto.randomUUID().slice(0, 8)}`;
   const upstreamHost = process.env['NIXIE_IMP_TEST_UPSTREAM_HOST'];
-  const requests: Request[] = [];
+  const requests: { readonly path: string; readonly apiKey: string | null }[] = [];
 
+  // Bun clears a request's URL once its response is sent, so the stand-in copies what it checks.
   const answerRequest = (request: Request): Response => {
-    requests.push(request);
+    requests.push({
+      path: new URL(request.url).pathname,
+      apiKey: request.headers.get('x-api-key'),
+    });
 
     return Response.json({ ok: true });
   };
 
-  const upstream = Bun.serve({ hostname: '0.0.0.0', port: 0, fetch: answerRequest });
+  // A relay imp that forwards a fixed port back to this machine needs the stand-in on that port.
+  const upstream = Bun.serve({
+    hostname: '0.0.0.0',
+    port: Number(process.env['NIXIE_IMP_TEST_UPSTREAM_PORT'] ?? '0'),
+    fetch: answerRequest,
+  });
 
   onTestFinished(() => upstream.stop(true));
 
@@ -231,8 +240,8 @@ test.skipIf(!hasImpHost || (process.env['NIXIE_IMP_TEST_UPSTREAM_HOST'] ?? '') =
     expect({
       own,
       other,
-      paths: ctx.requests.map((request) => new URL(request.url).pathname),
-      credentials: ctx.requests.map((request) => request.headers.get('x-api-key')),
+      paths: ctx.requests.map((request) => request.path),
+      credentials: ctx.requests.map((request) => request.apiKey),
     }).toStrictEqual({
       own: expect.stringMatching(/^status=200 /u),
       other: expect.stringMatching(/^status=403 /u),
