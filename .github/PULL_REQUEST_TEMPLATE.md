@@ -51,7 +51,7 @@ Output: <the line> — <result>   the output that proves the line
 Rerun: <the line>               the command or script that reproduces it
 
 Link anything longer, or of any other kind, with `cloud up --md`.
-Paste `bun verify report --human` last, untouched.
+Run `bun verify publish` last.
 -->
 
 - [ ] New or changed code has a test, or this line holds the reason it has none
@@ -59,8 +59,9 @@ Paste `bun verify report --human` last, untouched.
 ## Checks
 
 <!--
-One ticked line per review you ran: `<review>: <n> fixed,
-<n> declined`. Keep the chex, Cold read and Deslop lines
+One ticked line per review you ran: `<review> (<who>): <n> fixed,
+<n> declined`, where <who> names the model, and may be left out for a
+review your own session ran. Keep the chex, Cold read and Deslop lines
 only when the PR changes a skill's SKILL.md or a file under its
 references/. Under "Declined:", give each declined finding one line: the
 review that found it, the finding, then why not or the issue it went
@@ -68,7 +69,7 @@ to. Or write "Declined: none." A fixed finding shows in the diff; don't
 list it.
 -->
 
-- [ ] Second opinion: <n> fixed, <n> declined
+- [ ] Second opinion (<model>, <effort>): <n> fixed, <n> declined
 - [ ] chex prose, links and skill: cleared
 - [ ] Cold read: <n> fixed, <n> declined
 - [ ] Deslop: <n> edits
