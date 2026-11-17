@@ -36,6 +36,34 @@ would be priced wrong. The gateway refuses a request to a spending or token coun
 body names no model, or a model other than its route's, and sends nothing upstream. A path whose
 first segment names no route gets a 404.
 
+A route's model is the only model the count prices, so the gateway also refuses, with a 400 and
+nothing sent upstream, a request to a spending or token count endpoint that could bill anything
+else. It refuses a request whose body holds:
+
+- `models`, `fallbacks`, `route` or `plugins`, which let the model API run another model;
+- `provider`, unless the route sets `providerPin` and the field is exactly
+  `{ "order": ["<providerPin>"], "allow_fallbacks": false }`;
+- `speed` or `service_tier` with any value but the standard one, `standard` for `speed` and
+  `standard_only` or `default` for `service_tier`, because the price table holds no premium tier;
+- a `tools` entry that has a `model` key or a `type` that starts with `advisor_` or `openrouter:`,
+  which run a second model. The check reads the `tools` entries and nothing else, because a tool
+  call's input can hold a `model` key of its own.
+
+It also refuses a request that holds both an `authorization` and an `x-api-key` header. The
+credential broker sets its own header and the gateway passes the others through, so a second one
+would reach the model API beside the broker's.
+
+A route sets `providerPin` to the provider that its profile's `provider_pin` names, and the two must
+match, or the gateway refuses every pinned request:
+
+```yaml
+routes:
+  router:
+    upstream: https://models.example.com
+    model: example/model-small
+    providerPin: example-host
+```
+
 The gateway forwards only the endpoints of the route's API whose spend it can count, and refuses
 every other endpoint with a 403:
 
@@ -221,7 +249,8 @@ server refuses to start when a profile's base URL has a path. The sandbox name i
 which is also its name in the sandbox host. The profile ID is the gateway's route ID. The
 [capture](#the-tag) tag follows the profile ID, in the order the gateway parses. The secret still
 names the profile's own host, so the credential broker matches the request by host and sends it to
-the secret's upstream.
+the secret's upstream. The credential broker admits that request only on the route of the sandbox's
+own profile, so a sandbox cannot send its model credential to another profile's route.
 
 ### The count of a sandbox
 

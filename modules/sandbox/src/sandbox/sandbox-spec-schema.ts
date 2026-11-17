@@ -9,6 +9,9 @@ const egressSchema = z.discriminatedUnion('kind', [
 const grantSchema = z.object({
   secret: z.string(),
   host: z.string(),
+
+  // absent in a spec stored before a grant held a route
+  route: z.string().nullable().exactOptional(),
   env: z.record(z.string(), z.string()),
 });
 

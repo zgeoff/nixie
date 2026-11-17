@@ -5,6 +5,7 @@ export function buildMockGrantSpec(overrides: Partial<GrantSpec> = {}): GrantSpe
   return {
     secret: faker.string.alphanumeric({ length: 12, casing: 'lower' }),
     host: faker.internet.domainName(),
+    route: null,
     env: { API_KEY: faker.string.uuid() },
     ...overrides,
   };

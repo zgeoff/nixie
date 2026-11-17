@@ -13,6 +13,7 @@ import { requireImpSpec } from '../config/require-imp-spec';
 import { buildRouteRegistry } from '../routing/build-route-registry';
 import { buildSleepRegistry } from '../routing/build-sleep-registry';
 import type { ImpPort, ModelGateway } from '../types';
+import { buildGrantPath } from './build-grant-path';
 import { buildImpPolicy } from './build-imp-policy';
 import type { SleepRegistry } from './build-imp-sandbox';
 import { buildImpSandbox } from './build-imp-sandbox';
@@ -232,7 +233,9 @@ async function setupImp(options: ImpSandboxOptions, sandbox: Sandbox): Promise<S
 
   for (const grant of sandbox.spec.grants) {
     const filter =
-      options.modelGateway === undefined ? undefined : { paths: [`/${sandbox.id}/**`] };
+      options.modelGateway === undefined
+        ? undefined
+        : { paths: [buildGrantPath(sandbox.id, grant.route ?? null)] };
 
     await options.port.addGrant(sandbox.id, grant.secret, filter);
 

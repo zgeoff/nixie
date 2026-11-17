@@ -30,6 +30,7 @@ export const agentSDKHarnessDefinition: HarnessDefinition<'agent-sdk', AgentSDKP
     buildGrant: (secret): GrantSpec => ({
       secret: secret.name,
       host: secret.host,
+      route: profile.id,
       env:
         secret.header === 'bearer'
           ? { ANTHROPIC_AUTH_TOKEN: nixieBrokerPlaceholder }

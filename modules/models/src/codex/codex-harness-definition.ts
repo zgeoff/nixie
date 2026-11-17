@@ -22,6 +22,7 @@ export const codexHarnessDefinition: HarnessDefinition<'codex', CodexProfile> = 
     buildGrant: (secret): GrantSpec => ({
       secret: secret.name,
       host: secret.host,
+      route: profile.id,
       env: { OPENAI_API_KEY: nixieBrokerPlaceholder },
     }),
     guest: { package: 'codex', entries: { turn: 'main', check: null } },

@@ -242,10 +242,14 @@ model host ([the gateway](../policy/model-gateway.md#how-nixie-uses-the-gateway)
 The sandbox adapter reads each model secret's rules from the sandbox host before it creates a
 sandbox, and refuses to create the sandbox when the sandbox host lacks the secret or a rule sends to
 any other upstream. The error names the secret. The adapter then grants the secret with the path
-filter `/<sandbox name>/**`, so a guest reaches only the count of its own sandbox. The adapter
-applies the same check to a sandbox that already exists: one whose grant lacks the filter, or whose
-secret sends elsewhere, counts as retired, so the caller replaces it. A deployment with no
-`spendStop` grants and adds secrets as the section above says, with no filter.
+filter `/<sandbox name>/<profile ID>/**`, so a guest reaches only the count of its own sandbox, on
+the one route of the profile that the secret belongs to. A guest that names another profile's route
+meets a refusal from the credential broker before it adds the credential, so one provider's
+credential never reaches another provider's route. The adapter applies the same check to a sandbox
+that already exists: one whose grant lacks the filter, holds a wider one, or whose secret sends
+elsewhere, counts as retired, so the caller replaces it. A sandbox recorded before a grant held its
+route counts as retired too. A deployment with no `spendStop` grants and adds secrets as the section
+above says, with no filter.
 
 ## Records of model output
 

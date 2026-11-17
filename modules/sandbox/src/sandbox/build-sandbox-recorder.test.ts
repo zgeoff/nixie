@@ -97,6 +97,22 @@ test('it finds a sandbox through its own adapter', async () => {
   });
 });
 
+test('it reads a sandbox whose stored grant has no route, and leaves the route absent', async () => {
+  const ctx = await setupTest();
+
+  const spec = buildMockSandboxSpec({
+    grants: [{ secret: 'model', host: 'api.anthropic.com', env: { API_KEY: 'placeholder' } }],
+  });
+
+  await ctx.writeEvents([{ event: 'created', sandboxID: 'nixie-e', adapter: 'imp', spec }]);
+
+  const row = await ctx.recorder.readRow('imp', 'nixie-e');
+
+  expect(row?.spec.grants).toStrictEqual([
+    { secret: 'model', host: 'api.anthropic.com', env: { API_KEY: 'placeholder' } },
+  ]);
+});
+
 test('it finds no sandbox through another adapter', async () => {
   const ctx = await setupTest();
 

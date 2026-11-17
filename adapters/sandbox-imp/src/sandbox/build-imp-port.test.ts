@@ -757,7 +757,7 @@ test('it reads the upstream of each rule of a secret, and null for a rule with n
   expect(upstreams).toStrictEqual([['http://10.1.2.3:18081'], [null], null]);
 });
 
-test('it grants a model secret to a sandbox with the path filter of its own name when the gateway counts', async () => {
+test('it grants a model secret to a sandbox with the path filter of its own name and route when the gateway counts', async () => {
   const impd = await startTestImpd();
 
   const guested = attachTestGuests(impd, buildImpPort({ url: impd.url, token: TEST_TOKEN }));
@@ -782,7 +782,13 @@ test('it grants a model secret to a sandbox with the path filter of its own name
     buildMockSandboxSpec({
       kind: 'conversation',
       image: 'tide-image',
-      grants: [buildMockGrantSpec({ secret: 'nixie-test-counted', host: 'api.anthropic.com' })],
+      grants: [
+        buildMockGrantSpec({
+          secret: 'nixie-test-counted',
+          host: 'api.anthropic.com',
+          route: 'claude-main',
+        }),
+      ],
       toolRoute: true,
     }),
   );
@@ -790,7 +796,7 @@ test('it grants a model secret to a sandbox with the path filter of its own name
   const grants = await impd.client.grants.details({ name: sandbox.id });
 
   expect(grants).toStrictEqual([
-    { secret: 'nixie-test-counted', filter: { paths: [`/${sandbox.id}/**`] } },
+    { secret: 'nixie-test-counted', filter: { paths: [`/${sandbox.id}/claude-main/**`] } },
   ]);
 });
 
@@ -879,7 +885,13 @@ test.each([
         kind: 'conversation',
         image: 'tide-image',
         owner: 'conversation',
-        grants: [buildMockGrantSpec({ secret: 'nixie-test-kept', host: 'api.anthropic.com' })],
+        grants: [
+          buildMockGrantSpec({
+            secret: 'nixie-test-kept',
+            host: 'api.anthropic.com',
+            route: 'claude-main',
+          }),
+        ],
       }),
     );
 

@@ -18,6 +18,10 @@ test impd from `@impz/testing`, and impz's own e2e suites check that an imp reac
    bun run test:imp adapters/sandbox-imp/
    ```
 
+   Set `NIXIE_IMP_TEST_UPSTREAM_HOST=<host_address>` as well to run the route test. It starts a
+   stand-in upstream on that address of the test host, which impd must reach, and checks that a
+   sandbox granted the model secret of one route reaches no other route of the gateway.
+
 ### The codex image
 
 `apps/server/src/part/list-image-needs.imp.test.ts` runs the pinned Codex CLI in a sandbox on the
