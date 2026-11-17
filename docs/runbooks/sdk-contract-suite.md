@@ -65,10 +65,10 @@ After a push to the pull request, run the suite again at the new head. Post a ne
 
 ## Run the suite on another model
 
-Run the suite on a model outside Claude before you list that model in `models.selectable`. The suite
-reads the model from `NIXIE_SDK_CONTRACT_MODEL` and the base URL from `NIXIE_SDK_CONTRACT_BASE_URL`,
-and sets the CLI's small-model variables to the model. With neither variable set, it runs Haiku 5.5
-on the default endpoint.
+Run the suite on a model outside Claude to find which behaviours that nixie relies on break on that
+model. The suite reads the model from `NIXIE_SDK_CONTRACT_MODEL` and the base URL from
+`NIXIE_SDK_CONTRACT_BASE_URL`, and sets the CLI's small-model variables to the model. With neither
+variable set, it runs Haiku 5.5 on the default endpoint.
 
 1. In an imp, read the model's credential from the `nixie` vault item `openrouter-test`, field
    `credential`, into the sandbox's secret for the model host. Never print it.
@@ -83,8 +83,8 @@ on the default endpoint.
    `<model>` is the model ID the aggregator takes, and `<base_url>` is the aggregator's Anthropic
    Messages base URL.
 
-3. Name each failing probe in the pull request. A model that fails a probe stays out of
-   `models.selectable`.
+3. Read the output. Each failing probe names a behaviour that can break on that model, which the
+   [list of probes](../architecture/core/sdk-contract-suite.md#the-probes) describes.
 
 ## Act on a failing probe
 
