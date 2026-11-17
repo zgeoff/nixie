@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test';
 import type { OutcomeReason } from '../types';
-import { describeOutcomeReason } from './describe-outcome-reason';
+import { describeOutcomeReason, isOutcomeReason } from './describe-outcome-reason';
 
 test.each<[OutcomeReason, string]>([
   ['refused', 'the call was refused'],
@@ -18,4 +18,13 @@ test.each<[OutcomeReason, string]>([
   ['dropped', 'the user dropped it'],
 ])('#describeOutcomeReason gives a sentence for %s', (reason, sentence) => {
   expect(describeOutcomeReason(reason)).toBe(sentence);
+});
+
+test('#isOutcomeReason accepts a reason this release describes', () => {
+  expect(isOutcomeReason('rule_denied')).toBe(true);
+});
+
+test('#isOutcomeReason refuses a reason from a later release and a value that is not a string', () => {
+  expect(isOutcomeReason('a_later_reason')).toBe(false);
+  expect(isOutcomeReason(null)).toBe(false);
 });

@@ -19,3 +19,9 @@ const reasonSentences: Readonly<Record<OutcomeReason, string>> = {
 export function describeOutcomeReason(reason: OutcomeReason): string {
   return reasonSentences[reason];
 }
+
+// Whether a value read from a record's payload is a reason this release describes. A record from
+// a later release can carry a reason this one does not know.
+export function isOutcomeReason(value: unknown): value is OutcomeReason {
+  return typeof value === 'string' && Object.hasOwn(reasonSentences, value);
+}
