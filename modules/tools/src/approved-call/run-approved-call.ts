@@ -3,6 +3,7 @@ import { readRecords } from '@heynixie/log';
 import { buildActionHash } from '@heynixie/policy';
 import { z } from 'zod';
 import { makeCallRecorder } from '../call-record/make-call-recorder';
+import { pickVariant } from '../policy-call/pick-variant';
 import type { ToolCallOptions } from '../run-tool-call';
 import { buildMessage } from '../settle/build-message';
 import { buildTypedResult } from '../settle/build-typed-result';
@@ -25,10 +26,20 @@ export interface ApprovedCallRequest {
   readonly actionHash: string;
 }
 
+// What an approved call returned, which its turn reads in place of what the result record keeps.
+export interface ApprovedReply {
+  readonly result: JSONObject;
+  readonly images: readonly ToolImage[];
+}
+
 export type ApprovedRun =
   | {
       readonly status: 'done';
       readonly resultSequence: number;
+
+      // What the tool returned. A tool can record less than it returns, such as the IDs of the
+      // entries it read, so only the step that ran the call holds the full result and its images.
+      readonly result: JSONObject;
       readonly images: readonly ToolImage[];
     }
   | { readonly status: 'failed'; readonly resultSequence: number }
@@ -47,9 +58,9 @@ export async function runApprovedCall(
   run: ToolRun,
   options: ToolCallOptions,
 ): Promise<ApprovedRun> {
-  const registered = options.registry.findTool(request.tool);
+  const found = options.registry.findTool(request.tool);
 
-  if (registered === null || registered.definition.execution !== 'direct') {
+  if (found === null || found.definition.execution !== 'direct') {
     return { status: 'unavailable' };
   }
 
@@ -66,6 +77,15 @@ export async function runApprovedCall(
     toolUseID: stored.toolUseID,
   };
 
+  // a variant's declaration names the sources of its own results, as it does for the model's call
+  const variant = pickVariant(found, call);
+
+  if (variant?.status === 'error') {
+    return { status: 'unavailable' };
+  }
+
+  const registered = variant === null ? found : variant.registered;
+
   const settled = await tryRunApproved(registered, call, {
     run,
     callSequence: request.callSequence,
@@ -80,7 +100,12 @@ export async function runApprovedCall(
   const written = await recorder.writeSettled(request.callSequence, settled);
 
   return written.settled.outcome === 'result' && written.settled.reply.kind === 'typed'
-    ? { status: 'done', resultSequence: written.sequence, images: written.settled.reply.images }
+    ? {
+        status: 'done',
+        resultSequence: written.sequence,
+        result: written.settled.reply.result,
+        images: written.settled.reply.images,
+      }
     : { status: 'failed', resultSequence: written.sequence };
 }
 

@@ -5,7 +5,13 @@ export { pickPolicyToolName } from './policy-call/pick-policy-tool-name';
 export { callCapRefusal } from './cap/call-cap-refusal';
 export { checkCallCaps } from './cap/check-call-caps';
 export { countCapCalls } from './cap/count-cap-calls';
-export type { ApprovedCallRequest, ApprovedRun } from './approved-call/run-approved-call';
+
+export type {
+  ApprovedCallRequest,
+  ApprovedReply,
+  ApprovedRun,
+} from './approved-call/run-approved-call';
+
 export type { ToolCallOptions, ToolCallRequest } from './run-tool-call';
 export { runToolCall } from './run-tool-call';
 export type { ToolEndpointOptions } from './start-tool-endpoint';

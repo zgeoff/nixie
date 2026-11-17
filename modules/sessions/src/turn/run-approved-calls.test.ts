@@ -37,7 +37,7 @@ async function setupTest() {
 
   const tools = buildStubToolEndpoint({
     runApproved: () => {
-      const approved: ApprovedRun = { status: 'done', resultSequence: 0, images: [] };
+      const approved: ApprovedRun = { status: 'done', resultSequence: 0, result: {}, images: [] };
 
       return Promise.resolve(approved);
     },
@@ -108,7 +108,10 @@ async function setupTest() {
           },
         ]);
 
-        settled.push({ outcomeSequence: outcome?.sequence ?? 0, images: call.images ?? [] });
+        settled.push({
+          outcomeSequence: outcome?.sequence ?? 0,
+          reply: { result: { text: call.text }, images: call.images ?? [] },
+        });
       }
 
       return settled;

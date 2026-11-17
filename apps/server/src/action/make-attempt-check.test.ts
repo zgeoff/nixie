@@ -284,7 +284,12 @@ test('it fails an approved in-step call rule_denied, and runs no call, when a ru
     runCall: (request) => {
       calls.push(request);
 
-      return Promise.resolve({ status: 'done', resultSequence: called.sequence, images: [] });
+      return Promise.resolve({
+        status: 'done',
+        resultSequence: called.sequence,
+        result: {},
+        images: [],
+      });
     },
   });
 

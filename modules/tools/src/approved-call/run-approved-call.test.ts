@@ -8,6 +8,7 @@ import { findToolDeclaration } from '../policy-call/find-tool-declaration';
 import type { ToolCallOptions } from '../run-tool-call';
 import { runToolCall } from '../run-tool-call';
 import { buildMockToolDefinition } from '../test-utils/build-mock-tool-definition';
+import { buildMockVariantToolDefinition } from '../test-utils/build-mock-variant-tool-definition';
 import { buildStubActionQueue } from '../test-utils/build-stub-action-queue';
 import { setupTestLog } from '../test-utils/setup-test-log';
 import type { ToolContext, ToolDefinition, ToolOutcome, ToolRun } from '../types';
@@ -107,7 +108,12 @@ test('it writes the result as the call answers under the approval, naming the ac
   const [called] = records;
   const result = records.at(3);
 
-  expect(approved).toStrictEqual({ status: 'done', resultSequence: 4, images: [] });
+  expect(approved).toStrictEqual({
+    status: 'done',
+    resultSequence: 4,
+    result: { text: 'wiped' },
+    images: [],
+  });
 
   expect(result).toMatchObject({
     kind: 'tool_result',
@@ -160,4 +166,78 @@ test('it runs nothing for a tool the registry does not hold', async () => {
 
   expect(approved).toStrictEqual({ status: 'unavailable' });
   expect(ctx.contexts).toStrictEqual([]);
+});
+
+test("it marks the result of an approved variant call with the sources of that variant's own declaration", async () => {
+  const testLog = await setupTestLog();
+
+  const run: ToolRun = {
+    runID: 'run-1',
+    thread: 'task-1',
+    logThread: 'task-1',
+    tools: ['jobs_start'],
+    model: { model: 'model-a', profile: 'chat-direct' },
+    stepRunID: 'task-1@1',
+  };
+
+  const tool = buildMockVariantToolDefinition({
+    declaration: { effects: ['export'], results: { text: 'owner_data' } },
+    variants: {
+      pick: () => 'risky',
+      declarations: {
+        risky: {
+          effects: ['export'],
+          destinations: [],
+          amount: null,
+          content: [],
+          results: { text: 'untrusted' },
+        },
+      },
+    },
+    run: () => Promise.resolve({ status: 'ok', result: { text: 'a page said hello' } }),
+  });
+
+  const registry = buildToolRegistry([tool]);
+
+  const options: ToolCallOptions = {
+    registry,
+    decide: readStarterDecisionPoint((name) => findToolDeclaration(registry, name)),
+    log: testLog.log,
+    definitions: () => ({ snapshotHash: 'sha256:test' }),
+    queue: buildStubActionQueue().queue,
+    queuedWaitMs: 10_000,
+  };
+
+  const input = { kind: 'risky', query: 'hello' };
+
+  await runToolCall({ tool: 'jobs_start', input, toolUseID: 'toolu_1' }, run, options);
+
+  const approved = await runApprovedCall(
+    {
+      actionID: 'proposal-1',
+      tool: 'jobs_start',
+      input,
+      callSequence: 1,
+      actionHash: buildActionHash({
+        tool: 'jobs_start',
+        input,
+        destinations: [],
+        deadlineAt: null,
+      }),
+    },
+    run,
+    options,
+  );
+
+  const entries = await readRecords(testLog.log, { afterSequence: 0 });
+
+  const result = entries.map((entry) => entry.record).at(-1);
+
+  expect(approved).toMatchObject({ status: 'done' });
+
+  expect(result).toMatchObject({
+    kind: 'tool_result',
+    contentSource: 'untrusted',
+    payload: { actionID: 'proposal-1', sources: { text: 'untrusted' } },
+  });
 });

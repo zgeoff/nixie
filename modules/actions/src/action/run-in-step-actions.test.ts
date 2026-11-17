@@ -46,7 +46,9 @@ test('it runs the approved call once, with the arguments and hash the owner appr
   const ctx = await setupTest();
   const queued = await ctx.seed.inStepAction({ step: ctx.step });
 
-  await ctx.runStep({ runCall: ctx.runCall({ status: 'done', resultSequence: 7, images: [] }) });
+  await ctx.runStep({
+    runCall: ctx.runCall({ status: 'done', resultSequence: 7, result: {}, images: [] }),
+  });
 
   expect(ctx.calls).toStrictEqual([
     {
@@ -64,7 +66,7 @@ test('it settles the action done and names the result record in its outcome', as
   const queued = await ctx.seed.inStepAction({ step: ctx.step });
 
   const settled = await ctx.runStep({
-    runCall: ctx.runCall({ status: 'done', resultSequence: 7, images: [] }),
+    runCall: ctx.runCall({ status: 'done', resultSequence: 7, result: {}, images: [] }),
   });
 
   const action = await readTestAction(ctx.writer, queued.action_id);
@@ -84,14 +86,39 @@ test('it settles the action done and names the result record in its outcome', as
   });
 });
 
+test('it hands back what the call returned beside the outcome, for the turn to read in full', async () => {
+  const ctx = await setupTest();
+  const queued = await ctx.seed.inStepAction({ step: ctx.step });
+
+  const settled = await ctx.runStep({
+    runCall: ctx.runCall({
+      status: 'done',
+      resultSequence: 7,
+      result: { text: 'The ferry leaves at nine.' },
+      images: [],
+    }),
+  });
+
+  expect(settled).toStrictEqual([
+    {
+      actionID: queued.action_id,
+      outcomeSequence: expect.any(Number),
+      reply: { result: { text: 'The ferry leaves at nine.' }, images: [] },
+    },
+  ]);
+});
+
 test('it keeps the step lease after the run', async () => {
   const ctx = await setupTest();
 
   await ctx.seed.inStepAction({ step: ctx.step });
-  await ctx.runStep({ runCall: ctx.runCall({ status: 'done', resultSequence: 7, images: [] }) });
+
+  await ctx.runStep({
+    runCall: ctx.runCall({ status: 'done', resultSequence: 7, result: {}, images: [] }),
+  });
 
   const again = await ctx.runStep({
-    runCall: ctx.runCall({ status: 'done', resultSequence: 8, images: [] }),
+    runCall: ctx.runCall({ status: 'done', resultSequence: 8, result: {}, images: [] }),
   });
 
   expect(again).toStrictEqual([]);
@@ -102,7 +129,7 @@ test('it runs nothing for a second run of an action it already settled', async (
 
   await ctx.seed.inStepAction({ step: ctx.step });
 
-  const run = ctx.runCall({ status: 'done', resultSequence: 7, images: [] });
+  const run = ctx.runCall({ status: 'done', resultSequence: 7, result: {}, images: [] });
 
   await ctx.runStep({ runCall: run });
   await ctx.runStep({ runCall: run });
@@ -147,7 +174,7 @@ test('it fails the action rule_denied and runs no call when policy now denies it
 
   await ctx.runStep({
     checkAttempt: () => Promise.resolve(deny),
-    runCall: ctx.runCall({ status: 'done', resultSequence: 7, images: [] }),
+    runCall: ctx.runCall({ status: 'done', resultSequence: 7, result: {}, images: [] }),
   });
 
   const action = await readTestAction(ctx.writer, queued.action_id);
@@ -160,7 +187,9 @@ test('it fails the action deadline_passed and runs no call once its deadline pas
   const ctx = await setupTest();
   const queued = await ctx.seed.inStepAction({ step: ctx.step, deadlineAt: 999_000 });
 
-  await ctx.runStep({ runCall: ctx.runCall({ status: 'done', resultSequence: 7, images: [] }) });
+  await ctx.runStep({
+    runCall: ctx.runCall({ status: 'done', resultSequence: 7, result: {}, images: [] }),
+  });
 
   const action = await readTestAction(ctx.writer, queued.action_id);
 
@@ -187,7 +216,7 @@ test('it holds the action and runs no call when policy asks again of a routine a
 
   const settled = await ctx.runStep({
     checkAttempt: () => Promise.resolve(ask),
-    runCall: ctx.runCall({ status: 'done', resultSequence: 7, images: [] }),
+    runCall: ctx.runCall({ status: 'done', resultSequence: 7, result: {}, images: [] }),
   });
 
   const action = await readTestAction(ctx.writer, queued.action_id);
@@ -211,7 +240,7 @@ test('it settles an attempt that a crash left open as unknown and never reruns t
   const open = await readTestAction(ctx.writer, queued.action_id);
 
   const settled = await ctx.runStep({
-    runCall: ctx.runCall({ status: 'done', resultSequence: 7, images: [] }),
+    runCall: ctx.runCall({ status: 'done', resultSequence: 7, result: {}, images: [] }),
   });
 
   const action = await readTestAction(ctx.writer, queued.action_id);
@@ -240,7 +269,9 @@ test('it reports a pending approved call, and none once the call settled', async
 
   const before = await probeInStepActionPending(ctx.context, ctx.step.lease.workID);
 
-  await ctx.runStep({ runCall: ctx.runCall({ status: 'done', resultSequence: 7, images: [] }) });
+  await ctx.runStep({
+    runCall: ctx.runCall({ status: 'done', resultSequence: 7, result: {}, images: [] }),
+  });
 
   const after = await probeInStepActionPending(ctx.context, ctx.step.lease.workID);
 
@@ -255,7 +286,9 @@ test('it runs the call once more after the owner answers retry to the unknown ou
     .runStep({ runCall: () => Promise.reject(new Error('the process died')) })
     .catch(() => null);
 
-  await ctx.runStep({ runCall: ctx.runCall({ status: 'done', resultSequence: 7, images: [] }) });
+  await ctx.runStep({
+    runCall: ctx.runCall({ status: 'done', resultSequence: 7, result: {}, images: [] }),
+  });
 
   const answered = await withWriteTransaction(ctx.writer, (tx) =>
     writeUnknownAnswer(tx, ctx.context, {
@@ -267,8 +300,13 @@ test('it runs the call once more after the owner answers retry to the unknown ou
 
   const retried = await readTestAction(ctx.writer, queued.action_id);
 
-  await ctx.runStep({ runCall: ctx.runCall({ status: 'done', resultSequence: 8, images: [] }) });
-  await ctx.runStep({ runCall: ctx.runCall({ status: 'done', resultSequence: 9, images: [] }) });
+  await ctx.runStep({
+    runCall: ctx.runCall({ status: 'done', resultSequence: 8, result: {}, images: [] }),
+  });
+
+  await ctx.runStep({
+    runCall: ctx.runCall({ status: 'done', resultSequence: 9, result: {}, images: [] }),
+  });
 
   const kinds = await readRecords(ctx.context.log, { afterSequence: 0 });
   const settled = await readTestAction(ctx.writer, queued.action_id);

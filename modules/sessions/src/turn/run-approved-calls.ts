@@ -1,6 +1,6 @@
 import type { StepInput } from '@heynixie/tasks';
 import { buildStepRunID, readInbox } from '@heynixie/tasks';
-import type { ToolImage, ToolRun, ToolSession, ToolStepHold } from '@heynixie/tools';
+import type { ApprovedReply, ToolRun, ToolSession, ToolStepHold } from '@heynixie/tools';
 import { makeImageReserver } from '../task/make-image-reserver';
 import type { ConversationRun } from '../types';
 
@@ -8,8 +8,8 @@ export interface ApprovedCalls {
   // the step's input with the inbox read again, so the turn takes the outcomes that the calls wrote
   readonly input: StepInput;
 
-  // the images each call returned, by the sequence of its action's outcome record
-  readonly images: ReadonlyMap<number, readonly ToolImage[]>;
+  // what each call that ran returned, by the sequence of its action's outcome record
+  readonly replies: ReadonlyMap<number, ApprovedReply>;
 }
 
 export interface ApprovedCallsPlan {
@@ -31,7 +31,7 @@ export async function runApprovedCalls(
   const actions = run.inStepActions;
 
   if (actions === undefined || !(await actions.probePending(input.taskID))) {
-    return { input, images: new Map() };
+    return { input, replies: new Map() };
   }
 
   const token = run.endpoint.startStep(
@@ -55,7 +55,7 @@ export async function runApprovedCalls(
     });
 
     if (settled.length === 0) {
-      return { input, images: new Map() };
+      return { input, replies: new Map() };
     }
 
     // an outcome can land behind a message that arrived since the step began, and the read mark
@@ -64,7 +64,11 @@ export async function runApprovedCalls(
 
     return {
       input: { ...input, inbox },
-      images: new Map(settled.map((entry) => [entry.outcomeSequence, entry.images])),
+      replies: new Map(
+        settled.flatMap((entry) =>
+          entry.reply === null ? [] : [[entry.outcomeSequence, entry.reply] as const],
+        ),
+      ),
     };
   } finally {
     await token.stop();

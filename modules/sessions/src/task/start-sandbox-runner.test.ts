@@ -1821,12 +1821,18 @@ test('it runs a call approved while a task turn ran, in the step that continues 
         },
       ]);
 
-      return [{ outcomeSequence: outcome?.sequence ?? 0, images: [] }];
+      return [
+        {
+          outcomeSequence: outcome?.sequence ?? 0,
+          reply: { result: { text: 'the high tide is at 06:12' }, images: [] },
+        },
+      ];
     },
   };
 
   const tools = buildStubToolEndpoint({
-    runApproved: () => Promise.resolve({ status: 'done', resultSequence: 0, images: [] }),
+    runApproved: () =>
+      Promise.resolve({ status: 'done', resultSequence: 0, result: {}, images: [] }),
   });
 
   const runner = await ctx.startRunner({ tools: tools.endpoint, inStepActions });

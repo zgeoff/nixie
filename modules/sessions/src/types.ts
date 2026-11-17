@@ -7,9 +7,9 @@ import type { GuestCommand, Sandbox } from '@heynixie/sandbox';
 import type { StepInput, TaskMessaging, TaskReport, TasksContext } from '@heynixie/tasks';
 import type {
   ApprovedCallRequest,
+  ApprovedReply,
   ApprovedRun,
   RunEndpoint,
-  ToolImage,
   ToolRunModel,
 } from '@heynixie/tools';
 import type { ModelCallUsage, SessionPoint, TurnProfile } from '@heynixie/wire';
@@ -148,7 +148,9 @@ interface TurnBudget {
 export interface InStepSettled {
   // the sequence of the outcome record that the action wrote
   readonly outcomeSequence: number;
-  readonly images: readonly ToolImage[];
+
+  // what the call returned, or null for a call that did not run
+  readonly reply: ApprovedReply | null;
 }
 
 export interface InStepActions {

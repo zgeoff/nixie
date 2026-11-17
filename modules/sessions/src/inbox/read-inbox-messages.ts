@@ -2,7 +2,7 @@ import type { LogRecord } from '@heynixie/log';
 import { readRecordAttachments } from '@heynixie/log';
 import type { TasksContext } from '@heynixie/tasks';
 import { isInboxRecord, ownerMessageCodec } from '@heynixie/tasks';
-import type { ToolImage } from '@heynixie/tools';
+import type { ApprovedReply } from '@heynixie/tools';
 import type { InboxMessage } from '@heynixie/wire';
 import type { TaskMessageView } from '../task/render-task-message';
 import type { ImageTally, MessageTimeOptions } from '../types';
@@ -23,9 +23,9 @@ export interface InboxRead {
 
   readonly imageBudget: ImageTally;
 
-  // The images that the call of an action returned, by the sequence of the action's outcome record.
-  // No record keeps an image, so only the step that ran the call has them.
-  readonly resultImages?: ReadonlyMap<number, readonly ToolImage[]>;
+  // What the call of an action returned, by the sequence of the action's outcome record. No record
+  // keeps an image or every result in full, so only the step that ran the call has them.
+  readonly replies?: ReadonlyMap<number, ApprovedReply>;
 }
 
 export interface InboxMessages {
@@ -79,10 +79,15 @@ export async function readInboxMessages(
 async function readInboxMessage(
   context: InboxContext,
   record: LogRecord,
-  read: Pick<InboxRead, 'times' | 'view' | 'resultImages'>,
+  read: Pick<InboxRead, 'times' | 'view' | 'replies'>,
 ): Promise<InboxMessage> {
   const reminder = await readReminder(context, record, read.times.defaultZone);
-  const result = await readActionResult(context, record, read.resultImages?.get(record.sequence));
+
+  const result = await readActionResult(
+    context,
+    record,
+    read.replies?.get(record.sequence) ?? null,
+  );
 
   if (ownerMessageCodec.tryDecodePartial(record.payload)?.images === undefined) {
     return toInboxMessage(record, read.times, read.view, { attachments: [], reminder, result });

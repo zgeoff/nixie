@@ -1,7 +1,7 @@
 import type { JSONObject } from '@heynixie/log';
 import type { Lease, TasksContext } from '@heynixie/tasks';
 import { waitAtFaultPoint } from '@heynixie/tasks';
-import type { ApprovedCallRequest, ApprovedRun, ToolImage } from '@heynixie/tools';
+import type { ApprovedCallRequest, ApprovedReply, ApprovedRun } from '@heynixie/tools';
 import type { ActionRow, ActionsTables, OutcomeReason } from '../types';
 import type { AttemptCheck } from './attempt-check';
 import { buildCancelledCheck } from './build-cancelled-check';
@@ -22,12 +22,12 @@ export interface InStepActionsOptions {
   readonly runCall: (request: ApprovedCallRequest) => Promise<ApprovedRun>;
 }
 
-// An action the step settled: the outcome record it wrote, and the images of its result, which no
-// record keeps.
+// An action the step settled: the outcome record it wrote, and what its call returned, which no
+// record keeps in full. A call that did not run returned nothing.
 export interface InStepSettled {
   readonly actionID: string;
   readonly outcomeSequence: number;
-  readonly images: readonly ToolImage[];
+  readonly reply: ApprovedReply | null;
 }
 
 // Runs each approved call of the task that its step runs, in the order they were queued, under the
@@ -119,7 +119,7 @@ async function runInStepAction(
     });
 
     return step.kind === 'deny' && sequence !== undefined
-      ? { actionID: action.action_id, outcomeSequence: sequence, images: [] }
+      ? { actionID: action.action_id, outcomeSequence: sequence, reply: null }
       : null;
   }
 
@@ -173,7 +173,7 @@ async function writeUnknown(
 
   return sequence === undefined
     ? null
-    : { actionID: action.action_id, outcomeSequence: sequence, images: [] };
+    : { actionID: action.action_id, outcomeSequence: sequence, reply: null };
 }
 
 function writeFailure(
@@ -182,14 +182,19 @@ function writeFailure(
   reason: OutcomeReason,
   details: JSONObject,
 ): Promise<InStepSettled | null> {
-  return writeSettlement(context, attempt, { outcome: { status: 'failed', reason }, details }, []);
+  return writeSettlement(
+    context,
+    attempt,
+    { outcome: { status: 'failed', reason }, details },
+    null,
+  );
 }
 
 async function writeSettlement(
   context: TasksContext,
   attempt: Attempt,
   settlement: Settlement,
-  images: readonly ToolImage[],
+  reply: ApprovedReply | null,
 ): Promise<InStepSettled | null> {
   const [sequence] = await writeLeasedRecords(context, attempt.lease, {
     records: [buildOutcomeRecord(context, attempt, settlement)],
@@ -205,7 +210,7 @@ async function writeSettlement(
 
   return sequence === undefined
     ? null
-    : { actionID: attempt.action.action_id, outcomeSequence: sequence, images };
+    : { actionID: attempt.action.action_id, outcomeSequence: sequence, reply };
 }
 
 function writeRunOutcome(
@@ -218,7 +223,7 @@ function writeRunOutcome(
       context,
       attempt,
       { outcome: { status: 'done' }, resultSequence: run.resultSequence },
-      run.images,
+      { result: run.result, images: run.images },
     );
   }
 
@@ -227,7 +232,7 @@ function writeRunOutcome(
       context,
       attempt,
       { outcome: { status: 'failed', reason: 'refused' }, resultSequence: run.resultSequence },
-      [],
+      null,
     );
   }
 

@@ -47,7 +47,7 @@ export async function runLiveTurn(
   const opening = await readOpeningBatch(run.context, input.inbox, {
     ...plan,
     imageBudget: run.imageBudget,
-    resultImages: approved.images,
+    replies: approved.replies,
   });
 
   const silence = buildTurnSilence(opening.batch.records);

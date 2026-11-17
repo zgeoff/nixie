@@ -1,5 +1,5 @@
 import type { LogRecord } from '@heynixie/log';
-import type { ToolImage } from '@heynixie/tools';
+import type { ApprovedReply, ToolImage } from '@heynixie/tools';
 import type { InboxImage } from '@heynixie/wire';
 import { mintBlockID } from '@heynixie/wire';
 
@@ -9,21 +9,22 @@ export interface ActionResultBlock {
   readonly images: readonly InboxImage[];
 }
 
-// The text of the result record in an element that a fresh random ID closes, so what an outside
-// service said cannot close it early. An image takes a marker in the text and goes with the message.
+// The result in an element that a fresh random ID closes, so what an outside service said cannot
+// close it early. The reply of the step that ran the call wins over the record, which can keep less
+// than the tool returned. An image takes a marker in the text and goes with the message.
 export function renderActionResult(
   record: LogRecord,
-  images: readonly ToolImage[],
+  reply: ApprovedReply | null,
   mint: () => string = mintBlockID,
 ): ActionResultBlock {
   const fence = mint();
   const source = record.contentSource ?? 'untrusted';
-  const markers = images.flatMap((image) => toInboxImage(image, mint()));
+  const markers = (reply?.images ?? []).flatMap((image) => toInboxImage(image, mint()));
 
   return {
     text: [
       `<tool-result source="${source}" fence="${fence}">`,
-      toResultText(record),
+      toResultText(record, reply),
       ...markers.map((marker) => marker.marker),
       `</tool-result fence="${fence}">`,
     ].join('\n'),
@@ -56,9 +57,13 @@ function isInboxMediaType(mediaType: string): mediaType is InboxImage['mediaType
   return inboxMediaTypes.has(mediaType);
 }
 
-function toResultText(record: LogRecord): string {
+function toResultText(record: LogRecord, reply: ApprovedReply | null): string {
   if (record.erasable.status !== 'readable') {
     return '[a result since forgotten]';
+  }
+
+  if (reply !== null) {
+    return JSON.stringify(reply.result);
   }
 
   const fields = record.erasable.fields;

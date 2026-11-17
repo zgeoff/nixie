@@ -25,7 +25,7 @@ export function makeInStepActions(parts: ServerParts): InStepActions {
 
       return settled.map((entry) => ({
         outcomeSequence: entry.outcomeSequence,
-        images: entry.images,
+        reply: entry.reply,
       }));
     },
   };

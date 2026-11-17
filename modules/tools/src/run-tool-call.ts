@@ -8,6 +8,7 @@ import type { CallRecorder } from './call-record/make-call-recorder';
 import { callCapRefusal } from './cap/call-cap-refusal';
 import { buildMemoryVerdict, isMemoryRuleAsk } from './policy-call/build-memory-verdict';
 import { buildToolPolicyCall } from './policy-call/build-tool-policy-call';
+import { pickVariant } from './policy-call/pick-variant';
 import { readAskedRepeat } from './policy-call/read-asked-repeat';
 import { resolveCallDeadline } from './policy-call/resolve-call-deadline';
 import { resolveCallDestinations } from './policy-call/resolve-call-destinations';
@@ -221,33 +222,6 @@ function toCallToolResult(settled: Settled): CallToolResult {
         mimeType: image.mediaType,
       })),
     ],
-  };
-}
-
-type VariantPick =
-  | { readonly status: 'picked'; readonly registered: RegisteredTool; readonly policyTool: string }
-  | { readonly status: 'error'; readonly message: string }
-  | null;
-
-// A tool with variants runs as the variant that its input picks, under that variant's declaration.
-function pickVariant(registered: RegisteredTool, call: ToolCall): VariantPick {
-  const variants = registered.definition.variants;
-
-  if (variants === undefined) {
-    return null;
-  }
-
-  const name = variants.pick(call.input);
-  const declaration = variants.declarations[name];
-
-  if (declaration === undefined) {
-    return { status: 'error', message: `the tool ${call.tool} has no variant ${name}` };
-  }
-
-  return {
-    status: 'picked',
-    registered: { ...registered, definition: { ...registered.definition, declaration } },
-    policyTool: `${call.tool}/${name}`,
   };
 }
 
