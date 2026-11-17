@@ -2,7 +2,7 @@
 
 The model can propose a memory item, a fact about the user that nixie keeps. When the user's own
 words in the conversation do not state the fact, nixie holds the item as a proposal until the user
-approves it on the approvals page, `/memory/proposals`. An approved item shows on the memory page,
+approves it on the approvals page, `/proposals`. An approved item shows on the memory page,
 `/memory`, and its row in the `memory_items` table has the state `active`. A proposal has no row in
 that table.
 
@@ -53,7 +53,7 @@ item's fact would make nixie keep the item at once, with no proposal.
 4. Open the approvals page:
 
    ```bash
-   bun verify browser goto /memory/proposals
+   bun verify browser goto /proposals
    bun verify browser snapshot
    ```
 

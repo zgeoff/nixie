@@ -4,8 +4,8 @@ When an ask rule matches a tool call the model makes, nixie holds the call until
 
 - The call's `tool_result` record has the outcome `queued`, and its `actionID` is `null`: nothing
   ran.
-- The approvals page, `/memory/proposals`, lists each held call under its risk group, such as
-  "Routine" for the export call.
+- The approvals page, `/proposals`, lists each held call under its risk group, such as "Routine" for
+  the export call.
 - The `proposals` table holds one row for the call, with `family` `action` and `state` `pending`.
   The table also holds other kinds of proposal, such as rule changes.
 
@@ -72,7 +72,7 @@ Before you start:
 5. Open the approvals page:
 
    ```bash
-   bun verify browser goto /memory/proposals
+   bun verify browser goto /proposals
    bun verify browser snapshot
    ```
 

@@ -88,7 +88,7 @@ async function setupTest() {
       await waitInView(`document.querySelector('ul[aria-label="Passkeys"] li') !== null`);
     },
     openLine: async (sentence: string) => {
-      await view.navigate(`${appURL}/memory/proposals`);
+      await view.navigate(`${appURL}/proposals`);
 
       await waitInView(`document.querySelector('li[aria-label="${sentence}"] summary') !== null`);
 

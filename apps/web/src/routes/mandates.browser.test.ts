@@ -75,6 +75,12 @@ test('it proposes a mandate that then waits on the approvals page', async () => 
   const rows = store.approvalRows.all();
 
   expect(rows.map((row) => [row.cause, row.state])).toStrictEqual([['mandate', 'pending']]);
+
+  await ctx.view.evaluate(`document.querySelector('p[role="status"] a').click()`);
+
+  await ctx.waitForPage(
+    `location.pathname === '/proposals' && document.querySelector('li[aria-label=' + JSON.stringify(${JSON.stringify(rows[0]?.sentence)}) + ']') !== null`,
+  );
 });
 
 test.each([

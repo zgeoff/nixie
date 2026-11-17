@@ -37,7 +37,7 @@ async function setupTest() {
     findRow: (proposalID: string) =>
       store.approvalRows.findFirst((query) => query.where({ proposalID })),
     openDigest: async () => {
-      await view.navigate(`${app.url}/memory/proposals`);
+      await view.navigate(`${app.url}/proposals`);
     },
     waitForPage: (expression: string) =>
       waitFor(

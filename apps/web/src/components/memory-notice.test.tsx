@@ -494,6 +494,6 @@ test('it sends a proposal in a notice to the proposals page', async () => {
 
   expect(within(notice).getByRole('link', { name: 'Review' })).toHaveAttribute(
     'href',
-    '/memory/proposals',
+    '/proposals',
   );
 });

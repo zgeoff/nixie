@@ -37,7 +37,7 @@ test('it makes a memory the model proposed active once the user approves it on t
     { timeoutMs: 5000 },
   );
 
-  await ctx.view.navigate(`${ctx.appURL}/memory/proposals`);
+  await ctx.view.navigate(`${ctx.appURL}/proposals`);
 
   await waitForPage(
     ctx.view,

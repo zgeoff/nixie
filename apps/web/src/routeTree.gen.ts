@@ -15,7 +15,7 @@ import { Route as MandatesRouteImport } from './routes/mandates'
 import { Route as MemoryRouteImport } from './routes/memory'
 import { Route as MomentsRouteImport } from './routes/moments'
 import { Route as PasskeysRouteImport } from './routes/passkeys'
-import { Route as MemoryProposalsRouteImport } from './routes/memory_.proposals'
+import { Route as ProposalsRouteImport } from './routes/proposals'
 import { Route as MomentsMomentIDRouteImport } from './routes/moments_.$momentID'
 import { Route as TasksIndexRouteImport } from './routes/tasks.index'
 import { Route as TasksTaskIDRouteImport } from './routes/tasks.$taskID'
@@ -51,9 +51,9 @@ const PasskeysRoute = PasskeysRouteImport.update({
   path: '/passkeys',
   getParentRoute: () => rootRouteImport,
 } as any)
-const MemoryProposalsRoute = MemoryProposalsRouteImport.update({
-  id: '/memory_/proposals',
-  path: '/memory/proposals',
+const ProposalsRoute = ProposalsRouteImport.update({
+  id: '/proposals',
+  path: '/proposals',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MomentsMomentIDRoute = MomentsMomentIDRouteImport.update({
@@ -84,7 +84,7 @@ export interface FileRoutesByFullPath {
   '/memory': typeof MemoryRoute
   '/moments': typeof MomentsRoute
   '/passkeys': typeof PasskeysRoute
-  '/memory/proposals': typeof MemoryProposalsRoute
+  '/proposals': typeof ProposalsRoute
   '/moments/$momentID': typeof MomentsMomentIDRoute
   '/tasks/$taskID': typeof TasksTaskIDRoute
   '/tasks/ended': typeof TasksEndedRoute
@@ -97,7 +97,7 @@ export interface FileRoutesByTo {
   '/memory': typeof MemoryRoute
   '/moments': typeof MomentsRoute
   '/passkeys': typeof PasskeysRoute
-  '/memory/proposals': typeof MemoryProposalsRoute
+  '/proposals': typeof ProposalsRoute
   '/moments/$momentID': typeof MomentsMomentIDRoute
   '/tasks/$taskID': typeof TasksTaskIDRoute
   '/tasks/ended': typeof TasksEndedRoute
@@ -111,7 +111,7 @@ export interface FileRoutesById {
   '/memory': typeof MemoryRoute
   '/moments': typeof MomentsRoute
   '/passkeys': typeof PasskeysRoute
-  '/memory_/proposals': typeof MemoryProposalsRoute
+  '/proposals': typeof ProposalsRoute
   '/moments_/$momentID': typeof MomentsMomentIDRoute
   '/tasks/$taskID': typeof TasksTaskIDRoute
   '/tasks/ended': typeof TasksEndedRoute
@@ -126,7 +126,7 @@ export interface FileRouteTypes {
     | '/memory'
     | '/moments'
     | '/passkeys'
-    | '/memory/proposals'
+    | '/proposals'
     | '/moments/$momentID'
     | '/tasks/$taskID'
     | '/tasks/ended'
@@ -139,7 +139,7 @@ export interface FileRouteTypes {
     | '/memory'
     | '/moments'
     | '/passkeys'
-    | '/memory/proposals'
+    | '/proposals'
     | '/moments/$momentID'
     | '/tasks/$taskID'
     | '/tasks/ended'
@@ -152,7 +152,7 @@ export interface FileRouteTypes {
     | '/memory'
     | '/moments'
     | '/passkeys'
-    | '/memory_/proposals'
+    | '/proposals'
     | '/moments_/$momentID'
     | '/tasks/$taskID'
     | '/tasks/ended'
@@ -166,7 +166,7 @@ export interface RootRouteChildren {
   MemoryRoute: typeof MemoryRoute
   MomentsRoute: typeof MomentsRoute
   PasskeysRoute: typeof PasskeysRoute
-  MemoryProposalsRoute: typeof MemoryProposalsRoute
+  ProposalsRoute: typeof ProposalsRoute
   MomentsMomentIDRoute: typeof MomentsMomentIDRoute
   TasksTaskIDRoute: typeof TasksTaskIDRoute
   TasksEndedRoute: typeof TasksEndedRoute
@@ -217,11 +217,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PasskeysRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/memory_/proposals': {
-      id: '/memory_/proposals'
-      path: '/memory/proposals'
-      fullPath: '/memory/proposals'
-      preLoaderRoute: typeof MemoryProposalsRouteImport
+    '/proposals': {
+      id: '/proposals'
+      path: '/proposals'
+      fullPath: '/proposals'
+      preLoaderRoute: typeof ProposalsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/moments_/$momentID': {
@@ -262,7 +262,7 @@ const rootRouteChildren: RootRouteChildren = {
   MemoryRoute: MemoryRoute,
   MomentsRoute: MomentsRoute,
   PasskeysRoute: PasskeysRoute,
-  MemoryProposalsRoute: MemoryProposalsRoute,
+  ProposalsRoute: ProposalsRoute,
   MomentsMomentIDRoute: MomentsMomentIDRoute,
   TasksTaskIDRoute: TasksTaskIDRoute,
   TasksEndedRoute: TasksEndedRoute,

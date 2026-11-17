@@ -109,7 +109,7 @@ function NoticeEntry(props: NoticeEntryProps): ReactNode {
           {status === 'proposed' ? (
             <>
               {' · '}
-              <a className={link} href="/memory/proposals">
+              <a className={link} href="/proposals">
                 Review
               </a>
             </>

@@ -251,19 +251,19 @@ on a `definition.changed` record, so neither polls.
 
 ## The app shell
 
-Every page sits in one shell, which the root route renders. Its bar holds 7 links: Conversation,
-Memory, Moments, Tasks, Ended runs, Definitions and Passkeys. The link of the current page carries
-`aria-current="page"`, and a detail page marks its parent, so a task marks Tasks and the proposals
-page marks Memory. A page with no entry, such as the approvals page, marks nothing. Below 768px the
-links fold into a menu button that opens a side drawer. The drawer is a native modal dialog, so the
-rest of the page goes inert while it is open. It closes on a link tap, on Escape and on a tap
-outside it, and focus returns to the menu button. CSS alone switches between the bar and the button,
-so the server render matches the client. The conversation fills the height below the bar.
+Every page sits in one shell, which the root route renders. Its bar holds 8 links: Conversation,
+Memory, Proposals, Moments, Tasks, Ended runs, Definitions and Passkeys. The link of the current
+page carries `aria-current="page"`, and a detail page marks its parent, so a task marks Tasks. A
+page with no entry, such as the mandates page, marks nothing. Below 768px the links fold into a menu
+button that opens a side drawer. The drawer is a native modal dialog, so the rest of the page goes
+inert while it is open. It closes on a link tap, on Escape and on a tap outside it, and focus
+returns to the menu button. CSS alone switches between the bar and the button, so the server render
+matches the client. The conversation fills the height below the bar.
 
 ## Approvals
 
 A proposal shows as a card, in the conversation under the record that created it and on the
-approvals page. The card's text and state come from the proposal's row, read through
+approvals page at `/proposals`. The card's text and state come from the proposal's row, read through
 `approvals.readProposals`, and never from a model's reply, so a reply that claims the action is done
 leaves the card pending.
 

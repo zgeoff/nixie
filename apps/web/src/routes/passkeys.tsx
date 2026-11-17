@@ -32,7 +32,7 @@ function Passkeys(): ReactNode {
     >
       <PasskeyPage
         navigation={
-          <Link className={link} to="/memory/proposals">
+          <Link className={link} to="/proposals">
             Approvals
           </Link>
         }
