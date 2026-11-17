@@ -125,6 +125,7 @@ export interface CLIFlags {
   readonly ruleID?: string;
   readonly definitionID?: string;
   readonly mandateID?: string;
+  readonly budgetID?: string;
   readonly proposalID?: string;
 }
 

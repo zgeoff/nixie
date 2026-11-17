@@ -1,3 +1,4 @@
+import type { BudgetCounts, BudgetPeriod } from '@heynixie/policy';
 import type { Kysely } from 'kysely';
 import { readBudgetsInForce } from '../limit/read-budgets-in-force';
 import { buildBudgetPeriod } from '../period/build-budget-period';
@@ -5,9 +6,9 @@ import type { BudgetLimit, BudgetsContext, BudgetsTables } from '../types';
 
 export interface BudgetStatus {
   readonly id: string;
-  readonly counts: string;
+  readonly counts: BudgetCounts;
   readonly limitMicros: number;
-  readonly period: string;
+  readonly period: BudgetPeriod;
   readonly spentMicros: number;
   readonly periodStart: string;
   readonly resetsAt: number;
