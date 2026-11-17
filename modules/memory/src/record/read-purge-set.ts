@@ -1,10 +1,13 @@
 import type { Kysely } from 'kysely';
 import { sql } from 'kysely';
-import type { MemoryTables } from '../types';
+import type { MemoryState, MemoryTables } from '../types';
 
+// Reads each item in one of the given states whose evidence quotes the record, and each item that only
+// a pending new-item proposal quoting the record names.
 export async function readPurgeSet(
   db: Kysely<unknown>,
   recordSequence: number,
+  states: readonly MemoryState[],
 ): Promise<readonly string[]> {
   const tables = db.$extendTables<MemoryTables>();
 
@@ -44,15 +47,13 @@ export async function readPurgeSet(
     .where('item_id', 'in', candidates)
     .execute();
 
-  const states = new Map(items.map((row) => [row.item_id, row.state]));
+  const itemStates = new Map(items.map((row) => [row.item_id, row.state]));
 
   return candidates
     .filter((itemID) => {
-      const state = states.get(itemID);
+      const state = itemStates.get(itemID);
 
-      return state === undefined
-        ? pendingIDs.has(itemID)
-        : state === 'active' || state === 'retired';
+      return state === undefined ? pendingIDs.has(itemID) : states.includes(state);
     })
     .toSorted();
 }

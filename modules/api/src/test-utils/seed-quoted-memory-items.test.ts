@@ -14,7 +14,11 @@ async function setupTest() {
 test('it seeds an item of 2 versions that quotes the message, and another that quotes a later message', async () => {
   const ctx = await setupTest();
   const seeded = await seedQuotedMemoryItems(ctx.api.context, ctx.memory);
-  const set = await readPurgeSet(ctx.api.context.log.writer.db, seeded.sequence);
+
+  const set = await readPurgeSet(ctx.api.context.log.writer.db, seeded.sequence, [
+    'active',
+    'retired',
+  ]);
 
   expect(set).toStrictEqual([seeded.quoting.itemID]);
   expect(seeded.quoting.version).toBe(2);
