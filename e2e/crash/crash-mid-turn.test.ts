@@ -69,7 +69,14 @@ test('it sends once when nixie dies after the action queued, before any attempt'
   const oracle = await runOracle(ctx.nixie);
 
   expect(queued).toHaveLength(1);
-  expect(outcome.payload).toStrictEqual({ actionID, status: 'done', attempt: 1, reason: null });
+
+  expect(outcome.payload).toStrictEqual({
+    actionID,
+    tool: 'test.send',
+    status: 'done',
+    attempt: 1,
+    reason: null,
+  });
 
   expect(
     records
@@ -155,6 +162,7 @@ test('it leaves the action unknown and calls no provider when nixie dies after t
   ).toStrictEqual([
     {
       actionID,
+      tool: 'test.send',
       status: 'unknown',
       attempt: 1,
       reason: 'attempt_without_result',
@@ -244,6 +252,7 @@ test('it leaves the action unknown and calls the provider once when nixie dies b
   ).toStrictEqual([
     {
       actionID,
+      tool: 'test.send',
       status: 'unknown',
       attempt: 1,
       reason: 'attempt_without_result',

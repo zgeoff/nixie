@@ -113,7 +113,9 @@ test('it resumes the retry schedule across a restart and fails the action on the
 
   expect(
     records.filter((record) => record.kind === 'action.outcome').map((record) => record.payload),
-  ).toStrictEqual([{ actionID, status: 'failed', attempt: 5, reason: 'retries_exhausted' }]);
+  ).toStrictEqual([
+    { actionID, tool: 'test.send', status: 'failed', attempt: 5, reason: 'retries_exhausted' },
+  ]);
 
   expect(ctx.nixie.provider.calls.map((call) => call.idempotencyKey)).toStrictEqual(
     Array.from({ length: 5 }, () => actionID),
@@ -185,6 +187,7 @@ test('it marks a retry unknown when nixie dies after its attempt record, and nev
   ).toStrictEqual([
     {
       actionID,
+      tool: 'test.send',
       status: 'unknown',
       attempt: 2,
       reason: 'attempt_without_result',
