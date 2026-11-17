@@ -9,7 +9,7 @@ export function buildTasksDefinitionsTool(options: ChatToolOptions): ToolDefinit
   return {
     name: 'tasks.definitions',
     description:
-      'Lists every task definition: its ID, name, trigger in words, next fire, target and ' +
+      'Lists every task definition: its ID, name, trigger in words, next fire and ' +
       'tools, whether it is in force, and whether it comes from the definitions repo or from ' +
       'a change made here.',
     input: { type: 'object', properties: {}, additionalProperties: false },
@@ -29,7 +29,6 @@ export function buildTasksDefinitionsTool(options: ChatToolOptions): ToolDefinit
               trigger: { type: ['object', 'null'] },
               rendered: { type: ['string', 'null'] },
               next: { type: ['string', 'null'] },
-              target: { type: ['string', 'null'], enum: ['task', 'conversation', null] },
               tools: { type: 'array', items: { type: 'string' } },
               origin: { type: 'string', enum: ['definitions', 'nixie'] },
             },
@@ -42,7 +41,6 @@ export function buildTasksDefinitionsTool(options: ChatToolOptions): ToolDefinit
               'trigger',
               'rendered',
               'next',
-              'target',
               'tools',
               'origin',
             ],

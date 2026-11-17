@@ -446,6 +446,32 @@ export interface NixieTables {
     readonly refused_at: number;
     readonly refused_sequence: number;
   };
+  readonly reminder_moves: {
+    readonly definition_id: string;
+    readonly name: string;
+    readonly note: string;
+    readonly trigger: string;
+    readonly source: string;
+    readonly change_id: string | null;
+  };
+  readonly reminder_versions: {
+    readonly reminder_hash: string;
+    readonly name: string;
+    readonly note: string;
+    readonly trigger: string;
+  };
+  readonly reminders: {
+    readonly reminder_id: string;
+    readonly short_id: string;
+    readonly reminder_hash: string;
+    readonly trigger: string;
+    readonly state: string;
+    readonly origin: string;
+    readonly set_sequence: number;
+    readonly fired_at: number | null;
+    readonly recent_fires: string;
+    readonly updated_sequence: number;
+  };
   readonly rule_exports: {
     readonly export_id: string;
     readonly state: string | null;

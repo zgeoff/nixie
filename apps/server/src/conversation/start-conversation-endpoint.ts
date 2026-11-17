@@ -11,6 +11,12 @@ import {
 import type { MemoryToolStore } from '@heynixie/memory';
 import { buildLogReadImageTool, buildLogReadTool } from '@heynixie/memory';
 import { buildPromptReadTool, buildPromptWriteTool } from '@heynixie/prompts';
+import {
+  buildReminderCancelTool,
+  buildReminderSetTool,
+  buildReminderUpdateTool,
+  buildRemindersListTool,
+} from '@heynixie/reminders';
 import { buildSilentEndTool } from '@heynixie/sessions';
 import type { WorkerTool } from '@heynixie/sessions';
 import type { SkillVendorContext } from '@heynixie/skills';
@@ -129,15 +135,26 @@ export async function startConversationEndpoint(
     ),
   };
 
+  const reminders = {
+    log: options.context.log,
+    definitions: options.context.definitions,
+    readZone: definitionToolOptions.readZone,
+    minGapMinutes: options.config.reminders.min_gap_minutes,
+  };
+
   const definitionTools = [
     buildTasksDefinitionsTool(definitionToolOptions),
     buildTasksRunsTool(options.context, messaging),
     buildTaskDefineTool(definitionToolOptions),
     buildTaskUndefineTool(definitionToolOptions),
+    buildRemindersListTool(reminders),
+    buildReminderSetTool(reminders),
+    buildReminderUpdateTool(reminders),
+    buildReminderCancelTool(reminders),
   ];
 
   // A started task's thread has no skill list, so a skill tool would refuse its every call. The
-  // tools that list or change the task definitions belong to the conversation alone.
+  // tools that list or change the task definitions and the reminders belong to the conversation alone.
   const bounds = buildTaskStartBounds(
     options.config.models,
     buildConversationMemoryTools(memory),

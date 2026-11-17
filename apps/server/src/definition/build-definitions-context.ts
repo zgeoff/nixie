@@ -1,4 +1,5 @@
 import type { DefinitionsContext, DefinitionsExportSweep } from '@heynixie/definitions';
+import { readArmedReminders } from '@heynixie/reminders';
 import { recordSeedResult } from '../seed/record-seed-result';
 import type { ServerParts } from '../types';
 import { runDefinitionsSeed } from './run-definitions-seed';
@@ -15,7 +16,11 @@ export function buildDefinitionsContext(
     checkTaskStart: parts.tasks.checkTaskStart,
     toolNames: parts.tasks.toolNames,
     runSeed: () => runDefinitionsSeed(parts),
-    inForceSeed: { log: parts.context.log, buildPolicy: parts.buildPolicy },
+    inForceSeed: {
+      log: parts.context.log,
+      buildPolicy: parts.buildPolicy,
+      readExtraArmed: readArmedReminders,
+    },
     onSeeded: (result) => {
       recordSeedResult(parts, result);
     },

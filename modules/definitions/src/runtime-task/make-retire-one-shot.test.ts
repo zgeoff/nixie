@@ -54,7 +54,6 @@ test('it settles a runtime one-shot as retired with one_shot_skipped when its ta
     input: buildTestDefineInput({
       name: 'Book the dentist',
       brief: 'Book the dentist.',
-      target: 'task',
       trigger: { at: '2026-10-17T08:00:00Z' },
     }),
   });
@@ -105,7 +104,6 @@ test('it settles a runtime one-shot as retired with one_shot_fired when its task
     input: buildTestDefineInput({
       name: 'Book the dentist',
       brief: 'Book the dentist.',
-      target: 'task',
       trigger: { at: '2026-10-17T08:00:00Z' },
     }),
   });

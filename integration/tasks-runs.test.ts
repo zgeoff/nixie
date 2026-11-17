@@ -125,7 +125,6 @@ test('it lists the ended run of a one-off after its definition left the definiti
   await ctx.runDefine({
     name: 'Book the dentist',
     brief: 'Book the dentist.',
-    target: 'task',
     trigger: { at: '2027-03-12T08:00:00Z' },
   });
 
@@ -181,7 +180,6 @@ test('it names the task of a one-off from chat for a label once the task run end
   await ctx.runDefine({
     name: 'Book the dentist',
     brief: 'Book the dentist.',
-    target: 'task',
     trigger: { at: '2027-03-12T08:00:00Z' },
   });
 

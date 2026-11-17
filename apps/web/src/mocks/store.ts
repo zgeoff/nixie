@@ -133,7 +133,8 @@ const definitionNoticeSchema = z.object({
 });
 
 const reminderSchema = z.object({
-  brief: z.string(),
+  name: z.string().nullable().default(null),
+  note: z.string(),
   lateBySeconds: z.number().nullable().default(null),
   scheduledFor: z.string(),
 });

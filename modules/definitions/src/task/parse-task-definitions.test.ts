@@ -51,7 +51,6 @@ test('it accepts a definition and fills the defaults of the keys it leaves out',
             schedule: { every: 'week', on: 'fri', at: '08:00', zone: 'owner', catchUp: 'once' },
           },
           enabled: true,
-          target: 'task',
           context: 'fresh',
           wakeable: false,
           step: null,
@@ -70,7 +69,7 @@ test('it accepts a definition and fills the defaults of the keys it leaves out',
   });
 });
 
-test('it accepts a reminder with an at trigger', () => {
+test('it refuses a target: conversation definition and tells the owner to delete its folder', () => {
   const ctx = setupTest();
 
   const parsed = ctx.parse({
@@ -78,9 +77,39 @@ test('it accepts a reminder with an at trigger', () => {
       'name: Call the vet\nbrief: Book the check-up.\ntarget: conversation\ntrigger:\n  at: "2027-03-09T14:00:00+11:00"\n',
   });
 
-  expect(parsed.faults).toStrictEqual([]);
-  expect(parsed.definitions[0]?.form['trigger']).toStrictEqual({ at: '2027-03-09T14:00:00+11:00' });
+  expect(parsed.faults).toStrictEqual([
+    {
+      path: 'tasks/call-the-vet/task.yaml',
+      fault: 'target_removed',
+      reasons: [
+        'target: conversation is gone. nixie moved this definition to a reminder; delete the folder tasks/call-the-vet.',
+      ],
+    },
+  ]);
+
+  expect(parsed.warnings).toStrictEqual([]);
 });
+
+test.each(['task', 'elsewhere'])(
+  'it refuses a target: %s line and tells the owner to delete it',
+  (target) => {
+    const ctx = setupTest();
+
+    const parsed = ctx.parse({
+      'tasks/rain-gauge/task.yaml': `name: Check the rain gauge\nbrief: Read the gauge.\ntarget: ${target}\n`,
+    });
+
+    expect(parsed.faults).toStrictEqual([
+      {
+        path: 'tasks/rain-gauge/task.yaml',
+        fault: 'target_removed',
+        reasons: [
+          'target is gone, and every task definition runs as a task; delete the target line.',
+        ],
+      },
+    ]);
+  },
+);
 
 test('it keeps the step file in the files and the hash of a definition that names it', () => {
   const ctx = setupTest();
@@ -138,21 +167,6 @@ test.each<[SeedFaultCode, Record<string, string>, string]>([
       'tasks/rain-gauge/other.ts': 'export {};\n',
     },
     'tasks/rain-gauge/other.ts',
-  ],
-  [
-    'reminder_key',
-    {
-      'tasks/call-the-vet/task.yaml':
-        'name: Call the vet\nbrief: Book it.\ntarget: conversation\nwakeable: true\ntrigger:\n  at: "2027-03-09T14:00:00Z"\n',
-    },
-    'tasks/call-the-vet/task.yaml',
-  ],
-  [
-    'reminder_without_trigger',
-    {
-      'tasks/call-the-vet/task.yaml': 'name: Call the vet\nbrief: Book it.\ntarget: conversation\n',
-    },
-    'tasks/call-the-vet/task.yaml',
   ],
   [
     'bad_slot',
@@ -254,13 +268,6 @@ test.each<[SeedFaultCode, Record<string, string>, string]>([
     'bad_definition',
     {
       'tasks/rain-gauge/task.yaml': `name: Check the rain gauge\nbrief: Read the gauge and note the total.\nenabled: "yes"\n`,
-    },
-    'tasks/rain-gauge/task.yaml',
-  ],
-  [
-    'bad_definition',
-    {
-      'tasks/rain-gauge/task.yaml': `name: Check the rain gauge\nbrief: Read the gauge and note the total.\ntarget: elsewhere\n`,
     },
     'tasks/rain-gauge/task.yaml',
   ],

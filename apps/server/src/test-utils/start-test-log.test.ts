@@ -30,6 +30,7 @@ test('it starts a log with the tasks, sandboxes and memory projections and a fre
     'trigger_keys',
     'trigger_sources',
     'trigger_definitions',
+    'reminders',
     'sandboxes',
     'memory_items',
     'memory_versions',

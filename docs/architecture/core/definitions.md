@@ -233,16 +233,15 @@ the file.
 `model`, `persona`, `memory`, `log`, `tools`, `report`, `reportShape`, `limits`) and these keys of
 the definition:
 
-| Key            | Value                                                                                             | Default |
-| -------------- | ------------------------------------------------------------------------------------------------- | ------- |
-| `enabled`      | boolean                                                                                           | `true`  |
-| `trigger`      | `{ schedule }` or `{ at }`, as the contract library's `Trigger` type defines them                 | none    |
-| `target`       | `task`, or `conversation` for a reminder that holds only `name`, `brief`, `trigger` and `enabled` | `task`  |
-| `context`      | `fresh` or `continuing`                                                                           | `fresh` |
-| `wakeable`     | boolean                                                                                           | `false` |
-| `step`         | `{ file, api: 1 }`                                                                                | none    |
-| `destinations` | a list of destination patterns, as a rule's `destinations` list takes them                        | `[]`    |
-| `maxCalls`     | a map from a listed tool name to a whole-number cap of 1 or more                                  | `{}`    |
+| Key            | Value                                                                             | Default |
+| -------------- | --------------------------------------------------------------------------------- | ------- |
+| `enabled`      | boolean                                                                           | `true`  |
+| `trigger`      | `{ schedule }` or `{ at }`, as the contract library's `Trigger` type defines them | none    |
+| `context`      | `fresh` or `continuing`                                                           | `fresh` |
+| `wakeable`     | boolean                                                                           | `false` |
+| `step`         | `{ file, api: 1 }`                                                                | none    |
+| `destinations` | a list of destination patterns, as a rule's `destinations` list takes them        | `[]`    |
+| `maxCalls`     | a map from a listed tool name to a whole-number cap of 1 or more                  | `{}`    |
 
 The parser takes the decoded texts of the files and never reads the source. For each folder, it
 checks in this order:
@@ -265,19 +264,18 @@ One fault refuses the whole seed, and the definitions of the last accepted seed 
 refusal is a `TaskSeedRefusedError`, a kind of definitions parse error, whose problems and `faults`
 list each file's path and fault code:
 
-| Code                       | Path              | Cause                                                                                                 |
-| -------------------------- | ----------------- | ----------------------------------------------------------------------------------------------------- |
-| `bad_id`                   | the folder        | an ID outside the pattern                                                                             |
-| `missing_task_yaml`        | the folder        | a folder with no `task.yaml`                                                                          |
-| `unnamed_step_file`        | the `.ts` file    | a `.ts` file that `step.file` does not name                                                           |
-| `bad_slot`                 | `instructions.md` | a slot that the `task` prompt does not accept, which includes every `trigger.*` and `inputs.*` slot   |
-| `reminder_key`             | `task.yaml`       | a reminder with another key                                                                           |
-| `reminder_without_trigger` | `task.yaml`       | a reminder with no trigger                                                                            |
-| `bad_schedule`             | `task.yaml`       | a trigger that breaks a rule of `Schedule`                                                            |
-| `at_without_offset`        | `task.yaml`       | an `at` date-time with no offset or `Z`                                                               |
-| `start_refused`            | `task.yaml`       | start keys that fail the start schema, or a start that the check refuses                              |
-| `bad_max_calls`            | `task.yaml`       | a cap below 1, or a cap on a tool that `tools` lacks                                                  |
-| `bad_definition`           | `task.yaml`       | text that is not a mapping, a wrong value in a key of the definition, or a step file the folder lacks |
+| Code                | Path              | Cause                                                                                                 |
+| ------------------- | ----------------- | ----------------------------------------------------------------------------------------------------- |
+| `bad_id`            | the folder        | an ID outside the pattern                                                                             |
+| `missing_task_yaml` | the folder        | a folder with no `task.yaml`                                                                          |
+| `unnamed_step_file` | the `.ts` file    | a `.ts` file that `step.file` does not name                                                           |
+| `bad_slot`          | `instructions.md` | a slot that the `task` prompt does not accept, which includes every `trigger.*` and `inputs.*` slot   |
+| `target_removed`    | `task.yaml`       | a `target` key, which every definition now runs as a task without; delete the line                    |
+| `bad_schedule`      | `task.yaml`       | a trigger that breaks a rule of `Schedule`                                                            |
+| `at_without_offset` | `task.yaml`       | an `at` date-time with no offset or `Z`                                                               |
+| `start_refused`     | `task.yaml`       | start keys that fail the start schema, or a start that the check refuses                              |
+| `bad_max_calls`     | `task.yaml`       | a cap below 1, or a cap on a tool that `tools` lacks                                                  |
+| `bad_definition`    | `task.yaml`       | text that is not a mapping, a wrong value in a key of the definition, or a step file the folder lacks |
 
 A file directly under `tasks/`, a nested folder, and any `.yaml` or `.md` file other than
 `task.yaml` and `instructions.md` belong to no definition, and the seed lists them as unapplied
@@ -297,13 +295,12 @@ persona, memory `none`, the own log, and the default tools.
 
 ## The task of a definition
 
-Each definition with `target: task` and `enabled: true` has one task, which `task.definition_set`
-binds to the definition. The seed creates it in the seed's own transaction, with a `task.created`
-record that has no starter, and the record `task.definition_set` then holds the definition ID and
-the hash in force. A seed that changes the hash writes the record again. A seed that drops the
-definition, disables it or turns it into a reminder writes it with a null hash, and the task stays:
-its history and any open task run outlive the definition. A task never closes, so the close control
-of a definition's task gets `definition_task_never_closes`.
+Each enabled definition has one task, which `task.definition_set` binds to the definition. The seed
+creates it in the seed's own transaction, with a `task.created` record that has no starter, and the
+record `task.definition_set` then holds the definition ID and the hash in force. A seed that changes
+the hash writes the record again. A seed that drops the definition or disables it writes it with a
+null hash, and the task stays: its history and any open task run outlive the definition. A task
+never closes, so the close control of a definition's task gets `definition_task_never_closes`.
 
 At every accepted seed, the same transaction also arms each definition that holds a trigger, and
 leaves out a spent one-shot, as [Triggers](./triggers.md#which-definitions-can-fire) describes.
@@ -342,10 +339,8 @@ read itself, so the guest need not report it. A fire that lands during a turn st
 step that opens its task run. A `task.message` call that passes the brief ID as `replyTo` gets the
 refusal for an unknown message ID, because the ID names no message.
 
-A fire of a definition with `target: conversation` writes its `trigger.fired` record on the
-conversation's thread and opens no task run. It wakes the conversation, which shows the user a
-reminder with the brief and the time it was set for, as
-[system messages](./conversation-turns.md#system-messages) describes.
+A definition never fires into the conversation. A reminder does, as [reminders](./reminders.md)
+describes.
 
 The sandbox runner reads the version that the open task run pins, else the newest task run, else the
 hash in force. The version gives the persona, the memory, the log, the tools and the model. A
@@ -463,18 +458,18 @@ request that the user closes by hand opens again at the next export.
 
 ### Changes from the conversation
 
-The conversation holds 3 tools. `task.define` and `task.undefine` have the effect `schedule`, and
-`tasks.definitions` has the effect `read`. A task's tool list never holds any of the 3: a
-`task.start` that names one is refused with `conversation_tools`, because the start bounds list all
-3 as conversation tools. The bounds list `tasks.runs`, which [tasks](./tasks.md) describes, among
-the conversation tools too.
+The conversation holds 3 tools for definitions. `task.define` and `task.undefine` have the effect
+`schedule`, and `tasks.definitions` has the effect `read`. A task's tool list never holds any of
+them: a `task.start` that names one is refused with `conversation_tools`, because the start bounds
+list them as conversation tools. The [reminder tools](./reminders.md#tools) and `tasks.runs`, which
+[tasks](./tasks.md) describes, are conversation tools too.
 
-- **`task.define`** takes a name, a brief, a target and a trigger, and returns the ID, the trigger
-  in words, the next fire and the short ID of the change. A schedule has a zone, and an `at` may
-  hold no offset. The tool reads the user's zone and gives that `at` the zone's offset at that time
-  before it calls `requestDefinitionChange`. A refusal comes back as `refused` with the code and
-  what the model needs to retry. A change that leaves out `model`, `persona`, `memory`, `tools` or
-  `report` puts each back to its default.
+- **`task.define`** takes a name, a brief and a trigger, and returns the ID, the trigger in words,
+  the next fire and the short ID of the change. A schedule has a zone, and an `at` may hold no
+  offset. The tool reads the user's zone and gives that `at` the zone's offset at that time before
+  it calls `requestDefinitionChange`. A refusal comes back as `refused` with the code and what the
+  model needs to retry. A change that leaves out `model`, `persona`, `memory`, `tools` or `report`
+  puts each back to its default.
 - **`task.undefine`** takes a definition ID and answers the same way.
 - **`tasks.definitions`** lists every definition with its trigger in words and its next fire, and
   marks a disabled, spent, removed or unreadable one as not in force. A definition from the repo

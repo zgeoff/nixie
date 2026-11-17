@@ -1,5 +1,6 @@
 import { expect, test } from 'bun:test';
-import { writeRecords } from '@heynixie/log';
+import { withWriteTransaction, writeRecords } from '@heynixie/log';
+import { writeReminderVersion } from '@heynixie/reminders';
 import { buildMockTaskMessageView } from '../test-utils/build-mock-task-message-view';
 import { startTestTasks } from '../test-utils/start-test-tasks';
 import { readInboxMessages } from './read-inbox-messages';
@@ -10,7 +11,8 @@ async function setupTest() {
   return {
     log: tasks.context.log,
     context: tasks.context,
-    addVersion: tasks.definitionStore.add,
+    writeVersion: (hash: string, version: Parameters<typeof writeReminderVersion>[2]) =>
+      withWriteTransaction(tasks.writer, (tx) => writeReminderVersion(tx, hash, version)),
     buildFirePayload: (overrides: Record<string, unknown>) => ({
       definitionID: 'call-the-dentist',
       definitionHash: 'hash-1',
@@ -237,18 +239,17 @@ test('it passes over a record of a kind no module registers and keeps the record
 });
 
 test.each([
-  ['the brief of the pinned version', 'hash-1', 'Call the dentist about the crown.'],
+  ['the note of the pinned version', 'hash-1', 'Call the dentist about the crown.'],
   ['a note for a version that is no longer stored', 'hash-gone', 'no longer stored'],
 ])(
   'it reads a fire on the conversation thread as a reminder with %s',
   async (_name, hash, text) => {
     const ctx = await setupTest();
 
-    ctx.addVersion('hash-1', {
-      version: {
-        brief: 'Call the dentist about the crown.',
-        trigger: { at: '2027-03-09T14:00:00+11:00' },
-      },
+    await ctx.writeVersion('hash-1', {
+      name: 'Dentist',
+      note: 'Call the dentist about the crown.',
+      trigger: { at: '2027-03-09T14:00:00+11:00' },
     });
 
     const records = await writeRecords(ctx.log, [

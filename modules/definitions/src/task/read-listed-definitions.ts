@@ -14,7 +14,6 @@ export interface ListedDefinition {
   readonly definitionHash: string;
   readonly name: string;
   readonly enabled: boolean;
-  readonly target: 'task' | 'conversation';
   readonly trigger: Trigger | null;
   readonly tools: readonly string[];
   readonly origin: 'definitions' | 'nixie';
@@ -30,7 +29,6 @@ export interface ListedDefinition {
 
 const formSchema = z.looseObject({
   name: z.string(),
-  target: z.enum(['task', 'conversation']),
   enabled: z.boolean(),
   tools: z.string().array().optional(),
   trigger: triggerSchema.nullish(),
@@ -83,9 +81,8 @@ export async function readListedDefinitions(
           definitionHash: task.hash,
           name: form.name,
           enabled: form.enabled,
-          target: form.target,
           trigger: form.trigger ?? null,
-          tools: form.target === 'conversation' ? [] : (form.tools ?? startedTaskDefaultTools),
+          tools: form.tools ?? startedTaskDefaultTools,
           origin: task.origin,
           createdBy:
             changeSequence === undefined

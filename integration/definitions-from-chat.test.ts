@@ -104,7 +104,7 @@ async function setupTest() {
   };
 }
 
-test('it puts a conversation reminder in force from chat, writes its notice record and fires it on schedule', async () => {
+test('it puts a definition in force from chat, writes its notice record and fires it on schedule', async () => {
   const ctx = await setupTest();
 
   await ctx.seed();
@@ -114,7 +114,6 @@ test('it puts a conversation reminder in force from chat, writes its notice reco
   const outcome = await ctx.runDefine({
     name: 'Water the tomatoes',
     brief: 'Water the tomatoes.',
-    target: 'conversation',
     trigger: { schedule: { every: 'week', on: 'fri', at: '08:00', zone: 'owner' } },
   });
 
@@ -168,7 +167,6 @@ test('it takes a one-shot from chat out of force after its fire, and a later see
   await ctx.runDefine({
     name: 'Book the dentist',
     brief: 'Book the dentist.',
-    target: 'task',
     trigger: { at: '2027-03-12T08:00:00Z' },
   });
 
@@ -238,7 +236,6 @@ test('it refuses an undo of a one-shot from chat once it fired, as no longer in 
   const outcome = await ctx.runDefine({
     name: 'Book the dentist',
     brief: 'Book the dentist.',
-    target: 'task',
     trigger: { at: '2027-03-12T08:00:00Z' },
   });
 

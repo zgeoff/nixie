@@ -11,6 +11,7 @@ import { mockMandateProcedures } from './mock-mandate-procedures';
 import { mockMemoryRouter } from './mock-memory-router';
 import { mockPasskeyProcedures } from './mock-passkey-procedures';
 import { mockReadPayloadProcedure } from './mock-read-payload-procedure';
+import { mockReminderProcedures } from './mock-reminder-procedures';
 import { mockRuleProcedures } from './mock-rule-procedures';
 import { mockSpendProcedures } from './mock-spend-procedures';
 import { readMockBackupNotice } from './read-mock-backup-notice';
@@ -50,6 +51,7 @@ export const mockAPIRouter = os.router({
       return readMockBackupNotice();
     }),
   },
+  reminders: mockReminderProcedures,
   conversation: {
     read: os.conversation.read.handler((options) => {
       requireMockSession(options.context.sessionToken, options.errors.UNAUTHORIZED);

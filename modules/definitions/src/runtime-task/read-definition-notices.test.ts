@@ -108,7 +108,7 @@ test('it gives an undo of an add the name of the definition and no trigger', asy
 test('it gives an undo that restores a file definition with no trigger its version', async () => {
   const ctx = await setupTest();
 
-  await ctx.writeRepoTask('check-weather', 'name: Check weather\nbrief: Check it.\ntarget: task\n');
+  await ctx.writeRepoTask('check-weather', 'name: Check weather\nbrief: Check it.\n');
   await ctx.seed();
 
   const removed = await requestDefinitionChange(ctx.context, {

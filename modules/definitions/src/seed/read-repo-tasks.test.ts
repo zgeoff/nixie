@@ -18,7 +18,6 @@ async function setupTest() {
     input: {
       name: 'Feed the cat',
       brief: 'Feed the cat.',
-      target: 'conversation',
       trigger: {
         schedule: { every: 'day', at: '07:00', zone: 'owner', catchUp: 'once' },
       },

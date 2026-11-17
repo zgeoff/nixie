@@ -46,8 +46,8 @@ export interface RecordLookups {
     { readonly proposalID: string; readonly shortID: string }
   >;
 
-  // the brief of each reminder fire, keyed by its record's sequence
-  readonly reminderBriefs: ReadonlyMap<number, string>;
+  // the name and the note of each reminder fire, keyed by its record's sequence
+  readonly reminders: ReadonlyMap<number, { readonly name: string | null; readonly note: string }>;
   readonly removedSequences: ReadonlySet<number>;
   readonly stopCancelledActions: ReadonlyMap<number, readonly ListedAction[]>;
   readonly taskDirectory: readonly TaskProfile[];
@@ -58,7 +58,7 @@ const noLookups: RecordLookups = {
   cancelledActionIDs: new Set(),
   definitionNotices: new Map(),
   proposals: new Map(),
-  reminderBriefs: new Map(),
+  reminders: new Map(),
   removedSequences: new Set(),
   stopCancelledActions: new Map(),
   taskDirectory: [],
@@ -331,14 +331,15 @@ function toReminder(record: LogRecord, lookups: RecordLookups): Reminder | undef
   }
 
   const fire = parseTriggerFired(record.payload);
-  const brief = lookups.reminderBriefs.get(record.sequence);
+  const text = lookups.reminders.get(record.sequence);
 
-  if (fire === null || fire.kind === 'poll' || brief === undefined) {
+  if (fire === null || fire.kind === 'poll' || text === undefined) {
     return undefined;
   }
 
   return {
-    brief,
+    name: text.name,
+    note: text.note,
     scheduledFor: new Date(fire.scheduledFor).toISOString(),
     lateBySeconds: findLateBySeconds(fire),
   };

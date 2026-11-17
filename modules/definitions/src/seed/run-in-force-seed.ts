@@ -12,6 +12,7 @@ import type { SeedResult } from '../rule/run-seed';
 import { buildTaskSeedRecords } from '../runtime-task/build-task-seed-records';
 import { readTaskSeedInput } from '../runtime-task/read-task-seed-input';
 import { writeAdoptedSkills } from '../skill/write-adopted-skills';
+import type { TaskHooksContext } from '../task/write-task-hooks';
 import { writeTaskHooks } from '../task/write-task-hooks';
 import type { SnapshotPolicy } from '../types';
 import type { BudgetBase } from '../utils/build-budget-seed-plan';
@@ -32,6 +33,9 @@ export interface InForceSeedOptions {
   readonly log: Log;
   readonly buildPolicy: (prompts: PromptOverrides) => SnapshotPolicy;
   readonly builtInBudgets?: readonly BudgetBase[];
+
+  // the triggers that another module owns, which the seed arms beside the definitions
+  readonly readExtraArmed?: TaskHooksContext['readExtraArmed'];
 }
 
 export function runInForceSeed(options: InForceSeedOptions): Promise<SeedResult> {
@@ -119,7 +123,11 @@ export async function seedInForceInTransaction(
 
   await writeTaskHooks(
     tx,
-    { log: options.log, definitions: () => ({ snapshotHash: built.snapshotHash }) },
+    {
+      log: options.log,
+      definitions: () => ({ snapshotHash: built.snapshotHash }),
+      ...(options.readExtraArmed === undefined ? {} : { readExtraArmed: options.readExtraArmed }),
+    },
     built.tasks,
   );
 

@@ -1,0 +1,1 @@
+export const reminderTriggerPrefix = 'reminder:';

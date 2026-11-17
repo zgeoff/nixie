@@ -1,5 +1,5 @@
-import { buildLocalInstant } from '@heynixie/triggers';
-import { formatZonedISO } from '../../utils/format-zoned-iso';
+import { buildLocalInstant } from '@heynixie/clock';
+import { formatZonedISO } from './format-zoned-iso';
 
 const offsetPattern = /(?:Z|[+-]\d{2}:\d{2})$/u;
 

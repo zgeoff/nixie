@@ -5,8 +5,7 @@ import { sandboxStartSchema, startedTaskDefaultTools } from '@heynixie/tasks';
 import { checkCallCaps, toSDKToolName } from '@heynixie/tools';
 import { z } from 'zod';
 import { normalizeInstructions } from '../definition/normalize-instructions';
-import { buildSHA256 } from '../utils/build-sha256';
-import { toCanonicalJSON } from '../utils/to-canonical-json';
+import { buildDefinitionHash } from './build-definition-hash';
 import { collectNestedUnknownFields } from './collect-nested-unknown-fields';
 import { definitionOnlyKeys, definitionOnlySchema, maxCallsSchema } from './definition-only-schema';
 import { formatIssue } from './format-issue';
@@ -51,6 +50,20 @@ export function parseTaskFolder(folder: TaskFolder, context: TaskSeedContext): F
   if (typeof mapping === 'string') {
     return {
       faults: [{ path: yamlPath, fault: 'bad_definition', reasons: [mapping] }],
+      warnings: [],
+      definition: null,
+    };
+  }
+
+  if ('target' in mapping) {
+    return {
+      faults: [
+        {
+          path: yamlPath,
+          fault: 'target_removed',
+          reasons: [renderTargetRemoved(mapping['target'], folder.id)],
+        },
+      ],
       warnings: [],
       definition: null,
     };
@@ -123,10 +136,7 @@ export function parseTaskFolder(folder: TaskFolder, context: TaskSeedContext): F
   }
 
   if (only.success) {
-    faults.push(
-      ...collectReminderFaults(yamlPath, mapping, only.data.target, trigger),
-      ...collectStepFaults(root, folder, only.data.step),
-    );
+    faults.push(...collectStepFaults(root, folder, only.data.step));
   }
 
   const instructions = folder.files.get('instructions.md');
@@ -188,26 +198,10 @@ function parseMapping(text: string): Record<string, unknown> | string {
   return mapping.success ? mapping.data : 'task.yaml must hold a mapping of keys to values';
 }
 
-const reminderKeys = new Set(['name', 'brief', 'target', 'trigger', 'enabled']);
-
-function collectReminderFaults(
-  path: string,
-  mapping: Readonly<Record<string, unknown>>,
-  target: 'task' | 'conversation',
-  trigger: ReturnType<typeof parseTrigger>,
-): SeedFault[] {
-  if (target !== 'conversation') {
-    return [];
-  }
-
-  return [
-    ...(Object.keys(mapping).some((key) => !reminderKeys.has(key))
-      ? [{ path, fault: 'reminder_key' as const, reasons: [] }]
-      : []),
-    ...(trigger.status === 'parsed' && trigger.trigger === null
-      ? [{ path, fault: 'reminder_without_trigger' as const, reasons: [] }]
-      : []),
-  ];
+function renderTargetRemoved(target: unknown, id: string): string {
+  return target === 'conversation'
+    ? `target: conversation is gone. nixie moved this definition to a reminder; delete the folder tasks/${id}.`
+    : 'target is gone, and every task definition runs as a task; delete the target line.';
 }
 
 function collectStepFaults(
@@ -297,15 +291,12 @@ function buildTaskDefinition(
     files[`${root}/${stepFile}`] = step;
   }
 
-  const parts = {
+  const hash = buildDefinitionHash({
     id: folder.id,
     form,
-    instructions:
-      instructions === undefined ? null : buildSHA256(normalizeInstructions(instructions)),
-    step: step === undefined ? null : buildSHA256(step),
-  };
-
-  const hash = buildSHA256(toCanonicalJSON(parts));
+    instructions,
+    step,
+  });
 
   return { id: folder.id, hash, form, files };
 }

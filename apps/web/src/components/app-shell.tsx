@@ -11,6 +11,7 @@ const entries = [
   { exact: false, label: 'Tasks', to: '/tasks' },
   { exact: false, label: 'Ended runs', to: '/tasks/ended' },
   { exact: false, label: 'Definitions', to: '/definitions' },
+  { exact: false, label: 'Reminders', to: '/reminders' },
   { exact: false, label: 'Passkeys', to: '/passkeys' },
 ] as const;
 

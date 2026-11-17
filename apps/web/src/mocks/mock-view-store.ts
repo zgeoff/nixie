@@ -62,22 +62,39 @@ const definitions = new Collection({
     next: z.string().nullable().default(null),
     origin: z.enum(['definitions', 'nixie']).default('nixie'),
     rendered: z.string().nullable().default(null),
-    target: z.enum(['task', 'conversation']).default('task'),
     taskID: z.string().nullable().default(null),
     tools: toolsSchema.default([]),
     trigger: triggerSchema.nullable().default(null),
   }),
 });
 
+const recentFiresSchema = z.array(z.string()).default([]);
+
+const reminders = new Collection({
+  schema: z.object({
+    name: z.string(),
+    next: z.string().nullable().default(null),
+    note: z.string(),
+    recentFires: recentFiresSchema,
+    reminder: z.string(),
+    rendered: z.string(),
+    sequence: z.int().default(nextSequence),
+    state: z.enum(['active', 'fired', 'cancelled']).default('active'),
+    trigger: triggerSchema,
+  }),
+});
+
 export const mockViewStore = {
   definitions,
   endedRuns,
+  reminders,
   reportEntries,
 
   reset: (): void => {
     endedRuns.clear();
     reportEntries.clear();
     definitions.clear();
+    reminders.clear();
   },
 };
 

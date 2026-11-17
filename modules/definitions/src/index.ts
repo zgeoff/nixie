@@ -207,6 +207,7 @@ export type {
 
 export { writeDefinitionResolution } from './runtime-task/write-definition-resolution';
 export { makeRetireOneShot } from './runtime-task/make-retire-one-shot';
+export { writeReminderMoveSettle } from './runtime-task/write-reminder-move-settle';
 export { readTaskDefinitionsOverlay } from './runtime-task/read-task-definitions-overlay';
 export type { OverlaidTaskDefinition } from './utils/build-task-seed-plan';
 export type { InForceSeedOptions } from './seed/run-in-force-seed';

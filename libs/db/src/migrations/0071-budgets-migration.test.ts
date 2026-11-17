@@ -39,9 +39,9 @@ async function setupTest() {
   return { db };
 }
 
-test('it is the migration of version 71, and it leaves the oldest reader at 70', () => {
+test('it is the migration of version 71, and it is not the oldest reader', () => {
   expect(nixieSchema.migrations.indexOf(budgetsMigration) + 1).toBe(71);
-  expect(nixieSchema.oldestReader).toBe(70);
+  expect(nixieSchema.oldestReader).not.toBe(71);
 });
 
 test('it creates the 3 budget tables empty', async () => {

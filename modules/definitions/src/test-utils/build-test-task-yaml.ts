@@ -1,6 +1,5 @@
 export interface TestTaskYamlOptions {
   readonly brief?: string;
-  readonly target?: 'task' | 'conversation';
   readonly isEnabled?: boolean;
 }
 
@@ -8,7 +7,6 @@ export interface TestTaskYamlOptions {
 export function buildTestTaskYaml(options: TestTaskYamlOptions = {}): string {
   return `name: Water the tomatoes
 brief: ${options.brief ?? 'Water the tomatoes.'}
-target: ${options.target ?? 'conversation'}
 ${options.isEnabled === false ? 'enabled: false\n' : ''}trigger:
   schedule:
     every: week

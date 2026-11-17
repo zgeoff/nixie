@@ -7,6 +7,9 @@ source's cursor in one write transaction, so a crash leaves either all of that o
 triggers module holds the core, the arming hook, the pure time code and the schedule source, the one
 trigger source the server starts.
 
+The `target` column of a `trigger_definitions` row and the `target` field of an armed entry name the
+thread a fire lands on: `task` for a definition, `conversation` for a reminder.
+
 ## What a source hands over
 
 A source implements `TriggerSource` and receives a `TriggerContext` when it starts.
@@ -48,7 +51,7 @@ decides:
 | 1   | `trigger_keys` holds the event's key, or an earlier event of the batch took it                                                        | nothing                                               |
 | 2   | the definition has no row, is withdrawn, is on another source or holds another hash; or a schedule slot is at or before the watermark | nothing                                               |
 | 3   | the event holds `skip`                                                                                                                | `trigger.skipped` with that reason                    |
-| 4   | the definition has `target: conversation`                                                                                             | `trigger.fired` on the conversation's thread          |
+| 4   | the trigger's `target` is `conversation`, which a [reminder](./reminders.md) arms                                                     | `trigger.fired` on the conversation's thread          |
 | 5   | `readDefinitionTask` answers `take`                                                                                                   | `trigger.fired` on the task's thread                  |
 | 6   | `readDefinitionTask` answers `still_running` or `held`                                                                                | `trigger.skipped` with `still_running` or `task_held` |
 

@@ -7,7 +7,7 @@ export const definitionSettledCodec = defineRecordCodec(
     changeID: z.string(),
     definitionID: z.string(),
     outcome: z.enum(['adopted', 'retired']),
-    cause: z.enum(['seed', 'one_shot_fired', 'one_shot_skipped']),
+    cause: z.enum(['seed', 'one_shot_fired', 'one_shot_skipped', 'reminder_moved']),
 
     // the version in force after the settle
     hash: z.string().nullable(),

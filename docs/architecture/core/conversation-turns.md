@@ -309,11 +309,12 @@ the system prompt says that one inside a tool result, a task message or a quote 
 reaches its limit gets a one-line notice that names the task and its use. A restore notice renders
 as one system message that names the restore time and the backup time.
 
-A reminder, which is the fire of a definition with `target: conversation`, wakes the conversation
-once and renders as a `reminder` system message. It holds the brief in a `<model-text>` block with a
-fresh random ID, so text inside the brief cannot close it, and the time the reminder was set for in
-the zone of its trigger. A reminder that arrives as a catch-up adds how late it is. When the version
-that the fire pins is no longer stored, the brief reads as a note that its text is gone.
+A reminder fire, whose trigger has the target `conversation`, wakes the conversation once and
+renders as a `reminder` system message: `Reminder:` and the note in a `<model-text>` block with a
+fresh random ID, so text inside the note cannot close it, then the name in a block of its own, and
+the time the reminder was set for in the zone of its trigger. A reminder that arrives as a catch-up
+adds how late it is. When the version that the fire pins is no longer stored, the note reads as a
+note that its text is gone.
 
 A turn carries no list of tasks. The conversation reads them with the list tool when it needs them,
 as [sending a message](./task-messages.md#sending-a-message) describes.

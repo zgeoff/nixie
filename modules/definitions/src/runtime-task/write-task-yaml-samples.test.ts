@@ -39,7 +39,6 @@ test('it writes a sample as block YAML with one final newline', async () => {
     [
       'name: Call the vet',
       String.raw`brief: "Book the \"check-up\" # not a comment\nand ask about shots.\n"`,
-      'target: conversation',
       'trigger:',
       '  at: 2027-03-09T14:00:00+11:00',
       '',

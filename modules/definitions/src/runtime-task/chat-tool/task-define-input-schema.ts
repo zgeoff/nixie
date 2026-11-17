@@ -11,7 +11,6 @@ export const taskDefineInputSchema = z.strictObject({
   definitionID: z.string().min(1).max(64).optional(),
   name: z.string().min(1),
   brief: z.string().min(1),
-  target: z.enum(['task', 'conversation']),
   trigger: toolTriggerSchema,
   model: z.string().optional(),
   persona: z.enum(['default', 'none']).optional(),

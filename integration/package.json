@@ -20,6 +20,7 @@
     "@heynixie/models": "workspace:*",
     "@heynixie/policy": "workspace:*",
     "@heynixie/proposals": "workspace:*",
+    "@heynixie/reminders": "workspace:*",
     "@heynixie/sandbox": "workspace:*",
     "@heynixie/sandbox-imp": "workspace:*",
     "@heynixie/secret-scan": "workspace:*",

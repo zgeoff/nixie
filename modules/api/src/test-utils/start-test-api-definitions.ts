@@ -41,7 +41,7 @@ export async function startTestAPIDefinitions(api: TestAPI) {
 
       await writeFile(
         join(root, 'tasks', 'water-the-tomatoes', 'task.yaml'),
-        `name: Water the tomatoes\nbrief: ${brief}\ntarget: conversation\ntrigger:\n  schedule:\n    every: week\n    on: fri\n    at: "08:00"\n`,
+        `name: Water the tomatoes\nbrief: ${brief}\ntrigger:\n  schedule:\n    every: week\n    on: fri\n    at: "08:00"\n`,
       );
     },
     define: async (overrides: Parameters<typeof buildTestDefineInput>[0] = {}) => {

@@ -6,6 +6,7 @@ import { definitionsConfigSchema } from '@heynixie/definitions';
 import { memoryConfigSchema } from '@heynixie/memory';
 import { policyConfigSchema } from '@heynixie/policy';
 import { approvalsConfigSchema, quietHoursSchema } from '@heynixie/proposals';
+import { remindersConfigSchema } from '@heynixie/reminders';
 import { skillsConfigSchema } from '@heynixie/skills';
 import { tasksConfigSchema } from '@heynixie/tasks';
 import { turnInputLogConfigSchema } from '@heynixie/turn-inputs';
@@ -28,6 +29,7 @@ export const deploymentConfigSchema = z
     search: searchConfigSchema.default(searchConfigSchema.parse({})),
     time: timeConfigSchema.default(timeConfigSchema.parse({})),
     tasks: tasksConfigSchema.default(tasksConfigSchema.parse({})),
+    reminders: remindersConfigSchema.default(remindersConfigSchema.parse({})),
     actions: actionsConfigSchema.default(actionsConfigSchema.parse({})),
     memory: memoryConfigSchema.default(memoryConfigSchema.parse({})),
     policy: policyConfigSchema.default(policyConfigSchema.parse({})),

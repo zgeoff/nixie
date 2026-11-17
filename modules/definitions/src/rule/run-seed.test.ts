@@ -2294,7 +2294,7 @@ test('it fills a version with the file starter defaults when the file omits them
   });
 });
 
-test('it reads the brief and the at trigger of a conversation reminder', async () => {
+test('it reads the brief and the at trigger of a one-shot', async () => {
   const ctx = await setupTest();
 
   await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 4\n');
@@ -2303,7 +2303,7 @@ test('it reads the brief and the at trigger of a conversation reminder', async (
 
   await writeFile(
     join(ctx.root, 'tasks', 'dentist', 'task.yaml'),
-    'name: Call the dentist\nbrief: Call the dentist about the crown.\ntarget: conversation\ntrigger:\n  at: "2026-06-04T06:30:00+10:00"\n',
+    'name: Call the dentist\nbrief: Call the dentist about the crown.\ntrigger:\n  at: "2026-06-04T06:30:00+10:00"\n',
   );
 
   await runSeed({
@@ -2713,7 +2713,7 @@ test('it binds no task to a spent one-shot and arms nothing for it', async () =>
   expect(armed).toStrictEqual([]);
 });
 
-test('it arms a one-shot whose key is not taken, whatever its target', async () => {
+test('it arms a one-shot whose key is not taken', async () => {
   const ctx = await setupTest({ projections: [...tasksProjections, ...triggersProjections] });
 
   await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 4\n');
@@ -2722,7 +2722,7 @@ test('it arms a one-shot whose key is not taken, whatever its target', async () 
 
   await writeFile(
     join(ctx.root, 'tasks', 'dentist', 'task.yaml'),
-    'name: Dentist\nbrief: Remind me.\ntarget: conversation\ntrigger:\n  at: "2027-03-09T14:00:00Z"\n',
+    'name: Dentist\nbrief: Remind me.\ntrigger:\n  at: "2027-03-09T14:00:00Z"\n',
   );
 
   await runSeed({
@@ -2737,36 +2737,33 @@ test('it arms a one-shot whose key is not taken, whatever its target', async () 
   expect(armed.map((entry) => entry.record.payload['withdrawn'])).toStrictEqual([[]]);
 
   expect(armed.map((entry) => entry.record.payload['armed'])).toMatchObject([
-    [{ definitionID: 'dentist', target: 'conversation', trigger: { at: '2027-03-09T14:00:00Z' } }],
+    [{ definitionID: 'dentist', target: 'task', trigger: { at: '2027-03-09T14:00:00Z' } }],
   ]);
 });
 
-test.each([
-  ['a disabled definition', 'name: Check\nbrief: Read it.\nenabled: false\n'],
-  [
-    'a definition with target conversation',
-    'name: Check\nbrief: Read it.\ntarget: conversation\ntrigger:\n  at: "2027-03-09T14:00:00Z"\n',
-  ],
-])('it binds no task to %s', async (_title, yaml) => {
-  const ctx = await setupTest({ projections: tasksProjections });
+test.each([['a disabled definition', 'name: Check\nbrief: Read it.\nenabled: false\n']])(
+  'it binds no task to %s',
+  async (_title, yaml) => {
+    const ctx = await setupTest({ projections: tasksProjections });
 
-  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 4\n');
-  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
-  await mkdir(join(ctx.root, 'tasks', 'rain-gauge'), { recursive: true });
-  await writeFile(join(ctx.root, 'tasks', 'rain-gauge', 'task.yaml'), yaml);
+    await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 4\n');
+    await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+    await mkdir(join(ctx.root, 'tasks', 'rain-gauge'), { recursive: true });
+    await writeFile(join(ctx.root, 'tasks', 'rain-gauge', 'task.yaml'), yaml);
 
-  const result = await runSeed({
-    tasks: buildTestTaskSeed(),
-    log: ctx.log,
-    source: ctx.source,
-    buildPolicy: () => ({ rules: [], tools: [] }),
-  });
+    const result = await runSeed({
+      tasks: buildTestTaskSeed(),
+      log: ctx.log,
+      source: ctx.source,
+      buildPolicy: () => ({ rules: [], tools: [] }),
+    });
 
-  const created = await readRecords(ctx.log, { afterSequence: 0, kinds: ['task.created'] });
+    const created = await readRecords(ctx.log, { afterSequence: 0, kinds: ['task.created'] });
 
-  expect(result.status).toBe('seeded');
-  expect(created).toStrictEqual([]);
-});
+    expect(result.status).toBe('seeded');
+    expect(created).toStrictEqual([]);
+  },
+);
 
 test('it binds no task when the seed is refused', async () => {
   const ctx = await setupTest({ projections: tasksProjections });

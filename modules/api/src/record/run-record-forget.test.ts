@@ -2,6 +2,11 @@ import { expect, mock, test } from 'bun:test';
 import { readRecords, writeRecords } from '@heynixie/log';
 import { readRecordForgetPreview } from '@heynixie/memory';
 import { buildMockWriteCaller, readPurgeRows } from '@heynixie/memory/test-utils';
+import {
+  reminderCancelledCodec,
+  reminderSetCodec,
+  reminderUpdatedCodec,
+} from '@heynixie/reminders';
 import { createConversationTask } from '@heynixie/tasks';
 import invariant from 'tiny-invariant';
 import { buildSeeder } from '../test-utils/build-seeder';
@@ -247,3 +252,50 @@ test('it reads every value the purge deletes as removed from the forget start, a
 
   expect(refused).toMatchObject({ code: 'ITEM_PURGING' });
 });
+
+test.each([
+  [
+    'reminder.set',
+    reminderSetCodec.kind,
+    reminderSetCodec.encode({
+      reminderID: 'r1',
+      shortID: 'abc',
+      hash: 'h1',
+      trigger: { at: '2027-03-09T14:00:00+11:00' },
+      origin: 'conversation',
+    }),
+  ],
+  [
+    'reminder.updated',
+    reminderUpdatedCodec.kind,
+    reminderUpdatedCodec.encode({
+      reminderID: 'r1',
+      shortID: 'abc',
+      hash: 'h2',
+      trigger: { at: '2027-03-09T15:00:00+11:00' },
+    }),
+  ],
+  [
+    'reminder.cancelled',
+    reminderCancelledCodec.kind,
+    reminderCancelledCodec.encode({ reminderID: 'r1', shortID: 'abc' }),
+  ],
+])(
+  'it refuses to forget a %s record, which holds no text of its own',
+  async (_name, kind, payload) => {
+    const ctx = await setupTest();
+
+    const [written] = await writeRecords(ctx.context.log, [
+      { kind, definitions: { snapshotHash: 'sha256:test' }, thread: 'conversation', payload },
+    ]);
+
+    invariant(written);
+
+    const result = await runRecordForget(ctx.context, {
+      thread: 'conversation',
+      sequence: written.sequence,
+    });
+
+    expect(result).toStrictEqual({ status: 'wrong_kind', kind });
+  },
+);

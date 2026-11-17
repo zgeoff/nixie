@@ -5,13 +5,13 @@ import { z } from 'zod';
 import type { DefinitionsTables, SnapshotTasks } from '../types';
 
 const formSchema = z.looseObject({
-  target: z.enum(['task', 'conversation']),
   enabled: z.boolean(),
   trigger: triggerSchema.nullish(),
 });
 
-// The definitions in force that can fire: those that are not disabled and hold a trigger, of either
-// target. The seed hands them to the triggers module, which arms them.
+// The definitions in force that can fire: those that are not disabled and hold a trigger. A
+// definition whose version is gone is out of force. The seed hands them to the triggers module,
+// which arms them.
 export async function readArmedDefinitionsInForce(
   tx: Transaction<unknown>,
   tasks: SnapshotTasks,
@@ -44,7 +44,7 @@ export async function readArmedDefinitionsInForce(
             definitionID: task.id,
             definitionHash: task.hash,
             source: 'schedule' as const,
-            target: form.target,
+            target: 'task' as const,
             trigger: form.trigger,
           },
         ]

@@ -1,13 +1,14 @@
 import { readTriggerZone } from '@heynixie/connectors';
 import type { LogRecord } from '@heynixie/log';
+import { readReminderVersion } from '@heynixie/reminders';
 import type { TasksContext } from '@heynixie/tasks';
 import { conversationTaskID, parseTriggerFired } from '@heynixie/tasks';
 import type { ReminderRead } from './render-reminder-notice';
 
-// What the reminder of a fire needs: its brief from the version the fire pins, and the zone of its
-// set time. Null for any record that is no schedule or at fire on the conversation's thread.
+// What the reminder of a fire needs: its name and note from the version the fire pins, and the zone
+// of its set time. Null for any record that is no schedule or at fire on the conversation's thread.
 export async function readReminder(
-  context: Pick<TasksContext, 'log' | 'readDefinitionVersion'>,
+  context: Pick<TasksContext, 'log'>,
   record: LogRecord,
   defaultZone: string,
 ): Promise<ReminderRead | null> {
@@ -21,7 +22,7 @@ export async function readReminder(
     return null;
   }
 
-  const version = await context.readDefinitionVersion(context.log.writer.db, fire.definitionHash);
+  const version = await readReminderVersion(context.log.writer.db, fire.definitionHash);
 
   const zone = await readTriggerZone(
     context.log,
@@ -30,5 +31,5 @@ export async function readReminder(
     defaultZone,
   );
 
-  return { fire, brief: version?.brief ?? null, zone };
+  return { fire, name: version?.name ?? null, note: version?.note ?? null, zone };
 }

@@ -166,6 +166,11 @@ function pickUndoMove(state: DefinitionState, request: UndoRequest): DefinitionD
       : refuse({ code: 'REPO_MOVED', seedSequence: request.seedSequence });
   }
 
+  // a definition that became a reminder has nothing left to put back
+  if (change.cause === 'reminder_moved') {
+    return refuse({ code: 'NOT_FOUND' });
+  }
+
   invariant(
     change.cause === 'one_shot_fired' ||
       change.cause === 'one_shot_skipped' ||

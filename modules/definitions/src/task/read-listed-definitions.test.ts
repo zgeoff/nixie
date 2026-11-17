@@ -70,7 +70,7 @@ test('it lists each definition of the seed with its form and the seed that put i
 
   await ctx.writeTask(
     'call-the-vet',
-    'name: Call the vet\nbrief: Book the check-up.\ntarget: conversation\ntrigger:\n  at: "2027-03-09T14:00:00+11:00"\n',
+    'name: Call the vet\nbrief: Book the check-up.\ntrigger:\n  at: "2027-03-09T14:00:00+11:00"\n',
   );
 
   await ctx.writeTask(
@@ -87,9 +87,8 @@ test('it lists each definition of the seed with its form and the seed that put i
       definitionHash: expect.toBeString(),
       name: 'Call the vet',
       enabled: true,
-      target: 'conversation',
       trigger: { at: '2027-03-09T14:00:00+11:00' },
-      tools: [],
+      tools: [...startedTaskDefaultTools],
       origin: 'definitions',
       createdBy: { sequence: seeded, kind: 'definitions_seeded' },
       isUnreadable: false,
@@ -99,7 +98,6 @@ test('it lists each definition of the seed with its form and the seed that put i
       definitionHash: expect.toBeString(),
       name: 'Water the tomatoes',
       enabled: false,
-      target: 'task',
       trigger: { schedule: { every: 'day', at: '08:00', zone: 'owner', catchUp: 'once' } },
       tools: [...startedTaskDefaultTools],
       origin: 'definitions',

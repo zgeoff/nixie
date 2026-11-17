@@ -7,6 +7,7 @@ import type { DefinitionNotice } from '@heynixie/contract';
 import { definitionChangedCodec } from '@heynixie/definitions';
 import type { LogRecord } from '@heynixie/log';
 import { readProposalsBySequence } from '@heynixie/proposals';
+import { readReminderVersion } from '@heynixie/reminders';
 import {
   conversationTaskID,
   missingReminderBrief,
@@ -65,7 +66,7 @@ export async function readRecordLookups(
   const removedSequences = await (known.removedSequences ??
     readRemovedRecordSequences(context, records));
 
-  const reminderBriefs = await readReminderBriefs(context, records);
+  const reminders = await readReminders(context, records);
 
   return {
     actions: await readActionCalls(context, outcomeActionIDs),
@@ -75,19 +76,20 @@ export async function readRecordLookups(
       context.log.writer.db,
       records.map((record) => record.sequence),
     ),
-    reminderBriefs,
+    reminders,
     removedSequences,
     stopCancelledActions: await readStopCancelledActions(context, stopSequences),
     taskDirectory: [...named.directory, ...unlisted],
   };
 }
 
-// The brief of the version that each reminder fire pins, or a note when the version is gone.
-async function readReminderBriefs(
-  context: Pick<APIContext, 'log' | 'readDefinitionVersion'>,
+// The name and the note of the version that each reminder fire pins, or a note when the version is
+// gone.
+async function readReminders(
+  context: Pick<APIContext, 'log'>,
   records: readonly LogRecord[],
-): Promise<ReadonlyMap<number, string>> {
-  const briefs = new Map<number, string>();
+): Promise<RecordLookups['reminders']> {
+  const reminders = new Map<number, { name: string | null; note: string }>();
 
   for (const record of records) {
     const fire =
@@ -96,16 +98,16 @@ async function readReminderBriefs(
         : null;
 
     if (fire !== null && fire.kind !== 'poll') {
-      const version = await context.readDefinitionVersion(
-        context.log.writer.db,
-        fire.definitionHash,
-      );
+      const version = await readReminderVersion(context.log.writer.db, fire.definitionHash);
 
-      briefs.set(record.sequence, version?.brief ?? missingReminderBrief);
+      reminders.set(record.sequence, {
+        name: version?.name ?? null,
+        note: version?.note ?? missingReminderBrief,
+      });
     }
   }
 
-  return briefs;
+  return reminders;
 }
 
 // The notice of each definition.changed record. A record whose change has no row gets none.

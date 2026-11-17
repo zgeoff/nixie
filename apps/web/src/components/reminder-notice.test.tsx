@@ -3,13 +3,14 @@ import { render } from '../test-utils/render';
 import { setupBrowserTimeZone } from '../test-utils/setup-browser-time-zone';
 import { ReminderNotice } from './reminder-notice';
 
-test('it shows the brief as plain text with the set time', () => {
+test('it shows the note and the name as plain text with the set time', () => {
   setupBrowserTimeZone('Europe/Lisbon');
 
   const rendered = render(
     <ReminderNotice
       reminder={{
-        brief: 'Call the dentist about the **crown**.',
+        name: 'Dentist',
+        note: 'Call the dentist about the **crown**.',
         scheduledFor: '2027-03-09T03:00:00.000Z',
         lateBySeconds: null,
       }}
@@ -17,7 +18,7 @@ test('it shows the brief as plain text with the set time', () => {
   );
 
   expect(rendered.getByRole('note')).toHaveTextContent(
-    'Reminder: Call the dentist about the **crown**. Set for',
+    'Reminder: Call the dentist about the **crown**. (Dentist) Set for',
   );
 
   expect(rendered.getByRole('note')).toHaveTextContent(
@@ -31,7 +32,8 @@ test('it shows how late a catch-up arrived', () => {
   const rendered = render(
     <ReminderNotice
       reminder={{
-        brief: 'Call the dentist.',
+        name: 'Dentist',
+        note: 'Call the dentist.',
         scheduledFor: '2027-03-09T03:00:00.000Z',
         lateBySeconds: 7500,
       }}

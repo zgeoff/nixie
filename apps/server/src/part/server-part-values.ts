@@ -43,6 +43,7 @@ export interface ServerPartValues {
   readonly definitions_seed: SeedResult;
   readonly start_record: void;
   readonly conversation_task: void;
+  readonly reminder_moves: void;
   readonly trigger_sources: void;
   readonly sandbox_runner: SandboxRunner;
   readonly runners: void;

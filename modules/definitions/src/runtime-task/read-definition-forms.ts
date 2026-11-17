@@ -12,7 +12,6 @@ export interface DefinitionForm {
   readonly name: string;
   readonly enabled: boolean;
   readonly trigger: Trigger | null;
-  readonly target: 'task' | 'conversation';
   readonly tools: readonly string[];
 }
 
@@ -20,7 +19,6 @@ const formSchema = z.looseObject({
   name: z.string(),
   enabled: z.boolean().default(true),
   trigger: triggerSchema.nullish(),
-  target: z.enum(['task', 'conversation']).default('task'),
   tools: z.array(z.string()).optional(),
 });
 
@@ -51,7 +49,6 @@ export async function readDefinitionForms(
         name: parsed.data.name,
         enabled: parsed.data.enabled,
         trigger: parsed.data.trigger ?? null,
-        target: parsed.data.target,
         tools: parsed.data.tools ?? startedTaskDefaultTools,
       });
     }

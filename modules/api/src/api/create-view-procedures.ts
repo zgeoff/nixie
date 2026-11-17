@@ -120,7 +120,6 @@ export function createViewProcedures(context: APIContext) {
             definitionID: definition.definitionID,
             name: definition.name,
             enabled: definition.enabled,
-            target: definition.target,
             trigger,
             rendered: view?.rendered ?? null,
             next:
@@ -128,10 +127,7 @@ export function createViewProcedures(context: APIContext) {
             tools: [...definition.tools],
             origin: definition.origin,
             createdBy: definition.createdBy,
-            taskID:
-              definition.target === 'task' && definition.enabled
-                ? (bound.get(definition.definitionID) ?? null)
-                : null,
+            taskID: definition.enabled ? (bound.get(definition.definitionID) ?? null) : null,
             isUnreadable: definition.isUnreadable,
           });
         }

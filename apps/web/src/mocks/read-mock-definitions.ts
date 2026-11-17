@@ -9,7 +9,6 @@ export function readMockDefinitions() {
     definitionID: task.definitionID ?? '',
     name: task.name,
     enabled: true,
-    target: 'task' as const,
     trigger: null,
     rendered: null,
     next: null,

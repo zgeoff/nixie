@@ -50,7 +50,6 @@ const listedDefinitionSchema = z.object({
   definitionID: z.string(),
   name: z.string(),
   enabled: z.boolean(),
-  target: z.enum(['task', 'conversation']),
   trigger: triggerSchema.nullable(),
   rendered: z.string().nullable(),
   next: z.string().nullable(),

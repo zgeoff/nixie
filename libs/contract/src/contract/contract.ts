@@ -20,6 +20,7 @@ import { passkeyContract } from './passkey-contract';
 import { pauseStateSchema } from './pause-state-schema';
 import { readPayloadContract } from './read-payload-contract';
 import { recoverySchema } from './recovery-schema';
+import { remindersContract } from './reminders-contract';
 import { reusedIDErrors } from './reused-id-errors';
 import { ruleContract } from './rule-contract';
 import { sequenceSchema } from './sequence-schema';
@@ -96,7 +97,9 @@ const exchangeNoticeSchema = z.object({
 });
 
 const reminderSchema = z.object({
-  brief: z.string(),
+  // null when the version that holds the name is no longer stored
+  name: z.string().nullable(),
+  note: z.string(),
   scheduledFor: z.iso.datetime({ offset: true }),
   lateBySeconds: z.number().nullable(),
 });
@@ -424,6 +427,7 @@ export const contract = {
     readNotice: signedIn.output(z.object({ notice: backupNoticeSchema.nullable() })),
   },
   triggers: viewContract.triggers,
+  reminders: remindersContract,
   definitions: { ...viewContract.definitions, ...definitionsContract },
   rules: ruleContract,
   approvals: approvalContract,

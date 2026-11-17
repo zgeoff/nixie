@@ -274,7 +274,7 @@ test('it opens the conversation at a message that a hop-limit notice links, behi
   );
 });
 
-test('it shows a reminder with its brief and the time it was set for', async () => {
+test('it shows a reminder with its note and the time it was set for', async () => {
   setupBrowserTimeZone('Europe/Lisbon');
 
   const ctx = await setupTest();
@@ -283,7 +283,8 @@ test('it shows a reminder with its brief and the time it was set for', async () 
   await store.records.create({
     kind: 'trigger.fired',
     reminder: {
-      brief: 'Call the dentist about the crown.',
+      name: 'Dentist',
+      note: 'Call the dentist about the crown.',
       lateBySeconds: 7500,
       scheduledFor: '2027-03-09T03:00:00.000Z',
     },

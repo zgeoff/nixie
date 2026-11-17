@@ -1,5 +1,6 @@
 import type { SeedResult } from '@heynixie/definitions';
 import { runSeed } from '@heynixie/definitions';
+import { readArmedReminders } from '@heynixie/reminders';
 import type { SeedParts } from '../seed/run-queued-seed';
 import { runQueuedSeed } from '../seed/run-queued-seed';
 
@@ -22,6 +23,7 @@ export function runDefinitionsSeed(parts: SeedParts): Promise<SeedResult> {
       tasks: parts.tasks,
       buildPolicy: parts.buildPolicy,
       builtInBudgets: parts.context.budgets?.builtIn() ?? [],
+      readExtraArmed: readArmedReminders,
     });
 
     parts.state.update({
