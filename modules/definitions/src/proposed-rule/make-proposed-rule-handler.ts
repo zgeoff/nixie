@@ -18,6 +18,7 @@ import { z } from 'zod';
 import { writeRuntimeRuleInTransaction } from '../runtime/write-runtime-rule';
 import type { RuleContext } from '../runtime/write-runtime-rule';
 import type { DefinitionsTables } from '../types';
+import { buildMemoryGapFields } from '../utils/build-memory-gap-fields';
 import { readProposalRecords } from '../utils/read-proposal-records';
 import { describeProposedRule } from './describe-proposed-rule';
 import type { GapSettings } from './gap-settings';
@@ -114,6 +115,7 @@ function toBody(
     fields: {
       covers: `${proposed.approvals.length} approvals${days.length === 0 ? '' : `: ${days.join(', ')}`}`,
       group: formatGroup(rule),
+      ...buildMemoryGapFields([rule]),
     },
     ruleSentence: null,
     approveLabel: 'Allow this rule',

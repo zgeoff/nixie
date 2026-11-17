@@ -118,3 +118,6 @@ export { destinationPatternSchema } from './rule/destination-pattern-schema';
 export { ruleBodySchema } from './rule/rule-body-schema';
 export { ruleObjectSchema } from './rule/rule-body-schema';
 export { isRuleMatch } from './rule/is-rule-match';
+export type { RuleNeed } from './memory/is-need-met';
+export { isNeedMet } from './memory/is-need-met';
+export { listUncoveredMemoryWrites } from './memory/list-uncovered-memory-writes';

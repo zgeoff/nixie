@@ -1,13 +1,36 @@
 import { readMessageTimeZone } from '@heynixie/connectors';
 import { mandateInputSchema, writeMandateProposal } from '@heynixie/definitions';
 import { withWriteTransaction } from '@heynixie/log';
+import { listUncoveredMemoryWrites } from '@heynixie/policy';
 import type { ProposalContext } from '@heynixie/proposals';
 import type { ToolDefinition } from '@heynixie/tools';
 import { z } from 'zod';
+import { memoryRuleArguments } from './memory-rule-arguments';
 
 export const mandateToolName = 'rules.propose_mandate';
 const jsonSchema = z.toJSONSchema(mandateInputSchema, { io: 'input', target: 'draft-2020-12' });
 const inputSchema = z.record(z.string(), z.json()).parse(structuredClone(jsonSchema));
+
+const memoryArgumentLines = Object.entries(memoryRuleArguments)
+  .map(([tool, names]) => `${tool}: ${names.join(', ')}`)
+  .join('; ');
+
+// The text that tells the model how a rule reaches the memory writes. The arguments in it are the
+// ones that the memory tools declare, which a test checks against their input schemas.
+export const mandateDescription =
+  'Proposes a mandate: allow rules that last until a set time and then end on their own, such ' +
+  'as full authority over calendar invites today. The owner approves it on a card before any ' +
+  'rule takes effect. ' +
+  'For memory, a rule by tool name (memory.remember, memory.edit, memory.retire, memory.pin) and ' +
+  'a rule by effect (memory_write) cover the same writes, and an allow rule that covers a write ' +
+  'applies it at once with a notice; a write that no rule covers waits for review. A rule that ' +
+  'checks no subject leaves self-notes uncovered: add a check that subject is self to cover ' +
+  'them. A write from a photo needs a check on an image argument. memory.unpin has the note ' +
+  'effect, so only a rule by its tool name reaches it. The arguments that a rule can check, by ' +
+  `tool: ${memoryArgumentLines}. ` +
+  'Example for memory tidy-up: one rule with tools memory.edit, memory.retire and memory.pin, ' +
+  'and one rule with tools memory.remember and memory.edit and a check that subject eq self. ' +
+  'The result lists in memoryGaps the memory writes that each rule will not cover.';
 
 export interface MandateToolOptions {
   readonly context: ProposalContext;
@@ -22,10 +45,7 @@ export function buildMandateTool(options: MandateToolOptions): ToolDefinition {
 
   return {
     name: mandateToolName,
-    description:
-      'Proposes a mandate: allow rules that last until a set time and then end on their own, such ' +
-      'as full authority over calendar invites today. The owner approves it on a card before any ' +
-      'rule takes effect.',
+    description: mandateDescription,
     input: inputSchema,
     output: {
       type: 'object',
@@ -35,8 +55,20 @@ export function buildMandateTool(options: MandateToolOptions): ToolDefinition {
         mandateID: { type: 'string' },
         expires: { type: 'string' },
         sentences: { type: 'array', items: { type: 'string' } },
+        memoryGaps: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              rule: { type: 'integer' },
+              uncovered: { type: 'array', items: { type: 'string' } },
+            },
+            required: ['rule', 'uncovered'],
+            additionalProperties: false,
+          },
+        },
       },
-      required: ['status', 'proposalID', 'mandateID', 'expires', 'sentences'],
+      required: ['status', 'proposalID', 'mandateID', 'expires', 'sentences', 'memoryGaps'],
       additionalProperties: false,
     },
     declaration: {
@@ -50,6 +82,7 @@ export function buildMandateTool(options: MandateToolOptions): ToolDefinition {
         mandateID: 'owner_data',
         expires: 'owner_data',
         sentences: 'owner_data',
+        memoryGaps: 'owner_data',
       },
     },
     execution: 'direct',
@@ -90,6 +123,11 @@ export function buildMandateTool(options: MandateToolOptions): ToolDefinition {
           mandateID: proposed.mandateID,
           expires: new Date(proposed.expires).toISOString(),
           sentences: [...proposed.sentences],
+          memoryGaps: parsed.data.rules.flatMap((rule, index) => {
+            const uncovered = listUncoveredMemoryWrites(rule);
+
+            return uncovered.length === 0 ? [] : [{ rule: index + 1, uncovered: [...uncovered] }];
+          }),
         },
       };
     },
