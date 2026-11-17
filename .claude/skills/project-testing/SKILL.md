@@ -2,10 +2,10 @@
 name: project-testing
 description:
   "nixie's test facts, the shared testing rules it replaces for the model API lane and the MSW
-  server, and its own test topics: the unit tests' prerequisites, the imp and model API lanes, the
-  test build, where a harness lives, the browser lane, the e2e, bundle, journeys and restic lanes
-  and the nixie harnesses. Load it beside testing before you design, write, run or review a nixie
-  test."
+  server, and its own test topics: the MSW server, the unit tests' prerequisites, the imp and model
+  API lanes, time limits, the test build, where e2e code lives, the browser lane, the e2e, bundle,
+  journeys and restic lanes and the nixie harnesses. Load it beside testing before you design,
+  write, run or review a nixie test."
 metadata:
   kind: rule-set
 ---
@@ -26,54 +26,57 @@ metadata:
 
 ## Facts
 
-| Fact       | Where                                                                                                                                                                                                                                                                                                                                                                   |
-| ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Lanes      | [`rig.config.ts`](../../../rig.config.ts) for the lanes nixie adds or changes, and their limits; the table in the testing skill's [slow tests reference](../testing/references/slow-tests.md) for every other lane, the model-api lane included; the `test:e2e` script in the root [`package.json`](../../../package.json), whose `--timeout` sets the e2e lane's limit |
-| Test utils | [`libs/testing/src/`](../../../libs/testing/src/) for a harness that 2 server packages share; otherwise the `src/test-utils/` folder of the package that owns what the helper starts, builds or fakes. A server package is any package the nixie server runs: the server app, a module, an adapter or a lib                                                             |
+| Fact          | Where                                                                                                                                                                                                                                                                                                     |
+| ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Test commands | the `test:*` scripts in the root [`package.json`](../../../package.json); `lanes` in [`rig.config.ts`](../../../rig.config.ts) for each lane nixie adds or changes, with its limit. Every other lane keeps its limit from the testing skill's [slow tests reference](../testing/references/slow-tests.md) |
+| Test utils    | [`libs/testing/src/`](../../../libs/testing/src/) for a helper that 2 server packages share; otherwise `src/test-utils/` in the package that owns what the helper starts, builds or fakes                                                                                                                 |
+
+Count as a server package any package the nixie server runs: the server app, a module, an adapter or
+a lib.
 
 ## Departures
 
-- Run the `*.model-api.test.ts` files by hand, never in CI. This replaces the rule in the testing
-  skill's [slow tests reference](../testing/references/slow-tests.md) to run the `model-api` lane
-  nightly and on an SDK bump, because nixie's CI holds no model credential. The files form the
-  [SDK contract suite](../../../docs/architecture/core/sdk-contract-suite.md), and the Agent SDK
-  bump rule in [AGENTS.md](../../../AGENTS.md) says when to run it and where its output goes.
-- Build no MSW server of your own. The shared rule in
-  [The server and its lifecycle](../testing/references/http.md#the-server-and-its-lifecycle) has
-  each test process build one, and nixie's packages share one process from the repo root, so
-  `@heynixie/mock-server` builds the one server for all of them.
-  - Add a package's handlers with
-    [`addMockHandlers`](../../../libs/mock-server/src/add-mock-handlers.ts), in the package's
-    `src/mocks/test-preload.ts`. When the package has no preload, write one, as
-    [the web client's preload](../../../apps/web/src/mocks/test-preload.ts) does, and list it in the
-    root [`bunfig.toml`](../../../bunfig.toml).
-  - After each test, `@heynixie/mock-server` resets the handlers to those that `addMockHandlers`
-    added. For one test's handler, call `mockServer.use(...)`, as
-    [Per-test handlers](../testing/references/http.md#per-test-handlers) says.
-- Pass no `onUnhandledFrame` callback. This replaces the callback in
-  [The server and its lifecycle](../testing/references/http.md#the-server-and-its-lifecycle),
-  because under Bun, MSW's unhandled-request error never stops a request. `@heynixie/mock-server`
-  ends its handler list with a catch-all handler instead. That handler fails each request that no
-  other handler matches with `Failed to fetch`, and passes these through:
-  - a request to a loopback host;
-  - a `data:` URL, which holds its own contents;
-  - a request to a host under the reserved `.test` domain, for code that takes a resolver. No DNS
-    server answers a `.test` name, so without a stub resolver the request fails at its lookup. The
-    web fetch guest's suites pass one from
-    [`buildStubResolver`](../../../guests/fetch/src/test-utils/build-stub-resolver.ts).
+- Run the `*.model-api.test.ts` files by hand. CI never runs them: nixie's CI holds no model
+  credential. This replaces the rule in
+  [Where each test runs](../testing/references/slow-tests.md#where-each-test-runs) to run the
+  `model-api` lane nightly and on an SDK bump. For when to run them and where their output goes,
+  read the Agent SDK bump rule in [AGENTS.md](../../../AGENTS.md).
+- Never build an MSW server of your own, and never write the `onUnhandledFrame` callback from
+  [The server and its lifecycle](../testing/references/http.md#the-server-and-its-lifecycle). A
+  `bun test` from the repo root runs every package's tests in one process, and
+  `@heynixie/mock-server` starts one MSW server for all of them from a preload in the root
+  [`bunfig.toml`](../../../bunfig.toml). Under Bun, MSW's own unhandled-request error never stops a
+  request, so the server ends its handler list with a catch-all handler in place of the callback.
+  Expect it to fail each unmatched request with `Failed to fetch`, except a request to a loopback
+  host, a `data:` URL, or a host under the reserved `.test` domain.
 
-  Serve a test's outside requests from a loopback server, unless the code under test takes a
-  resolver.
+## The MSW server
+
+- Answer a request to an outside API with an MSW handler. Add a package's default handlers with
+  [`addMockHandlers`](../../../libs/mock-server/src/add-mock-handlers.ts), in the package's
+  `src/mocks/test-preload.ts`. When the package has no preload, write one, as
+  [the web client's preload](../../../apps/web/src/mocks/test-preload.ts) does, and add it at the
+  end of the `preload` list in the root `bunfig.toml`.
+- Give each handler a URL that no other package's handler matches. Of 2 matching handlers, the one
+  whose preload comes first in `bunfig.toml` wins.
+- For one test's handler, call `mockServer.use(...)`, as
+  [Per-test handlers](../testing/references/http.md#per-test-handlers) says. After each test,
+  `@heynixie/mock-server` resets the handlers to those that `addMockHandlers` added.
+- When the code under test takes a resolver for host names, as the code in `guests/fetch/` does, use
+  a `.test` host. Map it to a loopback address with
+  [`buildStubResolver`](../../../guests/fetch/src/test-utils/build-stub-resolver.ts), and serve the
+  request from a loopback server.
+- Open a `WebSocket` in a test only to a loopback host. `@heynixie/mock-server` passes those sockets
+  through.
 
 ## Test commands
 
 Before you call a test done, run it with its command from this table. Use the first row whose files
-match the test file. The test runner `@zgeoff/rig`, called rig, runs every command but `test:e2e`,
-whose script runs `bun test` itself.
+match the test file.
 
 | Files                                                                                              | Command                                       | In CI             |
 | -------------------------------------------------------------------------------------------------- | --------------------------------------------- | ----------------- |
-| `*.browser.test.ts` outside `e2e/journeys/` and `e2e/src/`                                         | `bun run test:browser`                        | in `pr.yml`       |
+| `*.browser.test.ts` outside `e2e/`                                                                 | `bun run test:browser`                        | in `pr.yml`       |
 | `*.agent-sdk.test.ts`                                                                              | `bun run test:agent-sdk`                      | in `pr.yml`       |
 | `e2e/**`, except `*.browser.test.ts` and `*.restic.test.ts`                                        | `bun run test:e2e`                            | in `pr.yml`       |
 | `*.browser.test.ts` in `e2e/journeys/`, and `e2e/src/test-utils/start-web-journey.browser.test.ts` | `bun run test:journeys`                       | in `journeys.yml` |
@@ -83,79 +86,89 @@ whose script runs `bun test` itself.
 | `*.model-api.test.ts`                                                                              | `NIXIE_SDK_CONTRACT=1 bun run test:model-api` | no                |
 | every other `*.test.ts`: the unit tests                                                            | `bun run test`                                | in `pr.yml`       |
 
-- Run the unit tests through `bun run test`. Before `bun test <path>` on one unit test file, run
-  from the repo root the 3 commands that `bun run test` runs first:
-  - Run `bun run models` to fetch the memory encoder's model files. Without them, a bare `bun test`
-    skips the encoder's suites.
-  - Run `bun run test:bundles` to build nixie's test and release bundles, and again after you change
-    a server package: the server app, a module, an adapter or a lib. A test that finds no bundle
-    builds one and runs past its limit.
-  - Run `bun run test:templates` to build the migrated-data template, and again after a change under
-    `libs/db/src/` or `modules/log/src/`, as
-    [the in-process harness](./references/nixie-harnesses.md#the-in-process-harness) describes.
-- To test one file of any other lane, pass the file's path to the lane's command, such as
-  `bun run test:agent-sdk <path>`. rig runs only the lane's own files among the paths you pass.
-  Never test such a file with a bare `bun test`. It gives the file the 5 s timeout of
-  `bun run test`, and skips the start hook that rig runs before the bundle, restic and Agent SDK
-  lanes to build what their tests read.
-- To test one e2e file, run the commands of the `test:e2e` script up to its `bun test`. Then run
-  that `bun test` with the file's path in place of `e2e/`. `bun run test:e2e` passes a path you add
-  only to its last command.
-- To test one journey, run `bun run test:journeys --test-name-pattern='<test name>'`. The script
-  passes rig the path of every journey, so a path you add narrows nothing.
-- Put a browser suite under `e2e/` in `e2e/journeys/`. The browser lane leaves out `e2e/src/`, and
-  the journeys lane runs only the start-web-journey suite there.
-- Run the `*.imp.test.ts` suites by hand, as the
-  [imp isolation runbook](../../../docs/runbooks/imp-isolation-tests.md) describes. Each needs a
-  real impd, nixie's sandbox daemon, which runs each sandbox in a VM called an
-  [imp](../../../docs/glossary.md), on a host with `/dev/kvm`. The suites skip until the runbook's
-  variables are set, and a suite that skips does not count as passed.
+### One unit test file
+
+`bun run test` runs 3 commands before the unit tests. Before you run `bun test <path>` on one unit
+test file, run each one that the file needs, from the repo root:
+
+- Run `bun run models` to fetch the memory encoder's model files, for a file in
+  `adapters/encoder-onnx/` or one that loads the encoder. Without them, `bun test` skips the
+  encoder's suites, and a skipped suite has not passed.
+- Run `bun run test:bundles` to build nixie's test and release bundles when the file reads a bundle
+  through [`readTestBundle`](../../../apps/server/src/test-utils/read-test-bundle.ts), and again
+  after each change to a server package. A test that finds no bundle builds one, and runs past its
+  limit.
+- Run `bun run test:templates` to build the migrated-data template when the file starts the
+  in-process harness, and again after a change under `libs/db/src/` or `modules/log/src/`, as
+  [the in-process harness](./references/nixie-harnesses.md#the-in-process-harness) explains.
+
+### One file of another lane
+
+- Pass the file's path to the lane's command, such as `bun run test:agent-sdk <path>`. The test
+  runner `@zgeoff/rig`, called rig, runs only the lane's own files among the paths you pass. Never
+  run such a file with a bare `bun test`. That gives the file the unit lane's limit, and skips the
+  start hook that builds what the bundle, restic and Agent SDK lanes read.
+- For one file under `e2e/`, follow
+  [The e2e, bundle, journeys and restic lanes](./references/e2e-and-restic-lanes.md). Never add a
+  path to `bun run test:e2e`: the script passes it only to `test:bundle`, which then fails.
+
+### Lanes that need a real system
+
+- Run the `*.imp.test.ts` suites by hand, with the
+  [imp isolation runbook](../../../docs/runbooks/imp-isolation-tests.md). Each needs a real impd,
+  the daemon that runs each sandbox in a VM called an [imp](../../../docs/glossary.md), on a host
+  with `/dev/kvm`. The suites skip until the runbook's variables are set. A suite that skips has not
+  passed.
 - Keep a `*.imp.test.ts` suite for what only a real impd shows, such as an imp that reaches the
   model host through the broker. Test every other case of the imp adapter in the unit tests, on
-  `startTestImpd` from `@impz/testing`. It runs impd's own API on stand-ins for the VMs and the
-  host, so the test does not need `/dev/kvm`.
-- Set `NIXIE_SDK_CONTRACT=1` for the model API tests, or every one skips and its command passes with
-  no test run.
-- Set no time limit in a test, except a model API test. rig gives each test its lane's limit, and a
-  raised limit only hides a slow test. The `zgeoff/max-test-timeout` lint rule fails a limit above
-  the lane's.
-- Give a model API test a limit of its own, because a live model's time varies by test. Measure the
-  test's time in an imp, with the steps in the
-  [SDK contract suite runbook](../../../docs/runbooks/sdk-contract-suite.md). Then pass about twice
-  that time as the third argument to `test()`, within the model-api lane's limit.
-- Install the Bun version in `.bun-version` before you change a test that asserts on an error Bun
-  raises, such as the code of a refused connection. That error can change between Bun releases.
+  `startTestImpd` from `@impz/testing`, which needs no `/dev/kvm`.
+- Run the model API tests inside an imp, with the steps in the
+  [SDK contract suite runbook](../../../docs/runbooks/sdk-contract-suite.md). Outside an imp they
+  fail: only the imp's broker supplies the model credential. To run one file, add its path to the
+  table's command. Without `NIXIE_SDK_CONTRACT=1`, every test skips and the command passes with no
+  test run.
+
+## Time limits
+
+- Never set a time limit in a test. rig gives each test its lane's limit, and a raised limit only
+  hides a slow test. The `zgeoff/max-test-timeout` lint rule fails a limit above the lane's.
+- Give each model API test a limit of its own: the one exception. A live model's time varies by
+  test. Time each one in an imp, and pass about twice that time as the third argument to `test()`,
+  within the model-api lane's limit.
+
+## Other test setup
+
+- Before you change a test that asserts on an error Bun raises, install the Bun version in
+  `.bun-version`. Such an error, like a refused connection's code, can change between Bun releases.
 - When you add a pattern to `pathIgnorePatterns` in the root `bunfig.toml`, add it to the `ignore`
-  list in `rig.config.ts` as well. rig passes each lane its patterns as flags, and a
+  list in `rig.config.ts` too. rig passes each lane its patterns as flags, and a
   `--path-ignore-patterns` flag replaces the bunfig's list.
-- Read nixie's test bundle or its release bundle in a unit test through
-  [`readTestBundle`](../../../apps/server/src/test-utils/read-test-bundle.ts), never by building
-  one. A whole-server build takes seconds.
-
-## Sockets and shared state
-
-- Open a `WebSocket` in a test only to a loopback host. `@heynixie/mock-server` passes those sockets
-  through with a handler of their own.
-- Register a reset of shared state, such as an `afterEach`, in the package's test preload that the
-  root `bunfig.toml` lists. A hook that an imported helper module registers binds only to the first
-  file that imports it. Leave the MSW handlers out: `@heynixie/mock-server` resets them.
+- Read nixie's test or release bundle in a unit test through `readTestBundle`. Never build one in
+  the test: a whole-server build takes seconds.
+- Register a reset of shared state, such as an `afterEach`, in a preload file that the root
+  `bunfig.toml` lists. A hook that an imported helper module registers binds only to the first file
+  that imports it. Put a reset of one package's state in that package's `src/mocks/test-preload.ts`.
+  Put a reset that several packages need in a new file in `libs/testing/src/`, and list that file.
+  Leave the MSW handlers out: `@heynixie/mock-server` resets them.
 
 ## The test build
 
 - Put test-only code that a product file holds inside `if (NIXIE_TEST_BUILD) { … }`.
   `NIXIE_TEST_BUILD` is a global boolean constant, which
-  [`nixie-test-build.d.ts`](../../../nixie-test-build.d.ts) declares. The root preloads set it to
-  `true` for every `bun test` from the repo root, and nixie's test bundle sets it at build time. Its
-  release bundle sets it to `false`, so the bundler drops the code behind it.
-  [Crash tests](../../../docs/architecture/core/crash-tests.md) lists the code that sits behind it.
+  [`nixie-test-build.d.ts`](../../../nixie-test-build.d.ts) declares.
+  [`define-test-build.ts`](../../../libs/testing/src/define-test-build.ts), a preload in the root
+  `bunfig.toml`, sets it to `true` for every `bun test` from the repo root, and nixie's test bundle
+  sets it at build time. Its release bundle sets it to `false`, so the bundler drops the guarded
+  code. [Crash tests](../../../docs/architecture/core/crash-tests.md) lists that code.
 - Leave code that only test files import without the guard.
 
-## Where a harness lives
+## Where e2e code lives
 
-- Search [`libs/testing/src/`](../../../libs/testing/src/) before you write a harness.
 - Import the harness that spawns nixie in an `e2e/` suite from
   [`@heynixie/server/test-utils`](../../../apps/server/src/test-utils/index.ts), and the helpers
   that an `e2e/` suite shares with the browser suites from
   [`@heynixie/web/test-utils`](../../../apps/web/src/test-utils/index.ts).
 - Put a helper that only `e2e/` suites share, such as one that 2 journeys call, in
   [`e2e/src/test-utils/`](../../../e2e/src/test-utils/), with its own test beside it.
+- Put each browser suite of `e2e/` in `e2e/journeys/`. The browser lane leaves out `e2e/src/`, and
+  the journeys lane runs only the start-web-journey suite there.
