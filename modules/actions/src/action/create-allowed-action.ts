@@ -2,6 +2,7 @@ import { chargeBudgetsInTransaction, formatBudgetReached } from '@heynixie/budge
 import type { BudgetsContext } from '@heynixie/budgets';
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import { buildActionProposalInput } from '@heynixie/policy';
+import { readOpenProposals } from '@heynixie/proposals';
 import { requireLease, waitAtFaultPoint } from '@heynixie/tasks';
 import type { TasksContext } from '@heynixie/tasks';
 import type { Transaction } from 'kysely';
@@ -169,6 +170,20 @@ async function writeBudgetAsk(
     stepKey: call.step.stepKey,
     budgetReached,
   });
+
+  const open = await readOpenProposals(tx, context.clock.now());
+
+  // a retry of the call that already asked gets the question it asked
+  const asked = open.find(
+    (row) =>
+      row.family === 'action' &&
+      row.thread === call.step.lease.workID &&
+      row.actionHash === proposal.record.payload?.['actionHash'],
+  );
+
+  if (asked !== undefined) {
+    return { shortID: asked.shortID };
+  }
 
   await writeRecordsInTransaction(tx, context.log, [proposal.record]);
 

@@ -436,6 +436,25 @@ test('it queues nothing and asks the owner, naming the budget and its reset, at 
   });
 });
 
+test('it answers a retry of a call the budget refused with the question already asked', async () => {
+  const ctx = await setupTest();
+  const first = await createTestStep(ctx.context);
+  const second = await createTestStep(ctx.context);
+
+  await createAllowedAction(ctx.context, buildMockLiftedCall(first, 6_000_000));
+
+  const overBudget = buildMockLiftedCall(second, 6_000_000);
+
+  const asked = await createAllowedAction(ctx.context, overBudget);
+  const retried = await createAllowedAction(ctx.context, overBudget);
+  const records = await readRecords(ctx.context.log, { afterSequence: 0 });
+
+  invariant('shortID' in asked);
+
+  expect(retried).toStrictEqual({ shortID: asked.shortID });
+  expect(records.filter((entry) => entry.record.kind === 'policy.action_proposed')).toHaveLength(1);
+});
+
 test('it credits the charge of an action that failed', async () => {
   const ctx = await setupTest();
   const step = await createTestStep(ctx.context);

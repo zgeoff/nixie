@@ -1,6 +1,8 @@
 import type { BudgetsContext } from '@heynixie/budgets';
 import { budgetProjections } from '@heynixie/budgets';
 import { seedBudgetInForce } from '@heynixie/budgets/test-utils';
+import { mapActionProposalRecord } from '@heynixie/policy';
+import { buildProposalsProjection } from '@heynixie/proposals';
 import type { TestTasks } from '@heynixie/tasks/test-utils';
 import { startTestActions } from './start-test-actions';
 
@@ -8,14 +10,18 @@ export interface TestBudgetedActions extends TestTasks {
   readonly budgets: BudgetsContext;
 }
 
-// Actions on a log that also folds the budget records, with one purchase budget in force: a day
+// Actions on a log that also folds the budget and proposal records, with one purchase budget in force: a day
 // budget of 10 dollars that counts spend.
 export async function startTestBudgetedActions(): Promise<TestBudgetedActions> {
   const actions = await startTestActions();
 
   const log = {
     ...actions.context.log,
-    projections: [...actions.context.log.projections, ...budgetProjections],
+    projections: [
+      ...actions.context.log.projections,
+      ...budgetProjections,
+      buildProposalsProjection([mapActionProposalRecord]),
+    ],
   };
 
   const budgets: BudgetsContext = {
