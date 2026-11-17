@@ -8,9 +8,10 @@ the model makes, nixie holds the call until you answer it:
 - The call's `tool_result` record has the outcome `queued`, and its `actionID` is `null`: nothing
   ran.
 - The approvals page, `/proposals`, lists each held call under its risk group, such as "Routine" for
-  the export call.
+  the `memory.export` call that this journey makes.
 - The `proposals` table holds one row for the call, with `family` `action` and `state` `pending`.
-  The table also holds other kinds of proposal, such as rule changes.
+  The table also holds other kinds of proposal, such as rule changes, so step 7 reads only the rows
+  whose `family` is `action`.
 
 When you approve the call, its row's `state` becomes `approved`, and nixie adds a
 `policy.action_answered` record. nixie then starts a new model turn to tell the model your answer.
@@ -72,7 +73,8 @@ Before you start:
    Expect: `proposals` exits 0. The last row of `data.rows` is the export call's result, with
    `outcome` `queued` and `action` `null`. Earlier rows are from earlier journeys' tool calls.
 
-4. Script the model's text for the turn that your answer starts. Without it, that turn fails.
+4. Script the model's text for the turn that your answer starts. Without it, that turn fails. No
+   step checks that turn's reply.
 
    ```bash
    bun verify action script-reply --text 'Thanks, I have your answer.'
