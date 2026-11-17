@@ -169,10 +169,12 @@ rewriter. The conversation role may run on a profile outside Claude when the che
 another profile. The context cap check above still applies: a model the CLI's catalog lacks gets the
 smaller window.
 
-List a model in `models.selectable` only after its run of the
-[SDK contract suite](../../runbooks/sdk-contract-suite.md#run-the-suite-on-another-model) and its
-preview check pass. nixie's code checks neither. OpenRouter promises that its Messages endpoint
-works with the CLI only for the models of its Anthropic provider.
+nixie's code checks no model before a deployment lists it in `models.selectable`. OpenRouter
+promises that its Messages endpoint works with the CLI only for the models of its Anthropic
+provider. A model outside that set can break behaviours that nixie relies on, such as a turn past
+the context window, a tool result past its tool-output limit and a mod's policy hooks. The
+[SDK contract suite](../../runbooks/sdk-contract-suite.md#run-the-suite-on-another-model) checks
+each of them on one model.
 
 ## The context cap
 
