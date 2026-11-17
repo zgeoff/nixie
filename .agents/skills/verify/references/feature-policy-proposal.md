@@ -1,6 +1,9 @@
 # policy-proposal
 
-When an ask rule matches a tool call the model makes, nixie holds the call until you answer it:
+Contents: [Journey](#journey), [End state](#end-state).
+
+When an [ask rule](../../../../docs/architecture/policy/decision-point.md#asks) matches a tool call
+the model makes, nixie holds the call until you answer it:
 
 - The call's `tool_result` record has the outcome `queued`, and its `actionID` is `null`: nothing
   ran.
@@ -11,24 +14,32 @@ When an ask rule matches a tool call the model makes, nixie holds the call until
 
 When you approve the call, its row's `state` becomes `approved`, and nixie adds a
 `policy.action_answered` record. nixie then starts a new model turn to tell the model your answer.
-The starter rules are on by default. Their rule `ask-exports` holds every call whose effect is
-`export`, such as `memory.export`.
+The test build starts with the
+[starter rules](../../../../deploy/compose/definitions/rules/starter.yaml), the rules file that the
+Compose recipe ships. nixie holds every call whose effect is `export`, such as `memory.export`, by
+its rule `ask-exports`.
 
-This journey runs on `local` only:
+Follow the steps in [Check a change](../SKILL.md#check-a-change) for this journey. Read that section
+for the targets `local` and `preview`, the commands `up` and `done`, and the `data` field of each
+command's JSON output.
 
-- On `local`, a harness runs nixie with a scripted model, which makes the export call.
-- The `proposals` command reads the harness's list of held calls.
+Run this journey on `local` only:
+
+- On `local`, `up` runs a test build of nixie with a scripted model, which makes the export call.
+- The `proposals` command reads the test build's list of held calls, which `preview` lacks.
+- On `preview`, skip this journey, and list the feature as not verified there in your reply.
 
 Before you start:
 
-- When the browser has no sign-in since `up`, run [sign-in-enrol](feature-sign-in-enrol.md) first.
-- Steps 3, 5 and 7 expect the export call of this pass to be the only held call since `up`. Before a
-  second pass, run `bun verify up --restart` and `bun verify doctor`, then sign-in-enrol.
+- When you have not run [sign-in-enrol](feature-sign-in-enrol.md) since `up`, run it first.
+- Run this journey once per `up`: in steps 3, 5 and 7, nixie must hold no call but this pass's
+  export call. Before a second pass, run `bun verify up --restart` and `bun verify doctor`, then
+  sign-in-enrol. `up --restart` starts nixie on a new, empty database.
 
 ## Journey
 
-1. Record the next commands under this feature. Then script the model's next turn: it calls
-   `memory.export`, then replies.
+1. Record every later command of this journey under this feature. Then script the model's next turn:
+   it calls `memory.export`, then replies.
 
    ```bash
    bun verify use --feature policy-proposal
@@ -50,8 +61,8 @@ Before you start:
 
    Expect: `conversation turn` exits 0.
 
-3. Check that nixie holds the call and did not run it. `proposals --waiting pending` passes when
-   exactly one call of the tool is held.
+3. Check that nixie holds the call and did not run it. `proposals --waiting pending` checks once,
+   with no wait, and exits 0 when nixie holds exactly one call of the tool.
 
    ```bash
    bun verify proposals --tool memory.export --waiting pending
@@ -79,9 +90,11 @@ Before you start:
    Expect: the "Routine" list holds one collapsed item, which reads "Run memory.export (export).",
    with no buttons.
 
-6. Expand the item, then approve the call. In the snapshot of step 5, find the line that holds "Run
-   memory.export (export)." and `[cursor=pointer]`. Pass that line's `ref`, such as `f3e11`, as
-   `<item_ref>`. Each snapshot gives new refs. The approve button is named "Run memory.export".
+6. Expand the item, then approve the call. Take the `ref` from the snapshot of step 5, and take no
+   other snapshot before the first click: each snapshot gives every element a new `ref`. In that
+   snapshot, find the line that holds "Run memory.export (export)." and `[cursor=pointer]`. Pass
+   that line's `ref`, such as `f3e11`, as `<item_ref>`. The approve button is named "Run
+   memory.export".
 
    ```bash
    bun verify browser click --ref '<item_ref>'
@@ -90,7 +103,8 @@ Before you start:
 
    Expect: both clicks exit 0.
 
-7. Check the answer. `proposals --waiting none` passes when no call of the tool is held.
+7. Check the answer. `proposals --waiting none` checks once, with no wait, and exits 0 when nixie
+   holds no call of the tool.
 
    ```bash
    bun verify proposals --tool memory.export --waiting none

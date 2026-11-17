@@ -1,25 +1,32 @@
 # memory-approval
 
+Contents: [Journey](#journey), [End state](#end-state).
+
 The model can propose a memory item, a fact about the user that nixie keeps. When the user's own
 words in the conversation do not state the fact, nixie holds the item as a proposal until the user
 approves it on the approvals page, `/proposals`. An approved item shows on the memory page,
 `/memory`, and its row in the `memory_items` table has the state `active`. A proposal has no row in
 that table.
 
+Follow the steps in [Check a change](../SKILL.md#check-a-change) for this journey. Read that section
+for the targets `local` and `preview`, the commands `up`, `attach` and `done`, and the `data` field
+of each command's JSON output.
+
 Before you start:
 
-- When the browser has no sign-in since `up` or `attach`, run
-  [sign-in-enrol](feature-sign-in-enrol.md) first.
+- When you have not run [sign-in-enrol](feature-sign-in-enrol.md) since `up` or `attach`, run it
+  first.
 - On `local`, run this journey once per `up`: step 3 checks that the `memory_items` table is empty.
   Before a second pass, run `bun verify up --restart` and `bun verify doctor`, then sign-in-enrol.
+  `up --restart` starts nixie on a new, empty database.
 
 On `local`, keep the message and the memory item text below as they are. A message that states the
 item's fact would make nixie keep the item at once, with no proposal.
 
 ## Journey
 
-1. Record the next commands under this feature. On `preview`, skip the `action script-reply` line:
-   the real model decides what to propose.
+1. Record every later command of this journey under this feature. On `preview`, skip the
+   `action script-reply` line and its expectation: the real model decides what to propose.
 
    ```bash
    bun verify use --feature memory-approval
@@ -29,9 +36,12 @@ item's fact would make nixie keep the item at once, with no proposal.
    Expect: `data.replies` is 2: the memory call is one scripted step, and the text reply is the
    other.
 
-2. Send the message. On `preview`, change the message to one that asks nixie to guess a fact about
-   you and remember it, such as "Guess which city I grew up in, and remember it.". Skip the
-   `conversation turn` line there, and take snapshots of `/` until the reply shows.
+2. Send the message. On `preview`, change the step:
+   - Type a message that asks nixie to guess a fact about you and remember it, such as "Guess which
+     city I grew up in, and remember it.".
+   - Skip the `conversation turn` line.
+   - Take a snapshot of `/` every 10 seconds, for up to 2 minutes, until a new reply from nixie
+     shows. Expect: the reply in a snapshot.
 
    ```bash
    bun verify browser goto /
@@ -60,16 +70,19 @@ item's fact would make nixie keep the item at once, with no proposal.
    Expect: the "Memory" list holds one collapsed item, which shows the item's text and no buttons.
    Note the text.
 
-   On `preview`, the "Memory" list can be empty. Then skip steps 5 and 6, and skip `done`. Report
-   the snapshot, and which case it shows:
+   On `preview`, the "Memory" list can hold items from earlier passes. Pick the item whose text
+   matches the fact you asked for. When the list holds no such item, skip steps 5 and 6, and skip
+   `bun verify done`, so the feature records no verdict. In your reply to your caller, paste the
+   lines of the snapshot that hold the lists, and say which case they show:
    - The "Routine" list holds "Run memory.remember (note).": nixie's policy held the model's call as
-     an action. An approved action never writes the memory item, so the item never reaches the
-     memory page.
+     an action. Leave that action unanswered. An approved action never writes the memory item, so
+     the item never reaches the memory page.
    - No list holds an item: the model proposed nothing.
 
-5. Expand the item, then approve it. In the snapshot of step 4, find the line that holds the item's
-   text and `[cursor=pointer]`. Pass that line's `ref`, such as `f3e11`, as `<item_ref>`. Each
-   snapshot gives new refs.
+5. Expand the item, then approve it. Take the `ref` from the snapshot of step 4, and take no other
+   snapshot before the first click: each snapshot gives every element a new `ref`. In that snapshot,
+   find the line that holds the item's text and `[cursor=pointer]`. Pass that line's `ref`, such as
+   `f3e11`, as `<item_ref>`.
 
    ```bash
    bun verify browser click --ref '<item_ref>'
@@ -94,3 +107,5 @@ item's fact would make nixie keep the item at once, with no proposal.
 - On `local`, the `db query` of step 6 returns one row, whose `state` is `active`.
 - The memory page shows the item's text from step 4: on `local`, "The user keeps bees on the
   allotment.".
+- On `preview`, when step 4 found no item, the feature has no verdict. Your reply gives the case
+  from step 4.
