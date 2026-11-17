@@ -22,6 +22,8 @@ export { readSpendTurns } from './stop/read-spend-turns';
 export { startSpendWatcher } from './watch/start-spend-watcher';
 export type { SpendWatcher, SpendWatcherOptions } from './watch/start-spend-watcher';
 export { pickRaiseResend } from './raise/pick-raise-resend';
+export { checkSpendTurns, stoppedStepDelayMs } from './gate/check-spend-turns';
+export { pickTurnTrip } from './gate/pick-turn-trip';
 export { settleSpendStop } from './stop/settle-spend-stop';
 export { writeSpendClear } from './stop/write-spend-clear';
 export { writeSpendTrip } from './stop/write-spend-trip';

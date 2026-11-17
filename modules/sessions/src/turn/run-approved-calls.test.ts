@@ -2,8 +2,20 @@ import { expect, test } from 'bun:test';
 import { writeRecords } from '@heynixie/log';
 import { buildMockModelProfile } from '@heynixie/models/test-utils';
 import { buildStubSandboxes } from '@heynixie/sandbox/test-utils';
+import {
+  buildSpendPeriods,
+  readSpendStopRow,
+  spendLimitRaisedCodec,
+  spendProjections,
+  stoppedStepDelayMs,
+  writeSpendClear,
+  writeSpendTrip,
+} from '@heynixie/spend';
+import type { SpendContext, SpendTurnLimits } from '@heynixie/spend';
+import { buildStubSpendGateway } from '@heynixie/spend/test-utils';
 import { claimTask, createConversationTask, writeInboxRecords } from '@heynixie/tasks';
 import { readTestTaskProgress } from '@heynixie/tasks/test-utils';
+import { waitForCondition } from '@heynixie/testing';
 import type { ApprovedRun, ToolImage } from '@heynixie/tools';
 import invariant from 'tiny-invariant';
 import { startConversationRunner } from '../session/start-conversation-runner';
@@ -31,6 +43,13 @@ async function setupTest() {
 
   const tasks = await startTestTasks();
 
+  // the log folds the spend records too, so the turn count and the stop read from it
+  const log = {
+    ...tasks.context.log,
+    projections: [...tasks.context.log.projections, ...spendProjections],
+  };
+
+  const context = { ...tasks.context, log };
   const sandboxes = buildStubSandboxes();
   const pending: PendingCall[] = [];
   const state = { pending, probes: 0 };
@@ -65,7 +84,7 @@ async function setupTest() {
         call.duringRun?.();
 
         if (call.messageDuringRun !== undefined) {
-          await writeInboxRecords(tasks.context, [
+          await writeInboxRecords(context, [
             {
               kind: 'owner_message',
               definitions,
@@ -75,7 +94,7 @@ async function setupTest() {
           ]);
         }
 
-        const [result] = await writeRecords(tasks.context.log, [
+        const [result] = await writeRecords(context.log, [
           {
             kind: 'tool_result',
             definitions,
@@ -93,7 +112,7 @@ async function setupTest() {
           },
         ]);
 
-        const [outcome] = await writeInboxRecords(tasks.context, [
+        const [outcome] = await writeInboxRecords(context, [
           {
             kind: 'action.outcome',
             definitions,
@@ -119,9 +138,9 @@ async function setupTest() {
     },
   };
 
-  const startRunner = () =>
+  const startRunner = (spend?: SpendContext) =>
     startConversationRunner({
-      context: tasks.context,
+      context,
       profile: { profile: buildMockModelProfile(), credential: 'not-a-real-key' },
       sandboxes: sandboxes.adapter,
       tools: tools.endpoint,
@@ -145,19 +164,55 @@ async function setupTest() {
       log: () => {},
       clearFetchPauses: () => {},
       inStepActions,
+      ...(spend === undefined ? {} : { spend }),
     });
+
+  const stoppedSleeps = { count: 0 };
+
+  const buildSpend = (limits: SpendTurnLimits): SpendContext => ({
+    gateway: buildStubSpendGateway(),
+    log,
+
+    // the records are stamped by the writer's clock, and the stop's delay runs on the test clock
+    clock: {
+      now: () => tasks.writer.clock.now(),
+      sleep: (durationMs, signal) => {
+        stoppedSleeps.count += 1;
+
+        return tasks.clock.sleep(durationMs, signal);
+      },
+    },
+    zone: 'UTC',
+    limits,
+    definitions: () => definitions,
+  });
+
+  const stoppedStep = async (runner: Awaited<ReturnType<typeof startRunner>>) => {
+    const step = runNextStep(context, runner.runStep);
+
+    await waitForCondition(() => stoppedSleeps.count > 0);
+
+    stoppedSleeps.count = 0;
+
+    tasks.clock.advance(stoppedStepDelayMs);
+
+    await step;
+  };
 
   return {
     ...tasks,
+    context,
+    buildSpend,
+    stoppedStep,
     sandboxes,
     tools,
     state,
     startRunner,
     writeMessage: (text: string) =>
-      writeInboxRecords(tasks.context, [
+      writeInboxRecords(context, [
         { kind: 'owner_message', definitions, thread: 'conversation', erasable: { text } },
       ]),
-    readProgress: () => readTestTaskProgress(tasks.context, 'conversation'),
+    readProgress: () => readTestTaskProgress(context, 'conversation'),
     readTurnTexts: () => sandboxes.turns.map((turn) => turn.input.map((message) => message.text)),
   };
 }
@@ -420,4 +475,124 @@ test('it aborts the approved call when a forget invalidates the session, as it a
   const [approved] = ctx.tools.steps;
 
   expect(approved?.session?.step?.signal.aborted).toBe(true);
+});
+
+test('it ends the step at the turn limit before the approved call runs, and runs it after the clear', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  const spend = ctx.buildSpend({ dayTurns: 1, dayTurnCap: 5, monthTurns: 100 });
+
+  const runner = await ctx.startRunner(spend);
+
+  ctx.sandboxes.setGuestScript(buildStubTurnScript(() => ({ reply: 'Done.' })));
+
+  await ctx.writeMessage('First.');
+
+  await runNextStep(ctx.context, runner.runStep);
+
+  ctx.state.pending.push({ text: 'the memory export is ready' });
+
+  await ctx.writeMessage('Export my memory.');
+  await ctx.stoppedStep(runner);
+
+  const stopped = ctx.state.pending.length;
+  const turnsAtStop = ctx.sandboxes.turns.length;
+
+  const progress = await ctx.readProgress();
+
+  const start = buildSpendPeriods(Date.now(), 'UTC').day.start;
+
+  await writeRecords(ctx.context.log, [
+    {
+      kind: spendLimitRaisedCodec.kind,
+      definitions: spend.definitions(),
+      payload: spendLimitRaisedCodec.encode({
+        start,
+        dollars: 60,
+        tokens: 80_000_000,
+        turns: 5,
+        by: 'host',
+      }),
+    },
+  ]);
+
+  await writeSpendClear(spend, 'raised');
+  await runNextStep(ctx.context, runner.runStep);
+
+  const [, second] = ctx.readTurnTexts().map((turn) => turn.join('\n'));
+
+  expect([stopped, turnsAtStop, progress.state]).toStrictEqual([1, 1, 'ready']);
+  expect(ctx.state.pending).toStrictEqual([]);
+  expect(second).toContain('the memory export is ready');
+});
+
+test('it runs no approved call and no turn while the stop stands, and the next step is claimed after the clear', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  const spend = ctx.buildSpend({ dayTurns: 100, dayTurnCap: 200, monthTurns: 1000 });
+
+  await ctx.startRunner(spend);
+
+  ctx.sandboxes.setGuestScript(buildStubTurnScript(() => ({ reply: 'Done.' })));
+
+  await writeSpendTrip(spend, { reason: 'lost', at: Date.now() });
+
+  ctx.state.pending.push({ text: 'ready' });
+
+  await ctx.writeMessage('Export my memory.');
+
+  const claim = await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  expect(claim).toBeNull();
+  expect(ctx.sandboxes.turns).toHaveLength(0);
+});
+
+test('it ends a conversation step at the month turn limit with no turn', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  const spend = ctx.buildSpend({ dayTurns: 100, dayTurnCap: 200, monthTurns: 1 });
+
+  const runner = await ctx.startRunner(spend);
+
+  ctx.sandboxes.setGuestScript(buildStubTurnScript(() => ({ reply: 'Done.' })));
+
+  await ctx.writeMessage('First.');
+
+  await runNextStep(ctx.context, runner.runStep);
+
+  await ctx.writeMessage('Second.');
+  await ctx.stoppedStep(runner);
+
+  const stop = await readSpendStopRow(ctx.writer.db);
+
+  expect(ctx.sandboxes.turns).toHaveLength(1);
+  expect(stop).toMatchObject({ reason: 'limit', period: 'month', measure: 'turns', limit: 1 });
+});
+
+test('it reads no turn count and writes no stop for a runner with no spend context', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  const runner = await ctx.startRunner();
+
+  ctx.sandboxes.setGuestScript(buildStubTurnScript(() => ({ reply: 'Done.' })));
+
+  await ctx.writeMessage('First.');
+
+  await runNextStep(ctx.context, runner.runStep);
+
+  await ctx.writeMessage('Second.');
+
+  await runNextStep(ctx.context, runner.runStep);
+
+  const stop = await readSpendStopRow(ctx.writer.db);
+
+  expect([ctx.sandboxes.turns.length, stop]).toStrictEqual([2, null]);
 });

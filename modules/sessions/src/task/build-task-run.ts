@@ -61,6 +61,7 @@ export function buildTaskRun(options: SandboxRunnerOptions, parts: TaskRunParts)
     session: buildHeldSessionGuard(parts.invalidated),
     clearFetchPauses: options.clearFetchPauses,
     ...(options.inStepActions === undefined ? {} : { inStepActions: options.inStepActions }),
+    ...(options.spend === undefined ? {} : { spend: options.spend }),
     log: options.log,
   };
 }

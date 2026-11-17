@@ -30,6 +30,7 @@ export async function startSandboxTaskRunner(
     messaging: buildTaskMessaging(parts.config),
     turnInputs: parts.turnInputs,
     ...(parts.spend === null ? {} : { gateway: parts.spend.gateway }),
+    ...(parts.apiContext.spend === undefined ? {} : { spend: parts.apiContext.spend }),
     clearFetchPauses: parts.tools.webFetch.clearPauses,
     inStepActions: makeInStepActions(parts),
     log: parts.log,

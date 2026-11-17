@@ -63,6 +63,9 @@ export interface ConversationRunnerOptions {
 
   readonly inStepActions?: NonNullable<ConversationRun['inStepActions']>;
 
+  // set with spendStop: each step checks the turn count and the stop before its turn
+  readonly spend?: NonNullable<ConversationRun['spend']>;
+
   readonly log: ConversationSandboxSpec['log'];
 }
 

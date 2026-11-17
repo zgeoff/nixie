@@ -1,4 +1,5 @@
 import { modelTurnEndedCodec } from '@heynixie/models';
+import { checkSpendTurns, stoppedStepDelayMs } from '@heynixie/spend';
 import type { StepInput, StepResult } from '@heynixie/tasks';
 import { buildStepRunID, readTaskDirectory } from '@heynixie/tasks';
 import { runCompactionStep } from '../compaction/run-compaction-step';
@@ -20,6 +21,12 @@ export async function runConversationStep(
   conversation: ConversationRun,
   input: StepInput,
 ): Promise<StepResult> {
+  const stopped = await runSpendCheck(conversation, input);
+
+  if (stopped !== null) {
+    return stopped;
+  }
+
   const capture = await openStepCapture(conversation.turnInputs, {
     step: { taskID: input.taskID, stepRunID: buildStepRunID(input) },
     profile: conversation.profile.profile,
@@ -44,6 +51,29 @@ export async function runConversationStep(
   } finally {
     await capture.close({ callFrames: calls.count });
   }
+}
+
+// With the spending stop standing, or the turn count at a limit, the step ends before it opens a
+// capture, runs an approved call or makes a model turn. The task keeps its state and its queued
+// calls for its next claim, which comes after the stop clears.
+async function runSpendCheck(
+  conversation: ConversationRun,
+  input: StepInput,
+): Promise<StepResult | null> {
+  const spend = conversation.spend;
+
+  if (spend === undefined || (await checkSpendTurns(spend)) === 'open') {
+    return null;
+  }
+
+  await spend.clock.sleep(stoppedStepDelayMs, input.signal);
+
+  return {
+    next: 'continue',
+    records: [],
+    acknowledged: [],
+    sessionBoundary: input.sessionBoundary,
+  };
 }
 
 function runSessionTurn(conversation: ConversationRun, input: StepInput): Promise<StepResult> {

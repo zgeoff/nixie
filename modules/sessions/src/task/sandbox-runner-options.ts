@@ -1,5 +1,6 @@
 import type { CompactionSettings } from '@heynixie/compaction';
 import type { Logger } from '@heynixie/logger';
+import type { SpendContext } from '@heynixie/spend';
 import type { TaskMessaging, TasksContext } from '@heynixie/tasks';
 import type { ToolEndpoint } from '@heynixie/tools';
 import type {
@@ -28,5 +29,8 @@ export interface SandboxRunnerOptions extends SystemTaskOptions {
 
   // runs the approved calls of the tools that run inside the turn, before a task's turn
   readonly inStepActions?: InStepActions;
+
+  // set with spendStop: each step checks the turn count and the stop before its turn
+  readonly spend?: SpendContext;
   readonly log: Logger;
 }
