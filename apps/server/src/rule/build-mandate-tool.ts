@@ -1,9 +1,11 @@
 import { readMessageTimeZone } from '@heynixie/connectors';
 import { mandateInputSchema, writeMandateProposal } from '@heynixie/definitions';
+import type { MandateRefusal } from '@heynixie/definitions';
 import { withWriteTransaction } from '@heynixie/log';
 import { listUncoveredMemoryWrites } from '@heynixie/policy';
 import type { ProposalContext } from '@heynixie/proposals';
 import type { ToolDefinition } from '@heynixie/tools';
+import { match } from 'ts-pattern';
 import { z } from 'zod';
 import { memoryRuleArguments } from './memory-rule-arguments';
 
@@ -17,20 +19,25 @@ const memoryArgumentLines = Object.entries(memoryRuleArguments)
 
 // The text that tells the model how a rule reaches the memory writes. The arguments in it are the
 // ones that the memory tools declare, which a test checks against their input schemas.
-export const mandateDescription =
-  'Proposes a mandate: allow rules that last until a set time and then end on their own, such ' +
-  'as full authority over calendar invites today. The owner approves it on a card before any ' +
-  'rule takes effect. ' +
-  'For memory, a rule by tool name (memory.remember, memory.edit, memory.retire, memory.pin) and ' +
-  'a rule by effect (memory_write) cover the same writes, and an allow rule that covers a write ' +
-  'applies it at once with a notice; a write that no rule covers waits for review. A rule that ' +
-  'checks no subject leaves self-notes uncovered: add a check that subject is self to cover ' +
-  'them. A write from a photo needs a check on an image argument. memory.unpin has the note ' +
-  'effect, so only a rule by its tool name reaches it. The arguments that a rule can check, by ' +
-  `tool: ${memoryArgumentLines}. ` +
-  'Example for memory tidy-up: one rule with tools memory.edit, memory.retire and memory.pin, ' +
-  'and one rule with tools memory.remember and memory.edit and a check that subject eq self. ' +
-  'The result lists in memoryGaps the memory writes that each rule will not cover.';
+export function buildMandateDescription(maxHours: number): string {
+  return (
+    'Proposes a mandate: allow rules that last until a set time and then end on their own, such ' +
+    'as full authority over calendar invites today. The owner approves it on a card before any ' +
+    'rule takes effect. ' +
+    `A mandate lasts at most ${maxHours} hours from the proposal. With no expires, it ends at the ` +
+    "next midnight in the user's time zone. " +
+    'For memory, a rule by tool name (memory.remember, memory.edit, memory.retire, memory.pin) and ' +
+    'a rule by effect (memory_write) cover the same writes, and an allow rule that covers a write ' +
+    'applies it at once with a notice; a write that no rule covers waits for review. A rule that ' +
+    'checks no subject leaves self-notes uncovered: add a check that subject is self to cover ' +
+    'them. A write from a photo needs a check on an image argument. memory.unpin has the note ' +
+    'effect, so only a rule by its tool name reaches it. The arguments that a rule can check, by ' +
+    `tool: ${memoryArgumentLines}. ` +
+    'Example for memory tidy-up: one rule with tools memory.edit, memory.retire and memory.pin, ' +
+    'and one rule with tools memory.remember and memory.edit and a check that subject eq self. ' +
+    'The result lists in memoryGaps the memory writes that each rule will not cover.'
+  );
+}
 
 export interface MandateToolOptions {
   readonly context: ProposalContext;
@@ -45,7 +52,7 @@ export function buildMandateTool(options: MandateToolOptions): ToolDefinition {
 
   return {
     name: mandateToolName,
-    description: mandateDescription,
+    description: buildMandateDescription(options.maxHours),
     input: inputSchema,
     output: {
       type: 'object',
@@ -112,7 +119,7 @@ export function buildMandateTool(options: MandateToolOptions): ToolDefinition {
       );
 
       if (proposed.status === 'refused') {
-        return { status: 'error', message: `The mandate was refused: ${proposed.reason}.` };
+        return { status: 'error', message: formatRefusal(proposed) };
       }
 
       return {
@@ -132,4 +139,19 @@ export function buildMandateTool(options: MandateToolOptions): ToolDefinition {
       };
     },
   };
+}
+
+function formatRefusal(refusal: MandateRefusal): string {
+  return match(refusal)
+    .with(
+      { reason: 'expires_past' },
+      (past) =>
+        `The mandate was refused: expires_past. now: ${past.now}. Propose again with expires after now, or leave expires out for the next midnight.`,
+    )
+    .with(
+      { reason: 'expires_beyond_max' },
+      (beyond) =>
+        `The mandate was refused: expires_beyond_max. maxHours: ${beyond.maxHours}. latestExpiry: ${beyond.latestExpiry}. Propose again with expires at or before latestExpiry.`,
+    )
+    .exhaustive();
 }

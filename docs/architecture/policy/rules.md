@@ -212,7 +212,14 @@ and an expiry, and the user proposes it in the web client's mandates page or thr
 conversation tool `rules.propose_mandate`, which only the conversation holds and which declares the
 `note` effect, because its call writes a proposal and nothing else. `policy.mandates.max_hours`
 limits the expiry, counted from the proposal, and the default expiry is the next midnight in the
-user's time zone. The rule store refuses a past or too late expiry.
+user's time zone. The tool's description states that limit, read from the setting, so nixie knows
+the longest mandate before she proposes one.
+
+The rule store refuses a past or too late expiry, and each refusal carries the facts that fix it, in
+the user's zone. `expires_past` carries `now`, the time the expiry was compared against.
+`expires_beyond_max` carries `maxHours` and `latestExpiry`, the latest end the proposal could ask
+for. The tool returns them in its error message, the API returns them as `expiry` in the data of the
+`INVALID` error, and the mandates page shows one sentence built from them.
 
 The proposal is a row of the `rule_change` family, with the cause `mandate`, the `lifting` risk
 class when a rule lifts the always-ask set and `always_ask` otherwise. Its deadline is the expiry,

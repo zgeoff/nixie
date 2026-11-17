@@ -19420,6 +19420,44 @@
                               "items": {
                                 "type": "string"
                               }
+                            },
+                            "expiry": {
+                              "anyOf": [
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "reason": {
+                                      "const": "expires_past"
+                                    },
+                                    "now": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "reason",
+                                    "now"
+                                  ]
+                                },
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "reason": {
+                                      "const": "expires_beyond_max"
+                                    },
+                                    "maxHours": {
+                                      "type": "number"
+                                    },
+                                    "latestExpiry": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "reason",
+                                    "maxHours",
+                                    "latestExpiry"
+                                  ]
+                                }
+                              ]
                             }
                           },
                           "required": [
@@ -19832,6 +19870,44 @@
                               "items": {
                                 "type": "string"
                               }
+                            },
+                            "expiry": {
+                              "anyOf": [
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "reason": {
+                                      "const": "expires_past"
+                                    },
+                                    "now": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "reason",
+                                    "now"
+                                  ]
+                                },
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "reason": {
+                                      "const": "expires_beyond_max"
+                                    },
+                                    "maxHours": {
+                                      "type": "number"
+                                    },
+                                    "latestExpiry": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "reason",
+                                    "maxHours",
+                                    "latestExpiry"
+                                  ]
+                                }
+                              ]
                             }
                           },
                           "required": [

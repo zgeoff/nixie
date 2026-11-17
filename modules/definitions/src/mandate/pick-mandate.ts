@@ -1,5 +1,6 @@
 import type { Rule } from '@heynixie/policy';
 import { pickNextMidnight } from '@heynixie/proposals';
+import { formatZonedISO } from '../utils/format-zoned-iso';
 import type { MandateInput } from './mandate-input-schema';
 
 const hourMs = 60 * 60 * 1000;
@@ -16,9 +17,18 @@ export interface MandateRule {
   readonly rule: Omit<Rule, 'id'>;
 }
 
+export type MandateRefusal =
+  | { readonly status: 'refused'; readonly reason: 'expires_past'; readonly now: string }
+  | {
+      readonly status: 'refused';
+      readonly reason: 'expires_beyond_max';
+      readonly maxHours: number;
+      readonly latestExpiry: string;
+    };
+
 export type MandatePick =
   | { readonly status: 'ok'; readonly expires: number; readonly rules: readonly MandateRule[] }
-  | { readonly status: 'refused'; readonly reason: 'expires_past' | 'expires_beyond_max' };
+  | MandateRefusal;
 
 // Every rule of the mandate takes the mandate's ID and its end, so the decision point stops each at
 // the end whether the timer has run or not.
@@ -29,11 +39,22 @@ export function pickMandate(input: MandateInput, facts: MandateFacts): MandatePi
       : Date.parse(input.expires);
 
   if (expires <= facts.now) {
-    return { status: 'refused', reason: 'expires_past' };
+    return {
+      status: 'refused',
+      reason: 'expires_past',
+      now: formatZonedISO(facts.now, facts.zone),
+    };
   }
 
-  if (expires > facts.now + facts.maxHours * hourMs) {
-    return { status: 'refused', reason: 'expires_beyond_max' };
+  const latest = facts.now + facts.maxHours * hourMs;
+
+  if (expires > latest) {
+    return {
+      status: 'refused',
+      reason: 'expires_beyond_max',
+      maxHours: facts.maxHours,
+      latestExpiry: formatZonedISO(latest, facts.zone),
+    };
   }
 
   return {

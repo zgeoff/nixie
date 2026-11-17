@@ -1,3 +1,4 @@
+import { buildMandateStatus, readActiveMandates, readMandateTitles } from '@heynixie/definitions';
 import type { StartedMemoryStore } from '@heynixie/memory';
 import { buildMomentStatus, buildPinnedCoreStatus } from '@heynixie/memory';
 import { bindHarness, resolveRoleProfile } from '@heynixie/models';
@@ -67,6 +68,10 @@ export async function startConversationImp(
       buildModelStatus(),
       ...buildPinnedCoreStatus(() => memory().readPinnedCoreUse()),
       buildMomentStatus((at) => memory().moments.readWeekCount(at), parts.config.owner.name),
+      buildMandateStatus({
+        readActive: () => readActiveMandates(parts.context.log.writer.db),
+        readTitles: (mandateIDs) => readMandateTitles(parts.context.log, mandateIDs),
+      }),
     ]),
     memory,
     memorySettings: {
