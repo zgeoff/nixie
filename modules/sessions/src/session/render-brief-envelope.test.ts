@@ -19,6 +19,7 @@ function setupTest() {
                 speaker: 'plain_task' as const,
               },
             ],
+      unlisted: [],
       ownerName: 'Robin',
       agentName: 'Aria',
     }),

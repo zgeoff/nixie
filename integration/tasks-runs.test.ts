@@ -7,7 +7,13 @@ import {
 } from '@heynixie/definitions';
 import { startTestDefinitions } from '@heynixie/definitions/test-utils';
 import { parseJSONObject, readRecords } from '@heynixie/log';
-import { buildTasksRunsTool, claimTask, writeStepCommit } from '@heynixie/tasks';
+import {
+  buildTasksRunsTool,
+  claimTask,
+  readTaskDirectory,
+  readUnlistedProfiles,
+  writeStepCommit,
+} from '@heynixie/tasks';
 import { waitForCondition } from '@heynixie/testing';
 import { buildMockToolCall, buildMockToolContext } from '@heynixie/tools/test-utils';
 import { buildScheduleSource, deliverTriggerBatch } from '@heynixie/triggers';
@@ -163,4 +169,40 @@ test('it lists the ended run of a one-off after its definition left the definiti
       },
     },
   });
+});
+
+test('it names the task of a one-off from chat for a label once the task run ended and the definition left force', async () => {
+  const ctx = await setupTest();
+
+  await ctx.seed();
+
+  await ctx.runDefine({
+    name: 'Book the dentist',
+    brief: 'Book the dentist.',
+    target: 'task',
+    trigger: { at: '2027-03-12T08:00:00Z' },
+  });
+
+  await ctx.fireOnce('2027-03-12T08:01:00Z');
+  await ctx.waitForSettled();
+
+  const claim = await claimTask(ctx.tasks, { holder: 'runner-a', leaseMs: 60_000 });
+
+  invariant(claim, 'the fire is ready to claim');
+
+  await writeStepCommit(ctx.tasks, claim, {
+    next: 'wait',
+    records: [],
+    acknowledged: [],
+    run: { activity: 'worked', report: { summary: 'Booked the dentist for Tuesday.' } },
+  });
+
+  const listed = await readTaskDirectory(ctx.tasks, { directory: [] });
+  const unlisted = await readUnlistedProfiles(ctx.tasks, listed.directory);
+
+  expect(listed.directory).toStrictEqual([]);
+
+  expect(unlisted.map((profile) => [profile.taskID, profile.name])).toStrictEqual([
+    [claim.lease.workID, 'Book the dentist'],
+  ]);
 });

@@ -4,8 +4,9 @@ import { renderSessionPrompt } from './render-session-prompt';
 
 function setupTest() {
   return {
-    emptyMessaging: { directory: [], ownerName: null, agentName: null },
+    emptyMessaging: { directory: [], unlisted: [], ownerName: null, agentName: null },
     messagingOfThree: {
+      unlisted: [],
       directory: [
         {
           taskID: 'conversation',

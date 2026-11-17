@@ -161,6 +161,173 @@ test('it labels a sender that the directory lists no more with its task ID', () 
   ).toInclude(' from="task: t4m2" ');
 });
 
+test.each([
+  {
+    title: 'a report from a plain task as the name and the task ID',
+    kind: 'report',
+    directory: [
+      {
+        taskID: 'planner',
+        brief: 'Plans trips.',
+        wakeable: true,
+        name: 'Plans',
+        speaker: 'plain_task' as const,
+      },
+    ],
+    unlisted: [],
+    label: 'task: Plans (planner)',
+  },
+  {
+    title: 'a report from a persona task as the name and the task ID in the task label',
+    kind: 'report',
+    directory: [
+      {
+        taskID: 'planner',
+        brief: 'Plans trips.',
+        wakeable: true,
+        name: 'Plans',
+        speaker: 'persona_task' as const,
+      },
+    ],
+    unlisted: [],
+    label: 'Pip (task: Plans (planner))',
+  },
+  {
+    title: 'a report from a sender with no profile as the task ID alone',
+    kind: 'report',
+    directory: [],
+    unlisted: [],
+    label: 'task: planner',
+  },
+  {
+    title: 'a report from a persona task named by its task ID as the task ID alone',
+    kind: 'report',
+    directory: [
+      {
+        taskID: 'planner',
+        brief: 'Plans trips.',
+        wakeable: true,
+        name: 'planner',
+        speaker: 'persona_task' as const,
+      },
+    ],
+    unlisted: [],
+    label: 'Pip (task: planner)',
+  },
+  {
+    title: 'a report from a plain task with an empty name as the task ID alone',
+    kind: 'report',
+    directory: [
+      {
+        taskID: 'planner',
+        brief: 'Plans trips.',
+        wakeable: true,
+        name: '',
+        speaker: 'plain_task' as const,
+      },
+    ],
+    unlisted: [],
+    label: 'task: planner',
+  },
+  {
+    title:
+      'a report from a sender that only the unlisted profiles hold as the name and the task ID',
+    kind: 'report',
+    directory: [],
+    unlisted: [
+      {
+        taskID: 'planner',
+        brief: 'Plans trips.',
+        wakeable: true,
+        name: 'Plans',
+        speaker: 'plain_task' as const,
+      },
+    ],
+    label: 'task: Plans (planner)',
+  },
+  {
+    title: 'a report from a task whose name holds a slot with the slot kept as text',
+    kind: 'report',
+    directory: [
+      {
+        taskID: 'planner',
+        brief: 'Plans trips.',
+        wakeable: true,
+        name: 'Plans {id}',
+        speaker: 'plain_task' as const,
+      },
+    ],
+    unlisted: [],
+    label: 'task: Plans {id} (planner)',
+  },
+  {
+    title: 'a question from a sender that only the unlisted profiles hold as the name alone',
+    kind: 'question',
+    directory: [],
+    unlisted: [
+      {
+        taskID: 'planner',
+        brief: 'Plans trips.',
+        wakeable: true,
+        name: 'Plans',
+        speaker: 'plain_task' as const,
+      },
+    ],
+    label: 'task: Plans',
+  },
+  {
+    title: 'a question from a plain task as the name alone',
+    kind: 'question',
+    directory: [
+      {
+        taskID: 'planner',
+        brief: 'Plans trips.',
+        wakeable: true,
+        name: 'Plans',
+        speaker: 'plain_task' as const,
+      },
+    ],
+    unlisted: [],
+    label: 'task: Plans',
+  },
+])('it labels $title', (row) => {
+  const record = buildMockLogRecord({
+    kind: 'task_message',
+    thread: 'conversation',
+    recordedAt: new Date('2026-10-13T03:05:00Z'),
+    payload: {
+      messageID: 'k3vq8m2xpa',
+      from: 'planner',
+      to: 'conversation',
+      kind: row.kind,
+      replyTo: null,
+      onBehalfOf: [],
+      hop: 1,
+      hopLimit: 20,
+      wake: true,
+      woke: true,
+      source: 'task:planner',
+    },
+    erasable: { status: 'readable', fields: { body: 'Done.' } },
+  });
+
+  const rendered = renderTaskMessage(
+    record,
+    { defaultZone: 'UTC', now: new Date('2026-10-13T03:05:00Z') },
+    buildMockTaskMessageView({
+      messaging: {
+        directory: row.directory,
+        unlisted: row.unlisted,
+        hopLimit: 20,
+        ownerName: null,
+        agentName: 'Pip',
+      },
+    }),
+  );
+
+  expect(rendered).toInclude(` from="${row.label}" `);
+});
+
 test("it renders a forgotten message's body as forgotten", () => {
   const record = buildMockLogRecord({
     kind: 'task_message',

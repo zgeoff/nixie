@@ -20,12 +20,14 @@ import {
   createConversationTask,
   readOpenRun,
   readTaskDirectory,
+  runTaskStep,
   writeInboxRecords,
   writeStepCommit,
 } from '@heynixie/tasks';
 import {
   seedConversationStep,
   seedDefinitionTask,
+  seedOpenDefinitionRun,
   writeTestTaskMessage,
   writeTestTriggerFire,
 } from '@heynixie/tasks/test-utils';
@@ -531,3 +533,134 @@ test('it starts a task run of a wakeable definition task on a question from the 
   expect(woken).toHaveLength(1);
   expect(woken[0]).toInclude('Yes, at 06:30.');
 });
+
+test.each([
+  {
+    title: 'a definition in force',
+    leaveForce: async () => {},
+  },
+  {
+    title: 'a definition that left force after the task run ended',
+    leaveForce: async (ctx: Awaited<ReturnType<typeof setupTest>>) => {
+      await seedDefinitionTask(
+        { ...ctx, writer: ctx.context.log.writer },
+        { definitionID: 'water-the-tomatoes', definitionHash: null },
+      );
+    },
+  },
+])(
+  'it labels the report of a task of $title with the name of the definition and the task ID',
+  async (row) => {
+    const ctx = await setupTest();
+    const conversationStep = await seedConversationStep(ctx.context);
+
+    const taskID = await seedDefinitionTask(
+      { ...ctx, writer: ctx.context.log.writer },
+      {
+        definitionID: 'water-the-tomatoes',
+        definitionHash: 'hash-1',
+        version: { name: 'Water the tomatoes', persona: 'none' },
+      },
+    );
+
+    const taskClaim = await seedOpenDefinitionRun(ctx.context, {
+      taskID,
+      definitionID: 'water-the-tomatoes',
+      definitionHash: 'hash-1',
+    });
+
+    const messaging = await readTaskDirectory(ctx.context, {
+      directory: [
+        {
+          taskID: 'conversation',
+          name: 'Conversation',
+          brief: 'Talks with the owner.',
+          wakeable: true,
+          speaker: 'conversation',
+        },
+      ],
+      unlisted: [],
+      hopLimit: 20,
+      ownerName: 'Robin',
+      agentName: null,
+    });
+
+    const report = await writeTestTaskMessage(ctx.context, messaging, {
+      from: taskID,
+      to: 'conversation',
+      kind: 'report',
+      body: 'The tomatoes are watered.',
+      replyTo: null,
+      onBehalfOf: [],
+      wake: true,
+    });
+
+    invariant(report.status === 'sent', 'the report was sent');
+
+    await writeStepCommit(ctx.context, taskClaim, {
+      next: 'wait',
+      records: [],
+      acknowledged: [],
+      run: { activity: 'worked', report: { summary: 'Watered.' } },
+    });
+
+    await writeStepCommit(ctx.context, conversationStep.claim, {
+      next: 'wait',
+      records: [],
+      acknowledged: [conversationStep.messageSequence],
+    });
+
+    await row.leaveForce(ctx);
+
+    const sandboxes = buildStubSandboxes();
+
+    const runner = await ctx.startConversation(sandboxes);
+
+    ctx.defer(() => runner.stop());
+
+    sandboxes.setGuestScript((turn) => [
+      { type: 'read', uuids: turn.input.map((message) => message.uuid) },
+      {
+        type: 'assistant',
+        messageID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d022',
+        text: 'The tomatoes were watered.',
+        toolUses: [],
+      },
+      {
+        type: 'ended',
+        boundary: {
+          harness: 'agent-sdk',
+          sessionID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d021',
+          messageID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d022',
+        },
+        outcome: 'finished',
+        stopReason: 'end_turn',
+        turns: 1,
+        usage: { inputTokens: 10, outputTokens: 5, cacheReadTokens: 0, cacheWriteTokens: 0 },
+      },
+    ]);
+
+    const claim = await claimTask(ctx.context, {
+      holder: 'runner-a',
+      leaseMs: 60_000,
+      taskID: 'conversation',
+    });
+
+    invariant(claim, 'the conversation is ready to claim');
+
+    await runTaskStep(ctx.context, claim, {
+      runStep: runner.runStep,
+      leaseMs: 60_000,
+      logger: () => {},
+      maxStepErrors: 3,
+      retryDelayMs: 30_000,
+      maxRetryDelayMs: 300_000,
+    });
+
+    const woken = sandboxes.turns.map((turn) =>
+      turn.input.map((message) => message.text).join('\n'),
+    );
+
+    expect(woken.join('\n')).toInclude(`from="task: Water the tomatoes (${taskID})" kind="report"`);
+  },
+);

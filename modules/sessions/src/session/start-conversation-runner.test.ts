@@ -1138,7 +1138,7 @@ test("it wakes the conversation for a system task's message and gives the turn t
   await ctx.runNextStep(runner);
 
   expect(ctx.sandboxes.turns[0]?.input.at(-1)?.text).toMatch(
-    /<task-message id="\w+" from="task: Sweeper" kind="report" sent="[^"]+" fence="(?<fence>\w+)">\nTwo new memories wait for your review\.\n<\/task-message fence="\k<fence>">$/u,
+    /<task-message id="\w+" from="task: Sweeper \(sweeper\)" kind="report" sent="[^"]+" fence="(?<fence>\w+)">\nTwo new memories wait for your review\.\n<\/task-message fence="\k<fence>">$/u,
   );
 });
 

@@ -3,7 +3,7 @@ import { readRecords } from '@heynixie/log';
 import type { ToolDefinition } from '@heynixie/tools';
 import { recallPageLimitBytes } from '@heynixie/wire';
 import { z } from 'zod';
-import { readPinnedProfiles } from '../task/read-pinned-profiles';
+import { readEndedProfiles } from '../task/read-ended-profiles';
 import { readTaskDirectory } from '../task/read-task-directory';
 import { readRunFire } from '../trigger/read-run-fire';
 import type { TaskMessaging, TasksContext, TasksTables } from '../types';
@@ -234,11 +234,7 @@ async function readRunNames(
   const missing = [...new Set(runs.map((run) => run.taskID))].filter((id) => !known.has(id));
 
   // the name comes from the newest ended run of the task, which is not always one of these runs
-  const newest = await Promise.all(
-    missing.map((taskID) => readEndedRuns(context, { taskID, limit: 1 })),
-  );
-
-  const pinned = await readPinnedProfiles(context, newest.flat(), missing);
+  const pinned = await readEndedProfiles(context, missing);
 
   for (const profile of pinned) {
     known.set(profile.taskID, profile.name);

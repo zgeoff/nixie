@@ -1,7 +1,7 @@
 import { modelTurnEndedCodec } from '@heynixie/models';
 import { checkSpendTurns, stoppedStepDelayMs } from '@heynixie/spend';
 import type { StepInput, StepResult } from '@heynixie/tasks';
-import { buildStepRunID, readTaskDirectory } from '@heynixie/tasks';
+import { buildStepRunID, readTaskDirectory, readUnlistedProfiles } from '@heynixie/tasks';
 import { runCompactionStep } from '../compaction/run-compaction-step';
 import { runInboxStep } from '../inbox/run-inbox-step';
 import { canSessionTake } from '../session/can-session-take';
@@ -81,9 +81,14 @@ function runSessionTurn(conversation: ConversationRun, input: StepInput): Promis
     const signal = AbortSignal.any([input.signal, invalidated]);
     const definitions = conversation.getDefinitions();
 
+    const listed = await readTaskDirectory(conversation.context, conversation.messaging);
+
     const run = {
       ...conversation,
-      messaging: await readTaskDirectory(conversation.context, conversation.messaging),
+      messaging: {
+        ...listed,
+        unlisted: await readUnlistedProfiles(conversation.context, listed.directory),
+      },
     };
 
     const marks = await readSessionMarks(run.context, input.taskID, run.sinceSequence);

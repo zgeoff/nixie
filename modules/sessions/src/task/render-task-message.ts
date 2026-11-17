@@ -20,11 +20,12 @@ export function renderTaskMessage(
 ): string {
   const message = taskMessageCodec.decode(record.payload);
   const body = record.erasable.status === 'readable' ? record.erasable.fields['body'] : undefined;
+  const form = message.kind === 'report' ? 'report' : 'plain';
 
   return renderTaskEnvelope(
     {
       id: message.messageID,
-      from: pickEnvelopeLabel(view.messaging, message.from),
+      from: pickEnvelopeLabel(view.messaging, message.from, form),
       kind: message.kind,
       replyTo: message.replyTo,
       sent: formatMessageTime(record.recordedAt, null, times),
