@@ -716,7 +716,7 @@ test('it lists a wakeable definition task as finished when its newest task run r
   });
 });
 
-test('it pages 100 tasks with long briefs under the byte budget, listing each once', async () => {
+test('it pages 200 tasks with long briefs under the byte budget, listing each once', async () => {
   const ctx = await setupTest();
 
   const firstLine =
@@ -725,23 +725,20 @@ test('it pages 100 tasks with long briefs under the byte budget, listing each on
   const brief = `${firstLine}\nSecond line of the brief.\nThird line of the brief.`;
   const clipped = `${firstLine.slice(0, 200)}…`;
 
-  // Each start in one step reads the step's earlier tasks, so the seeding cost grows with the square
-  // of the count: 100 tasks fill 2 pages and keep the test well under its limit.
-  const starter = await seedConversationStep(ctx.context);
+  const directory = Array.from({ length: 200 }, (_, index) => ({
+    taskID: `tide-check-${index}`,
+    name: `Tide check ${index}`,
+    brief,
+    wakeable: true,
+    speaker: 'plain_task' as const,
+  }));
 
-  const expectedIDs: string[] = [];
-
-  for (let index = 0; index < 100; index += 1) {
-    const taskID = await seedTask(ctx.context, {
-      starter: starter.claim,
-      name: `Tide check ${index}`,
-      brief,
-    });
-
-    expectedIDs.push(taskID);
+  for (const profile of directory) {
+    await createSystemTask(ctx.context, profile.taskID);
   }
 
-  const tool = buildTasksListTool(ctx.context, { directory: [] });
+  const expectedIDs = directory.map((profile) => profile.taskID);
+  const tool = buildTasksListTool(ctx.context, { directory });
   const listedIDs: string[] = [];
   const briefs: unknown[] = [];
   const sizes: number[] = [];
