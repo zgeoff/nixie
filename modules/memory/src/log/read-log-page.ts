@@ -68,9 +68,11 @@ export interface LogEntryQuery {
 }
 
 // The whole entry, with no clip, or null when the run's thread holds no such entry to show.
+// taskNames maps a task ID to its name, for the line of a task's message.
 export async function readLogEntry(
   log: Pick<Log, 'deploymentKey' | 'writer'>,
   query: LogEntryQuery,
+  taskNames: ReadonlyMap<string, string> = new Map(),
 ): Promise<LogEntry | null> {
   const [read] = await readRecords(log, {
     afterSequence: query.sequence - 1,
@@ -86,7 +88,7 @@ export async function readLogEntry(
 
   const lookup = await readToolShortIDs(log, [read.record]);
 
-  return buildScannedEntry(read.record, lookup).entry;
+  return buildScannedEntry(read.record, lookup, taskNames).entry;
 }
 
 const entryKinds: readonly RecordKind[] = [...conversationKinds, 'tool_result', 'task_message'];

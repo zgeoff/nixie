@@ -136,6 +136,7 @@ export function buildLogReadTool(
         return readWholeEntry(log, {
           thread: context.run.logThread,
           input: { ...input, record: input.record },
+          taskNames: await readTaskNames(),
         });
       }
 
@@ -186,6 +187,7 @@ export function buildLogReadTool(
 interface WholeEntryRequest {
   readonly thread: string;
   readonly input: z.infer<typeof logReadArguments> & { readonly record: string };
+  readonly taskNames: ReadonlyMap<string, string>;
 }
 
 async function readWholeEntry(
@@ -203,10 +205,11 @@ async function readWholeEntry(
     return { status: 'error', message: 'record takes only after beside it' };
   }
 
-  const entry = await readLogEntry(log, {
-    thread: request.thread,
-    sequence: Number(input.record.replace(/^#/u, '')),
-  });
+  const entry = await readLogEntry(
+    log,
+    { thread: request.thread, sequence: Number(input.record.replace(/^#/u, '')) },
+    request.taskNames,
+  );
 
   if (entry === null) {
     return { status: 'error', message: 'no such entry' };

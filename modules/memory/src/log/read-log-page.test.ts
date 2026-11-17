@@ -8,7 +8,7 @@ import { startTestMemory } from '../test-utils';
 import { createMemoryItem } from '../test-utils/create-memory-item';
 import { createProposal } from '../test-utils/create-proposal';
 import { writeOwnerMessageRecord } from '../test-utils/write-owner-message-record';
-import { readLogPage } from './read-log-page';
+import { readLogEntry, readLogPage } from './read-log-page';
 
 async function setupTest() {
   const memory = await startTestMemory();
@@ -394,6 +394,45 @@ test('it shows the name of the sender of a task message before its ID', async ()
   expect(page.entries.map((entry) => entry.text)).toStrictEqual([
     'report r8d2 from task Tide tables (t4m2)\nHigh tide is at 06:42.',
   ]);
+});
+
+test('it shows the name of the sender of a task message before its ID when it reads the entry whole', async () => {
+  const ctx = await setupTest();
+
+  const [written] = await writeRecords(ctx.log, [
+    {
+      kind: 'task_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: {
+        messageID: 'r8d2',
+        from: 't4m2',
+        to: 'conversation',
+        kind: 'report',
+        replyTo: null,
+        onBehalfOf: [],
+        hop: 1,
+        hopLimit: 6,
+        wake: true,
+        woke: true,
+        opensWait: false,
+        source: 'task:t4m2',
+      },
+      erasable: { body: 'High tide is at 06:42.' },
+    },
+  ]);
+
+  invariant(written !== undefined, 'the message is written');
+
+  const entry = await readLogEntry(
+    ctx.log,
+    { thread: 'conversation', sequence: written.sequence },
+    new Map([['t4m2', 'Tide tables']]),
+  );
+
+  invariant(entry !== null, 'the entry is read');
+
+  expect(entry.text).toBe('report r8d2 from task Tide tables (t4m2)\nHigh tide is at 06:42.');
 });
 
 test('it shows a forgotten message with no text, and a search never returns it', async () => {
