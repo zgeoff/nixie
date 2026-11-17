@@ -60,6 +60,33 @@ export async function readLogPage(
   return { entries: scan.entries, next: scan.after >= bounds.through ? null : scan.after };
 }
 
+export interface LogEntryQuery {
+  readonly thread: string;
+  readonly sequence: number;
+}
+
+// The whole entry, with no clip, or null when the run's thread holds no such entry to show.
+export async function readLogEntry(
+  log: Pick<Log, 'deploymentKey' | 'writer'>,
+  query: LogEntryQuery,
+): Promise<LogEntry | null> {
+  const [read] = await readRecords(log, {
+    afterSequence: query.sequence - 1,
+    beforeSequence: query.sequence + 1,
+    thread: query.thread,
+    kinds: entryKinds,
+    limit: 1,
+  });
+
+  if (read === undefined) {
+    return null;
+  }
+
+  const lookup = await readToolShortIDs(log, [read.record]);
+
+  return buildScannedEntry(read.record, lookup).entry;
+}
+
 const entryKinds: readonly RecordKind[] = [...conversationKinds, 'tool_result', 'task_message'];
 
 interface SequenceBounds {

@@ -472,3 +472,125 @@ test("it gives a task with the conversation's log the conversation's records thr
       .map((record) => record.kind),
   ).toIncludeAllMembers(['tool_called', 'tool_result']);
 });
+
+test("it gives a task with the conversation's log a conversation entry whole through log.read with record", async () => {
+  const ctx = await setupTest();
+
+  ctx.nixie.guest.addKindReplies('conversation', { text: 'Noted the lantern walk.' });
+
+  const records = await sendClientMessage(
+    ctx.api.client,
+    { text: 'Plan a lantern walk for Friday.' },
+    'Noted the lantern walk.',
+  );
+
+  const owner = records.find(
+    (record) => record.message?.text === 'Plan a lantern walk for Friday.',
+  );
+
+  invariant(owner, 'the owner message is in the conversation');
+
+  ctx.nixie.guest.addKindReplies(
+    'conversation',
+    {
+      toolUse: {
+        name: 'task.start',
+        input: {
+          name: 'Note taker',
+          brief: 'Read one entry of the conversation and report.',
+          memory: 'read',
+          log: 'conversation',
+          tools: ['log.read'],
+        },
+      },
+    },
+    { text: 'Passed to the Note taker task.' },
+    { text: 'The note taker read it.' },
+  );
+
+  ctx.nixie.guest.addKindReplies(
+    'worker',
+    { toolUse: { name: 'log.read', input: { record: String(owner.sequence) } } },
+    {
+      toolUse: {
+        name: 'task.message',
+        input: { to: 'conversation', kind: 'report', body: 'Read it.' },
+      },
+    },
+    { text: 'Reported.' },
+  );
+
+  await sendClientMessage(
+    ctx.api.client,
+    { text: 'Ask the note taker to read it.' },
+    'Passed to the Note taker task.',
+  );
+
+  await waitForCondition(() => ctx.nixie.toolResults.some((result) => result.name === 'log.read'));
+
+  const read = ctx.nixie.toolResults.find((result) => result.name === 'log.read');
+
+  expect(read?.result).toInclude(`"eventID":"${String(owner.sequence)}","role":"owner"`);
+  expect(read?.result).toInclude('Plan a lantern walk for Friday.');
+  expect(read?.result).toInclude('"next":null');
+});
+
+test("it refuses a whole read of the conversation's entry to a task with no log grant, and shows none of its text", async () => {
+  const ctx = await setupTest();
+
+  ctx.nixie.guest.addKindReplies('conversation', { text: 'Noted the lantern walk.' });
+
+  const records = await sendClientMessage(
+    ctx.api.client,
+    { text: 'Plan a lantern walk for Friday.' },
+    'Noted the lantern walk.',
+  );
+
+  const owner = records.find(
+    (record) => record.message?.text === 'Plan a lantern walk for Friday.',
+  );
+
+  invariant(owner, 'the owner message is in the conversation');
+
+  ctx.nixie.guest.addKindReplies(
+    'conversation',
+    {
+      toolUse: {
+        name: 'task.start',
+        input: {
+          name: 'Note taker',
+          brief: 'Read one entry of the conversation and report.',
+          memory: 'read',
+          tools: ['log.read'],
+        },
+      },
+    },
+    { text: 'Passed to the Note taker task.' },
+    { text: 'The note taker tried.' },
+  );
+
+  ctx.nixie.guest.addKindReplies(
+    'worker',
+    { toolUse: { name: 'log.read', input: { record: String(owner.sequence) } } },
+    {
+      toolUse: {
+        name: 'task.message',
+        input: { to: 'conversation', kind: 'report', body: 'Tried.' },
+      },
+    },
+    { text: 'Reported.' },
+  );
+
+  await sendClientMessage(
+    ctx.api.client,
+    { text: 'Ask the note taker to read it.' },
+    'Passed to the Note taker task.',
+  );
+
+  await waitForCondition(() => ctx.nixie.toolResults.some((result) => result.name === 'log.read'));
+
+  const read = ctx.nixie.toolResults.find((result) => result.name === 'log.read');
+
+  expect(read?.result).toInclude('no such entry');
+  expect(read?.result).not.toInclude('lantern walk');
+});
