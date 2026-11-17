@@ -50,6 +50,9 @@ export interface ServerParts {
 
   // the gateway that counts every model request, or null when the config sets no spendStop
   readonly spend: SpendInputs | null;
+
+  // whether the start checks left the gateway without its limits
+  readonly isSpendUnsent: boolean;
   readonly turnInputs: TurnInputs;
 
   readonly encoder: Encoder | null;

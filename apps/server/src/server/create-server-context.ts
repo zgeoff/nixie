@@ -7,6 +7,7 @@ import {
   readDefinitionsInForce,
 } from '@heynixie/definitions';
 import type { Writer } from '@heynixie/log';
+import type { SpendGateway, SpendTurnLimits } from '@heynixie/spend';
 import type { RunSettings, TaskLimits, TaskRunnerRegistry } from '@heynixie/tasks';
 import { readDefinitionNextFire } from '@heynixie/triggers';
 import type { InForce } from '../types';
@@ -28,6 +29,9 @@ export interface ServerContextOptions {
   // the zone that 'owner' resolves to until the owner has sent a message that carries one
   readonly defaultZone: string;
   readonly settings?: APISettings;
+
+  // the gateway and the turn limits of the spending stop, or absent without spendStop
+  readonly spend?: { readonly gateway: SpendGateway; readonly limits: SpendTurnLimits };
 }
 
 export async function createServerContext(
@@ -45,13 +49,27 @@ export async function createServerContext(
     },
   };
 
+  const log = buildServerLog(writer, deploymentKey);
+  const definitions = () => ({ snapshotHash: inForce.read()?.snapshotHash ?? '' });
+
   return {
     inForce,
     apiContext: {
-      log: buildServerLog(writer, deploymentKey),
+      log,
       clock: writer.clock,
-
-      definitions: () => ({ snapshotHash: inForce.read()?.snapshotHash ?? '' }),
+      definitions,
+      ...(options.spend === undefined
+        ? {}
+        : {
+            spend: {
+              gateway: options.spend.gateway,
+              log,
+              clock: writer.clock,
+              zone: options.defaultZone,
+              limits: options.spend.limits,
+              definitions,
+            },
+          }),
       runSettings: options.runSettings,
       runners: options.runners,
       readDefinitionVersion,

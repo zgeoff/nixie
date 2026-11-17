@@ -1,4 +1,55 @@
+import type { Clock } from '@heynixie/clock';
+import type { CheckedTables } from '@heynixie/db';
+import type { Definitions, Log } from '@heynixie/log';
+
 export type PeriodName = 'day' | 'month';
+
+export type SpendMeasure = 'dollars' | 'tokens' | 'turns';
+
+export interface SpendTriple {
+  readonly dollars: number;
+  readonly tokens: number;
+  readonly turns: number;
+}
+
+// The limits that nixie holds itself, as the models config sets them. The gateway holds the
+// dollars and the tokens, and nixie counts the turns.
+export interface SpendTurnLimits {
+  readonly dayTurns: number;
+  readonly dayTurnCap: number;
+  readonly monthTurns: number;
+}
+
+export interface SpendContext {
+  readonly gateway: SpendGateway;
+  readonly log: Log;
+  readonly clock: Clock;
+
+  // the zone in which the day and the month start, the time tool's default zone
+  readonly zone: string;
+  readonly limits: SpendTurnLimits;
+  readonly definitions: () => Definitions;
+}
+
+// What the stop is now. A trip also holds the measures of its period, so a client can offer a
+// raise: `limits` are the limits in force, `used` the counts, and `cap` the highest a raise reaches.
+export type SpendStop =
+  | { readonly state: 'clear' }
+  | { readonly state: 'unreachable' }
+  | { readonly state: 'lost' }
+  | {
+      readonly state: 'tripped';
+      readonly period: PeriodName;
+      readonly measure: SpendMeasure;
+      readonly limit: number;
+      readonly spent: number;
+      readonly at: number;
+      readonly resetsAt: number;
+      readonly canRaise: boolean;
+      readonly limits: SpendTriple;
+      readonly used: SpendTriple;
+      readonly cap: SpendTriple;
+    };
 
 export interface Measures {
   readonly dollars: number;
@@ -88,3 +139,38 @@ export interface SpendGateway {
   readonly readSandbox: (name: string) => Promise<Done<SandboxCount> | NotFound | Unreachable>;
   readonly removeSandbox: (name: string) => Promise<Done | Unreachable>;
 }
+
+interface SpendStopTable {
+  readonly id: number;
+  readonly reason: string;
+  readonly period: string | null;
+  readonly measure: string | null;
+  readonly limit_amount: number | null;
+  readonly spent_amount: number | null;
+  readonly at: number;
+  readonly resets_at: number | null;
+  readonly updated_sequence: number;
+}
+
+interface SpendRaiseTable {
+  readonly start: string;
+  readonly dollars: number;
+  readonly tokens: number;
+  readonly turns: number;
+  readonly raised_by: string;
+  readonly at: number;
+  readonly updated_sequence: number;
+}
+
+interface SpendTurnTable {
+  readonly bucket_start: number;
+  readonly turns: number;
+}
+
+export type SpendTables = CheckedTables<
+  Readonly<{
+    spend_stop: SpendStopTable;
+    spend_raises: SpendRaiseTable;
+    spend_turns: SpendTurnTable;
+  }>
+>;

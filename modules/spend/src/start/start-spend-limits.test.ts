@@ -1,6 +1,5 @@
-import { expect, mock, onTestFinished, test } from 'bun:test';
+import { expect, mock, test } from 'bun:test';
 import type { Logger } from '@heynixie/logger';
-import { waitForCondition } from '@heynixie/testing';
 import { buildMockGatewayStatus, buildStubSpendGateway } from '../test-utils';
 import { startSpendLimits } from './start-spend-limits';
 
@@ -13,12 +12,6 @@ function setupTest() {
   const gateway = buildStubSpendGateway();
   const log = mock<Logger>(() => {});
 
-  const stopping = new AbortController();
-
-  onTestFinished(() => {
-    stopping.abort();
-  });
-
   const options = {
     gateway,
     limits,
@@ -26,8 +19,6 @@ function setupTest() {
     credentialCount: 0,
     pathProfileIDs: [],
     log,
-    signal: stopping.signal,
-    retryMs: 5,
   };
 
   return { gateway, log, limits, options };
@@ -81,35 +72,24 @@ test('it refuses to start with the cap in the error when the gateway refuses the
   expect(startSpendLimits(ctx.options)).rejects.toThrow(/cap of 50 dollars and 1000 tokens/u);
 });
 
-test('it starts and sends the limits once a gateway that gave no answer answers', async () => {
+test('it starts with the limits unsent when the gateway gave no answer', async () => {
   const ctx = setupTest();
 
-  ctx.gateway.readStatus.mockResolvedValueOnce({ kind: 'unreachable', reason: 'no answer' });
+  ctx.gateway.readStatus.mockResolvedValue({ kind: 'unreachable', reason: 'no answer' });
 
-  await startSpendLimits(ctx.options);
-  await waitForCondition(() => ctx.gateway.putLimits.mock.calls.length === 1);
+  const result = await startSpendLimits(ctx.options);
 
-  expect(ctx.gateway.putLimits.mock.calls).toStrictEqual([[ctx.limits]]);
-
-  expect(ctx.log.mock.calls[0]).toStrictEqual([
-    'spend.limits_unsent',
-    { reason: 'no answer' },
-    'warn',
+  expect([result, ctx.gateway.putLimits.mock.calls, ctx.log.mock.calls[0]]).toStrictEqual([
+    'unsent',
+    [],
+    ['spend.limits_unsent', { reason: 'no answer' }, 'warn'],
   ]);
 });
 
-test('it sends no limits to a late gateway whose zone differs', async () => {
+test('it reports the limits sent when the gateway answers', async () => {
   const ctx = setupTest();
 
-  ctx.gateway.readStatus
-    .mockResolvedValueOnce({ kind: 'unreachable', reason: 'no answer' })
-    .mockResolvedValue({ kind: 'ok', value: buildMockGatewayStatus({ zone: 'Asia/Tokyo' }) });
+  const result = await startSpendLimits(ctx.options);
 
-  await startSpendLimits(ctx.options);
-
-  await waitForCondition(() =>
-    ctx.log.mock.calls.some((call) => call[0] === 'spend.limits_refused'),
-  );
-
-  expect(ctx.gateway.putLimits.mock.calls).toStrictEqual([]);
+  expect(result).toBe('sent');
 });

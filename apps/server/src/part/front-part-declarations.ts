@@ -42,6 +42,18 @@ export const frontPartDeclarations: readonly AnyPartDeclaration<ServerPartValues
           runners: buildServerTaskRunners(),
           taskRunLimits: options.config.models.limits.taskRun.default,
           defaultZone: options.config.time.default_zone,
+          ...(options.spend === null
+            ? {}
+            : {
+                spend: {
+                  gateway: options.spend.gateway,
+                  limits: {
+                    dayTurns: options.config.models.limits.day.turns,
+                    dayTurnCap: options.config.models.limits.day.turnCap,
+                    monthTurns: options.config.models.limits.month.turns,
+                  },
+                },
+              }),
           settings: {
             ...defaultAPISettings,
             isBackupEnabled: options.config.backup.isEnabled,

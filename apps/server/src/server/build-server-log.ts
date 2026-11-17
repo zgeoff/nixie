@@ -12,6 +12,7 @@ import { logProjections } from '@heynixie/log';
 import { memoryProjections } from '@heynixie/memory';
 import { knownContactsProjection } from '@heynixie/policy';
 import { sandboxesProjection } from '@heynixie/sandbox';
+import { spendProjections } from '@heynixie/spend';
 import { tasksProjections } from '@heynixie/tasks';
 import { triggersProjections } from '@heynixie/triggers';
 
@@ -34,6 +35,7 @@ export function buildServerLog(writer: Writer, deploymentKey: CryptoKey): Log {
       taskDefinitionExportsProjection,
       knownContactsProjection,
       proposalsProjection,
+      ...spendProjections,
     ],
   };
 }

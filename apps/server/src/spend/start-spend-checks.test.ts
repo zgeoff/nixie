@@ -8,15 +8,12 @@ import { startSpendChecks } from './start-spend-checks';
 test('it calls no gateway when the config sets no spendStop', async () => {
   const log = mock<Logger>(() => {});
 
-  await startSpendChecks(
-    {
-      spend: null,
-      config: { models: buildMockModelsConfig(), time: { default_zone: 'UTC' } },
-      secrets: { models: { model_credentials: { anthropic: 'not-a-real-key' } } },
-      log,
-    },
-    new AbortController().signal,
-  );
+  await startSpendChecks({
+    spend: null,
+    config: { models: buildMockModelsConfig(), time: { default_zone: 'UTC' } },
+    secrets: { models: { model_credentials: { anthropic: 'not-a-real-key' } } },
+    log,
+  });
 
   expect(log.mock.calls).toStrictEqual([]);
 });
@@ -24,20 +21,17 @@ test('it calls no gateway when the config sets no spendStop', async () => {
 test('it sends the day and month limits of the models config to the gateway', async () => {
   const gateway = buildStubSpendGateway();
 
-  await startSpendChecks(
-    {
-      spend: {
-        control: 'http://127.0.0.1:8790',
-        token: 'a-token',
-        modelURL: 'http://127.0.0.1:8789',
-        gateway,
-      },
-      config: { models: buildMockModelsConfig(), time: { default_zone: 'UTC' } },
-      secrets: { models: {} },
-      log: () => {},
+  await startSpendChecks({
+    spend: {
+      control: 'http://127.0.0.1:8790',
+      token: 'a-token',
+      modelURL: 'http://127.0.0.1:8789',
+      gateway,
     },
-    new AbortController().signal,
-  );
+    config: { models: buildMockModelsConfig(), time: { default_zone: 'UTC' } },
+    secrets: { models: {} },
+    log: () => {},
+  });
 
   expect(gateway.putLimits.mock.calls).toStrictEqual([
     [
@@ -52,20 +46,17 @@ test('it sends the day and month limits of the models config to the gateway', as
 test('it refuses to start with a model credential in the secrets file', () => {
   const gateway = buildStubSpendGateway();
 
-  const started = startSpendChecks(
-    {
-      spend: {
-        control: 'http://127.0.0.1:8790',
-        token: 'a-token',
-        modelURL: 'http://127.0.0.1:8789',
-        gateway,
-      },
-      config: { models: buildMockModelsConfig(), time: { default_zone: 'UTC' } },
-      secrets: { models: { model_credentials: { anthropic: 'not-a-real-key' } } },
-      log: () => {},
+  const started = startSpendChecks({
+    spend: {
+      control: 'http://127.0.0.1:8790',
+      token: 'a-token',
+      modelURL: 'http://127.0.0.1:8789',
+      gateway,
     },
-    new AbortController().signal,
-  );
+    config: { models: buildMockModelsConfig(), time: { default_zone: 'UTC' } },
+    secrets: { models: { model_credentials: { anthropic: 'not-a-real-key' } } },
+    log: () => {},
+  });
 
   expect(started).rejects.toThrow(/model_credentials/u);
 });
@@ -77,29 +68,26 @@ test('it refuses to start when a profile base URL has a path', () => {
 
   invariant(id !== undefined && profile !== undefined);
 
-  const started = startSpendChecks(
-    {
-      spend: {
-        control: 'http://127.0.0.1:8790',
-        token: 'a-token',
-        modelURL: 'http://127.0.0.1:8789',
-        gateway,
-      },
-      config: {
-        models: {
-          ...models,
-          profiles: {
-            ...models.profiles,
-            [id]: { ...profile, baseURL: 'https://models.example.test/anthropic' },
-          },
-        },
-        time: { default_zone: 'UTC' },
-      },
-      secrets: { models: {} },
-      log: () => {},
+  const started = startSpendChecks({
+    spend: {
+      control: 'http://127.0.0.1:8790',
+      token: 'a-token',
+      modelURL: 'http://127.0.0.1:8789',
+      gateway,
     },
-    new AbortController().signal,
-  );
+    config: {
+      models: {
+        ...models,
+        profiles: {
+          ...models.profiles,
+          [id]: { ...profile, baseURL: 'https://models.example.test/anthropic' },
+        },
+      },
+      time: { default_zone: 'UTC' },
+    },
+    secrets: { models: {} },
+    log: () => {},
+  });
 
   expect(started).rejects.toThrow(new RegExp(`fix ${id}`, 'u'));
 });

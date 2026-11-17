@@ -12,6 +12,7 @@ import type {
 } from '@heynixie/memory';
 import type { PromptsInForce } from '@heynixie/prompts';
 import type { QuietHours } from '@heynixie/proposals';
+import type { SpendContext } from '@heynixie/spend';
 import type { TaskProfile, TasksContext } from '@heynixie/tasks';
 import type { ReadZone } from '@heynixie/triggers';
 import type { TurnInputs } from '@heynixie/turn-inputs';
@@ -69,6 +70,9 @@ export type CleanupRecordSessions = (cause: ForgottenRecord) => Promise<void>;
 
 export interface APIContext extends TasksContext {
   readonly settings: APISettings;
+
+  // the gateway's spending stop; absent when the deployment sets no spendStop
+  readonly spend?: SpendContext;
 
   // challenges, registration options and the host code, which a restart drops
   readonly passkeys: PasskeyState;

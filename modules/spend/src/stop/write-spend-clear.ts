@@ -1,0 +1,38 @@
+import {
+  readPause,
+  resumeNixieInTransaction,
+  withWriteTransaction,
+  writeRecordsInTransaction,
+} from '@heynixie/log';
+import { spendStopClearedCodec } from '../record/spend-stop-cleared-codec';
+import type { SpendContext } from '../types';
+import type { ClearReason } from './pick-spend-move';
+import { readSpendStopRow } from './read-spend-stop-row';
+
+// Writes the clear and resumes nixie when its pause has the cause spending, in one transaction. A
+// pause of another cause stays, so a clear never resumes what you paused or what a restore did.
+export function writeSpendClear(context: SpendContext, reason: ClearReason): Promise<boolean> {
+  return withWriteTransaction(context.log.writer, async (tx) => {
+    if ((await readSpendStopRow(tx)) === null) {
+      return false;
+    }
+
+    const definitions = context.definitions();
+
+    await writeRecordsInTransaction(tx, context.log, [
+      {
+        kind: spendStopClearedCodec.kind,
+        definitions,
+        payload: spendStopClearedCodec.encode({ reason }),
+      },
+    ]);
+
+    const pause = await readPause(tx);
+
+    if (pause?.cause === 'spending') {
+      await resumeNixieInTransaction(tx, context.log, { by: 'spend', definitions });
+    }
+
+    return true;
+  });
+}

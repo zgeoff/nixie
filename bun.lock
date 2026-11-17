@@ -492,6 +492,7 @@
         "@heynixie/proposals": "workspace:*",
         "@heynixie/sessions": "workspace:*",
         "@heynixie/skills": "workspace:*",
+        "@heynixie/spend": "workspace:*",
         "@heynixie/tasks": "workspace:*",
         "@heynixie/tools": "workspace:*",
         "@heynixie/triggers": "workspace:*",
@@ -802,8 +803,15 @@
       "name": "@heynixie/spend",
       "version": "0.0.0",
       "dependencies": {
+        "@heynixie/clock": "workspace:*",
+        "@heynixie/db": "workspace:*",
+        "@heynixie/log": "workspace:*",
         "@heynixie/logger": "workspace:*",
         "@heynixie/sandbox": "workspace:*",
+        "@heynixie/triggers": "workspace:*",
+        "kysely": "catalog:",
+        "ts-pattern": "catalog:",
+        "zod": "catalog:",
       },
       "devDependencies": {
         "@heynixie/testing": "workspace:*",

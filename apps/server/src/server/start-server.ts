@@ -59,6 +59,9 @@ export interface ServerPartsOptions extends ServerOptions {
 
   // the gateway that counts every model request, or null when the config sets no spendStop
   readonly spend: SpendInputs | null;
+
+  // whether the start checks left the gateway without its limits, because it gave no answer
+  readonly isSpendUnsent: boolean;
   readonly writer: Writer;
   readonly cleanup: Cleanup;
 
@@ -82,9 +85,15 @@ export async function startServer(options: ServerOptions): Promise<Server> {
       ...(options.harness === undefined ? {} : { clock: options.harness.link.clock }),
     });
 
-    await startSpendChecks(inputs, cleanup.signal);
+    const spendStart = await startSpendChecks(inputs);
 
-    return await startServerWork({ ...options, ...inputs, writer, cleanup });
+    return await startServerWork({
+      ...options,
+      ...inputs,
+      isSpendUnsent: spendStart === 'unsent',
+      writer,
+      cleanup,
+    });
   } catch (error) {
     await cleanup.stop();
 

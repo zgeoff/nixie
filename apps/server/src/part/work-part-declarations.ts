@@ -11,6 +11,7 @@ import {
 } from '@heynixie/definitions';
 import { toErrorFields } from '@heynixie/logger';
 import { startPromptLapseSweep } from '@heynixie/prompts';
+import { startSpendWatcher } from '@heynixie/spend';
 import type { RunStep } from '@heynixie/tasks';
 import {
   conversationRunner,
@@ -161,6 +162,32 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
       });
 
       await parts.cleanup.defer(() => sweep.stop());
+    },
+  },
+  {
+    name: 'spend_watcher',
+    needs: ['server_parts', 'start_record'],
+    start: async (reader) => {
+      const parts = reader.get('server_parts');
+      const spend = parts.apiContext.spend;
+      const limits = parts.config.models.limits;
+
+      if (spend === undefined) {
+        return;
+      }
+
+      const watcher = startSpendWatcher({
+        context: spend,
+        limits: {
+          day: { dollars: limits.day.dollars, tokens: limits.day.tokens },
+          month: { dollars: limits.month.dollars, tokens: limits.month.tokens },
+        },
+        log: parts.log,
+        signal: parts.cleanup.signal,
+        isStartUnreachable: parts.isSpendUnsent,
+      });
+
+      await parts.cleanup.defer(() => watcher.stop());
     },
   },
   {
