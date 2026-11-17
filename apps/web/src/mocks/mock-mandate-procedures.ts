@@ -65,8 +65,26 @@ export const mockMandateProcedures = {
     const expires =
       input.expires === undefined ? Date.now() + dayMs / 2 : Date.parse(input.expires);
 
-    if (expires <= Date.now() || expires > Date.now() + dayMs) {
-      throw options.errors.INVALID({ data: { faults: ['expires: out of range'] } });
+    if (expires <= Date.now()) {
+      const now = new Date().toISOString();
+
+      throw options.errors.INVALID({
+        data: {
+          faults: [`expires: expires_past (now ${now})`],
+          expiry: { reason: 'expires_past', now },
+        },
+      });
+    }
+
+    if (expires > Date.now() + dayMs) {
+      const latestExpiry = new Date(Date.now() + dayMs).toISOString();
+
+      throw options.errors.INVALID({
+        data: {
+          faults: [`expires: expires_beyond_max (maxHours 24, latestExpiry ${latestExpiry})`],
+          expiry: { reason: 'expires_beyond_max', maxHours: 24, latestExpiry },
+        },
+      });
     }
 
     const mandateID = faker.string.alphanumeric({ length: 10, casing: 'lower' });

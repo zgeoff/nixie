@@ -85,6 +85,33 @@ test('it proposes a mandate that then waits on the approvals page', async () => 
   );
 });
 
+test('it names the limit and the latest end when the end is beyond the longest mandate', async () => {
+  const ctx = await setupTest();
+
+  await ctx.openPage();
+  await ctx.waitForPage(`document.body.innerText.includes('No mandate is in force.')`);
+  await ctx.view.click('input[maxlength="120"]');
+  await ctx.view.type('Handle my test sends');
+  await ctx.view.click('div[aria-label="Rule 1"] textarea');
+  await ctx.view.type('test.send');
+
+  // React tracks the input's value, so a bare assignment would leave the form's state unchanged
+  await ctx.view.evaluate(`(() => {
+    const input = document.querySelector('input[type="datetime-local"]');
+    const end = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000 - new Date().getTimezoneOffset() * 60000);
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(input, end.toISOString().slice(0, 16));
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  })()`);
+
+  await ctx.view.evaluate(`document.querySelector('button[name="propose"]').click()`);
+
+  await ctx.waitForPage(
+    `document.querySelector('ul[role="alert"]')?.innerText.includes('A mandate lasts at most 24 hours. The latest end you can ask for is') === true`,
+  );
+
+  expect(store.approvalRows.all()).toStrictEqual([]);
+});
+
 test.each([
   ['an empty list', 0, `document.body.innerText.includes('No mandate is in force.')`],
   [
