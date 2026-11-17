@@ -16,7 +16,7 @@ async function setupTest(isItemForgetting = false) {
     seed,
 
     // A release before the task.yaml text migration writes schema 69, and the migrated data needs
-    // a build that writes schema 70, so it refuses with the schema and the way back: restore a copy.
+    // a build that writes schema 70, so it refuses with the schema and the way back: restore a backup.
     expectRefusalNamingRollback: async (
       previous: ReturnType<typeof nixie.harness.startRelease>,
     ) => {
@@ -25,7 +25,7 @@ async function setupTest(isItemForgetting = false) {
       expect({ hasFailed: run.exit.code !== 0, output: previous.readOutput() }).toStrictEqual({
         hasFailed: true,
         output: expect.stringMatching(
-          /database schema 70 needs a build that writes schema 70 or later, and this build writes schema 69: .*restore/u,
+          /database schema 70 needs a build that writes schema 70 or later, and this build writes schema 69: no copy of schema 69 or older sits in \S+, so restore a backup/u,
         ),
       });
     },
@@ -90,6 +90,12 @@ test('it marks purged, on the next start after the previous release refused the 
   await restarted.kill();
 
   const state = await readPurgeState(ctx.nixie);
+
+  expect(
+    state.keyIDs.filter(
+      (keyID) => keyID === ctx.seed.itemID || keyID.startsWith(`${ctx.seed.itemID}/`),
+    ),
+  ).toStrictEqual([]);
 
   expect(state.purges).toStrictEqual([
     {
