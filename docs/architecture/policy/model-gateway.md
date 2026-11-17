@@ -157,14 +157,14 @@ A second listener on `control.listen` serves the server alone. It answers 401 to
 `Authorization: Bearer <token>`, with the token read from `control.tokenFile` at start. The model
 listener serves no control path.
 
-| Call                       | Effect                                                                                                 |
-| -------------------------- | ------------------------------------------------------------------------------------------------------ |
-| `GET /status`              | the zone, the lost mark, each period's start, reset time, count, limit in force and cap, and `tripped` |
-| `PUT /limits`              | sets the base limits of both periods; 409 `above_cap` past a cap                                       |
-| `POST /raise`              | raises the day for its start; 409 `above_cap`, or 409 `period_ended` for another start                 |
-| `PUT /sandboxes/<name>`    | sets the sandbox's limit, or `null` to count only, and sets its count to zero                          |
-| `GET /sandboxes/<name>`    | the sandbox's count and whether it is past its limit; 404 for a name the store lacks                   |
-| `DELETE /sandboxes/<name>` | removes the sandbox; 204 also for a name the store lacks                                               |
+| Call                       | Effect                                                                                                                       |
+| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `GET /status`              | the zone, the lost mark, each period's start, reset time, count, limit in force and cap, and `tripped`                       |
+| `PUT /limits`              | sets the base limits of both periods; 409 `above_cap` past a cap                                                             |
+| `POST /raise`              | raises the day for its start, never below that day's earlier raise; 409 `above_cap`, or 409 `period_ended` for another start |
+| `PUT /sandboxes/<name>`    | sets the sandbox's limit, or `null` to count only, and sets its count to zero                                                |
+| `GET /sandboxes/<name>`    | the sandbox's count and whether it is past its limit; 404 for a name the store lacks                                         |
+| `DELETE /sandboxes/<name>` | removes the sandbox; 204 also for a name the store lacks                                                                     |
 
 A refused call changes nothing. `tripped` is null while each count is under its limit in force and
 the lost mark is absent. For a limit, its `at` is the period's trip time. While only the lost mark

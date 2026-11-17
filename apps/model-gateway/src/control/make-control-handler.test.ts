@@ -226,6 +226,29 @@ test('it raises the day for the day in force and reports the raise as the limit'
   });
 });
 
+test('it keeps the larger of 2 raises of the same day in each measure, whatever their order', async () => {
+  const ctx = await setupTest();
+
+  await ctx.call('PUT', '/limits', ctx.limits);
+
+  await ctx.call('POST', '/raise', {
+    period: 'day',
+    start: '2026-11-13',
+    limit: { dollars: 110, tokens: 100_000_000 },
+  });
+
+  const response = await ctx.call('POST', '/raise', {
+    period: 'day',
+    start: '2026-11-13',
+    limit: { dollars: 90, tokens: 120_000_000 },
+  });
+
+  expect(response).toMatchObject({
+    status: 200,
+    body: { periods: { day: { limit: { dollars: 110, tokens: 120_000_000 } } } },
+  });
+});
+
 test('it refuses a raise past the cap with a 409 and keeps the limit', async () => {
   const ctx = await setupTest();
 

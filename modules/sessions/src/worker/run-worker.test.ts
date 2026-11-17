@@ -3,6 +3,7 @@ import type { JSONObject, RecordKinds } from '@heynixie/log';
 import { readRecords, writeRecords } from '@heynixie/log';
 import { modelsConfigSchema } from '@heynixie/models';
 import { sandboxCreatedCodec } from '@heynixie/sandbox';
+import { spendProjections } from '@heynixie/spend';
 import { buildStubSpendGateway } from '@heynixie/spend/test-utils';
 import { buildTestClock, waitForCondition } from '@heynixie/testing';
 import type { ToolOutcome, ToolStepHold } from '@heynixie/tools';
@@ -43,7 +44,11 @@ async function setupTest(config: SetupConfig = {}) {
     run: () => Promise.resolve({ status: 'ok', result: { text: 'Found 3 cafes.' } }),
   });
 
-  const host = await startTestSessionHost({ clock, tools: [fetchTool] });
+  const host = await startTestSessionHost({
+    clock,
+    tools: [fetchTool],
+    projections: spendProjections,
+  });
 
   const prices = { input: 3, cache_write: 3.75, cache_write_1h: 6, cached_input: 0.3, output: 15 };
 
@@ -137,6 +142,9 @@ async function setupTest(config: SetupConfig = {}) {
 
   const gateway = buildStubSpendGateway();
 
+  // each spending check reads the time once, so a test can wait for a call's check
+  const spendChecks = { count: 0 };
+
   const worker = await startWorkerTool({
     models,
     secrets: { model_credentials: { anthropic: 'not-a-real-key' } },
@@ -168,7 +176,14 @@ async function setupTest(config: SetupConfig = {}) {
           spend: {
             gateway,
             log: host.context.log,
-            clock,
+            clock: {
+              now: () => {
+                spendChecks.count += 1;
+
+                return clock.now();
+              },
+              sleep: clock.sleep,
+            },
             zone: 'UTC',
             limits: { dayTurns: config.spendDayTurns, dayTurnCap: 2000, monthTurns: 20_000 },
             definitions: host.context.definitions,
@@ -241,6 +256,7 @@ async function setupTest(config: SetupConfig = {}) {
     ...host,
     clock,
     gateway,
+    spendChecks,
     spent,
     destroys,
     stoppedRuns,
@@ -460,6 +476,47 @@ test('it refuses a worker at the turn limit of the spending stop, and starts no 
   });
 
   expect(owners).toStrictEqual([]);
+});
+
+test('it refuses a worker whose wait for a slot ends after the turn count reached the limit', async () => {
+  const ctx = await setupTest({ spendDayTurns: 1, workerRuns: { max: 1, whenFull: 'wait' } });
+
+  const gate = Promise.withResolvers<void>();
+
+  ctx.guest.addKindReplies('worker', { text: 'First.', gate: () => gate.promise });
+
+  const first = ctx.callWorker({ question: 'First?' });
+
+  await waitForCondition(() => ctx.guest.received.some((entry) => entry.frame.type === 'turn'));
+
+  const checks = ctx.spendChecks.count;
+  const second = ctx.callWorker({ question: 'Second?' });
+
+  await waitForCondition(() => ctx.spendChecks.count > checks);
+
+  // a read on the one connection runs after the check's reads, so the second call waits for its slot
+  await ctx.readOwners();
+
+  await writeRecords(ctx.context.log, [
+    {
+      kind: 'model.turn_ended',
+      definitions: ctx.context.definitions(),
+      thread: 'conversation',
+      payload: {},
+    },
+  ]);
+
+  gate.resolve();
+
+  const outcomes = await Promise.all([first, second]);
+  const owners = await ctx.readOwners();
+
+  expect(outcomes).toStrictEqual([
+    { status: 'ok', result: expect.toBeObject() },
+    { status: 'error', message: expect.toInclude('Model spending is stopped') },
+  ]);
+
+  expect(owners).toHaveLength(1);
 });
 
 test('it runs a worker under the turn limit of the spending stop', async () => {
