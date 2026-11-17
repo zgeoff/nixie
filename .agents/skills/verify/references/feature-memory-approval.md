@@ -10,8 +10,8 @@ Before you start:
 
 - When the browser has no sign-in since `up` or `attach`, run
   [sign-in-enrol](feature-sign-in-enrol.md) first.
-- On `local`, step 3 expects no memory item since `up`. Before a second pass of this journey, run
-  `bun verify up --restart` and `bun verify doctor`, then sign-in-enrol.
+- On `local`, run this journey once per `up`: step 3 checks that the `memory_items` table is empty.
+  Before a second pass, run `bun verify up --restart` and `bun verify doctor`, then sign-in-enrol.
 
 On `local`, keep the message and the memory item text below as they are. A message that states the
 item's fact would make nixie keep the item at once, with no proposal.
