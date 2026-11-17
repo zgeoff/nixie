@@ -43,13 +43,15 @@ else. It refuses a request whose body holds:
 - `models`, `fallbacks`, `route` or `plugins`, which let the model API run another model;
 - `provider`, unless the route sets `providerPin` and the field is exactly
   `{ "order": ["<providerPin>"], "allow_fallbacks": false }`;
-- `speed` with any value but `standard` or null, or `service_tier` with any value but `auto`,
-  `standard_only`, `default` or null, because the price table holds no premium tier. Both model APIs
-  treat an absent `service_tier` as `auto`, so each allowed value bills no more than a body without
-  the field;
-- a `tools` entry that has a `model` key or a `type` that starts with `advisor_` or `openrouter:`,
-  which run a second model. The check reads the `tools` entries and nothing else, because a tool
-  call's input can hold a `model` key of its own.
+- `speed` with any value but `standard` or null, `service_tier` with any value but `auto`,
+  `standard_only`, `default` or null, or `inference_geo` with any value but `global` or null,
+  because the price table holds no premium tier or regional price. Both model APIs treat an absent
+  `service_tier` as `auto`, so each allowed value bills no more than a body without the field;
+- a `tools` entry that is not a tool the caller runs: an object with no `model` key and a `type`
+  that is absent, `custom` or `function`, or a `namespace` whose `tools` all pass the same check.
+  Any other type, such as a web search, an image generation or an advisor, is a tool that the model
+  API runs and bills apart from the tokens, often on a second model. The check reads the `tools`
+  entries and nothing else, because a tool call's input can hold a `model` key of its own.
 
 It also refuses a request that holds both an `authorization` and an `x-api-key` header. The
 credential broker sets its own header and the gateway passes the others through, so a second one

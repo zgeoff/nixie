@@ -31,7 +31,13 @@ test('it allows a model secret that sends to the gateway model URL', async () =>
 
   const spec = buildMockSandboxSpec({
     kind: 'conversation',
-    grants: [buildMockGrantSpec({ secret: 'nixie-test-model', host: 'api.anthropic.com' })],
+    grants: [
+      buildMockGrantSpec({
+        secret: 'nixie-test-model',
+        host: 'api.anthropic.com',
+        route: 'claude-main',
+      }),
+    ],
   });
 
   expect(
@@ -46,7 +52,13 @@ test('it refuses a model secret that sends to another upstream, and names the se
 
   const spec = buildMockSandboxSpec({
     kind: 'conversation',
-    grants: [buildMockGrantSpec({ secret: 'nixie-test-model', host: 'api.anthropic.com' })],
+    grants: [
+      buildMockGrantSpec({
+        secret: 'nixie-test-model',
+        host: 'api.anthropic.com',
+        route: 'claude-main',
+      }),
+    ],
   });
 
   expect(
@@ -61,7 +73,13 @@ test('it refuses a model secret with no upstream, and names the secret', async (
 
   const spec = buildMockSandboxSpec({
     kind: 'conversation',
-    grants: [buildMockGrantSpec({ secret: 'nixie-test-model', host: 'api.anthropic.com' })],
+    grants: [
+      buildMockGrantSpec({
+        secret: 'nixie-test-model',
+        host: 'api.anthropic.com',
+        route: 'claude-main',
+      }),
+    ],
   });
 
   expect(
@@ -74,7 +92,13 @@ test('it refuses a model secret that impd lacks, and names the secret', async ()
 
   const spec = buildMockSandboxSpec({
     kind: 'conversation',
-    grants: [buildMockGrantSpec({ secret: 'nixie-test-absent', host: 'api.anthropic.com' })],
+    grants: [
+      buildMockGrantSpec({
+        secret: 'nixie-test-absent',
+        host: 'api.anthropic.com',
+        route: 'claude-main',
+      }),
+    ],
   });
 
   expect(
@@ -89,8 +113,31 @@ test('it checks no upstream when no gateway counts', async () => {
 
   const spec = buildMockSandboxSpec({
     kind: 'conversation',
-    grants: [buildMockGrantSpec({ secret: 'nixie-test-model', host: 'api.anthropic.com' })],
+    grants: [
+      buildMockGrantSpec({
+        secret: 'nixie-test-model',
+        host: 'api.anthropic.com',
+        route: 'claude-main',
+      }),
+    ],
   });
 
   expect(requireImpSpec(ctx.port, null, spec, null)).resolves.toBeUndefined();
+});
+
+test('it refuses a grant with no route when the gateway counts, and names the secret', async () => {
+  const ctx = await setupTest();
+
+  await ctx.addSecret('nixie-test-model', 'http://10.1.2.3:18081');
+
+  const spec = buildMockSandboxSpec({
+    kind: 'conversation',
+    grants: [
+      buildMockGrantSpec({ secret: 'nixie-test-model', host: 'api.anthropic.com', route: null }),
+    ],
+  });
+
+  expect(
+    requireImpSpec(ctx.port, null, spec, { modelURL: 'http://10.1.2.3:18081' }),
+  ).rejects.toThrow(/grant nixie-test-model names no gateway route/u);
 });

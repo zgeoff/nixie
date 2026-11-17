@@ -22,10 +22,10 @@ export function isGatewayGrant(facts: GatewayGrantFacts): boolean {
     const held = facts.grants.find((row) => row.secret === grant.secret);
     const upstreams = facts.upstreams[grant.secret] ?? null;
 
-    // a grant stored without a route was made before a grant held one, so its filter reaches every
-    // route of the sandbox
+    // a grant stored without a route was made before a grant held one, and a grant with a null
+    // route has no route to limit its filter to, so either filter reaches every route
     return (
-      grant.route !== undefined &&
+      typeof grant.route === 'string' &&
       held?.paths?.length === 1 &&
       held.paths[0] === buildGrantPath(facts.sandboxID, grant.route) &&
       upstreams !== null &&

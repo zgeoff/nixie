@@ -1906,6 +1906,7 @@ test.each([
   ['service tier priority', { service_tier: 'priority' }],
   ['service tier flex', { service_tier: 'flex' }],
   ['service tier scale', { service_tier: 'scale' }],
+  ['inference geo us', { inference_geo: 'us' }],
 ])('it refuses a request with %s and sends nothing on', async (_title, body) => {
   const ctx = await setupTest();
   const answer = await ctx.ask({ body });
@@ -1923,6 +1924,20 @@ test.each([
   ['service tier standard_only', { service_tier: 'standard_only' }],
   ['service tier default', { service_tier: 'default' }],
   ['service tier null', { service_tier: null }],
+  ['inference geo global', { inference_geo: 'global' }],
+  ['inference geo null', { inference_geo: null }],
+  [
+    'a namespace of function tools',
+    {
+      tools: [
+        {
+          type: 'namespace',
+          name: 'nixie',
+          tools: [{ type: 'function', name: 'note_read', parameters: {} }],
+        },
+      ],
+    },
+  ],
 ])('it sends on a request with %s', async (_title, body) => {
   const ctx = await setupTest();
   const answer = await ctx.ask({ body });
@@ -1944,6 +1959,13 @@ test.each([
   ['an advisor tool with no model', { tools: [{ type: 'advisor_20260301', name: 'advisor' }] }],
   ['an openrouter server tool', { tools: [{ type: 'openrouter:web_search' }] }],
   ['a tool with a model key', { tools: [{ name: 'ask', model: 'model-large', input_schema: {} }] }],
+  ['an image generation tool with no model key', { tools: [{ type: 'image_generation' }] }],
+  ['a web search server tool', { tools: [{ type: 'web_search_20250305', name: 'web_search' }] }],
+  [
+    'a namespace that holds a server tool',
+    { tools: [{ type: 'namespace', name: 'nixie', tools: [{ type: 'image_generation' }] }] },
+  ],
+  ['a tool that is not an object', { tools: ['image_generation'] }],
 ])('it refuses %s and sends nothing on', async (_title, body) => {
   const ctx = await setupTest();
   const answer = await ctx.ask({ body });

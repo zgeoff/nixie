@@ -70,7 +70,7 @@ test('it refuses a grant stored with no route, whatever its filter', () => {
   ).toBe(false);
 });
 
-test('it accepts a grant of a null route on the filter of its whole sandbox', () => {
+test('it refuses a grant of a null route on the filter of its whole sandbox', () => {
   expect(
     isGatewayGrant({
       sandboxID: 'nixie-abc',
@@ -79,5 +79,5 @@ test('it accepts a grant of a null route on the filter of its whole sandbox', ()
       grants: [{ secret: 's1', paths: ['/nixie-abc/**'] }],
       upstreams: { s1: ['http://10.0.0.2:8789'] },
     }),
-  ).toBe(true);
+  ).toBe(false);
 });

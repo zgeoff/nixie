@@ -28,6 +28,8 @@ export async function requireImpSpec(
   await Promise.all(spec.grants.map((grant) => requireGrantHost(port, grant.secret, grant.host)));
 
   if (modelGateway !== null) {
+    requireGrantRoutes(spec);
+
     await Promise.all(
       spec.grants.map((grant) => requireGrantUpstream(port, grant.secret, modelGateway.modelURL)),
     );
@@ -52,6 +54,17 @@ async function requireGrantHost(port: ImpPort, secret: string, host: string): Pr
   if (hosts?.length !== 1 || hosts[0] !== host) {
     throw new SandboxSpecRefusedError(
       `grant ${secret} must cover ${host} alone, and covers ${JSON.stringify(hosts)}`,
+    );
+  }
+}
+
+// Every grant sends to the gateway, and a grant with no route would reach every route of its sandbox.
+function requireGrantRoutes(spec: SandboxSpec): void {
+  const unrouted = spec.grants.find((grant) => typeof grant.route !== 'string');
+
+  if (unrouted !== undefined) {
+    throw new SandboxSpecRefusedError(
+      `grant ${unrouted.secret} names no gateway route, and with spendStop set each grant reaches one route`,
     );
   }
 }
