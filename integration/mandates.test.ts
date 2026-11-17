@@ -232,7 +232,11 @@ test('it refuses an expiry in the past', async () => {
     expires: '2026-11-01T09:00:00Z',
   });
 
-  expect(refused).toStrictEqual({ status: 'refused', reason: 'expires_past' });
+  expect(refused).toStrictEqual({
+    status: 'refused',
+    reason: 'expires_past',
+    now: '2026-11-02T20:00:00+11:00',
+  });
 });
 
 test('it refuses an expiry more than the longest mandate ahead', async () => {
@@ -244,7 +248,12 @@ test('it refuses an expiry more than the longest mandate ahead', async () => {
     expires: '2026-11-03T09:00:01Z',
   });
 
-  expect(refused).toStrictEqual({ status: 'refused', reason: 'expires_beyond_max' });
+  expect(refused).toStrictEqual({
+    status: 'refused',
+    reason: 'expires_beyond_max',
+    maxHours: 24,
+    latestExpiry: '2026-11-03T20:00:00+11:00',
+  });
 });
 
 test('it accepts the longest expiry that the setting allows', async () => {

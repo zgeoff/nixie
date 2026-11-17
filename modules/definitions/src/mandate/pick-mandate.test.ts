@@ -69,15 +69,26 @@ test('it keeps the end that the input names', () => {
 });
 
 test.each([
-  ['at the time of the proposal', 'expires_past', '2026-11-02T09:00:00Z'],
-  ['before the time of the proposal', 'expires_past', '2026-11-01T09:00:00Z'],
-  ['one second beyond the longest mandate', 'expires_beyond_max', '2026-11-03T09:00:01Z'],
-] as const)('it refuses an end %s', (_name, reason, expires) => {
+  ['at the time of the proposal', '2026-11-02T09:00:00Z'],
+  ['before the time of the proposal', '2026-11-01T09:00:00Z'],
+])('it refuses an end %s and names the time it compared against', (_name, expires) => {
   const ctx = setupTest();
 
   expect(pickMandate({ ...ctx.input, expires }, ctx.facts)).toStrictEqual({
     status: 'refused',
-    reason,
+    reason: 'expires_past',
+    now: '2026-11-02T20:00:00+11:00',
+  });
+});
+
+test('it refuses an end one second beyond the longest mandate and names the latest end', () => {
+  const ctx = setupTest();
+
+  expect(pickMandate({ ...ctx.input, expires: '2026-11-03T09:00:01Z' }, ctx.facts)).toStrictEqual({
+    status: 'refused',
+    reason: 'expires_beyond_max',
+    maxHours: 24,
+    latestExpiry: '2026-11-03T20:00:00+11:00',
   });
 });
 
@@ -92,5 +103,10 @@ test('it refuses a default end beyond a shorter longest mandate', () => {
   const ctx = setupTest();
   const picked = pickMandate(ctx.input, { ...ctx.facts, maxHours: 2 });
 
-  expect(picked).toStrictEqual({ status: 'refused', reason: 'expires_beyond_max' });
+  expect(picked).toStrictEqual({
+    status: 'refused',
+    reason: 'expires_beyond_max',
+    maxHours: 2,
+    latestExpiry: '2026-11-02T22:00:00+11:00',
+  });
 });

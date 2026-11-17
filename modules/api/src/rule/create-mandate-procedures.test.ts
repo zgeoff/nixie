@@ -44,6 +44,15 @@ async function setupTest() {
 
       return null;
     },
+    readData: async (call: Promise<unknown>): Promise<unknown> => {
+      try {
+        await call;
+      } catch (error) {
+        return error instanceof ORPCError ? error.data : null;
+      }
+
+      return null;
+    },
     client: createRouterClient(procedures, {
       context: { sessionToken: laptop.token, tokenSource: 'bearer' },
     }),
@@ -70,6 +79,46 @@ test('#proposeMandate refuses a client action ID reused with other rules of the 
   );
 
   expect(code).toBe('CLIENT_ACTION_ID_REUSED');
+});
+
+test('#proposeMandate names the time that a past end was compared against', async () => {
+  const ctx = await setupTest();
+
+  const data = await ctx.readData(
+    ctx.client.proposeMandate({
+      title: 'Too late',
+      rules: [{ outcome: 'allow', tools: ['test.send'] }],
+      expires: '1969-12-31T00:00:00Z',
+      clientActionID: crypto.randomUUID(),
+    }),
+  );
+
+  expect(data).toStrictEqual({
+    faults: ['expires: expires_past (now 1970-01-01T10:16:40+10:00)'],
+    expiry: { reason: 'expires_past', now: '1970-01-01T10:16:40+10:00' },
+  });
+});
+
+test('#proposeMandate names the limit and the latest end for an end beyond it', async () => {
+  const ctx = await setupTest();
+
+  const data = await ctx.readData(
+    ctx.client.proposeMandate({
+      title: 'Too long',
+      rules: [{ outcome: 'allow', tools: ['test.send'] }],
+      expires: '2100-01-01T00:00:00Z',
+      clientActionID: crypto.randomUUID(),
+    }),
+  );
+
+  expect(data).toStrictEqual({
+    faults: ['expires: expires_beyond_max (maxHours 24, latestExpiry 1970-01-02T10:16:40+10:00)'],
+    expiry: {
+      reason: 'expires_beyond_max',
+      maxHours: 24,
+      latestExpiry: '1970-01-02T10:16:40+10:00',
+    },
+  });
 });
 
 test('#proposeMandate replays the same request under the same client action ID', async () => {

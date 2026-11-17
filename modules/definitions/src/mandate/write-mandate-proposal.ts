@@ -6,6 +6,7 @@ import { describeMandate } from './describe-mandate';
 import type { MandateInput } from './mandate-input-schema';
 import { mandateProposedCodec } from './mandate-proposed-codec';
 import { pickMandate } from './pick-mandate';
+import type { MandateRefusal } from './pick-mandate';
 
 export interface MandateProposalOptions {
   readonly maxHours: number;
@@ -26,7 +27,7 @@ export type MandateProposalResult =
       readonly expires: number;
       readonly sentences: readonly string[];
     }
-  | { readonly status: 'refused'; readonly reason: 'expires_past' | 'expires_beyond_max' };
+  | MandateRefusal;
 
 // The caller owns the transaction. The title and the rules wait in erasable fields, so a mandate you
 // turn down leaves nothing in a plain column.

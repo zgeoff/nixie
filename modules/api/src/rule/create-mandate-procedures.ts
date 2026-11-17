@@ -9,6 +9,8 @@ import {
   writeMandateProposal,
   writeProposedRuleEdit,
 } from '@heynixie/definitions';
+import type { MandateRefusal } from '@heynixie/definitions';
+import { match } from 'ts-pattern';
 import { z } from 'zod';
 import { requireCaller } from '../memory/require-caller';
 import type { APIContext } from '../types';
@@ -146,7 +148,7 @@ export function createMandateProcedures(context: RuleProcedureContext) {
                   expires: proposed.expires,
                 },
               }
-            : { status: 'refused', refusal: proposed.reason };
+            : { status: 'refused', refusal: proposed };
         },
       });
 
@@ -159,7 +161,7 @@ export function createMandateProcedures(context: RuleProcedureContext) {
       }
 
       if (run.status === 'refused') {
-        throw options.errors.INVALID({ data: { faults: [`expires: ${run.refusal}`] } });
+        throw options.errors.INVALID({ data: buildExpiryError(run.refusal) });
       }
 
       const stored = storedMandateSchema.parse(run.result);
@@ -247,4 +249,23 @@ const closedStates = ['approved', 'declined', 'lapsed', 'withdrawn'] as const;
 // A closed row is never pending or deferred, which the contract's error leaves out.
 function toClosedState(state: string): (typeof closedStates)[number] {
   return z.enum(closedStates).parse(state);
+}
+
+function buildExpiryError(refusal: MandateRefusal) {
+  return match(refusal)
+    .with({ reason: 'expires_past' }, (past) => ({
+      faults: [`expires: ${past.reason} (now ${past.now})`],
+      expiry: { reason: past.reason, now: past.now },
+    }))
+    .with({ reason: 'expires_beyond_max' }, (beyond) => ({
+      faults: [
+        `expires: ${beyond.reason} (maxHours ${beyond.maxHours}, latestExpiry ${beyond.latestExpiry})`,
+      ],
+      expiry: {
+        reason: beyond.reason,
+        maxHours: beyond.maxHours,
+        latestExpiry: beyond.latestExpiry,
+      },
+    }))
+    .exhaustive();
 }

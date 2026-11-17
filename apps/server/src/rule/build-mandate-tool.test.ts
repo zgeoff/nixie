@@ -5,7 +5,7 @@ import { buildMemoryTools } from '@heynixie/memory';
 import { startTestMemory } from '@heynixie/memory/test-utils';
 import { buildMockToolContext } from '@heynixie/tools/test-utils';
 import { z } from 'zod';
-import { buildMandateTool, mandateDescription } from './build-mandate-tool';
+import { buildMandateDescription, buildMandateTool } from './build-mandate-tool';
 import { memoryRuleArguments } from './memory-rule-arguments';
 
 interface NamedArgument {
@@ -13,7 +13,7 @@ interface NamedArgument {
   isNamed: boolean;
 }
 
-async function setupTest() {
+async function setupTest(maxHours = 24) {
   const started = await startTestLog();
 
   const tool = buildMandateTool({
@@ -22,7 +22,7 @@ async function setupTest() {
       clock: started.clock,
       definitions: () => ({ snapshotHash: 'snapshot-1' }),
     },
-    maxHours: 24,
+    maxHours,
     defaultZone: 'Australia/Sydney',
   });
 
@@ -81,8 +81,33 @@ test('it refuses an expiry in the past', async () => {
 
   expect(outcome).toStrictEqual({
     status: 'error',
-    message: 'The mandate was refused: expires_past.',
+    message: `The mandate was refused: expires_past. now: 2026-10-16T20:00:00+11:00. Propose again with expires after now, or leave expires out for the next midnight.`,
   });
+});
+
+test('it refuses an expiry beyond the longest mandate and names the latest end', async () => {
+  const ctx = await setupTest();
+
+  const outcome = await ctx.call({
+    title: 'Too long',
+    rules: [{ outcome: 'allow', tools: ['calendar.respond'] }],
+    expires: '2100-01-01T00:00:00Z',
+  });
+
+  expect(outcome).toStrictEqual({
+    status: 'error',
+    message: `The mandate was refused: expires_beyond_max. maxHours: 24. latestExpiry: 2026-10-17T20:00:00+11:00. Propose again with expires at or before latestExpiry.`,
+  });
+});
+
+test('it states the longest mandate that the setting allows in its description', async () => {
+  const ctx = await setupTest(6);
+
+  expect(ctx.tool.description).toInclude('A mandate lasts at most 6 hours from the proposal.');
+
+  expect(ctx.tool.description).toInclude(
+    "With no expires, it ends at the next midnight in the user's time zone.",
+  );
 });
 
 test('it lists in memoryGaps the memory writes that a rule will not cover', async () => {
@@ -165,7 +190,9 @@ test('it names in its description each argument of a memory tool that a rule can
       name,
       isDeclared:
         name === 'subject' || Object.hasOwn(properties.properties, name.split('.')[0] ?? ''),
-      isNamed: mandateDescription.includes(`${toolName}: `) && mandateDescription.includes(name),
+      isNamed:
+        buildMandateDescription(24).includes(`${toolName}: `) &&
+        buildMandateDescription(24).includes(name),
     }));
   });
 
@@ -175,7 +202,7 @@ test('it names in its description each argument of a memory tool that a rule can
 });
 
 test('it describes the memory example and says that a rule by tool name and one by effect agree', () => {
-  expect(mandateDescription).toInclude('memory_write');
-  expect(mandateDescription).toInclude('subject eq self');
-  expect(mandateDescription).toInclude('memory tidy-up');
+  expect(buildMandateDescription(24)).toInclude('memory_write');
+  expect(buildMandateDescription(24)).toInclude('subject eq self');
+  expect(buildMandateDescription(24)).toInclude('memory tidy-up');
 });

@@ -47,7 +47,19 @@ const mandateSchema = z.object({
   expires: z.date(),
 });
 
-const faultsSchema = z.object({ faults: z.array(z.string()) });
+const expiryRefusalSchema = z.discriminatedUnion('reason', [
+  z.object({ reason: z.literal('expires_past'), now: z.string() }),
+  z.object({
+    reason: z.literal('expires_beyond_max'),
+    maxHours: z.number(),
+    latestExpiry: z.string(),
+  }),
+]);
+
+const faultsSchema = z.object({
+  faults: z.array(z.string()),
+  expiry: expiryRefusalSchema.optional(),
+});
 
 const invalid = {
   INVALID: {
