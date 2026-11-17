@@ -430,3 +430,15 @@ test('it says none in the status line when no mandate is in force', async () => 
 
   expect(line).toStrictEqual({ value: 0, text: 'Active mandates: none.' });
 });
+
+test('it leaves out a mandate that expired before the sweep ended it', async () => {
+  const ctx = await setupTest();
+
+  await ctx.startMandate();
+
+  ctx.clock.advance(30 * ctx.hourMs);
+
+  const line = await ctx.readStatus();
+
+  expect(line).toStrictEqual({ value: 0, text: 'Active mandates: none.' });
+});

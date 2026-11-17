@@ -53,3 +53,16 @@ test('it says none when no mandate is in force', async () => {
     text: 'Active mandates: none.',
   });
 });
+
+test('it leaves out a mandate whose expiry is at or before the opening', async () => {
+  const ctx = setupTest();
+
+  const status = buildMandateStatus({
+    readActive: () => Promise.resolve([ctx.mandate]),
+    readTitles: () => Promise.resolve(new Map([['k3m9x2q7ab', null]])),
+  });
+
+  const line = await status.read({ ...ctx.facts, openedAt: new Date('2026-10-14T13:00:00Z') });
+
+  expect(line).toStrictEqual({ value: 0, text: 'Active mandates: none.' });
+});

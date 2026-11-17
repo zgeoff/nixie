@@ -14,7 +14,10 @@ export function buildMandateStatus(reads: MandateStatusReads): StatusEntry {
   return {
     name: 'active_mandates',
     read: async (facts) => {
-      const active = await reads.readActive();
+      // A mandate that expired since the last sweep is still in force in storage, but is over.
+      const stored = await reads.readActive();
+
+      const active = stored.filter((mandate) => mandate.expires > facts.openedAt.getTime());
 
       if (active.length === 0) {
         return { value: 0, text: 'Active mandates: none.' };
