@@ -6,6 +6,7 @@ import {
   buildStubGuestSandboxes,
   writeMemoryKills,
 } from '@heynixie/sandbox/test-utils';
+import { buildStubSpendGateway } from '@heynixie/spend/test-utils';
 import { waitForCondition } from '@heynixie/testing';
 import { startTestServer } from '../test-utils/start-test-server';
 import { startSandboxAdapterPart } from './start-sandbox-adapter-part';
@@ -38,6 +39,7 @@ test('it applies the watcher to the adapter it builds, so a rising count gives o
 
   const adapter = startSandboxAdapterPart({
     sandbox: { adapter: 'test' },
+    spend: null,
     dataDir: ctx.dataDir,
     log: ctx.log,
     recorder: { log: ctx.context.log, definitions: ctx.context.definitions },
@@ -72,6 +74,7 @@ test('it applies the watcher to the adapter passed in as createSandboxAdapter, s
   const adapter = startSandboxAdapterPart({
     createSandboxAdapter: () => guests.adapter,
     sandbox: { adapter: 'test' },
+    spend: null,
     dataDir: ctx.dataDir,
     log: ctx.log,
     recorder: { log: ctx.context.log, definitions: ctx.context.definitions },
@@ -92,4 +95,30 @@ test('it applies the watcher to the adapter passed in as createSandboxAdapter, s
 
   expect(ctx.killLines).toStrictEqual([{ kills: 1 }]);
   expect(ctx.events.filter((event) => event === 'sandbox.memory_watch')).toHaveLength(1);
+});
+
+test('it registers the sandbox it creates at the gateway when spendStop is set', async () => {
+  const ctx = await setupTest();
+
+  const gateway = buildStubSpendGateway();
+
+  const counted = startSandboxAdapterPart({
+    sandbox: { adapter: 'test' },
+    spend: {
+      control: 'http://127.0.0.1:8790',
+      token: 'a-token',
+      modelURL: 'http://127.0.0.1:8789',
+      gateway,
+    },
+    dataDir: ctx.dataDir,
+    log: ctx.log,
+    recorder: { log: ctx.context.log, definitions: ctx.context.definitions },
+    toolTarget: ctx.endpoint.getToolTarget,
+  });
+
+  const sandbox = await counted.create(buildMockSandboxSpec({ kind: 'conversation' }));
+
+  ctx.stack.defer(() => sandbox.destroy());
+
+  expect(gateway.putSandbox.mock.calls).toStrictEqual([[sandbox.id, null]]);
 });

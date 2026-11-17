@@ -10,6 +10,7 @@ import {
 import invariant from 'tiny-invariant';
 import { buildSeeder } from '../test-utils/build-seeder';
 import { startTestTasks } from '../test-utils/start-test-tasks';
+import { workerGatewayChargedCodec } from '../worker/worker-gateway-charged-codec';
 import { workerTurnEndedCodec } from '../worker/worker-turn-ended-codec';
 import { buildDollarsMeter } from './build-dollars-meter';
 
@@ -85,6 +86,20 @@ async function setupTest() {
             dollars: worker.dollars,
           }),
           erasable: { text: 'Found 3 cafes.' },
+        },
+      ]),
+    writeGatewayCharge: (worker: WorkerSpend) =>
+      writeRecords(tasks.context.log, [
+        {
+          kind: workerGatewayChargedCodec.kind,
+          definitions: { snapshotHash: 'sha256:test' },
+          thread: taskID,
+          payload: workerGatewayChargedCodec.encode({
+            workerRunID: crypto.randomUUID(),
+            callID: crypto.randomUUID(),
+            taskRunID: worker.taskRunID,
+            dollars: worker.dollars,
+          }),
         },
       ]),
     readDollars: () =>
@@ -204,6 +219,27 @@ test("it leaves out the dollars of another task run's worker call", async () => 
   const ctx = await setupTest();
 
   await ctx.writeWorkerTurn({ taskRunID: 'an-earlier-run', dollars: 0.5 });
+
+  const dollars = await ctx.readDollars();
+
+  expect(dollars).toBe(0);
+});
+
+test('it adds the gateway dollars of a worker run above the priced calls of its turns', async () => {
+  const ctx = await setupTest();
+
+  await ctx.writeWorkerTurn({ taskRunID: ctx.run.runID, dollars: 0.06 });
+  await ctx.writeGatewayCharge({ taskRunID: ctx.run.runID, dollars: 0.36 });
+
+  const dollars = await ctx.readDollars();
+
+  expect(dollars).toBeCloseTo(0.42, 10);
+});
+
+test("it leaves out the gateway dollars of another task run's worker", async () => {
+  const ctx = await setupTest();
+
+  await ctx.writeGatewayCharge({ taskRunID: 'an-earlier-run', dollars: 0.5 });
 
   const dollars = await ctx.readDollars();
 

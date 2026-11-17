@@ -29,6 +29,7 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
             ? {}
             : { createSandboxAdapter: options.createSandboxAdapter }),
           sandbox: options.sandbox,
+          spend: options.spend,
           dataDir: options.config.server.dataDir,
           log: options.log,
           recorder: { log: apiContext.log, definitions: apiContext.definitions },

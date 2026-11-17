@@ -463,7 +463,7 @@ function buildEnded(
 
   return {
     type: 'ended',
-    outcome: ended.stopReason === 'end_turn' ? 'finished' : 'interrupted',
+    outcome: pickEndedOutcome(ended.stopReason),
     boundary: ended.point,
     stopReason: ended.stopReason,
     turns: fresh.filter((entry) => entry.role === 'assistant').length,
@@ -479,4 +479,12 @@ function buildEnded(
         (turn.profile.harness === 'agent-sdk' ? turn.profile.contextTokens : null) ?? defaultWindow,
     },
   };
+}
+
+function pickEndedOutcome(stopReason: string | null): 'finished' | 'limit' | 'interrupted' {
+  if (stopReason === 'end_turn') {
+    return 'finished';
+  }
+
+  return stopReason === 'max_turns' ? 'limit' : 'interrupted';
 }

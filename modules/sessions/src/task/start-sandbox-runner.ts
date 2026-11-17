@@ -10,7 +10,7 @@ import {
   modelSessionInvalidatedCodec,
   resolveModelCredentials,
 } from '@heynixie/models';
-import type { GrantSpec, Sandbox } from '@heynixie/sandbox';
+import type { GrantSpec } from '@heynixie/sandbox';
 import { readSandboxOwners } from '@heynixie/sandbox';
 import type { RunStep, StepInput, StepResult, TaskLimits, TaskRun } from '@heynixie/tasks';
 import {
@@ -21,25 +21,21 @@ import {
   startClaimPool,
   taskReportToolName,
 } from '@heynixie/tasks';
-import type { RunEndpoint } from '@heynixie/tools';
 import invariant from 'tiny-invariant';
 import type { Actor } from 'xstate';
 import { createActor } from 'xstate';
-import { buildHeldSessionGuard } from '../held/build-held-session-guard';
 import type { TaskImp, TaskImpParts } from '../sandbox/task-imp-machine';
 import { taskImpMachine } from '../sandbox/task-imp-machine';
-import { buildDefaultStatus } from '../session/build-default-status';
 import { runConversationStep } from '../step/run-conversation-step';
 import { silentEndToolName } from '../turn/build-silent-end-tool';
-import type { ConversationRun, SessionCleanupCause } from '../types';
+import type { SessionCleanupCause } from '../types';
 import { createWorkerSandbox } from '../utils/create-worker-sandbox';
 import type { SessionGuard } from '../utils/make-session-guard';
 import { makeSessionGuard } from '../utils/make-session-guard';
 import { runGuestPurge } from '../utils/run-guest-purge';
-import { sessionImageBudget } from '../utils/session-image-budget';
 import { buildReachedLimit } from './build-reached-limit';
 import { buildSpendRecord } from './build-spend-record';
-import type { CallBudget } from './create-call-budget';
+import { buildTaskRun } from './build-task-run';
 import { createCallBudget } from './create-call-budget';
 import { getHarnessImage } from './get-harness-image';
 import type { SystemTaskSession } from './make-system-task-runner';
@@ -382,10 +378,13 @@ async function runTaskTurn(
     () => readLateSpend(context, parts.taskRun, parts.throughSequence, buildStepRunID(input)),
   );
 
-  const ended = await runConversationStep(buildTaskRun(runner, { ...parts, ...held, budget }), {
-    ...input,
-    interrupt: AbortSignal.any([input.interrupt, budget.signal]),
-  }).then(
+  const ended = await runConversationStep(
+    buildTaskRun(runner.options, { ...parts, ...held, budget }),
+    {
+      ...input,
+      interrupt: AbortSignal.any([input.interrupt, budget.signal]),
+    },
+  ).then(
     (result) => ({ result, error: null }),
     (error: unknown) => ({ result: null, error }),
   );
@@ -468,56 +467,6 @@ async function renewStaleImp(
   held.stop();
 
   await held.getSnapshot().context.endpoint?.stop();
-}
-
-interface TaskRunParts {
-  readonly run: StartedRun;
-  readonly budget: CallBudget;
-  readonly endpoint: RunEndpoint;
-  readonly sandbox: Sandbox;
-  readonly invalidated: AbortSignal;
-}
-
-// No one watches a task turn, so a model that loops on tool calls stops at this many calls.
-const taskModelCallLimit = 100;
-
-function buildTaskRun(runner: TaskRunner, parts: TaskRunParts): ConversationRun {
-  const options = runner.options;
-
-  return {
-    context: options.context,
-    frame: {
-      kind: 'task',
-      startedBy: parts.run.startedBy,
-      report: parts.run.options.report,
-    },
-    ...(parts.run.sinceSequence === null ? {} : { sinceSequence: parts.run.sinceSequence }),
-    profile: parts.run.profile,
-    harness: parts.run.harness,
-    turnProfile: parts.run.harness.toTurnProfile('kept'),
-    sandbox: parts.sandbox,
-    endpoint: parts.endpoint,
-    model: parts.run.model,
-    command: parts.run.command,
-    modelCallLimit: taskModelCallLimit,
-    onModelCall: parts.budget.onCall,
-    budget: parts.budget,
-    ...(options.turnInputs === undefined ? {} : { turnInputs: options.turnInputs }),
-    getDefinitions: () =>
-      parts.run.options.persona === 'default'
-        ? options.getDefinitions()
-        : { ...options.getDefinitions(), persona: '', personaHash: '' },
-    status: buildDefaultStatus(),
-    ...(parts.run.options.memory === 'read' ? { memory: options.memory } : {}),
-    memorySettings: options.memorySettings,
-    compaction: options.compaction,
-    defaultZone: options.defaultZone,
-    messaging: options.messaging,
-    imageBudget: sessionImageBudget,
-    session: buildHeldSessionGuard(parts.invalidated),
-    clearFetchPauses: options.clearFetchPauses,
-    log: options.log,
-  };
 }
 
 async function runTaskSessionCleanup(

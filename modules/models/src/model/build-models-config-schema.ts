@@ -74,9 +74,35 @@ const workerRunSchema = z.strictObject({
   dollars: dollarsSchema.default(workerRunDefaults.dollars),
 });
 
+const daySchema = z
+  .strictObject({
+    dollars: dollarsSchema.default(60),
+    tokens: z.int().positive().default(80_000_000),
+    turns: turnsSchema.default(1000),
+    turnCap: turnsSchema.optional(),
+  })
+  .transform((day) => ({ ...day, turnCap: day.turnCap ?? day.turns * 2 }))
+  .superRefine((day, issues) => {
+    if (day.turnCap < day.turns) {
+      issues.addIssue({
+        code: 'custom',
+        path: ['turnCap'],
+        message: `the day's turn cap of ${String(day.turnCap)} is below its limit of ${String(day.turns)} turns`,
+      });
+    }
+  });
+
+const monthSchema = z.strictObject({
+  dollars: dollarsSchema.default(600),
+  tokens: z.int().positive().default(600_000_000),
+  turns: turnsSchema.default(20_000),
+});
+
 const limitsSchema = z.strictObject({
   taskRun: taskRunSchema.default(taskRunSchema.parse({})),
   workerRun: workerRunSchema.default(workerRunSchema.parse({})),
+  day: daySchema.default(daySchema.parse({})),
+  month: monthSchema.default(monthSchema.parse({})),
 });
 
 type ReadToolCallWaitMs = (profile: HarnessProfile) => number | null;

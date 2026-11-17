@@ -7,7 +7,7 @@ import type { TestRecorder } from '@heynixie/sandbox/test-utils';
 import { setupTestRecorder, startStubToolEndpoint } from '@heynixie/sandbox/test-utils';
 import type { PublicEgressConfig } from '../config/parse-imp-config';
 import { buildImpSandboxAdapter } from '../sandbox/build-imp-sandbox-adapter';
-import type { ImpPort } from '../types';
+import type { ImpPort, ModelGateway } from '../types';
 import { removeOwnedSandboxes } from './remove-owned-sandboxes';
 
 interface IsolationAdapterOptions {
@@ -17,6 +17,9 @@ interface IsolationAdapterOptions {
   readonly guestToolPort?: number;
 
   readonly secret: string;
+
+  // when set, the secret sends to its model URL and the adapter grants it a path filter
+  readonly modelGateway?: ModelGateway;
 }
 
 interface IsolationAdapter {
@@ -63,6 +66,7 @@ async function createIsolationAdapter(
     recorder: recorder.recorder,
     config: { publicEgress: options.publicEgress },
     toolTarget: () => ({ path: join(directory, 'tools.sock') }),
+    ...(options.modelGateway === undefined ? {} : { modelGateway: options.modelGateway }),
     ...(options.guestToolPort === undefined ? {} : { guestToolPort: options.guestToolPort }),
   });
 
@@ -96,6 +100,7 @@ async function createTestSecret(
     host: 'api.anthropic.com',
     header: 'x-api-key',
     scheme: 'raw',
+    ...(options.modelGateway === undefined ? {} : { upstream: options.modelGateway.modelURL }),
   });
 
   defer(async () => {

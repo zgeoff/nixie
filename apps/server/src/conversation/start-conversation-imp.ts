@@ -77,6 +77,7 @@ export async function startConversationImp(
     defaultZone: parts.config.time.default_zone,
     messaging,
     turnInputs: parts.turnInputs,
+    ...(parts.spend === null ? {} : { gateway: parts.spend.gateway }),
     clearFetchPauses: parts.tools.webFetch.clearPauses,
     log: parts.log,
   });

@@ -1,0 +1,17 @@
+{
+  "name": "@heynixie/spend-model-gateway",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsrs --noEmit"
+  },
+  "dependencies": {
+    "@heynixie/spend": "workspace:*",
+    "zod": "catalog:"
+  }
+}

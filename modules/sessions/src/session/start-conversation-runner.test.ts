@@ -14,6 +14,7 @@ import { withWriteTransaction } from '@heynixie/log';
 import { resolveRoleProfile } from '@heynixie/models';
 import { buildMockModelsConfig } from '@heynixie/models/test-utils';
 import { buildStubSandboxes } from '@heynixie/sandbox/test-utils';
+import { buildStubSpendGateway } from '@heynixie/spend/test-utils';
 import {
   claimTask,
   createConversationTask,
@@ -52,6 +53,7 @@ interface RunnerConfig {
   readonly getDefinitions?: ConversationRunnerOptions['getDefinitions'];
   readonly messaging?: ConversationRunnerOptions['messaging'];
   readonly imageBudget?: ConversationRunnerOptions['imageBudget'];
+  readonly gateway?: ConversationRunnerOptions['gateway'];
 }
 
 type Runner = Awaited<ReturnType<typeof startConversationRunner>>;
@@ -117,6 +119,7 @@ async function setupTest() {
         log: config.log ?? (() => {}),
         ...(config.messaging === undefined ? {} : { messaging: config.messaging }),
         ...(config.imageBudget === undefined ? {} : { imageBudget: config.imageBudget }),
+        ...(config.gateway === undefined ? {} : { gateway: config.gateway }),
       }),
     writeMessage,
     runNextStep: (runner: Runner) => runNextStep(tasks.context, runner.runStep),
@@ -147,6 +150,49 @@ test('it asks memory once for what the turn brings, with the message text and no
     text: 'Where is the bike pump?',
     excludedWords: [],
   });
+});
+
+test("it sends the conversation's turn to the base URL with the sandbox name and the profile ID when the gateway counts", async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  const runner = await ctx.startRunner({
+    models: buildMockModelsConfig({
+      profiles: { 'chat-direct': { baseURL: 'https://api.anthropic.com' } },
+    }),
+    credential: 'not-a-real-key',
+    toolNames: ['notes_read'],
+    gateway: buildStubSpendGateway(),
+  });
+
+  await ctx.sendMessage(runner, 'Hi.');
+
+  const [sandbox] = await ctx.sandboxes.adapter.list('conversation');
+
+  const [turn] = ctx.sandboxes.turns;
+
+  expect(turn?.profile.baseURL).toBe(`https://api.anthropic.com/${sandbox?.id ?? ''}/chat-direct`);
+});
+
+test("it sends the conversation's turn to the profile's own base URL when no gateway counts", async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  const runner = await ctx.startRunner({
+    models: buildMockModelsConfig({
+      profiles: { 'chat-direct': { baseURL: 'https://api.anthropic.com' } },
+    }),
+    credential: 'not-a-real-key',
+    toolNames: ['notes_read'],
+  });
+
+  await ctx.sendMessage(runner, 'Hi.');
+
+  const [turn] = ctx.sandboxes.turns;
+
+  expect(turn?.profile.baseURL).toBe('https://api.anthropic.com');
 });
 
 test('it opens a conversation with the memory index right after the pinned memory, and writes no recall record', async () => {

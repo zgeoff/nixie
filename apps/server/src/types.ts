@@ -13,6 +13,7 @@ import type { SandboxAdapterOptions } from './sandbox/create-sandbox-adapter';
 import type { SandboxImages } from './sandbox/load-sandbox-manifest';
 import type { SeedInputs } from './seed/build-seed-inputs';
 import type { CrashHarness } from './server/join-crash-harness';
+import type { SpendInputs } from './spend/create-spend-inputs';
 import type { StartState } from './utils/build-start-state';
 import type { DecisionPointFactory } from './utils/make-server-decisions';
 
@@ -46,6 +47,9 @@ export interface ServerParts {
   readonly tasks: SeedInputs['tasks'];
   readonly inForce: InForce;
   readonly modelSecrets: ModelSecrets;
+
+  // the gateway that counts every model request, or null when the config sets no spendStop
+  readonly spend: SpendInputs | null;
   readonly turnInputs: TurnInputs;
 
   readonly encoder: Encoder | null;

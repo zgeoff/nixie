@@ -8,6 +8,8 @@ import type { DeploymentConfig } from '../deployment/deployment-config-schema';
 import type { SandboxAdapterOptions } from '../sandbox/create-sandbox-adapter';
 import type { SandboxImages } from '../sandbox/load-sandbox-manifest';
 import type { SandboxSettings } from '../sandbox/resolve-sandbox-settings';
+import type { SpendInputs } from '../spend/create-spend-inputs';
+import { startSpendChecks } from '../spend/start-spend-checks';
 import type { Cleanup, ServerParts } from '../types';
 import { buildCleanup } from './build-cleanup';
 import type { CrashHarness } from './join-crash-harness';
@@ -54,6 +56,9 @@ export interface ServerPartsOptions extends ServerOptions {
 
   readonly definitionsExport: DefinitionsExportSettings | null;
   readonly search: SearchSettings | null;
+
+  // the gateway that counts every model request, or null when the config sets no spendStop
+  readonly spend: SpendInputs | null;
   readonly writer: Writer;
   readonly cleanup: Cleanup;
 
@@ -76,6 +81,8 @@ export async function startServer(options: ServerOptions): Promise<Server> {
       cleanup,
       ...(options.harness === undefined ? {} : { clock: options.harness.link.clock }),
     });
+
+    await startSpendChecks(inputs, cleanup.signal);
 
     return await startServerWork({ ...options, ...inputs, writer, cleanup });
   } catch (error) {

@@ -1,6 +1,7 @@
 import type { CompactionSettings } from '@heynixie/compaction';
 import { bindHarness, deriveModelSecret } from '@heynixie/models';
 import type { Harness, ResolvedProfile } from '@heynixie/models';
+import type { SpendGateway } from '@heynixie/spend';
 import type { RunStep, TaskMessaging, TasksContext } from '@heynixie/tasks';
 import { conversationTaskID } from '@heynixie/tasks';
 import type { ToolEndpoint, ToolRunModel } from '@heynixie/tools';
@@ -12,6 +13,7 @@ import type {
   ImageTally,
   SessionCleanupCause,
 } from '../types';
+import { buildRoutedModel } from '../utils/build-routed-model';
 import { makeSessionGuard } from '../utils/make-session-guard';
 import type { StepCapturePort } from '../utils/open-step-capture';
 import { sessionImageBudget } from '../utils/session-image-budget';
@@ -53,6 +55,9 @@ export interface ConversationRunnerOptions {
   readonly imageBudget?: ImageTally;
 
   readonly turnInputs?: StepCapturePort;
+
+  // set when every model request goes through the gateway, which counts it under its sandbox
+  readonly gateway?: SpendGateway;
 
   readonly clearFetchPauses: ConversationRun['clearFetchPauses'];
 
@@ -109,14 +114,22 @@ export async function startConversationRunner(
     toolUseMetaKey: harness.toolUseMetaKey,
   });
 
+  const routed = buildRoutedModel({
+    isRouted: options.gateway !== undefined,
+    profile: options.profile,
+    turnProfile: harness.toTurnProfile('kept'),
+    sandboxName: sandbox.id,
+  });
+
   const run: ConversationRun = {
     ...options,
+    profile: routed.profile,
     frame: { kind: 'conversation' },
     sandbox,
     endpoint,
     model,
     harness,
-    turnProfile: harness.toTurnProfile('kept'),
+    turnProfile: routed.turnProfile,
     memorySettings: { ...defaultMemorySettings, ...options.memorySettings },
     compaction: { ...defaultCompaction, ...options.compaction },
     status: options.status ?? buildDefaultStatus(),

@@ -46,6 +46,8 @@ export interface ConversationOptions {
 
   readonly clearFetchPauses: ConversationRunnerOptions['clearFetchPauses'];
 
+  readonly gateway?: ConversationRunnerOptions['gateway'];
+
   readonly log: Logger;
 }
 
@@ -84,6 +86,7 @@ export function startConversation(options: ConversationOptions): Promise<Convers
     ...(options.defaultZone === undefined ? {} : { defaultZone: options.defaultZone }),
     ...(options.messaging === undefined ? {} : { messaging: options.messaging }),
     ...(options.turnInputs === undefined ? {} : { turnInputs: options.turnInputs }),
+    ...(options.gateway === undefined ? {} : { gateway: options.gateway }),
     clearFetchPauses: options.clearFetchPauses,
     log: options.log,
   });

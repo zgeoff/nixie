@@ -222,6 +222,22 @@ sandbox host in one of 2 ways:
   deployment changes the entry, and nixie adds a secret under the new name. A sandbox granted the
   old secret keeps working until nixie replaces the sandbox.
 
+### Credentials with a spending gateway
+
+A deployment whose config sets `spendStop` holds every model credential. The secrets file has no
+`model_credentials` entry, so no nixie code can send a request with a key past the gateway. nixie
+adds no model secret either. Each model secret already sits in the sandbox host with the gateway's
+model listener as its upstream, the address where the sandbox host sends the request in place of the
+model host ([the gateway](../policy/model-gateway.md#how-nixie-uses-the-gateway)).
+
+The sandbox adapter reads each model secret's rules from the sandbox host before it creates a
+sandbox, and refuses to create the sandbox when the sandbox host lacks the secret or a rule sends to
+any other upstream. The error names the secret. The adapter then grants the secret with the path
+filter `/<sandbox name>/**`, so a guest reaches only the count of its own sandbox. The adapter
+applies the same check to a sandbox that already exists: one whose grant lacks the filter, or whose
+secret sends elsewhere, counts as retired, so the caller replaces it. A deployment with no
+`spendStop` grants and adds secrets as the section above says, with no filter.
+
 ## Records of model output
 
 Every record that holds model output, such as a reply or a tool call, carries the model ID and the

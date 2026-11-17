@@ -12,6 +12,10 @@ export interface SandboxAdapterOptions {
   readonly testRootDir: string;
 
   readonly hostEnv: Readonly<Record<string, string | undefined>>;
+
+  // set when every model request goes through the gateway: each model grant then covers its own
+  // sandbox's path, and its secret must send to this model URL
+  readonly modelGateway?: { readonly modelURL: string };
 }
 
 export function createSandboxAdapter(options: SandboxAdapterOptions): SandboxAdapter {
@@ -33,5 +37,6 @@ export function createSandboxAdapter(options: SandboxAdapterOptions): SandboxAda
     recorder: options.recorder,
     config: { publicEgress: options.sandbox.imp.publicEgress },
     toolTarget: options.toolTarget,
+    ...(options.modelGateway === undefined ? {} : { modelGateway: options.modelGateway }),
   });
 }

@@ -3,13 +3,16 @@ import { toErrorFields } from '@heynixie/logger';
 import { buildCallCost } from '@heynixie/models';
 import type { Sandbox } from '@heynixie/sandbox';
 import { buildSandboxSpec, buildWorkerRunOwner } from '@heynixie/sandbox';
+import type { SandboxCount } from '@heynixie/spend';
 import type { RunEndpoint } from '@heynixie/tools';
 import type { ModelCallUsage } from '@heynixie/wire';
 import invariant from 'tiny-invariant';
+import { buildRoutedModel } from '../utils/build-routed-model';
 import type { GuestTurn } from '../utils/run-guest-turn';
 import { runGuestTurn } from '../utils/run-guest-turn';
 import type { WorkerStops } from './create-worker-stops';
 import { createWorkerStops } from './create-worker-stops';
+import { pickGatewayEnd } from './pick-gateway-end';
 import type { WorkerTurnFacts } from './pick-worker-end';
 import { pickWorkerEnd } from './pick-worker-end';
 import { raceStop } from './race-stop';
@@ -26,6 +29,7 @@ import type {
 } from './types';
 import { workerSystemPrompt } from './worker-system-prompt';
 import type { WorkerUsed } from './worker-used';
+import { writeWorkerGatewayCharged } from './write-worker-gateway-charged';
 import { writeWorkerRunEnded } from './write-worker-run-ended';
 import { writeWorkerRunStarted } from './write-worker-run-started';
 import { writeWorkerTurnEnded } from './write-worker-turn-ended';
@@ -44,6 +48,9 @@ interface Held {
   // a create that a stop beat, whose sandbox the exit block destroys if it ever arrives
   lateSandbox: Promise<Sandbox> | null;
   endpoint: RunEndpoint | null;
+
+  // the gateway counts the sandbox, so the run may have spent on it
+  isRegistered: boolean;
   isStarted: boolean;
   stage: 'starting' | 'running';
 }
@@ -73,6 +80,7 @@ export async function runWorker(deps: WorkerDeps, plan: WorkerPlan): Promise<Wor
       sandbox: null,
       lateSandbox: null,
       endpoint: null,
+      isRegistered: false,
       isStarted: false,
       stage: 'starting',
     },
@@ -105,7 +113,7 @@ async function runOpenWorker(
 
   await ensureStarted(deps, plan, run);
 
-  const end =
+  const stagesEnd =
     grant === 'stopped'
       ? pickWorkerEnd({
           isAborted: plan.hold.signal.aborted,
@@ -118,7 +126,12 @@ async function runOpenWorker(
         })
       : await runStages(deps, plan, run);
 
-  const used = buildUsed(deps, plan, run);
+  const count = await readGatewayCount(deps, plan, run);
+
+  await chargeGatewayExcess(deps, plan, run, count);
+
+  const end = pickGatewayEnd(stagesEnd, count, plan.limits);
+  const used = buildUsed(deps, plan, run, count);
 
   await writeWorkerRunEnded(deps, plan, run.names, { end, used });
 
@@ -159,6 +172,11 @@ async function runStages(deps: WorkerDeps, plan: WorkerPlan, run: WorkerRun): Pr
     await raceStop(removeFailedDestroys(deps), run.stops.hard);
 
     run.held.sandbox = await createSandbox(deps, run);
+
+    await registerGatewaySandbox(deps, plan, run.held.sandbox);
+
+    run.held.isRegistered = deps.gateway !== undefined;
+
     run.held.endpoint = await startToolRun(deps, plan, run);
 
     const route = await raceStop(run.held.sandbox.toolRoute(), run.stops.hard);
@@ -209,6 +227,27 @@ async function createSandbox(deps: WorkerDeps, run: WorkerRun): Promise<Sandbox>
   }
 }
 
+// The gateway counts the worker's sandbox against the limits the plan holds, before its first
+// model request. A refusal fails the start.
+async function registerGatewaySandbox(
+  deps: WorkerDeps,
+  plan: WorkerPlan,
+  sandbox: Sandbox,
+): Promise<void> {
+  if (deps.gateway === undefined) {
+    return;
+  }
+
+  const put = await deps.gateway.putSandbox(sandbox.id, {
+    dollars: plan.limits.dollars,
+    tokens: plan.limits.tokens,
+  });
+
+  if (put.kind !== 'ok') {
+    throw new Error(`the gateway did not register the worker's sandbox: ${put.reason}`);
+  }
+}
+
 function startToolRun(deps: WorkerDeps, plan: WorkerPlan, run: WorkerRun): Promise<RunEndpoint> {
   const tools = deps.readTools();
 
@@ -246,7 +285,12 @@ function runGuest(
     command: deps.command,
     turn: {
       type: 'turn',
-      profile: deps.harness.toTurnProfile('one-off'),
+      profile: buildRoutedModel({
+        isRouted: deps.gateway !== undefined,
+        profile: deps.profile,
+        turnProfile: deps.harness.toTurnProfile('one-off'),
+        sandboxName: route.sandbox.id,
+      }).turnProfile,
       tools: { url: route.url, token: route.token },
       ...(deps.harness.session === null ? {} : { resume: null }),
       systemPrompt: workerSystemPrompt,
@@ -314,14 +358,71 @@ function summarizeTurn(turn: GuestTurn): WorkerTurnFacts {
   };
 }
 
-function buildUsed(deps: WorkerDeps, plan: WorkerPlan, run: WorkerRun): WorkerUsed {
+// The gateway's count of the worker's sandbox, or null when no gateway counts. When the gateway does
+// not answer, the count is the planned limit, where the gateway starts to refuse the sandbox, because
+// the guest's own tally can miss spend that the calling task must still pay.
+async function readGatewayCount(
+  deps: WorkerDeps,
+  plan: WorkerPlan,
+  run: WorkerRun,
+): Promise<SandboxCount | null> {
+  const sandbox = run.held.sandbox;
+
+  if (deps.gateway === undefined || sandbox === null || !run.held.isRegistered) {
+    return null;
+  }
+
+  const read = await deps.gateway.readSandbox(sandbox.id);
+
+  if (read.kind === 'ok') {
+    return read.value;
+  }
+
+  deps.logger(
+    'worker.gateway_read_failed',
+    { workerRunID: run.names.workerRunID, outcome: read.kind },
+    'warn',
+  );
+
+  return {
+    dollars: Math.max(plan.limits.dollars, run.tally.dollars),
+    tokens: Math.max(plan.limits.tokens, run.tally.tokens),
+    tripped: false,
+  };
+}
+
+// The gateway's dollars are the count that holds, so the calling task pays what the guest's own
+// usage reports left out. The excess goes in a record too, so a later step's meter counts it.
+async function chargeGatewayExcess(
+  deps: WorkerDeps,
+  plan: WorkerPlan,
+  run: WorkerRun,
+  count: SandboxCount | null,
+): Promise<void> {
+  if (count === null || count.dollars <= run.tally.dollars) {
+    return;
+  }
+
+  const excess = count.dollars - run.tally.dollars;
+
+  await writeWorkerGatewayCharged(deps, plan, run.names, excess);
+
+  plan.hold.onSpend(excess);
+}
+
+function buildUsed(
+  deps: WorkerDeps,
+  plan: WorkerPlan,
+  run: WorkerRun,
+  count: SandboxCount | null,
+): WorkerUsed {
   const minutes = (deps.clock.now() - plan.calledAt) / 60_000;
 
   return {
     minutes: Math.round(minutes * 10) / 10,
     turns: run.tally.turns,
-    tokens: run.tally.tokens,
-    dollars: run.tally.dollars,
+    tokens: count === null ? run.tally.tokens : Math.round(count.tokens),
+    dollars: count === null ? run.tally.dollars : count.dollars,
   };
 }
 

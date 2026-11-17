@@ -9,13 +9,14 @@ import { serverPartDeclarations } from '../part/server-part-declarations';
 import { loadSandboxManifest } from '../sandbox/load-sandbox-manifest';
 import { pickNeededImages } from '../sandbox/pick-needed-images';
 import { resolveSandboxSettings } from '../sandbox/resolve-sandbox-settings';
+import { createSpendInputs } from '../spend/create-spend-inputs';
 import { loadSecrets } from './load-secrets';
 import { resolveSearchSettings } from './resolve-search-settings';
 import type { ServerOptions, ServerPartsOptions } from './start-server';
 
 export type ServerInputs = Pick<
   ServerPartsOptions,
-  'config' | 'secrets' | 'images' | 'sandbox' | 'definitionsExport' | 'search' | 'log'
+  'config' | 'secrets' | 'images' | 'sandbox' | 'definitionsExport' | 'search' | 'spend' | 'log'
 > & {
   readonly encoder: ONNXEncoder | null;
 };
@@ -39,6 +40,7 @@ export async function loadServerInputs(options: ServerOptions): Promise<ServerIn
   const sandbox = resolveSandboxSettings(loaded, secrets.impdToken);
   const definitionsExport = resolveDefinitionsExport(config, secrets.definitionsExportToken);
   const search = resolveSearchSettings(loaded.search, secrets.connectorCredentials);
+  const spend = createSpendInputs(loaded.spendStop, secrets.settings);
 
   const manifest = await loadSandboxManifest(options.manifestPath);
 
@@ -54,6 +56,7 @@ export async function loadServerInputs(options: ServerOptions): Promise<ServerIn
     sandbox,
     definitionsExport,
     search,
+    spend,
     log,
     encoder,
   };

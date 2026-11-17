@@ -180,6 +180,75 @@ whose start is not the period's current start, and an override file that it cann
 listener has no call that writes the override, and the server has no path to the override, the store
 or the config. A config with no `override` path makes the command refuse to run.
 
+## How nixie uses the gateway
+
+A deployment whose config sets `spendStop` sends every model request through the gateway, under the
+count of the sandbox that sends it. A deployment with no `spendStop` changes nothing: no request
+takes the gateway path, no sandbox registers, and no start check calls the gateway.
+
+```yaml
+spendStop:
+  control: http://127.0.0.1:8790 # the gateway's control listener
+  token: deployment:gateway-control # a reference into the secrets file's settings
+  modelURL: http://10.0.0.2:8789 # the gateway's model listener, as the sandbox host reaches it
+```
+
+The server refuses to start when the secrets file lacks the settings entry that `token` names.
+
+### The start checks
+
+After the migrations, and before any other part starts, the server checks the gateway. It refuses to
+start in each of these cases:
+
+- the secrets file has a `model_credentials` entry;
+- the gateway's `/status` shows a zone that differs from the time tool's `default_zone`;
+- `PUT /limits` with the day and month limits of the models config answers `above_cap`. The error
+  holds the cap.
+
+When the gateway does not answer, the server starts, logs `spend.limits_unsent`, and sends the
+limits on a fixed short interval until the gateway answers. Until then the gateway holds no limit
+and refuses every model request. A late send checks the zone first, and sends nothing to a gateway
+in another zone.
+
+### The route of a request
+
+Each turn frame's base URL is the profile's base URL followed by `/<sandbox name>/<profile ID>`. The
+server builds it for the conversation, each task run, each worker run and the consent checker, and
+the guest changes nothing. The gateway reads the sandbox name from the first path segment, so the
+server refuses to start when a profile's base URL has a path. The sandbox name is the sandbox's ID,
+which is also its name in the sandbox host. The profile ID is the gateway's route ID. The
+[capture](#the-tag) tag follows the profile ID, in the order the gateway parses. The secret still
+names the profile's own host, so the credential broker matches the request by host and sends it to
+the secret's upstream.
+
+### The count of a sandbox
+
+Before a sandbox's first model request, the server registers it with `PUT /sandboxes/<name>`:
+
+| Sandbox                                | Limit                                            |
+| -------------------------------------- | ------------------------------------------------ |
+| a worker run's sandbox                 | the run's planned dollars and tokens             |
+| the conversation, a task and the check | none: the gateway counts it and never refuses it |
+
+A worker run's planned limit is the worker's configured limit, held to what the calling task run has
+left, so the gateway and nixie hold one number. A registration that fails fails the sandbox's start.
+A sandbox that an earlier server process made registers the first time this process reads it, so a
+sandbox kept across a restart has its count. Once a sandbox's destroy succeeds, the server deletes
+its entry. A sandbox whose destroy fails keeps its entry, because it may still run. A delete that
+fails is logged.
+
+### Worker limits
+
+A worker run ends at `workerRun.turns`, which the guest passes to the Agent SDK as its turn cap, and
+at `workerRun.minutes`. The gateway ends it at the sandbox's dollar and token limits. At the end of
+a worker run the server reads `GET /sandboxes/<name>`. The `worker.run_ended` record holds the
+gateway's dollars and tokens, and a sandbox the gateway found past its limit ends the run with the
+limit `dollars` or `tokens`, unless the run ended with an answer, a stop, its minutes or a failed
+start first. When the gateway does not answer that read, the record holds the run's planned dollars
+and tokens, where the gateway starts to refuse the sandbox's requests, because the guest's own count
+can miss spend. The run's dollars still count toward the calling task run's dollar limit. A task run
+has no token limit: it ends at its turns and its dollars.
+
 ## The capture
 
 The gateway copies the exact body of a model request to a spool folder, sealed to a key that only

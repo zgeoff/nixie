@@ -3,6 +3,7 @@ import type { JSONObject, RecordKinds } from '@heynixie/log';
 import { readRecords, writeRecords } from '@heynixie/log';
 import { modelsConfigSchema } from '@heynixie/models';
 import { sandboxCreatedCodec } from '@heynixie/sandbox';
+import { buildStubSpendGateway } from '@heynixie/spend/test-utils';
 import { buildTestClock, waitForCondition } from '@heynixie/testing';
 import type { ToolOutcome, ToolStepHold } from '@heynixie/tools';
 import { buildMockToolContext, buildMockToolDefinition } from '@heynixie/tools/test-utils';
@@ -23,6 +24,9 @@ interface SetupConfig {
   // the worker's first read of the definitions after its first priced call throws, which fails
   // the end record of a run of one model call
   readonly isEndWriteFailing?: boolean;
+
+  // the gateway counts every model request under its sandbox
+  readonly isGatewayOn?: boolean;
 
   readonly limits?: Readonly<Record<string, number>>;
   readonly workerRuns?: { readonly max: number; readonly whenFull: 'wait' | 'error' };
@@ -115,6 +119,8 @@ async function setupTest(config: SetupConfig = {}) {
     return host.context.definitions();
   };
 
+  const gateway = buildStubSpendGateway();
+
   const worker = await startWorkerTool({
     models,
     secrets: { model_credentials: { anthropic: 'not-a-real-key' } },
@@ -139,6 +145,7 @@ async function setupTest(config: SetupConfig = {}) {
       },
     }),
     ...(config.workerRuns === undefined ? {} : { workerRuns: config.workerRuns }),
+    ...(config.isGatewayOn === true ? { gateway } : {}),
   });
 
   host.defer(() => worker.stop());
@@ -202,6 +209,7 @@ async function setupTest(config: SetupConfig = {}) {
   return {
     ...host,
     clock,
+    gateway,
     spent,
     destroys,
     stoppedRuns,
@@ -601,5 +609,199 @@ test('it frees the tool run, the stops, the sandbox and the slot when the end re
     stoppedRuns: 1,
     sleepers: 0,
     second: 'ok',
+  });
+});
+
+test('it registers the sandbox of a run at the gateway with the planned dollars and tokens', async () => {
+  const ctx = await setupTest({ isGatewayOn: true, limits: { dollars: 0.5, tokens: 5000 } });
+
+  ctx.guest.addKindReplies('worker', { text: 'Done.' });
+
+  await ctx.callWorker({ question: 'Which cafes are open?' });
+
+  expect(ctx.gateway.putSandbox.mock.calls).toStrictEqual([
+    [expect.toStartWith('nixie-'), { dollars: 0.5, tokens: 5000 }],
+  ]);
+});
+
+test('it sends the turn of a run to the base URL with the sandbox name and the profile ID', async () => {
+  const ctx = await setupTest({ isGatewayOn: true });
+
+  ctx.guest.addKindReplies('worker', { text: 'Done.' });
+
+  await ctx.callWorker({ question: 'Which cafes are open?' });
+
+  const [sandboxID] = ctx.gateway.putSandbox.mock.calls[0] ?? [];
+
+  const turns = ctx.guest.received.flatMap((entry) =>
+    entry.frame.type === 'turn' ? [entry.frame] : [],
+  );
+
+  expect(turns.map((turn) => turn.profile.baseURL)).toStrictEqual([
+    `https://models.example.test/${String(sandboxID)}/worker-direct`,
+  ]);
+});
+
+test('it leaves the base URL and the gateway alone when the gateway is off', async () => {
+  const ctx = await setupTest();
+
+  ctx.guest.addKindReplies('worker', { text: 'Done.' });
+
+  await ctx.callWorker({ question: 'Which cafes are open?' });
+
+  const turns = ctx.guest.received.flatMap((entry) =>
+    entry.frame.type === 'turn' ? [entry.frame] : [],
+  );
+
+  expect(turns.map((turn) => turn.profile.baseURL)).toStrictEqual(['https://models.example.test']);
+  expect(ctx.gateway.putSandbox.mock.calls).toStrictEqual([]);
+  expect(ctx.gateway.readSandbox.mock.calls).toStrictEqual([]);
+});
+
+test('it fails the run and starts no model request when the gateway refuses the registration', async () => {
+  const ctx = await setupTest({ isGatewayOn: true });
+
+  ctx.gateway.putSandbox.mockResolvedValue({ kind: 'unreachable', reason: 'no answer' });
+
+  const outcome = await ctx.callWorker({ question: 'Which cafes are open?' });
+
+  expect(outcome).toStrictEqual({
+    status: 'error',
+    message: expect.toInclude('could not start its sandbox'),
+  });
+
+  expect(ctx.guest.received.filter((entry) => entry.frame.type === 'turn')).toStrictEqual([]);
+});
+
+test('it charges the calling task nothing when the gateway refuses the registration', async () => {
+  const ctx = await setupTest({ isGatewayOn: true, limits: { dollars: 0.75 } });
+
+  ctx.gateway.putSandbox.mockResolvedValue({ kind: 'unreachable', reason: 'no answer' });
+  ctx.gateway.readSandbox.mockResolvedValue({ kind: 'unreachable', reason: 'no answer' });
+
+  await ctx.callWorker({ question: 'Which cafes are open?' });
+
+  expect(ctx.spent).toStrictEqual([]);
+});
+
+test('it states the gateway numbers in the result of an answered run', async () => {
+  const ctx = await setupTest({ isGatewayOn: true });
+
+  ctx.gateway.readSandbox.mockResolvedValue({
+    kind: 'ok',
+    value: { dollars: 0.42, tokens: 7777, tripped: false },
+  });
+
+  ctx.guest.addKindReplies('worker', { text: 'Done.' });
+
+  const outcome = await ctx.callWorker({ question: 'Which cafes are open?' });
+
+  expect(outcome).toStrictEqual({
+    status: 'ok',
+    result: {
+      workerRunID: expect.toBeString(),
+      answer: 'Done.',
+      used: { minutes: 0, turns: 0, tokens: 7777, dollars: 0.42 },
+    },
+  });
+
+  expect(ctx.spent.reduce((sum, value) => sum + value, 0)).toBe(0.42);
+});
+
+test('it records the dollars the gateway counted beyond the priced calls of the worker', async () => {
+  const ctx = await setupTest({ isGatewayOn: true });
+
+  ctx.gateway.readSandbox.mockResolvedValue({
+    kind: 'ok',
+    value: { dollars: 0.42, tokens: 7777, tripped: false },
+  });
+
+  ctx.guest.addKindReplies('worker', { text: 'Done.' });
+
+  await ctx.callWorker({ question: 'Which cafes are open?' });
+
+  const records = await ctx.readKinds(['worker.gateway_charged']);
+
+  expect(records.map((record) => record.payload['dollars'])).toStrictEqual([0.42]);
+});
+
+test('it charges the calling task the planned dollars when the gateway does not answer the count', async () => {
+  const ctx = await setupTest({ isGatewayOn: true, limits: { dollars: 0.75, tokens: 9000 } });
+
+  ctx.gateway.readSandbox.mockResolvedValue({ kind: 'unreachable', reason: 'no answer' });
+  ctx.guest.addKindReplies('worker', { text: 'Done.' });
+
+  const outcome = await ctx.callWorker({ question: 'Which cafes are open?' });
+
+  expect(outcome).toStrictEqual({
+    status: 'ok',
+    result: {
+      workerRunID: expect.toBeString(),
+      answer: 'Done.',
+      used: { minutes: 0, turns: 0, tokens: 9000, dollars: 0.75 },
+    },
+  });
+
+  expect(ctx.spent.reduce((sum, value) => sum + value, 0)).toBe(0.75);
+});
+
+test('it records no gateway charge when the priced calls cover the gateway count', async () => {
+  const ctx = await setupTest();
+
+  ctx.guest.addKindReplies('worker', { text: 'Done.' });
+
+  await ctx.callWorker({ question: 'Which cafes are open?' });
+
+  const records = await ctx.readKinds(['worker.gateway_charged']);
+
+  expect(records).toStrictEqual([]);
+});
+
+test('it ends a run at a dollar limit when the gateway found its sandbox past it', async () => {
+  const ctx = await setupTest({ isGatewayOn: true, limits: { dollars: 1 } });
+
+  ctx.gateway.readSandbox.mockResolvedValue({
+    kind: 'ok',
+    value: { dollars: 1.2, tokens: 10, tripped: true },
+  });
+
+  ctx.guest.addKindReplies('worker', { text: '', stopReason: 'tool_use' });
+
+  const outcome = await ctx.callWorker({ question: 'Which cafes are open?' });
+
+  expect(outcome).toStrictEqual({
+    status: 'error',
+    message: expect.toInclude('stopped at its dollars limit of $1.00'),
+  });
+});
+
+test('it ends a run at a token limit when the gateway found its sandbox past it', async () => {
+  const ctx = await setupTest({ isGatewayOn: true, limits: { tokens: 1000 } });
+
+  ctx.gateway.readSandbox.mockResolvedValue({
+    kind: 'ok',
+    value: { dollars: 0.01, tokens: 1500, tripped: true },
+  });
+
+  ctx.guest.addKindReplies('worker', { text: '', stopReason: 'tool_use' });
+
+  const outcome = await ctx.callWorker({ question: 'Which cafes are open?' });
+
+  expect(outcome).toStrictEqual({
+    status: 'error',
+    message: expect.toInclude('stopped at its tokens limit of 1000'),
+  });
+});
+
+test('it ends a run at its turns limit when the guest stops at its turn cap', async () => {
+  const ctx = await setupTest({ limits: { turns: 3 } });
+
+  ctx.guest.addKindReplies('worker', { text: '', stopReason: 'max_turns' });
+
+  const outcome = await ctx.callWorker({ question: 'Which cafes are open?' });
+
+  expect(outcome).toStrictEqual({
+    status: 'error',
+    message: expect.toInclude('stopped at its turns limit of 3'),
   });
 });

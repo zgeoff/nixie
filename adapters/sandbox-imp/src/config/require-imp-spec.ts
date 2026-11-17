@@ -1,12 +1,13 @@
 import type { SandboxSpec } from '@heynixie/sandbox';
 import { SandboxSpecRefusedError, requireSandboxSpec } from '@heynixie/sandbox';
-import type { ImpFeatures, ImpPort } from '../types';
+import type { ImpFeatures, ImpPort, ModelGateway } from '../types';
 import type { PublicEgressConfig } from './parse-imp-config';
 
 export async function requireImpSpec(
   port: ImpPort,
   publicEgress: PublicEgressConfig | null,
   spec: SandboxSpec,
+  modelGateway: ModelGateway | null,
 ): Promise<void> {
   requireSandboxSpec(spec);
 
@@ -25,6 +26,12 @@ export async function requireImpSpec(
   }
 
   await Promise.all(spec.grants.map((grant) => requireGrantHost(port, grant.secret, grant.host)));
+
+  if (modelGateway !== null) {
+    await Promise.all(
+      spec.grants.map((grant) => requireGrantUpstream(port, grant.secret, modelGateway.modelURL)),
+    );
+  }
 }
 
 function requirePublicEgress(features: ImpFeatures, publicEgress: PublicEgressConfig | null): void {
@@ -47,4 +54,32 @@ async function requireGrantHost(port: ImpPort, secret: string, host: string): Pr
       `grant ${secret} must cover ${host} alone, and covers ${JSON.stringify(hosts)}`,
     );
   }
+}
+
+// With the gateway counting every model request, a model secret must send to the gateway, or its
+// requests would reach the provider uncounted.
+async function requireGrantUpstream(
+  port: ImpPort,
+  secret: string,
+  modelURL: string,
+): Promise<void> {
+  const upstreams = await port.readSecretUpstreams(secret);
+
+  if (upstreams === null) {
+    throw new SandboxSpecRefusedError(
+      `the model secret ${secret} is missing from impd, and with spendStop set the server adds no model secret`,
+    );
+  }
+
+  if (!upstreams.every((upstream) => upstream !== null && isSameOrigin(upstream, modelURL))) {
+    throw new SandboxSpecRefusedError(
+      `the model secret ${secret} must send to ${modelURL}, and sends to ${JSON.stringify(upstreams)}`,
+    );
+  }
+}
+
+function isSameOrigin(first: string, second: string): boolean {
+  const origin = URL.parse(first)?.origin;
+
+  return origin !== undefined && origin === URL.parse(second)?.origin;
 }

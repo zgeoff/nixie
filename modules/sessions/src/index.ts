@@ -109,6 +109,7 @@ export { startWorkerTool } from './worker/start-worker-tool';
 export { workerRunToolName } from './worker/worker-run-tool-name';
 export { workerRunEndedCodec } from './worker/worker-run-ended-codec';
 export { workerRunStartedCodec } from './worker/worker-run-started-codec';
+export { workerGatewayChargedCodec } from './worker/worker-gateway-charged-codec';
 export { workerTurnEndedCodec } from './worker/worker-turn-ended-codec';
 export type { WorkerUsed } from './worker/worker-used';
 export type { WorkerOutcome } from './worker/to-worker-outcome';

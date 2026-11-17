@@ -12,6 +12,7 @@ import { turnInputLogConfigSchema } from '@heynixie/turn-inputs';
 import { z } from 'zod';
 import { serverConfigSchema } from '../config/server-config-schema';
 import { sandboxSections } from '../sandbox/sandbox-sections';
+import { spendStopSchema } from '../spend/spend-stop-schema';
 import { ownerConfigSchema } from '../utils/owner-config-schema';
 import { modelSections } from './model-sections';
 
@@ -35,6 +36,7 @@ export const deploymentConfigSchema = z
     skills: skillsConfigSchema.default(skillsConfigSchema.parse({})),
     backup: backupConfigSchema.default(backupConfigSchema.parse({})),
     turn_input_log: turnInputLogConfigSchema.optional(),
+    spendStop: spendStopSchema.optional(),
   })
   .superRefine((config, issues) => {
     if (config.sandbox.adapter === 'imp' && config.imp === undefined) {

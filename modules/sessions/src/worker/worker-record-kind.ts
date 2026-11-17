@@ -1,4 +1,8 @@
-export type WorkerRecordKind = 'worker.run_started' | 'worker.turn_ended' | 'worker.run_ended';
+export type WorkerRecordKind =
+  | 'worker.run_started'
+  | 'worker.turn_ended'
+  | 'worker.gateway_charged'
+  | 'worker.run_ended';
 
 type WorkerErasableRecordKind = 'worker.turn_ended' | 'worker.run_ended';
 

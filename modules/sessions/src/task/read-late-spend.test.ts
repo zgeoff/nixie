@@ -6,6 +6,7 @@ import { waitForCondition } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
 import { buildSeeder } from '../test-utils/build-seeder';
 import { startTestTasks } from '../test-utils/start-test-tasks';
+import { workerGatewayChargedCodec } from '../worker/worker-gateway-charged-codec';
 import { workerRunStartedCodec } from '../worker/worker-run-started-codec';
 import { workerTurnEndedCodec } from '../worker/worker-turn-ended-codec';
 import { buildDollarsMeter } from './build-dollars-meter';
@@ -232,4 +233,58 @@ test('it counts a charge that lands while the meters read once, in the meters or
   const late = await readLateSpend(ctx.tasks.context, run, usage.throughSequence, 'step-a');
 
   expect(usage.used.dollars + late).toBeCloseTo(0.01, 10);
+});
+
+test('it counts the gateway dollars of a worker that another step started, and none of a worker the calling step started', async () => {
+  const ctx = await setupTest();
+  const run = await ctx.startRun();
+
+  const otherWorkerRunID = crypto.randomUUID();
+  const ownWorkerRunID = crypto.randomUUID();
+  const definitions = { snapshotHash: 'sha256:test' };
+
+  await writeRecords(
+    ctx.tasks.context.log,
+    [
+      { workerRunID: otherWorkerRunID, stepRunID: 'step-b' },
+      { workerRunID: ownWorkerRunID, stepRunID: 'step-a' },
+    ].map((worker) => ({
+      kind: 'worker.run_started' as const,
+      definitions,
+      thread: run.taskID,
+      payload: workerRunStartedCodec.encode({
+        workerRunID: worker.workerRunID,
+        shortID: 'w3k8',
+        callID: crypto.randomUUID(),
+        stepRunID: worker.stepRunID,
+        taskRunID: run.runID,
+        model: 'claude-test-1',
+        profile: 'worker',
+        tools: [],
+        limits: { minutes: 10, turns: 25, tokens: 2_000_000, dollars: 2 },
+        isTaskLimit: false,
+      }),
+    })),
+  );
+
+  const usage = await readRunUsage(ctx.tasks.context, run);
+
+  await writeRecords(
+    ctx.tasks.context.log,
+    [otherWorkerRunID, ownWorkerRunID].map((workerRunID) => ({
+      kind: 'worker.gateway_charged' as const,
+      definitions,
+      thread: run.taskID,
+      payload: workerGatewayChargedCodec.encode({
+        workerRunID,
+        callID: crypto.randomUUID(),
+        taskRunID: run.runID,
+        dollars: 0.2,
+      }),
+    })),
+  );
+
+  const dollars = await readLateSpend(ctx.tasks.context, run, usage.throughSequence, 'step-a');
+
+  expect(dollars).toBeCloseTo(0.2, 10);
 });

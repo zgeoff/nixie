@@ -10,8 +10,10 @@ import type {
   SandboxSpec,
 } from '@heynixie/sandbox';
 import { buildSandboxSpec, findKeptSandbox, removeSandboxes } from '@heynixie/sandbox';
+import type { SpendGateway } from '@heynixie/spend';
 import invariant from 'tiny-invariant';
 import { runSandboxCheck } from '../sandbox/run-sandbox-check';
+import { buildRoutedModel } from '../utils/build-routed-model';
 import type { RunCheck } from './checker-request';
 import { makeChecker } from './make-checker';
 
@@ -24,6 +26,9 @@ export interface CheckerRunnerOptions {
   readonly timeoutMs?: number;
 
   readonly clock: Clock;
+
+  // set when every model request goes through the gateway, which counts it under its sandbox
+  readonly gateway?: SpendGateway;
 
   readonly log: Logger;
 }
@@ -47,7 +52,15 @@ export async function startCheckerRunner(options: CheckerRunnerOptions): Promise
   const sandbox = await createCheckerSandbox(options.sandboxes, spec, options.log);
 
   const profile = options.profile.profile;
-  const turnProfile = harness.toTurnProfile('one-off');
+
+  const routed = buildRoutedModel({
+    isRouted: options.gateway !== undefined,
+    profile: options.profile,
+    turnProfile: harness.toTurnProfile('one-off'),
+    sandboxName: sandbox.id,
+  });
+
+  const turnProfile = routed.turnProfile;
 
   // the models config refuses the checker role on any harness but the Agent SDK
   invariant(turnProfile.harness === 'agent-sdk', `the ${harness.id} harness runs no check`);

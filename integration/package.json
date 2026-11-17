@@ -25,6 +25,8 @@
     "@heynixie/secret-scan": "workspace:*",
     "@heynixie/server": "workspace:*",
     "@heynixie/sessions": "workspace:*",
+    "@heynixie/spend": "workspace:*",
+    "@heynixie/spend-model-gateway": "workspace:*",
     "@heynixie/tasks": "workspace:*",
     "@heynixie/testing": "workspace:*",
     "@heynixie/tools": "workspace:*",
