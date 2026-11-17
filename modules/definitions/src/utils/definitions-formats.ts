@@ -5,6 +5,8 @@ const formatVersion = 4;
 export const definitionsFormats = {
   readable: [2, 3, formatVersion],
 
+  current: formatVersion,
+
   skills: 2,
 
   prompts: 3,

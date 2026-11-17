@@ -16,13 +16,18 @@ import type {
   DefinitionsRepo,
   DefinitionsTables,
   DueDefinitionsExport,
+  Snapshot,
 } from '../types';
 import { buildSHA256 } from '../utils/build-sha256';
 import { canMoveDefinitionsExport } from '../utils/can-move-definitions-export';
 import { definitionsFormats } from '../utils/definitions-formats';
+import { manifestPath } from '../utils/manifest-path';
+import type { RaisedManifest } from '../utils/raise-manifest-format';
+import { raiseManifestFormat } from '../utils/raise-manifest-format';
 import { toCanonicalJSON } from '../utils/to-canonical-json';
 import type { TaskExportChange } from './build-task-export-change';
 import { buildTaskExportChange, taskExportBranch } from './build-task-export-change';
+import { collectRaiseBlockers } from './collect-raise-blockers';
 import { definitionExportMovedCodec } from './definition-export-moved-codec';
 import { isExportedDefinition } from './is-exported-definition';
 import type { StoredTaskDefinition } from './stored-task-definition';
@@ -221,13 +226,12 @@ async function readTaskChange(
 
   const texts = new Map(textEntries);
 
-  const format = readManifestFormat(texts.get('nixie.yaml'));
+  const manifest = texts.get(manifestPath);
+  const format = readManifestFormat(manifest);
 
   // A manifest the seed cannot parse is left to parseDefinitions below, which names its fault.
-  if (format !== null && format < definitionsFormats.tasks) {
-    throw new Error(
-      `the definitions repo reads format ${String(format)}, which applies no task folder`,
-    );
+  if (format !== null && !definitionsFormats.readable.includes(format)) {
+    throw new Error(formatUnreadableFormatMessage(format));
   }
 
   const isChanged = [...change.files].some(([path, text]) => (texts.get(path) ?? null) !== text);
@@ -238,12 +242,25 @@ async function readTaskChange(
     );
   }
 
+  const raise =
+    manifest !== undefined &&
+    manifest !== null &&
+    format !== null &&
+    format < definitionsFormats.current
+      ? raiseManifestFormat(manifest, definitionsFormats.current)
+      : null;
+
+  if (raise !== null) {
+    requireRaiseApplied({ texts, raise, changes, revision, tasks });
+  }
+
+  const raised = raise === null ? change : buildRaisedChange(change, raise);
+
   // The seed refuses the whole snapshot when a task folder has a fault, so a change that leaves
   // one never reaches a pull request.
-  const encoder = new TextEncoder();
   const snapshot = new Map(texts);
 
-  for (const [path, text] of change.files) {
+  for (const [path, text] of raised.files) {
     if (text === null) {
       snapshot.delete(path);
     } else {
@@ -251,22 +268,11 @@ async function readTaskChange(
     }
   }
 
-  parseDefinitions(
-    {
-      contentHash: '',
-      files: new Map(
-        [...snapshot].flatMap(([path, text]): [string, Uint8Array][] =>
-          text === null ? [] : [[path, encoder.encode(text)]],
-        ),
-      ),
-      revision,
-      repository: null,
-      skipped: [],
-    },
-    tasks,
-  );
+  const changed = buildSnapshot(snapshot, revision);
 
-  return change;
+  parseDefinitions(changed, tasks);
+
+  return raised;
 }
 
 const manifestFormatSchema = z.looseObject({ format: z.number() });
@@ -283,6 +289,82 @@ function readManifestFormat(manifest: string | null | undefined): number | null 
   } catch {
     return null;
   }
+}
+
+function formatUnreadableFormatMessage(format: number): string {
+  const current = String(definitionsFormats.current);
+  const newest = Math.max(...definitionsFormats.readable);
+
+  if (format > newest) {
+    return `the definitions repo reads format ${String(format)}, which this release cannot read, so update nixie or set \`format: ${current}\` in nixie.yaml`;
+  }
+
+  return `the definitions repo reads format ${String(format)}, which this release cannot read, so set \`format: ${current}\` in nixie.yaml by hand`;
+}
+
+interface RaiseCheckInput {
+  readonly texts: ReadonlyMap<string, string | null>;
+  readonly raise: RaisedManifest;
+  readonly changes: readonly TaskExportChange[];
+  readonly revision: string;
+  readonly tasks: TaskSeedContext;
+}
+
+// The repo's own task folders of this export are left out of both parses, because the pull request
+// rewrites them.
+function requireRaiseApplied(input: RaiseCheckInput): void {
+  const ownFolders = input.changes.map((change) => `tasks/${change.definitionID}/`);
+
+  const others = new Map(
+    [...input.texts].filter(([path]) => !ownFolders.some((folder) => path.startsWith(folder))),
+  );
+
+  const before = parseDefinitions(buildSnapshot(others, input.revision), input.tasks);
+
+  const after = parseDefinitions(
+    buildSnapshot(new Map([...others, [manifestPath, input.raise.text]]), input.revision),
+    input.tasks,
+  );
+
+  const blockers = collectRaiseBlockers(before, after);
+
+  if (blockers.length > 0) {
+    throw new Error(formatRaiseBlockedMessage(input.raise.previousFormat, blockers));
+  }
+}
+
+function buildSnapshot(texts: ReadonlyMap<string, string | null>, revision: string): Snapshot {
+  const encoder = new TextEncoder();
+
+  return {
+    contentHash: '',
+    files: new Map(
+      [...texts].flatMap(([path, text]): [string, Uint8Array][] =>
+        text === null ? [] : [[path, encoder.encode(text)]],
+      ),
+    ),
+    revision,
+    repository: null,
+    skipped: [],
+  };
+}
+
+function formatRaiseBlockedMessage(previousFormat: number, blockers: readonly string[]): string {
+  const current = String(definitionsFormats.current);
+  const them = blockers.length === 1 ? 'it' : 'them';
+
+  return `raising nixie.yaml to format ${current} would apply ${blockers.join(', ')}, which format ${String(previousFormat)} leaves unapplied, so review ${them} and set \`format: ${current}\` in nixie.yaml by hand, or remove ${them}`;
+}
+
+function buildRaisedChange(change: DefinitionsChange, raise: RaisedManifest): DefinitionsChange {
+  const current = String(definitionsFormats.current);
+  const note = `nixie.yaml held format ${String(raise.previousFormat)}, and the seed applies task folders only from format ${current}, so the change sets \`format: ${current}\`. The repo holds no other file that the raise starts to apply.`;
+
+  return {
+    ...change,
+    body: `${change.body}\n\n${note}`,
+    files: new Map([...change.files, [manifestPath, raise.text]]),
+  };
 }
 
 async function readClosingTasks(

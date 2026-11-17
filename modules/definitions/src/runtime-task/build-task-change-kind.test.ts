@@ -112,14 +112,165 @@ test('it deletes every file of the folder of an undefined definition, and no oth
   });
 });
 
-test('it fails the export and opens no pull request when the repo reads format 3', async () => {
+test('it raises a format 3 manifest to the current format and writes the task folder in one pull request', async () => {
   const ctx = await setupTest();
 
   await ctx.seed();
 
   await requestDefinitionChange(ctx.context, { kind: 'define', input: buildTestDefineInput() });
 
+  const stored = await ctx.readStoredFiles('water-the-tomatoes');
+
+  await ctx.writeRepoFiles({ 'nixie.yaml': 'format: 3 # kept\n' });
+  await ctx.runExports();
+
+  expect(ctx.onError).not.toHaveBeenCalled();
+  expect(ctx.readOpenFiles()).toStrictEqual({ ...stored, 'nixie.yaml': 'format: 4 # kept\n' });
+
+  expect(ctx.repo.readPullRequests().map((request) => request.change.body)).toStrictEqual([
+    expect.stringContaining(
+      'nixie.yaml held format 3, and the seed applies task folders only from format 4, so the change sets `format: 4`.',
+    ),
+  ]);
+});
+
+test('it refuses a repo at a newer format and keeps the change pending', async () => {
+  const ctx = await setupTest();
+
+  await ctx.seed();
+
+  await requestDefinitionChange(ctx.context, { kind: 'define', input: buildTestDefineInput() });
+
+  await ctx.writeRepoFiles({ 'nixie.yaml': 'format: 5\n' });
+  await ctx.runExports();
+
+  expect(ctx.onError.mock.calls).toStrictEqual([
+    [
+      new Error(
+        'the definitions repo reads format 5, which this release cannot read, so update nixie or set `format: 4` in nixie.yaml',
+      ),
+    ],
+  ]);
+
+  expect(ctx.repo.readPullRequests()).toStrictEqual([]);
+
+  const [due] = await readTestTaskDefinitionExports(ctx.writer);
+
+  expect(due?.attempt_started_sequence).not.toBeNull();
+
+  await ctx.writeRepoFiles({ 'nixie.yaml': 'format: 4\n' });
+  await ctx.runExports();
+
+  expect(ctx.repo.readPullRequests().map((request) => request.state)).toStrictEqual(['open']);
+});
+
+test('it refuses a format 3 manifest the raise cannot edit', async () => {
+  const ctx = await setupTest();
+
+  await ctx.seed();
+
+  await requestDefinitionChange(ctx.context, { kind: 'define', input: buildTestDefineInput() });
+
+  await ctx.writeRepoFiles({ 'nixie.yaml': '{format: 3}\n' });
+  await ctx.runExports();
+
+  expect(ctx.onError.mock.calls).toStrictEqual([
+    [
+      new Error(
+        'nixie.yaml has no format line the export can read, so set `format: 4` in it by hand',
+      ),
+    ],
+  ]);
+
+  expect(ctx.repo.readPullRequests()).toStrictEqual([]);
+});
+
+test('it raises a format 2 manifest to the current format and notes the raise', async () => {
+  const ctx = await setupTest();
+
+  await ctx.seed();
+
+  await requestDefinitionChange(ctx.context, { kind: 'define', input: buildTestDefineInput() });
+
+  const stored = await ctx.readStoredFiles('water-the-tomatoes');
+
+  await ctx.writeRepoFiles({ 'nixie.yaml': 'format: 2\n' });
+  await ctx.runExports();
+
+  expect(ctx.onError).not.toHaveBeenCalled();
+  expect(ctx.readOpenFiles()).toStrictEqual({ ...stored, 'nixie.yaml': 'format: 4\n' });
+
+  expect(ctx.repo.readPullRequests().map((request) => request.change.body)).toStrictEqual([
+    expect.stringContaining(
+      'nixie.yaml held format 2, and the seed applies task folders only from format 4, so the change sets `format: 4`.',
+    ),
+  ]);
+});
+
+test('it raises a format 3 manifest when the repo holds the folder the export rewrites', async () => {
+  const ctx = await setupTest();
+
+  await ctx.writeRepoTask('water-the-tomatoes', buildTestTaskYaml());
+  await ctx.seed();
+
+  await requestDefinitionChange(ctx.context, {
+    kind: 'undefine',
+    definitionID: 'water-the-tomatoes',
+  });
+
   await ctx.writeRepoFiles({ 'nixie.yaml': 'format: 3\n' });
+  await ctx.runExports();
+
+  expect(ctx.onError).not.toHaveBeenCalled();
+
+  expect(ctx.readOpenFiles()).toStrictEqual({
+    'tasks/water-the-tomatoes/task.yaml': null,
+    'nixie.yaml': 'format: 4\n',
+  });
+});
+
+test('it refuses a format 3 repo that holds files format 4 would apply, and keeps the change pending', async () => {
+  const ctx = await setupTest();
+
+  await ctx.seed();
+
+  await requestDefinitionChange(ctx.context, { kind: 'define', input: buildTestDefineInput() });
+
+  await ctx.writeRepoFiles({
+    'nixie.yaml': 'format: 3\n',
+    'effects/mail.yaml': 'mail.draft:\n  add: [write]\n',
+    'tasks/feed-the-cat/task.yaml': buildTestTaskYaml(),
+  });
+
+  await ctx.runExports();
+
+  expect(ctx.onError.mock.calls).toStrictEqual([
+    [
+      new Error(
+        'raising nixie.yaml to format 4 would apply effects/mail.yaml, tasks/feed-the-cat/task.yaml, which format 3 leaves unapplied, so review them and set `format: 4` in nixie.yaml by hand, or remove them',
+      ),
+    ],
+  ]);
+
+  expect(ctx.repo.readPullRequests()).toStrictEqual([]);
+
+  const exports = await readTestTaskDefinitionExports(ctx.writer);
+
+  expect(exports).toStrictEqual([
+    expect.objectContaining({ attempt_started_sequence: expect.any(Number) }),
+  ]);
+});
+
+test('it fails the export and opens no pull request when the repo at format 3 already holds the files', async () => {
+  const ctx = await setupTest();
+
+  await ctx.seed();
+
+  await requestDefinitionChange(ctx.context, { kind: 'define', input: buildTestDefineInput() });
+
+  const stored = await ctx.readStoredFiles('water-the-tomatoes');
+
+  await ctx.writeRepoFiles({ ...stored, 'nixie.yaml': 'format: 3\n' });
   await ctx.runExports();
 
   expect(ctx.onError).toHaveBeenCalledTimes(1);

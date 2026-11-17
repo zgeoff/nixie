@@ -1,6 +1,7 @@
 import { isDeepStrictEqual } from 'node:util';
 import type { PromptID } from '@heynixie/prompts';
 import { definitionsFormats } from '../utils/definitions-formats';
+import { raiseManifestFormat } from '../utils/raise-manifest-format';
 import { buildPromptEntryLines } from './build-prompt-entry-lines';
 
 export interface PromptManifest {
@@ -8,8 +9,6 @@ export interface PromptManifest {
 
   readonly previousFormat: number;
 }
-
-const formatLine = /^format:[ \t]*(?<format>\d+)[ \t]*(?<comment>#.*)?$/mu;
 
 // nixie.yaml is the user's file, so the change edits only the lines of the format and of the one
 // prompt's entry, and keeps every comment and the order of every other key.
@@ -22,29 +21,13 @@ export function buildPromptManifest(
   // with a carriage return is quoted, so no line break of a value reaches the conversion.
   const isCRLF = original.includes('\r\n');
   const manifest = isCRLF ? original.replaceAll('\r\n', '\n') : original;
-  const format = formatLine.exec(manifest);
-  const previousFormat = Number(format?.groups?.['format'] ?? Number.NaN);
-
-  if (format === null || !Number.isInteger(previousFormat)) {
-    throw new Error('nixie.yaml on the base branch has no format line the export can read');
-  }
-
-  const formatted =
-    previousFormat >= definitionsFormats.prompts
-      ? manifest
-      : manifest.replace(
-          formatLine,
-          [`format: ${definitionsFormats.prompts}`, format.groups?.['comment']]
-            .filter((part) => part !== undefined)
-            .join(' '),
-        );
-
-  const edited = buildEntryText(formatted, promptID, entry);
+  const raised = raiseManifestFormat(manifest, definitionsFormats.prompts);
+  const edited = buildEntryText(raised.text, promptID, entry);
   const text = isCRLF ? edited.replaceAll('\n', '\r\n') : edited;
 
   requireEdit(original, text, promptID, entry);
 
-  return { text, previousFormat };
+  return { text, previousFormat: raised.previousFormat };
 }
 
 const promptsLine = /^prompts:[ \t]*(?:#.*)?$/u;

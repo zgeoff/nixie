@@ -272,6 +272,6 @@ test('it refuses a manifest with no format line', () => {
     buildPromptManifest('skills: []\n', 'compaction', { _template: '{{ parts.safety }}' }),
   ).toThrowWithMessage(
     Error,
-    'nixie.yaml on the base branch has no format line the export can read',
+    'nixie.yaml has no format line the export can read, so set `format: 3` in it by hand',
   );
 });
