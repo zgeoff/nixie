@@ -1,3 +1,4 @@
+import type { RecordInput } from '@heynixie/log';
 import { writeRecordsInTransaction } from '@heynixie/log';
 import { writeInboxRecordsInTransaction } from '@heynixie/tasks';
 import type { Transaction } from 'kysely';
@@ -32,9 +33,9 @@ export async function writeUnknownAnswer(
     return false;
   }
 
-  const records = [
+  const records: RecordInput[] = [
     {
-      kind: 'action.unknown_answered' as const,
+      kind: 'action.unknown_answered',
       definitions: context.definitions(),
       thread: action.task_id,
       payload: {

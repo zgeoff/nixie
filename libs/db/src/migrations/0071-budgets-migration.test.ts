@@ -7,7 +7,7 @@ import { runMigrations } from '../migration/run-migrations';
 import { nixieSchema } from '../schema/nixie-schema';
 import { buildSqliteWorkerDialect } from '../sqlite/build-sqlite-worker-dialect';
 import { readRunPrefix } from '../test-utils/read-run-prefix';
-import { budgetsMigration } from './0070-budgets-migration';
+import { budgetsMigration } from './0071-budgets-migration';
 
 async function setupTest() {
   const stack = new AsyncDisposableStack();
@@ -39,9 +39,9 @@ async function setupTest() {
   return { db };
 }
 
-test('it is the migration of version 70, and it leaves the oldest reader at 63', () => {
-  expect(nixieSchema.migrations.indexOf(budgetsMigration) + 1).toBe(70);
-  expect(nixieSchema.oldestReader).toBe(63);
+test('it is the migration of version 71, and it leaves the oldest reader at 70', () => {
+  expect(nixieSchema.migrations.indexOf(budgetsMigration) + 1).toBe(71);
+  expect(nixieSchema.oldestReader).toBe(70);
 });
 
 test('it creates the 3 budget tables empty', async () => {
