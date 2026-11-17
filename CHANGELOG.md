@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.80.0](https://github.com/zgeoff/nixie/compare/v0.79.0...v0.80.0) (2026-11-17)
+
+
+### Features
+
+* **approvals:** show whether an approved call applied or failed ([#1193](https://github.com/zgeoff/nixie/issues/1193)) ([3aa0100](https://github.com/zgeoff/nixie/commit/3aa01004613fdec9fd4aeaa3f1359a4d6565b776))
+* **budgets:** add budgets, paid tools and lifts ([#1204](https://github.com/zgeoff/nixie/issues/1204)) ([8af0ba7](https://github.com/zgeoff/nixie/commit/8af0ba76622b92e83058319a0211684cfa43c3ad))
+* **mandates:** state the mandate limit and list active mandates ([#1195](https://github.com/zgeoff/nixie/issues/1195)) ([2c1b893](https://github.com/zgeoff/nixie/commit/2c1b8936597de6bd3d2d8e52a03f91f24924dc73))
+* **memory:** read one clipped log entry whole ([#1196](https://github.com/zgeoff/nixie/issues/1196)) ([bdc68b4](https://github.com/zgeoff/nixie/commit/bdc68b4cfa043246aa2d0e8b9bf04104e2450cf2))
+* **reminders:** replace conversation-target task definitions with reminders ([#1198](https://github.com/zgeoff/nixie/issues/1198)) ([bc2b199](https://github.com/zgeoff/nixie/commit/bc2b199ae587ed0acc1e4b7532366f6d87f3c63f))
+* **sandbox:** bind each model grant to its own gateway route ([#1205](https://github.com/zgeoff/nixie/issues/1205)) ([7c7d728](https://github.com/zgeoff/nixie/commit/7c7d728bdc963e49dbd6723d354b789ff196c3b6))
+* **tasks:** add a tasks.runs tool to read ended task runs ([#1194](https://github.com/zgeoff/nixie/issues/1194)) ([1542ebc](https://github.com/zgeoff/nixie/commit/1542ebc5b2aee0da75510c6c31157d428356b904))
+
+
+### Bug Fixes
+
+* **definitions:** store and export task.yaml as formatted yaml ([#1201](https://github.com/zgeoff/nixie/issues/1201)) ([a8c3b21](https://github.com/zgeoff/nixie/commit/a8c3b218f89e4921e2f5c1ccb88340ad441f3920))
+* **sessions:** label a task's report with its name and id ([#1199](https://github.com/zgeoff/nixie/issues/1199)) ([d2bdf12](https://github.com/zgeoff/nixie/commit/d2bdf12ef2852386f976e1f116c976f306a19113))
+
 ## [0.79.0](https://github.com/zgeoff/nixie/compare/v0.78.0...v0.79.0) (2026-11-17)
 
 
