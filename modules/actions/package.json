@@ -16,6 +16,7 @@
     "@heynixie/db": "workspace:*",
     "@heynixie/log": "workspace:*",
     "@heynixie/policy": "workspace:*",
+    "@heynixie/proposals": "workspace:*",
     "@heynixie/retry": "workspace:*",
     "@heynixie/tasks": "workspace:*",
     "@heynixie/tools": "workspace:*",

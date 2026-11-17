@@ -2,7 +2,12 @@ import type { CompactionSettings } from '@heynixie/compaction';
 import type { Logger } from '@heynixie/logger';
 import type { TaskMessaging, TasksContext } from '@heynixie/tasks';
 import type { ToolEndpoint } from '@heynixie/tools';
-import type { ConversationMemory, ConversationMemorySettings, SessionDefinitions } from '../types';
+import type {
+  ConversationMemory,
+  ConversationMemorySettings,
+  InStepActions,
+  SessionDefinitions,
+} from '../types';
 import type { SystemTaskOptions } from './make-system-task-runner';
 
 export interface SandboxRunnerOptions extends SystemTaskOptions {
@@ -20,5 +25,8 @@ export interface SandboxRunnerOptions extends SystemTaskOptions {
 
   // empties the web fetch pause of every host when a forget cleans a task's session
   readonly clearFetchPauses: () => void;
+
+  // runs the approved calls of the tools that run inside the turn, before a task's turn
+  readonly inStepActions?: InStepActions;
   readonly log: Logger;
 }

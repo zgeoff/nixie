@@ -202,6 +202,7 @@ async function setupTest() {
             return Promise.resolve('action-1');
           },
           readOpenRepeat: () => Promise.resolve(null),
+          readOpenAsk: () => Promise.resolve(null),
           waitForOutcome: () => Promise.resolve(null),
         },
       });

@@ -16,6 +16,7 @@ import { runGuestTurn } from '../utils/run-guest-turn';
 import type { OpeningBatch } from './read-opening-batch';
 import { readOpeningBatch } from './read-opening-batch';
 import { readTurnRecalledThrough } from './read-turn-recalled-through';
+import { buildStepHold, buildTaskRun, runApprovedCalls } from './run-approved-calls';
 
 export interface LiveTurnPlan {
   readonly resume: SessionPoint | null;
@@ -36,20 +37,19 @@ export interface LiveTurnPlan {
 
 export async function runLiveTurn(
   run: ConversationRun,
-  input: StepInput,
+  stepInput: StepInput,
   plan: LiveTurnPlan,
 ): Promise<CompletedTurn> {
+  const input = await runApprovedCalls(run, stepInput, plan);
+
   const opening = await readOpeningBatch(run.context, input.inbox, {
     ...plan,
     imageBudget: run.imageBudget,
+    ...(run.inStepActions === undefined ? {} : { replies: run.inStepActions.replies }),
   });
 
   const silence = buildTurnSilence(opening.batch.records);
-
-  const taskRun =
-    input.run === null
-      ? undefined
-      : { runID: input.run.runID, calls: input.run.opened.limits.calls };
+  const taskRun = buildTaskRun(input);
 
   const stepToken = run.endpoint.startStep(
     buildStepRunID(input),
@@ -58,14 +58,7 @@ export async function runLiveTurn(
       reserveImages: makeImageReserver(opening.images),
       endSilently: silence.end,
       policy: buildStepPolicyFrame(run.frame, opening.batch.records),
-      step: {
-        signal: plan.signal,
-        interrupt: input.interrupt,
-        readLeftDollars: () => run.budget?.getLeftDollars() ?? null,
-        onSpend: (dollars) => {
-          run.budget?.onSpend(dollars);
-        },
-      },
+      step: buildStepHold(run, input, plan.signal),
     },
     taskRun,
   );

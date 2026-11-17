@@ -60,6 +60,7 @@ export function buildTaskRun(options: SandboxRunnerOptions, parts: TaskRunParts)
     imageBudget: sessionImageBudget,
     session: buildHeldSessionGuard(parts.invalidated),
     clearFetchPauses: options.clearFetchPauses,
+    ...(options.inStepActions === undefined ? {} : { inStepActions: options.inStepActions }),
     log: options.log,
   };
 }

@@ -111,6 +111,7 @@ async function setupTest() {
           queue: {
             enqueue: () => Promise.reject(new Error('task.start runs direct')),
             readOpenRepeat: () => Promise.resolve(null),
+            readOpenAsk: () => Promise.resolve(null),
             waitForOutcome: () => Promise.resolve(null),
           },
           queuedWaitMs: 1000,

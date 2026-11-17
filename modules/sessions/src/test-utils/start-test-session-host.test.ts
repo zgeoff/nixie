@@ -89,7 +89,12 @@ test("it sends a tool call of the stub guest's turn to the run endpoint of the s
     ),
     log: host.context.log,
     definitions: host.context.definitions,
-    queue: { enqueue: mock(), readOpenRepeat: mock(), waitForOutcome: mock() },
+    queue: {
+      enqueue: mock(),
+      readOpenRepeat: mock(),
+      readOpenAsk: mock(),
+      waitForOutcome: mock(),
+    },
   });
 
   onTestFinished(() => endpoint.stop());
@@ -137,7 +142,12 @@ test('it reads the names of the tools a turn of the stub guest is offered', asyn
     ),
     log: host.context.log,
     definitions: host.context.definitions,
-    queue: { enqueue: mock(), readOpenRepeat: mock(), waitForOutcome: mock() },
+    queue: {
+      enqueue: mock(),
+      readOpenRepeat: mock(),
+      readOpenAsk: mock(),
+      waitForOutcome: mock(),
+    },
   });
 
   onTestFinished(() => endpoint.stop());

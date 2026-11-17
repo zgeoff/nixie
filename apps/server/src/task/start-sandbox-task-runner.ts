@@ -1,6 +1,7 @@
 import type { StartedMemoryStore } from '@heynixie/memory';
 import type { SandboxRunner } from '@heynixie/sessions';
 import { startSandboxRunner } from '@heynixie/sessions';
+import { makeInStepActions } from '../action/make-in-step-actions';
 import { toImageNames } from '../sandbox/to-image-names';
 import type { ServerParts } from '../types';
 import { buildTaskMessaging } from '../utils/build-task-messaging';
@@ -30,6 +31,7 @@ export async function startSandboxTaskRunner(
     turnInputs: parts.turnInputs,
     ...(parts.spend === null ? {} : { gateway: parts.spend.gateway }),
     clearFetchPauses: parts.tools.webFetch.clearPauses,
+    inStepActions: makeInStepActions(parts),
     log: parts.log,
   });
 

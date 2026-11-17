@@ -1,10 +1,15 @@
 import { expect, test } from 'bun:test';
-import { createAllowedAction } from '@heynixie/actions';
-import { createTestStep, readTestAction, startTestActions } from '@heynixie/actions/test-utils';
+import { createAllowedAction, runInStepActions } from '@heynixie/actions';
+import {
+  buildActionSeeder,
+  createTestStep,
+  readTestAction,
+  startTestActions,
+} from '@heynixie/actions/test-utils';
 import { writeRecords } from '@heynixie/log';
 import type { RuleEntry } from '@heynixie/policy';
 import { actionProposedCodec, makeDecisionPoint } from '@heynixie/policy';
-import type { ToolDefinition } from '@heynixie/tools';
+import type { ApprovedCallRequest, ToolDefinition } from '@heynixie/tools';
 import { buildToolRegistry, toolCalledCodec } from '@heynixie/tools';
 import { buildMockVariantToolDefinition } from '@heynixie/tools/test-utils';
 import invariant from 'tiny-invariant';
@@ -29,6 +34,22 @@ async function setupTest() {
     run: () => Promise.reject(new Error('notes.post runs as an action, never inside the turn')),
   };
 
+  const reader: ToolDefinition = {
+    name: 'notes.read',
+    description: 'Reads the notes on the shared board.',
+    input: { type: 'object', properties: { board: { type: 'string' } }, required: ['board'] },
+    output: { type: 'object' },
+    execution: 'direct',
+    declaration: {
+      effects: ['read'],
+      destinations: [],
+      amount: null,
+      content: [],
+      results: {},
+    },
+    run: () => Promise.reject(new Error('the test runs notes.read through its runCall')),
+  };
+
   const rules: RuleEntry[] = [];
 
   const check = makeAttemptCheck({
@@ -37,6 +58,7 @@ async function setupTest() {
     definitions: actions.context.definitions,
     registry: buildToolRegistry([
       tool,
+      reader,
       buildMockVariantToolDefinition({
         execution: 'queued',
         declaration: { effects: ['send'] },
@@ -203,4 +225,76 @@ test('it denies an allowed variant call when a rule now denies that variant', as
     rule: { id: 'deny-risky', revision: 1 },
     message: 'rule deny-risky (r1)',
   });
+});
+
+test('it fails an approved in-step call rule_denied, and runs no call, when a rule added after the approval denies it', async () => {
+  const ctx = await setupTest();
+  const step = await createTestStep(ctx.context);
+
+  const [called] = await writeRecords(ctx.context.log, [
+    {
+      kind: toolCalledCodec.kind,
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: step.lease.workID,
+      payload: toolCalledCodec.encode({
+        callID: 'call-1',
+        runID: 'run-1',
+        toolUseID: 'toolu_1',
+        tool: 'notes.read',
+        model: 'claude-test-1',
+        profile: 'chat-direct',
+      }),
+      decision: {
+        outcome: 'ask',
+        stage: 9,
+        rule: null,
+        cause: 'no_rule',
+        inputs: {
+          toolList: ['notes.read'],
+          context: 'task',
+          definitionID: 'board-notes',
+          sources: ['task'],
+          turnMessageSequence: null,
+          onBehalfOf: [],
+        },
+      },
+      erasable: { input: { board: 'harbour' }, destinations: [] },
+    },
+  ]);
+
+  invariant(called, 'the call is recorded');
+
+  const queued = await buildActionSeeder({ context: ctx.context }).inStepAction({
+    step,
+    tool: 'notes.read',
+    callSequence: called.sequence,
+    arguments: { board: 'harbour' },
+  });
+
+  ctx.rules.push({
+    id: 'deny-board-reads',
+    revision: 1,
+    rule: { id: 'deny-board-reads', outcome: 'deny', tools: ['notes.read'] },
+  });
+
+  const calls: ApprovedCallRequest[] = [];
+
+  await runInStepActions(ctx.context, step.lease, {
+    checkAttempt: ctx.check,
+    runCall: (request) => {
+      calls.push(request);
+
+      return Promise.resolve({
+        status: 'done',
+        resultSequence: called.sequence,
+        result: {},
+        images: [],
+      });
+    },
+  });
+
+  const action = await readTestAction(ctx.writer, queued.action_id);
+
+  expect(calls).toStrictEqual([]);
+  expect(action).toMatchObject({ status: 'failed', reason: 'rule_denied', attempt_count: 0 });
 });

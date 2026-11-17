@@ -1,4 +1,5 @@
 import { writeRecordsInTransaction } from '@heynixie/log';
+import { writeInboxRecordsInTransaction } from '@heynixie/tasks';
 import type { Transaction } from 'kysely';
 import type { ActionsTables, UnknownChoice } from '../types';
 import type { ApprovedActionContext } from './create-approved-action';
@@ -20,7 +21,7 @@ export async function writeUnknownAnswer(
   const action = await tx
     .$extendTables<ActionsTables>()
     .selectFrom('actions')
-    .select(['task_id', 'attempt_count'])
+    .select(['task_id', 'attempt_count', 'runs_in_step'])
     .where('action_id', '=', answer.actionID)
     .where('status', '=', 'unknown')
     .where('outcome_sequence', 'is not', null)
@@ -59,6 +60,18 @@ export async function writeUnknownAnswer(
           },
         ]),
   ]);
+
+  // No runner claims an action that the task's step runs, so a retry wakes the task for its step.
+  if (answer.choice === 'retry' && action.runs_in_step === 1) {
+    await writeInboxRecordsInTransaction(tx, context, [
+      {
+        kind: 'task.wake',
+        definitions: context.definitions(),
+        thread: action.task_id,
+        payload: { at: context.clock.now(), actionID: answer.actionID },
+      },
+    ]);
+  }
 
   return true;
 }

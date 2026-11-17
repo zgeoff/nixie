@@ -12,6 +12,9 @@ export interface Settlement {
 
   readonly details?: JSONObject;
   readonly ownerReason?: OwnerReason;
+
+  // the result record of a call that ran inside the turn, which the outcome names and never copies
+  readonly resultSequence?: number;
   readonly rule?: { readonly id: string; readonly revision: number } | null;
 }
 
@@ -22,7 +25,7 @@ export interface Attempt {
 }
 
 export function buildOutcomeRecord(
-  context: TasksContext,
+  context: Pick<TasksContext, 'definitions'>,
   attempt: Pick<Attempt, 'action' | 'attempt'>,
   settlement: Settlement,
 ): RecordInput {
@@ -38,6 +41,9 @@ export function buildOutcomeRecord(
       attempt: attempt.attempt,
       reason: outcome.status === 'done' ? null : outcome.reason,
       ...(settlement.ownerReason === undefined ? {} : { ownerReason: settlement.ownerReason }),
+      ...(settlement.resultSequence === undefined
+        ? {}
+        : { resultSequence: settlement.resultSequence }),
       ...(settlement.rule === undefined || settlement.rule === null
         ? {}
         : { rule: { id: settlement.rule.id, revision: settlement.rule.revision } }),
@@ -52,18 +58,22 @@ export interface LeasedRecords {
   readonly reset: boolean;
 }
 
-export async function writeLeasedRecords(
+// The sequences of the records it wrote, in order.
+export function writeLeasedRecords(
   context: TasksContext,
   lease: Lease,
   leased: LeasedRecords,
-): Promise<void> {
-  await withWriteTransaction(context.log.writer, async (tx) => {
+): Promise<readonly number[]> {
+  return withWriteTransaction(context.log.writer, async (tx) => {
     await requireLease(tx, lease, context.clock.now());
-    await writeRecordsInTransaction(tx, context.log, leased.records);
+
+    const written = await writeRecordsInTransaction(tx, context.log, leased.records);
 
     if (leased.reset) {
       await resetLease(tx, lease);
     }
+
+    return written.map((record) => record.sequence);
   });
 }
 

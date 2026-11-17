@@ -37,6 +37,7 @@ async function setupTest() {
       queue: {
         enqueue: () => Promise.reject(new Error('no memory tool runs queued')),
         readOpenRepeat: () => Promise.resolve(null),
+        readOpenAsk: () => Promise.resolve(null),
         waitForOutcome: () => Promise.resolve(null),
       },
       queuedWaitMs: 1000,

@@ -5,6 +5,7 @@ import type { TaskMessageView } from '../task/render-task-message';
 import type { MessageTimeOptions } from '../types';
 import { renderImageMarkers } from '../utils/render-image-markers';
 import { encodeInboxUUID } from './encode-inbox-uuid';
+import type { ActionResultBlock } from './render-action-result';
 import { renderInboxMessage } from './render-inbox-message';
 import type { ReminderRead } from './render-reminder-notice';
 
@@ -12,6 +13,9 @@ import type { ReminderRead } from './render-reminder-notice';
 export interface InboxExtras {
   readonly attachments: readonly Uint8Array[];
   readonly reminder: ReminderRead | null;
+
+  // the result of the call that an action settled, when the call ran inside the turn
+  readonly result?: ActionResultBlock | null;
 }
 
 export function toInboxMessage(
@@ -22,10 +26,13 @@ export function toInboxMessage(
 ): InboxMessage {
   const message = {
     uuid: encodeInboxUUID(record.sequence),
-    text: renderInboxMessage(record, times, view, extras.reminder),
+    text: renderInboxMessage(record, times, view, extras),
   };
 
-  const images = buildInboxImages(record, extras.attachments);
+  const images = [
+    ...buildInboxImages(record, extras.attachments),
+    ...(extras.result?.images ?? []),
+  ];
 
   return images.length === 0 ? message : { ...message, images };
 }

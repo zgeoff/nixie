@@ -48,6 +48,8 @@ export interface ConversationOptions {
 
   readonly gateway?: ConversationRunnerOptions['gateway'];
 
+  readonly inStepActions?: ConversationRunnerOptions['inStepActions'];
+
   readonly log: Logger;
 }
 
@@ -88,6 +90,7 @@ export function startConversation(options: ConversationOptions): Promise<Convers
     ...(options.turnInputs === undefined ? {} : { turnInputs: options.turnInputs }),
     ...(options.gateway === undefined ? {} : { gateway: options.gateway }),
     clearFetchPauses: options.clearFetchPauses,
+    ...(options.inStepActions === undefined ? {} : { inStepActions: options.inStepActions }),
     log: options.log,
   });
 }

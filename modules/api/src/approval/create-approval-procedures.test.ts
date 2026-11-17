@@ -551,11 +551,11 @@ test('#approvals.answerProposal puts the note of a declined action in the inbox 
   ).toStrictEqual([['declined', 'The harbour office is closed this week.']]);
 });
 
-test.each<{ tool: string; effects: Effect[]; queued: string[] }>([
-  { tool: 'memory.export', effects: ['export'], queued: [] },
-  { tool: 'mail.send', effects: ['send'], queued: ['mail.send'] },
+test.each<{ tool: string; effects: Effect[]; runsInStep: boolean }>([
+  { tool: 'memory.export', effects: ['export'], runsInStep: true },
+  { tool: 'mail.send', effects: ['send'], runsInStep: false },
 ])(
-  '#approvals.answerProposal queues an approved $tool only when it runs outside the turn',
+  '#approvals.answerProposal queues an approved $tool, for the step to run when it runs inside the turn',
   async (row) => {
     const ctx = await setupTest();
 
@@ -590,7 +590,9 @@ test.each<{ tool: string; effects: Effect[]; queued: string[] }>([
       kinds: ['action.queued'],
     });
 
-    expect(read.map((entry) => entry.record.payload['tool'])).toStrictEqual(row.queued);
+    expect(
+      read.map((entry) => [entry.record.payload['tool'], entry.record.payload['runsInStep']]),
+    ).toStrictEqual([[row.tool, row.runsInStep ? true : undefined]]);
   },
 );
 

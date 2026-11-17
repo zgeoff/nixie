@@ -1,6 +1,8 @@
 import { expect, test } from 'bun:test';
+import { withWriteTransaction } from '@heynixie/log';
 import type { StepInput } from '@heynixie/tasks';
 import { buildStepRunID, writeTaskControl } from '@heynixie/tasks';
+import { buildActionSeeder } from '../test-utils/build-action-seeder';
 import { createTestStep } from '../test-utils/create-test-step';
 import { startTestActions } from '../test-utils/start-test-actions';
 import type { ActionsTables } from '../types';
@@ -473,5 +475,67 @@ test('it gives a cancelled outcome for an action that a stop of its task cancell
   expect(outcome).toStrictEqual({
     outcome: 'cancelled',
     reason: 'the task was stopped before it ran',
+  });
+});
+
+test.each([
+  ['an action that the step runs', true],
+  ['an action of the action runner', false],
+] as const)('it reports %s as an open repeat that says who runs it', async (_name, runsInStep) => {
+  const ctx = await setupTest();
+  const step = await createTestStep(ctx.context);
+
+  const seed = buildActionSeeder({ context: ctx.context });
+
+  const queued = runsInStep
+    ? await seed.inStepAction({ step })
+    : await seed.action({ step, actionHash: 'sha256:send-1' });
+
+  const queue = buildActionQueue(ctx.context);
+
+  const repeat = await queue.queue.readOpenRepeat({
+    run: {
+      runID: step.lease.workID,
+      thread: step.lease.workID,
+      logThread: step.lease.workID,
+      tools: ['test.send'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
+    tool: 'test.send',
+    input: {},
+    actionHash: queued.action_hash,
+  });
+
+  expect(repeat).toStrictEqual({ actionID: queued.action_id, runsInStep });
+});
+
+test('it reports an approved action that no run has settled to the transaction that would write a proposal', async () => {
+  const ctx = await setupTest();
+  const step = await createTestStep(ctx.context);
+
+  const seed = buildActionSeeder({ context: ctx.context });
+
+  const queued = await seed.action({ step, actionHash: 'sha256:send-1' });
+
+  const queue = buildActionQueue(ctx.context);
+
+  const open = await withWriteTransaction(ctx.context.log.writer, (tx) =>
+    queue.queue.readOpenAsk(tx, {
+      run: {
+        runID: step.lease.workID,
+        thread: step.lease.workID,
+        logThread: step.lease.workID,
+        tools: ['test.send'],
+        model: { model: 'model-a', profile: 'chat-direct' },
+      },
+      tool: 'test.send',
+      input: {},
+      actionHash: queued.action_hash,
+    }),
+  );
+
+  expect(open).toStrictEqual({
+    kind: 'action',
+    repeat: { actionID: queued.action_id, runsInStep: false },
   });
 });

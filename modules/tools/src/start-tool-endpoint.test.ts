@@ -1,13 +1,14 @@
 import { expect, mock, onTestFinished, test } from 'bun:test';
 import { join } from 'node:path';
 import { readRecords } from '@heynixie/log';
+import { buildActionHash } from '@heynixie/policy';
 import { readStarterDecisionPoint } from '@heynixie/policy/test-utils';
 import { buildToolRegistry } from './build-tool-registry';
 import { startToolEndpoint } from './start-tool-endpoint';
 import { buildMockToolDefinition } from './test-utils/build-mock-tool-definition';
 import { setupTestLog } from './test-utils/setup-test-log';
 import { startRunClient } from './test-utils/start-run-client';
-import type { ToolDefinition } from './types';
+import type { ToolContext, ToolDefinition } from './types';
 
 interface SetupConfig {
   readonly tools: readonly ToolDefinition[];
@@ -27,7 +28,12 @@ async function setupTest(config: SetupConfig) {
     log: testLog.log,
     definitions: () => ({ snapshotHash: 'sha256:test' }),
 
-    queue: { enqueue: mock(), readOpenRepeat: mock(), waitForOutcome: mock() },
+    queue: {
+      enqueue: mock(),
+      readOpenRepeat: mock(() => Promise.resolve(null)),
+      readOpenAsk: mock(() => Promise.resolve(null)),
+      waitForOutcome: mock(),
+    },
   });
 
   onTestFinished(() => endpoint.stop());
@@ -496,7 +502,12 @@ test("it leaves a later writer's socket for the same run in place when its run s
     log: { ...ctx.log, writer: { ...ctx.log.writer, epoch: ctx.log.writer.epoch + 1 } },
     definitions: () => ({ snapshotHash: 'sha256:test' }),
 
-    queue: { enqueue: mock(), readOpenRepeat: mock(), waitForOutcome: mock() },
+    queue: {
+      enqueue: mock(),
+      readOpenRepeat: mock(() => Promise.resolve(null)),
+      readOpenAsk: mock(() => Promise.resolve(null)),
+      waitForOutcome: mock(),
+    },
   });
 
   onTestFinished(() => other.stop());
@@ -622,7 +633,12 @@ test('it gives a sandbox the socket of a run that another endpoint of the same w
     log: ctx.log,
     definitions: () => ({ snapshotHash: 'sha256:test' }),
 
-    queue: { enqueue: mock(), readOpenRepeat: mock(), waitForOutcome: mock() },
+    queue: {
+      enqueue: mock(),
+      readOpenRepeat: mock(() => Promise.resolve(null)),
+      readOpenAsk: mock(() => Promise.resolve(null)),
+      waitForOutcome: mock(),
+    },
   });
 
   onTestFinished(() => other.stop());
@@ -682,4 +698,89 @@ test('it sends the listen acknowledgement while the listen stream stays open', a
 
   expect(first?.done).toBeFalse();
   expect(first?.value).toInclude('notifications/subscriptions/acknowledged');
+});
+
+test("it runs an approved call under the session and the step run of the token's step", async () => {
+  const contexts: ToolContext[] = [];
+
+  const ctx = await setupTest({
+    tools: [
+      buildMockToolDefinition({
+        name: 'notes_wipe',
+        declaration: { effects: ['export'] },
+        run: (_call, context) => {
+          contexts.push(context);
+
+          return Promise.resolve({ status: 'ok', result: { text: 'wiped' } });
+        },
+      }),
+    ],
+  });
+
+  const run = await ctx.endpoint.startRun({
+    toolUseMetaKey: null,
+    runID: 'run-1',
+    thread: 'task-1',
+    logThread: 'task-1',
+    tools: ['notes_wipe'],
+    model: { model: 'model-a', profile: 'chat-direct' },
+  });
+
+  const session = { key: 'session-a', invalidatedThrough: 4 };
+  const step = run.startStep('task-1@1', session);
+
+  const client = await startRunClient(run, step.token);
+
+  await client.callTool({ name: 'notes_wipe', arguments: { query: 'old' } });
+
+  const approved = await run.runApproved(step.token, {
+    actionID: 'proposal-1',
+    tool: 'notes_wipe',
+    input: { query: 'old' },
+    callSequence: 1,
+    actionHash: buildActionHash({
+      tool: 'notes_wipe',
+      input: { query: 'old' },
+      destinations: [],
+      deadlineAt: null,
+    }),
+  });
+
+  expect(approved).toMatchObject({ status: 'done' });
+
+  expect(contexts.map((context) => [context.run.stepRunID, context.run.session])).toStrictEqual([
+    ['task-1@1', session],
+  ]);
+});
+
+test('it refuses an approved call under the token of a step that stopped', async () => {
+  const ctx = await setupTest({ tools: [buildMockToolDefinition({ name: 'notes_wipe' })] });
+
+  const run = await ctx.endpoint.startRun({
+    toolUseMetaKey: null,
+    runID: 'run-1',
+    thread: 'task-1',
+    logThread: 'task-1',
+    tools: ['notes_wipe'],
+    model: { model: 'model-a', profile: 'chat-direct' },
+  });
+
+  const step = run.startStep('task-1@1');
+
+  await step.stop();
+
+  const refusal = await run
+    .runApproved(step.token, {
+      actionID: 'proposal-1',
+      tool: 'notes_wipe',
+      input: { query: 'old' },
+      callSequence: 1,
+      actionHash: 'sha256:any',
+    })
+    .then(
+      () => null,
+      (error: unknown) => error,
+    );
+
+  expect(refusal).toBeInstanceOf(Error);
 });

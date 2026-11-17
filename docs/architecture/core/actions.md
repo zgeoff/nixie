@@ -2,13 +2,14 @@
 
 An action is an allowed tool call whose effects reach outside nixie, such as a send, a write or a
 spend. It never runs inside the model's turn. It goes onto a durable queue, a separate runner
-attempts it against its provider, and its outcome becomes a record in the task's inbox. The queue
-exists so that a crash at any moment can never make an action happen twice: an action that may have
-reached its provider is marked unknown, and nixie settles it only by a retry under the same key, a
-check with the provider, or the user's answer, never by a blind second attempt. `modules/actions`
-owns the queue. An action is claimed through the same leases as a task step
-([leases and recovery](./leases-and-recovery.md)), and [tool calls](../connectors/tool-calls.md)
-covers how a call reaches the queue.
+attempts it against its provider, and its outcome becomes a record in the task's inbox. The one
+exception is a call that you approved to a tool that runs inside the turn, which the task's next
+step runs ([below](#approved-actions)). The queue exists so that a crash at any moment can never
+make an action happen twice: an action that may have reached its provider is marked unknown, and
+nixie settles it only by a retry under the same key, a check with the provider, or the user's
+answer, never by a blind second attempt. `modules/actions` owns the queue. An action is claimed
+through the same leases as a task step ([leases and recovery](./leases-and-recovery.md)), and
+[tool calls](../connectors/tool-calls.md) covers how a call reaches the queue.
 
 ## Outcomes
 
@@ -92,9 +93,34 @@ time past a row's deadline.
 An approval queues the action once. The approved proposal's ID becomes the action's ID, and the
 proposal row's `usedBy` names it, so a second tap on the same approval finds the action and queues
 nothing. The inbox record for the approval reads "Approved `<id>`. Queued as `<id>`.". Declining or
-letting the proposal lapse closes an action that was held for it. Approving a call to a tool that
-runs inside the turn queues nothing, because only a tool whose effects reach outside nixie runs as
-an action.
+letting the proposal lapse closes an action that was held for it.
+
+Approving a call to a tool that runs inside the turn, such as `worker.run`, queues an action too,
+flagged to run in the step. The action runner never claims it, because only a step has the turn's
+session, its hold on the turn's budget and its task run's bounds. The next step of the task runs the
+action before its model turn, under the step's lease, and one turn reads the approval and the
+result. The result is a second `tool_result` record under the call's `tool_called`, and the action's
+`action.outcome` record names it without copying it. A tool can record less than it returns, such as
+the IDs of the entries it read, so the turn reads the full reply, which the step keeps in memory. A
+later turn reads that reply too when its batch ends before the outcome, and after a restart a turn
+reads what the result record kept. The result takes the content sources of the variant that the call
+picked.
+
+The step runs such an action by the same rules as an attempt:
+
+- It decides the call again with the [policy check](#policy-before-each-attempt), and a deny fails
+  the action with `rule_denied`.
+- It refuses arguments that differ from the approved operation: the hash of the stored call must
+  equal the action's hash.
+- It records the attempt's start in its own transaction before the tool runs. A later step that
+  finds an attempt with no result marks the action unknown with `attempt_without_result` and runs no
+  tool, so the call never runs twice. Your retry returns the action to pending and wakes the task,
+  and the next step runs it again.
+- A task with such an action waiting never goes to waiting itself: its next step runs the action,
+  even with no message in its inbox.
+
+An approval answered before a release that runs these actions queued nothing for such a call, and it
+never runs.
 
 ## Policy before each attempt
 
@@ -126,8 +152,8 @@ have reached the provider before the crash, so a second attempt could repeat it.
 same for every such action before any runner starts. A runner claims no action of a paused or closed
 [task](./tasks.md#pause-stop-and-close) before its first attempt, so a pause holds the task's queued
 actions, and an action with a started attempt runs on to its outcome. A claimed action whose tool
-has no connector, or whose arguments are gone because their key was forgotten, fails without an
-attempt.
+has no connector (a tool that runs inside the turn has none, and its action is not claimed), or
+whose arguments are gone because their key was forgotten, fails without an attempt.
 
 Pausing nixie as a whole bars attempts too. The attempt start checks, in the transaction that would
 record it, whether nixie is paused and the action's task is not on the exemption list. If so, it

@@ -1,5 +1,6 @@
 import type { JSONObject } from '@heynixie/log';
-import type { TasksContext } from '@heynixie/tasks';
+import type { OpenRepeat } from '@heynixie/tools';
+import type { Kysely } from 'kysely';
 import type { ActionsTables } from '../types';
 import { buildActionHash } from './build-action-hash';
 import { buildCancelledCheck } from './build-cancelled-check';
@@ -13,13 +14,13 @@ export interface OpenRepeatQuery {
 
 // The pending or unknown action of the task that the same call already queued, if any.
 export async function readOpenRepeat(
-  context: TasksContext,
+  db: Kysely<unknown>,
   query: OpenRepeatQuery,
-): Promise<string | null> {
-  const open = await context.log.writer.db
+): Promise<OpenRepeat | null> {
+  const open = await db
     .$extendTables<ActionsTables>()
     .selectFrom('actions')
-    .select('action_id')
+    .select(['action_id', 'runs_in_step'])
     .where('task_id', '=', query.taskID)
 
     // an action queued before the hash covered the destinations holds the older hash
@@ -30,5 +31,7 @@ export async function readOpenRepeat(
     .limit(1)
     .executeTakeFirst();
 
-  return open?.action_id ?? null;
+  return open === undefined
+    ? null
+    : { actionID: open.action_id, runsInStep: open.runs_in_step === 1 };
 }

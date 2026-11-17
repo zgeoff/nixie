@@ -80,30 +80,37 @@ function runSessionTurn(conversation: ConversationRun, input: StepInput): Promis
 
     const result = await runSessionStep(step);
 
-    return run.frame.kind === 'task' && isStepTurnCut(input.interrupt, result.records)
-      ? buildCutResult(result)
-      : result;
+    const settled =
+      run.frame.kind === 'task' && isStepTurnCut(input.interrupt, result.records)
+        ? buildCutResult(result)
+        : result;
+
+    return keepApprovedCallsReady(run, input.taskID, settled);
   });
 }
 
-function runSessionStep(step: SessionStep): Promise<StepResult> {
+async function runSessionStep(step: SessionStep): Promise<StepResult> {
   const frame = step.run.frame;
 
   if (isSessionLive(step.position) && canSessionTake(step.position.state, 'compact')) {
     return runCompactionStep(step, step.position.boundary);
   }
 
+  // an approved call that no step ran has a result to read, though the inbox holds no record
+  const hasApprovedCall = (await step.run.inStepActions?.probePending(step.input.taskID)) === true;
+
   if (
     step.input.inbox.length === 0 &&
+    !hasApprovedCall &&
     !isTaskStart(frame, step.marks) &&
     !isTaskWorkCut(frame, step.marks)
   ) {
-    return Promise.resolve({
+    return {
       next: 'wait',
       records: [],
       acknowledged: [],
       sessionBoundary: step.input.sessionBoundary,
-    });
+    };
   }
 
   return runInboxStep(step, { canCompact: true, before: [] });
@@ -127,4 +134,26 @@ function buildCutResult(result: StepResult): StepResult {
         : record,
     ),
   };
+}
+
+// An approved call that this step has not run, such as one whose approval reached a turn that was
+// already running, keeps the task ready: the next step runs it before its turn.
+async function keepApprovedCallsReady(
+  run: ConversationRun,
+  taskID: string,
+  result: StepResult,
+): Promise<StepResult> {
+  const isEnding = result.next === 'wait' || result.next === 'done';
+
+  if (!isEnding) {
+    return result;
+  }
+
+  const probe = await run.inStepActions?.probePending(taskID);
+
+  if (probe !== true) {
+    return result;
+  }
+
+  return { ...result, next: 'continue' };
 }

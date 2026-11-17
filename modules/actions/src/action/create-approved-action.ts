@@ -23,6 +23,9 @@ export interface ApprovedAction {
   readonly callSequence: number;
   readonly riskClass: ActionRiskClass;
   readonly deadlineAt: number | null;
+
+  // whether the task's step runs the action, for a tool that runs inside the turn
+  readonly runsInStep: boolean;
 }
 
 // Queues the action an approval answered, in the answer's transaction, so a second answer finds the
@@ -84,6 +87,7 @@ export async function createApprovedAction(
         callSequence: approved.callSequence,
         riskClass: approved.riskClass,
         isApproved: true,
+        ...(approved.runsInStep ? { runsInStep: true } : {}),
         ...(approved.deadlineAt === null ? {} : { deadlineAt: approved.deadlineAt }),
       },
       erasable: { arguments: approved.arguments },

@@ -82,6 +82,7 @@ async function applyActionRecord(
         deadline_at: parsed.deadlineAt,
         risk_class: parsed.riskClass,
         is_approved: parsed.isApproved ? 1 : 0,
+        runs_in_step: parsed.runsInStep ? 1 : 0,
         held_by_proposal_id: null,
         unknown_streak: 0,
         first_attempt_at: null,

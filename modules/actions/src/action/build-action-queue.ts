@@ -1,3 +1,4 @@
+import { readOpenProposals } from '@heynixie/proposals';
 import type { RunStep, TaskClaim, TasksContext } from '@heynixie/tasks';
 import { buildStepRunID } from '@heynixie/tasks';
 import type { ActionOutcome, ActionQueue } from '@heynixie/tools';
@@ -51,12 +52,35 @@ export function buildActionQueue(
         return queued.actionID;
       },
       readOpenRepeat: (query) =>
-        readOpenRepeat(context, {
+        readOpenRepeat(context.log.writer.db, {
           taskID: query.run.thread,
           tool: query.tool,
           arguments: query.input,
           actionHash: query.actionHash,
         }),
+      readOpenAsk: async (tx, query) => {
+        const repeat = await readOpenRepeat(tx, {
+          taskID: query.run.thread,
+          tool: query.tool,
+          arguments: query.input,
+          actionHash: query.actionHash,
+        });
+
+        if (repeat !== null) {
+          return { kind: 'action', repeat };
+        }
+
+        const open = await readOpenProposals(tx, context.clock.now());
+
+        const proposal = open.find(
+          (row) =>
+            row.family === 'action' &&
+            row.thread === query.run.thread &&
+            row.actionHash === query.actionHash,
+        );
+
+        return proposal === undefined ? null : { kind: 'proposal', shortID: proposal.shortID };
+      },
       waitForOutcome: async (actionID, timeoutMs) => {
         const view = await waitForActionOutcome(context, actionID, {
           timeoutMs,

@@ -1,39 +1,26 @@
-import type { ContentSource, Decision, Definitions, JSONObject, Log } from '@heynixie/log';
-import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
-import type {
-  CallDestination,
-  DecisionPoint,
-  EffectDeclaration,
-  PolicyCall,
-  PolicyDecision,
-} from '@heynixie/policy';
-import {
-  buildActionHash,
-  buildActionProposalInput,
-  makeFaultSafeDecisionPoint,
-  toStoredDecision,
-} from '@heynixie/policy';
+import type { Decision, Definitions, JSONObject, Log } from '@heynixie/log';
+import type { CallDestination, DecisionPoint, PolicyDecision } from '@heynixie/policy';
+import { buildActionHash, makeFaultSafeDecisionPoint, toStoredDecision } from '@heynixie/policy';
 import type { CallToolResult } from '@modelcontextprotocol/server';
 import invariant from 'tiny-invariant';
+import { makeCallRecorder } from './call-record/make-call-recorder';
+import type { CallRecorder } from './call-record/make-call-recorder';
 import { callCapRefusal } from './cap/call-cap-refusal';
-import { countCapCalls } from './cap/count-cap-calls';
 import { buildMemoryVerdict, isMemoryRuleAsk } from './policy-call/build-memory-verdict';
 import { buildToolPolicyCall } from './policy-call/build-tool-policy-call';
+import { pickVariant } from './policy-call/pick-variant';
 import { readAskedRepeat } from './policy-call/read-asked-repeat';
 import { resolveCallDeadline } from './policy-call/resolve-call-deadline';
 import { resolveCallDestinations } from './policy-call/resolve-call-destinations';
 import { resolveCallPolicyFacts } from './policy-call/resolve-call-policy-facts';
-import { toStepKey } from './policy-call/to-step-key';
 import { buildMessage } from './settle/build-message';
 import { buildTypedResult } from './settle/build-typed-result';
 import { readQueuedResult } from './settle/read-queued-result';
 import type { Settled } from './settle/types';
-import { toolCalledCodec } from './tool-called-codec';
-import { toolResultCodec } from './tool-result-codec';
-import { ToolResultRefusedError } from './types';
 import type {
   ActionQueue,
   MemoryWriteVerdict,
+  OpenRepeat,
   RegisteredTool,
   SchemaCheck,
   ToolCall,
@@ -141,18 +128,20 @@ export async function runToolCall(
 
   const stored = toStoredDecision(policy.decision, policyCall);
 
+  const actionHash = buildActionHash({
+    tool: call.tool,
+    input: call.input,
+    destinations: destinations.map((destination) => destination.value),
+    deadlineAt,
+  });
+
   const repeatOf = await readAskedRepeat({
     registered,
     policy,
     call,
     run,
     queue: options.queue,
-    actionHash: buildActionHash({
-      tool: call.tool,
-      input: call.input,
-      destinations: destinations.map((destination) => destination.value),
-      deadlineAt,
-    }),
+    actionHash,
   });
 
   const written = await recorder.writeCall({
@@ -163,6 +152,7 @@ export async function runToolCall(
     frame: policyCall,
     deadlineAt,
     repeatOf,
+    actionHash,
     policyTool,
     declaration: registered?.definition.declaration ?? null,
   });
@@ -177,222 +167,39 @@ export async function runToolCall(
         run,
         callSequence: written.sequence,
         shortID: written.shortID,
-        repeatOf,
+        repeatOf: written.repeatOf,
         destinations,
         deadlineAt,
         options,
       });
 
-  return recorder.writeResult(written.sequence, settled);
+  const recorded = await recorder.writeSettled(written.sequence, settled);
+
+  return toCallToolResult(recorded.settled);
 }
 
-interface CallPolicy {
-  readonly policy: PolicyDecision;
-  readonly stored: Decision;
-  readonly destinations: readonly CallDestination[];
-
-  // the arguments the decision read, which a replay of the stored decision reads again
-  readonly args: JSONObject;
-
-  // the frame the call ran under, which a no_rule ask records
-  readonly frame: Pick<PolicyCall, 'context' | 'definitionID' | 'sources'>;
-
-  // the time after which the call's action must not start, null when it has none
-  readonly deadlineAt: number | null;
-
-  // the open action that an earlier approval of this same call queued, which the call asks no
-  // second time
-  readonly repeatOf: string | null;
-
-  // the name the decision point and an action proposal know the call by, which a variant extends
-  readonly policyTool: string;
-
-  // the declaration the decision point read: the variant's when the call picked one
-  readonly declaration: EffectDeclaration | null;
-}
-
-interface WrittenCall {
-  readonly sequence: number;
-
-  // the short ID of the action proposal that an ask wrote, and null for any other call
-  readonly shortID: string | null;
-
-  // whether the call is one more than its task run's cap on the tool
-  readonly isCapped: boolean;
-}
-
-interface CallRecorder {
-  readonly writeCall: (decided: CallPolicy | null) => Promise<WrittenCall>;
-  readonly writeResult: (callSequence: number, settled: Settled) => Promise<CallToolResult>;
-}
-
-interface CallRecordFields {
-  readonly definitions: Definitions;
-  readonly parent: number | undefined;
-}
-
-function makeCallRecorder(
+// A tool missing from the run's list skips the schema, so its errors never show the tool to the
+// model, and the decision point denies the call.
+function checkListedInput(
+  registered: RegisteredTool | null,
   call: ToolCall,
   run: ToolRun,
-  options: ToolCallOptions,
-  fields: CallRecordFields,
-): CallRecorder {
-  const definitions = fields.definitions;
-  const parent = fields.parent;
-
-  const ids = {
-    callID: call.callID,
-    runID: run.runID,
-    toolUseID: call.toolUseID,
-    ...(run.taskRun === undefined ? {} : { taskRunID: run.taskRun.runID }),
-  };
-
-  const recordInput = options.registry.findTool(call.tool)?.definition.recordInput;
-
-  return {
-    writeCall: (decided) =>
-      withWriteTransaction(options.log.writer, async (tx) => {
-        const recorded = decided?.args ?? call.input;
-        const input = recordInput?.(recorded) ?? recorded;
-        const destinations = decided?.destinations ?? [];
-
-        const [written] = await writeRecordsInTransaction(tx, options.log, [
-          {
-            kind: 'tool_called',
-            definitions,
-            thread: run.thread,
-            ...(parent === undefined ? {} : { parent }),
-            payload: toolCalledCodec.encode({
-              ...ids,
-              tool: call.tool,
-              model: run.model.model,
-              profile: run.model.profile,
-              ...(decided === null || decided.deadlineAt === null
-                ? {}
-                : { deadlineAt: decided.deadlineAt }),
-            }),
-            erasable: {
-              input,
-              ...(destinations.length === 0
-                ? {}
-                : {
-                    destinations: destinations.map((destination) => ({
-                      value: destination.value,
-                      replyTarget: destination.replyTarget,
-                    })),
-                  }),
-            },
-            ...(decided === null ? {} : { decision: decided.stored }),
-          },
-        ]);
-
-        invariant(written, 'the log wrote no record for the tool call');
-
-        const cap = decided === null ? undefined : run.taskRun?.calls[call.tool];
-
-        if (cap !== undefined && run.taskRun !== undefined) {
-          const earlier = await countCapCalls(tx, {
-            thread: run.thread,
-            taskRunID: run.taskRun.runID,
-            tool: call.tool,
-            beforeSequence: written.sequence,
-          });
-
-          if (earlier >= cap) {
-            return { sequence: written.sequence, shortID: null, isCapped: true };
-          }
-        }
-
-        const cause = decided?.policy.decision.cause;
-
-        if (
-          decided === null ||
-          decided.policy.decision.outcome !== 'ask' ||
-          cause === undefined ||
-          isMemoryRuleAsk(decided.policy) ||
-          decided.repeatOf !== null
-        ) {
-          return { sequence: written.sequence, shortID: null, isCapped: false };
-        }
-
-        const declaration = decided.declaration;
-
-        invariant(declaration, 'a tool that asks is registered');
-
-        const proposal = buildActionProposalInput({
-          definitions,
-          thread: run.thread,
-          callSequence: written.sequence,
-          tool: decided.policyTool,
-          actionTool: call.tool,
-          effects: declaration.effects,
-          cause,
-          input: call.input,
-          destinations,
-          content: declaration.content,
-          frame: decided.frame,
-          deadlineAt: decided.deadlineAt,
-          now: options.log.writer.clock.now(),
-          ...(run.stepRunID === undefined ? {} : { stepKey: toStepKey(run.stepRunID) }),
-        });
-
-        await writeRecordsInTransaction(tx, options.log, [proposal.record]);
-
-        return { sequence: written.sequence, shortID: proposal.shortID, isCapped: false };
-      }),
-    writeResult: async (callSequence, settled) => {
-      const writeSettled = async (toWrite: Settled): Promise<void> => {
-        const contentSource = pickLeastTrusted(Object.values(toWrite.sources));
-        const writeBeside = toWrite.writeBeside;
-
-        await withWriteTransaction(options.log.writer, async (tx) => {
-          const [written] = await writeRecordsInTransaction(tx, options.log, [
-            {
-              kind: 'tool_result',
-              definitions,
-              thread: run.thread,
-              parent: callSequence,
-              payload: toolResultCodec.encode({
-                ...ids,
-                outcome: toWrite.outcome,
-                actionID: toWrite.actionID,
-                sources: toWrite.sources,
-              }),
-              erasable: toWrite.content,
-              ...(toWrite.attachments === undefined ? {} : { attachments: toWrite.attachments }),
-              ...(contentSource === null ? {} : { contentSource }),
-            },
-          ]);
-
-          invariant(written, 'the log wrote no record for the tool result');
-
-          await writeBeside?.(tx, written.sequence);
-        });
-      };
-
-      try {
-        await writeSettled(settled);
-
-        return toCallToolResult(settled);
-      } catch (error) {
-        if (!(error instanceof ToolResultRefusedError)) {
-          throw error;
-        }
-
-        const refused = buildMessage('error', error.message, { source: 'untrusted' });
-
-        await writeSettled(refused);
-
-        return toCallToolResult(refused);
-      }
-    },
-  };
+): SchemaCheck {
+  return registered !== null && run.tools.includes(call.tool)
+    ? registered.parseInput(call.input)
+    : { isValid: true };
 }
 
-const trustOrder: readonly ContentSource[] = ['untrusted', 'owner_data', 'owner'];
+async function writeInvalidCall(recorder: CallRecorder, errors: string): Promise<CallToolResult> {
+  const written = await recorder.writeCall(null);
 
-function pickLeastTrusted(sources: readonly ContentSource[]): ContentSource | null {
-  return trustOrder.find((source) => sources.includes(source)) ?? null;
+  // the errors repeat the input's own keys, which the model chose
+  const invalid = await recorder.writeSettled(
+    written.sequence,
+    buildMessage('invalid', errors, { source: 'untrusted' }),
+  );
+
+  return toCallToolResult(invalid.settled);
 }
 
 function toCallToolResult(settled: Settled): CallToolResult {
@@ -418,55 +225,6 @@ function toCallToolResult(settled: Settled): CallToolResult {
   };
 }
 
-// A tool missing from the run's list skips the schema, so its errors never show the tool to the
-// model, and the decision point denies the call.
-function checkListedInput(
-  registered: RegisteredTool | null,
-  call: ToolCall,
-  run: ToolRun,
-): SchemaCheck {
-  return registered !== null && run.tools.includes(call.tool)
-    ? registered.parseInput(call.input)
-    : { isValid: true };
-}
-
-async function writeInvalidCall(recorder: CallRecorder, errors: string): Promise<CallToolResult> {
-  const written = await recorder.writeCall(null);
-
-  // the errors repeat the input's own keys, which the model chose
-  return recorder.writeResult(
-    written.sequence,
-    buildMessage('invalid', errors, { source: 'untrusted' }),
-  );
-}
-
-type VariantPick =
-  | { readonly status: 'picked'; readonly registered: RegisteredTool; readonly policyTool: string }
-  | { readonly status: 'error'; readonly message: string }
-  | null;
-
-// A tool with variants runs as the variant that its input picks, under that variant's declaration.
-function pickVariant(registered: RegisteredTool, call: ToolCall): VariantPick {
-  const variants = registered.definition.variants;
-
-  if (variants === undefined) {
-    return null;
-  }
-
-  const name = variants.pick(call.input);
-  const declaration = variants.declarations[name];
-
-  if (declaration === undefined) {
-    return { status: 'error', message: `the tool ${call.tool} has no variant ${name}` };
-  }
-
-  return {
-    status: 'picked',
-    registered: { ...registered, definition: { ...registered.definition, declaration } },
-    policyTool: `${call.tool}/${name}`,
-  };
-}
-
 function renderCallCapRefusal(run: ToolRun, tool: string): string {
   const cap = run.taskRun?.calls[tool] ?? 0;
 
@@ -481,7 +239,7 @@ interface DecidedCall {
   readonly run: ToolRun;
   readonly callSequence: number;
   readonly shortID: string | null;
-  readonly repeatOf: string | null;
+  readonly repeatOf: OpenRepeat | null;
   readonly destinations: readonly CallDestination[];
   readonly deadlineAt: number | null;
   readonly options: ToolCallOptions;
@@ -492,9 +250,10 @@ function runDecidedCall(decided: DecidedCall): Promise<Settled> {
 
   if (policy.decision.outcome === 'ask' && !isMemoryRuleAsk(policy)) {
     if (repeatOf !== null && registered !== null) {
+      // an action that the task's step runs settles in no turn that repeats the call
       return readQueuedResult(registered, rest.options.queue, {
-        actionID: repeatOf,
-        timeoutMs: rest.options.queuedWaitMs,
+        actionID: repeatOf.actionID,
+        timeoutMs: repeatOf.runsInStep ? 0 : rest.options.queuedWaitMs,
       });
     }
 

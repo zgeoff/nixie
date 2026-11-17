@@ -61,6 +61,8 @@ export interface ConversationRunnerOptions {
 
   readonly clearFetchPauses: ConversationRun['clearFetchPauses'];
 
+  readonly inStepActions?: NonNullable<ConversationRun['inStepActions']>;
+
   readonly log: ConversationSandboxSpec['log'];
 }
 

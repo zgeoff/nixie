@@ -41,6 +41,9 @@ export function claimAction(
           ]),
         )
         .where('actions.held_by_proposal_id', 'is', null)
+
+        // a task's step runs an action of a tool that runs inside the turn
+        .where('actions.runs_in_step', '=', 0)
         .where((eb) => eb.not(buildCancelledCheck(eb)))
         .where((eb) => buildPauseCheck(eb, 'actions.task_id'))
         .where((eb) => eb.not(buildHeldCheck(eb)))

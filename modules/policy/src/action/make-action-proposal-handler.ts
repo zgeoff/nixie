@@ -41,6 +41,9 @@ export interface ApprovedActionFacts {
   readonly callSequence: number;
   readonly riskClass: SharedProposal['riskClass'];
   readonly deadlineAt: number | null;
+
+  // true for a tool that runs inside the turn, which the task's step runs after the approval
+  readonly runsInStep: boolean;
 }
 
 export interface BodyFieldsRequest {
@@ -261,9 +264,7 @@ async function writeAnswer(
     return { status: 'refused', refusal: { error: 'NOT_ALLOWED', reason: 'rule_gone' } };
   }
 
-  // a tool that runs inside the turn never enters the action queue, which has no connector for it
-  const isQueued = !isDeclined && hasQueuedEffect(payload.effects);
-  const queued = isQueued ? await queueAction(deps, tx, { row, proposed, payload }) : null;
+  const queued = isDeclined ? null : await queueAction(deps, tx, { row, proposed, payload });
 
   if (queued !== null && queued.status === 'refused') {
     return { status: 'refused', refusal: queued.refusal };
@@ -393,6 +394,7 @@ async function queueAction(
     callSequence: payload.callSequence,
     riskClass: row.riskClass,
     deadlineAt: payload.deadlineAt ?? null,
+    runsInStep: !hasQueuedEffect(payload.effects),
   });
 
   return { status: 'queued', actionID };

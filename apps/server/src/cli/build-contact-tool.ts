@@ -5,8 +5,7 @@ import { z } from 'zod';
 
 const markArguments = z.object({ destination: z.string(), name: z.string().optional() });
 
-// Declares policy_widen, so stage 4 always asks. An approved action does not run yet, so until it
-// does only the CLI marks a contact.
+// Declares policy_widen, so stage 4 always asks, and the call runs once it is approved.
 export function buildContactTool(
   context: ContactContext,
   refreshDefinitions: () => Promise<unknown>,

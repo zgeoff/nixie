@@ -25,6 +25,7 @@ export interface NixieTables {
     readonly first_attempt_at: number | null;
     readonly last_attempt_at: number | null;
     readonly reconcile_at: number | null;
+    readonly runs_in_step: number;
   };
   readonly backup_notices: {
     readonly sequence: number;

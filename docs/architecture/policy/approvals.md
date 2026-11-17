@@ -77,9 +77,10 @@ first that fails:
    `NO_PASSKEY`, `PASSKEY_REQUIRED` or `PASSKEY_FAILED`, and the refusal is not stored.
 
 Approving an action proposal queues the action once, under the proposal's ID, as
-[actions](../core/actions.md#approved-actions) describes. A proposal for a call with a deadline
-lapses at the earlier of its usual lapse and the deadline, and an approval after the deadline fails
-the action.
+[actions](../core/actions.md#approved-actions) describes. That holds for a call to a tool that runs
+inside the turn as well: the task's step runs it. A proposal for a call with a deadline lapses at
+the earlier of its usual lapse and the deadline, and an approval after the deadline fails the
+action.
 
 Then the kind's handler applies the choice. Always allow is offered only for a routine action that
 policy held because no rule steered it, and it writes the rule the proposal carried and approves the

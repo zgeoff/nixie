@@ -73,6 +73,7 @@ async function setupTest() {
         queue: {
           enqueue: () => Promise.reject(new Error('a refused call queues nothing')),
           readOpenRepeat: () => Promise.resolve(null),
+          readOpenAsk: () => Promise.resolve(null),
           waitForOutcome: () => Promise.resolve(null),
         },
         queuedWaitMs: 1000,

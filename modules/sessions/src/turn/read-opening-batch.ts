@@ -1,5 +1,5 @@
 import type { StepInput } from '@heynixie/tasks';
-import type { InboxContext } from '../inbox/read-inbox-messages';
+import type { InboxContext, InboxRead } from '../inbox/read-inbox-messages';
 import type { LiveImages } from '../inbox/read-live-inbox';
 import type { TaskMessageView } from '../task/render-task-message';
 import type { ImageTally, MessageTimeOptions } from '../types';
@@ -20,6 +20,8 @@ interface OpeningRead {
 
   readonly images: ImageTally;
   readonly imageBudget: ImageTally;
+
+  readonly replies?: InboxRead['replies'];
 }
 
 export async function readOpeningBatch(
@@ -34,6 +36,7 @@ export async function readOpeningBatch(
       bytes: read.imageBudget.bytes - read.images.bytes,
       count: read.imageBudget.count - read.images.count,
     },
+    ...(read.replies === undefined ? {} : { replies: read.replies }),
   });
 
   const spent = mergeImageTallies(
