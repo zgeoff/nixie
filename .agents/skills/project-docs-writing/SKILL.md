@@ -30,6 +30,7 @@ metadata:
 
 - Address the person nixie works for as "you". In an architecture doc, call them "the user" instead,
   as the opening of the [glossary](../../../docs/glossary.md) says.
+- In a skill, call that person "the user" too. A skill's "you" is the agent that reads it.
 - Write "you" only for an action that person takes: "memory shows in 2 ways", not "you see memory in
   2 ways".
 - Never call that person "the owner". In the glossary, `owner` is a value of a memory item's

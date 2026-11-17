@@ -284,7 +284,7 @@ The host commands read and answer the rule store, and each prints JSON:
 | `nixie mandates list`                         | Lists each active mandate, its rules and its end                   |
 | `nixie mandates end <id>`                     | Ends the mandate, as End now does                                  |
 
-The approvals page in the web client lists the same pending proposals among every other kind, each
-change as the sentence before and after it, and answers them through `approvals.answerProposal`. A
-rejection there needs a reason too. An hourly sweep records the lapse of each proposal left past the
-shared proposal lapse time.
+The approvals page in the web client, at `/proposals`, lists the same pending proposals among every
+other kind, each change as the sentence before and after it, and answers them through
+`approvals.answerProposal`. A rejection there needs a reason too. An hourly sweep records the lapse
+of each proposal left past the shared proposal lapse time.

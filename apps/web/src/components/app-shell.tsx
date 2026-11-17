@@ -6,6 +6,7 @@ import { css } from '../styled-system/css';
 const entries = [
   { exact: true, label: 'Conversation', to: '/' },
   { exact: false, label: 'Memory', to: '/memory' },
+  { exact: false, label: 'Proposals', to: '/proposals' },
   { exact: false, label: 'Moments', to: '/moments' },
   { exact: false, label: 'Tasks', to: '/tasks' },
   { exact: false, label: 'Ended runs', to: '/tasks/ended' },

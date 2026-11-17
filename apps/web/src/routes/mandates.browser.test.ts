@@ -75,6 +75,14 @@ test('it proposes a mandate that then waits on the approvals page', async () => 
   const rows = store.approvalRows.all();
 
   expect(rows.map((row) => [row.cause, row.state])).toStrictEqual([['mandate', 'pending']]);
+
+  // A real click lands on a point in the viewport, and the status line renders below the viewport
+  await ctx.view.evaluate(`document.querySelector('p[role="status"] a').scrollIntoView()`);
+  await ctx.view.click('p[role="status"] a');
+
+  await ctx.waitForPage(
+    `location.pathname === '/proposals' && document.querySelector('li[aria-label="Allow mail.send, as a stand-in."]') !== null`,
+  );
 });
 
 test.each([

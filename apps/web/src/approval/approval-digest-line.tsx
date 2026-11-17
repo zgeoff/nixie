@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react';
 import { useEffect, useState } from 'react';
+import { RuleSentence } from '../rule/rule-sentence';
+import { toPlainRuleSentence } from '../rule/to-plain-rule-sentence';
 import { css } from '../styled-system/css';
 import { ApprovalCard } from './approval-card';
 import { isBatchable } from './build-batch-answers';
@@ -29,6 +31,7 @@ export function ApprovalDigestLine(props: ApprovalDigestLineProps): ReactNode {
   const [hasNotice, setHasNotice] = useState(false);
   const isOpen = item.proposal.state === 'pending' || item.proposal.state === 'deferred';
   const sentence = item.body?.sentence ?? `Proposal ${item.proposal.shortID}`;
+  const isRuleChange = item.proposal.kind === 'internal_change';
   const stateText = formatApprovalState(item);
 
   useEffect(() => {
@@ -38,7 +41,11 @@ export function ApprovalDigestLine(props: ApprovalDigestLineProps): ReactNode {
   }, [hasNotice, isOpen]);
 
   return (
-    <li aria-label={sentence} className={line} data-state={item.proposal.state}>
+    <li
+      aria-label={isRuleChange ? toPlainRuleSentence(sentence) : sentence}
+      className={line}
+      data-state={item.proposal.state}
+    >
       {isBatchable(props.entry) ? (
         <label className={state}>
           <input
@@ -58,7 +65,7 @@ export function ApprovalDigestLine(props: ApprovalDigestLineProps): ReactNode {
         open={isExpanded}
       >
         <summary className={summary}>
-          {sentence}
+          {isRuleChange ? <RuleSentence sentence={sentence} /> : sentence}
           {stateText === null || isOpen ? null : <span className={state}> · {stateText}</span>}
         </summary>
         <ApprovalCard

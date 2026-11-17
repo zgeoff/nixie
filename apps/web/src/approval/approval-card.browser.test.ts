@@ -88,7 +88,7 @@ async function setupTest() {
       await waitInView(`document.querySelector('ul[aria-label="Passkeys"] li') !== null`);
     },
     openLine: async (sentence: string) => {
-      await view.navigate(`${appURL}/memory/proposals`);
+      await view.navigate(`${appURL}/proposals`);
 
       await waitInView(`document.querySelector('li[aria-label="${sentence}"] summary') !== null`);
 
@@ -257,6 +257,45 @@ test('it shows the title, each rule and the end of a mandate on its card', async
   );
 
   expect(shown).toStrictEqual([true, true, true, true]);
+});
+
+test('it shows the marks of a rule sentence as bold and code, in the line and on the card', async () => {
+  const ctx = await setupTest();
+
+  await store.approvalRows.create({
+    cause: 'mandate',
+    choices: ['approve', 'defer', 'decline'],
+    kind: 'internal_change',
+    riskClass: 'always_ask',
+    sentence: '**Allow** `calendar.respond`, until 2026-11-14T13:00:00Z.',
+    approveLabel: 'Start the mandate',
+    fields: {
+      title: 'Full authority over my calendar invites',
+      ends: '2026-11-14T13:00:00.000Z',
+      'rule 1': '**Allow** `calendar.respond`, until 2026-11-14T13:00:00Z.',
+    },
+    thread: null,
+  });
+
+  await ctx.openLine('Allow calendar.respond, until 2026-11-14T13:00:00Z.');
+  await ctx.waitForPage(`document.querySelector('button[name="approve"]') !== null`);
+
+  const shown = await ctx.view.evaluate(
+    `(() => { const line = document.querySelector('li[aria-label="Allow calendar.respond, until 2026-11-14T13:00:00Z."]'); return { summary: line.querySelector('summary').innerText, marks: Array.from(line.querySelectorAll('strong, code'), (mark) => mark.tagName + ' ' + mark.textContent), hasStars: line.innerText.includes('**') || line.innerText.includes('\`') }; })()`,
+  );
+
+  expect(shown).toStrictEqual({
+    summary: 'Allow calendar.respond, until 2026-11-14T13:00:00Z.',
+    marks: [
+      'STRONG Allow',
+      'CODE calendar.respond',
+      'STRONG Allow',
+      'CODE calendar.respond',
+      'STRONG Allow',
+      'CODE calendar.respond',
+    ],
+    hasStars: false,
+  });
 });
 
 test('it says Not now for a proposed rule and declines it without asking for a note', async () => {

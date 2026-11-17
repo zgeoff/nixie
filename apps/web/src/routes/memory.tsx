@@ -34,7 +34,7 @@ function Memory(): ReactNode {
         {...(search.item === undefined ? {} : { openItemID: search.item })}
         navigation={
           <nav className={css({ display: 'flex', gap: '3' })}>
-            <Link className={link} to="/memory/proposals">
+            <Link className={link} to="/proposals">
               Proposals
             </Link>
           </nav>

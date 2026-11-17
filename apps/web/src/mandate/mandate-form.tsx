@@ -96,8 +96,8 @@ export function MandateForm(): ReactNode {
       )}
       {proposer.proposedUntil === null ? null : (
         <p role="status">
-          The mandate is proposed. <Link to="/memory/proposals">Approve it</Link> to start it. It
-          ends {proposer.proposedUntil.toLocaleString()}.
+          The mandate is proposed. <Link to="/proposals">Approve it</Link> to start it. It ends{' '}
+          {proposer.proposedUntil.toLocaleString()}.
         </p>
       )}
     </form>
