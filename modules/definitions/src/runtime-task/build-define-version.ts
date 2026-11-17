@@ -6,6 +6,7 @@ import type {
   TaskDefinition,
   TaskDefinitionWarning,
 } from '../task/types';
+import { renderTaskYAML } from './render-task-yaml';
 import type { StoredTaskDefinition } from './stored-task-definition';
 
 export interface TaskDefineInput {
@@ -50,7 +51,7 @@ export function buildDefineVersion(
     return { status: 'invalid', reasons: ['the name holds no letter or digit for an ID'] };
   }
 
-  const yaml = JSON.stringify(buildTaskMapping(input));
+  const yaml = renderTaskYAML(buildTaskMapping(input));
 
   const outcome = parseTaskFolder(
     { id: definitionID, files: new Map([['task.yaml', yaml]]) },

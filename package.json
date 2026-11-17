@@ -143,6 +143,7 @@
     "ci:compose:check-sign-in-code": "bun scripts/compose/check-sign-in-code.ts",
     "ci:compose:write-throwaway-secrets": "bun scripts/compose/write-throwaway-secrets.ts",
     "ci:config-schema:run-config-schema-check": "bun scripts/config-schema/run-config-schema-check.ts",
+    "ci:definitions:check-task-yaml-format": "bun scripts/definitions/check-task-yaml-format.ts",
     "ci:images:check-backup-image": "bun scripts/images/check-backup-image.ts",
     "ci:images:check-codex-image": "bun scripts/images/check-codex-image.ts",
     "ci:images:check-conversation-image": "bun scripts/images/check-conversation-image.ts",
