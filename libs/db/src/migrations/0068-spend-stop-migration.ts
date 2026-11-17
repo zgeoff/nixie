@@ -2,8 +2,8 @@ import { sql } from 'kysely';
 import type { Migration } from '../types';
 
 // The turn count has one row per 15-minute bucket, so a count of a day or a month in any zone sums
-// whole buckets. It starts from the turn records the log holds, so an upgrade mid-period keeps the
-// count.
+// whole buckets. The migration only adds tables, so the release before still opens the database;
+// the server folds the turns that no fold has counted at each start, which spend_turns_folded tracks.
 export const spendStopMigration: Migration = {
   name: 'add the spending stop tables',
   up: async (tx) => {
@@ -34,10 +34,9 @@ export const spendStopMigration: Migration = {
       turns integer not null
     ) strict`.execute(tx);
 
-    await sql`insert into spend_turns (bucket_start, turns)
-      select recorded_at / 900000 * 900000, count(*)
-      from records
-      where kind in ('model.turn_ended', 'worker.turn_ended')
-      group by recorded_at / 900000 * 900000`.execute(tx);
+    await sql`create table if not exists spend_turns_folded (
+      id integer primary key check (id = 1),
+      through_sequence integer not null
+    ) strict`.execute(tx);
   },
 };

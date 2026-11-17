@@ -557,6 +557,10 @@ export interface NixieTables {
     readonly bucket_start: number;
     readonly turns: number;
   };
+  readonly spend_turns_folded: {
+    readonly id: number;
+    readonly through_sequence: number;
+  };
   readonly task_definition_exports: {
     readonly export_id: string;
     readonly branch: string;

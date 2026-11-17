@@ -3,6 +3,7 @@ import type { Writer } from '@heynixie/log';
 import { startWriter } from '@heynixie/log';
 import type { Logger } from '@heynixie/logger';
 import type { SandboxAdapter } from '@heynixie/sandbox';
+import { writeMissedTurns } from '@heynixie/spend';
 import type { DefinitionsExportSettings } from '../definition/resolve-definitions-export';
 import type { DeploymentConfig } from '../deployment/deployment-config-schema';
 import type { SandboxAdapterOptions } from '../sandbox/create-sandbox-adapter';
@@ -84,6 +85,9 @@ export async function startServer(options: ServerOptions): Promise<Server> {
       cleanup,
       ...(options.harness === undefined ? {} : { clock: options.harness.link.clock }),
     });
+
+    // the release before writes turn records with no fold, so each start counts the ones it left
+    await writeMissedTurns(writer);
 
     const spendStart = await startSpendChecks(inputs);
 

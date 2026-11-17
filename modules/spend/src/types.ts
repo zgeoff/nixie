@@ -170,10 +170,16 @@ interface SpendTurnTable {
   readonly turns: number;
 }
 
+interface SpendTurnsFoldedTable {
+  readonly id: number;
+  readonly through_sequence: number;
+}
+
 export type SpendTables = CheckedTables<
   Readonly<{
     spend_stop: SpendStopTable;
     spend_raises: SpendRaiseTable;
     spend_turns: SpendTurnTable;
+    spend_turns_folded: SpendTurnsFoldedTable;
   }>
 >;

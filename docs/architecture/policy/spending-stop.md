@@ -22,6 +22,11 @@ The turn count has its own table, `spend_turns`, in UTC buckets. It adds one tur
 `model.turn_ended` and each `worker.turn_ended` record, and no call writes both. A limit is a total:
 the limit in force is the larger of the config's limit and the raise's total.
 
+The server counts each turn record that no fold counted at each start, before any work, from the
+last sequence it counted, which `spend_turns_folded` holds. The first start after the upgrade counts
+every turn the log holds, and a start after a rollback counts the turns the release before wrote.
+The migration only adds tables, so that rollback needs no restore.
+
 ## The watcher
 
 The server's `spend_watcher` part polls `/status` on a fixed interval and settles the stop in one

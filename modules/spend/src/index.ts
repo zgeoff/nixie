@@ -3,6 +3,7 @@ export { withSandboxCounts } from './sandbox/with-sandbox-counts';
 export { startSpendLimits } from './start/start-spend-limits';
 export type { SpendLimitsOptions } from './start/start-spend-limits';
 export { spendProjections } from './projection/spend-projections';
+export { writeMissedTurns } from './projection/write-missed-turns';
 export { spendLimitRaisedCodec } from './record/spend-limit-raised-codec';
 export type { SpendRecordKind, SpendTurnKind } from './record/spend-record-kind';
 export { spendStopClearedCodec } from './record/spend-stop-cleared-codec';
