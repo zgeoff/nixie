@@ -8,7 +8,7 @@ import { startTestTriggers } from '@heynixie/triggers/test-utils';
 import { remindersProjections } from '../projection/reminders-projections';
 import type { RemindersContext } from '../types';
 
-export interface TestFire {
+interface TestFire {
   readonly triggerID: string;
   readonly hash: string;
   readonly kind: 'schedule' | 'at';

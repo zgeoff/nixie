@@ -25,6 +25,7 @@ import { runDefinitionsSeed } from '../definition/run-definitions-seed';
 import { startDefinitionsExports } from '../definition/start-definitions-exports';
 import { queueCheckRunner } from '../queue/queue-check-runner';
 import { startQueueCheckTask } from '../queue/start-queue-check-task';
+import { runServerReminderMoves } from '../reminder/run-server-reminder-moves';
 import { runInForceSeedAndWake } from '../seed/run-in-force-seed-and-wake';
 import { startSeedPoll } from '../seed/start-seed-poll';
 import { makeReadLastMessageAt } from '../server/make-read-last-message-at';
@@ -61,6 +62,11 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
     }),
   },
   {
+    name: 'reminder_moves',
+    needs: ['server_parts', 'definitions_seed', 'conversation_task'],
+    start: (reader) => runServerReminderMoves(reader.get('server_parts')),
+  },
+  {
     name: 'conversation_task',
     needs: ['server_parts', 'start_record'],
     start: async (reader) => {
@@ -77,7 +83,7 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
   },
   {
     name: 'trigger_sources',
-    needs: ['server_parts', 'conversation_task'],
+    needs: ['server_parts', 'conversation_task', 'reminder_moves'],
     start: async (reader) => {
       const parts = reader.get('server_parts');
       const writer = parts.context.log.writer;

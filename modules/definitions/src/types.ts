@@ -273,6 +273,7 @@ export type RuntimeTaskCause =
   | 'seed'
   | 'one_shot_fired'
   | 'one_shot_skipped'
+  | 'reminder_moved'
   | 'kept_repo';
 
 export interface RuntimeTaskDefinitionRow {

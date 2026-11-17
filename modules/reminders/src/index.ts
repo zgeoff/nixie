@@ -22,3 +22,6 @@ export { buildReminderUpdateTool } from './tool/build-reminder-update-tool';
 export { buildRemindersListTool } from './tool/build-reminders-list-tool';
 export { remindersConfigSchema } from './reminders-config-schema';
 export type { ReminderOrigin, ReminderState, RemindersContext, RemindersTables } from './types';
+export type { ReminderMove } from './move/read-reminder-moves';
+export type { SettleMovedDefinition } from './move/run-reminder-moves';
+export { runReminderMoves } from './move/run-reminder-moves';

@@ -333,84 +333,106 @@ test('it starts the task run of a fire untrusted, holds it to its version tools 
   );
 });
 
-test('it wakes the conversation once for a fire and gives it a reminder with the note, the name and the time it was set for', async () => {
-  const ctx = await setupTest();
-
-  const sandboxes = buildStubSandboxes();
-
-  ctx.clock.advance(20_700_000);
-
-  await createConversationTask(ctx.context);
-
-  await withWriteTransaction(ctx.context.log.writer, (tx) =>
-    writeReminderVersion(tx, 'hash-1', {
-      name: 'Call the dentist',
-      note: 'Call the dentist about the crown.',
-      trigger: { at: '2027-03-09T14:00:00+11:00' },
-    }),
-  );
-
-  const runner = await ctx.startConversation(sandboxes);
-
-  ctx.defer(() => runner.stop());
-
-  sandboxes.setGuestScript((turn) => [
-    { type: 'read', uuids: turn.input.map((message) => message.uuid) },
+test.each([
+  [
+    'a one-time reminder',
+    { at: '2027-03-09T14:00:00+11:00' } as const,
+    { source: 'at', kind: 'at', scheduledFor: '2027-03-09T03:00:00.000Z' },
+  ],
+  [
+    'a recurring reminder',
     {
-      type: 'assistant',
-      messageID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d002',
-      text: 'I will remind you to call.',
-      toolUses: [],
-    },
-    {
-      type: 'ended',
-      boundary: {
-        harness: 'agent-sdk',
-        sessionID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d001',
+      schedule: {
+        every: 'week',
+        on: 'tue',
+        at: '14:00',
+        zone: 'Australia/Sydney',
+        catchUp: 'once',
+      },
+    } as const,
+    { source: 'schedule', kind: 'schedule', scheduledFor: '2027-03-09T03:00:00.000Z' },
+  ],
+])(
+  'it wakes the conversation once for a fire of %s and gives it a reminder with the note, the name and the time it was set for',
+  async (_name, trigger, fire) => {
+    const ctx = await setupTest();
+
+    const sandboxes = buildStubSandboxes();
+
+    ctx.clock.advance(20_700_000);
+
+    await createConversationTask(ctx.context);
+
+    await withWriteTransaction(ctx.context.log.writer, (tx) =>
+      writeReminderVersion(tx, 'hash-1', {
+        name: 'Call the dentist',
+        note: 'Call the dentist about the crown.',
+        trigger,
+      }),
+    );
+
+    const runner = await ctx.startConversation(sandboxes);
+
+    ctx.defer(() => runner.stop());
+
+    sandboxes.setGuestScript((turn) => [
+      { type: 'read', uuids: turn.input.map((message) => message.uuid) },
+      {
+        type: 'assistant',
         messageID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d002',
+        text: 'I will remind you to call.',
+        toolUses: [],
       },
-      outcome: 'finished',
-      stopReason: 'end_turn',
-      turns: 1,
-      usage: { inputTokens: 10, outputTokens: 5, cacheReadTokens: 0, cacheWriteTokens: 0 },
-    },
-  ]);
-
-  await writeInboxRecords(ctx.context, [
-    {
-      kind: 'trigger.fired',
-      definitions: ctx.context.definitions(),
-      thread: 'conversation',
-      payload: {
-        definitionID: 'call-the-dentist',
-        definitionHash: 'hash-1',
-        source: 'at',
-        dedupeKey: 'call-the-dentist:2027-03-09T03:00:00.000Z',
-        kind: 'at',
-        scheduledFor: '2027-03-09T03:00:00.000Z',
-        firedAt: '2027-03-09T03:00:00.000Z',
-        isCatchUp: false,
-        skipped: [],
-        skippedCount: 0,
+      {
+        type: 'ended',
+        boundary: {
+          harness: 'agent-sdk',
+          sessionID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d001',
+          messageID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d002',
+        },
+        outcome: 'finished',
+        stopReason: 'end_turn',
+        turns: 1,
+        usage: { inputTokens: 10, outputTokens: 5, cacheReadTokens: 0, cacheWriteTokens: 0 },
       },
-    },
-  ]);
+    ]);
 
-  await runNextStep(ctx.context, runner.runStep);
+    await writeInboxRecords(ctx.context, [
+      {
+        kind: 'trigger.fired',
+        definitions: ctx.context.definitions(),
+        thread: 'conversation',
+        payload: {
+          definitionID: 'call-the-dentist',
+          definitionHash: 'hash-1',
+          source: fire.source,
+          dedupeKey: `call-the-dentist:${fire.scheduledFor}`,
+          kind: fire.kind,
+          scheduledFor: fire.scheduledFor,
+          firedAt: fire.scheduledFor,
+          isCatchUp: false,
+          skipped: [],
+          skippedCount: 0,
+        },
+      },
+    ]);
 
-  const next = await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+    await runNextStep(ctx.context, runner.runStep);
 
-  const inputs = sandboxes.turns.map((turn) =>
-    turn.input.map((message) => message.text).join('\n'),
-  );
+    const next = await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
 
-  expect(sandboxes.turns).toHaveLength(1);
-  expect(next).toBeNull();
+    const inputs = sandboxes.turns.map((turn) =>
+      turn.input.map((message) => message.text).join('\n'),
+    );
 
-  expect(inputs[0]).toMatch(
-    /<system-message type="reminder" id="[0-9a-f]+" at="Tue 9 Mar, 14:00, Sydney">\n\[#\d+\] Reminder: <model-text id="(?<block>[0-9a-f]+)">Call the dentist about the crown\.<\/model-text id="\k<block>">\nName: <model-text id="[0-9a-f]+">Call the dentist<\/model-text id="[0-9a-f]+">\nIt was set for Tue 9 Mar, 14:00, Sydney\.\n<\/system-message id="[0-9a-f]+">/u,
-  );
-});
+    expect(sandboxes.turns).toHaveLength(1);
+    expect(next).toBeNull();
+
+    expect(inputs[0]).toMatch(
+      /<system-message type="reminder" id="[0-9a-f]+" at="Tue 9 Mar, 14:00, Sydney">\n\[#\d+\] Reminder: <model-text id="(?<block>[0-9a-f]+)">Call the dentist about the crown\.<\/model-text id="\k<block>">\nName: <model-text id="[0-9a-f]+">Call the dentist<\/model-text id="[0-9a-f]+">\nIt was set for Tue 9 Mar, 14:00, Sydney\.\n<\/system-message id="[0-9a-f]+">/u,
+    );
+  },
+);
 
 test('it starts a task run of a wakeable definition task on a question from the conversation, and wakes the conversation with its reply', async () => {
   const ctx = await setupTest();

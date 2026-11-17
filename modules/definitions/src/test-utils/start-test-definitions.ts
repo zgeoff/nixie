@@ -2,7 +2,7 @@ import { onTestFinished } from 'bun:test';
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import type { Log, Writer } from '@heynixie/log';
+import type { Log, Projection, Writer } from '@heynixie/log';
 import { startTestLog } from '@heynixie/log/test-utils';
 import type { TasksContext } from '@heynixie/tasks';
 import { readDefinitionTaskInTransaction, tasksProjections } from '@heynixie/tasks';
@@ -21,6 +21,7 @@ import { makeRetireOneShot } from '../runtime-task/make-retire-one-shot';
 import { runtimeTaskDefinitionsProjection } from '../runtime-task/runtime-task-definitions-projection';
 import { taskDefinitionExportsProjection } from '../runtime-task/task-definition-exports-projection';
 import type { DefinitionsContext } from '../runtime-task/types';
+import type { TaskHooksContext } from '../task/write-task-hooks';
 import type { DefinitionsSource } from '../types';
 import { buildTestTaskSeed } from './build-test-task-seed';
 
@@ -64,7 +65,17 @@ export interface TestDefinitions {
 
 // A log that folds the records of the tasks, the triggers and the runtime task definitions, over a
 // directory that serves as the definitions repo, and the context that a runtime change takes.
-export async function startTestDefinitions(): Promise<TestDefinitions> {
+export interface TestDefinitionsOptions {
+  // projections of another module that fold beside these
+  readonly projections?: readonly Projection[];
+
+  // the triggers of another module that the seed arms beside the definitions
+  readonly readExtraArmed?: TaskHooksContext['readExtraArmed'];
+}
+
+export async function startTestDefinitions(
+  options: TestDefinitionsOptions = {},
+): Promise<TestDefinitions> {
   const base = await startTestLog();
   const directory = await mkdtemp(join(tmpdir(), 'nixie-runtime-tasks-'));
 
@@ -78,14 +89,27 @@ export async function startTestDefinitions(): Promise<TestDefinitions> {
 
   const log: Log = {
     ...base.log,
-    projections: [...tasksProjections, ...definitionTaskProjections],
+    projections: [
+      ...tasksProjections,
+      ...definitionTaskProjections,
+      ...(options.projections ?? []),
+    ],
   };
 
   const source = createPathSource({ directory: root });
   const tasks = buildTestTaskSeed();
   const seeded: SeedResult[] = [];
   const wakes = { count: 0 };
-  const seed = () => runSeed({ tasks, log, source, buildPolicy });
+
+  const seed = () =>
+    runSeed({
+      tasks,
+      log,
+      source,
+      buildPolicy,
+      ...(options.readExtraArmed === undefined ? {} : { readExtraArmed: options.readExtraArmed }),
+    });
+
   const definitionStore = buildTestDefinitionStore();
 
   const tasksContext: TasksContext = {

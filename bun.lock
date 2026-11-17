@@ -759,11 +759,7 @@
         "@heynixie/triggers": "workspace:*",
         "@heynixie/wire": "workspace:*",
         "kysely": "catalog:",
-        "tiny-invariant": "catalog:",
         "zod": "catalog:",
-      },
-      "devDependencies": {
-        "@heynixie/testing": "workspace:*",
       },
     },
     "modules/sandbox": {
