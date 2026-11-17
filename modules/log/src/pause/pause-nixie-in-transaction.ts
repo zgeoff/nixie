@@ -1,4 +1,4 @@
-import { closeToOlderReaders, pauseMigrationVersion } from '@heynixie/db';
+import { closeToOlderReaders, pauseMigrationVersion, spendMigrationVersion } from '@heynixie/db';
 import type { Transaction } from 'kysely';
 import { writeRecordsInTransaction } from '../record/write-records-in-transaction';
 import type { Definitions, PauseCause, PauseLog } from '../types';
@@ -37,7 +37,9 @@ export async function pauseNixieInTransaction(
     },
   ]);
 
-  await closeToOlderReaders(tx, pauseMigrationVersion);
+  const reader = request.cause === 'spending' ? spendMigrationVersion : pauseMigrationVersion;
+
+  await closeToOlderReaders(tx, reader);
 }
 
 function requireRecoveryIDForRestore(request: PauseNixieRequest): void {

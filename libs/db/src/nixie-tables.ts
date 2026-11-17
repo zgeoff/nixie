@@ -533,6 +533,30 @@ export interface NixieTables {
     readonly in_conversation: number;
     readonly approval_id: string | null;
   };
+  readonly spend_raises: {
+    readonly start: string;
+    readonly dollars: number;
+    readonly tokens: number;
+    readonly turns: number;
+    readonly raised_by: string;
+    readonly at: number;
+    readonly updated_sequence: number;
+  };
+  readonly spend_stop: {
+    readonly id: number;
+    readonly reason: string;
+    readonly period: string | null;
+    readonly measure: string | null;
+    readonly limit_amount: number | null;
+    readonly spent_amount: number | null;
+    readonly at: number;
+    readonly resets_at: number | null;
+    readonly updated_sequence: number;
+  };
+  readonly spend_turns: {
+    readonly bucket_start: number;
+    readonly turns: number;
+  };
   readonly task_definition_exports: {
     readonly export_id: string;
     readonly branch: string;

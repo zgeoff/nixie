@@ -21,5 +21,6 @@ export { readMemorySubjectCounts } from './migration/read-memory-subject-counts'
 export type { SubjectMigrationReport } from './migration/run-subject-migration-dry-run';
 export { runSubjectMigrationDryRun } from './migration/run-subject-migration-dry-run';
 export { pauseMigrationVersion } from './migration/pause-migration-version';
+export { spendMigrationVersion } from './migration/spend-migration-version';
 export { reopenToOlderReaders } from './migration/reopen-to-older-readers';
 export { syncPauseGate } from './migration/sync-pause-gate';

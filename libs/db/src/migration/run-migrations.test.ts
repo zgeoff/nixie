@@ -13,6 +13,7 @@ import { closeToOlderReaders } from './close-to-older-readers';
 import { pauseMigrationVersion } from './pause-migration-version';
 import { reopenToOlderReaders } from './reopen-to-older-readers';
 import { runMigrations } from './run-migrations';
+import { spendMigrationVersion } from './spend-migration-version';
 
 async function setupTest() {
   const stack = new AsyncDisposableStack();
@@ -483,6 +484,29 @@ test('it refuses a schema older than the pause migration while a pause holds the
   const run = runMigrations(ctx.db, {
     schema: {
       migrations: nixieSchema.migrations.slice(0, pauseMigrationVersion - 1),
+      oldestReader: 35,
+    },
+    copyDir: ctx.directory,
+  });
+
+  await Promise.allSettled([run]);
+
+  expect(run).rejects.toBeInstanceOf(SchemaTooNewError);
+});
+
+test('it refuses the release before the spending stop tables while a spending pause holds the gate closed', async () => {
+  const ctx = await setupTest();
+
+  await runMigrations(ctx.db, {
+    schema: { ...nixieSchema, oldestReader: 35 },
+    copyDir: ctx.directory,
+  });
+
+  await ctx.db.transaction().execute((tx) => closeToOlderReaders(tx, spendMigrationVersion));
+
+  const run = runMigrations(ctx.db, {
+    schema: {
+      migrations: nixieSchema.migrations.slice(0, spendMigrationVersion - 1),
       oldestReader: 35,
     },
     copyDir: ctx.directory,
