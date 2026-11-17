@@ -132,6 +132,7 @@
         "@heynixie/api": "workspace:*",
         "@heynixie/async": "workspace:*",
         "@heynixie/backup": "workspace:*",
+        "@heynixie/budgets": "workspace:*",
         "@heynixie/clock": "workspace:*",
         "@heynixie/compaction": "workspace:*",
         "@heynixie/connectors": "workspace:*",
@@ -523,6 +524,23 @@
         "tiny-invariant": "catalog:",
         "ts-pattern": "catalog:",
         "xstate": "catalog:",
+        "zod": "catalog:",
+      },
+      "devDependencies": {
+        "@heynixie/testing": "workspace:*",
+      },
+    },
+    "modules/budgets": {
+      "name": "@heynixie/budgets",
+      "version": "0.0.0",
+      "dependencies": {
+        "@heynixie/clock": "workspace:*",
+        "@heynixie/db": "workspace:*",
+        "@heynixie/log": "workspace:*",
+        "@heynixie/policy": "workspace:*",
+        "@heynixie/triggers": "workspace:*",
+        "kysely": "catalog:",
+        "tiny-invariant": "catalog:",
         "zod": "catalog:",
       },
       "devDependencies": {
@@ -1339,6 +1357,8 @@
     "@heynixie/backup": ["@heynixie/backup@workspace:modules/backup"],
 
     "@heynixie/backup-job": ["@heynixie/backup-job@workspace:apps/backup-job"],
+
+    "@heynixie/budgets": ["@heynixie/budgets@workspace:modules/budgets"],
 
     "@heynixie/clock": ["@heynixie/clock@workspace:libs/clock"],
 
