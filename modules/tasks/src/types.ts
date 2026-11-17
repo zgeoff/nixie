@@ -195,6 +195,9 @@ export interface TaskStartBounds {
 
 export interface TaskMessaging {
   readonly directory: readonly TaskProfile[];
+
+  // the profiles of tasks in no directory, which only labels read
+  readonly unlisted: readonly TaskProfile[];
   readonly hopLimit: number;
   readonly ownerName: string | null;
   readonly agentName: string | null;

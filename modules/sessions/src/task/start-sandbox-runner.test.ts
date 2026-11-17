@@ -125,7 +125,7 @@ async function setupTest() {
       },
       compaction: { threshold: 0.8, headsUp: 0.7, summaryTokens: 2000 },
       defaultZone: 'UTC',
-      messaging: { directory: [], hopLimit: 20, ownerName: 'Robin', agentName: null },
+      messaging: { directory: [], unlisted: [], hopLimit: 20, ownerName: 'Robin', agentName: null },
       clearFetchPauses,
       log: (event) => {
         events.push(event);
@@ -174,6 +174,7 @@ async function setupTest() {
             replyTo: null,
             onBehalfOf: [],
             hop: 1,
+            unlisted: [],
             hopLimit: 20,
             wake: true,
             woke: true,
@@ -237,6 +238,7 @@ test.each([
         replyTo: null,
         onBehalfOf: [],
         hop: 1,
+        unlisted: [],
         hopLimit: 20,
         wake: true,
         woke: true,

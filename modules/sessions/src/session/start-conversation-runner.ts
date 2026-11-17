@@ -90,6 +90,7 @@ const defaultCompaction: CompactionSettings = {
 
 const defaultMessaging: TaskMessaging = {
   directory: [],
+  unlisted: [],
   hopLimit: 20,
   ownerName: null,
   agentName: null,

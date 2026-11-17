@@ -20,6 +20,7 @@ export function buildTaskMessaging(config: MessagingConfig): TaskMessaging {
 
   return {
     directory: [conversation],
+    unlisted: [],
     hopLimit: config.tasks.messaging.hopLimit,
     ownerName: config.owner.name,
     agentName: config.agent.names[0] ?? null,

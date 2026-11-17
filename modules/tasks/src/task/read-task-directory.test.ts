@@ -34,6 +34,7 @@ test('it adds each started task to the directory, with the name and the brief a 
   ]);
 
   const messaging: TaskMessaging = {
+    unlisted: [],
     hopLimit: 20,
     ownerName: null,
     agentName: null,
@@ -51,6 +52,7 @@ test('it adds each started task to the directory, with the name and the brief a 
   const directory = await readTaskDirectory(ctx.context, messaging);
 
   expect(directory).toStrictEqual({
+    unlisted: [],
     hopLimit: 20,
     ownerName: null,
     agentName: null,
@@ -169,6 +171,7 @@ test('it lists a started task whose creation record names a brief message and ho
         replyTo: null,
         onBehalfOf: [],
         hop: 0,
+        unlisted: [],
         hopLimit: 6,
         wake: true,
         woke: true,

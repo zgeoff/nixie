@@ -2,6 +2,7 @@ import type { TaskProfile } from '../types';
 
 interface StartedDirectory {
   readonly directory: readonly TaskProfile[];
+  readonly unlisted: readonly TaskProfile[];
   readonly hopLimit: number;
 }
 
@@ -24,6 +25,7 @@ export function buildStartedDirectory(taskID: string): StartedDirectory {
         speaker: 'plain_task',
       },
     ],
+    unlisted: [],
     hopLimit: 20,
   };
 }
