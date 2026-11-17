@@ -1,5 +1,5 @@
+import { buildZoneParts } from '@heynixie/clock';
 import type { Schedule, Trigger } from '@heynixie/contract';
-import { buildZoneParts } from './build-zone-parts';
 import { getWeekday } from './get-weekday';
 import { pickNextFire } from './pick-next-fire';
 

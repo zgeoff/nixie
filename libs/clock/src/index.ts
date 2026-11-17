@@ -3,3 +3,8 @@ export { setWorkTracker } from './set-work-tracker';
 export { systemClock } from './system-clock';
 export type { Clock, WorkTracker } from './types';
 export { withTrackedWork } from './with-tracked-work';
+export { buildDayStart } from './zone/build-day-start';
+export { buildLocalInstant } from './zone/build-local-instant';
+export type { LocalDate, ZoneParts } from './zone/build-zone-parts';
+export { buildZoneParts } from './zone/build-zone-parts';
+export { buildZoneOffsetMs } from './zone/build-zone-offset-ms';

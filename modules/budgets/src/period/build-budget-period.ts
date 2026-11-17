@@ -1,5 +1,5 @@
+import { buildDayStart, buildZoneOffsetMs } from '@heynixie/clock';
 import type { BudgetPeriod } from '@heynixie/policy';
-import { buildDayStart, buildZoneOffsetMs } from '@heynixie/triggers';
 
 export interface BudgetPeriodBounds {
   // the ISO date of the period's first day in the zone

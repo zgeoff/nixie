@@ -2,6 +2,7 @@ import { onTestFinished } from 'bun:test';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { budgetProjections } from '@heynixie/budgets';
 import type { Log } from '@heynixie/log';
 import { logProjections, startWriter } from '@heynixie/log';
 
@@ -28,5 +29,8 @@ export async function setupTestLog(): Promise<TestLog> {
     'unwrapKey',
   ]);
 
-  return { dataDir, log: { writer, deploymentKey, projections: logProjections } };
+  return {
+    dataDir,
+    log: { writer, deploymentKey, projections: [...logProjections, ...budgetProjections] },
+  };
 }

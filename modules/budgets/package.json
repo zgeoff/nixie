@@ -15,7 +15,6 @@
     "@heynixie/db": "workspace:*",
     "@heynixie/log": "workspace:*",
     "@heynixie/policy": "workspace:*",
-    "@heynixie/triggers": "workspace:*",
     "kysely": "catalog:",
     "tiny-invariant": "catalog:",
     "zod": "catalog:"

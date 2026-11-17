@@ -102,6 +102,11 @@ export interface ToolDefinition {
 
   readonly run: (call: ToolCall, context: ToolContext) => Promise<ToolOutcome>;
 
+  // A tool that costs money for each call, which is not a purchase. A call charges the price to the
+  // budgets `<name>-day` and `<name>-month` before the provider sees it, and a call that fails
+  // credits both. The tool runs direct.
+  readonly paid?: PaidTool;
+
   readonly recordInput?: (input: JSONObject) => JSONObject;
 
   // Resolves the destinations of a call on the host, for a tool whose destinations are not plain
@@ -131,6 +136,11 @@ export interface ToolDefinition {
   // the decision point about `<name>/<variant>`, under that variant's declaration, and every record
   // and cap still names the tool.
   readonly variants?: ToolVariants;
+}
+
+export interface PaidTool {
+  // the price of one call, in millionths of a dollar
+  readonly priceMicros: number;
 }
 
 export interface ToolVariants {

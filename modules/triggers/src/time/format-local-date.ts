@@ -1,4 +1,4 @@
-import type { LocalDate } from './build-zone-parts';
+import type { LocalDate } from '@heynixie/clock';
 
 // 'YYYY-MM-DD'
 export function formatLocalDate(date: LocalDate): string {

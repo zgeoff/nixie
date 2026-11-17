@@ -3,6 +3,7 @@ import { readRecords } from '@heynixie/log';
 import { buildActionHash } from '@heynixie/policy';
 import { z } from 'zod';
 import { makeCallRecorder } from '../call-record/make-call-recorder';
+import { runPaidCall } from '../paid/run-paid-call';
 import { pickVariant } from '../policy-call/pick-variant';
 import type { ToolCallOptions } from '../run-tool-call';
 import { buildMessage } from '../settle/build-message';
@@ -86,7 +87,7 @@ export async function runApprovedCall(
 
   const registered = variant === null ? found : variant.registered;
 
-  const settled = await tryRunApproved(registered, call, {
+  const settled = await tryRunApproved(registered, call, options, {
     run,
     callSequence: request.callSequence,
     actionID: request.actionID,
@@ -159,13 +160,20 @@ interface ApprovedRunFacts {
 async function tryRunApproved(
   registered: RegisteredTool,
   call: ToolCall,
+  options: ToolCallOptions,
   facts: ApprovedRunFacts,
 ): Promise<Settled> {
   try {
-    const outcome = await registered.definition.run(call, {
-      run: facts.run,
-      callSequence: facts.callSequence,
-    });
+    const outcome = await runPaidCall(registered, call, options, () =>
+      registered.definition.run(call, { run: facts.run, callSequence: facts.callSequence }),
+    );
+
+    if (outcome.status === 'budget_reached') {
+      return buildMessage('denied', outcome.message, {
+        source: 'owner_data',
+        actionID: facts.actionID,
+      });
+    }
 
     // a tool's error can quote what an outside service said, so it counts as outside content
     return outcome.status === 'error'

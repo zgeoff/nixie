@@ -538,7 +538,6 @@
         "@heynixie/db": "workspace:*",
         "@heynixie/log": "workspace:*",
         "@heynixie/policy": "workspace:*",
-        "@heynixie/triggers": "workspace:*",
         "kysely": "catalog:",
         "tiny-invariant": "catalog:",
         "zod": "catalog:",
@@ -862,6 +861,7 @@
       "name": "@heynixie/tools",
       "version": "0.0.0",
       "dependencies": {
+        "@heynixie/budgets": "workspace:*",
         "@heynixie/log": "workspace:*",
         "@heynixie/policy": "workspace:*",
         "@heynixie/sandbox": "workspace:*",

@@ -1,4 +1,4 @@
-import type { LocalDate } from './build-zone-parts';
+import type { LocalDate } from '@heynixie/clock';
 
 // 0 is Sunday
 export function getWeekday(date: LocalDate): number {

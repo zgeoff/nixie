@@ -1,4 +1,4 @@
-import type { LocalDate } from './build-zone-parts';
+import type { LocalDate } from '@heynixie/clock';
 
 export function addDays(date: LocalDate, days: number): LocalDate {
   const moved = new Date(Date.UTC(date.year, date.month - 1, date.day + days));
