@@ -107,3 +107,29 @@ test('it shows what the call returned when the record keeps less, such as the ID
     ].join('\n'),
   );
 });
+
+test('it shows neither the reply nor its images once a forget shredded the result', () => {
+  const record = buildMockLogRecord({
+    kind: 'tool_result',
+    thread: 'conversation',
+    erasable: { status: 'shredded' },
+  });
+
+  const block = renderActionResult(
+    record,
+    {
+      result: { text: 'The ferry leaves at nine.' },
+      images: [{ mediaType: 'image/png', bytes: new Uint8Array([1, 2, 3]) }],
+    },
+    () => 'fence1',
+  );
+
+  expect(block).toStrictEqual({
+    text: [
+      '<tool-result source="untrusted" fence="fence1">',
+      '[a result since forgotten]',
+      '</tool-result fence="fence1">',
+    ].join('\n'),
+    images: [],
+  });
+});

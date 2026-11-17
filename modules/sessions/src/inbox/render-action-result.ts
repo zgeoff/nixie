@@ -9,9 +9,8 @@ export interface ActionResultBlock {
   readonly images: readonly InboxImage[];
 }
 
-// The result in an element that a fresh random ID closes, so what an outside service said cannot
-// close it early. The reply of the step that ran the call wins over the record, which can keep less
-// than the tool returned. An image takes a marker in the text and goes with the message.
+// A fresh random ID closes the element, so what an outside service said cannot close it early. The
+// step's reply wins over the record, which can keep less than the tool returned, until a forget.
 export function renderActionResult(
   record: LogRecord,
   reply: ApprovedReply | null,
@@ -19,12 +18,13 @@ export function renderActionResult(
 ): ActionResultBlock {
   const fence = mint();
   const source = record.contentSource ?? 'untrusted';
-  const markers = (reply?.images ?? []).flatMap((image) => toInboxImage(image, mint()));
+  const kept = record.erasable.status === 'readable' ? reply : null;
+  const markers = (kept?.images ?? []).flatMap((image) => toInboxImage(image, mint()));
 
   return {
     text: [
       `<tool-result source="${source}" fence="${fence}">`,
-      toResultText(record, reply),
+      toResultText(record, kept),
       ...markers.map((marker) => marker.marker),
       `</tool-result fence="${fence}">`,
     ].join('\n'),
