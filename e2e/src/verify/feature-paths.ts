@@ -76,6 +76,7 @@ export const ignoredPaths = [
   'socket.yml',
   'review.json',
   'renovate.json',
+  '.agents/**',
   '.claude/**',
   '.codex/**',
   '.github/**',

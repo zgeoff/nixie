@@ -14,7 +14,7 @@ node_modules
 Thumbs.db
 *Zone.Identifier
 
-# agent scratch; .claude/skills stays tracked
+# agent scratch; .agents/skills stays tracked
 .reviews
 .scratch/
 .claude/settings.local.json
