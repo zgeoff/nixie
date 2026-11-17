@@ -232,7 +232,7 @@ seeder. The db lib keeps row seeds for its own storage tests, because it sits be
 The API module, the sessions module, the server app, `integration/` and `e2e/` each have a
 `buildSeeder`, and a test of those reaches the seeds through `ctx.seed`. The lint rules
 `zgeoff/seed-only` and `zgeoff/test-beside-seed` run as errors. The
-[seeding reference](../../.claude/skills/testing/references/seeding.md) holds the rules for writing
+[seeding reference](../../.agents/skills/testing/references/seeding.md) holds the rules for writing
 a seed.
 
 ### Test builds
