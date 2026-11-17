@@ -1298,7 +1298,7 @@ test('it leaves a self-note from a photo a proposal when no allow rule checks th
   expect(outcome).toMatchObject({ status: 'proposed' });
 });
 
-test('it applies a self-note from a photo when allow rules cover both the subject and the image', async () => {
+test('it leaves a self-note from a photo a proposal when the subject and the image are checked by separate allow rules', async () => {
   const memory = await startTestMemory();
 
   const photo = await writeOwnerMessageRecord(memory.log, {
@@ -1318,6 +1318,39 @@ test('it applies a self-note from a photo when allow rules cover both the subjec
       rules: [
         { id: 'rule-a', revision: 1, checks: [{ arg: 'subject', op: 'eq', value: 'self' }] },
         { id: 'rule-b', revision: 2, checks: [{ arg: 'image.number', op: 'eq', value: 1 }] },
+      ],
+    },
+  });
+
+  expect(outcome).toMatchObject({ status: 'proposed' });
+});
+
+test('it applies a self-note from a photo when one allow rule checks both the subject and the image', async () => {
+  const memory = await startTestMemory();
+
+  const photo = await writeOwnerMessageRecord(memory.log, {
+    thread: 'conversation',
+    text: 'Look at this',
+    spans: [{ start: 0, end: 12, source: 'typed' }],
+    images: ['image/jpeg'],
+  });
+
+  const outcome = await memory.store.writes.remember({
+    text: 'I liked how the bike looked',
+    subject: 'self',
+    image: { messageSequence: photo, image: 1 },
+    caller: buildMockWriteCaller(),
+    verdict: {
+      kind: 'rule-allow',
+      rules: [
+        {
+          id: 'rule-a',
+          revision: 1,
+          checks: [
+            { arg: 'subject', op: 'eq', value: 'self' },
+            { arg: 'image.number', op: 'eq', value: 1 },
+          ],
+        },
       ],
     },
   });

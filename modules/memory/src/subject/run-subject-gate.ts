@@ -77,23 +77,22 @@ interface WriteTarget {
   readonly hasImage: boolean;
 }
 
-// The rule that covers the write, which holds the checks that the subject it ends up under needs: a
-// self-note needs a subject check, a photo needs an image check, and a self-note from a photo needs
-// both.
+// The one rule that covers the write, which holds every check that the subject it ends up under
+// needs: a self-note needs a subject check, a photo needs an image check, and a self-note from a
+// photo needs both in the same rule.
 function pickWriteCoverage(
   verdict: MemoryWriteVerdict | undefined,
   target: WriteTarget,
 ): CoveringRule | null {
-  if (target.subject === 'self') {
-    const covering = pickCoveringRule(verdict, 'self_note');
-    const isPhotoCovered = !target.hasImage || pickCoveringRule(verdict, 'photo') !== null;
+  return pickCoveringRule(verdict, pickWriteNeed(target));
+}
 
-    return isPhotoCovered ? covering : null;
+function pickWriteNeed(target: WriteTarget): RuleNeed {
+  if (target.subject === 'self') {
+    return target.hasImage ? 'self_note_photo' : 'self_note';
   }
 
-  const need: RuleNeed = target.hasImage ? 'photo' : 'none';
-
-  return pickCoveringRule(verdict, need);
+  return target.hasImage ? 'photo' : 'none';
 }
 
 interface WriteSubjects {

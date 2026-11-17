@@ -37,6 +37,27 @@ test.each<[string, readonly RuleCheck[], RuleNeed, boolean]>([
     'photo',
     false,
   ],
+  [
+    'returns false for a subject check alone and the self-note photo need',
+    [{ arg: 'subject', op: 'eq', value: 'self' }],
+    'self_note_photo',
+    false,
+  ],
+  [
+    'returns false for an image check alone and the self-note photo need',
+    [{ arg: 'image.number', op: 'eq', value: 1 }],
+    'self_note_photo',
+    false,
+  ],
+  [
+    'returns true for a subject check and an image check and the self-note photo need',
+    [
+      { arg: 'subject', op: 'eq', value: 'self' },
+      { arg: 'image.number', op: 'eq', value: 1 },
+    ],
+    'self_note_photo',
+    true,
+  ],
 ])('#isNeedMet %s', (_name, checks, need, expected) => {
   expect(isNeedMet({ checks }, need)).toBe(expected);
 });
