@@ -21,6 +21,9 @@ const typedOrNot: WriteKind['sources'] = [['owner'], ['outside']];
 const untyped: WriteKind['sources'] = [['outside']];
 const nonSelf: WriteKind['subjects'] = ['owner', 'shared'];
 
+// a pin or a retirement adds no text, so its item may have any subject
+const anySubject: WriteKind['subjects'] = ['owner', 'shared', 'self'];
+
 const writeKinds: readonly WriteKind[] = [
   {
     phrase: 'a new fact',
@@ -97,7 +100,7 @@ const writeKinds: readonly WriteKind[] = [
   {
     phrase: 'a pin',
     tool: 'memory.pin',
-    subjects: nonSelf,
+    subjects: anySubject,
     need: 'none',
     hasImage: false,
     sources: [[]],
@@ -105,7 +108,7 @@ const writeKinds: readonly WriteKind[] = [
   {
     phrase: 'a retirement',
     tool: 'memory.retire',
-    subjects: nonSelf,
+    subjects: anySubject,
     need: 'none',
     hasImage: false,
     sources: typedOrNot,
