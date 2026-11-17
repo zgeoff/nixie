@@ -16,7 +16,7 @@ import { seedDefinitionTask } from '../test-utils/seed-definition-task';
 import { seedOpenDefinitionRun } from '../test-utils/seed-open-definition-run';
 import { seedTask } from '../test-utils/seed-task';
 import { startTestTasks } from '../test-utils/start-test-tasks';
-import type { DefinitionVersion } from '../types';
+import type { DefinitionVersion, TaskRunOptions } from '../types';
 import { buildTasksRunsTool } from './build-tasks-runs-tool';
 
 async function setupTest() {
@@ -43,6 +43,12 @@ async function setupTest() {
 
   return {
     ...tasks,
+    tideShape: {
+      type: 'object',
+      properties: { tide: { type: 'string' } },
+      required: ['tide'],
+      additionalProperties: false,
+    } as const,
     readListed: async (input: JSONObject) => {
       const outcome = await tool.run(
         buildMockToolCall({ tool: 'tasks.runs', input }),
@@ -96,13 +102,14 @@ async function setupTest() {
     },
 
     // opens the task run of a task that the conversation started
-    startRun: async (name: string) => {
+    startRun: async (name: string, options: Partial<TaskRunOptions> = {}) => {
       starter ??= await seedConversationStep(tasks.context);
 
       const taskID = await seedTask(tasks.context, {
         starter: starter.claim,
         name,
         brief: 'Compare the tide tables.',
+        options,
       });
 
       const claim = await claimTask(tasks.context, {
@@ -555,6 +562,181 @@ test('it shows the fixed text for a report whose text was forgotten', async () =
           isReportClipped: false,
         }),
       ],
+      nextCursor: null,
+    },
+  });
+});
+
+test('it gives the fields of the report for the run', async () => {
+  const ctx = await setupTest();
+  const started = await ctx.startRun('Tide check', { reportShape: ctx.tideShape });
+
+  await writeStepCommit(ctx.context, started.claim, {
+    next: 'continue',
+    records: [],
+    acknowledged: [],
+    run: { activity: 'worked', report: { summary: 'Checked.', fields: { tide: 'high' } } },
+  });
+
+  await writeTaskControl(ctx.context, { taskID: started.taskID, control: 'close' });
+
+  const listed = await ctx.readListed({});
+
+  const runID = listed.runs[0]?.run;
+
+  invariant(runID !== undefined, 'a run is listed');
+
+  const one = await ctx.callRuns({ run: runID });
+
+  expect(one).toStrictEqual({
+    status: 'ok',
+    result: {
+      runs: [expect.objectContaining({ report: 'Checked.', fields: { tide: 'high' } })],
+      nextCursor: null,
+    },
+  });
+});
+
+test('it gives the declared fields that a code-made report lacks as missing for the run', async () => {
+  const ctx = await setupTest();
+  const started = await ctx.startRun('Tide check', { reportShape: ctx.tideShape });
+
+  await writeTaskControl(ctx.context, { taskID: started.taskID, control: 'close' });
+
+  const listed = await ctx.readListed({});
+
+  const runID = listed.runs[0]?.run;
+
+  invariant(runID !== undefined, 'a run is listed');
+
+  const one = await ctx.callRuns({ run: runID });
+
+  expect(one).toStrictEqual({
+    status: 'ok',
+    result: {
+      runs: [expect.objectContaining({ missing: ['tide'] })],
+      nextCursor: null,
+    },
+  });
+});
+
+test('it leaves fields and missing out for the run of a task with no report shape', async () => {
+  const ctx = await setupTest();
+  const started = await ctx.startRun('Tide check');
+
+  await writeTaskControl(ctx.context, { taskID: started.taskID, control: 'close' });
+
+  const listed = await ctx.readListed({});
+
+  const runID = listed.runs[0]?.run;
+
+  invariant(runID !== undefined, 'a run is listed');
+
+  const outcome = await ctx.callRuns({ run: runID });
+
+  invariant(outcome.status === 'ok', 'the call answers');
+
+  const rowSchema = z.record(z.string(), z.unknown());
+  const rowsSchema = z.object({ runs: z.array(rowSchema) });
+  const parsed = rowsSchema.parse(outcome.result);
+  const [row] = parsed.runs;
+
+  expect(row).toBeDefined();
+  expect(row).not.toHaveProperty('fields');
+  expect(row).not.toHaveProperty('missing');
+});
+
+test('it names the one run by the version that the newest ended run of its task pins', async () => {
+  const ctx = await setupTest();
+
+  const taskID = await ctx.createDefinitionTask('tend-the-garden', 'garden-old', {
+    name: 'Old garden',
+  });
+
+  await ctx.endDefinitionRun(taskID, 'tend-the-garden', 'garden-old', 'Tended.');
+
+  await seedDefinitionTask(ctx, {
+    definitionID: 'tend-the-garden',
+    definitionHash: null,
+    version: { name: 'New garden' },
+  });
+
+  await ctx.endDefinitionRun(taskID, 'tend-the-garden', 'tend-the-garden-spent', 'Tended again.');
+
+  const listed = await ctx.readListed({});
+
+  const olderID = listed.runs[1]?.run;
+
+  invariant(olderID !== undefined, 'two runs are listed');
+
+  const one = await ctx.callRuns({ run: olderID });
+
+  expect(one).toStrictEqual({
+    status: 'ok',
+    result: { runs: [expect.objectContaining({ name: 'New garden' })], nextCursor: null },
+  });
+
+  const names = await ctx.callRuns({});
+
+  expect(names).toStrictEqual({
+    status: 'ok',
+    result: {
+      runs: [
+        expect.objectContaining({ name: 'New garden' }),
+        expect.objectContaining({ name: 'New garden' }),
+      ],
+      nextCursor: null,
+    },
+  });
+});
+
+test('it reads past forgotten failure messages to the newest one still readable', async () => {
+  const ctx = await setupTest();
+  const started = await ctx.startRun('Tide check');
+
+  const options = { maxStepErrors: 11, retryDelayMs: 1000, maxRetryDelayMs: 1000 };
+
+  await writeStepError(ctx.context, started.claim, {
+    ...options,
+    error: new Error('first readable error'),
+  });
+
+  for (let errors = 2; errors <= 11; errors += 1) {
+    ctx.clock.advance(1000);
+
+    const claim = await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+    invariant(claim, 'the task is claimable again');
+
+    await writeStepError(ctx.context, claim, {
+      ...options,
+      error: new Error(`error ${String(errors)}`),
+    });
+  }
+
+  const errors = await readRecords(ctx.context.log, {
+    afterSequence: 0,
+    kinds: ['task.step_errored'],
+    order: 'newest',
+    limit: 10,
+  });
+
+  for (const entry of errors) {
+    await removeTestRecordKey(ctx.context.log, entry.record.sequence);
+  }
+
+  const listed = await ctx.readListed({});
+
+  const runID = listed.runs[0]?.run;
+
+  invariant(runID !== undefined, 'a failed run is listed');
+
+  const one = await ctx.callRuns({ run: runID });
+
+  expect(one).toStrictEqual({
+    status: 'ok',
+    result: {
+      runs: [expect.objectContaining({ reason: 'first readable error' })],
       nextCursor: null,
     },
   });

@@ -233,7 +233,12 @@ async function readRunNames(
 
   const missing = [...new Set(runs.map((run) => run.taskID))].filter((id) => !known.has(id));
 
-  const pinned = await readPinnedProfiles(context, runs, missing);
+  // the name comes from the newest ended run of the task, which is not always one of these runs
+  const newest = await Promise.all(
+    missing.map((taskID) => readEndedRuns(context, { taskID, limit: 1 })),
+  );
+
+  const pinned = await readPinnedProfiles(context, newest.flat(), missing);
 
   for (const profile of pinned) {
     known.set(profile.taskID, profile.name);
@@ -367,6 +372,9 @@ async function readRunSource(
   return fire?.fire.kind === 'at' ? 'one-off' : 'schedule';
 }
 
+// the error records read from the log in one go
+const errorBatchSize = 10;
+
 async function readFailureReason(
   context: RunsContext,
   run: TaskRun,
@@ -386,25 +394,36 @@ async function readFailureReason(
     return formatLimitReason(ended.record.detail);
   }
 
-  const errors = await readRecords(context.log, {
-    afterSequence: run.openedSequence,
-    beforeSequence: ended.sequence,
-    thread: run.taskID,
-    kinds: ['task.step_errored'],
-    order: 'newest',
-    limit: 10,
-  });
+  // the newest error whose message is still readable; older errors stand in for forgotten ones
+  let before = ended.sequence;
 
-  for (const entry of errors) {
-    const erasable = entry.record.erasable;
-    const message = erasable?.status === 'readable' ? erasable.fields['message'] : undefined;
+  for (;;) {
+    const errors = await readRecords(context.log, {
+      afterSequence: run.openedSequence,
+      beforeSequence: before,
+      thread: run.taskID,
+      kinds: ['task.step_errored'],
+      order: 'newest',
+      limit: errorBatchSize,
+    });
 
-    if (typeof message === 'string') {
-      return message;
+    for (const entry of errors) {
+      const erasable = entry.record.erasable;
+      const message = erasable?.status === 'readable' ? erasable.fields['message'] : undefined;
+
+      if (typeof message === 'string') {
+        return message;
+      }
     }
-  }
 
-  return 'the run failed';
+    const oldest = errors.at(-1);
+
+    if (oldest === undefined || errors.length < errorBatchSize) {
+      return 'the run failed';
+    }
+
+    before = oldest.record.sequence;
+  }
 }
 
 function formatLimitReason(detail: Readonly<Record<string, string | number>>): string {
