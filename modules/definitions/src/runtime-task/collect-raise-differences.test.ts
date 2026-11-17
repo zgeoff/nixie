@@ -9,9 +9,9 @@ function setupTest() {
   const tasks = buildTestTaskSeed();
 
   return {
-    parseAt: (format: number, files: Readonly<Record<string, string>>) => {
+    parseAt: (format: number, files: Readonly<Record<string, string>>, manifest = '') => {
       const texts = {
-        'nixie.yaml': `format: ${String(format)}\n`,
+        'nixie.yaml': `format: ${String(format)}\n${manifest}`,
         'persona.md': '# Persona\n',
         ...files,
       };
@@ -32,13 +32,24 @@ function setupTest() {
 test('it names no kind for a format 3 repo whose files read the same under format 4', () => {
   const files = {
     'rules/mail.yaml': 'allow-mail-to-team:\n  outcome: allow\n  tools: [mail.send]\n',
+    'prompts/safety.md': 'Quote {{ owner.name }} exactly.\n',
+    'skills/tide-tables/SKILL.md':
+      '---\nname: tide-tables\ndescription: Reads a tide table.\n---\n# Tides\n',
     'notes.md': '# Notes\n',
   };
 
+  const manifest = 'prompts:\n  task:\n    safety: prompts/safety.md\n';
   const ctx = setupTest();
-  const before = ctx.parseAt(3, files);
-  const after = ctx.parseAt(4, files);
+  const before = ctx.parseAt(3, files, manifest);
+  const after = ctx.parseAt(4, files, manifest);
 
+  expect(before.rules).toHaveLength(1);
+
+  expect(before.prompts).toStrictEqual({
+    task: { parts: { safety: 'Quote {{ owner.name }} exactly.' }, template: null },
+  });
+
+  expect(before.skills).toHaveLength(1);
   expect(collectRaiseDifferences(before, after)).toStrictEqual([]);
 });
 
