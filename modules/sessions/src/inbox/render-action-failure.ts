@@ -29,7 +29,8 @@ export function renderActionFailure(
     return null;
   }
 
-  const actionID = String(payload['actionID']);
+  const rawActionID = payload['actionID'];
+  const actionID = typeof rawActionID === 'string' ? rawActionID : 'unknown';
   const tool = payload['tool'];
   const reason = payload['reason'];
 
