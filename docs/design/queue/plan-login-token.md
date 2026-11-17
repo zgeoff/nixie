@@ -26,7 +26,7 @@ Terms:
 
 The gateway's control listener, its model listener, the server's watcher, the `spendStop` config and
 the base URL of each sandbox are in the budgets design,
-[budgets and hard stop](budgets-and-hard-stop.md). The gateway as built is in
+[the spending stop](../../architecture/policy/spending-stop.md). The gateway as built is in
 [the model gateway](../../architecture/policy/model-gateway.md). The Codex guest, its config and the
 `codex` profile are in [the Codex harness](https://linear.app/zgeoff/issue/GEO-2237) work item.
 

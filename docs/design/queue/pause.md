@@ -125,7 +125,7 @@ alter table schema_version add column open_oldest_reader integer; -- null while 
 
 ```ts
 // log module: the 4 record kinds, each on no thread. The tasks projection folds none.
-type PauseCause = 'restore' | 'owner' | 'spending'; // 'spending': budgets-and-hard-stop.md
+type PauseCause = 'restore' | 'owner' | 'spending'; // 'spending': spending-stop.md
 
 interface NixiePaused {
   kind: 'nixie.paused'; // inserts or replaces the nixie_pause row, and empties pause_exemptions
@@ -317,9 +317,9 @@ type RestorePauseFaultPoint =
   attempt that has started runs to its outcome. Nothing new starts after either.
 - Only you pause or resume nixie, or resume one task: through the API, a host command or the web
   client. No tool does any of these. One exception: the
-  [hard spending stop](budgets-and-hard-stop.md#the-stop) pauses with the cause `spending`, with a
-  `by` of null, and resumes only that pause. Each record's `by` is the identity of the session that
-  acted, as the built task controls write it.
+  [hard spending stop](../../architecture/policy/spending-stop.md) pauses with the cause `spending`,
+  with a `by` of null, and resumes only that pause. Each record's `by` is the identity of the
+  session that acted, as the built task controls write it.
 - `nixie_pause`, `pause_exemptions` and `recoveries` are projections of the 4 record kinds, so a
   projection rebuild gives the same rows, and `syncPauseGate` matches the gate to them at the next
   start.
@@ -475,7 +475,8 @@ type RestorePauseFaultPoint =
 
 - `nixie rollback`, and what it would pause.
 - A pause from a tool, and a timed pause that resumes on its own. The spending pause resumes when
-  the stop clears, which [the hard spending stop](budgets-and-hard-stop.md#the-stop) covers.
+  the stop clears, which [the hard spending stop](../../architecture/policy/spending-stop.md)
+  covers.
 - A config key, and a change to a model's prompt.
 - A marker that lasts until the resume.
 

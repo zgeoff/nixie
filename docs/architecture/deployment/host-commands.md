@@ -224,6 +224,15 @@ raised limit. The command takes the task ID and `--turns`, `--dollars` or both, 
 `nixie task-raise k3x9m2p7qa --turns 40`, and prints the task's state and its new limits. It fails,
 and changes nothing, for a task that no limit holds and for a value that raises nothing.
 
+## Budgets
+
+`nixie budgets list` prints each budget in force and each built-in paid-tool budget as JSON, with
+its counts, limit in micros and period, what its current period has spent and when it resets.
+`nixie budgets ledger <budget_id>` prints the charges of one budget in its current period, each with
+what it is for and whether it was credited. The ledger command fails, with the reason in the
+`command.failed` log line, for an ID that no budget defines. [Budgets](../policy/budgets.md) covers
+the ledger.
+
 ## Pausing nixie
 
 `nixie pause` and `nixie resume` pause and resume all of nixie, as the

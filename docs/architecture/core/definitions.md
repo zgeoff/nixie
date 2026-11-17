@@ -43,12 +43,12 @@ same files seeds again. A checkout on a branch, or a directory with no git file,
 hash as its revision and names no repo.
 
 A source reads only the known definitions paths: the manifest and the persona at the root, and the
-`effects`, `prompts`, `rules`, `skills` and `tasks` folders. It skips every other entry at the root
-by name, without reading or entering it, so that entry never enters the content hash, never has to
-parse, and never counts towards the size limits. A definitions repo can then hold its own docs and
-scripts, and editing a readme never makes a new definitions version. The snapshot still lists every
-skipped root entry, so a misnamed folder such as `rule/` shows in the seed's record instead of its
-rules going unread without a trace.
+`budgets`, `effects`, `prompts`, `rules`, `skills` and `tasks` folders. It skips every other entry
+at the root by name, without reading or entering it, so that entry never enters the content hash,
+never has to parse, and never counts towards the size limits. A definitions repo can then hold its
+own docs and scripts, and editing a readme never makes a new definitions version. The snapshot still
+lists every skipped root entry, so a misnamed folder such as `rule/` shows in the seed's record
+instead of its rules going unread without a trace.
 
 Within the known paths, every source applies one filter. It skips every path with a part that starts
 with a dot, such as `.git`. It keeps every file under `skills/`, whatever its extension, because a
@@ -82,8 +82,10 @@ and its files unapplied. Format 3 also applies each `rules/*.yaml` file as a rul
 names as a prompt part. Format 3 therefore refuses a repo whose existing rule files fail the
 [rule format](../policy/rules.md#the-rule-format), and the error lists each file with its fault. The
 seed applies each folder under `tasks/` as a [task definition](#task-definitions) from format 4, and
-lists the `tasks/` files of an older format as unapplied. The prompt and task exports raise the
-manifest's `format` line to the format they need, as [prompts](prompts.md) and
+lists the `tasks/` files of an older format as unapplied. From format 5, it applies each
+`budgets/*.yaml` file as [budgets](../policy/budgets.md#the-budget-format), and lists those files of
+an older format as unapplied. The prompt and task exports raise the manifest's `format` line to the
+format they need, as [prompts](prompts.md) and
 [the export of task definitions](#the-export-of-task-definitions) describe. The seed applies no
 other file, and lists each one in its record as unapplied. Each unapplied YAML or JSON file must
 still parse.
