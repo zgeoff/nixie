@@ -82,8 +82,11 @@ and its files unapplied. Format 3 also applies each `rules/*.yaml` file as a rul
 names as a prompt part. Format 3 therefore refuses a repo whose existing rule files fail the
 [rule format](../policy/rules.md#the-rule-format), and the error lists each file with its fault. The
 seed applies each folder under `tasks/` as a [task definition](#task-definitions) from format 4, and
-lists the `tasks/` files of an older format as unapplied. The seed applies no other file, and lists
-each one in its record as unapplied. Each unapplied YAML or JSON file must still parse.
+lists the `tasks/` files of an older format as unapplied. The prompt and task exports raise the
+manifest's `format` line to the format they need, as [prompts](prompts.md) and
+[the export of task definitions](#the-export-of-task-definitions) describe. The seed applies no
+other file, and lists each one in its record as unapplied. Each unapplied YAML or JSON file must
+still parse.
 
 nixie owns the format, and each release publishes the manifest's rules as a JSON Schema, the
 `definitions-manifest.schema.json` asset, so a definitions repo checks its manifest against the
@@ -429,9 +432,21 @@ and deletes each path that the folder holds at the pinned commit and the version
 deletes every file that the folder holds. The export writes and deletes only paths under
 `tasks/<id>/` of its own definitions, and it throws on a version that holds any other path.
 
+When the repo's manifest reads a readable format below the current one, the export sets the
+manifest's `format` line to the current format in the same commit that writes the task folders. It
+edits only that line, so the trailing comment, the line endings and every other key stay. The pull
+request body says that the format was raised. Raising the format also applies the files that the
+newer format reads, such as `effects/`. Before it raises, the export parses the repo's files under
+the old and the new format. When any kind of file reads differently, it refuses.
+
 The export fails, calls `onError` and opens no pull request when:
 
-- the repo's manifest reads a format below 4, which applies no task folder;
+- the repo's manifest reads a format that this release cannot read, either older or newer than the
+  formats it reads;
+- the manifest's format line is not one that the export can edit, such as a format written in flow
+  style (`{format: 3}`);
+- the files of a format 3 or older repo read differently under the current format, so the raise
+  would change them;
 - the seed's parse of the changed repo refuses a task folder;
 - no file of the change differs from the repo, because the repo already holds the changes and the
   next seed adopts them.
