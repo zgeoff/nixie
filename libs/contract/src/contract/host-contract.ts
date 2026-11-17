@@ -8,6 +8,7 @@ import { hostPasskeyContract } from './host-passkey-contract';
 import { knownContactSchema } from './known-contact-schema';
 import { pauseStateSchema } from './pause-state-schema';
 import { recoverySchema } from './recovery-schema';
+import { spendStopStandsError } from './spend-stop-schema';
 import { turnInputsContract } from './turn-inputs-contract';
 
 const versionRefSchema = z.object({ itemID: z.string(), version: z.int().positive() });
@@ -305,6 +306,8 @@ const hostTaskStateSchema = z.enum([
   'closed',
 ]);
 
+const spendStopErrors = { SPEND_STOP_STANDS: spendStopStandsError };
+
 const taskControl = oc
   .errors({
     TASK_NOT_FOUND: { message: 'no task has that ID', status: 404 },
@@ -344,14 +347,29 @@ export const hostContract = {
   ),
   nixie: {
     pause: oc.output(z.object({ paused: pauseStateSchema })),
-    resume: oc.output(z.object({ paused: pauseStateSchema })),
+    resume: oc.errors(spendStopErrors).output(z.object({ paused: pauseStateSchema })),
+  },
+  spend: {
+    raise: oc
+      .errors({
+        SPEND_NOT_CONFIGURED: { message: 'the config sets no spendStop', status: 409 },
+      })
+      .input(z.strictObject({ turns: z.int().positive() }))
+      .output(
+        z.object({
+          start: z.string(),
+          dollars: z.number(),
+          tokens: z.number(),
+          turns: z.number(),
+        }),
+      ),
   },
   recovery: {
     read: oc.output(z.object({ recovery: recoverySchema })),
   },
   tasks: {
     pause: taskControl,
-    resume: taskControl,
+    resume: taskControl.errors(spendStopErrors),
     stop: taskControl,
     restart: taskControl,
     close: taskControl.errors({

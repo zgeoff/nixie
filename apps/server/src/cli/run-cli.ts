@@ -4,6 +4,7 @@ import { createDeploymentCommands } from '../deployment/create-deployment-comman
 import { createPauseCommands } from '../pause/create-pause-commands';
 import { createPromptCommands } from '../prompt/create-prompt-commands';
 import { startServer } from '../server/start-server';
+import { createSpendCommands } from '../spend/create-spend-commands';
 import { createTaskCommands } from '../task/create-task-commands';
 import { createTurnInputCommands } from '../turn/create-turn-input-commands';
 import type { CLIFlags, CLIIO, Command, HostTransport } from '../types';
@@ -35,6 +36,7 @@ const commands = new Map<string, Command>([
   ...createPasskeyCommands(host),
   ...taskCommands,
   ...createPauseCommands(host),
+  ...createSpendCommands(host),
   ...createResetCommands(host),
   ...createMemoryCommands(host),
   ...createSubjectCommands(host),

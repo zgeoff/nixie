@@ -132,6 +132,8 @@ export { reviveHeldTasks } from './task/revive-held-tasks';
 export { runDueTimers } from './task/run-due-timers';
 export type { RecoveryDependencies } from './lease/run-recovery';
 export { runRecovery } from './lease/run-recovery';
+export { isBeforeTurnFailure } from './step/is-before-turn-failure';
+export { markBeforeTurnFailure } from './step/mark-before-turn-failure';
 export type { TaskStepOptions } from './task/run-task-step';
 export { runTaskStep } from './task/run-task-step';
 export { setFaultPointHandler } from './lease/set-fault-point-handler';

@@ -8,6 +8,7 @@ import { mockSequence } from './mock-sequence';
 import { mockViewStore } from './mock-view-store';
 import { passkeyChecks, passkeyRows } from './passkey-rows';
 import { pauseStore } from './pause-store';
+import { spendStore } from './spend-store';
 import { unknownOutcomeRows } from './unknown-outcome-rows';
 
 const sessions = new Collection({
@@ -526,6 +527,7 @@ export const store = {
     }
 
     pauseStore.reset();
+    spendStore.reset();
     mockViewStore.reset();
 
     mockSequence.lastSequence = 0;

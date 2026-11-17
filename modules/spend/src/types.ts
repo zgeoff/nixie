@@ -40,6 +40,9 @@ export type SpendStop =
   | {
       readonly state: 'tripped';
       readonly period: PeriodName;
+
+      // the ISO date of the period's first day, which a raise names
+      readonly start: string;
       readonly measure: SpendMeasure;
       readonly limit: number;
       readonly spent: number;

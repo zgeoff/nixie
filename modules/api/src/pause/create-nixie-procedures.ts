@@ -2,6 +2,7 @@
 import { readPauseSince } from '@heynixie/log';
 import { match } from 'ts-pattern';
 import { requireCaller } from '../memory/require-caller';
+import { readResumeRefusal } from '../spend/read-resume-refusal';
 import type { APIContext } from '../types';
 import { apiImplementer } from '../utils/api-implementer';
 import { toPauseResponse } from './to-pause-response';
@@ -24,7 +25,17 @@ export function createNixieProcedures(context: APIContext) {
     }),
 
     pause: nixie.pause.handler((options) => runControl(context, 'pause', options)),
-    resume: nixie.resume.handler((options) => runControl(context, 'resume', options)),
+    resume: nixie.resume.handler(async (options) => {
+      await requireCaller(context, options.context.sessionToken, options.errors.UNAUTHORIZED);
+
+      const refusal = await readResumeRefusal(context);
+
+      if (refusal !== null) {
+        throw options.errors.SPEND_STOP_STANDS({ message: refusal });
+      }
+
+      return runControl(context, 'resume', options);
+    }),
   };
 }
 

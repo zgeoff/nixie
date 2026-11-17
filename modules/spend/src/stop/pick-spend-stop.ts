@@ -57,6 +57,7 @@ interface PeriodView {
   readonly used: SpendTriple;
   readonly cap: SpendTriple;
   readonly resetsAt: number;
+  readonly start: string;
 }
 
 function buildPeriodView(facts: SpendFacts, status: GatewayStatus, period: PeriodName): PeriodView {
@@ -84,6 +85,7 @@ function buildPeriodView(facts: SpendFacts, status: GatewayStatus, period: Perio
       turns: isDay ? facts.limits.dayTurnCap : facts.limits.monthTurns,
     },
     resetsAt: Date.parse(gateway.resetsAt),
+    start: gateway.start,
   };
 }
 
@@ -98,6 +100,7 @@ function buildTrip(
   return {
     state: 'tripped',
     period,
+    start: view.start,
     measure,
     limit: view.limits[measure],
     spent: view.used[measure],

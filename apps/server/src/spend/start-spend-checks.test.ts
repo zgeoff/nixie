@@ -8,14 +8,14 @@ import { startSpendChecks } from './start-spend-checks';
 test('it calls no gateway when the config sets no spendStop', async () => {
   const log = mock<Logger>(() => {});
 
-  await startSpendChecks({
+  const result = await startSpendChecks({
     spend: null,
     config: { models: buildMockModelsConfig(), time: { default_zone: 'UTC' } },
     secrets: { models: { model_credentials: { anthropic: 'not-a-real-key' } } },
     log,
   });
 
-  expect(log.mock.calls).toStrictEqual([]);
+  expect([result, log.mock.calls]).toStrictEqual(['off', []]);
 });
 
 test('it sends the day and month limits of the models config to the gateway', async () => {
@@ -90,4 +90,42 @@ test('it refuses to start when a profile base URL has a path', () => {
   });
 
   expect(started).rejects.toThrow(new RegExp(`fix ${id}`, 'u'));
+});
+
+test('it says the limits are sent when the gateway takes them', async () => {
+  const gateway = buildStubSpendGateway();
+
+  const result = await startSpendChecks({
+    spend: {
+      control: 'http://127.0.0.1:8790',
+      token: 'a-token',
+      modelURL: 'http://127.0.0.1:8789',
+      gateway,
+    },
+    config: { models: buildMockModelsConfig(), time: { default_zone: 'UTC' } },
+    secrets: { models: {} },
+    log: () => {},
+  });
+
+  expect(result).toBe('sent');
+});
+
+test('it says the limits are unsent when the gateway does not answer', async () => {
+  const gateway = buildStubSpendGateway();
+
+  gateway.putLimits.mockResolvedValue({ kind: 'unreachable', reason: 'no answer' });
+
+  const result = await startSpendChecks({
+    spend: {
+      control: 'http://127.0.0.1:8790',
+      token: 'a-token',
+      modelURL: 'http://127.0.0.1:8789',
+      gateway,
+    },
+    config: { models: buildMockModelsConfig(), time: { default_zone: 'UTC' } },
+    secrets: { models: {} },
+    log: () => {},
+  });
+
+  expect(result).toBe('unsent');
 });

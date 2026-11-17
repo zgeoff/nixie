@@ -195,6 +195,8 @@ spendStop:
 
 The server refuses to start when the secrets file lacks the settings entry that `token` names.
 
+The [spending stop](spending-stop.md) adds the turn count, the pause and the raise.
+
 ### The start checks
 
 After the migrations, and before any other part starts, the server checks the gateway. It refuses to

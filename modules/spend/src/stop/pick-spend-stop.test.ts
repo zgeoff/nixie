@@ -161,3 +161,18 @@ test('it cannot raise a day turn trip at the turn cap', () => {
 
   expect(stop).toMatchObject({ state: 'tripped', canRaise: false });
 });
+
+test.each([
+  { period: 'day', measure: 'dollars' },
+  { period: 'day', measure: 'tokens' },
+  { period: 'month', measure: 'dollars' },
+  { period: 'month', measure: 'tokens' },
+] as const)('it trips the $period by $measure from the gateway', (row) => {
+  const status = buildMockGatewayStatus({
+    tripped: { period: row.period, measure: row.measure, at: '2026-11-13T16:42:07Z' },
+  });
+
+  const stop = pickSpendStop(buildSpendFacts({ status }));
+
+  expect(stop).toMatchObject({ state: 'tripped', period: row.period, measure: row.measure });
+});

@@ -11,6 +11,7 @@ import { createRecordProcedures } from '../record/create-record-procedures';
 import { createMandateProcedures } from '../rule/create-mandate-procedures';
 import { createRuleProcedures } from '../rule/create-rule-procedures';
 import { createSessionProcedures } from '../session/create-session-procedures';
+import { createSpendProcedures } from '../spend/create-spend-procedures';
 import type { APIContext, ReadViewMemory } from '../types';
 import { apiImplementer } from '../utils/api-implementer';
 import { createBackupProcedures } from './create-backup-procedures';
@@ -37,6 +38,7 @@ export function createAPIRouter(
       ...createMemoryViewRouter(context, readMemory),
     },
     nixie: createNixieProcedures(context),
+    spend: createSpendProcedures(context),
     ...createRecordProcedures(context),
     passkeys: createPasskeyProcedures(context),
     recovery: createRecoveryProcedures(context),

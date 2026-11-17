@@ -316,6 +316,27 @@ test('it writes one start and one end record for an answered run, and lowers the
   expect(ctx.spent).toStrictEqual([0.003]);
 });
 
+test('it writes no model turn record for a worker run, so the turn count counts it once', async () => {
+  const ctx = await setupTest();
+
+  ctx.guest.addKindReplies('worker', {
+    text: 'Done.',
+    usage: {
+      uncachedInputTokens: 1000,
+      cacheReadTokens: 0,
+      cacheWrite5mTokens: 0,
+      cacheWrite1hTokens: 0,
+      outputTokens: 0,
+    },
+  });
+
+  await ctx.callWorker({ question: 'Which cafes are open?' });
+
+  const records = await ctx.readKinds(['model.turn_ended']);
+
+  expect(records).toStrictEqual([]);
+});
+
 test('it destroys the sandbox of a run once it ends', async () => {
   const ctx = await setupTest();
 

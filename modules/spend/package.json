@@ -18,7 +18,6 @@
     "@heynixie/sandbox": "workspace:*",
     "@heynixie/triggers": "workspace:*",
     "kysely": "catalog:",
-    "ts-pattern": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {

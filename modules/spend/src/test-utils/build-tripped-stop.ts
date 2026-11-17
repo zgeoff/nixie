@@ -7,6 +7,7 @@ export function buildTrippedStop(overrides: Partial<TrippedStop> = {}): TrippedS
   return {
     state: 'tripped',
     period: 'day',
+    start: '2026-11-13',
     measure: 'dollars',
     limit: 60,
     spent: 61.2,

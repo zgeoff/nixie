@@ -24,6 +24,13 @@ export type { SpendWatcher, SpendWatcherOptions } from './watch/start-spend-watc
 export { pickRaiseResend } from './raise/pick-raise-resend';
 export { checkSpendTurns, stoppedStepDelayMs } from './gate/check-spend-turns';
 export { pickTurnTrip } from './gate/pick-turn-trip';
+export { formatSpendStopRefusal } from './stop/format-spend-stop-refusal';
+export { pickRaiseRefusal } from './raise/pick-raise-refusal';
+export type { RaiseRefusal, RaiseRequest } from './raise/pick-raise-refusal';
+export { writeHostSpendRaise } from './raise/write-host-spend-raise';
+export type { HostSpendRaise } from './raise/write-host-spend-raise';
+export { writeSpendRaise } from './raise/write-spend-raise';
+export type { SpendRaiseResult } from './raise/write-spend-raise';
 export { settleSpendStop } from './stop/settle-spend-stop';
 export { writeSpendClear } from './stop/write-spend-clear';
 export { writeSpendTrip } from './stop/write-spend-trip';

@@ -13,7 +13,7 @@ import {
 } from '@heynixie/spend';
 import type { SpendContext, SpendTurnLimits } from '@heynixie/spend';
 import { buildStubSpendGateway } from '@heynixie/spend/test-utils';
-import { claimTask, createConversationTask, writeInboxRecords } from '@heynixie/tasks';
+import { claimTask, createConversationTask, runTaskStep, writeInboxRecords } from '@heynixie/tasks';
 import { readTestTaskProgress } from '@heynixie/tasks/test-utils';
 import { waitForCondition } from '@heynixie/testing';
 import type { ApprovedRun, ToolImage } from '@heynixie/tools';
@@ -36,6 +36,9 @@ interface PendingCall {
 
   // runs while the call does
   readonly duringRun?: () => void;
+
+  // makes the call fail the step
+  readonly failure?: Error;
 }
 
 async function setupTest() {
@@ -82,6 +85,10 @@ async function setupTest() {
         });
 
         call.duringRun?.();
+
+        if (call.failure !== undefined) {
+          throw call.failure;
+        }
 
         if (call.messageDuringRun !== undefined) {
           await writeInboxRecords(context, [
@@ -595,4 +602,36 @@ test('it reads no turn count and writes no stop for a runner with no spend conte
   const stop = await readSpendStopRow(ctx.writer.db);
 
   expect([ctx.sandboxes.turns.length, stop]).toStrictEqual([2, null]);
+});
+
+test('it counts the step error of an approved call that failed, though the stop stands', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  const runner = await ctx.startRunner(
+    ctx.buildSpend({ dayTurns: 100, dayTurnCap: 200, monthTurns: 1000 }),
+  );
+
+  ctx.state.pending.push({ text: 'ready', failure: new Error('the export failed') });
+
+  await ctx.writeMessage('Export my memory.');
+
+  const claim = await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  invariant(claim);
+
+  await runTaskStep(ctx.context, claim, {
+    runStep: runner.runStep,
+    probeSpendStop: () => Promise.resolve(true),
+    leaseMs: 60_000,
+    logger: () => {},
+    maxStepErrors: 3,
+    retryDelayMs: 30_000,
+    maxRetryDelayMs: 300_000,
+  });
+
+  const progress = await ctx.readProgress();
+
+  expect(progress).toMatchObject({ state: 'ready', stepErrors: 1 });
 });

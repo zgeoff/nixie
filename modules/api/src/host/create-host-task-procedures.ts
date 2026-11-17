@@ -2,6 +2,7 @@
 import type { TaskControl } from '@heynixie/tasks';
 import { writeTaskControl, writeTaskLimitRaise, writeTaskResume } from '@heynixie/tasks';
 import { match } from 'ts-pattern';
+import { readResumeRefusal } from '../spend/read-resume-refusal';
 import type { APIContext } from '../types';
 import { hostImplementer } from './host-implementer';
 
@@ -11,6 +12,12 @@ export function createHostTaskProcedures(context: APIContext) {
   return {
     pause: tasks.pause.handler((options) => runHostControl(context, 'pause', options)),
     resume: tasks.resume.handler(async (options) => {
+      const refusal = await readResumeRefusal(context);
+
+      if (refusal !== null) {
+        throw options.errors.SPEND_STOP_STANDS({ message: refusal });
+      }
+
       const outcome = await writeTaskResume(context, { taskID: options.input.taskID, by: 'host' });
 
       return toHostControlled(options.input.taskID, outcome, options.errors);
