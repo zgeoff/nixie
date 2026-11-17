@@ -85,6 +85,11 @@ const unknownItemSchema = z.object({
   passkeyChoices: z.array(unknownChoiceSchema),
 });
 
+const callSchema = z.object({
+  state: z.enum(['waiting', 'applied', 'failed', 'unknown']),
+  reason: z.string().nullable(),
+});
+
 const readItemSchema = z.object({
   proposal: proposalSchema,
   body: bodySchema.nullable(),
@@ -93,6 +98,9 @@ const readItemSchema = z.object({
   passkeyChoices: z.array(choiceSchema),
   answeredOn: z.string().nullable(),
   isAnsweredHere: z.boolean(),
+
+  // what became of the call an approved action row queued; null for any other row
+  call: callSchema.nullable(),
 });
 
 const deferSettingsSchema = z.object({

@@ -27,6 +27,8 @@ export { pickOutcome } from './action/pick-outcome';
 export { probeActionUnfinished } from './action/probe-action-unfinished';
 export type { ActionCall } from './action/read-action-calls';
 export { readActionCalls } from './action/read-action-calls';
+export { describeOutcomeReason, isOutcomeReason } from './action/describe-outcome-reason';
+export { readApprovedCalls } from './action/read-approved-calls';
 export { readActionCounts } from './action/read-action-counts';
 export { readCancelledActionIDs } from './action/read-cancelled-action-ids';
 export { readStopCancelledActions } from './action/read-stop-cancelled-actions';
@@ -40,6 +42,7 @@ export type {
   CheckAnswer,
   ActionRow,
   ActionStatus,
+  ApprovedCall,
   ActionsTables,
   AllowedCall,
   ListedAction,

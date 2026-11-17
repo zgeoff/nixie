@@ -69,7 +69,13 @@ test('it settles a checked send from the provider when nixie dies before the res
 
   const oracle = await runOracle(ctx.nixie);
 
-  expect(outcome.payload).toStrictEqual({ actionID, status: 'done', attempt: 1, reason: null });
+  expect(outcome.payload).toStrictEqual({
+    actionID,
+    tool: 'test.send_checked',
+    status: 'done',
+    attempt: 1,
+    reason: null,
+  });
 
   expect(
     records
@@ -154,7 +160,13 @@ test('it retries a keyed send under the same key when nixie dies before the resu
     records.find((record) => record.kind === 'action.queued')?.payload['actionID'],
   );
 
-  expect(outcome.payload).toStrictEqual({ actionID, status: 'done', attempt: 2, reason: null });
+  expect(outcome.payload).toStrictEqual({
+    actionID,
+    tool: 'test.send_keyed',
+    status: 'done',
+    attempt: 2,
+    reason: null,
+  });
 
   expect(ctx.nixie.provider.calls.map((call) => call.idempotencyKey)).toStrictEqual([
     actionID,

@@ -40,7 +40,7 @@ export async function createApprovedAction(
 
   const held = await db
     .selectFrom('actions')
-    .select(['action_id', 'task_id', 'deadline_at', 'attempt_count'])
+    .select(['action_id', 'task_id', 'tool', 'deadline_at', 'attempt_count'])
     .where('held_by_proposal_id', '=', approved.proposalID)
     .executeTakeFirst();
 
@@ -49,7 +49,12 @@ export async function createApprovedAction(
   if (held !== undefined) {
     await writeRecordsInTransaction(tx, context.log, [
       isPastDeadline
-        ? buildDeadlineRecord(context, held.action_id, held.task_id, held.attempt_count)
+        ? buildDeadlineRecord(context, {
+            actionID: held.action_id,
+            taskID: held.task_id,
+            tool: held.tool,
+            attempt: held.attempt_count,
+          })
         : {
             kind: 'action.released',
             definitions: context.definitions(),
@@ -93,24 +98,39 @@ export async function createApprovedAction(
       erasable: { arguments: approved.arguments },
     },
     ...(isPastDeadline
-      ? [buildDeadlineRecord(context, approved.proposalID, approved.taskID, 0)]
+      ? [
+          buildDeadlineRecord(context, {
+            actionID: approved.proposalID,
+            taskID: approved.taskID,
+            tool: approved.tool,
+            attempt: 0,
+          }),
+        ]
       : []),
   ]);
 
   return approved.proposalID;
 }
 
-function buildDeadlineRecord(
-  context: ApprovedActionContext,
-  actionID: string,
-  taskID: string,
-  attempt: number,
-) {
+interface DeadlineFacts {
+  readonly actionID: string;
+  readonly taskID: string;
+  readonly tool: string;
+  readonly attempt: number;
+}
+
+function buildDeadlineRecord(context: ApprovedActionContext, facts: DeadlineFacts) {
   return {
     kind: 'action.outcome' as const,
     definitions: context.definitions(),
-    thread: taskID,
-    payload: { actionID, status: 'failed', attempt, reason: 'deadline_passed' },
+    thread: facts.taskID,
+    payload: {
+      actionID: facts.actionID,
+      tool: facts.tool,
+      status: 'failed',
+      attempt: facts.attempt,
+      reason: 'deadline_passed',
+    },
     erasable: { message: 'the action passed its deadline' },
   };
 }

@@ -26,6 +26,11 @@ const closeMatchSchema = z.object({
   version: z.int().positive(),
 });
 
+const callSchema = z.object({
+  state: z.enum(['waiting', 'applied', 'failed', 'unknown']),
+  reason: z.string().nullable(),
+});
+
 const fieldsRuleSchema = z.record(z.string(), z.unknown());
 const ruleRefSchema = z.object({ destinations: z.array(z.string()), ruleID: z.string() });
 
@@ -48,6 +53,9 @@ export const approvalRows = new Collection({
     answeredBy: z.uuid().nullable().default(null),
     appliedText: z.string().optional(),
     approveLabel: z.string().default('Run mail.send'),
+
+    // what became of the call an approved action row queued
+    call: callSchema.nullable().default(null),
     cause: z.string().default('no_rule'),
     choices: choicesSchema.default((): ApprovalChoice[] => ['approve', 'defer', 'decline']),
     closeMatch: closeMatchSchema.optional(),

@@ -95,6 +95,7 @@ test('it brings an unknown outcome to the owner once the provider no longer keep
   expect(outcomes).toStrictEqual([
     {
       actionID: ctx.actionID,
+      tool: 'test.send',
       status: 'unknown',
       attempt: 1,
       reason: 'ambiguous',
@@ -128,6 +129,7 @@ test('it sends nothing again when the provider dropped the key while the retry w
   expect(outcomes).toStrictEqual([
     {
       actionID: ctx.actionID,
+      tool: 'test.send',
       status: 'unknown',
       attempt: 1,
       reason: 'ambiguous',
@@ -219,6 +221,7 @@ test('it brings an unknown outcome to the owner when the check is inconclusive',
   expect(outcomes).toStrictEqual([
     {
       actionID: ctx.actionID,
+      tool: 'test.send',
       status: 'unknown',
       attempt: 1,
       reason: 'ambiguous',
@@ -246,6 +249,7 @@ test('it brings an unknown outcome to the owner when the check finds nothing and
   expect(outcomes).toStrictEqual([
     {
       actionID: ctx.actionID,
+      tool: 'test.send',
       status: 'unknown',
       attempt: 1,
       reason: 'ambiguous',
@@ -289,6 +293,7 @@ test('it brings the 3rd unknown outcome in a row to the owner whatever the conne
   expect(outcomes).toStrictEqual([
     {
       actionID: ctx.actionID,
+      tool: 'test.send',
       status: 'unknown',
       attempt: 3,
       reason: 'ambiguous',
@@ -309,6 +314,7 @@ test('it brings an unknown outcome to the owner at once when the connector decla
   expect(outcomes).toStrictEqual([
     {
       actionID: ctx.actionID,
+      tool: 'test.send',
       status: 'unknown',
       attempt: 1,
       reason: 'ambiguous',

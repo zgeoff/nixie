@@ -633,6 +633,7 @@ test('it fails an action that a rule now denies, and names the rule in the outco
 
   expect(outcome?.payload).toStrictEqual({
     actionID: queued.actionID,
+    tool: 'test.send',
     status: 'failed',
     attempt: 1,
     reason: 'rule_denied',

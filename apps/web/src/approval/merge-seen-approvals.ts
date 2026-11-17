@@ -19,6 +19,7 @@ export function toApprovalRead(item: ApprovalItem): ApprovalRead {
     passkeyChoices: item.passkeyChoices,
     answeredOn: null,
     isAnsweredHere: false,
+    call: null,
   };
 }
 

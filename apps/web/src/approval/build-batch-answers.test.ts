@@ -40,6 +40,7 @@ function setupTest() {
         passkeyChoices: [],
         answeredOn: null,
         isAnsweredHere: false,
+        call: null,
       },
     }),
   };

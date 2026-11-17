@@ -188,3 +188,35 @@ test('it runs an approved worker once under the approval, and the next turn read
   expect(turn).toContain('<tool-result source="untrusted"');
   expect(turn).toContain('Four.');
 });
+
+test('it tells the next turn which approved call failed and why', async () => {
+  const ctx = await setupTest();
+
+  ctx.nixie.guest.addKindReplies(
+    'conversation',
+    { toolUse: { name: 'worker.run', input: { question: 'What is 2 + 2?' } } },
+    { text: 'I asked you first.' },
+    { text: 'The worker could not answer.' },
+  );
+
+  ctx.nixie.guest.addKindReplies('worker', { failure: 'the worker could not reach its model' });
+
+  await sendClientMessage(ctx.api.client, { text: 'Ask a worker.' }, 'I asked you first.');
+
+  const listed = await ctx.api.client.approvals.listItems();
+
+  const item = listed.items.at(0);
+
+  invariant(item, 'the call asks');
+
+  await ctx.approve(item.proposal.proposalID, item.proposal.actionHash);
+  await ctx.waitForOutcome();
+
+  await waitForCondition(() => ctx.readTurnTexts().length >= 2);
+
+  const turn = ctx.readTurnTexts().at(1) ?? '';
+
+  expect(turn).toContain(
+    `The call \`worker.run\` (\`${item.proposal.proposalID}\`) failed: the call was refused.`,
+  );
+});

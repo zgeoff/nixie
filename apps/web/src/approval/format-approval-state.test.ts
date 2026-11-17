@@ -7,6 +7,7 @@ function setupTest() {
       proposal: { state, deferUntil: null },
       answeredOn,
       isAnsweredHere,
+      call: null,
     }),
   };
 }
@@ -47,7 +48,38 @@ test('it shows the return time of a deferred row', () => {
     proposal: { state: 'deferred', deferUntil: new Date('2026-11-16T07:00:00Z') },
     answeredOn: null,
     isAnsweredHere: false,
+    call: null,
   };
 
   expect(formatApprovalState(item)).toStartWith('Deferred until ');
+});
+
+test.each([
+  [{ state: 'applied', reason: null }, 'Approved, applied'],
+  [
+    { state: 'failed', reason: 'the harbour office is closed' },
+    'Approved, failed: the harbour office is closed',
+  ],
+  [{ state: 'waiting', reason: null }, 'Approved, waiting to run'],
+  [{ state: 'unknown', reason: null }, 'Approved, outcome unknown'],
+] as const)('it names an approved row by the call state %o', (call, text) => {
+  const item = {
+    proposal: { state: 'approved', deferUntil: null },
+    answeredOn: null,
+    isAnsweredHere: false,
+    call,
+  };
+
+  expect(formatApprovalState(item)).toBe(text);
+});
+
+test('it keeps the device suffix at the end of a call state', () => {
+  const item = {
+    proposal: { state: 'approved', deferUntil: null },
+    answeredOn: 'Kitchen tablet',
+    isAnsweredHere: false,
+    call: { state: 'applied', reason: null },
+  } as const;
+
+  expect(formatApprovalState(item)).toBe('Approved, applied on Kitchen tablet');
 });

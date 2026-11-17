@@ -37,6 +37,7 @@ export function buildOutcomeRecord(
     thread: attempt.action.task_id,
     payload: {
       actionID: attempt.action.action_id,
+      tool: attempt.action.tool,
       status: outcome.status,
       attempt: attempt.attempt,
       reason: outcome.status === 'done' ? null : outcome.reason,

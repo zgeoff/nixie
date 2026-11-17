@@ -748,6 +748,7 @@
       "name": "@heynixie/sessions",
       "version": "0.0.0",
       "dependencies": {
+        "@heynixie/actions": "workspace:*",
         "@heynixie/clock": "workspace:*",
         "@heynixie/compaction": "workspace:*",
         "@heynixie/connectors": "workspace:*",
