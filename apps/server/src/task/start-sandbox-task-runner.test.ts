@@ -305,7 +305,7 @@ test('it runs a stranger that the conversation starts on another model, and its 
   expect(taskTurn.frame.systemPrompt).not.toInclude('You are nixie.');
 
   expect(report).toMatch(
-    /<task-message id="\w+" from="task: Second look" kind="report"[^>]*>\nThe north bed gets no afternoon sun\./u,
+    /<task-message id="\w+" from="task: Second look \(\w+\)" kind="report"[^>]*>\nThe north bed gets no afternoon sun\./u,
   );
 });
 

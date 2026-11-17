@@ -3,8 +3,8 @@ import { readRecords } from '@heynixie/log';
 import type { ToolDefinition } from '@heynixie/tools';
 import { recallPageLimitBytes } from '@heynixie/wire';
 import { z } from 'zod';
-import { readPinnedProfiles } from '../task/read-pinned-profiles';
 import { readTaskDirectory } from '../task/read-task-directory';
+import { readUnlistedProfiles } from '../task/read-unlisted-profiles';
 import { readRunFire } from '../trigger/read-run-fire';
 import type { TaskMessaging, TasksContext, TasksTables } from '../types';
 import { clipBrief } from '../utils/clip-brief';
@@ -186,7 +186,7 @@ async function readOneRun(
   const ended = run.ended;
 
   const named = await readTaskDirectory(context, messaging);
-  const names = await readRunNames(context, named.directory, [run]);
+  const names = await readRunNames(context, named.directory);
   const reports = await readRunReports(context, [run]);
 
   const report = reports.get(ended.sequence) ?? null;
@@ -227,20 +227,15 @@ async function readOneRun(
 async function readRunNames(
   context: RunsContext,
   directory: TaskMessaging['directory'],
-  runs: readonly TaskRun[],
 ): Promise<ReadonlyMap<string, string>> {
   const known = new Map(directory.map((profile) => [profile.taskID, profile.name]));
 
-  const missing = [...new Set(runs.map((run) => run.taskID))].filter((id) => !known.has(id));
+  // the label of a session reads the same profiles: a task with an open task run takes the name of
+  // the version that run pins, and another task of a definition out of force takes it from its
+  // newest ended task run
+  const unlisted = await readUnlistedProfiles(context, directory);
 
-  // the name comes from the newest ended run of the task, which is not always one of these runs
-  const newest = await Promise.all(
-    missing.map((taskID) => readEndedRuns(context, { taskID, limit: 1 })),
-  );
-
-  const pinned = await readPinnedProfiles(context, newest.flat(), missing);
-
-  for (const profile of pinned) {
+  for (const profile of unlisted) {
     known.set(profile.taskID, profile.name);
   }
 
@@ -503,7 +498,7 @@ async function readPage(
       limit: batchSize,
     });
 
-    const names = await readRunNames(context, named.directory, runs);
+    const names = await readRunNames(context, named.directory);
     const reports = await readRunReports(context, runs);
 
     for (const run of runs) {

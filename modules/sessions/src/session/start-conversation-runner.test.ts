@@ -1106,6 +1106,7 @@ test("it wakes the conversation for a system task's message and gives the turn t
         speaker: 'conversation' as const,
       },
     ],
+    unlisted: [],
     hopLimit: 20,
     ownerName: 'Robin',
     agentName: null,
@@ -1137,7 +1138,7 @@ test("it wakes the conversation for a system task's message and gives the turn t
   await ctx.runNextStep(runner);
 
   expect(ctx.sandboxes.turns[0]?.input.at(-1)?.text).toMatch(
-    /<task-message id="\w+" from="task: Sweeper" kind="report" sent="[^"]+" fence="(?<fence>\w+)">\nTwo new memories wait for your review\.\n<\/task-message fence="\k<fence>">$/u,
+    /<task-message id="\w+" from="task: Sweeper \(sweeper\)" kind="report" sent="[^"]+" fence="(?<fence>\w+)">\nTwo new memories wait for your review\.\n<\/task-message fence="\k<fence>">$/u,
   );
 });
 
@@ -1161,6 +1162,7 @@ test("it passes a held task message that lands during a turn into that turn, fra
         speaker: 'conversation' as const,
       },
     ],
+    unlisted: [],
     hopLimit: 3,
     ownerName: 'Robin',
     agentName: null,
@@ -1227,6 +1229,7 @@ test('it gives the next turn a message sent with no wake, before the message tha
         speaker: 'conversation' as const,
       },
     ],
+    unlisted: [],
     hopLimit: 20,
     ownerName: 'Robin',
     agentName: null,
@@ -1284,6 +1287,7 @@ test('it tells the conversation which messages arrived past the hop limit when t
         speaker: 'conversation' as const,
       },
     ],
+    unlisted: [],
     hopLimit: 2,
     ownerName: 'Robin',
     agentName: null,
@@ -3173,6 +3177,7 @@ test('it ends a turn that a task report alone woke with no reply, and records th
         speaker: 'conversation' as const,
       },
     ],
+    unlisted: [],
     hopLimit: 20,
     ownerName: 'Robin',
     agentName: null,
@@ -3294,6 +3299,7 @@ test.each([
         speaker: 'conversation' as const,
       },
     ],
+    unlisted: [],
     hopLimit: 20,
     ownerName: 'Robin',
     agentName: null,

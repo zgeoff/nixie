@@ -13,6 +13,7 @@ test('it builds the view of a step the owner woke, with the conversation in the 
           speaker: 'conversation',
         },
       ],
+      unlisted: [],
       hopLimit: 20,
       ownerName: null,
       agentName: null,

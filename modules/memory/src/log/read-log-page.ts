@@ -45,9 +45,11 @@ export interface LogPage {
   readonly next: number | null;
 }
 
+// taskNames maps a task ID to its name, for the line of a task's message.
 export async function readLogPage(
   log: Pick<Log, 'deploymentKey' | 'writer'>,
   query: LogPageQuery,
+  taskNames: ReadonlyMap<string, string> = new Map(),
 ): Promise<LogPage> {
   const bounds = await readSequenceBounds(log, query);
 
@@ -55,7 +57,7 @@ export async function readLogPage(
     return { entries: [], next: null };
   }
 
-  const scan = await readPageEntries(log, query, bounds);
+  const scan = await readPageEntries(log, query, bounds, taskNames);
 
   return { entries: scan.entries, next: scan.after >= bounds.through ? null : scan.after };
 }
@@ -66,9 +68,11 @@ export interface LogEntryQuery {
 }
 
 // The whole entry, with no clip, or null when the run's thread holds no such entry to show.
+// taskNames maps a task ID to its name, for the line of a task's message.
 export async function readLogEntry(
   log: Pick<Log, 'deploymentKey' | 'writer'>,
   query: LogEntryQuery,
+  taskNames: ReadonlyMap<string, string> = new Map(),
 ): Promise<LogEntry | null> {
   const [read] = await readRecords(log, {
     afterSequence: query.sequence - 1,
@@ -84,7 +88,7 @@ export async function readLogEntry(
 
   const lookup = await readToolShortIDs(log, [read.record]);
 
-  return buildScannedEntry(read.record, lookup).entry;
+  return buildScannedEntry(read.record, lookup, taskNames).entry;
 }
 
 const entryKinds: readonly RecordKind[] = [...conversationKinds, 'tool_result', 'task_message'];
@@ -129,6 +133,7 @@ async function readPageEntries(
   log: Pick<Log, 'deploymentKey' | 'writer'>,
   query: LogPageQuery,
   bounds: SequenceBounds,
+  taskNames: ReadonlyMap<string, string>,
 ): Promise<PageScan> {
   const words = query.words.map((word) => normalizeSearchText(word)).filter((word) => word !== '');
   let scan: PageScan = { entries: [], after: bounds.after, scanned: 0 };
@@ -154,7 +159,7 @@ async function readPageEntries(
     scan =
       batch.length === 0
         ? { ...scan, after: bounds.through }
-        : buildNextScan(scan, batch, { query, words, lookup });
+        : buildNextScan(scan, batch, { query, words, lookup, taskNames });
   }
 
   return scan;
@@ -168,6 +173,7 @@ interface EntryFilter {
   readonly query: LogPageQuery;
   readonly words: readonly string[];
   readonly lookup: ShortIDLookup;
+  readonly taskNames: ReadonlyMap<string, string>;
 }
 
 function buildNextScan(
@@ -185,7 +191,7 @@ function buildNextScan(
     next.after = read.record.sequence;
     next.scanned += 1;
 
-    const item = buildScannedEntry(read.record, filter.lookup);
+    const item = buildScannedEntry(read.record, filter.lookup, filter.taskNames);
 
     if (isInRange(item.entry, filter.query) && hasEveryWord(item.plain, filter.words)) {
       next.entries.push(toShownEntry(item.entry));
@@ -203,7 +209,11 @@ interface ScannedEntry {
 const spanFields = z.object({ start: z.int(), end: z.int(), source: z.string() });
 const ownerFields = z.object({ text: z.string(), spans: z.array(spanFields).optional() });
 
-function buildScannedEntry(record: LogRecord, lookup: ShortIDLookup): ScannedEntry {
+function buildScannedEntry(
+  record: LogRecord,
+  lookup: ShortIDLookup,
+  taskNames: ReadonlyMap<string, string>,
+): ScannedEntry {
   const base = { sequence: record.sequence, recordedAt: record.recordedAt.getTime(), isCut: false };
   const fields = record.erasable.status === 'readable' ? record.erasable.fields : null;
 
@@ -218,7 +228,7 @@ function buildScannedEntry(record: LogRecord, lookup: ShortIDLookup): ScannedEnt
   }
 
   if (record.kind === 'task_message') {
-    const text = renderTaskMessageText(record, fields);
+    const text = renderTaskMessageText(record, fields, taskNames);
 
     return { entry: { ...base, role: 'task', text }, plain: text };
   }
@@ -247,7 +257,11 @@ const taskMessageFields = z.object({ body: z.string() });
 const taskMessageHeader = z.object({ kind: z.string(), messageID: z.string(), from: z.string() });
 
 // A message that was forgotten has no body, so its entry keeps its place and shows no text.
-function renderTaskMessageText(record: LogRecord, fields: JSONObject | null): string | null {
+function renderTaskMessageText(
+  record: LogRecord,
+  fields: JSONObject | null,
+  taskNames: ReadonlyMap<string, string>,
+): string | null {
   const body = taskMessageFields.safeParse(fields);
   const header = taskMessageHeader.safeParse(record.payload);
 
@@ -256,8 +270,10 @@ function renderTaskMessageText(record: LogRecord, fields: JSONObject | null): st
   }
 
   const head = header.data;
+  const name = taskNames.get(head.from);
+  const sender = name === undefined ? head.from : `${name} (${head.from})`;
 
-  return `${head.kind} ${head.messageID} from task ${head.from}\n${body.data.body}`;
+  return `${head.kind} ${head.messageID} from task ${sender}\n${body.data.body}`;
 }
 
 function formatEntryText(

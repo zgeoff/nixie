@@ -14,6 +14,7 @@ export function buildMockTaskMessageView(
           speaker: 'conversation',
         },
       ],
+      unlisted: [],
       hopLimit: 20,
       ownerName: null,
       agentName: null,

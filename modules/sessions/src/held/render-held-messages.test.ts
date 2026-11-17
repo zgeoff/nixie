@@ -66,6 +66,7 @@ test('it counts the messages past the hop limit by their sender in one system me
             speaker: 'plain_task',
           },
         ],
+        unlisted: [],
         hopLimit: 20,
         ownerName: 'Robin',
         agentName: null,

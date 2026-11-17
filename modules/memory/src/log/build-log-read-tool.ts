@@ -101,7 +101,10 @@ const logReadArguments = z.object({
   record: z.string().optional(),
 });
 
-export function buildLogReadTool(log: Pick<Log, 'deploymentKey' | 'writer'>): ToolDefinition {
+export function buildLogReadTool(
+  log: Pick<Log, 'deploymentKey' | 'writer'>,
+  readTaskNames: () => Promise<ReadonlyMap<string, string>>,
+): ToolDefinition {
   return {
     name: 'log.read',
     description:
@@ -133,6 +136,7 @@ export function buildLogReadTool(log: Pick<Log, 'deploymentKey' | 'writer'>): To
         return readWholeEntry(log, {
           thread: context.run.logThread,
           input: { ...input, record: input.record },
+          taskNames: await readTaskNames(),
         });
       }
 
@@ -148,14 +152,20 @@ export function buildLogReadTool(log: Pick<Log, 'deploymentKey' | 'writer'>): To
         };
       }
 
-      const page = await readLogPage(log, {
-        thread: context.run.logThread,
-        after: input.after === undefined ? 0 : Number(input.after),
-        ...range,
-        words: input.query === undefined ? [] : input.query.split(/\s+/u),
-        limit: input.limit ?? defaultLimit,
-        scanLimit,
-      });
+      const taskNames = await readTaskNames();
+
+      const page = await readLogPage(
+        log,
+        {
+          thread: context.run.logThread,
+          after: input.after === undefined ? 0 : Number(input.after),
+          ...range,
+          words: input.query === undefined ? [] : input.query.split(/\s+/u),
+          limit: input.limit ?? defaultLimit,
+          scanLimit,
+        },
+        taskNames,
+      );
 
       const next = page.next === null ? null : String(page.next);
 
@@ -177,6 +187,7 @@ export function buildLogReadTool(log: Pick<Log, 'deploymentKey' | 'writer'>): To
 interface WholeEntryRequest {
   readonly thread: string;
   readonly input: z.infer<typeof logReadArguments> & { readonly record: string };
+  readonly taskNames: ReadonlyMap<string, string>;
 }
 
 async function readWholeEntry(
@@ -194,10 +205,11 @@ async function readWholeEntry(
     return { status: 'error', message: 'record takes only after beside it' };
   }
 
-  const entry = await readLogEntry(log, {
-    thread: request.thread,
-    sequence: Number(input.record.replace(/^#/u, '')),
-  });
+  const entry = await readLogEntry(
+    log,
+    { thread: request.thread, sequence: Number(input.record.replace(/^#/u, '')) },
+    request.taskNames,
+  );
 
   if (entry === null) {
     return { status: 'error', message: 'no such entry' };

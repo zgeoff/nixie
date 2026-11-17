@@ -12,7 +12,7 @@ export interface SessionPromptValues {
   readonly skillCatalog: string | null;
   readonly ownerName: string | null;
 
-  readonly messaging: Pick<TaskMessaging, 'agentName' | 'directory' | 'ownerName'>;
+  readonly messaging: Pick<TaskMessaging, 'agentName' | 'directory' | 'ownerName' | 'unlisted'>;
   readonly prompts: PromptOverrides;
 
   // the report of the step's open task run, or null for a step with none

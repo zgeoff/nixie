@@ -690,6 +690,35 @@ test('it names the one run by the version that the newest ended run of its task 
   });
 });
 
+test('it names a run by the version that the open run of its task pins, over the newest ended one', async () => {
+  const ctx = await setupTest();
+
+  const taskID = await ctx.createDefinitionTask('tend-the-garden', 'garden-old', {
+    name: 'Old garden',
+  });
+
+  await ctx.endDefinitionRun(taskID, 'tend-the-garden', 'garden-old', 'Tended.');
+
+  await seedDefinitionTask(ctx, {
+    definitionID: 'tend-the-garden',
+    definitionHash: null,
+    version: { name: 'New garden' },
+  });
+
+  await seedOpenDefinitionRun(ctx.context, {
+    taskID,
+    definitionID: 'tend-the-garden',
+    definitionHash: 'tend-the-garden-spent',
+  });
+
+  const names = await ctx.callRuns({});
+
+  expect(names).toStrictEqual({
+    status: 'ok',
+    result: { runs: [expect.objectContaining({ name: 'New garden' })], nextCursor: null },
+  });
+});
+
 test('it reads past forgotten failure messages to the newest one still readable', async () => {
   const ctx = await setupTest();
   const started = await ctx.startRun('Tide check');

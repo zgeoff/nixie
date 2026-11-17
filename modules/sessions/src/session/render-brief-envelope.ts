@@ -14,7 +14,7 @@ export interface BriefEnvelopeContext {
   // the task that reads the brief
   readonly taskID: string;
   readonly times: MessageTimeOptions;
-  readonly messaging: Pick<TaskMessaging, 'agentName' | 'directory' | 'ownerName'>;
+  readonly messaging: Pick<TaskMessaging, 'agentName' | 'directory' | 'ownerName' | 'unlisted'>;
 }
 
 export function renderBriefEnvelope(

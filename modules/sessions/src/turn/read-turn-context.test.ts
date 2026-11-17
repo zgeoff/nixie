@@ -34,7 +34,7 @@ test('it renders the system prompt with the session prompt override in force', a
         readTurnMemory: () => Promise.resolve({ kind: 'none' as const }),
       }),
       memorySettings: ctx.memorySettings,
-      messaging: { directory: [], hopLimit: 20, ownerName: null, agentName: null },
+      messaging: { directory: [], unlisted: [], hopLimit: 20, ownerName: null, agentName: null },
       defaultZone: 'UTC',
     },
     {
@@ -96,6 +96,7 @@ test("it puts no task board in the conversation's turn, with a started task in t
             speaker: 'plain_task',
           },
         ],
+        unlisted: [],
         hopLimit: 20,
         ownerName: null,
         agentName: null,
@@ -156,7 +157,7 @@ test('it reads the pinned figures for no turn whose pinned core is unchanged', a
       frame: { kind: 'conversation' } as const,
       memory: () => memory,
       memorySettings: ctx.memorySettings,
-      messaging: { directory: [], hopLimit: 20, ownerName: null, agentName: null },
+      messaging: { directory: [], unlisted: [], hopLimit: 20, ownerName: null, agentName: null },
       defaultZone: 'UTC',
     },
     {
@@ -214,7 +215,7 @@ test('it reads the pinned figures once for a turn whose pinned core changed, and
       frame: { kind: 'conversation' } as const,
       memory: () => memory,
       memorySettings: ctx.memorySettings,
-      messaging: { directory: [], hopLimit: 20, ownerName: null, agentName: null },
+      messaging: { directory: [], unlisted: [], hopLimit: 20, ownerName: null, agentName: null },
       defaultZone: 'UTC',
     },
     {
@@ -254,6 +255,7 @@ test("it renders a started task's first turn with the task prompt, no start note
             speaker: 'plain_task',
           },
         ],
+        unlisted: [],
         hopLimit: 20,
         ownerName: 'Robin',
         agentName: null,
@@ -292,7 +294,7 @@ test('it puts the brief that a task of the release before holds in its creation 
       context: ctx.tasks.context,
       frame: { kind: 'task', startedBy: 'conversation', report: 'none' },
       memorySettings: ctx.memorySettings,
-      messaging: { directory: [], hopLimit: 20, ownerName: null, agentName: null },
+      messaging: { directory: [], unlisted: [], hopLimit: 20, ownerName: null, agentName: null },
       defaultZone: 'UTC',
     },
     {
@@ -332,7 +334,7 @@ test('it leaves the brief of a task of the release before out of the preamble on
       context: ctx.tasks.context,
       frame: { kind: 'task', startedBy: 'conversation', report: 'none' },
       memorySettings: ctx.memorySettings,
-      messaging: { directory: [], hopLimit: 20, ownerName: null, agentName: null },
+      messaging: { directory: [], unlisted: [], hopLimit: 20, ownerName: null, agentName: null },
       defaultZone: 'UTC',
     },
     {
@@ -368,7 +370,7 @@ test("it gives a started task's rebuilt session no preamble block", async () => 
       context: ctx.tasks.context,
       frame: { kind: 'task', startedBy: 'conversation', report: 'wake' },
       memorySettings: ctx.memorySettings,
-      messaging: { directory: [], hopLimit: 20, ownerName: null, agentName: null },
+      messaging: { directory: [], unlisted: [], hopLimit: 20, ownerName: null, agentName: null },
       defaultZone: 'UTC',
     },
     {
@@ -397,7 +399,7 @@ test('it tells a started task whose cut work it carries on to continue that work
       context: ctx.tasks.context,
       frame: { kind: 'task', startedBy: 'conversation', report: 'wake' },
       memorySettings: ctx.memorySettings,
-      messaging: { directory: [], hopLimit: 20, ownerName: null, agentName: null },
+      messaging: { directory: [], unlisted: [], hopLimit: 20, ownerName: null, agentName: null },
       defaultZone: 'UTC',
     },
     {
@@ -445,7 +447,7 @@ test('it asks the memory once with the message text, and places nothing when it 
       frame: { kind: 'conversation' } as const,
       memory: () => memory,
       memorySettings: ctx.memorySettings,
-      messaging: { directory: [], hopLimit: 20, ownerName: null, agentName: null },
+      messaging: { directory: [], unlisted: [], hopLimit: 20, ownerName: null, agentName: null },
       defaultZone: 'UTC',
     },
     {
@@ -482,7 +484,7 @@ test('it hands the memory held lists that read nothing until called, and none fo
       frame: { kind: 'conversation' } as const,
       memory: () => memory,
       memorySettings: ctx.memorySettings,
-      messaging: { directory: [], hopLimit: 20, ownerName: null, agentName: null },
+      messaging: { directory: [], unlisted: [], hopLimit: 20, ownerName: null, agentName: null },
       defaultZone: 'UTC',
     },
     {
@@ -515,7 +517,7 @@ test('it asks nothing of a run with no memory', async () => {
       context: ctx.tasks.context,
       frame: { kind: 'conversation' } as const,
       memorySettings: ctx.memorySettings,
-      messaging: { directory: [], hopLimit: 20, ownerName: null, agentName: null },
+      messaging: { directory: [], unlisted: [], hopLimit: 20, ownerName: null, agentName: null },
       defaultZone: 'UTC',
     },
     {
@@ -590,7 +592,7 @@ test('it places the items that the memory answers with, whatever the index showe
       frame: { kind: 'conversation' } as const,
       memory: () => memory,
       memorySettings: ctx.memorySettings,
-      messaging: { directory: [], hopLimit: 20, ownerName: null, agentName: null },
+      messaging: { directory: [], unlisted: [], hopLimit: 20, ownerName: null, agentName: null },
       defaultZone: 'UTC',
     },
     {
@@ -677,6 +679,7 @@ test("it renders the first turn of a fire-opened definition's task run with its 
             speaker: 'plain_task',
           },
         ],
+        unlisted: [],
         hopLimit: 20,
         ownerName: 'Robin',
         agentName: 'Aria',
@@ -730,7 +733,7 @@ test.each(['pinned', 'none'] as const)(
         context: ctx.tasks.context,
         frame: { kind: 'task', startedBy: 'conversation', report: 'none' },
         memorySettings: ctx.memorySettings,
-        messaging: { directory: [], hopLimit: 20, ownerName: null, agentName: null },
+        messaging: { directory: [], unlisted: [], hopLimit: 20, ownerName: null, agentName: null },
         defaultZone: 'UTC',
       },
       {

@@ -12,6 +12,7 @@ import {
   missingReminderBrief,
   parseTriggerFired,
   readTaskDirectory,
+  readUnlistedProfiles,
   taskExchangeLimitedCodec,
   taskMessageCodec,
   taskStoppedCodec,
@@ -57,10 +58,9 @@ export async function readRecordLookups(
     .map((record) => record.sequence);
 
   const messaging = { directory: context.settings.taskDirectory };
-
-  const named = records.some((record) => namedKinds.has(record.kind))
-    ? await readTaskDirectory(context, messaging)
-    : messaging;
+  const hasNames = records.some((record) => namedKinds.has(record.kind));
+  const named = hasNames ? await readTaskDirectory(context, messaging) : messaging;
+  const unlisted = hasNames ? await readUnlistedProfiles(context, named.directory) : [];
 
   const removedSequences = await (known.removedSequences ??
     readRemovedRecordSequences(context, records));
@@ -78,7 +78,7 @@ export async function readRecordLookups(
     reminderBriefs,
     removedSequences,
     stopCancelledActions: await readStopCancelledActions(context, stopSequences),
-    taskDirectory: named.directory,
+    taskDirectory: [...named.directory, ...unlisted],
   };
 }
 

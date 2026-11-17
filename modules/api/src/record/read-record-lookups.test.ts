@@ -1,7 +1,11 @@
 import { expect, test } from 'bun:test';
 import { readRecords, writeRecords } from '@heynixie/log';
 import { createConversationTask, writeTaskControl } from '@heynixie/tasks';
-import { buildTestDefinitionStore } from '@heynixie/tasks/test-utils';
+import {
+  buildTestDefinitionStore,
+  seedDefinitionTask,
+  seedEndedDefinitionRun,
+} from '@heynixie/tasks/test-utils';
 import invariant from 'tiny-invariant';
 import { buildSeeder } from '../test-utils/build-seeder';
 import { startTestAPI } from '../test-utils/start-test-api';
@@ -94,6 +98,59 @@ test('it reads the actions each stop cancelled and the names of the started task
       },
     ],
   });
+});
+
+test('it reads the name of a definition task that left force after its task run ended', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  const taskID = await seedDefinitionTask(ctx, {
+    definitionID: 'water-the-tomatoes',
+    definitionHash: 'hash-1',
+    version: { name: 'Water the tomatoes' },
+  });
+
+  await seedEndedDefinitionRun(ctx.context, {
+    taskID,
+    definitionID: 'water-the-tomatoes',
+    definitionHash: 'hash-1',
+  });
+
+  await seedDefinitionTask(ctx, { definitionID: 'water-the-tomatoes', definitionHash: null });
+
+  const [message] = await writeRecords(ctx.context.log, [
+    {
+      kind: 'task_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: {
+        messageID: 'm7q2x9k4pa',
+        from: taskID,
+        to: 'conversation',
+        kind: 'report',
+        replyTo: null,
+        onBehalfOf: [],
+        hop: 1,
+        hopLimit: 20,
+        wake: true,
+        woke: true,
+        opensWait: false,
+        source: `task:${taskID}`,
+      },
+      erasable: { body: 'The beds are watered.' },
+    },
+  ]);
+
+  invariant(message);
+
+  const lookups = await readRecordLookups(ctx.context, [message]);
+
+  expect(
+    lookups.taskDirectory
+      .filter((profile) => profile.taskID === taskID)
+      .map((profile) => profile.name),
+  ).toStrictEqual(['Water the tomatoes']);
 });
 
 test('it reads no started task for records that name no task', async () => {

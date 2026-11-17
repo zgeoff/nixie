@@ -76,6 +76,8 @@ export { readTaskBrief } from './task/read-task-brief';
 export { readTaskBriefs } from './task/read-task-briefs';
 export { readPinnedProfiles } from './task/read-pinned-profiles';
 export { readTaskDirectory } from './task/read-task-directory';
+export { readTaskNames } from './task/read-task-names';
+export { readUnlistedProfiles } from './task/read-unlisted-profiles';
 export { isBriefRecord } from './brief/is-brief-record';
 export type { TaskBrief } from './brief/task-brief';
 export type { ListedTask } from './task/read-task-list';

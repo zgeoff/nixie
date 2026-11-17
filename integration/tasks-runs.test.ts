@@ -7,7 +7,15 @@ import {
 } from '@heynixie/definitions';
 import { startTestDefinitions } from '@heynixie/definitions/test-utils';
 import { parseJSONObject, readRecords } from '@heynixie/log';
-import { buildTasksRunsTool, claimTask, writeStepCommit } from '@heynixie/tasks';
+import { renderSessionMessages } from '@heynixie/sessions';
+import {
+  buildTasksRunsTool,
+  claimTask,
+  readTaskDirectory,
+  readUnlistedProfiles,
+  writeStepCommit,
+} from '@heynixie/tasks';
+import { seedConversationStep, writeTestTaskMessage } from '@heynixie/tasks/test-utils';
 import { waitForCondition } from '@heynixie/testing';
 import { buildMockToolCall, buildMockToolContext } from '@heynixie/tools/test-utils';
 import { buildScheduleSource, deliverTriggerBatch } from '@heynixie/triggers';
@@ -163,4 +171,74 @@ test('it lists the ended run of a one-off after its definition left the definiti
       },
     },
   });
+});
+
+test('it names the task of a one-off from chat for a label once the task run ended and the definition left force', async () => {
+  const ctx = await setupTest();
+
+  await ctx.seed();
+
+  await ctx.runDefine({
+    name: 'Book the dentist',
+    brief: 'Book the dentist.',
+    target: 'task',
+    trigger: { at: '2027-03-12T08:00:00Z' },
+  });
+
+  await ctx.fireOnce('2027-03-12T08:01:00Z');
+  await ctx.waitForSettled();
+
+  const claim = await claimTask(ctx.tasks, { holder: 'runner-a', leaseMs: 60_000 });
+
+  invariant(claim, 'the fire is ready to claim');
+
+  await seedConversationStep(ctx.tasks);
+
+  const messaging = await readTaskDirectory(ctx.tasks, {
+    directory: [
+      {
+        taskID: 'conversation',
+        name: 'Conversation',
+        brief: 'Talks with the owner.',
+        wakeable: true,
+        speaker: 'conversation',
+      },
+    ],
+    unlisted: [],
+    hopLimit: 20,
+    ownerName: 'Robin',
+    agentName: null,
+  });
+
+  const sent = await writeTestTaskMessage(ctx.tasks, messaging, {
+    from: claim.lease.workID,
+    to: 'conversation',
+    kind: 'report',
+    body: 'Booked the dentist for Tuesday.',
+    replyTo: null,
+    onBehalfOf: [],
+    wake: true,
+  });
+
+  invariant(sent.status === 'sent', 'the report was sent');
+
+  await writeStepCommit(ctx.tasks, claim, {
+    next: 'wait',
+    records: [],
+    acknowledged: [],
+    run: { activity: 'worked', report: { summary: 'Booked the dentist for Tuesday.' } },
+  });
+
+  const unlisted = await readUnlistedProfiles(ctx.tasks, messaging.directory);
+  const inbox = await readRecords(ctx.log, { afterSequence: 0, kinds: ['task_message'] });
+
+  const rendered = renderSessionMessages(
+    inbox.map((entry) => entry.record),
+    { defaultZone: 'UTC', now: new Date(ctx.clock.now()) },
+    { messaging: { ...messaging, unlisted }, wake: { hop: 0, cause: { kind: 'owner' } } },
+  );
+
+  expect(rendered).toInclude(
+    `from="nixie (task: Book the dentist (${claim.lease.workID}))" kind="report"`,
+  );
 });

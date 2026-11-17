@@ -7,6 +7,7 @@ import {
 import type { MemoryToolStore } from '@heynixie/memory';
 import { buildLogReadImageTool, buildLogReadTool } from '@heynixie/memory';
 import { readStarterDecisionPoint } from '@heynixie/policy/test-utils';
+import { readTaskNames } from '@heynixie/tasks';
 import type { FetchReply } from '@heynixie/wire';
 import { buildConversationTools } from '../conversation/build-conversation-tools';
 import type { BuildTestServerTools } from './start-test-server';
@@ -48,7 +49,10 @@ export function buildTestConversationTools(reply: FetchReply): TestConversationT
             findTimeZone: () => Promise.resolve(null),
             defaultZone: 'UTC',
           }),
-          logReaders: [buildLogReadTool(context.log), buildLogReadImageTool(context.log)],
+          logReaders: [
+            buildLogReadTool(context.log, () => readTaskNames(context)),
+            buildLogReadImageTool(context.log),
+          ],
           skills: [],
           prompts: [],
           tasks: [],

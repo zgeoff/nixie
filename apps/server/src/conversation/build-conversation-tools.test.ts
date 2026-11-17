@@ -30,7 +30,13 @@ async function setupTest() {
 
   stack.defer(() => log.writer.stop());
 
-  return { log, logReaders: [buildLogReadTool(log), buildLogReadImageTool(log)] };
+  return {
+    log,
+    logReaders: [
+      buildLogReadTool(log, () => Promise.resolve(new Map())),
+      buildLogReadImageTool(log),
+    ],
+  };
 }
 
 test('it lists the web fetch tool, the time tool, the log readers, the skill tools, the prompt reader and the 12 memory tools', async () => {
