@@ -135,11 +135,12 @@ test("it commits the caller's own write in the retirement's transaction", async 
     },
   });
 
-  const records = await readRecords(ctx.memory.log, { afterSequence: 1 });
+  const records = await readRecords(ctx.memory.log, { afterSequence: 2 });
 
   expect(records.map((read) => read.record.kind)).toStrictEqual([
     'owner_message',
     'memory.version_added',
+    'memory.version_keyed',
   ]);
 });
 

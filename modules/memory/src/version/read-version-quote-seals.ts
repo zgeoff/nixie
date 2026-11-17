@@ -1,52 +1,47 @@
 import type { Log, LogTables } from '@heynixie/log';
 import { readRecordKeys } from '@heynixie/log';
 import type { Kysely } from 'kysely';
-import type { MemoryVersionRow, VersionText } from '../types';
-import { parseEvidence } from '../utils/parse-evidence';
-import type { QuoteKind } from '../version/version-quote-codec';
-import { versionQuoteCodec } from '../version/version-quote-codec';
+import type { QuoteEvidence, VersionText } from '../types';
+import type { QuoteKind } from './version-quote-codec';
+import { versionQuoteCodec } from './version-quote-codec';
 
-export interface BridgeQuotes {
+export interface VersionQuoteSeals {
   readonly evidenceQuote: string | null;
   readonly intentQuote: string | null;
 }
 
-interface BridgeSource {
-  readonly row: MemoryVersionRow;
-  readonly text: VersionText;
-
-  // the record a record forget removed, whose quotes the bridge drops
-  readonly recordSequence: number;
-
-  // the version number of the bridge, and the key that seals its text
+interface QuoteSource {
+  readonly itemID: string;
   readonly version: number;
   readonly versionKey: CryptoKey;
+  readonly text: VersionText;
+  readonly evidence: QuoteEvidence | null;
+  readonly intentEvidence: QuoteEvidence | null;
 }
 
-// Seals each quote of another record twice: the quoted record's key inside, the bridge's version key
+// Seals each quote of another record twice: the quoted record's key inside, the version's key
 // outside. A quote whose record has no key is left out, with its offsets still on the version.
-export async function readBridgeQuotes(
+export async function readVersionQuoteSeals(
   log: Pick<Log, 'deploymentKey' | 'writer'>,
   db: Kysely<unknown>,
-  source: BridgeSource,
-): Promise<BridgeQuotes> {
+  source: QuoteSource,
+): Promise<VersionQuoteSeals> {
   return {
-    evidenceQuote: await sealBridgeQuote(log, db, source, 'evidence'),
-    intentQuote: await sealBridgeQuote(log, db, source, 'intent'),
+    evidenceQuote: await sealQuote(log, db, source, 'evidence'),
+    intentQuote: await sealQuote(log, db, source, 'intent'),
   };
 }
 
-async function sealBridgeQuote(
+async function sealQuote(
   log: Pick<Log, 'deploymentKey' | 'writer'>,
   db: Kysely<unknown>,
-  source: BridgeSource,
+  source: QuoteSource,
   quote: QuoteKind,
 ): Promise<string | null> {
-  const column = quote === 'evidence' ? source.row.evidence : source.row.intent_evidence;
-  const evidence = parseEvidence(column);
+  const evidence = quote === 'evidence' ? source.evidence : source.intentEvidence;
   const text = quote === 'evidence' ? source.text.evidenceQuote : source.text.intentQuote;
 
-  if (evidence === null || text === null || evidence.recordSequence === source.recordSequence) {
+  if (evidence === null || text === null) {
     return null;
   }
 
@@ -71,13 +66,13 @@ async function sealBridgeQuote(
 
   const inner = await versionQuoteCodec.sealInner(
     recordKey,
-    { itemID: source.row.item_id, evidence },
+    { itemID: source.itemID, evidence },
     text,
   );
 
   return versionQuoteCodec.sealOuter(
     source.versionKey,
-    { itemID: source.row.item_id, version: source.version, quote },
+    { itemID: source.itemID, version: source.version, quote },
     inner,
   );
 }

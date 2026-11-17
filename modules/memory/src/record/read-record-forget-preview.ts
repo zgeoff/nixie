@@ -22,7 +22,7 @@ export async function readRecordForgetPreview(
 ): Promise<RecordForgetPreview> {
   const [momentCount, itemIDs] = await Promise.all([
     readMomentCount(log, target),
-    readPurgeSet(log.writer.db, target.sequence),
+    readPurgeSet(log.writer.db, target.sequence, ['active', 'retired']),
   ]);
 
   const texts = await readPurgeTexts(log, itemIDs);

@@ -1,9 +1,13 @@
 import { expect, mock, test } from 'bun:test';
 import { readRecords, writeRecords } from '@heynixie/log';
+import { readRecordForgetPreview } from '@heynixie/memory';
+import { buildMockWriteCaller, readPurgeRows } from '@heynixie/memory/test-utils';
 import { createConversationTask } from '@heynixie/tasks';
 import invariant from 'tiny-invariant';
 import { buildSeeder } from '../test-utils/build-seeder';
+import { seedQuotedMemoryItems } from '../test-utils/seed-quoted-memory-items';
 import { startTestAPI } from '../test-utils/start-test-api';
+import { startTestMemoryForgets } from '../test-utils/start-test-memory-forgets';
 import type { CleanupRecordSessions } from '../types';
 import { readRecordForgetCheck } from './read-record-forget-check';
 import { runRecordForget } from './run-record-forget';
@@ -13,8 +17,11 @@ async function setupTest() {
 
   await createConversationTask(api.context);
 
+  const forgets = await startTestMemoryForgets(api.context);
+
   return {
     ...api,
+    ...forgets,
     seed: buildSeeder(api),
     writeOwnerMessage: async (text: string) => {
       const [record] = await writeRecords(api.context.log, [
@@ -34,6 +41,11 @@ async function setupTest() {
       const entries = await readRecords(api.context.log, { afterSequence: 0 });
 
       return entries.map((entry) => entry.record.kind);
+    },
+    readSequences: async (kind: 'memory.evidence_purged' | 'record.forgotten') => {
+      const entries = await readRecords(api.context.log, { afterSequence: 0, kinds: [kind] });
+
+      return entries.map((entry) => entry.record.sequence);
     },
   };
 }
@@ -147,4 +159,91 @@ test('it answers not_found for a record on another thread', async () => {
   });
 
   expect(check).toStrictEqual({ status: 'not_found' });
+});
+
+test('it lists in the purge set the items that the preview lists, and purges exactly those items', async () => {
+  const ctx = await setupTest();
+  const seeded = await seedQuotedMemoryItems(ctx.context, ctx.memory);
+
+  const target = { thread: 'conversation', sequence: seeded.sequence };
+
+  const preview = await readRecordForgetPreview(ctx.context.log, target);
+
+  await runRecordForget(ctx.forgetContext, target);
+
+  const rows = await readPurgeRows(ctx.context.log.writer.db);
+  const unrelated = await ctx.memory.readHistory(seeded.unrelated.itemID);
+
+  expect(preview.memoryItems.map((item) => item.itemID)).toStrictEqual([seeded.quoting.itemID]);
+
+  expect(rows).toStrictEqual([
+    {
+      record_sequence: seeded.sequence,
+      item_id: seeded.quoting.itemID,
+      closed_sequence: expect.toBeNumber(),
+      purged_sequence: expect.toBeNumber(),
+    },
+  ]);
+
+  expect(unrelated?.versions).toMatchObject([{ version: 1, status: 'readable', isRemoved: false }]);
+});
+
+test('it writes the purge set in the forget start, before any purge step runs', async () => {
+  const ctx = await setupTest();
+  const seeded = await seedQuotedMemoryItems(ctx.context, ctx.memory);
+
+  await runRecordForget(ctx.context, { thread: 'conversation', sequence: seeded.sequence });
+
+  const kinds = await ctx.readKinds();
+  const rows = await readPurgeRows(ctx.context.log.writer.db);
+
+  expect(kinds.slice(-2)).toStrictEqual(['record.forget_started', 'memory.evidence_purge_started']);
+
+  expect(rows).toStrictEqual([
+    {
+      record_sequence: seeded.sequence,
+      item_id: seeded.quoting.itemID,
+      closed_sequence: null,
+      purged_sequence: null,
+    },
+  ]);
+});
+
+test('it writes record.forgotten after the last mark of every item of the set', async () => {
+  const ctx = await setupTest();
+  const seeded = await seedQuotedMemoryItems(ctx.context, ctx.memory);
+
+  await runRecordForget(ctx.forgetContext, { thread: 'conversation', sequence: seeded.sequence });
+
+  const purged = await ctx.readSequences('memory.evidence_purged');
+  const [forgotten] = await ctx.readSequences('record.forgotten');
+
+  invariant(forgotten !== undefined);
+
+  expect(purged).toHaveLength(1);
+  expect(purged).toSatisfyAll((sequence: number) => sequence < forgotten);
+});
+
+test('it reads every value the purge deletes as removed from the forget start, and refuses a proposal for the item', async () => {
+  const ctx = await setupTest();
+  const seeded = await seedQuotedMemoryItems(ctx.context, ctx.memory);
+
+  await runRecordForget(ctx.context, { thread: 'conversation', sequence: seeded.sequence });
+
+  const history = await ctx.memory.readHistory(seeded.quoting.itemID);
+
+  const proposal = ctx.memory.writes.remember({
+    text: 'The cat uses the flap every evening',
+    target: seeded.quoting,
+    caller: buildMockWriteCaller(),
+  });
+
+  const refused = await proposal.catch((error: unknown) => error);
+
+  expect(history?.versions).toMatchObject([
+    { version: 1, status: 'shredded', isRemoved: true },
+    { version: 2, status: 'readable', isRemoved: false },
+  ]);
+
+  expect(refused).toMatchObject({ code: 'ITEM_PURGING' });
 });

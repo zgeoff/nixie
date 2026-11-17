@@ -5,6 +5,8 @@ import {
   memoryExportSchema,
   startMemoryStore,
 } from '@heynixie/memory';
+import { seedSharedKeyVersion } from '@heynixie/memory/test-utils';
+import { createConversationTask } from '@heynixie/tasks';
 import { buildTestClient } from '../test-utils/build-test-client';
 import { createDeviceSession } from '../test-utils/create-device-session';
 import { startTestAPI } from '../test-utils/start-test-api';
@@ -38,8 +40,73 @@ async function setupTest() {
 
   api.setMemory(memory);
 
+  api.setSessionCleanup((cause) =>
+    memory.finishEvidencePurges({ recordSequence: cause.recordSequence }),
+  );
+
   return { ...api, memory };
 }
+
+test('#memory.export marks the bridge version of an item purged by a forget of its quoted message, and the versions it removed as removed', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+
+  const client = buildTestClient(ctx.url, laptop.token);
+
+  const sent = await client.conversation.send({
+    clientMessageId: '0b9d8f0e-6f1c-4d2a-9b7e-3c5a1d2e4f60',
+    thread: 'conversation',
+    text: 'I keep bees on the allotment.',
+    spans: [],
+  });
+
+  const first = await seedSharedKeyVersion(ctx.context.log, {
+    text: 'Keeps bees on the allotment',
+    evidence: { recordSequence: sent.sequence, start: 0, end: 11 },
+    evidenceQuote: 'I keep bees',
+  });
+
+  await seedSharedKeyVersion(ctx.context.log, {
+    target: first,
+    text: 'Keeps two hives on the allotment',
+  });
+
+  await client.conversation.forget({
+    clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
+    thread: 'conversation',
+    sequence: sent.sequence,
+  });
+
+  const stream = await client.memory.export({
+    clientActionID: '9d4e2b71-3c8a-4f5e-b6d0-1a7c9e3f5b24',
+  });
+
+  const events = await Array.fromAsync(stream);
+
+  const parsed = memoryExportSchema.safeParse(
+    JSON.parse(events.flatMap((event) => ('chunk' in event ? [event.chunk] : [])).join('')),
+  );
+
+  expect(parsed.data?.items).toMatchObject([
+    {
+      itemID: first.itemID,
+      versions: [
+        { version: 1, text: null, evidenceQuote: null, isRemoved: true, isBridge: false },
+        { version: 2, text: null, evidenceQuote: null, isRemoved: true, isBridge: false },
+        {
+          version: 3,
+          text: 'Keeps two hives on the allotment',
+          evidenceQuote: null,
+          isRemoved: false,
+          isBridge: true,
+        },
+      ],
+    },
+  ]);
+});
 
 test('#memory.export streams one export file of every item, which the schema accepts', async () => {
   const ctx = await setupTest();

@@ -2,12 +2,20 @@ import { expect, test } from 'bun:test';
 import { readRecords, writeRecordsInTransaction } from '@heynixie/log';
 import { buildMockProvenance } from '../test-utils/build-mock-provenance';
 import { startTestMemory } from '../test-utils/start-test-memory';
+import { writeOwnerMessageRecord } from '../test-utils/write-owner-message-record';
 import type { MemoryTables } from '../types';
 
 async function setupTest() {
   const memory = await startTestMemory();
 
-  return { memory, db: memory.writer.db.$extendTables<MemoryTables>() };
+  const writeMessage = (text: string) =>
+    writeOwnerMessageRecord(memory.log, {
+      thread: 'conversation',
+      text,
+      spans: [{ start: 0, end: text.length, source: 'typed' }],
+    });
+
+  return { memory, writeMessage, db: memory.writer.db.$extendTables<MemoryTables>() };
 }
 
 test.each(['owner', 'shared', 'self'] as const)(
@@ -72,7 +80,7 @@ test('it pins an active item without adding a version', async () => {
     .where('item_id', '=', item.itemID)
     .executeTakeFirstOrThrow();
 
-  expect(row).toStrictEqual({ version: 1, is_pinned: 1, pinned_sequence: 2 });
+  expect(row).toStrictEqual({ version: 1, is_pinned: 1, pinned_sequence: 3 });
 });
 
 test('it unpins an item', async () => {
@@ -224,16 +232,24 @@ test('it pins an item that fits the pinned core budget beside a short owner name
 test('it rejects a pin whose quotes take the pinned core past 2,000 tokens', async () => {
   const ctx = await setupTest();
 
+  const seatQuote = 'I always take the window seat on the train to the coast. '.repeat(77);
+  const milkQuote = 'Oat milk in the coffee, please, never the dairy kind. '.repeat(81);
+
+  const seatSequence = await ctx.writeMessage(seatQuote);
+  const milkSequence = await ctx.writeMessage(milkQuote);
+
   await ctx.memory.store.remember({
     text: 'Likes the window seat',
-    evidenceQuote: 'I always take the window seat on the train to the coast. '.repeat(77),
+    evidenceQuote: seatQuote,
+    evidence: { recordSequence: seatSequence, start: 0, end: seatQuote.length },
     isPinned: true,
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
 
   const second = await ctx.memory.store.remember({
     text: 'Drinks oat milk',
-    evidenceQuote: 'Oat milk in the coffee, please, never the dairy kind. '.repeat(81),
+    evidenceQuote: milkQuote,
+    evidence: { recordSequence: milkSequence, start: 0, end: milkQuote.length },
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
 
@@ -258,16 +274,24 @@ test('it rejects a pin whose quotes take the pinned core past 2,000 tokens', asy
 test('it rejects a new pinned item whose quote takes the pinned core past 2,000 tokens', async () => {
   const ctx = await setupTest();
 
+  const seatQuote = 'I always take the window seat on the train to the coast. '.repeat(77);
+  const milkQuote = 'Oat milk in the coffee, please, never the dairy kind. '.repeat(81);
+
+  const seatSequence = await ctx.writeMessage(seatQuote);
+  const milkSequence = await ctx.writeMessage(milkQuote);
+
   await ctx.memory.store.remember({
     text: 'Likes the window seat',
-    evidenceQuote: 'I always take the window seat on the train to the coast. '.repeat(77),
+    evidenceQuote: seatQuote,
+    evidence: { recordSequence: seatSequence, start: 0, end: seatQuote.length },
     isPinned: true,
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
 
   const remember = ctx.memory.store.remember({
     text: 'Drinks oat milk',
-    evidenceQuote: 'Oat milk in the coffee, please, never the dairy kind. '.repeat(81),
+    evidenceQuote: milkQuote,
+    evidence: { recordSequence: milkSequence, start: 0, end: milkQuote.length },
     isPinned: true,
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });

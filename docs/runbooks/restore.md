@@ -192,7 +192,8 @@ backup that the key store backup holds every key for, after the words `name data
 
 - An item that you forgot after that backup stays unreadable after the restore, because the key
   store never gets a removed key back.
-- An item whose evidence nixie [purged](../design/queue/evidence-purge.md#backups) after that backup
+- An item whose evidence nixie
+  [purged](../architecture/deployment/backups.md#an-older-data-copy-and-a-purge) after that backup
   loses its text, unless its current version had a version key of its own and stayed current until
   the purge.
 

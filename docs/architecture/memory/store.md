@@ -145,34 +145,45 @@ item active.
 
 Each item key is an AES-256-GCM key in the key store, wrapped by the deployment key as every record
 key is. Every version is encrypted with the item ID and the version number as additional data, so a
-sealed value copied under another item or another version fails to decrypt. Until a
-[purge](#the-evidence-purge) reaches it, an item has one key, whose ID is the item's UUID, random as
-every key store ID must be ([key store IDs](../core/database.md#key-store-ids)). That key seals
-every value of the item: each version's text and quotes, each proposal and each labelling. A purge
-adds keys of 2 kinds:
+sealed value copied under another item or another version fails to decrypt. An item has keys of 2
+kinds:
 
-- A generation key seals each value written while it is in force. The key whose ID is the item's
-  UUID is generation 0, and each purge closes the generation in force and starts the next under a
-  new key.
-- A version key seals one version's text alone. Only a purge creates one, for the current text when
-  no version key sealed it.
+- A generation key seals each proposal and each labelling written while it is in force. The key
+  whose ID is the item's UUID is generation 0, random as every key store ID must be
+  ([key store IDs](../core/database.md#key-store-ids)). Each [purge](#the-evidence-purge) closes the
+  generation in force and starts the next under a new key.
+- A version key seals one version's text, so a purge can keep the current text and delete the rest.
+  Every version written from the release that added version keys has one, the first version of a new
+  item and a proposal's approval included. A version written before then shares generation 0 with
+  its item's other values, as does its quote, which sits inside its text. Such an item is shared-key
+  until its next version.
 
 Every key after generation 0 has an ID of the form `<item UUID>/<random UUID>`, so the memory forget
-finds every key of an item in the key store alone, by that prefix and the UUID itself.
+finds every key of an item in the key store alone, by that prefix and the UUID itself. A writer
+creates a version's key in the key store before the transaction that commits the version, under the
+delivery lock. A key whose commit never lands decrypts nothing, and the memory forget deletes it by
+its prefix.
+
+A version with a version key seals its text there with no quote. Each quote of another record, the
+evidence and the intent, sits sealed twice in the `memory.version_keyed` record that the version's
+transaction writes: first under the quoted record's key, which binds the item, the record and the
+offsets, then under the version key. A forget of the quoted record deletes the record's key, so the
+quote becomes unreadable with no purge step, and the memory forget still deletes the outer seal. A
+writer seals a quote only while the quoted record's key exists. When it is gone, the version keeps
+the quote's offsets and stores no quote. A retire, a restore and an undo copy an earlier version, so
+they seal its quote again under the new version's own key, from the earlier version's readable
+quote.
 
 ### The evidence purge
-
-In this build only a test writes `memory.evidence_purge_started`, the record that starts a purge, so
-a deployment's log holds no purge set. The purge code runs at the server's start and in a record
-forget's session cleanup, and finds nothing to do. The same holds for every purge step below and for
-the generation keys, version keys and `removed` answer in [reading a key](#reading-a-key). The
-[record forget](../channels/api.md#forgetting-a-record) will write the record in its first
-transaction ([GEO-2605](https://linear.app/zgeoff/issue/GEO-2605)).
 
 A purge removes the copies of a forgotten message that a memory item holds. The message is the
 evidence of some version, and the item's older versions and pending proposals keep its quote, so the
 purge makes those values unreadable and keeps the current text readable. The started record holds
-the forgotten record and the items to purge, the purge set.
+the forgotten record and the items to purge, the purge set: each active, retired or forgetting item,
+and each pending proposal for a new item, that has a version or a proposal whose evidence or intent
+evidence names the record. The [record forget](../channels/api.md#forgetting-a-record) writes the
+record in the transaction that writes `record.forget_started`, so a crash leaves both or neither. It
+writes none for a record that no item quotes, because a second read finds the same empty set.
 
 From the started record on, every reader reads each older version and pending proposal of those
 items as removed. Every proposal write for one of those items fails with `ItemPurgingError` until
@@ -189,6 +200,11 @@ The bridge and the new labelling each raise the revision, so a change bound to t
 the purge fails as stale. After the commit the purge deletes the closed keys and writes
 `memory.evidence_purged`.
 
+An item whose own [forget](#forgetting) has begun gets no closing commit, because that forget
+deletes every key of the item. The purge runs the forget's cleanup to its end, then writes
+`memory.evidence_purged`. So `record.forgotten` always follows the delete of every key that holds
+the record's text, even when the item's forget stopped before its key delete.
+
 The memory view's history shows a bridge with its text and "Kept when a message was removed", with
 no change or origin. Recall shows its change as `kept`, with the line "kept when a message it quoted
 was removed".
@@ -199,7 +215,39 @@ that holds the brief ([started tasks](../core/started-tasks.md#the-start)). It r
 can hold the record's text, once for each record it destroys. The call records go first and the
 forgotten record last, because the cleanup for the forgotten record finishes that record's purge set
 before the forget writes `record.forgotten`, and every other cleanup must have run before a purge
-deletes a key. At start the server finishes each purge set that no record forget owns.
+deletes a key. The backup job reads `record.forgotten` as the forget's end, so every key a purge
+deletes is covered by [the forget's backup state](../deployment/backups.md#a-forgets-backup-state).
+
+A forget that an earlier release began has `record.forget_started` and no purge set. Its cleanup
+writes the set in one transaction before any key goes, because the set reads the evidence of the
+items that the purge then changes, and then goes on. A cleanup that runs again finds the set and
+writes nothing more. A forget that an earlier release finished, with a `record.forgotten` and no
+purge set, leaves its quotes in the items, and the user forgets such an item from the memory view.
+
+A kill at any step leaves a state that the next start finishes, because each step finds its own
+record or a missing key and writes nothing more when it runs again:
+
+| A kill after                          | The start finds                                    | The start does                          |
+| ------------------------------------- | -------------------------------------------------- | --------------------------------------- |
+| the forget's first transaction        | `record.forget_started` with no `record.forgotten` | the rest of the forget                  |
+| the new keys, before the commit       | no closing record for the item                     | the item's purge again, with fresh keys |
+| the commit, before the key deletes    | a key of the closing record still in the key store | the deletes                             |
+| the key deletes, before the last mark | no `memory.evidence_purged` for the item           | `memory.evidence_purged`                |
+| every item                            | no `record.forgotten`                              | `record.forgotten`                      |
+
+[Crash tests](../core/crash-tests.md#fault-points-of-the-forget) lists the fault points that hold
+each of these. The purge deletes a key with `removeRecordKey`, which fails when a reader of the key
+store holds the write-ahead log. The purge then stops before `memory.evidence_purged`, so a purge
+counts as done only after the checkpoint cleared the old key from the log.
+
+The server's start finishes each purge that no open record forget owns, where an open forget has no
+`record.forgotten` yet. The release before this one can end a forget with such a purge left: it
+skips an item whose own forget began, deletes that item's keys at its start before any record
+forget, and never marks the item purged. No code writes a purge set with no record forget behind it,
+and the start scrubs nothing. A scrub of each merge change of the consolidator would be needed only
+because a change sat under the key of its first input. The migration that removed the consolidator's
+records and tables ran at every earlier release's first start, before memory starts, so no database
+that this release opens holds such a change.
 
 ### Reading a key
 
@@ -221,7 +269,7 @@ record yet, so it takes the newest generation key from `readCurrentItemKey`, bes
 
 A test beside the lookup fails when a file under `modules/memory/src` outside its list calls the
 log's raw key reader, `readRecordKeys`. The list holds the lookup, `readCurrentItemKey`, and 2
-readers of keys that seal no item value: the purge's quote reader in `purge/`, which reads the key
+readers of keys that seal no item value: the version quote reader in `version/`, which reads the key
 of a quoted record, and `readHeldRecordKeys` in `utils/record/`, which finds the keys still held
 before a sweep deletes the keys of closed proposals for new items and of saved photo offers.
 

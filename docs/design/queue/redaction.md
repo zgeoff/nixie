@@ -125,7 +125,7 @@ interface ForgetPreviewInput {
 
 interface ForgetPreviewOutput {
   momentCount: number; // the moments whose spans hold the record
-  // the items of the evidence purge's set (evidence-purge.md), each with its current text, so you
+  // the items of the evidence purge's set of the evidence purge, each with its current text, so you
   // can forget an item whose own text holds what you remove
   memoryItems: readonly { itemID: string; text: string }[];
 }
@@ -147,7 +147,7 @@ log.forget({ thread: 'conversation', record: '<the record as the session history
 
 ### Part 5: the evidence purge
 
-[The evidence purge](evidence-purge.md) holds this part's contracts and constraints.
+[The memory store](../../architecture/memory/store.md#the-evidence-purge) describes this part.
 
 ## Constraints
 
@@ -246,7 +246,8 @@ log.forget({ thread: 'conversation', record: '<the record as the session history
 
 ### Part 5
 
-- [The evidence purge](evidence-purge.md#constraints) holds this part's constraints.
+- [The memory store](../../architecture/memory/store.md#the-evidence-purge) holds this part's
+  constraints.
 
 ## Decisions
 

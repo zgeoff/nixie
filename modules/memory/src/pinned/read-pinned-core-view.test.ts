@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test';
 import { countTextTokens } from '@heynixie/compaction';
-import { removeRecordKey } from '@heynixie/log';
+import { removeRecordKeyFamily } from '@heynixie/log';
 import { startTestMemory } from '../test-utils/start-test-memory';
 
 async function setupTest() {
@@ -16,7 +16,7 @@ test('it reads a pinned item whose key is gone as a gap that takes no tokens', a
     provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
   });
 
-  await removeRecordKey(ctx.memory.log, item.itemID);
+  await removeRecordKeyFamily(ctx.memory.log, item.itemID);
 
   const core = await ctx.memory.store.view.readPinnedCore();
 

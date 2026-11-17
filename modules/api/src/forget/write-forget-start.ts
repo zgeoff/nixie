@@ -1,5 +1,5 @@
 import { writeRecordsInTransaction } from '@heynixie/log';
-import { recordForgetStartedCodec } from '@heynixie/memory';
+import { recordForgetStartedCodec, writeRecordPurgeSet } from '@heynixie/memory';
 import type { Transaction } from 'kysely';
 import invariant from 'tiny-invariant';
 import type { APIContext } from '../types';
@@ -43,6 +43,8 @@ export async function writeForgetStart(
   ]);
 
   invariant(record, 'the log wrote no record.forget_started record');
+
+  await writeRecordPurgeSet(tx, context, input.sequence);
 
   return record.recordedAt.getTime();
 }

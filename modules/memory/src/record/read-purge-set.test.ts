@@ -43,7 +43,10 @@ test('it returns each live item that quotes the record, and each pending new-ite
     provenance: buildMockProvenance(),
   });
 
-  const set = await readPurgeSet(ctx.memory.log.writer.db, quoted.recordSequence);
+  const set = await readPurgeSet(ctx.memory.log.writer.db, quoted.recordSequence, [
+    'active',
+    'retired',
+  ]);
 
   expect(set).toStrictEqual(
     [quoted.proposal.itemID, viaVersion.itemID, viaIntent.itemID].toSorted(),
@@ -76,9 +79,45 @@ test('it leaves out an item that a forget began on, and a rejected proposal for 
 
   await ctx.memory.store.forget({ target: forgotten, provenance: buildMockProvenance() });
 
-  const set = await readPurgeSet(ctx.memory.log.writer.db, quoted.recordSequence);
+  const set = await readPurgeSet(ctx.memory.log.writer.db, quoted.recordSequence, [
+    'active',
+    'retired',
+    'forgetting',
+  ]);
 
   expect(set).toStrictEqual([]);
+});
+
+test('it returns an item that quotes the record in a state the caller names, and leaves it out otherwise', async () => {
+  const ctx = await setupTest();
+
+  const quoted = await createQuotedProposal(ctx.memory, {
+    message: 'I keep bees on the allotment.',
+    text: 'The owner keeps bees.',
+    quote: 'I keep bees',
+  });
+
+  await ctx.memory.store.proposals.reject({
+    proposalID: quoted.proposal.proposalID,
+    actionHash: quoted.proposal.actionHash,
+    identityID: 'identity-1',
+  });
+
+  const retired = await ctx.memory.store.remember({
+    text: 'Keeps bees on the roof',
+    evidence: { recordSequence: quoted.recordSequence, start: 0, end: 5 },
+    evidenceQuote: 'bees',
+    provenance: buildMockProvenance(),
+  });
+
+  await ctx.memory.store.retire({ target: retired, provenance: buildMockProvenance() });
+
+  const sets = await Promise.all([
+    readPurgeSet(ctx.memory.log.writer.db, quoted.recordSequence, ['retired']),
+    readPurgeSet(ctx.memory.log.writer.db, quoted.recordSequence, ['active']),
+  ]);
+
+  expect(sets).toStrictEqual([[retired.itemID], []]);
 });
 
 test('it returns an item whose rejected proposal quotes the record', async () => {
@@ -98,7 +137,10 @@ test('it returns an item whose rejected proposal quotes the record', async () =>
     identityID: 'identity-1',
   });
 
-  const set = await readPurgeSet(ctx.memory.log.writer.db, quoted.recordSequence);
+  const set = await readPurgeSet(ctx.memory.log.writer.db, quoted.recordSequence, [
+    'active',
+    'retired',
+  ]);
 
   expect(set).toStrictEqual([item.itemID]);
 });

@@ -174,7 +174,12 @@ test('#memory.forget cleans up the sessions, then records the forget as complete
 
   expect(
     records.map((entry) => entry.record.kind).filter((kind) => kind.startsWith('memory.')),
-  ).toStrictEqual(['memory.version_added', 'memory.forget_started', 'memory.forgotten']);
+  ).toStrictEqual([
+    'memory.version_added',
+    'memory.version_keyed',
+    'memory.forget_started',
+    'memory.forgotten',
+  ]);
 });
 
 test('#memory.forget completes a forget on the retry after its session cleanup failed', async () => {
@@ -275,7 +280,12 @@ test('#memory.forget begins no forget and cleans up no session for a stale confi
 
   expect(
     records.map((entry) => entry.record.kind).filter((kind) => kind.startsWith('memory.')),
-  ).toStrictEqual(['memory.version_added', 'memory.version_added']);
+  ).toStrictEqual([
+    'memory.version_added',
+    'memory.version_keyed',
+    'memory.version_added',
+    'memory.version_keyed',
+  ]);
 });
 
 test('#memory.forget keeps the item in the index for a stale confirmation', async () => {

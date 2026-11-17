@@ -20,6 +20,7 @@ test('it reads the history and labels of an item before its purge runs', async (
   const item = await read.promise;
 
   expect(item).toStrictEqual({
+    currentText: 'Keeps two hives on the allotment',
     versions: [
       { version: 1, status: 'shredded', isRemoved: true, isBridge: false },
       { version: 2, status: 'readable', isRemoved: false, isBridge: false },

@@ -1,5 +1,5 @@
 import type { Approval, ContentSource, JSONObject, RecordInput } from '@heynixie/log';
-import { writeRecordsInTransaction } from '@heynixie/log';
+import { createRecordKey, writeRecordsInTransaction } from '@heynixie/log';
 import type { Kysely, Transaction } from 'kysely';
 import { writeLabelsInTransaction } from '../label/write-labels-in-transaction';
 import type {
@@ -23,6 +23,8 @@ import { encodeVersionText } from './encode-version-text';
 import type { ReadableVersion } from './read-version';
 import { readVersion } from './read-version';
 import { readVersionKey } from './read-version-key';
+import type { VersionQuoteSeals } from './read-version-quote-seals';
+import { readVersionQuoteSeals } from './read-version-quote-seals';
 import { requireVersionCoreRoom } from './require-version-core-room';
 
 export interface NewVersion {
@@ -45,15 +47,6 @@ export interface VersionLabels {
   readonly change: 'written' | 'backfilled';
 }
 
-// A purge's bridge version holds its text under a key of its own. Each quote of another record
-// sits sealed twice in a record beside the version.
-interface VersionBridge {
-  readonly keyID: string;
-  readonly key: CryptoKey;
-  readonly evidenceQuote: string | null;
-  readonly intentQuote: string | null;
-}
-
 export interface VersionPlan {
   readonly requirement: ItemRequirement | null;
   readonly provenance: Provenance;
@@ -70,7 +63,8 @@ export interface VersionPlan {
 
   readonly newItemID?: string;
 
-  readonly bridge?: VersionBridge;
+  // a purge's bridge version, which no write check covers
+  readonly isBridge?: boolean;
 
   readonly noticeKey?: string;
 
@@ -118,8 +112,19 @@ export async function writeVersionInTransaction(
   const previousSubject = item === null ? null : getRowSubject(item);
   const subject = next.subject ?? plan.subject ?? previousSubject ?? 'owner';
 
+  const textKey = await createRecordKey(parts.context.log, `${ref.itemID}/${crypto.randomUUID()}`);
+
+  const quotes = await readVersionQuoteSeals(parts.context.log, tx, {
+    itemID: ref.itemID,
+    version: ref.version,
+    versionKey: textKey.key,
+    text: next.text,
+    evidence: next.evidence,
+    intentEvidence: next.intentEvidence,
+  });
+
   const sealed = await encodePinnableVersion(parts, tx, {
-    key: plan.bridge?.key ?? versionKey.key,
+    key: textKey.key,
     plan,
     ref,
     revision,
@@ -135,7 +140,15 @@ export async function writeVersionInTransaction(
   await writeRecordsInTransaction(
     tx,
     parts.context.log,
-    buildRecords(parts, { plan, ref, shortID: versionKey.shortID, next, sealed, move }),
+    buildRecords(parts, {
+      plan,
+      ref,
+      shortID: versionKey.shortID,
+      next,
+      sealed,
+      keyed: { keyID: textKey.keyID, ...quotes },
+      move,
+    }),
   );
 
   if (plan.labels !== undefined) {
@@ -186,7 +199,7 @@ async function encodePinnableVersion(
     throw new MemoryStateError(version.ref.itemID, 'pin', version.next.state);
   }
 
-  const isBridge = version.plan.bridge !== undefined;
+  const isBridge = version.plan.isBridge === true;
 
   if (!isBridge && version.next.state === 'active' && (isPinned || version.wasPinned)) {
     const provenance = version.plan.provenance;
@@ -205,7 +218,11 @@ async function encodePinnableVersion(
     });
   }
 
-  return encodeVersionText(version.key, version.ref, version.next.text);
+  return encodeVersionText(version.key, version.ref, {
+    text: version.next.text.text,
+    evidenceQuote: null,
+    intentQuote: null,
+  });
 }
 
 interface SubjectMove {
@@ -219,6 +236,7 @@ interface SealedVersion {
   readonly shortID: string;
   readonly next: NewVersion;
   readonly sealed: string;
+  readonly keyed: { readonly keyID: string } & VersionQuoteSeals;
   readonly move: SubjectMove | null;
 }
 
@@ -283,24 +301,18 @@ function buildRecords(parts: StoreParts, written: SealedVersion): readonly Recor
       : [];
 
   const move = written.move;
-  const bridge = written.plan.bridge;
 
-  const keyed: readonly RecordInput[] =
-    bridge === undefined
-      ? []
-      : [
-          {
-            ...base,
-            kind: 'memory.version_keyed',
-            payload: {
-              itemID: written.ref.itemID,
-              version: written.ref.version,
-              keyID: bridge.keyID,
-              evidenceQuote: bridge.evidenceQuote,
-              intentQuote: bridge.intentQuote,
-            },
-          },
-        ];
+  const keyed: RecordInput = {
+    ...base,
+    kind: 'memory.version_keyed',
+    payload: {
+      itemID: written.ref.itemID,
+      version: written.ref.version,
+      keyID: written.keyed.keyID,
+      evidenceQuote: written.keyed.evidenceQuote,
+      intentQuote: written.keyed.intentQuote,
+    },
+  };
 
   const changed: readonly RecordInput[] =
     move === null
@@ -316,7 +328,7 @@ function buildRecords(parts: StoreParts, written: SealedVersion): readonly Recor
   return [
     ...(approval === undefined ? [] : [approval.record]),
     version,
-    ...keyed,
+    keyed,
     ...marked,
     ...changed,
     ...pinned,

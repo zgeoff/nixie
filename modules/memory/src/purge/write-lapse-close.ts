@@ -1,12 +1,12 @@
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import { memoryEvidencePurgeClosedCodec } from '../record/memory-evidence-purge-closed-codec';
 import type { StoreParts } from '../types';
-import { removeClosedProposalKeys } from '../utils/key/remove-closed-proposal-keys';
 import type { PurgeFacts } from './read-purge-facts';
 import { buildLapseRecords } from './write-item-close';
 
-// Closes the purge of a pending proposal for a new item. The proposal lapses, and the lapse deletes
-// the item's key, so the closing record names no key. The caller holds the delivery lock.
+// Closes the purge of a pending proposal for a new item. The proposal lapses, and the closing record
+// names the item's key, so a retry that finds the record deletes the key and checks the key store
+// again before it counts the purge as done. The caller holds the delivery lock.
 export async function writeLapseClose(parts: StoreParts, facts: PurgeFacts): Promise<void> {
   const log = parts.context.log;
 
@@ -19,7 +19,7 @@ export async function writeLapseClose(parts: StoreParts, facts: PurgeFacts): Pro
         payload: memoryEvidencePurgeClosedCodec.encode({
           recordSequence: facts.recordSequence,
           itemID: facts.itemID,
-          closedKeyIDs: [],
+          closedKeyIDs: [facts.itemID],
           closedRecordKeyIDs: [],
           generationKeyID: null,
           bridgeVersion: null,
@@ -28,6 +28,4 @@ export async function writeLapseClose(parts: StoreParts, facts: PurgeFacts): Pro
       },
     ]);
   });
-
-  await removeClosedProposalKeys(parts);
 }

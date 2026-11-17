@@ -22,6 +22,7 @@ import { apiProjections } from '../api/api-projections';
 import { createAPIApp } from '../api/create-api-app';
 import { createPasskeyState } from '../passkey/passkey-state';
 import { proposalsProjection } from '../proposal/proposals-projection';
+import type { CleanupRecordSessions } from '../types';
 import { defaultAPISettings } from '../utils/default-api-settings';
 
 type APIContext = Parameters<typeof createAPIApp>[0];
@@ -32,6 +33,9 @@ interface TestAPI {
   readonly dataDir: string;
 
   readonly setMemory: (store: ViewMemoryStore) => void;
+
+  // the session cleanup that a running nixie gives a record forget once memory starts
+  readonly setSessionCleanup: (cleanup: CleanupRecordSessions) => void;
   readonly writer: Writer;
   readonly clock: TestClock;
   readonly context: APIContext;
@@ -56,8 +60,14 @@ export async function startTestAPI(
   stack.defer(() => writer.stop());
 
   const definitionStore = buildTestDefinitionStore();
+  const sessions: { cleanup: CleanupRecordSessions | null } = { cleanup: null };
 
-  const context = await createTestContext(writer, settings, definitionStore);
+  const context = await createTestContext(
+    writer,
+    settings,
+    definitionStore,
+    () => sessions.cleanup,
+  );
 
   const served = startTestApp(context);
 
@@ -71,6 +81,9 @@ export async function startTestAPI(
     definitionStore,
     url: served.url,
     setMemory: served.setMemory,
+    setSessionCleanup: (cleanup) => {
+      sessions.cleanup = cleanup;
+    },
   };
 }
 
@@ -78,6 +91,7 @@ async function createTestContext(
   writer: Writer,
   settings: APIContext['settings'],
   definitionStore: TestDefinitionStore,
+  readSessionCleanup: APIContext['readSessionCleanup'],
 ): Promise<APIContext & { readonly clock: TestClock }> {
   const deploymentKey = await crypto.subtle.generateKey({ name: 'AES-KW', length: 256 }, false, [
     'wrapKey',
@@ -120,7 +134,7 @@ async function createTestContext(
     passkeys: createPasskeyState(),
 
     readZone: () => Promise.resolve('UTC'),
-    readSessionCleanup: () => null,
+    readSessionCleanup,
   };
 
   return context;

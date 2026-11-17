@@ -104,6 +104,26 @@ A test asserts that every list the oracle returns is empty. The scenario's own c
 retry delays or the unknown outcome after a kill between an attempt record and its result, sit
 beside the oracle in the test.
 
+## Fault points of the forget
+
+The evidence purge of a [record forget](../memory/store.md#the-evidence-purge) holds at 5 fault
+points, one for each row of its kill table. Each point sits behind the test-build flag. A test arms
+a point, makes the forget or the purge reach it, stops nixie there and starts it again, and checks
+that the purge finishes and the current text of each item still reads.
+
+| Fault point                 | Reached                                                   |
+| --------------------------- | --------------------------------------------------------- |
+| `record.forget.started`     | after the forget's first transaction, before any key goes |
+| `memory.purge.keys_created` | after an item's new keys, before its closing commit       |
+| `memory.purge.closed`       | after the closing commit, before the key deletes          |
+| `memory.purge.keys_removed` | after the key deletes, before `memory.evidence_purged`    |
+| `record.forget.purged`      | after every item's purge, before `record.forgotten`       |
+
+The suite also starts the previous release on the data after each kill, and checks that it finishes
+the purge too, so a rollback by one release in the middle of a forget loses nothing. It runs that
+release's test build, which the e2e lane builds from the release's tag, because the release build
+stops at the parts of a start that need a real sandbox.
+
 ## Coverage
 
 The [crash tests design](../../design/platform/core/crash-tests.md#slice-1-tests) lists the slice 1

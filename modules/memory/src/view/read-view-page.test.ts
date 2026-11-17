@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test';
-import { buildMockProvenance } from '../test-utils/build-mock-provenance';
 import { seedBegunPurge } from '../test-utils/seed-begun-purge';
+import { seedSharedKeyVersion } from '../test-utils/seed-shared-key-version';
 import { startTestMemory } from '../test-utils/start-test-memory';
 import { writeOwnerMessageRecord } from '../test-utils/write-owner-message-record';
 
@@ -282,17 +282,15 @@ test('it marks an item whose current version a purge kept as a bridge, apart fro
     spans: [{ start: 0, end: text.length, source: 'typed' }],
   });
 
-  const first = await ctx.memory.store.remember({
+  const first = await seedSharedKeyVersion(ctx.memory.log, {
     text: 'Keeps bees on the allotment',
     evidence: { recordSequence, start: 0, end: 11 },
     evidenceQuote: 'I keep bees',
-    provenance: buildMockProvenance(),
   });
 
-  await ctx.memory.store.remember({
-    text: 'Keeps two hives on the allotment',
+  await seedSharedKeyVersion(ctx.memory.log, {
     target: first,
-    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+    text: 'Keeps two hives on the allotment',
   });
 
   const edited = await ctx.memory.store.remember({

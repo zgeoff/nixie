@@ -12,6 +12,8 @@ interface PurgedVersion {
 }
 
 export interface PurgedItem {
+  // the text of the newest version the owner can read, or null when none reads
+  readonly currentText: string | null;
   readonly versions: readonly PurgedVersion[];
   readonly labels: Awaited<ReturnType<StartedMemoryStore['writes']['readItemLabels']>>;
 }
@@ -35,6 +37,8 @@ export async function readPurgedItem(
       const labels = await memory.writes.readItemLabels(itemID);
 
       return {
+        currentText:
+          history?.versions.findLast((version) => version.status === 'readable')?.text ?? null,
         versions: (history?.versions ?? []).map((version) => ({
           version: version.version,
           status: version.status,

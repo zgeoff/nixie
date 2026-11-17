@@ -1,5 +1,6 @@
 import { removeRecordKey, withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
-import { recordForgottenCodec, removeImageOfferKeys } from '@heynixie/memory';
+import { recordForgottenCodec, removeImageOfferKeys, writeRecordPurgeSet } from '@heynixie/memory';
+import { waitAtFaultPoint } from '@heynixie/tasks';
 import invariant from 'tiny-invariant';
 import { readForgetStartCalls } from '../forget/read-forget-start-calls';
 import type { APIContext, APITables } from '../types';
@@ -14,6 +15,16 @@ export async function runRecordForgetCleanup(
   ) {
     return;
   }
+
+  if (NIXIE_TEST_BUILD) {
+    await waitAtFaultPoint('record.forget.started', { kind: 'memory', id: String(recordSequence) });
+  }
+
+  // A forget that an earlier release began has no purge set. It gets one before any key goes,
+  // because the set reads the evidence of items that the purge then removes.
+  await withWriteTransaction(context.log.writer, (tx) =>
+    writeRecordPurgeSet(tx, context, recordSequence),
+  );
 
   const startCalls = await readForgetStartCalls(context, recordSequence);
 
@@ -40,6 +51,10 @@ export async function runRecordForgetCleanup(
   // items that quote it, and every session must have rebuilt by then.
   for (const sequence of [...startCalls, recordSequence]) {
     await cleanupSessions({ recordSequence: sequence });
+  }
+
+  if (NIXIE_TEST_BUILD) {
+    await waitAtFaultPoint('record.forget.purged', { kind: 'memory', id: String(recordSequence) });
   }
 
   await writeRecordForgotten(context, { recordSequence, thread });
