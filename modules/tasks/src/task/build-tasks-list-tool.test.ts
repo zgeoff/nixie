@@ -1,10 +1,11 @@
 import { expect, test } from 'bun:test';
-import { writeRecords } from '@heynixie/log';
+import { withWriteTransaction, writeRecords } from '@heynixie/log';
 import { buildMockToolCall, buildMockToolContext } from '@heynixie/tools/test-utils';
 import { recallPageLimitBytes } from '@heynixie/wire';
 import invariant from 'tiny-invariant';
 import { z } from 'zod';
 import { createConversationTask } from '../conversation/create-conversation-task';
+import { withdrawDefinitionTaskInTransaction } from '../definition/withdraw-definition-task-in-transaction';
 import { readInbox } from '../inbox/read-inbox';
 import { writeStepCommit } from '../step/write-step-commit';
 import { seedConversationStep } from '../test-utils/seed-conversation-step';
@@ -786,6 +787,63 @@ test('it pages 200 tasks with long briefs under the byte budget, listing each on
   expect(sizes).toSatisfyAll((size: number) => size <= recallPageLimitBytes);
   expect([...listedIDs].toSorted()).toStrictEqual([...expectedIDs].toSorted());
   expect(briefs).toSatisfyAll((entry: [string, boolean]) => entry[0] === clipped && entry[1]);
+});
+
+test('it pages a task out of force with a task run open, and a started task, listing each once', async () => {
+  const ctx = await setupTest();
+  const starter = await seedConversationStep(ctx.context);
+
+  const startedID = await seedTask(ctx.context, {
+    starter: starter.claim,
+    name: 'Tide check',
+    brief: 'Compare the tide tables.',
+  });
+
+  const withdrawnID = await seedDefinitionTask(ctx, {
+    definitionID: 'water-the-tomatoes',
+    definitionHash: 'hash-1',
+    version: { name: 'Water the tomatoes', brief: 'Water the beds.' },
+  });
+
+  await writeTestTriggerFire(ctx.context, withdrawnID, { definitionHash: 'hash-1' });
+  await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000, taskID: withdrawnID });
+
+  await withWriteTransaction(ctx.writer, (tx) =>
+    withdrawDefinitionTaskInTransaction(tx, ctx.context, 'water-the-tomatoes'),
+  );
+
+  const tool = buildTasksListTool(ctx.context, { directory: [] });
+  const entrySchema = z.object({ id: z.string() });
+
+  const resultSchema = z.object({
+    tasks: z.array(entrySchema),
+    nextCursor: z.string().optional(),
+  });
+
+  const listedIDs: string[] = [];
+  const cursor: { next: string | undefined } = { next: undefined };
+
+  do {
+    const outcome = await tool.run(
+      buildMockToolCall({
+        tool: 'tasks.list',
+        input: cursor.next === undefined ? { limit: 1 } : { limit: 1, cursor: cursor.next },
+      }),
+      buildMockToolContext({ run: { thread: 'conversation' } }),
+    );
+
+    invariant(outcome.status === 'ok', 'the list answers');
+
+    const result = resultSchema.parse(outcome.result);
+
+    listedIDs.push(...result.tasks.map((task) => task.id));
+
+    cursor.next = result.nextCursor;
+  } while (cursor.next !== undefined);
+
+  const expectedIDs = [startedID, withdrawnID].toSorted();
+
+  expect([...listedIDs].toSorted()).toStrictEqual(expectedIDs);
 });
 
 test('it lists one task with its whole brief when given its ID', async () => {

@@ -174,7 +174,6 @@ export function buildTasksListTool(
 
       const tasks = await readTaskList(context, directory, {
         callerID: tool.run.thread,
-        limit: directory.directory.length,
       });
 
       const states = listedStates[input.state ?? 'all'];
