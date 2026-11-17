@@ -14,7 +14,6 @@ function setupTest() {
         input: {
           name: 'Rain gauge: weekly total',
           brief: 'Read the gauge.',
-          target: 'conversation',
           trigger: {
             schedule: { every: 'week', on: 'fri', at: '08:00', zone: 'owner', catchUp: 'once' },
           },
@@ -25,7 +24,6 @@ function setupTest() {
         input: {
           name: 'Call the vet',
           brief: 'Book the "check-up" # not a comment\nand ask about shots.\n',
-          target: 'conversation',
           trigger: { at: '2027-03-09T14:00:00+11:00' },
         },
       },
@@ -34,7 +32,6 @@ function setupTest() {
         input: {
           name: '2027',
           brief: 'null',
-          target: 'task',
           trigger: { schedule: { every: 'day', at: '04:00', zone: 'owner', catchUp: 'once' } },
           tools: [],
         },
@@ -44,7 +41,6 @@ function setupTest() {
         input: {
           name: 'Tidy the garden shed',
           brief: `${'Sort the tools by use and put the rarely used ones on the top shelf. '.repeat(6)}Done.`,
-          target: 'task',
           trigger: { schedule: { every: 'day', at: '21:00', zone: 'owner', catchUp: 'once' } },
           tools: ['time.now'],
           memory: 'read',
@@ -56,7 +52,6 @@ function setupTest() {
         input: {
           name: 'Naïve café check ☕',
           brief: 'Ask how the café is going.',
-          target: 'conversation',
           trigger: { schedule: { every: 'day', at: '09:00', zone: 'owner', catchUp: 'once' } },
         },
       },

@@ -196,8 +196,9 @@ async function writeMoves(tx: Transaction<unknown>): Promise<void> {
 
 type HashMap = ReadonlyMap<string, string>;
 
-// Drops the target from the form, and from a task.yaml that a chat built, which is JSON text. A
-// task.yaml from a repo keeps its text, and the seed refuses it until its line goes.
+// Drops the target from the form, and from a task.yaml that a chat built, which the migration
+// before this one stored as rendered block YAML. A task.yaml from a repo keeps its text, and the
+// seed refuses it until its line goes.
 async function rewriteTaskVersions(
   tx: Transaction<unknown>,
   tasks: readonly Version[],
@@ -236,20 +237,27 @@ function dropTargetFromFiles(version: Version): Record<string, string> {
   let parsed: unknown;
 
   try {
-    parsed = JSON.parse(text);
+    parsed = Bun.YAML.parse(text);
   } catch {
     return { ...version.files };
   }
 
   const mapping = recordSchema.safeParse(parsed);
 
-  if (!mapping.success || !('target' in mapping.data)) {
+  // Only text that is exactly the renderer's output is rewritten, so a hand-written file and its
+  // comments stay as they are.
+  if (!mapping.success || !('target' in mapping.data) || renderTaskYAML(mapping.data) !== text) {
     return { ...version.files };
   }
 
   const { target: _target, ...rest } = mapping.data;
 
-  return { ...version.files, [path]: JSON.stringify(rest) };
+  return { ...version.files, [path]: renderTaskYAML(rest) };
+}
+
+// A frozen copy of the definitions module's task.yaml renderer.
+function renderTaskYAML(mapping: Readonly<Record<string, unknown>>): string {
+  return `${Bun.YAML.stringify(mapping, null, 2).replace(/\n+$/u, '')}\n`;
 }
 
 // A frozen copy of the hash that the definitions module builds from a folder, so a later change to

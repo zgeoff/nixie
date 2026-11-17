@@ -2,7 +2,7 @@ import { writeReminderMoveSettle } from '@heynixie/definitions';
 import { runReminderMoves } from '@heynixie/reminders';
 import type { ServerParts } from '../types';
 
-// Turns the definitions that the 0070 migration staged into reminders. It runs after the seed and
+// Turns the definitions that the reminders migration staged into reminders. It runs after the seed and
 // before the trigger sources, so no source fires an old trigger and a new one for one slot.
 export async function runServerReminderMoves(
   parts: Pick<ServerParts, 'context' | 'log'>,

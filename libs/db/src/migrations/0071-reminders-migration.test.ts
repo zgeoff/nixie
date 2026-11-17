@@ -9,7 +9,7 @@ import { readQueryRows } from '../read-query-rows';
 import { nixieSchema } from '../schema/nixie-schema';
 import { buildSqliteWorkerDialect } from '../sqlite/build-sqlite-worker-dialect';
 import { readRunPrefix } from '../test-utils/read-run-prefix';
-import { remindersMigration } from './0070-reminders-migration';
+import { remindersMigration } from './0071-reminders-migration';
 
 async function setupTest() {
   const stack = new AsyncDisposableStack();
@@ -97,9 +97,9 @@ async function setupTest() {
   };
 }
 
-test('it moves the schema to version 70, which the release before cannot read', () => {
-  expect(nixieSchema.migrations.indexOf(remindersMigration) + 1).toBe(70);
-  expect(nixieSchema.oldestReader).toBeGreaterThanOrEqual(70);
+test('it moves the schema to version 71, which the release before cannot read', () => {
+  expect(nixieSchema.migrations.indexOf(remindersMigration) + 1).toBe(71);
+  expect(nixieSchema.oldestReader).toBeGreaterThanOrEqual(71);
 });
 
 test('it keeps the version of a conversation definition as a reminder version and removes it from the definitions', async () => {
@@ -231,9 +231,7 @@ test('it leaves no stored form or text of a definition with a target key', async
     ctx.taskHash,
     'feed-the-cat',
     { name: 'Feed', brief: 'Feed the cat.', target: 'task' },
-    {
-      'tasks/feed-the-cat/task.yaml': JSON.stringify({ name: 'Feed', target: 'task', brief: 'x' }),
-    },
+    { 'tasks/feed-the-cat/task.yaml': 'name: Feed\ntarget: task\nbrief: x\n' },
   );
 
   await ctx.runMigration();
@@ -247,7 +245,32 @@ test('it leaves no stored form or text of a definition with a target key', async
   expect(rows).toStrictEqual([
     {
       form: '{"brief":"Feed the cat.","name":"Feed"}',
-      files: String.raw`{"tasks/feed-the-cat/task.yaml":"{\"name\":\"Feed\",\"brief\":\"x\"}"}`,
+      files: String.raw`{"tasks/feed-the-cat/task.yaml":"name: Feed\nbrief: x\n"}`,
+    },
+  ]);
+});
+
+test('it keeps the text of a hand-written task.yaml that holds a target line', async () => {
+  const ctx = await setupTest();
+
+  await ctx.writeVersion(
+    ctx.taskHash,
+    'feed-the-cat',
+    { name: 'Feed', brief: 'Feed the cat.', target: 'task' },
+    { 'tasks/feed-the-cat/task.yaml': '# the morning feed\nname: Feed\ntarget: task\nbrief: x\n' },
+  );
+
+  await ctx.runMigration();
+
+  const rows = await readQueryRows(
+    sql`select files from task_definition_versions`,
+    ctx.db,
+    z.object({ files: z.string() }),
+  );
+
+  expect(rows).toStrictEqual([
+    {
+      files: String.raw`{"tasks/feed-the-cat/task.yaml":"# the morning feed\nname: Feed\ntarget: task\nbrief: x\n"}`,
     },
   ]);
 });
