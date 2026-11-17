@@ -8,6 +8,11 @@ import { z } from 'zod';
 import { buildMandateTool, mandateDescription } from './build-mandate-tool';
 import { memoryRuleArguments } from './memory-rule-arguments';
 
+interface NamedArgument {
+  isDeclared: boolean;
+  isNamed: boolean;
+}
+
 async function setupTest() {
   const started = await startTestLog();
 
@@ -134,12 +139,12 @@ test('it leaves a photo write out of memoryGaps for a rule that checks an image 
     ],
   });
 
-  expect(outcome).toMatchObject({
-    status: 'ok',
-    result: {
-      memoryGaps: [{ rule: 1, uncovered: expect.not.arrayContaining(['a write from a photo']) }],
-    },
-  });
+  const gap = z.object({ rule: z.number(), uncovered: z.array(z.string()) });
+  const result = z.object({ memoryGaps: z.array(gap) });
+  const gaps = z.object({ status: z.literal('ok'), result }).parse(outcome).result.memoryGaps;
+
+  expect(gaps).toHaveLength(1);
+  expect(gaps[0]?.uncovered).not.toContain('a write from a photo');
 });
 
 test('it names in its description each argument of a memory tool that a rule can check', async () => {
@@ -164,7 +169,9 @@ test('it names in its description each argument of a memory tool that a rule can
     }));
   });
 
-  expect(named.flat()).toSatisfyAll((entry) => entry.isDeclared && entry.isNamed);
+  const entries: NamedArgument[] = named.flat();
+
+  expect(entries).toSatisfyAll((entry: NamedArgument) => entry.isDeclared && entry.isNamed);
 });
 
 test('it describes the memory example and says that a rule by tool name and one by effect agree', () => {

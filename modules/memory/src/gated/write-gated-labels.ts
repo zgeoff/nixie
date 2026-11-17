@@ -51,8 +51,7 @@ export async function writeGatedLabels(
   });
 
   const labelTexts = collectLabelTexts(request.labels);
-
-  const gate = await pickLabelGate(request, { covering, labelTexts, itemText: current.text.text });
+  const gate = pickLabelGate(request, { covering, labelTexts, itemText: current.text.text });
 
   if (gate.status === 'pass') {
     const ref = await writeLabelEdit(parts, {

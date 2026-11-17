@@ -228,7 +228,7 @@ test('it fails a memory call that runs before the memory store starts', async ()
   ).rejects.toThrowWithMessage(Error, 'a tool call ran before the memory store started');
 });
 
-test('it allows the time tool, the log reader and each memory tool but export and the 3 memory writes, which it leaves to the memory gate, and the starter rules allow a write tool', async () => {
+test('it allows the time tool, the log reader and each memory tool but export and the 4 memory writes, which it leaves to the memory gate, and the starter rules allow a write tool', async () => {
   const ctx = await setupTest();
 
   const registry = buildToolRegistry([
@@ -319,7 +319,7 @@ test('it allows the time tool, the log reader and each memory tool but export an
     'gate',
     'gate',
     'gate',
-    'allow',
+    'gate',
     'allow',
   ]);
 
