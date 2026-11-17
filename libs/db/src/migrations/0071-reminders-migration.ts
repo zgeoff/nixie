@@ -245,14 +245,24 @@ function dropTargetFromFiles(version: Version): Record<string, string> {
   const mapping = recordSchema.safeParse(parsed);
 
   // Only text that is exactly the renderer's output is rewritten, so a hand-written file and its
-  // comments stay as they are.
-  if (!mapping.success || !('target' in mapping.data) || renderTaskYAML(mapping.data) !== text) {
+  // comments stay as they are. YAML parsing turns a lone surrogate into U+FFFD, so the text is
+  // compared well-formed, and the target line is cut from the original text to keep it intact.
+  if (
+    !mapping.success ||
+    !('target' in mapping.data) ||
+    renderTaskYAML(mapping.data) !== text.toWellFormed()
+  ) {
     return { ...version.files };
   }
 
   const { target: _target, ...rest } = mapping.data;
+  const cut = text.replace(/^target: .*\n/mu, '');
 
-  return { ...version.files, [path]: renderTaskYAML(rest) };
+  if (renderTaskYAML(rest) !== cut.toWellFormed()) {
+    return { ...version.files };
+  }
+
+  return { ...version.files, [path]: cut };
 }
 
 // A frozen copy of the definitions module's task.yaml renderer.

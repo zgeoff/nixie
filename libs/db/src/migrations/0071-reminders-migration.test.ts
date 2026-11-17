@@ -250,6 +250,29 @@ test('it leaves no stored form or text of a definition with a target key', async
   ]);
 });
 
+test('it drops the target line of a rendered task.yaml whose brief holds a lone surrogate, and keeps the surrogate', async () => {
+  const ctx = await setupTest();
+
+  await ctx.writeVersion(
+    ctx.taskHash,
+    'feed-the-cat',
+    { name: 'Feed', brief: 'note\uD800end', target: 'task' },
+    { 'tasks/feed-the-cat/task.yaml': 'name: Feed\nbrief: note\uD800end\ntarget: task\n' },
+  );
+
+  await ctx.runMigration();
+
+  const rows = await readQueryRows(
+    sql`select files from task_definition_versions`,
+    ctx.db,
+    z.object({ files: z.string() }),
+  );
+
+  expect(
+    rows.map((row) => z.record(z.string(), z.string()).parse(JSON.parse(row.files))),
+  ).toStrictEqual([{ 'tasks/feed-the-cat/task.yaml': 'name: Feed\nbrief: note\uD800end\n' }]);
+});
+
 test('it keeps the text of a hand-written task.yaml that holds a target line', async () => {
   const ctx = await setupTest();
 
