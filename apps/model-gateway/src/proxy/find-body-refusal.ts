@@ -4,10 +4,12 @@ import { isRecord } from '../utils/is-record';
 // the fields that let OpenRouter bill a model other than the route's model
 const routingFields = ['models', 'fallbacks', 'route', 'plugins'] as const;
 
-// the only value of each field that bills the counted model at the price the route's table holds
+// The values of each field that bill no more than a body without it. Both model APIs treat an
+// absent service_tier as auto, so an explicit auto or null asks for nothing that omitting it would
+// not.
 const standardValues: Readonly<Record<'speed' | 'service_tier', readonly unknown[]>> = {
-  speed: ['standard'],
-  service_tier: ['standard_only', 'default'],
+  speed: ['standard', null],
+  service_tier: ['auto', 'standard_only', 'default', null],
 };
 
 // The refusal of a body that could bill more than the route's model at the route's prices, or null

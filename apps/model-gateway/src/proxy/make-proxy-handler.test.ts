@@ -1903,10 +1903,9 @@ test('it sends on and counts a request that holds the exact pinned provider', as
 
 test.each([
   ['speed fast', { speed: 'fast' }],
-  ['speed null', { speed: null }],
   ['service tier priority', { service_tier: 'priority' }],
-  ['service tier auto', { service_tier: 'auto' }],
   ['service tier flex', { service_tier: 'flex' }],
+  ['service tier scale', { service_tier: 'scale' }],
 ])('it refuses a request with %s and sends nothing on', async (_title, body) => {
   const ctx = await setupTest();
   const answer = await ctx.ask({ body });
@@ -1919,8 +1918,11 @@ test.each([
 
 test.each([
   ['speed standard', { speed: 'standard' }],
+  ['speed null', { speed: null }],
+  ['service tier auto', { service_tier: 'auto' }],
   ['service tier standard_only', { service_tier: 'standard_only' }],
   ['service tier default', { service_tier: 'default' }],
+  ['service tier null', { service_tier: null }],
 ])('it sends on a request with %s', async (_title, body) => {
   const ctx = await setupTest();
   const answer = await ctx.ask({ body });
@@ -2019,5 +2021,69 @@ test.each([
   expect({ status: answer.response.status, upstreamCalls: answer.upstreamCalls }).toStrictEqual({
     status: 200,
     upstreamCalls: 1,
+  });
+});
+
+// Each fixture is a body that a pinned CLI sent through nixie's own guest, with only the
+// environment text, paths and device IDs replaced and the model renamed to the route's.
+test.each([
+  {
+    title: "the Agent SDK CLI's conversation turn",
+    fixture: 'claude-cli-messages.json',
+    api: 'anthropic-messages',
+    path: '/v1/messages?beta=true',
+    headers: { 'x-api-key': 'placeholder' },
+    pin: {},
+  },
+  {
+    title: "the Agent SDK CLI's turn with a provider pin",
+    fixture: 'claude-cli-pinned-provider.json',
+    api: 'anthropic-messages',
+    path: '/v1/messages?beta=true',
+    headers: { 'x-api-key': 'placeholder' },
+    pin: { providerPin: 'z-ai' },
+  },
+  {
+    title: "the Codex CLI's turn",
+    fixture: 'codex-cli-responses.json',
+    api: 'openai-responses',
+    path: '/v1/responses',
+    headers: { authorization: 'Bearer placeholder' },
+    pin: {},
+  },
+] as const)('it sends on and counts the exact body of $title', async (row) => {
+  const ctx = await setupTest();
+  const bodyText = await readFile(join(import.meta.dir, '..', 'fixtures', row.fixture), 'utf8');
+
+  const sent: string[] = [];
+
+  const handler = await ctx.makeHandler({
+    capture: null,
+    api: row.api,
+    ...row.pin,
+    sendUpstream: async (_url, init) => {
+      const text = await new Response(init.body).text();
+
+      sent.push(text);
+
+      return Response.json({ id: 'reply_1', usage: { input_tokens: 10, output_tokens: 2 } });
+    },
+  });
+
+  const response = await handler(
+    new Request(`http://proxy.test/preview${row.path}`, {
+      method: 'POST',
+      headers: row.headers,
+      body: bodyText,
+    }),
+  );
+
+  const store = await createCounterStore(ctx.storePath);
+  const totals = await store.read();
+
+  expect({ status: response.status, sent, totals }).toStrictEqual({
+    status: 200,
+    sent: [bodyText],
+    totals: { dollars: 0.00002, tokens: 12, lost: false },
   });
 });

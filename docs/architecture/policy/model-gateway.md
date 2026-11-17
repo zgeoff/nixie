@@ -43,8 +43,10 @@ else. It refuses a request whose body holds:
 - `models`, `fallbacks`, `route` or `plugins`, which let the model API run another model;
 - `provider`, unless the route sets `providerPin` and the field is exactly
   `{ "order": ["<providerPin>"], "allow_fallbacks": false }`;
-- `speed` or `service_tier` with any value but the standard one, `standard` for `speed` and
-  `standard_only` or `default` for `service_tier`, because the price table holds no premium tier;
+- `speed` with any value but `standard` or null, or `service_tier` with any value but `auto`,
+  `standard_only`, `default` or null, because the price table holds no premium tier. Both model APIs
+  treat an absent `service_tier` as `auto`, so each allowed value bills no more than a body without
+  the field;
 - a `tools` entry that has a `model` key or a `type` that starts with `advisor_` or `openrouter:`,
   which run a second model. The check reads the `tools` entries and nothing else, because a tool
   call's input can hold a `model` key of its own.

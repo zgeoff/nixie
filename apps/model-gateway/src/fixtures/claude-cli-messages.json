@@ -1,0 +1,92 @@
+{
+  "model": "model-small",
+  "messages": [
+    {
+      "role": "user",
+      "content": "Adhaero sollers calcar contego."
+    },
+    {
+      "role": "system",
+      "content": [
+        {
+          "type": "text",
+          "text": "# Environment\nYou have been invoked in a test sandbox.",
+          "cache_control": {
+            "type": "ephemeral"
+          }
+        }
+      ]
+    }
+  ],
+  "system": [
+    {
+      "type": "text",
+      "text": "x-anthropic-billing-header: cc_version=2.1.322.21f; cc_entrypoint=sdk-ts;"
+    },
+    {
+      "type": "text",
+      "text": "You are a Claude agent, built on Anthropic's Claude Agent SDK.",
+      "cache_control": {
+        "type": "ephemeral"
+      }
+    },
+    {
+      "type": "text",
+      "text": "Ambulo tibi temeritas arto supplanto trucido.",
+      "cache_control": {
+        "type": "ephemeral"
+      }
+    }
+  ],
+  "tools": [
+    {
+      "name": "mcp__nixie__note_read",
+      "description": "Reads a note by its name.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    {
+      "name": "DeferredToolPlaceholder",
+      "description": "Reserved placeholder that keeps deferred tool loading active; never call this tool.",
+      "input_schema": {
+        "type": "object",
+        "properties": {}
+      },
+      "defer_loading": true
+    },
+    {
+      "name": "mcp__nixie__note_wait",
+      "description": "Waits for a note to change.",
+      "input_schema": {
+        "type": "object",
+        "properties": {}
+      }
+    }
+  ],
+  "metadata": {
+    "user_id": "{\"device_id\":\"4f1c4f1c4f1c4f1c4f1c4f1c4f1c4f1c4f1c4f1c4f1c4f1c4f1c4f1c4f1c4f1c\",\"account_uuid\":\"\",\"session_id\":\"78b8b471-ac8f-469a-966d-2abd11e4eece\"}"
+  },
+  "max_tokens": 32000,
+  "thinking": {
+    "type": "adaptive",
+    "display": "summarized"
+  },
+  "context_management": {
+    "edits": [
+      {
+        "type": "clear_thinking_20251015",
+        "keep": "all"
+      }
+    ]
+  },
+  "output_config": {
+    "effort": "medium"
+  },
+  "stream": true
+}
