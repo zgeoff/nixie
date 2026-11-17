@@ -171,7 +171,6 @@ test('it lists a started task whose creation record names a brief message and ho
         replyTo: null,
         onBehalfOf: [],
         hop: 0,
-        unlisted: [],
         hopLimit: 6,
         wake: true,
         woke: true,

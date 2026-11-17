@@ -18,7 +18,6 @@ test("it renders a task's message in the task-message envelope and never in an o
       replyTo: null,
       onBehalfOf: ['48212'],
       hop: 2,
-      unlisted: [],
       hopLimit: 20,
       wake: true,
       woke: true,
