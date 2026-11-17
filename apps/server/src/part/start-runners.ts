@@ -1,5 +1,7 @@
 import { startActionRunners } from '@heynixie/actions';
 import { toErrorFields } from '@heynixie/logger';
+import type { SpendContext } from '@heynixie/spend';
+import { readSpendStop } from '@heynixie/spend';
 import type { RunStep } from '@heynixie/tasks';
 import { startTaskClaimPools } from '@heynixie/tasks';
 import { buildToolRegistry } from '@heynixie/tools';
@@ -14,6 +16,7 @@ export async function startRunners(parts: ServerParts, runStep: RunStep): Promis
     parts.onFailure(error);
   };
 
+  const spend = parts.apiContext.spend;
   const logStepError = makeStepErrorLogger(parts.log);
   const markConversationFailure = makeConversationFailureMarker(parts.state);
 
@@ -29,6 +32,7 @@ export async function startRunners(parts: ServerParts, runStep: RunStep): Promis
     },
     onError,
     logger: parts.log,
+    ...(spend === undefined ? {} : { probeSpendStop: () => probeSpendStopped(spend) }),
     size: parts.config.tasks.runners,
   });
 
@@ -53,4 +57,10 @@ export async function startRunners(parts: ServerParts, runStep: RunStep): Promis
   await parts.cleanup.defer(async () => {
     await Promise.all([tasks.stop(), actions.stop()]);
   });
+}
+
+async function probeSpendStopped(spend: SpendContext): Promise<boolean> {
+  const stop = await readSpendStop(spend);
+
+  return stop.state !== 'clear';
 }

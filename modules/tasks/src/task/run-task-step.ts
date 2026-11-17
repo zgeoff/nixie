@@ -8,6 +8,7 @@ import { readDefinitionRunFacts } from '../run/read-definition-run-facts';
 import { readOpenRun } from '../run/read-open-run';
 import type { TaskRun } from '../run/types';
 import type { StepErrorOptions } from '../step/build-step-failure-plan';
+import { isBeforeTurnFailure } from '../step/is-before-turn-failure';
 import { startStepControlWatch } from '../step/start-step-control-watch';
 import { writeStepCommit } from '../step/write-step-commit';
 import { writeStepError } from '../step/write-step-error';
@@ -20,6 +21,9 @@ export interface TaskStepOptions extends StepErrorOptions {
   readonly runStep: RunStep;
   readonly leaseMs: number;
   readonly logger: Logger;
+
+  // set with spendStop: whether the spending stop stands, read after a step failed
+  readonly probeSpendStop?: () => Promise<boolean>;
 }
 
 export async function runTaskStep(
@@ -37,9 +41,24 @@ export async function runTaskStep(
       interrupt: controls.interrupted,
     });
 
-    return failure === null
-      ? null
-      : await writeStepError(context, claim, { ...options, error: failure.error });
+    if (failure === null) {
+      return null;
+    }
+
+    const isStopped = await probeFailureOfSpendStop(failure.error, options);
+
+    if (isStopped) {
+      await writeStepCommit(context, claim, {
+        next: 'continue',
+        records: [],
+        acknowledged: [],
+        sessionBoundary: await readSessionBoundary(context, claim.lease.workID),
+      });
+
+      return null;
+    }
+
+    return await writeStepError(context, claim, { ...options, error: failure.error });
   } catch (error) {
     if (!(error instanceof LeaseLostError)) {
       throw error;
@@ -147,4 +166,15 @@ async function runOrHoldStep(
 
 function buildReportOnlyResult(sessionBoundary: string | null): StepResult {
   return { next: 'wait', records: [], acknowledged: [], sessionBoundary };
+}
+
+// A step that ran a model turn and failed while the stop stands failed because of it, such as at the
+// gateway's refusal. It counts no step error, and the task keeps its state and its work for the next
+// claim, which comes after the stop clears.
+function probeFailureOfSpendStop(error: unknown, options: TaskStepOptions): Promise<boolean> {
+  if (options.probeSpendStop === undefined || isBeforeTurnFailure(error)) {
+    return Promise.resolve(false);
+  }
+
+  return options.probeSpendStop();
 }

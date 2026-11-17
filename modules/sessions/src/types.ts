@@ -4,6 +4,7 @@ import type { Logger } from '@heynixie/logger';
 import type { Harness, ResolvedProfile } from '@heynixie/models';
 import type { PromptOverrides } from '@heynixie/prompts';
 import type { GuestCommand, Sandbox } from '@heynixie/sandbox';
+import type { SpendContext } from '@heynixie/spend';
 import type { StepInput, TaskMessaging, TaskReport, TasksContext } from '@heynixie/tasks';
 import type {
   ApprovedCallRequest,
@@ -191,6 +192,9 @@ export interface ConversationRun {
   // The approved calls of the tools that run inside the turn, which the step runs before its turn.
   // Absent, no step runs one.
   readonly inStepActions?: InStepActions;
+
+  // set with spendStop: the step checks the turn count and the stop before its turn
+  readonly spend?: SpendContext;
   readonly model: ToolRunModel;
   readonly command: GuestCommand;
 

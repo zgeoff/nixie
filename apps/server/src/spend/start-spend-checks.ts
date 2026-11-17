@@ -14,18 +14,15 @@ export interface SpendChecksInputs {
 }
 
 // With spendStop set, the gateway counts every model request, so the server checks it before any
-// work starts. Without it, nothing runs.
-export async function startSpendChecks(
-  inputs: SpendChecksInputs,
-  signal: AbortSignal,
-): Promise<void> {
+// work starts. Without it, nothing runs. The result says whether the gateway got its limits.
+export function startSpendChecks(inputs: SpendChecksInputs): Promise<'off' | 'sent' | 'unsent'> {
   if (inputs.spend === null) {
-    return;
+    return Promise.resolve('off');
   }
 
   const limits = inputs.config.models.limits;
 
-  await startSpendLimits({
+  return startSpendLimits({
     gateway: inputs.spend.gateway,
     limits: {
       day: { dollars: limits.day.dollars, tokens: limits.day.tokens },
@@ -35,7 +32,6 @@ export async function startSpendChecks(
     credentialCount: Object.keys(inputs.secrets.models.model_credentials ?? {}).length,
     pathProfileIDs: collectPathProfileIDs(inputs.config.models.profiles),
     log: inputs.log,
-    signal,
   });
 }
 

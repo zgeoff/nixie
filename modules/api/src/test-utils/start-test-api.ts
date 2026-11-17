@@ -7,6 +7,8 @@ import { definitionTaskProjections } from '@heynixie/definitions/test-utils';
 import type { Writer } from '@heynixie/log';
 import { logProjections, startWriter } from '@heynixie/log';
 import { memoryProjections } from '@heynixie/memory';
+import { spendProjections } from '@heynixie/spend';
+import { buildStubSpendGateway } from '@heynixie/spend/test-utils';
 import type { ReadDefinitionVersion } from '@heynixie/tasks';
 import { tasksProjections } from '@heynixie/tasks';
 import type { TestDefinitionStore } from '@heynixie/tasks/test-utils';
@@ -41,11 +43,20 @@ interface TestAPI {
   readonly context: APIContext;
   readonly definitionStore: TestDefinitionStore;
 
+  // the stub gateway, which the context holds only when the test turns the spending stop on
+  readonly spendGateway: ReturnType<typeof buildStubSpendGateway>;
+
   readonly url: string;
+}
+
+interface TestAPIOptions {
+  // gives the context a spending stop on a stub gateway, with turn limits of 3 a day (cap 5) and 4 a month
+  readonly isSpendOn?: boolean;
 }
 
 export async function startTestAPI(
   settings: APIContext['settings'] = defaultAPISettings,
+  options: TestAPIOptions = {},
 ): Promise<TestAPI> {
   const stack = new AsyncDisposableStack();
 
@@ -61,13 +72,12 @@ export async function startTestAPI(
 
   const definitionStore = buildTestDefinitionStore();
   const sessions: { cleanup: CleanupRecordSessions | null } = { cleanup: null };
+  const spendGateway = buildStubSpendGateway();
 
-  const context = await createTestContext(
-    writer,
-    settings,
-    definitionStore,
-    () => sessions.cleanup,
-  );
+  const context = await createTestContext(writer, settings, definitionStore, {
+    readSessionCleanup: () => sessions.cleanup,
+    spendGateway: options.isSpendOn === true ? spendGateway : null,
+  });
 
   const served = startTestApp(context);
 
@@ -78,6 +88,7 @@ export async function startTestAPI(
     writer,
     clock: context.clock,
     context,
+    spendGateway,
     definitionStore,
     url: served.url,
     setMemory: served.setMemory,
@@ -87,11 +98,16 @@ export async function startTestAPI(
   };
 }
 
+interface TestContextDeps {
+  readonly readSessionCleanup: APIContext['readSessionCleanup'];
+  readonly spendGateway: ReturnType<typeof buildStubSpendGateway> | null;
+}
+
 async function createTestContext(
   writer: Writer,
   settings: APIContext['settings'],
   definitionStore: TestDefinitionStore,
-  readSessionCleanup: APIContext['readSessionCleanup'],
+  deps: TestContextDeps,
 ): Promise<APIContext & { readonly clock: TestClock }> {
   const deploymentKey = await crypto.subtle.generateKey({ name: 'AES-KW', length: 256 }, false, [
     'wrapKey',
@@ -104,22 +120,37 @@ async function createTestContext(
     return stored ?? definitionStore.readDefinitionVersion(db, hash);
   };
 
+  const log = {
+    writer,
+    deploymentKey,
+    projections: [
+      ...logProjections,
+      ...tasksProjections,
+      ...definitionTaskProjections,
+      actionsProjection,
+      ...apiProjections,
+      ...memoryProjections,
+      proposalsProjection,
+      ...spendProjections,
+    ],
+  };
+
   const context = {
-    log: {
-      writer,
-      deploymentKey,
-      projections: [
-        ...logProjections,
-        ...tasksProjections,
-        ...definitionTaskProjections,
-        actionsProjection,
-        ...apiProjections,
-        ...memoryProjections,
-        proposalsProjection,
-      ],
-    },
+    log,
     clock: buildTestClock(1_000_000),
-    definitions: () => ({ snapshotHash: 'sha256:test' }),
+    definitions: readTestDefinitions,
+    ...(deps.spendGateway === null
+      ? {}
+      : {
+          spend: {
+            gateway: deps.spendGateway,
+            log,
+            clock: writer.clock,
+            zone: 'UTC',
+            limits: { dayTurns: 3, dayTurnCap: 5, monthTurns: 4 },
+            definitions: readTestDefinitions,
+          },
+        }),
     runSettings: buildTestRunSettings(),
     readDefinitionNotices: (db: Kysely<unknown>, changeIDs: readonly string[]) =>
       readDefinitionNotices(db, changeIDs, {
@@ -134,10 +165,14 @@ async function createTestContext(
     passkeys: createPasskeyState(),
 
     readZone: () => Promise.resolve('UTC'),
-    readSessionCleanup,
+    readSessionCleanup: deps.readSessionCleanup,
   };
 
   return context;
+}
+
+function readTestDefinitions() {
+  return { snapshotHash: 'sha256:test' };
 }
 
 function startTestApp(

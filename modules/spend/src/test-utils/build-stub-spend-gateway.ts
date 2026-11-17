@@ -38,3 +38,21 @@ export function buildStubSpendGateway() {
     removeSandbox: mock<SpendGateway['removeSandbox']>(() => Promise.resolve({ kind: 'ok' })),
   } satisfies SpendGateway;
 }
+
+// The day's dollars passed the limit of 60, and the gateway reports the trip.
+export function buildTrippedGatewayStatus(): GatewayStatus {
+  const status = buildMockGatewayStatus();
+
+  return buildMockGatewayStatus({
+    periods: {
+      day: {
+        ...status.periods.day,
+        start: '2026-10-16',
+        resetsAt: '2026-10-17T00:00:00Z',
+        spent: { dollars: 61.2, tokens: 51_200_000 },
+      },
+      month: status.periods.month,
+    },
+    tripped: { period: 'day', measure: 'dollars', at: '2026-10-16T08:42:07Z' },
+  });
+}

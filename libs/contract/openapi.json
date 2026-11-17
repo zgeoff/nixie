@@ -4549,6 +4549,31 @@
                       "type": "object",
                       "properties": {
                         "defined": {
+                          "const": true
+                        },
+                        "code": {
+                          "const": "SPEND_STOP_STANDS"
+                        },
+                        "status": {
+                          "const": 409
+                        },
+                        "message": {
+                          "type": "string",
+                          "default": "Model spending is stopped, and nixie resumes when the stop clears"
+                        },
+                        "data": {}
+                      },
+                      "required": [
+                        "defined",
+                        "code",
+                        "status",
+                        "message"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "defined": {
                           "const": false
                         },
                         "code": {
@@ -16667,6 +16692,449 @@
                         "message": {
                           "type": "string",
                           "default": "The client action ID belongs to a different action"
+                        },
+                        "data": {}
+                      },
+                      "required": [
+                        "defined",
+                        "code",
+                        "status",
+                        "message"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "defined": {
+                          "const": true
+                        },
+                        "code": {
+                          "const": "SPEND_STOP_STANDS"
+                        },
+                        "status": {
+                          "const": 409
+                        },
+                        "message": {
+                          "type": "string",
+                          "default": "Model spending is stopped, and nixie resumes when the stop clears"
+                        },
+                        "data": {}
+                      },
+                      "required": [
+                        "defined",
+                        "code",
+                        "status",
+                        "message"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "defined": {
+                          "const": false
+                        },
+                        "code": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "number"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "data": {}
+                      },
+                      "required": [
+                        "defined",
+                        "code",
+                        "status",
+                        "message"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/spend/read": {
+      "post": {
+        "operationId": "spend.read",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "state": {
+                          "const": "clear"
+                        }
+                      },
+                      "required": [
+                        "state"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "state": {
+                          "const": "unreachable"
+                        }
+                      },
+                      "required": [
+                        "state"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "state": {
+                          "const": "lost"
+                        }
+                      },
+                      "required": [
+                        "state"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "state": {
+                          "const": "tripped"
+                        },
+                        "period": {
+                          "enum": [
+                            "day",
+                            "month"
+                          ],
+                          "type": "string"
+                        },
+                        "start": {
+                          "type": "string"
+                        },
+                        "measure": {
+                          "enum": [
+                            "dollars",
+                            "tokens",
+                            "turns"
+                          ],
+                          "type": "string"
+                        },
+                        "limit": {
+                          "type": "number"
+                        },
+                        "spent": {
+                          "type": "number"
+                        },
+                        "at": {
+                          "type": "string",
+                          "format": "date-time",
+                          "x-native-type": "date"
+                        },
+                        "resetsAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "x-native-type": "date"
+                        },
+                        "canRaise": {
+                          "type": "boolean"
+                        },
+                        "limits": {
+                          "type": "object",
+                          "properties": {
+                            "dollars": {
+                              "type": "number"
+                            },
+                            "tokens": {
+                              "type": "number"
+                            },
+                            "turns": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "dollars",
+                            "tokens",
+                            "turns"
+                          ]
+                        },
+                        "used": {
+                          "type": "object",
+                          "properties": {
+                            "dollars": {
+                              "type": "number"
+                            },
+                            "tokens": {
+                              "type": "number"
+                            },
+                            "turns": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "dollars",
+                            "tokens",
+                            "turns"
+                          ]
+                        },
+                        "cap": {
+                          "type": "object",
+                          "properties": {
+                            "dollars": {
+                              "type": "number"
+                            },
+                            "tokens": {
+                              "type": "number"
+                            },
+                            "turns": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "dollars",
+                            "tokens",
+                            "turns"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "state",
+                        "period",
+                        "start",
+                        "measure",
+                        "limit",
+                        "spent",
+                        "at",
+                        "resetsAt",
+                        "canRaise",
+                        "limits",
+                        "used",
+                        "cap"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "401",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "defined": {
+                          "const": true
+                        },
+                        "code": {
+                          "const": "UNAUTHORIZED"
+                        },
+                        "status": {
+                          "const": 401
+                        },
+                        "message": {
+                          "type": "string",
+                          "default": "The device session is missing, lapsed or revoked"
+                        },
+                        "data": {}
+                      },
+                      "required": [
+                        "defined",
+                        "code",
+                        "status",
+                        "message"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "defined": {
+                          "const": false
+                        },
+                        "code": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "number"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "data": {}
+                      },
+                      "required": [
+                        "defined",
+                        "code",
+                        "status",
+                        "message"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/spend/raise": {
+      "post": {
+        "operationId": "spend.raise",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "start": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                  },
+                  "dollars": {
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  },
+                  "tokens": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991,
+                    "exclusiveMinimum": 0
+                  },
+                  "turns": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991,
+                    "exclusiveMinimum": 0
+                  }
+                },
+                "required": [
+                  "start",
+                  "dollars",
+                  "tokens",
+                  "turns"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "state": {
+                          "const": "clear"
+                        }
+                      },
+                      "required": [
+                        "state"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "state": {
+                          "const": "stopped"
+                        }
+                      },
+                      "required": [
+                        "state"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "error": {
+                          "const": "above_cap"
+                        },
+                        "cap": {
+                          "type": "object",
+                          "properties": {
+                            "dollars": {
+                              "type": "number"
+                            },
+                            "tokens": {
+                              "type": "number"
+                            },
+                            "turns": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "dollars",
+                            "tokens",
+                            "turns"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "error",
+                        "cap"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "error": {
+                          "const": "period_ended"
+                        }
+                      },
+                      "required": [
+                        "error"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "error": {
+                          "const": "unreachable"
+                        }
+                      },
+                      "required": [
+                        "error"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "401",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "defined": {
+                          "const": true
+                        },
+                        "code": {
+                          "const": "UNAUTHORIZED"
+                        },
+                        "status": {
+                          "const": 401
+                        },
+                        "message": {
+                          "type": "string",
+                          "default": "The device session is missing, lapsed or revoked"
                         },
                         "data": {}
                       },

@@ -5,6 +5,7 @@ import { readQueryRows } from '../read-query-rows';
 import { closeToOlderReaders } from './close-to-older-readers';
 import { pauseMigrationVersion } from './pause-migration-version';
 import { reopenToOlderReaders } from './reopen-to-older-readers';
+import { spendMigrationVersion } from './spend-migration-version';
 
 export async function syncPauseGate(db: Kysely<unknown>): Promise<void> {
   await db.transaction().execute(async (tx) => {
@@ -19,13 +20,22 @@ export async function syncPauseGate(db: Kysely<unknown>): Promise<void> {
     }
 
     const pauses = await readQueryRows(
-      sql`select id from nixie_pause`,
+      sql`select cause from nixie_pause`,
       tx,
-      z.object({ id: z.number() }),
+      z.object({ cause: z.string() }),
     );
 
-    await (pauses.length === 0
-      ? reopenToOlderReaders(tx)
-      : closeToOlderReaders(tx, pauseMigrationVersion));
+    const [pause] = pauses;
+
+    if (pause === undefined) {
+      await reopenToOlderReaders(tx);
+
+      return;
+    }
+
+    // A spending pause holds the database closed to the release before the spending stop's tables.
+    const reader = pause.cause === 'spending' ? spendMigrationVersion : pauseMigrationVersion;
+
+    await closeToOlderReaders(tx, reader);
   });
 }

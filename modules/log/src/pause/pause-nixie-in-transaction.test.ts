@@ -1,5 +1,10 @@
 import { expect, test } from 'bun:test';
-import { nixieSchema, pauseMigrationVersion, readQueryRows } from '@heynixie/db';
+import {
+  nixieSchema,
+  pauseMigrationVersion,
+  readQueryRows,
+  spendMigrationVersion,
+} from '@heynixie/db';
 import { sql } from 'kysely';
 import { z } from 'zod';
 import { withWriteTransaction } from '../record/with-write-transaction';
@@ -143,6 +148,32 @@ test('it closes the reader gate with the pause', async () => {
   expect(gate).toStrictEqual([
     {
       oldest_reader: Math.max(nixieSchema.oldestReader, pauseMigrationVersion),
+      open_oldest_reader: nixieSchema.oldestReader,
+    },
+  ]);
+});
+
+test('it closes the reader gate to the spending version with a spending pause', async () => {
+  const ctx = await setupTest();
+
+  await withWriteTransaction(ctx.writer, (tx) =>
+    pauseNixieInTransaction(tx, ctx.log, {
+      cause: 'spending',
+      recoveryID: null,
+      by: null,
+      definitions: ctx.definitions,
+    }),
+  );
+
+  const gate = await readQueryRows(
+    sql`select oldest_reader, open_oldest_reader from schema_version`,
+    ctx.writer.db,
+    z.object({ oldest_reader: z.number(), open_oldest_reader: z.number().nullable() }),
+  );
+
+  expect(gate).toStrictEqual([
+    {
+      oldest_reader: Math.max(nixieSchema.oldestReader, spendMigrationVersion),
       open_oldest_reader: nixieSchema.oldestReader,
     },
   ]);

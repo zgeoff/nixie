@@ -7,6 +7,7 @@ import type { CheckedTaskControlResult } from '../kept/write-checked-task-contro
 import { writeCheckedTaskControl } from '../kept/write-checked-task-control';
 import { writeCheckedTaskMark } from '../kept/write-checked-task-mark';
 import { requireCaller } from '../memory/require-caller';
+import { readResumeRefusal } from '../spend/read-resume-refusal';
 import type { APIContext } from '../types';
 import { apiImplementer } from '../utils/api-implementer';
 import { readHeadSequence } from '../utils/read-head-sequence';
@@ -72,7 +73,17 @@ export function createTaskProcedures(context: APIContext) {
     }),
 
     pause: tasks.pause.handler((options) => runControl(context, 'pause', options)),
-    resume: tasks.resume.handler((options) => runControl(context, 'resume', options)),
+    resume: tasks.resume.handler(async (options) => {
+      await requireCaller(context, options.context.sessionToken, options.errors.UNAUTHORIZED);
+
+      const refusal = await readResumeRefusal(context);
+
+      if (refusal !== null) {
+        throw options.errors.SPEND_STOP_STANDS({ message: refusal });
+      }
+
+      return runControl(context, 'resume', options);
+    }),
     stop: tasks.stop.handler((options) => runControl(context, 'stop', options)),
     restart: tasks.restart.handler((options) => runControl(context, 'restart', options)),
     interrupt: tasks.interrupt.handler((options) => runControl(context, 'interrupt', options)),

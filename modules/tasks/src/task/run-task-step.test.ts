@@ -3,6 +3,7 @@ import { readRecords } from '@heynixie/log';
 import { waitForCondition } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
 import { createConversationTask } from '../conversation/create-conversation-task';
+import { markBeforeTurnFailure } from '../step/mark-before-turn-failure';
 import { startTestTasks } from '../test-utils/start-test-tasks';
 import type { StepInput, StepResult, TasksTables } from '../types';
 import { claimTask } from './projection/claim-task';
@@ -440,4 +441,144 @@ test('it tells a running step that the user interrupted it, and commits what the
 
   expect(seen.isSignalAborted).toBeFalse();
   expect(task).toStrictEqual({ state: 'waiting', committed_steps: 1 });
+});
+
+test('it counts no step error when the step failed while the spending stop stands, and keeps the task ready with its inbox unread', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  await writeInboxRecords(ctx.context, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'what is on today?' },
+    },
+  ]);
+
+  const claim = await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  invariant(claim);
+
+  const errored = await runTaskStep(ctx.context, claim, {
+    runStep: () => Promise.reject(new Error('the model API refused the request')),
+    probeSpendStop: () => Promise.resolve(true),
+    leaseMs: 60_000,
+    logger: () => {},
+    maxStepErrors: 3,
+    retryDelayMs: 30_000,
+    maxRetryDelayMs: 300_000,
+  });
+
+  const task = await ctx.db.selectFrom('tasks').selectAll().executeTakeFirstOrThrow();
+
+  const kinds = await readRecords(ctx.context.log, {
+    afterSequence: 0,
+    kinds: ['task.step_errored'],
+  });
+
+  expect(errored).toBeNull();
+  expect(kinds).toStrictEqual([]);
+  expect(task).toMatchObject({ state: 'ready', step_errors: 0, read_cursor: 0 });
+});
+
+test('it counts the step error of a failed step when the stop does not stand', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  await writeInboxRecords(ctx.context, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'what is on today?' },
+    },
+  ]);
+
+  const claim = await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  invariant(claim);
+
+  await runTaskStep(ctx.context, claim, {
+    runStep: () => Promise.reject(new Error('the model API refused the request')),
+    probeSpendStop: () => Promise.resolve(false),
+    leaseMs: 60_000,
+    logger: () => {},
+    maxStepErrors: 3,
+    retryDelayMs: 30_000,
+    maxRetryDelayMs: 300_000,
+  });
+
+  const task = await ctx.db.selectFrom('tasks').selectAll().executeTakeFirstOrThrow();
+
+  expect(task).toMatchObject({ state: 'ready', step_errors: 1 });
+});
+
+test('it counts the step error of a step that failed before its model turn, though the stop stands', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  await writeInboxRecords(ctx.context, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'what is on today?' },
+    },
+  ]);
+
+  const claim = await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  invariant(claim);
+
+  const failure = new Error('the approved call failed');
+
+  markBeforeTurnFailure(failure);
+
+  await runTaskStep(ctx.context, claim, {
+    runStep: () => Promise.reject(failure),
+    probeSpendStop: () => Promise.resolve(true),
+    leaseMs: 60_000,
+    logger: () => {},
+    maxStepErrors: 3,
+    retryDelayMs: 30_000,
+    maxRetryDelayMs: 300_000,
+  });
+
+  const task = await ctx.db.selectFrom('tasks').selectAll().executeTakeFirstOrThrow();
+
+  expect(task).toMatchObject({ state: 'ready', step_errors: 1 });
+});
+
+test('it reads no stop for a task step with no spend check', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  await writeInboxRecords(ctx.context, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'what is on today?' },
+    },
+  ]);
+
+  const claim = await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  invariant(claim);
+
+  const errored = await runTaskStep(ctx.context, claim, {
+    runStep: () => Promise.reject(new Error('the model API refused the request')),
+    leaseMs: 60_000,
+    logger: () => {},
+    maxStepErrors: 3,
+    retryDelayMs: 30_000,
+    maxRetryDelayMs: 300_000,
+  });
+
+  expect(errored).toMatchObject({ errors: 1 });
 });

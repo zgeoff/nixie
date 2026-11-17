@@ -3,6 +3,7 @@ import type { JSONObject, RecordKinds } from '@heynixie/log';
 import { readRecords, writeRecords } from '@heynixie/log';
 import { modelsConfigSchema } from '@heynixie/models';
 import { sandboxCreatedCodec } from '@heynixie/sandbox';
+import { spendProjections } from '@heynixie/spend';
 import { buildStubSpendGateway } from '@heynixie/spend/test-utils';
 import { buildTestClock, waitForCondition } from '@heynixie/testing';
 import type { ToolOutcome, ToolStepHold } from '@heynixie/tools';
@@ -30,6 +31,9 @@ interface SetupConfig {
 
   readonly limits?: Readonly<Record<string, number>>;
   readonly workerRuns?: { readonly max: number; readonly whenFull: 'wait' | 'error' };
+
+  // the spending stop's day turn limit; absent means no spending stop
+  readonly spendDayTurns?: number;
 }
 
 async function setupTest(config: SetupConfig = {}) {
@@ -40,7 +44,11 @@ async function setupTest(config: SetupConfig = {}) {
     run: () => Promise.resolve({ status: 'ok', result: { text: 'Found 3 cafes.' } }),
   });
 
-  const host = await startTestSessionHost({ clock, tools: [fetchTool] });
+  const host = await startTestSessionHost({
+    clock,
+    tools: [fetchTool],
+    projections: spendProjections,
+  });
 
   const prices = { input: 3, cache_write: 3.75, cache_write_1h: 6, cached_input: 0.3, output: 15 };
 
@@ -134,6 +142,9 @@ async function setupTest(config: SetupConfig = {}) {
 
   const gateway = buildStubSpendGateway();
 
+  // each spending check reads the time once, so a test can wait for a call's check
+  const spendChecks = { count: 0 };
+
   const worker = await startWorkerTool({
     models,
     secrets: { model_credentials: { anthropic: 'not-a-real-key' } },
@@ -159,6 +170,25 @@ async function setupTest(config: SetupConfig = {}) {
     }),
     ...(config.workerRuns === undefined ? {} : { workerRuns: config.workerRuns }),
     ...(config.isGatewayOn === true ? { gateway } : {}),
+    ...(config.spendDayTurns === undefined
+      ? {}
+      : {
+          spend: {
+            gateway,
+            log: host.context.log,
+            clock: {
+              now: () => {
+                spendChecks.count += 1;
+
+                return clock.now();
+              },
+              sleep: clock.sleep,
+            },
+            zone: 'UTC',
+            limits: { dayTurns: config.spendDayTurns, dayTurnCap: 2000, monthTurns: 20_000 },
+            definitions: host.context.definitions,
+          },
+        }),
   });
 
   host.defer(() => worker.stop());
@@ -226,6 +256,7 @@ async function setupTest(config: SetupConfig = {}) {
     ...host,
     clock,
     gateway,
+    spendChecks,
     spent,
     destroys,
     stoppedRuns,
@@ -314,6 +345,27 @@ test('it writes one start and one end record for an answered run, and lowers the
 
   expect(records.at(-1)?.payload['outcome']).toBe('answered');
   expect(ctx.spent).toStrictEqual([0.003]);
+});
+
+test('it writes no model turn record for a worker run, so the turn count counts it once', async () => {
+  const ctx = await setupTest();
+
+  ctx.guest.addKindReplies('worker', {
+    text: 'Done.',
+    usage: {
+      uncachedInputTokens: 1000,
+      cacheReadTokens: 0,
+      cacheWrite5mTokens: 0,
+      cacheWrite1hTokens: 0,
+      outputTokens: 0,
+    },
+  });
+
+  await ctx.callWorker({ question: 'Which cafes are open?' });
+
+  const records = await ctx.readKinds(['model.turn_ended']);
+
+  expect(records).toStrictEqual([]);
 });
 
 test('it destroys the sandbox of a run once it ends', async () => {
@@ -411,6 +463,70 @@ test('it refuses a tool of memory, and writes no worker record', async () => {
     outcome: { status: 'error', message: expect.toInclude('cannot get memory.recall') },
     records: [],
   });
+});
+
+test('it refuses a worker at the turn limit of the spending stop, and starts no sandbox', async () => {
+  const ctx = await setupTest({ spendDayTurns: 0 });
+  const outcome = await ctx.callWorker({ question: 'Which cafes are open?' });
+  const owners = await ctx.readOwners();
+
+  expect(outcome).toStrictEqual({
+    status: 'error',
+    message: expect.toInclude('Model spending is stopped'),
+  });
+
+  expect(owners).toStrictEqual([]);
+});
+
+test('it refuses a worker whose wait for a slot ends after the turn count reached the limit', async () => {
+  const ctx = await setupTest({ spendDayTurns: 1, workerRuns: { max: 1, whenFull: 'wait' } });
+
+  const gate = Promise.withResolvers<void>();
+
+  ctx.guest.addKindReplies('worker', { text: 'First.', gate: () => gate.promise });
+
+  const first = ctx.callWorker({ question: 'First?' });
+
+  await waitForCondition(() => ctx.guest.received.some((entry) => entry.frame.type === 'turn'));
+
+  const checks = ctx.spendChecks.count;
+  const second = ctx.callWorker({ question: 'Second?' });
+
+  await waitForCondition(() => ctx.spendChecks.count > checks);
+
+  // a read on the one connection runs after the check's reads, so the second call waits for its slot
+  await ctx.readOwners();
+
+  await writeRecords(ctx.context.log, [
+    {
+      kind: 'model.turn_ended',
+      definitions: ctx.context.definitions(),
+      thread: 'conversation',
+      payload: {},
+    },
+  ]);
+
+  gate.resolve();
+
+  const outcomes = await Promise.all([first, second]);
+  const owners = await ctx.readOwners();
+
+  expect(outcomes).toStrictEqual([
+    { status: 'ok', result: expect.toBeObject() },
+    { status: 'error', message: expect.toInclude('Model spending is stopped') },
+  ]);
+
+  expect(owners).toHaveLength(1);
+});
+
+test('it runs a worker under the turn limit of the spending stop', async () => {
+  const ctx = await setupTest({ spendDayTurns: 1000 });
+
+  ctx.guest.addKindReplies('worker', { text: 'Three cafes are open.' });
+
+  const outcome = await ctx.callWorker({ question: 'Which cafes are open?' });
+
+  expect(outcome).toStrictEqual({ status: 'ok', result: expect.toBeObject() });
 });
 
 test('it gives the cap sentence to a call past the cap that errors', async () => {

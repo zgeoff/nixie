@@ -10,6 +10,7 @@ import { closeToOlderReaders } from './close-to-older-readers';
 import { pauseMigrationVersion } from './pause-migration-version';
 import { removeTableRows } from './remove-table-rows';
 import { runMigrations } from './run-migrations';
+import { spendMigrationVersion } from './spend-migration-version';
 import { syncPauseGate } from './sync-pause-gate';
 
 async function setupTest() {
@@ -88,5 +89,36 @@ test('it does nothing on a schema with no pause table', async () => {
 
   expect(gate).toStrictEqual([
     { oldest_reader: pauseMigrationVersion, open_oldest_reader: ctx.openReader },
+  ]);
+});
+
+test('it lowers a gate closed to the spending version once the pause that stands has another cause', async () => {
+  const ctx = await setupTest();
+
+  await ctx.closeGate(spendMigrationVersion);
+  await ctx.seed.record({ kind: 'nixie.paused' });
+  await ctx.seed.nixiePause({ cause: 'owner' });
+
+  await syncPauseGate(ctx.db);
+
+  const gate = await ctx.readGate();
+
+  expect(gate).toStrictEqual([
+    { oldest_reader: pauseMigrationVersion, open_oldest_reader: ctx.openReader },
+  ]);
+});
+
+test('it closes an open gate to the spending version while a spending pause stands', async () => {
+  const ctx = await setupTest();
+
+  await ctx.seed.record({ kind: 'nixie.paused' });
+  await ctx.seed.nixiePause({ cause: 'spending' });
+
+  await syncPauseGate(ctx.db);
+
+  const gate = await ctx.readGate();
+
+  expect(gate).toStrictEqual([
+    { oldest_reader: spendMigrationVersion, open_oldest_reader: ctx.openReader },
   ]);
 });

@@ -79,6 +79,7 @@ export async function startConversationImp(
     messaging,
     turnInputs: parts.turnInputs,
     ...(parts.spend === null ? {} : { gateway: parts.spend.gateway }),
+    ...(parts.apiContext.spend === undefined ? {} : { spend: parts.apiContext.spend }),
     clearFetchPauses: parts.tools.webFetch.clearPauses,
     inStepActions: makeInStepActions(parts),
     log: parts.log,

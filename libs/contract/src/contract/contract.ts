@@ -24,6 +24,12 @@ import { reusedIDErrors } from './reused-id-errors';
 import { ruleContract } from './rule-contract';
 import { sequenceSchema } from './sequence-schema';
 import { signedIn } from './signed-in';
+import {
+  spendRaiseInputSchema,
+  spendRaiseOutputSchema,
+  spendStopSchema,
+  spendStopStandsError,
+} from './spend-stop-schema';
 import { taskSchema } from './task-schema';
 import { threadSchema } from './thread-schema';
 import { toolCallSchema } from './tool-call-schema';
@@ -210,6 +216,8 @@ const nixieControl = checkedAction
   .input(z.object({ clientActionID: clientActionIDSchema }))
   .output(z.object({ paused: pauseStateSchema }));
 
+const spendStopErrors = { SPEND_STOP_STANDS: spendStopStandsError };
+
 const backupNoticeSchema = z.object({
   cause: z.enum(['failed', 'missing']),
   sequence: z.int().positive(),
@@ -348,7 +356,7 @@ export const contract = {
         }),
       ),
     pause: taskControl,
-    resume: taskControl,
+    resume: taskControl.errors(spendStopErrors),
     stop: taskControl,
     restart: taskControl,
     close: taskControl.errors({
@@ -403,7 +411,11 @@ export const contract = {
   nixie: {
     read: signedIn.output(z.object({ paused: pauseStateSchema })),
     pause: nixieControl,
-    resume: nixieControl,
+    resume: nixieControl.errors(spendStopErrors),
+  },
+  spend: {
+    read: signedIn.output(spendStopSchema),
+    raise: signedIn.input(spendRaiseInputSchema).output(spendRaiseOutputSchema),
   },
   recovery: {
     read: signedIn.output(z.object({ recovery: recoverySchema })),

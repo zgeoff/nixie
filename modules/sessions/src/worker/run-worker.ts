@@ -4,6 +4,7 @@ import { buildCallCost } from '@heynixie/models';
 import type { Sandbox } from '@heynixie/sandbox';
 import { buildSandboxSpec, buildWorkerRunOwner } from '@heynixie/sandbox';
 import type { SandboxCount } from '@heynixie/spend';
+import { checkSpendTurns } from '@heynixie/spend';
 import type { RunEndpoint } from '@heynixie/tools';
 import type { ModelCallUsage } from '@heynixie/wire';
 import invariant from 'tiny-invariant';
@@ -93,11 +94,23 @@ export async function runWorker(deps: WorkerDeps, plan: WorkerPlan): Promise<Wor
   }
 }
 
+const spendStoppedResult: WorkerResult = {
+  kind: 'stopped',
+  sentence:
+    'Model spending is stopped, so nixie started no worker. Every task resumes when the stop clears.',
+};
+
 async function runOpenWorker(
   deps: WorkerDeps,
   plan: WorkerPlan,
   run: WorkerRun,
 ): Promise<WorkerResult> {
+  const isStoppedAtCall = await probeSpendStopped(deps);
+
+  if (isStoppedAtCall) {
+    return spendStoppedResult;
+  }
+
   const grant = await waitForSlot(deps, run);
 
   if (grant !== 'stopped' && grant.kind === 'full') {
@@ -109,6 +122,13 @@ async function runOpenWorker(
 
   if (grant !== 'stopped') {
     run.held.release = grant.release;
+
+    // the stop can trip while the call waits for its slot
+    const isStoppedAtSlot = await probeSpendStopped(deps);
+
+    if (isStoppedAtSlot) {
+      return spendStoppedResult;
+    }
   }
 
   await ensureStarted(deps, plan, run);
@@ -136,6 +156,10 @@ async function runOpenWorker(
   await writeWorkerRunEnded(deps, plan, run.names, { end, used });
 
   return toResult(plan, run, end, used);
+}
+
+async function probeSpendStopped(deps: WorkerDeps): Promise<boolean> {
+  return deps.spend !== undefined && (await checkSpendTurns(deps.spend)) === 'stopped';
 }
 
 // A call that waits for a slot counts the wait in its minutes, and a stop can end the wait.

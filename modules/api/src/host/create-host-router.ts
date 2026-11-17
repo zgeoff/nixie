@@ -14,6 +14,7 @@ import { createHostRecoveryProcedures } from './create-host-recovery-procedures'
 import { createHostRuleProcedures } from './create-host-rule-procedures';
 import { createHostSessionProcedures } from './create-host-session-procedures';
 import { createHostSkillProposalProcedures } from './create-host-skill-proposal-procedures';
+import { createHostSpendProcedures } from './create-host-spend-procedures';
 import { createHostSubjectsProcedure } from './create-host-subjects-procedure';
 import { createHostTaskProcedures } from './create-host-task-procedures';
 import { createHostTurnInputProcedures } from './create-host-turn-input-procedures';
@@ -43,6 +44,7 @@ export function createHostRouter(options: HostRouterOptions) {
       options.runConversationReset(),
     ),
     nixie: hostImplementer.nixie.use(gated).router(createHostNixieProcedures(options.context)),
+    spend: hostImplementer.spend.use(gated).router(createHostSpendProcedures(options.context)),
     recovery: hostImplementer.recovery
       .use(gated)
       .router(createHostRecoveryProcedures(options.context)),

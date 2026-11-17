@@ -12,6 +12,7 @@ import { mockMemoryRouter } from './mock-memory-router';
 import { mockPasskeyProcedures } from './mock-passkey-procedures';
 import { mockReadPayloadProcedure } from './mock-read-payload-procedure';
 import { mockRuleProcedures } from './mock-rule-procedures';
+import { mockSpendProcedures } from './mock-spend-procedures';
 import { readMockBackupNotice } from './read-mock-backup-notice';
 import { readMockDefinitions } from './read-mock-definitions';
 import { readMockEndedRuns } from './read-mock-ended-runs';
@@ -199,6 +200,7 @@ export const mockAPIRouter = os.router({
     }),
   },
   passkeys: mockPasskeyProcedures,
+  spend: mockSpendProcedures,
   records: { follow: followProcedure, readPayload: mockReadPayloadProcedure },
   rules: { ...mockRuleProcedures, ...mockMandateProcedures },
   sessions: {

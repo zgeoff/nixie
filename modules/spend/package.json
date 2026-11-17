@@ -11,8 +11,14 @@
     "typecheck": "tsrs --noEmit"
   },
   "dependencies": {
+    "@heynixie/clock": "workspace:*",
+    "@heynixie/db": "workspace:*",
+    "@heynixie/log": "workspace:*",
     "@heynixie/logger": "workspace:*",
-    "@heynixie/sandbox": "workspace:*"
+    "@heynixie/sandbox": "workspace:*",
+    "@heynixie/triggers": "workspace:*",
+    "kysely": "catalog:",
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@heynixie/testing": "workspace:*"

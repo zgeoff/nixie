@@ -47,11 +47,13 @@ export function PauseBanner(): ReactNode {
         resume it.
       </p>
       {paused.cause === 'restore' ? <PauseRecoveryList /> : null}
-      <div>
-        <button disabled={resume.isPending} onClick={resume.onSend} type="button">
-          Resume nixie
-        </button>
-      </div>
+      {paused.cause === 'spending' ? null : (
+        <div>
+          <button disabled={resume.isPending} onClick={resume.onSend} type="button">
+            Resume nixie
+          </button>
+        </div>
+      )}
       {resume.isError ? <p role="alert">The resume did not finish. Try again.</p> : null}
     </section>
   );

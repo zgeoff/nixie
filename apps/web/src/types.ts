@@ -1,4 +1,10 @@
-import type { ContractClient, ContractOutputs, Span, buildQueryUtils } from '@heynixie/contract';
+import type {
+  ContractClient,
+  ContractInputs,
+  ContractOutputs,
+  Span,
+  buildQueryUtils,
+} from '@heynixie/contract';
 import type { QueryClient } from '@tanstack/react-query';
 
 type QueryUtils = ReturnType<typeof buildQueryUtils>;
@@ -34,6 +40,12 @@ export interface OutboxMessage {
 }
 
 export type PauseCause = NonNullable<ContractOutputs['nixie']['read']['paused']>['cause'];
+
+export type SpendStop = ContractOutputs['spend']['read'];
+
+export type SpendTrip = Extract<SpendStop, { readonly state: 'tripped' }>;
+
+export type SpendRaiseInput = ContractInputs['spend']['raise'];
 
 export type MemoryItem = ContractOutputs['memory']['listItems']['items'][number];
 
@@ -78,3 +90,5 @@ export type MomentSpanRecord = ReadonlyDeep<
 >;
 
 export type MomentDestroyPreview = ReadonlyDeep<ContractOutputs['memory']['previewMomentDestroy']>;
+
+export type SpendRaiseOutput = ContractOutputs['spend']['raise'];

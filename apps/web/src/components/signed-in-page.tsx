@@ -4,6 +4,7 @@ import type { SessionState } from '../conversation/read-session-state';
 import { BackupNotice } from './backup-notice';
 import { EnrolForm } from './enrol-form';
 import { PauseBanner } from './pause-banner';
+import { SpendStopNotice } from './spend-stop-notice';
 
 export interface SignedInPageProps {
   readonly session: SessionState;
@@ -33,6 +34,7 @@ export function SignedInPage(props: SignedInPageProps): ReactNode {
     <>
       <BackupNotice />
       <PauseBanner />
+      <SpendStopNotice />
       {props.children}
     </>
   );

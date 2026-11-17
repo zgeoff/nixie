@@ -1,5 +1,5 @@
 import type { StepInput } from '@heynixie/tasks';
-import { buildStepRunID, readInbox } from '@heynixie/tasks';
+import { buildStepRunID, markBeforeTurnFailure, readInbox } from '@heynixie/tasks';
 import type { ApprovedReply, ToolRun, ToolSession, ToolStepHold } from '@heynixie/tools';
 import { makeImageReserver } from '../task/make-image-reserver';
 import type { ConversationRun } from '../types';
@@ -40,10 +40,15 @@ export async function runApprovedCalls(
   );
 
   try {
-    const settled = await actions.run({
-      lease: input.lease,
-      runCall: (request) => run.endpoint.runApproved(token.token, request),
-    });
+    const settled = await actions
+      .run({
+        lease: input.lease,
+        runCall: (request) => run.endpoint.runApproved(token.token, request),
+      })
+      .catch((error: unknown) => {
+        markBeforeTurnFailure(error);
+        throw error;
+      });
 
     if (settled.length === 0) {
       return input;

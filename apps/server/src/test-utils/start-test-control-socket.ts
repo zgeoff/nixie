@@ -8,6 +8,9 @@ import { buildAPIGate } from '../utils/build-api-gate';
 export interface TestControlSocketOptions {
   readonly path: string;
 
+  // gives the API a spending stop on a stub gateway
+  readonly isSpendOn?: boolean;
+
   readonly readMemory?: HostRouterOptions['readMemory'];
   readonly runReset?: HostRouterOptions['runReset'];
 }
@@ -15,7 +18,7 @@ export interface TestControlSocketOptions {
 type TestAPI = Awaited<ReturnType<typeof startTestAPI>>;
 
 export async function startTestControlSocket(options: TestControlSocketOptions): Promise<TestAPI> {
-  const api = await startTestAPI();
+  const api = await startTestAPI(undefined, { isSpendOn: options.isSpendOn === true });
 
   const socket = await startControlSocket({
     path: options.path,

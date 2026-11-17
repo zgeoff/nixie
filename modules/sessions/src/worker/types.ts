@@ -9,7 +9,7 @@ import type {
   SandboxAdapter,
   SandboxLimits,
 } from '@heynixie/sandbox';
-import type { SpendGateway } from '@heynixie/spend';
+import type { SpendContext, SpendGateway } from '@heynixie/spend';
 import type { ToolEndpoint, ToolRun, ToolStepHold } from '@heynixie/tools';
 import type { WorkerUsed } from './worker-used';
 
@@ -126,4 +126,8 @@ export interface WorkerDeps {
 
   // set when every model request goes through the gateway, which counts the worker's sandbox
   readonly gateway?: SpendGateway;
+
+  // set with the spending stop; the gateway counts no turns, so a worker that started while the stop
+  // stands or at a turn limit would make turns past it
+  readonly spend?: SpendContext;
 }
