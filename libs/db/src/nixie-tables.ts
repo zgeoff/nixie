@@ -133,6 +133,15 @@ export interface NixieTables {
     readonly epoch: number;
     readonly generation: number;
   };
+  readonly memory_change_notices: {
+    readonly entry_key: string;
+    readonly notice_key: string;
+    readonly thread: string | null;
+    readonly item_id: string;
+    readonly change: string;
+    readonly sequence: number;
+    readonly recorded_at: number;
+  };
   readonly memory_evidence_purges: {
     readonly purge_key: string;
     readonly record_sequence: number;
@@ -194,15 +203,6 @@ export interface NixieTables {
     readonly version: number | null;
     readonly change: string;
     readonly proposal_id: string | null;
-    readonly sequence: number;
-    readonly recorded_at: number;
-  };
-  readonly memory_change_notices: {
-    readonly entry_key: string;
-    readonly notice_key: string;
-    readonly thread: string | null;
-    readonly item_id: string;
-    readonly change: string;
     readonly sequence: number;
     readonly recorded_at: number;
   };
