@@ -2,6 +2,8 @@ import { expect, test } from 'bun:test';
 import { withWriteTransaction } from '@heynixie/log';
 import type { StepInput } from '@heynixie/tasks';
 import { buildStepRunID, writeTaskControl } from '@heynixie/tasks';
+import invariant from 'tiny-invariant';
+import { z } from 'zod';
 import { buildActionSeeder } from '../test-utils/build-action-seeder';
 import { createTestStep } from '../test-utils/create-test-step';
 import { startTestActions } from '../test-utils/start-test-actions';
@@ -55,7 +57,9 @@ test('it queues a call that a step makes under that step and returns its action 
       effects: ['send'],
     });
 
-    return { next: 'wait', records: [], acknowledged: [], sessionBoundary: actionID };
+    invariant(actionID.status === 'queued');
+
+    return { next: 'wait', records: [], acknowledged: [], sessionBoundary: actionID.actionID };
   });
 
   const result = await step(stepInput);
@@ -113,16 +117,21 @@ test('it returns the action a step queued when its rerun makes the same call', a
     const first = await sendCall();
     const rerun = await sendCall();
 
-    return { next: 'wait', records: [], acknowledged: [], sessionBoundary: `${first} ${rerun}` };
+    return {
+      next: 'wait',
+      records: [],
+      acknowledged: [],
+      sessionBoundary: JSON.stringify([first, rerun]),
+    };
   });
 
   const result = await step(stepInput);
   const actions = await ctx.db.selectFrom('actions').select('action_id').execute();
 
-  const [first, rerun] = String(result.sessionBoundary).split(' ');
+  const [first, rerun] = z.array(z.unknown()).parse(JSON.parse(String(result.sessionBoundary)));
 
   expect(actions).toHaveLength(1);
-  expect(rerun).toBe(first);
+  expect(rerun).toStrictEqual(first);
 });
 
 test('it refuses a call on a thread where no step runs', async () => {
@@ -343,7 +352,9 @@ test('it gives no outcome for an action still pending when the wait ends', async
       effects: ['send'],
     });
 
-    return { next: 'wait', records: [], acknowledged: [], sessionBoundary: actionID };
+    invariant(actionID.status === 'queued');
+
+    return { next: 'wait', records: [], acknowledged: [], sessionBoundary: actionID.actionID };
   });
 
   const result = await step(stepInput);
@@ -406,7 +417,9 @@ test.each([
         effects: ['send'],
       });
 
-      return { next: 'wait', records: [], acknowledged: [], sessionBoundary: actionID };
+      invariant(actionID.status === 'queued');
+
+      return { next: 'wait', records: [], acknowledged: [], sessionBoundary: actionID.actionID };
     });
 
     const result = await step(stepInput);
@@ -463,7 +476,9 @@ test('it gives a cancelled outcome for an action that a stop of its task cancell
       effects: ['send'],
     });
 
-    return { next: 'wait', records: [], acknowledged: [], sessionBoundary: actionID };
+    invariant(actionID.status === 'queued');
+
+    return { next: 'wait', records: [], acknowledged: [], sessionBoundary: actionID.actionID };
   });
 
   const result = await step(stepInput);

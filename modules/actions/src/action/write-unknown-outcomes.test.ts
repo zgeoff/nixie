@@ -3,10 +3,10 @@ import { readRecords } from '@heynixie/log';
 import { runRecovery, setFaultPointHandler } from '@heynixie/tasks';
 import { readTestLeases, readTestTasks, startNextTestWriter } from '@heynixie/tasks/test-utils';
 import { createTestStep } from '../test-utils/create-test-step';
+import { queueTestAction } from '../test-utils/queue-test-action';
 import { runStalledAttempt } from '../test-utils/run-stalled-attempt';
 import { startTestActions } from '../test-utils/start-test-actions';
 import type { ActionsTables } from '../types';
-import { createAllowedAction } from './create-allowed-action';
 import { writeUnknownOutcomes } from './write-unknown-outcomes';
 
 async function setupTest() {
@@ -19,7 +19,7 @@ test('it marks an action whose attempt record has no result unknown', async () =
   const ctx = await setupTest();
   const step = await createTestStep(ctx.context);
 
-  await createAllowedAction(ctx.context, {
+  await queueTestAction(ctx.context, {
     step,
     tool: 'test.send',
     actionHash: 'sha256:send-1',
@@ -59,7 +59,7 @@ test('it writes the unknown outcome to the task inbox', async () => {
   const ctx = await setupTest();
   const step = await createTestStep(ctx.context);
 
-  await createAllowedAction(ctx.context, {
+  await queueTestAction(ctx.context, {
     step,
     tool: 'test.send',
     actionHash: 'sha256:send-1',
@@ -96,7 +96,7 @@ test('it runs as recovery step 3, between the interrupted steps and the late tim
 
   const reached: string[] = [];
 
-  await createAllowedAction(ctx.context, {
+  await queueTestAction(ctx.context, {
     step,
     tool: 'test.send',
     actionHash: 'sha256:send-1',
@@ -135,7 +135,7 @@ test('it frees the step and the action leases through recovery', async () => {
   const ctx = await setupTest();
   const step = await createTestStep(ctx.context);
 
-  await createAllowedAction(ctx.context, {
+  await queueTestAction(ctx.context, {
     step,
     tool: 'test.send',
     actionHash: 'sha256:send-1',
@@ -167,7 +167,7 @@ test('it readies the task through recovery', async () => {
   const ctx = await setupTest();
   const step = await createTestStep(ctx.context);
 
-  await createAllowedAction(ctx.context, {
+  await queueTestAction(ctx.context, {
     step,
     tool: 'test.send',
     actionHash: 'sha256:send-1',
@@ -195,7 +195,7 @@ test('it leaves an action with no open attempt as it was', async () => {
   const ctx = await setupTest();
   const step = await createTestStep(ctx.context);
 
-  await createAllowedAction(ctx.context, {
+  await queueTestAction(ctx.context, {
     step,
     tool: 'test.send',
     actionHash: 'sha256:send-1',

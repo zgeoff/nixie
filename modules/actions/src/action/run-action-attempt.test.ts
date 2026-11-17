@@ -9,11 +9,12 @@ import {
 import { buildActionProposalInput } from '@heynixie/policy';
 import { setFaultPointHandler, writeStepCommit, writeTaskControl } from '@heynixie/tasks';
 import { readTestLeases } from '@heynixie/tasks/test-utils';
-import { claimAction, createAllowedAction, runActionAttempt } from '../index';
+import { claimAction, runActionAttempt } from '../index';
 import { buildActionSeeder } from '../test-utils/build-action-seeder';
 import { buildStubConnector } from '../test-utils/build-stub-connector';
 import { claimTestAction } from '../test-utils/claim-test-action';
 import { createTestStep } from '../test-utils/create-test-step';
+import { queueTestAction } from '../test-utils/queue-test-action';
 import { readTestAction } from '../test-utils/read-test-action';
 import { runStalledAttempt } from '../test-utils/run-stalled-attempt';
 import { startTestActions } from '../test-utils/start-test-actions';
@@ -58,7 +59,7 @@ test('it calls the provider with the action ID as the idempotency key', async ()
   const ctx = await setupTest();
   const step = await createTestStep(ctx.context);
 
-  const queued = await createAllowedAction(ctx.context, {
+  const queued = await queueTestAction(ctx.context, {
     step,
     tool: 'test.send',
     actionHash: 'sha256:send-1',
@@ -93,7 +94,7 @@ test.each([['stop'], ['pause'], ['close']] as const)(
     const ctx = await setupTest();
     const step = await createTestStep(ctx.context);
 
-    const queued = await createAllowedAction(ctx.context, {
+    const queued = await queueTestAction(ctx.context, {
       step,
       tool: 'test.send',
       actionHash: 'sha256:send-1',
@@ -134,7 +135,7 @@ test('it settles a success as done', async () => {
   const ctx = await setupTest();
   const step = await createTestStep(ctx.context);
 
-  await createAllowedAction(ctx.context, {
+  await queueTestAction(ctx.context, {
     step,
     tool: 'test.send',
     actionHash: 'sha256:send-1',
@@ -160,7 +161,7 @@ test('it puts the result of a success in the task inbox', async () => {
   const ctx = await setupTest();
   const step = await createTestStep(ctx.context);
 
-  const queued = await createAllowedAction(ctx.context, {
+  const queued = await queueTestAction(ctx.context, {
     step,
     tool: 'test.send',
     actionHash: 'sha256:send-1',
@@ -194,7 +195,7 @@ test('it settles a refusal with no effect as failed, with the reason in the inbo
   const ctx = await setupTest();
   const step = await createTestStep(ctx.context);
 
-  await createAllowedAction(ctx.context, {
+  await queueTestAction(ctx.context, {
     step,
     tool: 'test.send',
     actionHash: 'sha256:send-1',
@@ -227,7 +228,7 @@ test('it returns a refusal that can clear to pending, with its next attempt time
   const ctx = await setupTest();
   const step = await createTestStep(ctx.context);
 
-  await createAllowedAction(ctx.context, {
+  await queueTestAction(ctx.context, {
     step,
     tool: 'test.send',
     actionHash: 'sha256:send-1',
@@ -266,7 +267,7 @@ test('it settles an ambiguous response as unknown', async () => {
   const ctx = await setupTest();
   const step = await createTestStep(ctx.context);
 
-  await createAllowedAction(ctx.context, {
+  await queueTestAction(ctx.context, {
     step,
     tool: 'test.send',
     actionHash: 'sha256:send-1',
@@ -292,7 +293,7 @@ test('it settles a provider call that threw, such as a dropped connection, as un
   const ctx = await setupTest();
   const step = await createTestStep(ctx.context);
 
-  await createAllowedAction(ctx.context, {
+  await queueTestAction(ctx.context, {
     step,
     tool: 'test.send',
     actionHash: 'sha256:send-1',
@@ -327,7 +328,7 @@ test('it marks an action whose attempt record has no result unknown, and calls n
   const ctx = await setupTest();
   const step = await createTestStep(ctx.context);
 
-  await createAllowedAction(ctx.context, {
+  await queueTestAction(ctx.context, {
     step,
     tool: 'test.send',
     actionHash: 'sha256:send-1',
@@ -356,7 +357,7 @@ test('it commits no result once its lease is lost during the provider call', asy
   const ctx = await setupTest();
   const step = await createTestStep(ctx.context);
 
-  await createAllowedAction(ctx.context, {
+  await queueTestAction(ctx.context, {
     step,
     tool: 'test.send',
     actionHash: 'sha256:send-1',
@@ -386,7 +387,7 @@ test('it fails an action whose tool has no connector', async () => {
   const ctx = await setupTest();
   const step = await createTestStep(ctx.context);
 
-  await createAllowedAction(ctx.context, {
+  await queueTestAction(ctx.context, {
     step,
     tool: 'test.send',
     actionHash: 'sha256:send-1',
@@ -410,7 +411,7 @@ test('it reaches each attempt fault point in order', async () => {
 
   const step = await createTestStep(ctx.context);
 
-  await createAllowedAction(ctx.context, {
+  await queueTestAction(ctx.context, {
     step,
     tool: 'test.send',
     actionHash: 'sha256:send-1',
@@ -508,7 +509,7 @@ test('it fails an action past its deadline before it records an attempt or calls
   const ctx = await setupTest();
   const step = await createTestStep(ctx.context);
 
-  const queued = await createAllowedAction(ctx.context, {
+  const queued = await queueTestAction(ctx.context, {
     step,
     tool: 'test.send',
     actionHash: 'sha256:send-1',
@@ -538,7 +539,7 @@ test('it starts an action whose deadline has not come', async () => {
   const ctx = await setupTest();
   const step = await createTestStep(ctx.context);
 
-  const queued = await createAllowedAction(ctx.context, {
+  const queued = await queueTestAction(ctx.context, {
     step,
     tool: 'test.send',
     actionHash: 'sha256:send-1',
@@ -565,7 +566,7 @@ test('it fails an action whose deadline passes while its policy check runs, and 
   const ctx = await setupTest();
   const step = await createTestStep(ctx.context);
 
-  const queued = await createAllowedAction(ctx.context, {
+  const queued = await queueTestAction(ctx.context, {
     step,
     tool: 'test.send',
     actionHash: 'sha256:send-1',
@@ -598,7 +599,7 @@ test('it fails an action that a rule now denies, and names the rule in the outco
   const ctx = await setupTest();
   const step = await createTestStep(ctx.context);
 
-  const queued = await createAllowedAction(ctx.context, {
+  const queued = await queueTestAction(ctx.context, {
     step,
     tool: 'test.send',
     actionHash: 'sha256:send-1',
@@ -650,7 +651,7 @@ test('it hands the checked destinations to the connector', async () => {
   const ctx = await setupTest();
   const step = await createTestStep(ctx.context);
 
-  await createAllowedAction(ctx.context, {
+  await queueTestAction(ctx.context, {
     step,
     tool: 'test.send',
     actionHash: 'sha256:send-1',
@@ -676,7 +677,7 @@ test('it fails an action whose provider reports another destination set', async 
   const ctx = await setupTest();
   const step = await createTestStep(ctx.context);
 
-  const queued = await createAllowedAction(ctx.context, {
+  const queued = await queueTestAction(ctx.context, {
     step,
     tool: 'test.send',
     actionHash: 'sha256:send-1',
@@ -705,7 +706,7 @@ test('it holds an action that a rule allowed and now asks about, and runs none o
   const ctx = await setupTest();
   const step = await createTestStep(ctx.context);
 
-  const queued = await createAllowedAction(ctx.context, {
+  const queued = await queueTestAction(ctx.context, {
     step,
     tool: 'test.send',
     actionHash: 'sha256:send-1',

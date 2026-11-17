@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test';
-import { createAllowedAction } from '../action/create-allowed-action';
 import { claimTestAction } from './claim-test-action';
 import { createTestStep } from './create-test-step';
+import { queueTestAction } from './queue-test-action';
 import { startTestActions } from './start-test-actions';
 
 function setupTest() {
@@ -12,7 +12,7 @@ test('it claims the due action for the holder under the lease length', async () 
   const ctx = await setupTest();
   const step = await createTestStep(ctx.context);
 
-  const queued = await createAllowedAction(ctx.context, {
+  const queued = await queueTestAction(ctx.context, {
     step,
     tool: 'test.send',
     actionHash: 'sha256:send-1',

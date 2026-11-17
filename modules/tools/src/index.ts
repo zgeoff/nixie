@@ -30,6 +30,7 @@ export type {
   JsonSchema,
   MemoryWriteVerdict,
   PolicyFactsResolution,
+  Enqueued,
   QueuedAction,
   RegisteredTool,
   RepeatQuery,
@@ -52,6 +53,7 @@ export type {
   ToolSession,
   ToolStepHold,
   ToolVariants,
+  PaidTool,
 } from './types';
 
 export { ToolResultRefusedError } from './types';

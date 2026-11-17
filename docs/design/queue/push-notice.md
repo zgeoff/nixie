@@ -25,8 +25,9 @@ Terms:
   deferred proposal becomes an item again only when it returns.
 - An **unknown outcome** is an action that may or may not have reached its provider, as
   [actions](../../architecture/core/actions.md#outcomes) defines.
-- **The stop** is the hard spending stop of [budgets and hard stop](budgets-and-hard-stop.md): at a
-  spending limit, nixie pauses every task until the limit resets or you raise it.
+- **The stop** is the hard spending stop of
+  [the spending stop](../../architecture/policy/spending-stop.md): at a spending limit, nixie pauses
+  every task until the limit resets or you raise it.
 - A **trigger** is a record that can change a notice: a proposal created, answered, deferred,
   returned, lapsed or withdrawn; an `action.outcome` with the outcome `unknown`; and
   `spend.stop_tripped` and `spend.stop_cleared`.

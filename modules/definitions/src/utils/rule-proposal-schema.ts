@@ -1,4 +1,4 @@
-import { effectNames } from '@heynixie/policy';
+import { budgetPeriods, effectNames, storedBudgetCountsSchema } from '@heynixie/policy';
 import { z } from 'zod';
 
 const ruleSideSchema = z.object({ hash: z.string(), sentence: z.string() }).nullable();
@@ -8,6 +8,16 @@ const fieldChangeSchema = z.object({
   before: z.string().nullable(),
   after: z.string().nullable(),
 });
+
+const budgetSideSchema = z
+  .object({
+    hash: z.string(),
+    counts: storedBudgetCountsSchema,
+    limitMicros: z.number(),
+    period: z.enum(budgetPeriods),
+    sentence: z.string(),
+  })
+  .nullable();
 
 export const ruleProposalSchema = z.object({
   proposalID: z.string(),
@@ -27,6 +37,12 @@ export const ruleProposalSchema = z.object({
   // effects that leave a tool, which wait for your approval as the rules do
   effectChanges: z
     .object({ tool: z.string(), remove: z.enum(effectNames).array() })
+    .array()
+    .default([]),
+
+  // budget limits that wait for your approval as the rules do: a raised limit, or another period
+  budgetChanges: z
+    .object({ budgetID: z.string(), before: budgetSideSchema, after: budgetSideSchema })
     .array()
     .default([]),
 });

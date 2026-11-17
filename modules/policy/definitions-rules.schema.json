@@ -204,6 +204,27 @@
         "type": "string",
         "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
       },
+      "lift": {
+        "type": "object",
+        "properties": {
+          "perAction": {
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "description": "The most one call may cost, in dollars"
+          },
+          "budget": {
+            "type": "string",
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+            "description": "The ID of a budget that counts spend"
+          }
+        },
+        "required": [
+          "perAction",
+          "budget"
+        ],
+        "additionalProperties": false,
+        "description": "Lets a purchase through without asking, within one call cap and a budget"
+      },
       "cel": {
         "type": "string",
         "minLength": 1

@@ -215,9 +215,13 @@ function toBody(
   extra: Exclude<BodyFields, { readonly status: 'unreadable' }>,
 ): ProposalBody {
   const destinations = erasable.destinations.map((destination) => destination.value);
+  const sentence = buildActionProposalSentence(payload.tool, payload.effects, destinations);
 
   return {
-    sentence: buildActionProposalSentence(payload.tool, payload.effects, destinations),
+    sentence:
+      payload.budgetReached === undefined
+        ? sentence
+        : `${sentence} ${capitalize(payload.budgetReached)}`,
     fields: {
       ...Object.fromEntries(
         Object.entries(erasable.input).map(([name, value]) => [name, toFieldText(value)]),
@@ -227,6 +231,10 @@ function toBody(
     ruleSentence: erasable.ruleSentence ?? null,
     approveLabel: buildActionApproveLabel(payload.tool, destinations[0]),
   };
+}
+
+function capitalize(text: string): string {
+  return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
 function toFieldText(value: unknown): string {

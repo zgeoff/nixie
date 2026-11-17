@@ -193,13 +193,19 @@ test('it logs the message of a refused seed whose definitions directory is not c
     tools: [],
   });
 
+  // Bun names the call that failed, realpath or lstat, and which it names differs by release
+  const missingDirectory = new RegExp(
+    `^ENOENT: no such file or directory, \\w+ '${RegExp.escape(ctx.root)}'$`,
+    'u',
+  );
+
   expect(fields).toStrictEqual({
     status: 'refused',
     inForceRevision: null,
     inForceContentHash: null,
     inForceSnapshotHash: null,
     error: 'Error',
-    message: `ENOENT: no such file or directory, realpath '${ctx.root}'`,
+    message: expect.stringMatching(missingDirectory),
   });
 });
 

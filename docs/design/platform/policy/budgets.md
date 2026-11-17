@@ -20,11 +20,11 @@ raising one always asks.
 | Period | A day, a week or a month, reset at local midnight on its first day |
 
 Budgets live in the definitions repo under `budgets/`, apart from the rules, and
-[budgets and the hard stop](../../queue/budgets-and-hard-stop.md#budgets) gives the format. The
-limit is definition data inside the [snapshot hash](rules.md#the-snapshot-hash). The spent amount is
-state in a ledger projection, which every charge updates in the same transaction as its record.
-Raising a limit is `budget_raise`, which always asks; lowering it is `budget_lower`, which applies
-at once with undo.
+[budgets](../../../architecture/policy/budgets.md#the-budget-format) gives the format. The limit is
+definition data inside the [snapshot hash](rules.md#the-snapshot-hash). The spent amount is state in
+a ledger projection, which every charge updates in the same transaction as its record. Raising a
+limit is `budget_raise`, which always asks; lowering it is `budget_lower`, which applies at once
+with undo.
 
 ## Lifting rules
 
@@ -103,7 +103,7 @@ The hard spending stop ends all model spending once a deployment limit is reache
 nixie stops starting turns, pauses every task in place with a record, and tells you through the push
 channel, which needs no model. You resume by raising today's limit, up to a cap that only the
 gateway's host config holds, or by waiting for the next period.
-[Budgets and the hard stop](../../queue/budgets-and-hard-stop.md#the-stop) gives the contracts.
+[The spending stop](../../../architecture/policy/spending-stop.md) gives the contracts.
 
 The stop is a model gateway on the host. Every model request passes through it, it counts the tokens
 and the cost from each response, and once a deployment dollar or token limit is reached it refuses

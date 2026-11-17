@@ -5,17 +5,17 @@ import invariant from 'tiny-invariant';
 import { buildStubConnector } from '../test-utils/build-stub-connector';
 import { claimTestAction } from '../test-utils/claim-test-action';
 import { createTestStep } from '../test-utils/create-test-step';
+import { queueTestAction } from '../test-utils/queue-test-action';
 import { readTestAction } from '../test-utils/read-test-action';
 import { startTestActions } from '../test-utils/start-test-actions';
 import { claimAction } from './claim-action';
-import { createAllowedAction } from './create-allowed-action';
 import { runActionAttempt } from './run-action-attempt';
 
 async function setupTest() {
   const actions = await startTestActions();
   const step = await createTestStep(actions.context);
 
-  const queued = await createAllowedAction(actions.context, {
+  const queued = await queueTestAction(actions.context, {
     step,
     tool: 'test.send',
     actionHash: 'sha256:send-1',

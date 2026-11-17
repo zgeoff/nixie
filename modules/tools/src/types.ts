@@ -2,6 +2,7 @@ import type { ContentSource, Decision, JSONObject, WriteTransaction } from '@hey
 import type {
   AllowingRule,
   CallDestination,
+  Effect,
   EffectDeclaration,
   RuleContext,
   RuleSource,
@@ -102,6 +103,11 @@ export interface ToolDefinition {
 
   readonly run: (call: ToolCall, context: ToolContext) => Promise<ToolOutcome>;
 
+  // A tool that costs money for each call, which is not a purchase. A call charges the price to the
+  // budgets `<name>-day` and `<name>-month` before the provider sees it, and a call that fails
+  // credits both. The tool runs direct.
+  readonly paid?: PaidTool;
+
   readonly recordInput?: (input: JSONObject) => JSONObject;
 
   // Resolves the destinations of a call on the host, for a tool whose destinations are not plain
@@ -131,6 +137,11 @@ export interface ToolDefinition {
   // the decision point about `<name>/<variant>`, under that variant's declaration, and every record
   // and cap still names the tool.
   readonly variants?: ToolVariants;
+}
+
+export interface PaidTool {
+  // the price of one call, in millionths of a dollar
+  readonly priceMicros: number;
 }
 
 export interface ToolVariants {
@@ -264,8 +275,18 @@ export interface QueuedAction {
   readonly deadlineAt: number | null;
 
   // the effects the tool declares, which the owner reads in a question about the action
-  readonly effects: readonly string[];
+  readonly effects: readonly Effect[];
+
+  // what the hash covers and the owner's question shows, for the proposal of a call that cannot
+  // queue
+  readonly destinations?: readonly CallDestination[];
+  readonly content?: readonly string[];
 }
+
+// What the queue did with an allowed call: it queued an action, or it asked the owner instead.
+export type Enqueued =
+  | { readonly status: 'queued'; readonly actionID: string }
+  | { readonly status: 'asked'; readonly shortID: string };
 
 export type ActionOutcome =
   | { readonly outcome: 'done'; readonly result: JSONObject }
@@ -294,7 +315,7 @@ export type OpenAsk =
   | { readonly kind: 'proposal'; readonly shortID: string };
 
 export interface ActionQueue {
-  readonly enqueue: (action: QueuedAction) => Promise<string>;
+  readonly enqueue: (action: QueuedAction) => Promise<Enqueued>;
 
   // the pending or unknown action that the same call already queued, or null
   readonly readOpenRepeat: (query: RepeatQuery) => Promise<OpenRepeat | null>;

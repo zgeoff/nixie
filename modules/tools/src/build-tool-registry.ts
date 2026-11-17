@@ -29,6 +29,7 @@ function assertDefinition(definition: ToolDefinition): void {
   }
 
   assertDeclaration(definition, definition.declaration, definition.name);
+  assertPaid(definition);
 
   for (const [variant, declaration] of Object.entries(definition.variants?.declarations ?? {})) {
     assertDeclaration(definition, declaration, `${definition.name}/${variant}`);
@@ -79,5 +80,19 @@ function assertResultSources(
       `the tool ${name} needs an object result whose every field has a source: ` +
         `unsourced [${unsourced.join(', ')}], unknown [${unknown.join(', ')}]`,
     );
+  }
+}
+
+function assertPaid(definition: ToolDefinition): void {
+  if (definition.paid === undefined) {
+    return;
+  }
+
+  if (!Number.isInteger(definition.paid.priceMicros) || definition.paid.priceMicros <= 0) {
+    throw new Error(`the paid tool ${definition.name} needs a price in whole micros above zero`);
+  }
+
+  if (definition.execution !== 'direct') {
+    throw new Error(`the paid tool ${definition.name} runs direct, and a queued tool is not paid`);
   }
 }

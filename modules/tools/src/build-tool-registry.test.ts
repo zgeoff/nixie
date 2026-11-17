@@ -139,3 +139,34 @@ test('it refuses a variant whose result sources miss a field of the result', () 
     'the tool jobs_start/plain needs an object result whose every field has a source: unsourced [text], unknown []',
   );
 });
+
+test('it accepts a paid read tool that runs direct', () => {
+  const definition = buildMockToolDefinition({
+    name: 'web_search',
+    paid: { priceMicros: 25_000 },
+  });
+
+  expect(buildToolRegistry([definition]).findTool('web_search')?.definition).toBe(definition);
+});
+
+test.each([0, -5, 0.5])('it refuses a paid tool with the price %d', (priceMicros) => {
+  expect(() =>
+    buildToolRegistry([buildMockToolDefinition({ name: 'web_search', paid: { priceMicros } })]),
+  ).toThrowWithMessage(Error, 'the paid tool web_search needs a price in whole micros above zero');
+});
+
+test('it refuses a paid tool that runs queued', () => {
+  expect(() =>
+    buildToolRegistry([
+      buildMockToolDefinition({
+        name: 'shop_order',
+        execution: 'queued',
+        paid: { priceMicros: 25_000 },
+        declaration: { effects: ['send'] },
+      }),
+    ]),
+  ).toThrowWithMessage(
+    Error,
+    'the paid tool shop_order runs direct, and a queued tool is not paid',
+  );
+});

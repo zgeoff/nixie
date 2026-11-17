@@ -43,6 +43,28 @@ export interface NixieTables {
     readonly key_snapshot_id: string | null;
     readonly receipt: string | null;
   };
+  readonly budget_charges: {
+    readonly charge_id: string;
+    readonly budget_id: string;
+    readonly period_start: string;
+    readonly amount_micros: number;
+    readonly for_kind: string;
+    readonly for_id: string;
+    readonly credited: number;
+  };
+  readonly budget_ledger: {
+    readonly budget_id: string;
+    readonly period_start: string;
+    readonly spent_micros: number;
+  };
+  readonly budgets_in_force: {
+    readonly budget_id: string;
+    readonly counts: string;
+    readonly limit_micros: number;
+    readonly period: string;
+    readonly hash: string;
+    readonly updated_sequence: number;
+  };
   readonly client_actions: {
     readonly client_action_id: string;
     readonly procedure: string;

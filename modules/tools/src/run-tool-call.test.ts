@@ -1,4 +1,6 @@
 import { expect, mock, test } from 'bun:test';
+import type { BudgetsContext } from '@heynixie/budgets';
+import { buildBuiltInBudgets, readBudgetLedger } from '@heynixie/budgets';
 import { readRecordAttachments, readRecords, writeRecordsInTransaction } from '@heynixie/log';
 import type { EffectDeclaration, RuleEntry } from '@heynixie/policy';
 import { buildActionHash } from '@heynixie/policy';
@@ -23,6 +25,9 @@ interface SetupConfig {
   readonly decisionDeadlineMs?: number;
   readonly queue?: StubActionQueueOptions;
 
+  // the paid tools whose built-in budgets the server holds
+  readonly paidTools?: readonly string[];
+
   // the declarations of a snapshot, which the decision point reads before the ones in code
   readonly snapshotTools?: ReadonlyMap<string, EffectDeclaration>;
 }
@@ -32,6 +37,14 @@ async function setupTest(config: SetupConfig) {
 
   const registry = buildToolRegistry(config.tools);
   const queue = buildStubActionQueue(config.queue);
+
+  const budgets: BudgetsContext = {
+    log: testLog.log,
+    clock: testLog.log.writer.clock,
+    zone: 'UTC',
+    definitions: () => ({ snapshotHash: 'sha256:test' }),
+    builtIn: () => buildBuiltInBudgets(config.paidTools ?? []),
+  };
 
   const options: ToolCallOptions = {
     registry,
@@ -56,9 +69,10 @@ async function setupTest(config: SetupConfig) {
     definitions: () => ({ snapshotHash: 'sha256:test' }),
     queue: queue.queue,
     queuedWaitMs: 10_000,
+    budgets,
   };
 
-  return { log: testLog.log, queue, options };
+  return { log: testLog.log, queue, options, budgets };
 }
 
 test('it returns an allowed direct call the typed result as structured content alone', async () => {
@@ -601,6 +615,43 @@ test('it returns "queued as" the action ID when the action is still pending afte
     content: [{ type: 'text', text: `queued as ${ctx.queue.waits[0].actionID}` }],
     isError: false,
   });
+});
+
+test('it answers with the waiting message when the queue asks the owner instead of queueing', async () => {
+  const ctx = await setupTest({
+    queue: { asksWith: 'k7f2' },
+    tools: [
+      buildMockToolDefinition({
+        name: 'test.send',
+        execution: 'queued',
+        declaration: { effects: ['send'] },
+      }),
+    ],
+  });
+
+  const result = await runToolCall(
+    { tool: 'test.send', input: { query: 'hello' }, toolUseID: null },
+    {
+      runID: 'run-1',
+      thread: 'task-1',
+      logThread: 'task-1',
+      tools: ['test.send'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
+    ctx.options,
+  );
+
+  expect(result).toStrictEqual({
+    content: [
+      {
+        type: 'text',
+        text: 'Waiting for approval as `k7f2`. You can keep working; you will hear the answer in your inbox.',
+      },
+    ],
+    isError: false,
+  });
+
+  expect(ctx.queue.waits).toStrictEqual([]);
 });
 
 test('it returns a failed action outcome as text that is no tool error', async () => {
@@ -2156,7 +2207,7 @@ test('it proposes nothing for a call that repeats an approved action still open,
     model: { model: 'model-a', profile: 'chat-direct' },
   };
 
-  const earlierID = await ctx.queue.queue.enqueue({
+  const earlierID = await ctx.queue.enqueueAction({
     call: { callID: 'call-0', tool: 'files_delete', input: { query: 'old' }, toolUseID: null },
     run,
     decision: { outcome: 'allow', stage: 3, rule: null },
@@ -2216,7 +2267,7 @@ test('it proposes nothing for a direct call that repeats an approved action stil
     model: { model: 'model-a', profile: 'chat-direct' },
   };
 
-  const earlierID = await ctx.queue.queue.enqueue({
+  const earlierID = await ctx.queue.enqueueAction({
     call: { callID: 'call-0', tool: 'notes_wipe', input: { query: 'old' }, toolUseID: null },
     run,
     decision: { outcome: 'allow', stage: 3, rule: null },
@@ -2271,7 +2322,7 @@ test('it proposes nothing for a call that an approval queued after the repeat re
     model: { model: 'model-a', profile: 'chat-direct' },
   };
 
-  const earlierID = await ctx.queue.queue.enqueue({
+  const earlierID = await ctx.queue.enqueueAction({
     call: { callID: 'call-0', tool: 'notes_wipe', input: { query: 'old' }, toolUseID: null },
     run,
     decision: { outcome: 'allow', stage: 3, rule: null },
@@ -2509,7 +2560,7 @@ test('it proposes nothing for a variant call that repeats an approved action sti
 
   invariant(typeof proposedHash === 'string', 'the proposal record holds an action hash');
 
-  const earlierID = await ctx.queue.queue.enqueue({
+  const earlierID = await ctx.queue.enqueueAction({
     call: { callID: 'call-0', tool: 'jobs_start', input: call.input, toolUseID: null },
     run,
     decision: { outcome: 'allow', stage: 3, rule: null },
@@ -2613,4 +2664,166 @@ test('it writes a call with no parent when its request names none', async () => 
   const [called] = await readRecords(ctx.log, { afterSequence: 0, kinds: ['tool_called'] });
 
   expect(called?.record.parent).toBeNull();
+});
+
+test('it charges a paid tool to its day and month budgets before the tool runs', async () => {
+  const run = mock(() => Promise.resolve({ status: 'ok' as const, result: { text: 'a note' } }));
+
+  const ctx = await setupTest({
+    paidTools: ['web_search'],
+    tools: [buildMockToolDefinition({ name: 'web_search', paid: { priceMicros: 25_000 }, run })],
+  });
+
+  const result = await runToolCall(
+    { tool: 'web_search', input: { query: 'milk' }, toolUseID: 'toolu_p1' },
+    {
+      runID: 'run-1',
+      thread: 'task-1',
+      logThread: 'task-1',
+      tools: ['web_search'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
+    ctx.options,
+  );
+
+  const day = await readBudgetLedger(ctx.log.writer.db, ctx.budgets, 'web_search-day');
+  const month = await readBudgetLedger(ctx.log.writer.db, ctx.budgets, 'web_search-month');
+
+  expect(result).toStrictEqual({ content: [], structuredContent: { text: 'a note' } });
+  expect(run).toHaveBeenCalledTimes(1);
+  expect(day).toMatchObject({ spentMicros: 25_000 });
+  expect(month).toMatchObject({ spentMicros: 25_000 });
+});
+
+test('it credits both charges of a paid tool that answers with an error', async () => {
+  const ctx = await setupTest({
+    paidTools: ['web_search'],
+    tools: [
+      buildMockToolDefinition({
+        name: 'web_search',
+        paid: { priceMicros: 25_000 },
+        run: () => Promise.resolve({ status: 'error', message: 'the provider said no' }),
+      }),
+    ],
+  });
+
+  const result = await runToolCall(
+    { tool: 'web_search', input: { query: 'milk' }, toolUseID: 'toolu_p2' },
+    {
+      runID: 'run-1',
+      thread: 'task-1',
+      logThread: 'task-1',
+      tools: ['web_search'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
+    ctx.options,
+  );
+
+  const day = await readBudgetLedger(ctx.log.writer.db, ctx.budgets, 'web_search-day');
+  const month = await readBudgetLedger(ctx.log.writer.db, ctx.budgets, 'web_search-month');
+
+  expect(result).toStrictEqual({
+    content: [{ type: 'text', text: 'the provider said no' }],
+    isError: true,
+  });
+
+  expect(day).toMatchObject({ spentMicros: 0 });
+  expect(month).toMatchObject({ spentMicros: 0 });
+});
+
+test('it keeps the charges of a paid tool whose outcome is unknown', async () => {
+  const ctx = await setupTest({
+    paidTools: ['web_search'],
+    tools: [
+      buildMockToolDefinition({
+        name: 'web_search',
+        paid: { priceMicros: 25_000 },
+        run: () => Promise.reject(new Error('the connection dropped')),
+      }),
+    ],
+  });
+
+  const result = await runToolCall(
+    { tool: 'web_search', input: { query: 'milk' }, toolUseID: 'toolu_p3' },
+    {
+      runID: 'run-1',
+      thread: 'task-1',
+      logThread: 'task-1',
+      tools: ['web_search'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
+    ctx.options,
+  );
+
+  const day = await readBudgetLedger(ctx.log.writer.db, ctx.budgets, 'web_search-day');
+
+  expect(result).toMatchObject({ isError: true });
+  expect(day).toMatchObject({ spentMicros: 25_000 });
+});
+
+test('it returns budget reached at the limit, without running the tool or charging again', async () => {
+  const run = mock(() => Promise.resolve({ status: 'ok' as const, result: { text: 'a note' } }));
+
+  const ctx = await setupTest({
+    paidTools: ['web_search'],
+    tools: [buildMockToolDefinition({ name: 'web_search', paid: { priceMicros: 3_000_000 }, run })],
+  });
+
+  const frame = {
+    runID: 'run-1',
+    thread: 'task-1',
+    logThread: 'task-1',
+    tools: ['web_search'],
+    model: { model: 'model-a', profile: 'chat-direct' },
+  };
+
+  await runToolCall(
+    { tool: 'web_search', input: { query: 'milk' }, toolUseID: 'toolu_p4' },
+    frame,
+    ctx.options,
+  );
+
+  const reached = await runToolCall(
+    { tool: 'web_search', input: { query: 'eggs' }, toolUseID: 'toolu_p5' },
+    frame,
+    ctx.options,
+  );
+
+  const month = await readBudgetLedger(ctx.log.writer.db, ctx.budgets, 'web_search-month');
+
+  expect(reached).toStrictEqual({
+    content: [
+      {
+        type: 'text',
+        text: 'budget reached: web_search-day ($3.00 of $5.00). Resets at midnight.',
+      },
+    ],
+    isError: true,
+  });
+
+  expect(run).toHaveBeenCalledTimes(1);
+  expect(month).toMatchObject({ spentMicros: 3_000_000 });
+});
+
+test('it charges nothing for a tool that is not paid', async () => {
+  const ctx = await setupTest({
+    paidTools: ['web_search'],
+    tools: [buildMockToolDefinition({ name: 'notes_read' })],
+  });
+
+  await runToolCall(
+    { tool: 'notes_read', input: { query: 'milk' }, toolUseID: 'toolu_p6' },
+    {
+      runID: 'run-1',
+      thread: 'task-1',
+      logThread: 'task-1',
+      tools: ['notes_read'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
+    ctx.options,
+  );
+
+  const day = await readBudgetLedger(ctx.log.writer.db, ctx.budgets, 'web_search-day');
+
+  expect(day).toMatchObject({ spentMicros: 0, charges: [] });
 });

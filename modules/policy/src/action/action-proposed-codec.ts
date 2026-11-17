@@ -45,5 +45,9 @@ export const actionProposedCodec = defineRecordCodec(
 
     // the step that made the call
     stepKey: z.string().exactOptional(),
+
+    // For an ask that a lift's budget caused: the budget, the amount and its reset, as the owner
+    // reads them
+    budgetReached: z.string().exactOptional(),
   }),
 );

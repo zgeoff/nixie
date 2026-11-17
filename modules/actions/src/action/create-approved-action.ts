@@ -1,13 +1,18 @@
+import type { BudgetsContext } from '@heynixie/budgets';
 import type { Clock } from '@heynixie/clock';
 import type { Definitions, JSONObject, Log } from '@heynixie/log';
 import { writeRecordsInTransaction } from '@heynixie/log';
 import type { Transaction } from 'kysely';
 import type { ActionRiskClass, ActionsTables } from '../types';
+import { creditFailedActions } from './credit-failed-actions';
 
 export interface ApprovedActionContext {
   readonly log: Log;
   readonly clock: Pick<Clock, 'now'>;
   readonly definitions: () => Definitions;
+
+  // what a failed action's lift charge is credited to; absent, the deployment holds no budgets
+  readonly budgets?: BudgetsContext;
 }
 
 // What an approval answered: the action of the proposal row, which the owner approved as shown.
@@ -30,7 +35,7 @@ export interface ApprovedAction {
 
 // Queues the action an approval answered, in the answer's transaction, so a second answer finds the
 // row closed. A proposal that holds an action releases it instead. Past its deadline the action is
-// written failed, and the approval still closes its row.
+// written failed with its lift charge credited, and the approval still closes its row.
 export async function createApprovedAction(
   tx: Transaction<unknown>,
   context: ApprovedActionContext,
@@ -47,7 +52,7 @@ export async function createApprovedAction(
   const isPastDeadline = approved.deadlineAt !== null && context.clock.now() >= approved.deadlineAt;
 
   if (held !== undefined) {
-    await writeRecordsInTransaction(tx, context.log, [
+    const records = [
       isPastDeadline
         ? buildDeadlineRecord(context, {
             actionID: held.action_id,
@@ -56,12 +61,15 @@ export async function createApprovedAction(
             attempt: held.attempt_count,
           })
         : {
-            kind: 'action.released',
+            kind: 'action.released' as const,
             definitions: context.definitions(),
             thread: held.task_id,
             payload: { actionID: held.action_id, riskClass: approved.riskClass },
           },
-    ]);
+    ];
+
+    await writeRecordsInTransaction(tx, context.log, records);
+    await creditFailedActions(tx, context.budgets, records);
 
     return held.action_id;
   }

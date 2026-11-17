@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test';
-import { createAllowedAction } from '../action/create-allowed-action';
 import type { ActionsTables } from '../types';
 import { createTestStep } from './create-test-step';
+import { queueTestAction } from './queue-test-action';
 import { runStalledAttempt } from './run-stalled-attempt';
 import { startTestActions } from './start-test-actions';
 
@@ -13,7 +13,7 @@ test('it leaves an attempt record with no result after one provider call', async
   const ctx = await setupTest();
   const step = await createTestStep(ctx.context);
 
-  await createAllowedAction(ctx.context, {
+  await queueTestAction(ctx.context, {
     step,
     tool: 'test.send',
     actionHash: 'sha256:send-1',

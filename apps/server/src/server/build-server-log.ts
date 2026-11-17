@@ -1,5 +1,6 @@
 import { actionsProjection } from '@heynixie/actions';
 import { apiProjections, proposalsProjection } from '@heynixie/api';
+import { budgetProjections } from '@heynixie/budgets';
 import {
   gapAnswersProjection,
   gapGroupsProjection,
@@ -36,6 +37,7 @@ export function buildServerLog(writer: Writer, deploymentKey: CryptoKey): Log {
       knownContactsProjection,
       proposalsProjection,
       ...spendProjections,
+      ...budgetProjections,
     ],
   };
 }

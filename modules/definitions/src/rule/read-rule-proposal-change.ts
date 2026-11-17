@@ -2,6 +2,7 @@ import { createShortID } from '@heynixie/db';
 import type { Kysely } from 'kysely';
 import type { RuleProposalChange } from '../seed/write-seed';
 import type { DefinitionsTables } from '../types';
+import type { BudgetEdit } from '../utils/build-budget-seed-plan';
 import { buildRuleProposal } from '../utils/build-rule-proposal';
 import type { RuleEdit } from '../utils/build-rule-seed-plan';
 import type { HeldEffects } from '../utils/pick-seed-effects';
@@ -10,10 +11,15 @@ import { readRuleProposals } from './read-rule-proposals';
 // A pending proposal gives way to a new set of widenings. A set you rejected or left to lapse, even
 // before a log reset, waits for the definitions to change it. An approved set held again was
 // narrowed since, so it asks again.
+export interface HeldChanges {
+  readonly rules: readonly RuleEdit[];
+  readonly effects: readonly HeldEffects[];
+  readonly budgets: readonly BudgetEdit[];
+}
+
 export async function readRuleProposalChange(
   db: Kysely<unknown>,
-  held: readonly RuleEdit[],
-  heldEffects: readonly HeldEffects[],
+  held: HeldChanges,
   now: number,
 ): Promise<RuleProposalChange> {
   const proposals = await readRuleProposals(db);
@@ -21,9 +27,9 @@ export async function readRuleProposalChange(
   const pending = proposals.findLast((state) => state.outcome === null && state.lapseAt > now);
 
   const proposed =
-    held.length === 0 && heldEffects.length === 0
+    held.rules.length === 0 && held.effects.length === 0 && held.budgets.length === 0
       ? null
-      : buildRuleProposal(createShortID(), held, heldEffects);
+      : buildRuleProposal(createShortID(), held.rules, held.effects, held.budgets);
 
   if (pending?.proposal.proposalHash === proposed?.proposalHash) {
     return { withdrawn: null, proposed: null };

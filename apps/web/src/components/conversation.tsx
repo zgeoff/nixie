@@ -8,6 +8,7 @@ import { useMemoryNotices } from '../memory/use-memory-notices';
 import { useOutbox } from '../outbox/use-outbox';
 import { css } from '../styled-system/css';
 import type { StartTimer } from '../utils/start-platform-timer';
+import { BudgetNotice } from './budget-notice';
 import { CompactionFailureNotice } from './compaction-failure-notice';
 import { Composer } from './composer';
 import { ConversationFailureNotice } from './conversation-failure-notice';
@@ -194,6 +195,7 @@ export function Conversation(props: ConversationProps): ReactNode {
           />
         </ThreadApprovalsContext>
       </ConversationScroller>
+      <BudgetNotice records={records} />
       <ConversationFailureNotice lastStepEnd={conversation.lastStepEnd} records={records} />
       <div className={composerBar}>
         {props.composerNotice === undefined ? (

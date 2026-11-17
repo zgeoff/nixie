@@ -34,7 +34,12 @@ export function renderRule(rule: Rule): string {
   const until = rule.expires === undefined ? '' : `, until ${rule.expires}`;
   const cel = rule.cel === undefined ? '' : `, whatever the CEL condition ${renderCode(rule.cel)}`;
 
-  return `${lead} ${subject}${when}${until}${cel}.`;
+  const lift =
+    rule.lift === undefined
+      ? ''
+      : `, with no ask for a purchase of up to $${rule.lift.perAction} each within the budget ${renderCode(rule.lift.budget)}`;
+
+  return `${lead} ${subject}${when}${until}${lift}${cel}.`;
 }
 
 function renderCode(text: string): string {

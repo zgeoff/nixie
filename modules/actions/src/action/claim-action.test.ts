@@ -8,10 +8,10 @@ import {
 import { writeStepCommit, writeTaskControl, writeTaskResume } from '@heynixie/tasks';
 import { buildActionSeeder } from '../test-utils/build-action-seeder';
 import { createTestStep } from '../test-utils/create-test-step';
+import { queueTestAction } from '../test-utils/queue-test-action';
 import { startTestActions } from '../test-utils/start-test-actions';
 import type { ActionsTables } from '../types';
 import { claimAction } from './claim-action';
-import { createAllowedAction } from './create-allowed-action';
 import { waitForActionOutcome } from './wait-for-action-outcome';
 
 async function setupTest() {
@@ -52,7 +52,7 @@ test('it claims a due pending action with an action lease at generation 1', asyn
   const ctx = await setupTest();
   const step = await createTestStep(ctx.context);
 
-  const queued = await createAllowedAction(ctx.context, {
+  const queued = await queueTestAction(ctx.context, {
     step,
     tool: 'test.send',
     actionHash: 'sha256:send-1',
@@ -76,7 +76,7 @@ test('it leaves an action whose next attempt is not yet due', async () => {
   const ctx = await setupTest();
   const step = await createTestStep(ctx.context);
 
-  await createAllowedAction(ctx.context, {
+  await queueTestAction(ctx.context, {
     step,
     tool: 'test.send',
     actionHash: 'sha256:send-1',
@@ -95,7 +95,7 @@ test('it leaves a settled action', async () => {
   const ctx = await setupTest();
   const step = await createTestStep(ctx.context);
 
-  await createAllowedAction(ctx.context, {
+  await queueTestAction(ctx.context, {
     step,
     tool: 'test.send',
     actionHash: 'sha256:send-1',
@@ -114,7 +114,7 @@ test('it leaves an action whose lease another runner holds', async () => {
   const ctx = await setupTest();
   const step = await createTestStep(ctx.context);
 
-  await createAllowedAction(ctx.context, {
+  await queueTestAction(ctx.context, {
     step,
     tool: 'test.send',
     actionHash: 'sha256:send-1',
@@ -133,7 +133,7 @@ test('it holds an action that never started while its task is paused', async () 
   const ctx = await setupTest();
   const step = await createTestStep(ctx.context);
 
-  await createAllowedAction(ctx.context, {
+  await queueTestAction(ctx.context, {
     step,
     tool: 'test.send',
     actionHash: 'sha256:send-1',
@@ -153,7 +153,7 @@ test('it holds an action that never started once its task is closed', async () =
   const ctx = await setupTest();
   const step = await createTestStep(ctx.context);
 
-  await createAllowedAction(ctx.context, {
+  await queueTestAction(ctx.context, {
     step,
     tool: 'test.send',
     actionHash: 'sha256:send-1',
@@ -172,7 +172,7 @@ test('it never claims an action that a stop cancelled before its first attempt, 
   const ctx = await setupTest();
   const step = await createTestStep(ctx.context);
 
-  const queued = await createAllowedAction(ctx.context, {
+  const queued = await queueTestAction(ctx.context, {
     step,
     tool: 'test.send',
     actionHash: 'sha256:send-1',
@@ -199,7 +199,7 @@ test('it claims an action with a started attempt after a stop and a restart of i
   const ctx = await setupTest();
   const step = await createTestStep(ctx.context);
 
-  const queued = await createAllowedAction(ctx.context, {
+  const queued = await queueTestAction(ctx.context, {
     step,
     tool: 'test.send',
     actionHash: 'sha256:send-1',
@@ -221,7 +221,7 @@ test('it claims an action with a started attempt while its task is paused', asyn
   const ctx = await setupTest();
   const step = await createTestStep(ctx.context);
 
-  const queued = await createAllowedAction(ctx.context, {
+  const queued = await queueTestAction(ctx.context, {
     step,
     tool: 'test.send',
     actionHash: 'sha256:send-1',

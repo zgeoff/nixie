@@ -56,6 +56,20 @@ export type {
 } from './rule/parse-rule-files';
 
 export { parseRuleFiles } from './rule/parse-rule-files';
+
+export type {
+  BudgetCounts,
+  BudgetDefinition,
+  BudgetFileEntry,
+  BudgetFileProblem,
+  BudgetPeriod,
+  ParsedBudgetFiles,
+} from './budget/parse-budget-files';
+
+export { parseBudgetFiles } from './budget/parse-budget-files';
+export { budgetPeriods, storedBudgetCountsSchema } from './budget/budget-file-schema';
+export { toMicros } from './budget/to-micros';
+export { budgetIDPattern } from './budget/budget-id-pattern';
 export type { PolicyRecordKind } from './policy/policy-record-kind';
 export { pickRuleChange } from './rule/pick-rule-change';
 export type { RuleVerdict } from './rule/pick-rule-outcome';

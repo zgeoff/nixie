@@ -1,3 +1,4 @@
+import { creditCancelledActionChargesInTransaction } from '@heynixie/budgets';
 import type { JSONObject } from '@heynixie/log';
 import { writeRecordsInTransaction } from '@heynixie/log';
 import type { TaskControlPlan } from '@heynixie/task-control';
@@ -44,7 +45,7 @@ export type TaskControlOutcome =
 // record that moves it commit together.
 export async function writeTaskControlInTransaction(
   tx: Transaction<unknown>,
-  context: Pick<TasksContext, 'log' | 'definitions' | 'runSettings' | 'runners'>,
+  context: Pick<TasksContext, 'log' | 'definitions' | 'runSettings' | 'runners' | 'budgets'>,
   request: TaskControlRequest,
 ): Promise<TaskControlOutcome> {
   const db = tx.$extendTables<TasksTables>();
@@ -105,6 +106,10 @@ export async function writeTaskControlInTransaction(
   ]);
 
   invariant(record, 'the control writes its record');
+
+  if (plan.kind === 'task.stopped' && context.budgets !== undefined) {
+    await creditCancelledActionChargesInTransaction(tx, context.budgets, record.sequence);
+  }
 
   if (plan.kind === 'task.stopped') {
     await writeRunEndInTransaction(tx, context, {

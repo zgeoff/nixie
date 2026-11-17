@@ -488,7 +488,7 @@ test('it keeps the last seed when the source refuses the snapshot', async () => 
 test('it refuses a first snapshot that fails to parse and leaves no seed', async () => {
   const ctx = await setupTest();
 
-  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 5\n');
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 6\n');
   await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
 
   const result = await runSeed({
@@ -1855,6 +1855,7 @@ test('it writes a rule edit that widens as one rule change proposal beside the s
           fields: [{ field: 'outcome', before: '"deny"', after: '"ask"' }],
         },
       ],
+      budgetChanges: [],
       effectChanges: [],
     },
   ]);
@@ -2789,4 +2790,252 @@ test('it binds no task when the seed is refused', async () => {
 
   expect(result.status).toBe('refused');
   expect(created).toStrictEqual([]);
+});
+
+test('it applies a new budget at once and holds it in the budgets in force', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 5\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+  await mkdir(join(ctx.root, 'budgets'));
+
+  await writeFile(
+    join(ctx.root, 'budgets', 'shopping.yaml'),
+    'shopping-month:\n  counts: spend\n  limit: 100\n  period: month\n',
+  );
+
+  await runSeed({
+    tasks: buildTestTaskSeed(),
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => ({ rules: [], tools: [] }),
+  });
+
+  const rows =
+    await sql`select budget_id, counts, limit_micros, period from budgets_in_force`.execute(
+      ctx.writer.db,
+    );
+
+  expect(rows.rows).toStrictEqual([
+    { budget_id: 'shopping-month', counts: 'spend', limit_micros: 100_000_000, period: 'month' },
+  ]);
+});
+
+test('it keeps the budgets out of the snapshot of a deployment that has none', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 5\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+
+  const result = await runSeed({
+    tasks: buildTestTaskSeed(),
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => ({ rules: [], tools: [] }),
+  });
+
+  invariant(result.status === 'seeded');
+
+  const snapshot = await sql`select form from definition_snapshots`.execute(ctx.writer.db);
+
+  const form = String(Object.values(snapshot.rows[0] ?? {})[0]);
+
+  expect(form).not.toContain('"budgets"');
+});
+
+test('it puts the budgets in force into the snapshot hash', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 5\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+
+  const plain = await runSeed({
+    tasks: buildTestTaskSeed(),
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => ({ rules: [], tools: [] }),
+  });
+
+  await mkdir(join(ctx.root, 'budgets'));
+
+  await writeFile(
+    join(ctx.root, 'budgets', 'shopping.yaml'),
+    'shopping-month:\n  counts: spend\n  limit: 100\n  period: month\n',
+  );
+
+  const budgeted = await runSeed({
+    tasks: buildTestTaskSeed(),
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => ({ rules: [], tools: [] }),
+  });
+
+  invariant(plain.status === 'seeded' && budgeted.status === 'seeded');
+
+  expect(budgeted.inForce.snapshotHash).not.toBe(plain.inForce.snapshotHash);
+});
+
+test('it applies a lowered budget limit at once', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 5\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+  await mkdir(join(ctx.root, 'budgets'));
+
+  await writeFile(
+    join(ctx.root, 'budgets', 'shopping.yaml'),
+    'shopping-month:\n  counts: spend\n  limit: 100\n  period: month\n',
+  );
+
+  await runSeed({
+    tasks: buildTestTaskSeed(),
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => ({ rules: [], tools: [] }),
+  });
+
+  await writeFile(
+    join(ctx.root, 'budgets', 'shopping.yaml'),
+    'shopping-month:\n  counts: spend\n  limit: 60\n  period: month\n',
+  );
+
+  await runSeed({
+    tasks: buildTestTaskSeed(),
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => ({ rules: [], tools: [] }),
+  });
+
+  const rows = await sql`select limit_micros from budgets_in_force`.execute(ctx.writer.db);
+  const records = await readRecords(ctx.log, { afterSequence: 1 });
+
+  expect(rows.rows).toStrictEqual([{ limit_micros: 60_000_000 }]);
+  expect(records.map((read) => read.record.kind)).toStrictEqual(['definitions_seeded']);
+});
+
+test('it applies a removed budget at once', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 5\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+  await mkdir(join(ctx.root, 'budgets'));
+
+  await writeFile(
+    join(ctx.root, 'budgets', 'shopping.yaml'),
+    'shopping-month:\n  counts: spend\n  limit: 100\n  period: month\n',
+  );
+
+  await runSeed({
+    tasks: buildTestTaskSeed(),
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => ({ rules: [], tools: [] }),
+  });
+
+  await writeFile(join(ctx.root, 'budgets', 'shopping.yaml'), '# none\n');
+
+  await runSeed({
+    tasks: buildTestTaskSeed(),
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => ({ rules: [], tools: [] }),
+  });
+
+  const rows = await sql`select budget_id from budgets_in_force`.execute(ctx.writer.db);
+
+  expect(rows.rows).toStrictEqual([]);
+});
+
+test('it holds a raised budget limit in the widening proposal and keeps the limit in force', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 5\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+  await mkdir(join(ctx.root, 'budgets'));
+
+  await writeFile(
+    join(ctx.root, 'budgets', 'shopping.yaml'),
+    'shopping-month:\n  counts: spend\n  limit: 100\n  period: month\n',
+  );
+
+  await runSeed({
+    tasks: buildTestTaskSeed(),
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => ({ rules: [], tools: [] }),
+  });
+
+  await writeFile(
+    join(ctx.root, 'budgets', 'shopping.yaml'),
+    'shopping-month:\n  counts: spend\n  limit: 150\n  period: month\n',
+  );
+
+  await runSeed({
+    tasks: buildTestTaskSeed(),
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => ({ rules: [], tools: [] }),
+  });
+
+  const rows = await sql`select limit_micros from budgets_in_force`.execute(ctx.writer.db);
+  const records = await readRecords(ctx.log, { afterSequence: 1 });
+
+  expect(rows.rows).toStrictEqual([{ limit_micros: 100_000_000 }]);
+
+  expect(records.map((read) => read.record.payload)).toStrictEqual([
+    expect.objectContaining({ rules: expect.objectContaining({ held: [] }) }),
+    {
+      proposalID: expect.any(String),
+      proposalHash: expect.any(String),
+      changes: [],
+      effectChanges: [],
+      budgetChanges: [
+        {
+          budgetID: 'shopping-month',
+          before: {
+            hash: expect.any(String),
+            counts: 'spend',
+            limitMicros: 100_000_000,
+            period: 'month',
+            sentence: 'Let the budget shopping-month hold $100.00 a month for purchases.',
+          },
+          after: {
+            hash: expect.any(String),
+            counts: 'spend',
+            limitMicros: 150_000_000,
+            period: 'month',
+            sentence: 'Let the budget shopping-month hold $150.00 a month for purchases.',
+          },
+        },
+      ],
+    },
+  ]);
+});
+
+test('it holds a budget that raises a built-in limit, and applies one that lowers it', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 5\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+  await mkdir(join(ctx.root, 'budgets'));
+
+  await writeFile(
+    join(ctx.root, 'budgets', 'search.yaml'),
+    'search-day:\n  counts: tool:search\n  limit: 50\n  period: day\nsearch-month:\n  counts: tool:search\n  limit: 20\n  period: month\n',
+  );
+
+  await runSeed({
+    tasks: buildTestTaskSeed(),
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => ({ rules: [], tools: [] }),
+    builtInBudgets: [
+      { id: 'search-day', counts: 'tool:search', limitMicros: 5_000_000, period: 'day' },
+      { id: 'search-month', counts: 'tool:search', limitMicros: 50_000_000, period: 'month' },
+    ],
+  });
+
+  const rows = await sql`select budget_id from budgets_in_force`.execute(ctx.writer.db);
+
+  expect(rows.rows).toStrictEqual([{ budget_id: 'search-month' }]);
 });

@@ -1,4 +1,4 @@
-import type { LocalDate } from './build-zone-parts';
+import type { LocalDate } from '@heynixie/clock';
 import { formatLocalDate } from './format-local-date';
 
 // The key of a `day` or `week` fire: the local date and time of the slot.

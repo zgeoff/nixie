@@ -3,9 +3,9 @@ import { withWriteTransaction } from '@heynixie/log';
 import { writeTaskControl } from '@heynixie/tasks';
 import { claimTestAction } from '../test-utils/claim-test-action';
 import { createTestStep } from '../test-utils/create-test-step';
+import { queueTestAction } from '../test-utils/queue-test-action';
 import { seedDoneAction } from '../test-utils/seed-done-action';
 import { startTestActions } from '../test-utils/start-test-actions';
-import { createAllowedAction } from './create-allowed-action';
 import { readTasksWithPendingActions } from './read-tasks-with-pending-actions';
 import { runActionAttempt } from './run-action-attempt';
 
@@ -23,7 +23,7 @@ test('it lists the task of each action with no outcome, once for each action', a
   const ctx = await setupTest();
   const step = await createTestStep(ctx.context);
 
-  await createAllowedAction(ctx.context, {
+  await queueTestAction(ctx.context, {
     step,
     tool: 'test.send',
     actionHash: 'sha256:send-1',
@@ -31,7 +31,7 @@ test('it lists the task of each action with no outcome, once for each action', a
     decision: { outcome: 'allow', stage: 4, rule: { id: 'test-rule', revision: 1 } },
   });
 
-  await createAllowedAction(ctx.context, {
+  await queueTestAction(ctx.context, {
     step,
     tool: 'test.archive',
     actionHash: 'sha256:archive-1',
@@ -48,7 +48,7 @@ test('it lists an action whose attempt is open', async () => {
   const ctx = await setupTest();
   const step = await createTestStep(ctx.context);
 
-  await createAllowedAction(ctx.context, {
+  await queueTestAction(ctx.context, {
     step,
     tool: 'test.send',
     actionHash: 'sha256:send-1',
@@ -105,7 +105,7 @@ test('it leaves out an action that a stop cancelled', async () => {
   const ctx = await setupTest();
   const step = await createTestStep(ctx.context);
 
-  await createAllowedAction(ctx.context, {
+  await queueTestAction(ctx.context, {
     step,
     tool: 'test.send',
     actionHash: 'sha256:send-1',

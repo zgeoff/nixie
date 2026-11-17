@@ -55,6 +55,7 @@ export type {
   ContentSource,
   Decision,
   DecisionFault,
+  DecisionLift,
   DecisionInputs,
   DestinationPermission,
   Definitions,

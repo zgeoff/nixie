@@ -1,4 +1,6 @@
 import { expect, test } from 'bun:test';
+import type { BudgetsContext } from '@heynixie/budgets';
+import { buildBuiltInBudgets, readBudgetLedger } from '@heynixie/budgets';
 import type { JSONObject } from '@heynixie/log';
 import { readRecords } from '@heynixie/log';
 import { buildActionHash } from '@heynixie/policy';
@@ -11,7 +13,7 @@ import { buildMockToolDefinition } from '../test-utils/build-mock-tool-definitio
 import { buildMockVariantToolDefinition } from '../test-utils/build-mock-variant-tool-definition';
 import { buildStubActionQueue } from '../test-utils/build-stub-action-queue';
 import { setupTestLog } from '../test-utils/setup-test-log';
-import type { ToolContext, ToolDefinition, ToolOutcome, ToolRun } from '../types';
+import type { PaidTool, ToolContext, ToolDefinition, ToolOutcome, ToolRun } from '../types';
 import { runApprovedCall } from './run-approved-call';
 
 interface ApprovalOverrides {
@@ -20,7 +22,7 @@ interface ApprovalOverrides {
 }
 
 // A direct tool that asks, so its call is stored and waits for the owner.
-async function setupTest(outcome?: ToolOutcome) {
+async function setupTest(outcome?: ToolOutcome, paid?: PaidTool) {
   const run: ToolRun = {
     runID: 'run-1',
     thread: 'task-1',
@@ -43,6 +45,7 @@ async function setupTest(outcome?: ToolOutcome) {
 
   const tool: ToolDefinition = buildMockToolDefinition({
     name: 'notes_wipe',
+    ...(paid === undefined ? {} : { paid }),
     declaration: { effects: ['export'], results: { text: 'untrusted' } },
     run: (_call, context) => {
       contexts.push(context);
@@ -53,6 +56,14 @@ async function setupTest(outcome?: ToolOutcome) {
 
   const registry = buildToolRegistry([tool]);
 
+  const budgets: BudgetsContext = {
+    log: testLog.log,
+    clock: testLog.log.writer.clock,
+    zone: 'UTC',
+    definitions: () => ({ snapshotHash: 'sha256:test' }),
+    builtIn: () => buildBuiltInBudgets(['notes_wipe']),
+  };
+
   const options: ToolCallOptions = {
     registry,
     decide: readStarterDecisionPoint((name) => findToolDeclaration(registry, name)),
@@ -60,6 +71,7 @@ async function setupTest(outcome?: ToolOutcome) {
     definitions: () => ({ snapshotHash: 'sha256:test' }),
     queue: buildStubActionQueue().queue,
     queuedWaitMs: 10_000,
+    budgets,
   };
 
   await runToolCall(
@@ -70,6 +82,8 @@ async function setupTest(outcome?: ToolOutcome) {
 
   return {
     options,
+    budgets,
+    log: testLog.log,
     contexts,
     readRecords: async () => {
       const entries = await readRecords(testLog.log, { afterSequence: 0 });
@@ -240,4 +254,22 @@ test("it marks the result of an approved variant call with the sources of that v
     contentSource: 'untrusted',
     payload: { actionID: 'proposal-1', sources: { text: 'untrusted' } },
   });
+});
+
+test('it charges the approved call of a paid tool once, before it runs', async () => {
+  const ctx = await setupTest(undefined, { priceMicros: 40_000 });
+
+  await ctx.approve({});
+
+  const day = await readBudgetLedger(ctx.log.writer.db, ctx.budgets, 'notes_wipe-day');
+
+  expect(day).toMatchObject({ spentMicros: 40_000 });
+});
+
+test('it refuses the approved call of a paid tool whose budget is full, and runs nothing', async () => {
+  const ctx = await setupTest(undefined, { priceMicros: 6_000_000 });
+  const approved = await ctx.approve({});
+
+  expect(approved).toStrictEqual({ status: 'failed', resultSequence: 4 });
+  expect(ctx.contexts).toStrictEqual([]);
 });

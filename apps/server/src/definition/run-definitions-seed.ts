@@ -21,6 +21,7 @@ export function runDefinitionsSeed(parts: SeedParts): Promise<SeedResult> {
       source: parts.source,
       tasks: parts.tasks,
       buildPolicy: parts.buildPolicy,
+      builtInBudgets: parts.context.budgets?.builtIn() ?? [],
     });
 
     parts.state.update({

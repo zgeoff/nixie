@@ -1,3 +1,4 @@
+import type { BudgetsContext } from '@heynixie/budgets';
 import type { Decision, Definitions, JSONObject, Log } from '@heynixie/log';
 import type { CallDestination, DecisionPoint, PolicyDecision } from '@heynixie/policy';
 import { buildActionHash, makeFaultSafeDecisionPoint, toStoredDecision } from '@heynixie/policy';
@@ -6,6 +7,7 @@ import invariant from 'tiny-invariant';
 import { makeCallRecorder } from './call-record/make-call-recorder';
 import type { CallRecorder } from './call-record/make-call-recorder';
 import { callCapRefusal } from './cap/call-cap-refusal';
+import { runPaidCall } from './paid/run-paid-call';
 import { buildMemoryVerdict, isMemoryRuleAsk } from './policy-call/build-memory-verdict';
 import { buildToolPolicyCall } from './policy-call/build-tool-policy-call';
 import { pickVariant } from './policy-call/pick-variant';
@@ -41,6 +43,9 @@ export interface ToolCallOptions {
   readonly queue: ActionQueue;
 
   readonly queuedWaitMs: number;
+
+  // what a paid tool charges; a deployment with a paid tool sets it
+  readonly budgets?: BudgetsContext;
 }
 
 export interface ToolCallRequest {
@@ -325,11 +330,17 @@ function runAllowedCall(allowed: AllowedCall): Promise<Settled> {
 }
 
 async function runDirect(allowed: AllowedCall): Promise<Settled> {
-  const outcome = await allowed.registered.definition.run(allowed.call, {
-    run: allowed.run,
-    callSequence: allowed.callSequence,
-    ...(allowed.verdict === undefined ? {} : { verdict: allowed.verdict }),
-  });
+  const outcome = await runPaidCall(allowed.registered, allowed.call, allowed.options, () =>
+    allowed.registered.definition.run(allowed.call, {
+      run: allowed.run,
+      callSequence: allowed.callSequence,
+      ...(allowed.verdict === undefined ? {} : { verdict: allowed.verdict }),
+    }),
+  );
+
+  if (outcome.status === 'budget_reached') {
+    return buildMessage('denied', outcome.message, { source: 'owner_data' });
+  }
 
   // a tool's error can quote what an outside service said, so it counts as outside content
   return outcome.status === 'error'
@@ -338,7 +349,7 @@ async function runDirect(allowed: AllowedCall): Promise<Settled> {
 }
 
 async function runQueued(allowed: AllowedCall): Promise<Settled> {
-  const actionID = await allowed.options.queue.enqueue({
+  const enqueued = await allowed.options.queue.enqueue({
     call: allowed.call,
     run: allowed.run,
     decision: allowed.decision,
@@ -351,10 +362,16 @@ async function runQueued(allowed: AllowedCall): Promise<Settled> {
     }),
     deadlineAt: allowed.deadlineAt,
     effects: allowed.registered.definition.declaration.effects,
+    destinations: allowed.destinations,
+    content: allowed.registered.definition.declaration.content,
   });
 
+  if (enqueued.status === 'asked') {
+    return buildAskMessage(enqueued.shortID);
+  }
+
   return readQueuedResult(allowed.registered, allowed.options.queue, {
-    actionID,
+    actionID: enqueued.actionID,
     timeoutMs: allowed.options.queuedWaitMs,
   });
 }

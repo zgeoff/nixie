@@ -29,6 +29,10 @@ export const rulesFileBodySchema = fileObjectSchema
     message: 'a rule holds definitions or its old name jobs, never both',
     path: ['definitions'],
   })
+  .refine((rule) => rule.lift === undefined || rule.outcome === 'allow', {
+    message: 'a lift is valid only on an allow rule',
+    path: ['lift'],
+  })
   .meta({ dependentRequired: { mandate: ['expires'] } })
   .transform((rule) => {
     const { jobs, definitions, contexts, ...rest } = rule;

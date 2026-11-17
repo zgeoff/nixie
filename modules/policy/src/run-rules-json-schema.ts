@@ -1,8 +1,16 @@
 import { join } from 'node:path';
+import { buildBudgetsJSONSchema } from './budget/build-budgets-json-schema';
 import { buildRulesJSONSchema } from './rule/build-rules-json-schema';
 
-const path = join(import.meta.dir, '..', 'definitions-rules.schema.json');
+const files = [
+  ['definitions-rules.schema.json', buildRulesJSONSchema()],
+  ['definitions-budgets.schema.json', buildBudgetsJSONSchema()],
+] as const;
 
-await Bun.write(path, `${JSON.stringify(buildRulesJSONSchema(), null, 2)}\n`);
+for (const [name, schema] of files) {
+  const path = join(import.meta.dir, '..', name);
 
-process.stdout.write(`wrote ${path}\n`);
+  await Bun.write(path, `${JSON.stringify(schema, null, 2)}\n`);
+
+  process.stdout.write(`wrote ${path}\n`);
+}

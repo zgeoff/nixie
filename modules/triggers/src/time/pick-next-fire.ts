@@ -1,11 +1,9 @@
+import type { LocalDate } from '@heynixie/clock';
+import { buildLocalInstant, buildZoneOffsetMs, buildZoneParts } from '@heynixie/clock';
 import type { Schedule, Trigger } from '@heynixie/contract';
 import { addDays } from './add-days';
 import { buildInstantKey } from './build-instant-key';
-import { buildLocalInstant } from './build-local-instant';
 import { buildSlotKey } from './build-slot-key';
-import { buildZoneOffsetMs } from './build-zone-offset-ms';
-import type { LocalDate } from './build-zone-parts';
-import { buildZoneParts } from './build-zone-parts';
 import { getWeekday } from './get-weekday';
 import { toMinuteOfDay } from './to-minute-of-day';
 

@@ -34,6 +34,9 @@ export const decisionSchema = z.object({
     })
     .exactOptional(),
   fault: z.enum(['threw', 'timed_out']).exactOptional(),
+  lift: z
+    .object({ ruleID: z.string(), budgetID: z.string(), amountMicros: z.number() })
+    .exactOptional(),
   inputs: z
     .object({
       toolList: z.string().array(),

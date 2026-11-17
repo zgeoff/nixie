@@ -1,12 +1,17 @@
 import { expect, test } from 'bun:test';
+import { readBudgetLedger } from '@heynixie/budgets';
 import { readRecords, withWriteTransaction } from '@heynixie/log';
 import { buildActionProposalInput } from '@heynixie/policy';
 import { writeStepCommit } from '@heynixie/tasks';
+import invariant from 'tiny-invariant';
+import { buildMockLiftedCall } from '../test-utils/build-mock-lifted-call';
 import { buildStubConnector } from '../test-utils/build-stub-connector';
 import { claimTestAction } from '../test-utils/claim-test-action';
 import { createTestStep } from '../test-utils/create-test-step';
+import { queueTestAction } from '../test-utils/queue-test-action';
 import { readTestAction } from '../test-utils/read-test-action';
 import { startTestActions } from '../test-utils/start-test-actions';
+import { startTestBudgetedActions } from '../test-utils/start-test-budgeted-actions';
 import type { ActionsTables } from '../types';
 import type { AttemptVerdict } from './attempt-check';
 import { claimAction } from './claim-action';
@@ -45,7 +50,7 @@ async function setupTest() {
     taskID,
     approve,
     queueAllowed: () =>
-      createAllowedAction(actions.context, {
+      queueTestAction(actions.context, {
         step,
         tool: 'test.send',
         actionHash: 'sha256:send-1',
@@ -233,4 +238,64 @@ test('it leaves a held action unclaimed until its proposal is answered', async (
   const claimed = await claimAction(ctx.context, { holder: 'runner-b', leaseMs: 60_000 });
 
   expect(claimed).toBeNull();
+});
+
+test('it credits the lift charge of a held action that is approved past its deadline', async () => {
+  const actions = await startTestBudgetedActions();
+  const step = await createTestStep(actions.context);
+
+  const call = buildMockLiftedCall(step, 6_000_000);
+
+  const queued = await createAllowedAction(actions.context, call);
+
+  invariant('actionID' in queued);
+
+  const stub = buildStubConnector(() => ({ kind: 'success', result: {} }));
+
+  const lease = await claimTestAction(actions.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  await runActionAttempt(actions.context, lease, {
+    connectors: new Map([['test.buy', stub.connector]]),
+    leaseMs: 60_000,
+    checkAttempt: () =>
+      Promise.resolve({
+        kind: 'ask',
+        cause: 'always_ask',
+        destinations: [],
+        proposalID: queued.actionID,
+        record: buildActionProposalInput({
+          definitions: { snapshotHash: 'sha256:test' },
+          thread: step.lease.workID,
+          callSequence: 1,
+          tool: 'test.buy',
+          effects: ['spend'],
+          cause: 'always_ask',
+          input: { amount: 6 },
+          destinations: [],
+          reopen: { proposalID: queued.actionID, actionID: queued.actionID },
+        }).record,
+      }),
+  });
+
+  await withWriteTransaction(actions.writer, (tx) =>
+    createApprovedAction(tx, actions.context, {
+      proposalID: queued.actionID,
+      taskID: step.lease.workID,
+      stepKey: null,
+      tool: 'test.buy',
+      effects: ['spend'],
+      actionHash: call.actionHash,
+      arguments: { amount: 6 },
+      callSequence: 1,
+      riskClass: 'always_ask',
+      deadlineAt: 999_000,
+      runsInStep: false,
+    }),
+  );
+
+  const action = await readTestAction(actions.writer, queued.actionID);
+  const ledger = await readBudgetLedger(actions.writer.db, actions.budgets, 'groceries');
+
+  expect(action).toMatchObject({ status: 'failed', reason: 'deadline_passed' });
+  expect(ledger?.spentMicros).toBe(0);
 });

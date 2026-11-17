@@ -205,6 +205,111 @@ test.each<[string, Rule | null, Rule | null, RuleChange]>([
     { id: 'allow-reads', outcome: 'allow', effects: ['fetch', 'read'] },
     'unchanged',
   ],
+  [
+    'an added lift',
+    { id: 'allow-groceries', outcome: 'allow', tools: ['shop.order'] },
+    {
+      id: 'allow-groceries',
+      outcome: 'allow',
+      tools: ['shop.order'],
+      lift: { perAction: 20, budget: 'shopping-month' },
+    },
+    'widening',
+  ],
+  [
+    'a higher cap per action in a lift',
+    {
+      id: 'allow-groceries',
+      outcome: 'allow',
+      tools: ['shop.order'],
+      lift: { perAction: 20, budget: 'shopping-month' },
+    },
+    {
+      id: 'allow-groceries',
+      outcome: 'allow',
+      tools: ['shop.order'],
+      lift: { perAction: 30, budget: 'shopping-month' },
+    },
+    'widening',
+  ],
+  [
+    'another budget in a lift',
+    {
+      id: 'allow-groceries',
+      outcome: 'allow',
+      tools: ['shop.order'],
+      lift: { perAction: 20, budget: 'shopping-month' },
+    },
+    {
+      id: 'allow-groceries',
+      outcome: 'allow',
+      tools: ['shop.order'],
+      lift: { perAction: 20, budget: 'shopping-week' },
+    },
+    'widening',
+  ],
+  [
+    'a removed lift',
+    {
+      id: 'allow-groceries',
+      outcome: 'allow',
+      tools: ['shop.order'],
+      lift: { perAction: 20, budget: 'shopping-month' },
+    },
+    { id: 'allow-groceries', outcome: 'allow', tools: ['shop.order'] },
+    'narrowing',
+  ],
+  [
+    'a lower cap per action in a lift',
+    {
+      id: 'allow-groceries',
+      outcome: 'allow',
+      tools: ['shop.order'],
+      lift: { perAction: 20, budget: 'shopping-month' },
+    },
+    {
+      id: 'allow-groceries',
+      outcome: 'allow',
+      tools: ['shop.order'],
+      lift: { perAction: 10, budget: 'shopping-month' },
+    },
+    'narrowing',
+  ],
+  [
+    'a lower cap per action beside a wider pattern',
+    {
+      id: 'allow-groceries',
+      outcome: 'allow',
+      tools: ['shop.order'],
+      destinations: ['*@grocer.example'],
+      lift: { perAction: 20, budget: 'shopping-month' },
+    },
+    {
+      id: 'allow-groceries',
+      outcome: 'allow',
+      tools: ['shop.order'],
+      destinations: ['*'],
+      lift: { perAction: 10, budget: 'shopping-month' },
+    },
+    'widening',
+  ],
+  [
+    'the same lift',
+    {
+      id: 'allow-groceries',
+      outcome: 'allow',
+      tools: ['shop.order'],
+      lift: { perAction: 20, budget: 'shopping-month' },
+    },
+    {
+      id: 'allow-groceries',
+      outcome: 'allow',
+      tools: ['shop.order'],
+      lift: { perAction: 20, budget: 'shopping-month' },
+      note: 'Weekly food.',
+    },
+    'unchanged',
+  ],
 ])('it classifies %s', (_label, before, after, change) => {
   expect(pickRuleChange(before, after)).toBe(change);
 });

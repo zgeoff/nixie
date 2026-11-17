@@ -1,4 +1,4 @@
-import type { EffectOverride } from '@heynixie/policy';
+import type { BudgetDefinition, EffectOverride } from '@heynixie/policy';
 import { parseRuleDefinitions } from '../rule/parse-rule-definitions';
 import { manifestSchema } from '../skill/manifest-schema';
 import { parseConversationSkills } from '../skill/parse-conversation-skills';
@@ -6,7 +6,8 @@ import { parseSkills } from '../skill/parse-skills';
 import { parseTaskDefinitions } from '../task/parse-task-definitions';
 import { TaskSeedRefusedError } from '../task/task-seed-refused-error';
 import type { TaskSeedContext } from '../task/types';
-import type { ParsedDefinitions, Snapshot } from '../types';
+import type { DefinitionBudget, ParsedDefinitions, Snapshot } from '../types';
+import { buildBudgetHash } from '../utils/build-budget-hash';
 import { definitionsFormats } from '../utils/definitions-formats';
 import type { ParseProblem } from '../utils/definitions-parse-error';
 import { DefinitionsParseError } from '../utils/definitions-parse-error';
@@ -15,6 +16,7 @@ import { manifestPath } from '../utils/manifest-path';
 import { manifestPromptsSchema } from '../utils/manifest-prompts-schema';
 import type { ManifestPrompts } from '../utils/parse-prompt-overrides';
 import { parsePromptOverrides } from '../utils/parse-prompt-overrides';
+import { parseBudgetDefinitions } from './parse-budget-definitions';
 import { parseEffectDefinitions } from './parse-effect-definitions';
 
 const personaPath = 'persona.md';
@@ -37,9 +39,18 @@ export function parseDefinitions(
 
   const overrides = parsePromptOverrides(manifest.prompts, texts);
 
+  const budgets =
+    formatVersion >= definitionsFormats.budgets
+      ? parseBudgetDefinitions(texts, overrides.partFiles)
+      : { budgets: [], paths: new Set<string>() };
+
   const rules =
     formatVersion >= definitionsFormats.rules
-      ? parseRuleDefinitions(texts, overrides.partFiles)
+      ? parseRuleDefinitions(
+          texts,
+          overrides.partFiles,
+          new Map(budgets.budgets.map((entry) => [entry.budget.id, entry.budget])),
+        )
       : { rules: [], paths: new Set<string>(), warnings: [] };
 
   const effects =
@@ -64,6 +75,7 @@ export function parseDefinitions(
     .filter((path) => path !== manifestPath && path !== personaPath)
     .filter((path) => !hasSkills || !path.startsWith('skills/'))
     .filter((path) => !overrides.partFiles.has(path))
+    .filter((path) => !budgets.paths.has(path))
     .filter((path) => !rules.paths.has(path))
     .filter((path) => !effects.paths.has(path))
     .filter((path) => !taskDefinitions.paths.has(path))
@@ -85,6 +97,7 @@ export function parseDefinitions(
     conversationSkills,
     prompts: overrides.prompts,
     rules: rules.rules,
+    budgets: budgets.budgets.map((entry) => toDefinitionBudget(entry.budget)),
     ruleWarnings: rules.warnings,
     effects: effects.effects,
     tasks: taskDefinitions.definitions,
@@ -213,4 +226,14 @@ function requireParsable(files: readonly TextFile[]): void {
   if (problems.length > 0) {
     throw new DefinitionsParseError(problems);
   }
+}
+
+function toDefinitionBudget(budget: BudgetDefinition): DefinitionBudget {
+  return {
+    id: budget.id,
+    counts: budget.counts,
+    limitMicros: budget.limitMicros,
+    period: budget.period,
+    hash: buildBudgetHash(budget),
+  };
 }

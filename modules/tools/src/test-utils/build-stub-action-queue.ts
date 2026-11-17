@@ -1,3 +1,4 @@
+import invariant from 'tiny-invariant';
 import type {
   ActionOutcome,
   ActionQueue,
@@ -19,6 +20,9 @@ interface OutcomeWait {
 
 export interface StubActionQueue {
   readonly queue: ActionQueue;
+
+  // queues the call and returns its action ID, which the stub never answers with an ask
+  readonly enqueueAction: (action: QueuedAction) => Promise<string>;
 
   readonly actions: readonly QueuedEntry[];
 
@@ -47,6 +51,9 @@ export interface StubActionQueueOptions {
   // How many repeat reads miss an open action, as when an approval commits after the call read.
   // The read in the proposal's transaction still finds it.
   readonly missedRepeatReads?: number;
+
+  // the short ID of the proposal that every enqueue asks instead of queueing, as a lift's budget does
+  readonly asksWith?: string;
 }
 
 export function buildStubActionQueue(options: StubActionQueueOptions = {}): StubActionQueue {
@@ -70,54 +77,67 @@ export function buildStubActionQueue(options: StubActionQueueOptions = {}): Stub
         };
   };
 
+  const queue: ActionQueue = {
+    enqueue: (action) => {
+      if (outcomes.isStopped()) {
+        return Promise.reject(buildStoppedError());
+      }
+
+      if (options.asksWith !== undefined) {
+        return Promise.resolve({ status: 'asked', shortID: options.asksWith });
+      }
+
+      const earlier = actions.find((entry) => isSameAction(entry.action, action));
+
+      if (earlier !== undefined) {
+        return Promise.resolve({ status: 'queued', actionID: earlier.actionID });
+      }
+
+      const actionID = crypto.randomUUID();
+
+      actions.push({ actionID, action });
+
+      return Promise.resolve({ status: 'queued', actionID });
+    },
+    readOpenRepeat: (query) => {
+      if (reads.missed < (options.missedRepeatReads ?? 0)) {
+        reads.missed += 1;
+
+        return Promise.resolve(null);
+      }
+
+      return Promise.resolve(findOpen(query));
+    },
+    readOpenAsk: (_tx, query) => {
+      const repeat = findOpen(query);
+
+      if (repeat !== null) {
+        return Promise.resolve({ kind: 'action', repeat });
+      }
+
+      const proposal = options.openProposals?.find(
+        (open) => open.thread === query.run.thread && open.actionHash === query.actionHash,
+      );
+
+      const ask: OpenAsk | null =
+        proposal === undefined ? null : { kind: 'proposal', shortID: proposal.shortID };
+
+      return Promise.resolve(ask);
+    },
+    waitForOutcome: (actionID, timeoutMs) =>
+      actions.some((entry) => entry.actionID === actionID)
+        ? outcomes.waitFor(actionID, timeoutMs)
+        : Promise.reject(new Error(`the action queue holds no action ${actionID}`)),
+  };
+
   return {
-    queue: {
-      enqueue: (action) => {
-        if (outcomes.isStopped()) {
-          return Promise.reject(buildStoppedError());
-        }
+    queue,
+    enqueueAction: async (action) => {
+      const enqueued = await queue.enqueue(action);
 
-        const earlier = actions.find((entry) => isSameAction(entry.action, action));
+      invariant(enqueued.status === 'queued', 'the stub queues every call');
 
-        if (earlier !== undefined) {
-          return Promise.resolve(earlier.actionID);
-        }
-
-        const actionID = crypto.randomUUID();
-
-        actions.push({ actionID, action });
-
-        return Promise.resolve(actionID);
-      },
-      readOpenRepeat: (query) => {
-        if (reads.missed < (options.missedRepeatReads ?? 0)) {
-          reads.missed += 1;
-
-          return Promise.resolve(null);
-        }
-
-        return Promise.resolve(findOpen(query));
-      },
-      readOpenAsk: (_tx, query) => {
-        const repeat = findOpen(query);
-
-        if (repeat !== null) {
-          return Promise.resolve({ kind: 'action', repeat });
-        }
-
-        const proposal = options.openProposals?.find(
-          (open) => open.thread === query.run.thread && open.actionHash === query.actionHash,
-        );
-
-        const ask: OpenAsk | null =
-          proposal === undefined ? null : { kind: 'proposal', shortID: proposal.shortID };
-
-        return Promise.resolve(ask);
-      },
-      waitForOutcome: (actionID, timeoutMs) =>
-        actions.some((entry) => entry.actionID === actionID)
-          ? outcomes.waitFor(actionID, timeoutMs)
-          : Promise.reject(new Error(`the action queue holds no action ${actionID}`)),
+      return enqueued.actionID;
     },
     actions,
     waits: outcomes.waits,

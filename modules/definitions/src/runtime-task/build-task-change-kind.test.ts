@@ -141,13 +141,13 @@ test('it refuses a repo at a newer format and keeps the change pending', async (
 
   await requestDefinitionChange(ctx.context, { kind: 'define', input: buildTestDefineInput() });
 
-  await ctx.writeRepoFiles({ 'nixie.yaml': 'format: 5\n' });
+  await ctx.writeRepoFiles({ 'nixie.yaml': 'format: 6\n' });
   await ctx.runExports();
 
   expect(ctx.onError.mock.calls).toStrictEqual([
     [
       new Error(
-        'the definitions repo reads format 5, which this release cannot read, so update nixie or set `format: 4` in nixie.yaml',
+        'the definitions repo reads format 6, which this release cannot read, so update nixie or set `format: 5` in nixie.yaml',
       ),
     ],
   ]);

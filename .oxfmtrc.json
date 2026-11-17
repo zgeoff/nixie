@@ -24,6 +24,7 @@
     "apps/server/config.schema.json",
     "modules/definitions/definitions-manifest.schema.json",
     "modules/policy/definitions-rules.schema.json",
+    "modules/policy/definitions-budgets.schema.json",
     // written by the secret scan lib's rule builder, and the pin check compares its bytes
     "libs/secret-scan/src/generated/public-rules.generated.ts",
     "CHANGELOG.md",

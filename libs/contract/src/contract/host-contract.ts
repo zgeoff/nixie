@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { actionProposalSchema } from './action-proposal-schema';
 import { forgetBackupSchema } from './forget-backup-schema';
 import { forgottenItemsSchema } from './forgotten-items-schema';
+import { hostBudgetsContract } from './host-budgets-contract';
 import { hostMandatesContract } from './host-mandates-contract';
 import { hostPasskeyContract } from './host-passkey-contract';
 import { knownContactSchema } from './known-contact-schema';
@@ -523,6 +524,7 @@ export const hostContract = {
     },
   },
   mandates: hostMandatesContract,
+  budgets: hostBudgetsContract,
   contacts: {
     list: contacts.output(z.array(knownContactSchema)),
 

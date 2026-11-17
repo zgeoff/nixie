@@ -1,5 +1,6 @@
 import { expect, onTestFinished, test } from 'bun:test';
 import { join } from 'node:path';
+import { readBudgetLedger } from '@heynixie/budgets';
 import { readRecords } from '@heynixie/log';
 import type { FaultPointID } from '@heynixie/tasks';
 import {
@@ -10,23 +11,32 @@ import {
   writeTaskControl,
 } from '@heynixie/tasks';
 import invariant from 'tiny-invariant';
+import { buildMockLiftedCall } from '../test-utils/build-mock-lifted-call';
+import { buildStubConnector } from '../test-utils/build-stub-connector';
+import { claimTestAction } from '../test-utils/claim-test-action';
 import { createTestStep } from '../test-utils/create-test-step';
-import { startTestActions } from '../test-utils/start-test-actions';
+import { queueTestAction } from '../test-utils/queue-test-action';
+import { startTestBudgetedActions } from '../test-utils/start-test-budgeted-actions';
 import type { ActionsTables } from '../types';
 import { buildActionHash } from './build-action-hash';
 import { createAllowedAction } from './create-allowed-action';
+import { runActionAttempt } from './run-action-attempt';
 
 async function setupTest() {
-  const actions = await startTestActions();
+  const actions = await startTestBudgetedActions();
 
-  return { ...actions, db: actions.writer.db.$extendTables<ActionsTables>() };
+  return {
+    ...actions,
+    db: actions.writer.db.$extendTables<ActionsTables>(),
+    readLedger: () => readBudgetLedger(actions.writer.db, actions.budgets, 'groceries'),
+  };
 }
 
 test('it queues an allowed call as a pending action due at once', async () => {
   const ctx = await setupTest();
   const step = await createTestStep(ctx.context);
 
-  const queued = await createAllowedAction(ctx.context, {
+  const queued = await queueTestAction(ctx.context, {
     step,
     tool: 'test.send',
     actionHash: 'sha256:send-1',
@@ -54,7 +64,7 @@ test('it records the decision and keeps the arguments in the erasable fields', a
   const ctx = await setupTest();
   const step = await createTestStep(ctx.context);
 
-  await createAllowedAction(ctx.context, {
+  await queueTestAction(ctx.context, {
     step,
     tool: 'test.send',
     actionHash: 'sha256:send-1',
@@ -81,7 +91,7 @@ test('it refuses a call the decision point did not allow', async () => {
   const ctx = await setupTest();
   const step = await createTestStep(ctx.context);
 
-  const create = createAllowedAction(ctx.context, {
+  const create = queueTestAction(ctx.context, {
     step,
     tool: 'test.send',
     actionHash: 'sha256:send-1',
@@ -101,7 +111,7 @@ test('it returns the earlier action for a repeat call under the same step key', 
   const ctx = await setupTest();
   const step = await createTestStep(ctx.context);
 
-  const first = await createAllowedAction(ctx.context, {
+  const first = await queueTestAction(ctx.context, {
     step,
     tool: 'test.send',
     actionHash: 'sha256:send-1',
@@ -111,7 +121,7 @@ test('it returns the earlier action for a repeat call under the same step key', 
 
   await ctx.db.updateTable('actions').set({ status: 'done' }).execute();
 
-  const repeat = await createAllowedAction(ctx.context, {
+  const repeat = await queueTestAction(ctx.context, {
     step,
     tool: 'test.send',
     actionHash: 'sha256:send-1',
@@ -126,7 +136,7 @@ test('it returns the earlier action for a repeat call while that action is pendi
   const ctx = await setupTest();
   const step = await createTestStep(ctx.context);
 
-  const first = await createAllowedAction(ctx.context, {
+  const first = await queueTestAction(ctx.context, {
     step,
     tool: 'test.send',
     actionHash: 'sha256:send-1',
@@ -134,7 +144,7 @@ test('it returns the earlier action for a repeat call while that action is pendi
     decision: { outcome: 'allow', stage: 4, rule: { id: 'test-rule', revision: 1 } },
   });
 
-  const repeat = await createAllowedAction(ctx.context, {
+  const repeat = await queueTestAction(ctx.context, {
     step: { ...step, stepKey: `${step.lease.workID}:2` },
     tool: 'test.send',
     actionHash: 'sha256:send-1',
@@ -149,7 +159,7 @@ test('it returns the earlier action for a repeat call while that action is unkno
   const ctx = await setupTest();
   const step = await createTestStep(ctx.context);
 
-  const first = await createAllowedAction(ctx.context, {
+  const first = await queueTestAction(ctx.context, {
     step,
     tool: 'test.send',
     actionHash: 'sha256:send-1',
@@ -159,7 +169,7 @@ test('it returns the earlier action for a repeat call while that action is unkno
 
   await ctx.db.updateTable('actions').set({ status: 'unknown' }).execute();
 
-  const repeat = await createAllowedAction(ctx.context, {
+  const repeat = await queueTestAction(ctx.context, {
     step: { ...step, stepKey: `${step.lease.workID}:2` },
     tool: 'test.send',
     actionHash: 'sha256:send-1',
@@ -174,7 +184,7 @@ test('it queues a new action when the same call settled under an earlier step', 
   const ctx = await setupTest();
   const step = await createTestStep(ctx.context);
 
-  const first = await createAllowedAction(ctx.context, {
+  const first = await queueTestAction(ctx.context, {
     step,
     tool: 'test.send',
     actionHash: 'sha256:send-1',
@@ -184,7 +194,7 @@ test('it queues a new action when the same call settled under an earlier step', 
 
   await ctx.db.updateTable('actions').set({ status: 'done' }).execute();
 
-  const next = await createAllowedAction(ctx.context, {
+  const next = await queueTestAction(ctx.context, {
     step: { ...step, stepKey: `${step.lease.workID}:2` },
     tool: 'test.send',
     actionHash: 'sha256:send-1',
@@ -200,7 +210,7 @@ test('it returns the cancelled action to the rerun of the step that a stop ended
   const ctx = await setupTest();
   const step = await createTestStep(ctx.context);
 
-  const first = await createAllowedAction(ctx.context, {
+  const first = await queueTestAction(ctx.context, {
     step,
     tool: 'test.send',
     actionHash: 'sha256:send-1',
@@ -215,7 +225,7 @@ test('it returns the cancelled action to the rerun of the step that a stop ended
 
   invariant(rerun);
 
-  const next = await createAllowedAction(ctx.context, {
+  const next = await queueTestAction(ctx.context, {
     step: rerun,
     tool: 'test.send',
     actionHash: 'sha256:send-1',
@@ -231,7 +241,7 @@ test('it queues a new action for the same call in a later step than the one a st
   const ctx = await setupTest();
   const step = await createTestStep(ctx.context);
 
-  const first = await createAllowedAction(ctx.context, {
+  const first = await queueTestAction(ctx.context, {
     step,
     tool: 'test.send',
     actionHash: 'sha256:send-1',
@@ -252,7 +262,7 @@ test('it queues a new action for the same call in a later step than the one a st
 
   invariant(later);
 
-  const next = await createAllowedAction(ctx.context, {
+  const next = await queueTestAction(ctx.context, {
     step: later,
     tool: 'test.send',
     actionHash: 'sha256:send-1',
@@ -270,7 +280,7 @@ test('it queues nothing once the step lost its lease', async () => {
 
   ctx.clock.advance(step.lease.expiresAt - ctx.clock.now());
 
-  const create = createAllowedAction(ctx.context, {
+  const create = queueTestAction(ctx.context, {
     step,
     tool: 'test.send',
     actionHash: 'sha256:send-1',
@@ -300,7 +310,7 @@ test('it reaches queue.commit.before and queue.commit.after around the queue', a
     setFaultPointHandler(null);
   });
 
-  await createAllowedAction(ctx.context, {
+  await queueTestAction(ctx.context, {
     step,
     tool: 'test.send',
     actionHash: 'sha256:send-1',
@@ -339,7 +349,7 @@ test('it queues nothing for the rerun of a step whose action holds the hash from
   const ctx = await setupTest();
   const step = await createTestStep(ctx.context);
 
-  const first = await createAllowedAction(ctx.context, {
+  const first = await queueTestAction(ctx.context, {
     step,
     tool: 'test.send',
     actionHash: buildActionHash('test.send', { to: 'team' }),
@@ -347,7 +357,7 @@ test('it queues nothing for the rerun of a step whose action holds the hash from
     decision: { outcome: 'allow', stage: 4, rule: { id: 'test-rule', revision: 1 } },
   });
 
-  const rerun = await createAllowedAction(ctx.context, {
+  const rerun = await queueTestAction(ctx.context, {
     step,
     tool: 'test.send',
     actionHash: 'a-hash-that-covers-destinations-and-the-deadline',
@@ -359,4 +369,140 @@ test('it queues nothing for the rerun of a step whose action holds the hash from
 
   expect(rerun).toStrictEqual({ actionID: first.actionID, status: 'pending', isRepeat: true });
   expect(actions).toHaveLength(1);
+});
+
+test('it charges the budget of the lift to the action it queues', async () => {
+  const ctx = await setupTest();
+  const step = await createTestStep(ctx.context);
+  const queued = await createAllowedAction(ctx.context, buildMockLiftedCall(step, 4_000_000));
+  const ledger = await ctx.readLedger();
+
+  invariant('actionID' in queued);
+
+  expect(ledger?.charges).toStrictEqual([
+    {
+      chargeID: expect.any(String),
+      amountMicros: 4_000_000,
+      for: { kind: 'action', id: queued.actionID },
+      isCredited: false,
+    },
+  ]);
+});
+
+test('it queues one of two purchases that cannot both fit under the budget', async () => {
+  const ctx = await setupTest();
+  const first = await createTestStep(ctx.context);
+  const second = await createTestStep(ctx.context);
+
+  await Promise.all([
+    createAllowedAction(ctx.context, buildMockLiftedCall(first, 6_000_000)),
+    createAllowedAction(ctx.context, buildMockLiftedCall(second, 6_000_000)),
+  ]);
+
+  const actions = await ctx.db.selectFrom('actions').select('action_id').execute();
+  const ledger = await ctx.readLedger();
+
+  expect(actions).toHaveLength(1);
+  expect(ledger?.spentMicros).toBe(6_000_000);
+});
+
+test('it queues nothing and asks the owner, naming the budget and its reset, at the limit', async () => {
+  const ctx = await setupTest();
+  const first = await createTestStep(ctx.context);
+  const second = await createTestStep(ctx.context);
+
+  await createAllowedAction(ctx.context, buildMockLiftedCall(first, 6_000_000));
+
+  const asked = await createAllowedAction(ctx.context, buildMockLiftedCall(second, 6_000_000));
+  const actions = await ctx.db.selectFrom('actions').select('action_id').execute();
+  const records = await readRecords(ctx.context.log, { afterSequence: 0 });
+
+  invariant('shortID' in asked);
+
+  const proposals = records.filter((entry) => entry.record.kind === 'policy.action_proposed');
+
+  expect(actions).toHaveLength(1);
+  expect(proposals).toHaveLength(1);
+
+  expect(proposals[0]?.record).toMatchObject({
+    promptCause: 'always_ask',
+    thread: second.lease.workID,
+    payload: {
+      shortID: asked.shortID,
+      riskClass: 'always_ask',
+      cause: 'always_ask',
+      budgetReached: 'budget reached: groceries ($6.00 of $10.00). Resets at midnight.',
+    },
+  });
+});
+
+test('it answers a retry of a call the budget refused with the question already asked', async () => {
+  const ctx = await setupTest();
+  const first = await createTestStep(ctx.context);
+  const second = await createTestStep(ctx.context);
+
+  await createAllowedAction(ctx.context, buildMockLiftedCall(first, 6_000_000));
+
+  const overBudget = buildMockLiftedCall(second, 6_000_000);
+
+  const asked = await createAllowedAction(ctx.context, overBudget);
+  const retried = await createAllowedAction(ctx.context, overBudget);
+  const records = await readRecords(ctx.context.log, { afterSequence: 0 });
+
+  invariant('shortID' in asked);
+
+  expect(retried).toStrictEqual({ shortID: asked.shortID });
+  expect(records.filter((entry) => entry.record.kind === 'policy.action_proposed')).toHaveLength(1);
+});
+
+test('it credits the charge of an action that failed', async () => {
+  const ctx = await setupTest();
+  const step = await createTestStep(ctx.context);
+
+  await createAllowedAction(ctx.context, buildMockLiftedCall(step, 4_000_000));
+
+  const lease = await claimTestAction(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  const stub = buildStubConnector(() => ({ kind: 'refused', reason: 'the shop said no' }));
+
+  await runActionAttempt(ctx.context, lease, {
+    connectors: new Map([['test.buy', stub.connector]]),
+    leaseMs: 60_000,
+  });
+
+  const ledger = await ctx.readLedger();
+
+  expect(ledger?.spentMicros).toBe(0);
+});
+
+test('it credits the charge of an action that a stop cancelled', async () => {
+  const ctx = await setupTest();
+  const step = await createTestStep(ctx.context);
+
+  await createAllowedAction(ctx.context, buildMockLiftedCall(step, 4_000_000));
+  await writeTaskControl(ctx.context, { taskID: step.lease.workID, control: 'stop' });
+
+  const ledger = await ctx.readLedger();
+
+  expect(ledger?.spentMicros).toBe(0);
+});
+
+test('it keeps the charge of an action whose outcome is unknown', async () => {
+  const ctx = await setupTest();
+  const step = await createTestStep(ctx.context);
+
+  await createAllowedAction(ctx.context, buildMockLiftedCall(step, 4_000_000));
+
+  const lease = await claimTestAction(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  const stub = buildStubConnector(() => ({ kind: 'ambiguous', reason: 'the connection dropped' }));
+
+  await runActionAttempt(ctx.context, lease, {
+    connectors: new Map([['test.buy', stub.connector]]),
+    leaseMs: 60_000,
+  });
+
+  const ledger = await ctx.readLedger();
+
+  expect(ledger?.spentMicros).toBe(4_000_000);
 });

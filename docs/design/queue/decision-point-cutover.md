@@ -25,10 +25,8 @@ call. The pipeline's meaning stays in the decision point design and the
 [rules design](../platform/policy/rules.md). This doc holds what the cutover adds to make the
 pipeline run, and the order of the cutover in production.
 
-Two designs build on this one. The approval record design
-([approval record](../../architecture/policy/approvals.md)) later folds the action proposal into one
-record for every kind of proposal, and the budgets design
-([budgets and hard stop](budgets-and-hard-stop.md)) adds lifts to stage 4. Other terms are in the
+The approval record design ([approval record](../../architecture/policy/approvals.md)) later folds
+the action proposal into one record for every kind of proposal. Other terms are in the
 [glossary](../../glossary.md).
 
 ## Shape
@@ -511,7 +509,6 @@ nixie proposals reject k3x9m2p7qa --reason "Not this week"
   ([approval record](../../architecture/policy/approvals.md)).
 - Running an approved action, and the policy check before each attempt:
   [actions under policy](https://linear.app/zgeoff/issue/GEO-1810).
-- Lifts at stage 4: the budgets design ([budgets and hard stop](budgets-and-hard-stop.md)).
 - auto-mode, which the decision point design keeps off, and a taint label for each task run.
 - A second guard in the model's harness. Every model session runs with no built-in tools, and every
   call passes `runToolCall`.

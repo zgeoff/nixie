@@ -1,8 +1,10 @@
+import type { RecordInput } from '@heynixie/log';
 import { writeRecordsInTransaction } from '@heynixie/log';
 import { writeInboxRecordsInTransaction } from '@heynixie/tasks';
 import type { Transaction } from 'kysely';
 import type { ActionsTables, UnknownChoice } from '../types';
 import type { ApprovedActionContext } from './create-approved-action';
+import { creditFailedActions } from './credit-failed-actions';
 
 export interface UnknownAnswer {
   readonly actionID: string;
@@ -31,7 +33,7 @@ export async function writeUnknownAnswer(
     return false;
   }
 
-  await writeRecordsInTransaction(tx, context.log, [
+  const records: RecordInput[] = [
     {
       kind: 'action.unknown_answered',
       definitions: context.definitions(),
@@ -60,7 +62,10 @@ export async function writeUnknownAnswer(
             erasable: {},
           },
         ]),
-  ]);
+  ];
+
+  await writeRecordsInTransaction(tx, context.log, records);
+  await creditFailedActions(tx, context.budgets, records);
 
   // No runner claims an action that the task's step runs, so a retry wakes the task for its step.
   if (answer.choice === 'retry' && action.runs_in_step === 1) {

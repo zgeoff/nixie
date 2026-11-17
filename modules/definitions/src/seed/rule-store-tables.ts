@@ -9,4 +9,5 @@ export const ruleStoreTables = [
   'seeded_rules',
   'runtime_rules',
   'closed_rule_proposals',
+  'budgets_in_force',
 ] as const;

@@ -1,10 +1,10 @@
 import { expect, test } from 'bun:test';
 import { writeTaskControl } from '@heynixie/tasks';
 import { createTestStep } from '../test-utils/create-test-step';
+import { queueTestAction } from '../test-utils/queue-test-action';
 import { startTestActions } from '../test-utils/start-test-actions';
 import type { ActionsTables } from '../types';
 import { buildCancelledCheck } from './build-cancelled-check';
-import { createAllowedAction } from './create-allowed-action';
 
 async function setupTest() {
   const actions = await startTestActions();
@@ -16,7 +16,7 @@ test('it matches an action that a stop cancelled', async () => {
   const ctx = await setupTest();
   const step = await createTestStep(ctx.context);
 
-  const cancelled = await createAllowedAction(ctx.context, {
+  const cancelled = await queueTestAction(ctx.context, {
     step,
     tool: 'test.send',
     actionHash: 'sha256:send-1',
@@ -39,7 +39,7 @@ test('it matches no action that never met a stop', async () => {
   const ctx = await setupTest();
   const step = await createTestStep(ctx.context);
 
-  const queued = await createAllowedAction(ctx.context, {
+  const queued = await queueTestAction(ctx.context, {
     step,
     tool: 'test.send',
     actionHash: 'sha256:send-1',

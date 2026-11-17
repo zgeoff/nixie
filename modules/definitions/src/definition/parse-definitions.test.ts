@@ -25,6 +25,7 @@ test('it reads the format version and the persona, and lists every other file un
     conversationSkills: [],
     prompts: {},
     rules: [],
+    budgets: [],
     ruleWarnings: [],
     tasks: [],
     taskWarnings: [],
@@ -62,7 +63,7 @@ test('it refuses definitions without a manifest', () => {
 });
 
 test.each([
-  ['format 5, which a newer release writes', 'format: 5\n'],
+  ['format 6, which a newer release writes', 'format: 6\n'],
   ['format 1, which two releases back wrote', 'format: 1\n'],
   ['format 0', 'format: 0\n'],
 ])('it refuses a manifest with %s', (_label, manifest) => {
@@ -78,7 +79,7 @@ test.each([
     ),
   ).toThrowWithMessage(
     Error,
-    /^nixie\.yaml: format \d is not one this release reads, which is 2 or 3 or 4$/u,
+    /^nixie\.yaml: format \d is not one this release reads, which is 2 or 3 or 4 or 5$/u,
   );
 });
 
@@ -194,6 +195,7 @@ test('it ignores the prompts map under format 2 and lists its part files as unap
     conversationSkills: [],
     prompts: {},
     rules: [],
+    budgets: [],
     ruleWarnings: [],
     tasks: [],
     taskWarnings: [],
@@ -263,6 +265,7 @@ test('it reads each skill under format 2, and lists none of its files as unappli
     conversationSkills: ['tide-tables'],
     prompts: {},
     rules: [],
+    budgets: [],
     ruleWarnings: [],
     tasks: [],
     taskWarnings: [],
@@ -414,6 +417,7 @@ test('it reads a part override from its file and a template inline under format 
       compaction: { parts: {}, template: '{{ parts.instruction }}' },
     },
     rules: [],
+    budgets: [],
     ruleWarnings: [],
     tasks: [],
     taskWarnings: [],
@@ -530,4 +534,121 @@ test('it refuses a part file that is not UTF-8 text', () => {
       buildTestTaskSeed(),
     ),
   ).toThrowWithMessage(Error, 'prompts/writer.md: the file is not UTF-8 text');
+});
+
+test('it parses the budgets of a format 5 repo with their hashes, and the lift that names one', () => {
+  const files = new Map([
+    ['nixie.yaml', new TextEncoder().encode('format: 5\n')],
+    ['persona.md', new TextEncoder().encode('# Persona\n')],
+    [
+      'budgets/shopping.yaml',
+      new TextEncoder().encode('shopping-month:\n  counts: spend\n  limit: 100\n  period: month\n'),
+    ],
+    [
+      'rules/shop.yaml',
+      new TextEncoder().encode(
+        'allow-groceries:\n  outcome: allow\n  tools: [shop.order]\n  lift: { perAction: 20, budget: shopping-month }\n',
+      ),
+    ],
+  ]);
+
+  const parsed = parseDefinitions(
+    { contentHash: 'c', files, revision: 'r', repository: null, skipped: [] },
+    buildTestTaskSeed(),
+  );
+
+  expect(parsed.budgets).toStrictEqual([
+    {
+      id: 'shopping-month',
+      counts: 'spend',
+      limitMicros: 100_000_000,
+      period: 'month',
+      hash: expect.stringMatching(/^[0-9a-f]{64}$/u),
+    },
+  ]);
+
+  expect(parsed.rules).toMatchObject([
+    { rule: { lift: { perAction: 20, budget: 'shopping-month' } } },
+  ]);
+
+  expect(parsed.unapplied).toStrictEqual([]);
+});
+
+test('it leaves budget files unapplied in a format 4 repo', () => {
+  const files = new Map([
+    ['nixie.yaml', new TextEncoder().encode('format: 4\n')],
+    ['persona.md', new TextEncoder().encode('# Persona\n')],
+    [
+      'budgets/shopping.yaml',
+      new TextEncoder().encode('shopping-month:\n  counts: spend\n  limit: 100\n  period: month\n'),
+    ],
+  ]);
+
+  const parsed = parseDefinitions(
+    { contentHash: 'c', files, revision: 'r', repository: null, skipped: [] },
+    buildTestTaskSeed(),
+  );
+
+  expect(parsed.budgets).toStrictEqual([]);
+  expect(parsed.unapplied).toStrictEqual(['budgets/shopping.yaml']);
+});
+
+test('it refuses a budget ID that 2 files define, with both file names', () => {
+  const files = new Map([
+    ['nixie.yaml', new TextEncoder().encode('format: 5\n')],
+    ['persona.md', new TextEncoder().encode('# Persona\n')],
+    [
+      'budgets/a.yaml',
+      new TextEncoder().encode('shopping-month:\n  counts: spend\n  limit: 100\n  period: month\n'),
+    ],
+    [
+      'budgets/b.yaml',
+      new TextEncoder().encode('shopping-month:\n  counts: spend\n  limit: 50\n  period: month\n'),
+    ],
+  ]);
+
+  expect(() =>
+    parseDefinitions(
+      { contentHash: 'c', files, revision: 'r', repository: null, skipped: [] },
+      buildTestTaskSeed(),
+    ),
+  ).toThrowWithMessage(
+    Error,
+    'budgets/b.yaml: the budget ID shopping-month is also in budgets/a.yaml, and an ID names one budget',
+  );
+});
+
+test.each([
+  [
+    'a lift of a budget the definitions lack',
+    'allow-x:\n  outcome: allow\n  lift: { perAction: 20, budget: pet-month }\n',
+    'rules/x.yaml: allow-x.lift.budget: the definitions have no budget pet-month',
+  ],
+  [
+    'a lift of a budget that counts a tool',
+    'allow-x:\n  outcome: allow\n  lift: { perAction: 20, budget: search-day }\n',
+    'rules/x.yaml: allow-x.lift.budget: the budget search-day counts tool:search, and a lift needs a budget that counts spend',
+  ],
+  [
+    'a lift with no budget',
+    'allow-x:\n  outcome: allow\n  lift: { perAction: 20 }\n',
+    'rules/x.yaml: allow-x.lift.budget: Invalid input: expected string, received undefined',
+  ],
+])('it refuses %s', (_label, rule, message) => {
+  const files = new Map([
+    ['nixie.yaml', new TextEncoder().encode('format: 5\n')],
+    ['persona.md', new TextEncoder().encode('# Persona\n')],
+    [
+      'budgets/tools.yaml',
+      new TextEncoder().encode('search-day:\n  counts: tool:search\n  limit: 5\n  period: day\n'),
+    ],
+    ['rules/x.yaml', new TextEncoder().encode(rule)],
+  ]);
+
+  expect(() =>
+    parseDefinitions(
+      { contentHash: 'c', files, revision: 'r', repository: null, skipped: [] },
+      buildTestTaskSeed(),
+    ),
+  ).toThrowWithMessage(Error, message);
 });

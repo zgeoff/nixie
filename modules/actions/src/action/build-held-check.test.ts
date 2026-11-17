@@ -1,10 +1,10 @@
 import { expect, test } from 'bun:test';
 import { writeStepCommit, writeTaskControl } from '@heynixie/tasks';
 import { createTestStep } from '../test-utils/create-test-step';
+import { queueTestAction } from '../test-utils/queue-test-action';
 import { startTestActions } from '../test-utils/start-test-actions';
 import type { ActionsTables } from '../types';
 import { buildHeldCheck } from './build-held-check';
-import { createAllowedAction } from './create-allowed-action';
 
 async function setupTest() {
   const actions = await startTestActions();
@@ -20,7 +20,7 @@ test.each([
   const ctx = await setupTest();
   const step = await createTestStep(ctx.context);
 
-  await createAllowedAction(ctx.context, {
+  await queueTestAction(ctx.context, {
     step,
     tool: 'test.send',
     actionHash: 'sha256:send-1',
@@ -44,7 +44,7 @@ test('it never holds an action with a started attempt', async () => {
   const ctx = await setupTest();
   const step = await createTestStep(ctx.context);
 
-  await createAllowedAction(ctx.context, {
+  await queueTestAction(ctx.context, {
     step,
     tool: 'test.send',
     actionHash: 'sha256:send-1',

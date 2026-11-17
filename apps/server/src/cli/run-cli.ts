@@ -1,5 +1,6 @@
 import type { Logger } from '@heynixie/logger';
 import { toErrorFields } from '@heynixie/logger';
+import { createBudgetCommands } from '../budget/create-budget-commands';
 import { createDeploymentCommands } from '../deployment/create-deployment-commands';
 import { createPauseCommands } from '../pause/create-pause-commands';
 import { createPromptCommands } from '../prompt/create-prompt-commands';
@@ -37,6 +38,7 @@ const commands = new Map<string, Command>([
   ...taskCommands,
   ...createPauseCommands(host),
   ...createSpendCommands(host),
+  ...createBudgetCommands(host),
   ...createResetCommands(host),
   ...createMemoryCommands(host),
   ...createSubjectCommands(host),

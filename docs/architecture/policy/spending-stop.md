@@ -3,8 +3,8 @@
 The spending stop ends all model spending once a deployment limit is reached. It builds on the
 [model gateway](model-gateway.md), which counts dollars and tokens, and adds the count of turns, the
 pause, the raise and the notice. A deployment whose config has no `spendStop` has none of it: no
-spend module context, no watcher and no check before a turn.
-[Budgets and the hard stop](../../design/queue/budgets-and-hard-stop.md) holds the design.
+spend module context, no watcher and no check before a turn. [Budgets](budgets.md) cover the limits
+on tool calls and purchases.
 
 ## What stops
 

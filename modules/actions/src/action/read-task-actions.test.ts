@@ -1,9 +1,9 @@
 import { expect, test } from 'bun:test';
 import { writeTaskControl } from '@heynixie/tasks';
 import { createTestStep } from '../test-utils/create-test-step';
+import { queueTestAction } from '../test-utils/queue-test-action';
 import { startTestActions } from '../test-utils/start-test-actions';
 import type { ActionsTables } from '../types';
-import { createAllowedAction } from './create-allowed-action';
 import { readTaskActions } from './read-task-actions';
 
 async function setupTest() {
@@ -16,7 +16,7 @@ test('it splits the pending actions of a task into queued and started', async ()
   const ctx = await setupTest();
   const step = await createTestStep(ctx.context);
 
-  const queued = await createAllowedAction(ctx.context, {
+  const queued = await queueTestAction(ctx.context, {
     step,
     tool: 'test.send',
     actionHash: 'sha256:send-1',
@@ -24,7 +24,7 @@ test('it splits the pending actions of a task into queued and started', async ()
     decision: { outcome: 'allow', stage: 4, rule: { id: 'test-rule', revision: 1 } },
   });
 
-  const started = await createAllowedAction(ctx.context, {
+  const started = await queueTestAction(ctx.context, {
     step,
     tool: 'test.archive',
     actionHash: 'sha256:archive-1',
@@ -50,7 +50,7 @@ test('it leaves out the actions a stop cancelled', async () => {
   const ctx = await setupTest();
   const step = await createTestStep(ctx.context);
 
-  await createAllowedAction(ctx.context, {
+  await queueTestAction(ctx.context, {
     step,
     tool: 'test.send',
     actionHash: 'sha256:send-1',
@@ -69,7 +69,7 @@ test('it leaves out a settled action', async () => {
   const ctx = await setupTest();
   const step = await createTestStep(ctx.context);
 
-  const settled = await createAllowedAction(ctx.context, {
+  const settled = await queueTestAction(ctx.context, {
     step,
     tool: 'test.send',
     actionHash: 'sha256:send-1',

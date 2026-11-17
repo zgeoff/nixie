@@ -14,6 +14,9 @@ export function toRuleForm(rule: Rule): RuleForm {
     ...(rule.sources === undefined ? {} : { sources: toSortedSet(rule.sources) }),
     ...(rule.expires === undefined ? {} : { expires: new Date(rule.expires).toISOString() }),
     ...(rule.mandate === undefined ? {} : { mandate: rule.mandate }),
+    ...(rule.lift === undefined
+      ? {}
+      : { lift: { perAction: rule.lift.perAction, budget: rule.lift.budget } }),
     ...(rule.cel === undefined ? {} : { cel: rule.cel.normalize('NFC') }),
     ...(rule.note === undefined ? {} : { note: rule.note.normalize('NFC') }),
   };

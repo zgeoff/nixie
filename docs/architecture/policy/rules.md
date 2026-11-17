@@ -27,6 +27,7 @@ field but the outcome is optional, and a field that is missing matches every cal
 | `sources`      | Where the call's content came from: `owner`, `own_data`, `task` or `outside`                              |
 | `expires`      | When the rule stops matching, as an ISO date and time; a rule with `mandate` needs one                    |
 | `mandate`      | The mandate the rule belongs to                                                                           |
+| `lift`         | On an allow rule: `perAction` dollars and a `budget` ID, as [budgets](budgets.md#lifts) describes         |
 | `cel`          | A CEL condition                                                                                           |
 | `note`         | The user's own words about the rule                                                                       |
 
@@ -106,7 +107,8 @@ does the reverse. Within one outcome, the check asks whether one rule's match li
 other's, field by field: a pattern inside another pattern, a list inside another list, a check that
 implies another, and a sooner expiry. An allow narrows when the new match lies inside the old one,
 and an ask or a deny narrows when the old match lies inside the new one. An edit that changes only
-the note leaves the match the same, so it is unchanged.
+the note leaves the match the same, so it is unchanged. A lift widens when an edit adds one, raises
+`perAction` or names another budget, and narrows when an edit removes one or lowers `perAction`.
 
 A stricter outcome narrows when the old match lies inside the new one. Turning an allow into an ask
 or a deny always narrows, because removing an allow and adding an ask both narrow. A looser outcome
@@ -199,11 +201,11 @@ A lapse of the proposal keeps the group quiet as Not now does, and a decline of 
 proposal in the group withdraws the open proposed rule. A lapse that the release before writes, with
 `rules.change_lapsed`, closes the open proposed rule too. That record holds no quiet time, so the
 group keeps the lapse time, and the rule store adds the quiet days to it when it checks the group.
-An edited rule stays an allow rule, takes the `lifting` risk class when it lets an always-ask effect
-through, and returns `INVALID` with each fault the parser found. At start, the rule store checks
-each group that gained an answer since its last check, so a crash between an answer and its check
-loses no proposal. An approved proposed rule goes into [the rule export](#the-rule-export), and Undo
-on its notice removes it.
+An edited rule stays an allow rule, takes the `lifting` risk class when it carries a lift or lets an
+always-ask effect through, and returns `INVALID` with each fault the parser found. At start, the
+rule store checks each group that gained an answer since its last check, so a crash between an
+answer and its check loses no proposal. An approved proposed rule goes into
+[the rule export](#the-rule-export), and Undo on its notice removes it.
 
 ## Mandates
 

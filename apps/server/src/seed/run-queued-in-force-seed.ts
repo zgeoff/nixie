@@ -5,6 +5,10 @@ import { runQueuedSeed } from './run-queued-seed';
 
 export function runQueuedInForceSeed(parts: SeedParts): Promise<SeedResult> {
   return runQueuedSeed(parts, () =>
-    runInForceSeed({ log: parts.context.log, buildPolicy: parts.buildPolicy }),
+    runInForceSeed({
+      log: parts.context.log,
+      buildPolicy: parts.buildPolicy,
+      builtInBudgets: parts.context.budgets?.builtIn() ?? [],
+    }),
   );
 }
