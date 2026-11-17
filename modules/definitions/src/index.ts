@@ -162,6 +162,7 @@ export { isLiftingRule } from './utils/is-lifting-rule';
 export type { MandateInput } from './mandate/mandate-input-schema';
 export type { MandateRefusal } from './mandate/pick-mandate';
 export { mandateInputSchema } from './mandate/mandate-input-schema';
+export { buildMandateStatus } from './mandate/build-mandate-status';
 export { makeMandateHandler } from './mandate/make-mandate-handler';
 export { mapMandateRecord } from './mandate/map-mandate-record';
 export type { ActiveMandate } from './mandate/read-active-mandates';

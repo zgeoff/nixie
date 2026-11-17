@@ -90,17 +90,18 @@ the session opens, and the package that owns the value owns the entry, so a new 
 and no change to the builder. The server builds the registry when the conversation starts, in the
 order the status shows:
 
-| Entry              | Owner                | What it reads                                                          |
-| ------------------ | -------------------- | ---------------------------------------------------------------------- |
-| The kind of start  | the sessions package | the first session, a compaction, or a rebuild and its reason           |
-| The start time     | the sessions package | when the session opened, in the zone of the newest message             |
-| The nixie version  | the server           | the release that opened the session                                    |
-| The model          | the sessions package | the model of the conversation's profile, so it can name itself         |
-| The pinned items   | the memory package   | how many items the pinned core holds                                   |
-| The pinned tokens  | the memory package   | the pinned core's tokens against its budget                            |
-| The week's moments | the memory package   | the [moments](../memory/moments.md) kept over the past week, by keeper |
-| The index items    | the sessions package | how many active items that are not pinned the index covers             |
-| The index tokens   | the sessions package | the index block's tokens against its budget                            |
+| Entry               | Owner                   | What it reads                                                          |
+| ------------------- | ----------------------- | ---------------------------------------------------------------------- |
+| The kind of start   | the sessions package    | the first session, a compaction, or a rebuild and its reason           |
+| The start time      | the sessions package    | when the session opened, in the zone of the newest message             |
+| The nixie version   | the server              | the release that opened the session                                    |
+| The model           | the sessions package    | the model of the conversation's profile, so it can name itself         |
+| The pinned items    | the memory package      | how many items the pinned core holds                                   |
+| The pinned tokens   | the memory package      | the pinned core's tokens against its budget                            |
+| The week's moments  | the memory package      | the [moments](../memory/moments.md) kept over the past week, by keeper |
+| The active mandates | the definitions package | each mandate in force, its title, rule sentences and end               |
+| The index items     | the sessions package    | how many active items that are not pinned the index covers             |
+| The index tokens    | the sessions package    | the index block's tokens against its budget                            |
 
 The kind of start says that earlier history is in the event log. After a forget, it says that the
 forget erased the summary of earlier sessions, so the model reads the gap as deliberate. The start
@@ -108,7 +109,8 @@ time is labelled as the time the session started, because each input that starts
 own stamp, and the model must never read the status time as the time now. The two index lines come
 last, and only when the index budget is above 0. They come from the same read of the memory as the
 index block, so they match it. Every value is a name, a time or a count, so the opening record holds
-them with no free text.
+them with no free text. The active mandates line records the count of mandates, and its text lists
+them.
 
 ## The brief
 
