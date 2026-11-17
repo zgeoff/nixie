@@ -5,12 +5,12 @@ import { writeStepCommit } from '@heynixie/tasks';
 import { buildStubConnector } from '../test-utils/build-stub-connector';
 import { claimTestAction } from '../test-utils/claim-test-action';
 import { createTestStep } from '../test-utils/create-test-step';
+import { queueTestAction } from '../test-utils/queue-test-action';
 import { readTestAction } from '../test-utils/read-test-action';
 import { startTestActions } from '../test-utils/start-test-actions';
 import type { ActionsTables } from '../types';
 import type { AttemptVerdict } from './attempt-check';
 import { claimAction } from './claim-action';
-import { createAllowedAction } from './create-allowed-action';
 import type { ApprovedAction } from './create-approved-action';
 import { createApprovedAction } from './create-approved-action';
 import { runActionAttempt } from './run-action-attempt';
@@ -45,7 +45,7 @@ async function setupTest() {
     taskID,
     approve,
     queueAllowed: () =>
-      createAllowedAction(actions.context, {
+      queueTestAction(actions.context, {
         step,
         tool: 'test.send',
         actionHash: 'sha256:send-1',

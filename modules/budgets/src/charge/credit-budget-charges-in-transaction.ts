@@ -1,8 +1,7 @@
-import { writeRecordsInTransaction } from '@heynixie/log';
 import type { Transaction } from 'kysely';
 import { sql } from 'kysely';
-import { budgetCreditedCodec } from '../record/budget-credited-codec';
 import type { BudgetsContext, BudgetsTables, ChargeFor } from '../types';
+import { writeBudgetCredits } from './write-budget-credits';
 
 export interface CreditTarget {
   readonly for: ChargeFor;
@@ -25,18 +24,10 @@ export async function creditBudgetChargesInTransaction(
     .orderBy(sql`rowid`)
     .execute();
 
-  if (open.length === 0) {
-    return 0;
-  }
-
-  await writeRecordsInTransaction(
+  await writeBudgetCredits(
     tx,
-    context.log,
-    open.map((charge) => ({
-      kind: budgetCreditedCodec.kind,
-      definitions: context.definitions(),
-      payload: budgetCreditedCodec.encode({ chargeID: charge.charge_id }),
-    })),
+    context,
+    open.map((charge) => charge.charge_id),
   );
 
   return open.length;

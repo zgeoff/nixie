@@ -32,3 +32,5 @@ export type {
   ChargeRequest,
   ChargeResult,
 } from './types';
+
+export { creditCancelledActionChargesInTransaction } from './charge/credit-cancelled-action-charges-in-transaction';

@@ -1,3 +1,4 @@
+import type { BudgetsContext } from '@heynixie/budgets';
 import type { Clock } from '@heynixie/clock';
 import type { Trigger, taskMessageKindSchema } from '@heynixie/contract';
 import type { CheckedTables } from '@heynixie/db';
@@ -21,6 +22,10 @@ export interface TasksContext {
   readonly log: Log;
   readonly clock: Clock;
   readonly definitions: () => Definitions;
+
+  // what a purchase at the queue charges and a failed or cancelled action credits; absent, the
+  // deployment holds no budgets
+  readonly budgets?: BudgetsContext;
 
   // what a claim and the end of a task run read: the report defaults, the meters and the hop limit
   readonly runSettings: RunSettings;

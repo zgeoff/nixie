@@ -2,6 +2,7 @@ import { writeRecordsInTransaction } from '@heynixie/log';
 import type { Transaction } from 'kysely';
 import type { ActionsTables } from '../types';
 import type { ApprovedActionContext } from './create-approved-action';
+import { creditFailedActions } from './credit-failed-actions';
 
 export interface HeldClose {
   readonly proposalID: string;
@@ -25,9 +26,9 @@ export async function failHeldAction(
     return;
   }
 
-  await writeRecordsInTransaction(tx, context.log, [
+  const records = [
     {
-      kind: 'action.outcome',
+      kind: 'action.outcome' as const,
       definitions: context.definitions(),
       thread: action.task_id,
       payload: {
@@ -39,5 +40,8 @@ export async function failHeldAction(
       },
       erasable: {},
     },
-  ]);
+  ];
+
+  await writeRecordsInTransaction(tx, context.log, records);
+  await creditFailedActions(tx, context.budgets, records);
 }

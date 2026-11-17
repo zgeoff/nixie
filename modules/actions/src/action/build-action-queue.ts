@@ -47,9 +47,13 @@ export function buildActionQueue(
           callSequence: action.callSequence,
           deadlineAt: action.deadlineAt,
           effects: action.effects,
+          destinations: action.destinations ?? [],
+          content: action.content ?? [],
         });
 
-        return queued.actionID;
+        return 'shortID' in queued
+          ? { status: 'asked', shortID: queued.shortID }
+          : { status: 'queued', actionID: queued.actionID };
       },
       readOpenRepeat: (query) =>
         readOpenRepeat(context.log.writer.db, {

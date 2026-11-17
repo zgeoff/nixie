@@ -1,7 +1,11 @@
+import { chargeBudgetsInTransaction, formatBudgetReached } from '@heynixie/budgets';
+import type { BudgetsContext } from '@heynixie/budgets';
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
+import { buildActionProposalInput } from '@heynixie/policy';
 import { requireLease, waitAtFaultPoint } from '@heynixie/tasks';
 import type { TasksContext } from '@heynixie/tasks';
 import type { Transaction } from 'kysely';
+import invariant from 'tiny-invariant';
 import type { ActionRow, ActionStatus, ActionsTables, AllowedCall } from '../types';
 import { buildActionHash } from './build-action-hash';
 import { buildCancelledCheck } from './build-cancelled-check';
@@ -13,10 +17,16 @@ export interface QueuedAction {
   readonly isRepeat: boolean;
 }
 
+export interface AskedAction {
+  readonly shortID: string;
+}
+
+// An allowed call queues an action. A call that a rule's lift allowed charges the lift's budget in
+// the same transaction, and when the charge does not land it queues nothing and asks the owner.
 export async function createAllowedAction(
   context: TasksContext,
   call: AllowedCall,
-): Promise<QueuedAction> {
+): Promise<QueuedAction | AskedAction> {
   if (call.decision.outcome !== 'allow') {
     throw new Error(`a call the decision point answered ${call.decision.outcome} queues nothing`);
   }
@@ -37,6 +47,12 @@ export async function createAllowedAction(
     }
 
     const actionID = crypto.randomUUID();
+
+    const reached = await chargeLift(tx, context.budgets, call, actionID);
+
+    if (reached !== null) {
+      return writeBudgetAsk(tx, context, call, reached);
+    }
 
     await writeRecordsInTransaction(tx, context.log, [
       {
@@ -63,6 +79,10 @@ export async function createAllowedAction(
 
     return { actionID, status: 'pending' as const, isRepeat: false };
   });
+
+  if ('shortID' in queued) {
+    return queued;
+  }
 
   if (NIXIE_TEST_BUILD && !queued.isRepeat) {
     await waitAtFaultPoint('queue.commit.after', { kind: 'action', id: queued.actionID });
@@ -94,4 +114,63 @@ function readRepeat(
       .limit(1)
       .executeTakeFirst()
   );
+}
+
+// The sentence that says the lift's budget could not take the purchase, or null once it did.
+async function chargeLift(
+  tx: Transaction<unknown>,
+  budgets: BudgetsContext | undefined,
+  call: AllowedCall,
+  actionID: string,
+): Promise<string | null> {
+  const lift = call.decision.lift;
+
+  if (lift === undefined) {
+    return null;
+  }
+
+  invariant(budgets, 'a call that a lift allowed needs the budgets of the server');
+
+  const charged = await chargeBudgetsInTransaction(tx, budgets, {
+    budgetIDs: [lift.budgetID],
+    amountMicros: lift.amountMicros,
+    for: { kind: 'action', id: actionID },
+  });
+
+  if (!('error' in charged)) {
+    return null;
+  }
+
+  return charged.error === 'budget_reached'
+    ? formatBudgetReached(charged)
+    : `the budget ${charged.budgetID} is not in force.`;
+}
+
+async function writeBudgetAsk(
+  tx: Transaction<unknown>,
+  context: TasksContext,
+  call: AllowedCall,
+  budgetReached: string,
+): Promise<AskedAction> {
+  invariant(call.callSequence !== undefined, 'a call that a lift allowed has its call record');
+
+  const proposal = buildActionProposalInput({
+    definitions: context.definitions(),
+    thread: call.step.lease.workID,
+    callSequence: call.callSequence,
+    tool: call.tool,
+    effects: call.effects ?? [],
+    cause: 'always_ask',
+    input: call.arguments,
+    destinations: call.destinations ?? [],
+    content: call.content ?? [],
+    deadlineAt: call.deadlineAt ?? null,
+    now: context.clock.now(),
+    stepKey: call.step.stepKey,
+    budgetReached,
+  });
+
+  await writeRecordsInTransaction(tx, context.log, [proposal.record]);
+
+  return { shortID: proposal.shortID };
 }

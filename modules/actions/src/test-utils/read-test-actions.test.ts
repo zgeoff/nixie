@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test';
-import { createAllowedAction } from '../action/create-allowed-action';
 import { createTestStep } from './create-test-step';
+import { queueTestAction } from './queue-test-action';
 import { readTestActions } from './read-test-actions';
 import { startTestActions } from './start-test-actions';
 
@@ -12,7 +12,7 @@ test('it reads each action with its step, its status and its attempts, in queue 
   const ctx = await setupTest();
   const step = await createTestStep(ctx.context);
 
-  const first = await createAllowedAction(ctx.context, {
+  const first = await queueTestAction(ctx.context, {
     step,
     tool: 'test.send',
     actionHash: 'sha256:send-1',
@@ -20,7 +20,7 @@ test('it reads each action with its step, its status and its attempts, in queue 
     decision: { outcome: 'allow', stage: 4, rule: { id: 'test-rule', revision: 1 } },
   });
 
-  const second = await createAllowedAction(ctx.context, {
+  const second = await queueTestAction(ctx.context, {
     step,
     tool: 'test.archive',
     actionHash: 'sha256:archive-1',

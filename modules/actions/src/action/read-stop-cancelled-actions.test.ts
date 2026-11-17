@@ -2,8 +2,8 @@ import { expect, test } from 'bun:test';
 import { writeTaskControl } from '@heynixie/tasks';
 import invariant from 'tiny-invariant';
 import { createTestStep } from '../test-utils/create-test-step';
+import { queueTestAction } from '../test-utils/queue-test-action';
 import { startTestActions } from '../test-utils/start-test-actions';
-import { createAllowedAction } from './create-allowed-action';
 import { readStopCancelledActions } from './read-stop-cancelled-actions';
 
 async function setupTest() {
@@ -16,7 +16,7 @@ test('it lists the actions each stop cancelled under that stop', async () => {
   const ctx = await setupTest();
   const firstStep = await createTestStep(ctx.context);
 
-  const first = await createAllowedAction(ctx.context, {
+  const first = await queueTestAction(ctx.context, {
     step: firstStep,
     tool: 'test.send',
     actionHash: 'sha256:send-1',
@@ -31,7 +31,7 @@ test('it lists the actions each stop cancelled under that stop', async () => {
 
   const secondStep = await createTestStep(ctx.context);
 
-  const second = await createAllowedAction(ctx.context, {
+  const second = await queueTestAction(ctx.context, {
     step: secondStep,
     tool: 'test.archive',
     actionHash: 'sha256:archive-1',

@@ -3,6 +3,7 @@ import { readRecords, withWriteTransaction, writeRecordsInTransaction } from '@h
 import type { Lease, TasksContext } from '@heynixie/tasks';
 import { requireLease, resetLease } from '@heynixie/tasks';
 import type { ActionRow, Outcome, OwnerReason } from '../types';
+import { creditFailedActions } from './credit-failed-actions';
 import { isJSONObject } from './is-json-object';
 
 type SettledOutcome = Exclude<Outcome, { readonly status: 'pending' }>;
@@ -69,6 +70,8 @@ export function writeLeasedRecords(
     await requireLease(tx, lease, context.clock.now());
 
     const written = await writeRecordsInTransaction(tx, context.log, leased.records);
+
+    await creditFailedActions(tx, context.budgets, leased.records);
 
     if (leased.reset) {
       await resetLease(tx, lease);

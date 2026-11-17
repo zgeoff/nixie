@@ -3,8 +3,8 @@ import { waitForCondition } from '@heynixie/testing';
 import { buildStubConnector } from '../test-utils/build-stub-connector';
 import { claimTestAction } from '../test-utils/claim-test-action';
 import { createTestStep } from '../test-utils/create-test-step';
+import { queueTestAction } from '../test-utils/queue-test-action';
 import { startTestActions } from '../test-utils/start-test-actions';
-import { createAllowedAction } from './create-allowed-action';
 import { runActionAttempt } from './run-action-attempt';
 import { waitForActionOutcome } from './wait-for-action-outcome';
 
@@ -18,7 +18,7 @@ test('it returns the outcome on the commit that settles the action, without poll
   const ctx = await setupTest();
   const step = await createTestStep(ctx.context);
 
-  const queued = await createAllowedAction(ctx.context, {
+  const queued = await queueTestAction(ctx.context, {
     step,
     tool: 'test.send',
     actionHash: 'sha256:send-1',
@@ -55,7 +55,7 @@ test('it returns "queued as" with the action ID once 10 s pass with the action p
   const ctx = await setupTest();
   const step = await createTestStep(ctx.context);
 
-  const queued = await createAllowedAction(ctx.context, {
+  const queued = await queueTestAction(ctx.context, {
     step,
     tool: 'test.send',
     actionHash: 'sha256:send-1',

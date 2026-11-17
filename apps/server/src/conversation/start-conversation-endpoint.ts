@@ -202,6 +202,7 @@ export async function startConversationEndpoint(
     log: options.context.log,
     definitions: options.context.definitions,
     queue: tools.queue,
+    ...(options.context.budgets === undefined ? {} : { budgets: options.context.budgets }),
   });
 
   await options.cleanup.defer(() => endpoint.stop());

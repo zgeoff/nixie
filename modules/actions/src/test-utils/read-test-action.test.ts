@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test';
-import { createAllowedAction } from '../action/create-allowed-action';
 import { buildMockAllowedCall } from './build-mock-allowed-call';
 import { createTestStep } from './create-test-step';
+import { queueTestAction } from './queue-test-action';
 import { readTestAction } from './read-test-action';
 import { startTestActions } from './start-test-actions';
 
@@ -13,9 +13,9 @@ test('it reads the row of one action by its ID', async () => {
   const ctx = await setupTest();
   const step = await createTestStep(ctx.context);
 
-  await createAllowedAction(ctx.context, buildMockAllowedCall({ step }));
+  await queueTestAction(ctx.context, buildMockAllowedCall({ step }));
 
-  const second = await createAllowedAction(
+  const second = await queueTestAction(
     ctx.context,
     buildMockAllowedCall({ step, tool: 'test.archive' }),
   );

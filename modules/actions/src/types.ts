@@ -1,5 +1,6 @@
 import type { CheckedTables } from '@heynixie/db';
 import type { Decision, JSONObject } from '@heynixie/log';
+import type { CallDestination, Effect } from '@heynixie/policy';
 import type { TaskClaim, TasksTables } from '@heynixie/tasks';
 
 export type ActionStatus = 'pending' | 'done' | 'failed' | 'unknown';
@@ -49,7 +50,9 @@ export interface AllowedCall {
   // the tool_called record of the call, which the check before each attempt reads again
   readonly callSequence?: number;
   readonly deadlineAt?: number | null;
-  readonly effects?: readonly string[];
+  readonly effects?: readonly Effect[];
+  readonly destinations?: readonly CallDestination[];
+  readonly content?: readonly string[];
 }
 
 export type ModelView =

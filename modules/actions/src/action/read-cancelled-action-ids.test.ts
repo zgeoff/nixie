@@ -1,9 +1,9 @@
 import { expect, test } from 'bun:test';
 import { writeTaskControl } from '@heynixie/tasks';
 import { createTestStep } from '../test-utils/create-test-step';
+import { queueTestAction } from '../test-utils/queue-test-action';
 import { startTestActions } from '../test-utils/start-test-actions';
 import type { ActionsTables } from '../types';
-import { createAllowedAction } from './create-allowed-action';
 import { readCancelledActionIDs } from './read-cancelled-action-ids';
 
 async function setupTest() {
@@ -16,7 +16,7 @@ test('it reads only the actions that a stop cancelled before their first attempt
   const ctx = await setupTest();
   const step = await createTestStep(ctx.context);
 
-  const unstarted = await createAllowedAction(ctx.context, {
+  const unstarted = await queueTestAction(ctx.context, {
     step,
     tool: 'test.send',
     actionHash: 'sha256:send-1',
@@ -24,7 +24,7 @@ test('it reads only the actions that a stop cancelled before their first attempt
     decision: { outcome: 'allow', stage: 4, rule: { id: 'test-rule', revision: 1 } },
   });
 
-  const started = await createAllowedAction(ctx.context, {
+  const started = await queueTestAction(ctx.context, {
     step,
     tool: 'test.send',
     actionHash: 'sha256:send-2',

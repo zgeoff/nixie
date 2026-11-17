@@ -207,7 +207,7 @@ async function setupTest() {
           enqueue: () => {
             queued.push('action-1');
 
-            return Promise.resolve('action-1');
+            return Promise.resolve({ status: 'queued', actionID: 'action-1' });
           },
           readOpenRepeat: () => Promise.resolve(null),
           readOpenAsk: () => Promise.resolve(null),

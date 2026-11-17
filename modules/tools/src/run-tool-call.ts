@@ -349,7 +349,7 @@ async function runDirect(allowed: AllowedCall): Promise<Settled> {
 }
 
 async function runQueued(allowed: AllowedCall): Promise<Settled> {
-  const actionID = await allowed.options.queue.enqueue({
+  const enqueued = await allowed.options.queue.enqueue({
     call: allowed.call,
     run: allowed.run,
     decision: allowed.decision,
@@ -362,10 +362,16 @@ async function runQueued(allowed: AllowedCall): Promise<Settled> {
     }),
     deadlineAt: allowed.deadlineAt,
     effects: allowed.registered.definition.declaration.effects,
+    destinations: allowed.destinations,
+    content: allowed.registered.definition.declaration.content,
   });
 
+  if (enqueued.status === 'asked') {
+    return buildAskMessage(enqueued.shortID);
+  }
+
   return readQueuedResult(allowed.registered, allowed.options.queue, {
-    actionID,
+    actionID: enqueued.actionID,
     timeoutMs: allowed.options.queuedWaitMs,
   });
 }

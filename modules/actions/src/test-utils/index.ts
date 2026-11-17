@@ -7,3 +7,6 @@ export type { AllowedCallSeed } from './build-mock-allowed-call';
 export { createTestStep } from './create-test-step';
 export { readTestAction } from './read-test-action';
 export { seedActionRiskClass } from './seed-action-risk-class';
+export { queueTestAction } from './queue-test-action';
+export { buildMockLiftedCall } from './build-mock-lifted-call';
+export { startTestBudgetedActions } from './start-test-budgeted-actions';

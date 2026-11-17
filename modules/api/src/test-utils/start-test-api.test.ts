@@ -1,6 +1,6 @@
 import { expect, mock, onTestFinished, test } from 'bun:test';
 import { existsSync } from 'node:fs';
-import { createAllowedAction } from '@heynixie/actions';
+import { queueTestAction } from '@heynixie/actions/test-utils';
 import { clientHeaderName } from '@heynixie/contract';
 import { readTestTasks } from '@heynixie/tasks/test-utils';
 import { buildSeeder } from './build-seeder';
@@ -125,7 +125,7 @@ test('it reads back an action that the actions module created', async () => {
   const laptop = await createDeviceSession(ctx.context, 'laptop');
   const step = await ctx.seed.conversationStep();
 
-  const queued = await createAllowedAction(ctx.context, {
+  const queued = await queueTestAction(ctx.context, {
     step: step.claim,
     tool: 'test.send',
     actionHash: 'sha256:send-1',

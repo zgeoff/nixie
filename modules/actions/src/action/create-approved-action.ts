@@ -1,3 +1,4 @@
+import type { BudgetsContext } from '@heynixie/budgets';
 import type { Clock } from '@heynixie/clock';
 import type { Definitions, JSONObject, Log } from '@heynixie/log';
 import { writeRecordsInTransaction } from '@heynixie/log';
@@ -8,6 +9,9 @@ export interface ApprovedActionContext {
   readonly log: Log;
   readonly clock: Pick<Clock, 'now'>;
   readonly definitions: () => Definitions;
+
+  // what a failed action's lift charge is credited to; absent, the deployment holds no budgets
+  readonly budgets?: BudgetsContext;
 }
 
 // What an approval answered: the action of the proposal row, which the owner approved as shown.

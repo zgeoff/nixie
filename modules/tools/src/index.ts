@@ -30,6 +30,7 @@ export type {
   JsonSchema,
   MemoryWriteVerdict,
   PolicyFactsResolution,
+  Enqueued,
   QueuedAction,
   RegisteredTool,
   RepeatQuery,

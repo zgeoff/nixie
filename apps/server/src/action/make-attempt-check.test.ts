@@ -1,8 +1,9 @@
 import { expect, test } from 'bun:test';
-import { createAllowedAction, runInStepActions } from '@heynixie/actions';
+import { runInStepActions } from '@heynixie/actions';
 import {
   buildActionSeeder,
   createTestStep,
+  queueTestAction,
   readTestAction,
   startTestActions,
 } from '@heynixie/actions/test-utils';
@@ -125,7 +126,7 @@ test('it gives the proposal of an allowed action that no rule now steers the fra
 
   invariant(called, 'the call is recorded');
 
-  const queued = await createAllowedAction(ctx.context, {
+  const queued = await queueTestAction(ctx.context, {
     step,
     tool: 'notes.post',
     actionHash: 'sha256:post-1',
@@ -203,7 +204,7 @@ test('it denies an allowed variant call when a rule now denies that variant', as
     rule: { id: 'deny-risky', outcome: 'deny', tools: ['jobs_start/risky'] },
   });
 
-  const queued = await createAllowedAction(ctx.context, {
+  const queued = await queueTestAction(ctx.context, {
     step,
     tool: 'jobs_start',
     actionHash: 'sha256:start-1',

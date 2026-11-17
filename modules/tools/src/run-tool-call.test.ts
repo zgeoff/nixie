@@ -617,6 +617,43 @@ test('it returns "queued as" the action ID when the action is still pending afte
   });
 });
 
+test('it answers with the waiting message when the queue asks the owner instead of queueing', async () => {
+  const ctx = await setupTest({
+    queue: { asksWith: 'k7f2' },
+    tools: [
+      buildMockToolDefinition({
+        name: 'test.send',
+        execution: 'queued',
+        declaration: { effects: ['send'] },
+      }),
+    ],
+  });
+
+  const result = await runToolCall(
+    { tool: 'test.send', input: { query: 'hello' }, toolUseID: null },
+    {
+      runID: 'run-1',
+      thread: 'task-1',
+      logThread: 'task-1',
+      tools: ['test.send'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
+    ctx.options,
+  );
+
+  expect(result).toStrictEqual({
+    content: [
+      {
+        type: 'text',
+        text: 'Waiting for approval as `k7f2`. You can keep working; you will hear the answer in your inbox.',
+      },
+    ],
+    isError: false,
+  });
+
+  expect(ctx.queue.waits).toStrictEqual([]);
+});
+
 test('it returns a failed action outcome as text that is no tool error', async () => {
   const ctx = await setupTest({
     tools: [
@@ -2170,7 +2207,7 @@ test('it proposes nothing for a call that repeats an approved action still open,
     model: { model: 'model-a', profile: 'chat-direct' },
   };
 
-  const earlierID = await ctx.queue.queue.enqueue({
+  const earlierID = await ctx.queue.enqueueAction({
     call: { callID: 'call-0', tool: 'files_delete', input: { query: 'old' }, toolUseID: null },
     run,
     decision: { outcome: 'allow', stage: 3, rule: null },
@@ -2230,7 +2267,7 @@ test('it proposes nothing for a direct call that repeats an approved action stil
     model: { model: 'model-a', profile: 'chat-direct' },
   };
 
-  const earlierID = await ctx.queue.queue.enqueue({
+  const earlierID = await ctx.queue.enqueueAction({
     call: { callID: 'call-0', tool: 'notes_wipe', input: { query: 'old' }, toolUseID: null },
     run,
     decision: { outcome: 'allow', stage: 3, rule: null },
@@ -2285,7 +2322,7 @@ test('it proposes nothing for a call that an approval queued after the repeat re
     model: { model: 'model-a', profile: 'chat-direct' },
   };
 
-  const earlierID = await ctx.queue.queue.enqueue({
+  const earlierID = await ctx.queue.enqueueAction({
     call: { callID: 'call-0', tool: 'notes_wipe', input: { query: 'old' }, toolUseID: null },
     run,
     decision: { outcome: 'allow', stage: 3, rule: null },
@@ -2523,7 +2560,7 @@ test('it proposes nothing for a variant call that repeats an approved action sti
 
   invariant(typeof proposedHash === 'string', 'the proposal record holds an action hash');
 
-  const earlierID = await ctx.queue.queue.enqueue({
+  const earlierID = await ctx.queue.enqueueAction({
     call: { callID: 'call-0', tool: 'jobs_start', input: call.input, toolUseID: null },
     run,
     decision: { outcome: 'allow', stage: 3, rule: null },

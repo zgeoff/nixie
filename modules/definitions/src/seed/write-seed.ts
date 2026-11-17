@@ -30,7 +30,7 @@ export interface RuleProposalChange {
   readonly proposed: RuleProposal | null;
 }
 
-export interface BudgetStoreWrite {
+interface BudgetStoreWrite {
   readonly plan: BudgetSeedPlan;
 
   // the budgets that the repo holds, before any held edit

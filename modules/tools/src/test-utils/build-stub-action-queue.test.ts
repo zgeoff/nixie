@@ -4,7 +4,7 @@ import { buildStubActionQueue } from './build-stub-action-queue';
 test('it gives each new action its own ID and holds the action under it', async () => {
   const stub = buildStubActionQueue();
 
-  const first = await stub.queue.enqueue({
+  const first = await stub.enqueueAction({
     call: { callID: 'call-1', tool: 'test.send', input: { to: 'a' }, toolUseID: null },
     run: {
       runID: 'run-1',
@@ -20,7 +20,7 @@ test('it gives each new action its own ID and holds the action under it', async 
     effects: ['send'],
   });
 
-  const second = await stub.queue.enqueue({
+  const second = await stub.enqueueAction({
     call: { callID: 'call-2', tool: 'test.send', input: { to: 'b' }, toolUseID: null },
     run: {
       runID: 'run-1',
@@ -47,7 +47,7 @@ test('it gives each new action its own ID and holds the action under it', async 
 test("it gives a repeat of an earlier action's tool and input that action's ID", async () => {
   const stub = buildStubActionQueue();
 
-  const first = await stub.queue.enqueue({
+  const first = await stub.enqueueAction({
     call: { callID: 'call-1', tool: 'test.send', input: { to: 'a' }, toolUseID: null },
     run: {
       runID: 'run-1',
@@ -63,7 +63,7 @@ test("it gives a repeat of an earlier action's tool and input that action's ID",
     effects: ['send'],
   });
 
-  const repeat = await stub.queue.enqueue({
+  const repeat = await stub.enqueueAction({
     call: { callID: 'call-2', tool: 'test.send', input: { to: 'a' }, toolUseID: null },
     run: {
       runID: 'run-2',
@@ -86,7 +86,7 @@ test("it gives a repeat of an earlier action's tool and input that action's ID",
 test("it gives another task's call with the same tool and input its own ID", async () => {
   const stub = buildStubActionQueue();
 
-  const first = await stub.queue.enqueue({
+  const first = await stub.enqueueAction({
     call: { callID: 'call-1', tool: 'test.send', input: { to: 'a' }, toolUseID: null },
     run: {
       runID: 'run-1',
@@ -102,7 +102,7 @@ test("it gives another task's call with the same tool and input its own ID", asy
     effects: ['send'],
   });
 
-  const other = await stub.queue.enqueue({
+  const other = await stub.enqueueAction({
     call: { callID: 'call-2', tool: 'test.send', input: { to: 'a' }, toolUseID: null },
     run: {
       runID: 'run-2',
@@ -125,7 +125,7 @@ test("it gives another task's call with the same tool and input its own ID", asy
 test('it answers a pending wait with the outcome written for its action', async () => {
   const stub = buildStubActionQueue();
 
-  const actionID = await stub.queue.enqueue({
+  const actionID = await stub.enqueueAction({
     call: { callID: 'call-1', tool: 'test.send', input: { to: 'a' }, toolUseID: null },
     run: {
       runID: 'run-1',
@@ -151,7 +151,7 @@ test('it answers a pending wait with the outcome written for its action', async 
 test('it answers a wait that starts after the action settled with its outcome', async () => {
   const stub = buildStubActionQueue();
 
-  const actionID = await stub.queue.enqueue({
+  const actionID = await stub.enqueueAction({
     call: { callID: 'call-1', tool: 'test.send', input: { to: 'a' }, toolUseID: null },
     run: {
       runID: 'run-1',
@@ -177,7 +177,7 @@ test('it answers a wait that starts after the action settled with its outcome', 
 test('it ends a pending wait with null once the waits drain', async () => {
   const stub = buildStubActionQueue();
 
-  const actionID = await stub.queue.enqueue({
+  const actionID = await stub.enqueueAction({
     call: { callID: 'call-1', tool: 'test.send', input: { to: 'a' }, toolUseID: null },
     run: {
       runID: 'run-1',
@@ -203,7 +203,7 @@ test('it ends a pending wait with null once the waits drain', async () => {
 test('it records each wait with the timeout it was given', async () => {
   const stub = buildStubActionQueue();
 
-  const actionID = await stub.queue.enqueue({
+  const actionID = await stub.enqueueAction({
     call: { callID: 'call-1', tool: 'test.send', input: { to: 'a' }, toolUseID: null },
     run: {
       runID: 'run-1',
@@ -238,7 +238,7 @@ test('it rejects a wait for an action it never queued', () => {
 test('it rejects a pending wait once stopped', async () => {
   const stub = buildStubActionQueue();
 
-  const actionID = await stub.queue.enqueue({
+  const actionID = await stub.enqueueAction({
     call: { callID: 'call-1', tool: 'test.send', input: { to: 'a' }, toolUseID: null },
     run: {
       runID: 'run-1',
@@ -288,7 +288,7 @@ test('it rejects an action queued once stopped', () => {
 test('it answers a wait with no time at once, with no outcome', async () => {
   const stub = buildStubActionQueue();
 
-  const actionID = await stub.queue.enqueue({
+  const actionID = await stub.enqueueAction({
     call: { callID: 'call-1', tool: 'test.send', input: { to: 'a' }, toolUseID: null },
     run: {
       runID: 'run-1',
@@ -320,7 +320,7 @@ test('it hides an open action from the first repeat reads that the option names,
     model: { model: 'm', profile: 'p' },
   };
 
-  const actionID = await stub.queue.enqueue({
+  const actionID = await stub.enqueueAction({
     call: { callID: 'call-1', tool: 'test.send', input: { to: 'a' }, toolUseID: null },
     run,
     decision: { outcome: 'allow', stage: 3, rule: null },

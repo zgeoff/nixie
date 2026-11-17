@@ -4,9 +4,9 @@ import { buildRecordedCommits } from '@heynixie/log/test-utils';
 import { waitForCondition } from '@heynixie/testing';
 import { buildStubConnector } from '../test-utils/build-stub-connector';
 import { createTestStep } from '../test-utils/create-test-step';
+import { queueTestAction } from '../test-utils/queue-test-action';
 import { startTestActions } from '../test-utils/start-test-actions';
 import type { ActionsTables } from '../types';
-import { createAllowedAction } from './create-allowed-action';
 import { startActionRunners } from './start-action-runners';
 
 async function setupTest() {
@@ -21,7 +21,7 @@ test('it retries a refusal that can clear on the schedule', async () => {
 
   const attemptTimes: number[] = [];
 
-  await createAllowedAction(ctx.context, {
+  await queueTestAction(ctx.context, {
     step,
     tool: 'test.send',
     actionHash: 'sha256:send-1',
@@ -62,7 +62,7 @@ test('it fails a refusal that can clear on its fifth attempt', async () => {
   const ctx = await setupTest();
   const step = await createTestStep(ctx.context);
 
-  await createAllowedAction(ctx.context, {
+  await queueTestAction(ctx.context, {
     step,
     tool: 'test.send',
     actionHash: 'sha256:send-1',
@@ -114,7 +114,7 @@ test('it attempts an action queued while every runner sleeps without waiting for
 
   const queuedAt = ctx.clock.now();
 
-  await createAllowedAction(ctx.context, {
+  await queueTestAction(ctx.context, {
     step,
     tool: 'test.send',
     actionHash: 'sha256:send-1',
@@ -157,7 +157,7 @@ test('it runs 4 actions at once by default', async () => {
 
   await Promise.all(
     ['sha256:1', 'sha256:2', 'sha256:3', 'sha256:4', 'sha256:5'].map((actionHash) =>
-      createAllowedAction(ctx.context, {
+      queueTestAction(ctx.context, {
         step,
         tool: 'test.send',
         actionHash,
