@@ -40,12 +40,12 @@ The conversation holds 4 tools, and no task's tool list holds any of them:
   trigger counts from now.
 - **`reminder.cancel`** takes a short ID.
 - **`reminders.list`** lists the reminders that wait and the one-time reminders that fired in the
-  last 24 hours, newest set first, in pages that stop at the output limit of a recall page, with a
-  cursor for the next.
+  last day, newest set first, in pages that stop at the output limit of a recall page, with a cursor
+  for the next.
 
 A refusal comes back as `refused` with a code and a sentence. A trigger is refused when its time has
-passed, or when a recurring schedule fires more often than `reminders.min_gap_minutes`, which is 15
-minutes by default.
+passed, or when a recurring schedule fires more often than `reminders.min_gap_minutes`, which holds
+a default that the [configuration](../deployment/configuration.md) lists.
 
 The first three tools have the effect `note` and the fourth has the effect `read`. The starter rules
 allow both effects, so no call asks the user for approval until the user's own rules say otherwise.
