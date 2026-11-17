@@ -79,6 +79,7 @@ test('it settles the action done and names the result record in its outcome', as
 
   expect(outcome?.payload).toStrictEqual({
     actionID: queued.action_id,
+    tool: 'test.read',
     status: 'done',
     attempt: 1,
     reason: null,

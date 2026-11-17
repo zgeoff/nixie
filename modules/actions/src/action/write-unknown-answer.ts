@@ -21,7 +21,7 @@ export async function writeUnknownAnswer(
   const action = await tx
     .$extendTables<ActionsTables>()
     .selectFrom('actions')
-    .select(['task_id', 'attempt_count', 'runs_in_step'])
+    .select(['task_id', 'tool', 'attempt_count', 'runs_in_step'])
     .where('action_id', '=', answer.actionID)
     .where('status', '=', 'unknown')
     .where('outcome_sequence', 'is not', null)
@@ -52,6 +52,7 @@ export async function writeUnknownAnswer(
             thread: action.task_id,
             payload: {
               actionID: answer.actionID,
+              tool: action.tool,
               status: answer.choice === 'happened' ? 'done' : 'failed',
               attempt: action.attempt_count,
               reason: answer.choice === 'happened' ? null : 'dropped',

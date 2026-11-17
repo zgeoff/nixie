@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { withWriteTransaction } from '@heynixie/log';
+import { readRecords, withWriteTransaction } from '@heynixie/log';
 import { buildActionProposalInput } from '@heynixie/policy';
 import { buildStubConnector } from '../test-utils/build-stub-connector';
 import { claimTestAction } from '../test-utils/claim-test-action';
@@ -73,6 +73,21 @@ test.each(['declined', 'lapsed'] as const)(
     expect(action).toMatchObject({ status: 'failed', reason, held_by_proposal_id: null });
   },
 );
+
+test('it names the call in the outcome of the action a declined proposal held', async () => {
+  const ctx = await setupTest();
+
+  await ctx.failHeld(ctx.actionID, 'declined');
+
+  const entries = await readRecords(ctx.context.log, {
+    afterSequence: 0,
+    kinds: ['action.outcome'],
+  });
+
+  expect(entries.map((entry) => entry.record.payload)).toStrictEqual([
+    { actionID: ctx.actionID, tool: 'test.send', status: 'failed', attempt: 0, reason: 'declined' },
+  ]);
+});
 
 test('it fails nothing for a proposal that held no action', async () => {
   const ctx = await setupTest();

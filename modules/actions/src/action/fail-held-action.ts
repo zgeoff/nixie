@@ -17,7 +17,7 @@ export async function failHeldAction(
   const action = await tx
     .$extendTables<ActionsTables>()
     .selectFrom('actions')
-    .select(['action_id', 'task_id', 'attempt_count'])
+    .select(['action_id', 'task_id', 'tool', 'attempt_count'])
     .where('held_by_proposal_id', '=', held.proposalID)
     .executeTakeFirst();
 
@@ -32,6 +32,7 @@ export async function failHeldAction(
       thread: action.task_id,
       payload: {
         actionID: action.action_id,
+        tool: action.tool,
         status: 'failed',
         attempt: action.attempt_count,
         reason: held.reason,

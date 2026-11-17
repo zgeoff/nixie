@@ -64,6 +64,12 @@ export interface ListedAction {
   readonly tool: string;
 }
 
+// What became of an approved action, as its approval's card shows it.
+export interface ApprovedCall {
+  readonly state: 'waiting' | 'applied' | 'failed' | 'unknown';
+  readonly reason: string | null;
+}
+
 export interface ActionCounts {
   readonly queued: number;
   readonly started: number;

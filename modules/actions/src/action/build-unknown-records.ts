@@ -10,6 +10,7 @@ export interface UnknownFacts {
     ActionRow,
     | 'action_id'
     | 'task_id'
+    | 'tool'
     | 'unknown_streak'
     | 'first_attempt_at'
     | 'last_attempt_at'
@@ -48,6 +49,7 @@ export function buildUnknownRecords(
         thread: facts.action.task_id,
         payload: {
           actionID: facts.action.action_id,
+          tool: facts.action.tool,
           status: 'unknown',
           attempt: facts.attempt,
           reason: facts.reason,

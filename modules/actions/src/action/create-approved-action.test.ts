@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { withWriteTransaction } from '@heynixie/log';
+import { readRecords, withWriteTransaction } from '@heynixie/log';
 import { buildActionProposalInput } from '@heynixie/policy';
 import { writeStepCommit } from '@heynixie/tasks';
 import { buildStubConnector } from '../test-utils/build-stub-connector';
@@ -137,6 +137,20 @@ test('it fails an approved action that the owner approved past its deadline', as
   const action = await ctx.readAction(actionID);
 
   expect(action).toMatchObject({ status: 'failed', reason: 'deadline_passed', attempt_count: 0 });
+});
+
+test('it names the tool in the outcome of an action approved past its deadline', async () => {
+  const ctx = await setupTest();
+  const actionID = await ctx.approve({ deadlineAt: 999_000 });
+
+  const entries = await readRecords(ctx.context.log, {
+    afterSequence: 0,
+    kinds: ['action.outcome'],
+  });
+
+  expect(entries.map((entry) => entry.record.payload)).toStrictEqual([
+    { actionID, tool: 'test.send', status: 'failed', attempt: 0, reason: 'deadline_passed' },
+  ]);
 });
 
 test('it releases the action a proposal held, and runs it once', async () => {
