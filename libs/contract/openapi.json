@@ -21912,6 +21912,41 @@
                           },
                           "isAnsweredHere": {
                             "type": "boolean"
+                          },
+                          "call": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "state": {
+                                    "enum": [
+                                      "waiting",
+                                      "applied",
+                                      "failed",
+                                      "unknown"
+                                    ],
+                                    "type": "string"
+                                  },
+                                  "reason": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "state",
+                                  "reason"
+                                ]
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
                           }
                         },
                         "required": [
@@ -21921,7 +21956,8 @@
                           "choices",
                           "passkeyChoices",
                           "answeredOn",
-                          "isAnsweredHere"
+                          "isAnsweredHere",
+                          "call"
                         ]
                       }
                     }

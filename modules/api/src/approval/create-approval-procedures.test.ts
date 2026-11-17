@@ -1,6 +1,9 @@
 import { expect, onTestFinished, setSystemTime, test } from 'bun:test';
 import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import type { ApprovedCall } from '@heynixie/actions';
+import { claimAction, runActionAttempt } from '@heynixie/actions';
+import type { ProviderResponse } from '@heynixie/connectors';
 import { createPathSource, runSeed } from '@heynixie/definitions';
 import { buildTestTaskSeed } from '@heynixie/definitions/test-utils';
 import type { LogTables } from '@heynixie/log';
@@ -10,7 +13,7 @@ import { buildMockWriteCaller } from '@heynixie/memory/test-utils';
 import type { Effect } from '@heynixie/policy';
 import { buildActionProposalInput } from '@heynixie/policy';
 import { readProposal, runProposalLapses, runProposalReturns } from '@heynixie/proposals';
-import { createConversationTask, readInbox } from '@heynixie/tasks';
+import { createConversationTask, readInbox, writeTaskControl } from '@heynixie/tasks';
 import invariant from 'tiny-invariant';
 import { buildProposalCoreDeps } from '../proposal/build-proposal-core-deps';
 import { buildTestClient } from '../test-utils/build-test-client';
@@ -68,7 +71,48 @@ async function setupTest() {
 
   const laptop = await createDeviceSession(api.context, 'laptop');
 
-  return { api, memory, url: api.url, client: buildTestClient(api.url, laptop.token) };
+  const client = buildTestClient(api.url, laptop.token);
+
+  return {
+    api,
+    memory,
+    url: api.url,
+    client,
+    seed: {
+      // an ask for a mail.send that the owner approved, so its action is queued
+      approvedMailSend: async () => {
+        await createConversationTask(api.context);
+
+        const proposed = buildActionProposalInput({
+          definitions: api.context.definitions(),
+          thread: 'conversation',
+          callSequence: 1,
+          tool: 'mail.send',
+          effects: ['send'],
+          cause: 'ask_rule',
+          input: {},
+          destinations: [],
+        });
+
+        await writeRecords(api.context.log, [proposed.record]);
+
+        const listed = await client.approvals.listItems();
+
+        const item = listed.items.find((entry) => entry.proposal.shortID === proposed.shortID);
+
+        invariant(item);
+
+        await client.approvals.answerProposal({
+          proposalID: item.proposal.proposalID,
+          actionHash: item.proposal.actionHash,
+          choice: 'approve',
+          clientActionID: crypto.randomUUID(),
+        });
+
+        return item.proposal.proposalID;
+      },
+    },
+  };
 }
 
 test('#approvals.listItems lists a pending rule change with the choices it takes', async () => {
@@ -783,6 +827,7 @@ test('#approvals.readProposals reads an open row with its choices, its approve l
         passkeyChoices: [],
         answeredOn: null,
         isAnsweredHere: false,
+        call: null,
       },
     ],
   });
@@ -825,6 +870,77 @@ test('#approvals.readProposals reads a closed row with no choices and the device
     here: [['approved', [], 'laptop', true]],
     elsewhere: [[[], 'laptop', false]],
   });
+});
+
+test('#approvals.readProposals shows a call that has not run as waiting', async () => {
+  const ctx = await setupTest();
+  const proposalID = await ctx.seed.approvedMailSend();
+  const read = await ctx.client.approvals.readProposals({ proposalIDs: [proposalID] });
+
+  expect(read.proposals.map((entry) => entry.call)).toStrictEqual([
+    { state: 'waiting', reason: null },
+  ]);
+});
+
+test.each<{ result: ProviderResponse; call: ApprovedCall }>([
+  { result: { kind: 'success', result: {} }, call: { state: 'applied', reason: null } },
+  {
+    result: { kind: 'refused', reason: 'the harbour office is closed' },
+    call: { state: 'failed', reason: 'the harbour office is closed' },
+  },
+  { result: { kind: 'ambiguous', reason: 'timed out' }, call: { state: 'unknown', reason: null } },
+])('#approvals.readProposals shows a call that ran as $call.state', async (row) => {
+  const ctx = await setupTest();
+  const proposalID = await ctx.seed.approvedMailSend();
+  const lease = await claimAction(ctx.api.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  invariant(lease);
+
+  await runActionAttempt(ctx.api.context, lease, {
+    connectors: new Map([['mail.send', { run: () => Promise.resolve(row.result) }]]),
+    leaseMs: 60_000,
+  });
+
+  const read = await ctx.client.approvals.readProposals({ proposalIDs: [proposalID] });
+
+  expect(read.proposals.map((entry) => entry.call)).toStrictEqual([row.call]);
+});
+
+test('#approvals.readProposals shows a call that a stop cancelled as failed', async () => {
+  const ctx = await setupTest();
+  const proposalID = await ctx.seed.approvedMailSend();
+
+  await writeTaskControl(ctx.api.context, { taskID: 'conversation', control: 'stop' });
+
+  const read = await ctx.client.approvals.readProposals({ proposalIDs: [proposalID] });
+
+  expect(read.proposals.map((entry) => entry.call)).toStrictEqual([
+    { state: 'failed', reason: 'the task was stopped before it ran' },
+  ]);
+});
+
+test('#approvals.readProposals shows no call for a row that is not an approved action', async () => {
+  const ctx = await setupTest();
+  const listed = await ctx.client.approvals.listItems();
+
+  const [item] = listed.items;
+
+  invariant(item);
+
+  await ctx.client.approvals.answerProposal({
+    proposalID: item.proposal.proposalID,
+    actionHash: item.proposal.actionHash,
+    choice: 'approve',
+    clientActionID: crypto.randomUUID(),
+  });
+
+  const read = await ctx.client.approvals.readProposals({
+    proposalIDs: [item.proposal.proposalID],
+  });
+
+  expect(read.proposals.map((entry) => [entry.proposal.state, entry.call])).toStrictEqual([
+    ['approved', null],
+  ]);
 });
 
 test('#approvals.readProposals reads a row by its short ID and leaves out an ID that names no row', async () => {

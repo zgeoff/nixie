@@ -1,4 +1,6 @@
-import type { ProposalCoreDeps } from '@heynixie/proposals';
+import type { ApprovedCall } from '@heynixie/actions';
+import { readApprovedCalls } from '@heynixie/actions';
+import type { ProposalCoreDeps, SharedProposal } from '@heynixie/proposals';
 import { pickPasskeyChoices, pickProposalChoices, readProposalsByID } from '@heynixie/proposals';
 import type { APIContext, APITables, Identity, ReadViewMemory } from '../types';
 import { readApprovalBodies } from './read-approval-bodies';
@@ -27,6 +29,11 @@ export async function readApprovalProposals(
     rows.flatMap((row) => row.answeredBy ?? []),
   );
 
+  const calls = await readApprovedCalls(
+    context,
+    rows.flatMap((row) => (isApprovedAction(row) && row.usedBy !== null ? [row.usedBy] : [])),
+  );
+
   const directory = new Map(context.settings.taskDirectory.map((task) => [task.taskID, task.name]));
 
   return {
@@ -49,6 +56,7 @@ export async function readApprovalProposals(
           passkeyChoices: isOpen ? [...pickPasskeyChoices(row)] : [],
           answeredOn: row.answeredBy === null ? null : (labels.get(row.answeredBy) ?? null),
           isAnsweredHere: row.answeredBy === request.caller.identityID,
+          call: pickRowCall(row, calls),
         },
       ];
     }),
@@ -73,5 +81,22 @@ async function readDeviceLabels(
 
   return new Map(
     rows.flatMap((row) => (row.label === '' ? [] : [[row.identity_id, row.label] as const])),
+  );
+}
+
+function isApprovedAction(row: SharedProposal): boolean {
+  return row.kind === 'action' && row.state === 'approved';
+}
+
+function pickRowCall(
+  row: SharedProposal,
+  calls: ReadonlyMap<string, ApprovedCall>,
+): ApprovedCall | null {
+  if (!isApprovedAction(row) || row.usedBy === null) {
+    return null;
+  }
+
+  return (
+    calls.get(row.usedBy) ?? { state: 'failed', reason: 'no call was queued for this approval' }
   );
 }
