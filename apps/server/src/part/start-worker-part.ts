@@ -2,6 +2,7 @@ import type { Definitions, Log } from '@heynixie/log';
 import type { SandboxAdapter } from '@heynixie/sandbox';
 import type { WorkerTool } from '@heynixie/sessions';
 import { startWorkerTool } from '@heynixie/sessions';
+import type { SpendContext } from '@heynixie/spend';
 import type { ToolEndpoint } from '@heynixie/tools';
 import { toImageNames } from '../sandbox/to-image-names';
 import type { ServerPartsOptions } from '../server/start-server';
@@ -15,6 +16,7 @@ export interface WorkerPartInputs {
   readonly log: Log;
   readonly definitions: () => Definitions;
   readonly readTools: () => Pick<ToolEndpoint, 'startRun'> | null;
+  readonly spend: SpendContext | undefined;
 }
 
 // A deployment with no worker role gets no worker tool, so the model never sees a tool that every
@@ -42,6 +44,7 @@ export async function startWorkerPart(inputs: WorkerPartInputs): Promise<WorkerT
     logger: inputs.options.log,
     readTools: inputs.readTools,
     ...(inputs.options.spend === null ? {} : { gateway: inputs.options.spend.gateway }),
+    ...(inputs.spend === undefined ? {} : { spend: inputs.spend }),
     ...(config.tasks.workerRuns === undefined ? {} : { workerRuns: config.tasks.workerRuns }),
   });
 

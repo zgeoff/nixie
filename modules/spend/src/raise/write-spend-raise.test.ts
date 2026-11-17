@@ -121,7 +121,7 @@ test('it refuses a raise for a day that has ended', async () => {
   expect([result, raises]).toStrictEqual([{ error: 'period_ended' }, []]);
 });
 
-test('it keeps the record and returns the error when the gateway refuses the raise after it', async () => {
+test('it writes nothing and returns the error when the gateway refuses the raise above its cap', async () => {
   const ctx = await setupTest();
 
   await ctx.trip();
@@ -140,7 +140,7 @@ test('it keeps the record and returns the error when the gateway refuses the rai
     cap: { dollars: 80, tokens: 100_000_000, turns: 2000 },
   });
 
-  expect(raises).toHaveLength(1);
+  expect(raises).toStrictEqual([]);
 });
 
 test('it keeps the record when the gateway does not answer the raise, for the watcher to send again', async () => {

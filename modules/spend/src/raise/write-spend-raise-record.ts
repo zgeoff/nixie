@@ -11,9 +11,8 @@ export interface WrittenRaise {
   readonly turns: number;
 }
 
-// The raise stands in the log before the gateway hears of it, so a gateway that refuses or does not
-// answer leaves it, and the watcher sends it again until the day ends. The earlier raise is read in
-// the transaction, so two raises at once leave the larger totals.
+// A raise that the gateway did not answer stands, and the watcher sends it again until the day ends.
+// The earlier raise is read in the transaction, so two raises at once leave the larger totals.
 export function writeSpendRaiseRecord(
   context: SpendContext,
   request: RaiseRequest & { readonly by: string },

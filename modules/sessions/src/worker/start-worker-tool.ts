@@ -4,6 +4,7 @@ import type { Logger } from '@heynixie/logger';
 import type { ResolvedProfile } from '@heynixie/models';
 import { bindHarness, deriveModelSecret, resolveModelCredentials } from '@heynixie/models';
 import { sandboxSizes } from '@heynixie/sandbox';
+import type { SpendContext } from '@heynixie/spend';
 import type { TaskStartBounds, WorkerRunsConfig } from '@heynixie/tasks';
 import type { ToolDefinition, ToolEndpoint } from '@heynixie/tools';
 import invariant from 'tiny-invariant';
@@ -26,6 +27,9 @@ export interface WorkerToolOptions extends SystemTaskOptions {
 
   // the cap on workers at once; absent means no cap
   readonly workerRuns?: WorkerRunsConfig;
+
+  // set with the spending stop, which refuses a worker while it stands
+  readonly spend?: SpendContext;
 }
 
 export interface WorkerTool {
@@ -101,6 +105,7 @@ export const startWorkerTool = makeSystemTaskRunner<WorkerToolOptions, WorkerToo
       failedDestroys: [],
       cleanups: new Set(),
       ...(options.gateway === undefined ? {} : { gateway: options.gateway }),
+      ...(options.spend === undefined ? {} : { spend: options.spend }),
     };
 
     session.defer(async () => {

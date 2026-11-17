@@ -35,21 +35,23 @@ transaction:
 - A trip writes `spend.stop_tripped` and, when nixie is not paused, pauses with the cause
   `spending`. A pause that stands for another cause keeps its cause.
 - A clear writes `spend.stop_cleared` and resumes only a pause whose cause is `spending`.
-- A raise whose gateway call failed stays in the log as `spend.limit_raised`, and the watcher sends
-  it again until the day ends.
+- A raise that the gateway did not answer stays in the log as `spend.limit_raised`, and the watcher
+  sends it again until the day ends.
 - When the gateway did not answer at the start, the server starts with the limits unsent, and the
   watcher trips on its first poll and sends the limits when the gateway answers.
 
 The spending pause raises the database's reader gate to the spend migration, so the release before
-refuses to open the database while the pause stands.
+refuses to open the database while the pause stands. When the pause takes another cause, the gate
+drops to that cause's version.
 
 ## Before a turn
 
 Each conversation step and each task step calls `checkSpendTurns` before its model turn. A stopped
 step does no work and sleeps a short fixed time before it ends, so a task the pause exempts does not
 spin. A task step that finds the stop standing counts no step error, and its next claim after the
-resume runs it again. The tasks module takes this check as an injected `probeSpendStop`, because it
-cannot import the spend module.
+resume runs it again. A worker call makes the same check before it starts, because the gateway
+counts no turns, and while the stop stands the call fails with no sandbox started. The tasks module
+takes this check as an injected `probeSpendStop`, because it cannot import the spend module.
 
 ## Resume and raise
 
@@ -58,11 +60,11 @@ cause, with the way the stop clears. A pause and a stop of a task work as usual.
 nixie while the stop stands, the cause becomes `owner`, and the clear leaves nixie paused.
 
 `spend.read` gives the notice. `spend.raise` takes the period's start and the totals for dollars,
-tokens and turns, and works for a day trip only. It writes `spend.limit_raised` with the session as
-`by`, then calls the gateway's `POST /raise`. A total above a cap, the gateway's for dollars and
-tokens or the config's for turns, comes back as `above_cap` with the three caps. The host command
-`nixie spend raise --turns <n>` raises the day's turns past the turn cap, and writes the host as
-`by`. The month's limit moves only in the config.
+tokens and turns, and works for a day trip only. It calls the gateway's `POST /raise`, then writes
+`spend.limit_raised` with the session as `by`. A total above a cap, the gateway's for dollars and
+tokens or the config's for turns, comes back as `above_cap` with the three caps, and writes nothing.
+The host command `nixie spend raise --turns <n>` raises the day's turns past the turn cap, and
+writes the host as `by`. The month's limit moves only in the config.
 
 The web client shows the notice under the pause banner. A day trip offers "Raise today's limit" with
 today's limit plus half, up to the cap, and the amounts stay editable until the one confirm. A month

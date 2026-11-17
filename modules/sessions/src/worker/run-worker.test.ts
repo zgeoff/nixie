@@ -30,6 +30,9 @@ interface SetupConfig {
 
   readonly limits?: Readonly<Record<string, number>>;
   readonly workerRuns?: { readonly max: number; readonly whenFull: 'wait' | 'error' };
+
+  // the spending stop's day turn limit; absent means no spending stop
+  readonly spendDayTurns?: number;
 }
 
 async function setupTest(config: SetupConfig = {}) {
@@ -159,6 +162,18 @@ async function setupTest(config: SetupConfig = {}) {
     }),
     ...(config.workerRuns === undefined ? {} : { workerRuns: config.workerRuns }),
     ...(config.isGatewayOn === true ? { gateway } : {}),
+    ...(config.spendDayTurns === undefined
+      ? {}
+      : {
+          spend: {
+            gateway,
+            log: host.context.log,
+            clock,
+            zone: 'UTC',
+            limits: { dayTurns: config.spendDayTurns, dayTurnCap: 2000, monthTurns: 20_000 },
+            definitions: host.context.definitions,
+          },
+        }),
   });
 
   host.defer(() => worker.stop());
@@ -432,6 +447,29 @@ test('it refuses a tool of memory, and writes no worker record', async () => {
     outcome: { status: 'error', message: expect.toInclude('cannot get memory.recall') },
     records: [],
   });
+});
+
+test('it refuses a worker at the turn limit of the spending stop, and starts no sandbox', async () => {
+  const ctx = await setupTest({ spendDayTurns: 0 });
+  const outcome = await ctx.callWorker({ question: 'Which cafes are open?' });
+  const owners = await ctx.readOwners();
+
+  expect(outcome).toStrictEqual({
+    status: 'error',
+    message: expect.toInclude('Model spending is stopped'),
+  });
+
+  expect(owners).toStrictEqual([]);
+});
+
+test('it runs a worker under the turn limit of the spending stop', async () => {
+  const ctx = await setupTest({ spendDayTurns: 1000 });
+
+  ctx.guest.addKindReplies('worker', { text: 'Three cafes are open.' });
+
+  const outcome = await ctx.callWorker({ question: 'Which cafes are open?' });
+
+  expect(outcome).toStrictEqual({ status: 'ok', result: expect.toBeObject() });
 });
 
 test('it gives the cap sentence to a call past the cap that errors', async () => {

@@ -4,6 +4,7 @@ import { buildCallCost } from '@heynixie/models';
 import type { Sandbox } from '@heynixie/sandbox';
 import { buildSandboxSpec, buildWorkerRunOwner } from '@heynixie/sandbox';
 import type { SandboxCount } from '@heynixie/spend';
+import { checkSpendTurns } from '@heynixie/spend';
 import type { RunEndpoint } from '@heynixie/tools';
 import type { ModelCallUsage } from '@heynixie/wire';
 import invariant from 'tiny-invariant';
@@ -98,6 +99,14 @@ async function runOpenWorker(
   plan: WorkerPlan,
   run: WorkerRun,
 ): Promise<WorkerResult> {
+  if (deps.spend !== undefined && (await checkSpendTurns(deps.spend)) === 'stopped') {
+    return {
+      kind: 'stopped',
+      sentence:
+        'Model spending is stopped, so nixie started no worker. Every task resumes when the stop clears.',
+    };
+  }
+
   const grant = await waitForSlot(deps, run);
 
   if (grant !== 'stopped' && grant.kind === 'full') {
