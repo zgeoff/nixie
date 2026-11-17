@@ -22,10 +22,13 @@ import type {
   Snapshot,
   SnapshotPolicy,
 } from '../types';
+import { buildBudgetSeedPlan } from '../utils/build-budget-seed-plan';
+import type { BudgetBase } from '../utils/build-budget-seed-plan';
 import { buildRuleRevisions } from '../utils/build-rule-revisions';
 import { buildRuleSeedPlan } from '../utils/build-rule-seed-plan';
 import { buildSkillOverlay } from '../utils/build-skill-overlay';
 import { buildTaskSeedPlan } from '../utils/build-task-seed-plan';
+import { readBudgetsInForce } from '../utils/read-budgets-in-force';
 import { readRuleStore } from '../utils/read-rule-store';
 import { readWrittenSkills } from '../written/read-written-skills';
 import { readRuleProposalChange } from './read-rule-proposal-change';
@@ -44,6 +47,9 @@ export interface SeedOptions {
   readonly onTaskWarning?: (warning: TaskDefinitionWarning) => void;
 
   readonly buildPolicy: (prompts: PromptOverrides) => SnapshotPolicy;
+
+  // The built-in budget of each paid tool, which a budget of the definitions may change
+  readonly builtInBudgets?: readonly BudgetBase[];
 }
 
 export type SeedResult =
@@ -96,6 +102,12 @@ export async function runSeed(options: SeedOptions): Promise<SeedResult> {
       runtime: store.runtime,
     });
 
+    const budgets = buildBudgetSeedPlan({
+      definitions: read.parsed.budgets,
+      inForce: await readBudgetsInForce(tx),
+      builtIn: options.builtInBudgets ?? [],
+    });
+
     const revisions = buildRuleRevisions(store.current, rules.inForce);
     const now = options.log.writer.clock.now();
 
@@ -110,7 +122,11 @@ export async function runSeed(options: SeedOptions): Promise<SeedResult> {
       return { status: 'refused', error: policy.error, inForce };
     }
 
-    const proposals = await readRuleProposalChange(tx, rules.held, policy.held, now);
+    const proposals = await readRuleProposalChange(
+      tx,
+      { rules: rules.held, effects: policy.held, budgets: budgets.held },
+      now,
+    );
 
     await writeTaskVersions(tx, read.parsed.tasks);
 
@@ -127,6 +143,7 @@ export async function runSeed(options: SeedOptions): Promise<SeedResult> {
       skills: overlay.skills,
       conversationSkills: overlay.conversationSkills,
       tasks: taskPlan.tasks,
+      budgets: budgets.inForce,
     });
 
     await writeAdoptedSkills(tx, {
@@ -145,6 +162,7 @@ export async function runSeed(options: SeedOptions): Promise<SeedResult> {
       inForce !== null &&
       overlay.adopted.length === 0 &&
       rules.adopted.length === 0 &&
+      budgets.applied.length === 0 &&
       proposals.withdrawn === null &&
       proposals.proposed === null &&
       taskPlan.adopted.length === 0 &&
@@ -175,6 +193,7 @@ export async function runSeed(options: SeedOptions): Promise<SeedResult> {
         revisions,
         at: now,
       },
+      budgets: { plan: budgets, repo: read.parsed.budgets },
       proposals,
       built,
       repoTasks,

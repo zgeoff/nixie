@@ -1,6 +1,12 @@
 import { z } from 'zod';
 import { budgetIDPattern } from './budget-id-pattern';
 
+// The counts of a stored budget, which a budget file already validated
+export const storedBudgetCountsSchema = z.union([
+  z.literal('spend'),
+  z.templateLiteral(['tool:', z.string()]),
+]);
+
 export const budgetPeriods = ['day', 'week', 'month'] as const;
 
 const countsSchema = z

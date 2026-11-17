@@ -67,6 +67,7 @@ export type {
 } from './budget/parse-budget-files';
 
 export { parseBudgetFiles } from './budget/parse-budget-files';
+export { budgetPeriods, storedBudgetCountsSchema } from './budget/budget-file-schema';
 export { toMicros } from './budget/to-micros';
 export { budgetIDPattern } from './budget/budget-id-pattern';
 export type { PolicyRecordKind } from './policy/policy-record-kind';

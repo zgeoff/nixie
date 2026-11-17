@@ -34,9 +34,14 @@ export function makeRuleProposalHandler(context: RuleContext): ProposalKindHandl
             proposal === undefined
               ? null
               : {
-                  sentence: proposal.changes
-                    .map((change) => change.after?.sentence ?? `Remove the rule ${change.ruleID}.`)
-                    .join(' '),
+                  sentence: [
+                    ...proposal.changes.map(
+                      (change) => change.after?.sentence ?? `Remove the rule ${change.ruleID}.`,
+                    ),
+                    ...proposal.budgetChanges.map(
+                      (change) => change.after?.sentence ?? `Remove the budget ${change.budgetID}.`,
+                    ),
+                  ].join(' '),
                   fields: {},
                   ruleSentence: null,
                   approveLabel: 'Apply the rule change',
@@ -78,7 +83,7 @@ async function writeAnswer(
 
   const isDeclined = answer.choice === 'decline';
 
-  if (!isDeclined && !(await probeBaseCurrent(tx, state.proposal.changes))) {
+  if (!isDeclined && !(await probeBaseCurrent(tx, state.proposal))) {
     return {
       status: 'refused',
       refusal: {
@@ -113,9 +118,19 @@ interface RuleChangeBase {
   readonly before: { readonly hash: string } | null;
 }
 
+interface BudgetChangeBase {
+  readonly budgetID: string;
+  readonly before: { readonly hash: string } | null;
+}
+
+interface ProposalBases {
+  readonly changes: readonly RuleChangeBase[];
+  readonly budgetChanges: readonly BudgetChangeBase[];
+}
+
 async function probeBaseCurrent(
   tx: Transaction<unknown>,
-  changes: readonly RuleChangeBase[],
+  proposal: ProposalBases,
 ): Promise<boolean> {
   const seeded = await tx
     .$extendTables<DefinitionsTables>()
@@ -125,7 +140,20 @@ async function probeBaseCurrent(
 
   const hashes = new Map(seeded.map((entry) => [entry.rule_id, entry.rule_hash]));
 
-  return changes.every(
-    (change) => (hashes.get(change.ruleID) ?? null) === (change.before?.hash ?? null),
+  const budgets = await tx
+    .$extendTables<DefinitionsTables>()
+    .selectFrom('budgets_in_force')
+    .select(['budget_id', 'hash'])
+    .execute();
+
+  const budgetHashes = new Map(budgets.map((entry) => [entry.budget_id, entry.hash]));
+
+  return (
+    proposal.changes.every(
+      (change) => (hashes.get(change.ruleID) ?? null) === (change.before?.hash ?? null),
+    ) &&
+    proposal.budgetChanges.every(
+      (change) => (budgetHashes.get(change.budgetID) ?? null) === (change.before?.hash ?? null),
+    )
   );
 }

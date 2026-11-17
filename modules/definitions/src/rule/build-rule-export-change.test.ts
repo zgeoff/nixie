@@ -217,3 +217,33 @@ test('it writes a rule with the new names definitions and task', () => {
     'ask-triage:\n  outcome: "ask"\n  contexts: ["task"]\n  definitions: ["inbox-triage"]\n',
   );
 });
+
+test('it writes the lift of a rule as it writes every other field', () => {
+  const change = buildRuleExportChange({
+    changes: [
+      {
+        changeID: 'change-1',
+        ruleID: 'allow-groceries',
+        rule: {
+          hash: 'h-lift',
+          rule: {
+            id: 'allow-groceries',
+            outcome: 'allow',
+            tools: ['shop.order'],
+            lift: { perAction: 20, budget: 'shopping-month' },
+          },
+        },
+        base: null,
+        beneath: null,
+        changedBy: 'owner',
+        reason: 'Groceries are routine.',
+        changedAt: 1,
+      },
+    ],
+    files: new Map(),
+  });
+
+  expect([...change.files.values()].join('')).toContain(
+    'allow-groceries:\n  outcome: "allow"\n  tools: ["shop.order"]\n  lift: {"perAction":20,"budget":"shopping-month"}\n',
+  );
+});

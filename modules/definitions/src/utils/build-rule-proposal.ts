@@ -1,7 +1,8 @@
 import type { RuleForm } from '@heynixie/policy';
 import { renderRule } from '@heynixie/policy';
 import type { z } from 'zod';
-import type { StoredRule } from '../types';
+import type { DefinitionBudget, StoredRule } from '../types';
+import type { BudgetEdit } from './build-budget-seed-plan';
 import type { RuleEdit } from './build-rule-seed-plan';
 import { buildSHA256 } from './build-sha256';
 import { isLiftingRule } from './is-lifting-rule';
@@ -15,12 +16,13 @@ export function buildRuleProposal(
   proposalID: string,
   edits: readonly RuleEdit[],
   effects: readonly HeldEffects[],
+  budgets: readonly BudgetEdit[] = [],
 ): RuleProposal {
   const isLifting = edits.some((edit) => isLiftingEdit(edit));
 
   return {
     proposalID,
-    proposalHash: buildRuleProposalHash(edits, effects),
+    proposalHash: buildRuleProposalHash(edits, effects, budgets),
     ...(isLifting ? { riskClass: 'lifting' as const } : {}),
     changes: edits.map((edit) => ({
       ruleID: edit.ruleID,
@@ -29,6 +31,11 @@ export function buildRuleProposal(
       fields: collectFieldChanges(edit.before?.rule ?? null, edit.after?.rule ?? null),
     })),
     effectChanges: effects.map((held) => ({ tool: held.tool, remove: [...held.remove] })),
+    budgetChanges: budgets.map((edit) => ({
+      budgetID: edit.budgetID,
+      before: toBudgetSide(edit.before),
+      after: toBudgetSide(edit.after),
+    })),
   };
 }
 
@@ -42,10 +49,12 @@ function isLiftingEdit(edit: RuleEdit): boolean {
   return edit.before === null || edit.before.hash !== edit.after?.hash;
 }
 
-// A proposal with no effect change hashes as the release before did, so a pending one stays itself.
+// A proposal with no effect or budget change hashes as the release before did, so a pending one
+// stays itself.
 function buildRuleProposalHash(
   edits: readonly RuleEdit[],
   effects: readonly HeldEffects[],
+  budgets: readonly BudgetEdit[],
 ): string {
   const rules = edits.map((edit) => ({
     ruleID: edit.ruleID,
@@ -54,9 +63,23 @@ function buildRuleProposalHash(
   }));
 
   const hashed =
-    effects.length === 0
+    effects.length === 0 && budgets.length === 0
       ? rules
-      : { rules, effects: effects.map((held) => ({ tool: held.tool, remove: [...held.remove] })) };
+      : {
+          rules,
+          ...(effects.length === 0
+            ? {}
+            : { effects: effects.map((held) => ({ tool: held.tool, remove: [...held.remove] })) }),
+          ...(budgets.length === 0
+            ? {}
+            : {
+                budgets: budgets.map((edit) => ({
+                  budgetID: edit.budgetID,
+                  before: edit.before?.hash ?? null,
+                  after: edit.after?.hash ?? null,
+                })),
+              }),
+        };
 
   return buildSHA256(toCanonicalJSON(hashed));
 }
@@ -85,4 +108,25 @@ function toFieldText(rule: RuleForm | null, field: string): string | null {
   const value = rule?.[field];
 
   return value === undefined ? null : toCanonicalJSON(value);
+}
+
+function toBudgetSide(budget: DefinitionBudget | null) {
+  return budget === null
+    ? null
+    : {
+        hash: budget.hash,
+        counts: budget.counts,
+        limitMicros: budget.limitMicros,
+        period: budget.period,
+        sentence: renderBudget(budget),
+      };
+}
+
+function renderBudget(budget: DefinitionBudget): string {
+  const dollars = (budget.limitMicros / 1_000_000).toFixed(2);
+
+  const counted =
+    budget.counts === 'spend' ? 'purchases' : `calls of ${budget.counts.slice('tool:'.length)}`;
+
+  return `Let the budget ${budget.id} hold $${dollars} a ${budget.period} for ${counted}.`;
 }

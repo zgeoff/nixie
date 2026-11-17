@@ -14,12 +14,16 @@ import { readTaskSeedInput } from '../runtime-task/read-task-seed-input';
 import { writeAdoptedSkills } from '../skill/write-adopted-skills';
 import { writeTaskHooks } from '../task/write-task-hooks';
 import type { SnapshotPolicy } from '../types';
+import type { BudgetBase } from '../utils/build-budget-seed-plan';
+import { buildBudgetSeedPlan } from '../utils/build-budget-seed-plan';
 import { buildRuleRevisions } from '../utils/build-rule-revisions';
 import { buildRuleSeedPlan } from '../utils/build-rule-seed-plan';
 import { buildSkillOverlay } from '../utils/build-skill-overlay';
 import { buildTaskSeedPlan } from '../utils/build-task-seed-plan';
+import { readBudgetsInForce } from '../utils/read-budgets-in-force';
 import { readRuleStore } from '../utils/read-rule-store';
 import { readWrittenSkills } from '../written/read-written-skills';
+import { readRepoBudgets } from './read-repo-budgets';
 import { readRepoTasks } from './read-repo-tasks';
 import { readSeedPolicy } from './read-seed-policy';
 import { writeSeed } from './write-seed';
@@ -27,6 +31,7 @@ import { writeSeed } from './write-seed';
 export interface InForceSeedOptions {
   readonly log: Log;
   readonly buildPolicy: (prompts: PromptOverrides) => SnapshotPolicy;
+  readonly builtInBudgets?: readonly BudgetBase[];
 }
 
 export function runInForceSeed(options: InForceSeedOptions): Promise<SeedResult> {
@@ -61,6 +66,14 @@ export async function seedInForceInTransaction(
     runtime: store.runtime,
   });
 
+  const repoBudgets = await readRepoBudgets(tx, inForce);
+
+  const budgets = buildBudgetSeedPlan({
+    definitions: repoBudgets,
+    inForce: await readBudgetsInForce(tx),
+    builtIn: options.builtInBudgets ?? [],
+  });
+
   const revisions = buildRuleRevisions(store.current, rules.inForce);
   const now = options.log.writer.clock.now();
 
@@ -77,7 +90,12 @@ export async function seedInForceInTransaction(
     return { status: 'refused', error: policy.error, inForce };
   }
 
-  const proposals = await readRuleProposalChange(tx, rules.held, policy.held, now);
+  const proposals = await readRuleProposalChange(
+    tx,
+    { rules: rules.held, effects: policy.held, budgets: budgets.held },
+    now,
+  );
+
   const repoTasks = await readRepoTasks(tx, inForce);
   const taskInput = await readTaskSeedInput(tx, repoTasks);
 
@@ -90,6 +108,7 @@ export async function seedInForceInTransaction(
     skills: overlay.skills,
     conversationSkills: overlay.conversationSkills,
     tasks: taskPlan.tasks,
+    budgets: budgets.inForce,
   });
 
   await writeAdoptedSkills(tx, {
@@ -107,6 +126,7 @@ export async function seedInForceInTransaction(
   if (
     overlay.adopted.length === 0 &&
     rules.adopted.length === 0 &&
+    budgets.applied.length === 0 &&
     proposals.withdrawn === null &&
     proposals.proposed === null &&
     taskPlan.adopted.length === 0 &&
@@ -137,6 +157,7 @@ export async function seedInForceInTransaction(
       revisions,
       at: now,
     },
+    budgets: { plan: budgets, repo: repoBudgets },
     proposals,
     built,
     repoTasks,

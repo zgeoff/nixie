@@ -246,8 +246,8 @@ async function readTaskChange(
     manifest !== undefined &&
     manifest !== null &&
     format !== null &&
-    format < definitionsFormats.current
-      ? raiseManifestFormat(manifest, definitionsFormats.current)
+    format < definitionsFormats.tasks
+      ? raiseManifestFormat(manifest, definitionsFormats.tasks)
       : null;
 
   if (raise !== null) {
@@ -350,14 +350,14 @@ function buildSnapshot(texts: ReadonlyMap<string, string | null>, revision: stri
 }
 
 function formatRaiseBlockedMessage(previousFormat: number, blockers: readonly string[]): string {
-  const current = String(definitionsFormats.current);
+  const current = String(definitionsFormats.tasks);
   const them = blockers.length === 1 ? 'it' : 'them';
 
   return `raising nixie.yaml to format ${current} would apply ${blockers.join(', ')}, which format ${String(previousFormat)} leaves unapplied, so review ${them} and set \`format: ${current}\` in nixie.yaml by hand, or remove ${them}`;
 }
 
 function buildRaisedChange(change: DefinitionsChange, raise: RaisedManifest): DefinitionsChange {
-  const current = String(definitionsFormats.current);
+  const current = String(definitionsFormats.tasks);
   const note = `nixie.yaml held format ${String(raise.previousFormat)}, and the seed applies task folders only from format ${current}, so the change sets \`format: ${current}\`. The repo holds no other file that the raise starts to apply.`;
 
   return {

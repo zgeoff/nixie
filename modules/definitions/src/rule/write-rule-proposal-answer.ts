@@ -1,11 +1,13 @@
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import type { ProposalContext } from '@heynixie/proposals';
 import type { Transaction } from 'kysely';
+import invariant from 'tiny-invariant';
 import { rulesChangeApprovedCodec } from '../change/rules-change-approved-codec';
 import { rulesChangeRejectedCodec } from '../change/rules-change-rejected-codec';
 import type { RuleContext } from '../runtime/write-runtime-rule';
 import type { DefinitionsTables } from '../types';
 import type { RuleProposal } from '../utils/build-rule-proposal';
+import { writeBudgetsInForce } from '../utils/write-budgets-in-force';
 import { pickRuleProposalMove } from './pick-rule-proposal-move';
 import { readRuleProposals } from './read-rule-proposals';
 
@@ -105,7 +107,7 @@ export async function writeRuleProposalDecision(
 
   await writeApprovedRules(tx, proposal);
 
-  await writeRecordsInTransaction(tx, context.log, [
+  const [approved] = await writeRecordsInTransaction(tx, context.log, [
     {
       kind: rulesChangeApprovedCodec.kind,
       definitions: context.definitions(),
@@ -115,6 +117,26 @@ export async function writeRuleProposalDecision(
       }),
     },
   ]);
+
+  invariant(approved);
+
+  await writeBudgetsInForce(
+    tx,
+    proposal.budgetChanges.map((change) => ({
+      budgetID: change.budgetID,
+      after:
+        change.after === null
+          ? null
+          : {
+              id: change.budgetID,
+              counts: change.after.counts,
+              limitMicros: change.after.limitMicros,
+              period: change.after.period,
+              hash: change.after.hash,
+            },
+    })),
+    approved.sequence,
+  );
 }
 
 async function writeApprovedRules(tx: Transaction<unknown>, proposal: RuleProposal) {

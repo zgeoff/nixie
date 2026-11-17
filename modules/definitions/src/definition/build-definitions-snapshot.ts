@@ -1,6 +1,7 @@
 import type { JSONObject } from '@heynixie/log';
 import type { PromptOverrides } from '@heynixie/prompts';
 import type {
+  DefinitionBudget,
   DefinitionsSnapshot,
   SkillRef,
   SnapshotPolicy,
@@ -22,6 +23,9 @@ export interface DefinitionsSnapshotInput {
 
   readonly conversationSkills: readonly string[];
   readonly tasks: SnapshotTasks;
+
+  // the budgets in force, which a raised limit joins only once you approve it
+  readonly budgets?: readonly DefinitionBudget[];
 }
 
 export function buildDefinitionsSnapshot(input: DefinitionsSnapshotInput): DefinitionsSnapshot {
@@ -46,6 +50,17 @@ export function buildDefinitionsSnapshot(input: DefinitionsSnapshotInput): Defin
     (task) => task.id,
   );
 
+  const budgets = sortUniqueBy(
+    (input.budgets ?? []).map((budget) => ({
+      id: budget.id,
+      counts: budget.counts,
+      limitMicros: budget.limitMicros,
+      period: budget.period,
+    })),
+    'id',
+    (budget) => budget.id,
+  );
+
   const form = toCanonicalJSON({
     conversation,
     persona: personaVersion,
@@ -53,6 +68,7 @@ export function buildDefinitionsSnapshot(input: DefinitionsSnapshotInput): Defin
     skills,
     tasks,
     ...(Object.keys(prompts).length === 0 ? {} : { prompts }),
+    ...(budgets.length === 0 ? {} : { budgets }),
   });
 
   return {

@@ -1,4 +1,4 @@
-import type { RuleFileEntry, RuleFileWarning } from '@heynixie/policy';
+import type { BudgetDefinition, RuleFileEntry, RuleFileWarning } from '@heynixie/policy';
 import { parseRuleFiles } from '@heynixie/policy';
 import { DefinitionsParseError } from '../utils/definitions-parse-error';
 
@@ -14,12 +14,13 @@ const ruleFilePattern = /^rules\/.+\.ya?ml$/u;
 export function parseRuleDefinitions(
   texts: ReadonlyMap<string, string>,
   partFiles: ReadonlySet<string>,
+  budgets: ReadonlyMap<string, BudgetDefinition>,
 ): RuleDefinitions {
   const files = new Map(
     [...texts].filter(([path]) => ruleFilePattern.test(path) && !partFiles.has(path)),
   );
 
-  const parsed = parseRuleFiles(files);
+  const parsed = parseRuleFiles(files, budgets);
 
   if (parsed.status === 'refused') {
     throw new DefinitionsParseError(parsed.problems);

@@ -1,6 +1,13 @@
 import type { CheckedTables } from '@heynixie/db';
 import type { JSONObject } from '@heynixie/log';
-import type { EffectOverride, RuleFileEntry, RuleFileWarning, RuleForm } from '@heynixie/policy';
+import type {
+  BudgetCounts,
+  BudgetPeriod,
+  EffectOverride,
+  RuleFileEntry,
+  RuleFileWarning,
+  RuleForm,
+} from '@heynixie/policy';
 import type { PromptOverrides } from '@heynixie/prompts';
 import type { Generated, Kysely, Transaction } from 'kysely';
 import type { TaskDefinition, TaskDefinitionWarning } from './task/types';
@@ -93,6 +100,7 @@ export interface ParsedDefinitions {
   readonly conversationSkills: readonly string[];
   readonly prompts: PromptOverrides;
   readonly rules: readonly RuleFileEntry[];
+  readonly budgets: readonly DefinitionBudget[];
   readonly ruleWarnings: readonly RuleFileWarning[];
   readonly effects: ReadonlyMap<string, EffectOverride>;
   readonly tasks: readonly TaskDefinition[];
@@ -155,6 +163,16 @@ export type RuleChanger = 'owner' | 'nixie';
 export interface StoredRule {
   readonly hash: string;
   readonly rule: RuleForm;
+}
+
+// A budget as the definitions or the store hold it. The hash covers what the budget counts, its
+// limit and its period.
+export interface DefinitionBudget {
+  readonly id: string;
+  readonly counts: BudgetCounts;
+  readonly limitMicros: number;
+  readonly period: BudgetPeriod;
+  readonly hash: string;
 }
 
 export interface DefinitionRule extends StoredRule {
@@ -425,6 +443,15 @@ interface RuleRevisionRow {
   readonly created_at: number;
 }
 
+interface BudgetInForceRow {
+  readonly budget_id: string;
+  readonly counts: string;
+  readonly limit_micros: number;
+  readonly period: string;
+  readonly hash: string;
+  readonly updated_sequence: number;
+}
+
 interface DefinitionRuleRow {
   readonly rule_id: string;
   readonly rule_hash: string;
@@ -512,6 +539,7 @@ export type DefinitionsTables = CheckedTables<
     snapshot_rules: SnapshotRuleRow;
     rule_fires: RuleFireRow;
     closed_rule_proposals: { readonly proposal_hash: string };
+    budgets_in_force: BudgetInForceRow;
     rule_exports: RuleExportRow;
     gap_answers: GapAnswerRow;
     gap_groups: GapGroupRow;

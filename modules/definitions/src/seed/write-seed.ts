@@ -9,6 +9,7 @@ import { writeRuleStore } from '../rule/write-rule-store';
 import { buildSkillChanges } from '../skill/build-skill-changes';
 import { writeSkillRows } from '../skill/write-skill-rows';
 import type {
+  DefinitionBudget,
   DefinitionsInForce,
   DefinitionsSnapshot,
   DefinitionsTables,
@@ -17,14 +18,23 @@ import type {
   SkillVersion,
   SourceKind,
 } from '../types';
+import type { BudgetSeedPlan } from '../utils/build-budget-seed-plan';
 import type { RuleProposal } from '../utils/build-rule-proposal';
 import type { SkillOverlay } from '../utils/build-skill-overlay';
 import type { HeldEffects } from '../utils/pick-seed-effects';
 import { rulesChangeWithdrawnCodec } from '../utils/rules-change-withdrawn-codec';
+import { writeBudgetsInForce } from '../utils/write-budgets-in-force';
 
 export interface RuleProposalChange {
   readonly withdrawn: string | null;
   readonly proposed: RuleProposal | null;
+}
+
+export interface BudgetStoreWrite {
+  readonly plan: BudgetSeedPlan;
+
+  // the budgets that the repo holds, before any held edit
+  readonly repo: readonly DefinitionBudget[];
 }
 
 export interface SeedPlan {
@@ -43,6 +53,7 @@ export interface SeedPlan {
   readonly versions: readonly SkillVersion[];
   readonly overlay: SkillOverlay;
   readonly rules: RuleStoreWrite;
+  readonly budgets: BudgetStoreWrite;
   readonly proposals: RuleProposalChange;
   readonly built: DefinitionsSnapshot;
 
@@ -78,6 +89,12 @@ export async function writeSeed(
   await writeSnapshotRules(tx, plan.built.snapshotHash, rules);
 
   const record = await writeSeedRecord(tx, log, plan, rules);
+
+  await writeBudgetsInForce(
+    tx,
+    plan.budgets.plan.applied.map((edit) => ({ budgetID: edit.budgetID, after: edit.after })),
+    record.sequence,
+  );
 
   const inForce: DefinitionsInForce = {
     seededAt: new Date(seededAt),
@@ -223,6 +240,7 @@ async function writeSeedRecord(
           remove: [...held.remove],
         })),
         repoTasks: plan.repoTasks.map((task) => ({ id: task.id, hash: task.hash })),
+        repoBudgets: plan.budgets.repo.map((budget) => ({ ...budget })),
         unapplied: [...plan.unapplied],
         skipped: [...plan.skipped],
         rules: {

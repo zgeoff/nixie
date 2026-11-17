@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { readRecords, startWriter } from '@heynixie/log';
 import { proposalLapseMs } from '@heynixie/proposals';
+import { sql } from 'kysely';
 import invariant from 'tiny-invariant';
 import { createPathSource } from '../definition/create-path-source';
 import { readSnapshotToolEffects } from '../seed/read-snapshot-tool-effects';
@@ -408,4 +409,74 @@ test('it asks again about an effect removal you approved once the effect is rest
   const effects = await readSnapshotToolEffects(ctx.log.writer.db, result.inForce.snapshotHash);
 
   expect(effects).toStrictEqual(new Map([['mail.draft', ['send', 'write']]]));
+});
+
+test('it puts a raised budget limit in force once you approve its proposal, and the re-seed asks nothing more', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 5\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+  await mkdir(join(ctx.root, 'budgets'));
+
+  await writeFile(
+    join(ctx.root, 'budgets', 'shopping.yaml'),
+    'shopping-month:\n  counts: spend\n  limit: 100\n  period: month\n',
+  );
+
+  await ctx.runSeed();
+
+  await writeFile(
+    join(ctx.root, 'budgets', 'shopping.yaml'),
+    'shopping-month:\n  counts: spend\n  limit: 150\n  period: month\n',
+  );
+
+  await ctx.runSeed();
+
+  const pending = await ctx.readProposals();
+
+  const proposalID = pending.at(-1)?.proposal.proposalID;
+
+  invariant(proposalID !== undefined);
+
+  const answered = await writeRuleProposalAnswer(ctx.context, { answer: 'approve', proposalID });
+  const rows = await sql`select limit_micros from budgets_in_force`.execute(ctx.log.writer.db);
+  const proposals = await ctx.readProposals();
+
+  expect(answered).toStrictEqual({ status: 'approved', proposalID });
+  expect(rows.rows).toStrictEqual([{ limit_micros: 150_000_000 }]);
+  expect(proposals.map((state) => state.outcome)).toStrictEqual(['approved']);
+});
+
+test('it leaves the budget limit in force when you reject the proposal that raises it', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 5\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+  await mkdir(join(ctx.root, 'budgets'));
+
+  await writeFile(
+    join(ctx.root, 'budgets', 'shopping.yaml'),
+    'shopping-month:\n  counts: spend\n  limit: 100\n  period: month\n',
+  );
+
+  await ctx.runSeed();
+
+  await writeFile(
+    join(ctx.root, 'budgets', 'shopping.yaml'),
+    'shopping-month:\n  counts: spend\n  limit: 150\n  period: month\n',
+  );
+
+  await ctx.runSeed();
+
+  const pending = await ctx.readProposals();
+
+  const proposalID = pending.at(-1)?.proposal.proposalID;
+
+  invariant(proposalID !== undefined);
+
+  await writeRuleProposalAnswer(ctx.context, { answer: 'reject', proposalID, reason: 'Too much.' });
+
+  const rows = await sql`select limit_micros from budgets_in_force`.execute(ctx.log.writer.db);
+
+  expect(rows.rows).toStrictEqual([{ limit_micros: 100_000_000 }]);
 });

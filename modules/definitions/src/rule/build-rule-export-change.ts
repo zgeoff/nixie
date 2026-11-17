@@ -128,6 +128,7 @@ const ruleFieldOrder = [
   'sources',
   'expires',
   'mandate',
+  'lift',
   'cel',
   'note',
 ];
