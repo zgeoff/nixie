@@ -37,7 +37,7 @@ export async function startTestBudgets(
     clock: started.clock,
     zone: options.zone ?? 'UTC',
     definitions: () => definitions,
-    builtIn: buildBuiltInBudgets(['search']),
+    builtIn: () => buildBuiltInBudgets(['search']),
   };
 
   return {

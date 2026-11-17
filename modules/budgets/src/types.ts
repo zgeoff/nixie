@@ -19,8 +19,9 @@ export interface BudgetsContext {
   readonly zone: string;
   readonly definitions: () => Definitions;
 
-  // the built-in budgets of the paid tools, which a budget in force with the same ID overrides
-  readonly builtIn: readonly BudgetLimit[];
+  // the built-in budgets of the paid tools, which a budget in force with the same ID overrides; read
+  // at each use, because the tools start after the context
+  readonly builtIn: () => readonly BudgetLimit[];
 }
 
 export interface ChargeFor {

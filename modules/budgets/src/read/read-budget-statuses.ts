@@ -26,7 +26,8 @@ export async function readBudgetStatuses(
 
   const budgets = [
     ...inForce.map((budget) => ({ budget, source: 'definitions' as const })),
-    ...context.builtIn
+    ...context
+      .builtIn()
       .filter((budget) => !replaced.has(budget.id))
       .map((budget) => ({ budget, source: 'built_in' as const })),
   ].toSorted((left, right) => (left.budget.id < right.budget.id ? -1 : 1));

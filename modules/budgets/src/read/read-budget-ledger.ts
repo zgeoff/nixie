@@ -29,7 +29,7 @@ export async function readBudgetLedger(
 ): Promise<BudgetLedger | null> {
   const inForce = await readBudgetsInForce(db);
 
-  const limit = pickBudgetLimit(budgetID, inForce, context.builtIn);
+  const limit = pickBudgetLimit(budgetID, inForce, context.builtIn());
 
   if (limit === null) {
     return null;

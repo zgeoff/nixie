@@ -43,7 +43,7 @@ async function setupTest(config: SetupConfig) {
     clock: testLog.log.writer.clock,
     zone: 'UTC',
     definitions: () => ({ snapshotHash: 'sha256:test' }),
-    builtIn: buildBuiltInBudgets(config.paidTools ?? []),
+    builtIn: () => buildBuiltInBudgets(config.paidTools ?? []),
   };
 
   const options: ToolCallOptions = {

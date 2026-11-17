@@ -61,7 +61,7 @@ async function setupTest(outcome?: ToolOutcome, paid?: PaidTool) {
     clock: testLog.log.writer.clock,
     zone: 'UTC',
     definitions: () => ({ snapshotHash: 'sha256:test' }),
-    builtIn: buildBuiltInBudgets(['notes_wipe']),
+    builtIn: () => buildBuiltInBudgets(['notes_wipe']),
   };
 
   const options: ToolCallOptions = {

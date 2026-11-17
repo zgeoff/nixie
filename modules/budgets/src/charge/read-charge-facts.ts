@@ -17,7 +17,7 @@ export async function readChargeFacts(
   const facts: ChargeFact[] = [];
 
   for (const budgetID of budgetIDs) {
-    const limit = pickBudgetLimit(budgetID, inForce, context.builtIn);
+    const limit = pickBudgetLimit(budgetID, inForce, context.builtIn());
 
     if (limit === null) {
       return { error: 'budget_unknown', budgetID };
