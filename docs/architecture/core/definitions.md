@@ -435,9 +435,13 @@ deletes every file that the folder holds. The export writes and deletes only pat
 When the repo's manifest reads a readable format below the current one, the export sets the
 manifest's `format` line to the current format in the same commit that writes the task folders. It
 edits only that line, so the trailing comment, the line endings and every other key stay. The pull
-request body says that the format was raised. Raising the format also applies the files that the
-newer format reads, such as `effects/`. Before it raises, the export parses the repo's files under
-the old and the new format. When any kind of file reads differently, it refuses.
+request body says that the format was raised.
+
+A raise must never apply a file nobody reviewed, because an `effects/` file can change which rules
+match. Before it raises, the export parses the repo under the old and the current format, leaving
+out the task folders it rewrites. Each file that the old format leaves unapplied and the current
+format applies blocks the raise, and so does a `prompts:` map that format 2 ignores. An `effects/`
+file and a task folder written by hand both block it.
 
 The export fails, calls `onError` and opens no pull request when:
 
@@ -445,8 +449,8 @@ The export fails, calls `onError` and opens no pull request when:
   formats it reads;
 - the manifest's format line is not one that the export can edit, such as a format written in flow
   style (`{format: 3}`);
-- the files of a format 3 or older repo read differently under the current format, so the raise
-  would change them;
+- a file blocks the raise; the error lists each such file, and tells the user to review them and
+  raise the format by hand, or remove them;
 - the seed's parse of the changed repo refuses a task folder;
 - no file of the change differs from the repo, because the repo already holds the changes and the
   next seed adopts them.
