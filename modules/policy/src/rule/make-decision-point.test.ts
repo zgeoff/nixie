@@ -120,6 +120,231 @@ test('it asks at stage 4 for a tool that spends, whatever the rules allow', asyn
   });
 });
 
+test('it passes stage 4 for a purchase within the lift, and carries the lift', async () => {
+  const ctx = buildTestDecisionPoint({
+    declaration: buildTestDeclaration({
+      effects: ['spend'],
+      destinations: ['merchant'],
+      amount: 'order.total',
+    }),
+    rules: [
+      buildRuleEntry('allow-groceries', {
+        outcome: 'allow',
+        tools: ['shop.order'],
+        destinations: ['*@grocer.example'],
+        lift: { perAction: 20, budget: 'shopping-month' },
+      }),
+    ],
+  });
+
+  const decided = await ctx.decide(
+    buildPolicyCall({
+      tool: 'shop.order',
+      toolList: ['shop.order'],
+      args: { order: { total: 12.5 } },
+      destinations: [{ value: 'orders@grocer.example', replyTarget: false }],
+    }),
+  );
+
+  expect(decided.decision).toStrictEqual({
+    outcome: 'allow',
+    stage: 7,
+    rule: { id: 'allow-groceries', revision: 2, others: [] },
+    destinations: [{ value: 'orders@grocer.example', permission: 'rule' }],
+    snapshot: 'snapshot-1',
+    lift: { ruleID: 'allow-groceries', budgetID: 'shopping-month', amountMicros: 12_500_000 },
+  });
+});
+
+test('it asks at stage 4 for a purchase over the cap of the lift', async () => {
+  const ctx = buildTestDecisionPoint({
+    declaration: buildTestDeclaration({
+      effects: ['spend'],
+      destinations: ['merchant'],
+      amount: 'order.total',
+    }),
+    rules: [
+      buildRuleEntry('allow-groceries', {
+        outcome: 'allow',
+        tools: ['shop.order'],
+        destinations: ['*@grocer.example'],
+        lift: { perAction: 20, budget: 'shopping-month' },
+      }),
+    ],
+  });
+
+  const decided = await ctx.decide(
+    buildPolicyCall({
+      tool: 'shop.order',
+      toolList: ['shop.order'],
+      args: { order: { total: 20.01 } },
+      destinations: [{ value: 'orders@grocer.example', replyTarget: false }],
+    }),
+  );
+
+  expect(decided.decision).toMatchObject({ outcome: 'ask', stage: 4, cause: 'always_ask' });
+});
+
+test('it asks at stage 4 for a purchase whose amount the declaration does not name', async () => {
+  const ctx = buildTestDecisionPoint({
+    declaration: buildTestDeclaration({ effects: ['spend'], destinations: ['merchant'] }),
+    rules: [
+      buildRuleEntry('allow-groceries', {
+        outcome: 'allow',
+        tools: ['shop.order'],
+        lift: { perAction: 20, budget: 'shopping-month' },
+      }),
+    ],
+  });
+
+  const decided = await ctx.decide(
+    buildPolicyCall({
+      tool: 'shop.order',
+      toolList: ['shop.order'],
+      args: { order: { total: 5 } },
+      destinations: [{ value: 'orders@grocer.example', replyTarget: false }],
+    }),
+  );
+
+  expect(decided.decision).toMatchObject({ outcome: 'ask', stage: 4 });
+});
+
+test('it asks at stage 4 for a spend call with another always-ask effect', async () => {
+  const ctx = buildTestDecisionPoint({
+    declaration: buildTestDeclaration({
+      effects: ['spend', 'policy_widen'],
+      destinations: ['merchant'],
+      amount: 'order.total',
+    }),
+    rules: [
+      buildRuleEntry('allow-groceries', {
+        outcome: 'allow',
+        tools: ['shop.order'],
+        lift: { perAction: 20, budget: 'shopping-month' },
+      }),
+    ],
+  });
+
+  const decided = await ctx.decide(
+    buildPolicyCall({
+      tool: 'shop.order',
+      toolList: ['shop.order'],
+      args: { order: { total: 5 } },
+      destinations: [{ value: 'orders@grocer.example', replyTarget: false }],
+    }),
+  );
+
+  expect(decided.decision).toMatchObject({ outcome: 'ask', stage: 4 });
+});
+
+test('it asks at stage 4 when the lifting rule does not match the call', async () => {
+  const ctx = buildTestDecisionPoint({
+    declaration: buildTestDeclaration({
+      effects: ['spend'],
+      destinations: ['merchant'],
+      amount: 'order.total',
+    }),
+    rules: [
+      buildRuleEntry('allow-refunds', {
+        outcome: 'allow',
+        tools: ['shop.refund'],
+        lift: { perAction: 20, budget: 'shopping-month' },
+      }),
+    ],
+  });
+
+  const decided = await ctx.decide(
+    buildPolicyCall({
+      tool: 'shop.order',
+      toolList: ['shop.order'],
+      args: { order: { total: 5 } },
+      destinations: [{ value: 'orders@grocer.example', replyTarget: false }],
+    }),
+  );
+
+  expect(decided.decision).toMatchObject({ outcome: 'ask', stage: 4 });
+});
+
+test('it refuses a lifted purchase at stage 5 when a destination has no permission', async () => {
+  const ctx = buildTestDecisionPoint({
+    declaration: buildTestDeclaration({
+      effects: ['spend'],
+      destinations: ['merchant'],
+      amount: 'order.total',
+    }),
+    rules: [
+      buildRuleEntry('allow-orders', {
+        outcome: 'allow',
+        tools: ['shop.order'],
+        lift: { perAction: 20, budget: 'shopping-month' },
+      }),
+    ],
+  });
+
+  const decided = await ctx.decide(
+    buildPolicyCall({
+      tool: 'shop.order',
+      toolList: ['shop.order'],
+      args: { order: { total: 5 } },
+      destinations: [{ value: 'orders@stranger.example', replyTarget: false }],
+    }),
+  );
+
+  expect(decided.decision).toMatchObject({ outcome: 'ask', stage: 5, cause: 'outside_steering' });
+});
+
+test('it keeps asking at stage 4 for a purchase when the allow rule holds no lift', async () => {
+  const ctx = buildTestDecisionPoint({
+    declaration: buildTestDeclaration({
+      effects: ['spend'],
+      destinations: ['merchant'],
+      amount: 'order.total',
+    }),
+    rules: [buildRuleEntry('allow-groceries', { outcome: 'allow', tools: ['shop.order'] })],
+  });
+
+  const decided = await ctx.decide(
+    buildPolicyCall({
+      tool: 'shop.order',
+      toolList: ['shop.order'],
+      args: { order: { total: 5 } },
+      destinations: [{ value: 'orders@grocer.example', replyTarget: false }],
+    }),
+  );
+
+  expect(decided.decision).toMatchObject({ outcome: 'ask', stage: 4 });
+});
+
+test('it asks at stage 6 for a lifted purchase that an ask rule matches', async () => {
+  const ctx = buildTestDecisionPoint({
+    declaration: buildTestDeclaration({
+      effects: ['spend'],
+      destinations: ['merchant'],
+      amount: 'order.total',
+    }),
+    rules: [
+      buildRuleEntry('allow-groceries', {
+        outcome: 'allow',
+        tools: ['shop.order'],
+        destinations: ['*@grocer.example'],
+        lift: { perAction: 20, budget: 'shopping-month' },
+      }),
+      buildRuleEntry('ask-orders', { outcome: 'ask', tools: ['shop.order'] }),
+    ],
+  });
+
+  const decided = await ctx.decide(
+    buildPolicyCall({
+      tool: 'shop.order',
+      toolList: ['shop.order'],
+      args: { order: { total: 5 } },
+      destinations: [{ value: 'orders@grocer.example', replyTarget: false }],
+    }),
+  );
+
+  expect(decided.decision).toMatchObject({ outcome: 'ask', stage: 6 });
+});
+
 test.each(['policy_widen', 'budget_raise'] as const)(
   'it asks at stage 4 for the effect %s',
   async (effect) => {

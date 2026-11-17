@@ -1,4 +1,5 @@
 import type { z } from 'zod';
+import type { BudgetDefinition } from '../budget/parse-budget-files';
 import type { RuleForm } from '../types';
 import { ruleFieldNames } from './rules-file-body-schema';
 import { rulesFileSchema } from './rules-file-schema';
@@ -31,14 +32,18 @@ export type ParsedRuleFiles =
     }
   | { readonly status: 'refused'; readonly problems: readonly RuleFileProblem[] };
 
-export function parseRuleFiles(files: ReadonlyMap<string, string>): ParsedRuleFiles {
+// A lift names a budget of the definitions that counts spend, so the caller passes those budgets.
+export function parseRuleFiles(
+  files: ReadonlyMap<string, string>,
+  budgets: ReadonlyMap<string, BudgetDefinition> = new Map(),
+): ParsedRuleFiles {
   const problems: RuleFileProblem[] = [];
   const warnings: RuleFileWarning[] = [];
 
   const byID = new Map<string, RuleFileEntry>();
 
   for (const [path, text] of [...files].toSorted(([left], [right]) => (left < right ? -1 : 1))) {
-    const parsed = parseRuleFile(path, text);
+    const parsed = parseRuleFile(path, text, budgets);
 
     if (parsed.status === 'refused') {
       problems.push(...parsed.problems);
@@ -72,7 +77,11 @@ export function parseRuleFiles(files: ReadonlyMap<string, string>): ParsedRuleFi
       };
 }
 
-function parseRuleFile(path: string, text: string): ParsedRuleFiles {
+function parseRuleFile(
+  path: string,
+  text: string,
+  budgets: ReadonlyMap<string, BudgetDefinition>,
+): ParsedRuleFiles {
   const yaml = parseYAML(text);
 
   if (yaml instanceof Error) {
@@ -91,6 +100,14 @@ function parseRuleFile(path: string, text: string): ParsedRuleFiles {
       status: 'refused',
       problems: result.error.issues.map((issue) => ({ path, reason: formatIssue(issue) })),
     };
+  }
+
+  const liftProblems = Object.entries(result.data).flatMap(([id, body]) =>
+    collectLiftProblems(path, id, body.lift, budgets),
+  );
+
+  if (liftProblems.length > 0) {
+    return { status: 'refused', problems: liftProblems };
   }
 
   return {
@@ -164,4 +181,32 @@ function formatIssue(issue: z.core.$ZodIssue): string {
   const at = issue.path.map(String).join('.');
 
   return at.length === 0 ? issue.message : `${at}: ${issue.message}`;
+}
+
+function collectLiftProblems(
+  path: string,
+  ruleID: string,
+  lift: { readonly budget: string } | undefined,
+  budgets: ReadonlyMap<string, BudgetDefinition>,
+): RuleFileProblem[] {
+  if (lift === undefined) {
+    return [];
+  }
+
+  const budget = budgets.get(lift.budget);
+
+  if (budget === undefined) {
+    return [
+      { path, reason: `${ruleID}.lift.budget: the definitions have no budget ${lift.budget}` },
+    ];
+  }
+
+  return budget.counts === 'spend'
+    ? []
+    : [
+        {
+          path,
+          reason: `${ruleID}.lift.budget: the budget ${lift.budget} counts ${budget.counts}, and a lift needs a budget that counts spend`,
+        },
+      ];
 }

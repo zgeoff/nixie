@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import type { BudgetDefinition } from '../budget/parse-budget-files';
 import { parseRuleFiles } from './parse-rule-files';
 
 test('it parses each rule with the file that holds it, sorted by ID', () => {
@@ -203,3 +204,92 @@ test.each(['ask', 'deny'])(
     });
   },
 );
+
+test('it parses a lift on an allow rule whose budget counts spend', () => {
+  const parsed = parseRuleFiles(
+    new Map([
+      [
+        'rules/shop.yaml',
+        'allow-groceries:\n  outcome: allow\n  tools: [shop.order]\n  lift: { perAction: 20, budget: shopping-month }\n',
+      ],
+    ]),
+    new Map([
+      [
+        'shopping-month',
+        { id: 'shopping-month', counts: 'spend', limitMicros: 100_000_000, period: 'month' },
+      ],
+    ]),
+  );
+
+  expect(parsed).toStrictEqual({
+    status: 'parsed',
+    rules: [
+      {
+        path: 'rules/shop.yaml',
+        rule: {
+          id: 'allow-groceries',
+          outcome: 'allow',
+          tools: ['shop.order'],
+          lift: { perAction: 20, budget: 'shopping-month' },
+        },
+      },
+    ],
+    warnings: [],
+  });
+});
+
+test.each([
+  [
+    'a lift on an ask rule',
+    'ask-x:\n  outcome: ask\n  lift: { perAction: 20, budget: shopping-month }\n',
+    'ask-x.lift: a lift is valid only on an allow rule',
+  ],
+  [
+    'a lift with no budget',
+    'allow-x:\n  outcome: allow\n  lift: { perAction: 20 }\n',
+    'allow-x.lift.budget: Invalid input: expected string, received undefined',
+  ],
+  [
+    'a lift with no cap per action',
+    'allow-x:\n  outcome: allow\n  lift: { budget: shopping-month }\n',
+    'allow-x.lift.perAction: Invalid input: expected number, received undefined',
+  ],
+  [
+    'a lift of a budget the definitions lack',
+    'allow-x:\n  outcome: allow\n  lift: { perAction: 20, budget: pet-month }\n',
+    'allow-x.lift.budget: the definitions have no budget pet-month',
+  ],
+  [
+    'a lift of a budget that counts a tool',
+    'allow-x:\n  outcome: allow\n  lift: { perAction: 20, budget: search-day }\n',
+    'allow-x.lift.budget: the budget search-day counts tool:search, and a lift needs a budget that counts spend',
+  ],
+])('it refuses %s', (_label, text, reason) => {
+  const parsed = parseRuleFiles(
+    new Map([['rules/x.yaml', text]]),
+    new Map<string, BudgetDefinition>([
+      [
+        'shopping-month',
+        { id: 'shopping-month', counts: 'spend', limitMicros: 100_000_000, period: 'month' },
+      ],
+      [
+        'search-day',
+        { id: 'search-day', counts: 'tool:search', limitMicros: 5_000_000, period: 'day' },
+      ],
+    ]),
+  );
+
+  expect(parsed).toStrictEqual({ status: 'refused', problems: [{ path: 'rules/x.yaml', reason }] });
+});
+
+test('it skips an allow rule with a field it does not know, as the release before does with lift', () => {
+  const parsed = parseRuleFiles(
+    new Map([['rules/x.yaml', 'allow-x:\n  outcome: allow\n  lifted: { perAction: 20 }\n']]),
+  );
+
+  expect(parsed).toStrictEqual({
+    status: 'parsed',
+    rules: [],
+    warnings: [{ path: 'rules/x.yaml', ruleID: 'allow-x', field: 'lifted', action: 'skipped' }],
+  });
+});

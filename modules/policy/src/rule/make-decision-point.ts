@@ -1,4 +1,4 @@
-import type { ConsentCheck, DestinationPermission } from '@heynixie/log';
+import type { ConsentCheck, DecisionLift, DestinationPermission } from '@heynixie/log';
 import type { ConsentFacts } from '../consent/check-consent';
 import { alwaysAskEffects } from '../effect/always-ask-effects';
 import type {
@@ -20,6 +20,7 @@ import type {
 import { getFixedRules } from './get-fixed-rules';
 import { isRuleMatch } from './is-rule-match';
 import { pickDestinationPermissions } from './pick-destination-permissions';
+import { pickLift } from './pick-lift';
 import { pickRuleOutcome } from './pick-rule-outcome';
 import { renderDenySentence } from './render-deny-sentence';
 
@@ -112,7 +113,10 @@ async function runRuleStages(run: StageRun): Promise<PolicyDecision> {
 
   progress.stage = 4;
 
-  if (declaration.effects.some((effect) => alwaysAskEffects.has(effect))) {
+  const asking = declaration.effects.filter((effect) => alwaysAskEffects.has(effect));
+  const lift = asking.length === 0 ? null : pickLift(entries, ruleCall, declaration, asking);
+
+  if (asking.length > 0 && lift === null) {
     return buildDecision(run, 4, { outcome: 'ask', cause: 'always_ask' }, null);
   }
 
@@ -166,7 +170,7 @@ async function runRuleStages(run: StageRun): Promise<PolicyDecision> {
     return buildDecision(
       run,
       7,
-      { outcome: 'allow', verdict: allowed, permissions, consent: answers.peek() },
+      { outcome: 'allow', verdict: allowed, permissions, consent: answers.peek(), lift },
       null,
     );
   }
@@ -248,6 +252,7 @@ interface Verdict {
   readonly cause?: 'outside_steering' | 'always_ask' | 'ask_rule' | 'no_rule';
   readonly permissions?: readonly (DestinationPermission | null)[];
   readonly consent?: ConsentCheck | null;
+  readonly lift?: DecisionLift | null;
 }
 
 function buildDecision(
@@ -279,6 +284,7 @@ function buildDecision(
       ? {}
       : { consent: verdict.consent }),
     snapshot: call.snapshot,
+    ...(verdict.lift === undefined || verdict.lift === null ? {} : { lift: verdict.lift }),
   };
 
   return {

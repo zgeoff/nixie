@@ -1,5 +1,6 @@
 import { match } from 'ts-pattern';
 import type { Rule, RuleCall, RuleCheck } from '../types';
+import { findArgument } from './find-argument';
 import { isPatternMatch } from './is-pattern-match';
 
 export function isRuleMatch(rule: Rule, call: RuleCall): boolean {
@@ -68,20 +69,6 @@ function isCheckMet(
   const isPassing = (item: unknown): boolean => isCheckPassed(check, item);
 
   return isAllow ? values.every((item) => isPassing(item)) : values.some((item) => isPassing(item));
-}
-
-function findArgument(args: Readonly<Record<string, unknown>>, path: string): unknown {
-  let value: unknown = args;
-
-  for (const part of path.split('.')) {
-    if (typeof value !== 'object' || value === null || !Object.hasOwn(value, part)) {
-      return undefined;
-    }
-
-    value = Object.getOwnPropertyDescriptor(value, part)?.value;
-  }
-
-  return value;
 }
 
 function isCheckPassed(check: RuleCheck, value: unknown): boolean {

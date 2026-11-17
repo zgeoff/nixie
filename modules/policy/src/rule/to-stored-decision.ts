@@ -27,6 +27,7 @@ export function toStoredDecision(detail: DecisionDetail, call: PolicyCall): Deci
           },
         }),
     ...(detail.fault === undefined ? {} : { fault: detail.fault }),
+    ...(detail.lift === undefined ? {} : { lift: { ...detail.lift } }),
     inputs: {
       toolList: [...call.toolList],
       context: call.context,

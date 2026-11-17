@@ -100,6 +100,15 @@ export interface Decision {
   readonly consentCheck?: ConsentCheck;
   readonly fault?: DecisionFault;
   readonly inputs?: DecisionInputs;
+
+  // The lift of an allow rule that let a purchase through, whose charge lands when the action queues
+  readonly lift?: DecisionLift;
+}
+
+export interface DecisionLift {
+  readonly ruleID: string;
+  readonly budgetID: string;
+  readonly amountMicros: number;
 }
 
 export interface Definitions {

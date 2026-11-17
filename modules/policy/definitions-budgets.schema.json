@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "propertyNames": {
+    "type": "string",
+    "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+  },
+  "additionalProperties": {
+    "type": "object",
+    "properties": {
+      "counts": {
+        "type": "string",
+        "pattern": "^(?:spend|tool:\\S+)$",
+        "description": "What the budget counts: spend, or tool:<name> for one paid tool"
+      },
+      "limit": {
+        "type": "number",
+        "exclusiveMinimum": 0,
+        "description": "The limit in dollars"
+      },
+      "period": {
+        "type": "string",
+        "enum": [
+          "day",
+          "week",
+          "month"
+        ],
+        "description": "A day, a week from Monday, or a month"
+      }
+    },
+    "required": [
+      "counts",
+      "limit",
+      "period"
+    ],
+    "additionalProperties": false
+  },
+  "title": "nixie budgets file",
+  "description": "A YAML file under budgets/ in the definitions, which maps each budget ID to its budget. An ID names one budget across every file."
+}

@@ -2,6 +2,7 @@ import type {
   ConsentCheck,
   ContentSource,
   DecisionFault,
+  DecisionLift,
   DestinationPermission,
   JSONObject,
 } from '@heynixie/log';
@@ -111,6 +112,9 @@ export interface DecisionDetail {
   readonly consent?: ConsentCheck;
   readonly snapshot: string;
   readonly fault?: DecisionFault;
+
+  // set when an allow rule's lift let a purchase past stage 4
+  readonly lift?: DecisionLift;
 }
 
 // An allow rule that matched the call, with the checks the memory gate reads to see what it covers.

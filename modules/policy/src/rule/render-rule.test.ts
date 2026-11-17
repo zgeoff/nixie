@@ -17,6 +17,16 @@ test.each<[string, Rule, string]>([
     '**Allow** `mail.send` when every destination matches `*@example.com`.',
   ],
   [
+    'allow-groceries',
+    {
+      id: 'allow-groceries',
+      outcome: 'allow',
+      tools: ['shop.order'],
+      lift: { perAction: 20, budget: 'shopping-month' },
+    },
+    '**Allow** `shop.order`, with no ask for a purchase of up to $20 each within the budget `shopping-month`.',
+  ],
+  [
     'ask-mail-attachments',
     {
       id: 'ask-mail-attachments',
