@@ -81,13 +81,13 @@ async function setupTest() {
         log,
       }),
     ask: async (ask: Ask) => {
-      const upstreamBodies: string[] = [];
+      let upstreamCalls = 0;
 
       const handler = await makeHandler({
         capture: null,
         ...(ask.providerPin === undefined ? {} : { providerPin: ask.providerPin }),
-        sendUpstream: (_url, init) => {
-          upstreamBodies.push(String(init.body));
+        sendUpstream: () => {
+          upstreamCalls += 1;
 
           return Promise.resolve(
             Response.json({ id: 'msg_1', usage: { input_tokens: 10, output_tokens: 2 } }),
@@ -103,7 +103,7 @@ async function setupTest() {
         }),
       );
 
-      return { response, upstreamCalls: upstreamBodies.length };
+      return { response, upstreamCalls };
     },
     makeHandler,
   };
