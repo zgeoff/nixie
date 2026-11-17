@@ -17,6 +17,7 @@ export interface EarlierRecordsRequest {
 export interface EarlierRecords {
   readonly records: readonly LiveRecord[];
   readonly isFailed: boolean;
+  readonly isLoading: boolean;
 
   readonly onRetry: () => void;
 }
@@ -71,6 +72,7 @@ export function useEarlierRecords(request: EarlierRecordsRequest): EarlierRecord
   return {
     records,
     isFailed,
+    isLoading: isFetching,
     onRetry: () => {
       void (earlier.isFetchNextPageError ? fetchNextPage() : earlier.refetch());
     },

@@ -156,9 +156,22 @@ export function Conversation(props: ConversationProps): ReactNode {
       {conversation.isLinkedMessageFailed ? (
         <p className={notice} role="alert">
           The linked message did not load.{' '}
-          <button onClick={conversation.onLinkedMessageRetry} type="button">
+          <button onClick={conversation.onEarlierRetry} type="button">
             Load it again
           </button>
+        </p>
+      ) : null}
+      {conversation.isEarlierFailed ? (
+        <p className={notice} role="alert">
+          The earlier messages did not load.{' '}
+          <button onClick={conversation.onEarlierRetry} type="button">
+            Load them again
+          </button>
+        </p>
+      ) : null}
+      {conversation.isEarlierLoading ? (
+        <p className={notice} role="status">
+          Loading earlier messages…
         </p>
       ) : null}
       <CompactionFailureNotice records={records} />

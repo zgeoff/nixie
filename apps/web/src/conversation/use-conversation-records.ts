@@ -18,7 +18,11 @@ export interface ConversationRecords {
 
   readonly isLinkedMessageFailed: boolean;
 
-  readonly onLinkedMessageRetry: () => void;
+  readonly onEarlierRetry: () => void;
+
+  readonly isEarlierLoading: boolean;
+
+  readonly isEarlierFailed: boolean;
 }
 
 export interface ConversationRecordsOptions extends LiveRecordsOptions {
@@ -41,6 +45,7 @@ export function useConversationRecords(
     thread,
   });
 
+  const isLinked = options.messageID !== undefined;
   const merged = mergeRecords([...earlier.records, ...(page.data?.records ?? [])], live.records);
 
   if (page.data === undefined) {
@@ -52,7 +57,9 @@ export function useConversationRecords(
       forgottenClientMessageIDs: [],
       liveResetSequence: undefined,
       isLinkedMessageFailed: false,
-      onLinkedMessageRetry: earlier.onRetry,
+      onEarlierRetry: earlier.onRetry,
+      isEarlierLoading: false,
+      isEarlierFailed: false,
     };
   }
 
@@ -63,8 +70,10 @@ export function useConversationRecords(
     unavailable: live.unavailable,
     forgottenClientMessageIDs: merged.forgottenClientMessageIDs,
     liveResetSequence: live.records.findLast((record) => record.kind === 'log_reset')?.sequence,
-    isLinkedMessageFailed: earlier.isFailed,
-    onLinkedMessageRetry: earlier.onRetry,
+    isLinkedMessageFailed: earlier.isFailed && isLinked,
+    onEarlierRetry: earlier.onRetry,
+    isEarlierLoading: earlier.isLoading,
+    isEarlierFailed: earlier.isFailed && !isLinked,
   };
 }
 
