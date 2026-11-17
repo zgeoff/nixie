@@ -289,7 +289,9 @@ change note and the retrieved items each render as one system message before the
 fired timer and an action's outcome render as one each, with the time their record was written, and
 each body leads with the record's event ID so the model can cite it. The outcome of a failed action
 adds a line that names the call and the reason, and shows the provider's own message only inside an
-untrusted fenced block. The user's message renders as an
+untrusted block.
+
+The user's message renders as an
 `<owner-message id="48213" from="…" sent="Tue 14 Oct, 22:50, Sydney">` element, with the user's own
 text inside. The `id` is the record's event ID, its log sequence, so the model can cite any message
 it sees, in a summary, a memory quote or a moment's span, and pass it on in a task message, without
