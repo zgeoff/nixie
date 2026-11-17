@@ -25,7 +25,7 @@ export function StepGroup(props: StepGroupProps): ReactNode {
   const step = props.step;
 
   return (
-    <li className={css({ color: 'textMuted', fontSize: 'sm' })}>
+    <li className={css({ color: 'textMuted', fontSize: 'sm', overflowWrap: 'anywhere' })}>
       <details>
         <summary className={css({ cursor: 'pointer' })}>{formatStepSummary(step)}</summary>
         <div

@@ -1,8 +1,9 @@
-import { expect, mock, test } from 'bun:test';
+import { expect, mock, onTestFinished, test } from 'bun:test';
 import { waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { HttpResponse, delay, http } from 'msw';
 import invariant from 'tiny-invariant';
+import { z } from 'zod';
 import { MicrophoneContext } from '../microphone/microphone-context';
 import { server } from '../mocks/server';
 import { store } from '../mocks/store';
@@ -836,4 +837,104 @@ test('it removes a held message you discard from the page and device storage', a
 
   expect(globalThis.localStorage.getItem('nixie.outbox')).toBeNull();
   expect(store.records.count()).toBe(0);
+});
+
+test('it says it loads earlier messages while their page is on its way', async () => {
+  await createDeviceSession();
+
+  await store.records.create({ kind: 'owner_message', message: { text: 'Is the shed locked?' } });
+
+  // The first page holds the newest 50 records, so 60 step records leave the message out of it.
+  for (let index = 0; index < 60; index += 1) {
+    await store.records.create({ kind: 'task.step_started' });
+  }
+
+  const earlierRead = z.object({ json: z.object({ beforeSequence: z.number() }) });
+  const held = Promise.withResolvers<void>();
+
+  onTestFinished(() => {
+    held.resolve();
+  });
+
+  server.use(
+    http.post('*/rpc/conversation/read', async (info) => {
+      const body: unknown = await info.request.clone().json();
+
+      if (earlierRead.safeParse(body).success) {
+        await held.promise;
+      }
+    }),
+  );
+
+  const rendered = render(<Conversation thread="conversation" />);
+
+  const status = await rendered.findByRole('status');
+
+  expect(status).toHaveTextContent('Loading earlier messages…');
+});
+
+test('it says the earlier messages did not load when their page fails', async () => {
+  await createDeviceSession();
+
+  await store.records.create({ kind: 'owner_message', message: { text: 'Is the shed locked?' } });
+
+  // The first page holds the newest 50 records, so 60 step records leave the message out of it.
+  for (let index = 0; index < 60; index += 1) {
+    await store.records.create({ kind: 'task.step_started' });
+  }
+
+  const earlierRead = z.object({ json: z.object({ beforeSequence: z.number() }) });
+
+  server.use(
+    http.post('*/rpc/conversation/read', async (info) => {
+      const body: unknown = await info.request.clone().json();
+
+      return earlierRead.safeParse(body).success ? HttpResponse.error() : undefined;
+    }),
+  );
+
+  const rendered = render(<Conversation thread="conversation" />);
+
+  const alert = await rendered.findByRole('alert');
+
+  expect(alert).toHaveTextContent('The earlier messages did not load. Load them again');
+});
+
+test('it loads the earlier messages again when you ask after their page fails', async () => {
+  const ctx = setupTest();
+
+  await createDeviceSession();
+
+  await store.records.create({ kind: 'owner_message', message: { text: 'Is the shed locked?' } });
+
+  // The first page holds the newest 50 records, so 60 step records leave the message out of it.
+  for (let index = 0; index < 60; index += 1) {
+    await store.records.create({ kind: 'task.step_started' });
+  }
+
+  const earlierRead = z.object({ json: z.object({ beforeSequence: z.number() }) });
+
+  server.use(
+    http.post('*/rpc/conversation/read', async (info) => {
+      const body: unknown = await info.request.clone().json();
+
+      return earlierRead.safeParse(body).success ? HttpResponse.error() : undefined;
+    }),
+  );
+
+  const rendered = render(<Conversation thread="conversation" />);
+
+  const retry = await rendered.findByRole('button', { name: 'Load them again' });
+
+  server.resetHandlers();
+
+  await ctx.user.click(retry);
+
+  const list = await rendered.findByRole('list', { name: 'Conversation' });
+
+  await waitFor(() => {
+    expect(list).toHaveTextContent('Is the shed locked?');
+  });
+
+  expect(rendered.queryByRole('alert')).toBeNull();
 });

@@ -418,3 +418,38 @@ test('it reads no further pages once the link goes, though the view stays', asyn
 
   expect(reads).toHaveBeenCalledTimes(3);
 });
+
+test('it reads earlier pages while the view wants them, and reads none when it does not', async () => {
+  await createDeviceSession();
+
+  const records = await Promise.all(
+    Array.from({ length: 120 }, () =>
+      store.records.create({ kind: 'task.step_started', thread: 'p7hd2wq9zn' }),
+    ),
+  );
+
+  const oldestShown = records.toSorted((left, right) => left.sequence - right.sequence).at(70);
+
+  if (oldestShown === undefined) {
+    throw new Error('the thread holds 120 records');
+  }
+
+  const page = {
+    hasEarlier: true,
+    records: [buildMockLogRecord({ kind: 'task.step_started', sequence: oldestShown.sequence })],
+  };
+
+  const idle = renderHook(() =>
+    useEarlierRecords({ isWanted: false, messageID: undefined, page, thread: 'p7hd2wq9zn' }),
+  );
+
+  const wanted = renderHook(() =>
+    useEarlierRecords({ isWanted: true, messageID: undefined, page, thread: 'p7hd2wq9zn' }),
+  );
+
+  await waitFor(() => {
+    expect(wanted.result.current.records.length).toBeGreaterThan(0);
+  });
+
+  expect(idle.result.current.records).toStrictEqual([]);
+});

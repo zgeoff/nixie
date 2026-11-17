@@ -90,10 +90,12 @@ const notice = css({
 export function Conversation(props: ConversationProps): ReactNode {
   const liveOptions = props.startTimer === undefined ? {} : { startTimer: props.startTimer };
   const messageOptions = props.messageID === undefined ? {} : { messageID: props.messageID };
+  const [isEarlierWanted, setEarlierWanted] = useState(false);
 
   const conversation = useConversationRecords(props.thread, {
     ...liveOptions,
     ...messageOptions,
+    isEarlierWanted,
   });
 
   const messageID = props.messageID;
@@ -154,16 +156,31 @@ export function Conversation(props: ConversationProps): ReactNode {
       {conversation.isLinkedMessageFailed ? (
         <p className={notice} role="alert">
           The linked message did not load.{' '}
-          <button onClick={conversation.onLinkedMessageRetry} type="button">
+          <button onClick={conversation.onEarlierRetry} type="button">
             Load it again
           </button>
+        </p>
+      ) : null}
+      {conversation.isEarlierFailed ? (
+        <p className={notice} role="alert">
+          The earlier messages did not load.{' '}
+          <button onClick={conversation.onEarlierRetry} type="button">
+            Load them again
+          </button>
+        </p>
+      ) : null}
+      {conversation.isEarlierLoading ? (
+        <p className={notice} role="status">
+          Loading earlier messages…
         </p>
       ) : null}
       <CompactionFailureNotice records={records} />
       {notices.isFailed ? <MemoryNoticesFailure onRetry={notices.retry} /> : null}
       <ConversationScroller
         arrivals={records.length + entries.length + notices.notices.length}
+        onEarlierWanted={setEarlierWanted}
         sends={sends}
+        startKey={records[0]?.sequence}
       >
         <ThreadApprovalsContext value={approvals}>
           <ConversationList

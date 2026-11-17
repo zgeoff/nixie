@@ -1,4 +1,4 @@
-import { expect, test } from 'bun:test';
+import { expect, mock, test } from 'bun:test';
 import { fireEvent, render } from '@testing-library/react';
 import invariant from 'tiny-invariant';
 import { registerStubResizeObserver } from '../test-utils/register-stub-resize-observer';
@@ -164,4 +164,67 @@ test('it brings the view to the end when you send a message after scrolling up',
   );
 
   expect(scroller.scrollTop).toBe(1200);
+});
+
+test('it asks for earlier records when the list does not fill the view', () => {
+  const onEarlierWanted = mock<(isWanted: boolean) => void>();
+
+  render(
+    <ConversationScroller arrivals={1} onEarlierWanted={onEarlierWanted} sends={0}>
+      <ol aria-label="Conversation" />
+    </ConversationScroller>,
+  );
+
+  expect(onEarlierWanted).toHaveBeenLastCalledWith(true);
+});
+
+test('it stops asking for earlier records when the view is away from the start', () => {
+  const onEarlierWanted = mock<(isWanted: boolean) => void>();
+
+  const rendered = render(
+    <ConversationScroller arrivals={1} onEarlierWanted={onEarlierWanted} sends={0}>
+      <ol aria-label="Conversation" />
+    </ConversationScroller>,
+  );
+
+  const scroller = rendered.getByRole('list', { name: 'Conversation' }).parentElement;
+
+  invariant(scroller);
+
+  Object.defineProperty(scroller, 'clientHeight', { configurable: true, value: 400 });
+  Object.defineProperty(scroller, 'scrollHeight', { configurable: true, value: 1000 });
+
+  scroller.scrollTop = 600;
+
+  fireEvent.scroll(scroller);
+
+  expect(onEarlierWanted).toHaveBeenLastCalledWith(false);
+});
+
+test('it keeps the record in view when earlier records arrive above it', () => {
+  const rendered = render(
+    <ConversationScroller arrivals={1} sends={0} startKey={50}>
+      <ol aria-label="Conversation" />
+    </ConversationScroller>,
+  );
+
+  const scroller = rendered.getByRole('list', { name: 'Conversation' }).parentElement;
+
+  invariant(scroller);
+
+  Object.defineProperty(scroller, 'clientHeight', { configurable: true, value: 400 });
+  Object.defineProperty(scroller, 'scrollHeight', { configurable: true, value: 1000 });
+
+  scroller.scrollTop = 100;
+
+  fireEvent.scroll(scroller);
+  Object.defineProperty(scroller, 'scrollHeight', { configurable: true, value: 1500 });
+
+  rendered.rerender(
+    <ConversationScroller arrivals={2} sends={0} startKey={10}>
+      <ol aria-label="Conversation" />
+    </ConversationScroller>,
+  );
+
+  expect(scroller.scrollTop).toBe(600);
 });
