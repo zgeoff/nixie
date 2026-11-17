@@ -50,7 +50,8 @@ async function foldArmed(
 
     const trigger = toCanonicalJSON(definition.trigger);
     const isNew = row === undefined || row.definition_hash === null || row.trigger !== trigger;
-    const after = isNew ? Math.max(row?.after ?? 0, record.recordedAt.getTime()) : row.after;
+    const fresh = isNew ? Math.max(row?.after ?? 0, record.recordedAt.getTime()) : row.after;
+    const after = definition.after ?? fresh;
 
     await db
       .insertInto('trigger_definitions')

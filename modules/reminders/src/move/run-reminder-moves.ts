@@ -20,11 +20,14 @@ export async function runReminderMoves(
 
   for (const move of moves) {
     await withWriteTransaction(context.log.writer, async (tx) => {
+      const after = await readOldWatermark(tx, move.definitionID);
+
       await writeReminderSet(tx, context, {
         name: move.name,
         note: move.note,
         trigger: move.trigger,
         origin: 'migration',
+        ...(after === undefined ? {} : { after }),
       });
 
       await settleMovedDefinition(tx, move);
@@ -40,6 +43,20 @@ export async function runReminderMoves(
   }
 
   return moves.length;
+}
+
+async function readOldWatermark(
+  tx: Transaction<unknown>,
+  definitionID: string,
+): Promise<number | undefined> {
+  const row = await tx
+    .$extendTables<TriggersTables>()
+    .selectFrom('trigger_definitions')
+    .select('after')
+    .where('definition_id', '=', definitionID)
+    .executeTakeFirst();
+
+  return row?.after;
 }
 
 async function withdrawOldTrigger(

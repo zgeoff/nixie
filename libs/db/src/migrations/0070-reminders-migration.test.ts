@@ -296,7 +296,7 @@ test('it repoints every column, record and projection row that names an old hash
     (change_id, short_id, definition_id, operation, definition_hash, previous_hash, base_hash,
      definitions_hash, caller, state, changed_sequence, updated_sequence)
     values ('c1', 's1', 'feed-the-cat', 'change', ${oldHash}, ${otherOldHash}, ${oldHash},
-      'snap', 'owner', 'in_force', 1, 1)`.execute(ctx.db);
+      ${oldHash}, 'owner', 'in_force', 1, 1)`.execute(ctx.db);
 
   await ctx.writeArmed('feed-the-cat', oldHash, 'task');
 
@@ -352,7 +352,7 @@ test('it repoints every column, record and projection row that names an old hash
   const snapshots = await sql`select snapshot_hash from definition_snapshots`.execute(ctx.db);
 
   expect(withoutQuotes.includes(oldHash)).toBeFalse();
-  expect(withoutQuotes.split(expected)).toHaveLength(20);
+  expect(withoutQuotes.split(expected)).toHaveLength(21);
   expect(everything.includes(`quotes ${oldHash}`)).toBeTrue();
   expect(snapshots.rows).toStrictEqual([{ snapshot_hash: 'snap' }]);
 });

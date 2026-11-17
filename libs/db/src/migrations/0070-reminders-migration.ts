@@ -298,6 +298,7 @@ const hashColumns = [
   ['runtime_task_definitions', 'definition_hash'],
   ['runtime_task_definitions', 'previous_hash'],
   ['runtime_task_definitions', 'base_hash'],
+  ['runtime_task_definitions', 'definitions_hash'],
   ['trigger_definitions', 'definition_hash'],
 ] as const;
 

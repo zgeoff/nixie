@@ -33,6 +33,7 @@ const armedEntrySchema = z.object({
   source: z.literal('schedule'),
   target: z.enum(['task', 'conversation']),
   trigger: storedTriggerSchema,
+  after: z.number().exactOptional(),
 });
 
 // The definitions that can fire: those added, changed or back in force, and the IDs of those out of

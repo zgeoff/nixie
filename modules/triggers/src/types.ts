@@ -15,6 +15,9 @@ export interface ArmedDefinition {
   readonly source: 'schedule';
   readonly target: 'task' | 'conversation';
   readonly trigger: Trigger;
+
+  // a watermark to carry over from a trigger this one replaces, epoch milliseconds
+  readonly after?: number;
 }
 
 export interface TriggerEvent {

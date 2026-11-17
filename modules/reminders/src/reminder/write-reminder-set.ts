@@ -12,6 +12,9 @@ import { writeReminderVersion } from './write-reminder-version';
 
 export interface SetReminder extends ReminderVersion {
   readonly origin: ReminderOrigin;
+
+  // the watermark of the trigger this reminder replaces, epoch milliseconds
+  readonly after?: number;
 }
 
 export interface WrittenReminder {
@@ -48,7 +51,7 @@ export async function writeReminderSet(
   ]);
 
   await writeTriggerArming(tx, context, {
-    armed: [buildArmedReminder(reminderID, hash, reminder.trigger)],
+    armed: [buildArmedReminder(reminderID, hash, reminder.trigger, reminder.after)],
     withdrawn: [],
   });
 

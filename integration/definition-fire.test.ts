@@ -1,10 +1,10 @@
-import { expect, test } from 'bun:test';
+import { expect, onTestFinished, test } from 'bun:test';
 import { join } from 'node:path';
-import { readRecords, withWriteTransaction } from '@heynixie/log';
+import { parseJSONObject, readRecords } from '@heynixie/log';
 import { modelsConfigSchema, resolveRoleProfile } from '@heynixie/models';
 import type { EffectDeclaration } from '@heynixie/policy';
 import { readStarterDecisionPoint } from '@heynixie/policy/test-utils';
-import { writeReminderVersion } from '@heynixie/reminders';
+import { buildReminderSetTool, remindersProjections } from '@heynixie/reminders';
 import type { SandboxAdapter } from '@heynixie/sandbox';
 import { buildSandboxRecorder } from '@heynixie/sandbox';
 import { buildStubGuestSandboxes, buildStubSandboxes } from '@heynixie/sandbox/test-utils';
@@ -19,10 +19,11 @@ import {
   buildTaskMessageTool,
   claimTask,
   createConversationTask,
+  readDefinitionTaskInTransaction,
   readOpenRun,
   readTaskDirectory,
   runTaskStep,
-  writeInboxRecords,
+  withdrawDefinitionTaskInTransaction,
   writeStepCommit,
 } from '@heynixie/tasks';
 import {
@@ -32,14 +33,17 @@ import {
   writeTestTaskMessage,
   writeTestTriggerFire,
 } from '@heynixie/tasks/test-utils';
-import { buildTestClock } from '@heynixie/testing';
+import { buildTestClock, waitForCondition } from '@heynixie/testing';
 import type { ToolDefinition, ToolEndpoint } from '@heynixie/tools';
 import { buildToolRegistry, startToolEndpoint } from '@heynixie/tools';
 import {
+  buildMockToolCall,
+  buildMockToolContext,
   buildMockToolDefinition,
   sendTestToolCall,
   withTestToolClient,
 } from '@heynixie/tools/test-utils';
+import { buildScheduleSource, deliverTriggerBatch, triggersProjections } from '@heynixie/triggers';
 import invariant from 'tiny-invariant';
 
 interface TaskRunnerRoute {
@@ -68,7 +72,13 @@ async function setupTest() {
         model: 'claude-test-errands',
         effort: 'low',
         context_tokens: 200_000,
-        prices: { input: 0, cache_write: 0, cache_write_1h: 0, cached_input: 0, output: 0 },
+        prices: {
+          input: 0,
+          cache_write: 0,
+          cache_write_1h: 0,
+          cached_input: 0,
+          output: 0,
+        },
       },
     },
     roles: { conversation: 'chat-direct', task: 'errands' },
@@ -78,11 +88,16 @@ async function setupTest() {
 
   const host = await startTestSessionHost({
     clock,
+    projections: [...triggersProjections, ...remindersProjections],
     runSettings: buildRunSettings({ models, secrets, hopLimit: 20 }),
   });
 
   const tools = buildStubToolEndpoint();
-  const memory = buildStubMemory({ pinned: [], pinnedUse: { items: 0, tokens: 0, budget: 2000 } });
+
+  const memory = buildStubMemory({
+    pinned: [],
+    pinnedUse: { items: 0, tokens: 0, budget: 2000 },
+  });
 
   const definitions = {
     persona: 'You are Pip.',
@@ -119,17 +134,83 @@ async function setupTest() {
     buildMockToolDefinition({
       name,
       execution: declaration.effects.includes('read') ? 'direct' : 'queued',
-      input: { properties: { to: { type: 'string' }, body: { type: 'string' } }, required: [] },
+      input: {
+        properties: { to: { type: 'string' }, body: { type: 'string' } },
+        required: [],
+      },
       declaration,
     }),
   );
 
   const queued: string[] = [];
 
+  const setTool = buildReminderSetTool({
+    log: host.context.log,
+    definitions: host.context.definitions,
+    readZone: () => Promise.resolve('Australia/Sydney'),
+    minGapMinutes: 15,
+  });
+
   return {
     ...host,
     clock,
     queued,
+    runReminderSet: (input: object) => {
+      const call = buildMockToolCall({
+        tool: 'reminder.set',
+        input: parseJSONObject(JSON.stringify(input)),
+      });
+
+      return setTool.run(call, buildMockToolContext());
+    },
+    runFiresUntil: async (advanceMs: number) => {
+      const controller = new AbortController();
+
+      const source = buildScheduleSource({
+        db: host.context.log.writer.db,
+        clock,
+        readZone: () => Promise.resolve('Australia/Sydney'),
+        readLastMessageAt: () => Promise.resolve(null),
+      });
+
+      const core = {
+        log: host.context.log,
+        clock,
+        definitions: host.context.definitions,
+        logEvent: () => {},
+        readDefinitionTask: readDefinitionTaskInTransaction,
+        retireOneShot: (
+          tx: Parameters<typeof withdrawDefinitionTaskInTransaction>[0],
+          id: string,
+        ) => withdrawDefinitionTaskInTransaction(tx, host.context, id),
+      };
+
+      onTestFinished(async () => {
+        controller.abort();
+
+        await source.stop();
+      });
+
+      await source.start({
+        cursor: null,
+        deliver: (batch) => deliverTriggerBatch(core, 'schedule', batch),
+        reportHealth: () => {},
+        signal: controller.signal,
+      });
+
+      await waitForCondition(() => clock.countSleepers() === 1);
+
+      clock.advance(advanceMs);
+
+      await waitForCondition(async () => {
+        const fired = await readRecords(host.context.log, {
+          afterSequence: 0,
+          kinds: ['trigger.fired'],
+        });
+
+        return fired.length === 1;
+      });
+    },
     runs: tools.runs,
     steps: tools.steps,
     startTaskRunner: (route?: TaskRunnerRoute) =>
@@ -171,7 +252,10 @@ async function setupTest() {
         toolNames: [],
         image: 'conversation',
         limits: { vcpus: 1, memoryMiB: 1024, diskMiB: 2048 },
-        command: { argv: ['bun', '/opt/nixie/conversation/src/main.ts'], env: {} },
+        command: {
+          argv: ['bun', '/opt/nixie/conversation/src/main.ts'],
+          env: {},
+        },
         getDefinitions: () => definitions,
         memory: () => memory,
         defaultZone: 'Australia/Sydney',
@@ -186,7 +270,10 @@ async function setupTest() {
         }),
         callTool: (call) =>
           sendTestToolCall({
-            target: endpoint.getToolTarget({ id: call.sandboxID, owner: call.owner }),
+            target: endpoint.getToolTarget({
+              id: call.sandboxID,
+              owner: call.owner,
+            }),
             token: call.token,
             name: call.name,
             input: call.input,
@@ -234,7 +321,12 @@ test('it starts the task run of a fire untrusted, holds it to its version tools 
       version: {
         tools: ['tasks.list', 'test.send'],
         trigger: {
-          schedule: { every: 'day', at: '06:30', zone: 'Australia/Sydney', catchUp: 'once' },
+          schedule: {
+            every: 'day',
+            at: '06:30',
+            zone: 'Australia/Sydney',
+            catchUp: 'once',
+          },
         },
       },
     },
@@ -283,18 +375,27 @@ test('it starts the task run of a fire untrusted, holds it to its version tools 
     { target: run.target, token: step.token },
     async (client) => {
       const listed = await client.listTools();
-      const outside = await client.callTool({ name: 'test.wipe', arguments: {} });
+
+      const outside = await client.callTool({
+        name: 'test.wipe',
+        arguments: {},
+      });
 
       const past = await client.callTool({
         name: 'test.send',
-        arguments: { to: 'harbour-office@example.org', body: 'The mooring fee is paid.' },
+        arguments: {
+          to: 'harbour-office@example.org',
+          body: 'The mooring fee is paid.',
+        },
       });
 
       return { listed: listed.tools.map((tool) => tool.name), outside, past };
     },
   );
 
-  const after = await readRecords(ctx.context.log, { afterSequence: fireSequence });
+  const after = await readRecords(ctx.context.log, {
+    afterSequence: fireSequence,
+  });
 
   const decisions = after
     .filter((entry) => entry.record.kind === 'tool_called')
@@ -316,7 +417,12 @@ test('it starts the task run of a fire untrusted, holds it to its version tools 
 
   expect(calls.outside).toMatchObject({
     isError: true,
-    content: [{ type: 'text', text: "denied: The tool test.wipe is not on this run's tool list." }],
+    content: [
+      {
+        type: 'text',
+        text: "denied: The tool test.wipe is not on this run's tool list.",
+      },
+    ],
   });
 
   expect(decisions).toStrictEqual(['deny', 'ask']);
@@ -334,11 +440,7 @@ test('it starts the task run of a fire untrusted, holds it to its version tools 
 });
 
 test.each([
-  [
-    'a one-time reminder',
-    { at: '2027-03-09T14:00:00+11:00' } as const,
-    { source: 'at', kind: 'at', scheduledFor: '2027-03-09T03:00:00.000Z' },
-  ],
+  ['a one-time reminder', { at: '2027-03-09T14:00:00+11:00' } as const],
   [
     'a recurring reminder',
     {
@@ -350,26 +452,21 @@ test.each([
         catchUp: 'once',
       },
     } as const,
-    { source: 'schedule', kind: 'schedule', scheduledFor: '2027-03-09T03:00:00.000Z' },
   ],
 ])(
   'it wakes the conversation once for a fire of %s and gives it a reminder with the note, the name and the time it was set for',
-  async (_name, trigger, fire) => {
+  async (_name, trigger) => {
     const ctx = await setupTest();
 
     const sandboxes = buildStubSandboxes();
 
-    ctx.clock.advance(20_700_000);
-
     await createConversationTask(ctx.context);
 
-    await withWriteTransaction(ctx.context.log.writer, (tx) =>
-      writeReminderVersion(tx, 'hash-1', {
-        name: 'Call the dentist',
-        note: 'Call the dentist about the crown.',
-        trigger,
-      }),
-    );
+    const set = await ctx.runReminderSet({
+      name: 'Call the dentist',
+      note: 'Call the dentist about the crown.',
+      trigger,
+    });
 
     const runner = await ctx.startConversation(sandboxes);
 
@@ -393,43 +490,34 @@ test.each([
         outcome: 'finished',
         stopReason: 'end_turn',
         turns: 1,
-        usage: { inputTokens: 10, outputTokens: 5, cacheReadTokens: 0, cacheWriteTokens: 0 },
-      },
-    ]);
-
-    await writeInboxRecords(ctx.context, [
-      {
-        kind: 'trigger.fired',
-        definitions: ctx.context.definitions(),
-        thread: 'conversation',
-        payload: {
-          definitionID: 'call-the-dentist',
-          definitionHash: 'hash-1',
-          source: fire.source,
-          dedupeKey: `call-the-dentist:${fire.scheduledFor}`,
-          kind: fire.kind,
-          scheduledFor: fire.scheduledFor,
-          firedAt: fire.scheduledFor,
-          isCatchUp: false,
-          skipped: [],
-          skippedCount: 0,
+        usage: {
+          inputTokens: 10,
+          outputTokens: 5,
+          cacheReadTokens: 0,
+          cacheWriteTokens: 0,
         },
       },
     ]);
 
+    await ctx.runFiresUntil(20_760_000);
+
     await runNextStep(ctx.context, runner.runStep);
 
-    const next = await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+    const next = await claimTask(ctx.context, {
+      holder: 'runner-a',
+      leaseMs: 60_000,
+    });
 
     const inputs = sandboxes.turns.map((turn) =>
       turn.input.map((message) => message.text).join('\n'),
     );
 
+    expect(set.status).toBe('ok');
     expect(sandboxes.turns).toHaveLength(1);
     expect(next).toBeNull();
 
     expect(inputs[0]).toMatch(
-      /<system-message type="reminder" id="[0-9a-f]+" at="Tue 9 Mar, 14:00, Sydney">\n\[#\d+\] Reminder: <model-text id="(?<block>[0-9a-f]+)">Call the dentist about the crown\.<\/model-text id="\k<block>">\nName: <model-text id="[0-9a-f]+">Call the dentist<\/model-text id="[0-9a-f]+">\nIt was set for Tue 9 Mar, 14:00, Sydney\.\n<\/system-message id="[0-9a-f]+">/u,
+      /<system-message type="reminder" id="[0-9a-f]+" at="Tue 9 Mar, 14:01, Sydney">\n\[#\d+\] Reminder: <model-text id="(?<block>[0-9a-f]+)">Call the dentist about the crown\.<\/model-text id="\k<block>">\nName: <model-text id="[0-9a-f]+">Call the dentist<\/model-text id="[0-9a-f]+">\nIt was set for Tue 9 Mar, 14:00, Sydney\.\n<\/system-message id="[0-9a-f]+">/u,
     );
   },
 );
@@ -541,7 +629,12 @@ test('it starts a task run of a wakeable definition task on a question from the 
       outcome: 'finished',
       stopReason: 'end_turn',
       turns: 1,
-      usage: { inputTokens: 10, outputTokens: 5, cacheReadTokens: 0, cacheWriteTokens: 0 },
+      usage: {
+        inputTokens: 10,
+        outputTokens: 5,
+        cacheReadTokens: 0,
+        cacheWriteTokens: 0,
+      },
     },
   ]);
 

@@ -8,6 +8,10 @@ export interface ReminderVersion {
   readonly trigger: Trigger;
 }
 
+// Hashes the version's content alone, so the same name, note and trigger hash the same on every
+// path that writes it, whatever else the caller passes along.
 export function buildReminderHash(version: ReminderVersion): string {
-  return createHash('sha256').update(toCanonicalJSON(version)).digest('hex');
+  const content = { name: version.name, note: version.note, trigger: version.trigger };
+
+  return createHash('sha256').update(toCanonicalJSON(content)).digest('hex');
 }

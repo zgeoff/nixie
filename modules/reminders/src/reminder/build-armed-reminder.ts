@@ -6,6 +6,7 @@ export function buildArmedReminder(
   reminderID: string,
   hash: string,
   trigger: Trigger,
+  after?: number,
 ): ArmedDefinition {
   return {
     definitionID: buildReminderTriggerID(reminderID),
@@ -13,5 +14,6 @@ export function buildArmedReminder(
     source: 'schedule',
     target: 'conversation',
     trigger,
+    ...(after === undefined ? {} : { after }),
   };
 }

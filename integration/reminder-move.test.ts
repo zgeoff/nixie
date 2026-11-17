@@ -66,6 +66,15 @@ async function setupTest() {
 
       return { reminders: reminders.rows, armed };
     },
+    readWatermarks: async () => {
+      const rows = await readQueryRows(
+        sql`select definition_id, after from trigger_definitions order by definition_id`,
+        ctx.writer.db,
+        z.object({ definition_id: z.string(), after: z.number() }),
+      );
+
+      return rows.map((row) => [row.definition_id.split(':')[0], row.after]);
+    },
     readLastSequence: async () => {
       const rows = await readQueryRows(
         sql`select max(sequence) as last from records`,
@@ -85,7 +94,13 @@ test('it turns the conversation definitions into two active reminders, and moves
   await ctx.seed();
 
   const weekly = {
-    schedule: { every: 'week', on: 'fri', at: '08:00', zone: 'owner', catchUp: 'once' },
+    schedule: {
+      every: 'week',
+      on: 'fri',
+      at: '08:00',
+      zone: 'owner',
+      catchUp: 'once',
+    },
   } as const;
 
   const once = { at: '2027-03-09T14:00:00+11:00' } as const;
@@ -234,6 +249,54 @@ test('it fires a moved reminder once per slot while the repo file still names th
   expect(fires.rows).toHaveLength(1);
 
   expect(stored.armed).toContainEqual(
-    expect.objectContaining({ definition_id: 'water-the-tomatoes', definition_hash: null }),
+    expect.objectContaining({
+      definition_id: 'water-the-tomatoes',
+      definition_hash: null,
+    }),
   );
+});
+
+test('it gives a moved recurring reminder the watermark of its old trigger, so a slot that fell due before the move still fires', async () => {
+  const ctx = await setupTest();
+
+  await ctx.writeRepoTask('tend-the-garden', buildTestTaskYaml());
+  await ctx.seed();
+
+  await seedConversationDefinition(ctx, {
+    definitionID: 'water-the-tomatoes',
+    hash: 'a'.repeat(64),
+    name: 'Tomatoes',
+    note: 'Water the tomatoes.',
+    trigger: {
+      schedule: {
+        every: 'week',
+        on: 'fri',
+        at: '08:00',
+        zone: 'owner',
+        catchUp: 'once',
+      },
+    },
+    changeID: null,
+  });
+
+  const before = await ctx.readWatermarks();
+
+  const [, oldAfter] = before.find(([id]) => id === 'water-the-tomatoes') ?? [];
+
+  await seedOldTaskHash(ctx.writer, 'tend-the-garden');
+
+  await ctx.runMigration();
+
+  ctx.clock.advance(3_600_000);
+
+  await ctx.runMoves();
+
+  const watermarks = await ctx.readWatermarks();
+
+  await runProjectionRebuild(ctx.log);
+
+  const rebuilt = await ctx.readWatermarks();
+
+  expect(watermarks).toContainEqual(['reminder', oldAfter]);
+  expect(rebuilt).toStrictEqual(watermarks);
 });
