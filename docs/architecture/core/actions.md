@@ -100,7 +100,11 @@ flagged to run in the step. The action runner never claims it, because only a st
 session, its hold on the turn's budget and its task run's bounds. The next step of the task runs the
 action before its model turn, under the step's lease, and one turn reads the approval and the
 result. The result is a second `tool_result` record under the call's `tool_called`, and the action's
-`action.outcome` record names it without copying it.
+`action.outcome` record names it without copying it. A tool can record less than it returns, such as
+the IDs of the entries it read, so the turn reads the full reply, which the step keeps in memory. A
+later turn reads that reply too when its batch ends before the outcome, and after a restart a turn
+reads what the result record kept. The result takes the content sources of the variant that the call
+picked.
 
 The step runs such an action by the same rules as an attempt:
 
