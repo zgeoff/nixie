@@ -162,7 +162,17 @@
                           "reminder": {
                             "type": "object",
                             "properties": {
-                              "brief": {
+                              "name": {
+                                "anyOf": [
+                                  {
+                                    "type": "string"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "note": {
                                 "type": "string"
                               },
                               "scheduledFor": {
@@ -181,7 +191,8 @@
                               }
                             },
                             "required": [
-                              "brief",
+                              "name",
+                              "note",
                               "scheduledFor",
                               "lateBySeconds"
                             ]
@@ -940,7 +951,17 @@
                             "reminder": {
                               "type": "object",
                               "properties": {
-                                "brief": {
+                                "name": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "note": {
                                   "type": "string"
                                 },
                                 "scheduledFor": {
@@ -959,7 +980,8 @@
                                 }
                               },
                               "required": [
-                                "brief",
+                                "name",
+                                "note",
                                 "scheduledFor",
                                 "lateBySeconds"
                               ]
@@ -17627,6 +17649,478 @@
         }
       }
     },
+    "/reminders/list": {
+      "post": {
+        "operationId": "reminders.list",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "reminders": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "reminder": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "note": {
+                            "type": "string"
+                          },
+                          "trigger": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "schedule": {
+                                    "type": "object",
+                                    "properties": {
+                                      "every": {
+                                        "anyOf": [
+                                          {
+                                            "enum": [
+                                              "day",
+                                              "week",
+                                              "hour"
+                                            ],
+                                            "type": "string"
+                                          },
+                                          {
+                                            "type": "object",
+                                            "properties": {
+                                              "minutes": {
+                                                "type": "integer",
+                                                "minimum": 5,
+                                                "maximum": 1440
+                                              }
+                                            },
+                                            "required": [
+                                              "minutes"
+                                            ],
+                                            "additionalProperties": false
+                                          }
+                                        ]
+                                      },
+                                      "at": {
+                                        "type": "string",
+                                        "pattern": "^(?:[01]\\d|2[0-3]):[0-5]\\d$"
+                                      },
+                                      "on": {
+                                        "enum": [
+                                          "mon",
+                                          "tue",
+                                          "wed",
+                                          "thu",
+                                          "fri",
+                                          "sat",
+                                          "sun"
+                                        ],
+                                        "type": "string"
+                                      },
+                                      "window": {
+                                        "type": "object",
+                                        "properties": {
+                                          "from": {
+                                            "type": "string",
+                                            "pattern": "^(?:[01]\\d|2[0-3]):[0-5]\\d$"
+                                          },
+                                          "until": {
+                                            "type": "string",
+                                            "pattern": "^(?:[01]\\d|2[0-3]):[0-5]\\d$"
+                                          }
+                                        },
+                                        "required": [
+                                          "from",
+                                          "until"
+                                        ],
+                                        "additionalProperties": false
+                                      },
+                                      "idleMinutes": {
+                                        "type": "integer",
+                                        "minimum": 1,
+                                        "maximum": 720
+                                      },
+                                      "zone": {
+                                        "type": "string",
+                                        "default": "owner"
+                                      },
+                                      "catchUp": {
+                                        "enum": [
+                                          "once",
+                                          "skip"
+                                        ],
+                                        "type": "string",
+                                        "default": "once"
+                                      }
+                                    },
+                                    "required": [
+                                      "every"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                },
+                                "required": [
+                                  "schedule"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "at": {
+                                    "type": "string",
+                                    "format": "date-time"
+                                  }
+                                },
+                                "required": [
+                                  "at"
+                                ],
+                                "additionalProperties": false
+                              }
+                            ]
+                          },
+                          "rendered": {
+                            "type": "string"
+                          },
+                          "state": {
+                            "enum": [
+                              "active",
+                              "fired"
+                            ],
+                            "type": "string"
+                          },
+                          "next": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "recentFires": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          }
+                        },
+                        "required": [
+                          "reminder",
+                          "name",
+                          "note",
+                          "trigger",
+                          "rendered",
+                          "state",
+                          "next",
+                          "recentFires"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "reminders"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "401",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "defined": {
+                          "const": true
+                        },
+                        "code": {
+                          "const": "UNAUTHORIZED"
+                        },
+                        "status": {
+                          "const": 401
+                        },
+                        "message": {
+                          "type": "string",
+                          "default": "The device session is missing, lapsed or revoked"
+                        },
+                        "data": {}
+                      },
+                      "required": [
+                        "defined",
+                        "code",
+                        "status",
+                        "message"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "defined": {
+                          "const": false
+                        },
+                        "code": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "number"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "data": {}
+                      },
+                      "required": [
+                        "defined",
+                        "code",
+                        "status",
+                        "message"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/reminders/cancel": {
+      "post": {
+        "operationId": "reminders.cancel",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reminder": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 64
+                  }
+                },
+                "required": [
+                  "reminder"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "reminder": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "reminder"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "401",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "defined": {
+                          "const": true
+                        },
+                        "code": {
+                          "const": "UNAUTHORIZED"
+                        },
+                        "status": {
+                          "const": 401
+                        },
+                        "message": {
+                          "type": "string",
+                          "default": "The device session is missing, lapsed or revoked"
+                        },
+                        "data": {}
+                      },
+                      "required": [
+                        "defined",
+                        "code",
+                        "status",
+                        "message"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "defined": {
+                          "const": false
+                        },
+                        "code": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "number"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "data": {}
+                      },
+                      "required": [
+                        "defined",
+                        "code",
+                        "status",
+                        "message"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "defined": {
+                          "const": true
+                        },
+                        "code": {
+                          "const": "NOT_FOUND"
+                        },
+                        "status": {
+                          "const": 404
+                        },
+                        "message": {
+                          "type": "string",
+                          "default": "No reminder has this ID"
+                        },
+                        "data": {}
+                      },
+                      "required": [
+                        "defined",
+                        "code",
+                        "status",
+                        "message"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "defined": {
+                          "const": false
+                        },
+                        "code": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "number"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "data": {}
+                      },
+                      "required": [
+                        "defined",
+                        "code",
+                        "status",
+                        "message"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "409",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "defined": {
+                          "const": true
+                        },
+                        "code": {
+                          "const": "NOT_ACTIVE"
+                        },
+                        "status": {
+                          "const": 409
+                        },
+                        "message": {
+                          "type": "string",
+                          "default": "The reminder already fired or was cancelled"
+                        },
+                        "data": {}
+                      },
+                      "required": [
+                        "defined",
+                        "code",
+                        "status",
+                        "message"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "defined": {
+                          "const": false
+                        },
+                        "code": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "number"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "data": {}
+                      },
+                      "required": [
+                        "defined",
+                        "code",
+                        "status",
+                        "message"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/definitions/listTasks": {
       "post": {
         "operationId": "definitions.listTasks",
@@ -17651,13 +18145,6 @@
                           },
                           "enabled": {
                             "type": "boolean"
-                          },
-                          "target": {
-                            "enum": [
-                              "task",
-                              "conversation"
-                            ],
-                            "type": "string"
                           },
                           "trigger": {
                             "anyOf": [
@@ -17852,7 +18339,6 @@
                           "definitionID",
                           "name",
                           "enabled",
-                          "target",
                           "trigger",
                           "rendered",
                           "next",
@@ -25417,7 +25903,17 @@
                                 "reminder": {
                                   "type": "object",
                                   "properties": {
-                                    "brief": {
+                                    "name": {
+                                      "anyOf": [
+                                        {
+                                          "type": "string"
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ]
+                                    },
+                                    "note": {
                                       "type": "string"
                                     },
                                     "scheduledFor": {
@@ -25436,7 +25932,8 @@
                                     }
                                   },
                                   "required": [
-                                    "brief",
+                                    "name",
+                                    "note",
                                     "scheduledFor",
                                     "lateBySeconds"
                                   ]
@@ -26360,7 +26857,17 @@
                                 "reminder": {
                                   "type": "object",
                                   "properties": {
-                                    "brief": {
+                                    "name": {
+                                      "anyOf": [
+                                        {
+                                          "type": "string"
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ]
+                                    },
+                                    "note": {
                                       "type": "string"
                                     },
                                     "scheduledFor": {
@@ -26379,7 +26886,8 @@
                                     }
                                   },
                                   "required": [
-                                    "brief",
+                                    "name",
+                                    "note",
                                     "scheduledFor",
                                     "lateBySeconds"
                                   ]

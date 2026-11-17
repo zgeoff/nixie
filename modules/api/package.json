@@ -25,6 +25,7 @@
     "@heynixie/policy": "workspace:*",
     "@heynixie/prompts": "workspace:*",
     "@heynixie/proposals": "workspace:*",
+    "@heynixie/reminders": "workspace:*",
     "@heynixie/sessions": "workspace:*",
     "@heynixie/skills": "workspace:*",
     "@heynixie/spend": "workspace:*",

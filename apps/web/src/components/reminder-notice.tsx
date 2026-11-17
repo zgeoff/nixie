@@ -24,7 +24,8 @@ export function ReminderNotice(props: ReminderNoticeProps): ReactNode {
 
   return (
     <li className={quiet} role="note">
-      <span>Reminder: {reminder.brief}</span>{' '}
+      <span>Reminder: {reminder.note}</span>{' '}
+      {reminder.name === null ? null : <span>({reminder.name})</span>}{' '}
       <span>
         Set for {time}
         {reminder.lateBySeconds === null ? '' : ` (${formatLateness(reminder.lateBySeconds)} late)`}

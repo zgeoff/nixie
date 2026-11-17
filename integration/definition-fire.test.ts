@@ -1,9 +1,10 @@
 import { expect, test } from 'bun:test';
 import { join } from 'node:path';
-import { readRecords } from '@heynixie/log';
+import { readRecords, withWriteTransaction } from '@heynixie/log';
 import { modelsConfigSchema, resolveRoleProfile } from '@heynixie/models';
 import type { EffectDeclaration } from '@heynixie/policy';
 import { readStarterDecisionPoint } from '@heynixie/policy/test-utils';
+import { writeReminderVersion } from '@heynixie/reminders';
 import type { SandboxAdapter } from '@heynixie/sandbox';
 import { buildSandboxRecorder } from '@heynixie/sandbox';
 import { buildStubGuestSandboxes, buildStubSandboxes } from '@heynixie/sandbox/test-utils';
@@ -332,7 +333,7 @@ test('it starts the task run of a fire untrusted, holds it to its version tools 
   );
 });
 
-test('it wakes the conversation once for a fire and gives it a reminder with the brief and the time it was set for', async () => {
+test('it wakes the conversation once for a fire and gives it a reminder with the note, the name and the time it was set for', async () => {
   const ctx = await setupTest();
 
   const sandboxes = buildStubSandboxes();
@@ -341,13 +342,13 @@ test('it wakes the conversation once for a fire and gives it a reminder with the
 
   await createConversationTask(ctx.context);
 
-  ctx.definitionStore.add('hash-1', {
-    version: {
-      definitionID: 'call-the-dentist',
-      brief: 'Call the dentist about the crown.',
+  await withWriteTransaction(ctx.context.log.writer, (tx) =>
+    writeReminderVersion(tx, 'hash-1', {
+      name: 'Call the dentist',
+      note: 'Call the dentist about the crown.',
       trigger: { at: '2027-03-09T14:00:00+11:00' },
-    },
-  });
+    }),
+  );
 
   const runner = await ctx.startConversation(sandboxes);
 
@@ -407,7 +408,7 @@ test('it wakes the conversation once for a fire and gives it a reminder with the
   expect(next).toBeNull();
 
   expect(inputs[0]).toMatch(
-    /<system-message type="reminder" id="[0-9a-f]+" at="Tue 9 Mar, 14:00, Sydney">\n\[#\d+\] Reminder you set: <model-text id="(?<block>[0-9a-f]+)">Call the dentist about the crown\.<\/model-text id="\k<block>">\nIt was set for Tue 9 Mar, 14:00, Sydney\.\n<\/system-message id="[0-9a-f]+">/u,
+    /<system-message type="reminder" id="[0-9a-f]+" at="Tue 9 Mar, 14:00, Sydney">\n\[#\d+\] Reminder: <model-text id="(?<block>[0-9a-f]+)">Call the dentist about the crown\.<\/model-text id="\k<block>">\nName: <model-text id="[0-9a-f]+">Call the dentist<\/model-text id="[0-9a-f]+">\nIt was set for Tue 9 Mar, 14:00, Sydney\.\n<\/system-message id="[0-9a-f]+">/u,
   );
 });
 

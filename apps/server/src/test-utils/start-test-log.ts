@@ -4,6 +4,7 @@ import type { Log, Writer } from '@heynixie/log';
 import { logProjections, startWriter } from '@heynixie/log';
 import { memoryProjections } from '@heynixie/memory';
 import { knownContactsProjection } from '@heynixie/policy';
+import { remindersProjections } from '@heynixie/reminders';
 import { sandboxesProjection } from '@heynixie/sandbox';
 import { tasksProjections } from '@heynixie/tasks';
 import { triggersProjections } from '@heynixie/triggers';
@@ -28,6 +29,7 @@ export async function startTestLog(
       ...logProjections,
       ...tasksProjections,
       ...triggersProjections,
+      ...remindersProjections,
       sandboxesProjection,
       ...memoryProjections,
       knownContactsProjection,

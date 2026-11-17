@@ -1,11 +1,8 @@
 import { expect, test } from 'bun:test';
-import { readRecords, writeRecords } from '@heynixie/log';
+import { readRecords, withWriteTransaction, writeRecords } from '@heynixie/log';
+import { writeReminderVersion } from '@heynixie/reminders';
 import { createConversationTask, writeTaskControl } from '@heynixie/tasks';
-import {
-  buildTestDefinitionStore,
-  seedDefinitionTask,
-  seedEndedDefinitionRun,
-} from '@heynixie/tasks/test-utils';
+import { seedDefinitionTask, seedEndedDefinitionRun } from '@heynixie/tasks/test-utils';
 import invariant from 'tiny-invariant';
 import { buildSeeder } from '../test-utils/build-seeder';
 import { startTestAPI } from '../test-utils/start-test-api';
@@ -76,7 +73,7 @@ test('it reads the actions each stop cancelled and the names of the started task
     cancelledActionIDs: new Set(),
     definitionNotices: new Map(),
     proposals: new Map(),
-    reminderBriefs: new Map(),
+    reminders: new Map(),
     removedSequences: new Set(),
     stopCancelledActions: new Map([
       [stop.sequence, [{ actionID: action.action_id, tool: 'test.send' }]],
@@ -213,18 +210,26 @@ test('it reads the tool of the action that each outcome record names', async () 
 });
 
 test.each([
-  ['the brief of the pinned version', 'hash-1', 'Call the dentist about the crown.'],
+  [
+    'the name and the note of the pinned version',
+    'hash-1',
+    { name: 'Dentist', note: 'Call the dentist about the crown.' },
+  ],
   [
     'a note for a version that is no longer stored',
     'hash-gone',
-    '[a reminder whose text is no longer stored]',
+    { name: null, note: '[a reminder whose text is no longer stored]' },
   ],
-])('it reads %s for a fire on the conversation thread', async (_name, hash, brief) => {
+])('it reads %s for a fire on the conversation thread', async (_name, hash, expected) => {
   const ctx = await setupTest();
 
-  const store = buildTestDefinitionStore();
-
-  store.add('hash-1', { version: { brief: 'Call the dentist about the crown.' } });
+  await withWriteTransaction(ctx.context.log.writer, (tx) =>
+    writeReminderVersion(tx, 'hash-1', {
+      name: 'Dentist',
+      note: 'Call the dentist about the crown.',
+      trigger: { at: '2027-03-09T14:00:00+11:00' },
+    }),
+  );
 
   const [fire] = await writeRecords(ctx.context.log, [
     {
@@ -232,9 +237,9 @@ test.each([
       definitions: { snapshotHash: 'sha256:test' },
       thread: 'conversation',
       payload: {
-        definitionID: 'call-the-dentist',
+        definitionID: 'reminder:one',
         definitionHash: hash,
-        source: 'at',
+        source: 'schedule',
         dedupeKey: 'key-1',
         kind: 'at',
         scheduledFor: '2027-03-09T03:00:00.000Z',
@@ -248,20 +253,13 @@ test.each([
 
   invariant(fire);
 
-  const lookups = await readRecordLookups(
-    { ...ctx.context, readDefinitionVersion: store.readDefinitionVersion },
-    [fire],
-  );
+  const lookups = await readRecordLookups(ctx.context, [fire]);
 
-  expect(lookups.reminderBriefs).toStrictEqual(new Map([[fire.sequence, brief]]));
+  expect(lookups.reminders).toStrictEqual(new Map([[fire.sequence, expected]]));
 });
 
-test('it reads no brief for a fire on the thread of a task', async () => {
+test('it reads no reminder for a fire on the thread of a task', async () => {
   const ctx = await setupTest();
-
-  const store = buildTestDefinitionStore();
-
-  store.add('hash-1', { version: { brief: 'Water the tomatoes.' } });
 
   const [fire] = await writeRecords(ctx.context.log, [
     {
@@ -285,12 +283,9 @@ test('it reads no brief for a fire on the thread of a task', async () => {
 
   invariant(fire);
 
-  const lookups = await readRecordLookups(
-    { ...ctx.context, readDefinitionVersion: store.readDefinitionVersion },
-    [fire],
-  );
+  const lookups = await readRecordLookups(ctx.context, [fire]);
 
-  expect(lookups.reminderBriefs).toStrictEqual(new Map());
+  expect(lookups.reminders).toStrictEqual(new Map());
 });
 
 test('it reads the notice of each definition change by the sequence of its record', async () => {

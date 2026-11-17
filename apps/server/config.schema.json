@@ -1378,6 +1378,21 @@
       },
       "additionalProperties": false
     },
+    "reminders": {
+      "default": {
+        "min_gap_minutes": 15
+      },
+      "type": "object",
+      "properties": {
+        "min_gap_minutes": {
+          "default": 15,
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        }
+      },
+      "additionalProperties": false
+    },
     "actions": {
       "type": "object",
       "properties": {

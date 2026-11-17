@@ -21,7 +21,7 @@ export async function seedDefinitionConflict(
 
   await writeFile(join(definitions, 'nixie.yaml'), 'format: 4\n');
   await mkdir(folder, { recursive: true });
-  await writeFile(join(folder, 'task.yaml'), buildTestTaskYaml({ target: 'task' }));
+  await writeFile(join(folder, 'task.yaml'), buildTestTaskYaml());
 
   const testLog = await startDataLog({
     dataDir: nixie.dataDir,
@@ -51,7 +51,6 @@ export async function seedDefinitionConflict(
       kind: 'define',
       input: buildTestDefineInput({
         definitionID: 'water-the-tomatoes',
-        target: 'task',
         brief: 'Water them well.',
       }),
     });
@@ -59,7 +58,7 @@ export async function seedDefinitionConflict(
     await testLog.writer.stop();
   }
 
-  await writeFile(join(folder, 'task.yaml'), buildTestTaskYaml({ target: 'task', brief: 'Soak.' }));
+  await writeFile(join(folder, 'task.yaml'), buildTestTaskYaml({ brief: 'Soak.' }));
 }
 
 function buildPolicy() {

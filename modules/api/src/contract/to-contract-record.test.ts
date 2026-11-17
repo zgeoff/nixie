@@ -11,7 +11,7 @@ function setupTest() {
     proposals: new Map(),
     removedSequences: new Set(),
     stopCancelledActions: new Map(),
-    reminderBriefs: new Map(),
+    reminders: new Map(),
     taskDirectory: [],
   };
 
@@ -389,7 +389,7 @@ test('it shows a failed tool result as cancelled when its action is among the ca
     proposals: new Map(),
     removedSequences: new Set<number>(),
     stopCancelledActions: new Map(),
-    reminderBriefs: new Map(),
+    reminders: new Map(),
     taskDirectory: [],
   };
 
@@ -728,7 +728,7 @@ test('it carries a task message with its sender named from the directory', () =>
     proposals: new Map(),
     removedSequences: new Set<number>(),
     stopCancelledActions: new Map(),
-    reminderBriefs: new Map(),
+    reminders: new Map(),
     taskDirectory: [
       {
         taskID: 'k3x9m2p7qa',
@@ -810,7 +810,7 @@ test('it renders an exchange notice that names both tasks and links to the recei
     proposals: new Map(),
     removedSequences: new Set<number>(),
     stopCancelledActions: new Map(),
-    reminderBriefs: new Map(),
+    reminders: new Map(),
     taskDirectory: [
       {
         taskID: 'k3x9m2p7qa',
@@ -853,7 +853,7 @@ test('it lists the actions a stop cancelled on its record', () => {
     stopCancelledActions: new Map([
       [19, [{ actionID: '5d7f9b1c-3e2a-4c6d-8f0b-1a3c5e7d9f24', tool: 'test.send' }]],
     ]),
-    reminderBriefs: new Map(),
+    reminders: new Map(),
     taskDirectory: [],
   };
 
@@ -877,7 +877,7 @@ test('it marks a shredded record that a forget named as removed', () => {
     proposals: new Map(),
     removedSequences: new Set([12]),
     stopCancelledActions: new Map(),
-    reminderBriefs: new Map(),
+    reminders: new Map(),
     taskDirectory: [],
   };
 
@@ -902,7 +902,7 @@ test.each([
     proposals: new Map(),
     removedSequences,
     stopCancelledActions: new Map(),
-    reminderBriefs: new Map(),
+    reminders: new Map(),
     taskDirectory: [],
   };
 
@@ -1038,11 +1038,12 @@ test.each([
 
     const result = toContractRecord(record, {
       ...ctx.noLookups,
-      reminderBriefs: new Map([[40, 'Call the dentist about the crown.']]),
+      reminders: new Map([[40, { name: 'Dentist', note: 'Call the dentist about the crown.' }]]),
     });
 
     expect(result?.reminder).toStrictEqual({
-      brief: 'Call the dentist about the crown.',
+      name: 'Dentist',
+      note: 'Call the dentist about the crown.',
       scheduledFor: '2027-03-09T03:00:00.000Z',
       lateBySeconds,
     });
@@ -1076,7 +1077,7 @@ test.each([
 
   const result = toContractRecord(record, {
     ...ctx.noLookups,
-    reminderBriefs: new Map([[41, 'Call the dentist.']]),
+    reminders: new Map([[41, { name: 'Dentist', note: 'Call the dentist.' }]]),
   });
 
   expect(result?.reminder).toBeUndefined();

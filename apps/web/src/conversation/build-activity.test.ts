@@ -331,7 +331,8 @@ test('it keeps a reminder on its own line', () => {
   const reminder = buildMockLogRecord({
     kind: 'trigger.fired',
     reminder: {
-      brief: 'Call the dentist.',
+      name: 'Dentist',
+      note: 'Call the dentist.',
       lateBySeconds: null,
       scheduledFor: '2027-03-09T03:00:00.000Z',
     },
@@ -343,7 +344,8 @@ test('it keeps a reminder on its own line', () => {
       kind: 'reminder',
       record: reminder,
       reminder: {
-        brief: 'Call the dentist.',
+        name: 'Dentist',
+        note: 'Call the dentist.',
         lateBySeconds: null,
         scheduledFor: '2027-03-09T03:00:00.000Z',
       },

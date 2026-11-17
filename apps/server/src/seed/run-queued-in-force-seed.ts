@@ -1,5 +1,6 @@
 import type { SeedResult } from '@heynixie/definitions';
 import { runInForceSeed } from '@heynixie/definitions';
+import { readArmedReminders } from '@heynixie/reminders';
 import type { SeedParts } from './run-queued-seed';
 import { runQueuedSeed } from './run-queued-seed';
 
@@ -9,6 +10,7 @@ export function runQueuedInForceSeed(parts: SeedParts): Promise<SeedResult> {
       log: parts.context.log,
       buildPolicy: parts.buildPolicy,
       builtInBudgets: parts.context.budgets?.builtIn() ?? [],
+      readExtraArmed: readArmedReminders,
     }),
   );
 }

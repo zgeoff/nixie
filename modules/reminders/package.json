@@ -1,0 +1,28 @@
+{
+  "name": "@heynixie/reminders",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./test-utils": "./src/test-utils/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsrs --noEmit"
+  },
+  "dependencies": {
+    "@heynixie/contract": "workspace:*",
+    "@heynixie/db": "workspace:*",
+    "@heynixie/log": "workspace:*",
+    "@heynixie/tasks": "workspace:*",
+    "@heynixie/tools": "workspace:*",
+    "@heynixie/triggers": "workspace:*",
+    "@heynixie/wire": "workspace:*",
+    "kysely": "catalog:",
+    "tiny-invariant": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@heynixie/testing": "workspace:*"
+  }
+}

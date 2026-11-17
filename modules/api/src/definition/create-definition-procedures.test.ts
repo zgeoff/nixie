@@ -177,13 +177,11 @@ test('#undo refuses a one-time trigger whose time has passed with ONE_SHOT_PAST'
   const ctx = await setupTest();
 
   await ctx.define({
-    target: 'task',
     trigger: { at: new Date(ctx.api.clock.now() + 60_000).toISOString() },
   });
 
   await ctx.define({
     definitionID: 'water-the-tomatoes',
-    target: 'task',
     brief: 'Water them well.',
   });
 
@@ -206,7 +204,6 @@ test('#undo refuses a one-time trigger that went back over a definition in the r
   const ctx = await setupTest();
 
   await ctx.define({
-    target: 'task',
     trigger: { at: new Date(ctx.api.clock.now() + 60_000).toISOString() },
   });
 
@@ -229,7 +226,6 @@ test('#undo refuses a one-time trigger that fired with NOT_IN_FORCE and its caus
   const ctx = await setupTest();
 
   const added = await ctx.define({
-    target: 'task',
     trigger: { at: new Date(ctx.api.clock.now() + 60_000).toISOString() },
   });
 

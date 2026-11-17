@@ -8,6 +8,7 @@ import { createNixieProcedures } from '../pause/create-nixie-procedures';
 import { createRecoveryProcedures } from '../pause/create-recovery-procedures';
 import { createConversationProcedures } from '../record/create-conversation-procedures';
 import { createRecordProcedures } from '../record/create-record-procedures';
+import { createReminderProcedures } from '../reminder/create-reminder-procedures';
 import { createMandateProcedures } from '../rule/create-mandate-procedures';
 import { createRuleProcedures } from '../rule/create-rule-procedures';
 import { createSessionProcedures } from '../session/create-session-procedures';
@@ -42,6 +43,7 @@ export function createAPIRouter(
     ...createRecordProcedures(context),
     passkeys: createPasskeyProcedures(context),
     recovery: createRecoveryProcedures(context),
+    reminders: createReminderProcedures(context),
     rules: {
       ...createRuleProcedures({ ...context, runInForceSeed }),
       ...createMandateProcedures({ ...context, runInForceSeed }),

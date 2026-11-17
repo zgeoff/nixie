@@ -5,27 +5,29 @@ import { mintBlockID, renderSystemMessage } from '@heynixie/wire';
 import { formatMessageTime } from '../message/format-message-time';
 import type { MessageTimeOptions } from '../types';
 
-// What a reminder needs beyond its record: the brief and the zone, which the inbox read pre-reads.
+// What a reminder needs beyond its record: the name, the note and the zone, which the inbox read
+// pre-reads.
 export interface ReminderRead {
   readonly fire: TriggerFired;
 
-  // null: the version that holds the brief is no longer stored
-  readonly brief: string | null;
+  // null: the version that holds the name and the note is no longer stored
+  readonly name: string | null;
+  readonly note: string | null;
 
   // the IANA zone the set time shows in
   readonly zone: string;
 }
 
-// The brief is text the model wrote, so it sits in a block of its own with a fresh random ID that
-// no closing tag inside the brief can match.
+// The note and the name are text the model wrote, so each sits in a block of its own with a fresh
+// random ID that no closing tag inside it can match.
 export function renderReminderNotice(
   record: LogRecord,
   times: MessageTimeOptions,
   reminder: ReminderRead,
   mint: () => string = mintBlockID,
 ): string {
-  const blockID = mint();
-  const brief = reminder.brief ?? missingReminderBrief;
+  const noteID = mint();
+  const note = reminder.note ?? missingReminderBrief;
   const setFor = formatMessageTime(new Date(reminder.fire.scheduledFor), reminder.zone, times);
   const lateBySeconds = findLateBySeconds(reminder.fire);
 
@@ -38,7 +40,8 @@ export function renderReminderNotice(
     type: 'reminder',
     at: formatMessageTime(record.recordedAt, reminder.zone, times),
     body: [
-      `[#${record.sequence}] Reminder you set: <model-text id="${blockID}">${brief}</model-text id="${blockID}">`,
+      `[#${record.sequence}] Reminder: <model-text id="${noteID}">${note}</model-text id="${noteID}">`,
+      ...renderNameLine(reminder.name, mint),
       setLine,
     ].join('\n'),
   });
@@ -61,4 +64,14 @@ function formatDuration(seconds: number): string {
 
 function formatUnit(count: number, unit: string): string {
   return `${String(count)} ${unit}${count === 1 ? '' : 's'}`;
+}
+
+function renderNameLine(name: string | null, mint: () => string): readonly string[] {
+  if (name === null) {
+    return [];
+  }
+
+  const nameID = mint();
+
+  return [`Name: <model-text id="${nameID}">${name}</model-text id="${nameID}">`];
 }

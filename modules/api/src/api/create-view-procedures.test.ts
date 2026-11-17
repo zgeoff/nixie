@@ -429,17 +429,12 @@ test('#triggers.report names a skip by the definition in force, and by its ID wh
   ]);
 });
 
-test('#definitions.listTasks holds a spent one-shot with a null next, and a conversation definition with a null task', async () => {
+test('#definitions.listTasks holds a spent one-shot with a null next', async () => {
   const ctx = await setupTest();
 
   await ctx.writeDefinition(
     'dentist',
     'name: Call the dentist\nbrief: Book the check-up.\ntrigger:\n  at: "2027-03-09T14:00:00+11:00"\n',
-  );
-
-  await ctx.writeDefinition(
-    'call-the-vet',
-    'name: Call the vet\nbrief: Book the check-up.\ntarget: conversation\ntrigger:\n  at: "2099-03-09T14:00:00Z"\n',
   );
 
   const seeded = await ctx.runSeed();
@@ -468,24 +463,9 @@ test('#definitions.listTasks holds a spent one-shot with a null next, and a conv
 
   expect(listed.definitions).toStrictEqual([
     {
-      definitionID: 'call-the-vet',
-      name: 'Call the vet',
-      enabled: true,
-      target: 'conversation',
-      trigger: { at: '2099-03-09T14:00:00Z' },
-      rendered: 'once on Mon 9 Mar at 14:00',
-      next: 'Mon 9 Mar',
-      tools: [],
-      origin: 'definitions',
-      createdBy: { sequence: seeded, kind: 'definitions_seeded' },
-      taskID: null,
-      isUnreadable: false,
-    },
-    {
       definitionID: 'dentist',
       name: 'Call the dentist',
       enabled: true,
-      target: 'task',
       trigger: { at: '2027-03-09T14:00:00+11:00' },
       rendered: 'once on Tue 9 Mar at 03:00',
       next: null,
