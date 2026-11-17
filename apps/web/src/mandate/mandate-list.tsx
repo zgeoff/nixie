@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import { routeDataStaleTimeMs } from '../conversation/read-route-session';
+import { RuleSentence } from '../rule/rule-sentence';
 import { css } from '../styled-system/css';
 import { useNixieClient } from '../utils/use-nixie-client';
 import { useEndMandate } from './use-end-mandate';
@@ -49,7 +50,9 @@ export function MandateList(): ReactNode {
             </span>
             <ul>
               {mandate.rules.map((rule) => (
-                <li key={rule.ruleID}>{rule.sentence}</li>
+                <li key={rule.ruleID}>
+                  <RuleSentence sentence={rule.sentence} />
+                </li>
               ))}
             </ul>
             <span className={meta}>Ends {mandate.expires.toLocaleString()}</span>

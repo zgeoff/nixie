@@ -2,6 +2,7 @@ import { ORPCError } from '@orpc/client';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import { useState } from 'react';
+import { RuleSentence } from '../rule/rule-sentence';
 import { css } from '../styled-system/css';
 import { useNixieClient } from '../utils/use-nixie-client';
 
@@ -81,7 +82,9 @@ export function ApprovalRuleNotice(props: ApprovalRuleNoticeProps): ReactNode {
   return (
     <div aria-label="Rule added" role="status">
       <div className={row}>
-        <span>Rule added: {rule.sentence}</span>
+        <span>
+          Rule added: <RuleSentence sentence={rule.sentence} />
+        </span>
         {rule.destinations.length > 1 ? (
           <button
             name="edit-rule"

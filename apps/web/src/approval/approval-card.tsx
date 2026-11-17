@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { useState } from 'react';
 import type { RuleDraft } from '../rule/rule-draft';
 import { toRuleDraft } from '../rule/rule-draft';
+import { RuleSentence } from '../rule/rule-sentence';
 import { css } from '../styled-system/css';
 import type { ApprovalRead } from '../types';
 import { ApprovalChanges } from './approval-changes';
@@ -116,7 +117,13 @@ export function ApprovalCard(props: ApprovalCardProps): ReactNode {
       ) : (
         <>
           {memory === undefined ? (
-            <p className={css({ fontWeight: 'semibold' })}>{body.sentence}</p>
+            <p className={css({ fontWeight: 'semibold' })}>
+              {proposal.kind === 'internal_change' ? (
+                <RuleSentence sentence={body.sentence} />
+              ) : (
+                body.sentence
+              )}
+            </p>
           ) : (
             <ApprovalMemoryBody draft={draft} memory={memory} onDraft={setDraft} />
           )}
@@ -227,6 +234,9 @@ interface BoundsProps {
   readonly body: NonNullable<ApprovalRead['body']>;
 }
 
+// A mandate names each of its rules in a field `rule 1`, `rule 2` and on, as a rule sentence.
+const ruleFieldPattern = /^rule \d+$/u;
+
 function Bounds(props: BoundsProps): ReactNode {
   const fields = Object.entries(props.body.fields);
 
@@ -237,13 +247,17 @@ function Bounds(props: BoundsProps): ReactNode {
           {fields.map(([name, value]) => (
             <div key={name}>
               <dt className={css({ fontWeight: 'semibold' })}>{name}</dt>
-              <dd className={css({ overflowWrap: 'anywhere', whiteSpace: 'pre-wrap' })}>{value}</dd>
+              <dd className={css({ overflowWrap: 'anywhere', whiteSpace: 'pre-wrap' })}>
+                {ruleFieldPattern.test(name) ? <RuleSentence sentence={value} /> : value}
+              </dd>
             </div>
           ))}
         </dl>
       )}
       {props.body.ruleSentence === null ? null : (
-        <p className={meta}>Always allow adds this rule: {props.body.ruleSentence}</p>
+        <p className={meta}>
+          Always allow adds this rule: <RuleSentence sentence={props.body.ruleSentence} />
+        </p>
       )}
     </>
   );

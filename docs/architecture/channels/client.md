@@ -267,6 +267,12 @@ approvals page at `/proposals`. The card's text and state come from the proposal
 `approvals.readProposals`, and never from a model's reply, so a reply that claims the action is done
 leaves the card pending.
 
+A rule's [sentence](../policy/rules.md#rendering) marks its outcome with `**` and each value with
+backticks. The client shows the outcome in bold and each value as code wherever it shows a rule: the
+sentence of a rule change or a mandate, a mandate's rule fields, the rule that Always allow adds,
+and the mandates page. An action's sentence and a memory proposal's text stay plain, because they
+can hold the user's own words.
+
 The card shows the approve label on its Approve button, and offers only the choices the host lists.
 A lifting row shows the rule's bounds before Approve takes effect. Always allow shows the rule it
 adds on the card, and after it the card shows "Rule added" with Undo, and Edit when the rule has

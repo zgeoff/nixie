@@ -81,7 +81,7 @@ test('it proposes a mandate that then waits on the approvals page', async () => 
   await ctx.view.click('p[role="status"] a');
 
   await ctx.waitForPage(
-    `location.pathname === '/proposals' && document.querySelector('li[aria-label=' + JSON.stringify(${JSON.stringify(rows[0]?.sentence)}) + ']') !== null`,
+    `location.pathname === '/proposals' && document.querySelector('li[aria-label="Allow mail.send, as a stand-in."]') !== null`,
   );
 });
 
