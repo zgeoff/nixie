@@ -5,3 +5,4 @@ export { startTestSessionHost } from './start-test-session-host';
 export { buildStubMemory } from './build-stub-memory';
 export { buildStubToolEndpoint } from './build-stub-tool-endpoint';
 export { runNextStep } from './run-next-step';
+export { buildMockWorkerTarget } from './build-mock-worker-target';

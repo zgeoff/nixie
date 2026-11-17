@@ -438,6 +438,7 @@ test('it gives a worker the page that its web fetch call reads in the fetch sand
   const workerTool = worker.buildTool({
     memoryTools: { read: ['memory.recall'], write: ['memory.remember'] },
     conversationTools: ['log.forget'],
+    models: [],
   });
 
   host.guest.addKindReplies(

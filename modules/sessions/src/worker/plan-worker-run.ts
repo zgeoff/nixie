@@ -4,7 +4,7 @@ import { taskReportToolName } from '@heynixie/tasks';
 import type { ToolRun } from '@heynixie/tools';
 import { toSDKToolName } from '@heynixie/tools';
 import { silentEndToolName } from '../turn/build-silent-end-tool';
-import type { WorkerPlan } from './types';
+import type { WorkerPlan, WorkerTargets } from './types';
 import { workerRunToolName } from './worker-run-tool-name';
 
 // A worker starts, messages, closes and lists no task, reports for none and starts no worker. The
@@ -28,6 +28,9 @@ export interface WorkerRunFacts {
 
     // the tool names as the model wrote them
     readonly tools: readonly string[];
+
+    // the selectable model's name, when the call chose one
+    readonly model?: string;
   };
   readonly run: ToolRun;
 
@@ -35,6 +38,7 @@ export interface WorkerRunFacts {
   readonly isRunning: boolean;
   readonly bounds: Pick<TaskStartBounds, 'memoryTools' | 'conversationTools'>;
   readonly limits: WorkerRunLimits;
+  readonly targets: WorkerTargets;
   readonly now: number;
 }
 
@@ -85,6 +89,13 @@ export function planWorkerRun(facts: WorkerRunFacts): WorkerRunPlan {
     return refuse(`A worker cannot get ${memory.join(', ')}, so nixie started none.`);
   }
 
+  const model = facts.call.model;
+  const target = model === undefined ? facts.targets.role : facts.targets.byModel.get(model);
+
+  if (target === undefined) {
+    return refuse(renderUnknownModel(model ?? '', [...facts.targets.byModel.keys()]));
+  }
+
   const left = hold.readLeftDollars();
 
   if (left !== null && left <= 0) {
@@ -97,6 +108,7 @@ export function planWorkerRun(facts: WorkerRunFacts): WorkerRunPlan {
     status: 'planned',
     plan: {
       question: facts.call.question,
+      target,
       tools,
       limits: { ...facts.limits, dollars: taskDollars ?? facts.limits.dollars },
       isTaskLimit: taskDollars !== null,
@@ -124,4 +136,10 @@ function findHeldTool(name: string, held: readonly string[]): string | null {
   }
 
   return held.find((tool) => toSDKToolName(tool) === name) ?? null;
+}
+
+function renderUnknownModel(name: string, names: readonly string[]): string {
+  return names.length === 0
+    ? `This deployment offers no model choice, so there is no model ${name} to run a worker on, and nixie started none.`
+    : `There is no model ${name} to run a worker on; choose one of ${names.join(', ')}, so nixie started none.`;
 }

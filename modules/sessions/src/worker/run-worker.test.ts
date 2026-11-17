@@ -64,8 +64,21 @@ async function setupTest(config: SetupConfig = {}) {
         effort: 'low',
         prices,
       },
+      'big-direct': {
+        harness: 'agent-sdk',
+        base_url: 'https://big.example.test',
+        credential: 'deployment:anthropic',
+        auth_header: 'x-api-key',
+        model: 'claude-test-big',
+        effort: 'high',
+        prices: { ...prices, input: 30 },
+      },
     },
     roles: { conversation: 'chat-direct', worker: 'worker-direct' },
+    selectable: {
+      big: { profile: 'big-direct', description: 'Slower and stronger.' },
+      careful: { profile: 'big-direct', description: 'Asks first.', ask: true },
+    },
     limits: { workerRun: config.limits ?? {} },
   });
 
@@ -153,6 +166,9 @@ async function setupTest(config: SetupConfig = {}) {
   const tool = worker.buildTool({
     memoryTools: { read: ['memory.recall'], write: ['memory.remember'] },
     conversationTools: ['log.forget'],
+    models: [
+      { name: 'big', profile: 'big-direct', description: 'Slower and stronger.', missing: [] },
+    ],
   });
 
   await writeRecords(host.context.log, [
@@ -803,5 +819,105 @@ test('it ends a run at its turns limit when the guest stops at its turn cap', as
   expect(outcome).toStrictEqual({
     status: 'error',
     message: expect.toInclude('stopped at its turns limit of 3'),
+  });
+});
+
+test('it runs a call that names a model on the profile of that model, with its grant, prices and record names', async () => {
+  const ctx = await setupTest();
+
+  ctx.guest.addKindReplies('worker', {
+    text: 'Done.',
+    usage: {
+      uncachedInputTokens: 1000,
+      cacheReadTokens: 0,
+      cacheWrite5mTokens: 0,
+      cacheWrite1hTokens: 0,
+      outputTokens: 0,
+    },
+  });
+
+  await ctx.callWorker({ question: 'Which cafes are open?', model: 'big' });
+
+  const [started] = await ctx.readKinds(['worker.run_started']);
+  const [created] = await ctx.readKinds(['sandbox.created']);
+
+  expect(started?.payload).toMatchObject({ model: 'claude-test-big', profile: 'big-direct' });
+
+  expect(sandboxCreatedCodec.decode(created?.payload ?? {}).spec.grants[0]?.host).toBe(
+    'big.example.test',
+  );
+
+  expect(ctx.spent).toStrictEqual([0.03]);
+
+  const turns = ctx.guest.received.flatMap((entry) =>
+    entry.frame.type === 'turn' ? [entry.frame] : [],
+  );
+
+  expect(turns.map((turn) => turn.profile.model)).toStrictEqual(['claude-test-big']);
+});
+
+test('it runs a call that names no model on the profile of the worker role', async () => {
+  const ctx = await setupTest();
+
+  ctx.guest.addKindReplies('worker', { text: 'Done.' });
+
+  await ctx.callWorker({ question: 'Which cafes are open?' });
+
+  const [started] = await ctx.readKinds(['worker.run_started']);
+  const [created] = await ctx.readKinds(['sandbox.created']);
+
+  expect(started?.payload).toMatchObject({ model: 'claude-test-worker', profile: 'worker-direct' });
+
+  expect(sandboxCreatedCodec.decode(created?.payload ?? {}).spec.grants[0]?.host).toBe(
+    'models.example.test',
+  );
+});
+
+test('it registers a run on a chosen model at the gateway and routes its turn through its profile', async () => {
+  const ctx = await setupTest({ isGatewayOn: true });
+
+  ctx.guest.addKindReplies('worker', { text: 'Done.' });
+
+  await ctx.callWorker({ question: 'Which cafes are open?', model: 'big' });
+
+  const [sandboxID] = ctx.gateway.putSandbox.mock.calls[0] ?? [];
+
+  const turns = ctx.guest.received.flatMap((entry) =>
+    entry.frame.type === 'turn' ? [entry.frame] : [],
+  );
+
+  expect(ctx.gateway.putSandbox.mock.calls).toStrictEqual([
+    [expect.toStartWith('nixie-'), { dollars: 1, tokens: 2_000_000 }],
+  ]);
+
+  expect(turns.map((turn) => turn.profile.baseURL)).toStrictEqual([
+    `https://big.example.test/${String(sandboxID)}/big-direct`,
+  ]);
+});
+
+test('it refuses a model that is not offered, and starts no sandbox and writes no record', async () => {
+  const ctx = await setupTest();
+  const outcome = await ctx.callWorker({ question: 'Which cafes are open?', model: 'huge' });
+
+  expect(outcome).toStrictEqual({
+    status: 'error',
+    message: expect.stringContaining('There is no model huge'),
+  });
+
+  const owners = await ctx.readOwners();
+  const records = await ctx.readKinds(['worker.run_started']);
+
+  expect(owners).toStrictEqual([]);
+  expect(records).toStrictEqual([]);
+});
+
+test('it refuses a model whose entry asks, because no worker runs on it', async () => {
+  const ctx = await setupTest();
+  const outcome = await ctx.callWorker({ question: 'Which cafes are open?', model: 'careful' });
+
+  expect(outcome).toStrictEqual({
+    status: 'error',
+    message:
+      'There is no model careful to run a worker on; choose one of big, so nixie started none.',
   });
 });
