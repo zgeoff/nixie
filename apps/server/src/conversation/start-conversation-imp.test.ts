@@ -36,7 +36,7 @@ test('it tells a new session how many moments were kept this week, and who kept 
   invariant(turn);
 
   expect(turn.input[0]?.text).toMatch(
-    /<system-message type="status"[^>]*>\n(?:- [^\n]*\n)*- Moments kept this week: 1 \(1 by the owner\)\. 1 is waiting for a reflection\.\n- Memory index: 0 items\n- Memory index tokens: 0 of 3000\n<\/system-message/u,
+    /<system-message type="status"[^>]*>\n(?:- [^\n]*\n)*- Moments kept this week: 1 \(1 by the owner\)\. 1 is waiting for a reflection\.\n- Active mandates: none\.\n- Memory index: 0 items\n- Memory index tokens: 0 of 3000\n<\/system-message/u,
   );
 });
 
