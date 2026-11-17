@@ -13,6 +13,8 @@ import { buildCountedStream } from '../usage/build-counted-stream';
 import type { CaptureSpool } from '../usage/create-capture-spool';
 import { usageDialects } from '../usage/usage-dialects';
 import { isRecord } from '../utils/is-record';
+import { findBodyRefusal } from './find-body-refusal';
+import { findHeaderRefusal } from './find-header-refusal';
 import { findProxyEndpoint } from './find-proxy-endpoint';
 import { makeLimitsAccounting } from './make-limits-accounting';
 import type { PeriodsAccountingDeps } from './make-periods-accounting';
@@ -74,6 +76,12 @@ export function makeProxyHandler(deps: ProxyHandlerDeps): (request: Request) => 
       );
     }
 
+    const headerRefusal = findHeaderRefusal(request.headers);
+
+    if (headerRefusal !== null) {
+      return renderAPIError(400, 'invalid_request_error', headerRefusal);
+    }
+
     const refusal = await accounting.admit(target.sandbox);
 
     if (refusal !== null) {
@@ -104,6 +112,12 @@ export function makeProxyHandler(deps: ProxyHandlerDeps): (request: Request) => 
         'invalid_request_error',
         `the model gateway prices this route for ${target.route.model}, so it refuses a request for ${parsed.data.model}`,
       );
+    }
+
+    const bodyRefusal = parsed === null ? null : findBodyRefusal(parsed.data, target.route);
+
+    if (bodyRefusal !== null) {
+      return renderAPIError(400, 'invalid_request_error', bodyRefusal);
     }
 
     const tag =

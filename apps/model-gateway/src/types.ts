@@ -5,6 +5,9 @@ export interface ProxyRoute {
   readonly api: ModelAPI;
   readonly upstream: string;
   readonly model: string;
+
+  // the provider an OpenRouter route pins, which the only provider field a request may hold names
+  readonly providerPin: string | null;
   readonly prices: ModelPrices;
 }
 
