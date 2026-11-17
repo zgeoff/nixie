@@ -1,4 +1,4 @@
-import { buildZoneOffsetMs } from '@heynixie/triggers';
+import { buildZoneOffsetMs } from '@heynixie/clock';
 
 // The seconds truncate, so a time that marks a limit never lies past it.
 export function formatZonedISO(instantMs: number, zone: string): string {

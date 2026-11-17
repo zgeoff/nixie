@@ -1,10 +1,10 @@
 import { parseJSONObject } from '@heynixie/log';
 import type { ToolDefinition } from '@heynixie/tools';
+import { buildOffsetAt } from '@heynixie/triggers';
 import invariant from 'tiny-invariant';
 import { z } from 'zod';
 import { readDefinitionNotices } from '../read-definition-notices';
 import { requestDefinitionChange } from '../request-definition-change';
-import { buildOffsetAt } from './build-offset-at';
 import type { ChatToolOptions } from './chat-tool-options';
 import { notReadyMessage } from './chat-tool-options';
 import { taskDefineInputSchema } from './task-define-input-schema';
@@ -15,19 +15,17 @@ const jsonSchema = z.toJSONSchema(taskDefineInputSchema, {
 });
 
 const inputSchema = z.record(z.string(), z.json()).parse(structuredClone(jsonSchema));
-const taskOnlyKeys = ['model', 'persona', 'memory', 'tools', 'report'] as const;
 
 // Held by the conversation alone: the tool stays out of every task's list.
 export function buildTaskDefineTool(options: ChatToolOptions): ToolDefinition {
   return {
     name: 'task.define',
     description:
-      'Creates or replaces a task definition from a name, a brief, a target and a trigger: a ' +
+      'Creates or replaces a task definition from a name, a brief and a trigger: a ' +
       'schedule, or one time with `at`. It takes effect at once, and the owner sees a notice ' +
       'with an undo. Pass definitionID to replace a definition, with every field you want kept: ' +
       'a field you leave out goes back to its default. An `at` without an offset is read in the ' +
-      "owner's zone. A conversation target takes only name, brief, target, trigger and " +
-      'definitionID. A refusal comes back as `refused` with a code and what you need to retry.',
+      "owner's zone. A refusal comes back as `refused` with a code and what you need to retry.",
     input: inputSchema,
     output: {
       type: 'object',
@@ -62,17 +60,6 @@ export function buildTaskDefineTool(options: ChatToolOptions): ToolDefinition {
       }
 
       const given = parsed.data;
-      const extraKeys = taskOnlyKeys.filter((key) => given[key] !== undefined);
-
-      if (given.target === 'conversation' && extraKeys.length > 0) {
-        return {
-          status: 'error',
-          message:
-            'A conversation target takes only name, brief, target, trigger and definitionID. ' +
-            `Leave out: ${extraKeys.join(', ')}.`,
-        };
-      }
-
       const context = options.readDefinitions();
 
       if (context === null) {

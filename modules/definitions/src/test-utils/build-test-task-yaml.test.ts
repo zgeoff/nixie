@@ -1,10 +1,9 @@
 import { expect, test } from 'bun:test';
 import { buildTestTaskYaml } from './build-test-task-yaml';
 
-test('it builds the weekly schedule of a conversation reminder', () => {
+test('it builds the weekly schedule of the tomatoes', () => {
   expect(buildTestTaskYaml()).toBe(`name: Water the tomatoes
 brief: Water the tomatoes.
-target: conversation
 trigger:
   schedule:
     every: week
@@ -13,14 +12,10 @@ trigger:
 `);
 });
 
-test('it takes the brief and the target that the caller names', () => {
-  expect(buildTestTaskYaml({ brief: 'Soak them.', target: 'task' })).toContain(
-    'brief: Soak them.\ntarget: task\n',
-  );
+test('it takes the brief that the caller names', () => {
+  expect(buildTestTaskYaml({ brief: 'Soak them.' })).toContain('brief: Soak them.\ntrigger:');
 });
 
 test('it disables the task when the caller names it so', () => {
-  expect(buildTestTaskYaml({ isEnabled: false })).toContain(
-    'target: conversation\nenabled: false\n',
-  );
+  expect(buildTestTaskYaml({ isEnabled: false })).toContain('enabled: false\n');
 });

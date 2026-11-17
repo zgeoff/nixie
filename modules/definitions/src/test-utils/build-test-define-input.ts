@@ -5,7 +5,6 @@ export function buildTestDefineInput(overrides: Partial<TaskDefineInput> = {}): 
   return {
     name: 'Water the tomatoes',
     brief: 'Water the tomatoes.',
-    target: 'conversation',
     trigger: {
       schedule: { every: 'week', on: 'fri', at: '08:00', zone: 'owner', catchUp: 'once' },
     },

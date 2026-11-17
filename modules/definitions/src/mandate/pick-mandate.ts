@@ -1,6 +1,6 @@
 import type { Rule } from '@heynixie/policy';
 import { pickNextMidnight } from '@heynixie/proposals';
-import { formatZonedISO } from '../utils/format-zoned-iso';
+import { formatZonedISO } from '@heynixie/triggers';
 import type { MandateInput } from './mandate-input-schema';
 
 const hourMs = 60 * 60 * 1000;

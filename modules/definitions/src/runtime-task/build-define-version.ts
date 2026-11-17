@@ -14,7 +14,6 @@ export interface TaskDefineInput {
   readonly definitionID?: string | undefined;
   readonly name: string;
   readonly brief: string;
-  readonly target: 'task' | 'conversation';
   readonly trigger: Trigger;
   readonly model?: string | undefined;
   readonly persona?: 'default' | 'none' | undefined;
@@ -98,7 +97,6 @@ function buildTaskMapping(input: TaskDefineInput): Record<string, unknown> {
   return {
     name: input.name,
     brief: input.brief,
-    target: input.target,
     trigger: input.trigger,
     ...(input.model === undefined ? {} : { model: input.model }),
     ...(input.persona === undefined ? {} : { persona: input.persona }),

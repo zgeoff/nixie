@@ -73,7 +73,6 @@ test('it stores an at without an offset with the offset of the owner zone', asyn
     buildTestDefineInput({
       name: 'Book the dentist',
       brief: 'Book the dentist.',
-      target: 'task',
       trigger: { at: '2027-03-12T08:00' },
     }),
   );
@@ -121,7 +120,7 @@ test('it returns UNCHANGED for a replacement that holds the version in force', a
 test('it returns FILE_ONLY_KEYS for a replacement of a definition that holds an instructions file', async () => {
   const ctx = await setupTest();
 
-  await ctx.writeRepoTask('water-the-tomatoes', buildTestTaskYaml({ target: 'task' }), {
+  await ctx.writeRepoTask('water-the-tomatoes', buildTestTaskYaml(), {
     'instructions.md': 'Water the tomatoes at the roots.\n',
   });
 
@@ -156,28 +155,11 @@ test('it returns INVALID with the reasons for a version that a start refuses', a
 
   await ctx.seed();
 
-  const outcome = await ctx.define(
-    buildTestDefineInput({ target: 'task', tools: ['files.write'] }),
-  );
+  const outcome = await ctx.define(buildTestDefineInput({ tools: ['files.write'] }));
 
   expect(outcome).toStrictEqual({
     status: 'ok',
     result: { refused: { code: 'INVALID', reasons: expect.any(Array) } },
-  });
-});
-
-test('it names the task-only fields that a conversation target takes none of', async () => {
-  const ctx = await setupTest();
-
-  await ctx.seed();
-
-  const outcome = await ctx.define(buildTestDefineInput({ memory: 'none', report: 'none' }));
-
-  expect(outcome).toStrictEqual({
-    status: 'error',
-    message:
-      'A conversation target takes only name, brief, target, trigger and definitionID. ' +
-      'Leave out: memory, report.',
   });
 });
 
@@ -198,13 +180,12 @@ test('it resets the model to the default when a change omits it', async () => {
   const ctx = await setupTest();
 
   await ctx.seed();
-  await ctx.define(buildTestDefineInput({ target: 'task', model: 'second-look' }));
+  await ctx.define(buildTestDefineInput({ model: 'second-look' }));
 
   await ctx.define(
     buildTestDefineInput({
       definitionID: 'water-the-tomatoes',
       brief: 'Water them well.',
-      target: 'task',
     }),
   );
 

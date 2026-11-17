@@ -25,7 +25,6 @@ export interface DefinitionListing {
 
   // null when out of force
   readonly next: string | null;
-  readonly target: 'task' | 'conversation' | null;
   readonly tools: readonly string[];
   readonly origin: 'definitions' | 'nixie';
 }
@@ -88,7 +87,6 @@ export async function readDefinitionListings(
       trigger: form?.trigger ?? null,
       rendered: rendered.rendered,
       next: isInForce ? rendered.next : null,
-      target: form?.target ?? null,
       tools: form?.tools ?? [],
       origin: definition.origin,
     });

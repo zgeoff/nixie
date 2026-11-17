@@ -146,7 +146,7 @@ test('it refuses a replacement that holds the version in force', async () => {
 test('it refuses a replacement of a definition that holds an instructions file', async () => {
   const ctx = await setupTest();
 
-  await ctx.writeRepoTask('water-the-tomatoes', buildTestTaskYaml({ target: 'task' }), {
+  await ctx.writeRepoTask('water-the-tomatoes', buildTestTaskYaml(), {
     'instructions.md': 'Water the tomatoes at the roots.\n',
   });
 
@@ -163,11 +163,7 @@ test('it refuses a replacement of a definition that holds an instructions file',
 test('it refuses a replacement of a definition that holds a file-only key at a non-default value', async () => {
   const ctx = await setupTest();
 
-  await ctx.writeRepoTask(
-    'water-the-tomatoes',
-    `${buildTestTaskYaml({ target: 'task' })}wakeable: true\n`,
-  );
-
+  await ctx.writeRepoTask('water-the-tomatoes', `${buildTestTaskYaml()}wakeable: true\n`);
   await ctx.seed();
 
   const result = await requestDefinitionChange(ctx.context, {
@@ -183,7 +179,7 @@ test('it replaces a definition that holds file-only keys at their defaults', asy
 
   await ctx.writeRepoTask(
     'water-the-tomatoes',
-    `${buildTestTaskYaml({ target: 'task' })}wakeable: false\ncontext: fresh\ndestinations: []\n`,
+    `${buildTestTaskYaml()}wakeable: false\ncontext: fresh\ndestinations: []\n`,
   );
 
   await ctx.seed();
@@ -595,7 +591,7 @@ test('it ends with the merged version in force when the undo seed fails', async 
 test('it leaves the hash that an unread fire pinned after a define and after an undo', async () => {
   const ctx = await setupTest();
 
-  await ctx.writeRepoTask('water-the-tomatoes', buildTestTaskYaml({ target: 'task' }));
+  await ctx.writeRepoTask('water-the-tomatoes', buildTestTaskYaml());
   await ctx.seed();
 
   const [task] = await readTestTasks(ctx.writer);
@@ -611,7 +607,6 @@ test('it leaves the hash that an unread fire pinned after a define and after an 
     kind: 'define',
     input: buildTestDefineInput({
       definitionID: 'water-the-tomatoes',
-      target: 'task',
       brief: 'Water them well.',
     }),
   });

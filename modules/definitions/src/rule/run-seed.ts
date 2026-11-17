@@ -12,6 +12,7 @@ import { readSeedPolicy } from '../seed/read-seed-policy';
 import { writeSeed } from '../seed/write-seed';
 import { writeAdoptedSkills } from '../skill/write-adopted-skills';
 import type { TaskDefinitionWarning, TaskSeedContext } from '../task/types';
+import type { TaskHooksContext } from '../task/write-task-hooks';
 import { writeTaskHooks } from '../task/write-task-hooks';
 import { writeTaskVersions } from '../task/write-task-versions';
 import type {
@@ -50,6 +51,9 @@ export interface SeedOptions {
 
   // The built-in budget of each paid tool, which a budget of the definitions may change
   readonly builtInBudgets?: readonly BudgetBase[];
+
+  // the triggers that another module owns, which the seed arms beside the definitions
+  readonly readExtraArmed?: TaskHooksContext['readExtraArmed'];
 }
 
 export type SeedResult =
@@ -154,7 +158,11 @@ export async function runSeed(options: SeedOptions): Promise<SeedResult> {
 
     await writeTaskHooks(
       tx,
-      { log: options.log, definitions: () => ({ snapshotHash: built.snapshotHash }) },
+      {
+        log: options.log,
+        definitions: () => ({ snapshotHash: built.snapshotHash }),
+        ...(options.readExtraArmed === undefined ? {} : { readExtraArmed: options.readExtraArmed }),
+      },
       built.tasks,
     );
 

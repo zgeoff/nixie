@@ -22,7 +22,7 @@ const storedScheduleSchema = z.strictObject({
   catchUp: z.enum(['once', 'skip']),
 });
 
-const storedTriggerSchema = z.union([
+export const storedTriggerSchema = z.union([
   z.strictObject({ schedule: storedScheduleSchema }),
   z.strictObject({ at: z.string() }),
 ]);

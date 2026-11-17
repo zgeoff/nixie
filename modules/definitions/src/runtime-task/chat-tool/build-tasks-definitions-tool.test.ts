@@ -33,7 +33,7 @@ test('it declares the read effect and runs direct', async () => {
 test('it lists a definition from the repo with the default task tools', async () => {
   const ctx = await setupTest();
 
-  await ctx.writeRepoTask('water-the-tomatoes', buildTestTaskYaml({ target: 'task' }));
+  await ctx.writeRepoTask('water-the-tomatoes', buildTestTaskYaml());
   await ctx.seed();
 
   const outcome = await ctx.list();
@@ -51,7 +51,6 @@ test('it lists a definition from the repo with the default task tools', async ()
           trigger: expect.any(Object),
           rendered: 'every Friday at 08:00',
           next: 'Fri 12 Mar',
-          target: 'task',
           tools: expect.arrayContaining(['tasks.list', 'task.message']),
           origin: 'definitions',
         },
@@ -80,11 +79,7 @@ test('it lists a definition from a change made in the conversation with the nixi
 test('it lists a disabled definition as out of force with no next fire', async () => {
   const ctx = await setupTest();
 
-  await ctx.writeRepoTask(
-    'water-the-tomatoes',
-    buildTestTaskYaml({ target: 'task', isEnabled: false }),
-  );
-
+  await ctx.writeRepoTask('water-the-tomatoes', buildTestTaskYaml({ isEnabled: false }));
   await ctx.seed();
 
   const outcome = await ctx.list();

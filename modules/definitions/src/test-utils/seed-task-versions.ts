@@ -23,7 +23,6 @@ export async function seedTaskVersions(
       name: seed.name,
       brief: seed.brief,
       enabled: true,
-      target: 'task',
       context: 'fresh',
       wakeable: false,
     },
