@@ -1,5 +1,6 @@
 import type { WorkerRunLimits } from '@heynixie/models';
 import type { TaskStartBounds } from '@heynixie/tasks';
+import { buildModelChoiceSchema } from '@heynixie/tasks';
 import type { ToolDefinition, ToolOutcome } from '@heynixie/tools';
 import { z } from 'zod';
 import type { WorkerRunFacts } from './plan-worker-run';
@@ -10,7 +11,7 @@ import { workerRunToolName } from './worker-run-tool-name';
 
 export interface WorkerRunToolOptions {
   readonly deps: WorkerDeps;
-  readonly bounds: WorkerRunFacts['bounds'] & Pick<TaskStartBounds, 'memoryTools'>;
+  readonly bounds: WorkerRunFacts['bounds'] & Pick<TaskStartBounds, 'memoryTools' | 'models'>;
   readonly limits: WorkerRunLimits;
 
   // false once the worker stopped
@@ -20,9 +21,15 @@ export interface WorkerRunToolOptions {
 const inputSchema = z.object({
   question: z.string(),
   tools: z.string().array().exactOptional(),
+  model: z.string().exactOptional(),
 });
 
 export function buildWorkerRunTool(options: WorkerRunToolOptions): ToolDefinition {
+  const model = buildModelChoiceSchema(
+    options.bounds.models,
+    "The model the worker runs on; leave it out for the worker's usual one.",
+  );
+
   return {
     name: workerRunToolName,
     description:
@@ -30,7 +37,7 @@ export function buildWorkerRunTool(options: WorkerRunToolOptions): ToolDefinitio
       'answer. The worker holds only the tools you name from the tools you hold, and none that ' +
       'start tasks, send messages or touch memory. It has no history, so put everything it needs in ' +
       'the question. The call waits for the answer, and it stops at its limits of minutes, turns, ' +
-      'tokens and dollars. Its spend counts toward this task.',
+      'tokens and dollars. Its spend counts toward this task. It can run on a model you choose.',
     input: {
       type: 'object',
       properties: {
@@ -41,6 +48,7 @@ export function buildWorkerRunTool(options: WorkerRunToolOptions): ToolDefinitio
           maxItems: 50,
           uniqueItems: true,
         },
+        ...(model === null ? {} : { model }),
       },
       required: ['question'],
       additionalProperties: false,
@@ -82,11 +90,13 @@ export function buildWorkerRunTool(options: WorkerRunToolOptions): ToolDefinitio
           callSequence: tool.callSequence,
           question: input.question,
           tools: input.tools ?? [],
+          ...(input.model === undefined ? {} : { model: input.model }),
         },
         run: tool.run,
         isRunning: options.isRunning(),
         bounds: options.bounds,
         limits: options.limits,
+        targets: options.deps.targets,
         now: options.deps.clock.now(),
       });
 

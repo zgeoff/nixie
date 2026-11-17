@@ -298,6 +298,7 @@ const workerWaitMarginMs = 30_000;
 interface WorkerConfig {
   readonly profiles: Readonly<Record<string, ProfileFields>>;
   readonly roles: z.infer<typeof rolesSchema>;
+  readonly selectable: Readonly<Record<string, z.infer<typeof selectableSchema>>>;
   readonly limits: z.infer<typeof limitsSchema>;
 }
 
@@ -350,6 +351,32 @@ function addWorkerIssues(
         code: 'custom',
         path: ['limits', 'workerRun', 'minutes'],
         message: `the worker run limit of ${String(minutes)} minutes is longer than the ${String((waitMs - workerWaitMarginMs) / 60_000)} minutes that the ${profile.harness} harness of the profile ${profileID} gives a tool call (its wait of ${String(waitMs / 60_000)} minutes less 30 seconds)`,
+      });
+    }
+  }
+
+  // A selectable model that asks is no choice for a worker. Any other can run a worker, and its
+  // profile can call one, so its harness needs the same wait.
+  for (const [name, entry] of Object.entries(config.selectable)) {
+    const profile = config.profiles[entry.profile];
+
+    if (entry.ask === true || profile === undefined || callerIDs.has(entry.profile)) {
+      continue;
+    }
+
+    const waitMs = readToolCallWaitMs({ id: entry.profile, ...profile });
+
+    if (waitMs === null) {
+      issues.addIssue({
+        code: 'custom',
+        path: ['selectable', name, 'profile'],
+        message: `the worker role is set, and the ${profile.harness} harness of the profile ${entry.profile} of the selectable model ${name} has no tool call wait, so a worker's limit error could miss its caller`,
+      });
+    } else if (minutes * 60_000 > waitMs - workerWaitMarginMs) {
+      issues.addIssue({
+        code: 'custom',
+        path: ['limits', 'workerRun', 'minutes'],
+        message: `the worker run limit of ${String(minutes)} minutes is longer than the ${String((waitMs - workerWaitMarginMs) / 60_000)} minutes that the ${profile.harness} harness of the profile ${entry.profile} of the selectable model ${name} gives a tool call (its wait of ${String(waitMs / 60_000)} minutes less 30 seconds)`,
       });
     }
   }

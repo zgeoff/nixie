@@ -1,14 +1,19 @@
 import type { Clock } from '@heynixie/clock';
 import type { Definitions, Log } from '@heynixie/log';
 import type { Logger } from '@heynixie/logger';
-import { bindHarness, deriveModelSecret } from '@heynixie/models';
+import type { ResolvedProfile } from '@heynixie/models';
+import { bindHarness, deriveModelSecret, resolveModelCredentials } from '@heynixie/models';
+import { sandboxSizes } from '@heynixie/sandbox';
 import type { TaskStartBounds, WorkerRunsConfig } from '@heynixie/tasks';
 import type { ToolDefinition, ToolEndpoint } from '@heynixie/tools';
+import invariant from 'tiny-invariant';
+import { buildGuestCommand } from '../task/build-guest-command';
+import { getHarnessImage } from '../task/get-harness-image';
 import type { SystemTaskOptions } from '../task/make-system-task-runner';
 import { makeSystemTaskRunner } from '../task/make-system-task-runner';
 import { buildWorkerRunTool } from './build-worker-run-tool';
 import { makeWorkerSlots } from './make-worker-slots';
-import type { WorkerDeps } from './types';
+import type { WorkerDeps, WorkerTarget } from './types';
 
 export interface WorkerToolOptions extends SystemTaskOptions {
   readonly log: Log;
@@ -26,7 +31,7 @@ export interface WorkerToolOptions extends SystemTaskOptions {
 export interface WorkerTool {
   // the tool needs the bounds of a started task, which the endpoint builds after this part starts
   readonly buildTool: (
-    bounds: Pick<TaskStartBounds, 'memoryTools' | 'conversationTools'>,
+    bounds: Pick<TaskStartBounds, 'memoryTools' | 'conversationTools' | 'models'>,
   ) => ToolDefinition;
 }
 
@@ -36,10 +41,51 @@ export const startWorkerTool = makeSystemTaskRunner<WorkerToolOptions, WorkerToo
   role: 'worker',
   entry: 'turn',
   start: async (options, session) => {
-    const harness = bindHarness(session.profile.profile);
-    const secret = deriveModelSecret(session.profile, harness);
+    const credentials = resolveModelCredentials(options.models, options.secrets);
 
-    await options.sandboxes.addSecret(secret);
+    const targets = new Map<string, WorkerTarget>();
+
+    // One target and one secret for each distinct profile, so a missing credential fails the start.
+    const createTarget = async (profile: ResolvedProfile): Promise<WorkerTarget> => {
+      const known = targets.get(profile.profile.id);
+
+      if (known !== undefined) {
+        return known;
+      }
+
+      const harness = bindHarness(profile.profile);
+      const secret = deriveModelSecret(profile, harness);
+
+      await options.sandboxes.addSecret(secret);
+
+      const target: WorkerTarget = {
+        profile,
+        harness,
+        image: getHarnessImage(options.images, harness.imageKey),
+        size: sandboxSizes[harness.sizeRows.systemTask],
+        modelGrant: harness.buildGrant(secret),
+        command: buildGuestCommand(options.sandboxes, harness.guest, 'turn'),
+      };
+
+      targets.set(profile.profile.id, target);
+
+      return target;
+    };
+
+    const role = await createTarget(session.profile);
+
+    const byModel = new Map<string, WorkerTarget>();
+
+    // An entry that asks is no choice, as for a task.
+    for (const entry of options.models.selectable.filter((choice) => !choice.isAsked)) {
+      const resolved = credentials[entry.profile];
+
+      invariant(resolved, `the selectable model ${entry.name} was never resolved`);
+
+      const target = await createTarget(resolved);
+
+      byModel.set(entry.name, target);
+    }
 
     const state = { isRunning: true };
 
@@ -50,12 +96,7 @@ export const startWorkerTool = makeSystemTaskRunner<WorkerToolOptions, WorkerToo
       logger: options.logger,
       sandboxes: options.sandboxes,
       readTools: options.readTools,
-      profile: session.profile,
-      harness,
-      image: session.image,
-      size: session.limits,
-      modelGrant: harness.buildGrant(secret),
-      command: session.command,
+      targets: { role, byModel },
       slots: makeWorkerSlots(options.workerRuns),
       failedDestroys: [],
       cleanups: new Set(),

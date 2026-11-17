@@ -1,9 +1,13 @@
 import { expect, test } from 'bun:test';
 import { buildMockToolContext } from '@heynixie/tools/test-utils';
+import { buildMockWorkerTarget } from '../test-utils/build-mock-worker-target';
 import type { WorkerRunFacts } from './plan-worker-run';
 import { planWorkerRun } from './plan-worker-run';
 
 function setupTest(overrides: Partial<WorkerRunFacts> = {}, left: number | null = null) {
+  const roleTarget = buildMockWorkerTarget('worker-role', 'claude-test-role');
+  const bigTarget = buildMockWorkerTarget('big', 'claude-test-big');
+
   const context = buildMockToolContext({
     run: {
       tools: ['notes_read', 'mcp__nixie__web_fetch', 'web_fetch'],
@@ -30,6 +34,7 @@ function setupTest(overrides: Partial<WorkerRunFacts> = {}, left: number | null 
       conversationTools: ['log.forget'],
     },
     limits: { minutes: 10, turns: 25, tokens: 2_000_000, dollars: 2 },
+    targets: { role: roleTarget, byModel: new Map([['big', bigTarget]]) },
     now: 5000,
     ...overrides,
   } satisfies WorkerRunFacts;
@@ -133,4 +138,45 @@ test('it takes a tool by the name the model sees', () => {
   const planned = planWorkerRun({ ...facts, call: { ...facts.call, tools: ['notes_read'] } });
 
   expect(planned.status).toBe('planned');
+});
+
+test('it plans a call that names a model on the target of that model', () => {
+  const facts = setupTest();
+  const planned = planWorkerRun({ ...facts, call: { ...facts.call, model: 'big' } });
+
+  expect(planned).toMatchObject({
+    status: 'planned',
+    plan: { target: { image: 'image-big', profile: { profile: { model: 'claude-test-big' } } } },
+  });
+});
+
+test('it plans a call that names no model on the target of the worker role', () => {
+  const planned = planWorkerRun(setupTest());
+
+  expect(planned).toMatchObject({
+    status: 'planned',
+    plan: { target: { image: 'image-worker-role' } },
+  });
+});
+
+test('it refuses a model that is not offered, and names the choices', () => {
+  const facts = setupTest();
+  const planned = planWorkerRun({ ...facts, call: { ...facts.call, model: 'huge' } });
+
+  expect(planned).toStrictEqual({
+    status: 'refused',
+    sentence:
+      'There is no model huge to run a worker on; choose one of big, so nixie started none.',
+  });
+});
+
+test('it refuses a model when the deployment offers none', () => {
+  const base = setupTest();
+  const facts = { ...base, targets: { role: base.targets.role, byModel: new Map() } };
+  const planned = planWorkerRun({ ...facts, call: { ...facts.call, model: 'big' } });
+
+  expect(planned).toStrictEqual({
+    status: 'refused',
+    sentence: expect.toInclude('This deployment offers no model choice'),
+  });
 });

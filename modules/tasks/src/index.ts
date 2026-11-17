@@ -37,6 +37,7 @@ export type {
   TaskRunOpened,
 } from './run/types';
 
+export { buildModelChoiceSchema } from './runner/build-model-choice-schema';
 export { buildTaskRunnerRegistry } from './runner/build-task-runner-registry';
 export type { TaskRunnerRegistryOptions } from './runner/build-task-runner-registry';
 export { conversationRunner } from './runner/conversation-runner';

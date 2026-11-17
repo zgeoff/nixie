@@ -1,11 +1,12 @@
 import { formatTokenCount } from './format-token-count';
 import type { WorkerActivity, WorkerUsed } from './worker-activity';
 
-// The collapsed line of a worker run: its short ID, the start of its question, its outcome and what
+// The collapsed line of a worker run: its short ID, its model, the start of its question, its outcome and what
 // it used. A run with no end shows as running, with the turns and dollars so far.
 export function formatWorkerLine(worker: WorkerActivity, question: string | undefined): string {
   const parts = [
     worker.shortID === undefined ? 'worker' : `worker ${worker.shortID}`,
+    ...(worker.model === undefined ? [] : [worker.model]),
     ...(question === undefined ? [] : [formatQuestionStart(question)]),
     ...(worker.end === undefined
       ? ['running', ...formatRunningUsage(worker)]

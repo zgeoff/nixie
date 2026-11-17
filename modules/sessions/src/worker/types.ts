@@ -18,6 +18,9 @@ import type { WorkerUsed } from './worker-used';
 export interface WorkerPlan {
   readonly question: string;
 
+  // the profile the worker runs on
+  readonly target: WorkerTarget;
+
   // nixie's own names of the tools the worker holds
   readonly tools: readonly string[];
   readonly limits: WorkerRunLimits;
@@ -84,6 +87,24 @@ export interface WorkerSlots {
   readonly acquire: (signal: AbortSignal) => Promise<WorkerSlotGrant>;
 }
 
+// What a worker needs of the profile it runs on.
+export interface WorkerTarget {
+  readonly profile: ResolvedProfile;
+  readonly harness: Harness;
+  readonly image: string;
+  readonly size: SandboxLimits;
+  readonly modelGrant: GrantSpec;
+  readonly command: GuestCommand;
+}
+
+export interface WorkerTargets {
+  // the worker role's profile, for a call that names no model
+  readonly role: WorkerTarget;
+
+  // the selectable models, by the name a call gives
+  readonly byModel: ReadonlyMap<string, WorkerTarget>;
+}
+
 export interface WorkerDeps {
   readonly log: Log;
   readonly definitions: () => Definitions;
@@ -94,12 +115,7 @@ export interface WorkerDeps {
 
   // null while no endpoint runs
   readonly readTools: () => Pick<ToolEndpoint, 'startRun'> | null;
-  readonly profile: ResolvedProfile;
-  readonly harness: Harness;
-  readonly image: string;
-  readonly size: SandboxLimits;
-  readonly modelGrant: GrantSpec;
-  readonly command: GuestCommand;
+  readonly targets: WorkerTargets;
   readonly slots: WorkerSlots;
 
   // the sandboxes whose destroy failed, which the next worker run tries again before its create

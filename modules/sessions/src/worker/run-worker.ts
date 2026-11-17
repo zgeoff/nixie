@@ -70,8 +70,8 @@ export async function runWorker(deps: WorkerDeps, plan: WorkerPlan): Promise<Wor
     names: {
       workerRunID: crypto.randomUUID(),
       shortID: createShortID(),
-      model: deps.profile.profile.model,
-      profile: deps.profile.profile.id,
+      model: plan.target.profile.profile.model,
+      profile: plan.target.profile.profile.id,
     },
     stops: createWorkerStops(deps.clock, plan),
     tally: { turns: 0, tokens: 0, dollars: 0 },
@@ -171,7 +171,7 @@ async function runStages(deps: WorkerDeps, plan: WorkerPlan, run: WorkerRun): Pr
   try {
     await raceStop(removeFailedDestroys(deps), run.stops.hard);
 
-    run.held.sandbox = await createSandbox(deps, run);
+    run.held.sandbox = await createSandbox(deps, plan, run);
 
     await registerGatewaySandbox(deps, plan, run.held.sandbox);
 
@@ -208,14 +208,14 @@ async function runStages(deps: WorkerDeps, plan: WorkerPlan, run: WorkerRun): Pr
 }
 
 // The create has the minutes for its limit, and a sandbox that arrives after a stop is destroyed.
-async function createSandbox(deps: WorkerDeps, run: WorkerRun): Promise<Sandbox> {
+async function createSandbox(deps: WorkerDeps, plan: WorkerPlan, run: WorkerRun): Promise<Sandbox> {
   const creating = deps.sandboxes.create(
     buildSandboxSpec({
       kind: 'worker',
-      image: deps.image,
+      image: plan.target.image,
       owner: buildWorkerRunOwner(run.names.workerRunID),
-      limits: deps.size,
-      modelGrant: deps.modelGrant,
+      limits: plan.target.size,
+      modelGrant: plan.target.modelGrant,
     }),
   );
 
@@ -260,7 +260,7 @@ function startToolRun(deps: WorkerDeps, plan: WorkerPlan, run: WorkerRun): Promi
     tools: [...plan.tools],
     model: { model: run.names.model, profile: run.names.profile },
     ...(plan.caller.taskRun === undefined ? {} : { taskRun: plan.caller.taskRun }),
-    toolUseMetaKey: deps.harness.toolUseMetaKey,
+    toolUseMetaKey: plan.target.harness.toolUseMetaKey,
     parent: plan.caller.callSequence,
   });
 }
@@ -277,26 +277,26 @@ function runGuest(
   run: WorkerRun,
   route: GuestRoute,
 ): Promise<GuestTurn> {
-  const capabilities = deps.harness.capabilities;
+  const capabilities = plan.target.harness.capabilities;
 
   return runGuestTurn({
-    harness: deps.harness,
+    harness: plan.target.harness,
     sandbox: route.sandbox,
-    command: deps.command,
+    command: plan.target.command,
     turn: {
       type: 'turn',
       profile: buildRoutedModel({
         isRouted: deps.gateway !== undefined,
-        profile: deps.profile,
-        turnProfile: deps.harness.toTurnProfile('one-off'),
+        profile: plan.target.profile,
+        turnProfile: plan.target.harness.toTurnProfile('one-off'),
         sandboxName: route.sandbox.id,
       }).turnProfile,
       tools: { url: route.url, token: route.token },
-      ...(deps.harness.session === null ? {} : { resume: null }),
+      ...(plan.target.harness.session === null ? {} : { resume: null }),
       systemPrompt: workerSystemPrompt,
       limits: {
         modelCalls: capabilities.has('turn-limit') ? plan.limits.turns : null,
-        toolCallWaitMs: deps.harness.toolCallWaitMs,
+        toolCallWaitMs: plan.target.harness.toolCallWaitMs,
       },
       input: [{ uuid: crypto.randomUUID(), text: plan.question }],
     },
@@ -320,7 +320,7 @@ async function runCall(
   run: WorkerRun,
   call: WorkerCall,
 ): Promise<void> {
-  const prices = deps.profile.profile.prices;
+  const prices = plan.target.profile.profile.prices;
   const dollars = prices === null ? 0 : buildCallCost(call.usage, prices);
 
   run.tally.turns += 1;

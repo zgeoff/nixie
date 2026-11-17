@@ -1,19 +1,15 @@
 import type { JSONObject } from '@heynixie/log';
 import { reportShapeKeywords } from '../report/check-report-shape';
 import type { TaskStartBounds } from '../types';
+import { buildModelChoiceSchema } from './build-model-choice-schema';
 
 export function buildSandboxStartInput(bounds: TaskStartBounds): JSONObject {
   const limits = bounds.limits;
-  const choices = bounds.models.map((entry) => `${entry.name}: ${entry.description}`).join('; ');
 
-  const model: JSONObject | null =
-    bounds.models.length === 0
-      ? null
-      : {
-          type: 'string',
-          enum: bounds.models.map((entry) => entry.name),
-          description: `The model the task runs on; leave it out for the usual one. ${choices}`,
-        };
+  const model = buildModelChoiceSchema(
+    bounds.models,
+    'The model the task runs on; leave it out for the usual one.',
+  );
 
   return {
     type: 'object',

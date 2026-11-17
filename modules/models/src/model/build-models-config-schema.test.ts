@@ -4,7 +4,10 @@ import { agentSDKHarnessDefinition } from '../agent/agent-sdk-harness-definition
 import { codexHarnessDefinition } from '../codex/codex-harness-definition';
 import { buildModelsConfigSchema } from './build-models-config-schema';
 
-function setupTest(capabilities = harnessCapabilities, readToolCallWaitMs?: () => number | null) {
+function setupTest(
+  capabilities = harnessCapabilities,
+  readToolCallWaitMs?: Parameters<typeof buildModelsConfigSchema>[2],
+) {
   return {
     schema: buildModelsConfigSchema(
       [agentSDKHarnessDefinition, codexHarnessDefinition],
@@ -531,4 +534,109 @@ test('it refuses the worker role on a profile with no price table', () => {
         'the worker role names the profile worker-bare, which sets no prices, and a worker run counts its cost against its dollar limit',
     }),
   ]);
+});
+
+test('it refuses a selectable model whose harness has no tool call wait while the worker role is set', () => {
+  const ctx = setupTest(harnessCapabilities, (profile) =>
+    profile.id === 'big-direct' ? null : 900_000,
+  );
+
+  const result = ctx.schema.safeParse({
+    profiles: {
+      'chat-direct': {
+        harness: 'agent-sdk',
+        base_url: 'https://api.anthropic.com',
+        credential: 'deployment:anthropic',
+        auth_header: 'x-api-key',
+        model: 'claude-test-1',
+        effort: 'medium',
+        prices: { input: 3, cache_write: 3.75, cache_write_1h: 6, cached_input: 0.3, output: 15 },
+      },
+      'big-direct': {
+        harness: 'agent-sdk',
+        base_url: 'https://api.anthropic.com',
+        credential: 'deployment:anthropic',
+        auth_header: 'x-api-key',
+        model: 'claude-test-big',
+        effort: 'medium',
+        prices: { input: 3, cache_write: 3.75, cache_write_1h: 6, cached_input: 0.3, output: 15 },
+      },
+    },
+    roles: { conversation: 'chat-direct', worker: 'chat-direct' },
+    selectable: { big: { profile: 'big-direct', description: 'Slower and stronger.' } },
+  });
+
+  expect(result.error?.issues).toStrictEqual([
+    expect.objectContaining({
+      path: ['selectable', 'big', 'profile'],
+      message:
+        "the worker role is set, and the agent-sdk harness of the profile big-direct of the selectable model big has no tool call wait, so a worker's limit error could miss its caller",
+    }),
+  ]);
+});
+
+test('it accepts a selectable model whose harness has no tool call wait when no worker role is set', () => {
+  const ctx = setupTest(harnessCapabilities, (profile) =>
+    profile.id === 'big-direct' ? null : 900_000,
+  );
+
+  const result = ctx.schema.safeParse({
+    profiles: {
+      'chat-direct': {
+        harness: 'agent-sdk',
+        base_url: 'https://api.anthropic.com',
+        credential: 'deployment:anthropic',
+        auth_header: 'x-api-key',
+        model: 'claude-test-1',
+        effort: 'medium',
+        prices: { input: 3, cache_write: 3.75, cache_write_1h: 6, cached_input: 0.3, output: 15 },
+      },
+      'big-direct': {
+        harness: 'agent-sdk',
+        base_url: 'https://api.anthropic.com',
+        credential: 'deployment:anthropic',
+        auth_header: 'x-api-key',
+        model: 'claude-test-big',
+        effort: 'medium',
+        prices: { input: 3, cache_write: 3.75, cache_write_1h: 6, cached_input: 0.3, output: 15 },
+      },
+    },
+    roles: { conversation: 'chat-direct' },
+    selectable: { big: { profile: 'big-direct', description: 'Slower and stronger.' } },
+  });
+
+  expect(result.error).toBeUndefined();
+});
+
+test('it does not check the tool call wait of a selectable model that asks', () => {
+  const ctx = setupTest(harnessCapabilities, (profile) =>
+    profile.id === 'big-direct' ? null : 900_000,
+  );
+
+  const result = ctx.schema.safeParse({
+    profiles: {
+      'chat-direct': {
+        harness: 'agent-sdk',
+        base_url: 'https://api.anthropic.com',
+        credential: 'deployment:anthropic',
+        auth_header: 'x-api-key',
+        model: 'claude-test-1',
+        effort: 'medium',
+        prices: { input: 3, cache_write: 3.75, cache_write_1h: 6, cached_input: 0.3, output: 15 },
+      },
+      'big-direct': {
+        harness: 'agent-sdk',
+        base_url: 'https://api.anthropic.com',
+        credential: 'deployment:anthropic',
+        auth_header: 'x-api-key',
+        model: 'claude-test-big',
+        effort: 'medium',
+        prices: { input: 3, cache_write: 3.75, cache_write_1h: 6, cached_input: 0.3, output: 15 },
+      },
+    },
+    roles: { conversation: 'chat-direct', worker: 'chat-direct' },
+    selectable: { big: { profile: 'big-direct', description: 'Asks first.', ask: true } },
+  });
+
+  expect(result.error).toBeUndefined();
 });
