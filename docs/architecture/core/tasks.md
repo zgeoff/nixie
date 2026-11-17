@@ -171,13 +171,19 @@ reaches the step at once.
   `closedBy`: `owner` for the user's close control, `nixie` for the `task.close` tool, and
   `disposable` for the commit that closes a disposable task after its report. A record with no
   `closedBy` reads as `owner`. The [started tasks](./started-tasks.md#the-mark-and-closing) doc
-  describes the tool and the auto-close.
+  describes the tool and the auto-close. A close sends the closer no report message when the closer
+  is the task run's report target: the report stays on the `task.run_ended` record, as a kept report
+  does. A close by any other actor, and the auto-close, keep their message.
 - **Interrupt** of a running task records the step it interrupts, and the runner fires the step's
   interrupt signal. A conversation turn then ends at the last entry of its Agent SDK session and
   commits as usual, as [conversation turns](./conversation-turns.md#interrupts) describes. A started
   task keeps the work that the interrupt cut, as
   [interrupted work](./started-tasks.md#interrupted-work) describes. A step that runs no model has
   no turn to end, and commits when it would have.
+
+`tasks.list` gives the first line of each task's brief, and pages through the tasks in a byte budget
+with a cursor. Its `taskID` input gives one task's whole brief. The
+[started tasks](./started-tasks.md#the-listed-state) doc describes the tool.
 
 While a task is paused or closed, nixie claims none of its [actions](./actions.md) that have not
 started an attempt, so a pause keeps the queued actions with the task. A stop

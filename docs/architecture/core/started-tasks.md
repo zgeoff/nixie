@@ -191,10 +191,13 @@ gives. It closes a started task in any state but ready, running and closed, and 
 - a call from a step that no longer holds its lease.
 
 A task that is already closed answers `wasClosed: true` and writes nothing, so a rerun of the step
-after a crash gets the same answer. A started task holds the tool only when its start names it in
-`tools`. The tool declares the `note` effect with no destination, so the starter rule `allow-notes`
-allows it with no approval. The tool, the model's records and the prompts hold no sandbox ID, image
-or size.
+after a crash gets the same answer. The close sends the caller no report message: a task run that
+ends because its report target closed it keeps its report, as [Reports](#reports) says. The owner's
+close control and a disposable task's auto-close still deliver theirs.
+
+A started task holds the tool only when its start names it in `tools`. The tool declares the `note`
+effect with no destination, so the starter rule `allow-notes` allows it with no approval. The tool,
+the model's records and the prompts hold no sandbox ID, image or size.
 
 ## The listed state
 
@@ -215,6 +218,14 @@ The list tool reads the end of the newest task run, never the last message the t
 kept report sends none. The `waiting` filter lists `asleep` tasks too. A task in any other task
 state lists under that state. The list tool also gives each task's `wakeable` flag and its model, or
 null for a task on the `task` role's profile.
+
+Each listed task shows only the first line of its brief, clipped to 200 characters, and
+`isBriefClipped` says when text was left out. A page of the list ends at a byte budget that keeps it
+inside the tool output limit, or at the optional `limit`, and returns `nextCursor` when tasks
+remain. The cursor holds the position of the last listed task in the list order, so a task that
+changes between pages moves to the top and a later page can skip it. Start again with no cursor for
+a fresh view. The `taskID` input returns one task with its whole brief, whatever the state, limit or
+cursor.
 
 A started task can wait with unread input, such as its brief. Only a waking inbox record moves a
 waiting task to ready, so such a task never runs. At each server start, after the server writes the
@@ -263,9 +274,10 @@ leaves the same code-made summary. The report mode decides the delivery:
 - `next_turn`: the message goes to the starter with no wake.
 - `none`: nixie keeps the report on the `task.run_ended` record and sends no message.
 
-A report to a starter that is done, failed or closed, and the end of a task run that did no work,
-are kept the same way. An end for a limit under a mode that does not wake the starter also writes a
-`task.limit_notice` to the starter, so the starter learns the task paused.
+A report to a starter that is done, failed or closed, the end of a task run that did no work, and
+the end that the report target caused by closing the task, are kept the same way. An end for a limit
+under a mode that does not wake the starter also writes a `task.limit_notice` to the starter, so the
+starter learns the task paused.
 
 A task that finishes a turn with no report ends its task run as `no_report`. A forget of a delivered
 report destroys the request, the end and the message together, and rebuilds the sessions of each.
