@@ -8,7 +8,7 @@ import { spendMigrationVersion } from '../migration/spend-migration-version';
 import { nixieSchema } from '../schema/nixie-schema';
 import { buildSqliteWorkerDialect } from '../sqlite/build-sqlite-worker-dialect';
 import { readRunPrefix } from '../test-utils/read-run-prefix';
-import { spendStopMigration } from './0068-spend-stop-migration';
+import { spendStopMigration } from './0069-spend-stop-migration';
 
 async function setupTest() {
   const stack = new AsyncDisposableStack();
@@ -40,9 +40,9 @@ async function setupTest() {
   return { db };
 }
 
-test('it is the migration of version 68, which spendMigrationVersion names', () => {
-  expect(nixieSchema.migrations.indexOf(spendStopMigration) + 1).toBe(68);
-  expect(spendMigrationVersion).toBe(68);
+test('it is the migration of version 69, which spendMigrationVersion names', () => {
+  expect(nixieSchema.migrations.indexOf(spendStopMigration) + 1).toBe(69);
+  expect(spendMigrationVersion).toBe(69);
 });
 
 test('it creates the 4 spend tables', async () => {

@@ -1,5 +1,5 @@
 import invariant from 'tiny-invariant';
-import { spendStopMigration } from '../migrations/0068-spend-stop-migration';
+import { spendStopMigration } from '../migrations/0069-spend-stop-migration';
 import { nixieSchema } from '../schema/nixie-schema';
 
 const index = nixieSchema.migrations.indexOf(spendStopMigration);
