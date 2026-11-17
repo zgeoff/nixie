@@ -14,6 +14,9 @@ export interface TaskClose {
   readonly stepKey: string | null;
   readonly closedBy: (typeof taskClosedByValues)[number];
   readonly endedBy: string;
+
+  // the thread that made the close, or null when no thread did, as with the owner's control
+  readonly closer: string | null;
 }
 
 type CloseContext = Pick<TasksContext, 'log' | 'definitions' | 'runSettings' | 'runners'>;
@@ -62,7 +65,7 @@ export async function writeTaskCloseInTransaction(
 
   await writeRunEndInTransaction(tx, context, {
     taskID: close.taskID,
-    trigger: { kind: 'closed' },
+    trigger: { kind: 'closed', closer: close.closer },
     endedBy: close.endedBy,
     stepKey: null,
   });

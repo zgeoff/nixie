@@ -16,7 +16,9 @@ export type RunEndingTrigger =
       readonly isWakeable: boolean;
     }
   | { readonly kind: 'stopped' }
-  | { readonly kind: 'closed' }
+
+  // the closer is the thread that made the close, or null for the owner's control or an auto-close
+  | { readonly kind: 'closed'; readonly closer: string | null }
 
   // the claim ends an idle task run of a definition's task to open the task run of a fire
   | { readonly kind: 'claim' }

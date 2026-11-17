@@ -83,6 +83,7 @@ export async function writeTaskControlInTransaction(
       stepKey: task.started_step_key,
       closedBy: 'owner',
       endedBy: 'control:close',
+      closer: null,
     });
 
     return readControlled(tx, task.task_id, sequence);

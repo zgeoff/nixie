@@ -62,6 +62,7 @@ export function writeTaskClose(
       stepKey: task?.started_step_key ?? null,
       closedBy: 'nixie',
       endedBy: 'control:close',
+      closer: request.from,
     });
 
     return { status: 'closed', wasClosed: false };

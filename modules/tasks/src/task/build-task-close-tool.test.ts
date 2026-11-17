@@ -2,6 +2,7 @@ import { expect, test } from 'bun:test';
 import { readRecords } from '@heynixie/log';
 import { buildMockToolCall, buildMockToolContext } from '@heynixie/tools/test-utils';
 import invariant from 'tiny-invariant';
+import { readInbox } from '../inbox/read-inbox';
 import { buildTaskStartTool } from '../lease/build-task-start-tool';
 import { buildStepRunID } from '../step/build-step-run-id';
 import { buildMockTaskStartBounds } from '../test-utils/build-mock-task-start-bounds';
@@ -58,6 +59,23 @@ async function setupTest() {
         .executeTakeFirstOrThrow();
 
       return task.state;
+    },
+    readRunEnds: async () => {
+      const entries = await readRecords(tasks.context.log, {
+        afterSequence: 0,
+        kinds: ['task.run_ended'],
+      });
+
+      return entries.map((entry) => entry.record.payload);
+    },
+    readReportMessages: async () => {
+      const entries = await readRecords(tasks.context.log, {
+        afterSequence: 0,
+        thread: 'conversation',
+        kinds: ['task_message'],
+      });
+
+      return entries.filter((entry) => entry.record.payload['kind'] === 'report');
     },
     readClosed: async () => {
       const entries = await readRecords(tasks.context.log, {
@@ -246,6 +264,72 @@ test('it leaves a closed task that takes no resume, no restart and no message', 
   expect(resumed).toMatchObject({ status: 'refused', refusal: { reason: 'not_allowed' } });
   expect(restarted).toMatchObject({ status: 'refused', refusal: { reason: 'not_allowed' } });
   expect(messaged).toMatchObject({ status: 'refused', refusal: { reason: 'finished' } });
+});
+
+test('it keeps the report of a close that the conversation made and tells it nothing', async () => {
+  const ctx = await setupTest();
+  const taskID = await ctx.seed.waitingTask(ctx.buildSeedInput('Tides'));
+  const before = await readInbox(ctx.context, 'conversation');
+
+  await ctx.close(taskID);
+
+  const ends = await ctx.readRunEnds();
+
+  expect(ends).toHaveLength(1);
+  expect(ends[0]).toMatchObject({ taskID, cause: 'closed', delivery: 'kept' });
+
+  const reports = await ctx.readReportMessages();
+  const inbox = await readInbox(ctx.context, 'conversation');
+
+  expect(reports).toHaveLength(0);
+  expect(inbox).toHaveLength(before.length);
+});
+
+test('it still reports to the conversation when the owner closes the task', async () => {
+  const ctx = await setupTest();
+  const taskID = await ctx.seed.waitingTask(ctx.buildSeedInput('Tides'));
+
+  await writeTaskControl(ctx.context, { taskID, control: 'close' });
+
+  const ends = await ctx.readRunEnds();
+
+  expect(ends[0]).toMatchObject({
+    taskID,
+    cause: 'closed',
+    delivery: expect.not.stringMatching(/^kept$/u),
+  });
+
+  const reports = await ctx.readReportMessages();
+
+  expect(reports).toHaveLength(1);
+});
+
+test('it sends the conversation no message for 34 closes in one step', async () => {
+  const ctx = await setupTest();
+  const before = await readInbox(ctx.context, 'conversation');
+
+  const taskIDs: string[] = [];
+
+  for (let index = 0; index < 34; index += 1) {
+    const taskID = await ctx.seed.waitingTask(ctx.buildSeedInput(`Tides ${index}`));
+
+    taskIDs.push(taskID);
+  }
+
+  for (const taskID of taskIDs) {
+    await ctx.close(taskID);
+  }
+
+  const ends = await ctx.readRunEnds();
+  const closed = await ctx.readClosed();
+  const reports = await ctx.readReportMessages();
+  const inbox = await readInbox(ctx.context, 'conversation');
+
+  expect(closed).toHaveLength(34);
+  expect(ends).toHaveLength(34);
+  expect(ends).toSatisfyAll((end: Record<string, unknown>) => end['delivery'] === 'kept');
+  expect(reports).toHaveLength(0);
+  expect(inbox).toHaveLength(before.length);
 });
 
 test('it declares a note effect with no destination, so the starter rule allows it', async () => {

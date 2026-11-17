@@ -124,6 +124,7 @@ export async function writeStepCommit(
         stepKey: claim.stepKey,
         closedBy: 'disposable',
         endedBy: `step:${claim.stepKey}`,
+        closer: null,
       });
     }
 

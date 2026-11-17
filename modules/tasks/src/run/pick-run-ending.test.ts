@@ -69,6 +69,13 @@ test('it leaves a task run open while the task waits for a message or has work',
   expect(pickRunEnding(ctx.quiet)).toBeNull();
 });
 
-test.each(['stopped', 'closed', 'failed'] as const)('it ends a task run on %s', (kind) => {
+test.each(['stopped', 'failed'] as const)('it ends a task run on %s', (kind) => {
   expect(pickRunEnding({ kind })).toStrictEqual({ cause: kind, limitMeter: null });
+});
+
+test('it ends a task run on a close', () => {
+  expect(pickRunEnding({ kind: 'closed', closer: 'conversation' })).toStrictEqual({
+    cause: 'closed',
+    limitMeter: null,
+  });
 });
