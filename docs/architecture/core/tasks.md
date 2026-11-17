@@ -200,10 +200,18 @@ runner that runs a started task's steps, and its limits.
 ## Workers
 
 A model turn of the conversation, or of a started task whose start lists the tool and whose starter
-holds it, calls `worker.run` with a question and an optional list of tools. The call starts one
-worker: a model loop in a sandbox of its own, on the worker role's profile, with a fresh session and
-the question as its only input. The call waits for the worker's last reply and returns it as the
-answer, with the minutes, turns, tokens and dollars the worker used.
+holds it, calls `worker.run` with a question, an optional list of tools and an optional `model`. The
+call starts one worker: a model loop in a sandbox of its own, with a fresh session and the question
+as its only input. The call waits for the worker's last reply and returns it as the answer, with the
+minutes, turns, tokens and dollars the worker used.
+
+The `model` option takes one of the [selectable models](./model-profiles.md#selectable-models) that
+the start tool offers, with the same names and descriptions, and leaves out each entry with
+`ask: true`. A worker that names a model runs on that model's profile. A worker that names none runs
+on the worker role's profile. A call that names any other model gets an error sentence that lists
+the choices and starts nothing. The option is absent when the deployment lists no selectable model.
+`worker.run_started` names the model ID and profile the worker ran on, and the task page's worker
+line shows that model ID.
 
 A worker holds only tools that its caller holds. It never holds a tool that starts a task, sends a
 message, closes a task, lists tasks or task definitions, reports, ends a turn silently or starts a
@@ -215,6 +223,8 @@ Four limits stop a worker, each with a sentence that tells the caller which limi
 - `limits.workerRun` in the models config sets the minutes, turns, tokens and dollars. The config
   refuses a worker role whose profile sets no prices or no tool call wait, and a minutes limit that
   exceeds what the caller's tool call wait leaves.
+- The limits, the price table and the gateway's count apply on the profile the worker runs on, and
+  one pool of slots covers every model.
 - A worker's dollar limit is the smaller of its own limit and what its caller's task run has left.
 - `tasks.workerRuns` sets how many workers run at once, and whether a call past that cap waits for a
   slot or gets an error. With no setting, no cap applies.

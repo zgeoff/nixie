@@ -34,6 +34,13 @@ endpoint or a credential. An entry with `ask: true` stays out of the choices unt
 point can ask before such a start
 ([GEO-1803](https://linear.app/zgeoff/issue/GEO-1803/nixie-policy-the-full-decision-point-with-destination-limits-known)).
 
+The `worker.run` tool offers the same choices as its own `model` option, with the same names and
+descriptions. A worker that names a selectable model runs on that entry's profile, and one that
+names none runs on the `worker` role's profile ([workers](./tasks.md#workers)). Such a profile can
+run a worker and can call one, so while the `worker` role is set, the schema checks the tool call
+wait of each entry that has no `ask: true`: the harness must have one, and the worker run limit's
+minutes must fit inside it. The error names the selectable model.
+
 The schema refuses an entry whose profile the file does not define, and an entry whose profile has
 no price table, because a task counts the cost of its turns against its dollar limit
 ([started tasks](./started-tasks.md#limits)). For the same reason, the schema refuses a config whose
