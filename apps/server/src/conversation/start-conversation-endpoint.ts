@@ -22,6 +22,7 @@ import {
   buildTaskStartTool,
   buildTasksListTool,
   buildTasksRunsTool,
+  readTaskNames,
 } from '@heynixie/tasks';
 import type { ActionQueue, ToolDefinition, ToolEndpoint } from '@heynixie/tools';
 import { buildToolRegistry, findToolDeclaration, startToolEndpoint } from '@heynixie/tools';
@@ -84,7 +85,7 @@ export async function startConversationEndpoint(
   });
 
   const logReaders = [
-    buildLogReadTool(options.context.log),
+    buildLogReadTool(options.context.log, () => readTaskNames(options.context)),
     buildLogReadImageTool(options.context.log),
   ];
 

@@ -351,6 +351,51 @@ test('it shows a task message as an entry of the role task, with its kind, ID an
   ]);
 });
 
+test('it shows the name of the sender of a task message before its ID', async () => {
+  const ctx = await setupTest();
+
+  await writeRecords(ctx.log, [
+    {
+      kind: 'task_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: {
+        messageID: 'r8d2',
+        from: 't4m2',
+        to: 'conversation',
+        kind: 'report',
+        replyTo: null,
+        onBehalfOf: [],
+        hop: 1,
+        hopLimit: 6,
+        wake: true,
+        woke: true,
+        opensWait: false,
+        source: 'task:t4m2',
+      },
+      erasable: { body: 'High tide is at 06:42.' },
+    },
+  ]);
+
+  const page = await readLogPage(
+    ctx.log,
+    {
+      thread: 'conversation',
+      after: 0,
+      from: null,
+      to: null,
+      words: [],
+      limit: 20,
+      scanLimit: 500,
+    },
+    new Map([['t4m2', 'Tide tables']]),
+  );
+
+  expect(page.entries.map((entry) => entry.text)).toStrictEqual([
+    'report r8d2 from task Tide tables (t4m2)\nHigh tide is at 06:42.',
+  ]);
+});
+
 test('it shows a forgotten message with no text, and a search never returns it', async () => {
   const ctx = await setupTest();
 

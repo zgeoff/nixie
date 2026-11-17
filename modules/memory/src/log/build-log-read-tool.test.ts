@@ -17,7 +17,7 @@ async function setupTest() {
     setSystemTime();
   });
 
-  return { log: memory.log, tool: buildLogReadTool(memory.log) };
+  return { log: memory.log, tool: buildLogReadTool(memory.log, () => Promise.resolve(new Map())) };
 }
 
 test('it reads one page of a date range, with the cursor of the next page', async () => {

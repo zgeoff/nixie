@@ -27,7 +27,7 @@ export function buildRoleTools(set: ToolSet): readonly ListedTool[] {
     conversation: () => [
       webFetch,
       buildTimeTool({ ...options, findTimeZone: () => Promise.resolve(null) }),
-      buildLogReadTool(unused),
+      buildLogReadTool(unused, () => Promise.resolve(new Map())),
       ...buildMemoryTools(unused, options),
     ],
     worker: () => [webFetch],

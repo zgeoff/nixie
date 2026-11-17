@@ -101,7 +101,10 @@ const logReadArguments = z.object({
   record: z.string().optional(),
 });
 
-export function buildLogReadTool(log: Pick<Log, 'deploymentKey' | 'writer'>): ToolDefinition {
+export function buildLogReadTool(
+  log: Pick<Log, 'deploymentKey' | 'writer'>,
+  readTaskNames: () => Promise<ReadonlyMap<string, string>>,
+): ToolDefinition {
   return {
     name: 'log.read',
     description:
@@ -148,14 +151,20 @@ export function buildLogReadTool(log: Pick<Log, 'deploymentKey' | 'writer'>): To
         };
       }
 
-      const page = await readLogPage(log, {
-        thread: context.run.logThread,
-        after: input.after === undefined ? 0 : Number(input.after),
-        ...range,
-        words: input.query === undefined ? [] : input.query.split(/\s+/u),
-        limit: input.limit ?? defaultLimit,
-        scanLimit,
-      });
+      const taskNames = await readTaskNames();
+
+      const page = await readLogPage(
+        log,
+        {
+          thread: context.run.logThread,
+          after: input.after === undefined ? 0 : Number(input.after),
+          ...range,
+          words: input.query === undefined ? [] : input.query.split(/\s+/u),
+          limit: input.limit ?? defaultLimit,
+          scanLimit,
+        },
+        taskNames,
+      );
 
       const next = page.next === null ? null : String(page.next);
 
