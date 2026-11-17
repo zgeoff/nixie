@@ -22,6 +22,7 @@ interface HandlerOptions {
 
 interface Ask {
   readonly body: Readonly<Record<string, unknown>>;
+  readonly bodyText?: string;
   readonly providerPin?: string;
   readonly headers?: Readonly<Record<string, string>>;
 }
@@ -99,7 +100,7 @@ async function setupTest() {
         new Request('http://proxy.test/preview/v1/messages', {
           method: 'POST',
           headers: ask.headers ?? {},
-          body: JSON.stringify({ model: 'model-small', messages: [], ...ask.body }),
+          body: ask.bodyText ?? JSON.stringify({ model: 'model-small', messages: [], ...ask.body }),
         }),
       );
 
@@ -1878,6 +1879,33 @@ test.each([
     upstreamCalls: 0,
   });
 });
+
+test.each([
+  ['a second model', '{"model":"model-large","messages":[],"model":"model-small"}'],
+  [
+    'a second model under an escaped key',
+    String.raw`{"model":"model-large","messages":[],"model":"model-small"}`,
+  ],
+  [
+    'a second provider',
+    '{"model":"model-small","messages":[],"provider":{"order":["other-host"]},"provider":{"order":["example-host"],"allow_fallbacks":false}}',
+  ],
+  [
+    'a tool entry with a second type',
+    '{"model":"model-small","messages":[],"tools":[{"name":"ask","input_schema":{},"type":"image_generation","type":"custom"}]}',
+  ],
+])(
+  'it refuses a body that repeats a key to hide %s, and sends nothing on',
+  async (_title, bodyText) => {
+    const ctx = await setupTest();
+    const answer = await ctx.ask({ body: {}, bodyText, providerPin: 'example-host' });
+
+    expect({ status: answer.response.status, upstreamCalls: answer.upstreamCalls }).toStrictEqual({
+      status: 400,
+      upstreamCalls: 0,
+    });
+  },
+);
 
 test('it sends on and counts a request that holds the exact pinned provider', async () => {
   const ctx = await setupTest();

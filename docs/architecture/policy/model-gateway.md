@@ -53,6 +53,10 @@ else. It refuses a request whose body holds:
   API runs and bills apart from the tokens, often on a second model. The check reads the `tools`
   entries and nothing else, because a tool call's input can hold a `model` key of its own.
 
+The gateway sends the body on byte for byte, so it also refuses a body that names one key twice in
+any object, counting an escaped spelling of a key as the same key. JSON parsers disagree on which of
+the 2 values wins, so the model API could read a value that the checks never saw.
+
 It also refuses a request that holds both an `authorization` and an `x-api-key` header. The
 credential broker sets its own header and the gateway passes the others through, so a second one
 would reach the model API beside the broker's.
