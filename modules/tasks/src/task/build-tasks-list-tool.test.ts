@@ -723,7 +723,7 @@ test('it pages 200 tasks with long briefs under the byte budget, listing each on
     'Compare the tide tables for the harbour across the whole month, noting each spring tide, each neap tide, the heights at both ends of the day, and every day on which the two sources disagree by more than ten centimetres.';
 
   const brief = `${firstLine}\nSecond line of the brief.\nThird line of the brief.`;
-  const clipped = `${[...firstLine].slice(0, 200).join('')}…`;
+  const clipped = `${firstLine.slice(0, 200)}…`;
 
   const starter = await seedConversationStep(ctx.context);
 

@@ -125,7 +125,7 @@ export function buildTasksListTool(
       destinations: [],
       amount: null,
       content: [],
-      results: { tasks: 'owner_data' },
+      results: { tasks: 'owner_data', nextCursor: 'owner_data' },
     },
     execution: 'direct',
     run: async (call, tool) => {
@@ -304,11 +304,13 @@ async function fillPage(
 
 const briefClipLength = 200;
 
+const graphemeSegmenter = new Intl.Segmenter();
+
 // The first line of the brief, trimmed and cut to the clip length with a trailing ellipsis.
 function clipBrief(brief: string): BriefView {
   const trimmed = brief.trim();
   const firstLine = (trimmed.split(/\r?\n/u)[0] ?? '').trim();
-  const characters = [...firstLine];
+  const characters = Array.from(graphemeSegmenter.segment(firstLine), (part) => part.segment);
 
   if (characters.length > briefClipLength) {
     return { brief: `${characters.slice(0, briefClipLength).join('')}…`, isBriefClipped: true };

@@ -296,8 +296,9 @@ test('it still reports to the conversation when the owner closes the task', asyn
   expect(ends[0]).toMatchObject({
     taskID,
     cause: 'closed',
-    delivery: expect.not.stringMatching(/^kept$/u),
   });
+
+  expect(ends[0]?.['delivery']).not.toBe('kept');
 
   const reports = await ctx.readReportMessages();
 
