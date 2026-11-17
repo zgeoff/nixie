@@ -54,6 +54,48 @@ test.each([
   },
 );
 
+test('it marks purged, on the next start after the previous release ended the record forget, an item whose own forget nixie was killed during', async () => {
+  const nixie = await startSpawnedNixie();
+  const seed = await seedBegunPurge(nixie, { isOwned: true, isItemForgetting: true });
+  const previous = await readPreviousReleaseBuild();
+
+  const killed = nixie.harness.start([{ point: 'memory.forget.key_removed', kind: 'memory' }]);
+
+  await killed.waitForArrival('memory.forget.key_removed');
+  await killed.kill();
+
+  const rolledBack = nixie.harness.startRelease(previous.testEntry);
+
+  await nixie.waitForRecord((record) => record.kind === 'record.forgotten');
+  await rolledBack.kill();
+
+  const rolledBackState = await readPurgeState(nixie);
+
+  const restarted = nixie.harness.start();
+
+  await restarted.ready;
+
+  await nixie.waitForRecord((record) => record.kind === 'memory.evidence_purged');
+  await restarted.kill();
+
+  const state = await readPurgeState(nixie);
+
+  expect(
+    rolledBackState.keyIDs.filter(
+      (keyID) => keyID === seed.itemID || keyID.startsWith(`${seed.itemID}/`),
+    ),
+  ).toStrictEqual([]);
+
+  expect(state.purges).toStrictEqual([
+    {
+      record_sequence: seed.recordSequence,
+      item_id: seed.itemID,
+      closed_sequence: null,
+      purged_sequence: expect.toBeNumber(),
+    },
+  ]);
+});
+
 test.each([
   'record.forget.started',
   'memory.purge.keys_created',

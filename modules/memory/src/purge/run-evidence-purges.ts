@@ -1,9 +1,14 @@
+import type { LogTables } from '@heynixie/log';
+import type { Kysely } from 'kysely';
+import { sql } from 'kysely';
+import { z } from 'zod';
 import { readAllRemovedSequences } from '../record/read-all-removed-sequences';
+import { recordForgottenCodec } from '../record/record-forgotten-codec';
 import type { MemoryTables, PurgeRequest, PurgeScope, StoreParts } from '../types';
 import { runItemPurge } from './run-item-purge';
 
 // Finishes every item of the scope that still owes a purge. A record forget calls it for its own
-// record. The server start calls it for the purges that no record forget owns, such as a scrub.
+// record. The server start calls it for the purges that no open record forget owns.
 export async function runEvidencePurges(parts: StoreParts, scope: PurgeScope): Promise<void> {
   const owed = await readOwedPurges(parts, scope);
 
@@ -33,7 +38,27 @@ async function readOwedPurges(
     return owed.filter((purge) => purge.recordSequence === scope.recordSequence);
   }
 
-  const owners = await readAllRemovedSequences(db);
+  const owners = await readOpenForgetSequences(db);
 
   return owed.filter((purge) => !owners.has(purge.recordSequence));
+}
+
+const endedRowSchema = z.object({ record_sequence: z.int() });
+
+// The record forgets with no record.forgotten yet. A forget that ended leaves no later step to finish
+// a purge it owed, as when a previous release skipped an item whose own forget had begun.
+async function readOpenForgetSequences(db: Kysely<unknown>): Promise<ReadonlySet<number>> {
+  const [started, forgotten] = await Promise.all([
+    readAllRemovedSequences(db),
+    db
+      .$extendTables<LogTables>()
+      .selectFrom('records')
+      .select(sql`json_extract(payload, '$.recordSequence')`.as('record_sequence'))
+      .where('kind', '=', sql.lit(recordForgottenCodec.kind))
+      .execute(),
+  ]);
+
+  const ended = new Set(forgotten.map((row) => endedRowSchema.parse(row).record_sequence));
+
+  return new Set([...started].filter((sequence) => !ended.has(sequence)));
 }

@@ -179,11 +179,11 @@ quote.
 A purge removes the copies of a forgotten message that a memory item holds. The message is the
 evidence of some version, and the item's older versions and pending proposals keep its quote, so the
 purge makes those values unreadable and keeps the current text readable. The started record holds
-the forgotten record and the items to purge, the purge set: each active or retired item, and each
-pending proposal for a new item, that has a version or a proposal whose evidence or intent evidence
-names the record. The [record forget](../channels/api.md#forgetting-a-record) writes the record in
-the transaction that writes `record.forget_started`, so a crash leaves both or neither. It writes
-none for a record that no item quotes, because a second read finds the same empty set.
+the forgotten record and the items to purge, the purge set: each active, retired or forgetting item,
+and each pending proposal for a new item, that has a version or a proposal whose evidence or intent
+evidence names the record. The [record forget](../channels/api.md#forgetting-a-record) writes the
+record in the transaction that writes `record.forget_started`, so a crash leaves both or neither. It
+writes none for a record that no item quotes, because a second read finds the same empty set.
 
 From the started record on, every reader reads each older version and pending proposal of those
 items as removed. Every proposal write for one of those items fails with `ItemPurgingError` until
@@ -240,7 +240,10 @@ each of these. The purge deletes a key with `removeRecordKey`, which fails when 
 store holds the write-ahead log. The purge then stops before `memory.evidence_purged`, so a purge
 counts as done only after the checkpoint cleared the old key from the log.
 
-The server's start finishes each purge set that no record forget owns. No code writes such a set,
+The server's start finishes each purge that no open record forget owns, where an open forget has no
+`record.forgotten` yet. The release before this one can end a forget with such a purge left: it
+skips an item whose own forget began, deletes that item's keys at its start before any record
+forget, and never marks the item purged. No code writes a purge set with no record forget behind it,
 and the start scrubs nothing. A scrub of each merge change of the consolidator would be needed only
 because a change sat under the key of its first input. The migration that removed the consolidator's
 records and tables ran at every earlier release's first start, before memory starts, so no database

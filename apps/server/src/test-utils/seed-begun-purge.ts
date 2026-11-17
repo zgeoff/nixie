@@ -1,4 +1,5 @@
 import { systemClock } from '@heynixie/clock';
+import { writeRecords } from '@heynixie/log';
 import type { StartedMemoryStore } from '@heynixie/memory';
 import {
   createProposal,
@@ -28,6 +29,9 @@ export interface BegunPurgeOptions {
   // True writes the item as an earlier release did, with each version under the item's own key
   // and no labels, so the purge writes a bridge version.
   readonly isSharedKey?: boolean;
+
+  // True also begins the item's own forget after the purge set, and stops it before any key goes
+  readonly isItemForgetting?: boolean;
 }
 
 // Leaves the data where a record forget stops after its first transaction: the forget began and the
@@ -70,6 +74,20 @@ export async function seedBegunPurge(
         recordSequence: options?.isOwned === false ? null : recordSequence,
         itemIDs: [first.itemID],
       });
+
+      if (options?.isItemForgetting === true) {
+        await writeRecords(testLog.context.log, [
+          {
+            kind: 'memory.forget_started',
+            definitions: { snapshotHash: 'sha256:test' },
+            payload: {
+              itemID: second.itemID,
+              version: second.version,
+              evidenceSequences: [recordSequence],
+            },
+          },
+        ]);
+      }
 
       return { recordSequence, itemID: first.itemID, proposalID: proposal.proposalID };
     } finally {
