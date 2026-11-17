@@ -298,6 +298,35 @@ test('it shows the marks of a rule sentence as bold and code, in the line and on
   });
 });
 
+test('it shows what each rule of a mandate will not cover on its card', async () => {
+  const ctx = await setupTest();
+
+  await store.approvalRows.create({
+    cause: 'mandate',
+    choices: ['approve', 'defer', 'decline'],
+    kind: 'internal_change',
+    riskClass: 'always_ask',
+    sentence: 'Allow memory.edit and memory.retire, until 2026-11-14T13:00:00Z.',
+    approveLabel: 'Start the mandate',
+    fields: {
+      title: 'Tidy my memory today',
+      ends: '2026-11-14T13:00:00.000Z',
+      'rule 1': 'Allow memory.edit and memory.retire, until 2026-11-14T13:00:00Z.',
+      'rule 1 will not cover': 'a new fact; a pin; a new self-note',
+    },
+    thread: null,
+  });
+
+  await ctx.openLine('Allow memory.edit and memory.retire, until 2026-11-14T13:00:00Z.');
+  await ctx.waitForPage(`document.querySelector('button[name="approve"]') !== null`);
+
+  const shown = await ctx.view.evaluate(
+    `(() => { const text = document.querySelector('li[aria-label="Allow memory.edit and memory.retire, until 2026-11-14T13:00:00Z."]').innerText; return ['rule 1 will not cover', 'a new fact; a pin; a new self-note'].map((part) => text.includes(part)); })()`,
+  );
+
+  expect(shown).toStrictEqual([true, true]);
+});
+
 test('it says Not now for a proposed rule and declines it without asking for a note', async () => {
   const ctx = await setupTest();
 

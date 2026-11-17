@@ -30,7 +30,11 @@ const versionAdded = z.strictObject({
   until: z.int().nullable().default(null),
 });
 
-const pinned = z.strictObject({ itemID: z.string(), isPinned: z.boolean() });
+const pinned = z.strictObject({
+  itemID: z.string(),
+  isPinned: z.boolean(),
+  noticeKey: z.string().nullable().default(null),
+});
 
 const forgetStarted = z.strictObject({
   itemID: z.string(),
@@ -66,7 +70,12 @@ interface VersionAddedRecord {
 
 export type MemoryRecord =
   | VersionAddedRecord
-  | { readonly kind: 'memory.pinned'; readonly itemID: string; readonly isPinned: boolean }
+  | {
+      readonly kind: 'memory.pinned';
+      readonly itemID: string;
+      readonly isPinned: boolean;
+      readonly noticeKey: string | null;
+    }
   | {
       readonly kind: 'memory.forget_started';
       readonly itemID: string;

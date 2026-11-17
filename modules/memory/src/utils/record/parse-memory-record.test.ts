@@ -120,7 +120,17 @@ test.each([
   [
     'memory.pinned',
     { itemID: 'item-a', isPinned: true },
-    { kind: 'memory.pinned', itemID: 'item-a', isPinned: true },
+    { kind: 'memory.pinned', itemID: 'item-a', isPinned: true, noticeKey: null },
+  ],
+  [
+    'memory.pinned',
+    { itemID: 'item-a', isPinned: false, noticeKey: 'run/run-4' },
+    {
+      kind: 'memory.pinned',
+      itemID: 'item-a',
+      isPinned: false,
+      noticeKey: 'run/run-4',
+    },
   ],
   [
     'memory.forget_started',

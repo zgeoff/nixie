@@ -32,6 +32,9 @@ export type MemorySubject = 'owner' | 'self' | 'shared';
 
 export type MemoryChange = 'created' | 'edited' | 'retired' | 'restored' | 'undone';
 
+// What a notice entry reports: a version's change, a proposal, or a write of no text version.
+export type NoticeChange = MemoryChange | 'proposed' | 'labelled' | 'pinned' | 'unpinned';
+
 export type ProposalOperationKind = 'remember' | 'retire' | 'pin';
 
 export type MemoryOrigin = 'owner' | 'conversation' | 'task' | 'lapse';
@@ -126,6 +129,9 @@ export interface PinRequest {
 
   readonly version?: number;
   readonly writeInTransaction?: WriteInTransaction;
+
+  // the notice that the write joins, for a write the user learns of from a notice
+  readonly noticeKey?: string;
 }
 
 export interface ForgetRequest {

@@ -497,3 +497,53 @@ test('it sends a proposal in a notice to the proposals page', async () => {
     '/proposals',
   );
 });
+
+test('it shows a pin and a label edit in a notice with a link and no controls', async () => {
+  const ctx = await setupTest();
+
+  const message = await store.records.create({
+    kind: 'owner_message',
+    message: { text: 'Tidy up my running notes' },
+  });
+
+  await store.records.create({ kind: 'model.reply', message: { text: 'Tidied.' } });
+
+  const pinned = await store.memoryItems.create({
+    shortID: 'p6m3dz',
+    versions: [{ text: 'Runs on Sundays' }],
+  });
+
+  const labelled = await store.memoryItems.create({
+    shortID: 'l9t4vy',
+    versions: [{ text: 'Owns a kettlebell' }],
+  });
+
+  await store.memoryNotices.create({
+    entries: [
+      { change: 'pinned', itemID: pinned.itemID, sequence: message.sequence + 1, version: null },
+      {
+        change: 'labelled',
+        itemID: labelled.itemID,
+        sequence: message.sequence + 2,
+        version: null,
+      },
+    ],
+    kind: 'turn',
+    messageSequence: message.sequence,
+    noticeKey: `turn/conversation/${String(message.sequence)}`,
+  });
+
+  const rendered = render(<Conversation thread="conversation" />);
+
+  const notice = await rendered.findByRole('listitem', { name: 'Updated 2 things' });
+
+  await ctx.user.click(within(notice).getByRole('button', { name: 'View' }));
+
+  const pinnedRow = within(notice).getByRole('listitem', { name: 'p6m3dz' });
+  const labelledRow = within(notice).getByRole('listitem', { name: 'l9t4vy' });
+
+  expect(within(pinnedRow).getByText('Pinned')).toBeVisible();
+  expect(within(labelledRow).getByText('Labels changed')).toBeVisible();
+  expect(within(notice).queryByRole('button', { name: 'Undo' })).toBeNull();
+  expect(within(pinnedRow).getByRole('link', { name: 'Open in memory' })).toBeVisible();
+});

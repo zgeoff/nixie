@@ -11,14 +11,17 @@ const reviewReasons: Readonly<Record<MemoryProposal['reason'], string>> = {
   checker_unreachable: 'The checker could not be reached.',
   forgotten_evidence: 'The message it quotes was forgotten.',
   ambiguous_target: 'It is unclear which item it changes.',
-  pinned: 'It changes a pinned item.',
+  pinned:
+    'It adds the item to the pinned core, and a pin waits for your review unless a rule of yours covers it.',
   other: 'nixie sent it to review.',
-  self_note: 'nixie wrote it about itself, and every self-note waits for your review.',
-  from_photo: 'It comes from a photo you sent, and nixie never takes a photo as your words.',
+  self_note:
+    'nixie wrote it about itself, and a self-note waits for your review unless a rule of yours covers it.',
+  from_photo:
+    'It comes from a photo you sent, and nixie never takes a photo as your words unless a rule of yours covers it.',
   subject_change:
-    'It changes whose fact the item is, and every subject change waits for your review.',
+    'It changes whose fact the item is, and a subject change waits for your review unless a rule of yours covers it.',
   labels:
-    'It changes how the item is listed or what brings it up, and every such change waits for your review.',
+    'It changes how the item is listed or what brings it up, and such a change waits for your review unless a rule of yours covers it.',
   ask_rule: 'A rule of yours asks before nixie writes this kind of memory.',
 };
 

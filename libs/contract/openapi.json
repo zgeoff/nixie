@@ -9324,7 +9324,10 @@
                                     "retired",
                                     "restored",
                                     "undone",
-                                    "proposed"
+                                    "proposed",
+                                    "labelled",
+                                    "pinned",
+                                    "unpinned"
                                   ],
                                   "type": "string"
                                 },

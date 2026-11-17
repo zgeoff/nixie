@@ -35,7 +35,11 @@ export function writePin(
           definitions: parts.context.definitions(),
           ...(request.provenance.thread === undefined ? {} : { thread: request.provenance.thread }),
           ...(approval === undefined ? {} : { approval: approval.envelope }),
-          payload: { itemID: request.itemID, isPinned: request.isPinned },
+          payload: {
+            itemID: request.itemID,
+            isPinned: request.isPinned,
+            ...(request.noticeKey === undefined ? {} : { noticeKey: request.noticeKey }),
+          },
         },
       ]);
     }),

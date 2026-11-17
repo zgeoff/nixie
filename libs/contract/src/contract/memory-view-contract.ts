@@ -185,7 +185,17 @@ const versionTargetSchema = z.object({
 const versionResultSchema = z.object({ itemID: z.string(), version: z.int().positive() });
 
 const noticeEntrySchema = z.object({
-  change: z.enum(['created', 'edited', 'retired', 'restored', 'undone', 'proposed']),
+  change: z.enum([
+    'created',
+    'edited',
+    'retired',
+    'restored',
+    'undone',
+    'proposed',
+    'labelled',
+    'pinned',
+    'unpinned',
+  ]),
   isKept: z.boolean(),
   item: memoryItemSchema
     .extend({ change: z.enum(['created', 'edited', 'retired', 'restored', 'undone']) })

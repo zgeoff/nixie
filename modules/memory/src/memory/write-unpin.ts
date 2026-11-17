@@ -1,8 +1,10 @@
 import type { UnpinRequest, WriteOutcome } from '../gate/gate-context';
+import { readNewestMessage } from '../message/read-newest-message';
 import { writePin } from '../pin/write-pin';
 import type { MemoryTables, StoreParts } from '../types';
 import { MemoryItemNotFoundError } from '../utils/error/memory-item-not-found-error';
 import { NotPinnedError } from '../utils/error/not-pinned-error';
+import { buildWriteGroup } from '../write/build-write-group';
 
 export async function writeUnpin(parts: StoreParts, request: UnpinRequest): Promise<WriteOutcome> {
   const item = await parts.context.log.writer.db
@@ -22,6 +24,8 @@ export async function writeUnpin(parts: StoreParts, request: UnpinRequest): Prom
 
   const caller = request.caller;
 
+  const newest = await readNewestMessage(parts.context.log, caller.thread);
+
   await writePin(parts, {
     itemID: request.itemID,
     isPinned: false,
@@ -34,6 +38,7 @@ export async function writeUnpin(parts: StoreParts, request: UnpinRequest): Prom
       thread: caller.thread,
       model: caller.model,
     },
+    noticeKey: buildWriteGroup(caller, newest).noticeKey,
   });
 
   return { status: 'applied', itemID: request.itemID, version: item.version + item.label_edits };

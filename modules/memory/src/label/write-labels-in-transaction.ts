@@ -22,6 +22,9 @@ export interface LabelWrite {
   readonly model: string | null;
   readonly thread?: string;
 
+  // the notice that the write joins, for a write the user learns of from a notice
+  readonly noticeKey?: string;
+
   readonly approval?: {
     readonly envelope: Approval;
     readonly record: RecordInput;
@@ -58,6 +61,7 @@ export async function writeLabelsInTransaction(
       taskID: write.taskID,
       proposalID: write.proposalID,
       model: write.model,
+      ...(write.noticeKey === undefined ? {} : { noticeKey: write.noticeKey }),
     },
   };
 
