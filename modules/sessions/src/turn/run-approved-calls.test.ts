@@ -44,6 +44,7 @@ async function setupTest() {
   });
 
   const inStepActions: InStepActions = {
+    replies: new Map(),
     probePending: () => {
       state.probes += 1;
 
@@ -87,7 +88,7 @@ async function setupTest() {
               actionID: 'action-1',
               sources: { text: call.source ?? 'untrusted' },
             },
-            erasable: { result: { text: call.text } },
+            erasable: { result: { kept: 'the IDs the call read' } },
             contentSource: call.source ?? 'untrusted',
           },
         ]);
@@ -181,6 +182,29 @@ test('it runs the approved call before the turn, and the turn reads the result b
   expect(ctx.sandboxes.turns).toHaveLength(1);
   expect(joined).toContain('An action settled');
   expect(joined).toContain('the memory export is ready');
+});
+
+test('it shows what the call returned in a later turn when a full batch ended before its outcome', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  const runner = await ctx.startRunner();
+
+  ctx.sandboxes.setGuestScript(buildStubTurnScript(() => ({ reply: 'Done.' })));
+  ctx.state.pending.push({ text: 'the memory export is ready' });
+
+  for (const count of Array.from({ length: 64 }, (_, index) => index + 1)) {
+    await ctx.writeMessage(`Message ${String(count)}.`);
+  }
+
+  await runNextStep(ctx.context, runner.runStep);
+  await runNextStep(ctx.context, runner.runStep);
+
+  const [first, second] = ctx.readTurnTexts().map((turn) => turn.join('\n'));
+
+  expect(first).not.toContain('the memory export is ready');
+  expect(second).toContain('the memory export is ready');
 });
 
 test('it marks the result of a call that returned outside content, and fences it', async () => {

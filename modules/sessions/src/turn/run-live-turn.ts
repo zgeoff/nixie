@@ -40,14 +40,12 @@ export async function runLiveTurn(
   stepInput: StepInput,
   plan: LiveTurnPlan,
 ): Promise<CompletedTurn> {
-  const approved = await runApprovedCalls(run, stepInput, plan);
-
-  const input = approved.input;
+  const input = await runApprovedCalls(run, stepInput, plan);
 
   const opening = await readOpeningBatch(run.context, input.inbox, {
     ...plan,
     imageBudget: run.imageBudget,
-    replies: approved.replies,
+    ...(run.inStepActions === undefined ? {} : { replies: run.inStepActions.replies }),
   });
 
   const silence = buildTurnSilence(opening.batch.records);

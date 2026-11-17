@@ -159,6 +159,11 @@ export interface InStepActions {
 
   // runs each such call under the step's lease, through the step's own tool run
   readonly run: (request: InStepRunRequest) => Promise<readonly InStepSettled[]>;
+
+  // What each call that ran returned, by the sequence of its outcome record, which a later turn
+  // reads when its batch ends before the outcome. A restart empties it, and a turn then reads what
+  // the result record kept.
+  readonly replies: Map<number, ApprovedReply>;
 }
 
 export interface InStepRunRequest {

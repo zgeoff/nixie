@@ -1770,6 +1770,7 @@ test('it runs a call approved while a task turn ran, in the step that continues 
   const approval = { isPending: false, runs: 0 };
 
   const inStepActions: InStepActions = {
+    replies: new Map(),
     probePending: () => Promise.resolve(approval.isPending),
     run: async (request) => {
       if (!approval.isPending) {

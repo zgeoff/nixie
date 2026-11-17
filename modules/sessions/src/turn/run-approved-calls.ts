@@ -4,14 +4,6 @@ import type { ApprovedReply, ToolRun, ToolSession, ToolStepHold } from '@heynixi
 import { makeImageReserver } from '../task/make-image-reserver';
 import type { ConversationRun } from '../types';
 
-export interface ApprovedCalls {
-  // the step's input with the inbox read again, so the turn takes the outcomes that the calls wrote
-  readonly input: StepInput;
-
-  // what each call that ran returned, by the sequence of its action's outcome record
-  readonly replies: ReadonlyMap<number, ApprovedReply>;
-}
-
 export interface ApprovedCallsPlan {
   // the session the calls run on
   readonly session: ToolSession;
@@ -20,18 +12,17 @@ export interface ApprovedCallsPlan {
   readonly signal: AbortSignal;
 }
 
-// The step that holds the task runs the calls its owner approved before its model turn, so one
-// turn reads the approval and the results. A call runs under the step's own hold on the turn's
-// budget and under its task run's bounds, as a call the model made in the turn would.
+// A call runs under the step's own hold on the turn's budget and its task run's bounds, as a call
+// the model made in the turn would. The inbox is read again, so the turn takes the outcomes.
 export async function runApprovedCalls(
   run: ConversationRun,
   input: StepInput,
   plan: ApprovedCallsPlan,
-): Promise<ApprovedCalls> {
+): Promise<StepInput> {
   const actions = run.inStepActions;
 
   if (actions === undefined || !(await actions.probePending(input.taskID))) {
-    return { input, replies: new Map() };
+    return input;
   }
 
   const token = run.endpoint.startStep(
@@ -55,21 +46,20 @@ export async function runApprovedCalls(
     });
 
     if (settled.length === 0) {
-      return { input, replies: new Map() };
+      return input;
     }
 
     // an outcome can land behind a message that arrived since the step began, and the read mark
     // moves over a contiguous run of records only, so the turn takes the inbox as it is now
     const inbox = await readInbox(run.context, input.taskID);
 
-    return {
-      input: { ...input, inbox },
-      replies: new Map(
-        settled.flatMap((entry) =>
-          entry.reply === null ? [] : [[entry.outcomeSequence, entry.reply] as const],
-        ),
-      ),
-    };
+    for (const entry of settled) {
+      if (entry.reply !== null) {
+        keepReply(actions.replies, entry.outcomeSequence, entry.reply);
+      }
+    }
+
+    return { ...input, inbox };
   } finally {
     await token.stop();
   }
@@ -94,4 +84,24 @@ export function buildTaskRun(input: StepInput): ToolRun['taskRun'] {
   return input.run === null
     ? undefined
     : { runID: input.run.runID, calls: input.run.opened.limits.calls };
+}
+
+// The newest replies a turn may still read: a batch that ends before an outcome leaves its reply
+// for a later step, so a reply stays past the step that ran its call.
+const keptReplies = 100;
+
+function keepReply(
+  replies: Map<number, ApprovedReply>,
+  outcomeSequence: number,
+  reply: ApprovedReply,
+): void {
+  replies.set(outcomeSequence, reply);
+
+  for (const sequence of replies.keys()) {
+    if (replies.size <= keptReplies) {
+      return;
+    }
+
+    replies.delete(sequence);
+  }
 }

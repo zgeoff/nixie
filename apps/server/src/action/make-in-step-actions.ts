@@ -16,6 +16,7 @@ export function makeInStepActions(parts: ServerParts): InStepActions {
   });
 
   return {
+    replies: new Map(),
     probePending: (taskID) => probeInStepActionPending(parts.context, taskID),
     run: async (request) => {
       const settled = await runInStepActions(parts.context, request.lease, {
