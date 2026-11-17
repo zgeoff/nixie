@@ -215,11 +215,11 @@ test('it removes a conversation definition from a seed record and a snapshot for
 
   expect(newHash).not.toBe(ctx.taskHash);
 
-  expect(records.map((row) => JSON.parse(row.payload))).toStrictEqual([
+  expect(records.map((row) => z.unknown().parse(JSON.parse(row.payload)))).toStrictEqual([
     { repoTasks: [{ id: 'feed-the-cat', hash: newHash }] },
   ]);
 
-  expect(snapshots.map((row) => JSON.parse(row.form))).toStrictEqual([
+  expect(snapshots.map((row) => z.unknown().parse(JSON.parse(row.form)))).toStrictEqual([
     { tasks: [{ hash: newHash, id: 'feed-the-cat', origin: 'definitions' }] },
   ]);
 });
