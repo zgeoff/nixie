@@ -2,6 +2,7 @@ import { expect, test } from 'bun:test';
 import {
   readPreviousReleaseBuild,
   readTestBundle,
+  seedBudgetRecords,
   seedMemoryItems,
 } from '@heynixie/server/test-utils';
 import { runRollbackCheck } from './src/test-utils/run-rollback-check';
@@ -42,6 +43,13 @@ test('it fails with the refusal when the release cannot take the writer lock', a
 test('it does not fail the previous release on data that holds memory items with 2 versions, labels and proposals', async () => {
   const previous = await readPreviousReleaseBuild();
   const result = await runRollbackCheck({ previous, seed: seedMemoryItems });
+
+  expect(result).not.toMatchObject({ verdict: 'fail' });
+});
+
+test('it does not fail the previous release on data that holds budget charges and credits', async () => {
+  const previous = await readPreviousReleaseBuild();
+  const result = await runRollbackCheck({ previous, seed: seedBudgetRecords });
 
   expect(result).not.toMatchObject({ verdict: 'fail' });
 });
