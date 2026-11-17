@@ -114,11 +114,13 @@ the writer's epoch that stops an older nixie process from writing
   version retires the item, because no earlier text exists.
 - **Edit labels** adds a `memory.labelled` record and no version, and raises the revision by 1.
 - **Pin** and **unpin** change where the item shows and not its text, so each appends a
-  `memory.pinned` record and adds no version. A pin from the model or the client carries the
-  revision its caller read, and fails as stale once the item moved past it. Only an active item can
-  be pinned, whatever its subject. A pin, or an edit of a pinned item, fails when it would take
-  [the pinned core](./context.md#the-pinned-core) past its budget. An unpin fails only when the item
-  is not pinned.
+  `memory.pinned` record and adds no version. A pin or unpin that joins a
+  [notice](./writes.md#notices) also appends a `memory.pin_noticed` record that holds the notice
+  key, because the release before refuses a `memory.pinned` record with any other field. A pin from
+  the model or the client carries the revision its caller read, and fails as stale once the item
+  moved past it. Only an active item can be pinned, whatever its subject. A pin, or an edit of a
+  pinned item, fails when it would take [the pinned core](./context.md#the-pinned-core) past its
+  budget. An unpin fails only when the item is not pinned.
 
 ## End times
 
@@ -483,12 +485,13 @@ then runs as in a bulk forget of retired items.
 | `memory.remember` | `memory_write` | Creates an item, with a quote or a photo as its source      |
 | `memory.edit`     | `memory_write` | Edits an item at a revision it read, with a quote           |
 | `memory.retire`   | `memory_write` | Retires an item at a revision it read, with an intent quote |
-| `memory.pin`      | `note`         | Asks to pin an item at a revision it read                   |
+| `memory.pin`      | `memory_write` | Pins an item at a revision it read, or asks to              |
 | `memory.unpin`    | `note`         | Takes an item out of the pinned core                        |
 
-Each tool runs direct, and the user's rules decide each call by its effect. The starter rules
-`allow-reads` and `allow-notes` allow `read` and `note`. No starter rule allows `memory_write`, so
-the memory gate decides those calls ([rules on memory writes](./writes.md#rules-on-memory-writes)).
+Each tool runs direct, and the user's rules decide each call by its effect or its name. The starter
+rules `allow-reads` and `allow-notes` allow `read` and `note`. No starter rule allows
+`memory_write`, so the memory gate decides those calls
+([rules on memory writes](./writes.md#rules-on-memory-writes)).
 
 Each write tool runs its gate, and returns either the revision it applied or the proposal it became,
 with its review reason. A missing quote never fails the tool, because the gate turns it into a

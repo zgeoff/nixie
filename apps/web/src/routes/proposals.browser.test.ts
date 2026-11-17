@@ -296,7 +296,7 @@ test('it shows the labels of a label-only memory proposal and the sentence of it
   await ctx.openLine('Change the labels');
 
   await ctx.waitForPage(
-    `document.body.innerText.includes('It changes how the item is listed or what brings it up, and every such change waits for your review.')`,
+    `document.body.innerText.includes('It changes how the item is listed or what brings it up, and such a change waits for your review unless a rule of yours covers it.')`,
   );
 
   const labels: unknown = await ctx.view.evaluate(

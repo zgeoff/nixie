@@ -247,7 +247,17 @@ const backupNotices = new Collection({
 
 const noticeEntrySchema = z.object({
   change: z
-    .enum(['created', 'edited', 'retired', 'restored', 'undone', 'proposed'])
+    .enum([
+      'created',
+      'edited',
+      'retired',
+      'restored',
+      'undone',
+      'proposed',
+      'labelled',
+      'pinned',
+      'unpinned',
+    ])
     .default('created'),
   itemID: z.string(),
   proposalID: z.string().nullable().default(null),

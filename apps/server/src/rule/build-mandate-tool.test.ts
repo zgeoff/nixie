@@ -1,8 +1,17 @@
 import { expect, test } from 'bun:test';
 import type { JSONObject } from '@heynixie/log';
 import { startTestLog } from '@heynixie/log/test-utils';
+import { buildMemoryTools } from '@heynixie/memory';
+import { startTestMemory } from '@heynixie/memory/test-utils';
 import { buildMockToolContext } from '@heynixie/tools/test-utils';
-import { buildMandateTool } from './build-mandate-tool';
+import { z } from 'zod';
+import { buildMandateTool, mandateDescription } from './build-mandate-tool';
+import { memoryRuleArguments } from './memory-rule-arguments';
+
+interface NamedArgument {
+  isDeclared: boolean;
+  isNamed: boolean;
+}
 
 async function setupTest() {
   const started = await startTestLog();
@@ -74,4 +83,99 @@ test('it refuses an expiry in the past', async () => {
     status: 'error',
     message: 'The mandate was refused: expires_past.',
   });
+});
+
+test('it lists in memoryGaps the memory writes that a rule will not cover', async () => {
+  const ctx = await setupTest();
+
+  const outcome = await ctx.call({
+    title: 'Tidy my memory',
+    rules: [
+      { outcome: 'allow', tools: ['memory.edit', 'memory.retire'] },
+      { outcome: 'allow', tools: ['calendar.respond'] },
+    ],
+  });
+
+  expect(outcome).toMatchObject({
+    status: 'ok',
+    result: {
+      memoryGaps: [
+        {
+          rule: 1,
+          uncovered: expect.arrayContaining([
+            'a new fact',
+            'a new self-note',
+            'a self-note text edit',
+            'a pin',
+          ]),
+        },
+      ],
+    },
+  });
+});
+
+test('it leaves memoryGaps empty for a rule that reaches no memory tool', async () => {
+  const ctx = await setupTest();
+
+  const outcome = await ctx.call({
+    title: 'Calendar only',
+    rules: [{ outcome: 'allow', tools: ['calendar.respond'] }],
+  });
+
+  expect(outcome).toMatchObject({ status: 'ok', result: { memoryGaps: [] } });
+});
+
+test('it leaves a photo write out of memoryGaps for a rule that checks an image argument', async () => {
+  const ctx = await setupTest();
+
+  const outcome = await ctx.call({
+    title: 'Memory from photos',
+    rules: [
+      {
+        outcome: 'allow',
+        effects: ['memory_write'],
+        checks: [{ arg: 'image.eventID', op: 'matches', value: '*' }],
+      },
+    ],
+  });
+
+  const gap = z.object({ rule: z.number(), uncovered: z.array(z.string()) });
+  const result = z.object({ memoryGaps: z.array(gap) });
+  const gaps = z.object({ status: z.literal('ok'), result }).parse(outcome).result.memoryGaps;
+
+  expect(gaps).toHaveLength(1);
+  expect(gaps[0]?.uncovered).not.toContain('a write from a photo');
+});
+
+test('it names in its description each argument of a memory tool that a rule can check', async () => {
+  const memory = await startTestMemory();
+
+  const tools = buildMemoryTools(memory.store, {
+    clock: { now: () => Date.now() },
+    ownerName: null,
+    defaultZone: 'UTC',
+  });
+
+  const named = Object.entries(memoryRuleArguments).map(([toolName, names]) => {
+    const input = tools.find((tool) => tool.name === toolName)?.input;
+    const properties = z.object({ properties: z.record(z.string(), z.unknown()) }).parse(input);
+
+    return names.map((name) => ({
+      toolName,
+      name,
+      isDeclared:
+        name === 'subject' || Object.hasOwn(properties.properties, name.split('.')[0] ?? ''),
+      isNamed: mandateDescription.includes(`${toolName}: `) && mandateDescription.includes(name),
+    }));
+  });
+
+  const entries: NamedArgument[] = named.flat();
+
+  expect(entries).toSatisfyAll((entry: NamedArgument) => entry.isDeclared && entry.isNamed);
+});
+
+test('it describes the memory example and says that a rule by tool name and one by effect agree', () => {
+  expect(mandateDescription).toInclude('memory_write');
+  expect(mandateDescription).toInclude('subject eq self');
+  expect(mandateDescription).toInclude('memory tidy-up');
 });

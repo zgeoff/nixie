@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test';
 import { startTestRules } from '@heynixie/api/test-utils';
-import { runGapChecks } from '@heynixie/definitions';
+import { runGapChecks, writeProposedRule } from '@heynixie/definitions';
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import {
   answerProposal,
@@ -568,4 +568,22 @@ test.each([
   const refused = await ctx.editProposedRule(old.row.id, old.row.actionHash, rule);
 
   expect(refused.status).toBe('invalid');
+});
+
+test('it shows on the card of a proposed rule what the rule will not cover in memory', async () => {
+  const ctx = await setupTest();
+
+  const written = await withWriteTransaction(ctx.log.writer, (tx) =>
+    writeProposedRule(tx, ctx.context, {
+      groupHash: 'group-memory',
+      rule: { outcome: 'allow', tools: ['memory.remember'], sources: ['owner'] },
+      approvals: [],
+      editOf: null,
+    }),
+  );
+
+  const [proposed] = await ctx.readProposedRules();
+
+  expect(proposed?.row.id).toBe(written.proposalID);
+  expect(proposed?.body?.fields['rule 1 will not cover']).toInclude('a pin');
 });

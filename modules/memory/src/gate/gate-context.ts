@@ -9,6 +9,7 @@ import type {
   Labels,
   MemoryChange,
   MemorySubject,
+  NoticeChange,
   ProposalOperationKind,
   ProposalOrigin,
   QuoteEvidence,
@@ -105,6 +106,9 @@ export interface GatedLabelEditRequest {
   // the whole label set the approval applies
   readonly labels: Labels;
   readonly caller: WriteCaller;
+
+  // what the decision point said; a write with none runs every check
+  readonly verdict?: MemoryWriteVerdict;
 }
 
 export interface GatedRetireRequest {
@@ -117,6 +121,9 @@ export interface GatedRetireRequest {
 export interface GatedPinRequest {
   readonly target: VersionRef;
   readonly caller: WriteCaller;
+
+  // what the decision point said; a pin with none waits for review
+  readonly verdict?: MemoryWriteVerdict;
 }
 
 export interface UnpinRequest {
@@ -274,7 +281,7 @@ export interface MemoryProposals {
 
 export interface NoticeEntry {
   readonly itemID: string;
-  readonly change: MemoryChange | 'proposed';
+  readonly change: NoticeChange;
   readonly version: number | null;
   readonly proposalID: string | null;
   readonly sequence: number;
@@ -332,6 +339,17 @@ export interface MemoryNoticeEntryTable {
   readonly version: number | null;
   readonly change: MemoryChange | 'proposed';
   readonly proposal_id: string | null;
+  readonly sequence: number;
+  readonly recorded_at: number;
+}
+
+// the notice entries of the writes that add no text version: a label edit, a pin and an unpin
+export interface MemoryChangeNoticeTable {
+  readonly entry_key: string;
+  readonly notice_key: string;
+  readonly thread: string | null;
+  readonly item_id: string;
+  readonly change: Exclude<NoticeChange, MemoryChange | 'proposed'>;
   readonly sequence: number;
   readonly recorded_at: number;
 }

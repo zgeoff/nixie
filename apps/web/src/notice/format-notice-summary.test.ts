@@ -11,5 +11,21 @@ test.each([
   ],
   [{ remembered: 0, retired: 0, proposed: 2 }, 'Proposed 2 things'],
 ] as const)('it sums up the notice %o as "%s"', (notice, expected) => {
-  expect(formatNoticeSummary(notice)).toBe(expected);
+  expect(formatNoticeSummary({ ...notice, entries: [] })).toBe(expected);
+});
+
+test('it counts each label edit, pin and unpin as an update', () => {
+  const notice = {
+    remembered: 1,
+    retired: 0,
+    proposed: 0,
+    entries: [
+      { change: 'created' },
+      { change: 'labelled' },
+      { change: 'pinned' },
+      { change: 'unpinned' },
+    ],
+  } as const;
+
+  expect(formatNoticeSummary(notice)).toBe('Remembered 1 thing, Updated 3 things');
 });

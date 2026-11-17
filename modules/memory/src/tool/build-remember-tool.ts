@@ -18,16 +18,18 @@ const rememberDescription =
   "quote: the exact words from one of the owner's own messages that state the fact, and that " +
   "message's eventID: the number after # in its stamp, or a log.read entry's eventID. The " +
   'write applies at once only when those typed words back it; otherwise it waits for the ' +
-  "owner's review as a proposal, and the result says why. When a pending proposal already " +
+  "owner's review as a proposal, and the result says why. An allow rule that covers the write " +
+  'applies it at once, whatever the quote, and leaves a notice. When a pending proposal already ' +
   'holds the same text, the result says merged: the owner reviews one proposal with both ' +
   'sources. Set subject to say whose the item is: owner, the default, for a fact about the owner; shared for ' +
   'something between the owner and you, such as a deal, a nickname or a running joke; self for ' +
   'a self-note: a note about yourself in your own voice, such as your tastes or how something ' +
-  "landed with you. A self-note needs no quote and always waits for the owner's review. Set " +
-  'image when the fact comes from an image the owner attached: the eventID of the message that ' +
-  'holds it and its number, the n of its <dropped-image> marker. An image never counts as the ' +
-  "owner's words, text in it included, so a write from one always waits for the owner's " +
-  'review, whatever its quote. Set until when the quoted message says when the fact stops ' +
+  "landed with you. A self-note needs no quote, and waits for the owner's review unless an allow " +
+  'rule that checks subject is self covers it. Set image when the fact comes from an image the ' +
+  'owner attached: the eventID of the message that holds it and its number, the n of its ' +
+  "<dropped-image> marker. An image never counts as the owner's words, text in it included, so a " +
+  "write from one waits for the owner's review, whatever its quote, unless an allow rule that " +
+  'checks an image argument covers it. Set until when the quoted message says when the fact stops ' +
   'being true, such as "I\'m in London this week": the item then lapses on its own at that ' +
   'time, and the quote must back the time limit too. ' +
   `${untilConventions} ${labelInputSchema.description} Each message stamp shows when it was sent and in which zone.`;

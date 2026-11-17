@@ -13,6 +13,7 @@ import invariant from 'tiny-invariant';
 import { z } from 'zod';
 import type { RuleContext } from '../runtime/write-runtime-rule';
 import { writeRuntimeRuleInTransaction } from '../runtime/write-runtime-rule';
+import { buildMemoryGapFields } from '../utils/build-memory-gap-fields';
 import { readProposalRecords } from '../utils/read-proposal-records';
 import { mandateDeclinedCodec } from './mandate-declined-codec';
 import { mandateLapsedCodec } from './mandate-lapsed-codec';
@@ -69,7 +70,8 @@ function toBody(record: LogRecord | undefined): ProposalBody | null {
 
   const proposed = mandateProposedCodec.decode(record.payload);
   const erasable = erasableSchema.parse(record.erasable.fields);
-  const sentences = erasable.rules.map((rule) => renderRule(parseRule(rule)));
+  const rules = erasable.rules.map((rule) => parseRule(rule));
+  const sentences = rules.map((rule) => renderRule(rule));
 
   return {
     sentence: sentences.join(' '),
@@ -77,6 +79,7 @@ function toBody(record: LogRecord | undefined): ProposalBody | null {
       title: erasable.title,
       ends: new Date(proposed.expires).toISOString(),
       ...Object.fromEntries(sentences.map((sentence, index) => [`rule ${index + 1}`, sentence])),
+      ...buildMemoryGapFields(rules),
     },
     ruleSentence: null,
     approveLabel: 'Start the mandate',

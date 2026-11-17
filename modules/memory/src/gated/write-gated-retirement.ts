@@ -1,3 +1,4 @@
+import type { RuleNeed } from '@heynixie/policy';
 import { requireLiveEvidence } from '../evidence/require-live-evidence';
 import { requireUnforgottenQuote } from '../evidence/require-unforgotten-quote';
 import { buildAskReview } from '../gate/build-ask-review';
@@ -68,7 +69,8 @@ function runRetirementGate(
     return Promise.resolve(selfNoteRetirement);
   }
 
-  const covering = pickCoveringRule(verdict, 'none');
+  const need: RuleNeed = item.isSelfNote ? 'self_note' : 'none';
+  const covering = pickCoveringRule(verdict, need);
 
   if (covering !== null) {
     return Promise.resolve({

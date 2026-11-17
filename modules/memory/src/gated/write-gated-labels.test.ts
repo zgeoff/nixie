@@ -2,6 +2,7 @@ import { expect, test } from 'bun:test';
 import { readRecords } from '@heynixie/log';
 import invariant from 'tiny-invariant';
 import { buildMockWriteCaller, startTestMemory } from '../test-utils';
+import { buildAllowVerdict } from '../test-utils/build-allow-verdict';
 import { buildMockProvenance } from '../test-utils/build-mock-provenance';
 import type { MemoryTables } from '../types';
 import { SelfNoteError } from '../utils/error/self-note-error';
@@ -333,4 +334,120 @@ test("it refuses a task's label-only edit of a self-note, and writes nothing", a
   );
 
   expect(pending).toStrictEqual([]);
+});
+
+test.each([
+  { from: 'conversation', caller: buildMockWriteCaller(), thread: 'conversation' },
+  {
+    from: 'task',
+    caller: buildMockWriteCaller({ origin: 'task', thread: 'task-1', taskID: 'task-1' }),
+    thread: 'task-1',
+  },
+] as const)(
+  'it applies a label-only edit at once with a notice under a covering rule, from the $from',
+  async (testCase) => {
+    const memory = await startTestMemory();
+
+    const item = await memory.store.remember({
+      text: 'Keeps a kettlebell by the door',
+      labels: { gist: 'kettlebell', topic: 'home', triggers: [] },
+      provenance: buildMockProvenance(),
+    });
+
+    const outcome = await memory.store.writes.editLabels({
+      target: item,
+      labels: { gist: 'kettlebell by the door', topic: 'home', triggers: ['gym'] },
+      caller: testCase.caller,
+      verdict: buildAllowVerdict(),
+    });
+
+    const labels = await memory.store.writes.readItemLabels(item.itemID);
+    const notices = await memory.store.readNotices(testCase.thread);
+
+    expect(outcome).toStrictEqual({ status: 'applied', itemID: item.itemID, version: 2 });
+
+    expect(labels).toStrictEqual({
+      gist: 'kettlebell by the door',
+      topic: 'home',
+      triggers: ['gym'],
+    });
+
+    expect(notices.flatMap((notice) => notice.entries)).toMatchObject([
+      { itemID: item.itemID, change: 'labelled', version: null },
+    ]);
+  },
+);
+
+test.each([
+  { from: 'conversation', caller: buildMockWriteCaller(), thread: 'conversation' },
+  {
+    from: 'task',
+    caller: buildMockWriteCaller({ origin: 'task', thread: 'task-1', taskID: 'task-1' }),
+    thread: 'task-1',
+  },
+] as const)(
+  'it applies a self-note label edit at once with a notice under a rule that checks subject is self, from the $from',
+  async (testCase) => {
+    const memory = await startTestMemory();
+
+    const item = await memory.store.remember({
+      text: 'Keeps a kettlebell by the door',
+      labels: { gist: 'kettlebell', topic: 'home', triggers: [] },
+      subject: 'self',
+      provenance: buildMockProvenance(),
+    });
+
+    const outcome = await memory.store.writes.editLabels({
+      target: item,
+      labels: { gist: 'opening question', topic: 'habits', triggers: [] },
+      caller: testCase.caller,
+      verdict: buildAllowVerdict([{ arg: 'subject', op: 'eq', value: 'self' }]),
+    });
+
+    const notices = await memory.store.readNotices(testCase.thread);
+
+    expect(outcome).toStrictEqual({ status: 'applied', itemID: item.itemID, version: 2 });
+
+    expect(notices.flatMap((notice) => notice.entries)).toMatchObject([
+      { itemID: item.itemID, change: 'labelled' },
+    ]);
+  },
+);
+
+test('it makes a label-only edit with a hidden character a proposal under a covering rule', async () => {
+  const memory = await startTestMemory();
+
+  const item = await memory.store.remember({
+    text: 'Keeps a kettlebell by the door',
+    labels: { gist: 'kettlebell', topic: 'home', triggers: [] },
+    provenance: buildMockProvenance(),
+  });
+
+  const outcome = await memory.store.writes.editLabels({
+    target: item,
+    labels: { gist: 'kettle\u200Bbell', topic: 'home', triggers: [] },
+    caller: buildMockWriteCaller(),
+    verdict: buildAllowVerdict(),
+  });
+
+  expect(outcome).toMatchObject({ status: 'proposed', reason: 'invisible_character' });
+});
+
+test('it makes a label-only edit a proposal with the reason ask_rule under an ask rule', async () => {
+  const memory = await startTestMemory();
+
+  const item = await memory.store.remember({
+    text: 'Keeps a kettlebell by the door',
+    labels: { gist: 'kettlebell', topic: 'home', triggers: [] },
+    provenance: buildMockProvenance(),
+  });
+
+  const outcome = await memory.store.writes.editLabels({
+    target: item,
+    labels: { gist: 'kettlebell by the door', topic: 'home', triggers: [] },
+    caller: buildMockWriteCaller(),
+    verdict: { kind: 'rule-ask', rule: { id: 'rule-b', revision: 3 } },
+  });
+
+  expect(outcome).toMatchObject({ status: 'proposed', reason: 'ask_rule' });
 });

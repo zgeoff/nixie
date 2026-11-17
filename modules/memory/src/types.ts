@@ -11,6 +11,7 @@ import type { Selectable, Transaction } from 'kysely';
 import type {
   GateContext,
   ImageRef,
+  MemoryChangeNoticeTable,
   MemoryForgottenEvidenceTable,
   MemoryNoticeEntryTable,
   MemoryProposalTable,
@@ -31,6 +32,9 @@ export type VersionState = 'active' | 'retired';
 export type MemorySubject = 'owner' | 'self' | 'shared';
 
 export type MemoryChange = 'created' | 'edited' | 'retired' | 'restored' | 'undone';
+
+// What a notice entry reports: a version's change, a proposal, or a write of no text version.
+export type NoticeChange = MemoryChange | 'proposed' | 'labelled' | 'pinned' | 'unpinned';
 
 export type ProposalOperationKind = 'remember' | 'retire' | 'pin';
 
@@ -126,6 +130,9 @@ export interface PinRequest {
 
   readonly version?: number;
   readonly writeInTransaction?: WriteInTransaction;
+
+  // the notice that the write joins, for a write the user learns of from a notice
+  readonly noticeKey?: string;
 }
 
 export interface ForgetRequest {
@@ -455,6 +462,7 @@ export type MemoryTables = CheckedTables<
     memory_proposals: MemoryProposalTable;
     memory_proposal_merges: MemoryProposalMergeTable;
     memory_notice_entries: MemoryNoticeEntryTable;
+    memory_change_notices: MemoryChangeNoticeTable;
     memory_forgotten_evidence: MemoryForgottenEvidenceTable;
     memory_item_keys: MemoryItemKeyTable;
     memory_evidence_purges: MemoryEvidencePurgeTable;

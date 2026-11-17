@@ -5,13 +5,25 @@ export async function readMemoryNotices(
   parts: StoreParts,
   thread: string,
 ): Promise<readonly MemoryNotice[]> {
-  const rows = await parts.context.log.writer.db
-    .$extendTables<MemoryTables>()
-    .selectFrom('memory_notice_entries')
-    .selectAll()
-    .where('thread', '=', thread)
-    .orderBy('sequence')
-    .execute();
+  const db = parts.context.log.writer.db.$extendTables<MemoryTables>();
+
+  const [entryRows, changeRows] = await Promise.all([
+    db
+      .selectFrom('memory_notice_entries')
+      .select(['notice_key', 'item_id', 'change', 'version', 'proposal_id', 'sequence'])
+      .where('thread', '=', thread)
+      .execute(),
+    db
+      .selectFrom('memory_change_notices')
+      .select(['notice_key', 'item_id', 'change', 'sequence'])
+      .where('thread', '=', thread)
+      .execute(),
+  ]);
+
+  const rows = [
+    ...entryRows,
+    ...changeRows.map((row) => Object.assign(row, { version: null, proposal_id: null })),
+  ].toSorted((first, second) => first.sequence - second.sequence);
 
   const notices = new Map<string, NoticeEntry[]>();
 

@@ -2,8 +2,13 @@ import { expect, onTestFinished, setSystemTime, test } from 'bun:test';
 import { buildShortIDFromUUID } from '@heynixie/db';
 import type { JSONObject, LogTables } from '@heynixie/log';
 import { readRecordKeys, readRecords } from '@heynixie/log';
-import { buildAllowingDecisionPoint } from '@heynixie/policy/test-utils';
-import type { ToolRun } from '@heynixie/tools';
+import type { EffectDeclaration, Rule, RuleEntry } from '@heynixie/policy';
+import {
+  buildAllowingDecisionPoint,
+  readStarterDecisionPoint,
+  readStarterRules,
+} from '@heynixie/policy/test-utils';
+import type { ToolCallOptions, ToolRun } from '@heynixie/tools';
 import { buildToolRegistry, runToolCall } from '@heynixie/tools';
 import invariant from 'tiny-invariant';
 import { defaultGateLimits } from '../gate/default-gate-limits';
@@ -31,6 +36,22 @@ async function setupTest(config: TestMemoryOptions = {}) {
       defaultZone: 'UTC',
     }),
   );
+
+  const toolCallOptions = {
+    registry,
+
+    decide: buildAllowingDecisionPoint(),
+    log: memory.log,
+    definitions: () => ({ snapshotHash: 'sha256:test' }),
+
+    queue: {
+      enqueue: () => Promise.reject(new Error('no memory tool runs queued')),
+      readOpenRepeat: () => Promise.resolve(null),
+      readOpenAsk: () => Promise.resolve(null),
+      waitForOutcome: () => Promise.resolve(null),
+    },
+    queuedWaitMs: 1000,
+  };
 
   return {
     memory,
@@ -99,25 +120,42 @@ async function setupTest(config: TestMemoryOptions = {}) {
 
       return { itemID: item.itemID, shortID: await readItemShortID(memory.log, item.itemID) };
     },
-    toolCallOptions: {
-      registry,
-
-      decide: buildAllowingDecisionPoint(),
-      log: memory.log,
-      definitions: () => ({ snapshotHash: 'sha256:test' }),
-
-      queue: {
-        enqueue: () => Promise.reject(new Error('no memory tool runs queued')),
-        readOpenRepeat: () => Promise.resolve(null),
-        readOpenAsk: () => Promise.resolve(null),
-        waitForOutcome: () => Promise.resolve(null),
-      },
-      queuedWaitMs: 1000,
-    },
+    buildStarterDecisionPoint: (options: { readonly extraRules?: readonly RuleEntry[] } = {}) =>
+      readStarterDecisionPoint(
+        (tool) => registry.findTool(tool)?.definition.declaration ?? null,
+        options,
+      ),
+    buildSnapshotDecisionPoint: (tools: ReadonlyMap<string, EffectDeclaration>) =>
+      readStarterDecisionPoint((tool) => registry.findTool(tool)?.definition.declaration ?? null, {
+        readInputs: () =>
+          Promise.resolve({
+            rules: readStarterRules(),
+            contacts: [],
+            tools,
+            ownerDestinations: [],
+          }),
+      }),
+    callTool: (
+      tool: string,
+      input: Record<string, string | number>,
+      decide: ToolCallOptions['decide'],
+    ) =>
+      runToolCall(
+        { tool, input, toolUseID: null },
+        {
+          runID: 'run-1',
+          thread: 'conversation',
+          logThread: 'conversation',
+          tools: [tool],
+          model: { model: 'test-model', profile: 'standard' },
+        },
+        { ...toolCallOptions, decide },
+      ),
+    toolCallOptions,
   };
 }
 
-test('it declares read for the reads, export for export, memory_write for remember, edit and retire, and note for the other writes', async () => {
+test('it declares read for the reads, export for export, memory_write for remember, edit, retire and pin, and note for the unpin', async () => {
   const ctx = await setupTest();
 
   const effects = [
@@ -143,7 +181,7 @@ test('it declares read for the reads, export for export, memory_write for rememb
     ['memory.remember', ['memory_write']],
     ['memory.edit', ['memory_write']],
     ['memory.retire', ['memory_write']],
-    ['memory.pin', ['note']],
+    ['memory.pin', ['memory_write']],
     ['memory.unpin', ['note']],
     ['memory.export', ['export']],
     ['moment.keep', ['note']],
@@ -341,7 +379,7 @@ test('it returns a proposal with the photo sentence for a fact from an image of 
       status: 'proposed',
       proposalID: buildShortIDFromUUID(proposal.proposalID),
       reason:
-        'from_photo: Saved as a proposal for the owner to review. It comes from a photo, and a memory from a photo waits for their review.',
+        'from_photo: Saved as a proposal for the owner to review. It comes from a photo, and a memory from a photo waits for their review unless an allow rule covers it.',
       merged: false,
     },
   });
@@ -456,12 +494,12 @@ test('it gives the token sentence for a fact with a number its typed quote lacks
     status: 'proposed',
     proposalID: expect.toBeString(),
     reason:
-      "token_missing: Saved as a proposal for Avery to review. The new text has a number, address, handle or link that isn't in the quote, or in what Avery typed in their last 20 messages when an allow rule skips the quote.",
+      "token_missing: Saved as a proposal for Avery to review. The new text has a number, address, handle or link that isn't in the quote, or in what Avery typed in their last 20 messages.",
     merged: false,
   });
 });
 
-test('it gives the token sentence under an allow rule when the owner never typed the number, even though the quote holds it', async () => {
+test('it applies a write under an allow rule though the owner never typed the number, because the rule is their consent', async () => {
   const ctx = await setupTest({ gate: { ownerName: 'Avery' } });
 
   await writeOwnerMessageRecord(ctx.memory.log, {
@@ -497,11 +535,9 @@ test('it gives the token sentence under an allow rule when the owner never typed
   );
 
   expect(result.structuredContent).toStrictEqual({
-    status: 'proposed',
-    proposalID: expect.toBeString(),
-    reason:
-      "token_missing: Saved as a proposal for Avery to review. The new text has a number, address, handle or link that isn't in the quote, or in what Avery typed in their last 20 messages when an allow rule skips the quote.",
-    merged: false,
+    status: 'applied',
+    itemID: expect.toBeString(),
+    version: 1,
   });
 });
 
@@ -2238,4 +2274,221 @@ test("it proposes a save in a step run after the grant left the task's setup, wh
     merged: false,
     reason: expect.toStartWith('no_quote:'),
   });
+});
+
+test.each([
+  'memory.remember',
+  'memory.edit',
+  'memory.retire',
+  'memory.pin',
+  'memory.unpin',
+] as const)('it describes %s with its allow rule sentence and never says always', async (name) => {
+  const ctx = await setupTest();
+
+  const description = ctx.registry.findTool(name)?.definition.description;
+
+  expect(description).not.toMatch(/\balways\b/iu);
+  expect(description).toInclude('allow rule');
+});
+
+test.each<{ by: string; rule: Omit<Rule, 'id'> }>([
+  { by: 'tool name', rule: { outcome: 'allow', tools: ['memory.edit', 'memory.pin'] } },
+  { by: 'the memory_write effect', rule: { outcome: 'allow', effects: ['memory_write'] } },
+])('it applies a label-only edit at once under an allow rule by $by', async (testCase) => {
+  const ctx = await setupTest();
+
+  const item = await ctx.memory.store.remember({
+    text: 'Keeps a kettlebell by the door',
+    labels: { gist: 'kettlebell', topic: 'home', triggers: [] },
+    provenance: buildMockProvenance(),
+  });
+
+  const shortID = await readItemShortID(ctx.memory.log, item.itemID);
+
+  const decide = ctx.buildStarterDecisionPoint({
+    extraRules: [
+      { id: 'allow-memory', revision: 2, rule: { id: 'allow-memory', ...testCase.rule } },
+    ],
+  });
+
+  const result = await ctx.callTool(
+    'memory.edit',
+    { itemID: shortID, version: 1, gist: 'kettlebell by the door' },
+    decide,
+  );
+
+  const labels = await ctx.memory.store.writes.readItemLabels(item.itemID);
+  const pending = await ctx.memory.store.proposals.listPending();
+
+  expect(result.structuredContent).toStrictEqual({
+    status: 'applied',
+    itemID: shortID,
+    version: 2,
+  });
+
+  expect(labels.gist).toBe('kettlebell by the door');
+  expect(pending).toStrictEqual([]);
+});
+
+test.each<{ by: string; rule: Omit<Rule, 'id'> }>([
+  { by: 'tool name', rule: { outcome: 'allow', tools: ['memory.edit', 'memory.pin'] } },
+  { by: 'the memory_write effect', rule: { outcome: 'allow', effects: ['memory_write'] } },
+])('it applies a pin at once under an allow rule by $by', async (testCase) => {
+  const ctx = await setupTest();
+
+  const item = await ctx.memory.store.remember({
+    text: 'Keeps a kettlebell by the door',
+    provenance: buildMockProvenance(),
+  });
+
+  const shortID = await readItemShortID(ctx.memory.log, item.itemID);
+
+  const decide = ctx.buildStarterDecisionPoint({
+    extraRules: [
+      { id: 'allow-memory', revision: 2, rule: { id: 'allow-memory', ...testCase.rule } },
+    ],
+  });
+
+  const result = await ctx.callTool('memory.pin', { itemID: shortID, version: 1 }, decide);
+  const core = await ctx.memory.store.readPinnedCore();
+  const pending = await ctx.memory.store.proposals.listPending();
+
+  expect(result.structuredContent).toStrictEqual({
+    status: 'applied',
+    itemID: shortID,
+    version: 1,
+  });
+
+  expect(core).toMatchObject([{ itemID: item.itemID }]);
+  expect(pending).toStrictEqual([]);
+});
+
+test('it leaves a label-only edit a proposal under the starter rules', async () => {
+  const ctx = await setupTest();
+
+  const item = await ctx.memory.store.remember({
+    text: 'Keeps a kettlebell by the door',
+    labels: { gist: 'kettlebell', topic: 'home', triggers: [] },
+    provenance: buildMockProvenance(),
+  });
+
+  const shortID = await readItemShortID(ctx.memory.log, item.itemID);
+
+  const result = await ctx.callTool(
+    'memory.edit',
+    { itemID: shortID, version: 1, gist: 'kettlebell by the door' },
+    ctx.buildStarterDecisionPoint(),
+  );
+
+  expect(result.structuredContent).toMatchObject({
+    status: 'proposed',
+    reason: expect.stringMatching(/^labels: /u),
+  });
+});
+
+test('it leaves a pin a proposal under the starter rules', async () => {
+  const ctx = await setupTest();
+
+  const item = await ctx.memory.store.remember({
+    text: 'Keeps a kettlebell by the door',
+    provenance: buildMockProvenance(),
+  });
+
+  const shortID = await readItemShortID(ctx.memory.log, item.itemID);
+
+  const result = await ctx.callTool(
+    'memory.pin',
+    { itemID: shortID, version: 1 },
+    ctx.buildStarterDecisionPoint(),
+  );
+
+  expect(result.structuredContent).toMatchObject({
+    status: 'proposed',
+    reason: expect.stringMatching(/^pinned: /u),
+  });
+});
+
+test('it leaves a pin a proposal when the snapshot still declares the pin as a note', async () => {
+  const ctx = await setupTest();
+
+  const item = await ctx.memory.store.remember({
+    text: 'Keeps a kettlebell by the door',
+    provenance: buildMockProvenance(),
+  });
+
+  const shortID = await readItemShortID(ctx.memory.log, item.itemID);
+
+  const noteDeclaration: EffectDeclaration = {
+    effects: ['note'],
+    destinations: [],
+    amount: null,
+    content: [],
+    results: {},
+  };
+
+  const result = await ctx.callTool(
+    'memory.pin',
+    { itemID: shortID, version: 1 },
+    ctx.buildSnapshotDecisionPoint(new Map([['memory.pin', noteDeclaration]])),
+  );
+
+  expect(result.structuredContent).toMatchObject({
+    status: 'proposed',
+    reason: expect.stringMatching(/^pinned: /u),
+  });
+});
+
+test('it denies a pin before the tool runs under a deny rule on the tool', async () => {
+  const ctx = await setupTest();
+
+  const item = await ctx.memory.store.remember({
+    text: 'Keeps a kettlebell by the door',
+    provenance: buildMockProvenance(),
+  });
+
+  const shortID = await readItemShortID(ctx.memory.log, item.itemID);
+
+  const decide = ctx.buildStarterDecisionPoint({
+    extraRules: [
+      {
+        id: 'deny-pins',
+        revision: 2,
+        rule: { id: 'deny-pins', outcome: 'deny', tools: ['memory.pin'] },
+      },
+    ],
+  });
+
+  const result = await ctx.callTool('memory.pin', { itemID: shortID, version: 1 }, decide);
+  const core = await ctx.memory.store.readPinnedCore();
+
+  expect(result.isError).toBeTrue();
+  expect(core).toStrictEqual([]);
+});
+
+test('it still applies an unpin at once under the starter rules', async () => {
+  const ctx = await setupTest();
+
+  const item = await ctx.memory.store.remember({
+    text: 'Keeps a kettlebell by the door',
+    isPinned: true,
+    provenance: buildMockProvenance(),
+  });
+
+  const shortID = await readItemShortID(ctx.memory.log, item.itemID);
+
+  const result = await ctx.callTool(
+    'memory.unpin',
+    { itemID: shortID },
+    ctx.buildStarterDecisionPoint(),
+  );
+
+  const core = await ctx.memory.store.readPinnedCore();
+
+  expect(result.structuredContent).toStrictEqual({
+    status: 'applied',
+    itemID: shortID,
+    version: 1,
+  });
+
+  expect(core).toStrictEqual([]);
 });

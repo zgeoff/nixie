@@ -54,13 +54,16 @@ the step's own sources would misstate them:
   in the thread's recent messages, outside any pasted span. A write with no quote, a quote in a
   pasted span, a photo, a self-note or a quote the gate cannot place takes `outside`. A write from a
   task run adds `task`. A memory write never takes `own_data`.
-- `memory.edit` and `memory.retire` take `subject` from the item when the call leaves it out, so a
-  rule reads `subject` on all 3 tools.
+- `memory.edit` and `memory.retire` take `subject` from the item when the call leaves it out, and
+  `memory.pin` takes it from the item, so a rule reads `subject` on all 4 tools. A pin takes the
+  source `task` from a task run and no other source.
 
 The tool runner passes the decision to the tool as a verdict: the allow rules that matched with
 their checks, the ask rule, or `gate`. The tool trusts a rule verdict only when the declaration that
 the decision point read holds `memory_write`. A snapshot declaration from before the release that
-changed it still says `note`, and a call decided from it runs every check of the memory gate.
+changed it still says `note`, and a call decided from it runs every check of the memory gate. A
+snapshot from before `memory.pin` declared `memory_write` gives a pin no verdict, so the pin stays a
+proposal.
 
 ## Destinations
 

@@ -1,9 +1,6 @@
+import type { RuleNeed } from '@heynixie/policy';
+import { isNeedMet } from '@heynixie/policy';
 import type { MemoryWriteVerdict } from '@heynixie/tools';
-import { match } from 'ts-pattern';
-
-// What a write needs an allow rule to check before the rule covers it: nothing for a plain write, a
-// `subject` check for a self-note, a check on the `image` argument for a write from a photo.
-export type RuleNeed = 'none' | 'self_note' | 'photo';
 
 export interface CoveringRule {
   readonly id: string;
@@ -23,18 +20,4 @@ export function pickCoveringRule(
   const covering = verdict.rules.find((rule) => isNeedMet(rule, need));
 
   return covering === undefined ? null : { id: covering.id, revision: covering.revision };
-}
-
-type AllowRule = Extract<MemoryWriteVerdict, { readonly kind: 'rule-allow' }>['rules'][number];
-
-function isNeedMet(rule: AllowRule, need: RuleNeed): boolean {
-  return match(need)
-    .with('none', () => true)
-    .with('self_note', () =>
-      rule.checks.some(
-        (check) => check.arg === 'subject' && check.op === 'eq' && check.value === 'self',
-      ),
-    )
-    .with('photo', () => rule.checks.some((check) => check.arg.startsWith('image.')))
-    .exhaustive();
 }

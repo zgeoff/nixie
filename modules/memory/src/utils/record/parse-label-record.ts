@@ -14,6 +14,7 @@ const labelled = z.looseObject({
   taskID: z.string().nullable(),
   proposalID: z.string().nullable(),
   model: z.string().nullable(),
+  noticeKey: z.string().nullable().default(null),
 });
 
 const proposalLabelled = z.strictObject({
@@ -36,6 +37,7 @@ interface LabelledRecord {
   readonly taskID: string | null;
   readonly proposalID: string | null;
   readonly model: string | null;
+  readonly noticeKey: string | null;
 }
 
 interface ProposalLabelledRecord {
@@ -65,6 +67,7 @@ export function parseLabelRecord(record: EnvelopeRecord): LabelRecord | null {
       taskID: parsed.taskID,
       proposalID: parsed.proposalID,
       model: parsed.model,
+      noticeKey: parsed.noticeKey,
     };
   }
 

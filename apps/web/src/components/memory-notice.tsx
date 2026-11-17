@@ -81,6 +81,9 @@ const statusLabels: Readonly<Record<Exclude<NoticeEntryStatus, 'open'>, string>>
   undone: 'Undone',
   retired: 'Retired',
   changed: 'Changed since',
+  labelled: 'Labels changed',
+  pinned: 'Pinned',
+  unpinned: 'Unpinned',
   proposed: 'Waiting for your review',
   gone: 'Forgotten',
 };

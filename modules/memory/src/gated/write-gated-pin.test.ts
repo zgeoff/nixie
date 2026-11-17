@@ -2,6 +2,7 @@ import { expect, test } from 'bun:test';
 import { readRecords } from '@heynixie/log';
 import { buildTestClock } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
+import { buildAllowVerdict } from '../test-utils/build-allow-verdict';
 import { buildMockProvenance } from '../test-utils/build-mock-provenance';
 import { buildMockWriteCaller } from '../test-utils/build-mock-write-caller';
 import { startTestMemory } from '../test-utils/start-test-memory';
@@ -157,4 +158,96 @@ test('it merges a second pin of the same version into the pending proposal', asy
   });
 
   expect(pending).toHaveLength(1);
+});
+
+test.each([
+  { from: 'conversation', caller: buildMockWriteCaller(), thread: 'conversation' },
+  {
+    from: 'task',
+    caller: buildMockWriteCaller({ origin: 'task', thread: 'task-1', taskID: 'task-1' }),
+    thread: 'task-1',
+  },
+] as const)(
+  'it pins an item at once with a notice under a covering rule, from the $from',
+  async (testCase) => {
+    const memory = await startTestMemory();
+
+    const item = await memory.store.remember({
+      text: 'Keeps a kettlebell by the door',
+      labels: { gist: 'kettlebell', topic: 'home', triggers: [] },
+      provenance: buildMockProvenance(),
+    });
+
+    const outcome = await memory.store.writes.pin({
+      target: item,
+      caller: testCase.caller,
+      verdict: buildAllowVerdict(),
+    });
+
+    const core = await memory.store.readPinnedCore();
+    const pending = await memory.store.proposals.listPending();
+    const notices = await memory.store.readNotices(testCase.thread);
+
+    expect(outcome).toStrictEqual({ status: 'applied', itemID: item.itemID, version: 1 });
+    expect(core).toMatchObject([{ itemID: item.itemID }]);
+    expect(pending).toStrictEqual([]);
+
+    expect(notices.flatMap((notice) => notice.entries)).toMatchObject([
+      { itemID: item.itemID, change: 'pinned', version: null },
+    ]);
+  },
+);
+
+test('it makes a pin a proposal with the reason ask_rule under an ask rule', async () => {
+  const memory = await startTestMemory();
+
+  const item = await memory.store.remember({
+    text: 'Keeps a kettlebell by the door',
+    provenance: buildMockProvenance(),
+  });
+
+  const outcome = await memory.store.writes.pin({
+    target: item,
+    caller: buildMockWriteCaller(),
+    verdict: { kind: 'rule-ask', rule: { id: 'rule-b', revision: 3 } },
+  });
+
+  expect(outcome).toMatchObject({ status: 'proposed', reason: 'ask_rule' });
+});
+
+test.each([
+  { from: 'a gate verdict', verdict: { kind: 'gate' } },
+  { from: 'no verdict', verdict: undefined },
+] as const)('it makes a pin a proposal with the reason pinned under $from', async (testCase) => {
+  const memory = await startTestMemory();
+
+  const item = await memory.store.remember({
+    text: 'Keeps a kettlebell by the door',
+    provenance: buildMockProvenance(),
+  });
+
+  const outcome = await memory.store.writes.pin({
+    target: item,
+    caller: buildMockWriteCaller(),
+    ...(testCase.verdict === undefined ? {} : { verdict: testCase.verdict }),
+  });
+
+  expect(outcome).toMatchObject({ status: 'proposed', reason: 'pinned' });
+});
+
+test('it fails a pin that a rule applies when the pinned core has no room, and pins nothing', async () => {
+  const memory = await startTestMemory();
+
+  const item = await memory.store.remember({
+    text: 'x '.repeat(20_000),
+    provenance: buildMockProvenance(),
+  });
+
+  const pin = memory.store.writes.pin({
+    target: item,
+    caller: buildMockWriteCaller(),
+    verdict: buildAllowVerdict(),
+  });
+
+  expect(pin).rejects.toMatchObject({ code: 'PINNED_CORE_FULL' });
 });

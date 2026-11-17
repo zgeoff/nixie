@@ -41,6 +41,15 @@ test('it reads a proposal as proposed', () => {
   expect(pickNoticeEntryStatus(entry)).toBe('proposed');
 });
 
+test.each(['labelled', 'pinned', 'unpinned'] as const)(
+  'it reads an entry whose change is %s as that change',
+  (change) => {
+    const entry = buildMockMemoryNoticeEntry({ change, version: null });
+
+    expect(pickNoticeEntryStatus(entry)).toBe(change);
+  },
+);
+
 test('it reads an item that is gone as gone', () => {
   expect(pickNoticeEntryStatus(buildMockMemoryNoticeEntry({ item: null }))).toBe('gone');
 });

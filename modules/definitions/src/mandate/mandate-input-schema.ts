@@ -11,7 +11,11 @@ export const mandateInputSchema = z.strictObject({
     .array(mandateRuleSchema)
     .min(1)
     .max(10)
-    .describe('The allow rules of the mandate, in the rule format'),
+    .describe(
+      'The allow rules of the mandate, in the rule format. A rule matches a call by tool name or by ' +
+        'effect, and for memory the two ways cover the same writes: tools memory.remember, ' +
+        'memory.edit, memory.retire and memory.pin, or the effect memory_write',
+    ),
   expires: z.iso
     .datetime({ offset: true })
     .optional()

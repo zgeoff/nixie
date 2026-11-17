@@ -7,6 +7,7 @@ export type MemoryRecordKind =
   | 'memory.forgotten'
   | 'memory.image_offered'
   | 'memory.labelled'
+  | 'memory.pin_noticed'
   | 'memory.pinned'
   | 'memory.proposal_labelled'
   | 'memory.proposal_lapsed'
