@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.79.0](https://github.com/zgeoff/nixie/compare/v0.78.0...v0.79.0) (2026-11-17)
+
+
+### Features
+
+* **memory:** let allow rules decide every memory write ([#1190](https://github.com/zgeoff/nixie/issues/1190)) ([04e2b81](https://github.com/zgeoff/nixie/commit/04e2b81dd19efc495e6fe427928ea5503fd04511))
+* **spend:** add a hard stop for model spending ([#1188](https://github.com/zgeoff/nixie/issues/1188)) ([57a6feb](https://github.com/zgeoff/nixie/commit/57a6feb4d0cc13d70fecd8a13df223c6fe9cb772))
+* **web:** move the proposals page to /proposals with a nav item ([#1184](https://github.com/zgeoff/nixie/issues/1184)) ([9122b7d](https://github.com/zgeoff/nixie/commit/9122b7dfd1eeedefea6a848e2e0e6ba24225fb9b))
+
+
+### Bug Fixes
+
+* **definitions:** raise the manifest format when a task change exports ([#1192](https://github.com/zgeoff/nixie/issues/1192)) ([0616f88](https://github.com/zgeoff/nixie/commit/0616f887d52af54016bdbd120b3e14c54fb0e579))
+* **tasks:** page the task list and quiet a close the closer made ([#1187](https://github.com/zgeoff/nixie/issues/1187)) ([df020d7](https://github.com/zgeoff/nixie/commit/df020d7f9e87fb9b6efa260a9ea61d8b6fb9aecc))
+
 ## [0.78.0](https://github.com/zgeoff/nixie/compare/v0.77.0...v0.78.0) (2026-11-17)
 
 
