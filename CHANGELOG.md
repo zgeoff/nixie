@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.78.0](https://github.com/zgeoff/nixie/compare/v0.77.0...v0.78.0) (2026-11-17)
+
+
+### Features
+
+* **actions:** run an approved in-turn call in the task's next step ([#1176](https://github.com/zgeoff/nixie/issues/1176)) ([2f56930](https://github.com/zgeoff/nixie/commit/2f569308c9b9e3eadb49e60c074bca419f54f407))
+* **memory:** purge memory evidence when a record is forgotten ([#1178](https://github.com/zgeoff/nixie/issues/1178)) ([f413cfc](https://github.com/zgeoff/nixie/commit/f413cfcd2c4b80ad5ffb3fe06372a3c03de95c6b))
+* **sessions:** let worker.run choose a selectable model ([#1185](https://github.com/zgeoff/nixie/issues/1185)) ([392314b](https://github.com/zgeoff/nixie/commit/392314bbcc2e51ad425b3208374cbca6973668b8))
+* **spend:** route model requests through the spending gateway ([#1177](https://github.com/zgeoff/nixie/issues/1177)) ([d9578b1](https://github.com/zgeoff/nixie/commit/d9578b1cf57310ab0c705bdc41b611caf17d94ce))
+
+
+### Bug Fixes
+
+* **web:** load earlier history when the thread does not fill the view ([#1186](https://github.com/zgeoff/nixie/issues/1186)) ([7cea2eb](https://github.com/zgeoff/nixie/commit/7cea2eb652e33290faadb71c739f643a2656bdb4))
+
 ## [0.77.0](https://github.com/zgeoff/nixie/compare/v0.76.0...v0.77.0) (2026-11-16)
 
 
