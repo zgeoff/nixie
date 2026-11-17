@@ -36,6 +36,7 @@ export async function writeGatedRemember(
       gate,
       group,
       subject,
+      newSubject: checked.newSubject,
       until: checked.until,
       textVersion: checked.textVersion,
     });
@@ -56,6 +57,9 @@ interface PassedRemember {
   readonly gate: Extract<ContentGateResult, { readonly status: 'pass' }>;
   readonly group: WriteGroup;
   readonly subject: MemorySubject;
+
+  // the subject a covering rule lets the write move the item to
+  readonly newSubject: MemorySubject | null;
   readonly until: number | null;
 }
 
@@ -85,7 +89,7 @@ async function applyPassedRemember(
       review,
       group: passed.group,
       subject: passed.subject,
-      newSubject: null,
+      newSubject: passed.newSubject,
       until: passed.until,
       textVersion: passed.textVersion,
     });
@@ -113,7 +117,12 @@ async function applyRemember(
         thread: caller.thread,
         model: caller.model,
       },
-      ...(request.target === undefined ? { subject: passed.subject } : { target: request.target }),
+      ...(request.target === undefined
+        ? { subject: passed.subject }
+        : {
+            target: request.target,
+            ...(passed.newSubject === null ? {} : { subject: passed.newSubject }),
+          }),
       ...(request.labels === undefined ? {} : { labels: request.labels }),
       ...(evidence === null || request.quote === undefined
         ? {}

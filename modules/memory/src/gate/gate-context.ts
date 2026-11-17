@@ -7,8 +7,8 @@ import type { MemoryWriteVerdict } from '@heynixie/tools';
 import type { Selectable } from 'kysely';
 import type {
   Labels,
-  MemoryChange,
   MemorySubject,
+  NoticeChange,
   ProposalOperationKind,
   ProposalOrigin,
   QuoteEvidence,
@@ -105,6 +105,9 @@ export interface GatedLabelEditRequest {
   // the whole label set the approval applies
   readonly labels: Labels;
   readonly caller: WriteCaller;
+
+  // what the decision point said; a write with none runs every check
+  readonly verdict?: MemoryWriteVerdict;
 }
 
 export interface GatedRetireRequest {
@@ -117,6 +120,9 @@ export interface GatedRetireRequest {
 export interface GatedPinRequest {
   readonly target: VersionRef;
   readonly caller: WriteCaller;
+
+  // what the decision point said; a pin with none waits for review
+  readonly verdict?: MemoryWriteVerdict;
 }
 
 export interface UnpinRequest {
@@ -274,7 +280,7 @@ export interface MemoryProposals {
 
 export interface NoticeEntry {
   readonly itemID: string;
-  readonly change: MemoryChange | 'proposed';
+  readonly change: NoticeChange;
   readonly version: number | null;
   readonly proposalID: string | null;
   readonly sequence: number;
@@ -330,7 +336,7 @@ export interface MemoryNoticeEntryTable {
   readonly thread: string | null;
   readonly item_id: string;
   readonly version: number | null;
-  readonly change: MemoryChange | 'proposed';
+  readonly change: NoticeChange;
   readonly proposal_id: string | null;
   readonly sequence: number;
   readonly recorded_at: number;

@@ -22,8 +22,9 @@ export function buildUnpinTool(memory: ModelWriteStore & ItemIDStore): ToolDefin
     name: 'memory.unpin',
     description:
       'Takes a memory item out of the pinned core by its itemID. The unpin applies at once and ' +
-      'needs no review, because the item stays in memory and memory.recall still finds it. The ' +
-      'owner can pin it again.',
+      'leaves a notice. It needs no review and no allow rule, because the item stays in memory ' +
+      'and memory.recall still finds it; a rule on the tool name memory.unpin can still ask or ' +
+      'deny it. The owner can pin it again.',
     input: {
       type: 'object',
       properties: { itemID: { type: 'string' } },

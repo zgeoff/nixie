@@ -1,6 +1,12 @@
+import type { RuleNeed } from '@heynixie/policy';
+import { buildAskReview } from '../gate/build-ask-review';
+import { buildRuleGate } from '../gate/build-rule-gate';
 import { findMissingToken } from '../gate/find-missing-token';
-import type { GatedLabelEditRequest, ReviewReason, WriteOutcome } from '../gate/gate-context';
+import type { ContentGateResult, GatedLabelEditRequest, WriteOutcome } from '../gate/gate-context';
+import type { CoveringRule } from '../gate/pick-covering-rule';
+import { pickCoveringRule } from '../gate/pick-covering-rule';
 import { collectLabelTexts } from '../label/collect-label-texts';
+import { writeLabelEdit } from '../label/write-label-edit';
 import { writeMemoryProposal } from '../memory/write-memory-proposal';
 import { readNewestMessage } from '../message/read-newest-message';
 import { requireSelfNoteCaller } from '../subject/require-self-note-caller';
@@ -10,11 +16,8 @@ import { requireItem } from '../utils/item/require-item';
 import { readVersion } from '../version/read-version';
 import { buildWriteGroup } from '../write/build-write-group';
 
-const invisible = /\p{Cf}/u;
-
-// Every label-only edit waits for review, whoever wrote it and whatever rule covers it. No quote can
-// back a label, so the gate runs no quote check and no checker. It checks the labels' tokens
-// against the text of the item the labels belong to.
+// No quote can back a label, so the gate runs no quote check and no checker. Without a covering
+// rule, it checks the labels' tokens against the text of the item the labels belong to.
 export async function writeGatedLabels(
   parts: StoreParts,
   request: GatedLabelEditRequest,
@@ -28,21 +31,47 @@ export async function writeGatedLabels(
     states: ['active', 'retired'],
   });
 
-  if (getRowSubject(item) === 'self') {
+  const subject = getRowSubject(item);
+  const need: RuleNeed = subject === 'self' ? 'self_note' : 'none';
+  const covering = pickCoveringRule(request.verdict, need);
+
+  if (covering === null && subject === 'self') {
     requireSelfNoteCaller(request.caller);
   }
+
+  const caller = request.caller;
+
+  const newest = await readNewestMessage(log, caller.thread);
+
+  const group = buildWriteGroup(caller, newest);
 
   const current = await readVersion(log, log.writer.db, {
     itemID: item.item_id,
     version: item.version,
   });
 
-  const labelText = collectLabelTexts(request.labels).join('\n');
-  const reason: ReviewReason = invisible.test(labelText) ? 'invisible_character' : 'labels';
-  const tokens = findMissingToken(labelText, current.text.text) === null ? 'pass' : 'fail';
-  const caller = request.caller;
+  const labelTexts = collectLabelTexts(request.labels);
 
-  const newest = await readNewestMessage(log, caller.thread);
+  const gate = await pickLabelGate(request, { covering, labelTexts, itemText: current.text.text });
+
+  if (gate.status === 'pass') {
+    const ref = await writeLabelEdit(parts, {
+      target: request.target,
+      labels: request.labels,
+      provenance: {
+        origin: caller.origin,
+        source: gate.source,
+        taskID: caller.taskID,
+        proposalID: null,
+        checks: gate.checks,
+        thread: caller.thread,
+        model: caller.model,
+      },
+      noticeKey: group.noticeKey,
+    });
+
+    return { status: 'applied', ...ref };
+  }
 
   const written = await writeMemoryProposal(parts, {
     operation: 'remember',
@@ -50,16 +79,47 @@ export async function writeGatedLabels(
     isPinned: false,
     text: current.text.text,
     quote: null,
-    reason,
+    reason: gate.reason,
     evidence: null,
-    checks: { tokens },
+    checks: gate.checks,
     checkerReason: null,
     caller,
-    group: buildWriteGroup(caller, newest),
+    group,
     labels: request.labels,
     targetRevision: request.target.version,
     isLabelOnly: true,
   });
 
-  return { status: 'proposed', ...written, reason };
+  return { status: 'proposed', ...written, reason: gate.reason };
+}
+
+interface LabelGateFacts {
+  readonly covering: CoveringRule | null;
+  readonly labelTexts: readonly string[];
+  readonly itemText: string;
+}
+
+const invisible = /\p{Cf}/u;
+
+function pickLabelGate(request: GatedLabelEditRequest, facts: LabelGateFacts): ContentGateResult {
+  const verdict = request.verdict;
+
+  if (verdict?.kind === 'rule-ask') {
+    return buildAskReview(verdict.rule);
+  }
+
+  if (facts.covering !== null) {
+    return buildRuleGate({ text: '', labelTexts: facts.labelTexts }, facts.covering);
+  }
+
+  const labelText = facts.labelTexts.join('\n');
+  const tokens = findMissingToken(labelText, facts.itemText) === null ? 'pass' : 'fail';
+
+  return {
+    status: 'review',
+    reason: invisible.test(labelText) ? 'invisible_character' : 'labels',
+    evidence: null,
+    checks: { tokens },
+    checkerReason: null,
+  };
 }

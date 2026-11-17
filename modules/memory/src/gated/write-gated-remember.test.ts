@@ -16,6 +16,7 @@ import {
   writeModelReplyRecord,
 } from '../test-utils';
 import { buildAllowVerdict } from '../test-utils/build-allow-verdict';
+import { buildMockProvenance } from '../test-utils/build-mock-provenance';
 import { writeOwnerMessageRecord } from '../test-utils/write-owner-message-record';
 import type { MemoryTables } from '../types';
 
@@ -1134,7 +1135,7 @@ test('it applies a write under your allow rule with outside content as its sourc
   expect(check).not.toHaveBeenCalled();
 });
 
-test('it proposes a write under your allow rule whose token you never typed', async () => {
+test('it applies a write under your allow rule whose token you never typed, because the rule is your consent', async () => {
   const memory = await startTestMemory();
 
   await writeOwnerMessageRecord(memory.log, {
@@ -1149,7 +1150,7 @@ test('it proposes a write under your allow rule whose token you never typed', as
     verdict: buildAllowVerdict(),
   });
 
-  expect(outcome).toMatchObject({ status: 'proposed', reason: 'token_missing' });
+  expect(outcome).toMatchObject({ status: 'applied' });
 });
 
 test('it proposes a write under an ask rule with the review reason ask_rule and the rule in its checks', async () => {
@@ -1229,10 +1230,10 @@ test('it applies a self-note under an allow rule that checks the subject is self
     .where('item_id', '=', outcome.itemID)
     .executeTakeFirstOrThrow();
 
-  expect(row.checks).toBe(JSON.stringify({ rule: { id: 'rule-a', revision: 2 }, tokens: 'pass' }));
+  expect(row.checks).toBe(JSON.stringify({ rule: { id: 'rule-a', revision: 2 } }));
 });
 
-test('it proposes a self-note with a token you never typed under an allow rule that checks the subject is self', async () => {
+test('it applies a self-note with a token you never typed under an allow rule that checks the subject is self', async () => {
   const memory = await startTestMemory();
 
   const outcome = await memory.store.writes.remember({
@@ -1242,7 +1243,7 @@ test('it proposes a self-note with a token you never typed under an allow rule t
     verdict: buildAllowVerdict([{ arg: 'subject', op: 'eq', value: 'self' }]),
   });
 
-  expect(outcome).toMatchObject({ status: 'proposed', reason: 'token_missing' });
+  expect(outcome).toMatchObject({ status: 'applied' });
 });
 
 test('it counts a self-note as covered when one of several allow rules checks the subject', async () => {
@@ -1270,7 +1271,7 @@ test('it counts a self-note as covered when one of several allow rules checks th
     .where('item_id', '=', outcome.itemID)
     .executeTakeFirstOrThrow();
 
-  expect(row.checks).toBe(JSON.stringify({ rule: { id: 'rule-b', revision: 5 }, tokens: 'pass' }));
+  expect(row.checks).toBe(JSON.stringify({ rule: { id: 'rule-b', revision: 5 } }));
 });
 
 test('it leaves a self-note from a photo a proposal when no allow rule checks the image, though one checks the subject', async () => {
@@ -1868,7 +1869,6 @@ test('it applies a write from a photo under your allow rule that checks the imag
     source: 'untrusted',
     checks: JSON.stringify({
       rule: { id: 'rule-a', revision: 2 },
-      tokens: 'pass',
       image: { messageSequence: photo, image: 1 },
     }),
     evidence: null,
@@ -1902,7 +1902,7 @@ test('it proposes a write from a photo whose text holds a hidden character, unde
   expect(versions).toStrictEqual([]);
 });
 
-test('it proposes a write from a photo with a number you never typed, under your allow rule that checks the image argument', async () => {
+test('it applies a write from a photo with a number you never typed, under your allow rule that checks the image argument', async () => {
   const memory = await startTestMemory();
 
   const photo = await writeOwnerMessageRecord(memory.log, {
@@ -1925,8 +1925,8 @@ test('it proposes a write from a photo with a number you never typed, under your
     .selectAll()
     .execute();
 
-  expect(outcome).toMatchObject({ status: 'proposed', reason: 'token_missing' });
-  expect(versions).toStrictEqual([]);
+  expect(outcome).toMatchObject({ status: 'applied' });
+  expect(versions).toHaveLength(1);
 });
 
 test('it refuses a photo source that names an image the message lacks', async () => {
@@ -2068,4 +2068,270 @@ test("it reads the quote window of a write on the caller's own thread, not its l
     merged: false,
     reason: 'no_quote',
   });
+});
+
+test.each([
+  { from: 'conversation', caller: buildMockWriteCaller(), thread: 'conversation' },
+  {
+    from: 'task',
+    caller: buildMockWriteCaller({ origin: 'task', thread: 'task-1', taskID: 'task-1' }),
+    thread: 'task-1',
+  },
+] as const)(
+  'it applies a text edit at once with a notice under a covering rule, from the $from',
+  async (testCase) => {
+    const memory = await startTestMemory();
+
+    const item = await memory.store.remember({
+      text: 'Keeps a kettlebell by the door',
+      labels: { gist: 'kettlebell', topic: 'home', triggers: [] },
+      provenance: buildMockProvenance(),
+    });
+
+    const outcome = await memory.store.writes.remember({
+      text: 'Keeps two kettlebells by the door',
+      target: item,
+      verdict: buildAllowVerdict(),
+      caller: testCase.caller,
+    });
+
+    const notices = await memory.store.readNotices(testCase.thread);
+
+    expect(outcome).toStrictEqual({ status: 'applied', itemID: item.itemID, version: 2 });
+
+    expect(notices.flatMap((notice) => notice.entries)).toMatchObject([
+      { itemID: item.itemID, change: 'edited', version: 2 },
+    ]);
+  },
+);
+
+test.each([
+  { from: 'conversation', caller: buildMockWriteCaller(), thread: 'conversation' },
+  {
+    from: 'task',
+    caller: buildMockWriteCaller({ origin: 'task', thread: 'task-1', taskID: 'task-1' }),
+    thread: 'task-1',
+  },
+] as const)(
+  'it applies a subject change at once with a notice under a covering rule, from the $from',
+  async (testCase) => {
+    const memory = await startTestMemory();
+
+    const item = await memory.store.remember({
+      text: 'Keeps a kettlebell by the door',
+      labels: { gist: 'kettlebell', topic: 'home', triggers: [] },
+      provenance: buildMockProvenance(),
+    });
+
+    const outcome = await memory.store.writes.remember({
+      text: 'Keeps a kettlebell by the door, and we share it',
+      subject: 'shared',
+      target: item,
+      verdict: buildAllowVerdict(),
+      caller: testCase.caller,
+    });
+
+    const subject = await memory.store.writes.readItemSubject(item.itemID);
+    const notices = await memory.store.readNotices(testCase.thread);
+
+    expect(outcome).toStrictEqual({ status: 'applied', itemID: item.itemID, version: 2 });
+    expect(subject).toBe('shared');
+
+    expect(notices.flatMap((notice) => notice.entries)).toMatchObject([
+      { itemID: item.itemID, change: 'edited', version: 2 },
+    ]);
+  },
+);
+
+test.each([
+  { from: 'conversation', caller: buildMockWriteCaller(), thread: 'conversation' },
+  {
+    from: 'task',
+    caller: buildMockWriteCaller({ origin: 'task', thread: 'task-1', taskID: 'task-1' }),
+    thread: 'task-1',
+  },
+] as const)(
+  'it applies a new self-note at once with a notice under a rule that checks subject is self, from the $from',
+  async (testCase) => {
+    const memory = await startTestMemory();
+
+    const outcome = await memory.store.writes.remember({
+      text: 'I like opening with a question',
+      subject: 'self',
+      caller: testCase.caller,
+      verdict: buildAllowVerdict([{ arg: 'subject', op: 'eq', value: 'self' }]),
+    });
+
+    const notices = await memory.store.readNotices(testCase.thread);
+
+    expect(outcome).toMatchObject({ status: 'applied', version: 1 });
+
+    expect(notices.flatMap((notice) => notice.entries)).toMatchObject([
+      { change: 'created', version: 1 },
+    ]);
+  },
+);
+
+test.each([
+  { from: 'conversation', caller: buildMockWriteCaller(), thread: 'conversation' },
+  {
+    from: 'task',
+    caller: buildMockWriteCaller({ origin: 'task', thread: 'task-1', taskID: 'task-1' }),
+    thread: 'task-1',
+  },
+] as const)(
+  'it applies a self-note edit at once with a notice under a rule that checks subject is self, from the $from',
+  async (testCase) => {
+    const memory = await startTestMemory();
+
+    const item = await memory.store.remember({
+      text: 'Keeps a kettlebell by the door',
+      labels: { gist: 'kettlebell', topic: 'home', triggers: [] },
+      subject: 'self',
+      provenance: buildMockProvenance(),
+    });
+
+    const outcome = await memory.store.writes.remember({
+      text: 'I like opening with a question about the weekend',
+      target: item,
+      verdict: buildAllowVerdict([{ arg: 'subject', op: 'eq', value: 'self' }]),
+      caller: testCase.caller,
+    });
+
+    const notices = await memory.store.readNotices(testCase.thread);
+
+    expect(outcome).toStrictEqual({ status: 'applied', itemID: item.itemID, version: 2 });
+
+    expect(notices.flatMap((notice) => notice.entries)).toMatchObject([
+      { itemID: item.itemID, change: 'edited', version: 2 },
+    ]);
+  },
+);
+
+test.each([
+  { from: 'conversation', caller: buildMockWriteCaller(), thread: 'conversation' },
+  {
+    from: 'task',
+    caller: buildMockWriteCaller({ origin: 'task', thread: 'task-1', taskID: 'task-1' }),
+    thread: 'task-1',
+  },
+] as const)(
+  'it moves an item into self at once with a notice under a rule that checks subject is self, from the $from',
+  async (testCase) => {
+    const memory = await startTestMemory();
+
+    const item = await memory.store.remember({
+      text: 'Keeps a kettlebell by the door',
+      labels: { gist: 'kettlebell', topic: 'home', triggers: [] },
+      provenance: buildMockProvenance(),
+    });
+
+    const outcome = await memory.store.writes.remember({
+      text: 'I keep a kettlebell by the door',
+      subject: 'self',
+      target: item,
+      verdict: buildAllowVerdict([{ arg: 'subject', op: 'eq', value: 'self' }]),
+      caller: testCase.caller,
+    });
+
+    const subject = await memory.store.writes.readItemSubject(item.itemID);
+    const notices = await memory.store.readNotices(testCase.thread);
+
+    expect(outcome).toStrictEqual({ status: 'applied', itemID: item.itemID, version: 2 });
+    expect(subject).toBe('self');
+
+    expect(notices.flatMap((notice) => notice.entries)).toMatchObject([
+      { itemID: item.itemID, change: 'edited', version: 2 },
+    ]);
+  },
+);
+
+test.each([
+  { from: 'conversation', caller: buildMockWriteCaller(), thread: 'conversation' },
+  {
+    from: 'task',
+    caller: buildMockWriteCaller({ origin: 'task', thread: 'task-1', taskID: 'task-1' }),
+    thread: 'task-1',
+  },
+] as const)(
+  'it moves an item out of self at once with a notice under a covering rule, from the $from',
+  async (testCase) => {
+    const memory = await startTestMemory();
+
+    const item = await memory.store.remember({
+      text: 'Keeps a kettlebell by the door',
+      labels: { gist: 'kettlebell', topic: 'home', triggers: [] },
+      subject: 'self',
+      provenance: buildMockProvenance(),
+    });
+
+    const outcome = await memory.store.writes.remember({
+      text: 'Keeps a kettlebell by the door',
+      subject: 'owner',
+      target: item,
+      verdict: buildAllowVerdict(),
+      caller: testCase.caller,
+    });
+
+    const subject = await memory.store.writes.readItemSubject(item.itemID);
+    const notices = await memory.store.readNotices(testCase.thread);
+
+    expect(outcome).toStrictEqual({ status: 'applied', itemID: item.itemID, version: 2 });
+    expect(subject).toBe('owner');
+
+    expect(notices.flatMap((notice) => notice.entries)).toMatchObject([
+      { itemID: item.itemID, change: 'edited', version: 2 },
+    ]);
+  },
+);
+
+test('it makes a text write with a hidden character a proposal under a covering rule', async () => {
+  const memory = await startTestMemory();
+
+  const outcome = await memory.store.writes.remember({
+    text: 'Keeps a kettle\u200Bbell by the door',
+    caller: buildMockWriteCaller(),
+    verdict: buildAllowVerdict(),
+  });
+
+  expect(outcome).toMatchObject({ status: 'proposed', reason: 'invisible_character' });
+});
+
+test("it fails a task's self-note write when no rule covers it", async () => {
+  const memory = await startTestMemory();
+
+  const write = memory.store.writes.remember({
+    text: 'I like opening with a question',
+    subject: 'self',
+    caller: buildMockWriteCaller({ origin: 'task', thread: 'task-1', taskID: 'task-1' }),
+    verdict: { kind: 'gate' },
+  });
+
+  expect(write).rejects.toThrow('only the conversation writes a self-note');
+});
+
+test("it fails a task's self-note write under a rule that checks no subject", async () => {
+  const memory = await startTestMemory();
+
+  const write = memory.store.writes.remember({
+    text: 'I like opening with a question',
+    subject: 'self',
+    caller: buildMockWriteCaller({ origin: 'task', thread: 'task-1', taskID: 'task-1' }),
+    verdict: buildAllowVerdict(),
+  });
+
+  expect(write).rejects.toThrow('only the conversation writes a self-note');
+});
+
+test("it fails a task's self-note write under an ask rule", async () => {
+  const memory = await startTestMemory();
+
+  const write = memory.store.writes.remember({
+    text: 'I like opening with a question',
+    subject: 'self',
+    caller: buildMockWriteCaller({ origin: 'task', thread: 'task-1', taskID: 'task-1' }),
+    verdict: { kind: 'rule-ask', rule: { id: 'rule-b', revision: 3 } },
+  });
+
+  expect(write).rejects.toThrow('only the conversation writes a self-note');
 });

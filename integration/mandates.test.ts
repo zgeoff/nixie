@@ -353,3 +353,40 @@ test('it declines a mandate with no rule put in force', async () => {
 
   expect(states).toStrictEqual([]);
 });
+
+test('it shows on the card what each rule of a mandate will not cover in memory', async () => {
+  const ctx = await setupTest();
+
+  const proposed = await ctx.proposeMandate({
+    title: 'Tidy my memory today',
+    rules: [
+      { outcome: 'allow', tools: ['memory.edit', 'memory.retire', 'memory.pin'] },
+      { outcome: 'allow', tools: ['test.send'] },
+    ],
+  });
+
+  invariant(proposed.status === 'proposed', 'the mandate was proposed');
+
+  const row = await readProposal(ctx.log.writer.db, proposed.proposalID);
+
+  const handler = ctx.deps.handlers.get('rule_change');
+
+  invariant(row, 'the proposal opened a row');
+  invariant(handler, 'the server wires the rule change handler');
+
+  const bodies = await handler.readBodies(ctx.log.writer.db, [row]);
+
+  const fields = bodies.get(row.id)?.fields ?? {};
+
+  expect(Object.keys(fields)).toStrictEqual([
+    'title',
+    'ends',
+    'rule 1',
+    'rule 2',
+    'rule 1 will not cover',
+  ]);
+
+  expect(fields['rule 1 will not cover']).toBe(
+    'a new fact; a new self-note; a self-note text edit; a self-note label edit; a move of an item into self; a write from a photo',
+  );
+});

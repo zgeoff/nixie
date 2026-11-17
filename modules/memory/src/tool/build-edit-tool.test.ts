@@ -39,7 +39,7 @@ test('it applies an edit with no quote under your allow rule on memory_write', a
 });
 
 test.each(['conversation', 'task-1'])(
-  'it proposes an edit from the %s thread that moves the item to another subject, though your allow rule on memory_write applies other edits at once',
+  'it proposes an edit from the %s thread that moves the item to another subject and cites no quote when no rule covers it',
   async (thread) => {
     const memory = await startTestMemory();
 
@@ -66,7 +66,7 @@ test.each(['conversation', 'task-1'])(
         },
         toolUseID: null,
       },
-      buildMockToolContext({ thread }, buildAllowVerdict()),
+      buildMockToolContext({ thread }, { kind: 'gate' }),
     );
 
     const row = await memory.writer.db
@@ -89,7 +89,7 @@ test.each(['conversation', 'task-1'])(
         status: 'proposed',
         proposalID: buildShortIDFromUUID(proposal.proposalID),
         reason:
-          'subject_change: Saved as a proposal for the owner to review. It changes whose fact the item is, and every subject change waits for their review.',
+          "no_quote: Saved as a proposal for the owner to review. The write gave no quote, or neither the owner's last 20 messages nor the message its eventID names contains it.",
         merged: false,
       },
     });

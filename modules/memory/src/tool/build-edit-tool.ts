@@ -21,18 +21,21 @@ const editDescription =
   `the item's history. Pass quote: the exact words from one of the owner's own messages that ` +
   `state the new text, and that message's eventID: the number after # in its stamp, or a ` +
   `log.read entry's eventID. The edit applies at once only when those typed words back ` +
-  `it; otherwise it waits for the owner's review as a proposal, and the result says why. ` +
+  `it; otherwise it waits for the owner's review as a proposal, and the result says why. An ` +
+  `allow rule that covers the edit applies it at once, whatever the quote, and leaves a notice. ` +
   `The item keeps its subject unless you pass subject: owner for a fact about the owner, shared ` +
   `for something between the owner and you, self for a note about yourself. Pass it to fix an ` +
   `item filed under the wrong subject. A subject change changes whose fact the item is, so it ` +
-  `always waits for the owner's review as a proposal, whatever the quote. To split an item ` +
+  `waits for the owner's review as a proposal, whatever the quote, unless an allow rule covers ` +
+  `it; a move into or out of self takes the rule that the new subject needs. To split an item ` +
   `that holds two subjects, edit it down to one fact and store the other with memory.remember. ` +
   `The item keeps its end time unless you pass until: a new end time, which the quote must ` +
   `back, or null when the fact no longer ends, such as after "actually I'm staying on". ${untilConventions} ` +
   `Pass gist, topic or triggers to change how the item is listed and what brings it up: a label ` +
   `you leave out keeps its value, and triggers replaces the whole list, so [] clears it. Leave ` +
   `text out for an edit of labels only: it takes none of quote, eventID, until and subject, and ` +
-  `it always waits for the owner's review as a proposal. ${labelInputSchema.description}`;
+  `it waits for the owner's review as a proposal unless an allow rule covers it. ` +
+  `A write to a self-note needs an allow rule that checks subject is self. ${labelInputSchema.description}`;
 
 const editInput = {
   type: 'object',
@@ -141,6 +144,7 @@ export function buildEditTool(memory: ModelWriteStore & ItemIDStore): ToolDefini
               target: { itemID, version: input.version },
               labels,
               caller: buildWriteCaller(context),
+              ...(context.verdict === undefined ? {} : { verdict: context.verdict }),
             });
           }
 

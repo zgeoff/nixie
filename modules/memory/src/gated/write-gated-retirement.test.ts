@@ -596,3 +596,37 @@ test('it reads the sources of a retirement from its intent quote, and adds task 
   expect(outside).toStrictEqual(['outside']);
   expect(task).toStrictEqual(['owner', 'task']);
 });
+
+test.each([
+  { from: 'conversation', caller: buildMockWriteCaller(), thread: 'conversation' },
+  {
+    from: 'task',
+    caller: buildMockWriteCaller({ origin: 'task', thread: 'task-1', taskID: 'task-1' }),
+    thread: 'task-1',
+  },
+] as const)(
+  'it retires an item at once with a notice under a covering rule, from the $from',
+  async (testCase) => {
+    const memory = await startTestMemory();
+
+    const item = await memory.store.remember({
+      text: 'Keeps a kettlebell by the door',
+      labels: { gist: 'kettlebell', topic: 'home', triggers: [] },
+      provenance: buildMockProvenance(),
+    });
+
+    const outcome = await memory.store.writes.retire({
+      target: item,
+      caller: testCase.caller,
+      verdict: buildAllowVerdict(),
+    });
+
+    const notices = await memory.store.readNotices(testCase.thread);
+
+    expect(outcome).toStrictEqual({ status: 'applied', itemID: item.itemID, version: 2 });
+
+    expect(notices.flatMap((notice) => notice.entries)).toMatchObject([
+      { itemID: item.itemID, change: 'retired', version: 2 },
+    ]);
+  },
+);

@@ -94,7 +94,7 @@ async function setupTest(config: SetupConfig = {}) {
   };
 }
 
-test('it applies a quote-backed write under an owner allow rule with the token check only, and names the rule in the version', async () => {
+test('it applies a quote-backed write under an owner allow rule with no check beyond the hidden-character check, and names the rule in the version', async () => {
   const ctx = await setupTest({
     rules: [
       { id: 'allow-owner-memory', outcome: 'allow', effects: ['memory_write'], sources: ['owner'] },
@@ -122,10 +122,7 @@ test('it applies a quote-backed write under an owner allow rule with the token c
 
   expect(result.structuredContent).toMatchObject({ status: 'applied' });
   expect(ctx.check).not.toHaveBeenCalled();
-
-  expect(checks).toStrictEqual([
-    { rule: { id: 'allow-owner-memory', revision: 3 }, tokens: 'pass' },
-  ]);
+  expect(checks).toStrictEqual([{ rule: { id: 'allow-owner-memory', revision: 3 } }]);
 });
 
 test('it turns a write whose quote lies in a pasted span into a memory proposal under the starter rules, with no action proposal', async () => {
@@ -196,7 +193,7 @@ test('it holds a self-note for review under the starter rules', async () => {
   expect(pending).toMatchObject([{ reason: 'self_note', subject: 'self' }]);
 });
 
-test('it applies a self-note under an allow rule that checks the subject is self, and still runs the token check', async () => {
+test('it applies a self-note under an allow rule that checks the subject is self, whatever tokens it holds', async () => {
   const ctx = await setupTest({
     rules: [
       {
@@ -231,9 +228,9 @@ test('it applies a self-note under an allow rule that checks the subject is self
   const checks = await readVersionChecks(ctx.memory, item.itemID);
 
   expect(applied.structuredContent).toMatchObject({ status: 'applied' });
-  expect(held.structuredContent).toMatchObject({ status: 'proposed' });
-  expect(pending).toMatchObject([{ reason: 'token_missing', subject: 'self' }]);
-  expect(checks).toStrictEqual([{ rule: { id: 'allow-self-notes', revision: 3 }, tokens: 'pass' }]);
+  expect(held.structuredContent).toMatchObject({ status: 'applied' });
+  expect(pending).toStrictEqual([]);
+  expect(checks).toStrictEqual([{ rule: { id: 'allow-self-notes', revision: 3 } }]);
 });
 
 test('it leaves a self-note a proposal under an allow rule on outside that checks no subject', async () => {
@@ -288,7 +285,7 @@ test('it makes a write a memory proposal with the reason ask_rule under an ask r
   expect(ctx.check).not.toHaveBeenCalled();
 });
 
-test('it denies a write that a deny rule on memory_write matches, and leaves a pin to review', async () => {
+test('it denies a write and a pin that a deny rule on memory_write matches', async () => {
   const ctx = await setupTest({
     rules: [{ id: 'deny-memory', outcome: 'deny', effects: ['memory_write'] }],
   });
@@ -321,8 +318,13 @@ test('it denies a write that a deny rule on memory_write matches, and leaves a p
     { text: expect.toStartWith('Not allowed by rule `deny-memory`') },
   ]);
 
-  expect(pinned.structuredContent).toMatchObject({ status: 'proposed' });
-  expect(pending).toMatchObject([{ operation: 'pin', reason: 'pinned' }]);
+  expect(pinned.isError).toBeTrue();
+
+  expect(pinned.content).toMatchObject([
+    { text: expect.toStartWith('Not allowed by rule `deny-memory`') },
+  ]);
+
+  expect(pending).toStrictEqual([]);
 });
 
 test('it denies a write with the subject left out under a deny rule on the owner subject, as it does an explicit owner', async () => {
