@@ -19,6 +19,9 @@ export interface TaskListQuery {
 
 export interface ListedTask {
   readonly id: string;
+
+  // the sequence of the newest record that changed the task, which orders the list
+  readonly updatedSequence: number;
   readonly name: string;
   readonly state: TaskState;
   readonly isPauseRequested: boolean;
@@ -76,6 +79,7 @@ export async function readTaskList(
       'tasks.state',
       'tasks.pause_requested',
       'tasks.created_sequence',
+      'tasks.updated_sequence',
       'tasks.definition_id',
       'records.recorded_at',
     ])
@@ -88,6 +92,7 @@ export async function readTaskList(
       builder.where('tasks.definition_id', '=', query.definitionID ?? ''),
     )
     .orderBy('tasks.updated_sequence', 'desc')
+    .orderBy('tasks.task_id', 'desc')
     .$if(query.limit !== undefined, (builder) => builder.limit(query.limit ?? 0))
     .execute();
 
@@ -146,6 +151,7 @@ export async function readTaskList(
       : [
           {
             id: row.task_id,
+            updatedSequence: row.updated_sequence,
             name: profile.name,
             state: row.state,
             isPauseRequested: row.pause_requested === 1,

@@ -13,6 +13,9 @@ export interface RunDeliveryFacts {
   // the hop of the step that the end belongs to, and the hop limit
   readonly hop: number;
   readonly hopLimit: number;
+
+  // whether the report target made the close that ends the task run
+  readonly isClosedByTarget: boolean;
 }
 
 export interface RunDeliveryPlan {
@@ -26,6 +29,7 @@ export function pickRunDelivery(facts: RunDeliveryFacts): RunDeliveryPlan {
   if (
     facts.cause === 'no_work' ||
     facts.mode === 'none' ||
+    facts.isClosedByTarget ||
     facts.targetState === null ||
     isFinishedState(facts.targetState)
   ) {

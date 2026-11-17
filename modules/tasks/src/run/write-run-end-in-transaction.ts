@@ -81,6 +81,10 @@ export async function writeRunEndInTransaction(
     targetState,
     hop: task.step_hop,
     hopLimit: context.runSettings.hopLimit,
+    isClosedByTarget:
+      request.trigger.kind === 'closed' &&
+      request.trigger.closer !== null &&
+      request.trigger.closer === target,
   });
 
   const detail = buildDetail(run, ending, request, used);

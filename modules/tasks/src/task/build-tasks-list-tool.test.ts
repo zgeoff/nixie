@@ -1,8 +1,11 @@
 import { expect, test } from 'bun:test';
-import { writeRecords } from '@heynixie/log';
+import { withWriteTransaction, writeRecords } from '@heynixie/log';
 import { buildMockToolCall, buildMockToolContext } from '@heynixie/tools/test-utils';
+import { recallPageLimitBytes } from '@heynixie/wire';
 import invariant from 'tiny-invariant';
+import { z } from 'zod';
 import { createConversationTask } from '../conversation/create-conversation-task';
+import { withdrawDefinitionTaskInTransaction } from '../definition/withdraw-definition-task-in-transaction';
 import { readInbox } from '../inbox/read-inbox';
 import { writeStepCommit } from '../step/write-step-commit';
 import { seedConversationStep } from '../test-utils/seed-conversation-step';
@@ -70,6 +73,7 @@ test('it lists the tasks other than the caller, with each last activity in UTC',
           state: 'ready',
           model: null,
           brief: 'Plans the week.',
+          isBriefClipped: false,
           lastActivityAt: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/u),
           wakeable: true,
         },
@@ -125,6 +129,7 @@ test('it lists a started task with the name and brief it started with', async ()
           state: 'ready',
           model: null,
           brief: 'Plan the beds.',
+          isBriefClipped: false,
           lastActivityAt: expect.toBeString(),
           wakeable: true,
         },
@@ -166,6 +171,7 @@ test('it lists only as many tasks as the limit asks for', async () => {
   expect(outcome).toStrictEqual({
     status: 'ok',
     result: {
+      nextCursor: expect.toBeString(),
       tasks: [
         {
           id: 'critic',
@@ -173,6 +179,7 @@ test('it lists only as many tasks as the limit asks for', async () => {
           state: 'ready',
           model: null,
           brief: 'Checks plans.',
+          isBriefClipped: false,
           lastActivityAt: expect.toBeString(),
           wakeable: true,
         },
@@ -225,6 +232,7 @@ test('it lists each task with the model it runs on', async () => {
           state: 'ready',
           model: null,
           brief: 'List the seeds to order for spring.',
+          isBriefClipped: false,
           lastActivityAt: expect.toBeString(),
           wakeable: true,
         },
@@ -234,6 +242,7 @@ test('it lists each task with the model it runs on', async () => {
           state: 'ready',
           model: 'second-look',
           brief: 'Find the weak points in the plan.',
+          isBriefClipped: false,
           lastActivityAt: expect.toBeString(),
           wakeable: true,
         },
@@ -314,6 +323,7 @@ test.each([
             state,
             model: null,
             brief: 'List the seeds to order for spring.',
+            isBriefClipped: false,
             lastActivityAt: expect.toBeString(),
             wakeable: true,
             ...wait,
@@ -399,6 +409,7 @@ test('it lists a finished task under done within the limit, behind a newer idle 
           state: 'finished',
           model: null,
           brief: 'List the seeds to order for spring.',
+          isBriefClipped: false,
           lastActivityAt: expect.toBeString(),
           wakeable: true,
         },
@@ -474,6 +485,7 @@ test.each([
         tasks: expected.map((task) => ({
           ...task,
           model: null,
+          isBriefClipped: false,
           lastActivityAt: expect.toBeString(),
           wakeable: true,
         })),
@@ -565,6 +577,7 @@ test.each([
       tasks: expected.map((task) => ({
         ...task,
         model: null,
+        isBriefClipped: false,
         lastActivityAt: expect.toBeString(),
         wakeable: true,
       })),
@@ -607,6 +620,7 @@ test.each([
           state: 'asleep',
           model: null,
           brief: 'Water the beds.',
+          isBriefClipped: false,
           lastActivityAt: expect.toBeString(),
           wakeable: false,
           ...row.shown,
@@ -644,6 +658,7 @@ test('it lists a wakeable definition task as idle with no next run', async () =>
           state: 'idle',
           model: null,
           brief: 'Water the beds.',
+          isBriefClipped: false,
           lastActivityAt: expect.toBeString(),
           wakeable: true,
         },
@@ -692,10 +707,213 @@ test('it lists a wakeable definition task as finished when its newest task run r
           state: 'finished',
           model: null,
           brief: 'Water the beds.',
+          isBriefClipped: false,
           lastActivityAt: expect.toBeString(),
           wakeable: true,
         },
       ],
     },
+  });
+});
+
+test('it pages 200 tasks with long briefs under the byte budget, listing each once', async () => {
+  const ctx = await setupTest();
+
+  const firstLine =
+    'Compare the tide tables for the harbour across the whole month, noting each spring tide, each neap tide, the heights at both ends of the day, and every day on which the two sources disagree by more than ten centimetres.';
+
+  const brief = `${firstLine}\nSecond line of the brief.\nThird line of the brief.`;
+  const clipped = `${firstLine.slice(0, 200)}…`;
+
+  const directory = Array.from({ length: 200 }, (_, index) => ({
+    taskID: `tide-check-${index}`,
+    name: `Tide check ${index}`,
+    brief,
+    wakeable: true,
+    speaker: 'plain_task' as const,
+  }));
+
+  for (const profile of directory) {
+    await createSystemTask(ctx.context, profile.taskID);
+  }
+
+  const expectedIDs = directory.map((profile) => profile.taskID);
+  const tool = buildTasksListTool(ctx.context, { directory });
+  const listedIDs: string[] = [];
+  const briefs: unknown[] = [];
+  const sizes: number[] = [];
+  const cursor: { next: string | undefined } = { next: undefined };
+  let pages = 0;
+
+  do {
+    const outcome = await tool.run(
+      buildMockToolCall({
+        tool: 'tasks.list',
+        input: cursor.next === undefined ? {} : { cursor: cursor.next },
+      }),
+      buildMockToolContext({ run: { thread: 'conversation' } }),
+    );
+
+    invariant(outcome.status === 'ok', 'the list answers');
+
+    const text = JSON.stringify(outcome.result);
+
+    sizes.push(Buffer.byteLength(text));
+
+    const entrySchema = z.object({
+      id: z.string(),
+      brief: z.string(),
+      isBriefClipped: z.boolean(),
+    });
+
+    const resultSchema = z.object({
+      tasks: z.array(entrySchema),
+      nextCursor: z.string().optional(),
+    });
+
+    const result = resultSchema.parse(outcome.result);
+
+    for (const task of result.tasks) {
+      listedIDs.push(task.id);
+      briefs.push([task.brief, task.isBriefClipped]);
+    }
+
+    cursor.next = result.nextCursor;
+    pages += 1;
+  } while (cursor.next !== undefined);
+
+  expect(pages).toBeGreaterThan(1);
+  expect(sizes).toSatisfyAll((size: number) => size <= recallPageLimitBytes);
+  expect([...listedIDs].toSorted()).toStrictEqual([...expectedIDs].toSorted());
+  expect(briefs).toSatisfyAll((entry: [string, boolean]) => entry[0] === clipped && entry[1]);
+});
+
+test('it pages a task out of force with a task run open, and a started task, listing each once', async () => {
+  const ctx = await setupTest();
+  const starter = await seedConversationStep(ctx.context);
+
+  const startedID = await seedTask(ctx.context, {
+    starter: starter.claim,
+    name: 'Tide check',
+    brief: 'Compare the tide tables.',
+  });
+
+  const withdrawnID = await seedDefinitionTask(ctx, {
+    definitionID: 'water-the-tomatoes',
+    definitionHash: 'hash-1',
+    version: { name: 'Water the tomatoes', brief: 'Water the beds.' },
+  });
+
+  await writeTestTriggerFire(ctx.context, withdrawnID, { definitionHash: 'hash-1' });
+  await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000, taskID: withdrawnID });
+
+  await withWriteTransaction(ctx.writer, (tx) =>
+    withdrawDefinitionTaskInTransaction(tx, ctx.context, 'water-the-tomatoes'),
+  );
+
+  const tool = buildTasksListTool(ctx.context, { directory: [] });
+  const entrySchema = z.object({ id: z.string() });
+
+  const resultSchema = z.object({
+    tasks: z.array(entrySchema),
+    nextCursor: z.string().optional(),
+  });
+
+  const listedIDs: string[] = [];
+  const cursor: { next: string | undefined } = { next: undefined };
+
+  do {
+    const outcome = await tool.run(
+      buildMockToolCall({
+        tool: 'tasks.list',
+        input: cursor.next === undefined ? { limit: 1 } : { limit: 1, cursor: cursor.next },
+      }),
+      buildMockToolContext({ run: { thread: 'conversation' } }),
+    );
+
+    invariant(outcome.status === 'ok', 'the list answers');
+
+    const result = resultSchema.parse(outcome.result);
+
+    listedIDs.push(...result.tasks.map((task) => task.id));
+
+    cursor.next = result.nextCursor;
+  } while (cursor.next !== undefined);
+
+  const expectedIDs = [startedID, withdrawnID].toSorted();
+
+  expect([...listedIDs].toSorted()).toStrictEqual(expectedIDs);
+});
+
+test('it lists one task with its whole brief when given its ID', async () => {
+  const ctx = await setupTest();
+
+  const brief =
+    'Compare the tide tables for the harbour.\nNote each spring tide.\nNote each neap tide.';
+
+  const starter = await seedConversationStep(ctx.context);
+
+  const taskID = await seedTask(ctx.context, {
+    starter: starter.claim,
+    name: 'Tide check',
+    brief,
+  });
+
+  const tool = buildTasksListTool(ctx.context, { directory: [] });
+
+  const outcome = await tool.run(
+    buildMockToolCall({ tool: 'tasks.list', input: { taskID, state: 'done', limit: 1 } }),
+    buildMockToolContext({ run: { thread: 'conversation' } }),
+  );
+
+  expect(outcome).toStrictEqual({
+    status: 'ok',
+    result: {
+      tasks: [
+        {
+          id: taskID,
+          name: 'Tide check',
+          state: 'ready',
+          model: null,
+          brief,
+          isBriefClipped: false,
+          lastActivityAt: expect.toBeString(),
+          wakeable: true,
+        },
+      ],
+    },
+  });
+});
+
+test('it answers an unknown task ID with an error that points at the list', async () => {
+  const ctx = await setupTest();
+
+  const tool = buildTasksListTool(ctx.context, { directory: [] });
+
+  const outcome = await tool.run(
+    buildMockToolCall({ tool: 'tasks.list', input: { taskID: 'nosuchtask' } }),
+    buildMockToolContext({ run: { thread: 'conversation' } }),
+  );
+
+  expect(outcome).toStrictEqual({
+    status: 'error',
+    message:
+      'no task you can list has the ID nosuchtask; call tasks.list with no taskID to see the IDs',
+  });
+});
+
+test('it answers a cursor it did not give with an error that says to start again', async () => {
+  const ctx = await setupTest();
+
+  const tool = buildTasksListTool(ctx.context, { directory: [] });
+
+  const outcome = await tool.run(
+    buildMockToolCall({ tool: 'tasks.list', input: { cursor: 'not-a-cursor' } }),
+    buildMockToolContext({ run: { thread: 'conversation' } }),
+  );
+
+  expect(outcome).toStrictEqual({
+    status: 'error',
+    message: 'that cursor is not one tasks.list gave; call tasks.list again with no cursor',
   });
 });
