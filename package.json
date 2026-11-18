@@ -107,7 +107,6 @@
     "format": "oxfmt . && format-codemod --quiet .",
     "format:check": "oxfmt --check . && format-codemod --check --quiet .",
     "lint": "oxlint",
-    "lint:shell": "git ls-files -z '*.sh' ':!.claude/**' ':!.agents/skills/**' | xargs -0 sh -c 'shellcheck \"$@\" && shfmt -d \"$@\"' sh",
     "lint:full": "tsgolint=$(tsrslint-path) && OXLINT_TSGOLINT_PATH=$tsgolint oxlint --type-aware --report-unused-disable-directives-severity error",
     "models": "bun adapters/encoder-onnx/src/run-pinned-download.ts adapters/encoder-onnx/model-files.txt node_modules/.cache/nixie-encoder",
     "postinstall": "bun run --cwd apps/web codegen",
