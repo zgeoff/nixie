@@ -3,6 +3,7 @@
 # one shared fetch VM would read them. Usage: fetch.sh <url...>
 # The fetcher exits 0 when it refuses or fails a page, so the script checks each reply's kind and
 # prints `bad reply` for any reply that isn't a page.
+# shellcheck disable=SC1091 # shellcheck does not follow a sourced file, and setup.sh is checked as its own file
 . "$(dirname "$0")/setup.sh"
 n=0
 

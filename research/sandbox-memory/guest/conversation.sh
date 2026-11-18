@@ -1,6 +1,7 @@
 #!/bin/sh
 # In the conversation image: a short turn, a turn of about 235k input tokens, a resume of that
 # session, and an 8-call tool loop, each under the sampler, then the OOM counters.
+# shellcheck disable=SC1091 # shellcheck does not follow a sourced file, and setup.sh is checked as its own file
 . "$(dirname "$0")/setup.sh"
 bun write-large-prompt.ts large-prompt.txt
 echo "Call read_ledger for pages 1 to 8, one call at a time, then say how many pages you read." > tools-prompt.txt

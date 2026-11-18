@@ -1,6 +1,7 @@
 #!/bin/sh
 # In the conversation image: the SDK host run from source, from a bundle, compiled, and with
 # --smol, 3 times each, then the start time of each form and of the CLI.
+# shellcheck disable=SC1091 # shellcheck does not follow a sourced file, and setup.sh is checked as its own file
 . "$(dirname "$0")/setup.sh"
 # the bundled image holds the CLI at /app/claude; an image built before it holds it in its packages
 if [ -x /app/claude ]; then
