@@ -132,17 +132,19 @@ export const backupScheduleMachine = setup<
         input: (entered) => entered.context.input,
         onDone: [
           { guard: (passed) => passed.context.isStopping, target: 'stopped' },
+
+          // A queued request runs before a wake, so commits during a pass cannot postpone it.
           {
-            guard: (passed) => passed.context.isWakePending,
-            target: 'passing',
-            reenter: true,
+            guard: (passed) => passed.context.requests.length > 0,
+            target: 'staging',
             actions: (passed) => {
               reportPass(passed.context.input, passed.event.output);
             },
           },
           {
-            guard: (passed) => passed.context.requests.length > 0,
-            target: 'staging',
+            guard: (passed) => passed.context.isWakePending,
+            target: 'passing',
+            reenter: true,
             actions: (passed) => {
               reportPass(passed.context.input, passed.event.output);
             },

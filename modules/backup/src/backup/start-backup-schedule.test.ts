@@ -29,6 +29,9 @@ async function setupTest() {
       { kind: 'memory.forgotten', definitions, payload: { itemID: 'item-a' } },
     ]);
 
+  const writeRecord = (tx: Transaction<unknown>) =>
+    writeRecordsInTransaction(tx, log.log, [{ kind: 'task.created', definitions, payload: {} }]);
+
   const context = { writer: log.writer, storage: localDataStorage };
 
   const startSchedule = () => {
@@ -52,6 +55,7 @@ async function setupTest() {
     onError,
     onAbandoned,
     writeForgottenRecord,
+    writeRecord,
     startSchedule,
     seed: buildBackupSeeder({ context }),
   };
@@ -750,7 +754,7 @@ test('it stages under a pause by the owner', async () => {
   expect(outcome).toMatchObject({ status: 'staged', manifest: { sequence: 2 } });
 });
 
-test('it runs a request sent during the first pass after that pass, and stages exactly one set', async () => {
+test('it runs a request sent during startup once the first pass ends, and stages exactly one set', async () => {
   const ctx = await setupTest();
 
   await ctx.seed.publishedBackupSet();
@@ -771,7 +775,7 @@ test('it runs a request sent during the first pass after that pass, and stages e
   ]);
 });
 
-test('it refuses a request sent during a pass that stages a set, and stages no second set', async () => {
+test('it refuses a request sent during startup when the first pass stages a set, and stages no second set', async () => {
   const ctx = await setupTest();
 
   const schedule = ctx.startSchedule();
@@ -784,6 +788,74 @@ test('it refuses a request sent during a pass that stages a set, and stages no s
 
   expect(outcome).toStrictEqual({ status: 'set_waiting', sequence: 1 });
   expect(sets.rows).toStrictEqual([{ sequence: 1, kind: 'scheduled', state: 'staged' }]);
+});
+
+test('it runs a request queued during a pass right after that pass, before a wake that arrived during the pass, and stages exactly one set', async () => {
+  const ctx = await setupTest();
+
+  await ctx.seed.publishedBackupSet();
+
+  const held = Promise.withResolvers<void>();
+  const entered = Promise.withResolvers<void>();
+  const gate = { isArmed: false };
+
+  const holdingStorage = {
+    ...localDataStorage,
+    files: {
+      ...localDataStorage.files,
+      readDirectory: async (path: string) => {
+        if (gate.isArmed) {
+          gate.isArmed = false;
+
+          entered.resolve();
+
+          await held.promise;
+        }
+
+        return localDataStorage.files.readDirectory(path);
+      },
+    },
+  };
+
+  const schedule = startBackupSchedule({
+    context: { writer: ctx.writer, storage: holdingStorage },
+    intervalMs: 3_600_000,
+    onAbandoned: ctx.onAbandoned,
+    onPass: ctx.onPass,
+    onError: ctx.onError,
+  });
+
+  onTestFinished(() => schedule.stop());
+
+  await waitForCondition(() => ctx.onPass.mock.calls.length === 1);
+
+  gate.isArmed = true;
+
+  await withWriteTransaction(ctx.writer, (tx) => ctx.writeRecord(tx));
+  await entered.promise;
+
+  const staging = schedule.stage();
+
+  await withWriteTransaction(ctx.writer, (tx) => ctx.writeRecord(tx));
+
+  held.resolve();
+
+  const outcome = await staging;
+
+  await waitForCondition(() => ctx.onPass.mock.calls.length === 4);
+
+  const sets = await sql`select sequence, kind, state from backup_sets order by sequence`.execute(
+    ctx.writer.db,
+  );
+
+  expect(outcome).toMatchObject({ status: 'staged', manifest: { sequence: 2 } });
+  expect(ctx.onPass.mock.calls[2]?.[0].staged).toMatchObject({ sequence: 2 });
+  expect(ctx.onPass.mock.calls[3]?.[0].staged).toBeNull();
+
+  expect(sets.rows).toStrictEqual([
+    { sequence: 1, kind: 'scheduled', state: 'published' },
+    { sequence: 2, kind: 'scheduled', state: 'staged' },
+  ]);
 });
 
 test('it rejects a queued request when the schedule stops', async () => {
