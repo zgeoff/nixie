@@ -145,6 +145,7 @@ async function setupTest() {
     },
     startPeriodsHandler: async (
       sendUpstream: (url: string, init: RequestInit) => Promise<Response>,
+      upstream = 'http://model.test',
     ) => {
       const store = await createPeriodStore({
         path: storePath,
@@ -170,7 +171,7 @@ async function setupTest() {
         routes: {
           preview: {
             api: 'anthropic-messages',
-            upstream: 'http://model.test',
+            upstream,
             model: 'model-small',
             providerPin: null,
             prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
@@ -2347,6 +2348,65 @@ test('it counts the estimate of a Messages stream that breaks after its message 
       reason: 'cut',
       dollars: expect.closeTo(0.01333, 9),
       tokens: 5165,
+    },
+    'warn',
+  );
+});
+
+test('it counts the estimate of a Messages stream whose last delta holds no output count, pricing the start event input on an Anthropic route', async () => {
+  const ctx = await setupTest();
+
+  const events = [
+    { type: 'message_start', message: { usage: { input_tokens: 9000, output_tokens: 1 } } },
+    { type: 'message_delta', delta: { stop_reason: 'end_turn' }, usage: {} },
+  ];
+
+  const sendUpstream = mock<(url: string, init: RequestInit) => Promise<Response>>(() =>
+    Promise.resolve(
+      new Response(events.map((event) => `data: ${JSON.stringify(event)}\n\n`).join(''), {
+        headers: { 'content-type': 'text/event-stream' },
+      }),
+    ),
+  );
+
+  const started = await ctx.startPeriodsHandler(sendUpstream, 'https://api.anthropic.com');
+
+  const sendRequest = () =>
+    started.handler(
+      new Request('http://proxy.test/alpha/preview/v1/messages', {
+        method: 'POST',
+        body: JSON.stringify({
+          model: 'model-small',
+          messages: [],
+          stream: true,
+          max_tokens: 1000,
+        }),
+      }),
+    );
+
+  const ended = await sendRequest();
+
+  await ended.text();
+
+  const later = await sendRequest();
+  const counted = await started.store.read();
+
+  // 9,000 input tokens from the start event at the input rate, and 1,000 output tokens at the
+  // output rate; the byte bound of 4,165 tokens at the highest input rate would cost more
+  expect([later.status, counted.lost, counted.sandboxes['alpha']?.tokens]).toStrictEqual([
+    200,
+    false,
+    10_000,
+  ]);
+
+  expect(ctx.log).toHaveBeenCalledWith(
+    'count.estimated',
+    {
+      route: 'preview',
+      sandbox: 'alpha',
+      reason: 'no_usage',
+      dollars: expect.closeTo(0.014, 9),
+      tokens: 10_000,
     },
     'warn',
   );
