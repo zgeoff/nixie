@@ -268,7 +268,7 @@ test.skipIf(!hasPlanGateway)(
 );
 
 test.skipIf(!hasPlanGateway)(
-  'it records the error that Codex gives when a plan login turn passes the context window',
+  'it fails a plan login turn that passes the context window with an error that names the context',
   async () => {
     const ctx = await setupTest();
 
@@ -278,12 +278,14 @@ test.skipIf(!hasPlanGateway)(
     const turn = await ctx.runTurn({
       systemPrompt: 'You are a test agent.',
       input: filler,
+      tools: { ping: 'pong' },
     });
 
-    const last = turn.frames.at(-1);
-
-    console.log(`plan login context overflow probe: last frame ${JSON.stringify(last)}`);
-
-    expect(last?.type === 'ended' || last?.type === 'failed').toBeTrue();
+    // an unrelated failure, such as tools_not_connected, has another reason or detail
+    expect(turn.frames.at(-1)).toStrictEqual({
+      type: 'failed',
+      reason: 'error',
+      detail: expect.stringMatching(/context/iu),
+    });
   },
 );

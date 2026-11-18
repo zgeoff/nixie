@@ -175,13 +175,25 @@ export async function createPlanLogin(deps: PlanLoginDeps): Promise<PlanLogin> {
       return buildRefusal(deps.routeID, `has a login that is ${file.status}`);
     }
 
-    if (state.held === null || deps.now() >= state.held.dueAtMs) {
+    // a refresh in flight settles first, so no request goes out on a token it is replacing
+    if (state.inFlight !== null || state.held === null || deps.now() >= state.held.dueAtMs) {
       await refresh();
     }
 
+    // the refresh may have changed the file's status
+    const after = await readFileOrNull();
+
     const held = state.held;
 
-    if (held === null || held.loginID !== file.loginID || deps.now() >= held.expiresAtMs) {
+    if (after === null) {
+      return buildRefusal(deps.routeID, 'has no readable login');
+    }
+
+    if (after.status !== 'active') {
+      return buildRefusal(deps.routeID, `has a login that is ${after.status}`);
+    }
+
+    if (held === null || held.loginID !== after.loginID || deps.now() >= held.expiresAtMs) {
       return buildRefusal(deps.routeID, 'could not refresh its login');
     }
 

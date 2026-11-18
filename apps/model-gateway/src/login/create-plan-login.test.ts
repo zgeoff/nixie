@@ -30,22 +30,28 @@ async function setupTest() {
   const answers: Answer[] = [];
   const requests: { url: string; body: Record<string, unknown> }[] = [];
   const sleeps: { delayMs: number; wake: () => void }[] = [];
+  let gate: Promise<void> | null = null;
 
   const open = () =>
     createPlanLogin({
       routeID: 'codex-plan',
       config: { file: loginPath, routeKeyFile },
-      send: (url, init) => {
+      send: async (url, init) => {
         requests.push({ url, body: JSON.parse(String(init.body)) });
 
         const answer = answers.shift() ?? { status: 503, body: {} };
+        const waiting = gate;
+
+        gate = null;
+
+        await waiting;
 
         // status 0 stands for no answer within the time
         if (answer.status === 0) {
-          return Promise.reject(new Error('no answer'));
+          throw new Error('no answer');
         }
 
-        return Promise.resolve(Response.json(answer.body, { status: answer.status }));
+        return Response.json(answer.body, { status: answer.status });
       },
       now: () => current,
       sleep: (delayMs, signal) =>
@@ -67,6 +73,15 @@ async function setupTest() {
     readFile: () => readLoginFile(loginPath),
     advance: (durationMs: number) => {
       current += durationMs;
+    },
+
+    // holds the answer to the next request until the returned function runs
+    holdNextAnswer: () => {
+      const held = Promise.withResolvers<void>();
+
+      gate = held.promise;
+
+      return () => held.resolve();
     },
     answer: (status: number, body: unknown) => {
       answers.push({ status, body });
@@ -593,4 +608,82 @@ test('it reports the entry of a login without its token or email', async () => {
     accountID: 'acct-test-1',
     planType: 'plus',
   });
+});
+
+test('it makes a request wait for a refresh in flight before it admits a token', async () => {
+  const ctx = await setupTest();
+
+  await ctx.writeLogin();
+
+  ctx.answerToken('a1', 'refresh-token-2', 60 * 60_000);
+
+  const login = await ctx.open();
+
+  await login.admit();
+
+  ctx.advance(10 * 60_000);
+
+  const release = ctx.holdNextAnswer();
+
+  ctx.answerToken('a2', 'refresh-token-3', 60 * 60_000);
+
+  const refreshing = login.refreshAfterRejection('login-1');
+
+  await waitForCondition(() => ctx.requests.length === 2);
+
+  let admittedEarly = false;
+
+  const admitting = (async () => {
+    const result = await login.admit();
+
+    admittedEarly = true;
+
+    return result;
+  })();
+
+  await expect(waitForCondition(() => admittedEarly, { timeoutMs: 100 })).toReject();
+
+  release();
+
+  await refreshing;
+
+  const admitted = await admitting;
+
+  expect(admitted).toStrictEqual({
+    kind: 'ok',
+    accessToken: expect.any(String),
+    loginID: 'login-1',
+  });
+
+  const file = await ctx.readFile();
+
+  expect(file?.refreshToken).toBe('refresh-token-3');
+});
+
+test('it refuses a request and sends nothing upstream once the third failed refresh marks the login failing', async () => {
+  const ctx = await setupTest();
+
+  await ctx.writeLogin();
+
+  ctx.answerToken('a1', 'refresh-token-2', 20 * 60_000);
+
+  const login = await ctx.open();
+
+  await login.admit();
+
+  ctx.advance(16 * 60_000);
+
+  // the stand-in answers 503 once its queue is empty
+  await login.admit();
+  await login.admit();
+
+  const file = await ctx.readFile();
+
+  expect(file?.status).toBe('active');
+
+  const result = await login.admit();
+  const failing = await ctx.readFile();
+
+  expect(failing?.status).toBe('failing');
+  expect(result).toStrictEqual({ kind: 'refused', message: expect.stringContaining('failing') });
 });
