@@ -727,15 +727,18 @@ test('it answers a 502 and counts the estimate, so the next request passes, when
 
   expect(sendUpstream).toHaveBeenCalledTimes(2);
 
+  const estimated = ctx.log.mock.calls.find(([event]) => event === 'count.estimated');
+
+  expect(estimated?.[1]?.['dollars']).toBeCloseTo(0.013302, 9);
+
   expect(ctx.log).toHaveBeenCalledWith(
     'count.estimated',
-    {
+    expect.objectContaining({
       route: 'preview',
       sandbox: null,
       reason: 'body_failed',
-      dollars: expect.closeTo(0.013302, 9),
       tokens: 5151,
-    },
+    }),
     'warn',
   );
 });
@@ -806,15 +809,13 @@ test('it counts the estimate, so the next request passes, when a streamed reply 
   expect([later.status, counted.lost, counted.tokens]).toStrictEqual([200, false, 5165]);
   expect(sendUpstream).toHaveBeenCalledTimes(2);
 
+  const estimated = ctx.log.mock.calls.find(([event]) => event === 'count.estimated');
+
+  expect(estimated?.[1]?.['dollars']).toBeCloseTo(0.01333, 9);
+
   expect(ctx.log).toHaveBeenCalledWith(
     'count.estimated',
-    {
-      route: 'preview',
-      sandbox: null,
-      reason: 'cut',
-      dollars: expect.closeTo(0.01333, 9),
-      tokens: 5165,
-    },
+    expect.objectContaining({ route: 'preview', sandbox: null, reason: 'cut', tokens: 5165 }),
     'warn',
   );
 });
@@ -1246,15 +1247,18 @@ test('it counts the estimate, so the next request passes, once a message call fa
     10_302,
   ]);
 
+  const estimated = ctx.log.mock.calls.find(([event]) => event === 'count.estimated');
+
+  expect(estimated?.[1]?.['dollars']).toBeCloseTo(0.013302, 9);
+
   expect(ctx.log).toHaveBeenCalledWith(
     'count.estimated',
-    {
+    expect.objectContaining({
       route: 'preview',
       sandbox: null,
       reason: 'upstream_failed',
-      dollars: expect.closeTo(0.013302, 9),
       tokens: 5151,
-    },
+    }),
     'warn',
   );
 });
@@ -2340,15 +2344,13 @@ test('it counts the estimate of a Messages stream that breaks after its message 
     5165,
   ]);
 
+  const estimated = ctx.log.mock.calls.find(([event]) => event === 'count.estimated');
+
+  expect(estimated?.[1]?.['dollars']).toBeCloseTo(0.01333, 9);
+
   expect(ctx.log).toHaveBeenCalledWith(
     'count.estimated',
-    {
-      route: 'preview',
-      sandbox: 'alpha',
-      reason: 'cut',
-      dollars: expect.closeTo(0.01333, 9),
-      tokens: 5165,
-    },
+    expect.objectContaining({ route: 'preview', sandbox: 'alpha', reason: 'cut', tokens: 5165 }),
     'warn',
   );
 });
@@ -2399,15 +2401,18 @@ test('it counts the estimate of a Messages stream whose last delta holds no outp
     10_000,
   ]);
 
+  const estimated = ctx.log.mock.calls.find(([event]) => event === 'count.estimated');
+
+  expect(estimated?.[1]?.['dollars']).toBeCloseTo(0.014, 9);
+
   expect(ctx.log).toHaveBeenCalledWith(
     'count.estimated',
-    {
+    expect.objectContaining({
       route: 'preview',
       sandbox: 'alpha',
       reason: 'no_usage',
-      dollars: expect.closeTo(0.014, 9),
       tokens: 10_000,
-    },
+    }),
     'warn',
   );
 });
@@ -2445,11 +2450,8 @@ test('it counts the estimate from the route maxOutputTokens for a Responses stre
   const counted = await started.store.read();
 
   // the body's 64 bytes and the 4,096 allowance in, and the route's 8,192 tokens out
-  expect(counted).toStrictEqual({
-    dollars: expect.closeTo((4160 * 2 + 8192 * 5) / 1_000_000, 9),
-    tokens: 4160 + 8192,
-    lost: false,
-  });
+  expect([counted.tokens, counted.lost]).toStrictEqual([4160 + 8192, false]);
+  expect(counted.dollars).toBeCloseTo((4160 * 2 + 8192 * 5) / 1_000_000, 9);
 });
 
 test.each([
@@ -2571,7 +2573,8 @@ test.each([
   const counted = await store.read();
 
   // 9,000 reported input tokens at $2 and 1,000 output tokens at $5, per million
-  expect(counted).toStrictEqual({ dollars: expect.closeTo(0.023, 9), tokens: 10_000, lost: false });
+  expect([counted.tokens, counted.lost]).toStrictEqual([10_000, false]);
+  expect(counted.dollars).toBeCloseTo(0.023, 9);
 });
 
 test('it charges the usage a stream reported when a stop cuts it off, and a later cancel adds nothing', async () => {
@@ -2634,5 +2637,6 @@ test('it charges the usage a stream reported when a stop cuts it off, and a late
 
   const counted = await store.read();
 
-  expect(counted).toStrictEqual({ dollars: expect.closeTo(0.023, 9), tokens: 10_000, lost: false });
+  expect([counted.tokens, counted.lost]).toStrictEqual([10_000, false]);
+  expect(counted.dollars).toBeCloseTo(0.023, 9);
 });

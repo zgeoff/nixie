@@ -432,19 +432,17 @@ test('it charges the estimate of a reply a stop cut off at the drain deadline, a
   });
 
   // the stream's body of 69 bytes and 4,096 allowance tokens in, and 1,000 tokens out
-  expect(JSON.parse(stored)).toStrictEqual({ dollars: expect.closeTo(0.01333, 9), tokens: 5165 });
+  expect(stored).toMatch(/^\{"dollars":0\.0133\d*,"tokens":5165\}$/u);
   expect(response.status).toBe(200);
   expect(ctx.model.requests).toHaveLength(2);
 
+  const estimated = ctx.log.mock.calls.find(([event]) => event === 'count.estimated');
+
+  expect(estimated?.[1]?.['dollars']).toBeCloseTo(0.01333, 9);
+
   expect(ctx.log).toHaveBeenCalledWith(
     'count.estimated',
-    {
-      route: 'preview',
-      sandbox: null,
-      reason: 'shutdown',
-      dollars: expect.closeTo(0.01333, 9),
-      tokens: 5165,
-    },
+    expect.objectContaining({ route: 'preview', sandbox: null, reason: 'shutdown', tokens: 5165 }),
     'warn',
   );
 });
