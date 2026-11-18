@@ -182,9 +182,7 @@ jobs:
         run: docker run --rm --network none --read-only "$NIXIE" check-encoder
 
       - name: Pull each sandbox image with no credentials
-        run: |
-          mapfile -t refs < <(jq -r '.[]' apps/server/sandbox-manifest.json)
-          .github/scripts/check-public-pulls.sh "${refs[@]}"
+        run: bun run --silent ci:images:check-public-pulls
 
       - name: Tag every image, twice, and keep each digest
         env:

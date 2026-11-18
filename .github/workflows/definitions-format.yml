@@ -1,16 +1,15 @@
 # Runs the definitions repo's formatter check over the task.yaml files that a task export writes, so
 # an export pull request never fails that repo's format check. A step script runs the formatter,
-# because the unit tests never start a binary.
+# because the unit tests never start a binary. definitions-format-main.yml runs the same check on
+# each push to main.
 name: definitions format
 
 on:
   pull_request:
-  push:
-    branches: [main]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
