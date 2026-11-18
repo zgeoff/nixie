@@ -51,6 +51,10 @@ export const ignoredPaths = [
   'integration/**',
   'apps/*/e2e/**',
 
+  // The root e2e workspace is gone. Its verify CLI and helpers moved to `verify/` and each app's
+  // `test-utils`, which map as shared paths, so only the deleted files match here.
+  'e2e/**',
+
   // 2. Build, lint, CI and editor wiring, which Bun never reads when it runs the source.
   '**/tsconfig*.json',
   '**/turbo.json',
