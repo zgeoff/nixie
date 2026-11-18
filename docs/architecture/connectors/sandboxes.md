@@ -175,7 +175,10 @@ and the secrets.
   spec whose egress is wider than its kind allows.
 - **Credentials at start.** In an imp with a grant, a command starts only once impd has set the
   broker's environment variables for that boot: its proxy, its bypass list and its certificate. impd
-  refuses a command whose environment replaces one of them.
+  refuses a command whose environment replaces one of them. The adapter's own file commands (copy
+  in, copy out, list, move and the memory-kill read) start without the broker requirement and with
+  no grant placeholders, so they still run on an imp whose grant a rebind revoked. When the adapter
+  reads an imp that lost a grant of its spec, it marks the sandbox as retired.
 - **Lost imps.** A host can lose an imp without a destroy from nixie, so a sandbox row alone never
   proves that its imp exists. When the adapter reads or lists a row whose imp impd no longer holds,
   it records the sandbox destroyed and leaves it out, so its owner creates a new one.

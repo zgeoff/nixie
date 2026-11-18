@@ -19,6 +19,7 @@ import { buildImpPolicy } from './build-imp-policy';
 import type { SleepRegistry } from './build-imp-sandbox';
 import { buildImpSandbox } from './build-imp-sandbox';
 import { probeGatewayGrants } from './probe-gateway-grants';
+import { probeRevokedGrants } from './probe-revoked-grants';
 
 export interface ImpSandboxOptions {
   readonly port: ImpPort;
@@ -94,7 +95,7 @@ export function buildImpSandboxAdapter(options: ImpSandboxOptions): SandboxAdapt
 
 // A host can lose an imp with no destroy from nixie, so a row alone never proves the imp exists. With
 // the gateway counting, an imp whose grants lack the gateway's path filter is retired, so the
-// caller replaces it.
+// caller replaces it. An imp that lost a grant to a rebind is retired the same way.
 function makeRowSandboxReader(
   options: ImpSandboxOptions,
   sleeping: SleepRegistry,
@@ -115,16 +116,22 @@ function makeRowSandboxReader(
 
     sleeping.setAsleep(row.sandboxID, row.state === 'sleeping');
 
-    const isWrongGrant =
-      options.modelGateway !== undefined &&
-      !(await probeGatewayGrants(options.port, {
-        sandboxID: row.sandboxID,
-        spec: row.spec,
-        modelURL: options.modelGateway.modelURL,
-      }));
+    const isWrongGrant = await probeWrongGrant(options, row);
 
     return getSandbox(row.sandboxID, row.spec, isBackedUp || isWrongGrant);
   };
+}
+
+async function probeWrongGrant(options: ImpSandboxOptions, row: SandboxRow): Promise<boolean> {
+  if (options.modelGateway === undefined) {
+    return probeRevokedGrants(options.port, row.sandboxID, row.spec);
+  }
+
+  return !(await probeGatewayGrants(options.port, {
+    sandboxID: row.sandboxID,
+    spec: row.spec,
+    modelURL: options.modelGateway.modelURL,
+  }));
 }
 
 function makeImageAdder(
