@@ -1,4 +1,6 @@
 import { expect, test } from 'bun:test';
+import invariant from 'tiny-invariant';
+import { z } from 'zod';
 import { rewriteModelRequest } from './rewrite-model-request';
 
 test.each(['messages', 'count_tokens'] as const)(
@@ -77,6 +79,40 @@ test('it adds the provider order to a messages request when the profile pins a p
       provider: { order: ['z-ai'], allow_fallbacks: false },
     }),
   });
+});
+
+test('it sends back a reply that ends with a redacted_thinking block unchanged on the next request', () => {
+  const kept = { type: 'text', text: 'You are nixie.' };
+
+  const messages = [
+    { role: 'user', content: [{ type: 'text', text: 'How tall is the lighthouse?' }] },
+    {
+      role: 'assistant',
+      content: [
+        { type: 'text', text: 'The lighthouse is 42 metres tall.', citations: [] },
+        { type: 'redacted_thinking', data: 'test.reasoning:c2lnbmF0dXJlLW9mLXRoZS1saWdodGhvdXNl' },
+      ],
+    },
+    { role: 'user', content: [{ type: 'text', text: 'And how old is it?' }] },
+  ];
+
+  const body = JSON.stringify({
+    model: 'glm-test-1',
+    system: [{ type: 'text', text: 'You are a CLI agent.' }, kept],
+    messages,
+  });
+
+  const result = rewriteModelRequest('messages', body, {
+    model: 'glm-test-1',
+    systemPrompt: 'You are nixie.',
+    providerPin: 'z-ai',
+  });
+
+  invariant(result.ok);
+
+  expect(z.object({ messages: z.unknown() }).parse(JSON.parse(result.body)).messages).toStrictEqual(
+    messages,
+  );
 });
 
 test('it adds no provider order to a token count', () => {
