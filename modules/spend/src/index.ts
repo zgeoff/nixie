@@ -1,5 +1,7 @@
 export { buildGatewayBaseURL } from './route/build-gateway-base-url';
 export { withSandboxCounts } from './sandbox/with-sandbox-counts';
+export { createPlanLoginsHolder } from './login/create-plan-logins-holder';
+export { readPlanLogins } from './login/read-plan-logins';
 export { startSpendLimits } from './start/start-spend-limits';
 export type { SpendLimitsOptions } from './start/start-spend-limits';
 export { spendProjections } from './projection/spend-projections';
@@ -48,6 +50,9 @@ export type {
   PeriodEnded,
   PeriodName,
   PeriodStatus,
+  PlanLoginStatus,
+  PlanLogins,
+  PlanLoginsHolder,
   SandboxCount,
   SpendContext,
   SpendGateway,

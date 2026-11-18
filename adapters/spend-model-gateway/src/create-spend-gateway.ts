@@ -3,12 +3,14 @@ import type {
   Done,
   GatewayStatus,
   NotFound,
+  PlanLoginStatus,
   SandboxCount,
   SpendGateway,
   Unreachable,
 } from '@heynixie/spend';
 import type { z } from 'zod';
 import { aboveCapSchema } from './above-cap-schema';
+import { chatgptLoginsSchema } from './chatgpt-logins-schema';
 import { gatewayStatusSchema } from './gateway-status-schema';
 import { periodEndedSchema } from './period-ended-schema';
 import { sandboxCountSchema } from './sandbox-count-schema';
@@ -60,6 +62,11 @@ export function createSpendGateway(options: SpendGatewayOptions): SpendGateway {
       const answer = await send('GET', '/status');
 
       return parseStatusAnswer(answer);
+    },
+    readChatGPTLogins: async () => {
+      const answer = await send('GET', '/chatgpt-logins');
+
+      return parseLoginsAnswer(answer);
     },
     putLimits: async (limits) => {
       const answer = await send('PUT', '/limits', limits);
@@ -137,6 +144,25 @@ function isUnreachable(answer: Answer | Unreachable): answer is Unreachable {
 
 function renderRefusal(answer: Answer): Unreachable {
   return { kind: 'unreachable', reason: `the gateway answered ${String(answer.status)}` };
+}
+
+function parseLoginsAnswer(
+  answer: Answer | Unreachable,
+): Done<Readonly<Record<string, PlanLoginStatus>>> | Unreachable {
+  const parsed = parseBody(answer, chatgptLoginsSchema);
+
+  if (parsed.kind !== 'ok') {
+    return parsed;
+  }
+
+  const routes = Object.fromEntries(
+    Object.entries(parsed.value).map(([routeID, login]) => [
+      routeID,
+      { status: login.status, accountID: login.accountID, planType: login.planType },
+    ]),
+  );
+
+  return { kind: 'ok', value: routes };
 }
 
 function parseAboveCap(answer: Answer | Unreachable): AboveCap | null {

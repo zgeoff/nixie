@@ -1,5 +1,6 @@
 import { collectSentMessages } from './collect-sent-messages';
 import { collectWorkers } from './collect-workers';
+import { formatFailureCause } from './format-failure-cause';
 import type { LiveRecord } from './use-live-records';
 import type { WorkerActivity } from './worker-activity';
 
@@ -79,6 +80,9 @@ export interface StepActivity {
   readonly summaries?: readonly SummaryActivity[];
 
   readonly durationMs?: number;
+
+  // the plain-words cause of a failed step whose reason the client knows
+  readonly cause?: string;
 
   readonly error?: string;
 
@@ -221,6 +225,8 @@ function buildStep(records: readonly LiveRecord[], status: StepStatus): StepActi
   const task = records.find((record) => record.task !== undefined)?.task;
   const stepKey = records.find((record) => record.task?.stepKey !== undefined)?.task?.stepKey;
   const error = records.find((record) => record.task?.error !== undefined)?.task?.error;
+  const reason = records.find((record) => record.task?.reason !== undefined)?.task?.reason;
+  const cause = formatFailureCause(reason) ?? undefined;
   const durationMs = status === 'running' ? undefined : findDuration(records);
   const recalls = records.filter((record) => record.recall !== undefined);
   const context = records.findLast((record) => record.context !== undefined)?.context;
@@ -250,6 +256,7 @@ function buildStep(records: readonly LiveRecord[], status: StepStatus): StepActi
     ...(summaries.length === 0 ? {} : { summaries }),
     ...(context === undefined ? {} : { context }),
     ...(durationMs === undefined ? {} : { durationMs }),
+    ...(cause === undefined ? {} : { cause }),
     ...(error === undefined ? {} : { error }),
     ...(records.some((record) => record.isSilentTurn === true) ? { isSilent: true } : {}),
     key: records[0]?.sequence ?? 0,

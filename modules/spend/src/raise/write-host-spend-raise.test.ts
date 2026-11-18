@@ -55,3 +55,19 @@ test('it writes zero dollars and tokens when the gateway gives no limit', async 
 
   expect(raised).toStrictEqual({ start: '2026-10-16', dollars: 0, tokens: 0, turns: 9 });
 });
+
+test('it holds the plan logins that the gateway reports', async () => {
+  const ctx = await setupTest();
+
+  ctx.gateway.readChatGPTLogins.mockResolvedValue({
+    kind: 'ok',
+    value: { 'codex-plan': { status: 'active', accountID: 'acct-test-1', planType: 'plus' } },
+  });
+
+  await ctx.raise(9);
+
+  expect(ctx.context.planLogins.read()).toStrictEqual({
+    state: 'read',
+    routes: { 'codex-plan': { status: 'active', accountID: 'acct-test-1', planType: 'plus' } },
+  });
+});

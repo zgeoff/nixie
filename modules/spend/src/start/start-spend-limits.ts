@@ -1,9 +1,13 @@
 import type { Logger } from '@heynixie/logger';
-import type { GatewayLimits, SpendGateway } from '../types';
+import { readPlanLogins } from '../login/read-plan-logins';
+import type { GatewayLimits, PlanLoginsHolder, SpendGateway } from '../types';
 import { formatAboveCap, pickStartRefusal } from './pick-start-refusal';
 
 export interface SpendLimitsOptions {
   readonly gateway: SpendGateway;
+
+  // where the read of the plan logins is held, which the spend context shares
+  readonly planLogins: PlanLoginsHolder;
   readonly limits: GatewayLimits;
   readonly defaultZone: string;
   readonly credentialCount: number;
@@ -49,7 +53,7 @@ type Attempt =
   | { readonly kind: 'refused'; readonly message: string };
 
 async function tryLimits(options: SpendLimitsOptions): Promise<Attempt> {
-  const status = await options.gateway.readStatus();
+  const [status] = await Promise.all([options.gateway.readStatus(), readPlanLogins(options)]);
 
   if (status.kind === 'unreachable') {
     return { kind: 'pending', reason: status.reason };

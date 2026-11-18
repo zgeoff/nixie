@@ -3,7 +3,7 @@ import type { JSONObject, RecordKinds } from '@heynixie/log';
 import { readRecords, writeRecords } from '@heynixie/log';
 import { modelsConfigSchema } from '@heynixie/models';
 import { sandboxCreatedCodec } from '@heynixie/sandbox';
-import { spendProjections } from '@heynixie/spend';
+import { createPlanLoginsHolder, spendProjections } from '@heynixie/spend';
 import { buildStubSpendGateway } from '@heynixie/spend/test-utils';
 import { buildTestClock, waitForCondition } from '@heynixie/testing';
 import type { ToolOutcome, ToolStepHold } from '@heynixie/tools';
@@ -187,6 +187,7 @@ async function setupTest(config: SetupConfig = {}) {
             zone: 'UTC',
             limits: { dayTurns: config.spendDayTurns, dayTurnCap: 2000, monthTurns: 20_000 },
             definitions: host.context.definitions,
+            planLogins: createPlanLoginsHolder(),
           },
         }),
   });

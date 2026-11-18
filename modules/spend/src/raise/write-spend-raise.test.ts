@@ -211,3 +211,19 @@ test('it keeps the larger totals when two raises land at once', async () => {
     },
   ]);
 });
+
+test('it holds the plan logins that the gateway reports', async () => {
+  const ctx = await setupTest();
+
+  ctx.gateway.readChatGPTLogins.mockResolvedValue({
+    kind: 'ok',
+    value: { 'codex-plan': { status: 'failing', accountID: 'acct-test-1', planType: 'plus' } },
+  });
+
+  await ctx.raise();
+
+  expect(ctx.context.planLogins.read()).toStrictEqual({
+    state: 'read',
+    routes: { 'codex-plan': { status: 'failing', accountID: 'acct-test-1', planType: 'plus' } },
+  });
+});

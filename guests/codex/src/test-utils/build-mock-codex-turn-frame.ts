@@ -4,6 +4,7 @@ import type { CodexTurnFrame } from '../turn/run-codex-turn';
 export interface CodexTurnFrameOverrides {
   readonly input?: CodexTurnFrame['input'];
   readonly limits?: CodexTurnFrame['limits'];
+  readonly chatgptLogin?: CodexTurnFrame['profile']['chatgptLogin'];
 }
 
 // The frame of a turn on the codex harness, which a host frame type holds
@@ -15,6 +16,7 @@ export function buildMockCodexTurnFrame(overrides: CodexTurnFrameOverrides = {})
       model: 'gpt-test-1',
       baseURL: 'https://models.example.test/v1',
       effort: 'high',
+      chatgptLogin: overrides.chatgptLogin ?? null,
     },
     tools: { url: 'http://127.0.0.1:8901', token: 'step-token' },
     systemPrompt: 'You are nixie.',

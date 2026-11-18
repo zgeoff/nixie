@@ -1,3 +1,4 @@
+import { readPlanLogins } from '../login/read-plan-logins';
 import { readSpendFacts } from '../stop/read-spend-facts';
 import { readSpendRaise } from '../stop/read-spend-raise';
 import { settleSpendStop } from '../stop/settle-spend-stop';
@@ -25,7 +26,7 @@ export async function writeHostSpendRaise(
   const start = buildSpendPeriods(context.clock.now(), context.zone).day.start;
 
   const earlier = await readSpendRaise(context.log.writer.db, start);
-  const status = await context.gateway.readStatus();
+  const [status] = await Promise.all([context.gateway.readStatus(), readPlanLogins(context)]);
 
   const limit = status.kind === 'ok' ? status.value.periods.day.limit : null;
 

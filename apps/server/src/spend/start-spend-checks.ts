@@ -24,6 +24,7 @@ export function startSpendChecks(inputs: SpendChecksInputs): Promise<'off' | 'se
 
   return startSpendLimits({
     gateway: inputs.spend.gateway,
+    planLogins: inputs.spend.planLogins,
     limits: {
       day: { dollars: limits.day.dollars, tokens: limits.day.tokens },
       month: { dollars: limits.month.dollars, tokens: limits.month.tokens },

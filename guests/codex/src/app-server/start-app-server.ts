@@ -44,9 +44,21 @@ export class AppServerRequestError extends Error {
   }
 }
 
-// Opens a client on `child` and runs the `initialize` handshake.
-export async function startAppServer(child: AppServerProcess): Promise<AppServerClient> {
-  const client = openClient(child);
+// What the CLI asks the client for when it wants a ChatGPT token: the same 3 fields that
+// `account/login/start` takes.
+export interface ChatGPTTokens {
+  readonly accessToken: string;
+  readonly chatgptAccountId: string;
+  readonly chatgptPlanType: string;
+}
+
+// Opens a client on `child` and runs the `initialize` handshake. On a plan login, `readTokens` gives
+// the answer to each token refresh the CLI asks for; with null the client answers no server request.
+export async function startAppServer(
+  child: AppServerProcess,
+  readTokens: (() => ChatGPTTokens) | null,
+): Promise<AppServerClient> {
+  const client = openClient(child, readTokens);
 
   try {
     await client.request('initialize', {
@@ -67,8 +79,12 @@ export async function startAppServer(child: AppServerProcess): Promise<AppServer
 // How long a process may outlive its closed output before the client gives up on it. A crash ends
 // the output just before the exit, and the exit status then names the cause.
 const exitGraceMs = 500;
+const tokenRefreshMethod = 'account/chatgptAuthTokens/refresh';
 
-function openClient(child: AppServerProcess): AppServerClient {
+function openClient(
+  child: AppServerProcess,
+  readTokens: (() => ChatGPTTokens) | null,
+): AppServerClient {
   const pending = new Map<number, PromiseWithResolvers<unknown>>();
 
   const queue: AppServerEvent[] = [];
@@ -112,6 +128,12 @@ function openClient(child: AppServerProcess): AppServerClient {
   const handleLine = (line: string): void => {
     match(parseServerMessage(parseJSONOrNull(line)))
       .with({ kind: 'request' }, (request) => {
+        if (request.method === tokenRefreshMethod && readTokens !== null) {
+          send({ id: request.id, result: readTokens() });
+
+          return;
+        }
+
         send({
           id: request.id,
           error: { code: -32_601, message: 'the nixie guest answers no server request' },

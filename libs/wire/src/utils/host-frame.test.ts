@@ -227,6 +227,48 @@ test('it accepts a turn frame with a codex profile', () => {
       model: 'gpt-test-1',
       baseURL: 'https://models.example.test',
       effort: 'high',
+      chatgptLogin: null,
+    },
+    tools: { url: 'http://127.0.0.1:8901', token: 'run-token' },
+    resume: null,
+    systemPrompt: 'You are nixie.',
+    input: [{ uuid: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d003', text: 'Hi.' }],
+    limits: { modelCalls: 5, toolCallWaitMs: null },
+  };
+
+  expect(hostFrameSchema.safeParse(frame).data).toStrictEqual(frame);
+});
+
+test('it accepts a codex turn frame from a server before the plan login, and reads its login as null', () => {
+  const result = hostFrameSchema.safeParse({
+    type: 'turn',
+    profile: {
+      harness: 'codex',
+      model: 'gpt-test-1',
+      baseURL: 'https://models.example.test',
+      effort: 'high',
+    },
+    tools: { url: 'http://127.0.0.1:8901', token: 'run-token' },
+    resume: null,
+    systemPrompt: 'You are nixie.',
+    input: [{ uuid: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d003', text: 'Hi.' }],
+    limits: { modelCalls: 5, toolCallWaitMs: null },
+  });
+
+  const profile = result.data?.type === 'turn' ? result.data.profile : null;
+
+  expect(profile).toMatchObject({ chatgptLogin: null });
+});
+
+test('it keeps the account and plan of a codex plan login', () => {
+  const frame: HostFrame = {
+    type: 'turn',
+    profile: {
+      harness: 'codex',
+      model: 'gpt-test-1',
+      baseURL: 'https://chatgpt.com/nixie-1/codex-plan',
+      effort: 'high',
+      chatgptLogin: { accountID: 'acct-test-1', planType: 'plus' },
     },
     tools: { url: 'http://127.0.0.1:8901', token: 'run-token' },
     resume: null,

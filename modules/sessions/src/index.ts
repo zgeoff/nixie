@@ -27,6 +27,7 @@ export type { SessionDeliveries } from './session/read-session-deliveries';
 export { readSessionDeliveries } from './session/read-session-deliveries';
 export { ModelAPIError } from './turn/model-api-error';
 export { ModelAuthError } from './step/model-auth-error';
+export { ChatGPTLoginError } from './turn/chatgpt-login-error';
 export { checkerOwner } from './checker/start-checker-runner';
 export { agentConfigSchema } from './session/agent-config-schema';
 export type { EventsBlock } from './event/read-events-block';

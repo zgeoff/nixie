@@ -18,6 +18,7 @@ async function setupTest() {
         baseURL: 'https://models.example.test/v1',
         toolsURL: 'http://127.0.0.1:8901/mcp',
         toolCallWaitMs: null,
+        isChatGPTLogin: false,
       }),
   };
 }

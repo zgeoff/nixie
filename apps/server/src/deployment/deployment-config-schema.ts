@@ -48,6 +48,19 @@ export const deploymentConfigSchema = z
         message: 'the imp section is unset, and the imp sandbox adapter needs it',
       });
     }
+
+    // the server reaches the gateway's logins through the spendStop section
+    if (config.spendStop === undefined) {
+      for (const [id, profile] of Object.entries(config.models.profiles)) {
+        if (profile.harness === 'codex' && profile.chatgptLogin) {
+          issues.addIssue({
+            code: 'custom',
+            path: ['models', 'profiles', id, 'chatgpt_login'],
+            message: `the profile ${id} sets chatgpt_login, and the spendStop section is unset, which the server needs to reach the model gateway's logins`,
+          });
+        }
+      }
+    }
   });
 
 export type DeploymentConfig = z.infer<typeof deploymentConfigSchema>;

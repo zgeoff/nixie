@@ -8,6 +8,9 @@ export interface CodexConfigInput {
   readonly toolsURL: string;
   readonly catalogPath: string;
 
+  // true on a plan profile, where the CLI logs in with tokens the guest hands it
+  readonly isChatGPTLogin: boolean;
+
   // Milliseconds; the turn frame's value. Null leaves the CLI's own tool-call timeout.
   readonly toolCallWaitMs: number | null;
 }
@@ -56,6 +59,9 @@ export function buildCodexConfig(input: CodexConfigInput): string {
     `model_provider = ${JSON.stringify(providerName)}`,
     `model_reasoning_effort = ${JSON.stringify(input.effort)}`,
     `model_catalog_json = ${JSON.stringify(input.catalogPath)}`,
+    ...(input.isChatGPTLogin
+      ? ['cli_auth_credentials_store = "ephemeral"', 'forced_login_method = "chatgpt"']
+      : []),
     'sandbox_mode = "read-only"',
     'approval_policy = "never"',
     'include_environment_context = false',
@@ -69,7 +75,9 @@ export function buildCodexConfig(input: CodexConfigInput): string {
     `[model_providers.${providerName}]`,
     `name = ${JSON.stringify(providerName)}`,
     `base_url = ${JSON.stringify(input.baseURL)}`,
-    `env_key = ${JSON.stringify(credentialVariable)}`,
+    input.isChatGPTLogin
+      ? 'requires_openai_auth = true'
+      : `env_key = ${JSON.stringify(credentialVariable)}`,
     'wire_api = "responses"',
     'supports_websockets = false',
     '',

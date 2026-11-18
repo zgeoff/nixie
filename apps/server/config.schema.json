@@ -349,6 +349,10 @@
                       "output"
                     ],
                     "additionalProperties": false
+                  },
+                  "chatgpt_login": {
+                    "default": false,
+                    "type": "boolean"
                   }
                 },
                 "required": [

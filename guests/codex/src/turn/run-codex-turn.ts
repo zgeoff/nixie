@@ -3,12 +3,18 @@ import { join } from 'node:path';
 import type { CodexTurnProfile, GuestFrame, HostFrame } from '@heynixie/wire';
 import { match } from 'ts-pattern';
 import { z } from 'zod';
-import type { AppServerClient, AppServerProcess } from '../app-server/start-app-server';
+import type {
+  AppServerClient,
+  AppServerProcess,
+  ChatGPTTokens,
+} from '../app-server/start-app-server';
 import { AppServerRequestError, startAppServer } from '../app-server/start-app-server';
 import { codexVersion } from '../codex-version';
 import { toolServerName } from '../config/build-codex-config';
 import { buildCodexEnv } from './build-codex-env';
 import { buildCodexFailure } from './build-codex-failure';
+import type { PlaceholderLogin } from './build-placeholder-jwt';
+import { buildPlaceholderJWT } from './build-placeholder-jwt';
 import { buildTurnInput } from './build-turn-input';
 import { findNewCall } from './find-new-call';
 import { getHome } from './get-home';
@@ -60,6 +66,7 @@ export async function runCodexTurn(
     baseURL: turn.profile.baseURL,
     toolsURL: new URL('/mcp', turn.tools.url).href,
     toolCallWaitMs: turn.limits.toolCallWaitMs,
+    isChatGPTLogin: turn.profile.chatgptLogin !== null,
   });
 
   const input = buildTurnInput(turn.input, workDir);
@@ -70,13 +77,24 @@ export async function runCodexTurn(
     ),
   );
 
-  const client = await startAppServer(deps.startProcess(env, workDir));
+  const login = turn.profile.chatgptLogin;
+  const readTokens = login === null ? null : () => buildChatGPTTokens(login);
+
+  const client = await startAppServer(deps.startProcess(env, workDir), readTokens);
 
   try {
     await driveTurn(client, { turn, deps, workDir, items: input.items });
   } finally {
     await client.stop();
   }
+}
+
+function buildChatGPTTokens(login: PlaceholderLogin): ChatGPTTokens {
+  return {
+    accessToken: buildPlaceholderJWT(login, Date.now()),
+    chatgptAccountId: login.accountID,
+    chatgptPlanType: login.planType,
+  };
 }
 
 interface TurnRun {
@@ -112,6 +130,16 @@ interface Handling {
 const turnStartSchema = z.object({ turn: z.object({ id: z.string() }) });
 
 async function driveTurn(client: AppServerClient, run: TurnRun): Promise<void> {
+  const login = run.turn.profile.chatgptLogin;
+
+  // the CLI holds a login before its first thread, and the gateway sets the real token on each call
+  if (login !== null) {
+    await client.request('account/login/start', {
+      type: 'chatgptAuthTokens',
+      ...buildChatGPTTokens(login),
+    });
+  }
+
   const threadID = await startThread(client, run);
 
   if (threadID === null) {

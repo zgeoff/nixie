@@ -1,5 +1,6 @@
 import { expect, mock, test } from 'bun:test';
 import type { Logger } from '@heynixie/logger';
+import { createPlanLoginsHolder } from '../login/create-plan-logins-holder';
 import { buildMockGatewayStatus, buildStubSpendGateway } from '../test-utils';
 import { startSpendLimits } from './start-spend-limits';
 
@@ -14,6 +15,7 @@ function setupTest() {
 
   const options = {
     gateway,
+    planLogins: createPlanLoginsHolder(),
     limits,
     defaultZone: 'UTC',
     credentialCount: 0,
@@ -92,4 +94,20 @@ test('it reports the limits sent when the gateway answers', async () => {
   const result = await startSpendLimits(ctx.options);
 
   expect(result).toBe('sent');
+});
+
+test('it holds the plan logins that the gateway reports at start', async () => {
+  const ctx = setupTest();
+
+  ctx.gateway.readChatGPTLogins.mockResolvedValue({
+    kind: 'ok',
+    value: { 'codex-plan': { status: 'needs_login', accountID: null, planType: null } },
+  });
+
+  await startSpendLimits(ctx.options);
+
+  expect(ctx.options.planLogins.read()).toStrictEqual({
+    state: 'read',
+    routes: { 'codex-plan': { status: 'needs_login', accountID: null, planType: null } },
+  });
 });

@@ -57,6 +57,7 @@ test.each(['kept', 'one-off'] as const)(
       model: 'gpt-test-1',
       baseURL: 'https://models.example.test',
       effort: 'high',
+      chatgptLogin: null,
     });
   },
 );

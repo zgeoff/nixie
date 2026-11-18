@@ -12,6 +12,7 @@ import {
   makeFrameDecoder,
 } from '@heynixie/wire';
 import { buildMockTurnFrame } from '@heynixie/wire/test-utils';
+import { z } from 'zod';
 import { buildMockCodexTurnFrame } from '../test-utils/build-mock-codex-turn-frame';
 import { buildMockTokenBreakdown } from '../test-utils/build-mock-token-breakdown';
 import { makeTurnAnswer } from '../test-utils/make-turn-answer';
@@ -744,4 +745,170 @@ test('it removes the session state and sends purged on a purge frame', async () 
   await running;
 
   expect([ctx.frames, await readdir(ctx.home)]).toStrictEqual([[{ type: 'purged' }], []]);
+});
+
+test('it logs in with a placeholder token before its first thread when the profile has a plan login', async () => {
+  const ctx = await setupTest();
+
+  const server = startFakeAppServer(makeTurnAnswer(undefined));
+  const running = ctx.runGuest(server);
+  const sentAtMs = Date.now();
+
+  await ctx.sendFrame(
+    buildMockCodexTurnFrame({ chatgptLogin: { accountID: 'acct-test-1', planType: 'plus' } }),
+  );
+
+  await waitForCondition(() => server.requests.length === 3);
+
+  await ctx.endInput();
+
+  server.close(0);
+
+  await running;
+
+  const [login] = server.requests;
+  const sent = z.object({ accessToken: z.string() }).parse(login?.params);
+
+  const claims = JSON.parse(
+    Buffer.from(sent.accessToken.split('.')[1] ?? '', 'base64url').toString('utf8'),
+  );
+
+  expect(server.requests.map((request) => request.method)).toStrictEqual([
+    'account/login/start',
+    'thread/start',
+    'turn/start',
+  ]);
+
+  expect(login?.params).toStrictEqual({
+    type: 'chatgptAuthTokens',
+    accessToken: expect.toBeString(),
+    chatgptAccountId: 'acct-test-1',
+    chatgptPlanType: 'plus',
+  });
+
+  expect(claims).toStrictEqual({
+    'https://api.openai.com/auth': { chatgpt_account_id: 'acct-test-1', chatgpt_plan_type: 'plus' },
+    exp: expect.toBeWithin(sentAtMs / 1000 + 86_399, sentAtMs / 1000 + 86_402),
+  });
+});
+
+test('it answers a token refresh at once with a new placeholder in the same 3 fields', async () => {
+  const ctx = await setupTest();
+
+  const server = startFakeAppServer(makeTurnAnswer(undefined));
+  const running = ctx.runGuest(server);
+
+  await ctx.sendFrame(
+    buildMockCodexTurnFrame({ chatgptLogin: { accountID: 'acct-test-1', planType: 'plus' } }),
+  );
+
+  await waitForCondition(() => server.requests.length === 3);
+
+  const answer = await server.request('account/chatgptAuthTokens/refresh', {
+    reason: 'unauthorized',
+    previousAccountId: 'acct-test-1',
+  });
+
+  await ctx.endInput();
+
+  server.close(0);
+
+  await running;
+
+  expect(answer).toStrictEqual({
+    accessToken: expect.toBeString(),
+    chatgptAccountId: 'acct-test-1',
+    chatgptPlanType: 'plus',
+  });
+});
+
+test('it answers a token refresh with an error on an API key profile', async () => {
+  const ctx = await setupTest();
+
+  const server = startFakeAppServer(makeTurnAnswer(undefined));
+  const running = ctx.runGuest(server);
+
+  await ctx.sendFrame(buildMockCodexTurnFrame());
+
+  await waitForCondition(() => server.requests.length === 2);
+
+  const answer = await server.request('account/chatgptAuthTokens/refresh', {});
+
+  await ctx.endInput();
+
+  server.close(0);
+
+  await running;
+
+  expect(answer).toMatchObject({ error: { code: -32_601 } });
+});
+
+test('it sends no account login on an API key profile, and writes the API key config', async () => {
+  const ctx = await setupTest();
+
+  const server = startFakeAppServer(makeTurnAnswer(undefined));
+  const running = ctx.runGuest(server);
+
+  await ctx.sendFrame(buildMockCodexTurnFrame());
+
+  await waitForCondition(() => server.requests.length === 2);
+
+  await ctx.endInput();
+
+  server.close(0);
+
+  await running;
+
+  const config = await readFile(join(ctx.home, '.codex', 'config.toml'), 'utf8');
+
+  expect(server.requests.map((request) => request.method)).toStrictEqual([
+    'thread/start',
+    'turn/start',
+  ]);
+
+  expect(config.split('\n')).toContain('env_key = "OPENAI_API_KEY"');
+});
+
+test('it writes no auth file into the codex home on a plan login', async () => {
+  const ctx = await setupTest();
+
+  const server = startFakeAppServer(makeTurnAnswer(undefined));
+  const running = ctx.runGuest(server);
+
+  await ctx.sendFrame(
+    buildMockCodexTurnFrame({ chatgptLogin: { accountID: 'acct-test-1', planType: 'plus' } }),
+  );
+
+  await waitForCondition(() => server.requests.length === 3);
+
+  await ctx.endInput();
+
+  server.close(0);
+
+  await running;
+
+  const files = await readdir(join(ctx.home, '.codex'));
+
+  expect(files.toSorted()).toStrictEqual(['config.toml', 'model-catalog.json']);
+});
+
+test('it sends no service tier in any request of a plan login turn', async () => {
+  const ctx = await setupTest();
+
+  const server = startFakeAppServer(makeTurnAnswer(undefined));
+  const running = ctx.runGuest(server);
+
+  await ctx.sendFrame(
+    buildMockCodexTurnFrame({ chatgptLogin: { accountID: 'acct-test-1', planType: 'plus' } }),
+  );
+
+  await waitForCondition(() => server.requests.length === 3);
+
+  await ctx.endInput();
+
+  server.close(0);
+
+  await running;
+
+  expect(JSON.stringify(server.requests)).not.toMatch(/service_?tier/iu);
 });

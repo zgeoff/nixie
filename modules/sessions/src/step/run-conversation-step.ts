@@ -6,6 +6,7 @@ import { runCompactionStep } from '../compaction/run-compaction-step';
 import { runInboxStep } from '../inbox/run-inbox-step';
 import { canSessionTake } from '../session/can-session-take';
 import { isSessionLive } from '../session/is-session-live';
+import { resolvePlanTurnProfile } from '../turn/resolve-plan-turn-profile';
 import type { ConversationRun, SessionFrame, SessionStep } from '../types';
 import { isTaskWorkCut } from '../utils/is-task-work-cut';
 import { openStepCapture } from '../utils/open-step-capture';
@@ -27,6 +28,13 @@ export async function runConversationStep(
     return stopped;
   }
 
+  // a plan profile whose login the gateway does not hold fails the step before any capture opens
+  const turnProfile = resolvePlanTurnProfile({
+    turnProfile: conversation.turnProfile,
+    profile: conversation.profile.profile,
+    spend: conversation.spend,
+  });
+
   const capture = await openStepCapture(conversation.turnInputs, {
     step: { taskID: input.taskID, stepRunID: buildStepRunID(input) },
     profile: conversation.profile.profile,
@@ -38,7 +46,7 @@ export async function runConversationStep(
 
   const captured: ConversationRun = {
     ...conversation,
-    turnProfile: { ...conversation.turnProfile, baseURL: capture.baseURL },
+    turnProfile: { ...turnProfile, baseURL: capture.baseURL },
     onModelCall: async (usage) => {
       calls.count += 1;
 

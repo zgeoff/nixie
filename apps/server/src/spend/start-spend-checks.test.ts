@@ -1,6 +1,7 @@
 import { expect, mock, test } from 'bun:test';
 import type { Logger } from '@heynixie/logger';
 import { buildMockModelsConfig } from '@heynixie/models/test-utils';
+import { createPlanLoginsHolder } from '@heynixie/spend';
 import { buildStubSpendGateway } from '@heynixie/spend/test-utils';
 import invariant from 'tiny-invariant';
 import { startSpendChecks } from './start-spend-checks';
@@ -27,6 +28,7 @@ test('it sends the day and month limits of the models config to the gateway', as
       token: 'a-token',
       modelURL: 'http://127.0.0.1:8789',
       gateway,
+      planLogins: createPlanLoginsHolder(),
     },
     config: { models: buildMockModelsConfig(), time: { default_zone: 'UTC' } },
     secrets: { models: {} },
@@ -52,6 +54,7 @@ test('it refuses to start with a model credential in the secrets file', () => {
       token: 'a-token',
       modelURL: 'http://127.0.0.1:8789',
       gateway,
+      planLogins: createPlanLoginsHolder(),
     },
     config: { models: buildMockModelsConfig(), time: { default_zone: 'UTC' } },
     secrets: { models: { model_credentials: { anthropic: 'not-a-real-key' } } },
@@ -74,6 +77,7 @@ test('it refuses to start when a profile base URL has a path', () => {
       token: 'a-token',
       modelURL: 'http://127.0.0.1:8789',
       gateway,
+      planLogins: createPlanLoginsHolder(),
     },
     config: {
       models: {
@@ -101,6 +105,7 @@ test('it says the limits are sent when the gateway takes them', async () => {
       token: 'a-token',
       modelURL: 'http://127.0.0.1:8789',
       gateway,
+      planLogins: createPlanLoginsHolder(),
     },
     config: { models: buildMockModelsConfig(), time: { default_zone: 'UTC' } },
     secrets: { models: {} },
@@ -121,6 +126,7 @@ test('it says the limits are unsent when the gateway does not answer', async () 
       token: 'a-token',
       modelURL: 'http://127.0.0.1:8789',
       gateway,
+      planLogins: createPlanLoginsHolder(),
     },
     config: { models: buildMockModelsConfig(), time: { default_zone: 'UTC' } },
     secrets: { models: {} },

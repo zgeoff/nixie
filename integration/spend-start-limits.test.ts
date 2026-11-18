@@ -1,6 +1,6 @@
 import { expect, onTestFinished, test } from 'bun:test';
 import { startTestModelGateway } from '@heynixie/model-gateway/test-utils';
-import { startSpendLimits } from '@heynixie/spend';
+import { createPlanLoginsHolder, startSpendLimits } from '@heynixie/spend';
 import { createSpendGateway } from '@heynixie/spend-model-gateway';
 import { startScriptedModel } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
@@ -30,6 +30,7 @@ async function setupTest() {
 
   const options = {
     gateway: spend,
+    planLogins: createPlanLoginsHolder(),
     limits: {
       day: { dollars: 60, tokens: 80_000_000 },
       month: { dollars: 600, tokens: 600_000_000 },

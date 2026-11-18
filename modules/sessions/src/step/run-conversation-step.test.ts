@@ -6,9 +6,11 @@ import { bindHarness } from '@heynixie/models';
 import { buildMockCodexProfile, buildMockModelProfile } from '@heynixie/models/test-utils';
 import type { StubGuestScript } from '@heynixie/sandbox/test-utils';
 import { buildStubSandboxes } from '@heynixie/sandbox/test-utils';
+import { startTestSpend } from '@heynixie/spend/test-utils';
 import { createConversationTask, writeInboxRecords } from '@heynixie/tasks';
 import { readTestTaskProgress } from '@heynixie/tasks/test-utils';
 import type { InboxMessage } from '@heynixie/wire';
+import type { ConversationRunnerOptions } from '../session/start-conversation-runner';
 import { startConversationRunner } from '../session/start-conversation-runner';
 import { buildStubToolEndpoint } from '../test-utils/build-stub-tool-endpoint';
 import { buildStubTurnScript } from '../test-utils/build-stub-turn-script';
@@ -43,6 +45,11 @@ test('it records the error and keeps no turn when the memory rejects', async () 
 });
 
 type Runner = Awaited<ReturnType<typeof startConversationRunner>>;
+
+interface RunnerExtra {
+  readonly harness?: Harness;
+  readonly overrides?: Partial<ConversationRunnerOptions>;
+}
 
 async function setupTest() {
   const tasks = await startTestTasks();
@@ -106,11 +113,11 @@ async function setupTest() {
       loadOrPinSkillCatalog: (taskID: string) => Promise<string | null> = () =>
         Promise.resolve(null),
       turnInputs?: StepCapturePort,
-      harness?: Harness,
+      extra: RunnerExtra = {},
     ) =>
       startConversationRunner({
         context: tasks.context,
-        ...(harness === undefined ? {} : { harness }),
+        ...(extra.harness === undefined ? {} : { harness: extra.harness }),
         profile: { profile, credential: 'not-a-real-key' },
         sandboxes: sandboxes.adapter,
         tools: tools.endpoint,
@@ -136,6 +143,7 @@ async function setupTest() {
         log: () => {},
         clearFetchPauses: () => {},
         ...(turnInputs === undefined ? {} : { turnInputs }),
+        ...extra.overrides,
       }),
     writeMessage: (text: string) =>
       writeInboxRecords(tasks.context, [
@@ -851,12 +859,9 @@ test('it opens each later step on a harness with no session as an unkept rebuild
 
   await createConversationTask(ctx.context);
 
-  const runner = await ctx.startRunner(
-    2000,
-    () => Promise.resolve(null),
-    undefined,
-    bindHarness(buildMockCodexProfile()),
-  );
+  const runner = await ctx.startRunner(2000, () => Promise.resolve(null), undefined, {
+    harness: bindHarness(buildMockCodexProfile()),
+  });
 
   ctx.sandboxes.setGuestScript((turn) => [
     { type: 'read', uuids: turn.input.map((message) => message.uuid) },
@@ -894,12 +899,9 @@ test('it fails the step of a turn that overflows on a harness with no session, a
 
   await createConversationTask(ctx.context);
 
-  const runner = await ctx.startRunner(
-    2000,
-    () => Promise.resolve(null),
-    undefined,
-    bindHarness(buildMockCodexProfile()),
-  );
+  const runner = await ctx.startRunner(2000, () => Promise.resolve(null), undefined, {
+    harness: bindHarness(buildMockCodexProfile()),
+  });
 
   const usage = { inputTokens: 10, outputTokens: 5, cacheReadTokens: 0, cacheWriteTokens: 0 };
 
@@ -944,12 +946,9 @@ test('it sends no live message frame on a harness without live messages, and lea
 
   await createConversationTask(ctx.context);
 
-  const runner = await ctx.startRunner(
-    2000,
-    () => Promise.resolve(null),
-    undefined,
-    bindHarness(buildMockCodexProfile()),
-  );
+  const runner = await ctx.startRunner(2000, () => Promise.resolve(null), undefined, {
+    harness: bindHarness(buildMockCodexProfile()),
+  });
 
   const delivered: InboxMessage[] = [];
 
@@ -975,4 +974,64 @@ test('it sends no live message frame on a harness without live messages, and lea
   const task = await readTestTaskProgress(ctx.context, 'conversation');
 
   expect([delivered, task.state]).toStrictEqual([[], 'ready']);
+});
+
+test('it fails a step on a plan profile whose login is not active, with no capture and no turn', async () => {
+  const ctx = await setupTest();
+  const spend = await startTestSpend();
+
+  const planProfile = buildMockCodexProfile({ id: 'codex-plan', chatgptLogin: true });
+
+  spend.context.planLogins.write({
+    state: 'read',
+    routes: { 'codex-plan': { status: 'needs_login', accountID: 'acct-test-1', planType: 'plus' } },
+  });
+
+  await createConversationTask(ctx.context);
+
+  const runner = await ctx.startRunner(2000, undefined, ctx.port, {
+    harness: bindHarness(planProfile),
+    overrides: {
+      profile: { profile: planProfile, credential: 'not-a-real-key' },
+      spend: spend.context,
+    },
+  });
+
+  await ctx.sendMessage(runner, 'What does the tide gauge read?');
+
+  const errored = await ctx.readKinds('task.step_errored');
+
+  expect(errored).toMatchObject([{ payload: { reason: 'model_auth.chatgpt_login' } }]);
+  expect([ctx.opened, ctx.sandboxes.turns]).toStrictEqual([[], []]);
+});
+
+test('it sends the account and plan of an active login in the turn profile of a plan profile', async () => {
+  const ctx = await setupTest();
+  const spend = await startTestSpend();
+
+  const planProfile = buildMockCodexProfile({ id: 'codex-plan', chatgptLogin: true });
+
+  spend.context.planLogins.write({
+    state: 'read',
+    routes: { 'codex-plan': { status: 'active', accountID: 'acct-test-1', planType: 'plus' } },
+  });
+
+  await createConversationTask(ctx.context);
+
+  const runner = await ctx.startRunner(2000, undefined, undefined, {
+    harness: bindHarness(planProfile),
+    overrides: {
+      profile: { profile: planProfile, credential: 'not-a-real-key' },
+      spend: spend.context,
+    },
+  });
+
+  ctx.sandboxes.setGuestScript(ctx.callingScript);
+
+  await ctx.sendMessage(runner, 'What does the tide gauge read?');
+
+  expect(ctx.sandboxes.turns.at(-1)?.profile).toMatchObject({
+    harness: 'codex',
+    chatgptLogin: { accountID: 'acct-test-1', planType: 'plus' },
+  });
 });
