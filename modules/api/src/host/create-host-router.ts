@@ -2,6 +2,7 @@ import { checkPromptProposal } from '@heynixie/definitions';
 import { ORPCError, os } from '@orpc/server';
 import type { HostRouterOptions } from '../types';
 import { createHostActionProcedures } from './create-host-action-procedures';
+import { createHostBackupProcedures } from './create-host-backup-procedures';
 import { createHostBudgetProcedures } from './create-host-budget-procedures';
 import { createHostContactProcedures } from './create-host-contact-procedures';
 import { createHostDefinitionProcedures } from './create-host-definition-procedures';
@@ -49,6 +50,9 @@ export function createHostRouter(options: HostRouterOptions) {
     recovery: hostImplementer.recovery
       .use(gated)
       .router(createHostRecoveryProcedures(options.context)),
+    backups: hostImplementer.backups
+      .use(gated)
+      .router(createHostBackupProcedures(options.readBackups)),
     tasks: hostImplementer.tasks.use(gated).router(createHostTaskProcedures(options.context)),
     sessions: hostImplementer.sessions
       .use(gated)

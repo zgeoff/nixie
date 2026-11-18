@@ -2,10 +2,13 @@ import { subscribeToRecordCommits } from '@heynixie/log';
 import { createActor, toPromise } from 'xstate';
 import type { BackupContext } from '../types';
 import { BackupPassError } from './backup-pass-error';
+import type { BackupStageRequest } from './backup-schedule-machine';
 import { backupScheduleMachine } from './backup-schedule-machine';
 import { removeAbandonedSets } from './remove-abandoned-sets';
 import type { BackupPass } from './run-backup-pass';
 import { runBackupPass } from './run-backup-pass';
+import type { BackupStageOutcome } from './run-backup-stage-pass';
+import { runBackupStagePass } from './run-backup-stage-pass';
 
 export interface BackupScheduleOptions {
   readonly context: BackupContext;
@@ -16,6 +19,7 @@ export interface BackupScheduleOptions {
 }
 
 export interface BackupSchedule {
+  readonly stage: () => Promise<BackupStageOutcome>;
   readonly stop: () => Promise<void>;
 }
 
@@ -34,6 +38,7 @@ export function startBackupSchedule(options: BackupScheduleOptions): BackupSched
         }
       },
       pass: () => runBackupPass(options.context, options.intervalMs),
+      stage: () => runBackupStagePass(options.context, options.intervalMs),
       clock: options.context.writer.clock,
       pollMs,
       onPass: options.onPass,
@@ -64,6 +69,18 @@ export function startBackupSchedule(options: BackupScheduleOptions): BackupSched
   });
 
   return {
+    stage: () => {
+      const stage = Promise.withResolvers<BackupStageOutcome>();
+      const request: BackupStageRequest = { settle: stage.resolve, reject: stage.reject };
+
+      if (schedule.getSnapshot().status === 'active') {
+        schedule.send({ type: 'stage', request });
+      } else {
+        request.reject(new Error('the backup schedule stopped'));
+      }
+
+      return stage.promise;
+    },
     stop: async () => {
       unsubscribe();
 

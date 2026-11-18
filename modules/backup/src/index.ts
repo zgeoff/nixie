@@ -6,6 +6,7 @@ export { readForgetBackup } from './backup/read-forget-backup';
 export type { BackupHealth } from './backup/read-backup-health';
 export { readBackupHealth } from './backup/read-backup-health';
 export type { BackupPass } from './backup/run-backup-pass';
+export type { BackupStageOutcome } from './backup/run-backup-stage-pass';
 export type { BackupSchedule, BackupScheduleOptions } from './backup/start-backup-schedule';
 export { startBackupSchedule } from './backup/start-backup-schedule';
 export type { BackupContext, BackupNotice, BackupNoticeCause, BackupSetState } from './types';

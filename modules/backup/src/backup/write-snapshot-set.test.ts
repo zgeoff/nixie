@@ -5,11 +5,14 @@ import { startDatabase } from '@heynixie/db';
 import { localDataStorage, pauseNixieInTransaction, withWriteTransaction } from '@heynixie/log';
 import { startTestLog } from '@heynixie/log/test-utils';
 import { startFaultPointFailure } from '@heynixie/tasks/test-utils';
+import type { BackupSetKind } from '@heynixie/wire';
 import { backupSetManifestSchema, parseBackupFile, readFileSHA256 } from '@heynixie/wire';
 import { sql } from 'kysely';
 import invariant from 'tiny-invariant';
 import { buildSeeder } from '../test-utils/build-seeder';
 import { buildStubFailingStorage } from '../test-utils/build-stub-failing-storage';
+import type { BackupContext } from '../types';
+import { runBackupStagePass } from './run-backup-stage-pass';
 import { writeSnapshotSet } from './write-snapshot-set';
 
 async function setupTest() {
@@ -20,48 +23,80 @@ async function setupTest() {
   return { ...log, context, seed: buildSeeder({ log: log.log, context }) };
 }
 
-test('it stages copies of both databases with a manifest of their checksums, and writes the marker', async () => {
-  const ctx = await setupTest();
-  const manifest = await writeSnapshotSet(ctx.context, 'scheduled');
+test.each([
+  [
+    'writeSnapshotSet',
+    (context: BackupContext, kind: BackupSetKind) => writeSnapshotSet(context, kind),
+  ],
+  [
+    'the stage pass',
+    async (context: BackupContext) => {
+      const staged = await runBackupStagePass(context, 3_600_000);
 
-  invariant(manifest, 'a set stages when nixie is not paused after a restore');
+      return staged.outcome.status === 'staged' ? staged.outcome.manifest : null;
+    },
+  ],
+])(
+  'it stages copies of both databases with a manifest of their checksums, and writes the marker, through %s',
+  async (_label, stage) => {
+    const ctx = await setupTest();
+    const manifest = await stage(ctx.context, 'scheduled');
 
-  const directory = join(ctx.dataDir, 'backup', '000000000001');
+    invariant(manifest, 'a set stages when nixie is not paused after a restore');
 
-  const files = await readdir(directory);
-  const text = await Bun.file(join(directory, 'manifest.json')).text();
+    const directory = join(ctx.dataDir, 'backup', '000000000001');
 
-  const written = parseBackupFile(text, backupSetManifestSchema);
+    const files = await readdir(directory);
+    const text = await Bun.file(join(directory, 'manifest.json')).text();
 
-  expect(files).toIncludeSameMembers(['nixie.db', 'keys.db', 'manifest.json', 'complete']);
-  expect(written).toStrictEqual({ value: manifest });
+    const written = parseBackupFile(text, backupSetManifestSchema);
 
-  expect(manifest).toStrictEqual({
-    format: 1,
-    kind: 'scheduled',
-    sequence: 1,
-    stagedAt: Date.parse('2026-10-16T09:00:00Z'),
-    copies: [
-      { name: 'nixie.db', ...(await readFileSHA256(join(directory, 'nixie.db'))) },
-      { name: 'keys.db', ...(await readFileSHA256(join(directory, 'keys.db'))) },
-    ],
-  });
-});
+    expect(files).toIncludeSameMembers(['nixie.db', 'keys.db', 'manifest.json', 'complete']);
+    expect(written).toStrictEqual({ value: manifest });
 
-test('it records the staged set with the log head its copy holds', async () => {
-  const ctx = await setupTest();
-  const forgotten = await ctx.seed.record({ kind: 'memory.forgotten', payload: {} });
+    expect(manifest).toStrictEqual({
+      format: 1,
+      kind: 'scheduled',
+      sequence: 1,
+      stagedAt: Date.parse('2026-10-16T09:00:00Z'),
+      copies: [
+        { name: 'nixie.db', ...(await readFileSHA256(join(directory, 'nixie.db'))) },
+        { name: 'keys.db', ...(await readFileSHA256(join(directory, 'keys.db'))) },
+      ],
+    });
+  },
+);
 
-  await writeSnapshotSet(ctx.context, 'forget');
+test.each([
+  [
+    'writeSnapshotSet',
+    (context: BackupContext, kind: BackupSetKind) => writeSnapshotSet(context, kind),
+  ],
+  [
+    'the stage pass',
+    async (context: BackupContext) => {
+      const staged = await runBackupStagePass(context, 3_600_000);
 
-  const rows = await sql`select sequence, kind, state, log_head from backup_sets`.execute(
-    ctx.writer.db,
-  );
+      return staged.outcome.status === 'staged' ? staged.outcome.manifest : null;
+    },
+  ],
+])(
+  'it records the staged set with the log head its copy holds, through %s',
+  async (_label, stage) => {
+    const ctx = await setupTest();
+    const forgotten = await ctx.seed.record({ kind: 'memory.forgotten', payload: {} });
 
-  expect(rows.rows).toStrictEqual([
-    { sequence: 1, kind: 'forget', state: 'staged', log_head: forgotten.sequence },
-  ]);
-});
+    await stage(ctx.context, 'forget');
+
+    const rows = await sql`select sequence, kind, state, log_head from backup_sets`.execute(
+      ctx.writer.db,
+    );
+
+    expect(rows.rows).toStrictEqual([
+      { sequence: 1, kind: 'forget', state: 'staged', log_head: forgotten.sequence },
+    ]);
+  },
+);
 
 test('it copies a database that holds the rows committed before the set', async () => {
   const ctx = await setupTest();

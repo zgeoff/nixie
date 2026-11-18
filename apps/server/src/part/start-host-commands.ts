@@ -1,5 +1,5 @@
 import { join } from 'node:path';
-import type { APIContext } from '@heynixie/api';
+import type { APIContext, HostBackups } from '@heynixie/api';
 import { makeHostResponder } from '@heynixie/api';
 import type { DefinitionsContext } from '@heynixie/definitions';
 import type { StartedMemoryStore } from '@heynixie/memory';
@@ -16,6 +16,7 @@ export interface HostCommandsOptions {
   readonly apiContext: APIContext;
 
   readonly readMemory: () => StartedMemoryStore | null;
+  readonly readBackups: () => HostBackups | null;
 
   readonly runInForceSeed: () => Promise<void>;
   readonly readDefinitions: () => DefinitionsContext | null;
@@ -36,6 +37,7 @@ export async function startHostCommands(
   const respond = makeHostResponder({
     context: options.apiContext,
     readMemory: options.readMemory,
+    readBackups: options.readBackups,
     runInForceSeed: options.runInForceSeed,
     readDefinitions: options.readDefinitions,
     readInForce: options.readInForce,

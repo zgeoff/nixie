@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { actionProposalSchema } from './action-proposal-schema';
 import { forgetBackupSchema } from './forget-backup-schema';
 import { forgottenItemsSchema } from './forgotten-items-schema';
+import { hostBackupsContract } from './host-backups-contract';
 import { hostBudgetsContract } from './host-budgets-contract';
 import { hostMandatesContract } from './host-mandates-contract';
 import { hostPasskeyContract } from './host-passkey-contract';
@@ -368,6 +369,7 @@ export const hostContract = {
   recovery: {
     read: oc.output(z.object({ recovery: recoverySchema })),
   },
+  backups: hostBackupsContract,
   tasks: {
     pause: taskControl,
     resume: taskControl.errors(spendStopErrors),
