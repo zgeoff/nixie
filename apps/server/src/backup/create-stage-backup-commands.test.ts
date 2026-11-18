@@ -29,7 +29,9 @@ async function setupTest() {
       context: { writer: api.writer, storage: localDataStorage },
       intervalMs: Number.MAX_SAFE_INTEGER,
       onAbandoned: () => {},
-      onPass,
+      onPass: () => {
+        onPass();
+      },
       onError: () => {},
     });
 
