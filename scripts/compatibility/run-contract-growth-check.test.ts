@@ -51,7 +51,7 @@ test('it builds the contract, then checks it against the one the last release co
     [
       'bun run --cwd libs/contract openapi',
       'git show v0.58.0:libs/contract/openapi.json',
-      `bash .github/scripts/check-contract-growth.sh ${ctx.runnerTemp}/last-openapi.json libs/contract/openapi.json libs/contract/accepted-breaks.txt`,
+      `bash scripts/compatibility/check-contract-growth.sh ${ctx.runnerTemp}/last-openapi.json libs/contract/openapi.json libs/contract/accepted-breaks.txt`,
       '',
     ].join('\n'),
   );
@@ -66,7 +66,7 @@ test('it fails with the exit code of the growth check', async () => {
   createStubProgram(join(ctx.binPath, 'bash'), {
     callsPath: ctx.callsPath,
     answers: {
-      [`.github/scripts/check-contract-growth.sh ${ctx.runnerTemp}/last-openapi.json libs/contract/openapi.json libs/contract/accepted-breaks.txt`]:
+      [`scripts/compatibility/check-contract-growth.sh ${ctx.runnerTemp}/last-openapi.json libs/contract/openapi.json libs/contract/accepted-breaks.txt`]:
         { exitCode: 1 },
     },
   });

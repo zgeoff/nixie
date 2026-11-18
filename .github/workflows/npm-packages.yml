@@ -1,7 +1,7 @@
 # Rehearses the release's publish of each npm package, the Kubernetes component and the API
 # contract: it packs the package at a rehearsal version, checks the tarball, and runs npm's publish
-# as a dry run, then runs the release path against a stand-in for npm. A pull request runs it only
-# when it changes a file a package or the publish reads; every push to main runs it in full.
+# as a dry run. The unit tests run the release path against a stand-in for npm. A pull request runs
+# it only when it changes a file a package or the publish reads; every push to main runs it in full.
 name: npm packages
 
 on:
@@ -27,8 +27,7 @@ jobs:
     with:
       paths: |
         .github/workflows/npm-packages.yml
-        .github/scripts/publish-npm-package.sh
-        .github/scripts/check-publish-npm-package.sh
+        scripts/release/publish-npm-package.sh
         .bun-version
         bun.lock
         bunfig.toml
@@ -69,9 +68,4 @@ jobs:
         env:
           PACKAGE: ${{ matrix.package }}
           BACKUP_IMAGE: ghcr.io/example/nixie-backup@sha256:0000000000000000000000000000000000000000000000000000000000000000
-        run: .github/scripts/publish-npm-package.sh "$PACKAGE" 0.0.0-rehearsal --dry-run
-
-      - name: Run the release path against a stand-in for npm
-        env:
-          PACKAGE: ${{ matrix.package }}
-        run: .github/scripts/check-publish-npm-package.sh "$PACKAGE"
+        run: scripts/release/publish-npm-package.sh "$PACKAGE" 0.0.0-rehearsal --dry-run

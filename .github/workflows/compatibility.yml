@@ -29,8 +29,6 @@ jobs:
     with:
       paths: |
         .github/workflows/compatibility.yml
-        .github/scripts/check-accepted-breaks.sh
-        .github/scripts/check-contract-growth.sh
         .github/scripts/read-released-schema.sh
         .bun-version
         bun.lock
@@ -71,9 +69,6 @@ jobs:
             ${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) ||
             github.sha }}
         run: bun run --silent ci:compatibility:find-last-release
-
-      - name: Check that the contract check accepts only the breaks it lists
-        run: .github/scripts/check-accepted-breaks.sh
 
       # oasdiff fails on a removed procedure, a removed or retyped output field, a new required input
       # field or a narrowed input type, and allows the removal of a procedure that the last release

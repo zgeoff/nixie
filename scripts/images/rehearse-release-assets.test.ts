@@ -94,7 +94,7 @@ test('it builds release.json from the rehearsal digests and rehearses its upload
       'docker buildx imagetools inspect r/nixie-fetch:0.0.0-rehearsal --format {{.Manifest.Digest}}',
       'docker buildx imagetools inspect r/nixie-code:0.0.0-rehearsal --format {{.Manifest.Digest}}',
       'docker buildx imagetools inspect r/nixie-codex:0.0.0-rehearsal --format {{.Manifest.Digest}}',
-      `bash .github/scripts/check-publish-release-assets.sh ${ctx.runnerTemp}/release.json`,
+      `bash scripts/release/publish-release-assets.sh v0.0.0-rehearsal ${ctx.runnerTemp}/release.json`,
       '',
     ].join('\n'),
   );
@@ -143,7 +143,7 @@ test('it fails, and uploads nothing, when a tag in release.json names another di
     '::error::release.json names r/nixie:0.0.0-rehearsal@sha256:dd44, but r/nixie:0.0.0-rehearsal names sha256:ee55\n',
   );
 
-  expect(readFileSync(ctx.callsPath, 'utf8')).not.toInclude('check-publish-release-assets.sh');
+  expect(readFileSync(ctx.callsPath, 'utf8')).not.toInclude('publish-release-assets.sh');
 });
 
 test('it fails when release.json leaves out a sandbox image', async () => {

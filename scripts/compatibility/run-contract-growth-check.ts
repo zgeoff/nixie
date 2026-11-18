@@ -26,7 +26,7 @@ async function runCLI(): Promise<void> {
   writeFileSync(lastPath, lastContract);
 
   const check =
-    await $`bash .github/scripts/check-contract-growth.sh ${lastPath} libs/contract/openapi.json libs/contract/accepted-breaks.txt`.nothrow();
+    await $`bash scripts/compatibility/check-contract-growth.sh ${lastPath} libs/contract/openapi.json libs/contract/accepted-breaks.txt`.nothrow();
 
   process.exitCode = check.exitCode;
 }

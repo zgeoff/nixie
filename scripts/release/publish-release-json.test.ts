@@ -70,7 +70,7 @@ test('it builds release.json from the notes summaries and publishes it', async (
   expect(readFileSync(ctx.callsPath, 'utf8')).toBe(
     [
       `bun apps/server/src/run-release-manifest.ts --version 0.59.0 --commit a1b2c3 --server ghcr.io/heynixie/nixie@sha256:cc33 --web ghcr.io/heynixie/nixie-web@sha256:dd44 --sandbox-manifest ${ctx.runnerTemp}/sandbox-manifest.json --backup ghcr.io/heynixie/nixie-backup@sha256:ab12 --migrations ${ctx.runnerTemp}/migrations.json --config-schema ${ctx.runnerTemp}/config-schema.json --out ${ctx.runnerTemp}/release.json`,
-      `bash .github/scripts/publish-release-assets.sh v0.59.0 ${ctx.runnerTemp}/release.json`,
+      `bash scripts/release/publish-release-assets.sh v0.59.0 ${ctx.runnerTemp}/release.json`,
       '',
     ].join('\n'),
   );
