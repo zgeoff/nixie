@@ -14,6 +14,7 @@ import {
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { $ } from 'bun';
+import rootPackage from '../../package.json';
 
 // The release path builds the package in place, so each test builds a copy of it in its own temp
 // folder. A parallel test of another package then never reads a package.json that the build has
@@ -51,9 +52,10 @@ function setupTest(packageDir: string, name: string) {
   // The copy holds one workspace, and bun 1.4.4 fails a pack when the root package.json lists a
   // workspace folder that is absent, so the copy's root lists only the package under test. The
   // catalog stays, because the pack resolves each catalog: version from it.
-  const rootManifest = JSON.parse(readFileSync(join(repoPath, 'package.json'), 'utf8'));
-
-  rootManifest.workspaces.packages = [packageDir];
+  const rootManifest = {
+    ...rootPackage,
+    workspaces: { ...rootPackage.workspaces, packages: [packageDir] },
+  };
 
   writeFileSync(join(workPath, 'package.json'), `${JSON.stringify(rootManifest, null, 2)}\n`);
 
