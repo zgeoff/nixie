@@ -37,7 +37,6 @@ function setupTest(packageDir: string, name: string) {
 
   // the files that a package's build reads from the repo root
   const rootFiles = [
-    'package.json',
     'bun.lock',
     'tsconfig.base.json',
     'nixie-test-build.d.ts',
@@ -48,6 +47,15 @@ function setupTest(packageDir: string, name: string) {
   for (const file of rootFiles) {
     cpSync(join(repoPath, file), join(workPath, file));
   }
+
+  // The copy holds one workspace, and bun 1.4.4 fails a pack when the root package.json lists a
+  // workspace folder that is absent, so the copy's root lists only the package under test. The
+  // catalog stays, because the pack resolves each catalog: version from it.
+  const rootManifest = JSON.parse(readFileSync(join(repoPath, 'package.json'), 'utf8'));
+
+  rootManifest.workspaces.packages = [packageDir];
+
+  writeFileSync(join(workPath, 'package.json'), `${JSON.stringify(rootManifest, null, 2)}\n`);
 
   cpSync(join(repoPath, packageDir), join(workPath, packageDir), {
     recursive: true,
