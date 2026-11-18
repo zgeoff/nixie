@@ -34,6 +34,9 @@ interface SetupConfig {
 
   // the spending stop's day turn limit; absent means no spending stop
   readonly spendDayTurns?: number;
+
+  // the profile of the worker role; worker-plan is a codex profile with a ChatGPT plan login
+  readonly workerProfile?: 'worker-direct' | 'worker-plan';
 }
 
 async function setupTest(config: SetupConfig = {}) {
@@ -81,8 +84,20 @@ async function setupTest(config: SetupConfig = {}) {
         effort: 'high',
         prices: { ...prices, input: 30 },
       },
+      'worker-plan': {
+        harness: 'codex',
+        base_url: 'https://chatgpt.com',
+        credential: 'deployment:worker-plan',
+        chatgpt_login: true,
+        model: 'house-model-1',
+        effort: 'low',
+        prices,
+      },
     },
-    roles: { conversation: 'chat-direct', worker: 'worker-direct' },
+    roles: {
+      conversation: 'chat-direct',
+      worker: config.workerProfile ?? 'worker-direct',
+    },
     selectable: {
       big: { profile: 'big-direct', description: 'Slower and stronger.' },
       careful: { profile: 'big-direct', description: 'Asks first.', ask: true },
@@ -149,7 +164,10 @@ async function setupTest(config: SetupConfig = {}) {
     models,
     secrets: { model_credentials: { anthropic: 'not-a-real-key' } },
     sandboxes,
-    images: { conversation: 'nixie-conversation-0123456789ab' },
+    images: {
+      conversation: 'nixie-conversation-0123456789ab',
+      codex: 'nixie-codex-0123456789ab',
+    },
     log: host.context.log,
     definitions: readDefinitions,
     clock,
@@ -507,6 +525,22 @@ test('it refuses a worker at the turn limit of the spending stop, and starts no 
   });
 
   expect(owners).toStrictEqual([]);
+});
+
+test('it fails a worker on a plan profile whose login the gateway holds no answer for, and sends no turn', async () => {
+  const ctx = await setupTest({ spendDayTurns: 1000, workerProfile: 'worker-plan' });
+  const outcome = await ctx.callWorker({ question: 'Which cafes are open?' });
+
+  const turns = ctx.guest.received.flatMap((entry) =>
+    entry.frame.type === 'turn' ? [entry.frame] : [],
+  );
+
+  expect(outcome).toStrictEqual({
+    status: 'error',
+    message: expect.toInclude('model-gateway chatgpt-login'),
+  });
+
+  expect(turns).toStrictEqual([]);
 });
 
 test('it refuses a worker whose wait for a slot ends after the turn count reached the limit', async () => {
