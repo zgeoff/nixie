@@ -112,18 +112,32 @@ test('it shows a sent file that is not an image as a chip that reads the file wh
 
   await waitForPage(ctx.view, `${chip} !== undefined`);
 
+  // The page records each download link that is clicked, with the text its blob holds, and starts
+  // no real download.
+  await ctx.view.evaluate(`(() => {
+    window.downloads = [];
+    HTMLAnchorElement.prototype.click = function () {
+      const name = this.download;
+      const read = fetch(this.href).then((response) => response.text());
+      window.downloads.push(read.then((text) => ({ name, text })));
+    };
+  })()`);
+
   await ctx.view.evaluate(`${chip}.click()`);
 
-  await waitForPage(ctx.view, `${chip}?.disabled === false`);
+  await waitForPage(ctx.view, `${chip}?.disabled === false && window.downloads.length === 1`);
 
+  const downloads: unknown = await ctx.view.evaluate('Promise.all(window.downloads)');
   const images = await ctx.view.evaluate("document.querySelectorAll('li img').length");
 
   expect({
     readRequests: ctx.api.requests.filter((request) => request.path === '/rpc/files/read'),
     images,
+    downloads,
   }).toStrictEqual({
     readRequests: [expect.objectContaining({ path: '/rpc/files/read' })],
     images: 0,
+    downloads: [{ name: 'orders.csv', text: 'a,b\n' }],
   });
 });
 

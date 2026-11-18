@@ -42,6 +42,9 @@ export function ForgetControl(props: ForgetControlProps): ReactNode {
           }),
         });
 
+        // A forget of a tool result can make the files it sent unreadable, so each read of a file
+        // runs again and an open one shows as forgotten.
+        void queryClient.invalidateQueries({ queryKey: nixie.queryUtils.files.read.key() });
         props.onForgotten(result.backup);
       },
     }),
