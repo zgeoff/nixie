@@ -149,9 +149,11 @@ function buildFakePort(
         state.calls.push(`memory-kills ${name}`);
 
         return Promise.resolve(
-          createPendingExec(sleeps.waitForAwake(name, 'exec'), () =>
-            startFakeMemoryKillsExec(state.memoryKills),
-          ),
+          createPendingExec(sleeps.waitForAwake(name, 'exec'), () => {
+            requireGrantForBroker(state, name, options);
+
+            return startFakeMemoryKillsExec(state.memoryKills);
+          }),
         );
       }
 
@@ -234,6 +236,16 @@ function isSameArgv(argv: readonly string[], expected: readonly string[]): boole
   return argv.length === expected.length && argv.every((arg, index) => arg === expected[index]);
 }
 
+// impd refuses an exec that requires the broker on an imp with no grant, because it sets no broker
+// variables there.
+function requireGrantForBroker(state: FakeState, name: string, options: ImpExecOptions): void {
+  if (options.requireBroker && (state.grants.get(name)?.size ?? 0) === 0) {
+    throw new Error(
+      'the broker is not ready for this exec: the imp has no grant, so impd sets no broker variables',
+    );
+  }
+}
+
 function startFakeMemoryKillsExec(memoryKills: FakeImpMemory['memoryKills']): ImpExec {
   const encoder = new TextEncoder();
 
@@ -262,16 +274,6 @@ function startFakeMemoryKillsExec(memoryKills: FakeImpMemory['memoryKills']): Im
     close: () => {},
     exit: exit.promise,
   };
-}
-
-// impd refuses an exec that requires the broker on an imp with no grant, because it sets no broker
-// variables there.
-function requireGrantForBroker(state: FakeState, name: string, options: ImpExecOptions): void {
-  if (options.requireBroker && (state.grants.get(name)?.size ?? 0) === 0) {
-    throw new Error(
-      'the broker is not ready for this exec: the imp has no grant, so impd sets no broker variables',
-    );
-  }
 }
 
 const brokerEnv: Readonly<Record<string, string>> = {
