@@ -21,9 +21,9 @@ to [How the lane runs](#how-the-lane-runs).
 
 rig, the test runner `@zgeoff/rig`, runs both commands:
 
-- `bun run test:browser` runs every browser suite outside the root `e2e/` folder. Add a file's path
-  to run only that file, such as `bun run test:browser apps/web/src/routes/<name>.browser.test.ts`.
-- `bun run test:journeys` runs the user journeys in the root `e2e/journeys/` folder, as
+- `bun run test:browser` runs every browser suite outside `apps/server/e2e/`. Add a file's path to
+  run only that file, such as `bun run test:browser apps/web/src/routes/<name>.browser.test.ts`.
+- `bun run test:journeys` runs the user journeys in `apps/server/e2e/`, as
   [Journeys](./e2e-and-restic-lanes.md#journeys) describes.
 
 Name a new suite `<name>.browser.test.ts`, and put it next to the code it tests. The lane finds it

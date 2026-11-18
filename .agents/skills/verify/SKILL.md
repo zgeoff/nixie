@@ -159,9 +159,9 @@ for its commands.
 
 <!-- repo: registry -->
 
-[`create-verify-registry.ts`](../../../e2e/src/verify/create-verify-registry.ts) declares the
+[`create-verify-registry.ts`](../../../verify/src/verify/create-verify-registry.ts) declares the
 targets, actions, commands, doctor checks and features.
-[`feature-paths.ts`](../../../e2e/src/verify/feature-paths.ts) holds each feature's `paths`, the
+[`feature-paths.ts`](../../../verify/src/verify/feature-paths.ts) holds each feature's `paths`, the
 shared globs that make every verdict stale, and the `.ignore` list.
 
 <!-- /repo -->

@@ -45,7 +45,7 @@ modules/           domain modules, one per design area
 adapters/          one outside system each, named <interface>-<system> (sandbox-imp)
 guests/            programs that run inside a sandbox; reach nixie only through libs/wire
 libs/              shared code that belongs to no domain
-e2e/               whole-program suites
+verify/            the verify CLI, which checks a change in a running nixie
 integration/       in-process suites of one flow across several packages
 evals/             checks committed evaluation reports against the code
 research/<name>/   spikes: a Bun package each, indexed in research/README.md; CI typechecks
