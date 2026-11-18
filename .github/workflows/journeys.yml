@@ -1,20 +1,18 @@
 # Drives the user's core journeys through the built web app in Chrome, against a running nixie:
 # signing in, a chat turn, approving a memory proposal and a reset. A pull request runs them only
-# when it changes a file the server, the web app or the journeys read; every push to main runs them.
+# when it changes a file the server, the web app or the journeys read. journeys-main.yml runs them
+# on every push to main.
 name: Journeys
 
 on:
   pull_request:
-  push:
-    branches: [main]
 
 permissions:
   contents: read
 
-# a push to main keeps each run, so every merged commit gets its journeys run
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event_name == 'push' && github.sha || github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   changes:
