@@ -6,16 +6,16 @@ headless Chrome or Chromium through `Bun.WebView`. The browser lane is the pair 
 these suites, and the setup they share. Watch for these traps:
 
 - a suite started outside the lane has no web build;
-- Chrome has no browser to start on your host;
-- the options you pass to a view, one browser tab, never reach Chrome;
+- Bun finds no Chrome or Chromium to start on your host;
+- the start options you pass to a view, such as its size, never reach Chrome;
 - cookies and globals that one test or file leaves for the next;
 - a click that misses because the page moved;
 - a layout test that passes because the data arrived too early;
-- text typed into a server-rendered form before React hydrates it;
+- text typed into a control, or a click on it, before React hydrates the page;
 - a child Chrome whose `TMPDIR` path is too long.
 
-Jump to [Traps](#traps), for each trap and what to do, to [Write a suite](#write-a-suite), or to
-[How the lane runs](#how-the-lane-runs).
+[Traps](#traps) gives each trap and what to do. Jump there, to [Write a suite](#write-a-suite), or
+to [How the lane runs](#how-the-lane-runs).
 
 ## How the lane runs
 
@@ -55,9 +55,9 @@ another in one test process. Every file shares one Chrome and one global object:
   browser on the host, push the branch and read the `pr / test-browser` check, which runs
   `bun run test:browser`, and the `journeys` check, which runs `bun run test:journeys`.
 - **Open every view with `new Bun.WebView({ backend: 'chrome' })`.** `backend: 'chrome'` picks
-  Chrome as the view's engine. Pass no other option. Bun ignores the options of every view after the
-  browser preload's first one, so a view's options cannot set the viewport size. Set it with step 6
-  of [Write a suite](#write-a-suite).
+  Chrome as the view's engine. Pass no other option: Bun ignores the start options, such as the
+  viewport size, of every view after the first view, which the browser preload opens. Set the
+  viewport size with step 6 of [Write a suite](#write-a-suite).
 - **Clear the cookies before each test, with step 3 of [Write a suite](#write-a-suite).** Every view
   shares the one Chrome's cookie jar, across files too.
 - **Undo in `onTestFinished` each change your suite makes to `globalThis`, such as a stubbed
@@ -75,17 +75,23 @@ another in one test process. Every file shares one Chrome and one global object:
     `document.querySelector('ul li') !== null` for a list row, or
     `document.body.innerText.includes('Nothing here yet')` for the empty-list text. An expression
     that returns the text itself never counts as `true`.
-  - When the page fetches no data, wait for the click target to exist.
-  - On a page that fetches its data in the browser, React renders that data only after hydration, so
-    this wait also shows that the page hydrated. A page whose route `loader` reads its data, such as
-    the passkeys page, renders the data on the server. There the data shows before hydration, so the
-    wait shows nothing about hydration.
-  - Don't check `_reactListening` on `document` for hydration: React sets that key before it
-    hydrates the page's components.
-- **Before you type into or click a control of a server-rendered form, wait until the control is
-  enabled.** The server render shows the form before React listens, and React resets text typed
-  then. Keep each control of such a form `disabled` until `useIsHydrated()` returns true, and make
-  the wait check that the control is enabled, such as `fieldset.disabled === false`.
+  - When the page fetches no data in the browser, wait for the enabled control, as the next trap
+    says.
+- **Before you type into or click a control that the server sends in the page's HTML, wait until the
+  control is enabled.** The server's HTML contains every control that needs no data from the
+  browser. On a page whose route `loader` reads the page's data, such as the passkeys page, the
+  server's HTML contains every control. Text typed into such a control before React hydrates the
+  page is lost, and so is a click.
+  - In the component, keep the control `disabled` until
+    [`useIsHydrated()`](../../../../apps/web/src/conversation/use-is-hydrated.ts) returns true.
+    Import the hook from where it is. When the component does not disable the control yet, add the
+    `disabled` in your PR. A user who types early loses the text too.
+  - In the test, wait with `waitForPage` for the enabled control, such as
+    `document.querySelector('textarea:enabled') !== null` or `button[type=submit]:enabled`. On a
+    page whose route `loader` reads the page's data, the data arrives with the HTML, so the enabled
+    control is the only wait you need.
+  - Only this wait shows that the page hydrated. React sets `_reactListening` on `document` before
+    it hydrates the page's components.
 - **To check that a control does not move when the page's data arrives, delay the stub API's answer
   to that data's request.** Without the delay, the data can arrive before the first paint, and the
   test passes whether the control moves or not.
@@ -108,25 +114,27 @@ another in one test process. Every file shares one Chrome and one global object:
 
 Copy `setupTest()` from an existing suite, such as
 [`memory.browser.test.ts`](../../../../apps/web/src/routes/memory.browser.test.ts). Each test calls
-`setupTest()` first, so every test gets a fresh stub API, web server, proxy and view. The copied
-function already does steps 1 to 3 with the helpers in
+`setupTest()` first, so every test gets a fresh stub API, web server, proxy and view. Check that the
+copied function does steps 1 to 3, which it does with the helpers in
 [`test-utils/`](../../../../apps/web/src/test-utils/). Each helper stops what it started in its own
 `onTestFinished`.
 
 1. In `setupTest()`, serve the web build: call `startStubAPI()`, then `startBuiltWeb(api.url)`, then
    `startFrontProxy({ apiURL: api.url, webURL: web.url })`. The front proxy's URL is the app's URL.
 2. Still in `setupTest()`, open the view with `new Bun.WebView({ backend: 'chrome' })`. Then
-   register the `onTestFinished` hooks in this order. Hooks run in the order registered.
+   register the `onTestFinished` hooks in this order. Hooks run in the order registered, and the
+   viewport reset needs the view still open.
    - When the suite sets a viewport size, a hook that calls
      `view.cdp('Emulation.clearDeviceMetricsOverride')`.
    - A hook that closes the view.
 3. Still in `setupTest()`, navigate the view to `about:blank`, then clear the cookies with
    `view.cdp('Network.clearBrowserCookies')`. Bun sets up a view's CDP session on its first
    navigation, and `view.cdp` works only after that.
-4. In the test, when the page needs a session, create one with `store.sessions.create({})` from the
-   web app's mock store, and pass its token to `setupSignedInBrowser(view, { appURL, token })`. The
-   helper sets the session cookie and navigates to the app's root. Then navigate to the page under
-   test.
+4. In the test, when the page needs a session, create one with `store.sessions.create({})` from
+   [`mocks/store.ts`](../../../../apps/web/src/mocks/store.ts), and pass its token to
+   [`setupSignedInBrowser(view, { appURL, token })`](../../../../apps/web/src/test-utils/setup-signed-in-browser.ts).
+   The helper sets the session cookie and navigates to the app's root. Then navigate to the page
+   under test.
 5. Run code in the page through `runInPage(view, pageFunction, argument, schema)` from
    `@zgeoff/rig`. `pageFunction` is an arrow function that sees only `argument` and the page's
    globals, and `schema` is a zod schema for its result. Keep `view.evaluate` for a one-line
@@ -136,5 +144,6 @@ function already does steps 1 to 3 with the helpers in
    in the test, before you navigate to the page.
    [`app-shell.browser.test.ts`](../../../../apps/web/src/components/app-shell.browser.test.ts) does
    this, with the reset hook from step 2.
-7. Click with `view.click`, which clicks the way a user does. Before each click, wait for the page's
-   fetched data. [Traps](#traps) gives the reason.
+7. Click with `view.click`, which clicks the way a user does. Before each click or typed text, wait
+   for the enabled control, and for the data the page fetches in the browser, as [Traps](#traps)
+   says.
