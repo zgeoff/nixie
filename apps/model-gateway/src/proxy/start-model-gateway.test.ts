@@ -1059,5 +1059,5 @@ test.each(['/chatgpt-logins', '/alpha/chatgpt-logins', '/alpha/codex-plan/chatgp
 test('it fails to start on a route key file that holds no key', async () => {
   const ctx = await setupTest();
 
-  await expect(ctx.startPlan({ routeKey: '\n' })).rejects.toThrow(/holds no key/u);
+  expect(ctx.startPlan({ routeKey: '\n' })).rejects.toThrow(/holds no key/u);
 });

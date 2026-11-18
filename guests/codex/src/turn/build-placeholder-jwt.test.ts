@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import { z } from 'zod';
 import { buildPlaceholderJWT } from './build-placeholder-jwt';
 
 function setupTest() {
@@ -7,8 +8,8 @@ function setupTest() {
       const [header = '', payload = '', signature = ''] = token.split('.');
 
       return {
-        header: JSON.parse(Buffer.from(header, 'base64url').toString('utf8')),
-        payload: JSON.parse(Buffer.from(payload, 'base64url').toString('utf8')),
+        header: z.unknown().parse(JSON.parse(Buffer.from(header, 'base64url').toString('utf8'))),
+        payload: z.unknown().parse(JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'))),
         signature,
       };
     },

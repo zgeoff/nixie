@@ -127,7 +127,7 @@ test('it gives up on a lock that another holder keeps, and says so', async () =>
 
   const waiter = withLoginLock(ctx.path, () => Promise.resolve(), 50);
 
-  await expect(waiter).rejects.toThrow(/stayed locked/u);
+  expect(waiter).rejects.toThrow(/stayed locked/u);
 
   release.resolve(undefined);
 

@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { Logger } from '@heynixie/logger';
 import { waitForCondition } from '@heynixie/testing';
+import { z } from 'zod';
 import { buildLoginFile } from '../test-utils/build-login-file';
 import { buildTestJWT } from '../test-utils/build-test-jwt';
 import { createPlanLogin } from './create-plan-login';
@@ -37,7 +38,11 @@ async function setupTest() {
       routeID: 'codex-plan',
       config: { file: loginPath, routeKeyFile },
       send: async (url, init) => {
-        requests.push({ url, body: JSON.parse(String(init.body)) });
+        const text = await new Response(init.body).text();
+
+        const body = z.record(z.string(), z.unknown()).parse(JSON.parse(text));
+
+        requests.push({ url, body });
 
         const answer = answers.shift() ?? { status: 503, body: {} };
         const waiting = gate;
@@ -56,8 +61,16 @@ async function setupTest() {
       now: () => current,
       sleep: (delayMs, signal) =>
         new Promise((resolve) => {
-          sleeps.push({ delayMs, wake: () => resolve() });
-          signal.addEventListener('abort', () => resolve());
+          sleeps.push({
+            delayMs,
+            wake: () => {
+              resolve();
+            },
+          });
+
+          signal.addEventListener('abort', () => {
+            resolve();
+          });
         }),
       log: mock<Logger>(() => {}),
     });
@@ -81,7 +94,9 @@ async function setupTest() {
 
       gate = held.promise;
 
-      return () => held.resolve();
+      return () => {
+        held.resolve();
+      };
     },
     answer: (status: number, body: unknown) => {
       answers.push({ status, body });
@@ -108,7 +123,7 @@ test('it fails to open on a route key file that holds no key', async () => {
 
   await writeFile(join(ctx.loginPath, '..', 'route-key'), '\n');
 
-  await expect(ctx.open()).rejects.toThrow(/holds no key/u);
+  expect(ctx.open()).rejects.toThrow(/holds no key/u);
 });
 
 test('it reads the route key trimmed', async () => {

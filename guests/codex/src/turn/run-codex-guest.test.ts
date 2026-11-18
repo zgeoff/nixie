@@ -769,7 +769,7 @@ test('it logs in with a placeholder token before its first thread when the profi
   const [login] = server.requests;
   const sent = z.object({ accessToken: z.string() }).parse(login?.params);
 
-  const claims = JSON.parse(
+  const claims: unknown = JSON.parse(
     Buffer.from(sent.accessToken.split('.')[1] ?? '', 'base64url').toString('utf8'),
   );
 

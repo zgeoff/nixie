@@ -145,8 +145,10 @@ async function setupTest() {
       const planLogin = await createPlanLogin({
         routeID: 'codex-plan',
         config: { file: loginPath, routeKeyFile },
-        send: (_url, init) => {
-          refreshes.push(String(init.body));
+        send: async (_url, init) => {
+          const text = await new Response(init.body).text();
+
+          refreshes.push(text);
 
           issued += 1;
 
@@ -160,7 +162,7 @@ async function setupTest() {
             refresh_token: `refresh-token-${String(issued + 1)}`,
           });
 
-          return Promise.resolve(options.refresh?.() ?? issuedAnswer);
+          return options.refresh?.() ?? issuedAnswer;
         },
         now: clock,
         sleep: () => Promise.resolve(),

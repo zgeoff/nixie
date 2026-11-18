@@ -81,10 +81,12 @@ async function setupTest() {
     return runChatGPTLogin({
       routeID: 'codex-plan',
       loginPath,
-      send: (url, init) => {
-        calls.push({ url, body: String(init.body) });
+      send: async (url, init) => {
+        const body = await new Response(init.body).text();
 
-        return Promise.resolve(respond(url, pending, options.codeStatus ?? 200));
+        calls.push({ url, body });
+
+        return respond(url, pending, options.codeStatus ?? 200);
       },
       write: (text) => {
         output.push(text);
@@ -187,10 +189,8 @@ test('it replaces the login file the route had', async () => {
 
   const result = await readLoginFile(ctx.loginPath);
 
-  expect(result).toMatchObject({
-    status: 'active',
-    loginID: expect.not.stringMatching(/^earlier$/u),
-  });
+  expect(result).toMatchObject({ status: 'active' });
+  expect(result).not.toMatchObject({ loginID: 'earlier' });
 });
 
 test('it says device code login is off on a 404 for the code request, and writes no file', async () => {
@@ -220,5 +220,5 @@ test('it gives up when nobody approves the code in 15 minutes', async () => {
 test('it fails on a code request that OpenAI refuses for another reason', async () => {
   const ctx = await setupTest();
 
-  await expect(ctx.run({ pendingPolls: 0, codeStatus: 500 })).rejects.toThrow(/status 500/u);
+  expect(ctx.run({ pendingPolls: 0, codeStatus: 500 })).rejects.toThrow(/status 500/u);
 });
