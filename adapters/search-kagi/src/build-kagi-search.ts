@@ -11,8 +11,12 @@ export interface KagiSearchOptions {
   readonly apiURL: string;
 }
 
+// Kagi's price list charges $12 for 1000 searches (https://kagi.com/api/pricing).
+const kagiSearchPriceMicros = 12_000;
+
 export function buildKagiSearch(options: KagiSearchOptions): SearchProvider {
   return {
+    priceMicros: kagiSearchPriceMicros,
     readHits: async (request) => {
       const reply = await readKagiReply(options, request);
 
@@ -63,9 +67,6 @@ function buildKagiRequest(request: SearchRequest): KagiSearchRequest {
   };
 }
 
-// Kagi's price list charges $12 for 1000 searches (https://kagi.com/api/pricing).
-const kagiSearchCostUSD = 0.012;
-
 function parseKagiResponse(status: number, text: string): SearchReply {
   const body = parseJSONOrNull(text);
 
@@ -93,7 +94,7 @@ function parseKagiResponse(status: number, text: string): SearchReply {
           // Kagi can set its time of day to the moment of the search, so nixie keeps the day alone.
           date: result.time?.slice(0, 10) ?? null,
         })),
-        costUSD: kagiSearchCostUSD,
+        costUSD: kagiSearchPriceMicros / 1_000_000,
       }
     : { kind: 'failed', reason: 'Kagi answered with results nixie cannot read' };
 }

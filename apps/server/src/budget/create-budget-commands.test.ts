@@ -26,7 +26,7 @@ async function setupTest() {
   return nixie;
 }
 
-test('it lists each budget in force with its limit, period, spent and reset', async () => {
+test('it lists each budget in force, built-in ones too, with its limit, period, spent and reset', async () => {
   const ctx = await setupTest();
   const listed = await runHostCommand(ctx.configPath, ['budgets', 'list']);
 
@@ -44,6 +44,24 @@ test('it lists each budget in force with its limit, period, spent and reset', as
         spentMicros: 0,
         resetsAt: expect.any(String),
         source: 'definitions',
+      },
+      {
+        budgetID: 'search-day',
+        counts: 'tool:search',
+        limitMicros: 5_000_000,
+        period: 'day',
+        spentMicros: 0,
+        resetsAt: expect.any(String),
+        source: 'built_in',
+      },
+      {
+        budgetID: 'search-month',
+        counts: 'tool:search',
+        limitMicros: 50_000_000,
+        period: 'month',
+        spentMicros: 0,
+        resetsAt: expect.any(String),
+        source: 'built_in',
       },
     ],
   });

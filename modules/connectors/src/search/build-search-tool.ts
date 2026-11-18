@@ -6,7 +6,7 @@ import { z } from 'zod';
 import type { SearchHit, SearchProvider, SearchRequest } from '../types';
 import { getPageSession } from '../utils/get-page-session';
 import { writeHitLinks } from '../web/write-hit-links';
-import { writeSearchCall } from './write-search-call';
+import { probeSearchCallRoom, writeSearchCall } from './write-search-call';
 
 const searchInput = {
   type: 'object',
@@ -64,7 +64,7 @@ const searchArguments = z.object({
 });
 
 export interface SearchToolOptions {
-  // the log whose writer holds the count of calls a day
+  // the log whose writer holds the hit links
   readonly log: Pick<Log, 'writer'>;
   readonly clock: Pick<Clock, 'now'>;
 
@@ -98,20 +98,36 @@ export function buildSearchTool(
       results: { hits: 'untrusted' },
     },
     execution: 'direct',
+    paid: {
+      priceMicros: provider.priceMicros,
+      callCap: {
+        openCall: () => {
+          const call = {
+            day: formatLocalDay(options.clock.now(), options.timeZone),
+            cap: options.dailyCallCap,
+          };
+
+          return {
+            checkInTransaction: async (tx) => {
+              const hasRoom = await probeSearchCallRoom(tx, call);
+
+              return hasRoom
+                ? { status: 'room' }
+                : {
+                    status: 'capped',
+                    message:
+                      `the search cap of ${String(options.dailyCallCap)} calls a day is reached, ` +
+                      `and it resets at midnight ${options.timeZone} time, when ` +
+                      `${formatNextDay(call.day)} starts`,
+                  };
+            },
+            countInTransaction: (tx) => writeSearchCall(tx, call),
+          };
+        },
+      },
+    },
     run: async (call, context) => {
       const request: SearchRequest = searchArguments.parse(call.input);
-      const day = formatLocalDay(options.clock.now(), options.timeZone);
-
-      const capOutcome = await writeSearchCall(options.log, { day, cap: options.dailyCallCap });
-
-      if (capOutcome === 'capped') {
-        return {
-          status: 'error',
-          message:
-            `the search cap of ${String(options.dailyCallCap)} calls a day is reached, and it ` +
-            `resets at midnight ${options.timeZone} time, when ${formatNextDay(day)} starts`,
-        };
-      }
 
       const reply = await provider.readHits(request);
 
@@ -129,6 +145,7 @@ export function buildSearchTool(
         return {
           status: 'error',
           message: 'the session ended while the search ran, so it returns no hits',
+          billed: true,
 
           // the provider answered, so the search was paid for
           hidden: { costUSD: reply.costUSD },

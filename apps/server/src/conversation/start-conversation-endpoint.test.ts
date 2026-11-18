@@ -5,7 +5,9 @@ import { waitForCondition } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
 import { z } from 'zod';
 import { createTestClient } from '../test-utils/create-test-client';
+import { readHostLedger } from '../test-utils/read-host-ledger';
 import { runHostCommand } from '../test-utils/run-host-command';
+import { seedPaidBudgetSpend } from '../test-utils/seed-paid-budget-spend';
 import { sendClientMessage } from '../test-utils/send-client-message';
 import { startInProcessNixie } from '../test-utils/start-in-process-nixie';
 
@@ -574,6 +576,143 @@ test('it refuses the second search of a day under the cap of 1 the configuration
       isError: true,
     },
   });
+});
+
+test('it charges a search to its day and month budgets before Kagi sees it', async () => {
+  const nixie = await startInProcessNixie({
+    extraConfig: ['search:', '  credential: deployment:search', `  api_url: ${kagiAPIURL}`],
+    extraSecrets: ['connector_credentials:', '  search: kagi-key-a'],
+  });
+
+  const api = await createTestClient(nixie);
+
+  const seen: unknown[] = [];
+
+  await kagiStore.keys.create({ key: 'kagi-key-a' });
+
+  kagiStore.hooks.onRequest = async () => {
+    const day = await readHostLedger(nixie.configPath, 'search-day');
+    const month = await readHostLedger(nixie.configPath, 'search-month');
+
+    seen.push({ day: day.spentMicros, month: month.spentMicros });
+  };
+
+  nixie.guest.addReplies(
+    { toolUse: { name: 'search', input: { query: 'ferry timetable' } } },
+    { text: 'Searched.' },
+  );
+
+  await sendClientMessage(api.client, { text: 'How do I get to Manly?' }, 'Searched.');
+
+  const day = await readHostLedger(nixie.configPath, 'search-day');
+  const month = await readHostLedger(nixie.configPath, 'search-month');
+
+  expect(seen).toStrictEqual([{ day: 12_000, month: 12_000 }]);
+  expect(day.spentMicros).toBe(12_000);
+  expect(month.spentMicros).toBe(12_000);
+});
+
+test('it credits both charges of a search that Kagi fails', async () => {
+  const nixie = await startInProcessNixie({
+    extraConfig: ['search:', '  credential: deployment:search', `  api_url: ${kagiAPIURL}`],
+    extraSecrets: ['connector_credentials:', '  search: kagi-key-a'],
+  });
+
+  const api = await createTestClient(nixie);
+
+  nixie.guest.addReplies(
+    { toolUse: { name: 'search', input: { query: 'ferry timetable' } } },
+    { text: 'Failed.' },
+  );
+
+  await sendClientMessage(api.client, { text: 'How do I get to Manly?' }, 'Failed.');
+
+  const day = await readHostLedger(nixie.configPath, 'search-day');
+  const month = await readHostLedger(nixie.configPath, 'search-month');
+
+  expect(kagiStore.requests.findMany()).toHaveLength(1);
+  expect(day.spentMicros).toBe(0);
+  expect(month.spentMicros).toBe(0);
+  expect(day.charges).toHaveLength(1);
+  expect(month.charges).toHaveLength(1);
+});
+
+test('it refuses a search whose day budget is full, with the budget notice, and Kagi sees nothing', async () => {
+  const nixie = await startInProcessNixie({
+    extraConfig: ['search:', '  credential: deployment:search', `  api_url: ${kagiAPIURL}`],
+    extraSecrets: ['connector_credentials:', '  search: kagi-key-a'],
+    beforeStart: (files) =>
+      seedPaidBudgetSpend(files, {
+        tool: 'search',
+        budgetID: 'search-day',
+        amountMicros: 5_000_000,
+      }),
+  });
+
+  const api = await createTestClient(nixie);
+
+  await kagiStore.keys.create({ key: 'kagi-key-a' });
+
+  nixie.guest.addReplies(
+    { toolUse: { name: 'search', input: { query: 'ferry timetable' } } },
+    { text: 'Refused.' },
+  );
+
+  const records = await sendClientMessage(
+    api.client,
+    { text: 'How do I get to Manly?' },
+    'Refused.',
+  );
+
+  const refused = nixie.toolResults.at(-1);
+  const result: unknown = JSON.parse(refused?.result ?? '{}');
+
+  const noticeMessage = records.findLast((record) => record.toolCall?.outcome !== undefined)
+    ?.toolCall?.content?.['message'];
+
+  expect(result).toMatchObject({
+    content: [
+      {
+        type: 'text',
+        text: 'budget reached: search-day ($5.00 of $5.00). Resets at midnight.',
+      },
+    ],
+    isError: true,
+  });
+
+  expect(noticeMessage).toBe('budget reached: search-day ($5.00 of $5.00). Resets at midnight.');
+  expect(kagiStore.requests.findMany()).toHaveLength(0);
+});
+
+test('it counts a search that Kagi fails against the daily cap, and refuses the next without a charge', async () => {
+  const nixie = await startInProcessNixie({
+    extraConfig: [
+      'search:',
+      '  daily_call_cap: 1',
+      '  credential: deployment:search',
+      `  api_url: ${kagiAPIURL}`,
+    ],
+    extraSecrets: ['connector_credentials:', '  search: kagi-key-a'],
+  });
+
+  const api = await createTestClient(nixie);
+
+  nixie.guest.addReplies(
+    { toolUse: { name: 'search', input: { query: 'ferry timetable' } } },
+    { toolUse: { name: 'search', input: { query: 'bus timetable' } } },
+    { text: 'Searched twice.' },
+  );
+
+  await sendClientMessage(api.client, { text: 'How do I get to Manly?' }, 'Searched twice.');
+
+  const refused = nixie.toolResults.at(-1);
+
+  const day = await readHostLedger(nixie.configPath, 'search-day');
+
+  expect(refused?.result).toInclude('the search cap of 1 calls a day is reached');
+  expect(kagiStore.requests.findMany()).toHaveLength(1);
+  expect(day.charges).toHaveLength(1);
+  expect(day.spentMicros).toBe(0);
 });
 
 test('it offers no search tool when the configuration names no search credential', async () => {

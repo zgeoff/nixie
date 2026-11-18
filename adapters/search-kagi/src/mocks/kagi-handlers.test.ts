@@ -78,3 +78,24 @@ test('it answers with at most the limit of the hits it holds for the exact query
 
   expect(body).toStrictEqual({ data: { search: [{ url: 'https://a.test/', title: 'A' }] } });
 });
+
+test('it records each request that reaches it, and runs the request hook before it answers', async () => {
+  const seen: number[] = [];
+
+  kagiStore.hooks.onRequest = () => {
+    seen.push(kagiStore.requests.findMany().length);
+
+    return Promise.resolve();
+  };
+
+  await fetch(`${kagiAPIURL}/search`, {
+    method: 'POST',
+    headers: { authorization: 'Bearer kagi-key-b', 'content-type': 'application/json' },
+    body: JSON.stringify({ query: 'tide times', workflow: 'search', limit: 10 }),
+  });
+
+  expect({ seen, requests: kagiStore.requests.findMany().length }).toStrictEqual({
+    seen: [1],
+    requests: 1,
+  });
+});
