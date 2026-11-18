@@ -442,6 +442,7 @@ test("it fetches the URL of a search hit by the hit's link ID", async () => {
 
   const search = buildSearchTool(
     {
+      priceMicros: 12_000,
       readHits: () =>
         Promise.resolve<SearchReply>({
           kind: 'hits',

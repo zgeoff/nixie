@@ -67,8 +67,15 @@ transaction before the provider sees the call:
 
 - At the limit, the call returns `budget reached: search-day ($5.00 of $5.00). Resets at midnight.`
   to the model, and nothing else is written.
-- A tool that answers with an error did not spend, so its charges are credited.
+- A tool that answers with an error did not spend, so its charges are credited. An error that sets
+  `billed`, because the provider answered before the error, keeps its charges.
 - A tool that throws leaves an unknown outcome, so its charges stand.
+
+A paid tool can also set a call cap, a limit on the count of its calls, such as the search tool's
+[daily call cap](../connectors/search.md#the-daily-call-cap). The charge's write transaction first
+checks the cap, then charges both budgets, then counts the call, so a call passes both limits or
+neither. When both are full, the cap's refusal wins. A call that is counted stays counted when the
+tool errors, because nothing credits the count.
 
 The same charge runs for a call the user approved. The [client](../channels/client.md) shows the
 last refusal in a notice beside the spending-stop notice.

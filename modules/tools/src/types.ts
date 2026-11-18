@@ -53,6 +53,10 @@ export type ToolOutcome =
       // What the server records and the model never reads. Only the tool puts a value here. A tool
       // never puts text here that a forget of another record must erase.
       readonly hidden?: JSONObject;
+
+      // Set by a paid tool whose provider answered before the error, so the call was billed and a
+      // paid call keeps its charges.
+      readonly billed?: true;
     };
 
 interface TypedResult {
@@ -105,7 +109,7 @@ export interface ToolDefinition {
 
   // A tool that costs money for each call, which is not a purchase. A call charges the price to the
   // budgets `<name>-day` and `<name>-month` before the provider sees it, and a call that fails
-  // credits both. The tool runs direct.
+  // credits both, unless its error says the provider billed. The tool runs direct.
   readonly paid?: PaidTool;
 
   readonly recordInput?: (input: JSONObject) => JSONObject;
@@ -142,7 +146,28 @@ export interface ToolDefinition {
 export interface PaidTool {
   // the price of one call, in millionths of a dollar
   readonly priceMicros: number;
+
+  // a limit on the count of calls that the tool keeps beside its budgets, such as a daily cap
+  readonly callCap?: PaidCallCap;
 }
+
+export interface PaidCallCap {
+  // Starts one call's check of the cap and its count, so both use the same moment, such as one
+  // local day.
+  readonly openCall: () => PaidCallCapCall;
+}
+
+// The 2 steps run in the write transaction that charges the budgets, so a call passes the cap and
+// the budgets or neither. The count of a call is never credited.
+export interface PaidCallCapCall {
+  // reads whether the cap has room, and writes nothing
+  readonly checkInTransaction: (tx: WriteTransaction) => Promise<CallCapCheck>;
+  readonly countInTransaction: (tx: WriteTransaction) => Promise<void>;
+}
+
+export type CallCapCheck =
+  | { readonly status: 'room' }
+  | { readonly status: 'capped'; readonly message: string };
 
 export interface ToolVariants {
   // the variant that a call whose input passed the tool's schema takes

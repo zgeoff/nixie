@@ -13,6 +13,9 @@ export const kagiHandlers = [
   http.post(`${kagiAPIURL}/search`, async (info) => {
     const request = info.request;
 
+    await kagiStore.requests.create({ authorization: request.headers.get('authorization') ?? '' });
+    await kagiStore.hooks.onRequest?.();
+
     const key = /^Bearer (?<key>\S+)$/u.exec(request.headers.get('authorization') ?? '')?.groups?.[
       'key'
     ];

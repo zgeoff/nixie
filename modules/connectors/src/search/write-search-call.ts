@@ -1,6 +1,6 @@
-import type { Log } from '@heynixie/log';
-import { withWriteTransaction } from '@heynixie/log';
+import type { WriteTransaction } from '@heynixie/log';
 import { sql } from 'kysely';
+import invariant from 'tiny-invariant';
 import type { SearchTables } from './search-tables';
 
 export interface SearchCall {
@@ -9,28 +9,38 @@ export interface SearchCall {
   readonly cap: number;
 }
 
-export type SearchCapOutcome = 'counted' | 'capped';
-
-// Counts one call on the day, unless the day's count already reached the cap. One statement checks
-// and counts, so two calls at once never both take the last call under the cap.
-export function writeSearchCall(
-  log: Pick<Log, 'writer'>,
+// Reads whether the day's count is under the cap, and writes nothing.
+export async function probeSearchCallRoom(
+  tx: WriteTransaction,
   call: SearchCall,
-): Promise<SearchCapOutcome> {
-  return withWriteTransaction(log.writer, async (tx) => {
-    const countedRow = await tx
-      .$extendTables<SearchTables>()
-      .insertInto('search_calls')
-      .values({ day: call.day, count: 1 })
-      .onConflict((conflict) =>
-        conflict
-          .column('day')
-          .doUpdateSet({ count: sql`count + 1` })
-          .where('search_calls.count', '<', call.cap),
-      )
-      .returning('count')
-      .executeTakeFirst();
+): Promise<boolean> {
+  const row = await tx
+    .$extendTables<SearchTables>()
+    .selectFrom('search_calls')
+    .select('count')
+    .where('day', '=', call.day)
+    .executeTakeFirst();
 
-    return countedRow === undefined ? 'capped' : 'counted';
-  });
+  return (row?.count ?? 0) < call.cap;
+}
+
+// Counts one call on the day. The guard keeps the count at the cap even if a caller skips the check.
+export async function writeSearchCall(tx: WriteTransaction, call: SearchCall): Promise<void> {
+  const countedRow = await tx
+    .$extendTables<SearchTables>()
+    .insertInto('search_calls')
+    .values({ day: call.day, count: 1 })
+    .onConflict((conflict) =>
+      conflict
+        .column('day')
+        .doUpdateSet({ count: sql`count + 1` })
+        .where('search_calls.count', '<', call.cap),
+    )
+    .returning('count')
+    .executeTakeFirst();
+
+  invariant(
+    countedRow !== undefined,
+    `the search call of ${call.day} passed the check, then capped`,
+  );
 }

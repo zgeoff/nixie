@@ -11,6 +11,7 @@ import { buildToolRegistry } from './build-tool-registry';
 import { findToolDeclaration } from './policy-call/find-tool-declaration';
 import type { ToolCallOptions } from './run-tool-call';
 import { runToolCall } from './run-tool-call';
+import { buildCountingCallCap } from './test-utils/build-counting-call-cap';
 import { buildMockToolDefinition } from './test-utils/build-mock-tool-definition';
 import { buildMockVariantToolDefinition } from './test-utils/build-mock-variant-tool-definition';
 import type { StubActionQueueOptions } from './test-utils/build-stub-action-queue';
@@ -2826,4 +2827,203 @@ test('it charges nothing for a tool that is not paid', async () => {
   const day = await readBudgetLedger(ctx.log.writer.db, ctx.budgets, 'web_search-day');
 
   expect(day).toMatchObject({ spentMicros: 0, charges: [] });
+});
+
+test('it counts a call that passes the cap and the budgets, and charges it', async () => {
+  const cap = buildCountingCallCap(2);
+
+  const ctx = await setupTest({
+    paidTools: ['web_search'],
+    tools: [
+      buildMockToolDefinition({
+        name: 'web_search',
+        paid: { priceMicros: 25_000, callCap: cap.callCap },
+      }),
+    ],
+  });
+
+  await runToolCall(
+    { tool: 'web_search', input: { query: 'milk' }, toolUseID: 'toolu_c1' },
+    {
+      runID: 'run-1',
+      thread: 'task-1',
+      logThread: 'task-1',
+      tools: ['web_search'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
+    ctx.options,
+  );
+
+  const day = await readBudgetLedger(ctx.log.writer.db, ctx.budgets, 'web_search-day');
+
+  expect(cap.counted()).toBe(1);
+  expect(day).toMatchObject({ spentMicros: 25_000 });
+});
+
+test('it refuses a call at the cap with its message, charging nothing and running nothing', async () => {
+  const cap = buildCountingCallCap(0);
+  const run = mock(() => Promise.resolve({ status: 'ok' as const, result: { text: 'a note' } }));
+
+  const ctx = await setupTest({
+    paidTools: ['web_search'],
+    tools: [
+      buildMockToolDefinition({
+        name: 'web_search',
+        paid: { priceMicros: 25_000, callCap: cap.callCap },
+        run,
+      }),
+    ],
+  });
+
+  const result = await runToolCall(
+    { tool: 'web_search', input: { query: 'milk' }, toolUseID: 'toolu_c2' },
+    {
+      runID: 'run-1',
+      thread: 'task-1',
+      logThread: 'task-1',
+      tools: ['web_search'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
+    ctx.options,
+  );
+
+  const day = await readBudgetLedger(ctx.log.writer.db, ctx.budgets, 'web_search-day');
+
+  expect(result).toStrictEqual({
+    content: [{ type: 'text', text: 'the cap is reached' }],
+    isError: true,
+  });
+
+  expect(run).not.toHaveBeenCalled();
+  expect(day).toMatchObject({ spentMicros: 0, charges: [] });
+  expect(cap.counted()).toBe(0);
+});
+
+test('it refuses a call whose budget is full without counting the cap', async () => {
+  const cap = buildCountingCallCap(5);
+  const run = mock(() => Promise.resolve({ status: 'ok' as const, result: { text: 'a note' } }));
+
+  const ctx = await setupTest({
+    paidTools: ['web_search'],
+    tools: [
+      buildMockToolDefinition({
+        name: 'web_search',
+        paid: { priceMicros: 6_000_000, callCap: cap.callCap },
+        run,
+      }),
+    ],
+  });
+
+  const result = await runToolCall(
+    { tool: 'web_search', input: { query: 'milk' }, toolUseID: 'toolu_c3' },
+    {
+      runID: 'run-1',
+      thread: 'task-1',
+      logThread: 'task-1',
+      tools: ['web_search'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
+    ctx.options,
+  );
+
+  expect(result).toMatchObject({ isError: true });
+  expect(run).not.toHaveBeenCalled();
+  expect(cap.counted()).toBe(0);
+});
+
+test('it refuses with the cap when the cap and a budget are both full', async () => {
+  const cap = buildCountingCallCap(0);
+
+  const ctx = await setupTest({
+    paidTools: ['web_search'],
+    tools: [
+      buildMockToolDefinition({
+        name: 'web_search',
+        paid: { priceMicros: 6_000_000, callCap: cap.callCap },
+      }),
+    ],
+  });
+
+  const result = await runToolCall(
+    { tool: 'web_search', input: { query: 'milk' }, toolUseID: 'toolu_c4' },
+    {
+      runID: 'run-1',
+      thread: 'task-1',
+      logThread: 'task-1',
+      tools: ['web_search'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
+    ctx.options,
+  );
+
+  expect(result).toStrictEqual({
+    content: [{ type: 'text', text: 'the cap is reached' }],
+    isError: true,
+  });
+});
+
+test('it credits both charges of an error but leaves the call counted', async () => {
+  const cap = buildCountingCallCap(5);
+
+  const ctx = await setupTest({
+    paidTools: ['web_search'],
+    tools: [
+      buildMockToolDefinition({
+        name: 'web_search',
+        paid: { priceMicros: 25_000, callCap: cap.callCap },
+        run: () => Promise.resolve({ status: 'error', message: 'the provider said no' }),
+      }),
+    ],
+  });
+
+  await runToolCall(
+    { tool: 'web_search', input: { query: 'milk' }, toolUseID: 'toolu_c5' },
+    {
+      runID: 'run-1',
+      thread: 'task-1',
+      logThread: 'task-1',
+      tools: ['web_search'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
+    ctx.options,
+  );
+
+  const day = await readBudgetLedger(ctx.log.writer.db, ctx.budgets, 'web_search-day');
+  const month = await readBudgetLedger(ctx.log.writer.db, ctx.budgets, 'web_search-month');
+
+  expect(day).toMatchObject({ spentMicros: 0 });
+  expect(month).toMatchObject({ spentMicros: 0 });
+  expect(cap.counted()).toBe(1);
+});
+
+test('it keeps both charges of an error that says the provider billed', async () => {
+  const ctx = await setupTest({
+    paidTools: ['web_search'],
+    tools: [
+      buildMockToolDefinition({
+        name: 'web_search',
+        paid: { priceMicros: 25_000 },
+        run: () => Promise.resolve({ status: 'error', message: 'cut short', billed: true }),
+      }),
+    ],
+  });
+
+  const result = await runToolCall(
+    { tool: 'web_search', input: { query: 'milk' }, toolUseID: 'toolu_c6' },
+    {
+      runID: 'run-1',
+      thread: 'task-1',
+      logThread: 'task-1',
+      tools: ['web_search'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
+    ctx.options,
+  );
+
+  const day = await readBudgetLedger(ctx.log.writer.db, ctx.budgets, 'web_search-day');
+  const month = await readBudgetLedger(ctx.log.writer.db, ctx.budgets, 'web_search-month');
+
+  expect(result).toMatchObject({ isError: true });
+  expect(day).toMatchObject({ spentMicros: 25_000 });
+  expect(month).toMatchObject({ spentMicros: 25_000 });
 });

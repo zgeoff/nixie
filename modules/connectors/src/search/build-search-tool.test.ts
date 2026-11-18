@@ -1,8 +1,10 @@
 import { expect, mock, test } from 'bun:test';
-import { writeRecords } from '@heynixie/log';
+import { withWriteTransaction, writeRecords } from '@heynixie/log';
 import { buildTestClock } from '@heynixie/testing';
 import { buildToolRegistry } from '@heynixie/tools';
 import { sql } from 'kysely';
+import invariant from 'tiny-invariant';
+import { buildStubSearchProvider } from '../test-utils/build-stub-search-provider';
 import { seedWebFetchLinks } from '../test-utils/seed-web-fetch-links';
 import { startTestLog } from '../test-utils/start-test-log';
 import type { SearchReply, SearchRequest } from '../types';
@@ -17,6 +19,7 @@ test('it returns each hit with a link ID and a date only on a dated hit, and kee
   const ctx = await setupTest();
 
   const provider = {
+    priceMicros: 12_000,
     readHits: () =>
       Promise.resolve<SearchReply>({
         kind: 'hits',
@@ -89,6 +92,7 @@ test('it numbers a hit after the links the session already holds, and gives a kn
 
   const tool = buildSearchTool(
     {
+      priceMicros: 12_000,
       readHits: () =>
         Promise.resolve<SearchReply>({
           kind: 'hits',
@@ -139,6 +143,7 @@ test('it gives two hits with one URL the same link ID', async () => {
 
   const tool = buildSearchTool(
     {
+      priceMicros: 12_000,
       readHits: () =>
         Promise.resolve<SearchReply>({
           kind: 'hits',
@@ -189,6 +194,7 @@ test('it keys the link IDs of a call under the run token by the run', async () =
 
   const tool = buildSearchTool(
     {
+      priceMicros: 12_000,
       readHits: () =>
         Promise.resolve<SearchReply>({
           kind: 'hits',
@@ -237,6 +243,7 @@ test('it refuses a search whose session a forget ended, and stores no link', asy
 
   const tool = buildSearchTool(
     {
+      priceMicros: 12_000,
       readHits: () =>
         Promise.resolve<SearchReply>({
           kind: 'hits',
@@ -272,6 +279,7 @@ test('it refuses a search whose session a forget ended, and stores no link', asy
   expect(outcome).toStrictEqual({
     status: 'error',
     message: 'the session ended while the search ran, so it returns no hits',
+    billed: true,
     hidden: { costUSD: 0.012 },
   });
 
@@ -287,6 +295,7 @@ test.each([
 
   const tool = buildSearchTool(
     {
+      priceMicros: 12_000,
       readHits: () =>
         Promise.resolve<SearchReply>({
           kind: 'hits',
@@ -331,7 +340,7 @@ test('it asks the provider for 10 hits from any site at any time when the call s
   );
 
   const tool = buildSearchTool(
-    { readHits },
+    { priceMicros: 12_000, readHits },
     {
       log: ctx.log,
       clock: buildTestClock(Date.parse('2026-11-07T01:00:00.000Z')),
@@ -370,7 +379,7 @@ test('it passes the limit, the sites and the freshness the call sets to the prov
   );
 
   const tool = buildSearchTool(
-    { readHits },
+    { priceMicros: 12_000, readHits },
     {
       log: ctx.log,
       clock: buildTestClock(Date.parse('2026-11-07T01:00:00.000Z')),
@@ -411,63 +420,74 @@ test('it passes the limit, the sites and the freshness the call sets to the prov
   });
 });
 
-test('it refuses the call past 200 in a day, names the cap and when it resets, and asks the provider nothing', async () => {
+test('it prices a search at the provider price, and shows the model no price', async () => {
   const ctx = await setupTest();
 
-  const readHits = mock<(request: SearchRequest) => Promise<SearchReply>>(() =>
-    Promise.resolve({ kind: 'hits', hits: [], costUSD: 0.012 }),
-  );
+  const tool = buildSearchTool(buildStubSearchProvider(), {
+    log: ctx.log,
+    clock: buildTestClock(0),
+    dailyCallCap: 200,
+    timeZone: 'UTC',
+  });
 
-  const tool = buildSearchTool(
-    { readHits },
-    {
-      log: ctx.log,
-      clock: buildTestClock(Date.parse('2026-11-07T01:00:00.000Z')),
-      dailyCallCap: 200,
-      timeZone: 'Australia/Sydney',
-    },
-  );
+  expect(tool.paid?.priceMicros).toBe(12_000);
+  expect(tool.description).not.toMatch(/\$|price|cost/iu);
+});
+
+test('it reports the cap as full past 200 calls in a day, naming the cap and when it resets', async () => {
+  const ctx = await setupTest();
+
+  const tool = buildSearchTool(buildStubSearchProvider(), {
+    log: ctx.log,
+    clock: buildTestClock(Date.parse('2026-11-07T01:00:00.000Z')),
+    dailyCallCap: 200,
+    timeZone: 'Australia/Sydney',
+  });
+
+  const callCap = tool.paid?.callCap;
+
+  invariant(callCap);
 
   for (let index = 0; index < 200; index += 1) {
-    await tool.run(
-      { callID: `call-${index}`, tool: 'search', input: { query: 'tides' }, toolUseID: null },
-      {
-        callSequence: 1,
-        run: {
-          runID: 'run-1',
-          thread: 'conversation',
-          logThread: 'conversation',
-          tools: ['search'],
-          model: { model: 'model-a', profile: 'chat-direct' },
-        },
-      },
-    );
+    await withWriteTransaction(ctx.log.writer, (tx) => callCap.openCall().countInTransaction(tx));
   }
 
-  readHits.mockClear();
-
-  const outcome = await tool.run(
-    { callID: 'call-201', tool: 'search', input: { query: 'tides' }, toolUseID: null },
-    {
-      callSequence: 1,
-      run: {
-        runID: 'run-1',
-        thread: 'conversation',
-        logThread: 'conversation',
-        tools: ['search'],
-        model: { model: 'model-a', profile: 'chat-direct' },
-      },
-    },
+  const check = await withWriteTransaction(ctx.log.writer, (tx) =>
+    callCap.openCall().checkInTransaction(tx),
   );
 
-  expect(outcome).toStrictEqual({
-    status: 'error',
+  expect(check).toStrictEqual({
+    status: 'capped',
     message:
       'the search cap of 200 calls a day is reached, and it resets at midnight ' +
       'Australia/Sydney time, when 2026-11-08 starts',
   });
+});
 
-  expect(readHits).not.toHaveBeenCalled();
+test('it reports room under the cap, and writes no count when it checks', async () => {
+  const ctx = await setupTest();
+
+  const tool = buildSearchTool(buildStubSearchProvider(), {
+    log: ctx.log,
+    clock: buildTestClock(Date.parse('2026-11-07T01:00:00.000Z')),
+    dailyCallCap: 1,
+    timeZone: 'Australia/Sydney',
+  });
+
+  const callCap = tool.paid?.callCap;
+
+  invariant(callCap);
+
+  const first = await withWriteTransaction(ctx.log.writer, (tx) =>
+    callCap.openCall().checkInTransaction(tx),
+  );
+
+  const second = await withWriteTransaction(ctx.log.writer, (tx) =>
+    callCap.openCall().checkInTransaction(tx),
+  );
+
+  expect(first).toStrictEqual({ status: 'room' });
+  expect(second).toStrictEqual({ status: 'room' });
 });
 
 test('it counts afresh from local midnight', async () => {
@@ -475,94 +495,54 @@ test('it counts afresh from local midnight', async () => {
 
   const clock = buildTestClock(Date.parse('2026-11-07T12:59:59.000Z'));
 
-  const tool = buildSearchTool(
-    {
-      readHits: () => Promise.resolve<SearchReply>({ kind: 'hits', hits: [], costUSD: 0.012 }),
-    },
-    { log: ctx.log, clock, dailyCallCap: 1, timeZone: 'Australia/Sydney' },
-  );
+  const tool = buildSearchTool(buildStubSearchProvider(), {
+    log: ctx.log,
+    clock,
+    dailyCallCap: 1,
+    timeZone: 'Australia/Sydney',
+  });
 
-  await tool.run(
-    { callID: 'call-1', tool: 'search', input: { query: 'tides' }, toolUseID: null },
-    {
-      callSequence: 1,
-      run: {
-        runID: 'run-1',
-        thread: 'conversation',
-        logThread: 'conversation',
-        tools: ['search'],
-        model: { model: 'model-a', profile: 'chat-direct' },
-      },
-    },
-  );
+  const callCap = tool.paid?.callCap;
+
+  invariant(callCap);
+
+  await withWriteTransaction(ctx.log.writer, (tx) => callCap.openCall().countInTransaction(tx));
 
   clock.advance(1000);
 
-  const outcome = await tool.run(
-    { callID: 'call-2', tool: 'search', input: { query: 'tides' }, toolUseID: null },
-    {
-      callSequence: 1,
-      run: {
-        runID: 'run-1',
-        thread: 'conversation',
-        logThread: 'conversation',
-        tools: ['search'],
-        model: { model: 'model-a', profile: 'chat-direct' },
-      },
-    },
+  const check = await withWriteTransaction(ctx.log.writer, (tx) =>
+    callCap.openCall().checkInTransaction(tx),
   );
 
-  expect(outcome).toStrictEqual({
-    status: 'ok',
-    result: { hits: [] },
-    hidden: { costUSD: 0.012 },
-  });
+  expect(check).toStrictEqual({ status: 'room' });
 });
 
-test('it refuses a second call before local midnight under a cap of 1', async () => {
+test('it reports the cap as full before local midnight under a cap of 1', async () => {
   const ctx = await setupTest();
 
   const clock = buildTestClock(Date.parse('2026-11-07T12:59:58.000Z'));
 
-  const tool = buildSearchTool(
-    {
-      readHits: () => Promise.resolve<SearchReply>({ kind: 'hits', hits: [], costUSD: 0.012 }),
-    },
-    { log: ctx.log, clock, dailyCallCap: 1, timeZone: 'Australia/Sydney' },
-  );
+  const tool = buildSearchTool(buildStubSearchProvider(), {
+    log: ctx.log,
+    clock,
+    dailyCallCap: 1,
+    timeZone: 'Australia/Sydney',
+  });
 
-  await tool.run(
-    { callID: 'call-1', tool: 'search', input: { query: 'tides' }, toolUseID: null },
-    {
-      callSequence: 1,
-      run: {
-        runID: 'run-1',
-        thread: 'conversation',
-        logThread: 'conversation',
-        tools: ['search'],
-        model: { model: 'model-a', profile: 'chat-direct' },
-      },
-    },
-  );
+  const callCap = tool.paid?.callCap;
+
+  invariant(callCap);
+
+  await withWriteTransaction(ctx.log.writer, (tx) => callCap.openCall().countInTransaction(tx));
 
   clock.advance(1000);
 
-  const outcome = await tool.run(
-    { callID: 'call-2', tool: 'search', input: { query: 'tides' }, toolUseID: null },
-    {
-      callSequence: 1,
-      run: {
-        runID: 'run-1',
-        thread: 'conversation',
-        logThread: 'conversation',
-        tools: ['search'],
-        model: { model: 'model-a', profile: 'chat-direct' },
-      },
-    },
+  const check = await withWriteTransaction(ctx.log.writer, (tx) =>
+    callCap.openCall().checkInTransaction(tx),
   );
 
-  expect(outcome).toStrictEqual({
-    status: 'error',
+  expect(check).toStrictEqual({
+    status: 'capped',
     message:
       'the search cap of 1 calls a day is reached, and it resets at midnight ' +
       'Australia/Sydney time, when 2026-11-08 starts',
@@ -574,6 +554,7 @@ test("it returns the provider's failure as an error the model reads", async () =
 
   const tool = buildSearchTool(
     {
+      priceMicros: 12_000,
       readHits: () => Promise.resolve<SearchReply>({ kind: 'failed', reason: 'Kagi answered 503' }),
     },
     {
@@ -608,7 +589,10 @@ test('it declares the fetch effect and runs inside the turn', async () => {
   const ctx = await setupTest();
 
   const tool = buildSearchTool(
-    { readHits: () => Promise.resolve<SearchReply>({ kind: 'failed', reason: 'unused' }) },
+    {
+      priceMicros: 12_000,
+      readHits: () => Promise.resolve<SearchReply>({ kind: 'failed', reason: 'unused' }),
+    },
     { log: ctx.log, clock: buildTestClock(0), dailyCallCap: 200, timeZone: 'UTC' },
   );
 
@@ -628,7 +612,10 @@ test('it marks every result field as outside content', async () => {
   const ctx = await setupTest();
 
   const tool = buildSearchTool(
-    { readHits: () => Promise.resolve<SearchReply>({ kind: 'failed', reason: 'unused' }) },
+    {
+      priceMicros: 12_000,
+      readHits: () => Promise.resolve<SearchReply>({ kind: 'failed', reason: 'unused' }),
+    },
     { log: ctx.log, clock: buildTestClock(0), dailyCallCap: 200, timeZone: 'UTC' },
   );
 
@@ -639,7 +626,10 @@ test("it endorses only a hit's date, and gives the model no cost", async () => {
   const ctx = await setupTest();
 
   const tool = buildSearchTool(
-    { readHits: () => Promise.resolve<SearchReply>({ kind: 'failed', reason: 'unused' }) },
+    {
+      priceMicros: 12_000,
+      readHits: () => Promise.resolve<SearchReply>({ kind: 'failed', reason: 'unused' }),
+    },
     { log: ctx.log, clock: buildTestClock(0), dailyCallCap: 200, timeZone: 'UTC' },
   );
 
@@ -666,7 +656,10 @@ test('it is a tool the registry accepts, whose output schema holds a dated hit',
   const ctx = await setupTest();
 
   const tool = buildSearchTool(
-    { readHits: () => Promise.resolve<SearchReply>({ kind: 'failed', reason: 'unused' }) },
+    {
+      priceMicros: 12_000,
+      readHits: () => Promise.resolve<SearchReply>({ kind: 'failed', reason: 'unused' }),
+    },
     { log: ctx.log, clock: buildTestClock(0), dailyCallCap: 200, timeZone: 'UTC' },
   );
 

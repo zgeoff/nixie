@@ -108,6 +108,8 @@ export type SearchReply =
   | { readonly kind: 'failed'; readonly reason: string };
 
 export interface SearchProvider {
+  // the price of one search, in millionths of a dollar
+  readonly priceMicros: number;
   readonly readHits: (request: SearchRequest) => Promise<SearchReply>;
 }
 

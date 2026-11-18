@@ -53,9 +53,19 @@ searches for. Every paid search records its cost under `hidden` in the
 [result record](./tool-calls.md#records), which the model never reads, so the event log shows what
 the search cost. That includes a search the tool refuses because a forget ended the session while
 the provider answered. Result records from earlier releases hold `costUSD` inside the result, and
-`log.read` ([reading the log](../memory/context.md#reading-the-log)) drops it. The paid-tool
-[budgets](../policy/budgets.md#paid-tools) are built, and moving search onto them is planned in
-[GEO-1813](https://linear.app/zgeoff/issue/GEO-1813).
+`log.read` ([reading the log](../memory/context.md#reading-the-log)) drops it.
+
+## The budgets
+
+Search is a [paid tool](../policy/budgets.md#paid-tools). The provider sets the price of one search
+in micros, which is 12,000 ($0.012) for Kagi, and the reply's `costUSD` comes from the same number.
+Each search charges that price to the built-in budgets `search-day` ($5) and `search-month` ($50)
+before the provider sees it. At a limit, the model reads
+`budget reached: search-day ($5.00 of $5.00). Resets at midnight.` and the provider gets nothing.
+
+A search that fails at the provider credits both charges, because the provider did not bill. A
+search that the tool refuses because a forget ended the session keeps both charges, because the
+provider answered.
 
 ## The daily call cap
 
@@ -64,12 +74,14 @@ in the time zone that the [time](./time.md) tool's `default_zone` setting holds,
 at the same hour each day. A refused search returns an error that holds the cap and the date the
 count resets on, and the tool sends the provider nothing.
 
-The tool counts a search before it sends the request. One database statement adds the search to the
-count only while the count is under the cap, so two searches at the same moment can never both pass
-when one place is left. The tool never takes a search back off the count, so a search that fails, at
-the provider or on the way to it, still counts. The count keeps one row per day in the
-`search_calls` table. The row holds no query and no result, so a
-[forget](../memory/context.md#forgetting-and-the-live-session) leaves it in place.
+The cap is the paid call cap of the tool, so one write transaction checks the cap, charges both
+[budgets](#the-budgets) and counts the search, before the tool sends the request. The cap refuses
+first: when the cap and a budget are both full, the model reads the cap's error, and the count stays
+as it was. A refused budget leaves the count unchanged too. The tool never takes a search back off
+the count, so a search that fails, at the provider or on the way to it, still counts, although its
+charges are credited. The count keeps one row per day in the `search_calls` table. The row holds no
+query and no result, so a [forget](../memory/context.md#forgetting-and-the-live-session) leaves it
+in place.
 
 ## Providers
 
