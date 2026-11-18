@@ -373,6 +373,15 @@ and limits, `turn` with the sum of its 4 token counts, its dollars and its text,
 its outcome, limit, usage and failure detail. A tool call and its result carry `toolCall.runID`, the
 run that made the call. A worker's own tool calls carry the worker run's ID.
 
+## Reading a code-run file
+
+`files.read` takes a file ID and returns that file's bytes with its name, to any signed-in session,
+whichever thread the code run wrote the file on. It returns the stored type for PNG, JPEG, GIF and
+WebP, and `application/octet-stream` for every other type, so a client never receives a type that a
+browser would run. An unknown ID returns `FILE_NOT_FOUND`, and a file whose result record a forget
+made unreadable returns `FILE_FORGOTTEN`. [The code tool](../connectors/code-tool.md#sending-a-file)
+covers how a file reaches the user.
+
 ## Reading and the live stream
 
 A conversation read returns the newest page of a thread before a sequence, and the log sequence it
