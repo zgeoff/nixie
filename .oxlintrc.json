@@ -90,6 +90,13 @@
   },
   "overrides": [
     {
+      "files": ["integration/*.test.ts"],
+      // each test drives one flow across several packages, so no single module sits beside it
+      "rules": {
+        "zgeoff/test-beside-module": "off"
+      }
+    },
+    {
       "files": ["libs/db/src/nixie-tables.ts"],
       // generated from the migrations: its length grows with the schema, not with complexity
       "rules": {
