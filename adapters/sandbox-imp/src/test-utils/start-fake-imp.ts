@@ -22,6 +22,7 @@ interface FakeState {
   readonly created: ImpCreateInput[];
   readonly execs: FakeExec[];
   readonly secrets: Map<string, readonly string[]>;
+  readonly grants: Map<string, Set<string>>;
 
   readonly images: Map<string, { readonly digest: string; readonly ref: string }>;
   features: ImpFeatures;
@@ -41,6 +42,9 @@ interface FakeImpMemory {
 interface FakeImp
   extends FakeState, FakeImpMemory, Pick<FakeSleeps, 'startIdleSleep' | 'sleepsAfterWake'> {
   readonly port: ImpPort;
+
+  // Takes the secret's grant from every imp, as impd's rotate with a rebind does.
+  readonly revokeSecretGrants: (secret: string) => void;
 }
 
 export async function startFakeImp(): Promise<FakeImp> {
@@ -54,6 +58,7 @@ export async function startFakeImp(): Promise<FakeImp> {
     created: [],
     execs: [],
     secrets: new Map(),
+    grants: new Map(),
     images: new Map(),
     features: { publicEgress: true, isEgressEnforced: true, hasBackupOptOut: true },
     failFeatures: false,
@@ -68,6 +73,11 @@ export async function startFakeImp(): Promise<FakeImp> {
 
   return Object.assign(state, {
     port: buildFakePort(state, sleeps, stack),
+    revokeSecretGrants: (secret: string) => {
+      for (const secrets of state.grants.values()) {
+        secrets.delete(secret);
+      }
+    },
     startIdleSleep: sleeps.startIdleSleep,
     sleepsAfterWake: sleeps.sleepsAfterWake,
   });
@@ -139,9 +149,11 @@ function buildFakePort(
         state.calls.push(`memory-kills ${name}`);
 
         return Promise.resolve(
-          createPendingExec(sleeps.waitForAwake(name, 'exec'), () =>
-            startFakeMemoryKillsExec(state.memoryKills),
-          ),
+          createPendingExec(sleeps.waitForAwake(name, 'exec'), () => {
+            requireGrantForBroker(state, name, options);
+
+            return startFakeMemoryKillsExec(state.memoryKills);
+          }),
         );
       }
 
@@ -150,7 +162,11 @@ function buildFakePort(
       state.execs.push(exec);
 
       return Promise.resolve(
-        createPendingExec(sleeps.waitForAwake(name, 'exec'), () => startFakeExec(exec, stack)),
+        createPendingExec(sleeps.waitForAwake(name, 'exec'), () => {
+          requireGrantForBroker(state, name, options);
+
+          return startFakeExec(exec, stack);
+        }),
       );
     },
     ...buildFakeForwardCall(state, sleeps),
@@ -194,8 +210,15 @@ function buildFakeSecretCalls(state: FakeState, updateCallLog: UpdateCallLog): F
     readSecretHosts: (secret) => Promise.resolve(state.secrets.get(secret) ?? null),
     readSecretUpstreams: (secret) =>
       Promise.resolve(state.secrets.get(secret)?.map(() => null) ?? null),
-    readGrants: () => Promise.resolve([]),
-    addGrant: (name, secret) => updateCallLog(`grant ${name} ${secret}`),
+    readGrants: (name) =>
+      Promise.resolve(
+        [...(state.grants.get(name) ?? [])].map((secret) => ({ secret, paths: null })),
+      ),
+    addGrant: async (name, secret) => {
+      await updateCallLog(`grant ${name} ${secret}`);
+
+      state.grants.set(name, (state.grants.get(name) ?? new Set()).add(secret));
+    },
     addSecret: async (secret) => {
       await updateCallLog(`secret ${secret.name} ${secret.host} ${secret.header} ${secret.scheme}`);
 
@@ -211,6 +234,16 @@ function buildFakeSecretCalls(state: FakeState, updateCallLog: UpdateCallLog): F
 
 function isSameArgv(argv: readonly string[], expected: readonly string[]): boolean {
   return argv.length === expected.length && argv.every((arg, index) => arg === expected[index]);
+}
+
+// impd refuses an exec that requires the broker on an imp with no grant, because it sets no broker
+// variables there.
+function requireGrantForBroker(state: FakeState, name: string, options: ImpExecOptions): void {
+  if (options.requireBroker && (state.grants.get(name)?.size ?? 0) === 0) {
+    throw new Error(
+      'the broker is not ready for this exec: the imp has no grant, so impd sets no broker variables',
+    );
+  }
 }
 
 function startFakeMemoryKillsExec(memoryKills: FakeImpMemory['memoryKills']): ImpExec {

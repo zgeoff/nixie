@@ -100,6 +100,8 @@ test('it refuses the features call, as an impd that does not answer, when told t
 test('it refuses an exec that requires the broker and replaces a broker variable', async () => {
   const imp = await startFakeImp();
 
+  await imp.port.addGrant('nixie-a', 'model-default');
+
   const exec = await imp.port.openExec('nixie-a', ['true'], {
     env: { NO_PROXY: 'example.com' },
     killGraceMs: 5000,
@@ -143,6 +145,8 @@ test('it returns an exec handle during an idle sleep and starts the exec once th
 test('it runs an exec with the broker variables when the exec requires the broker', async () => {
   const imp = await startFakeImp();
 
+  await imp.port.addGrant('nixie-a', 'model-default');
+
   const exec = await imp.port.openExec('nixie-a', ['sh', '-c', 'echo "$HTTPS_PROXY $NO_PROXY"'], {
     env: {},
     killGraceMs: 5000,
@@ -152,6 +156,67 @@ test('it runs an exec with the broker variables when the exec requires the broke
   const output = await new Response(exec.stdout).text();
 
   expect(output).toBe('http://broker.invalid:3128 localhost,127.0.0.1,::1\n');
+});
+
+test('it refuses an exec that requires the broker on an imp that holds no grant', async () => {
+  const imp = await startFakeImp();
+
+  const exec = await imp.port.openExec('nixie-a', ['true'], {
+    env: {},
+    killGraceMs: 5000,
+    requireBroker: true,
+  });
+
+  expect(exec.started).rejects.toThrow(
+    'the broker is not ready for this exec: the imp has no grant, so impd sets no broker variables',
+  );
+});
+
+test('it refuses an exec that requires the broker once a revoke takes the imp grant', async () => {
+  const imp = await startFakeImp();
+
+  await imp.port.addGrant('nixie-a', 'model-default');
+
+  imp.revokeSecretGrants('model-default');
+
+  const exec = await imp.port.openExec('nixie-a', ['true'], {
+    env: {},
+    killGraceMs: 5000,
+    requireBroker: true,
+  });
+
+  expect(exec.started).rejects.toThrow('the imp has no grant');
+});
+
+test('it runs an exec that does not require the broker on an imp whose grant was revoked', async () => {
+  const imp = await startFakeImp();
+
+  await imp.port.addGrant('nixie-a', 'model-default');
+
+  imp.revokeSecretGrants('model-default');
+
+  const exec = await imp.port.openExec('nixie-a', ['true'], {
+    env: {},
+    killGraceMs: 5000,
+    requireBroker: false,
+  });
+
+  expect(exec.exit).resolves.toStrictEqual({ code: 0, signal: null });
+});
+
+test('it reads the grants of an imp until a revoke takes them', async () => {
+  const imp = await startFakeImp();
+
+  await imp.port.addGrant('nixie-a', 'model-default');
+
+  const before = await imp.port.readGrants('nixie-a');
+
+  imp.revokeSecretGrants('model-default');
+
+  const after = await imp.port.readGrants('nixie-a');
+
+  expect(before).toStrictEqual([{ secret: 'model-default', paths: null }]);
+  expect(after).toStrictEqual([]);
 });
 
 test('it reports an exec that a signal with no name ended with the signal as its number', async () => {

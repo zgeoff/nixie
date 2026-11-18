@@ -256,6 +256,45 @@ test('it lists a sandbox whose imp stays out of the backups as kept', async () =
   expect(listed.map((row) => [row.id, row.isRetired])).toStrictEqual([[sandbox.id, false]]);
 });
 
+test('it lists a sandbox whose grant a rebind revoked as retired, with no gateway set', async () => {
+  const ctx = await setupTest();
+
+  const grant = buildMockGrantSpec();
+
+  ctx.imp.secrets.set(grant.secret, [grant.host]);
+
+  const sandbox = await ctx.adapter.create(
+    buildMockSandboxSpec({ kind: 'conversation', grants: [grant] }),
+  );
+
+  const before = await ctx.adapter.list(sandbox.spec.owner);
+
+  ctx.imp.revokeSecretGrants(grant.secret);
+
+  const after = await ctx.adapter.list(sandbox.spec.owner);
+
+  expect(before.map((row) => row.isRetired)).toStrictEqual([false]);
+  expect(after.map((row) => [row.id, row.isRetired])).toStrictEqual([[sandbox.id, true]]);
+});
+
+test('it gets a sandbox whose grant a rebind revoked as retired, with no gateway set', async () => {
+  const ctx = await setupTest();
+
+  const grant = buildMockGrantSpec();
+
+  ctx.imp.secrets.set(grant.secret, [grant.host]);
+
+  const sandbox = await ctx.adapter.create(
+    buildMockSandboxSpec({ kind: 'conversation', grants: [grant] }),
+  );
+
+  ctx.imp.revokeSecretGrants(grant.secret);
+
+  const found = await ctx.adapter.read(sandbox.id);
+
+  expect(found?.isRetired).toBeTrue();
+});
+
 test('it gets a sandbox whose imp impd still backs up as retired', async () => {
   const ctx = await setupTest();
   const sandbox = await ctx.adapter.create(buildMockSandboxSpec({ grants: [] }));
@@ -517,6 +556,81 @@ test('it copies a file in and back out through the guest', async () => {
   const [out] = await sandbox.copyOut([join(ctx.directory, 'work', 'in.txt')]);
 
   expect(new TextDecoder().decode(out?.content)).toBe('hello');
+});
+
+test('it runs the session copy calls on an imp whose grant a rebind revoked', async () => {
+  const ctx = await setupTest();
+
+  const grant = buildMockGrantSpec();
+
+  ctx.imp.secrets.set(grant.secret, [grant.host]);
+
+  const sandbox = await ctx.adapter.create(
+    buildMockSandboxSpec({ kind: 'conversation', grants: [grant] }),
+  );
+
+  const path = join(ctx.directory, 'work', 'session.jsonl');
+
+  await sandbox.copyIn([{ path, content: new TextEncoder().encode('turn one') }]);
+
+  ctx.imp.revokeSecretGrants(grant.secret);
+
+  const listed = await sandbox.readFilePaths(join(ctx.directory, 'work'));
+  const copied = await sandbox.copyOut([path]);
+
+  await sandbox.copyIn([{ path, content: new TextEncoder().encode('turn two') }]);
+  await sandbox.applyMove(path, `${path}.moved`);
+
+  const moved = await sandbox.copyOut([`${path}.moved`]);
+
+  expect(ctx.imp.execs.map((exec) => exec.options.requireBroker)).toSatisfyAll(
+    (requireBroker) => requireBroker === false,
+  );
+
+  expect(listed).toStrictEqual(['session.jsonl']);
+  expect(copied.map((file) => new TextDecoder().decode(file.content))).toStrictEqual(['turn one']);
+  expect(moved.map((file) => new TextDecoder().decode(file.content))).toStrictEqual(['turn two']);
+});
+
+test('it reads the memory kills of an imp whose grant a rebind revoked', async () => {
+  const ctx = await setupTest();
+
+  const grant = buildMockGrantSpec();
+
+  ctx.imp.secrets.set(grant.secret, [grant.host]);
+
+  const sandbox = await ctx.adapter.create(
+    buildMockSandboxSpec({ kind: 'conversation', grants: [grant] }),
+  );
+
+  ctx.imp.memoryKills = 2;
+
+  ctx.imp.revokeSecretGrants(grant.secret);
+
+  expect(sandbox.readMemoryKills()).resolves.toStrictEqual({ kind: 'count', kills: 2 });
+});
+
+test('it runs the file commands of a granted imp with no grant placeholders in their env', async () => {
+  const ctx = await setupTest();
+
+  const grant = buildMockGrantSpec();
+
+  ctx.imp.secrets.set(grant.secret, [grant.host]);
+
+  const sandbox = await ctx.adapter.create(
+    buildMockSandboxSpec({ kind: 'conversation', grants: [grant] }),
+  );
+
+  const path = join(ctx.directory, 'work', 'session.jsonl');
+
+  await sandbox.copyIn([{ path, content: new TextEncoder().encode('turn one') }]);
+  await sandbox.readFilePaths(join(ctx.directory, 'work'));
+  await sandbox.copyOut([path]);
+  await sandbox.applyMove(path, `${path}.moved`);
+
+  expect(ctx.imp.execs.map((exec) => exec.options.env)).toSatisfyAll(
+    (env: Readonly<Record<string, string>>) => Object.keys(env).length === 0,
+  );
 });
 
 test('it refuses to copy out a guest path that climbs', async () => {

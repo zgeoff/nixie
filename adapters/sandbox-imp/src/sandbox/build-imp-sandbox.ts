@@ -40,12 +40,12 @@ export function buildImpSandbox(ctx: ImpSandboxContext): Sandbox {
     id: ctx.id,
     spec: ctx.spec,
     exec: async (command, signal) => {
-      const io = await startImpProcess(ctx, command);
+      const io = await runGuestProcess(ctx, command);
 
       return runCommand(io, command.stdin, signal);
     },
     spawn: async (command) => {
-      const io = await startImpProcess(ctx, command);
+      const io = await runGuestProcess(ctx, command);
 
       return startExecStream(io, command.maxMessageBytes);
     },
@@ -70,14 +70,27 @@ export function buildImpSandbox(ctx: ImpSandboxContext): Sandbox {
   };
 }
 
-async function startImpProcess(ctx: ImpSandboxContext, command: ExecSpec) {
+// A guest command gets the grants' placeholders and needs the broker whenever the spec has a grant.
+function runGuestProcess(ctx: ImpSandboxContext, command: ExecSpec) {
+  return runImpProcess(ctx, command, {
+    env: buildImpExecEnv(ctx.spec, command.env),
+    requireBroker: ctx.spec.grants.length > 0,
+  });
+}
+
+interface ExecAccess {
+  readonly env: Readonly<Record<string, string>>;
+  readonly requireBroker: boolean;
+}
+
+async function runImpProcess(ctx: ImpSandboxContext, command: ExecSpec, access: ExecAccess) {
   await startRoute(ctx);
 
   const exec = await ctx.port.openExec(ctx.id, command.argv, {
-    env: buildImpExecEnv(ctx.spec, command.env),
+    env: access.env,
     ...(command.cwd === undefined ? {} : { cwd: command.cwd }),
     killGraceMs: ctx.killGraceMs,
-    requireBroker: ctx.spec.grants.length > 0,
+    requireBroker: access.requireBroker,
   });
 
   // impd can start an idle sleep between the route's open and the exec's arrival. The sleep holds the
@@ -131,7 +144,7 @@ async function writeGuestFiles(ctx: ImpSandboxContext, files: readonly FileSpec[
   for (const file of files) {
     requireGuestPath(file.path);
 
-    const io = await startImpProcess(ctx, {
+    const io = await runFileProcess(ctx, {
       argv: ['sh', '-c', 'mkdir -p "$(dirname "$1")" && cat > "$1"', 'sh', file.path],
     });
 
@@ -147,6 +160,12 @@ function requireGuestPath(path: string): void {
   }
 }
 
+// The adapter's own file commands reach no network and need no credential. impd refuses a broker
+// requirement on an imp whose grant a rebind revoked, and a session copy still reads that imp.
+function runFileProcess(ctx: ImpSandboxContext, command: ExecSpec) {
+  return runImpProcess(ctx, command, { env: command.env ?? {}, requireBroker: false });
+}
+
 function requireSuccess(result: ExecResult, action: string): void {
   if (result.code !== 0) {
     const stderr = new TextDecoder().decode(result.stderr.bytes);
@@ -160,7 +179,7 @@ const copyOutLimitBytes = 64 * 1024 * 1024;
 async function readGuestFile(ctx: ImpSandboxContext, path: string): Promise<FileSpec> {
   requireGuestPath(path);
 
-  const io = await startImpProcess(ctx, {
+  const io = await runFileProcess(ctx, {
     argv: ['head', '-c', String(copyOutLimitBytes + 1), '--', path],
   });
 
@@ -201,7 +220,7 @@ async function readGuestFilePaths(
 
   const depth = options.maxDepth === undefined ? [] : ['-maxdepth', String(options.maxDepth)];
 
-  const io = await startImpProcess(ctx, {
+  const io = await runFileProcess(ctx, {
     argv: ['sh', '-c', listScript, 'sh', directory, ...depth],
   });
 
@@ -226,7 +245,7 @@ async function applyGuestMove(ctx: ImpSandboxContext, from: string, to: string):
   requireGuestPath(from);
   requireGuestPath(to);
 
-  const io = await startImpProcess(ctx, { argv: ['mv', '-f', '-T', '--', from, to] });
+  const io = await runFileProcess(ctx, { argv: ['mv', '-f', '-T', '--', from, to] });
   const result = await runCommand(io, undefined, undefined);
 
   requireSuccess(result, `move of ${from} to ${to}`);
@@ -278,7 +297,7 @@ async function runMemoryKillsRead(
   signal: AbortSignal | undefined,
 ): Promise<MemoryKillRead> {
   try {
-    const io = await startImpProcess(ctx, { argv: memoryKillsArgv });
+    const io = await runFileProcess(ctx, { argv: memoryKillsArgv });
     const result = await runCommand(io, undefined, signal);
 
     return result.code === 0 && result.signal === null

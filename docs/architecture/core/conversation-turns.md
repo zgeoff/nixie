@@ -37,7 +37,8 @@ message never waits for a wake.
 A replacement keeps the session. nixie creates the new sandbox before it destroys the old one, and
 copies the session that the conversation resumes, its transcript and its side folder, from the old
 disk to the new one. The copy wakes a sleeping old sandbox first, because each read runs in its
-guest. The CLI names a session's project folder after the working directory, so the copy lists the
+guest. The copy also runs on an old sandbox that lost its grant, such as after a rebind of the model
+secret. The CLI names a session's project folder after the working directory, so the copy lists the
 files from the old guest's home and writes them under the folder that the new guest's own home
 names. A start that stops before it destroys the old sandbox leaves both, so the next start copies
 again into the sandbox it keeps and overwrites what the stopped copy wrote. No turn runs while an
