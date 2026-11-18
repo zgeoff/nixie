@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.83.1](https://github.com/zgeoff/nixie/compare/v0.83.0...v0.83.1) (2026-11-18)
+
+
+### Bug Fixes
+
+* **backup:** fetch without a restic lock, and add the restore drill ([#1221](https://github.com/zgeoff/nixie/issues/1221)) ([83c8f92](https://github.com/zgeoff/nixie/commit/83c8f92e9f04b9eb24ad1f68a4f487020509a15f))
+
 ## [0.83.0](https://github.com/zgeoff/nixie/compare/v0.82.0...v0.83.0) (2026-11-18)
 
 
