@@ -7,6 +7,11 @@ export type CodeFileRead =
   | { readonly kind: 'forgotten' }
   | { readonly kind: 'ok'; readonly bytes: Uint8Array<ArrayBuffer> };
 
+export interface CodeFileLocation {
+  readonly sequence: number;
+  readonly position: number;
+}
+
 export interface CodeFileRef {
   readonly thread: string;
   readonly fileID: string;
@@ -29,10 +34,19 @@ export async function readCodeFile(
     return { kind: 'missing' };
   }
 
+  const bytes = await readCodeFileBytes(log, row);
+
+  return bytes === undefined ? { kind: 'forgotten' } : { kind: 'ok', bytes };
+}
+
+// The bytes of a stored file, or undefined when a forget made its result record unreadable.
+export async function readCodeFileBytes(
+  log: Pick<Log, 'deploymentKey' | 'writer'>,
+  row: CodeFileLocation,
+): Promise<Uint8Array<ArrayBuffer> | undefined> {
   const attachments = await readRecordAttachments(log, [row.sequence]);
 
   const stored = attachments.get(row.sequence);
-  const bytes = stored?.status === 'readable' ? stored.attachments[row.position] : undefined;
 
-  return bytes === undefined ? { kind: 'forgotten' } : { kind: 'ok', bytes };
+  return stored?.status === 'readable' ? stored.attachments[row.position] : undefined;
 }

@@ -7,3 +7,5 @@ export { buildStubSandboxAdapter } from './build-stub-sandbox-adapter';
 export { makeStubFetcher } from './make-stub-fetcher';
 export type { StubProgram, StubProgramContext, StubProgramScript } from './make-stub-code-exec';
 export { makeStubCodeExec } from './make-stub-code-exec';
+export type { CodeRunFilesSeed, SeededCodeRunFiles } from './seed-code-run-files';
+export { seedCodeRunFiles } from './seed-code-run-files';

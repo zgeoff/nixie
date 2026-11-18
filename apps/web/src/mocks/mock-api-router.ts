@@ -6,6 +6,7 @@ import type { ReadonlyDeep } from '../types';
 import { isForgettableKind } from './is-forgettable-kind';
 import { mockApprovalProcedures } from './mock-approval-procedures';
 import { mockDefinitionProcedures } from './mock-definition-procedures';
+import { mockFileProcedures } from './mock-file-procedures';
 import { mockImplementer } from './mock-implementer';
 import { mockMandateProcedures } from './mock-mandate-procedures';
 import { mockMemoryRouter } from './mock-memory-router';
@@ -51,6 +52,7 @@ export const mockAPIRouter = os.router({
       return readMockBackupNotice();
     }),
   },
+  files: mockFileProcedures,
   reminders: mockReminderProcedures,
   conversation: {
     read: os.conversation.read.handler((options) => {

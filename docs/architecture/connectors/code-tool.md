@@ -102,13 +102,44 @@ the `codeRun` size row after a memory kill, because the program chose how much m
 - A code run adds its files and up to two stream files to `nixie.db` and to each backup, so the
   output limits bound the growth.
 
+## Sending a file
+
+`file.send` shows the user a file that a code run on the same thread wrote, under nixie's reply. It
+takes a `file` ID from a `code.run` result's `files` and an optional plain-text `caption` of 1 to
+1,000 characters, and sends one file per call. The result holds the file's `file`, `name`, `bytes`
+and `mediaType`, and every field is outside content, because the program chose the name and the
+type.
+
+- The tool declares the `note` effect, no destination and no amount, with `caption` as its content.
+  The file goes only to the user inside nixie, so the starter rule `allow-notes` allows it, and the
+  tool runs direct.
+- A file ID resolves only on the thread of the call, as it does for `code.run`'s inputs. The call
+  refuses a file of another thread, an unknown ID and a forgotten file with the messages that
+  `code.run` gives for them.
+- The call refuses a kept stream file (`.stdout` or `.stderr`), because it is the code run's output
+  and not a file the program wrote. The tool finds one by the `stdout.file` and `stderr.file` of the
+  code run's result record.
+- The name is the last segment of the file's path in that result.
+- A send stores the file ID and never a copy of the bytes. The bytes stay one attachment of the code
+  run's `tool_result` record, so a forget of that record makes the sent file unreadable as well.
+- The result record's transaction also writes one `code_file_sends` row with the record's sequence,
+  the file ID and the thread. The row holds no free text and sits outside the erasable fields, so it
+  marks which files went to the user even after a forget.
+
+[The conversation view](../channels/client.md#the-conversation-view) covers how the user sees the
+file, and [the API](../channels/api.md#reading-a-code-run-file) covers how the client reads its
+bytes.
+
 ## Forgetting
 
 A forget of a `tool_result` record makes its files unreadable with its text, and the `code_files`
-row stays, so the next use of the file ID gets "The file {file} was forgotten." The sandbox holds
-unencrypted copies, so a forget destroys each code sandbox of a call on a record it covers before it
-deletes any key, a running one included, and finds each through its owner. A conversation reset does
-the same for every call on the conversation thread.
+row stays, so the next use of the file ID gets "The file {file} was forgotten." The same holds for a
+file that `file.send` sent: the view then shows its name and size with no image and no download. A
+forget of the `file.send` record itself removes only its caption and result, so the view shows
+nothing for it, and the file stays readable. The sandbox holds unencrypted copies, so a forget
+destroys each code sandbox of a call on a record it covers before it deletes any key, a running one
+included, and finds each through its owner. A conversation reset does the same for every call on the
+conversation thread.
 
 When a destroy fails, the forget or the reset fails with "nixie could not destroy a code sandbox
 that holds this text. Try the forget again.", deletes no key, and a retry runs the cleanup again.

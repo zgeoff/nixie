@@ -166,6 +166,16 @@ states the key backup state of the forget: off, pending, failed, complete or unk
 [host commands](../deployment/host-commands.md#the-reset) word a reset's line. The removed record
 stays in view with that line until the view reloads.
 
+A file that a step sent with [`file.send`](../connectors/code-tool.md#sending-a-file) shows under
+the last reply of that step, or under the step when it made no reply. A task's sent files show on
+that task's page. The view shows an image inline only when its type is PNG, JPEG, GIF or WebP, the
+types that nixie sniffs from the bytes, and a tap opens it full size in a dialog. Every other type,
+SVG and HTML included, is a chip with the file's name and size that downloads it. The bytes come
+through `files.read` as a blob, so the view never navigates to a file and never opens one in a tab,
+because a program wrote the bytes and the page's own origin would load them. The caption shows below
+as plain text. A forgotten file shows its name and size with "Forgotten", and a missing one with
+"Unavailable".
+
 A reply renders as Markdown, and the user's own message shows as typed. A reply can quote fetched
 web text, so the renderer never turns raw HTML into markup, shows a link with an unsafe protocol
 such as `javascript:` as plain text, and shows an image as a link to it, because a loaded image

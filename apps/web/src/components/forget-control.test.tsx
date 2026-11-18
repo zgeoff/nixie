@@ -8,6 +8,7 @@ import { store } from '../mocks/store';
 import { createDeviceSession } from '../test-utils/create-device-session';
 import { render } from '../test-utils/render';
 import { ForgetControl } from './forget-control';
+import { SentFile } from './sent-file';
 
 function setupTest() {
   return { user: userEvent.setup() };
@@ -353,4 +354,64 @@ test('it keeps the confirm hidden after a failed preview when the window regains
   } finally {
     focusManager.setFocused(undefined);
   }
+});
+
+test('it shows a sent image as forgotten once a forget makes its file unreadable', async () => {
+  const ctx = setupTest();
+
+  await createDeviceSession();
+
+  const file = await store.files.create({
+    file: 'p3n8x2c7ke',
+    name: 'revenue.png',
+    mediaType: 'image/png',
+    data: new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0]).toBase64(),
+  });
+
+  const stored = await store.records.create({
+    kind: 'tool_result',
+    message: { text: 'Sent revenue.png.' },
+  });
+
+  const rendered = render(
+    <>
+      <ForgetControl
+        hasText
+        onForgotten={mock<() => void>()}
+        onOpenChange={mock<(isOpen: boolean) => void>()}
+        kind="tool_result"
+        label="Forget"
+        sequence={stored.sequence}
+        thread={stored.thread}
+      />
+      <SentFile
+        file={{
+          callID: 'call-1',
+          file: 'p3n8x2c7ke',
+          name: 'revenue.png',
+          bytes: 48_213,
+          mediaType: 'image/png',
+        }}
+      />
+    </>,
+  );
+
+  await rendered.findByRole('img', { name: 'revenue.png' });
+
+  await store.files.update(file, {
+    data: (draft) => {
+      draft.isForgotten = true;
+    },
+  });
+
+  await ctx.user.click(rendered.getByRole('button', { name: 'Forget' }));
+
+  const confirm = await rendered.findByRole('button', { name: 'Forget for good' });
+
+  await ctx.user.click(confirm);
+
+  const note = await rendered.findByText('revenue.png · 47.1 KiB · Forgotten');
+
+  expect(note).toBeVisible();
+  expect(rendered.queryAllByRole('img')).toStrictEqual([]);
 });
