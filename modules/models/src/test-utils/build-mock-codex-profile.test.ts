@@ -10,6 +10,7 @@ test('it builds a default codex profile', () => {
     model: expect.toBeString(),
     effort: 'medium',
     prices: null,
+    chatgptLogin: false,
   });
 });
 
@@ -22,5 +23,6 @@ test('it applies overrides on top of the defaults', () => {
     model: expect.toBeString(),
     effort: 'high',
     prices: null,
+    chatgptLogin: false,
   });
 });

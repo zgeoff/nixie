@@ -13,6 +13,7 @@
     "@heynixie/logger": "workspace:*",
     "@heynixie/models": "workspace:*",
     "@heynixie/wire": "workspace:*",
+    "@zgeoff/std": "catalog:",
     "gunshi": "catalog:",
     "tiny-invariant": "catalog:",
     "zod": "catalog:"

@@ -1,7 +1,11 @@
+import { setTimeout as sleepFor } from 'node:timers/promises';
 import type { Logger } from '@heynixie/logger';
 import invariant from 'tiny-invariant';
 import type { ControlHandlerDeps } from '../control/make-control-handler';
 import { makeControlHandler } from '../control/make-control-handler';
+import type { AuthFetch } from '../login/chatgpt-auth';
+import type { PlanLogin } from '../login/create-plan-login';
+import { createPlanLogin } from '../login/create-plan-login';
 import { makeOverrideReader } from '../override/make-override-reader';
 import { createPeriodStore } from '../periods/create-period-store';
 import type { CounterStore, PeriodsConfig, ProxyConfig, ProxyLimits } from '../types';
@@ -27,6 +31,12 @@ export interface ModelGatewayOptions {
   // the clock the periods reset by, which a caller passes only to move time
   readonly now?: () => number;
 
+  // the call that refreshes a plan login, which a caller passes only to answer it itself
+  readonly authFetch?: AuthFetch;
+
+  // waits for the refresh of a plan login, which a caller passes only to move time
+  readonly sleep?: (delayMs: number, signal: AbortSignal) => Promise<void>;
+
   // resolves when a stop has waited long enough for the replies under way, and closes their
   // connections
   readonly waitForDrainDeadline: () => Promise<void>;
@@ -37,10 +47,17 @@ export async function startModelGateway(options: ModelGatewayOptions): Promise<M
 
   const now = options.now ?? Date.now;
 
+  const logins = await createPlanLogins(config, {
+    send: options.authFetch ?? fetch,
+    now,
+    sleep: options.sleep ?? waitUnlessAborted,
+    log: options.log,
+  });
+
   const counting =
     config.periods === null
       ? await startLimitsCounting(config)
-      : await startPeriodsCounting(config, config.periods, now, options.log);
+      : await startPeriodsCounting(config, config.periods, { now, log: options.log, logins });
 
   const capture =
     config.capture === null
@@ -52,6 +69,7 @@ export async function startModelGateway(options: ModelGatewayOptions): Promise<M
   const answerRequest = makeProxyHandler({
     openReplies,
     routes: config.routes,
+    planLogins: logins,
     ...counting.deps,
     capture,
     sendUpstream: fetch,
@@ -78,6 +96,10 @@ export async function startModelGateway(options: ModelGatewayOptions): Promise<M
           port: counting.controlListen.port,
           fetch: answerControl,
         });
+
+  for (const login of Object.values(logins)) {
+    login.start();
+  }
 
   options.log('proxy.started', {
     port: server.port ?? config.listen.port,
@@ -110,10 +132,40 @@ export async function startModelGateway(options: ModelGatewayOptions): Promise<M
 
       await server.stop(true);
       await control?.stop(true);
+      await Promise.all(Object.values(logins).map((login) => login.stop()));
       await capture?.settle();
       await counting.settle();
     },
   };
+}
+
+type PlanLoginsDeps = Omit<Parameters<typeof createPlanLogin>[0], 'routeID' | 'config'>;
+
+async function createPlanLogins(
+  config: ProxyConfig,
+  deps: PlanLoginsDeps,
+): Promise<Record<string, PlanLogin>> {
+  const entries = await Promise.all(
+    Object.entries(config.routes).map(async ([routeID, route]) => {
+      if (route.login === null) {
+        return null;
+      }
+
+      const login = await createPlanLogin({ ...deps, routeID, config: route.login });
+
+      return [routeID, login] as const;
+    }),
+  );
+
+  return Object.fromEntries(entries.filter((entry) => entry !== null));
+}
+
+async function waitUnlessAborted(delayMs: number, signal: AbortSignal): Promise<void> {
+  try {
+    await sleepFor(delayMs, undefined, { signal });
+  } catch {
+    // an abort ends the wait early, which is what the stop of the gateway asks for
+  }
 }
 
 type CountingDeps =
@@ -140,18 +192,23 @@ async function startLimitsCounting(config: ProxyConfig): Promise<Counting> {
   };
 }
 
+interface PeriodsCountingDeps {
+  readonly now: () => number;
+  readonly log: Logger;
+  readonly logins: Readonly<Record<string, PlanLogin>>;
+}
+
 async function startPeriodsCounting(
   config: ProxyConfig,
   periods: PeriodsConfig,
-  now: () => number,
-  log: Logger,
+  deps: PeriodsCountingDeps,
 ): Promise<Counting> {
   const store = await createPeriodStore({
     path: config.store,
     zone: periods.zone,
-    now,
-    readOverride: makeOverrideReader(periods.override, log),
-    log,
+    now: deps.now,
+    readOverride: makeOverrideReader(periods.override, deps.log),
+    log: deps.log,
   });
 
   const tokenText = await Bun.file(periods.control.tokenFile).text();
@@ -167,10 +224,17 @@ async function startPeriodsCounting(
       periods: {
         store,
         countBySandbox: periods.countBySandbox,
-        log,
+        log: deps.log,
       },
     },
-    control: { store, config: periods, token, now, log },
+    control: {
+      store,
+      config: periods,
+      logins: deps.logins,
+      token,
+      now: deps.now,
+      log: deps.log,
+    },
     controlListen: periods.control.listen,
     settle: store.settle,
   };

@@ -46,9 +46,10 @@ export function StepGroup(props: StepGroupProps): ReactNode {
               <WorkerLine key={worker.workerRunID} worker={worker} />
             ))}
           </StepSection>
-          {step.error === undefined ? null : (
+          {step.error === undefined && step.cause === undefined ? null : (
             <StepSection title="Error">
-              <p>{step.error}</p>
+              {step.cause === undefined ? null : <p>{step.cause}</p>}
+              {step.error === undefined ? null : <p>{step.error}</p>}
             </StepSection>
           )}
         </div>

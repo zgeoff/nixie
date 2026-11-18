@@ -921,3 +921,47 @@ test('it reads an earlier definition notice as superseded once a later change of
     { kind: 'definition', record: second, notice: secondNotice },
   ]);
 });
+
+test('it carries the cause of a failed step whose reason the client knows', () => {
+  const started = buildMockLogRecord({
+    kind: 'task.step_started',
+    sequence: 1,
+    task: { stepKey: 'task-a:2', taskID: 'task-a' },
+  });
+
+  const errored = buildMockLogRecord({
+    kind: 'task.step_errored',
+    sequence: 2,
+    task: {
+      error: 'the model gateway has no login',
+      reason: 'model_auth.chatgpt_login',
+      stepKey: 'task-a:2',
+      taskID: 'task-a',
+    },
+  });
+
+  expect(buildActivity([started, errored])).toMatchObject([
+    {
+      cause: 'ChatGPT login needed: the operator runs model-gateway chatgpt-login',
+      status: 'failed',
+    },
+  ]);
+});
+
+test('it carries no cause for a failed step whose reason the client does not know', () => {
+  const started = buildMockLogRecord({
+    kind: 'task.step_started',
+    sequence: 1,
+    task: { stepKey: 'task-a:2', taskID: 'task-a' },
+  });
+
+  const errored = buildMockLogRecord({
+    kind: 'task.step_errored',
+    sequence: 2,
+    task: { reason: 'sandbox_host', stepKey: 'task-a:2', taskID: 'task-a' },
+  });
+
+  expect(buildActivity([started, errored])).not.toContainEqual(
+    expect.objectContaining({ cause: expect.anything() }),
+  );
+});

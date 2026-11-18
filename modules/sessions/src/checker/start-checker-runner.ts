@@ -62,7 +62,8 @@ export async function startCheckerRunner(options: CheckerRunnerOptions): Promise
 
   const turnProfile = routed.turnProfile;
 
-  // the models config refuses the checker role on any harness but the Agent SDK
+  // the models config refuses the checker role on any harness but the Agent SDK, so no checker runs
+  // on a plan profile
   invariant(turnProfile.harness === 'agent-sdk', `the ${harness.id} harness runs no check`);
 
   return makeChecker({

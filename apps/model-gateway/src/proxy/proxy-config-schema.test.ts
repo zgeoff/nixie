@@ -94,6 +94,7 @@ test('it reads a config into its typed shape, with a trailing slash cut from the
         providerPin: null,
         prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
         maxOutputTokens: null,
+        login: null,
       },
     },
   });
@@ -293,6 +294,67 @@ test('it rejects a capture key it does not know', () => {
       },
     }).success,
   ).toBeFalse();
+});
+
+test('it reads the login block of a route on a periods config', () => {
+  const ctx = setupTest();
+
+  const result = proxyConfigSchema.safeParse({
+    ...ctx.periodsConfig,
+    routes: {
+      plan: {
+        api: 'openai-responses',
+        upstream: 'https://chatgpt.example.com/backend-api/codex',
+        model: 'model-o',
+        prices: { input: 1, cache_write: 1.25, cache_write_1h: 2, cached_input: 0.1, output: 8 },
+        maxOutputTokens: 32_000,
+        login: { file: '/var/lib/model-gateway/plan.json', routeKeyFile: '/run/secrets/plan-key' },
+      },
+    },
+  });
+
+  expect(result.data?.routes['plan']?.login).toStrictEqual({
+    file: '/var/lib/model-gateway/plan.json',
+    routeKeyFile: '/run/secrets/plan-key',
+  });
+});
+
+test('it rejects a route with a login on a limits config', () => {
+  const ctx = setupTest();
+
+  const result = proxyConfigSchema.safeParse(
+    ctx.buildRouteConfig({
+      api: 'openai-responses',
+      maxOutputTokens: 32_000,
+      login: { file: '/var/lib/model-gateway/plan.json', routeKeyFile: '/run/secrets/plan-key' },
+    }),
+  );
+
+  expect(result.error?.issues.map((issue) => issue.path.join('.'))).toStrictEqual([
+    'routes.review.login',
+  ]);
+});
+
+test.each([
+  { file: 'plan.json', routeKeyFile: '/run/secrets/plan-key' },
+  { file: '/var/lib/model-gateway/plan.json', routeKeyFile: 'plan-key' },
+  { file: '/var/lib/model-gateway/plan.json' },
+])('it rejects a login block of %j', (login) => {
+  const ctx = setupTest();
+
+  const result = proxyConfigSchema.safeParse({
+    ...ctx.periodsConfig,
+    routes: {
+      plan: {
+        upstream: 'https://models.example.com',
+        model: 'model-o',
+        prices: { input: 1, cache_write: 1.25, cache_write_1h: 2, cached_input: 0.1, output: 8 },
+        login,
+      },
+    },
+  });
+
+  expect(result.success).toBeFalse();
 });
 
 function setupTest() {

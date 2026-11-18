@@ -221,17 +221,19 @@ function collectSubschemaChanges(change: KeywordChange, segment: string): readon
   return collectNodeChanges(toNode(change.before), toNode(change.after), path);
 }
 
-// oneOf refuses a value that matches two choices, and any change to a choice can make a value that
-// matched one choice match two, so every oneOf change counts, except an added choice that no value
-// of another choice can match
+// oneOf refuses a value that matches two choices, so any change to a choice counts, except where a
+// required string tag keeps the choices apart: a value then matches only the choice with its tag,
+// so each kept choice is checked on its own and an added tag refuses nothing
 function collectChoiceChanges(change: KeywordChange): readonly string[] {
   const before = toArray(change.before);
   const after = toArray(change.after);
 
   if (change.keyword === 'oneOf') {
-    return isAddedTaggedChoice(before, after)
-      ? []
-      : [`${formatPath(change.path)}: changes the oneOf choices`];
+    return (
+      collectTaggedChoiceChanges(before, after, change.path) ?? [
+        `${formatPath(change.path)}: changes the oneOf choices`,
+      ]
+    );
   }
 
   return before.flatMap((choice, index) =>
@@ -241,21 +243,56 @@ function collectChoiceChanges(change: KeywordChange): readonly string[] {
   );
 }
 
-// JSON Schema compares a const by value and lets a choice without type object take null, which
-// matches every such choice, so only string tags on object choices keep the choices apart.
-function isAddedTaggedChoice(before: readonly unknown[], after: readonly unknown[]): boolean {
-  const isKept = before.every((choice, index) => Bun.deepEquals(choice, after[index]));
+// null when no one key tags every choice both before and after
+function collectTaggedChoiceChanges(
+  before: readonly unknown[],
+  after: readonly unknown[],
+  path: readonly string[],
+): readonly string[] | null {
   const [first] = after;
 
-  if (!isKept || after.length <= before.length || first === undefined) {
-    return false;
+  if (first === undefined) {
+    return null;
   }
 
-  return Object.keys(toNode(toNode(first)['properties'])).some((key) => {
-    const tags = after.map((choice) => pickRequiredConst(toNode(choice), key));
+  for (const key of Object.keys(toNode(toNode(first)['properties']))) {
+    const beforeTags = findChoiceTags(before, key);
+    const afterTags = findChoiceTags(after, key);
 
-    return tags.every((tag) => tag !== undefined) && new Set(tags).size === tags.length;
-  });
+    if (beforeTags !== null && afterTags !== null) {
+      return [...beforeTags].flatMap(([tag, choice]) => {
+        const kept = afterTags.get(tag);
+
+        return kept === undefined
+          ? [`${formatPath(path)}: drops the oneOf choice ${key} ${JSON.stringify(tag)}`]
+          : collectNodeChanges(choice, kept, path);
+      });
+    }
+  }
+
+  return null;
+}
+
+// JSON Schema compares a const by value and lets a choice without type object take null, which
+// matches every such choice, so only string tags on object choices keep the choices apart.
+function findChoiceTags(
+  choices: readonly unknown[],
+  key: string,
+): ReadonlyMap<string, SchemaNode> | null {
+  const tags = new Map<string, SchemaNode>();
+
+  for (const choice of choices) {
+    const node = toNode(choice);
+    const tag = pickRequiredConst(node, key);
+
+    if (typeof tag !== 'string' || tags.has(tag)) {
+      return null;
+    }
+
+    tags.set(tag, node);
+  }
+
+  return tags;
 }
 
 function pickRequiredConst(choice: SchemaNode, key: string): unknown {

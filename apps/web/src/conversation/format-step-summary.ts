@@ -23,6 +23,10 @@ function formatStatus(step: StepActivity): readonly string[] {
     return [];
   }
 
+  if (step.status === 'failed' && step.cause !== undefined) {
+    return [`failed: ${step.cause}`];
+  }
+
   if (step.status !== 'failed' || step.error === undefined) {
     return [step.status];
   }

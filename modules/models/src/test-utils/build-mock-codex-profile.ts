@@ -10,6 +10,7 @@ export function buildMockCodexProfile(overrides: Partial<CodexProfile> = {}): Co
     model: `${faker.lorem.word()}-${faker.number.int({ min: 1, max: 9 })}`,
     effort: 'medium',
     prices: null,
+    chatgptLogin: false,
     ...overrides,
   };
 }

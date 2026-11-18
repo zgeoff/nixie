@@ -8,6 +8,7 @@ import { checkSpendTurns } from '@heynixie/spend';
 import type { RunEndpoint } from '@heynixie/tools';
 import type { ModelCallUsage } from '@heynixie/wire';
 import invariant from 'tiny-invariant';
+import { resolvePlanTurnProfile } from '../turn/resolve-plan-turn-profile';
 import { buildRoutedModel } from '../utils/build-routed-model';
 import type { GuestTurn } from '../utils/run-guest-turn';
 import { runGuestTurn } from '../utils/run-guest-turn';
@@ -303,18 +304,24 @@ function runGuest(
 ): Promise<GuestTurn> {
   const capabilities = plan.target.harness.capabilities;
 
+  const routed = buildRoutedModel({
+    isRouted: deps.gateway !== undefined,
+    profile: plan.target.profile,
+    turnProfile: plan.target.harness.toTurnProfile('one-off'),
+    sandboxName: route.sandbox.id,
+  });
+
   return runGuestTurn({
     harness: plan.target.harness,
     sandbox: route.sandbox,
     command: plan.target.command,
     turn: {
       type: 'turn',
-      profile: buildRoutedModel({
-        isRouted: deps.gateway !== undefined,
-        profile: plan.target.profile,
-        turnProfile: plan.target.harness.toTurnProfile('one-off'),
-        sandboxName: route.sandbox.id,
-      }).turnProfile,
+      profile: resolvePlanTurnProfile({
+        turnProfile: routed.turnProfile,
+        profile: plan.target.profile.profile,
+        spend: deps.spend,
+      }),
       tools: { url: route.url, token: route.token },
       ...(plan.target.harness.session === null ? {} : { resume: null }),
       systemPrompt: workerSystemPrompt,

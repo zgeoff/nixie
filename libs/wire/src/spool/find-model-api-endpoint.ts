@@ -19,7 +19,7 @@ const modelAPIEndpoints: Readonly<Record<ModelAPI, readonly ModelAPIEndpoint[]>>
     modelsEndpoint,
   ],
   'openai-responses': [
-    { name: 'responses', method: 'POST', path: /^\/v1\/responses$/u },
+    { name: 'responses', method: 'POST', path: /^(?:\/v1)?\/responses$/u },
     modelsEndpoint,
   ],
 };

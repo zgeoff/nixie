@@ -125,6 +125,17 @@ A task run whose model calls kept failing, as when the preview has no model acce
 repeat step 5 with `thread` set to the record's `.taskMessage.from`. Expect a `model.reply` record
 on the task's thread.
 
+## Send one turn on a plan profile
+
+The preview checks a turn on the Codex harness's ChatGPT plan login when its config sets `spendStop`
+and a plan profile, and the gateway that `spendStop` names holds the plan route with a login, as the
+[plan login runbook](chatgpt-plan-login.md) sets up. The preview's route config leaves a plan
+profile's `base_url` at `https://chatgpt.com`, and the profile reaches the gateway through the
+sandbox route that `spendStop` gives it. Make a task run on the plan profile, then do steps 1 to 7
+of [Send one turn and read its records](#send-one-turn-and-read-its-records) for it. Expect the
+task's step to end with `task.step_committed`. A `task.step_errored` record whose `task.reason` is
+`model_auth.chatgpt_login` means the route has no active login: sign it in again.
+
 ## Start the next check from an empty log
 
 A reset removes every record, every memory, the conversation and every sandbox of the preview, and

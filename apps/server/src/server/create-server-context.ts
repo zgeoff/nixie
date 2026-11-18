@@ -8,7 +8,7 @@ import {
   readDefinitionsInForce,
 } from '@heynixie/definitions';
 import type { Writer } from '@heynixie/log';
-import type { SpendGateway, SpendTurnLimits } from '@heynixie/spend';
+import type { PlanLoginsHolder, SpendGateway, SpendTurnLimits } from '@heynixie/spend';
 import type { RunSettings, TaskLimits, TaskRunnerRegistry } from '@heynixie/tasks';
 import { readDefinitionNextFire } from '@heynixie/triggers';
 import { paidToolNames } from '../budget/paid-tool-names';
@@ -33,7 +33,11 @@ export interface ServerContextOptions {
   readonly settings?: APISettings;
 
   // the gateway and the turn limits of the spending stop, or absent without spendStop
-  readonly spend?: { readonly gateway: SpendGateway; readonly limits: SpendTurnLimits };
+  readonly spend?: {
+    readonly gateway: SpendGateway;
+    readonly limits: SpendTurnLimits;
+    readonly planLogins: PlanLoginsHolder;
+  };
 }
 
 export async function createServerContext(
@@ -77,6 +81,7 @@ export async function createServerContext(
               zone: options.defaultZone,
               limits: options.spend.limits,
               definitions,
+              planLogins: options.spend.planLogins,
             },
           }),
       runSettings: options.runSettings,

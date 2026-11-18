@@ -1,3 +1,4 @@
+import { readPlanLogins } from '../login/read-plan-logins';
 import { buildSpendPeriods } from '../time/build-spend-periods';
 import type { SpendContext } from '../types';
 import type { SpendFacts } from './pick-spend-stop';
@@ -15,6 +16,7 @@ export async function readSpendFacts(context: SpendContext): Promise<SpendFacts>
     context.gateway.readStatus(),
     readSpendTurns(db, { dayMs: periods.day.startMs, monthMs: periods.month.startMs }),
     readSpendRaise(db, periods.day.start),
+    readPlanLogins(context),
   ]);
 
   return {

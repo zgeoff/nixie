@@ -1,6 +1,12 @@
 import type { ModelPrices } from '@heynixie/models/prices';
 import type { ModelAPI } from '@heynixie/wire';
 
+// the files of a plan route, whose requests the gateway signs with a ChatGPT plan login
+export interface PlanLoginConfig {
+  readonly file: string;
+  readonly routeKeyFile: string;
+}
+
 export interface ProxyRoute {
   readonly api: ModelAPI;
   readonly upstream: string;
@@ -12,6 +18,9 @@ export interface ProxyRoute {
 
   // the model's largest output, which bounds a reply whose request sets no output limit
   readonly maxOutputTokens: number | null;
+
+  // null on a route that holds no plan login
+  readonly login: PlanLoginConfig | null;
 }
 
 export interface ProxyLimits {

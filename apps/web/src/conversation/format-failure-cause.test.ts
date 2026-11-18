@@ -10,6 +10,10 @@ test.each([
   ['model_api.account', 'Claude account needs attention'],
   ['model_api.model_not_found', 'Claude model not found'],
   ['model_api.unknown', 'Claude API error'],
+  [
+    'model_auth.chatgpt_login',
+    'ChatGPT login needed: the operator runs model-gateway chatgpt-login',
+  ],
 ])('it names the cause of %s in plain words', (reason, cause) => {
   expect(formatFailureCause(reason)).toBe(cause);
 });

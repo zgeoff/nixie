@@ -73,6 +73,28 @@ each connection through a reverse forward to the gateway on this machine.
    `NIXIE_IMP_TEST_CODEX_IMAGE`, the 2 variables above and
    `bun run test:imp integration/codex-gates.imp.test.ts apps/server/src/part/list-image-needs.imp.test.ts`.
 
+### The plan login checks
+
+`integration/codex-plan-login.imp.test.ts` runs a turn on a real ChatGPT plan login through a model
+gateway that holds a plan route, as the [plan login runbook](chatgpt-plan-login.md) sets up. One
+case runs a turn that calls a tool, and asserts that the gateway's count for the sandbox equals the
+sum of the turn's `call` frames. The other case sends a turn past the context window and prints the
+last frame that Codex gives, as `plan login context overflow probe`. The suite skips until these
+variables are set, beside `NIXIE_IMP_TEST_URL`, `NIXIE_IMP_TEST_TOKEN` and
+`NIXIE_IMP_TEST_CODEX_IMAGE`:
+
+- `NIXIE_IMP_TEST_CODEX_PLAN_GATEWAY`: the gateway's model listener, as impd's broker reaches it.
+- `NIXIE_IMP_TEST_CODEX_PLAN_CONTROL` and `NIXIE_IMP_TEST_CODEX_PLAN_CONTROL_TOKEN`: the control
+  listener, as this machine reaches it, and its token.
+- `NIXIE_IMP_TEST_CODEX_PLAN_ROUTE_KEY`: the route key.
+- `NIXIE_IMP_TEST_CODEX_PLAN_ROUTE`: the plan route's ID, which defaults to `codex-plan`.
+- `NIXIE_IMP_TEST_CODEX_PLAN_MODEL`: the route's model, which defaults to `gpt-6-luna`.
+
+The route must show `active` at `GET /chatgpt-logins`. Run the suite from the repo root with
+`bun run test:imp integration/codex-plan-login.imp.test.ts`. The cases add a secret named
+`nixie-test-<id>` and a sandbox at the gateway, and remove both when they end. The suite uses the
+account's plan, so a run spends plan usage.
+
 To check that the path works before a run, call `https://models-<id>.example.com/` from a second imp
 on the codex image that holds a grant of a secret with that host and the relay's `upstream`. The
 request must reach a listener on the gateway's port with `authorization: Bearer <secret value>`.

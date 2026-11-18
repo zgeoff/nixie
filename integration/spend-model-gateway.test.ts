@@ -12,6 +12,21 @@ async function setupTest() {
   const gateway = await startTestModelGateway({
     upstreamURL: model.url,
     periods: { zone: 'UTC', countBySandbox: true },
+    planRoute: {
+      routeID: 'codex-plan',
+      login: {
+        version: 1,
+        loginID: 'login-1',
+        refreshToken: 'refresh-token-1',
+        accountID: 'acct-test-1',
+        planType: 'plus',
+        email: 'owner@example.com',
+        status: 'active',
+        reason: null,
+        statusSince: '2026-11-13T09:12:00.000Z',
+        lastRefreshAt: null,
+      },
+    },
   });
 
   invariant(gateway.control);
@@ -217,4 +232,24 @@ test('it returns unreachable when the listener sends a reply that is not the gat
     kind: 'unreachable',
     reason: 'the gateway sent a reply that is not its own',
   });
+});
+
+test('it reads the plan logins of the gateway without a token or an email', async () => {
+  const ctx = await setupTest();
+  const logins = await ctx.spend.readChatGPTLogins();
+
+  expect(logins).toStrictEqual({
+    kind: 'ok',
+    value: { 'codex-plan': { status: 'active', accountID: 'acct-test-1', planType: 'plus' } },
+  });
+});
+
+test('it reads the plan logins as unreachable when the token is wrong', async () => {
+  const ctx = await setupTest();
+
+  const spend = createSpendGateway({ url: ctx.control.url, token: 'wrong' });
+
+  const logins = await spend.readChatGPTLogins();
+
+  expect(logins).toStrictEqual({ kind: 'unreachable', reason: 'the gateway answered 401' });
 });

@@ -9,5 +9,9 @@ export function formatFailureCause(reason: string | undefined): string | null {
     .with('model_api.billing', () => 'Claude billing problem')
     .with('model_api.account', () => 'Claude account needs attention')
     .with('model_api.model_not_found', () => 'Claude model not found')
+    .with(
+      'model_auth.chatgpt_login',
+      () => 'ChatGPT login needed: the operator runs model-gateway chatgpt-login',
+    )
     .otherwise((other) => (other?.startsWith('model_api.') === true ? 'Claude API error' : null));
 }

@@ -29,6 +29,9 @@ export interface SpendContext {
   readonly zone: string;
   readonly limits: SpendTurnLimits;
   readonly definitions: () => Definitions;
+
+  // the last answer of the gateway's plan logins, which a step on a plan profile reads
+  readonly planLogins: PlanLoginsHolder;
 }
 
 // What the stop is now. A trip also holds the measures of its period, so a client can offer a
@@ -85,6 +88,25 @@ export interface GatewayStatus {
   readonly tripped: GatewayTrip | null;
 }
 
+// The state of one plan route's login, as the gateway reports it. It holds no token and no email.
+export interface PlanLoginStatus {
+  readonly status: 'active' | 'failing' | 'needs_login';
+  readonly accountID: string | null;
+  readonly planType: string | null;
+}
+
+// The route ID of each plan route with its login, or the mark that the last read got no answer.
+export type PlanLogins =
+  | { readonly state: 'read'; readonly routes: Readonly<Record<string, PlanLoginStatus>> }
+  | { readonly state: 'unreachable' };
+
+// The last answer, which lives in memory only: it holds no token and no email, and it is never
+// written to the database.
+export interface PlanLoginsHolder {
+  readonly read: () => PlanLogins;
+  readonly write: (logins: PlanLogins) => void;
+}
+
 export interface SandboxCount {
   readonly dollars: number;
   readonly tokens: number;
@@ -130,6 +152,11 @@ export type Done<Value = undefined> = Value extends undefined
 // outcome as a value, and never throws.
 export interface SpendGateway {
   readonly readStatus: () => Promise<Done<GatewayStatus> | Unreachable>;
+
+  // the login of each plan route, by route ID
+  readonly readChatGPTLogins: () => Promise<
+    Done<Readonly<Record<string, PlanLoginStatus>>> | Unreachable
+  >;
   readonly putLimits: (
     limits: GatewayLimits,
   ) => Promise<Done<GatewayStatus> | AboveCap | Unreachable>;

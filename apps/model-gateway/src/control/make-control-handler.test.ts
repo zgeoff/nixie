@@ -1,11 +1,14 @@
 import { expect, mock, onTestFinished, test } from 'bun:test';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { Logger } from '@heynixie/logger';
+import { createPlanLogin } from '../login/create-plan-login';
+import { writeLoginFile } from '../login/write-login-file';
 import { makeOverrideReader } from '../override/make-override-reader';
 import { writeOverride } from '../override/write-override';
 import { createPeriodStore } from '../periods/create-period-store';
+import { buildLoginFile } from '../test-utils/build-login-file';
 import { makeControlHandler } from './make-control-handler';
 
 async function setupTest() {
@@ -28,8 +31,22 @@ async function setupTest() {
     log: mock<Logger>(() => {}),
   });
 
+  const loginPath = join(directory, 'plan-login.json');
+
+  await writeFile(join(directory, 'plan-key'), 'route-key\n');
+
+  const planLogin = await createPlanLogin({
+    routeID: 'codex-plan',
+    config: { file: loginPath, routeKeyFile: join(directory, 'plan-key') },
+    send: () => Promise.reject(new Error('the control handler never refreshes')),
+    now,
+    sleep: () => Promise.resolve(),
+    log: mock<Logger>(() => {}),
+  });
+
   const handler = makeControlHandler({
     store,
+    logins: { 'codex-plan': planLogin },
     token: 'secret-control-token',
     now,
     log: mock<Logger>(() => {}),
@@ -48,6 +65,8 @@ async function setupTest() {
   return {
     store,
     overridePath,
+    writeLogin: (overrides: Parameters<typeof buildLoginFile>[0]) =>
+      writeLoginFile(loginPath, buildLoginFile(overrides)),
     limits: {
       day: { dollars: 60, tokens: 80_000_000 },
       month: { dollars: 600, tokens: 600_000_000 },
@@ -80,6 +99,7 @@ async function setupTest() {
 
 test.each([
   ['GET', '/status'],
+  ['GET', '/chatgpt-logins'],
   ['PUT', '/limits'],
   ['POST', '/raise'],
   ['PUT', '/sandboxes/alpha'],
@@ -93,6 +113,55 @@ test.each([
 
   expect(response.status).toBe(401);
   expect(held.periods.day.limit).toBeNull();
+});
+
+test('it reports a plan route with no login file as needing a login', async () => {
+  const ctx = await setupTest();
+  const response = await ctx.call('GET', '/chatgpt-logins');
+
+  expect(response).toStrictEqual({
+    status: 200,
+    body: {
+      'codex-plan': {
+        status: 'needs_login',
+        reason: null,
+        since: null,
+        accountID: null,
+        planType: null,
+      },
+    },
+  });
+});
+
+test('it reports the status, account and plan of a plan login, and no token or email', async () => {
+  const ctx = await setupTest();
+
+  await ctx.writeLogin({ status: 'failing', reason: 'no_answer' });
+
+  const response = await ctx.call('GET', '/chatgpt-logins');
+
+  expect(response).toStrictEqual({
+    status: 200,
+    body: {
+      'codex-plan': {
+        status: 'failing',
+        reason: 'no_answer',
+        since: '2026-11-13T09:12:00.000Z',
+        accountID: 'acct-test-1',
+        planType: 'plus',
+      },
+    },
+  });
+
+  expect(JSON.stringify(response.body)).not.toContain('refresh-token-1');
+  expect(JSON.stringify(response.body)).not.toContain('owner@example.com');
+});
+
+test('it answers POST /chatgpt-logins with a 405', async () => {
+  const ctx = await setupTest();
+  const response = await ctx.call('POST', '/chatgpt-logins');
+
+  expect(response.status).toBe(405);
 });
 
 test('it answers a request with no authorization header with a 401', async () => {

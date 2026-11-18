@@ -1,3 +1,4 @@
+import { readPlanLogins } from '../login/read-plan-logins';
 import { readSpendFacts } from '../stop/read-spend-facts';
 import { readSpendRaise } from '../stop/read-spend-raise';
 import { settleSpendStop } from '../stop/settle-spend-stop';
@@ -20,7 +21,7 @@ export async function writeSpendRaise(
   context: SpendContext,
   request: RaiseRequest & { readonly by: string },
 ): Promise<SpendRaiseResult> {
-  const status = await context.gateway.readStatus();
+  const [status] = await Promise.all([context.gateway.readStatus(), readPlanLogins(context)]);
 
   if (status.kind !== 'ok') {
     return { error: 'unreachable' };

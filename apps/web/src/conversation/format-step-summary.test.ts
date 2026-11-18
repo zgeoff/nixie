@@ -230,6 +230,21 @@ test('it says a step whose turn ended silently ended with no reply', () => {
   ).toBe('conversation · ended with no reply · turn end silently');
 });
 
+test('it says a failed step failed with its cause in place of its error when the client knows the cause', () => {
+  expect(
+    formatStepSummary(
+      buildMockStepActivity({
+        cause: 'ChatGPT login needed: the operator runs model-gateway chatgpt-login',
+        error: 'the conversation turn failed: no login',
+        status: 'failed',
+        taskID: 'task-a',
+      }),
+    ),
+  ).toBe(
+    'task-a · failed: ChatGPT login needed: the operator runs model-gateway chatgpt-login · no tools',
+  );
+});
+
 test('it says a failed step with no readable error failed', () => {
   expect(formatStepSummary(buildMockStepActivity({ status: 'failed' }))).toBe(
     'task · failed · no tools',

@@ -51,6 +51,12 @@ const codexTurnProfileSchema = z
     model: z.string().min(1),
     baseURL: z.url(),
     effort: z.enum(codexEfforts),
+
+    // non-null on a plan profile: the guest logs in with a placeholder for this account
+    chatgptLogin: z
+      .object({ accountID: z.string().min(1), planType: z.string().min(1) })
+      .nullable()
+      .default(null),
   })
   .readonly();
 

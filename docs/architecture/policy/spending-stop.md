@@ -53,6 +53,23 @@ resume runs it again. A worker call makes the same check before it starts, becau
 counts no turns, and while the stop stands the call fails with no sandbox started. The tasks module
 takes this check as an injected `probeSpendStop`, because it cannot import the spend module.
 
+### Plan logins
+
+At each read of the gateway's `/status`, the spend module also reads `GET /chatgpt-logins` and keeps
+the answer in memory on the spend context: the route ID of each plan route with its status, account
+ID and plan type, or `unreachable` after a failed read. It holds no token and no email, and it is
+never written to the database. Before the first read, the held answer is `unreachable`.
+
+A step on a plan profile, a `codex` profile with `chatgpt_login: true`, reads the held answer before
+its turn, after the spend check and before any capture opens. The plan profile's ID is the route ID.
+The step puts the route's account ID and plan type in the turn profile's `chatgptLogin`. When the
+gateway is unreachable, or lists no active login for the profile, the step fails with
+`model_auth.chatgpt_login`, which waits for the user, and no turn starts. The web client shows that
+the operator runs `model-gateway chatgpt-login`. A worker run on a plan profile reads the held
+answer the same way before its turn, and its call fails with the same message. The schema refuses
+`chatgpt_login: true` when the config has no `spendStop` section, because the server reaches the
+logins through it.
+
 ## Resume and raise
 
 While the stop stands, the API refuses `nixie.resume` and a task's resume, whatever the pause's

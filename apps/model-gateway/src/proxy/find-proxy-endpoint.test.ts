@@ -31,6 +31,13 @@ test.each([
     name: 'responses',
     spends: true,
   },
+  {
+    api: 'openai-responses',
+    method: 'POST',
+    path: '/responses',
+    name: 'responses',
+    spends: true,
+  },
   { api: 'openai-responses', method: 'GET', path: '/v1/models', name: 'models', spends: false },
 ] as const)(
   "it finds a $api route's $method $path as the $name endpoint, which spends: $spends",
@@ -52,6 +59,7 @@ test.each([
   ['openai-responses', 'POST', '/v1/messages'],
   ['openai-responses', 'GET', '/v1/responses/resp_0a1b2c'],
   ['openai-responses', 'POST', '/v1/responses/input_tokens'],
+  ['openai-responses', 'POST', '/responses/input_tokens'],
   ['openai-responses', 'POST', '/v1/chat/completions'],
 ] as const)('it finds no endpoint on a %s route for %s %s', (api, method, path) => {
   expect(findProxyEndpoint(api, method, path)).toBeNull();

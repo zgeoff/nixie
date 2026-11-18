@@ -334,3 +334,28 @@ test('it logs a failed poll and polls again', async () => {
 
   await watcher.stop();
 });
+
+test('it holds the plan logins at each poll, and marks them unreachable when the gateway gives none', async () => {
+  const ctx = await setupTest();
+
+  ctx.gateway.readChatGPTLogins.mockResolvedValue({
+    kind: 'ok',
+    value: { 'codex-plan': { status: 'active', accountID: 'acct-test-1', planType: 'plus' } },
+  });
+
+  await ctx.poll({ noAnswerSince: null, isLimitsPending: false });
+
+  const first = ctx.context.planLogins.read();
+
+  ctx.gateway.readChatGPTLogins.mockResolvedValue({ kind: 'unreachable', reason: 'down' });
+
+  await ctx.poll({ noAnswerSince: null, isLimitsPending: false });
+
+  expect([first, ctx.context.planLogins.read()]).toStrictEqual([
+    {
+      state: 'read',
+      routes: { 'codex-plan': { status: 'active', accountID: 'acct-test-1', planType: 'plus' } },
+    },
+    { state: 'unreachable' },
+  ]);
+});

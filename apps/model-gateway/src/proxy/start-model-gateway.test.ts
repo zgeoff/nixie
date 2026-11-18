@@ -7,6 +7,9 @@ import type { Logger } from '@heynixie/logger';
 import { startScriptedModel, waitForCondition } from '@heynixie/testing';
 import { encodeCaptureTag, openSpoolFile, parseSpoolFileName } from '@heynixie/wire';
 import { createSpoolRecipient } from '@heynixie/wire/test-utils';
+import { writeLoginFile } from '../login/write-login-file';
+import { buildLoginFile } from '../test-utils/build-login-file';
+import { buildTestJWT } from '../test-utils/build-test-jwt';
 import { startModelGateway } from './start-model-gateway';
 
 async function setupTest() {
@@ -27,6 +30,59 @@ async function setupTest() {
     log,
     moveTo: (instant: string) => {
       current = Date.parse(instant);
+    },
+
+    // a gateway with periods, a control listener and a plan route whose refresh `authFetch` answers
+    startPlan: async (
+      options: {
+        routeKey?: string;
+        authFetch?: (url: string, init: RequestInit) => Promise<Response>;
+      } = {},
+    ) => {
+      await writeFile(join(directory, 'token'), 'control-secret\n');
+      await writeFile(join(directory, 'plan-key'), options.routeKey ?? 'route-key-1\n');
+      await writeLoginFile(join(directory, 'plan-login.json'), buildLoginFile());
+
+      await writeFile(
+        join(directory, 'proxy.yaml'),
+        [
+          'listen: { port: 0 }',
+          `store: ${join(directory, 'counter.json')}`,
+          'periods: { zone: Europe/London }',
+          `control: { listen: { port: 0 }, tokenFile: ${join(directory, 'token')} }`,
+          'countBySandbox: true',
+          'routes:',
+          '  codex-plan:',
+          '    api: openai-responses',
+          `    upstream: ${model.url}/v1`,
+          '    model: model-o',
+          '    maxOutputTokens: 1000',
+          '    prices: { input: 1, cache_write: 1.25, cache_write_1h: 2, cached_input: 0.1, output: 5 }',
+          '    login:',
+          `      file: ${join(directory, 'plan-login.json')}`,
+          `      routeKeyFile: ${join(directory, 'plan-key')}`,
+        ].join('\n'),
+      );
+
+      const proxy = await startModelGateway({
+        configPath: join(directory, 'proxy.yaml'),
+        log,
+        now: () => current,
+        authFetch:
+          options.authFetch ??
+          (() =>
+            Promise.resolve(
+              Response.json({
+                access_token: buildTestJWT({ jti: 'access-1', exp: current / 1000 + 3600 }),
+                refresh_token: 'refresh-token-2',
+              }),
+            )),
+        waitForDrainDeadline: () => Promise.resolve(),
+      });
+
+      onTestFinished(() => proxy.stop());
+
+      return proxy;
     },
 
     // a gateway with periods, a control listener and a route to the scripted model; the config
@@ -921,4 +977,87 @@ test('it lets a control reply under way finish before a stop resolves', async ()
   const answered = await reply;
 
   expect(answered.status).toBe(200);
+});
+
+test('it serves a plan route with its route key and reports the login on the control listener', async () => {
+  const ctx = await setupTest();
+
+  ctx.model.addReplies({ text: 'planned', responsesUsage: { input_tokens: 10, output_tokens: 2 } });
+
+  const proxy = await ctx.startPlan();
+
+  await fetch(`${proxy.controlURL ?? ''}/limits`, {
+    method: 'PUT',
+    headers: { authorization: 'Bearer control-secret' },
+    body: JSON.stringify({
+      day: { dollars: 60, tokens: 80_000_000 },
+      month: { dollars: 600, tokens: 600_000_000 },
+    }),
+  });
+
+  await fetch(`${proxy.controlURL ?? ''}/sandboxes/alpha`, {
+    method: 'PUT',
+    headers: { authorization: 'Bearer control-secret' },
+    body: JSON.stringify({ limit: null }),
+  });
+
+  const response = await fetch(`${proxy.url}/alpha/codex-plan/responses`, {
+    method: 'POST',
+    headers: { authorization: 'Bearer route-key-1' },
+    body: JSON.stringify({ model: 'model-o', input: 'Plan it.' }),
+  });
+
+  const logins = await fetch(`${proxy.controlURL ?? ''}/chatgpt-logins`, {
+    headers: { authorization: 'Bearer control-secret' },
+  });
+
+  expect(response.status).toBe(200);
+
+  const result = await logins.json();
+
+  expect(result).toStrictEqual({
+    'codex-plan': {
+      status: 'active',
+      reason: null,
+      since: '2026-11-13T09:12:00.000Z',
+      accountID: 'acct-test-1',
+      planType: 'plus',
+    },
+  });
+});
+
+test('it refuses a plan request that lacks the route key', async () => {
+  const ctx = await setupTest();
+  const proxy = await ctx.startPlan();
+
+  const response = await fetch(`${proxy.url}/alpha/codex-plan/responses`, {
+    method: 'POST',
+    body: JSON.stringify({ model: 'model-o', input: 'Plan it.' }),
+  });
+
+  expect(response.status).toBe(403);
+});
+
+test.each(['/chatgpt-logins', '/alpha/chatgpt-logins', '/alpha/codex-plan/chatgpt-logins'])(
+  'it serves no login path %s on the model listener',
+  async (path) => {
+    const ctx = await setupTest();
+    const proxy = await ctx.startPlan();
+
+    const response = await fetch(`${proxy.url}${path}`, {
+      headers: { authorization: 'Bearer route-key-1' },
+    });
+
+    expect([403, 404]).toContain(response.status);
+
+    const result = await response.text();
+
+    expect(result).not.toContain('acct-test-1');
+  },
+);
+
+test('it fails to start on a route key file that holds no key', async () => {
+  const ctx = await setupTest();
+
+  expect(ctx.startPlan({ routeKey: '\n' })).rejects.toThrow(/holds no key/u);
 });

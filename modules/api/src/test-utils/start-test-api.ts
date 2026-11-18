@@ -7,7 +7,7 @@ import { definitionTaskProjections } from '@heynixie/definitions/test-utils';
 import type { Writer } from '@heynixie/log';
 import { logProjections, startWriter } from '@heynixie/log';
 import { memoryProjections } from '@heynixie/memory';
-import { spendProjections } from '@heynixie/spend';
+import { createPlanLoginsHolder, spendProjections } from '@heynixie/spend';
 import { buildStubSpendGateway } from '@heynixie/spend/test-utils';
 import type { ReadDefinitionVersion } from '@heynixie/tasks';
 import { tasksProjections } from '@heynixie/tasks';
@@ -149,6 +149,7 @@ async function createTestContext(
             zone: 'UTC',
             limits: { dayTurns: 3, dayTurnCap: 5, monthTurns: 4 },
             definitions: readTestDefinitions,
+            planLogins: createPlanLoginsHolder(),
           },
         }),
     runSettings: buildTestRunSettings(),

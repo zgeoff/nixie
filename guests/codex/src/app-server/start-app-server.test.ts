@@ -5,7 +5,7 @@ import { startAppServer } from './start-app-server';
 test('it reports a close with the exit status when the process exits after its output ends', async () => {
   const server = startFakeAppServer(() => ({}));
 
-  const client = await startAppServer(server.process);
+  const client = await startAppServer(server.process, null);
 
   server.close(3);
 
@@ -20,7 +20,10 @@ test('it reports a close with the exit status when the process exits after its o
 test('it reports a close when the output ends and the process keeps running', async () => {
   const server = startFakeAppServer(() => ({}));
 
-  const client = await startAppServer({ ...server.process, exited: new Promise<number>(() => {}) });
+  const client = await startAppServer(
+    { ...server.process, exited: new Promise<number>(() => {}) },
+    null,
+  );
 
   server.close(0);
 
@@ -36,14 +39,17 @@ test('it rejects a pending request when the output ends and the process keeps ru
   const server = startFakeAppServer(() => ({}));
   const state = { isMuted: false };
 
-  const client = await startAppServer({
-    ...server.process,
-    stdin: {
-      write: (text) => (state.isMuted ? undefined : server.process.stdin.write(text)),
-      end: () => {},
+  const client = await startAppServer(
+    {
+      ...server.process,
+      stdin: {
+        write: (text) => (state.isMuted ? undefined : server.process.stdin.write(text)),
+        end: () => {},
+      },
+      exited: new Promise<number>(() => {}),
     },
-    exited: new Promise<number>(() => {}),
-  });
+    null,
+  );
 
   state.isMuted = true;
 

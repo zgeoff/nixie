@@ -11,6 +11,9 @@ const nixieBrokerPlaceholder = 'nixie-broker-placeholder';
 export interface CodexProfile extends ModelProfile {
   readonly harness: 'codex';
   readonly effort: (typeof codexEfforts)[number];
+
+  // true for a plan profile, whose requests go to the model gateway's plan route of the same ID
+  readonly chatgptLogin: boolean;
 }
 
 export const codexHarnessDefinition: HarnessDefinition<'codex', CodexProfile> = {
@@ -43,6 +46,9 @@ export const codexHarnessDefinition: HarnessDefinition<'codex', CodexProfile> = 
       model: profile.model,
       baseURL: profile.baseURL,
       effort: profile.effort,
+
+      // the server fills it from the gateway's logins, because the profile holds no login
+      chatgptLogin: null,
     }),
   }),
   session: null,

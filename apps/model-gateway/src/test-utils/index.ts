@@ -1,4 +1,8 @@
-export type { TestModelGateway, TestModelGatewayOptions } from './start-test-model-gateway';
+export type {
+  TestModelGateway,
+  TestModelGatewayOptions,
+  TestPlanRoute,
+} from './start-test-model-gateway';
 
 export {
   startTestModelGateway,

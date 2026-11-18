@@ -36,6 +36,15 @@ const controlSchema = z.strictObject({
 
 const routeIDSchema = z.string().regex(/^[a-z0-9][a-z0-9-]*$/u, 'a route ID is a lowercase slug');
 
+const loginSchema = z.strictObject({
+  file: z.string().refine((path) => isAbsolute(path), {
+    message: 'the login file is an absolute path',
+  }),
+  routeKeyFile: z.string().refine((path) => isAbsolute(path), {
+    message: 'the route key file is an absolute path',
+  }),
+});
+
 const routeSchema = z.strictObject({
   api: z.enum(modelAPIs).default('anthropic-messages'),
   upstream: z.url({ protocol: /^https?$/u }),
@@ -43,6 +52,7 @@ const routeSchema = z.strictObject({
   providerPin: z.string().min(1).optional(),
   prices: modelPricesSchema,
   maxOutputTokens: z.int().positive().optional(),
+  login: loginSchema.optional(),
 });
 
 const limitsSchema = z
@@ -92,6 +102,16 @@ export const proxyConfigSchema = z
           code: 'custom',
           path: ['routes', id, 'maxOutputTokens'],
           message: `the route ${id} speaks openai-responses and sets no maxOutputTokens, which bounds a reply whose request sets no max_output_tokens`,
+        });
+      }
+    }
+
+    for (const [id, route] of Object.entries(config.routes)) {
+      if (route.login !== undefined && config.periods === undefined) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['routes', id, 'login'],
+          message: `the route ${id} holds a plan login, which needs a periods config, because the server reads the login from the control listener`,
         });
       }
     }
@@ -167,6 +187,7 @@ export const proxyConfigSchema = z
           providerPin: route.providerPin ?? null,
           prices: route.prices,
           maxOutputTokens: route.maxOutputTokens ?? null,
+          login: route.login ?? null,
         },
       ]),
     ),

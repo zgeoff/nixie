@@ -254,6 +254,29 @@ test('it shows the error of a failed step once its section opens', async () => {
   expect(error).toBeVisible();
 });
 
+test('it shows the cause of a failed step above its error once its section opens', async () => {
+  const user = userEvent.setup();
+
+  const rendered = render(
+    <StepGroup
+      step={buildMockStepActivity({
+        cause: 'ChatGPT login needed: the operator runs model-gateway chatgpt-login',
+        error: 'the conversation turn failed: no login',
+        status: 'failed',
+        stepKey: 'task-a:2',
+        taskID: 'task-a',
+      })}
+    />,
+  );
+
+  await user.click(rendered.getByText(/^task-a · failed: ChatGPT login needed/u));
+  await user.click(rendered.getByText('Error'));
+
+  expect(
+    rendered.getByText('ChatGPT login needed: the operator runs model-gateway chatgpt-login'),
+  ).toBeVisible();
+});
+
 test('it keeps the toggles of a long input and a long result each with its own text', async () => {
   const user = userEvent.setup();
 

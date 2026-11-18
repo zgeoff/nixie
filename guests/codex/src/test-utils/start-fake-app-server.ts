@@ -24,6 +24,9 @@ export interface FakeAppServer {
 
   readonly notify: (method: string, params: unknown) => void;
 
+  // sends the guest a request, as the CLI does for a token refresh, and gives its answer
+  readonly request: (method: string, params: unknown) => Promise<unknown>;
+
   // ends the stream the way a crashed server does
   readonly close: (exitCode: number) => void;
 }
@@ -48,6 +51,23 @@ export function startFakeAppServer(answer: (request: FakeRequest) => FakeReply):
     send({ method, params });
   };
 
+  const asks = new Map<string, PromiseWithResolvers<unknown>>();
+
+  const state = { nextAsk: 1 };
+
+  const ask = (method: string, params: unknown): Promise<unknown> => {
+    const id = `fake-${String(state.nextAsk)}`;
+    const pending = Promise.withResolvers<unknown>();
+
+    state.nextAsk += 1;
+
+    asks.set(id, pending);
+
+    send({ id, method, params });
+
+    return pending.promise;
+  };
+
   const handleLine = (line: string): void => {
     const message: unknown = JSON.parse(line);
 
@@ -55,7 +75,16 @@ export function startFakeAppServer(answer: (request: FakeRequest) => FakeReply):
       return;
     }
 
-    const method = 'method' in message ? String(message.method) : '';
+    if (!('method' in message)) {
+      // the guest's answer to a request the fake sent
+      const answered = 'result' in message ? message.result : message;
+
+      asks.get(String(message.id))?.resolve(answered);
+
+      return;
+    }
+
+    const method = String(message.method);
     const params = 'params' in message ? message.params : null;
 
     if (method === 'initialize') {
@@ -103,6 +132,7 @@ export function startFakeAppServer(answer: (request: FakeRequest) => FakeReply):
     },
     requests,
     notify,
+    request: ask,
     close: (exitCode) => {
       exited.resolve(exitCode);
       void closeQuietly(writer);

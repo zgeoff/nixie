@@ -2,6 +2,7 @@ import { timingSafeEqual } from 'node:crypto';
 import type { Logger } from '@heynixie/logger';
 import { toErrorFields } from '@heynixie/logger';
 import { z } from 'zod';
+import type { PlanLogin } from '../login/create-plan-login';
 import { sandboxNameSchema } from '../periods/sandbox-name-schema';
 import type { PeriodChange, PeriodStore, PeriodStoreHandle, PeriodsConfig } from '../types';
 import { buildStatus } from './build-status';
@@ -14,6 +15,9 @@ import { pickSandboxSetChange } from './pick-sandbox-set-change';
 export interface ControlHandlerDeps {
   readonly store: PeriodStoreHandle;
   readonly config: PeriodsConfig;
+
+  // the plan login of each plan route, by route ID
+  readonly logins: Readonly<Record<string, PlanLogin>>;
 
   // the one line of the token file
   readonly token: string;
@@ -143,9 +147,23 @@ export function makeControlHandler(
     return request.method === 'GET' ? answerSandboxRead(name.data) : renderMethodNotAllowed();
   };
 
+  const answerLogins = async (): Promise<Response> => {
+    const entries = await Promise.all(
+      Object.entries(deps.logins).map(
+        async ([routeID, login]) => [routeID, await login.readEntry()] as const,
+      ),
+    );
+
+    return Response.json(Object.fromEntries(entries));
+  };
+
   const answerRoute = (request: Request, pathname: string): Promise<Response> | Response => {
     if (pathname === '/status') {
       return request.method === 'GET' ? answerStatus() : renderMethodNotAllowed();
+    }
+
+    if (pathname === '/chatgpt-logins') {
+      return request.method === 'GET' ? answerLogins() : renderMethodNotAllowed();
     }
 
     if (pathname === '/limits') {

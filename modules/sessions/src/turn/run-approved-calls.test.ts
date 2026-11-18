@@ -4,6 +4,7 @@ import { buildMockModelProfile } from '@heynixie/models/test-utils';
 import { buildStubSandboxes } from '@heynixie/sandbox/test-utils';
 import {
   buildSpendPeriods,
+  createPlanLoginsHolder,
   readSpendStopRow,
   spendLimitRaisedCodec,
   spendProjections,
@@ -192,6 +193,7 @@ async function setupTest() {
     zone: 'UTC',
     limits,
     definitions: () => definitions,
+    planLogins: createPlanLoginsHolder(),
   });
 
   const stoppedStep = async (runner: Awaited<ReturnType<typeof startRunner>>) => {

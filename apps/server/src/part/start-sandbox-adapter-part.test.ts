@@ -6,6 +6,7 @@ import {
   buildStubGuestSandboxes,
   writeMemoryKills,
 } from '@heynixie/sandbox/test-utils';
+import { createPlanLoginsHolder } from '@heynixie/spend';
 import { buildStubSpendGateway } from '@heynixie/spend/test-utils';
 import { waitForCondition } from '@heynixie/testing';
 import { startTestServer } from '../test-utils/start-test-server';
@@ -109,6 +110,7 @@ test('it registers the sandbox it creates at the gateway when spendStop is set',
       token: 'a-token',
       modelURL: 'http://127.0.0.1:8789',
       gateway,
+      planLogins: createPlanLoginsHolder(),
     },
     dataDir: ctx.dataDir,
     log: ctx.log,

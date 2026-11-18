@@ -82,12 +82,28 @@ and the type of the definition enforces it. The `agent-sdk` and `codex` harnesse
 Each profile schema holds only the keys its loop reads, so the schema refuses a key it does not
 read.
 
-A `codex` profile holds `harness`, `base_url`, `credential`, `model`, `effort` and `prices`.
-`effort` is one of `low`, `medium`, `high`, `xhigh` and `max`. The harness runs the Codex CLI's app
-server in a sandbox on the codex image, with nixie's tool route as the CLI's only tool source. It
-has no session and no context window, so nixie sends it the whole history at each step. It runs
-system tasks only, and has no conversation row yet. The CLI also lists 3 MCP resource tools that
-nixie cannot remove, so a model on this harness sees them beside nixie's tools.
+A `codex` profile holds `harness`, `base_url`, `credential`, `model`, `effort`, `prices` and
+`chatgpt_login`. `effort` is one of `low`, `medium`, `high`, `xhigh` and `max`. The harness runs the
+Codex CLI's app server in a sandbox on the codex image, with nixie's tool route as the CLI's only
+tool source. It has no session and no context window, so nixie sends it the whole history at each
+step. It runs system tasks only, and has no conversation row yet. The CLI also lists 3 MCP resource
+tools that nixie cannot remove, so a model on this harness sees them beside nixie's tools.
+
+A profile with `chatgpt_login: true` runs on a ChatGPT plan login in place of an API key. Its
+`base_url` is `https://chatgpt.com`, and the schema refuses another value. Its requests go to the
+[model gateway's plan route](../policy/model-gateway.md#the-plan-route) of the same ID as the
+profile, which holds the login. The turn profile then carries `chatgptLogin` with the account ID and
+plan type, which the server reads from the gateway
+([plan logins](../policy/spending-stop.md#plan-logins)).
+
+The guest's config sets `cli_auth_credentials_store = "ephemeral"`,
+`forced_login_method = "chatgpt"` and `requires_openai_auth = true` on the model provider, in place
+of `env_key`. Before its first thread, the guest sends `account/login/start` with type
+`chatgptAuthTokens` and an unsigned placeholder token. The token holds the account ID, the plan type
+and an `exp` a day ahead, and no email. The guest answers each `account/chatgptAuthTokens/refresh`
+request at once with a new placeholder, and writes no `auth.json`. In its own token mode the CLI
+would refresh with the placeholder refresh token and fail the turn, so the guest runs it in external
+token mode. The guest sends no `service_tier`.
 
 The guest's config sets `tool_output_token_limit` to the wire library's `toolOutputLimitTokens`, the
 limit that the Agent SDK guest holds. A recall result of exactly the page limit, made of many small

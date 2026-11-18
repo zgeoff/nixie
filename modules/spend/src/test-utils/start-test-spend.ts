@@ -2,6 +2,7 @@ import type { Log, Writer } from '@heynixie/log';
 import { logProjections, withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import { startTestLog } from '@heynixie/log/test-utils';
 import type { TestClock } from '@heynixie/testing';
+import { createPlanLoginsHolder } from '../login/create-plan-logins-holder';
 import { spendProjections } from '../projection/spend-projections';
 import type { SpendContext, SpendTurnLimits } from '../types';
 import { buildStubSpendGateway } from './build-stub-spend-gateway';
@@ -40,6 +41,7 @@ export async function startTestSpend(limits: Partial<SpendTurnLimits> = {}): Pro
       zone: 'UTC',
       limits: { ...testLimits, ...limits },
       definitions: () => definitions,
+      planLogins: createPlanLoginsHolder(),
     },
     writeTurn: async (kind = 'model.turn_ended') => {
       await withWriteTransaction(started.writer, (tx) =>

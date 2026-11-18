@@ -25,6 +25,9 @@ export function buildStubSpendGateway() {
     readStatus: mock<SpendGateway['readStatus']>(() =>
       Promise.resolve({ kind: 'ok', value: buildMockGatewayStatus() }),
     ),
+    readChatGPTLogins: mock<SpendGateway['readChatGPTLogins']>(() =>
+      Promise.resolve({ kind: 'ok', value: {} }),
+    ),
     putLimits: mock<SpendGateway['putLimits']>(() =>
       Promise.resolve({ kind: 'ok', value: buildMockGatewayStatus() }),
     ),
