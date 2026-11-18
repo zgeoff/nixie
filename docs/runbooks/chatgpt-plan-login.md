@@ -32,20 +32,23 @@ first with the doc that the item links.
 
 ## Placeholders
 
-| Placeholder           | What it stands for                                                                                                                                                               |
-| --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `<gateway_host>`      | the host that runs the model gateway                                                                                                                                             |
-| `<gateway_user>`      | the system user that the gateway's service runs as                                                                                                                               |
-| `<config_file>`       | the gateway's config file                                                                                                                                                        |
-| `<route>`             | the plan route's ID, which is also the ID of the model profile that uses it                                                                                                      |
-| `<route_key_file>`    | a file on `<gateway_host>` for the route key, such as `/run/secrets/<route>-route-key`                                                                                           |
-| `<login_file>`        | the file where the gateway keeps the login, such as `/var/lib/model-gateway/logins/<route>.json`                                                                                 |
-| `<model>`             | the Codex model ID, such as `gpt-6-luna`                                                                                                                                         |
-| `<price_table>`       | OpenAI's API prices for `<model>`, in the keys of [a price table](../architecture/core/model-profiles.md#prices-and-the-provider-pin)                                            |
-| `<max_output_tokens>` | the model's largest output in tokens, which the gateway assumes for a request with no `max_output_tokens` ([the estimate](../architecture/policy/model-gateway.md#the-estimate)) |
-| `<credential_name>`   | any name for the profile's `deployment:` reference, such as `<route>`                                                                                                            |
-| `<control_address>`   | the `hostname:port` of `control.listen` in `<config_file>`                                                                                                                       |
-| `<control_token>`     | the token in the file that `control.tokenFile` in `<config_file>` names                                                                                                          |
+| Placeholder                                                                  | What it stands for                                                                                                                                                                 |
+| ---------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `<gateway_host>`                                                             | the host that runs the model gateway                                                                                                                                               |
+| `<gateway_user>`                                                             | the system user that the gateway's service runs as                                                                                                                                 |
+| `<config_file>`                                                              | the gateway's config file                                                                                                                                                          |
+| `<route>`                                                                    | the plan route's ID, which is also the ID of the model profile that uses it                                                                                                        |
+| `<route_key_file>`                                                           | a file on `<gateway_host>` for the route key, such as `/run/secrets/<route>-route-key`                                                                                             |
+| `<login_file>`                                                               | the file where the gateway keeps the login, such as `/var/lib/model-gateway/logins/<route>.json`                                                                                   |
+| `<model>`                                                                    | the Codex model ID, such as `gpt-6-luna`                                                                                                                                           |
+| `<input>`, `<cache_write>`, `<cache_write_1h>`, `<cached_input>`, `<output>` | OpenAI's API price for `<model>`, in US dollars per million tokens, for each class of token in [a price table](../architecture/core/model-profiles.md#prices-and-the-provider-pin) |
+| `<max_output_tokens>`                                                        | the model's largest output in tokens, which the gateway assumes for a request with no `max_output_tokens` ([the estimate](../architecture/policy/model-gateway.md#the-estimate))   |
+| `<control_address>`                                                          | the `hostname:port` of `control.listen` in `<config_file>`                                                                                                                         |
+| `<control_token>`                                                            | the token in the file that `control.tokenFile` in `<config_file>` names                                                                                                            |
+| `<impd_url>`                                                                 | the URL of impd, the daemon that runs each sandbox: `imp.url` in nixie's `config.yaml`                                                                                             |
+| `<impd_root_token>`                                                          | an impd token that can add a secret for the whole host                                                                                                                             |
+| `<secret_name>`                                                              | the name that step 4 of [Set up the plan route](#set-up-the-plan-route) prints                                                                                                     |
+| `<model_url>`                                                                | the gateway's model listener: `spendStop.modelURL` in nixie's `config.yaml`                                                                                                        |
 
 ## Read the route's status
 
@@ -88,16 +91,21 @@ answer holds no token and no email.
        upstream: https://chatgpt.com/backend-api/codex
        model: <model>
        maxOutputTokens: <max_output_tokens>
-       prices: <price_table>
+       prices:
+         input: <input>
+         cache_write: <cache_write>
+         cache_write_1h: <cache_write_1h>
+         cached_input: <cached_input>
+         output: <output>
        login:
          file: <login_file>
          routeKeyFile: <route_key_file>
    ```
 
    A plan has no price per token, but Codex use past the plan's own limit draws on credits bought
-   for the account. The gateway counts each plan request at `<price_table>` against the dollar
-   limits in `periods`, so those limits cap that spend. The count therefore shows more than the plan
-   itself costs.
+   for the account. The gateway counts each plan request at these prices against the dollar limits
+   in `periods`, so those limits cap that spend. The count therefore shows more than the plan itself
+   costs.
 
 4. Print the name that nixie gives the plan profile's model secret:
 
@@ -109,15 +117,22 @@ answer holds no token and no email.
    refuses to create a sandbox for the profile when impd lacks it
    ([model secrets](../architecture/deployment/impd-names.md#model-secrets)).
 
-5. Add the secret to impd, the daemon that runs each sandbox, with impd's root token, which can add
-   a secret for the whole host. Store it under the name from step 4, with these values:
+5. Add the route key to impd as the secret `<secret_name>`. Run this as root on `<gateway_host>`,
+   from the `adapters/sandbox-imp` folder of a nixie checkout at the release you run:
 
-   | Field    | Value                                                                                      |
-   | -------- | ------------------------------------------------------------------------------------------ |
-   | value    | the route key in `<route_key_file>`                                                        |
-   | host     | `chatgpt.com`                                                                              |
-   | header   | `authorization`, scheme `bearer`                                                           |
-   | upstream | the gateway's model listener, the address in `spendStop.modelURL` of nixie's `config.yaml` |
+   ```bash
+   IMPD_TOKEN='<impd_root_token>' ROUTE_KEY="$(cat <route_key_file>)" bun -e '
+   import { createImpClient } from "@impz/client";
+   const client = createImpClient({ url: "<impd_url>", token: process.env.IMPD_TOKEN });
+   await client.secrets.add({
+     name: "<secret_name>",
+     kind: "custom",
+     value: process.env.ROUTE_KEY.trim(),
+     rules: [{ host: "chatgpt.com", header: "authorization", scheme: "bearer", upstream: "<model_url>" }],
+   });'
+   ```
+
+   Expect: the command exits 0 and prints nothing.
 
    impd's credential broker, the part of impd that adds a secret to a sandbox's requests, then takes
    each plan request that a sandbox sends to `chatgpt.com`. It adds the route key, and sends the
@@ -131,17 +146,23 @@ answer holds no token and no email.
        <route>:
          harness: codex
          base_url: https://chatgpt.com
-         credential: deployment:<credential_name>
+         credential: deployment:<route>
          chatgpt_login: true
          model: <model>
          effort: low
-         prices: <price_table>
+         prices:
+           input: <input>
+           cache_write: <cache_write>
+           cache_write_1h: <cache_write_1h>
+           cached_input: <cached_input>
+           output: <output>
    ```
 
    Set `effort` to the reasoning effort the tasks need
-   ([model profiles](../architecture/core/model-profiles.md#harnesses)). Leave `<credential_name>`
-   out of nixie's secrets file: with `spendStop` set, nixie reads no model credential, and impd
-   holds the route key.
+   ([model profiles](../architecture/core/model-profiles.md#harnesses)). Add nothing to nixie's
+   secrets file for `deployment:<route>`. With `spendStop` set, the nixie server refuses to start
+   when the secrets file has a `model_credentials` entry, and impd holds the route key
+   ([credentials with a spending gateway](../architecture/core/model-profiles.md#credentials-with-a-spending-gateway)).
 
 7. Restart the gateway and the nixie server, so each reads its new config.
 

@@ -115,12 +115,13 @@ A plan route lets a task on the Codex harness
 ([model profiles](../core/model-profiles.md#harnesses)) spend a ChatGPT plan in place of an OpenAI
 API key. The gateway holds the plan's login: a refresh token, from which it gets the short-lived
 access token that ChatGPT's backend takes. It refreshes the login and sets the access token on each
-plan request itself. The nixie server and each sandbox hold only stand-in values in its place, so
-every plan request passes through the count.
+plan request itself. The nixie server and each sandbox hold only stand-in values in place of either
+token, so every plan request passes through the count.
 
 A route holds a plan login when its config has a `login` block. The nixie server reads each login's
 status from the [control listener](#the-control-listener), and only a config with
-[periods](#the-periods) has one, so the schema refuses a `login` block in a `limits` config:
+[periods](#the-periods) has a control listener, so the schema refuses a `login` block in a `limits`
+config:
 
 ```yaml
 routes:
@@ -143,16 +144,16 @@ plan route up.
 
 A plan request leaves the sandbox for `chatgpt.com`, on a path that starts with the sandbox's name
 and the route, as in [count by sandbox](#count-by-sandbox). impd, the daemon that runs each sandbox,
-holds the plan profile's model secret, and its credential broker matches the request by that host.
-It sends the request to the gateway's model listener, the address that takes model requests, apart
-from the control listener ([the route of a request](#the-route-of-a-request)).
+holds the plan profile's model secret, and its credential broker matches the request by the host
+`chatgpt.com`. The broker sends the request to the gateway's model listener, the address that takes
+model requests, apart from the control listener ([the route of a request](#the-route-of-a-request)).
 
-| Hop               | What it receives                                    | What it sends on                                                                  |
-| ----------------- | --------------------------------------------------- | --------------------------------------------------------------------------------- |
-| The Codex guest   | nothing                                             | `https://chatgpt.com/<sandbox>/codex-plan/responses`, with a placeholder          |
-| The broker        | that request, checked against `/<sandbox>/**`       | the same path to the gateway's model listener, with `Authorization: Bearer <key>` |
-| The model gateway | `/<sandbox>/codex-plan/responses` and the route key | `/responses` to the route's upstream, with `Authorization: Bearer <access token>` |
-| The upstream      | `https://chatgpt.com/backend-api/codex/responses`   | the reply, which the gateway counts                                               |
+| Hop               | What it receives                                         | What it sends on                                                                  |
+| ----------------- | -------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| The Codex guest   | nothing                                                  | `https://chatgpt.com/<sandbox>/codex-plan/responses`, with a placeholder token    |
+| The broker        | that request, checked against `/<sandbox>/codex-plan/**` | the same path to the gateway's model listener, with `Authorization: Bearer <key>` |
+| The model gateway | `/<sandbox>/codex-plan/responses` and the route key      | `/responses` to the route's upstream, with `Authorization: Bearer <access token>` |
+| The upstream      | `https://chatgpt.com/backend-api/codex/responses`        | the reply, which the gateway counts                                               |
 
 - The route key is 32 random bytes in hex. It is the value of the plan profile's model secret
   ([model secrets](../deployment/impd-names.md#model-secrets)) and the content of the route's
