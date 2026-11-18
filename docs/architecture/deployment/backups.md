@@ -119,11 +119,6 @@ directory that does not exist. Its optional `--data-snapshot <snapshot_id>` name
 its full ID, which `nixie-backup snapshots` prints. A data snapshot named under a key snapshot with
 no publish number is checked only by its `set-` number.
 
-The fetch and `nixie-backup snapshots` run restic with `--no-lock`, so a credential that can only
-read the repositories serves them. The job's own backups, forgets and prunes keep their locks.
-Without a lock, a prune can remove the packs that the fetch copies. restic then exits non-zero, and
-the fetch fails at that step with the marker in place.
-
 The fetch:
 
 1. writes the unfinished-backup marker into the directory, before anything else;
@@ -146,6 +141,11 @@ On success the fetch exits 0 after one `backup.fetched` line. On any failure it 
 the refusal and its message, which names the data snapshot to take when one goes with the key
 snapshot. A failed fetch leaves the marker, so `nixie restore` refuses the directory. The fetch only
 restores the newest key snapshot, because an older one would make a forgotten item readable again.
+
+The fetch and `nixie-backup snapshots` run restic with `--no-lock`, so they work with a credential
+that can only read the repositories. The job's own backups, forgets and prunes keep their locks.
+Without a lock, a prune by a running backup job can remove the packs that the fetch copies. restic
+then exits non-zero, so the fetch fails and leaves the unfinished-backup marker.
 
 `nixie restore --from <directory>` reads `fetched-pair.json` and returns the pair. It then empties
 the staging folder and writes `restore-note.json` there, which holds the restore time and the key
