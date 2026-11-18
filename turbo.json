@@ -27,8 +27,10 @@
       "client": {
         "dependencies": { "allow": ["lib"] }
       },
+      // the backup job's own source imports libs alone; its e2e suites seed real log data, so its
+      // dev dependencies reach the modules
       "sidecar": {
-        "dependencies": { "allow": ["lib"] }
+        "dependencies": { "allow": ["module", "lib"] }
       },
       "module": {
         "dependencies": { "allow": ["module", "lib"] }
@@ -64,7 +66,16 @@
       },
       "server-only": {
         "dependents": {
-          "allow": ["app", "module", "adapter", "server-only", "eval", "verify", "integration"]
+          "allow": [
+            "app",
+            "sidecar",
+            "module",
+            "adapter",
+            "server-only",
+            "eval",
+            "verify",
+            "integration"
+          ]
         }
       }
     }

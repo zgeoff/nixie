@@ -101,7 +101,7 @@ outside the importer's package, and a cycle between packages.
 | ------------- | ----------------------------------- | ----------------------------------- |
 | `app`         | `apps/server`, `apps/model-gateway` | modules, adapters, libs, other apps |
 | `client`      | `apps/web`                          | libs without `server-only`          |
-| `sidecar`     | `apps/backup-job`                   | libs without `server-only`          |
+| `sidecar`     | `apps/backup-job`                   | modules, libs                       |
 | `module`      | `modules/*`                         | other modules, libs                 |
 | `adapter`     | `adapters/*`                        | modules, libs                       |
 | `guest`       | `guests/*`                          | libs without `server-only`          |
@@ -111,15 +111,16 @@ outside the importer's package, and a cycle between packages.
 | `integration` | `integration/`                      | the app, modules, adapters, libs    |
 | `eval`        | `evals/`                            | modules, guests, libs               |
 
-The backup job depends on libs alone, so it never reaches the modules that hold the deployment key.
-An app may depend on the other deployables, so its `e2e/` suites can read their test helpers.
-Nothing depends on the `verify`, `integration` and `eval` packages, so their wide rules never let
-production code reach test code.
+The backup job's own source imports libs alone, so it never reaches the modules that hold the
+deployment key; its `e2e/` suites seed real log data, so its dev dependencies reach the modules. An
+app may depend on the other deployables, so its `e2e/` suites can read their test helpers. Nothing
+depends on the `verify`, `integration` and `eval` packages, so their wide rules never let production
+code reach test code.
 
 - **Libs depend only on libs.** A guest or a client therefore never reaches a module through a lib,
   because no lib can depend on one.
 - **`server-only`** marks a lib that only the trusted core and the test suites may use: `libs/db`
-  and `libs/secret-scan`. Its rule allows dependents tagged `app`, `module`, `adapter`,
+  and `libs/secret-scan`. Its rule allows dependents tagged `app`, `sidecar`, `module`, `adapter`,
   `server-only`, `verify`, `integration` or `eval`, so a guest or a client that declares it fails
   the check.
 - **An adapter depends only on the module that owns its interface.** The tags allow any module, so
