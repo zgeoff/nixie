@@ -9,7 +9,11 @@ const routeSchema = z.string().regex(/^[a-z0-9][a-z0-9-]*$/u);
 
 // the deployment schema renames and fills in fields, so the route goes on the file's own shape,
 // which the schema checks before and after
-const profileSchema = z.looseObject({ base_url: z.string() });
+const profileSchema = z.looseObject({
+  base_url: z.string(),
+  chatgpt_login: z.boolean().optional(),
+});
+
 const modelsSchema = z.looseObject({ profiles: z.record(z.string(), profileSchema) });
 const profilesSchema = z.looseObject({ models: modelsSchema });
 
@@ -32,11 +36,14 @@ export function buildPreviewRouteConfig(route: string, text: string): PreviewRou
   }
 
   // a host's model gateway serves the route at the model API's own host, so the route only
-  // extends each profile's base URL
+  // extends each profile's base URL; a plan profile keeps https://chatgpt.com, which its schema
+  // requires, and reaches the gateway through the sandbox route that spendStop gives it
   const profiles = Object.fromEntries(
     Object.entries(parsed.data.models.profiles).map(([name, profile]) => [
       name,
-      { ...profile, base_url: `${profile.base_url.replace(/\/+$/u, '')}/${route}` },
+      profile.chatgpt_login === true
+        ? profile
+        : { ...profile, base_url: `${profile.base_url.replace(/\/+$/u, '')}/${route}` },
     ]),
   );
 
