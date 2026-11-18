@@ -69,7 +69,6 @@
     "@zgeoff/testing": "catalog:",
     "ajv": "catalog:",
     "ajv-formats": "3.0.1",
-    "kysely": "catalog:",
     "release-please": "17.11.2"
   }
 }
