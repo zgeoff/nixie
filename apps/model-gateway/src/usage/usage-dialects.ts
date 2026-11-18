@@ -42,7 +42,7 @@ export const usageDialects: Readonly<Record<ModelAPI, UsageDialect>> = {
         return 'start';
       }
 
-      return type === 'message_delta' ? 'final' : null;
+      return type === 'message_delta' && isOutputCountCarried(event) ? 'final' : null;
     },
     parseUsage: parseAnthropicUsage,
   },
@@ -61,6 +61,19 @@ export const usageDialects: Readonly<Record<ModelAPI, UsageDialect>> = {
     parseUsage: parseOpenAIUsage,
   },
 };
+
+// a message_delta ends the usage only when it carries the final output count
+function isOutputCountCarried(event: unknown): boolean {
+  const usage =
+    typeof event === 'object' && event !== null && 'usage' in event ? event.usage : null;
+
+  return (
+    typeof usage === 'object' &&
+    usage !== null &&
+    'output_tokens' in usage &&
+    typeof usage.output_tokens === 'number'
+  );
+}
 
 function parseAnthropicUsage(
   reported: unknown,

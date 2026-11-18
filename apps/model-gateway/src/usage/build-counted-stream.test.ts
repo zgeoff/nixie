@@ -154,3 +154,35 @@ test('it reports no usage for a stream with no usage event', async () => {
     true,
   );
 });
+
+test('it does not call the usage final when the last delta carries no output count', async () => {
+  const onEnd = mock(async () => {});
+
+  const text = [
+    'event: message_start\ndata: {"type":"message_start","message":{"usage":{"input_tokens":9000,"output_tokens":1}}}\n\n',
+    'event: message_delta\ndata: {"type":"message_delta","usage":{}}\n\n',
+  ];
+
+  const body = new Response(
+    new ReadableStream<Uint8Array>({
+      start: (controller) => {
+        for (const part of text) {
+          controller.enqueue(new TextEncoder().encode(part));
+        }
+
+        controller.close();
+      },
+    }),
+  ).body;
+
+  if (body === null) {
+    throw new Error('the test response has no body');
+  }
+
+  await new Response(buildCountedStream(body, usageDialects['anthropic-messages'], onEnd)).text();
+
+  expect(onEnd).toHaveBeenCalledExactlyOnceWith(
+    { usage: expect.anything(), isFinal: false, hasInput: true },
+    true,
+  );
+});
