@@ -156,7 +156,7 @@ EOF
       exit 1
       ;;
   esac
-  npm install --prefix "$consumer" --no-audit --no-fund --silent "$tarball" "${companions[@]}" \
+  npm install --prefix "$consumer" --no-audit --no-fund --loglevel=error "$tarball" "${companions[@]}" \
     "typescript@$consumer_typescript"
   (cd "$consumer" && node --input-type=module -e "
     const module = await import('$name');
