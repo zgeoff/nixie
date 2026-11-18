@@ -1,3 +1,4 @@
+import { timingSafeEqual } from 'node:crypto';
 import type { Logger } from '@heynixie/logger';
 import { toErrorFields } from '@heynixie/logger';
 import type { ModelAPIEndpointName } from '@heynixie/wire';
@@ -8,6 +9,7 @@ import {
   parseJSONOrNull,
 } from '@heynixie/wire';
 import invariant from 'tiny-invariant';
+import type { PlanLogin } from '../login/create-plan-login';
 import type { CounterStore, ProxyLimits, ProxyRoute } from '../types';
 import { buildCountedStream } from '../usage/build-counted-stream';
 import { buildReplyEstimate } from '../usage/build-reply-estimate';
@@ -35,6 +37,9 @@ interface ProxyHandlerBaseDeps {
 
   // the replies under way, which a stop that gives up counts; one the handler makes when absent
   readonly openReplies?: OpenReplies;
+
+  // the plan login of each route that holds one, by route ID
+  readonly planLogins?: Readonly<Record<string, PlanLogin>>;
   readonly sendUpstream: (url: string, init: RequestInit) => Promise<Response>;
   readonly log: Logger;
 }
@@ -78,9 +83,21 @@ export function makeProxyHandler(deps: ProxyHandlerDeps): (request: Request) => 
       );
     }
 
+    const plan = findPlanLogin(deps.planLogins, target.routeID, target.route);
+
+    // a request that lacks the route key learns no more than that it is refused
+    if (plan !== null && !isRouteKey(request, plan.routeKey)) {
+      return renderAPIError(
+        403,
+        'permission_error',
+        `the model gateway refuses a request to ${target.routeID} that lacks its route key`,
+      );
+    }
+
     const endpoint = findProxyEndpoint(target.route.api, request.method, target.path);
 
-    if (endpoint === null) {
+    // a plan route forwards only the model call, so no request reads the model list with the login
+    if (endpoint === null || (plan !== null && endpoint.name === 'models')) {
       return renderAPIError(
         403,
         'permission_error',
@@ -138,6 +155,12 @@ export function makeProxyHandler(deps: ProxyHandlerDeps): (request: Request) => 
 
     if (bodyRefusal !== null) {
       return renderAPIError(400, 'invalid_request_error', bodyRefusal);
+    }
+
+    const access = plan === null ? null : await plan.admit();
+
+    if (access?.kind === 'refused') {
+      return renderAPIError(401, 'authentication_error', access.message);
     }
 
     const tag =
@@ -199,7 +222,7 @@ export function makeProxyHandler(deps: ProxyHandlerDeps): (request: Request) => 
     const upstream = await deps
       .sendUpstream(`${target.route.upstream}${target.path}${url.search}`, {
         method: request.method,
-        headers: buildUpstreamHeaders(request.headers),
+        headers: buildUpstreamHeaders(request.headers, access?.accessToken ?? null),
         body,
         redirect: 'manual',
       })
@@ -220,6 +243,11 @@ export function makeProxyHandler(deps: ProxyHandlerDeps): (request: Request) => 
       await countOnce(() => countReply(noUsageRead, false, endpoint.spends, 'upstream_failed'));
 
       return renderAPIError(502, 'api_error', 'the model gateway could not reach the model API');
+    }
+
+    // the request that Codex sends again waits for the new token
+    if (access?.kind === 'ok' && plan !== null && upstream.status === 401) {
+      await plan.refreshAfterRejection(access.loginID);
     }
 
     const init = {
@@ -357,6 +385,32 @@ function findRouteTarget(
   };
 }
 
+function findPlanLogin(
+  planLogins: Readonly<Record<string, PlanLogin>> | undefined,
+  routeID: string,
+  route: ProxyRoute,
+): PlanLogin | null {
+  if (route.login === null) {
+    return null;
+  }
+
+  const plan =
+    planLogins !== undefined && Object.hasOwn(planLogins, routeID)
+      ? planLogins[routeID]
+      : undefined;
+
+  invariant(plan !== undefined, 'a route with a login block has a plan login');
+
+  return plan;
+}
+
+function isRouteKey(request: Request, routeKey: string): boolean {
+  const given = Buffer.from(request.headers.get('authorization') ?? '');
+  const expected = Buffer.from(`Bearer ${routeKey}`);
+
+  return given.length === expected.length && timingSafeEqual(given, expected);
+}
+
 function isCapturableEndpoint(name: ModelAPIEndpointName): name is 'messages' | 'responses' {
   return name === 'messages' || name === 'responses';
 }
@@ -376,8 +430,14 @@ const REQUEST_HEADERS_DROPPED = [
   'accept-encoding',
 ];
 
-function buildUpstreamHeaders(received: Headers): Headers {
+// A plan route gets the access token in place of whatever credential the request held, and no other
+// route gets a credential from the gateway.
+function buildUpstreamHeaders(received: Headers, accessToken: string | null): Headers {
   const headers = new Headers(received);
+
+  if (accessToken !== null) {
+    headers.set('authorization', `Bearer ${accessToken}`);
+  }
 
   for (const name of REQUEST_HEADERS_DROPPED) {
     headers.delete(name);

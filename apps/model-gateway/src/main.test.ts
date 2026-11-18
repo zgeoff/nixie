@@ -182,3 +182,92 @@ test('it exits 1 from the raise command for a config with no override file', asy
 
   expect(code).toBe(1);
 });
+
+test.each(['chatgpt-login', 'chatgpt-logout'])(
+  'it exits 1 and names the route when %s targets a route with no login block',
+  async (command) => {
+    const ctx = await setupTest();
+
+    await writeFile(
+      join(ctx.directory, 'proxy.yaml'),
+      [
+        'listen: { port: 0 }',
+        `store: ${join(ctx.directory, 'counter.json')}`,
+        'limits: { dollars: 1 }',
+        'routes:',
+        '  preview:',
+        `    upstream: ${ctx.model.url}`,
+        '    model: model-small',
+        '    prices: { input: 1, cache_write: 1.25, cache_write_1h: 2, cached_input: 0.1, output: 5 }',
+      ].join('\n'),
+    );
+
+    const child = Bun.spawn(
+      [
+        process.execPath,
+        ctx.entry,
+        command,
+        '--config',
+        join(ctx.directory, 'proxy.yaml'),
+        '--route',
+        'preview',
+      ],
+      { stdin: 'ignore', stdout: 'pipe', stderr: 'ignore' },
+    );
+
+    const [code, output] = await Promise.all([child.exited, new Response(child.stdout).text()]);
+
+    expect(code).toBe(1);
+    expect(output).toContain('the route preview has no login block');
+  },
+);
+
+test('it removes the login file of a route from the chatgpt-logout command and exits 0', async () => {
+  const ctx = await setupTest();
+
+  const loginPath = join(ctx.directory, 'plan-login.json');
+
+  await writeFile(loginPath, '{}');
+
+  await writeFile(
+    join(ctx.directory, 'proxy.yaml'),
+    [
+      'listen: { port: 0 }',
+      `store: ${join(ctx.directory, 'counter.json')}`,
+      'periods: { zone: Europe/London }',
+      `control: { listen: { port: 0 }, tokenFile: ${join(ctx.directory, 'token')} }`,
+      'routes:',
+      '  codex-plan:',
+      '    api: openai-responses',
+      `    upstream: ${ctx.model.url}`,
+      '    model: model-o',
+      '    maxOutputTokens: 1000',
+      '    prices: { input: 1, cache_write: 1.25, cache_write_1h: 2, cached_input: 0.1, output: 5 }',
+      '    login:',
+      `      file: ${loginPath}`,
+      `      routeKeyFile: ${join(ctx.directory, 'plan-key')}`,
+    ].join('\n'),
+  );
+
+  const child = Bun.spawn(
+    [
+      process.execPath,
+      ctx.entry,
+      'chatgpt-logout',
+      '--config',
+      join(ctx.directory, 'proxy.yaml'),
+      '--route',
+      'codex-plan',
+    ],
+    { stdin: 'ignore', stdout: 'pipe', stderr: 'ignore' },
+  );
+
+  const [code, output] = await Promise.all([child.exited, new Response(child.stdout).text()]);
+
+  expect(code).toBe(0);
+  expect(output).toContain('Removed the login for codex-plan.');
+
+  const isLeft = await Bun.file(loginPath).exists();
+
+  expect(isLeft).toBeFalse();
+});

@@ -7,7 +7,11 @@ import { startScriptedModel, waitForCondition } from '@heynixie/testing';
 import type { ModelAPI } from '@heynixie/wire';
 import { encodeCaptureTag, formatSpoolFileName, openSpoolFile } from '@heynixie/wire';
 import { createSpoolRecipient } from '@heynixie/wire/test-utils';
+import { createPlanLogin } from '../login/create-plan-login';
+import { writeLoginFile } from '../login/write-login-file';
 import { createPeriodStore } from '../periods/create-period-store';
+import { buildLoginFile } from '../test-utils/build-login-file';
+import { buildTestJWT } from '../test-utils/build-test-jwt';
 import type { CaptureSpool } from '../usage/create-capture-spool';
 import { createCaptureSpool } from '../usage/create-capture-spool';
 import { createCounterStore } from '../usage/create-counter-store';
@@ -65,6 +69,7 @@ async function setupTest() {
           providerPin: options.providerPin ?? null,
           prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
           maxOutputTokens: null,
+          login: null,
         },
       },
       limits: { dollars: 1, tokens: null },
@@ -115,6 +120,112 @@ async function setupTest() {
       return { response, upstreamCalls };
     },
     makeHandler,
+
+    // a Responses route that holds a plan login, whose refresh answers with `refresh`
+    startPlanHandler: async (
+      options: {
+        upstreamStatus?: number;
+        login?: Parameters<typeof buildLoginFile>[0];
+        refresh?: () => Response;
+        now?: () => number;
+      } = {},
+    ) => {
+      await writeFile(storePath, '{"dollars":0,"tokens":0}');
+
+      const loginPath = join(directory, 'plan-login.json');
+      const routeKeyFile = join(directory, 'plan-key');
+
+      await writeFile(routeKeyFile, 'route-key-1\n');
+      await writeLoginFile(loginPath, buildLoginFile(options.login));
+
+      const clock = options.now ?? (() => Date.parse('2026-11-14T10:00:00Z'));
+      const refreshes: string[] = [];
+      let issued = 0;
+
+      const planLogin = await createPlanLogin({
+        routeID: 'codex-plan',
+        config: { file: loginPath, routeKeyFile },
+        send: (_url, init) => {
+          refreshes.push(String(init.body));
+
+          issued += 1;
+
+          const token = buildTestJWT({
+            jti: `access-${String(issued)}`,
+            exp: clock() / 1000 + 3600,
+          });
+
+          const issuedAnswer = Response.json({
+            access_token: token,
+            refresh_token: `refresh-token-${String(issued + 1)}`,
+          });
+
+          return Promise.resolve(options.refresh?.() ?? issuedAnswer);
+        },
+        now: clock,
+        sleep: () => Promise.resolve(),
+        log,
+      });
+
+      const upstreamCalls: { url: string; headers: Headers; body: string }[] = [];
+
+      const handler = makeProxyHandler({
+        routes: {
+          'codex-plan': {
+            api: 'openai-responses',
+            upstream: 'http://chatgpt.test/backend-api/codex',
+            model: 'model-o',
+            providerPin: null,
+            prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
+            maxOutputTokens: 1000,
+            login: { file: loginPath, routeKeyFile },
+          },
+        },
+        planLogins: { 'codex-plan': planLogin },
+        limits: { dollars: 1, tokens: null },
+        store: await createCounterStore(storePath),
+        capture: null,
+        sendUpstream: async (url, init) => {
+          upstreamCalls.push({
+            url,
+            headers: new Headers(init.headers),
+            body: await new Response(init.body).text(),
+          });
+
+          return options.upstreamStatus === undefined || options.upstreamStatus === 200
+            ? Response.json({ id: 'resp_1', usage: { input_tokens: 10, output_tokens: 2 } })
+            : new Response('{}', { status: options.upstreamStatus });
+        },
+        log,
+      });
+
+      return {
+        upstreamCalls,
+        refreshes,
+        loginPath,
+        ask: (
+          init: {
+            authorization?: string | null;
+            path?: string;
+            method?: string;
+            body?: unknown;
+          } = {},
+        ) =>
+          handler(
+            new Request(`http://proxy.test${init.path ?? '/codex-plan/responses'}`, {
+              method: init.method ?? 'POST',
+              headers:
+                init.authorization === null
+                  ? { 'x-api-key': 'placeholder' }
+                  : { authorization: init.authorization ?? 'Bearer route-key-1' },
+              body:
+                init.method === 'GET'
+                  ? null
+                  : JSON.stringify(init.body ?? { model: 'model-o', input: 'Review the plan.' }),
+            }),
+          ),
+      };
+    },
     startLimitsHandler: async (
       route: LimitsRoute,
       sendUpstream: (url: string, init: RequestInit) => Promise<Response>,
@@ -132,6 +243,7 @@ async function setupTest() {
             providerPin: null,
             prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
             maxOutputTokens: route.maxOutputTokens,
+            login: null,
           },
         },
         limits: { dollars: 1, tokens: null },
@@ -176,6 +288,7 @@ async function setupTest() {
             providerPin: null,
             prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
             maxOutputTokens: null,
+            login: null,
           },
         },
         periods: { store, countBySandbox: true, log },
@@ -216,6 +329,7 @@ test('it prices a reply through its route profile, the 1-hour cache write price 
         providerPin: null,
         prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
         maxOutputTokens: null,
+        login: null,
       },
     },
     limits: { dollars: 1, tokens: null },
@@ -267,6 +381,7 @@ test('it prices a streamed reply from its message start and its last delta', asy
         providerPin: null,
         prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
         maxOutputTokens: null,
+        login: null,
       },
     },
     limits: { dollars: 1, tokens: null },
@@ -324,6 +439,7 @@ test.each([
           providerPin: null,
           prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
           maxOutputTokens: null,
+          login: null,
         },
       },
       limits: { dollars: 1, tokens: null },
@@ -362,6 +478,7 @@ test('it refuses a background Responses request, whose reply holds no usage, and
         providerPin: null,
         prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
         maxOutputTokens: null,
+        login: null,
       },
     },
     limits: { dollars: 1, tokens: null },
@@ -407,6 +524,7 @@ test('it refuses a Messages request on a Responses route and sends nothing on', 
         providerPin: null,
         prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
         maxOutputTokens: null,
+        login: null,
       },
     },
     limits: { dollars: 1, tokens: null },
@@ -449,6 +567,7 @@ test('it refuses every request once the replies it counted reach its dollar limi
         providerPin: null,
         prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
         maxOutputTokens: null,
+        login: null,
       },
     },
     limits: { dollars: 0.01, tokens: null },
@@ -508,6 +627,7 @@ test('it refuses every request once the replies it counted reach its token limit
         providerPin: null,
         prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
         maxOutputTokens: null,
+        login: null,
       },
     },
     limits: { dollars: null, tokens: 1000 },
@@ -551,6 +671,7 @@ test('it logs the limit once when a count reaches it', async () => {
         providerPin: null,
         prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
         maxOutputTokens: null,
+        login: null,
       },
     },
     limits: { dollars: null, tokens: 1000 },
@@ -596,6 +717,7 @@ test('it refuses every request when its counter store is down', async () => {
         providerPin: null,
         prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
         maxOutputTokens: null,
+        login: null,
       },
     },
     limits: { dollars: 1, tokens: null },
@@ -645,6 +767,7 @@ test('it refuses every request when its counter store holds no count it can read
         providerPin: null,
         prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
         maxOutputTokens: null,
+        login: null,
       },
     },
     limits: { dollars: 1, tokens: null },
@@ -696,6 +819,7 @@ test('it answers a 502 and counts the estimate, so the next request passes, when
         providerPin: null,
         prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
         maxOutputTokens: null,
+        login: null,
       },
     },
     limits: { dollars: 1, tokens: null },
@@ -772,6 +896,7 @@ test('it counts the estimate, so the next request passes, when a streamed reply 
         providerPin: null,
         prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
         maxOutputTokens: null,
+        login: null,
       },
     },
     limits: { dollars: 1, tokens: null },
@@ -843,6 +968,7 @@ test('it refuses every later request once a count fails to write, even after the
         providerPin: null,
         prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
         maxOutputTokens: null,
+        login: null,
       },
     },
     limits: { dollars: 1, tokens: null },
@@ -893,6 +1019,7 @@ test('it refuses a request for a model its route does not price', async () => {
         providerPin: null,
         prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
         maxOutputTokens: null,
+        login: null,
       },
     },
     limits: { dollars: 1, tokens: null },
@@ -941,6 +1068,7 @@ test('it refuses a message request whose body names no model', async () => {
         providerPin: null,
         prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
         maxOutputTokens: null,
+        login: null,
       },
     },
     limits: { dollars: 1, tokens: null },
@@ -993,6 +1121,7 @@ test.each([
         providerPin: null,
         prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
         maxOutputTokens: null,
+        login: null,
       },
     },
     limits: { dollars: 1, tokens: null },
@@ -1024,6 +1153,7 @@ test('it sends on a request for the model list', async () => {
         providerPin: null,
         prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
         maxOutputTokens: null,
+        login: null,
       },
     },
     limits: { dollars: 1, tokens: null },
@@ -1054,6 +1184,7 @@ test('it answers a path outside every route with a 404 and sends nothing on', as
         providerPin: null,
         prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
         maxOutputTokens: null,
+        login: null,
       },
     },
     limits: { dollars: 1, tokens: null },
@@ -1090,6 +1221,7 @@ test('it sends a request on with its path past the route, its query and its cred
         providerPin: null,
         prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
         maxOutputTokens: null,
+        login: null,
       },
     },
     limits: { dollars: 1, tokens: null },
@@ -1141,6 +1273,7 @@ test('it passes an upstream error through without counting it', async () => {
         providerPin: null,
         prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
         maxOutputTokens: null,
+        login: null,
       },
     },
     limits: { dollars: 1, tokens: null },
@@ -1180,6 +1313,7 @@ test('it answers a 502 when the upstream cannot be reached', async () => {
         providerPin: null,
         prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
         maxOutputTokens: null,
+        login: null,
       },
     },
     limits: { dollars: 1, tokens: null },
@@ -1219,6 +1353,7 @@ test('it counts the estimate, so the next request passes, once a message call fa
         providerPin: null,
         prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
         maxOutputTokens: null,
+        login: null,
       },
     },
     limits: { dollars: 1, tokens: null },
@@ -1283,6 +1418,7 @@ test('it admits a request again once an operator removes the lost mark, with no 
         providerPin: null,
         prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
         maxOutputTokens: null,
+        login: null,
       },
     },
     limits: { dollars: 1, tokens: null },
@@ -1341,6 +1477,7 @@ test('it refuses a request that arrives while the lost mark is still being writt
         providerPin: null,
         prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
         maxOutputTokens: null,
+        login: null,
       },
     },
     limits: { dollars: 1, tokens: null },
@@ -1394,6 +1531,7 @@ test('it refuses every request after a restart once a lost count marks its store
         providerPin: null,
         prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
         maxOutputTokens: null,
+        login: null,
       },
     },
     limits: { dollars: 1, tokens: null },
@@ -1452,6 +1590,7 @@ test('it counts the estimate, so the next request passes, once a successful mess
         providerPin: null,
         prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
         maxOutputTokens: null,
+        login: null,
       },
     },
     limits: { dollars: 1, tokens: null },
@@ -1503,6 +1642,7 @@ test('it keeps sending on after a call that spends nothing fails', async () => {
         providerPin: null,
         prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
         maxOutputTokens: null,
+        login: null,
       },
     },
     limits: { dollars: 1, tokens: null },
@@ -1955,6 +2095,7 @@ test.each([
         providerPin: null,
         prices,
         maxOutputTokens: null,
+        login: null,
       },
       router: {
         api: 'anthropic-messages',
@@ -1963,6 +2104,7 @@ test.each([
         providerPin: 'z-ai',
         prices,
         maxOutputTokens: null,
+        login: null,
       },
     },
     limits: { dollars: 1, tokens: null },
@@ -2552,6 +2694,7 @@ test.each([
         providerPin: null,
         prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
         maxOutputTokens: null,
+        login: null,
       },
     },
     limits: { dollars: 1, tokens: null },
@@ -2595,6 +2738,7 @@ test('it charges the usage a stream reported when a stop cuts it off, and a late
         providerPin: null,
         prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
         maxOutputTokens: null,
+        login: null,
       },
     },
     limits: { dollars: 1, tokens: null },
@@ -2639,4 +2783,156 @@ test('it charges the usage a stream reported when a stop cuts it off, and a late
 
   expect([counted.tokens, counted.lost]).toStrictEqual([10_000, false]);
   expect(counted.dollars).toBeCloseTo(0.023, 9);
+});
+
+test('it sends a plan request upstream with the access token in place of the route key', async () => {
+  const ctx = await setupTest();
+  const plan = await ctx.startPlanHandler();
+  const response = await plan.ask();
+
+  expect(response.status).toBe(200);
+
+  expect(plan.upstreamCalls).toStrictEqual([
+    {
+      url: 'http://chatgpt.test/backend-api/codex/responses',
+      headers: expect.any(Headers),
+      body: JSON.stringify({ model: 'model-o', input: 'Review the plan.' }),
+    },
+  ]);
+
+  expect(
+    Object.fromEntries(plan.upstreamCalls[0]?.headers.entries() ?? [])['authorization'],
+  ).toStartWith('Bearer ');
+
+  const authorization = plan.upstreamCalls[0]?.headers.get('authorization') ?? '';
+
+  expect(authorization).toStartWith('Bearer ');
+  expect(authorization).not.toContain('route-key-1');
+  expect(plan.refreshes).toHaveLength(1);
+});
+
+test('it counts a plan request under the route prices', async () => {
+  const ctx = await setupTest();
+  const plan = await ctx.startPlanHandler();
+  const response = await plan.ask();
+
+  await response.text();
+
+  const totals = await createCounterStore(ctx.storePath).then((store) => store.read());
+
+  // 10 × $1 + 2 × $5, per million tokens
+  expect(totals).toStrictEqual({ dollars: 0.00002, tokens: 12, lost: false });
+});
+
+test.each([
+  ['a wrong key', 'Bearer other-key'],
+  ['no authorization header', null],
+  ['a key of another length', 'Bearer route-key-10'],
+])(
+  'it refuses a plan request with %s with a 403 and sends nothing upstream',
+  async (_name, authorization) => {
+    const ctx = await setupTest();
+    const plan = await ctx.startPlanHandler();
+    const response = await plan.ask({ authorization });
+
+    expect(response.status).toBe(403);
+    expect(plan.upstreamCalls).toHaveLength(0);
+    expect(plan.refreshes).toHaveLength(0);
+  },
+);
+
+test('it refuses the model list on a plan route with a 403 and sends nothing upstream', async () => {
+  const ctx = await setupTest();
+  const plan = await ctx.startPlanHandler();
+  const response = await plan.ask({ method: 'GET', path: '/codex-plan/models' });
+
+  expect(response.status).toBe(403);
+  expect(plan.upstreamCalls).toHaveLength(0);
+});
+
+test('it answers a plan request with a 401 when the login needs a login, and sends nothing upstream', async () => {
+  const ctx = await setupTest();
+  const plan = await ctx.startPlanHandler({ login: { status: 'needs_login', reason: 'refused' } });
+  const response = await plan.ask();
+
+  expect(response.status).toBe(401);
+
+  const result = await response.json();
+
+  expect(result).toStrictEqual({
+    type: 'error',
+    error: { type: 'authentication_error', message: expect.stringContaining('chatgpt-login') },
+  });
+
+  expect(plan.upstreamCalls).toHaveLength(0);
+});
+
+test('it refuses a plan request that sets a service tier with a 400', async () => {
+  const ctx = await setupTest();
+  const plan = await ctx.startPlanHandler();
+
+  const response = await plan.ask({
+    body: { model: 'model-o', input: 'Review the plan.', service_tier: 'priority' },
+  });
+
+  expect(response.status).toBe(400);
+  expect(plan.upstreamCalls).toHaveLength(0);
+});
+
+test('it starts a refresh when the upstream answers 401, once the token is old enough', async () => {
+  const ctx = await setupTest();
+
+  let current = Date.parse('2026-11-14T10:00:00Z');
+
+  const plan = await ctx.startPlanHandler({ upstreamStatus: 401, now: () => current });
+
+  await plan.ask();
+
+  expect(plan.refreshes).toHaveLength(1);
+
+  current += 5 * 60_000;
+
+  const response = await plan.ask();
+
+  expect(response.status).toBe(401);
+  expect(plan.refreshes).toHaveLength(2);
+});
+
+test('it starts no refresh when the upstream answers 401 for a token under 5 minutes old', async () => {
+  const ctx = await setupTest();
+  const plan = await ctx.startPlanHandler({ upstreamStatus: 401 });
+
+  await plan.ask();
+  await plan.ask();
+
+  expect(plan.refreshes).toHaveLength(1);
+});
+
+test('it sets no credential on a route that holds no plan login', async () => {
+  const ctx = await setupTest();
+
+  const sent: Record<string, string>[] = [];
+
+  const handler = await ctx.makeHandler({
+    capture: null,
+    sendUpstream: (_url, init) => {
+      sent.push(Object.fromEntries(new Headers(init.headers).entries()));
+
+      return Promise.resolve(
+        Response.json({ id: 'msg_1', usage: { input_tokens: 1, output_tokens: 1 } }),
+      );
+    },
+  });
+
+  await handler(
+    new Request('http://proxy.test/preview/v1/messages', {
+      method: 'POST',
+      headers: { authorization: 'Bearer caller-credential' },
+      body: JSON.stringify({ model: 'model-small', messages: [] }),
+    }),
+  );
+
+  expect(sent.map((headers) => headers['authorization'])).toStrictEqual([
+    'Bearer caller-credential',
+  ]);
 });

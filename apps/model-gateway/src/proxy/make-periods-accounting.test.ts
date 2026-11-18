@@ -45,6 +45,7 @@ async function setupTest() {
     providerPin: null,
     prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
     maxOutputTokens: null,
+    login: null,
   } as const;
 
   return {

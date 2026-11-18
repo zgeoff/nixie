@@ -22,6 +22,11 @@ export function findBodyRefusal(
   body: Readonly<Record<string, unknown>>,
   route: ProxyRoute,
 ): string | null {
+  // a faster tier spends bought credits at a higher rate than the route's prices count
+  if (route.login !== null && (body['service_tier'] ?? null) !== null) {
+    return 'the model gateway counts a plan route at its own prices, so it refuses a request that sets service_tier';
+  }
+
   const field = routingFields.find((name) => Object.hasOwn(body, name));
 
   if (field !== undefined) {
