@@ -73,6 +73,31 @@ test.each([
       ],
     },
   ],
+  [
+    'a new optional key on a closed tagged oneOf choice',
+    {
+      oneOf: [
+        {
+          type: 'object',
+          properties: { kind: { const: 'a' } },
+          required: ['kind'],
+          additionalProperties: false,
+        },
+        { type: 'object', properties: { kind: { const: 'b' } }, required: ['kind'] },
+      ],
+    },
+    {
+      oneOf: [
+        {
+          type: 'object',
+          properties: { kind: { const: 'a' }, label: { type: 'boolean' } },
+          required: ['kind'],
+          additionalProperties: false,
+        },
+        { type: 'object', properties: { kind: { const: 'b' } }, required: ['kind'] },
+      ],
+    },
+  ],
 ])('it finds no breaking change in %s', (_label, released, current) => {
   expect(collectBreakingConfigChanges(released, current)).toStrictEqual([]);
 });
@@ -301,6 +326,53 @@ test.each([
     released: { oneOf: [{ type: 'string' }] },
     current: { oneOf: [{ type: 'string' }, { type: 'number' }] },
     expected: ['(root): changes the oneOf choices'],
+  },
+  {
+    label: 'a narrowed tagged oneOf choice',
+    released: {
+      oneOf: [
+        {
+          type: 'object',
+          properties: { kind: { const: 'a' }, label: { type: 'string' } },
+          required: ['kind'],
+        },
+        { type: 'object', properties: { kind: { const: 'b' } }, required: ['kind'] },
+      ],
+    },
+    current: {
+      oneOf: [
+        {
+          type: 'object',
+          properties: { kind: { const: 'a' }, label: { type: 'string', minLength: 2 } },
+          required: ['kind'],
+        },
+        { type: 'object', properties: { kind: { const: 'b' } }, required: ['kind'] },
+      ],
+    },
+    expected: ['label: adds minLength'],
+  },
+  {
+    label: 'a dropped tagged oneOf choice',
+    released: {
+      oneOf: [
+        { type: 'object', properties: { kind: { const: 'a' } }, required: ['kind'] },
+        { type: 'object', properties: { kind: { const: 'b' } }, required: ['kind'] },
+      ],
+    },
+    current: {
+      oneOf: [{ type: 'object', properties: { kind: { const: 'a' } }, required: ['kind'] }],
+    },
+    expected: ['(root): drops the oneOf choice kind "b"'],
+  },
+  {
+    label: 'a renamed tag on a oneOf choice',
+    released: {
+      oneOf: [{ type: 'object', properties: { kind: { const: 'a' } }, required: ['kind'] }],
+    },
+    current: {
+      oneOf: [{ type: 'object', properties: { kind: { const: 'c' } }, required: ['kind'] }],
+    },
+    expected: ['(root): drops the oneOf choice kind "a"'],
   },
 ])('it reports $label', (row) => {
   expect(collectBreakingConfigChanges(row.released, row.current)).toStrictEqual(row.expected);

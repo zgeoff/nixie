@@ -282,10 +282,14 @@ messages say.
 The config schema check lists each change between two copies of `config.schema.json` that can refuse
 a `config.yaml` the older copy accepts: a removed or newly required key, a narrower type, bound or
 value list, or a new pattern. A change it cannot prove harmless counts as breaking, so the list can
-hold a false alarm but never misses a break. On a pull request, the check compares with the copy on
-the pull request's base, so each pull request answers only for the change it adds. A pull request
-with a breaking change fails until its title marks a breaking change with `!`, because the squash
-merge makes the title the commit header, and release-please then lists the commit under the
-changelog's breaking changes. A title edit runs the check again. The release notes stage compares
-with the copy the last release tag holds, adds the list to the GitHub release, and carries it in
-`release.json`, so a break that merged with its marker never blocks the release.
+hold a false alarm but never misses a break. The check compares the choices of a `oneOf` one by one
+only when a required string tag, such as a model profile's `harness`, keeps them apart. It counts
+any other `oneOf` change as breaking.
+
+On a pull request, the check compares with the copy on the pull request's base, so each pull request
+answers only for the change it adds. A pull request with a breaking change fails until its title
+marks a breaking change with `!`, because the squash merge makes the title the commit header, and
+release-please then lists the commit under the changelog's breaking changes. A title edit runs the
+check again. The release notes stage compares with the copy the last release tag holds, adds the
+list to the GitHub release, and carries it in `release.json`, so a break that merged with its marker
+never blocks the release.
