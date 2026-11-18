@@ -126,15 +126,15 @@ The store refreshes OAuth tokens on the host, 5 min before expiry by default, an
 value to every grant that holds it. nixie never uses impd's own refresh, because an impd secret that
 refreshes cannot send its requests through the model gateway. A ChatGPT plan login is the one model
 credential outside the store: it lives in the model gateway, as
-[the plan login design](../../queue/plan-login-token.md) gives. A request the service rejects as
-unauthorised gets one refresh and one retry, and a second rejection marks the credential failing.
-Any other failure goes to the [action queue](../core/actions.md) and its reconciliation. The store
-runs one refresh per credential at a time, and writes a rotated refresh token in the same
-transaction as the refresh's record, so a crash after the commit never loses a rotated token. A
-crash before it loses the rotated token, and when the provider has spent the old one, the next
-refresh marks the credential `needs_consent`. Every OAuth token refreshes at least every 7 days, by
-default, so a quiet connection never lapses. A refresh that fails for a while, such as during a
-provider outage, backs off as a poll does in the
+[the model gateway's plan route](../../../architecture/policy/model-gateway.md#the-plan-route)
+gives. A request the service rejects as unauthorised gets one refresh and one retry, and a second
+rejection marks the credential failing. Any other failure goes to the
+[action queue](../core/actions.md) and its reconciliation. The store runs one refresh per credential
+at a time, and writes a rotated refresh token in the same transaction as the refresh's record, so a
+crash after the commit never loses a rotated token. A crash before it loses the rotated token, and
+when the provider has spent the old one, the next refresh marks the credential `needs_consent`.
+Every OAuth token refreshes at least every 7 days, by default, so a quiet connection never lapses. A
+refresh that fails for a while, such as during a provider outage, backs off as a poll does in the
 [trigger source](../channels/trigger-source.md#polls), and marks the credential failing after 3
 failures in a row.
 
