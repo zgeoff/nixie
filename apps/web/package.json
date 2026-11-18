@@ -49,6 +49,7 @@
     "@types/react-dom": "catalog:",
     "@vitejs/plugin-react": "catalog:",
     "@zgeoff/rig": "catalog:",
+    "@zgeoff/testing": "catalog:",
     "babel-plugin-react-compiler": "catalog:",
     "fake-indexeddb": "catalog:",
     "happy-dom": "catalog:",

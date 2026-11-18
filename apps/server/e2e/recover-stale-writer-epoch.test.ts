@@ -1,0 +1,74 @@
+import { expect, test } from 'bun:test';
+import { runOracle, startE2ENixie } from '@heynixie/server/test-utils';
+
+async function setupTest() {
+  const nixie = await startE2ENixie();
+
+  return { nixie };
+}
+
+test('it stops the stale writer at its first write, and the new writer expires its lease', async () => {
+  const ctx = await setupTest();
+
+  const processA = ctx.nixie.harness.start();
+  const lateReply = Promise.withResolvers<void>();
+
+  await processA.ready;
+
+  ctx.nixie.model.addReplies({ text: 'Late.', gate: lateReply.promise }, { text: 'Hi.' });
+  void processA.request('sendMessage', { thread: 'conversation', text: 'Hello.' });
+
+  await ctx.nixie.waitForModelCalls(1);
+  await processA.request('releaseWriterLock', null);
+
+  const processB = ctx.nixie.harness.start();
+
+  await processB.ready;
+
+  lateReply.resolve();
+
+  const exitA = await processA.exited;
+
+  await ctx.nixie.waitForRecord((record) => record.stepKey === 'conversation:1');
+  await processB.kill();
+
+  const records = await ctx.nixie.readRecords();
+
+  const conversation = records.filter((record) => record.thread === 'conversation');
+
+  const startedByA = conversation.find(
+    (record) => record.kind === 'task.step_started' && record.payload['generation'] === 1,
+  );
+
+  const expiredByB = conversation.find((record) => record.kind === 'task.lease_expired');
+
+  const oracle = await runOracle(ctx.nixie);
+
+  expect(exitA.code).not.toBe(0);
+  expect(processA.readOutput()).toInclude('"error":"StaleWriterError"');
+  expect(Number(startedByA?.sequence)).toBeLessThan(Number(expiredByB?.sequence));
+
+  expect(
+    conversation
+      .filter((record) => record.kind === 'task.step_started')
+      .map((record) => record.payload['generation']),
+  ).toStrictEqual([1, 2]);
+
+  expect(
+    conversation
+      .filter((record) => record.kind === 'task.step_committed')
+      .map((record) => record.stepKey),
+  ).toStrictEqual(['conversation:1']);
+
+  expect(records.filter((record) => record.kind === 'model.reply')).toHaveLength(1);
+
+  expect(oracle).toStrictEqual({
+    repeatedStepKeys: [],
+    repeatedActions: [],
+    strayCalls: [],
+    heldLeases: [],
+    unreadyTasks: [],
+    changedEndStates: [],
+    projectionDrift: [],
+  });
+});

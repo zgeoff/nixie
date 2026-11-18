@@ -159,6 +159,10 @@ export interface SpawnedNixieOptions {
 
   readonly release?: string;
 
+  // The entry file of the test bundle to run, where a suite gets it from a rig program; the test
+  // bundle that the unit run builds otherwise
+  readonly entry?: string;
+
   readonly backups?: boolean;
 
   // task definitions that the boot files hold, so the first seed arms their triggers
@@ -205,10 +209,8 @@ export async function createSpawnedNixie(
 
   // a start from source transpiles the whole server each time, so each start runs the test bundle
   // that the run builds once
-  const testBundle = await readTestBundle(true);
-
   const launch: Launch = {
-    entry: options.release ?? testBundle.entry,
+    entry: await readEntry(options),
     args: buildServeArgs(files),
     env: {
       NIXIE_TEST_PROVIDER_URL: doubles.provider.url,
@@ -369,6 +371,18 @@ function startLogReader(dataDir: string, stack: AsyncDisposableStack): LogReader
     readBackupSets: () => readTestBackupSets(readWriter()),
     readWriterEpoch: () => readTestWriterEpoch(readWriter()),
   };
+}
+
+async function readEntry(options: SpawnedNixieOptions): Promise<string> {
+  const given = options.release ?? options.entry;
+
+  if (given !== undefined) {
+    return given;
+  }
+
+  const bundle = await readTestBundle(true);
+
+  return bundle.entry;
 }
 
 function buildServeArgs(files: BootFiles): readonly string[] {

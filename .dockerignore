@@ -11,4 +11,5 @@
 **/.env.*
 docs
 research
-e2e
+**/e2e
+verify

@@ -7,6 +7,7 @@
     "./test-utils": "./src/test-utils/index.ts"
   },
   "scripts": {
+    "build": "bun build src/main.ts --target=bun --define NIXIE_TEST_BUILD=false --outfile dist/main.js",
     "typecheck": "tsrs --fast --noEmit"
   },
   "dependencies": {
@@ -18,6 +19,8 @@
   },
   "devDependencies": {
     "@heynixie/testing": "workspace:*",
+    "@zgeoff/rig": "catalog:",
+    "@zgeoff/testing": "catalog:",
     "tiny-invariant": "catalog:"
   }
 }
