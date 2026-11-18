@@ -259,16 +259,36 @@ Both routes follow the live stream, which starts at the head the task list read.
 reads again on a `trigger.fired`, `trigger.skipped` or `task.run_ended` record, and `/definitions`
 on a `definition.changed` record, so neither polls.
 
+## The files page
+
+`/files` lists the files that code runs wrote, from `files.list`, newest first, as a grid of tiles.
+A tile shows the file's name, short type, size and date, and links to the task that made it: a
+task's name links to its page, and the conversation links to `/`. A file that `file.send` sent
+carries a "Sent to you" mark. Three toggle buttons, All, Images and Other files, set the `kind`
+search parameter, so a reload keeps the filter.
+
+- An image tile loads its bytes through `files.read` only when the tile scrolls into view, and a tap
+  opens the full size in the image viewer. Any other tile shows no preview. The page keeps each
+  file's bytes as a blob and never navigates to them.
+- Each tile has a Download button, which saves the blob through a download link.
+- The grid loads a page of 30 files, then the next page when its end scrolls into view and when the
+  user presses Load more. A page can hold fewer than 30 files while more remain.
+- A forget on a tile is a forget of the code run's `tool_result` record, so the tile says that it
+  forgets the whole run: its output and all its files. After it, the page drops every tile of that
+  run and reads the list again.
+- An empty gallery says that files appear when nixie runs code that writes them, and a filter with
+  no match says so.
+
 ## The app shell
 
-Every page sits in one shell, which the root route renders. Its bar holds 8 links: Conversation,
-Memory, Proposals, Moments, Tasks, Ended runs, Definitions and Passkeys. The link of the current
-page carries `aria-current="page"`, and a detail page marks its parent, so a task marks Tasks. A
-page with no entry, such as the mandates page, marks nothing. Below 768px the links fold into a menu
-button that opens a side drawer. The drawer is a native modal dialog, so the rest of the page goes
-inert while it is open. It closes on a link tap, on Escape and on a tap outside it, and focus
-returns to the menu button. CSS alone switches between the bar and the button, so the server render
-matches the client. The conversation fills the height below the bar.
+Every page sits in one shell, which the root route renders. Its bar holds 10 links: Conversation,
+Memory, Proposals, Moments, Tasks, Ended runs, Files, Definitions, Reminders and Passkeys. The link
+of the current page carries `aria-current="page"`, and a detail page marks its parent, so a task
+marks Tasks. A page with no entry, such as the mandates page, marks nothing. Below 768px the links
+fold into a menu button that opens a side drawer. The drawer is a native modal dialog, so the rest
+of the page goes inert while it is open. It closes on a link tap, on Escape and on a tap outside it,
+and focus returns to the menu button. CSS alone switches between the bar and the button, so the
+server render matches the client. The conversation fills the height below the bar.
 
 ## Approvals
 

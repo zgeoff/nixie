@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as DefinitionsRouteImport } from './routes/definitions'
+import { Route as FilesRouteImport } from './routes/files'
 import { Route as MandatesRouteImport } from './routes/mandates'
 import { Route as MemoryRouteImport } from './routes/memory'
 import { Route as MomentsRouteImport } from './routes/moments'
@@ -30,6 +31,11 @@ const IndexRoute = IndexRouteImport.update({
 const DefinitionsRoute = DefinitionsRouteImport.update({
   id: '/definitions',
   path: '/definitions',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FilesRoute = FilesRouteImport.update({
+  id: '/files',
+  path: '/files',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MandatesRoute = MandatesRouteImport.update({
@@ -86,6 +92,7 @@ const TasksEndedRoute = TasksEndedRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/definitions': typeof DefinitionsRoute
+  '/files': typeof FilesRoute
   '/mandates': typeof MandatesRoute
   '/memory': typeof MemoryRoute
   '/moments': typeof MomentsRoute
@@ -100,6 +107,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/definitions': typeof DefinitionsRoute
+  '/files': typeof FilesRoute
   '/mandates': typeof MandatesRoute
   '/memory': typeof MemoryRoute
   '/moments': typeof MomentsRoute
@@ -115,6 +123,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/definitions': typeof DefinitionsRoute
+  '/files': typeof FilesRoute
   '/mandates': typeof MandatesRoute
   '/memory': typeof MemoryRoute
   '/moments': typeof MomentsRoute
@@ -131,6 +140,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/definitions'
+    | '/files'
     | '/mandates'
     | '/memory'
     | '/moments'
@@ -145,6 +155,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/definitions'
+    | '/files'
     | '/mandates'
     | '/memory'
     | '/moments'
@@ -159,6 +170,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/definitions'
+    | '/files'
     | '/mandates'
     | '/memory'
     | '/moments'
@@ -174,6 +186,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DefinitionsRoute: typeof DefinitionsRoute
+  FilesRoute: typeof FilesRoute
   MandatesRoute: typeof MandatesRoute
   MemoryRoute: typeof MemoryRoute
   MomentsRoute: typeof MomentsRoute
@@ -200,6 +213,13 @@ declare module '@tanstack/react-router' {
       path: '/definitions'
       fullPath: '/definitions'
       preLoaderRoute: typeof DefinitionsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/files': {
+      id: '/files'
+      path: '/files'
+      fullPath: '/files'
+      preLoaderRoute: typeof FilesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/mandates': {
@@ -278,6 +298,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DefinitionsRoute: DefinitionsRoute,
+  FilesRoute: FilesRoute,
   MandatesRoute: MandatesRoute,
   MemoryRoute: MemoryRoute,
   MomentsRoute: MomentsRoute,

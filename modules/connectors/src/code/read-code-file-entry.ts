@@ -1,7 +1,8 @@
 import type { Log } from '@heynixie/log';
 import { readRecords } from '@heynixie/log';
-import { z } from 'zod';
 import type { CodeFilesTables } from './code-files-tables';
+import type { CodeRunResult } from './parse-code-run-result';
+import { parseCodeRunResult } from './parse-code-run-result';
 
 export interface CodeFileRow {
   readonly thread: string;
@@ -27,17 +28,6 @@ export type CodeFileEntry =
       readonly isStream: boolean;
       readonly recordedAt: Date;
     };
-
-const streamSchema = z.object({ file: z.string().nullable() });
-const writtenSchema = z.object({ file: z.string(), path: z.string() });
-
-const resultSchema = z.object({
-  result: z.object({
-    stdout: streamSchema,
-    stderr: streamSchema,
-    files: z.array(writtenSchema),
-  }),
-});
 
 // A file of any thread, with what its run's result says about it. A file whose result record a
 // forget made unreadable reads as forgotten, with no name.
@@ -73,7 +63,7 @@ export async function readCodeFileEntry(
     return { kind: 'forgotten', row };
   }
 
-  const content = resultSchema.safeParse(found.record.erasable.fields).data?.result;
+  const content = parseCodeRunResult(found.record.erasable.fields);
 
   if (content === undefined) {
     return { kind: 'forgotten', row };
@@ -95,10 +85,7 @@ export async function readCodeFileEntry(
   };
 }
 
-function findStreamPath(
-  content: z.infer<typeof resultSchema>['result'],
-  fileID: string,
-): string | undefined {
+function findStreamPath(content: CodeRunResult, fileID: string): string | undefined {
   if (content.stdout.file === fileID) {
     return '.stdout';
   }

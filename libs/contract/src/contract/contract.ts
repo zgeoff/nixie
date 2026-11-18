@@ -1,5 +1,6 @@
 import { eventIterator, oc } from '@orpc/contract';
 import { z } from 'zod';
+import { codeFileSchema } from '../file/code-file-schema';
 import { spanSchema } from '../span/span-schema';
 import { approvalContract } from './approval-contract';
 import { clippedPayloadSchema } from './clipped-payload-schema';
@@ -419,6 +420,23 @@ export const contract = {
       })
       .input(z.object({ file: z.string().min(1).max(100) }))
       .output(z.file()),
+    list: signedIn
+      .input(
+        z.object({
+          cursor: z
+            .string()
+            .max(100)
+            .regex(/^\d+:\d+$/u)
+            .optional(),
+          kind: z.enum(['image', 'other']).optional(),
+        }),
+      )
+      .output(
+        z.object({
+          files: z.array(codeFileSchema).max(30),
+          nextCursor: z.string().nullable(),
+        }),
+      ),
   },
   nixie: {
     read: signedIn.output(z.object({ paused: pauseStateSchema })),

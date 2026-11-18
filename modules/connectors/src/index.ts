@@ -10,6 +10,8 @@ export { buildFileSendTool } from './code/build-file-send-tool';
 export { CodeSandboxDestroyError } from './code/destroy-code-run-sandboxes';
 export type { CodeFileEntry, CodeFileRow } from './code/read-code-file-entry';
 export { readCodeFileEntry } from './code/read-code-file-entry';
+export type { ListCodeFilesOptions, ListedCodeFile, ListedCodeFiles } from './code/list-code-files';
+export { listCodeFiles } from './code/list-code-files';
 export { readCodeFileBytes } from './code/read-code-file';
 export type { CodeRunCleanup } from './code/make-code-run-cleanup';
 export { makeCodeRunCleanup } from './code/make-code-run-cleanup';

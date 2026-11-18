@@ -99,6 +99,8 @@ the `codeRun` size row after a memory kill, because the program chose how much m
 - When the call has a session, the transaction first checks that no forget ended the session. When
   one did, nixie writes nothing and returns "A forget ended this session during the code run, so
   nixie kept nothing from it."
+- The files page lists only the files that the program wrote under `out/`, and never a kept stream,
+  as [the client](../channels/client.md#the-files-page) describes.
 - A code run adds its files and up to two stream files to `nixie.db` and to each backup, so the
   output limits bound the growth.
 
@@ -140,6 +142,11 @@ nothing for it, and the file stays readable. The sandbox holds unencrypted copie
 destroys each code sandbox of a call on a record it covers before it deletes any key, a running one
 included, and finds each through its owner. A conversation reset does the same for every call on the
 conversation thread.
+
+The files page forgets a file by forgetting the code run's `tool_result` record, because every file
+of a run sits under that record's key and no forget of one file alone exists. The page says so
+beside its forget control. The run's files then leave the page, and a sent file shows as forgotten
+in the conversation.
 
 When a destroy fails, the forget or the reset fails with "nixie could not destroy a code sandbox
 that holds this text. Try the forget again.", deletes no key, and a retry runs the cleanup again.

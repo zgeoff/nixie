@@ -13,6 +13,9 @@ export interface CodeRunFilesSeed {
 
   // the files the program writes, by path under the work folder, such as out/orders.csv
   readonly writes: Readonly<Record<string, string | Uint8Array<ArrayBuffer>>>;
+
+  // a stdout longer than the result shows, which the run keeps as a stream file
+  readonly longStdout?: boolean;
 }
 
 export interface SeededCodeRunFiles {
@@ -31,7 +34,10 @@ export async function seedCodeRunFiles(
   const tool = buildCodeRunTool({
     log,
     adapter: buildStubSandboxAdapter(() => Promise.resolve(0), {
-      exec: makeStubCodeExec(() => ({ writes: seed.writes })),
+      exec: makeStubCodeExec(() => ({
+        writes: seed.writes,
+        ...(seed.longStdout === true ? { stdout: 'x'.repeat(50_000) } : {}),
+      })),
     }),
     clock: log.writer.clock,
     logger: () => {},

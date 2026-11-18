@@ -1,6 +1,7 @@
 // oxlint-disable new-cap -- oRPC names a procedure's typed errors by their upper-case codes
 import { imageLimits } from '@heynixie/contract';
 import { mockImplementer } from './mock-implementer';
+import { readMockCodeFiles } from './read-mock-code-files';
 import { requireMockSession } from './require-mock-session';
 import { store } from './store';
 
@@ -25,5 +26,11 @@ export const mockFileProcedures = {
     return new File([Uint8Array.fromBase64(stored.data)], stored.name, {
       type: inlineTypes.includes(stored.mediaType) ? stored.mediaType : 'application/octet-stream',
     });
+  }),
+
+  list: mockImplementer.files.list.handler((options) => {
+    requireMockSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
+
+    return readMockCodeFiles(options.input);
   }),
 };

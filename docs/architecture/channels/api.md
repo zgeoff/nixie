@@ -382,6 +382,15 @@ browser would run. An unknown ID returns `FILE_NOT_FOUND`, and a file whose resu
 made unreadable returns `FILE_FORGOTTEN`. [The code tool](../connectors/code-tool.md#sending-a-file)
 covers how a file reaches the user.
 
+`files.list` takes an optional `kind`, `image` or `other`, and an optional cursor, and returns up to
+30 files, newest run first, with `nextCursor`. `image` lists the 4 types that `files.read` serves
+with their stored type, and `other` lists every other type. Each file holds its ID, name, size,
+type, the time of its result record, its thread, the task's ID and name (null for the conversation),
+the position of its result record, whether `file.send` sent it, and how many files its code run
+wrote. A call reads at most 300 stored rows, so a page can hold fewer than 30 files while
+`nextCursor` remains. The list leaves out the kept streams and every file whose result record a
+forget made unreadable.
+
 ## Reading and the live stream
 
 A conversation read returns the newest page of a thread before a sequence, and the log sequence it
