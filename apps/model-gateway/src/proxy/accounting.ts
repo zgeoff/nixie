@@ -16,7 +16,11 @@ export interface CountedReply {
   // null when the reply reported none the proxy can read
   readonly usage: ModelCallUsage | null;
 
-  // false for a stream that broke or was cancelled, and for a reply that never arrived
+  // the reply reported its input classes in a start event or an input count
+  readonly hasInput: boolean;
+
+  // false for a stream that broke or was cancelled, a stream or body whose usage holds only part of
+  // its counts, and a reply that never arrived
   readonly whole: boolean;
 
   // the reply spent for certain, or may have

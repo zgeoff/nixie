@@ -1,6 +1,6 @@
 import type { Logger } from '@heynixie/logger';
 import { toErrorFields } from '@heynixie/logger';
-import type { ModelAPIEndpointName, ModelCallUsage } from '@heynixie/wire';
+import type { ModelAPIEndpointName } from '@heynixie/wire';
 import {
   captureAnswerSchema,
   capturePath,
@@ -12,6 +12,7 @@ import type { CounterStore, ProxyLimits, ProxyRoute } from '../types';
 import { buildCountedStream } from '../usage/build-counted-stream';
 import { buildReplyEstimate } from '../usage/build-reply-estimate';
 import type { CaptureSpool } from '../usage/create-capture-spool';
+import type { ReadUsage } from '../usage/usage-dialects';
 import { usageDialects } from '../usage/usage-dialects';
 import { isRecord } from '../utils/is-record';
 import type { EstimateReason } from './accounting';
@@ -45,6 +46,8 @@ export type ProxyHandlerDeps = ProxyHandlerBaseDeps &
     | { readonly limits: ProxyLimits; readonly store: CounterStore }
     | { readonly periods: PeriodsAccountingDeps }
   );
+
+const noUsageRead: ReadUsage = { usage: null, isFinal: false, hasInput: false };
 
 export function makeProxyHandler(deps: ProxyHandlerDeps): (request: Request) => Promise<Response> {
   const accounting =
@@ -168,8 +171,11 @@ export function makeProxyHandler(deps: ProxyHandlerDeps): (request: Request) => 
           })
         : null;
 
+    // what the reply reported so far, which a stop that gives up counts
+    let latest: ReadUsage = noUsageRead;
+
     const countReply = (
-      usage: ModelCallUsage | null,
+      read: ReadUsage,
       whole: boolean,
       spent: boolean,
       reason: EstimateReason,
@@ -179,14 +185,15 @@ export function makeProxyHandler(deps: ProxyHandlerDeps): (request: Request) => 
         route: target.route,
         sandbox: target.sandbox,
         estimate,
-        usage,
+        usage: read.usage,
+        hasInput: read.hasInput,
         whole,
         spent,
         reason,
       });
 
     const countOnce = endpoint.spends
-      ? openReplies.open(() => countReply(null, false, true, 'shutdown'))
+      ? openReplies.open(() => countReply(latest, false, true, 'shutdown'))
       : (count: () => Promise<void>) => count();
 
     const upstream = await deps
@@ -210,7 +217,7 @@ export function makeProxyHandler(deps: ProxyHandlerDeps): (request: Request) => 
 
     // a connection can break after the model API took the call, so the model may have spent
     if (upstream === null) {
-      await countOnce(() => countReply(null, false, endpoint.spends, 'upstream_failed'));
+      await countOnce(() => countReply(noUsageRead, false, endpoint.spends, 'upstream_failed'));
 
       return renderAPIError(502, 'api_error', 'the model gateway could not reach the model API');
     }
@@ -226,7 +233,7 @@ export function makeProxyHandler(deps: ProxyHandlerDeps): (request: Request) => 
     const dialect = usageDialects[target.route.api];
 
     if (upstream.body === null) {
-      await countOnce(() => countReply(null, true, spent, 'no_usage'));
+      await countOnce(() => countReply(noUsageRead, true, spent, 'no_usage'));
 
       return new Response(null, init);
     }
@@ -234,11 +241,19 @@ export function makeProxyHandler(deps: ProxyHandlerDeps): (request: Request) => 
     // a stream that broke or was cancelled before its first usage event may still have spent
     if (upstream.headers.get('content-type')?.startsWith('text/event-stream') === true) {
       return new Response(
-        buildCountedStream(upstream.body, dialect, (usage, complete) => {
-          const reason = complete ? 'no_usage' : 'cut';
+        buildCountedStream(
+          upstream.body,
+          dialect,
+          (read, complete) => {
+            const whole = complete && read.isFinal;
+            const reason = complete ? 'no_usage' : 'cut';
 
-          return countOnce(() => countReply(usage, complete, spent || !complete, reason));
-        }),
+            return countOnce(() => countReply(read, whole, spent || !whole, reason));
+          },
+          (read) => {
+            latest = read;
+          },
+        ),
         init,
       );
     }
@@ -251,14 +266,16 @@ export function makeProxyHandler(deps: ProxyHandlerDeps): (request: Request) => 
 
     // the model may have spent on a reply whose usage never arrived
     if (text === null) {
-      await countOnce(() => countReply(null, false, endpoint.spends, 'body_failed'));
+      await countOnce(() => countReply(noUsageRead, false, endpoint.spends, 'body_failed'));
 
       return renderAPIError(502, 'api_error', 'the model gateway lost the reply of the model API');
     }
 
-    await countOnce(() =>
-      countReply(dialect.parseUsage(findBodyUsage(text)), true, spent, 'no_usage'),
-    );
+    await countOnce(() => {
+      const read = dialect.parseUsage(findBodyUsage(text), null);
+
+      return countReply(read, read.isFinal, spent, 'no_usage');
+    });
 
     return new Response(text, init);
   };

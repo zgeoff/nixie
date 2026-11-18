@@ -11,6 +11,7 @@ import { createPeriodStore } from '../periods/create-period-store';
 import type { CaptureSpool } from '../usage/create-capture-spool';
 import { createCaptureSpool } from '../usage/create-capture-spool';
 import { createCounterStore } from '../usage/create-counter-store';
+import { makeOpenReplies } from './make-open-replies';
 import { makeProxyHandler } from './make-proxy-handler';
 
 interface HandlerOptions {
@@ -2455,4 +2456,123 @@ test('it marks the count lost and names the field when a reply with no usage ans
     { route: 'preview', sandbox: 'alpha', field: 'messages.content.source' },
     'error',
   );
+});
+
+test.each([
+  {
+    title: 'a whole body whose usage holds only its input count',
+    buildReply: () => Response.json({ type: 'message', usage: { input_tokens: 9000 } }),
+  },
+  {
+    title: 'a stream that ends cleanly after its message start',
+    buildReply: () =>
+      new Response(
+        `data: ${JSON.stringify({
+          type: 'message_start',
+          message: { usage: { input_tokens: 9000, output_tokens: 1 } },
+        })}\n\n`,
+        { headers: { 'content-type': 'text/event-stream' } },
+      ),
+  },
+])('it charges the input it reported and the output bound for $title', async (row) => {
+  const ctx = await setupTest();
+
+  await writeFile(ctx.storePath, '{"dollars":0,"tokens":0}');
+
+  const store = await createCounterStore(ctx.storePath);
+
+  const handler = makeProxyHandler({
+    routes: {
+      preview: {
+        api: 'anthropic-messages',
+        upstream: 'http://model.test',
+        model: 'model-small',
+        providerPin: null,
+        prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
+        maxOutputTokens: null,
+      },
+    },
+    limits: { dollars: 1, tokens: null },
+    store,
+    capture: null,
+    sendUpstream: () => Promise.resolve(row.buildReply()),
+    log: ctx.log,
+  });
+
+  const response = await handler(
+    new Request('http://proxy.test/preview/v1/messages', {
+      method: 'POST',
+      body: JSON.stringify({ model: 'model-small', messages: [], max_tokens: 1000 }),
+    }),
+  );
+
+  await response.text();
+
+  const counted = await store.read();
+
+  // 9,000 reported input tokens at $2 and 1,000 output tokens at $5, per million
+  expect(counted).toStrictEqual({ dollars: expect.closeTo(0.023, 9), tokens: 10_000, lost: false });
+});
+
+test('it charges the usage a stream reported when a stop cuts it off, and a later cancel adds nothing', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(ctx.storePath, '{"dollars":0,"tokens":0}');
+
+  const store = await createCounterStore(ctx.storePath);
+
+  const openReplies = makeOpenReplies();
+
+  const handler = makeProxyHandler({
+    routes: {
+      preview: {
+        api: 'anthropic-messages',
+        upstream: 'http://model.test',
+        model: 'model-small',
+        providerPin: null,
+        prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
+        maxOutputTokens: null,
+      },
+    },
+    limits: { dollars: 1, tokens: null },
+    store,
+    capture: null,
+    openReplies,
+    sendUpstream: () =>
+      Promise.resolve(
+        new Response(
+          new ReadableStream<Uint8Array>({
+            start: (controller) => {
+              controller.enqueue(
+                new TextEncoder().encode(
+                  `data: ${JSON.stringify({
+                    type: 'message_start',
+                    message: { usage: { input_tokens: 9000, output_tokens: 1 } },
+                  })}\n\n`,
+                ),
+              );
+            },
+          }),
+          { headers: { 'content-type': 'text/event-stream' } },
+        ),
+      ),
+    log: ctx.log,
+  });
+
+  const response = await handler(
+    new Request('http://proxy.test/preview/v1/messages', {
+      method: 'POST',
+      body: JSON.stringify({ model: 'model-small', messages: [], stream: true, max_tokens: 1000 }),
+    }),
+  );
+
+  const reader = response.body?.getReader();
+
+  await reader?.read();
+  await openReplies.countAtStop();
+  await reader?.cancel();
+
+  const counted = await store.read();
+
+  expect(counted).toStrictEqual({ dollars: expect.closeTo(0.023, 9), tokens: 10_000, lost: false });
 });

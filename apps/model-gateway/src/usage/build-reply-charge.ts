@@ -12,10 +12,13 @@ export interface ReplyChargeRequest {
 
   // what the reply reported before it ended, or null when it reported none
   readonly usage: ModelCallUsage | null;
+
+  // the usage holds input classes a start event or an input count reported
+  readonly hasInput: boolean;
 }
 
 // The output side is the output bound at the highest output rate. A cut stream from Anthropic's own
-// API charges the input its first event reported, which is final there. Any other input side is the
+// API charges the input its start event reported, which is final there. Any other input side is the
 // larger of the byte bound and the reported input.
 export function buildReplyCharge(request: ReplyChargeRequest): Measures {
   const route = request.route;
@@ -25,7 +28,7 @@ export function buildReplyCharge(request: ReplyChargeRequest): Measures {
   const outputDollars = (estimate.outputTokens * rates.output) / 1_000_000;
   const reportedInputTokens = usage === null ? 0 : sumInputTokens(usage);
 
-  if (usage !== null && isAnthropicRoute(route)) {
+  if (usage !== null && request.hasInput && isAnthropicRoute(route)) {
     return {
       dollars: buildCallCost({ ...usage, outputTokens: 0 }, route.prices) + outputDollars,
       tokens: reportedInputTokens + estimate.outputTokens,

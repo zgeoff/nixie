@@ -65,6 +65,7 @@ async function setupTest() {
       sandbox: 'alpha',
       estimate: null,
       usage: null,
+      hasInput: false,
       whole: true,
       spent: true,
       reason: 'no_usage',
@@ -159,6 +160,7 @@ test('it charges a cut stream from Anthropic its reported input at the class rat
       route: { ...ctx.route, upstream: 'https://api.anthropic.com' },
       estimate: ctx.estimate,
       usage: { ...ctx.usage(0, 3), cacheReadTokens: 9000 },
+      hasInput: true,
       whole: false,
       reason: 'cut',
     }),
@@ -168,6 +170,41 @@ test('it charges a cut stream from Anthropic its reported input at the class rat
 
   // 9,000 cache read tokens at $0.10 and 1,000 output tokens at $5, per million
   expect(stored.periods.day).toMatchObject({ dollars: 0.0059, tokens: 10_000 });
+});
+
+test('it charges the byte bound for a cut Anthropic stream that never reported its input classes', async () => {
+  const ctx = await setupTest();
+
+  await ctx.accounting.count(
+    ctx.reply({
+      route: { ...ctx.route, upstream: 'https://api.anthropic.com' },
+      estimate: ctx.estimate,
+      usage: ctx.usage(0, 3),
+      hasInput: false,
+      whole: false,
+      reason: 'cut',
+    }),
+  );
+
+  const stored = await ctx.store.read();
+
+  // 5,096 byte-bound input tokens (1,000 bytes and the 4,096 allowance) at $2, and 1,000 output
+  // tokens at $5, per million
+  expect(stored.periods.day).toMatchObject({ dollars: 0.015192, tokens: 6096 });
+});
+
+test('it charges the output bound for a reply whose usage holds only its input', async () => {
+  const ctx = await setupTest();
+
+  await ctx.accounting.count(
+    ctx.reply({ estimate: ctx.estimate, usage: ctx.usage(900, 0), whole: false }),
+  );
+
+  const stored = await ctx.store.read();
+
+  // 5,096 byte-bound input tokens beat the 900 reported, so they are priced at $2, with 1,000
+  // output tokens at $5, per million
+  expect(stored.periods.day).toMatchObject({ dollars: 0.015192, tokens: 6096 });
 });
 
 test('it admits a request again once an operator removes the lost mark, with no restart', async () => {

@@ -38,11 +38,15 @@ test('it passes every byte through and reports the usage of the message start an
 
   expect(onEnd).toHaveBeenCalledExactlyOnceWith(
     {
-      uncachedInputTokens: 40,
-      cacheReadTokens: 0,
-      cacheWrite5mTokens: 0,
-      cacheWrite1hTokens: 2000,
-      outputTokens: 12,
+      usage: {
+        uncachedInputTokens: 40,
+        cacheReadTokens: 0,
+        cacheWrite5mTokens: 0,
+        cacheWrite1hTokens: 2000,
+        outputTokens: 12,
+      },
+      isFinal: true,
+      hasInput: true,
     },
     true,
   );
@@ -72,11 +76,15 @@ test('it reports the usage seen so far when the reader stops early', async () =>
 
   expect(onEnd).toHaveBeenCalledExactlyOnceWith(
     {
-      uncachedInputTokens: 40,
-      cacheReadTokens: 0,
-      cacheWrite5mTokens: 0,
-      cacheWrite1hTokens: 0,
-      outputTokens: 1,
+      usage: {
+        uncachedInputTokens: 40,
+        cacheReadTokens: 0,
+        cacheWrite5mTokens: 0,
+        cacheWrite1hTokens: 0,
+        outputTokens: 1,
+      },
+      isFinal: false,
+      hasInput: true,
     },
     false,
   );
@@ -114,11 +122,15 @@ test('it reports the usage seen so far and fails the stream when the upstream br
 
   expect(onEnd).toHaveBeenCalledExactlyOnceWith(
     {
-      uncachedInputTokens: 40,
-      cacheReadTokens: 0,
-      cacheWrite5mTokens: 0,
-      cacheWrite1hTokens: 0,
-      outputTokens: 1,
+      usage: {
+        uncachedInputTokens: 40,
+        cacheReadTokens: 0,
+        cacheWrite5mTokens: 0,
+        cacheWrite1hTokens: 0,
+        outputTokens: 1,
+      },
+      isFinal: false,
+      hasInput: true,
     },
     false,
   );
@@ -137,5 +149,8 @@ test('it reports no usage for a stream with no usage event', async () => {
     buildCountedStream(upstream, usageDialects['anthropic-messages'], onEnd),
   ).text();
 
-  expect(onEnd).toHaveBeenCalledExactlyOnceWith(null, true);
+  expect(onEnd).toHaveBeenCalledExactlyOnceWith(
+    { usage: null, isFinal: false, hasInput: false },
+    true,
+  );
 });

@@ -41,6 +41,7 @@ export function pickReplyCharge(reply: CountedReply): ReplyCharge {
       route: reply.route,
       estimate: reply.estimate,
       usage: reply.usage,
+      hasInput: reply.hasInput,
     }),
   };
 }

@@ -149,10 +149,13 @@ to the provider.
 - **Output.** The output bound is the request's `max_tokens` on Messages, or `max_output_tokens` on
   Responses. When the request sets none, it is the route's `maxOutputTokens`. The gateway prices it
   at the higher of `output` and `longPrompt.output`.
-- **A cut Messages stream from Anthropic's own API.** When the stream delivered its first event, the
-  input side is that event's input counts, each class at its own rate, because that API sends the
-  final input counts there. The output side stays the output bound. On any other route, the input
-  side is the larger of the byte bound and the input the partial usage reported.
+- **A reply with part of its usage, or a cut Messages stream from Anthropic's own API.** A usage
+  that holds only some of its counts, and a stream that ends without its final usage, count as
+  uncounted. When the stream delivered its first event with input counts, the input side is those
+  counts, each class at its own rate, because that API sends the final input counts there. The
+  output side stays the output bound. With no such event, and on any other route, the input side is
+  the larger of the byte bound and the input the partial usage reported. A stop that cuts off an
+  open reply charges what it had reported by then, the same way.
 
 A cut or cancelled stream charges the full output bound. That over-counts the budget, and never the
 real bill.
