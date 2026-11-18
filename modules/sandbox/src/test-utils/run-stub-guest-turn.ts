@@ -25,6 +25,10 @@ export type StubGuestReply =
 
       // the guest reports the call's usage before the gate opens
       readonly usage?: ModelCallUsage;
+
+      // the reply ends with a reasoning block after its text, which the CLI sends as a message of
+      // its own with no text and no tool use
+      readonly isReasoningLast?: boolean;
     }
   | {
       readonly toolUse: {
@@ -272,6 +276,15 @@ async function runInputCall(
           text: answered.text,
           toolUses: [],
         });
+
+        if (answered.isReasoningLast === true) {
+          frames.push({
+            type: 'assistant',
+            messageID: crypto.randomUUID(),
+            text: '',
+            toolUses: [],
+          });
+        }
 
         return {
           frames,
