@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.83.0](https://github.com/zgeoff/nixie/compare/v0.82.0...v0.83.0) (2026-11-18)
+
+
+### Features
+
+* **web:** add the files page for code-run files ([#1219](https://github.com/zgeoff/nixie/issues/1219)) ([7c6db4e](https://github.com/zgeoff/nixie/commit/7c6db4e74935baf4c99a39dad18b6ddb8f67f8e4))
+
 ## [0.82.0](https://github.com/zgeoff/nixie/compare/v0.81.0...v0.82.0) (2026-11-18)
 
 
