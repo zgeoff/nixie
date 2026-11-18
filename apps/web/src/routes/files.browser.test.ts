@@ -1,6 +1,6 @@
 import { expect, onTestFinished, test } from 'bun:test';
 import { store } from '../mocks/store';
-import { seedCodeRunFiles } from '../test-utils/seed-code-run-files';
+import { seedCodeRunFilePages, seedCodeRunFiles } from '../test-utils/seed-code-run-files';
 import { setupSignedInBrowser } from '../test-utils/setup-signed-in-browser';
 import { startBuiltWeb } from '../test-utils/start-built-web';
 import { startFrontProxy } from '../test-utils/start-front-proxy';
@@ -136,4 +136,48 @@ test('it removes every tile of a code run when one of its files is forgotten', a
   );
 
   expect(tiles).toStrictEqual([expect.stringContaining('beds.csv')]);
+});
+
+test('it loads the next page when the end of the grid scrolls into view', async () => {
+  const ctx = await setupTest();
+
+  await seedCodeRunFilePages();
+
+  await ctx.open('/files');
+
+  await waitForPage(ctx.view, "document.body.innerText.includes('part-29.csv')");
+
+  const first: unknown = await ctx.view.evaluate("document.querySelectorAll('li').length");
+
+  expect(first).toBe(30);
+
+  await ctx.view.evaluate(
+    "[...document.querySelectorAll('button')].find((button) => button.textContent === 'Load more').scrollIntoView()",
+  );
+
+  await waitForPage(ctx.view, "document.body.innerText.includes('part-34.csv')");
+
+  const second: unknown = await ctx.view.evaluate("document.querySelectorAll('li').length");
+
+  expect(second).toBe(35);
+});
+
+test('it loads the next page when Load more is pressed', async () => {
+  const ctx = await setupTest();
+
+  await seedCodeRunFilePages();
+
+  await ctx.open('/files');
+
+  await waitForPage(ctx.view, "document.body.innerText.includes('part-29.csv')");
+
+  await ctx.view.evaluate(
+    "[...document.querySelectorAll('button')].find((button) => button.textContent === 'Load more').click()",
+  );
+
+  await waitForPage(ctx.view, "document.body.innerText.includes('part-34.csv')");
+
+  const tiles: unknown = await ctx.view.evaluate("document.querySelectorAll('li').length");
+
+  expect(tiles).toBe(35);
 });

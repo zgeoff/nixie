@@ -35,3 +35,18 @@ export async function seedCodeRunFiles(): Promise<void> {
 
   await store.records.create({ kind: 'tool_result', sequence: 20, thread: 'conversation' });
 }
+
+// One code run of 35 CSV files, which fill a first page of 30 files and leave 5 for the second.
+export async function seedCodeRunFilePages(): Promise<void> {
+  for (let position = 0; position < 35; position += 1) {
+    // oxlint-disable-next-line no-await-in-loop -- the rows keep their order
+    await store.files.create({
+      file: `f${String(position).padStart(9, '0')}`,
+      name: `part-${String(position).padStart(2, '0')}.csv`,
+      mediaType: 'text/csv',
+      data: btoa('a\n'),
+      sequence: 30,
+      position,
+    });
+  }
+}

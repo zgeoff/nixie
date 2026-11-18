@@ -3,6 +3,7 @@ import { seedCodeRunFiles } from '@heynixie/connectors/test-utils';
 import { clientHeaderName } from '@heynixie/contract';
 import type { LogTables } from '@heynixie/log';
 import { removeRecordKey } from '@heynixie/log';
+import { seedDefinitionTask, seedEndedDefinitionRun } from '@heynixie/tasks/test-utils';
 import invariant from 'tiny-invariant';
 import { buildTestClient } from '../test-utils/build-test-client';
 import { createDeviceSession } from '../test-utils/create-device-session';
@@ -167,4 +168,33 @@ test('#files.list lists only images with the image filter', async () => {
   const listed = await ctx.client.files.list({ kind: 'image' });
 
   expect(listed.files.map((file) => file.name)).toStrictEqual(['chart.png']);
+});
+
+test('#files.list names the task of a definition that left force', async () => {
+  const ctx = await setupTest();
+
+  const taskID = await seedDefinitionTask(ctx, {
+    definitionID: 'water-the-tomatoes',
+    definitionHash: 'hash-1',
+    version: { name: 'Water the tomatoes' },
+  });
+
+  await seedEndedDefinitionRun(ctx.context, {
+    taskID,
+    definitionID: 'water-the-tomatoes',
+    definitionHash: 'hash-1',
+  });
+
+  await seedDefinitionTask(ctx, { definitionID: 'water-the-tomatoes', definitionHash: null });
+
+  await seedCodeRunFiles(ctx.context.log, {
+    thread: taskID,
+    writes: { 'out/beds.csv': 'a\n' },
+  });
+
+  const listed = await ctx.client.files.list({});
+
+  expect(listed.files.map((file) => [file.name, file.taskID, file.taskName])).toStrictEqual([
+    ['beds.csv', taskID, 'Water the tomatoes'],
+  ]);
 });

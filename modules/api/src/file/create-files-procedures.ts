@@ -1,7 +1,7 @@
 import { listCodeFiles, readCodeFileBytes, readCodeFileEntry } from '@heynixie/connectors';
 // oxlint-disable new-cap -- oRPC names a procedure's typed errors by their upper-case codes
 import { imageLimits } from '@heynixie/contract';
-import { readTaskDirectory } from '@heynixie/tasks';
+import { readTaskNames } from '@heynixie/tasks';
 import { requireCaller } from '../memory/require-caller';
 import type { APIContext } from '../types';
 import { apiImplementer } from '../utils/api-implementer';
@@ -45,11 +45,7 @@ export function createFilesProcedures(context: APIContext) {
         limit: pageSize,
       });
 
-      const messaging = await readTaskDirectory(context, {
-        directory: context.settings.taskDirectory,
-      });
-
-      const names = new Map(messaging.directory.map((task) => [task.taskID, task.name]));
+      const names = await readTaskNames(context);
 
       return {
         nextCursor: page.nextCursor,
