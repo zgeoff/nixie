@@ -12,11 +12,40 @@ test('it reads a route that names the Responses API', () => {
         upstream: 'https://models.example.com',
         model: 'model-o',
         prices: { input: 1, cache_write: 1.25, cache_write_1h: 2.5, cached_input: 0.1, output: 8 },
+        maxOutputTokens: 32_000,
       },
     },
   });
 
   expect(result.data?.routes['review']?.api).toBe('openai-responses');
+});
+
+test('it rejects a Responses route with no maxOutputTokens, and names the route and the field', () => {
+  const ctx = setupTest();
+  const result = proxyConfigSchema.safeParse(ctx.buildRouteConfig({ api: 'openai-responses' }));
+
+  expect(result.error?.issues.map((issue) => [issue.path.join('.'), issue.message])).toStrictEqual([
+    [
+      'routes.review.maxOutputTokens',
+      expect.stringContaining(
+        'the route review speaks openai-responses and sets no maxOutputTokens',
+      ),
+    ],
+  ]);
+});
+
+test('it reads a Messages route with no maxOutputTokens as null', () => {
+  const ctx = setupTest();
+  const result = proxyConfigSchema.safeParse(ctx.buildRouteConfig({}));
+
+  expect(result.data?.routes['review']?.maxOutputTokens).toBeNull();
+});
+
+test('it reads the maxOutputTokens of a route as given', () => {
+  const ctx = setupTest();
+  const result = proxyConfigSchema.safeParse(ctx.buildRouteConfig({ maxOutputTokens: 64_000 }));
+
+  expect(result.data?.routes['review']?.maxOutputTokens).toBe(64_000);
 });
 
 test('it rejects a route that names an API the proxy does not count', () => {
@@ -64,6 +93,7 @@ test('it reads a config into its typed shape, with a trailing slash cut from the
         model: 'model-small',
         providerPin: null,
         prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
+        maxOutputTokens: null,
       },
     },
   });
@@ -267,6 +297,25 @@ test('it rejects a capture key it does not know', () => {
 
 function setupTest() {
   return {
+    buildRouteConfig: (route: Record<string, unknown>) => ({
+      listen: { port: 18_090 },
+      store: '/var/lib/model-gateway/counter.json',
+      limits: { dollars: 5 },
+      routes: {
+        review: {
+          upstream: 'https://models.example.com',
+          model: 'model-o',
+          prices: {
+            input: 1,
+            cache_write: 1.25,
+            cache_write_1h: 2.5,
+            cached_input: 0.1,
+            output: 8,
+          },
+          ...route,
+        },
+      },
+    }),
     periodsConfig: {
       listen: { port: 18_090 },
       store: '/var/lib/model-gateway/counter.json',

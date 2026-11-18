@@ -365,7 +365,7 @@ test('it closes a reply that outlasts the drain deadline and resolves the stop',
   expect(settled?.status).toBe('rejected');
 });
 
-test('it refuses every request after a restart once a stop cut off a reply at the drain deadline', async () => {
+test('it charges the estimate of a reply a stop cut off at the drain deadline, and serves the next start', async () => {
   const ctx = await setupTest();
 
   // the reply never starts until the test ends
@@ -406,7 +406,7 @@ test('it refuses every request after a restart once a stop cut off a reply at th
   const reply = Promise.allSettled([
     fetch(`${proxy.url}/preview/v1/messages`, {
       method: 'POST',
-      body: JSON.stringify({ model: 'model-small', messages: [], stream: true }),
+      body: JSON.stringify({ model: 'model-small', messages: [], stream: true, max_tokens: 1000 }),
     }),
   ]);
 
@@ -415,6 +415,8 @@ test('it refuses every request after a restart once a stop cut off a reply at th
   await waitForCondition(() => ctx.model.requests.length === 1);
 
   await proxy.stop();
+
+  const stored = await readFile(join(ctx.directory, 'counter.json'), 'utf8');
 
   const restarted = await startModelGateway({
     configPath: join(ctx.directory, 'proxy.yaml'),
@@ -429,8 +431,22 @@ test('it refuses every request after a restart once a stop cut off a reply at th
     body: JSON.stringify({ model: 'model-small', messages: [] }),
   });
 
-  expect(response.status).toBe(503);
-  expect(ctx.model.requests).toHaveLength(1);
+  // the stream's body of 69 bytes and 4,096 allowance tokens in, and 1,000 tokens out
+  expect(JSON.parse(stored)).toStrictEqual({ dollars: expect.closeTo(0.01333, 9), tokens: 5165 });
+  expect(response.status).toBe(200);
+  expect(ctx.model.requests).toHaveLength(2);
+
+  expect(ctx.log).toHaveBeenCalledWith(
+    'count.estimated',
+    {
+      route: 'preview',
+      sandbox: null,
+      reason: 'shutdown',
+      dollars: expect.closeTo(0.01333, 9),
+      tokens: 5165,
+    },
+    'warn',
+  );
 });
 
 test('it leaves the count unmarked when a stop finds no reply under way', async () => {

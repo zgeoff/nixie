@@ -1,6 +1,6 @@
 import type { Logger } from '@heynixie/logger';
 import { toErrorFields } from '@heynixie/logger';
-import type { ModelAPIEndpointName } from '@heynixie/wire';
+import type { ModelAPIEndpointName, ModelCallUsage } from '@heynixie/wire';
 import {
   captureAnswerSchema,
   capturePath,
@@ -10,14 +10,18 @@ import {
 import invariant from 'tiny-invariant';
 import type { CounterStore, ProxyLimits, ProxyRoute } from '../types';
 import { buildCountedStream } from '../usage/build-counted-stream';
+import { buildReplyEstimate } from '../usage/build-reply-estimate';
 import type { CaptureSpool } from '../usage/create-capture-spool';
 import { usageDialects } from '../usage/usage-dialects';
 import { isRecord } from '../utils/is-record';
+import type { EstimateReason } from './accounting';
 import { findBodyRefusal } from './find-body-refusal';
 import { findHeaderRefusal } from './find-header-refusal';
 import { findProxyEndpoint } from './find-proxy-endpoint';
 import { hasDuplicateKey } from './has-duplicate-key';
 import { makeLimitsAccounting } from './make-limits-accounting';
+import { makeOpenReplies } from './make-open-replies';
+import type { OpenReplies } from './make-open-replies';
 import type { PeriodsAccountingDeps } from './make-periods-accounting';
 import { makePeriodsAccounting } from './make-periods-accounting';
 import { renderAPIError } from './render-api-error';
@@ -27,6 +31,9 @@ interface ProxyHandlerBaseDeps {
 
   // null when the config holds no capture key
   readonly capture: CaptureSpool | null;
+
+  // the replies under way, which a stop that gives up counts; one the handler makes when absent
+  readonly openReplies?: OpenReplies;
   readonly sendUpstream: (url: string, init: RequestInit) => Promise<Response>;
   readonly log: Logger;
 }
@@ -46,6 +53,7 @@ export function makeProxyHandler(deps: ProxyHandlerDeps): (request: Request) => 
       : makeLimitsAccounting({ limits: deps.limits, store: deps.store, log: deps.log });
 
   const countBySandbox = 'periods' in deps && deps.periods.countBySandbox;
+  const openReplies = deps.openReplies ?? makeOpenReplies();
 
   return async (request) => {
     const receivedAt = Date.now();
@@ -149,6 +157,38 @@ export function makeProxyHandler(deps: ProxyHandlerDeps): (request: Request) => 
             body: new Uint8Array(body),
           });
 
+    // built once, before the request goes upstream; a reply that never ends whole is charged it
+    const estimate =
+      endpoint.spends && parsed !== null && body !== null
+        ? buildReplyEstimate({
+            route: target.route,
+            api: target.route.api,
+            body: parsed.data,
+            byteLength: body.byteLength,
+          })
+        : null;
+
+    const countReply = (
+      usage: ModelCallUsage | null,
+      whole: boolean,
+      spent: boolean,
+      reason: EstimateReason,
+    ): Promise<void> =>
+      accounting.count({
+        routeID: target.routeID,
+        route: target.route,
+        sandbox: target.sandbox,
+        estimate,
+        usage,
+        whole,
+        spent,
+        reason,
+      });
+
+    const countOnce = endpoint.spends
+      ? openReplies.open(() => countReply(null, false, true, 'shutdown'))
+      : (count: () => Promise<void>) => count();
+
     const upstream = await deps
       .sendUpstream(`${target.route.upstream}${target.path}${url.search}`, {
         method: request.method,
@@ -170,9 +210,7 @@ export function makeProxyHandler(deps: ProxyHandlerDeps): (request: Request) => 
 
     // a connection can break after the model API took the call, so the model may have spent
     if (upstream === null) {
-      if (endpoint.spends) {
-        await accounting.loseCount();
-      }
+      await countOnce(() => countReply(null, false, endpoint.spends, 'upstream_failed'));
 
       return renderAPIError(502, 'api_error', 'the model gateway could not reach the model API');
     }
@@ -188,7 +226,7 @@ export function makeProxyHandler(deps: ProxyHandlerDeps): (request: Request) => 
     const dialect = usageDialects[target.route.api];
 
     if (upstream.body === null) {
-      await accounting.count(target.route, target.sandbox, null, spent);
+      await countOnce(() => countReply(null, true, spent, 'no_usage'));
 
       return new Response(null, init);
     }
@@ -196,9 +234,11 @@ export function makeProxyHandler(deps: ProxyHandlerDeps): (request: Request) => 
     // a stream that broke or was cancelled before its first usage event may still have spent
     if (upstream.headers.get('content-type')?.startsWith('text/event-stream') === true) {
       return new Response(
-        buildCountedStream(upstream.body, dialect, (usage, complete) =>
-          accounting.count(target.route, target.sandbox, usage, spent || !complete),
-        ),
+        buildCountedStream(upstream.body, dialect, (usage, complete) => {
+          const reason = complete ? 'no_usage' : 'cut';
+
+          return countOnce(() => countReply(usage, complete, spent || !complete, reason));
+        }),
         init,
       );
     }
@@ -209,20 +249,15 @@ export function makeProxyHandler(deps: ProxyHandlerDeps): (request: Request) => 
       return null;
     });
 
-    // the model may have spent on a reply whose usage never arrived, so the count is behind
+    // the model may have spent on a reply whose usage never arrived
     if (text === null) {
-      if (endpoint.spends) {
-        await accounting.loseCount();
-      }
+      await countOnce(() => countReply(null, false, endpoint.spends, 'body_failed'));
 
       return renderAPIError(502, 'api_error', 'the model gateway lost the reply of the model API');
     }
 
-    await accounting.count(
-      target.route,
-      target.sandbox,
-      dialect.parseUsage(findBodyUsage(text)),
-      spent,
+    await countOnce(() =>
+      countReply(dialect.parseUsage(findBodyUsage(text)), true, spent, 'no_usage'),
     );
 
     return new Response(text, init);
