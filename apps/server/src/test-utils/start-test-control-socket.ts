@@ -12,6 +12,7 @@ export interface TestControlSocketOptions {
   readonly isSpendOn?: boolean;
 
   readonly readMemory?: HostRouterOptions['readMemory'];
+  readonly readBackups?: HostRouterOptions['readBackups'];
   readonly runReset?: HostRouterOptions['runReset'];
 }
 
@@ -25,6 +26,7 @@ export async function startTestControlSocket(options: TestControlSocketOptions):
     respond: makeHostResponder({
       context: api.context,
       readMemory: options.readMemory ?? (() => null),
+      readBackups: options.readBackups ?? (() => null),
 
       runInForceSeed: () => Promise.resolve(),
       readDefinitions: () => null,

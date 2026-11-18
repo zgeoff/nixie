@@ -130,6 +130,7 @@ async function setupTest() {
   const respond = makeHostResponder({
     context,
     readMemory: () => memory,
+    readBackups: () => null,
     runInForceSeed: () => Promise.resolve(),
     readDefinitions: () => null,
     readInForce: () => null,
@@ -150,6 +151,7 @@ async function setupTest() {
   const respondOff = makeHostResponder({
     context: offContext,
     readMemory: () => memory,
+    readBackups: () => null,
     runInForceSeed: () => Promise.resolve(),
     readDefinitions: () => null,
     readInForce: () => null,

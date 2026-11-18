@@ -1,4 +1,4 @@
-import type { CleanupRecordSessions } from '@heynixie/api';
+import type { CleanupRecordSessions, HostBackups } from '@heynixie/api';
 import type { DefinitionsExportSweep, SeedResult } from '@heynixie/definitions';
 import type { StartedMemoryStore } from '@heynixie/memory';
 import type { CheckerTask, SandboxRunner, WorkerTool } from '@heynixie/sessions';
@@ -51,7 +51,7 @@ export interface ServerPartValues {
   readonly proposal_sweeps: void;
   readonly prompt_lapse_sweep: void;
   readonly spend_watcher: void;
-  readonly backups: void;
+  readonly backups: HostBackups;
 
   readonly definitions_exports: DefinitionsExportSweep | null;
   readonly ready: void;

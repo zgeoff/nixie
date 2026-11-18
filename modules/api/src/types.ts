@@ -1,4 +1,4 @@
-import type { ForgetBackup } from '@heynixie/backup';
+import type { BackupSchedule, ForgetBackup } from '@heynixie/backup';
 import type { DefinitionNotice, ImageMediaType } from '@heynixie/contract';
 import type { CheckedTables } from '@heynixie/db';
 import type { DefinitionsContext } from '@heynixie/definitions';
@@ -105,6 +105,8 @@ export interface HostRouterOptions {
 
   readonly readMemory: ReadHostMemory;
 
+  readonly readBackups: ReadHostBackups;
+
   readonly runReset: () => Promise<HostReset>;
   readonly runConversationReset: () => Promise<HostConversationReset>;
 
@@ -124,6 +126,13 @@ interface HostCallGate {
 }
 
 export type ReadHostMemory = () => HostMemoryStore | null;
+
+export type HostBackups =
+  | { readonly state: 'off' }
+  | { readonly state: 'on'; readonly schedule: Pick<BackupSchedule, 'stage'> };
+
+// null until the backups part has started
+export type ReadHostBackups = () => HostBackups | null;
 
 export type ViewMemoryStore = Pick<
   MemoryStore,

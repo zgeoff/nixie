@@ -1,3 +1,4 @@
+import type { HostBackups } from '@heynixie/api';
 import type { BackupContext } from '@heynixie/backup';
 import { startBackupSchedule } from '@heynixie/backup';
 import { localDataStorage } from '@heynixie/log';
@@ -10,12 +11,12 @@ export interface ServerBackupParts extends Pick<ServerParts, 'log' | 'state'> {
   readonly context: { readonly log: { readonly writer: BackupContext['writer'] } };
 }
 
-export async function startServerBackups(parts: ServerBackupParts): Promise<void> {
+export async function startServerBackups(parts: ServerBackupParts): Promise<HostBackups> {
   if (!parts.config.backup.isEnabled) {
     parts.state.update({ backups: { state: 'off' } });
     parts.log('backup.off');
 
-    return;
+    return { state: 'off' };
   }
 
   const intervalMs = parts.config.backup.intervalMs;
@@ -74,4 +75,6 @@ export async function startServerBackups(parts: ServerBackupParts): Promise<void
   });
 
   await parts.cleanup.defer(() => schedule.stop());
+
+  return { state: 'on', schedule };
 }

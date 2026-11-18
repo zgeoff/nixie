@@ -23,6 +23,9 @@ diagram lacks. The job never reads that table: it reads only the files in the st
 
 ## Staging a set
 
+A set stages in 3 ways: at the schedule's pass, after a forget, and on request through the
+[`stage-backup` command](host-commands.md#backup-and-restore).
+
 nixie's backup schedule runs a pass on a poll, and early when a record commits. A pass first records
 every receipt that the job wrote, then stages a set when one is due:
 
@@ -38,7 +41,18 @@ before it creates its folder. nixie copies the pair with the same check that the
 every record that the log copy keeps readable. It then writes the manifest with each copy's size and
 checksum, and writes the `complete` marker last, with an fsync of each file and of the folder.
 
-nixie stages no set of either kind while it is paused after a restore. The first publish after a
+The `stage-backup` command stages a set at once, in place of a set that waits for the interval. The
+server sends the request to the schedule's own actor, so the request runs after the pass in flight
+and never beside it. The request first records every receipt that the job wrote, so a set that the
+job shipped a moment ago no longer counts as waiting. It then refuses while any set is still copying
+or has no receipt, and names that set's sequence, because the job ships a set only after its marker
+exists and a second set would only pile up on the volume. When no set waits, it stages a forget set
+if a forget is due, and a scheduled set otherwise, through the same steps as a pass. The command
+answers once the marker exists and the row reads staged, and the next job run ships the set. The
+request reports through the same log events and health state as a pass, and the next scheduled set
+comes one backup interval after it.
+
+nixie stages no set of any kind while it is paused after a restore. The first publish after a
 restore replaces the key snapshot that the restore came from, and nothing undoes that, so staging
 waits until the user has read the recovery and resumed nixie. The check reads the pause in the
 transaction that inserts the set's row. A pause with cause `owner` or `spending` stages as on any

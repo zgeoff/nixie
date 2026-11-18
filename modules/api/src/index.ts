@@ -26,6 +26,7 @@ export type {
   APISettings,
   CleanupRecordSessions,
   ForgetBackupState,
+  HostBackups,
   HostRouterOptions,
   Identity,
   ReadViewMemory,

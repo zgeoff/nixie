@@ -89,6 +89,7 @@ test('it prints what the server reset, and that backups still hold the old data'
     respond: makeHostResponder({
       context: api.context,
       readMemory: () => null,
+      readBackups: () => null,
       runInForceSeed: () => Promise.resolve(),
       readDefinitions: () => null,
       readInForce: () => null,
@@ -139,6 +140,7 @@ test('it exits 1 when the server fails the reset', async () => {
     respond: makeHostResponder({
       context: api.context,
       readMemory: () => null,
+      readBackups: () => null,
       runInForceSeed: () => Promise.resolve(),
       readDefinitions: () => null,
       readInForce: () => null,
@@ -234,6 +236,7 @@ test('it prints what a reset of the conversations shredded, that the server rest
     respond: makeHostResponder({
       context: api.context,
       readMemory: () => null,
+      readBackups: () => null,
       runInForceSeed: () => Promise.resolve(),
       readDefinitions: () => null,
       readInForce: () => null,
@@ -286,6 +289,7 @@ test('it forgets every memory item through a reset of the memories, and prints h
     respond: makeHostResponder({
       context: api.context,
       readMemory: () => memory.store,
+      readBackups: () => null,
       runInForceSeed: () => Promise.resolve(),
       readDefinitions: () => null,
       readInForce: () => null,
@@ -399,6 +403,7 @@ test('it pins a self-note from memory-pin', async () => {
     respond: makeHostResponder({
       context: api.context,
       readMemory: () => memory.store,
+      readBackups: () => null,
       runInForceSeed: () => Promise.resolve(),
       readDefinitions: () => null,
       readInForce: () => null,
@@ -440,6 +445,7 @@ test('it prints the subject of a self-note from memory-show', async () => {
     respond: makeHostResponder({
       context: api.context,
       readMemory: () => memory.store,
+      readBackups: () => null,
       runInForceSeed: () => Promise.resolve(),
       readDefinitions: () => null,
       readInForce: () => null,
@@ -485,6 +491,7 @@ test('it prints the count of each subject from memory-subjects', async () => {
     respond: makeHostResponder({
       context: api.context,
       readMemory: () => memory.store,
+      readBackups: () => null,
       runInForceSeed: () => Promise.resolve(),
       readDefinitions: () => null,
       readInForce: () => null,

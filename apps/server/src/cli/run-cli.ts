@@ -1,5 +1,6 @@
 import type { Logger } from '@heynixie/logger';
 import { toErrorFields } from '@heynixie/logger';
+import { createStageBackupCommands } from '../backup/create-stage-backup-commands';
 import { createBudgetCommands } from '../budget/create-budget-commands';
 import { createDeploymentCommands } from '../deployment/create-deployment-commands';
 import { createPauseCommands } from '../pause/create-pause-commands';
@@ -50,6 +51,7 @@ const commands = new Map<string, Command>([
   ...createContactCommands(host),
   ...createTurnInputCommands(host),
   ...buildBackupCommands(),
+  ...createStageBackupCommands(host),
 ]);
 
 export async function runCLI(argv: readonly string[], io: CLIIO): Promise<number> {

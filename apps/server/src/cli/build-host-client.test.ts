@@ -22,6 +22,7 @@ async function setupTest() {
     respond: makeHostResponder({
       context: api.context,
       readMemory: () => null,
+      readBackups: () => null,
       runInForceSeed: () => Promise.resolve(),
       readDefinitions: () => null,
       readInForce: () => null,

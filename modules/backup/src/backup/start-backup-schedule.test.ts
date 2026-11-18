@@ -12,7 +12,7 @@ import { startTestLog } from '@heynixie/log/test-utils';
 import { waitForCondition } from '@heynixie/testing';
 import type { Transaction } from 'kysely';
 import { sql } from 'kysely';
-import { buildStubFailingStorage, writeTestBackupReceipt } from '../test-utils';
+import { buildBackupSeeder, buildStubFailingStorage, writeTestBackupReceipt } from '../test-utils';
 import type { BackupPass } from './run-backup-pass';
 import { startBackupSchedule } from './start-backup-schedule';
 
@@ -29,7 +29,36 @@ async function setupTest() {
       { kind: 'memory.forgotten', definitions, payload: { itemID: 'item-a' } },
     ]);
 
-  return { ...log, definitions, onPass, onError, onAbandoned, writeForgottenRecord };
+  const writeRecord = (tx: Transaction<unknown>) =>
+    writeRecordsInTransaction(tx, log.log, [{ kind: 'task.created', definitions, payload: {} }]);
+
+  const context = { writer: log.writer, storage: localDataStorage };
+
+  const startSchedule = () => {
+    const schedule = startBackupSchedule({
+      context,
+      intervalMs: 3_600_000,
+      onAbandoned,
+      onPass,
+      onError,
+    });
+
+    onTestFinished(() => schedule.stop());
+
+    return schedule;
+  };
+
+  return {
+    ...log,
+    definitions,
+    onPass,
+    onError,
+    onAbandoned,
+    writeForgottenRecord,
+    writeRecord,
+    startSchedule,
+    seed: buildBackupSeeder({ context }),
+  };
 }
 
 test('it stages a scheduled set at start when nixie holds none', async () => {
@@ -585,4 +614,268 @@ test('it stages no set at start when a forget is due under a restore pause', asy
 
   expect(ctx.onPass.mock.calls[0]?.[0].staged).toBeNull();
   expect(sets.rows).toStrictEqual([]);
+});
+
+test('it stages a scheduled set at once while no set waits, and reports the pass to onPass', async () => {
+  const ctx = await setupTest();
+
+  await ctx.seed.publishedBackupSet();
+
+  const schedule = ctx.startSchedule();
+
+  await waitForCondition(() => ctx.onPass.mock.calls.length === 1);
+
+  const outcome = await schedule.stage();
+
+  const sets = await sql`select sequence, kind, state from backup_sets order by sequence`.execute(
+    ctx.writer.db,
+  );
+
+  expect(outcome).toMatchObject({ status: 'staged', manifest: { sequence: 2, kind: 'scheduled' } });
+
+  expect(sets.rows).toStrictEqual([
+    { sequence: 1, kind: 'scheduled', state: 'published' },
+    { sequence: 2, kind: 'scheduled', state: 'staged' },
+  ]);
+
+  expect(ctx.onPass.mock.calls[1]?.[0]).toMatchObject({ staged: { sequence: 2 } });
+});
+
+test('it refuses with the sequence while a set is staged', async () => {
+  const ctx = await setupTest();
+
+  const schedule = ctx.startSchedule();
+
+  await waitForCondition(() => ctx.onPass.mock.calls.length === 1);
+
+  const outcome = await schedule.stage();
+
+  const sets = await sql`select sequence, kind, state from backup_sets order by sequence`.execute(
+    ctx.writer.db,
+  );
+
+  expect(outcome).toStrictEqual({ status: 'set_waiting', sequence: 1 });
+  expect(sets.rows).toStrictEqual([{ sequence: 1, kind: 'scheduled', state: 'staged' }]);
+});
+
+test('it refuses with the sequence while a set is staging', async () => {
+  const ctx = await setupTest();
+
+  await ctx.seed.publishedBackupSet();
+
+  const schedule = ctx.startSchedule();
+
+  await waitForCondition(() => ctx.onPass.mock.calls.length === 1);
+
+  await withWriteTransaction(ctx.writer, async (tx) => {
+    await sql`insert into backup_sets (sequence, kind, state, log_head, staged_at)
+      values (5, 'scheduled', 'staging', 0, ${ctx.clock.now()})`.execute(tx);
+  });
+
+  const outcome = await schedule.stage();
+
+  expect(outcome).toStrictEqual({ status: 'set_waiting', sequence: 5 });
+});
+
+test('it records a receipt the job wrote before it looks for a waiting set, then stages', async () => {
+  const ctx = await setupTest();
+
+  const schedule = ctx.startSchedule();
+
+  await waitForCondition(() => ctx.onPass.mock.calls.length === 1);
+  await writeTestBackupReceipt(ctx.dataDir, { sequence: 1, status: 'published' });
+
+  const outcome = await schedule.stage();
+
+  const sets = await sql`select sequence, kind, state from backup_sets order by sequence`.execute(
+    ctx.writer.db,
+  );
+
+  expect(outcome).toMatchObject({ status: 'staged', manifest: { sequence: 2 } });
+
+  expect(sets.rows).toStrictEqual([
+    { sequence: 1, kind: 'scheduled', state: 'published' },
+    { sequence: 2, kind: 'scheduled', state: 'staged' },
+  ]);
+
+  expect(ctx.onPass.mock.calls[1]?.[0]).toMatchObject({
+    received: [{ sequence: 1, status: 'published', failure: null }],
+  });
+});
+
+test('it refuses under a pause after a restore', async () => {
+  const ctx = await setupTest();
+
+  await ctx.seed.publishedBackupSet();
+
+  await withWriteTransaction(ctx.writer, (tx) =>
+    pauseNixieInTransaction(tx, ctx.log, {
+      cause: 'restore',
+      recoveryID: 'recovery-a',
+      by: null,
+      definitions: ctx.definitions,
+    }),
+  );
+
+  const schedule = ctx.startSchedule();
+
+  await waitForCondition(() => ctx.onPass.mock.calls.length === 1);
+
+  const outcome = await schedule.stage();
+
+  const sets = await sql`select sequence, kind, state from backup_sets order by sequence`.execute(
+    ctx.writer.db,
+  );
+
+  expect(outcome).toStrictEqual({ status: 'restore_pause' });
+  expect(sets.rows).toStrictEqual([{ sequence: 1, kind: 'scheduled', state: 'published' }]);
+});
+
+test('it stages under a pause by the owner', async () => {
+  const ctx = await setupTest();
+
+  await ctx.seed.publishedBackupSet();
+
+  await withWriteTransaction(ctx.writer, (tx) =>
+    pauseNixieInTransaction(tx, ctx.log, {
+      cause: 'owner',
+      recoveryID: null,
+      by: null,
+      definitions: ctx.definitions,
+    }),
+  );
+
+  const schedule = ctx.startSchedule();
+
+  await waitForCondition(() => ctx.onPass.mock.calls.length === 1);
+
+  const outcome = await schedule.stage();
+
+  expect(outcome).toMatchObject({ status: 'staged', manifest: { sequence: 2 } });
+});
+
+test('it runs a request sent during startup once the first pass ends, and stages exactly one set', async () => {
+  const ctx = await setupTest();
+
+  await ctx.seed.publishedBackupSet();
+
+  const schedule = ctx.startSchedule();
+
+  const outcome = await schedule.stage();
+
+  const sets = await sql`select sequence, kind, state from backup_sets order by sequence`.execute(
+    ctx.writer.db,
+  );
+
+  expect(outcome).toMatchObject({ status: 'staged', manifest: { sequence: 2 } });
+
+  expect(sets.rows).toStrictEqual([
+    { sequence: 1, kind: 'scheduled', state: 'published' },
+    { sequence: 2, kind: 'scheduled', state: 'staged' },
+  ]);
+});
+
+test('it refuses a request sent during startup when the first pass stages a set, and stages no second set', async () => {
+  const ctx = await setupTest();
+
+  const schedule = ctx.startSchedule();
+
+  const outcome = await schedule.stage();
+
+  const sets = await sql`select sequence, kind, state from backup_sets order by sequence`.execute(
+    ctx.writer.db,
+  );
+
+  expect(outcome).toStrictEqual({ status: 'set_waiting', sequence: 1 });
+  expect(sets.rows).toStrictEqual([{ sequence: 1, kind: 'scheduled', state: 'staged' }]);
+});
+
+test('it runs a request queued during a pass right after that pass, before a wake that arrived during the pass, and stages exactly one set', async () => {
+  const ctx = await setupTest();
+
+  await ctx.seed.publishedBackupSet();
+
+  const held = Promise.withResolvers<void>();
+  const entered = Promise.withResolvers<void>();
+  const gate = { isArmed: false };
+
+  const holdingStorage = {
+    ...localDataStorage,
+    files: {
+      ...localDataStorage.files,
+      readDirectory: async (path: string) => {
+        if (gate.isArmed) {
+          gate.isArmed = false;
+
+          entered.resolve();
+
+          await held.promise;
+        }
+
+        return localDataStorage.files.readDirectory(path);
+      },
+    },
+  };
+
+  const schedule = startBackupSchedule({
+    context: { writer: ctx.writer, storage: holdingStorage },
+    intervalMs: 3_600_000,
+    onAbandoned: ctx.onAbandoned,
+    onPass: ctx.onPass,
+    onError: ctx.onError,
+  });
+
+  onTestFinished(() => schedule.stop());
+
+  await waitForCondition(() => ctx.onPass.mock.calls.length === 1);
+
+  gate.isArmed = true;
+
+  await withWriteTransaction(ctx.writer, (tx) => ctx.writeRecord(tx));
+  await entered.promise;
+
+  const staging = schedule.stage();
+
+  await withWriteTransaction(ctx.writer, (tx) => ctx.writeRecord(tx));
+
+  held.resolve();
+
+  const outcome = await staging;
+
+  await waitForCondition(() => ctx.onPass.mock.calls.length === 4);
+
+  const sets = await sql`select sequence, kind, state from backup_sets order by sequence`.execute(
+    ctx.writer.db,
+  );
+
+  expect(outcome).toMatchObject({ status: 'staged', manifest: { sequence: 2 } });
+  expect(ctx.onPass.mock.calls[2]?.[0].staged).toMatchObject({ sequence: 2 });
+  expect(ctx.onPass.mock.calls[3]?.[0].staged).toBeNull();
+
+  expect(sets.rows).toStrictEqual([
+    { sequence: 1, kind: 'scheduled', state: 'published' },
+    { sequence: 2, kind: 'scheduled', state: 'staged' },
+  ]);
+});
+
+test('it rejects a queued request when the schedule stops', async () => {
+  const ctx = await setupTest();
+
+  const schedule = ctx.startSchedule();
+  const staging = schedule.stage();
+  const stopped = schedule.stop();
+
+  expect(staging).rejects.toThrow('the backup schedule stopped');
+
+  await stopped;
+});
+
+test('it rejects a request sent after the schedule stopped', async () => {
+  const ctx = await setupTest();
+
+  const schedule = ctx.startSchedule();
+
+  await schedule.stop();
+
+  expect(schedule.stage()).rejects.toThrow('the backup schedule stopped');
 });

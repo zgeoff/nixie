@@ -19,9 +19,20 @@ export interface BackupPass {
 
 // The pass removes each recorded receipt's set folder, so a failure after that throws the receipts
 // with it, or their refusals and failures would never reach the log.
-export async function runBackupPass(
+export function runBackupPass(context: BackupContext, intervalMs: number): Promise<BackupPass> {
+  return runBackupPassWith(context, intervalMs, async () => {
+    const due = await readBackupDue(context.writer);
+
+    const kind = pickBackupSetKind(due, context.writer.clock.now(), intervalMs);
+
+    return kind === null ? null : writeSnapshotSet(context, kind);
+  });
+}
+
+export async function runBackupPassWith(
   context: BackupContext,
   intervalMs: number,
+  writeSet: () => Promise<BackupSetManifest | null>,
 ): Promise<BackupPass> {
   const received = await writeReceivedReceipts(context);
 
@@ -32,12 +43,7 @@ export async function runBackupPass(
 
   try {
     outputs.noticed = await writeBackupNotices(context, intervalMs);
-
-    const due = await readBackupDue(context.writer);
-
-    const kind = pickBackupSetKind(due, context.writer.clock.now(), intervalMs);
-
-    outputs.staged = kind === null ? null : await writeSnapshotSet(context, kind);
+    outputs.staged = await writeSet();
   } catch (error) {
     const healthAfterError = await readHealthOrError(context.writer);
 
