@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { useState } from 'react';
 import { css } from '../styled-system/css';
 import { useNixieClient } from '../utils/use-nixie-client';
+import { writeBlobDownload } from '../utils/write-blob-download';
 
 const section = css({ alignItems: 'baseline', display: 'flex', gap: '2', marginBlock: '3' });
 
@@ -92,21 +93,7 @@ async function writeDownload(
 ): Promise<void> {
   const blob = await readExportBlob(client, actionID);
 
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-
-  link.href = url;
-  link.download = fileName;
-
-  // Some browsers download nothing from a link outside the document.
-  document.body.append(link);
-  link.click();
-  link.remove();
-
-  // The browser reads the download URL after the click returns.
-  setTimeout(() => {
-    URL.revokeObjectURL(url);
-  }, 1000);
+  writeBlobDownload(blob, fileName);
 }
 
 async function readExportBlob(client: NixieClient, actionID: string): Promise<Blob> {

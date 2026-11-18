@@ -1,3 +1,4 @@
+import { collectSentFiles } from './collect-sent-files';
 import { collectSentMessages } from './collect-sent-messages';
 import { collectWorkers } from './collect-workers';
 import { formatFailureCause } from './format-failure-cause';
@@ -67,6 +68,15 @@ export interface TaskMessageActivity {
   readonly woke: boolean;
 }
 
+export interface SentFileActivity {
+  readonly callID: string;
+  readonly file: string;
+  readonly name: string;
+  readonly bytes: number;
+  readonly mediaType: string;
+  readonly caption?: string;
+}
+
 type StepStatus = 'done' | 'failed' | 'interrupted' | 'running';
 
 export interface StepActivity {
@@ -93,6 +103,7 @@ export interface StepActivity {
   readonly memories?: readonly RecalledMemory[];
   readonly records: readonly LiveRecord[];
 
+  readonly sentFiles?: readonly SentFileActivity[];
   readonly sentMessages?: readonly TaskMessageActivity[];
 
   readonly status: StepStatus;
@@ -249,6 +260,7 @@ function buildStep(records: readonly LiveRecord[], status: StepStatus): StepActi
   );
 
   const sentMessages = collectSentMessages(calls);
+  const sentFiles = collectSentFiles(calls);
 
   return {
     calls,
@@ -265,6 +277,7 @@ function buildStep(records: readonly LiveRecord[], status: StepStatus): StepActi
       ? {}
       : { memories: recalls.flatMap((record) => record.recall?.items ?? []) }),
     records,
+    ...(sentFiles.length === 0 ? {} : { sentFiles }),
     ...(sentMessages.length === 0 ? {} : { sentMessages }),
     status,
     ...(stepKey === undefined ? {} : { stepKey }),

@@ -479,7 +479,19 @@ const retryActions = new Collection({
   }),
 });
 
+// A code-run file that the owner reads through files.read. A forgotten one answers as a forget does.
+const files = new Collection({
+  schema: z.object({
+    data: z.base64().default(() => faker.string.alphanumeric(8)),
+    file: z.string().default(() => faker.string.alphanumeric(10)),
+    isForgotten: z.boolean().default(false),
+    mediaType: z.string().default('application/octet-stream'),
+    name: z.string().default(() => faker.system.commonFileName()),
+  }),
+});
+
 export const store = {
+  files,
   backupNotices,
   enrolmentCodes,
   forgetActions,
@@ -502,6 +514,7 @@ export const store = {
   reset: (): void => {
     for (const collection of [
       records,
+      files,
       forgetActions,
       retryActions,
       taskControlActions,

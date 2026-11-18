@@ -4,6 +4,7 @@ import { match } from 'ts-pattern';
 import { ThreadApprovalCard } from '../approval/thread-approval-card';
 import type { ActivityItem, TaskMessageActivity } from '../conversation/build-activity';
 import { buildActivity } from '../conversation/build-activity';
+import { buildSentFilePlacement } from '../conversation/build-sent-file-placement';
 import { isWorking } from '../conversation/is-working';
 import type { LiveRecord } from '../conversation/use-live-records';
 import { buildNoticePlacement } from '../notice/build-notice-placement';
@@ -20,6 +21,7 @@ import { RecordItem } from './record-item';
 import { ReminderNotice } from './reminder-notice';
 import { RemovalNotice } from './removal-notice';
 import { ResetMarker } from './reset-marker';
+import { SentFile } from './sent-file';
 import { StepGroup } from './step-group';
 import { StopMarker } from './stop-marker';
 import type { TaskMessageLayout } from './task-message-entry';
@@ -73,6 +75,7 @@ export function ConversationList(props: ConversationListProps): ReactNode {
   const activity = buildActivity(props.records);
   const placement = buildNoticePlacement(activity, props.notices);
   const removals = buildRemovalPlacement(activity, props.records);
+  const sentFiles = buildSentFilePlacement(activity);
   const unshown = props.entries.filter((entry) => !shown.has(entry.message.clientMessageId));
 
   return (
@@ -87,6 +90,9 @@ export function ConversationList(props: ConversationListProps): ReactNode {
             />
             {placement.get(index)?.map((notice) => (
               <MemoryNotice key={notice.noticeKey} notice={notice} />
+            ))}
+            {sentFiles.get(index)?.map((file) => (
+              <SentFile file={file} key={file.callID} />
             ))}
             {removals.get(index)?.map((record) => (
               <RemovalNotice key={record.sequence} record={record} />

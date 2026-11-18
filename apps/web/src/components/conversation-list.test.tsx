@@ -1,5 +1,8 @@
 import { expect, test } from 'bun:test';
+import { within } from '@testing-library/react';
+import { store } from '../mocks/store';
 import { buildMockLogRecord } from '../test-utils/build-mock-log-record';
+import { createDeviceSession } from '../test-utils/create-device-session';
 import { render } from '../test-utils/render';
 import { ConversationList } from './conversation-list';
 
@@ -196,4 +199,51 @@ test("it shows a removal under the turn's last reply, before the next message of
 
   expect(positions.removal).toBe(positions.reply + 1);
   expect(positions.next).toBe(positions.removal + 1);
+});
+
+test('it shows a file that a step sent after the reply of that step', async () => {
+  await createDeviceSession();
+
+  await store.files.create({ file: 'k7w2m9qa4x', name: 'orders.csv', mediaType: 'text/csv' });
+
+  const rendered = render(
+    <ConversationList
+      entries={[]}
+      notices={[]}
+      onDiscard={() => {}}
+      onRetry={() => Promise.resolve()}
+      records={[
+        buildMockLogRecord({ kind: 'task.step_started', sequence: 1 }),
+        buildMockLogRecord({
+          kind: 'tool_called',
+          sequence: 2,
+          toolCall: { callID: 'call-1', input: { file: 'k7w2m9qa4x' }, tool: 'file.send' },
+        }),
+        buildMockLogRecord({
+          kind: 'tool_result',
+          sequence: 3,
+          toolCall: {
+            callID: 'call-1',
+            content: {
+              result: { file: 'k7w2m9qa4x', name: 'orders.csv', bytes: 4, mediaType: 'text/csv' },
+            },
+            outcome: 'result',
+          },
+        }),
+        buildMockLogRecord({ kind: 'model.reply', sequence: 4, message: { text: 'Here it is.' } }),
+        buildMockLogRecord({ kind: 'task.step_committed', sequence: 5 }),
+      ]}
+      taskMessageLayout="line"
+    />,
+  );
+
+  const items = within(rendered.getByRole('list', { name: 'Conversation' })).getAllByRole(
+    'listitem',
+  );
+
+  expect(items.map((item) => item.textContent)).toStrictEqual([
+    expect.stringContaining('file.send'),
+    expect.stringContaining('Here it is.'),
+    'orders.csv · 4 B',
+  ]);
 });
