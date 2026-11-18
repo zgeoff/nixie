@@ -15,6 +15,7 @@ const parsed = parseArgs({
   allowPositionals: true,
   options: {
     'no-cache': { type: 'boolean' },
+    'no-lock': { type: 'boolean' },
     json: { type: 'boolean' },
     host: { type: 'string' },
     stdin: { type: 'boolean' },

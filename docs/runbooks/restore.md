@@ -418,18 +418,22 @@ holds its keys.
 ## Drill
 
 A drill restores a backup pair into a fresh namespace and volume on Kubernetes, and stops with nixie
-paused, to show that the restore works. Run it on a cluster that holds no production data, from 2
-repositories that no live nixie writes, such as a pair that a backup job of a throwaway nixie wrote.
+paused, to show that the restore works. Run it on a cluster that holds no production data. Give the
+fetch a credential that can only read the 2 repositories, when the storage offers one. The fetch
+takes no restic lock, so it reads with such a credential, and a drill then changes nothing in the
+repositories. With a credential that can write, fetch only from repositories that no live nixie
+writes.
 
-**Warning: a drill against live repositories can remove the live backup.** The fetch takes a lock in
-each repository, so it needs a credential that can write: with a read-only credential it exits 1
-with `backup.fetch_failed` at the step `list`. One backup that a drill nixie publishes removes every
-other key store backup, the live one included.
+**Warning: a prune during the fetch fails the fetch.** With no lock, a backup job's prune can remove
+the packs that the fetch copies. The fetch then exits 1 with `backup.fetch_failed` and leaves the
+folder marked unfinished, which `nixie restore` refuses. Fetch again into a new folder, as
+[step 2 of the restore](#2-fetch-the-backup-pair) says.
 
 1. **Get approval first.** Create the drill's namespace and nixie's ConfigMap in it. In its
    `config.yaml`, set `backup.enabled: false`, and set `imp.url` to a port that nothing answers,
-   such as `http://127.0.0.1:1`. At its start, nixie destroys the sandboxes of the task work that
-   the restored log shows as ended, so the drill nixie must reach no sandbox backend.
+   such as `http://127.0.0.1:1`. One backup that a drill nixie publishes removes every other key
+   store backup, the live one included. At its start, nixie destroys the sandboxes of the task work
+   that the restored log shows as ended, so the drill nixie must reach no sandbox backend.
 2. Check the ConfigMap before any nixie reads it:
 
    ```bash

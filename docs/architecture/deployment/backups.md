@@ -119,6 +119,11 @@ directory that does not exist. Its optional `--data-snapshot <snapshot_id>` name
 its full ID, which `nixie-backup snapshots` prints. A data snapshot named under a key snapshot with
 no publish number is checked only by its `set-` number.
 
+The fetch and `nixie-backup snapshots` run restic with `--no-lock`, so a credential that can only
+read the repositories serves them. The job's own backups, forgets and prunes keep their locks.
+Without a lock, a prune can remove the packs that the fetch copies. restic then exits non-zero, and
+the fetch fails at that step with the marker in place.
+
 The fetch:
 
 1. writes the unfinished-backup marker into the directory, before anything else;

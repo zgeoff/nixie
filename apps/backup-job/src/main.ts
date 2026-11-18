@@ -9,6 +9,7 @@ import { localJobFiles } from './local-job-files';
 import type { JobConfig } from './parse-job-config';
 import { parseJobConfig } from './parse-job-config';
 import type { BackupRepos } from './publish/publish-backup-set';
+import type { ResticLocking } from './restic/build-restic-client';
 import { buildResticClient } from './restic/build-restic-client';
 import { runJobPass } from './run-job-pass';
 
@@ -69,7 +70,7 @@ const fetchPair = define({
       const config = parseJobConfig(process.env);
 
       return {
-        repos: buildRepos(config),
+        repos: buildRepos(config, 'lock-free'),
         files: localFetchFiles,
         directory: ctx.values.to,
         dataSnapshotID: ctx.values['data-snapshot'] ?? null,
@@ -83,7 +84,7 @@ const snapshots = define({
   name: 'snapshots',
   description: 'Prints one line of JSON for each snapshot of the data and key repositories',
   run: async () => {
-    const lines = await readSnapshotLines(buildRepos(parseJobConfig(process.env)));
+    const lines = await readSnapshotLines(buildRepos(parseJobConfig(process.env), 'lock-free'));
 
     for (const line of lines) {
       process.stdout.write(`${line}\n`);
@@ -131,9 +132,9 @@ async function runLoggedPass(config: JobConfig, logger: Logger): Promise<number>
   return receipts.some((receipt) => receipt.status === 'failed') ? 1 : 0;
 }
 
-function buildRepos(config: JobConfig): BackupRepos {
+function buildRepos(config: JobConfig, locking: ResticLocking = 'locked'): BackupRepos {
   return {
-    data: buildResticClient(config, config.data, 'data'),
-    keys: buildResticClient(config, config.keys, 'key'),
+    data: buildResticClient(config, config.data, 'data', locking),
+    keys: buildResticClient(config, config.keys, 'key', locking),
   };
 }
