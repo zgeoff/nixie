@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.81.0](https://github.com/zgeoff/nixie/compare/v0.80.1...v0.81.0) (2026-11-18)
+
+
+### Features
+
+* **backup:** add a stage-backup command that stages a set on request ([#1212](https://github.com/zgeoff/nixie/issues/1212)) ([ebc495b](https://github.com/zgeoff/nixie/commit/ebc495ba399e318a4dabd03ffb29524a0ee630fd))
+* **search:** charge each search to its own paid-tool budgets ([#1213](https://github.com/zgeoff/nixie/issues/1213)) ([5e78c4c](https://github.com/zgeoff/nixie/commit/5e78c4c4786958b3468724f0934522d47f040226))
+
+
+### Bug Fixes
+
+* **web:** keep server-rendered controls shut until the page hydrates ([#1208](https://github.com/zgeoff/nixie/issues/1208)) ([2aaf3f1](https://github.com/zgeoff/nixie/commit/2aaf3f1d9da1200ba3c353e991eadef46f0210c7))
+
 ## [0.80.1](https://github.com/zgeoff/nixie/compare/v0.80.0...v0.80.1) (2026-11-18)
 
 
