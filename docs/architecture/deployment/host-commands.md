@@ -37,6 +37,7 @@ log line, so a deployment's check reads the report and not the log.
 | `nixie passkeys revoke <id>`         | the revoked passkey's ID                                                                    | the passkey existed and is revoked   |
 | `nixie sessions`                     | the live device sessions, as JSON                                                           | the server answered                  |
 | `nixie backup --to <directory>`      | each database it copied, then the directory and the number of copies                        | both copies match                    |
+| `nixie stage-backup`                 | the sequence and kind of the set it staged                                                  | the server staged a set              |
 | `nixie restore --from … --yes`       | the databases it restored and the directory they came from                                  | both databases were replaced         |
 
 The health report is the body of the server's own health endpoint, with each part's readiness and
@@ -122,6 +123,13 @@ them.
 ## Backup and restore
 
 The [restore runbook](../../runbooks/restore.md) gives the steps on a new host.
+
+Run `stage-backup` before a deploy, so that the next job run ships a fresh set off the host before
+the deploy's migrations. The command asks the running server to stage a set now, and exits 1 with
+the reason when backups are off, nixie is paused after a restore, or a set still waits for the
+backup job. It never waits for the job, and it never uploads anything: `backup --to` instead copies
+the databases into a local directory, with no server and no backup job. See
+[staging a set](backups.md#staging-a-set).
 
 The backup command, `backup --to <directory>`, copies `nixie.db` and `keys.db` into a directory it
 creates, which a deployment then uploads as one snapshot. It refuses a directory that exists, so two
