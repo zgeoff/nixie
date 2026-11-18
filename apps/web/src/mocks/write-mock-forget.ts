@@ -38,6 +38,17 @@ export async function writeMockForget(input: ForgetInput): Promise<ForgetResult>
 
   const forgottenAt = await writeForgottenRecord(target, input);
 
+  // A code run's files all sit under its result record, so a forget of the record forgets them.
+  for (const file of store.files.findMany((query) =>
+    query.where((entry) => entry.thread === input.thread && entry.sequence === input.sequence),
+  )) {
+    await store.files.update(file, {
+      data(draft) {
+        draft.isForgotten = true;
+      },
+    });
+  }
+
   await store.forgetActions.create({ ...input, forgottenAt });
 
   return { status: 'forgotten', forgottenAt };

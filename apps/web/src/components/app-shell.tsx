@@ -10,6 +10,7 @@ const entries = [
   { exact: false, label: 'Moments', to: '/moments' },
   { exact: false, label: 'Tasks', to: '/tasks' },
   { exact: false, label: 'Ended runs', to: '/tasks/ended' },
+  { exact: false, label: 'Files', to: '/files' },
   { exact: false, label: 'Definitions', to: '/definitions' },
   { exact: false, label: 'Reminders', to: '/reminders' },
   { exact: false, label: 'Passkeys', to: '/passkeys' },

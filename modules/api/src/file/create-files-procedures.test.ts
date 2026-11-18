@@ -126,3 +126,45 @@ test('#files.read refuses a call with no session', async () => {
     code: 'UNAUTHORIZED',
   });
 });
+
+test('#files.list returns the files of the conversation and of a task, newest first, with the task name', async () => {
+  const ctx = await setupTest();
+
+  await seedCodeRunFiles(ctx.context.log, {
+    thread: 'conversation',
+    writes: { 'out/orders.csv': 'a,b\n' },
+  });
+
+  await seedCodeRunFiles(ctx.context.log, {
+    thread: 'task-7',
+    writes: { 'out/totals.csv': 'c\n' },
+  });
+
+  const listed = await ctx.client.files.list({});
+
+  expect({
+    files: listed.files.map((file) => [file.name, file.taskID, file.taskName, file.isSent]),
+    nextCursor: listed.nextCursor,
+  }).toStrictEqual({
+    files: [
+      ['totals.csv', 'task-7', 'task-7', false],
+      ['orders.csv', null, null, false],
+    ],
+    nextCursor: null,
+  });
+});
+
+test('#files.list lists only images with the image filter', async () => {
+  const ctx = await setupTest();
+
+  const pngHeader = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0]);
+
+  await seedCodeRunFiles(ctx.context.log, {
+    thread: 'conversation',
+    writes: { 'out/chart.png': pngHeader, 'out/orders.csv': 'a,b\n' },
+  });
+
+  const listed = await ctx.client.files.list({ kind: 'image' });
+
+  expect(listed.files.map((file) => file.name)).toStrictEqual(['chart.png']);
+});
