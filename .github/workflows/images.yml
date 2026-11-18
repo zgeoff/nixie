@@ -32,6 +32,7 @@ jobs:
         .github/workflows/images.yml
         .github/actions/build-image/**
         .github/scripts/**
+        scripts/release/publish-release-assets.sh
         .bun-version
         .dockerignore
         bun.lock

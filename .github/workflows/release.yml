@@ -472,4 +472,4 @@ jobs:
           PACKAGE: ${{ matrix.package }}
           VERSION: ${{ needs.resolve.outputs.version }}
           BACKUP_IMAGE: ${{ needs.backup.outputs.ref }}
-        run: .github/scripts/publish-npm-package.sh "$PACKAGE" "$VERSION"
+        run: scripts/release/publish-npm-package.sh "$PACKAGE" "$VERSION"

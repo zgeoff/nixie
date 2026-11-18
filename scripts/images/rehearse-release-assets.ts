@@ -1,4 +1,4 @@
-import { appendFileSync, readFileSync } from 'node:fs';
+import { appendFileSync, chmodSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { $ } from 'bun';
 import { releaseImagesSchema } from '../../apps/server/src/release/release-images-schema.ts';
@@ -11,7 +11,7 @@ const releaseManifestPath = 'apps/server/src/run-release-manifest.ts';
 
 // The release's assets stage on the rehearsal digests, with the summaries the notes stage writes:
 // every image that release.json names must resolve its tag to its digest, and the upload script
-// runs against a stand-in for gh.
+// runs against a stand-in for gh that accepts each upload of an existing file.
 async function runCLI(): Promise<void> {
   const command = parseStepCommand('rehearse-release-assets.ts', [], process.argv.slice(2));
 
@@ -61,7 +61,18 @@ async function runCLI(): Promise<void> {
     console.log(`${ref} resolves`);
   }
 
-  await $`bash .github/scripts/check-publish-release-assets.sh ${releasePath}`;
+  // the upload script reaches GitHub only through gh, so a gh that accepts each upload of an
+  // existing file rehearses it
+  const stubPath = join(runnerTemp, 'gh-stub');
+
+  mkdirSync(stubPath, { recursive: true });
+  writeFileSync(join(stubPath, 'gh'), '#!/usr/bin/env bash\ntest -f "$4"\n');
+  chmodSync(join(stubPath, 'gh'), 0o755);
+
+  await $`bash scripts/release/publish-release-assets.sh v0.0.0-rehearsal ${releasePath}`.env({
+    ...process.env,
+    PATH: `${stubPath}:${process.env['PATH'] ?? ''}`,
+  });
 
   appendFileSync(summaryPath, `## release.json\n\n\`\`\`json\n${release}\`\`\`\n`);
 }

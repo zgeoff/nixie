@@ -1,6 +1,7 @@
 #!/bin/sh
 # In the conversation image: the large turn and two tool loops at once, as one VM would hold a
 # conversation turn beside 2 system tasks, then the peak anonymous memory of their processes.
+# shellcheck disable=SC1091 # shellcheck does not follow a sourced file, and setup.sh is checked as its own file
 . "$(dirname "$0")/setup.sh"
 bun write-large-prompt.ts large-prompt.txt
 echo "Call read_ledger for pages 1 to 8, one call at a time, then say how many pages you read." > tools-prompt.txt

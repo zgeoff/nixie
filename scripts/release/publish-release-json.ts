@@ -31,7 +31,7 @@ async function runCLI(): Promise<void> {
   writeFileSync(configSchemaPath, `${getStepEnv(process.env, 'CONFIG_SCHEMA')}\n`);
 
   await $`bun ${releaseManifestPath} --version ${getStepEnv(process.env, 'VERSION')} --commit ${getStepEnv(process.env, 'SHA')} --server ${getStepEnv(process.env, 'NIXIE')} --web ${getStepEnv(process.env, 'WEB')} --sandbox-manifest ${sandboxManifestPath} --backup ${getStepEnv(process.env, 'BACKUP')} --migrations ${migrationsPath} --config-schema ${configSchemaPath} --out ${releasePath}`;
-  await $`bash .github/scripts/publish-release-assets.sh ${tag} ${releasePath}`;
+  await $`bash scripts/release/publish-release-assets.sh ${tag} ${releasePath}`;
 
   appendFileSync(
     getStepEnv(process.env, 'GITHUB_STEP_SUMMARY'),
