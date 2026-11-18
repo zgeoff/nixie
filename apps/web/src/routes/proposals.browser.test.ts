@@ -192,6 +192,12 @@ test('it moves a deferred item to the collapsed Deferred group', async () => {
   await ctx.waitForPage(`document.querySelector('button[name="defer"]') !== null`);
   await ctx.view.click('button[name="defer"]');
   await ctx.waitForPage(`document.querySelector('button[name="defer-default"]') !== null`);
+
+  // The menu opens at the bottom edge of the short test viewport, where a click can miss.
+  await ctx.view.evaluate(
+    `document.querySelector('button[name="defer-default"]').scrollIntoView({ block: 'center' })`,
+  );
+
   await ctx.view.click('button[name="defer-default"]');
 
   await ctx.waitForPage(
