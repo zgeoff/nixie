@@ -315,6 +315,36 @@ test("it answers with the worker's last reply and the use of its calls, after a 
   });
 });
 
+test('it answers with the text of a reply that ends with a reasoning block', async () => {
+  const ctx = await setupTest();
+
+  ctx.guest.addKindReplies('worker', { text: 'The bridge opens at nine.', isReasoningLast: true });
+
+  const outcome = await ctx.callWorker({ question: 'When does the bridge open?' });
+
+  expect(outcome).toMatchObject({
+    status: 'ok',
+    result: { answer: 'The bridge opens at nine.' },
+  });
+});
+
+test('it answers with the text of a reply that ends with a reasoning block, after a tool call of its own', async () => {
+  const ctx = await setupTest();
+
+  ctx.guest.addKindReplies(
+    'worker',
+    { toolUse: { name: 'notes_read', input: { query: 'ferry' } } },
+    { text: 'The ferry leaves at six.', isReasoningLast: true },
+  );
+
+  const outcome = await ctx.callWorker({ question: 'When does the ferry leave?' });
+
+  expect(outcome).toMatchObject({
+    status: 'ok',
+    result: { answer: 'The ferry leaves at six.' },
+  });
+});
+
 test('it writes one start and one end record for an answered run, and lowers the caller budget by its spend', async () => {
   const ctx = await setupTest();
 

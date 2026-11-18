@@ -224,7 +224,8 @@ A model turn of the conversation, or of a started task whose start lists the too
 holds it, calls `worker.run` with a question, an optional list of tools and an optional `model`. The
 call starts one worker: a model loop in a sandbox of its own, with a fresh session and the question
 as its only input. The call waits for the worker's last reply and returns it as the answer, with the
-minutes, turns, tokens and dollars the worker used.
+minutes, turns, tokens and dollars the worker used. A reasoning block that the model sends after its
+text is not a reply, so the text before it stays the answer.
 
 The `model` option takes one of the [selectable models](./model-profiles.md#selectable-models) that
 the start tool offers, with the same names and descriptions, and leaves out each entry with

@@ -374,11 +374,17 @@ async function runCall(
   }
 }
 
+// A model may end its reply with a reasoning block, which the CLI sends as a message of its own with
+// no text and no tool use, so the answer comes from the last message that holds either.
 function summarizeTurn(turn: GuestTurn): WorkerTurnFacts {
+  const reply = turn.assistants.findLast(
+    (assistant) => assistant.text !== '' || assistant.toolUses.length > 0,
+  );
+
   return {
     ended: turn.ended.at(-1)?.outcome ?? null,
     failure: turn.failure === null ? null : turn.failure.detail,
-    answer: turn.assistants.at(-1)?.text.trim() ?? '',
+    answer: reply?.text.trim() ?? '',
   };
 }
 

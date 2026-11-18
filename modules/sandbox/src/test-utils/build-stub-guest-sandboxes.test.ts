@@ -68,6 +68,27 @@ test('it reads the inbox messages and replies with the queued reply, then with t
   expect(defaulted.frames[1]).toMatchObject({ type: 'assistant', text: 'Hello.' });
 });
 
+test('it sends a reply that ends with a reasoning block as its text, then a message with no text', async () => {
+  const ctx = await setupTest();
+  const sandbox = await ctx.stub.adapter.create(ctx.spec);
+
+  ctx.stub.addReplies({ text: 'The tide turns at noon.', isReasoningLast: true });
+
+  const answered = await runGuestFrame(sandbox, buildMockTurnFrame());
+
+  expect(answered.frames.map((frame) => frame.type)).toStrictEqual([
+    'read',
+    'assistant',
+    'assistant',
+    'ended',
+  ]);
+
+  expect(answered.frames.slice(1, 3)).toMatchObject([
+    { type: 'assistant', text: 'The tide turns at noon.', toolUses: [] },
+    { type: 'assistant', text: '', toolUses: [] },
+  ]);
+});
+
 test("it reports a reply's model call usage before the reply", async () => {
   const ctx = await setupTest();
   const sandbox = await ctx.stub.adapter.create(ctx.spec);
