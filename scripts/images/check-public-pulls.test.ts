@@ -69,14 +69,14 @@ test('it pulls each image of the manifest that the step passes in its env', asyn
   );
 });
 
-test('it fails when an image does not pull', async () => {
+test('it exits with the exit code of a failing pull script', async () => {
   const ctx = setupTest();
 
   createStubProgram(join(ctx.binPath, 'bash'), {
     callsPath: ctx.callsPath,
     answers: {
       '.github/scripts/check-public-pulls.sh r/nixie-conversation@sha256:aa11 r/nixie-fetch@sha256:bb22':
-        { exitCode: 1 },
+        { exitCode: 42 },
     },
   });
 
@@ -86,5 +86,5 @@ test('it fails when an image does not pull', async () => {
     .nothrow()
     .quiet();
 
-  expect(result.exitCode).toBe(1);
+  expect(result.exitCode).toBe(42);
 });

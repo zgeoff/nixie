@@ -27,7 +27,9 @@ async function runCLI(): Promise<void> {
     ...['BACKUP', 'WEB', 'NIXIE'].map((name) => getStepEnv(process.env, name)),
   ];
 
-  await $`bash .github/scripts/tag-images.sh ${version} ${refs}`;
+  const result = await $`bash .github/scripts/tag-images.sh ${version} ${refs}`.nothrow();
+
+  process.exitCode = result.exitCode;
 }
 
 if (import.meta.main) {

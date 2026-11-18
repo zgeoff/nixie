@@ -22,7 +22,10 @@ async function runCLI(): Promise<void> {
       ? readSandboxManifest('apps/server/sandbox-manifest.json')
       : parseSandboxManifest(manifestText);
 
-  await $`bash .github/scripts/check-public-pulls.sh ${Object.values(manifest)}`;
+  const result =
+    await $`bash .github/scripts/check-public-pulls.sh ${Object.values(manifest)}`.nothrow();
+
+  process.exitCode = result.exitCode;
 }
 
 if (import.meta.main) {

@@ -52,14 +52,14 @@ test('it tags the sandbox images first, then backup, web and nixie last', async 
   );
 });
 
-test('it fails when the tag script fails', async () => {
+test('it exits with the exit code of a failing tag script', async () => {
   const ctx = setupTest();
 
   createStubProgram(join(ctx.binPath, 'bash'), {
     callsPath: ctx.callsPath,
     answers: {
       '.github/scripts/tag-images.sh 1.2.3 r/nixie-conversation@sha256:aa11 r/nixie-fetch@sha256:bb22 r/nixie-backup@sha256:ab12 r/nixie-web@sha256:cc33 r/nixie@sha256:dd44':
-        { exitCode: 1 },
+        { exitCode: 42 },
     },
   });
 
@@ -69,7 +69,7 @@ test('it fails when the tag script fails', async () => {
     .nothrow()
     .quiet();
 
-  expect(result.exitCode).toBe(1);
+  expect(result.exitCode).toBe(42);
 });
 
 test('it fails when the step leaves out the version', async () => {
