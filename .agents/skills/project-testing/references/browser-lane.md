@@ -11,6 +11,7 @@ these suites, and the setup they share. Watch for these traps:
 - cookies and globals that one test or file leaves for the next;
 - a click that misses because the page moved;
 - a layout test that passes because the data arrived too early;
+- text typed into a server-rendered form before React hydrates it;
 - a child Chrome whose `TMPDIR` path is too long.
 
 Jump to [Traps](#traps), for each trap and what to do, to [Write a suite](#write-a-suite), or to
@@ -81,6 +82,10 @@ another in one test process. Every file shares one Chrome and one global object:
     wait shows nothing about hydration.
   - Don't check `_reactListening` on `document` for hydration: React sets that key before it
     hydrates the page's components.
+- **Before you type into or click a control of a server-rendered form, wait until the control is
+  enabled.** The server render shows the form before React listens, and React resets text typed
+  then. Keep each control of such a form `disabled` until `useIsHydrated()` returns true, and make
+  the wait check that the control is enabled, such as `fieldset.disabled === false`.
 - **To check that a control does not move when the page's data arrives, delay the stub API's answer
   to that data's request.** Without the delay, the data can arrive before the first paint, and the
   test passes whether the control moves or not.
