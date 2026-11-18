@@ -22,11 +22,19 @@ const listedSnapshotSchema = z.object({
 
 const snapshotsSchema = z.array(listedSnapshotSchema);
 
+// A read-only credential cannot write restic's lock file, so a reader that takes no lock can list
+// and restore with one. Without the lock, a prune can remove packs mid-restore: restic then exits
+// non-zero, and the restore step throws.
+export type ResticLocking = 'locked' | 'lock-free';
+
 export function buildResticClient(
   config: Pick<JobConfig, 'restic' | 'backendEnv'>,
   repository: ResticRepository,
   label: string,
+  locking: ResticLocking = 'locked',
 ): BackupRepository {
+  const readArgs = locking === 'lock-free' ? ['--no-lock'] : [];
+
   const run = async (args: readonly string[], stdin?: string): Promise<ResticRun> => {
     const result = await runRestic(config, repository, {
       args,
@@ -89,7 +97,7 @@ export function buildResticClient(
       return summary.data.snapshot_id;
     },
     readSnapshots: async () => {
-      const result = await run(['snapshots', '--json']);
+      const result = await run([...readArgs, 'snapshots', '--json']);
 
       requireSuccess('snapshots', result);
 
@@ -118,7 +126,7 @@ export function buildResticClient(
       });
     },
     restoreSnapshot: async (snapshotID, directory) => {
-      const result = await run(['restore', snapshotID, '--target', directory]);
+      const result = await run([...readArgs, 'restore', snapshotID, '--target', directory]);
 
       requireSuccess('restore', result);
     },

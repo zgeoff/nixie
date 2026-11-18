@@ -2,6 +2,7 @@ import { buildBuiltInBudgets, chargeBudgetsInTransaction } from '@heynixie/budge
 import { systemClock } from '@heynixie/clock';
 import { withWriteTransaction } from '@heynixie/log';
 import invariant from 'tiny-invariant';
+import { readDeploymentConfig } from '../deployment/read-deployment-config';
 import { startDataLog } from './start-data-log';
 import type { BootFiles } from './write-boot-files';
 
@@ -16,9 +17,11 @@ export interface PaidBudgetSpend {
 
 // Writes one charge to a built-in paid-tool budget. No nixie may hold the data's writer lock.
 export async function seedPaidBudgetSpend(
-  nixie: Pick<BootFiles, 'dataDir' | 'deploymentKey'>,
+  nixie: Pick<BootFiles, 'dataDir' | 'configPath' | 'deploymentKey'>,
   spend: PaidBudgetSpend,
 ): Promise<void> {
+  const deployment = await readDeploymentConfig(nixie.configPath);
+
   const data = await startDataLog({
     dataDir: nixie.dataDir,
     deploymentKey: nixie.deploymentKey,
@@ -29,7 +32,7 @@ export async function seedPaidBudgetSpend(
     const budgets = {
       log: data.context.log,
       clock: systemClock,
-      zone: 'UTC',
+      zone: deployment.config.time.default_zone,
       definitions: data.context.definitions,
       builtIn: () => buildBuiltInBudgets([spend.tool]),
     };

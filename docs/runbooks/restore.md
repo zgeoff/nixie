@@ -18,10 +18,10 @@ You need:
 - a release of nixie that starts paused after a restore, pinned in your deployment repo.
 
 **Use a release that starts paused after a restore.** Its release notes list the restore pause. A
-release without the pause refuses to start on the data directory that the restore leaves. After a
-release with the pause has started on that data directory, a release without it refuses the data
-directory with `SchemaTooNewError` for as long as nixie stays paused. The error does not say that
-the pause is the cause.
+release without the pause refuses the data directory that the restore leaves. A release with the
+pause changes the database schema when it starts there. A release without the pause then refuses the
+data directory with `SchemaTooNewError`, both while nixie is paused and after `nixie resume`. The
+message of `SchemaTooNewError` never mentions the pause.
 
 Each step marked **Get approval first** stops the live nixie or does something that no later step
 puts back. When someone else follows these steps for you, they stop before each such step and ask
@@ -29,21 +29,25 @@ you.
 
 Replace these placeholders in each command:
 
-| Placeholder          | Stands for                                                          |
-| -------------------- | ------------------------------------------------------------------- |
-| `<restore_volume>`   | a volume for the fetched copies: a named volume, or a claim         |
-| `<backup_service>`   | the Compose service that runs the backup job                        |
-| `<backup_env_file>`  | a file of the `NIXIE_BACKUP_*` variables that your backup job reads |
-| `<backup_image>`     | the backup image of your release, by its tag and digest             |
-| `<nixie_image>`      | nixie's image of your release, by its tag and digest                |
-| `<namespace>`        | the Kubernetes namespace of nixie                                   |
-| `<job_name>`         | a backup Job that has not finished                                  |
-| `<config_map>`       | the ConfigMap that holds nixie's `config.yaml`                      |
-| `<sops_file>`        | one sops file of the deployment                                     |
-| `<age_key_file>`     | the age key file that the Compose commands read                     |
-| `<new_age_key_file>` | a path that you pick for the restored host's new age key            |
-| `<task_id>`          | the ID of one task that `nixie recovery` lists                      |
-| `<snapshot_id>`      | the full ID of a data snapshot                                      |
+| Placeholder          | Stands for                                                                  |
+| -------------------- | --------------------------------------------------------------------------- |
+| `<restore_volume>`   | a volume for the fetched copies: a named volume, or a claim                 |
+| `<backup_service>`   | the Compose service that runs the backup job                                |
+| `<backup_env_file>`  | a file of the `NIXIE_BACKUP_*` variables that your backup job reads         |
+| `<backup_image>`     | the backup image of your release, by its tag and digest                     |
+| `<nixie_image>`      | nixie's image of your release, by its tag and digest                        |
+| `<namespace>`        | the Kubernetes namespace of nixie                                           |
+| `<job_name>`         | a backup Job that has not finished                                          |
+| `<config_map>`       | the ConfigMap that holds nixie's `config.yaml`                              |
+| `<sops_file>`        | one sops file of the deployment                                             |
+| `<age_key_file>`     | the age key file that the Compose commands read                             |
+| `<new_age_key_file>` | a path that you pick for the restored host's new age key                    |
+| `<task_id>`          | the ID of one task that `nixie recovery` lists                              |
+| `<snapshot_id>`      | the full ID of a data snapshot                                              |
+| `<directory>`        | a folder that `nixie backup --to` wrote                                     |
+| `<drill_config>`     | the file that holds the drill nixie's `config.yaml`                         |
+| `<drill_namespace>`  | a new Kubernetes namespace for a drill, never the namespace of a live nixie |
+| `<volume>`           | one volume that the drill's claims used                                     |
 
 On Compose, set `NIXIE_SECRETS_FILE=<sops_file>` and `NIXIE_AGE_KEY_FILE=<age_key_file>` on each
 `docker compose` command, as the [Compose guide](../guides/compose.md) does. Until step 9, the age
@@ -418,20 +422,70 @@ holds its keys.
 
 ## Drill
 
-A drill restores into a fresh namespace and volume on Kubernetes, to show that the restore works.
-Which repository credential a drill reads the repositories with is still open, in
-[the restore checks by hand](https://linear.app/zgeoff/issue/GEO-2576). Run no drill until that
-issue settles it.
+Run a drill to show that the restore works. A drill restores a backup pair into a new namespace on
+Kubernetes, and stops with nixie paused. Use a cluster that holds no production data. The drill
+works with the reference manifests and with the Pulumi component.
 
-Set up the drill nixie so that it can harm nothing live:
+When your storage offers it, give the fetch a read-only credential for the data repository and the
+key repository. The fetch takes no restic lock, so it works with such a credential, and the drill
+then changes nothing in either repository. With a credential that can write, fetch only from
+repositories that no live nixie writes.
 
-- Set `backup.enabled: false` in its `config.yaml`, and run no backup job. One backup that a drill
-  publishes removes every other key store backup, the live one included.
-- Give it no sandbox backend that it can reach. At its start, nixie destroys the sandboxes of the
-  task work that the restored log shows as ended.
+**Warning: a prune during the fetch fails the fetch.** Without a restic lock, a backup job's prune
+can remove repository data that the fetch still reads. The fetch then exits 1 with
+`backup.fetch_failed`, and leaves the folder marked unfinished, which `nixie restore` refuses. Fetch
+again into a new folder, as [step 2 of the restore](#2-fetch-the-backup-pair) does.
 
-**Get approval first.** Creating the namespace and its volume changes the cluster.
+1. Write the drill nixie's `config.yaml` in `<drill_config>`. With the manifests, that file is the
+   ConfigMap manifest. With the Pulumi component, it is the file that you pass in the `config`
+   argument.
+2. In `<drill_config>`, set `backup.enabled: false`. One backup that a drill nixie publishes removes
+   every other key store backup, the live one included.
+3. In `<drill_config>`, set `imp.url`, the URL of the sandbox backend, to a port that nothing
+   answers, such as `http://127.0.0.1:1`. At its start, nixie destroys the sandboxes of the task
+   work that the restored log shows as ended, so the drill nixie must reach no sandbox backend.
+4. Check `<drill_config>` before any nixie reads it:
 
-Deploy nixie into the drill's namespace with no backup job, as [Before you start](#before-you-start)
-says for a new cluster. Then follow steps 2 to 5 there. Send no message to the drill nixie. The
-evidence is the output of `nixie recovery`, the paused tasks it lists, and `nixie health`.
+   ```bash
+   grep -n -E '^\s*(imp|backup|url|enabled):' <drill_config>
+   ```
+
+   Expect: the first `url:` line that the command prints after `imp:` shows `http://127.0.0.1:1`,
+   and the first `enabled:` line after `backup:` shows `false`. With any other value, stop and fix
+   the file.
+
+5. **Get approval first.** Create `<drill_namespace>`. Then deploy nixie into it with
+   `<drill_config>` and no backup job, as [Before you start](#before-you-start) says for a new
+   cluster.
+6. Follow steps 1 to 5 of [Restore](#restore), with `<drill_namespace>` in place of `<namespace>`.
+   In step 1, stop nothing outside `<drill_namespace>`. Send no message to the drill nixie.
+
+   Expect: the fetch's `"relation":"same-publish"`, the restore line, a `restore.paused` line in
+   nixie's log, and `nixie recovery` with each task to check in `toCheck`.
+
+7. Run `nixie health` inside nixie's container, as [step 5 of the restore](#5-read-the-recovery)
+   runs `nixie recovery`.
+
+   Expect: `unready`, because no sandbox backend answers.
+
+8. List the volumes of the drill's claims:
+
+   ```bash
+   kubectl get pv -o jsonpath='{range .items[?(@.spec.claimRef.namespace=="<drill_namespace>")]}{.metadata.name}{"\n"}{end}'
+   ```
+
+9. **Warning: this deletes every resource in the namespace.** Check that `<drill_namespace>` is the
+   drill's namespace, never the live nixie's. Delete `<drill_namespace>`. Its claims each hold a
+   copy of the key store.
+
+   ```bash
+   kubectl delete namespace <drill_namespace>
+   ```
+
+   Expect: `namespace "<drill_namespace>" deleted`.
+
+10. When the claims' storage class keeps its volumes, delete each volume from step 8:
+
+    ```bash
+    kubectl delete pv <volume>
+    ```

@@ -327,3 +327,90 @@ test.skipIf(isResticMissing)(
     expect(staging).toStrictEqual(['000000000007']);
   },
 );
+
+test.skipIf(isResticMissing)(
+  'it fetches the pair from repositories it can only read, where a restic that locks fails',
+  async () => {
+    const ctx = await setupTest();
+    const log = await startTestLog();
+
+    await writeSnapshotSet({ writer: log.writer, storage: localDataStorage }, 'scheduled');
+
+    const jobEnv = {
+      ...ctx.jobEnv,
+      NIXIE_BACKUP_STAGING_DIR: getBackupStagingDir(log.dataDir),
+    };
+
+    const target = join(ctx.directory, 'fetched');
+
+    await $`${process.execPath} ${ctx.job} run`.env(jobEnv).quiet();
+
+    const repositories = [ctx.dataEnv.RESTIC_REPOSITORY, ctx.keyEnv.RESTIC_REPOSITORY];
+
+    await $`chmod -R a-w ${repositories}`.quiet();
+
+    const locked = await $`${ctx.restic} --no-cache snapshots --json`
+      .env(ctx.dataEnv)
+      .nothrow()
+      .quiet();
+
+    const fetch = await $`${process.execPath} ${ctx.job} fetch --to ${target}`
+      .env(jobEnv)
+      .nothrow()
+      .quiet();
+
+    // the temp folder's removal needs write access back on each repository
+    await $`chmod -R u+w ${repositories}`.quiet();
+
+    const pairText = await Bun.file(join(target, fetchedPairFile)).text();
+
+    const parsed = parseBackupFile(pairText, fetchedPairSchema);
+
+    invariant('value' in parsed, 'the fetch writes a pair file that parses');
+
+    expect(locked.exitCode).not.toBe(0);
+    expect(fetch.exitCode).toBe(0);
+    expect(parsed.value.relation).toBe('same-publish');
+  },
+);
+
+test.skipIf(isResticMissing)(
+  'it fails the fetch and keeps the folder marked unfinished when a prune removed the data packs',
+  async () => {
+    const ctx = await setupTest();
+    const log = await startTestLog();
+
+    await writeSnapshotSet({ writer: log.writer, storage: localDataStorage }, 'scheduled');
+
+    const jobEnv = {
+      ...ctx.jobEnv,
+      NIXIE_BACKUP_STAGING_DIR: getBackupStagingDir(log.dataDir),
+    };
+
+    const target = join(ctx.directory, 'fetched');
+
+    await $`${process.execPath} ${ctx.job} run`.env(jobEnv).quiet();
+
+    const packRoot = join(ctx.dataEnv.RESTIC_REPOSITORY, 'data');
+
+    for (const folder of await readdir(packRoot)) {
+      await rm(join(packRoot, folder), { recursive: true, force: true });
+    }
+
+    const fetch = await $`${process.execPath} ${ctx.job} fetch --to ${target}`
+      .env(jobEnv)
+      .nothrow()
+      .quiet();
+
+    const hasMarker = await Bun.file(join(target, unfinishedBackupMarker)).exists();
+    const hasPair = await Bun.file(join(target, fetchedPairFile)).exists();
+
+    expect({ exitCode: fetch.exitCode, stdout: fetch.stdout.toString() }).toStrictEqual({
+      exitCode: 1,
+      stdout: expect.stringContaining('"step":"copy-data"'),
+    });
+
+    expect(hasMarker).toBeTrue();
+    expect(hasPair).toBeFalse();
+  },
+);

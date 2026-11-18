@@ -2,6 +2,7 @@ import { expect, onTestFinished, test } from 'bun:test';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { z } from 'zod';
 import { createStubRestic } from '../test-utils/create-stub-restic';
 import { buildResticClient } from './build-restic-client';
 import { ResticError } from './restic-error';
@@ -138,4 +139,40 @@ test('it names the step and the repo of a failed restore', async () => {
   expect(
     ctx.client.restoreSnapshot('d'.repeat(64), join(ctx.directory, 'restored')),
   ).rejects.toThrowWithMessage(ResticError, /^restic restore in the key repo exited 1: /u);
+});
+
+test('it lists and restores with no lock for a lock-free reader, and prunes with one', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(join(ctx.directory, 'keys.db'), 'key rows');
+
+  await ctx.client.createRepository();
+
+  const snapshotID = await ctx.client.writeSnapshot(join(ctx.directory, 'keys.db'), 'keys.db', []);
+
+  const reader = buildResticClient(
+    { restic: ctx.restic, backendEnv: { STUB_RESTIC_LOG: ctx.calls } },
+    { repository: join(ctx.directory, 'repo'), password: 'key-pass' },
+    'key',
+    'lock-free',
+  );
+
+  await rm(ctx.calls);
+
+  await reader.readSnapshots();
+  await reader.restoreSnapshot(snapshotID, join(ctx.directory, 'restored'));
+  await reader.runPrune();
+
+  const calls = await Bun.file(ctx.calls).text();
+
+  const commands = calls
+    .trim()
+    .split('\n')
+    .map((line) => z.object({ args: z.array(z.string()) }).parse(JSON.parse(line)).args);
+
+  expect(commands).toStrictEqual([
+    ['--no-cache', '--no-lock', 'snapshots', '--json'],
+    ['--no-cache', '--no-lock', 'restore', snapshotID, '--target', join(ctx.directory, 'restored')],
+    ['--no-cache', 'prune', '--max-unused', '0'],
+  ]);
 });
