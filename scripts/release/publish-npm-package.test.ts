@@ -124,6 +124,7 @@ exit 1
     return {
       exitCode: result.exitCode,
       stdout: result.stdout.toString(),
+      stderr: result.stderr.toString(),
       calls: existsSync(join(stubPath, 'calls.log'))
         ? readFileSync(join(stubPath, 'calls.log'), 'utf8')
         : '',
@@ -151,6 +152,7 @@ test.each([
     exitCode: 0,
     stdout: `::warning::npm holds no ${ctx.name} yet, so the release publishes nothing. Create the package on npm and add this workflow as its trusted publisher.\n`,
     calls: `view ${ctx.name} name\n`,
+    stderr: '',
     published: [],
     packageJson: ctx.packageJson,
   });
@@ -168,6 +170,7 @@ test.each([
     exitCode: 0,
     stdout: `${ctx.name}@1.2.3 is on npm already\n`,
     calls: `view ${ctx.name} name\nview ${ctx.name}@1.2.3 version\n`,
+    stderr: '',
     published: [],
     packageJson: ctx.packageJson,
   });
@@ -184,6 +187,7 @@ test.each([
   expect(result).toStrictEqual({
     exitCode: 0,
     stdout: '',
+    stderr: '',
     calls: `view ${ctx.name} name\nview ${ctx.name}@1.2.3 version\npublish ${tarball} --access public --provenance\n`,
     published: [tarball],
     packageJson: ctx.packageJson,
@@ -212,11 +216,13 @@ test('it fails the Kubernetes component when the release names no backup image',
 
   const result = await ctx.runPublish({ BACKUP_IMAGE: '' });
 
-  expect(result.exitCode).toBe(1);
-  expect(result.calls).toBe('');
-  expect(result.published).toStrictEqual([]);
-
-  expect(result.stdout).toInclude(
-    "::error::@heynixie/pulumi-k8s needs BACKUP_IMAGE to name the release's backup image",
-  );
+  expect(result).toStrictEqual({
+    exitCode: 1,
+    stdout:
+      "::error::@heynixie/pulumi-k8s needs BACKUP_IMAGE to name the release's backup image as <repository>@sha256:<digest>\n",
+    stderr: '',
+    calls: '',
+    published: [],
+    packageJson: ctx.packageJson,
+  });
 });

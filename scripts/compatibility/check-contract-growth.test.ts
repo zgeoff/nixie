@@ -63,7 +63,11 @@ function setupTest() {
         .nothrow()
         .quiet();
 
-    return { exitCode: result.exitCode, stdout: result.stdout.toString() };
+    return {
+      exitCode: result.exitCode,
+      stdout: result.stdout.toString(),
+      stderr: result.stderr.toString(),
+    };
   };
 
   return { runCheck };
@@ -77,6 +81,7 @@ test('it passes a contract that has no break', async () => {
   expect(result).toStrictEqual({
     exitCode: 0,
     stdout: 'the contract only grows, apart from the breaks it accepts\n',
+    stderr: '',
   });
 });
 
@@ -88,11 +93,11 @@ test('it fails a new response enum value that no line accepts', async () => {
     [],
   );
 
-  expect(result.exitCode).toBe(1);
-
-  expect(result.stdout).toContain(
-    'error: POST /memory/listProposals added the new `self_note` enum value to the `reason` response property for the response status `200`\n',
-  );
+  expect(result).toStrictEqual({
+    exitCode: 1,
+    stdout: `error: POST /memory/listProposals added the new \`self_note\` enum value to the \`reason\` response property for the response status \`200\`\n::error::the contract breaks a client of the last release in a way no accepted-breaks line names\n`,
+    stderr: '',
+  });
 });
 
 test('it passes a break that a line names, behind a comment and an issue prefix', async () => {
@@ -104,11 +109,11 @@ test('it passes a break that a line names, behind a comment and an issue prefix'
     '# accepted breaks\n',
   );
 
-  expect(result.exitCode).toBe(0);
-
-  expect(result.stdout).toStartWith(
-    'accepted: POST /memory/listProposals added the new `self_note` enum value',
-  );
+  expect(result).toStrictEqual({
+    exitCode: 0,
+    stdout: `accepted: POST /memory/listProposals added the new \`self_note\` enum value to the \`reason\` response property for the response status \`200\`\nthe contract only grows, apart from the breaks it accepts\n`,
+    stderr: '',
+  });
 });
 
 test('it fails a second break beside the accepted one', async () => {
@@ -122,11 +127,11 @@ test('it fails a second break beside the accepted one', async () => {
     [{ method: 'POST', path: '/memory/listProposals', value: 'self_note' }],
   );
 
-  expect(result.exitCode).toBe(1);
-
-  expect(result.stdout).toContain(
-    'error: POST /memory/listProposals added the new `other_reason` enum value',
-  );
+  expect(result).toStrictEqual({
+    exitCode: 1,
+    stdout: `accepted: POST /memory/listProposals added the new \`self_note\` enum value to the \`reason\` response property for the response status \`200\`\nerror: POST /memory/listProposals added the new \`other_reason\` enum value to the \`reason\` response property for the response status \`200\`\n::error::the contract breaks a client of the last release in a way no accepted-breaks line names\n`,
+    stderr: '',
+  });
 });
 
 test('it fails a break that differs from the accepted one only in case', async () => {
@@ -137,7 +142,11 @@ test('it fails a break that differs from the accepted one only in case', async (
     [{ method: 'POST', path: '/memory/listProposals', value: 'self_note' }],
   );
 
-  expect(result.exitCode).toBe(1);
+  expect(result).toStrictEqual({
+    exitCode: 1,
+    stdout: `error: POST /memory/listProposals added the new \`SELF_NOTE\` enum value to the \`reason\` response property for the response status \`200\`\n::error::the contract breaks a client of the last release in a way no accepted-breaks line names\n`,
+    stderr: '',
+  });
 });
 
 test('it fails a break that a line names under another method', async () => {
@@ -148,7 +157,11 @@ test('it fails a break that a line names under another method', async () => {
     [{ method: 'GET', path: '/memory/listProposals', value: 'self_note' }],
   );
 
-  expect(result.exitCode).toBe(1);
+  expect(result).toStrictEqual({
+    exitCode: 1,
+    stdout: `error: POST /memory/listProposals added the new \`self_note\` enum value to the \`reason\` response property for the response status \`200\`\n::error::the contract breaks a client of the last release in a way no accepted-breaks line names\n`,
+    stderr: '',
+  });
 });
 
 test('it fails a break that a line names only under a longer path', async () => {
@@ -159,5 +172,9 @@ test('it fails a break that a line names only under a longer path', async () => 
     [{ method: 'POST', path: '/memory/listProposalsArchive', value: 'self_note' }],
   );
 
-  expect(result.exitCode).toBe(1);
+  expect(result).toStrictEqual({
+    exitCode: 1,
+    stdout: `error: POST /memory/listProposals added the new \`self_note\` enum value to the \`reason\` response property for the response status \`200\`\n::error::the contract breaks a client of the last release in a way no accepted-breaks line names\n`,
+    stderr: '',
+  });
 });

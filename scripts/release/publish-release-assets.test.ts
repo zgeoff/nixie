@@ -74,6 +74,7 @@ function setupTest() {
     return {
       exitCode: result.exitCode,
       stdout: result.stdout.toString(),
+      stderr: result.stderr.toString(),
       calls: readFileSync(callsPath, 'utf8'),
     };
   };
@@ -89,6 +90,7 @@ test('it uploads the config schema and both definitions schemas, then release.js
   expect(result).toStrictEqual({
     exitCode: 0,
     stdout: '',
+    stderr: '',
     calls: `${ctx.uploads.config}\n${ctx.uploads.manifest}\n${ctx.uploads.rules}\n${ctx.uploads.release}\n`,
   });
 });
@@ -126,8 +128,13 @@ test('it fails the run when a schema file does not exist', async () => {
 
   const result = await ctx.runPublish(undefined, tmpdir());
 
-  expect(result.exitCode).toBe(1);
-  expect(readdirSync(ctx.uploadedPath)).toStrictEqual([]);
+  expect({ ...result, uploaded: readdirSync(ctx.uploadedPath) }).toStrictEqual({
+    exitCode: 1,
+    stdout: '',
+    stderr: "cp: cannot stat 'apps/server/config.schema.json': No such file or directory\n",
+    calls: `${ctx.uploads.config}\n`,
+    uploaded: [],
+  });
 });
 
 test('it stops before release.json when the config schema upload fails', async () => {
@@ -135,8 +142,12 @@ test('it stops before release.json when the config schema upload fails', async (
 
   const result = await ctx.runPublish(ctx.uploads.config);
 
-  expect(result.exitCode).toBe(1);
-  expect(result.calls).toBe(`${ctx.uploads.config}\n`);
+  expect(result).toStrictEqual({
+    exitCode: 1,
+    stdout: '',
+    stderr: '',
+    calls: `${ctx.uploads.config}\n`,
+  });
 });
 
 test('it stops before release.json when the definitions manifest schema upload fails', async () => {
@@ -144,8 +155,12 @@ test('it stops before release.json when the definitions manifest schema upload f
 
   const result = await ctx.runPublish(ctx.uploads.manifest);
 
-  expect(result.exitCode).toBe(1);
-  expect(result.calls).toBe(`${ctx.uploads.config}\n${ctx.uploads.manifest}\n`);
+  expect(result).toStrictEqual({
+    exitCode: 1,
+    stdout: '',
+    stderr: '',
+    calls: `${ctx.uploads.config}\n${ctx.uploads.manifest}\n`,
+  });
 });
 
 test('it stops before release.json when the definitions rules schema upload fails', async () => {
@@ -153,11 +168,12 @@ test('it stops before release.json when the definitions rules schema upload fail
 
   const result = await ctx.runPublish(ctx.uploads.rules);
 
-  expect(result.exitCode).toBe(1);
-
-  expect(result.calls).toBe(
-    `${ctx.uploads.config}\n${ctx.uploads.manifest}\n${ctx.uploads.rules}\n`,
-  );
+  expect(result).toStrictEqual({
+    exitCode: 1,
+    stdout: '',
+    stderr: '',
+    calls: `${ctx.uploads.config}\n${ctx.uploads.manifest}\n${ctx.uploads.rules}\n`,
+  });
 });
 
 test('it uploads nothing when release.json points to another asset', async () => {
@@ -171,6 +187,7 @@ test('it uploads nothing when release.json points to another asset', async () =>
     exitCode: 1,
     stdout:
       '::error::release.json points to the asset other.schema.json, but the release uploads config.schema.json\n',
+    stderr: '',
     calls: '',
   });
 });
