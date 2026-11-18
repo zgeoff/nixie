@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import { routeDataStaleTimeMs } from '../conversation/read-route-session';
+import { useIsHydrated } from '../conversation/use-is-hydrated';
 import { RuleSentence } from '../rule/rule-sentence';
 import { css } from '../styled-system/css';
 import { useNixieClient } from '../utils/use-nixie-client';
@@ -20,6 +21,7 @@ const meta = css({ fontSize: 'sm', opacity: '0.8' });
 export function MandateList(): ReactNode {
   const nixie = useNixieClient();
   const ender = useEndMandate();
+  const isHydrated = useIsHydrated();
 
   const list = useQuery({
     ...nixie.queryUtils.rules.listMandates.queryOptions(),
@@ -57,7 +59,7 @@ export function MandateList(): ReactNode {
             </ul>
             <span className={meta}>Ends {mandate.expires.toLocaleString()}</span>
             <button
-              disabled={ender.isPending}
+              disabled={ender.isPending || !isHydrated}
               name="end-now"
               onClick={() => {
                 ender.end(mandate.mandateID);

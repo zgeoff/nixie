@@ -51,6 +51,12 @@ test('it lists a mandate in force with its rule and ends it with End now', async
   });
 
   await ctx.openPage();
+
+  // The server render shows the form before React listens, and a click or text before then is lost
+  await ctx.waitForPage(
+    `document.querySelector('form[aria-label="Propose a mandate"] fieldset')?.disabled === false`,
+  );
+
   await ctx.waitForPage(`document.body.innerText.includes('Allow calendar.respond.')`);
   await ctx.view.click('button[name="end-now"]');
   await ctx.waitForPage(`document.body.innerText.includes('No mandate is in force.')`);
@@ -63,8 +69,11 @@ test('it proposes a mandate that then waits on the approvals page', async () => 
 
   await ctx.openPage();
 
-  // The list's arrival moves the form down, and a click lands where the field was
-  await ctx.waitForPage(`document.body.innerText.includes('No mandate is in force.')`);
+  // The server render shows the form before React listens, and a click or text before then is lost
+  await ctx.waitForPage(
+    `document.querySelector('form[aria-label="Propose a mandate"] fieldset')?.disabled === false`,
+  );
+
   await ctx.view.click('input[maxlength="120"]');
   await ctx.view.type('Handle my test sends');
   await ctx.view.click('div[aria-label="Rule 1"] textarea');
@@ -89,7 +98,12 @@ test('it names the limit and the latest end when the end is beyond the longest m
   const ctx = await setupTest();
 
   await ctx.openPage();
-  await ctx.waitForPage(`document.body.innerText.includes('No mandate is in force.')`);
+
+  // The server render shows the form before React listens, and a click or text before then is lost
+  await ctx.waitForPage(
+    `document.querySelector('form[aria-label="Propose a mandate"] fieldset')?.disabled === false`,
+  );
+
   await ctx.view.click('input[maxlength="120"]');
   await ctx.view.type('Handle my test sends');
   await ctx.view.click('div[aria-label="Rule 1"] textarea');
