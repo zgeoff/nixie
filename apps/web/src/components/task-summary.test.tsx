@@ -1,7 +1,12 @@
 import { expect, test } from 'bun:test';
+import { buildQueryUtils } from '@heynixie/contract';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import userEvent from '@testing-library/user-event';
+import { renderToString } from 'react-dom/server';
+import { buildBrowserClient } from '../client/build-browser-client';
 import { buildMockListedTask } from '../test-utils/build-mock-listed-task';
 import { render } from '../test-utils/render';
+import { NixieClientContext } from '../utils/nixie-client-context';
 import { TaskSummary } from './task-summary';
 
 test('it links a task to its page with its state, brief and the task it waits on', () => {
@@ -168,4 +173,19 @@ test('it shows the next run of an asleep task and the report of a finished one',
 
   expect(nextRun).toBeVisible();
   expect(rendered.getByText('Sent its report')).toBeVisible();
+});
+
+test('it renders the toggle of the whole brief disabled on the server, before React can take the click', () => {
+  const garden = buildMockListedTask({ brief: 'Plans the vegetable beds.', name: 'Garden plan' });
+  const client = buildBrowserClient();
+
+  const markup = renderToString(
+    <QueryClientProvider client={new QueryClient()}>
+      <NixieClientContext value={{ client, queryUtils: buildQueryUtils(client) }}>
+        <TaskSummary isLinked={false} task={garden} tasks={[garden]} />
+      </NixieClientContext>
+    </QueryClientProvider>,
+  );
+
+  expect(markup).toMatch(/<button[^>]*disabled=""[^>]*>Show the whole prompt<\/button>/u);
 });

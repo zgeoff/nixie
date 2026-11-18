@@ -76,9 +76,10 @@ async function setupTest() {
     registerPasskey: async () => {
       await view.navigate(`${appURL}/passkeys`);
 
-      // The list's arrival moves the form down, and a click lands where the button was
+      // The server render holds the list and the form, so the form shows before React listens. The
+      // controls turn enabled once it does, and text typed before then is lost.
       await waitInView(
-        `document.body.innerText.includes('No passkey is set up yet.') && document.querySelector('form[aria-label="Add a passkey"]') !== null`,
+        `document.body.innerText.includes('No passkey is set up yet.') && document.querySelector('form[aria-label="Add a passkey"] fieldset')?.disabled === false`,
       );
 
       await view.click('form[aria-label="Add a passkey"] label:nth-of-type(2) input');

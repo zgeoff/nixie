@@ -1,7 +1,11 @@
 import { expect, mock, test } from 'bun:test';
+import { buildQueryUtils } from '@heynixie/contract';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { HttpResponse, http } from 'msw';
+import { renderToString } from 'react-dom/server';
+import { buildBrowserClient } from '../client/build-browser-client';
 import { pauseStore } from '../mocks/pause-store';
 import { probeMockTaskPaused } from '../mocks/probe-mock-task-paused';
 import { server } from '../mocks/server';
@@ -9,6 +13,7 @@ import { store } from '../mocks/store';
 import { buildMockListedTask } from '../test-utils/build-mock-listed-task';
 import { createDeviceSession } from '../test-utils/create-device-session';
 import { render } from '../test-utils/render';
+import { NixieClientContext } from '../utils/nixie-client-context';
 import { TaskControls } from './task-controls';
 
 function setupTest() {
@@ -206,4 +211,18 @@ test('it runs a task that nixie pauses with its own resume, and leaves the other
   });
 
   expect(probeMockTaskPaused('p7hd2wq9zn')).toBeTrue();
+});
+
+test('it renders each control disabled on the server, before React can take the click', () => {
+  const client = buildBrowserClient();
+
+  const markup = renderToString(
+    <QueryClientProvider client={new QueryClient()}>
+      <NixieClientContext value={{ client, queryUtils: buildQueryUtils(client) }}>
+        <TaskControls task={buildMockListedTask({ name: 'Garden plan', state: 'stopped' })} />
+      </NixieClientContext>
+    </QueryClientProvider>,
+  );
+
+  expect(markup.match(/<button[^>]*disabled=""/gu)).toHaveLength(2);
 });

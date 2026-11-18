@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import { routeDataStaleTimeMs } from '../conversation/read-route-session';
+import { useIsHydrated } from '../conversation/use-is-hydrated';
 import { css } from '../styled-system/css';
 import { useNixieClient } from '../utils/use-nixie-client';
 import { useRevokePasskey } from './use-revoke-passkey';
@@ -19,6 +20,7 @@ const meta = css({ fontSize: 'sm', opacity: '0.8' });
 export function PasskeyList(): ReactNode {
   const nixie = useNixieClient();
   const revoker = useRevokePasskey();
+  const isHydrated = useIsHydrated();
 
   const list = useQuery({
     ...nixie.queryUtils.passkeys.list.queryOptions(),
@@ -51,7 +53,7 @@ export function PasskeyList(): ReactNode {
             </span>
             {passkey.revokedAt === null ? (
               <button
-                disabled={revoker.isPending}
+                disabled={revoker.isPending || !isHydrated}
                 onClick={() => {
                   revoker.revoke(passkey.passkeyID);
                 }}

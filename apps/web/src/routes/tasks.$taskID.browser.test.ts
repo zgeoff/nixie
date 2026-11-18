@@ -299,10 +299,11 @@ test('it opens the whole of a long prompt on a task page, down to its last parag
 
   await ctx.view.navigate(`${ctx.appURL}/tasks/k3vq8m2xpa`);
 
+  // The server render holds the toggle, which turns enabled once React listens for the click
   await waitFor(
     async () => {
       const hasToggle: unknown = await ctx.view.evaluate(
-        "document.querySelector('button[aria-controls]') !== null",
+        "document.querySelector('button[aria-controls]:enabled') !== null",
       );
 
       expect(hasToggle).toBeTrue();
@@ -348,10 +349,11 @@ test('it sends a message written on a task page to that task, not the conversati
 
   await ctx.view.navigate(`${ctx.appURL}/tasks/k3vq8m2xpa`);
 
+  // The server render holds the composer, which turns enabled once React listens for the text
   await waitFor(
     async () => {
       const hasComposer: unknown = await ctx.view.evaluate(
-        "document.querySelector('textarea') !== null",
+        "document.querySelector('textarea:enabled') !== null",
       );
 
       expect(hasComposer).toBeTrue();
