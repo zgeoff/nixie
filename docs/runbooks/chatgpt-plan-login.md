@@ -1,29 +1,85 @@
 # Run Codex tasks on a ChatGPT plan login
 
-A model gateway can hold a ChatGPT plan login, so a task on the Codex harness runs on the plan in
-place of an API key. The operator sets up the plan route once, signs the route in, and signs it in
-again when its login needs it. The design is in
-[the plan route](../architecture/policy/model-gateway.md#the-plan-route). Before you start, the
-deployment needs a `spendStop` section and a model gateway with a periods config.
+Use this runbook to let a task on the
+[Codex harness](../architecture/core/model-profiles.md#harnesses) spend a ChatGPT plan in place of
+an OpenAI API key.
 
-Placeholders in this runbook:
+The [model gateway](../architecture/policy/model-gateway.md) is the process on the host that counts
+every model request. It holds the plan's login on a route of its own, the plan route, and adds the
+plan's token to each plan request itself. Neither the nixie server nor a sandbox ever holds that
+token, so no plan request can skip the gateway's count.
+[The plan route](../architecture/policy/model-gateway.md#the-plan-route) explains the path of a
+request.
 
-- `<gateway_host>`: the host that runs the model gateway.
-- `<config file>`: the gateway's config file.
-- `<route>`: the plan route's ID, which is also the plan profile's ID.
-- `<route key file>`: the file that holds the route key.
+Two people take part:
+
+- The operator runs the commands on the host that runs the gateway.
+- The account holder signs in to the ChatGPT account and approves the sign-in code. The account
+  holder can be the operator.
+
+## Before you start
+
+Check that both configs have the sections the plan route needs. When one lacks a section, set it up
+first with the doc that the item links.
+
+- nixie's `config.yaml` has a `spendStop` section. With it, nixie sends every model request through
+  the gateway and reads the gateway's status
+  ([how nixie uses the gateway](../architecture/policy/model-gateway.md#how-nixie-uses-the-gateway)).
+- The gateway's config has a `periods` section, which holds the day and month dollar limits, and a
+  `control` section ([the periods](../architecture/policy/model-gateway.md#the-periods)). nixie
+  reads the plan login's status from the control listener, the gateway's second address, which only
+  the nixie server calls.
+
+## Placeholders
+
+| Placeholder           | What it stands for                                                                                                                                                               |
+| --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `<gateway_host>`      | the host that runs the model gateway                                                                                                                                             |
+| `<gateway_user>`      | the system user that the gateway's service runs as                                                                                                                               |
+| `<config_file>`       | the gateway's config file                                                                                                                                                        |
+| `<route>`             | the plan route's ID, which is also the ID of the model profile that uses it                                                                                                      |
+| `<route_key_file>`    | a file on `<gateway_host>` for the route key, such as `/run/secrets/<route>-route-key`                                                                                           |
+| `<login_file>`        | the file where the gateway keeps the login, such as `/var/lib/model-gateway/logins/<route>.json`                                                                                 |
+| `<model>`             | the Codex model ID, such as `gpt-6-luna`                                                                                                                                         |
+| `<price_table>`       | OpenAI's API prices for `<model>`, in the keys of [a price table](../architecture/core/model-profiles.md#prices-and-the-provider-pin)                                            |
+| `<max_output_tokens>` | the model's largest output in tokens, which the gateway assumes for a request with no `max_output_tokens` ([the estimate](../architecture/policy/model-gateway.md#the-estimate)) |
+| `<credential_name>`   | any name for the profile's `deployment:` reference, such as `<route>`                                                                                                            |
+| `<control_address>`   | the `hostname:port` of `control.listen` in `<config_file>`                                                                                                                       |
+| `<control_token>`     | the token in the file that `control.tokenFile` in `<config_file>` names                                                                                                          |
+
+## Read the route's status
+
+Run this on `<gateway_host>` at any point:
+
+```bash
+curl -s -H "Authorization: Bearer <control_token>" http://<control_address>/chatgpt-logins
+```
+
+Expect: one entry per plan route, with its `status` of `active`, `failing` or `needs_login`. The
+answer holds no token and no email.
 
 ## Set up the plan route
 
-1. Make the route key on `<gateway_host>`, 32 random bytes in hex, and keep it out of any log:
+1. On `<gateway_host>`, make the route key. Only a sandbox that nixie grants the plan profile sends
+   this key, and the gateway refuses a plan request without it.
 
    ```bash
-   openssl rand -hex 32 > <route key file>
-   chmod 600 <route key file>
+   openssl rand -hex 32 > <route_key_file>
+   chown <gateway_user> <route_key_file>
+   chmod 600 <route_key_file>
    ```
 
-2. Add the route to `<config file>`, with a `login` block. The login file's folder must be one that
-   only the gateway's user reads:
+   Keep the key out of any log or chat.
+
+2. Make the login file's folder, readable by the gateway's user only:
+
+   ```bash
+   install -d -o <gateway_user> -m 700 "$(dirname <login_file>)"
+   ```
+
+   The login command writes `<login_file>` itself, with mode 600.
+
+3. Add the route under `routes` in `<config_file>`:
 
    ```yaml
    routes:
@@ -32,20 +88,42 @@ Placeholders in this runbook:
        upstream: https://chatgpt.com/backend-api/codex
        model: <model>
        maxOutputTokens: <max_output_tokens>
-       prices: { … }
+       prices: <price_table>
        login:
-         file: <login file>
-         routeKeyFile: <route key file>
+         file: <login_file>
+         routeKeyFile: <route_key_file>
    ```
 
-   Set the route's `prices` to the API prices of `<model>`. A plan has no price per token, but Codex
-   usage past the plan's limit can draw on bought credits, so the dollar limit bounds that spend.
+   A plan has no price per token, but Codex use past the plan's own limit draws on credits bought
+   for the account. The gateway counts each plan request at `<price_table>` against the dollar
+   limits in `periods`, so those limits cap that spend. The count therefore shows more than the plan
+   itself costs.
 
-3. Add the route key as the plan profile's impd secret, with impd's root access, as for every model
-   secret: host `chatgpt.com`, header `authorization`, scheme `bearer`, and the gateway's model
-   listener as its upstream. The secret's name is the profile's `credential`.
+4. Print the name that nixie gives the plan profile's model secret:
 
-4. Add the plan profile to the deployment config, with the same prices as the route:
+   ```bash
+   printf '<route>\nbearer\nchatgpt.com' | sha256sum | cut -c1-19 | sed 's/^/nixie-model-/'
+   ```
+
+   Expect: one line that starts with `nixie-model-`. nixie looks the secret up under this name, and
+   refuses to create a sandbox for the profile when impd lacks it
+   ([model secrets](../architecture/deployment/impd-names.md#model-secrets)).
+
+5. Add the secret to impd, the daemon that runs each sandbox, with impd's root token, which can add
+   a secret for the whole host. Store it under the name from step 4, with these values:
+
+   | Field    | Value                                                                                      |
+   | -------- | ------------------------------------------------------------------------------------------ |
+   | value    | the route key in `<route_key_file>`                                                        |
+   | host     | `chatgpt.com`                                                                              |
+   | header   | `authorization`, scheme `bearer`                                                           |
+   | upstream | the gateway's model listener, the address in `spendStop.modelURL` of nixie's `config.yaml` |
+
+   impd's credential broker, the part of impd that adds a secret to a sandbox's requests, then takes
+   each plan request that a sandbox sends to `chatgpt.com`. It adds the route key, and sends the
+   request to the gateway in place of ChatGPT.
+
+6. Add the plan profile under `models.profiles` in nixie's `config.yaml`:
 
    ```yaml
    models:
@@ -53,59 +131,71 @@ Placeholders in this runbook:
        <route>:
          harness: codex
          base_url: https://chatgpt.com
-         credential: deployment:<secret_name>
+         credential: deployment:<credential_name>
          chatgpt_login: true
          model: <model>
          effort: low
-         prices: { … }
+         prices: <price_table>
    ```
 
-5. Restart the gateway. Until the next step, the route reports `needs_login` and answers each
-   request with a 401.
+   Set `effort` to the reasoning effort the tasks need
+   ([model profiles](../architecture/core/model-profiles.md#harnesses)). Leave `<credential_name>`
+   out of nixie's secrets file: with `spendStop` set, nixie reads no model credential, and impd
+   holds the route key.
+
+7. Restart the gateway and the nixie server, so each reads its new config.
+
+   Expect: [the route's status](#read-the-routes-status) is `needs_login`, and the gateway answers
+   each plan request with a 401 until you sign the route in.
 
 ## Sign the route in
 
-1. Device code login must be on in the account's ChatGPT security settings. The account's user turns
-   it on.
+1. The account holder turns on device code login in the ChatGPT account's security settings. Without
+   it, the login command stops with a message that the setting is off.
 
-2. Run the command on `<gateway_host>`:
+2. On `<gateway_host>`, run as `<gateway_user>`:
 
    ```bash
-   model-gateway chatgpt-login --config <config file> --route <route>
+   model-gateway chatgpt-login --config <config_file> --route <route>
    ```
 
-   Expect a line such as
+   Expect: a line such as
    `Open https://auth.openai.com/codex/device and enter the code ABCD-1234 (expires in 15 minutes).`
    The command opens no browser and prints no token.
 
-3. The account's user opens the URL and approves the code in ChatGPT. Expect the command to print
-   `Signed in: <email>, plan <plan>. Stored for <route>.` A command that prints that the code
-   expired needs a new run.
+3. Send the URL and the code to the account holder, who opens the URL and approves the code in
+   ChatGPT before it expires.
 
-4. Read the route's state from the control listener:
+   Expect: the command prints `Signed in: <email>, plan <plan>. Stored for <route>.`, with the
+   account's email and plan. When the code expires first, run the command again.
 
-   ```bash
-   curl -s -H "Authorization: Bearer <control token>" http://<control_address>/chatgpt-logins
-   ```
+4. [Read the route's status](#read-the-routes-status). Expect: `"status": "active"` for `<route>`.
 
-   Expect `"status": "active"` for `<route>`. The answer holds no token and no email.
+A running gateway reads the new login at the next plan request, so it needs no restart.
 
-A running gateway picks up a new login at its next request, so a restart is not needed.
+## When a Codex task fails with `model_auth.chatgpt_login`
 
-## Sign the route in again
+[Read the route's status](#read-the-routes-status), then act on it:
 
-A route whose status is `needs_login` answers each request with a 401, and a Codex task on its
-profile fails with `model_auth.chatgpt_login` until the route has a login. A status of `failing`
-means the gateway could not refresh the login 3 times in a row, and it keeps retrying. When the
-status stays `failing`, check that `<gateway_host>` reaches `auth.openai.com`. Run
-`model-gateway chatgpt-login` again as in the steps above. A new login replaces the file and
-restarts the refresh.
+| Status        | What it means                                                                     | What you do                                                                                                                          |
+| ------------- | --------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `needs_login` | OpenAI refused the login's refresh, or the route has no login file                | Do every step of [Sign the route in](#sign-the-route-in). The new login replaces the login file, and the gateway refreshes it again. |
+| `failing`     | 3 refreshes in a row got an error answer or no answer                             | Check that `<gateway_host>` reaches `auth.openai.com`. The gateway keeps retrying, and the status returns to `active` on its own.    |
+| `active`      | the gateway holds the login, but nixie's last read of the control listener failed | Check that the nixie server reaches the address in `spendStop.control`. nixie reads the status again with the gateway's `/status`.   |
 
 ## Remove the login
 
-```bash
-model-gateway chatgpt-logout --config <config file> --route <route>
-```
+Remove the login when the plan route should stop spending the plan, such as when the account changes
+hands.
 
-The command removes the login file. OpenAI documents no revocation for this sign-in, so the
-account's user also signs the device out in ChatGPT's security settings.
+1. On `<gateway_host>`, run as `<gateway_user>`:
+
+   ```bash
+   model-gateway chatgpt-logout --config <config_file> --route <route>
+   ```
+
+   Expect: `Removed the login for <route>.`, and [the route's status](#read-the-routes-status) turns
+   to `needs_login`. The gateway answers each plan request with a 401 from then on, with no restart.
+
+2. The account holder signs out the Codex sign-in in the ChatGPT account's security settings. OpenAI
+   offers no way for the command to revoke the sign-in.

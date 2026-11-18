@@ -46,7 +46,8 @@ else. It refuses a request whose body holds:
 - `speed` with any value but `standard` or null, `service_tier` with any value but `auto`,
   `standard_only`, `default` or null, or `inference_geo` with any value but `global` or null,
   because the price table holds no premium tier or regional price. Both model APIs treat an absent
-  `service_tier` as `auto`, so each allowed value bills no more than a body without the field;
+  `service_tier` as `auto`, so each allowed value bills no more than a body without the field. A
+  [plan route](#the-path-of-a-plan-request) refuses `service_tier` with any value;
 - a `tools` entry that is not a tool the caller runs: an object with no `model` key and a `type`
   that is absent, `custom` or `function`, or a `namespace` whose `tools` all pass the same check.
   Any other type, such as a web search, an image generation or an advisor, is a tool that the model
@@ -104,16 +105,22 @@ that the gateway could count. The gateway refuses a request for a background res
 too, because that response spends after its reply, and the reply holds no usage.
 
 The gateway passes every header through except the hop-by-hop ones, and asks the upstream for an
-uncompressed reply so that it can read the usage as the reply passes. It never adds or reads a
-credential: a credential broker in front of it, or the deployment itself, supplies one.
+uncompressed reply so that it can read the usage as the reply passes. On every route except a
+[plan route](#the-plan-route), it never adds or reads a credential: a credential broker in front of
+it, or the deployment itself, supplies one.
 
 ## The plan route
 
-A plan route lets a Codex task run on a ChatGPT plan login. The gateway holds the login, refreshes
-it and sets the access token on each plan request, so the nixie server and every sandbox hold only
-placeholders and every plan request passes through the count. A route holds a plan login when its
-config has a `login` block, which needs a periods config because the server reads the login from the
-control listener:
+A plan route lets a task on the Codex harness
+([model profiles](../core/model-profiles.md#harnesses)) spend a ChatGPT plan in place of an OpenAI
+API key. The gateway holds the plan's login: a refresh token, from which it gets the short-lived
+access token that ChatGPT's backend takes. It refreshes the login and sets the access token on each
+plan request itself. The nixie server and each sandbox hold only stand-in values in its place, so
+every plan request passes through the count.
+
+A route holds a plan login when its config has a `login` block. The nixie server reads each login's
+status from the [control listener](#the-control-listener), and only a config with
+[periods](#the-periods) has one, so the schema refuses a `login` block in a `limits` config:
 
 ```yaml
 routes:
@@ -134,6 +141,12 @@ plan route up.
 
 ### The path of a plan request
 
+A plan request leaves the sandbox for `chatgpt.com`, on a path that starts with the sandbox's name
+and the route, as in [count by sandbox](#count-by-sandbox). impd, the daemon that runs each sandbox,
+holds the plan profile's model secret, and its credential broker matches the request by that host.
+It sends the request to the gateway's model listener, the address that takes model requests, apart
+from the control listener ([the route of a request](#the-route-of-a-request)).
+
 | Hop               | What it receives                                    | What it sends on                                                                  |
 | ----------------- | --------------------------------------------------- | --------------------------------------------------------------------------------- |
 | The Codex guest   | nothing                                             | `https://chatgpt.com/<sandbox>/codex-plan/responses`, with a placeholder          |
@@ -141,60 +154,78 @@ plan route up.
 | The model gateway | `/<sandbox>/codex-plan/responses` and the route key | `/responses` to the route's upstream, with `Authorization: Bearer <access token>` |
 | The upstream      | `https://chatgpt.com/backend-api/codex/responses`   | the reply, which the gateway counts                                               |
 
-- The route key is 32 random bytes in hex. It is the plan profile's impd secret and the content of
-  the route's `routeKeyFile`. The gateway compares the `Authorization` header with it in constant
-  time and answers a mismatch with a 403 that sends nothing upstream. Only a sandbox granted the
-  profile's secret gets the header from the broker, so no other sandbox can use the route by naming
-  it in its path.
+- The route key is 32 random bytes in hex. It is the value of the plan profile's model secret
+  ([model secrets](../deployment/impd-names.md#model-secrets)) and the content of the route's
+  `routeKeyFile`. The gateway compares the `Authorization` header with it in constant time and
+  answers a mismatch with a 403 that sends nothing upstream. Only a sandbox granted the profile's
+  secret gets the header from the broker, so no other sandbox can use the route by naming it in its
+  path.
 - The gateway answers `GET /models` on a plan route with a 403. The broker refuses every other
-  ChatGPT path that Codex calls, such as `/backend-api/wham/accounts/check`, because the grant's
-  path filter does not cover it.
+  ChatGPT path that Codex calls, such as `/backend-api/wham/accounts/check`, because the grant
+  covers only the paths under the sandbox's own name and route
+  ([credentials with a spending gateway](../core/model-profiles.md#credentials-with-a-spending-gateway)).
 - After the key check, the gateway removes the `Authorization` header and sets
-  `Authorization: Bearer <access token>`. It sets a credential on no other route.
-- A body that sets `service_tier` gets a 400, because a faster tier spends bought credits at a
-  higher rate than the route's prices count.
+  `Authorization: Bearer <access token>`.
+- A body that sets `service_tier`, to any value, gets a 400. Codex use past the plan's own limit
+  draws on credits bought for the account, and a faster tier spends them at a higher rate than the
+  route's prices count.
 - A request on a route whose login is not `active` gets a 401 in the Responses error shape, and
   nothing goes upstream.
-- Plan requests count under the route's prices as every other request does. The operator sets the
-  route's prices and the profile's prices to the API prices of the same model: a plan has no price
-  per token, and the dollar limit bounds the spend that Codex usage past the plan's limit can draw
-  on bought credits.
+- The gateway counts a plan request under the route's prices, as it counts every other request. A
+  plan has no price per token, so the operator sets the route's prices and the profile's prices to
+  OpenAI's API prices for the same model. The day and month dollar limits then cap the credits that
+  Codex use past the plan's own limit spends.
 
 ### The login file and the refresh
 
-The login file has mode 0600, and only the gateway's user reads it. It holds `version` (1), a random
-`loginID` that each login replaces, the `refreshToken`, the `accountID`, `planType` and `email` from
-the ID token, the `status` (`active`, `failing` or `needs_login`), the `reason` (`refused`,
-`service_error` or `no_answer`, null while active), `statusSince` and `lastRefreshAt`. The access
-token lives only in the gateway's memory, with the time the gateway got it and the `loginID` it came
-from. The auth endpoints and the client ID are constants of the gateway binary, the values of the
-Codex CLI that the `codex` image pins.
+The login file has mode 0600, and only the gateway's user reads it. It holds these fields:
 
-- The gateway refreshes a login at its own start, shortly before the access token's `exp` (a fixed
-  time after the refresh when the token has none), and at a fixed longest interval, one refresh per
-  login at a time. A request waits for a refresh in flight.
-- When the upstream answers 401, the gateway starts a refresh before it passes the 401 on, unless it
-  got the current token only just before.
+- `version`: 1;
+- `loginID`: a random ID that each login replaces;
+- `refreshToken`;
+- `accountID`, `planType` and `email`, from the ID token of the sign-in;
+- `status`: `active`, `failing` or `needs_login`;
+- `reason`: `refused`, `service_error` or `no_answer`, and null while the status is `active`;
+- `statusSince` and `lastRefreshAt`.
+
+The access token lives only in the gateway's memory, with the time the gateway got it and the
+`loginID` it came from. The auth endpoints, the client ID and the time limits of a sign-in are
+constants of the gateway binary in
+[`chatgpt-auth.ts`](../../../apps/model-gateway/src/login/chatgpt-auth.ts), the values of the Codex
+CLI that the `codex` image pins. The refresh times below are constants in
+[`create-plan-login.ts`](../../../apps/model-gateway/src/login/create-plan-login.ts).
+
+- The gateway refreshes a login at its own start, `refreshLeadMs` before the access token's `exp`,
+  and at least every `refreshIntervalMs`, one refresh per login at a time. An access token with no
+  readable `exp` counts as one that expires `unknownLifeMs` after the refresh. A request waits for a
+  refresh in flight.
+- When the upstream answers 401, the gateway starts a refresh before it passes the 401 on, once its
+  current access token is at least `rejectionAgeMs` old.
 - The gateway writes a rotated refresh token to the file through a second file and a rename, before
   it uses the new access token, and only while the file's `loginID` is the one it read before the
   refresh. A lock on the file spans the read and the write, and `chatgpt-login` and `chatgpt-logout`
-  take the same lock. A waiter gives up after a fixed short wait.
+  take the same lock. A process that waits `loginLockWaitMs`
+  ([`with-login-lock.ts`](../../../apps/model-gateway/src/login/with-login-lock.ts)) for the lock
+  gives up with an error that names the file. A refresh that gives up keeps no new token, so the
+  request that waited on it gets a 401. A command that gives up exits with the error.
 - Before it admits each request, the gateway reads the file's `loginID`. A different ID drops the
   token and refreshes. A missing file gives a 401.
 - The gateway reads the refresh token only to refresh, and sends it only to the token endpoint.
 
-| The answer to a refresh                                                                         | Status        | Reason                                                                  |
-| ----------------------------------------------------------------------------------------------- | ------------- | ----------------------------------------------------------------------- |
-| a token                                                                                         | `active`      | null                                                                    |
-| `refresh_token_expired`, `refresh_token_reused`, `refresh_token_invalidated` or `invalid_grant` | `needs_login` | `refused`                                                               |
-| 3 in a row of a 5xx, a 429, another 4xx, a 200 with no token, or no answer in time              | `failing`     | `service_error` after an answer, `no_answer` after none, from the third |
+| The answer to a refresh                                                                          | Status        | Reason                                                                  |
+| ------------------------------------------------------------------------------------------------ | ------------- | ----------------------------------------------------------------------- |
+| a token                                                                                          | `active`      | null                                                                    |
+| `refresh_token_expired`, `refresh_token_reused`, `refresh_token_invalidated` or `invalid_grant`  | `needs_login` | `refused`                                                               |
+| 3 in a row of a 5xx, a 429, another 4xx, a 200 with no token, or no answer in `requestTimeoutMs` | `failing`     | `service_error` after an answer, `no_answer` after none, from the third |
 
-A `failing` login keeps its retries, with backoff, and returns to `active` on the first token. A
-`needs_login` login stops its refreshes until the next login writes a new `loginID`. When an answer
-is lost, or the gateway stops after OpenAI answers and before the rename, OpenAI may have spent the
-stored refresh token. The next refresh then gets a refusal and the login becomes `needs_login`, with
-the earlier refresh token still in a file that parses. A login file stays on disk, so the plan login
-works again after a rollback.
+A `failing` login keeps its retries, `backoffFirstMs` apart at first and doubling up to
+`backoffMaxMs`, and returns to `active` on the first token. A `needs_login` login stops its
+refreshes until the next login writes a new `loginID`. When an answer is lost, or the gateway stops
+after OpenAI answers and before the rename, OpenAI may have spent the stored refresh token. The next
+refresh then gets a refusal and the login becomes `needs_login`. The file still holds the earlier
+refresh token and parses, so the gateway reports the status and an operator signs the route in
+again. A login file stays on disk when a gateway release is rolled back, so the plan login works
+again once the release that holds plan routes returns.
 
 ### The commands
 
@@ -204,13 +235,13 @@ model-gateway chatgpt-logout --config <config file> --route codex-plan
 ```
 
 `chatgpt-login` runs OpenAI's device code flow on the gateway host. It prints the URL, the code and
-its expiry, opens no browser, and waits until the code expires for the account's user to approve the
-code. It then writes the login file with a new `loginID`, replaces any file the route had, and
-prints the email and the plan, never a token. Device code login must be on in the account's ChatGPT
-security settings, and the command says so when OpenAI refuses the code request. `chatgpt-logout`
-removes the file. OpenAI documents no revocation for this sign-in, so the command tells the operator
-to sign the device out in ChatGPT. Both commands refuse a route with no `login` block. A running
-gateway picks up a new login through the `loginID` check.
+its expiry, and opens no browser. It waits for the account's user to approve the code, for at most
+the code's life, `deviceCodeLifetimeMs`. It then writes the login file with a new `loginID`,
+replaces any file the route had, and prints the email and the plan, never a token. Device code login
+must be on in the account's ChatGPT security settings, and the command says so when OpenAI refuses
+the code request. `chatgpt-logout` removes the file. OpenAI documents no revocation for this
+sign-in, so the command tells the operator to sign the device out in ChatGPT. Both commands refuse a
+route with no `login` block. A running gateway picks up a new login through the `loginID` check.
 
 ### The logins on the control listener
 

@@ -65,8 +65,10 @@ its turn, after the spend check and before any capture opens. The plan profile's
 The step puts the route's account ID and plan type in the turn profile's `chatgptLogin`. When the
 gateway is unreachable, or lists no active login for the profile, the step fails with
 `model_auth.chatgpt_login`, which waits for the user, and no turn starts. The web client shows that
-the operator runs `model-gateway chatgpt-login`. The schema refuses `chatgpt_login: true` when the
-config has no `spendStop` section, because the server reaches the logins through it.
+the operator runs `model-gateway chatgpt-login`. A worker run on a plan profile reads the held
+answer the same way before its turn, and its call fails with the same message. The schema refuses
+`chatgpt_login: true` when the config has no `spendStop` section, because the server reaches the
+logins through it.
 
 ## Resume and raise
 
