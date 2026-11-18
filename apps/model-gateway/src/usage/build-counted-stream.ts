@@ -1,14 +1,15 @@
-import type { ModelCallUsage, ReportedUsage } from '@heynixie/wire';
+import type { ReportedUsage } from '@heynixie/wire';
 import { parseJSONOrNull } from '@heynixie/wire';
-import type { UsageDialect } from './usage-dialects';
+import type { ReadUsage, StreamEventKind, UsageDialect } from './usage-dialects';
 
 // The stream ends for its reader only after the count is written, so a caller that read a whole
 // reply never races its own next request past the count. A reader that stops early, or an upstream
-// that breaks, still counts what the events reported so far.
+// that breaks, still counts what the events reported; onProgress hears the usage after each event.
 export function buildCountedStream(
   body: ReadableStream<Uint8Array>,
   dialect: UsageDialect,
-  onEnd: (usage: ModelCallUsage | null, complete: boolean) => Promise<void>,
+  onEnd: (read: ReadUsage, complete: boolean) => Promise<void>,
+  onProgress: (read: ReadUsage) => void = () => {},
 ): ReadableStream<Uint8Array> {
   const reader = body.getReader();
 
@@ -18,6 +19,8 @@ export function buildCountedStream(
   let reported: ReportedUsage = {};
   let ended = false;
 
+  const seen = new Set<StreamEventKind>();
+
   const readEvents = (text: string) => {
     pending += text;
 
@@ -26,8 +29,10 @@ export function buildCountedStream(
     pending = lines.pop() ?? '';
 
     for (const line of lines) {
-      reported = foldEventLine(dialect, reported, line);
+      reported = foldEventLine(dialect, reported, seen, line);
     }
+
+    onProgress(dialect.parseUsage(reported, seen));
   };
 
   const finish = async (complete: boolean) => {
@@ -39,7 +44,7 @@ export function buildCountedStream(
 
     readEvents(`${decoder.decode()}\n`);
 
-    await onEnd(dialect.parseUsage(reported), complete);
+    await onEnd(dialect.parseUsage(reported, seen), complete);
   };
 
   return new ReadableStream<Uint8Array>({
@@ -80,11 +85,16 @@ export function buildCountedStream(
 function foldEventLine(
   dialect: UsageDialect,
   reported: ReportedUsage,
+  seen: Set<StreamEventKind>,
   line: string,
 ): ReportedUsage {
   if (!line.startsWith('data:')) {
     return reported;
   }
 
-  return dialect.foldStreamEvent(reported, parseJSONOrNull(line.slice('data:'.length).trim()));
+  const event = parseJSONOrNull(line.slice('data:'.length).trim());
+
+  seen.add(dialect.pickStreamEventKind(event));
+
+  return dialect.foldStreamEvent(reported, event);
 }

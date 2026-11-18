@@ -10,6 +10,7 @@ test('it passes the provider field that the guest builds for a pinned profile', 
     model: 'model-small',
     providerPin: 'example-host',
     prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
+    maxOutputTokens: null,
   };
 
   const body = { model: 'model-small', ...buildProviderOrder('example-host') };
@@ -24,6 +25,7 @@ test('it refuses the provider field that the guest builds for another pin', () =
     model: 'model-small',
     providerPin: 'example-host',
     prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
+    maxOutputTokens: null,
   };
 
   const body = { model: 'model-small', ...buildProviderOrder('other-host') };

@@ -42,6 +42,7 @@ const routeSchema = z.strictObject({
   model: z.string().min(1),
   providerPin: z.string().min(1).optional(),
   prices: modelPricesSchema,
+  maxOutputTokens: z.int().positive().optional(),
 });
 
 const limitsSchema = z
@@ -85,6 +86,16 @@ export const proxyConfigSchema = z
       }),
   })
   .superRefine((config, ctx) => {
+    for (const [id, route] of Object.entries(config.routes)) {
+      if (route.api === 'openai-responses' && route.maxOutputTokens === undefined) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['routes', id, 'maxOutputTokens'],
+          message: `the route ${id} speaks openai-responses and sets no maxOutputTokens, which bounds a reply whose request sets no max_output_tokens`,
+        });
+      }
+    }
+
     if (config.limits !== undefined && config.periods !== undefined) {
       ctx.addIssue({
         code: 'custom',
@@ -155,6 +166,7 @@ export const proxyConfigSchema = z
           model: route.model,
           providerPin: route.providerPin ?? null,
           prices: route.prices,
+          maxOutputTokens: route.maxOutputTokens ?? null,
         },
       ]),
     ),

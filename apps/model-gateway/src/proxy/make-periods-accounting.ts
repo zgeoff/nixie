@@ -1,13 +1,13 @@
 import type { Logger } from '@heynixie/logger';
 import { toErrorFields } from '@heynixie/logger';
-import { buildCallCost } from '@heynixie/models/prices';
 import { collectTrips } from '../periods/collect-trips';
 import { pickPeriodsRefusal } from '../periods/pick-periods-refusal';
 import type { PeriodStoreHandle } from '../types';
-import { buildCallTokens } from '../usage/build-call-tokens';
 import type { Accounting } from './accounting';
 import { makeLostLatch } from './make-lost-latch';
+import { pickReplyCharge } from './pick-reply-charge';
 import { renderAPIError } from './render-api-error';
+import { writeReplyChargeLog } from './write-reply-charge-log';
 
 export interface PeriodsAccountingDeps {
   readonly store: PeriodStoreHandle;
@@ -19,7 +19,6 @@ export interface PeriodsAccountingDeps {
 export function makePeriodsAccounting(deps: PeriodsAccountingDeps): Accounting {
   let tripLogged = '';
   const latch = makeLostLatch(deps.store.markLost, deps.log);
-  const loseCount = latch.loseCount;
 
   const admit = async (sandbox: string | null): Promise<Response | null> => {
     const held = await deps.store.readInForce().catch((error: unknown) => {
@@ -42,24 +41,23 @@ export function makePeriodsAccounting(deps: PeriodsAccountingDeps): Accounting {
     return refusal === null ? null : renderAPIError(refusal.status, refusal.type, refusal.message);
   };
 
-  const count: Accounting['count'] = async (route, sandbox, usage, required) => {
-    if (usage === null && required) {
-      deps.log('count.lost', {}, 'error');
+  const count: Accounting['count'] = async (reply) => {
+    const charge = pickReplyCharge(reply);
 
-      await loseCount();
-
+    if (charge.kind === 'none') {
       return;
     }
 
-    if (usage === null) {
+    writeReplyChargeLog(deps.log, reply, charge);
+
+    if (charge.kind === 'lost') {
+      await latch.loseCount();
+
       return;
     }
 
     try {
-      const counted = await deps.store.addSpend(sandbox, {
-        dollars: buildCallCost(usage, route.prices),
-        tokens: buildCallTokens(usage),
-      });
+      const counted = await deps.store.addSpend(reply.sandbox, charge.spend);
 
       const trips = collectTrips(counted.store, counted.override);
       const key = trips.map((trip) => `${trip.period}:${trip.measure}`).join(',');
@@ -72,9 +70,9 @@ export function makePeriodsAccounting(deps: PeriodsAccountingDeps): Accounting {
     } catch (error) {
       deps.log('counter.write_failed', toErrorFields(error), 'error');
 
-      await loseCount();
+      await latch.loseCount();
     }
   };
 
-  return { admit, count, loseCount };
+  return { admit, count };
 }

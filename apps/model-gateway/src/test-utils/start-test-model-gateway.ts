@@ -111,6 +111,7 @@ export async function startTestModelGateway(
       `    upstream: ${options.upstreamURL}`,
       `    model: ${options.model ?? 'claude-test-1'}`,
       `    prices: ${JSON.stringify(testGatewayPrices)}`,
+      '    maxOutputTokens: 64000',
     ].join('\n'),
   );
 

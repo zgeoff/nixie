@@ -1,11 +1,11 @@
 import type { Logger } from '@heynixie/logger';
 import { toErrorFields } from '@heynixie/logger';
-import { buildCallCost } from '@heynixie/models/prices';
 import type { CounterStore, ProxyLimits, SpendTotals, StoredCount } from '../types';
-import { buildCallTokens } from '../usage/build-call-tokens';
 import type { Accounting } from './accounting';
 import { makeLostLatch } from './make-lost-latch';
+import { pickReplyCharge } from './pick-reply-charge';
 import { renderAPIError } from './render-api-error';
+import { writeReplyChargeLog } from './write-reply-charge-log';
 
 export interface LimitsAccountingDeps {
   readonly limits: ProxyLimits;
@@ -15,12 +15,11 @@ export interface LimitsAccountingDeps {
 
 // the count of a config with limits: one total that never resets
 export function makeLimitsAccounting(deps: LimitsAccountingDeps): Accounting {
-  // a count that failed to write, or a reply lost before its usage arrived, leaves the store behind
-  // the spend, so the store keeps a mark that refuses every later request, across a restart, until
-  // an operator clears it
+  // a count that failed to write, or a reply with no usage and no bound, leaves the store behind the
+  // spend, so the store keeps a mark that refuses every later request, across a restart, until an
+  // operator clears it
   let limitLogged = false;
   const latch = makeLostLatch(deps.store.markLost, deps.log);
-  const loseCount = latch.loseCount;
 
   const admit = async (): Promise<Response | null> => {
     const totals = await readTotals(deps);
@@ -48,24 +47,23 @@ export function makeLimitsAccounting(deps: LimitsAccountingDeps): Accounting {
     return null;
   };
 
-  const count: Accounting['count'] = async (route, _sandbox, usage, required) => {
-    if (usage === null && required) {
-      deps.log('count.lost', {}, 'error');
+  const count: Accounting['count'] = async (reply) => {
+    const charge = pickReplyCharge(reply);
 
-      await loseCount();
-
+    if (charge.kind === 'none') {
       return;
     }
 
-    if (usage === null) {
+    writeReplyChargeLog(deps.log, reply, charge);
+
+    if (charge.kind === 'lost') {
+      await latch.loseCount();
+
       return;
     }
 
     try {
-      const totals = await deps.store.add({
-        dollars: buildCallCost(usage, route.prices),
-        tokens: buildCallTokens(usage),
-      });
+      const totals = await deps.store.add(charge.spend);
 
       if (!limitLogged && isLimitReached(totals, deps.limits)) {
         limitLogged = true;
@@ -75,11 +73,11 @@ export function makeLimitsAccounting(deps: LimitsAccountingDeps): Accounting {
     } catch (error) {
       deps.log('counter.write_failed', toErrorFields(error), 'error');
 
-      await loseCount();
+      await latch.loseCount();
     }
   };
 
-  return { admit, count, loseCount };
+  return { admit, count };
 }
 
 async function readTotals(deps: LimitsAccountingDeps): Promise<StoredCount | null> {

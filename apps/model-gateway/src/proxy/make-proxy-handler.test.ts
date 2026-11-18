@@ -7,9 +7,11 @@ import { startScriptedModel, waitForCondition } from '@heynixie/testing';
 import type { ModelAPI } from '@heynixie/wire';
 import { encodeCaptureTag, formatSpoolFileName, openSpoolFile } from '@heynixie/wire';
 import { createSpoolRecipient } from '@heynixie/wire/test-utils';
+import { createPeriodStore } from '../periods/create-period-store';
 import type { CaptureSpool } from '../usage/create-capture-spool';
 import { createCaptureSpool } from '../usage/create-capture-spool';
 import { createCounterStore } from '../usage/create-counter-store';
+import { makeOpenReplies } from './make-open-replies';
 import { makeProxyHandler } from './make-proxy-handler';
 
 interface HandlerOptions {
@@ -18,6 +20,11 @@ interface HandlerOptions {
   readonly api?: ModelAPI;
   readonly storeText?: string;
   readonly providerPin?: string;
+}
+
+interface LimitsRoute {
+  readonly api: ModelAPI;
+  readonly maxOutputTokens: number | null;
 }
 
 interface Ask {
@@ -57,6 +64,7 @@ async function setupTest() {
           model: 'model-small',
           providerPin: options.providerPin ?? null,
           prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
+          maxOutputTokens: null,
         },
       },
       limits: { dollars: 1, tokens: null },
@@ -107,6 +115,77 @@ async function setupTest() {
       return { response, upstreamCalls };
     },
     makeHandler,
+    startLimitsHandler: async (
+      route: LimitsRoute,
+      sendUpstream: (url: string, init: RequestInit) => Promise<Response>,
+    ) => {
+      await writeFile(storePath, '{"dollars":0,"tokens":0}');
+
+      const store = await createCounterStore(storePath);
+
+      const handler = makeProxyHandler({
+        routes: {
+          preview: {
+            api: route.api,
+            upstream: 'http://model.test',
+            model: 'model-small',
+            providerPin: null,
+            prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
+            maxOutputTokens: route.maxOutputTokens,
+          },
+        },
+        limits: { dollars: 1, tokens: null },
+        store,
+        capture: null,
+        sendUpstream,
+        log,
+      });
+
+      return { handler, store };
+    },
+    startPeriodsHandler: async (
+      sendUpstream: (url: string, init: RequestInit) => Promise<Response>,
+      upstream = 'http://model.test',
+    ) => {
+      const store = await createPeriodStore({
+        path: storePath,
+        zone: 'Europe/London',
+        now: () => Date.parse('2026-11-13T10:00:00Z'),
+        readOverride: () => Promise.resolve(null),
+        log,
+      });
+
+      await store.change((held) => ({
+        store: {
+          ...held,
+          periods: {
+            day: { ...held.periods.day, limit: { dollars: 60, tokens: 1_000_000 } },
+            month: { ...held.periods.month, limit: { dollars: 600, tokens: 10_000_000 } },
+          },
+          sandboxes: { alpha: { dollars: 0, tokens: 0, limit: null } },
+        },
+        result: undefined,
+      }));
+
+      const handler = makeProxyHandler({
+        routes: {
+          preview: {
+            api: 'anthropic-messages',
+            upstream,
+            model: 'model-small',
+            providerPin: null,
+            prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
+            maxOutputTokens: null,
+          },
+        },
+        periods: { store, countBySandbox: true, log },
+        capture: null,
+        sendUpstream,
+        log,
+      });
+
+      return { handler, store };
+    },
   };
 }
 
@@ -136,6 +215,7 @@ test('it prices a reply through its route profile, the 1-hour cache write price 
         model: 'model-small',
         providerPin: null,
         prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
+        maxOutputTokens: null,
       },
     },
     limits: { dollars: 1, tokens: null },
@@ -186,6 +266,7 @@ test('it prices a streamed reply from its message start and its last delta', asy
         model: 'model-small',
         providerPin: null,
         prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
+        maxOutputTokens: null,
       },
     },
     limits: { dollars: 1, tokens: null },
@@ -242,6 +323,7 @@ test.each([
           model: 'model-o',
           providerPin: null,
           prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
+          maxOutputTokens: null,
         },
       },
       limits: { dollars: 1, tokens: null },
@@ -279,6 +361,7 @@ test('it refuses a background Responses request, whose reply holds no usage, and
         model: 'model-o',
         providerPin: null,
         prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
+        maxOutputTokens: null,
       },
     },
     limits: { dollars: 1, tokens: null },
@@ -323,6 +406,7 @@ test('it refuses a Messages request on a Responses route and sends nothing on', 
         model: 'model-o',
         providerPin: null,
         prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
+        maxOutputTokens: null,
       },
     },
     limits: { dollars: 1, tokens: null },
@@ -364,6 +448,7 @@ test('it refuses every request once the replies it counted reach its dollar limi
         model: 'model-small',
         providerPin: null,
         prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
+        maxOutputTokens: null,
       },
     },
     limits: { dollars: 0.01, tokens: null },
@@ -422,6 +507,7 @@ test('it refuses every request once the replies it counted reach its token limit
         model: 'model-small',
         providerPin: null,
         prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
+        maxOutputTokens: null,
       },
     },
     limits: { dollars: null, tokens: 1000 },
@@ -464,6 +550,7 @@ test('it logs the limit once when a count reaches it', async () => {
         model: 'model-small',
         providerPin: null,
         prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
+        maxOutputTokens: null,
       },
     },
     limits: { dollars: null, tokens: 1000 },
@@ -508,6 +595,7 @@ test('it refuses every request when its counter store is down', async () => {
         model: 'model-small',
         providerPin: null,
         prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
+        maxOutputTokens: null,
       },
     },
     limits: { dollars: 1, tokens: null },
@@ -556,6 +644,7 @@ test('it refuses every request when its counter store holds no count it can read
         model: 'model-small',
         providerPin: null,
         prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
+        maxOutputTokens: null,
       },
     },
     limits: { dollars: 1, tokens: null },
@@ -578,7 +667,7 @@ test('it refuses every request when its counter store holds no count it can read
   expect(ctx.model.requests).toHaveLength(0);
 });
 
-test('it answers a 502 and refuses every later request when a reply body breaks before its usage arrives', async () => {
+test('it answers a 502 and counts the estimate, so the next request passes, when a reply body breaks before its usage arrives', async () => {
   const ctx = await setupTest();
 
   await writeFile(ctx.storePath, '{"dollars":0,"tokens":0}');
@@ -606,6 +695,7 @@ test('it answers a 502 and refuses every later request when a reply body breaks 
         model: 'model-small',
         providerPin: null,
         prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
+        maxOutputTokens: null,
       },
     },
     limits: { dollars: 1, tokens: null },
@@ -619,19 +709,41 @@ test('it answers a 502 and refuses every later request when a reply body breaks 
     handler(
       new Request('http://proxy.test/preview/v1/messages', {
         method: 'POST',
-        body: JSON.stringify({ model: 'model-small', messages: [] }),
+        body: JSON.stringify({ model: 'model-small', messages: [], max_tokens: 1000 }),
       }),
     );
 
   const broken = await sendRequest();
   const later = await sendRequest();
+  const counted = await store.read();
 
-  expect(broken.status).toBe(502);
-  expect(later.status).toBe(503);
-  expect(sendUpstream).toHaveBeenCalledOnce();
+  // 4,151 input tokens at the highest input rate, $2, and 1,000 output tokens at $5, per million
+  expect([broken.status, later.status, counted.lost, counted.tokens]).toStrictEqual([
+    502,
+    502,
+    false,
+    10_302,
+  ]);
+
+  expect(sendUpstream).toHaveBeenCalledTimes(2);
+
+  const estimated = ctx.log.mock.calls.find(([event]) => event === 'count.estimated');
+
+  expect(estimated?.[1]?.['dollars']).toBeCloseTo(0.013302, 9);
+
+  expect(ctx.log).toHaveBeenCalledWith(
+    'count.estimated',
+    expect.objectContaining({
+      route: 'preview',
+      sandbox: null,
+      reason: 'body_failed',
+      tokens: 5151,
+    }),
+    'warn',
+  );
 });
 
-test('it refuses every later request when a streamed reply breaks before its usage arrives', async () => {
+test('it counts the estimate, so the next request passes, when a streamed reply breaks before its usage arrives', async () => {
   const ctx = await setupTest();
 
   await writeFile(ctx.storePath, '{"dollars":0,"tokens":0}');
@@ -659,6 +771,7 @@ test('it refuses every later request when a streamed reply breaks before its usa
         model: 'model-small',
         providerPin: null,
         prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
+        maxOutputTokens: null,
       },
     },
     limits: { dollars: 1, tokens: null },
@@ -672,7 +785,12 @@ test('it refuses every later request when a streamed reply breaks before its usa
     handler(
       new Request('http://proxy.test/preview/v1/messages', {
         method: 'POST',
-        body: JSON.stringify({ model: 'model-small', messages: [], stream: true }),
+        body: JSON.stringify({
+          model: 'model-small',
+          messages: [],
+          stream: true,
+          max_tokens: 1000,
+        }),
       }),
     );
 
@@ -684,10 +802,22 @@ test('it refuses every later request when a streamed reply breaks before its usa
   );
 
   const later = await sendRequest();
+  const counted = await store.read();
 
+  // 4,165 input tokens at the highest input rate, $2, and 1,000 output tokens at $5, per million
   expect(read).toBeInstanceOf(Error);
-  expect(later.status).toBe(503);
-  expect(sendUpstream).toHaveBeenCalledOnce();
+  expect([later.status, counted.lost, counted.tokens]).toStrictEqual([200, false, 5165]);
+  expect(sendUpstream).toHaveBeenCalledTimes(2);
+
+  const estimated = ctx.log.mock.calls.find(([event]) => event === 'count.estimated');
+
+  expect(estimated?.[1]?.['dollars']).toBeCloseTo(0.01333, 9);
+
+  expect(ctx.log).toHaveBeenCalledWith(
+    'count.estimated',
+    expect.objectContaining({ route: 'preview', sandbox: null, reason: 'cut', tokens: 5165 }),
+    'warn',
+  );
 });
 
 test('it refuses every later request once a count fails to write, even after the store comes back', async () => {
@@ -712,6 +842,7 @@ test('it refuses every later request once a count fails to write, even after the
         model: 'model-small',
         providerPin: null,
         prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
+        maxOutputTokens: null,
       },
     },
     limits: { dollars: 1, tokens: null },
@@ -761,6 +892,7 @@ test('it refuses a request for a model its route does not price', async () => {
         model: 'model-small',
         providerPin: null,
         prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
+        maxOutputTokens: null,
       },
     },
     limits: { dollars: 1, tokens: null },
@@ -808,6 +940,7 @@ test('it refuses a message request whose body names no model', async () => {
         model: 'model-small',
         providerPin: null,
         prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
+        maxOutputTokens: null,
       },
     },
     limits: { dollars: 1, tokens: null },
@@ -859,6 +992,7 @@ test.each([
         model: 'model-small',
         providerPin: null,
         prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
+        maxOutputTokens: null,
       },
     },
     limits: { dollars: 1, tokens: null },
@@ -889,6 +1023,7 @@ test('it sends on a request for the model list', async () => {
         model: 'model-small',
         providerPin: null,
         prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
+        maxOutputTokens: null,
       },
     },
     limits: { dollars: 1, tokens: null },
@@ -918,6 +1053,7 @@ test('it answers a path outside every route with a 404 and sends nothing on', as
         model: 'model-small',
         providerPin: null,
         prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
+        maxOutputTokens: null,
       },
     },
     limits: { dollars: 1, tokens: null },
@@ -953,6 +1089,7 @@ test('it sends a request on with its path past the route, its query and its cred
         model: 'model-small',
         providerPin: null,
         prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
+        maxOutputTokens: null,
       },
     },
     limits: { dollars: 1, tokens: null },
@@ -1003,6 +1140,7 @@ test('it passes an upstream error through without counting it', async () => {
         model: 'model-small',
         providerPin: null,
         prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
+        maxOutputTokens: null,
       },
     },
     limits: { dollars: 1, tokens: null },
@@ -1041,6 +1179,7 @@ test('it answers a 502 when the upstream cannot be reached', async () => {
         model: 'model-small',
         providerPin: null,
         prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
+        maxOutputTokens: null,
       },
     },
     limits: { dollars: 1, tokens: null },
@@ -1060,7 +1199,7 @@ test('it answers a 502 when the upstream cannot be reached', async () => {
   expect(response.status).toBe(502);
 });
 
-test('it refuses every later request once a message call fails before its reply arrives', async () => {
+test('it counts the estimate, so the next request passes, once a message call fails before its reply arrives', async () => {
   const ctx = await setupTest();
 
   await writeFile(ctx.storePath, '{"dollars":0,"tokens":0}');
@@ -1079,6 +1218,7 @@ test('it refuses every later request once a message call fails before its reply 
         model: 'model-small',
         providerPin: null,
         prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
+        maxOutputTokens: null,
       },
     },
     limits: { dollars: 1, tokens: null },
@@ -1092,16 +1232,35 @@ test('it refuses every later request once a message call fails before its reply 
     handler(
       new Request('http://proxy.test/preview/v1/messages', {
         method: 'POST',
-        body: JSON.stringify({ model: 'model-small', messages: [] }),
+        body: JSON.stringify({ model: 'model-small', messages: [], max_tokens: 1000 }),
       }),
     );
 
   const failed = await sendRequest();
   const later = await sendRequest();
+  const counted = await store.read();
 
-  expect(failed.status).toBe(502);
-  expect(later.status).toBe(503);
-  expect(sendUpstream).toHaveBeenCalledOnce();
+  expect([failed.status, later.status, counted.lost, counted.tokens]).toStrictEqual([
+    502,
+    502,
+    false,
+    10_302,
+  ]);
+
+  const estimated = ctx.log.mock.calls.find(([event]) => event === 'count.estimated');
+
+  expect(estimated?.[1]?.['dollars']).toBeCloseTo(0.013302, 9);
+
+  expect(ctx.log).toHaveBeenCalledWith(
+    'count.estimated',
+    expect.objectContaining({
+      route: 'preview',
+      sandbox: null,
+      reason: 'upstream_failed',
+      tokens: 5151,
+    }),
+    'warn',
+  );
 });
 
 test('it admits a request again once an operator removes the lost mark, with no restart', async () => {
@@ -1123,6 +1282,7 @@ test('it admits a request again once an operator removes the lost mark, with no 
         model: 'model-small',
         providerPin: null,
         prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
+        maxOutputTokens: null,
       },
     },
     limits: { dollars: 1, tokens: null },
@@ -1180,6 +1340,7 @@ test('it refuses a request that arrives while the lost mark is still being writt
         model: 'model-small',
         providerPin: null,
         prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
+        maxOutputTokens: null,
       },
     },
     limits: { dollars: 1, tokens: null },
@@ -1215,35 +1376,13 @@ test('it refuses every request after a restart once a lost count marks its store
 
   await writeFile(ctx.storePath, '{"dollars":0,"tokens":0}');
 
-  const store = await createCounterStore(ctx.storePath);
-
   const sendUpstream = mock<(url: string, init: RequestInit) => Promise<Response>>(() =>
     Promise.reject(new Error('connection reset')),
   );
 
-  const handler = makeProxyHandler({
-    routes: {
-      preview: {
-        api: 'anthropic-messages',
-        upstream: 'http://model.test',
-        model: 'model-small',
-        providerPin: null,
-        prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
-      },
-    },
-    limits: { dollars: 1, tokens: null },
-    store,
-    capture: null,
-    sendUpstream,
-    log: ctx.log,
-  });
+  const seeded = await createCounterStore(ctx.storePath);
 
-  await handler(
-    new Request('http://proxy.test/preview/v1/messages', {
-      method: 'POST',
-      body: JSON.stringify({ model: 'model-small', messages: [] }),
-    }),
-  );
+  await seeded.markLost();
 
   // a handler on a store opened again stands for the proxy after a restart
   const restarted = makeProxyHandler({
@@ -1254,6 +1393,7 @@ test('it refuses every request after a restart once a lost count marks its store
         model: 'model-small',
         providerPin: null,
         prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
+        maxOutputTokens: null,
       },
     },
     limits: { dollars: 1, tokens: null },
@@ -1283,10 +1423,10 @@ test('it refuses every request after a restart once a lost count marks its store
     },
   });
 
-  expect(sendUpstream).toHaveBeenCalledOnce();
+  expect(sendUpstream).not.toHaveBeenCalled();
 });
 
-test('it refuses every later request once a successful message reply holds usage it cannot read', async () => {
+test('it counts the estimate, so the next request passes, once a successful message reply holds usage it cannot read', async () => {
   const ctx = await setupTest();
 
   await writeFile(ctx.storePath, '{"dollars":0,"tokens":0}');
@@ -1311,6 +1451,7 @@ test('it refuses every later request once a successful message reply holds usage
         model: 'model-small',
         providerPin: null,
         prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
+        maxOutputTokens: null,
       },
     },
     limits: { dollars: 1, tokens: null },
@@ -1324,16 +1465,22 @@ test('it refuses every later request once a successful message reply holds usage
     handler(
       new Request('http://proxy.test/preview/v1/messages', {
         method: 'POST',
-        body: JSON.stringify({ model: 'model-small', messages: [] }),
+        body: JSON.stringify({ model: 'model-small', messages: [], max_tokens: 1000 }),
       }),
     );
 
   const unreadable = await sendRequest();
   const later = await sendRequest();
+  const counted = await store.read();
 
-  expect(unreadable.status).toBe(200);
-  expect(later.status).toBe(503);
-  expect(sendUpstream).toHaveBeenCalledOnce();
+  expect([unreadable.status, later.status, counted.lost, counted.tokens]).toStrictEqual([
+    200,
+    200,
+    false,
+    10_302,
+  ]);
+
+  expect(sendUpstream).toHaveBeenCalledTimes(2);
 });
 
 test('it keeps sending on after a call that spends nothing fails', async () => {
@@ -1355,6 +1502,7 @@ test('it keeps sending on after a call that spends nothing fails', async () => {
         model: 'model-small',
         providerPin: null,
         prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
+        maxOutputTokens: null,
       },
     },
     limits: { dollars: 1, tokens: null },
@@ -1806,6 +1954,7 @@ test.each([
         model: 'model-small',
         providerPin: null,
         prices,
+        maxOutputTokens: null,
       },
       router: {
         api: 'anthropic-messages',
@@ -1813,6 +1962,7 @@ test.each([
         model: 'model-small',
         providerPin: 'z-ai',
         prices,
+        maxOutputTokens: null,
       },
     },
     limits: { dollars: 1, tokens: null },
@@ -2136,4 +2286,357 @@ test.each([
     sent: [bodyText],
     totals: { dollars: 0.00002, tokens: 12, lost: false },
   });
+});
+
+test('it counts the estimate of a Messages stream that breaks after its message start, per sandbox, and admits the next request', async () => {
+  const ctx = await setupTest();
+
+  const encoder = new TextEncoder();
+
+  const sendUpstream = mock<(url: string, init: RequestInit) => Promise<Response>>(() =>
+    Promise.resolve(
+      new Response(
+        new ReadableStream<Uint8Array>({
+          pull: (controller) => {
+            controller.enqueue(
+              encoder.encode(
+                `data: ${JSON.stringify({
+                  type: 'message_start',
+                  message: { usage: { input_tokens: 100, output_tokens: 1 } },
+                })}\n\n`,
+              ),
+            );
+
+            controller.error(new Error('connection reset'));
+          },
+        }),
+        { headers: { 'content-type': 'text/event-stream' } },
+      ),
+    ),
+  );
+
+  const started = await ctx.startPeriodsHandler(sendUpstream);
+
+  const sendRequest = () =>
+    started.handler(
+      new Request('http://proxy.test/alpha/preview/v1/messages', {
+        method: 'POST',
+        body: JSON.stringify({
+          model: 'model-small',
+          messages: [],
+          stream: true,
+          max_tokens: 1000,
+        }),
+      }),
+    );
+
+  const broken = await sendRequest();
+
+  await broken.text().catch(() => null);
+
+  const later = await sendRequest();
+  const counted = await started.store.read();
+
+  // 4,165 input tokens, the body's 69 bytes and the allowance, and 1,000 output tokens
+  expect([later.status, counted.lost, counted.sandboxes['alpha']?.tokens]).toStrictEqual([
+    200,
+    false,
+    5165,
+  ]);
+
+  const estimated = ctx.log.mock.calls.find(([event]) => event === 'count.estimated');
+
+  expect(estimated?.[1]?.['dollars']).toBeCloseTo(0.01333, 9);
+
+  expect(ctx.log).toHaveBeenCalledWith(
+    'count.estimated',
+    expect.objectContaining({ route: 'preview', sandbox: 'alpha', reason: 'cut', tokens: 5165 }),
+    'warn',
+  );
+});
+
+test('it counts the estimate of a Messages stream whose last delta holds no output count, pricing the start event input on an Anthropic route', async () => {
+  const ctx = await setupTest();
+
+  const events = [
+    { type: 'message_start', message: { usage: { input_tokens: 9000, output_tokens: 1 } } },
+    { type: 'message_delta', delta: { stop_reason: 'end_turn' }, usage: {} },
+  ];
+
+  const sendUpstream = mock<(url: string, init: RequestInit) => Promise<Response>>(() =>
+    Promise.resolve(
+      new Response(events.map((event) => `data: ${JSON.stringify(event)}\n\n`).join(''), {
+        headers: { 'content-type': 'text/event-stream' },
+      }),
+    ),
+  );
+
+  const started = await ctx.startPeriodsHandler(sendUpstream, 'https://api.anthropic.com');
+
+  const sendRequest = () =>
+    started.handler(
+      new Request('http://proxy.test/alpha/preview/v1/messages', {
+        method: 'POST',
+        body: JSON.stringify({
+          model: 'model-small',
+          messages: [],
+          stream: true,
+          max_tokens: 1000,
+        }),
+      }),
+    );
+
+  const ended = await sendRequest();
+
+  await ended.text();
+
+  const later = await sendRequest();
+  const counted = await started.store.read();
+
+  // 9,000 input tokens from the start event at the input rate, and 1,000 output tokens at the
+  // output rate; the byte bound of 4,165 tokens at the highest input rate would cost more
+  expect([later.status, counted.lost, counted.sandboxes['alpha']?.tokens]).toStrictEqual([
+    200,
+    false,
+    10_000,
+  ]);
+
+  const estimated = ctx.log.mock.calls.find(([event]) => event === 'count.estimated');
+
+  expect(estimated?.[1]?.['dollars']).toBeCloseTo(0.014, 9);
+
+  expect(ctx.log).toHaveBeenCalledWith(
+    'count.estimated',
+    expect.objectContaining({
+      route: 'preview',
+      sandbox: 'alpha',
+      reason: 'no_usage',
+      tokens: 10_000,
+    }),
+    'warn',
+  );
+});
+
+test('it counts the estimate from the route maxOutputTokens for a Responses stream cut before its final event', async () => {
+  const ctx = await setupTest();
+
+  const sendUpstream = mock<(url: string, init: RequestInit) => Promise<Response>>(() =>
+    Promise.resolve(
+      new Response(
+        new ReadableStream({
+          pull: (controller) => {
+            controller.error(new Error('connection reset'));
+          },
+        }),
+        { headers: { 'content-type': 'text/event-stream' } },
+      ),
+    ),
+  );
+
+  const started = await ctx.startLimitsHandler(
+    { api: 'openai-responses', maxOutputTokens: 8192 },
+    sendUpstream,
+  );
+
+  const response = await started.handler(
+    new Request('http://proxy.test/preview/v1/responses', {
+      method: 'POST',
+      body: JSON.stringify({ model: 'model-small', stream: true, input: 'Review the plan.' }),
+    }),
+  );
+
+  await response.text().catch(() => null);
+
+  const counted = await started.store.read();
+
+  // the body's 64 bytes and the 4,096 allowance in, and the route's 8,192 tokens out
+  expect([counted.tokens, counted.lost]).toStrictEqual([4160 + 8192, false]);
+  expect(counted.dollars).toBeCloseTo((4160 * 2 + 8192 * 5) / 1_000_000, 9);
+});
+
+test.each([
+  ['no usage block', { id: 'msg_1', type: 'message' }],
+  [
+    'usage of another shape, as a router reports it',
+    { id: 'msg_1', usage: { prompt_tokens: 120, completion_tokens: 30 } },
+  ],
+])('it counts the estimate for a whole reply with %s', async (_case, reply) => {
+  const ctx = await setupTest();
+
+  const started = await ctx.startLimitsHandler(
+    { api: 'anthropic-messages', maxOutputTokens: null },
+    () => Promise.resolve(Response.json(reply)),
+  );
+
+  const response = await started.handler(
+    new Request('http://proxy.test/preview/v1/messages', {
+      method: 'POST',
+      body: JSON.stringify({ model: 'model-small', messages: [], max_tokens: 1000 }),
+    }),
+  );
+
+  const counted = await started.store.read();
+
+  expect([response.status, counted.lost, counted.tokens]).toStrictEqual([200, false, 5151]);
+
+  expect(ctx.log).toHaveBeenCalledWith(
+    'count.estimated',
+    expect.objectContaining({ route: 'preview', reason: 'no_usage', tokens: 5151 }),
+    'warn',
+  );
+});
+
+test('it marks the count lost and names the field when a reply with no usage answers a request with an image by URL', async () => {
+  const ctx = await setupTest();
+
+  const started = await ctx.startPeriodsHandler(() =>
+    Promise.resolve(Response.json({ id: 'msg_1' })),
+  );
+
+  const response = await started.handler(
+    new Request('http://proxy.test/alpha/preview/v1/messages', {
+      method: 'POST',
+      body: JSON.stringify({
+        model: 'model-small',
+        max_tokens: 1000,
+        messages: [
+          {
+            role: 'user',
+            content: [{ type: 'image', source: { type: 'url', url: 'https://img.test/a.png' } }],
+          },
+        ],
+      }),
+    }),
+  );
+
+  const counted = await started.store.read();
+
+  expect([response.status, counted.lost]).toStrictEqual([200, true]);
+
+  expect(ctx.log).toHaveBeenCalledWith(
+    'count.lost',
+    { route: 'preview', sandbox: 'alpha', field: 'messages.content.source' },
+    'error',
+  );
+});
+
+test.each([
+  {
+    title: 'a whole body whose usage holds only its input count',
+    buildReply: () => Response.json({ type: 'message', usage: { input_tokens: 9000 } }),
+  },
+  {
+    title: 'a stream that ends cleanly after its message start',
+    buildReply: () =>
+      new Response(
+        `data: ${JSON.stringify({
+          type: 'message_start',
+          message: { usage: { input_tokens: 9000, output_tokens: 1 } },
+        })}\n\n`,
+        { headers: { 'content-type': 'text/event-stream' } },
+      ),
+  },
+])('it charges the input it reported and the output bound for $title', async (row) => {
+  const ctx = await setupTest();
+
+  await writeFile(ctx.storePath, '{"dollars":0,"tokens":0}');
+
+  const store = await createCounterStore(ctx.storePath);
+
+  const handler = makeProxyHandler({
+    routes: {
+      preview: {
+        api: 'anthropic-messages',
+        upstream: 'http://model.test',
+        model: 'model-small',
+        providerPin: null,
+        prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
+        maxOutputTokens: null,
+      },
+    },
+    limits: { dollars: 1, tokens: null },
+    store,
+    capture: null,
+    sendUpstream: () => Promise.resolve(row.buildReply()),
+    log: ctx.log,
+  });
+
+  const response = await handler(
+    new Request('http://proxy.test/preview/v1/messages', {
+      method: 'POST',
+      body: JSON.stringify({ model: 'model-small', messages: [], max_tokens: 1000 }),
+    }),
+  );
+
+  await response.text();
+
+  const counted = await store.read();
+
+  // 9,000 reported input tokens at $2 and 1,000 output tokens at $5, per million
+  expect([counted.tokens, counted.lost]).toStrictEqual([10_000, false]);
+  expect(counted.dollars).toBeCloseTo(0.023, 9);
+});
+
+test('it charges the usage a stream reported when a stop cuts it off, and a later cancel adds nothing', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(ctx.storePath, '{"dollars":0,"tokens":0}');
+
+  const store = await createCounterStore(ctx.storePath);
+
+  const openReplies = makeOpenReplies();
+
+  const handler = makeProxyHandler({
+    routes: {
+      preview: {
+        api: 'anthropic-messages',
+        upstream: 'http://model.test',
+        model: 'model-small',
+        providerPin: null,
+        prices: { input: 1, cacheWrite: 1.25, cacheWrite1h: 2, cachedInput: 0.1, output: 5 },
+        maxOutputTokens: null,
+      },
+    },
+    limits: { dollars: 1, tokens: null },
+    store,
+    capture: null,
+    openReplies,
+    sendUpstream: () =>
+      Promise.resolve(
+        new Response(
+          new ReadableStream<Uint8Array>({
+            start: (controller) => {
+              controller.enqueue(
+                new TextEncoder().encode(
+                  `data: ${JSON.stringify({
+                    type: 'message_start',
+                    message: { usage: { input_tokens: 9000, output_tokens: 1 } },
+                  })}\n\n`,
+                ),
+              );
+            },
+          }),
+          { headers: { 'content-type': 'text/event-stream' } },
+        ),
+      ),
+    log: ctx.log,
+  });
+
+  const response = await handler(
+    new Request('http://proxy.test/preview/v1/messages', {
+      method: 'POST',
+      body: JSON.stringify({ model: 'model-small', messages: [], stream: true, max_tokens: 1000 }),
+    }),
+  );
+
+  const reader = response.body?.getReader();
+
+  await reader?.read();
+  await openReplies.countAtStop();
+  await reader?.cancel();
+
+  const counted = await store.read();
+
+  expect([counted.tokens, counted.lost]).toStrictEqual([10_000, false]);
+  expect(counted.dollars).toBeCloseTo(0.023, 9);
 });

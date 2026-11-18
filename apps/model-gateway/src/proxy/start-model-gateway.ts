@@ -1,5 +1,4 @@
 import type { Logger } from '@heynixie/logger';
-import { toErrorFields } from '@heynixie/logger';
 import invariant from 'tiny-invariant';
 import type { ControlHandlerDeps } from '../control/make-control-handler';
 import { makeControlHandler } from '../control/make-control-handler';
@@ -9,6 +8,7 @@ import type { CounterStore, PeriodsConfig, ProxyConfig, ProxyLimits } from '../t
 import { createCaptureSpool } from '../usage/create-capture-spool';
 import { createCounterStore } from '../usage/create-counter-store';
 import { loadProxyConfig } from './load-proxy-config';
+import { makeOpenReplies } from './make-open-replies';
 import type { PeriodsAccountingDeps } from './make-periods-accounting';
 import { makeProxyHandler } from './make-proxy-handler';
 
@@ -47,7 +47,10 @@ export async function startModelGateway(options: ModelGatewayOptions): Promise<M
       ? null
       : await createCaptureSpool({ config: config.capture, log: options.log });
 
+  const openReplies = makeOpenReplies();
+
   const answerRequest = makeProxyHandler({
+    openReplies,
     routes: config.routes,
     ...counting.deps,
     capture,
@@ -97,14 +100,12 @@ export async function startModelGateway(options: ModelGatewayOptions): Promise<M
 
       await Promise.race([Promise.all([drained, controlDrained]), options.waitForDrainDeadline()]);
 
-      // a reply still open at the deadline is cut off before its whole usage arrives, so the store
-      // keeps the count's mark as lost for the next start to refuse
+      // a reply still open at the deadline is cut off before its whole usage arrives, so each one
+      // that spends is charged its estimate
       if (server.pendingRequests > 0) {
         options.log('count.cut_off', { replies: server.pendingRequests }, 'error');
 
-        await counting.markLost().catch((error: unknown) => {
-          options.log('counter.mark_failed', toErrorFields(error), 'error');
-        });
+        await openReplies.countAtStop();
       }
 
       await server.stop(true);
@@ -123,7 +124,6 @@ interface Counting {
   readonly deps: CountingDeps;
   readonly control: ControlHandlerDeps | null;
   readonly controlListen: { readonly hostname: string; readonly port: number } | null;
-  readonly markLost: () => Promise<void>;
   readonly settle: () => Promise<void>;
 }
 
@@ -136,7 +136,6 @@ async function startLimitsCounting(config: ProxyConfig): Promise<Counting> {
     deps: { limits: config.limits, store },
     control: null,
     controlListen: null,
-    markLost: store.markLost,
     settle: store.settle,
   };
 }
@@ -173,7 +172,6 @@ async function startPeriodsCounting(
     },
     control: { store, config: periods, token, now, log },
     controlListen: periods.control.listen,
-    markLost: store.markLost,
     settle: store.settle,
   };
 }

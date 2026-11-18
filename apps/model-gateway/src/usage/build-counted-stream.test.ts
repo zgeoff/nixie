@@ -38,11 +38,15 @@ test('it passes every byte through and reports the usage of the message start an
 
   expect(onEnd).toHaveBeenCalledExactlyOnceWith(
     {
-      uncachedInputTokens: 40,
-      cacheReadTokens: 0,
-      cacheWrite5mTokens: 0,
-      cacheWrite1hTokens: 2000,
-      outputTokens: 12,
+      usage: {
+        uncachedInputTokens: 40,
+        cacheReadTokens: 0,
+        cacheWrite5mTokens: 0,
+        cacheWrite1hTokens: 2000,
+        outputTokens: 12,
+      },
+      isFinal: true,
+      hasInput: true,
     },
     true,
   );
@@ -72,11 +76,15 @@ test('it reports the usage seen so far when the reader stops early', async () =>
 
   expect(onEnd).toHaveBeenCalledExactlyOnceWith(
     {
-      uncachedInputTokens: 40,
-      cacheReadTokens: 0,
-      cacheWrite5mTokens: 0,
-      cacheWrite1hTokens: 0,
-      outputTokens: 1,
+      usage: {
+        uncachedInputTokens: 40,
+        cacheReadTokens: 0,
+        cacheWrite5mTokens: 0,
+        cacheWrite1hTokens: 0,
+        outputTokens: 1,
+      },
+      isFinal: false,
+      hasInput: true,
     },
     false,
   );
@@ -114,11 +122,15 @@ test('it reports the usage seen so far and fails the stream when the upstream br
 
   expect(onEnd).toHaveBeenCalledExactlyOnceWith(
     {
-      uncachedInputTokens: 40,
-      cacheReadTokens: 0,
-      cacheWrite5mTokens: 0,
-      cacheWrite1hTokens: 0,
-      outputTokens: 1,
+      usage: {
+        uncachedInputTokens: 40,
+        cacheReadTokens: 0,
+        cacheWrite5mTokens: 0,
+        cacheWrite1hTokens: 0,
+        outputTokens: 1,
+      },
+      isFinal: false,
+      hasInput: true,
     },
     false,
   );
@@ -137,5 +149,40 @@ test('it reports no usage for a stream with no usage event', async () => {
     buildCountedStream(upstream, usageDialects['anthropic-messages'], onEnd),
   ).text();
 
-  expect(onEnd).toHaveBeenCalledExactlyOnceWith(null, true);
+  expect(onEnd).toHaveBeenCalledExactlyOnceWith(
+    { usage: null, isFinal: false, hasInput: false },
+    true,
+  );
+});
+
+test('it does not call the usage final when the last delta carries no output count', async () => {
+  const onEnd = mock(async () => {});
+
+  const text = [
+    'event: message_start\ndata: {"type":"message_start","message":{"usage":{"input_tokens":9000,"output_tokens":1}}}\n\n',
+    'event: message_delta\ndata: {"type":"message_delta","usage":{}}\n\n',
+  ];
+
+  const body = new Response(
+    new ReadableStream<Uint8Array>({
+      start: (controller) => {
+        for (const part of text) {
+          controller.enqueue(new TextEncoder().encode(part));
+        }
+
+        controller.close();
+      },
+    }),
+  ).body;
+
+  if (body === null) {
+    throw new Error('the test response has no body');
+  }
+
+  await new Response(buildCountedStream(body, usageDialects['anthropic-messages'], onEnd)).text();
+
+  expect(onEnd).toHaveBeenCalledExactlyOnceWith(
+    { usage: expect.anything(), isFinal: false, hasInput: true },
+    true,
+  );
 });

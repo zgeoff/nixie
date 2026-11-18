@@ -9,6 +9,9 @@ export interface ProxyRoute {
   // the provider an OpenRouter route pins, which the only provider field a request may hold names
   readonly providerPin: string | null;
   readonly prices: ModelPrices;
+
+  // the model's largest output, which bounds a reply whose request sets no output limit
+  readonly maxOutputTokens: number | null;
 }
 
 export interface ProxyLimits {
