@@ -6,6 +6,7 @@ import { getBackupStagingDir, writeSnapshotSet } from '@heynixie/backup';
 import { startDatabase } from '@heynixie/db';
 import { createRecordKey, getDataFilePath, localDataStorage, removeRecordKey } from '@heynixie/log';
 import { buildLogSeeder, readTestRecordKeyRows, startTestLog } from '@heynixie/log/test-utils';
+import type { MemoryRecordKind } from '@heynixie/memory';
 import {
   backupReceiptSchema,
   backupSetLayout,
@@ -73,7 +74,7 @@ test.skipIf(isResticMissing)(
     );
 
     const added = await ctx.seed.record({
-      kind: 'memory.version_added',
+      kind: 'memory.version_added' satisfies MemoryRecordKind,
       payload: {
         forgotten: Buffer.from(forgottenText).toString('base64'),
         neighbour: Buffer.from(neighbourText).toString('base64'),
@@ -90,7 +91,7 @@ test.skipIf(isResticMissing)(
     await run(ctx.job.command, { args: ['run'], cwd: ctx.job.cwd, env: ctx.jobEnv });
     await removeRecordKey(ctx.log, forgotten.keyID);
 
-    await ctx.seed.record({ kind: 'memory.forgotten', payload: {} });
+    await ctx.seed.record({ kind: 'memory.forgotten' satisfies MemoryRecordKind, payload: {} });
 
     await writeSnapshotSet(context, 'forget');
 

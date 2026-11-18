@@ -18,9 +18,14 @@
     "zod": "catalog:"
   },
   "devDependencies": {
+    "@heynixie/backup": "workspace:*",
+    "@heynixie/db": "workspace:*",
+    "@heynixie/log": "workspace:*",
+    "@heynixie/memory": "workspace:*",
     "@heynixie/testing": "workspace:*",
     "@zgeoff/rig": "catalog:",
     "@zgeoff/testing": "catalog:",
+    "kysely": "catalog:",
     "tiny-invariant": "catalog:"
   }
 }
