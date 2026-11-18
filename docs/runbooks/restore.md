@@ -18,10 +18,9 @@ You need:
 - a release of nixie that starts paused after a restore, pinned in your deployment repo.
 
 **Use a release that starts paused after a restore.** Its release notes list the restore pause. A
-release without the pause refuses to start on the data directory that the restore leaves. After a
-release with the pause has started on that data directory, a release without it refuses the data
-directory with `SchemaTooNewError` for as long as nixie stays paused. The error does not say that
-the pause is the cause.
+release without the pause refuses the data directory with `SchemaTooNewError`, both while nixie is
+paused and after `nixie resume`, because each release that starts paused writes a database schema
+too new for it. The error does not name the pause.
 
 Each step marked **Get approval first** stops the live nixie or does something that no later step
 puts back. When someone else follows these steps for you, they stop before each such step and ask
@@ -418,20 +417,42 @@ holds its keys.
 
 ## Drill
 
-A drill restores into a fresh namespace and volume on Kubernetes, to show that the restore works.
-Which repository credential a drill reads the repositories with is still open, in
-[the restore checks by hand](https://linear.app/zgeoff/issue/GEO-2576). Run no drill until that
-issue settles it.
+A drill restores a backup pair into a fresh namespace and volume on Kubernetes, and stops with nixie
+paused, to show that the restore works. Run it on a cluster that holds no production data, from 2
+repositories that no live nixie writes, such as a pair that a backup job of a throwaway nixie wrote.
 
-Set up the drill nixie so that it can harm nothing live:
+**Warning: a drill against live repositories can remove the live backup.** The fetch takes a lock in
+each repository, so it needs a credential that can write: with a read-only credential it exits 1
+with `backup.fetch_failed` at the step `list`. One backup that a drill nixie publishes removes every
+other key store backup, the live one included.
 
-- Set `backup.enabled: false` in its `config.yaml`, and run no backup job. One backup that a drill
-  publishes removes every other key store backup, the live one included.
-- Give it no sandbox backend that it can reach. At its start, nixie destroys the sandboxes of the
-  task work that the restored log shows as ended.
+1. **Get approval first.** Create the drill's namespace and nixie's ConfigMap in it. In its
+   `config.yaml`, set `backup.enabled: false`, and set `imp.url` to a port that nothing answers,
+   such as `http://127.0.0.1:1`. At its start, nixie destroys the sandboxes of the task work that
+   the restored log shows as ended, so the drill nixie must reach no sandbox backend.
+2. Check the ConfigMap before any nixie reads it:
 
-**Get approval first.** Creating the namespace and its volume changes the cluster.
+   ```bash
+   kubectl -n <namespace> get configmap <config_map> -o 'jsonpath={.data.config\.yaml}' | grep -E 'url:|enabled:'
+   ```
 
-Deploy nixie into the drill's namespace with no backup job, as [Before you start](#before-you-start)
-says for a new cluster. Then follow steps 2 to 5 there. Send no message to the drill nixie. The
-evidence is the output of `nixie recovery`, the paused tasks it lists, and `nixie health`.
+   Expect each `url:` to show the dead port, and `enabled: false`. With any other value, stop and
+   fix the ConfigMap.
+
+3. Deploy nixie into the namespace with no backup job, as [Before you start](#before-you-start) says
+   for a new cluster.
+4. Follow steps 1 to 5 of [Restore](#restore). Send no message to the drill nixie.
+
+   Expect: the fetch's `"relation":"same-publish"`, the restore line, a `restore.paused` line in
+   nixie's log, and `nixie recovery` with each task to check in `toCheck`. `nixie health` reports
+   `unready`, because no sandbox backend answers.
+
+5. Delete the drill's namespace, which holds the drill's claims. Each claim holds a copy of the key
+   store.
+
+   ```bash
+   kubectl delete namespace <namespace>
+   ```
+
+   Expect: `namespace "<namespace>" deleted`. When the claims' storage class keeps its volumes,
+   delete each volume that `kubectl get pv` lists as `Released`.
