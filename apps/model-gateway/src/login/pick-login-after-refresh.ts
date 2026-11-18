@@ -2,7 +2,7 @@ import type { LoginFile } from './login-file-schema';
 import type { RefreshAnswer } from './parse-refresh-answer';
 
 // the failures in a row after which a login shows as failing
-export const failuresBeforeFailing = 3;
+const failuresBeforeFailing = 3;
 
 export interface LoginAfterRefresh {
   // null when the answer changes nothing in the file

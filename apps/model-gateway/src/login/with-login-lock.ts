@@ -5,7 +5,7 @@ import { withFileLock } from '@zgeoff/std/with-file-lock';
 // A holder keeps the lock for one read and one write, so a waiter that gets no turn in this time
 // finds a stuck holder. The kernel drops the lock of a killed process, so no holder blocks it for
 // good.
-export const loginLockWaitMs = 10_000;
+const loginLockWaitMs = 10_000;
 
 export async function withLoginLock<Value>(
   loginPath: string,

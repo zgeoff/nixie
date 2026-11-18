@@ -8,7 +8,7 @@ import { pickLoginAfterRefresh } from './pick-login-after-refresh';
 import { readLoginFile } from './read-login-file';
 import { requestTokenRefresh } from './request-token-refresh';
 
-export interface LoginEntry {
+interface LoginEntry {
   readonly status: 'active' | 'failing' | 'needs_login';
   readonly reason: 'refused' | 'service_error' | 'no_answer' | null;
   readonly since: string | null;
@@ -16,7 +16,7 @@ export interface LoginEntry {
   readonly planType: string | null;
 }
 
-export type PlanAdmit =
+type PlanAdmit =
   | { readonly kind: 'ok'; readonly accessToken: string; readonly loginID: string }
   | { readonly kind: 'refused'; readonly message: string };
 

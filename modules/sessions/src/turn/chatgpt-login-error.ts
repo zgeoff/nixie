@@ -1,6 +1,6 @@
 import { StepFailedError } from '@heynixie/tasks';
 
-export const chatgptLoginReason = 'model_auth.chatgpt_login';
+const chatgptLoginReason = 'model_auth.chatgpt_login';
 
 // A plan profile whose login the gateway does not hold active. A retry fails the same way until the
 // operator signs in, so the step waits for its owner.
