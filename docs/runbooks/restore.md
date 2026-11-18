@@ -474,7 +474,9 @@ again into a new folder, as [step 2 of the restore](#2-fetch-the-backup-pair) do
    kubectl get pv -o jsonpath='{range .items[?(@.spec.claimRef.namespace=="<drill_namespace>")]}{.metadata.name}{"\n"}{end}'
    ```
 
-9. Delete `<drill_namespace>`. Its claims each hold a copy of the key store.
+9. **Warning: this deletes every resource in the namespace.** Check that `<drill_namespace>` is the
+   drill's namespace, never the live nixie's. Delete `<drill_namespace>`. Its claims each hold a
+   copy of the key store.
 
    ```bash
    kubectl delete namespace <drill_namespace>
