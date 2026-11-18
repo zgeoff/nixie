@@ -1,6 +1,7 @@
 import type { DefinitionsContext } from '@heynixie/definitions';
 import { createApprovalProcedures } from '../approval/create-approval-procedures';
 import { createDefinitionProcedures } from '../definition/create-definition-procedures';
+import { createFilesProcedures } from '../file/create-files-procedures';
 import { createMemoryProcedures } from '../memory/create-memory-procedures';
 import { createMemoryViewRouter } from '../memory/create-memory-view-router';
 import { createPasskeyProcedures } from '../passkey/create-passkey-procedures';
@@ -34,6 +35,7 @@ export function createAPIRouter(
     backups: createBackupProcedures(context),
     conversation: createConversationProcedures(context),
     definitions: { ...createDefinitionProcedures(context, readDefinitions), ...views.definitions },
+    files: createFilesProcedures(context),
     memory: {
       ...createMemoryProcedures(context),
       ...createMemoryViewRouter(context, readMemory),

@@ -5,6 +5,7 @@ import { buildConversationMemoryTools } from './build-conversation-memory-tools'
 export interface ConversationReaders {
   readonly webFetch: ToolDefinition;
   readonly codeRun?: ToolDefinition;
+  readonly fileSend?: ToolDefinition;
   readonly forget?: ToolDefinition;
   readonly time: ToolDefinition;
   readonly logReaders: readonly ToolDefinition[];
@@ -20,6 +21,7 @@ export function buildConversationTools(
   return [
     readers.webFetch,
     ...(readers.codeRun === undefined ? [] : [readers.codeRun]),
+    ...(readers.fileSend === undefined ? [] : [readers.fileSend]),
     readers.time,
     ...readers.logReaders,
     ...(readers.forget === undefined ? [] : [readers.forget]),

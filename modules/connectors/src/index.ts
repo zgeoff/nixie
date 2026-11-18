@@ -5,7 +5,12 @@ export type { FetchBackoff, FetchBackoffOptions } from './fetch/make-fetch-backo
 export { makeFetchBackoff } from './fetch/make-fetch-backoff';
 export type { CodeRunToolOptions } from './code/build-code-run-tool';
 export { buildCodeRunTool } from './code/build-code-run-tool';
+export type { FileSendToolOptions } from './code/build-file-send-tool';
+export { buildFileSendTool } from './code/build-file-send-tool';
 export { CodeSandboxDestroyError } from './code/destroy-code-run-sandboxes';
+export type { CodeFileEntry, CodeFileRow } from './code/read-code-file-entry';
+export { readCodeFileEntry } from './code/read-code-file-entry';
+export { readCodeFileBytes } from './code/read-code-file';
 export type { CodeRunCleanup } from './code/make-code-run-cleanup';
 export { makeCodeRunCleanup } from './code/make-code-run-cleanup';
 export type { CodeSkill, SkillLookup } from './code/resolve-code-run-inputs';

@@ -109,6 +109,7 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
         {
           webFetch: parts.get('web_fetch').tool,
           codeRun: parts.get('code_run').tool,
+          fileSend: parts.get('code_run').sendTool,
           forget: parts.get('actions').forget.tool,
           worker: parts.get('worker'),
           search:
