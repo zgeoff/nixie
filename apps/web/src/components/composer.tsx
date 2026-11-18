@@ -2,6 +2,7 @@ import type { SpanState } from '@heynixie/contract';
 import { buildSpanState } from '@heynixie/contract';
 import type { ClipboardEvent, DragEvent, KeyboardEvent, ReactNode } from 'react';
 import { useRef, useState } from 'react';
+import { useIsHydrated } from '../conversation/use-is-hydrated';
 import { normalizeImage as normalizeInBrowser } from '../image/normalize-image';
 import { useAttachedImages } from '../image/use-attached-images';
 import { css } from '../styled-system/css';
@@ -39,7 +40,9 @@ const sendButton = css({
   paddingInline: '4',
 });
 
+// The message box and Send wait for hydration, because text typed into the server render is lost.
 export function Composer(props: ComposerProps): ReactNode {
+  const isHydrated = useIsHydrated();
   const [message, setMessage] = useState<SpanState>(emptyMessage);
   const textBox = useRef<HTMLTextAreaElement>(null);
   const pendingInput = usePendingInput(textBox);
@@ -80,6 +83,7 @@ export function Composer(props: ComposerProps): ReactNode {
             setMessage((current) => buildSpanState(current, pending, text));
           }}
           className={messageBox}
+          disabled={!isHydrated}
           onKeyDown={handleKeyDown}
           onPaste={(event) => void attached.attach(readPastedFiles(event))}
           ref={textBox}
@@ -87,7 +91,7 @@ export function Composer(props: ComposerProps): ReactNode {
           value={message.text}
         />
         <ImagePickers onPick={(files) => void attached.attach(files)} />
-        <button className={sendButton} disabled={attached.isPending} type="submit">
+        <button className={sendButton} disabled={attached.isPending || !isHydrated} type="submit">
           Send
         </button>
       </div>

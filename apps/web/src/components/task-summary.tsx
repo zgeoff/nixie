@@ -129,7 +129,9 @@ const toggle = css({
   textDecoration: 'underline',
 });
 
+// The toggle waits for hydration, because a click on the server render is lost.
 function TaskBrief(props: TaskBriefProps): ReactNode {
+  const isHydrated = useIsHydrated();
   const [isOpen, setIsOpen] = useState(false);
   const briefID = useId();
 
@@ -146,6 +148,7 @@ function TaskBrief(props: TaskBriefProps): ReactNode {
         aria-controls={briefID}
         aria-expanded={isOpen}
         className={toggle}
+        disabled={!isHydrated}
         onClick={() => {
           setIsOpen(!isOpen);
         }}

@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import { useState } from 'react';
 import { formatStopPreview } from '../conversation/format-stop-preview';
+import { useIsHydrated } from '../conversation/use-is-hydrated';
 import { collectOfferedControls } from '../pause/collect-offered-controls';
 import { css } from '../styled-system/css';
 import { runTaskControl } from '../task/run-task-control';
@@ -37,8 +38,10 @@ const controlLabels: Readonly<Record<TaskControl, string>> = {
   interrupt: 'Interrupt',
 };
 
+// Each control waits for hydration, because a click on the server render is lost.
 export function TaskControls(props: TaskControlsProps): ReactNode {
   const nixie = useNixieClient();
+  const isHydrated = useIsHydrated();
   const queryClient = useQueryClient();
   const [confirming, setConfirming] = useState<'stop' | 'close' | null>(null);
   const [attempt, setAttempt] = useState<ControlAttempt | null>(null);
@@ -81,7 +84,7 @@ export function TaskControls(props: TaskControlsProps): ReactNode {
       ) : null}
       {offered.map((control) => (
         <button
-          disabled={sent.isPending}
+          disabled={sent.isPending || !isHydrated}
           key={control}
           onClick={() => {
             if (control === 'stop' || control === 'close') {

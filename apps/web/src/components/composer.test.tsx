@@ -2,6 +2,7 @@ import { expect, mock, test } from 'bun:test';
 import type { SpanState } from '@heynixie/contract';
 import { fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { renderToString } from 'react-dom/server';
 import { render } from '../test-utils/render';
 import type { ComposedMessage } from './composer';
 import { Composer } from './composer';
@@ -318,4 +319,13 @@ test('it takes off an image you remove before sending', async () => {
     spans: [{ end: 10, source: 'typed', start: 0 }],
     text: 'Never mind',
   });
+});
+
+test('it renders the message box and Send disabled on the server, before React can take the text', () => {
+  const markup = renderToString(<Composer onSend={() => {}} />);
+
+  expect([
+    /<textarea[^>]*disabled=""/u.test(markup),
+    /<button[^>]*disabled=""[^>]*>Send<\/button>/u.test(markup),
+  ]).toStrictEqual([true, true]);
 });
