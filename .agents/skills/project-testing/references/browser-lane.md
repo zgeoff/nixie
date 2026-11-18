@@ -94,7 +94,9 @@ another in one test process. Every file shares one Chrome and one global object:
     it hydrates the page's components.
 - **To check that a control does not move when the page's data arrives, delay the stub API's answer
   to that data's request.** Without the delay, the data can arrive before the first paint, and the
-  test passes whether the control moves or not.
+  test passes whether the control moves or not. On a page whose route `loader` reads the data, such
+  as the passkeys page, the delay holds back the server's HTML, and the test checks that the control
+  does not move after the first paint.
   [`passkeys.browser.test.ts`](../../../../apps/web/src/routes/passkeys.browser.test.ts) does this:
   1. Before you navigate to the page under test, call `delayPath(path, delayMs)` on the stub API
      that [`startStubAPI`](../../../../apps/web/src/test-utils/start-stub-api.ts) returns. Pass the
