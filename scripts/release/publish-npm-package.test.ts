@@ -143,8 +143,8 @@ exit 1
 }
 
 test.each([
-  ['libs/contract', '@heynixie/contract', 'heynixie-contract-1.2.3.tgz'],
-  ['deploy/pulumi-k8s', '@heynixie/pulumi-k8s', 'heynixie-pulumi-k8s-1.2.3.tgz'],
+  ['libs/contract', '@heynixie/contract'],
+  ['deploy/pulumi-k8s', '@heynixie/pulumi-k8s'],
 ])('it publishes nothing and warns when npm holds no %s', async (packageDir, name) => {
   const ctx = setupTest(packageDir, name);
 
@@ -161,8 +161,8 @@ test.each([
 });
 
 test.each([
-  ['libs/contract', '@heynixie/contract', 'heynixie-contract-1.2.3.tgz'],
-  ['deploy/pulumi-k8s', '@heynixie/pulumi-k8s', 'heynixie-pulumi-k8s-1.2.3.tgz'],
+  ['libs/contract', '@heynixie/contract'],
+  ['deploy/pulumi-k8s', '@heynixie/pulumi-k8s'],
 ])('it publishes nothing when npm holds the version of %s', async (packageDir, name) => {
   const ctx = setupTest(packageDir, name);
 
