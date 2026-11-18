@@ -629,7 +629,7 @@ test('it runs the file commands of a granted imp with no grant placeholders in t
   await sandbox.applyMove(path, `${path}.moved`);
 
   expect(ctx.imp.execs.map((exec) => exec.options.env)).toSatisfyAll(
-    (env) => Object.keys(env ?? {}).length === 0,
+    (env: Readonly<Record<string, string>>) => Object.keys(env).length === 0,
   );
 });
 
