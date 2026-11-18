@@ -144,8 +144,8 @@ restores the newest key snapshot, because an older one would make a forgotten it
 
 The fetch and `nixie-backup snapshots` run restic with `--no-lock`, so they work with a credential
 that can only read the repositories. The job's own backups, forgets and prunes keep their locks.
-Without a lock, a prune by a running backup job can remove the packs that the fetch copies. restic
-then exits non-zero, so the fetch fails and leaves the unfinished-backup marker.
+Without a lock, a prune by a running backup job can remove repository data that the fetch still
+reads. restic then exits non-zero, so the fetch fails and leaves the unfinished-backup marker.
 
 `nixie restore --from <directory>` reads `fetched-pair.json` and returns the pair. It then empties
 the staging folder and writes `restore-note.json` there, which holds the restore time and the key
