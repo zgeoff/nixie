@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.82.0](https://github.com/zgeoff/nixie/compare/v0.81.0...v0.82.0) (2026-11-18)
+
+
+### Features
+
+* **connectors:** send a code-run file to the person ([#1214](https://github.com/zgeoff/nixie/issues/1214)) ([8c232f6](https://github.com/zgeoff/nixie/commit/8c232f6cb2c34c4f911f30ef4c401c4b61030197))
+* **models:** run codex tasks on a chatgpt plan login ([#1216](https://github.com/zgeoff/nixie/issues/1216)) ([cc75800](https://github.com/zgeoff/nixie/commit/cc7580022c0783f07572283698b0bcc4b40d63e5))
+
 ## [0.81.0](https://github.com/zgeoff/nixie/compare/v0.80.1...v0.81.0) (2026-11-18)
 
 
