@@ -53,6 +53,9 @@ export type {
   ToolSession,
   ToolStepHold,
   ToolVariants,
+  CallCapCheck,
+  PaidCallCap,
+  PaidCallCapCall,
   PaidTool,
 } from './types';
 
