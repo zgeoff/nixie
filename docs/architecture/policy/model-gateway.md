@@ -72,6 +72,20 @@ routes:
     providerPin: example-host
 ```
 
+A route sets `maxOutputTokens` to the model's largest output. It bounds the output of a reply whose
+request sets no output limit, as [the estimate](#the-estimate) describes. A route that speaks
+`openai-responses` must set it, and the gateway refuses to start without it. A Messages route may
+leave it out.
+
+```yaml
+routes:
+  review:
+    api: openai-responses
+    upstream: https://models.example.com
+    model: example/model-o
+    maxOutputTokens: 128000
+```
+
 The gateway forwards only the endpoints of the route's API whose spend it can count, and refuses
 every other endpoint with a 403:
 
@@ -113,8 +127,49 @@ whole usage in the event that ends the response, whether the response completed,
 failed. The gateway reads the events as they pass on to the caller. The streamed reply ends for the
 caller only after the count is written, so a caller that reads a whole reply and sends again never
 gets ahead of its own count. A caller that stops reading early, and an upstream that breaks
-mid-stream, still leave the count of the events that arrived. A reply with no usage, such as an
-error, adds nothing.
+mid-stream, still leave the count of the events that arrived. A reply with no usage that spent
+nothing, such as an error, adds nothing. A reply that spent, or may have, with no whole usage the
+gateway can read adds [an estimate](#the-estimate).
+
+### The estimate
+
+A reply that spent, or may have, and ends without its whole usage, adds a cautious estimate to the
+count and the gateway keeps serving. That covers a reply with no usage block, usage in a shape the
+gateway cannot read, a stream that breaks or that its caller cancels before its final usage, a
+connection that fails after the request went out, a reply whose body breaks, and a reply still open
+when a stop gives up. The estimate is an upper bound on the provider's bill for the request, so the
+count never lets spend grow past it. The gateway builds it from the request alone and makes no call
+to the provider.
+
+- **Input.** The input tokens are the UTF-8 byte length of the request body, plus an allowance of
+  4,096 tokens for what the provider adds, such as the tool-use system prompt and message framing. A
+  text token is never shorter than 1 byte. The gateway prices them at the highest input-side rate of
+  the route: `input`, `cacheWrite`, `cacheWrite1h` and `cachedInput`, and the same 4 rates of
+  `longPrompt` when the route has it.
+- **Output.** The output bound is the request's `max_tokens` on Messages, or `max_output_tokens` on
+  Responses. When the request sets none, it is the route's `maxOutputTokens`. The gateway prices it
+  at the higher of `output` and `longPrompt.output`.
+- **A cut Messages stream from Anthropic's own API.** When the stream delivered its first event, the
+  input side is that event's input counts, each class at its own rate, because that API sends the
+  final input counts there. The output side stays the output bound. On any other route, the input
+  side is the larger of the byte bound and the input the partial usage reported.
+
+A cut or cancelled stream charges the full output bound. That over-counts the budget, and never the
+real bill.
+
+The estimate leaves a request unbounded when the byte count cannot bound its input, or when it has
+no output bound. A reply that spent with no usage, to such a request, marks the count as lost, and
+the `count.lost` log line names the field:
+
+- Messages: `mcp_servers`, `container`, and an `image` or `document` block, in a message or in a
+  tool result, whose source is a URL or a file ID, as `messages.content.source`;
+- Responses: `previous_response_id`, `conversation`, `prompt`, an `item_reference` input item, and
+  an input image or file by file ID or by a URL that is not a `data:` URL;
+- `max_tokens` on Messages, or `max_output_tokens` on Responses, when the request and the route set
+  no bound.
+
+The gateway logs each estimate as `count.estimated`, at the warn level, with the route, the sandbox,
+the reason and the dollars and tokens it added.
 
 The store writes each count to a new file and renames it over the old one, so a crash leaves the
 last whole count. It adds one reply at a time, so two replies that end together each count once.
@@ -386,25 +441,28 @@ count is lost until its mark is in the store, the gateway refuses every request 
 also while a second mark is still being written. When a mark cannot be written, the gateway refuses
 every later request until it exits.
 
+The mark covers 2 cases: a count that cannot be written, and a reply that spent with no usage to a
+request that holds an input the [estimate](#the-estimate) cannot bound. Every other lost reply adds
+its estimate and leaves the count marked as whole.
+
 - **The store cannot be read.** A missing store file, a missing directory or a file that holds no
   count fails the read, and the gateway answers the request with a 503 and sends nothing upstream.
 - **A count cannot be written.** The reply that could not be counted still reaches its caller, and
   the gateway marks the count as lost, because its store now holds less than was spent.
 - **A message reply is lost before its usage arrives.** A call whose connection fails, or whose
   whole reply breaks, gets the caller a 502, and a stream that breaks or that its caller cancels
-  ends where it stopped. Either way the gateway marks the count as lost, because the model may have
-  spent on a reply the gateway never counted. A failed token count or model list spends nothing, so
-  it only gets the caller a 502.
+  ends where it stopped. Either way the gateway adds the estimate, because the model may have spent
+  on a reply the gateway never counted, and the next request passes. A failed token count or model
+  list spends nothing, so it only gets the caller a 502.
 - **A successful message reply holds no usage the gateway can read.** The reply reaches its caller,
-  and the gateway marks the count as lost, because the reply spent an amount the gateway cannot
-  count.
+  and the gateway adds the estimate.
 - **The store directory does not exist at start.** The gateway exits, so the route it would serve
   has no way to the model API.
 
 A stop signal closes the listener and lets each reply under way finish, up to a bounded wait, so the
 count holds every reply that finishes within that wait. A reply still open when the wait ends is cut
-off before its whole usage arrives, so the gateway marks the count as lost before it closes that
-reply.
+off before its whole usage arrives, so the gateway adds the estimate of each open reply that spends
+before it closes that reply. A later cancel of the same reply adds nothing.
 
 The release attaches the gateway as one compiled binary for Linux, so a host runs it without a Bun
 install. The gateway imports prices from `@heynixie/models/prices` only, because the package's main

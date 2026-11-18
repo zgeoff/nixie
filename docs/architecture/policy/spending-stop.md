@@ -11,12 +11,12 @@ on tool calls and purchases.
 The stop stands in one of 4 states, which `readSpendStop` in `modules/spend` works out from the
 gateway's `/status` and the turn count:
 
-| State         | When                                                                                  | Clears                                                     |
-| ------------- | ------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
-| `tripped`     | a day or month limit in dollars, tokens or turns is reached                           | at the period's reset, or when a raise lifts every measure |
-| `unreachable` | the gateway has not answered for the watcher's no-answer time, or not since the start | at the gateway's first answer                              |
-| `lost`        | the gateway's count is lost                                                           | when an operator removes the lost mark from the store      |
-| `clear`       | none of the above                                                                     |                                                            |
+| State         | When                                                                                                                  | Clears                                                     |
+| ------------- | --------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| `tripped`     | a day or month limit in dollars, tokens or turns is reached                                                           | at the period's reset, or when a raise lifts every measure |
+| `unreachable` | the gateway has not answered for the watcher's no-answer time, or not since the start                                 | at the gateway's first answer                              |
+| `lost`        | the gateway's count is lost: a count failed to write, or a reply with an input the estimate cannot bound had no usage | when an operator removes the lost mark from the store      |
+| `clear`       | none of the above                                                                                                     |                                                            |
 
 The turn count has its own table, `spend_turns`, in UTC buckets. It adds one turn for each
 `model.turn_ended` and each `worker.turn_ended` record, and no call writes both. A limit is a total:
