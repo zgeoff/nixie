@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.80.1](https://github.com/zgeoff/nixie/compare/v0.80.0...v0.80.1) (2026-11-18)
+
+
+### Bug Fixes
+
+* **model-gateway:** charge a cautious estimate for a reply with no usage ([#1211](https://github.com/zgeoff/nixie/issues/1211)) ([702a3d9](https://github.com/zgeoff/nixie/commit/702a3d982f57c0258385932bed8d89634fb31a7f))
+* **sandbox-imp:** run the adapter's file commands without the broker requirement ([#1210](https://github.com/zgeoff/nixie/issues/1210)) ([c4e88b1](https://github.com/zgeoff/nixie/commit/c4e88b185c2402c7771bfff41ccba14357a44c8b))
+* **sessions:** read a worker's answer past a trailing reasoning block ([#1206](https://github.com/zgeoff/nixie/issues/1206)) ([49e87ae](https://github.com/zgeoff/nixie/commit/49e87ae4ce3d35fc4ae8c235fe2a3ebd5ccc049c))
+
 ## [0.80.0](https://github.com/zgeoff/nixie/compare/v0.79.0...v0.80.0) (2026-11-17)
 
 
