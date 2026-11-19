@@ -277,7 +277,9 @@ async function setupTest() {
         },
       });
     },
-    readUntil: async (body: ReadableStream<Uint8Array> | null, marker: string): Promise<void> => {
+
+    // leaves the reader open, so the caller decides when the reader stops
+    readUntil: async (body: ReadableStream<Uint8Array> | null, marker: string) => {
       invariant(body !== null, 'a stream reply has a body');
 
       const reader = body.getReader();
@@ -294,7 +296,7 @@ async function setupTest() {
         read += decoder.decode(chunk.value, { stream: true });
       }
 
-      await reader.cancel();
+      return reader;
     },
     startLimitsHandler: async (
       route: LimitsRoute,
@@ -303,6 +305,8 @@ async function setupTest() {
       await writeFile(storePath, '{"dollars":0,"tokens":0}');
 
       const store = await createCounterStore(storePath);
+
+      const openReplies = makeOpenReplies();
 
       const handler = makeProxyHandler({
         routes: {
@@ -319,11 +323,12 @@ async function setupTest() {
         limits: { dollars: 1, tokens: null },
         store,
         capture: null,
+        openReplies,
         sendUpstream,
         log,
       });
 
-      return { handler, store };
+      return { handler, store, openReplies };
     },
     startPeriodsHandler: async (
       sendUpstream: (url: string, init: RequestInit) => Promise<Response>,
@@ -2711,7 +2716,39 @@ test('it counts the usage of a Responses stream whose reader stops right after t
     }),
   );
 
-  await ctx.readUntil(response.body, 'response.completed');
+  const reader = await ctx.readUntil(response.body, 'response.completed');
+
+  await reader.cancel();
+
+  const counted = await started.store.read();
+
+  expect([counted.tokens, counted.lost]).toStrictEqual([2430, false]);
+  expect(counted.dollars).toBeCloseTo((2000 * 1 + 400 * 0.1 + 30 * 5) / 1_000_000, 12);
+  expect(ctx.log).not.toHaveBeenCalledWith('count.estimated', expect.anything(), 'warn');
+});
+
+test('it counts the usage of a Responses stream that stays open after its final event when the gateway stops', async () => {
+  const ctx = await setupTest();
+
+  const stream = ctx.buildEventStream(ctx.buildCodexBackendEvents(), true);
+
+  const started = await ctx.startLimitsHandler(
+    { api: 'openai-responses', maxOutputTokens: 128_000 },
+    () =>
+      Promise.resolve(new Response(stream, { headers: { 'content-type': 'text/event-stream' } })),
+  );
+
+  const response = await started.handler(
+    new Request('http://proxy.test/preview/responses', {
+      method: 'POST',
+      body: JSON.stringify({ model: 'model-small', stream: true, input: 'Review the plan.' }),
+    }),
+  );
+
+  const reader = await ctx.readUntil(response.body, 'response.completed');
+
+  await started.openReplies.countAtStop();
+  await reader.cancel();
 
   const counted = await started.store.read();
 
@@ -2760,7 +2797,9 @@ test.each([
     }),
   );
 
-  await ctx.readUntil(response.body, row.marker);
+  const reader = await ctx.readUntil(response.body, row.marker);
+
+  await reader.cancel();
 
   expect(ctx.log).toHaveBeenCalledWith(
     'count.estimated',

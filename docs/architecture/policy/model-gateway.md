@@ -267,8 +267,8 @@ lifetime price, and its longer one, or a write with no lifetime, takes the longe
 A whole reply carries its usage in its body. A streamed Messages reply carries the input side in its
 first event and the running output count in each later delta. A streamed Responses reply carries its
 whole usage in the event that ends the response, whether the response completed, stopped early or
-failed, so a caller that stops reading right after that event, as Codex does, leaves the whole
-usage.
+failed. A caller that stops reading right after that event, as Codex does, leaves the whole usage,
+and so does a gateway that stops while the stream stays open after it.
 
 The gateway reads a reply as a stream when its content type is `text/event-stream`. It also reads a
 successful reply with no content type as a stream when the request set `stream: true`, because
