@@ -279,6 +279,12 @@ stops reading early, and an upstream that breaks mid-stream, still leave the cou
 that arrived. A reply with no usage that spent nothing, such as an error, adds nothing. A reply that
 spent, or may have, with no whole usage the gateway can read adds [an estimate](#the-estimate).
 
+The gateway logs each reply it counts from its whole usage as `count.charged`, at the info level,
+with the route, the sandbox, the usage's 5 token counts (uncached input, cache reads, the 2 cache
+writes and output), its reasoning tokens or `null` when the reply reported none, and the dollars and
+tokens it added. The reasoning tokens are a part of the output tokens. The line holds counts only,
+so it never copies a key, a prompt or a reply.
+
 ### The estimate
 
 A reply that spent, or may have, and ends without its whole usage, adds a cautious estimate to the
