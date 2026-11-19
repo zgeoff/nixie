@@ -1,10 +1,8 @@
 import { expect, test } from 'bun:test';
 import { startTestRules } from '@heynixie/api/test-utils';
 import {
-  buildMandateStatus,
   readActiveMandates,
   readMandateEndReason,
-  readMandateTitles,
   runMandateEnd,
   runMandateExpiry,
   startMandateTimer,
@@ -61,17 +59,6 @@ async function setupTest() {
     startMandate,
     countEnded,
     readActive: () => readActiveMandates(rules.log.writer.db),
-    readStatus: () =>
-      buildMandateStatus({
-        readActive: () => readActiveMandates(rules.log.writer.db),
-        readTitles: (mandateIDs) => readMandateTitles(rules.log, mandateIDs),
-      }).read({
-        start: { kind: 'first' },
-        openedAt: new Date(rules.clock.now()),
-        zone: 'Australia/Sydney',
-        times: { defaultZone: 'Australia/Sydney', now: new Date(rules.clock.now()) },
-        model: 'claude-test-1',
-      }),
     readEndReason: (mandateID: string) => readMandateEndReason(rules.log, mandateID),
     readChangeStates: async () => {
       const found = await rules.log.writer.db
@@ -411,34 +398,4 @@ test('it shows on the card what each rule of a mandate will not cover in memory'
   expect(fields['rule 1 will not cover']).toBe(
     'a new fact; a new self-note; a self-note text edit; a self-note label edit; a move of an item into self; a write from a photo',
   );
-});
-
-test('it lists an approved mandate in the status line with its title, rule and end', async () => {
-  const ctx = await setupTest();
-  const started = await ctx.startMandate();
-  const line = await ctx.readStatus();
-
-  expect(line).toStrictEqual({
-    value: 1,
-    text: `Active mandates: 1.\n  Full authority over my test sends (mandate ${started.mandateID}), ends Tue 3 Nov, 00:00, Sydney: **Allow** \`test.send\` when every destination matches \`*@example.org\`, until 2026-11-02T13:00:00.000Z.`,
-  });
-});
-
-test('it says none in the status line when no mandate is in force', async () => {
-  const ctx = await setupTest();
-  const line = await ctx.readStatus();
-
-  expect(line).toStrictEqual({ value: 0, text: 'Active mandates: none.' });
-});
-
-test('it leaves out a mandate that expired before the sweep ended it', async () => {
-  const ctx = await setupTest();
-
-  await ctx.startMandate();
-
-  ctx.clock.advance(30 * ctx.hourMs);
-
-  const line = await ctx.readStatus();
-
-  expect(line).toStrictEqual({ value: 0, text: 'Active mandates: none.' });
 });

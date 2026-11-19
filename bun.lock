@@ -600,7 +600,6 @@
         "@heynixie/policy": "workspace:*",
         "@heynixie/prompts": "workspace:*",
         "@heynixie/proposals": "workspace:*",
-        "@heynixie/sessions": "workspace:*",
         "@heynixie/tasks": "workspace:*",
         "@heynixie/tools": "workspace:*",
         "@heynixie/triggers": "workspace:*",

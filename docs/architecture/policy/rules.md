@@ -244,6 +244,32 @@ and, for a rule that reaches memory, the memory writes it will not cover
 - The server adds a line to the [events block](../core/conversation-turns.md#the-events-block) when
   a mandate starts and when it ends.
 
+### Reading mandates and rules
+
+nixie reads her mandates and her standing rules with the conversation tool `rules.list`, which
+declares the `read` effect, so the starter rule `allow-reads` lets it through. It returns 2 lists:
+
+- `mandates`: the 50 newest mandates, the newest proposal first. Each holds the proposal's short ID,
+  the title, the state, the expiry and each rule's sentence. A forget of the proposal leaves the
+  title null and the rules empty.
+- `rules`: each allow and ask rule in force whose `contexts` match the conversation, with its ID and
+  sentence. It leaves out deny rules, mandate rules, rules limited to task definitions and expired
+  rules.
+
+The tool reads each mandate's state from its newest record:
+
+| State      | Record                                      |
+| ---------- | ------------------------------------------- |
+| `pending`  | `rules.mandate_proposed`                    |
+| `active`   | `rules.mandate_started`                     |
+| `rejected` | `rules.mandate_declined`                    |
+| `lapsed`   | `rules.mandate_lapsed`                      |
+| `ended`    | `rules.mandate_ended` with reason `ended`   |
+| `expired`  | `rules.mandate_ended` with reason `expired` |
+
+A pending mandate past its expiry reads as `lapsed`, and an active one as `expired`, before the
+sweep that closes it runs.
+
 ## The rule export
 
 nixie exports the runtime changes in force to the definitions repo through the
