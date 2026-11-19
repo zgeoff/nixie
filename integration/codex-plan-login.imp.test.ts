@@ -44,7 +44,7 @@ async function setupTest() {
 
   onTestFinished(() => stack.disposeAsync());
 
-  const routeID = process.env['NIXIE_IMP_TEST_CODEX_PLAN_ROUTE'] ?? 'codex-plan';
+  const routeID = process.env['NIXIE_IMP_TEST_CODEX_PLAN_ROUTE'] ?? 'gpt-6-luna';
 
   const testRecorder = await setupTestRecorder();
 
@@ -261,6 +261,10 @@ test.skipIf(!hasPlanGateway)(
       0,
     );
 
+    console.log(
+      `plan login count probe: ${String(usages.length)} call frames sum to ${String(expectedTokens)} tokens; the gateway counted ${JSON.stringify(turn.counted)}; last frame ${JSON.stringify(turn.frames.at(-1))}`,
+    );
+
     expect(turn.frames.at(-1)).toMatchObject({ type: 'ended', outcome: 'finished' });
     expect(usages.length).toBeGreaterThanOrEqual(2);
     expect(turn.counted).toMatchObject({ kind: 'ok', value: { tokens: expectedTokens } });
@@ -280,6 +284,8 @@ test.skipIf(!hasPlanGateway)(
       input: filler,
       tools: { ping: 'pong' },
     });
+
+    console.log(`plan login context overflow probe: ${JSON.stringify(turn.frames.at(-1))}`);
 
     // an unrelated failure, such as tools_not_connected, has another reason or detail
     expect(turn.frames.at(-1)).toStrictEqual({

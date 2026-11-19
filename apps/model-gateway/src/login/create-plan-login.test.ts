@@ -476,6 +476,22 @@ test('it marks the login failing with the reason no_answer from the third refres
   expect(result).toMatchObject({ status: 'failing', reason: 'no_answer' });
 });
 
+test('it keeps the earlier refresh token in the login file when a refresh gets no answer', async () => {
+  const ctx = await setupTest();
+
+  await ctx.writeLogin();
+
+  ctx.answer(0, null);
+
+  const login = await ctx.open();
+
+  await login.admit();
+
+  const result = await ctx.readFile();
+
+  expect(result?.refreshToken).toBe('refresh-token-1');
+});
+
 test('it returns a failing login to active on the first token of its retries', async () => {
   const ctx = await setupTest();
 
