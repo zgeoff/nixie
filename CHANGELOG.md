@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.85.0](https://github.com/zgeoff/nixie/compare/v0.84.1...v0.85.0) (2026-11-19)
+
+
+### Features
+
+* **codex:** measure the codex request and turn off its unasked text ([#1259](https://github.com/zgeoff/nixie/issues/1259)) ([72283c9](https://github.com/zgeoff/nixie/commit/72283c98f0e7b23d3092211aa1f006cb508e3c95))
+* **definitions:** apply the definitions repo's widenings at seed ([#1260](https://github.com/zgeoff/nixie/issues/1260)) ([f77394a](https://github.com/zgeoff/nixie/commit/f77394a7888bba517f6302e9d2a57edcd71d2436))
+* **skills:** apply a skill write at once under a rule that names it ([#1241](https://github.com/zgeoff/nixie/issues/1241)) ([23d881c](https://github.com/zgeoff/nixie/commit/23d881c674c2c151a2b3dfa1e986a116a64ec0b3))
+
 ## [0.84.1](https://github.com/zgeoff/nixie/compare/v0.84.0...v0.84.1) (2026-11-19)
 
 
