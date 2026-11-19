@@ -1,13 +1,12 @@
 # Starts the preview recipe as a preview environment starts it: it builds the images, waits for
 # every service to report healthy, checks that nixie's health URL answers ready through the
 # preview's one origin, and that the enrol service printed a sign-in code. A pull request runs it
-# only when it changes a file the preview reads; every push to main runs it in full.
+# only when it changes a file the preview reads. preview-main.yml runs the same jobs on each push to
+# main.
 name: Preview
 
 on:
   pull_request:
-  push:
-    branches: [main]
 
 permissions:
   contents: read

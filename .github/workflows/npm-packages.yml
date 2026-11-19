@@ -1,13 +1,12 @@
 # Rehearses the release's publish of each npm package, the Kubernetes component and the API
 # contract: it packs the package at a rehearsal version, checks the tarball, and runs npm's publish
 # as a dry run. The unit tests run the release path against a stand-in for npm. A pull request runs
-# it only when it changes a file a package or the publish reads; every push to main runs it in full.
+# it only when it changes a file a package or the publish reads. npm-packages-main.yml runs the same
+# jobs on each push to main.
 name: npm packages
 
 on:
   pull_request:
-  push:
-    branches: [main]
 
 permissions:
   contents: read

@@ -7,13 +7,12 @@
 # their own services. The recipe job is a required check, and GitHub counts a
 # skipped job as a pass, so the job runs on every pull request; on a pull request that changes no
 # file the recipe or the test build reads, each of its steps skips. A pull request runs the digest
-# check only when it changes the recipe or that check; every push to main runs it in full.
+# check only when it changes the recipe or that check. compose-main.yml runs the same jobs on each
+# push to main.
 name: Compose
 
 on:
   pull_request:
-  push:
-    branches: [main]
 
 permissions:
   contents: read

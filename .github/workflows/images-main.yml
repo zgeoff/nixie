@@ -1,0 +1,200 @@
+# Rehearses the release's image stages on each push to main, as images.yml rehearses them on a pull
+# request, in full. A push to main keeps each run, so every merged commit is rehearsed.
+name: Images main
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+# keyed by commit and never cancelled, so every push to main runs in full; two runs of one
+# commit, such as a rerun, wait for each other
+concurrency:
+  group: ${{ github.workflow }}-${{ github.sha }}
+  cancel-in-progress: false
+
+# an explicit bash runs each step with pipefail, so a failure inside a pipeline fails the step
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  changes:
+    uses: zgeoff/tools/.github/workflows/paths-changed.yml@54078f7fcb6ca379cf41c02d3ec4f6ec1553d2c7 # main
+    with:
+      paths: |
+        .github/workflows/images-main.yml
+        .github/actions/build-image/**
+        .github/scripts/**
+        scripts/release/publish-release-assets.sh
+        .bun-version
+        .dockerignore
+        bun.lock
+        bunfig.toml
+        package.json
+        rig.config.ts
+        tsconfig*.json
+        adapters/**
+        apps/**
+        guests/**
+        libs/**
+        modules/**
+        scripts/images/**
+        scripts/lib/**
+        scripts/test-utils/**
+
+  rehearse:
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.changed != 'false' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      registry:
+        image: registry:3@sha256:82f6ff4a7f982960c8aa51617fea3aabc485df6e55cce80d22deb1de36f1bc3c
+        ports:
+          - 5000:5000
+    env:
+      REGISTRY: localhost:5000
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version-file: .bun-version
+
+      - name: Install
+        run: bun install --frozen-lockfile --ignore-scripts
+
+      # the builder shares the host network, so it reaches the job's registry on localhost
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+        with:
+          driver-opts: network=host
+
+      - name: Build the conversation image
+        id: conversation
+        uses: ./.github/actions/build-image
+        with:
+          repository: ${{ env.REGISTRY }}/nixie-conversation
+          dockerfile: guests/conversation/Dockerfile
+          cache-scope: conversation
+
+      # the CLI runs, and the image holds no workspace for the bundles to import from
+      - name: Check that the conversation image runs its CLI and holds no node_modules
+        env:
+          CONVERSATION:
+            ${{ env.REGISTRY }}/nixie-conversation@${{ steps.conversation.outputs.digest }}
+        run: bun run --silent ci:images:check-conversation-image
+
+      - name: Build the fetch image
+        id: fetch
+        uses: ./.github/actions/build-image
+        with:
+          repository: ${{ env.REGISTRY }}/nixie-fetch
+          dockerfile: guests/fetch/Dockerfile
+          cache-scope: fetch
+
+      - name: Build the code image
+        id: code
+        uses: ./.github/actions/build-image
+        with:
+          repository: ${{ env.REGISTRY }}/nixie-code
+          dockerfile: guests/code/Dockerfile
+          cache-scope: code
+
+      - name: Build the codex image
+        id: codex
+        uses: ./.github/actions/build-image
+        with:
+          repository: ${{ env.REGISTRY }}/nixie-codex
+          dockerfile: guests/codex/Dockerfile
+          cache-scope: codex
+
+      # the image runs only the Codex CLI version that its guest accepts
+      - name: Check that the codex image runs its pinned CLI
+        env:
+          CODEX: ${{ env.REGISTRY }}/nixie-codex@${{ steps.codex.outputs.digest }}
+        run: bun run --silent ci:images:check-codex-image
+
+      - name: Build the backup image
+        id: backup
+        uses: ./.github/actions/build-image
+        with:
+          repository: ${{ env.REGISTRY }}/nixie-backup
+          dockerfile: apps/backup-job/Dockerfile
+          cache-scope: backup
+
+      # the version binaries.txt pins, and the job's own command with no network and a read-only
+      # root, as the backup CronJob runs it
+      - name: Check that the backup image runs its pinned restic and the job
+        env:
+          BACKUP: ${{ env.REGISTRY }}/nixie-backup@${{ steps.backup.outputs.digest }}
+        run: bun run --silent ci:images:check-backup-image
+
+      # before the sandbox manifest is written, so its context is the checkout, as in the Preview
+      # workflow's web build, and the two share their layers through the web scope
+      - name: Build the web image
+        id: web
+        uses: ./.github/actions/build-image
+        with:
+          repository: ${{ env.REGISTRY }}/nixie-web
+          dockerfile: apps/web/Dockerfile
+          cache-scope: web
+
+      - name: Write the sandbox manifest
+        id: manifest
+        env:
+          STEPS: ${{ toJSON(steps) }}
+        run: bun run --silent ci:images:write-sandbox-manifest
+
+      - name: Build the nixie image
+        id: nixie
+        uses: ./.github/actions/build-image
+        with:
+          repository: ${{ env.REGISTRY }}/nixie
+          dockerfile: apps/server/Dockerfile
+          cache-scope: nixie
+
+      - name: Check that the nixie image carries the sandbox manifest
+        env:
+          NIXIE: ${{ env.REGISTRY }}/nixie@${{ steps.nixie.outputs.digest }}
+        run: bun run --silent ci:images:check-carried-manifest
+
+      - name: Check that the nixie command prints the sandbox images
+        env:
+          NIXIE: ${{ env.REGISTRY }}/nixie@${{ steps.nixie.outputs.digest }}
+        run: bun run --silent ci:images:check-printed-sandbox-images
+
+      # with no network, so the check passes only on the model files the image carries
+      - name: Check that the nixie image loads its encoder offline
+        env:
+          NIXIE: ${{ env.REGISTRY }}/nixie@${{ steps.nixie.outputs.digest }}
+        run: docker run --rm --network none --read-only "$NIXIE" check-encoder
+
+      - name: Pull each sandbox image with no credentials
+        run: bun run --silent ci:images:check-public-pulls
+
+      - name: Tag every image, twice, and keep each digest
+        env:
+          BACKUP: ${{ env.REGISTRY }}/nixie-backup@${{ steps.backup.outputs.digest }}
+          NIXIE: ${{ env.REGISTRY }}/nixie@${{ steps.nixie.outputs.digest }}
+          WEB: ${{ env.REGISTRY }}/nixie-web@${{ steps.web.outputs.digest }}
+        run: bun run --silent ci:images:tag-rehearsal-images
+
+      - name: Run the restic lane on the backup image's restic
+        env:
+          BACKUP: ${{ env.REGISTRY }}/nixie-backup@${{ steps.backup.outputs.digest }}
+        run: bun run --silent ci:images:run-restic-lane
+
+      - name: Build release.json, check each image it names, and rehearse its upload
+        env:
+          BACKUP: ${{ env.REGISTRY }}/nixie-backup@${{ steps.backup.outputs.digest }}
+          NIXIE: ${{ env.REGISTRY }}/nixie@${{ steps.nixie.outputs.digest }}
+          WEB: ${{ env.REGISTRY }}/nixie-web@${{ steps.web.outputs.digest }}
+        run: bun run --silent ci:images:rehearse-release-assets

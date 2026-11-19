@@ -3,14 +3,12 @@
 # the nixie image carries it and that the backup image runs its pinned restic, runs the restic lane
 # on that restic, then runs the release's pull check, tag stage and assets stage. A
 # broken Dockerfile or a changed checksum then fails the pull request, never a release. A pull
-# request runs it only when it changes a file the images or the stages read; every push to main runs
-# it in full.
+# request runs it only when it changes a file the images or the stages read. images-main.yml runs the
+# same jobs on each push to main.
 name: Images
 
 on:
   pull_request:
-  push:
-    branches: [main]
 
 permissions:
   contents: read
