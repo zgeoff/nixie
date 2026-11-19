@@ -1,0 +1,25 @@
+{
+  "name": "@heynixie/verify",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsrs --fast --noEmit"
+  },
+  "dependencies": {
+    "@heynixie/contract": "workspace:*",
+    "@heynixie/log": "workspace:*",
+    "@heynixie/server": "workspace:*",
+    "@heynixie/testing": "workspace:*",
+    "@heynixie/web": "workspace:*",
+    "@wringer/browser": "catalog:",
+    "@wringer/core": "catalog:",
+    "@wringer/db": "catalog:",
+    "@wringer/gunshi": "catalog:",
+    "@wringer/http": "catalog:",
+    "@wringer/stream": "catalog:",
+    "@wringer/terminal": "catalog:",
+    "ts-pattern": "catalog:",
+    "zod": "catalog:"
+  }
+}

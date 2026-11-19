@@ -104,7 +104,14 @@
         "zod": "catalog:",
       },
       "devDependencies": {
+        "@heynixie/backup": "workspace:*",
+        "@heynixie/db": "workspace:*",
+        "@heynixie/log": "workspace:*",
+        "@heynixie/memory": "workspace:*",
         "@heynixie/testing": "workspace:*",
+        "@zgeoff/rig": "catalog:",
+        "@zgeoff/testing": "catalog:",
+        "kysely": "catalog:",
         "tiny-invariant": "catalog:",
       },
     },
@@ -176,7 +183,12 @@
       },
       "devDependencies": {
         "@faker-js/faker": "catalog:",
+        "@heynixie/backup-job": "workspace:*",
+        "@heynixie/model-gateway": "workspace:*",
+        "@heynixie/web": "workspace:*",
         "@modelcontextprotocol/client": "catalog:",
+        "@zgeoff/rig": "catalog:",
+        "@zgeoff/testing": "catalog:",
         "ajv": "catalog:",
         "ajv-formats": "3.0.1",
         "release-please": "17.11.2",
@@ -221,6 +233,7 @@
         "@types/react-dom": "catalog:",
         "@vitejs/plugin-react": "catalog:",
         "@zgeoff/rig": "catalog:",
+        "@zgeoff/testing": "catalog:",
         "babel-plugin-react-compiler": "catalog:",
         "fake-indexeddb": "catalog:",
         "happy-dom": "catalog:",
@@ -239,35 +252,6 @@
       "peerDependencies": {
         "@pulumi/kubernetes": ">=4.34.2 <5",
         "@pulumi/pulumi": ">=3.268.0 <4",
-      },
-    },
-    "e2e": {
-      "name": "@heynixie/e2e",
-      "version": "0.0.0",
-      "dependencies": {
-        "@heynixie/async": "workspace:*",
-        "@heynixie/backup": "workspace:*",
-        "@heynixie/backup-job": "workspace:*",
-        "@heynixie/contract": "workspace:*",
-        "@heynixie/db": "workspace:*",
-        "@heynixie/log": "workspace:*",
-        "@heynixie/model-gateway": "workspace:*",
-        "@heynixie/server": "workspace:*",
-        "@heynixie/testing": "workspace:*",
-        "@heynixie/web": "workspace:*",
-        "@heynixie/wire": "workspace:*",
-        "@orpc/client": "catalog:",
-        "@wringer/browser": "catalog:",
-        "@wringer/core": "catalog:",
-        "@wringer/db": "catalog:",
-        "@wringer/gunshi": "catalog:",
-        "@wringer/http": "catalog:",
-        "@wringer/stream": "catalog:",
-        "@wringer/terminal": "catalog:",
-        "kysely": "catalog:",
-        "tiny-invariant": "catalog:",
-        "ts-pattern": "catalog:",
-        "zod": "catalog:",
       },
     },
     "evals": {
@@ -1132,6 +1116,26 @@
       "name": "@heynixie/spike-worker-cold-start",
       "version": "0.0.0",
     },
+    "verify": {
+      "name": "@heynixie/verify",
+      "version": "0.0.0",
+      "dependencies": {
+        "@heynixie/contract": "workspace:*",
+        "@heynixie/log": "workspace:*",
+        "@heynixie/server": "workspace:*",
+        "@heynixie/testing": "workspace:*",
+        "@heynixie/web": "workspace:*",
+        "@wringer/browser": "catalog:",
+        "@wringer/core": "catalog:",
+        "@wringer/db": "catalog:",
+        "@wringer/gunshi": "catalog:",
+        "@wringer/http": "catalog:",
+        "@wringer/stream": "catalog:",
+        "@wringer/terminal": "catalog:",
+        "ts-pattern": "catalog:",
+        "zod": "catalog:",
+      },
+    },
   },
   "overrides": {
     "happy-dom": "21.0.4",
@@ -1182,6 +1186,7 @@
     "@zgeoff/kysely-bun-sqlite": "0.3.3",
     "@zgeoff/rig": "0.2.3",
     "@zgeoff/std": "0.4.3",
+    "@zgeoff/testing": "0.3.0",
     "ajv": "8.20.0",
     "babel-plugin-react-compiler": "1.0.0",
     "elysia": "1.4.30",
@@ -1399,8 +1404,6 @@
 
     "@heynixie/definitions-repo-github": ["@heynixie/definitions-repo-github@workspace:adapters/definitions-repo-github"],
 
-    "@heynixie/e2e": ["@heynixie/e2e@workspace:e2e"],
-
     "@heynixie/encoder-onnx": ["@heynixie/encoder-onnx@workspace:adapters/encoder-onnx"],
 
     "@heynixie/evals": ["@heynixie/evals@workspace:evals"],
@@ -1508,6 +1511,8 @@
     "@heynixie/turn-inputs": ["@heynixie/turn-inputs@workspace:modules/turn-inputs"],
 
     "@heynixie/web": ["@heynixie/web@workspace:apps/web"],
+
+    "@heynixie/verify": ["@heynixie/verify@workspace:verify"],
 
     "@heynixie/wire": ["@heynixie/wire@workspace:libs/wire"],
 
@@ -2355,6 +2360,8 @@
 
     "acorn": ["acorn@8.19.0", "", { "bin": { "acorn": "bin/acorn" } }, "sha512-oJlA3XiRm7Cyk6qFD2Jn8ak9B7jSy0qy00ADO3+8dpT0LSjFihQYv4C02LFCSYJV3Q37xYwwRy5m+IpIiUzqWw=="],
 
+    "@zgeoff/testing": ["@zgeoff/testing@0.3.0", "", { "dependencies": { "bun-pty": "0.6.0" } }, "sha512-9oeaSUJ3XtoXzYwBgT5DtiHA2OgjyzeFsggIzNGdTUrrDMfwytB3HCA0kGCnVNh/o84nqli4jvDD5eYWWv6QeA=="],
+
     "acorn-jsx": ["acorn-jsx@5.3.2", "", { "peerDependencies": { "acorn": "^6.0.0 || ^7.0.0 || ^8.0.0" } }, "sha512-rq9s+JNhf0IChjtDXxllJ7g41oZk5SlXtp0LHwyA5cejwn7vKmKp4pPri6YEePv2PU65sAsegbXtIinmDFDXgQ=="],
 
     "acorn-walk": ["acorn-walk@8.3.5", "", { "dependencies": { "acorn": "^8.11.0" } }, "sha512-HEHNfbars9v4pgpW6SO1KSPkfoS0xVOM/9UzkJltjlsHZmJasxg8aXkuZa7SMf8vKGIBhpUsPluQSqhJFCqebw=="],
@@ -2440,6 +2447,8 @@
     "bytes": ["bytes@3.1.2", "", {}, "sha512-/Nf7TyzTx6S3yRJObOAV7956r8cr2+Oj8AC5dt8wSP3BQAoeX58NoHyCU8P8zGkNXStjTSi6fzO6F0pBdcYbEg=="],
 
     "cacache": ["cacache@20.0.4", "", { "dependencies": { "@npmcli/fs": "^5.0.0", "fs-minipass": "^3.0.0", "glob": "^13.0.0", "lru-cache": "^11.1.0", "minipass": "^7.0.3", "minipass-collect": "^2.0.1", "minipass-flush": "^1.0.5", "minipass-pipeline": "^1.2.4", "p-map": "^7.0.2", "ssri": "^13.0.0" } }, "sha512-M3Lab8NPYlZU2exsL3bMVvMrMqgwCnMWfdZbK28bn3pK6APT/Te/I8hjRPNu1uwORY9a1eEQoifXbKPQMfMTOA=="],
+
+    "bun-pty": ["bun-pty@0.6.0", "", {}, "sha512-tRVhUKbu18DSg/lUdp9vXzzEAlevBcdWJ+3TXX0CuvSmtdC6EIbzKmklRpiKZmmtN6qwkIqB2QeEFghpI1/z3g=="],
 
     "cacheable": ["cacheable@2.5.0", "", { "dependencies": { "@cacheable/memory": "^2.2.0", "@cacheable/utils": "^2.5.0", "hookified": "^1.15.0", "keyv": "^5.6.0", "qified": "^0.10.1" } }, "sha512-60cyAOytib/OzBw1JNSoSV/boK1AtHryDIjvVBk7XbN4ugfkM3+Sry7fEjNgPMGgOjuaZPAp8ruZ0Cxafwyq9g=="],
 

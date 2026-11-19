@@ -4,11 +4,11 @@ A crash test runs nixie as a child process, holds one of its runners at a named 
 the process with `SIGKILL`, and starts it again on the same data directory. When the scenario ends,
 the test checks the event log and the projections against one oracle. Every test ends with the same
 oracle, so each one proves the same thing: a crash at that point loses nothing and repeats nothing.
-The suites live in the root `e2e/` folder. The harness that spawns nixie lives in the server's test
-utilities, and the parts it builds on, such as the crash harness and the doubles, live in
-`libs/testing`. [Leases and recovery](./leases-and-recovery.md) covers the fault points and the
-recovery that a restart runs. [Actions](./actions.md) covers the action queue whose repeats the
-tests look for.
+The suites live in the server's `e2e/` folder, `apps/server/e2e/`. The harness that spawns nixie
+lives in the server's test utilities, and the parts it builds on, such as the crash harness and the
+doubles, live in `libs/testing`. [Leases and recovery](./leases-and-recovery.md) covers the fault
+points and the recovery that a restart runs. [Actions](./actions.md) covers the action queue whose
+repeats the tests look for.
 
 ```mermaid
 flowchart LR
@@ -127,6 +127,6 @@ stops at the parts of a start that need a real sandbox.
 ## Coverage
 
 The [crash tests design](../../design/platform/core/crash-tests.md#slice-1-tests) lists the slice 1
-tests and their variants. Each test is one file under `e2e/crash/`. Two variants wait on parts that
-nixie does not have. The wake-up from a trigger event needs a trigger source, and the second writer
-that runs the restore command needs that command.
+tests and their variants. Each test is one `recover-*.test.ts` file in `apps/server/e2e/`. Two
+variants wait on parts that nixie does not have. The wake-up from a trigger event needs a trigger
+source, and the second writer that runs the restore command needs that command.

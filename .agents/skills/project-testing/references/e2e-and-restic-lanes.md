@@ -6,20 +6,20 @@ tests start. When you run one file without its lane's command, make each build i
 build helper, such as `readWebBuild`, makes a missing build itself, inside the test's own time
 limit, and a build takes longer than that limit, so the test fails.
 
-| Lane     | Files                                                                     | Command                 |
-| -------- | ------------------------------------------------------------------------- | ----------------------- |
-| e2e      | the root `e2e/` folder, except `*.browser.test.ts` and `*.restic.test.ts` | `bun run test:e2e`      |
-| bundle   | `*.bundle.test.ts`, outside the root `e2e/` folder                        | `bun run test:bundle`   |
-| journeys | `*.browser.test.ts` in `e2e/journeys/`                                    | `bun run test:journeys` |
-| restic   | `*.restic.test.ts` in the root `e2e/` folder                              | `bun run test:restic`   |
+| Lane     | Files                                                                            | Command                 |
+| -------- | -------------------------------------------------------------------------------- | ----------------------- |
+| e2e      | the `e2e/` folder of each app, except `*.browser.test.ts` and `*.restic.test.ts` | `bun run test:e2e`      |
+| bundle   | `*.bundle.test.ts`, outside the `e2e/` folders                                   | `bun run test:bundle`   |
+| journeys | `*.browser.test.ts` in `apps/server/e2e/`                                        | `bun run test:journeys` |
+| restic   | `*.restic.test.ts` in the `e2e/` folders                                         | `bun run test:restic`   |
 
-Run each command from the repo root. rig, the test runner `@zgeoff/rig`, runs the bundle, journeys
-and restic lanes. rig does not run the root `e2e/` folder, so `bun run test:e2e` runs that folder
-through `bun test` with a limit of 15 s per test. It then runs the bundle lane through
-`bun run test:bundle`.
+Run each command from the repo root. rig, the test runner `@zgeoff/rig`, runs every lane. `rig e2e`
+runs each app's `e2e/` folder with a limit of 15 s per test, after it builds each program that
+`programs` in [`rig.config.ts`](../../../../rig.config.ts) declares. `bun run test:e2e` runs the
+bundle lane first, then `rig e2e`.
 
-- Outside the root `e2e/` folder, give a test that reads the web build or the backup job's bundle
-  the suffix `*.bundle.test.ts`. Give a test there that reads only nixie's test bundle the plain
+- Outside the `e2e/` folders, give a test that reads the web build or the backup job's bundle the
+  suffix `*.bundle.test.ts`. Give a test there that reads only nixie's test bundle the plain
   `*.test.ts` suffix. `bun run test` runs the unit tests, and builds that bundle first.
 - Stop each process and remove each folder that a test makes. The files of a lane share one process,
   so anything a file leaves behind stays for every later file.
@@ -28,41 +28,47 @@ through `bun test` with a limit of 15 s per test. It then runs the bundle lane t
   `scripts/test-utils/` that [`rig.config.ts`](../../../../rig.config.ts) names, and the hook makes
   the lane's builds. For a restic file, also set `NIXIE_RESTIC_BINARY`, as in [Restic](#restic). For
   a journey, use the command in [Journeys](#journeys).
-- To run one file of the e2e lane again, run the build commands it needs from [Builds](#builds),
-  then `bun test --timeout=15000 <path>`.
+- To run one file of the e2e lane again, pass its path: `bun run test:e2e <path>`. The command runs
+  the bundle lane first, then builds each program and runs only that file.
+- A suite gets the command that starts a program from `resolveProgram(name)` in `@zgeoff/rig/e2e`.
+  Outside `rig e2e`, in CI, it throws: the e2e lane's builds name each program, and the restic
+  lane's start hook names the backup job.
 
 ## Builds
 
 | Build                   | Build command                         | Read it in a test with                                        |
 | ----------------------- | ------------------------------------- | ------------------------------------------------------------- |
-| nixie's test bundle     | `bun run test:bundles`                | `startSpawnedNixie` from `@heynixie/server/test-utils`        |
+| nixie's test bundle     | `bun run test:bundles`                | `startE2ENixie` from `@heynixie/server/test-utils`            |
 | the previous release    | `bun run test:previous-release-build` | `readPreviousReleaseBuild` from `@heynixie/server/test-utils` |
 | the web build           | `bun run test:web-build`              | `readWebBuild` from `@heynixie/web/test-utils`                |
 | the backup job's bundle | `bun run test:backup-job-build`       | `readBackupJobBundle` from `@heynixie/backup-job/test-utils`  |
 
 `bun run test:bundles`, with an `s`, builds nixie's test bundle. `bun run test:bundle` runs the
-bundle lane. A file needs each build whose function in the last column it imports.
+bundle lane. A build helper in the last column reads a build that its command made. The web build,
+the backup job's bundle and nixie's test bundle that the e2e lane runs come from `programs` in
+`rig.config.ts` instead: `resolveProgram('web')`, `resolveProgram('backup-job')` and
+`startE2ENixie`, which calls `resolveProgram('nixie')`.
 
-- Pass the server entry path that `readWebBuild` returns to `startBuiltWeb`, from the same package.
-  A journey reads the browser lane's own web build instead: see [Journeys](#journeys).
-- Start the backup job with `bun <bundle_path> run`. `<bundle_path>` is the path that
-  `readBackupJobBundle` returns, and `run` is the job's command.
+- Start the web server with `start` from `@zgeoff/testing/process`, on the command that
+  `resolveProgram('web')` returns, with `NIXIE_API_URL` and `NODE_ENV=production` in its `env`.
+- Start the backup job with `run` from `@zgeoff/testing/process`, on the command that
+  `resolveProgram('backup-job')` returns, with `args: ['run']`.
 - Run a build command again after you change a file the build is made from. Each build helper keeps
   its build in a folder under `node_modules/.cache/nixie-test-bundles/`, named by a hash of those
   files, so a change leaves the build missing.
-- Give `startSpawnedNixie` a `release` path only in a suite that checks the release bundle. The
-  release bundle is the one nixie ships, with the test-only code left out. The `release` path is the
+- Give `startE2ENixie` a `release` path only in a suite that checks the release bundle. The release
+  bundle is the one nixie ships, with the test-only code left out. The `release` path is the
   bundle's entry file. The suite writes its own release bundle, as
-  [`write-release-bundle.test.ts`](../../../../e2e/write-release-bundle.test.ts) does.
+  [`build-release-bundle.test.ts`](../../../../apps/server/e2e/build-release-bundle.test.ts) does.
 - To check that the previous release starts on data the checked-out code wrote, write the test in
-  the root `e2e/` folder, as [`rollback-check.test.ts`](../../../../e2e/rollback-check.test.ts)
-  does:
+  `apps/server/e2e/`, as
+  [`compat-rollback-check.test.ts`](../../../../apps/server/e2e/compat-rollback-check.test.ts) does:
   1. Get the previous release with `readPreviousReleaseBuild()`. It takes the newest `v*` tag
      reachable from `HEAD`, other than a tag on `HEAD` itself. With no such tag it throws: run
      `git fetch --tags` first.
   2. Pass it to `runRollbackCheck`, from
-     [`run-rollback-check.ts`](../../../../e2e/src/test-utils/run-rollback-check.ts). The check
-     starts the checkout's release bundle, then the previous release on the same data.
+     [`run-rollback-check.ts`](../../../../apps/server/src/test-utils/run-rollback-check.ts). The
+     check starts the checkout's release bundle, then the previous release on the same data.
   3. Expect the result's `verdict` to be `pass` or `declared`:
      - `pass`: the previous release logged `http.listening`, and its `/health/ready` report shows
        the `database` part ready. The lane runs no imp daemon, so the parts that need one stay
@@ -82,10 +88,13 @@ bundle lane. A file needs each build whose function in the last column it import
 ## Journeys
 
 Write each journey the user takes through the web app as a `*.browser.test.ts` file in
-`e2e/journeys/`. Examples are signing in, sending a message, approving a memory proposal, and a
-reset. A journey drives the web app in Chrome against nixie's test bundle. `bun run test:journeys`
-runs them with rig's browser runner, the one the [browser lane](./browser-lane.md) uses, and its
-limit of 10 s per test. `bun run test:e2e` and `bun run test:browser` leave the journeys out.
+`apps/server/e2e/`, named `journey-<name>.browser.test.ts`. Examples are signing in, sending a
+message, approving a memory proposal, and a reset. A journey drives the web app in Chrome against
+nixie's test bundle. `bun run test:journeys` runs them with rig's browser runner, the one the
+[browser lane](./browser-lane.md) uses, and its limit of 10 s per test. `bun run test:e2e` and
+`bun run test:browser` leave the journeys out. A journey starts nixie with `startSpawnedNixie`,
+which reads the test bundle that `bun run test:bundles` made, because the browser lane builds no
+program.
 
 - **Run one journey with `bun run test:journeys --test-name-pattern='<test name>'`.** With
   `-t '<test name>'`, rig reads `<test name>` as a path, because it has no leading `-`, and the
@@ -95,12 +104,13 @@ limit of 10 s per test. `bun run test:e2e` and `bun run test:browser` leave the 
   when a journey reads a file outside the job's paths.** CI runs the journeys there, and only on a
   pull request that changes a listed path.
 - **Start each journey with
-  [`startWebJourney`](../../../../e2e/src/test-utils/start-web-journey.ts).** It starts nixie, the
-  web server and a proxy that serves both on one origin, as a deployment does, and opens a Chrome
-  view. It stops each of them when the test finishes. Read the fields of the journey it returns in
-  its `WebJourney` type. `journey.server` is the first nixie process, never the web server. After
-  nixie exits, such as after a reset, call `journey.startServer`. It starts a new nixie process on
-  the same data and returns it, and the web server's requests then reach that process.
+  [`startWebJourney`](../../../../apps/server/src/test-utils/start-web-journey.ts).** It starts
+  nixie, the web server and a proxy that serves both on one origin, as a deployment does, and opens
+  a Chrome view. It stops each of them when the test finishes. Read the fields of the journey it
+  returns in its `WebJourney` type. `journey.server` is the first nixie process, never the web
+  server. After nixie exits, such as after a reset, call `journey.startServer`. It starts a new
+  nixie process on the same data and returns it, and the web server's requests then reach that
+  process.
 - **Wait for the page to hydrate before you click a submit button.** A click before hydration
   submits the form as plain HTML, and React never sees it. On the conversation page, wait for an
   enabled `input[type=file]`: the image pickers stay disabled until the page hydrates. On any other
@@ -123,8 +133,10 @@ limit of 10 s per test. `bun run test:e2e` and `bun run test:browser` leave the 
 
 - **Set `NIXIE_RESTIC_BINARY` to run a restic suite locally.** Each restic suite skips when neither
   `NIXIE_RESTIC_BINARY` nor `CI` is set, even with `restic` on `PATH`. Run
-  `NIXIE_RESTIC_BINARY=<path-to-restic> bun run test:restic`. In a new suite, copy the skip check
-  from [`backup-retention.restic.test.ts`](../../../../e2e/backup-retention.restic.test.ts).
+  `NIXIE_RESTIC_BINARY=<path-to-restic> bun run test:restic`. The lane's start hook builds the
+  backup job and names its build for `resolveProgram('backup-job')`. In a new suite, copy the skip
+  check from
+  [`cli-backup-retention.restic.test.ts`](../../../../apps/backup-job/e2e/cli-backup-retention.restic.test.ts).
 - **Read the restic lane's result in the `rehearse` job of
   [`images.yml`](../../../../.github/workflows/images.yml).** `pr.yml` does not run a restic suite.
   `images.yml` runs only on a pull request that changes a path in its `changes` job, and runs the

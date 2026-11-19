@@ -17,8 +17,8 @@ metadata:
 - [The browser lane](./references/browser-lane.md): read it before you write, run or debug a
   `*.browser.test.ts` suite.
 - [The e2e, bundle, journeys and restic lanes](./references/e2e-and-restic-lanes.md): read it before
-  you write, run or debug a suite under `e2e/`, including a `*.restic.test.ts` suite and a journey
-  in `e2e/journeys/`, or a `*.bundle.test.ts` suite.
+  you write, run or debug a suite in an app's `e2e/` folder, including a `*.restic.test.ts` suite
+  and a journey, or a `*.bundle.test.ts` suite.
 - [The nixie harnesses](./references/nixie-harnesses.md): read it before you start nixie in a test,
   in process or as a child process, or write a crash suite that arms fault points.
 - [Agent SDK probes](./references/agent-sdk-probes.md): read it before you write a check of an SDK
@@ -74,17 +74,17 @@ a lib.
 Before you call a test done, run it with its command from this table. Use the first row whose files
 match the test file.
 
-| Files                                                                                              | Command                                       | In CI             |
-| -------------------------------------------------------------------------------------------------- | --------------------------------------------- | ----------------- |
-| `*.browser.test.ts` outside `e2e/`                                                                 | `bun run test:browser`                        | in `pr.yml`       |
-| `*.agent-sdk.test.ts`                                                                              | `bun run test:agent-sdk`                      | in `pr.yml`       |
-| `e2e/**`, except `*.browser.test.ts` and `*.restic.test.ts`                                        | `bun run test:e2e`                            | in `pr.yml`       |
-| `*.browser.test.ts` in `e2e/journeys/`, and `e2e/src/test-utils/start-web-journey.browser.test.ts` | `bun run test:journeys`                       | in `journeys.yml` |
-| `*.bundle.test.ts` outside `e2e/`                                                                  | `bun run test:bundle`                         | in `pr.yml`       |
-| `e2e/**/*.restic.test.ts`                                                                          | `bun run test:restic`                         | in `images.yml`   |
-| `*.imp.test.ts`                                                                                    | `bun run test:imp`                            | no                |
-| `*.model-api.test.ts`                                                                              | `NIXIE_SDK_CONTRACT=1 bun run test:model-api` | no                |
-| every other `*.test.ts`: the unit tests                                                            | `bun run test`                                | in `pr.yml`       |
+| Files                                                                                                               | Command                                       | In CI             |
+| ------------------------------------------------------------------------------------------------------------------- | --------------------------------------------- | ----------------- |
+| `*.browser.test.ts` outside `apps/server/e2e/`, except `start-web-journey.browser.test.ts`                          | `bun run test:browser`                        | in `pr.yml`       |
+| `*.agent-sdk.test.ts`                                                                                               | `bun run test:agent-sdk`                      | in `pr.yml`       |
+| `apps/*/e2e/**`, except `*.browser.test.ts` and `*.restic.test.ts`                                                  | `bun run test:e2e`                            | in `pr.yml`       |
+| `*.browser.test.ts` in `apps/server/e2e/`, and `start-web-journey.browser.test.ts` in `apps/server/src/test-utils/` | `bun run test:journeys`                       | in `journeys.yml` |
+| `*.bundle.test.ts` outside `e2e/`                                                                                   | `bun run test:bundle`                         | in `pr.yml`       |
+| `*.restic.test.ts` in `apps/*/e2e/`                                                                                 | `bun run test:restic`                         | in `images.yml`   |
+| `*.imp.test.ts`                                                                                                     | `bun run test:imp`                            | no                |
+| `*.model-api.test.ts`                                                                                               | `NIXIE_SDK_CONTRACT=1 bun run test:model-api` | no                |
+| every other `*.test.ts`: the unit tests                                                                             | `bun run test`                                | in `pr.yml`       |
 
 ### One unit test file
 
@@ -109,8 +109,7 @@ test file, run each one that the file needs, from the repo root:
   run such a file with a bare `bun test`. That gives the file the unit lane's limit, and skips the
   start hook that builds what the bundle, restic and Agent SDK lanes read.
 - For one file under `e2e/`, follow
-  [The e2e, bundle, journeys and restic lanes](./references/e2e-and-restic-lanes.md). Never add a
-  path to `bun run test:e2e`: the script passes it only to `test:bundle`, which then fails.
+  [The e2e, bundle, journeys and restic lanes](./references/e2e-and-restic-lanes.md).
 
 ### Lanes that need a real system
 
@@ -164,11 +163,13 @@ test file, run each one that the file needs, from the repo root:
 
 ## Where e2e code lives
 
-- Import the harness that spawns nixie in an `e2e/` suite from
-  [`@heynixie/server/test-utils`](../../../apps/server/src/test-utils/index.ts), and the helpers
-  that an `e2e/` suite shares with the browser suites from
-  [`@heynixie/web/test-utils`](../../../apps/web/src/test-utils/index.ts).
-- Put a helper that only `e2e/` suites share, such as one that 2 journeys call, in
-  [`e2e/src/test-utils/`](../../../e2e/src/test-utils/), with its own test beside it.
-- Put each browser suite of `e2e/` in `e2e/journeys/`. The browser lane leaves out `e2e/src/`, and
-  the journeys lane runs only the start-web-journey suite there.
+- Put each `e2e/` suite in the folder of the app it starts, with a prefix from the testing skill's
+  [E2e prefixes](../testing/references/system-tests.md#e2e-prefixes). `rig.config.ts` declares each
+  app's program under `programs`.
+- Start the web client and the backup job from `resolveProgram` in `@zgeoff/rig/e2e`, and nixie with
+  [`startE2ENixie`](../../../apps/server/src/test-utils/start-e2e-nixie.ts) from
+  `@heynixie/server/test-utils`.
+- Put a helper that `e2e/` suites share in `src/test-utils/` of the package that owns what it
+  starts, with its own test beside it, such as
+  [`start-web-journey.ts`](../../../apps/server/src/test-utils/start-web-journey.ts).
+- Put each browser suite of `e2e/` in `apps/server/e2e/`, named `journey-<name>.browser.test.ts`.

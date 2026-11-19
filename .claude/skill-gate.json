@@ -4,7 +4,7 @@
     { "match": "**/*.{ts,tsx}", "skills": ["code-style"] },
     { "match": "**/*.test.{ts,tsx}", "skills": ["testing", "project-testing"] },
     { "match": "**/test-utils/**", "skills": ["testing", "project-testing"] },
-    { "match": "e2e/**", "skills": ["testing", "project-testing"] },
+    { "match": "apps/*/e2e/**", "skills": ["testing", "project-testing"] },
     { "match": "**/bunfig.toml", "skills": ["testing", "project-testing"] },
     { "match": "**/*.md", "skills": ["docs-writing", "project-docs-writing"] },
     { "match": "**/skills/*/SKILL.md", "skills": ["skill-writing", "docs-writing", "deslop"] },
@@ -20,7 +20,7 @@
     { "match": "adapters/spend-model-gateway/**", "skills": ["verify"] },
     { "match": "nixie-test-build.d.ts", "skills": ["verify"] },
     { "match": "bun-serve-options.d.ts", "skills": ["verify"] },
-    { "match": "e2e/src/verify/**", "skills": ["verify"] },
+    { "match": "verify/**", "skills": ["verify"] },
     { "match": "preview/**", "skills": ["verify"] }
   ]
 }

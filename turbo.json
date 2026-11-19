@@ -19,14 +19,18 @@
   },
   "boundaries": {
     "tags": {
+      // an app's e2e suite runs the other deployables as programs and reads their test helpers, so
+      // an app also depends on them as dev dependencies
       "app": {
-        "dependencies": { "allow": ["module", "adapter", "lib"] }
+        "dependencies": { "allow": ["app", "client", "sidecar", "module", "adapter", "lib"] }
       },
       "client": {
         "dependencies": { "allow": ["lib"] }
       },
+      // the backup job's own source imports libs alone; its e2e suites seed real log data, so its
+      // dev dependencies reach the modules
       "sidecar": {
-        "dependencies": { "allow": ["lib"] }
+        "dependencies": { "allow": ["module", "lib"] }
       },
       "module": {
         "dependencies": { "allow": ["module", "lib"] }
@@ -50,19 +54,28 @@
       "eval": {
         "dependencies": { "allow": ["module", "guest", "lib"] }
       },
-      // the whole-program suites run builds of the server, the web client and the backup job as
-      // child processes, and nothing depends on them
-      "e2e": {
+      // the verify CLI starts the server and the web client behind one origin, and nothing depends
+      // on it
+      "verify": {
         "dependencies": { "allow": ["app", "client", "sidecar", "module", "adapter", "lib"] }
       },
       // the in-process suites run one flow across several packages on the server's test harnesses,
       // and nothing depends on them
       "integration": {
-        "dependencies": { "allow": ["app", "module", "adapter", "lib"] }
+        "dependencies": { "allow": ["app", "client", "sidecar", "module", "adapter", "lib"] }
       },
       "server-only": {
         "dependents": {
-          "allow": ["app", "module", "adapter", "server-only", "eval", "e2e", "integration"]
+          "allow": [
+            "app",
+            "sidecar",
+            "module",
+            "adapter",
+            "server-only",
+            "eval",
+            "verify",
+            "integration"
+          ]
         }
       }
     }

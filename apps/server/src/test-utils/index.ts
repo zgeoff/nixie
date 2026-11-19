@@ -15,6 +15,7 @@ export { writeBootFiles } from './write-boot-files';
 export { startInProcessNixie } from './start-in-process-nixie';
 export { startTestConversation } from './start-test-conversation';
 export { createSpawnedNixie } from './create-spawned-nixie';
+export { startE2ENixie } from './start-e2e-nixie';
 export { startSpawnedNixie } from './start-spawned-nixie';
 export { startTestServer } from './start-test-server';
 export { writeSeedMessages } from './write-seed-messages';

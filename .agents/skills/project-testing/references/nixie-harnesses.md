@@ -2,10 +2,11 @@
 
 Pick the harness by what the suite needs:
 
-- Use the spawned harness, `startSpawnedNixie`, in a suite under `e2e/`, when the suite needs the
-  real conversation guest, a crash, a signal, an exit code, or a restart on the same data directory.
-  Only a child process gives a test those. The conversation guest is the program that runs each turn
-  through the Agent SDK inside a sandbox, as the [glossary](../../../../docs/glossary.md) says.
+- Use the spawned harness, `startE2ENixie`, in a suite in `apps/server/e2e/`, when the suite needs
+  the real conversation guest, a crash, a signal, an exit code, or a restart on the same data
+  directory. Only a child process gives a test those. The conversation guest is the program that
+  runs each turn through the Agent SDK inside a sandbox, as the
+  [glossary](../../../../docs/glossary.md) says.
 - Use the in-process harness, `startInProcessNixie`, for every other server suite. Only its test can
   read the turn frames: the messages each turn sends to the conversation guest.
 
@@ -37,10 +38,10 @@ in place of the sandbox adapter. A turn starts no guest process and no Agent SDK
 
 ## A crash suite on the spawned harness
 
-[`startSpawnedNixie`](../../../../apps/server/src/test-utils/start-spawned-nixie.ts) runs the
-server's test bundle as a child process: the server built with its test-only code, such as its fault
-points, switched on. Run the suites with `bun run test:e2e`, which builds the test bundle before the
-first start.
+[`startE2ENixie`](../../../../apps/server/src/test-utils/start-e2e-nixie.ts) runs the server's test
+bundle as a child process: the server built with its test-only code, such as its fault points,
+switched on. Run the suites with `bun run test:e2e`, which builds the test bundle before the first
+start.
 
 - The test process holds a scripted model, and a provider double that answers in place of the
   outside service that a connector's tool reaches.
@@ -53,10 +54,11 @@ first start.
 - Inside the test bundle, nixie reads the harness clock. The clock moves only when the test calls
   `nixie.harness.advance`. The test process keeps real time.
 
-Write a crash suite in this order. [`retry.test.ts`](../../../../e2e/crash/retry.test.ts) shows the
-arguments of each call.
+Write a crash suite in this order.
+[`recover-retry.test.ts`](../../../../apps/server/e2e/recover-retry.test.ts) shows the arguments of
+each call.
 
-1. Assign the result of `startSpawnedNixie()` to `nixie`.
+1. Assign the result of `startE2ENixie()` to `nixie`.
 2. Start the child process with `nixie.harness.start()`, and await its `ready`.
 3. Await `nixie.waitForQueueCheck()`.
 4. Arm a fault point with `child.request('arm', { point, kind: 'action' })`.

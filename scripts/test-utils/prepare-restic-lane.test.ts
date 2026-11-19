@@ -19,12 +19,12 @@ async function setupTest() {
   };
 }
 
-test('it builds the backup job before the restic lane runs', async () => {
+test('it builds the backup job before the restic lane runs, and names its build for the suites', async () => {
   const ctx = await setupTest();
 
   createStubProgram(ctx.bunPath, { callsPath: ctx.callsPath });
 
-  prepareResticLane({
+  const start = prepareResticLane({
     repoRoot: '/srv/orchard',
     runID: 'run-7',
     environment: ctx.env,
@@ -41,5 +41,9 @@ test('it builds the backup job before the restic lane runs', async () => {
 
   const calls = await readFile(ctx.callsPath, 'utf8');
 
-  expect(calls).toBe('bun run test:backup-job-build\n');
+  expect(calls).toBe('bun run test:backup-job-program\n');
+
+  expect(start).toStrictEqual({
+    environment: { RIG_PROGRAM_BACKUP_JOB: '/srv/orchard/apps/backup-job/dist/main.js' },
+  });
 });

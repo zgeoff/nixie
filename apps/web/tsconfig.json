@@ -8,6 +8,7 @@
   "include": [
     "src/**/*.ts",
     "src/**/*.tsx",
+    "e2e/**/*.ts",
     "panda.config.ts",
     "postcss.config.js",
     "vite.config.ts"

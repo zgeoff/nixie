@@ -39,6 +39,7 @@
         "src/run-release-build.ts",
         "src/test-utils/write-previous-release-build.ts",
         "src/test-utils/write-test-templates.ts",
+        "src/test-utils/write-test-program.ts",
         "src/test-utils/run-stub-*.ts",
         "src/run-config-schema-check.ts",
         "src/run-release-manifest.ts",
@@ -74,7 +75,7 @@
     "apps/web": { "entry": ["src/routes/**/*.tsx", "postcss.config.js"] },
     // `bun verify` runs the verify CLI by its path, and the CLI launches the harness by its path,
     // so no import reaches either
-    "e2e": { "entry": ["src/verify/verify.ts", "src/verify/harness/run-verify-harness.ts"] },
+    "verify": { "entry": ["src/verify/verify.ts", "src/verify/harness/run-verify-harness.ts"] },
     // rig loads its config and the lane start hooks by path, and the web image build and the
     // preview doctor run the source lister by its path
     ".": {

@@ -34,8 +34,8 @@ libs/       shared code that belongs to no domain
 - **A guest** holds the code a sandbox image runs. It depends only on `libs/wire`, and speaks to
   nixie through those wire formats over the sandbox's route back to nixie.
 
-The workspace globs cover those 5 folders, the Pulumi component, the root `e2e/`, `integration/` and
-`evals/` packages, and the spikes in `research/`. The spikes join the workspace so that CI
+The workspace globs cover those 5 folders, the Pulumi component, the root `verify/`, `integration/`
+and `evals/` packages, and the spikes in `research/`. The spikes join the workspace so that CI
 typechecks them, and they stand outside the package rules here: a spike pins the exact versions it
 ran against, imports product files by path with a `@boundaries-ignore` comment, and has no tests
 that CI runs. A spike whose pins conflict with the workspace stays out of it and installs on its
@@ -97,30 +97,32 @@ dependency against the rules in the root `turbo.json`. The check fails on a depe
 deny, an import of a workspace package that the importer does not declare, an import of a file
 outside the importer's package, and a cycle between packages.
 
-| Tag           | Packages                            | May depend on                     |
-| ------------- | ----------------------------------- | --------------------------------- |
-| `app`         | `apps/server`, `apps/model-gateway` | modules, adapters, libs           |
-| `client`      | `apps/web`                          | libs without `server-only`        |
-| `sidecar`     | `apps/backup-job`                   | libs without `server-only`        |
-| `module`      | `modules/*`                         | other modules, libs               |
-| `adapter`     | `adapters/*`                        | modules, libs                     |
-| `guest`       | `guests/*`                          | libs without `server-only`        |
-| `lib`         | `libs/*`                            | libs                              |
-| `deploy`      | `deploy/pulumi-k8s`                 | no workspace package              |
-| `e2e`         | `e2e/`                              | the apps, modules, adapters, libs |
-| `integration` | `integration/`                      | the app, modules, adapters, libs  |
-| `eval`        | `evals/`                            | modules, guests, libs             |
+| Tag           | Packages                            | May depend on                       |
+| ------------- | ----------------------------------- | ----------------------------------- |
+| `app`         | `apps/server`, `apps/model-gateway` | modules, adapters, libs, other apps |
+| `client`      | `apps/web`                          | libs without `server-only`          |
+| `sidecar`     | `apps/backup-job`                   | modules, libs                       |
+| `module`      | `modules/*`                         | other modules, libs                 |
+| `adapter`     | `adapters/*`                        | modules, libs                       |
+| `guest`       | `guests/*`                          | libs without `server-only`          |
+| `lib`         | `libs/*`                            | libs                                |
+| `deploy`      | `deploy/pulumi-k8s`                 | no workspace package                |
+| `verify`      | `verify/`                           | the apps, modules, adapters, libs   |
+| `integration` | `integration/`                      | the app, modules, adapters, libs    |
+| `eval`        | `evals/`                            | modules, guests, libs               |
 
-The backup job depends on libs alone, so it never reaches the modules that hold the deployment key.
-Nothing depends on the `e2e`, `integration` and `eval` packages, so their wide rules never let
-production code reach test code.
+The backup job's own source imports libs alone, so it never reaches the modules that hold the
+deployment key; its `e2e/` suites seed real log data, so its dev dependencies reach the modules. An
+app may depend on the other deployables, so its `e2e/` suites can read their test helpers. Nothing
+depends on the `verify`, `integration` and `eval` packages, so their wide rules never let production
+code reach test code.
 
 - **Libs depend only on libs.** A guest or a client therefore never reaches a module through a lib,
   because no lib can depend on one.
 - **`server-only`** marks a lib that only the trusted core and the test suites may use: `libs/db`
-  and `libs/secret-scan`. Its rule allows dependents tagged `app`, `module`, `adapter`,
-  `server-only`, `e2e`, `integration` or `eval`, so a guest or a client that declares it fails the
-  check.
+  and `libs/secret-scan`. Its rule allows dependents tagged `app`, `sidecar`, `module`, `adapter`,
+  `server-only`, `verify`, `integration` or `eval`, so a guest or a client that declares it fails
+  the check.
 - **An adapter depends only on the module that owns its interface.** The tags allow any module, so
   review holds this rule.
 - **Modules form no cycles.** `turbo boundaries` refuses a cycle, so a module that needs work from a
@@ -202,12 +204,13 @@ The other packages each hold one piece the modules and apps share:
 
 Tests run on `bun test`, and each test sits beside the module it tests, as `x.test.ts` beside
 `x.ts`. A lint rule refuses a test file with no module of its name beside it. The only test folders
-are 3 at the root: `e2e/`, which holds whole-program suites such as the
-[crash tests](core/crash-tests.md); `integration/`, which runs one flow across several packages in
-one process; and `evals/`, which checks committed evaluation reports against the code. Their helpers
-live in packages: the spawned-nixie harness in the server's test utilities, the helpers that build
-the web client and the backup job in those apps' test utilities, and the eval helpers in the memory
-module and the conversation guest.
+are 2 at the root, `integration/`, which runs one flow across several packages in one process, and
+`evals/`, which checks committed evaluation reports against the code. Each app that a test starts as
+a program holds its whole-program suites in its own `e2e/` folder, such as the
+[crash tests](core/crash-tests.md) in `apps/server/e2e/`. Their helpers live in packages: the
+spawned-nixie harness in the server's test utilities, the helpers that build the web client and the
+backup job in those apps' test utilities, and the eval helpers in the memory module and the
+conversation guest.
 
 The product tests that run the Agent SDK's `query()` live in `guests/conversation`, the one product
 package that imports the SDK. They run against the guest's own stub model, so none of them needs an
@@ -216,12 +219,12 @@ function in the guest's `sdk-contract` folder: the guest's tests run it against 
 the suite in `evals/` runs it against a real model, to check the SDK behaviours nixie relies on. The
 suite's doc lists the probes that only the real model can check, which no guest test runs. The
 suite's probes run only with `NIXIE_SDK_CONTRACT=1` and a model credential, and skip otherwise, so a
-plain `bun test` never calls a model. Whole-program suites in `e2e/` run nixie with the sandbox
-double, which starts the conversation guest as a local process, so the SDK still loads only from its
-own package. A module's tests of a system task that runs its own session, such as the checker, run
-the conversation guest in the sandbox double too, which the sessions module's test helpers start
-beside a log outside the server. An eval run that calls a real model is a script a contributor runs
-by hand, and its suite checks only the committed report.
+plain `bun test` never calls a model. Whole-program suites in an app's `e2e/` folder run nixie with
+the sandbox double, which starts the conversation guest as a local process, so the SDK still loads
+only from its own package. A module's tests of a system task that runs its own session, such as the
+checker, run the conversation guest in the sandbox double too, which the sessions module's test
+helpers start beside a log outside the server. An eval run that calls a real model is a script a
+contributor runs by hand, and its suite checks only the committed report.
 
 ### Test seeders
 
@@ -229,7 +232,7 @@ A test outside a module seeds that module's records through the module, so a sch
 only the module and its tests. The actions, tasks, memory, connectors, backup, prompts and log
 modules publish a seeder from their `test-utils` export, and the API module publishes the identity
 seeder. The db lib keeps row seeds for its own storage tests, because it sits below every module.
-The API module, the sessions module, the server app, `integration/` and `e2e/` each have a
+The API module, the sessions module, the server app, the backup job and `integration/` each have a
 `buildSeeder`, and a test of those reaches the seeds through `ctx.seed`. The lint rules
 `zgeoff/seed-only` and `zgeoff/test-beside-seed` run as errors. The
 [seeding reference](../../.agents/skills/testing/references/seeding.md) holds the rules for writing

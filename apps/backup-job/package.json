@@ -7,6 +7,7 @@
     "./test-utils": "./src/test-utils/index.ts"
   },
   "scripts": {
+    "build": "bun build src/main.ts --target=bun --define NIXIE_TEST_BUILD=false --outfile dist/main.js",
     "typecheck": "tsrs --fast --noEmit"
   },
   "dependencies": {
@@ -17,7 +18,14 @@
     "zod": "catalog:"
   },
   "devDependencies": {
+    "@heynixie/backup": "workspace:*",
+    "@heynixie/db": "workspace:*",
+    "@heynixie/log": "workspace:*",
+    "@heynixie/memory": "workspace:*",
     "@heynixie/testing": "workspace:*",
+    "@zgeoff/rig": "catalog:",
+    "@zgeoff/testing": "catalog:",
+    "kysely": "catalog:",
     "tiny-invariant": "catalog:"
   }
 }
