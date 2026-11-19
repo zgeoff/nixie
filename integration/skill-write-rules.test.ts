@@ -4,7 +4,9 @@ import type { MandateInput } from '@heynixie/definitions';
 import { readDefinitionsInForce, readSnapshotPolicy } from '@heynixie/definitions';
 import type { JSONObject } from '@heynixie/log';
 import { readRecords } from '@heynixie/log';
+import type { DecisionPoint, EffectDeclaration } from '@heynixie/policy';
 import { makeDecisionPoint } from '@heynixie/policy';
+import { readStarterDecisionPoint } from '@heynixie/policy/test-utils';
 import { readProposal } from '@heynixie/proposals';
 import { buildSkillTools } from '@heynixie/skills';
 import { buildToolRegistry, runToolCall } from '@heynixie/tools';
@@ -25,7 +27,10 @@ async function setupTest() {
     await rules.answer(proposed.proposalID, 'approve');
   };
 
-  const writeSkill = async (input: JSONObject) => {
+  const runWrite = async (
+    input: JSONObject,
+    makeDecide: (findDeclaration: (tool: string) => EffectDeclaration | null) => DecisionPoint,
+  ) => {
     const inForce = await readDefinitionsInForce(rules.log.writer.db);
 
     const registry = buildToolRegistry(
@@ -41,16 +46,7 @@ async function setupTest() {
       }),
     );
 
-    const decide = makeDecisionPoint({
-      findDeclaration: (tool) => registry.findTool(tool)?.definition.declaration ?? null,
-      readInputs: async (snapshot) => {
-        const read = await readSnapshotPolicy(rules.log.writer.db, snapshot);
-
-        return { rules: read.rules, contacts: [], tools: read.tools, ownerDestinations: [] };
-      },
-      findTaskDestinations: () => [],
-      readConsent: () => Promise.resolve(null),
-    });
+    const decide = makeDecide((tool) => registry.findTool(tool)?.definition.declaration ?? null);
 
     return runToolCall(
       { tool: 'skill_write', input, toolUseID: null },
@@ -80,7 +76,23 @@ async function setupTest() {
   return {
     ...rules,
     startMandate,
-    writeSkill,
+
+    // decides each call from the snapshot in force, which holds the mandates' rules
+    writeSkill: (input: JSONObject) =>
+      runWrite(input, (findDeclaration) =>
+        makeDecisionPoint({
+          findDeclaration,
+          readInputs: async (snapshot) => {
+            const read = await readSnapshotPolicy(rules.log.writer.db, snapshot);
+
+            return { rules: read.rules, contacts: [], tools: read.tools, ownerDestinations: [] };
+          },
+          findTaskDestinations: () => [],
+          readConsent: () => Promise.resolve(null),
+        }),
+      ),
+    writeSkillUnderStarterRules: (input: JSONObject) =>
+      runWrite(input, (findDeclaration) => readStarterDecisionPoint(findDeclaration)),
     readSkillNamesInForce: async () => {
       const inForce = await readDefinitionsInForce(rules.log.writer.db);
 
@@ -129,6 +141,25 @@ test('it keeps the proposal for a skill write under a mandate whose rule matches
   });
 
   await ctx.writeSkill({
+    name: 'kite-forecast',
+    files: [
+      {
+        path: 'SKILL.md',
+        text: '---\nname: kite-forecast\ndescription: Reads the wind for kites.\n---\n# Wind\n',
+      },
+    ],
+  });
+
+  const kinds = await ctx.readRecordKinds(['skills.write_applied', 'skills.write_proposed']);
+  const names = await ctx.readSkillNamesInForce();
+
+  expect([kinds, names]).toStrictEqual([['skills.write_proposed'], []]);
+});
+
+test('it keeps the proposal for a skill write under the starter rules, whose allow-notes rule matches the note effect', async () => {
+  const ctx = await setupTest();
+
+  await ctx.writeSkillUnderStarterRules({
     name: 'kite-forecast',
     files: [
       {

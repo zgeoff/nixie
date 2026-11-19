@@ -5,7 +5,7 @@ import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import { skillsWriteAppliedCodec } from '../write/skills-write-applied-codec';
 import { readCurrentSkillHashes } from './read-current-skill-hashes';
 
-export interface RuleAppliedSkill {
+interface RuleAppliedSkill {
   readonly writeID: string;
   readonly skill: ParsedSkill;
   readonly baseHash: string | null;
