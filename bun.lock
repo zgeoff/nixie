@@ -1186,7 +1186,7 @@
     "@zgeoff/kysely-bun-sqlite": "0.3.3",
     "@zgeoff/rig": "0.2.3",
     "@zgeoff/std": "0.4.3",
-    "@zgeoff/testing": "0.3.0",
+    "@zgeoff/testing": "0.3.1",
     "ajv": "8.20.0",
     "babel-plugin-react-compiler": "1.0.0",
     "elysia": "1.4.30",
@@ -2354,7 +2354,7 @@
 
     "@zgeoff/std": ["@zgeoff/std@0.4.3", "", {}, "sha512-wCaqH8+vrkR+6R/grWUUDraryyFY1NW0Gjbhg85bXX38k9Q+N3aHFu+Yc+EjzZ/Sp9n5aJnCvZqbO5F2mUjWAg=="],
 
-    "@zgeoff/testing": ["@zgeoff/testing@0.3.0", "", { "dependencies": { "bun-pty": "0.6.0" } }, "sha512-9oeaSUJ3XtoXzYwBgT5DtiHA2OgjyzeFsggIzNGdTUrrDMfwytB3HCA0kGCnVNh/o84nqli4jvDD5eYWWv6QeA=="],
+    "@zgeoff/testing": ["@zgeoff/testing@0.3.1", "", { "dependencies": { "bun-pty": "0.6.0" } }, "sha512-QpmnTW0GyU2Sw+3taXhNNw8c8dKD+EpirZ/7Bx9RxjTGz/2tEspAR7CHdafYPn5Bak/93tU0akxSOZ9HsJ0usA=="],
 
     "abbrev": ["abbrev@4.0.0", "", {}, "sha512-a1wflyaL0tHtJSmLSOVybYhy22vRih4eduhhrkcjgrWGnRfrZtovJ2FRjxuTtkkj47O/baf0R86QU5OuYpz8fA=="],
 
