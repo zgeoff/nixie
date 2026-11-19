@@ -73,7 +73,7 @@
       "@wringer/stream": "0.1.4",
       "@wringer/terminal": "0.1.1",
       "@zgeoff/kysely-bun-sqlite": "0.3.3",
-      "@zgeoff/rig": "0.2.3",
+      "@zgeoff/rig": "0.2.6",
       "@zgeoff/std": "0.4.3",
       "@zgeoff/testing": "0.3.0",
       "ajv": "8.20.0",
