@@ -1,0 +1,83 @@
+# Runs the compatibility checks on each push to main, as compatibility.yml runs them on a pull
+# request, in full and against the newest v* tag reachable from the pushed commit. A push to main
+# keeps each run, so every merged commit is checked.
+name: Compatibility main
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+# keyed by commit and never cancelled, so every push to main runs in full; two runs of one
+# commit, such as a rerun, wait for each other
+concurrency:
+  group: ${{ github.workflow }}-${{ github.sha }}
+  cancel-in-progress: false
+
+# an explicit bash runs each step with pipefail, so a failure inside a pipeline fails the step
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  changes:
+    uses: zgeoff/tools/.github/workflows/paths-changed.yml@54078f7fcb6ca379cf41c02d3ec4f6ec1553d2c7 # main
+    with:
+      paths: |
+        .github/workflows/compatibility-main.yml
+        .github/scripts/read-released-schema.sh
+        .bun-version
+        bun.lock
+        bunfig.toml
+        package.json
+        tsconfig*.json
+        libs/contract/**
+        libs/db/**
+        scripts/compatibility/**
+        scripts/lib/**
+
+  compatibility:
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.changed != 'false' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          # the migration check extracts the whole tree of the last release with git archive
+          filter: ''
+          persist-credentials: false
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version-file: .bun-version
+
+      - name: Install
+        run: bun install --frozen-lockfile --ignore-scripts
+
+      - name: Find the last release
+        id: last
+        env:
+          BASE:
+            ${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) ||
+            github.sha }}
+        run: bun run --silent ci:compatibility:find-last-release
+
+      # oasdiff fails on a removed procedure, a removed or retyped output field, a new required input
+      # field or a narrowed input type, and allows the removal of a procedure that the last release
+      # marks deprecated or a break that libs/contract/accepted-breaks.txt names
+      - name: Check that the contract only grows
+        if: steps.last.outputs.tag != ''
+        env:
+          TAG: ${{ steps.last.outputs.tag }}
+        run: bun run --silent ci:compatibility:run-contract-growth-check
+
+      - name: Check the migrations since the last release
+        env:
+          TAG: ${{ steps.last.outputs.tag }}
+        run: bun run --silent ci:compatibility:run-migration-check

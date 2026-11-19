@@ -1,0 +1,71 @@
+# Rehearses the release's publish of each npm package on each push to main, as npm-packages.yml
+# rehearses it on a pull request, in full. A push to main keeps each run, so every merged commit is
+# rehearsed.
+name: npm packages main
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+# keyed by commit and never cancelled, so every push to main runs in full; two runs of one
+# commit, such as a rerun, wait for each other
+concurrency:
+  group: ${{ github.workflow }}-${{ github.sha }}
+  cancel-in-progress: false
+
+# an explicit bash runs each step with pipefail, so a failure inside a pipeline fails the step
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  changes:
+    uses: zgeoff/tools/.github/workflows/paths-changed.yml@54078f7fcb6ca379cf41c02d3ec4f6ec1553d2c7 # main
+    with:
+      paths: |
+        .github/workflows/npm-packages-main.yml
+        scripts/release/publish-npm-package.sh
+        .bun-version
+        bun.lock
+        bunfig.toml
+        package.json
+        deploy/pulumi-k8s/**
+        libs/contract/**
+
+  rehearse:
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.changed != 'false' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        package: [deploy/pulumi-k8s, libs/contract]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version-file: .bun-version
+
+      - name: Set up Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 26
+
+      - name: Install
+        run: bun install --frozen-lockfile --ignore-scripts
+
+      # a rehearsal digest, so the pack proves the release writes its backup image into the component
+      - name: Pack the package and dry-run its publish
+        env:
+          PACKAGE: ${{ matrix.package }}
+          BACKUP_IMAGE: ghcr.io/example/nixie-backup@sha256:0000000000000000000000000000000000000000000000000000000000000000
+        run: scripts/release/publish-npm-package.sh "$PACKAGE" 0.0.0-rehearsal --dry-run

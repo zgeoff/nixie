@@ -2,14 +2,12 @@
 # release after it can roll back by one release: the oRPC contract only grows, and each migration
 # since that release keeps the schema readable by it unless nixie-schema.ts declares the break.
 # Before the first release, both checks pass with nothing to compare. A pull request runs it only
-# when it changes a file the checks read; every push to main runs it in full, against the newest v*
-# tag reachable from the pushed commit.
+# when it changes a file the checks read. compatibility-main.yml runs the same jobs on each push to
+# main.
 name: Compatibility
 
 on:
   pull_request:
-  push:
-    branches: [main]
 
 permissions:
   contents: read
