@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.84.0](https://github.com/zgeoff/nixie/compare/v0.83.2...v0.84.0) (2026-11-19)
+
+
+### Features
+
+* **rules:** let nixie list her mandates and rules with rules.list ([#1237](https://github.com/zgeoff/nixie/issues/1237)) ([9a93ee5](https://github.com/zgeoff/nixie/commit/9a93ee595d64bf7f505191263c2802345d280c7b))
+* **web:** add a mandates item to the nav bar ([#1236](https://github.com/zgeoff/nixie/issues/1236)) ([1cfbaab](https://github.com/zgeoff/nixie/commit/1cfbaab751ab07e87a615a9329763591cf4127ec))
+
 ## [0.83.2](https://github.com/zgeoff/nixie/compare/v0.83.1...v0.83.2) (2026-11-19)
 
 
