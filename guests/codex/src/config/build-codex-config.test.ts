@@ -77,6 +77,15 @@ test('it turns off the text and the tools that the CLI adds unasked', () => {
   ]);
 });
 
+test('it turns off the analytics and the feedback uploads', () => {
+  const ctx = setupTest();
+  const lines = ctx.buildConfig().split('\n');
+
+  expect([lines.indexOf('[analytics]'), lines.indexOf('[feedback]')]).toSatisfyAll(
+    (tableAt: number) => tableAt > -1 && lines[tableAt + 1] === 'enabled = false',
+  );
+});
+
 test('it sets the tool output limit as a top-level key, before the first table', () => {
   const ctx = setupTest();
   const lines = ctx.buildConfig().split('\n');
@@ -173,6 +182,12 @@ test('it writes the config of an API key profile exactly as it did before the pl
       'enabled = false',
       '',
       '[agents]',
+      'enabled = false',
+      '',
+      '[analytics]',
+      'enabled = false',
+      '',
+      '[feedback]',
       'enabled = false',
     ]
       .join('\n')

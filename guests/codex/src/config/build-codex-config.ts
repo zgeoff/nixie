@@ -50,9 +50,9 @@ const disabledFeatures = [
   'view_image',
 ] as const;
 
-// Builds the Codex home's config.toml. The CLI gets no built-in tool, no command or file write,
-// none of its own skills, agents or project docs, and nixie's tool route as its only tool source.
-// A tool server that does not answer in 5 s fails the turn, where the CLI's 30 s would hold it.
+// Builds the Codex home's config.toml: no built-in tool, command, file write, skill, agent, project
+// doc, analytics or feedback upload, and nixie's tool route as the only tool source. A tool server
+// that does not answer in 5 s fails the turn, where the CLI's 30 s would hold it.
 export function buildCodexConfig(input: CodexConfigInput): string {
   return `${[
     `model = ${JSON.stringify(input.model)}`,
@@ -104,6 +104,12 @@ export function buildCodexConfig(input: CodexConfigInput): string {
     'enabled = false',
     '',
     '[agents]',
+    'enabled = false',
+    '',
+    '[analytics]',
+    'enabled = false',
+    '',
+    '[feedback]',
     'enabled = false',
   ].join('\n')}\n`;
 }

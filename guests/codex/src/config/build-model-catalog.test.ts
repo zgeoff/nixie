@@ -18,6 +18,25 @@ test('it holds one entry for the model with every tool switch off', () => {
   });
 });
 
+test('it gives each MCP resource helper an empty description and a schema with no fields', () => {
+  const [entry] = buildModelCatalog('house-model-1').models;
+  const empty = { description: '', parameters: '{"type":"object","properties":{}}' };
+
+  expect(entry).toStrictEqual(
+    expect.objectContaining({
+      model_messages: {
+        tools: {
+          mcp_resources: {
+            list_mcp_resources: empty,
+            list_mcp_resource_templates: empty,
+            read_mcp_resource: empty,
+          },
+        },
+      },
+    }),
+  );
+});
+
 test('it lists every reasoning effort that nixie takes', () => {
   const [entry] = buildModelCatalog('house-model-1').models;
 

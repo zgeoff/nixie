@@ -25,6 +25,7 @@ lists the variable.
 | [cache-lifetime](cache-lifetime/)                       | which CLI setting writes 1-hour prompt cache entries, and a turn after a pause under each lifetime                                  |
 | [code-environment](code-environment/)                   | Node.js, Python and shell programs in the code and worker images, and the size of each image and package group                      |
 | [codex-app-server](codex-app-server/)                   | which `codex app-server` methods and events a turn uses, usage for each call, the tool-call ID, and app-server against `codex exec` |
+| [codex-request-bytes](codex-request-bytes/)             | each byte the Codex CLI sends the model on a task turn, its source, and the settings that remove Codex's own text                   |
 | [connector-account-pick](connector-account-pick/)       | whether the model passes the ID of the connector account that a message names                                                       |
 | [consent-checker](consent-checker/)                     | how often the consent checker credits consent wrongly or misses it, on one deployment's own messages                                |
 | [encoder](encoder/)                                     | which small local embedding model to ship, by retrieval quality, CPU time, memory and image size                                    |
