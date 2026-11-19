@@ -121,6 +121,26 @@ test('it logs the estimate with its route, sandbox and reason', async () => {
   );
 });
 
+test('it logs a whole reply with its route, sandbox, usage and charge', async () => {
+  const ctx = await setupTest();
+
+  await ctx.accounting.count(ctx.reply({ estimate: ctx.estimate, usage: ctx.usage(1000, 200) }));
+
+  // 1,000 input tokens at $1 and 200 output tokens at $5, per million
+  expect(ctx.log).toHaveBeenCalledWith('count.charged', {
+    route: 'preview',
+    sandbox: 'alpha',
+    uncachedInputTokens: 1000,
+    cacheReadTokens: 0,
+    cacheWrite5mTokens: 0,
+    cacheWrite1hTokens: 0,
+    outputTokens: 200,
+    reasoningTokens: null,
+    dollars: 0.002,
+    tokens: 1200,
+  });
+});
+
 test('it marks the count lost and refuses every later request when a reply that spent has no usage and no bound', async () => {
   const ctx = await setupTest();
 

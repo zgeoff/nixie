@@ -1,4 +1,5 @@
 import { buildCallCost } from '@heynixie/models/prices';
+import type { ModelCallUsage } from '@heynixie/wire';
 import type { Measures } from '../types';
 import { buildCallTokens } from '../usage/build-call-tokens';
 import { buildReplyCharge } from '../usage/build-reply-charge';
@@ -6,7 +7,7 @@ import type { CountedReply } from './accounting';
 
 export type ReplyCharge =
   | { readonly kind: 'none' }
-  | { readonly kind: 'usage'; readonly spend: Measures }
+  | { readonly kind: 'usage'; readonly spend: Measures; readonly usage: ModelCallUsage }
   | { readonly kind: 'estimate'; readonly spend: Measures }
 
   // the count falls behind the spend, and the field names what left the reply without a bound
@@ -20,6 +21,7 @@ export function pickReplyCharge(reply: CountedReply): ReplyCharge {
         dollars: buildCallCost(reply.usage, reply.route.prices),
         tokens: buildCallTokens(reply.usage),
       },
+      usage: reply.usage,
     };
   }
 

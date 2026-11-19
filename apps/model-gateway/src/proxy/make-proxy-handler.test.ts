@@ -767,11 +767,9 @@ test('it logs the limit once when a count reaches it', async () => {
   await sendRequest();
   await sendRequest();
 
-  expect(ctx.log).toHaveBeenCalledExactlyOnceWith(
-    'limit.reached',
-    { dollars: 0.0026, tokens: 1000 },
-    'warn',
-  );
+  expect(ctx.log.mock.calls.filter(([event]) => event === 'limit.reached')).toStrictEqual([
+    ['limit.reached', { dollars: 0.0026, tokens: 1000 }, 'warn'],
+  ]);
 });
 
 test('it refuses every request when its counter store is down', async () => {
