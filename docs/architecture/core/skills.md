@@ -51,7 +51,7 @@ list on that endpoint, so it reads no skill.
 | `skill_read`       | `read`  | The pinned version's instructions and file list, or one file |
 | `skill_reload`     | `note`  | The named skill's old and new version                        |
 | `skill_reload_all` | `note`  | The old and new version of each skill on the list or the pin |
-| `skill_write`      | `note`  | The proposal's short ID, pending approval                    |
+| `skill_write`      | `note`  | Applied, or the proposal's short ID, pending approval        |
 | `skill_pending`    | `read`  | Each skill proposal that waits for the user's answer         |
 | `skill_vendor`     | `fetch` | The URL of the pull request that adds a published skill      |
 
@@ -77,15 +77,42 @@ in its context.
 `skill_write` takes a skill's name and its complete set of files, for a new skill or a new version
 of one. It runs [the checks the seed runs](./definitions.md#skills) on the folder, plus each path
 inside the folder and the size limits a snapshot keeps to, and a skill that fails a check returns
-every problem as an error. A skill that passes becomes a proposal record on the caller's thread,
-which holds the files, the version in force it would replace, the run and the call that wrote it,
-and the outcome of the token check. The model reads the proposal by its short ID.
+every problem as an error. A skill that passes either applies at once under a rule, as
+[Writes under a rule](#writes-under-a-rule) describes, or becomes a proposal record on the caller's
+thread. The proposal holds the files, the version in force it would replace, the run and the call
+that wrote it, and the outcome of the token check. The model reads the proposal by its short ID.
 
 The token check is the one that the memory content gate runs, in
 [the token check](../memory/writes.md#the-token-check): every destination-like token in the files
 appears in what the user typed in their latest messages on the thread, or in the persona or a skill
 in force. The proposal records the first token that fails, so the review shows a destination the
 user never named.
+
+### Writes under a rule
+
+A write applies at once when an allow rule of the user's that matched the call lists `skill_write`
+by its exact name in its tools field. A tool pattern, such as `skill_*` or `*`, never applies a
+write, so a rule applies skills only when the user named the tool. A rule of a
+[mandate](../policy/rules.md#mandates) counts the same way. The decision point hands the tool every
+matched allow rule that lists it, and the tool takes the first by rule ID. A write still becomes a
+proposal in each of these cases:
+
+- No rule lists `skill_write`, such as when only the starter `allow-notes` rule matches the `note`
+  effect.
+- The token check fails. The check runs under every rule, because the worst skill nixie could write
+  is one that sends future tasks to a destination the user never named.
+- The version in force moved past the one the call read, so applying would replace a version the
+  model never saw.
+
+An applied write does what an approval does. In one transaction, the server stores the skill in
+[the store of written skills](./definitions.md#skills-that-nixie-wrote) under a new approval ID and
+writes a `skills.write_applied` record on the caller's thread, which holds the rule and its revision
+in place of an approver. A seed of the definitions in force then puts the skill in force for the
+next task, and nixie [exports the skill](./definitions.md#the-export-to-the-definitions-repo) to the
+user's definitions repo as a pull request. The tool returns `applied` with a message for the model
+to reload the skill. The conversation shows a notice with the skill's name, the first 12 characters
+of its new version's hash, and the rule's ID. The notice offers no undo, because nothing reverts a
+written skill.
 
 The user reviews a proposal through the skill host commands, which list each pending proposal with
 its files, the version of the skill in force at the time of the listing, and the outcome of the
