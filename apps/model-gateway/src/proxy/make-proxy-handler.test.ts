@@ -277,10 +277,10 @@ async function setupTest() {
         },
       });
     },
-    readUntil: async (response: Response, marker: string): Promise<void> => {
-      invariant(response.body !== null, 'a stream reply has a body');
+    readUntil: async (body: ReadableStream<Uint8Array> | null, marker: string): Promise<void> => {
+      invariant(body !== null, 'a stream reply has a body');
 
-      const reader = response.body.getReader();
+      const reader = body.getReader();
 
       const decoder = new TextDecoder();
 
@@ -2711,7 +2711,7 @@ test('it counts the usage of a Responses stream whose reader stops right after t
     }),
   );
 
-  await ctx.readUntil(response, 'response.completed');
+  await ctx.readUntil(response.body, 'response.completed');
 
   const counted = await started.store.read();
 
@@ -2760,7 +2760,7 @@ test.each([
     }),
   );
 
-  await ctx.readUntil(response, row.marker);
+  await ctx.readUntil(response.body, row.marker);
 
   expect(ctx.log).toHaveBeenCalledWith(
     'count.estimated',
