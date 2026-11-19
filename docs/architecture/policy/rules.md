@@ -110,14 +110,16 @@ and an ask or a deny narrows when the old match lies inside the new one. An edit
 the note leaves the match the same, so it is unchanged. A lift widens when an edit adds one, raises
 `perAction` or names another budget, and narrows when an edit removes one or lowers `perAction`.
 
-A stricter outcome narrows when the old match lies inside the new one. Turning an allow into an ask
-or a deny always narrows, because removing an allow and adding an ask both narrow. A looser outcome
-widens.
+Turning an allow into an ask or a deny narrows whatever the match, because removing an allow and
+adding an ask both narrow. Turning an ask into a deny narrows when the old match lies inside the new
+one, and widens otherwise. A looser outcome widens.
 
 The check never reports a widening as a narrowing. A wildcard inside an inner pattern counts as
 covered only by a wildcard in the outer pattern, so the check returns "not inside" for a pair it
-cannot prove. Every edit to a rule with a CEL condition widens, because the check cannot read CEL. A
-wrong answer therefore costs a prompt, and never access.
+cannot prove. Every edit to a rule with a CEL condition widens, because the check cannot read CEL.
+For a change made inside nixie, a wrong answer therefore costs a prompt or a refusal, and never
+access. A seed applies every edit whatever its class, as [rules in force](#rules-in-force)
+describes.
 
 ## Rules in force
 
@@ -132,15 +134,21 @@ A seed compares each rule in the definitions with its seeded version through
 [the widening check](#the-widening-check), and applies every edit at once, a widening as much as a
 narrowing, because the user wrote the repo
 ([0016](../../decisions/0016-trust-the-definitions-repo.md)). The seed record lists each edit with
-its class. The seed writes no rule change proposal, and withdraws each one that still waits, so its
-widenings go in force with the seed. A widening that starts inside nixie still asks: Always allow, a
-proposed rule, a mandate and a runtime change.
+its class. The seed writes no rule change proposal. A rule change proposal is the one kind of
+proposal that holds a seed's widenings for approval, and the log still holds the ones that seeds of
+older releases wrote. Each seed withdraws every pending rule change proposal, because the seed
+applies the repo's widenings itself. A proposed rule and a mandate are other kinds of proposal, and
+a seed leaves them pending. A widening that starts inside nixie still asks: Always allow, a proposed
+rule, a mandate and a runtime change.
 
 Trusting the repo has 3 consequences:
 
-- A budget raise or a lift rule from the repo skips the passkey check of the `lifting` risk class.
-  The same change made inside nixie still takes the passkey.
-- A widening rejected in the app goes in force at the next seed while the repo still holds it.
+- A budget raise or a lift rule from the repo skips the
+  [passkey check](passkeys.md#which-answers-take-the-passkey). The same change made inside nixie
+  still takes the passkey, in the `always_ask` risk class for a budget raise and the `lifting` risk
+  class for a lift.
+- A widening from the repo that the user rejected in a rule change proposal goes in force at the
+  next seed while the repo still holds it. To keep it out, remove it from the repo.
 - A nixie release can drop an effect from a tool's declaration, and the next seed applies the drop
   with no ask.
 
@@ -324,8 +332,9 @@ The host commands read and answer the rule store, and each prints JSON:
 | `nixie mandates list`                         | Lists each active mandate, its rules and its end                   |
 | `nixie mandates end <id>`                     | Ends the mandate, as End now does                                  |
 
-No seed writes a rule change proposal, so the `nixie proposals` commands answer only the proposals
-that the log already holds, and the next seed withdraws each one that still waits.
+No seed writes a rule change proposal, so the `nixie proposals` commands answer only the rule change
+proposals that the log already holds. The next seed withdraws each one that is still pending, and
+leaves a pending proposed rule or mandate as it is.
 
 The approvals page in the web client, at `/proposals`, lists the same pending proposals among every
 other kind, each change as the sentence before and after it, and answers them through

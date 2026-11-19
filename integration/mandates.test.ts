@@ -6,9 +6,11 @@ import {
   runMandateEnd,
   runMandateExpiry,
   startMandateTimer,
+  writeProposedRule,
   writeRuleEdit,
   writeRuntimeRule,
 } from '@heynixie/definitions';
+import { seedLegacyRuleProposal } from '@heynixie/definitions/test-utils';
 import { readRecords, withWriteTransaction } from '@heynixie/log';
 import { readProposal, runProposalLapses } from '@heynixie/proposals';
 import { waitForCondition } from '@heynixie/testing';
@@ -361,6 +363,46 @@ test('it declines a mandate with no rule put in force', async () => {
   const states = await ctx.readChangeStates();
 
   expect(states).toStrictEqual([]);
+});
+
+test('it leaves another mandate and a proposed rule pending when a mandate approval seeds', async () => {
+  const ctx = await setupTest();
+
+  // A rule change proposal from before seeds applied widenings, which the approval's seed withdraws.
+  await seedLegacyRuleProposal(ctx.log);
+
+  const waiting = await ctx.proposeMandate({
+    title: 'Test deletes',
+    rules: [{ outcome: 'allow', tools: ['test.delete'] }],
+  });
+
+  invariant(waiting.status === 'proposed', 'the mandate was proposed');
+
+  const proposedRule = await withWriteTransaction(ctx.log.writer, (tx) =>
+    writeProposedRule(tx, ctx.context, {
+      groupHash: 'group-1',
+      rule: { outcome: 'allow', tools: ['test.send'], destinations: ['kim@example.org'] },
+      approvals: [crypto.randomUUID(), crypto.randomUUID(), crypto.randomUUID()],
+      editOf: null,
+    }),
+  );
+
+  await ctx.startMandate();
+
+  const rows = await Promise.all([
+    readProposal(ctx.log.writer.db, waiting.proposalID),
+    readProposal(ctx.log.writer.db, proposedRule.proposalID),
+  ]);
+
+  const withdrawn = await readRecords(ctx.log, {
+    afterSequence: 0,
+    kinds: ['rules.change_withdrawn'],
+  });
+
+  expect({ states: rows.map((row) => row?.state), withdrawn: withdrawn.length }).toStrictEqual({
+    states: ['pending', 'pending'],
+    withdrawn: 1,
+  });
 });
 
 test('it shows on the card what each rule of a mandate will not cover in memory', async () => {
