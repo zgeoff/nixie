@@ -88,34 +88,6 @@ appears in what the user typed in their latest messages on the thread, or in the
 in force. The proposal records the first token that fails, so the review shows a destination the
 user never named.
 
-### Writes under a rule
-
-A write applies at once when an allow rule of the user's that matched the call lists `skill_write`
-by its exact name in its tools field. A tool pattern, such as `skill_*` or `*`, never applies a
-write, so a rule applies skills only when the user named the tool. An edit that adds the name to an
-allow rule is a widening, which waits for the user's approval, as
-[the widening check](../policy/rules.md#the-widening-check) explains. A rule of a
-[mandate](../policy/rules.md#mandates) counts the same way. The decision point hands the tool every
-matched allow rule that lists it, and the tool takes the first by rule ID. A write still becomes a
-proposal in each of these cases:
-
-- No rule lists `skill_write`, such as when only the starter `allow-notes` rule matches the `note`
-  effect.
-- The token check fails. The check runs under every rule, because the worst skill nixie could write
-  is one that sends future tasks to a destination the user never named.
-- The version in force moved past the one the call read, so applying would replace a version the
-  model never saw.
-
-An applied write does what an approval does. In one transaction, the server stores the skill in
-[the store of written skills](./definitions.md#skills-that-nixie-wrote) under a new approval ID and
-writes a `skills.write_applied` record on the caller's thread, which holds the rule and its revision
-in place of an approver. A seed of the definitions in force then puts the skill in force for the
-next task, and nixie [exports the skill](./definitions.md#the-export-to-the-definitions-repo) to the
-user's definitions repo as a pull request. The tool returns `applied` with a message for the model
-to reload the skill. The conversation shows a notice with the skill's name, the first 12 characters
-of its new version's hash, and the rule's ID. The notice offers no undo, because nothing reverts a
-written skill.
-
 The user reviews a proposal through the skill host commands, which list each pending proposal with
 its files, the version of the skill in force at the time of the listing, and the outcome of the
 token check, so a diff of each file against the version in force shows what the proposal changes. An
@@ -150,6 +122,34 @@ untrusted, as `memory.pending` does in [the memory store](../memory/store.md#the
 The conversation's next turn names each of its proposals that closed, with the reason for a
 rejection, so the model learns why the user turned a skill down. The note on an approval tells the
 model to reload the skill, because the conversation's pin holds the versions it started with.
+
+### Writes under a rule
+
+A write applies at once when an allow rule of the user's that matched the call lists `skill_write`
+by its exact name in its tools field. A tool pattern, such as `skill_*` or `*`, never applies a
+write, so a rule applies skills only when the user named the tool. An edit that adds the name to an
+allow rule is a widening, which waits for the user's approval, as
+[the widening check](../policy/rules.md#the-widening-check) explains. A rule of a
+[mandate](../policy/rules.md#mandates) counts the same way. The decision point hands the tool every
+matched allow rule that lists it, and the tool names the first of them, in rule ID order, in its
+record. A write still becomes a proposal in each of these cases:
+
+- No rule lists `skill_write`, such as when only the starter `allow-notes` rule matches the `note`
+  effect.
+- The token check fails. The check runs under every rule, because the worst skill nixie could write
+  is one that sends future tasks to a destination the user never named.
+- Another write changed the skill between the moment the tool read the version in force and the
+  moment it applies, so applying would replace a version the model never saw.
+
+In one transaction, as an approval does, the server stores the skill in
+[the store of written skills](./definitions.md#skills-that-nixie-wrote) under a new approval ID and
+writes a `skills.write_applied` record on the caller's thread, which holds the rule and its revision
+in place of an approver. A seed of the definitions in force then puts the skill in force for the
+next task, and nixie [exports the skill](./definitions.md#the-export-to-the-definitions-repo) to the
+user's definitions repo as a pull request. The tool returns `applied` with a message for the model
+to reload the skill. The conversation shows a notice with the skill's name, the first 12 characters
+of its new version's hash, and the rule's ID. nixie never reverts a written skill, so the notice
+offers no undo.
 
 ## Vendored skills
 
