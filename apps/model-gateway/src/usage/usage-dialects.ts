@@ -26,6 +26,10 @@ export interface UsageDialect {
   // tells which events of a stream start the usage and which end it
   readonly pickStreamEventKind: (event: unknown) => StreamEventKind;
 
+  // the event that ends the usage is the last of the reply, so a reader that stops after it still
+  // saw the whole usage
+  readonly isFinalEventLast: boolean;
+
   // reads the usage of a whole reply body, or of a stream folded so far with the kinds of event it
   // has seen
   readonly parseUsage: (reported: unknown, seen: ReadonlySet<StreamEventKind> | null) => ReadUsage;
@@ -44,6 +48,7 @@ export const usageDialects: Readonly<Record<ModelAPI, UsageDialect>> = {
 
       return type === 'message_delta' && isOutputCountCarried(event) ? 'final' : null;
     },
+    isFinalEventLast: false,
     parseUsage: parseAnthropicUsage,
   },
   'openai-responses': {
@@ -58,6 +63,7 @@ export const usageDialects: Readonly<Record<ModelAPI, UsageDialect>> = {
         ? 'final'
         : null;
     },
+    isFinalEventLast: true,
     parseUsage: parseOpenAIUsage,
   },
 };

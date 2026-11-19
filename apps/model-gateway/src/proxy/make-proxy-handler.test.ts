@@ -7,6 +7,7 @@ import { startScriptedModel, waitForCondition } from '@heynixie/testing';
 import type { ModelAPI } from '@heynixie/wire';
 import { encodeCaptureTag, formatSpoolFileName, openSpoolFile } from '@heynixie/wire';
 import { createSpoolRecipient } from '@heynixie/wire/test-utils';
+import invariant from 'tiny-invariant';
 import { createPlanLogin } from '../login/create-plan-login';
 import { writeLoginFile } from '../login/write-login-file';
 import { createPeriodStore } from '../periods/create-period-store';
@@ -228,6 +229,75 @@ async function setupTest() {
           ),
       };
     },
+
+    // the events of a Codex reply as ChatGPT's Codex backend streams them: an event line before
+    // each data line, and usage that holds more fields than the counts
+    buildCodexBackendEvents: (): string[] => {
+      const usage = {
+        input_tokens: 2400,
+        input_tokens_details: {
+          cached_tokens: 400,
+          cache_write_tokens: 0,
+          cache_write_tokens_details: { ttl_30m_tokens: 0, ttl_12h_tokens: 0 },
+        },
+        output_tokens: 30,
+        output_tokens_details: { reasoning_tokens: 10 },
+        total_tokens: 2430,
+        attribution: {
+          items: { msg_1: { input_tokens: 2400, cached_tokens: 400, output_tokens: 0 } },
+        },
+      };
+
+      return [
+        {
+          type: 'response.created',
+          response: { id: 'resp_1', status: 'in_progress', usage: null },
+        },
+        { type: 'response.output_text.delta', item_id: 'msg_2', delta: 'Done.' },
+        { type: 'response.metadata', metadata: {} },
+        { type: 'response.completed', response: { id: 'resp_1', status: 'completed', usage } },
+      ].map((event) => `event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`);
+    },
+
+    // with keepOpen the stream never ends, so only its reader can stop it
+    buildEventStream: (events: readonly string[], keepOpen = false): ReadableStream<Uint8Array> => {
+      const encoder = new TextEncoder();
+
+      const pending = [...events];
+
+      return new ReadableStream<Uint8Array>({
+        pull: (controller) => {
+          const event = pending.shift();
+
+          if (event !== undefined) {
+            controller.enqueue(encoder.encode(event));
+          } else if (!keepOpen) {
+            controller.close();
+          }
+        },
+      });
+    },
+
+    // leaves the reader open, so the caller decides when the reader stops
+    readUntil: async (body: ReadableStream<Uint8Array> | null, marker: string) => {
+      invariant(body !== null, 'a stream reply has a body');
+
+      const reader = body.getReader();
+
+      const decoder = new TextDecoder();
+
+      let read = '';
+
+      while (!read.includes(marker)) {
+        const chunk = await reader.read();
+
+        invariant(!chunk.done, 'the stream ends only after the reader stops');
+
+        read += decoder.decode(chunk.value, { stream: true });
+      }
+
+      return reader;
+    },
     startLimitsHandler: async (
       route: LimitsRoute,
       sendUpstream: (url: string, init: RequestInit) => Promise<Response>,
@@ -235,6 +305,8 @@ async function setupTest() {
       await writeFile(storePath, '{"dollars":0,"tokens":0}');
 
       const store = await createCounterStore(storePath);
+
+      const openReplies = makeOpenReplies();
 
       const handler = makeProxyHandler({
         routes: {
@@ -251,11 +323,12 @@ async function setupTest() {
         limits: { dollars: 1, tokens: null },
         store,
         capture: null,
+        openReplies,
         sendUpstream,
         log,
       });
 
-      return { handler, store };
+      return { handler, store, openReplies };
     },
     startPeriodsHandler: async (
       sendUpstream: (url: string, init: RequestInit) => Promise<Response>,
@@ -2596,6 +2669,186 @@ test('it counts the estimate from the route maxOutputTokens for a Responses stre
   // the body's 64 bytes and the 4,096 allowance in, and the route's 8,192 tokens out
   expect([counted.tokens, counted.lost]).toStrictEqual([4160 + 8192, false]);
   expect(counted.dollars).toBeCloseTo((4160 * 2 + 8192 * 5) / 1_000_000, 9);
+});
+
+test('it counts the usage of a Responses stream that has no content type, as ChatGPT sends it', async () => {
+  const ctx = await setupTest();
+
+  const stream = ctx.buildEventStream(ctx.buildCodexBackendEvents());
+
+  const started = await ctx.startLimitsHandler(
+    { api: 'openai-responses', maxOutputTokens: 128_000 },
+    () => Promise.resolve(new Response(stream)),
+  );
+
+  const response = await started.handler(
+    new Request('http://proxy.test/preview/responses', {
+      method: 'POST',
+      body: JSON.stringify({ model: 'model-small', stream: true, input: 'Review the plan.' }),
+    }),
+  );
+
+  const text = await response.text();
+  const counted = await started.store.read();
+
+  // 2,000 uncached input tokens at $1, 400 cached at $0.1 and 30 output tokens at $5, per million
+  expect(text).toBe(ctx.buildCodexBackendEvents().join(''));
+  expect([counted.tokens, counted.lost]).toStrictEqual([2430, false]);
+  expect(counted.dollars).toBeCloseTo((2000 * 1 + 400 * 0.1 + 30 * 5) / 1_000_000, 12);
+  expect(ctx.log).not.toHaveBeenCalledWith('count.estimated', expect.anything(), 'warn');
+});
+
+test('it counts the usage of a Responses stream whose reader stops right after the final event, as Codex does', async () => {
+  const ctx = await setupTest();
+
+  const stream = ctx.buildEventStream(ctx.buildCodexBackendEvents(), true);
+
+  const started = await ctx.startLimitsHandler(
+    { api: 'openai-responses', maxOutputTokens: 128_000 },
+    () =>
+      Promise.resolve(new Response(stream, { headers: { 'content-type': 'text/event-stream' } })),
+  );
+
+  const response = await started.handler(
+    new Request('http://proxy.test/preview/responses', {
+      method: 'POST',
+      body: JSON.stringify({ model: 'model-small', stream: true, input: 'Review the plan.' }),
+    }),
+  );
+
+  const reader = await ctx.readUntil(response.body, 'response.completed');
+
+  await reader.cancel();
+
+  const counted = await started.store.read();
+
+  expect([counted.tokens, counted.lost]).toStrictEqual([2430, false]);
+  expect(counted.dollars).toBeCloseTo((2000 * 1 + 400 * 0.1 + 30 * 5) / 1_000_000, 12);
+  expect(ctx.log).not.toHaveBeenCalledWith('count.estimated', expect.anything(), 'warn');
+});
+
+test('it counts the usage of a Responses stream that stays open after its final event when the gateway stops', async () => {
+  const ctx = await setupTest();
+
+  const stream = ctx.buildEventStream(ctx.buildCodexBackendEvents(), true);
+
+  const started = await ctx.startLimitsHandler(
+    { api: 'openai-responses', maxOutputTokens: 128_000 },
+    () =>
+      Promise.resolve(new Response(stream, { headers: { 'content-type': 'text/event-stream' } })),
+  );
+
+  const response = await started.handler(
+    new Request('http://proxy.test/preview/responses', {
+      method: 'POST',
+      body: JSON.stringify({ model: 'model-small', stream: true, input: 'Review the plan.' }),
+    }),
+  );
+
+  const reader = await ctx.readUntil(response.body, 'response.completed');
+
+  await started.openReplies.countAtStop();
+  await reader.cancel();
+
+  const counted = await started.store.read();
+
+  expect([counted.tokens, counted.lost]).toStrictEqual([2430, false]);
+  expect(counted.dollars).toBeCloseTo((2000 * 1 + 400 * 0.1 + 30 * 5) / 1_000_000, 12);
+  expect(ctx.log).not.toHaveBeenCalledWith('count.estimated', expect.anything(), 'warn');
+});
+
+test.each([
+  {
+    title: 'a Messages stream whose reader stops after its last delta',
+    api: 'anthropic-messages',
+    path: '/v1/messages',
+    body: { model: 'model-small', messages: [], stream: true, max_tokens: 1000 },
+    events: [
+      { type: 'message_start', message: { usage: { input_tokens: 9000, output_tokens: 1 } } },
+      { type: 'message_delta', delta: { stop_reason: 'end_turn' }, usage: { output_tokens: 40 } },
+    ],
+    marker: 'message_delta',
+  },
+  {
+    title: 'a Responses stream whose reader stops before the final event',
+    api: 'openai-responses',
+    path: '/responses',
+    body: { model: 'model-small', stream: true, input: 'Review the plan.' },
+    events: [{ type: 'response.created', response: { id: 'resp_1', usage: null } }],
+    marker: 'response.created',
+  },
+] as const)('it charges the estimate for $title', async (row) => {
+  const ctx = await setupTest();
+
+  const lines = row.events.map((event) => `data: ${JSON.stringify(event)}\n\n`);
+
+  const started = await ctx.startLimitsHandler({ api: row.api, maxOutputTokens: 1000 }, () =>
+    Promise.resolve(
+      new Response(ctx.buildEventStream(lines, true), {
+        headers: { 'content-type': 'text/event-stream' },
+      }),
+    ),
+  );
+
+  const response = await started.handler(
+    new Request(`http://proxy.test/preview${row.path}`, {
+      method: 'POST',
+      body: JSON.stringify(row.body),
+    }),
+  );
+
+  const reader = await ctx.readUntil(response.body, row.marker);
+
+  await reader.cancel();
+
+  expect(ctx.log).toHaveBeenCalledWith(
+    'count.estimated',
+    expect.objectContaining({ route: 'preview', reason: 'cut' }),
+    'warn',
+  );
+});
+
+test.each([
+  {
+    title: 'a successful reply to a request that asked for no stream',
+    body: { model: 'model-small', input: 'Review the plan.' },
+    status: 200,
+    reply: { id: 'resp_1', usage: { input_tokens: 10, output_tokens: 2 } },
+    tokens: 12,
+  },
+  {
+    title: 'an error reply to a request that asked for a stream',
+    body: { model: 'model-small', stream: true, input: 'Review the plan.' },
+    status: 429,
+    reply: { error: { type: 'rate_limit_error', message: 'Slow down.' } },
+    tokens: 0,
+  },
+])('it reads a reply with no content type as a whole body for $title', async (row) => {
+  const ctx = await setupTest();
+
+  const replyBytes = new TextEncoder().encode(JSON.stringify(row.reply));
+
+  const started = await ctx.startLimitsHandler(
+    { api: 'openai-responses', maxOutputTokens: 128_000 },
+    () => Promise.resolve(new Response(replyBytes, { status: row.status })),
+  );
+
+  const response = await started.handler(
+    new Request('http://proxy.test/preview/responses', {
+      method: 'POST',
+      body: JSON.stringify(row.body),
+    }),
+  );
+
+  await response.text();
+
+  const counted = await started.store.read();
+
+  expect([response.status, counted.tokens, counted.lost]).toStrictEqual([
+    row.status,
+    row.tokens,
+    false,
+  ]);
 });
 
 test.each([

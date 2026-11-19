@@ -215,8 +215,16 @@ export function makeProxyHandler(deps: ProxyHandlerDeps): (request: Request) => 
         reason,
       });
 
+    // a stream whose last event already arrived holds its whole usage when the gateway stops
     const countOnce = endpoint.spends
-      ? openReplies.open(() => countReply(latest, false, true, 'shutdown'))
+      ? openReplies.open(() =>
+          countReply(
+            latest,
+            latest.isFinal && usageDialects[target.route.api].isFinalEventLast,
+            true,
+            'shutdown',
+          ),
+        )
       : (count: () => Promise<void>) => count();
 
     const upstream = await deps
@@ -267,13 +275,13 @@ export function makeProxyHandler(deps: ProxyHandlerDeps): (request: Request) => 
     }
 
     // a stream that broke or was cancelled before its first usage event may still have spent
-    if (upstream.headers.get('content-type')?.startsWith('text/event-stream') === true) {
+    if (isEventStreamReply(upstream, parsed?.data ?? null)) {
       return new Response(
         buildCountedStream(
           upstream.body,
           dialect,
           (read, complete) => {
-            const whole = complete && read.isFinal;
+            const whole = read.isFinal && (complete || dialect.isFinalEventLast);
             const reason = complete ? 'no_usage' : 'cut';
 
             return countOnce(() => countReply(read, whole, spent || !whole, reason));
@@ -465,6 +473,17 @@ function buildDownstreamHeaders(received: Headers): Headers {
   }
 
   return headers;
+}
+
+// ChatGPT's Codex backend sends its stream with no content type
+function isEventStreamReply(upstream: Response, body: object | null): boolean {
+  const type = upstream.headers.get('content-type');
+
+  if (type !== null) {
+    return type.startsWith('text/event-stream');
+  }
+
+  return upstream.ok && body !== null && 'stream' in body && body.stream === true;
 }
 
 function findBodyUsage(text: string): unknown {
