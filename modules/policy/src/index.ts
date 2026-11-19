@@ -93,6 +93,7 @@ export type {
   EffectOverride,
   KnownContact,
   MemoryWriteFacts,
+  NamingRule,
   PolicyCall,
   PolicyDecision,
   PolicyInputs,

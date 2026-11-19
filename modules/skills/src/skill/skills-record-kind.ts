@@ -3,6 +3,7 @@ export type SkillsRecordKind =
   | 'skills.reloaded'
   | 'skills.write_proposed'
   | 'skills.write_approved'
+  | 'skills.write_applied'
   | 'skills.write_rejected'
   | 'skills.write_lapsed'
   | 'skills.written_resolved';

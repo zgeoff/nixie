@@ -67,6 +67,7 @@ export interface ConversationEndpointTools {
 
   readonly readInForce: () => DefinitionsInForce | null;
   readonly refreshDefinitions: () => Promise<DefinitionsInForce | null>;
+  readonly runInForceSeed: () => Promise<void>;
 
   // null before the server parts start
   readonly readDefinitions: () => DefinitionsContext | null;
@@ -103,6 +104,7 @@ export async function startConversationEndpoint(
       clock: options.context.clock,
       readInForce: tools.readInForce,
       refreshDefinitions: tools.refreshDefinitions,
+      runInForceSeed: tools.runInForceSeed,
     },
     tools.vendor,
   );

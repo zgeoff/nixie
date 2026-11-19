@@ -2,7 +2,7 @@ import { expect, onTestFinished, test } from 'bun:test';
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { createPathSource, runSeed } from '@heynixie/definitions';
+import { createPathSource, readWrittenSkills, runSeed } from '@heynixie/definitions';
 import { buildTestTaskSeed } from '@heynixie/definitions/test-utils';
 import { readRecords, startWriter, writeRecords } from '@heynixie/log';
 import { buildTestClock } from '@heynixie/testing';
@@ -57,6 +57,7 @@ test('it proposes a new skill for review and records its files and the run that 
       log: ctx.log,
       clock: buildTestClock(0),
       readInForce: () => seeded.inForce,
+      runInForceSeed: () => Promise.resolve(),
       refreshDefinitions: () => Promise.resolve(seeded.inForce),
       readSkillList: () => [],
     }),
@@ -157,6 +158,7 @@ test('it records the version in force that a change to a skill would replace', a
     log: ctx.log,
     clock: buildTestClock(0),
     readInForce: () => seeded.inForce,
+    runInForceSeed: () => Promise.resolve(),
     refreshDefinitions: () => Promise.resolve(seeded.inForce),
     readSkillList: () => ['tide-tables'],
   });
@@ -229,6 +231,7 @@ test('it records a destination the owner never typed and the definitions lack', 
     log: ctx.log,
     clock: buildTestClock(0),
     readInForce: () => seeded.inForce,
+    runInForceSeed: () => Promise.resolve(),
     refreshDefinitions: () => Promise.resolve(seeded.inForce),
     readSkillList: () => [],
   });
@@ -287,6 +290,7 @@ test('it records an untyped destination that only a reference file holds', async
     log: ctx.log,
     clock: buildTestClock(0),
     readInForce: () => seeded.inForce,
+    runInForceSeed: () => Promise.resolve(),
     refreshDefinitions: () => Promise.resolve(seeded.inForce),
     readSkillList: () => [],
   });
@@ -346,6 +350,7 @@ test('it refuses 2 files at one path, and records no proposal', async () => {
     log: ctx.log,
     clock: buildTestClock(0),
     readInForce: () => seeded.inForce,
+    runInForceSeed: () => Promise.resolve(),
     refreshDefinitions: () => Promise.resolve(seeded.inForce),
     readSkillList: () => [],
   });
@@ -412,6 +417,7 @@ test('it records no untyped token for a destination that the persona holds', asy
     log: ctx.log,
     clock: buildTestClock(0),
     readInForce: () => seeded.inForce,
+    runInForceSeed: () => Promise.resolve(),
     refreshDefinitions: () => Promise.resolve(seeded.inForce),
     readSkillList: () => [],
   });
@@ -479,6 +485,7 @@ test('it records no untyped token for a destination that a skill in force holds 
     log: ctx.log,
     clock: buildTestClock(0),
     readInForce: () => seeded.inForce,
+    runInForceSeed: () => Promise.resolve(),
     refreshDefinitions: () => Promise.resolve(seeded.inForce),
     readSkillList: () => [],
   });
@@ -535,6 +542,7 @@ test('it refuses a skill that fails a seed check, and records no proposal', asyn
     log: ctx.log,
     clock: buildTestClock(0),
     readInForce: () => seeded.inForce,
+    runInForceSeed: () => Promise.resolve(),
     refreshDefinitions: () => Promise.resolve(seeded.inForce),
     readSkillList: () => [],
   });
@@ -597,6 +605,7 @@ test('it refuses a skill with every problem the seed checks find, and records no
     log: ctx.log,
     clock: buildTestClock(0),
     readInForce: () => seeded.inForce,
+    runInForceSeed: () => Promise.resolve(),
     refreshDefinitions: () => Promise.resolve(seeded.inForce),
     readSkillList: () => [],
   });
@@ -666,6 +675,7 @@ test('it refuses files that match the version in force', async () => {
     log: ctx.log,
     clock: buildTestClock(0),
     readInForce: () => seeded.inForce,
+    runInForceSeed: () => Promise.resolve(),
     refreshDefinitions: () => Promise.resolve(seeded.inForce),
     readSkillList: () => ['tide-tables'],
   });
@@ -710,6 +720,7 @@ test('it refuses a write before the first seed', async () => {
     log: ctx.log,
     clock: buildTestClock(0),
     readInForce: () => null,
+    runInForceSeed: () => Promise.resolve(),
     refreshDefinitions: () => Promise.resolve(null),
     readSkillList: () => [],
   });
@@ -742,4 +753,269 @@ test('it refuses a write before the first seed', async () => {
   );
 
   expect(outcome).toStrictEqual({ status: 'error', message: 'no definitions are in force yet' });
+});
+
+test('it applies a skill at once under an allow rule that names skill_write, and records the rule', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 2\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+
+  const seeded = await runSeed({
+    tasks: buildTestTaskSeed(),
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => ({ rules: [], tools: [] }),
+  });
+
+  const seeds: string[] = [];
+
+  const registry = buildToolRegistry([
+    buildSkillWriteTool({
+      log: ctx.log,
+      clock: buildTestClock(1_794_550_000_000),
+      readInForce: () => seeded.inForce,
+      runInForceSeed: () => {
+        seeds.push('seed');
+
+        return Promise.resolve();
+      },
+      refreshDefinitions: () => Promise.resolve(seeded.inForce),
+      readSkillList: () => [],
+    }),
+  ]);
+
+  const tool = registry.findTool('skill_write');
+
+  invariant(tool);
+
+  const outcome = await tool.definition.run(
+    {
+      callID: 'call-1',
+      tool: 'skill_write',
+      input: {
+        name: 'kite-forecast',
+        files: [
+          {
+            path: 'SKILL.md',
+            text: '---\nname: kite-forecast\ndescription: Reads the wind for kites.\n---\n# Wind\n',
+          },
+        ],
+      },
+      toolUseID: null,
+    },
+    {
+      callSequence: 1,
+      namingRules: [{ id: 'allow-skill-writes', revision: 3 }],
+      run: {
+        runID: 'run-1',
+        thread: 'conversation',
+        logThread: 'conversation',
+        tools: [],
+        model: { model: 'test-model', profile: 'standard' },
+      },
+    },
+  );
+
+  const written = await readWrittenSkills(ctx.log.writer.db);
+
+  const records = await readRecords(ctx.log, {
+    afterSequence: 0,
+    kinds: ['skills.write_applied', 'skills.write_proposed'],
+  });
+
+  const [stored] = written;
+
+  invariant(outcome.status === 'ok');
+  invariant(stored, 'the write stored a skill');
+
+  expect(outcome.result).toStrictEqual({
+    status: 'applied',
+    message:
+      'applied kite-forecast under the rule allow-skill-writes; it is in force for new tasks. ' +
+      'Call skill_reload with kite-forecast to use it in this conversation.',
+  });
+
+  expect(tool.parseOutput(outcome.result)).toStrictEqual({ isValid: true });
+
+  expect(written).toStrictEqual([
+    {
+      approvalID: expect.any(String),
+      proposalID: expect.any(String),
+      name: 'kite-forecast',
+      skillHash: expect.toSatisfy((hash: string) => /^[0-9a-f]{64}$/u.test(hash)),
+      base: null,
+      definitions: null,
+      approvedAt: 1_794_550_000_000,
+    },
+  ]);
+
+  expect(
+    records.map((entry) => [entry.record.kind, entry.record.thread, entry.record.payload]),
+  ).toStrictEqual([
+    [
+      'skills.write_applied',
+      'conversation',
+      {
+        writeID: stored.proposalID,
+        approvalID: stored.approvalID,
+        name: 'kite-forecast',
+        skillHash: stored.skillHash,
+        baseHash: null,
+        rule: { id: 'allow-skill-writes', revision: 3 },
+        provenance: { runID: 'run-1', callID: 'call-1', profile: 'standard' },
+      },
+    ],
+  ]);
+
+  expect(seeds).toStrictEqual(['seed']);
+});
+
+test('it proposes a skill that names a destination the owner never typed, under an allow rule that names skill_write', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 2\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+
+  const seeded = await runSeed({
+    tasks: buildTestTaskSeed(),
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => ({ rules: [], tools: [] }),
+  });
+
+  const tool = buildSkillWriteTool({
+    log: ctx.log,
+    clock: buildTestClock(0),
+    readInForce: () => seeded.inForce,
+    runInForceSeed: () => Promise.resolve(),
+    refreshDefinitions: () => Promise.resolve(seeded.inForce),
+    readSkillList: () => [],
+  });
+
+  const outcome = await tool.run(
+    {
+      callID: 'call-1',
+      tool: 'skill_write',
+      input: {
+        name: 'kite-report',
+        files: [
+          {
+            path: 'SKILL.md',
+            text: '---\nname: kite-report\ndescription: Mails the kite report.\n---\nMail it to wind@example.net.\n',
+          },
+        ],
+      },
+      toolUseID: null,
+    },
+    {
+      callSequence: 1,
+      namingRules: [{ id: 'allow-skill-writes', revision: 1 }],
+      run: {
+        runID: 'run-1',
+        thread: 'conversation',
+        logThread: 'conversation',
+        tools: [],
+        model: { model: 'test-model', profile: 'standard' },
+      },
+    },
+  );
+
+  const written = await readWrittenSkills(ctx.log.writer.db);
+
+  invariant(outcome.status === 'ok');
+
+  expect(outcome.result['status']).toBe('pending');
+  expect(written).toStrictEqual([]);
+});
+
+test('it proposes a skill whose version in force moved since the call read it, under an allow rule that names skill_write', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 2\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+
+  const seeded = await runSeed({
+    tasks: buildTestTaskSeed(),
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => ({ rules: [], tools: [] }),
+  });
+
+  const tool = buildSkillWriteTool({
+    log: ctx.log,
+    clock: buildTestClock(0),
+    readInForce: () => seeded.inForce,
+    runInForceSeed: () => Promise.resolve(),
+    refreshDefinitions: () => Promise.resolve(seeded.inForce),
+    readSkillList: () => [],
+  });
+
+  const context = {
+    callSequence: 1,
+    namingRules: [{ id: 'allow-skill-writes', revision: 1 }],
+    run: {
+      runID: 'run-1',
+      thread: 'conversation',
+      logThread: 'conversation',
+      tools: [],
+      model: { model: 'test-model', profile: 'standard' },
+    },
+  };
+
+  await tool.run(
+    {
+      callID: 'call-1',
+      tool: 'skill_write',
+      input: {
+        name: 'kite-forecast',
+        files: [
+          {
+            path: 'SKILL.md',
+            text: '---\nname: kite-forecast\ndescription: Reads the wind for kites.\n---\n# Wind\n',
+          },
+        ],
+      },
+      toolUseID: null,
+    },
+    context,
+  );
+
+  const outcome = await tool.run(
+    {
+      callID: 'call-2',
+      tool: 'skill_write',
+      input: {
+        name: 'kite-forecast',
+        files: [
+          {
+            path: 'SKILL.md',
+            text: '---\nname: kite-forecast\ndescription: Reads the wind and the tide for kites.\n---\n# Wind\n',
+          },
+        ],
+      },
+      toolUseID: null,
+    },
+    context,
+  );
+
+  invariant(outcome.status === 'ok');
+
+  expect(outcome.result['status']).toBe('pending');
+});
+
+test('it describes a write that a covering rule applies at once, and no approval of each one', async () => {
+  const ctx = await setupTest();
+
+  const tool = buildSkillWriteTool({
+    log: ctx.log,
+    clock: buildTestClock(0),
+    readInForce: () => null,
+    runInForceSeed: () => Promise.resolve(),
+    refreshDefinitions: () => Promise.resolve(null),
+    readSkillList: () => [],
+  });
+
+  expect(tool.description).toInclude('names skill_write, the write applies at once');
+  expect(tool.description).not.toInclude('approves each proposal');
 });

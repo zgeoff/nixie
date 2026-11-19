@@ -5,6 +5,7 @@ import { readDefinitionsContext } from '../definition/read-definitions-context';
 import { refreshDefinitions } from '../definition/refresh-definitions';
 import { addLogForget } from '../forget/add-log-forget';
 import { buildLogForgetTool } from '../forget/build-log-forget-tool';
+import { runInForceSeedAndWake } from '../seed/run-in-force-seed-and-wake';
 import { buildActions } from '../test/build-actions';
 import type { AnyPartDeclaration } from '../types';
 import { buildTestSendTool, testSendKinds } from '../utils/build-test-send-tool';
@@ -133,6 +134,8 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
           readStore: () => parts.find('memory'),
           readInForce: () => inForce.read(),
           refreshDefinitions: () => refreshDefinitions(parts.find('server_parts'), inForce),
+          runInForceSeed: () =>
+            runInForceSeedAndWake(parts.find('server_parts'), parts.find('definitions_exports')),
           readDefinitions: () =>
             readDefinitionsContext(parts.find('server_parts'), parts.find('definitions_exports')),
           vendor:

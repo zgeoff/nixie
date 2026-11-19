@@ -70,6 +70,7 @@ test('it reloads every skill on the list, with a result the output schema accept
       log: ctx.log,
       clock: buildTestClock(0),
       readInForce: () => seeded.inForce,
+      runInForceSeed: () => Promise.resolve(),
       refreshDefinitions: () => Promise.resolve(seeded.inForce),
       readSkillList: () => ['bird-log', 'tide-tables'],
     }),
@@ -140,6 +141,7 @@ test('it moves a pinned skill to the version a later seed put in force', async (
     log: ctx.log,
     clock: buildTestClock(0),
     readInForce: () => first.inForce,
+    runInForceSeed: () => Promise.resolve(),
     refreshDefinitions: async () => {
       const seeded = await runSeed({
         tasks: buildTestTaskSeed(),

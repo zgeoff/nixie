@@ -12,6 +12,9 @@ export interface SkillToolsContext {
 
   readonly refreshDefinitions: () => Promise<DefinitionsInForce | null>;
 
+  // seeds the definitions in force after a rule applies a write, and wakes the export
+  readonly runInForceSeed: () => Promise<void>;
+
   readonly readSkillList: (run: ToolRun, inForce: DefinitionsInForce | null) => readonly string[];
 }
 
