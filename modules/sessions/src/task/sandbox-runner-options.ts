@@ -20,6 +20,10 @@ export interface SandboxRunnerOptions extends SystemTaskOptions {
 
   readonly memory: () => ConversationMemory;
   readonly memorySettings: ConversationMemorySettings;
+
+  // the memory tools that only read, which task.start gives a task with memory read, so the task
+  // run of a definition with memory read gets them too
+  readonly memoryReadTools: readonly string[];
   readonly compaction: CompactionSettings;
   readonly defaultZone: string;
   readonly messaging: TaskMessaging;

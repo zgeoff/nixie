@@ -20,7 +20,7 @@ export function buildToolRegistry(definitions: readonly ToolDefinition[]): ToolR
     });
   }
 
-  return { findTool: (name) => tools.get(name) ?? null };
+  return { toolNames: [...tools.keys()], findTool: (name) => tools.get(name) ?? null };
 }
 
 function assertDefinition(definition: ToolDefinition): void {

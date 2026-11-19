@@ -1,9 +1,9 @@
 import { triggerSchema } from '@heynixie/contract';
-import { startedTaskDefaultTools } from '@heynixie/tasks';
 import type { Kysely } from 'kysely';
 import { z } from 'zod';
 import { normalizeInstructions } from '../definition/normalize-instructions';
 import type { DefinitionVersion, DefinitionsTables } from '../types';
+import { collectDefinitionTools } from './collect-definition-tools';
 
 const formSchema = z.looseObject({
   name: z.string(),
@@ -50,7 +50,7 @@ export async function readDefinitionVersion(
     persona: form.persona ?? 'default',
     memory: form.memory ?? 'none',
     log: form.log ?? 'own',
-    tools: form.tools ?? startedTaskDefaultTools,
+    tools: collectDefinitionTools(form.tools),
     context: form.context,
     wakeable: form.wakeable,
     trigger: form.trigger ?? null,

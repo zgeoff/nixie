@@ -84,7 +84,7 @@ export interface ConversationEndpoint {
 }
 
 export async function startConversationEndpoint(
-  options: Pick<ServerParts, 'cleanup' | 'config' | 'context'>,
+  options: Pick<ServerParts, 'cleanup' | 'config' | 'context' | 'log'>,
   tools: ConversationEndpointTools,
 ): Promise<ConversationEndpoint> {
   const time = buildTimeTool({
@@ -223,6 +223,7 @@ export async function startConversationEndpoint(
     registry,
     decide: tools.makeDecide((name) => findToolDeclaration(registry, name)),
     log: options.context.log,
+    logger: options.log,
     definitions: options.context.definitions,
     queue: tools.queue,
     ...(options.context.budgets === undefined ? {} : { budgets: options.context.budgets }),

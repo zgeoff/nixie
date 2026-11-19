@@ -209,6 +209,8 @@ export interface RegisteredTool {
 }
 
 export interface ToolRegistry {
+  // the name of each registered tool
+  readonly toolNames: readonly string[];
   readonly findTool: (name: string) => RegisteredTool | null;
 }
 

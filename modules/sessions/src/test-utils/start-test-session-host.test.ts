@@ -82,6 +82,7 @@ test("it sends a tool call of the stub guest's turn to the run endpoint of the s
   ]);
 
   const endpoint = await startToolEndpoint({
+    logger: () => {},
     socketDir: host.socketDir,
     registry,
     decide: readStarterDecisionPoint(
@@ -135,6 +136,7 @@ test('it reads the names of the tools a turn of the stub guest is offered', asyn
   ]);
 
   const endpoint = await startToolEndpoint({
+    logger: () => {},
     socketDir: host.socketDir,
     registry,
     decide: readStarterDecisionPoint(

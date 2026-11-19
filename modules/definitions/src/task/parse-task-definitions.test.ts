@@ -45,7 +45,7 @@ test('it accepts a definition and fills the defaults of the keys it leaves out',
           name: 'Check the rain gauge',
           brief: 'Read the gauge and note the total.',
           memory: 'read',
-          tools: ['memory.recall'],
+          tools: ['tasks.list', 'task.message', 'task.report', 'memory.recall'],
           report: 'wake',
           trigger: {
             schedule: { every: 'week', on: 'fri', at: '08:00', zone: 'owner', catchUp: 'once' },
@@ -420,7 +420,12 @@ test('it drops a tool that nothing registers, with a warning, and keeps the rest
     { kind: 'tool_dropped', definition: 'rain-gauge', tool: 'telepathy.send' },
   ]);
 
-  expect(parsed.definitions[0]?.form['tools']).toStrictEqual(['time.now']);
+  expect(parsed.definitions[0]?.form['tools']).toStrictEqual([
+    'tasks.list',
+    'task.message',
+    'task.report',
+    'time.now',
+  ]);
 });
 
 test('it accepts a registered tool that the conversation cannot hand to a task', () => {
@@ -431,7 +436,13 @@ test('it accepts a registered tool that the conversation cannot hand to a task',
   });
 
   expect(parsed.faults).toStrictEqual([]);
-  expect(parsed.definitions[0]?.form['tools']).toStrictEqual(['files.write']);
+
+  expect(parsed.definitions[0]?.form['tools']).toStrictEqual([
+    'tasks.list',
+    'task.message',
+    'task.report',
+    'files.write',
+  ]);
 });
 
 test('it accepts a cap on a tool that the definition lists', () => {
@@ -597,7 +608,14 @@ test('it seeds the memory consolidation example with its schedule, read memory a
   expect(parsed.definitions[0]?.form).toMatchObject({
     trigger: { schedule: { every: 'week', on: 'sun', at: '03:00' } },
     memory: 'read',
-    tools: ['memory.recall', 'memory.edit', 'memory.retire'],
+    tools: [
+      'tasks.list',
+      'task.message',
+      'task.report',
+      'memory.recall',
+      'memory.edit',
+      'memory.retire',
+    ],
   });
 });
 
@@ -620,7 +638,15 @@ test('it seeds the moment reflection example with its daily schedule, read memor
     context: 'fresh',
     memory: 'read',
     log: 'conversation',
-    tools: ['moment.find', 'moment.read', 'moment.edit', 'log.read'],
+    tools: [
+      'tasks.list',
+      'task.message',
+      'task.report',
+      'moment.find',
+      'moment.read',
+      'moment.edit',
+      'log.read',
+    ],
     maxCalls: { 'moment.edit': 3 },
   });
 });
@@ -644,6 +670,13 @@ test('it seeds the note-taking example with its daily schedule, conversation log
     context: 'fresh',
     memory: 'read',
     log: 'conversation',
-    tools: ['log.read', 'memory.remember', 'memory.edit'],
+    tools: [
+      'tasks.list',
+      'task.message',
+      'task.report',
+      'log.read',
+      'memory.remember',
+      'memory.edit',
+    ],
   });
 });

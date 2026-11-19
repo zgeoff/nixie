@@ -106,6 +106,7 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
           config: options.config,
           context: parts.get('context').apiContext,
           cleanup: options.cleanup,
+          log: options.log,
         },
         {
           webFetch: parts.get('web_fetch').tool,

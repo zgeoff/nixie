@@ -123,6 +123,7 @@ async function setupTest() {
         ownerName: 'Robin',
         agentNames: [],
       },
+      memoryReadTools: ['memory.recall', 'moment.find'],
       compaction: { threshold: 0.8, headsUp: 0.7, summaryTokens: 2000 },
       defaultZone: 'UTC',
       messaging: { directory: [], unlisted: [], hopLimit: 20, ownerName: 'Robin', agentName: null },
@@ -2948,6 +2949,26 @@ test('it starts the tool list of a definition task from the version its task run
 
   expect(ctx.runs.map((run) => run.tools)).toStrictEqual([
     ['tasks.list', 'turn.end_silently', 'task.report'],
+  ]);
+});
+
+test('it adds the memory tools that only read to the tool list of a definition task with memory read', async () => {
+  const ctx = await setupTest();
+
+  const taskID = await ctx.writeDefinitionTask({
+    definitionID: 'water-the-tomatoes',
+    definitionHash: 'hash-1',
+    version: { memory: 'read', tools: ['tasks.list', 'memory.recall'] },
+  });
+
+  await ctx.writeFire(taskID, 'hash-1', 'fire-3');
+
+  const runner = await ctx.startRunner();
+
+  await ctx.runNextStep(runner);
+
+  expect(ctx.runs.map((run) => run.tools)).toStrictEqual([
+    ['tasks.list', 'memory.recall', 'moment.find', 'turn.end_silently', 'task.report'],
   ]);
 });
 

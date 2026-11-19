@@ -120,7 +120,7 @@ export type { DefinitionTaskSetup, StartedTaskSetup, TaskSetup } from './task/re
 export { readTaskSetup } from './task/read-task-setup';
 export type { DefinitionRunContext } from './task/read-definition-run-context';
 export { readDefinitionRunContext } from './task/read-definition-run-context';
-export { startedTaskDefaultTools } from './task/started-task-default-tools';
+export { startedTaskBaseTools, startedTaskDefaultTools } from './task/started-task-default-tools';
 export { taskFailedTurnSpentCodec } from './task/codec/task-failed-turn-spent-codec';
 export { taskLimitNoticeCodec } from './limit/task-limit-notice-codec';
 export { taskLimitReachedCodec } from './limit/task-limit-reached-codec';

@@ -1,10 +1,10 @@
 import type { Trigger } from '@heynixie/contract';
 import { triggerSchema } from '@heynixie/contract';
-import { startedTaskDefaultTools } from '@heynixie/tasks';
 import type { Kysely } from 'kysely';
 import { z } from 'zod';
 import { readDefinitionsInForce } from '../definition/read-definitions-in-force';
 import type { DefinitionsTables, SnapshotTask } from '../types';
+import { collectDefinitionTools } from './collect-definition-tools';
 import type { SeededTask } from './pick-seeded-sequence';
 import { pickSeededSequence } from './pick-seeded-sequence';
 import { readSeededTasks } from './read-seeded-tasks';
@@ -82,7 +82,7 @@ export async function readListedDefinitions(
           name: form.name,
           enabled: form.enabled,
           trigger: form.trigger ?? null,
-          tools: form.tools ?? startedTaskDefaultTools,
+          tools: collectDefinitionTools(form.tools),
           origin: task.origin,
           createdBy:
             changeSequence === undefined

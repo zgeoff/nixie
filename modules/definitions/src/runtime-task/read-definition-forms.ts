@@ -1,10 +1,10 @@
 import type { Trigger } from '@heynixie/contract';
 import { triggerSchema } from '@heynixie/contract';
-import { startedTaskDefaultTools } from '@heynixie/tasks';
 import type { ReadZone } from '@heynixie/triggers';
 import { renderTrigger } from '@heynixie/triggers';
 import type { Kysely } from 'kysely';
 import { z } from 'zod';
+import { collectDefinitionTools } from '../task/collect-definition-tools';
 import type { DefinitionsTables } from '../types';
 
 // What a view of a task definition reads from the body of one version
@@ -49,7 +49,7 @@ export async function readDefinitionForms(
         name: parsed.data.name,
         enabled: parsed.data.enabled,
         trigger: parsed.data.trigger ?? null,
-        tools: parsed.data.tools ?? startedTaskDefaultTools,
+        tools: collectDefinitionTools(parsed.data.tools),
       });
     }
   }

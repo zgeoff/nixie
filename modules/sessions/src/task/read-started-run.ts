@@ -71,7 +71,10 @@ async function readDefinitionRun(runner: RunReader, taskID: string): Promise<Sta
       persona: version.persona,
       memory: version.memory,
       log: version.log,
-      tools: version.tools,
+      tools:
+        version.memory === 'read'
+          ? [...new Set([...version.tools, ...runner.options.memoryReadTools])]
+          : version.tools,
       report: found.report.mode,
       limits: runner.options.models.limits.taskRun.default,
     },

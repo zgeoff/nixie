@@ -22,6 +22,7 @@ test('it runs the callback with a client connected to the run endpoint and retur
   ]);
 
   const endpoint = await startToolEndpoint({
+    logger: () => {},
     socketDir: join(ctx.dataDir, 'tools'),
     registry,
     decide: readStarterDecisionPoint(
