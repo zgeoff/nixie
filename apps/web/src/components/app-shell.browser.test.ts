@@ -102,6 +102,7 @@ test('it marks the current page in the bar, and its parent on a detail page', as
     { label: 'Conversation', path: '/' },
     { label: 'Memory', path: '/memory' },
     { label: 'Proposals', path: '/proposals' },
+    { label: 'Mandates', path: '/mandates' },
     { label: 'Moments', path: '/moments' },
     { label: 'Tasks', path: '/tasks' },
     { label: 'Passkeys', path: '/passkeys' },
@@ -128,6 +129,7 @@ test('it marks the current page in the bar, and its parent on a detail page', as
     'Conversation',
     'Memory',
     'Proposals',
+    'Mandates',
     'Moments',
     'Tasks',
     'Passkeys',
@@ -218,6 +220,30 @@ test('it folds the nav into a drawer at phone width that closes on a link, Escap
       const drawer = await ctx.readDrawer();
 
       expect(marks).toStrictEqual({ marked: ['Proposals'], path: '/proposals' });
+      expect(drawer.isOpen).toBe(false);
+    },
+    { timeout: 10_000 },
+  );
+
+  await ctx.view.click('button[aria-haspopup="dialog"]');
+
+  await waitFor(
+    async () => {
+      const drawer = await ctx.readDrawer();
+
+      expect(drawer.isOpen).toBe(true);
+    },
+    { timeout: 10_000 },
+  );
+
+  await ctx.view.click('dialog nav a[href="/mandates"]');
+
+  await waitFor(
+    async () => {
+      const marks = await ctx.readMarks();
+      const drawer = await ctx.readDrawer();
+
+      expect(marks).toStrictEqual({ marked: ['Mandates'], path: '/mandates' });
       expect(drawer.isOpen).toBe(false);
     },
     { timeout: 10_000 },
