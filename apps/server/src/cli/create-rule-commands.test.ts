@@ -2,7 +2,6 @@ import { expect, mock, test } from 'bun:test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { z } from 'zod';
-import { createTestClient } from '../test-utils/create-test-client';
 import { runHostCommand } from '../test-utils/run-host-command';
 import { startInProcessNixie } from '../test-utils/start-in-process-nixie';
 import { runCLI } from './run-cli';
@@ -29,7 +28,7 @@ async function setupTest() {
   return nixie;
 }
 
-test('it lists the rules in force, with the allows of a first seed left out until you approve them', async () => {
+test('it lists the rules in force, with the allows of a first seed beside its denies', async () => {
   const ctx = await setupTest();
   const listed = await runHostCommand(ctx.configPath, ['rules', 'list']);
 
@@ -38,73 +37,18 @@ test('it lists the rules in force, with the allows of a first seed left out unti
     .parse(JSON.parse(listed.stdout));
 
   expect(rules.map((rule) => [rule.ruleID, rule.origin])).toStrictEqual([
+    ['allow-web', 'definitions'],
     ['deny-shell', 'definitions'],
   ]);
 });
 
-test('it puts the allows of a first seed in force when you approve their proposal', async () => {
+test('it lists no pending proposal after a first seed that adds an allow', async () => {
   const ctx = await setupTest();
   const pending = await runHostCommand(ctx.configPath, ['proposals', 'list']);
 
-  const [proposal] = z
-    .tuple([z.object({ proposalID: z.string() })])
-    .parse(JSON.parse(pending.stdout));
-
-  await runHostCommand(ctx.configPath, ['proposals', 'approve', proposal.proposalID]);
-
-  const listed = await runHostCommand(ctx.configPath, ['rules', 'list']);
-
-  const rules = z.array(z.object({ ruleID: z.string() })).parse(JSON.parse(listed.stdout));
-
-  expect(rules.map((rule) => rule.ruleID)).toStrictEqual(['allow-web', 'deny-shell']);
-});
-
-test('it puts the allows of a first seed in force when a device approves their proposal', async () => {
-  const ctx = await setupTest();
-  const api = await createTestClient(ctx);
-  const pending = await api.client.approvals.listItems();
-
-  const itemSchema = z.object({
-    proposal: z.object({ proposalID: z.string(), actionHash: z.string() }),
-  });
-
-  const [item] = z.tuple([itemSchema]).parse(pending.items);
-
-  await api.client.approvals.answerProposal({
-    proposalID: item.proposal.proposalID,
-    actionHash: item.proposal.actionHash,
-    choice: 'approve',
-    clientActionID: crypto.randomUUID(),
-  });
-
-  const listed = await runHostCommand(ctx.configPath, ['rules', 'list']);
-
-  const rules = z.array(z.object({ ruleID: z.string() })).parse(JSON.parse(listed.stdout));
-
-  expect(rules.map((rule) => rule.ruleID)).toStrictEqual(['allow-web', 'deny-shell']);
-});
-
-test('it leaves a rejected proposal out of the pending list', async () => {
-  const ctx = await setupTest();
-  const pending = await runHostCommand(ctx.configPath, ['proposals', 'list']);
-
-  const [proposal] = z
-    .tuple([z.object({ proposalID: z.string() })])
-    .parse(JSON.parse(pending.stdout));
-
-  const rejected = await runHostCommand(ctx.configPath, [
-    'proposals',
-    'reject',
-    proposal.proposalID,
-    '--reason',
-    'Web fetches wait for next month.',
-  ]);
-
-  const after = await runHostCommand(ctx.configPath, ['proposals', 'list']);
-
-  expect({ rejected: rejected.exitCode, after: after.stdout }).toStrictEqual({
-    rejected: 0,
-    after: '[]\n',
+  expect({ exitCode: pending.exitCode, stdout: pending.stdout }).toStrictEqual({
+    exitCode: 0,
+    stdout: '[]\n',
   });
 });
 

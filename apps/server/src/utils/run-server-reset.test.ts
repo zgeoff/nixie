@@ -15,7 +15,6 @@ import { buildMockSandboxSpec } from '@heynixie/sandbox/test-utils';
 import { createConversationTask, startTaskClaimPools } from '@heynixie/tasks';
 import { readTestTasks } from '@heynixie/tasks/test-utils';
 import { makeGatedCall } from '@heynixie/testing';
-import invariant from 'tiny-invariant';
 import { runTestSeed } from '../test-utils/run-test-seed';
 import { startTestServer } from '../test-utils/start-test-server';
 import { runServerReset } from './run-server-reset';
@@ -105,7 +104,7 @@ test('it keeps the rules in force and their revisions through a reset', async ()
   expect(rules.map((rule) => [rule.ruleID, rule.revision])).toStrictEqual([['deny-shell', 1]]);
 });
 
-test('it keeps a widening that passed its lapse time closed through a reset', async () => {
+test('it keeps an allow that a first seed put in force through a reset, and the next seed proposes nothing', async () => {
   const ctx = await setupTest();
 
   const root = join(ctx.dataDir, 'rule-definitions');
@@ -127,14 +126,8 @@ test('it keeps a widening that passed its lapse time closed through a reset', as
     buildPolicy: () => ({ rules: [], tools: [] }),
   });
 
-  const pending = await readRuleProposals(ctx.context.log.writer.db);
-
-  invariant(pending.length === 1);
-
-  const monthLater = { ...ctx.context.clock, now: () => Date.now() + 30 * 24 * 60 * 60 * 1000 };
-
   await runServerReset({
-    context: { ...ctx.context, clock: monthLater },
+    context: ctx.context,
     adapter: ctx.sandboxes,
     stopWork: () => Promise.resolve(),
     log: () => {},
@@ -147,9 +140,13 @@ test('it keeps a widening that passed its lapse time closed through a reset', as
     buildPolicy: () => ({ rules: [], tools: [] }),
   });
 
+  const rules = await readRulesInForce(ctx.context.log.writer.db);
   const proposals = await readRuleProposals(ctx.context.log.writer.db);
 
-  expect(proposals).toStrictEqual([]);
+  expect({
+    rules: rules.map((rule) => [rule.ruleID, rule.revision]),
+    proposals,
+  }).toStrictEqual({ rules: [['allow-web', 1]], proposals: [] });
 });
 
 test('it destroys every sandbox before it resets', async () => {

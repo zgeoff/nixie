@@ -32,7 +32,7 @@ import { buildTaskSeedPlan } from '../utils/build-task-seed-plan';
 import { readBudgetsInForce } from '../utils/read-budgets-in-force';
 import { readRuleStore } from '../utils/read-rule-store';
 import { readWrittenSkills } from '../written/read-written-skills';
-import { readRuleProposalChange } from './read-rule-proposal-change';
+import { readPendingRuleProposals } from './read-pending-rule-proposals';
 
 export interface SeedOptions {
   readonly log: Log;
@@ -118,7 +118,6 @@ export async function runSeed(options: SeedOptions): Promise<SeedResult> {
     const policy = await readSeedPolicy(tx, {
       base: options.buildPolicy(read.parsed.prompts),
       overrides: read.parsed.effects,
-      inForce,
       rules: revisions.inForce,
     });
 
@@ -126,11 +125,7 @@ export async function runSeed(options: SeedOptions): Promise<SeedResult> {
       return { status: 'refused', error: policy.error, inForce };
     }
 
-    const proposals = await readRuleProposalChange(
-      tx,
-      { rules: rules.held, effects: policy.held, budgets: budgets.held },
-      now,
-    );
+    const pending = await readPendingRuleProposals(tx, now);
 
     await writeTaskVersions(tx, read.parsed.tasks);
 
@@ -171,8 +166,7 @@ export async function runSeed(options: SeedOptions): Promise<SeedResult> {
       overlay.adopted.length === 0 &&
       rules.adopted.length === 0 &&
       budgets.applied.length === 0 &&
-      proposals.withdrawn === null &&
-      proposals.proposed === null &&
+      pending.length === 0 &&
       taskPlan.adopted.length === 0 &&
       taskPlan.moved.length === 0 &&
       isSameSeed(inForce, { ...read, built, sourceID: options.source.id })
@@ -190,7 +184,6 @@ export async function runSeed(options: SeedOptions): Promise<SeedResult> {
       },
       formatVersion: read.parsed.formatVersion,
       effects: read.parsed.effects,
-      heldEffects: policy.held,
       unapplied: read.parsed.unapplied,
       skipped: read.snapshot.skipped,
       versions: read.parsed.skills,
@@ -202,7 +195,7 @@ export async function runSeed(options: SeedOptions): Promise<SeedResult> {
         at: now,
       },
       budgets: { plan: budgets, repo: read.parsed.budgets },
-      proposals,
+      withdrawnProposalIDs: pending.map((entry) => entry.proposal.proposalID),
       built,
       repoTasks,
       taskRecords: buildTaskSeedRecords(taskPlan, {

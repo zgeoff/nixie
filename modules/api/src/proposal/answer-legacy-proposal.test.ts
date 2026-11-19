@@ -1,8 +1,6 @@
 import { expect, test } from 'bun:test';
-import { mkdir, writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
-import { createPathSource, readPendingRuleProposals, runSeed } from '@heynixie/definitions';
-import { buildTestTaskSeed } from '@heynixie/definitions/test-utils';
+import { readPendingRuleProposals } from '@heynixie/definitions';
+import { seedLegacyRuleProposal } from '@heynixie/definitions/test-utils';
 import { buildTestClient } from '../test-utils/build-test-client';
 import { createDeviceSession } from '../test-utils/create-device-session';
 import { startTestAPI } from '../test-utils/start-test-api';
@@ -12,26 +10,11 @@ import { answerLegacyProposal } from './answer-legacy-proposal';
 async function setupTest() {
   const api = await startTestAPI();
 
-  const root = join(api.dataDir, 'definitions');
-
-  await mkdir(join(root, 'rules'), { recursive: true });
-  await writeFile(join(root, 'nixie.yaml'), 'format: 3\n');
-  await writeFile(join(root, 'persona.md'), '# Persona\n');
-
-  await writeFile(
-    join(root, 'rules', 'web.yaml'),
-    'allow-web:\n  outcome: allow\n  tools: [web.fetch]\n',
-  );
-
-  await runSeed({
-    tasks: buildTestTaskSeed(),
-    log: api.context.log,
-    source: createPathSource({ directory: root }),
-    buildPolicy: () => ({ rules: [], tools: [] }),
-  });
-
   // the writer stamps records with the wall clock, so the test clock starts there
   api.clock.advance(Date.now() - api.clock.now());
+
+  // a rule change proposal that a seed of an earlier release left pending
+  await seedLegacyRuleProposal(api.context.log);
 
   const laptop = await createDeviceSession(api.context, 'laptop');
 

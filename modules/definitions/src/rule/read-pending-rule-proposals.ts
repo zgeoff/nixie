@@ -1,5 +1,5 @@
 import type { Kysely } from 'kysely';
-import type { RuleProposal } from '../utils/build-rule-proposal';
+import type { RuleProposal } from '../utils/rule-proposal-schema';
 import { readRuleProposals } from './read-rule-proposals';
 
 export interface PendingRuleProposal {

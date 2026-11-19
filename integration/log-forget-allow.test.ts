@@ -2,7 +2,6 @@ import { expect, test } from 'bun:test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import {
-  approveStarterRules,
   createTestClient,
   sendClientMessage,
   startInProcessNixie,
@@ -26,8 +25,6 @@ async function setupTest() {
   });
 
   await nixie.waitForLogEvent('ready');
-
-  await approveStarterRules(nixie.configPath);
 
   const api = await createTestClient(nixie);
 

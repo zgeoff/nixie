@@ -5,8 +5,6 @@ import { createPathSource, runInForceSeed, runSeed } from '@heynixie/definitions
 import { buildTestTaskSeed } from '@heynixie/definitions/test-utils';
 import { ORPCError } from '@orpc/client';
 import { createRouterClient } from '@orpc/server';
-import invariant from 'tiny-invariant';
-import { buildTestClient } from '../test-utils/build-test-client';
 import { createDeviceSession } from '../test-utils/create-device-session';
 import { startTestAPI } from '../test-utils/start-test-api';
 import { createRuleProcedures } from './create-rule-procedures';
@@ -44,24 +42,6 @@ async function setupTest() {
   });
 
   const laptop = await createDeviceSession(api.context, 'laptop');
-
-  const over = buildTestClient(api.url, laptop.token);
-
-  // A first seed holds its allow rules as a proposal until the user answers it.
-  const listed = await over.approvals.listItems();
-
-  const [item] = listed.items;
-
-  invariant(item);
-
-  await over.approvals.answerProposal({
-    proposalID: item.proposal.proposalID,
-    actionHash: item.proposal.actionHash,
-    choice: 'approve',
-    clientActionID: crypto.randomUUID(),
-  });
-
-  await runInForceSeed({ log, buildPolicy: () => ({ rules: [], tools: [] }) });
 
   let seedGate = Promise.resolve();
   const seedStarted = Promise.withResolvers<void>();

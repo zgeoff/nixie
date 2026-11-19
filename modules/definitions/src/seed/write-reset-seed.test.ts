@@ -3,14 +3,11 @@ import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { readRecords, runLogReset, startWriter, withWriteTransaction } from '@heynixie/log';
-import { proposalLapseMs } from '@heynixie/proposals';
 import invariant from 'tiny-invariant';
 import { createPathSource } from '../definition/create-path-source';
 import { readDefinitionsInForce } from '../definition/read-definitions-in-force';
-import { readRuleProposals } from '../rule/read-rule-proposals';
 import { readRulesInForce } from '../rule/read-rules-in-force';
 import { runSeed } from '../rule/run-seed';
-import { writeRuleProposalAnswer } from '../rule/write-rule-proposal-answer';
 import { checkSkillFiles } from '../skill/check-skill-files';
 import { loadSnapshotSkills } from '../skill/load-snapshot-skills';
 import { readDefinitionVersion } from '../task/read-definition-version';
@@ -71,7 +68,7 @@ test('it seeds the definitions in force again as the first record of the new log
 
   await runLogReset(ctx.log, {
     keptTables: [],
-    readKept: (tx) => readResetSeed(tx, 0),
+    readKept: (tx) => readResetSeed(tx),
     writeFirstRecords: async (tx, seed) => {
       invariant(seed);
 
@@ -105,7 +102,7 @@ test('it puts the same definitions in force under the new record', async () => {
 
   await runLogReset(ctx.log, {
     keptTables: [],
-    readKept: (tx) => readResetSeed(tx, 0),
+    readKept: (tx) => readResetSeed(tx),
     writeFirstRecords: async (tx, seed) => {
       invariant(seed);
 
@@ -113,7 +110,7 @@ test('it puts the same definitions in force under the new record', async () => {
     },
   });
 
-  const after = await readResetSeed(ctx.writer.db, 0);
+  const after = await readResetSeed(ctx.writer.db);
 
   invariant(seeded.inForce);
 
@@ -148,7 +145,7 @@ test('it keeps the commit and the repository of a git-sync seed through a reset'
 
   await runLogReset(ctx.log, {
     keptTables: [],
-    readKept: (tx) => readResetSeed(tx, 0),
+    readKept: (tx) => readResetSeed(tx),
     writeFirstRecords: async (tx, seed) => {
       invariant(seed);
 
@@ -192,7 +189,7 @@ test('it seeds the skills in force again with their files', async () => {
 
   await runLogReset(ctx.log, {
     keptTables: [],
-    readKept: (tx) => readResetSeed(tx, 0),
+    readKept: (tx) => readResetSeed(tx),
     writeFirstRecords: async (tx, seed) => {
       invariant(seed);
 
@@ -230,7 +227,7 @@ test("it keeps a skill's frontmatter fields through a reset", async () => {
 
   await runLogReset(ctx.log, {
     keptTables: [],
-    readKept: (tx) => readResetSeed(tx, 0),
+    readKept: (tx) => readResetSeed(tx),
     writeFirstRecords: async (tx, seed) => {
       invariant(seed);
 
@@ -284,7 +281,7 @@ test("it keeps the conversation's skill list through storage and a reset", async
 
   await runLogReset(ctx.log, {
     keptTables: [],
-    readKept: (tx) => readResetSeed(tx, 0),
+    readKept: (tx) => readResetSeed(tx),
     writeFirstRecords: async (tx, seed) => {
       invariant(seed);
 
@@ -324,7 +321,7 @@ test('it keeps an empty conversation skill list through storage and a reset, bes
 
   await runLogReset(ctx.log, {
     keptTables: [],
-    readKept: (tx) => readResetSeed(tx, 0),
+    readKept: (tx) => readResetSeed(tx),
     writeFirstRecords: async (tx, seed) => {
       invariant(seed);
 
@@ -356,7 +353,7 @@ test('it leaves the next seed of the same definitions unchanged', async () => {
 
   await runLogReset(ctx.log, {
     keptTables: [],
-    readKept: (tx) => readResetSeed(tx, 0),
+    readKept: (tx) => readResetSeed(tx),
     writeFirstRecords: async (tx, seed) => {
       invariant(seed);
 
@@ -413,7 +410,7 @@ test('it keeps a skill nixie wrote in force through a reset and the seed after i
 
   await runLogReset(ctx.log, {
     keptTables: [],
-    readKept: (tx) => readResetSeed(tx, 0),
+    readKept: (tx) => readResetSeed(tx),
     writeFirstRecords: async (tx, seed) => {
       invariant(seed);
 
@@ -472,7 +469,7 @@ test('it keeps a skill nixie wrote through a reset before its seed, and the seed
 
   await runLogReset(ctx.log, {
     keptTables: [],
-    readKept: (tx) => readResetSeed(tx, 0),
+    readKept: (tx) => readResetSeed(tx),
     writeFirstRecords: async (tx, seed) => {
       invariant(seed);
 
@@ -526,7 +523,7 @@ test("it puts your definitions' version back after a reset when you retire nixie
 
   await runLogReset(ctx.log, {
     keptTables: [],
-    readKept: (tx) => readResetSeed(tx, 0),
+    readKept: (tx) => readResetSeed(tx),
     writeFirstRecords: async (tx, seed) => {
       invariant(seed);
 
@@ -572,7 +569,7 @@ test('it keeps the rules in force through a reset that keeps the rule store', as
 
   await runLogReset(ctx.log, {
     keptTables: ruleStoreTables,
-    readKept: (tx) => readResetSeed(tx, 0),
+    readKept: (tx) => readResetSeed(tx),
     writeFirstRecords: async (tx, seed) => {
       invariant(seed);
 
@@ -583,154 +580,6 @@ test('it keeps the rules in force through a reset that keeps the rule store', as
   const rules = await readRulesInForce(ctx.writer.db);
 
   expect(rules).toStrictEqual(before);
-});
-
-test('it proposes a pending widening again at the first seed after a reset', async () => {
-  const ctx = await setupTest();
-
-  await mkdir(join(ctx.root, 'rules'));
-
-  await Promise.all([
-    writeFile(join(ctx.root, 'nixie.yaml'), 'format: 3\n'),
-    writeFile(join(ctx.root, 'persona.md'), '# Persona\n\nCalm and short.\n'),
-    writeFile(
-      join(ctx.root, 'rules', 'web.yaml'),
-      'allow-web:\n  outcome: allow\n  tools: [web.fetch]\n',
-    ),
-  ]);
-
-  await runSeed({
-    tasks: buildTestTaskSeed(),
-    log: ctx.log,
-    source: ctx.source,
-    buildPolicy: () => ({ rules: [], tools: [] }),
-  });
-
-  await runLogReset(ctx.log, {
-    keptTables: ruleStoreTables,
-    readKept: (tx) => readResetSeed(tx, 0),
-    writeFirstRecords: async (tx, seed) => {
-      invariant(seed);
-
-      await writeResetSeed(tx, ctx.log, seed);
-    },
-  });
-
-  await runSeed({
-    tasks: buildTestTaskSeed(),
-    log: ctx.log,
-    source: ctx.source,
-    buildPolicy: () => ({ rules: [], tools: [] }),
-  });
-
-  const proposals = await readRuleProposals(ctx.writer.db);
-
-  expect(
-    proposals.map((entry) => [
-      entry.outcome,
-      entry.proposal.changes.map((change) => change.ruleID),
-    ]),
-  ).toStrictEqual([[null, ['allow-web']]]);
-});
-
-test('it asks again about no widening whose proposal passed its lapse time before a reset', async () => {
-  const ctx = await setupTest();
-
-  await mkdir(join(ctx.root, 'rules'));
-
-  await Promise.all([
-    writeFile(join(ctx.root, 'nixie.yaml'), 'format: 3\n'),
-    writeFile(join(ctx.root, 'persona.md'), '# Persona\n\nCalm and short.\n'),
-    writeFile(
-      join(ctx.root, 'rules', 'web.yaml'),
-      'allow-web:\n  outcome: allow\n  tools: [web.fetch]\n',
-    ),
-  ]);
-
-  await runSeed({
-    tasks: buildTestTaskSeed(),
-    log: ctx.log,
-    source: ctx.source,
-    buildPolicy: () => ({ rules: [], tools: [] }),
-  });
-
-  await runLogReset(ctx.log, {
-    keptTables: ruleStoreTables,
-    readKept: (tx) => readResetSeed(tx, Date.now() + proposalLapseMs),
-    writeFirstRecords: async (tx, seed) => {
-      invariant(seed);
-
-      await writeResetSeed(tx, ctx.log, seed);
-    },
-  });
-
-  await runSeed({
-    tasks: buildTestTaskSeed(),
-    log: ctx.log,
-    source: ctx.source,
-    buildPolicy: () => ({ rules: [], tools: [] }),
-  });
-
-  const proposals = await readRuleProposals(ctx.writer.db);
-
-  expect(proposals).toStrictEqual([]);
-});
-
-test('it asks again about no widening you rejected before a reset', async () => {
-  const ctx = await setupTest();
-
-  await mkdir(join(ctx.root, 'rules'));
-
-  await Promise.all([
-    writeFile(join(ctx.root, 'nixie.yaml'), 'format: 3\n'),
-    writeFile(join(ctx.root, 'persona.md'), '# Persona\n\nCalm and short.\n'),
-    writeFile(
-      join(ctx.root, 'rules', 'web.yaml'),
-      'allow-web:\n  outcome: allow\n  tools: [web.fetch]\n',
-    ),
-  ]);
-
-  await runSeed({
-    tasks: buildTestTaskSeed(),
-    log: ctx.log,
-    source: ctx.source,
-    buildPolicy: () => ({ rules: [], tools: [] }),
-  });
-
-  const [pending] = await readRuleProposals(ctx.writer.db);
-
-  invariant(pending);
-
-  await writeRuleProposalAnswer(
-    {
-      log: ctx.log,
-      clock: { now: () => Date.now() },
-      definitions: () => ({ snapshotHash: 'snapshot-a' }),
-      runInForceSeed: () => Promise.resolve(),
-    },
-    { answer: 'reject', proposalID: pending.proposal.proposalID, reason: 'Not yet.' },
-  );
-
-  await runLogReset(ctx.log, {
-    keptTables: ruleStoreTables,
-    readKept: (tx) => readResetSeed(tx, 0),
-    writeFirstRecords: async (tx, seed) => {
-      invariant(seed);
-
-      await writeResetSeed(tx, ctx.log, seed);
-    },
-  });
-
-  await runSeed({
-    tasks: buildTestTaskSeed(),
-    log: ctx.log,
-    source: ctx.source,
-    buildPolicy: () => ({ rules: [], tools: [] }),
-  });
-
-  const proposals = await readRuleProposals(ctx.writer.db);
-
-  expect(proposals).toStrictEqual([]);
 });
 
 test('it carries the version of each task in force into the new database', async () => {
@@ -762,7 +611,7 @@ test('it carries the version of each task in force into the new database', async
 
   await runLogReset(ctx.log, {
     keptTables: [],
-    readKept: (tx) => readResetSeed(tx, 0),
+    readKept: (tx) => readResetSeed(tx),
     writeFirstRecords: async (tx, seed) => {
       invariant(seed);
 

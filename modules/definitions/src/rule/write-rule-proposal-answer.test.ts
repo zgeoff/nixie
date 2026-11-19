@@ -4,15 +4,11 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { readRecords, startWriter } from '@heynixie/log';
 import { proposalLapseMs } from '@heynixie/proposals';
-import { sql } from 'kysely';
-import invariant from 'tiny-invariant';
 import { createPathSource } from '../definition/create-path-source';
-import { readSnapshotToolEffects } from '../seed/read-snapshot-tool-effects';
 import { runInForceSeed } from '../seed/run-in-force-seed';
 import { buildTestTaskSeed } from '../test-utils/build-test-task-seed';
-import { buildTestToolDeclaration } from '../test-utils/build-test-tool-declaration';
+import { seedLegacyRuleProposal } from '../test-utils/seed-legacy-rule-proposal';
 import { readRuleProposals } from './read-rule-proposals';
-import { readRulesInForce } from './read-rules-in-force';
 import { runSeed } from './run-seed';
 import { writeRuleProposalAnswer } from './write-rule-proposal-answer';
 
@@ -55,23 +51,6 @@ async function setupTest() {
         source: createPathSource({ directory: root }),
         buildPolicy: () => ({ rules: [], tools: [] }),
       }),
-    runMailSeed: () =>
-      runSeed({
-        tasks: buildTestTaskSeed(),
-        log,
-        source: createPathSource({ directory: root }),
-        buildPolicy: () => ({ rules: [], tools: [buildTestToolDeclaration('mail.draft')] }),
-      }),
-    mailContext: {
-      log,
-      clock,
-      definitions: () => ({ snapshotHash: 'snapshot-a' }),
-      runInForceSeed: () =>
-        runInForceSeed({
-          log,
-          buildPolicy: () => ({ rules: [], tools: [buildTestToolDeclaration('mail.draft')] }),
-        }),
-    },
     context: {
       log,
       clock,
@@ -81,116 +60,41 @@ async function setupTest() {
   };
 }
 
-test('it puts the widening of a rule change proposal in force once you approve it', async () => {
+test('it records your approval of a rule change proposal that an earlier release left pending', async () => {
   const ctx = await setupTest();
+  const proposal = await seedLegacyRuleProposal(ctx.log);
 
-  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 3\n');
-  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+  const result = await writeRuleProposalAnswer(ctx.context, {
+    answer: 'approve',
+    proposalID: proposal.proposalID,
+  });
 
-  await writeFile(
-    join(ctx.root, 'rules', 'mail.yaml'),
-    'deny-mail:\n  outcome: deny\n  tools: [mail.send]\n',
-  );
+  const records = await readRecords(ctx.log, { afterSequence: 1 });
 
-  await ctx.runSeed();
-
-  await writeFile(
-    join(ctx.root, 'rules', 'mail.yaml'),
-    'deny-mail:\n  outcome: ask\n  tools: [mail.send]\n',
-  );
-
-  await ctx.runSeed();
-
-  const pending = await ctx.readProposals();
-
-  const proposalID = pending.at(-1)?.proposal.proposalID;
-
-  invariant(proposalID !== undefined);
-
-  await writeRuleProposalAnswer(ctx.context, { answer: 'approve', proposalID });
-
-  const rules = await readRulesInForce(ctx.log.writer.db);
-
-  expect(
-    rules.map((entry) => [entry.ruleID, entry.revision, entry.rule.rule.outcome]),
-  ).toStrictEqual([['deny-mail', 2, 'ask']]);
-});
-
-test('it records your approval of a rule change proposal', async () => {
-  const ctx = await setupTest();
-
-  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 3\n');
-  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
-
-  await writeFile(
-    join(ctx.root, 'rules', 'web.yaml'),
-    'allow-web:\n  outcome: allow\n  tools: [web.fetch]\n',
-  );
-
-  const held = await ctx.runSeed();
-
-  invariant(held.status === 'seeded');
-
-  const pending = await ctx.readProposals();
-
-  const proposalID = pending.at(-1)?.proposal.proposalID;
-
-  invariant(proposalID !== undefined);
-
-  const result = await writeRuleProposalAnswer(ctx.context, { answer: 'approve', proposalID });
-  const records = await readRecords(ctx.log, { afterSequence: held.record.sequence + 1 });
-
-  expect(result).toStrictEqual({ status: 'approved', proposalID });
+  expect(result).toStrictEqual({ status: 'approved', proposalID: proposal.proposalID });
 
   expect(records.map((read) => [read.record.kind, read.record.payload])).toStrictEqual([
-    ['rules.change_approved', { proposalID }],
-    ['definitions_seeded', expect.any(Object)],
+    ['rules.change_approved', { proposalID: proposal.proposalID }],
   ]);
 });
 
-test('it keeps the version in force and records your reason when you reject a rule change proposal', async () => {
+test('it records your reason when you reject a rule change proposal', async () => {
   const ctx = await setupTest();
-
-  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 3\n');
-  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
-
-  await writeFile(
-    join(ctx.root, 'rules', 'mail.yaml'),
-    'deny-mail:\n  outcome: deny\n  tools: [mail.send]\n',
-  );
-
-  await ctx.runSeed();
-
-  await writeFile(
-    join(ctx.root, 'rules', 'mail.yaml'),
-    'deny-mail:\n  outcome: ask\n  tools: [mail.send]\n',
-  );
-
-  const held = await ctx.runSeed();
-
-  invariant(held.status === 'seeded');
-
-  const pending = await ctx.readProposals();
-
-  const proposalID = pending.at(-1)?.proposal.proposalID;
-
-  invariant(proposalID !== undefined);
+  const proposal = await seedLegacyRuleProposal(ctx.log);
 
   await writeRuleProposalAnswer(ctx.context, {
     answer: 'reject',
-    proposalID,
+    proposalID: proposal.proposalID,
     reason: 'Mail stays blocked for now.',
   });
 
-  const rules = await readRulesInForce(ctx.log.writer.db);
-  const records = await readRecords(ctx.log, { afterSequence: held.record.sequence + 1 });
-
-  expect(rules.map((entry) => [entry.ruleID, entry.rule.rule.outcome])).toStrictEqual([
-    ['deny-mail', 'deny'],
-  ]);
+  const records = await readRecords(ctx.log, { afterSequence: 1 });
 
   expect(records.map((read) => [read.record.kind, read.record.payload])).toStrictEqual([
-    ['rules.change_rejected', { proposalID, reason: 'Mail stays blocked for now.' }],
+    [
+      'rules.change_rejected',
+      { proposalID: proposal.proposalID, reason: 'Mail stays blocked for now.' },
+    ],
   ]);
 });
 
@@ -211,26 +115,18 @@ test('it refuses an answer to a rule change proposal it has no record of', async
 
 test('it refuses an approval of a rule change proposal you rejected', async () => {
   const ctx = await setupTest();
+  const proposal = await seedLegacyRuleProposal(ctx.log);
 
-  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 3\n');
-  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+  await writeRuleProposalAnswer(ctx.context, {
+    answer: 'reject',
+    proposalID: proposal.proposalID,
+    reason: 'Not yet.',
+  });
 
-  await writeFile(
-    join(ctx.root, 'rules', 'web.yaml'),
-    'allow-web:\n  outcome: allow\n  tools: [web.fetch]\n',
-  );
-
-  await ctx.runSeed();
-
-  const pending = await ctx.readProposals();
-
-  const proposalID = pending.at(-1)?.proposal.proposalID;
-
-  invariant(proposalID !== undefined);
-
-  await writeRuleProposalAnswer(ctx.context, { answer: 'reject', proposalID, reason: 'Not yet.' });
-
-  const result = await writeRuleProposalAnswer(ctx.context, { answer: 'approve', proposalID });
+  const result = await writeRuleProposalAnswer(ctx.context, {
+    answer: 'approve',
+    proposalID: proposal.proposalID,
+  });
 
   expect(result).toStrictEqual({
     status: 'refused',
@@ -241,26 +137,14 @@ test('it refuses an approval of a rule change proposal you rejected', async () =
 
 test('it refuses an approval of a rule change proposal past its lapse time', async () => {
   const ctx = await setupTest();
-
-  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 3\n');
-  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
-
-  await writeFile(
-    join(ctx.root, 'rules', 'web.yaml'),
-    'allow-web:\n  outcome: allow\n  tools: [web.fetch]\n',
-  );
-
-  await ctx.runSeed();
-
-  const pending = await ctx.readProposals();
-
-  const proposalID = pending.at(-1)?.proposal.proposalID;
-
-  invariant(proposalID !== undefined);
+  const proposal = await seedLegacyRuleProposal(ctx.log);
 
   ctx.time.now += proposalLapseMs;
 
-  const result = await writeRuleProposalAnswer(ctx.context, { answer: 'approve', proposalID });
+  const result = await writeRuleProposalAnswer(ctx.context, {
+    answer: 'approve',
+    proposalID: proposal.proposalID,
+  });
 
   expect(result).toStrictEqual({
     status: 'refused',
@@ -269,214 +153,23 @@ test('it refuses an approval of a rule change proposal past its lapse time', asy
   });
 });
 
-test('it refuses an approval of a rule change proposal that a later seed withdrew', async () => {
+test('it refuses an approval of a rule change proposal that the next seed withdrew', async () => {
   const ctx = await setupTest();
+  const proposal = await seedLegacyRuleProposal(ctx.log);
 
   await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 3\n');
   await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
 
-  await writeFile(
-    join(ctx.root, 'rules', 'web.yaml'),
-    'allow-web:\n  outcome: allow\n  tools: [web.fetch]\n',
-  );
-
   await ctx.runSeed();
 
-  const pending = await ctx.readProposals();
-
-  const proposalID = pending.at(-1)?.proposal.proposalID;
-
-  invariant(proposalID !== undefined);
-
-  await writeFile(
-    join(ctx.root, 'rules', 'web.yaml'),
-    'allow-web:\n  outcome: allow\n  tools: [web.*]\n',
-  );
-
-  await ctx.runSeed();
-
-  const result = await writeRuleProposalAnswer(ctx.context, { answer: 'approve', proposalID });
+  const result = await writeRuleProposalAnswer(ctx.context, {
+    answer: 'approve',
+    proposalID: proposal.proposalID,
+  });
 
   expect(result).toStrictEqual({
     status: 'refused',
     code: 'PROPOSAL_CLOSED',
     reason: expect.any(String),
   });
-});
-
-test('it asks again about a widening you rejected only once the definitions change it', async () => {
-  const ctx = await setupTest();
-
-  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 3\n');
-  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
-
-  await writeFile(
-    join(ctx.root, 'rules', 'web.yaml'),
-    'allow-web:\n  outcome: allow\n  tools: [web.fetch]\n',
-  );
-
-  await ctx.runSeed();
-
-  const pending = await ctx.readProposals();
-
-  const proposalID = pending.at(-1)?.proposal.proposalID;
-
-  invariant(proposalID !== undefined);
-
-  await writeRuleProposalAnswer(ctx.context, { answer: 'reject', proposalID, reason: 'Not yet.' });
-  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n\nShort replies.\n');
-
-  await ctx.runSeed();
-
-  await writeFile(
-    join(ctx.root, 'rules', 'web.yaml'),
-    'allow-web:\n  outcome: allow\n  tools: [web.read]\n',
-  );
-
-  await ctx.runSeed();
-
-  const proposals = await ctx.readProposals();
-
-  expect(proposals.map((entry) => entry.outcome)).toStrictEqual(['rejected', null]);
-});
-
-test('it asks again about a widening you approved once the definitions narrow it and widen it back', async () => {
-  const ctx = await setupTest();
-
-  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 3\n');
-  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
-
-  await writeFile(
-    join(ctx.root, 'rules', 'web.yaml'),
-    'allow-web:\n  outcome: allow\n  tools: [web.fetch]\n',
-  );
-
-  await ctx.runSeed();
-
-  const pending = await ctx.readProposals();
-
-  const proposalID = pending.at(-1)?.proposal.proposalID;
-
-  invariant(proposalID !== undefined);
-
-  await writeRuleProposalAnswer(ctx.context, { answer: 'approve', proposalID });
-  await writeFile(join(ctx.root, 'rules', 'web.yaml'), '# No web rules for now.\n');
-
-  await ctx.runSeed();
-
-  await writeFile(
-    join(ctx.root, 'rules', 'web.yaml'),
-    'allow-web:\n  outcome: allow\n  tools: [web.fetch]\n',
-  );
-
-  await ctx.runSeed();
-
-  const proposals = await ctx.readProposals();
-
-  expect(proposals.map((entry) => entry.outcome)).toStrictEqual(['approved', null]);
-});
-
-test('it asks again about an effect removal you approved once the effect is restored and removed again', async () => {
-  const ctx = await setupTest();
-
-  await mkdir(join(ctx.root, 'effects'));
-  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 4\n');
-  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
-
-  await ctx.runMailSeed();
-
-  await writeFile(join(ctx.root, 'effects', 'mail.yaml'), 'mail.draft:\n  remove: [send]\n');
-
-  await ctx.runMailSeed();
-
-  const pending = await ctx.readProposals();
-
-  const proposalID = pending.at(-1)?.proposal.proposalID;
-
-  invariant(proposalID !== undefined);
-
-  await writeRuleProposalAnswer(ctx.mailContext, { answer: 'approve', proposalID });
-  await writeFile(join(ctx.root, 'effects', 'mail.yaml'), '# Restored.\n');
-
-  await ctx.runMailSeed();
-
-  await writeFile(join(ctx.root, 'effects', 'mail.yaml'), 'mail.draft:\n  remove: [send]\n');
-
-  const result = await ctx.runMailSeed();
-
-  invariant(result.inForce);
-
-  const effects = await readSnapshotToolEffects(ctx.log.writer.db, result.inForce.snapshotHash);
-
-  expect(effects).toStrictEqual(new Map([['mail.draft', ['send', 'write']]]));
-});
-
-test('it puts a raised budget limit in force once you approve its proposal, and the re-seed asks nothing more', async () => {
-  const ctx = await setupTest();
-
-  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 5\n');
-  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
-  await mkdir(join(ctx.root, 'budgets'));
-
-  await writeFile(
-    join(ctx.root, 'budgets', 'shopping.yaml'),
-    'shopping-month:\n  counts: spend\n  limit: 100\n  period: month\n',
-  );
-
-  await ctx.runSeed();
-
-  await writeFile(
-    join(ctx.root, 'budgets', 'shopping.yaml'),
-    'shopping-month:\n  counts: spend\n  limit: 150\n  period: month\n',
-  );
-
-  await ctx.runSeed();
-
-  const pending = await ctx.readProposals();
-
-  const proposalID = pending.at(-1)?.proposal.proposalID;
-
-  invariant(proposalID !== undefined);
-
-  const answered = await writeRuleProposalAnswer(ctx.context, { answer: 'approve', proposalID });
-  const rows = await sql`select limit_micros from budgets_in_force`.execute(ctx.log.writer.db);
-  const proposals = await ctx.readProposals();
-
-  expect(answered).toStrictEqual({ status: 'approved', proposalID });
-  expect(rows.rows).toStrictEqual([{ limit_micros: 150_000_000 }]);
-  expect(proposals.map((state) => state.outcome)).toStrictEqual(['approved']);
-});
-
-test('it leaves the budget limit in force when you reject the proposal that raises it', async () => {
-  const ctx = await setupTest();
-
-  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 5\n');
-  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
-  await mkdir(join(ctx.root, 'budgets'));
-
-  await writeFile(
-    join(ctx.root, 'budgets', 'shopping.yaml'),
-    'shopping-month:\n  counts: spend\n  limit: 100\n  period: month\n',
-  );
-
-  await ctx.runSeed();
-
-  await writeFile(
-    join(ctx.root, 'budgets', 'shopping.yaml'),
-    'shopping-month:\n  counts: spend\n  limit: 150\n  period: month\n',
-  );
-
-  await ctx.runSeed();
-
-  const pending = await ctx.readProposals();
-
-  const proposalID = pending.at(-1)?.proposal.proposalID;
-
-  invariant(proposalID !== undefined);
-
-  await writeRuleProposalAnswer(ctx.context, { answer: 'reject', proposalID, reason: 'Too much.' });
-
-  const rows = await sql`select limit_micros from budgets_in_force`.execute(ctx.log.writer.db);
-
-  expect(rows.rows).toStrictEqual([{ limit_micros: 100_000_000 }]);
 });

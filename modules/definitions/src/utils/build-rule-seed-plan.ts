@@ -3,7 +3,7 @@ import { pickRuleChange } from '@heynixie/policy';
 import type { DefinitionRule, RuntimeRule, StoredRule } from '../types';
 import { buildRuntimeOverlay } from './build-runtime-overlay';
 
-export interface RuleEdit {
+interface RuleEdit {
   readonly ruleID: string;
   readonly before: StoredRule | null;
   readonly after: StoredRule | null;
@@ -23,7 +23,6 @@ export interface PlannedRule {
 export interface RuleSeedPlan {
   readonly seeded: readonly StoredRule[];
   readonly applied: readonly RuleEdit[];
-  readonly held: readonly RuleEdit[];
   readonly adopted: readonly RuntimeRule[];
   readonly overlaid: readonly OverlaidRule[];
   readonly inForce: readonly PlannedRule[];
@@ -35,8 +34,9 @@ export interface RuleSeedInput {
   readonly runtime: readonly RuntimeRule[];
 }
 
-// The definitions' rules apply over the ones seeded before only where the edit narrows, and every
-// runtime change stays over both until the definitions hold its version.
+// The definitions' rules apply over the ones seeded before, a widening as at once as a narrowing,
+// because you wrote the repo. Every runtime change stays over both until the definitions hold its
+// version.
 export function buildRuleSeedPlan(input: RuleSeedInput): RuleSeedPlan {
   const overlay = buildRuntimeOverlay({
     seeded: input.definitions.map((rule) => ({ key: rule.rule.id, hash: rule.hash, value: rule })),
@@ -53,7 +53,6 @@ export function buildRuleSeedPlan(input: RuleSeedInput): RuleSeedPlan {
   const seeded = new Map(input.seeded.map((rule) => [rule.rule.id, rule]));
 
   const applied: RuleEdit[] = [];
-  const held: RuleEdit[] = [];
 
   for (const ruleID of [...new Set([...definitions.keys(), ...seeded.keys()])].toSorted()) {
     const before = seeded.get(ruleID) ?? null;
@@ -67,14 +66,7 @@ export function buildRuleSeedPlan(input: RuleSeedInput): RuleSeedPlan {
       ? 'unchanged'
       : pickRuleChange(before?.rule ?? null, after?.rule ?? null);
 
-    const edit = { ruleID, before, after, change };
-
-    if (change === 'widening') {
-      held.push(edit);
-      continue;
-    }
-
-    applied.push(edit);
+    applied.push({ ruleID, before, after, change });
 
     if (after === null) {
       seeded.delete(ruleID);
@@ -86,7 +78,6 @@ export function buildRuleSeedPlan(input: RuleSeedInput): RuleSeedPlan {
   return {
     seeded: [...seeded.values()].toSorted(byRuleID),
     applied,
-    held,
     adopted: overlay.adopted,
     overlaid: overlay.inForce,
     inForce: collectInForce(seeded, overlay.inForce),

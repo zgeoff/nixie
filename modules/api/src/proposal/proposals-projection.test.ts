@@ -3,7 +3,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { nixieSchema, readQueryRows, removeTableRows } from '@heynixie/db';
 import { createPathSource, runSeed } from '@heynixie/definitions';
-import { buildTestTaskSeed } from '@heynixie/definitions/test-utils';
+import { buildTestTaskSeed, seedLegacyRuleProposal } from '@heynixie/definitions/test-utils';
 import { withWriteTransaction, writeRecords } from '@heynixie/log';
 import { defaultGateLimits, defaultOwnerPronouns, startMemoryStore } from '@heynixie/memory';
 import { buildMockWriteCaller } from '@heynixie/memory/test-utils';
@@ -37,6 +37,9 @@ async function setupTest() {
 
   // the writer stamps records with the wall clock, so the test clock starts there
   api.clock.advance(Date.now() - api.clock.now());
+
+  // a rule change proposal that a seed of an earlier release left pending
+  await seedLegacyRuleProposal(api.context.log);
 
   const memory = await startMemoryStore({
     log: api.context.log,

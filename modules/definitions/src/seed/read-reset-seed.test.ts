@@ -20,7 +20,7 @@ function setupTest() {
 
 test('it finds nothing before the first seed', async () => {
   const ctx = await setupTest();
-  const seed = await readResetSeed(ctx.writer.db, 0);
+  const seed = await readResetSeed(ctx.writer.db);
 
   expect(seed).toBeNull();
 });
@@ -49,7 +49,7 @@ test('it reads the seed in force with its snapshot row and the payload of its re
     policy,
   });
 
-  const seed = await readResetSeed(ctx.writer.db, 0);
+  const seed = await readResetSeed(ctx.writer.db);
 
   invariant(seeded.inForce);
 
@@ -72,18 +72,16 @@ test('it reads the seed in force with its snapshot row and the payload of its re
       writtenSkills: [],
       adoptedSkills: [],
       effects: {},
-      heldEffects: [],
       repoBudgets: [],
       repoTasks: [],
       unapplied: [],
       skipped: [],
-      rules: { revisions: [], applied: [], held: [], adopted: [], conflicts: [], proposalID: null },
+      rules: { revisions: [], applied: [], adopted: [], conflicts: [] },
     },
     skills: [],
     written: [],
     beneath: [],
     rules: [],
-    closedProposalHashes: [],
     taskVersions: [],
     runtimeTasks: [],
   });
@@ -103,7 +101,7 @@ test('it covers the repo version and the runtime version of a replaced definitio
     }),
   });
 
-  const seed = await readResetSeed(ctx.writer.db, 0);
+  const seed = await readResetSeed(ctx.writer.db);
 
   expect(seed?.taskVersions.map((version) => version.definition_id)).toStrictEqual([
     'water-the-tomatoes',
@@ -127,7 +125,7 @@ test('it keeps a runtime change in force through a reset and the seed after it',
 
   await runLogReset(ctx.log, {
     keptTables: [],
-    readKept: (tx) => readResetSeed(tx, 0),
+    readKept: (tx) => readResetSeed(tx),
     writeFirstRecords: async (tx, seed) => {
       invariant(seed);
 

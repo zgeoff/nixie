@@ -32,17 +32,17 @@ Monday and a month on the first. The refusal text and the client show the next s
 
 ## Budgets in force
 
-The seed compares each budget with the one in force, as it does for a rule, and sorts each edit:
+The seed compares each budget with the one in force, as it does for a rule, and applies each edit at
+once, as [rules in force](rules.md#rules-in-force) explains. The seed record lists each edit with
+its class:
 
-- A new budget, a removed budget and a lower limit apply at once.
-- A higher limit, or a changed period or counts, widens the budget. The seed adds it to the rule
-  change proposal that holds the widened rules, and the old budget stays in force until the user
-  approves. Approval writes the budget as seeded.
-- A budget that raises the built-in limit of a paid tool counts as widening too.
+- A new budget, a removed budget and a lower limit narrow.
+- A higher limit, or a changed period or counts, widens the budget.
+- A budget that raises the built-in limit of a paid tool widens too.
 
 The `budgets_in_force` table holds each budget with its limit in micros, its hash and the sequence
-of its last change. The seed record holds the repo's budgets, so the seed that follows an approval
-sees what the repo asked for. A log reset keeps the table, as it keeps the rule store.
+of its last change. The seed record holds the repo's budgets. A log reset keeps the table, as it
+keeps the rule store.
 
 ## The ledger
 
@@ -111,10 +111,11 @@ question.
 
 ## Changing a lift or a budget
 
-Adding a lift, raising its `perAction` or pointing it at another budget widens the rule, and
-[the widening check](rules.md#the-widening-check) holds the change for approval in the lifting risk
-class. Removing a lift or lowering `perAction` narrows. A rule that names an always-ask effect has
-the lifting class too, as before.
+Adding a lift, raising its `perAction` or pointing it at another budget widens the rule, by
+[the widening check](rules.md#the-widening-check). Removing a lift or lowering `perAction` narrows.
+A widening made inside nixie, such as an edited proposed rule or a mandate, asks for approval in the
+lifting risk class, and so does a rule that names an always-ask effect. A widening from the
+definitions repo applies at the next seed and skips that class.
 
 ## Commands
 

@@ -12,11 +12,8 @@ export interface BudgetEdit {
 }
 
 export interface BudgetSeedPlan {
-  // edits that apply at once: a new budget, a lowered limit and a removed budget
+  // every edit, which applies at once: a raised limit as much as a lowered one
   readonly applied: readonly BudgetEdit[];
-
-  // edits that wait in the seed's widening proposal: a raised limit, or another period or count
-  readonly held: readonly BudgetEdit[];
 
   // the budgets in force once the applied edits land
   readonly inForce: readonly DefinitionBudget[];
@@ -38,7 +35,6 @@ export function buildBudgetSeedPlan(input: BudgetSeedInput): BudgetSeedPlan {
   const builtIn = new Map(input.builtIn.map((budget) => [budget.id, budget]));
 
   const applied: BudgetEdit[] = [];
-  const held: BudgetEdit[] = [];
 
   for (const budgetID of [...new Set([...definitions.keys(), ...inForce.keys()])].toSorted()) {
     const stored = inForce.get(budgetID) ?? null;
@@ -49,14 +45,8 @@ export function buildBudgetSeedPlan(input: BudgetSeedInput): BudgetSeedPlan {
     }
 
     const before = stored ?? builtIn.get(budgetID) ?? null;
-    const edit = { budgetID, before: stored, after, change: pickBudgetChange(before, after) };
 
-    if (edit.change === 'widening') {
-      held.push(edit);
-      continue;
-    }
-
-    applied.push(edit);
+    applied.push({ budgetID, before: stored, after, change: pickBudgetChange(before, after) });
 
     if (after === null) {
       inForce.delete(budgetID);
@@ -67,7 +57,6 @@ export function buildBudgetSeedPlan(input: BudgetSeedInput): BudgetSeedPlan {
 
   return {
     applied,
-    held,
     inForce: [...inForce.values()].toSorted((left, right) => (left.id < right.id ? -1 : 1)),
   };
 }

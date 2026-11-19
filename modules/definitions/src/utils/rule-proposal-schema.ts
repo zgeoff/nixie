@@ -46,3 +46,5 @@ export const ruleProposalSchema = z.object({
     .array()
     .default([]),
 });
+
+export type RuleProposal = z.output<typeof ruleProposalSchema>;

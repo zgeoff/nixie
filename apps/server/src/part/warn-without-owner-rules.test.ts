@@ -30,24 +30,7 @@ async function setupTest() {
   };
 }
 
-test('it warns and names the first seeds pending proposal when only its allows are held', async () => {
-  const ctx = await setupTest();
-
-  await ctx.writeRules('allow-reads:\n  outcome: allow\n  effects: [read]\n');
-  await ctx.runSeed();
-  await ctx.warn();
-
-  expect(ctx.log).toHaveBeenCalledExactlyOnceWith(
-    'policy.no_rules_in_force',
-    {
-      proposalID: expect.stringMatching(/^[a-z0-9]{10}$/u),
-      action: expect.stringContaining('nixie proposals approve '),
-    },
-    'warn',
-  );
-});
-
-test('it warns with no proposal when the definitions hold no rule', async () => {
+test('it warns when the definitions hold no rule', async () => {
   const ctx = await setupTest();
 
   await ctx.runSeed();
@@ -55,15 +38,18 @@ test('it warns with no proposal when the definitions hold no rule', async () => 
 
   expect(ctx.log).toHaveBeenCalledExactlyOnceWith(
     'policy.no_rules_in_force',
-    { proposalID: null, action: expect.stringContaining('Add rules') },
+    { action: expect.stringContaining('Add rules') },
     'warn',
   );
 });
 
-test('it logs nothing once a rule of the owner is in force', async () => {
+test.each([
+  ['an ask', 'ask-exports:\n  outcome: ask\n  effects: [export]\n'],
+  ['an allow', 'allow-reads:\n  outcome: allow\n  effects: [read]\n'],
+])('it logs nothing once %s of the owner is in force', async (_label, rules) => {
   const ctx = await setupTest();
 
-  await ctx.writeRules('ask-exports:\n  outcome: ask\n  effects: [export]\n');
+  await ctx.writeRules(rules);
   await ctx.runSeed();
   await ctx.warn();
 

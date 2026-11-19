@@ -146,14 +146,11 @@ mail.draft:
   remove: [write]
 ```
 
-An effect that joins a tool applies at once. An effect that leaves widens the policy, because the
-tool can then pass a rule it did not before, so the tool keeps it until you approve the removal in
-the rule change proposal of that seed. A file that names an unknown tool or effect, removes an
-effect the tool lacks, or adds one it already holds refuses the whole seed.
-
-An approval covers the removal until the next seed applies it. If the effect later returns and a
-file removes it again, the removal waits for a new approval. The proposal lists each removal with a
-sentence, in `nixie proposals list` and on the proposals screen.
+An effect that joins a tool and an effect that leaves it both apply at the seed. An effect that
+leaves widens the policy, because the tool can then pass a rule it did not before, but the seed
+trusts the repo, as [rules in force](rules.md#rules-in-force) explains. The same holds for an effect
+that a nixie release drops from a tool's declaration. A file that names an unknown tool or effect,
+removes an effect the tool lacks, or adds one it already holds refuses the whole seed.
 
 The declarations in force, with the overrides applied, are part of the policy that the snapshot hash
 covers ([the definitions](../core/definitions.md#the-snapshot-hash)).
@@ -165,5 +162,5 @@ log-only connector's tool at stage 7, so the [queue check](../core/actions.md#th
 reaches the action queue on every start. A test build adds a rule that allows the crash tests' send
 tool. The bundler drops it from the release bundle.
 
-With no rule of yours in force, every call that consent does not allow asks. The start logs a
-warning, and names the first seed's rule change proposal when it still waits for your approval.
+With no rule of yours in force, every call that consent does not allow asks, and the start logs a
+warning.

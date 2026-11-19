@@ -3,7 +3,7 @@ import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createPathSource, runInForceSeed, runSeed, writeRuntimeRule } from '@heynixie/definitions';
-import { buildTestTaskSeed } from '@heynixie/definitions/test-utils';
+import { buildTestTaskSeed, seedLegacyRuleProposal } from '@heynixie/definitions/test-utils';
 import { startWriter } from '@heynixie/log';
 import { buildTestClock } from '@heynixie/testing';
 import { createRouterClient } from '@orpc/server';
@@ -55,25 +55,6 @@ async function setupTest() {
         log,
         source: createPathSource({ directory: root }),
         buildPolicy: () => ({ rules: [], tools: [] }),
-      }),
-    runMailToolSeed: () =>
-      runSeed({
-        tasks: buildTestTaskSeed(),
-        log,
-        source: createPathSource({ directory: root }),
-        buildPolicy: () => ({
-          rules: [],
-          tools: [
-            {
-              name: 'mail.draft',
-              effects: ['send', 'write'],
-              destinations: [],
-              amount: null,
-              content: [],
-              results: {},
-            },
-          ],
-        }),
       }),
   };
 }
@@ -204,26 +185,28 @@ test('#resolve refuses a rule with no conflict as not found', async () => {
 test('#proposals.list shows a pending rule change proposal with the sentence of each version', async () => {
   const ctx = await setupTest();
 
-  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 3\n');
-  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
-
-  await writeFile(
-    join(ctx.root, 'rules', 'web.yaml'),
-    'allow-web:\n  outcome: allow\n  tools: [web.fetch]\n',
-  );
-
-  await ctx.runSeed();
+  await seedLegacyRuleProposal(ctx.context.log, {
+    changes: [
+      {
+        ruleID: 'allow-web',
+        before: null,
+        after: { hash: 'h-web', sentence: 'Allow web.fetch.' },
+        fields: [],
+      },
+    ],
+    effectChanges: [],
+  });
 
   const proposals = await ctx.client.proposals.list();
 
   expect(proposals).toStrictEqual([
     {
-      proposalID: expect.any(String),
+      proposalID: 'legacy-proposal',
       changes: [
         {
           ruleID: 'allow-web',
           before: null,
-          after: { ruleHash: expect.any(String), sentence: expect.stringContaining('web.fetch') },
+          after: { ruleHash: 'h-web', sentence: 'Allow web.fetch.' },
         },
       ],
       effectChanges: [],
@@ -233,51 +216,32 @@ test('#proposals.list shows a pending rule change proposal with the sentence of 
   ]);
 });
 
-test('#proposals.approve puts the widening in force', async () => {
+test('#proposals.approve closes the proposal', async () => {
   const ctx = await setupTest();
+  const proposal = await seedLegacyRuleProposal(ctx.context.log);
 
-  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 3\n');
-  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+  await ctx.client.proposals.approve({ proposalID: proposal.proposalID });
 
-  await writeFile(
-    join(ctx.root, 'rules', 'web.yaml'),
-    'allow-web:\n  outcome: allow\n  tools: [web.fetch]\n',
-  );
+  const proposals = await ctx.client.proposals.list();
 
-  await ctx.runSeed();
-
-  const [pending] = await ctx.client.proposals.list();
-
-  const proposalID = pending?.proposalID ?? 'missing';
-
-  await ctx.client.proposals.approve({ proposalID });
-
-  const rules = await ctx.client.list();
-
-  expect(rules.map((rule) => rule.ruleID)).toStrictEqual(['allow-web']);
+  expect(proposals).toStrictEqual([]);
 });
 
-test('#proposals.reject leaves the widening out of force', async () => {
+test('#proposals.reject closes the proposal with your reason', async () => {
   const ctx = await setupTest();
+  const proposal = await seedLegacyRuleProposal(ctx.context.log);
 
-  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 3\n');
-  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+  const rejected = await ctx.client.proposals.reject({
+    proposalID: proposal.proposalID,
+    reason: 'Not this week.',
+  });
 
-  await writeFile(
-    join(ctx.root, 'rules', 'web.yaml'),
-    'allow-web:\n  outcome: allow\n  tools: [web.fetch]\n',
-  );
+  const proposals = await ctx.client.proposals.list();
 
-  await ctx.runSeed();
-
-  const [pending] = await ctx.client.proposals.list();
-
-  const proposalID = pending?.proposalID ?? 'missing';
-
-  const rejected = await ctx.client.proposals.reject({ proposalID, reason: 'Not this week.' });
-  const rules = await ctx.client.list();
-
-  expect({ rejected, rules }).toStrictEqual({ rejected: { proposalID }, rules: [] });
+  expect({ rejected, proposals }).toStrictEqual({
+    rejected: { proposalID: proposal.proposalID },
+    proposals: [],
+  });
 });
 
 test('#proposals.approve refuses a proposal it has no record of as not found', async () => {
@@ -292,24 +256,14 @@ test('#proposals.approve refuses a proposal it has no record of as not found', a
 
 test('#proposals.reject refuses a proposal you answered as closed', async () => {
   const ctx = await setupTest();
+  const proposal = await seedLegacyRuleProposal(ctx.context.log);
 
-  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 3\n');
-  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+  await ctx.client.proposals.approve({ proposalID: proposal.proposalID });
 
-  await writeFile(
-    join(ctx.root, 'rules', 'web.yaml'),
-    'allow-web:\n  outcome: allow\n  tools: [web.fetch]\n',
-  );
-
-  await ctx.runSeed();
-
-  const [pending] = await ctx.client.proposals.list();
-
-  const proposalID = pending?.proposalID ?? 'missing';
-
-  await ctx.client.proposals.approve({ proposalID });
-
-  const rejected = ctx.client.proposals.reject({ proposalID, reason: 'Not this week.' });
+  const rejected = ctx.client.proposals.reject({
+    proposalID: proposal.proposalID,
+    reason: 'Not this week.',
+  });
 
   await Promise.allSettled([rejected]);
 
@@ -319,21 +273,15 @@ test('#proposals.reject refuses a proposal you answered as closed', async () => 
 test('#proposals.list shows an effect removal that no rule change comes with', async () => {
   const ctx = await setupTest();
 
-  await mkdir(join(ctx.root, 'effects'));
-  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 4\n');
-  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
-
-  await ctx.runMailToolSeed();
-
-  await writeFile(join(ctx.root, 'effects', 'mail.yaml'), 'mail.draft:\n  remove: [send]\n');
-
-  await ctx.runMailToolSeed();
+  await seedLegacyRuleProposal(ctx.context.log, {
+    effectChanges: [{ tool: 'mail.draft', remove: ['send'] }],
+  });
 
   const proposals = await ctx.client.proposals.list();
 
   expect(proposals).toStrictEqual([
     {
-      proposalID: expect.any(String),
+      proposalID: 'legacy-proposal',
       changes: [],
       effectChanges: [
         { tool: 'mail.draft', remove: ['send'], sentence: expect.stringContaining('send') },

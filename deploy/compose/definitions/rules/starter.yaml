@@ -1,5 +1,5 @@
 # The starter rules. Copy them into your own definitions repo and edit them there.
-# The first seed applies the asks at once, and gathers the allows into one proposal for you to approve.
+# The first seed applies every rule here at once.
 
 allow-reads:
   outcome: allow

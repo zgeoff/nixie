@@ -6,6 +6,7 @@ import { startWriter } from '@heynixie/log';
 import { proposalLapseMs } from '@heynixie/proposals';
 import { createPathSource } from '../definition/create-path-source';
 import { buildTestTaskSeed } from '../test-utils/build-test-task-seed';
+import { seedLegacyRuleProposal } from '../test-utils/seed-legacy-rule-proposal';
 import { readRuleProposals } from './read-rule-proposals';
 import { runSeed } from './run-seed';
 import { writeRuleProposalLapses } from './write-rule-proposal-lapses';
@@ -55,15 +56,7 @@ async function setupTest() {
 test('it lapses a rule change proposal left unanswered past its lapse time', async () => {
   const ctx = await setupTest();
 
-  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 3\n');
-  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
-
-  await writeFile(
-    join(ctx.root, 'rules', 'web.yaml'),
-    'allow-web:\n  outcome: allow\n  tools: [web.fetch]\n',
-  );
-
-  await ctx.runSeed();
+  await seedLegacyRuleProposal(ctx.log);
 
   ctx.time.now += proposalLapseMs;
 
@@ -79,15 +72,7 @@ test('it lapses a rule change proposal left unanswered past its lapse time', asy
 test('it leaves a rule change proposal within its lapse time pending', async () => {
   const ctx = await setupTest();
 
-  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 3\n');
-  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
-
-  await writeFile(
-    join(ctx.root, 'rules', 'web.yaml'),
-    'allow-web:\n  outcome: allow\n  tools: [web.fetch]\n',
-  );
-
-  await ctx.runSeed();
+  await seedLegacyRuleProposal(ctx.log);
 
   ctx.time.now += proposalLapseMs - 1;
 
@@ -99,20 +84,9 @@ test('it leaves a rule change proposal within its lapse time pending', async () 
 test('it leaves a withdrawn rule change proposal withdrawn', async () => {
   const ctx = await setupTest();
 
+  await seedLegacyRuleProposal(ctx.log);
   await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 3\n');
   await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
-
-  await writeFile(
-    join(ctx.root, 'rules', 'web.yaml'),
-    'allow-web:\n  outcome: allow\n  tools: [web.fetch]\n',
-  );
-
-  await ctx.runSeed();
-
-  await writeFile(
-    join(ctx.root, 'rules', 'web.yaml'),
-    'allow-web:\n  outcome: allow\n  tools: [web.*]\n',
-  );
 
   await ctx.runSeed();
 
@@ -122,5 +96,5 @@ test('it leaves a withdrawn rule change proposal withdrawn', async () => {
 
   const proposals = await readRuleProposals(ctx.log.writer.db);
 
-  expect(proposals.map((entry) => entry.outcome)).toStrictEqual(['withdrawn', 'lapsed']);
+  expect(proposals.map((entry) => entry.outcome)).toStrictEqual(['withdrawn']);
 });

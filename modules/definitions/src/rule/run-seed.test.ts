@@ -21,6 +21,7 @@ import { TaskSeedRefusedError } from '../task/task-seed-refused-error';
 import { buildTestTaskSeed } from '../test-utils/build-test-task-seed';
 import { buildTestToolDeclaration } from '../test-utils/build-test-tool-declaration';
 import { createStubGitSyncWorktree } from '../test-utils/create-stub-git-sync-worktree';
+import { seedLegacyRuleProposal } from '../test-utils/seed-legacy-rule-proposal';
 import { buildContentHash } from '../utils/build-content-hash';
 import { buildSHA256 } from '../utils/build-sha256';
 import { DefinitionsParseError } from '../utils/definitions-parse-error';
@@ -28,6 +29,7 @@ import { toCanonicalJSON } from '../utils/to-canonical-json';
 import { readWrittenSkills } from '../written/read-written-skills';
 import { writeWrittenSkill } from '../written/write-written-skill';
 import { writeWrittenSkillState } from '../written/write-written-skill-state';
+import { readRuleProposals } from './read-rule-proposals';
 import { readRulesInForce } from './read-rules-in-force';
 import { ruleFiresProjection } from './rule-fires-projection';
 import { runSeed } from './run-seed';
@@ -1670,10 +1672,8 @@ test('it applies a rule edit that narrows and records it in the seed record', as
   expect(result.record.payload['rules']).toStrictEqual({
     revisions: [{ ruleID: 'ask-mail', revision: 2, hash: expect.any(String) }],
     applied: [{ ruleID: 'ask-mail', change: 'narrowing' }],
-    held: [],
     adopted: [],
     conflicts: [],
-    proposalID: null,
   });
 });
 
@@ -1762,7 +1762,7 @@ test('it puts a rule edit that narrows in force', async () => {
   ]);
 });
 
-test('it keeps the version in force and proposes a rule edit that widens', async () => {
+test('it puts a rule edit that widens in force', async () => {
   const ctx = await setupTest();
 
   await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 3\n');
@@ -1797,10 +1797,96 @@ test('it keeps the version in force and proposes a rule edit that widens', async
 
   expect(
     rules.map((entry) => [entry.ruleID, entry.revision, entry.rule.rule.outcome]),
-  ).toStrictEqual([['deny-mail', 1, 'deny']]);
+  ).toStrictEqual([['deny-mail', 2, 'ask']]);
 });
 
-test('it writes a rule edit that widens as one rule change proposal beside the seed record', async () => {
+test('it withdraws a rule change proposal that an earlier release left pending, and puts the widening in force', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 3\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+  await mkdir(join(ctx.root, 'rules'));
+
+  await writeFile(
+    join(ctx.root, 'rules', 'mail.yaml'),
+    'deny-mail:\n  outcome: deny\n  tools: [mail.send]\n',
+  );
+
+  await runSeed({
+    tasks: buildTestTaskSeed(),
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => ({ rules: [], tools: [] }),
+  });
+
+  const proposal = await seedLegacyRuleProposal(ctx.log);
+
+  await writeFile(
+    join(ctx.root, 'rules', 'mail.yaml'),
+    'deny-mail:\n  outcome: ask\n  tools: [mail.send]\n',
+  );
+
+  await runSeed({
+    tasks: buildTestTaskSeed(),
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => ({ rules: [], tools: [] }),
+  });
+
+  const proposals = await readRuleProposals(ctx.writer.db);
+  const rules = await readRulesInForce(ctx.writer.db);
+  const records = await readRecords(ctx.log, { afterSequence: 2 });
+
+  expect({
+    outcomes: proposals.map((state) => state.outcome),
+    rules: rules.map((entry) => [entry.ruleID, entry.rule.rule.outcome]),
+    records: records.map((read) => [read.record.kind, read.record.payload['proposalID'] ?? null]),
+  }).toStrictEqual({
+    outcomes: ['withdrawn'],
+    rules: [['deny-mail', 'ask']],
+    records: [
+      ['definitions_seeded', null],
+      ['rules.change_withdrawn', proposal.proposalID],
+    ],
+  });
+});
+
+test('it withdraws a rule change proposal that an earlier release left pending, when nothing else changed', async () => {
+  const ctx = await setupTest();
+
+  await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 3\n');
+  await writeFile(join(ctx.root, 'persona.md'), '# Persona\n');
+
+  const first = await runSeed({
+    tasks: buildTestTaskSeed(),
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => ({ rules: [], tools: [] }),
+  });
+
+  await seedLegacyRuleProposal(ctx.log);
+
+  const result = await runSeed({
+    tasks: buildTestTaskSeed(),
+    log: ctx.log,
+    source: ctx.source,
+    buildPolicy: () => ({ rules: [], tools: [] }),
+  });
+
+  const proposals = await readRuleProposals(ctx.writer.db);
+
+  expect({
+    status: result.status,
+    snapshotHash: result.inForce?.snapshotHash,
+    outcomes: proposals.map((state) => state.outcome),
+  }).toStrictEqual({
+    status: 'seeded',
+    snapshotHash: first.inForce?.snapshotHash,
+    outcomes: ['withdrawn'],
+  });
+});
+
+test('it records a rule edit that widens as applied in the seed record, with no proposal', async () => {
   const ctx = await setupTest();
 
   await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 3\n');
@@ -1833,35 +1919,20 @@ test('it writes a rule edit that widens as one rule change proposal beside the s
 
   const records = await readRecords(ctx.log, { afterSequence: 1 });
 
-  expect(records.map((read) => read.record.payload)).toStrictEqual([
-    expect.objectContaining({
-      rules: {
-        revisions: [],
-        applied: [],
-        held: ['deny-mail'],
+  expect(records.map((read) => [read.record.kind, read.record.payload['rules']])).toStrictEqual([
+    [
+      'definitions_seeded',
+      {
+        revisions: [{ ruleID: 'deny-mail', revision: 2, hash: expect.any(String) }],
+        applied: [{ ruleID: 'deny-mail', change: 'widening' }],
         adopted: [],
         conflicts: [],
-        proposalID: expect.any(String),
       },
-    }),
-    {
-      proposalID: expect.any(String),
-      proposalHash: expect.any(String),
-      changes: [
-        {
-          ruleID: 'deny-mail',
-          before: { hash: expect.any(String), sentence: expect.any(String) },
-          after: { hash: expect.any(String), sentence: expect.any(String) },
-          fields: [{ field: 'outcome', before: '"deny"', after: '"ask"' }],
-        },
-      ],
-      budgetChanges: [],
-      effectChanges: [],
-    },
+    ],
   ]);
 });
 
-test('it applies the denies and asks of a first seed and gathers its allows into one proposal', async () => {
+test('it applies every rule of a first seed, its allows with its denies and asks', async () => {
   const ctx = await setupTest();
 
   await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 3\n');
@@ -1889,17 +1960,19 @@ test('it applies the denies and asks of a first seed and gathers its allows into
 
   expect(result.record.payload['rules']).toStrictEqual({
     revisions: [
+      { ruleID: 'allow-notes', revision: 1, hash: expect.any(String) },
+      { ruleID: 'allow-web', revision: 1, hash: expect.any(String) },
       { ruleID: 'ask-mail', revision: 1, hash: expect.any(String) },
       { ruleID: 'deny-shell', revision: 1, hash: expect.any(String) },
     ],
     applied: [
+      { ruleID: 'allow-notes', change: 'widening' },
+      { ruleID: 'allow-web', change: 'widening' },
       { ruleID: 'ask-mail', change: 'narrowing' },
       { ruleID: 'deny-shell', change: 'narrowing' },
     ],
-    held: ['allow-notes', 'allow-web'],
     adopted: [],
     conflicts: [],
-    proposalID: expect.any(String),
   });
 });
 
@@ -2057,7 +2130,7 @@ test('it seeds an effect that an override adds at once, and the snapshot holds i
   expect(effects).toStrictEqual(new Map([['mail.draft', ['send', 'spend', 'write']]]));
 });
 
-test('it holds a removed effect as a proposal until you approve it', async () => {
+test('it seeds an effect that an override removes at once, and the snapshot leaves it out', async () => {
   const ctx = await setupTest();
 
   await mkdir(join(ctx.root, 'effects'));
@@ -2082,14 +2155,9 @@ test('it holds a removed effect as a proposal until you approve it', async () =>
 
   invariant(result.inForce);
 
-  const records = await readRecords(ctx.log, { afterSequence: 1 });
   const effects = await readSnapshotToolEffects(ctx.writer.db, result.inForce.snapshotHash);
 
-  expect(records.map((read) => read.record.payload)).toContainEqual(
-    expect.objectContaining({ effectChanges: [{ tool: 'mail.draft', remove: ['send'] }] }),
-  );
-
-  expect(effects).toStrictEqual(new Map([['mail.draft', ['send', 'write']]]));
+  expect(effects).toStrictEqual(new Map([['mail.draft', ['write']]]));
 });
 
 test('it refuses an override of a tool the code does not declare', async () => {
@@ -2943,7 +3011,7 @@ test('it applies a removed budget at once', async () => {
   expect(rows.rows).toStrictEqual([]);
 });
 
-test('it holds a raised budget limit in the widening proposal and keeps the limit in force', async () => {
+test('it puts a raised budget limit in force, with no proposal', async () => {
   const ctx = await setupTest();
 
   await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 5\n');
@@ -2977,39 +3045,13 @@ test('it holds a raised budget limit in the widening proposal and keeps the limi
   const rows = await sql`select limit_micros from budgets_in_force`.execute(ctx.writer.db);
   const records = await readRecords(ctx.log, { afterSequence: 1 });
 
-  expect(rows.rows).toStrictEqual([{ limit_micros: 100_000_000 }]);
-
-  expect(records.map((read) => read.record.payload)).toStrictEqual([
-    expect.objectContaining({ rules: expect.objectContaining({ held: [] }) }),
-    {
-      proposalID: expect.any(String),
-      proposalHash: expect.any(String),
-      changes: [],
-      effectChanges: [],
-      budgetChanges: [
-        {
-          budgetID: 'shopping-month',
-          before: {
-            hash: expect.any(String),
-            counts: 'spend',
-            limitMicros: 100_000_000,
-            period: 'month',
-            sentence: 'Let the budget shopping-month hold $100.00 a month for purchases.',
-          },
-          after: {
-            hash: expect.any(String),
-            counts: 'spend',
-            limitMicros: 150_000_000,
-            period: 'month',
-            sentence: 'Let the budget shopping-month hold $150.00 a month for purchases.',
-          },
-        },
-      ],
-    },
-  ]);
+  expect({
+    limits: rows.rows,
+    kinds: records.map((read) => read.record.kind),
+  }).toStrictEqual({ limits: [{ limit_micros: 150_000_000 }], kinds: ['definitions_seeded'] });
 });
 
-test('it holds a budget that raises a built-in limit, and applies one that lowers it', async () => {
+test('it applies a budget that raises a built-in limit, as one that lowers it', async () => {
   const ctx = await setupTest();
 
   await writeFile(join(ctx.root, 'nixie.yaml'), 'format: 5\n');
@@ -3034,5 +3076,5 @@ test('it holds a budget that raises a built-in limit, and applies one that lower
 
   const rows = await sql`select budget_id from budgets_in_force`.execute(ctx.writer.db);
 
-  expect(rows.rows).toStrictEqual([{ budget_id: 'search-month' }]);
+  expect(rows.rows).toStrictEqual([{ budget_id: 'search-day' }, { budget_id: 'search-month' }]);
 });
