@@ -9,9 +9,11 @@ on:
 permissions:
   contents: read
 
+# Keyed by commit and never cancelled, so every push to main is tested; two
+# runs of one commit, such as a rerun, wait for each other.
 concurrency:
-  group: main
-  cancel-in-progress: true
+  group: main-checks-${{ github.sha }}
+  cancel-in-progress: false
 
 jobs:
   checks:
