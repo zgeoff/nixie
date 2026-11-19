@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.86.0](https://github.com/zgeoff/nixie/compare/v0.85.0...v0.86.0) (2026-11-19)
+
+
+### Features
+
+* **model-gateway:** log the usage of each counted reply ([#1271](https://github.com/zgeoff/nixie/issues/1271)) ([09bfc82](https://github.com/zgeoff/nixie/commit/09bfc82868ee0faaba08d65e3e5dd9ce015e2b74))
+
+
+### Bug Fixes
+
+* **definitions:** give definition task runs the tools they name ([#1274](https://github.com/zgeoff/nixie/issues/1274)) ([804601e](https://github.com/zgeoff/nixie/commit/804601ece69de028493ecc63ef7cc28e3603c15d))
+* **deps:** update @zgeoff/std to v0.4.4 ([#1246](https://github.com/zgeoff/nixie/issues/1246)) ([814b703](https://github.com/zgeoff/nixie/commit/814b7038fe24ec3a2769e482883f0036d591c28b))
+
 ## [0.85.0](https://github.com/zgeoff/nixie/compare/v0.84.1...v0.85.0) (2026-11-19)
 
 
