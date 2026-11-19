@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.84.1](https://github.com/zgeoff/nixie/compare/v0.84.0...v0.84.1) (2026-11-19)
+
+
+### Bug Fixes
+
+* **model-gateway:** count the usage of codex streams from a chatgpt plan ([#1256](https://github.com/zgeoff/nixie/issues/1256)) ([1b21a22](https://github.com/zgeoff/nixie/commit/1b21a22e20506fe7f77a5b1f09ea7feb79e2dca6))
+
 ## [0.84.0](https://github.com/zgeoff/nixie/compare/v0.83.2...v0.84.0) (2026-11-19)
 
 
