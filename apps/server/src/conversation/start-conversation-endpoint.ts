@@ -34,6 +34,7 @@ import type { ActionQueue, ToolDefinition, ToolEndpoint } from '@heynixie/tools'
 import { buildToolRegistry, findToolDeclaration, startToolEndpoint } from '@heynixie/tools';
 import { buildContactTool } from '../cli/build-contact-tool';
 import { buildMandateTool } from '../rule/build-mandate-tool';
+import { buildRulesListTool } from '../rule/build-rules-list-tool';
 import { makeReadZone } from '../server/make-read-zone';
 import { buildTaskStartBounds } from '../task/build-task-start-bounds';
 import type { ServerParts } from '../types';
@@ -208,6 +209,7 @@ export async function startConversationEndpoint(
       maxHours: options.config.policy.mandates.maxHours,
       defaultZone: options.config.time.default_zone,
     }),
+    buildRulesListTool(options.context),
     buildSilentEndTool(messaging),
     buildTaskReportTool(options.context),
   ];
