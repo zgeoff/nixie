@@ -37,6 +37,7 @@ const disabledFeatures = [
   'guardian_approval',
   'hooks',
   'image_generation',
+  'memories',
   'multi_agent',
   'plugins',
   'remote_plugin',

@@ -19,11 +19,13 @@ nixie never asked for?
   empties the text of the 3 MCP resource helpers, which cut 1,485 bytes, about 281 tokens, from each
   request.
 - What stays cannot go: the 3 helpers' names, the namespace line, and a 36-byte wall-time header on
-  each tool result. Codex adds each one with no setting to turn it off.
+  each tool result. Codex adds each one with no setting to turn it off. Codex also drops the length
+  and range limits from nixie's tool schemas, so the model never sees them.
 - On a plan login, the CLI's analytics upload to `chatgpt.com` stops under the guest's new
   `[analytics]` table. When the plan account turns on commit attribution, Codex adds a 1,125-byte
-  developer message, and only the broker's refusal of that settings path keeps it out.
-- Without nixie's catalog, the CLI's bundled entry adds 9,448 bytes, about 2,444 tokens. That entry
+  developer message. In production, the broker's refusal of that settings path keeps it out, and a
+  closed `chatgpt_base_url` in the guest would keep it out as well.
+- Without nixie's catalog, the CLI's bundled entry adds 9,448 bytes, about 2,446 tokens. That entry
   makes up most of the 2,767 input tokens that the [codex-app-server](../codex-app-server/) spike's
   first call read, because that spike wrote no catalog.
 

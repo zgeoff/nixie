@@ -110,6 +110,16 @@ const variants: readonly Variant[] = [
     changeCatalog: (catalog) => catalog,
   },
   {
+    name: 'attribution-closed-backend',
+    description:
+      'attribution-plan-backend, with chatgpt_base_url at a closed loopback port in place of the stub',
+    isPlanLogin: true,
+    stub: { toolCall: null, userSettings: { commit_attribution_enabled: true } },
+    changeConfig: (config) =>
+      addTopLevelKeys(config, ['chatgpt_base_url = "http://127.0.0.1:9/backend-api/"']),
+    changeCatalog: (catalog) => catalog,
+  },
+  {
     name: 'tool-call',
     description: 'production, with a first reply that calls time.now, so a second request follows',
     isPlanLogin: false,

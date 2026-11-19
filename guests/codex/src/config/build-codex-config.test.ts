@@ -163,6 +163,7 @@ test('it writes the config of an API key profile exactly as it did before the pl
       'guardian_approval = false',
       'hooks = false',
       'image_generation = false',
+      'memories = false',
       'multi_agent = false',
       'plugins = false',
       'remote_plugin = false',

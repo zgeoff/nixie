@@ -37,24 +37,26 @@ part of every model request.
 ### Tokens
 
 The stub has no tokenizer of the model, so each token count is an `o200k_base` count of the part's
-text, or of its JSON for a tool or an input item that is not a message. For the bundled catalog's
-request, `o200k_base` counts 2,652 tokens [measured]. The codex-app-server spike's first call sent
-the same bundled entry with a smaller prompt and one tool, and the model API counted 2,767 input
-tokens for it [from a record]. Treat each count as an estimate within a few percent.
+text, or of its JSON for a tool or an input item that is not a message. No count here is checked
+against the model API's own count. The closest pair: `o200k_base` counts 2,654 tokens for the
+bundled catalog's request [measured], and the model API counted 2,767 input tokens for the
+codex-app-server spike's first call [from a record]. That call sent a different prompt and tool, and
+most likely the same bundled entry, since that spike wrote no catalog.
 
 ## The variants
 
-| Variant                    | What changes                                                                                                          |
-| -------------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| `before`                   | the guest as it was before this spike: no `[analytics]` or `[feedback]` table, and no `model_messages` in the catalog |
-| `before-plan-backend`      | `before`, on a plan login, with `chatgpt_base_url` at the stub                                                        |
-| `production`               | nothing: the guest's config and catalog, with an API key                                                              |
-| `production-plan`          | `production`, on a plan login, with the ChatGPT backend left at `chatgpt.com`                                         |
-| `production-plan-backend`  | `production`, on a plan login, with `chatgpt_base_url` at the stub                                                    |
-| `attribution-plan-backend` | `production-plan-backend`, with a user settings answer that turns commit attribution on                               |
-| `tool-call`                | `production`, with a first reply that calls `time.now`, so a second request follows                                   |
-| `bundled-catalog`          | `production`, without `model_catalog_json`, so the CLI uses its bundled entry                                         |
-| `capture-tag`              | `production`, with a turn-input capture tag in the base URL's path                                                    |
+| Variant                      | What changes                                                                                                          |
+| ---------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `before`                     | the guest as it was before this spike: no `[analytics]` or `[feedback]` table, and no `model_messages` in the catalog |
+| `before-plan-backend`        | `before`, on a plan login, with `chatgpt_base_url` at the stub                                                        |
+| `production`                 | nothing: the guest's config and catalog, with an API key                                                              |
+| `production-plan`            | `production`, on a plan login, with the ChatGPT backend left at `chatgpt.com`                                         |
+| `production-plan-backend`    | `production`, on a plan login, with `chatgpt_base_url` at the stub                                                    |
+| `attribution-plan-backend`   | `production-plan-backend`, with a user settings answer that turns commit attribution on                               |
+| `attribution-closed-backend` | `attribution-plan-backend`, with `chatgpt_base_url` at a closed loopback port in place of the stub                    |
+| `tool-call`                  | `production`, with a first reply that calls `time.now`, so a second request follows                                   |
+| `bundled-catalog`            | `production`, without `model_catalog_json`, so the CLI uses its bundled entry                                         |
+| `capture-tag`                | `production`, with a turn-input capture tag in the base URL's path                                                    |
 
 Every variant ended its turn with `finished` [measured].
 
@@ -79,33 +81,44 @@ The `production` variant's request body is 8,127 bytes as sent [measured]:
 | 8 other fields                      | metadata | 133   | -      |
 | braces, commas and keys             | JSON     | 409   | -      |
 
-- The body holds no `instructions` field and no Codex developer message [measured]. The CLI adds a
-  base instructions item only when its text is not empty (`core/src/client.rs:1073`) [read in the
-  code].
+- The body holds no `instructions` field and no Codex developer message [measured].
 - The developer text is nixie's task prompt, byte for byte, and the user text is the turn's message
-  [measured].
+  [measured]. The guest passes the prompt as `baseInstructions` on `thread/start`
+  (`guests/codex/src/turn/run-codex-turn.ts:207`), and the CLI sends base instructions as the first
+  developer message (`core/src/client.rs:1073`) [read in the code]. So nixie's prompt takes the
+  place of Codex's own base instructions, in this variant and in `bundled-catalog` alike [measured].
+- Codex rewrites each nixie tool's schema before it sends it [measured]. It renames `time.now` to
+  `time_now`, adds `"strict": false`, sorts the properties, and gives an empty object
+  `"properties": {}`. It drops each keyword its schema type has no field for, such as `minimum`,
+  `maximum`, `minLength` and `maxLength` (`tools/src/json_schema.rs:37`,
+  `tools/src/json_schema/types.rs:40`) [read in the code]. The model never sees those limits, and
+  nixie's tool route still checks them. The descriptions arrive byte for byte [measured].
 - The 8 other fields are `model`, `stream`, `tool_choice`, `parallel_tool_calls`, `reasoning`,
   `store`, `include` and `prompt_cache_key`. They set how the API answers, and the model reads none
   of them as text [read in the code].
 - `client_metadata` holds IDs, the sandbox mode, the workspace path and `analytics_enabled`. The
   same text goes in the `x-codex-turn-metadata` header [measured]. Whether the upstream shows it to
   the model is unknown, so this report counts it as metadata.
-- A plan login's body differs from an API key's only in the IDs [measured].
+- A plan login's body has the same fields, input and tools as an API key's. It differs in the IDs in
+  `prompt_cache_key` and `client_metadata`, and in the state folder's path, whose length differs by
+  variant name [measured].
 
 ## Before and after
 
-The guest change in this spike's PR adds an `[analytics]` and a `[feedback]` table to `config.toml`,
-and an empty description and empty schema for each MCP resource helper to the catalog [read in the
-code].
+The guest change in this spike's PR adds an `[analytics]` and a `[feedback]` table and
+`memories = false` to `config.toml`, and an empty description and empty schema for each MCP resource
+helper to the catalog [read in the code]. The `before` variants leave out the tables and the catalog
+change, and keep `memories = false`, which changes nothing in the request.
 
-| Variant                    | Body bytes | Codex bytes the model reads | Codex tokens | nixie bytes | nixie tokens |
-| -------------------------- | ---------- | --------------------------- | ------------ | ----------- | ------------ |
-| `bundled-catalog`          | 12,267     | 9,448                       | 2,444        | 946         | 208          |
-| `before`                   | 9,607      | 1,973                       | 400          | 5,787       | 1,304        |
-| `production`               | 8,127      | 488                         | 119          | 5,787       | 1,304        |
-| `production-plan`          | 8,132      | 488                         | 119          | 5,787       | 1,304        |
-| `attribution-plan-backend` | 9,394      | 1,613                       | 354          | 5,787       | 1,304        |
-| `tool-call`, request 2     | 8,505      | 524                         | 131          | 5,850       | 1,328        |
+| Variant                      | Body bytes | Codex bytes the model reads | Codex tokens | nixie bytes | nixie tokens |
+| ---------------------------- | ---------- | --------------------------- | ------------ | ----------- | ------------ |
+| `bundled-catalog`            | 12,267     | 9,448                       | 2,446        | 946         | 208          |
+| `before`                     | 9,607      | 1,973                       | 400          | 5,787       | 1,304        |
+| `production`                 | 8,127      | 488                         | 119          | 5,787       | 1,304        |
+| `production-plan`            | 8,132      | 488                         | 119          | 5,787       | 1,304        |
+| `attribution-plan-backend`   | 9,394      | 1,613                       | 354          | 5,787       | 1,304        |
+| `attribution-closed-backend` | 8,143      | 488                         | 119          | 5,787       | 1,304        |
+| `tool-call`, request 2       | 8,505      | 524                         | 131          | 5,850       | 1,328        |
 
 [measured]
 
@@ -122,17 +135,35 @@ code].
   the ChatGPT backend, and `production-plan-backend` sent none. `analytics_enabled` went from `true`
   to `false` in the turn metadata [measured].
 
+### Beside the Claude Code capture
+
+The [model-eval](../model-eval/results.md#each-harness-adds-context-to-the-prompt) spike lists what
+Claude Code adds to a request in a table of yes and no. The same table for the Codex CLI, from this
+spike's variants [measured]:
+
+| Setup                                   | Base instructions | Developer message | Script tool guidance | Resource helper text | Analytics upload |
+| --------------------------------------- | ----------------- | ----------------- | -------------------- | -------------------- | ---------------- |
+| Bundled catalog, API key                | no                | no                | yes                  | no                   | no               |
+| Guest before this spike, plan login     | no                | no                | no                   | yes                  | yes              |
+| Guest, API key or plan login            | no                | no                | no                   | no                   | no               |
+| Guest, plan account with attribution on | no                | yes               | no                   | no                   | no               |
+
+"Base instructions" means Codex's own, in place of nixie's prompt. In the bundled catalog, the
+script tool's single item holds every tool, so the 3 helpers have no text of their own. The
+model-eval spike's 2,300 input tokens for Codex came from a run that kept the code-mode host on
+[from a record], so that run most likely sent the same script tool. This spike did not check it.
+
 ## What each setting removes
 
 | Codex adds                               | Setting that removes it                                                                                                      | Where in the Codex source                                                                                               |
 | ---------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| base instructions                        | catalog `base_instructions = ""`, already set                                                                                | `core/src/client.rs:1073`                                                                                               |
+| Codex's own base instructions            | nixie's prompt as `baseInstructions` on `thread/start`, already set                                                          | `core/src/client.rs:1073`                                                                                               |
 | the 3 MCP resource helpers' text         | catalog `model_messages.tools.mcp_resources`, each with `description: ""` and a schema with no properties; set by this spike | `protocol/src/openai_models.rs:624` and `:727`, `:646` for an empty description; `tools/src/catalog_tool_message.rs:16` |
 | the analytics upload on a plan login     | `[analytics] enabled = false`; set by this spike                                                                             | `config/src/types.rs:250`, `core/src/session/session.rs:1691`                                                           |
 | feedback uploads                         | `[feedback] enabled = false`; set by this spike                                                                              | `config/src/types.rs:258`                                                                                               |
 | the bundled script tool and its guidance | nixie's own catalog entry, already set                                                                                       | measured in `bundled-catalog`                                                                                           |
 | history notes                            | a provider other than `openai`, already set                                                                                  | `ext/history-notes/src/extension.rs:50`, `model-provider-info/src/lib.rs:697`                                           |
-| memories                                 | off unless the memory feature and `use_memories` are on                                                                      | `ext/memories/src/extension.rs:48`                                                                                      |
+| memories                                 | `[features] memories = false`; off by default, and set by this spike so a new default cannot turn it on                      | `features/src/lib.rs:1367`, `ext/memories/src/extension.rs:48`                                                          |
 
 The guest's earlier settings, such as the `include_*` keys and the disabled features, left nothing
 in the request body that this spike could find [measured].
@@ -173,13 +204,19 @@ On a plan login, Codex asks the ChatGPT backend for the user settings
 the model to sign commits and pull requests as Codex (`ext/git-attribution/src/world_state.rs:18`).
 In `attribution-plan-backend` it cost 1,125 bytes, about 235 tokens [measured].
 
-No setting turns it off. Any answer other than a success leaves it out
+No setting names it. Any answer other than a success leaves it out
 (`ext/git-attribution/src/policy.rs:87`) [read in the code], as the stub's 404 in
 `production-plan-backend` showed [measured]. In production, the broker refuses every ChatGPT path
 that Codex calls other than the step's own route
 ([the model gateway](../../docs/architecture/policy/model-gateway.md#the-path-of-a-plan-request))
 [from a record], so the settings request fails and the message stays out. The capture below checks
 that.
+
+The guest could also keep it out without the broker: in `attribution-closed-backend`,
+`chatgpt_base_url` at a closed loopback port left the message out, and the CLI sent no request but
+the model request [measured]. The model request does not use `chatgpt_base_url`, because the
+provider's `base_url` names its route. The guest does not set it; whether to set it is a choice for
+the owner, since it hides every ChatGPT backend call, wanted or not.
 
 ### Workspace check
 
