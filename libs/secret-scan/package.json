@@ -9,7 +9,7 @@
     "./test-utils": "./src/test-utils/index.ts"
   },
   "scripts": {
-    "typecheck": "tsrs --noEmit",
+    "typecheck": "tsrs --fast --noEmit",
     "rules:build": "bun src/run-rule-build.ts",
     "rules:check": "bun src/run-rule-check.ts"
   },

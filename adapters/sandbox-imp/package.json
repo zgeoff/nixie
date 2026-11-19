@@ -10,7 +10,7 @@
   },
   "scripts": {
     "test:imp": "bun run --cwd ../.. test:imp adapters/sandbox-imp/",
-    "typecheck": "tsrs --noEmit"
+    "typecheck": "tsrs --fast --noEmit"
   },
   "dependencies": {
     "@heynixie/sandbox": "workspace:*",

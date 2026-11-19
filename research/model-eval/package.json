@@ -8,6 +8,6 @@
     "ts-pattern": "5.9.2"
   },
   "scripts": {
-    "typecheck": "tsrs --noEmit"
+    "typecheck": "tsrs --fast --noEmit"
   }
 }

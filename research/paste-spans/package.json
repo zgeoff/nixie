@@ -7,6 +7,6 @@
     "playwright-core": "1.64.1"
   },
   "scripts": {
-    "typecheck": "tsrs --noEmit"
+    "typecheck": "tsrs --fast --noEmit"
   }
 }

@@ -3,6 +3,6 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "typecheck": "tsrs --noEmit"
+    "typecheck": "tsrs --fast --noEmit"
   }
 }
