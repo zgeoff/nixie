@@ -102,8 +102,10 @@ A skill that fails a folder check returns every problem as an error.
 `skill_write` also reads the skill's base: the version in force that the write would replace, or
 none for a new skill. Then it runs the token check of the memory content gate on the files, which
 [the token check](../memory/writes.md#the-token-check) covers. The check succeeds when every
-destination-like token in the files appears in the persona, in a skill in force, or in what the user
-typed on the thread within the gate's [evidence window](../memory/writes.md#the-content-gate).
+destination-like token in the files appears in the persona, in a skill in force, or in the user's 20
+latest messages on the thread, the default size of the gate's
+[evidence window](../memory/writes.md#the-content-gate). `skill_write` uses that default and never
+reads the deployment's `evidence_window` setting.
 
 A skill that passes the folder checks either applies at once, as
 [writes under a rule](#writes-under-a-rule) describes, or becomes a proposal. The server writes the
