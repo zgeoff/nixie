@@ -92,7 +92,9 @@ user never named.
 
 A write applies at once when an allow rule of the user's that matched the call lists `skill_write`
 by its exact name in its tools field. A tool pattern, such as `skill_*` or `*`, never applies a
-write, so a rule applies skills only when the user named the tool. A rule of a
+write, so a rule applies skills only when the user named the tool. An edit that adds the name to an
+allow rule is a widening, which waits for the user's approval, as
+[the widening check](../policy/rules.md#the-widening-check) explains. A rule of a
 [mandate](../policy/rules.md#mandates) counts the same way. The decision point hands the tool every
 matched allow rule that lists it, and the tool takes the first by rule ID. A write still becomes a
 proposal in each of these cases:

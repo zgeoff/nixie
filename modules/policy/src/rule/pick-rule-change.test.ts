@@ -124,6 +124,24 @@ test.each<[string, Rule | null, Rule | null, RuleChange]>([
     'narrowing',
   ],
   [
+    'an allow on the note effect that comes to name skill_write',
+    { id: 'allow-notes', outcome: 'allow', effects: ['note'] },
+    { id: 'allow-notes', outcome: 'allow', effects: ['note'], tools: ['skill_write'] },
+    'widening',
+  ],
+  [
+    'an allow on skill_write narrowed to the note effect alone',
+    { id: 'allow-notes', outcome: 'allow', effects: ['note'], tools: ['skill_write'] },
+    { id: 'allow-notes', outcome: 'allow', effects: ['note'] },
+    'widening',
+  ],
+  [
+    'an allow that drops skill_write from its tools',
+    { id: 'allow-skills', outcome: 'allow', tools: ['skill_read', 'skill_write'] },
+    { id: 'allow-skills', outcome: 'allow', tools: ['skill_read'] },
+    'narrowing',
+  ],
+  [
     'a stricter outcome over the same match',
     { id: 'mail-rule', outcome: 'ask', tools: ['mail.send'] },
     { id: 'mail-rule', outcome: 'deny', tools: ['mail.send'] },

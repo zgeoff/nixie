@@ -108,7 +108,11 @@ other's, field by field: a pattern inside another pattern, a list inside another
 implies another, and a sooner expiry. An allow narrows when the new match lies inside the old one,
 and an ask or a deny narrows when the old match lies inside the new one. An edit that changes only
 the note leaves the match the same, so it is unchanged. A lift widens when an edit adds one, raises
-`perAction` or names another budget, and narrows when an edit removes one or lowers `perAction`.
+`perAction` or names another budget, and narrows when an edit removes one or lowers `perAction`. An
+allow that comes to list `skill_write` by its exact name widens, even when the name narrows its
+match, because that name lets a skill write apply at once, as
+[Writes under a rule](../core/skills.md#writes-under-a-rule) describes. An allow that drops the name
+narrows.
 
 A stricter outcome narrows when the old match lies inside the new one. Turning an allow into an ask
 or a deny always narrows, because removing an allow and adding an ask both narrow. A looser outcome
