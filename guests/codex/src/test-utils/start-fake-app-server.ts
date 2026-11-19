@@ -34,9 +34,11 @@ export interface FakeAppServer {
 const encoder = new TextEncoder();
 
 // A stand-in for `codex app-server`, which speaks its JSON-RPC over stdio in memory. It answers
-// `initialize` itself, and every other request through `answer`.
+// `initialize` itself, refuses a token login without the experimental API as the real server does,
+// and answers every other request through `answer`.
 export function startFakeAppServer(answer: (request: FakeRequest) => FakeReply): FakeAppServer {
   const requests: FakeRequest[] = [];
+  const handshake = { experimentalApi: false };
 
   const stdout = new TransformStream<Uint8Array, Uint8Array>();
 
@@ -88,6 +90,8 @@ export function startFakeAppServer(answer: (request: FakeRequest) => FakeReply):
     const params = 'params' in message ? message.params : null;
 
     if (method === 'initialize') {
+      handshake.experimentalApi = hasExperimentalApi(params);
+
       send({ id: message.id, result: {} });
 
       return;
@@ -97,7 +101,11 @@ export function startFakeAppServer(answer: (request: FakeRequest) => FakeReply):
 
     requests.push(request);
 
-    const reply = answer(request);
+    const reply =
+      isTokenLogin(request) && !handshake.experimentalApi
+        ? { error: `${method}.chatgptAuthTokens requires experimentalApi capability` }
+        : answer(request);
+
     const failure = { code: -32_603, message: reply.error };
 
     const answerBody =
@@ -150,6 +158,29 @@ async function writeQuietly(
   } catch {
     // the stream is closed
   }
+}
+
+function hasExperimentalApi(params: unknown): boolean {
+  if (typeof params !== 'object' || params === null || !('capabilities' in params)) {
+    return false;
+  }
+
+  return (
+    typeof params.capabilities === 'object' &&
+    params.capabilities !== null &&
+    'experimentalApi' in params.capabilities &&
+    params.capabilities.experimentalApi === true
+  );
+}
+
+function isTokenLogin(request: FakeRequest): boolean {
+  return (
+    request.method === 'account/login/start' &&
+    typeof request.params === 'object' &&
+    request.params !== null &&
+    'type' in request.params &&
+    request.params.type === 'chatgptAuthTokens'
+  );
 }
 
 async function closeQuietly(writer: WritableStreamDefaultWriter<Uint8Array>): Promise<void> {

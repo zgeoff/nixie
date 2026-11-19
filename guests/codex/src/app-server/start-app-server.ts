@@ -61,9 +61,10 @@ export async function startAppServer(
   const client = openClient(child, readTokens);
 
   try {
+    // the app-server refuses a `chatgptAuthTokens` login from a client without the experimental API
     await client.request('initialize', {
       clientInfo: { name: 'nixie-codex-guest', title: null, version: '0.0.0' },
-      capabilities: { experimentalApi: false, requestAttestation: false },
+      capabilities: { experimentalApi: readTokens !== null, requestAttestation: false },
     });
   } catch (error) {
     await client.stop();

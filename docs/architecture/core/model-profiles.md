@@ -98,12 +98,13 @@ plan type, which the server reads from the gateway
 
 The guest's config sets `cli_auth_credentials_store = "ephemeral"`,
 `forced_login_method = "chatgpt"` and `requires_openai_auth = true` on the model provider, in place
-of `env_key`. Before its first thread, the guest sends `account/login/start` with type
-`chatgptAuthTokens` and an unsigned placeholder token. The token holds the account ID, the plan type
-and an `exp` a day ahead, and no email. The guest answers each `account/chatgptAuthTokens/refresh`
-request at once with a new placeholder, and writes no `auth.json`. In its own token mode the CLI
-would refresh with the placeholder refresh token and fail the turn, so the guest runs it in external
-token mode. The guest sends no `service_tier`.
+of `env_key`. On a plan login, the guest turns on `experimentalApi` in the `initialize` handshake,
+because the app-server refuses a `chatgptAuthTokens` login without it. Before its first thread, the
+guest sends `account/login/start` with type `chatgptAuthTokens` and an unsigned placeholder token.
+The token holds the account ID, the plan type and an `exp` a day ahead, and no email. The guest
+answers each `account/chatgptAuthTokens/refresh` request at once with a new placeholder, and writes
+no `auth.json`. In its own token mode the CLI would refresh with the placeholder refresh token and
+fail the turn, so the guest runs it in external token mode. The guest sends no `service_tier`.
 
 The guest's config sets `tool_output_token_limit` to the wire library's `toolOutputLimitTokens`, the
 limit that the Agent SDK guest holds. A recall result of exactly the page limit, made of many small
