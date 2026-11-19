@@ -7,26 +7,11 @@ in your definitions allow anything, and a call that no rule covers asks.
 
 1. Copy `deploy/compose/definitions/rules/starter.yaml` into the `rules/` folder of your definitions
    repository, and set `format: 4` in `nixie.yaml`. The file keeps the rules you edit.
-2. Start the new release. Expect: the first seed applies the asks at once and records one rule
-   change proposal that holds the allows.
-3. List the proposals.
+2. Start the new release. Expect: the first seed applies every starter rule at once, and
+   `nixie rules list` shows each one. Without them, the start log holds `policy.no_rules_in_force`
+   and every call that you did not ask for in typed words waits for approval.
 
-   ```bash
-   nixie proposals list
-   ```
-
-   Expect: one `rule_change` entry. Without it, the start log holds `policy.no_rules_in_force` and
-   every call that you did not ask for in typed words waits for approval.
-
-4. Read the allows, then approve the proposal.
-
-   ```bash
-   nixie proposals approve <proposalID>
-   ```
-
-   Expect: `nixie rules list` shows every starter rule.
-
-5. Mark each destination that nixie may send to without asking as a known contact.
+3. Mark each destination that nixie may send to without asking as a known contact.
 
    ```bash
    nixie contacts mark-known <destination> --name <name>

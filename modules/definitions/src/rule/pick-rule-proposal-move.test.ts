@@ -1,5 +1,4 @@
 import { expect, test } from 'bun:test';
-import { buildRuleProposal } from '../utils/build-rule-proposal';
 import { pickRuleProposalMove } from './pick-rule-proposal-move';
 import type { RuleProposalOutcome } from './rule-proposal-outcomes';
 import type { RuleProposalRefusal } from './write-rule-proposal-answer';
@@ -47,18 +46,20 @@ test.each<RefusalCase>([
     code: 'PROPOSAL_CLOSED',
   },
 ])('it refuses an approval of $label', (refusal) => {
-  const proposal = buildRuleProposal(
-    'p-web',
-    [
+  const proposal = {
+    proposalID: 'p-web',
+    proposalHash: 'sha256:p-web',
+    changes: [
       {
         ruleID: 'allow-web',
         before: null,
-        after: { hash: 'h-web', rule: { id: 'allow-web', outcome: 'allow', tools: ['web.fetch'] } },
-        change: 'widening',
+        after: { hash: 'h-web', sentence: 'Allow web.fetch.' },
+        fields: [],
       },
     ],
-    [],
-  );
+    effectChanges: [],
+    budgetChanges: [],
+  };
 
   const move = pickRuleProposalMove({
     proposals: [
@@ -77,18 +78,20 @@ test.each<RefusalCase>([
 });
 
 test('it approves a pending proposal while the seeded rules hold its versions from before', () => {
-  const proposal = buildRuleProposal(
-    'p-web',
-    [
+  const proposal = {
+    proposalID: 'p-web',
+    proposalHash: 'sha256:p-web',
+    changes: [
       {
         ruleID: 'allow-web',
         before: null,
-        after: { hash: 'h-web', rule: { id: 'allow-web', outcome: 'allow', tools: ['web.fetch'] } },
-        change: 'widening',
+        after: { hash: 'h-web', sentence: 'Allow web.fetch.' },
+        fields: [],
       },
     ],
-    [],
-  );
+    effectChanges: [],
+    budgetChanges: [],
+  };
 
   const move = pickRuleProposalMove({
     proposals: [{ proposal, proposedAt: 0, lapseAt: 1000, outcome: null }],
@@ -101,18 +104,20 @@ test('it approves a pending proposal while the seeded rules hold its versions fr
 });
 
 test('it approves a proposal a defer kept open past its first lapse time', () => {
-  const proposal = buildRuleProposal(
-    'p-web',
-    [
+  const proposal = {
+    proposalID: 'p-web',
+    proposalHash: 'sha256:p-web',
+    changes: [
       {
         ruleID: 'allow-web',
         before: null,
-        after: { hash: 'h-web', rule: { id: 'allow-web', outcome: 'allow', tools: ['web.fetch'] } },
-        change: 'widening',
+        after: { hash: 'h-web', sentence: 'Allow web.fetch.' },
+        fields: [],
       },
     ],
-    [],
-  );
+    effectChanges: [],
+    budgetChanges: [],
+  };
 
   const move = pickRuleProposalMove({
     proposals: [
@@ -132,18 +137,20 @@ test('it approves a proposal a defer kept open past its first lapse time', () =>
 });
 
 test('it rejects a pending proposal with your reason', () => {
-  const proposal = buildRuleProposal(
-    'p-web',
-    [
+  const proposal = {
+    proposalID: 'p-web',
+    proposalHash: 'sha256:p-web',
+    changes: [
       {
         ruleID: 'allow-web',
         before: null,
-        after: { hash: 'h-web', rule: { id: 'allow-web', outcome: 'allow', tools: ['web.fetch'] } },
-        change: 'widening',
+        after: { hash: 'h-web', sentence: 'Allow web.fetch.' },
+        fields: [],
       },
     ],
-    [],
-  );
+    effectChanges: [],
+    budgetChanges: [],
+  };
 
   const move = pickRuleProposalMove({
     proposals: [{ proposal, proposedAt: 0, lapseAt: 1000, outcome: null }],

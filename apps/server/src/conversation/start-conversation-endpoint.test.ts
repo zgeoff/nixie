@@ -744,7 +744,7 @@ test('it offers no search tool when the configuration names no search credential
 });
 
 test('it lets no registered tool run a call that no rule in force allows', async () => {
-  const ctx = await startInProcessNixie({ isStarterApproved: false });
+  const ctx = await startInProcessNixie({ hasStarterRules: false });
   const api = await createTestClient(ctx);
 
   const gate = Promise.withResolvers<void>();

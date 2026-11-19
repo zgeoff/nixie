@@ -294,7 +294,7 @@ test('it gives the same rows after a projection rebuild as the migration left', 
   expect(rebuiltInForce).toStrictEqual(inForce);
 });
 
-test('it asks again for a widening rejected before a log reset, and keeps the rule in force until you answer', async () => {
+test('it puts a widening in force after the migration, even one rejected before a log reset', async () => {
   const ctx = await setupTest();
 
   await ctx.runSeedAgain();
@@ -345,6 +345,22 @@ deny-old-names:
   const inForce = await ctx.readInForce();
   const proposals = await ctx.readProposals();
 
-  expect(inForce).toContainEqual(['deny-old-names', stored]);
-  expect(proposals).toStrictEqual([{ outcome: null, changes: ['deny-old-names'] }]);
+  expect({
+    widened: inForce.filter(([ruleID]) => ruleID === 'deny-old-names'),
+    proposals,
+  }).toStrictEqual({
+    widened: [
+      [
+        'deny-old-names',
+        {
+          id: 'deny-old-names',
+          outcome: 'ask',
+          tools: ['mail.archive'],
+          contexts: ['task'],
+          definitions: ['nightly-sweep'],
+        },
+      ],
+    ],
+    proposals: [],
+  });
 });

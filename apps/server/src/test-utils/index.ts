@@ -1,5 +1,4 @@
 export { buildTestConversationTools } from './build-test-conversation-tools';
-export { approveStarterRules } from './approve-starter-rules';
 export { createTestClient } from './create-test-client';
 export type { NixieOperationArgs } from '../part/build-nixie-operation-schemas';
 export { readDataFiles } from './read-data-files';

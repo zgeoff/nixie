@@ -2,7 +2,7 @@ import type { LogTables } from '@heynixie/log';
 import { proposalLapseMs, readProposalLapses } from '@heynixie/proposals';
 import type { Kysely } from 'kysely';
 import { sql } from 'kysely';
-import type { RuleProposal } from '../utils/build-rule-proposal';
+import type { RuleProposal } from '../utils/rule-proposal-schema';
 import { ruleProposalSchema } from '../utils/rule-proposal-schema';
 import type { RuleProposalOutcome } from './rule-proposal-outcomes';
 import { ruleProposalOutcomes } from './rule-proposal-outcomes';

@@ -7,7 +7,7 @@ import { z } from 'zod';
 import { buildDefinitionsSnapshot } from '../definition/build-definitions-snapshot';
 import { readDefinitionsInForce } from '../definition/read-definitions-in-force';
 import { readDefinitionsSkills } from '../definition/read-definitions-skills';
-import { readRuleProposalChange } from '../rule/read-rule-proposal-change';
+import { readPendingRuleProposals } from '../rule/read-pending-rule-proposals';
 import type { SeedResult } from '../rule/run-seed';
 import { buildTaskSeedRecords } from '../runtime-task/build-task-seed-records';
 import { readTaskSeedInput } from '../runtime-task/read-task-seed-input';
@@ -86,7 +86,6 @@ export async function seedInForceInTransaction(
   const policy = await readSeedPolicy(tx, {
     base: options.buildPolicy(inForce.prompts),
     overrides: lists.effects,
-    inForce,
     rules: revisions.inForce,
   });
 
@@ -94,12 +93,7 @@ export async function seedInForceInTransaction(
     return { status: 'refused', error: policy.error, inForce };
   }
 
-  const proposals = await readRuleProposalChange(
-    tx,
-    { rules: rules.held, effects: policy.held, budgets: budgets.held },
-    now,
-  );
-
+  const pending = await readPendingRuleProposals(tx, now);
   const repoTasks = await readRepoTasks(tx, inForce);
   const taskInput = await readTaskSeedInput(tx, repoTasks);
 
@@ -135,8 +129,7 @@ export async function seedInForceInTransaction(
     overlay.adopted.length === 0 &&
     rules.adopted.length === 0 &&
     budgets.applied.length === 0 &&
-    proposals.withdrawn === null &&
-    proposals.proposed === null &&
+    pending.length === 0 &&
     taskPlan.adopted.length === 0 &&
     taskPlan.moved.length === 0 &&
     built.snapshotHash === inForce.snapshotHash
@@ -154,7 +147,6 @@ export async function seedInForceInTransaction(
     },
     formatVersion: inForce.formatVersion,
     effects: lists.effects,
-    heldEffects: policy.held,
     unapplied: lists.unapplied,
     skipped: lists.skipped,
     versions: [],
@@ -166,7 +158,7 @@ export async function seedInForceInTransaction(
       at: now,
     },
     budgets: { plan: budgets, repo: repoBudgets },
-    proposals,
+    withdrawnProposalIDs: pending.map((entry) => entry.proposal.proposalID),
     built,
     repoTasks,
     taskRecords: buildTaskSeedRecords(taskPlan, {

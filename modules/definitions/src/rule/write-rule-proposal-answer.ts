@@ -6,7 +6,7 @@ import { rulesChangeApprovedCodec } from '../change/rules-change-approved-codec'
 import { rulesChangeRejectedCodec } from '../change/rules-change-rejected-codec';
 import type { RuleContext } from '../runtime/write-runtime-rule';
 import type { DefinitionsTables } from '../types';
-import type { RuleProposal } from '../utils/build-rule-proposal';
+import type { RuleProposal } from '../utils/rule-proposal-schema';
 import { writeBudgetsInForce } from '../utils/write-budgets-in-force';
 import { pickRuleProposalMove } from './pick-rule-proposal-move';
 import { readRuleProposals } from './read-rule-proposals';

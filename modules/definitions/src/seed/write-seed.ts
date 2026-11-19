@@ -3,7 +3,6 @@ import { writeRecordsInTransaction } from '@heynixie/log';
 import type { EffectOverride } from '@heynixie/policy';
 import type { Transaction } from 'kysely';
 import invariant from 'tiny-invariant';
-import { rulesChangeProposedCodec } from '../change/rules-change-proposed-codec';
 import type { RuleStoreWrite, WrittenRules } from '../rule/write-rule-store';
 import { writeRuleStore } from '../rule/write-rule-store';
 import { buildSkillChanges } from '../skill/build-skill-changes';
@@ -19,21 +18,14 @@ import type {
   SourceKind,
 } from '../types';
 import type { BudgetSeedPlan } from '../utils/build-budget-seed-plan';
-import type { RuleProposal } from '../utils/build-rule-proposal';
 import type { SkillOverlay } from '../utils/build-skill-overlay';
-import type { HeldEffects } from '../utils/pick-seed-effects';
 import { rulesChangeWithdrawnCodec } from '../utils/rules-change-withdrawn-codec';
 import { writeBudgetsInForce } from '../utils/write-budgets-in-force';
-
-export interface RuleProposalChange {
-  readonly withdrawn: string | null;
-  readonly proposed: RuleProposal | null;
-}
 
 interface BudgetStoreWrite {
   readonly plan: BudgetSeedPlan;
 
-  // the budgets that the repo holds, before any held edit
+  // the budgets that the repo holds
   readonly repo: readonly DefinitionBudget[];
 }
 
@@ -47,14 +39,17 @@ export interface SeedPlan {
   };
   readonly formatVersion: number;
   readonly effects: ReadonlyMap<string, EffectOverride>;
-  readonly heldEffects: readonly HeldEffects[];
   readonly unapplied: readonly string[];
   readonly skipped: readonly string[];
   readonly versions: readonly SkillVersion[];
   readonly overlay: SkillOverlay;
   readonly rules: RuleStoreWrite;
   readonly budgets: BudgetStoreWrite;
-  readonly proposals: RuleProposalChange;
+
+  // each pending rule change proposal, which the seed withdraws because it applies every widening
+  // of the repo itself
+  readonly withdrawnProposalIDs: readonly string[];
+
   readonly built: DefinitionsSnapshot;
 
   // the task definitions that the repo holds, before any runtime change
@@ -235,10 +230,6 @@ async function writeSeedRecord(
             { add: [...override.add], remove: [...override.remove] },
           ]),
         ),
-        heldEffects: plan.heldEffects.map((held) => ({
-          tool: held.tool,
-          remove: [...held.remove],
-        })),
         repoTasks: plan.repoTasks.map((task) => ({ id: task.id, hash: task.hash })),
         repoBudgets: plan.budgets.repo.map((budget) => ({ ...budget })),
         unapplied: [...plan.unapplied],
@@ -249,7 +240,6 @@ async function writeSeedRecord(
             ruleID: edit.ruleID,
             change: edit.change,
           })),
-          held: plan.rules.plan.held.map((edit) => edit.ruleID),
           adopted: plan.rules.plan.adopted.map((change) => ({
             ruleID: change.ruleID,
             changeID: change.changeID,
@@ -259,7 +249,6 @@ async function writeSeedRecord(
               ? []
               : [overlaid.change.ruleID],
           ),
-          proposalID: plan.proposals.proposed?.proposalID ?? null,
         },
       },
     },
@@ -282,32 +271,11 @@ function buildProposalRecords(plan: SeedPlan): readonly RecordInput[] {
     personaVersion: plan.built.personaVersion,
   };
 
-  const withdrawn = plan.proposals.withdrawn;
-  const proposed = plan.proposals.proposed;
-
-  return [
-    ...(withdrawn === null
-      ? []
-      : [
-          {
-            kind: rulesChangeWithdrawnCodec.kind,
-            definitions,
-            payload: rulesChangeWithdrawnCodec.encode({
-              proposalID: withdrawn,
-              replacedBy: proposed?.proposalID ?? null,
-            }),
-          },
-        ]),
-    ...(proposed === null
-      ? []
-      : [
-          {
-            kind: rulesChangeProposedCodec.kind,
-            definitions,
-            payload: rulesChangeProposedCodec.encode(proposed),
-          },
-        ]),
-  ];
+  return plan.withdrawnProposalIDs.map((proposalID) => ({
+    kind: rulesChangeWithdrawnCodec.kind,
+    definitions,
+    payload: rulesChangeWithdrawnCodec.encode({ proposalID, replacedBy: null }),
+  }));
 }
 
 async function writeSeedRow(tx: Transaction<unknown>, inForce: DefinitionsInForce): Promise<void> {

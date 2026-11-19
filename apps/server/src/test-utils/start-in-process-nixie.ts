@@ -19,7 +19,6 @@ import {
 import invariant from 'tiny-invariant';
 import { runCLI } from '../cli/run-cli';
 import type { SandboxAdapterOptions } from '../sandbox/create-sandbox-adapter';
-import { approveStarterRules } from './approve-starter-rules';
 import type { FetchPage } from './build-fetch-page-sandboxes';
 import { buildFetchPageSandboxes } from './build-fetch-page-sandboxes';
 import type { BootSeeder } from './build-seeder';
@@ -45,13 +44,10 @@ export interface InProcessNixieOptions {
 
   readonly modelCredential?: NonNullable<BootFileExtras['modelCredential']>;
 
-  // The definitions carry the starter rules and the harness approves them once nixie is ready, so
-  // a turn's tool calls meet the same rules a deployment starts with. False leaves the definitions
-  // with no rule, for a test that writes its own.
+  // The definitions carry the starter rules, so a turn's tool calls meet the same rules a
+  // deployment starts with. False leaves the definitions with no rule, for a test that writes its
+  // own.
   readonly hasStarterRules?: boolean;
-
-  // False leaves the allows of the starter rules waiting for a test to approve them.
-  readonly isStarterApproved?: boolean;
 
   // Pages that web_fetch serves, because the fetch guest refuses every address a test can serve.
   // With none, a fetch sandbox goes to the stub guest like any other.
@@ -215,7 +211,7 @@ async function startFirstRun(
     countTokens: countTextTokens,
   });
 
-  const run = startNixieRun({
+  return startNixieRun({
     directory,
     model,
     files,
@@ -227,18 +223,6 @@ async function startFirstRun(
     runBeforeCleanup,
     runs: [],
   });
-
-  const isApproved = options.isStarterApproved ?? true;
-
-  if ((options.hasStarterRules ?? true) && isApproved && !isReadyHidden(options.logLevel)) {
-    const [ready] = await Promise.allSettled([run.waitForLogEvent('ready')]);
-
-    if (ready.status === 'fulfilled') {
-      await approveStarterRules(run.configPath);
-    }
-  }
-
-  return run;
 }
 
 interface RunHost {
@@ -408,9 +392,4 @@ function buildServeArgs(files: BootFiles): readonly string[] {
     '--encoder',
     '',
   ];
-}
-
-// The ready event logs at the info level.
-function isReadyHidden(level: InProcessNixieOptions['logLevel']): boolean {
-  return level === 'warn' || level === 'error';
 }

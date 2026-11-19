@@ -3,7 +3,7 @@ import type { DefinitionBudget } from '../types';
 import type { BudgetEdit } from './build-budget-seed-plan';
 import { buildBudgetSeedPlan } from './build-budget-seed-plan';
 
-test.each<[string, DefinitionBudget | null, DefinitionBudget | null, 'applied' | 'held']>([
+test.each<[string, DefinitionBudget | null, DefinitionBudget | null, 'narrowing' | 'widening']>([
   [
     'a new budget',
     null,
@@ -14,7 +14,7 @@ test.each<[string, DefinitionBudget | null, DefinitionBudget | null, 'applied' |
       period: 'month',
       hash: 'h1',
     },
-    'applied',
+    'narrowing',
   ],
   [
     'a removed budget',
@@ -26,7 +26,7 @@ test.each<[string, DefinitionBudget | null, DefinitionBudget | null, 'applied' |
       hash: 'h1',
     },
     null,
-    'applied',
+    'narrowing',
   ],
   [
     'a lowered limit',
@@ -38,7 +38,7 @@ test.each<[string, DefinitionBudget | null, DefinitionBudget | null, 'applied' |
       hash: 'h1',
     },
     { id: 'shopping-month', counts: 'spend', limitMicros: 60_000_000, period: 'month', hash: 'h2' },
-    'applied',
+    'narrowing',
   ],
   [
     'a raised limit',
@@ -56,7 +56,7 @@ test.each<[string, DefinitionBudget | null, DefinitionBudget | null, 'applied' |
       period: 'month',
       hash: 'h2',
     },
-    'held',
+    'widening',
   ],
   [
     'another period',
@@ -68,15 +68,15 @@ test.each<[string, DefinitionBudget | null, DefinitionBudget | null, 'applied' |
       hash: 'h1',
     },
     { id: 'shopping-month', counts: 'spend', limitMicros: 60_000_000, period: 'week', hash: 'h2' },
-    'held',
+    'widening',
   ],
   [
     'another thing counted',
     { id: 'search-day', counts: 'tool:search', limitMicros: 5_000_000, period: 'day', hash: 'h1' },
     { id: 'search-day', counts: 'spend', limitMicros: 5_000_000, period: 'day', hash: 'h2' },
-    'held',
+    'widening',
   ],
-])('it plans %s as %s', (_label, before, after, where) => {
+])('it applies %s at once as a %s', (_label, before, after, change) => {
   const plan = buildBudgetSeedPlan({
     definitions: after === null ? [] : [after],
     inForce: before === null ? [] : [before],
@@ -84,18 +84,12 @@ test.each<[string, DefinitionBudget | null, DefinitionBudget | null, 'applied' |
   });
 
   const budgetID = (before ?? after)?.id ?? '';
+  const edit: BudgetEdit = { budgetID, before, after, change };
 
-  const edit: BudgetEdit = {
-    budgetID,
-    before,
-    after,
-    change: where === 'held' ? 'widening' : 'narrowing',
-  };
-
-  expect(plan[where]).toStrictEqual([edit]);
+  expect(plan.applied).toStrictEqual([edit]);
 });
 
-test('it keeps a held budget out of the budgets in force', () => {
+test('it puts a raised budget limit in force', () => {
   const plan = buildBudgetSeedPlan({
     definitions: [
       {
@@ -122,9 +116,9 @@ test('it keeps a held budget out of the budgets in force', () => {
     {
       id: 'shopping-month',
       counts: 'spend',
-      limitMicros: 100_000_000,
+      limitMicros: 150_000_000,
       period: 'month',
-      hash: 'h1',
+      hash: 'h2',
     },
   ]);
 });
@@ -142,12 +136,11 @@ test('it plans nothing for a budget that the definitions and the store hold alik
     buildBudgetSeedPlan({ definitions: [budget], inForce: [budget], builtIn: [] }),
   ).toStrictEqual({
     applied: [],
-    held: [],
     inForce: [budget],
   });
 });
 
-test('it holds a new budget that raises the built-in limit of a paid tool', () => {
+test('it applies a new budget that raises the built-in limit of a paid tool', () => {
   const plan = buildBudgetSeedPlan({
     definitions: [
       {
@@ -162,8 +155,9 @@ test('it holds a new budget that raises the built-in limit of a paid tool', () =
     builtIn: [{ id: 'search-day', counts: 'tool:search', limitMicros: 5_000_000, period: 'day' }],
   });
 
-  expect(plan.held.map((edit) => edit.budgetID)).toStrictEqual(['search-day']);
-  expect(plan.inForce).toStrictEqual([]);
+  expect(plan.applied.map((edit) => [edit.budgetID, edit.change])).toStrictEqual([
+    ['search-day', 'widening'],
+  ]);
 });
 
 test('it applies a new budget that lowers the built-in limit of a paid tool', () => {

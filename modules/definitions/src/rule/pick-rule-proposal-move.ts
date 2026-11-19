@@ -1,6 +1,6 @@
 import { canMoveProposal } from '@heynixie/proposals';
 import invariant from 'tiny-invariant';
-import type { RuleProposal } from '../utils/build-rule-proposal';
+import type { RuleProposal } from '../utils/rule-proposal-schema';
 import type { RuleProposalState } from './read-rule-proposals';
 import type { RuleProposalAnswer, RuleProposalRefusal } from './write-rule-proposal-answer';
 

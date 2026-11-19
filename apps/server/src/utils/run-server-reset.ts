@@ -25,7 +25,7 @@ export interface ServerReset {
 }
 
 export async function runServerReset(options: ServerResetOptions): Promise<ServerReset> {
-  const start = await readResetSeed(options.context.log.writer.db, options.context.clock.now());
+  const start = await readResetSeed(options.context.log.writer.db);
 
   if (start === null) {
     throw new Error('no definitions are in force yet, so the reset has nothing to start from');
@@ -58,7 +58,7 @@ export async function runServerReset(options: ServerResetOptions): Promise<Serve
       await removeRevokedPasskeys(tx);
 
       return {
-        seed: await readResetSeed(tx, options.context.clock.now()),
+        seed: await readResetSeed(tx),
         sessions: await readKeptSessions(tx, options.context),
       };
     },

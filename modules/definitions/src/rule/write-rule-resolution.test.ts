@@ -92,10 +92,8 @@ test('it keeps a runtime change in force when the repo changes its rule, and lis
   expect(result.record.payload['rules']).toStrictEqual({
     revisions: [],
     applied: [],
-    held: [],
     adopted: [],
     conflicts: ['ask-mail'],
-    proposalID: null,
   });
 
   expect(

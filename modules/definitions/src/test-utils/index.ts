@@ -8,3 +8,4 @@ export { buildTestTaskYaml } from './build-test-task-yaml';
 export { readTestRuntimeTasks } from './read-test-runtime-tasks';
 export type { TaskVersionSeed } from './seed-task-versions';
 export { seedTaskVersions } from './seed-task-versions';
+export { seedLegacyRuleProposal } from './seed-legacy-rule-proposal';

@@ -1,11 +1,11 @@
 import { expect, onTestFinished, setSystemTime, test } from 'bun:test';
-import { mkdir, rm, writeFile } from 'node:fs/promises';
+import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { ApprovedCall } from '@heynixie/actions';
 import { claimAction, runActionAttempt } from '@heynixie/actions';
 import type { ProviderResponse } from '@heynixie/connectors';
 import { createPathSource, runSeed } from '@heynixie/definitions';
-import { buildTestTaskSeed } from '@heynixie/definitions/test-utils';
+import { buildTestTaskSeed, seedLegacyRuleProposal } from '@heynixie/definitions/test-utils';
 import type { LogTables } from '@heynixie/log';
 import { readRecords, removeRecordKey, writeRecords } from '@heynixie/log';
 import { defaultGateLimits, defaultOwnerPronouns, startMemoryStore } from '@heynixie/memory';
@@ -43,6 +43,9 @@ async function setupTest() {
 
   // the writer stamps records with the wall clock, so the test clock starts there
   api.clock.advance(Date.now() - api.clock.now());
+
+  // a rule change proposal that a seed of an earlier release left pending
+  await seedLegacyRuleProposal(api.context.log);
 
   const memory = await startMemoryStore({
     log: api.context.log,
@@ -360,7 +363,7 @@ test('#runProposalLapses lapses a proposal at the new time after a defer, not th
   });
 });
 
-test('#runSeed withdraws a rule change a defer kept open past its first lapse time when its widening goes', async () => {
+test('#runSeed withdraws a rule change a defer kept open past its first lapse time', async () => {
   const ctx = await setupTest();
   const listed = await ctx.client.approvals.listItems();
 
@@ -380,8 +383,6 @@ test('#runSeed withdraws a rule change a defer kept open past its first lapse ti
   onTestFinished(() => setSystemTime());
 
   const root = join(ctx.api.dataDir, 'definitions');
-
-  await rm(join(root, 'rules', 'web.yaml'));
 
   await runSeed({
     tasks: buildTestTaskSeed(),

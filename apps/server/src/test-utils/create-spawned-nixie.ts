@@ -35,7 +35,6 @@ import {
 import { z } from 'zod';
 import type { NixieOperationArgs } from '../part/build-nixie-operation-schemas';
 import { getSandboxRootDir } from '../part/get-sandbox-root-dir';
-import { approveStarterRules } from './approve-starter-rules';
 import { buildAdvanceHelpers } from './build-advance-helpers';
 import { readDataFiles } from './read-data-files';
 import { readTestBundle } from './read-test-bundle';
@@ -231,11 +230,7 @@ export async function createSpawnedNixie(
 
   const harness: SpawnedNixieHarness = {
     now: crashHarness.now,
-    start: (faultPoints) => {
-      const started = startProcess(faultPoints);
-
-      return withStarterApproval(started, files.configPath);
-    },
+    start: (faultPoints) => startProcess(faultPoints),
     startRelease: (entry) => startRelease({ ...launch, entry }, stack),
     advance: crashHarness.advance,
   };
@@ -515,20 +510,6 @@ function startRelease(launch: Launch, stack: AsyncDisposableStack): SpawnedNixie
   void Promise.allSettled([ready]);
 
   return { ...started, ready };
-}
-
-// A start that finds the first seed's proposal still pending approves it before its ready settles,
-// so a test sends its first message under the rules a deployment starts with.
-function withStarterApproval(nixie: SpawnedNixieProcess, configPath: string): SpawnedNixieProcess {
-  const ready = (async () => {
-    await nixie.ready;
-    await approveStarterRules(configPath);
-  })();
-
-  // A test that expects the process to refuse its start never waits for ready.
-  void Promise.allSettled([ready]);
-
-  return { ...nixie, ready };
 }
 
 // Each start of nixie checks its action queue with an action of its own, which reaches every

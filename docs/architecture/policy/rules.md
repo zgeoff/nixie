@@ -129,17 +129,20 @@ The rule store keeps 3 layers of rules, and each seed lays them over each other 
    changed it and why.
 
 A seed compares each rule in the definitions with its seeded version through
-[the widening check](#the-widening-check). An edit that narrows applies at once, and the seed record
-lists it. An edit that widens waits: the seed gathers every widening into one rule change proposal,
-recorded beside the seed record, and the seeded version stays in force. The first seed of a rules
-file follows the same check, so its denies and asks apply and its allows wait for one approval. When
-a later seed, including a seed of the definitions in force, holds other widenings, it withdraws the
-pending proposal and proposes again. An approval applies each widened version as seeded. After a
-rejection or a lapse, the seeded version stays in force, and nixie asks again only once the set of
-widenings changes. An approved set held again means the definitions narrowed it since, so nixie asks
-again at once. A log reset removes the proposal records but keeps each set of widenings you rejected
-or left to lapse, including a set past its lapse time that the hourly sweep has not yet closed. The
-first seed after the reset proposes again only a set that was pending.
+[the widening check](#the-widening-check), and applies every edit at once, a widening as much as a
+narrowing, because the user wrote the repo
+([0016](../../decisions/0016-trust-the-definitions-repo.md)). The seed record lists each edit with
+its class. The seed writes no rule change proposal, and withdraws each one that still waits, so its
+widenings go in force with the seed. A widening that starts inside nixie still asks: Always allow, a
+proposed rule, a mandate and a runtime change.
+
+Trusting the repo has 3 consequences:
+
+- A budget raise or a lift rule from the repo skips the passkey check of the `lifting` risk class.
+  The same change made inside nixie still takes the passkey.
+- A widening rejected in the app goes in force at the next seed while the repo still holds it.
+- A nixie release can drop an effect from a tool's declaration, and the next seed applies the drop
+  with no ask.
 
 A runtime change stays in force over the seeded version and the definitions' version. It records the
 definitions' version that it changed, its base, so the store tells whether the definitions moved
@@ -317,9 +320,12 @@ The host commands read and answer the rule store, and each prints JSON:
 | `nixie rules resolve <id> --keep nixie\|repo` | Resolves the conflict on that rule                                 |
 | `nixie proposals list`                        | Lists each pending rule change proposal                            |
 | `nixie proposals approve <id>`                | Puts the proposal's widenings in force                             |
-| `nixie proposals reject <id> --reason <why>`  | Leaves the seeded versions in force, with your reason              |
+| `nixie proposals reject <id> --reason <why>`  | Closes the proposal with your reason                               |
 | `nixie mandates list`                         | Lists each active mandate, its rules and its end                   |
 | `nixie mandates end <id>`                     | Ends the mandate, as End now does                                  |
+
+No seed writes a rule change proposal, so the `nixie proposals` commands answer only the proposals
+that the log already holds, and the next seed withdraws each one that still waits.
 
 The approvals page in the web client, at `/proposals`, lists the same pending proposals among every
 other kind, each change as the sentence before and after it, and answers them through

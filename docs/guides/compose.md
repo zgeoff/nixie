@@ -18,8 +18,7 @@ secret reaches the container's configuration or its disk.
 3. Replace the persona in `definitions/` with your own. Keep or edit the starter rules in
    `definitions/rules/starter.yaml`. The pinned image reads definitions format 2, which leaves rule
    files unapplied. When you run a release that applies rule files, set `format: 3` in
-   `definitions/nixie.yaml`. The next seed applies the asks at once, and waits for you to approve
-   the allows with `nixie proposals approve <proposal ID>`.
+   `definitions/nixie.yaml`. The next seed applies every rule in the files at once.
 4. Encrypt your secrets file with sops to your host's age key and your recovery key. It holds the
    deployment key, impd's token and one credential per model profile, in the shape
    [the Kubernetes Secret example](../../deploy/kubernetes/secret.example.yaml) shows.

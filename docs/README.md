@@ -307,6 +307,8 @@ Approvals, the rule engine, untrusted content and the spending stop.
   always untrusted and carries no taint flag, so the destination limits apply to every send
 - [0012: The spending stop](decisions/0012-spending-stop.md) — a model gateway on the host counts
   model spend and refuses requests past the budget, in place of the SDK's cap inside the sandbox
+- [0016: The definitions repo's widenings](decisions/0016-trust-the-definitions-repo.md) — a seed
+  applies every widening from the repo at once, and only a widening that starts inside nixie asks
 
 ### Memory
 

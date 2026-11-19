@@ -24,7 +24,6 @@ test('it applies a definitions edit that narrows and seeds the new version', () 
         change: 'narrowing',
       },
     ],
-    held: [],
     adopted: [],
     overlaid: [],
     inForce: [
@@ -36,7 +35,7 @@ test('it applies a definitions edit that narrows and seeds the new version', () 
   });
 });
 
-test('it holds a definitions edit that widens and keeps the seeded version in force', () => {
+test('it applies a definitions edit that widens and seeds the new version', () => {
   const plan = buildRuleSeedPlan({
     definitions: [
       {
@@ -50,9 +49,8 @@ test('it holds a definitions edit that widens and keeps the seeded version in fo
   });
 
   expect(plan).toStrictEqual({
-    seeded: [{ hash: 'h-deny', rule: { id: 'mail', outcome: 'deny', tools: ['mail.send'] } }],
-    applied: [],
-    held: [
+    seeded: [{ hash: 'h-ask', rule: { id: 'mail', outcome: 'ask', tools: ['mail.send'] } }],
+    applied: [
       {
         ruleID: 'mail',
         before: { hash: 'h-deny', rule: { id: 'mail', outcome: 'deny', tools: ['mail.send'] } },
@@ -64,7 +62,7 @@ test('it holds a definitions edit that widens and keeps the seeded version in fo
     overlaid: [],
     inForce: [
       {
-        rule: { hash: 'h-deny', rule: { id: 'mail', outcome: 'deny', tools: ['mail.send'] } },
+        rule: { hash: 'h-ask', rule: { id: 'mail', outcome: 'ask', tools: ['mail.send'] } },
         changeID: null,
       },
     ],
@@ -73,7 +71,7 @@ test('it holds a definitions edit that widens and keeps the seeded version in fo
 
 test.each<[string, string, 'allow' | 'deny', string[]]>([
   ['an allow', 'narrowing', 'allow', []],
-  ['a deny', 'widening', 'deny', ['web']],
+  ['a deny', 'widening', 'deny', []],
 ])('it plans the removal of %s from the definitions as a %s', (_name, change, outcome, inForce) => {
   const plan = buildRuleSeedPlan({
     definitions: [],
@@ -82,7 +80,7 @@ test.each<[string, string, 'allow' | 'deny', string[]]>([
   });
 
   expect({
-    changes: [...plan.applied, ...plan.held].map((edit) => [edit.ruleID, edit.change]),
+    changes: plan.applied.map((edit) => [edit.ruleID, edit.change]),
     inForce: plan.inForce.map((entry) => entry.rule.rule.id),
   }).toStrictEqual({ changes: [['web', change]], inForce });
 });
@@ -113,9 +111,8 @@ test('it keeps a runtime change in force over a definitions edit to its rule', (
 
   expect({
     applied: plan.applied,
-    held: plan.held,
     inForce: plan.inForce.map((entry) => [entry.rule.hash, entry.changeID]),
-  }).toStrictEqual({ applied: [], held: [], inForce: [['h-allow', 'change-1']] });
+  }).toStrictEqual({ applied: [], inForce: [['h-allow', 'change-1']] });
 });
 
 test('it adopts a runtime change once the definitions hold its version', () => {

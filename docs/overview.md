@@ -152,10 +152,10 @@ first external server is a hosted MCP server of your own over HTTPS, configured 
 
 ## Deployment
 
-Your definitions seed the database from a definitions source, and a seed that widens a rule waits
-for your confirmation. Kubernetes and Docker Compose are both supported from the first build, with
-Compose as the recipe for local use and any single host
-([the definitions](architecture/core/definitions.md),
+Your definitions seed the database from a definitions source, and a seed applies each rule, budget
+and effect change in them at once ([0016](decisions/0016-trust-the-definitions-repo.md)). Kubernetes
+and Docker Compose are both supported from the first build, with Compose as the recipe for local use
+and any single host ([the definitions](architecture/core/definitions.md),
 [the deployment design](design/platform/deployment/deployment.md)).
 
 Restic snapshots the data and key stores. Litestream replicates the database to S3-compatible
