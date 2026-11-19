@@ -4,9 +4,10 @@ A rule is plain data that matches a tool call and gives it one outcome: allow, a
 writes rules as YAML files in the definitions, and nixie checks, matches, evaluates and renders them
 with code that never calls a model, so the user reads exactly what a rule does and a replay of a
 decision gets the same answer. The policy module owns the rule format and these pure functions, and
-[rules in force](#rules-in-force) covers how a seed puts them in force. The
-[rules design](../../design/platform/policy/rules.md) holds the parts not built yet, and
-[the decision point](decision-point.md) covers the stages that decide a call.
+[rules in force](#rules-in-force) covers how a seed puts them in force. A seed is the step that
+reads the definitions and puts them in force, as [seeding](../core/definitions.md#seeding)
+describes. The [rules design](../../design/platform/policy/rules.md) holds the parts not built yet,
+and [the decision point](decision-point.md) covers the stages that decide a call.
 
 ## The rule format
 
@@ -35,26 +36,24 @@ The parser refuses an empty list, a pattern with a space and an unknown field in
 lists each fault with its file. A rule that holds an unknown top-level field fails closed, so a
 newer release's field never stops an older release from seeding: the seed skips an allow rule whole,
 so it matches nothing, and drops only the field from an ask or a deny rule, so the rule matches
-more. The seed logs a warning that names the rule and the field. Each release publishes the format
-as a JSON Schema, the `definitions-rules.schema.json` asset, which the same schema the parser uses
-generates. After a change to the format, `bun run --cwd modules/policy rules-schema` rewrites the
+more. The seed logs a warning with the rule and the field. Each release publishes the format as a
+JSON Schema, the `definitions-rules.schema.json` asset, generated from the schema that the parser
+uses. After a change to the format, `bun run --cwd modules/policy rules-schema` rewrites the
 committed file, and a test fails while the two differ.
 
 A pattern uses `*` as its only wildcard and matches the whole text, so `*@example.com` matches every
 address at that domain and nothing longer. Strings compare in Unicode NFC on both sides. One kind of
 wildcard keeps the widening check decidable, which a regular expression would not.
 
-The parser of a rules file still reads the old names, `jobs` for `definitions` and the context `job`
-for `task`, and a rule that holds both `jobs` and `definitions` is refused, because merging the
-lists could widen an allow rule. The JSON Schema marks the old names as deprecated. nixie stores
-every rule in the new names, and reads a stored rule in no other form. The export writes the new
-names too.
+The parser of a rules file reads 2 deprecated names: `jobs` for `definitions`, and the context `job`
+for `task`. The parser refuses a rule that holds both `jobs` and `definitions`, because merging the
+lists could widen an allow rule. The JSON Schema marks the deprecated names. nixie stores and
+exports every rule with `definitions` and `task`, and reads a stored rule in no other form.
 
-The context `task` covers both kinds of task, so it matches more than either old context did. A rule
-with `contexts: [job]` matches a task that nixie starts from chat as well as a definition's task
-run. A rule with `contexts: [task]` matches a definition's task run as well as a task that nixie
-starts. A `definitions` or `jobs` list still limits a rule to the task runs of the definitions it
-names, so name the definitions in a rule that must match only them.
+The parser reads the context `job` as `task`, which covers both kinds of task. A rule with
+`contexts: [job]` or `contexts: [task]` therefore matches a task that nixie starts from chat as well
+as a definition's task run. A `definitions` or `jobs` list still limits a rule to the task runs of
+the definitions it names, so name the definitions in a rule that must match only them.
 
 The parser turns each rule into its canonical form: each list sorted with its duplicates dropped,
 free text in NFC, and the expiry in UTC. Two files that list the same rule in another order
@@ -73,8 +72,8 @@ while an ask or a deny guards access and catches any part of it:
 | `destinations` | the call has destinations, and each matches a pattern | one destination matches a pattern        |
 | `sources`      | the call has sources, and the rule lists each one     | the rule lists one of the call's sources |
 
-A check on an argument the call lacks fails, for an allow and an ask alike. A tool name matches the
-tool and each of its variants, so `task.start` matches `task.start/atc`, while `task.start/atc`
+A check on an argument that the call lacks fails, whatever the rule's outcome. A tool name matches
+the tool and each of its variants, so `task.start` matches `task.start/atc`, while `task.start/atc`
 matches only that variant. A rule stops matching at its expiry, compared with the time of the call,
 so a replay agrees.
 
@@ -114,47 +113,53 @@ Turning an allow into an ask or a deny narrows whatever the match, because remov
 adding an ask both narrow. Turning an ask into a deny narrows when the old match lies inside the new
 one, and widens otherwise. A looser outcome widens.
 
-The check never reports a widening as a narrowing. A wildcard inside an inner pattern counts as
-covered only by a wildcard in the outer pattern, so the check returns "not inside" for a pair it
-cannot prove. Every edit to a rule with a CEL condition widens, because the check cannot read CEL.
-For a change made inside nixie, a wrong answer therefore costs a prompt or a refusal, and never
-access. A seed applies every edit whatever its class, as [rules in force](#rules-in-force)
-describes.
+The check never reports a widening as a narrowing. When the check tests whether pattern A lies
+inside pattern B, a wildcard in A counts as covered only by a wildcard in B, so the check returns
+"not inside" for a pair it cannot prove. Every edit to a rule with a CEL condition widens, because
+the check cannot read CEL. For a change made inside nixie, a wrong answer therefore costs a prompt
+or a refusal, and never access. A seed applies every edit whatever its class, as
+[rules in force](#rules-in-force) describes.
 
 ## Rules in force
 
-The rule store keeps 3 layers of rules, and each seed lays them over each other in this order:
+The rule store keeps 3 layers of rules:
 
 1. The rules the definitions hold, each with the path of its file.
-2. The seeded rules: the version of each rule from the definitions that nixie applied.
+2. The seeded rules: the version of each rule from the definitions that the last seed applied.
 3. The runtime changes: a rule that nixie or the user changed or removed while nixie runs, with who
    changed it and why.
 
-A seed compares each rule in the definitions with its seeded version through
+The rule in force is the runtime change when one exists, and the seeded version otherwise. A seed
+compares each rule in the definitions with its seeded version through
 [the widening check](#the-widening-check), and applies every edit at once, a widening as much as a
 narrowing, because the user wrote the repo
 ([0016](../../decisions/0016-trust-the-definitions-repo.md)). The seed record lists each edit with
-its class. The seed writes no rule change proposal. A rule change proposal is the one kind of
-proposal that holds a seed's widenings for approval, and the log still holds the ones that seeds of
-older releases wrote. Each seed withdraws every pending rule change proposal, because the seed
-applies the repo's widenings itself. A proposed rule and a mandate are other kinds of proposal, and
-a seed leaves them pending. A widening that starts inside nixie still asks: Always allow, a proposed
-rule, a mandate and a runtime change.
+its class.
+
+A seed never writes a rule change proposal, the `rules.change_proposed` record that holds a set of
+widenings from the definitions until the user answers it. Each seed withdraws every pending
+`rules.change_proposed` that the log holds. A proposed rule and a mandate use other records, so a
+seed leaves them pending, although their rows share the `rule_change` family.
+
+A widening that starts inside nixie asks the user first. Always allow on an approval card, a
+[proposed rule](#proposed-rules) and a [mandate](#mandates) each wait for the user's answer, and the
+device calls that change a rule refuse a widening, as
+[narrowing a rule from the client](#narrowing-a-rule-from-the-client) describes.
 
 Trusting the repo has 3 consequences:
 
-- A budget raise or a lift rule from the repo skips the
+- A budget raise or a lift rule from the repo goes in force with no
   [passkey check](passkeys.md#which-answers-take-the-passkey). The same change made inside nixie
   still takes the passkey, in the `always_ask` risk class for a budget raise and the `lifting` risk
   class for a lift.
-- A widening from the repo that the user rejected in a rule change proposal goes in force at the
-  next seed while the repo still holds it. To keep it out, remove it from the repo.
+- The app can never keep out a widening that the repo holds. To keep a widening out, remove it from
+  the repo.
 - A nixie release can drop an effect from a tool's declaration, and the next seed applies the drop
   with no ask.
 
 A runtime change stays in force over the seeded version and the definitions' version. It records the
-definitions' version that it changed, its base, so the store tells whether the definitions moved
-since:
+definitions' version that it changed, its base, so the rule store can tell whether the definitions
+moved since:
 
 - **The definitions hold the runtime version.** The user merged it, so the seed adopts the change
   and the rule's origin becomes the definitions.
@@ -162,25 +167,27 @@ since:
 - **The definitions hold another version.** The runtime change stays in force, and the seed record
   lists the conflict. Keeping nixie's version makes the definitions' version its base. Keeping the
   repo's version retires the runtime change and applies the definitions' version as seeded, with no
-  widening check, because the user chose it. Each choice is a record.
+  widening check, because the user chose it. The rule store writes a record of each choice.
 
-A runtime change, an approval and a resolution each take effect at once through a seed of the
-definitions in force, as [skills that nixie wrote](../core/definitions.md#skills-that-nixie-wrote)
-do. Each rule has a revision, which goes up by one each time its version in force changes, and a
-decision names the rule and the revision that decided it. A log reset keeps the rule store, and the
-reset seed restores the rules of the snapshot in force.
+A seed of the definitions in force reads the snapshot already in force, with no read of the repo. A
+runtime change, an approved proposal and a resolved conflict each take effect at once through one,
+as [skills that nixie wrote](../core/definitions.md#skills-that-nixie-wrote) do. Each rule has a
+revision, which goes up by one each time its version in force changes, and a decision names the rule
+and the revision that decided it. A log reset keeps the rule store, and the seed after the reset
+restores the rules of the snapshot in force, as [seeding](../core/definitions.md#seeding) describes.
 
-The snapshot hash covers each rule in force with its revision, its origin and its runtime change, so
-each snapshot holds the revision of every rule in force.
+The [snapshot hash](../core/definitions.md#the-snapshot-hash) covers each rule in force with its
+revision, its origin and its runtime change, so each snapshot holds the revision of every rule in
+force.
 
 ## Proposed rules
 
-When the user approves the same kind of call often enough within a window and declines none,
-`policy.proposed_rules` sets the counts and nixie proposes the narrowest allow rule that covers
-those calls. A call that no rule matches asks with the cause `no_rule`, and the user's answer to
-that action proposal joins a gap group. The group's key is the tool with its variant, the context
-and the sorted destinations, hashed with SHA-256. The `gap_answers` and `gap_groups` projections
-hold the group hash, each answer and its time, and never a destination or an argument.
+When the user approves the same kind of call often enough within a window and declines none, nixie
+proposes the narrowest allow rule that covers those calls. The `policy.proposed_rules` settings set
+the counts and the window. A call that no rule matches asks with the cause `no_rule`, and the user's
+answer to that action proposal joins a gap group. The group's key is the tool with its variant, the
+context and the sorted destinations, hashed with SHA-256. The `gap_answers` and `gap_groups`
+projections hold the group hash, each answer and its time, and never a destination or an argument.
 
 After each answer that joins a group, the rule store checks the group in a transaction of its own,
 and proposes a rule when all of these hold:
@@ -195,7 +202,7 @@ and proposes a rule when all of these hold:
 definition when every call came from one, the exact destinations, the union of the sources, and an
 `eq` check on each scalar argument that held one value in every call. An argument that the tool
 declares as content gets no check, and neither does a list. The rule parser checks the result as it
-checks every rule, and a test holds that every counted call matches it.
+checks every rule, and a test checks that every counted call matches it.
 
 The proposal is a row of the `rule_change` family with the cause `proposed_rule` and the
 `always_ask` risk class. Its record, `rules.rule_proposed`, keeps the rule in erasable fields, so a
@@ -209,13 +216,13 @@ record forget of the proposal removes it. The card offers these choices:
 | Edit    | Sends `rules.editProposedRule`, which withdraws the card and opens a new one with the edited rule     |
 
 A lapse of the proposal keeps the group quiet as Not now does, and a decline of a new action
-proposal in the group withdraws the open proposed rule. A lapse that the release before writes, with
-`rules.change_lapsed`, closes the open proposed rule too. That record holds no quiet time, so the
-group keeps the lapse time, and the rule store adds the quiet days to it when it checks the group.
-An edited rule stays an allow rule, takes the `lifting` risk class when it carries a lift or lets an
-always-ask effect through, and returns `INVALID` with each fault the parser found. At start, the
-rule store checks each group that gained an answer since its last check, so a crash between an
-answer and its check loses no proposal. An approved proposed rule goes into
+proposal in the group withdraws the open proposed rule. A `rules.change_lapsed` record for the
+proposed rule closes it too. That record holds no quiet time, so the group keeps the lapse time, and
+the rule store adds the quiet days to it when it checks the group. `rules.editProposedRule` keeps
+the edited rule an allow rule, and gives the new card the `lifting` risk class when the rule carries
+a lift or lets an always-ask effect through. It returns `INVALID` with each fault the parser found.
+At start, the rule store checks each group that gained an answer since its last check, so a crash
+between an answer and its check loses no proposal. An approved proposed rule goes into
 [the rule export](#the-rule-export), and Undo on its notice removes it.
 
 ## Mandates
@@ -290,8 +297,8 @@ a hash of the exported changes, each with its base, the definitions' version and
 it, the count of runtime changes that left force, and the record of the seed in force. Any change to
 those, such as a new runtime change, a choice on a conflict or a new seed, makes a new export, even
 when the set or the repo returns to one an earlier export held. The export builds the branch again
-on the newest commit of the base branch, which updates the open pull request, and the run marks each
-earlier export closed without closing that pull request. When the set empties, the run closes a pull
+on the newest commit of the base branch, which updates the open pull request, and marks each earlier
+export closed without closing that pull request. When the set empties, the export closes a pull
 request still open on the branch, and leaves a merged one as it is.
 
 The export edits the rules files in place: it replaces or removes the top-level block of each
@@ -304,12 +311,12 @@ same way.
 
 ## Narrowing a rule from the client
 
-Two device calls change a rule in force, and each one only narrows:
+The web client changes a rule in force through 2 calls of the device API, and each one only narrows:
 
-- `rules.removeRule` removes an allow rule. The widening check refuses the removal of an ask or a
-  deny rule, because that widens.
-- `rules.editRule` replaces the destinations of an allow rule. The check refuses an edit that adds a
-  destination, and the call refuses an empty list.
+- `rules.removeRule` removes an allow rule. The call refuses to remove an ask or a deny rule,
+  because the widening check classes that removal as a widening.
+- `rules.editRule` replaces the destinations of an allow rule. The call refuses an edit that adds a
+  destination, and refuses an empty list.
 
 Both calls name the revision the client showed, and refuse with the current revision when it has
 moved. Both run as checked actions with a client action ID, write a runtime change in one
@@ -332,9 +339,9 @@ The host commands read and answer the rule store, and each prints JSON:
 | `nixie mandates list`                         | Lists each active mandate, its rules and its end                   |
 | `nixie mandates end <id>`                     | Ends the mandate, as End now does                                  |
 
-No seed writes a rule change proposal, so the `nixie proposals` commands answer only the rule change
-proposals that the log already holds. The next seed withdraws each one that is still pending, and
-leaves a pending proposed rule or mandate as it is.
+The `nixie proposals` commands answer only the rule change proposals that the log holds, because a
+seed never writes one. The next seed withdraws each one that is still pending, and leaves a pending
+proposed rule or mandate as it is.
 
 The approvals page in the web client, at `/proposals`, lists the same pending proposals among every
 other kind, each change as the sentence before and after it, and answers them through
