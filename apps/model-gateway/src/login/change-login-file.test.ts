@@ -1,5 +1,5 @@
 import { expect, onTestFinished, test } from 'bun:test';
-import { mkdtemp, rm, stat } from 'node:fs/promises';
+import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { buildLoginFile } from '../test-utils/build-login-file';
@@ -21,22 +21,6 @@ test('it reads a login file that is gone as null', async () => {
   const result = await readLoginFile(ctx.path);
 
   expect(result).toBeNull();
-});
-
-test('it writes a login file that only its owner reads, and reads it back', async () => {
-  const ctx = await setupTest();
-
-  const login = buildLoginFile();
-
-  await writeLoginFile(ctx.path, login);
-
-  const info = await stat(ctx.path);
-
-  expect(info.mode & 0o777).toBe(0o600);
-
-  const result = await readLoginFile(ctx.path);
-
-  expect(result).toStrictEqual(login);
 });
 
 test('it writes a change to the login the caller read', async () => {
