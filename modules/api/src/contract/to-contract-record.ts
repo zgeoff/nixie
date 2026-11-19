@@ -10,6 +10,7 @@ import {
   modelTurnEndedCodec,
 } from '@heynixie/models';
 import { memoryRecalledCodec } from '@heynixie/sessions';
+import { skillsWriteAppliedCodec } from '@heynixie/skills';
 import type { TaskProfile } from '@heynixie/tasks';
 import {
   conversationTaskID,
@@ -87,6 +88,7 @@ export function toContractRecord(
   const proposal = lookups.proposals.get(record.sequence);
   const removal = record.kind === 'action.outcome' ? toRemoval(record, lookups) : undefined;
   const definitionNotice = lookups.definitionNotices.get(record.sequence);
+  const skillNotice = record.kind === 'skills.write_applied' ? toSkillNotice(record) : undefined;
   const worker = toWorkerView(record);
 
   return {
@@ -104,6 +106,7 @@ export function toContractRecord(
     recordedAt: record.recordedAt,
     ...(removal === undefined ? {} : { removal }),
     sequence: record.sequence,
+    ...(skillNotice === undefined ? {} : { skillNotice }),
     ...(stop === undefined ? {} : { stop }),
     thread: record.thread,
     ...(task === undefined ? {} : { task }),
@@ -407,6 +410,28 @@ function toRemoval(record: LogRecord, lookups: RecordLookups): Removal | undefin
         ...(action.callSequence === null ? {} : { callSequence: action.callSequence }),
       }
     : undefined;
+}
+
+type SkillNotice = NonNullable<ContractRecord['skillNotice']>;
+
+function toSkillNotice(record: LogRecord): SkillNotice | undefined {
+  const applied = skillsWriteAppliedCodec.tryDecodePartial(record.payload);
+
+  if (
+    applied?.name === undefined ||
+    applied.skillHash === undefined ||
+    applied.baseHash === undefined ||
+    applied.rule?.id === undefined
+  ) {
+    return undefined;
+  }
+
+  return {
+    name: applied.name,
+    skillHash: applied.skillHash,
+    isNew: applied.baseHash === null,
+    ruleID: applied.rule.id,
+  };
 }
 
 type SessionFields = Pick<

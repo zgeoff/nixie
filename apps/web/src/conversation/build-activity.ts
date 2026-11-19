@@ -137,6 +137,11 @@ export type ActivityItem =
       readonly notice: NonNullable<LiveRecord['definitionNotice']>;
     }
   | {
+      readonly kind: 'skill';
+      readonly record: LiveRecord;
+      readonly notice: NonNullable<LiveRecord['skillNotice']>;
+    }
+  | {
       readonly kind: 'reminder';
       readonly record: LiveRecord;
       readonly reminder: NonNullable<LiveRecord['reminder']>;
@@ -199,6 +204,8 @@ function foldRecord(state: ActivityState, record: LiveRecord): void {
     state.items.push({ kind: 'exchange', record, notice: record.exchangeNotice });
   } else if (record.definitionNotice !== undefined) {
     state.items.push({ kind: 'definition', record, notice: record.definitionNotice });
+  } else if (record.skillNotice !== undefined) {
+    state.items.push({ kind: 'skill', record, notice: record.skillNotice });
   } else if (record.reminder !== undefined) {
     state.items.push({ kind: 'reminder', record, reminder: record.reminder });
   } else if (record.stop !== undefined) {

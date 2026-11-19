@@ -34,3 +34,4 @@ export { writeWrittenSkillResolution } from './skill/write-written-skill-resolut
 export { makeSkillProposalHandler } from './skill/make-skill-proposal-handler';
 export { mapSkillProposalRecord } from './skill/map-skill-proposal-record';
 export { skillsWriteApprovedCodec } from './write/skills-write-approved-codec';
+export { skillsWriteAppliedCodec } from './write/skills-write-applied-codec';

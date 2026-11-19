@@ -154,6 +154,11 @@ const recordSchema = z.object({
 
   sequence: sequenceSchema,
 
+  // set on a skill that an allow rule applied at once, with the version it put in force
+  skillNotice: z
+    .object({ name: z.string(), skillHash: z.string(), isNew: z.boolean(), ruleID: z.string() })
+    .optional(),
+
   stop: z.object({ cancelledActions: z.array(listedActionSchema) }).optional(),
 
   summary: summarySchema.optional(),
