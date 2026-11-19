@@ -13,6 +13,7 @@
   "dependencies": {
     "@heynixie/budgets": "workspace:*",
     "@heynixie/log": "workspace:*",
+    "@heynixie/logger": "workspace:*",
     "@heynixie/policy": "workspace:*",
     "@heynixie/sandbox": "workspace:*",
     "@modelcontextprotocol/server": "catalog:",

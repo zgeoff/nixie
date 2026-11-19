@@ -22,6 +22,7 @@ test('it reads the names of the tools a run endpoint offers to the run token', a
   ]);
 
   const endpoint = await startToolEndpoint({
+    logger: () => {},
     socketDir: join(ctx.dataDir, 'tools'),
     registry,
     decide: readStarterDecisionPoint(

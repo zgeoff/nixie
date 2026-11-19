@@ -35,20 +35,20 @@ hash as both its revision and its probe token.
 
 A git-sync sidecar checks each commit of the definitions repo out as a linked git worktree, and the
 path source reads that commit from the files git keeps beside the checkout, without running git.
-When the root resolves to a linked worktree whose HEAD holds a bare commit, the commit becomes the
-revision. The source names the repo by the origin URL in the repo's git config, with any user name,
-password, query and fragment removed, because a sync can carry its credential in that URL. The probe
-token joins the commit and the repo to the content hash, so a new commit or a new origin over the
-same files seeds again. A checkout on a branch, or a directory with no git file, keeps the content
-hash as its revision and names no repo.
+When the root resolves to a linked worktree with a detached HEAD, whose `HEAD` file holds a commit
+ID in place of a branch name, that commit becomes the revision. The source names the repo by the
+origin URL in the repo's git config, with any user name, password, query and fragment removed,
+because a sync can carry its credential in that URL. The probe token joins the commit and the repo
+to the content hash, so a new commit or a new origin over the same files seeds again. A checkout on
+a branch, or a directory with no git file, keeps the content hash as its revision and names no repo.
 
-A source reads only the known definitions paths: the manifest and the persona at the root, and the
-`budgets`, `effects`, `prompts`, `rules`, `skills` and `tasks` folders. It skips every other entry
-at the root by name, without reading or entering it, so that entry never enters the content hash,
-never has to parse, and never counts towards the size limits. A definitions repo can then hold its
-own docs and scripts, and editing a readme never makes a new definitions version. The snapshot still
-lists every skipped root entry, so a misnamed folder such as `rule/` shows in the seed's record
-instead of its rules going unread without a trace.
+A source reads only the known definitions paths: the manifest, `nixie.yaml`, and the persona at the
+root, and the `budgets`, `effects`, `prompts`, `rules`, `skills` and `tasks` folders. It skips every
+other entry at the root by name, without reading or entering it, so that entry never enters the
+content hash, never has to parse, and never counts towards the size limits. A definitions repo can
+then hold its own docs and scripts, and editing a readme never makes a new definitions version. The
+snapshot still lists every skipped root entry, so a misnamed folder such as `rule/` shows in the
+seed's record instead of its rules going unread without a trace.
 
 Within the known paths, every source applies one filter. It skips every path with a part that starts
 with a dot, such as `.git`. It keeps every file under `skills/`, whatever its extension, because a
@@ -65,10 +65,9 @@ refuses one that turned into a link. No file from outside the definitions ever r
 The content hash covers a format version line, then each file in path order with its path, its byte
 length and its own hash. Every source turns CRLF line endings into LF before it hashes, and git
 metadata, mode bits and file times never enter the hash. A git commit and a checkout of it, on any
-platform, therefore give the same hash. A run that read one set of definitions from a git commit and
-from a local directory got one hash from both, and a persona file saved with CRLF endings hashed the
-same as its LF copy once normalised. Without that step a Windows checkout with `core.autocrlf` on
-would give the commit a second hash.
+platform, therefore give the same hash, and a persona file saved with CRLF endings hashes the same
+as its LF copy. Without the CRLF step, a Windows checkout with `core.autocrlf` on would give the
+commit a second hash.
 
 ## The definitions format
 
@@ -196,17 +195,18 @@ checks that its approval is still in force in the transaction that marks it in f
 that records its pull request, and closes at once when it is not. A retired skill's pull request
 closes. An adopted skill's pull request usually merged, so the run closes only an open one on the
 skill's branch. A superseded approval leaves its pull request open, because the approval after it
-exports on the same branch. The run never closes a pull request that another approval's opened
-export holds.
+exports on the same branch. The export run never closes a pull request while the export of another
+approval records that pull request as open.
 
 A choice on a conflict changes the export. Keeping nixie's version gives the skill a new base, and
 the export builds the pull request again on it. Keeping the definitions' version retires the skill,
 and the export closes its pull request. The export records itself before it writes to the repo, so
-when a run stops before it records the pull request it opened, the close finds that pull request by
-the skill's branch. A new skill joins the conversation's list through the overlay alone, so when
-nixie.yaml lists the conversation's skills, the pull request asks the user to add the skill to that
-list. The seed refuses definitions at format 1, so it never adopts a skill merged into them. When
-nixie.yaml holds format 1, the pull request tells the user to move it to format 2 with the merge.
+when an export run stops before it records the pull request it opened, the close finds that pull
+request by the skill's branch. A new skill joins the conversation's list through the overlay alone,
+so when the manifest lists the conversation's skills, the pull request asks the user to add the
+skill to that list. The seed refuses definitions at format 1, so it never adopts a skill merged into
+them. When the manifest holds format 1, the pull request tells the user to move it to format 2 with
+the merge.
 
 The export runs only when the configuration names the definitions repo on GitHub. It writes through
 GitHub's REST API with a fine-grained token that holds contents and pull-requests write on that one
@@ -255,15 +255,21 @@ checks in this order:
    only `log` or `poll`, is an unknown field.
 4. Every other fault, which refuses the seed.
 
-A tool name in `tools` that is neither a registered tool nor the SDK name of one is dropped with a
-warning, before the hash is taken. The server passes the registered tool names, and passes the check
-of a start, which runs the sandbox runner's plan with the bounds of the conversation's `task.start`.
-A file definition may list any registered tool except the tools that a task started from chat may
-not hold.
+A definition may name a tool in `tools` by nixie's own name, such as `web_fetch`, or by the
+[SDK name](../connectors/tool-calls.md#tool-names) the model sees, such as `mcp__nixie__web_fetch`.
+The parser drops a name that is neither a registered tool nor the SDK name of one, with a warning,
+before it takes the hash. The parsed `task.yaml`, which the hash covers, lists the base tools that
+every task holds first: `tasks.list`, `task.message` and `task.report`. Then it lists each kept tool
+under nixie's own name. To check each name, the parser takes the registered tool names from the
+server. It also runs the server's check of a start: the sandbox runner's plan, with the bounds of
+the conversation's `task.start`. A definition in `tasks/` may list any registered tool except a
+conversation tool, which [changes from the conversation](#changes-from-the-conversation) describes,
+and a memory tool unless its `memory` is `read`.
 
 One fault refuses the whole seed, and the definitions of the last accepted seed stay in force. The
-refusal is a `TaskSeedRefusedError`, a kind of definitions parse error, whose problems and `faults`
-list each file's path and fault code:
+refusal is a `TaskSeedRefusedError`, a kind of definitions parse error. Its `problems` field, which
+every definitions parse error has, and its own `faults` field both list each file's path with its
+fault code:
 
 | Code                | Path              | Cause                                                                                                 |
 | ------------------- | ----------------- | ----------------------------------------------------------------------------------------------------- |
@@ -271,7 +277,7 @@ list each file's path and fault code:
 | `missing_task_yaml` | the folder        | a folder with no `task.yaml`                                                                          |
 | `unnamed_step_file` | the `.ts` file    | a `.ts` file that `step.file` does not name                                                           |
 | `bad_slot`          | `instructions.md` | a slot that the `task` prompt does not accept, which includes every `trigger.*` and `inputs.*` slot   |
-| `target_removed`    | `task.yaml`       | a `target` key, which every definition now runs as a task without; delete the line                    |
+| `target_removed`    | `task.yaml`       | a `target` key, which no definition reads, because every definition runs as a task; delete the line   |
 | `bad_schedule`      | `task.yaml`       | a trigger that breaks a rule of `Schedule`                                                            |
 | `at_without_offset` | `task.yaml`       | an `at` date-time with no offset or `Z`                                                               |
 | `start_refused`     | `task.yaml`       | start keys that fail the start schema, or a start that the check refuses                              |
@@ -290,9 +296,13 @@ changes it. The form omits the start keys that a file leaves out, so nothing fro
 enters the hash.
 
 The seed stores each accepted version in `task_definition_versions`, keyed by its hash, with its
-form and its files. nixie never deletes a row. `readDefinitionVersion` reads one by hash and fills
-what the file omits as a start from the file starter would: no model, no profile, the default
-persona, memory `none`, the own log, and the default tools.
+form and its files. nixie never deletes a row. `readDefinitionVersion` reads one by hash, and fills
+each start key the file omits with the value that a `task.start` leaving out that key gets: no
+model, no profile, the default persona, memory `none`, the task's own log (`own`), and the default
+tools. When the version lists `tools`, the reader puts the base tools first. A version that an older
+parser stored can list only its own tools, or the SDK names of tools. The base tools reach its task
+runs from the reader, and the [tool endpoint](../connectors/tool-calls.md) maps each SDK name to
+nixie's own when a task run starts.
 
 ## The task of a definition
 
@@ -315,21 +325,26 @@ transaction. A task that is paused, stopped, failed or held at a limit holds the
 that works or has a fire waiting answers `still_running`. The trigger core reads that answer with
 `readDefinitionTaskInTransaction`.
 
+When a task run ends at a limit, stopped or failed, a raise of the task's limits or a restart opens
+a task run that carries the ended one, as [limits](./started-tasks.md#limits) describes. A task run
+and every task run that carries it on, directly or through others, form one piece of work.
+
 The first input of a definition's task run holds a `trigger` block before its report shape:
 `<input name="trigger">` with one sentence that gives the time the task run was scheduled for, the
 time it started, whether it is a catch-up and the skipped times, then the zone those times are in.
-The block comes from the fire that opened the first task run of the chain, so a task run that a
-raise or a restart carries shows the same block when its session is rebuilt. A schedule's zone is
-its own IANA zone. A schedule with the zone `owner`, and an `at` trigger, take the zone of the
-user's newest message recorded before the fire, else the configured default zone. A task run that a
-message opened, and a fire that polls, have no `trigger` block.
+The block comes from the fire that opened the first task run of the piece of work, so a carried task
+run shows the same block when its session is rebuilt. A schedule's zone is its own IANA zone. A
+schedule with the zone `owner`, and an `at` trigger, take the zone of the user's newest message
+recorded before the fire, else the configured default zone. A task run that a message opened has no
+`trigger` block, and neither has a task run that a stored `trigger.fired` record of the kind `poll`
+opened, a kind that no trigger writes.
 
 Each task run of a definition gets a `since` block among its run blocks. It holds the start of the
 previous task run, or the time the definition was first enabled when there is none, and the start of
-this task run. A task run that a raise or a restart carried counts from the start of the first task
-run of its piece of work, so each task run reads from where the previous one's read ended. A
-scheduled task passes the first time as the `from` of `log.read` and the second as its `to`. A
-rebuilt session renders the block again, and a resumed session of a carried task run renders none.
+this task run. A carried task run counts from the start of the first task run of its piece of work,
+so each task run reads from where the previous one's read ended. A scheduled task passes the first
+time as the `from` of `log.read` and the second as its `to`. A rebuilt session renders the block
+again, and a resumed session of a carried task run renders none.
 
 A definition's task run has a brief with no record: the `brief` of the version that the task run
 pins, which the model reads in an envelope from the label `task definition: {name}`, last in the
@@ -345,14 +360,17 @@ describes.
 
 The sandbox runner reads the version that the open task run pins, else the newest task run, else the
 hash in force. The version gives the persona, the memory, the log, the tools and the model. A
-version that names no model runs on the profile of the model role `task`, and a version that names a
-selectable model runs on that model's profile. A task run that pins another hash than the running
-endpoint started with gets a new endpoint, so the tool list of a version applies from its first task
-run.
+version with memory `read` also gets each memory tool that only reads, as a `task.start` with memory
+`read` gives it, and the version's form never lists those tools. A version that names no model runs
+on the profile of the model role `task`, and a version that names a selectable model runs on that
+model's profile. A task's [tool endpoint](../connectors/tool-calls.md#one-endpoint-per-run), through
+which its model loop calls tools, keeps the tool list of the version it started with and can serve
+several task runs. A task run that pins another hash than the task's endpoint started with therefore
+gets a new endpoint, so the tool list of a version applies from its first task run.
 
-Under `context: fresh`, each piece of work opens a session of its own: a task run that a raise or a
-restart carries resumes the session of the task run it carries, and any other task run starts one.
-Under `continuing`, each step resumes the session that the task last kept.
+Under `context: fresh`, each piece of work opens a session of its own: a carried task run resumes
+the session of the task run it carries, and any other task run starts one. Under `continuing`, each
+step resumes the session that the task last kept.
 
 ## The runtime layer of task definitions
 
@@ -378,13 +396,14 @@ the change stores the version in `task_definition_versions` in the same transact
 
 The seed record carries the repo's own task list, which the snapshot's list cannot give: the
 snapshot lists the definitions in force, runtime ones included, with origin `nixie` and the change
-ID. An in-force seed reads the repo's list from the seed record it carries forward. A seed record
-from before the list falls back to the snapshot entries with origin `definitions`.
+ID. A seed of the definitions in force, which takes no fresh snapshot from the source, reads the
+repo's list from the seed record of those definitions. When that seed record holds no list, the seed
+takes the snapshot's entries with origin `definitions` in its place.
 
 At each seed, for each runtime change in force:
 
-- When the repo holds the change's version, the hash included when both are null, the seed writes
-  `definition.settled` as `adopted`.
+- When the repo holds the change's version, the seed writes `definition.settled` as `adopted`. An
+  undefine counts as held when the repo lacks the definition.
 - When the repo holds another version than the one the change last read, the seed writes
   `definition.repo_moved`. A seed that finds the same version again writes nothing.
 - A change whose base differs from the repo's version is a conflict. nixie stores no flag, because
@@ -484,16 +503,24 @@ define only, so an undefine of such a definition goes through. The define refusa
 order: `NOT_FOUND`, `ID_TAKEN`, `FILE_ONLY_KEYS`, `UNCHANGED`, `ONE_SHOT_OVER_REPO`.
 
 No fixed rule names `task.define` or `task.undefine`, so the decision point treats them like any
-tool of the `schedule` effect with no destination. The user's own request allows a call at stage 8,
-and any other call asks at stage 9.
+tool of the `schedule` effect with no destination. The user's own request allows a call at the
+consent stage, stage 8 of [the decision point's stages](../policy/decision-point.md#the-stages), and
+any other call asks at stage 9, the no-rule stage.
 
 Each change shows in the conversation as a notice that carries an undo. A notice is not stored.
 `readDefinitionNotices` builds it for the `definition.changed` records that a read returns, from the
 change's row, its version, the definitions in force and the spent one-shots, and renders the trigger
-in the user's zone at read time. `next` has a value only while the change is `in_force` or
-`adopted`, is the version in force, is enabled, and its one-shot is not spent. An undo undoes the
-change as `undoDefinitionChange` decides, and runs a client action in the same write transaction, so
-a refused undo stores no client action and a retry with the same ID gets the first result.
+in the user's zone at read time. The notice's `next` field gives the next fire, and it is null
+unless all of these hold:
+
+- the change is `in_force` or `adopted`;
+- the change's version is the one in force;
+- that version is enabled;
+- its one-shot, if it has one, is not spent.
+
+An undo undoes the change as `undoDefinitionChange` decides, and runs a client action in the same
+write transaction, so a refused undo stores no client action and a retry with the same ID gets the
+first result.
 
 ## The snapshot hash
 
@@ -509,13 +536,13 @@ keys and no whitespace, so the same definitions always give the same bytes.
 
 The policy holds the rules in code, the rules in force and every tool declaration in the build's
 registry. A rule enters with its revision, as [rules in force](../policy/rules.md#rules-in-force)
-describes, so an edit to a rule changes the snapshot hash. When a rule last decided a call lives in
-its own table and never enters the hash. The rules in code are the queue check rule, which allows
-`actions.log` alone, and in a test build the test rule. A rule decides by a tool's declared effects
-([the decision point](../policy/decision-point.md)), so a replay needs the declarations that were in
-force. A release that changes a tool declaration therefore changes the snapshot hash over the same
-files. A probe token follows the source alone, so the change enters with the next seed the release
-runs, which compares the snapshot hash as well as the revision.
+describes, so an edit to a rule changes the snapshot hash. The time a rule last decided a call lives
+in its own table, so it never enters the hash. The rules in code are the queue check rule, which
+allows `actions.log` alone, and in a test build the test rule. A rule decides by a tool's declared
+effects ([the decision point](../policy/decision-point.md)), so a replay needs the declarations that
+were in force. A release that changes a tool declaration therefore changes the snapshot hash over
+the same files. A probe token follows the source alone, so the change enters with the next seed the
+release runs, which compares the snapshot hash as well as the revision.
 
 A migration that rewrites a stored form keeps the snapshot's hash, because the hash names the
 snapshot in every record and in copies outside the database, and nothing recomputes it from the

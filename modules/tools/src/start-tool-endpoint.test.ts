@@ -1,6 +1,7 @@
 import { expect, mock, onTestFinished, test } from 'bun:test';
 import { join } from 'node:path';
 import { readRecords } from '@heynixie/log';
+import type { LogFields, LogLevel } from '@heynixie/logger';
 import { buildActionHash } from '@heynixie/policy';
 import { readStarterDecisionPoint } from '@heynixie/policy/test-utils';
 import { buildToolRegistry } from './build-tool-registry';
@@ -19,7 +20,13 @@ async function setupTest(config: SetupConfig) {
 
   const registry = buildToolRegistry(config.tools);
 
+  const logLines: { event: string; fields: LogFields | undefined; level: LogLevel | undefined }[] =
+    [];
+
   const endpoint = await startToolEndpoint({
+    logger: (event, fields, level) => {
+      logLines.push({ event, fields, level });
+    },
     socketDir: join(testLog.dataDir, 'tools'),
     registry,
     decide: readStarterDecisionPoint(
@@ -38,8 +45,56 @@ async function setupTest(config: SetupConfig) {
 
   onTestFinished(() => endpoint.stop());
 
-  return { endpoint, log: testLog.log, dataDir: testLog.dataDir };
+  return { endpoint, log: testLog.log, dataDir: testLog.dataDir, logLines };
 }
+
+test('it lists and runs a tool that the run names by its SDK name under the registered name', async () => {
+  const ctx = await setupTest({
+    tools: [buildMockToolDefinition({ name: 'notes.read' })],
+  });
+
+  const run = await ctx.endpoint.startRun({
+    toolUseMetaKey: null,
+    runID: 'run-1',
+    thread: 'task-1',
+    logThread: 'task-1',
+    tools: ['mcp__nixie__notes_read'],
+    model: { model: 'model-a', profile: 'chat-direct' },
+  });
+
+  const client = await startRunClient(run);
+  const listed = await client.listTools();
+  const result = await client.callTool({ name: 'notes.read', arguments: { query: 'milk' } });
+
+  expect(listed.tools.map((tool) => tool.name)).toStrictEqual(['notes.read']);
+  expect(result.structuredContent).toStrictEqual({ text: 'a note' });
+});
+
+test('it warns once for each tool of a run that no registered tool answers', async () => {
+  const ctx = await setupTest({ tools: [buildMockToolDefinition({ name: 'notes.read' })] });
+
+  await ctx.endpoint.startRun({
+    toolUseMetaKey: null,
+    runID: 'run-1',
+    thread: 'task-1',
+    logThread: 'task-1',
+    tools: ['notes.read', 'mcp__nixie__pond_drain', 'kettle.boil'],
+    model: { model: 'model-a', profile: 'chat-direct' },
+  });
+
+  expect(ctx.logLines).toStrictEqual([
+    {
+      event: 'tools.run_tool_unknown',
+      fields: { runID: 'run-1', tool: 'mcp__nixie__pond_drain' },
+      level: 'warn',
+    },
+    {
+      event: 'tools.run_tool_unknown',
+      fields: { runID: 'run-1', tool: 'kettle.boil' },
+      level: 'warn',
+    },
+  ]);
+});
 
 test("it lists only the run's tools, each with its name, description and input schema alone", async () => {
   const ctx = await setupTest({
@@ -494,6 +549,7 @@ test("it leaves a later writer's socket for the same run in place when its run s
   const registry = buildToolRegistry([buildMockToolDefinition({ name: 'notes_read' })]);
 
   const other = await startToolEndpoint({
+    logger: () => {},
     socketDir: join(ctx.dataDir, 'tools'),
     registry,
     decide: readStarterDecisionPoint(
@@ -625,6 +681,7 @@ test('it gives a sandbox the socket of a run that another endpoint of the same w
   const registry = buildToolRegistry([buildMockToolDefinition({ name: 'notes_read' })]);
 
   const other = await startToolEndpoint({
+    logger: () => {},
     socketDir: join(ctx.dataDir, 'tools'),
     registry,
     decide: readStarterDecisionPoint(

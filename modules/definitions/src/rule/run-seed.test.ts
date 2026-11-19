@@ -2288,7 +2288,7 @@ test('it stores each accepted version under its hash and reads it back', async (
     persona: 'default',
     memory: 'read',
     log: 'own',
-    tools: ['memory.recall'],
+    tools: ['tasks.list', 'task.message', 'task.report', 'memory.recall'],
     context: 'fresh',
     wakeable: false,
     trigger: null,

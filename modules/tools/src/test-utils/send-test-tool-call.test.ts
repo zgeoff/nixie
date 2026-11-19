@@ -24,6 +24,7 @@ test('it calls a tool on the run endpoint with the run token and returns its res
   ]);
 
   const endpoint = await startToolEndpoint({
+    logger: () => {},
     socketDir: join(ctx.dataDir, 'tools'),
     registry,
     decide: readStarterDecisionPoint(
@@ -67,6 +68,7 @@ test('it rejects a call that carries a token the endpoint does not know', async 
   const registry = buildToolRegistry([buildMockToolDefinition({ name: 'notes_read' })]);
 
   const endpoint = await startToolEndpoint({
+    logger: () => {},
     socketDir: join(ctx.dataDir, 'tools'),
     registry,
     decide: readStarterDecisionPoint(

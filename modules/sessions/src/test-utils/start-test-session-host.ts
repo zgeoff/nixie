@@ -113,6 +113,7 @@ export async function startTestSessionHost(
   const registry = buildToolRegistry(options.tools ?? []);
 
   const endpoint = await startToolEndpoint({
+    logger: () => {},
     socketDir,
     registry,
     decide:

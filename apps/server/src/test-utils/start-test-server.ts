@@ -161,6 +161,7 @@ function startTestToolEndpoint(
   const tools = typeof given === 'function' ? given(context) : given;
 
   return startToolEndpoint({
+    logger: () => {},
     socketDir,
     registry: buildToolRegistry(tools?.definitions ?? []),
     decide:

@@ -15,7 +15,14 @@ export const taskDefineInputSchema = z.strictObject({
   model: z.string().optional(),
   persona: z.enum(['default', 'none']).optional(),
   memory: z.enum(['none', 'read']).optional(),
-  tools: z.array(z.string()).optional(),
+  tools: z
+    .array(z.string())
+    .optional()
+    .describe(
+      'The tools the task may use beside tasks.list, task.message and task.report, which every ' +
+        'task gets. Name each tool as nixie names it, such as web_fetch, or as your tool list shows ' +
+        'it, such as mcp__nixie__web_fetch.',
+    ),
   report: z.enum(['wake', 'next_turn', 'none']).optional(),
 });
 

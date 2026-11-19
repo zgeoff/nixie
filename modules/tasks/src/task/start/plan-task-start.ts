@@ -1,4 +1,4 @@
-import { toSDKToolName } from '@heynixie/tools';
+import { findHeldToolName } from '@heynixie/tools';
 import type { HarnessCapability } from '@heynixie/wire';
 import { checkReportShape } from '../../report/check-report-shape';
 import { taskReportToolName } from '../../report/task-report-tool-name';
@@ -191,15 +191,6 @@ export function planTaskStart(
 
 function refuse(refusal: TaskStartChoiceRefusal): TaskStartPlan {
   return { status: 'refused', refusal };
-}
-
-// The model sees each tool by its SDK name, so a task accepts that name as well as nixie's own.
-function findHeldToolName(name: string, starterTools: readonly string[]): string | null {
-  if (starterTools.includes(name)) {
-    return name;
-  }
-
-  return starterTools.find((tool) => toSDKToolName(tool) === name) ?? null;
 }
 
 function pickToolRefusal(

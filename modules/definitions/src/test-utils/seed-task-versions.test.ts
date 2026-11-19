@@ -38,3 +38,25 @@ test('it stores a version that reads back with its name, brief and defaults', as
     trigger: null,
   });
 });
+
+test('it stores the tools of a version as given, and they read back after the base tools', async () => {
+  const ctx = await setupTest();
+
+  const [seeded] = await seedTaskVersions(ctx.writer, [
+    {
+      definitionID: 'water-the-ferns',
+      name: 'Water the ferns',
+      brief: 'Mist the ferns in the hall.',
+      tools: ['mcp__nixie__time_now', 'mcp__nixie__tasks_list'],
+    },
+  ]);
+
+  const version = await ctx.readVersion(seeded?.definitionHash ?? '');
+
+  expect(version?.tools).toStrictEqual([
+    'tasks.list',
+    'task.message',
+    'task.report',
+    'mcp__nixie__time_now',
+  ]);
+});

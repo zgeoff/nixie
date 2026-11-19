@@ -1,5 +1,7 @@
 export { buildSchemaParser } from './schema/build-schema-parser';
 export { buildToolRegistry } from './build-tool-registry';
+export { collectHeldToolNames } from './tool-name/collect-held-tool-names';
+export { findHeldToolName } from './tool-name/find-held-tool-name';
 export { findToolDeclaration } from './policy-call/find-tool-declaration';
 export { pickPolicyToolName } from './policy-call/pick-policy-tool-name';
 export { callCapRefusal } from './cap/call-cap-refusal';
@@ -18,7 +20,7 @@ export type { ToolEndpointOptions } from './start-tool-endpoint';
 export { startToolEndpoint } from './start-tool-endpoint';
 export { toolCalledCodec } from './tool-called-codec';
 export { toolResultCodec } from './tool-result-codec';
-export { toSDKToolName } from './to-sdk-tool-name';
+export { toSDKToolName } from './tool-name/to-sdk-tool-name';
 
 export type {
   ActionOutcome,

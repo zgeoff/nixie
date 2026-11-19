@@ -1,17 +1,21 @@
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { mkdir, rm } from 'node:fs/promises';
 import { join } from 'node:path';
+import type { Logger } from '@heynixie/logger';
 import { findWorkerRunID } from '@heynixie/sandbox';
 import { createMcpHandler } from '@modelcontextprotocol/server';
 import { runApprovedCall } from './approved-call/run-approved-call';
 import { createRunServer } from './create-run-server';
 import type { ToolCallOptions } from './run-tool-call';
+import { collectHeldToolNames } from './tool-name/collect-held-tool-names';
 import type { GuestToolRun, RunEndpoint, ToolEndpoint } from './types';
 
 export interface ToolEndpointOptions extends Omit<ToolCallOptions, 'queuedWaitMs'> {
   readonly socketDir: string;
 
   readonly queuedWaitMs?: number;
+
+  readonly logger: Logger;
 }
 
 export async function startToolEndpoint(options: ToolEndpointOptions): Promise<ToolEndpoint> {
@@ -34,8 +38,15 @@ export async function startToolEndpoint(options: ToolEndpointOptions): Promise<T
           throw new Error(`the run ${run.runID} already has a tool endpoint`);
         }
 
+        const names = collectHeldToolNames(run.tools, options.registry.toolNames);
+
+        // The endpoint lists only registered tools, so a name it drops would vanish from the run.
+        for (const tool of names.unknown) {
+          options.logger('tools.run_tool_unknown', { runID: run.runID, tool }, 'warn');
+        }
+
         const endpoint = startRunEndpoint({
-          run,
+          run: { ...run, tools: [...names.held] },
           socketPath: getSocketPath(run.runID),
           options: callOptions,
           onStop: () => {

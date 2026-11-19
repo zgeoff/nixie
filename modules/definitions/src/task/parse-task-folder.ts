@@ -1,11 +1,12 @@
 import type { JSONObject } from '@heynixie/log';
 import { parseJSONObject } from '@heynixie/log';
 import { checkPromptOverride } from '@heynixie/prompts';
-import { sandboxStartSchema, startedTaskDefaultTools } from '@heynixie/tasks';
-import { checkCallCaps, toSDKToolName } from '@heynixie/tools';
+import { sandboxStartSchema } from '@heynixie/tasks';
+import { checkCallCaps, collectHeldToolNames } from '@heynixie/tools';
 import { z } from 'zod';
 import { normalizeInstructions } from '../definition/normalize-instructions';
 import { buildDefinitionHash } from './build-definition-hash';
+import { collectDefinitionTools } from './collect-definition-tools';
 import { collectNestedUnknownFields } from './collect-nested-unknown-fields';
 import { definitionOnlyKeys, definitionOnlySchema, maxCallsSchema } from './definition-only-schema';
 import { formatIssue } from './format-issue';
@@ -150,17 +151,18 @@ export function parseTaskFolder(folder: TaskFolder, context: TaskSeedContext): F
   }
 
   const dropped = dropUnknownTools(folder.id, start.data.tools, context.toolNames);
-  const input = { ...start.data, ...(dropped.tools === null ? {} : { tools: dropped.tools }) };
-  const checked = context.checkTaskStart(input, 'file');
+
+  const checked = context.checkTaskStart(
+    { ...start.data, ...(dropped.tools === undefined ? {} : { tools: [...dropped.tools] }) },
+    'file',
+  );
 
   if (checked.status === 'refused') {
     faults.push({ path: yamlPath, fault: 'start_refused', reasons: checked.reasons });
   }
 
-  const capReasons = checkCallCaps(
-    maxCalls.data,
-    (dropped.tools ?? startedTaskDefaultTools).map((tool) => toHeldName(tool, context.toolNames)),
-  );
+  const tools = collectDefinitionTools(dropped.tools);
+  const capReasons = checkCallCaps(maxCalls.data, tools);
 
   if (capReasons.length > 0) {
     faults.push({ path: yamlPath, fault: 'bad_max_calls', reasons: capReasons });
@@ -170,8 +172,16 @@ export function parseTaskFolder(folder: TaskFolder, context: TaskSeedContext): F
     return { faults, warnings: dropped.warnings, definition: null };
   }
 
+  // The form holds nixie's own names and the base tools, so a task run of the version gets them.
+  // A file that lists no tools keeps the key out of the form and out of the hash.
   const form = parseJSONObject(
-    JSON.stringify({ ...input, ...only.data, trigger: trigger.trigger, maxCalls: maxCalls.data }),
+    JSON.stringify({
+      ...start.data,
+      ...(dropped.tools === undefined ? {} : { tools }),
+      ...only.data,
+      trigger: trigger.trigger,
+      maxCalls: maxCalls.data,
+    }),
   );
 
   return {
@@ -246,26 +256,17 @@ function dropUnknownTools(
   definition: string,
   tools: readonly string[] | undefined,
   toolNames: readonly string[],
-): { tools: string[] | null; warnings: TaskDefinitionWarning[] } {
+): { tools: readonly string[] | undefined; warnings: TaskDefinitionWarning[] } {
   if (tools === undefined) {
-    return { tools: null, warnings: [] };
+    return { tools: undefined, warnings: [] };
   }
 
-  const kept = tools.filter((tool) =>
-    toolNames.some((name) => name === tool || toSDKToolName(name) === tool),
-  );
+  const names = collectHeldToolNames(tools, toolNames);
 
   return {
-    tools: kept,
-    warnings: tools
-      .filter((tool) => !kept.includes(tool))
-      .map((tool) => ({ kind: 'tool_dropped', definition, tool })),
+    tools: names.held,
+    warnings: names.unknown.map((tool) => ({ kind: 'tool_dropped', definition, tool })),
   };
-}
-
-// The model sees a tool by its SDK name, so a definition may list either name.
-function toHeldName(tool: string, toolNames: readonly string[]): string {
-  return toolNames.find((name) => name === tool || toSDKToolName(name) === tool) ?? tool;
 }
 
 function buildTaskDefinition(
