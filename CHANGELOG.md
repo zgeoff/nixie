@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.83.2](https://github.com/zgeoff/nixie/compare/v0.83.1...v0.83.2) (2026-11-19)
+
+
+### Bug Fixes
+
+* **codex:** opt into the experimental api for a plan login ([#1234](https://github.com/zgeoff/nixie/issues/1234)) ([776db51](https://github.com/zgeoff/nixie/commit/776db5164231d231847d08adcabfe7593c471992))
+
 ## [0.83.1](https://github.com/zgeoff/nixie/compare/v0.83.0...v0.83.1) (2026-11-18)
 
 
