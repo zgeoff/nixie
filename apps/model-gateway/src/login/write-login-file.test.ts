@@ -60,7 +60,7 @@ test('it leaves the earlier login file whole when the write fails before its ren
 
   await expect(
     writeLoginFile(ctx.path, buildLoginFile({ refreshToken: 'refresh-token-2' })),
-  ).rejects.toThrow();
+  ).toReject();
 
   const result = await readLoginFile(ctx.path);
 
