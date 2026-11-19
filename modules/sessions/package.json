@@ -8,7 +8,7 @@
     "./test-utils": "./src/test-utils/index.ts"
   },
   "scripts": {
-    "typecheck": "tsrs --noEmit"
+    "typecheck": "tsrs --fast --noEmit"
   },
   "dependencies": {
     "@heynixie/actions": "workspace:*",

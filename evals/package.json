@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "typecheck": "tsrs --noEmit"
+    "typecheck": "tsrs --fast --noEmit"
   },
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "catalog:",

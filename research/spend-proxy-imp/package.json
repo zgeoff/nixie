@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "spike": "bun run-spike.ts",
-    "typecheck": "tsrs --noEmit",
+    "typecheck": "tsrs --fast --noEmit",
     "test": "bun test"
   },
   "dependencies": {

@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "check": "bun --no-env-file run.ts",
-    "typecheck": "tsrs --noEmit"
+    "typecheck": "tsrs --fast --noEmit"
   },
   "devDependencies": {
     "@types/bun": "1.4.4"

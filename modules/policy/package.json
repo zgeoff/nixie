@@ -9,7 +9,7 @@
   },
   "scripts": {
     "rules-schema": "bun src/run-rules-json-schema.ts",
-    "typecheck": "tsrs --noEmit"
+    "typecheck": "tsrs --fast --noEmit"
   },
   "dependencies": {
     "@heynixie/clock": "workspace:*",

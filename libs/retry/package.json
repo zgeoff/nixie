@@ -8,6 +8,6 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "typecheck": "tsrs --noEmit"
+    "typecheck": "tsrs --fast --noEmit"
   }
 }

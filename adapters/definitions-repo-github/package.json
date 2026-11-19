@@ -9,7 +9,7 @@
     "./mocks": "./src/mocks/index.ts"
   },
   "scripts": {
-    "typecheck": "tsrs --noEmit"
+    "typecheck": "tsrs --fast --noEmit"
   },
   "dependencies": {
     "@heynixie/definitions": "workspace:*",

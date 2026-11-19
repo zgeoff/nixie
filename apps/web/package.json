@@ -11,7 +11,7 @@
     "codegen": "panda codegen --silent",
     "dev": "vite dev",
     "start": "bun dist/server/server.js",
-    "typecheck": "tsrs --noEmit"
+    "typecheck": "tsrs --fast --noEmit"
   },
   "dependencies": {
     "@heynixie/contract": "workspace:*",

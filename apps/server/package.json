@@ -9,7 +9,7 @@
   },
   "scripts": {
     "test:imp": "bun run --cwd ../.. test:imp apps/server/",
-    "typecheck": "tsrs --noEmit",
+    "typecheck": "tsrs --fast --noEmit",
     "config-schema": "bun --define NIXIE_TEST_BUILD=false src/run-config-json-schema.ts"
   },
   "dependencies": {

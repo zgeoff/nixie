@@ -5,6 +5,6 @@
   "type": "module",
   "scripts": {
     "spike": "bash run.sh",
-    "typecheck": "tsrs --noEmit"
+    "typecheck": "tsrs --fast --noEmit"
   }
 }
