@@ -267,12 +267,17 @@ lifetime price, and its longer one, or a write with no lifetime, takes the longe
 A whole reply carries its usage in its body. A streamed Messages reply carries the input side in its
 first event and the running output count in each later delta. A streamed Responses reply carries its
 whole usage in the event that ends the response, whether the response completed, stopped early or
-failed. The gateway reads the events as they pass on to the caller. The streamed reply ends for the
-caller only after the count is written, so a caller that reads a whole reply and sends again never
-gets ahead of its own count. A caller that stops reading early, and an upstream that breaks
-mid-stream, still leave the count of the events that arrived. A reply with no usage that spent
-nothing, such as an error, adds nothing. A reply that spent, or may have, with no whole usage the
-gateway can read adds [an estimate](#the-estimate).
+failed, so a caller that stops reading right after that event, as Codex does, leaves the whole
+usage.
+
+The gateway reads a reply as a stream when its content type is `text/event-stream`. It also reads a
+successful reply with no content type as a stream when the request set `stream: true`, because
+ChatGPT's Codex backend sends its stream with no content type. The gateway reads the events as they
+pass on to the caller. The streamed reply ends for the caller only after the count is written, so a
+caller that reads a whole reply and sends again never gets ahead of its own count. A caller that
+stops reading early, and an upstream that breaks mid-stream, still leave the count of the events
+that arrived. A reply with no usage that spent nothing, such as an error, adds nothing. A reply that
+spent, or may have, with no whole usage the gateway can read adds [an estimate](#the-estimate).
 
 ### The estimate
 
