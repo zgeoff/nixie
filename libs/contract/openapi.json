@@ -498,6 +498,29 @@
                             "minimum": 0,
                             "maximum": 9007199254740991
                           },
+                          "skillNotice": {
+                            "type": "object",
+                            "properties": {
+                              "name": {
+                                "type": "string"
+                              },
+                              "skillHash": {
+                                "type": "string"
+                              },
+                              "isNew": {
+                                "type": "boolean"
+                              },
+                              "ruleID": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "name",
+                              "skillHash",
+                              "isNew",
+                              "ruleID"
+                            ]
+                          },
                           "stop": {
                             "type": "object",
                             "properties": {
@@ -1286,6 +1309,29 @@
                               "type": "integer",
                               "minimum": 0,
                               "maximum": 9007199254740991
+                            },
+                            "skillNotice": {
+                              "type": "object",
+                              "properties": {
+                                "name": {
+                                  "type": "string"
+                                },
+                                "skillHash": {
+                                  "type": "string"
+                                },
+                                "isNew": {
+                                  "type": "boolean"
+                                },
+                                "ruleID": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "name",
+                                "skillHash",
+                                "isNew",
+                                "ruleID"
+                              ]
                             },
                             "stop": {
                               "type": "object",
@@ -26665,6 +26711,29 @@
                                   "minimum": 0,
                                   "maximum": 9007199254740991
                                 },
+                                "skillNotice": {
+                                  "type": "object",
+                                  "properties": {
+                                    "name": {
+                                      "type": "string"
+                                    },
+                                    "skillHash": {
+                                      "type": "string"
+                                    },
+                                    "isNew": {
+                                      "type": "boolean"
+                                    },
+                                    "ruleID": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "name",
+                                    "skillHash",
+                                    "isNew",
+                                    "ruleID"
+                                  ]
+                                },
                                 "stop": {
                                   "type": "object",
                                   "properties": {
@@ -27618,6 +27687,29 @@
                                   "type": "integer",
                                   "minimum": 0,
                                   "maximum": 9007199254740991
+                                },
+                                "skillNotice": {
+                                  "type": "object",
+                                  "properties": {
+                                    "name": {
+                                      "type": "string"
+                                    },
+                                    "skillHash": {
+                                      "type": "string"
+                                    },
+                                    "isNew": {
+                                      "type": "boolean"
+                                    },
+                                    "ruleID": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "name",
+                                    "skillHash",
+                                    "isNew",
+                                    "ruleID"
+                                  ]
                                 },
                                 "stop": {
                                   "type": "object",

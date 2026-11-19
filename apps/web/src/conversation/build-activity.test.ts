@@ -353,6 +353,32 @@ test('it keeps a reminder on its own line', () => {
   ]);
 });
 
+test('it keeps a skill notice on its own line', () => {
+  const applied = buildMockLogRecord({
+    kind: 'skills.write_applied',
+    sequence: 1,
+    skillNotice: {
+      name: 'kite-forecast',
+      skillHash: 'a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f90',
+      isNew: true,
+      ruleID: 'allow-skill-writes',
+    },
+  });
+
+  expect(buildActivity([applied])).toStrictEqual([
+    {
+      kind: 'skill',
+      record: applied,
+      notice: {
+        name: 'kite-forecast',
+        skillHash: 'a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f90',
+        isNew: true,
+        ruleID: 'allow-skill-writes',
+      },
+    },
+  ]);
+});
+
 test('it takes the sender of a received task message as its other end', () => {
   const message = buildMockLogRecord({
     kind: 'task_message',

@@ -86,6 +86,7 @@ test('it moves one skill to the version a fresh seed holds and records its old a
       log: ctx.log,
       clock: buildTestClock(0),
       readInForce: () => first.inForce,
+      runInForceSeed: () => Promise.resolve(),
       refreshDefinitions: () =>
         runSeed({
           tasks: buildTestTaskSeed(),
@@ -194,6 +195,7 @@ test('it moves both skills when 2 reloads of one thread name different skills at
     log: ctx.log,
     clock: buildTestClock(0),
     readInForce: () => first.inForce,
+    runInForceSeed: () => Promise.resolve(),
     refreshDefinitions: async () => {
       const seeded = await runSeed({
         tasks: buildTestTaskSeed(),
@@ -277,6 +279,7 @@ test('it runs the next reload of a thread after one fails, and gives the failure
       log: ctx.log,
       clock: buildTestClock(0),
       readInForce: () => first.inForce,
+      runInForceSeed: () => Promise.resolve(),
       refreshDefinitions: () => Promise.reject(new Error('the definitions source is down')),
       readSkillList: () => ['tide-tables'],
     },
@@ -289,6 +292,7 @@ test('it runs the next reload of a thread after one fails, and gives the failure
       log: ctx.log,
       clock: buildTestClock(0),
       readInForce: () => first.inForce,
+      runInForceSeed: () => Promise.resolve(),
       refreshDefinitions: async () => {
         const seeded = await runSeed({
           tasks: buildTestTaskSeed(),
@@ -360,6 +364,7 @@ test('it moves every skill, joins one the list gained and drops one the definiti
       log: ctx.log,
       clock: buildTestClock(0),
       readInForce: () => first.inForce,
+      runInForceSeed: () => Promise.resolve(),
       refreshDefinitions: () =>
         runSeed({
           tasks: buildTestTaskSeed(),
@@ -440,6 +445,7 @@ test("it drops a pinned skill that left the caller's list when a reload names it
       log: ctx.log,
       clock: buildTestClock(0),
       readInForce: () => seeded.inForce,
+      runInForceSeed: () => Promise.resolve(),
       refreshDefinitions: () => Promise.resolve(seeded.inForce),
       readSkillList: () => [],
     },
@@ -507,6 +513,7 @@ test("it refuses a skill that is neither pinned nor on the caller's list, and re
       log: ctx.log,
       clock: buildTestClock(0),
       readInForce: () => seeded.inForce,
+      runInForceSeed: () => Promise.resolve(),
       refreshDefinitions: () => Promise.resolve(seeded.inForce),
       readSkillList: () => ['tide-tables'],
     },
@@ -538,6 +545,7 @@ test('it fails a reload before the first seed', async () => {
       log: ctx.log,
       clock: buildTestClock(0),
       readInForce: () => null,
+      runInForceSeed: () => Promise.resolve(),
       refreshDefinitions: () => Promise.resolve(null),
       readSkillList: () => [],
     },

@@ -25,6 +25,7 @@ export function toLogRecord(record: StoredRecord): LogRecord {
     ...(record.reminder === undefined ? {} : { reminder: { ...record.reminder } }),
     ...(record.removal === undefined ? {} : { removal: { ...record.removal } }),
     sequence: record.sequence,
+    ...(record.skillNotice === undefined ? {} : { skillNotice: { ...record.skillNotice } }),
     ...(record.stop === undefined
       ? {}
       : { stop: { cancelledActions: record.stop.cancelledActions.map(toLogAction) } }),

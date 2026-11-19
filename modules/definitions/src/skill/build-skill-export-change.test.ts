@@ -38,7 +38,7 @@ test('it carries a new skill in its folder, and notes a conversation list that l
   });
 
   expect(change.body).toMatchInlineSnapshot(`
-    "nixie wrote this version of the \`tide-tables\` skill, and an approval put it in force: approval \`5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31\`, proposal \`k3vq8m2xpa\`.
+    "nixie wrote this version of the \`tide-tables\` skill, and your approval or one of your rules put it in force: approval \`5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31\`, from \`k3vq8m2xpa\`.
 
     Merge this pull request to make the skill yours: the next seed after the merge marks it as yours. A change to the skill on the base branch before the merge shows as a conflict, and \`nixie skill resolve\` keeps one side.
 
@@ -89,7 +89,7 @@ test('it warns that a merge alone leaves the skill unapplied when nixie.yaml hol
   });
 
   expect(change.body).toMatchInlineSnapshot(`
-    "nixie wrote this version of the \`tide-tables\` skill, and an approval put it in force: approval \`5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31\`, proposal \`k3vq8m2xpa\`.
+    "nixie wrote this version of the \`tide-tables\` skill, and your approval or one of your rules put it in force: approval \`5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31\`, from \`k3vq8m2xpa\`.
 
     nixie.yaml holds format 1, and the seed applies skills only from format 2, so a merge alone leaves the skill unapplied and nixie's version stays in force. Set \`format: 2\` in nixie.yaml with the merge to make the skill yours: the next seed then marks it as yours. Format 2 applies and checks every skill under skills/.
     "
@@ -241,7 +241,7 @@ test('it fills the configured title and message for a new skill', () => {
     "Written by Wren for Morgan.
     Approval 5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31, proposal k3vq8m2xpa.
 
-    nixie wrote this version of the \`tide-tables\` skill, and an approval put it in force: approval \`5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31\`, proposal \`k3vq8m2xpa\`.
+    nixie wrote this version of the \`tide-tables\` skill, and your approval or one of your rules put it in force: approval \`5b1e0c7a-3d9f-4e62-8a14-7c2f6b0d9e31\`, from \`k3vq8m2xpa\`.
 
     Merge this pull request to make the skill yours: the next seed after the merge marks it as yours. A change to the skill on the base branch before the merge shows as a conflict, and \`nixie skill resolve\` keeps one side.
     "

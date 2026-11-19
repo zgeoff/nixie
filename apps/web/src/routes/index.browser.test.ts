@@ -307,6 +307,39 @@ test('it shows a reminder with its note and the time it was set for', async () =
   );
 });
 
+test('it shows the notice of a skill that a rule applied, with its name, its version and the rule', async () => {
+  const ctx = await setupTest();
+  const session = await store.sessions.create({});
+
+  await store.records.create({ kind: 'owner_message', message: { text: 'Save that as a skill.' } });
+
+  await store.records.create({
+    kind: 'skills.write_applied',
+    skillNotice: {
+      name: 'kite-forecast',
+      skillHash: 'a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f90',
+      isNew: true,
+      ruleID: 'allow-skill-writes',
+    },
+    thread: 'conversation',
+  });
+
+  await setupSignedInBrowser(ctx.view, { appURL: ctx.appURL, token: session.token });
+
+  await ctx.view.navigate(`${ctx.appURL}/`);
+
+  await waitFor(
+    async () => {
+      const text: unknown = await ctx.view.evaluate('document.body.innerText');
+
+      expect(text).toInclude(
+        'nixie saved the new skill kite-forecast, version a1b2c3d4e5f6, under your rule allow-skill-writes.',
+      );
+    },
+    { timeout: 10_000 },
+  );
+});
+
 test('it shows the notice of an added definition word for word, with an Undo that calls definitions.undo', async () => {
   const ctx = await setupTest();
   const session = await store.sessions.create({});

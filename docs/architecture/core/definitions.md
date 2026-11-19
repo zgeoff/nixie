@@ -134,16 +134,17 @@ beside the skills.
 
 ### Skills that nixie wrote
 
-A skill that nixie wrote goes into force when the user approves it, before the user's definitions
-hold it. The store of written skills keeps one row for each approval that applied a skill: the
-version, the approval's ID, and the version of the skill in the user's definitions when the approval
-applied it, which is the base. Each seed lays every written skill in force over the skills it
-parsed, so the written version replaces the definitions' version, or joins the skills when the
-definitions lack it. A new written skill joins the conversation's skill list, because the
-conversation wrote it, and a written version of an existing skill keeps that skill's place on the
-list. The snapshot hash covers the result with each written skill's origin as nixie and the approval
-that applied it, so every record names the skills that nixie wrote, and a version that a later
-approval brings back gets a snapshot of its own.
+A skill that nixie wrote goes into force when the user approves it, or at once under an allow rule
+that names `skill_write`, as [writes under a rule](./skills.md#writes-under-a-rule) describes,
+before the user's definitions hold it. The store of written skills keeps one row for each approval
+or rule that applied a skill: the version, an approval ID, the ID of the proposal or of the write
+under a rule, and the version of the skill in the user's definitions when it applied, which is the
+base. Each seed lays every written skill in force over the skills it parsed, so the written version
+replaces the definitions' version, or joins the skills when the definitions lack it. A new written
+skill joins the conversation's skill list, because the conversation wrote it, and a written version
+of an existing skill keeps that skill's place on the list. The snapshot hash covers the result with
+each written skill's origin as nixie and the approval that applied it, so every record names the
+skills that nixie wrote, and a version that a later approval brings back gets a snapshot of its own.
 
 The seed compares each written skill with the definitions' version of it:
 

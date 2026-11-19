@@ -35,6 +35,7 @@ test('it builds skill_read, skill_reload, skill_reload_all, skill_write and skil
     log: ctx.log,
     clock: buildTestClock(0),
     readInForce: () => null,
+    runInForceSeed: () => Promise.resolve(),
     refreshDefinitions: () => Promise.resolve(null),
     readSkillList: () => [],
   });

@@ -52,6 +52,7 @@ async function setupTest() {
     log: context.apiContext.log,
     clock: buildTestClock(0),
     readInForce: () => context.inForce.read(),
+    runInForceSeed: () => Promise.resolve(),
     refreshDefinitions: () => refreshDefinitions(parts, context.inForce),
   };
 

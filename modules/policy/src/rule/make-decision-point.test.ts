@@ -818,3 +818,49 @@ test('it asks for a task.define at stage 9 when the owner did not ask for it', a
     snapshot: 'snapshot-1',
   });
 });
+
+test('it lists each matched allow rule that names the tool exactly, and leaves out a rule on its effect alone', async () => {
+  const ctx = buildTestDecisionPoint({
+    declaration: buildTestDeclaration({ effects: ['note'], destinations: [] }),
+    rules: [
+      buildRuleEntry('allow-notes', { outcome: 'allow', effects: ['note'] }),
+      buildRuleEntry('allow-skill-writes', { outcome: 'allow', tools: ['skill_write'] }),
+      buildRuleEntry('allow-skill-tools', { outcome: 'allow', tools: ['skill_*'] }),
+    ],
+  });
+
+  const decided = await ctx.decide(
+    buildPolicyCall({ tool: 'skill_write', toolList: ['skill_write'] }),
+  );
+
+  expect(decided.namingRules).toStrictEqual([{ id: 'allow-skill-writes', revision: 2 }]);
+});
+
+test('it lists no naming rule when only a rule on the note effect allows the call', async () => {
+  const ctx = buildTestDecisionPoint({
+    declaration: buildTestDeclaration({ effects: ['note'], destinations: [] }),
+    rules: [buildRuleEntry('allow-notes', { outcome: 'allow', effects: ['note'] })],
+  });
+
+  const decided = await ctx.decide(
+    buildPolicyCall({ tool: 'skill_write', toolList: ['skill_write'] }),
+  );
+
+  expect([decided.decision.outcome, decided.namingRules]).toStrictEqual(['allow', undefined]);
+});
+
+test('it lists no naming rule when a deny rule refuses a call that an allow rule names', async () => {
+  const ctx = buildTestDecisionPoint({
+    declaration: buildTestDeclaration({ effects: ['note'], destinations: [] }),
+    rules: [
+      buildRuleEntry('allow-skill-writes', { outcome: 'allow', tools: ['skill_write'] }),
+      buildRuleEntry('deny-skill-writes', { outcome: 'deny', tools: ['skill_write'] }),
+    ],
+  });
+
+  const decided = await ctx.decide(
+    buildPolicyCall({ tool: 'skill_write', toolList: ['skill_write'] }),
+  );
+
+  expect([decided.decision.outcome, decided.namingRules]).toStrictEqual(['deny', undefined]);
+});

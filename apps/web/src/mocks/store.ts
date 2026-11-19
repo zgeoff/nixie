@@ -133,6 +133,13 @@ const definitionNoticeSchema = z.object({
   state: z.enum(['in_force', 'superseded', 'adopted', 'retired']).default('in_force'),
 });
 
+const skillNoticeSchema = z.object({
+  name: z.string(),
+  skillHash: z.string(),
+  isNew: z.boolean().default(true),
+  ruleID: z.string(),
+});
+
 const reminderSchema = z.object({
   name: z.string().nullable().default(null),
   note: z.string(),
@@ -172,6 +179,7 @@ const records = new Collection({
 
       return mockSequence.lastSequence;
     }),
+    skillNotice: skillNoticeSchema.optional(),
     stop: stopSchema.optional(),
     summary: summarySchema.optional(),
     task: taskSchema.optional(),

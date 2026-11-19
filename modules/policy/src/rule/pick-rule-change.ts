@@ -7,7 +7,9 @@ export function pickRuleChange(before: Rule | null, after: Rule | null): RuleCha
     return pickPresenceChange(before, after);
   }
 
-  return mergeChanges(pickMatchChange(before, after), pickLiftChange(before.lift, after.lift));
+  const change = mergeChanges(pickMatchChange(before, after), pickGrantChange(before, after));
+
+  return mergeChanges(change, pickLiftChange(before.lift, after.lift));
 }
 
 function pickPresenceChange(before: Rule | null, after: Rule | null): RuleChange {
@@ -71,6 +73,27 @@ function pickSameOutcomeChange(
   }
 
   return (isAllow ? isAfterInside : isBeforeInside) ? 'narrowing' : 'widening';
+}
+
+function pickGrantChange(before: Rule, after: Rule): RuleChange {
+  const granted = collectGrantedTools(before);
+  const granting = collectGrantedTools(after);
+
+  if (granting.some((tool) => !granted.includes(tool))) {
+    return 'widening';
+  }
+
+  return granted.some((tool) => !granting.includes(tool)) ? 'narrowing' : 'unchanged';
+}
+
+// An allow rule that lists one of these tools by its exact name lets the tool do more than a match
+// on its effect does, so a list that narrows the match can still widen what the rule grants.
+const grantingTools: ReadonlySet<string> = new Set(['skill_write']);
+
+function collectGrantedTools(rule: Rule): readonly string[] {
+  return rule.outcome === 'allow'
+    ? (rule.tools ?? []).filter((tool) => grantingTools.has(tool))
+    : [];
 }
 
 // An added lift, a higher cap per action and another budget widen. A removed lift and a lower cap

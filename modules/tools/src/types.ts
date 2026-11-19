@@ -4,6 +4,7 @@ import type {
   CallDestination,
   Effect,
   EffectDeclaration,
+  NamingRule,
   RuleContext,
   RuleSource,
 } from '@heynixie/policy';
@@ -34,6 +35,10 @@ export interface ToolContext extends ToolResolveContext {
   // What the decision point said about a call to a tool that declares memory_write. A call with no
   // verdict runs every check of the tool's own gate.
   readonly verdict?: MemoryWriteVerdict;
+
+  // The allow rules that matched the call and list the tool by its exact name, present only when
+  // a rule allowed the call and one such rule matched.
+  readonly namingRules?: readonly NamingRule[];
 }
 
 export type MemoryWriteVerdict =

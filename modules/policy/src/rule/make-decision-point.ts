@@ -6,6 +6,7 @@ import type {
   DecisionDetail,
   DecisionPoint,
   EffectDeclaration,
+  NamingRule,
   PolicyCall,
   PolicyDecision,
   PolicyInputs,
@@ -287,9 +288,13 @@ function buildDecision(
     ...(verdict.lift === undefined || verdict.lift === null ? {} : { lift: verdict.lift }),
   };
 
+  const naming =
+    verdict.outcome === 'allow' && verdict.verdict !== undefined ? listNamingRules(run) : [];
+
   return {
     decision: detail,
     sentence,
+    ...(naming.length === 0 ? {} : { namingRules: naming }),
     ...(run.declaration.effects.includes('memory_write')
       ? { memoryWrite: { allowing: listAllowingRules(run) } }
       : {}),
@@ -308,8 +313,14 @@ function isDirectRequest(verdict: Verdict, stage: PolicyStage): boolean {
   );
 }
 
-// In the order pickRuleOutcome names a rule, so the first is the rule the decision names.
-function listAllowingRules(run: StageRun): readonly AllowingRule[] {
+// A pattern such as * matches every tool, so only the exact name lets a rule speak for one tool.
+function listNamingRules(run: StageRun): readonly NamingRule[] {
+  return listMatchedAllowEntries(run)
+    .filter((entry) => entry.rule.tools?.includes(run.call.tool) === true)
+    .map((entry) => ({ id: entry.id, revision: entry.revision }));
+}
+
+function listMatchedAllowEntries(run: StageRun): readonly RuleEntry[] {
   const ruleCall = buildRuleCall(run);
 
   const matched = [...getFixedRules(), ...run.inputs.rules].filter(
@@ -319,12 +330,16 @@ function listAllowingRules(run: StageRun): readonly AllowingRule[] {
   return matched
     .map((entry) => entry.id)
     .toSorted()
-    .flatMap((id) => matched.find((entry) => entry.id === id) ?? [])
-    .map((entry) => ({
-      id: entry.id,
-      revision: entry.revision,
-      checks: entry.rule.checks ?? [],
-    }));
+    .flatMap((id) => matched.find((entry) => entry.id === id) ?? []);
+}
+
+// In the order pickRuleOutcome names a rule, so the first is the rule the decision names.
+function listAllowingRules(run: StageRun): readonly AllowingRule[] {
+  return listMatchedAllowEntries(run).map((entry) => ({
+    id: entry.id,
+    revision: entry.revision,
+    checks: entry.rule.checks ?? [],
+  }));
 }
 
 function isConsentGiven(consent: ConsentCheck | null): boolean {

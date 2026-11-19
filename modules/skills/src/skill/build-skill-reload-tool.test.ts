@@ -69,6 +69,7 @@ test('it reloads the skill its input names, with a result the output schema acce
       log: ctx.log,
       clock: buildTestClock(0),
       readInForce: () => seeded.inForce,
+      runInForceSeed: () => Promise.resolve(),
       refreshDefinitions: () => Promise.resolve(seeded.inForce),
       readSkillList: () => ['bird-log', 'tide-tables'],
     }),

@@ -130,9 +130,18 @@ export interface MemoryWriteFacts {
   readonly allowing: readonly AllowingRule[];
 }
 
+// An allow rule that matched the call and lists the call's tool by its exact name.
+export interface NamingRule {
+  readonly id: string;
+  readonly revision: number;
+}
+
 export interface PolicyDecision {
   readonly decision: DecisionDetail;
   readonly sentence: string | null;
+
+  // present only on an allow by a rule, when a matched allow rule lists the tool by its exact name
+  readonly namingRules?: readonly NamingRule[];
 
   // present only when the declaration the decision used holds memory_write
   readonly memoryWrite?: MemoryWriteFacts;

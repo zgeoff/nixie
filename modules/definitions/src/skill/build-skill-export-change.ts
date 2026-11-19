@@ -46,7 +46,7 @@ export function buildSkillExportChange(skillExport: SkillExport): DefinitionsCha
   const skillsFormat = String(definitionsFormats.skills);
 
   const notes = [
-    `nixie wrote this version of the \`${name}\` skill, and an approval put it in force: approval \`${skillExport.approvalID}\`, proposal \`${skillExport.proposalID}\`.`,
+    `nixie wrote this version of the \`${name}\` skill, and your approval or one of your rules put it in force: approval \`${skillExport.approvalID}\`, from \`${skillExport.proposalID}\`.`,
     format === null
       ? 'Merge this pull request to make the skill yours: the next seed after the merge marks it as yours. A change to the skill on the base branch before the merge shows as a conflict, and `nixie skill resolve` keeps one side.'
       : `nixie.yaml holds format ${String(format)}, and the seed applies skills only from format ${skillsFormat}, so a merge alone leaves the skill unapplied and nixie's version stays in force. Set \`format: ${skillsFormat}\` in nixie.yaml with the merge to make the skill yours: the next seed then marks it as yours. Format ${skillsFormat} applies and checks every skill under skills/.`,

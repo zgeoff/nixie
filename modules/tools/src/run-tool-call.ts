@@ -1,6 +1,6 @@
 import type { BudgetsContext } from '@heynixie/budgets';
 import type { Decision, Definitions, JSONObject, Log } from '@heynixie/log';
-import type { CallDestination, DecisionPoint, PolicyDecision } from '@heynixie/policy';
+import type { CallDestination, DecisionPoint, NamingRule, PolicyDecision } from '@heynixie/policy';
 import { buildActionHash, makeFaultSafeDecisionPoint, toStoredDecision } from '@heynixie/policy';
 import type { CallToolResult } from '@modelcontextprotocol/server';
 import invariant from 'tiny-invariant';
@@ -286,6 +286,7 @@ function runDecidedCall(decided: DecidedCall): Promise<Settled> {
     registered,
     decision: stored,
     ...(verdict === undefined ? {} : { verdict }),
+    ...(policy.namingRules === undefined ? {} : { namingRules: policy.namingRules }),
   });
 }
 
@@ -311,6 +312,7 @@ interface AllowedCall {
   readonly options: ToolCallOptions;
 
   readonly verdict?: MemoryWriteVerdict;
+  readonly namingRules?: readonly NamingRule[];
 }
 
 async function tryRunAllowedCall(allowed: AllowedCall): Promise<Settled> {
@@ -335,6 +337,7 @@ async function runDirect(allowed: AllowedCall): Promise<Settled> {
       run: allowed.run,
       callSequence: allowed.callSequence,
       ...(allowed.verdict === undefined ? {} : { verdict: allowed.verdict }),
+      ...(allowed.namingRules === undefined ? {} : { namingRules: allowed.namingRules }),
     }),
   );
 

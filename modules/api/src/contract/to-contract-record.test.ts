@@ -673,6 +673,37 @@ test('it carries a kept moment with its IDs and its title', () => {
   });
 });
 
+test('it carries a skill that a rule applied as a notice with its name, its version and the rule', () => {
+  const record = buildMockLogRecord({
+    sequence: 21,
+    recordedAt: new Date('2026-10-10T12:00:06Z'),
+    kind: 'skills.write_applied',
+    thread: 'conversation',
+    payload: {
+      writeID: 'k7m2p9x4w1',
+      approvalID: '2b7e4c1a-9d3f-4e8a-b6c5-0f1e2d3c4b5a',
+      name: 'kite-forecast',
+      skillHash: 'a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f90',
+      baseHash: null,
+      rule: { id: 'allow-skill-writes', revision: 2 },
+      provenance: { runID: 'run-1', callID: 'call-1', profile: 'standard' },
+    },
+  });
+
+  expect(toContractRecord(record)).toStrictEqual({
+    kind: 'skills.write_applied',
+    recordedAt: new Date('2026-10-10T12:00:06Z'),
+    sequence: 21,
+    skillNotice: {
+      name: 'kite-forecast',
+      skillHash: 'a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f90',
+      isNew: true,
+      ruleID: 'allow-skill-writes',
+    },
+    thread: 'conversation',
+  });
+});
+
 test('it carries a destroyed moment with its IDs and no title', () => {
   const record = buildMockLogRecord({
     sequence: 15,

@@ -65,6 +65,7 @@ test('it returns the instructions without their frontmatter and the list of the 
     log: ctx.log,
     clock: buildTestClock(0),
     readInForce: () => seeded.inForce,
+    runInForceSeed: () => Promise.resolve(),
     refreshDefinitions: () => Promise.resolve(seeded.inForce),
     readSkillList: () => ['tide-tables'],
   });
@@ -102,6 +103,7 @@ test("it labels a skill's text and file list as untrusted, and its name and vers
       log: ctx.log,
       clock: buildTestClock(0),
       readInForce: () => null,
+      runInForceSeed: () => Promise.resolve(),
       refreshDefinitions: () => Promise.resolve(null),
       readSkillList: () => [],
     }),
@@ -144,6 +146,7 @@ test('it returns the file at a path inside the skill folder', async () => {
     log: ctx.log,
     clock: buildTestClock(0),
     readInForce: () => seeded.inForce,
+    runInForceSeed: () => Promise.resolve(),
     refreshDefinitions: () => Promise.resolve(seeded.inForce),
     readSkillList: () => ['tide-tables'],
   });
@@ -211,6 +214,7 @@ test.each([
     log: ctx.log,
     clock: buildTestClock(0),
     readInForce: () => seeded.inForce,
+    runInForceSeed: () => Promise.resolve(),
     refreshDefinitions: () => Promise.resolve(seeded.inForce),
     readSkillList: () => ['tide-tables'],
   });
@@ -258,6 +262,7 @@ test('it refuses a path the skill has no file at', async () => {
     log: ctx.log,
     clock: buildTestClock(0),
     readInForce: () => seeded.inForce,
+    runInForceSeed: () => Promise.resolve(),
     refreshDefinitions: () => Promise.resolve(seeded.inForce),
     readSkillList: () => ['tide-tables'],
   });
@@ -316,6 +321,7 @@ test("it refuses a skill that is off the caller's skill list", async () => {
     log: ctx.log,
     clock: buildTestClock(0),
     readInForce: () => seeded.inForce,
+    runInForceSeed: () => Promise.resolve(),
     refreshDefinitions: () => Promise.resolve(seeded.inForce),
     readSkillList: () => ['tide-tables'],
   });
@@ -365,6 +371,7 @@ test('it reads the version the task first loaded after a seed changes the skill'
     log: ctx.log,
     clock: buildTestClock(0),
     readInForce: () => first.inForce,
+    runInForceSeed: () => Promise.resolve(),
     refreshDefinitions: () => Promise.resolve(first.inForce),
     readSkillList: () => ['tide-tables'],
   });
@@ -399,6 +406,7 @@ test('it reads the version the task first loaded after a seed changes the skill'
     log: ctx.log,
     clock: buildTestClock(0),
     readInForce: () => second.inForce,
+    runInForceSeed: () => Promise.resolve(),
     refreshDefinitions: () => Promise.resolve(second.inForce),
     readSkillList: () => ['tide-tables'],
   });

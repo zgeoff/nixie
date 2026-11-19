@@ -73,6 +73,7 @@ test('it lists the web fetch tool, the time tool, the log readers, the skill too
         log: ctx.log,
         clock: buildTestClock(0),
         readInForce: () => null,
+        runInForceSeed: () => Promise.resolve(),
         refreshDefinitions: () => Promise.resolve(null),
         readSkillList: () => [],
       }),
