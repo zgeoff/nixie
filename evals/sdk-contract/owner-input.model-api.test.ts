@@ -58,3 +58,22 @@ test.skipIf(!isContractRun)(
   },
   27_000,
 );
+
+test.skipIf(!isContractRun)(
+  'it cuts a reply in flight with an interrupt, and the queued owner messages start the next turn',
+  async () => {
+    const ctx = await setupTest();
+    const probe = await runOwnerInputProbe(ctx.target, 'mid-reply');
+
+    const results = probe.run.messages.flatMap((message) =>
+      message.type === 'result' ? [message.subtype] : [],
+    );
+
+    const lastReply = probe.run.messages.findLast((message) => message.type === 'assistant');
+
+    expect(probe.receipt).toMatchObject({ still_queued: [probe.ownerUUID] });
+    expect(results).toStrictEqual(['error_during_execution', 'success']);
+    expect(JSON.stringify(lastReply?.message.content)).toContain('PINEAPPLE');
+  },
+  90_000,
+);
