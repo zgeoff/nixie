@@ -513,3 +513,34 @@ test('it answers the messages endpoint with the status of a scripted failure', a
     error: { type: 'api_error', message: 'broken' },
   });
 });
+
+test('it answers with the text and then the tool call of one message, streamed or whole', async () => {
+  const ctx = setupTest();
+
+  ctx.model.addReplies(
+    { text: 'Let me look.', toolUse: { name: 'ping', input: { who: 'a' } } },
+    { text: 'Let me look.', toolUse: { name: 'ping', input: { who: 'a' } } },
+  );
+
+  const send = (stream: boolean) =>
+    fetch(`${ctx.model.url}/v1/messages`, {
+      method: 'POST',
+      body: JSON.stringify({ model: 'model-a', messages: [], stream }),
+    });
+
+  const wholeResponse = await send(false);
+  const streamedResponse = await send(true);
+  const whole = await wholeResponse.json();
+  const streamed = await streamedResponse.text();
+
+  expect(whole).toMatchObject({
+    stop_reason: 'tool_use',
+    content: [
+      { type: 'text', text: 'Let me look.' },
+      { type: 'tool_use', name: 'ping', input: { who: 'a' } },
+    ],
+  });
+
+  expect(streamed).toInclude('"text":"Let me look."');
+  expect(streamed).toInclude('"index":1,"content_block":{"type":"tool_use"');
+});
