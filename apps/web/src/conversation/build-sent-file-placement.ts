@@ -19,7 +19,10 @@ export function buildSentFilePlacement(
 }
 
 function findLastReply(activity: readonly ActivityItem[], stepIndex: number): number | null {
-  const next = activity.findIndex((item, index) => index > stepIndex && item.kind === 'step');
+  const next = activity.findIndex(
+    (item, index) => index > stepIndex && item.kind === 'step' && item.isContinued !== true,
+  );
+
   const end = next === -1 ? activity.length : next;
 
   const found = activity.findLastIndex(

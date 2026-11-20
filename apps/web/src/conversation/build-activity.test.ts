@@ -1256,3 +1256,105 @@ test('it voids the reply of an interrupted step as a lost attempt', () => {
     voidReason: 'attempt_lost',
   });
 });
+
+test('it keeps a call with its result when an owner message lands between them', () => {
+  const started = buildMockLogRecord({ kind: 'task.step_started', sequence: 1 });
+
+  const called = buildMockLogRecord({
+    kind: 'tool_called',
+    sequence: 2,
+    toolCall: { callID: 'call-a', input: { url: 'https://a.test/' }, tool: 'web_fetch' },
+  });
+
+  const question = buildMockLogRecord({
+    kind: 'owner_message',
+    message: { text: 'And the shed?' },
+    sequence: 3,
+  });
+
+  const result = buildMockLogRecord({
+    kind: 'tool_result',
+    sequence: 4,
+    toolCall: { callID: 'call-a', outcome: 'result' },
+  });
+
+  const committed = buildMockLogRecord({ kind: 'task.step_committed', sequence: 5 });
+  const items = buildActivity([started, called, question, result, committed]);
+
+  expect(
+    items.map((item) =>
+      item.kind === 'step'
+        ? { calls: item.calls.map((call) => [call.callID, call.tool, call.outcome]) }
+        : { message: item.record.sequence },
+    ),
+  ).toStrictEqual([{ calls: [['call-a', 'web_fetch', 'result']] }, { message: 3 }]);
+});
+
+test('it collects a file sent across an owner message in the segment of its call', () => {
+  const started = buildMockLogRecord({ kind: 'task.step_started', sequence: 1 });
+
+  const called = buildMockLogRecord({
+    kind: 'tool_called',
+    sequence: 2,
+    toolCall: { callID: 'call-1', input: { file: 'p3n8x2c7ke' }, tool: 'file.send' },
+  });
+
+  const question = buildMockLogRecord({
+    kind: 'owner_message',
+    message: { text: 'Thanks.' },
+    sequence: 3,
+  });
+
+  const result = buildMockLogRecord({
+    kind: 'tool_result',
+    sequence: 4,
+    toolCall: {
+      callID: 'call-1',
+      content: {
+        result: { file: 'p3n8x2c7ke', name: 'orders.csv', bytes: 812, mediaType: 'text/csv' },
+      },
+      outcome: 'result',
+    },
+  });
+
+  const committed = buildMockLogRecord({ kind: 'task.step_committed', sequence: 5 });
+  const items = buildActivity([started, called, question, result, committed]);
+
+  expect(
+    items.flatMap((item) =>
+      item.kind === 'step' ? [(item.sentFiles ?? []).map((file) => file.name)] : [],
+    ),
+  ).toStrictEqual([['orders.csv']]);
+});
+
+test('it voids a reply that precedes the end record of a step that started before the page', () => {
+  const draft = buildMockLogRecord({
+    kind: 'model.reply',
+    message: { text: 'Draft.' },
+    sequence: 2,
+  });
+
+  const errored = buildMockLogRecord({
+    kind: 'task.step_errored',
+    sequence: 3,
+    task: {
+      stepKey: 'step-1',
+      taskID: 'conversation',
+      reason: 'model_api.overloaded',
+      error: 'overloaded',
+    },
+  });
+
+  const items = buildActivity([draft, errored]);
+
+  expect(
+    items.flatMap((item) =>
+      item.kind === 'message' ? [{ message: item.record.message, cause: item.cause }] : [],
+    ),
+  ).toStrictEqual([
+    {
+      message: { text: 'Draft.', isVoided: true, voidReason: 'attempt_failed' },
+      cause: 'Claude is overloaded',
+    },
+  ]);
+});
