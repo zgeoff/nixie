@@ -87,6 +87,17 @@ test('it shows each reply as the model writes it, across a tool call that is sti
   // the reply stands ahead of the call it was written with, and the new owner message behind both
   expect(heldKinds).toStrictEqual(['owner_message', 'model.reply', 'tool_called', 'owner_message']);
 
+  // the page shows the same order while the call is held
+  await waitForPage(ctx.view, "document.body.innerText.includes('And the side gate?')");
+
+  const heldOrderText: unknown = await ctx.view.evaluate('document.body.innerText');
+
+  invariant(typeof heldOrderText === 'string');
+
+  expect(heldOrderText).toMatch(
+    /Where did the heron go\?[\s\S]*Checking the pond\.[\s\S]*And the side gate\?/u,
+  );
+
   // a reload while the call is open still shows the reply, once
   await ctx.view.navigate(ctx.appURL);
 
@@ -97,7 +108,10 @@ test('it shows each reply as the model writes it, across a tool call that is sti
   invariant(typeof heldReloadedText === 'string');
 
   expect(heldReloadedText.split('Checking the pond.')).toHaveLength(2);
-  expect(heldReloadedText).toInclude('And the side gate?');
+
+  expect(heldReloadedText).toMatch(
+    /Where did the heron go\?[\s\S]*Checking the pond\.[\s\S]*And the side gate\?/u,
+  );
 
   ctx.server.release(firstCall);
 
@@ -125,12 +139,22 @@ test('it shows each reply as the model writes it, across a tool call that is sti
 
   expect(
     page.records
-      .filter((record) => ['model.reply', 'tool_called'].includes(record.kind))
-      .slice(0, 5)
+      .filter((record) => ['owner_message', 'model.reply', 'tool_called'].includes(record.kind))
+      .slice(0, 7)
       .map((record) => record.kind),
-  ).toStrictEqual(['model.reply', 'tool_called', 'model.reply', 'tool_called', 'model.reply']);
+  ).toStrictEqual([
+    'owner_message',
+    'model.reply',
+    'tool_called',
+    'owner_message',
+    'model.reply',
+    'tool_called',
+    'model.reply',
+  ]);
 
-  const order = /Checking the pond\.[\s\S]*Checking the gate\.[\s\S]*The heron left at dawn\./u;
+  // the owner message that landed during the call sorts ahead of the replies written after it
+  const order =
+    /Where did the heron go\?[\s\S]*Checking the pond\.[\s\S]*And the side gate\?[\s\S]*Checking the gate\.[\s\S]*The heron left at dawn\./u;
 
   invariant(typeof liveText === 'string' && typeof reloadedText === 'string');
 
