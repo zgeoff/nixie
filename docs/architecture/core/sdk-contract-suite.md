@@ -63,6 +63,10 @@ watchdog to fire.
   after the timeout gives an error result that says the call timed out. The `agent-sdk` harness
   declares its tool-call wait only because this probe passes.
   [Conversation turns](conversation-turns.md) hold the wait.
+- `end-turn`: a tool result whose `_meta` holds `claude/endTurn: true` ends the turn after that tool
+  call. The CLI makes no further model call and writes no nudge for a missing reply into the
+  session, and its result is a success whose stop reason is `tool_use`. A
+  [silent turn](conversation-turns.md#a-turn-that-ends-with-nothing-sent) relies on it.
 - `model-grant`: a turn whose only credential is the placeholder that `buildModelGrant` sets, in
   either auth header's variable, gets its answer through the broker, because the broker replaces the
   header on each request it carries. [Model profiles](model-profiles.md) give each model loop that

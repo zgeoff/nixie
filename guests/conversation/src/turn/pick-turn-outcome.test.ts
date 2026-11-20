@@ -66,6 +66,13 @@ test.each([
     outcome: 'interrupted',
   },
   {
+    terminalReason: 'completed',
+    subtype: 'success',
+    stopReason: 'tool_use',
+    isInterrupted: false,
+    outcome: 'finished',
+  },
+  {
     terminalReason: undefined,
     subtype: 'success',
     stopReason: 'refusal',

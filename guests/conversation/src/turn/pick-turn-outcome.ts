@@ -23,5 +23,15 @@ export function pickTurnOutcome(input: TurnOutcomeInput): TurnOutcome {
     return 'finished';
   }
 
+  // The CLI ends a turn on a tool result that asks for it, so the last call's stop reason is
+  // tool_use and the turn ran to its end.
+  if (
+    input.subtype === 'success' &&
+    input.stopReason === 'tool_use' &&
+    input.terminalReason === 'completed'
+  ) {
+    return 'finished';
+  }
+
   return input.isInterrupted ? 'interrupted' : 'stopped';
 }

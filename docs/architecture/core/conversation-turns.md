@@ -360,9 +360,10 @@ A silent turn is a turn whose step commits no reply record. The model makes a tu
 `turn.end_silently`, a tool that the conversation and every
 [started task](./started-tasks.md#start-options) hold on every turn. The tool list therefore never
 changes, and the prompt cache holds. nixie wrote the tool's description to ask the model for the
-call only when a task message or a timer woke the turn and nothing needs saying. The call ends
-nothing by itself: the model's loop runs until the model stops, and every other tool call in the
-turn takes effect.
+call only when a task message or a timer woke the turn and nothing needs saying. When the host
+accepts the call, its result carries `_meta` with `claude/endTurn: true`, and the model's loop ends
+the turn after that tool call with no further model call. The guest reads that end as a finished
+turn, whose last stop reason is `tool_use`.
 
 The host answers the call from the inbox records that the turn holds. Those are the records that
 opened the turn, and the records that the host passed into it while it ran, as
