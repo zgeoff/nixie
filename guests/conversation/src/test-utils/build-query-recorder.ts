@@ -8,6 +8,9 @@ export interface QueryRecorder {
   readonly options: readonly Options[];
 
   readonly waitForQueued: (uuid: string) => Promise<void>;
+
+  // resolves when the model's reply first streams text
+  readonly waitForText: () => Promise<void>;
 }
 
 export function buildQueryRecorder(): QueryRecorder {
@@ -15,6 +18,8 @@ export function buildQueryRecorder(): QueryRecorder {
 
   const queued = new Set<string>();
   const waiters = new Map<string, () => void>();
+
+  const text = Promise.withResolvers<void>();
 
   return {
     runQuery: (params) => {
@@ -33,12 +38,17 @@ export function buildQueryRecorder(): QueryRecorder {
               waiters.get(uuid)?.();
             }
 
+            if (isTextDelta(message)) {
+              text.resolve();
+            }
+
             yield message;
           }
         },
       });
     },
     options,
+    waitForText: () => text.promise,
     waitForQueued: (uuid) => {
       if (queued.has(uuid)) {
         return Promise.resolve();
@@ -59,4 +69,12 @@ function findQueuedUUID(message: SDKMessage): string | null {
   return lifecycle.success && lifecycle.data.state === 'queued'
     ? (lifecycle.data.command_uuid ?? null)
     : null;
+}
+
+function isTextDelta(message: SDKMessage): boolean {
+  return (
+    message.type === 'stream_event' &&
+    message.event.type === 'content_block_delta' &&
+    message.event.delta.type === 'text_delta'
+  );
 }

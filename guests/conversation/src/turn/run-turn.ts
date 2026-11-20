@@ -1,12 +1,13 @@
-import type { SDKMessage, SDKResultMessage } from '@anthropic-ai/claude-agent-sdk';
+import type { Query, SDKMessage, SDKResultMessage } from '@anthropic-ai/claude-agent-sdk';
 import { query } from '@anthropic-ai/claude-agent-sdk';
-import type { GuestFrame, ReportedUsage, SessionPoint } from '@heynixie/wire';
+import type { GuestFrame, SessionPoint } from '@heynixie/wire';
 import { foldAnthropicUsageEvent, parseAnthropicCallUsage } from '@heynixie/wire';
 import type { RequestRewriter } from '../rewrite/start-request-rewriter';
 import { startRequestRewriter } from '../rewrite/start-request-rewriter';
-import type { Refusal } from '../rewrite/wait-for-refusal';
 import { waitForRefusal } from '../rewrite/wait-for-refusal';
 import type { TurnDependencies } from '../types';
+import { addCarried } from './add-carried';
+import { buildEnded } from './build-ended';
 import { buildModelFailure } from './build-model-failure';
 import type { TurnFrame } from './build-query-options';
 import { buildQueryOptions } from './build-query-options';
@@ -14,12 +15,15 @@ import { checkToolServer } from './check-tool-server';
 import { commandLifecycleSchema } from './command-lifecycle-schema';
 import { countContextTokens } from './count-context-tokens';
 import { getCompactWindow } from './get-compact-window';
+import { hasAwaited } from './has-awaited';
 import { isOverflowReason } from './is-overflow-reason';
-import { pickTurnOutcome } from './pick-turn-outcome';
-import type { TurnInputState } from './read-turn-input';
 import { readTurnInput } from './read-turn-input';
 import { setupTurnDisk } from './setup-turn-disk';
+import { startCutIfDue } from './start-cut-if-due';
 import { toolServerName } from './tool-server-name';
+import { trackStreaming } from './track-streaming';
+import type { AssistantMessage, Cut, TurnState } from './turn-state';
+import { noCarried } from './turn-state';
 
 export async function runTurn(turn: TurnFrame, deps: TurnDependencies): Promise<void> {
   const rewriter = await startRewriterOrFail(turn, deps);
@@ -52,25 +56,6 @@ async function startRewriterOrFail(
   }
 }
 
-interface TurnState extends TurnInputState {
-  boundary: SessionPoint | null;
-
-  committed: SessionPoint | null;
-
-  contextSize: number | null;
-  readonly compactWindow: number;
-
-  isInterrupted: boolean;
-
-  // The CLI retried the model call that the next main-chain message answers.
-  isRetried: boolean;
-
-  // the usage the stream reported so far for the model call in flight
-  reported: ReportedUsage;
-
-  readonly refused: Promise<Refusal>;
-}
-
 async function runTurnThrough(
   turn: TurnFrame,
   deps: TurnDependencies,
@@ -86,6 +71,17 @@ async function runTurnThrough(
 
   const state: TurnState = {
     pending: new Set(),
+    cutting: new Set(),
+    queued: new Set(),
+    unlisted: new Set(),
+    canCut: false,
+    isStreaming: false,
+    hasToolUse: false,
+    cut: null,
+    cutCalls: 0,
+    carried: noCarried,
+    held: null,
+    heldReads: new Set(),
     boundary: null,
     committed: turn.resume ?? null,
     contextSize: null,
@@ -166,7 +162,7 @@ async function drainConnectedSession(
 }
 
 async function drainSession(
-  session: AsyncIterable<SDKMessage>,
+  session: Query,
   deps: TurnDependencies,
   state: TurnState,
 ): Promise<void> {
@@ -191,9 +187,11 @@ async function drainSession(
 
     const outcome = await emitMessageFrames(next.value, deps, state);
 
-    if (outcome === 'stop' || (outcome === 'result' && state.pending.size === 0)) {
+    if (outcome === 'stop' || (outcome === 'result' && !hasAwaited(state))) {
       return;
     }
+
+    startCutIfDue(session, state);
   }
 }
 
@@ -237,7 +235,7 @@ function emitSystem(
   state: TurnState,
 ): Promise<MessageOutcome> {
   if (message.subtype === 'init') {
-    return emitInit(message, deps);
+    return emitInit(message, deps, state);
   }
 
   if (message.subtype === 'api_retry') {
@@ -251,7 +249,13 @@ function emitSystem(
 
 type InitMessage = Extract<SDKMessage, { type: 'system'; subtype: 'init' }>;
 
-async function emitInit(message: InitMessage, deps: TurnDependencies): Promise<MessageOutcome> {
+async function emitInit(
+  message: InitMessage,
+  deps: TurnDependencies,
+  state: TurnState,
+): Promise<MessageOutcome> {
+  state.canCut = message.capabilities?.includes('interrupt_receipt_v1') === true;
+
   const server = message.mcp_servers.find((candidate) => candidate.name === toolServerName);
 
   if (server?.status === 'connected') {
@@ -274,8 +278,21 @@ async function emitCommandRead(
 ): Promise<MessageOutcome> {
   const lifecycle = commandLifecycleSchema.safeParse(message);
 
-  if (lifecycle.success && lifecycle.data.state === 'completed') {
-    await emitReads(deps, state, [lifecycle.data.command_uuid]);
+  if (!lifecycle.success || lifecycle.data.command_uuid === undefined) {
+    return 'continue';
+  }
+
+  const uuid = lifecycle.data.command_uuid;
+
+  if (lifecycle.data.state === 'queued') {
+    state.queued.add(uuid);
+  } else {
+    state.queued.delete(uuid);
+  }
+
+  // A command that completes while a cut ends the call may be the one the cut aborted.
+  if (lifecycle.data.state === 'completed' && state.cut === null) {
+    await emitReads(deps, state, [uuid]);
   }
 
   return 'continue';
@@ -293,13 +310,12 @@ async function emitReads(
   if (uuids.length > 0) {
     for (const uuid of uuids) {
       state.pending.delete(uuid);
+      state.unlisted.delete(uuid);
     }
 
     await deps.emit({ type: 'read', uuids });
   }
 }
-
-type AssistantMessage = Extract<SDKMessage, { type: 'assistant' }>;
 
 async function emitAssistant(
   message: AssistantMessage,
@@ -307,6 +323,14 @@ async function emitAssistant(
   state: TurnState,
 ): Promise<MessageOutcome> {
   if (message.parent_tool_use_id !== null) {
+    return 'continue';
+  }
+
+  // A cut call's text may end mid-word, and the model never finished it, so nothing of it reaches
+  // the host.
+  if (message.aborted === true) {
+    state.held = null;
+
     return 'continue';
   }
 
@@ -329,6 +353,45 @@ async function emitAssistant(
     return 'stop';
   }
 
+  if (message.error === undefined && isReasoningOnly(message)) {
+    await flushHeld(deps, state);
+
+    state.held = message;
+
+    return 'continue';
+  }
+
+  await flushHeld(deps, state);
+
+  return emitAssistantFrames(message, deps, state);
+}
+
+function collectText(content: AssistantMessage['message']['content']): string {
+  return content.flatMap((block) => (block.type === 'text' ? [block.text] : [])).join('\n\n');
+}
+
+function isReasoningOnly(message: AssistantMessage): boolean {
+  return (
+    message.message.content.length > 0 &&
+    message.message.content.every((block) => block.type === 'thinking')
+  );
+}
+
+async function flushHeld(deps: TurnDependencies, state: TurnState): Promise<void> {
+  const held = state.held;
+
+  if (held !== null) {
+    state.held = null;
+
+    await emitAssistantFrames(held, deps, state);
+  }
+}
+
+async function emitAssistantFrames(
+  message: AssistantMessage,
+  deps: TurnDependencies,
+  state: TurnState,
+): Promise<MessageOutcome> {
   state.boundary = { harness: 'agent-sdk', sessionID: message.session_id, messageID: message.uuid };
 
   if (message.error === undefined) {
@@ -336,7 +399,13 @@ async function emitAssistant(
     state.contextSize = countContextTokens(message.message.usage);
   }
 
-  await emitReads(deps, state, [message.user_message_uuid, ...(message.user_message_uuids ?? [])]);
+  await emitReads(deps, state, [
+    message.user_message_uuid,
+    ...(message.user_message_uuids ?? []),
+    ...state.heldReads,
+  ]);
+
+  state.heldReads.clear();
 
   const summary = collectSummary(message.message.content);
 
@@ -352,10 +421,6 @@ async function emitAssistant(
   });
 
   return 'continue';
-}
-
-function collectText(content: AssistantMessage['message']['content']): string {
-  return content.flatMap((block) => (block.type === 'text' ? [block.text] : [])).join('\n\n');
 }
 
 function collectSummary(content: AssistantMessage['message']['content']): string {
@@ -389,6 +454,14 @@ async function emitResult(
     (message.subtype !== 'success' && state.isInterrupted)
   ) {
     return emitInterrupted(message, deps, state);
+  }
+
+  const cut = state.cut;
+
+  state.cut = null;
+
+  if (cut !== null && message.subtype !== 'success') {
+    return emitCut(message, cut, deps, state);
   }
 
   if (message.subtype !== 'success') {
@@ -440,39 +513,51 @@ async function emitInterrupted(
   return 'stop';
 }
 
-function buildEnded(
+// The CLI ends the cut call's turn with an error result and starts the next queued message at
+// once. The cut call's usage still counts, and the turn goes on while a message survives the cut.
+async function emitCut(
   message: SDKResultMessage,
-  boundary: SessionPoint,
+  cut: Cut,
+  deps: TurnDependencies,
   state: TurnState,
-): GuestFrame {
-  // The model API reports thinking tokens only in the result's usage, as the turn's total. The
-  // per-message usage never carries them.
-  const thinkingTokens = message.usage.output_tokens_details.thinking_tokens;
+): Promise<MessageOutcome> {
+  const stillQueued = await cut.receipt;
 
-  return {
-    type: 'ended',
-    outcome: pickTurnOutcome({
-      subtype: message.subtype,
-      terminalReason: message.terminal_reason,
-      stopReason: message.stop_reason,
-      isInterrupted: state.isInterrupted,
-    }),
-    boundary,
-    stopReason: message.stop_reason,
-    isError: message.is_error,
-    ...(message.terminal_reason === undefined ? {} : { terminalReason: message.terminal_reason }),
-    turns: message.num_turns,
-    usage: {
-      inputTokens: message.usage.input_tokens,
-      outputTokens: message.usage.output_tokens,
-      cacheReadTokens: message.usage.cache_read_input_tokens,
-      cacheWriteTokens: message.usage.cache_creation_input_tokens,
-    },
-    ...(thinkingTokens === 0 ? {} : { thinkingTokens }),
-    ...(state.contextSize === null
-      ? {}
-      : { context: { size: state.contextSize, window: state.compactWindow } }),
-  };
+  const usage = parseAnthropicCallUsage(state.reported);
+
+  state.reported = {};
+  state.held = null;
+  state.isStreaming = false;
+  state.cutCalls += 1;
+
+  if (usage !== null) {
+    await deps.emit({ type: 'call', usage });
+  }
+
+  for (const uuid of state.pending) {
+    if (state.unlisted.has(uuid) && !state.queued.has(uuid)) {
+      state.heldReads.add(uuid);
+    }
+  }
+
+  if (stillQueued !== null && hasAwaited(state)) {
+    state.carried = addCarried(state.carried, message);
+
+    return 'continue';
+  }
+
+  const boundary = state.boundary ?? state.committed;
+
+  await emitReads(deps, state, [...state.heldReads]);
+
+  const frame: GuestFrame =
+    boundary === null
+      ? { type: 'failed', reason: 'error', detail: 'the turn was cut before any chain entry' }
+      : { ...buildEnded(message, boundary, state), outcome: 'finished', isError: false };
+
+  await deps.emit(frame);
+
+  return 'stop';
 }
 
 function pickBoundary(
@@ -493,11 +578,15 @@ async function emitCallUsage(
   deps: TurnDependencies,
   state: TurnState,
 ): Promise<MessageOutcome> {
+  trackStreaming(message, state);
+
   if (message.event.type !== 'message_stop') {
     state.reported = foldAnthropicUsageEvent(state.reported, message.event);
 
     return 'continue';
   }
+
+  await flushHeld(deps, state);
 
   const usage = parseAnthropicCallUsage(state.reported);
 

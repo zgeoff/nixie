@@ -1,11 +1,15 @@
 import type { SDKUserMessage } from '@anthropic-ai/claude-agent-sdk';
 import type { InboxMessage } from '@heynixie/wire';
 import invariant from 'tiny-invariant';
+import type { LiveMessage } from '../types';
 import type { TurnFrame } from './build-query-options';
 import { isUUID } from './is-uuid';
 
 export interface TurnInputState {
   readonly pending: Set<string>;
+
+  // the pending messages that cut the model call in flight
+  readonly cutting: Set<string>;
 
   readonly toolsReady: PromiseWithResolvers<boolean>;
 
@@ -15,7 +19,7 @@ export interface TurnInputState {
 
 export async function* readTurnInput(
   turn: TurnFrame,
-  messages: AsyncIterable<InboxMessage> | Iterable<InboxMessage>,
+  messages: AsyncIterable<LiveMessage> | Iterable<LiveMessage>,
   state: TurnInputState,
 ): AsyncGenerator<SDKUserMessage> {
   const isReady = await state.toolsReady.promise;
@@ -27,7 +31,7 @@ export async function* readTurnInput(
 
 async function* readInbox(
   turn: TurnFrame,
-  messages: AsyncIterable<InboxMessage> | Iterable<InboxMessage>,
+  messages: AsyncIterable<LiveMessage> | Iterable<LiveMessage>,
   state: TurnInputState,
 ): AsyncGenerator<SDKUserMessage> {
   for (const message of turn.input) {
@@ -45,6 +49,11 @@ async function* readInbox(
     }
 
     state.pending.add(next.value.uuid);
+
+    if (next.value.cutsCall === true) {
+      state.cutting.add(next.value.uuid);
+    }
+
     yield buildUserMessage(next.value);
   }
 }
@@ -86,15 +95,15 @@ function buildContent(message: InboxMessage): UserContent {
 }
 
 async function* readMessages(
-  messages: AsyncIterable<InboxMessage> | Iterable<InboxMessage>,
-): AsyncGenerator<InboxMessage> {
+  messages: AsyncIterable<LiveMessage> | Iterable<LiveMessage>,
+): AsyncGenerator<LiveMessage> {
   yield* messages;
 }
 
 async function readNextMessage(
-  iterator: AsyncIterator<InboxMessage>,
+  iterator: AsyncIterator<LiveMessage>,
   state: TurnInputState,
-): Promise<IteratorResult<InboxMessage> | null> {
+): Promise<IteratorResult<LiveMessage> | null> {
   try {
     return await Promise.race([iterator.next(), state.ended.promise.then(() => null)]);
   } catch (error) {

@@ -1,5 +1,5 @@
 import type { McpServerConfig } from '@anthropic-ai/claude-agent-sdk';
-import type { GuestFrame, HostFrame, InboxMessage } from '@heynixie/wire';
+import type { GuestFrame, HostFrame } from '@heynixie/wire';
 import {
   decodeTurnFrame,
   encodeFrame,
@@ -8,6 +8,7 @@ import {
   hostFrameSchema,
   makeFrameDecoder,
 } from '@heynixie/wire';
+import type { LiveMessage } from '../types';
 import type { TurnFrame } from './build-query-options';
 import { getHome } from './get-home';
 import { removeSessionState } from './remove-session-state';
@@ -120,7 +121,7 @@ function buildHTTPToolServer(turn: TurnFrame): McpServerConfig {
 async function* readMessages(
   frames: AsyncIterator<HostFrame>,
   interrupt: AbortController,
-): AsyncGenerator<InboxMessage> {
+): AsyncGenerator<LiveMessage> {
   for (;;) {
     const next = await frames.next();
 
@@ -131,7 +132,9 @@ async function* readMessages(
     if (next.value.type === 'interrupt') {
       interrupt.abort();
     } else if (next.value.type === 'message') {
-      yield next.value.message;
+      yield next.value.cutsCall === true
+        ? { ...next.value.message, cutsCall: true }
+        : next.value.message;
     } else {
       throw new Error('a turn is already running');
     }
