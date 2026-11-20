@@ -18,7 +18,7 @@ export const turnFieldNeeds = {
 } as const satisfies Readonly<Record<string, HarnessCapability>>;
 
 // A message frame's cutsCall key.
-export const messageFieldNeeds = {
+const messageFieldNeeds = {
   cutsCall: 'live-cut',
 } as const satisfies Readonly<Record<string, HarnessCapability>>;
 
