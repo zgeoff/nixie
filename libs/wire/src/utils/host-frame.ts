@@ -99,6 +99,9 @@ const messageFrameSchema = z
   .object({
     type: z.literal('message'),
     message: inboxMessageSchema,
+
+    // true: the guest cuts the model call in flight to read this message at once
+    cutsCall: z.literal(true).optional(),
   })
   .readonly();
 

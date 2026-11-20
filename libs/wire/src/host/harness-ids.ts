@@ -8,6 +8,7 @@ export type HarnessCapability =
   | 'resume'
   | 'resume-at-entry'
   | 'live-messages'
+  | 'live-cut'
   | 'interrupt'
   | 'summarize'
   | 'structured-output'
@@ -23,6 +24,7 @@ export const harnessCapabilityLists = {
     'resume',
     'resume-at-entry',
     'live-messages',
+    'live-cut',
     'interrupt',
     'summarize',
     'structured-output',

@@ -304,3 +304,13 @@ test('it accepts a turn frame with no resume key', () => {
 
   expect(hostFrameSchema.safeParse(frame).data).toStrictEqual(frame);
 });
+
+test('it accepts a message frame that cuts the call in flight', () => {
+  const frame: HostFrame = {
+    type: 'message',
+    message: { uuid: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d001', text: 'Stop and look at this.' },
+    cutsCall: true,
+  };
+
+  expect(hostFrameSchema.safeParse(frame).data).toStrictEqual(frame);
+});
