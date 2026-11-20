@@ -1,5 +1,5 @@
 import type { StepInput } from '@heynixie/tasks';
-import { buildStepRunID } from '@heynixie/tasks';
+import { LeaseLostError, buildStepRunID } from '@heynixie/tasks';
 import type { ToolSession } from '@heynixie/tools';
 import type { InboxMessage, SessionPoint } from '@heynixie/wire';
 import invariant from 'tiny-invariant';
@@ -12,11 +12,14 @@ import type { TaskMessageView } from '../task/render-task-message';
 import type { ConversationRun, ImageTally, MessageTimeOptions, TurnNote } from '../types';
 import type { TurnSilence } from '../utils/build-turn-silence';
 import { buildTurnSilence } from '../utils/build-turn-silence';
+import type { AssistantFrame } from '../utils/run-guest-turn';
 import { runGuestTurn } from '../utils/run-guest-turn';
 import type { OpeningBatch } from './read-opening-batch';
 import { readOpeningBatch } from './read-opening-batch';
 import { readTurnRecalledThrough } from './read-turn-recalled-through';
 import { buildStepHold, buildTaskRun, runApprovedCalls } from './run-approved-calls';
+import { writeLiveReply } from './write-live-reply';
+import { writeReplyVoids } from './write-reply-voids';
 
 export interface LiveTurnPlan {
   readonly resume: SessionPoint | null;
@@ -33,6 +36,14 @@ export interface LiveTurnPlan {
 
   // the session the turn runs on, which the turn's step token hands each tool call
   readonly session: ToolSession;
+}
+
+interface LiveWrites {
+  // the sequences of the replies written so far, in order
+  readonly written: number[];
+
+  // the reasoning summaries sent since the last reply
+  readonly summaries: string[];
 }
 
 export async function runLiveTurn(
@@ -63,8 +74,20 @@ export async function runLiveTurn(
     taskRun,
   );
 
+  const live: LiveWrites = { written: [], summaries: [] };
+
   try {
-    return await runTokenTurn(run, input, { ...plan, token: stepToken.token, opening, silence });
+    return await runTokenTurn(run, input, {
+      ...plan,
+      token: stepToken.token,
+      opening,
+      silence,
+      live,
+    });
+  } catch (error) {
+    await voidFailedAttempt(run, input, live.written, error);
+
+    throw error;
   } finally {
     await stepToken.stop();
   }
@@ -74,6 +97,33 @@ interface TokenTurnPlan extends LiveTurnPlan {
   readonly token: string;
   readonly opening: OpeningBatch;
   readonly silence: TurnSilence;
+  readonly live: LiveWrites;
+}
+
+// A turn that throws keeps none of the replies it wrote. A runner that lost its lease writes
+// nothing, and the next step's sweep voids what it left. A failed void write leaves the sweep the
+// same work, and must not hide the error that failed the turn.
+export async function voidFailedAttempt(
+  run: Pick<ConversationRun, 'context' | 'log'>,
+  input: StepInput,
+  sequences: readonly number[],
+  cause: unknown,
+): Promise<void> {
+  if (cause instanceof LeaseLostError || sequences.length === 0) {
+    return;
+  }
+
+  try {
+    await writeReplyVoids(run, input, [
+      { sequences, runID: buildStepRunID(input), reason: 'attempt_failed' },
+    ]);
+  } catch (error) {
+    run.log(
+      'reply_void.failed',
+      { error: error instanceof Error ? error.message : 'unknown' },
+      'warn',
+    );
+  }
 }
 
 async function runTokenTurn(
@@ -134,6 +184,7 @@ async function runTokenTurn(
       ...(capabilities.has('interrupt') ? { interrupt: input.interrupt } : {}),
       readRecallMark: () => readTurnRecalledThrough(run.context, input),
       ...(run.onModelCall === undefined ? {} : { onCall: run.onModelCall }),
+      onAssistant: (frame) => writeAssistantReply(run, input, plan.live, frame),
     });
 
     return {
@@ -144,6 +195,7 @@ async function runTokenTurn(
       notedThrough: note?.throughSequence ?? null,
       images: opening.images.spent,
       isSilent: plan.silence.isSilent(),
+      runID: buildStepRunID(input),
     };
   } finally {
     live.abort();
@@ -185,4 +237,30 @@ function buildTurnInput(
   }
 
   return [{ ...first, text: [...preamble, first.text].join('\n\n') }, ...rest];
+}
+
+async function writeAssistantReply(
+  run: ConversationRun,
+  input: StepInput,
+  live: LiveWrites,
+  frame: AssistantFrame,
+): Promise<number | null> {
+  if (frame.summary !== undefined) {
+    live.summaries.push(frame.summary);
+  }
+
+  if (frame.text === '') {
+    return null;
+  }
+
+  const sequence = await writeLiveReply(run, input, {
+    messageID: frame.messageID,
+    text: frame.text,
+    summary: live.summaries.splice(0).join('\n\n'),
+    runID: buildStepRunID(input),
+  });
+
+  live.written.push(sequence);
+
+  return sequence;
 }

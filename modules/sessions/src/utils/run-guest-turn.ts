@@ -10,7 +10,7 @@ import {
 
 type TurnFrame = Extract<HostFrame, { type: 'turn' }>;
 
-type AssistantFrame = Extract<GuestFrame, { type: 'assistant' }>;
+export type AssistantFrame = Extract<GuestFrame, { type: 'assistant' }>;
 
 type EndedFrame = Extract<GuestFrame, { type: 'ended' }>;
 
@@ -38,6 +38,11 @@ export interface GuestTurnSpec {
   // with the text of the replies the guest sent since the call before. The guest sends a call's
   // replies before the frame that reports the call.
   readonly onCall?: (usage: ModelCallUsage, replies: GuestCallReplies) => Promise<void>;
+
+  // runs on each assistant frame, before the host reads the guest's next frame, and returns the
+  // sequence of the reply it wrote for the frame, or null when it wrote none. A frame that carries
+  // an error text never reaches it: the turn holds that frame for its commit.
+  readonly onAssistant?: (frame: AssistantFrame) => Promise<number | null>;
 }
 
 export interface GuestTurn {
@@ -45,6 +50,13 @@ export interface GuestTurn {
   readonly read: readonly string[];
   readonly ended: readonly EndedFrame[];
   readonly failure: FailedFrame | null;
+
+  // the sequences of the replies that onAssistant wrote, in the order it wrote them
+  readonly written: readonly number[];
+
+  // how many of the written replies the last result frame settled: the replies after it belong to a
+  // session that no turn resumes
+  readonly settledWritten: number;
 
   readonly endedMark?: number;
 }
@@ -170,23 +182,25 @@ interface MutableTurn {
   readonly read: string[];
   readonly ended: EndedFrame[];
   failure: FailedFrame | null;
+  readonly written: number[];
   endedMark: number | null;
-  settled: { readonly assistants: number; readonly read: number };
+  settled: { readonly assistants: number; readonly read: number; readonly written: number };
 }
 
 // The SDK resumes a session at its last result, so a reply or a read after that result belongs to a
 // session that no turn resumes. Its inbox records stay unread, and the next step sends them again.
 async function readTurn(
   stream: ExecStream,
-  spec: Pick<GuestTurnSpec, 'harness' | 'readRecallMark' | 'onCall'>,
+  spec: Pick<GuestTurnSpec, 'harness' | 'readRecallMark' | 'onCall' | 'onAssistant'>,
 ): Promise<GuestTurn> {
   const turn: MutableTurn = {
     assistants: [],
     read: [],
     ended: [],
     failure: null,
+    written: [],
     endedMark: null,
-    settled: { assistants: 0, read: 0 },
+    settled: { assistants: 0, read: 0, written: 0 },
   };
 
   let repliedThrough = 0;
@@ -209,6 +223,14 @@ async function readTurn(
     const mark = await readFrameMark(frame, spec.readRecallMark);
 
     updateTurn(turn, frame, mark, spec.harness);
+
+    if (frame.type === 'assistant' && frame.isError !== true) {
+      const sequence = await spec.onAssistant?.(frame);
+
+      if (sequence !== undefined && sequence !== null) {
+        turn.written.push(sequence);
+      }
+    }
   }
 
   const exit = await stream.exit;
@@ -222,6 +244,8 @@ async function readTurn(
     read: turn.read.slice(0, turn.settled.read),
     ended: turn.ended,
     failure: turn.failure,
+    written: turn.written,
+    settledWritten: turn.settled.written,
     ...(turn.endedMark === null ? {} : { endedMark: turn.endedMark }),
   };
 }
@@ -250,7 +274,12 @@ function updateTurn(
     turn.ended.push(frame);
 
     turn.endedMark = mark ?? null;
-    turn.settled = { assistants: turn.assistants.length, read: turn.read.length };
+
+    turn.settled = {
+      assistants: turn.assistants.length,
+      read: turn.read.length,
+      written: turn.written.length,
+    };
   } else if (frame.type === 'failed') {
     turn.failure = frame;
   } else {

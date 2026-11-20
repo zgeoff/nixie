@@ -7,6 +7,7 @@ import { buildStepResult } from '../step/build-step-result';
 import type { SessionStart } from '../types';
 import type { SessionTurn } from './run-planned-turn';
 import { runPlannedTurn } from './run-planned-turn';
+import { runStepCommit } from './run-step-commit';
 
 export interface Opening {
   readonly source: ModelRecordSource;
@@ -21,21 +22,20 @@ export async function runOpenedTurn(turn: SessionTurn, opening: Opening): Promis
 
   invariant(opened.opening, 'a new session ran with no opening');
 
-  return buildStepResult(
-    source,
-    {
-      ...opened.completed,
-      harness: turn.run.harness,
-      memory: { ...turn.context, invalidatedThrough: turn.invalidatedThrough },
-    },
-    [
-      ...opening.before,
-      buildModelEventRecord(source, modelSessionOpenedCodec, {
-        ...opened.opening,
-        personaHash: turn.definitions.personaHash,
-        policyHash: turn.definitions.policyHash,
-        sessionKey: turn.sessionKey,
-      }),
-    ],
+  const completed = {
+    ...opened.completed,
+    harness: turn.run.harness,
+    memory: { ...turn.context, invalidatedThrough: turn.invalidatedThrough },
+  };
+
+  const sessionOpened = buildModelEventRecord(source, modelSessionOpenedCodec, {
+    ...opened.opening,
+    personaHash: turn.definitions.personaHash,
+    policyHash: turn.definitions.policyHash,
+    sessionKey: turn.sessionKey,
+  });
+
+  return runStepCommit(turn, completed, () =>
+    buildStepResult(source, completed, [...opening.before, sessionOpened]),
   );
 }

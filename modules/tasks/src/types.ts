@@ -289,6 +289,7 @@ export type FaultPointID =
   | 'timer.fire.before'
   | 'inbox.write.after'
   | 'task_list.read.after'
+  | 'turn.reply.after'
   | 'recovery.step.1'
   | 'recovery.step.2'
   | 'recovery.step.3'

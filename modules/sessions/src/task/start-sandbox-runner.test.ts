@@ -256,7 +256,7 @@ test.each([
     }),
   },
 ])(
-  'it ends a task turn that $name alone woke with no reply and no task message, and records the turn end as silent',
+  'it ends a task turn that $name alone woke with no task message, keeps the text written before, and records the turn end as silent',
   async (row) => {
     const ctx = await setupTest();
     const starter = await ctx.seed.conversationStep();
@@ -293,7 +293,11 @@ test.each([
     const ended = await ctx.readKinds('model.turn_ended');
 
     expect(ends).toStrictEqual(['ended']);
-    expect(replies).toStrictEqual(repliesBefore);
+
+    expect(replies.slice(repliesBefore.length).map((record) => record.erasable)).toStrictEqual([
+      { status: 'readable', fields: { text: 'Nothing new on the tides.' } },
+    ]);
+
     expect(sent.filter((record) => record.thread !== taskID)).toStrictEqual([]);
 
     expect(ended.at(-1)).toStrictEqual({
@@ -381,6 +385,7 @@ test('it refuses to end a task turn that holds a message from you silently, and 
       model: 'claude-test-errands',
       profile: 'errands',
       messageID: expect.any(String),
+      runID: expect.any(String),
     },
     erasable: { status: 'readable', fields: { text: 'The morning tide is at 06:10.' } },
   });

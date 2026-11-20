@@ -13,6 +13,18 @@ function setupTest() {
   return {
     stub: buildStubSandboxes(),
     harness: bindHarness(buildMockModelProfile()),
+    ended: {
+      type: 'ended' as const,
+      boundary: {
+        harness: 'agent-sdk' as const,
+        sessionID: '5d2b1e0c-7f3a-4e8b-9c6d-2a1b3c4d5e6f',
+        messageID: '0b4f4c8e-3d0a-4c39-9a51-6f1f1f2b8c01',
+      },
+      outcome: 'finished' as const,
+      stopReason: 'end_turn',
+      turns: 1,
+      usage: { inputTokens: 10, outputTokens: 5, cacheReadTokens: 0, cacheWriteTokens: 0 },
+    },
   };
 }
 
@@ -39,6 +51,8 @@ test('it collects the frames the guest sent for the turn', async () => {
     read: ['6e697869-0000-8000-8000-000000000002'],
     ended: [expect.objectContaining({ type: 'ended', outcome: 'finished' })],
     failure: null,
+    written: [],
+    settledWritten: 0,
   });
 });
 
@@ -104,6 +118,8 @@ test('it drops the reads and replies a guest sent after its last result when it 
     read: ['6e697869-0000-8000-8000-000000000002'],
     ended: [expect.objectContaining({ type: 'ended', turns: 1 })],
     failure: null,
+    written: [],
+    settledWritten: 0,
   });
 });
 
@@ -156,6 +172,8 @@ test('it keeps every reply of a turn that failed after its last result', async (
       error: 'quota',
       detail: 'API Error: Request rejected (429) · Weekly allowance used up',
     },
+    written: [],
+    settledWritten: 0,
   });
 });
 
@@ -601,4 +619,125 @@ test('it fails the turn, and sends the guest no interrupt, on a harness without 
   });
 
   expect(turn).rejects.toThrow('The harness lacks interrupt');
+});
+
+test('it waits for the caller to write each reply before it reads the next frame', async () => {
+  const ctx = setupTest();
+
+  const sandbox = await ctx.stub.adapter.create(buildMockSandboxSpec({ kind: 'conversation' }));
+
+  const held = Promise.withResolvers<number | null>();
+  const seen: string[] = [];
+
+  ctx.stub.setGuestScript(() => [
+    { type: 'assistant', messageID: 'msg_1', text: 'First.', toolUses: [] },
+    { type: 'assistant', messageID: 'msg_2', text: 'Second.', toolUses: [] },
+    ctx.ended,
+  ]);
+
+  const turn = runGuestTurn({
+    harness: ctx.harness,
+    sandbox,
+    command: { argv: ['guest'], env: {} },
+    turn: buildMockTurnFrame({
+      input: [{ uuid: '6e697869-0000-8000-8000-000000000002', text: 'Hi.' }],
+    }),
+    messages: [],
+    signal: new AbortController().signal,
+    onAssistant: (frame) => {
+      seen.push(frame.text);
+
+      return seen.length === 1 ? held.promise : Promise.resolve(8);
+    },
+  });
+
+  await expect(waitForCondition(() => seen.length > 1, { timeoutMs: 200 })).toReject();
+
+  const seenWhileHeld = [...seen];
+
+  held.resolve(7);
+
+  const result = await turn;
+
+  expect({ seenWhileHeld, seenAtEnd: seen, written: result.written }).toStrictEqual({
+    seenWhileHeld: ['First.'],
+    seenAtEnd: ['First.', 'Second.'],
+    written: [7, 8],
+  });
+});
+
+test('it holds an error frame for the commit and never hands it to the caller', async () => {
+  const ctx = setupTest();
+
+  const sandbox = await ctx.stub.adapter.create(buildMockSandboxSpec({ kind: 'conversation' }));
+
+  ctx.stub.setGuestScript(() => [
+    {
+      type: 'assistant',
+      messageID: 'msg_1',
+      text: 'Prompt is too long',
+      toolUses: [],
+      isError: true,
+    },
+    ctx.ended,
+  ]);
+
+  const handed: string[] = [];
+
+  const turn = await runGuestTurn({
+    harness: ctx.harness,
+    sandbox,
+    command: { argv: ['guest'], env: {} },
+    turn: buildMockTurnFrame({
+      input: [{ uuid: '6e697869-0000-8000-8000-000000000002', text: 'Hi.' }],
+    }),
+    messages: [],
+    signal: new AbortController().signal,
+    onAssistant: (frame) => {
+      handed.push(frame.text);
+
+      return Promise.resolve(1);
+    },
+  });
+
+  expect({
+    handed,
+    assistants: turn.assistants.map((frame) => frame.text),
+    written: turn.written,
+  }).toStrictEqual({
+    handed: [],
+    assistants: ['Prompt is too long'],
+    written: [],
+  });
+});
+
+test('it counts the written replies the last result settled, and not those after it', async () => {
+  const ctx = setupTest();
+
+  const sandbox = await ctx.stub.adapter.create(buildMockSandboxSpec({ kind: 'conversation' }));
+
+  ctx.stub.setGuestScript(() => [
+    { type: 'assistant', messageID: 'msg_1', text: 'Hello.', toolUses: [] },
+    ctx.ended,
+    { type: 'assistant', messageID: 'msg_2', text: 'And eggs.', toolUses: [] },
+  ]);
+
+  const sequences = [4, 5];
+
+  const turn = await runGuestTurn({
+    harness: ctx.harness,
+    sandbox,
+    command: { argv: ['guest'], env: {} },
+    turn: buildMockTurnFrame({
+      input: [{ uuid: '6e697869-0000-8000-8000-000000000002', text: 'Hi.' }],
+    }),
+    messages: [],
+    signal: new AbortController().signal,
+    onAssistant: () => Promise.resolve(sequences.shift() ?? null),
+  });
+
+  expect({ written: turn.written, settled: turn.settledWritten }).toStrictEqual({
+    written: [4, 5],
+    settled: 1,
+  });
 });

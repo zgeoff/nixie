@@ -15,6 +15,7 @@ import type { SessionMarks } from '../utils/read-session-marks';
 import { readSessionMarks } from '../utils/read-session-marks';
 import { isStepTurnCut } from './is-step-turn-cut';
 import { pickSessionPosition } from './pick-session-position';
+import { voidLostReplies } from './void-lost-replies';
 
 // One capture covers the whole step: a threshold compaction, the turn, an overflow compaction and a
 // rebuilt turn all share it. The step closes it with the count of model calls it made.
@@ -22,6 +23,9 @@ export async function runConversationStep(
   conversation: ConversationRun,
   input: StepInput,
 ): Promise<StepResult> {
+  // a runner that died mid-turn left replies that no commit kept, and no later read may see them
+  await voidLostReplies(conversation, input);
+
   const stopped = await runSpendCheck(conversation, input);
 
   if (stopped !== null) {

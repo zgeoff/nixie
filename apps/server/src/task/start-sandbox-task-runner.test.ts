@@ -175,7 +175,7 @@ test("it ends the conversation's turn that the task's report woke with no reply,
     },
     content: [],
     structuredContent: {
-      note: 'This turn ends with nothing sent. Write no more text: nixie keeps no reply from this turn.',
+      note: 'This turn ends with nothing sent. Write no more text.',
     },
   });
 });

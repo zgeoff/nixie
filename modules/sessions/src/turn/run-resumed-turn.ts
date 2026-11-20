@@ -1,13 +1,18 @@
+import type { RecordInput } from '@heynixie/log';
 import type { StepResult } from '@heynixie/tasks';
 import type { SessionPoint } from '@heynixie/wire';
 import { runOverflowCompaction } from '../compaction/run-overflow-compaction';
 import { probeSessionImagesFull } from '../session/probe-session-images-full';
 import { readSessionTurn } from '../session/read-session-turn';
+import type { CompletedTurn } from '../step/build-step-result';
 import { buildStepResult } from '../step/build-step-result';
 import type { InboxPlan, SessionStart, SessionStep } from '../types';
+import type { DroppedReplies } from '../utils/build-reply-voids';
+import { buildReplyVoids } from '../utils/build-reply-voids';
 import { isContextOverflow } from '../utils/is-context-overflow';
 import { runOpenedTurn } from './run-opened-turn';
 import { runPlannedTurn } from './run-planned-turn';
+import { runStepCommit } from './run-step-commit';
 
 export interface ResumedSession {
   readonly boundary: SessionPoint;
@@ -31,6 +36,7 @@ async function runRebuiltTurn(
   step: SessionStep,
   session: ResumedSession,
   reason: 'lost' | 'images',
+  dropped: readonly RecordInput[] = [],
 ): Promise<StepResult> {
   const start: SessionStart = {
     kind: 'rebuild',
@@ -43,7 +49,7 @@ async function runRebuiltTurn(
   return runOpenedTurn(opened, {
     source: { definitions: step.run.context.definitions, model: step.run.model },
     start,
-    before: session.plan.before,
+    before: [...session.plan.before, ...dropped],
   });
 }
 
@@ -67,15 +73,31 @@ async function runBoundaryTurn(step: SessionStep, session: ResumedSession): Prom
       plan: session.plan,
       resume: session.boundary,
       contextSize: ended.context?.size ?? null,
+      replies: buildDroppedReplies(resumed.completed),
     });
   }
 
   if (resumed.completed.turn.failure?.reason === 'session_missing') {
-    return runRebuiltTurn(step, session, 'lost');
+    return runRebuiltTurn(
+      step,
+      session,
+      'lost',
+      buildReplyVoids(source, {
+        ...buildDroppedReplies(resumed.completed),
+        reason: 'turn_dropped',
+      }),
+    );
   }
 
   const memory = { ...turn.context, invalidatedThrough: turn.invalidatedThrough };
   const completed = { ...resumed.completed, harness: step.run.harness, memory };
 
-  return buildStepResult(source, completed, session.plan.before);
+  return runStepCommit(step, completed, () =>
+    buildStepResult(source, completed, session.plan.before),
+  );
+}
+
+// The turn ran on a session that no later turn resumes, so none of the replies it wrote stay.
+function buildDroppedReplies(completed: CompletedTurn): DroppedReplies {
+  return { sequences: completed.turn.written, runID: completed.runID };
 }
