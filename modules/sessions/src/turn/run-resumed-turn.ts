@@ -1,4 +1,3 @@
-import type { RecordInput } from '@heynixie/log';
 import type { StepResult } from '@heynixie/tasks';
 import type { SessionPoint } from '@heynixie/wire';
 import { runOverflowCompaction } from '../compaction/run-overflow-compaction';
@@ -8,11 +7,11 @@ import type { CompletedTurn } from '../step/build-step-result';
 import { buildStepResult } from '../step/build-step-result';
 import type { InboxPlan, SessionStart, SessionStep } from '../types';
 import type { DroppedReplies } from '../utils/build-reply-voids';
-import { buildReplyVoids } from '../utils/build-reply-voids';
 import { isContextOverflow } from '../utils/is-context-overflow';
 import { runOpenedTurn } from './run-opened-turn';
 import { runPlannedTurn } from './run-planned-turn';
 import { runStepCommit } from './run-step-commit';
+import { writeReplyVoids } from './write-reply-voids';
 
 export interface ResumedSession {
   readonly boundary: SessionPoint;
@@ -36,7 +35,6 @@ async function runRebuiltTurn(
   step: SessionStep,
   session: ResumedSession,
   reason: 'lost' | 'images',
-  dropped: readonly RecordInput[] = [],
 ): Promise<StepResult> {
   const start: SessionStart = {
     kind: 'rebuild',
@@ -49,7 +47,7 @@ async function runRebuiltTurn(
   return runOpenedTurn(opened, {
     source: { definitions: step.run.context.definitions, model: step.run.model },
     start,
-    before: [...session.plan.before, ...dropped],
+    before: session.plan.before,
   });
 }
 
@@ -78,15 +76,12 @@ async function runBoundaryTurn(step: SessionStep, session: ResumedSession): Prom
   }
 
   if (resumed.completed.turn.failure?.reason === 'session_missing') {
-    return runRebuiltTurn(
-      step,
-      session,
-      'lost',
-      buildReplyVoids(source, {
-        ...buildDroppedReplies(resumed.completed),
-        reason: 'turn_dropped',
-      }),
-    );
+    // the rebuilt session reads the recent turns from the log, so the voids stand before it does
+    await writeReplyVoids(step.run, step.input, [
+      { ...buildDroppedReplies(resumed.completed), reason: 'turn_dropped' },
+    ]);
+
+    return runRebuiltTurn(step, session, 'lost');
   }
 
   const memory = { ...turn.context, invalidatedThrough: turn.invalidatedThrough };

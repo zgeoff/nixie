@@ -1,6 +1,7 @@
 import { countTextTokens } from '@heynixie/compaction';
 import type { LogRecord } from '@heynixie/log';
 import { readThreadNewestFirst } from '@heynixie/log';
+import { readVoidedReplies } from '@heynixie/models';
 import type { TaskMessaging, TasksContext } from '@heynixie/tasks';
 import { readSentTaskMessages } from '@heynixie/tasks';
 import type { MessageTimeOptions } from '../types';
@@ -65,7 +66,12 @@ async function* readTurnsNewestFirst(
     }
 
     if (record.kind === 'model.reply') {
-      unanswered.push({ record, answered: null });
+      // an attempt that kept no reply leaves none in the history a rebuilt session reads
+      const voided = await readVoidedReplies(context.log.writer.db, [record.sequence]);
+
+      if (!voided.has(record.sequence)) {
+        unanswered.push({ record, answered: null });
+      }
     } else if (record.thread !== query.taskID) {
       unanswered.push({ record, answered: null, isSent: true });
     } else if (record.sequence < query.beforeSequence) {

@@ -8,6 +8,7 @@ import type {
   RecordWithChanges,
 } from '@heynixie/log';
 import { readRecords } from '@heynixie/log';
+import { readVoidedReplies } from '@heynixie/models';
 import { renderOwnerText } from '@heynixie/sessions';
 import type { OwnerImageMediaType } from '@heynixie/tasks';
 import { ownerMessageCodec } from '@heynixie/tasks';
@@ -101,9 +102,22 @@ export async function readMomentSpanPage(
         .map((read) => read.record.sequence),
     );
 
+    // a reply of an attempt that kept none is no part of the moment, for the model or the export
+    const voided = await readVoidedReplies(
+      log.writer.db,
+      batch
+        .filter((read) => read.record.kind === 'model.reply')
+        .map((read) => read.record.sequence),
+    );
+
     const lookup = await readBatchShortIDs(log, batch, query.reader);
 
     for (const read of batch) {
+      if (voided.has(read.record.sequence)) {
+        after = read.record.sequence;
+        continue;
+      }
+
       const entry = buildSpanEntry(read.record, removed, { reader: query.reader, lookup });
       const cost = countEntryTokens(entry);
 

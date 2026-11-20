@@ -7,6 +7,7 @@ import type {
   RecordWithChanges,
 } from '@heynixie/log';
 import { readRecords } from '@heynixie/log';
+import { readVoidedReplies } from '@heynixie/models';
 import { renderImageMarkers, renderOwnerText } from '@heynixie/sessions';
 import { z } from 'zod';
 import { formatToolEntry } from '../tool/format-tool-entry';
@@ -86,6 +87,12 @@ export async function readLogEntry(
     return null;
   }
 
+  const voided = await readVoidedReplies(log.writer.db, [read.record.sequence]);
+
+  if (voided.has(read.record.sequence)) {
+    return null;
+  }
+
   const lookup = await readToolShortIDs(log, [read.record]);
 
   return buildScannedEntry(read.record, lookup, taskNames).entry;
@@ -156,10 +163,17 @@ async function readPageEntries(
       batch.map((read) => read.record),
     );
 
+    const voided = await readVoidedReplies(
+      log.writer.db,
+      batch
+        .filter((read) => read.record.kind === 'model.reply')
+        .map((read) => read.record.sequence),
+    );
+
     scan =
       batch.length === 0
         ? { ...scan, after: bounds.through }
-        : buildNextScan(scan, batch, { query, words, lookup, taskNames });
+        : buildNextScan(scan, batch, { query, words, lookup, taskNames, voided });
   }
 
   return scan;
@@ -174,6 +188,9 @@ interface EntryFilter {
   readonly words: readonly string[];
   readonly lookup: ShortIDLookup;
   readonly taskNames: ReadonlyMap<string, string>;
+
+  // the replies of an attempt that kept none, which no page shows
+  readonly voided: ReadonlyMap<number, unknown>;
 }
 
 function buildNextScan(
@@ -190,6 +207,10 @@ function buildNextScan(
 
     next.after = read.record.sequence;
     next.scanned += 1;
+
+    if (filter.voided.has(read.record.sequence)) {
+      continue;
+    }
 
     const item = buildScannedEntry(read.record, filter.lookup, filter.taskNames);
 
