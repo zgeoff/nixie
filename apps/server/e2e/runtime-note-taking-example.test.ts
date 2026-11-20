@@ -116,6 +116,10 @@ test('it fires the daily note-taking example and saves a memory that cites the m
     },
   );
 
+  const recordsBefore = await ctx.nixie.readRecords();
+
+  const sequenceBefore = recordsBefore.at(-1)?.sequence ?? 0;
+
   void process.request('sendMessage', { thread: 'conversation', text: 'What do you hold?' });
 
   // The recall result sits before the system message that carries the report, so it is not the
@@ -129,6 +133,14 @@ test('it fires the daily note-taking example and saves a memory that cites the m
   await waitForCondition(() => findRecalled() !== undefined);
 
   const recalled = findRecalled();
+
+  // A reply that the turn wrote stands unvoided until its step commits, so the kill waits for it.
+  await ctx.nixie.waitForRecord(
+    (record) =>
+      record.kind === 'task.step_committed' &&
+      record.thread === 'conversation' &&
+      record.sequence > sequenceBefore,
+  );
 
   await process.kill();
 
