@@ -13,6 +13,7 @@ function setupTest() {
     stopCancelledActions: new Map(),
     reminders: new Map(),
     taskDirectory: [],
+    voidedReplies: new Map(),
   };
 
   return { noLookups };
@@ -391,6 +392,7 @@ test('it shows a failed tool result as cancelled when its action is among the ca
     stopCancelledActions: new Map(),
     reminders: new Map(),
     taskDirectory: [],
+    voidedReplies: new Map(),
   };
 
   expect(toContractRecord(record, lookups)?.toolCall).toStrictEqual({
@@ -769,6 +771,7 @@ test('it carries a task message with its sender named from the directory', () =>
         speaker: 'plain_task' as const,
       },
     ],
+    voidedReplies: new Map(),
   };
 
   expect(toContractRecord(record, lookups)?.taskMessage).toStrictEqual({
@@ -858,6 +861,7 @@ test('it renders an exchange notice that names both tasks and links to the recei
         speaker: 'plain_task' as const,
       },
     ],
+    voidedReplies: new Map(),
   };
 
   expect(toContractRecord(record, lookups)?.exchangeNotice).toStrictEqual({
@@ -886,6 +890,7 @@ test('it lists the actions a stop cancelled on its record', () => {
     ]),
     reminders: new Map(),
     taskDirectory: [],
+    voidedReplies: new Map(),
   };
 
   expect(toContractRecord(record, lookups)?.stop).toStrictEqual({
@@ -910,6 +915,7 @@ test('it marks a shredded record that a forget named as removed', () => {
     stopCancelledActions: new Map(),
     reminders: new Map(),
     taskDirectory: [],
+    voidedReplies: new Map(),
   };
 
   expect(toContractRecord(record, lookups)?.isRemoved).toBeTrue();
@@ -935,6 +941,7 @@ test.each([
     stopCancelledActions: new Map(),
     reminders: new Map(),
     taskDirectory: [],
+    voidedReplies: new Map(),
   };
 
   expect(toContractRecord(record, lookups)).not.toHaveProperty('isRemoved');
@@ -1154,4 +1161,51 @@ test('it carries no notice for a definition change that the lookup does not hold
   });
 
   expect(toContractRecord(record, ctx.noLookups)).not.toHaveProperty('definitionNotice');
+});
+
+test('it marks a model reply that a void names as voided with the reason', () => {
+  const record = buildMockLogRecord({
+    sequence: 9,
+    recordedAt: new Date('2026-10-10T12:00:01Z'),
+    kind: 'model.reply',
+    thread: 'conversation',
+    payload: { model: 'claude-test-1', profile: 'chat-direct' },
+    erasable: { status: 'readable', fields: { text: 'Hello.' } },
+  });
+
+  const lookups = {
+    actions: new Map(),
+    cancelledActionIDs: new Set<string>(),
+    definitionNotices: new Map(),
+    proposals: new Map(),
+    removedSequences: new Set<number>(),
+    stopCancelledActions: new Map(),
+    reminders: new Map(),
+    taskDirectory: [],
+    voidedReplies: new Map([[9, 'attempt_failed' as const]]),
+  };
+
+  expect(toContractRecord(record, lookups)?.message).toStrictEqual({
+    isVoided: true,
+    text: 'Hello.',
+    voidReason: 'attempt_failed',
+  });
+});
+
+test('it names the reply and the reason on a void record', () => {
+  const record = buildMockLogRecord({
+    sequence: 12,
+    recordedAt: new Date('2026-10-10T12:00:05Z'),
+    kind: 'model.reply_voided',
+    thread: 'conversation',
+    payload: { replySequence: 9, runID: 'run-1', reason: 'attempt_lost' },
+  });
+
+  expect(toContractRecord(record)).toStrictEqual({
+    kind: 'model.reply_voided',
+    recordedAt: new Date('2026-10-10T12:00:05Z'),
+    sequence: 12,
+    thread: 'conversation',
+    voidedReply: { sequence: 9, reason: 'attempt_lost' },
+  });
 });

@@ -55,6 +55,7 @@ const versionRefSchema = z.object({
 
 const recallItemSchema = versionRefSchema.extend({ score: z.number().optional() });
 const recallSchema = z.object({ items: z.array(recallItemSchema) });
+const replyVoidReasonSchema = z.enum(['attempt_failed', 'attempt_lost', 'turn_dropped', 'silent']);
 const tokenCountSchema = z.int().nonnegative();
 const contextSchema = z.object({ size: tokenCountSchema, window: z.int().positive() });
 
@@ -132,8 +133,12 @@ const recordSchema = z.object({
       clientMessageId: z.uuid().optional(),
 
       images: z.array(imageSchema).optional(),
+
+      // set on a model reply that a void record names, with the reason it names
+      isVoided: z.literal(true).optional(),
       spans: z.array(spanSchema).optional(),
       text: z.string(),
+      voidReason: replyVoidReasonSchema.optional(),
     })
     .optional(),
 
@@ -169,6 +174,9 @@ const recordSchema = z.object({
   taskMessage: taskMessageSchema.optional(),
 
   toolCall: toolCallSchema.optional(),
+
+  // set on a void record, which names the reply it voids and the reason
+  voidedReply: z.object({ sequence: sequenceSchema, reason: replyVoidReasonSchema }).optional(),
   worker: workerViewSchema.optional(),
 });
 

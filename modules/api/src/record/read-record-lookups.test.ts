@@ -94,6 +94,7 @@ test('it reads the actions each stop cancelled and the names of the started task
         speaker: 'plain_task',
       },
     ],
+    voidedReplies: new Map(),
   });
 });
 
@@ -311,4 +312,42 @@ test('it reads the notice of each definition change by the sequence of its recor
       state: 'in_force',
     }),
   ]);
+});
+
+test('it reads the reason that a void gives for each reply on the page', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  const [reply, otherReply] = await writeRecords(ctx.context.log, [
+    {
+      kind: 'model.reply',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: { model: 'claude-test-1', profile: 'chat-direct', messageID: 'message-1' },
+      erasable: { text: 'First draft.' },
+    },
+    {
+      kind: 'model.reply',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: { model: 'claude-test-1', profile: 'chat-direct', messageID: 'message-2' },
+      erasable: { text: 'Second draft.' },
+    },
+  ]);
+
+  invariant(reply && otherReply);
+
+  await writeRecords(ctx.context.log, [
+    {
+      kind: 'model.reply_voided',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: { replySequence: reply.sequence, runID: 'run-1', reason: 'attempt_failed' },
+    },
+  ]);
+
+  const lookups = await readRecordLookups(ctx.context, [reply, otherReply]);
+
+  expect([...lookups.voidedReplies]).toStrictEqual([[reply.sequence, 'attempt_failed']]);
 });
