@@ -116,8 +116,7 @@ interface StepRead {
 }
 
 // A definition's task with no task run calls no runner: the step holds, so an unread message stays
-// unread, and it marks read each fire that this release's codec does not know. The rerun of a step
-// that asked for its report runs no model turn.
+// unread, and it marks read each fire that this release's codec does not know.
 async function runOrHoldStep(
   context: TasksContext,
   claim: StartedClaim,
@@ -147,10 +146,6 @@ async function runOrHoldStep(
     }
   }
 
-  if (read.run !== null && read.run.reportID !== null) {
-    return buildReportOnlyResult(read.sessionBoundary);
-  }
-
   return options.runStep({
     run: read.run,
     taskID,
@@ -162,10 +157,6 @@ async function runOrHoldStep(
     signal: options.signal,
     interrupt: options.interrupt,
   });
-}
-
-function buildReportOnlyResult(sessionBoundary: string | null): StepResult {
-  return { next: 'wait', records: [], acknowledged: [], sessionBoundary };
 }
 
 // A step that ran a model turn and failed while the stop stands failed because of it, such as at the

@@ -18,9 +18,12 @@ export function findConversationGap(
     return `an owner_message record with the text "${turn.message}"`;
   }
 
+  const voided = new Set(records.map((record) => record.voidedReply));
+
   const isReplyAfter = records.some(
     (record) =>
       record.kind === 'model.reply' &&
+      !voided.has(record.sequence) &&
       record.text === turn.reply &&
       record.sequence > message.sequence,
   );

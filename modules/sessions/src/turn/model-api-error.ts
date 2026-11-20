@@ -1,4 +1,3 @@
-import type { RecordInput } from '@heynixie/log';
 import { StepFailedError } from '@heynixie/tasks';
 import type { ModelAPIErrorKind } from '@heynixie/wire';
 import { match } from 'ts-pattern';
@@ -11,11 +10,11 @@ export class ModelAPIError extends StepFailedError {
   // it.
   readonly detail: string;
 
-  constructor(kind: ModelAPIErrorKind, detail: string, replies: readonly RecordInput[]) {
+  constructor(kind: ModelAPIErrorKind, detail: string) {
     super(`the conversation turn failed: the model API refused the call with ${kind}: ${detail}`, {
       reason: `${modelAPIReasonPrefix}${kind}`,
       isWaitingForOwner: isWaitingForOwner(kind),
-      records: replies,
+      records: [],
     });
 
     this.name = 'ModelAPIError';

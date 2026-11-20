@@ -55,7 +55,7 @@ export function buildStep(
     ...(durationMs === undefined ? {} : { durationMs }),
     ...(cause === undefined ? {} : { cause }),
     ...(error === undefined ? {} : { error }),
-    ...(records.some((record) => record.isSilentTurn === true) ? { isSilent: true } : {}),
+    ...(isSilentStep(records) ? { isSilent: true } : {}),
     key: records[0]?.sequence ?? 0,
     kind: 'step',
     ...(recalls.length === 0
@@ -119,4 +119,13 @@ function collectCalls(records: readonly LiveRecord[]): readonly ToolActivity[] {
   }
 
   return [...calls.values()];
+}
+
+// A turn that ended silently keeps the text it wrote before, so only a step with no reply shows as
+// ended with none.
+function isSilentStep(records: readonly LiveRecord[]): boolean {
+  return (
+    records.some((record) => record.isSilentTurn === true) &&
+    !records.some((record) => record.kind === 'model.reply' && record.message?.isVoided !== true)
+  );
 }

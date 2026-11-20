@@ -95,7 +95,6 @@ test('it marks the conversation turns as failing at the first turn that waits fo
     error: new ModelAPIError(
       'quota',
       'API Error: Request rejected (429) · Weekly allowance used up',
-      [],
     ),
   });
 
@@ -115,7 +114,7 @@ test('it names the model API error in the mark once refused calls reach the limi
     errorLimit: 3,
     nextState: 'ready',
     retryAt: 1_120_000,
-    error: new ModelAPIError('overloaded', 'API Error: 529 Overloaded', []),
+    error: new ModelAPIError('overloaded', 'API Error: 529 Overloaded'),
   });
 
   expect(state.read().turns).toStrictEqual({
@@ -135,7 +134,7 @@ test('it leaves the conversation turns passing while refused calls that retry on
     errorLimit: 3,
     nextState: 'ready',
     retryAt: 1_030_000,
-    error: new ModelAPIError('overloaded', 'API Error: 529 Overloaded', []),
+    error: new ModelAPIError('overloaded', 'API Error: 529 Overloaded'),
   });
 
   expect(state.read().turns).toStrictEqual({ isReady: true, reason: null });

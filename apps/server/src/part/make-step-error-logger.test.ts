@@ -224,11 +224,7 @@ test('it logs the kind and the text of a refused model call', async () => {
   const errored = await sendTestMessage(
     ctx.context,
     () => {
-      throw new ModelAPIError(
-        'quota',
-        'API Error: Request rejected (429) · Monthly limit reached',
-        [],
-      );
+      throw new ModelAPIError('quota', 'API Error: Request rejected (429) · Monthly limit reached');
     },
     'Is the ferry running on Sunday?',
   );

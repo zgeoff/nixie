@@ -600,3 +600,42 @@ test("it reads each record of a task's thread that a worker run wrote, in order,
     [first.sequence + 7, 'task_message', 'nixie'],
   ]);
 });
+
+test('it leaves a reply that a void names out of a span, whichever the reader', async () => {
+  const ctx = await setupTest();
+
+  const definitions = { snapshotHash: 'sha256:test' };
+
+  const [kept, lost] = await writeRecords(ctx.memory.log, [
+    { kind: 'model.reply', definitions, thread: 'conversation', erasable: { text: 'Kept reply' } },
+    { kind: 'model.reply', definitions, thread: 'conversation', erasable: { text: 'Lost reply' } },
+  ]);
+
+  invariant(kept && lost);
+
+  await writeRecords(ctx.memory.log, [
+    {
+      kind: 'model.reply_voided',
+      definitions,
+      thread: 'conversation',
+      payload: { replySequence: lost.sequence, runID: 'conversation:1@1', reason: 'turn_dropped' },
+    },
+  ]);
+
+  const read = (reader: 'model' | 'owner') =>
+    readMomentSpanPage(ctx.memory.log, {
+      thread: 'conversation',
+      firstSequence: kept.sequence,
+      lastSequence: lost.sequence,
+      after: null,
+      tokenCap: 6000,
+      records: 'all',
+      reader,
+    });
+
+  const modelPage = await read('model');
+  const ownerPage = await read('owner');
+
+  expect(modelPage.entries.map((entry) => entry.sequence)).toStrictEqual([kept.sequence]);
+  expect(ownerPage.entries.map((entry) => entry.sequence)).toStrictEqual([kept.sequence]);
+});

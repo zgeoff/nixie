@@ -43,7 +43,7 @@ export function buildSilentEndTool(messaging: Pick<TaskMessaging, 'ownerName'>):
             status: 'ok',
             endsTurn: true,
             result: {
-              note: 'This turn ends with nothing sent. Write no more text: nixie keeps no reply from this turn.',
+              note: 'This turn ends with nothing sent. Write no more text.',
             },
           }))
           .with('refused', () => ({

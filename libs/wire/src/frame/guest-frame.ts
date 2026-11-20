@@ -14,6 +14,10 @@ const assistantFrameSchema = z
     text: z.string(),
     toolUses: z.array(toolUseSchema).readonly(),
     summary: z.string().optional(),
+
+    // The CLI's own error text, which a message that carries no model failure still holds, such as
+    // an invalid request. The host keeps it for the commit and writes no live reply for it.
+    isError: z.literal(true).optional(),
   })
   .readonly();
 

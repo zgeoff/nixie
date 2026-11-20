@@ -307,7 +307,7 @@ test('it records each reply with the model and the profile in force, never what 
   ]);
 });
 
-test('it records the reply with the turn summary in its erasable fields and the thinking tokens in its payload', async () => {
+test('it records the reply with the turn summary in its erasable fields and the thinking tokens on the turn end', async () => {
   const ctx = await setupTest();
 
   await createConversationTask(ctx.context);
@@ -359,7 +359,6 @@ test('it records the reply with the turn summary in its erasable fields and the 
         model: 'claude-test-1',
         profile: 'chat-direct',
         messageID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d002',
-        thinkingTokens: 236,
       },
       erasable: {
         status: 'readable',
@@ -370,9 +369,13 @@ test('it records the reply with the turn summary in its erasable fields and the 
       },
     },
   ]);
+
+  const ended = await ctx.readKinds('model.turn_ended');
+
+  expect(ended.at(-1)?.payload).toMatchObject({ thinkingTokens: 236 });
 });
 
-test('it joins the turn summaries onto the last reply and records the thinking tokens there alone', async () => {
+test('it gives each reply the summaries sent since the reply before and records the thinking tokens on the turn end', async () => {
   const ctx = await setupTest();
 
   await createConversationTask(ctx.context);
@@ -436,27 +439,32 @@ test('it joins the turn summaries onto the last reply and records the thinking t
     model: 'claude-test-1',
     profile: 'chat-direct',
     messageID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d020',
+    runID: 'conversation:1@1',
   });
 
   expect(records.at(0)?.erasable).toStrictEqual({
     status: 'readable',
-    fields: { text: 'Let me check the timetable.' },
+    fields: { text: 'Let me check the timetable.', summary: 'I list the ferries.' },
   });
 
   expect(records.at(1)?.payload).toStrictEqual({
     model: 'claude-test-1',
     profile: 'chat-direct',
     messageID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d021',
-    thinkingTokens: 300,
+    runID: 'conversation:1@1',
   });
 
   expect(records.at(1)?.erasable).toStrictEqual({
     status: 'readable',
     fields: {
       text: 'Take the 09:25 ferry.',
-      summary: 'I list the ferries.\n\nThe 09:25 reaches the pier by 08:55.',
+      summary: 'The 09:25 reaches the pier by 08:55.',
     },
   });
+
+  const ended = await ctx.readKinds('model.turn_ended');
+
+  expect(ended.at(-1)?.payload).toMatchObject({ thinkingTokens: 300 });
 });
 
 test('it records the new model on the next reply once the conversation role points at another profile', async () => {
@@ -2116,7 +2124,7 @@ test('it aborts a running turn on a forget, and fails the step so it retries on 
   expect([task.sessionBoundary, task.stepErrors]).toStrictEqual([null, 1]);
 });
 
-test('it fails the step and records no reply when nixie tool server is not connected', async () => {
+test('it fails the step and voids the reply it wrote when nixie tool server is not connected', async () => {
   const ctx = await setupTest();
 
   await createConversationTask(ctx.context);
@@ -2135,9 +2143,17 @@ test('it fails the step and records no reply when nixie tool server is not conne
   await ctx.sendMessage(runner, 'Hi.');
 
   const task = await readTestTaskProgress(ctx.context, 'conversation');
-  const records = await ctx.readKinds('model.reply');
 
-  expect(records).toStrictEqual([]);
+  const [replies, voids] = await Promise.all([
+    ctx.readKinds('model.reply'),
+    ctx.readKinds('model.reply_voided'),
+  ]);
+
+  expect(
+    voids.map((record) => [record.payload['replySequence'], record.payload['reason']]),
+  ).toStrictEqual(replies.map((reply) => [reply.sequence, 'attempt_failed']));
+
+  expect(replies).toHaveLength(1);
 
   expect(task).toStrictEqual({
     state: 'ready',
@@ -2422,7 +2438,7 @@ test('it runs the turn after a refused call from the boundary before it, with no
   }).toStrictEqual({ resume: before, hasError: false, texts: [true] });
 });
 
-test('it records the replies the model gave before the model API refused the call, and leaves the message unread', async () => {
+test('it keeps the replies the model gave before the model API refused the call, voided, and leaves the message unread', async () => {
   const ctx = await setupTest();
 
   await createConversationTask(ctx.context);
@@ -2451,10 +2467,15 @@ test('it records the replies the model gave before the model API refused the cal
 
   await ctx.sendMessage(runner, 'What is on today?');
 
-  const [replies, task] = await Promise.all([
+  const [replies, voids, task] = await Promise.all([
     ctx.readKinds('model.reply'),
+    ctx.readKinds('model.reply_voided'),
     readTestTaskProgress(ctx.context, 'conversation'),
   ]);
+
+  expect(
+    voids.map((record) => [record.payload['replySequence'], record.payload['reason']]),
+  ).toStrictEqual(replies.map((reply) => [reply.sequence, 'attempt_failed']));
 
   expect(replies.map((reply) => [reply.thread, reply.payload, reply.erasable])).toStrictEqual([
     [
@@ -2463,6 +2484,7 @@ test('it records the replies the model gave before the model API refused the cal
         model: expect.toBeString(),
         profile: expect.toBeString(),
         messageID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d002',
+        runID: expect.toBeString(),
       },
       { status: 'readable', fields: { text: 'Let me check the calendar.' } },
     ],
@@ -3158,7 +3180,7 @@ test('it records the sequence a turn with no memory changes covers and adds no m
   expect(records).toMatchObject([{ payload: { memoryNotedThrough: 4 } }]);
 });
 
-test('it ends a turn that a task report alone woke with no reply, and records the turn end as silent', async () => {
+test('it ends a turn that a task report alone woke, keeps the text written before, and records the turn end as silent', async () => {
   const ctx = await setupTest();
 
   const messaging = {
@@ -3239,7 +3261,10 @@ test('it ends a turn that a task report alone woke with no reply, and records th
   const ended = await ctx.readKinds('model.turn_ended');
 
   expect(ends).toStrictEqual(['ended']);
-  expect(replies).toStrictEqual([]);
+
+  expect(replies.map((reply) => reply.erasable)).toStrictEqual([
+    { status: 'readable', fields: { text: 'The writer saved two memories.' } },
+  ]);
 
   expect(ended).toStrictEqual([
     {
@@ -3362,6 +3387,7 @@ test.each([
         model: expect.any(String),
         profile: expect.any(String),
         messageID: expect.any(String),
+        runID: expect.any(String),
       },
       erasable: { status: 'readable', fields: { text: 'Yes, Thursday works.' } },
     },
@@ -3520,4 +3546,88 @@ test("it renders a restore notice in the turn that the owner's next message wake
   expect(text).toMatch(/<system-message type="restore" [^>]*>\n\[#\d+\] nixie was restored at /u);
   expect(text).toInclude('The log holds nothing after that time.');
   expect(text).toInclude('Are you back?');
+});
+
+test('it writes each reply to the thread as the host reads it, before the turn ends', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  const runner = await ctx.startRunner({
+    models: buildMockModelsConfig(),
+    credential: 'not-a-real-key',
+    toolNames: ['notes_read'],
+  });
+
+  const seen = { replies: 0, turnEnds: -1 };
+
+  ctx.sandboxes.setGuestScript(async (turn, guest) => {
+    invariant(guest.emit);
+
+    guest.emit([{ type: 'assistant', messageID: 'msg_1', text: 'Let me check.', toolUses: [] }]);
+
+    await waitForCondition(async () => {
+      const replies = await ctx.readKinds('model.reply');
+
+      return replies.length === 1;
+    });
+
+    const replies = await ctx.readKinds('model.reply');
+    const ends = await ctx.readKinds('model.turn_ended');
+
+    seen.replies = replies.length;
+    seen.turnEnds = ends.length;
+
+    return [
+      { type: 'read', uuids: turn.input.map((message) => message.uuid) },
+      {
+        type: 'ended',
+        boundary: {
+          harness: 'agent-sdk',
+          sessionID: crypto.randomUUID(),
+          messageID: crypto.randomUUID(),
+        },
+        outcome: 'finished',
+        stopReason: 'end_turn',
+        turns: 1,
+        usage: { inputTokens: 10, outputTokens: 5, cacheReadTokens: 0, cacheWriteTokens: 0 },
+      },
+    ];
+  });
+
+  await ctx.sendMessage(runner, 'What is on today?');
+
+  const voids = await ctx.readKinds('model.reply_voided');
+
+  expect({ seen, voids }).toStrictEqual({ seen: { replies: 1, turnEnds: 0 }, voids: [] });
+});
+
+test('it writes no reply and ends the turn when the runner lost its lease', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  const runner = await ctx.startRunner({
+    models: buildMockModelsConfig(),
+    credential: 'not-a-real-key',
+    toolNames: ['notes_read'],
+  });
+
+  ctx.sandboxes.setGuestScript((turn) => {
+    ctx.clock.advance(120_000);
+
+    return [
+      { type: 'read', uuids: turn.input.map((message) => message.uuid) },
+      { type: 'assistant', messageID: 'msg_1', text: 'Too late.', toolUses: [] },
+    ];
+  });
+
+  await ctx.sendMessage(runner, 'What is on today?');
+
+  const [replies, voids] = await Promise.all([
+    ctx.readKinds('model.reply'),
+    ctx.readKinds('model.reply_voided'),
+  ]);
+
+  expect({ replies, voids }).toStrictEqual({ replies: [], voids: [] });
 });

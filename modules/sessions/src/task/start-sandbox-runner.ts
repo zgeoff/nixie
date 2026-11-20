@@ -27,6 +27,7 @@ import { createActor } from 'xstate';
 import type { TaskImp, TaskImpParts } from '../sandbox/task-imp-machine';
 import { taskImpMachine } from '../sandbox/task-imp-machine';
 import { runConversationStep } from '../step/run-conversation-step';
+import { voidLostReplies } from '../step/void-lost-replies';
 import { silentEndToolName } from '../turn/build-silent-end-tool';
 import type { SessionCleanupCause } from '../types';
 import { createWorkerSandbox } from '../utils/create-worker-sandbox';
@@ -312,6 +313,19 @@ async function runGuardedStep(
   invariant(input.run !== null, `the sandbox runner runs a task run, and ${input.taskID} has none`);
 
   const taskRun = input.run;
+
+  // The rerun of a step that asked for its report runs no model turn, and it voids the replies the
+  // attempt that died left.
+  if (taskRun.reportID !== null) {
+    await voidLostReplies({ context }, input);
+
+    return {
+      next: 'wait',
+      records: [],
+      acknowledged: [],
+      sessionBoundary: input.sessionBoundary,
+    };
+  }
 
   const run = await readStartedRun(runner, input.taskID);
   const usage = await readRunUsage(context, taskRun);

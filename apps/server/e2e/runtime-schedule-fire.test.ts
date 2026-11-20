@@ -71,6 +71,7 @@ test('it fires a 5-minute schedule once and runs its task to a report', async ()
     repeatedStepKeys: [],
     repeatedActions: [],
     strayCalls: [],
+    strayReplies: [],
     heldLeases: [],
     unreadyTasks: [],
     changedEndStates: [],

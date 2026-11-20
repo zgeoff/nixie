@@ -126,18 +126,29 @@ test('it shows how full the context stood after a turn and marks its compaction 
         buildMockLogRecord({
           kind: 'task.step_started',
           recordedAt: new Date(0),
+          sequence: 1,
           task: { stepKey: 'step-1', taskID: 'conversation' },
         }),
-        buildMockLogRecord({ kind: 'model.reply', message: { text: 'Here is a plan.' } }),
+        buildMockLogRecord({
+          kind: 'model.reply',
+          message: { text: 'Here is a plan.' },
+          sequence: 4,
+        }),
         buildMockLogRecord({
           compaction: { postTokens: 42_000, preTokens: 384_000, trigger: 'auto' },
           kind: 'model.compacted',
+          sequence: 2,
         }),
         buildMockLogRecord({
           context: { size: 41_000, window: 400_000 },
           kind: 'model.turn_ended',
+          sequence: 3,
         }),
-        buildMockLogRecord({ kind: 'task.step_committed', recordedAt: new Date(12_300) }),
+        buildMockLogRecord({
+          kind: 'task.step_committed',
+          recordedAt: new Date(12_300),
+          sequence: 5,
+        }),
       ]}
       taskMessageLayout="line"
     />,

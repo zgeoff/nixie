@@ -20,7 +20,7 @@ test('it ends a turn that a timer woke, and tells the model to write nothing mor
     status: 'ok',
     endsTurn: true,
     result: {
-      note: 'This turn ends with nothing sent. Write no more text: nixie keeps no reply from this turn.',
+      note: 'This turn ends with nothing sent. Write no more text.',
     },
   });
 });

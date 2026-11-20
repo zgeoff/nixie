@@ -2,10 +2,10 @@
 
 The conversation answers the user one turn at a time. Each turn is one step of the conversation
 task: the step hands the task's unread inbox to a model loop, the loop runs on the Agent SDK in a
-long-lived sandbox, and the step commits the loop's replies and the point the loop's session
-reached. The event log is the record of the conversation, and the SDK's session transcript is a
-cache that makes the next turn cheaper. [Tasks](./tasks.md) covers steps and their commits,
-[model profiles](./model-profiles.md) covers the profile a turn runs on,
+long-lived sandbox. The host writes each reply to the log as the model writes it, and the step
+commits the point the loop's session reached. The event log is the record of the conversation, and
+the SDK's session transcript is a cache that makes the next turn cheaper. [Tasks](./tasks.md) covers
+steps and their commits, [model profiles](./model-profiles.md) covers the profile a turn runs on,
 [tool calls](../connectors/tool-calls.md) covers the endpoint that serves the loop its tools,
 [memory in context](../memory/context.md) covers the pinned core and the items each turn places,
 [session opening](./session-opening.md) covers what a new session opens with, and
@@ -125,9 +125,10 @@ resumes before the turn starts. The disk then holds at most the resumed session 
 turn writes, rather than a growing copy per turn.
 
 A guest can die after one result and before the next, once a message that landed mid-turn started a
-second model call. The step then counts only the replies and reads that came before the last result,
-because the next turn resumes at that result's boundary, and a record read after it stays unread for
-the next step to send again.
+second model call. The step then counts only the reads that came before the last result, because the
+next turn resumes at that result's boundary, and a record read after it stays unread for the next
+step to send again. A reply the host wrote after that result belongs to the part of the turn that no
+session keeps, so the step voids it with the reason `turn_dropped`.
 
 ## Compaction
 
@@ -341,18 +342,30 @@ stays on the CLI's message.
 The usage sums every model call in the turn, so it measures cost and not how full the context
 stands. The context is therefore the last main-chain model call's input, cache-read and cache-write
 tokens, beside the window nixie compacts within. The step turns these into records on the
-conversation's thread: a reply record per message with text, whose text is erasable, and one
-turn-ended record with the usage, the end reason and the context. The turn's last reply keeps the
-model's reasoning: the summary joined from the turn's thinking sits in the reply's erasable fields,
-so a forget removes it with the reply, and the thinking-token count sits in the plain payload, so a
-projection reads the count without a key and it outlives a forgotten reply. Each record holds the
-model ID and the profile's ID from the profile nixie gave the turn, never from the guest's frames
+conversation's thread. The host writes a reply record for each message with text as the guest
+reports it, in a transaction of its own that the task's lease guards, so a reader sees the reply
+while the turn still runs. The reply's text is erasable, and its payload names the run that wrote
+it. The step commit writes one turn-ended record with the usage, the end reason, the context and the
+count of thinking tokens, which the plain payload holds so that a projection reads the count without
+a key and it outlives a forgotten reply. Each reply keeps the model's reasoning from before it: the
+summaries gathered since the previous reply sit in the reply's erasable fields, so a forget removes
+them with the reply. Each record holds the model ID and the profile's ID from the profile nixie gave
+the turn, never from the guest's frames
 ([model profiles](./model-profiles.md#records-of-model-output)).
 
 A `model.reply_voided` record marks one reply as never sent to the user. Its payload holds the
 reply's sequence, the run's ID and the reason: `attempt_failed`, `attempt_lost`, `turn_dropped` or
 `silent`. Each void is its own record, and a partial index on the reply's sequence answers the
-lookup. No step writes the record yet.
+lookup. The reasons mean:
+
+- `attempt_failed`: the attempt threw, and its own runner wrote the void before it rethrew;
+- `attempt_lost`: the runner died, and the next run of the step found the reply after the thread's
+  last step commit with no void, and voided it before it did anything else;
+- `turn_dropped`: the reply came after the last result of the turn, or the turn's session was lost
+  or overflowed, so the step starts the turn again from the boundary.
+
+A reader that feeds the model, such as the recent turns of a rebuilt session, the log read tool and
+the moments, leaves out a voided reply.
 
 The step returns to waiting once it commits, because the conversation always waits for the user's
 next message. A turn that fails for any reason but a lost session, such as a disconnected tool
@@ -361,8 +374,8 @@ with each failure in a row. The conversation never fails ([tasks](./tasks.md#ste
 
 ### A turn that ends with nothing sent
 
-A silent turn is a turn whose step commits no reply record. The model makes a turn silent by calling
-`turn.end_silently`, a tool that the conversation and every
+A silent turn is a turn that ends by calling `turn.end_silently`. The model makes a turn silent by
+calling `turn.end_silently`, a tool that the conversation and every
 [started task](./started-tasks.md#start-options) hold on every turn. The tool list therefore never
 changes, and the prompt cache holds. nixie wrote the tool's description to ask the model for the
 call only when a task message or a timer woke the turn and nothing needs saying. When the host
@@ -380,13 +393,14 @@ When the host accepts the call, it stops passing records into the running turn. 
 lands after the call stays unread, and a waking record, such as the user's message, starts the next
 step.
 
-The step that commits a silent turn writes no reply record, even for text the model wrote before or
-after the call. It writes the turn-ended record with `isSilent: true`, marks the read records and
-commits the session boundary, as every step does. One exception: when the model API refuses a later
-call, the step fails as [a call the model API refuses](#a-call-the-model-api-refuses) describes, and
-its error records hold no reply. The [API](../channels/api.md) names the mark `isSilentTurn` on its
-record, because one record type there covers every kind, and the [client](../channels/client.md)
-shows the step as ended with no reply.
+Text that the model wrote before the call stays a normal reply, because the host wrote it already.
+The tool's answer tells the model to write no more text. The step writes the turn-ended record with
+`isSilent: true`, marks the read records and commits the session boundary, as every step does. One
+exception: when the model API refuses a later call, the step fails as
+[a call the model API refuses](#a-call-the-model-api-refuses) describes. The
+[API](../channels/api.md) names the mark `isSilentTurn` on its record, because one record type there
+covers every kind, and the [client](../channels/client.md) shows the step as ended with no reply
+only when the step holds no reply.
 
 ### A call the model API refuses
 
@@ -412,12 +426,14 @@ A retry of the failed turn runs it at once, whether the turn waited for the user
 
 The CLI retries a rate limit within the call unless the model API asks for a wait past the CLI's own
 limit, so the guest reads a rate limit that the CLI never retried as a quota. The CLI passes no
-reset time on to the SDK, so nixie knows none. The step records the replies that the model gave
-before the refused call with the error, and the next try runs the whole turn again.
+reset time on to the SDK, so nixie knows none. The replies that the model gave before the refused
+call stay on the timeline, voided with the reason `attempt_failed`, and the next try runs the whole
+turn again.
 
 Two exceptions: a request the model API refused as invalid, and a reply cut at the output cap, end
 the turn with its error message, because the host tells a context overflow from them only at the
-turn's end.
+turn's end. The guest marks that message as an error on the frame, and the host holds it until the
+step commit instead of writing it as a live reply.
 
 ## The events block
 

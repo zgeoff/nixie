@@ -31,6 +31,17 @@ test('it decodes a reply that carries a thinking-token count', () => {
   });
 });
 
+test('it decodes a reply that names the step run that wrote it', () => {
+  const payload = modelReplyCodec.encode({
+    model: 'claude-test-1',
+    profile: 'chat-direct',
+    messageID: 'message-1',
+    runID: 'step-1@1',
+  });
+
+  expect(modelReplyCodec.decode(payload).runID).toBe('step-1@1');
+});
+
 test('it refuses a reply that names no message', () => {
   expect(() => modelReplyCodec.decode({ model: 'claude-test-1', profile: 'chat-direct' })).toThrow(
     /"path": \[\s+"messageID"\s+\]/u,

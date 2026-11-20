@@ -124,6 +124,7 @@ async function writeRecordLines(client: ContractClient, signal: AbortSignal): Pr
       sequence: event.record.sequence,
       kind: event.record.kind,
       text: event.record.message?.text ?? null,
+      voidedReply: event.record.voidedReply?.sequence ?? null,
     });
   }
 }

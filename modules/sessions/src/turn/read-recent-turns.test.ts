@@ -459,3 +459,50 @@ test('it leaves out every record from before the newest reset of the conversatio
 
   expect(turns.map((turn) => turn.record.sequence)).toStrictEqual([4, 5]);
 });
+
+test('it leaves out a reply that a void names', async () => {
+  const ctx = await setupTest();
+
+  await writeRecords(ctx.tasks.context.log, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'Where is the spare key?' },
+    },
+    {
+      kind: 'model.reply',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'Let me look in the shed.' },
+    },
+    {
+      kind: 'model.reply',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'Under the blue flowerpot.' },
+    },
+    {
+      kind: 'model.reply_voided',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: { replySequence: 2, runID: 'conversation:1@1', reason: 'attempt_failed' },
+    },
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'And the side gate?' },
+    },
+  ]);
+
+  const records = await readRecentTurns(ctx.tasks.context, {
+    taskID: 'conversation',
+    beforeSequence: 5,
+    tokens: 30_000,
+    times: { defaultZone: 'Australia/Sydney', now: new Date() },
+    messaging: buildMockTaskMessageView().messaging,
+  });
+
+  expect(records.map((turn) => turn.record.sequence)).toStrictEqual([1, 3]);
+});

@@ -124,6 +124,18 @@ the purge too, so a rollback by one release in the middle of a forget loses noth
 release's test build, which the e2e lane builds from the release's tag, because the release build
 stops at the parts of a start that need a real sandbox.
 
+## Fault point of a live reply
+
+`turn.reply.after` sits behind the test-build flag, after the transaction that writes a live
+`model.reply`. A test arms it, kills nixie there, starts nixie again, and checks that the crash
+sweep wrote a `model.reply_voided` record for the reply, and that the rerun's model request holds
+none of its text. `recover-reply-voided.test.ts` does this, and checks the same void after a failed
+attempt that did not crash.
+
+`time.now.running` sits behind the same flag, inside the `time.now` tool, so it holds a tool call
+that is executing. A journey arms it to land an owner message, and to reload the page, while a call
+is open, and then releases it.
+
 ## Coverage
 
 The [crash tests design](../../design/platform/core/crash-tests.md#slice-1-tests) lists the slice 1

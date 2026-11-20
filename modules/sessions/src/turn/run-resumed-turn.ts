@@ -3,11 +3,15 @@ import type { SessionPoint } from '@heynixie/wire';
 import { runOverflowCompaction } from '../compaction/run-overflow-compaction';
 import { probeSessionImagesFull } from '../session/probe-session-images-full';
 import { readSessionTurn } from '../session/read-session-turn';
+import type { CompletedTurn } from '../step/build-step-result';
 import { buildStepResult } from '../step/build-step-result';
 import type { InboxPlan, SessionStart, SessionStep } from '../types';
+import type { DroppedReplies } from '../utils/build-reply-voids';
 import { isContextOverflow } from '../utils/is-context-overflow';
 import { runOpenedTurn } from './run-opened-turn';
 import { runPlannedTurn } from './run-planned-turn';
+import { runStepCommit } from './run-step-commit';
+import { writeReplyVoids } from './write-reply-voids';
 
 export interface ResumedSession {
   readonly boundary: SessionPoint;
@@ -67,15 +71,28 @@ async function runBoundaryTurn(step: SessionStep, session: ResumedSession): Prom
       plan: session.plan,
       resume: session.boundary,
       contextSize: ended.context?.size ?? null,
+      replies: buildDroppedReplies(resumed.completed),
     });
   }
 
   if (resumed.completed.turn.failure?.reason === 'session_missing') {
+    // the rebuilt session reads the recent turns from the log, so the voids stand before it does
+    await writeReplyVoids(step.run, step.input, [
+      { ...buildDroppedReplies(resumed.completed), reason: 'turn_dropped' },
+    ]);
+
     return runRebuiltTurn(step, session, 'lost');
   }
 
   const memory = { ...turn.context, invalidatedThrough: turn.invalidatedThrough };
   const completed = { ...resumed.completed, harness: step.run.harness, memory };
 
-  return buildStepResult(source, completed, session.plan.before);
+  return runStepCommit(step, completed, () =>
+    buildStepResult(source, completed, session.plan.before),
+  );
+}
+
+// The turn ran on a session that no later turn resumes, so none of the replies it wrote stay.
+function buildDroppedReplies(completed: CompletedTurn): DroppedReplies {
+  return { sequences: completed.turn.written, runID: completed.runID };
 }

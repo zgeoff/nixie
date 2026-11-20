@@ -8,23 +8,28 @@ function setupTest() {
   return {
     agentSDK: bindHarness(buildMockModelProfile()),
     codex: bindHarness(buildMockCodexProfile()),
+    source: {
+      definitions: () => ({ snapshotHash: 'sha256:test' }),
+      model: { model: 'claude-test-1', profile: 'chat-direct' },
+    },
+    usage: { inputTokens: 10, outputTokens: 5, cacheReadTokens: 0, cacheWriteTokens: 0 },
+    boundary: {
+      harness: 'agent-sdk' as const,
+      sessionID: 'session-1',
+      messageID: 'message-1',
+    },
   };
 }
 
-test('it records no reply with the error of a silent turn that the model API refused', () => {
+test('it throws a model API refusal that carries no reply record', () => {
   const ctx = setupTest();
 
   expect(() =>
     buildStepResult(
-      {
-        definitions: () => ({ snapshotHash: 'sha256:test' }),
-        model: { model: 'claude-test-1', profile: 'chat-direct' },
-      },
+      ctx.source,
       {
         turn: {
-          assistants: [
-            { type: 'assistant', messageID: 'message-1', text: 'Nothing to add.', toolUses: [] },
-          ],
+          assistants: [],
           read: [],
           ended: [],
           failure: {
@@ -33,12 +38,15 @@ test('it records no reply with the error of a silent turn that the model API ref
             error: 'overloaded',
             detail: 'API Error: 529 Overloaded',
           },
+          written: [41],
+          settledWritten: 0,
         },
         sent: new Set<number>(),
         hasMore: false,
         notedThrough: null,
         images: { bytes: 0, count: 0 },
-        isSilent: true,
+        isSilent: false,
+        runID: 'step-1@1',
         silent: new Set(),
         harness: ctx.agentSDK,
         memory: { pinnedCore: [], retrieved: [], invalidatedThrough: 0 },
@@ -48,53 +56,47 @@ test('it records no reply with the error of a silent turn that the model API ref
   ).toThrow(expect.objectContaining({ name: 'ModelAPIError', records: [] }));
 });
 
-test('it sums the thinking tokens of every ended frame onto the last reply, and leaves earlier replies without the count', () => {
+test('it sums the thinking tokens of every ended frame onto the turn end, and writes no reply record', () => {
   const ctx = setupTest();
 
   const result = buildStepResult(
-    {
-      definitions: () => ({ snapshotHash: 'sha256:test' }),
-      model: { model: 'claude-test-1', profile: 'chat-direct' },
-    },
+    ctx.source,
     {
       turn: {
         assistants: [
           { type: 'assistant', messageID: 'message-1', text: 'Let me check.', toolUses: [] },
-          {
-            type: 'assistant',
-            messageID: 'message-2',
-            text: 'Take the 09:25 ferry.',
-            toolUses: [],
-          },
         ],
         read: [],
         ended: [
           {
             type: 'ended',
-            boundary: { harness: 'agent-sdk', sessionID: 'session-1', messageID: 'message-1' },
+            boundary: ctx.boundary,
             outcome: 'finished',
             stopReason: 'end_turn',
             turns: 1,
-            usage: { inputTokens: 10, outputTokens: 5, cacheReadTokens: 0, cacheWriteTokens: 0 },
+            usage: ctx.usage,
             thinkingTokens: 12,
           },
           {
             type: 'ended',
-            boundary: { harness: 'agent-sdk', sessionID: 'session-1', messageID: 'message-2' },
+            boundary: ctx.boundary,
             outcome: 'finished',
             stopReason: 'end_turn',
             turns: 1,
-            usage: { inputTokens: 10, outputTokens: 5, cacheReadTokens: 0, cacheWriteTokens: 0 },
+            usage: ctx.usage,
             thinkingTokens: 34,
           },
         ],
         failure: null,
+        written: [41],
+        settledWritten: 1,
       },
       sent: new Set<number>(),
       hasMore: false,
       notedThrough: null,
       images: { bytes: 0, count: 0 },
       isSilent: false,
+      runID: 'step-1@1',
       silent: new Set(),
       harness: ctx.agentSDK,
       memory: { pinnedCore: [], retrieved: [], invalidatedThrough: 0 },
@@ -102,53 +104,138 @@ test('it sums the thinking tokens of every ended frame onto the last reply, and 
     [],
   );
 
-  const replies = result.records.filter((record) => record.kind === 'model.reply');
-
-  expect(replies.at(0)?.payload).toStrictEqual({
-    model: 'claude-test-1',
-    profile: 'chat-direct',
-    messageID: 'message-1',
-  });
-
-  expect(replies.at(1)?.payload).toStrictEqual({
-    model: 'claude-test-1',
-    profile: 'chat-direct',
-    messageID: 'message-2',
-    thinkingTokens: 46,
-  });
+  expect(
+    result.records.map((record) => [record.kind, record.payload?.['thinkingTokens']]),
+  ).toStrictEqual([['model.turn_ended', 46]]);
 });
 
-test('it records no reply for a silent turn, and marks its turn end silent', () => {
+test('it commits the text of a held error frame as a reply', () => {
   const ctx = setupTest();
 
   const result = buildStepResult(
-    {
-      definitions: () => ({ snapshotHash: 'sha256:test' }),
-      model: { model: 'claude-test-1', profile: 'chat-direct' },
-    },
+    ctx.source,
     {
       turn: {
         assistants: [
-          { type: 'assistant', messageID: 'message-1', text: 'Nothing to add.', toolUses: [] },
+          {
+            type: 'assistant',
+            messageID: 'message-1',
+            text: 'Prompt is too long',
+            toolUses: [],
+            isError: true,
+          },
         ],
         read: [],
         ended: [
           {
             type: 'ended',
-            boundary: { harness: 'agent-sdk', sessionID: 'session-1', messageID: 'message-1' },
+            boundary: ctx.boundary,
             outcome: 'finished',
             stopReason: 'end_turn',
-            turns: 2,
-            usage: { inputTokens: 10, outputTokens: 5, cacheReadTokens: 0, cacheWriteTokens: 0 },
+            turns: 1,
+            usage: ctx.usage,
           },
         ],
         failure: null,
+        written: [],
+        settledWritten: 0,
+      },
+      sent: new Set<number>(),
+      hasMore: false,
+      notedThrough: null,
+      images: { bytes: 0, count: 0 },
+      isSilent: false,
+      runID: 'step-1@1',
+      silent: new Set(),
+      harness: ctx.agentSDK,
+      memory: { pinnedCore: [], retrieved: [], invalidatedThrough: 0 },
+    },
+    [],
+  );
+
+  expect(result.records.at(0)).toStrictEqual({
+    kind: 'model.reply',
+    definitions: { snapshotHash: 'sha256:test' },
+    payload: { model: 'claude-test-1', profile: 'chat-direct', messageID: 'message-1' },
+    erasable: { text: 'Prompt is too long' },
+  });
+});
+
+test('it voids each reply the turn wrote after its last result, and no earlier one', () => {
+  const ctx = setupTest();
+
+  const result = buildStepResult(
+    ctx.source,
+    {
+      turn: {
+        assistants: [],
+        read: [],
+        ended: [
+          {
+            type: 'ended',
+            boundary: ctx.boundary,
+            outcome: 'finished',
+            stopReason: 'end_turn',
+            turns: 1,
+            usage: ctx.usage,
+          },
+        ],
+        failure: null,
+        written: [41, 42, 43],
+        settledWritten: 1,
+      },
+      sent: new Set<number>(),
+      hasMore: false,
+      notedThrough: null,
+      images: { bytes: 0, count: 0 },
+      isSilent: false,
+      runID: 'step-1@1',
+      silent: new Set(),
+      harness: ctx.agentSDK,
+      memory: { pinnedCore: [], retrieved: [], invalidatedThrough: 0 },
+    },
+    [],
+  );
+
+  expect(
+    result.records
+      .filter((record) => record.kind === 'model.reply_voided')
+      .map((record) => record.payload),
+  ).toStrictEqual([
+    { replySequence: 42, runID: 'step-1@1', reason: 'turn_dropped' },
+    { replySequence: 43, runID: 'step-1@1', reason: 'turn_dropped' },
+  ]);
+});
+
+test('it keeps the text a silent turn wrote, and marks its turn end silent', () => {
+  const ctx = setupTest();
+
+  const result = buildStepResult(
+    ctx.source,
+    {
+      turn: {
+        assistants: [],
+        read: [],
+        ended: [
+          {
+            type: 'ended',
+            boundary: ctx.boundary,
+            outcome: 'finished',
+            stopReason: 'end_turn',
+            turns: 2,
+            usage: ctx.usage,
+          },
+        ],
+        failure: null,
+        written: [41],
+        settledWritten: 1,
       },
       sent: new Set<number>(),
       hasMore: false,
       notedThrough: null,
       images: { bytes: 0, count: 0 },
       isSilent: true,
+      runID: 'step-1@1',
       silent: new Set(),
       harness: ctx.agentSDK,
       memory: { pinnedCore: [], retrieved: [], invalidatedThrough: 0 },
@@ -156,38 +243,9 @@ test('it records no reply for a silent turn, and marks its turn end silent', () 
     [],
   );
 
-  expect(result).toStrictEqual({
-    next: 'wait',
-    records: [
-      {
-        kind: 'model.turn_ended',
-        definitions: { snapshotHash: 'sha256:test' },
-        payload: {
-          model: 'claude-test-1',
-          profile: 'chat-direct',
-          outcome: 'finished',
-          stopReason: 'end_turn',
-          turns: 2,
-          inputTokens: 10,
-          outputTokens: 5,
-          cacheReadTokens: 0,
-          cacheWriteTokens: 0,
-          pinnedCore: [],
-          retrieved: [],
-          invalidatedThrough: 0,
-          sessionImageBytes: 0,
-          sessionImageCount: 0,
-          isSilent: true,
-        },
-      },
-    ],
-    acknowledged: [],
-    sessionBoundary: JSON.stringify({
-      harness: 'agent-sdk',
-      sessionID: 'session-1',
-      messageID: 'message-1',
-    }),
-  });
+  expect(result.records.map((record) => [record.kind, record.payload?.['isSilent']])).toStrictEqual(
+    [['model.turn_ended', true]],
+  );
 });
 
 test('it stores no session point for a step on a harness with no session, and records the outcome of the turn', () => {
@@ -212,12 +270,15 @@ test('it stores no session point for a step on a harness with no session, and re
           },
         ],
         failure: null,
+        written: [],
+        settledWritten: 0,
       },
       sent: new Set<number>(),
       hasMore: false,
       notedThrough: null,
       images: { bytes: 0, count: 0 },
       isSilent: false,
+      runID: 'step-1@1',
       silent: new Set(),
       harness: ctx.codex,
       memory: { pinnedCore: [], retrieved: [], invalidatedThrough: 0 },
@@ -253,12 +314,15 @@ test('it fails a step whose turn overflowed', () => {
             },
           ],
           failure: null,
+          written: [],
+          settledWritten: 0,
         },
         sent: new Set<number>(),
         hasMore: false,
         notedThrough: null,
         images: { bytes: 0, count: 0 },
         isSilent: false,
+        runID: 'step-1@1',
         silent: new Set(),
         harness: ctx.codex,
         memory: { pinnedCore: [], retrieved: [], invalidatedThrough: 0 },
@@ -291,12 +355,15 @@ test('it fails a step whose guest broke the contract of its harness', () => {
             },
           ],
           failure: null,
+          written: [],
+          settledWritten: 0,
         },
         sent: new Set<number>(),
         hasMore: false,
         notedThrough: null,
         images: { bytes: 0, count: 0 },
         isSilent: false,
+        runID: 'step-1@1',
         silent: new Set(),
         harness: ctx.agentSDK,
         memory: { pinnedCore: [], retrieved: [], invalidatedThrough: 0 },
@@ -308,7 +375,6 @@ test('it fails a step whose guest broke the contract of its harness', () => {
 
 test('it fails a step whose earlier ended frame broke the contract, though its last one did not', () => {
   const ctx = setupTest();
-  const usage = { inputTokens: 10, outputTokens: 5, cacheReadTokens: 0, cacheWriteTokens: 0 };
 
   expect(() =>
     buildStepResult(
@@ -326,18 +392,27 @@ test('it fails a step whose earlier ended frame broke the contract, though its l
               outcome: 'finished',
               stopReason: 'end_turn',
               turns: 1,
-              usage,
+              usage: ctx.usage,
               context: { size: 10, window: 100 },
             },
-            { type: 'ended', outcome: 'finished', stopReason: 'end_turn', turns: 1, usage },
+            {
+              type: 'ended',
+              outcome: 'finished',
+              stopReason: 'end_turn',
+              turns: 1,
+              usage: ctx.usage,
+            },
           ],
           failure: null,
+          written: [],
+          settledWritten: 0,
         },
         sent: new Set<number>(),
         hasMore: false,
         notedThrough: null,
         images: { bytes: 0, count: 0 },
         isSilent: false,
+        runID: 'step-1@1',
         silent: new Set(),
         harness: ctx.codex,
         memory: { pinnedCore: [], retrieved: [], invalidatedThrough: 0 },
@@ -370,6 +445,8 @@ test('it acknowledges a silent record that the guest never reports read, and a r
           },
         ],
         failure: null,
+        written: [],
+        settledWritten: 0,
       },
       sent: new Set([11, 12]),
       silent: new Set([11]),
@@ -377,6 +454,7 @@ test('it acknowledges a silent record that the guest never reports read, and a r
       notedThrough: null,
       images: { bytes: 0, count: 0 },
       isSilent: false,
+      runID: 'step-1@1',
       harness: ctx.agentSDK,
       memory: { pinnedCore: [], retrieved: [], invalidatedThrough: 0 },
     },
@@ -401,6 +479,8 @@ test('it acknowledges no silent record for a turn that failed', () => {
           read: [],
           ended: [],
           failure: { type: 'failed', reason: 'error', detail: 'the guest exited' },
+          written: [],
+          settledWritten: 0,
         },
         sent: new Set([11]),
         silent: new Set([11]),
@@ -408,6 +488,7 @@ test('it acknowledges no silent record for a turn that failed', () => {
         notedThrough: null,
         images: { bytes: 0, count: 0 },
         isSilent: false,
+        runID: 'step-1@1',
         harness: ctx.agentSDK,
         memory: { pinnedCore: [], retrieved: [], invalidatedThrough: 0 },
       },

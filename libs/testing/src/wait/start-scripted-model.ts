@@ -46,22 +46,24 @@ interface ScriptedMatch {
   readonly when?: (body: ScriptedModelBody) => boolean;
 }
 
+interface ScriptedToolUse {
+  readonly name: string;
+
+  // the namespace that the Responses API groups a tool under, such as an MCP server's
+  readonly namespace?: string;
+
+  // a function builds the input from the request the reply answers, when a value in the
+  // input, such as an ID, is known only from an earlier tool result in that request
+  readonly input:
+    | Readonly<Record<string, unknown>>
+    | ((body: ScriptedModelBody) => Readonly<Record<string, unknown>>);
+}
+
+// A message holds text, a tool call, or both: the text comes first, as the model writes it
+// before it calls a tool.
 type ScriptedMessage = (
-  | { readonly text: string }
-  | {
-      readonly toolUse: {
-        readonly name: string;
-
-        // the namespace that the Responses API groups a tool under, such as an MCP server's
-        readonly namespace?: string;
-
-        // a function builds the input from the request the reply answers, when a value in the
-        // input, such as an ID, is known only from an earlier tool result in that request
-        readonly input:
-          | Readonly<Record<string, unknown>>
-          | ((body: ScriptedModelBody) => Readonly<Record<string, unknown>>);
-      };
-    }
+  | { readonly text: string; readonly toolUse?: ScriptedToolUse }
+  | { readonly toolUse: ScriptedToolUse; readonly text?: string }
 ) &
   ScriptedMatch & {
     readonly gate?: Promise<void>;
@@ -221,7 +223,11 @@ function renderRefusal(message: string): Response {
 }
 
 function resolveToolInput(reply: ScriptedReply, body: ScriptedModelBody): ScriptedReply {
-  if (!('toolUse' in reply) || typeof reply.toolUse.input !== 'function') {
+  if (
+    !('toolUse' in reply) ||
+    reply.toolUse === undefined ||
+    typeof reply.toolUse.input !== 'function'
+  ) {
     return reply;
   }
 
@@ -245,8 +251,15 @@ function buildResponsesReply(reply: ScriptedReply, model: string, isStream: bool
   // a client that follows each output item, such as the Codex CLI, reads its ID and its start and
   // end events, as the real API sends them
   const item =
-    'toolUse' in reply
+    reply.toolUse === undefined
       ? {
+          type: 'message',
+          id: `msg_${crypto.randomUUID().replaceAll('-', '')}`,
+          role: 'assistant',
+          status: 'completed',
+          content: [{ type: 'output_text', text: reply.text, annotations: [] }],
+        }
+      : {
           type: 'function_call',
           id: `fc_${crypto.randomUUID().replaceAll('-', '')}`,
           call_id: `call_${crypto.randomUUID().replaceAll('-', '')}`,
@@ -254,13 +267,6 @@ function buildResponsesReply(reply: ScriptedReply, model: string, isStream: bool
           ...(reply.toolUse.namespace === undefined ? {} : { namespace: reply.toolUse.namespace }),
           arguments: JSON.stringify(reply.toolUse.input),
           status: 'completed',
-        }
-      : {
-          type: 'message',
-          id: `msg_${crypto.randomUUID().replaceAll('-', '')}`,
-          role: 'assistant',
-          status: 'completed',
-          content: [{ type: 'output_text', text: reply.text, annotations: [] }],
         };
 
   const completed = {
@@ -286,7 +292,9 @@ function buildResponsesReply(reply: ScriptedReply, model: string, isStream: bool
       output_index: 0,
       item: { ...item, status: 'in_progress', content: [] },
     },
-    ...('text' in reply ? [{ type: 'response.output_text.delta', delta: reply.text }] : []),
+    ...(reply.toolUse === undefined && reply.text !== undefined
+      ? [{ type: 'response.output_text.delta', delta: reply.text }]
+      : []),
     { type: 'response.output_item.done', output_index: 0, item },
     { type: 'response.completed', response: completed },
   ];
@@ -337,9 +345,9 @@ function renderAuthFailure(message: string): Response {
 }
 
 function renderStream(reply: ScriptedMessage, model: string): Response {
-  const block = buildBlock(reply);
-  const isTool = 'toolUse' in reply;
+  const blocks = buildBlocks(reply);
   const usage = buildUsage(reply);
+  const hasTool = reply.toolUse !== undefined;
 
   const events = [
     {
@@ -355,22 +363,26 @@ function renderStream(reply: ScriptedMessage, model: string): Response {
         usage: { ...usage, output_tokens: 1 },
       },
     },
-    {
-      type: 'content_block_start',
-      index: 0,
-      content_block: isTool ? { ...block, input: {} } : { type: 'text', text: '' },
-    },
-    {
-      type: 'content_block_delta',
-      index: 0,
-      delta: isTool
-        ? { type: 'input_json_delta', partial_json: JSON.stringify(reply.toolUse.input) }
-        : { type: 'text_delta', text: reply.text },
-    },
-    { type: 'content_block_stop', index: 0 },
+    ...blocks.flatMap((block, index) => [
+      {
+        type: 'content_block_start',
+        index,
+        content_block:
+          block.type === 'tool_use' ? { ...block, input: {} } : { type: 'text', text: '' },
+      },
+      {
+        type: 'content_block_delta',
+        index,
+        delta:
+          block.type === 'tool_use'
+            ? { type: 'input_json_delta', partial_json: JSON.stringify(block.input) }
+            : { type: 'text_delta', text: block.text },
+      },
+      { type: 'content_block_stop', index },
+    ]),
     {
       type: 'message_delta',
-      delta: { stop_reason: isTool ? 'tool_use' : 'end_turn', stop_sequence: null },
+      delta: { stop_reason: hasTool ? 'tool_use' : 'end_turn', stop_sequence: null },
       usage: { output_tokens: usage.output_tokens },
     },
     { type: 'message_stop' },
@@ -382,17 +394,29 @@ function renderStream(reply: ScriptedMessage, model: string): Response {
   );
 }
 
-function buildBlock(reply: ScriptedMessage): Readonly<Record<string, unknown>> {
-  if ('toolUse' in reply) {
-    return {
-      type: 'tool_use',
-      id: `toolu_${crypto.randomUUID().replaceAll('-', '')}`,
-      name: reply.toolUse.name,
-      input: reply.toolUse.input,
+type ScriptedBlock =
+  | { readonly type: 'text'; readonly text: string }
+  | {
+      readonly type: 'tool_use';
+      readonly id: string;
+      readonly name: string;
+      readonly input: unknown;
     };
-  }
 
-  return { type: 'text', text: reply.text };
+function buildBlocks(reply: ScriptedMessage): readonly ScriptedBlock[] {
+  return [
+    ...(reply.text === undefined ? [] : [{ type: 'text' as const, text: reply.text }]),
+    ...(reply.toolUse === undefined
+      ? []
+      : [
+          {
+            type: 'tool_use' as const,
+            id: `toolu_${crypto.randomUUID().replaceAll('-', '')}`,
+            name: reply.toolUse.name,
+            input: reply.toolUse.input,
+          },
+        ]),
+  ];
 }
 
 function buildUsage(reply: ScriptedMessage): ScriptedUsage {
@@ -400,15 +424,13 @@ function buildUsage(reply: ScriptedMessage): ScriptedUsage {
 }
 
 function renderWhole(reply: ScriptedMessage, model: string): Response {
-  const block = buildBlock(reply);
-
   return Response.json({
     id: `msg_${crypto.randomUUID()}`,
     type: 'message',
     role: 'assistant',
     model,
-    content: [block],
-    stop_reason: 'toolUse' in reply ? 'tool_use' : 'end_turn',
+    content: buildBlocks(reply),
+    stop_reason: reply.toolUse === undefined ? 'end_turn' : 'tool_use',
     stop_sequence: null,
     usage: buildUsage(reply),
   });

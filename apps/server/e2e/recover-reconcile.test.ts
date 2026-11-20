@@ -96,6 +96,7 @@ test('it settles a checked send from the provider when nixie dies before the res
     repeatedStepKeys: [],
     repeatedActions: [],
     strayCalls: [],
+    strayReplies: [],
     heldLeases: [],
     unreadyTasks: [],
     changedEndStates: [],

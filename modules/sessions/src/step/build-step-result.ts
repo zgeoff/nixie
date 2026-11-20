@@ -10,6 +10,7 @@ import type { StepResult } from '@heynixie/tasks';
 import { decodeInboxUUID } from '../inbox/decode-inbox-uuid';
 import { ModelAPIError } from '../turn/model-api-error';
 import type { ImageTally, MemoryRef } from '../types';
+import { buildReplyVoids } from '../utils/build-reply-voids';
 import { isContextOverflow } from '../utils/is-context-overflow';
 import type { GuestTurn } from '../utils/run-guest-turn';
 import { checkEndedContract } from './check-ended-contract';
@@ -31,6 +32,9 @@ export interface CompletedTurn {
   readonly images: ImageTally;
 
   readonly isSilent: boolean;
+
+  // the step run that wrote the turn's replies
+  readonly runID: string;
 }
 
 interface TurnMemoryRefs {
@@ -59,7 +63,7 @@ export function buildStepResult(
   }
 
   if (failure?.reason === 'model_api') {
-    throw new ModelAPIError(failure.error, failure.detail, buildReplyRecords(source, completed));
+    throw new ModelAPIError(failure.error, failure.detail);
   }
 
   if (failure !== null || last === undefined) {
@@ -91,59 +95,14 @@ export function buildStepResult(
   };
 }
 
-function buildReplyRecords(
-  source: ModelRecordSource,
-  completed: Pick<CompletedTurn, 'isSilent' | 'turn'>,
-): readonly RecordInput[] {
-  const turn = completed.turn;
-
-  const replies = completed.isSilent
-    ? []
-    : turn.assistants.filter((assistant) => assistant.text !== '');
-
-  const reasoning = buildTurnReasoning(turn);
-
-  return replies.map((assistant, index) => {
-    // The SDK's summarized display sends the reasoning as its own message and reports thinking
-    // tokens once per turn, so the joined summary and the total sit on the last reply.
-    const isLast = index === replies.length - 1;
-
-    return buildModelRecord(source, modelReplyCodec, {
-      payload: {
-        messageID: assistant.messageID,
-        ...(isLast && reasoning.thinkingTokens > 0
-          ? { thinkingTokens: reasoning.thinkingTokens }
-          : {}),
-      },
-      text: assistant.text,
-      ...(isLast && reasoning.summary !== '' ? { summary: reasoning.summary } : {}),
-    });
-  });
-}
-
-interface TurnReasoning {
-  readonly summary: string;
-  readonly thinkingTokens: number;
-}
-
-function buildTurnReasoning(turn: GuestTurn): TurnReasoning {
-  const summary = turn.assistants
-    .flatMap((assistant) => (assistant.summary === undefined ? [] : [assistant.summary]))
-    .join('\n\n');
-
-  const thinkingTokens = turn.ended.reduce(
-    (total, frame) => total + (frame.thinkingTokens ?? 0),
-    0,
-  );
-
-  return { summary, thinkingTokens };
-}
-
 function buildTurnRecords(source: ModelRecordSource, completed: StepTurn): readonly RecordInput[] {
   return [
     ...buildReplyRecords(source, completed),
     buildModelEventRecord(source, modelTurnEndedCodec, {
       ...buildTurnSummary(completed.turn),
+      ...(buildThinkingTokens(completed.turn) > 0
+        ? { thinkingTokens: buildThinkingTokens(completed.turn) }
+        : {}),
       ...(completed.isSilent ? { isSilent: true } : {}),
       pinnedCore: completed.memory.pinnedCore.map((ref) => ({ ...ref })),
       retrieved: completed.memory.retrieved.map((ref) => ({ ...ref })),
@@ -154,6 +113,33 @@ function buildTurnRecords(source: ModelRecordSource, completed: StepTurn): reado
         ? {}
         : { recalledThrough: completed.turn.endedMark }),
       ...(completed.notedThrough === null ? {} : { memoryNotedThrough: completed.notedThrough }),
+    }),
+  ];
+}
+
+// The turn wrote each reply as the model sent it. The commit writes only the error texts the turn
+// held, and voids the replies after the last result, which no resumed session holds.
+function buildReplyRecords(
+  source: ModelRecordSource,
+  completed: Pick<CompletedTurn, 'turn' | 'runID'>,
+): readonly RecordInput[] {
+  const turn = completed.turn;
+
+  const errors = turn.assistants
+    .filter((assistant) => assistant.isError === true && assistant.text !== '')
+    .map((assistant) =>
+      buildModelRecord(source, modelReplyCodec, {
+        payload: { messageID: assistant.messageID },
+        text: assistant.text,
+      }),
+    );
+
+  return [
+    ...errors,
+    ...buildReplyVoids(source, {
+      sequences: turn.written.slice(turn.settledWritten),
+      runID: completed.runID,
+      reason: 'turn_dropped',
     }),
   ];
 }
@@ -193,4 +179,8 @@ function buildTurnSummary(turn: GuestTurn): TurnSummary {
     cacheWriteTokens: buildTotal((frame) => frame.usage.cacheWriteTokens),
     ...(context === undefined ? {} : { contextSize: context.size, contextWindow: context.window }),
   };
+}
+
+function buildThinkingTokens(turn: GuestTurn): number {
+  return turn.ended.reduce((total, frame) => total + (frame.thinkingTokens ?? 0), 0);
 }

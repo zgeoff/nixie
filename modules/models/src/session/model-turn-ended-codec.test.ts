@@ -47,6 +47,27 @@ test('it decodes the payload a writer encodes', () => {
   });
 });
 
+test('it decodes a turn end that carries the turn thinking tokens', () => {
+  const payload = modelTurnEndedCodec.encode({
+    model: 'claude-test-1',
+    profile: 'chat-direct',
+    stopReason: 'end_turn',
+    turns: 1,
+    inputTokens: 10,
+    outputTokens: 5,
+    cacheReadTokens: 0,
+    cacheWriteTokens: 0,
+    thinkingTokens: 236,
+    pinnedCore: [],
+    retrieved: [],
+    invalidatedThrough: 0,
+    sessionImageBytes: 0,
+    sessionImageCount: 0,
+  });
+
+  expect(modelTurnEndedCodec.decode(payload).thinkingTokens).toBe(236);
+});
+
 test('it reads the context of a turn from before turns kept their memory', () => {
   expect(
     modelTurnEndedCodec.tryDecodePartial({

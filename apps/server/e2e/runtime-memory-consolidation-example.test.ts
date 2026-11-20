@@ -171,6 +171,7 @@ test('it fires the weekly memory consolidation example and holds each edit as a 
     repeatedStepKeys: [],
     repeatedActions: [],
     strayCalls: [],
+    strayReplies: [],
     heldLeases: [],
     unreadyTasks: [],
     changedEndStates: [],

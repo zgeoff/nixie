@@ -262,6 +262,30 @@ test('it accepts an assistant frame whose message ID is not a UUID', () => {
   expect(guestFrameSchema.safeParse(frame).data).toStrictEqual(frame);
 });
 
+test('it accepts an assistant frame that flags its text as an error', () => {
+  const frame: GuestFrame = {
+    type: 'assistant',
+    messageID: 'msg_01',
+    text: 'Prompt is too long',
+    toolUses: [],
+    isError: true,
+  };
+
+  expect(guestFrameSchema.safeParse(frame).data).toStrictEqual(frame);
+});
+
+test('it refuses an assistant frame whose error flag is false', () => {
+  const result = guestFrameSchema.safeParse({
+    type: 'assistant',
+    messageID: 'msg_01',
+    text: 'Hi',
+    toolUses: [],
+    isError: false,
+  });
+
+  expect(result.error?.issues).toPartiallyContain({ path: ['isError'] });
+});
+
 test('it refuses an assistant frame with an empty message ID', () => {
   const result = guestFrameSchema.safeParse({
     type: 'assistant',

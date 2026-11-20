@@ -14,6 +14,9 @@ interface OracleReport {
 
   readonly strayCalls: readonly (string | null)[];
 
+  // the sequence of each reply that no void names, in a step that never committed
+  readonly strayReplies: readonly number[];
+
   readonly heldLeases: readonly string[];
 
   readonly unreadyTasks: readonly string[];
@@ -46,6 +49,7 @@ export async function runOracle(nixie: SpawnedNixie): Promise<OracleReport> {
         (record) => `${record.stepKey} ${String(record.payload['actionHash'])}`,
       ),
       strayCalls: collectStrayCalls(nixie, records),
+      strayReplies: collectStrayReplies(records),
       ...recovery,
       projectionDrift: await readTestProjectionDrift(context.log),
     };
@@ -150,4 +154,60 @@ function collectStrayCalls(
 
       return remaining <= 0;
     });
+}
+
+function collectStrayReplies(
+  records: Awaited<ReturnType<SpawnedNixie['readRecords']>>,
+): readonly number[] {
+  const voided = new Set(
+    records
+      .filter((record) => record.kind === 'model.reply_voided')
+      .map((record) => record.payload['replySequence']),
+  );
+
+  const committedRuns = collectCommittedRuns(records);
+
+  return records
+    .filter((record) => {
+      const runID = record.payload['runID'];
+
+      return (
+        record.kind === 'model.reply' &&
+        typeof runID === 'string' &&
+        !voided.has(record.sequence) &&
+        !committedRuns.has(runID)
+      );
+    })
+    .map((record) => record.sequence);
+}
+
+// The run that committed a step is the last one that started it before the commit, named like
+// buildStepRunID names it.
+function collectCommittedRuns(
+  records: Awaited<ReturnType<SpawnedNixie['readRecords']>>,
+): ReadonlySet<string> {
+  const started = new Map<string, string>();
+  const committed = new Set<string>();
+
+  for (const record of records) {
+    // a step start names its key in the payload, and the commit names it on the record
+    const stepKey =
+      record.kind === 'task.step_started' ? record.payload['stepKey'] : record.stepKey;
+
+    if (typeof stepKey !== 'string') {
+      continue;
+    }
+
+    if (record.kind === 'task.step_started') {
+      started.set(stepKey, `${stepKey}@${String(record.payload['generation'])}`);
+    }
+
+    const runID = started.get(stepKey);
+
+    if (record.kind === 'task.step_committed' && runID !== undefined) {
+      committed.add(runID);
+    }
+  }
+
+  return committed;
 }
