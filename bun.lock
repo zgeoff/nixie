@@ -661,7 +661,6 @@
       },
       "devDependencies": {
         "@faker-js/faker": "catalog:",
-        "@heynixie/testing": "workspace:*",
       },
     },
     "modules/ops": {
