@@ -360,6 +360,9 @@
                                   ]
                                 }
                               },
+                              "isVoided": {
+                                "const": true
+                              },
                               "spans": {
                                 "type": "array",
                                 "items": {
@@ -393,6 +396,15 @@
                                 }
                               },
                               "text": {
+                                "type": "string"
+                              },
+                              "voidReason": {
+                                "enum": [
+                                  "attempt_failed",
+                                  "attempt_lost",
+                                  "turn_dropped",
+                                  "silent"
+                                ],
                                 "type": "string"
                               }
                             },
@@ -705,6 +717,29 @@
                             },
                             "required": [
                               "callID"
+                            ]
+                          },
+                          "voidedReply": {
+                            "type": "object",
+                            "properties": {
+                              "sequence": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 9007199254740991
+                              },
+                              "reason": {
+                                "enum": [
+                                  "attempt_failed",
+                                  "attempt_lost",
+                                  "turn_dropped",
+                                  "silent"
+                                ],
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "sequence",
+                              "reason"
                             ]
                           },
                           "worker": {
@@ -1172,6 +1207,9 @@
                                     ]
                                   }
                                 },
+                                "isVoided": {
+                                  "const": true
+                                },
                                 "spans": {
                                   "type": "array",
                                   "items": {
@@ -1205,6 +1243,15 @@
                                   }
                                 },
                                 "text": {
+                                  "type": "string"
+                                },
+                                "voidReason": {
+                                  "enum": [
+                                    "attempt_failed",
+                                    "attempt_lost",
+                                    "turn_dropped",
+                                    "silent"
+                                  ],
                                   "type": "string"
                                 }
                               },
@@ -1517,6 +1564,29 @@
                               },
                               "required": [
                                 "callID"
+                              ]
+                            },
+                            "voidedReply": {
+                              "type": "object",
+                              "properties": {
+                                "sequence": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 9007199254740991
+                                },
+                                "reason": {
+                                  "enum": [
+                                    "attempt_failed",
+                                    "attempt_lost",
+                                    "turn_dropped",
+                                    "silent"
+                                  ],
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "sequence",
+                                "reason"
                               ]
                             },
                             "worker": {
@@ -26573,6 +26643,9 @@
                                         ]
                                       }
                                     },
+                                    "isVoided": {
+                                      "const": true
+                                    },
                                     "spans": {
                                       "type": "array",
                                       "items": {
@@ -26606,6 +26679,15 @@
                                       }
                                     },
                                     "text": {
+                                      "type": "string"
+                                    },
+                                    "voidReason": {
+                                      "enum": [
+                                        "attempt_failed",
+                                        "attempt_lost",
+                                        "turn_dropped",
+                                        "silent"
+                                      ],
                                       "type": "string"
                                     }
                                   },
@@ -26918,6 +27000,29 @@
                                   },
                                   "required": [
                                     "callID"
+                                  ]
+                                },
+                                "voidedReply": {
+                                  "type": "object",
+                                  "properties": {
+                                    "sequence": {
+                                      "type": "integer",
+                                      "minimum": 0,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "reason": {
+                                      "enum": [
+                                        "attempt_failed",
+                                        "attempt_lost",
+                                        "turn_dropped",
+                                        "silent"
+                                      ],
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "sequence",
+                                    "reason"
                                   ]
                                 },
                                 "worker": {
@@ -27550,6 +27655,9 @@
                                         ]
                                       }
                                     },
+                                    "isVoided": {
+                                      "const": true
+                                    },
                                     "spans": {
                                       "type": "array",
                                       "items": {
@@ -27583,6 +27691,15 @@
                                       }
                                     },
                                     "text": {
+                                      "type": "string"
+                                    },
+                                    "voidReason": {
+                                      "enum": [
+                                        "attempt_failed",
+                                        "attempt_lost",
+                                        "turn_dropped",
+                                        "silent"
+                                      ],
                                       "type": "string"
                                     }
                                   },
@@ -27895,6 +28012,29 @@
                                   },
                                   "required": [
                                     "callID"
+                                  ]
+                                },
+                                "voidedReply": {
+                                  "type": "object",
+                                  "properties": {
+                                    "sequence": {
+                                      "type": "integer",
+                                      "minimum": 0,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "reason": {
+                                      "enum": [
+                                        "attempt_failed",
+                                        "attempt_lost",
+                                        "turn_dropped",
+                                        "silent"
+                                      ],
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "sequence",
+                                    "reason"
                                   ]
                                 },
                                 "worker": {
