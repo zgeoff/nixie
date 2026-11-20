@@ -64,6 +64,7 @@
     "@heynixie/backup-job": "workspace:*",
     "@heynixie/model-gateway": "workspace:*",
     "@heynixie/web": "workspace:*",
+    "@impz/testing": "catalog:",
     "@modelcontextprotocol/client": "catalog:",
     "@zgeoff/rig": "catalog:",
     "@zgeoff/testing": "catalog:",

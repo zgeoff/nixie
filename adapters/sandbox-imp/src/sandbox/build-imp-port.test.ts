@@ -1,4 +1,4 @@
-import { expect, mock, onTestFinished, test } from 'bun:test';
+import { expect, onTestFinished, test } from 'bun:test';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -9,139 +9,76 @@ import {
   startStubToolEndpoint,
 } from '@heynixie/sandbox/test-utils';
 import { waitForCondition } from '@heynixie/testing';
-import { TEST_TOKEN, startTestImpd } from '@impz/testing';
+import type { TestImpdOptions } from '@impz/testing';
+import { TEST_TOKEN } from '@impz/testing';
 import invariant from 'tiny-invariant';
 import { attachTestGuests } from '../test-utils/attach-test-guests';
 import { setupIsolationAdapter } from '../test-utils/setup-isolation-adapter';
-import { startStubImpd } from '../test-utils/start-stub-impd';
+import { startImpd } from '../test-utils/start-impd';
 import type { ModelGateway } from '../types';
 import { buildImpPort } from './build-imp-port';
 import { buildImpSandboxAdapter } from './build-imp-sandbox-adapter';
 
-test('it refuses to read the features of an impd whose version the client does not speak', () => {
-  const answerRequest = mock(() =>
-    Response.json({ json: { version: '0.39.0', features: {}, egress: {} } }),
-  );
+async function setupTest(options: TestImpdOptions = {}) {
+  const impd = await startImpd(options);
 
-  const impd = Bun.serve({
-    port: 0,
-    hostname: '127.0.0.1',
-    fetch: answerRequest,
-  });
+  onTestFinished(impd.stop);
 
-  onTestFinished(() => impd.stop(true));
+  return { impd, port: buildImpPort({ url: impd.url, token: TEST_TOKEN }) };
+}
 
-  const port = buildImpPort({ url: impd.url.href, token: 'not-a-real-token' });
+test('it refuses to read the features of an impd whose version the client does not speak', async () => {
+  const ctx = await setupTest({ version: '0.39.0' });
 
-  expect(port.readFeatures()).rejects.toThrow(/^impd 0\.39\.0 does not speak imp client /u);
+  expect(ctx.port.readFeatures()).rejects.toThrow(/^impd 0\.39\.0 does not speak imp client /u);
 });
 
-test('it reads the features of an impd of major 3 with imp client 6', () => {
-  const answerRequest = mock(() =>
-    Response.json({
-      json: {
-        version: '3.0.0',
-        features: { publicEgress: true, backupOptOut: true },
-        egress: { isEnforced: true },
-      },
-    }),
-  );
-
-  const impd = Bun.serve({
-    port: 0,
-    hostname: '127.0.0.1',
-    fetch: answerRequest,
+test('it reads the features of an impd of major 3 with imp client 7', async () => {
+  const ctx = await setupTest({
+    version: '3.0.0',
+    features: { publicEgress: true, backupOptOut: true },
   });
 
-  onTestFinished(() => impd.stop(true));
-
-  const port = buildImpPort({ url: impd.url.href, token: 'not-a-real-token' });
-
-  expect(port.readFeatures()).resolves.toStrictEqual({
+  expect(ctx.port.readFeatures()).resolves.toStrictEqual({
     publicEgress: true,
     isEgressEnforced: true,
     hasBackupOptOut: true,
   });
 });
 
-test('it reads the features of an impd of major 4 with imp client 6', () => {
-  const answerRequest = mock(() =>
-    Response.json({
-      json: {
-        version: '4.0.0',
-        features: { publicEgress: true, backupOptOut: true },
-        egress: { isEnforced: true },
-      },
-    }),
-  );
-
-  const impd = Bun.serve({
-    port: 0,
-    hostname: '127.0.0.1',
-    fetch: answerRequest,
+test('it reads the features of an impd of major 4 with imp client 7', async () => {
+  const ctx = await setupTest({
+    version: '4.0.0',
+    features: { publicEgress: true, backupOptOut: true },
   });
 
-  onTestFinished(() => impd.stop(true));
-
-  const port = buildImpPort({ url: impd.url.href, token: 'not-a-real-token' });
-
-  expect(port.readFeatures()).resolves.toStrictEqual({
+  expect(ctx.port.readFeatures()).resolves.toStrictEqual({
     publicEgress: true,
     isEgressEnforced: true,
     hasBackupOptOut: true,
   });
 });
 
-test('it reads the features of an impd of major 5 with imp client 6', () => {
-  const answerRequest = mock(() =>
-    Response.json({
-      json: {
-        version: '5.0.0',
-        features: { publicEgress: true, backupOptOut: true },
-        egress: { isEnforced: true },
-      },
-    }),
-  );
-
-  const impd = Bun.serve({
-    port: 0,
-    hostname: '127.0.0.1',
-    fetch: answerRequest,
+test('it reads the features of an impd of major 5 with imp client 7', async () => {
+  const ctx = await setupTest({
+    version: '5.0.0',
+    features: { publicEgress: true, backupOptOut: true },
   });
 
-  onTestFinished(() => impd.stop(true));
-
-  const port = buildImpPort({ url: impd.url.href, token: 'not-a-real-token' });
-
-  expect(port.readFeatures()).resolves.toStrictEqual({
+  expect(ctx.port.readFeatures()).resolves.toStrictEqual({
     publicEgress: true,
     isEgressEnforced: true,
     hasBackupOptOut: true,
   });
 });
 
-test('it reads the features of an impd of major 6 with imp client 6', () => {
-  const answerRequest = mock(() =>
-    Response.json({
-      json: {
-        version: '6.0.0',
-        features: { publicEgress: true, backupOptOut: true },
-        egress: { isEnforced: true },
-      },
-    }),
-  );
-
-  const impd = Bun.serve({
-    port: 0,
-    hostname: '127.0.0.1',
-    fetch: answerRequest,
+test('it reads the features of an impd of major 6 with imp client 7', async () => {
+  const ctx = await setupTest({
+    version: '6.0.0',
+    features: { publicEgress: true, backupOptOut: true },
   });
 
-  onTestFinished(() => impd.stop(true));
-
-  const port = buildImpPort({ url: impd.url.href, token: 'not-a-real-token' });
-
-  expect(port.readFeatures()).resolves.toStrictEqual({
+  expect(ctx.port.readFeatures()).resolves.toStrictEqual({
     publicEgress: true,
     isEgressEnforced: true,
     hasBackupOptOut: true,
@@ -149,7 +86,7 @@ test('it reads the features of an impd of major 6 with imp client 6', () => {
 });
 
 test('it reads the features of a real impd that runs in the test process', async () => {
-  const impd = await startTestImpd();
+  const impd = await startImpd();
 
   onTestFinished(impd.stop);
 
@@ -163,7 +100,7 @@ test('it reads the features of a real impd that runs in the test process', async
 });
 
 test('it lets a conversation imp reach the tool endpoint through the reverse forward', async () => {
-  const impd = await startTestImpd();
+  const impd = await startImpd();
 
   const guested = attachTestGuests(impd, buildImpPort({ url: impd.url, token: TEST_TOKEN }));
 
@@ -212,7 +149,7 @@ test('it lets a conversation imp reach the tool endpoint through the reverse for
 });
 
 test('it reopens the tool route of a conversation imp after a sleep and a wake', async () => {
-  const impd = await startTestImpd();
+  const impd = await startImpd();
 
   const guested = attachTestGuests(impd, buildImpPort({ url: impd.url, token: TEST_TOKEN }));
 
@@ -266,7 +203,7 @@ test('it reopens the tool route of a conversation imp after a sleep and a wake',
 });
 
 test('it gets no sandbox whose imp impd lost, and records the sandbox destroyed', async () => {
-  const impd = await startTestImpd();
+  const impd = await startImpd();
 
   const guested = attachTestGuests(impd, buildImpPort({ url: impd.url, token: TEST_TOKEN }));
 
@@ -304,7 +241,7 @@ test('it gets no sandbox whose imp impd lost, and records the sandbox destroyed'
 });
 
 test('it lists no sandbox whose imp impd lost', async () => {
-  const impd = await startTestImpd();
+  const impd = await startImpd();
 
   const guested = attachTestGuests(impd, buildImpPort({ url: impd.url, token: TEST_TOKEN }));
 
@@ -335,249 +272,104 @@ test('it lists no sandbox whose imp impd lost', async () => {
   expect(listed).toStrictEqual([]);
 });
 
-test('it reads the features of an impd of major 7 with imp client 6', () => {
-  const answerRequest = mock(() =>
-    Response.json({
-      json: {
-        version: '7.0.0',
-        features: { publicEgress: true, backupOptOut: true },
-        egress: { isEnforced: true },
-      },
-    }),
-  );
-
-  const impd = Bun.serve({
-    port: 0,
-    hostname: '127.0.0.1',
-    fetch: answerRequest,
+test('it reads the features of an impd of major 7 with imp client 7', async () => {
+  const ctx = await setupTest({
+    version: '7.0.0',
+    features: { publicEgress: true, backupOptOut: true },
   });
 
-  onTestFinished(() => impd.stop(true));
-
-  const port = buildImpPort({ url: impd.url.href, token: 'not-a-real-token' });
-
-  expect(port.readFeatures()).resolves.toStrictEqual({
+  expect(ctx.port.readFeatures()).resolves.toStrictEqual({
     publicEgress: true,
     isEgressEnforced: true,
     hasBackupOptOut: true,
   });
 });
 
-test('it refuses to read the features of an impd of major 8 with imp client 6', () => {
-  const answerRequest = mock(() =>
-    Response.json({ json: { version: '8.0.0', features: {}, egress: {} } }),
-  );
+test('it refuses to read the features of an impd of major 8 with imp client 7', async () => {
+  const ctx = await setupTest({ version: '8.0.0' });
 
-  const impd = Bun.serve({
-    port: 0,
-    hostname: '127.0.0.1',
-    fetch: answerRequest,
-  });
-
-  onTestFinished(() => impd.stop(true));
-
-  const port = buildImpPort({ url: impd.url.href, token: 'not-a-real-token' });
-
-  expect(port.readFeatures()).rejects.toThrow(/^impd 8\.0\.0 does not speak imp client 6\./u);
+  expect(ctx.port.readFeatures()).rejects.toThrow(/^impd 8\.0\.0 does not speak imp client 7\./u);
 });
 
-test('it refuses to read the features of an impd of major 1 with imp client 6', () => {
-  const answerRequest = mock(() =>
-    Response.json({ json: { version: '1.6.0', features: {}, egress: {} } }),
-  );
+test('it refuses to read the features of an impd of major 1 with imp client 7', async () => {
+  const ctx = await setupTest({ version: '1.6.0' });
 
-  const impd = Bun.serve({
-    port: 0,
-    hostname: '127.0.0.1',
-    fetch: answerRequest,
-  });
-
-  onTestFinished(() => impd.stop(true));
-
-  const port = buildImpPort({ url: impd.url.href, token: 'not-a-real-token' });
-
-  expect(port.readFeatures()).rejects.toThrow(/^impd 1\.6\.0 does not speak imp client 6\./u);
+  expect(ctx.port.readFeatures()).rejects.toThrow(/^impd 1\.6\.0 does not speak imp client 7\./u);
 });
 
-test('it reads the features of an impd of major 2 with imp client 6', () => {
-  const answerRequest = mock(() =>
-    Response.json({
-      json: {
-        version: '2.0.3',
-        features: { publicEgress: true, backupOptOut: true },
-        egress: { isEnforced: true },
-      },
-    }),
-  );
-
-  const impd = Bun.serve({
-    port: 0,
-    hostname: '127.0.0.1',
-    fetch: answerRequest,
+test('it reads the features of an impd of major 2 with imp client 7', async () => {
+  const ctx = await setupTest({
+    version: '2.0.3',
+    features: { publicEgress: true, backupOptOut: true },
   });
 
-  onTestFinished(() => impd.stop(true));
-
-  const port = buildImpPort({ url: impd.url.href, token: 'not-a-real-token' });
-
-  expect(port.readFeatures()).resolves.toStrictEqual({
+  expect(ctx.port.readFeatures()).resolves.toStrictEqual({
     publicEgress: true,
     isEgressEnforced: true,
     hasBackupOptOut: true,
   });
 });
 
-test('it reads the backup opt-out among the features of an impd that has it', () => {
-  const answerRequest = mock(() =>
-    Response.json({ json: { version: '2.0.0', features: { backupOptOut: true }, egress: {} } }),
-  );
+test('it reads the backup opt-out among the features of an impd that has it', async () => {
+  const ctx = await setupTest({ version: '2.0.0', features: { backupOptOut: true } });
 
-  const impd = Bun.serve({
-    port: 0,
-    hostname: '127.0.0.1',
-    fetch: answerRequest,
-  });
-
-  onTestFinished(() => impd.stop(true));
-
-  const port = buildImpPort({ url: impd.url.href, token: 'not-a-real-token' });
-
-  expect(port.readFeatures()).resolves.toMatchObject({ hasBackupOptOut: true });
+  expect(ctx.port.readFeatures()).resolves.toMatchObject({ hasBackupOptOut: true });
 });
 
 test('it ends a feature read that impd never answers at the abort, after one call', async () => {
-  const answer = mock(() => Promise.withResolvers<Response>().promise);
-  const impd = Bun.serve({ port: 0, hostname: '127.0.0.1', fetch: answer });
+  const ctx = await setupTest();
 
-  onTestFinished(() => impd.stop(true));
-
-  const port = buildImpPort({ url: impd.url.href, token: 'not-a-real-token' });
+  ctx.impd.stall('system/info');
 
   const stopped = new AbortController();
 
-  const read = port.readFeatures(stopped.signal);
+  const read = ctx.port.readFeatures(stopped.signal);
 
-  await waitForCondition(() => answer.mock.calls.length === 1);
+  await waitForCondition(
+    () => ctx.impd.calls.filter((call) => call.procedure === 'system/info').length === 1,
+  );
 
   stopped.abort();
 
   expect(read).rejects.toMatchObject({ name: 'AbortError' });
-  expect(answer).toHaveBeenCalledOnce();
+  expect(ctx.impd.calls.filter((call) => call.procedure === 'system/info')).toHaveLength(1);
 });
 
-test('it reads an imp that impd shows with no backup flag as backed up', () => {
-  const answerRequest = mock(() =>
-    Response.json({
-      json: {
-        id: '01a130ab-7d6b-7664-ae89-f93646cd7e2a',
-        name: 'nixie-a',
-        image: 'conversation',
-        state: 'running',
-        vcpus: 1,
-        memoryMib: 512,
-        diskMib: 1024,
-        ip: '10.0.0.2',
-        slot: 2,
-        port: 2222,
-        httpPort: 8080,
-        url: 'https://nixie-a.imps.example',
-        createdAt: '2026-10-12T05:10:00.428Z',
-        lastActiveAt: '2026-10-12T05:10:00.428Z',
-        cpu: { limit: null, weight: 100 },
-      },
-      meta: [
-        [1, 'createdAt'],
-        [1, 'lastActiveAt'],
-      ],
-    }),
-  );
+test('it reads an imp that impd shows with no backup flag as backed up', async () => {
+  const ctx = await setupTest();
 
-  const impd = Bun.serve({
-    port: 0,
-    hostname: '127.0.0.1',
-    fetch: answerRequest,
-  });
+  await ctx.impd.seedImage('tide-image');
+  await ctx.impd.client.imps.create({ name: 'nixie-backed-up', image: 'tide-image' });
 
-  onTestFinished(() => impd.stop(true));
-
-  const port = buildImpPort({ url: impd.url.href, token: 'not-a-real-token' });
-
-  expect(port.readImpBackup('nixie-a')).resolves.toBeTrue();
+  expect(ctx.port.readImpBackup('nixie-backed-up')).resolves.toBeTrue();
 });
 
-test('it reads an imp created with backup off as left out of the backups', () => {
-  const answerRequest = mock(() =>
-    Response.json({
-      json: {
-        id: '01a130ab-7d6b-7664-ae89-f93646cd7e2a',
-        name: 'nixie-a',
-        image: 'conversation',
-        state: 'running',
-        vcpus: 1,
-        memoryMib: 512,
-        diskMib: 1024,
-        backup: false,
-        ip: '10.0.0.2',
-        slot: 2,
-        port: 2222,
-        httpPort: 8080,
-        url: 'https://nixie-a.imps.example',
-        createdAt: '2026-10-12T05:10:00.428Z',
-        lastActiveAt: '2026-10-12T05:10:00.428Z',
-        cpu: { limit: null, weight: 100 },
-      },
-      meta: [
-        [1, 'createdAt'],
-        [1, 'lastActiveAt'],
-      ],
-    }),
-  );
+test('it reads an imp created with backup off as left out of the backups', async () => {
+  const ctx = await setupTest();
 
-  const impd = Bun.serve({
-    port: 0,
-    hostname: '127.0.0.1',
-    fetch: answerRequest,
-  });
+  await ctx.impd.seedImage('tide-image');
+  await ctx.impd.client.imps.create({ name: 'nixie-unbacked', image: 'tide-image', backup: false });
 
-  onTestFinished(() => impd.stop(true));
-
-  const port = buildImpPort({ url: impd.url.href, token: 'not-a-real-token' });
-
-  expect(port.readImpBackup('nixie-a')).resolves.toBeFalse();
+  expect(ctx.port.readImpBackup('nixie-unbacked')).resolves.toBeFalse();
 });
 
-test('it reads no backup flag for an imp that impd does not hold', () => {
-  const refuseRequest = mock(() =>
-    Response.json(
-      { json: { defined: false, code: 'NOT_FOUND', status: 404, message: 'no imp nixie-a' } },
-      { status: 404 },
-    ),
-  );
+test('it reads no backup flag for an imp that impd does not hold', async () => {
+  const ctx = await setupTest();
 
-  const impd = Bun.serve({
-    port: 0,
-    hostname: '127.0.0.1',
-    fetch: refuseRequest,
-  });
-
-  onTestFinished(() => impd.stop(true));
-
-  const port = buildImpPort({ url: impd.url.href, token: 'not-a-real-token' });
-
-  expect(port.readImpBackup('nixie-a')).resolves.toBeNull();
+  expect(ctx.port.readImpBackup('nixie-absent')).resolves.toBeNull();
 });
 
-test("it fails a wake that impd refuses for memory with impd's code and message", () => {
-  const url = startStubImpd({
+test("it fails a wake that impd refuses for memory with impd's code and message", async () => {
+  const ctx = await setupTest();
+
+  ctx.impd.fail('imps/wake', {
     code: 'RAM_BUDGET_EXCEEDED',
     status: 503,
     message: 'Not enough RAM budget, even after sleeping idle imps',
     data: { budgetMib: 8192, usedMib: 7680, requestedMib: 1024 },
   });
 
-  const port = buildImpPort({ url, token: 'not-a-real-token' });
-
-  expect(port.wakeImp('nixie-a')).rejects.toMatchObject({
+  expect(ctx.port.wakeImp('nixie-a')).rejects.toMatchObject({
     name: 'SandboxHostError',
     call: 'wake',
     code: 'RAM_BUDGET_EXCEEDED',
@@ -587,17 +379,17 @@ test("it fails a wake that impd refuses for memory with impd's code and message"
   });
 });
 
-test("it fails a create that impd refuses with impd's code and message", () => {
-  const url = startStubImpd({
+test("it fails a create that impd refuses with impd's code and message", async () => {
+  const ctx = await setupTest();
+
+  ctx.impd.fail('imps/create', {
     code: 'PRECONDITION_FAILED',
     status: 412,
     message: 'Not possible on this host',
   });
 
-  const port = buildImpPort({ url, token: 'not-a-real-token' });
-
   expect(
-    port.createImp({
+    ctx.port.createImp({
       name: 'nixie-a',
       image: 'nixie-guest',
       vcpus: 1,
@@ -615,42 +407,20 @@ test("it fails a create that impd refuses with impd's code and message", () => {
 });
 
 test('it passes on a failed wake that is no impd error, such as impd not answering', async () => {
-  const answerProbe = mock(() => new Response());
-  const probe = Bun.serve({ port: 0, hostname: '127.0.0.1', fetch: answerProbe });
-  const url = probe.url.href;
+  const ctx = await setupTest();
 
-  await probe.stop(true);
+  await ctx.impd.stop();
 
-  const port = buildImpPort({ url, token: 'not-a-real-token' });
-
-  expect(port.wakeImp('nixie-a')).rejects.toMatchObject({
+  expect(ctx.port.wakeImp('nixie-a')).rejects.toMatchObject({
     name: 'TypeError',
     code: 'ECONNREFUSED',
   });
 });
 
 test('it adds a secret as the custom kind with no field beyond its name, value and rules', async () => {
-  const bodies: unknown[] = [];
+  const ctx = await setupTest();
 
-  const recordBody = mock(async (request: Request) => {
-    const body: unknown = await request.json();
-
-    bodies.push(body);
-
-    return Response.json({ json: null });
-  });
-
-  const impd = Bun.serve({
-    port: 0,
-    hostname: '127.0.0.1',
-    fetch: recordBody,
-  });
-
-  onTestFinished(() => impd.stop(true));
-
-  const port = buildImpPort({ url: impd.url.href, token: 'not-a-real-token' });
-
-  await port.addSecret({
+  await ctx.port.addSecret({
     name: 'model-key',
     value: 'sk-not-a-real-key',
     host: 'api.example.com',
@@ -658,20 +428,20 @@ test('it adds a secret as the custom kind with no field beyond its name, value a
     scheme: 'raw',
   });
 
-  expect(bodies).toStrictEqual([
+  expect(
+    ctx.impd.calls.filter((call) => call.procedure === 'secrets/add').map((call) => call.input),
+  ).toStrictEqual([
     {
-      json: {
-        name: 'model-key',
-        kind: 'custom',
-        value: 'sk-not-a-real-key',
-        rules: [{ host: 'api.example.com', header: 'x-api-key', scheme: 'raw' }],
-      },
+      name: 'model-key',
+      kind: 'custom',
+      value: 'sk-not-a-real-key',
+      rules: [{ host: 'api.example.com', header: 'x-api-key', scheme: 'raw' }],
     },
   ]);
 });
 
 test('it adds a secret whose rule sends the host to an upstream origin', async () => {
-  const impd = await startTestImpd();
+  const impd = await startImpd();
 
   onTestFinished(impd.stop);
 
@@ -699,33 +469,27 @@ test('it adds a secret whose rule sends the host to an upstream origin', async (
 });
 
 test('it removes a secret by its name', async () => {
-  const bodies: unknown[] = [];
+  const ctx = await setupTest();
 
-  const recordBody = mock(async (request: Request) => {
-    const body: unknown = await request.json();
-
-    bodies.push(body);
-
-    return Response.json({ json: null });
+  await ctx.port.addSecret({
+    name: 'model-key',
+    value: 'sk-not-a-real-key',
+    host: 'api.example.com',
+    header: 'x-api-key',
+    scheme: 'raw',
   });
 
-  const impd = Bun.serve({
-    port: 0,
-    hostname: '127.0.0.1',
-    fetch: recordBody,
-  });
+  await ctx.port.removeSecret('model-key');
 
-  onTestFinished(() => impd.stop(true));
+  expect(
+    ctx.impd.calls.filter((call) => call.procedure === 'secrets/delete').map((call) => call.input),
+  ).toStrictEqual([{ name: 'model-key' }]);
 
-  const port = buildImpPort({ url: impd.url.href, token: 'not-a-real-token' });
-
-  await port.removeSecret('model-key');
-
-  expect(bodies).toStrictEqual([{ json: { name: 'model-key' } }]);
+  expect(ctx.port.readSecretHosts('model-key')).resolves.toBeNull();
 });
 
 test('it reads the upstream of each rule of a secret, and null for a rule with none', async () => {
-  const impd = await startTestImpd();
+  const impd = await startImpd();
 
   onTestFinished(impd.stop);
 
@@ -758,7 +522,7 @@ test('it reads the upstream of each rule of a secret, and null for a rule with n
 });
 
 test('it grants a model secret to a sandbox with the path filter of its own name and route when the gateway counts', async () => {
-  const impd = await startTestImpd();
+  const impd = await startImpd();
 
   const guested = attachTestGuests(impd, buildImpPort({ url: impd.url, token: TEST_TOKEN }));
 
@@ -801,7 +565,7 @@ test('it grants a model secret to a sandbox with the path filter of its own name
 });
 
 test('it grants a model secret with no filter when no gateway counts', async () => {
-  const impd = await startTestImpd();
+  const impd = await startImpd();
 
   const guested = attachTestGuests(impd, buildImpPort({ url: impd.url, token: TEST_TOKEN }));
 
@@ -840,7 +604,7 @@ test.each([
 ] as const)(
   'it retires %s when the gateway counts, so the caller replaces it',
   async (_name, isGatewayAtCreate, isRetired) => {
-    const impd = await startTestImpd();
+    const impd = await startImpd();
 
     const port = attachTestGuests(impd, buildImpPort({ url: impd.url, token: TEST_TOKEN }));
 
