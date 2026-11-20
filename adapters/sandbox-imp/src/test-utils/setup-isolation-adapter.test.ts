@@ -1,11 +1,20 @@
 import { expect, mock, onTestFinished, test } from 'bun:test';
 import { buildMockGrantSpec, buildMockSandboxSpec } from '@heynixie/sandbox/test-utils';
 import { makeGatedCall } from '@heynixie/testing';
+import { seedSecret } from './seed-secret';
 import { setupIsolationAdapter } from './setup-isolation-adapter';
 import { startFakeImp } from './start-fake-imp';
+import { startSharedImpd } from './start-impd';
 
 async function setupTest() {
-  return { imp: await startFakeImp() };
+  const started = await startSharedImpd();
+
+  return {
+    imp: await startFakeImp(started),
+    impd: started.impd,
+    readCalls: started.readCalls,
+    readInputs: started.readInputs,
+  };
 }
 
 test('it adds the model-host secret under the name it is given', async () => {
@@ -19,16 +28,21 @@ test('it adds the model-host secret under the name it is given', async () => {
     secret: 'nixie-test-a',
   });
 
-  expect(ctx.imp.calls).toStrictEqual(['secret nixie-test-a api.anthropic.com x-api-key raw']);
+  expect(ctx.readInputs('secrets/add')).toStrictEqual([
+    {
+      name: 'nixie-test-a',
+      kind: 'custom',
+      value: 'nixie-isolation-dummy',
+      rules: [{ host: 'api.anthropic.com', header: 'x-api-key', scheme: 'raw' }],
+    },
+  ]);
 });
 
 test('it destroys each imp it made, then removes the secret, when the test finishes', async () => {
   const ctx = await setupTest();
 
-  const removeSecret = mock((name: string) => {
-    ctx.imp.calls.push(`secret-remove ${name}`);
-
-    return Promise.resolve();
+  const removeSecret = mock(async (name: string) => {
+    await ctx.impd.client.secrets.delete({ name });
   });
 
   const isolation = await setupIsolationAdapter({
@@ -47,10 +61,15 @@ test('it destroys each imp it made, then removes the secret, when the test finis
   );
 
   onTestFinished(() => {
-    expect(ctx.imp.calls.slice(-3)).toStrictEqual([
-      `forward-stopped ${sandbox.id}`,
-      `remove ${sandbox.id}`,
-      'secret-remove nixie-test-a',
+    expect(
+      ctx
+        .readCalls()
+        .filter((call) => call.procedure !== 'secrets/list')
+        .slice(-2)
+        .map((call) => [call.procedure, call.input]),
+    ).toStrictEqual([
+      ['imps/destroy', { name: sandbox.id }],
+      ['secrets/delete', { name: 'nixie-test-a' }],
     ]);
   });
 });
@@ -74,18 +93,14 @@ test('it destroys an imp whose create was still running when the test finished',
   );
 
   onTestFinished(() => {
-    expect(ctx.imp.calls).toSatisfyAny((call: string) => call.startsWith('remove '));
+    expect(ctx.readCalls().map((call) => call.procedure)).toContain('imps/destroy');
   });
 });
 
 test('it destroys an imp whose failed create could not roll it back', async () => {
   const ctx = await setupTest();
 
-  ctx.imp.failRemove = true;
-
-  onTestFinished(() => {
-    ctx.imp.failRemove = false;
-  });
+  ctx.impd.fail('imps/destroy', { code: 'INTERNAL_SERVER_ERROR', status: 500 }, { times: 1 });
 
   const isolation = await setupIsolationAdapter({
     port: {
@@ -108,12 +123,9 @@ test('it destroys an imp whose failed create could not roll it back', async () =
   await created.catch(() => {});
 
   onTestFinished(() => {
-    const name = ctx.imp.created.at(0)?.name;
+    const name = ctx.readInputs('imps/create').at(0)?.['name'];
 
-    expect(ctx.imp.calls.filter((call) => call.startsWith('remove '))).toStrictEqual([
-      `remove ${name}`,
-      `remove ${name}`,
-    ]);
+    expect(ctx.readInputs('imps/destroy')).toStrictEqual([{ name }, { name }]);
   });
 
   expect(created).rejects.toThrow('INTERNAL_SERVER_ERROR');
@@ -147,7 +159,7 @@ test('it removes a secret whose add was still running when the test finished', a
 test('it refuses a secret name impd holds already', async () => {
   const ctx = await setupTest();
 
-  ctx.imp.secrets.set('nixie-test-a', ['api.anthropic.com']);
+  await seedSecret(ctx.impd, 'nixie-test-a', ['api.anthropic.com']);
 
   expect(
     setupIsolationAdapter({
@@ -165,7 +177,7 @@ test('it never removes a secret it did not add', async () => {
 
   const removeSecret = mock(() => Promise.resolve());
 
-  ctx.imp.secrets.set('nixie-test-a', ['api.anthropic.com']);
+  await seedSecret(ctx.impd, 'nixie-test-a', ['api.anthropic.com']);
 
   const failure = await setupIsolationAdapter({
     port: ctx.imp.port,

@@ -55,4 +55,5 @@ preload = [
   "./apps/web/src/mocks/test-preload.ts",
   "./adapters/definitions-repo-github/src/mocks/test-preload.ts",
   "./adapters/search-kagi/src/mocks/test-preload.ts",
+  "./adapters/sandbox-imp/src/mocks/test-preload.ts",
 ]

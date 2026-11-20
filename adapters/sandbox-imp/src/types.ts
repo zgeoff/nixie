@@ -23,7 +23,7 @@ export interface ImpPolicy {
   readonly allow: readonly string[];
 }
 
-export interface ImpCreateInput {
+interface ImpCreateInput {
   readonly name: string;
   readonly image: string;
   readonly vcpus: number;

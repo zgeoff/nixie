@@ -9,90 +9,82 @@ import {
   startStubToolEndpoint,
 } from '@heynixie/sandbox/test-utils';
 import { waitForCondition } from '@heynixie/testing';
-import type { TestImpdOptions } from '@impz/testing';
 import { TEST_TOKEN } from '@impz/testing';
 import invariant from 'tiny-invariant';
 import { attachTestGuests } from '../test-utils/attach-test-guests';
 import { setupIsolationAdapter } from '../test-utils/setup-isolation-adapter';
-import { startImpd } from '../test-utils/start-impd';
+import { seedImageOnce, startImpd, startSharedImpd } from '../test-utils/start-impd';
 import type { ModelGateway } from '../types';
 import { buildImpPort } from './build-imp-port';
 import { buildImpSandboxAdapter } from './build-imp-sandbox-adapter';
 
-async function setupTest(options: TestImpdOptions = {}) {
-  const impd = await startImpd(options);
+async function setupTest() {
+  const started = await startSharedImpd();
 
-  onTestFinished(impd.stop);
-
-  return { impd, port: buildImpPort({ url: impd.url, token: TEST_TOKEN }) };
+  return {
+    impd: started.impd,
+    readCalls: started.readCalls,
+    port: buildImpPort({ url: started.impd.url, token: TEST_TOKEN }),
+  };
 }
 
-test('it refuses to read the features of an impd whose version the client does not speak', async () => {
-  const ctx = await setupTest({ version: '0.39.0' });
+test.each(['0.39.0', '1.6.0', '8.0.0'])(
+  'it refuses to read the features of an impd of version %s, which imp client 7 does not speak',
+  async (version) => {
+    const impd = await startImpd({ version });
 
-  expect(ctx.port.readFeatures()).rejects.toThrow(/^impd 0\.39\.0 does not speak imp client /u);
-});
+    onTestFinished(impd.stop);
 
-test('it reads the features of an impd of major 3 with imp client 7', async () => {
-  const ctx = await setupTest({
-    version: '3.0.0',
-    features: { publicEgress: true, backupOptOut: true },
-  });
+    const port = buildImpPort({ url: impd.url, token: TEST_TOKEN });
 
-  expect(ctx.port.readFeatures()).resolves.toStrictEqual({
-    publicEgress: true,
-    isEgressEnforced: true,
-    hasBackupOptOut: true,
-  });
-});
+    expect(port.readFeatures()).rejects.toThrow(`impd ${version} does not speak imp client 7.`);
+  },
+);
 
-test('it reads the features of an impd of major 4 with imp client 7', async () => {
-  const ctx = await setupTest({
-    version: '4.0.0',
-    features: { publicEgress: true, backupOptOut: true },
-  });
+test.each(['2.0.3', '3.0.0', '4.0.0', '5.0.0', '6.0.0', '7.0.0'])(
+  'it reads the features of an impd of version %s with imp client 7',
+  async (version) => {
+    const impd = await startImpd({
+      version,
+      features: { publicEgress: true, backupOptOut: true },
+    });
 
-  expect(ctx.port.readFeatures()).resolves.toStrictEqual({
-    publicEgress: true,
-    isEgressEnforced: true,
-    hasBackupOptOut: true,
-  });
-});
+    onTestFinished(impd.stop);
 
-test('it reads the features of an impd of major 5 with imp client 7', async () => {
-  const ctx = await setupTest({
-    version: '5.0.0',
-    features: { publicEgress: true, backupOptOut: true },
-  });
+    const port = buildImpPort({ url: impd.url, token: TEST_TOKEN });
 
-  expect(ctx.port.readFeatures()).resolves.toStrictEqual({
-    publicEgress: true,
-    isEgressEnforced: true,
-    hasBackupOptOut: true,
-  });
-});
+    expect(port.readFeatures()).resolves.toStrictEqual({
+      publicEgress: true,
+      isEgressEnforced: true,
+      hasBackupOptOut: true,
+    });
+  },
+);
 
-test('it reads the features of an impd of major 6 with imp client 7', async () => {
-  const ctx = await setupTest({
-    version: '6.0.0',
-    features: { publicEgress: true, backupOptOut: true },
-  });
-
-  expect(ctx.port.readFeatures()).resolves.toStrictEqual({
-    publicEgress: true,
-    isEgressEnforced: true,
-    hasBackupOptOut: true,
-  });
-});
-
-test('it reads the features of a real impd that runs in the test process', async () => {
-  const impd = await startImpd();
+test('it reads the backup opt-out among the features of an impd that has it', async () => {
+  const impd = await startImpd({ version: '2.0.0', features: { backupOptOut: true } });
 
   onTestFinished(impd.stop);
 
   const port = buildImpPort({ url: impd.url, token: TEST_TOKEN });
 
-  expect(port.readFeatures()).resolves.toStrictEqual({
+  expect(port.readFeatures()).resolves.toMatchObject({ hasBackupOptOut: true });
+});
+
+test('it reads no backup opt-out from an impd that lacks it', async () => {
+  const impd = await startImpd({ version: '2.0.0', features: { backupOptOut: false } });
+
+  onTestFinished(impd.stop);
+
+  const port = buildImpPort({ url: impd.url, token: TEST_TOKEN });
+
+  expect(port.readFeatures()).resolves.toMatchObject({ hasBackupOptOut: false });
+});
+
+test('it reads the features of a real impd that runs in the test process', async () => {
+  const ctx = await setupTest();
+
+  expect(ctx.port.readFeatures()).resolves.toStrictEqual({
     publicEgress: true,
     isEgressEnforced: true,
     hasBackupOptOut: true,
@@ -100,25 +92,18 @@ test('it reads the features of a real impd that runs in the test process', async
 });
 
 test('it lets a conversation imp reach the tool endpoint through the reverse forward', async () => {
-  const impd = await startImpd();
+  const ctx = await setupTest();
 
-  const guested = attachTestGuests(impd, buildImpPort({ url: impd.url, token: TEST_TOKEN }));
+  const guested = attachTestGuests(ctx.impd, ctx.port);
 
-  // The adapter's cleanup removes its imps and its secret through impd, so impd stops after it.
-  const started = setupIsolationAdapter({
+  const isolation = await setupIsolationAdapter({
     port: guested.port,
     removeSecret: async (name) => {
-      await impd.client.secrets.delete({ name });
+      await ctx.impd.client.secrets.delete({ name });
     },
     publicEgress: null,
     secret: 'nixie-test-tide',
   });
-
-  onTestFinished(impd.stop);
-
-  const isolation = await started;
-
-  await impd.seedImage('tide-image');
 
   const sandbox = await isolation.createSandbox(
     buildMockSandboxSpec({
@@ -149,25 +134,18 @@ test('it lets a conversation imp reach the tool endpoint through the reverse for
 });
 
 test('it reopens the tool route of a conversation imp after a sleep and a wake', async () => {
-  const impd = await startImpd();
+  const ctx = await setupTest();
 
-  const guested = attachTestGuests(impd, buildImpPort({ url: impd.url, token: TEST_TOKEN }));
+  const guested = attachTestGuests(ctx.impd, ctx.port);
 
-  // The adapter's cleanup removes its imps and its secret through impd, so impd stops after it.
-  const started = setupIsolationAdapter({
+  const isolation = await setupIsolationAdapter({
     port: guested.port,
     removeSecret: async (name) => {
-      await impd.client.secrets.delete({ name });
+      await ctx.impd.client.secrets.delete({ name });
     },
     publicEgress: null,
     secret: 'nixie-test-tide',
   });
-
-  onTestFinished(impd.stop);
-
-  const isolation = await started;
-
-  await impd.seedImage('tide-image');
 
   const sandbox = await isolation.createSandbox(
     buildMockSandboxSpec({
@@ -203,31 +181,24 @@ test('it reopens the tool route of a conversation imp after a sleep and a wake',
 });
 
 test('it gets no sandbox whose imp impd lost, and records the sandbox destroyed', async () => {
-  const impd = await startImpd();
+  const ctx = await setupTest();
 
-  const guested = attachTestGuests(impd, buildImpPort({ url: impd.url, token: TEST_TOKEN }));
+  const guested = attachTestGuests(ctx.impd, ctx.port);
 
-  // The adapter's cleanup removes its imps and its secret through impd, so impd stops after it.
-  const started = setupIsolationAdapter({
+  const isolation = await setupIsolationAdapter({
     port: guested.port,
     removeSecret: async (name) => {
-      await impd.client.secrets.delete({ name });
+      await ctx.impd.client.secrets.delete({ name });
     },
     publicEgress: null,
     secret: 'nixie-test-reef',
   });
 
-  onTestFinished(impd.stop);
-
-  const isolation = await started;
-
-  await impd.seedImage('reef-image');
-
   const sandbox = await isolation.createSandbox(
     buildMockSandboxSpec({ kind: 'worker', image: 'reef-image', grants: [] }),
   );
 
-  await impd.client.imps.destroy({ name: sandbox.id });
+  await ctx.impd.client.imps.destroy({ name: sandbox.id });
 
   const found = await isolation.readSandbox(sandbox.id);
   const records = await isolation.readSandboxRecords();
@@ -241,85 +212,28 @@ test('it gets no sandbox whose imp impd lost, and records the sandbox destroyed'
 });
 
 test('it lists no sandbox whose imp impd lost', async () => {
-  const impd = await startImpd();
+  const ctx = await setupTest();
 
-  const guested = attachTestGuests(impd, buildImpPort({ url: impd.url, token: TEST_TOKEN }));
+  const guested = attachTestGuests(ctx.impd, ctx.port);
 
-  // The adapter's cleanup removes its imps and its secret through impd, so impd stops after it.
-  const started = setupIsolationAdapter({
+  const isolation = await setupIsolationAdapter({
     port: guested.port,
     removeSecret: async (name) => {
-      await impd.client.secrets.delete({ name });
+      await ctx.impd.client.secrets.delete({ name });
     },
     publicEgress: null,
     secret: 'nixie-test-reef',
   });
 
-  onTestFinished(impd.stop);
-
-  const isolation = await started;
-
-  await impd.seedImage('reef-image');
-
   const sandbox = await isolation.createSandbox(
     buildMockSandboxSpec({ kind: 'worker', image: 'reef-image', grants: [] }),
   );
 
-  await impd.client.imps.destroy({ name: sandbox.id });
+  await ctx.impd.client.imps.destroy({ name: sandbox.id });
 
   const listed = await isolation.listSandboxes(sandbox.spec.owner);
 
   expect(listed).toStrictEqual([]);
-});
-
-test('it reads the features of an impd of major 7 with imp client 7', async () => {
-  const ctx = await setupTest({
-    version: '7.0.0',
-    features: { publicEgress: true, backupOptOut: true },
-  });
-
-  expect(ctx.port.readFeatures()).resolves.toStrictEqual({
-    publicEgress: true,
-    isEgressEnforced: true,
-    hasBackupOptOut: true,
-  });
-});
-
-test('it refuses to read the features of an impd of major 8 with imp client 7', async () => {
-  const ctx = await setupTest({ version: '8.0.0' });
-
-  expect(ctx.port.readFeatures()).rejects.toThrow(/^impd 8\.0\.0 does not speak imp client 7\./u);
-});
-
-test('it refuses to read the features of an impd of major 1 with imp client 7', async () => {
-  const ctx = await setupTest({ version: '1.6.0' });
-
-  expect(ctx.port.readFeatures()).rejects.toThrow(/^impd 1\.6\.0 does not speak imp client 7\./u);
-});
-
-test('it reads the features of an impd of major 2 with imp client 7', async () => {
-  const ctx = await setupTest({
-    version: '2.0.3',
-    features: { publicEgress: true, backupOptOut: true },
-  });
-
-  expect(ctx.port.readFeatures()).resolves.toStrictEqual({
-    publicEgress: true,
-    isEgressEnforced: true,
-    hasBackupOptOut: true,
-  });
-});
-
-test('it reads the backup opt-out among the features of an impd that has it', async () => {
-  const ctx = await setupTest({ version: '2.0.0', features: { backupOptOut: true } });
-
-  expect(ctx.port.readFeatures()).resolves.toMatchObject({ hasBackupOptOut: true });
-});
-
-test('it reads no backup opt-out from an impd that lacks it', async () => {
-  const ctx = await setupTest({ version: '2.0.0', features: { backupOptOut: false } });
-
-  expect(ctx.port.readFeatures()).resolves.toMatchObject({ hasBackupOptOut: false });
 });
 
 test('it ends a feature read that impd never answers at the abort, after one call', async () => {
@@ -332,19 +246,20 @@ test('it ends a feature read that impd never answers at the abort, after one cal
   const read = ctx.port.readFeatures(stopped.signal);
 
   await waitForCondition(
-    () => ctx.impd.calls.filter((call) => call.procedure === 'system/info').length === 1,
+    () => ctx.readCalls().filter((call) => call.procedure === 'system/info').length === 1,
   );
 
   stopped.abort();
 
   expect(read).rejects.toMatchObject({ name: 'AbortError' });
-  expect(ctx.impd.calls.filter((call) => call.procedure === 'system/info')).toHaveLength(1);
+  expect(ctx.readCalls().filter((call) => call.procedure === 'system/info')).toHaveLength(1);
 });
 
 test('it reads an imp that impd shows with no backup flag as backed up', async () => {
   const ctx = await setupTest();
 
-  await ctx.impd.seedImage('tide-image');
+  await seedImageOnce(ctx.impd, 'tide-image');
+
   await ctx.impd.client.imps.create({ name: 'nixie-backed-up', image: 'tide-image' });
 
   expect(ctx.port.readImpBackup('nixie-backed-up')).resolves.toBeTrue();
@@ -353,7 +268,8 @@ test('it reads an imp that impd shows with no backup flag as backed up', async (
 test('it reads an imp created with backup off as left out of the backups', async () => {
   const ctx = await setupTest();
 
-  await ctx.impd.seedImage('tide-image');
+  await seedImageOnce(ctx.impd, 'tide-image');
+
   await ctx.impd.client.imps.create({ name: 'nixie-unbacked', image: 'tide-image', backup: false });
 
   expect(ctx.port.readImpBackup('nixie-unbacked')).resolves.toBeFalse();
@@ -413,11 +329,15 @@ test("it fails a create that impd refuses with impd's code and message", async (
 });
 
 test('it passes on a failed wake that is no impd error, such as impd not answering', async () => {
-  const ctx = await setupTest();
+  const impd = await startImpd();
 
-  await ctx.impd.stop();
+  onTestFinished(impd.stop);
 
-  expect(ctx.port.wakeImp('nixie-a')).rejects.toMatchObject({
+  const port = buildImpPort({ url: impd.url, token: TEST_TOKEN });
+
+  await impd.stop();
+
+  expect(port.wakeImp('nixie-a')).rejects.toMatchObject({
     name: 'TypeError',
     code: 'ECONNREFUSED',
   });
@@ -435,7 +355,10 @@ test('it adds a secret as the custom kind with no field beyond its name, value a
   });
 
   expect(
-    ctx.impd.calls.filter((call) => call.procedure === 'secrets/add').map((call) => call.input),
+    ctx
+      .readCalls()
+      .filter((call) => call.procedure === 'secrets/add')
+      .map((call) => call.input),
   ).toStrictEqual([
     {
       name: 'model-key',
@@ -447,13 +370,9 @@ test('it adds a secret as the custom kind with no field beyond its name, value a
 });
 
 test('it adds a secret whose rule sends the host to an upstream origin', async () => {
-  const impd = await startImpd();
+  const ctx = await setupTest();
 
-  onTestFinished(impd.stop);
-
-  const port = buildImpPort({ url: impd.url, token: TEST_TOKEN });
-
-  await port.addSecret({
+  await ctx.port.addSecret({
     name: 'nixie-test-relay',
     value: 'not-a-real-value',
     host: 'models.example.com',
@@ -462,7 +381,7 @@ test('it adds a secret whose rule sends the host to an upstream origin', async (
     upstream: 'http://10.1.2.3:18081',
   });
 
-  const secrets = await impd.client.secrets.list();
+  const secrets = await ctx.impd.client.secrets.list();
 
   expect(secrets.find((row) => row.name === 'nixie-test-relay')?.rules).toStrictEqual([
     {
@@ -488,20 +407,19 @@ test('it removes a secret by its name', async () => {
   await ctx.port.removeSecret('model-key');
 
   expect(
-    ctx.impd.calls.filter((call) => call.procedure === 'secrets/delete').map((call) => call.input),
+    ctx
+      .readCalls()
+      .filter((call) => call.procedure === 'secrets/delete')
+      .map((call) => call.input),
   ).toStrictEqual([{ name: 'model-key' }]);
 
   expect(ctx.port.readSecretHosts('model-key')).resolves.toBeNull();
 });
 
 test('it reads the upstream of each rule of a secret, and null for a rule with none', async () => {
-  const impd = await startImpd();
+  const ctx = await setupTest();
 
-  onTestFinished(impd.stop);
-
-  const port = buildImpPort({ url: impd.url, token: TEST_TOKEN });
-
-  await port.addSecret({
+  await ctx.port.addSecret({
     name: 'nixie-test-routed',
     value: 'not-a-real-value',
     host: 'models.example.com',
@@ -510,7 +428,7 @@ test('it reads the upstream of each rule of a secret, and null for a rule with n
     upstream: 'http://10.1.2.3:18081',
   });
 
-  await port.addSecret({
+  await ctx.port.addSecret({
     name: 'nixie-test-direct',
     value: 'not-a-real-value',
     host: 'models.example.com',
@@ -519,34 +437,28 @@ test('it reads the upstream of each rule of a secret, and null for a rule with n
   });
 
   const upstreams = await Promise.all([
-    port.readSecretUpstreams('nixie-test-routed'),
-    port.readSecretUpstreams('nixie-test-direct'),
-    port.readSecretUpstreams('nixie-test-absent'),
+    ctx.port.readSecretUpstreams('nixie-test-routed'),
+    ctx.port.readSecretUpstreams('nixie-test-direct'),
+    ctx.port.readSecretUpstreams('nixie-test-absent'),
   ]);
 
   expect(upstreams).toStrictEqual([['http://10.1.2.3:18081'], [null], null]);
 });
 
 test('it grants a model secret to a sandbox with the path filter of its own name and route when the gateway counts', async () => {
-  const impd = await startImpd();
+  const ctx = await setupTest();
 
-  const guested = attachTestGuests(impd, buildImpPort({ url: impd.url, token: TEST_TOKEN }));
+  const guested = attachTestGuests(ctx.impd, ctx.port);
 
-  const started = setupIsolationAdapter({
+  const isolation = await setupIsolationAdapter({
     port: guested.port,
     removeSecret: async (name) => {
-      await impd.client.secrets.delete({ name });
+      await ctx.impd.client.secrets.delete({ name });
     },
     publicEgress: null,
     secret: 'nixie-test-counted',
     modelGateway: { modelURL: 'http://10.1.2.3:18081' },
   });
-
-  onTestFinished(impd.stop);
-
-  const isolation = await started;
-
-  await impd.seedImage('tide-image');
 
   const sandbox = await isolation.createSandbox(
     buildMockSandboxSpec({
@@ -563,7 +475,7 @@ test('it grants a model secret to a sandbox with the path filter of its own name
     }),
   );
 
-  const grants = await impd.client.grants.details({ name: sandbox.id });
+  const grants = await ctx.impd.client.grants.details({ name: sandbox.id });
 
   expect(grants).toStrictEqual([
     { secret: 'nixie-test-counted', filter: { paths: [`/${sandbox.id}/claude-main/**`] } },
@@ -571,24 +483,18 @@ test('it grants a model secret to a sandbox with the path filter of its own name
 });
 
 test('it grants a model secret with no filter when no gateway counts', async () => {
-  const impd = await startImpd();
+  const ctx = await setupTest();
 
-  const guested = attachTestGuests(impd, buildImpPort({ url: impd.url, token: TEST_TOKEN }));
+  const guested = attachTestGuests(ctx.impd, ctx.port);
 
-  const started = setupIsolationAdapter({
+  const isolation = await setupIsolationAdapter({
     port: guested.port,
     removeSecret: async (name) => {
-      await impd.client.secrets.delete({ name });
+      await ctx.impd.client.secrets.delete({ name });
     },
     publicEgress: null,
     secret: 'nixie-test-plain',
   });
-
-  onTestFinished(impd.stop);
-
-  const isolation = await started;
-
-  await impd.seedImage('tide-image');
 
   const sandbox = await isolation.createSandbox(
     buildMockSandboxSpec({
@@ -599,7 +505,7 @@ test('it grants a model secret with no filter when no gateway counts', async () 
     }),
   );
 
-  const grants = await impd.client.grants.details({ name: sandbox.id });
+  const grants = await ctx.impd.client.grants.details({ name: sandbox.id });
 
   expect(grants).toStrictEqual([{ secret: 'nixie-test-plain', filter: null }]);
 });
@@ -610,18 +516,17 @@ test.each([
 ] as const)(
   'it retires %s when the gateway counts, so the caller replaces it',
   async (_name, isGatewayAtCreate, isRetired) => {
-    const impd = await startImpd();
+    const ctx = await setupTest();
 
-    const port = attachTestGuests(impd, buildImpPort({ url: impd.url, token: TEST_TOKEN }));
+    const guested = attachTestGuests(ctx.impd, ctx.port);
 
     const recorder = await setupTestRecorder();
     const directory = await mkdtemp(join(tmpdir(), 'nixie-kept-'));
 
     onTestFinished(() => rm(directory, { recursive: true, force: true }));
-    onTestFinished(impd.stop);
     startStubToolEndpoint(join(directory, 'tools.sock'));
 
-    await impd.client.secrets.add({
+    await ctx.impd.client.secrets.add({
       name: 'nixie-test-kept',
       kind: 'custom',
       value: 'not-a-real-value',
@@ -635,11 +540,9 @@ test.each([
       ],
     });
 
-    await impd.seedImage('tide-image');
-
     const buildAdapter = (modelGateway?: ModelGateway) =>
       buildImpSandboxAdapter({
-        port: port.port,
+        port: guested.port,
         recorder: recorder.recorder,
         config: { publicEgress: null },
         toolTarget: () => ({ path: join(directory, 'tools.sock') }),

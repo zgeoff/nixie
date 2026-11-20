@@ -36,3 +36,29 @@ test('it rejects started and exit, and errors the output, when the exec fails to
   expect(exec.exit).rejects.toThrow('the broker is not ready for this exec');
   expect(new Response(exec.stdout).text()).rejects.toThrow('the broker is not ready for this exec');
 });
+
+test('it starts an exec whose start is async only once that start resolves', async () => {
+  const start = Promise.withResolvers<void>();
+
+  const exec = createPendingExec(Promise.resolve(), async () => {
+    await start.promise;
+
+    return {
+      started: Promise.resolve('running'),
+      stdout: new Response('out').body ?? new ReadableStream(),
+      stderr: new Response('').body ?? new ReadableStream(),
+      write: () => Promise.resolve(),
+      closeStdin: () => Promise.resolve(),
+      sendSignal: () => {},
+      close: () => {},
+      exit: Promise.resolve({ code: 0, signal: null }),
+    };
+  });
+
+  const before = await Promise.race([exec.started, Promise.resolve('waiting')]);
+
+  start.resolve();
+
+  expect(before).toBe('waiting');
+  expect(exec.started).resolves.toBe('running');
+});

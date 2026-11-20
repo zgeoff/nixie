@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { startWriter } from '@heynixie/log';
 import type { LogFields } from '@heynixie/logger';
 import { buildImpSandboxAdapter } from '@heynixie/sandbox-imp';
-import { startFakeImp } from '@heynixie/sandbox-imp/test-utils';
+import { startFakeImp, startSharedImpd } from '@heynixie/sandbox-imp/test-utils';
 import { setupTestRecorder } from '@heynixie/sandbox/test-utils';
 import { buildTestClock, waitForCondition } from '@heynixie/testing';
 import { buildCleanup } from '../server/build-cleanup';
@@ -16,7 +16,8 @@ import { registerSandboxImages } from './register-sandbox-images';
 
 async function setupTest() {
   const recorder = await setupTestRecorder();
-  const imp = await startFakeImp();
+  const started = await startSharedImpd();
+  const imp = await startFakeImp(started);
 
   const adapter = buildImpSandboxAdapter({
     port: imp.port,
@@ -98,7 +99,7 @@ test('it marks the images added when impd holds each one and refuses every add',
   });
 
   expect(ctx.state.read().images).toStrictEqual({ isReady: true, reason: null });
-  expect(ctx.imp.calls).toStrictEqual([]);
+  expect(ctx.imp.imageAdds).toStrictEqual([]);
 
   expect(ctx.lines).toStrictEqual([
     { event: 'image.added', name: 'nixie-conversation-bbbbbbbbbbbb' },
@@ -172,9 +173,12 @@ test('it adds each manifest image to an impd that holds none, and reports the im
     return JSON.stringify(body).includes('"imp_host":{"isReady":true');
   });
 
-  expect(ctx.imp.calls).toStrictEqual([
-    `image nixie-conversation-bbbbbbbbbbbb ghcr.io/example/nixie-conversation@sha256:${'b'.repeat(64)}`,
-    `image nixie-fetch-cccccccccccc ghcr.io/example/nixie-fetch@sha256:${'c'.repeat(64)}`,
+  expect(ctx.imp.imageAdds.map((add) => [add.name, add.ref])).toStrictEqual([
+    [
+      'nixie-conversation-bbbbbbbbbbbb',
+      `ghcr.io/example/nixie-conversation@sha256:${'b'.repeat(64)}`,
+    ],
+    ['nixie-fetch-cccccccccccc', `ghcr.io/example/nixie-fetch@sha256:${'c'.repeat(64)}`],
   ]);
 
   expect([...ctx.imp.images]).toStrictEqual([

@@ -10,19 +10,27 @@ import {
   setupTestRecorder,
   startStubToolEndpoint,
 } from '@heynixie/sandbox/test-utils';
+import { TEST_TOKEN } from '@impz/testing';
 import invariant from 'tiny-invariant';
 import type { PublicEgressConfig } from '../config/parse-imp-config';
+import { buildUnenforcedEgressPort } from '../test-utils/build-unenforced-egress-port';
+import { rebindSecret, seedSecret } from '../test-utils/seed-secret';
 import { startFakeImp } from '../test-utils/start-fake-imp';
+import { startImpd, startSharedImpd } from '../test-utils/start-impd';
+import type { ImpPort } from '../types';
+import { buildImpPort } from './build-imp-port';
 import { buildImpSandboxAdapter } from './build-imp-sandbox-adapter';
 
 interface AdapterConfig {
   readonly publicEgress?: PublicEgressConfig | null;
   readonly toolTarget?: ToolTarget;
+  readonly port?: ImpPort;
 }
 
 async function setupTest() {
+  const started = await startSharedImpd();
   const recorder = await setupTestRecorder();
-  const imp = await startFakeImp();
+  const imp = await startFakeImp(started);
   const directory = await mkdtemp(join(tmpdir(), 'nixie-sandbox-imp-'));
 
   onTestFinished(() => rm(directory, { recursive: true, force: true }));
@@ -30,7 +38,7 @@ async function setupTest() {
 
   const buildAdapter = (config: AdapterConfig = {}) =>
     buildImpSandboxAdapter({
-      port: imp.port,
+      port: config.port ?? imp.port,
       recorder: recorder.recorder,
       config: { publicEgress: config.publicEgress ?? null },
       toolTarget: () => config.toolTarget ?? { path: join(directory, 'tools.sock') },
@@ -39,6 +47,9 @@ async function setupTest() {
 
   return {
     imp,
+    impd: started.impd,
+    readCalls: started.readCalls,
+    readInputs: started.readInputs,
     directory,
     adapter: buildAdapter(),
     buildAdapter,
@@ -52,7 +63,7 @@ test('it records every create, grant, sleep, wake and destroy', async () => {
 
   const grant = buildMockGrantSpec();
 
-  ctx.imp.secrets.set(grant.secret, [grant.host]);
+  await seedSecret(ctx.impd, grant.secret, [grant.host]);
 
   const sandbox = await ctx.adapter.create(
     buildMockSandboxSpec({ kind: 'conversation', grants: [grant] }),
@@ -80,7 +91,35 @@ test('it closes the forward for a sleep and opens it again after the wake', asyn
 
   const grant = buildMockGrantSpec();
 
-  ctx.imp.secrets.set(grant.secret, [grant.host]);
+  await seedSecret(ctx.impd, grant.secret, [grant.host]);
+
+  const sandbox = await ctx.adapter.create(
+    buildMockSandboxSpec({ kind: 'conversation', grants: [grant] }),
+  );
+
+  invariant(sandbox.suspension.kind === 'memory');
+
+  const opened = await ctx.imp.probeForward(sandbox.id);
+
+  await sandbox.suspension.sleep();
+
+  const closed = await ctx.imp.probeForward(sandbox.id);
+
+  await sandbox.suspension.wake();
+
+  const reopened = await ctx.imp.probeForward(sandbox.id);
+
+  expect([opened, closed, reopened]).toStrictEqual([true, false, true]);
+});
+
+test('it calls impd to create, grant, sleep, wake and destroy, in that order', async () => {
+  const ctx = await setupTest();
+
+  const grant = buildMockGrantSpec();
+
+  await seedSecret(ctx.impd, grant.secret, [grant.host]);
+
+  const before = ctx.readCalls().length;
 
   const sandbox = await ctx.adapter.create(
     buildMockSandboxSpec({ kind: 'conversation', grants: [grant] }),
@@ -92,17 +131,19 @@ test('it closes the forward for a sleep and opens it again after the wake', asyn
   await sandbox.suspension.wake();
   await sandbox.destroy();
 
-  expect(ctx.imp.calls).toStrictEqual([
-    `create ${sandbox.id}`,
-    `grant ${sandbox.id} ${grant.secret}`,
-    `wake ${sandbox.id}`,
-    `forward ${sandbox.id} ${ctx.imp.guestToolPort}`,
-    `forward-stopped ${sandbox.id}`,
-    `sleep ${sandbox.id}`,
-    `wake ${sandbox.id}`,
-    `forward ${sandbox.id} ${ctx.imp.guestToolPort}`,
-    `forward-stopped ${sandbox.id}`,
-    `remove ${sandbox.id}`,
+  const calls = ctx.readCalls().slice(before);
+
+  expect(
+    calls
+      .filter((call) => call.procedure.startsWith('imps/') || call.procedure === 'grants/add')
+      .map((call) => [call.procedure, call.input]),
+  ).toStrictEqual([
+    ['imps/create', expect.objectContaining({ name: sandbox.id })],
+    ['grants/add', { name: sandbox.id, secret: grant.secret }],
+    ['imps/wake', { name: sandbox.id, restartError: false }],
+    ['imps/sleep', { name: sandbox.id }],
+    ['imps/wake', { name: sandbox.id, restartError: false }],
+    ['imps/destroy', { name: sandbox.id }],
   ]);
 });
 
@@ -129,7 +170,7 @@ test('it creates the imp with policy none, out of every backup, and leaves the g
 
   const grant = buildMockGrantSpec();
 
-  ctx.imp.secrets.set(grant.secret, [grant.host]);
+  await seedSecret(ctx.impd, grant.secret, [grant.host]);
 
   const sandbox = await ctx.adapter.create(
     buildMockSandboxSpec({
@@ -140,7 +181,7 @@ test('it creates the imp with policy none, out of every backup, and leaves the g
     }),
   );
 
-  expect(ctx.imp.created).toStrictEqual([
+  expect(ctx.readInputs('imps/create')).toStrictEqual([
     {
       name: sandbox.id,
       image: 'conversation',
@@ -158,7 +199,7 @@ test('it creates a worker imp from the real spec builder with policy none and no
 
   const modelGrant = buildMockGrantSpec();
 
-  ctx.imp.secrets.set(modelGrant.secret, [modelGrant.host]);
+  await seedSecret(ctx.impd, modelGrant.secret, [modelGrant.host]);
 
   const spec = buildSandboxSpec({
     kind: 'worker',
@@ -171,7 +212,7 @@ test('it creates a worker imp from the real spec builder with policy none and no
 
   const sandbox = await ctx.adapter.create(spec);
 
-  expect(ctx.imp.created).toStrictEqual([
+  expect(ctx.readInputs('imps/create')).toStrictEqual([
     {
       name: sandbox.id,
       image: 'worker',
@@ -183,7 +224,9 @@ test('it creates a worker imp from the real spec builder with policy none and no
     },
   ]);
 
-  expect(ctx.imp.calls).toContain(`grant ${sandbox.id} ${modelGrant.secret}`);
+  expect(ctx.readInputs('grants/add')).toStrictEqual([
+    { name: sandbox.id, secret: modelGrant.secret },
+  ]);
 });
 
 test.each([
@@ -194,14 +237,13 @@ test.each([
   async (_name, shape) => {
     const ctx = await setupTest();
 
-    ctx.imp.features = { publicEgress: true, isEgressEnforced: false, hasBackupOptOut: true };
+    const adapter = ctx.buildAdapter({ port: buildUnenforcedEgressPort(ctx.imp.port) });
 
-    expect(ctx.adapter.create(buildMockSandboxSpec({ ...shape, grants: [] }))).rejects.toThrow(
+    expect(adapter.create(buildMockSandboxSpec({ ...shape, grants: [] }))).rejects.toThrow(
       new SandboxSpecRefusedError('closed egress on an impd that does not enforce it'),
     );
 
-    expect(ctx.imp.calls).toStrictEqual([]);
-    expect(ctx.imp.created).toStrictEqual([]);
+    expect(ctx.readCalls().map((call) => call.procedure)).not.toContain('imps/create');
   },
 );
 
@@ -218,30 +260,30 @@ test('it refuses a worker spec with wider egress than none', async () => {
     ),
   ).rejects.toThrow(SandboxSpecRefusedError);
 
-  expect(ctx.imp.created).toStrictEqual([]);
+  expect(ctx.readCalls().map((call) => call.procedure)).not.toContain('imps/create');
 });
 
 test('it refuses a sandbox on an impd that would back it up', async () => {
   const ctx = await setupTest();
+  const impd = await startImpd({ features: { backupOptOut: false } });
 
-  ctx.imp.features = { publicEgress: true, isEgressEnforced: true, hasBackupOptOut: false };
+  onTestFinished(impd.stop);
 
-  expect(ctx.adapter.create(buildMockSandboxSpec({ grants: [] }))).rejects.toThrow(
+  const adapter = ctx.buildAdapter({ port: buildImpPort({ url: impd.url, token: TEST_TOKEN }) });
+
+  expect(adapter.create(buildMockSandboxSpec({ grants: [] }))).rejects.toThrow(
     new SandboxSpecRefusedError('a sandbox on an impd that would back it up'),
   );
 
-  expect(ctx.imp.calls).toStrictEqual([]);
+  expect(impd.calls.map((call) => call.procedure)).not.toContain('imps/create');
 });
 
 test('it lists a sandbox whose imp impd still backs up as retired', async () => {
   const ctx = await setupTest();
   const sandbox = await ctx.adapter.create(buildMockSandboxSpec({ grants: [] }));
 
-  const created = ctx.imp.created.at(0);
-
-  invariant(created);
-
-  ctx.imp.created[0] = { ...created, backup: true };
+  await ctx.impd.client.imps.destroy({ name: sandbox.id });
+  await ctx.impd.client.imps.create({ name: sandbox.id, image: sandbox.spec.image });
 
   const listed = await ctx.adapter.list(sandbox.spec.owner);
 
@@ -261,7 +303,7 @@ test('it lists a sandbox whose grant a rebind revoked as retired, with no gatewa
 
   const grant = buildMockGrantSpec();
 
-  ctx.imp.secrets.set(grant.secret, [grant.host]);
+  await seedSecret(ctx.impd, grant.secret, [grant.host]);
 
   const sandbox = await ctx.adapter.create(
     buildMockSandboxSpec({ kind: 'conversation', grants: [grant] }),
@@ -269,7 +311,7 @@ test('it lists a sandbox whose grant a rebind revoked as retired, with no gatewa
 
   const before = await ctx.adapter.list(sandbox.spec.owner);
 
-  ctx.imp.revokeSecretGrants(grant.secret);
+  await rebindSecret(ctx.impd, grant.secret, [grant.host]);
 
   const after = await ctx.adapter.list(sandbox.spec.owner);
 
@@ -282,13 +324,13 @@ test('it gets a sandbox whose grant a rebind revoked as retired, with no gateway
 
   const grant = buildMockGrantSpec();
 
-  ctx.imp.secrets.set(grant.secret, [grant.host]);
+  await seedSecret(ctx.impd, grant.secret, [grant.host]);
 
   const sandbox = await ctx.adapter.create(
     buildMockSandboxSpec({ kind: 'conversation', grants: [grant] }),
   );
 
-  ctx.imp.revokeSecretGrants(grant.secret);
+  await rebindSecret(ctx.impd, grant.secret, [grant.host]);
 
   const found = await ctx.adapter.read(sandbox.id);
 
@@ -299,11 +341,8 @@ test('it gets a sandbox whose imp impd still backs up as retired', async () => {
   const ctx = await setupTest();
   const sandbox = await ctx.adapter.create(buildMockSandboxSpec({ grants: [] }));
 
-  const created = ctx.imp.created.at(0);
-
-  invariant(created);
-
-  ctx.imp.created[0] = { ...created, backup: true };
+  await ctx.impd.client.imps.destroy({ name: sandbox.id });
+  await ctx.impd.client.imps.create({ name: sandbox.id, image: sandbox.spec.image });
 
   const found = await ctx.adapter.read(sandbox.id);
 
@@ -315,7 +354,7 @@ test('it gives a coding session a box policy with its hosts beside its grant', a
 
   const grant = buildMockGrantSpec();
 
-  ctx.imp.secrets.set(grant.secret, [grant.host]);
+  await seedSecret(ctx.impd, grant.secret, [grant.host]);
 
   await ctx.adapter.create(
     buildMockSandboxSpec({
@@ -325,7 +364,7 @@ test('it gives a coding session a box policy with its hosts beside its grant', a
     }),
   );
 
-  expect(ctx.imp.created.at(0)?.policy).toStrictEqual({
+  expect(ctx.readInputs('imps/create').at(0)?.['policy']).toStrictEqual({
     mode: 'box',
     allow: ['github.com', '*.npmjs.org'],
   });
@@ -342,7 +381,10 @@ test('it makes a public imp with imp public policy', async () => {
     buildMockSandboxSpec({ kind: 'fetch', egress: { kind: 'public' }, grants: [] }),
   );
 
-  expect(ctx.imp.created.at(0)?.policy).toStrictEqual({ mode: 'public', allow: [] });
+  expect(ctx.readInputs('imps/create').at(0)?.['policy']).toStrictEqual({
+    mode: 'public',
+    allow: [],
+  });
 });
 
 test('it refuses public egress on an impd that does not enforce it', async () => {
@@ -350,9 +392,8 @@ test('it refuses public egress on an impd that does not enforce it', async () =>
 
   const adapter = ctx.buildAdapter({
     publicEgress: { hostAddresses: ['203.0.113.7/24'], egressDeny: ['198.51.100.0/24'] },
+    port: buildUnenforcedEgressPort(ctx.imp.port),
   });
-
-  ctx.imp.features = { publicEgress: true, isEgressEnforced: false, hasBackupOptOut: true };
 
   expect(
     adapter.create(buildMockSandboxSpec({ kind: 'fetch', egress: { kind: 'public' }, grants: [] })),
@@ -376,7 +417,7 @@ test('it refuses public egress without the deployment host addresses', async () 
 test('it refuses a grant whose secret covers another host beside its own', async () => {
   const ctx = await setupTest();
 
-  ctx.imp.secrets.set('model-wide', ['api.anthropic.com', 'example.com']);
+  await seedSecret(ctx.impd, 'model-wide', ['api.anthropic.com', 'example.com']);
 
   const grant = buildMockGrantSpec({ secret: 'model-wide', host: 'api.anthropic.com' });
 
@@ -406,7 +447,11 @@ test('it refuses a grant whose secret impd does not hold', async () => {
 test('it records a failed create as destroyed and removes the imp', async () => {
   const ctx = await setupTest();
 
-  ctx.imp.failCreate = true;
+  ctx.impd.fail('imps/create', {
+    code: 'RAM_BUDGET_EXCEEDED',
+    status: 503,
+    message: 'Not enough RAM budget, even after sleeping idle imps',
+  });
 
   expect(
     ctx.adapter.create(buildMockSandboxSpec({ owner: 'conversation:step-7' })),
@@ -424,7 +469,16 @@ test('it records a failed create as destroyed and removes the imp', async () => 
     ['sandbox.destroyed', 'create_failed'],
   ]);
 
-  expect(ctx.imp.calls).toStrictEqual([`create ${id}`, `remove ${id}`]);
+  expect(
+    ctx
+      .readCalls()
+      .filter((call) => call.procedure.startsWith('imps/'))
+      .map((call) => [call.procedure, call.input]),
+  ).toStrictEqual([
+    ['imps/create', expect.objectContaining({ name: id })],
+    ['imps/destroy', { name: id }],
+  ]);
+
   expect(listed).toStrictEqual([]);
 });
 
@@ -433,7 +487,7 @@ test('it cuts exec output past 1 MiB, with the broker required and its NO_PROXY 
 
   const grant = buildMockGrantSpec({ env: { ANTHROPIC_API_KEY: 'broker-placeholder' } });
 
-  ctx.imp.secrets.set(grant.secret, [grant.host]);
+  await seedSecret(ctx.impd, grant.secret, [grant.host]);
 
   const sandbox = await ctx.adapter.create(
     buildMockSandboxSpec({ kind: 'conversation', grants: [grant] }),
@@ -563,7 +617,7 @@ test('it runs the session copy calls on an imp whose grant a rebind revoked', as
 
   const grant = buildMockGrantSpec();
 
-  ctx.imp.secrets.set(grant.secret, [grant.host]);
+  await seedSecret(ctx.impd, grant.secret, [grant.host]);
 
   const sandbox = await ctx.adapter.create(
     buildMockSandboxSpec({ kind: 'conversation', grants: [grant] }),
@@ -573,7 +627,7 @@ test('it runs the session copy calls on an imp whose grant a rebind revoked', as
 
   await sandbox.copyIn([{ path, content: new TextEncoder().encode('turn one') }]);
 
-  ctx.imp.revokeSecretGrants(grant.secret);
+  await rebindSecret(ctx.impd, grant.secret, [grant.host]);
 
   const listed = await sandbox.readFilePaths(join(ctx.directory, 'work'));
   const copied = await sandbox.copyOut([path]);
@@ -597,7 +651,7 @@ test('it reads the memory kills of an imp whose grant a rebind revoked', async (
 
   const grant = buildMockGrantSpec();
 
-  ctx.imp.secrets.set(grant.secret, [grant.host]);
+  await seedSecret(ctx.impd, grant.secret, [grant.host]);
 
   const sandbox = await ctx.adapter.create(
     buildMockSandboxSpec({ kind: 'conversation', grants: [grant] }),
@@ -605,7 +659,7 @@ test('it reads the memory kills of an imp whose grant a rebind revoked', async (
 
   ctx.imp.memoryKills = 2;
 
-  ctx.imp.revokeSecretGrants(grant.secret);
+  await rebindSecret(ctx.impd, grant.secret, [grant.host]);
 
   expect(sandbox.readMemoryKills()).resolves.toStrictEqual({ kind: 'count', kills: 2 });
 });
@@ -615,7 +669,7 @@ test('it runs the file commands of a granted imp with no grant placeholders in t
 
   const grant = buildMockGrantSpec();
 
-  ctx.imp.secrets.set(grant.secret, [grant.host]);
+  await seedSecret(ctx.impd, grant.secret, [grant.host]);
 
   const sandbox = await ctx.adapter.create(
     buildMockSandboxSpec({ kind: 'conversation', grants: [grant] }),
@@ -798,7 +852,11 @@ test('it lets a restarted adapter list and destroy what the last one made, for r
 
   expect(orphan?.spec).toStrictEqual(spec);
   expect(found).toBeNull();
-  expect(ctx.imp.calls.at(-1)).toBe(`remove ${made.id}`);
+
+  expect(ctx.readCalls().at(-1)).toMatchObject({
+    procedure: 'imps/destroy',
+    input: { name: made.id },
+  });
 });
 
 test('it rejects the exit of a session that impd loses after a stop', async () => {
@@ -864,9 +922,9 @@ test('it refuses to copy out a guest file past 64 MiB', async () => {
 });
 
 test.each([
-  ['bearer', 'secret model-chat-1 gateway.example authorization bearer'],
-  ['x-api-key', 'secret model-chat-1 gateway.example x-api-key raw'],
-] as const)('it stores a %s secret for its one host', async (header, call) => {
+  ['bearer', 'authorization', 'bearer'],
+  ['x-api-key', 'x-api-key', 'raw'],
+] as const)('it stores a %s secret for its one host', async (header, impdHeader, scheme) => {
   const ctx = await setupTest();
 
   await ctx.adapter.addSecret({
@@ -876,13 +934,20 @@ test.each([
     header,
   });
 
-  expect(ctx.imp.calls).toStrictEqual([call]);
+  expect(ctx.readInputs('secrets/add')).toStrictEqual([
+    {
+      name: 'model-chat-1',
+      kind: 'custom',
+      value: 'not-a-real-key',
+      rules: [{ host: 'gateway.example', header: impdHeader, scheme }],
+    },
+  ]);
 });
 
 test('it stores no secret when one already has the name', async () => {
   const ctx = await setupTest();
 
-  ctx.imp.secrets.set('model-default', ['api.anthropic.com']);
+  await seedSecret(ctx.impd, 'model-default', ['api.anthropic.com']);
 
   await ctx.adapter.addSecret({
     name: 'model-default',
@@ -891,7 +956,9 @@ test('it stores no secret when one already has the name', async () => {
     header: 'x-api-key',
   });
 
-  expect(ctx.imp.calls).toStrictEqual([]);
+  expect(
+    ctx.readInputs('secrets/add').filter((input) => input['value'] === 'not-a-real-key'),
+  ).toStrictEqual([]);
 });
 
 test('it adds an image again before a create when impd removed it after the add', async () => {
@@ -908,11 +975,20 @@ test('it adds an image again before a create when impd removed it after the add'
     buildMockSandboxSpec({ kind: 'code_run', image: 'nixie-fetch-aaaaaaaaaaaa' }),
   );
 
-  expect(ctx.imp.calls.slice(0, 3)).toStrictEqual([
-    `image nixie-fetch-aaaaaaaaaaaa ghcr.io/example/nixie-fetch@sha256:${'a'.repeat(64)}`,
-    `image nixie-fetch-aaaaaaaaaaaa ghcr.io/example/nixie-fetch@sha256:${'a'.repeat(64)}`,
-    `create ${sandbox.id}`,
+  const calls = ctx.readCalls();
+  const createIndex = calls.findIndex((call) => call.procedure === 'imps/create');
+
+  expect(ctx.imp.imageAdds.map((add) => [add.name, add.ref])).toStrictEqual([
+    ['nixie-fetch-aaaaaaaaaaaa', `ghcr.io/example/nixie-fetch@sha256:${'a'.repeat(64)}`],
+    ['nixie-fetch-aaaaaaaaaaaa', `ghcr.io/example/nixie-fetch@sha256:${'a'.repeat(64)}`],
   ]);
+
+  expect(ctx.imp.imageAdds.map((add) => add.callsBefore <= createIndex)).toStrictEqual([
+    true,
+    true,
+  ]);
+
+  expect(ctx.readInputs('imps/create')).toMatchObject([{ name: sandbox.id }]);
 });
 
 test('it adds no image before a create when impd holds the image it added', async () => {
@@ -927,10 +1003,15 @@ test('it adds no image before a create when impd holds the image it added', asyn
     buildMockSandboxSpec({ kind: 'code_run', image: 'nixie-fetch-aaaaaaaaaaaa' }),
   );
 
-  expect(ctx.imp.calls.slice(0, 2)).toStrictEqual([
-    `image nixie-fetch-aaaaaaaaaaaa ghcr.io/example/nixie-fetch@sha256:${'a'.repeat(64)}`,
-    `create ${sandbox.id}`,
+  const calls = ctx.readCalls();
+  const createIndex = calls.findIndex((call) => call.procedure === 'imps/create');
+
+  expect(ctx.imp.imageAdds.map((add) => [add.name, add.ref])).toStrictEqual([
+    ['nixie-fetch-aaaaaaaaaaaa', `ghcr.io/example/nixie-fetch@sha256:${'a'.repeat(64)}`],
   ]);
+
+  expect(ctx.imp.imageAdds.map((add) => add.callsBefore <= createIndex)).toStrictEqual([true]);
+  expect(ctx.readInputs('imps/create')).toMatchObject([{ name: sandbox.id }]);
 });
 
 test('it adds an image by its reference under its name', async () => {
@@ -941,8 +1022,8 @@ test('it adds an image by its reference under its name', async () => {
     ref: `ghcr.io/example/nixie-fetch@sha256:${'a'.repeat(64)}`,
   });
 
-  expect(ctx.imp.calls).toStrictEqual([
-    `image nixie-fetch-aaaaaaaaaaaa ghcr.io/example/nixie-fetch@sha256:${'a'.repeat(64)}`,
+  expect(ctx.imp.imageAdds.map((add) => [add.name, add.ref])).toStrictEqual([
+    ['nixie-fetch-aaaaaaaaaaaa', `ghcr.io/example/nixie-fetch@sha256:${'a'.repeat(64)}`],
   ]);
 });
 
@@ -959,7 +1040,7 @@ test('it adds nothing when impd holds the name at the same digest', async () => 
     ref: `ghcr.io/example/nixie-fetch@sha256:${'a'.repeat(64)}`,
   });
 
-  expect(ctx.imp.calls).toStrictEqual([]);
+  expect(ctx.imp.imageAdds).toStrictEqual([]);
 });
 
 test('it adds nothing when impd built the name from a reference pinned at the same digest', async () => {
@@ -975,7 +1056,7 @@ test('it adds nothing when impd built the name from a reference pinned at the sa
     ref: `ghcr.io/example/nixie-fetch@sha256:${'a'.repeat(64)}`,
   });
 
-  expect(ctx.imp.calls).toStrictEqual([]);
+  expect(ctx.imp.imageAdds).toStrictEqual([]);
 });
 
 test('it adds nothing, and succeeds, when impd holds the name and would refuse an add', async () => {
@@ -995,7 +1076,7 @@ test('it adds nothing, and succeeds, when impd holds the name and would refuse a
     }),
   ).toResolve();
 
-  expect(ctx.imp.calls).toStrictEqual([]);
+  expect(ctx.imp.imageAdds).toStrictEqual([]);
 });
 
 test('it names the image and its reference when impd refuses the add', async () => {
@@ -1086,7 +1167,7 @@ test('it reports the runtime ready while impd answers', async () => {
 test('it reports the runtime unready when impd does not answer', async () => {
   const ctx = await setupTest();
 
-  ctx.imp.failFeatures = true;
+  ctx.impd.fail('system/info', { status: 503, body: {} });
 
   const report = await ctx.adapter.checkRuntime();
 

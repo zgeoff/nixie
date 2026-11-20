@@ -3,10 +3,12 @@ import { buildMockSandboxSpec, setupTestRecorder } from '@heynixie/sandbox/test-
 import { buildImpSandboxAdapter } from '../sandbox/build-imp-sandbox-adapter';
 import { removeOwnedSandboxes } from './remove-owned-sandboxes';
 import { startFakeImp } from './start-fake-imp';
+import { startSharedImpd } from './start-impd';
 
 async function setupTest() {
+  const started = await startSharedImpd();
   const recorder = await setupTestRecorder();
-  const imp = await startFakeImp();
+  const imp = await startFakeImp(started);
 
   const adapter = buildImpSandboxAdapter({
     port: imp.port,
@@ -16,7 +18,7 @@ async function setupTest() {
     guestToolPort: imp.guestToolPort,
   });
 
-  return { imp, adapter };
+  return { imp, adapter, impd: started.impd, readInputs: started.readInputs };
 }
 
 test('it destroys every sandbox of each owner it is given', async () => {
@@ -32,9 +34,9 @@ test('it destroys every sandbox of each owner it is given', async () => {
 
   await removeOwnedSandboxes(ctx.adapter, ['conversation:step-7', 'code_run:step-8']);
 
-  expect(ctx.imp.calls.filter((call) => call.startsWith('remove '))).toStrictEqual([
-    `remove ${first.id}`,
-    `remove ${second.id}`,
+  expect(ctx.readInputs('imps/destroy').map((input) => input['name'])).toStrictEqual([
+    first.id,
+    second.id,
   ]);
 });
 
@@ -50,7 +52,7 @@ test('it never removes a sandbox of another owner', async () => {
   const left = await ctx.adapter.list('code_run:step-8');
 
   expect(left).toMatchObject([{ id: other.id }]);
-  expect(ctx.imp.calls).not.toContain(`remove ${other.id}`);
+  expect(ctx.readInputs('imps/destroy').map((input) => input['name'])).toStrictEqual([]);
 });
 
 test('it tries every destroy, then rejects with each failure', async () => {
@@ -64,7 +66,7 @@ test('it tries every destroy, then rejects with each failure', async () => {
     buildMockSandboxSpec({ owner: 'conversation:step-7', toolRoute: false }),
   );
 
-  ctx.imp.failRemove = true;
+  ctx.impd.fail('imps/destroy', { code: 'INTERNAL_SERVER_ERROR', status: 500 });
 
   const failure = await removeOwnedSandboxes(ctx.adapter, ['conversation:step-7']).catch(
     (error: unknown) => error,
@@ -80,8 +82,8 @@ test('it tries every destroy, then rejects with each failure', async () => {
     ],
   });
 
-  expect(ctx.imp.calls.filter((call) => call.startsWith('remove '))).toStrictEqual([
-    `remove ${first.id}`,
-    `remove ${second.id}`,
+  expect(ctx.readInputs('imps/destroy').map((input) => input['name'])).toStrictEqual([
+    first.id,
+    second.id,
   ]);
 });

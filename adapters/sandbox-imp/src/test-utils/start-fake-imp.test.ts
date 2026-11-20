@@ -1,108 +1,34 @@
 import { expect, onTestFinished, test } from 'bun:test';
 import { memoryKillsArgv } from '../memory/memory-kills-argv';
+import { rebindSecret, seedSecret } from './seed-secret';
 import { startFakeImp } from './start-fake-imp';
+import { startSharedImpd } from './start-impd';
 
-test('it holds no secret until a test adds one', async () => {
-  const imp = await startFakeImp();
-  const hosts = await imp.port.readSecretHosts('model-default');
+async function setupTest() {
+  const started = await startSharedImpd();
+  const imp = await startFakeImp(started);
 
-  expect(hosts).toBeNull();
-});
-
-test('it stores a secret for its one host and logs the call', async () => {
-  const imp = await startFakeImp();
-
-  await imp.port.addSecret({
-    name: 'model-chat-1',
-    value: 'not-a-real-key',
-    host: 'gateway.example',
-    header: 'authorization',
-    scheme: 'bearer',
+  await imp.port.createImp({
+    name: 'harbour',
+    image: 'harbour-image',
+    vcpus: 1,
+    memoryMib: 512,
+    diskMib: 1024,
+    policy: { mode: 'none', allow: [] },
+    backup: false,
   });
 
-  const hosts = await imp.port.readSecretHosts('model-chat-1');
-
-  expect(hosts).toStrictEqual(['gateway.example']);
-  expect(imp.calls).toStrictEqual(['secret model-chat-1 gateway.example authorization bearer']);
-});
-
-test('it logs a create, then refuses it as impd does without the RAM, when told to', async () => {
-  const imp = await startFakeImp();
-
-  imp.failCreate = true;
-
-  expect(
-    imp.port.createImp({
-      name: 'nixie-a',
-      image: 'conversation',
-      vcpus: 1,
-      memoryMib: 512,
-      diskMib: 1024,
-      policy: { mode: 'none', allow: [] },
-      backup: false,
-    }),
-  ).rejects.toThrow('RAM_BUDGET_EXCEEDED');
-
-  expect(imp.calls).toStrictEqual(['create nixie-a']);
-  expect(imp.created).toStrictEqual([]);
-});
-
-test('it reads the backup flag of the newest create of the name', async () => {
-  const imp = await startFakeImp();
-
-  imp.created.push(
-    {
-      name: 'nixie-a',
-      image: 'conversation',
-      vcpus: 1,
-      memoryMib: 512,
-      diskMib: 1024,
-      policy: { mode: 'none', allow: [] },
-      backup: true,
-    },
-    {
-      name: 'nixie-a',
-      image: 'conversation',
-      vcpus: 1,
-      memoryMib: 512,
-      diskMib: 1024,
-      policy: { mode: 'none', allow: [] },
-      backup: false,
-    },
-  );
-
-  expect(imp.port.readImpBackup('nixie-a')).resolves.toBeFalse();
-});
-
-test('it reads no backup flag for a name it never created', async () => {
-  const imp = await startFakeImp();
-
-  expect(imp.port.readImpBackup('nixie-a')).resolves.toBeNull();
-});
-
-test('it logs a remove, then fails it, when told to', async () => {
-  const imp = await startFakeImp();
-
-  imp.failRemove = true;
-
-  expect(imp.port.removeImp('nixie-a')).rejects.toThrow('INTERNAL_SERVER_ERROR');
-  expect(imp.calls).toStrictEqual(['remove nixie-a']);
-});
-
-test('it refuses the features call, as an impd that does not answer, when told to', async () => {
-  const imp = await startFakeImp();
-
-  imp.failFeatures = true;
-
-  expect(imp.port.readFeatures()).rejects.toThrow('connect ECONNREFUSED');
-});
+  return { imp, impd: started.impd };
+}
 
 test('it refuses an exec that requires the broker and replaces a broker variable', async () => {
-  const imp = await startFakeImp();
+  const ctx = await setupTest();
 
-  await imp.port.addGrant('nixie-a', 'model-default');
+  await seedSecret(ctx.impd, 'model-default', ['api.anthropic.com']);
 
-  const exec = await imp.port.openExec('nixie-a', ['true'], {
+  await ctx.imp.port.addGrant('harbour', 'model-default');
+
+  const exec = await ctx.imp.port.openExec('harbour', ['true'], {
     env: { NO_PROXY: 'example.com' },
     killGraceMs: 5000,
     requireBroker: true,
@@ -114,13 +40,13 @@ test('it refuses an exec that requires the broker and replaces a broker variable
 });
 
 test('it returns an exec handle during an idle sleep and starts the exec once the sleep ends', async () => {
-  const imp = await startFakeImp();
+  const ctx = await setupTest();
 
   const snapshot = Promise.withResolvers<void>();
 
-  void imp.startIdleSleep('nixie-a', snapshot.promise);
+  void ctx.imp.startIdleSleep('harbour', snapshot.promise);
 
-  const exec = await imp.port.openExec('nixie-a', ['true'], {
+  const exec = await ctx.imp.port.openExec('harbour', ['true'], {
     env: {},
     killGraceMs: 5000,
     requireBroker: false,
@@ -133,25 +59,21 @@ test('it returns an exec handle during an idle sleep and starts the exec once th
   await exec.started;
 
   expect(before).toBe('starting');
-
-  expect(imp.calls).toStrictEqual([
-    'idle-sleep nixie-a',
-    'wait exec nixie-a',
-    'slept nixie-a',
-    'woken by exec nixie-a',
-  ]);
+  expect(ctx.imp.events).toStrictEqual(['wait exec harbour', 'woken by exec harbour']);
 });
 
 test('it runs an exec with the broker variables when the exec requires the broker', async () => {
-  const imp = await startFakeImp();
+  const ctx = await setupTest();
 
-  await imp.port.addGrant('nixie-a', 'model-default');
+  await seedSecret(ctx.impd, 'model-default', ['api.anthropic.com']);
 
-  const exec = await imp.port.openExec('nixie-a', ['sh', '-c', 'echo "$HTTPS_PROXY $NO_PROXY"'], {
-    env: {},
-    killGraceMs: 5000,
-    requireBroker: true,
-  });
+  await ctx.imp.port.addGrant('harbour', 'model-default');
+
+  const exec = await ctx.imp.port.openExec(
+    'harbour',
+    ['sh', '-c', 'echo "$HTTPS_PROXY $NO_PROXY"'],
+    { env: {}, killGraceMs: 5000, requireBroker: true },
+  );
 
   const output = await new Response(exec.stdout).text();
 
@@ -159,9 +81,9 @@ test('it runs an exec with the broker variables when the exec requires the broke
 });
 
 test('it refuses an exec that requires the broker on an imp that holds no grant', async () => {
-  const imp = await startFakeImp();
+  const ctx = await setupTest();
 
-  const exec = await imp.port.openExec('nixie-a', ['true'], {
+  const exec = await ctx.imp.port.openExec('harbour', ['true'], {
     env: {},
     killGraceMs: 5000,
     requireBroker: true,
@@ -172,14 +94,16 @@ test('it refuses an exec that requires the broker on an imp that holds no grant'
   );
 });
 
-test('it refuses an exec that requires the broker once a revoke takes the imp grant', async () => {
-  const imp = await startFakeImp();
+test('it refuses an exec that requires the broker once a rebind takes the imp grant', async () => {
+  const ctx = await setupTest();
 
-  await imp.port.addGrant('nixie-a', 'model-default');
+  await seedSecret(ctx.impd, 'model-default', ['api.anthropic.com']);
 
-  imp.revokeSecretGrants('model-default');
+  await ctx.imp.port.addGrant('harbour', 'model-default');
 
-  const exec = await imp.port.openExec('nixie-a', ['true'], {
+  await rebindSecret(ctx.impd, 'model-default', ['api.anthropic.com']);
+
+  const exec = await ctx.imp.port.openExec('harbour', ['true'], {
     env: {},
     killGraceMs: 5000,
     requireBroker: true,
@@ -188,14 +112,16 @@ test('it refuses an exec that requires the broker once a revoke takes the imp gr
   expect(exec.started).rejects.toThrow('the imp has no grant');
 });
 
-test('it runs an exec that does not require the broker on an imp whose grant was revoked', async () => {
-  const imp = await startFakeImp();
+test('it runs an exec that does not require the broker on an imp whose grant a rebind took', async () => {
+  const ctx = await setupTest();
 
-  await imp.port.addGrant('nixie-a', 'model-default');
+  await seedSecret(ctx.impd, 'model-default', ['api.anthropic.com']);
 
-  imp.revokeSecretGrants('model-default');
+  await ctx.imp.port.addGrant('harbour', 'model-default');
 
-  const exec = await imp.port.openExec('nixie-a', ['true'], {
+  await rebindSecret(ctx.impd, 'model-default', ['api.anthropic.com']);
+
+  const exec = await ctx.imp.port.openExec('harbour', ['true'], {
     env: {},
     killGraceMs: 5000,
     requireBroker: false,
@@ -204,25 +130,10 @@ test('it runs an exec that does not require the broker on an imp whose grant was
   expect(exec.exit).resolves.toStrictEqual({ code: 0, signal: null });
 });
 
-test('it reads the grants of an imp until a revoke takes them', async () => {
-  const imp = await startFakeImp();
-
-  await imp.port.addGrant('nixie-a', 'model-default');
-
-  const before = await imp.port.readGrants('nixie-a');
-
-  imp.revokeSecretGrants('model-default');
-
-  const after = await imp.port.readGrants('nixie-a');
-
-  expect(before).toStrictEqual([{ secret: 'model-default', paths: null }]);
-  expect(after).toStrictEqual([]);
-});
-
 test('it reports an exec that a signal with no name ended with the signal as its number', async () => {
-  const imp = await startFakeImp();
+  const ctx = await setupTest();
 
-  const exec = await imp.port.openExec('nixie-a', ['sh', '-c', 'kill -34 $$'], {
+  const exec = await ctx.imp.port.openExec('harbour', ['sh', '-c', 'kill -34 $$'], {
     env: {},
     killGraceMs: 5000,
     requireBroker: false,
@@ -234,10 +145,10 @@ test('it reports an exec that a signal with no name ended with the signal as its
 });
 
 test('it kills an exec that outlives SIGTERM at its kill grace', async () => {
-  const imp = await startFakeImp();
+  const ctx = await setupTest();
 
-  const exec = await imp.port.openExec(
-    'nixie-a',
+  const exec = await ctx.imp.port.openExec(
+    'harbour',
     ['sh', '-c', 'trap "" TERM; echo ready; sleep 60'],
     { env: {}, killGraceMs: 100, requireBroker: false },
   );
@@ -249,15 +160,15 @@ test('it kills an exec that outlives SIGTERM at its kill grace', async () => {
   const exit = await exec.exit;
 
   expect(exit).toStrictEqual({ code: null, signal: 'SIGKILL' });
-  expect(imp.execs.at(0)?.signals).toStrictEqual(['SIGTERM']);
+  expect(ctx.imp.execs.at(0)?.signals).toStrictEqual(['SIGTERM']);
 });
 
 test('it rejects the exit of a session it loses on a stop, when told to', async () => {
-  const imp = await startFakeImp();
+  const ctx = await setupTest();
 
-  imp.failExitOnStop = true;
+  ctx.imp.failExitOnStop = true;
 
-  const exec = await imp.port.openExec('nixie-a', ['sleep', '60'], {
+  const exec = await ctx.imp.port.openExec('harbour', ['sleep', '60'], {
     env: {},
     killGraceMs: 5000,
     requireBroker: false,
@@ -268,75 +179,104 @@ test('it rejects the exit of a session it loses on a stop, when told to', async 
   expect(exec.exit).rejects.toThrow('CONNECTION_CLOSED');
 });
 
-test('it listens for a reverse forward on its guest tool port and logs its stop', async () => {
-  const imp = await startFakeImp();
+test('it carries a dial of the tool port in the guest to the reverse forward of the imp', async () => {
+  const ctx = await setupTest();
 
-  const forward = imp.port.openReverseForward('nixie-a', 8901, () => {});
+  const forward = ctx.imp.port.openReverseForward('harbour', ctx.imp.guestToolPort, (accept) => {
+    const relay = accept({
+      onData: (data) => {
+        relay.send(data);
+      },
+      onEof: () => {},
+      onClose: () => {},
+    });
+  });
 
-  const port = await forward.listening;
+  await forward.listening;
 
-  forward.stop();
-
-  expect(port).toBe(imp.guestToolPort);
-  expect(imp.calls).toStrictEqual(['forward nixie-a 8901', 'forward-stopped nixie-a']);
-});
-
-test('it holds a wake, an exec and a listen until an idle sleep ends, then wakes the imp once', async () => {
-  const imp = await startFakeImp();
-
-  const snapshot = Promise.withResolvers<void>();
-
-  void imp.startIdleSleep('nixie-a', snapshot.promise);
-  const wake = imp.port.wakeImp('nixie-a');
-
-  const exec = imp.port.openExec('nixie-a', ['true'], {
+  await ctx.imp.port.openExec('harbour', ['true'], {
     env: {},
     killGraceMs: 5000,
     requireBroker: false,
   });
 
-  const forward = imp.port.openReverseForward('nixie-a', 8901, () => {});
+  const answered = Promise.withResolvers<string>();
 
-  snapshot.resolve();
+  const socket = await Bun.connect({
+    hostname: '127.0.0.1',
+    port: ctx.imp.guestToolPort,
+    socket: {
+      data: (_socket, data) => {
+        answered.resolve(new TextDecoder().decode(data));
+      },
+    },
+  });
 
-  await Promise.all([wake, exec, forward.listening]);
+  onTestFinished(() => {
+    socket.end();
+  });
 
-  expect(imp.calls).toStrictEqual([
-    'idle-sleep nixie-a',
-    'wait wake nixie-a',
-    'wait exec nixie-a',
-    'forward nixie-a 8901',
-    'wait listen nixie-a',
-    'slept nixie-a',
-    'woken by wake nixie-a',
-    'wake nixie-a',
-  ]);
+  socket.write('ping');
+
+  expect(answered.promise).resolves.toBe('ping');
 });
 
-test('it ends each forward of the imp as lost when an idle sleep ends', async () => {
-  const imp = await startFakeImp();
+test('it ends a dial of the tool port that no forward pairs', async () => {
+  const ctx = await setupTest();
 
-  const forward = imp.port.openReverseForward('nixie-a', 8901, () => {});
+  await ctx.imp.port.openExec('harbour', ['true'], {
+    env: {},
+    killGraceMs: 5000,
+    requireBroker: false,
+  });
 
-  await forward.listening;
+  const closed = Promise.withResolvers<string>();
 
-  await imp.startIdleSleep('nixie-a', Promise.resolve());
+  await Bun.connect({
+    hostname: '127.0.0.1',
+    port: ctx.imp.guestToolPort,
+    socket: {
+      data: () => {},
+      close: () => {
+        closed.resolve('closed');
+      },
+    },
+  });
 
-  const ended = await forward.ended;
-
-  expect(ended).toStrictEqual({ kind: 'lost' });
+  expect(closed.promise).resolves.toBe('closed');
 });
 
-test('it starts the idle sleep set for the next wake of the imp once that wake ends', async () => {
-  const imp = await startFakeImp();
+test('it holds a wake and an exec until an idle sleep ends, then wakes the imp once', async () => {
+  const ctx = await setupTest();
 
   const snapshot = Promise.withResolvers<void>();
 
-  imp.sleepsAfterWake.set('nixie-a', snapshot.promise);
+  void ctx.imp.startIdleSleep('harbour', snapshot.promise);
+  const wake = ctx.imp.port.wakeImp('harbour');
 
-  await imp.port.wakeImp('nixie-a');
+  const exec = ctx.imp.port.openExec('harbour', ['true'], {
+    env: {},
+    killGraceMs: 5000,
+    requireBroker: false,
+  });
 
-  const exec = await imp.port.openExec('nixie-a', ['true'], {
+  snapshot.resolve();
+
+  await Promise.all([wake, exec]);
+
+  expect(ctx.imp.events).toStrictEqual(['wait wake harbour', 'wait exec harbour']);
+});
+
+test('it starts the idle sleep set for the next wake of the imp once that wake ends', async () => {
+  const ctx = await setupTest();
+
+  const snapshot = Promise.withResolvers<void>();
+
+  ctx.imp.sleepsAfterWake.set('harbour', snapshot.promise);
+
+  await ctx.imp.port.wakeImp('harbour');
+
+  const exec = await ctx.imp.port.openExec('harbour', ['true'], {
     env: {},
     killGraceMs: 5000,
     requireBroker: false,
@@ -346,29 +286,19 @@ test('it starts the idle sleep set for the next wake of the imp once that wake e
 
   await exec.started;
 
-  expect(imp.sleepsAfterWake.size).toBe(0);
-
-  expect(imp.calls).toStrictEqual([
-    'wake nixie-a',
-    'idle-sleep nixie-a',
-    'wait exec nixie-a',
-    'slept nixie-a',
-    'woken by exec nixie-a',
-  ]);
+  expect(ctx.imp.sleepsAfterWake.size).toBe(0);
+  expect(ctx.imp.events).toStrictEqual(['wait exec harbour', 'woken by exec harbour']);
 });
 
-test('it kills each exec process group and closes each forward when the test finishes', async () => {
-  const imp = await startFakeImp();
+test('it kills each exec process group and closes the tool port when the test finishes', async () => {
+  const ctx = await setupTest();
 
-  const exec = await imp.port.openExec('nixie-a', ['sh', '-c', 'echo $$; exec sleep 60'], {
+  const exec = await ctx.imp.port.openExec('harbour', ['sh', '-c', 'echo $$; exec sleep 60'], {
     env: {},
     killGraceMs: 5000,
     requireBroker: false,
   });
 
-  const forward = imp.port.openReverseForward('nixie-a', 8901, () => {});
-
-  const port = await forward.listening;
   const read = await exec.stdout.getReader().read();
 
   const pid = Number(new TextDecoder().decode(read.value).trim());
@@ -379,43 +309,47 @@ test('it kills each exec process group and closes each forward when the test fin
     expect(() => process.kill(-pid, 0)).toThrow();
 
     expect(
-      Bun.connect({ hostname: '127.0.0.1', port: Number(port), socket: { data: () => {} } }),
+      Bun.connect({
+        hostname: '127.0.0.1',
+        port: ctx.imp.guestToolPort,
+        socket: { data: () => {} },
+      }),
     ).rejects.toThrow();
   });
 
   expect(pid).toBeGreaterThan(0);
 });
 
-test('it logs an image add, then refuses it as impd does a scoped token, when told to', async () => {
-  const imp = await startFakeImp();
+test('it records an image add, then refuses it as impd does a scoped token, when told to', async () => {
+  const ctx = await setupTest();
 
-  imp.refuseImageAdd = true;
+  ctx.imp.refuseImageAdd = true;
 
   expect(
-    imp.port.addImage({
+    ctx.imp.port.addImage({
       name: 'nixie-fetch',
       digest: `sha256:${'a'.repeat(64)}`,
       ref: `ghcr.io/example/nixie-fetch@sha256:${'a'.repeat(64)}`,
     }),
   ).rejects.toThrowWithMessage(Error, /is limited to some imps; this call is host-wide$/u);
 
-  expect(imp.calls).toStrictEqual([
-    `image nixie-fetch ghcr.io/example/nixie-fetch@sha256:${'a'.repeat(64)}`,
+  expect(ctx.imp.imageAdds.map((add) => [add.name, add.ref])).toStrictEqual([
+    ['nixie-fetch', `ghcr.io/example/nixie-fetch@sha256:${'a'.repeat(64)}`],
   ]);
 
-  expect(imp.images.size).toBe(0);
+  expect(ctx.imp.images.size).toBe(0);
 });
 
 test('it lists each image it holds with its digest and reference', async () => {
-  const imp = await startFakeImp();
+  const ctx = await setupTest();
 
-  await imp.port.addImage({
+  await ctx.imp.port.addImage({
     name: 'nixie-fetch',
     digest: `sha256:${'a'.repeat(64)}`,
     ref: `ghcr.io/example/nixie-fetch@sha256:${'a'.repeat(64)}`,
   });
 
-  const images = await imp.port.listImages();
+  const images = await ctx.imp.port.listImages();
 
   expect(images).toStrictEqual([
     {
@@ -427,9 +361,9 @@ test('it lists each image it holds with its digest and reference', async () => {
 });
 
 test('it answers the memory kills read with a count of 0 and no host process, by default', async () => {
-  const imp = await startFakeImp();
+  const ctx = await setupTest();
 
-  const exec = await imp.port.openExec('nixie-a', memoryKillsArgv, {
+  const exec = await ctx.imp.port.openExec('harbour', memoryKillsArgv, {
     env: {},
     killGraceMs: 5000,
     requireBroker: false,
@@ -444,16 +378,16 @@ test('it answers the memory kills read with a count of 0 and no host process, by
     exit: { status: 'fulfilled', value: { code: 0, signal: null } },
   });
 
-  expect(imp.calls).toStrictEqual(['memory-kills nixie-a']);
-  expect(imp.execs).toStrictEqual([]);
+  expect(ctx.imp.memoryKillReads).toStrictEqual(['harbour']);
+  expect(ctx.imp.execs).toStrictEqual([]);
 });
 
 test('it answers the memory kills read with the count a test sets', async () => {
-  const imp = await startFakeImp();
+  const ctx = await setupTest();
 
-  imp.memoryKills = 3;
+  ctx.imp.memoryKills = 3;
 
-  const exec = await imp.port.openExec('nixie-a', memoryKillsArgv, {
+  const exec = await ctx.imp.port.openExec('harbour', memoryKillsArgv, {
     env: {},
     killGraceMs: 5000,
     requireBroker: false,
@@ -470,11 +404,11 @@ test('it answers the memory kills read with the count a test sets', async () => 
 });
 
 test('it answers the memory kills read with no output when the file is missing', async () => {
-  const imp = await startFakeImp();
+  const ctx = await setupTest();
 
-  imp.memoryKills = 'missing';
+  ctx.imp.memoryKills = 'missing';
 
-  const exec = await imp.port.openExec('nixie-a', memoryKillsArgv, {
+  const exec = await ctx.imp.port.openExec('harbour', memoryKillsArgv, {
     env: {},
     killGraceMs: 5000,
     requireBroker: false,
@@ -491,11 +425,11 @@ test('it answers the memory kills read with no output when the file is missing',
 });
 
 test('it rejects the exit of the memory kills read on a lost connection', async () => {
-  const imp = await startFakeImp();
+  const ctx = await setupTest();
 
-  imp.memoryKills = 'lost';
+  ctx.imp.memoryKills = 'lost';
 
-  const exec = await imp.port.openExec('nixie-a', memoryKillsArgv, {
+  const exec = await ctx.imp.port.openExec('harbour', memoryKillsArgv, {
     env: {},
     killGraceMs: 5000,
     requireBroker: false,
@@ -509,13 +443,13 @@ test('it rejects the exit of the memory kills read on a lost connection', async 
 });
 
 test('it holds the memory kills read until an idle sleep ends', async () => {
-  const imp = await startFakeImp();
+  const ctx = await setupTest();
 
   const snapshot = Promise.withResolvers<void>();
 
-  void imp.startIdleSleep('nixie-a', snapshot.promise);
+  void ctx.imp.startIdleSleep('harbour', snapshot.promise);
 
-  const exec = await imp.port.openExec('nixie-a', memoryKillsArgv, {
+  const exec = await ctx.imp.port.openExec('harbour', memoryKillsArgv, {
     env: {},
     killGraceMs: 5000,
     requireBroker: false,
@@ -531,9 +465,9 @@ test('it holds the memory kills read until an idle sleep ends', async () => {
 });
 
 test('it runs an exec on the host when its argv only contains the memory kills argv', async () => {
-  const imp = await startFakeImp();
+  const ctx = await setupTest();
 
-  const exec = await imp.port.openExec('nixie-a', [...memoryKillsArgv, 'extra'], {
+  const exec = await ctx.imp.port.openExec('harbour', [...memoryKillsArgv, 'extra'], {
     env: {},
     killGraceMs: 5000,
     requireBroker: false,
@@ -541,28 +475,5 @@ test('it runs an exec on the host when its argv only contains the memory kills a
 
   await exec.started;
 
-  expect(imp.calls).not.toContain('memory-kills nixie-a');
-});
-
-test('it forgets a secret that a test removes and logs the call', async () => {
-  const imp = await startFakeImp();
-
-  await imp.port.addSecret({
-    name: 'model-chat-1',
-    value: 'not-a-real-key',
-    host: 'gateway.example',
-    header: 'authorization',
-    scheme: 'bearer',
-  });
-
-  await imp.port.removeSecret('model-chat-1');
-
-  const hosts = await imp.port.readSecretHosts('model-chat-1');
-
-  expect(hosts).toBeNull();
-
-  expect(imp.calls).toStrictEqual([
-    'secret model-chat-1 gateway.example authorization bearer',
-    'remove secret model-chat-1',
-  ]);
+  expect(ctx.imp.memoryKillReads).toStrictEqual([]);
 });

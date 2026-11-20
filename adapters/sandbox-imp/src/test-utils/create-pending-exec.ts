@@ -1,7 +1,10 @@
 import { waitForSettled } from '@heynixie/async';
 import type { ImpExec } from '../types';
 
-export function createPendingExec(wait: Promise<void>, start: () => ImpExec): ImpExec {
+export function createPendingExec(
+  wait: Promise<void>,
+  start: () => ImpExec | Promise<ImpExec>,
+): ImpExec {
   const starting = startAfter(wait, start);
 
   const stdout = new TransformStream<Uint8Array, Uint8Array>();
@@ -35,7 +38,10 @@ export function createPendingExec(wait: Promise<void>, start: () => ImpExec): Im
   };
 }
 
-async function startAfter(wait: Promise<void>, start: () => ImpExec): Promise<ImpExec> {
+async function startAfter(
+  wait: Promise<void>,
+  start: () => ImpExec | Promise<ImpExec>,
+): Promise<ImpExec> {
   await wait;
 
   return start();

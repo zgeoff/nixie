@@ -1,72 +1,84 @@
-import { expect, mock, test } from 'bun:test';
+import { expect, onTestFinished, test } from 'bun:test';
 import { buildFakeSleeps } from './build-fake-sleeps';
+import { startImpd } from './start-impd';
 
-test('it holds a call until the idle sleep ends, then wakes the imp for that call only', async () => {
-  const calls: string[] = [];
-  const sleeps = buildFakeSleeps(calls);
+async function setupTest() {
+  const impd = await startImpd();
+
+  onTestFinished(impd.stop);
+
+  await impd.seedImage('harbour-image');
+  await impd.client.imps.create({ name: 'harbour', image: 'harbour-image' });
+
+  return { impd, sleeps: buildFakeSleeps(impd.client) };
+}
+
+test('it holds an exec until the idle sleep ends, then wakes the imp for that exec', async () => {
+  const ctx = await setupTest();
+
   const snapshot = Promise.withResolvers<void>();
 
-  void sleeps.startIdleSleep('nixie-a', snapshot.promise);
-  const first = sleeps.waitForAwake('nixie-a', 'exec');
-  const second = sleeps.waitForAwake('nixie-a', 'listen');
+  void ctx.sleeps.startIdleSleep('harbour', snapshot.promise);
+  const waiting = ctx.sleeps.waitForAwake('harbour');
 
   snapshot.resolve();
 
-  await Promise.all([first, second]);
+  await waiting;
 
-  expect(calls).toStrictEqual([
-    'idle-sleep nixie-a',
-    'wait exec nixie-a',
-    'wait listen nixie-a',
-    'slept nixie-a',
-    'woken by exec nixie-a',
-  ]);
+  const imp = await ctx.impd.client.imps.get({ name: 'harbour' });
+
+  expect(ctx.sleeps.events).toStrictEqual(['wait exec harbour', 'woken by exec harbour']);
+  expect(imp.state).toBe('running');
 });
 
-test('it lets a call through at once when no sleep holds the imp', async () => {
-  const calls: string[] = [];
-  const sleeps = buildFakeSleeps(calls);
+test('it lets an exec through at once when no sleep holds the imp', async () => {
+  const ctx = await setupTest();
 
-  await sleeps.waitForAwake('nixie-a', 'exec');
+  await ctx.sleeps.waitForAwake('harbour');
 
-  expect(calls).toStrictEqual([]);
+  expect(ctx.sleeps.events).toStrictEqual([]);
 });
 
-test('it ends each listening forward of the imp as lost, and none that waits to listen', async () => {
-  const sleeps = buildFakeSleeps([]);
+test('it holds the adapter wake until the idle sleep ends', async () => {
+  const ctx = await setupTest();
 
-  const listening = {
-    listening: Promise.resolve(8901),
-    ended: Promise.withResolvers<{ readonly kind: string }>().promise,
-  };
+  const snapshot = Promise.withResolvers<void>();
 
-  const waiting = { listening: Promise.withResolvers().promise, ended: listening.ended };
-  const lost = { ...listening, stop: mock(), stopAsLost: mock() };
-  const held = { ...waiting, stop: mock(), stopAsLost: mock() };
+  const guarded = ctx.sleeps.guardWake({
+    wakeImp: async (name) => {
+      await ctx.impd.client.requireAwake(name);
+    },
+  });
 
-  sleeps.registerForward('nixie-a', lost);
-  sleeps.registerForward('nixie-a', held);
+  void ctx.sleeps.startIdleSleep('harbour', snapshot.promise);
+  const waking = guarded.wakeImp('harbour');
 
-  await sleeps.startIdleSleep('nixie-a', Promise.resolve());
+  snapshot.resolve();
 
-  expect(lost.stopAsLost).toHaveBeenCalledOnce();
-  expect(held.stopAsLost).not.toHaveBeenCalled();
+  await waking;
+
+  const imp = await ctx.impd.client.imps.get({ name: 'harbour' });
+
+  await ctx.sleeps.waitForAwake('harbour');
+
+  expect(ctx.sleeps.events).toStrictEqual(['wait wake harbour']);
+  expect(imp.state).toBe('running');
 });
 
 test('it starts the sleep set for the next wake once, and none after it', async () => {
-  const calls: string[] = [];
-  const sleeps = buildFakeSleeps(calls);
+  const ctx = await setupTest();
 
-  sleeps.sleepsAfterWake.set('nixie-a', Promise.resolve());
-  sleeps.startSleepAfterWake('nixie-a');
-  sleeps.startSleepAfterWake('nixie-a');
+  const guarded = ctx.sleeps.guardWake({
+    wakeImp: async (name) => {
+      await ctx.impd.client.requireAwake(name);
+    },
+  });
 
-  await sleeps.waitForAwake('nixie-a', 'exec');
+  ctx.sleeps.sleepsAfterWake.set('harbour', Promise.resolve());
 
-  expect(calls).toStrictEqual([
-    'idle-sleep nixie-a',
-    'wait exec nixie-a',
-    'slept nixie-a',
-    'woken by exec nixie-a',
-  ]);
+  await guarded.wakeImp('harbour');
+  await ctx.sleeps.waitForAwake('harbour');
+  await guarded.wakeImp('harbour');
+
+  expect(ctx.sleeps.events).toStrictEqual(['wait exec harbour', 'woken by exec harbour']);
 });

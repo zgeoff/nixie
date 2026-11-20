@@ -10,7 +10,7 @@ export function buildMockSandboxSpec(overrides: MockSandboxSpecOverrides = {}): 
 
   return {
     kind: 'worker',
-    image: faker.string.alphanumeric({ length: 12, casing: 'lower' }),
+    image: faker.string.alpha({ length: 12, casing: 'lower' }),
     owner: `${faker.string.uuid()}:${faker.string.uuid()}`,
     egress: { kind: 'none' },
     grants: [],

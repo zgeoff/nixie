@@ -1,12 +1,21 @@
 import { onTestFinished } from 'bun:test';
+import type { Socket } from 'node:net';
 import { createServer } from 'node:net';
 import { waitForSettled } from '@heynixie/async';
+import type { TestGuest } from '@impz/testing';
+import { TEST_TOKEN } from '@impz/testing';
+import invariant from 'tiny-invariant';
 import { memoryKillsArgv } from '../memory/memory-kills-argv';
-import type { ImpCreateInput, ImpExec, ImpExecOptions, ImpFeatures, ImpPort } from '../types';
+import { buildImpPort } from '../sandbox/build-imp-port';
+import type { ImpExec, ImpExecOptions, ImpPort } from '../types';
+import { attachTestGuests } from './attach-test-guests';
 import type { FakeSleeps } from './build-fake-sleeps';
 import { buildFakeSleeps } from './build-fake-sleeps';
 import { createPendingExec } from './create-pending-exec';
-import { startFakeForward } from './start-fake-forward';
+import type { SharedImpdTest } from './start-impd';
+
+// @impz/testing runs no command and pulls no image, so this stand-in answers the exec, the dial of
+// the tool port, the image add and the idle sleep on top of its impd. impd answers the rest.
 
 interface FakeExec {
   readonly argv: readonly string[];
@@ -16,75 +25,134 @@ interface FakeExec {
   readonly signals: string[];
 }
 
-interface FakeState {
+interface FakeImage {
+  readonly digest: string;
+  readonly ref: string;
+}
+
+interface FakeImageAdd {
+  readonly name: string;
+  readonly ref: string;
+
+  // how many calls impd had answered when the add came, to show the add before a later call
+  readonly callsBefore: number;
+}
+
+interface FakeImp {
+  readonly port: ImpPort;
   readonly guestToolPort: number;
-  readonly calls: string[];
-  readonly created: ImpCreateInput[];
+
+  // whether a connection to the tool port in the imp's guest reaches its reverse forward
+  readonly probeForward: (impName: string) => Promise<boolean>;
+
   readonly execs: FakeExec[];
-  readonly secrets: Map<string, readonly string[]>;
-  readonly grants: Map<string, Set<string>>;
 
-  readonly images: Map<string, { readonly digest: string; readonly ref: string }>;
-  features: ImpFeatures;
-  failFeatures: boolean;
-  failCreate: boolean;
-  failRemove: boolean;
+  // the imps whose memory.events an exec read
+  readonly memoryKillReads: string[];
+  readonly images: Map<string, FakeImage>;
+  readonly imageAdds: FakeImageAdd[];
+  readonly events: FakeSleeps['events'];
+  readonly sleepsAfterWake: FakeSleeps['sleepsAfterWake'];
+  readonly startIdleSleep: FakeSleeps['startIdleSleep'];
+
+  // a count the guest's memory.events holds, no such file, or a connection that drops mid-read
+  memoryKills: number | 'missing' | 'lost';
+
   failExitOnStop: boolean;
-
   refuseImageAdd: boolean;
 }
 
-interface FakeImpMemory {
-  // A count the guest's memory.events holds, no such file, or a connection that drops mid-read.
-  memoryKills: number | 'missing' | 'lost';
+interface FakeState {
+  readonly execs: FakeExec[];
+  readonly memoryKillReads: string[];
+  readonly images: Map<string, FakeImage>;
+  readonly imageAdds: FakeImageAdd[];
+  readonly stack: AsyncDisposableStack;
+
+  memoryKills: FakeImp['memoryKills'];
+  failExitOnStop: boolean;
+  refuseImageAdd: boolean;
+  execImp: string | null;
 }
 
-interface FakeImp
-  extends FakeState, FakeImpMemory, Pick<FakeSleeps, 'startIdleSleep' | 'sleepsAfterWake'> {
-  readonly port: ImpPort;
-
-  // Takes the secret's grant from every imp, as impd's rotate with a rebind does.
-  readonly revokeSecretGrants: (secret: string) => void;
-}
-
-export async function startFakeImp(): Promise<FakeImp> {
+export async function startFakeImp(test: SharedImpdTest): Promise<FakeImp> {
   const stack = new AsyncDisposableStack();
 
   onTestFinished(() => stack.disposeAsync());
 
-  const state: FakeState & FakeImpMemory = {
-    guestToolPort: await readFreePort(),
-    calls: [],
-    created: [],
+  const state: FakeState = {
     execs: [],
-    secrets: new Map(),
-    grants: new Map(),
+    memoryKillReads: [],
     images: new Map(),
-    features: { publicEgress: true, isEgressEnforced: true, hasBackupOptOut: true },
-    failFeatures: false,
-    failCreate: false,
-    failRemove: false,
+    imageAdds: [],
+    stack,
+    memoryKills: 0,
     failExitOnStop: false,
     refuseImageAdd: false,
-    memoryKills: 0,
+    execImp: null,
   };
 
-  const sleeps = buildFakeSleeps(state.calls);
+  const guested = attachTestGuests(
+    test.impd,
+    buildImpPort({ url: test.impd.url, token: TEST_TOKEN }),
+  );
+
+  const sleeps = buildFakeSleeps(test.impd.client);
+
+  const guestToolPort = await startToolBridge(state, guested.getGuest);
+
+  const port: ImpPort = {
+    ...guested.port,
+    ...sleeps.guardWake(guested.port),
+    ...buildFakeImageCalls(state, test),
+    openExec: (name, argv, options) => {
+      state.execImp = name;
+
+      return Promise.resolve(openFakeExec({ state, test, sleeps }, name, argv, options));
+    },
+  };
 
   return Object.assign(state, {
-    port: buildFakePort(state, sleeps, stack),
-    revokeSecretGrants: (secret: string) => {
-      for (const secrets of state.grants.values()) {
-        secrets.delete(secret);
-      }
+    port,
+    guestToolPort,
+    probeForward: async (impName: string) => {
+      const stream = await guested
+        .getGuest(impName)
+        .connect(guestToolPort)
+        .catch(() => null);
+
+      stream?.destroy();
+
+      return stream !== null;
     },
-    startIdleSleep: sleeps.startIdleSleep,
+    events: sleeps.events,
     sleepsAfterWake: sleeps.sleepsAfterWake,
+    startIdleSleep: sleeps.startIdleSleep,
   });
 }
 
-async function readFreePort(): Promise<number> {
-  const server = createServer();
+// A process in the imp dials the tool port of the guest, and impd's reverse forward carries it to
+// the host. The process here runs on the host, so a local listener on that port hands each
+// connection to the guest of the imp that runs the exec.
+async function startToolBridge(
+  state: FakeState,
+  getGuest: (impName: string) => TestGuest,
+): Promise<number> {
+  const sockets = new Set<Socket>();
+
+  let port = 0;
+
+  const server = createServer((socket) => {
+    sockets.add(socket);
+    socket.on('error', () => {});
+
+    socket.once('close', () => {
+      sockets.delete(socket);
+    });
+
+    void bridgeToGuest(getGuest, state, socket, port);
+  });
+
   const listening = Promise.withResolvers<void>();
 
   server.listen(0, '127.0.0.1', listening.resolve);
@@ -93,143 +161,130 @@ async function readFreePort(): Promise<number> {
 
   const address = server.address();
 
-  server.close();
+  invariant(typeof address === 'object' && address !== null);
 
-  return typeof address === 'object' && address !== null ? address.port : 0;
+  port = address.port;
+
+  state.stack.defer(() => {
+    for (const socket of sockets) {
+      socket.destroy();
+    }
+
+    server.close();
+  });
+
+  return port;
 }
 
-function buildFakePort(
-  state: FakeState & FakeImpMemory,
-  sleeps: FakeSleeps,
-  stack: AsyncDisposableStack,
-): ImpPort {
-  const updateCallLog = (call: string): Promise<void> => {
-    state.calls.push(call);
+// impd closes a guest connection that no forward pairs within 10 s, and the stand-in guest never
+// does, so a dial to a tool endpoint that is down waits for ever. The bridge ends it sooner.
+const PAIRING_LIMIT_MS = 500;
 
-    return Promise.resolve();
-  };
+async function bridgeToGuest(
+  getGuest: (impName: string) => TestGuest,
+  state: FakeState,
+  socket: Socket,
+  port: number,
+): Promise<void> {
+  try {
+    invariant(state.execImp !== null, 'no exec has run, so no imp holds the tool port');
 
-  return {
-    readFeatures: () =>
-      state.failFeatures
-        ? Promise.reject(new Error('connect ECONNREFUSED'))
-        : Promise.resolve(state.features),
-    ...buildFakeImageCalls(state, updateCallLog),
-    createImp: async (input) => {
-      await updateCallLog(`create ${input.name}`);
+    const stream = await connectWithin(getGuest(state.execImp), port, PAIRING_LIMIT_MS);
 
-      if (state.failCreate) {
-        throw new Error('RAM_BUDGET_EXCEEDED');
-      }
+    stream.on('error', () => {
+      socket.destroy();
+    });
 
-      state.created.push(input);
-    },
+    stream.once('close', () => {
+      socket.destroy();
+    });
 
-    readImpBackup: (name) =>
-      Promise.resolve(state.created.findLast((input) => input.name === name)?.backup ?? null),
-    removeImp: async (name) => {
-      await updateCallLog(`remove ${name}`);
+    socket.once('close', () => {
+      stream.destroy();
+    });
 
-      if (state.failRemove) {
-        throw new Error('INTERNAL_SERVER_ERROR');
-      }
-    },
-    sleepImp: (name) => updateCallLog(`sleep ${name}`),
-    wakeImp: async (name) => {
-      await sleeps.waitForAwake(name, 'wake');
+    socket.pipe(stream);
+    stream.pipe(socket);
+  } catch {
+    socket.destroy();
+  }
+}
 
-      await updateCallLog(`wake ${name}`);
+async function connectWithin(guest: TestGuest, port: number, limitMs: number) {
+  const timeout = Promise.withResolvers<never>();
+  const timer = setTimeout(timeout.reject, limitMs, new Error('no forward paired the connection'));
+  const connecting = guest.connect(port);
 
-      sleeps.startSleepAfterWake(name);
-    },
-    ...buildFakeSecretCalls(state, updateCallLog),
+  void waitForSettled(timeout.promise);
 
-    openExec: (name, argv, options) => {
-      if (isSameArgv(argv, memoryKillsArgv)) {
-        state.calls.push(`memory-kills ${name}`);
-
-        return Promise.resolve(
-          createPendingExec(sleeps.waitForAwake(name, 'exec'), () => {
-            requireGrantForBroker(state, name, options);
-
-            return startFakeMemoryKillsExec(state.memoryKills);
-          }),
-        );
-      }
-
-      const exec: FakeExec = { argv, options, signals: [], failsOnStop: state.failExitOnStop };
-
-      state.execs.push(exec);
-
-      return Promise.resolve(
-        createPendingExec(sleeps.waitForAwake(name, 'exec'), () => {
-          requireGrantForBroker(state, name, options);
-
-          return startFakeExec(exec, stack);
-        }),
-      );
-    },
-    ...buildFakeForwardCall(state, sleeps),
-  };
+  try {
+    return await Promise.race([connecting, timeout.promise]);
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 type FakeImageCalls = Pick<ImpPort, 'listImages' | 'addImage'>;
 
-type UpdateCallLog = (call: string) => Promise<void>;
-
-function buildFakeImageCalls(state: FakeState, updateCallLog: UpdateCallLog): FakeImageCalls {
+function buildFakeImageCalls(state: FakeState, test: SharedImpdTest): FakeImageCalls {
   return {
     listImages: () =>
       Promise.resolve(
         [...state.images].map(([name, held]) => ({ name, digest: held.digest, ref: held.ref })),
       ),
-    addImage: async (image) => {
-      await updateCallLog(`image ${image.name} ${image.ref}`);
+    addImage: (image) => {
+      state.imageAdds.push({
+        name: image.name,
+        ref: image.ref,
+        callsBefore: test.readCalls().length,
+      });
 
       if (state.refuseImageAdd) {
-        throw new Error('token nixie-test is limited to some imps; this call is host-wide');
+        return Promise.reject(
+          new Error('token nixie-test is limited to some imps; this call is host-wide'),
+        );
       }
 
       state.images.set(image.name, { digest: image.digest, ref: image.ref });
+
+      return Promise.resolve();
     },
   };
 }
 
-type FakeSecretCalls = Pick<
-  ImpPort,
-  | 'readSecretHosts'
-  | 'readSecretUpstreams'
-  | 'readGrants'
-  | 'addGrant'
-  | 'addSecret'
-  | 'removeSecret'
->;
+interface ExecDeps {
+  readonly state: FakeState;
+  readonly test: SharedImpdTest;
+  readonly sleeps: FakeSleeps;
+}
 
-function buildFakeSecretCalls(state: FakeState, updateCallLog: UpdateCallLog): FakeSecretCalls {
-  return {
-    readSecretHosts: (secret) => Promise.resolve(state.secrets.get(secret) ?? null),
-    readSecretUpstreams: (secret) =>
-      Promise.resolve(state.secrets.get(secret)?.map(() => null) ?? null),
-    readGrants: (name) =>
-      Promise.resolve(
-        [...(state.grants.get(name) ?? [])].map((secret) => ({ secret, paths: null })),
-      ),
-    addGrant: async (name, secret) => {
-      await updateCallLog(`grant ${name} ${secret}`);
+function openFakeExec(
+  deps: ExecDeps,
+  name: string,
+  argv: readonly string[],
+  options: ImpExecOptions,
+): ImpExec {
+  const wait = deps.sleeps.waitForAwake(name);
 
-      state.grants.set(name, (state.grants.get(name) ?? new Set()).add(secret));
-    },
-    addSecret: async (secret) => {
-      await updateCallLog(`secret ${secret.name} ${secret.host} ${secret.header} ${secret.scheme}`);
+  if (isSameArgv(argv, memoryKillsArgv)) {
+    deps.state.memoryKillReads.push(name);
 
-      state.secrets.set(secret.name, [secret.host]);
-    },
-    removeSecret: async (name) => {
-      await updateCallLog(`remove secret ${name}`);
+    return createPendingExec(wait, async () => {
+      await requireGrantForBroker(deps.test, name, options);
 
-      state.secrets.delete(name);
-    },
-  };
+      return startFakeMemoryKillsExec(deps.state.memoryKills);
+    });
+  }
+
+  const exec: FakeExec = { argv, options, signals: [], failsOnStop: deps.state.failExitOnStop };
+
+  deps.state.execs.push(exec);
+
+  return createPendingExec(wait, async () => {
+    await requireGrantForBroker(deps.test, name, options);
+
+    return startFakeExec(exec, deps.state.stack);
+  });
 }
 
 function isSameArgv(argv: readonly string[], expected: readonly string[]): boolean {
@@ -238,15 +293,25 @@ function isSameArgv(argv: readonly string[], expected: readonly string[]): boole
 
 // impd refuses an exec that requires the broker on an imp with no grant, because it sets no broker
 // variables there.
-function requireGrantForBroker(state: FakeState, name: string, options: ImpExecOptions): void {
-  if (options.requireBroker && (state.grants.get(name)?.size ?? 0) === 0) {
+async function requireGrantForBroker(
+  test: SharedImpdTest,
+  name: string,
+  options: ImpExecOptions,
+): Promise<void> {
+  if (!options.requireBroker) {
+    return;
+  }
+
+  const grants = await test.impd.client.grants.details({ name });
+
+  if (grants.length === 0) {
     throw new Error(
       'the broker is not ready for this exec: the imp has no grant, so impd sets no broker variables',
     );
   }
 }
 
-function startFakeMemoryKillsExec(memoryKills: FakeImpMemory['memoryKills']): ImpExec {
+function startFakeMemoryKillsExec(memoryKills: FakeImp['memoryKills']): ImpExec {
   const encoder = new TextEncoder();
 
   const events =
@@ -373,27 +438,4 @@ async function waitForExit<T>(exited: Promise<number>, readExit: () => T): Promi
   await exited;
 
   return readExit();
-}
-
-type ForwardPort = Pick<ImpPort, 'openReverseForward'>;
-
-function buildFakeForwardCall(state: FakeState, sleeps: FakeSleeps): ForwardPort {
-  return {
-    openReverseForward: (name, guestPort, onConnection) => {
-      state.calls.push(`forward ${name} ${guestPort}`);
-
-      const forward = startFakeForward({
-        port: state.guestToolPort,
-        onConnection,
-        onStop: () => {
-          state.calls.push(`forward-stopped ${name}`);
-        },
-        waitForAwake: () => sleeps.waitForAwake(name, 'listen'),
-      });
-
-      sleeps.registerForward(name, forward);
-
-      return forward;
-    },
-  };
 }
