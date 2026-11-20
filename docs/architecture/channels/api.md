@@ -415,7 +415,8 @@ A `model.reply_voided` record names a reply it voids, with the reason, in `voide
 sets `isVoided` and `voidReason` on the `message` of each reply on the page that a void record
 names, reading the record through an index on the reply's sequence. A reply that the stream sends
 before its void record exists carries neither field, and the client sets them when the void record
-arrives. All three fields are optional.
+arrives. All three fields are optional. A reply record reaches a page and the stream when the host
+writes it, before the step's commit record, so a client sees each reply of a running turn.
 
 A step commit carries the step's read cursor: the sequence of the newest record in the task's
 [inbox](../core/tasks.md#the-inbox) that the step read. The step read a message when its cursor is

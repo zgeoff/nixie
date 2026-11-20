@@ -174,6 +174,9 @@ shows muted, with the label "Not sent: this attempt failed, and Nix tried again"
 cause when the client knows it. It has no retry control. A voided reply never counts as the answer
 to a message of the user's, so the spinner keeps showing, and a sent file never shows under it.
 
+The view shows each reply as its record arrives, while the turn still runs, in the order of the
+records. A message of the user's that lands while the model writes a reply sorts before that reply.
+
 A file that a step sent with [`file.send`](../connectors/code-tool.md#sending-a-file) shows under
 the last reply of that step, or under the step when it made no reply. A task's sent files show on
 that task's page. The view shows an image inline only when its type is PNG, JPEG, GIF or WebP, the

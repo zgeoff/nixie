@@ -1,6 +1,8 @@
 import { expect, test } from 'bun:test';
 import { createTestClient } from '@heynixie/server/test-utils';
+import { waitForCondition } from '@heynixie/testing';
 import { setupSignedInBrowser, waitForPage } from '@heynixie/web/test-utils';
+import invariant from 'tiny-invariant';
 import { startWebJourney } from '../src/test-utils/start-web-journey';
 
 async function setupTest() {
@@ -9,7 +11,7 @@ async function setupTest() {
 
   await setupSignedInBrowser(journey.view, { appURL: journey.appURL, token: api.token });
 
-  return journey;
+  return { ...journey, api };
 }
 
 test('it shows the reply to a message sent from the page, and stops the spinner', async () => {
@@ -37,4 +39,88 @@ test('it shows the reply to a message sent from the page, and stops the spinner'
   const text: unknown = await ctx.view.evaluate('document.body.innerText');
 
   expect(text).toInclude('Where did the heron go?');
+});
+
+test('it shows each reply as the model writes it, in the order of the records, across a reload', async () => {
+  const ctx = await setupTest();
+
+  const gate = Promise.withResolvers<void>();
+
+  ctx.nixie.model.addReplies(
+    { text: 'Checking the pond.', toolUse: { name: 'mcp__nixie__time_now', input: {} } },
+    {
+      text: 'Checking the gate.',
+      toolUse: { name: 'mcp__nixie__time_now', input: {} },
+      gate: gate.promise,
+    },
+    { text: 'The heron left at dawn.' },
+    { text: 'The side gate is shut.' },
+  );
+
+  await waitForPage(
+    ctx.view,
+    "document.querySelector('input[type=file]:not([disabled])') !== null",
+  );
+
+  await ctx.view.click('textarea[aria-label="Message"]');
+  await ctx.view.cdp('Input.insertText', { text: 'Where did the heron go?' });
+  await ctx.view.click('button[type=submit]');
+
+  // the first reply stands on the page while the model is still on its second call
+  await waitForPage(ctx.view, "document.body.innerText.includes('Checking the pond.')");
+
+  const heldText: unknown = await ctx.view.evaluate('document.body.innerText');
+
+  expect(heldText).not.toInclude('The heron left at dawn.');
+
+  await ctx.api.client.conversation.send({
+    clientMessageId: crypto.randomUUID(),
+    spans: [],
+    text: 'And the side gate?',
+    thread: 'conversation',
+  });
+
+  gate.resolve();
+
+  await waitForPage(ctx.view, "document.body.innerText.includes('The heron left at dawn.')");
+
+  await waitForCondition(async () => {
+    const read = await ctx.api.client.conversation.read({ thread: 'conversation' });
+
+    return read.records.some((record) => record.kind === 'task.step_committed');
+  });
+
+  const liveText: unknown = await ctx.view.evaluate('document.body.innerText');
+
+  await ctx.view.navigate(ctx.appURL);
+
+  await waitForPage(ctx.view, "document.body.innerText.includes('The heron left at dawn.')");
+
+  const reloadedText: unknown = await ctx.view.evaluate('document.body.innerText');
+  const page = await ctx.api.client.conversation.read({ thread: 'conversation' });
+
+  const replyTexts = ['Checking the pond.', 'Checking the gate.', 'The heron left at dawn.'];
+  const replies = page.records.filter((record) => record.kind === 'model.reply');
+
+  expect(replies.slice(0, 3).map((record) => record.message?.text)).toStrictEqual(replyTexts);
+
+  expect(
+    page.records
+      .filter((record) => ['model.reply', 'tool_called'].includes(record.kind))
+      .slice(0, 5)
+      .map((record) => record.kind),
+  ).toStrictEqual(['model.reply', 'tool_called', 'model.reply', 'tool_called', 'model.reply']);
+
+  const order = /Checking the pond\.[\s\S]*Checking the gate\.[\s\S]*The heron left at dawn\./u;
+
+  invariant(typeof liveText === 'string' && typeof reloadedText === 'string');
+
+  expect([liveText, reloadedText]).toSatisfyAll((text: string) => order.test(text));
+
+  expect(
+    [liveText, reloadedText].map((text) => replyTexts.map((reply) => text.split(reply).length - 1)),
+  ).toStrictEqual([
+    [1, 1, 1],
+    [1, 1, 1],
+  ]);
 });

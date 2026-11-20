@@ -79,6 +79,13 @@ in order:
    with its owner and the adapter that made it
    ([sandboxes](../connectors/sandboxes.md#records-and-recovery)).
 
+A conversation turn writes each reply to the log before its step commits
+([conversation turns](./conversation-turns.md#records-of-a-turn)), so a crash can leave a reply that
+no commit keeps. Recovery writes nothing for it. The next run of the step, before it spends or
+compacts anything, reads the thread back to its last step commit and voids each reply that no void
+names, with the reason `attempt_lost`. A runner that lost its lease writes no reply and no void: the
+lease check fails inside the write.
+
 The actions module and the sandbox module depend on tasks, and modules form no cycles, so the server
 passes stages 3 and 5 in as dependencies. Each stage writes nothing when it runs again over the
 state it left, so the next start finishes a recovery that crashed part way through.
@@ -94,6 +101,7 @@ pause commits, and `recovery.pause.marker_cleared` after the marker goes
 hold a delivery outside its write transaction: `trigger.batch.before` before the transaction opens,
 and `trigger.batch.after` after it commits, both with the kind `trigger` and the source's ID. A
 claim has `claim.before`, which holds a runner before its claim transaction opens, so a test can
-keep a task's runner from claiming the record that a commit has just woken it for. Every fault point
-sits behind the test-build flag, so the release bundle holds none of them and no release code path
-can stop at one.
+keep a task's runner from claiming the record that a commit has just woken it for.
+`turn.reply.after` holds a runner after the transaction that writes a live reply, with the kind
+`task` and the task's ID. Every fault point sits behind the test-build flag, so the release bundle
+holds none of them and no release code path can stop at one.
