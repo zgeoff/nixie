@@ -29,6 +29,7 @@ test('it finds nothing wrong in a log that nixie wrote', async () => {
     repeatedStepKeys: [],
     repeatedActions: [],
     strayCalls: [],
+    strayReplies: [],
     heldLeases: [],
     unreadyTasks: [],
     changedEndStates: [],
@@ -124,4 +125,24 @@ test('it reports a lease that is still held once recovery ran', async () => {
   const oracle = await runOracle(ctx.nixie);
 
   expect(oracle.heldLeases).toStrictEqual([`1:task:${taskID}`]);
+});
+
+test('it reports a reply that no void names in a step that never committed', async () => {
+  const ctx = await setupTest();
+
+  const first = ctx.nixie.harness.start();
+
+  await first.ready;
+
+  const created = await first.request('createTask', { brief: 'Wait an hour.' });
+
+  const taskID = String(created);
+
+  await ctx.nixie.waitForRecord((record) => record.stepKey === `${taskID}:1`);
+  await first.kill();
+  await ctx.seed.strayReply(taskID);
+
+  const oracle = await runOracle(ctx.nixie);
+
+  expect(oracle.strayReplies).toStrictEqual([expect.any(Number)]);
 });

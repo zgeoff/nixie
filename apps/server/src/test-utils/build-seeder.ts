@@ -2,6 +2,7 @@ import { buildIdentitySeeder } from '@heynixie/api/test-utils';
 import type { IdentitySeederDeps } from '@heynixie/api/test-utils';
 import { systemClock } from '@heynixie/clock';
 import { buildConnectorSeeder } from '@heynixie/connectors/test-utils';
+import { writeRecords } from '@heynixie/log';
 import type { TasksContext } from '@heynixie/tasks';
 import { buildTaskSeeder } from '@heynixie/tasks/test-utils';
 import type { BegunPurgeOptions } from './seed-begun-purge';
@@ -36,6 +37,18 @@ export function buildBootSeeder(files: BootSeederFiles) {
     definitionConflict: () => seedDefinitionConflict(files),
     driftedTask: (taskID: string) =>
       runInDataLog(files, (context) => buildTaskSeeder({ context }).driftedTask(taskID)),
+    strayReply: (taskID: string) =>
+      runInDataLog(files, async (context) => {
+        await writeRecords(context.log, [
+          {
+            kind: 'model.reply',
+            definitions: { snapshotHash: 'sha256:test' },
+            thread: taskID,
+            payload: { messageID: 'msg-stray', runID: `${taskID}:9@1` },
+            erasable: { text: 'A reply no step kept.' },
+          },
+        ]);
+      }),
     goneHolderLease: (taskID: string) =>
       runInDataLog(files, (context) => buildTaskSeeder({ context }).goneHolderLease(taskID)),
   };

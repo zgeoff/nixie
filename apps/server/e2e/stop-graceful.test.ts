@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { runOracle, startE2ENixie } from '@heynixie/server/test-utils';
+import { collectUnvoidedReplies, runOracle, startE2ENixie } from '@heynixie/server/test-utils';
 
 async function setupTest() {
   const nixie = await startE2ENixie();
@@ -50,6 +50,7 @@ test('it commits a step that finishes inside the grace window once, and claims n
     repeatedStepKeys: [],
     repeatedActions: [],
     strayCalls: [],
+    strayReplies: [],
     heldLeases: [],
     unreadyTasks: [],
     changedEndStates: [],
@@ -116,12 +117,13 @@ test('it stops with a step still running at the deadline, which the restart reco
     'task.step_committed',
   ]);
 
-  expect(records.filter((record) => record.kind === 'model.reply')).toHaveLength(1);
+  expect(collectUnvoidedReplies(records)).toHaveLength(1);
 
   expect(oracle).toStrictEqual({
     repeatedStepKeys: [],
     repeatedActions: [],
     strayCalls: [],
+    strayReplies: [],
     heldLeases: [],
     unreadyTasks: [],
     changedEndStates: [],

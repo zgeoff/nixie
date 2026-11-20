@@ -149,6 +149,7 @@ test('it fires the daily moment reflection example and labels its reflection wit
     repeatedStepKeys: [],
     repeatedActions: [],
     strayCalls: [],
+    strayReplies: [],
     heldLeases: [],
     unreadyTasks: [],
     changedEndStates: [],

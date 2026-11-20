@@ -190,6 +190,7 @@ test('it fires the daily note-taking example and saves a memory that cites the m
     repeatedStepKeys: [],
     repeatedActions: [],
     strayCalls: [],
+    strayReplies: [],
     heldLeases: [],
     unreadyTasks: [],
     changedEndStates: [],

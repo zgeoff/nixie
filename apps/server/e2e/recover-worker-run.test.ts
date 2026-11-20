@@ -120,6 +120,7 @@ test("it removes a worker's sandbox but not its caller's after a kill during the
     repeatedStepKeys: [],
     repeatedActions: [],
     strayCalls: [],
+    strayReplies: [],
     heldLeases: [],
     unreadyTasks: [],
     changedEndStates: [],

@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { runOracle, startE2ENixie } from '@heynixie/server/test-utils';
+import { collectUnvoidedReplies, runOracle, startE2ENixie } from '@heynixie/server/test-utils';
 
 async function setupTest() {
   const nixie = await startE2ENixie();
@@ -60,12 +60,13 @@ test('it stops the stale writer at its first write, and the new writer expires i
       .map((record) => record.stepKey),
   ).toStrictEqual(['conversation:1']);
 
-  expect(records.filter((record) => record.kind === 'model.reply')).toHaveLength(1);
+  expect(collectUnvoidedReplies(records)).toHaveLength(1);
 
   expect(oracle).toStrictEqual({
     repeatedStepKeys: [],
     repeatedActions: [],
     strayCalls: [],
+    strayReplies: [],
     heldLeases: [],
     unreadyTasks: [],
     changedEndStates: [],

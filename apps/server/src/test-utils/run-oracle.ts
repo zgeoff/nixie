@@ -14,6 +14,9 @@ interface OracleReport {
 
   readonly strayCalls: readonly (string | null)[];
 
+  // the sequence of each reply that no void names, in a step that never committed
+  readonly strayReplies: readonly number[];
+
   readonly heldLeases: readonly string[];
 
   readonly unreadyTasks: readonly string[];
@@ -46,6 +49,7 @@ export async function runOracle(nixie: SpawnedNixie): Promise<OracleReport> {
         (record) => `${record.stepKey} ${String(record.payload['actionHash'])}`,
       ),
       strayCalls: collectStrayCalls(nixie, records),
+      strayReplies: collectStrayReplies(records),
       ...recovery,
       projectionDrift: await readTestProjectionDrift(context.log),
     };
@@ -150,4 +154,33 @@ function collectStrayCalls(
 
       return remaining <= 0;
     });
+}
+
+function collectStrayReplies(
+  records: Awaited<ReturnType<SpawnedNixie['readRecords']>>,
+): readonly number[] {
+  const voided = new Set(
+    records
+      .filter((record) => record.kind === 'model.reply_voided')
+      .map((record) => record.payload['replySequence']),
+  );
+
+  const committed = new Set(
+    records
+      .filter((record) => record.kind === 'task.step_committed')
+      .map((record) => record.stepKey),
+  );
+
+  return records
+    .filter((record) => {
+      const runID = record.payload['runID'];
+
+      return (
+        record.kind === 'model.reply' &&
+        typeof runID === 'string' &&
+        !voided.has(record.sequence) &&
+        !committed.has(runID.split('@')[0] ?? null)
+      );
+    })
+    .map((record) => record.sequence);
 }

@@ -90,6 +90,7 @@ test('it leaves a live message unread when nixie dies before the step commits, a
     repeatedStepKeys: [],
     repeatedActions: [],
     strayCalls: [],
+    strayReplies: [],
     heldLeases: [],
     unreadyTasks: [],
     changedEndStates: [],

@@ -114,6 +114,7 @@ test.each([
       repeatedStepKeys: [],
       repeatedActions: [],
       strayCalls: [],
+      strayReplies: [],
       heldLeases: [],
       unreadyTasks: [],
       changedEndStates: [],

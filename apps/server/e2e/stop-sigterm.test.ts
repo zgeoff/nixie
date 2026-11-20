@@ -1,5 +1,9 @@
 import { expect, test } from 'bun:test';
-import { createTestClient, startE2ENixie } from '@heynixie/server/test-utils';
+import {
+  collectUnvoidedReplies,
+  createTestClient,
+  startE2ENixie,
+} from '@heynixie/server/test-utils';
 import { waitForCondition } from '@heynixie/testing';
 
 test('it stops claiming steps on SIGTERM, lets the turn in flight commit and exits 0', async () => {
@@ -34,7 +38,7 @@ test('it stops claiming steps on SIGTERM, lets the turn in flight commit and exi
 
   expect(run.exit).toStrictEqual({ code: 0, signal: null });
 
-  expect(run.records).toIncludeAllPartialMembers([
-    { kind: 'model.reply', erasable: { status: 'readable', fields: { text: 'Held-reply' } } },
+  expect(collectUnvoidedReplies(run.records).map((record) => record.erasable)).toStrictEqual([
+    { status: 'readable', fields: { text: 'Held-reply' } },
   ]);
 });

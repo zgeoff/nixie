@@ -31,11 +31,19 @@ export async function sendClientMessage(
 
     page.records = read.records;
 
-    return page.records.some(
+    const reply = page.records.find(
       (record) =>
         record.kind === 'model.reply' &&
         record.sequence > sent.sequence &&
         record.message?.text === replyText,
+    );
+
+    // the replies are written as the model writes them, so the turn is done at the step's commit
+    return (
+      reply !== undefined &&
+      page.records.some(
+        (record) => record.kind === 'task.step_committed' && record.sequence > reply.sequence,
+      )
     );
   }, wait);
 

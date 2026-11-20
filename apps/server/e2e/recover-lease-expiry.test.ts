@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { runOracle, startE2ENixie } from '@heynixie/server/test-utils';
+import { collectUnvoidedReplies, runOracle, startE2ENixie } from '@heynixie/server/test-utils';
 import invariant from 'tiny-invariant';
 
 async function setupTest() {
@@ -51,12 +51,13 @@ test('it lets runner B take an expired lease at the next generation, and commits
       .map((record) => record.stepKey),
   ).toStrictEqual(['conversation:1']);
 
-  expect(records.filter((record) => record.kind === 'model.reply')).toHaveLength(1);
+  expect(collectUnvoidedReplies(records)).toHaveLength(1);
 
   expect(oracle).toStrictEqual({
     repeatedStepKeys: [],
     repeatedActions: [],
     strayCalls: [],
+    strayReplies: [],
     heldLeases: [],
     unreadyTasks: [],
     changedEndStates: [],
@@ -122,6 +123,7 @@ test('it lets runner B claim only once the renewed lease expires, never before',
     repeatedStepKeys: [],
     repeatedActions: [],
     strayCalls: [],
+    strayReplies: [],
     heldLeases: [],
     unreadyTasks: [],
     changedEndStates: [],
@@ -220,6 +222,7 @@ test("it refuses a call from runner A's guest once runner B holds the claim, and
     repeatedStepKeys: [],
     repeatedActions: [],
     strayCalls: [],
+    strayReplies: [],
     heldLeases: [],
     unreadyTasks: [],
     changedEndStates: [],
@@ -284,12 +287,13 @@ test('it expires the lease of a killed nixie on restart, runs the task once, and
   ).toStrictEqual([`${finishedID}:1`, `${finishedID}:2`, 'conversation:1']);
 
   expect(tasks).toPartiallyContain({ id: finishedID, state: 'done' });
-  expect(records.filter((record) => record.kind === 'model.reply')).toHaveLength(1);
+  expect(collectUnvoidedReplies(records)).toHaveLength(1);
 
   expect(oracle).toStrictEqual({
     repeatedStepKeys: [],
     repeatedActions: [],
     strayCalls: [],
+    strayReplies: [],
     heldLeases: [],
     unreadyTasks: [],
     changedEndStates: [],
