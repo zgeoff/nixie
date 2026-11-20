@@ -133,3 +133,31 @@ test('it drops the text of a worker turn and the detail of a worker end that a f
     dollars: 0.01,
   });
 });
+
+test('it marks the reply that a void record names as voided', () => {
+  const reply = buildMockLogRecord({
+    kind: 'model.reply',
+    message: { text: 'Draft.' },
+    sequence: 4,
+  });
+
+  const other = buildMockLogRecord({
+    kind: 'model.reply',
+    message: { text: 'Final.' },
+    sequence: 6,
+  });
+
+  const voidRecord = buildMockLogRecord({
+    kind: 'model.reply_voided',
+    sequence: 5,
+    voidedReply: { sequence: 4, reason: 'attempt_failed' },
+  });
+
+  const merged = mergeRecords([reply, voidRecord, other], []);
+
+  expect(merged.records.map((record) => record.message)).toStrictEqual([
+    { text: 'Draft.', isVoided: true, voidReason: 'attempt_failed' },
+    undefined,
+    { text: 'Final.' },
+  ]);
+});

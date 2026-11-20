@@ -1,7 +1,6 @@
-import { collectSentFiles } from './collect-sent-files';
-import { collectSentMessages } from './collect-sent-messages';
-import { collectWorkers } from './collect-workers';
-import { formatFailureCause } from './format-failure-cause';
+import { buildStep, stepEnds } from './build-step';
+import type { StepStatus } from './build-step';
+import { splitSteps } from './split-steps';
 import type { LiveRecord } from './use-live-records';
 import type { WorkerActivity } from './worker-activity';
 
@@ -77,8 +76,6 @@ export interface SentFileActivity {
   readonly caption?: string;
 }
 
-type StepStatus = 'done' | 'failed' | 'interrupted' | 'running';
-
 export interface StepActivity {
   readonly kind: 'step';
   readonly calls: readonly ToolActivity[];
@@ -95,6 +92,9 @@ export interface StepActivity {
   readonly cause?: string;
 
   readonly error?: string;
+
+  // a later segment of a step that a message split; the first segment holds the step's header
+  readonly isContinued?: true;
 
   readonly isSilent?: true;
 
@@ -114,7 +114,13 @@ export interface StepActivity {
 }
 
 export type ActivityItem =
-  | { readonly kind: 'message'; readonly record: LiveRecord }
+  | {
+      readonly kind: 'message';
+      readonly record: LiveRecord;
+
+      // the plain-words cause of the failed step that a voided reply sits in
+      readonly cause?: string;
+    }
   | { readonly kind: 'reset'; readonly record: LiveRecord }
   | {
       readonly kind: 'moment';
@@ -180,7 +186,7 @@ export function buildActivity(records: readonly LiveRecord[]): readonly Activity
   const items =
     state.pending.length === 0 ? state.items : [...state.items, buildStep(state.pending, 'done')];
 
-  return supersedeDefinitionNotices(items);
+  return supersedeDefinitionNotices(splitSteps(items));
 }
 
 const messageKinds: ReadonlySet<string> = new Set(['owner_message', 'model.reply']);
@@ -237,110 +243,6 @@ function toReceivedMessage(message: NonNullable<LiveRecord['taskMessage']>): Tas
     ...(message.text === undefined ? {} : { text: message.text }),
     woke: message.woke,
   };
-}
-
-function buildStep(records: readonly LiveRecord[], status: StepStatus): StepActivity {
-  const task = records.find((record) => record.task !== undefined)?.task;
-  const stepKey = records.find((record) => record.task?.stepKey !== undefined)?.task?.stepKey;
-  const error = records.find((record) => record.task?.error !== undefined)?.task?.error;
-  const reason = records.find((record) => record.task?.reason !== undefined)?.task?.reason;
-  const cause = formatFailureCause(reason) ?? undefined;
-  const durationMs = status === 'running' ? undefined : findDuration(records);
-  const recalls = records.filter((record) => record.recall !== undefined);
-  const context = records.findLast((record) => record.context !== undefined)?.context;
-
-  const compactions = records.flatMap((record) =>
-    record.compaction === undefined ? [] : [{ ...record.compaction, sequence: record.sequence }],
-  );
-
-  const summaries = records.flatMap((record) =>
-    record.summary === undefined ? [] : [{ ...record.summary, sequence: record.sequence }],
-  );
-
-  const allCalls = collectCalls(records);
-  const workers = collectWorkers(records, allCalls);
-
-  const workerRunIDs = new Set(workers.map((worker) => worker.workerRunID));
-
-  const calls = allCalls.filter(
-    (call) => call.runID === undefined || !workerRunIDs.has(call.runID),
-  );
-
-  const sentMessages = collectSentMessages(calls);
-  const sentFiles = collectSentFiles(calls);
-
-  return {
-    calls,
-    ...(compactions.length === 0 ? {} : { compactions }),
-    ...(summaries.length === 0 ? {} : { summaries }),
-    ...(context === undefined ? {} : { context }),
-    ...(durationMs === undefined ? {} : { durationMs }),
-    ...(cause === undefined ? {} : { cause }),
-    ...(error === undefined ? {} : { error }),
-    ...(records.some((record) => record.isSilentTurn === true) ? { isSilent: true } : {}),
-    key: records[0]?.sequence ?? 0,
-    kind: 'step',
-    ...(recalls.length === 0
-      ? {}
-      : { memories: recalls.flatMap((record) => record.recall?.items ?? []) }),
-    records,
-    ...(sentFiles.length === 0 ? {} : { sentFiles }),
-    ...(sentMessages.length === 0 ? {} : { sentMessages }),
-    status,
-    ...(stepKey === undefined ? {} : { stepKey }),
-    ...(task === undefined ? {} : { taskID: task.taskID }),
-    ...(workers.length === 0 ? {} : { workers }),
-  };
-}
-
-const stepEnds: Readonly<Record<string, StepStatus>> = {
-  'task.step_committed': 'done',
-  'task.step_errored': 'failed',
-  'task.step_interrupted': 'interrupted',
-};
-
-function findDuration(records: readonly LiveRecord[]): number | undefined {
-  const started = records.find((record) => record.kind === 'task.step_started');
-  const ended = records.findLast((record) => stepEnds[record.kind] !== undefined);
-
-  return started === undefined || ended === undefined
-    ? undefined
-    : ended.recordedAt.getTime() - started.recordedAt.getTime();
-}
-
-function collectCalls(records: readonly LiveRecord[]): readonly ToolActivity[] {
-  const calls = new Map<string, ToolActivity>();
-
-  for (const record of records) {
-    const toolCall = record.toolCall;
-
-    if (toolCall !== undefined) {
-      const earlier = calls.get(toolCall.callID);
-      const clips = record.isRemoved === true ? [] : (record.clipped ?? []);
-      const isInputCut = clips.some((clip) => clip.field === 'toolCall.input');
-      const isContentCut = clips.some((clip) => clip.field === 'toolCall.content');
-
-      calls.set(toolCall.callID, {
-        ...earlier,
-        callID: toolCall.callID,
-        ...(record.isRemoved === true ? { isRemoved: true } : {}),
-        ...(toolCall.runID === undefined ? {} : { runID: toolCall.runID }),
-        ...(isInputCut
-          ? { called: { sequence: record.sequence, thread: record.thread }, isInputCut: true }
-          : {}),
-        ...(isContentCut ? { isContentCut: true } : {}),
-        tool: toolCall.tool ?? earlier?.tool ?? 'tool',
-        ...(toolCall.input === undefined ? {} : { input: toolCall.input }),
-        ...(toolCall.outcome === undefined ? {} : { outcome: toolCall.outcome }),
-        ...(toolCall.content === undefined ? {} : { content: toolCall.content }),
-        ...(record.kind === 'tool_result'
-          ? { result: { kind: record.kind, sequence: record.sequence, thread: record.thread } }
-          : {}),
-      });
-    }
-  }
-
-  return [...calls.values()];
 }
 
 function foldRecordOutsideStep(state: ActivityState, record: LiveRecord): void {

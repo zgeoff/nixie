@@ -64,8 +64,10 @@ function toLogMessage(message: NonNullable<StoredRecord['message']>): LogMessage
   return {
     ...(message.clientMessageId === undefined ? {} : { clientMessageId: message.clientMessageId }),
     ...(images === undefined ? {} : { images }),
+    ...(message.isVoided === undefined ? {} : { isVoided: message.isVoided }),
     ...(spans === undefined ? {} : { spans }),
     text: message.text,
+    ...(message.voidReason === undefined ? {} : { voidReason: message.voidReason }),
   };
 }
 

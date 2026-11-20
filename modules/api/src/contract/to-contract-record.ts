@@ -6,9 +6,11 @@ import { momentKeptCodec, recordForgetStartedCodec, recordForgottenCodec } from 
 import {
   modelCompactedCodec,
   modelCompactionFailedCodec,
+  modelReplyVoidedCodec,
   modelSessionSummarizedCodec,
   modelTurnEndedCodec,
 } from '@heynixie/models';
+import type { ReplyVoidReason } from '@heynixie/models';
 import { memoryRecalledCodec } from '@heynixie/sessions';
 import { skillsWriteAppliedCodec } from '@heynixie/skills';
 import type { TaskProfile } from '@heynixie/tasks';
@@ -52,6 +54,9 @@ export interface RecordLookups {
   readonly removedSequences: ReadonlySet<number>;
   readonly stopCancelledActions: ReadonlyMap<number, readonly ListedAction[]>;
   readonly taskDirectory: readonly TaskProfile[];
+
+  // the reason of each reply that a void record names, keyed by the reply's sequence
+  readonly voidedReplies: ReadonlyMap<number, ReplyVoidReason>;
 }
 
 const noLookups: RecordLookups = {
@@ -63,6 +68,7 @@ const noLookups: RecordLookups = {
   removedSequences: new Set(),
   stopCancelledActions: new Map(),
   taskDirectory: [],
+  voidedReplies: new Map(),
 };
 
 export function toContractRecord(
@@ -73,7 +79,7 @@ export function toContractRecord(
     return null;
   }
 
-  const message = messageKinds.has(record.kind) ? toMessage(record) : undefined;
+  const message = messageKinds.has(record.kind) ? toMessage(record, lookups) : undefined;
   const task = toTask(record);
   const toolCall = toToolCall(record, lookups.cancelledActionIDs);
   const taskMessage = record.kind === 'task_message' ? toTaskMessage(record, lookups) : undefined;
@@ -94,6 +100,7 @@ export function toContractRecord(
   return {
     ...toSessionFields(record),
     ...toForget(record),
+    ...toVoidedReply(record),
     ...toGap(record, lookups),
     ...(definitionNotice === undefined ? {} : { definitionNotice }),
     ...(exchangeNotice === undefined ? {} : { exchangeNotice }),
@@ -118,7 +125,7 @@ export function toContractRecord(
 
 type Message = NonNullable<ContractRecord['message']>;
 
-function toMessage(record: LogRecord): Message | undefined {
+function toMessage(record: LogRecord, lookups: RecordLookups): Message | undefined {
   if (record.erasable.status !== 'readable') {
     return undefined;
   }
@@ -134,9 +141,13 @@ function toMessage(record: LogRecord): Message | undefined {
 
   const spans = z.array(spanSchema).optional().parse(record.erasable.fields['spans']);
 
+  const voidReason =
+    record.kind === 'model.reply' ? lookups.voidedReplies.get(record.sequence) : undefined;
+
   return {
     ...(owner?.clientMessageId === undefined ? {} : { clientMessageId: owner.clientMessageId }),
     ...(owner?.images === undefined ? {} : { images: [...owner.images] }),
+    ...(voidReason === undefined ? {} : { isVoided: true as const, voidReason }),
     ...(spans === undefined ? {} : { spans: [...spans] }),
     text,
   };
@@ -522,6 +533,17 @@ function toForget(record: LogRecord): Pick<ContractRecord, 'forget'> {
   const sequence = codec?.tryDecodePartial(record.payload)?.recordSequence;
 
   return sequence === undefined ? {} : { forget: { sequence } };
+}
+
+function toVoidedReply(record: LogRecord): Pick<ContractRecord, 'voidedReply'> {
+  const voided =
+    record.kind === modelReplyVoidedCodec.kind
+      ? modelReplyVoidedCodec.tryDecodePartial(record.payload)
+      : null;
+
+  return voided?.replySequence === undefined || voided.reason === undefined
+    ? {}
+    : { voidedReply: { sequence: voided.replySequence, reason: voided.reason } };
 }
 
 function toGap(record: LogRecord, lookups: RecordLookups): Pick<ContractRecord, 'isRemoved'> {

@@ -21,9 +21,23 @@ export function mergeRecords(
     kept.flatMap((record) => (record.forget ? [record.forget.sequence] : [])),
   );
 
+  const voided = new Map(
+    kept.flatMap((record) =>
+      record.voidedReply ? [[record.voidedReply.sequence, record.voidedReply.reason] as const] : [],
+    ),
+  );
+
   return {
     records: toReadableSummaries(
-      kept.map((record) => (forgotten.has(record.sequence) ? toForgottenRecord(record) : record)),
+      kept.map((record) => {
+        if (forgotten.has(record.sequence)) {
+          return toForgottenRecord(record);
+        }
+
+        const reason = voided.get(record.sequence);
+
+        return reason === undefined ? record : toVoidedReply(record, reason);
+      }),
     ),
     forgottenClientMessageIDs: kept.flatMap((record) =>
       forgotten.has(record.sequence) && record.message?.clientMessageId !== undefined
@@ -107,4 +121,15 @@ function toTaskWithoutError(
   const { error: _error, ...kept } = task;
 
   return kept;
+}
+
+function toVoidedReply(
+  record: LiveRecord,
+  reason: NonNullable<NonNullable<LiveRecord['message']>['voidReason']>,
+): LiveRecord {
+  if (record.kind !== 'model.reply' || record.message === undefined) {
+    return record;
+  }
+
+  return { ...record, message: { ...record.message, isVoided: true, voidReason: reason } };
 }

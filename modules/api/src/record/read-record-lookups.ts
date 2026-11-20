@@ -6,6 +6,7 @@ import {
 import type { DefinitionNotice } from '@heynixie/contract';
 import { definitionChangedCodec } from '@heynixie/definitions';
 import type { LogRecord } from '@heynixie/log';
+import { modelReplyCodec, readVoidedReplies } from '@heynixie/models';
 import { readProposalsBySequence } from '@heynixie/proposals';
 import { readReminderVersion } from '@heynixie/reminders';
 import {
@@ -80,6 +81,12 @@ export async function readRecordLookups(
     removedSequences,
     stopCancelledActions: await readStopCancelledActions(context, stopSequences),
     taskDirectory: [...named.directory, ...unlisted],
+    voidedReplies: await readVoidedReplies(
+      context.log.writer.db,
+      records
+        .filter((record) => record.kind === modelReplyCodec.kind)
+        .map((record) => record.sequence),
+    ),
   };
 }
 

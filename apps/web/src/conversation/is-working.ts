@@ -9,7 +9,11 @@ export function isWorking(activity: readonly ActivityItem[], hasPendingSend: boo
 }
 
 function hasUnansweredMessage(activity: readonly ActivityItem[]): boolean {
-  const settling = activity.findLast((item) => item.kind !== 'step' || item.status !== 'done');
+  const settling = activity.findLast((item) =>
+    item.kind === 'message'
+      ? item.record.message?.isVoided !== true
+      : item.kind !== 'step' || item.status !== 'done',
+  );
 
   return settling?.kind === 'message' && settling.record.kind === 'owner_message';
 }

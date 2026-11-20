@@ -1,5 +1,6 @@
 export type ModelsRecordKind =
   | 'model.reply'
+  | 'model.reply_voided'
   | 'model.turn_ended'
   | 'model.compacted'
   | 'model.compaction_failed'

@@ -120,3 +120,21 @@ test('it copies a recall with each score, and leaves the score out where none ex
     thread: 'conversation',
   });
 });
+
+test('it copies the void flag and reason of a reply', async () => {
+  const record = await store.records.create({
+    kind: 'model.reply',
+    message: { isVoided: true, text: 'A draft.', voidReason: 'attempt_failed' },
+    recordedAt: new Date('2026-10-10T12:00:00Z'),
+    sequence: 4,
+    thread: 'conversation',
+  });
+
+  expect(toLogRecord(record)).toStrictEqual({
+    kind: 'model.reply',
+    message: { isVoided: true, text: 'A draft.', voidReason: 'attempt_failed' },
+    recordedAt: new Date('2026-10-10T12:00:00Z'),
+    sequence: 4,
+    thread: 'conversation',
+  });
+});

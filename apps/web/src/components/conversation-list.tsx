@@ -140,7 +140,7 @@ function ActivityEntry(props: ActivityEntryProps): ReactNode {
   );
 
   return match(props.item)
-    .with({ kind: 'message' }, (item) => <RecordItem record={item.record} />)
+    .with({ kind: 'message' }, (item) => <RecordItem cause={item.cause} record={item.record} />)
     .with({ kind: 'reset' }, (item) => <ResetMarker record={item.record} />)
     .with({ kind: 'moment' }, (item) => <MomentKeptNotice moment={item.moment} />)
     .with({ kind: 'taskMessage' }, (item) => renderMessage(item.message))

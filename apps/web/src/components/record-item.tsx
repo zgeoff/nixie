@@ -10,11 +10,14 @@ import { MessageImages } from './message-images';
 import { ReplyText } from './reply-text';
 
 export interface RecordItemProps {
+  // the plain-words cause of the failed step that a voided reply sits in
+  readonly cause?: string | undefined;
   readonly record: LiveRecord;
 }
 
 const forgettable: readonly string[] = forgettableKinds;
 const speaker = css({ display: 'block', fontWeight: 'semibold' });
+const muted = css({ color: 'textMuted' });
 const message = css({ overflowWrap: 'anywhere', whiteSpace: 'pre-wrap' });
 
 export function RecordItem(props: RecordItemProps): ReactNode {
@@ -32,10 +35,14 @@ export function RecordItem(props: RecordItemProps): ReactNode {
 
   // A forget that has not finished keeps its control on a removed message, so the owner can try again.
   const hasControl = forgettable.includes(props.record.kind) && (!isRemoved || isForgetOpen);
+  const isVoided = !isYours && props.record.message?.isVoided === true;
 
   return (
-    <li>
+    <li className={isVoided ? muted : undefined}>
       <strong className={speaker}>{isYours ? 'You' : 'nixie'}</strong>{' '}
+      {isVoided ? (
+        <VoidedLabel cause={props.cause} reason={props.record.message?.voidReason} />
+      ) : null}
       {isRemoved ? '— removed' : null}
       {text !== undefined && isYours ? <span className={message}>{text}</span> : null}
       {text !== undefined && isYours && images > 0 ? (
@@ -62,5 +69,21 @@ export function RecordItem(props: RecordItemProps): ReactNode {
       ) : null}
       {backup === null ? null : <ForgetBackupLine backup={backup} />}
     </li>
+  );
+}
+
+interface VoidedLabelProps {
+  readonly cause: string | undefined;
+  readonly reason: NonNullable<LiveRecord['message']>['voidReason'];
+}
+
+function VoidedLabel(props: VoidedLabelProps): ReactNode {
+  const isFailure = props.reason === 'attempt_failed' || props.reason === 'attempt_lost';
+  const label = isFailure ? 'Not sent: this attempt failed, and Nix tried again' : 'Not sent';
+
+  return (
+    <small className={css({ display: 'block', fontStyle: 'italic' })}>
+      {props.cause === undefined ? label : `${label} (${props.cause})`}
+    </small>
   );
 }

@@ -349,6 +349,11 @@ projection reads the count without a key and it outlives a forgotten reply. Each
 model ID and the profile's ID from the profile nixie gave the turn, never from the guest's frames
 ([model profiles](./model-profiles.md#records-of-model-output)).
 
+A `model.reply_voided` record marks one reply as never sent to the user. Its payload holds the
+reply's sequence, the run's ID and the reason: `attempt_failed`, `attempt_lost`, `turn_dropped` or
+`silent`. Each void is its own record, and a partial index on the reply's sequence answers the
+lookup. No step writes the record yet.
+
 The step returns to waiting once it commits, because the conversation always waits for the user's
 next message. A turn that fails for any reason but a lost session, such as a disconnected tool
 server, throws, so the tasks module records the error and retries the step after a delay that grows

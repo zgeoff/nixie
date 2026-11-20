@@ -86,3 +86,22 @@ test('it is not working once a reset follows your unanswered message', () => {
 test('it is not working in an empty conversation with nothing to send', () => {
   expect(isWorking([], false)).toBe(false);
 });
+
+test('it is working while a voided reply is the only thing after your message', () => {
+  const question = buildMockLogRecord({ kind: 'owner_message', message: { text: '?' } });
+
+  const reply = buildMockLogRecord({
+    kind: 'model.reply',
+    message: { text: '!', isVoided: true, voidReason: 'attempt_failed' },
+  });
+
+  expect(
+    isWorking(
+      [
+        { kind: 'message', record: question },
+        { kind: 'message', record: reply },
+      ],
+      false,
+    ),
+  ).toBe(true);
+});

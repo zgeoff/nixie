@@ -708,3 +708,13 @@ test('it keeps the forget confirmation and retries with the same action ID when 
 
   expect(ids[0]).toBe(ids[1]);
 });
+
+test('it leaves the step header off a later segment of a split step', async () => {
+  const rendered = render(
+    <StepGroup step={buildMockStepActivity({ isContinued: true, taskID: 'conversation' })} />,
+  );
+
+  await userEvent.click(rendered.getByText('no tools'));
+
+  expect(rendered.queryByText('Step')).toBeNull();
+});
