@@ -276,8 +276,12 @@ test.skipIf(!hasPlanGateway)(
   async () => {
     const ctx = await setupTest();
 
-    // far past any model window, so the turn cannot fit
-    const filler = 'The tide gauge reads high. '.repeat(400_000);
+    // The app-server refuses an input past 1,048,576 characters before the model sees it, and an
+    // input of repeated English fits the window at that size. Distinct ideographs in a scattered
+    // order take at least a token each, which is past any window.
+    const filler = Array.from({ length: 1_000_000 }, (_, index) =>
+      String.fromCodePoint(0x4e_00 + ((index * 7919) % 20_000)),
+    ).join('');
 
     const turn = await ctx.runTurn({
       systemPrompt: 'You are a test agent.',
