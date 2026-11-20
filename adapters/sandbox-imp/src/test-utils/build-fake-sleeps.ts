@@ -96,8 +96,8 @@ async function runIdleSleep(
 
   await state.client.imps.sleep({ name });
 
-  // A real sleep stops the VM and its vsock, so impd has ended the imp's reverse forwards by the time
-  // the sleep is done. The stand-in guest ends them only when it sees the sleep's event, later.
+  // A real sleep kills the VM before it returns, which closes the vsock under each reverse forward.
+  // The stand-in guest drops its forwards only when it sees the sleep's event, later.
   await Promise.allSettled([...(state.forwards.get(name) ?? [])].map((forward) => forward.ended));
 
   state.asleep.add(name);
