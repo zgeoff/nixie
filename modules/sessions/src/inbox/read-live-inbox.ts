@@ -6,7 +6,7 @@ import { isInboxRecord } from '@heynixie/tasks';
 import type { InboxMessage } from '@heynixie/wire';
 import invariant from 'tiny-invariant';
 import type { TaskMessageView } from '../task/render-task-message';
-import type { ImageTally, MessageTimeOptions } from '../types';
+import type { ImageTally, LiveInboxMessage, MessageTimeOptions } from '../types';
 import type { TurnSilence } from '../utils/build-turn-silence';
 import { countImages } from '../utils/count-images';
 import { isPastImageBudget } from '../utils/is-past-image-budget';
@@ -23,6 +23,9 @@ export interface LiveImages {
 export interface LiveInbox {
   readonly taskID: string;
 
+  // true when the harness cuts a model call for an owner message
+  readonly canCut: boolean;
+
   readonly sent: Set<number>;
   readonly signal: AbortSignal;
 
@@ -38,7 +41,7 @@ export async function* readLiveInbox(
   context: Pick<TasksContext, 'log' | 'readDefinitionVersion'>,
 
   live: LiveInbox,
-): AsyncGenerator<InboxMessage> {
+): AsyncGenerator<LiveInboxMessage> {
   const entries = subscribeToRecords(context.log, {
     afterSequence: Math.max(0, ...live.sent),
     thread: live.taskID,
@@ -76,7 +79,7 @@ export async function* readLiveInbox(
       live.silence.take(entry.record);
 
       live.images.spent = mergeImageTallies(live.images.spent, countImages(message));
-      yield message;
+      yield { message, cutsCall: live.canCut && entry.record.kind === 'owner_message' };
     }
   }
 }

@@ -134,7 +134,8 @@ harness does not own counts as no point.
 record's capabilities and the frame, and it throws, before it returns any bytes, when the frame or
 one of its fields needs a capability the harness lacks: a `message` frame needs `live-messages`, an
 `interrupt` frame needs `interrupt`, a `summarize` frame needs `summarize`, a turn frame's `resume`
-key needs `resume`, and a non-null `limits.modelCalls` needs `turn-limit`. The step fails and sends
+key needs `resume`, a non-null `limits.modelCalls` needs `turn-limit`, and a `message` frame's
+`cutsCall` needs `live-cut`, which only the `agent-sdk` harness declares. The step fails and sends
 nothing. Each role's needs cover every capability its frames can use, including `images` for a role
 whose input can carry an image, so a capability gap fails the config's load, and a throw marks a
 host bug.

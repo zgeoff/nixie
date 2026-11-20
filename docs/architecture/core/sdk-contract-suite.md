@@ -42,7 +42,10 @@ watchdog to fire.
   relies on the resume, and on the snapshot staying off.
 - `owner-input`: a `next` message sent during a tool call reaches the model after that call, in the
   same turn, on an assistant message stamped with the message's `uuid`. An interrupt keeps a queued
-  message, which starts the next turn.
+  message, which starts the next turn. An interrupt during a reply that streams does the same: the
+  receipt lists the message, the CLI sends the cut call as an `aborted` assistant message, and the
+  next request holds the opening prompt once, the partial text, an interrupt marker and every queued
+  message.
   [Messages into a running task](../../design/platform/channels/client.md#messages-into-a-running-task)
   rely on both.
 - `precompact-block`: a `PreCompact` hook that returns block stops an automatic compaction, which

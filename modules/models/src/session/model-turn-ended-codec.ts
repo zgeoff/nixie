@@ -19,6 +19,7 @@ export const modelTurnEndedCodec = defineRecordCodec(
     cacheReadTokens: z.int(),
     cacheWriteTokens: z.int(),
     thinkingTokens: z.int().nonnegative().exactOptional(),
+    cutCalls: z.int().positive().exactOptional(),
     contextSize: z.int().nonnegative().exactOptional(),
     contextWindow: z.int().positive().exactOptional(),
     pinnedCore: memoryRefsSchema,

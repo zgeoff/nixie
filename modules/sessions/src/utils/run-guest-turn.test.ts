@@ -4,9 +4,10 @@ import { bindHarness } from '@heynixie/models';
 import { buildMockCodexProfile, buildMockModelProfile } from '@heynixie/models/test-utils';
 import { buildMockSandboxSpec, buildStubSandboxes } from '@heynixie/sandbox/test-utils';
 import { waitForCondition } from '@heynixie/testing';
-import type { InboxMessage } from '@heynixie/wire';
+import { harnessCapabilities } from '@heynixie/wire';
 import { buildMockTurnFrame } from '@heynixie/wire/test-utils';
 import invariant from 'tiny-invariant';
+import type { LiveInboxMessage } from '../types';
 import { runGuestTurn } from './run-guest-turn';
 
 function setupTest() {
@@ -221,7 +222,9 @@ test('it passes each live message into the running turn', async () => {
 
   const sandbox = await ctx.stub.adapter.create(buildMockSandboxSpec({ kind: 'conversation' }));
 
-  const live: InboxMessage[] = [{ uuid: '6e697869-0000-8000-8000-000000000003', text: 'And?' }];
+  const live: LiveInboxMessage[] = [
+    { message: { uuid: '6e697869-0000-8000-8000-000000000003', text: 'And?' }, cutsCall: false },
+  ];
 
   ctx.stub.setGuestScript(async (_turn, guest) => {
     const message = await guest.waitForMessage();
@@ -583,7 +586,9 @@ test('it fails the turn, and sends the guest no live message, on a harness witho
     sandbox,
     command: { argv: ['guest'], env: {} },
     turn: buildMockTurnFrame(),
-    messages: [{ uuid: '6e697869-0000-8000-8000-000000000003', text: 'And?' }],
+    messages: [
+      { message: { uuid: '6e697869-0000-8000-8000-000000000003', text: 'And?' }, cutsCall: false },
+    ],
     signal: new AbortController().signal,
   });
 
@@ -740,4 +745,67 @@ test('it counts the written replies the last result settled, and not those after
     written: [4, 5],
     settled: 1,
   });
+});
+
+test('it sends a live message that cuts a call with the cut flag, and one that does not without it', async () => {
+  const ctx = setupTest();
+
+  const sandbox = await ctx.stub.adapter.create(buildMockSandboxSpec({ kind: 'conversation' }));
+
+  ctx.stub.setGuestScript(async (_turn, guest) => {
+    invariant(guest.isCutting);
+
+    const cutting = await guest.waitForMessage();
+    const plain = await guest.waitForMessage();
+
+    return [
+      {
+        type: 'failed',
+        reason: 'error',
+        detail: `${guest.isCutting(cutting.uuid)} ${guest.isCutting(plain.uuid)}`,
+      },
+    ];
+  });
+
+  const turn = await runGuestTurn({
+    harness: { ...ctx.harness, capabilities: harnessCapabilities['agent-sdk'] },
+    sandbox,
+    command: { argv: ['guest'], env: {} },
+    turn: buildMockTurnFrame(),
+    messages: [
+      { message: { uuid: '6e697869-0000-8000-8000-000000000003', text: 'Stop.' }, cutsCall: true },
+      { message: { uuid: '6e697869-0000-8000-8000-000000000004', text: 'Eggs.' }, cutsCall: false },
+    ],
+    signal: new AbortController().signal,
+  });
+
+  expect(turn.failure).toStrictEqual({ type: 'failed', reason: 'error', detail: 'true false' });
+});
+
+test('it refuses a live message that cuts a call on a harness without live-cut', async () => {
+  const ctx = setupTest();
+
+  const sandbox = await ctx.stub.adapter.create(buildMockSandboxSpec({ kind: 'conversation' }));
+
+  ctx.stub.setGuestScript(async (_turn, guest) => {
+    await guest.waitForMessage();
+
+    return [{ type: 'failed', reason: 'error', detail: 'got a message' }];
+  });
+
+  const turn = runGuestTurn({
+    harness: {
+      ...ctx.harness,
+      capabilities: new Set(['tools', 'fresh-session', 'resume', 'live-messages']),
+    },
+    sandbox,
+    command: { argv: ['guest'], env: {} },
+    turn: buildMockTurnFrame(),
+    messages: [
+      { message: { uuid: '6e697869-0000-8000-8000-000000000003', text: 'Stop.' }, cutsCall: true },
+    ],
+    signal: new AbortController().signal,
+  });
+
+  expect(turn).rejects.toThrow('The harness lacks live-cut');
 });

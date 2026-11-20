@@ -3631,3 +3631,105 @@ test('it writes no reply and ends the turn when the runner lost its lease', asyn
 
   expect({ replies, voids }).toStrictEqual({ replies: [], voids: [] });
 });
+
+test('it commits a turn whose owner message cut a reply, with no failed step, all 3 burst messages acknowledged, and the cut count on the turn end', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  const runner = await ctx.startRunner({
+    models: buildMockModelsConfig(),
+    credential: 'not-a-real-key',
+    toolNames: ['notes_read'],
+  });
+
+  const live = { last: 0 };
+
+  const script = buildStubLiveTurnScript(
+    async () => {
+      await ctx.writeMessage('Burst one.');
+      await ctx.writeMessage('Burst two.');
+
+      const [last] = await ctx.writeMessage('Burst three.');
+
+      live.last = last?.sequence ?? 0;
+    },
+    { messages: 3 },
+  );
+
+  ctx.sandboxes.setGuestScript(script.script);
+
+  await ctx.writeMessage('Explain how a clock works.');
+  await ctx.runNextStep(runner);
+
+  const task = await readTestTaskProgress(ctx.context, 'conversation');
+  const [ended] = await ctx.readKinds('model.turn_ended');
+  const voids = await ctx.readKinds('model.reply_voided');
+
+  expect(script.cutting).toHaveLength(3);
+  expect(task).toMatchObject({ state: 'waiting', stepErrors: 0, readCursor: live.last });
+  expect(ended?.payload).toMatchObject({ outcome: 'finished', cutCalls: 1 });
+  expect(voids).toStrictEqual([]);
+});
+
+test('it does not cut a reply for a task message', async () => {
+  const ctx = await setupTest();
+
+  const messaging = {
+    directory: [
+      {
+        taskID: 'sweeper',
+        name: 'Sweeper',
+        brief: 'Saves.',
+        wakeable: true,
+        speaker: 'plain_task' as const,
+      },
+      {
+        taskID: 'conversation',
+        name: 'Conversation',
+        brief: 'Talks.',
+        wakeable: true,
+        speaker: 'conversation' as const,
+      },
+    ],
+    unlisted: [],
+    hopLimit: 20,
+    ownerName: 'Robin',
+    agentName: null,
+  };
+
+  await createConversationTask(ctx.context);
+
+  await ctx.seed.systemTaskAtHop({ taskID: 'sweeper', hop: 3 });
+
+  await claimTask(ctx.context, { holder: 'runner-b', leaseMs: 60_000 });
+
+  const runner = await ctx.startRunner({
+    models: buildMockModelsConfig(),
+    credential: 'not-a-real-key',
+    toolNames: ['task.message'],
+    messaging,
+  });
+
+  const script = buildStubLiveTurnScript(() =>
+    writeTestTaskMessage(ctx.context, messaging, {
+      from: 'sweeper',
+      to: 'conversation',
+      kind: 'question',
+      body: 'Keep the note about the bike?',
+      replyTo: null,
+      onBehalfOf: [],
+      wake: true,
+    }),
+  );
+
+  ctx.sandboxes.setGuestScript(script.script);
+
+  await ctx.sendMessage(runner, 'Anything new?');
+
+  const [ended] = await ctx.readKinds('model.turn_ended');
+
+  expect(script.received).toHaveLength(1);
+  expect(script.cutting).toStrictEqual([]);
+  expect(ended?.payload).not.toHaveProperty('cutCalls');
+});

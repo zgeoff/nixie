@@ -13,7 +13,7 @@ import type {
   RunEndpoint,
   ToolRunModel,
 } from '@heynixie/tools';
-import type { ModelCallUsage, SessionPoint, TurnProfile } from '@heynixie/wire';
+import type { InboxMessage, ModelCallUsage, SessionPoint, TurnProfile } from '@heynixie/wire';
 import type { StatusRegistry } from './session/build-status-registry';
 import type { SessionGuard } from './utils/make-session-guard';
 import type { StepCapturePort } from './utils/open-step-capture';
@@ -357,3 +357,9 @@ export type EventRegistry = readonly {
   readonly isUncapped: boolean;
   readonly isSessionBound: boolean;
 }[];
+
+// A message for the running turn. cutsCall is true when it cuts the model call in flight.
+export interface LiveInboxMessage {
+  readonly message: InboxMessage;
+  readonly cutsCall: boolean;
+}

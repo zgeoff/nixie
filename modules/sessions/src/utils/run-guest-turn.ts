@@ -1,12 +1,13 @@
 import type { Harness } from '@heynixie/models';
 import type { ExecStream, GuestCommand, Sandbox, StreamExit } from '@heynixie/sandbox';
-import type { GuestFrame, HostFrame, InboxMessage, ModelCallUsage } from '@heynixie/wire';
+import type { GuestFrame, HostFrame, ModelCallUsage } from '@heynixie/wire';
 import {
   decodeTurnFrame,
   encodeHostFrame,
   guestFrameSchema,
   turnFrameLimitBytes,
 } from '@heynixie/wire';
+import type { LiveInboxMessage } from '../types';
 
 type TurnFrame = Extract<HostFrame, { type: 'turn' }>;
 
@@ -26,7 +27,7 @@ export interface GuestTurnSpec {
   readonly command: GuestCommand;
   readonly turn: TurnFrame;
 
-  readonly messages: AsyncIterable<InboxMessage> | Iterable<InboxMessage>;
+  readonly messages: AsyncIterable<LiveInboxMessage> | Iterable<LiveInboxMessage>;
 
   readonly signal: AbortSignal;
 
@@ -120,8 +121,12 @@ async function sendMessages(
   stream: ExecStream,
   spec: Pick<GuestTurnSpec, 'harness' | 'messages'>,
 ): Promise<void> {
-  for await (const message of spec.messages) {
-    const bytes = encodeHostFrame(spec.harness.capabilities, { type: 'message', message });
+  for await (const live of spec.messages) {
+    const bytes = encodeHostFrame(spec.harness.capabilities, {
+      type: 'message',
+      message: live.message,
+      ...(live.cutsCall ? { cutsCall: true as const } : {}),
+    });
 
     try {
       await stream.send(bytes);

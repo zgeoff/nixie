@@ -194,6 +194,11 @@ turn's next tool boundary, and the step's commit marks it read. The SDK acknowle
 folds into a running turn in a different form from the turn's opening messages, and the guest counts
 both forms as a read.
 
+A message frame for a user message carries `cutsCall` on a harness with `live-cut`. The guest then
+[cuts the model call in flight](#cutting-a-model-call), so the model reads the message at once and
+not at the next tool boundary. No other record cuts: a task message or an action result waits for
+the boundary.
+
 The user's message renders with each span the client labelled pasted or dropped wrapped in a
 `<pasted id="…">` or `<dropped id="…">` block, in the inbox and in a rebuilt session's history
 alike. The closing tag repeats the opening tag's ID, which is random and fresh for each block, so
@@ -258,6 +263,28 @@ reached stays unread, so it starts the next turn, and the next turn resumes the 
 interrupted turn's last entry. A resumed turn interrupted before its first new chain entry ends at
 the entry it resumed from. A fresh turn interrupted before its first chain entry has no boundary to
 end at, so it fails as a step error, and the next step runs it again.
+
+### Cutting a model call
+
+The guest cuts a call only when all of these hold: the CLI's init lists `interrupt_receipt_v1`, a
+message that cuts is queued and unread, a main-chain call is streaming, no tool use has begun in
+that call, and no cut is pending. A host interrupt wins over a cut. The host sends no message frame
+to a turn that left records for the next step or that ended silently, so those turns never cut.
+
+The guest interrupts the query and reads the receipt, which lists the queued messages that survive.
+The CLI then ends its turn with an error result and starts the next queued message at once, in the
+same process and session. The cut call's message arrives flagged `aborted` and its text may end
+mid-word, so the guest sends no assistant frame for it and drops the reasoning summary it held. The
+guest reports the cut call's partial usage in a call frame and adds the cut result's usage, turns
+and thinking tokens to the turn end. The guest sends no turn end for the cut, and keeps reading
+while a message the receipt listed is unread. A message the receipt did not list is not waited for.
+When no message survives, the turn ends as `finished` at the last chain entry.
+
+The CLI keeps the cut call's partial text and an interrupt marker in the session, and joins the
+queued messages into one user message after them, so a burst of messages lands in one request and
+the model sees the opening messages once. The session prompt tells the model that a reply a message
+cut never reached the user. A message counts as read when a finished call that was not cut held it.
+The turn end carries the count of cut calls as `cutCalls`.
 
 ## Model calls
 
@@ -346,11 +373,11 @@ conversation's thread. The host writes a reply record for each message with text
 reports it, in a transaction of its own that the task's lease guards, so a reader sees the reply
 while the turn still runs. The reply's text is erasable, and its payload names the run that wrote
 it. The step commit writes one turn-ended record with the usage, the end reason, the context and the
-count of thinking tokens, which the plain payload holds so that a projection reads the count without
-a key and it outlives a forgotten reply. Each reply keeps the model's reasoning from before it: the
-summaries gathered since the previous reply sit in the reply's erasable fields, so a forget removes
-them with the reply. Each record holds the model ID and the profile's ID from the profile nixie gave
-the turn, never from the guest's frames
+count of thinking tokens and the count of cut calls, which the plain payload holds so that a
+projection reads the count without a key and it outlives a forgotten reply. Each reply keeps the
+model's reasoning from before it: the summaries gathered since the previous reply sit in the reply's
+erasable fields, so a forget removes them with the reply. Each record holds the model ID and the
+profile's ID from the profile nixie gave the turn, never from the guest's frames
 ([model profiles](./model-profiles.md#records-of-model-output)).
 
 A `model.reply_voided` record marks one reply as never sent to the user. Its payload holds the

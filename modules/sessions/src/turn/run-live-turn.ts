@@ -172,6 +172,7 @@ async function runTokenTurn(
           ? []
           : readLiveInbox(run.context, {
               taskID: input.taskID,
+              canCut: capabilities.has('live-cut'),
               sent,
               signal: live.signal,
               times: plan.times,
