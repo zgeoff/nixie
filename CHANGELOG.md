@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.87.0](https://github.com/zgeoff/nixie/compare/v0.86.0...v0.87.0) (2026-11-20)
+
+
+### Features
+
+* **prompts:** tell the model which text reaches the owner ([#1277](https://github.com/zgeoff/nixie/issues/1277)) ([93b5cc0](https://github.com/zgeoff/nixie/commit/93b5cc0e62984ec0e47e286576a6e3a13b3c174f))
+* **sessions:** show each model reply live and void lost ones ([#1281](https://github.com/zgeoff/nixie/issues/1281)) ([404eb30](https://github.com/zgeoff/nixie/commit/404eb309609f915cdcf00607aeb2c8670ddd1046))
+* **web:** split a step around messages and show voided replies ([#1279](https://github.com/zgeoff/nixie/issues/1279)) ([909994c](https://github.com/zgeoff/nixie/commit/909994cf5757938922d45de5964a03928cea1fa5))
+
+
+### Bug Fixes
+
+* **sessions:** end a silent turn without another model call ([#1276](https://github.com/zgeoff/nixie/issues/1276)) ([f335c8a](https://github.com/zgeoff/nixie/commit/f335c8a209821001e8e587fcd53920f172fb1ee4))
+
 ## [0.86.0](https://github.com/zgeoff/nixie/compare/v0.85.0...v0.86.0) (2026-11-19)
 
 
