@@ -10,11 +10,13 @@ import {
 import { waitForCondition } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
 import { startFakeImp } from '../test-utils/start-fake-imp';
+import { startSharedImpd } from '../test-utils/start-impd';
 import { buildImpSandboxAdapter } from './build-imp-sandbox-adapter';
 
 async function setupTest() {
+  const started = await startSharedImpd();
   const recorder = await setupTestRecorder();
-  const imp = await startFakeImp();
+  const imp = await startFakeImp(started);
   const directory = await mkdtemp(join(tmpdir(), 'nixie-sandbox-imp-'));
 
   onTestFinished(() => rm(directory, { recursive: true, force: true }));
@@ -28,7 +30,7 @@ async function setupTest() {
     guestToolPort: imp.guestToolPort,
   });
 
-  return { imp, adapter, recorder };
+  return { imp, adapter, recorder, readCalls: started.readCalls };
 }
 
 test('it lets a turn that starts during an idle sleep reach the tool endpoint on the woken imp', async () => {
@@ -51,7 +53,7 @@ test('it lets a turn that starts during an idle sleep reach the tool endpoint on
     env: { TOOL_URL: route.url },
   });
 
-  await waitForCondition(() => ctx.imp.calls.some((call) => call.startsWith('wait ')));
+  await waitForCondition(() => ctx.imp.events.some((event) => event.startsWith('wait ')));
 
   snapshot.resolve();
 
@@ -64,11 +66,11 @@ test('it lets a turn that starts during an idle sleep reach the tool endpoint on
     authorization: 'Bearer run-token',
   });
 
-  expect(ctx.imp.calls.slice(ctx.imp.calls.indexOf(`slept ${sandbox.id}`))).toStrictEqual([
-    `slept ${sandbox.id}`,
-    `woken by wake ${sandbox.id}`,
-    `wake ${sandbox.id}`,
-    `forward ${sandbox.id} ${ctx.imp.guestToolPort}`,
+  expect(ctx.imp.events).toStrictEqual([`wait wake ${sandbox.id}`]);
+
+  expect(ctx.readCalls().map((call) => [call.procedure, call.input])).toIncludeAllMembers([
+    ['imps/sleep', { name: sandbox.id }],
+    ['imps/wake', { name: sandbox.id, restartError: false }],
   ]);
 });
 
@@ -92,7 +94,7 @@ test('it lets a turn reach the tool endpoint when an idle sleep starts between i
     env: { TOOL_URL: route.url },
   });
 
-  await waitForCondition(() => ctx.imp.calls.includes(`wait exec ${sandbox.id}`));
+  await waitForCondition(() => ctx.imp.events.includes(`wait exec ${sandbox.id}`));
 
   snapshot.resolve();
 
@@ -153,11 +155,8 @@ test('it wakes a sleeping imp for the memory kill read and records the wake', as
   const read = await sandbox.readMemoryKills();
 
   expect(read).toStrictEqual({ kind: 'count', kills: 2 });
-
-  expect(ctx.imp.calls).toIncludeAllMembers([
-    `wake ${ctx.imp.created[0]?.name}`,
-    `memory-kills ${ctx.imp.created[0]?.name}`,
-  ]);
+  expect(ctx.readCalls().map((call) => call.procedure)).toContain('imps/wake');
+  expect(ctx.imp.memoryKillReads).toStrictEqual([sandbox.id]);
 
   const records = await ctx.recorder.readSandboxRecords();
 
@@ -170,7 +169,7 @@ test('it fails the memory kill read of an aborted signal and starts no exec', as
 
   expect(sandbox.readMemoryKills(AbortSignal.abort())).resolves.toStrictEqual({ kind: 'failed' });
   expect(ctx.imp.execs).toStrictEqual([]);
-  expect(ctx.imp.calls.filter((call) => call.startsWith('memory-kills'))).toStrictEqual([]);
+  expect(ctx.imp.memoryKillReads).toStrictEqual([]);
 });
 
 test('it fails the memory kill read on an abort while an idle sleep holds the exec', async () => {
@@ -184,14 +183,14 @@ test('it fails the memory kill read on an abort while an idle sleep holds the ex
   void ctx.imp.startIdleSleep(sandbox.id, snapshot.promise);
   const read = sandbox.readMemoryKills(controller.signal);
 
-  await waitForCondition(() => ctx.imp.calls.some((call) => call.startsWith('wait ')));
+  await waitForCondition(() => ctx.imp.events.some((event) => event.startsWith('wait ')));
 
   controller.abort();
 
   const result = await read;
 
   expect(result).toStrictEqual({ kind: 'failed' });
-  expect(ctx.imp.calls).not.toContain(`woken by exec ${sandbox.id}`);
+  expect(ctx.imp.events).not.toContain(`woken by exec ${sandbox.id}`);
 
   snapshot.resolve();
 });

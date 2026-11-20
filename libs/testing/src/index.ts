@@ -54,3 +54,4 @@ export { probeProcessGone } from './process/probe-process-gone';
 export { readDescendants } from './wait/read-descendants';
 export { readMemoryTmpdir } from './memory/read-memory-tmpdir';
 export { stopProcesses } from './wait/stop-processes';
+export { nativeWebSocket } from './native-web-socket';

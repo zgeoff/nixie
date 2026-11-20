@@ -14,8 +14,6 @@ async function setupTest() {
 test('it starts the stand-in guest of an imp before its create returns', async () => {
   const ctx = await setupTest();
 
-  await ctx.impd.seedImage('harbour-image');
-
   const guested = attachTestGuests(
     ctx.impd,
     buildImpPort({ url: ctx.impd.url, token: TEST_TOKEN }),
@@ -45,4 +43,29 @@ test('it refuses the guest of an imp that the port did not create', async () => 
   expect(() => guested.getGuest('lighthouse')).toThrow(
     'no imp named lighthouse was created through this port',
   );
+});
+
+test('it seeds the image of an imp once, however many imps boot from it', async () => {
+  const ctx = await setupTest();
+
+  const guested = attachTestGuests(
+    ctx.impd,
+    buildImpPort({ url: ctx.impd.url, token: TEST_TOKEN }),
+  );
+
+  const input = {
+    image: 'harbour-image',
+    vcpus: 1,
+    memoryMib: 512,
+    diskMib: 1024,
+    policy: { mode: 'none', allow: [] },
+    backup: false,
+  } as const;
+
+  await guested.port.createImp({ ...input, name: 'harbour' });
+  await guested.port.createImp({ ...input, name: 'lighthouse' });
+
+  const images = await ctx.impd.client.images.list();
+
+  expect(images.map((image) => image.name)).toStrictEqual(['harbour-image']);
 });

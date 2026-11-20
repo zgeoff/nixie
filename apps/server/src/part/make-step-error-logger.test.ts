@@ -3,9 +3,9 @@ import type { Logger } from '@heynixie/logger';
 import { makeLogger, startLineLog } from '@heynixie/logger';
 import { SandboxHostError } from '@heynixie/sandbox';
 import { buildImpPort } from '@heynixie/sandbox-imp';
-import { startStubImpd } from '@heynixie/sandbox-imp/test-utils';
 import { ModelAPIError } from '@heynixie/sessions';
 import { createConversationTask } from '@heynixie/tasks';
+import { TEST_TOKEN, startTestImpd } from '@impz/testing';
 import invariant from 'tiny-invariant';
 import { sendTestMessage } from '../test-utils/send-test-message';
 import { startTestServer } from '../test-utils/start-test-server';
@@ -22,14 +22,18 @@ test("it records and logs impd's code and message for a turn whose imp wake impd
 
   await createConversationTask(ctx.context);
 
-  const url = startStubImpd({
+  const impd = await startTestImpd();
+
+  onTestFinished(impd.stop);
+
+  impd.fail('imps/wake', {
     code: 'RAM_BUDGET_EXCEEDED',
     status: 503,
     message: 'Not enough RAM budget, even after sleeping idle imps',
     data: { budgetMib: 8192, usedMib: 7680, requestedMib: 1024 },
   });
 
-  const port = buildImpPort({ url, token: 'not-a-real-token' });
+  const port = buildImpPort({ url: impd.url, token: TEST_TOKEN });
   const log = mock<Logger>();
 
   const errored = await sendTestMessage(

@@ -6,11 +6,14 @@ import {
 } from '@heynixie/sandbox/test-utils';
 import { buildImpSandboxAdapter } from '../sandbox/build-imp-sandbox-adapter';
 import { runProbe } from './run-probe';
+import { seedSecret } from './seed-secret';
 import { startFakeImp } from './start-fake-imp';
+import { startSharedImpd } from './start-impd';
 
 async function setupTest() {
+  const started = await startSharedImpd();
   const recorder = await setupTestRecorder();
-  const imp = await startFakeImp();
+  const imp = await startFakeImp(started);
 
   const adapter = buildImpSandboxAdapter({
     port: imp.port,
@@ -19,7 +22,7 @@ async function setupTest() {
     toolTarget: () => ({ path: '/nonexistent.sock' }),
   });
 
-  return { imp, adapter };
+  return { imp, adapter, impd: started.impd };
 }
 
 test('it reports the status and a zero exit for a server that answers', async () => {
@@ -56,7 +59,7 @@ test('it goes through the proxy that the guest env names when it uses the broker
 
   const grant = buildMockGrantSpec();
 
-  ctx.imp.secrets.set(grant.secret, [grant.host]);
+  await seedSecret(ctx.impd, grant.secret, [grant.host]);
 
   const sandbox = await ctx.adapter.create(
     buildMockSandboxSpec({ grants: [grant], toolRoute: false }),
