@@ -6,6 +6,7 @@ export type { TranscriptEntry } from './load-session-transcript';
 export { loadSessionTranscript } from './load-session-transcript';
 export type { ContractQuery, ContractRun } from './run-contract-query';
 export { runContractQuery } from './run-contract-query';
+export { runEndTurnProbe, endTurnProbeToolName } from './run-end-turn-probe';
 export { runMissingSessionProbe } from './run-missing-session-probe';
 export { runModPolicyProbe } from './run-mod-policy-probe';
 export { runOwnerInputProbe } from './run-owner-input-probe';

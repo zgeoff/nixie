@@ -72,6 +72,10 @@ interface TypedResult {
 export interface DirectResult extends TypedResult {
   readonly images?: readonly ToolImage[];
 
+  // Asks the model's loop to end its turn after this call, with no further model call. Only a tool
+  // whose result ends the turn for good sets it.
+  readonly endsTurn?: true;
+
   // Sealed under the result record's key, in order, as the record's attachments. They never enter
   // the result's payload or its erasable text.
   readonly attachments?: readonly Uint8Array<ArrayBuffer>[];

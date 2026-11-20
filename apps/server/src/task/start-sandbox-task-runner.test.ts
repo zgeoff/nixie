@@ -169,7 +169,10 @@ test("it ends the conversation's turn that the task's report woke with no reply,
   });
 
   expect(JSON.parse(ended?.result ?? '{}')).toStrictEqual({
-    _meta: { 'io.modelcontextprotocol/serverInfo': { name: 'nixie', version: expect.any(String) } },
+    _meta: {
+      'claude/endTurn': true,
+      'io.modelcontextprotocol/serverInfo': { name: 'nixie', version: expect.any(String) },
+    },
     content: [],
     structuredContent: {
       note: 'This turn ends with nothing sent. Write no more text: nixie keeps no reply from this turn.',

@@ -23,6 +23,9 @@ export interface Settled {
       }
     | { readonly kind: 'text'; readonly text: string; readonly isError: boolean };
 
+  // the model's loop ends its turn after this result
+  readonly endsTurn?: true;
+
   // sealed under the result record's key, in order
   readonly attachments?: readonly Uint8Array<ArrayBuffer>[];
 

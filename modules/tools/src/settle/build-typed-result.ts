@@ -27,6 +27,7 @@ export function buildTypedResult(
     sources: registered.definition.declaration.results,
     content: buildResultFields(typed, result),
     reply: { kind: 'typed', result, images: typed.images ?? [] },
+    ...(typed.endsTurn === undefined ? {} : { endsTurn: true as const }),
     ...(typed.attachments === undefined ? {} : { attachments: typed.attachments }),
     ...(typed.writeBeside === undefined ? {} : { writeBeside: typed.writeBeside }),
   };

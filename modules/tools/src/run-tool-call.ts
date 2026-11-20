@@ -214,8 +214,11 @@ function toCallToolResult(settled: Settled): CallToolResult {
     return { content: [{ type: 'text', text: reply.text }], isError: reply.isError };
   }
 
+  // The Claude Code CLI ends its turn after a result with this key and makes no further model call.
+  const endTurn = settled.endsTurn === true ? { _meta: { 'claude/endTurn': true } } : {};
+
   if (reply.images.length === 0) {
-    return { content: [], structuredContent: reply.result };
+    return { content: [], structuredContent: reply.result, ...endTurn };
   }
 
   return {
@@ -227,6 +230,7 @@ function toCallToolResult(settled: Settled): CallToolResult {
         mimeType: image.mediaType,
       })),
     ],
+    ...endTurn,
   };
 }
 

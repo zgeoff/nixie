@@ -130,6 +130,60 @@ test('it writes the call with its decision, the tool-use ID and the run model pr
   });
 });
 
+test('it marks the MCP result of a tool that ends the turn with the end-turn key', async () => {
+  const ctx = await setupTest({
+    tools: [
+      buildMockToolDefinition({
+        name: 'notes_read',
+        run: () => Promise.resolve({ status: 'ok', result: { text: 'a note' }, endsTurn: true }),
+      }),
+    ],
+  });
+
+  const result = await runToolCall(
+    { tool: 'notes_read', input: { query: 'milk' }, toolUseID: 'toolu_2' },
+    {
+      runID: 'run-1',
+      thread: 'task-1',
+      logThread: 'task-1',
+      tools: ['notes_read'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
+    ctx.options,
+  );
+
+  expect(result).toStrictEqual({
+    content: [],
+    structuredContent: { text: 'a note' },
+    _meta: { 'claude/endTurn': true },
+  });
+});
+
+test('it leaves the end-turn key off the MCP result of a tool that does not end the turn', async () => {
+  const ctx = await setupTest({
+    tools: [
+      buildMockToolDefinition({
+        name: 'notes_read',
+        run: () => Promise.resolve({ status: 'ok', result: { text: 'a note' } }),
+      }),
+    ],
+  });
+
+  const result = await runToolCall(
+    { tool: 'notes_read', input: { query: 'milk' }, toolUseID: 'toolu_2' },
+    {
+      runID: 'run-1',
+      thread: 'task-1',
+      logThread: 'task-1',
+      tools: ['notes_read'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
+    ctx.options,
+  );
+
+  expect(result).toStrictEqual({ content: [], structuredContent: { text: 'a note' } });
+});
+
 test('it writes the result with the source of each field, under the call it answers', async () => {
   const ctx = await setupTest({
     tools: [
