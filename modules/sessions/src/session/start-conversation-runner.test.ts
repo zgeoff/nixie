@@ -3547,3 +3547,87 @@ test("it renders a restore notice in the turn that the owner's next message wake
   expect(text).toInclude('The log holds nothing after that time.');
   expect(text).toInclude('Are you back?');
 });
+
+test('it writes each reply to the thread as the host reads it, before the turn ends', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  const runner = await ctx.startRunner({
+    models: buildMockModelsConfig(),
+    credential: 'not-a-real-key',
+    toolNames: ['notes_read'],
+  });
+
+  const seen = { replies: 0, turnEnds: -1 };
+
+  ctx.sandboxes.setGuestScript(async (turn, guest) => {
+    invariant(guest.emit);
+
+    guest.emit([{ type: 'assistant', messageID: 'msg_1', text: 'Let me check.', toolUses: [] }]);
+
+    await waitForCondition(async () => {
+      const replies = await ctx.readKinds('model.reply');
+
+      return replies.length === 1;
+    });
+
+    const replies = await ctx.readKinds('model.reply');
+    const ends = await ctx.readKinds('model.turn_ended');
+
+    seen.replies = replies.length;
+    seen.turnEnds = ends.length;
+
+    return [
+      { type: 'read', uuids: turn.input.map((message) => message.uuid) },
+      {
+        type: 'ended',
+        boundary: {
+          harness: 'agent-sdk',
+          sessionID: crypto.randomUUID(),
+          messageID: crypto.randomUUID(),
+        },
+        outcome: 'finished',
+        stopReason: 'end_turn',
+        turns: 1,
+        usage: { inputTokens: 10, outputTokens: 5, cacheReadTokens: 0, cacheWriteTokens: 0 },
+      },
+    ];
+  });
+
+  await ctx.sendMessage(runner, 'What is on today?');
+
+  const voids = await ctx.readKinds('model.reply_voided');
+
+  expect({ seen, voids }).toStrictEqual({ seen: { replies: 1, turnEnds: 0 }, voids: [] });
+});
+
+test('it writes no reply and ends the turn when the runner lost its lease', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  const runner = await ctx.startRunner({
+    models: buildMockModelsConfig(),
+    credential: 'not-a-real-key',
+    toolNames: ['notes_read'],
+  });
+
+  ctx.sandboxes.setGuestScript((turn) => {
+    ctx.clock.advance(120_000);
+
+    return [
+      { type: 'read', uuids: turn.input.map((message) => message.uuid) },
+      { type: 'assistant', messageID: 'msg_1', text: 'Too late.', toolUses: [] },
+    ];
+  });
+
+  await ctx.sendMessage(runner, 'What is on today?');
+
+  const [replies, voids] = await Promise.all([
+    ctx.readKinds('model.reply'),
+    ctx.readKinds('model.reply_voided'),
+  ]);
+
+  expect({ replies, voids }).toStrictEqual({ replies: [], voids: [] });
+});

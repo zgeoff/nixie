@@ -10,6 +10,7 @@ import { startTestSpend } from '@heynixie/spend/test-utils';
 import { createConversationTask, writeInboxRecords } from '@heynixie/tasks';
 import { readTestTaskProgress } from '@heynixie/tasks/test-utils';
 import type { InboxMessage } from '@heynixie/wire';
+import invariant from 'tiny-invariant';
 import type { ConversationRunnerOptions } from '../session/start-conversation-runner';
 import { startConversationRunner } from '../session/start-conversation-runner';
 import { buildStubToolEndpoint } from '../test-utils/build-stub-tool-endpoint';
@@ -1034,4 +1035,189 @@ test('it sends the account and plan of an active login in the turn profile of a 
     harness: 'codex',
     chatgptLogin: { accountID: 'acct-test-1', planType: 'plus' },
   });
+});
+
+test('it voids the replies of an overflowed turn in the commit of its compaction', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  const runner = await ctx.startRunner();
+
+  ctx.sandboxes.setGuestScript(
+    buildStubTurnScript((turn) => ({
+      boundary: {
+        harness: 'agent-sdk',
+        sessionID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d001',
+        messageID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d002',
+      },
+      reply: turn.resume === null ? 'Hello.' : 'Reading the first page.',
+      contextSize: 20_000,
+      ...(turn.resume === null ? {} : { terminalReason: 'blocking_limit' }),
+    })),
+  );
+
+  await ctx.sendMessage(runner, 'What does the tide gauge read?');
+  await ctx.sendMessage(runner, 'Read me every page of the gauge log.');
+
+  const [replies, voids] = await Promise.all([
+    ctx.readKinds('model.reply'),
+    ctx.readKinds('model.reply_voided'),
+  ]);
+
+  const overflowed = replies.find(
+    (reply) =>
+      reply.erasable.status === 'readable' &&
+      reply.erasable.fields['text'] === 'Reading the first page.',
+  );
+
+  invariant(overflowed);
+
+  expect(voids.map((record) => record.payload)).toStrictEqual([
+    { replySequence: overflowed.sequence, runID: expect.toBeString(), reason: 'turn_dropped' },
+  ]);
+});
+
+test('it voids the replies of a turn that failed on a harness with no summary to compact an overflow', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  const runner = await ctx.startRunner(2000, () => Promise.resolve(null), undefined, {
+    harness: bindHarness(buildMockCodexProfile()),
+  });
+
+  const usage = { inputTokens: 10, outputTokens: 5, cacheReadTokens: 0, cacheWriteTokens: 0 };
+
+  ctx.sandboxes.setGuestScript((turn) => [
+    { type: 'read', uuids: turn.input.map((message) => message.uuid) },
+    { type: 'assistant', messageID: 'msg_1', text: 'Reading the first page.', toolUses: [] },
+    { type: 'ended', outcome: 'overflow', stopReason: 'end_turn', turns: 1, usage },
+  ]);
+
+  await ctx.sendMessage(runner, 'Read me every page of the gauge log.');
+
+  const [replies, voids] = await Promise.all([
+    ctx.readKinds('model.reply'),
+    ctx.readKinds('model.reply_voided'),
+  ]);
+
+  expect(
+    voids.map((record) => [record.payload['replySequence'], record.payload['reason']]),
+  ).toStrictEqual(replies.map((reply) => [reply.sequence, 'attempt_failed']));
+
+  expect(replies).toHaveLength(1);
+});
+
+test('it voids the replies of a guest that exited before it ended its turn', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  const runner = await ctx.startRunner();
+
+  ctx.sandboxes.setGuestScript((turn) => [
+    { type: 'read', uuids: turn.input.map((message) => message.uuid) },
+    { type: 'assistant', messageID: 'msg_1', text: 'Let me look.', toolUses: [] },
+  ]);
+
+  await ctx.sendMessage(runner, 'What does the tide gauge read?');
+
+  const [replies, voids] = await Promise.all([
+    ctx.readKinds('model.reply'),
+    ctx.readKinds('model.reply_voided'),
+  ]);
+
+  expect(
+    voids.map((record) => [record.payload['replySequence'], record.payload['reason']]),
+  ).toStrictEqual(replies.map((reply) => [reply.sequence, 'attempt_failed']));
+
+  expect(replies).toHaveLength(1);
+});
+
+test('it voids the replies of a session the guest lost, and keeps the replies of the rebuilt turn', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  const runner = await ctx.startRunner();
+
+  ctx.sandboxes.setGuestScript((turn, guest) =>
+    turn.resume === null
+      ? buildStubTurnScript(() => ({
+          boundary: {
+            harness: 'agent-sdk',
+            sessionID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d001',
+            messageID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d002',
+          },
+          reply: 'Fresh answer.',
+        }))(turn, guest)
+      : [
+          { type: 'assistant', messageID: 'msg_stale', text: 'Stale answer.', toolUses: [] },
+          { type: 'failed', reason: 'session_missing', detail: 'No conversation found' },
+        ],
+  );
+
+  await ctx.sendMessage(runner, 'Hi.');
+  await ctx.sendMessage(runner, 'Hi again.');
+
+  const [replies, voids] = await Promise.all([
+    ctx.readKinds('model.reply'),
+    ctx.readKinds('model.reply_voided'),
+  ]);
+
+  const stale = replies.find(
+    (reply) =>
+      reply.erasable.status === 'readable' && reply.erasable.fields['text'] === 'Stale answer.',
+  );
+
+  invariant(stale);
+
+  expect(
+    voids.map((record) => [record.payload['replySequence'], record.payload['reason']]),
+  ).toStrictEqual([[stale.sequence, 'turn_dropped']]);
+});
+
+test('it voids a reply that no step commit kept before it takes the task, and voids none a commit kept', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  const runner = await ctx.startRunner();
+
+  ctx.sandboxes.setGuestScript(buildStubTurnScript(() => ({ reply: 'Kept.' })));
+
+  await ctx.sendMessage(runner, 'One.');
+
+  await writeRecords(ctx.context.log, [
+    {
+      kind: 'model.reply',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: {
+        model: 'claude-test-1',
+        profile: 'chat-direct',
+        messageID: 'msg_lost',
+        runID: 'conversation:2@1',
+      },
+      erasable: { text: 'Lost.' },
+    },
+  ]);
+
+  await ctx.sendMessage(runner, 'Two.');
+
+  const [replies, voids] = await Promise.all([
+    ctx.readKinds('model.reply'),
+    ctx.readKinds('model.reply_voided'),
+  ]);
+
+  const lost = replies.find(
+    (reply) => reply.erasable.status === 'readable' && reply.erasable.fields['text'] === 'Lost.',
+  );
+
+  invariant(lost);
+
+  expect(voids.map((record) => record.payload)).toStrictEqual([
+    { replySequence: lost.sequence, runID: 'conversation:2@1', reason: 'attempt_lost' },
+  ]);
 });
