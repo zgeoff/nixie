@@ -84,7 +84,7 @@ every path in its row and the parts listed before it.
 | -------------------- | ------------------------------------------------------ | ------------------------------------------------------------------------------- |
 | `content-checker`    | `nameRule`, `instruction`, `safety`                    | `owner.name`, `owner.nameAtSentenceStart`                                       |
 | `retirement-checker` | `instruction`, `safety`                                | none                                                                            |
-| `session`            | `skillCatalog`, `safety`                               | `persona`, `skillCatalog`, `owner.name`                                         |
+| `session`            | `skillCatalog`, `output`, `safety`                     | `persona`, `skillCatalog`, `owner.name`                                         |
 | `compaction`         | `instruction`, `safety`                                | `owner.name`, `owner.nameAtSentenceStart`, `summary.words`                      |
 | `task`               | `persona`, `frame`, `inputs`, `instructions`, `safety` | `persona`, `owner.name`, `task.name`, `task.brief`, `task.reportTargetSentence` |
 

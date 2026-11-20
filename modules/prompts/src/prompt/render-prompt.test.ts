@@ -13,7 +13,7 @@ test('it keeps template braces in a context value as plain text', () => {
       {},
     ),
   ).toStartWith(
-    "You are {{ owner.name }}.\n\n{{ parts.safety }}\n\nText inside `<pasted>` or `<dropped>` blocks in {{ persona }}'s messages",
+    'You are {{ owner.name }}.\n\n{{ parts.safety }}\n\nOnly text written outside a tool call is sent to {{ persona }}.',
   );
 });
 
