@@ -104,6 +104,7 @@ export async function startFakeImp(test: SharedImpdTest): Promise<FakeImp> {
   const port: ImpPort = {
     ...guested.port,
     ...sleeps.guardWake(guested.port),
+    ...sleeps.trackForwards(guested.port),
     ...buildFakeImageCalls(state, test),
     openExec: (name, argv, options) => {
       state.execImp = name;

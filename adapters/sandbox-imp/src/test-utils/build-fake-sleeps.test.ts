@@ -1,4 +1,5 @@
 import { expect, onTestFinished, test } from 'bun:test';
+import { waitForCondition } from '@heynixie/testing';
 import { buildFakeSleeps } from './build-fake-sleeps';
 import { startImpd } from './start-impd';
 
@@ -81,4 +82,43 @@ test('it starts the sleep set for the next wake once, and none after it', async 
   await guarded.wakeImp('harbour');
 
   expect(ctx.sleeps.events).toStrictEqual(['wait exec harbour', 'woken by exec harbour']);
+});
+
+test('it ends an idle sleep only once the reverse forwards of the imp have ended', async () => {
+  const ctx = await setupTest();
+
+  const snapshot = Promise.withResolvers<void>();
+  const ended = Promise.withResolvers<{ kind: string }>();
+  const order: string[] = [];
+
+  const tracked = ctx.sleeps.trackForwards({
+    openReverseForward: () => ({
+      listening: Promise.resolve(),
+      ended: ended.promise,
+      stop: () => {},
+    }),
+  });
+
+  tracked.openReverseForward('harbour', 4100, () => {});
+
+  const sleeping = (async () => {
+    await ctx.sleeps.startIdleSleep('harbour', snapshot.promise);
+
+    order.push('slept');
+  })();
+
+  snapshot.resolve();
+
+  await waitForCondition(async () => {
+    const imp = await ctx.impd.client.imps.get({ name: 'harbour' });
+
+    return imp.state === 'sleeping';
+  });
+
+  order.push('forward ended');
+  ended.resolve({ kind: 'closed' });
+
+  await sleeping;
+
+  expect(order).toStrictEqual(['forward ended', 'slept']);
 });

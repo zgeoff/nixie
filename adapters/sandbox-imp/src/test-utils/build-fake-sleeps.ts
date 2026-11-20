@@ -1,5 +1,5 @@
 import type { ImpClient } from '@impz/client';
-import type { ImpPort } from '../types';
+import type { ImpForward, ImpPort } from '../types';
 
 export interface FakeSleeps {
   // what a call did around an idle sleep: `wait <call> <imp>` when a sleep held it, and
@@ -16,6 +16,11 @@ export interface FakeSleeps {
 
   // holds the adapter's wake until an idle sleep ends, and starts the sleep set for the wake
   readonly guardWake: (port: Pick<ImpPort, 'wakeImp'>) => Pick<ImpPort, 'wakeImp'>;
+
+  // keeps each reverse forward the port opens, so an idle sleep of its imp ends only once it has
+  readonly trackForwards: (
+    port: Pick<ImpPort, 'openReverseForward'>,
+  ) => Pick<ImpPort, 'openReverseForward'>;
 }
 
 type SleepClient = Pick<ImpClient, 'imps' | 'requireAwake'>;
@@ -25,12 +30,19 @@ interface SleepState {
   readonly events: string[];
   readonly sleeping: Map<string, Promise<void>>;
   readonly asleep: Set<string>;
+  readonly forwards: Map<string, Set<ImpForward>>;
 }
 
 // impd sleeps an idle imp on its own, at a moment no test can pick. This stand-in sleeps the imp at
 // the moment the test picks, through the real impd, so a call can meet the sleep half done.
 export function buildFakeSleeps(client: SleepClient): FakeSleeps {
-  const state: SleepState = { client, events: [], sleeping: new Map(), asleep: new Set() };
+  const state: SleepState = {
+    client,
+    events: [],
+    sleeping: new Map(),
+    asleep: new Set(),
+    forwards: new Map(),
+  };
 
   const sleepsAfterWake = new Map<string, Promise<void>>();
 
@@ -55,6 +67,15 @@ export function buildFakeSleeps(client: SleepClient): FakeSleeps {
         }
       },
     }),
+    trackForwards: (port) => ({
+      openReverseForward: (name, guestPort, onConnection) => {
+        const forward = port.openReverseForward(name, guestPort, onConnection);
+
+        trackForward(state, name, forward);
+
+        return forward;
+      },
+    }),
   };
 }
 
@@ -74,6 +95,10 @@ async function runIdleSleep(
   await snapshot;
 
   await state.client.imps.sleep({ name });
+
+  // A real sleep stops the VM and its vsock, so impd has ended the imp's reverse forwards by the time
+  // the sleep is done. The stand-in guest ends them only when it sees the sleep's event, later.
+  await Promise.allSettled([...(state.forwards.get(name) ?? [])].map((forward) => forward.ended));
 
   state.asleep.add(name);
   state.sleeping.delete(name);
@@ -97,4 +122,20 @@ async function waitForSleep(state: SleepState, name: string, call: string): Prom
 
     await sleep;
   }
+}
+
+function trackForward(state: SleepState, name: string, forward: ImpForward): void {
+  const open = state.forwards.get(name) ?? new Set<ImpForward>();
+
+  state.forwards.set(name, open);
+  open.add(forward);
+  void removeWhenEnded(open, forward);
+}
+
+async function removeWhenEnded(open: Set<ImpForward>, forward: ImpForward): Promise<void> {
+  try {
+    await forward.ended;
+  } catch {}
+
+  open.delete(forward);
 }
