@@ -82,6 +82,9 @@
                 "skillCatalog": {
                   "type": "string"
                 },
+                "output": {
+                  "type": "string"
+                },
                 "safety": {
                   "type": "string"
                 }
