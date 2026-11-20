@@ -6,9 +6,8 @@ nixie reads them as a snapshot of files, parses what it applies, and seeds them 
 under a snapshot hash. Every record in the [event log](./event-log.md) carries the snapshot hash of
 the definitions in force when it was written, so a replay of any decision can read exactly the
 persona and policy it ran under. `modules/definitions` owns sources, the seed and the snapshot hash.
-The seed applies the persona, the skills and the task definitions, and the
-[rules design](../../design/platform/policy/rules.md) covers the rule files it reads but does not
-apply.
+The seed applies the persona, the skills, the prompt overrides, the rule files, the task definitions
+and the budgets, each from the [definitions format](#the-definitions-format) that adds it.
 
 ```mermaid
 flowchart LR
