@@ -215,8 +215,8 @@ test('it answers a message with a reply that used a tool, with each step in the 
     'skills.pinned',
     'tool_called',
     'tool_result',
-    'model.session_opened',
     'model.reply',
+    'model.session_opened',
     'model.turn_ended',
     'task.step_committed',
   ]);

@@ -100,7 +100,7 @@ test("it runs the task that the conversation starts in a worker imp it owns, and
   );
 });
 
-test("it ends the conversation's turn that the task's report woke with no reply, and the client reads the turn as silent", async () => {
+test("it marks the conversation's turn that the task's report woke as silent, and keeps the text the model still wrote", async () => {
   const ctx = await setupTest();
 
   ctx.nixie.guest.addKindReplies(
@@ -153,6 +153,13 @@ test("it ends the conversation's turn that the task's report woke with no reply,
     {
       kind: 'model.reply',
       message: { text: 'Passed to the Tide tables task.' },
+      recordedAt: expect.any(Date),
+      sequence: expect.any(Number),
+      thread: 'conversation',
+    },
+    {
+      kind: 'model.reply',
+      message: { text: 'The tide report is in.' },
       recordedAt: expect.any(Date),
       sequence: expect.any(Number),
       thread: 'conversation',

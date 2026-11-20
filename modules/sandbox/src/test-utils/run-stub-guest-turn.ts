@@ -254,6 +254,7 @@ async function runInputCall(
           messageID: message.uuid,
           text: overflowText,
           toolUses: [],
+          isError: true,
         });
 
         return { frames, overflow: overflowed.overflow, refusal: null, stopReason: null };
