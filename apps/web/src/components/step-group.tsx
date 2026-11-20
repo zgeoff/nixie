@@ -31,9 +31,11 @@ export function StepGroup(props: StepGroupProps): ReactNode {
         <div
           className={css({ display: 'flex', flexDirection: 'column', gap: '3', paddingBlock: '2' })}
         >
-          <StepSection title="Step">
-            <p>{formatStepLine(step)}</p>
-          </StepSection>
+          {step.isContinued === true ? null : (
+            <StepSection title="Step">
+              <p>{formatStepLine(step)}</p>
+            </StepSection>
+          )}
           {step.memories === undefined ? null : <StepMemories memories={step.memories} />}
           {step.context === undefined && step.compactions === undefined ? null : (
             <StepContext compactions={step.compactions ?? []} context={step.context} />

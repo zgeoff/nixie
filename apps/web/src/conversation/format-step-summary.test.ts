@@ -250,3 +250,9 @@ test('it says a failed step with no readable error failed', () => {
     'task · failed · no tools',
   );
 });
+
+test('it leaves the task off the summary of a later segment of a split step', () => {
+  expect(
+    formatStepSummary(buildMockStepActivity({ isContinued: true, taskID: 'conversation' })),
+  ).toBe('no tools');
+});

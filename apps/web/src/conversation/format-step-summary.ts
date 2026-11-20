@@ -4,7 +4,7 @@ import { formatContext } from './format-context';
 
 export function formatStepSummary(step: StepActivity): string {
   const parts = [
-    step.taskID ?? 'task',
+    ...(step.isContinued === true ? [] : [step.taskID ?? 'task']),
     ...formatStatus(step),
     ...(step.isSilent === true ? ['ended with no reply'] : []),
     ...(step.memories === undefined ? [] : [formatMemoryCount(step.memories)]),

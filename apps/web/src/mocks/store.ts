@@ -43,11 +43,15 @@ const imageSchema = z.object({
   mediaType: z.enum(['image/jpeg', 'image/png', 'image/webp', 'image/gif']).default('image/png'),
 });
 
+const voidReasonSchema = z.enum(['attempt_failed', 'attempt_lost', 'turn_dropped', 'silent']);
+
 const messageSchema = z.object({
   clientMessageId: z.uuid().optional(),
   images: z.array(imageSchema).optional(),
+  isVoided: z.literal(true).optional(),
   spans: z.array(spanSchema).optional(),
   text: z.string().default(() => faker.lorem.sentence()),
+  voidReason: voidReasonSchema.optional(),
 });
 
 const jsonObjectSchema = z.record(z.string(), z.unknown());

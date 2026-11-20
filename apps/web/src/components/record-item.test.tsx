@@ -213,3 +213,42 @@ test('it shows an error and no confirm when the preview of a forget fails', asyn
 
   expect(rendered.queryByRole('button', { name: 'Forget for good' })).toBeNull();
 });
+
+test('it mutes a voided reply and labels it with the cause of the failed step', () => {
+  const rendered = render(
+    <RecordItem
+      cause="Claude is overloaded"
+      record={buildMockLogRecord({
+        kind: 'model.reply',
+        message: { isVoided: true, text: 'A draft.', voidReason: 'attempt_failed' },
+      })}
+    />,
+  );
+
+  expect(rendered.getByRole('listitem')).toHaveTextContent(
+    'nixie Not sent: this attempt failed, and Nix tried again (Claude is overloaded)A draft.Forget',
+  );
+});
+
+test('it labels a reply that a void names for a silent turn as not sent only', () => {
+  const rendered = render(
+    <RecordItem
+      record={buildMockLogRecord({
+        kind: 'model.reply',
+        message: { isVoided: true, text: 'A draft.', voidReason: 'silent' },
+      })}
+    />,
+  );
+
+  expect(rendered.getByText('Not sent')).toBeVisible();
+});
+
+test('it shows a reply that no void names without a label', () => {
+  const rendered = render(
+    <RecordItem
+      record={buildMockLogRecord({ kind: 'model.reply', message: { text: 'A reply.' } })}
+    />,
+  );
+
+  expect(rendered.queryByText(/Not sent/u)).toBeNull();
+});

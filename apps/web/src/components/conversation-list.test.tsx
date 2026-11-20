@@ -247,3 +247,32 @@ test('it shows a file that a step sent after the reply of that step', async () =
     'orders.csv · 4 B',
   ]);
 });
+
+test('it shows a reply of a failed step muted with the cause of the failure', () => {
+  const rendered = render(
+    <ConversationList
+      entries={[]}
+      notices={[]}
+      onDiscard={() => {}}
+      onRetry={() => Promise.resolve()}
+      records={[
+        buildMockLogRecord({
+          kind: 'task.step_started',
+          sequence: 1,
+          task: { stepKey: 'step-1', taskID: 'conversation' },
+        }),
+        buildMockLogRecord({ kind: 'model.reply', message: { text: 'A draft.' }, sequence: 2 }),
+        buildMockLogRecord({
+          kind: 'task.step_errored',
+          sequence: 3,
+          task: { reason: 'model_api.overloaded', stepKey: 'step-1', taskID: 'conversation' },
+        }),
+      ]}
+      taskMessageLayout="line"
+    />,
+  );
+
+  expect(
+    rendered.getByText('Not sent: this attempt failed, and Nix tried again (Claude is overloaded)'),
+  ).toBeVisible();
+});

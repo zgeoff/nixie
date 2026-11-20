@@ -124,10 +124,13 @@ it fails and the conversation stops only once the context is full
 a forget invalidates the session or a new session opens.
 
 Each message stands on its own line, a reset stands on its own line too, and every other record
-folds into the step it belongs to, from the step's start to its end. A record before a step, such as
-the task's creation, folds into the step that follows it. A page holds only the thread's newest
-records, so it can start partway through a step: a step's end with no start before it closes the
-records before it as one step, with the status its end records.
+folds into the step it belongs to, from the step's start to its end. A message inside a step splits
+the step into segments, with the message between them. The first segment keeps the step's header,
+and the last keeps its status, duration and error. Records after the last message that show nothing
+of their own, such as the turn end and the step's end, stay with the segment before it. A record
+before a step, such as the task's creation, folds into the step that follows it. A page holds only
+the thread's newest records, so it can start partway through a step: a step's end with no start
+before it closes the records before it as one step, with the status its end records.
 
 A step shows as one collapsed line of short facts: its task, whether its turn ended with no reply,
 how many memories its recalls delivered with how many of them the model rated as noise, each tool it
@@ -165,6 +168,11 @@ forget record that names it arrives. After a forget, one line takes the place of
 states the key backup state of the forget: off, pending, failed, complete or unknown, worded as the
 [host commands](../deployment/host-commands.md#the-reset) word a reset's line. The removed record
 stays in view with that line until the view reloads.
+
+A reply that a void record names, or that sits in a step which ended in an error or an interruption,
+shows muted, with the label "Not sent: this attempt failed, and Nix tried again" and the step's
+cause when the client knows it. It has no retry control. A voided reply never counts as the answer
+to a message of the user's, so the spinner keeps showing, and a sent file never shows under it.
 
 A file that a step sent with [`file.send`](../connectors/code-tool.md#sending-a-file) shows under
 the last reply of that step, or under the step when it made no reply. A task's sent files show on
