@@ -999,8 +999,9 @@ test('it counts the estimate, so the next request passes, when a streamed reply 
     (error: unknown) => error,
   );
 
-  const later = await sendRequest();
+  // Read the counter before the next request: its own estimate lands in the background
   const counted = await store.read();
+  const later = await sendRequest();
 
   // 4,165 input tokens at the highest input rate, $2, and 1,000 output tokens at $5, per million
   expect(read).toBeInstanceOf(Error);

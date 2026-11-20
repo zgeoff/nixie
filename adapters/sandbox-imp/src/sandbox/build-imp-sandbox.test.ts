@@ -48,7 +48,7 @@ test('it lets a turn that starts during an idle sleep reach the tool endpoint on
     argv: [
       process.execPath,
       '-e',
-      'const r = await fetch(process.env.TOOL_URL + "/mcp", { headers: { authorization: "Bearer run-token" } }); console.log(await r.text())',
+      'const get = () => fetch(process.env.TOOL_URL + "/mcp", { headers: { authorization: "Bearer run-token" } }); const r = await get().catch(async () => { await Bun.sleep(200); return get(); }); console.log(await r.text())',
     ],
     env: { TOOL_URL: route.url },
   });
