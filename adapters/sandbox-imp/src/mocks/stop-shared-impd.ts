@@ -1,13 +1,15 @@
-let stopHeld: (() => Promise<void>) | null = null;
+const stopsHeld: (() => Promise<void>)[] = [];
 
 export function registerSharedImpdStop(stop: () => Promise<void>): void {
-  stopHeld = stop;
+  stopsHeld.push(stop);
 }
 
+// Each stop restores the WebSocket class that was global when its impd started, so the stops run
+// in the reverse of the order that the impds started.
 export async function stopSharedImpd(): Promise<void> {
-  const stop = stopHeld;
+  const stops = stopsHeld.splice(0).toReversed();
 
-  stopHeld = null;
-
-  await stop?.();
+  for (const stop of stops) {
+    await stop();
+  }
 }

@@ -9,6 +9,7 @@ import {
   startStubToolEndpoint,
 } from '@heynixie/sandbox/test-utils';
 import { waitForCondition } from '@heynixie/testing';
+import type { TestImpdOptions } from '@impz/testing';
 import { TEST_TOKEN } from '@impz/testing';
 import invariant from 'tiny-invariant';
 import { attachTestGuests } from '../test-utils/attach-test-guests';
@@ -18,8 +19,8 @@ import type { ModelGateway } from '../types';
 import { buildImpPort } from './build-imp-port';
 import { buildImpSandboxAdapter } from './build-imp-sandbox-adapter';
 
-async function setupTest() {
-  const started = await startSharedImpd();
+async function setupTest(options: TestImpdOptions = {}) {
+  const started = await startSharedImpd(options);
 
   return {
     impd: started.impd,
@@ -31,29 +32,18 @@ async function setupTest() {
 test.each(['0.39.0', '1.6.0', '8.0.0'])(
   'it refuses to read the features of an impd of version %s, which imp client 7 does not speak',
   async (version) => {
-    const impd = await startImpd({ version });
+    const ctx = await setupTest({ version });
 
-    onTestFinished(impd.stop);
-
-    const port = buildImpPort({ url: impd.url, token: TEST_TOKEN });
-
-    expect(port.readFeatures()).rejects.toThrow(`impd ${version} does not speak imp client 7.`);
+    expect(ctx.port.readFeatures()).rejects.toThrow(`impd ${version} does not speak imp client 7.`);
   },
 );
 
 test.each(['2.0.3', '3.0.0', '4.0.0', '5.0.0', '6.0.0', '7.0.0'])(
   'it reads the features of an impd of version %s with imp client 7',
   async (version) => {
-    const impd = await startImpd({
-      version,
-      features: { publicEgress: true, backupOptOut: true },
-    });
+    const ctx = await setupTest({ version, features: { publicEgress: true, backupOptOut: true } });
 
-    onTestFinished(impd.stop);
-
-    const port = buildImpPort({ url: impd.url, token: TEST_TOKEN });
-
-    expect(port.readFeatures()).resolves.toStrictEqual({
+    expect(ctx.port.readFeatures()).resolves.toStrictEqual({
       publicEgress: true,
       isEgressEnforced: true,
       hasBackupOptOut: true,
@@ -62,23 +52,15 @@ test.each(['2.0.3', '3.0.0', '4.0.0', '5.0.0', '6.0.0', '7.0.0'])(
 );
 
 test('it reads the backup opt-out among the features of an impd that has it', async () => {
-  const impd = await startImpd({ version: '2.0.0', features: { backupOptOut: true } });
+  const ctx = await setupTest({ version: '2.0.0', features: { backupOptOut: true } });
 
-  onTestFinished(impd.stop);
-
-  const port = buildImpPort({ url: impd.url, token: TEST_TOKEN });
-
-  expect(port.readFeatures()).resolves.toMatchObject({ hasBackupOptOut: true });
+  expect(ctx.port.readFeatures()).resolves.toMatchObject({ hasBackupOptOut: true });
 });
 
 test('it reads no backup opt-out from an impd that lacks it', async () => {
-  const impd = await startImpd({ version: '2.0.0', features: { backupOptOut: false } });
+  const ctx = await setupTest({ version: '2.0.0', features: { backupOptOut: false } });
 
-  onTestFinished(impd.stop);
-
-  const port = buildImpPort({ url: impd.url, token: TEST_TOKEN });
-
-  expect(port.readFeatures()).resolves.toMatchObject({ hasBackupOptOut: false });
+  expect(ctx.port.readFeatures()).resolves.toMatchObject({ hasBackupOptOut: false });
 });
 
 test('it reads the features of a real impd that runs in the test process', async () => {

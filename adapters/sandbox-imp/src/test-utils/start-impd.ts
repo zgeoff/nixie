@@ -29,15 +29,18 @@ export interface SharedImpdTest {
   readonly readInputs: (procedure: string) => Record<string, unknown>[];
 }
 
-let sharedImpd: Promise<TestImpd> | null = null;
+const sharedImpds = new Map<string, Promise<TestImpd>>();
 
-// One impd serves every test of a file, which the test preload stops when the file ends. Each test
-// takes a clean impd: no fault, no imp and no secret from an earlier test. An image stays, because
-// impd refuses to seed a name twice, so `seedImageOnce` adds each name once.
-export async function startSharedImpd(): Promise<SharedImpdTest> {
-  sharedImpd ??= startSharedImpdOnce();
+// One impd per distinct set of options serves every test of a file, which the test preload stops
+// when the file ends. Each test takes a clean impd: no fault, no imp and no secret from an earlier
+// test. An image stays, so `seedImageOnce` adds each name once.
+export async function startSharedImpd(options: TestImpdOptions = {}): Promise<SharedImpdTest> {
+  const key = JSON.stringify(options);
+  const started = sharedImpds.get(key) ?? startSharedImpdOnce(options);
 
-  const impd = await sharedImpd;
+  sharedImpds.set(key, started);
+
+  const impd = await started;
 
   impd.clearFaults();
 
@@ -56,15 +59,15 @@ export async function startSharedImpd(): Promise<SharedImpdTest> {
   };
 }
 
-async function startSharedImpdOnce(): Promise<TestImpd> {
+async function startSharedImpdOnce(options: TestImpdOptions): Promise<TestImpd> {
   const wrapped = globalThis.WebSocket;
 
   Object.assign(globalThis, { WebSocket: nativeWebSocket });
 
-  const impd = await startTestImpd();
+  const impd = await startTestImpd(options);
 
   registerSharedImpdStop(async () => {
-    sharedImpd = null;
+    sharedImpds.clear();
 
     await impd.stop();
 
