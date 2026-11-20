@@ -8,7 +8,10 @@ import { collectLostReplies } from './collect-lost-replies';
 
 // A runner that died mid-turn left the replies it wrote with no step commit and no void. The step
 // that takes the task next voids them before it does anything else, so the model reads none of them.
-export async function voidLostReplies(run: ConversationRun, input: StepInput): Promise<void> {
+export async function voidLostReplies(
+  run: Pick<ConversationRun, 'context'>,
+  input: StepInput,
+): Promise<void> {
   const records = await readUncommittedRecords(run, input);
 
   const lost = collectLostReplies(records, buildStepRunID(input));
@@ -28,7 +31,7 @@ const lostKinds = ['model.reply', 'model.reply_voided', 'task.step_committed'] a
 
 // The read stops at the thread's last step commit, so a long thread costs no more than its tail.
 async function readUncommittedRecords(
-  run: ConversationRun,
+  run: Pick<ConversationRun, 'context'>,
   input: StepInput,
 ): Promise<readonly LogRecord[]> {
   const records: LogRecord[] = [];

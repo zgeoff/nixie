@@ -1536,6 +1536,76 @@ test('it pauses a task at its turn limit with no turn, and tells its starter in 
   ]);
 });
 
+test('it voids the replies a dead attempt left, and runs no turn, when a step reruns after its report was asked for', async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seed.conversationStep();
+
+  const taskID = await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+    options: { report: 'none' },
+  });
+
+  const runner = await ctx.startRunner();
+
+  await ctx.runNextStep(runner);
+
+  const [opened] = await ctx.readKinds('task.run_opened');
+
+  invariant(opened);
+
+  await writeRecords(ctx.context.log, [
+    {
+      kind: 'task.run_report_requested',
+      definitions: ctx.context.definitions(),
+      thread: taskID,
+      payload: {
+        taskID,
+        runID: String(opened.payload['runID']),
+        stepKey: `${taskID}:2`,
+        reportID: 'rep0000001',
+      },
+      erasable: { summary: 'Done.' },
+    },
+    {
+      kind: 'model.reply',
+      definitions: ctx.context.definitions(),
+      thread: taskID,
+      payload: {
+        model: 'claude-test-errands',
+        profile: 'errands',
+        messageID: 'msg_lost',
+        runID: `${taskID}:2@1`,
+      },
+      erasable: { text: 'Lost.' },
+    },
+  ]);
+
+  await ctx.writeMessage(taskID, 'Only the morning tide, please.');
+
+  const turnsBefore = ctx.guest.turns.length;
+
+  await ctx.runNextStep(runner);
+
+  const [replies, voids] = await Promise.all([
+    ctx.readKinds('model.reply'),
+    ctx.readKinds('model.reply_voided'),
+  ]);
+
+  const lost = replies.find(
+    (reply) => reply.erasable.status === 'readable' && reply.erasable.fields['text'] === 'Lost.',
+  );
+
+  invariant(lost);
+
+  expect(ctx.guest.turns).toHaveLength(turnsBefore);
+
+  expect(voids.map((record) => record.payload)).toStrictEqual([
+    { replySequence: lost.sequence, runID: `${taskID}:2@1`, reason: 'attempt_lost' },
+  ]);
+});
+
 test('it sleeps the awake imp of a task that pauses at its limit after a turn with work left', async () => {
   const ctx = await setupTest();
   const starter = await ctx.seed.conversationStep();

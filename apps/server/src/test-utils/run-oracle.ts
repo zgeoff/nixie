@@ -190,9 +190,11 @@ function collectCommittedRuns(
   const committed = new Set<string>();
 
   for (const record of records) {
-    const stepKey = record.stepKey;
+    // a step start names its key in the payload, and the commit names it on the record
+    const stepKey =
+      record.kind === 'task.step_started' ? record.payload['stepKey'] : record.stepKey;
 
-    if (stepKey === null) {
+    if (typeof stepKey !== 'string') {
       continue;
     }
 
