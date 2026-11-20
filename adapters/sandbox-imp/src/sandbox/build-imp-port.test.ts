@@ -316,6 +316,12 @@ test('it reads the backup opt-out among the features of an impd that has it', as
   expect(ctx.port.readFeatures()).resolves.toMatchObject({ hasBackupOptOut: true });
 });
 
+test('it reads no backup opt-out from an impd that lacks it', async () => {
+  const ctx = await setupTest({ version: '2.0.0', features: { backupOptOut: false } });
+
+  expect(ctx.port.readFeatures()).resolves.toMatchObject({ hasBackupOptOut: false });
+});
+
 test('it ends a feature read that impd never answers at the abort, after one call', async () => {
   const ctx = await setupTest();
 
