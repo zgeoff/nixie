@@ -215,7 +215,6 @@ function toCallToolResult(settled: Settled): CallToolResult {
   }
 
   // The Claude Code CLI ends its turn after a result with this key and makes no further model call.
-  // oxlint-disable-next-line no-underscore-dangle -- _meta is the MCP field's name
   const endTurn = settled.endsTurn === true ? { _meta: { 'claude/endTurn': true } } : {};
 
   if (reply.images.length === 0) {
