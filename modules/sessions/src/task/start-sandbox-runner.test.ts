@@ -1555,6 +1555,10 @@ test('it voids the replies a dead attempt left, and runs no turn, when a step re
 
   invariant(opened);
 
+  const runID = opened.payload['runID'];
+
+  invariant(typeof runID === 'string', 'a task run opens with a run ID');
+
   await writeRecords(ctx.context.log, [
     {
       kind: 'task.run_report_requested',
@@ -1562,7 +1566,7 @@ test('it voids the replies a dead attempt left, and runs no turn, when a step re
       thread: taskID,
       payload: {
         taskID,
-        runID: String(opened.payload['runID']),
+        runID,
         stepKey: `${taskID}:2`,
         reportID: 'rep0000001',
       },
