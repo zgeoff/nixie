@@ -44,3 +44,29 @@ test('it names the message when no record holds it', () => {
     findConversationGap([], { message: 'Is the kettle on?', reply: 'It boiled a minute ago.' }),
   ).toBe('an owner_message record with the text "Is the kettle on?"');
 });
+
+test('it names the reply when a void names the only reply after the message', () => {
+  const records = [
+    { event: 'record' as const, sequence: 12, kind: 'owner_message', text: 'Is the kettle on?' },
+    {
+      event: 'record' as const,
+      sequence: 14,
+      kind: 'model.reply',
+      text: 'It boiled a minute ago.',
+    },
+    {
+      event: 'record' as const,
+      sequence: 15,
+      kind: 'model.reply_voided',
+      text: null,
+      voidedReply: 14,
+    },
+  ];
+
+  expect(
+    findConversationGap(records, {
+      message: 'Is the kettle on?',
+      reply: 'It boiled a minute ago.',
+    }),
+  ).toBe('a model.reply record "It boiled a minute ago." after the owner\'s message');
+});

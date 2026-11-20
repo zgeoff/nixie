@@ -5,6 +5,9 @@ export const conversationRecordSchema = z.object({
   sequence: z.int(),
   kind: z.string(),
   text: z.string().nullable(),
+
+  // on a model.reply_voided record, the sequence of the reply it voids
+  voidedReply: z.int().nullable().optional(),
 });
 
 export type ConversationRecord = z.infer<typeof conversationRecordSchema>;
