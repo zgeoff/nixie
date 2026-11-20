@@ -120,3 +120,33 @@ test('it leaves a reply of a later step out of the placement', () => {
     ],
   ]);
 });
+
+test('it places a sent file under the step when its only reply was voided', () => {
+  const activity = buildActivity([
+    buildMockLogRecord({ kind: 'task.step_started', sequence: 1 }),
+    buildMockLogRecord({
+      kind: 'tool_called',
+      sequence: 2,
+      toolCall: { callID: 'call-1', input: { file: 'p3n8x2c7ke' }, tool: 'file.send' },
+    }),
+    buildMockLogRecord({
+      kind: 'tool_result',
+      sequence: 3,
+      toolCall: {
+        callID: 'call-1',
+        content: {
+          result: { file: 'p3n8x2c7ke', name: 'orders.csv', bytes: 812, mediaType: 'text/csv' },
+        },
+        outcome: 'result',
+      },
+    }),
+    buildMockLogRecord({
+      kind: 'model.reply',
+      sequence: 4,
+      message: { text: 'Sent.', isVoided: true, voidReason: 'attempt_failed' },
+    }),
+    buildMockLogRecord({ kind: 'task.step_committed', sequence: 5 }),
+  ]);
+
+  expect([...buildSentFilePlacement(activity).keys()]).toStrictEqual([0]);
+});

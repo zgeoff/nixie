@@ -96,6 +96,9 @@ export interface StepActivity {
 
   readonly error?: string;
 
+  // a later segment of a step that a message split; the first segment holds the step's header
+  readonly isContinued?: true;
+
   readonly isSilent?: true;
 
   readonly key: number;
@@ -114,7 +117,13 @@ export interface StepActivity {
 }
 
 export type ActivityItem =
-  | { readonly kind: 'message'; readonly record: LiveRecord }
+  | {
+      readonly kind: 'message';
+      readonly record: LiveRecord;
+
+      // the plain-words cause of the failed step that a voided reply sits in
+      readonly cause?: string;
+    }
   | { readonly kind: 'reset'; readonly record: LiveRecord }
   | {
       readonly kind: 'moment';
@@ -180,7 +189,7 @@ export function buildActivity(records: readonly LiveRecord[]): readonly Activity
   const items =
     state.pending.length === 0 ? state.items : [...state.items, buildStep(state.pending, 'done')];
 
-  return supersedeDefinitionNotices(items);
+  return supersedeDefinitionNotices(splitSteps(items));
 }
 
 const messageKinds: ReadonlySet<string> = new Set(['owner_message', 'model.reply']);
@@ -393,4 +402,190 @@ function buildSupersededNotice(
   notice: NonNullable<LiveRecord['definitionNotice']>,
 ): NonNullable<LiveRecord['definitionNotice']> {
   return { ...notice, state: 'superseded' as const, next: null };
+}
+
+// A message inside a step splits it into one segment per run of records between messages. The header
+// stays on the first segment, and the status, duration and error on the last. A step that ended in
+// an error or an interruption voids the replies inside it, which covers a crash with no void record.
+function splitSteps(items: readonly ActivityItem[]): readonly ActivityItem[] {
+  const moved = new Set<number>();
+
+  const result: ActivityItem[] = [];
+
+  items.forEach((item, index) => {
+    if (moved.has(index)) {
+      return;
+    }
+
+    if (item.kind !== 'step') {
+      result.push(item);
+
+      return;
+    }
+
+    const inside = collectMessagesInside(items, index, item);
+
+    for (const found of inside) {
+      moved.add(found.index);
+    }
+
+    result.push(
+      ...splitStep(
+        item,
+        inside.map((found) => markVoidedReply(found.item, item)),
+      ),
+    );
+  });
+
+  return result;
+}
+
+type MessageItem = Extract<ActivityItem, { readonly kind: 'message' }>;
+
+function collectMessagesInside(
+  items: readonly ActivityItem[],
+  stepIndex: number,
+  step: StepActivity,
+): readonly { readonly index: number; readonly item: MessageItem }[] {
+  const first = step.records[0]?.sequence ?? step.key;
+  const last = step.records.at(-1)?.sequence ?? first;
+
+  return items.flatMap((item, index) =>
+    index > stepIndex &&
+    item.kind === 'message' &&
+    item.record.sequence > first &&
+    item.record.sequence < last
+      ? [{ index, item }]
+      : [],
+  );
+}
+
+function splitStep(step: StepActivity, messages: readonly MessageItem[]): readonly ActivityItem[] {
+  if (messages.length === 0) {
+    return [step];
+  }
+
+  const groups = groupByMessage(step.records, messages);
+  const last = groups.at(-1);
+  const before = groups.at(-2);
+
+  const built = groups.map((group) => ({
+    cutCount: group.cutCount,
+    records: group.records,
+    step: buildStep(group.records, 'done'),
+  }));
+
+  const lastBuilt = built.at(-1);
+
+  // The records after the last message hold no content of their own when the step ends there. They
+  // stay with the segment before the message, so a reply at the end of a step leaves it as it was.
+  if (
+    last !== undefined &&
+    before !== undefined &&
+    lastBuilt !== undefined &&
+    !hasContent(lastBuilt.step)
+  ) {
+    const merged = [...before.records, ...last.records];
+
+    built.splice(-2, 2, {
+      cutCount: before.cutCount,
+      records: merged,
+      step: buildStep(merged, 'done'),
+    });
+  }
+
+  const result: ActivityItem[] = [];
+  let next = 0;
+
+  built.forEach((segment, index) => {
+    const following = built[index + 1];
+    const end = following === undefined ? messages.length : following.cutCount;
+
+    result.push(
+      buildSegment(step, segment.step, index, following === undefined),
+      ...messages.slice(next, end),
+    );
+
+    next = end;
+  });
+
+  return result;
+}
+
+interface MessageGroup {
+  // how many of the messages come before this group's records
+  readonly cutCount: number;
+  readonly records: readonly LiveRecord[];
+}
+
+function groupByMessage(
+  records: readonly LiveRecord[],
+  messages: readonly MessageItem[],
+): MessageGroup[] {
+  const groups = new Map<number, LiveRecord[]>();
+
+  for (const record of records) {
+    const cutCount = messages.filter((message) => message.record.sequence < record.sequence).length;
+
+    groups.set(cutCount, [...(groups.get(cutCount) ?? []), record]);
+  }
+
+  return [...groups].map(([cutCount, grouped]) => ({ cutCount, records: grouped }));
+}
+
+function hasContent(segment: StepActivity): boolean {
+  return (
+    segment.calls.length > 0 ||
+    segment.workers !== undefined ||
+    segment.memories !== undefined ||
+    segment.compactions !== undefined ||
+    segment.summaries !== undefined
+  );
+}
+
+function buildSegment(
+  step: StepActivity,
+  segment: StepActivity,
+  index: number,
+  isLast: boolean,
+): StepActivity {
+  const { durationMs: _duration, cause: _cause, error: _error, ...own } = segment;
+
+  return {
+    ...own,
+    ...(step.taskID === undefined ? {} : { taskID: step.taskID }),
+    ...(step.stepKey === undefined ? {} : { stepKey: step.stepKey }),
+    ...(index === 0 ? {} : { isContinued: true as const }),
+    ...(isLast
+      ? {
+          status: step.status,
+          ...(step.durationMs === undefined ? {} : { durationMs: step.durationMs }),
+          ...(step.cause === undefined ? {} : { cause: step.cause }),
+          ...(step.error === undefined ? {} : { error: step.error }),
+        }
+      : {}),
+  };
+}
+
+const voidReasons: Readonly<Record<string, 'attempt_failed' | 'attempt_lost'>> = {
+  failed: 'attempt_failed',
+  interrupted: 'attempt_lost',
+};
+
+function markVoidedReply(item: MessageItem, step: StepActivity): MessageItem {
+  const voidReason = voidReasons[step.status];
+  const message = item.record.message;
+
+  if (voidReason === undefined || item.record.kind !== 'model.reply' || message === undefined) {
+    return item;
+  }
+
+  return {
+    kind: 'message',
+    record: {
+      ...item.record,
+      message: { ...message, isVoided: true, voidReason: message.voidReason ?? voidReason },
+    },
+    ...(step.cause === undefined ? {} : { cause: step.cause }),
+  };
 }

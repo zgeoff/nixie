@@ -991,3 +991,268 @@ test('it carries no cause for a failed step whose reason the client does not kno
     expect.objectContaining({ cause: expect.anything() }),
   );
 });
+
+test('it splits a step of text, tool, text, tool and text at each reply', () => {
+  const started = buildMockLogRecord({
+    kind: 'task.step_started',
+    sequence: 1,
+    task: { stepKey: 'step-1', taskID: 'conversation' },
+  });
+
+  const first = buildMockLogRecord({ kind: 'model.reply', message: { text: 'One.' }, sequence: 2 });
+
+  const calledA = buildMockLogRecord({
+    kind: 'tool_called',
+    sequence: 3,
+    toolCall: { callID: 'call-a', input: {}, tool: 'web_fetch' },
+  });
+
+  const resultA = buildMockLogRecord({
+    kind: 'tool_result',
+    sequence: 4,
+    toolCall: { callID: 'call-a', content: {}, outcome: 'result' },
+  });
+
+  const second = buildMockLogRecord({
+    kind: 'model.reply',
+    message: { text: 'Two.' },
+    sequence: 5,
+  });
+
+  const calledB = buildMockLogRecord({
+    kind: 'tool_called',
+    sequence: 6,
+    toolCall: { callID: 'call-b', input: {}, tool: 'web_search' },
+  });
+
+  const resultB = buildMockLogRecord({
+    kind: 'tool_result',
+    sequence: 7,
+    toolCall: { callID: 'call-b', content: {}, outcome: 'result' },
+  });
+
+  const third = buildMockLogRecord({
+    kind: 'model.reply',
+    message: { text: 'Three.' },
+    sequence: 8,
+  });
+
+  const ended = buildMockLogRecord({ kind: 'model.turn_ended', sequence: 9 });
+  const committed = buildMockLogRecord({ kind: 'task.step_committed', sequence: 10 });
+
+  const items = buildActivity([
+    started,
+    first,
+    calledA,
+    resultA,
+    second,
+    calledB,
+    resultB,
+    third,
+    ended,
+    committed,
+  ]);
+
+  expect(
+    items.map((item) =>
+      item.kind === 'step'
+        ? {
+            key: item.key,
+            records: item.records.map((record) => record.sequence),
+            calls: item.calls.map((call) => call.callID),
+            status: item.status,
+            isContinued: item.isContinued,
+            durationMs: item.durationMs === undefined ? 'none' : 'timed',
+            taskID: item.taskID,
+          }
+        : { message: item.record.sequence },
+    ),
+  ).toStrictEqual([
+    {
+      key: 1,
+      records: [1],
+      calls: [],
+      status: 'done',
+      isContinued: undefined,
+      durationMs: 'none',
+      taskID: 'conversation',
+    },
+    { message: 2 },
+    {
+      key: 3,
+      records: [3, 4],
+      calls: ['call-a'],
+      status: 'done',
+      isContinued: true,
+      durationMs: 'none',
+      taskID: 'conversation',
+    },
+    { message: 5 },
+    {
+      key: 6,
+      records: [6, 7, 9, 10],
+      calls: ['call-b'],
+      status: 'done',
+      isContinued: true,
+      durationMs: 'timed',
+      taskID: 'conversation',
+    },
+    { message: 8 },
+  ]);
+});
+
+test('it keeps the status of a running step on its last segment', () => {
+  const started = buildMockLogRecord({
+    kind: 'task.step_started',
+    sequence: 1,
+    task: { stepKey: 'step-1', taskID: 'conversation' },
+  });
+
+  const called = buildMockLogRecord({
+    kind: 'tool_called',
+    sequence: 2,
+    toolCall: { callID: 'call-a', input: {}, tool: 'web_fetch' },
+  });
+
+  const reply = buildMockLogRecord({ kind: 'model.reply', message: { text: 'One.' }, sequence: 3 });
+
+  const calledB = buildMockLogRecord({
+    kind: 'tool_called',
+    sequence: 4,
+    toolCall: { callID: 'call-b', input: {}, tool: 'web_search' },
+  });
+
+  const items = buildActivity([started, called, reply, calledB]);
+
+  expect(
+    items.map((item) => (item.kind === 'step' ? item.status : item.record.sequence)),
+  ).toStrictEqual(['done', 3, 'running']);
+});
+
+test('it splits a step around an owner message that landed inside it', () => {
+  const started = buildMockLogRecord({
+    kind: 'task.step_started',
+    sequence: 1,
+    task: { stepKey: 'step-1', taskID: 'conversation' },
+  });
+
+  const calledA = buildMockLogRecord({
+    kind: 'tool_called',
+    sequence: 2,
+    toolCall: { callID: 'call-a', input: {}, tool: 'web_fetch' },
+  });
+
+  const question = buildMockLogRecord({
+    kind: 'owner_message',
+    message: { text: 'And the shed?' },
+    sequence: 3,
+  });
+
+  const calledB = buildMockLogRecord({
+    kind: 'tool_called',
+    sequence: 4,
+    toolCall: { callID: 'call-b', input: {}, tool: 'web_search' },
+  });
+
+  const committed = buildMockLogRecord({ kind: 'task.step_committed', sequence: 5 });
+  const items = buildActivity([started, calledA, question, calledB, committed]);
+
+  expect(
+    items.map((item) =>
+      item.kind === 'step'
+        ? { key: item.key, calls: item.calls.map((call) => call.callID), status: item.status }
+        : { message: item.record.sequence },
+    ),
+  ).toStrictEqual([
+    { key: 1, calls: ['call-a'], status: 'done' },
+    { message: 3 },
+    { key: 4, calls: ['call-b'], status: 'done' },
+  ]);
+});
+
+test('it voids the replies of a step that failed and leaves the rerun alone', () => {
+  const started = buildMockLogRecord({
+    kind: 'task.step_started',
+    sequence: 1,
+    task: { stepKey: 'step-1', taskID: 'conversation' },
+  });
+
+  const draft = buildMockLogRecord({
+    kind: 'model.reply',
+    message: { text: 'Draft.' },
+    sequence: 2,
+  });
+
+  const errored = buildMockLogRecord({
+    kind: 'task.step_errored',
+    sequence: 3,
+    task: {
+      stepKey: 'step-1',
+      taskID: 'conversation',
+      reason: 'model_api.overloaded',
+      error: 'overloaded',
+    },
+  });
+
+  const rerun = buildMockLogRecord({
+    kind: 'task.step_started',
+    sequence: 4,
+    task: { stepKey: 'step-2', taskID: 'conversation' },
+  });
+
+  const final = buildMockLogRecord({
+    kind: 'model.reply',
+    message: { text: 'Final.' },
+    sequence: 5,
+  });
+
+  const committed = buildMockLogRecord({ kind: 'task.step_committed', sequence: 6 });
+  const items = buildActivity([started, draft, errored, rerun, final, committed]);
+
+  const replies = items
+    .filter((item) => item.kind === 'message')
+    .map((item) => ({
+      reply: item.record.sequence,
+      message: item.record.message,
+      cause: item.cause,
+    }));
+
+  expect(replies).toStrictEqual([
+    {
+      reply: 2,
+      message: { text: 'Draft.', isVoided: true, voidReason: 'attempt_failed' },
+      cause: 'Claude is overloaded',
+    },
+    { reply: 5, message: { text: 'Final.' }, cause: undefined },
+  ]);
+});
+
+test('it voids the reply of an interrupted step as a lost attempt', () => {
+  const started = buildMockLogRecord({
+    kind: 'task.step_started',
+    sequence: 1,
+    task: { stepKey: 'step-1', taskID: 'conversation' },
+  });
+
+  const draft = buildMockLogRecord({
+    kind: 'model.reply',
+    message: { text: 'Draft.' },
+    sequence: 2,
+  });
+
+  const interrupted = buildMockLogRecord({
+    kind: 'task.step_interrupted',
+    sequence: 3,
+    task: { stepKey: 'step-1', taskID: 'conversation' },
+  });
+
+  const reply = buildActivity([started, draft, interrupted]).find(
+    (item) => item.kind === 'message',
+  );
+
+  expect(reply?.record.message).toStrictEqual({
+    text: 'Draft.',
+    isVoided: true,
+    voidReason: 'attempt_lost',
+  });
+});
