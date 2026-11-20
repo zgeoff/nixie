@@ -692,6 +692,31 @@ test('it fails the turn on a credit balance the model API refuses as a billing e
   ]);
 });
 
+test('it flags the error text of an invalid request as an error reply', async () => {
+  const ctx = await setupTest();
+
+  ctx.model.addReplies({
+    apiError: {
+      status: 400,
+      type: 'invalid_request_error',
+      message: 'messages.0: text content blocks must be non-empty',
+      shouldRetry: false,
+    },
+  });
+
+  await runTurn(
+    buildMockTurnFrame({
+      profile: { baseURL: ctx.model.url },
+      input: [{ uuid: '6e697869-0000-8000-8000-000000000001', text: 'What do I need?' }],
+    }),
+    ctx.deps,
+  );
+
+  expect(ctx.frames).toPartiallyContain(
+    expect.objectContaining({ type: 'assistant', isError: true }),
+  );
+});
+
 test('it reports the replies before a refused call, then fails the turn with no turn end', async () => {
   const ctx = await setupTest();
 

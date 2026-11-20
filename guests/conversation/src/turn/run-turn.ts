@@ -348,6 +348,7 @@ async function emitAssistant(
       block.type === 'tool_use' ? [{ id: block.id, name: block.name }] : [],
     ),
     ...(summary === '' ? {} : { summary }),
+    ...(message.error === undefined ? {} : { isError: true as const }),
   });
 
   return 'continue';
