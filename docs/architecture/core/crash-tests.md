@@ -132,6 +132,10 @@ sweep wrote a `model.reply_voided` record for the reply, and that the rerun's mo
 none of its text. `recover-reply-voided.test.ts` does this, and checks the same void after a failed
 attempt that did not crash.
 
+`time.now.running` sits behind the same flag, inside the `time.now` tool, so it holds a tool call
+that is executing. A journey arms it to land an owner message, and to reload the page, while a call
+is open, and then releases it.
+
 ## Coverage
 
 The [crash tests design](../../design/platform/core/crash-tests.md#slice-1-tests) lists the slice 1

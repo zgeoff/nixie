@@ -41,21 +41,17 @@ test('it shows the reply to a message sent from the page, and stops the spinner'
   expect(text).toInclude('Where did the heron go?');
 });
 
-test('it shows each reply as the model writes it, in the order of the records, across a reload', async () => {
+test('it shows each reply as the model writes it, across a tool call that is still running and a reload, in the order of the records', async () => {
   const ctx = await setupTest();
-
-  const gate = Promise.withResolvers<void>();
 
   ctx.nixie.model.addReplies(
     { text: 'Checking the pond.', toolUse: { name: 'mcp__nixie__time_now', input: {} } },
-    {
-      text: 'Checking the gate.',
-      toolUse: { name: 'mcp__nixie__time_now', input: {} },
-      gate: gate.promise,
-    },
+    { text: 'Checking the gate.', toolUse: { name: 'mcp__nixie__time_now', input: {} } },
     { text: 'The heron left at dawn.' },
     { text: 'The side gate is shut.' },
   );
+
+  await ctx.server.request('arm', { point: 'time.now.running' });
 
   await waitForPage(
     ctx.view,
@@ -66,7 +62,9 @@ test('it shows each reply as the model writes it, in the order of the records, a
   await ctx.view.cdp('Input.insertText', { text: 'Where did the heron go?' });
   await ctx.view.click('button[type=submit]');
 
-  // the first reply stands on the page while the model is still on its second call
+  // the first tool call is open, so the turn is still running with its first reply on the page
+  const firstCall = await ctx.server.waitForArrival('time.now.running');
+
   await waitForPage(ctx.view, "document.body.innerText.includes('Checking the pond.')");
 
   const heldText: unknown = await ctx.view.evaluate('document.body.innerText');
@@ -80,7 +78,28 @@ test('it shows each reply as the model writes it, in the order of the records, a
     thread: 'conversation',
   });
 
-  gate.resolve();
+  const heldPage = await ctx.api.client.conversation.read({ thread: 'conversation' });
+
+  const heldKinds = heldPage.records
+    .filter((record) => ['owner_message', 'model.reply', 'tool_called'].includes(record.kind))
+    .map((record) => record.kind);
+
+  // the reply stands ahead of the call it was written with, and the new owner message behind both
+  expect(heldKinds).toStrictEqual(['owner_message', 'model.reply', 'tool_called', 'owner_message']);
+
+  // a reload while the call is open still shows the reply, once
+  await ctx.view.navigate(ctx.appURL);
+
+  await waitForPage(ctx.view, "document.body.innerText.includes('Checking the pond.')");
+
+  const heldReloadedText: unknown = await ctx.view.evaluate('document.body.innerText');
+
+  invariant(typeof heldReloadedText === 'string');
+
+  expect(heldReloadedText.split('Checking the pond.')).toHaveLength(2);
+  expect(heldReloadedText).toInclude('And the side gate?');
+
+  ctx.server.release(firstCall);
 
   await waitForPage(ctx.view, "document.body.innerText.includes('The heron left at dawn.')");
 

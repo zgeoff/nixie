@@ -146,3 +146,23 @@ test('it reports a reply that no void names in a step that never committed', asy
 
   expect(oracle.strayReplies).toStrictEqual([expect.any(Number)]);
 });
+
+test('it reports a reply of a failed attempt that no void names when a retry committed', async () => {
+  const ctx = await setupTest();
+
+  const first = ctx.nixie.harness.start();
+
+  await first.ready;
+
+  const created = await first.request('createTask', { brief: 'Wait an hour.' });
+
+  const taskID = String(created);
+
+  await ctx.nixie.waitForRecord((record) => record.kind === 'task.step_committed');
+  await first.kill();
+  await ctx.seed.strayReply(taskID, `${taskID}:1@0`);
+
+  const oracle = await runOracle(ctx.nixie);
+
+  expect(oracle.strayReplies).toStrictEqual([expect.any(Number)]);
+});

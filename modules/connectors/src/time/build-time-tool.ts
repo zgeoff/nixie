@@ -1,4 +1,5 @@
 import type { Clock } from '@heynixie/clock';
+import { waitAtFaultPoint } from '@heynixie/tasks';
 import type { ToolDefinition } from '@heynixie/tools';
 
 export interface TimeToolOptions {
@@ -51,6 +52,10 @@ export function buildTimeTool(options: TimeToolOptions): ToolDefinition {
     },
     execution: 'direct',
     run: async () => {
+      if (NIXIE_TEST_BUILD) {
+        await waitAtFaultPoint('time.now.running', { kind: 'task', id: null });
+      }
+
       const found = await options.findTimeZone();
 
       const timeZone = found ?? options.defaultZone;

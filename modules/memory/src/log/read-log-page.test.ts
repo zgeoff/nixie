@@ -1031,3 +1031,48 @@ test('it leaves a proposalID that is no UUID as stored', async () => {
     JSON.stringify({ result: { proposals: [{ proposalID: 'dxsae7uygo' }, { proposalID: null }] } }),
   ]);
 });
+
+test('it leaves a reply that a void names out of a page and out of a single entry read', async () => {
+  const ctx = await setupTest();
+
+  const definitions = { snapshotHash: 'sha256:test' };
+
+  const [kept, lost] = await writeRecords(ctx.log, [
+    { kind: 'model.reply', definitions, thread: 'conversation', erasable: { text: 'Kept reply' } },
+    { kind: 'model.reply', definitions, thread: 'conversation', erasable: { text: 'Lost reply' } },
+  ]);
+
+  invariant(kept && lost);
+
+  await writeRecords(ctx.log, [
+    {
+      kind: 'model.reply_voided',
+      definitions,
+      thread: 'conversation',
+      payload: {
+        replySequence: lost.sequence,
+        runID: 'conversation:1@1',
+        reason: 'attempt_failed',
+      },
+    },
+  ]);
+
+  const page = await readLogPage(ctx.log, {
+    thread: 'conversation',
+    after: 0,
+    from: null,
+    to: null,
+    words: [],
+    limit: 20,
+    scanLimit: 500,
+  });
+
+  const entry = await readLogEntry(
+    ctx.log,
+    { thread: 'conversation', sequence: lost.sequence },
+    new Map(),
+  );
+
+  expect(page.entries.map((pageEntry) => pageEntry.sequence)).toStrictEqual([kept.sequence]);
+  expect(entry).toBeNull();
+});

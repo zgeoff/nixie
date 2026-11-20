@@ -165,11 +165,7 @@ function collectStrayReplies(
       .map((record) => record.payload['replySequence']),
   );
 
-  const committed = new Set(
-    records
-      .filter((record) => record.kind === 'task.step_committed')
-      .map((record) => record.stepKey),
-  );
+  const committedRuns = collectCommittedRuns(records);
 
   return records
     .filter((record) => {
@@ -179,8 +175,37 @@ function collectStrayReplies(
         record.kind === 'model.reply' &&
         typeof runID === 'string' &&
         !voided.has(record.sequence) &&
-        !committed.has(runID.split('@')[0] ?? null)
+        !committedRuns.has(runID)
       );
     })
     .map((record) => record.sequence);
+}
+
+// The run that committed a step is the last one that started it before the commit, named like
+// buildStepRunID names it.
+function collectCommittedRuns(
+  records: Awaited<ReturnType<SpawnedNixie['readRecords']>>,
+): ReadonlySet<string> {
+  const started = new Map<string, string>();
+  const committed = new Set<string>();
+
+  for (const record of records) {
+    const stepKey = record.stepKey;
+
+    if (stepKey === null) {
+      continue;
+    }
+
+    if (record.kind === 'task.step_started') {
+      started.set(stepKey, `${stepKey}@${String(record.payload['generation'])}`);
+    }
+
+    const runID = started.get(stepKey);
+
+    if (record.kind === 'task.step_committed' && runID !== undefined) {
+      committed.add(runID);
+    }
+  }
+
+  return committed;
 }
