@@ -53,7 +53,8 @@ account.sign_in({ tab: 't1', account: 'a7q2m9x4kd', submit: 'E7' });
 
 account.sign_up({ tab: 't1', label: 'library card', username: 'nix@example.net', submit: 'E9' });
 //   it refuses as sign_in does, except the account checks. The entry exists once the fill lands.
-// → { status: 'signed_in', account: 'a7q2m9x4kd', state: 'pending', … the sign_in result's fields }
+// → { status: 'signed_in', account: 'a7q2m9x4kd', state: 'ready', … the sign_in result's fields }
+//   state is 'ready' when status is 'signed_in', and 'pending' when status is 'filled'
 //   the broker makes the password, fills every password field with it, fills an email field with the
 //   username, and keeps the tab's origin as the entry's one origin. The assistant fills any other
 //   field, such as a name, with computer.fill first.
@@ -113,7 +114,7 @@ interface VaultEntry {
   secret: SealedValue; // a password, or a card's number, expiry and code, under the entry's own key
   fingerprint: string | null; // a card: an HMAC of its number under a server key; the only form in records
   frameOrigins: string[]; // a card: the payment frames you allow, such as https://js.pay.example; else []
-  state: 'pending' | 'ready' | 'forgotten'; // a sign_up is pending until its first sign_in
+  state: 'pending' | 'ready' | 'forgotten'; // a sign_up is pending until it or a sign_in reaches signed_in
 }
 
 // contract lib: owner calls, each behind the passkey check
@@ -201,13 +202,15 @@ mail.list({ unread: true, from: 'penpal@example.com', text: 'chess' }); // from,
 mail.read({ message: 'mz4k8q2w7p' });
 // → { from, subject, thread, text: 'Your code is 482913. [L4] Sign in',
 //     attachments: [{ attachment: 1, name: 'board.png', bytes: 30422 }] }   // every field outside, links as link IDs
+mail.mark({ message: 'mz4k8q2w7p', isUnread: false }); // → { message: 'mz4k8q2w7p', isUnread: false }
 mail.saveAttachment({ message: 'mz4k8q2w7p', attachment: 1 });
 // → { file: 'f7m3q8k2wz', name: 'board.png' }   a file like computer.exportFile's; at most 25 MiB
 mail.send({ to: ['hello@library.example.org'], subject, text, files: ['f2r8k5w1mz'] });
 mail.reply({ message: 'mz4k8q2w7p', text, files: [] }); // threads with In-Reply-To; to: the sender
-// mail.list, mail.read, mail.saveAttachment: ['note'], direct
+// mail.list, mail.read, mail.mark, mail.saveAttachment: ['note'], direct
 // mail.send, mail.reply: ['send'], queued, destination: each address; files: up to 10 file or image
-//   IDs, 25 MiB in all
+//   IDs, 25 MiB in all. Their "always allow" rule pins `to` (mail.reply: the sender), so a rule
+//   allows one address; subject, text and files are free text to the card
 // refusals: UNKNOWN_MESSAGE, UNKNOWN_ATTACHMENT, TOO_BIG, UNKNOWN_FILE, FILE_FORGOTTEN,
 //   UNKNOWN_IMAGE, IMAGE_FORGOTTEN
 // the mail_messages table maps each message's and thread's short ID to its JMAP ID.
@@ -257,9 +260,10 @@ Filling:
 - A password goes only into an `<input type=password>` whose form posts to the same origin, or that
   sits in no form. A card part goes only into a field whose `autocomplete` names that part, in a
   frame whose own origin is the merchant's or one of the card's `frameOrigins`.
-- A `sign_up` entry lists with state `pending` until its first `sign_in` reaches `signed_in`, and
-  then turns `ready`. A pending entry signs in like a ready one, so a site that took the password
-  never loses it. A pending entry that no sign-in reaches within 7 days turns `forgotten`.
+- A `sign_up` entry turns `ready` when the sign-up itself reaches `signed_in`. Otherwise it lists
+  with state `pending` until its first `sign_in` reaches `signed_in`, and then turns `ready`. A
+  pending entry signs in like a ready one, so a site that took the password never loses it. A
+  pending entry that no sign-in reaches within 7 days turns `forgotten`.
 - A forget of a vault entry destroys its key, and the next `sign_in` with it returns
   `ACCOUNT_FORGOTTEN`.
 
