@@ -145,7 +145,7 @@ The server keeps each open stream's `pixels` in memory only.
 - The server refuses every call from a device session except the five in
   [the device's calls](#the-devices-calls).
 - A capability switches on only from the device itself. No tool and no other device can switch one
-  on.
+  on, so whoever sets up each device decides whether its camera works.
 - The screen builds first, then the camera. The speaker and the microphone come with their own work
   items.
 - A screen shows an image with `fit: 'whole'` scaled to fit and centred on black, and one with
@@ -219,9 +219,6 @@ The camera:
 - Dimming a screen on a schedule. The assistant sets an empty scene at night.
 
 ## Open questions
-
-- **Who in the house agrees to the camera?** The owner settles it before the camera's build ships to
-  prod. Until then, the camera builds and stays switched off on every device.
 
 - **Are "device", "capability" and "screen" the right names?** The owner settles it before the
   build, because the model reads them in the tools. Until then, the build uses them.
