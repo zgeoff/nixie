@@ -1,17 +1,17 @@
-# Accounts, sign-in and the purse
+# Accounts, sign-in and the wallet
 
 - **Status:** draft
 - **Work items:**
   [the assistant's own email and accounts](https://linear.app/zgeoff/issue/GEO-2731), then
-  [the purse](https://linear.app/zgeoff/issue/GEO-2757). Both build on [the computer](computer.md),
+  [the wallet](https://linear.app/zgeoff/issue/GEO-2757). Both build on [the computer](computer.md),
   which lands first.
 
 The assistant gets its own mailbox and its own accounts, and signs in to them in its browser without
 ever seeing a password. Each account's secret sits in a vault that only the server reads. When the
 assistant asks to sign in, the request passes your rules like any other action, and on allow the
 server sends the secret over the browser guest's private channel, where it goes straight into the
-page's password field. The purse is one more vault entry, a capped card, and a purchase is a `spend`
-action under the [budgets design](../platform/policy/budgets.md).
+page's password field. The wallet is one more vault entry, a capped card, and a purchase is a
+`spend` action under the [budgets design](../platform/policy/budgets.md).
 
 ## Shape
 
@@ -36,7 +36,7 @@ accounts.list({});
 // → { accounts: [
 //     { account: 'a7q2m9x4kd', kind: 'password', label: 'library card', origins: ['https://library.example.org'],
 //       username: 'nix@example.net' },
-//     { account: 'c3w8p1z6mt', kind: 'card', label: 'purse', origins: [], username: null } ] }
+//     { account: 'c3w8p1z6mt', kind: 'card', label: 'wallet', origins: [], username: null } ] }
 
 account.sign_in({ tab: 't1', account: 'a7q2m9x4kd', submit: 'E7' });
 // → { status: 'signed_in', tab: 't1', url: 'https://library.example.org/account', fields: ['username', 'password'],
@@ -59,7 +59,7 @@ account.sign_up({ tab: 't1', label: 'library card', username: 'nix@example.net',
 //   username, and keeps the tab's origin as the entry's one origin. The assistant fills any other
 //   field, such as a name, with computer.fill first.
 
-purse.pay({
+wallet.pay({
   tab: 't1',
   amount: { value: 12.5, currency: 'AUD' },
   item: 'one font licence',
@@ -77,22 +77,22 @@ purse.pay({
 //   bank's app, then returns 'paid'. After that, { status: 'needs_owner', purchase }: an unknown
 //   outcome that you settle, as the budgets design settles one.
 
-purse.read({});
+wallet.read({});
 // → { month: { budget: '100.00 AUD', spent: '37.50 AUD', left: '62.50 AUD' },
 //     lifts: [{ merchants: ['https://fonts.example.com'], perAction: '25.00 AUD' }],
 //     purchases: [{ purchase: 'pq3z8w1n5v', at, merchant: 'https://fonts.example.com', amount: '12.50 AUD',
 //                   item: 'one font licence', approval: 'lift' }], next: null }
-//   lifts lists each lifting rule that names purse.pay
+//   lifts lists each lifting rule that names wallet.pay
 ```
 
 ```ts
 // connectors module: the effects each tool declares
-// accounts.list, purse.read: ['note'], run direct
+// accounts.list, wallet.read: ['note'], run direct
 // account.sign_in, account.sign_up: ['sign_in'], a new effect of the routine risk class, queued;
 //   destination: the tab's origin. Its "always allow" rule pins the origin and the account.
-// purse.pay: ['spend'], queued; destination: the tab's origin; amount: the page's total, see below
+// wallet.pay: ['spend'], queued; destination: the tab's origin; amount: the page's total, see below
 // No tool takes an origin. Each tool's prepare hook, from the computer design, reads the tab's
-// origin, its URL and, for purse.pay, the checkout's total from the guest before the decision.
+// origin, its URL and, for wallet.pay, the checkout's total from the guest before the decision.
 // The fill happens only on that origin, and a URL that changed returns PAGE_CHANGED.
 ```
 
@@ -118,7 +118,7 @@ interface VaultEntry {
 }
 
 // contract lib: owner calls, each behind the passkey check
-vault.add({ kind: 'card', label: 'purse', secret: { number, expiry, code }, frameOrigins: [] }); // → { account: 'c3w8p1z6mt' }
+vault.add({ kind: 'card', label: 'wallet', secret: { number, expiry, code }, frameOrigins: [] }); // → { account: 'c3w8p1z6mt' }
 vault.add({
   kind: 'password',
   label: 'forum',
@@ -181,11 +181,11 @@ type FillReply =
 ### The purchase record
 
 ```text
-purchase.recorded              -- budgets module, one per purse.pay that clicks submit
+purchase.recorded              -- budgets module, one per wallet.pay that clicks submit
   purchase       text          -- short ID
     amount         integer       -- micros of the card's currency, the amount the policy checked
   page_total     integer null  -- micros, the total the guest read; null when none was found
-    currency       text          -- the card's currency; the purse's budget counts in it
+    currency       text          -- the card's currency; the wallet's budget counts in it
   merchant       text          -- the origin the card was filled on
   item           text          -- erasable
   approval       text          -- 'lift' or the approval's ID
@@ -244,7 +244,7 @@ Secrets:
   vault keeps those origins, so a browser restart keeps the block. Every snapshot shows each filled
   field as dots.
 - `computer.click` and `computer.fill` return `FILLED_TAB` on a tab that holds a filled card field,
-  so only `purse.pay` submits a payment.
+  so only `wallet.pay` submits a payment.
 - The browser profile never saves a password or a card. Chromium's password manager and autofill are
   off.
 
@@ -272,14 +272,14 @@ Spending:
 - Before the decision, the guest reads the checkout's total from the page. The policy checks the
   page's total when the guest found one and it matches the declared amount to the cent, in the
   card's currency, and asks with the passkey otherwise.
-- A `purse.pay` passes without asking only under a lifting rule whose destinations include the
-  merchant and whose `perAction` covers the amount. Every other `purse.pay` asks with the passkey.
-- A lift charges the purse's budget when the action queues, as the budgets design says, and a
-  purchase you approved is never charged. A `purse.pay` that ends before its click, with
+- A `wallet.pay` passes without asking only under a lifting rule whose destinations include the
+  merchant and whose `perAction` covers the amount. Every other `wallet.pay` asks with the passkey.
+- A lift charges the wallet's budget when the action queues, as the budgets design says, and a
+  purchase you approved is never charged. A `wallet.pay` that ends before its click, with
   `TOTAL_CHANGED`, `STALE_ELEMENT` or `FAILED`, credits the charge, and the guest clears the card
   fields it filled.
-- Every `purse.pay` that clicks submit writes a `purchase.recorded` record.
-- The purse starts with a lift of 25 AUD per purchase and a budget of 100 AUD a month. The card's
+- Every `wallet.pay` that clicks submit writes a `purchase.recorded` record.
+- The wallet starts with a lift of 25 AUD per purchase and a budget of 100 AUD a month. The card's
   own limit in the bank's app is the hard cap.
 
 Mail:
@@ -338,9 +338,8 @@ Mail:
 - **Which mail host and domain?** The owner settles it. Until then, the adapter targets JMAP, which
   Fastmail serves.
 - **Does the bank ask for a 3-D Secure check on each purchase?** A test purchase settles it. Until
-  then, a purchase waits for a bank check as `purse.pay` describes.
+  then, a purchase waits for a bank check as `wallet.pay` describes.
 - **Does the assistant get a phone number?** Many sign-ups ask for one, and a number that takes
   texts costs a monthly fee. The owner settles it. Until then, a sign-up that asks for a phone
   number stops, as a CAPTCHA does.
-- **Are `account`, `purse` and the tool names right?** The owner settles it. Until then, the build
-  uses them.
+- **Are `account` and the tool names right?** The owner settles it. Until then, the build uses them.
