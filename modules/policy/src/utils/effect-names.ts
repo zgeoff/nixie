@@ -9,6 +9,7 @@ export const effectNames = [
   'spend',
   'schedule',
   'code_run',
+  'computer_run',
   'device',
   'policy_widen',
   'policy_narrow',
