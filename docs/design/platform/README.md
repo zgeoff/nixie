@@ -4,7 +4,8 @@ The platform design is the locked baseline of nixie's first build, one folder pe
 
 - [Core](core/README.md) — the event log, tasks, the action queue and model profiles
 - [Policy](policy/README.md) — the decision point, rules, proposals and approvals, and budgets
-- [Memory](memory/store.md) — the store, writes, memory in context, and [moments](memory/moments.md)
+- Memory — [writes](memory/writes.md), [memory in context](memory/context.md) and
+  [moments](memory/moments.md)
 - [Channels](channels/README.md) — the client, the channel adapter, approvals, the live view and the
   trigger source
 - [Connectors](connectors/README.md) — connectors, tools and the MCP endpoint, the sandbox and
@@ -23,4 +24,3 @@ boundary where a deployment picks its own technology:
 - [Credential store](connectors/credentials.md): OAuth clients, refresh and the credentials a tool
   gets without the model seeing them
 - [Definitions source](connectors/definitions-source.md): where nixie reads your definitions from
-- [Sandbox adapter](connectors/sandbox-adapter.md): a sandbox for each model loop and code run

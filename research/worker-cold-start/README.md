@@ -3,7 +3,7 @@
 This spike times a fresh worker on the worker image, which adds Node.js, Python and a toolbox to the
 conversation image, and a fresh fetch sandbox. It checks the 2.5 to 3 s to first text in decision
 [0003](../../docs/decisions/0003-sdk-placement.md) against the images in the
-[sandbox adapter design](../../docs/design/platform/connectors/sandbox-adapter.md#images).
+[sandboxes doc](../../docs/architecture/connectors/sandboxes.md#kinds-of-work).
 
 ## Question
 

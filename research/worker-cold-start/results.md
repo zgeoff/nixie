@@ -37,8 +37,8 @@ cannot create imps, so the imp create time comes from imp's own design and the
 - 2 turn images from [`Dockerfile`](Dockerfile), both on the conversation image with the imp worker
   spike's [`turn.ts`](../imp-worker-start/turn.ts) added. `RUNTIMES=no` adds nothing more, and
   `RUNTIMES=yes` adds the code environment that the
-  [sandbox adapter design](../../docs/design/platform/connectors/sandbox-adapter.md#images) lists,
-  which makes it the worker image;
+  [sandboxes doc](../../docs/architecture/connectors/sandboxes.md#kinds-of-work) lists, which makes
+  it the worker image;
 - the fetch image, from the fetch guest's own Dockerfile.
 
 [`bench.ts`](bench.ts) takes every time from the machine's clock around a `docker` CLI call, and

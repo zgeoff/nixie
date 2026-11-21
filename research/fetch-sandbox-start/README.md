@@ -3,8 +3,8 @@
 This spike times the ways a fetch sandbox can start on a production impd host: a plain `imp new`
 from the fetch image, `imp new` from a template, `imp fork`, a wake of a kept imp, and an exec in an
 awake imp. It measures the cost that
-[the sandbox's lifetime](../../docs/design/platform/connectors/web-fetch.md#the-sandboxs-lifetime)
-in the web fetch design waits on.
+[the sandbox's lifetime](../../docs/architecture/connectors/web-fetch.md#the-fetch-sandbox) in the
+web fetch design waits on.
 
 ## Question
 

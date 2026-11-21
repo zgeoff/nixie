@@ -5,7 +5,8 @@
 nixie's tools run in nixie's process on the host, and the model reaches them only through MCP. Every
 model loop sets `tools: []`, which removes the Agent SDK's built-in tools, so nixie's tools are the
 only tools the model has. The conversation and every worker run inside an imp, so the model reaches
-the tools over HTTP MCP through the route the [sandbox adapter](sandbox-adapter.md) opens.
+the tools over HTTP MCP through the route the
+[sandbox adapter](../../../architecture/connectors/sandboxes.md) opens.
 
 ## A tool definition
 
@@ -25,8 +26,8 @@ interface ToolDefinition<Input, Output> {
 
 The [policy decision point](../policy/decision-point.md) owns the declaration. A tool whose effects
 include `write`, `delete`, `send`, `spend` or `device` runs `queued`, as an
-[action](../core/actions.md) with an ID and an outcome. Every other tool runs `direct` in the turn,
-because a read retried after a crash repeats nothing.
+[action](../../../architecture/core/actions.md) with an ID and an outcome. Every other tool runs
+`direct` in the turn, because a read retried after a crash repeats nothing.
 
 Every call runs the same steps on the host:
 

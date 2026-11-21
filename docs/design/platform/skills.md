@@ -172,8 +172,8 @@ each skill's hash. A rule can match the `skills` argument, such as "ask before a
 vendored skill runs".
 
 A code run has no network, so a script uses only what the
-[code image](connectors/sandbox-adapter.md#images) holds. A script that needs a missing package
-fails, and its `compatibility` field shows what it expects.
+[code image](../../architecture/connectors/sandboxes.md#kinds-of-work) holds. A script that needs a
+missing package fails, and its `compatibility` field shows what it expects.
 
 ## Skills that nixie writes
 
