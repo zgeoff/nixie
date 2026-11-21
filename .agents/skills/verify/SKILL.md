@@ -50,15 +50,17 @@ Read a feature's file before you run its journey.
 
 <!-- wringer:features -->
 
-| Feature         | Summary                                                                    | File                                                                           |
-| --------------- | -------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
-| sign-in-enrol   | Sign a browser in with a code from `nixie enrol-code`, and see its session | [references/feature-sign-in-enrol.md](references/feature-sign-in-enrol.md)     |
-| chat-turn       | Send a message from the page, and see the reply after it, in order         | [references/feature-chat-turn.md](references/feature-chat-turn.md)             |
-| memory-approval | Approve a memory the model proposed, and see it become active              | [references/feature-memory-approval.md](references/feature-memory-approval.md) |
-| policy-proposal | Approve a call that an ask rule held unrun                                 | [references/feature-policy-proposal.md](references/feature-policy-proposal.md) |
-| task-control    | Pause and resume a task, and see its records agree                         | [references/feature-task-control.md](references/feature-task-control.md)       |
-| drawing         | Draw a picture, edit it, and list both                                     | [references/feature-drawing.md](references/feature-drawing.md)                 |
-| device-screen   | Enrol a device and see a picture on it                                     | [references/feature-device-screen.md](references/feature-device-screen.md)     |
+| Feature          | Summary                                                                    | File                                                                             |
+| ---------------- | -------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| sign-in-enrol    | Sign a browser in with a code from `nixie enrol-code`, and see its session | [references/feature-sign-in-enrol.md](references/feature-sign-in-enrol.md)       |
+| chat-turn        | Send a message from the page, and see the reply after it, in order         | [references/feature-chat-turn.md](references/feature-chat-turn.md)               |
+| memory-approval  | Approve a memory the model proposed, and see it become active              | [references/feature-memory-approval.md](references/feature-memory-approval.md)   |
+| policy-proposal  | Approve a call that an ask rule held unrun                                 | [references/feature-policy-proposal.md](references/feature-policy-proposal.md)   |
+| task-control     | Pause and resume a task, and see its records agree                         | [references/feature-task-control.md](references/feature-task-control.md)         |
+| drawing          | Draw a picture, edit it, and list both                                     | [references/feature-drawing.md](references/feature-drawing.md)                   |
+| computer-browser | The assistant opens a page in its own browser                              | [references/feature-computer-browser.md](references/feature-computer-browser.md) |
+| computer-shell   | The assistant writes a file on its own shell and reads it back             | [references/feature-computer-shell.md](references/feature-computer-shell.md)     |
+| device-screen    | Enrol a device and see a picture on it                                     | [references/feature-device-screen.md](references/feature-device-screen.md)       |
 
 <!-- /wringer:features -->
 
