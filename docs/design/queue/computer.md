@@ -87,7 +87,8 @@ computer.exportFile({ path: '~/files/chart.png' });
 //   they touch only the shell's disk and nixie's own store, so nothing leaves nixie
 // computer.fill, computer.click: ['send'] with the tab's host as the destination, queued
 //   their "always allow" rule pins only the host: tab, element and value are free text to the card
-// computer.run: ['computer_run'], a new effect, queued; it asks unless a rule allows it
+// computer.run: ['computer_run'], a new effect, queued; it asks unless a rule allows it. Its card's
+//   "always allow" offers a pattern built from the command's first words, such as `git status *`
 // every result field except status, part, parts and the flags is untrusted, and so is the screenshot
 ```
 
@@ -184,10 +185,12 @@ Isolation:
   public egress.
 - No tool reads the browser sandbox's profile, process or DevTools port, and no tool runs a command
   there. A secret that the sign-in broker fills stays out of the shell's reach.
-- The shell holds only the assistant's own files. A command a rule allows can send them anywhere.
-- Every browser connection leaves through the guest's checking proxy, which runs the fetch guest's
-  address checks and pins each resolved address. The checks move to a lib that both guests import.
-  QUIC and WebRTC are off.
+- The shell holds only the assistant's own files. A command a rule allows can send them to any
+  public host, past the secret scan.
+- Every connection from either sandbox leaves through its guest's checking proxy, which runs the
+  fetch guest's address checks, pins each resolved address, and runs the secret scan on what a
+  request sends. The checks move to a lib that every guest imports. QUIC and WebRTC are off in the
+  browser, and the shell has no route out except the proxy.
 - The guest asks nixie to scan each navigation hop for secrets, as the fetch guest does. The secret
   scan also runs on every value `computer.fill` types and on every `computer.run` command.
 
@@ -207,6 +210,11 @@ Acting:
 - A waiting `computer.run`'s pending result tells the assistant that a `writeFile`, `download` or
   other `run` before your decision cancels it. Each of those calls returns `voids`, the action IDs
   of the waiting runs it cancelled, so the assistant can hold off or propose again.
+- A rule's `matches` check on `computer.run`'s `command` reads the command as a syntax tree from
+  `unbash`. It passes only when the command is plain commands of literal words joined by `;`, `&&`,
+  `||` or `|`, and every one of them matches the pattern. A command substitution, a process
+  substitution, a redirection, an assignment, an expansion, or a line that doesn't parse fails the
+  check, so the run asks.
 - Calls into each sandbox run one at a time, from the conversation or a started task. A call waits
   up to 60 seconds for its turn, and then returns `BUSY`. A `computer.run`'s own timeout starts when
   its turn comes.
