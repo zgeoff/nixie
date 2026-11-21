@@ -29,11 +29,11 @@ A guest is one long-lived process per wake. It reads frames from `libs/wire` on 
 one at a time on stdout, and holds no state nixie cannot rebuild, except the disk. The computer in
 `modules/connectors` owns the sandboxes:
 
-- A call waits up to 60 seconds for its turn at a sandbox, and returns `BUSY` after that. The calls
-  into one sandbox therefore never overlap, whether they come from the conversation or a task.
-- The browser sandbox sleeps after 30 minutes idle and the shell sandbox after 5. Nixie treats every
-  wake as a restart: it starts the guest again, so every tab ID from before the sleep returns
-  `TAB_GONE`. The profile keeps the sign-ins.
+- A call waits a set time for its turn at a sandbox, and returns `BUSY` after that. The calls into
+  one sandbox therefore never overlap, whether they come from the conversation or a task.
+- Each sandbox sleeps after its own idle time, which is longer for the browser than for the shell.
+  Nixie treats every wake as a restart: it starts the guest again, so every tab ID from before the
+  sleep returns `TAB_GONE`. The profile keeps the sign-ins.
 - A queued click or fill holds the browser awake until its action runs or its approval lapses, so a
   card the user answers late still finds its tab. A queued command holds the shell the same way.
 - When a sandbox's image or spec differs from the release, nixie creates a new one at its next call
@@ -44,19 +44,19 @@ one at a time on stdout, and holds no state nixie cannot rebuild, except the dis
 
 ## Tools
 
-| Tool                   | Effect         | Runs   | Result                                                             |
-| ---------------------- | -------------- | ------ | ------------------------------------------------------------------ |
-| `computer.open`        | `fetch`        | direct | a new tab and its page text                                        |
-| `computer.read`        | `note`         | direct | the page again, as `text` or as a `snapshot` that marks controls   |
-| `computer.screenshot`  | `note`         | direct | the viewport's picture beside the result                           |
-| `computer.close`       | `note`         | direct | the tab closed                                                     |
-| `computer.download`    | `fetch`        | direct | a file saved to `downloads/` on the shell's disk                   |
-| `computer.fill`        | `send`         | queued | the page after the typed value, with `submit` to press Enter       |
-| `computer.click`       | `send`         | queued | the page after the click                                           |
-| `computer.run`         | `computer_run` | queued | the exit code, `stdout` and `stderr` (each cut at 64 KiB), seconds |
-| `computer.read_file`   | `note`         | direct | the text of a file under `~/files`                                 |
-| `computer.write_file`  | `note`         | direct | a file written under `~/files`, which replaces one of that name    |
-| `computer.export_file` | `note`         | direct | a file kept with the result, so `file.send` can send it            |
+| Tool                   | Effect         | Runs   | Result                                                              |
+| ---------------------- | -------------- | ------ | ------------------------------------------------------------------- |
+| `computer.open`        | `fetch`        | direct | a new tab and its page text                                         |
+| `computer.read`        | `note`         | direct | the page again, as `text` or as a `snapshot` that marks controls    |
+| `computer.screenshot`  | `note`         | direct | the viewport's picture beside the result                            |
+| `computer.close`       | `note`         | direct | the tab closed                                                      |
+| `computer.download`    | `fetch`        | direct | a file saved to `downloads/` on the shell's disk                    |
+| `computer.fill`        | `send`         | queued | the page after the typed value, with `submit` to press Enter        |
+| `computer.click`       | `send`         | queued | the page after the click                                            |
+| `computer.run`         | `computer_run` | queued | the exit code, `stdout` and `stderr` (each cut at a limit), seconds |
+| `computer.read_file`   | `note`         | direct | the text of a file under `~/files`                                  |
+| `computer.write_file`  | `note`         | direct | a file written under `~/files`, which replaces one of that name     |
+| `computer.export_file` | `note`         | direct | a file kept with the result, so `file.send` can send it             |
 
 Every result field except the tab, the flags and a refusal's code is untrusted. A refusal comes back
 as a result with `refused: { code, message }`, never as an error.
@@ -69,9 +69,9 @@ at most 5 pages (`TAB_LIMIT`). The model's tab IDs (`t1`, `t2` and on) count up 
 server, so a restart never reuses one.
 
 **Paths.** A path is under `~/files`, and a relative path starts there. A path that leaves it by
-`..` or by a symlink returns `BAD_PATH`. A file read or written moves at most 25 MiB. `export_file`
-returns the result shape of a `code.run` file, and stores its bytes as an attachment of the result
-record, so a forget of that record erases them.
+`..` or by a symlink returns `BAD_PATH`. A file read or written has a size limit, and a larger file
+returns `TOO_BIG`. `export_file` returns the result shape of a `code.run` file, and stores its bytes
+as an attachment of the result record, so a forget of that record erases them.
 
 ## Reads and acts
 
