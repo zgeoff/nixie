@@ -95,7 +95,9 @@ type ImageSize = '1024x1024' | '1536x1024' | '1024x1536';
 // image.draw: paid, effects ['fetch'], execution 'direct', results { prompt: 'untrusted' }.
 //   When `from` or `references` holds an image whose source is 'photo', its prepare hook, from the
 //   computer design, returns ['fetch', 'send'] with the profile's provider as the destination, and
-//   the call queues; its card shows each photo. check and the charge run when the call runs.
+//   the call goes through the rules like any send: a rule that allows sends to that provider runs it
+//   direct, and otherwise it queues and its card shows each photo. check and the charge run when the
+//   call runs.
 // image.name, image.pin, image.unpin, image.list, image.read, image.import: effects ['note'],
 //   execution 'direct'
 
