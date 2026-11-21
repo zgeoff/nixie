@@ -217,8 +217,3 @@ The camera:
 - HTML content on a screen.
 - The speaker and microphone tools.
 - Dimming a screen on a schedule. The assistant sets an empty scene at night.
-
-## Open questions
-
-- **Are "device", "capability" and "screen" the right names?** The owner settles it before the
-  build, because the model reads them in the tools. Until then, the build uses them.
