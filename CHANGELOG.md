@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.92.0](https://github.com/zgeoff/nixie/compare/v0.91.0...v0.92.0) (2026-11-21)
+
+
+### Features
+
+* **verify:** add a drawing journey on a stubbed image provider ([#1327](https://github.com/zgeoff/nixie/issues/1327)) ([3219958](https://github.com/zgeoff/nixie/commit/3219958af45329a0dc49ddc8fd2fa79e896ec330))
+
+
+### Bug Fixes
+
+* **verify:** report a preview checkout with no commit as environment ([#1335](https://github.com/zgeoff/nixie/issues/1335)) ([1ccb9fa](https://github.com/zgeoff/nixie/commit/1ccb9fa856775d484013974768101fe79acd932e))
+
 ## [0.91.0](https://github.com/zgeoff/nixie/compare/v0.90.0...v0.91.0) (2026-11-21)
 
 
