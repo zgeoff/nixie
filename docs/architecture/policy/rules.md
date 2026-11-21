@@ -9,6 +9,11 @@ reads the definitions and puts them in force, as [seeding](../core/definitions.m
 describes. The [rules design](../../design/platform/policy/rules.md) holds the parts not built yet,
 and [the decision point](decision-point.md) covers the stages that decide a call.
 
+An allow rule can allow any call, with 2 exceptions. A call that widens the policy or raises a
+budget always asks, so no rule can give the assistant more room than the user approved. A call that
+spends passes only an allow rule with a [lift](budgets.md#lifts), which caps each purchase and
+charges a budget. A new tool never adds a third exception.
+
 ## The rule format
 
 A rules file maps each rule ID to its rule, and each ID belongs to one rule across every file under
