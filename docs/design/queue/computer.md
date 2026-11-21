@@ -66,7 +66,8 @@ computer.readFile({ path: '~/files/notes.md', part: 1 });
 // → { path, bytes: 2210, part: 1, parts: 1, text: '…' }
 //   or { refused: 'NOT_TEXT' } | { refused: 'NO_FILE' } | { refused: 'BAD_PATH' } | { refused: 'TOO_BIG' }
 computer.writeFile({ path: '~/files/notes.md', text: '…' }); // or from: { image: 'k3x9m2p7qa' } | { file: 'f9k2m4q7ws' }
-// → { path, bytes: 2318 }   or BAD_PATH | TOO_BIG | DISK_FULL | UNKNOWN_FILE | FILE_FORGOTTEN
+// → { path, bytes: 2318, voids: [] }   voids: each waiting computer.run this write cancels
+//   or BAD_PATH | TOO_BIG | DISK_FULL | UNKNOWN_FILE | FILE_FORGOTTEN
 //   | UNKNOWN_IMAGE | IMAGE_FORGOTTEN. A code.run file from another thread is UNKNOWN_FILE
 //   `from` copies an image or a file into the shell. A write replaces the file and makes its folders
 computer.exportFile({ path: '~/files/chart.png' });
@@ -203,6 +204,9 @@ Acting:
   count moved before it runs, the run returns `FILES_CHANGED`, does nothing, and the assistant
   proposes it again, so an approved command never runs a script that changed after you read the
   card. A run that a rule allows skips this check.
+- A waiting `computer.run`'s pending result tells the assistant that a `writeFile`, `download` or
+  other `run` before your decision cancels it. Each of those calls returns `voids`, the action IDs
+  of the waiting runs it cancelled, so the assistant can hold off or propose again.
 - Calls into each sandbox run one at a time, from the conversation or a started task. A call waits
   up to 60 seconds for its turn, and then returns `BUSY`. A `computer.run`'s own timeout starts when
   its turn comes.
