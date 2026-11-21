@@ -3,10 +3,10 @@ import { budgetProjections, buildBuiltInBudgets } from '@heynixie/budgets';
 import type { JSONObject, Log } from '@heynixie/log';
 import type { DecisionPoint, RuleEntry } from '@heynixie/policy';
 import { buildAllowingDecisionPoint, readStarterDecisionPoint } from '@heynixie/policy/test-utils';
-import { buildTestClock } from '@heynixie/testing';
 import type { ToolRun } from '@heynixie/tools';
 import { buildToolRegistry, findToolDeclaration, runToolCall } from '@heynixie/tools';
 import { buildStubActionQueue } from '@heynixie/tools/test-utils';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import { buildImageTools } from '../image/build-image-tools';
 import type { ImagesConfig } from '../image/images-config-schema';
 import { largestImageBytes } from '../image/pick-room-left';
@@ -31,7 +31,7 @@ const prices = { '1024x1024': 40_000, '1536x1024': 60_000, '1024x1536': 60_000 }
 // Starts the log and the 7 image tools behind the real tool endpoint, with a stand-in for each
 // provider, so a test sends a call and reads what the model, the budgets and the log hold after it.
 export async function startTestImages(options: TestImagesOptions) {
-  const clock = buildTestClock(Date.parse('2026-11-21T08:00:00.000Z'));
+  const clock = createFakeClock({ startMs: Date.parse('2026-11-21T08:00:00.000Z') });
 
   const started = await startTestLog(clock);
 

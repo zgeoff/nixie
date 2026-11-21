@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test';
 import { startTestImages } from '@heynixie/connectors/test-utils';
 import { readRecords } from '@heynixie/log';
-import { mockServer } from '@heynixie/mock-server';
+import { network } from '@heynixie/mock-server';
 import { HttpResponse, http } from 'msw';
 import { z } from 'zod';
 import { buildGeminiImages } from './build-gemini-images';
@@ -22,7 +22,7 @@ test('it sends the prompt, the source and each reference with the key in a heade
   const ctx = setupTest();
   const seen: { key: string | null; revision: string | null; body: unknown; url: string }[] = [];
 
-  mockServer.use(
+  network.use(
     http.post(`${geminiImagesAPIURL}/interactions`, async (info) => {
       const body = await info.request.clone().json();
 
@@ -91,7 +91,7 @@ test('it sends the prompt, the source and each reference with the key in a heade
 test('it returns a reply that holds only words as a billed refusal that carries them', async () => {
   const ctx = setupTest();
 
-  mockServer.use(
+  network.use(
     http.post(`${geminiImagesAPIURL}/interactions`, () =>
       HttpResponse.json({
         steps: [{ type: 'model_output', content: [{ type: 'text', text: 'I cannot draw that.' }] }],
@@ -118,7 +118,7 @@ test('it returns a reply that holds only words as a billed refusal that carries 
 test('it returns a blocked prompt as an unbilled safety refusal', async () => {
   const ctx = setupTest();
 
-  mockServer.use(
+  network.use(
     http.post(`${geminiImagesAPIURL}/interactions`, () =>
       HttpResponse.json(
         { error: { status: 'INVALID_ARGUMENT', message: 'Prompt blocked for safety reasons.' } },
@@ -146,7 +146,7 @@ test('it returns a blocked prompt as an unbilled safety refusal', async () => {
 test('it returns another error status as an unbilled failure that names the status', async () => {
   const ctx = setupTest();
 
-  mockServer.use(
+  network.use(
     http.post(`${geminiImagesAPIURL}/interactions`, () =>
       HttpResponse.json({ error: { message: 'Overloaded.' } }, { status: 503 }),
     ),
@@ -173,7 +173,7 @@ test('it throws when the time limit aborts the call, so the tool can tell a time
   const controller = new AbortController();
 
   controller.abort();
-  mockServer.use(http.post(`${geminiImagesAPIURL}/interactions`, () => HttpResponse.json({})));
+  network.use(http.post(`${geminiImagesAPIURL}/interactions`, () => HttpResponse.json({})));
 
   const drawn = ctx.provider.draw({
     model: 'model-b',
@@ -189,7 +189,7 @@ test('it throws when the time limit aborts the call, so the tool can tell a time
 test('it never lets the key reach a result or the log when the API echoes it', async () => {
   const ctx = setupTest();
 
-  mockServer.use(
+  network.use(
     http.post(`${geminiImagesAPIURL}/interactions`, (info) =>
       HttpResponse.json(
         {
