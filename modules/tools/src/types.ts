@@ -175,7 +175,7 @@ export interface Prepared {
 export interface PaidTool {
   // The price of one call, in millionths of a dollar. A function prices the call from its input,
   // after check and before the charge.
-  readonly priceMicros: number | ((input: JSONObject) => number);
+  readonly priceMicros: number | ((input: JSONObject) => number | Promise<number>);
 
   // Refuses a call before anything is charged: a non-null result returns with no charge, and the
   // call cap does not count it.

@@ -1,6 +1,6 @@
 import type { Log } from '@heynixie/log';
 import { readRecordAttachments, readRecords } from '@heynixie/log';
-import { ownerMessageCodec } from '@heynixie/tasks';
+import { ownerMessageCodec } from './owner-message-codec';
 
 export interface OwnerImageQuery {
   readonly thread: string;

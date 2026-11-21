@@ -55,7 +55,7 @@ export async function runPaidCall(
   }
 
   const priceMicros =
-    typeof paid.priceMicros === 'number' ? paid.priceMicros : paid.priceMicros(call.input);
+    typeof paid.priceMicros === 'number' ? paid.priceMicros : await paid.priceMicros(call.input);
 
   invariant(isPriceMicros(priceMicros), `the paid tool ${name} priced a call at ${priceMicros}`);
 
