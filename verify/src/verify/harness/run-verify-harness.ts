@@ -3,6 +3,7 @@ import { getDataFilePath } from '@heynixie/log';
 import { createSpawnedNixie, createTestClient, readTestBundle } from '@heynixie/server/test-utils';
 import { createBuiltWeb, createFrontProxy, readWebBuild } from '@heynixie/web/test-utils';
 import { buildScriptedReplies } from './build-scripted-replies';
+import { runDeviceShow } from './run-device-show';
 import { serveControl } from './serve-control';
 
 interface RunningState {
@@ -61,6 +62,7 @@ export async function runVerifyHarness(): Promise<void> {
 
       return replies.length;
     },
+    showOnDevice: (show) => runDeviceShow(api.client, nixie.model, show),
     readTasks: async () => {
       const listed = await api.client.tasks.list();
       const records = await nixie.readRecords();

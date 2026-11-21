@@ -60,6 +60,7 @@ Read a feature's file before you run its journey.
 | policy-proposal | Approve a call that an ask rule held unrun                                 | [references/feature-policy-proposal.md](references/feature-policy-proposal.md) |
 | task-control    | Pause and resume a task, and see its records agree                         | [references/feature-task-control.md](references/feature-task-control.md)       |
 | drawing         | Draw a picture, edit it, and list both                                     | [references/feature-drawing.md](references/feature-drawing.md)                 |
+| device-screen   | Enrol a device, and see a picture the model shows on it                    | [references/feature-device-screen.md](references/feature-device-screen.md)     |
 
 <!-- /wringer:features -->
 
