@@ -19,7 +19,9 @@ async function setupTest() {
         buildMockToolContext(),
       );
 
-      return outcome.status === 'ok' ? String(outcome.result['reminder']) : '';
+      const reminder = outcome.status === 'ok' ? outcome.result['reminder'] : '';
+
+      return typeof reminder === 'string' ? reminder : '';
     },
     runSnooze: (input: object) =>
       snooze.run(buildReminderToolCall('reminder.snooze', input), buildMockToolContext()),

@@ -71,3 +71,10 @@ GEO-2688: POST /conversation/read removed the required property `records/items/r
 GEO-2688: POST /definitions/listTasks removed the required property `definitions/items/target` from the response with the `200` status
 GEO-2688: POST /log/follow removed the required property `oneOf[subschema #1]/data/record/reminder/brief` from the response with the `200` status
 GEO-2688: POST /records/follow removed the required property `oneOf[subschema #1]/data/record/reminder/brief` from the response with the `200` status
+# GEO-2727: a client of the last release still works, because a schedule it already knows keeps its shape: the list answers an older schedule record as before, converting it on read, and a client that reads no repeat schedule shows the same fires. The new repeat shape only adds to the union.
+GEO-2727: POST /definitions/listTasks added `subschema #1, subschema #2` to the `definitions/items/trigger/anyOf[subschema #1]/anyOf[subschema #1]/schedule` response property `anyOf` list for the response status `200`
+GEO-2727: POST /definitions/listTasks the `definitions/items/trigger/anyOf[subschema #1]/anyOf[subschema #1]/schedule` response's property `type` changed from `object` to `any` for status `200`
+GEO-2727: POST /definitions/listTasks removed the required property `definitions/items/trigger/anyOf[subschema #1]/anyOf[subschema #1]/schedule/every` from the response with the `200` status
+GEO-2727: POST /reminders/list added `subschema #1, subschema #2` to the `reminders/items/trigger/anyOf[subschema #1]/schedule` response property `anyOf` list for the response status `200`
+GEO-2727: POST /reminders/list the `reminders/items/trigger/anyOf[subschema #1]/schedule` response's property `type` changed from `object` to `any` for status `200`
+GEO-2727: POST /reminders/list removed the required property `reminders/items/trigger/anyOf[subschema #1]/schedule/every` from the response with the `200` status
