@@ -63,6 +63,12 @@ declaration. The rules are:
 - The input schema and the output schema both describe objects.
 - Every top-level field of the output has a source of content in the declaration, and every declared
   source names a field.
+- A paid tool sets `priceMicros` as a number or as a function of the input, and can set a `check`
+  that returns a refusal before anything is charged. A result with a `refusalCode` credits the
+  charge unless it sets `billed`. [Paid tools](../policy/budgets.md#paid-tools) covers the charge.
+- A tool can set `prepare`, which the endpoint calls with the input before the decision. It returns
+  the destinations and effects of this call, which replace the declared ones, or a result that ends
+  the call. An approved call runs it again and returns `changed` when the destinations differ.
 - A tool whose effects reach outside nixie, such as a write, a send or a spend, runs queued as an
   action, and every other tool runs direct. A read retried after a crash repeats nothing, so it can
   run inside the turn.

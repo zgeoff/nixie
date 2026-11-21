@@ -108,6 +108,8 @@ holds the design for a piece of work that is not built yet, with its spikes in
   the files it writes and how a forget destroys its sandbox
 - [Time](architecture/connectors/time.md) — the time zone on each message, and the time tool that
   answers in the user's newest zone
+- [Images](architecture/connectors/images.md) — drawing and editing pictures in passes, the provider
+  profiles, the charge and the stored attempts
 - [Search](architecture/connectors/search.md) — the search tool on the host, its daily call cap, the
   Kagi provider and its key
 
