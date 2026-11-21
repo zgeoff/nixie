@@ -99,9 +99,7 @@ Read a feature's file before you run its journey.
 10. Check that `CLOUD_FILES_URL` and `CLOUD_FILES_TOKEN_REF` are set. When either is empty, stop and
     report it as a blocker. `CLOUD_FILES_URL` is the file host that takes the evidence files.
     `CLOUD_FILES_TOKEN_REF` is the 1Password `op://` reference to the upload token. Never run
-    `op read` on its own: it prints the token. The `local` and `preview` targets upload, so
-    `publish` fails without them; `--no-upload` keeps the evidence local, for a session with no file
-    host.
+    `op read` on its own: it prints the token.
 11. Publish the report, even when you skipped a feature. Read the token in a subshell, so it never
     sits in your shell. Because `&&` joins them, a failed `op read` stops the command before
     `publish` runs:
@@ -112,8 +110,8 @@ Read a feature's file before you run its journey.
 
     To write to a PR other than the branch's own, add `--pr <number>`. When `op read` fails, stop
     and report it as a blocker. Expect: `ok: true`, and `data.action` of `created`, `replaced` or
-    `unchanged`, with `data.uploaded` or `data.reused` above 0 and `data.local` at 0. `publish`
-    writes the report into the PR's description, the only report the gate reads.
+    `unchanged`, and `data.local` of 0. `publish` writes the report into the PR's description, the
+    only report the gate reads.
 
 12. End the run: `bun verify down` after `up`, or `bun verify detach` after `attach`.
 
