@@ -133,7 +133,8 @@ result's `hidden.uuids`, keyed by short ID.
 A code run's file takes a short ID the same way, in the `code_files` table
 ([the files](../connectors/code-tool.md#the-files)).
 
-An image takes a short ID in the `images` table ([storage](../connectors/images.md#storage)).
+An image takes a short ID in the `images` table ([storage](../connectors/images.md#storage)), and a
+device in the `devices` table ([devices](../channels/devices.md#the-device-record)).
 
 The UUID stays the record's own key, in the log, in every foreign key and in the key store, so a
 short ID is an alias that only the model's side of each tool reads and writes. A tool that takes an
