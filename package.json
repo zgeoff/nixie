@@ -180,7 +180,7 @@
     "@zgeoff/commitlint-config": "0.1.2",
     "@zgeoff/diet": "0.2.4",
     "@zgeoff/format-codemod": "0.3.6",
-    "@zgeoff/oxlint-config": "0.10.10",
+    "@zgeoff/oxlint-config": "0.10.12",
     "@zgeoff/rig": "catalog:",
     "knip": "6.44.1",
     "lefthook": "2.2.2",
