@@ -4,22 +4,23 @@
   photo.
 - [End state](#end-state): what the page, the device row and the records show.
 
-A device is a browser that shows what the model puts on its screen. It enrols with a code from
-`nixie enrol-code device`, on the page `/device`, and its session reaches only its own stream. The
-owner switches the screen on there, and the model then shows a picture on it with `device.show`.
+Run this journey on `local` only, after every other journey. It needs the scripted model and the
+`show-on-device` action, which the harness that runs nixie on `local` serves. On `preview`, list the
+feature as not verified, and run no `bun verify done`.
 
-Run this journey on `local` only. It needs the scripted model, and the `show-on-device` action,
-which sends the owner's photo from the harness that runs nixie on `local`. List the feature as not
-verified on `preview`.
+Start from a browser with no session, because the device page shows the enrolment form only to such
+a browser. Run `bun verify up --restart` and `bun verify doctor`. Skip `sign-in-enrol`, which signs
+the browser in. Enrolling replaces the browser's session, so a journey after this one needs a new
+restart and a `sign-in-enrol` run. Restart the same way before each repeat of this journey, even
+after a failed one: a restart gives nixie a new, empty database.
 
-Run it on a browser with no session: the device page shows the enrolment form only to such a
-browser, and enrolling a device replaces the session the browser held. Run `bun verify up --restart`
-and `bun verify doctor` first when an earlier journey signed this browser in.
+A device is a browser that shows what the model puts on its screen. You enrol it on the page
+`/device`, with a code from `nixie enrol-code device`.
 
 ## Journey
 
-1. Record the next commands under this feature, and get a device code from the target's terminal.
-   Wait for the code it prints:
+1. Record the next commands under this feature. Start the `enrol-device-code` terminal, which runs
+   `nixie enrol-code device`, and wait for the code it prints:
 
    ```bash
    bun verify use --feature device-screen
@@ -33,15 +34,17 @@ and `bun verify doctor` first when an earlier journey signed this browser in.
 
    ```bash
    bun verify browser goto /device
+   bun verify browser snapshot
    bun verify browser type --role textbox --name 'Enrolment code' --value '<code>'
    bun verify browser type --role textbox --name 'Device name' --value 'hall display'
    bun verify browser click --role button --name Enrol
    bun verify browser snapshot
    ```
 
-   Expect: the button "Switch on screen", and no "Enrol this browser" heading.
+   Expect: the first snapshot shows the heading "Enrol this browser". The last shows the button
+   "Switch on screen" and no such heading.
 
-3. Switch the screen on, and check that the device is on the list:
+3. Switch the screen on, and read the `devices` table:
 
    ```bash
    bun verify browser click --role button --name 'Switch on screen'
@@ -52,13 +55,18 @@ and `bun verify doctor` first when an earlier journey signed this browser in.
    Expect: the buttons "Switch off screen" and "Sign out", and one row, "hall display", whose
    `capabilities` holds `"screen":true`.
 
-4. Send the owner's photo, and have the model show it. `--fit whole` shows all of the picture, and
-   `--fit fill` covers the screen. The command queues the model's turn, so run it once per fit:
+4. Have the model show the photo, once for each `--fit` value. `whole` shows all of the picture and
+   `fill` covers the screen. The action sends the user's message with a photo, always with the text
+   below, and queues the model turn that shows it. Copy the `conversation turn` message as written,
+   and give both commands the same reply:
 
    ```bash
    bun verify action show-on-device --fit whole --text 'The hall display shows the photo.'
    bun verify conversation turn --message 'Show this photo on the screen in the hall.' --reply 'The hall display shows the photo.'
    ```
+
+   Run both commands again with `--fit fill`. Expect: each `show-on-device` returns `data.replies`
+   above 0, the count of scripted model replies it queued, and each `conversation turn` exits 0.
 
 5. Read the page and the device row:
 
@@ -68,8 +76,12 @@ and `bun verify doctor` first when an earlier journey signed this browser in.
    bun verify db query "select shown_sequence from devices"
    ```
 
+   Expect: the end state below.
+
 ## End state
 
-- `conversation turn` exited 0.
 - The snapshot of step 5 lists an image named "Picture" above the buttons.
-- `shown_sequence` of the device is a number, not null.
+- `shown_sequence` of the device is a number, never null.
+- The screenshot is evidence for the reviewer. Check nothing in it.
+
+Once the end state matches, run `bun verify done`.

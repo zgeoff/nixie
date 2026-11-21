@@ -21,12 +21,10 @@ changes a feature with no verdict there.
 The mistakes that cost the most time:
 
 - **Using the app before `doctor` passes.** `bun verify doctor` checks that the app answers and that
-  each driver works. Until `doctor` passes after `bun verify up` or `bun verify attach`, any command
-  that touches the app fails with exit code 3.
+  the browser and terminal drivers work. Until it passes after `bun verify up` or
+  `bun verify attach`, any command that touches the app fails with exit code 3.
 - **Editing the app's code while `up` runs it.** The next command that touches the app fails with
   `doctor-required`. Run `bun verify up --restart` and `bun verify doctor`, then the journey again.
-- **Running `done` before you check the end state.** `done` checks only that one journey command
-  succeeded.
 
 ## Key rules
 
@@ -151,7 +149,8 @@ that command alone. A command with neither runs on the registry's first target, 
 | `prod`    | `bun verify use --target prod`, then `bun verify attach`    | read-only  | Production; follow [the prod check](references/prod-check.md).                                                  |
 
 - Run `sign-in-enrol` first, and after each `up --restart`, as
-  [its file](references/feature-sign-in-enrol.md) says.
+  [its file](references/feature-sign-in-enrol.md) says. Skip it before `device-screen`, which needs
+  a browser with no session.
 
 <!-- /repo -->
 
