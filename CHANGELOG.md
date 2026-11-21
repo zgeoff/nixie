@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.90.0](https://github.com/zgeoff/nixie/compare/v0.89.0...v0.90.0) (2026-11-21)
+
+
+### Features
+
+* **prompts:** cue the tools at the point of use ([#1299](https://github.com/zgeoff/nixie/issues/1299)) ([9c7ca98](https://github.com/zgeoff/nixie/commit/9c7ca98d36e3065430eb5979f76dfc6c3c14d80f))
+* **reminders:** add flexible schedules with hours, snooze and skip ([#1307](https://github.com/zgeoff/nixie/issues/1307)) ([dc1b392](https://github.com/zgeoff/nixie/commit/dc1b392068e955474379fca49aa38c7bd59de628))
+
+
+### Bug Fixes
+
+* **actions:** mark an approved call that its tool refuses as failed ([#1300](https://github.com/zgeoff/nixie/issues/1300)) ([e420304](https://github.com/zgeoff/nixie/commit/e420304a297e252c3219fb381a2a784b14428e2d))
+
 ## [0.89.0](https://github.com/zgeoff/nixie/compare/v0.88.0...v0.89.0) (2026-11-21)
 
 
