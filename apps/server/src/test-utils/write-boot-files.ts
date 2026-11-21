@@ -7,6 +7,7 @@ export interface BootFiles {
   readonly dataDir: string;
   readonly configPath: string;
   readonly manifestPath: string;
+  readonly previousManifestPath: string;
   readonly sopsPath: string;
 
   readonly deploymentKey: string;
@@ -65,7 +66,8 @@ export async function writeBootFiles(
   );
 
   await writeSecrets(join(directory, 'secrets.yaml'), deploymentKey, extras);
-  await writeManifest(join(directory, 'sandbox-manifest.json'));
+  await writeManifest(join(directory, 'sandbox-manifest.json'), true);
+  await writeManifest(join(directory, 'previous-sandbox-manifest.json'), false);
   await writeStubSops(join(directory, 'sops'));
 
   await writeConfig(directory, [
@@ -85,6 +87,7 @@ export async function writeBootFiles(
     dataDir,
     configPath: join(directory, 'config.yaml'),
     manifestPath: join(directory, 'sandbox-manifest.json'),
+    previousManifestPath: join(directory, 'previous-sandbox-manifest.json'),
     sopsPath: join(directory, 'sops'),
     deploymentKey,
   };
@@ -144,14 +147,20 @@ async function writeSecrets(
   await writeFile(path, `${lines.join('\n')}\n`);
 }
 
-async function writeManifest(path: string): Promise<void> {
+// A release from before the computer refuses a manifest key it does not know, so the manifest that
+// a previous release reads leaves out the computer's images.
+async function writeManifest(path: string, hasComputerImages: boolean): Promise<void> {
   const manifest = {
     conversation: `ghcr.io/example/nixie-conversation@sha256:${'c'.repeat(64)}`,
     fetch: `ghcr.io/example/nixie-fetch@sha256:${'f'.repeat(64)}`,
     code: `ghcr.io/example/nixie-code@sha256:${'d'.repeat(64)}`,
     codex: `ghcr.io/example/nixie-codex@sha256:${'e'.repeat(64)}`,
-    browser: `ghcr.io/example/nixie-browser@sha256:${'a'.repeat(64)}`,
-    shell: `ghcr.io/example/nixie-shell@sha256:${'b'.repeat(64)}`,
+    ...(hasComputerImages
+      ? {
+          browser: `ghcr.io/example/nixie-browser@sha256:${'a'.repeat(64)}`,
+          shell: `ghcr.io/example/nixie-shell@sha256:${'b'.repeat(64)}`,
+        }
+      : {}),
   };
 
   await writeFile(path, JSON.stringify(manifest));

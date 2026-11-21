@@ -11,7 +11,11 @@ export function askProxy(port: number, request: string): Promise<string> {
     });
 
     socket.once('error', reject);
-    socket.once('close', () => resolve(text));
+
+    socket.once('close', () => {
+      resolve(text);
+    });
+
     socket.write(request);
   });
 }

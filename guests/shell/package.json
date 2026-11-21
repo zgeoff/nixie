@@ -8,6 +8,7 @@
   },
   "dependencies": {
     "@heynixie/egress": "workspace:*",
-    "@heynixie/wire": "workspace:*"
+    "@heynixie/wire": "workspace:*",
+    "tiny-invariant": "catalog:"
   }
 }

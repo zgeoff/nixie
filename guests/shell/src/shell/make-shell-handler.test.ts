@@ -3,6 +3,7 @@ import { mkdir, mkdtemp, readFile, realpath, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { ComputerRequest } from '@heynixie/wire';
+import invariant from 'tiny-invariant';
 import { makeShellHandler } from './make-shell-handler';
 
 async function setupTest() {
@@ -205,14 +206,11 @@ test('it gives a command no route out except the proxy', async () => {
     timeoutSeconds: 20,
   });
 
-  expect(reply).toMatchObject({
-    run: { exitCode: 0, stdout: { text: expect.not.stringContaining('DIRECT_CONNECTION') } },
-  });
+  invariant(reply.kind === 'run');
 
-  expect(reply).toMatchObject({
-    run: { stdout: { text: expect.not.stringMatching(/curl=0|raw=0/u) } },
-  });
-
+  expect(reply.run.exitCode).toBe(0);
+  expect(reply.run.stdout.text).not.toInclude('DIRECT_CONNECTION');
+  expect(reply.run.stdout.text).not.toMatch(/curl=0|raw=0/u);
   expect(ctx.scanned).toStrictEqual([]);
 });
 

@@ -8,7 +8,7 @@ WORKDIR /src
 COPY . .
 RUN bun install --frozen-lockfile --ignore-scripts \
   && bun build guests/browser/src/main.ts --target bun --external playwright-core --outfile /out/browser.js \
-  && cp -rL node_modules/.bun/playwright-core@*/node_modules/playwright-core /out/playwright-core
+  && cp -rL guests/browser/node_modules/playwright-core /out/playwright-core
 
 FROM oven/bun:1.4.4
 ENV PLAYWRIGHT_BROWSERS_PATH=/opt/browsers

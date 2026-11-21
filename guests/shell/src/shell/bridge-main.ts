@@ -15,14 +15,22 @@ if (lift.exitCode !== 0) {
 const bridge = createServer((client) => {
   const upstream = connect({ path: socketPath });
 
-  client.on('error', () => upstream.destroy());
-  upstream.on('error', () => client.destroy());
+  client.on('error', () => {
+    upstream.destroy();
+  });
+
+  upstream.on('error', () => {
+    client.destroy();
+  });
+
   client.pipe(upstream);
   upstream.pipe(client);
 });
 
 await new Promise<void>((resolve) => {
-  bridge.listen(Number(portText), '127.0.0.1', () => resolve());
+  bridge.listen(Number(portText), '127.0.0.1', () => {
+    resolve();
+  });
 });
 
 const child = Bun.spawn([command, ...args], {

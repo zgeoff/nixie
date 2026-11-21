@@ -37,7 +37,10 @@ export async function startCheckingProxy(options: CheckingProxyOptions): Promise
 
   await new Promise<void>((resolve, reject) => {
     proxy.server.once('error', reject);
-    proxy.server.listen(0, '127.0.0.1', () => resolve());
+
+    proxy.server.listen(0, '127.0.0.1', () => {
+      resolve();
+    });
   });
 
   const address = proxy.server.address();
@@ -58,7 +61,10 @@ export async function startSocketProxy(
 
   await new Promise<void>((resolve, reject) => {
     proxy.server.once('error', reject);
-    proxy.server.listen(socketPath, () => resolve());
+
+    proxy.server.listen(socketPath, () => {
+      resolve();
+    });
   });
 
   return { stop: proxy.stop };
@@ -72,8 +78,15 @@ function buildProxyServer(options: CheckingProxyOptions): {
 
   const server = createServer((client) => {
     sockets.add(client);
-    client.once('close', () => sockets.delete(client));
-    client.on('error', () => client.destroy());
+
+    client.once('close', () => {
+      sockets.delete(client);
+    });
+
+    client.on('error', () => {
+      client.destroy();
+    });
+
     void serveClient(client, options);
   });
 
@@ -85,7 +98,9 @@ function buildProxyServer(options: CheckingProxyOptions): {
           socket.destroy();
         }
 
-        server.close(() => resolve());
+        server.close(() => {
+          resolve();
+        });
       }),
   };
 }
@@ -155,7 +170,9 @@ async function serveClient(client: Socket, options: CheckingProxyOptions): Promi
     refuse(client, '502 Bad Gateway', 'the connection failed');
   });
 
-  client.on('close', () => upstream.destroy());
+  client.on('close', () => {
+    upstream.destroy();
+  });
 
   upstream.once('connect', () => {
     if (content === null) {
@@ -216,7 +233,10 @@ function readHead(client: Socket): Promise<Head | null> {
     };
 
     client.on('data', onData);
-    client.once('close', () => resolve(null));
+
+    client.once('close', () => {
+      resolve(null);
+    });
   });
 }
 
@@ -352,7 +372,11 @@ function readBytes(client: Socket, rest: Buffer, length: number): Promise<Buffer
     };
 
     client.on('data', onData);
-    client.once('close', () => resolve(null));
+
+    client.once('close', () => {
+      resolve(null);
+    });
+
     client.resume();
   });
 }

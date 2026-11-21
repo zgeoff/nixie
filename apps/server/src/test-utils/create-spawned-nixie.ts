@@ -213,7 +213,7 @@ export async function createSpawnedNixie(
   // that the run builds once
   const launch: Launch = {
     entry: await readEntry(options),
-    args: buildServeArgs(files),
+    args: buildServeArgs(files, files.manifestPath),
     env: {
       NIXIE_TEST_PROVIDER_URL: doubles.provider.url,
       NIXIE_TEST_FETCHER: join(import.meta.dir, 'run-stub-fetcher.ts'),
@@ -383,13 +383,13 @@ async function readEntry(options: SpawnedNixieOptions): Promise<string> {
   return bundle.entry;
 }
 
-function buildServeArgs(files: BootFiles): readonly string[] {
+function buildServeArgs(files: BootFiles, manifestPath: string): readonly string[] {
   return [
     'serve',
     '--config',
     files.configPath,
     '--manifest',
-    files.manifestPath,
+    manifestPath,
     '--sops',
     files.sopsPath,
 
@@ -496,7 +496,11 @@ function parseLogLines(text: string): readonly LogLine[] {
 // A release bundle leaves the harness link out, so it never sends ready over IPC, and its ready
 // log line stands in.
 function startRelease(launch: Launch, stack: AsyncDisposableStack): SpawnedNixieProcess {
-  const nixie = startNixieProcess({ ...launch, clockMs: startMs });
+  const nixie = startNixieProcess({
+    ...launch,
+    args: buildServeArgs(launch.files, launch.files.previousManifestPath),
+    clockMs: startMs,
+  });
 
   stack.defer(async () => {
     await nixie.kill();

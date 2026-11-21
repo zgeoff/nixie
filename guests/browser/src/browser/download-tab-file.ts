@@ -40,7 +40,7 @@ async function clickForDownload(tab: Tab, locator: Locator): Promise<Download | 
   const waiting = tab.page.waitForEvent('download', { timeout: downloadWaitMs });
 
   try {
-    await locator.click({ timeout: 10_000, noWaitAfter: true });
+    await locator.click({ timeout: 10_000 });
 
     return await waiting;
   } catch {
