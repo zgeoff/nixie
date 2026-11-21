@@ -42,7 +42,6 @@ const rememberInput = {
     text: {
       type: 'string',
       minLength: 1,
-      maxLength: 6000,
       description: 'at most 6,000 characters for a self-note and 2,000 for any other subject',
     },
     gist: labelInputSchema.gist,

@@ -62,6 +62,25 @@ test.skipIf(isModelMissing)('it encodes a text beside others as it encodes it al
   expect(batched).toStrictEqual(alone);
 });
 
+test.skipIf(isModelMissing)('it keeps a text the model reads whole as one chunk', async () => {
+  const ctx = await setupTest();
+
+  expect(ctx.encoder.splitText?.('Ana cannot digest lactose')).toStrictEqual([
+    'Ana cannot digest lactose',
+  ]);
+});
+
+test.skipIf(isModelMissing)(
+  'it splits a text longer than the model reads into chunks',
+  async () => {
+    const ctx = await setupTest();
+
+    const chunks = ctx.encoder.splitText?.('The boiler hums. '.repeat(200)) ?? [];
+
+    expect(chunks.length).toBeGreaterThan(1);
+  },
+);
+
 test.skipIf(isModelMissing)('it encodes nothing for no texts', async () => {
   const ctx = await setupTest();
 
@@ -116,7 +135,7 @@ test.skipIf(isModelMissing)(
 );
 
 test.skipIf(isModelMissing)(
-  'it retrieves a long self-note by meaning when its only match sits past the 512 tokens the model reads',
+  'it retrieves a long self-note by meaning when its only match sits in the middle, past the 512 tokens the model reads',
   async () => {
     const ctx = await setupTest();
 
@@ -135,6 +154,7 @@ test.skipIf(isModelMissing)(
       'The cat next door visits most evenings and sits on the windowsill as if it owns the flat. I have no opinion on cats, officially, but I notice I mention it on tired days.',
       'Running in the park has become a weekly thing again. I keep the times and the routes, and I have learned not to comment on a slow week. Encouragement lands better than numbers on those days.',
       'Letters to the bank remain the worst job of the month. I draft them plainly and they get softened, and the soft version always gets the better answer, which has taught me something about tone.',
+      'The boiler service is booked for the 14th, in the morning between eight and noon. The man from the gas company will check the pressure and the flue, and he asked that someone be home to let him in.',
       'Rainy weekends bring out the board games. Word games turn ruthless and everything else stays generous, and I have stopped pretending I let anyone win.',
       'Birthdays are a small project every year. I keep a list of what each friend mentioned wanting, and the best gifts are always the ones from a passing remark in March.',
       'Learning Spanish has stalled at the past tense. We practise over breakfast, ten minutes at most, and I have learned that a joke in the new language does more than a page of drills.',
@@ -147,7 +167,6 @@ test.skipIf(isModelMissing)(
       'Saturday markets are the best hour of the week for me. I keep the stall list, I know which baker sells out first, and I like hearing the bargaining even when nothing is bought.',
       'Old friends from school write less often now. I keep track of whose turn it is to reply, and I have noticed that a short note sent soon beats a long one sent late every time.',
       'Puzzles with a thousand pieces take over the table for weeks. I am good at the edges and hopeless at the sky, and I have made peace with being the edge person.',
-      'The boiler service is booked for the 14th, in the morning between eight and noon. The man from the gas company will check the pressure and the flue, and he asked that someone be home to let him in.',
     ].join('\n\n');
 
     const note = await createMemoryItem(memory.store, { text, subject: 'self' });

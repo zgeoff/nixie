@@ -2494,6 +2494,35 @@ test('it still applies an unpin at once under the starter rules', async () => {
   expect(core).toStrictEqual([]);
 });
 
+test('it proposes a self-note of 5,000 characters with no rule, and saves it whole when the owner approves', async () => {
+  const ctx = await setupTest();
+
+  const text = 'I like the quiet before the kettle boils. '.repeat(120).slice(0, 5000);
+
+  await ctx.callTool(
+    'memory.remember',
+    { gist: 'a gist', topic: 'a topic', text, subject: 'self' },
+    buildAllowingDecisionPoint(),
+  );
+
+  const [proposal] = await ctx.memory.store.proposals.listPending();
+
+  invariant(proposal, 'the self-note left no proposal');
+
+  const approval = await ctx.memory.store.proposals.approve({
+    proposalID: proposal.proposalID,
+    actionHash: proposal.actionHash,
+    identityID: 'host',
+  });
+
+  const itemID = z.object({ itemID: z.string() }).parse(approval).itemID;
+
+  const recalled = await ctx.memory.store.recall({ itemIDs: [itemID] });
+
+  expect(proposal.text).toBe(text);
+  expect(recalled.items.map((item) => item.text)).toStrictEqual([text]);
+});
+
 test('it saves a self-note of 5,000 characters whole under an allow rule', async () => {
   const ctx = await setupTest();
 
@@ -2529,6 +2558,11 @@ test.each([
     subject: 'owner',
     length: 2001,
     error: 'data/text is 2,001 characters, 1 over the 2,000 limit',
+  },
+  {
+    subject: 'owner',
+    length: 6001,
+    error: 'data/text is 6,001 characters, 4,001 over the 2,000 limit',
   },
   {
     subject: 'shared',
@@ -2616,6 +2650,13 @@ test.each([
     change: {},
     length: 2001,
     error: 'data/text is 2,001 characters, 1 over the 2,000 limit',
+  },
+  {
+    name: 'an owner item that keeps its subject',
+    from: 'owner',
+    change: {},
+    length: 6001,
+    error: 'data/text is 6,001 characters, 4,001 over the 2,000 limit',
   },
   {
     name: 'a self-note moved to owner',
