@@ -12,7 +12,9 @@ async function setupTest() {
 
   return {
     ...ctx,
-    stop: () => stopped.abort(),
+    stop: () => {
+      stopped.abort();
+    },
     follow: (deviceID: string) =>
       followDevice({
         log: ctx.log,

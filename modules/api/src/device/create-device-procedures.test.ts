@@ -108,7 +108,7 @@ test('it refuses a session of the full scope a device stream', async () => {
 
   const refused = session.client.devices.follow({ pixels: { width: 800, height: 600 } });
 
-  await expect(refused).rejects.toMatchObject({ code: 'UNAUTHORIZED' });
+  expect(refused).rejects.toMatchObject({ code: 'UNAUTHORIZED' });
 });
 
 test('it refuses a device session its request for the conversation', async () => {
@@ -117,7 +117,7 @@ test('it refuses a device session its request for the conversation', async () =>
 
   const refused = device.client.conversation.read({ thread: 'conversation' });
 
-  await expect(refused).rejects.toMatchObject({ status: 403 });
+  expect(refused).rejects.toMatchObject({ status: 403 });
 });
 
 test('it lets a device session reach only the paths of its own device', async () => {
@@ -277,7 +277,7 @@ test('it signs a device out, and its row goes', async () => {
 
   await device.client.sessions.signOut({});
 
-  await expect(
+  expect(
     device.client.devices.setCapability({ capability: 'screen', isOn: true }),
   ).rejects.toMatchObject({ code: 'UNAUTHORIZED' });
 
@@ -367,7 +367,7 @@ test('it refuses a live device session an enrolment', async () => {
     tokenDelivery: 'bearer',
   });
 
-  await expect(refused).rejects.toMatchObject({ status: 403 });
+  expect(refused).rejects.toMatchObject({ status: 403 });
 });
 
 test('it keeps the first enrolment code available while only a device holds a session', async () => {

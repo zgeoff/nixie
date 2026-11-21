@@ -27,12 +27,10 @@ export function ScreenView(props: ScreenViewProps): ReactNode {
     <div className={screen} data-testid="screen">
       {props.blocks.map((block, index) =>
         block.kind === 'markdown' ? (
-          // oxlint-disable-next-line react/no-array-index-key -- a scene has no ID of its own for a block
           <div className={text} key={index}>
             <ReplyText text={block.text} />
           </div>
         ) : (
-          // oxlint-disable-next-line react/no-array-index-key -- a scene has no ID of its own for a block
           <div className={picture} key={index}>
             <DeviceImage fit={block.fit} image={block.image} />
           </div>
