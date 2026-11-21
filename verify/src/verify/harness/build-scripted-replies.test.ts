@@ -63,3 +63,27 @@ test('it queues the task start and the conversation reply for the conversation, 
     { reply: { text: 'Tides noted.', when: undefined }, forConversation: false, forTask: true },
   ]);
 });
+
+test('it queues a draw, an edit of the drawn picture, and a list before the reply', () => {
+  const replies = buildScriptedReplies({
+    text: 'Here are both pictures.',
+    draw: { prompt: 'A heron at dawn.', edit: 'Make the sky pink.' },
+  });
+
+  const body = {
+    messages: [{ role: 'user', content: '{"result":{"image":"cm1abc","size":"1024x1024"}}' }],
+  };
+
+  const inputs = replies.map((reply) => {
+    const input = 'toolUse' in reply ? reply.toolUse?.input : undefined;
+
+    return typeof input === 'function' ? input(body) : input;
+  });
+
+  expect(inputs).toStrictEqual([
+    { prompt: 'A heron at dawn.' },
+    { prompt: 'Make the sky pink.', from: 'cm1abc' },
+    {},
+    undefined,
+  ]);
+});

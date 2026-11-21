@@ -1182,6 +1182,7 @@
         "@wringer/http": "catalog:",
         "@wringer/stream": "catalog:",
         "@wringer/terminal": "catalog:",
+        "tiny-invariant": "catalog:",
         "ts-pattern": "catalog:",
         "zod": "catalog:",
       },

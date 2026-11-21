@@ -22,7 +22,20 @@ export async function runVerifyHarness(): Promise<void> {
     stopped.abort();
   });
 
-  const nixie = await createSpawnedNixie(stack);
+  // the test build answers each image call with a stub, so the key is a placeholder
+  const nixie = await createSpawnedNixie(stack, {
+    extraConfig: [
+      'images:',
+      '  default: main',
+      '  profiles:',
+      '    main:',
+      '      provider: openai',
+      '      model: image-test-1',
+      '      credential: deployment:images',
+      '      prices: { 1024x1024: 40000, 1536x1024: 60000, 1024x1536: 60000 }',
+    ],
+    extraSecrets: ['connector_credentials:', '  images: stub-image-key'],
+  });
 
   const server = nixie.harness.start();
   const running: RunningState = { isRunning: true };

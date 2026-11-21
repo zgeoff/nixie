@@ -150,6 +150,9 @@ export interface SpawnedNixieOptions {
 
   readonly extraConfig?: readonly string[];
 
+  // lines for the secrets file, such as a connector credential
+  readonly extraSecrets?: readonly string[];
+
   // Puts a proxy in front of the model double: it takes the double's URL and gives back the base
   // URL the profile names and the config lines the proxy needs.
   readonly routeModel?: (upstreamURL: string) => Promise<ModelRoute>;
@@ -289,7 +292,7 @@ function buildBootExtras(options: SpawnedNixieOptions, doubles: TestDoubles) {
       `  checker_timeout_ms: ${String(checkerTimeoutMs)}`,
       ...(options.extraConfig ?? []),
     ],
-    secrets: [],
+    secrets: options.extraSecrets ?? [],
     definitions: [],
     hasStarterRules: true,
     ...(options.logLevel === undefined ? {} : { logLevel: options.logLevel }),

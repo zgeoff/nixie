@@ -1,4 +1,5 @@
 import type { ScriptedModelRequest, ScriptedReply } from '@heynixie/testing';
+import invariant from 'tiny-invariant';
 import type { z } from 'zod';
 import type { controlRoutes } from './control-routes';
 
@@ -27,8 +28,10 @@ export function buildScriptedReplies(
   const memoryExport =
     reply.export === true ? [{ toolUse: { name: 'mcp__nixie__memory_export', input: {} } }] : [];
 
+  const drawing = reply.draw === undefined ? [] : buildDrawingReplies(reply.draw);
+
   if (reply.task === undefined) {
-    return [...memory, ...memoryExport, { text: reply.text }];
+    return [...memory, ...memoryExport, ...drawing, { text: reply.text }];
   }
 
   const { reply: taskReply, ...task } = reply.task;
@@ -44,4 +47,30 @@ export function buildScriptedReplies(
 
 function isConversationTurn(body: ScriptedBody): boolean {
   return body.tools?.some((tool) => tool.name === 'mcp__nixie__task_start') === true;
+}
+
+// A draw, an edit of the picture it made, and a list of the pictures. The edit names the picture
+// by the ID the draw's result gave the model.
+function buildDrawingReplies(
+  draw: NonNullable<z.output<typeof controlRoutes.addReply.input>['draw']>,
+) {
+  return [
+    { toolUse: { name: 'mcp__nixie__image_draw', input: { prompt: draw.prompt } } },
+    {
+      toolUse: {
+        name: 'mcp__nixie__image_draw',
+        input: (body: ScriptedBody) => ({ prompt: draw.edit, from: readLastImageID(body) }),
+      },
+    },
+    { toolUse: { name: 'mcp__nixie__image_list', input: {} } },
+  ];
+}
+
+function readLastImageID(body: ScriptedBody): string {
+  const seen = JSON.stringify(body.messages);
+  const imageID = [...seen.matchAll(/image\\*":\\*"(?<id>[a-z0-9]+)/gu)].at(-1)?.groups?.['id'];
+
+  invariant(imageID !== undefined, 'the request holds no image ID');
+
+  return imageID;
 }
