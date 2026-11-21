@@ -1,5 +1,6 @@
 import { expect, mock, test } from 'bun:test';
-import { buildTestClock, makeGatedCall } from '@heynixie/testing';
+import { makeGatedCall } from '@heynixie/testing';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import invariant from 'tiny-invariant';
 import { buildAllowVerdict } from '../test-utils/build-allow-verdict';
 import { buildMockCheckerAnswer } from '../test-utils/build-mock-checker-answer';
@@ -15,7 +16,7 @@ test('it retires an item you asked to retire, with your intent quote and the che
 
   const memory = await startTestMemory({
     gate: { check },
-    logClock: buildTestClock(Date.parse('2026-10-19T08:14:00Z')),
+    logClock: createFakeClock({ startMs: Date.parse('2026-10-19T08:14:00Z') }),
   });
 
   const item = await memory.store.remember({

@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { startWriter, withWriteTransaction } from '@heynixie/log';
 import { buildPromptSeeder } from '@heynixie/prompts/test-utils';
-import { buildTestClock } from '@heynixie/testing';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import { sql } from 'kysely';
 import { writePromptExportState } from './write-prompt-export-state';
 
@@ -28,7 +28,7 @@ async function setupTest() {
 
   const deps = {
     log: { writer, deploymentKey, projections: [] },
-    clock: buildTestClock(1000),
+    clock: createFakeClock({ startMs: 1000 }),
     definitions: () => ({ snapshotHash: 'sha256:test' }),
   };
 

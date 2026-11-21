@@ -3,7 +3,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { readRecords, startWriter, writeRecords } from '@heynixie/log';
-import { buildTestClock } from '@heynixie/testing';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import { promptsOverrideProposedCodec } from '../override/prompts-override-proposed-codec';
 import { writePromptProposalLapses } from './write-prompt-proposal-lapses';
 
@@ -56,7 +56,7 @@ test('it lapses a pending proposal 14 days after it was proposed, on its own thr
 
   const count = await writePromptProposalLapses({
     log: ctx.log,
-    clock: buildTestClock(proposedAt + 14 * 24 * 60 * 60 * 1000),
+    clock: createFakeClock({ startMs: proposedAt + 14 * 24 * 60 * 60 * 1000 }),
     definitions: () => ({ snapshotHash: 'snapshot-a' }),
   });
 
@@ -100,7 +100,7 @@ test('it leaves a proposal younger than 14 days pending', async () => {
 
   const count = await writePromptProposalLapses({
     log: ctx.log,
-    clock: buildTestClock(proposedAt + 14 * 24 * 60 * 60 * 1000 - 1),
+    clock: createFakeClock({ startMs: proposedAt + 14 * 24 * 60 * 60 * 1000 - 1 }),
     definitions: () => ({ snapshotHash: 'snapshot-a' }),
   });
 
@@ -141,7 +141,7 @@ test('it never lapses a proposal that an answer closed', async () => {
 
   const count = await writePromptProposalLapses({
     log: ctx.log,
-    clock: buildTestClock(proposedAt + 30 * 24 * 60 * 60 * 1000),
+    clock: createFakeClock({ startMs: proposedAt + 30 * 24 * 60 * 60 * 1000 }),
     definitions: () => ({ snapshotHash: 'snapshot-a' }),
   });
 

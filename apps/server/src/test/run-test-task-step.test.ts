@@ -1,11 +1,11 @@
 import { expect, test } from 'bun:test';
 import { buildMockLogRecord } from '@heynixie/log/test-utils';
-import { buildTestClock } from '@heynixie/testing';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import { buildMockStepInput } from '../test-utils/build-mock-step-input';
 import { runTestTaskStep } from './run-test-task-step';
 
 test('it reads the inbox, waits, and sets a timer an hour out on the first step', () => {
-  const clock = buildTestClock(1_000_000);
+  const clock = createFakeClock({ startMs: 1_000_000 });
 
   const result = runTestTaskStep(
     clock,
@@ -32,7 +32,7 @@ test('it reads the inbox, waits, and sets a timer an hour out on the first step'
 });
 
 test('it finishes on an inbox record that asks it to, and sets no timer after the first step', () => {
-  const clock = buildTestClock(1_000_000);
+  const clock = createFakeClock({ startMs: 1_000_000 });
 
   const result = runTestTaskStep(
     clock,

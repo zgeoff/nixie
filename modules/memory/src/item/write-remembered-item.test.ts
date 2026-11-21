@@ -1,8 +1,8 @@
 import { expect, test } from 'bun:test';
 import { readFile, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
-import { buildTestClock } from '@heynixie/testing';
 import { isCuid } from '@paralleldrive/cuid2';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import { buildMockProvenance } from '../test-utils/build-mock-provenance';
 import { startTestMemory } from '../test-utils/start-test-memory';
 import type { MemoryTables } from '../types';
@@ -289,7 +289,7 @@ test('it keeps no item text in plain form in nixie.db or any file beside it', as
 });
 
 test('it refuses a new item whose end time has passed, and writes nothing', async () => {
-  const clock = buildTestClock(Date.parse('2026-10-19T09:00:00Z'));
+  const clock = createFakeClock({ startMs: Date.parse('2026-10-19T09:00:00Z') });
 
   const memory = await startTestMemory({ gate: { clock } });
 
@@ -315,7 +315,7 @@ test('it refuses a new item whose end time has passed, and writes nothing', asyn
 });
 
 test('it refuses an edit to an end time that is now', async () => {
-  const clock = buildTestClock(Date.parse('2026-10-19T09:00:00Z'));
+  const clock = createFakeClock({ startMs: Date.parse('2026-10-19T09:00:00Z') });
 
   const memory = await startTestMemory({ gate: { clock } });
 
@@ -335,7 +335,7 @@ test('it refuses an edit to an end time that is now', async () => {
 });
 
 test('it stores the end time of a new item on its version and its row', async () => {
-  const clock = buildTestClock(Date.parse('2026-10-19T09:00:00Z'));
+  const clock = createFakeClock({ startMs: Date.parse('2026-10-19T09:00:00Z') });
 
   const memory = await startTestMemory({ gate: { clock } });
 
@@ -364,7 +364,7 @@ test('it stores the end time of a new item on its version and its row', async ()
 });
 
 test('it keeps the end time through an edit that leaves it out', async () => {
-  const clock = buildTestClock(Date.parse('2026-10-19T09:00:00Z'));
+  const clock = createFakeClock({ startMs: Date.parse('2026-10-19T09:00:00Z') });
 
   const memory = await startTestMemory({ gate: { clock } });
 
@@ -388,7 +388,7 @@ test('it keeps the end time through an edit that leaves it out', async () => {
 });
 
 test('it clears the end time through an edit that sets it to null', async () => {
-  const clock = buildTestClock(Date.parse('2026-10-19T09:00:00Z'));
+  const clock = createFakeClock({ startMs: Date.parse('2026-10-19T09:00:00Z') });
 
   const memory = await startTestMemory({ gate: { clock } });
 

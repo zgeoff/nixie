@@ -1,12 +1,13 @@
 import { expect, mock, onTestFinished, test } from 'bun:test';
-import { buildTestClock, waitForCondition } from '@heynixie/testing';
+import { waitForCondition } from '@heynixie/testing';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import { buildMockProvenance } from '../test-utils/build-mock-provenance';
 import { createProposal } from '../test-utils/create-proposal';
 import { startTestMemory } from '../test-utils/start-test-memory';
 import { startLapseSweep } from './start-lapse-sweep';
 
 test('it retires a memory item past its end time on the next sweep', async () => {
-  const clock = buildTestClock(Date.parse('2026-10-19T09:00:00Z'));
+  const clock = createFakeClock({ startMs: Date.parse('2026-10-19T09:00:00Z') });
 
   const memory = await startTestMemory({ gate: { clock } });
 
@@ -36,7 +37,7 @@ test('it retires a memory item past its end time on the next sweep', async () =>
 });
 
 test('it lapses a proposal past its lapse time on the next sweep', async () => {
-  const clock = buildTestClock(1_000_000);
+  const clock = createFakeClock({ startMs: 1_000_000 });
 
   const memory = await startTestMemory({
     gate: {

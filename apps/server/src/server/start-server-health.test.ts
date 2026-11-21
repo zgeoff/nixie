@@ -5,7 +5,8 @@ import { join } from 'node:path';
 import { startWriter } from '@heynixie/log';
 import type { Logger } from '@heynixie/logger';
 import type { RuntimeReport } from '@heynixie/sandbox';
-import { buildStubCheck, buildTestClock, waitForCondition } from '@heynixie/testing';
+import { buildStubCheck, waitForCondition } from '@heynixie/testing';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import { buildStartState } from '../utils/build-start-state';
 import { buildCleanup } from './build-cleanup';
 import { startServerHealth } from './start-server-health';
@@ -19,7 +20,7 @@ async function setupTest() {
 
   onTestFinished(() => writer.stop());
 
-  const clock = buildTestClock(0);
+  const clock = createFakeClock({ startMs: 0 });
   const cleanup = buildCleanup();
 
   onTestFinished(() => {
@@ -106,7 +107,7 @@ test('it answers readiness with 200 and the status degraded, and logs the imp ho
     log,
   });
 
-  await waitForCondition(() => ctx.clock.countSleepers() === 1);
+  await waitForCondition(() => ctx.clock.countPending() === 1);
 
   ctx.clock.advance(2000);
 

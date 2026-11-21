@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test';
 import { buildShortIDFromUUID } from '@heynixie/db';
-import { buildTestClock } from '@heynixie/testing';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import invariant from 'tiny-invariant';
 import { buildAllowVerdict } from '../test-utils/build-allow-verdict';
 import { buildMockCheckerAnswer } from '../test-utils/build-mock-checker-answer';
@@ -100,7 +100,7 @@ test.each(['conversation', 'task-1'])(
 
 test('it clears the end time of an item when the edit passes a null end time', async () => {
   const memory = await startTestMemory({
-    gate: { clock: buildTestClock(Date.parse('2026-10-19T08:30:00Z')) },
+    gate: { clock: createFakeClock({ startMs: Date.parse('2026-10-19T08:30:00Z') }) },
   });
 
   const item = await memory.store.remember({
@@ -131,7 +131,7 @@ test('it clears the end time of an item when the edit passes a null end time', a
 
 test('it moves the end time of an item to the one the edit passes', async () => {
   const memory = await startTestMemory({
-    gate: { clock: buildTestClock(Date.parse('2026-10-19T08:30:00Z')) },
+    gate: { clock: createFakeClock({ startMs: Date.parse('2026-10-19T08:30:00Z') }) },
   });
 
   const item = await memory.store.remember({

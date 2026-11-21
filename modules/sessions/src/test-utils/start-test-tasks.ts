@@ -11,14 +11,14 @@ import {
   buildTestRunSettings,
   buildTestTaskRunners,
 } from '@heynixie/tasks/test-utils';
-import type { TestClock } from '@heynixie/testing';
-import { buildTestClock } from '@heynixie/testing';
+import type { FakeClock } from '@zgeoff/testing/clock';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import type { Kysely } from 'kysely';
 
 interface TestTasks {
   readonly dataDir: string;
   readonly writer: Writer;
-  readonly clock: TestClock;
+  readonly clock: FakeClock;
   readonly context: TasksContext;
   readonly definitionStore: ReturnType<typeof buildTestDefinitionStore>;
 
@@ -39,7 +39,7 @@ export async function startTestTasks(options: TestTasksOptions = {}): Promise<Te
 
   stack.defer(() => rm(dataDir, { recursive: true, force: true }));
 
-  const clock = buildTestClock(options.recordsAtMs ?? 1_000_000);
+  const clock = createFakeClock({ startMs: options.recordsAtMs ?? 1_000_000 });
 
   const writer = await startWriter({
     dataDir,

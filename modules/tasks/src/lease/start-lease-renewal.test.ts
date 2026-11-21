@@ -50,7 +50,7 @@ test('it renews the lease a third of its length after the claim', async () => {
 
   ctx.clock.advance(20_000);
 
-  await waitForCondition(() => ctx.clock.countSleepers() === 1);
+  await waitForCondition(() => ctx.clock.countPending() === 1);
 
   const row = await ctx.db.selectFrom('leases').select('expires_at').executeTakeFirstOrThrow();
 
@@ -73,11 +73,11 @@ test('it renews again every third of the lease', async () => {
 
   ctx.clock.advance(20_000);
 
-  await waitForCondition(() => ctx.clock.countSleepers() === 1);
+  await waitForCondition(() => ctx.clock.countPending() === 1);
 
   ctx.clock.advance(20_000);
 
-  await waitForCondition(() => ctx.clock.countSleepers() === 1);
+  await waitForCondition(() => ctx.clock.countPending() === 1);
 
   const row = await ctx.db.selectFrom('leases').select('expires_at').executeTakeFirstOrThrow();
 
@@ -125,7 +125,7 @@ test('it stops renewing once stopped', async () => {
 
   const row = await ctx.db.selectFrom('leases').select('expires_at').executeTakeFirstOrThrow();
 
-  expect(ctx.clock.countSleepers()).toBe(0);
+  expect(ctx.clock.countPending()).toBe(0);
   expect(row.expires_at).toBe(1_060_000);
 });
 

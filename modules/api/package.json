@@ -43,6 +43,7 @@
   },
   "devDependencies": {
     "@heynixie/testing": "workspace:*",
-    "@orpc/client": "catalog:"
+    "@orpc/client": "catalog:",
+    "@zgeoff/testing": "catalog:"
   }
 }

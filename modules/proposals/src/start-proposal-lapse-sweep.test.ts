@@ -1,9 +1,10 @@
 import { expect, mock, onTestFinished, test } from 'bun:test';
-import { buildTestClock, waitForCondition } from '@heynixie/testing';
+import { waitForCondition } from '@heynixie/testing';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import { startProposalLapseSweep } from './start-proposal-lapse-sweep';
 
 function setupTest() {
-  const clock = buildTestClock(0);
+  const clock = createFakeClock({ startMs: 0 });
 
   return { clock };
 }
@@ -21,11 +22,11 @@ test('it runs the sweep again once each interval passes', async () => {
 
   onTestFinished(() => lapses.stop());
 
-  await waitForCondition(() => ctx.clock.countSleepers() === 1);
+  await waitForCondition(() => ctx.clock.countPending() === 1);
 
   ctx.clock.advance(3_600_000);
 
-  await waitForCondition(() => sweep.mock.calls.length === 1 && ctx.clock.countSleepers() === 1);
+  await waitForCondition(() => sweep.mock.calls.length === 1 && ctx.clock.countPending() === 1);
 
   ctx.clock.advance(3_600_000);
 
@@ -48,11 +49,11 @@ test('it passes a failed sweep to onError, and sweeps again', async () => {
 
   onTestFinished(() => lapses.stop());
 
-  await waitForCondition(() => ctx.clock.countSleepers() === 1);
+  await waitForCondition(() => ctx.clock.countPending() === 1);
 
   ctx.clock.advance(3_600_000);
 
-  await waitForCondition(() => onError.mock.calls.length === 1 && ctx.clock.countSleepers() === 1);
+  await waitForCondition(() => onError.mock.calls.length === 1 && ctx.clock.countPending() === 1);
 
   ctx.clock.advance(3_600_000);
 

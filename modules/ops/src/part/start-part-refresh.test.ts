@@ -1,10 +1,11 @@
 import { expect, mock, onTestFinished, test } from 'bun:test';
-import { buildStubCheck, buildTestClock, waitForCondition } from '@heynixie/testing';
+import { buildStubCheck, waitForCondition } from '@heynixie/testing';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import type { PartReport } from '../types';
 import { startPartRefresh } from './start-part-refresh';
 
 function setupTest() {
-  const clock = buildTestClock(0);
+  const clock = createFakeClock({ startMs: 0 });
 
   return { clock };
 }
@@ -94,7 +95,7 @@ test('it reports a part whose check outlasts the timeout as unready', async () =
 
   onTestFinished(() => refresh.stop());
 
-  await waitForCondition(() => ctx.clock.countSleepers() === 1);
+  await waitForCondition(() => ctx.clock.countPending() === 1);
 
   ctx.clock.advance(2000);
 
@@ -122,7 +123,7 @@ test('it skips a part whose check still runs past its timeout in later rounds', 
 
   onTestFinished(() => refresh.stop());
 
-  await waitForCondition(() => ctx.clock.countSleepers() === 1);
+  await waitForCondition(() => ctx.clock.countPending() === 1);
 
   ctx.clock.advance(2000);
 
@@ -156,7 +157,7 @@ test('it checks a part again once its check that outlasted the timeout settles',
 
   onTestFinished(() => refresh.stop());
 
-  await waitForCondition(() => ctx.clock.countSleepers() === 1);
+  await waitForCondition(() => ctx.clock.countPending() === 1);
 
   ctx.clock.advance(2000);
 
@@ -224,7 +225,7 @@ test('it checks each part again once the interval passes', async () => {
 
   stub.answerWith(() => Promise.resolve({ isReady: false, reason: 'the data volume is 95% full' }));
 
-  await waitForCondition(() => ctx.clock.countSleepers() === 1);
+  await waitForCondition(() => ctx.clock.countPending() === 1);
 
   ctx.clock.advance(5000);
 
@@ -253,7 +254,7 @@ test('it never checks again before the interval passes', async () => {
 
   ctx.clock.advance(4999);
 
-  expect(ctx.clock.countSleepers()).toBe(1);
+  expect(ctx.clock.countPending()).toBe(1);
   expect(check).toHaveBeenCalledOnce();
 });
 

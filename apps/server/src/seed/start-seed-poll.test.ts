@@ -5,7 +5,8 @@ import { join } from 'node:path';
 import { createPathSource } from '@heynixie/definitions';
 import { buildTestTaskSeed } from '@heynixie/definitions/test-utils';
 import { buildTestRunSettings, buildTestTaskRunners } from '@heynixie/tasks/test-utils';
-import { buildTestClock, waitForCondition } from '@heynixie/testing';
+import { waitForCondition } from '@heynixie/testing';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import { refreshDefinitions } from '../definition/refresh-definitions';
 import { createServerContext } from '../server/create-server-context';
 import { startInProcessNixie } from '../test-utils/start-in-process-nixie';
@@ -76,7 +77,7 @@ test('it reports the definitions ready again once the source returns to its last
     runners: buildTestTaskRunners(),
   });
 
-  const clock = buildTestClock(0);
+  const clock = createFakeClock({ startMs: 0 });
 
   const parts: SeedPollParts = {
     context: { ...context.apiContext, clock },
@@ -101,7 +102,7 @@ test('it reports the definitions ready again once the source returns to its last
   clock.advance(60_000);
 
   await waitForCondition(() => parts.state.read().definitions.isReady);
-  await waitForCondition(() => clock.countSleepers() === 1);
+  await waitForCondition(() => clock.countPending() === 1);
   await writeFile(join(root, 'skills', 'tide-tables', 'SKILL.md'), '# Tides, by port\n');
 
   const refused = await refreshDefinitions(parts, parts.inForce);

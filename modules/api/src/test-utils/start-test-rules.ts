@@ -40,7 +40,7 @@ import {
   buildTestRunSettings,
   buildTestTaskRunners,
 } from '@heynixie/tasks/test-utils';
-import { buildTestClock } from '@heynixie/testing';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import { sql } from 'kysely';
 import invariant from 'tiny-invariant';
 import { z } from 'zod';
@@ -73,7 +73,7 @@ export async function startTestRules(settings: APIContext['settings'] = defaultA
 
   stack.defer(() => rm(dataDir, { recursive: true, force: true }));
 
-  const clock = buildTestClock(Date.parse('2026-11-02T09:00:00Z'));
+  const clock = createFakeClock({ startMs: Date.parse('2026-11-02T09:00:00Z') });
 
   const writer = await startWriter({ dataDir, clock });
 

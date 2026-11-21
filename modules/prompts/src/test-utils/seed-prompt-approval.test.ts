@@ -3,7 +3,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { startWriter } from '@heynixie/log';
-import { buildTestClock } from '@heynixie/testing';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import type { PromptsTables } from '../types';
 import { seedPromptApproval } from './seed-prompt-approval';
 
@@ -27,7 +27,7 @@ async function setupTest() {
 
   return {
     log: { writer, deploymentKey, projections: [] },
-    clock: buildTestClock(1000),
+    clock: createFakeClock({ startMs: 1000 }),
     definitions: () => ({ snapshotHash: 'sha256:test' }),
   };
 }

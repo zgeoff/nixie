@@ -1,7 +1,7 @@
 import type { Log, Writer } from '@heynixie/log';
 import { logProjections, withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import { startTestLog } from '@heynixie/log/test-utils';
-import type { TestClock } from '@heynixie/testing';
+import type { FakeClock } from '@zgeoff/testing/clock';
 import { createPlanLoginsHolder } from '../login/create-plan-logins-holder';
 import { spendProjections } from '../projection/spend-projections';
 import type { SpendContext, SpendTurnLimits } from '../types';
@@ -10,7 +10,7 @@ import { buildStubSpendGateway } from './build-stub-spend-gateway';
 export interface TestSpend {
   readonly writer: Writer;
   readonly log: Log;
-  readonly clock: TestClock;
+  readonly clock: FakeClock;
   readonly gateway: ReturnType<typeof buildStubSpendGateway>;
   readonly context: SpendContext;
 

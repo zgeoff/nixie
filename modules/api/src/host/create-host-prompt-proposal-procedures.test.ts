@@ -6,8 +6,8 @@ import { checkPromptProposal } from '@heynixie/definitions';
 import { readRecords, startWriter, writeRecords } from '@heynixie/log';
 import type { PromptsInForce } from '@heynixie/prompts';
 import { promptsOverrideProposedCodec, readPromptApproval } from '@heynixie/prompts';
-import { buildTestClock } from '@heynixie/testing';
 import { createRouterClient } from '@orpc/server';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import { createHostPromptProposalProcedures } from './create-host-prompt-proposal-procedures';
 
 async function setupTest() {
@@ -29,7 +29,7 @@ async function setupTest() {
   ]);
 
   const log = { writer, deploymentKey, projections: [] };
-  const clock = buildTestClock(Date.UTC(2026, 2, 3, 10, 0));
+  const clock = createFakeClock({ startMs: Date.UTC(2026, 2, 3, 10, 0) });
   const wakeExports = mock(() => {});
 
   const createClient = (inForce: PromptsInForce | null) =>

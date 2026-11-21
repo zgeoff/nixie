@@ -123,7 +123,7 @@ test('it closes without a file that outlasts close_wait and counts it as not_rec
   const closing = capture.close({ callFrames: 1 });
 
   for (let poll = 0; poll < 5; poll += 1) {
-    await waitForCondition(() => ctx.clock.countSleepers() === 1);
+    await waitForCondition(() => ctx.clock.countPending() === 1);
 
     ctx.clock.advance(100);
   }

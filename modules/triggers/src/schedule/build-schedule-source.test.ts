@@ -72,7 +72,7 @@ async function setupTest() {
   };
 
   // The source sleeps again once its tick, and the delivery in it, has ended.
-  const settle = () => waitForCondition(() => triggers.clock.countSleepers() === 1);
+  const settle = () => waitForCondition(() => triggers.clock.countPending() === 1);
 
   const advance = async (durationMs: number) => {
     triggers.clock.advance(durationMs);
@@ -374,7 +374,7 @@ test('it waits for a tick in flight when it stops', async () => {
 
   await stopped;
 
-  expect([early, ctx.health.at(-1), ctx.clock.countSleepers()]).toStrictEqual([
+  expect([early, ctx.health.at(-1), ctx.clock.countPending()]).toStrictEqual([
     'waiting',
     'stopped',
     0,
@@ -388,7 +388,7 @@ test('it resolves a stop while it sleeps', async () => {
   await ctx.settle();
   await source.stop();
 
-  expect([ctx.health.at(-1), ctx.clock.countSleepers()]).toStrictEqual(['stopped', 0]);
+  expect([ctx.health.at(-1), ctx.clock.countPending()]).toStrictEqual(['stopped', 0]);
 });
 
 test('it delivers nothing for a tick with no event', async () => {

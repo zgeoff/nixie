@@ -1,10 +1,11 @@
 import { expect, onTestFinished, test } from 'bun:test';
-import { buildTestClock, waitForCondition } from '@heynixie/testing';
+import { waitForCondition } from '@heynixie/testing';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import { createActor } from 'xstate';
 import { definitionsPollMachine } from './definitions-poll-machine';
 
 function setupTest() {
-  const clock = buildTestClock(0);
+  const clock = createFakeClock({ startMs: 0 });
 
   return { clock };
 }
@@ -144,7 +145,7 @@ test('it ends the wait when it stops', () => {
 
   poll.send({ type: 'stop' });
 
-  expect(ctx.clock.countSleepers()).toBe(0);
+  expect(ctx.clock.countPending()).toBe(0);
 });
 
 test('it keeps probing on a stop while a probe runs', async () => {

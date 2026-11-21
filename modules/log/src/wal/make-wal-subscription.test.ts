@@ -2,7 +2,8 @@ import { expect, mock, onTestFinished, test } from 'bun:test';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { buildTestClock, waitForCondition } from '@heynixie/testing';
+import { waitForCondition } from '@heynixie/testing';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import { makeWALSubscription } from './make-wal-subscription';
 
 async function setupTest() {
@@ -10,7 +11,7 @@ async function setupTest() {
 
   onTestFinished(() => rm(dataDir, { recursive: true, force: true }));
 
-  return { dataDir, clock: buildTestClock(1_700_000_000_000) };
+  return { dataDir, clock: createFakeClock({ startMs: 1_700_000_000_000 }) };
 }
 
 test('it calls back on each poll when no WAL change arrives', async () => {
@@ -28,7 +29,7 @@ test('it calls back on each poll when no WAL change arrives', async () => {
   ctx.clock.advance(1000);
 
   await waitForCondition(() => onChange.mock.calls.length === 1);
-  await waitForCondition(() => ctx.clock.countSleepers() === 1);
+  await waitForCondition(() => ctx.clock.countPending() === 1);
 
   ctx.clock.advance(1000);
 
@@ -61,6 +62,6 @@ test('it ends the poll and the watch once unsubscribed', async () => {
 
   ctx.clock.advance(1000);
 
-  expect(ctx.clock.countSleepers()).toBe(0);
+  expect(ctx.clock.countPending()).toBe(0);
   expect(onChange).not.toHaveBeenCalled();
 });

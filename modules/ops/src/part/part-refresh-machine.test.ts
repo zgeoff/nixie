@@ -1,11 +1,12 @@
 import { expect, onTestFinished, test } from 'bun:test';
-import { buildStubCheck, buildTestClock, waitForCondition } from '@heynixie/testing';
+import { buildStubCheck, waitForCondition } from '@heynixie/testing';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import { createActor } from 'xstate';
 import type { PartReport } from '../types';
 import { partRefreshMachine } from './part-refresh-machine';
 
 function setupTest() {
-  const clock = buildTestClock(0);
+  const clock = createFakeClock({ startMs: 0 });
 
   return { clock };
 }

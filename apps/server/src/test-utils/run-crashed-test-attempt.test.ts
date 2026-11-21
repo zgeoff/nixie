@@ -12,7 +12,7 @@ import {
   buildTestRunSettings,
   buildTestTaskRunners,
 } from '@heynixie/tasks/test-utils';
-import { buildTestClock } from '@heynixie/testing';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import { makeQueueCheckStep } from '../queue/make-queue-check-step';
 import { buildActions } from '../test/build-actions';
 import { createTestStep } from './create-test-step';
@@ -42,7 +42,7 @@ async function setupTest() {
       deploymentKey,
       projections: [...logProjections, ...tasksProjections, actionsProjection],
     },
-    clock: buildTestClock(1_000_000),
+    clock: createFakeClock({ startMs: 1_000_000 }),
     definitions: () => ({ snapshotHash: 'sha256:test' }),
     runSettings: buildTestRunSettings(),
     ...buildTestDefinitionReaders(),

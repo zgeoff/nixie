@@ -7,8 +7,8 @@ import { buildLogReadImageTool, buildLogReadTool } from '@heynixie/memory';
 import { buildPolicyCall, readStarterDecisionPoint } from '@heynixie/policy/test-utils';
 import { buildPromptReadTool } from '@heynixie/prompts';
 import { buildSkillTools } from '@heynixie/skills';
-import { buildTestClock } from '@heynixie/testing';
 import { buildToolRegistry, runToolCall } from '@heynixie/tools';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import { createApprovedItems } from '../test-utils/create-approved-items';
 import { createTestClient } from '../test-utils/create-test-client';
 import { runHostCommand } from '../test-utils/run-host-command';
@@ -71,7 +71,7 @@ test('it lists the web fetch tool, the time tool, the log readers, the skill too
       logReaders: ctx.logReaders,
       skills: buildSkillTools({
         log: ctx.log,
-        clock: buildTestClock(0),
+        clock: createFakeClock({ startMs: 0 }),
         readInForce: () => null,
         runInForceSeed: () => Promise.resolve(),
         refreshDefinitions: () => Promise.resolve(null),

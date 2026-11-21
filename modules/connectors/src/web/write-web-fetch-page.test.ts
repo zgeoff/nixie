@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test';
 import { writeRecords } from '@heynixie/log';
 import { modelSessionOpenedCodec } from '@heynixie/models';
-import { buildTestClock } from '@heynixie/testing';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import { sql } from 'kysely';
 import invariant from 'tiny-invariant';
 import { startTestLog } from '../test-utils/start-test-log';
@@ -10,7 +10,7 @@ import { readWebFetchPage } from './read-web-fetch-page';
 import { writeWebFetchPage } from './write-web-fetch-page';
 
 async function setupTest() {
-  const clock = buildTestClock(Date.parse('2026-11-02T09:00:00.000Z'));
+  const clock = createFakeClock({ startMs: Date.parse('2026-11-02T09:00:00.000Z') });
 
   return { clock, log: await startTestLog(clock) };
 }

@@ -5,8 +5,8 @@ import { join } from 'node:path';
 import { checkSkillFiles, writeWrittenSkill } from '@heynixie/definitions';
 import { readRecords, startWriter, withWriteTransaction, writeRecords } from '@heynixie/log';
 import { skillsWriteProposedCodec } from '@heynixie/skills';
-import { buildTestClock } from '@heynixie/testing';
 import { createRouterClient } from '@orpc/server';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import invariant from 'tiny-invariant';
 import { createHostSkillProposalProcedures } from './create-host-skill-proposal-procedures';
 
@@ -29,7 +29,7 @@ async function setupTest() {
   ]);
 
   const log = { writer, deploymentKey, projections: [] };
-  const clock = buildTestClock(Date.UTC(2026, 2, 3, 10, 0));
+  const clock = createFakeClock({ startMs: Date.UTC(2026, 2, 3, 10, 0) });
   const runInForceSeed = mock(() => Promise.resolve());
 
   const client = createRouterClient(

@@ -2,8 +2,9 @@ import { expect, mock, onTestFinished, test } from 'bun:test';
 import type { MemoryKillRead } from '@heynixie/sandbox';
 import { watchMemoryKills } from '@heynixie/sandbox';
 import { buildMockSandboxSpec } from '@heynixie/sandbox/test-utils';
-import { buildTestClock, makeGatedCall, waitForCondition } from '@heynixie/testing';
+import { makeGatedCall, waitForCondition } from '@heynixie/testing';
 import type { FetchRequest } from '@heynixie/wire';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import invariant from 'tiny-invariant';
 import type { PageHop } from '../page/gate-page-hops';
 import { buildStubSandboxAdapter } from '../test-utils/build-stub-sandbox-adapter';
@@ -154,7 +155,7 @@ test('it runs two fetches in a row in two different sandboxes, and destroys each
 });
 
 test("it starts the next fetch only once the last fetch's destroy ends, and sweeps a sandbox whose destroy passed its time limit", async () => {
-  const clock = buildTestClock(0);
+  const clock = createFakeClock({ startMs: 0 });
 
   const adapter = buildStubSandboxAdapter(
     makeStubFetcher((request) => ({
@@ -189,7 +190,7 @@ test("it starts the next fetch only once the last fetch's destroy ends, and swee
 
   const second = fetchSandbox.readPage('https://example.com/2');
 
-  await waitForCondition(() => clock.countSleepers() === 1);
+  await waitForCondition(() => clock.countPending() === 1);
 
   clock.advance(30_000);
 
@@ -244,7 +245,7 @@ test("it returns a fetch's reply before its sandbox's destroy ends", async () =>
 });
 
 test('it destroys a sandbox that a create makes after its time limit, as soon as it arrives', async () => {
-  const clock = buildTestClock(0);
+  const clock = createFakeClock({ startMs: 0 });
   const gate = Promise.withResolvers<void>();
 
   const adapter = buildStubSandboxAdapter(
@@ -278,7 +279,7 @@ test('it destroys a sandbox that a create makes after its time limit, as soon as
 
   const pending = fetchSandbox.readPage('https://example.com/');
 
-  await waitForCondition(() => clock.countSleepers() === 1);
+  await waitForCondition(() => clock.countPending() === 1);
 
   clock.advance(30_000);
 
@@ -301,7 +302,7 @@ test('it destroys a sandbox that a create makes after its time limit, as soon as
 });
 
 test('it destroys nothing and creates nothing for a fetch whose sweep listed after its time limit', async () => {
-  const clock = buildTestClock(0);
+  const clock = createFakeClock({ startMs: 0 });
   const gate = Promise.withResolvers<void>();
 
   const adapter = buildStubSandboxAdapter(
@@ -335,7 +336,7 @@ test('it destroys nothing and creates nothing for a fetch whose sweep listed aft
 
   const stuck = fetchSandbox.readPage('https://example.com/1');
 
-  await waitForCondition(() => clock.countSleepers() === 1);
+  await waitForCondition(() => clock.countPending() === 1);
 
   clock.advance(30_000);
 
@@ -372,7 +373,7 @@ test('it destroys nothing and creates nothing for a fetch whose sweep listed aft
 });
 
 test('it creates nothing for a fetch whose sweep destroyed its leftovers after its time limit', async () => {
-  const clock = buildTestClock(0);
+  const clock = createFakeClock({ startMs: 0 });
   const gate = Promise.withResolvers<void>();
 
   const adapter = buildStubSandboxAdapter(
@@ -417,7 +418,7 @@ test('it creates nothing for a fetch whose sweep destroyed its leftovers after i
 
   const stuck = fetchSandbox.readPage('https://example.com/1');
 
-  await waitForCondition(() => clock.countSleepers() === 1);
+  await waitForCondition(() => clock.countPending() === 1);
 
   clock.advance(30_000);
 
@@ -709,7 +710,7 @@ test('it fails a fetch whose fetcher exits with no reply, and destroys its sandb
 });
 
 test('it stops a fetcher that sends no reply in time', async () => {
-  const clock = buildTestClock(0);
+  const clock = createFakeClock({ startMs: 0 });
   const adapter = buildStubSandboxAdapter(makeStubFetcher(() => ({ kind: 'hang' })));
 
   const fetchSandbox = startFetchSandbox({
@@ -741,7 +742,7 @@ test('it stops a fetcher that sends no reply in time', async () => {
 });
 
 test('it destroys the sandbox of a fetch whose fetcher sends no reply in time', async () => {
-  const clock = buildTestClock(0);
+  const clock = createFakeClock({ startMs: 0 });
   const adapter = buildStubSandboxAdapter(makeStubFetcher(() => ({ kind: 'hang' })));
 
   const fetchSandbox = startFetchSandbox({
@@ -771,7 +772,7 @@ test('it destroys the sandbox of a fetch whose fetcher sends no reply in time', 
 });
 
 test('it waits on a fetcher that sends no reply until the time limit passes', async () => {
-  const clock = buildTestClock(0);
+  const clock = createFakeClock({ startMs: 0 });
   const adapter = buildStubSandboxAdapter(makeStubFetcher(() => ({ kind: 'hang' })));
 
   const fetchSandbox = startFetchSandbox({
@@ -797,12 +798,12 @@ test('it waits on a fetcher that sends no reply until the time limit passes', as
 
   clock.advance(1499);
 
-  expect(clock.countSleepers()).toBe(1);
+  expect(clock.countPending()).toBe(1);
   expect(Bun.peek.status(pending)).toBe('pending');
 });
 
 test('it fails a fetch whose time limit passed before its fetcher exited', async () => {
-  const sleeps = buildTestClock(0);
+  const sleeps = createFakeClock({ startMs: 0 });
   const time = { now: 0 };
 
   const adapter = buildStubSandboxAdapter(
@@ -1035,7 +1036,7 @@ test('it fails the fetch when the sandbox cannot be created, and tries again on 
 });
 
 test('it fails a fetch whose sandbox never finishes creating', async () => {
-  const clock = buildTestClock(0);
+  const clock = createFakeClock({ startMs: 0 });
 
   const adapter = buildStubSandboxAdapter(
     makeStubFetcher((request) => ({
@@ -1068,7 +1069,7 @@ test('it fails a fetch whose sandbox never finishes creating', async () => {
 
   const pending = fetchSandbox.readPage('https://example.com/1');
 
-  await waitForCondition(() => clock.countSleepers() === 1);
+  await waitForCondition(() => clock.countPending() === 1);
 
   clock.advance(30_000);
 
@@ -1082,7 +1083,7 @@ test('it fails a fetch whose sandbox never finishes creating', async () => {
 });
 
 test('it waits on a sandbox that never finishes creating until the time limit passes', async () => {
-  const clock = buildTestClock(0);
+  const clock = createFakeClock({ startMs: 0 });
 
   const adapter = buildStubSandboxAdapter(
     makeStubFetcher((request) => ({
@@ -1119,16 +1120,16 @@ test('it waits on a sandbox that never finishes creating until the time limit pa
 
   const pending = fetchSandbox.readPage('https://example.com/1');
 
-  await waitForCondition(() => clock.countSleepers() === 1);
+  await waitForCondition(() => clock.countPending() === 1);
 
   clock.advance(29_999);
 
-  expect(clock.countSleepers()).toBe(1);
+  expect(clock.countPending()).toBe(1);
   expect(Bun.peek.status(pending)).toBe('pending');
 });
 
 test('it serves the next fetch after a sandbox that never finished creating', async () => {
-  const clock = buildTestClock(0);
+  const clock = createFakeClock({ startMs: 0 });
 
   const adapter = buildStubSandboxAdapter(
     makeStubFetcher((request) => ({
@@ -1161,7 +1162,7 @@ test('it serves the next fetch after a sandbox that never finished creating', as
 
   const stuck = fetchSandbox.readPage('https://example.com/1');
 
-  await waitForCondition(() => clock.countSleepers() === 1);
+  await waitForCondition(() => clock.countPending() === 1);
 
   clock.advance(30_000);
 
@@ -1245,7 +1246,7 @@ test("it destroys the last fetch's sandbox before it finishes stopping", async (
 });
 
 test("it waits on the last fetch's destroy before it finishes stopping", async () => {
-  const clock = buildTestClock(0);
+  const clock = createFakeClock({ startMs: 0 });
 
   const adapter = buildStubSandboxAdapter(
     makeStubFetcher((request) => ({
@@ -1284,11 +1285,11 @@ test("it waits on the last fetch's destroy before it finishes stopping", async (
 
   const stopping = fetchSandbox.stop();
 
-  await waitForCondition(() => clock.countSleepers() === 1);
+  await waitForCondition(() => clock.countPending() === 1);
 
   clock.advance(29_999);
 
-  expect(clock.countSleepers()).toBe(1);
+  expect(clock.countPending()).toBe(1);
   expect(Bun.peek.status(stopping)).toBe('pending');
 });
 

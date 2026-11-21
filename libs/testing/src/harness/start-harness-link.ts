@@ -1,9 +1,9 @@
 import { setImmediate } from 'node:timers/promises';
+import type { FakeClock } from '@zgeoff/testing/clock';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import { z } from 'zod';
 import type { FaultPointArm, FaultPointWork, HarnessMessage, NixieMessage } from '../types';
 import { harnessEnv } from '../utils/harness-env';
-import type { TestClock } from './build-test-clock';
-import { buildTestClock } from './build-test-clock';
 import type { WorkTracker } from './build-work-tracker';
 import { buildWorkTracker } from './build-work-tracker';
 
@@ -15,7 +15,7 @@ export interface HarnessChannel {
 export type HarnessOperation<Args> = (args: Args) => unknown;
 
 export interface HarnessLink {
-  readonly clock: TestClock;
+  readonly clock: FakeClock;
   readonly workTracker: WorkTracker;
   readonly waitAtFaultPoint: (point: string, work: FaultPointWork) => Promise<void>;
   readonly registerOperation: <Args>(
@@ -59,7 +59,7 @@ export function startHarnessLink(
   env: Readonly<Record<string, string | undefined>> = process.env,
   channel: HarnessChannel = processChannel,
 ): HarnessLink {
-  const clock = buildTestClock(Number(env[harnessEnv.clockMs] ?? '0'));
+  const clock = createFakeClock({ startMs: Number(env[harnessEnv.clockMs] ?? '0') });
   const workTracker = buildWorkTracker();
   const arms = parseArms(env[harnessEnv.faultPoints]);
 
@@ -134,7 +134,7 @@ function buildHeldArm(arm: FaultPointArm): HeldArm {
 const defaultSettleTimeoutMs = 5000;
 
 interface AdvanceTarget {
-  readonly clock: TestClock;
+  readonly clock: FakeClock;
   readonly workTracker: WorkTracker;
 }
 

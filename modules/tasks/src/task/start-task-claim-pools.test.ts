@@ -1,7 +1,7 @@
 import { expect, mock, onTestFinished, test } from 'bun:test';
 import { readRecords } from '@heynixie/log';
 import { buildRecordedCommits } from '@heynixie/log/test-utils';
-import { waitForCondition } from '@heynixie/testing';
+import { stopWithoutGrace, waitForCondition } from '@heynixie/testing';
 import { writeStepCommit } from '../step/write-step-commit';
 import { seedConversationStep } from '../test-utils/seed-conversation-step';
 import { seedDefinitionTask } from '../test-utils/seed-definition-task';
@@ -47,10 +47,10 @@ test('it runs 3 steps at once by default', async () => {
   onTestFinished(async () => {
     held.resolve();
 
-    await runners.stop(0);
+    await stopWithoutGrace(ctx.clock, runners);
   });
 
-  await waitForCondition(() => running.size === 3 && ctx.clock.countSleepers() === 4);
+  await waitForCondition(() => running.size === 3 && ctx.clock.countPending() === 4);
 
   const waiting = await ctx.db
     .selectFrom('tasks')
@@ -73,7 +73,7 @@ test('it runs a claimed step and commits its result', async () => {
     logger: () => {},
   });
 
-  onTestFinished(() => runners.stop(0));
+  onTestFinished(() => stopWithoutGrace(ctx.clock, runners));
 
   await waitForCondition(async () => {
     const task = await ctx.db
@@ -102,9 +102,9 @@ test('it runs a task created while every runner sleeps without waiting for the p
     logger: () => {},
   });
 
-  onTestFinished(() => runners.stop(0));
+  onTestFinished(() => stopWithoutGrace(ctx.clock, runners));
 
-  await waitForCondition(() => ctx.clock.countSleepers() === 4);
+  await waitForCondition(() => ctx.clock.countPending() === 4);
 
   const createdAt = ctx.clock.now();
 
@@ -132,12 +132,10 @@ test('it stops waking on commits once stopped', async () => {
     logger: () => {},
   });
 
-  onTestFinished(() => runners.stop(0));
+  onTestFinished(() => stopWithoutGrace(ctx.clock, runners));
 
-  await waitForCondition(() => ctx.clock.countSleepers() === 4);
-
-  await runners.stop(0);
-
+  await waitForCondition(() => ctx.clock.countPending() === 4);
+  await stopWithoutGrace(ctx.clock, runners);
   await createTask(ctx.context, 'sweep the porch');
 
   expect(ran).not.toHaveBeenCalled();
@@ -161,7 +159,7 @@ test('it removes its commit listener once stopped', async () => {
     },
   );
 
-  await runners.stop(0);
+  await stopWithoutGrace(ctx.clock, runners);
 
   expect(recorded.calls).toStrictEqual(['add commit', 'remove commit']);
 });
@@ -182,7 +180,7 @@ test('it reports a step that throws once its error record commits', async () => 
     logger: () => {},
   });
 
-  onTestFinished(() => runners.stop(0));
+  onTestFinished(() => stopWithoutGrace(ctx.clock, runners));
 
   await waitForCondition(() => onStepErrored.mock.calls.length === 1);
 
@@ -231,9 +229,9 @@ test('it fires a due timer on its next poll', async () => {
     logger: () => {},
   });
 
-  onTestFinished(() => runners.stop(0));
+  onTestFinished(() => stopWithoutGrace(ctx.clock, runners));
 
-  await waitForCondition(() => ctx.clock.countSleepers() === 4);
+  await waitForCondition(() => ctx.clock.countPending() === 4);
 
   ctx.clock.advance(60_000);
 
@@ -268,7 +266,7 @@ test('it runs a started task through the started step', async () => {
     logger: () => {},
   });
 
-  onTestFinished(() => runners.stop(0));
+  onTestFinished(() => stopWithoutGrace(ctx.clock, runners));
 
   await waitForCondition(() => ran.mock.calls.length === 1);
 
@@ -331,7 +329,7 @@ test('it claims a message to the conversation while every claim loop of the star
   onTestFinished(async () => {
     held.resolve();
 
-    await runners.stop(0);
+    await stopWithoutGrace(ctx.clock, runners);
   });
 
   await waitForCondition(() => started.size === 2);
@@ -376,7 +374,7 @@ test('it fails a definition task whose fire names a missing version after its re
     retryDelayMs: 1000,
   });
 
-  onTestFinished(() => runners.stop(0));
+  onTestFinished(() => stopWithoutGrace(ctx.clock, runners));
 
   await waitForCondition(async () => {
     ctx.clock.advance(1000);
