@@ -3384,7 +3384,7 @@ test('it returns the result a prepare step gives, and never asks the decision po
 });
 
 test('it releases what a paid check held when the budget stops the call before the tool runs', async () => {
-  const release = mock(() => null);
+  const release = mock(() => {});
   const run = mock(() => Promise.resolve({ status: 'ok' as const, result: { text: 'a note' } }));
 
   const ctx = await setupTest({
@@ -3415,7 +3415,7 @@ test('it releases what a paid check held when the budget stops the call before t
 });
 
 test('it leaves the release of a paid call that runs to the tool', async () => {
-  const release = mock(() => null);
+  const release = mock(() => {});
 
   const ctx = await setupTest({
     paidTools: ['web_search'],

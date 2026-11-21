@@ -74,7 +74,9 @@ test('it sends the source and then each reference to the edits endpoint', async 
       }
 
       for (const field of ['model', 'prompt', 'size']) {
-        fields[field] = String(form.get(field));
+        const value = form.get(field);
+
+        fields[field] = typeof value === 'string' ? value : '';
       }
 
       return HttpResponse.json({ data: [{ b64_json: ctx.pixel }] });

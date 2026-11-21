@@ -31,7 +31,12 @@ test('it pages the list, and hands back where the next page starts', async () =>
   await ctx.call('image.draw', { prompt: 'third cove' });
 
   const first = await ctx.read('image.list', { limit: 2 });
-  const second = await ctx.read('image.list', { limit: 2, after: String(first['next']) });
+
+  const next = first['next'];
+
+  invariant(typeof next === 'string', 'the first page hands back where the next one starts');
+
+  const second = await ctx.read('image.list', { limit: 2, after: next });
 
   expect(first['images']).toMatchObject([{ prompt: 'third cove' }, { prompt: 'second cove' }]);
   expect(second).toMatchObject({ images: [{ prompt: 'first cove' }], next: null });

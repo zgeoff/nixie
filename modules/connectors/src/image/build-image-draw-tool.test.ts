@@ -231,7 +231,9 @@ test('it keeps the charge of a draw that passes its time limit', async () => {
         takes: { source: true, references: true },
         draw: (request) =>
           new Promise((_resolve, reject) => {
-            request.signal.addEventListener('abort', () => reject(new Error('aborted')));
+            request.signal.addEventListener('abort', () => {
+              reject(new Error('aborted'));
+            });
           }),
       },
       second: buildStubImageProvider(),
@@ -341,7 +343,7 @@ test('it refuses a forgotten image before any charge, naming it', async () => {
   expect(readToolResult(reply)).toStrictEqual({
     refused: {
       code: 'IMAGE_FORGOTTEN',
-      message: `The image ${String(readImageID(first))} was forgotten.`,
+      message: `The image ${readImageID(first)} was forgotten.`,
     },
   });
 
@@ -561,7 +563,7 @@ test('it keeps the last room for the draw that holds it while its picture is fit
   invariant(session?.releaseImageRoom !== undefined);
 
   const release = session.releaseImageRoom;
-  let rival: ReturnType<typeof ctx.call> | null = null;
+  const rivals: ReturnType<typeof ctx.call>[] = [];
 
   // The first release is the draw giving up its hold. A draw that starts then sees the room as
   // free only when the hold went before the picture was reserved.
@@ -572,11 +574,15 @@ test('it keeps the last room for the draw that holds it while its picture is fit
       releaseImageRoom: (key) => {
         release(key);
 
-        rival ??= runToolCall(
-          { tool: 'image.draw', input: { prompt: 'another cove' }, toolUseID: null },
-          watchedRun,
-          ctx.toolOptions,
-        );
+        if (rivals.length === 0) {
+          rivals.push(
+            runToolCall(
+              { tool: 'image.draw', input: { prompt: 'another cove' }, toolUseID: null },
+              watchedRun,
+              ctx.toolOptions,
+            ),
+          );
+        }
       },
     },
   };
@@ -587,7 +593,9 @@ test('it keeps the last room for the draw that holds it while its picture is fit
     ctx.toolOptions,
   );
 
-  invariant(rival !== null);
+  const [rival] = rivals;
+
+  invariant(rival !== undefined);
 
   const second = await rival;
   const ledger = await readBudgetLedger(ctx.log.writer.db, ctx.budgets, 'image.draw-day');

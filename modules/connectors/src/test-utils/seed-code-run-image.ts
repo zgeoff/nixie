@@ -24,7 +24,7 @@ export async function seedCodeRunImage(log: Log, seed: CodeRunImageSeed) {
 
   const file = seeded.files[0]?.file;
 
-  invariant(file, 'the code run wrote the picture');
+  invariant(file !== undefined, 'the code run wrote the picture');
 
   return { file, resultSequence: seeded.resultSequence };
 }
