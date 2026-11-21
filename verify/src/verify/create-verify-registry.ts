@@ -379,7 +379,7 @@ export function createVerifyRegistry(): Wringer {
       },
       {
         name: 'device-screen',
-        summary: 'Enrol a device, and see a picture the model shows on it',
+        summary: 'Enrol a device and see a picture on it',
         paths: featurePaths['device-screen'],
       },
     )
