@@ -65,18 +65,25 @@ test('it sends the source and then each reference to the edits endpoint', async 
 
   mockServer.use(
     http.post(`${openAIImagesAPIURL}/images/edits`, async (info) => {
-      const form = await info.request.clone().formData();
+      const boundary = /boundary=(?<boundary>.+)$/u.exec(
+        info.request.headers.get('content-type') ?? '',
+      )?.groups?.['boundary'];
 
-      for (const file of form.getAll('image[]')) {
-        const size = file instanceof File ? file.size : -1;
+      const body = await info.request.clone().text();
 
-        sizes.push(size);
-      }
+      // each part: a header block, a blank line, its bytes, then the line break before the next
+      const parts = body.split(`--${boundary}`).slice(1, -1);
 
-      for (const field of ['model', 'prompt', 'size']) {
-        const value = form.get(field);
+      for (const part of parts) {
+        const [head = '', ...rest] = part.split('\r\n\r\n');
+        const content = rest.join('\r\n\r\n').replace(/\r\n$/u, '');
+        const name = /name="(?<name>[^"]+)"/u.exec(head)?.groups?.['name'];
 
-        fields[field] = typeof value === 'string' ? value : '';
+        if (name === 'image[]') {
+          sizes.push(content.length);
+        } else if (name === 'model' || name === 'prompt' || name === 'size') {
+          fields[name] = content;
+        }
       }
 
       return HttpResponse.json({ data: [{ b64_json: ctx.pixel }] });
