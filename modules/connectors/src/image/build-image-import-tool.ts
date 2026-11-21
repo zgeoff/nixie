@@ -47,7 +47,6 @@ const importInput = {
     },
   },
   additionalProperties: false,
-  oneOf: [{ required: ['file'] }, { required: ['photo'] }],
 };
 
 const importArguments = z.object({
@@ -61,8 +60,8 @@ export function buildImageImportTool(options: ImageToolOptions): ToolDefinition 
   return {
     name: 'image.import',
     description:
-      'Keeps a picture as an image you can look at, edit and use as a reference. Pass a file ID ' +
-      'from a code.run result on this thread, or a photo the owner sent. nixie converts the ' +
+      'Keeps a picture as an image you can look at, edit and use as a reference. Pass exactly one: a ' +
+      'file ID from a code.run result on this thread, or a photo the owner sent. nixie converts the ' +
       'picture to PNG, scales it down until its long side is at most 2048 pixels, and shows it ' +
       'when the session has room. Drawing from a photo of the owner sends it to the image ' +
       'provider, which the owner approves.',

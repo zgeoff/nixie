@@ -9,8 +9,8 @@ export function createHostSessionProcedures(context: APIContext) {
   const sessions = hostImplementer.sessions;
 
   return {
-    issueCode: sessions.issueCode.handler(async () => {
-      const issued = await createEnrolmentCode(context);
+    issueCode: sessions.issueCode.handler(async (options) => {
+      const issued = await createEnrolmentCode(context, options.input?.scope);
 
       return { code: issued.code, expiresAt: issued.expiresAt };
     }),

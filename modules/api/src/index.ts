@@ -23,6 +23,7 @@ export { writeKeptSessions } from './kept/write-kept-sessions';
 
 export type {
   APIContext,
+  APITables,
   APISettings,
   CleanupRecordSessions,
   ForgetBackupState,

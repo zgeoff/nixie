@@ -182,3 +182,15 @@ test('it pads an imported picture into the size nearest its shape when it is edi
 
   expect([request?.size, sent.width, sent.height]).toStrictEqual(['1536x1024', 1536, 1024]);
 });
+
+test('it declares an input with no combinator at the top, which the model API refuses', async () => {
+  const ctx = await setupTest();
+
+  const tool = ctx.toolOptions.registry.findTool('image.import');
+
+  expect(Object.keys(tool?.definition.input ?? {})).not.toIncludeAnyMembers([
+    'oneOf',
+    'anyOf',
+    'allOf',
+  ]);
+});
