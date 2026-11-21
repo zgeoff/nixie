@@ -22,7 +22,16 @@ const limitsSchema = z.object({
 });
 
 export const sandboxSpecSchema = z.object({
-  kind: z.enum(['conversation', 'checker', 'worker', 'code_run', 'fetch', 'coding']),
+  kind: z.enum([
+    'conversation',
+    'checker',
+    'worker',
+    'code_run',
+    'fetch',
+    'coding',
+    'browser',
+    'shell',
+  ]),
   image: z.string(),
   owner: z.string(),
   egress: egressSchema,

@@ -150,6 +150,8 @@ async function writeManifest(path: string): Promise<void> {
     fetch: `ghcr.io/example/nixie-fetch@sha256:${'f'.repeat(64)}`,
     code: `ghcr.io/example/nixie-code@sha256:${'d'.repeat(64)}`,
     codex: `ghcr.io/example/nixie-codex@sha256:${'e'.repeat(64)}`,
+    browser: `ghcr.io/example/nixie-browser@sha256:${'a'.repeat(64)}`,
+    shell: `ghcr.io/example/nixie-shell@sha256:${'b'.repeat(64)}`,
   };
 
   await writeFile(path, JSON.stringify(manifest));

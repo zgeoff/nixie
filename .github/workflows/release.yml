@@ -168,6 +168,40 @@ jobs:
       dockerfile: guests/code/Dockerfile
       sha: ${{ needs.resolve.outputs.sha }}
 
+  browser:
+    name: Release the browser image
+    needs: resolve
+    concurrency:
+      group: release-browser
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+    uses: ./.github/workflows/release-image.yml
+    with:
+      image: nixie-browser
+      dockerfile: guests/browser/Dockerfile
+      sha: ${{ needs.resolve.outputs.sha }}
+
+  shell:
+    name: Release the shell image
+    needs: resolve
+    concurrency:
+      group: release-shell
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+    uses: ./.github/workflows/release-image.yml
+    with:
+      image: nixie-shell
+      dockerfile: guests/shell/Dockerfile
+      sha: ${{ needs.resolve.outputs.sha }}
+
   codex:
     name: Release the codex image
     needs: resolve
@@ -204,7 +238,7 @@ jobs:
 
   sandbox-manifest:
     name: Release the sandbox manifest
-    needs: [resolve, conversation, fetch, code, codex]
+    needs: [resolve, conversation, fetch, code, codex, browser, shell]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     concurrency:

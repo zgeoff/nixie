@@ -303,6 +303,15 @@
         "tiny-invariant": "catalog:",
       },
     },
+    "guests/browser": {
+      "name": "@heynixie/browser",
+      "version": "0.0.0",
+      "dependencies": {
+        "@heynixie/egress": "workspace:*",
+        "@heynixie/wire": "workspace:*",
+        "playwright-core": "catalog:",
+      },
+    },
     "guests/codex": {
       "name": "@heynixie/codex",
       "version": "0.0.0",
@@ -337,6 +346,14 @@
         "@heynixie/egress": "workspace:*",
         "@heynixie/wire": "workspace:*",
         "entities": "catalog:",
+      },
+    },
+    "guests/shell": {
+      "name": "@heynixie/shell",
+      "version": "0.0.0",
+      "dependencies": {
+        "@heynixie/egress": "workspace:*",
+        "@heynixie/wire": "workspace:*",
       },
     },
     "integration": {
@@ -477,6 +494,7 @@
       },
       "devDependencies": {
         "@faker-js/faker": "catalog:",
+        "@heynixie/testing": "workspace:*",
         "tiny-invariant": "catalog:",
       },
     },
@@ -1468,6 +1486,8 @@
 
     "@heynixie/backup-job": ["@heynixie/backup-job@workspace:apps/backup-job"],
 
+    "@heynixie/browser": ["@heynixie/browser@workspace:guests/browser"],
+
     "@heynixie/budgets": ["@heynixie/budgets@workspace:modules/budgets"],
 
     "@heynixie/clock": ["@heynixie/clock@workspace:libs/clock"],
@@ -1541,6 +1561,8 @@
     "@heynixie/server": ["@heynixie/server@workspace:apps/server"],
 
     "@heynixie/sessions": ["@heynixie/sessions@workspace:modules/sessions"],
+
+    "@heynixie/shell": ["@heynixie/shell@workspace:guests/shell"],
 
     "@heynixie/skills": ["@heynixie/skills@workspace:modules/skills"],
 
