@@ -6,10 +6,11 @@ import invariant from 'tiny-invariant';
 import { buildMockTaskMessageView } from '../test-utils/build-mock-task-message-view';
 import { startTestTasks } from '../test-utils/start-test-tasks';
 import { buildTurnSilence } from '../utils/build-turn-silence';
+import { makeGapReader } from './make-gap-reader';
 import { readLiveInbox } from './read-live-inbox';
 
 async function setupTest() {
-  const tasks = await startTestTasks();
+  const tasks = await startTestTasks({ recordsAtMs: Date.parse('2026-11-21T00:00:00Z') });
 
   const controller = new AbortController();
 
@@ -467,3 +468,68 @@ test('it does not mark a task message as cutting a call, even when the harness c
 
   expect(next.value.cutsCall).toBeFalse();
 });
+
+test.each([
+  { canCut: true, tag: 'with its own gaps' },
+  { canCut: false, tag: 'with no gaps' },
+])(
+  'it renders an owner message that lands during the turn $tag when canCut is $canCut',
+  async (row) => {
+    const ctx = await setupTest();
+
+    const definitions = { snapshotHash: 'sha256:test' };
+
+    await createConversationTask(ctx.context);
+
+    const [earlier] = await writeRecords(ctx.context.log, [
+      {
+        kind: 'owner_message',
+        definitions,
+        thread: 'conversation',
+        erasable: { text: 'Earlier.' },
+      },
+    ]);
+
+    invariant(earlier, 'the earlier message was not written');
+
+    ctx.clock.advance(2 * 60_000);
+
+    await writeRecords(ctx.context.log, [
+      { kind: 'model.turn_ended', definitions, thread: 'conversation' },
+    ]);
+
+    const live = readLiveInbox(ctx.context, {
+      taskID: 'conversation',
+      canCut: row.canCut,
+      sent: new Set([0, earlier.sequence]),
+      signal: ctx.signal,
+      view: buildMockTaskMessageView(),
+      times: { defaultZone: 'Australia/Sydney', now: new Date('2026-10-13T05:00:00Z') },
+      images: { spent: { bytes: 0, count: 0 }, budget: { bytes: 16, count: 100 }, isCapped: false },
+      silence: buildTurnSilence([]),
+      gaps: makeGapReader(ctx.context),
+      log: () => {},
+    });
+
+    ctx.clock.advance(10 * 60_000);
+
+    await writeInboxRecords(ctx.context, [
+      {
+        kind: 'owner_message',
+        definitions,
+        thread: 'conversation',
+        erasable: { text: 'Stop and look.' },
+      },
+    ]);
+
+    const next = await live.next();
+
+    invariant(next.done !== true, 'the feed ended before the message');
+
+    const [opening] = next.value.message.text.split('\n');
+
+    expect(opening?.includes('since-your-last-turn="10 min" since-owner-last-wrote="12 min"')).toBe(
+      row.canCut,
+    );
+  },
+);

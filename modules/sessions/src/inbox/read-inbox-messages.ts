@@ -5,7 +5,7 @@ import { isInboxRecord, ownerMessageCodec } from '@heynixie/tasks';
 import type { ApprovedReply } from '@heynixie/tools';
 import type { InboxMessage } from '@heynixie/wire';
 import type { TaskMessageView } from '../task/render-task-message';
-import type { ImageTally, MessageTimeOptions } from '../types';
+import type { GapReader, ImageTally, MessageTimeOptions, TurnGaps } from '../types';
 import { countImages } from '../utils/count-images';
 import { isPastImageBudget } from '../utils/is-past-image-budget';
 import { mergeImageTallies } from '../utils/merge-image-tallies';
@@ -26,6 +26,9 @@ export interface InboxRead {
   // What the call of an action returned, by the sequence of the action's outcome record. No record
   // keeps an image or every result in full, so only the step that ran the call has them.
   readonly replies?: ReadonlyMap<number, ApprovedReply>;
+
+  // reads the gaps that the first message of the read shows
+  readonly gaps?: GapReader;
 }
 
 export interface InboxMessages {
@@ -59,7 +62,9 @@ export async function readInboxMessages(
       continue;
     }
 
-    const message = await readInboxMessage(context, record, read);
+    const gaps = messages.length === 0 ? await read.gaps?.(record) : undefined;
+
+    const message = await readInboxMessage(context, record, read, gaps);
 
     const images = countImages(message);
 
@@ -80,6 +85,7 @@ async function readInboxMessage(
   context: InboxContext,
   record: LogRecord,
   read: Pick<InboxRead, 'times' | 'view' | 'replies'>,
+  gaps: TurnGaps | undefined,
 ): Promise<InboxMessage> {
   const reminder = await readReminder(context, record, read.times.defaultZone);
 
@@ -90,7 +96,12 @@ async function readInboxMessage(
   );
 
   if (ownerMessageCodec.tryDecodePartial(record.payload)?.images === undefined) {
-    return toInboxMessage(record, read.times, read.view, { attachments: [], reminder, result });
+    return toInboxMessage(record, read.times, read.view, {
+      attachments: [],
+      reminder,
+      result,
+      ...(gaps === undefined ? {} : { gaps }),
+    });
   }
 
   const attachments = await readRecordAttachments(context.log, [record.sequence]);
@@ -102,5 +113,6 @@ async function readInboxMessage(
     attachments: bytes,
     reminder,
     result,
+    ...(gaps === undefined ? {} : { gaps }),
   });
 }

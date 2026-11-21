@@ -22,6 +22,7 @@ interface OpeningRead {
   readonly imageBudget: ImageTally;
 
   readonly replies?: InboxRead['replies'];
+  readonly gaps?: InboxRead['gaps'];
 }
 
 export async function readOpeningBatch(
@@ -37,6 +38,7 @@ export async function readOpeningBatch(
       count: read.imageBudget.count - read.images.count,
     },
     ...(read.replies === undefined ? {} : { replies: read.replies }),
+    ...(read.gaps === undefined ? {} : { gaps: read.gaps }),
   });
 
   const spent = mergeImageTallies(

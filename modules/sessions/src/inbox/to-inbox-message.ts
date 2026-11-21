@@ -2,8 +2,9 @@ import type { LogRecord } from '@heynixie/log';
 import { ownerMessageCodec } from '@heynixie/tasks';
 import type { InboxImage, InboxMessage } from '@heynixie/wire';
 import type { TaskMessageView } from '../task/render-task-message';
-import type { MessageTimeOptions } from '../types';
+import type { MessageTimeOptions, TurnGaps } from '../types';
 import { renderImageMarkers } from '../utils/render-image-markers';
+import { addTurnGaps } from './add-turn-gaps';
 import { encodeInboxUUID } from './encode-inbox-uuid';
 import type { ActionResultBlock } from './render-action-result';
 import { renderInboxMessage } from './render-inbox-message';
@@ -16,6 +17,9 @@ export interface InboxExtras {
 
   // the result of the call that an action settled, when the call ran inside the turn
   readonly result?: ActionResultBlock | null;
+
+  // set on the message that starts a turn, or cuts into one
+  readonly gaps?: TurnGaps;
 }
 
 export function toInboxMessage(
@@ -26,7 +30,7 @@ export function toInboxMessage(
 ): InboxMessage {
   const message = {
     uuid: encodeInboxUUID(record.sequence),
-    text: renderInboxMessage(record, times, view, extras),
+    text: addGaps(renderInboxMessage(record, times, view, extras), extras.gaps),
   };
 
   const images = [
@@ -35,6 +39,10 @@ export function toInboxMessage(
   ];
 
   return images.length === 0 ? message : { ...message, images };
+}
+
+function addGaps(text: string, gaps: TurnGaps | undefined): string {
+  return gaps === undefined ? text : addTurnGaps(text, gaps);
 }
 
 function buildInboxImages(
