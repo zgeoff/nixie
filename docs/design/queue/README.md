@@ -27,6 +27,7 @@ is deleted.
 | Google tools        | [Gmail, Calendar and Drive](gmail-calendar-drive-tools.md)                                                                                                                                                                                |
 | MCP servers         | [the MCP proxy build](mcp-proxy-build.md)                                                                                                                                                                                                 |
 | Channels            | [the push notice](push-notice.md)                                                                                                                                                                                                         |
+| Devices             | [devices and their capabilities](devices.md)                                                                                                                                                                                              |
 | Live view           | [dashboard states, fires and filters](live-view-dashboard.md)                                                                                                                                                                             |
 
 Work that no design covers, such as the port rules and the voice and typing design sessions, lives
