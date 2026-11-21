@@ -158,6 +158,11 @@ Acting:
 - `computer.download` refuses a tab that holds a field the sign-in broker filled. It runs direct,
   because it only moves bytes between the assistant's own sandboxes, and the file counts as
   untrusted.
+- nixie counts each call that can change the shell's disk: `writeFile`, `download` and `run`. A
+  `computer.run` that waits for your decision keeps the count from when it was proposed. When the
+  count moved before it runs, the run returns `FILES_CHANGED`, does nothing, and the assistant
+  proposes it again, so an approved command never runs a script that changed after you read the
+  card. A run that a rule allows skips this check.
 - Calls into each sandbox run one at a time, from the conversation or a started task. A call waits
   up to 60 seconds for its turn, and `computer.run` up to its own timeout as well.
 
