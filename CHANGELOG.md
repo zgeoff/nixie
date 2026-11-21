@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.89.0](https://github.com/zgeoff/nixie/compare/v0.88.0...v0.89.0) (2026-11-21)
+
+
+### Features
+
+* **memory:** let a self-note run to 6,000 characters ([#1295](https://github.com/zgeoff/nixie/issues/1295)) ([adcd52c](https://github.com/zgeoff/nixie/commit/adcd52cc199d353fdc2ee7cb9ffe1ed8a8fa51af))
+* **prompts:** carry the assistant's own positions through compaction ([#1290](https://github.com/zgeoff/nixie/issues/1290)) ([dd82beb](https://github.com/zgeoff/nixie/commit/dd82beb1f07db5f25d10de05e662976a9af119f5))
+* **sessions:** show the gaps since the last turn and the owner's last message ([#1298](https://github.com/zgeoff/nixie/issues/1298)) ([886eab2](https://github.com/zgeoff/nixie/commit/886eab20d6fc07ecf17446cd6207b221c8995c5e))
+
+
+### Bug Fixes
+
+* **memory:** keep a phrase search going past an empty log page ([#1291](https://github.com/zgeoff/nixie/issues/1291)) ([b4a6109](https://github.com/zgeoff/nixie/commit/b4a6109ec4317992cfed39a6b5dee456af855782))
+* **memory:** let two moment links land in parallel ([#1292](https://github.com/zgeoff/nixie/issues/1292)) ([49b8edf](https://github.com/zgeoff/nixie/commit/49b8edf55e064b85e95db28c5be29d0a83098f8c))
+
 ## [0.88.0](https://github.com/zgeoff/nixie/compare/v0.87.0...v0.88.0) (2026-11-21)
 
 
