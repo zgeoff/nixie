@@ -22,7 +22,13 @@ test('it keeps the images of an unsent message across a reload, and sends them w
 
   await createDeviceSession();
 
-  server.use(http.post('*/rpc/conversation/send', () => Response.error()));
+  const state = { isSendFailing: true };
+
+  server.use(
+    http.post('*/rpc/conversation/send', () =>
+      state.isSendFailing ? Response.error() : undefined,
+    ),
+  );
 
   act(() => {
     ctx.rendered.result.current.add({
@@ -44,7 +50,8 @@ test('it keeps the images of an unsent message across a reload, and sends them w
   });
 
   ctx.rendered.unmount();
-  server.resetHandlers();
+
+  state.isSendFailing = false;
 
   const reloaded = renderHook(() => useOutbox([], ctx.options));
 

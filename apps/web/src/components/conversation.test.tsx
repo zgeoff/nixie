@@ -884,12 +884,15 @@ test('it says the earlier messages did not load when their page fails', async ()
   }
 
   const earlierRead = z.object({ json: z.object({ beforeSequence: z.number() }) });
+  const state = { isEarlierReadFailing: true };
 
   server.use(
     http.post('*/rpc/conversation/read', async (info) => {
       const body: unknown = await info.request.clone().json();
 
-      return earlierRead.safeParse(body).success ? HttpResponse.error() : undefined;
+      return state.isEarlierReadFailing && earlierRead.safeParse(body).success
+        ? HttpResponse.error()
+        : undefined;
     }),
   );
 
@@ -913,12 +916,15 @@ test('it loads the earlier messages again when you ask after their page fails', 
   }
 
   const earlierRead = z.object({ json: z.object({ beforeSequence: z.number() }) });
+  const state = { isEarlierReadFailing: true };
 
   server.use(
     http.post('*/rpc/conversation/read', async (info) => {
       const body: unknown = await info.request.clone().json();
 
-      return earlierRead.safeParse(body).success ? HttpResponse.error() : undefined;
+      return state.isEarlierReadFailing && earlierRead.safeParse(body).success
+        ? HttpResponse.error()
+        : undefined;
     }),
   );
 
@@ -926,7 +932,7 @@ test('it loads the earlier messages again when you ask after their page fails', 
 
   const retry = await rendered.findByRole('button', { name: 'Load them again' });
 
-  server.resetHandlers();
+  state.isEarlierReadFailing = false;
 
   await ctx.user.click(retry);
 

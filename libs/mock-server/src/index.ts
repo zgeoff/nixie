@@ -1,2 +1,2 @@
 export { addMockHandlers } from './add-mock-handlers';
-export { mockServer } from './mock-server';
+export { network } from './network';
