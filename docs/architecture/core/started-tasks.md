@@ -186,9 +186,9 @@ so a rerun after a crash erases the same calls.
 
 A start marks its task disposable or kept, and `disposable` defaults to `true`. The mark sits on the
 task's `task.created` record, and the user's change of it is a `task.mark_set` record on the task's
-thread. The newest change wins. A `task.created` record with no mark reads as kept, so no unmarked
-task closes. The conversation, the queue check, system tasks and any task that no start made carry
-no mark and never close by themselves.
+thread. The newest change wins. A `task.created` record with no mark reads as kept, so an unmarked
+task never closes. The conversation, the queue check, system tasks and any task that no start made
+carry no mark and never close by themselves.
 
 A disposable task closes in the transaction of the step commit that ends its task run as `reported`,
 `no_report` or `no_work`, when that commit leaves the task waiting with nothing unread and no open
@@ -249,10 +249,11 @@ paused or stopped keeps its state.
 ## Task runs
 
 A task run is one stretch of a started task's work that ends in one report. A claim opens a task run
-when the task has none open and a waking message, a raise or a restart is waiting, and the run ends
-when the task reports, reaches a limit, stops, closes or fails. The 3 records `task.run_opened`,
-`task.run_report_requested` and `task.run_ended` hold it, and the `task_runs` projection folds them
-into one row per task run with the open run first in the unique `task_runs_open` index.
+when the task has none open and a waking message, a raise or a restart is waiting, and the task run
+ends when the task reports, reaches a limit, stops, closes or fails. The 3 records
+`task.run_opened`, `task.run_report_requested` and `task.run_ended` hold it, and the `task_runs`
+projection folds them into one row per task run, with the open task run in the unique
+`task_runs_open` index.
 
 A definition's task opens its task runs on a fire, as
 [the task of a definition](definitions.md#the-task-of-a-definition) describes.
@@ -263,11 +264,11 @@ its limits. A raise or a restart opens a task run that carries the one before it
 so a crash after an action ran and a rerun of the step give exactly one report.
 
 A record belongs to a task run by the `taskRunID` it carries, or, for a record with none, by its
-place between the opening and the end of a run. Only a tool call's records and a failed turn's spend
-record can land after their task run ended, because a step writes them with no lease check, so only
-they carry the ID. A record that lands between one task run's end and the next one's opening, such
-as a message after a report, belongs to no task run until a claim opens one for it. Every count of a
-task run's use reads its records through one function, so the meters and the caps agree.
+place between the opening and the end of a task run. Only a tool call's records and a failed turn's
+spend record can land after their task run ended, because a step writes them with no lease check, so
+only they carry the ID. A record that lands between one task run's end and the next one's opening,
+such as a message after a report, belongs to no task run until a claim opens one for it. Every count
+of a task run's use reads its records through one function, so the meters and the caps agree.
 
 Each tool call in a task run carries the ID, and a tool can have a cap of calls per task run: a call
 past the cap is a `tool_result` with the outcome `denied` and no decision, and a call that was
@@ -396,7 +397,8 @@ The first turn of a task run renders the `trigger` block of a definition's task 
 `task.report` and passes the shape as one line of JSON. Its `fence` attribute holds the first 4 hex
 digits of the task run's ID, which the model never sees, so the model cannot close the block early,
 and a rerun or a rebuild renders the same block. nixie stores neither block. They sit in a block
-because a prompt that changes at each fire would break the session of a `continuing` task. The first
+because a prompt that changes at each fire would break the session of a task whose `context` is
+`continuing`, as [what opens a task run](definitions.md#what-opens-a-task-run) describes. The first
 turn of a carried task run renders neither, because the resumed session holds both. A rebuilt
 session of a carried task run renders both, and takes the fire from the first task run of the chain.
 

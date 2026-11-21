@@ -597,13 +597,11 @@ holds only what a `task.start` from the conversation can hold. A change that put
 force, or an undefine, commits its notice in the same transaction, so every runtime change in force
 has one.
 
-When the seed that an undefine or an undo runs first fails or is refused, the change goes on with
-the repo version that nixie last read and records that version, so the next seed compares it with
+An undefine or an undo records the repo version it went on with, so the next seed compares it with
 the repo. A merge that the decision missed then ends as an adoption or a conflict and never as a
 silent overwrite. One definition has at most one runtime change in force, so a second change fails
-the unique index and its transaction. A seed whose runtime change has a version with no readable
-body, because the key store lost its key, puts the definition out of force and keeps the row, and
-the lists show it as unreadable.
+the unique index and its transaction. The lists show a definition whose change lost its body as
+unreadable.
 
 An undo names a change X, and the first row of this table that fits decides:
 
@@ -692,12 +690,10 @@ The seed's one write transaction runs in this order: every refusal, the hook tha
 ([triggers](./triggers.md#which-definitions-can-fire)), and then the `unchanged` return. A refused
 seed calls neither hook, and an `unchanged` seed calls both. A task definition goes through the one
 check of a start that `task.start` runs, so the seed applies no separate rule about which memory
-tools a task may hold, and the parser takes the text of the files as input and never reads the
-source, so a test checks a definition that lives in no repo. A definition with no `trigger` is bound
-to its task and never opens a task run from a trigger. When a task run's pinned hash has no row in
-the version store, its step fails, and after the step error limit the task is `failed`. The
-definitions module imports the tasks module for the start input, and the tasks module imports
-nothing from the definitions module.
+tools a task may hold. A definition with no `trigger` is bound to its task and never opens a task
+run from a trigger. When a task run's pinned hash has no row in the version store, its step fails,
+and after the step error limit the task is `failed`. The definitions module imports the tasks module
+for the start input, and the tasks module imports nothing from the definitions module.
 
 A task definition that holds a fault refuses the seed too. A refused seed comes back as a value with
 its error and the definitions still in force, never as a throw, so the caller reports the refusal

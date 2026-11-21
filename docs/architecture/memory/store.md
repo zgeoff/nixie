@@ -79,9 +79,11 @@ item to label. A new item takes the topic's spelling from an existing item that 
 case.
 
 A topic has no ID and no hash in any record, so a forget leaves nothing that leads from the item to
-its topic. Label text exists on disk only sealed, in the 2 label records and the 2 sealed columns.
-nixie creates an item's ID and key when it writes the proposal that creates it, and seals that
-proposal's labels under that key, so a proposal and an approval never write label text in the clear.
+its topic. Label text exists on disk only sealed: in the `memory.labelled` and
+`memory.proposal_labelled` records, in `memory_labels.sealed` and in
+`memory_proposals.sealed_labels`. nixie creates an item's ID and key when it writes the proposal
+that creates it, and seals that proposal's labels under that key, so a proposal and an approval
+never write label text in the clear.
 
 The label record always holds the whole label set, and one function writes it for every path and
 updates the in-memory entries. A waiting proposal writes nothing to its item. A label-only proposal
@@ -89,11 +91,10 @@ matches a pending one only when both whole label sets are equal: a second propos
 labels merges into the pending one, and one with other labels waits beside it, so approving one
 makes the other stale. A change of an item's subject writes no label record, and the item keeps its
 labels. `undo` undoes the last text change only, so a label stays as it is until an edit changes it.
-Every label edit moves the revision, and a tool, the API and the memory view show that number as
-`version`, while history entries, recall records, the export and a proposal's hash keep the text
-version. A session that holds the number from before a label edit gets the stale error once and
-reads the revision from it, and `memory.retire` passes its read check for a text recalled before a
-label-only edit, because that edit leaves the text unchanged.
+A session that holds the number from before a label edit gets the stale error once and reads the
+revision from it. A label-only edit leaves the text unchanged, so `memory.retire` still accepts a
+recall of the text from before that edit as the
+[proof that the thread read the item](./writes.md#retirement-intent).
 
 A label-only proposal's `memory.proposed` record holds the operation `remember`, the text version
 and a copy of the text, so a reader that knows no label record kind still parses it.

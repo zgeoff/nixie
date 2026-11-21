@@ -190,6 +190,9 @@ its runtime's own words:
 | `interrupted` | An `interrupt` frame stopped the turn             |
 | `overflow`    | The context passed the model's window             |
 
+Codex reports a context overflow as a plain error, with no code of its own, so the Codex guest sends
+a Codex overflow as a failed turn, and the step fails.
+
 The host reads `outcome` on the turn record that the running step built, and never reads the
 harness's own `stopReason` or `terminalReason`, which it only writes. A turn counts as finished only
 when its outcome is `finished`, so a refusal or an output cap never counts as a finished turn. The
@@ -199,23 +202,23 @@ reads it only on the record that the running step built. The `ended` frame carri
 exactly when the harness has a session, and a context size only when the harness declares
 `context-window`. A guest that breaks this fails the step.
 
-A step on a harness with no session finds the session position `fresh` at its first step and
-`unkept` at each step after it, unless a forget or a persona change made it `invalidated`. The task
-has a [session opening](./session-opening.md), no summary and no session point that its harness
-owns. nixie derives `unkept` at each step and stores it nowhere. The step opens a session from the
-log with a rebuild whose reason is null, sends a turn frame with no `resume` key, and stores no
-session point. A turn that overflows fails its step, and the next step opens again from the log. A
-resumed turn that overflows compacts only on a harness that declares `summarize`.
+The session position, in the table below, says what a step finds of its session. A step on a harness
+with no session finds the session position `fresh` at its first step and `unkept` at each step after
+it, unless a forget or a persona change made it `invalidated`. The task has a
+[session opening](./session-opening.md), no summary and no session point that its harness owns.
+nixie derives `unkept` at each step and stores it nowhere. The step opens a session from the log
+with a rebuild whose reason is null, sends a turn frame with no `resume` key, and stores no session
+point. A turn that overflows fails its step, and the next step opens again from the log. A resumed
+turn that overflows compacts only on a harness that declares `summarize`.
 
-The rebuild uses the opening's existing `reason: null`, so the schema adds no reason value. A step
-opens a session from the log within the rebuild token budget, so history alone never overflows. A
-rebuild reads its clock, its status lines and its block IDs from inputs of the step, so the same log
-gives the same opening. A step on a harness with no session sends no `message` frame, because it
-starts no live inbox reader, and no `summarize` frame. It sends an `interrupt` frame only when the
-harness declares `interrupt`, and stores no session point. A message that arrives mid-turn waits for
-the next step, because nixie never marks it read in the running turn, so the step's commit finds it
-unread and sets the task to `ready`. An Agent SDK task finds `unkept` only after its profile moves
-from a harness with no session. It then stores its point and becomes `resumable`.
+A step opens a session from the log within the rebuild token budget, so history alone never
+overflows. A rebuild reads its clock, its status lines and its block IDs from inputs of the step, so
+the same log gives the same opening. A step on a harness with no session sends no `message` frame,
+because it starts no live inbox reader, and no `summarize` frame. It sends an `interrupt` frame only
+when the harness declares `interrupt`, and stores no session point. A message that arrives mid-turn
+waits for the next step, because nixie never marks it read in the running turn, so the step's commit
+finds it unread and sets the task to `ready`. An Agent SDK task finds `unkept` only after its
+profile moves from a harness with no session. It then stores its point and becomes `resumable`.
 
 | Position                         | Event   | Condition                       | Next         |
 | -------------------------------- | ------- | ------------------------------- | ------------ |
@@ -232,9 +235,10 @@ guest sends a session point and its harness has no session, sends `ended` with n
 harness has one, or sends a context size and its harness declares no `context-window`. A turn that
 opened a session and overflows fails its step.
 
-The `ended` frame's `outcome` is required, so the host and the guest images ship together. The
-server image's guest digests already pin them as a pair. When a stored point belongs to another
-harness, nixie reads it as no point, and the step rebuilds the session from the log.
+The `ended` frame's `outcome` is required, though a turn record can hold none, so the host and the
+guest images ship together. The server image's guest digests pin them as a pair. When a stored point
+belongs to another harness, nixie reads it as no point, and the step rebuilds the session from the
+log.
 
 ## Models outside Claude
 

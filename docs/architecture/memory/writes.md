@@ -69,7 +69,7 @@ about the user or a shared item, it runs these steps in order:
    `forgotten_evidence`. A quote with no event ID searches the caller's own thread only, so an
    uncited quote from a task with the log grant waits with `no_quote`, and such a task must cite the
    event. The gate looks up a covering allow rule by the caller's own thread, whatever the grant.
-   The grant adds no review reason and never sends a write to review on its own.
+   The grant changes where the gate looks for evidence, and nothing else.
 3. **The quote check.** The quote lies wholly in text the user typed, outside any quoted block.
 4. **The token check.** Every [destination-like token](#the-token-check) in the text and the labels
    appears in the quote, so a label never carries a destination that the text could not.

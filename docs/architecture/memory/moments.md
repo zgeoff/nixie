@@ -68,8 +68,10 @@ turn, after it reads the span again.
 
 `moment.keep` keeps a span of the caller's own thread only. `moment.read` reads the span on the
 moment's own thread, whichever thread that is, for any caller that holds the tool. A task holds the
-tool only under `memory: read`, so that setting decides which task reads a moment's records, and the
-log grant does not. To stop a task from reading kept moments, leave `moment.read` out of its tools.
+tool only under `memory: read` ([start options](../core/started-tasks.md#start-options)), so that
+setting decides which task reads a moment's records. The log grant, which lets a task read other
+threads, plays no part. To stop a task from reading kept moments, leave `moment.read` out of its
+tools.
 
 Each moment tool declares `note` or `read` and runs direct, so the starter rules `allow-notes` and
 `allow-reads` allow every one. The user's rules on `note` decide whether nixie keeps moments on its
