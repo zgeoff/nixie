@@ -353,6 +353,11 @@ export function createVerifyRegistry(): Wringer {
         summary: 'Pause and resume a task, and see its records agree',
         paths: featurePaths['task-control'],
       },
+      {
+        name: 'drawing',
+        summary: 'Draw a picture, edit it once, and list both',
+        paths: featurePaths['drawing'],
+      },
     )
     .shared(...sharedPaths)
     .ignore(...ignoredPaths)

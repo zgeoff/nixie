@@ -7,6 +7,7 @@ import { addLogForget } from '../forget/add-log-forget';
 import { buildLogForgetTool } from '../forget/build-log-forget-tool';
 import { runInForceSeedAndWake } from '../seed/run-in-force-seed-and-wake';
 import { buildActions } from '../test/build-actions';
+import { buildStubImageProviders } from '../test/build-stub-image-providers';
 import type { AnyPartDeclaration } from '../types';
 import { buildTestSendTool, testSendKinds } from '../utils/build-test-send-tool';
 import { buildImageProviders } from './build-image-providers';
@@ -130,7 +131,10 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
               ? null
               : {
                   config: options.imageSettings.config,
-                  providers: buildImageProviders(options.imageSettings),
+                  providers:
+                    NIXIE_TEST_BUILD && options.harness !== undefined
+                      ? buildStubImageProviders(options.imageSettings.config)
+                      : buildImageProviders(options.imageSettings),
                 },
           testTools:
             NIXIE_TEST_BUILD && options.harness !== undefined
