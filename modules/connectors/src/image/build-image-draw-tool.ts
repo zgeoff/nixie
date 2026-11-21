@@ -298,10 +298,8 @@ async function writeDraw(
   const image = createShortID();
   const uuid = crypto.randomUUID();
 
-  // the hold gives its room back, so the picture takes it
-  drawn.run.session?.releaseImageRoom?.(drawn.callID);
-
-  const shown = await showImage(drawn.run, png.bytes, options.imageLongEdge);
+  // the hold gives its room back in the step that reserves the picture, so the picture takes it
+  const shown = await showImage(drawn.run, png.bytes, options.imageLongEdge, drawn.callID);
 
   const size = formatImageSize(png);
   const roomLeft = pickRoomLeft(drawn.run.session?.readImageRoom?.());

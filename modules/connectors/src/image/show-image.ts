@@ -6,11 +6,14 @@ export interface ShownImage {
   readonly image: ToolImage | null;
 }
 
-// Passes the picture through the fit and the reservation that a fetched image takes.
+// Passes the picture through the fit and the reservation that a fetched image takes. A call that
+// holds room for its picture names the hold in `heldKey`, and the hold goes in the same synchronous
+// step that reserves the picture, so a call beside it cannot take the room in between.
 export async function showImage(
   run: ToolRun,
   png: Uint8Array,
   longEdge: number,
+  heldKey?: string,
 ): Promise<ShownImage> {
   const reserve = run.session?.reserveImages;
 
@@ -19,6 +22,10 @@ export async function showImage(
   }
 
   const fitted = await fitFetchedImage(png, longEdge);
+
+  if (heldKey !== undefined) {
+    run.session?.releaseImageRoom?.(heldKey);
+  }
 
   return fitted.kind === 'image' && reserve([fitted.image])
     ? { image: fitted.image }
