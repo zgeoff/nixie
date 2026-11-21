@@ -237,6 +237,10 @@ Lifecycle:
   started empty.
 - A reset is an owner action in the web client, for the browser, the shell or both. It destroys the
   sandbox, and the next call creates an empty one.
+- When the sandbox's memory-kill count rises during a call, the call returns
+  `{ refused: 'OUT_OF_MEMORY', sandbox: 'browser' | 'shell' }`, whatever else it would have
+  returned, and the server logs `sandbox.memory_kill` with the sandbox's kind and size. A browser
+  kill also ends every tab, so later calls on them return `TAB_GONE`.
 
 Records:
 
