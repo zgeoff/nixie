@@ -225,12 +225,16 @@ test('it returns out_of_memory and logs sandbox.memory_kill when the kill count 
 test('it asks the text scan about the headers and body a guest is about to send', async () => {
   const texts: string[] = [];
 
-  const ctx = await setupTest({
-    answer: (_request, _askScan, askScanText) =>
-      askScanText('POST body synthetic-secret').then(
-        () => ({ kind: 'closed', ok: true }) as const,
-        () => ({ kind: 'failed', ok: false, reason: 'failed' }) as const,
-      ),
+  const ctx = setupTest({
+    answer: async (_request, _askScan, askScanText) => {
+      try {
+        await askScanText('POST body synthetic-secret');
+      } catch {
+        return { kind: 'failed', ok: false, reason: 'failed' };
+      }
+
+      return { kind: 'closed', ok: true };
+    },
   });
 
   const result = await ctx.computer.call('shell', {
