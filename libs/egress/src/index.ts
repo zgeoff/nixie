@@ -4,3 +4,5 @@ export type { IPAddress } from './parse-ip-address';
 export { parseIPAddress } from './parse-ip-address';
 export { resolveHostAddresses } from './resolve-host-addresses';
 export { toBareHost } from './to-bare-host';
+export type { CheckingProxy, CheckingProxyOptions } from './start-checking-proxy';
+export { startCheckingProxy } from './start-checking-proxy';
