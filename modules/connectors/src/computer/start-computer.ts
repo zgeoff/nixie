@@ -200,6 +200,8 @@ async function runInTurn(
     }
 
     if (exchanged.kind === 'broken') {
+      context.options.logger('computer.guest_failed', { kind, reason: exchanged.message }, 'warn');
+
       await stopGuest(context.states[kind]);
 
       return { status: 'failed', message: exchanged.message };
@@ -207,6 +209,8 @@ async function runInTurn(
 
     return { status: 'reply', reply: exchanged.reply, refusal: exchanged.refusal };
   } catch (error) {
+    context.options.logger('computer.call_failed', { kind, reason: String(error) }, 'warn');
+
     await stopGuest(context.states[kind]);
 
     return { status: 'failed', message: error instanceof Error ? error.message : String(error) };
