@@ -33,7 +33,7 @@ export function makeWebFetch(options: WebFetchOptions) {
 
     const page = await options.startFetch(request);
 
-    return toPrivateResponse(page);
+    return pathname === '/device' ? toDeviceResponse(page) : toPrivateResponse(page);
   };
 }
 
@@ -97,6 +97,29 @@ async function readAsset(path: string, cacheControl: string): Promise<Response |
   const exists = await file.exists();
 
   return exists ? new Response(file, { headers: { 'cache-control': cacheControl } }) : undefined;
+}
+
+// The device page runs on a screen in a shared room: it loads its own files only, talks to nixie
+// alone, and no other page may frame it. The page's inline scripts are Start's hydration data and
+// the theme, so a script source of its own origin cannot do without them.
+const deviceContentSecurityPolicy = [
+  "default-src 'self'",
+  "script-src 'self' 'unsafe-inline'",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' blob:",
+  "connect-src 'self'",
+  "object-src 'none'",
+  "base-uri 'none'",
+  "form-action 'self'",
+  "frame-ancestors 'none'",
+].join('; ');
+
+function toDeviceResponse(response: Response): Response {
+  const page = toPrivateResponse(response);
+
+  page.headers.set('content-security-policy', deviceContentSecurityPolicy);
+
+  return page;
 }
 
 // A rendered page holds the conversation of the session that asked for it, so no cache between the

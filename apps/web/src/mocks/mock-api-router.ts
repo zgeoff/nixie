@@ -6,6 +6,7 @@ import type { ReadonlyDeep } from '../types';
 import { isForgettableKind } from './is-forgettable-kind';
 import { mockApprovalProcedures } from './mock-approval-procedures';
 import { mockDefinitionProcedures } from './mock-definition-procedures';
+import { mockDeviceProcedures } from './mock-device-procedures';
 import { mockFileProcedures } from './mock-file-procedures';
 import { mockImplementer } from './mock-implementer';
 import { mockMandateProcedures } from './mock-mandate-procedures';
@@ -52,6 +53,7 @@ export const mockAPIRouter = os.router({
       return readMockBackupNotice();
     }),
   },
+  devices: mockDeviceProcedures,
   files: mockFileProcedures,
   reminders: mockReminderProcedures,
   conversation: {
@@ -233,6 +235,20 @@ export const mockAPIRouter = os.router({
       const code = await store.enrolmentCodes.create({});
 
       return { code: code.code, expiresAt: code.expiresAt };
+    }),
+
+    signOut: os.sessions.signOut.handler(async (options) => {
+      const session = requireMockSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
+
+      const signedOutAt = new Date();
+
+      await store.sessions.update(session, {
+        data(draft) {
+          draft.revokedAt = signedOutAt;
+        },
+      });
+
+      return { signedOutAt };
     }),
 
     list: os.sessions.list.handler((options) => {
