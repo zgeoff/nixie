@@ -18,11 +18,13 @@ async function setupTest() {
   await mkdir(root);
 
   const scanned: string[] = [];
+  const scannedTexts: string[] = [];
   let isNew = true;
 
   const handle = makeShellHandler({
     root,
     baseEnv: { PATH: process.env['PATH'] ?? '', HOME: base },
+    bridgeScript: join(import.meta.dir, 'bridge-main.ts'),
     checkAddress: () => true,
     resolveHost: () => Promise.resolve(['127.0.0.1']),
     takeIsDiskNew: () => {
@@ -37,12 +39,23 @@ async function setupTest() {
   return {
     root,
     scanned,
+    scannedTexts,
     send: (request: ComputerRequest, refuse?: string) =>
-      handle(request, (url) => {
-        scanned.push(url);
+      handle(
+        request,
+        (url) => {
+          scanned.push(url);
 
-        return refuse === undefined ? Promise.resolve() : Promise.reject(new Error(refuse));
-      }),
+          return refuse === undefined ? Promise.resolve() : Promise.reject(new Error(refuse));
+        },
+        (text) => {
+          scannedTexts.push(text);
+
+          return text.includes('synthetic-secret')
+            ? Promise.reject(new Error('holds a secret'))
+            : Promise.resolve();
+        },
+      ),
   };
 }
 
@@ -167,4 +180,105 @@ test('it stops a connection whose URL the scan refuses', async () => {
   );
 
   expect(reply).toMatchObject({ run: { stdout: { text: '403' } } });
+});
+
+test('it gives a command no route out except the proxy', async () => {
+  const ctx = await setupTest();
+
+  const site = Bun.serve({
+    port: 0,
+    hostname: '127.0.0.1',
+    routes: { '/*': new Response('DIRECT_CONNECTION') },
+  });
+
+  onTestFinished(async () => {
+    await site.stop(true);
+  });
+
+  const reply = await ctx.send({
+    op: 'run',
+    argv: [
+      'bash',
+      '-c',
+      `curl -s --noproxy '*' --max-time 5 http://127.0.0.1:${String(site.port)}/; echo "curl=$?"; (exec 3<>/dev/tcp/127.0.0.1/${String(site.port)}) 2>/dev/null; echo "raw=$?"`,
+    ],
+    timeoutSeconds: 20,
+  });
+
+  expect(reply).toMatchObject({
+    run: { exitCode: 0, stdout: { text: expect.not.stringContaining('DIRECT_CONNECTION') } },
+  });
+
+  expect(reply).toMatchObject({
+    run: { stdout: { text: expect.not.stringMatching(/curl=0|raw=0/u) } },
+  });
+
+  expect(ctx.scanned).toStrictEqual([]);
+});
+
+test('it stops a body that holds a secret the URL does not', async () => {
+  const ctx = await setupTest();
+
+  const site = Bun.serve({
+    port: 0,
+    hostname: '127.0.0.1',
+    routes: { '/*': new Response('received') },
+  });
+
+  onTestFinished(async () => {
+    await site.stop(true);
+  });
+
+  await Bun.write(join(ctx.root, 'upload.txt'), 'synthetic-secret');
+
+  const reply = await ctx.send({
+    op: 'run',
+    argv: [
+      'bash',
+      '-c',
+      `curl -s -o /dev/null -w '%{http_code}' --data-binary @upload.txt http://pages.test:${String(site.port)}/up`,
+    ],
+    timeoutSeconds: 20,
+  });
+
+  expect(reply).toMatchObject({ run: { stdout: { text: '403' } } });
+});
+
+test('it stops a header that holds a secret', async () => {
+  const ctx = await setupTest();
+
+  const site = Bun.serve({
+    port: 0,
+    hostname: '127.0.0.1',
+    routes: { '/*': new Response('received') },
+  });
+
+  onTestFinished(async () => {
+    await site.stop(true);
+  });
+
+  const reply = await ctx.send({
+    op: 'run',
+    argv: [
+      'bash',
+      '-c',
+      `curl -s -o /dev/null -w '%{http_code}' -H 'X-Note: synthetic-secret' http://pages.test:${String(site.port)}/up`,
+    ],
+    timeoutSeconds: 20,
+  });
+
+  expect(reply).toMatchObject({ run: { stdout: { text: '403' } } });
+});
+
+test('it refuses an encrypted tunnel a command opens', async () => {
+  const ctx = await setupTest();
+
+  const reply = await ctx.send({
+    op: 'run',
+    argv: ['bash', '-c', `curl -s -o /dev/null -w '%{http_code}' https://pages.test:9/`],
+    timeoutSeconds: 20,
+  });
+
+  expect(reply).toMatchObject({ run: { stdout: { text: '000' } } });
+  expect(ctx.scanned).toStrictEqual([]);
 });

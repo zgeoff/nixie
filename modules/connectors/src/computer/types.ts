@@ -27,6 +27,9 @@ export interface ComputerCall {
   readonly request: ComputerRequest;
   readonly scan: ComputerScan;
 
+  // scans the headers and body of a request a guest is about to send
+  readonly scanText: ComputerScan;
+
   // the longest the guest may take after its turn starts
   readonly timeoutMs: number;
 }

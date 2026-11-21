@@ -112,10 +112,16 @@ test('it creates one sandbox of the kind at its size and reuses it for the next 
   const first = await ctx.computer.call('shell', {
     request: ctx.run('ls'),
     scan: ctx.pass,
+    scanText: ctx.pass,
     timeoutMs: 5000,
   });
 
-  await ctx.computer.call('shell', { request: ctx.run('ls'), scan: ctx.pass, timeoutMs: 5000 });
+  await ctx.computer.call('shell', {
+    request: ctx.run('ls'),
+    scan: ctx.pass,
+    scanText: ctx.pass,
+    timeoutMs: 5000,
+  });
 
   expect(first).toMatchObject({ status: 'reply', reply: { kind: 'run' } });
 
@@ -138,6 +144,7 @@ test('it gives the browser 1 GiB of memory', async () => {
   await ctx.computer.call('browser', {
     request: { op: 'close', tab: 't1' },
     scan: ctx.pass,
+    scanText: ctx.pass,
     timeoutMs: 5000,
   });
 
@@ -162,6 +169,7 @@ test('it returns busy to a call that waits past the limit for its turn', async (
   const first = ctx.computer.call('shell', {
     request: ctx.run('a'),
     scan: ctx.pass,
+    scanText: ctx.pass,
     timeoutMs: 5000,
   });
 
@@ -170,6 +178,7 @@ test('it returns busy to a call that waits past the limit for its turn', async (
   const second = ctx.computer.call('shell', {
     request: ctx.run('b'),
     scan: ctx.pass,
+    scanText: ctx.pass,
     timeoutMs: 5000,
   });
 
@@ -198,6 +207,7 @@ test('it returns out_of_memory and logs sandbox.memory_kill when the kill count 
   const result = await ctx.computer.call('browser', {
     request: { op: 'close', tab: 't1' },
     scan: ctx.pass,
+    scanText: ctx.pass,
     timeoutMs: 5000,
   });
 
@@ -209,6 +219,41 @@ test('it returns out_of_memory and logs sandbox.memory_kill when the kill count 
     kind: 'browser',
     memoryMiB: 1024,
     kills: 1,
+  });
+});
+
+test('it asks the text scan about the headers and body a guest is about to send', async () => {
+  const texts: string[] = [];
+
+  const ctx = await setupTest({
+    answer: async (_request, _askScan, askScanText) => {
+      try {
+        await askScanText('POST body synthetic-secret');
+      } catch {
+        return { kind: 'failed', ok: false, reason: 'failed' };
+      }
+
+      return { kind: 'closed', ok: true };
+    },
+  });
+
+  const result = await ctx.computer.call('shell', {
+    request: ctx.run('a'),
+    scan: ctx.pass,
+    scanText: (text) => {
+      texts.push(text);
+
+      return Promise.resolve({ kind: 'refuse' as const, reason: 'holds a secret' });
+    },
+    timeoutMs: 5000,
+  });
+
+  expect(texts).toStrictEqual(['POST body synthetic-secret']);
+
+  expect(result).toMatchObject({
+    status: 'reply',
+    reply: { kind: 'failed', reason: 'failed' },
+    refusal: 'holds a secret',
   });
 });
 
@@ -234,6 +279,7 @@ test('it asks the scan about each hop a guest sends and says why one was refused
 
       return Promise.resolve({ kind: 'refuse' as const, reason: 'holds a secret' });
     },
+    scanText: ctx.pass,
     timeoutMs: 5000,
   });
 
@@ -249,13 +295,23 @@ test('it asks the scan about each hop a guest sends and says why one was refused
 test('it sleeps an idle sandbox, wakes it for the next call and starts its guest again', async () => {
   const ctx = setupTest();
 
-  await ctx.computer.call('shell', { request: ctx.run('a'), scan: ctx.pass, timeoutMs: 5000 });
+  await ctx.computer.call('shell', {
+    request: ctx.run('a'),
+    scan: ctx.pass,
+    scanText: ctx.pass,
+    timeoutMs: 5000,
+  });
 
   ctx.clock.advance(5 * 60 * 1000);
 
   await waitForCondition(() => ctx.state.sleeps === 1);
 
-  await ctx.computer.call('shell', { request: ctx.run('b'), scan: ctx.pass, timeoutMs: 5000 });
+  await ctx.computer.call('shell', {
+    request: ctx.run('b'),
+    scan: ctx.pass,
+    scanText: ctx.pass,
+    timeoutMs: 5000,
+  });
 
   expect(ctx.state.wakes).toBe(1);
   expect(ctx.state.guests).toBe(2);
@@ -267,6 +323,7 @@ test('it keeps a browser awake for 30 minutes and a shell for 5', async () => {
   await ctx.computer.call('browser', {
     request: { op: 'close', tab: 't1' },
     scan: ctx.pass,
+    scanText: ctx.pass,
     timeoutMs: 5000,
   });
 
@@ -282,7 +339,12 @@ test('it keeps a browser awake for 30 minutes and a shell for 5', async () => {
 test('it keeps a sandbox awake while a hold stands', async () => {
   const ctx = setupTest();
 
-  await ctx.computer.call('shell', { request: ctx.run('a'), scan: ctx.pass, timeoutMs: 5000 });
+  await ctx.computer.call('shell', {
+    request: ctx.run('a'),
+    scan: ctx.pass,
+    scanText: ctx.pass,
+    timeoutMs: 5000,
+  });
 
   const release = ctx.computer.hold('shell', 72 * 60 * 60 * 1000);
 
@@ -303,6 +365,7 @@ test('it drops every tab at a wake, so a tab from before the sleep is gone', asy
   await ctx.computer.call('browser', {
     request: { op: 'close', tab: 't1' },
     scan: ctx.pass,
+    scanText: ctx.pass,
     timeoutMs: 5000,
   });
 
@@ -318,9 +381,21 @@ test('it drops every tab at a wake, so a tab from before the sleep is gone', asy
 test('it destroys a sandbox at a reset, and the next call makes an empty one', async () => {
   const ctx = setupTest();
 
-  await ctx.computer.call('shell', { request: ctx.run('a'), scan: ctx.pass, timeoutMs: 5000 });
+  await ctx.computer.call('shell', {
+    request: ctx.run('a'),
+    scan: ctx.pass,
+    scanText: ctx.pass,
+    timeoutMs: 5000,
+  });
+
   await ctx.computer.reset(['shell']);
-  await ctx.computer.call('shell', { request: ctx.run('b'), scan: ctx.pass, timeoutMs: 5000 });
+
+  await ctx.computer.call('shell', {
+    request: ctx.run('b'),
+    scan: ctx.pass,
+    scanText: ctx.pass,
+    timeoutMs: 5000,
+  });
 
   expect(ctx.stub.destroyed).toHaveLength(1);
   expect(ctx.stub.created).toHaveLength(2);

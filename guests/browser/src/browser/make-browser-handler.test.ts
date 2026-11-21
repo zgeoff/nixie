@@ -73,11 +73,15 @@ async function setupTest() {
     url: `http://pages.test:${String(site.port)}/`,
     scanned,
     send: (request: ComputerRequest, refuse?: string) =>
-      handle(request, (url) => {
-        scanned.push(url);
+      handle(
+        request,
+        (url) => {
+          scanned.push(url);
 
-        return refuse === undefined ? Promise.resolve() : Promise.reject(new Error(refuse));
-      }),
+          return refuse === undefined ? Promise.resolve() : Promise.reject(new Error(refuse));
+        },
+        () => Promise.resolve(),
+      ),
   };
 }
 
@@ -127,6 +131,29 @@ test.skipIf(!hasChromium)('it fills a field and submits the form of the page', a
     page: { text: expect.stringContaining('value="Ada"') },
   });
 });
+
+test.skipIf(!hasChromium)(
+  'it keeps the control numbers after a read of the page as text',
+  async () => {
+    const ctx = await setupTest();
+
+    await ctx.send(ctx.open(ctx.url));
+    await ctx.send({ op: 'read', tab: 't1', mode: 'text' });
+
+    const reply = await ctx.send({
+      op: 'act',
+      tab: 't1',
+      expectURL: ctx.url,
+      acts: [{ kind: 'fill', element: 'E1', value: 'Ada' }],
+      submit: false,
+    });
+
+    expect(reply).toMatchObject({
+      kind: 'page',
+      page: { text: expect.stringContaining('value="Ada"') },
+    });
+  },
+);
 
 test.skipIf(!hasChromium)(
   'it refuses an act when the page is no longer at the expected URL',

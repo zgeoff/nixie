@@ -53,10 +53,10 @@ async function setupTest(options: SetupOptions) {
   const adapter = buildStubSandboxAdapter(async (stdin, stdout) => {
     await runComputerGuest(
       { input: stdin, write: (bytes) => stdout.write(bytes) },
-      (request, askScan) => {
+      (request, askScan, askScanText) => {
         requests.push(request);
 
-        return answer(request, askScan);
+        return answer(request, askScan, askScanText);
       },
       10_000_000,
     );
@@ -163,6 +163,29 @@ test('it refuses an open whose redirect holds a secret and tells the model why',
     answer: (replies) => async (_request, askScan) => {
       try {
         await askScan('https://site.test/next?key=hunter2');
+      } catch {
+        return { kind: 'failed', ok: false, reason: 'failed' };
+      }
+
+      return replies.page;
+    },
+  });
+
+  const outcome = await ctx.call('computer.open', { url: 'https://site.test/form' });
+
+  expect(outcome).toMatchObject({
+    status: 'ok',
+    refusalCode: 'SECRET_REFUSED',
+    result: { refused: { code: 'SECRET_REFUSED' } },
+  });
+});
+
+test('it refuses a call whose request body holds a secret the URL does not', async () => {
+  const ctx = await setupTest({
+    secret: 'hunter2',
+    answer: (replies) => async (_request, _askScan, askScanText) => {
+      try {
+        await askScanText('POST /up\n\nkey=hunter2');
       } catch {
         return { kind: 'failed', ok: false, reason: 'failed' };
       }

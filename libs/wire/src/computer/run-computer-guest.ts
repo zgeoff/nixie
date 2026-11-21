@@ -1,6 +1,7 @@
 import { encodeFrame } from '../frame/encode-frame';
 import { makeFrameDecoder } from '../frame/make-frame-decoder';
 import { parseJSONOrNull } from '../utils/parse-json-or-null';
+import type { ComputerHopFrame } from './computer-hop-frame';
 import type { ComputerReply } from './computer-reply';
 import type { ComputerRequest } from './computer-request';
 import { decodeComputerRequest } from './decode-computer-request';
@@ -14,9 +15,13 @@ export interface ComputerGuestIO {
 // asks the server to scan a URL and waits for its pass; rejects when the server stops the guest
 export type AskScan = (url: string) => Promise<void>;
 
+// asks the server to scan the text of a request's headers or body, which holds no URL to exempt
+export type AskScanText = (text: string) => Promise<void>;
+
 export type ComputerHandler = (
   request: ComputerRequest,
   askScan: AskScan,
+  askScanText: AskScanText,
 ) => Promise<ComputerReply>;
 
 // A guest is one process that answers request frames one at a time, until its input closes. A
@@ -44,8 +49,8 @@ export async function runComputerGuest(
     return pending.shift() ?? null;
   };
 
-  const askScan: AskScan = async (url) => {
-    await io.write(encodeFrame(encodeComputerMessage({ kind: 'hop', url })));
+  const askServer = async (hop: ComputerHopFrame): Promise<void> => {
+    await io.write(encodeFrame(encodeComputerMessage(hop)));
 
     const frame = await readFrame();
 
@@ -70,6 +75,9 @@ export async function runComputerGuest(
     }
   };
 
+  const askScan: AskScan = (url) => askServer({ kind: 'hop', url });
+  const askScanText: AskScanText = (text) => askServer({ kind: 'hop-content', text });
+
   for (;;) {
     const frame = await readFrame();
 
@@ -77,7 +85,7 @@ export async function runComputerGuest(
       return;
     }
 
-    const reply = await handle(decodeComputerRequest(frame), askScan);
+    const reply = await handle(decodeComputerRequest(frame), askScan, askScanText);
 
     await io.write(encodeFrame(encodeComputerMessage(reply)));
   }

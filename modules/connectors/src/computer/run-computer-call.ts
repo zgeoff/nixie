@@ -53,26 +53,48 @@ export async function runComputerCall(
     request: input.request,
     timeoutMs: input.timeoutMs,
     scan: (url) => scanURL(url, scan),
+    scanText: (text) => scanText(text, scan),
   });
 
   return sortCallResult(result, input.kind);
 }
 
-// The scan of a queued action, which has no typed URL to exempt.
-export function makeActionScan(options: ComputerToolOptions): ComputerScan {
+// The scans of a queued action, which has no typed URL to exempt.
+export function makeActionScans(options: ComputerToolOptions): {
+  readonly scan: ComputerScan;
+  readonly scanText: ComputerScan;
+} {
   const scan: SecretScan = {
     findSecret: options.findSecret,
     logger: options.logger,
     isExempt: () => Promise.resolve(false),
   };
 
-  return (url) => scanURL(url, scan);
+  return { scan: (url) => scanURL(url, scan), scanText: (text) => scanText(text, scan) };
 }
 
 async function scanURL(url: string, scan: SecretScan): Promise<ScanVerdict> {
   const reason = await refuseFetchURL(url, scan);
 
   return reason === null ? { kind: 'pass' } : { kind: 'refuse', reason };
+}
+
+const contentRefusalEvent = 'computer.secret_refused';
+
+// The headers and body of a request never hold a URL the owner typed, so no exemption applies.
+function scanText(text: string, scan: SecretScan): Promise<ScanVerdict> {
+  const found = scan.findSecret(text);
+
+  if (found === null) {
+    return Promise.resolve({ kind: 'pass' });
+  }
+
+  scan.logger(contentRefusalEvent, { rule: found.rule });
+
+  return Promise.resolve({
+    kind: 'refuse',
+    reason: `the request holds a secret (rule ${found.rule}), so it was not sent`,
+  });
 }
 
 export function sortCallResult(result: CallResult, kind: ComputerKind): ComputerOutcome {

@@ -16,12 +16,6 @@ export interface ReadOptions {
   readonly isDiskNew: boolean;
 }
 
-export interface ReadOptions {
-  readonly mode: 'text' | 'snapshot';
-  readonly textBytes: number;
-  readonly isDiskNew: boolean;
-}
-
 type PageReply = Extract<ComputerReply, { kind: 'page' }>;
 
 // The tab's page as text, with link marks, and in snapshot mode with its controls numbered. The

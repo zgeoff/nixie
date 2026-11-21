@@ -15,7 +15,7 @@ export type ExchangeResult =
   | { readonly kind: 'reply'; readonly reply: ComputerReply; readonly refusal: string | null }
   | { readonly kind: 'broken'; readonly message: string };
 
-// Sends one request and reads frames until the reply. A hop frame goes to the call's scan, and the
+// Sends one request and reads frames until the reply. A hop frame goes to the call's scan of URLs or of text, and the
 // guest hears pass or refuse before it goes on. A guest that exits, sends nonsense or passes the
 // call's time limit leaves the exchange broken, and the caller stops it.
 export async function exchangeWithGuest(
@@ -54,11 +54,13 @@ async function readUntilReply(
 
     const frame = decodeComputerGuestFrame(next.value);
 
-    if (frame.kind !== 'hop') {
+    if (frame.kind !== 'hop' && frame.kind !== 'hop-content') {
       return { kind: 'reply', reply: frame, refusal };
     }
 
-    const verdict = await waitOrTimeOut(call.scan(frame.url), limit);
+    const scanning = frame.kind === 'hop' ? call.scan(frame.url) : call.scanText(frame.text);
+
+    const verdict = await waitOrTimeOut(scanning, limit);
 
     if (verdict.kind === 'refuse') {
       refusal = verdict.reason;

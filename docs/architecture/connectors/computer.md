@@ -103,18 +103,30 @@ A `computer.run` is its own effect, `computer_run`, because the shell reaches th
 
 Every connection from either sandbox leaves through a proxy that its guest starts (`libs/egress`).
 The proxy refuses an address in a denied range, resolves each host once and pins the address it
-checked, and asks nixie to scan each URL for a secret before it connects. The browser also turns off
-QUIC and WebRTC's non-proxied UDP, and asks nixie to scan the URL of every request it makes, with a
-hop frame as the fetch guest does. The shell sets the proxy in the environment of each command.
+checked. Before it connects, it asks nixie to scan the URL of a plain request, and then the headers
+and body, which it holds in full. A body too large to hold, and a chunked body, are refused because
+the proxy cannot scan them first. The scan of headers and bodies has no typed-URL exemption.
+
+The browser also turns off QUIC and WebRTC's non-proxied UDP, and asks nixie to scan the URL of
+every request it makes, with a hop frame as the fetch guest does. Chromium may open a CONNECT
+tunnel, because the guest scans each request before it enters one.
+
+The shell runs each command in a network namespace of its own that holds a loopback and nothing
+else. A bridge there passes the command's proxy settings to a proxy on a Unix socket, so a raw
+socket or `curl --noproxy` finds no route out. The proxy refuses CONNECT, because it cannot read an
+encrypted tunnel, so the shell reaches plain HTTP sites only, and the browser fetches the rest. A
+command's processes end with the command.
+
 Nixie scans the URL of a click, a fill and a run the same way, with no typed-URL exemption, because
 a queued action has no message to exempt it.
 
 ## What the test sandbox shows
 
-The test sandbox runs a guest as a plain process of the host, and enforces no egress. A test shows
-that the guest sends its traffic to the proxy and that the secret scan stops a URL with a secret. It
-cannot show that the network is closed to the guest, which only the imp adapter's egress rules do. A
-journey in `bun verify` runs against a page the harness serves on a `.test` host, which the test
+The test sandbox runs a guest as a plain process of the host. A test shows that a shell command has
+no route out except the proxy, and that the secret scan stops a secret in a URL, a header and a
+body. The shell's namespace needs unprivileged user namespaces in the sandbox's kernel; a command
+fails closed when they are off. The browser's network is closed by Chromium's proxy settings alone.
+A journey in `bun verify` runs against a page the harness serves on a `.test` host, which the test
 build's guests resolve to the loopback address.
 
 ## Memory kills

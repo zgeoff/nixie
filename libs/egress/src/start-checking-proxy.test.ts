@@ -3,11 +3,16 @@ import { makeAddressCheck } from './make-address-check';
 import { startCheckingProxy } from './start-checking-proxy';
 import { askProxy } from './test-utils/ask-proxy';
 
-async function setupTest(overrides: { scanURL?: (url: string) => Promise<void> } = {}) {
+async function setupTest(
+  overrides: { scanURL?: (url: string) => Promise<void>; canTunnel?: boolean } = {},
+) {
   const site = Bun.serve({
     port: 0,
     hostname: '127.0.0.1',
-    routes: { '/*': (request) => new Response(`hello ${new URL(request.url).pathname}`) },
+    routes: {
+      '/*': async (request) =>
+        new Response(`hello ${new URL(request.url).pathname} ${await request.text()}`),
+    },
   });
 
   onTestFinished(async () => {
@@ -15,8 +20,17 @@ async function setupTest(overrides: { scanURL?: (url: string) => Promise<void> }
   });
 
   const scanned: string[] = [];
+  const scannedTexts: string[] = [];
 
   const proxy = await startCheckingProxy({
+    canTunnel: overrides.canTunnel ?? true,
+    scanText: (text) => {
+      scannedTexts.push(text);
+
+      return text.includes('synthetic-secret')
+        ? Promise.reject(new Error('holds a secret'))
+        : Promise.resolve();
+    },
     checkAddress: () => true,
     resolveHost: () => Promise.resolve(['127.0.0.1']),
     scanURL: (url) => {
@@ -30,7 +44,7 @@ async function setupTest(overrides: { scanURL?: (url: string) => Promise<void> }
     await proxy.stop();
   });
 
-  return { site, proxy, scanned };
+  return { site, proxy, scanned, scannedTexts };
 }
 
 test('it forwards a plain request to the address it checked and scans its whole URL', async () => {
@@ -83,6 +97,8 @@ test('it refuses a host that resolves to a non-public address', async () => {
     checkAddress: makeAddressCheck([]),
     resolveHost: () => Promise.resolve(['127.0.0.1']),
     scanURL: () => Promise.resolve(),
+    scanText: () => Promise.resolve(),
+    canTunnel: true,
   });
 
   onTestFinished(async () => {
@@ -102,6 +118,8 @@ test('it refuses a host with one non-public address among public ones', async ()
     checkAddress: makeAddressCheck([]),
     resolveHost: () => Promise.resolve(['93.184.216.34', '10.0.0.1']),
     scanURL: () => Promise.resolve(),
+    scanText: () => Promise.resolve(),
+    canTunnel: true,
   });
 
   onTestFinished(async () => {
@@ -111,4 +129,74 @@ test('it refuses a host with one non-public address among public ones', async ()
   const reply = await askProxy(proxy.port, 'CONNECT pages.test:443 HTTP/1.1\r\n\r\n');
 
   expect(reply).toContain('403 Forbidden');
+});
+
+test('it sends the body of a plain request upstream after the scan of its headers and body passes', async () => {
+  const ctx = await setupTest();
+
+  const reply = await askProxy(
+    ctx.proxy.port,
+    `POST http://pages.test:${String(ctx.site.port)}/up HTTP/1.1\r\nHost: pages.test\r\nContent-Length: 5\r\n\r\nhello`,
+  );
+
+  expect(reply).toContain('hello /up hello');
+  expect(ctx.scannedTexts).toStrictEqual([expect.stringContaining('hello')]);
+});
+
+test('it refuses a request whose body holds a secret the URL does not', async () => {
+  const ctx = await setupTest();
+
+  const reply = await askProxy(
+    ctx.proxy.port,
+    `POST http://pages.test:${String(ctx.site.port)}/up HTTP/1.1\r\nHost: pages.test\r\nContent-Length: 16\r\n\r\nsynthetic-secret`,
+  );
+
+  expect(reply).toContain('403 Forbidden');
+  expect(reply).not.toContain('hello /up');
+});
+
+test('it refuses a request whose header holds a secret', async () => {
+  const ctx = await setupTest();
+
+  const reply = await askProxy(
+    ctx.proxy.port,
+    `GET http://pages.test:${String(ctx.site.port)}/up HTTP/1.1\r\nHost: pages.test\r\nX-Note: synthetic-secret\r\n\r\n`,
+  );
+
+  expect(reply).toContain('403 Forbidden');
+  expect(reply).not.toContain('hello /up');
+});
+
+test('it refuses a chunked body, which it cannot scan before it sends', async () => {
+  const ctx = await setupTest();
+
+  const reply = await askProxy(
+    ctx.proxy.port,
+    `POST http://pages.test:${String(ctx.site.port)}/up HTTP/1.1\r\nHost: pages.test\r\nTransfer-Encoding: chunked\r\n\r\n0\r\n\r\n`,
+  );
+
+  expect(reply).toContain('411 Length Required');
+});
+
+test('it refuses a body larger than it can scan', async () => {
+  const ctx = await setupTest();
+
+  const reply = await askProxy(
+    ctx.proxy.port,
+    `POST http://pages.test:${String(ctx.site.port)}/up HTTP/1.1\r\nHost: pages.test\r\nContent-Length: 2000000\r\n\r\n`,
+  );
+
+  expect(reply).toContain('413 Payload Too Large');
+});
+
+test('it refuses a CONNECT tunnel when the client may not tunnel', async () => {
+  const ctx = await setupTest({ canTunnel: false });
+
+  const reply = await askProxy(
+    ctx.proxy.port,
+    `CONNECT pages.test:${String(ctx.site.port)} HTTP/1.1\r\n\r\n`,
+  );
+
+  expect(reply).toContain('403 Forbidden');
+  expect(ctx.scanned).toStrictEqual([]);
 });

@@ -23,6 +23,7 @@ await runComputerGuest(
   makeShellHandler({
     root,
     baseEnv: { ...Bun.env, HOME: home },
+    bridgeScript: join(import.meta.dir, 'shell/bridge-main.ts'),
     checkAddress: () => true,
     resolveHost: () => Promise.resolve(['127.0.0.1']),
     takeIsDiskNew: () => {

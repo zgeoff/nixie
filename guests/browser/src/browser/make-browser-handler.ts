@@ -39,6 +39,8 @@ export function makeBrowserHandler(options: BrowserHandlerOptions): ComputerHand
       checkAddress,
       resolveHost: options.resolveHost,
       scanURL: gate.scan,
+      scanText: gate.scanText,
+      canTunnel: true,
     });
 
     return proxy.port;
@@ -69,8 +71,8 @@ export function makeBrowserHandler(options: BrowserHandlerOptions): ComputerHand
     return state;
   };
 
-  return async (request, askScan) => {
-    gate.current = askScan;
+  return async (request, askScan, askScanText) => {
+    gate.current = { askScan, askScanText };
 
     if (request.op === 'open') {
       ranges.current = request.deniedRanges;

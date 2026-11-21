@@ -6,7 +6,7 @@ import type { ComputerState } from './computer-state';
 import { buildActionKey } from './computer-state';
 import type { ComputerToolOptions } from './computer-tool-options';
 import {
-  makeActionScan,
+  makeActionScans,
   refuseComputer,
   runComputerCall,
   sortCallResult,
@@ -203,7 +203,7 @@ export async function runBrowserAct(
 
   const outcome = await options.computer.call('browser', {
     timeoutMs: 60_000,
-    scan: makeActionScan(options),
+    ...makeActionScans(options),
     request: { op: 'act', tab: guestTab, expectURL, ...acts },
   });
 

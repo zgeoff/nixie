@@ -6,7 +6,9 @@ export function buildSnapshotScript(mode: 'text' | 'snapshot'): string {
   const mode = ${JSON.stringify(mode)};
   const open = '\\uE000';
   const close = '\\uE001';
-  for (const old of document.querySelectorAll('[data-nixie-e]')) old.removeAttribute('data-nixie-e');
+  if (mode === 'snapshot') {
+    for (const old of document.querySelectorAll('[data-nixie-e]')) old.removeAttribute('data-nixie-e');
+  }
   const links = [];
   const out = [];
   let count = 0;

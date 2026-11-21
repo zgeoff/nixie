@@ -8,7 +8,7 @@ import type { ComputerState } from './computer-state';
 import { buildActionKey } from './computer-state';
 import type { ComputerToolOptions } from './computer-tool-options';
 import {
-  makeActionScan,
+  makeActionScans,
   refuseComputer,
   runComputerCall,
   sortCallResult,
@@ -390,7 +390,7 @@ export async function runShellCommand(
 
   const called = await options.computer.call('shell', {
     timeoutMs: (seconds + 30) * 1000,
-    scan: makeActionScan(options),
+    ...makeActionScans(options),
     request: { op: 'run', argv: ['bash', '-lc', input.command], timeoutSeconds: seconds },
   });
 
