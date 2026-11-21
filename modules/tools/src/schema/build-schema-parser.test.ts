@@ -65,3 +65,38 @@ test('it repeats no part of a key that the call sent, whatever characters the ke
   expect(JSON.stringify(check)).not.toContain(marker);
   expect(JSON.stringify(check)).not.toContain('prefix');
 });
+
+test.each([
+  {
+    name: 'a string over maxLength',
+    schema: { type: 'string', maxLength: 2000 },
+    value: 'x'.repeat(2347),
+    errors: 'data/text is 2,347 characters, 347 over the 2,000 limit',
+  },
+  {
+    name: 'an array over maxItems',
+    schema: { type: 'array', maxItems: 3 },
+    value: [1, 2, 3, 4, 5],
+    errors: 'data/text is 5 items, 2 over the 3 limit',
+  },
+])('it says how far over the limit $name runs', (row) => {
+  const parse = buildSchemaParser({
+    type: 'object',
+    properties: { text: row.schema },
+    required: ['text'],
+  });
+
+  expect(parse({ text: row.value })).toStrictEqual({ isValid: false, errors: row.errors });
+});
+
+test('it counts a character outside the basic plane once', () => {
+  const parse = buildSchemaParser({
+    type: 'object',
+    properties: { text: { type: 'string', maxLength: 2 } },
+  });
+
+  expect(parse({ text: '😀😀😀' })).toStrictEqual({
+    isValid: false,
+    errors: 'data/text is 3 characters, 1 over the 2 limit',
+  });
+});
