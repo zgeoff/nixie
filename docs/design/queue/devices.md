@@ -39,7 +39,9 @@ devices.list({});
 // → { devices: [{ device: 'dk4m7q2w9x', name: 'desk panel', screen: 'on', camera: 'off', online: true,
 //                 pixels: { width: 1920, height: 480 },          // the screen's size, from the device
 //                 showing: { kind: 'image', image: 'k3x9m2p7qa', until: '2026-11-21T08:20:00Z' } }] }
-//   showing is { kind: 'idle' } when the idle scene shows, and null when the device is offline
+//   showing: { kind: 'markdown' } | { kind: 'image', image, until } | { kind: 'page', page, until }
+//   | { kind: 'idle' }. pixels and showing are null while the device is offline. With several open
+//   streams, pixels comes from the newest
 
 device.show({ device: 'dk4m7q2w9x', content: { kind: 'image', image: 'k3x9m2p7qa' }, minutes: 10 });
 // → { shown: true, until: '2026-11-21T08:20:00Z' }   // until: null when minutes is absent
@@ -56,6 +58,8 @@ device.setIdle({
 device.look({ device: 'tb8r3k6m1q' });
 // → { device: 'tb8r3k6m1q', at: '2026-11-21T09:02:11Z', width: 1280, height: 720 } with the still beside it
 //   or { refused: 'CAMERA_OFF' } | { refused: 'OFFLINE' } | { refused: 'UNKNOWN_DEVICE' }
+//   or { refused: 'NO_NOTICE' } when the screen is off, because a look must show its notice
+//   or { refused: 'IMAGE_CAPS_FULL' }, checked before the device takes a still
 ```
 
 ```ts
@@ -73,8 +77,13 @@ interface DeviceShowInput {
   minutes?: number; // 1 to 1,440; the idle scene returns after it. Absent: until the next show
 }
 // devices.list, device.show and device.setIdle declare effects ['note'], execution 'direct'
-// device.look declares ['sense'], a new effect for reading a room, execution 'direct';
-//   your starter rules hold no rule for it, so each look asks until you write one
+// device.look declares ['sense'], a new effect for reading a room, with the device as destination.
+//   It runs direct when a rule allows it and queues when it asks. Its risk class is routine, so its
+//   card offers "always allow" for that device. Your starter rules hold no rule for it.
+
+// device.show refuses UNKNOWN_PAGE for every page until the notebook's build, then PAGE_FORGOTTEN too.
+// device.setIdle refuses UNKNOWN_IMAGE and IMAGE_FORGOTTEN; a scene holds up to 8 blocks and
+//   20,000 characters of markdown in all.
 ```
 
 ### The device's calls
@@ -91,7 +100,10 @@ devices.follow({ pixels: { width: 1920, height: 480 } }); // the screen's size, 
 //   | { kind: 'look'; lookID: string }   // take one still now
 // the first event is what the screen shows now
 
-devices.sendStill({ lookID, still: Uint8Array }); // a JPEG, at most 2 MiB; only for an open look
+devices.sendStill({ lookID, still: Uint8Array }); // a JPEG, at most 2 MiB
+devices.sendStill({ lookID, refused: 'denied' | 'no_camera' }); // the tool returns CAMERA_OFF
+// the server makes each lookID with crypto.randomUUID() and sends the look event to the newest open
+// stream only. The first answer wins; a later one, or one after 10 seconds, is refused
 
 devices.setCapability({ capability: 'screen', isOn: true }); // → { screen: 'on' }; writes device.capability_changed
 devices.readImage({ image: 'k3x9m2p7qa' }); // → the bytes, or NOT_SHOWN
@@ -107,9 +119,18 @@ devices                        -- devices module
   identity_id    text          -- the enrolled identity; a revoke removes the device
   name           text          -- the identity's label, from deviceName
   capabilities   json          -- { screen: false, camera: false, … } at enrolment
-  idle_scene     json null     -- ScreenContent[], sealed under the device's own key
+    idle_scene     json null     -- ScreenContent[], sealed under the device's own key
   updated_at     integer
+
+device.shown                   -- one per device.show
+  device         text
+  content        sealed        -- ScreenContent, under the record's own key
+  until          integer null
+device.idle_set                -- one per device.setIdle; the scene sealed the same way
+device.looked                  -- one per look that returns a still; the still is its attachment
 ```
+
+The server keeps each open stream's `pixels` in memory only.
 
 ## Constraints
 
@@ -137,7 +158,10 @@ devices                        -- devices module
 - The server decrypts the idle scene and each `device.shown` record. A device session never holds a
   key.
 - The `device.shown` record seals its content under its own key, so a forget erases it.
-- When an image or a page is forgotten while it shows, the server sends the idle event.
+- When an image or a page is forgotten while it shows, the server sends the idle event. When one in
+  the idle scene is forgotten, the server drops that block and sends the idle event again.
+- A `setIdle` while the idle scene shows sends the new scene to every open stream.
+- `devices.readImage` serves an image in the show or in the idle scene.
 - The device page sets a Content-Security-Policy and `frame-ancestors 'none'`.
 - Device mode keeps the screen awake with the Wake Lock API while a stream is open.
 
@@ -149,9 +173,10 @@ The camera:
   at least 3 seconds.
 - The browser's own camera permission stays on the device. The device asks for it when you switch
   the camera on, and a look fails with `CAMERA_OFF` when the browser refuses.
-- The still goes beside the result and into the tool_result record's sealed attachments, so a forget
-  erases it. It never becomes an image the assistant can edit or send unless it imports it.
-- A look that gets no still within 10 seconds returns `OFFLINE`.
+- The still goes beside the result, fitted and counted against the session's image caps like a
+  fetched image, and into the `device.looked` record's sealed attachments, so a forget erases it. It
+  never becomes an image the assistant can edit, import or send.
+- A look that gets no answer within 10 seconds of its start returns `OFFLINE`.
 - A device session lapses after 30 idle days, like every session, and an open stream keeps it
   active.
 
