@@ -60,12 +60,19 @@ computer.run({ command: 'ls ~/files', timeoutSeconds: 30 }); // timeoutSeconds: 
 // → { exitCode: 0, stdout: { text: 'notes.md\n', isCut: false }, stderr: { text: '', isCut: false }, seconds: 0.2 }
 
 computer.readFile({ path: '~/files/notes.md', part: 1 });
-// → { path, bytes: 2210, part: 1, parts: 1, text: '…' }  or { refused: 'NOT_TEXT' } | { refused: 'NO_FILE' }
+// → { path, bytes: 2210, part: 1, parts: 1, text: '…' }
+//   or { refused: 'NOT_TEXT' } | { refused: 'NO_FILE' } | { refused: 'BAD_PATH' } | { refused: 'TOO_BIG' }
 computer.writeFile({ path: '~/files/notes.md', text: '…' }); // or from: { image: 'k3x9m2p7qa' } | { file: 'f9k2m4q7ws' }
-// → { path, bytes: 2318 }   `from` copies an image or a code.run file into the shell
+// → { path, bytes: 2318 }   or BAD_PATH | TOO_BIG | DISK_FULL | UNKNOWN_FILE | IMAGE_FORGOTTEN
+//   `from` copies an image or a file into the shell. A write replaces the file and makes its folders
 computer.exportFile({ path: '~/files/chart.png' });
 // → { file: 'f2r8k5w1mz', name: 'chart.png', bytes: 40211 }
-//   a file that file.send, image.import and code.run take, as they take a code.run file; at most 25 MiB
+//   a file that file.send, image.import, mail.send and code.run take; at most 25 MiB, else TOO_BIG.
+//   Its bytes sit in the attachments of its own tool_result record, so its ID resolves on every
+//   thread, and a forget of that record erases it. It reuses the readFile frame.
+
+// paths: under ~/files only. A relative path starts there. A path that leaves it, by `..` or by a
+// symlink, returns BAD_PATH. readFile and writeFile move at most 25 MiB; readFile pages text as read does
 ```
 
 ```ts
@@ -84,7 +91,8 @@ computer.exportFile({ path: '~/files/chart.png' });
 - nixie stores each page's text and links and pages them as `web_fetch` does, with `L` IDs from
   [link IDs](../../architecture/connectors/web-fetch.md#link-ids). `open` never reads the page
   cache, because a tab shows the live page with its cookies.
-- `isDiskNew` is true on the first result after nixie created the sandbox empty.
+- `isDiskNew` is true on the first result from a sandbox that nixie created empty: `open` for the
+  browser, and `run` or a file tool for the shell.
 
 ### The guest's frames
 
@@ -98,7 +106,7 @@ type ComputerRequest =
   | { op: 'close'; tab: string }
   | { op: 'download'; tab: string; element: string }
   | { op: 'run'; argv: string[]; timeoutSeconds: number }
-  | { op: 'readFile'; path: string }
+  | { op: 'readFile'; path: string } // readFile and exportFile
   | { op: 'writeFile'; path: string; bytes: Uint8Array };
 
 type Act = { kind: 'click'; element: string } | { kind: 'fill'; element: string; value: string };
@@ -114,7 +122,16 @@ type ComputerReply =
   | { ok: true; written: { bytes: number } }
   | {
       ok: false;
-      reason: 'stale_element' | 'page_changed' | 'cross_origin_submit' | 'tab_gone' | 'failed';
+      reason:
+        | 'stale_element'
+        | 'page_changed'
+        | 'cross_origin_submit'
+        | 'tab_gone'
+        | 'no_file'
+        | 'bad_path'
+        | 'too_big'
+        | 'disk_full'
+        | 'failed';
     };
 ```
 
@@ -172,8 +189,9 @@ Lifecycle:
   its first use after the release, and copies the profile or the files into the replacement after it
   stops Chromium or the shell.
 - When a sandbox is gone, the next call creates an empty one.
-- The browser sandbox sleeps after 30 minutes idle, and never while a queued act on one of its tabs
-  waits for your decision. The shell sandbox sleeps after 5 minutes idle.
+- The browser sandbox sleeps after 30 minutes idle. While a queued act on one of its tabs waits for
+  your decision, nixie keeps it awake, up to the approval's lapse. When a release replaces the
+  sandbox meanwhile, the act returns `TAB_GONE`. The shell sandbox sleeps after 5 minutes idle.
 - When a wake keeps the sandbox's memory, the tabs and their IDs survive the sleep. When it doesn't,
   Chromium restarts, every tab ID from before the sleep returns `TAB_GONE`, and the profile keeps
   the sign-ins.
