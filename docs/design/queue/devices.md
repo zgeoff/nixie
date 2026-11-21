@@ -43,7 +43,13 @@ devices.list({});
 //   | { kind: 'idle' }. pixels and showing are null while the device is offline. With several open
 //   streams, pixels comes from the newest
 
-device.show({ device: 'dk4m7q2w9x', content: { kind: 'image', image: 'k3x9m2p7qa' }, minutes: 10 });
+device.show({
+  device: 'dk4m7q2w9x',
+  content: { kind: 'image', image: 'k3x9m2p7qa', fit: 'fill' },
+  minutes: 10,
+});
+//   fit: 'whole' (the default) or 'fill', which scales the image to cover the screen and crops the
+//   overflow evenly from both sides
 // → { shown: true, until: '2026-11-21T08:20:00Z' }   // until: null when minutes is absent
 //   or { refused: 'SCREEN_OFF' } | { refused: 'OFFLINE' } | { refused: 'UNKNOWN_DEVICE' }
 //   or { refused: 'IMAGE_FORGOTTEN' } | { refused: 'UNKNOWN_IMAGE' }
@@ -142,8 +148,8 @@ The server keeps each open stream's `pixels` in memory only.
   on.
 - The screen builds first, then the camera. The speaker and the microphone come with their own work
   items.
-- A screen shows an image whole, scaled to fit and centred on black. An empty scene is a black
-  screen.
+- A screen shows an image with `fit: 'whole'` scaled to fit and centred on black, and one with
+  `fit: 'fill'` scaled to cover the screen, centred and cropped. An empty scene is a black screen.
 - `device.show` reaches only a device enrolled to you. Your starter rules allow it.
 - A device is online while it has at least one open `devices.follow` stream. A show goes to every
   open stream of that device, and returns `OFFLINE` at once when there is none.
