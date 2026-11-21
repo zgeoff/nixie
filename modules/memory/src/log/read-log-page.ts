@@ -46,21 +46,45 @@ export interface LogPage {
   readonly next: number | null;
 }
 
+export interface LogPageRead extends LogPage {
+  // how many records the read decrypted
+  readonly scanned: number;
+
+  // the recording times of the first and the last record the read decrypted, or null when it read none
+  readonly searched: { readonly fromAt: number; readonly throughAt: number } | null;
+}
+
 // taskNames maps a task ID to its name, for the line of a task's message.
 export async function readLogPage(
   log: Pick<Log, 'deploymentKey' | 'writer'>,
   query: LogPageQuery,
   taskNames: ReadonlyMap<string, string> = new Map(),
 ): Promise<LogPage> {
+  const read = await readLogPageWithSpan(log, query, taskNames);
+
+  return { entries: read.entries, next: read.next };
+}
+
+// A page with how many records the read decrypted and the span of their recording times.
+export async function readLogPageWithSpan(
+  log: Pick<Log, 'deploymentKey' | 'writer'>,
+  query: LogPageQuery,
+  taskNames: ReadonlyMap<string, string>,
+): Promise<LogPageRead> {
   const bounds = await readSequenceBounds(log, query);
 
   if (bounds === null) {
-    return { entries: [], next: null };
+    return { entries: [], next: null, scanned: 0, searched: null };
   }
 
   const scan = await readPageEntries(log, query, bounds, taskNames);
 
-  return { entries: scan.entries, next: scan.after >= bounds.through ? null : scan.after };
+  return {
+    entries: scan.entries,
+    next: scan.after >= bounds.through ? null : scan.after,
+    scanned: scan.scanned,
+    searched: scan.searched,
+  };
 }
 
 export interface LogEntryQuery {
@@ -132,6 +156,7 @@ interface PageScan {
 
   readonly after: number;
   readonly scanned: number;
+  readonly searched: LogPageRead['searched'];
 }
 
 const batchSize = 100;
@@ -143,7 +168,7 @@ async function readPageEntries(
   taskNames: ReadonlyMap<string, string>,
 ): Promise<PageScan> {
   const words = query.words.map((word) => normalizeSearchText(word)).filter((word) => word !== '');
-  let scan: PageScan = { entries: [], after: bounds.after, scanned: 0 };
+  let scan: PageScan = { entries: [], after: bounds.after, scanned: 0, searched: null };
 
   while (
     scan.entries.length < query.limit &&
@@ -198,7 +223,12 @@ function buildNextScan(
   batch: readonly RecordWithChanges[],
   filter: EntryFilter,
 ): PageScan {
-  const next = { entries: [...scan.entries], after: scan.after, scanned: scan.scanned };
+  const next = {
+    entries: [...scan.entries],
+    after: scan.after,
+    scanned: scan.scanned,
+    searched: scan.searched,
+  };
 
   for (const read of batch) {
     if (next.entries.length === filter.query.limit) {
@@ -207,6 +237,13 @@ function buildNextScan(
 
     next.after = read.record.sequence;
     next.scanned += 1;
+
+    const recordedAt = read.record.recordedAt.getTime();
+
+    next.searched = {
+      fromAt: next.searched?.fromAt ?? recordedAt,
+      throughAt: recordedAt,
+    };
 
     if (filter.voided.has(read.record.sequence)) {
       continue;
