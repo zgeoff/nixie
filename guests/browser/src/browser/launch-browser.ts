@@ -1,5 +1,6 @@
 import { mkdir, stat, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import type { Request } from 'playwright-core';
 import { chromium } from 'playwright-core';
 import type { ScanGate } from './make-scan-gate';
 import { viewport } from './shoot-tab';
@@ -13,8 +14,8 @@ export interface BrowserLaunch {
 }
 
 // Starts Chromium on the profile in the home folder. Every connection goes to the checking proxy,
-// QUIC and WebRTC are off so nothing leaves past it, and each navigation asks the server to scan
-// its URL before it goes.
+// QUIC and WebRTC are off so nothing leaves past it, and each request has its headers and body
+// scanned here, because the proxy cannot read them inside an encrypted tunnel.
 export async function launchBrowser(launch: BrowserLaunch): Promise<BrowserState> {
   const profile = join(launch.home, 'profile');
   const marker = join(launch.home, '.nixie-disk-used');
@@ -33,6 +34,7 @@ export async function launchBrowser(launch: BrowserLaunch): Promise<BrowserState
     viewport,
     ...(launch.executablePath === undefined ? {} : { executablePath: launch.executablePath }),
     acceptDownloads: true,
+    serviceWorkers: 'block',
     proxy: { server: `http://127.0.0.1:${String(launch.proxyPort)}`, bypass: '<-loopback>' },
     args: [
       '--disable-quic',
@@ -48,21 +50,35 @@ export async function launchBrowser(launch: BrowserLaunch): Promise<BrowserState
     state.tabs.clear();
   });
 
+  await context.routeWebSocket('**/*', (socket) => socket.close({ code: 1008 }));
+
   await context.route('**/*', async (route) => {
     const request = route.request();
 
-    if (request.isNavigationRequest()) {
-      try {
+    try {
+      if (request.isNavigationRequest()) {
         await launch.gate.scan(request.url());
-      } catch {
-        await route.abort('blockedbyclient');
-
-        return;
       }
+
+      const text = await readRequestText(request);
+
+      await launch.gate.scanText(text);
+    } catch {
+      await route.abort('blockedbyclient');
+
+      return;
     }
 
     await route.continue();
   });
 
   return state;
+}
+
+async function readRequestText(request: Request): Promise<string> {
+  const headers = await request.allHeaders();
+
+  const lines = Object.entries(headers).map(([name, value]) => `${name}: ${value}`);
+
+  return `${lines.join('\n')}\n\n${request.postDataBuffer()?.toString('utf8') ?? ''}`;
 }
