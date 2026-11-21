@@ -54,9 +54,7 @@ searches for. Every paid search records its cost under `hidden` in the
 the search cost. That includes a search the tool refuses because a forget ended the session while
 the provider answered. Result records from earlier releases hold `costUSD` inside the result, and
 `log.read` ([reading the log](../memory/context.md#reading-the-log)) drops it. Code that totals
-search spend from the log therefore reads both places. After a rollback, the release before prints
-`hidden` whole in its `log.read`, so the model then reads the cost of searches that the later
-release recorded.
+search spend from the log reads both places.
 
 ## The budgets
 
