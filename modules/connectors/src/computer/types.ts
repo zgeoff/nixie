@@ -1,3 +1,4 @@
+import type { JSONObject } from '@heynixie/log';
 import type { ComputerReply, ComputerRequest } from '@heynixie/wire';
 
 export type ComputerKind = 'browser' | 'shell';
@@ -28,4 +29,10 @@ export interface ComputerCall {
 
   // the longest the guest may take after its turn starts
   readonly timeoutMs: number;
+}
+
+// the tool and the arguments of a queued call, as its action holds them
+export interface ComputerAttempt {
+  readonly tool: string;
+  readonly arguments: JSONObject;
 }
