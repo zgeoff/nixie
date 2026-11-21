@@ -35,7 +35,7 @@ export interface VectorIndex {
 interface VectorState {
   readonly encoder: Encoder;
   readonly onError: (error: unknown) => void;
-  readonly vectors: Map<string, Int8Array>;
+  readonly vectors: Map<string, readonly Int8Array[]>;
   readonly generations: Map<string, number>;
   nextGeneration: number;
   isReady: boolean;
@@ -159,21 +159,37 @@ async function updateVectors(state: VectorState, entries: readonly StampedEntry[
     return;
   }
 
-  const texts = current.map((entry) => entry.text);
+  const chunked = current.map((entry) => ({ entry, chunks: splitEntryText(state, entry.text) }));
 
-  const encoded = await state.encoder.encode(texts, 'document');
+  const encoded = await state.encoder.encode(
+    chunked.flatMap((item) => item.chunks),
+    'document',
+  );
 
-  for (const [index, entry] of current.entries()) {
-    const vector = encoded[index];
+  let offset = 0;
 
-    if (vector !== undefined && isCurrent(state, entry)) {
-      state.vectors.set(entry.itemID, toStoredVector(vector));
+  for (const item of chunked) {
+    const vectors = encoded.slice(offset, offset + item.chunks.length);
+
+    offset += item.chunks.length;
+
+    if (vectors.length > 0 && isCurrent(state, item.entry)) {
+      state.vectors.set(
+        item.entry.itemID,
+        vectors.map((vector) => toStoredVector(vector)),
+      );
     }
   }
 }
 
 function isCurrent(state: VectorState, entry: StampedEntry): boolean {
   return state.generations.get(entry.itemID) === entry.generation;
+}
+
+function splitEntryText(state: VectorState, text: string): readonly string[] {
+  const chunks = state.encoder.splitText?.(text) ?? [];
+
+  return chunks.length === 0 ? [text] : chunks;
 }
 
 // The encoder's model is trained so that its first numbers carry most of a vector's meaning.
@@ -215,7 +231,10 @@ async function readVectorMatches(
 
   return [...state.vectors]
     .filter(([itemID]) => !excluded.has(itemID))
-    .map(([itemID, vector]) => ({ itemID, similarity: buildSimilarity(target, vector) }))
+    .map(([itemID, vectors]) => ({
+      itemID,
+      similarity: Math.max(...vectors.map((vector) => buildSimilarity(target, vector))),
+    }))
     .filter((match) => match.similarity >= options.minSimilarity)
     .toSorted((first, second) => second.similarity - first.similarity)
     .slice(0, options.limit);

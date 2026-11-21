@@ -76,11 +76,11 @@ no prose. `moment.find` decrypts every candidate's text in process memory, a bat
 matches each query word against it, because a full-text index on disk would keep a destroyed
 moment's words.
 
-`moment.find` also ranks moments by meaning. The store keeps a vector index for moments alone, with
-one vector for each active or retired moment, encoded from its title, note and reflections together.
-That index works like the [item vector index](./store.md#the-indexes): it lives in process memory,
-rebuilds in the background after each start, and leaves each search on keywords alone until the
-rebuild ends.
+`moment.find` also ranks moments by meaning. The store keeps a vector index for moments alone, which
+encodes each active or retired moment from its title, note and reflections together. That index
+works like the [item vector index](./store.md#the-indexes): it splits a long moment into chunks and
+ranks it by its best chunk, lives in process memory, rebuilds in the background after each start,
+and leaves each search on keywords alone until the rebuild ends.
 
 Before each search, the store reads every moment kept or changed since the last search, whether a
 tool call or a client action changed it. It encodes each active or retired moment among them, drops

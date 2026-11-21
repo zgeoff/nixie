@@ -5,10 +5,12 @@ import { buildDerivedLabels } from '../label/build-derived-labels';
 import type { OpenedProposal } from '../proposal/read-open-proposal';
 import type { MemorySubject, StoreParts, VersionRef } from '../types';
 import { ProposalClosedError } from '../utils/error/proposal-closed-error';
+import { TextLimitError } from '../utils/error/text-limit-error';
 import { UntilPassedError } from '../utils/error/until-passed-error';
 import { getRowSubject } from '../utils/get-row-subject';
 import { parseEvidence } from '../utils/parse-evidence';
 import type { VersionLabels } from '../version/write-version-in-transaction';
+import { findTextLimitError } from '../write/find-text-limit-error';
 import { buildApprovalExtras } from './build-approval-extras';
 import { buildApprovedProvenance } from './build-approved-provenance';
 
@@ -46,6 +48,17 @@ function writeApprovedVersion(parts: StoreParts, approved: ApprovedRemember): Pr
   const approvalExtras = buildApprovalExtras(parts, row, answer);
   const until = opened.text.until;
   const text = answer.editedText ?? opened.text.text;
+
+  // The proposal's text met its limit when the tool took it; an edited one meets it here.
+  const limitError =
+    answer.editedText === undefined
+      ? null
+      : findTextLimitError(answer.editedText, row.new_subject ?? getRowSubject(row));
+
+  if (limitError !== null) {
+    return Promise.reject(new TextLimitError(limitError));
+  }
+
   const labels = pickApprovedLabels(opened, { text, isCreation: target === null });
 
   const extras = {

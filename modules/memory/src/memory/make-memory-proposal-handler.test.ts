@@ -143,6 +143,28 @@ test('it refuses an edit of a pin proposal as NOT_ALLOWED with memory reason PIN
   expect(pending).toHaveLength(1);
 });
 
+test('it refuses an edited text of 2,001 characters for an owner note as NOT_ALLOWED with memory reason TEXT_TOO_LONG', async () => {
+  const ctx = await setupTest();
+  const proposal = await createProposal(ctx.memory.store, { text: 'Swims at the lido on Fridays' });
+
+  const outcome = await ctx.answer({
+    proposalID: proposal.proposalID,
+    actionHash: proposal.actionHash,
+    choice: 'approve',
+    identityID: 'identity-1',
+    memory: { editedText: 'Swims at the lido on Fridays. '.repeat(70).slice(0, 2001) },
+  });
+
+  const pending = await ctx.memory.store.proposals.listPending();
+
+  expect(outcome).toStrictEqual({
+    status: 'refused',
+    refusal: { error: 'NOT_ALLOWED', reason: 'TEXT_TOO_LONG' },
+  });
+
+  expect(pending).toHaveLength(1);
+});
+
 test('it refuses an answer to a proposal whose target has a newer version as CONFLICT', async () => {
   const ctx = await setupTest();
 

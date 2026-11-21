@@ -1,7 +1,9 @@
 import type { MemorySubjectCounts } from '@heynixie/db';
 import type { ApprovalResult, MemoryProposal, MemoryProposals } from '../gate/gate-context';
 import type { ForgetStatus, MemoryStore, Provenance, VersionRef } from '../types';
+import { TextLimitError } from '../utils/error/text-limit-error';
 import type { ItemHistory } from '../view/memory-view';
+import { findTextLimitError } from '../write/find-text-limit-error';
 
 export type HostMemoryStore = Pick<
   MemoryStore,
@@ -70,7 +72,17 @@ export function buildHostMemory(store: HostMemoryStore): HostMemory {
     rejectProposal: (rejection) =>
       store.proposals.reject({ ...rejection, identityID: hostIdentityID }),
     readHistory: (itemID) => store.readHistory(itemID),
-    edit: (target, text) => store.remember({ text, target, provenance: ownerProvenance }),
+    edit: async (target, text) => {
+      const history = await store.readHistory(target.itemID);
+
+      const limitError = findTextLimitError(text, history?.subject ?? 'owner');
+
+      if (limitError !== null) {
+        throw new TextLimitError(limitError);
+      }
+
+      return store.remember({ text, target, provenance: ownerProvenance });
+    },
     retire: (target) => store.retire({ target, provenance: ownerProvenance }),
     restore: (target) => store.restore({ target, provenance: ownerProvenance }),
     pin: (itemID, isPinned) => store.pin({ itemID, isPinned, provenance: ownerProvenance }),

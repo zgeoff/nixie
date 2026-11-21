@@ -20,7 +20,7 @@ const versionTargetSchema = z.strictObject({
   version: z.int().positive(),
 });
 
-const itemTextSchema = z.string().max(2000).regex(/\S/u);
+const itemTextSchema = z.string().max(6000).regex(/\S/u);
 const proposalOriginSchema = z.enum(['owner', 'conversation', 'task']);
 const memoryOriginSchema = z.enum([...proposalOriginSchema.options, 'lapse']);
 const contentSourceSchema = z.enum(['owner', 'owner_data', 'untrusted']);
@@ -132,6 +132,7 @@ const memory = oc.errors({
   RETIREMENT_EDIT: { message: 'a retirement takes no edited text', status: 400 },
   PIN_EDIT: { message: 'a pin takes no edited text', status: 400 },
   SELF_NOTE_REFUSED: { message: 'a self-note never takes that change', status: 409 },
+  TEXT_TOO_LONG: { message: 'the text runs past the limit of its subject', status: 400 },
 });
 
 const skillFileSchema = z.object({ path: z.string(), text: z.string() });

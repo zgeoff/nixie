@@ -1,10 +1,17 @@
 import { join } from 'node:path';
 import type { Encoder } from '@heynixie/memory';
 import { Tokenizer } from '@huggingface/tokenizers';
+import { collectTextChunks } from './collect-text-chunks';
 
 export interface ONNXEncoder extends Encoder {
   readonly stop: () => Promise<void>;
 }
+
+// The model reads at most 512 tokens, its 2 special tokens included, so a stored text of more splits
+// into chunks. On a 4,000-character note, a passage in the middle scored 0.39 against a paraphrased
+// query in chunks of 100 tokens and 0.29 in chunks of 400, under recall's 0.3 floor.
+const windowTokens = 510;
+const chunkTokens = 100;
 
 // The model card asks for this prefix on a query and for none on a stored text.
 const queryPrefix = 'Represent this sentence for searching relevant passages: ';
@@ -19,6 +26,9 @@ export async function startONNXEncoder(modelDir: string): Promise<ONNXEncoder> {
   ]);
 
   const tokenizer = new Tokenizer(tokenizerJSON, tokenizerConfig);
+
+  const countTokens = (text: string) =>
+    tokenizer.encode(text, { add_special_tokens: false }).ids.length;
 
   // The session loads by path, so the runtime finds the .onnx_data weights beside the graph.
   const session = await ort.InferenceSession.create(join(modelDir, 'onnx/model_quantized.onnx'), {
@@ -68,6 +78,10 @@ export async function startONNXEncoder(modelDir: string): Promise<ONNXEncoder> {
 
       return vectors;
     },
+    splitText: (text) =>
+      countTokens(text) <= windowTokens
+        ? [text]
+        : collectTextChunks(text, countTokens, chunkTokens),
     stop: () => session.release(),
   };
 }

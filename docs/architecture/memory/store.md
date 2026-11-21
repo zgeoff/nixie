@@ -388,11 +388,19 @@ or 2 items every match scores about zero, and a floor above zero drops every mat
 words. The index stems them with the same tokenizer as the query, and drops each query word whose
 stems all match one of theirs, so "Nixie's" drops with "nixie".
 
-The vector index holds one vector per active item in process memory, and nothing writes it to disk.
-A local text encoder, `mdbr-leaf-ir` on its int8 ONNX weights, makes each vector, of which the index
-keeps the first 256 numbers at one byte each, and ranks items by their dot product with the query's
-vector. The store leaves the excluded words out of the query text it encodes, because a name that
-nearly every item holds pulls every item toward the query.
+The vector index holds the vectors of each active item in process memory, and nothing writes it to
+disk. A local text encoder, `mdbr-leaf-ir` on its int8 ONNX weights, makes each vector, of which the
+index keeps the first 256 numbers at one byte each. The encoder reads at most 512 tokens of a text,
+so it splits a longer stored text, such as a long self-note, into chunks of at most 100 tokens, at a
+paragraph break where one fits, then at a sentence, then at a word. A text the encoder reads whole
+stays one chunk. The index keeps one vector per chunk and ranks each item by the best dot product of
+its chunks with the query's vector, so a passage in the middle of a long item can match a query. The
+chunks are small because the rest of a chunk dilutes its passage: on a 4,000-character test note, a
+paraphrased query scores 0.39 against the 100-token chunk that holds its passage, and 0.29 against a
+400-token chunk, under the similarity floor of 0.3 that `memory.recall` sets. Each start encodes
+every item again, so a change to how texts split reaches every stored item at the next start. The
+store leaves the excluded words out of the query text it encodes, because a name that nearly every
+item holds pulls every item toward the query.
 
 The trigger index is a second pair of indexes in process memory, built as the item indexes are but
 with one keyword row and one vector for each trigger phrase of an active item. It ranks an item by

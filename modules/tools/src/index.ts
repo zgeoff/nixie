@@ -1,4 +1,7 @@
 export { buildSchemaParser } from './schema/build-schema-parser';
+export { countCodePoints } from './schema/count-code-points';
+export type { LimitUnit } from './schema/format-over-limit';
+export { formatOverLimit } from './schema/format-over-limit';
 export { buildToolRegistry } from './build-tool-registry';
 export { collectHeldToolNames } from './tool-name/collect-held-tool-names';
 export { findHeldToolName } from './tool-name/find-held-tool-name';

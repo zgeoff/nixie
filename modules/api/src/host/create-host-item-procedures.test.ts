@@ -117,6 +117,58 @@ test('#edit refuses a version the item has moved past with STALE_VERSION, and ad
   expect(history?.versions).toHaveLength(2);
 });
 
+test('#edit saves a self-note of 5,000 characters', async () => {
+  const ctx = await setupTest();
+
+  const item = await ctx.memory.store.remember({
+    text: 'Enjoys a slow morning question more than a quick one',
+    subject: 'self',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const text = 'The tide tables come out on Sundays. '.repeat(140).slice(0, 5000);
+
+  const ref = await ctx.client.edit({ itemID: item.itemID, version: 1, text });
+  const history = await ctx.memory.store.readHistory(item.itemID);
+
+  expect(ref).toStrictEqual({ itemID: item.itemID, version: 2 });
+  expect(history?.versions[1]).toMatchObject({ status: 'readable', text });
+});
+
+test('#edit refuses an owner note of 2,001 characters with TEXT_TOO_LONG, and adds no version', async () => {
+  const ctx = await setupTest();
+  const item = await createMemoryItem(ctx.memory.store, { text: 'Likes jaz' });
+
+  const edited = ctx.client.edit({
+    itemID: item.itemID,
+    version: 1,
+    text: 'Likes jazz on the radio. '.repeat(81).slice(0, 2001),
+  });
+
+  await edited.catch(() => {});
+
+  const history = await ctx.memory.store.readHistory(item.itemID);
+
+  expect(edited).rejects.toMatchObject({
+    code: 'TEXT_TOO_LONG',
+    status: 400,
+    message: 'data/text is 2,001 characters, 1 over the 2,000 limit',
+  });
+
+  expect(history?.versions).toHaveLength(1);
+});
+
+test('#edit refuses text over 6,000 characters as a bad request', async () => {
+  const ctx = await setupTest();
+  const item = await createMemoryItem(ctx.memory.store, { text: 'Likes jaz' });
+
+  const edited = ctx.client.edit({ itemID: item.itemID, version: 1, text: 'j'.repeat(6001) });
+
+  await edited.catch(() => {});
+
+  expect(edited).rejects.toMatchObject({ code: 'BAD_REQUEST', status: 400 });
+});
+
 test('#edit refuses blank text as a bad request', async () => {
   const ctx = await setupTest();
   const item = await createMemoryItem(ctx.memory.store, { text: 'Likes jaz' });
