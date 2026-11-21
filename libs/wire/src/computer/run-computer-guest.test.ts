@@ -77,3 +77,29 @@ test('it sends a hop frame and waits for the pass before the reply', async () =>
     { kind: 'closed', ok: true },
   ]);
 });
+
+test('it fails the hop of a guest when the server refuses it', async () => {
+  const ctx = setupTest();
+  const outcomes: string[] = [];
+
+  const running = ctx.start(async (_request, askScan) => {
+    await askScan('https://example.org/next').catch((error: unknown) => {
+      const message = error instanceof Error ? error.message : 'no message';
+
+      outcomes.push(message);
+    });
+
+    return { kind: 'closed', ok: true };
+  });
+
+  await ctx.send({ op: 'close', tab: 't1' });
+
+  await waitForCondition(() => ctx.sent.length === 1);
+
+  await ctx.send({ kind: 'hop-refuse', reason: 'the URL holds a secret' });
+  await ctx.close();
+
+  await running;
+
+  expect(outcomes).toStrictEqual(['the URL holds a secret']);
+});

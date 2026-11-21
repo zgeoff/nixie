@@ -1,6 +1,6 @@
-import { decodeFetchHopPass } from '../fetch/decode-fetch-hop-pass';
 import { encodeFrame } from '../frame/encode-frame';
 import { makeFrameDecoder } from '../frame/make-frame-decoder';
+import { parseJSONOrNull } from '../utils/parse-json-or-null';
 import type { ComputerReply } from './computer-reply';
 import type { ComputerRequest } from './computer-request';
 import { decodeComputerRequest } from './decode-computer-request';
@@ -12,7 +12,7 @@ export interface ComputerGuestIO {
 }
 
 // asks the server to scan a URL and waits for its pass; rejects when the server stops the guest
-type AskScan = (url: string) => Promise<void>;
+export type AskScan = (url: string) => Promise<void>;
 
 export type ComputerHandler = (
   request: ComputerRequest,
@@ -53,7 +53,21 @@ export async function runComputerGuest(
       throw new Error('the input closed before the server answered a hop');
     }
 
-    decodeFetchHopPass(frame);
+    const answer = parseJSONOrNull(new TextDecoder().decode(frame));
+
+    if (typeof answer !== 'object' || answer === null || !('kind' in answer)) {
+      throw new TypeError('a computer hop needs a hop-pass or hop-refuse frame in answer');
+    }
+
+    if (answer.kind === 'hop-refuse') {
+      const reason = 'reason' in answer ? String(answer.reason) : 'the server refused the hop';
+
+      throw new Error(reason);
+    }
+
+    if (answer.kind !== 'hop-pass') {
+      throw new TypeError('a computer hop needs a hop-pass or hop-refuse frame in answer');
+    }
   };
 
   for (;;) {

@@ -310,6 +310,8 @@
         "@heynixie/egress": "workspace:*",
         "@heynixie/wire": "workspace:*",
         "playwright-core": "catalog:",
+        "ts-pattern": "catalog:",
+        "zod": "catalog:",
       },
     },
     "guests/codex": {
