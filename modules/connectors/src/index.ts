@@ -81,3 +81,4 @@ export type { ComputerToolOptions } from './computer/computer-tool-options';
 export type { Computer, ComputerOptions } from './computer/start-computer';
 export { startComputer } from './computer/start-computer';
 export type { ComputerKind } from './computer/types';
+export { computerOwners } from './computer/computer-owners';

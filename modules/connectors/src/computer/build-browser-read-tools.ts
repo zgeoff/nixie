@@ -83,6 +83,7 @@ function buildOpenTool(options: ComputerToolOptions): ToolDefinition {
         url: { type: 'string', minLength: 1, description: 'the page to open' },
         link: { type: 'number', description: 'the number of a link from a web_fetch page' },
       },
+      anyOf: [{ required: ['url'] }, { required: ['link'] }],
       additionalProperties: false,
     },
     output: pageOutput,
