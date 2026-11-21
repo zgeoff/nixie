@@ -13,6 +13,8 @@ import {
   buildTasksDefinitionsTool,
   checkPromptProposal,
 } from '@heynixie/definitions';
+import type { DeviceStreams } from '@heynixie/devices';
+import { buildDeviceTools } from '@heynixie/devices';
 import type { MemoryToolStore } from '@heynixie/memory';
 import { buildLogReadImageTool, buildLogReadTool } from '@heynixie/memory';
 import { buildPromptReadTool, buildPromptWriteTool } from '@heynixie/prompts';
@@ -70,6 +72,9 @@ export interface ConversationEndpointTools {
 
   // absent when the deployment sets no images block
   readonly images: ConversationImages | null;
+
+  // the open streams of each device, which the API's device calls share
+  readonly deviceStreams: DeviceStreams;
 
   // absent when the deployment sets no worker role
   readonly worker: WorkerTool | null;
@@ -214,6 +219,13 @@ export async function startConversationEndpoint(
           providers: tools.images.providers,
         });
 
+  const devices = buildDeviceTools({
+    log: options.context.log,
+    definitions: options.context.definitions,
+    clock: options.context.clock,
+    streams: tools.deviceStreams,
+  });
+
   const worker = tools.worker === null ? [] : [tools.worker.buildTool(bounds)];
 
   const definitions = [
@@ -233,6 +245,7 @@ export async function startConversationEndpoint(
     ),
     ...search,
     ...images,
+    ...devices,
     ...definitionTools,
     ...worker,
     buildContactTool(options.context, tools.refreshDefinitions),

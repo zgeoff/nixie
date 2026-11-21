@@ -115,6 +115,7 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
           codeRun: parts.get('code_run').tool,
           fileSend: parts.get('code_run').sendTool,
           forget: parts.get('actions').forget.tool,
+          deviceStreams: parts.get('context').apiContext.devices,
           worker: parts.get('worker'),
           search:
             options.search === null

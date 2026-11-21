@@ -25,6 +25,7 @@
     "@heynixie/db": "workspace:*",
     "@heynixie/definitions": "workspace:*",
     "@heynixie/definitions-repo-github": "workspace:*",
+    "@heynixie/devices": "workspace:*",
     "@heynixie/encoder-onnx": "workspace:*",
     "@heynixie/image-gemini": "workspace:*",
     "@heynixie/image-openai": "workspace:*",
