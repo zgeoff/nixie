@@ -96,10 +96,10 @@ Read a feature's file before you run its journey.
    you did not skip in step 5. Repeat steps 4 to 6 for each `stale` feature.
 9. Push the branch. When no PR is open for it, open one: without an open PR, `publish` fails and
    writes nothing.
-10. Check that `CLOUD_FILES_URL` and `CLOUD_FILES_TOKEN_REF` are set. When either is empty, stop and
-    report it as a blocker. `CLOUD_FILES_URL` is the file host that takes the evidence files.
-    `CLOUD_FILES_TOKEN_REF` is the 1Password `op://` reference to the upload token. Never run
-    `op read` on its own: it prints the token.
+10. Check that the session's environment sets `CLOUD_FILES_URL` and `CLOUD_FILES_TOKEN_REF`. When
+    either is empty, stop and report it as a blocker. `publish` uploads the evidence files to
+    `CLOUD_FILES_URL`. `CLOUD_FILES_TOKEN_REF` is the 1Password `op://` reference to the upload
+    token. Never run `op read` on its own: it prints the token.
 11. Publish the report, even when you skipped a feature. Read the token in a subshell, so it never
     sits in your shell. Because `&&` joins them, a failed `op read` stops the command before
     `publish` runs:
@@ -108,10 +108,10 @@ Read a feature's file before you run its journey.
     (CLOUD_FILES_TOKEN="$(op read "$CLOUD_FILES_TOKEN_REF")" && export CLOUD_FILES_TOKEN && bun verify publish)
     ```
 
-    To write to a PR other than the branch's own, add `--pr <number>`. When `op read` fails, stop
-    and report it as a blocker. Expect: `ok: true`, and `data.action` of `created`, `replaced` or
-    `unchanged`, and `data.local` of 0. `publish` writes the report into the PR's description, the
-    only report the gate reads.
+    To write to another PR, add `--pr <number>`. When `op read` fails, stop and report a blocker.
+    Expect: `ok: true`, and `data.action` of `created`, `replaced` or `unchanged`, and `data.local`
+    of 0: each file it counts stayed on your machine, where a reviewer can't open it. `publish`
+    writes the report into the PR's description, the only report the gate reads.
 
 12. End the run: `bun verify down` after `up`, or `bun verify detach` after `attach`.
 
