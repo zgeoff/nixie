@@ -334,6 +334,7 @@
       "name": "@heynixie/fetch",
       "version": "0.0.0",
       "dependencies": {
+        "@heynixie/egress": "workspace:*",
         "@heynixie/wire": "workspace:*",
         "entities": "catalog:",
       },
@@ -411,6 +412,13 @@
         "kysely": "catalog:",
         "tiny-invariant": "catalog:",
         "zod": "catalog:",
+      },
+    },
+    "libs/egress": {
+      "name": "@heynixie/egress",
+      "version": "0.0.0",
+      "dependencies": {
+        "@heynixie/wire": "workspace:*",
       },
     },
     "libs/logger": {
@@ -1481,6 +1489,8 @@
     "@heynixie/definitions-repo-github": ["@heynixie/definitions-repo-github@workspace:adapters/definitions-repo-github"],
 
     "@heynixie/devices": ["@heynixie/devices@workspace:modules/devices"],
+
+    "@heynixie/egress": ["@heynixie/egress@workspace:libs/egress"],
 
     "@heynixie/encoder-onnx": ["@heynixie/encoder-onnx@workspace:adapters/encoder-onnx"],
 
