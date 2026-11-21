@@ -7,11 +7,16 @@ The release workflow then builds the conversation, fetch, code, codex and backup
 image with the sandbox digests inside it, and the web image, in that order. Each image gets a build
 provenance attestation as it is pushed, and the version tag reaches every image only after all of
 them exist. The release then publishes `release.json` and `config.schema.json`, the contract a
-deployment reads in place of nixie's tree. Pull-request CI checks the 2 compatibility rules that a
-one-release rollback depends on: the oRPC contract only grows, and each migration keeps the schema
-readable by the release before. A rollback check then starts the release before on the data that the
-pull request's build left. A third check fails a config schema change that can refuse a released
-`config.yaml`, unless the pull request title marks it breaking.
+deployment reads in place of nixie's tree.
+
+Pull-request CI runs the [compatibility checks](#compatibility-checks), which keep a rollback of one
+release safe:
+
+- the oRPC contract only grows;
+- each migration keeps the schema readable by the release before;
+- the release before starts on the data that the pull request's build wrote;
+- a config schema change that can refuse a released `config.yaml` fails, unless the pull request
+  title marks it breaking.
 
 [The server](server.md) covers how nixie reads the sandbox manifest that the pipeline writes into
 the nixie image, and [the database](../core/database.md#migrations) covers migrations and the oldest
@@ -122,8 +127,8 @@ At start, nixie adds only the images that it needs: one for the harness of each 
 (the profile each model role resolves to, and each profile a selectable model names), and one for
 each key that a part declaration names. A part that picks its image itself declares the key in
 `images`, as the web fetch declares `fetch`. A part whose image comes from a harness record declares
-none, because the profile's harness covers it. It refuses to start, before any part starts, when the
-manifest lacks one of them, and the refusal names each missing image and what needs it.
+none, because the profile's harness covers it. nixie refuses to start, before any part starts, when
+the manifest lacks one of them, and the refusal names each missing image and what needs it.
 
 A pull request that adds an image holds:
 

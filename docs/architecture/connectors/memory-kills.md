@@ -90,11 +90,11 @@ count becomes the new last count; `unsupported` and `failed` leave the last coun
 | `unsupported`                                 | `sandbox.memory_kill_unknown` | `warn`  | `reason`: `unsupported`   |
 | `failed`, or no answer within `readTimeoutMs` | `sandbox.memory_kill_unknown` | `warn`  | `reason`: `read_failed`   |
 
-A kill between 2 programs, or during a file copy, shows on the line of the next program that ends,
-because the rise counts from the last read. A sandbox that had a kill under an earlier server
-process logs `no_baseline` again after every restart, because its count stays above 0. A count below
-the last count means the guest booted again between 2 reads. `readTimeoutMs` is an option of
-`watchMemoryKills`, and the server leaves it at its default.
+A kill while no spawned program runs, such as during an `exec`, shows on the line of the next
+spawned program that ends, because the rise counts from the last read. A sandbox that had a kill
+under an earlier server process logs `no_baseline` again after every restart, because its count
+stays above 0. A count below the last count means the guest booted again between 2 reads.
+`readTimeoutMs` is an option of `watchMemoryKills`, and the server leaves it at its default.
 
 The watcher logs a `warn` line for every end it cannot judge, and never treats such an end as one
 with no kill. An adapter that returns `unsupported` therefore gives one `warn` line per end. The
