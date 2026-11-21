@@ -26,6 +26,7 @@ is deleted.
 | MCP servers     | [the MCP proxy build](mcp-proxy-build.md)                                                     |
 | Channels        | [the push notice](push-notice.md)                                                             |
 | Devices         | [the camera, the speaker and the microphone](devices.md)                                      |
+| Accounts        | [accounts, sign-in and the wallet](accounts-and-wallet.md)                                    |
 
 Work that no design covers, such as the port rules and the voice and typing design sessions, lives
 in its Linear issue alone. The decision records these designs follow are in
