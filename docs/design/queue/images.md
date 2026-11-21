@@ -69,7 +69,7 @@ image.list({ isKept: true });
 
 image.read({ image: 'k3x9m2p7qa' });
 // → { image: 'k3x9m2p7qa', from: null, prompt: 'a small cove…', size: '1536x1024', isShown: true }
-//   with the picture beside the result; a forgotten image returns "The image k3x9m2p7qa was forgotten."
+//   with the picture beside the result
 ```
 
 `isShown` is false only on `image.read` and `image.import`, when the session's image caps leave no
@@ -87,11 +87,12 @@ type ImageDrawInput =
 type ImageSize = '1024x1024' | '1536x1024' | '1024x1536';
 
 // image.draw: paid, effects ['fetch'], execution 'direct', results { prompt: 'untrusted' }.
-//   When `from` or `references` holds an image whose source is 'photo', it declares ['send'] too,
-//   with the profile's provider as the destination, and queues; its card shows each photo.
+//   When `from` or `references` holds an image whose source is 'photo', its prepare hook, from the
+//   computer design, returns ['fetch', 'send'] with the profile's provider as the destination, and
+//   the call queues; its card shows each photo. check and the charge run when the call runs.
 // image.mark, image.list, image.read, image.import: effects ['note'], execution 'direct'
 
-// refusal codes, each a result with refusalCode; check returns the first 4 before any charge
+// refusal codes, each a result with refusalCode; check returns the first 5 before any charge
 // UNKNOWN_IMAGE, IMAGE_FORGOTTEN: a `from` or a reference; the message names which
 // UNKNOWN_PROFILE
 // NO_EDIT: the profile takes no `from` or no references
@@ -100,6 +101,9 @@ type ImageSize = '1024x1024' | '1536x1024' | '1024x1536';
 // IMAGE_FAILED: a DrawReply failed, a reply over 8 MiB, or bytes that don't decode
 // IMAGE_TIMEOUT: no reply in 120 seconds
 // NOT_IMAGE: image.import of a file that doesn't decode as a picture
+// image.mark, image.read and image.list's `from` return UNKNOWN_IMAGE or IMAGE_FORGOTTEN.
+// image.import returns UNKNOWN_FILE, FILE_FORGOTTEN or UNKNOWN_PHOTO. A mark with neither field
+// fails the input check.
 ```
 
 ### The provider interface
@@ -234,6 +238,8 @@ Showing:
   ends with no image releases the reservation. A source and the references go to the provider and
   never count against the caps.
 
+- nixie stores every image as PNG, converting a provider's reply first. At 1536x1024 a PNG stays
+  under 8 MiB, so any stored image can be a source or a reference.
 - Each image passes through the same fit and reservation as a fetched image: up to 4 images beside a
   result, counted against the session's image caps.
 
