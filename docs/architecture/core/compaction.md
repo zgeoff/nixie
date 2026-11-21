@@ -70,12 +70,13 @@ because the next step compacts the session before any turn reads the block.
 
 The instruction tells the model that nixie closes the session, what the next session opens with, and
 that the memory store and the event log keep everything. It asks for a summary written to itself, in
-its own words, of the open threads, the decisions settled with their reasons, the outside events
-that still matter, its own state and tone, and the user's recurring phrases word for word. It asks
-the model to cite a longer passage by its event ID, to mark what it is unsure of, and to state no
-fact about the user as settled, because the next session trusts the summary and a summary never
-becomes memory. The text lives in the code beside its renderer, because its wording is tuned against
-the model.
+its own words, of the open threads, the decisions settled with their reasons, the positions it holds
+itself with their reasons and memory item IDs, the outside events that still matter, its own state
+and tone, and the user's recurring phrases word for word. It asks the model to cite a longer passage
+by its event ID, to mark what it is unsure of, to say how settled each decision and position is, and
+to state no fact about the user as settled, because the next session acts on the summary as true and
+a summary never becomes memory. The text lives in the code beside its renderer, because its wording
+is tuned against the model.
 
 The model cannot count its own tokens, so the instruction gives a word target that nixie derives
 from the token cap in the deployment configuration. The step counts the reply with the counter that

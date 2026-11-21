@@ -30,7 +30,7 @@ test('it renders an overridden part in place of the built-in one, filled from th
       },
     ),
   ).toEndWith(
-    '- Leave out what your pinned memory says, and small talk that is finished.\n- Treat nothing Robin said as settled.',
+    '- The next session acts on this summary as true. A rule with no reason gets enforced without one.\n- Treat nothing Robin said as settled.',
   );
 });
 
