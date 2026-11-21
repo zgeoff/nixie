@@ -31,7 +31,7 @@ flowchart LR
 
 ```ts
 image.draw({ prompt: 'a small cove at dusk, loose watercolour, warm light', size: '1536x1024' });
-// → { image: 'k3x9m2p7qa', from: null, profile: 'openai', size: '1536x1024', isShown: true }
+// → { image: 'k3x9m2p7qa', from: null, profile: 'openai', size: '1536x1024', isShown: true, roomLeft: 3 }
 //   with the picture beside the result
 
 image.draw({
@@ -57,10 +57,11 @@ image.mark({ image: 'p8d2v6t1wz', name: 'cove, final', isKept: true });
 //   isKept only filters image.list; it keeps nothing past a forget.
 
 image.import({ file: 'f9k2m4q7ws' }); // a file ID, or { photo: { eventID: '1042', number: 1 } }
-// → { image: 'h6w3n8r2pk', from: null, size: '1024x1024', isShown: true }
+// → { image: 'h6w3n8r2pk', from: null, size: '1920x480', isShown: true, roomLeft: 3 }
 //   a file ID from code.run, computer.exportFile or mail.saveAttachment. nixie converts the picture
-//   to PNG and fits it, padded, into the ImageSize nearest its shape. It can then be a `from` or a
-//   reference like any other image.
+//   to PNG and keeps its shape, scaled down until its long side is at most 2048 pixels and the PNG is at most 8 MiB. It can then
+//   be a `from` or a reference like any other image. As a `from`, nixie pads it into the ImageSize
+//   nearest its shape, and the edit comes back at that size.
 
 image.list({ isKept: true });
 // → { images: [{ image: 'p8d2v6t1wz', name: 'cove, final', isKept: true, from: 'k3x9m2p7qa',
@@ -73,9 +74,11 @@ image.read({ image: 'k3x9m2p7qa' });
 ```
 
 `isShown` is false only on `image.read` and `image.import`, when the session's image caps leave no
-room. `image.draw` never pays for a picture the assistant can't see: its `check` refuses with
-`IMAGE_CAPS_FULL` before the charge, and the refusal says that the next turn opens a rebuilt
-session, where earlier pictures show as markers and `image.read` brings any one back.
+room. Every image result, and the `IMAGE_CAPS_FULL` refusal, carries `roomLeft`: how many more
+images at the largest size still fit, so the assistant can stop on purpose. `image.draw` never pays
+for a picture the assistant can't see: its `check` refuses with `IMAGE_CAPS_FULL` before the charge,
+and the refusal says that the next turn opens a rebuilt session, where earlier pictures show as
+markers and `image.read` brings any one back.
 
 ```ts
 // connectors module
@@ -239,7 +242,8 @@ Showing:
   never count against the caps.
 
 - nixie stores every image as PNG, converting a provider's reply first. At 1536x1024 a PNG stays
-  under 8 MiB, so any stored image can be a source or a reference.
+  under 8 MiB, and an import is scaled to stay under it, so any stored image can be a source or a
+  reference.
 - Each image passes through the same fit and reservation as a fetched image: up to 4 images beside a
   result, counted against the session's image caps.
 
