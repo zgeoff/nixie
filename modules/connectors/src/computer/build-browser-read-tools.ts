@@ -1,8 +1,6 @@
-import type { DirectResult, ToolDefinition, ToolRun } from '@heynixie/tools';
+import type { DirectResult, ToolDefinition } from '@heynixie/tools';
 import { z } from 'zod';
 import { fitFetchedImage } from '../fetch/fit-fetched-image';
-import { getPageSession } from '../utils/get-page-session';
-import { readLinkTarget } from '../web/read-link-target';
 import type { ComputerState } from './computer-state';
 import type { ComputerToolOptions } from './computer-tool-options';
 import { refuseComputer, runComputerCall } from './run-computer-call';
@@ -64,7 +62,7 @@ const pageResults = {
   refused: 'untrusted',
 } as const;
 
-const openArguments = z.object({ url: z.string().min(1).optional(), link: z.number().optional() });
+const openArguments = z.object({ url: z.string().min(1) });
 const openTimeoutMs = 60_000;
 
 function buildOpenTool(options: ComputerToolOptions): ToolDefinition {
@@ -81,9 +79,8 @@ function buildOpenTool(options: ComputerToolOptions): ToolDefinition {
       type: 'object',
       properties: {
         url: { type: 'string', minLength: 1, description: 'the page to open' },
-        link: { type: 'number', description: 'the number of a link from a web_fetch page' },
       },
-      anyOf: [{ required: ['url'] }, { required: ['link'] }],
+      required: ['url'],
       additionalProperties: false,
     },
     output: pageOutput,
@@ -95,13 +92,14 @@ function buildOpenTool(options: ComputerToolOptions): ToolDefinition {
       results: pageResults,
     },
     execution: 'direct',
-    prepare: async (input, context) => {
-      const target = await readOpenTarget(options, context.run, openArguments.parse(input));
+    prepare: (input) => {
+      const target = readOpenTarget(openArguments.parse(input));
+      const prepared = typeof target === 'string' ? { destinations: [hostOf(target)] } : target;
 
-      return typeof target === 'string' ? { destinations: [hostOf(target)] } : target;
+      return Promise.resolve(prepared);
     },
     run: async (call, context) => {
-      const target = await readOpenTarget(options, context.run, openArguments.parse(call.input));
+      const target = readOpenTarget(openArguments.parse(call.input));
 
       if (typeof target !== 'string') {
         return { status: 'ok', ...target };
@@ -134,29 +132,9 @@ function buildOpenTool(options: ComputerToolOptions): ToolDefinition {
   };
 }
 
-async function readOpenTarget(
-  options: ComputerToolOptions,
-  run: ToolRun,
-  input: z.infer<typeof openArguments>,
-): Promise<string | DirectResult> {
-  const named =
-    input.url ??
-    (input.link === undefined
-      ? null
-      : await readLinkTarget(options.log, {
-          sessionKey: getPageSession(run).sessionKey,
-          number: input.link,
-        }));
-
-  if (named === null) {
-    return refuseComputer(
-      'NO_URL',
-      'name a url, or the number of a link from a page of this session',
-    );
-  }
-
-  return URL.canParse(named) && /^https?:$/u.test(new URL(named).protocol)
-    ? named
+function readOpenTarget(input: z.infer<typeof openArguments>): string | DirectResult {
+  return URL.canParse(input.url) && /^https?:$/u.test(new URL(input.url).protocol)
+    ? input.url
     : refuseComputer('BAD_URL', 'the browser opens only http and https addresses');
 }
 
