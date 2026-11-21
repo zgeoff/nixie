@@ -328,11 +328,11 @@ Recovery ends no task run: the rerun of a step joins the open one. When the tran
 task run throws, the task run stays open and the caller's retry ends it.
 
 A kept started task that reported is wakeable and waits with its sandbox asleep until the user
-closes it. A disposable one closes itself, as [the mark](#the-mark-and-closing) says. It is never
-`done`, because a `done` task refuses messages and has no sandbox. A definition's task is never
-`done` either. A step whose task run holds a report request runs no further model turn, so when the
-lease of a step that called `task.report` expires, the rerun does no work and its commit sends the
-first summary and fields under the first report ID.
+closes it. A disposable one closes itself, as [the mark](#the-mark-and-closing) says. A kept or a
+disposable task is never `done` after a report, because a `done` task refuses messages and has no
+sandbox. A definition's task is never `done` either. A step whose task run holds a report request
+runs no further model turn, so when the lease of a step that called `task.report` expires, the rerun
+does no work and its commit sends the first summary and fields under the first report ID.
 
 The end writer delivers the report, and the first row that applies decides:
 

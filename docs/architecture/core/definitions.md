@@ -621,9 +621,10 @@ A restore that would bring back a one-shot refuses with `ONE_SHOT_OVER_REPO` whe
 definition, and with `ONE_SHOT_PAST` when its time is before the clock reading the caller passes. An
 undo is a runtime change with its own notice, and an undo of an undo follows the same rows. Only the
 user undoes a change, because the agent has no tool that reaches the undo. A merge that races an
-undo settles by which seed reads it: when the undo's own seed reads the merge, it adopts the change
-and the row for an adopted change applies, and when that seed fails, the undo restores the earlier
-version, and the next seed reads the merged change from the repo, which wins.
+undo settles by which seed reads it: when the undo's own seed reads the merge, that seed adopts the
+change and the undo takes the adopted-change row of the table above, and when that seed fails, the
+undo restores the earlier version, and the next seed reads the merged change from the repo, which
+wins.
 
 No fixed rule names `task.define` or `task.undefine`, so the decision point treats them like any
 tool of the `schedule` effect with no destination. The user's own request allows a call at the
