@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.88.0](https://github.com/zgeoff/nixie/compare/v0.87.0...v0.88.0) (2026-11-21)
+
+
+### Features
+
+* **sessions:** cut a model call for an owner message ([#1285](https://github.com/zgeoff/nixie/issues/1285)) ([2415553](https://github.com/zgeoff/nixie/commit/24155535d780000290e4cb58cc342a9b6af99955))
+
+
+### Bug Fixes
+
+* **tools:** say how far over a length limit an argument runs ([#1289](https://github.com/zgeoff/nixie/issues/1289)) ([24fabf1](https://github.com/zgeoff/nixie/commit/24fabf1365e7e2174771cf2461ce406bd524776d))
+
 ## [0.87.0](https://github.com/zgeoff/nixie/compare/v0.86.0...v0.87.0) (2026-11-20)
 
 
