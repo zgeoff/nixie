@@ -156,8 +156,7 @@ test('#reminder.set reads back the next 3 fires of an hourly reminder that hours
   expect(outcome).toMatchObject({
     status: 'ok',
     result: {
-      rendered:
-        'every hour, on Monday, Tuesday, Wednesday, Thursday and Friday between 09:00 and 17:00 (UTC)',
+      rendered: 'every hour, on weekdays between 09:00 and 17:00 (UTC)',
       next: ['2027-03-09T09:00:00+00:00', '2027-03-09T10:00:00+00:00', '2027-03-09T11:00:00+00:00'],
     },
   });

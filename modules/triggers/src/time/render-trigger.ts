@@ -80,11 +80,17 @@ const frequencyUnits = {
   yearly: 'year',
 } as const;
 
-function renderCadence(repeat: Repeat): string {
+function renderCadence(rule: Repeat): string {
+  const repeat = withImpliedDate(rule);
   const interval = repeat.interval ?? 1;
   const unit = frequencyUnits[repeat.frequency];
-  const days = (repeat.byDay ?? []).map((entry) => renderDay(entry));
   const isWeekdays = isWeekdaySet(repeat);
+  const days = isWeekdays ? ['weekdays'] : (repeat.byDay ?? []).map((entry) => renderDay(entry));
+  const hasDates = (repeat.byMonthDay ?? []).length > 0 || (repeat.byMonth ?? []).length > 0;
+
+  if (isWeekdays && !hasDates && (repeat.frequency === 'daily' || repeat.frequency === 'weekly')) {
+    return interval === 1 ? 'every weekday' : `every ${interval} ${unit}s, on weekdays`;
+  }
 
   if (repeat.frequency === 'weekly') {
     if (days.length === 0) {
@@ -98,13 +104,46 @@ function renderCadence(repeat: Repeat): string {
 
   const every = interval === 1 ? `every ${unit}` : `every ${interval} ${unit}s`;
 
-  if (isWeekdays) {
-    return interval === 1 ? `every weekday` : `${every}, on weekdays`;
-  }
-
   return [every, renderDays(repeat, days), renderMonths(repeat)]
     .filter((part) => part !== '')
     .join(', ');
+}
+
+const weekdayKeys = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as const;
+
+// A rule that names no day fires on the day its start date falls on, so the words name that day.
+function withImpliedDate(repeat: Repeat): Repeat {
+  if (repeat.starts === undefined) {
+    return repeat;
+  }
+
+  const [year = 0, month = 1, day = 1] = repeat.starts.split('-').map(Number);
+  const hasDay = (repeat.byDay ?? []).length > 0;
+  const hasMonthDay = (repeat.byMonthDay ?? []).length > 0;
+
+  if (repeat.frequency === 'weekly' && !hasDay) {
+    return { ...repeat, byDay: [weekdayKeys[getWeekday({ year, month, day })] ?? 'mon'] };
+  }
+
+  if (repeat.frequency === 'monthly' && !hasDay && !hasMonthDay) {
+    return { ...repeat, byMonthDay: [day] };
+  }
+
+  if (repeat.frequency === 'yearly' && !hasDay && !hasMonthDay) {
+    return { ...repeat, byMonth: repeat.byMonth ?? [month], byMonthDay: [day] };
+  }
+
+  return repeat;
+}
+
+function isWeekdaySet(repeat: Repeat): boolean {
+  const days: readonly string[] = (repeat.byDay ?? []).flatMap((entry) =>
+    typeof entry === 'string' ? [entry] : [],
+  );
+
+  return (
+    days.length === 5 && ['mon', 'tue', 'wed', 'thu', 'fri'].every((day) => days.includes(day))
+  );
 }
 
 const longWeekdays = {
@@ -137,18 +176,6 @@ function renderOrdinal(nth: number): string {
   return nth < 0 ? `${names[-nth - 1] ?? ''} to last` : (names[nth - 1] ?? '');
 }
 
-function isWeekdaySet(repeat: Repeat): boolean {
-  const days: readonly string[] = (repeat.byDay ?? []).flatMap((entry) =>
-    typeof entry === 'string' ? [entry] : [],
-  );
-
-  return (
-    repeat.frequency === 'daily' &&
-    days.length === 5 &&
-    ['mon', 'tue', 'wed', 'thu', 'fri'].every((day) => days.includes(day))
-  );
-}
-
 function joinWords(words: readonly string[]): string {
   const last = words.at(-1);
 
@@ -159,7 +186,14 @@ function renderDays(repeat: Repeat, days: readonly string[]): string {
   const monthDays = (repeat.byMonthDay ?? []).map((day) => renderMonthDay(day));
   const all = [...days, ...monthDays];
 
-  return all.length === 0 ? '' : `on ${joinWords(all)}`;
+  if (all.length === 0) {
+    return '';
+  }
+
+  const skipsMonths =
+    repeat.frequency === 'monthly' && (repeat.byMonthDay ?? []).some((day) => day > 28);
+
+  return `on ${joinWords(all)}${skipsMonths ? ' (skipping shorter months)' : ''}`;
 }
 
 function renderMonthDay(day: number): string {

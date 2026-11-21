@@ -227,8 +227,7 @@ test('it defines a task that fires hourly in the hours of weekdays', async () =>
     status: 'ok',
     result: {
       definitionID: 'water-the-tomatoes',
-      rendered:
-        'every hour, on Monday, Tuesday, Wednesday, Thursday and Friday between 09:00 and 17:00 (Europe/Paris)',
+      rendered: 'every hour, on weekdays between 09:00 and 17:00 (Europe/Paris)',
       next: expect.any(String),
       changeID: expect.any(String),
     },

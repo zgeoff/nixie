@@ -45,6 +45,84 @@ test.each([
     'every Monday between 07:00 and 09:00, once idle for 20 minutes (Australia/Sydney)',
     'Mon 15 Mar',
   ],
+  [
+    { repeat: { frequency: 'monthly', byDay: [{ day: 'fri', nth: -1 }], at: ['18:00'] } },
+    'every month, on the last Friday at 18:00 (Australia/Sydney)',
+    'Fri 26 Mar',
+  ],
+  [
+    { repeat: { frequency: 'monthly', byDay: [{ day: 'tue', nth: 2 }], at: ['09:00'] } },
+    'every month, on the second Tuesday at 09:00 (Australia/Sydney)',
+    'Tue 9 Mar',
+  ],
+  [
+    { repeat: { frequency: 'weekly', interval: 2, starts: '2027-03-01', at: ['08:00'] } },
+    'every 2 weeks, on Monday at 08:00 from Mon 1 Mar 2027 (Australia/Sydney)',
+    'Mon 15 Mar',
+  ],
+  [
+    { repeat: { frequency: 'daily', interval: 3, starts: '2027-03-01', at: ['08:00'] } },
+    'every 3 days at 08:00 from Mon 1 Mar 2027 (Australia/Sydney)',
+    'Wed 10 Mar',
+  ],
+  [
+    { repeat: { frequency: 'monthly', byMonthDay: [1, -1], at: ['09:00'] } },
+    'every month, on day 1 and the last day at 09:00 (Australia/Sydney)',
+    'Wed 31 Mar',
+  ],
+  [
+    { repeat: { frequency: 'monthly', starts: '2027-01-31', at: ['09:00'] } },
+    'every month, on day 31 (skipping shorter months) at 09:00 (Australia/Sydney)',
+    'Wed 31 Mar',
+  ],
+  [
+    { repeat: { frequency: 'monthly', byMonthDay: [31], at: ['09:00'] } },
+    'every month, on day 31 (skipping shorter months) at 09:00 (Australia/Sydney)',
+    'Wed 31 Mar',
+  ],
+  [
+    { repeat: { frequency: 'weekly', starts: '2027-03-10', at: ['08:00'] } },
+    'every Wednesday at 08:00 (Australia/Sydney)',
+    'Wed 10 Mar',
+  ],
+  [
+    { repeat: { frequency: 'yearly', starts: '2027-03-14', at: ['08:00'] } },
+    'every year, on day 14, in March at 08:00 (Australia/Sydney)',
+    'Sun 14 Mar',
+  ],
+  [
+    { repeat: { frequency: 'yearly', byMonth: [3, 9], byMonthDay: [15], at: ['08:00'] } },
+    'every year, on day 15, in March and September at 08:00 (Australia/Sydney)',
+    'Mon 15 Mar',
+  ],
+  [
+    { repeat: { frequency: 'daily', byDay: ['mon', 'tue', 'wed', 'thu', 'fri'], at: ['08:00'] } },
+    'every weekday at 08:00 (Australia/Sydney)',
+    'Tue 9 Mar',
+  ],
+  [
+    { repeat: { frequency: 'weekly', byDay: ['mon', 'tue', 'wed', 'thu', 'fri'], at: ['08:00'] } },
+    'every weekday at 08:00 (Australia/Sydney)',
+    'Tue 9 Mar',
+  ],
+  [
+    {
+      repeat: {
+        frequency: 'weekly',
+        interval: 2,
+        byDay: ['mon', 'tue', 'wed', 'thu', 'fri'],
+        starts: '2027-03-01',
+        at: ['08:00'],
+      },
+    },
+    'every 2 weeks, on weekdays at 08:00 from Mon 1 Mar 2027 (Australia/Sydney)',
+    'Mon 15 Mar',
+  ],
+  [
+    { repeat: { frequency: 'monthly', byDay: ['mon', 'tue', 'wed', 'thu', 'fri'], at: ['08:00'] } },
+    'every month, on weekdays at 08:00 (Australia/Sydney)',
+    'Tue 9 Mar',
+  ],
 ])('it renders the schedule %j as %p with next %p', (schedule, rendered, next) => {
   const ctx = setupTest();
 
