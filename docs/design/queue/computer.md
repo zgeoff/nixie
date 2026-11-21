@@ -282,7 +282,5 @@ Records:
 - **Does a wake keep the browser's memory?** The spike settles it. Until then, the build treats
   every wake as a restart.
 
-- **Are `computer` and the `computer.*` tool names right?** The owner settles it. Until then, the
-  build uses them.
 - **Do the sizes and the idle timeout fit?** A spike in a sandbox settles them. Until then, the
   build uses the sizes above and the idle times in [Lifecycle](#constraints).
