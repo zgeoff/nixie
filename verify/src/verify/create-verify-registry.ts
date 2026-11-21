@@ -1,6 +1,6 @@
 import { join } from 'node:path';
 import { browser } from '@wringer/browser';
-import { WringerError, createWringer, local } from '@wringer/core';
+import { WringerError, createHostUploader, createWringer, local } from '@wringer/core';
 import type { Wringer } from '@wringer/core';
 import { db } from '@wringer/db';
 import { http } from '@wringer/http';
@@ -64,6 +64,7 @@ export function createVerifyRegistry(): Wringer {
     .use(terminal({ cols: 120, rows: 30 }))
     .use(db({}))
     .target('local', {
+      evidence: 'upload',
       mode: 'launch',
       access: 'read-write',
       refusalHint,
@@ -98,6 +99,7 @@ export function createVerifyRegistry(): Wringer {
       },
     })
     .target('preview', {
+      evidence: 'upload',
       mode: 'attach',
       access: 'read-write',
       refusalHint,
@@ -127,6 +129,10 @@ export function createVerifyRegistry(): Wringer {
               }),
             },
     })
+    .hook(
+      'upload',
+      createHostUploader({ urlEnv: 'CLOUD_FILES_URL', tokenEnv: 'CLOUD_FILES_TOKEN' }),
+    )
     .secret('NIXIE_PREVIEW_SSH', 'NIXIE_PREVIEW_IMP_EXEC')
     .secret('NIXIE_PROD_TOKEN', 'NIXIE_PROD_KUBECONFIG')
     .action({

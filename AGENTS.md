@@ -27,8 +27,9 @@ When you write or edit a skill:
 1. Load the `skill-writing`, `cold-read` and `deslop` skills from `.agents/skills/`, which
    `.claude/skills` links to. repo-sync delivers them there at the `zgeoff/skills` commit that
    `zgeoff/tools` pins, so install none of them yourself.
-2. Do every step in the "Check it" section of `.agents/skills/skill-writing/SKILL.md`. In its last
-   step, you fill in the `## Checks` section of the PR template.
+2. Do every step in the "Check it" section of `.agents/skills/skill-writing/SKILL.md`, then tick the
+   Deslop and Cold read lines in the `## Checks` section of the PR template, each with the commit
+   you checked.
 
 ## Repo structure
 
@@ -133,8 +134,7 @@ The repo is public, and everything pushed to it stays public: commits, PRs, issu
 replies. Keep your own environment out of it, so your setup never leaks through your work.
 
 - Leave out home directory paths, host names, private network names, cloud details, and the names of
-  the tools and agents you work with. One exception: on a PR's Checks lines, name the model that ran
-  each review, as the PR template asks. A private deployment repo holds a deployment's details.
+  the tools and agents you work with. A private deployment repo holds a deployment's details.
 - Explain each choice by what nixie needs, so the reason stays true when other products change.
 
 gitleaks scans each commit and each PR for secrets and tailnet host names, and the pre-push hook
