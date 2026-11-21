@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test';
 import { seedImage } from '@heynixie/connectors/test-utils';
-import { clientHeaderName, contract } from '@heynixie/contract';
+import { clientHeaderName, contract, sessionCookieName } from '@heynixie/contract';
 import { buildDeviceToolCaller } from '@heynixie/devices/test-utils';
 import invariant from 'tiny-invariant';
 import { buildTestClient } from '../test-utils/build-test-client';
@@ -308,6 +308,47 @@ test('it lets a browser with the token of a revoked device session enrol again',
   });
 
   expect(enrolled.scope).toBe('device');
+});
+
+test('it lets a browser with the cookie of a revoked device session enrol again, and replaces the cookie', async () => {
+  const ctx = await setupTest();
+  const device = await ctx.enrol('device', 'desk panel');
+
+  await ctx.ownerClient.sessions.revoke({
+    clientActionID: crypto.randomUUID(),
+    sessionID: device.sessionID,
+  });
+
+  const issued = await ctx.ownerClient.sessions.issueCode({
+    clientActionID: crypto.randomUUID(),
+    scope: 'device',
+  });
+
+  const response = await fetch(`${ctx.url}/rpc/sessions/enrol`, {
+    method: 'POST',
+    headers: {
+      [clientHeaderName]: 'web',
+      'content-type': 'application/json',
+      cookie: `${sessionCookieName}=${device.token}`,
+    },
+    body: JSON.stringify({
+      json: {
+        clientActionID: crypto.randomUUID(),
+        code: issued.code,
+        deviceName: 'desk panel',
+        tokenDelivery: 'cookie',
+      },
+    }),
+  });
+
+  const cookie = response.headers.get('set-cookie') ?? '';
+
+  expect([response.status, cookie]).toStrictEqual([
+    200,
+    expect.stringMatching(new RegExp(`^${sessionCookieName}=[\\w-]{43};`, 'u')),
+  ]);
+
+  expect(cookie).not.toInclude(device.token);
 });
 
 test('it refuses a live device session an enrolment', async () => {
