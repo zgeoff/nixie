@@ -177,6 +177,8 @@ The other packages each hold one piece the modules and apps share:
 
 - `guests/conversation` runs the conversation's turns through the Agent SDK.
 - `guests/fetch` runs the web fetch inside the fetch sandbox.
+- `guests/browser` and `guests/shell` run the assistant's headless browser and its shell inside
+  their sandboxes.
 - `adapters/definitions-repo-github` is the definitions repo on GitHub's API.
 - `adapters/sandbox-imp` is the sandbox adapter on imp.
 - `adapters/search-kagi` is the search tool's provider on Kagi's search API.
@@ -191,6 +193,8 @@ The other packages each hold one piece the modules and apps share:
 - `libs/secret-scan` scans a URL for a key or a token, with the pinned public rules and nixie's own
   values, tagged `server-only`. [The secret scan](connectors/secret-scan.md) covers its rules.
 - `libs/wire` holds the message formats that cross a sandbox boundary.
+- `libs/egress` holds the address checks and the checking proxy that the guests with public egress
+  share.
 - `libs/clock` is the one clock that every time and every wait reads. A test build replaces it with
   a clock the test steps.
 - `libs/retry` is the backoff that sets the wait before each retry, so every part that retries backs
