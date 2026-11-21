@@ -2,6 +2,7 @@ import type { StepInput } from '@heynixie/tasks';
 import { buildStepRunID, markBeforeTurnFailure, readInbox } from '@heynixie/tasks';
 import type { ApprovedReply, ToolRun, ToolSession, ToolStepHold } from '@heynixie/tools';
 import { makeImageReserver } from '../task/make-image-reserver';
+import { makeImageRoomReader } from '../task/make-image-room-reader';
 import type { ConversationRun } from '../types';
 
 export interface ApprovedCallsPlan {
@@ -25,15 +26,14 @@ export async function runApprovedCalls(
     return input;
   }
 
+  const images = { spent: { bytes: 0, count: 0 }, budget: run.imageBudget, isCapped: false };
+
   const token = run.endpoint.startStep(
     buildStepRunID(input),
     {
       ...plan.session,
-      reserveImages: makeImageReserver({
-        spent: { bytes: 0, count: 0 },
-        budget: run.imageBudget,
-        isCapped: false,
-      }),
+      reserveImages: makeImageReserver(images),
+      readImageRoom: makeImageRoomReader(images),
       step: buildStepHold(run, input, plan.signal),
     },
     buildTaskRun(input),

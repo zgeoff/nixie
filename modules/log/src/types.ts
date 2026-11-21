@@ -69,6 +69,9 @@ export interface DecisionInputs {
   readonly sources: readonly ('owner' | 'own_data' | 'task' | 'outside')[];
   readonly turnMessageSequence: number | null;
   readonly onBehalfOf: readonly number[];
+
+  // the effects a tool's prepare step set for the call, when it replaced the declared ones
+  readonly effects?: readonly string[];
 }
 
 export interface Decision {

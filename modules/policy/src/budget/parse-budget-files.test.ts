@@ -89,3 +89,29 @@ test('it refuses a file that is not YAML', () => {
 
   expect(parsed.status).toBe('refused');
 });
+
+test('it parses a budget whose ID holds the dot of a paid tool name', () => {
+  const parsed = parseBudgetFiles(
+    new Map([
+      [
+        'budgets/tools.yaml',
+        'image.draw-day:\n  counts: tool:image.draw\n  limit: 3\n  period: day\n',
+      ],
+    ]),
+  );
+
+  expect(parsed).toStrictEqual({
+    status: 'parsed',
+    budgets: [
+      {
+        path: 'budgets/tools.yaml',
+        budget: {
+          id: 'image.draw-day',
+          counts: 'tool:image.draw',
+          limitMicros: 3_000_000,
+          period: 'day',
+        },
+      },
+    ],
+  });
+});

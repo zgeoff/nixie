@@ -39,7 +39,12 @@ export function makeDecisionPoint(options: DecisionPointOptions): DecisionPoint 
 
     const inputs = await options.readInputs(call.snapshot);
 
-    const declaration = inputs.tools.get(call.tool) ?? options.findDeclaration(call.tool);
+    const declared = inputs.tools.get(call.tool) ?? options.findDeclaration(call.tool);
+
+    const declaration =
+      declared === null || call.effects === undefined
+        ? declared
+        : { ...declared, effects: call.effects };
 
     if (declaration === null || declaration.effects.length === 0) {
       return buildStageDenial(

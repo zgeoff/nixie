@@ -88,11 +88,17 @@ function assertPaid(definition: ToolDefinition): void {
     return;
   }
 
-  if (!Number.isInteger(definition.paid.priceMicros) || definition.paid.priceMicros <= 0) {
+  const price = definition.paid.priceMicros;
+
+  if (typeof price === 'number' && !isPriceMicros(price)) {
     throw new Error(`the paid tool ${definition.name} needs a price in whole micros above zero`);
   }
 
   if (definition.execution !== 'direct') {
     throw new Error(`the paid tool ${definition.name} runs direct, and a queued tool is not paid`);
   }
+}
+
+export function isPriceMicros(price: number): boolean {
+  return Number.isInteger(price) && price > 0;
 }

@@ -80,6 +80,10 @@ export interface DirectResult extends TypedResult {
   // the call settles failed, with the code in its outcome.
   readonly refusalCode?: string;
 
+  // Set by a paid tool whose provider billed the call before it refused, so the charge stands even
+  // though the result carries a refusalCode.
+  readonly billed?: true;
+
   // Sealed under the result record's key, in order, as the record's attachments. They never enter
   // the result's payload or its erasable text.
   readonly attachments?: readonly Uint8Array<ArrayBuffer>[];
@@ -121,11 +125,16 @@ export interface ToolDefinition {
   readonly run: (call: ToolCall, context: ToolContext) => Promise<ToolOutcome>;
 
   // A tool that costs money for each call, which is not a purchase. A call charges the price to the
-  // budgets `<name>-day` and `<name>-month` before the provider sees it, and a call that fails
-  // credits both, unless its error says the provider billed. The tool runs direct.
+  // budgets `<name>-day` and `<name>-month` before the provider sees it. A failure or a refusalCode
+  // credits both, unless the outcome says the provider billed. The tool runs direct.
   readonly paid?: PaidTool;
 
   readonly recordInput?: (input: JSONObject) => JSONObject;
+
+  // Reads what only the host can read about a call before the decision, such as a stored photo. It
+  // returns the destinations and effects the decision point checks in place of the declared ones,
+  // or a result that ends the call. The action hash covers the destinations.
+  readonly prepare?: (input: JSONObject) => Promise<Prepared | DirectResult>;
 
   // Resolves the destinations of a call on the host, for a tool whose destinations are not plain
   // arguments, such as a reply that names a message. A tool without it takes each argument its
@@ -156,9 +165,21 @@ export interface ToolDefinition {
   readonly variants?: ToolVariants;
 }
 
+export interface Prepared {
+  readonly destinations: readonly string[];
+
+  // replaces the declared effects for this call
+  readonly effects?: readonly Effect[];
+}
+
 export interface PaidTool {
-  // the price of one call, in millionths of a dollar
-  readonly priceMicros: number;
+  // The price of one call, in millionths of a dollar. A function prices the call from its input,
+  // after check and before the charge.
+  readonly priceMicros: number | ((input: JSONObject) => number);
+
+  // Refuses a call before anything is charged: a non-null result returns with no charge, and the
+  // call cap does not count it.
+  readonly check?: (input: JSONObject, context: ToolResolveContext) => Promise<DirectResult | null>;
 
   // a limit on the count of calls that the tool keeps beside its budgets, such as a daily cap
   readonly callCap?: PaidCallCap;
@@ -257,6 +278,10 @@ export interface ToolSession {
   // counts against the session's image budget, and false refuses it.
   readonly reserveImages?: (images: readonly ToolImage[]) => boolean;
 
+  // what the session's image caps still take, counted in base64 bytes and in images, so a tool
+  // that draws can refuse before it pays for a picture the model could not see
+  readonly readImageRoom?: () => ImageRoom;
+
   // A turn that holds a message from the owner refuses to end with nothing sent, so the model
   // replies to it.
   readonly endSilently?: () => SilentEnd;
@@ -267,6 +292,11 @@ export interface ToolSession {
   // what a call that starts more model work needs from the turn that makes it; a worker's own step
   // token never gives it
   readonly step?: ToolStepHold;
+}
+
+export interface ImageRoom {
+  readonly bytes: number;
+  readonly count: number;
 }
 
 export interface ToolStepHold {

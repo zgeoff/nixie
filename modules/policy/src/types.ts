@@ -78,6 +78,10 @@ export interface PolicyCall {
   readonly sources: readonly RuleSource[];
   readonly at: number;
 
+  // Replaces the effects the tool declares, for a call whose effects depend on what its input
+  // names. A call without it takes the declared effects.
+  readonly effects?: readonly Effect[];
+
   // the sequence of the owner_message that started this turn; null in a task run
   readonly turnMessageSequence: number | null;
 

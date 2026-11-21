@@ -45,6 +45,7 @@ export const decisionSchema = z.object({
       sources: sourceSchema.array(),
       turnMessageSequence: z.number().nullable(),
       onBehalfOf: z.number().array(),
+      effects: z.string().array().exactOptional(),
     })
     .exactOptional(),
 }) satisfies z.ZodType<Decision>;
