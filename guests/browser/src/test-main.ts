@@ -1,10 +1,13 @@
-import { homedir } from 'node:os';
+import { homedir, userInfo } from 'node:os';
+import { join } from 'node:path';
 import { runComputerGuest } from '@heynixie/wire';
 import { makeBrowserHandler } from './browser/make-browser-handler';
 
-// The browser of the test build. A host under the reserved .test domain resolves to the loopback
-// address, and the guest allows it, so a journey can serve its own site and never reach the
-// internet.
+// The browser of the test build: a .test host resolves to loopback and loopback is allowed.
+// The process sandbox points HOME at the sandbox's own folder, which holds no browser download, so
+// the browsers are looked up under the account's real home.
+process.env['PLAYWRIGHT_BROWSERS_PATH'] ??= join(userInfo().homedir, '.cache', 'ms-playwright');
+
 await runComputerGuest(
   {
     input: Bun.stdin.stream(),
