@@ -357,9 +357,8 @@ that holds decides:
 An unread fire comes first because a fire can be unread at a carry only after a stop of an idle task
 run, which has nothing to carry, while a message after a `limit` end belongs to the work that the
 raise carries on. A claim marks read a `trigger.fired` whose kind it does not know and opens no task
-run for it, so a release meets a fire of a later source safely after a rollback. A task run of a
-definition has no limit of its own on effects: the decision point treats its calls as it treats the
-conversation's.
+run for it. A task run of a definition has no limit of its own on effects: the decision point treats
+its calls as it treats the conversation's.
 
 The trigger core asks for the fire answer in the transaction that delivers the fire, before it
 writes the fire's record, and the first answer that holds decides:

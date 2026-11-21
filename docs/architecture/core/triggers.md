@@ -85,13 +85,13 @@ Each record is written before the core reads for the next event, and its fold ad
 never finds the task missing. When `deliver` throws or nixie dies before the commit, nothing is
 written, and the source builds the same events with the same keys at its next tick. When the clock
 moves back, nixie delivers no fire twice. A restored backup holds its keys and watermarks, so nixie
-repeats no fire it holds, and a fire due after the backup is a missed fire. After a rollback and an
-upgrade, the first seed corrects the armed rows, and until then the core drops each event whose hash
-differs from its row. `trigger_keys` grows by one row per fire or skip, so a schedule that fires
-every few minutes adds tens of thousands of rows a year. The triggers module imports the tasks
-module, the log module and the clock lib, and the definitions module imports the triggers module, so
-no import cycle forms. A trigger source that calls an outside system is an adapter named
-`trigger-<system>`, or calls that system through a connector.
+repeats no fire it holds, and a fire due after the backup is a missed fire. Until the first seed
+corrects the armed rows, the core drops each event whose hash differs from its row. `trigger_keys`
+grows by one row per fire or skip, so a schedule that fires every few minutes adds tens of thousands
+of rows a year. The triggers module imports the tasks module, the log module and the clock lib, and
+the definitions module imports the triggers module, so no import cycle forms. A trigger source that
+calls an outside system is an adapter named `trigger-<system>`, or calls that system through a
+connector.
 
 ## The spent one-shot
 

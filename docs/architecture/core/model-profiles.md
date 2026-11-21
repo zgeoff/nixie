@@ -194,10 +194,10 @@ The host reads `outcome` on the turn record that the running step built, and nev
 harness's own `stopReason` or `terminalReason`, which it only writes. A turn counts as finished only
 when its outcome is `finished`, so a refusal or an output cap never counts as a finished turn. The
 guest sets the outcome, and each guest maps its runtime's words, so the host reads one field in the
-same words for every harness. A turn record from an earlier release holds no outcome, so the
-record's key is optional and nixie reads it only on the record that the running step built. The
-`ended` frame carries a session point exactly when the harness has a session, and a context size
-only when the harness declares `context-window`. A guest that breaks this fails the step.
+same words for every harness. A turn record can hold no outcome, so the record's key is optional and
+nixie reads it only on the record that the running step built. The `ended` frame carries a session
+point exactly when the harness has a session, and a context size only when the harness declares
+`context-window`. A guest that breaks this fails the step.
 
 A step on a harness with no session finds the session position `fresh` at its first step and
 `unkept` at each step after it, unless a forget or a persona change made it `invalidated`: the task
@@ -207,16 +207,15 @@ null, sends a turn frame with no `resume` key, and stores no session point. A tu
 fails its step, and the next step opens again from the log. A resumed turn that overflows compacts
 only on a harness that declares `summarize`.
 
-The rebuild reuses the opening's `reason: null` that earlier releases already read, because a new
-reason value would fail to decode in the release a rollback returns to. A step opens a session from
-the log within the rebuild token budget, so history alone never overflows. A rebuild reads its
-clock, its status lines and its block IDs from inputs of the step, so the same log gives the same
-opening. A step on a harness with no session sends no `message` frame, because it starts no live
-inbox reader, and no `summarize` frame. It sends an `interrupt` frame only when the harness declares
-`interrupt`, and stores no session point. A message that arrives mid-turn waits for the next step,
-because nixie never marks it read in the running turn, so the step's commit finds it unread and sets
-the task to `ready`. An Agent SDK task finds `unkept` only after its profile moves from a harness
-with no session. It then stores its point and becomes `resumable`.
+The rebuild uses the opening's `reason: null`, so the opening schema gains no reason value. A step
+opens a session from the log within the rebuild token budget, so history alone never overflows. A
+rebuild reads its clock, its status lines and its block IDs from inputs of the step, so the same log
+gives the same opening. A step on a harness with no session sends no `message` frame, because it
+starts no live inbox reader, and no `summarize` frame. It sends an `interrupt` frame only when the
+harness declares `interrupt`, and stores no session point. A message that arrives mid-turn waits for
+the next step, because nixie never marks it read in the running turn, so the step's commit finds it
+unread and sets the task to `ready`. An Agent SDK task finds `unkept` only after its profile moves
+from a harness with no session. It then stores its point and becomes `resumable`.
 
 | Position                         | Event   | Condition                       | Next         |
 | -------------------------------- | ------- | ------------------------------- | ------------ |

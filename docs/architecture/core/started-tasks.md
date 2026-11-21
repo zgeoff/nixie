@@ -15,10 +15,8 @@ task's first [message](./task-messages.md): a `task_message` record on the task'
 the same transaction, which the creation record names by its message ID. The creation record holds
 which task started it, and the tasks projection keeps that on the task's row, so the directory finds
 every started task. A forget of the name leaves the task listed under its ID. The creation record
-holds no copy of the brief, so a forget has one record to reach. A rollback to the release before
-therefore loses the briefs of the tasks that this release started, because that release reads a
-brief only from the creation record. The creation record holds the task's
-[start options](#start-options) in its plain payload too.
+holds no copy of the brief, so a forget has one record to reach. The creation record holds the
+task's [start options](#start-options) in its plain payload too.
 
 The creation record also holds the step key of the step that started the task. After a crash, that
 step runs again under the same key, and its model can call the start again. The start then gives
@@ -71,7 +69,7 @@ the user's rules, so the grant widens what a task reads and never where nixie se
 file may set `log: conversation`, because the user wrote the file, and the seed checks it as a start
 from a starter that holds the grant. The runner sets the thread of the grant at the start of each
 step, from the started task's options or the definition version that the task run pins, and nothing
-stores it, so the model never picks a thread and an older release never meets the field.
+stores it, so the model never picks a thread.
 
 A grant that the task's setup loses in the middle of a step counts until the step ends. The task's
 `log.read` records its call and its result on the task's own thread, so a forget of the task's
@@ -81,8 +79,7 @@ A forget of a record on the conversation's thread cleans the open task with the 
 an open task that reads memory, because the task's session can hold the record's text from a read.
 The cleanup reads a started task's grant from its creation record, and a definition's task from the
 version its newest task run pinned and the version in force, because the task's session can outlive
-a task run. An older release reads every task run on its own thread and skips a definition whose
-file sets `log`, so it cleans no session for the grant.
+a task run.
 
 Each write from a task goes through the same [write gate](../memory/writes.md) as the
 conversation's. A task's `memory.remember` or text edit cites no message of the user on its own
@@ -188,9 +185,9 @@ so a rerun after a crash erases the same calls.
 
 A start marks its task disposable or kept, and `disposable` defaults to `true`. The mark sits on the
 task's `task.created` record, and the user's change of it is a `task.mark_set` record on the task's
-thread. The newest change wins. A `task.created` record with no mark, from the release before, reads
-as kept, so an upgrade closes no task. The conversation, the queue check, system tasks and any task
-that no start made carry no mark and never close by themselves.
+thread. The newest change wins. A `task.created` record with no mark reads as kept, so no unmarked
+task closes. The conversation, the queue check, system tasks and any task that no start made carry
+no mark and never close by themselves.
 
 A disposable task closes in the transaction of the step commit that ends its task run as `reported`,
 `no_report` or `no_work`, when that commit leaves the task waiting with nothing unread and no open
@@ -447,8 +444,8 @@ The config schema refuses a profile with no price table for any profile a task c
 the per-call usage that the model API reports leaves out thinking tokens, so the meter prices each
 record as one call. It therefore prices every cache write at the longer lifetime's price, and a turn
 whose calls together pass a profile's long-prompt size at the long-prompt prices. The count can run
-above the spend. One exception: a summary recorded by an earlier release kept no token counts, so it
-adds no dollars, and the count of a task that has one can fall below its spend.
+above the spend. One exception: a summary can hold no token counts, so it adds no dollars, and the
+count of a task that has one can fall below its spend.
 
 Before each step runs a turn, the runner reads both meters. When either has reached its limit, the
 step runs no turn and returns the limit as its end, and the step's commit ends the task run as

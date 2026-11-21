@@ -95,11 +95,8 @@ version. A session that holds the number from before a label edit gets the stale
 reads the revision from it, and after a label-only edit `memory.retire` still passes the read check
 for a text recalled before the edit.
 
-A rollback by one release keeps the schema readable, because the labels add only columns with
-defaults and one table. The release before skips both label record kinds and refuses a revision
-number once with its stale error. A label-only proposal's `memory.proposed` record holds the
-operation `remember`, the text version and a copy of the text, so that release parses it, but if it
-approves one it writes a version with the same text and loses the reviewed labels.
+A label-only proposal's `memory.proposed` record holds the operation `remember`, the text version
+and a copy of the text, so a reader that knows no label record kind still parses it.
 
 ## States
 
