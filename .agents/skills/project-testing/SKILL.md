@@ -41,14 +41,12 @@ a lib.
   [Where each test runs](../testing/references/slow-tests.md#where-each-test-runs) to run the
   `model-api` lane nightly and on an SDK bump. For when to run them and where their output goes,
   read the Agent SDK bump rule in [AGENTS.md](../../../AGENTS.md).
-- Never build an MSW server of your own, and never write the `onUnhandledFrame` callback from
-  [The server and its lifecycle](../testing/references/http.md#the-server-and-its-lifecycle). A
-  `bun test` from the repo root runs every package's tests in one process, and
-  `@heynixie/mock-server` starts one MSW server for all of them from a preload in the root
-  [`bunfig.toml`](../../../bunfig.toml). Under Bun, MSW's own unhandled-request error never stops a
-  request, so the server ends its handler list with a catch-all handler in place of the callback.
-  Expect it to fail each unmatched request with `Failed to fetch`, except a request to a loopback
-  host, a `data:` URL, or a host under the reserved `.test` domain.
+- Never build an MSW server of your own. A `bun test` from the repo root runs every package's tests
+  in one process, and `@heynixie/mock-server` builds one test network for all of them, with
+  `createTestNetwork` from `@zgeoff/testing/fetch`, from a preload in the root
+  [`bunfig.toml`](../../../bunfig.toml). Expect the network to reject each request that no handler
+  matches and to fail the test in `afterEach`. A request to a loopback host goes to Bun's own
+  `fetch`.
 
 ## The MSW server
 
@@ -59,7 +57,7 @@ a lib.
   end of the `preload` list in the root `bunfig.toml`.
 - Give each handler a URL that no other package's handler matches. Of 2 matching handlers, the one
   whose preload comes first in `bunfig.toml` wins.
-- For one test's handler, call `mockServer.use(...)`, as
+- For one test's handler, call `network.use(...)`, as
   [Per-test handlers](../testing/references/http.md#per-test-handlers) says. After each test,
   `@heynixie/mock-server` resets the handlers to those that `addMockHandlers` added.
 - When the code under test takes a resolver for host names, as the code in `guests/fetch/` does, use
