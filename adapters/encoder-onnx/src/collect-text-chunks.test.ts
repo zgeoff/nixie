@@ -47,3 +47,9 @@ test('it halves a word that alone runs over the limit', () => {
 
   expect(chunks).toStrictEqual(['ab', 'cd', 'ef', 'gh', 'ij']);
 });
+
+test('it halves a word between graphemes, so an emoji with a skin tone stays whole', () => {
+  const chunks = collectTextChunks('a👍🏽', (text) => text.length, 4);
+
+  expect(chunks).toStrictEqual(['a', '👍🏽']);
+});

@@ -1,6 +1,6 @@
 // Splits a text into chunks of at most maxTokens each, at the widest boundary that fits: paragraphs
-// first, then sentences, then words, and halves of a word as the last resort. Each chunk packs as
-// many neighbouring pieces as fit.
+// first, then sentences, then words, and halves of a word as the last resort, cut between graphemes
+// so an emoji stays whole. Each chunk packs as many neighbouring pieces as fit.
 export function collectTextChunks(
   text: string,
   countTokens: (text: string) => number,
@@ -52,8 +52,10 @@ function collectLevelChunks(text: string, limit: ChunkLimit, level: number): rea
   return packPieces(pieces, splitter.joiner, limit);
 }
 
+const graphemes = new Intl.Segmenter('en', { granularity: 'grapheme' });
+
 function splitHalves(text: string): readonly string[] {
-  const points = [...text];
+  const points = Array.from(graphemes.segment(text), (part) => part.segment);
   const middle = Math.ceil(points.length / 2);
 
   return points.length <= 1
