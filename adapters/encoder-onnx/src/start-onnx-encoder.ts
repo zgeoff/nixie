@@ -1,10 +1,15 @@
 import { join } from 'node:path';
 import type { Encoder } from '@heynixie/memory';
 import { Tokenizer } from '@huggingface/tokenizers';
+import { collectTextChunks } from './collect-text-chunks';
 
 export interface ONNXEncoder extends Encoder {
   readonly stop: () => Promise<void>;
 }
+
+// The model reads at most 512 tokens, its 2 special tokens included, and a chunk well inside that
+// keeps one passage of a long text from being lost among the rest.
+const chunkTokens = 400;
 
 // The model card asks for this prefix on a query and for none on a stored text.
 const queryPrefix = 'Represent this sentence for searching relevant passages: ';
@@ -68,6 +73,12 @@ export async function startONNXEncoder(modelDir: string): Promise<ONNXEncoder> {
 
       return vectors;
     },
+    splitText: (text) =>
+      collectTextChunks(
+        text,
+        (piece) => tokenizer.encode(piece, { add_special_tokens: false }).ids.length,
+        chunkTokens,
+      ),
     stop: () => session.release(),
   };
 }

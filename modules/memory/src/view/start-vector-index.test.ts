@@ -102,6 +102,24 @@ test('it finds no match for a blank query', async () => {
   expect(ctx.index.readMatches('  ', { limit: 5, minSimilarity: -1 })).resolves.toStrictEqual([]);
 });
 
+test('it scores an item by the best of the chunks its encoder splits it into', async () => {
+  const encoder = buildStubEncoder([['sister', 'sibling'], ['leeds'], ['boiler', 'heating']]);
+  const ctx = setupTest({ ...encoder, splitText: (text) => text.split('\n\n') });
+
+  await ctx.index.rebuild([
+    { itemID: 'item-long', text: 'Ana is my sister\n\nShe moved to Leeds\n\nThe boiler is new' },
+  ]);
+
+  const matches = await ctx.index.readMatches('when is the heating looked at', {
+    limit: 5,
+    minSimilarity: 0.9,
+  });
+
+  expect(matches).toStrictEqual([
+    { itemID: 'item-long', similarity: expect.toBeWithin(0.99, 1.02) },
+  ]);
+});
+
 test('it encodes an updated item from its new text', async () => {
   const ctx = setupTest(
     buildStubEncoder([

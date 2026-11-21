@@ -6,12 +6,14 @@ import type { GatedRememberRequest, ModelWriteStore } from '../gate/gate-context
 import { labelInputSchema } from '../label/label-input-schema';
 import { pickTopicSpelling } from '../label/pick-topic-spelling';
 import type { ItemIDStore, Labels } from '../types';
+import { TextLimitError } from '../utils/error/text-limit-error';
 import { readItemIDs } from '../utils/item/read-item-ids';
 import { makeInputRecorder } from '../utils/make-input-recorder';
 import { memoryWriteOutput } from '../utils/memory-write-output';
 import { parseUntilInput } from '../utils/parse-until-input';
 import { untilInputSchema } from '../utils/schema/until-input-schema';
 import { buildWriteCaller } from '../write/build-write-caller';
+import { findTextLimitError } from '../write/find-text-limit-error';
 import { resolveWriteFacts } from '../write/resolve-write-facts';
 import { runWriteCall } from '../write/run-write-call';
 
@@ -42,7 +44,14 @@ const editInput = {
   properties: {
     itemID: { type: 'string' },
     version: { type: 'integer', minimum: 1 },
-    text: { type: 'string', minLength: 1, maxLength: 2000 },
+    text: {
+      type: 'string',
+      minLength: 1,
+      maxLength: 6000,
+      description:
+        'at most 6,000 characters for a self-note and 2,000 for any other subject, the subject ' +
+        'being the one you pass or else the one the item has',
+    },
     gist: labelInputSchema.gist,
     topic: labelInputSchema.topic,
     triggers: labelInputSchema.triggers,
@@ -108,6 +117,13 @@ export function buildEditTool(memory: ModelWriteStore & ItemIDStore): ToolDefini
         const itemSubject = await memory.writes.readItemSubject(itemID);
 
         const subject = input.subject ?? itemSubject;
+
+        const limitError =
+          input.text === undefined ? null : findTextLimitError(input.text, subject);
+
+        if (limitError !== null) {
+          throw new TextLimitError(limitError);
+        }
 
         return {
           sources: await memory.writes.readRememberSources(

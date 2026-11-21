@@ -336,6 +336,10 @@ export type EncodeKind = 'query' | 'document';
 
 export interface Encoder {
   readonly encode: (texts: readonly string[], kind: EncodeKind) => Promise<readonly Float32Array[]>;
+
+  // An encoder that reads only the start of a long text splits a stored text into chunks it reads
+  // whole. The index keeps a vector per chunk and scores an item by its best chunk.
+  readonly splitText?: (text: string) => readonly string[];
 }
 
 export interface SemanticSearch {

@@ -2,6 +2,8 @@ import { addFormats } from '@modelcontextprotocol/server/validators/ajv';
 import type { ErrorObject, ValidateFunction } from 'ajv';
 import Ajv2020 from 'ajv/dist/2020';
 import type { JsonSchema, SchemaCheck } from '../types';
+import { countCodePoints } from './count-code-points';
+import { formatOverLimit } from './format-over-limit';
 
 const compiler: { ajv: Ajv2020 | null } = { ajv: null };
 
@@ -99,7 +101,6 @@ function decodePointerSegment(segment: string): string {
   return segment.replaceAll('~1', '/').replaceAll('~0', '~');
 }
 
-// A length limit says how far over it the value runs, so the model can cut to fit in one try.
 function buildRuleText(error: ErrorObject, size: number | null): string {
   const limit: unknown = error.params['limit'];
 
@@ -110,16 +111,12 @@ function buildRuleText(error: ErrorObject, size: number | null): string {
   ) {
     const unit = error.keyword === 'maxLength' ? 'characters' : 'items';
 
-    return `is ${formatCount(size)} ${unit}, ${formatCount(size - limit)} over the ${formatCount(limit)} limit`;
+    return formatOverLimit(size, limit, unit);
   }
 
   return error.keyword === 'propertyNames'
     ? 'has a key name that is invalid'
     : (error.message ?? 'is invalid');
-}
-
-function formatCount(count: number): string {
-  return count.toLocaleString('en-US');
 }
 
 function findSize(value: unknown, segments: readonly string[]): number | null {
@@ -140,9 +137,4 @@ function findSize(value: unknown, segments: readonly string[]): number | null {
   }
 
   return Array.isArray(node) ? node.length : null;
-}
-
-// Ajv counts a limit in code points, so a character outside the basic plane counts once.
-function countCodePoints(text: string): number {
-  return text.match(/./gsu)?.length ?? 0;
 }

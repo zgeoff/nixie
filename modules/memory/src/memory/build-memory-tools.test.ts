@@ -11,6 +11,7 @@ import {
 import type { ToolCallOptions, ToolRun } from '@heynixie/tools';
 import { buildToolRegistry, runToolCall } from '@heynixie/tools';
 import invariant from 'tiny-invariant';
+import { z } from 'zod';
 import { defaultGateLimits } from '../gate/default-gate-limits';
 import type { TestMemoryOptions } from '../test-utils';
 import {
@@ -2492,3 +2493,159 @@ test('it still applies an unpin at once under the starter rules', async () => {
 
   expect(core).toStrictEqual([]);
 });
+
+test('it saves a self-note of 5,000 characters whole under an allow rule', async () => {
+  const ctx = await setupTest();
+
+  const text = 'I like the quiet before the kettle boils. '.repeat(120).slice(0, 5000);
+
+  const result = await ctx.callTool(
+    'memory.remember',
+    { gist: 'a gist', topic: 'a topic', text, subject: 'self' },
+    buildAllowingDecisionPoint({
+      allowing: [
+        { id: 'rule-self', revision: 1, checks: [{ arg: 'subject', op: 'eq', value: 'self' }] },
+      ],
+    }),
+  );
+
+  const shortID = z.object({ itemID: z.string() }).parse(result.structuredContent).itemID;
+
+  const itemIDs = await ctx.memory.store.readItemIDMap([shortID]);
+  const recalled = await ctx.memory.store.recall({ itemIDs: [...itemIDs.values()] });
+
+  expect(result.structuredContent).toStrictEqual({
+    status: 'applied',
+    itemID: shortID,
+    version: 1,
+  });
+
+  expect(recalled.items.map((item) => item.text)).toStrictEqual([text]);
+});
+
+test.each([
+  { subject: 'self', length: 6001, error: 'data/text is 6,001 characters, 1 over the 6,000 limit' },
+  {
+    subject: 'owner',
+    length: 2001,
+    error: 'data/text is 2,001 characters, 1 over the 2,000 limit',
+  },
+  {
+    subject: 'shared',
+    length: 2001,
+    error: 'data/text is 2,001 characters, 1 over the 2,000 limit',
+  },
+])(
+  'it refuses a remember of a $subject note of $length characters with how far over its limit it runs',
+  async (row) => {
+    const ctx = await setupTest();
+
+    const result = await ctx.callTool(
+      'memory.remember',
+      { gist: 'a gist', topic: 'a topic', text: 'b'.repeat(row.length), subject: row.subject },
+      buildAllowingDecisionPoint({ allowing: [{ id: 'rule-all', revision: 1, checks: [] }] }),
+    );
+
+    const pending = await ctx.memory.store.proposals.listPending();
+
+    expect(result).toStrictEqual({ content: [{ type: 'text', text: row.error }], isError: true });
+    expect(pending).toStrictEqual([]);
+  },
+);
+
+test('it refuses a remember of 2,001 characters that names no subject with the 2,000 limit', async () => {
+  const ctx = await setupTest();
+
+  const result = await ctx.callTool(
+    'memory.remember',
+    { gist: 'a gist', topic: 'a topic', text: 'b'.repeat(2001) },
+    buildAllowingDecisionPoint({ allowing: [{ id: 'rule-all', revision: 1, checks: [] }] }),
+  );
+
+  expect(result).toStrictEqual({
+    content: [{ type: 'text', text: 'data/text is 2,001 characters, 1 over the 2,000 limit' }],
+    isError: true,
+  });
+});
+
+test.each([
+  { name: 'a self-note that keeps its subject', from: 'self', change: {}, length: 5000 },
+  { name: 'an owner item moved to self', from: 'owner', change: { subject: 'self' }, length: 5000 },
+] as const)(
+  'it applies an edit of $name to $length characters under an allow rule',
+  async (row) => {
+    const ctx = await setupTest();
+
+    const item = await ctx.memory.store.remember({
+      text: 'Hums while the kettle boils',
+      subject: row.from,
+      provenance: buildMockProvenance(),
+    });
+
+    const shortID = await readItemShortID(ctx.memory.log, item.itemID);
+
+    const result = await ctx.callTool(
+      'memory.edit',
+      { itemID: shortID, version: 1, text: 'c'.repeat(row.length), ...row.change },
+      buildAllowingDecisionPoint({
+        allowing: [
+          { id: 'rule-self', revision: 1, checks: [{ arg: 'subject', op: 'eq', value: 'self' }] },
+        ],
+      }),
+    );
+
+    expect(result.structuredContent).toStrictEqual({
+      status: 'applied',
+      itemID: shortID,
+      version: 2,
+    });
+  },
+);
+
+test.each([
+  {
+    name: 'a self-note that keeps its subject',
+    from: 'self',
+    change: {},
+    length: 6001,
+    error: 'data/text is 6,001 characters, 1 over the 6,000 limit',
+  },
+  {
+    name: 'an owner item that keeps its subject',
+    from: 'owner',
+    change: {},
+    length: 2001,
+    error: 'data/text is 2,001 characters, 1 over the 2,000 limit',
+  },
+  {
+    name: 'a self-note moved to owner',
+    from: 'self',
+    change: { subject: 'owner' },
+    length: 2001,
+    error: 'data/text is 2,001 characters, 1 over the 2,000 limit',
+  },
+] as const)(
+  'it refuses an edit of $name to $length characters with the limit of the subject it ends with',
+  async (row) => {
+    const ctx = await setupTest();
+
+    const item = await ctx.memory.store.remember({
+      text: 'Hums while the kettle boils',
+      subject: row.from,
+      provenance: buildMockProvenance(),
+    });
+
+    const shortID = await readItemShortID(ctx.memory.log, item.itemID);
+
+    const result = await ctx.callTool(
+      'memory.edit',
+      { itemID: shortID, version: 1, text: 'c'.repeat(row.length), ...row.change },
+      buildAllowingDecisionPoint({ allowing: [{ id: 'rule-all', revision: 1, checks: [] }] }),
+    );
+
+    const history = await ctx.memory.store.readHistory(item.itemID);
+
+    expect(result).toStrictEqual({ content: [{ type: 'text', text: row.error }], isError: true });
+    expect(history?.versions).toHaveLength(1);
+  },
+);

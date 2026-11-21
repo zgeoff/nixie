@@ -15,6 +15,10 @@ A few writes fail outright instead. The tool returns an error to the model, and 
 no item, no version and no proposal. These are:
 
 - a call that a deny rule matches ([rules on memory writes](#rules-on-memory-writes));
+- a text longer than its subject allows: 6,000 characters for a [self-note](#self-notes) and 2,000
+  for an item about the user or a shared item. An edit takes the subject it passes, or else the
+  item's. The error gives the text's length and how far over the limit it runs, as a schema error
+  does;
 - an edit, retirement or pin of a missing or forgotten item, or at an outdated revision;
 - an edit with no text and no label;
 - an edit of labels only that also passes a quote, an event ID, an end time or a subject, because
@@ -221,7 +225,8 @@ with the user. An item's subject is whose it is
 for something between the user and nixie, such as a deal or a nickname, and `self` for a self-note.
 `memory.remember` takes the subject, `owner` by default. An item keeps its subject until an approved
 [subject change](#subject-changes) moves it, so an edit that keeps a self-note's subject is a
-self-note write.
+self-note write. A self-note runs to 6,000 characters, and any other item to 2,000. Search by
+meaning covers the whole of a long note ([the indexes](./store.md#the-indexes)).
 
 Nothing of the user's backs a self-note, so the gate skips the quote check and the checker. It runs
 the hidden-character check, and a token check that compares the note's destination-like tokens with

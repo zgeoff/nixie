@@ -5,11 +5,13 @@ import type { GatedRememberRequest, ModelWriteStore } from '../gate/gate-context
 import { labelInputSchema } from '../label/label-input-schema';
 import { pickTopicSpelling } from '../label/pick-topic-spelling';
 import type { ItemIDStore } from '../types';
+import { TextLimitError } from '../utils/error/text-limit-error';
 import { makeInputRecorder } from '../utils/make-input-recorder';
 import { memoryWriteOutput } from '../utils/memory-write-output';
 import { parseUntilInput } from '../utils/parse-until-input';
 import { untilInputSchema } from '../utils/schema/until-input-schema';
 import { buildWriteCaller } from '../write/build-write-caller';
+import { findTextLimitError } from '../write/find-text-limit-error';
 import { resolveWriteFacts } from '../write/resolve-write-facts';
 import { runWriteCall } from '../write/run-write-call';
 
@@ -37,7 +39,12 @@ const rememberDescription =
 const rememberInput = {
   type: 'object',
   properties: {
-    text: { type: 'string', minLength: 1, maxLength: 2000 },
+    text: {
+      type: 'string',
+      minLength: 1,
+      maxLength: 6000,
+      description: 'at most 6,000 characters for a self-note and 2,000 for any other subject',
+    },
     gist: labelInputSchema.gist,
     topic: labelInputSchema.topic,
     triggers: labelInputSchema.triggers,
@@ -117,12 +124,18 @@ export function buildRememberTool(
     resolvePolicyFacts: (rawInput, context) =>
       resolveWriteFacts(async () => {
         const input = rememberArguments.parse(rawInput);
+        const subject = input.subject ?? 'owner';
+        const limitError = findTextLimitError(input.text, subject);
+
+        if (limitError !== null) {
+          throw new TextLimitError(limitError);
+        }
 
         return {
           sources: await memory.writes.readRememberSources(
             buildRememberRequest(input, undefined, context),
           ),
-          args: { ...rawInput, subject: input.subject ?? 'owner' },
+          args: { ...rawInput, subject },
         };
       }),
     run: async (call, context) => {
