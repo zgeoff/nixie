@@ -2,87 +2,113 @@
 
 Contents: [Journey](#journey), [End state](#end-state).
 
-The user asks the assistant to open a page. nixie calls `computer.open`, which opens the page in the
-assistant's own browser, a headless Chromium in a sandbox of its own, and returns the page text.
+The user asks the assistant to open a page. On `local`, a scripted model answers in place of the
+real one. It calls `computer.open`, and nixie holds the call until the user approves the site. Then
+nixie opens the page in the assistant's browser, a headless Chromium.
 
 Follow the steps in [Check a change](../SKILL.md#check-a-change) for this journey. Read that section
 for the commands `up` and `done`, and for the `data` field of each command's JSON output.
 
-Run this journey on `local` only. On `local`, the test build runs the guest as a plain process, with
-no egress enforcement, and the harness serves its own page on a `.test` host, so nothing reaches the
-internet. `preview` has no such page. There, skip this journey and run no `done`. In your reply,
-list the feature as not verified on `preview`, and say the test sandbox cannot show that the network
-is closed to the guest.
+Run this journey on `local` only. The `use-computer` action and the page it opens, on the host
+`pages.test`, exist only in `local`'s test build. On `preview`, skip the journey and run no `done`.
+In your reply, list the feature as not verified because it needs `local`.
+
+This journey does not check that the browser's network is closed. In a deployment, the browser runs
+in a sandbox of its own. `local`'s test build runs it as a plain process, with no network limits.
 
 Before you start:
 
 - When you have not run [sign-in-enrol](feature-sign-in-enrol.md) since `up`, run it first.
-- Run this journey once per `up`. Before you run it again, even after a failed pass, run
-  `bun verify up --restart` and `bun verify doctor`. Then run sign-in-enrol.
+- Run this journey once per `up`. Once the user approves the site, nixie asks no more, so a second
+  journey finds no call to approve in step 4. Before you run it again, even after a failed journey,
+  run `bun verify up --restart` and `bun verify doctor`. Then run sign-in-enrol.
 
 ## Journey
 
-1. Record every later command of this journey under this feature, then script the model's next turn.
-   `--kind browser` queues 2 replies: a `computer.open` call on the harness page, and the reply that
-   follows it.
+1. Record every later command of this journey under this feature:
 
    ```bash
    bun verify use --feature computer-browser
+   ```
+
+2. Send the user's message and script the model's turn. `use-computer --kind browser` sends the
+   message "Open the page in your browser.", and queues 2 replies: a `computer.open` call on the
+   `pages.test` page, and the text in `--text`.
+
+   ```bash
    bun verify action use-computer --kind browser --text 'The assistant opened the page.'
    ```
 
-   Expect: `data.replies` is above 0, the count of scripted model replies it queued.
+   Expect: `data.replies` is 2.
 
-2. Send the message. `conversation turn` waits up to 10 s for the message and the reply in the event
-   log.
+3. Wait for the turn. `conversation turn` waits up to 10 s for the message and the reply in the
+   event log. Give `--reply` the same text as `--text` in step 2. The reply arrives before the
+   approval: nixie gives the model a tool result of `queued` for the held call at once, and holds
+   the call itself as a proposal.
 
    ```bash
-   bun verify browser goto /
    bun verify conversation turn --message 'Open the page in your browser.' --reply 'The assistant opened the page.'
    ```
 
-   Expect: `conversation turn` exits 0. On a failure, do what its row in [Exit codes](exit-codes.md)
-   says.
+   Expect: exit 0. On a failure, do what its row in [Exit codes](exit-codes.md) says.
 
-3. Check that nixie holds the call and did not run it. The first open of a site asks the owner, so
-   the call waits as an approval for that site:
+4. Check that nixie holds the call and did not run it. `proposals --waiting pending` checks once,
+   with no wait, and exits 0 when nixie holds exactly one call of the tool.
 
    ```bash
    bun verify proposals --tool computer.open --waiting pending
+   ```
+
+   Expect: exit 0.
+
+5. Script the model's text for the turn that the approval starts. Without it, that turn fails. No
+   step checks that turn's reply.
+
+   ```bash
    bun verify action script-reply --text 'Thanks, I have your answer.'
    ```
 
-   Expect: `proposals` exits 0. The second command returns `data.replies` of 1, the text of the turn
-   that your answer starts.
+   Expect: `data.replies` is 1.
 
-4. Open the approvals page, expand the item and approve it. Take each `ref` from the snapshot just
-   before its click: the item is the line that holds "Run computer.open to" and `[cursor=pointer]`,
-   and after the first click the approve button is named "Run computer.open to" followed by the
-   site.
+6. Open the approvals page, and take a snapshot:
 
    ```bash
    bun verify browser goto /proposals
    bun verify browser snapshot
+   ```
+
+   Expect: one item that reads "Run computer.open to pages.test:", then a port, then "(fetch).".
+   "fetch" is the effect that `computer.open` declares. Find the line that holds that text and
+   `[cursor=pointer]`. Pass its `ref`, such as `f3e32`, as `<item_ref>`.
+
+7. Click the item to expand it, then click its approve button. Take the button's `ref` from the
+   snapshot after the first click. Each snapshot gives every element a new `ref`. The button's name
+   repeats the item's text without "(fetch).", so find the line that starts with
+   `button "Run computer.open to pages.test:`. Pass its `ref` as `<button_ref>`.
+
+   ```bash
    bun verify browser click --ref '<item_ref>'
    bun verify browser snapshot
    bun verify browser click --ref '<button_ref>'
    ```
 
-   Expect: the item reads "Run computer.open to pages.test:" and a port. Both clicks exit 0.
+   Expect: both clicks exit 0.
 
-5. Check the answer. `proposals --waiting none` checks once, with no wait:
+8. Check the call's outcome. `proposals --waiting none` checks once, with no wait, and exits 0 when
+   nixie holds no call of the tool.
 
    ```bash
    bun verify proposals --tool computer.open --waiting none
-   bun verify db query "select json_extract(payload, '$.status') as status from records where kind = 'action.outcome' order by sequence desc limit 1"
+   bun verify db query "select json_extract(payload, '$.status') as status from records where kind = 'action.outcome' and json_extract(payload, '$.tool') = 'computer.open'"
    ```
 
-   Expect: `proposals` exits 0, and `status` is `done`.
+   Expect: `proposals` exits 0, and the query returns one row, with `status` `done`.
 
 ## End state
 
-- Step 3: one pending approval for `computer.open`, which names the site's host and port.
-- Step 5: the call's action ended `done`: nixie opened the harness page in the browser after the
-  approval, and not before.
+- In step 4, nixie held one call of `computer.open`.
+- In step 6, the approvals page showed the site's host, `pages.test`, and its port.
+- In step 8, nixie holds no call, and the call's outcome is `done`: nixie opened the page after the
+  approval.
 
 Once the end state matches, run `bun verify done`.

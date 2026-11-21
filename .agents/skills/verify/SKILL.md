@@ -32,8 +32,7 @@ The mistakes that cost the most time:
   then `done`; then push and publish with the upload token read in a subshell.
 - [Read the envelope](#read-the-envelope): branch on the exit code and `error.code`, never on the
   message, which can change in any release.
-- [Targets](#targets): check a change on a launch target, a target whose app `bun verify up` starts
-  from your worktree.
+- [Targets](#targets): check a change on a launch target, which `bun verify up` starts.
 - [Commands](#commands): read `--help` before you guess a flag.
 - [Edit the skill and the registry](#edit-the-skill-and-the-registry): map each new file in the
   registry, read the reference before you edit the skill, and run `lint`.
@@ -151,7 +150,8 @@ that command alone. A command with neither runs on the registry's first target, 
 | `prod`    | `bun verify use --target prod`, then `bun verify attach`    | read-only  | [The prod check](references/prod-check.md).                                              |
 
 - Run `sign-in-enrol` first, and after each `up --restart`, as
-  [its file](references/feature-sign-in-enrol.md) says. Skip it before `device-screen`.
+  [its file](references/feature-sign-in-enrol.md) says, except before `device-screen`, which needs a
+  browser with no session.
 
 <!-- /repo -->
 
@@ -180,7 +180,7 @@ for its commands.
 [`create-verify-registry.ts`](../../../verify/src/verify/create-verify-registry.ts) declares the
 targets, actions, commands, doctor checks and features.
 [`feature-paths.ts`](../../../verify/src/verify/feature-paths.ts) holds each feature's `paths`, the
-shared globs, and the `.ignore` list.
+shared globs that make every verdict stale, and the `.ignore` list.
 
 <!-- /repo -->
 
