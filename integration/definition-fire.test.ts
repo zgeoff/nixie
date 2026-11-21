@@ -447,9 +447,7 @@ test.each([
     'a recurring reminder',
     {
       schedule: {
-        every: 'week',
-        on: 'tue',
-        at: '14:00',
+        repeat: { frequency: 'weekly', byDay: ['tue'], at: ['14:00'] },
         zone: 'Australia/Sydney',
         catchUp: 'once',
       },

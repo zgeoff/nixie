@@ -694,11 +694,9 @@ export interface NixieTables {
     readonly target: string;
     readonly trigger: string;
     readonly after: number;
-
-    // the slot that a snooze holds and the instant its hold ends, epoch milliseconds
+    readonly updated_sequence: number;
     readonly hold_slot: number | null;
     readonly hold_until: number | null;
-    readonly updated_sequence: number;
   };
   readonly trigger_keys: {
     readonly source_key: string;

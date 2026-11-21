@@ -42,7 +42,9 @@ async function setupTest() {
 test('it shows the owner an approved task.define that the define refused as failed', async () => {
   const ctx = await setupTest();
 
-  const trigger = { schedule: { every: 'week', on: 'fri', at: '08:00', zone: 'owner' } };
+  const trigger = {
+    schedule: { repeat: { frequency: 'weekly', byDay: ['fri'], at: ['08:00'] }, zone: 'owner' },
+  };
 
   ctx.nixie.guest.addReplies(
     {
@@ -89,7 +91,9 @@ test('it shows the owner an approved task.define that the define refused as fail
 test('it tells the next turn that the approved task.define failed, with the refusal it returned', async () => {
   const ctx = await setupTest();
 
-  const trigger = { schedule: { every: 'week', on: 'fri', at: '08:00', zone: 'owner' } };
+  const trigger = {
+    schedule: { repeat: { frequency: 'weekly', byDay: ['fri'], at: ['08:00'] }, zone: 'owner' },
+  };
 
   ctx.nixie.guest.addReplies(
     {
