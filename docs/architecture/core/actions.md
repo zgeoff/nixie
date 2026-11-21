@@ -116,6 +116,10 @@ The step runs such an action by the same rules as an attempt:
   finds an attempt with no result marks the action unknown with `attempt_without_result` and runs no
   tool, so the call never runs twice. Your retry returns the action to pending and wakes the task,
   and the next step runs it again.
+- A tool can mark its result as a refusal with a code, when it changed nothing and the result says
+  why. The action then fails with `refused`, and its outcome's message gives the code. The turn
+  still reads the tool's result, which tells the model what it needs to retry. `task.define`,
+  `task.undefine` and the reminder tools mark their refusals this way.
 - A task with such an action waiting never goes to waiting itself: its next step runs the action,
   even with no message in its inbox.
 

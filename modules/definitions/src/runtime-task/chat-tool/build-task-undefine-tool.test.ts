@@ -62,7 +62,11 @@ test('it returns NOT_FOUND for a definition that does not exist', async () => {
 
   const outcome = await ctx.undefine({ definitionID: 'feed-the-cat' });
 
-  expect(outcome).toStrictEqual({ status: 'ok', result: { refused: { code: 'NOT_FOUND' } } });
+  expect(outcome).toStrictEqual({
+    status: 'ok',
+    result: { refused: { code: 'NOT_FOUND' } },
+    refusalCode: 'NOT_FOUND',
+  });
 });
 
 test('it returns an error for an input that breaks the schema', async () => {

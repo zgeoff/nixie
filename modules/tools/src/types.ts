@@ -76,6 +76,10 @@ export interface DirectResult extends TypedResult {
   // whose result ends the turn for good sets it.
   readonly endsTurn?: true;
 
+  // The code of a refusal: the tool changed nothing, and the result says why. An approved action of
+  // the call settles failed, with the code in its outcome.
+  readonly refusalCode?: string;
+
   // Sealed under the result record's key, in order, as the record's attachments. They never enter
   // the result's payload or its erasable text.
   readonly attachments?: readonly Uint8Array<ArrayBuffer>[];

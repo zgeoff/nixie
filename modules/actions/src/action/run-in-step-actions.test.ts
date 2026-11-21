@@ -149,6 +149,63 @@ test('it fails the action when the tool failed, and names the result of the fail
   expect(action).toMatchObject({ status: 'failed', reason: 'refused' });
 });
 
+test('it fails the action refused, with the code in its outcome, when the tool refused the call', async () => {
+  const ctx = await setupTest();
+  const queued = await ctx.seed.inStepAction({ step: ctx.step });
+
+  const settled = await ctx.runStep({
+    runCall: ctx.runCall({
+      status: 'refused',
+      resultSequence: 9,
+      code: 'ID_TAKEN',
+      result: { refused: { code: 'ID_TAKEN' } },
+      images: [],
+    }),
+  });
+
+  const [first] = settled;
+
+  const outcome = await ctx.readOutcome(first?.outcomeSequence ?? 0);
+
+  expect({ payload: outcome?.payload, erasable: outcome?.erasable }).toStrictEqual({
+    payload: {
+      actionID: queued.action_id,
+      tool: 'test.read',
+      status: 'failed',
+      attempt: 1,
+      reason: 'refused',
+      resultSequence: 9,
+    },
+    erasable: {
+      status: 'readable',
+      fields: { message: 'the tool refused the call: ID_TAKEN' },
+    },
+  });
+});
+
+test('it hands back the result of a refused call, for the turn to read', async () => {
+  const ctx = await setupTest();
+  const queued = await ctx.seed.inStepAction({ step: ctx.step });
+
+  const settled = await ctx.runStep({
+    runCall: ctx.runCall({
+      status: 'refused',
+      resultSequence: 9,
+      code: 'ID_TAKEN',
+      result: { refused: { code: 'ID_TAKEN' } },
+      images: [],
+    }),
+  });
+
+  expect(settled).toStrictEqual([
+    {
+      actionID: queued.action_id,
+      outcomeSequence: expect.any(Number),
+      reply: { result: { refused: { code: 'ID_TAKEN' } }, images: [] },
+    },
+  ]);
+});
+
 test.each([
   ['unavailable', 'unknown_tool'],
   ['changed', 'arguments_unreadable'],

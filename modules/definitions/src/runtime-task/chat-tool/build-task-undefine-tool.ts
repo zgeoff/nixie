@@ -60,6 +60,7 @@ export function buildTaskUndefineTool(options: ChatToolOptions): ToolDefinition 
         return {
           status: 'ok',
           result: { refused: parseJSONObject(JSON.stringify(result.refusal)) },
+          refusalCode: result.refusal.code,
         };
       }
 

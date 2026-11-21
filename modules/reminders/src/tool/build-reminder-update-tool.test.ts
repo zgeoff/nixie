@@ -61,6 +61,7 @@ test('#reminder.update refuses an unknown ID', async () => {
         sentence: 'No reminder has the ID nope. Call reminders.list to see the IDs.',
       },
     },
+    refusalCode: 'UNKNOWN_REMINDER',
   });
 });
 

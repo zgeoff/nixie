@@ -73,5 +73,6 @@ test('#reminder.set refuses a schedule under the minimum gap with a sentence tha
           'A recurring reminder fires at most every 15 minutes (reminders.min_gap_minutes).',
       },
     },
+    refusalCode: 'MIN_GAP',
   });
 });

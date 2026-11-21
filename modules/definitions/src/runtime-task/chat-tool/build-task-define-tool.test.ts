@@ -93,7 +93,11 @@ test('it returns ID_TAKEN for an ID that the repo holds', async () => {
 
   const outcome = await ctx.define(buildTestDefineInput({ brief: 'Water them well.' }));
 
-  expect(outcome).toStrictEqual({ status: 'ok', result: { refused: { code: 'ID_TAKEN' } } });
+  expect(outcome).toStrictEqual({
+    status: 'ok',
+    result: { refused: { code: 'ID_TAKEN' } },
+    refusalCode: 'ID_TAKEN',
+  });
 });
 
 test('it returns NOT_FOUND for a replacement of a definition that does not exist', async () => {
@@ -103,7 +107,11 @@ test('it returns NOT_FOUND for a replacement of a definition that does not exist
 
   const outcome = await ctx.define(buildTestDefineInput({ definitionID: 'feed-the-cat' }));
 
-  expect(outcome).toStrictEqual({ status: 'ok', result: { refused: { code: 'NOT_FOUND' } } });
+  expect(outcome).toStrictEqual({
+    status: 'ok',
+    result: { refused: { code: 'NOT_FOUND' } },
+    refusalCode: 'NOT_FOUND',
+  });
 });
 
 test('it returns UNCHANGED for a replacement that holds the version in force', async () => {
@@ -114,7 +122,11 @@ test('it returns UNCHANGED for a replacement that holds the version in force', a
 
   const outcome = await ctx.define(buildTestDefineInput({ definitionID: 'water-the-tomatoes' }));
 
-  expect(outcome).toStrictEqual({ status: 'ok', result: { refused: { code: 'UNCHANGED' } } });
+  expect(outcome).toStrictEqual({
+    status: 'ok',
+    result: { refused: { code: 'UNCHANGED' } },
+    refusalCode: 'UNCHANGED',
+  });
 });
 
 test('it returns FILE_ONLY_KEYS for a replacement of a definition that holds an instructions file', async () => {
@@ -130,7 +142,11 @@ test('it returns FILE_ONLY_KEYS for a replacement of a definition that holds an 
     buildTestDefineInput({ definitionID: 'water-the-tomatoes', brief: 'Water them well.' }),
   );
 
-  expect(outcome).toStrictEqual({ status: 'ok', result: { refused: { code: 'FILE_ONLY_KEYS' } } });
+  expect(outcome).toStrictEqual({
+    status: 'ok',
+    result: { refused: { code: 'FILE_ONLY_KEYS' } },
+    refusalCode: 'FILE_ONLY_KEYS',
+  });
 });
 
 test('it returns ONE_SHOT_OVER_REPO for a one-shot over a definition that the repo holds', async () => {
@@ -147,6 +163,7 @@ test('it returns ONE_SHOT_OVER_REPO for a one-shot over a definition that the re
   expect(outcome).toStrictEqual({
     status: 'ok',
     result: { refused: { code: 'ONE_SHOT_OVER_REPO' } },
+    refusalCode: 'ONE_SHOT_OVER_REPO',
   });
 });
 
@@ -160,6 +177,7 @@ test('it returns INVALID with the reasons for a version that a start refuses', a
   expect(outcome).toStrictEqual({
     status: 'ok',
     result: { refused: { code: 'INVALID', reasons: expect.any(Array) } },
+    refusalCode: 'INVALID',
   });
 });
 
@@ -173,6 +191,7 @@ test('it returns INVALID for a name with an empty slug', async () => {
   expect(outcome).toStrictEqual({
     status: 'ok',
     result: { refused: { code: 'INVALID', reasons: expect.any(Array) } },
+    refusalCode: 'INVALID',
   });
 });
 
