@@ -27,7 +27,7 @@ The first build ships the smallest deployment that keeps every guarantee true:
   snapshot. nixie makes the copies, and the [backup sidecar](backup-and-restore.md) ships them.
 - **Forget completes after the key repo prunes.** A forget stages a key backup at once, and key
   backups publish in the order nixie staged them. The forget reports pending until that job prunes
-  every older key snapshot. [Memory](../memory/store.md) owns what forget means.
+  every older key snapshot. [Memory](../../../architecture/memory/store.md) owns what forget means.
 - **Restore on a new host,** which starts nixie paused, so a restored task never repeats an action
   before you check.
 - **Upgrades as pin bumps,** by hand or by a poll timer. Every release keeps its schema readable by
@@ -69,7 +69,7 @@ imp runs as its own stack from its release image, outside nixie's Compose file o
 reaches impd's API with a token from the secrets, through the sandbox adapter. **Why:** impd runs as
 root with extra capabilities, so keeping it apart keeps nixie unprivileged and lets imp upgrade on
 its own schedule. A model in an imp reaches nixie's tools through imp's reverse forward with egress
-`none`, as the [sandbox adapter](../connectors/sandbox-adapter.md) describes.
+`none`, as the [sandbox adapter](../../../architecture/connectors/sandboxes.md) describes.
 
 ## The image
 

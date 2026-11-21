@@ -121,16 +121,16 @@ connection lists its tools without the argument. A worker's subset narrows the c
 same way as the tools.
 
 The connector maps each provider response to one of the 4 responses, with the provider's status, its
-error message as `detail` and its retry time as `after`. The [action queue](../core/actions.md)
-turns a queued action's response into an outcome, and the
-[tool endpoint](tools.md#a-failed-direct-call) retries and reports a direct action's response inside
-the turn. A direct action never returns `ambiguous`, because a read has no effect to reconcile, so a
-thrown call counts as `retry`. The fetcher rejects a request it refuses with its own error, which
-the connector lets pass, so the endpoint never reads a refusal as the provider's answer. Each queued
-action declares how the queue reconciles an unknown outcome: the provider's idempotency key and how
-long the provider keeps it, a read-only check and how long to wait before trusting a negative
-answer, or neither. `run` passes the action ID as the idempotency key, or writes it where the check
-finds it, such as a header on a sent email.
+error message as `detail` and its retry time as `after`. The
+[action queue](../../../architecture/core/actions.md) turns a queued action's response into an
+outcome, and the [tool endpoint](tools.md#a-failed-direct-call) retries and reports a direct
+action's response inside the turn. A direct action never returns `ambiguous`, because a read has no
+effect to reconcile, so a thrown call counts as `retry`. The fetcher rejects a request it refuses
+with its own error, which the connector lets pass, so the endpoint never reads a refusal as the
+provider's answer. Each queued action declares how the queue reconciles an unknown outcome: the
+provider's idempotency key and how long the provider keeps it, a read-only check and how long to
+wait before trusting a negative answer, or neither. `run` passes the action ID as the idempotency
+key, or writes it where the check finds it, such as a header on a sent email.
 
 `ConnectorContext` gives the connector a [fetcher](credentials.md) for the connection's credential,
 limited to the hosts the connector declares, and nothing else that reaches the network. Connectors

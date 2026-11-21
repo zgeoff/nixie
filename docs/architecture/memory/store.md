@@ -448,9 +448,12 @@ item as a gap with its date and provenance.
 
 ### A forget and the key backups
 
-A backup copied before a forget still holds the forgotten item's key, so a forget also reports the
-state of the backups of its keys: off, pending, failed with a reason, or complete. A forget or a
-bulk forget answers with this state, and `memory.readForgetStatus` reads it again.
+A backup copied before a forget still holds the forgotten item's key. The key backups' storage must
+let nixie delete every past copy, so a store with versioning that nixie does not manage, or with
+immutable retention, cannot hold them. Staging files, restore samples and backup caches count as
+copies too. A forget also reports the state of the backups of its keys: off, pending, failed with a
+reason, or complete. A forget or a bulk forget answers with this state, and
+`memory.readForgetStatus` reads it again.
 
 - The state reads off when the deployment turned the backup schedule off.
 - It reads pending until a forget has deleted every item asked about. An item that no forget took,

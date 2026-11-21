@@ -68,7 +68,7 @@ or implement a distributed lock. It tests one local filesystem backend, not clou
 immutable retention, hidden provider copies or physical media erasure. It performs no live SDK
 cleanup. The fixture never restores a deleted key into the live store.
 
-The [forget contract](../../docs/design/platform/memory/store.md#forget-completion-and-key-backups)
-requires every registered backend to acknowledge cleanup and rejects stale publication. Each
-selected deployment backend needs its own validation. A failed or unreachable cleanup remains
-pending; the ordinary backup schedule cannot make a completed forget recoverable again.
+The [forget contract](../../docs/architecture/memory/store.md#a-forget-and-the-key-backups) requires
+every registered backend to acknowledge cleanup and rejects stale publication. Each selected
+deployment backend needs its own validation. A failed or unreachable cleanup remains pending; the
+ordinary backup schedule cannot make a completed forget recoverable again.

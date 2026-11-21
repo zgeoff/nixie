@@ -102,7 +102,8 @@ still restored.
 
 nixie deletes a key from the live store with SQLite's `secure_delete` on and checkpoints the
 write-ahead log. A forget then stages a key set at once instead of waiting for the schedule. The
-[memory store](../memory/store.md) owns the forget contract. Deployment meets it this way:
+[memory store](../../../architecture/memory/store.md) owns the forget contract. Deployment meets it
+this way:
 
 1. The backup job uploads the set's key snapshot, which lacks the deleted keys, forgets every other
    key snapshot, and prunes their unused data. Forgetting snapshots without a prune left a blob that

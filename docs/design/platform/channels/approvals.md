@@ -36,8 +36,8 @@ when its rule is wider than the rule the card showed.
 - **Decline** closes the proposal, and an optional note reaches the task as a message.
 
 A reply in the thread, such as "make it 8:30", makes the model withdraw the proposal and post a new
-one. An unknown outcome shows what nixie tried and the choices that [actions](../core/actions.md)
-sets: it happened, retry, or drop.
+one. An unknown outcome shows what nixie tried and the choices that
+[actions](../../../architecture/core/actions.md) sets: it happened, retry, or drop.
 
 ### Defer
 

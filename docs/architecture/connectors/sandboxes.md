@@ -3,11 +3,9 @@
 nixie runs untrusted work in sandboxes: the conversation's model loop, the memory checker, each
 worker, each code run, the fetch sandbox and each coding session. A sandbox gets only the network
 and the credentials its kind of work needs, and the caller names only that kind. nixie reaches
-sandboxes through its own sandbox interface, which the
-[sandbox adapter design](../../design/platform/connectors/sandbox-adapter.md) defines. The reference
-adapter runs each sandbox as an [imp](../../glossary.md), a microVM that impd, imp's host daemon,
-runs. The test sandbox runs each guest as a local process, so any module's tests can run a real
-guest.
+sandboxes through its own sandbox interface, `Sandbox` in `modules/sandbox`. The reference adapter
+runs each sandbox as an [imp](../../glossary.md), a microVM that impd, imp's host daemon, runs. The
+test sandbox runs each guest as a local process, so any module's tests can run a real guest.
 
 [Tool calls](./tool-calls.md) covers the endpoint a sandbox's tool route reaches.
 [The code tool](./code-tool.md) covers the code run's sandbox. [Web fetch](./web-fetch.md) covers
@@ -135,7 +133,8 @@ creates a new sandbox, and the guest opens a new session from the log.
 ## The tool route
 
 A sandbox with a tool route reaches nixie's tools over a reverse forward, and has no network route
-to the host.
+to the host. An egress allow entry would not do: imp's allow entry admits a whole address, so an imp
+allowed to reach nixie's endpoint would also reach impd's API on the same address.
 
 ```mermaid
 flowchart LR
@@ -181,9 +180,10 @@ and the secrets.
   the adapter refuses a grant whose secret the broker would send to any host but its own one.
 - **Public egress.** Public egress reaches the internet and nothing inside the deployment: not the
   host, not impd's API, not another sandbox. The deployment's operator lists the host's own
-  addresses and the deployment's private address ranges, and the same lists go to impd and to nixie.
-  The adapter refuses public egress when the list of host addresses is empty, or when impd cannot
-  enforce public egress, because a public imp can reach any host address the list leaves out.
+  addresses and the deployment's private address ranges, in `IMP_HOST_ADDRESSES` and
+  `IMP_EGRESS_DENY`, and the same lists go to impd and to nixie. The adapter refuses public egress
+  when the list of host addresses is empty, or when impd cannot enforce public egress, because a
+  public imp can reach any host address the list leaves out.
 - **Closed egress.** A sandbox with no egress, a worker's included, has no internet route except its
   broker. The broker adds the model grant from the host side, so code in the sandbox that holds a
   key of its own gets no answer from the model API's host when it connects directly. A worker reads

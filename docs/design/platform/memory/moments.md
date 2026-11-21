@@ -8,7 +8,7 @@ model's reflections beside it. The moment refers to its records by sequence and 
 so the event log stays the one history. A model reaches a moment only through a tool call, either
 from a search or from a memory item's link, and never through per-turn retrieval. Destroying a
 moment shreds the moment's own text and leaves the conversation in the event log.
-[The memory store](store.md) covers the facts that moments sit beside.
+[The memory store](../../../architecture/memory/store.md) covers the facts that moments sit beside.
 
 ## The first build
 

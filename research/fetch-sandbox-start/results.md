@@ -6,9 +6,9 @@ awake imp. On impd 2.8.3, a plain `imp new` to a first exec takes a median of 1.
 984 to 1379 ms. A template or a fork gains nothing within the spread of those runs. A kept imp that
 wakes costs 0.56 s, and an exec in an awake imp 0.11 s. The answer is one new sandbox per fetch from
 the fetch image, with no template, fork or pool. The
-[web fetch design](../../docs/design/platform/connectors/web-fetch.md#the-sandboxs-lifetime) makes
-that the default once its cost is measured. Every one of the 22 timed creates exited 0, the 5 from
-the conversation image included.
+[web fetch doc](../../docs/architecture/connectors/web-fetch.md#the-fetch-sandbox) makes that the
+default once its cost is measured. Every one of the 22 timed creates exited 0, the 5 from the
+conversation image included.
 
 ## Question
 

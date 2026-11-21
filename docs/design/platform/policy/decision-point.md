@@ -47,7 +47,8 @@ endpoint resolves every connector call to one connection before stage 1, as the
 check `connection` on any call. A denied call returns the rule's ID and sentence to the model as the
 tool result, so the model can take another path, and no prompt reaches you. A queued action runs
 through the pipeline again before each attempt, so a rule that narrowed after its approval still
-applies; [actions](../core/actions.md) covers how an approval answers each outcome.
+applies; [actions](../../../architecture/core/actions.md) covers how an approval answers each
+outcome.
 
 ## The slice 1 rule
 

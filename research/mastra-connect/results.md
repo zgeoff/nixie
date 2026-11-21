@@ -148,10 +148,10 @@ that carries an `Idempotency-Key` header, and gives any other write exactly one 
 The client has no handling for a 429, `Retry-After`, a quota or a per-call timeout, and a comment
 defers to a platform retry policy the docs never describe.
 
-nixie's [action queue](../../docs/design/platform/core/actions.md) covers queued writes with 4
-response kinds, a retry schedule that honours the provider's retry time, and reconciliation. Like
-Connect, it never repeats a write blindly: an unknown outcome leads to reconciliation, never to a
-plain second attempt. The designs say less about a `direct` call, a read in the turn: neither the
+nixie's [action queue](../../docs/architecture/core/actions.md) covers queued writes with 4 response
+kinds, a retry schedule that honours the provider's retry time, and reconciliation. Like Connect, it
+never repeats a write blindly: an unknown outcome leads to reconciliation, never to a plain second
+attempt. The designs say less about a `direct` call, a read in the turn: neither the
 [tool endpoint](../../docs/design/platform/connectors/tools.md#what-the-model-sees) nor the
 connector interface states what a rate-limited or failed read returns to the model.
 
