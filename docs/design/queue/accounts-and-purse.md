@@ -38,10 +38,11 @@ accounts.list({});
 //       username: 'nix@example.net' },
 //     { account: 'c3w8p1z6mt', kind: 'card', label: 'purse', origins: [], username: null } ] }
 
-account.sign_in({ tab: 't1', account: 'a7q2m9x4kd' });
-// → { status: 'filled', tab: 't1', url: 'https://library.example.org/login', fields: ['username', 'password'] }
-//   it fills and never submits: the assistant submits with computer.click. fields lists what the page
-//   had, so a two-step sign-in takes one call for the username and one on the next page for the password
+account.sign_in({ tab: 't1', account: 'a7q2m9x4kd', submit: 'E7' });
+// → { status: 'signed_in', tab: 't1', url: 'https://library.example.org/account', fields: ['username', 'password'] }
+//   submit: the element to click after the fill, in the same action, so a sign-in is one card or none.
+//   Without it the result is status 'filled' and the assistant submits with computer.click. fields lists
+//   what the page had, so a two-step sign-in takes one call for the username and one on the next page
 //   or { refused: 'ORIGIN_MISMATCH', origin: 'https://library-example.top' } | { refused: 'NO_FIELD' }
 //   or { refused: 'CROSS_ORIGIN_SUBMIT' } | { refused: 'UNKNOWN_ACCOUNT' } | { refused: 'WRONG_KIND' }
 //   or { refused: 'ACCOUNT_FORGOTTEN' } | { refused: 'TAB_GONE' }
@@ -53,11 +54,16 @@ account.sign_up({ tab: 't1', label: 'library card', username: 'nix@example.net' 
 purse.pay({ tab: 't1', amount: { value: 12.5, currency: 'AUD' }, item: 'one font licence' });
 // → { status: 'filled', purchase: 'pq3z8w1n5v', merchant: 'https://fonts.example.com', pageTotal: '12.50 AUD' }
 //   or { refused: 'NO_CARD_FIELD' } | { refused: 'ORIGIN_MISMATCH' } | { refused: 'NEEDS_OWNER' }
+
+purse.read({});
+// → { month: { budget: '100.00 AUD', spent: '37.50 AUD', left: '62.50 AUD' }, lift: '25.00 AUD',
+//     purchases: [{ purchase: 'pq3z8w1n5v', at, merchant: 'https://fonts.example.com', amount: '12.50 AUD',
+//                   item: 'one font licence', approval: 'lift' }], next: null }
 ```
 
 ```ts
 // connectors module: the effects each tool declares
-// accounts.list: ['note'], run direct
+// accounts.list, purse.read: ['note'], run direct
 // account.sign_in, account.sign_up: ['sign_in'], a new effect, queued; destination: the tab's origin
 // purse.pay: ['spend'], queued; destination: the tab's origin; amount: the page's total, see below
 // No tool takes an origin. Before the decision, the tool reads the tab's origin from the guest
@@ -143,11 +149,28 @@ purchase.recorded              -- budgets module, one per purse.pay that fills
 
 ```ts
 // connectors module. Adapter: mail-jmap, against the mail host's JMAP API.
-mail.list({ unread: true });
-// → { messages: [{ message: 'mz4k8q2w7p', from: 'hello@library.example.org', subject: 'Your code', at, isUnread: true }] }
+mail.list({ unread: true, query: 'from:penpal@example.com chess' }); // query: the host's search syntax
+// → { messages: [{ message: 'mz4k8q2w7p', thread: 'th6p2k9w4x', from: 'hello@library.example.org',
+//                  subject: 'Your code', at, isUnread: true }], next: null }
 mail.read({ message: 'mz4k8q2w7p' });
-// → { from, subject, text: 'Your code is 482913. [L4] Sign in' }   // every field outside, links as link IDs
-mail.send({ to: ['hello@library.example.org'], subject, text }); // effects ['send'], queued, destination: each address
+// → { from, subject, thread, text: 'Your code is 482913. [L4] Sign in',
+//     attachments: [{ attachment: 1, name: 'board.png', bytes: 30422 }] }   // every field outside, links as link IDs
+mail.saveAttachment({ message: 'mz4k8q2w7p', attachment: 1 });
+// → { file: 'f7m3q8k2wz', name: 'board.png' }   a file like computer.exportFile's; at most 25 MiB
+mail.send({ to: ['hello@library.example.org'], subject, text, files: ['f2r8k5w1mz'] });
+mail.reply({ message: 'mz4k8q2w7p', text, files: [] }); // threads with In-Reply-To; to: the sender
+// mail.list, mail.read, mail.saveAttachment: ['note'], direct
+// mail.send, mail.reply: ['send'], queued, destination: each address; files: up to 10, 25 MiB in all
+```
+
+### New mail
+
+```ts
+// a task's trigger, beside the schedule triggers
+trigger: { on: 'mail', from?: ['penpal@example.com'] } // a task starts for each new mail that matches
+
+// with no task matching, the conversation gets a system message
+// { kind: 'mail', messages: [{ message: 'mz4k8q2w7p', from, subject }] }   from and subject are outside
 ```
 
 ## Constraints
@@ -198,6 +221,11 @@ Mail:
 - Every mail field comes back with the source `outside`, and HTML mail is parsed in a fetch sandbox,
   as [the Gmail design](gmail-calendar-drive-tools.md) does it.
 - A one-time code in a mail is visible to the assistant, which types it with `computer.fill`.
+- The adapter follows the host's JMAP push stream, and writes a `mail.received` record for each new
+  mail. A lost stream reconnects, and nixie reads what arrived since its last state.
+- New mail that no task takes folds into one system message per 15 minutes, so a burst of mail wakes
+  the conversation once.
+- A saved attachment counts as untrusted, like a download.
 
 ## Decisions
 
@@ -230,6 +258,8 @@ Mail:
 ## Out of scope
 
 - Two-factor apps and passkeys for the assistant's accounts.
+- Solving a CAPTCHA. A sign-up that shows one stops there, and the assistant tells you which site
+  asked.
 - Reading a card statement from the bank. The card has no API.
 - Signing in to your accounts. Every account here is the assistant's own.
 
@@ -239,5 +269,8 @@ Mail:
   Fastmail serves.
 - **Does the bank ask for a 3-D Secure check on each purchase?** A test purchase settles it. Until
   then, a purchase that stops at a bank check returns `NEEDS_OWNER` and waits for you.
+- **Does the assistant get a phone number?** Many sign-ups ask for one, and a number that takes
+  texts costs a monthly fee. The owner settles it. Until then, a sign-up that asks for a phone
+  number stops, as a CAPTCHA does.
 - **Are `account`, `purse` and the tool names right?** The owner settles it. Until then, the build
   uses them.
