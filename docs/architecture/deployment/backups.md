@@ -78,10 +78,11 @@ receipt. For each set it ships, the job:
    either, or 1 when neither holds one;
 3. backs up the key store copy to the key repository first, with the tags `set-`, `kind-` and
    `publish-`, and the tags `legacy-set-` and `proven-from-` where the
-   [tag rules](../../design/queue/backup-pair.md#tags) give them: the key snapshot copies both from
-   the one it replaces, and takes `legacy-set-` when it is the first numbered one. It takes
-   `proven-from-` with its own number, and no other tag, when a restore note shows the restored keys
-   are not the newest's, or when the replaced snapshot has no number while a repository holds one;
+   [tag rules](backup-pair.md#the-key-only-tags-of-a-new-key-snapshot) give them: the key snapshot
+   copies both from the one it replaces, and takes `legacy-set-` when it is the first numbered one.
+   It takes `proven-from-` with its own number, and no other tag, when a restore note shows the
+   restored keys are not the newest's, or when the replaced snapshot has no number while a
+   repository holds one;
 4. backs up the log copy to the data repository with the same `set-`, `kind-` and `publish-` tags,
    then applies the data retention;
 5. forgets every other key snapshot by its ID, prunes every unused byte, and checks the repository's
@@ -123,7 +124,7 @@ The fetch:
 
 1. writes the unfinished-backup marker into the directory, before anything else;
 2. lists both repositories and picks the pair: the newest key snapshot, and the data snapshot that
-   goes with it. The [pick's rules](../../design/queue/backup-pair.md#the-pick) give each refusal,
+   goes with it. The [pick's rules](backup-pair.md#choosing-the-data-snapshot) give each refusal,
    and the table that rates a named data snapshot;
 3. restores the key snapshot as `keys.db` and the data snapshot as `nixie.db`, as bytes;
 4. lists the key repository again. When a publish changed the newest key snapshot, it empties the

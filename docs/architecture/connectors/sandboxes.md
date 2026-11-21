@@ -63,9 +63,26 @@ to a role. A sandbox kind or an image never picks a row.
 | code run     | each `code.run` call                                | 1     | 512 MiB | 4096 MiB |
 ```
 
-A size is a constant with no config key, and a release changes it. A kept sandbox whose stored size
-differs from its row is replaced once, by the rule that finds a kept sandbox.
-[The sandbox sizes design](../../design/queue/sandbox-sizes.md) gives the reasons for each figure.
+A size is a constant with no config key, and a release changes it. Each row's memory is an even
+number of MiB, no smaller than the runtime's smallest sandbox, and a unit test fails on any other
+figure. The even rule exists because a host that reserves large pages for sandbox memory cannot
+place an odd size in that reserve. Each figure comes from the measurements of the
+[sandbox memory spike](../../../research/sandbox-memory/README.md).
+
+When a row's sandbox is killed for running out of memory, raise the row step by step to the first
+figure at which the spike's `probe.sh` passes. `probe.sh` runs one of the spike's scenarios in a new
+test imp of a given size, and passes when no process in it is killed for memory. Ship the new figure
+in a release. A memory kill in the code run row is the program's own limit, as the
+[code tool](code-tool.md) describes, and changes no row. When you add an image for a role with no
+row, add the role's row in the same pull request, size it with `probe.sh` on that image, and quote
+the probe's output.
+
+The server keeps one sandbox across its restarts for the conversation, for each started task and for
+the checker. Each time the server starts, it compares the stored spec of each kept sandbox with the
+spec it would create now, which carries the row's size. When any field differs, the server replaces
+the sandbox once. The comparison is by equality, so a rollback replaces it as an upgrade does. The
+conversation's new sandbox copies the session from the one it replaces, then removes it. A task's or
+the checker's new sandbox starts empty.
 
 ## Records and recovery
 

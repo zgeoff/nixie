@@ -217,8 +217,8 @@ For the conversation, `logThread` equals `thread`.
 - The release a rollback returns to drops the options key because the options schema is not strict.
   It has no `logThread`, so every task run reads its own thread, a granted one included.
 - That release skips each definition whose file sets `log`, as it skips any definition with a field
-  it does not know ([the rollback check](rollback-check.md#constraints)), and logs a warning that
-  names the definition and the field.
+  it does not know ([task definitions](../../architecture/core/definitions.md#task-definitions)),
+  and logs a warning that names the definition and the field.
 - The design adds no record kind and no migration. Its one new key is `log`, in the start input and
   in a definition file, and it adds no key to `nixie.yaml`.
 - That release cleans no session for the grant on a forget, so a granted task's sandbox can keep the
@@ -229,7 +229,7 @@ For the conversation, `logThread` equals `thread`.
   ([the brief and the envelope](https://linear.app/zgeoff/issue/GEO-2357)).
 - The `images` list of a span record belongs to
   [the photos in a kept moment](https://linear.app/zgeoff/issue/GEO-1913), and
-  [the export version](redaction.md#the-export-version-shared-with-the-photos-work) gives its
+  [the memory export](../../architecture/memory/export.md) gives its schema version and its
   rollback.
 
 ## Decisions
@@ -263,6 +263,7 @@ For the conversation, `logThread` equals `thread`.
 
 - A read of another task's thread.
 - A window search on the conversation's thread for a granted task.
-- Which thread `log.forget` removes a record from. [Redaction](redaction.md#part-4-the-forget-tool)
-  owns that tool, and the grant widens reads only.
+- Which thread `log.forget` removes a record from.
+  [The log.forget tool](../../architecture/channels/api.md#the-logforget-tool) describes that tool,
+  and the grant widens reads only.
 - A moment over several threads.
