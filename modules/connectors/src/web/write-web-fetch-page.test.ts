@@ -520,8 +520,10 @@ test("it writes the time it stored the page from the writer's clock", async () =
 });
 
 test('it removes the page stored first once the store limit passes, even after the clock steps back', async () => {
-  const ctx = await setupTest();
-
+  // the test clock never runs backwards, so this test keeps a clock of its own that steps back
+  const state = { nowMs: Date.parse('2026-11-02T09:00:00.000Z') };
+  const clock = { now: () => state.nowMs, sleep: () => Promise.resolve() };
+  const ctx = { log: await startTestLog(clock) };
   const session = { sessionKey: 'session-a', thread: 'conversation', invalidatedThrough: null };
   const limits = { textBytes: 100, linkPathChars: 24, storeBytes: 20 };
 
@@ -541,7 +543,7 @@ test('it removes the page stored first once the store limit passes, even after t
     limits,
   );
 
-  ctx.clock.advance(-60_000);
+  state.nowMs -= 60_000;
 
   const newest = await writeWebFetchPage(
     ctx.log,
