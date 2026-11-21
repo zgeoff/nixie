@@ -6,6 +6,8 @@ export const forgettableKinds = [
   'action.queued',
   'action.reconcile_checked',
   'action.retry_scheduled',
+  'device.idle_set',
+  'device.shown',
   'image.named',
   'model.compaction_failed',
   'model.reply',

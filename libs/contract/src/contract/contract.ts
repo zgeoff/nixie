@@ -6,6 +6,7 @@ import { approvalContract } from './approval-contract';
 import { clippedPayloadSchema } from './clipped-payload-schema';
 import { definitionNoticeSchema } from './definition-notice-schema';
 import { definitionsContract } from './definitions-contract';
+import { devicesContract } from './devices-contract';
 import { forgetBackupSchema } from './forget-backup-schema';
 import { imageLimits } from './image-limits';
 import { imageNotFoundError } from './image-not-found-error';
@@ -39,6 +40,7 @@ import { viewContract } from './view-contract';
 import { workerViewSchema } from './worker-view-schema';
 
 const clientActionIDSchema = z.uuid();
+const sessionScopeSchema = z.enum(['full', 'device']);
 const imageSchema = z.object({ mediaType: z.enum(imageLimits.mediaTypes) });
 const imageFilesSchema = z.array(z.file());
 
@@ -469,6 +471,7 @@ export const contract = {
   triggers: viewContract.triggers,
   reminders: remindersContract,
   definitions: { ...viewContract.definitions, ...definitionsContract },
+  devices: devicesContract,
   rules: ruleContract,
   approvals: approvalContract,
   passkeys: passkeyContract,
@@ -498,11 +501,21 @@ export const contract = {
           tokenDelivery: z.enum(['cookie', 'bearer']),
         }),
       )
-      .output(z.object({ sessionID: z.uuid(), token: z.string().optional() })),
+      .output(
+        z.object({
+          scope: sessionScopeSchema.optional(),
+          sessionID: z.uuid(),
+          token: z.string().optional(),
+        }),
+      ),
 
     issueCode: checkedAction
-      .input(z.object({ clientActionID: clientActionIDSchema }))
+      .input(
+        z.object({ clientActionID: clientActionIDSchema, scope: sessionScopeSchema.optional() }),
+      )
       .output(z.object({ code: z.string(), expiresAt: z.date() })),
+
+    signOut: signedIn.input(z.object({})).output(z.object({ signedOutAt: z.date() })),
     list: signedIn.output(z.object({ sessions: z.array(sessionSchema) })),
 
     revoke: checkedAction
