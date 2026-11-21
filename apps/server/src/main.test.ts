@@ -265,7 +265,7 @@ test('it shows the model when each message was sent, in its own zone or the defa
       input: [
         {
           text: expect.stringMatching(
-            /<owner-message id="\d+" from="[^"]+" sent="\w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, Sydney" session="laptop">\nHi\.\n<\/owner-message>$/u,
+            /<owner-message id="\d+" from="[^"]+" sent="\w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, Sydney" session="laptop"(?: since-your-last-turn="[^"]+")?(?: since-owner-last-wrote="[^"]+")?>\nHi\.\n<\/owner-message>$/u,
           ),
         },
       ],
@@ -274,7 +274,7 @@ test('it shows the model when each message was sent, in its own zone or the defa
       input: [
         {
           text: expect.stringMatching(
-            /<owner-message id="\d+" from="[^"]+" sent="\w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, Tokyo" session="laptop">\nJust landed\.\n<\/owner-message>$/u,
+            /<owner-message id="\d+" from="[^"]+" sent="\w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, Tokyo" session="laptop"(?: since-your-last-turn="[^"]+")?(?: since-owner-last-wrote="[^"]+")?>\nJust landed\.\n<\/owner-message>$/u,
           ),
         },
       ],
@@ -323,7 +323,7 @@ test('it shows the model when you typed a message that reached nixie over 2 minu
       input: [
         {
           text: expect.stringMatching(
-            /<owner-message id="\d+" from="[^"]+" sent="\w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, Tokyo" session="laptop">\nBack home\.\n<\/owner-message>$/u,
+            /<owner-message id="\d+" from="[^"]+" sent="\w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, Tokyo" session="laptop"(?: since-your-last-turn="[^"]+")?(?: since-owner-last-wrote="[^"]+")?>\nBack home\.\n<\/owner-message>$/u,
           ),
         },
       ],
@@ -332,7 +332,7 @@ test('it shows the model when you typed a message that reached nixie over 2 minu
       input: [
         {
           text: expect.stringMatching(
-            /<owner-message id="\d+" from="[^"]+" sent="typed (?:\w{3} \d{1,2} \w{3}(?: \d{4})?, )?\d{2}:\d{2}, sent \w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, Tokyo" session="laptop">\nBook the dentist\.\n<\/owner-message>$/u,
+            /<owner-message id="\d+" from="[^"]+" sent="typed (?:\w{3} \d{1,2} \w{3}(?: \d{4})?, )?\d{2}:\d{2}, sent \w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, Tokyo" session="laptop"(?: since-your-last-turn="[^"]+")?(?: since-owner-last-wrote="[^"]+")?>\nBook the dentist\.\n<\/owner-message>$/u,
           ),
         },
       ],
@@ -368,7 +368,7 @@ test('it shows the model the label you set on a session through the session comm
       input: [
         {
           text: expect.stringMatching(
-            /<owner-message id="\d+" from="[^"]+" sent="\w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, Sydney" session="work PC">\nHi\.\n<\/owner-message>$/u,
+            /<owner-message id="\d+" from="[^"]+" sent="\w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, Sydney" session="work PC"(?: since-your-last-turn="[^"]+")?(?: since-owner-last-wrote="[^"]+")?>\nHi\.\n<\/owner-message>$/u,
           ),
         },
       ],
