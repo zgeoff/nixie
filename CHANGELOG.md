@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.93.0](https://github.com/zgeoff/nixie/compare/v0.92.0...v0.93.0) (2026-11-21)
+
+
+### Features
+
+* **devices:** put pictures and markdown on a device screen ([#1333](https://github.com/zgeoff/nixie/issues/1333)) ([6c758f7](https://github.com/zgeoff/nixie/commit/6c758f7208898b53b667a600c4c3db78a385e2fe))
+
 ## [0.92.0](https://github.com/zgeoff/nixie/compare/v0.91.0...v0.92.0) (2026-11-21)
 
 
