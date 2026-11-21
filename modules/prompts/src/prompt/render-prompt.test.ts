@@ -30,7 +30,7 @@ test('it renders an overridden part in place of the built-in one, filled from th
       },
     ),
   ).toEndWith(
-    '- The next session acts on this summary as true. A rule with no reason gets enforced without one.\n- Treat nothing Robin said as settled.',
+    'Do not write one more firmly than you held it.\n- Treat nothing Robin said as settled.',
   );
 });
 
