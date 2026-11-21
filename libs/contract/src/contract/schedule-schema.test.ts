@@ -57,6 +57,75 @@ test.each([
   expect(scheduleSchema.safeParse(schedule).success).toBe(false);
 });
 
+test('it fills the repeat defaults', () => {
+  expect(scheduleSchema.parse({ repeat: { frequency: 'daily', at: ['08:30'] } })).toStrictEqual({
+    repeat: { frequency: 'daily', at: ['08:30'] },
+    zone: 'owner',
+    catchUp: 'once',
+  });
+});
+
+test.each([
+  { repeat: { frequency: 'minutely', interval: 30 } },
+  { repeat: { frequency: 'hourly' }, hours: { from: '09:00', until: '17:00' } },
+  { repeat: { frequency: 'weekly', byDay: ['mon', 'fri'], at: ['08:00'] } },
+  { repeat: { frequency: 'monthly', byDay: [{ day: 'fri', nth: -1 }], at: ['18:00'] } },
+  { repeat: { frequency: 'monthly', byMonthDay: [1, -1], at: ['09:00'] } },
+  { repeat: { frequency: 'yearly', byMonth: [3, 9], byMonthDay: [15], at: ['09:00'] } },
+  { repeat: { frequency: 'weekly', interval: 2, starts: '2027-03-01', at: ['08:00'] } },
+  { repeat: { frequency: 'daily', at: ['08:00'] }, zone: 'Australia/Sydney', catchUp: 'skip' },
+])('it accepts the repeat schedule %j', (schedule) => {
+  expect(scheduleSchema.safeParse(schedule).success).toBe(true);
+});
+
+test.each([
+  ['a frequency of fortnightly', { repeat: { frequency: 'fortnightly' } }],
+  ['an interval of 0', { repeat: { frequency: 'daily', interval: 0, at: ['08:00'] } }],
+  ['an interval above 1000', { repeat: { frequency: 'daily', interval: 1001, at: ['08:00'] } }],
+  ['an interval that is not whole', { repeat: { frequency: 'daily', interval: 1.5 } }],
+  [
+    'an nth of 0',
+    { repeat: { frequency: 'monthly', byDay: [{ day: 'fri', nth: 0 }], at: ['08:00'] } },
+  ],
+  [
+    'an nth of 6',
+    { repeat: { frequency: 'monthly', byDay: [{ day: 'fri', nth: 6 }], at: ['08:00'] } },
+  ],
+  [
+    'an nth of -6',
+    { repeat: { frequency: 'monthly', byDay: [{ day: 'fri', nth: -6 }], at: ['08:00'] } },
+  ],
+  ['a byDay that is empty', { repeat: { frequency: 'weekly', byDay: [], at: ['08:00'] } }],
+  ['a byDay of monday', { repeat: { frequency: 'weekly', byDay: ['monday'], at: ['08:00'] } }],
+  ['a byMonthDay of 0', { repeat: { frequency: 'monthly', byMonthDay: [0], at: ['08:00'] } }],
+  ['a byMonthDay of 32', { repeat: { frequency: 'monthly', byMonthDay: [32], at: ['08:00'] } }],
+  ['a byMonthDay of -32', { repeat: { frequency: 'monthly', byMonthDay: [-32], at: ['08:00'] } }],
+  [
+    'a byMonthDay that is empty',
+    { repeat: { frequency: 'monthly', byMonthDay: [], at: ['08:00'] } },
+  ],
+  ['a byMonth of 0', { repeat: { frequency: 'yearly', byMonth: [0], at: ['08:00'] } }],
+  ['a byMonth of 13', { repeat: { frequency: 'yearly', byMonth: [13], at: ['08:00'] } }],
+  ['an at that is empty', { repeat: { frequency: 'daily', at: [] } }],
+  ['an at of 24:00', { repeat: { frequency: 'daily', at: ['24:00'] } }],
+  ['a starts that is no date', { repeat: { frequency: 'daily', starts: 'soon', at: ['08:00'] } }],
+  ['a repeat key it does not know', { repeat: { frequency: 'daily', cron: '* * * * *' } }],
+  ['a zone that is not a zone', { repeat: { frequency: 'daily', at: ['08:00'] }, zone: 'Mars/X' }],
+  ['a repeat beside the old every', { repeat: { frequency: 'daily' }, every: 'day', at: '08:00' }],
+])('it refuses the repeat schedule with %s', (_name, schedule) => {
+  expect(scheduleSchema.safeParse(schedule).success).toBe(false);
+});
+
+test('it parses an old-shape schedule through the union as the old shape', () => {
+  expect(scheduleSchema.parse({ every: 'week', on: 'fri', at: '23:59' })).toStrictEqual({
+    every: 'week',
+    on: 'fri',
+    at: '23:59',
+    zone: 'owner',
+    catchUp: 'once',
+  });
+});
+
 test.each(['2027-03-09T14:00:00+11:00', '2027-03-09T14:00:00Z'])(
   'it accepts the trigger at %s',
   (at) => {
