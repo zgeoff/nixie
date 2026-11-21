@@ -1,5 +1,5 @@
 import { join } from 'node:path';
-import { createRunTemplate } from '@heynixie/testing';
+import { readTestTemplate } from '@heynixie/testing';
 import { buildGatewayCompileArgs } from '../build-gateway-compile-args';
 
 const repoRoot = join(import.meta.dir, '..', '..', '..', '..');
@@ -7,10 +7,9 @@ const repoRoot = join(import.meta.dir, '..', '..', '..', '..');
 // A compile takes longer than a test's limit, so the bundle lane's start hook fills the template
 // before its tests start, and each suite reads it.
 export async function readModelGatewayBinary(): Promise<string> {
-  const directory = await createRunTemplate({
+  const directory = await readTestTemplate({
     name: 'nixie-model-gateway',
     root: repoRoot,
-    parentDir: join(repoRoot, 'node_modules', '.cache', 'nixie-test-bundles'),
     inputs: [
       'apps/model-gateway/src/**/*',
       'modules/*/src/**/*',

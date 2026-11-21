@@ -3,8 +3,8 @@ import { cp, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { getDataFilePath, startWriter } from '@heynixie/log';
-import type { RunTemplateOptions } from '@heynixie/testing';
-import { createRunTemplate } from '@heynixie/testing';
+import type { TestTemplateOptions } from '@heynixie/testing';
+import { readTestTemplate } from '@heynixie/testing';
 import { readDataFiles } from './read-data-files';
 import { createMigratedTemplate, writeMigratedData } from './write-migrated-data';
 
@@ -13,9 +13,27 @@ async function setupTest() {
 
   onTestFinished(() => rm(directory, { recursive: true, force: true }));
 
+  const templates: string[] = [];
+  const runID = crypto.randomUUID();
+
+  // the kit keeps every template in one folder, so each test names its own and removes it after
+  onTestFinished(() =>
+    Promise.all(
+      templates.flatMap((template) => [
+        rm(template, { recursive: true, force: true }),
+        rm(`${template}.used`, { force: true }),
+      ]),
+    ),
+  );
+
   const io = {
-    createTemplate: (options: RunTemplateOptions) =>
-      createRunTemplate({ ...options, parentDir: join(directory, 'templates') }),
+    createTemplate: async (options: TestTemplateOptions) => {
+      const template = await readTestTemplate({ ...options, name: `${options.name}-${runID}` });
+
+      templates.push(template);
+
+      return template;
+    },
     startWriter,
     copyDirectory: (from: string, to: string) => cp(from, to, { recursive: true }),
   };
