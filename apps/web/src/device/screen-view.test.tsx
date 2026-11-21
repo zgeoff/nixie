@@ -20,7 +20,7 @@ test.each(['whole', 'fill'] as const)('it fits an image with the fit %s', async 
 
   const rendered = render(<ScreenView blocks={[{ kind: 'image', image: 'k3x9m2p7qa', fit }]} />);
 
-  const picture = await rendered.findByRole('presentation');
+  const picture = await rendered.findByRole('img');
 
   expect(picture).toHaveAttribute('data-fit', fit);
 });

@@ -34,6 +34,11 @@ export function DeviceImage(props: DeviceImageProps): ReactNode {
   }
 
   return (
-    <img alt="" className={props.fit === 'fill' ? fill : whole} data-fit={props.fit} src={url} />
+    <img
+      alt="Picture"
+      className={props.fit === 'fill' ? fill : whole}
+      data-fit={props.fit}
+      src={url}
+    />
   );
 }
