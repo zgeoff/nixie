@@ -9,6 +9,8 @@ const everyJourney = [
   'guests/**',
   'adapters/definitions-repo-github/**',
   'adapters/encoder-onnx/**',
+  'adapters/image-gemini/**',
+  'adapters/image-openai/**',
   'adapters/search-kagi/**',
   'adapters/spend-model-gateway/**',
   'nixie-test-build.d.ts',

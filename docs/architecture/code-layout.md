@@ -179,6 +179,8 @@ The other packages each hold one piece the modules and apps share:
 - `adapters/definitions-repo-github` is the definitions repo on GitHub's API.
 - `adapters/sandbox-imp` is the sandbox adapter on imp.
 - `adapters/search-kagi` is the search tool's provider on Kagi's search API.
+- `adapters/image-openai` and `adapters/image-gemini` are the image provider on OpenAI's images API
+  and on the Gemini API.
 - `adapters/encoder-onnx` is the memory module's text encoder, which runs a pinned embedding model
   on ONNX Runtime.
 - `libs/contract` holds the oRPC contracts of the API and the host commands, with the client code

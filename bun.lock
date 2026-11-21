@@ -54,6 +54,34 @@
         "@heynixie/log": "workspace:*",
       },
     },
+    "adapters/image-gemini": {
+      "name": "@heynixie/image-gemini",
+      "version": "0.0.0",
+      "dependencies": {
+        "@heynixie/connectors": "workspace:*",
+        "@heynixie/wire": "workspace:*",
+        "zod": "catalog:",
+      },
+      "devDependencies": {
+        "@heynixie/log": "workspace:*",
+        "@heynixie/mock-server": "workspace:*",
+        "msw": "catalog:",
+      },
+    },
+    "adapters/image-openai": {
+      "name": "@heynixie/image-openai",
+      "version": "0.0.0",
+      "dependencies": {
+        "@heynixie/connectors": "workspace:*",
+        "@heynixie/wire": "workspace:*",
+        "zod": "catalog:",
+      },
+      "devDependencies": {
+        "@heynixie/log": "workspace:*",
+        "@heynixie/mock-server": "workspace:*",
+        "msw": "catalog:",
+      },
+    },
     "adapters/sandbox-imp": {
       "name": "@heynixie/sandbox-imp",
       "version": "0.0.0",
@@ -1428,6 +1456,10 @@
     "@heynixie/evals": ["@heynixie/evals@workspace:evals"],
 
     "@heynixie/fetch": ["@heynixie/fetch@workspace:guests/fetch"],
+
+    "@heynixie/image-gemini": ["@heynixie/image-gemini@workspace:adapters/image-gemini"],
+
+    "@heynixie/image-openai": ["@heynixie/image-openai@workspace:adapters/image-openai"],
 
     "@heynixie/integration": ["@heynixie/integration@workspace:integration"],
 
