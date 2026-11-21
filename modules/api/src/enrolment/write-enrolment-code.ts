@@ -1,6 +1,6 @@
 import { writeRecordsInTransaction } from '@heynixie/log';
 import type { Transaction } from 'kysely';
-import type { APIContext, APITables } from '../types';
+import type { APIContext, APITables, SessionScope } from '../types';
 import { deriveSecretHash } from '../utils/derive-secret-hash';
 import { createSecret } from './create-secret';
 import { normalizeEnrolmentCode } from './normalize-enrolment-code';
@@ -15,6 +15,7 @@ export async function writeEnrolmentCode(
   tx: Transaction<unknown>,
   context: APIContext,
   issuedBy: string | null,
+  scope: SessionScope = 'full',
 ): Promise<IssuedCode> {
   const code = createSecret('enrolment-code');
   const codeHash = deriveSecretHash(normalizeEnrolmentCode(code));
@@ -39,6 +40,7 @@ export async function writeEnrolmentCode(
       issued_by: issuedBy,
       used_at: null,
       identity_id: null,
+      scope,
     })
     .execute();
 

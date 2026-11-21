@@ -16,6 +16,7 @@ import {
   writeProposedRuleEdit,
 } from '@heynixie/definitions';
 import { buildTestTaskSeed } from '@heynixie/definitions/test-utils';
+import { createDeviceStreams } from '@heynixie/devices';
 import type { JSONObject, Log } from '@heynixie/log';
 import {
   logProjections,
@@ -108,6 +109,7 @@ export async function startTestRules(settings: APIContext['settings'] = defaultA
     runners: buildTestTaskRunners(),
     settings,
     passkeys: createPasskeyState(),
+    devices: createDeviceStreams(),
     readZone: () => Promise.resolve('Australia/Sydney'),
     readSessionCleanup: () => null,
   };

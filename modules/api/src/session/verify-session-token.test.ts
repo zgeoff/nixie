@@ -29,6 +29,7 @@ test('it resolves a live session to its row of the identity record', async () =>
   expect(result).toStrictEqual({
     identityID: session.sessionID,
     channel: 'client',
+    scope: 'full',
     label: 'laptop',
     pairedAt: 1_000_000,
     lastSeenAt: 1_000_000,
@@ -215,6 +216,7 @@ test('it resolves a read-only token to the read-only caller', async () => {
   expect(caller).toStrictEqual({
     identityID: 'read-only-token',
     channel: 'client',
+    scope: 'full',
     label: 'read-only token',
     pairedAt: 1_000_000,
     lastSeenAt: 1_000_000,

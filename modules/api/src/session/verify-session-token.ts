@@ -38,6 +38,7 @@ export async function verifySessionToken(
   return {
     identityID: row.identity_id,
     channel: row.channel,
+    scope: row.scope,
     label: row.label,
     pairedAt: row.paired_at,
     lastSeenAt,
@@ -50,6 +51,7 @@ function buildReadOnlyCaller(now: number): Identity {
   return {
     identityID: 'read-only-token',
     channel: 'client',
+    scope: 'full',
     label: 'read-only token',
     pairedAt: now,
     lastSeenAt: now,

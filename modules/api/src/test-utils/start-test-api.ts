@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { actionsProjection } from '@heynixie/actions';
 import { readDefinitionNotices, readDefinitionVersion } from '@heynixie/definitions';
 import { definitionTaskProjections } from '@heynixie/definitions/test-utils';
+import { createDeviceStreams } from '@heynixie/devices';
 import type { Writer } from '@heynixie/log';
 import { logProjections, startWriter } from '@heynixie/log';
 import { memoryProjections } from '@heynixie/memory';
@@ -164,6 +165,7 @@ async function createTestContext(
     runners: buildTestTaskRunners(),
     settings,
     passkeys: createPasskeyState(),
+    devices: createDeviceStreams(),
 
     readZone: () => Promise.resolve('UTC'),
     readSessionCleanup: deps.readSessionCleanup,

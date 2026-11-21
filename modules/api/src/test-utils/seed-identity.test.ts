@@ -11,6 +11,7 @@ test('it enrols an identity whose token resolves to the caller it returns', asyn
   expect(identity.caller).toStrictEqual({
     identityID: identity.sessionID,
     channel: 'client',
+    scope: 'full',
     label: 'phone',
     pairedAt: 1_000_000,
     lastSeenAt: 1_000_000,
