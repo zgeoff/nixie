@@ -171,4 +171,5 @@ before the action's own write runs, so no record and no client action result com
 answer closes its proposal, so the API looks up the client action ID before it answers, and a retry
 gets its first outcome back instead of a stale one. An edited approval meets the close match check
 on the edited text, and a held approval comes back with the item that matched, which the user then
-revises or leaves for a new item.
+revises or leaves for a new item. An edited text longer than its subject allows is refused with
+`TEXT_TOO_LONG` and writes nothing ([memory writes](./writes.md)).

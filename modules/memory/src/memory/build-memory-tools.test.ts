@@ -2523,6 +2523,81 @@ test('it proposes a self-note of 5,000 characters with no rule, and saves it who
   expect(recalled.items.map((item) => item.text)).toStrictEqual([text]);
 });
 
+test('it saves a self-note proposal whole when the owner approves it edited to 5,000 characters', async () => {
+  const ctx = await setupTest();
+
+  await ctx.callTool(
+    'memory.remember',
+    {
+      gist: 'a gist',
+      topic: 'a topic',
+      text: 'I like the quiet before the kettle boils.',
+      subject: 'self',
+    },
+    buildAllowingDecisionPoint(),
+  );
+
+  const [proposal] = await ctx.memory.store.proposals.listPending();
+
+  invariant(proposal, 'the self-note left no proposal');
+
+  const editedText = 'I like the quiet before the kettle boils, and the first light. '
+    .repeat(80)
+    .slice(0, 5000);
+
+  const approval = await ctx.memory.store.proposals.approve({
+    proposalID: proposal.proposalID,
+    actionHash: proposal.actionHash,
+    identityID: 'host',
+    editedText,
+  });
+
+  const itemID = z.object({ itemID: z.string() }).parse(approval).itemID;
+
+  const recalled = await ctx.memory.store.recall({ itemIDs: [itemID] });
+
+  expect(recalled.items.map((item) => item.text)).toStrictEqual([editedText]);
+});
+
+test('it refuses a self-note proposal edited to 6,001 characters on approval, and leaves it pending', async () => {
+  const ctx = await setupTest();
+
+  await ctx.callTool(
+    'memory.remember',
+    {
+      gist: 'a gist',
+      topic: 'a topic',
+      text: 'I like the quiet before the kettle boils.',
+      subject: 'self',
+    },
+    buildAllowingDecisionPoint(),
+  );
+
+  const [proposal] = await ctx.memory.store.proposals.listPending();
+
+  invariant(proposal, 'the self-note left no proposal');
+
+  const approval = ctx.memory.store.proposals.approve({
+    proposalID: proposal.proposalID,
+    actionHash: proposal.actionHash,
+    identityID: 'host',
+    editedText: 'I like the quiet before the kettle boils, and the first light. '
+      .repeat(100)
+      .slice(0, 6001),
+  });
+
+  await approval.catch(() => {});
+
+  const pending = await ctx.memory.store.proposals.listPending();
+
+  expect(approval).rejects.toThrowWithMessage(
+    Error,
+    'data/text is 6,001 characters, 1 over the 6,000 limit',
+  );
+
+  expect(pending).toHaveLength(1);
+});
+
 test('it saves a self-note of 5,000 characters whole under an allow rule', async () => {
   const ctx = await setupTest();
 

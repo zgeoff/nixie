@@ -14,6 +14,7 @@ const memoryRefusals: ReadonlySet<string> = new Set([
   'RETIREMENT_EDIT',
   'REVISION_TARGET',
   'SELF_NOTE_REFUSED',
+  'TEXT_TOO_LONG',
   'WRONG_STATE',
 ]);
 

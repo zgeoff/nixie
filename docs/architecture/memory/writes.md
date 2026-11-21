@@ -18,7 +18,8 @@ no item, no version and no proposal. These are:
 - a text longer than its subject allows: 6,000 characters for a [self-note](#self-notes) and 2,000
   for an item about the user or a shared item. An edit is held to the subject it passes, or else to
   the item's. The tool answers with the length and how far it runs over, such as
-  `data/text is 2,347 characters, 347 over the 2,000 limit`;
+  `data/text is 2,347 characters, 347 over the 2,000 limit`. nixie holds the user's own edits and
+  edited approvals to the same limits, and refuses an over-long one with `TEXT_TOO_LONG`;
 - an edit, retirement or pin of a missing or forgotten item, or at an outdated revision;
 - an edit with no text and no label;
 - an edit of labels only that also passes a quote, an event ID, an end time or a subject, because

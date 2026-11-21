@@ -109,6 +109,29 @@ test('#approve applies a proposal and answers with the version it wrote', async 
   expect(result).toStrictEqual({ status: 'applied', itemID: proposal.itemID, version: 1 });
 });
 
+test('#approve refuses an edited text of 2,001 characters for an owner note with TEXT_TOO_LONG, and leaves the proposal pending', async () => {
+  const ctx = await setupTest();
+  const proposal = await createProposal(ctx.memory.store, { text: 'Likes jaz' });
+
+  const approve = ctx.client.approve({
+    proposalID: proposal.proposalID,
+    actionHash: proposal.actionHash,
+    editedText: 'Likes jazz on the radio. '.repeat(81).slice(0, 2001),
+  });
+
+  await approve.catch(() => {});
+
+  const pending = await ctx.memory.store.proposals.listPending();
+
+  expect(approve).rejects.toMatchObject({
+    code: 'TEXT_TOO_LONG',
+    status: 400,
+    message: 'data/text is 2,001 characters, 1 over the 2,000 limit',
+  });
+
+  expect(pending).toHaveLength(1);
+});
+
 test('#approve pins the item of a pin proposal, and answers with the version it pinned', async () => {
   const ctx = await setupTest();
   const item = await createMemoryItem(ctx.memory.store, { text: 'Bakes bread on Fridays' });
