@@ -4,14 +4,12 @@ import { buildOffsetAt, checkSchedule } from '@heynixie/triggers';
 import type { ScheduleFacts } from '@heynixie/triggers';
 import invariant from 'tiny-invariant';
 import { z } from 'zod';
+import { taskMinGapMinutes } from '../../task/constants';
 import { readDefinitionNotices } from '../read-definition-notices';
 import { requestDefinitionChange } from '../request-definition-change';
 import type { ChatToolOptions } from './chat-tool-options';
 import { notReadyMessage } from './chat-tool-options';
 import { taskDefineInputSchema } from './task-define-input-schema';
-
-// The shortest gap between 2 fires of a task's schedule, in minutes.
-const taskMinGapMinutes = 5;
 
 const jsonSchema = z.toJSONSchema(taskDefineInputSchema, {
   io: 'input',

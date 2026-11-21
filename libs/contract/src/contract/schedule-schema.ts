@@ -73,7 +73,8 @@ const repeatSchema = z.strictObject({
     .date()
     .optional()
     .describe(
-      'the date it counts from, YYYY-MM-DD, for an interval above 1. Default: the day it is set',
+      'the date it counts from, YYYY-MM-DD. Needed for an interval above 1, and for a weekly, ' +
+        'monthly or yearly schedule that names no day. Otherwise it defaults to the day it is set',
     ),
 });
 

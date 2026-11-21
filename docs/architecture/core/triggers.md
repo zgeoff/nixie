@@ -97,12 +97,14 @@ trigger:
 ```
 
 The `repeat` follows the recurrence rule of RFC 5545. `hours` with an end before its start runs past
-midnight. `starts` defaults to the local date the schedule is set, and an interval above 1 needs it.
-Nix writes the structure and never recurrence rule text.
+midnight. `starts` defaults to the local date the schedule is set. A schedule that counts from it or
+takes a day from it needs it given, so an edit never moves it: an interval above 1, a weekly
+schedule with no `byDay`, and a monthly or yearly schedule with no `byDay` or `byMonthDay`. Nix
+writes the structure and never recurrence rule text.
 
 `checkSchedule` is the one check of a new schedule, and a reminder tool and `task.define` both call
-it. It is pure. It fills `starts`, sorts the times of `at`, and refuses with a code, the field's
-path and a sentence that says how to fix it when:
+it. It is pure. It checks the fields as given, then fills `starts` and sorts the times of `at`, and
+refuses with a code, the field's path and a sentence that says how to fix it when:
 
 - a field is missing or never goes with the others: `AT_REQUIRED`, `AT_NOT_ALLOWED`,
   `NTH_NOT_ALLOWED`, `BY_MONTH_DAY_NOT_ALLOWED`, `STARTS_REQUIRED`;
@@ -209,6 +211,7 @@ slot:
 | 5   | window without `idleMinutes`        | now is at or before `until`                                | fire                     |
 | 6   | any other schedule                  | within the threshold                                       | fire                     |
 | 7   | any other schedule, `catchUp: skip` | past the threshold                                         | skip `catch_up_off`      |
+| 7a  | `hours` in the repeat shape         | past the threshold, and now is outside the hours           | skip `too_late`          |
 | 8   | any other schedule, `catchUp: once` | past the threshold, at most half the interval              | fire, a catch-up         |
 | 9   | any other schedule, `catchUp: once` | late by more than half the interval                        | skip `too_late`          |
 

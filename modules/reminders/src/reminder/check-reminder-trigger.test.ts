@@ -30,7 +30,7 @@ test('it fills the defaults and the start date of a schedule', () => {
 
 test('it refuses a recurring schedule under the minimum gap with the field and a fix', () => {
   const checked = checkReminderTrigger(
-    { schedule: { repeat: { frequency: 'minutely', interval: 5 } } },
+    { schedule: { repeat: { frequency: 'minutely', interval: 5, starts: '2027-03-09' } } },
     { now: 1_804_550_400_000, minGapMinutes: 15, ownerZone: 'UTC' },
   );
 
@@ -45,7 +45,7 @@ test('it refuses a recurring schedule under the minimum gap with the field and a
 
 test('it accepts a recurring schedule at the minimum gap', () => {
   const checked = checkReminderTrigger(
-    { schedule: { repeat: { frequency: 'minutely', interval: 15 } } },
+    { schedule: { repeat: { frequency: 'minutely', interval: 15, starts: '2027-03-09' } } },
     { now: 1_804_550_400_000, minGapMinutes: 15, ownerZone: 'UTC' },
   );
 

@@ -124,7 +124,7 @@ function pickWindowEnd(
 
 // Whether a minute of the day lies in the hours, both ends included. Hours with an end before their
 // start run past midnight.
-function isWithinHours(hours: Hours | null, minute: number): boolean {
+export function isWithinHours(hours: Hours | null, minute: number): boolean {
   if (hours === null) {
     return true;
   }

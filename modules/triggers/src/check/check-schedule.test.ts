@@ -69,6 +69,24 @@ test.each([
     'repeat.byMonthDay',
   ],
   [
+    'an interval above 1 with no start date',
+    { repeat: { frequency: 'weekly', interval: 2, byDay: ['mon'], at: ['09:00'] } },
+    'STARTS_REQUIRED',
+    'repeat.starts',
+  ],
+  [
+    'a weekly schedule with no day and no start date',
+    { repeat: { frequency: 'weekly', at: ['09:00'] } },
+    'STARTS_REQUIRED',
+    'repeat.starts',
+  ],
+  [
+    'a monthly schedule with no day and no start date',
+    { repeat: { frequency: 'monthly', at: ['09:00'] } },
+    'STARTS_REQUIRED',
+    'repeat.starts',
+  ],
+  [
     'a day that no month has',
     { repeat: { frequency: 'yearly', byMonth: [2], byMonthDay: [30], at: ['09:00'] } },
     'NO_FIRE',
@@ -82,7 +100,7 @@ test.each([
   ],
   [
     'a minute schedule closer than the minimum gap',
-    { repeat: { frequency: 'minutely', interval: 5 } },
+    { repeat: { frequency: 'minutely', interval: 5, starts: '2026-11-21' } },
     'MIN_GAP',
     'repeat',
   ],

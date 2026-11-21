@@ -1,7 +1,8 @@
 import type { Trigger } from '@heynixie/contract';
 import { triggerAtSchema, triggerSchema } from '@heynixie/contract';
-import { checkScheduleShape } from '@heynixie/triggers';
+import { checkSchedule } from '@heynixie/triggers';
 import { z } from 'zod';
+import { taskMinGapMinutes } from './constants';
 import { formatIssue } from './format-issue';
 import type { SeedFaultCode } from './types';
 
@@ -56,8 +57,13 @@ function parseAt(at: unknown, value: unknown): TriggerResult {
   return parseSchedule(value);
 }
 
-// A schedule in the repeat shape also goes through the shape check, which refuses a mix of fields
-// that never go together with the field and a fix.
+// A task.yaml has no clock, and a definition must parse the same on every run, so its schedule is
+// checked at a fixed instant. Only its verdict is kept: the file's own text stays as written.
+const checkedAtMs = Date.parse('2026-01-01T00:00:00Z');
+
+// A schedule in the repeat shape also goes through the schedule check, which refuses a mix of
+// fields that never go together, a schedule with no fire in 400 days and fires closer than the
+// minimum gap, each with the field and a fix.
 function parseSchedule(value: unknown): TriggerResult {
   const parsed = triggerSchema.safeParse(value);
 
@@ -70,13 +76,17 @@ function parseSchedule(value: unknown): TriggerResult {
   }
 
   if ('schedule' in parsed.data && 'repeat' in parsed.data.schedule) {
-    const refusal = checkScheduleShape(parsed.data.schedule);
+    const checked = checkSchedule(parsed.data.schedule, {
+      nowMs: checkedAtMs,
+      ownerZone: 'UTC',
+      minGapMinutes: taskMinGapMinutes,
+    });
 
-    if (refusal !== null) {
+    if (checked.status === 'refused') {
       return {
         status: 'refused',
         fault: 'bad_schedule',
-        reasons: [`trigger.schedule.${refusal.path}: ${refusal.sentence}`],
+        reasons: [`trigger.schedule.${checked.path}: ${checked.sentence}`],
       };
     }
   }

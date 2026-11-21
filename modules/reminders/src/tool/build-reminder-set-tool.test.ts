@@ -66,13 +66,40 @@ test('#reminder.set sets a recurring reminder with the zone owner by default', a
   });
 });
 
+test('#reminder.set refuses an interval above 1 with no start date', async () => {
+  const ctx = await setupTest();
+
+  const outcome = await ctx.runSet({
+    name: 'Tomatoes',
+    note: 'Water the tomatoes.',
+    trigger: {
+      schedule: { repeat: { frequency: 'weekly', interval: 2, byDay: ['mon'], at: ['09:00'] } },
+    },
+  });
+
+  expect(outcome).toStrictEqual({
+    status: 'ok',
+    result: {
+      refused: {
+        code: 'STARTS_REQUIRED',
+        path: 'trigger.schedule.repeat.starts',
+        sentence:
+          'An interval above 1 counts from a start date: add repeat.starts, such as "2026-11-23".',
+      },
+    },
+    refusalCode: 'STARTS_REQUIRED',
+  });
+});
+
 test('#reminder.set refuses a schedule under the minimum gap with a sentence that names the limit', async () => {
   const ctx = await setupTest();
 
   const outcome = await ctx.runSet({
     name: 'Tomatoes',
     note: 'Water the tomatoes.',
-    trigger: { schedule: { repeat: { frequency: 'minutely', interval: 5 } } },
+    trigger: {
+      schedule: { repeat: { frequency: 'minutely', interval: 5, starts: '2026-11-21' } },
+    },
   });
 
   expect(outcome).toStrictEqual({

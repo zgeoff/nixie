@@ -1,9 +1,10 @@
+import { buildZoneParts } from '@heynixie/clock';
 import type { ArmedRow } from '../arm/read-armed-definitions';
 import { catchUpThresholdMs, maxSkippedSlots } from '../core/constants';
 import type { NormalizedSchedule } from '../recurrence/to-normalized-schedule';
 import { toNormalizedSchedule } from '../recurrence/to-normalized-schedule';
 import type { NextFire } from '../time/pick-next-fire';
-import { pickNextFire, pickScheduleFire } from '../time/pick-next-fire';
+import { isWithinHours, pickNextFire, pickScheduleFire } from '../time/pick-next-fire';
 import type { TriggerEvent } from '../types';
 import { getIntervalMs } from './get-interval-ms';
 
@@ -165,6 +166,10 @@ function pickDecision(
     return { kind: 'skip', reason: 'catch_up_off' };
   }
 
+  if (schedule.legacy === null && isOutsideHours(schedule, nowMs, input.zone)) {
+    return { kind: 'skip', reason: 'too_late' };
+  }
+
   return lateMs <= getIntervalMs(schedule.repeat) / 2
     ? { kind: 'fire' }
     : { kind: 'skip', reason: 'too_late' };
@@ -189,4 +194,16 @@ function pickIdleWindowDecision(
     lastMessageAtMs === null || input.nowMs - lastMessageAtMs >= idleMinutes * minuteMs;
 
   return isIdle ? { kind: 'fire' } : { kind: 'wait' };
+}
+
+// The hours of a schedule in the repeat shape limit when it fires, so a late slot waits for no later
+// hours: it is skipped.
+function isOutsideHours(schedule: NormalizedSchedule, nowMs: number, zone: string): boolean {
+  if (schedule.hours === null) {
+    return false;
+  }
+
+  const parts = buildZoneParts(nowMs, zone);
+
+  return !isWithinHours(schedule.hours, parts.hour * 60 + parts.minute);
 }

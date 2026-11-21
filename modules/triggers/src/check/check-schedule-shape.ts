@@ -60,13 +60,41 @@ export function checkScheduleShape(schedule: RepeatSchedule): ScheduleRefusal | 
     };
   }
 
-  if ((repeat.interval ?? 1) > 1 && repeat.starts === undefined) {
-    return {
-      code: 'STARTS_REQUIRED',
-      path: 'repeat.starts',
-      sentence:
-        'A schedule with an interval above 1 counts from a start date: add repeat.starts, such as "2026-11-23".',
-    };
+  if (repeat.starts === undefined) {
+    return checkStartsRequired(repeat);
+  }
+
+  return null;
+}
+
+// The schedules that count from a start date or take a day from it. Filling that date with the day
+// of the edit would move them on each edit, so the date is never a default for these.
+function checkStartsRequired(repeat: RepeatSchedule['repeat']): ScheduleRefusal | null {
+  const hasDays = (repeat.byDay ?? []).length > 0 || (repeat.byMonthDay ?? []).length > 0;
+
+  const reason =
+    (repeat.interval ?? 1) > 1
+      ? 'An interval above 1 counts from a start date'
+      : pickImplicitDayReason(repeat, hasDays);
+
+  if (reason === null) {
+    return null;
+  }
+
+  return {
+    code: 'STARTS_REQUIRED',
+    path: 'repeat.starts',
+    sentence: `${reason}: add repeat.starts, such as "2026-11-23".`,
+  };
+}
+
+function pickImplicitDayReason(repeat: RepeatSchedule['repeat'], hasDays: boolean): string | null {
+  if (repeat.frequency === 'weekly' && (repeat.byDay ?? []).length === 0) {
+    return 'A weekly schedule with no byDay fires on the weekday of its start date';
+  }
+
+  if ((repeat.frequency === 'monthly' || repeat.frequency === 'yearly') && !hasDays) {
+    return `A ${repeat.frequency} schedule with no byDay or byMonthDay fires on the day of its start date`;
   }
 
   return null;

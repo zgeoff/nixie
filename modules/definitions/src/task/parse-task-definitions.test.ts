@@ -201,6 +201,27 @@ test.each<[SeedFaultCode, Record<string, string>, string]>([
     'tasks/rain-gauge/task.yaml',
   ],
   [
+    'bad_schedule',
+    {
+      'tasks/rain-gauge/task.yaml': `name: Check the rain gauge\nbrief: Read the gauge and note the total.\ntrigger:\n  schedule:\n    repeat:\n      frequency: minutely\n`,
+    },
+    'tasks/rain-gauge/task.yaml',
+  ],
+  [
+    'bad_schedule',
+    {
+      'tasks/rain-gauge/task.yaml': `name: Check the rain gauge\nbrief: Read the gauge and note the total.\ntrigger:\n  schedule:\n    repeat:\n      frequency: daily\n      at: ["03:00"]\n    hours:\n      from: "09:00"\n      until: "17:00"\n`,
+    },
+    'tasks/rain-gauge/task.yaml',
+  ],
+  [
+    'bad_schedule',
+    {
+      'tasks/rain-gauge/task.yaml': `name: Check the rain gauge\nbrief: Read the gauge and note the total.\ntrigger:\n  schedule:\n    repeat:\n      frequency: weekly\n      at: ["08:00"]\n`,
+    },
+    'tasks/rain-gauge/task.yaml',
+  ],
+  [
     'at_without_offset',
     {
       'tasks/rain-gauge/task.yaml': `name: Check the rain gauge\nbrief: Read the gauge and note the total.\ntrigger:\n  at: "2027-03-09T14:00:00"\n`,

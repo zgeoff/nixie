@@ -25,16 +25,17 @@ const checkedFires = 60;
 const horizonMs = 400 * 24 * 3_600_000;
 const minuteMs = 60_000;
 
-// Pure. Fills the start date, then refuses a mix of fields that never go together, a schedule with
-// no fire in the next 400 days, and next fires closer than the minimum gap.
+// Pure. Refuses a mix of fields that never go together, then fills the start date, then refuses a
+// schedule with no fire in the next 400 days and next fires closer than the minimum gap.
 export function checkSchedule(given: RepeatSchedule, facts: ScheduleFacts): ScheduleCheck {
   const zone = given.zone === 'owner' ? facts.ownerZone : given.zone;
-  const schedule = buildFilledSchedule(given, facts.nowMs, zone);
-  const shape = checkScheduleShape(schedule);
+  const shape = checkScheduleShape(given);
 
   if (shape !== null) {
     return { status: 'refused', ...shape };
   }
+
+  const schedule = buildFilledSchedule(given, facts.nowMs, zone);
 
   const fires = collectNextFires(
     'check',

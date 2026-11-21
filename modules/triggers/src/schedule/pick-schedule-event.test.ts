@@ -161,6 +161,48 @@ test.each([
     { scheduledFor: '2027-03-09T09:00:00.000Z', skip: 'too_late' },
   ],
   [
+    'an hourly slot caught up past the hours',
+    {
+      schedule: {
+        repeat: { frequency: 'hourly', byDay: ['mon', 'tue', 'wed', 'thu', 'fri'] },
+        hours: { from: '09:00', until: '17:00' },
+        zone: 'UTC',
+      },
+    },
+    '2027-03-09T16:00:00Z',
+    '2027-03-09T17:25:00Z',
+    null,
+    { scheduledFor: '2027-03-09T17:00:00.000Z', skip: 'too_late' },
+  ],
+  [
+    'an hourly slot caught up inside the hours',
+    {
+      schedule: {
+        repeat: { frequency: 'hourly', byDay: ['mon', 'tue', 'wed', 'thu', 'fri'] },
+        hours: { from: '09:00', until: '17:00' },
+        zone: 'UTC',
+      },
+    },
+    '2027-03-09T09:00:00Z',
+    '2027-03-09T10:25:00Z',
+    null,
+    { scheduledFor: '2027-03-09T10:00:00.000Z', skip: null },
+  ],
+  [
+    'a daily slot caught up overnight past the hours',
+    {
+      schedule: {
+        repeat: { frequency: 'daily', at: ['16:50'] },
+        hours: { from: '09:00', until: '17:00' },
+        zone: 'UTC',
+      },
+    },
+    '2027-03-08T16:50:00Z',
+    '2027-03-10T03:00:00Z',
+    null,
+    { scheduledFor: '2027-03-09T16:50:00.000Z', skip: 'too_late' },
+  ],
+  [
     'a one-shot that is not yet due',
     { at: '2027-03-09T10:00:00Z' },
     '2027-03-09T00:00:00Z',
