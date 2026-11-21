@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.90.1](https://github.com/zgeoff/nixie/compare/v0.90.0...v0.90.1) (2026-11-21)
+
+
+### Bug Fixes
+
+* **deps:** update @zgeoff/std to v0.4.5 ([#1313](https://github.com/zgeoff/nixie/issues/1313)) ([16d6c5c](https://github.com/zgeoff/nixie/commit/16d6c5c1190d789200c85ccb24a2957c1974c862))
+
 ## [0.90.0](https://github.com/zgeoff/nixie/compare/v0.89.0...v0.90.0) (2026-11-21)
 
 
