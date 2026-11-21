@@ -9,8 +9,10 @@ export function buildTestTaskYaml(options: TestTaskYamlOptions = {}): string {
 brief: ${options.brief ?? 'Water the tomatoes.'}
 ${options.isEnabled === false ? 'enabled: false\n' : ''}trigger:
   schedule:
-    every: week
-    on: fri
-    at: "08:00"
+    repeat:
+      frequency: weekly
+      byDay: [fri]
+      at: ["08:00"]
+      starts: "2026-11-20"
 `;
 }

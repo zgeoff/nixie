@@ -49,7 +49,7 @@ test('it lists a definition from the repo with the default task tools', async ()
           isInForce: true,
           isUnreadable: false,
           trigger: expect.any(Object),
-          rendered: 'every Friday at 08:00',
+          rendered: 'every Friday at 08:00 (UTC)',
           next: 'Fri 12 Mar',
           tools: expect.arrayContaining(['tasks.list', 'task.message']),
           origin: 'definitions',

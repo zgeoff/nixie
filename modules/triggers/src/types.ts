@@ -124,6 +124,10 @@ interface TriggerDefinitionTable {
 
   // the watermark, epoch milliseconds
   readonly after: number;
+
+  // the slot that a snooze holds and the instant its hold ends, epoch milliseconds
+  readonly hold_slot: number | null;
+  readonly hold_until: number | null;
   readonly updated_sequence: number;
 }
 

@@ -1,5 +1,6 @@
 import type { Trigger } from '@heynixie/contract';
 import { triggerAtSchema, triggerSchema } from '@heynixie/contract';
+import { checkScheduleShape } from '@heynixie/triggers';
 import { z } from 'zod';
 import { formatIssue } from './format-issue';
 import type { SeedFaultCode } from './types';
@@ -28,15 +29,7 @@ export function parseTrigger(value: unknown): TriggerResult {
     return parseAt(record.data['at'], value);
   }
 
-  const parsed = triggerSchema.safeParse(value);
-
-  return parsed.success
-    ? { status: 'parsed', trigger: parsed.data }
-    : {
-        status: 'refused',
-        fault: 'bad_schedule',
-        reasons: parsed.error.issues.map((issue) => formatIssue(issue)),
-      };
+  return parseSchedule(value);
 }
 
 const localDateTimeSchema = z.iso.datetime({ local: true });
@@ -60,13 +53,33 @@ function parseAt(at: unknown, value: unknown): TriggerResult {
         };
   }
 
+  return parseSchedule(value);
+}
+
+// A schedule in the repeat shape also goes through the shape check, which refuses a mix of fields
+// that never go together with the field and a fix.
+function parseSchedule(value: unknown): TriggerResult {
   const parsed = triggerSchema.safeParse(value);
 
-  return parsed.success
-    ? { status: 'parsed', trigger: parsed.data }
-    : {
+  if (!parsed.success) {
+    return {
+      status: 'refused',
+      fault: 'bad_schedule',
+      reasons: parsed.error.issues.map((issue) => formatIssue(issue)),
+    };
+  }
+
+  if ('schedule' in parsed.data && 'repeat' in parsed.data.schedule) {
+    const refusal = checkScheduleShape(parsed.data.schedule);
+
+    if (refusal !== null) {
+      return {
         status: 'refused',
         fault: 'bad_schedule',
-        reasons: parsed.error.issues.map((issue) => formatIssue(issue)),
+        reasons: [`trigger.schedule.${refusal.path}: ${refusal.sentence}`],
       };
+    }
+  }
+
+  return { status: 'parsed', trigger: parsed.data };
 }

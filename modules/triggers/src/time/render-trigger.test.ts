@@ -27,18 +27,22 @@ function setupTest() {
 }
 
 test.each([
-  [{ every: 'day', at: '06:30' }, 'every day at 06:30', 'Tue 9 Mar'],
-  [{ every: 'week', on: 'fri', at: '08:00' }, 'every Friday at 08:00', 'Fri 12 Mar'],
-  [{ every: { minutes: 45 } }, 'every 45 minutes', 'Mon 8 Mar at 11:45'],
-  [{ every: 'hour' }, 'every hour', 'Mon 8 Mar at 12:00'],
+  [{ every: 'day', at: '06:30' }, 'every day at 06:30 (Australia/Sydney)', 'Tue 9 Mar'],
+  [
+    { every: 'week', on: 'fri', at: '08:00' },
+    'every Friday at 08:00 (Australia/Sydney)',
+    'Fri 12 Mar',
+  ],
+  [{ every: { minutes: 45 } }, 'every 45 minutes (Australia/Sydney)', 'Mon 8 Mar at 11:45'],
+  [{ every: 'hour' }, 'every hour (Australia/Sydney)', 'Mon 8 Mar at 12:00'],
   [
     { every: 'day', window: { from: '07:00', until: '09:00' } },
-    'every day between 07:00 and 09:00',
+    'every day between 07:00 and 09:00 (Australia/Sydney)',
     'Tue 9 Mar',
   ],
   [
     { every: 'week', on: 'mon', window: { from: '07:00', until: '09:00' }, idleMinutes: 20 },
-    'every Monday between 07:00 and 09:00, once idle for 20 minutes',
+    'every Monday between 07:00 and 09:00, once idle for 20 minutes (Australia/Sydney)',
     'Mon 15 Mar',
   ],
 ])('it renders the schedule %j as %p with next %p', (schedule, rendered, next) => {

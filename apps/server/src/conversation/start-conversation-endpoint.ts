@@ -14,6 +14,8 @@ import { buildPromptReadTool, buildPromptWriteTool } from '@heynixie/prompts';
 import {
   buildReminderCancelTool,
   buildReminderSetTool,
+  buildReminderSkipTool,
+  buildReminderSnoozeTool,
   buildReminderUpdateTool,
   buildRemindersListTool,
 } from '@heynixie/reminders';
@@ -155,6 +157,8 @@ export async function startConversationEndpoint(
     buildReminderSetTool(reminders),
     buildReminderUpdateTool(reminders),
     buildReminderCancelTool(reminders),
+    buildReminderSnoozeTool(reminders),
+    buildReminderSkipTool(reminders),
   ];
 
   // A started task's thread has no skill list, so a skill tool would refuse its every call. The

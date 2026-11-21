@@ -1,9 +1,9 @@
-import { scheduleSchema } from '@heynixie/contract';
+import { repeatScheduleSchema } from '@heynixie/contract';
 import { z } from 'zod';
 
 // An `at` may hold no offset: the tool reads it in the owner's zone
 const toolTriggerSchema = z.union([
-  z.strictObject({ schedule: scheduleSchema }),
+  z.strictObject({ schedule: repeatScheduleSchema }),
   z.strictObject({ at: z.iso.datetime({ offset: true, local: true }) }),
 ]);
 

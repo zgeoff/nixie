@@ -57,7 +57,7 @@ test('it defines a task and returns its ID, words, next fire and short change ID
     status: 'ok',
     result: {
       definitionID: 'water-the-tomatoes',
-      rendered: 'every Friday at 08:00',
+      rendered: 'every Friday at 08:00 (Europe/Paris)',
       next: expect.any(String),
       changeID: expect.any(String),
     },
@@ -178,6 +178,60 @@ test('it returns INVALID with the reasons for a version that a start refuses', a
     status: 'ok',
     result: { refused: { code: 'INVALID', reasons: expect.any(Array) } },
     refusalCode: 'INVALID',
+  });
+});
+
+test('it refuses a schedule that mixes fields with the field and a fix', async () => {
+  const ctx = await setupTest();
+
+  await ctx.seed();
+
+  const outcome = await ctx.define(
+    buildTestDefineInput({
+      trigger: { schedule: { repeat: { frequency: 'daily' }, zone: 'owner', catchUp: 'once' } },
+    }),
+  );
+
+  expect(outcome).toStrictEqual({
+    status: 'ok',
+    result: {
+      refused: {
+        code: 'AT_REQUIRED',
+        path: 'trigger.schedule.repeat.at',
+        sentence: expect.stringContaining('add repeat.at'),
+      },
+    },
+    refusalCode: 'AT_REQUIRED',
+  });
+});
+
+test('it defines a task that fires hourly in the hours of weekdays', async () => {
+  const ctx = await setupTest();
+
+  await ctx.seed();
+
+  const outcome = await ctx.define(
+    buildTestDefineInput({
+      trigger: {
+        schedule: {
+          repeat: { frequency: 'hourly', byDay: ['mon', 'tue', 'wed', 'thu', 'fri'] },
+          hours: { from: '09:00', until: '17:00' },
+          zone: 'owner',
+          catchUp: 'once',
+        },
+      },
+    }),
+  );
+
+  expect(outcome).toStrictEqual({
+    status: 'ok',
+    result: {
+      definitionID: 'water-the-tomatoes',
+      rendered:
+        'every hour, on Monday, Tuesday, Wednesday, Thursday and Friday between 09:00 and 17:00 (Europe/Paris)',
+      next: expect.any(String),
+      changeID: expect.any(String),
+    },
   });
 });
 

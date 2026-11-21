@@ -18,6 +18,7 @@
     "@heynixie/logger": "workspace:*",
     "@heynixie/tasks": "workspace:*",
     "kysely": "catalog:",
+    "rrule-temporal": "catalog:",
     "ts-pattern": "catalog:",
     "xstate": "catalog:",
     "zod": "catalog:"

@@ -28,7 +28,7 @@ export function buildReminderUpdateTool(context: RemindersContext): ToolDefiniti
       properties: {
         reminder: { type: 'string' },
         rendered: { type: 'string', description: reminderToolParts.triggerWords },
-        next: { type: ['string', 'null'], description: 'the next fire, ISO in UTC' },
+        next: reminderToolParts.nextFires,
         refused: reminderToolParts.refusedOutput,
       },
       additionalProperties: false,
@@ -70,7 +70,7 @@ export function buildReminderUpdateTool(context: RemindersContext): ToolDefiniti
             });
 
       if (checked?.status === 'refused') {
-        return refuseReminder(checked.code, checked.sentence);
+        return refuseReminder(checked.code, checked.sentence, checked.path);
       }
 
       const outcome = await withWriteTransaction(context.log.writer, async (tx) => {

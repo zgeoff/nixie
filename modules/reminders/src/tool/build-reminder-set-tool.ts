@@ -17,16 +17,21 @@ export function buildReminderSetTool(context: RemindersContext): ToolDefinition 
     description:
       'Sets a reminder for the owner: a name, a note, and a trigger, either a schedule or one time ' +
       'with `at`. When it fires, the note reaches this conversation as "Reminder: <note>" with ' +
-      "its name. An `at` without an offset is read in the owner's zone. A recurring reminder fires " +
-      `at most every ${context.minGapMinutes} minutes. Returns the reminder's ID, the trigger in ` +
-      'words and the next fire. A refusal comes back as `refused` with a code and a sentence.',
+      "its name. An `at` without an offset is read in the owner's zone. A schedule is a `repeat` " +
+      'with a frequency, such as {"frequency":"weekly","byDay":["mon"],"at":["09:00"]}, and ' +
+      'optional `hours` that limit when it fires, such as hourly from 09:00 to 17:00 on weekdays: ' +
+      '{"repeat":{"frequency":"hourly","byDay":["mon","tue","wed","thu","fri"]},' +
+      '"hours":{"from":"09:00","until":"17:00"}}. ' +
+      `A recurring reminder fires at most every ${context.minGapMinutes} minutes. Returns the ` +
+      "reminder's ID, the schedule in words with its zone, and the next 3 fires in local time. A " +
+      'refusal comes back as `refused` with a code, the field and a sentence that says what to change.',
     input: buildReminderInputSchema(reminderSetInputSchema),
     output: {
       type: 'object',
       properties: {
         reminder: { type: 'string', description: 'the ID to pass to the other reminder tools' },
         rendered: { type: 'string', description: reminderToolParts.triggerWords },
-        next: { type: ['string', 'null'], description: 'the next fire, ISO in UTC' },
+        next: reminderToolParts.nextFires,
         refused: reminderToolParts.refusedOutput,
       },
       additionalProperties: false,
@@ -57,7 +62,7 @@ export function buildReminderSetTool(context: RemindersContext): ToolDefinition 
       });
 
       if (checked.status === 'refused') {
-        return refuseReminder(checked.code, checked.sentence);
+        return refuseReminder(checked.code, checked.sentence, checked.path);
       }
 
       const written = await withWriteTransaction(context.log.writer, (tx) =>

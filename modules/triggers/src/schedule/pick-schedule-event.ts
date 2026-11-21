@@ -1,8 +1,9 @@
-import type { Schedule } from '@heynixie/contract';
 import type { ArmedRow } from '../arm/read-armed-definitions';
 import { catchUpThresholdMs, maxSkippedSlots } from '../core/constants';
+import type { NormalizedSchedule } from '../recurrence/to-normalized-schedule';
+import { toNormalizedSchedule } from '../recurrence/to-normalized-schedule';
 import type { NextFire } from '../time/pick-next-fire';
-import { pickNextFire } from '../time/pick-next-fire';
+import { pickNextFire, pickScheduleFire } from '../time/pick-next-fire';
 import type { TriggerEvent } from '../types';
 import { getIntervalMs } from './get-interval-ms';
 
@@ -28,7 +29,7 @@ export function pickScheduleEvent(input: ScheduleEventInput): TriggerEvent | nul
     return pickOneShotEvent(input);
   }
 
-  const schedule = row.trigger.schedule;
+  const schedule = toNormalizedSchedule(row.trigger.schedule);
   const walk = walkDueSlots(input, schedule);
 
   if (walk === null) {
@@ -87,7 +88,7 @@ interface DueSlots {
 }
 
 // Walks the slots after the watermark that are due, and keeps only the newest few in memory.
-function walkDueSlots(input: ScheduleEventInput, schedule: Schedule): DueSlots | null {
+function walkDueSlots(input: ScheduleEventInput, schedule: NormalizedSchedule): DueSlots | null {
   const row = input.row;
   const nowMs = input.nowMs;
   let newest: NextFire | null = null;
@@ -96,9 +97,9 @@ function walkDueSlots(input: ScheduleEventInput, schedule: Schedule): DueSlots |
   const missed: number[] = [];
 
   for (;;) {
-    const slot = pickNextFire(row.definitionID, { schedule }, afterMs, input.zone);
+    const slot = pickScheduleFire(row.definitionID, schedule, afterMs, input.zone);
 
-    if (slot === null || slot.scheduledFor > nowMs) {
+    if (slot === null || slot.scheduledFor > nowMs || isHeld(row.hold, slot, nowMs)) {
       break;
     }
 
@@ -119,6 +120,11 @@ function walkDueSlots(input: ScheduleEventInput, schedule: Schedule): DueSlots |
   return newest === null ? null : { newest, missed, missedCount };
 }
 
+// A snoozed slot waits for the end of its hold, and the slots after it wait behind it.
+function isHeld(hold: ArmedRow['hold'], slot: NextFire, nowMs: number): boolean {
+  return hold !== null && slot.scheduledFor === hold.slot && nowMs < hold.until;
+}
+
 type Skip = NonNullable<TriggerEvent['skip']>;
 
 // What the source does with a slot that is due: fire it, skip it, or wait for a later tick.
@@ -127,12 +133,21 @@ type Decision =
   | { readonly kind: 'wait' }
   | { readonly kind: 'skip'; readonly reason: Skip };
 
-function pickDecision(input: ScheduleEventInput, schedule: Schedule, newest: NextFire): Decision {
+function pickDecision(
+  input: ScheduleEventInput,
+  schedule: NormalizedSchedule,
+  newest: NextFire,
+): Decision {
   const nowMs = input.nowMs;
 
-  if (schedule.window !== undefined && newest.until !== null) {
-    if (schedule.idleMinutes !== undefined) {
-      return pickIdleWindowDecision(input, schedule.idleMinutes, newest.until);
+  // a slot that a snooze held fires when its hold ends, however late that is
+  if (input.row.hold?.slot === newest.scheduledFor) {
+    return { kind: 'fire' };
+  }
+
+  if (schedule.hours !== null && newest.until !== null) {
+    if (schedule.legacy?.idleMinutes !== null && schedule.legacy?.idleMinutes !== undefined) {
+      return pickIdleWindowDecision(input, schedule.legacy.idleMinutes, newest.until);
     }
 
     if (nowMs <= newest.until) {
@@ -150,7 +165,7 @@ function pickDecision(input: ScheduleEventInput, schedule: Schedule, newest: Nex
     return { kind: 'skip', reason: 'catch_up_off' };
   }
 
-  return lateMs <= getIntervalMs(schedule.every) / 2
+  return lateMs <= getIntervalMs(schedule.repeat) / 2
     ? { kind: 'fire' }
     : { kind: 'skip', reason: 'too_late' };
 }

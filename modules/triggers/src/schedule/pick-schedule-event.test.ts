@@ -2,6 +2,11 @@ import { expect, test } from 'bun:test';
 import { triggerSchema } from '@heynixie/contract';
 import { pickScheduleEvent } from './pick-schedule-event';
 
+interface HoldIso {
+  readonly slot: string;
+  readonly until: string;
+}
+
 function setupTest() {
   return {
     pick: (trigger: unknown, after: string, now: string, lastMessageAt: string | null = null) =>
@@ -12,10 +17,25 @@ function setupTest() {
           target: 'task',
           trigger: triggerSchema.parse(trigger),
           after: Date.parse(after),
+          hold: null,
         },
         zone: 'UTC',
         nowMs: Date.parse(now),
         lastMessageAtMs: lastMessageAt === null ? null : Date.parse(lastMessageAt),
+      }),
+    pickHeld: (trigger: unknown, after: string, now: string, hold: HoldIso) =>
+      pickScheduleEvent({
+        row: {
+          definitionID: 'water-the-tomatoes',
+          definitionHash: 'hash-1',
+          target: 'conversation',
+          trigger: triggerSchema.parse(trigger),
+          after: Date.parse(after),
+          hold: { slot: Date.parse(hold.slot), until: Date.parse(hold.until) },
+        },
+        zone: 'UTC',
+        nowMs: Date.parse(now),
+        lastMessageAtMs: null,
       }),
   };
 }
@@ -260,6 +280,7 @@ test('it walks the local slots across a daylight-saving change once each', () =>
         schedule: { every: 'day', at: '08:00', zone: 'Australia/Sydney' },
       }),
       after: Date.parse('2027-04-01T00:00:00Z'),
+      hold: null,
     },
     zone: 'Australia/Sydney',
     nowMs: Date.parse('2027-04-06T00:00:00Z'),
@@ -277,4 +298,62 @@ test('it walks the local slots across a daylight-saving change once each', () =>
       '2027-04-04T22:00:00.000Z',
     ],
   ]);
+});
+
+test('it waits while a snooze holds the slot', () => {
+  const ctx = setupTest();
+
+  const event = ctx.pickHeld(
+    {
+      schedule: {
+        repeat: { frequency: 'daily', at: ['09:00'], starts: '2027-03-01' },
+        zone: 'UTC',
+      },
+    },
+    '2027-03-08T09:00:00Z',
+    '2027-03-09T12:00:00Z',
+    { slot: '2027-03-09T09:00:00Z', until: '2027-03-09T15:00:00Z' },
+  );
+
+  expect(event).toBeNull();
+});
+
+test('it fires the held slot once its hold ends, however late it is', () => {
+  const ctx = setupTest();
+
+  const event = ctx.pickHeld(
+    {
+      schedule: {
+        repeat: { frequency: 'daily', at: ['09:00'], starts: '2027-03-01' },
+        zone: 'UTC',
+      },
+    },
+    '2027-03-08T09:00:00Z',
+    '2027-03-09T15:00:10Z',
+    { slot: '2027-03-09T09:00:00Z', until: '2027-03-09T15:00:00Z' },
+  );
+
+  expect([event?.scheduledFor, event?.skip, event?.missedCount]).toStrictEqual([
+    '2027-03-09T09:00:00.000Z',
+    undefined,
+    0,
+  ]);
+});
+
+test('it counts a released held slot as missed when a later slot is due too', () => {
+  const ctx = setupTest();
+
+  const event = ctx.pickHeld(
+    {
+      schedule: {
+        repeat: { frequency: 'daily', at: ['09:00'], starts: '2027-03-01' },
+        zone: 'UTC',
+      },
+    },
+    '2027-03-08T09:00:00Z',
+    '2027-03-10T09:00:20Z',
+    { slot: '2027-03-09T09:00:00Z', until: '2027-03-09T15:00:00Z' },
+  );
+
+  expect([event?.scheduledFor, event?.missedCount]).toStrictEqual(['2027-03-10T09:00:00.000Z', 1]);
 });

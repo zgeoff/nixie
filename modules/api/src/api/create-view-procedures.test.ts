@@ -491,7 +491,7 @@ test('#definitions.listTasks gives the next fire of a definition whose trigger i
   const listed = await ctx.client.definitions.listTasks({});
 
   expect(listed.definitions[0]).toMatchObject({
-    rendered: 'every day at 08:00',
+    rendered: 'every day at 08:00 (UTC)',
     next: expect.toBeString(),
   });
 });
