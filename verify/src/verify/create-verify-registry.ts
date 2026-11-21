@@ -23,10 +23,10 @@ import type { ServedContainer } from './preview/build-served-blobs-argv';
 import { createPreviewHost } from './preview/create-preview-host';
 import { pickCommitRefusal } from './preview/pick-commit-refusal';
 import { collectExtraPaths, pickSourceRefusal } from './preview/pick-source-refusal';
-import { previewCheckout } from './preview/preview-checkout';
 import { readPreviewEndpoints } from './preview/read-preview-endpoints';
 import type { PullRequest } from './preview/read-pull-request';
 import { readPullRequest } from './preview/read-pull-request';
+import { readServedCommit, servedCommitArgv } from './preview/read-served-commit';
 import { buildProdEndpoints } from './prod/build-prod-endpoints';
 import { readProdCall } from './prod/read-prod-call';
 import { readProdErrors } from './prod/read-prod-errors';
@@ -381,20 +381,6 @@ function makeCachedRead(read: () => Promise<PullRequest>): () => Promise<PullReq
   };
 }
 
-const servedCommitArgv = ['git', '-C', previewCheckout, 'rev-parse', 'HEAD'];
-
-type PreviewHost = ReturnType<typeof createPreviewHost>;
-
-async function readServedCommit(host: PreviewHost): Promise<string> {
-  const ran = await host.run({ argv: servedCommitArgv, access: 'read-only' });
-
-  if (ran.exitCode !== 0) {
-    throw new Error(`the preview's checkout has no commit: ${ran.stderr.trim()}`);
-  }
-
-  return ran.stdout.trim();
-}
-
 async function postControl<Input extends z.ZodType, Output extends z.ZodType>(
   client: HttpClient,
   route: ControlRoute<Input, Output>,
@@ -439,6 +425,8 @@ function refuseOffProd(target: string, command: string): void {
 
 const previewRefusalHint =
   'Push this commit, open the preview link on the pull request to rebuild the preview, then run `bun verify attach` and `bun verify doctor` again.';
+
+type PreviewHost = ReturnType<typeof createPreviewHost>;
 
 // The checkout can move on while a container from an older build still serves, so the doctor also
 // compares the container's files with this tree. A doctor check's exec refuses every raw command,
