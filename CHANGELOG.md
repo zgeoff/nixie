@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.91.0](https://github.com/zgeoff/nixie/compare/v0.90.0...v0.91.0) (2026-11-21)
+
+
+### Features
+
+* **images:** draw and edit pictures in passes ([#1320](https://github.com/zgeoff/nixie/issues/1320)) ([a6224dc](https://github.com/zgeoff/nixie/commit/a6224dc722b95cbcaff8ee4c6619bc549dbb1a30))
+* **verify:** upload evidence from the local and preview targets ([#1318](https://github.com/zgeoff/nixie/issues/1318)) ([7ee5e97](https://github.com/zgeoff/nixie/commit/7ee5e97d8d7daeb5ea3f4bb74c58bfe051ff02f7))
+
+
+### Bug Fixes
+
+* **deps:** update @zgeoff/std to v0.4.5 ([#1313](https://github.com/zgeoff/nixie/issues/1313)) ([16d6c5c](https://github.com/zgeoff/nixie/commit/16d6c5c1190d789200c85ccb24a2957c1974c862))
+
 ## [0.90.0](https://github.com/zgeoff/nixie/compare/v0.89.0...v0.90.0) (2026-11-21)
 
 
