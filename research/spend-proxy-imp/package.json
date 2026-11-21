@@ -9,7 +9,7 @@
     "test": "bun test"
   },
   "dependencies": {
-    "@orpc/client": "1.16.1",
+    "@orpc/client": "1.16.2",
     "ts-pattern": "5.9.2"
   }
 }
