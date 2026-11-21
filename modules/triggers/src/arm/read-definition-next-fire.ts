@@ -1,8 +1,6 @@
-import { triggerSchema } from '@heynixie/contract';
 import type { Kysely } from 'kysely';
-import { pickNextFire } from '../time/pick-next-fire';
-import type { ReadZone, TriggersTables } from '../types';
-import { readSpentOneShots } from './read-spent-one-shots';
+import type { ReadZone } from '../types';
+import { readDefinitionNextFires } from './read-definition-next-fires';
 
 // The next slot of a definition in force as an ISO instant in UTC, also when the slot is already
 // past, or null when no slot is left. A snooze moves it to the end of its hold.
@@ -11,38 +9,9 @@ export async function readDefinitionNextFire(
   readZone: ReadZone,
   definitionID: string,
 ): Promise<string | null> {
-  const row = await db
-    .$extendTables<TriggersTables>()
-    .selectFrom('trigger_definitions')
-    .select(['definition_hash', 'trigger', 'after', 'hold_slot', 'hold_until'])
-    .where('definition_id', '=', definitionID)
-    .executeTakeFirst();
+  const next = await readDefinitionNextFires(db, readZone, definitionID, 1);
 
-  if (row === undefined || row.definition_hash === null) {
-    return null;
-  }
+  const first = next?.fires[0];
 
-  const trigger = triggerSchema.parse(JSON.parse(row.trigger));
-
-  const spent = await readSpentOneShots(db, [{ definitionID, trigger }]);
-
-  if (spent.has(definitionID)) {
-    return null;
-  }
-
-  const scheduleZone = 'at' in trigger ? 'owner' : trigger.schedule.zone;
-
-  const zone = await readZone(scheduleZone);
-
-  const fire = pickNextFire(definitionID, trigger, row.after, zone);
-
-  if (fire === null) {
-    return null;
-  }
-
-  // a snooze moves the fire to the end of its hold
-  const isHeld = fire.scheduledFor === row.hold_slot && row.hold_until !== null;
-  const atMs = isHeld ? (row.hold_until ?? fire.scheduledFor) : fire.scheduledFor;
-
-  return new Date(atMs).toISOString();
+  return first === undefined ? null : new Date(first.atMs).toISOString();
 }
