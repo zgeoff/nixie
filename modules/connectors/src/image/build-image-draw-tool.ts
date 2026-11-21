@@ -18,6 +18,7 @@ import type { PickedProfile } from './pick-image-profile';
 import { pickRoomLeft } from './pick-room-left';
 import { readDrawSources } from './read-draw-sources';
 import type { DrawSources } from './read-draw-sources';
+import { readPhotoImageIDs } from './read-photo-image-ids';
 import { refuseImage } from './refuse-image';
 import { showImage } from './show-image';
 import type { ImageToolOptions } from './types';
@@ -97,22 +98,33 @@ export function buildImageDrawTool(options: ImageToolOptions): ToolDefinition {
       check: async (input, context) => {
         const sources = await readDrawSources(options, drawArguments.parse(input));
 
-        return sources.kind === 'refused' ? sources.refusal : refuseFullCaps(context.run);
+        return sources.kind === 'refused'
+          ? sources.refusal
+          : holdRoomOrRefuse(context.run, context.callID);
+      },
+      release: (context) => {
+        context.run.session?.releaseImageRoom?.(context.callID);
       },
     },
     prepare: (input) => prepareDraw(options, input),
     run: async (call, context) => {
-      const sources = await readDrawSources(options, drawArguments.parse(call.input));
+      try {
+        const sources = await readDrawSources(options, drawArguments.parse(call.input));
 
-      return sources.kind === 'refused'
-        ? { status: 'ok', ...sources.refusal }
-        : runDraw(options, sources, context.run);
+        return sources.kind === 'refused'
+          ? { status: 'ok', ...sources.refusal }
+          : await runDraw(options, sources, { run: context.run, callID: call.callID });
+      } finally {
+        context.run.session?.releaseImageRoom?.(call.callID);
+      }
     },
   };
 }
 
-function refuseFullCaps(run: ToolRun) {
-  if (pickRoomLeft(run.session?.readImageRoom?.()) > 0) {
+// Takes the room for the picture now, so a draw beside this one cannot pass on the same room. The
+// hold lasts until the call reserves its picture or ends.
+function holdRoomOrRefuse(run: ToolRun, callID: string) {
+  if (run.session?.holdImageRoom?.(callID) === true) {
     return null;
   }
 
@@ -146,24 +158,20 @@ async function prepareDraw(options: ImageToolOptions, input: unknown) {
 }
 
 async function probeHasPhoto(options: ImageToolOptions, ids: readonly string[]): Promise<boolean> {
-  if (ids.length === 0) {
-    return false;
-  }
+  const photos = await readPhotoImageIDs(options.log, ids);
 
-  const rows = await options.log.writer.db
-    .$extendTables<ImageTables>()
-    .selectFrom('images')
-    .select('source')
-    .where((query) => query.or([query('image_id', 'in', ids), query('uuid', 'in', ids)]))
-    .execute();
+  return photos.length > 0;
+}
 
-  return rows.some((row) => row.source === 'photo');
+interface DrawCall {
+  readonly run: ToolRun;
+  readonly callID: string;
 }
 
 async function runDraw(
   options: ImageToolOptions,
   sources: Extract<DrawSources, { kind: 'ready' }>,
-  run: ToolRun,
+  call: DrawCall,
 ): Promise<ToolOutcome> {
   const source = await readDrawSource(sources);
 
@@ -189,7 +197,7 @@ async function runDraw(
     return { status: 'ok', ...refuseReply(options, sources, reply) };
   }
 
-  return writeDraw(options, sources, { run, reply });
+  return writeDraw(options, sources, { ...call, reply });
 }
 
 async function readDrawSource(sources: Extract<DrawSources, { kind: 'ready' }>) {
@@ -264,8 +272,7 @@ function refuseReply(
   return { ...refusal, billed: true as const };
 }
 
-interface StoredDraw {
-  readonly run: ToolRun;
+interface StoredDraw extends DrawCall {
   readonly reply: Extract<DrawReply, { kind: 'image' }>;
 }
 
@@ -290,6 +297,9 @@ async function writeDraw(
 
   const image = createShortID();
   const uuid = crypto.randomUUID();
+
+  // the hold gives its room back, so the picture takes it
+  drawn.run.session?.releaseImageRoom?.(drawn.callID);
 
   const shown = await showImage(drawn.run, png.bytes, options.imageLongEdge);
 

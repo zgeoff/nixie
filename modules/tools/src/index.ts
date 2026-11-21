@@ -30,6 +30,7 @@ export type {
   ActionQueue,
   DirectResult,
   ImageRoom,
+  PaidCallContext,
   Prepared,
   OpenAsk,
   OpenRepeat,

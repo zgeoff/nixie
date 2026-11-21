@@ -78,7 +78,9 @@ function buildInteraction(request: DrawRequest) {
     input: [{ type: 'text', text: request.prompt }, ...images.map((image) => toImagePart(image))],
     response_format: {
       type: 'image',
-      mime_type: 'image/png',
+
+      // The API allows only JPEG for image output; the draw tool converts it to the stored PNG.
+      mime_type: 'image/jpeg',
       aspect_ratio: aspectRatios[request.size],
       image_size: '1K',
     },
@@ -117,7 +119,7 @@ function parseGeminiResponse(status: number, text: string): DrawReply {
   const encoded = blocks.find((block) => block.type === 'image' && block.data !== undefined)?.data;
 
   if (encoded !== undefined) {
-    return { kind: 'image', mediaType: 'image/png', bytes: Buffer.from(encoded, 'base64') };
+    return { kind: 'image', mediaType: 'image/jpeg', bytes: Buffer.from(encoded, 'base64') };
   }
 
   // The model answered in words and drew nothing, and the provider counts the call.

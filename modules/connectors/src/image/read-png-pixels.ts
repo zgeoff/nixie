@@ -10,7 +10,7 @@ export interface PngPixels {
   readonly rgba: Uint8Array;
 }
 
-export interface PngSize {
+interface PngSize {
   readonly width: number;
   readonly height: number;
 }

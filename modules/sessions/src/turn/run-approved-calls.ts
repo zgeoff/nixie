@@ -2,6 +2,7 @@ import type { StepInput } from '@heynixie/tasks';
 import { buildStepRunID, markBeforeTurnFailure, readInbox } from '@heynixie/tasks';
 import type { ApprovedReply, ToolRun, ToolSession, ToolStepHold } from '@heynixie/tools';
 import { makeImageReserver } from '../task/make-image-reserver';
+import { makeImageRoomHolder } from '../task/make-image-room-holder';
 import { makeImageRoomReader } from '../task/make-image-room-reader';
 import type { ConversationRun } from '../types';
 
@@ -34,6 +35,7 @@ export async function runApprovedCalls(
       ...plan.session,
       reserveImages: makeImageReserver(images),
       readImageRoom: makeImageRoomReader(images),
+      ...makeImageRoomHolder(images),
       step: buildStepHold(run, input, plan.signal),
     },
     buildTaskRun(input),

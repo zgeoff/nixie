@@ -1,7 +1,7 @@
 import type { DrawReply, DrawRequest, ImageProvider } from '../types';
 import { encodeTestImage } from './encode-test-image';
 
-export type StubImageReply = (request: DrawRequest) => Promise<DrawReply> | DrawReply;
+type StubImageReply = (request: DrawRequest) => Promise<DrawReply> | DrawReply;
 
 export interface StubImageProvider extends ImageProvider {
   // what the provider takes, which a test can narrow

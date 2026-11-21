@@ -9,6 +9,7 @@ import { readLiveInbox } from '../inbox/read-live-inbox';
 import { buildStepPolicyFrame } from '../step/build-step-policy-frame';
 import type { CompletedTurn } from '../step/build-step-result';
 import { makeImageReserver } from '../task/make-image-reserver';
+import { makeImageRoomHolder } from '../task/make-image-room-holder';
 import { makeImageRoomReader } from '../task/make-image-room-reader';
 import type { TaskMessageView } from '../task/render-task-message';
 import type {
@@ -79,6 +80,7 @@ export async function runLiveTurn(
       ...plan.session,
       reserveImages: makeImageReserver(opening.images),
       readImageRoom: makeImageRoomReader(opening.images),
+      ...makeImageRoomHolder(opening.images),
       endSilently: silence.end,
       policy: buildStepPolicyFrame(run.frame, opening.batch.records),
       step: buildStepHold(run, input, plan.signal),

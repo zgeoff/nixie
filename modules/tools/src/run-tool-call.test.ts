@@ -3382,3 +3382,59 @@ test('it returns the result a prepare step gives, and never asks the decision po
   expect(decide).not.toHaveBeenCalled();
   expect(run).not.toHaveBeenCalled();
 });
+
+test('it releases what a paid check held when the budget stops the call before the tool runs', async () => {
+  const release = mock(() => null);
+  const run = mock(() => Promise.resolve({ status: 'ok' as const, result: { text: 'a note' } }));
+
+  const ctx = await setupTest({
+    paidTools: ['web_search'],
+    tools: [
+      buildMockToolDefinition({
+        name: 'web_search',
+        paid: { priceMicros: 6_000_000, release },
+        run,
+      }),
+    ],
+  });
+
+  await runToolCall(
+    { tool: 'web_search', input: { query: 'milk' }, toolUseID: 'toolu_r1' },
+    {
+      runID: 'run-1',
+      thread: 'task-1',
+      logThread: 'task-1',
+      tools: ['web_search'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
+    ctx.options,
+  );
+
+  expect(run).not.toHaveBeenCalled();
+  expect(release).toHaveBeenCalledTimes(1);
+});
+
+test('it leaves the release of a paid call that runs to the tool', async () => {
+  const release = mock(() => null);
+
+  const ctx = await setupTest({
+    paidTools: ['web_search'],
+    tools: [
+      buildMockToolDefinition({ name: 'web_search', paid: { priceMicros: 25_000, release } }),
+    ],
+  });
+
+  await runToolCall(
+    { tool: 'web_search', input: { query: 'milk' }, toolUseID: 'toolu_r2' },
+    {
+      runID: 'run-1',
+      thread: 'task-1',
+      logThread: 'task-1',
+      tools: ['web_search'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
+    ctx.options,
+  );
+
+  expect(release).not.toHaveBeenCalled();
+});

@@ -95,6 +95,13 @@ test('it refuses an image read without its position', () => {
   expect(result?.error?.issues).toPartiallyContain({ path: ['position'] });
 });
 
+test('it declares a missing device session and a missing image for an approval image read', () => {
+  expect(contract.approvals.readImage['~orpc'].errorMap).toContainAllKeys([
+    'UNAUTHORIZED',
+    'IMAGE_NOT_FOUND',
+  ]);
+});
+
 test('it declares a missing device session, a reused action ID, an unknown record and an unfinished action for a forget', () => {
   expect(contract.conversation.forget['~orpc'].errorMap).toContainAllKeys([
     'UNAUTHORIZED',

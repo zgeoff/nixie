@@ -46,13 +46,43 @@ export async function runPaidCall(
 
   invariant(budgets, `the paid tool ${registered.definition.name} needs the budgets of the server`);
 
-  const name = registered.definition.name;
+  const context = { run: facts.run, callID: call.callID };
 
-  const refusal = await paid.check?.(call.input, { run: facts.run });
+  const refusal = await paid.check?.(call.input, context);
 
   if (refusal !== undefined && refusal !== null) {
     return { status: 'ok', ...refusal };
   }
+
+  const started = { isRun: false };
+
+  try {
+    return await chargeAndRun(registered, facts, options, () => {
+      started.isRun = true;
+
+      return run();
+    });
+  } finally {
+    if (!started.isRun) {
+      paid.release?.(context);
+    }
+  }
+}
+
+async function chargeAndRun(
+  registered: RegisteredTool,
+  facts: PaidCallFacts,
+  options: PaidCallOptions,
+  run: () => Promise<ToolOutcome>,
+): Promise<PaidOutcome> {
+  const paid = registered.definition.paid;
+  const budgets = options.budgets;
+
+  invariant(paid, 'a charged call belongs to a paid tool');
+  invariant(budgets, 'a charged call has the budgets of the server');
+
+  const call = facts.call;
+  const name = registered.definition.name;
 
   const priceMicros =
     typeof paid.priceMicros === 'number' ? paid.priceMicros : await paid.priceMicros(call.input);

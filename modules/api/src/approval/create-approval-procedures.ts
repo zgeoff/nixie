@@ -1,4 +1,5 @@
 // oxlint-disable new-cap -- oRPC names a procedure's typed errors by their upper-case codes
+import { readImageEntry } from '@heynixie/connectors';
 import type { AnswerSettlement } from '@heynixie/proposals';
 import { requireCaller } from '../memory/require-caller';
 import { createPasskeyAnswerGate } from '../passkey/create-passkey-answer-gate';
@@ -33,6 +34,20 @@ export function createApprovalProcedures(context: APIContext, parts: ProposalPar
       return readApprovalProposals(context, deps, parts.readMemory, {
         caller,
         proposalIDs: options.input.proposalIDs,
+      });
+    }),
+
+    readImage: approvals.readImage.handler(async (options) => {
+      await requireCaller(context, options.context.sessionToken, options.errors.UNAUTHORIZED);
+
+      const image = await readImageEntry(context.log, options.input.imageID);
+
+      if (image.kind !== 'ok') {
+        throw options.errors.IMAGE_NOT_FOUND();
+      }
+
+      return new File([image.bytes], `image-${image.row.image_id}`, {
+        type: image.row.media_type,
       });
     }),
 

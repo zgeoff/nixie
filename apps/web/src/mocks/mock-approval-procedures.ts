@@ -10,6 +10,10 @@ import { writeMockUnknownOutcomeAnswer } from './write-mock-unknown-outcome-answ
 
 const approvals = mockImplementer.approvals;
 
+// a 1 by 1 PNG
+const mockPhotoPNG =
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==';
+
 export const mockApprovalProcedures = {
   listItems: approvals.listItems.handler((options) => {
     requireMockSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
@@ -32,6 +36,14 @@ export const mockApprovalProcedures = {
     return {
       proposals: readMockApprovalProposals(options.input.proposalIDs, session.sessionID),
     };
+  }),
+
+  readImage: approvals.readImage.handler((options) => {
+    requireMockSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
+
+    return new File([Uint8Array.fromBase64(mockPhotoPNG)], `image-${options.input.imageID}`, {
+      type: 'image/png',
+    });
   }),
 
   answerProposal: approvals.answerProposal.handler(async (options) => {

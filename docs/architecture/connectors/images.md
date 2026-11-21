@@ -66,7 +66,9 @@ profile's `prices` give the micros per image for each size, and the paid call re
 it checks the input. The call runs in this order:
 
 1. `check` refuses an unknown image, an unknown profile, a profile that takes no edit, and a full
-   session, before anything is charged.
+   session, before anything is charged. A check that passes holds room for one image at the largest
+   size under the call's ID, so draws that run side by side cannot take the same last room. The call
+   frees the hold when it reserves its picture, and when it ends without running.
 2. The call charges `image.draw-day` ($2) and `image.draw-month` ($20), then runs.
 3. A refusal or a failure credits the charge unless the provider billed the call. An unbilled
    refusal is credited; a billed one stands.
@@ -81,8 +83,9 @@ A draw whose `from` or `references` names an image imported from a photo sends t
 provider. The tool's `prepare` hook reports the provider as the call's destination, with the effects
 `fetch` and `send`, so the [decision point](../policy/decision-point.md) treats the draw as a send:
 a rule that allows sends to that provider runs it direct, and otherwise it queues as a proposal for
-the user. The proposal's input holds the image IDs and its destination is the provider. When the
-user approves, the call runs `prepare` again, and a destination that changed since the proposal
+the user. The proposal's input holds the image IDs and its destination is the provider. The
+proposal's card shows each photo among them, read from the stored image when the card is read. When
+the user approves, the call runs `prepare` again, and a destination that changed since the proposal
 makes the call return `changed` and run nothing.
 
 ## The provider interface
@@ -106,10 +109,10 @@ tool then returns `IMAGE_TIMEOUT`. An adapter sends its key in a request header,
 replaces the key with `<the API key>` in any reason or message it returns. The tool never keeps the
 text of a thrown error.
 
-| Adapter        | Request                                                                           | Refusal                                                                          |
-| -------------- | --------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
-| `image-openai` | `images/generations` as JSON, or `images/edits` as multipart with each `image[]`  | Error code `moderation_blocked`; billed only when the moderation stage is output |
-| `image-gemini` | `interactions` with an image `response_format`; the aspect ratio follows the size | A reply with no image block, billed; a 400 that names a safety block, not billed |
+| Adapter        | Request                                                                                                                      | Refusal                                                                          |
+| -------------- | ---------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| `image-openai` | `images/generations` as JSON, or `images/edits` as multipart with each `image[]`                                             | Error code `moderation_blocked`; billed only when the moderation stage is output |
+| `image-gemini` | `interactions` with an image `response_format` for JPEG, the one image type the API gives; the aspect ratio follows the size | A reply with no image block, billed; a 400 that names a safety block, not billed |
 
 Any other HTTP error, and an unreachable host, return `failed` unbilled. A 200 reply with no
 readable image returns `failed` billed, because the provider answered.

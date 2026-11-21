@@ -514,3 +514,30 @@ test('it runs a draw from a drawn image without asking, as it sends no photo', a
 
   expect(edit).toMatchObject({ from: readImageID(first) });
 });
+
+test('it lets only one of two draws side by side take the last room, and charges only that one', async () => {
+  const main = buildStubImageProvider();
+
+  const ctx = await startTestImages({
+    providers: { main, second: buildStubImageProvider() },
+    caps: { bytes: 24 * 1024 * 1024, count: 1 },
+  });
+
+  const replies = await Promise.all([
+    ctx.call('image.draw', { prompt: 'a cove' }),
+    ctx.call('image.draw', { prompt: 'another cove' }),
+  ]);
+
+  const ledger = await readBudgetLedger(ctx.log.writer.db, ctx.budgets, 'image.draw-day');
+
+  const refusals = replies
+    .map((reply) => readToolResult(reply))
+    .filter((result) => 'refused' in result);
+
+  expect(refusals).toStrictEqual([
+    expect.objectContaining({ refused: { code: 'IMAGE_CAPS_FULL', message: expect.any(String) } }),
+  ]);
+
+  expect(main.requests).toHaveLength(1);
+  expect(ledger?.spentMicros).toBe(40_000);
+});

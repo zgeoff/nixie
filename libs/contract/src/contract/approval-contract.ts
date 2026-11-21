@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { authenticationResponseSchema } from './authentication-response-schema';
 import { choiceSchema } from './choice-schema';
+import { imageNotFoundError } from './image-not-found-error';
 import { memoryProposalSchema } from './memory-view-contract';
 import { noPasskeyError } from './no-passkey-error';
 import { passkeyFailedError } from './passkey-failed-error';
@@ -35,6 +36,9 @@ const bodySchema = z.object({
   sentence: z.string(),
   fields: z.record(z.string(), z.string()),
   ruleSentence: z.string().nullable(),
+
+  // the IDs of stored images the card shows, such as the photos a draw would send
+  images: z.array(z.string()).optional(),
   approveLabel: z.string(),
   rule: z.record(z.string(), z.unknown()).optional(),
   memory: memoryProposalSchema.optional(),
@@ -223,6 +227,12 @@ export const approvalContract = {
   readProposals: signedIn
     .input(readInputSchema)
     .output(z.object({ proposals: z.array(readItemSchema) })),
+
+  // the picture of a stored image that a card shows
+  readImage: signedIn
+    .errors({ IMAGE_NOT_FOUND: imageNotFoundError })
+    .input(z.object({ imageID: z.string().min(1).max(200) }))
+    .output(z.file()),
 
   answerProposal: answerErrors.input(passkeyAnswerSchema).output(resultSchema),
 

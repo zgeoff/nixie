@@ -179,10 +179,19 @@ export interface PaidTool {
 
   // Refuses a call before anything is charged: a non-null result returns with no charge, and the
   // call cap does not count it.
-  readonly check?: (input: JSONObject, context: ToolResolveContext) => Promise<DirectResult | null>;
+  readonly check?: (input: JSONObject, context: PaidCallContext) => Promise<DirectResult | null>;
+
+  // Runs when a call that passed check ends before the tool's run starts, such as at a budget that
+  // is reached, so what check held for the call goes free. A call that runs frees its own hold.
+  readonly release?: (context: PaidCallContext) => void;
 
   // a limit on the count of calls that the tool keeps beside its budgets, such as a daily cap
   readonly callCap?: PaidCallCap;
+}
+
+export interface PaidCallContext extends ToolResolveContext {
+  // the call's own ID, which a hold that check takes is keyed by
+  readonly callID: string;
 }
 
 export interface PaidCallCap {
@@ -281,6 +290,15 @@ export interface ToolSession {
   // what the session's image caps still take, counted in base64 bytes and in images, so a tool
   // that draws can refuse before it pays for a picture the model could not see
   readonly readImageRoom?: () => ImageRoom;
+
+  // Takes room for one image at the largest size under the key of a call, so calls that run side
+  // by side cannot all pass on the same room. False means the caps have none. A key that holds
+  // already stays held.
+  readonly holdImageRoom?: (key: string) => boolean;
+
+  // Frees what the key holds, once: a second release of the same key frees nothing. The call
+  // frees its hold before it reserves the picture it got.
+  readonly releaseImageRoom?: (key: string) => void;
 
   // A turn that holds a message from the owner refuses to end with nothing sent, so the model
   // replies to it.

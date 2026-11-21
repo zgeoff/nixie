@@ -9,6 +9,7 @@ import { buildToolRegistry, findToolDeclaration, runToolCall } from '@heynixie/t
 import { buildStubActionQueue } from '@heynixie/tools/test-utils';
 import { buildImageTools } from '../image/build-image-tools';
 import type { ImagesConfig } from '../image/images-config-schema';
+import { largestImageBytes } from '../image/pick-room-left';
 import type { ImageProvider } from '../types';
 import { readToolResult } from './read-tool-result';
 import { startTestLog } from './start-test-log';
@@ -37,6 +38,8 @@ export async function startTestImages(options: TestImagesOptions) {
   const log: Log = { ...started, projections: [...started.projections, ...budgetProjections] };
   const spent = { bytes: 0, count: 0 };
   const caps = options.caps ?? { bytes: 24 * 1024 * 1024, count: 100 };
+
+  const held = new Set<string>();
 
   const images: ImagesConfig = {
     default: 'main',
@@ -101,6 +104,28 @@ export async function startTestImages(options: TestImagesOptions) {
         return true;
       },
       readImageRoom: () => ({ bytes: caps.bytes - spent.bytes, count: caps.count - spent.count }),
+      holdImageRoom: (key) => {
+        if (held.has(key)) {
+          return true;
+        }
+
+        if (spent.count + 1 > caps.count || spent.bytes + largestImageBytes > caps.bytes) {
+          return false;
+        }
+
+        spent.bytes += largestImageBytes;
+        spent.count += 1;
+
+        held.add(key);
+
+        return true;
+      },
+      releaseImageRoom: (key) => {
+        if (held.delete(key)) {
+          spent.bytes -= largestImageBytes;
+          spent.count -= 1;
+        }
+      },
     },
   };
 

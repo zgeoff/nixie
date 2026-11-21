@@ -3,6 +3,7 @@ import { startTestImages } from '@heynixie/connectors/test-utils';
 import { readRecords } from '@heynixie/log';
 import { mockServer } from '@heynixie/mock-server';
 import { HttpResponse, http } from 'msw';
+import { z } from 'zod';
 import { buildGeminiImages } from './build-gemini-images';
 import { geminiImagesAPIURL } from './mocks/gemini-images-api-url';
 
@@ -23,10 +24,23 @@ test('it sends the prompt, the source and each reference with the key in a heade
 
   mockServer.use(
     http.post(`${geminiImagesAPIURL}/interactions`, async (info) => {
+      const body = await info.request.clone().json();
+
+      const format = z
+        .object({ response_format: z.object({ mime_type: z.string() }) })
+        .safeParse(body);
+
+      if (format.data?.response_format.mime_type !== 'image/jpeg') {
+        return HttpResponse.json(
+          { error: { status: 'INVALID_ARGUMENT', message: 'Only image/jpeg is allowed.' } },
+          { status: 400 },
+        );
+      }
+
       seen.push({
         key: info.request.headers.get('x-goog-api-key'),
         revision: info.request.headers.get('api-revision'),
-        body: await info.request.clone().json(),
+        body,
         url: info.request.url,
       });
 
@@ -59,7 +73,7 @@ test('it sends the prompt, the source and each reference with the key in a heade
         ],
         response_format: {
           type: 'image',
-          mime_type: 'image/png',
+          mime_type: 'image/jpeg',
           aspect_ratio: '3:2',
           image_size: '1K',
         },
@@ -69,7 +83,7 @@ test('it sends the prompt, the source and each reference with the key in a heade
 
   expect(reply).toStrictEqual({
     kind: 'image',
-    mediaType: 'image/png',
+    mediaType: 'image/jpeg',
     bytes: Buffer.from(ctx.pixel, 'base64'),
   });
 });
