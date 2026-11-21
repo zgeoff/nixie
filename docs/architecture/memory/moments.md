@@ -30,7 +30,10 @@ so a rebuild after a destroy gives the same rows as the live projection. The fol
 when the forget of its memory item starts.
 
 Every change binds to the version the caller read, and a change that finds the moment moved on fails
-as stale and writes nothing. The check and the record commit in one write transaction.
+as stale and writes nothing. A link or an unlink adds a row beside the moment's text, edges and
+state, so it never makes a change stale: only an edit or a retirement committed after the version
+the caller read does. Two links that a model calls in parallel at the same version therefore both
+land. The check and the record commit in one write transaction.
 
 ## Who keeps and who writes
 
