@@ -11,6 +11,7 @@ import type {
   MomentTarget,
   MomentWrite,
 } from '../utils/moment-context';
+import { probeMomentMovedOn } from './probe-moment-moved-on';
 import type { MomentRow } from './read-moment-row';
 import { readMomentRow } from './read-moment-row';
 
@@ -41,7 +42,8 @@ export interface MomentChangeRequest {
 type WrittenMoment = Extract<MomentWrite, { readonly status: 'written' }>;
 
 // The check and the record commit in one write transaction, so two callers that read the same
-// version never both change the moment.
+// version never both edit or retire the moment. Links that commit between the read and the write
+// do not make it stale.
 export async function writeMomentChange(
   context: MomentContext,
   request: MomentChangeRequest,
@@ -59,7 +61,9 @@ export async function writeMomentChange(
         throw new MomentChangeRefusedError('not_found');
       }
 
-      if (row.version !== request.target.version) {
+      const isMovedOn = await probeMomentMovedOn(tx, row, request.target.version);
+
+      if (isMovedOn) {
         throw new MomentChangeRefusedError('stale');
       }
 

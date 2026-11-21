@@ -108,3 +108,153 @@ test("it rolls back the caller's write in the change's transaction when it refus
   expect(writeWake).toHaveBeenCalledOnce();
   expect(wakes).toStrictEqual([]);
 });
+
+test('it applies an edit at the version read when only links landed since', async () => {
+  const ctx = await setupTest();
+
+  const [message] = await writeRecords(ctx.memory.log, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'the bread rises overnight now' },
+    },
+  ]);
+
+  invariant(message);
+
+  const kept = await ctx.memory.store.moments.keep({
+    caller: { kind: 'owner' },
+    thread: 'conversation',
+    firstSequence: message.sequence,
+    lastSequence: message.sequence,
+    title: 'The overnight loaf',
+  });
+
+  invariant(kept.status === 'written');
+
+  const item = await ctx.memory.store.remember({
+    text: 'Proves dough overnight',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const momentID = kept.momentID;
+  const itemID = item.itemID;
+
+  await ctx.memory.store.moments.link({
+    caller: { kind: 'owner' },
+    target: { momentID, version: 1 },
+    itemID,
+    isLinked: true,
+  });
+
+  const edited = await ctx.memory.store.moments.edit({
+    caller: { kind: 'owner' },
+    target: { momentID, version: 1 },
+    change: { kind: 'title', title: 'The slow loaf' },
+  });
+
+  expect(edited).toMatchObject({ status: 'written', version: 3 });
+});
+
+test('it refuses a link at the version read when an edit landed since', async () => {
+  const ctx = await setupTest();
+
+  const [message] = await writeRecords(ctx.memory.log, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'the bread rises overnight now' },
+    },
+  ]);
+
+  invariant(message);
+
+  const kept = await ctx.memory.store.moments.keep({
+    caller: { kind: 'owner' },
+    thread: 'conversation',
+    firstSequence: message.sequence,
+    lastSequence: message.sequence,
+    title: 'The overnight loaf',
+  });
+
+  invariant(kept.status === 'written');
+
+  const item = await ctx.memory.store.remember({
+    text: 'Proves dough overnight',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const momentID = kept.momentID;
+  const itemID = item.itemID;
+
+  await ctx.memory.store.moments.edit({
+    caller: { kind: 'owner' },
+    target: { momentID, version: 1 },
+    change: { kind: 'title', title: 'The slow loaf' },
+  });
+
+  const linked = await ctx.memory.store.moments.link({
+    caller: { kind: 'owner' },
+    target: { momentID, version: 1 },
+    itemID,
+    isLinked: true,
+  });
+
+  expect(linked).toStrictEqual({ status: 'refused', reason: 'stale' });
+});
+
+test('it refuses a retirement at the version read when an edit landed since', async () => {
+  const ctx = await setupTest();
+
+  const [message] = await writeRecords(ctx.memory.log, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'the bread rises overnight now' },
+    },
+  ]);
+
+  invariant(message);
+
+  const kept = await ctx.memory.store.moments.keep({
+    caller: { kind: 'owner' },
+    thread: 'conversation',
+    firstSequence: message.sequence,
+    lastSequence: message.sequence,
+    title: 'The overnight loaf',
+  });
+
+  invariant(kept.status === 'written');
+
+  const item = await ctx.memory.store.remember({
+    text: 'Proves dough overnight',
+    provenance: { origin: 'owner', source: 'owner', taskID: null, proposalID: null, checks: null },
+  });
+
+  const momentID = kept.momentID;
+  const itemID = item.itemID;
+
+  await ctx.memory.store.moments.link({
+    caller: { kind: 'owner' },
+    target: { momentID, version: 1 },
+    itemID,
+    isLinked: true,
+  });
+
+  await ctx.memory.store.moments.edit({
+    caller: { kind: 'owner' },
+    target: { momentID, version: 2 },
+    change: { kind: 'title', title: 'The slow loaf' },
+  });
+
+  const retired = await ctx.memory.store.moments.retire({
+    caller: { kind: 'owner' },
+    target: { momentID, version: 1 },
+    isRetired: true,
+  });
+
+  expect(retired).toStrictEqual({ status: 'refused', reason: 'stale' });
+});

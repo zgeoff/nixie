@@ -1161,6 +1161,61 @@ test('#memory.recall returns the moments linked to an item by ID and title, and 
   });
 });
 
+test('#moment.link lands both links when two calls run in parallel', async () => {
+  const ctx = await setupTest();
+
+  const message = await writeOwnerMessageRecord(ctx.memory.log, {
+    thread: 'conversation',
+    text: 'only the quiet kettle from now on',
+    spans: [],
+  });
+
+  const provenance = {
+    origin: 'owner',
+    source: 'owner',
+    taskID: null,
+    proposalID: null,
+    checks: null,
+  } as const;
+
+  const first = await ctx.memory.store.remember({ text: 'Buys only quiet kettles', provenance });
+  const second = await ctx.memory.store.remember({ text: 'Dislikes loud appliances', provenance });
+
+  const kept = await ctx.memory.store.moments.keep({
+    caller: { kind: 'model', thread: 'conversation', model: 'claude-test-4' },
+    thread: 'conversation',
+    firstSequence: message,
+    lastSequence: message,
+    title: 'The kettle argument',
+  });
+
+  invariant(kept.status === 'written');
+
+  const results = await Promise.all(
+    [first, second].map((item, index) =>
+      runToolCall(
+        {
+          tool: 'moment.link',
+          input: { momentID: kept.shortID, version: 1, itemID: item.itemID },
+          toolUseID: `toolu_${index}`,
+        },
+        ctx.run,
+        ctx.toolCallOptions,
+      ),
+    ),
+  );
+
+  const links = await ctx.db.selectFrom('moment_links').select('item_id').execute();
+
+  expect(results.map((result) => result.content)).toSatisfyAll(
+    (content) => !JSON.stringify(content).includes('refused'),
+  );
+
+  expect(links.map((link) => link.item_id).toSorted()).toStrictEqual(
+    [first.itemID, second.itemID].toSorted(),
+  );
+});
+
 test('it leaves every title, reflection and query out of the records of moment tool calls', async () => {
   const ctx = await setupTest();
 
