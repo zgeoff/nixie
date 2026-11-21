@@ -351,9 +351,9 @@ type RestorePauseFaultPoint =
   definition's watermark stays where it was.
 - The source delivers the same events at its next tick. So the first tick after the resume, or after
   you resume that task, finds each missed fire late, and the catch-up rule of
-  [triggers](triggers.md#decisions) decides: one catch-up within half the interval, and a `too_late`
-  skip beyond it. A pause longer than half a schedule's interval skips that fire, as any downtime
-  does.
+  [triggers](../../architecture/core/triggers.md#the-schedule-source) decides: one catch-up within
+  half the interval, and a `too_late` skip beyond it. A pause longer than half a schedule's interval
+  skips that fire, as any downtime does.
 - An exempt task takes its fires as on any day.
 - A poll event delivers while nixie is paused, as
   [mail and calendar polls](mail-and-calendar-polls.md#one-deliver-call-of-a-poll-batch) says. Its

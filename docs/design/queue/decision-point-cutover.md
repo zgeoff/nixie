@@ -257,8 +257,8 @@ destinations:
 ```
 
 The key is one of the definition-only keys of the
-[task definition format](task-definition-format.md#the-folder-and-taskyaml). That design holds the
-key's parsing.
+[task definition format](../../architecture/core/definitions.md#task-definitions). That design holds
+the key's parsing.
 
 ### The action proposal
 
@@ -319,9 +319,10 @@ nixie proposals reject k3x9m2p7qa --reason "Not this week"
 - `test.allow-send` stays in a test build, as a rule in code that allows `test.send` at stage 7. Its
   call still meets stage 5, so each crash test marks its destination as a known contact first.
 - The rule in code `definitions.chat-change` of
-  [definitions from chat](definitions-from-chat.md#the-3-tools) leaves the code in the cutover.
-  `task.define` and `task.undefine` then pass stages 3 to 9: your own request allows them at stage
-  8, and any other call asks at stage 9 unless a rule of yours allows it.
+  [definitions from chat](../../architecture/core/definitions.md#changes-from-the-conversation)
+  leaves the code in the cutover. `task.define` and `task.undefine` then pass stages 3 to 9: your
+  own request allows them at stage 8, and any other call asks at stage 9 unless a rule of yours
+  allows it.
 - Each rule in code renders with the rule renderer, and the snapshot's policy part holds it in
   canonical form.
 - With no rule of yours in force, stages 3, 6 and 7 match only the rules in code, so every other

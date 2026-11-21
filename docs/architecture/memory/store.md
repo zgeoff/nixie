@@ -78,6 +78,27 @@ record whose change is `backfilled`. A backfill counts as no label edit, and a s
 item to label. A new item takes the topic's spelling from an existing item that differs only in
 case.
 
+A topic has no ID and no hash in any record, so a forget leaves nothing that leads from the item to
+its topic. Label text exists on disk only sealed: in the `memory.labelled` and
+`memory.proposal_labelled` records, in `memory_labels.sealed` and in
+`memory_proposals.sealed_labels`. nixie creates an item's ID and key when it writes the proposal
+that creates it, and seals that proposal's labels under that key, so a proposal and an approval
+never write label text in the clear.
+
+The label record always holds the whole label set, and one function writes it for every path and
+updates the in-memory entries. A waiting proposal writes nothing to its item. A label-only proposal
+matches a pending one only when both whole label sets are equal: a second proposal with the same
+labels merges into the pending one, and one with other labels waits beside it, so approving one
+makes the other stale. A change of an item's subject writes no label record, and the item keeps its
+labels. `undo` undoes the last text change only, so a label stays as it is until an edit changes it.
+A session that holds the number from before a label edit gets the stale error once and reads the
+revision from it. A label-only edit leaves the text unchanged, so `memory.retire` still accepts a
+recall of the text from before that edit as the
+[proof that the thread read the item](./writes.md#retirement-intent).
+
+A label-only proposal's `memory.proposed` record holds the operation `remember`, the text version
+and a copy of the text, so a reader that knows no label record kind still parses it.
+
 ## States
 
 An item is in one of 4 states:
@@ -340,6 +361,16 @@ IDs, cut so it always fits the page limit. A recall that finds nothing, from any
 [per-turn retrieval](./context.md#per-turn-retrieval) included, returns an empty `items` list and
 appends no record. The stored tool record holds `leftOut` by item ID and no `searched`, so the query
 text stays out of it.
+
+For `itemIDs`, `leftOut` names the IDs past `limit` and the items the cut left out, as one run in
+the order named. For `query`, it names the matches the cut left out, in rank order, and never a
+match below the first `limit`. For the plain list and for topic pages it lists no IDs, and `next`
+starts at the first omitted entry. `leftOut` never lists an ID that the store drops for another
+reason, such as an unknown ID, a forgotten item, a retired item without `includeRetired`, or an item
+outside `subjects`. A call that passes `subjects` limits any kind of call to those subjects. The
+store's recall holds an item's whole current version, which is at most 6,000 characters of text
+(2,000 for an owner or shared item) and 2,000 of quote, so the command-line program's own cut at
+48,000 characters never reaches it.
 
 ### Topic pages and the topic list
 

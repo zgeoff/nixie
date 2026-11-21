@@ -140,6 +140,43 @@ nothing. Each role's needs cover every capability its frames can use, including 
 whose input can carry an image, so a capability gap fails the config's load, and a throw marks a
 host bug.
 
+### The tool-call wait
+
+A model runtime drops a tool call whose result arrives after its own timeout, and `worker.run`
+blocks for minutes. A harness whose runtime obeys a setting for the wait declares a fixed long wait,
+a constant of its definition and never a function of the config. A wait worked out from the worker's
+time limit would always satisfy the config's check that the wait covers that limit, so the check
+would catch nothing. A harness declares the wait only after a probe passes: with the timeout set
+short, a tool that returns inside it gives the model its result, and a tool that returns after it
+gives none. Until then it declares null. The host copies the figure into the `limits` of each turn
+frame, and the guest sets that value in its runtime when it starts the turn, so the figure that the
+config's load checks is the figure the runtime gets. The Agent SDK guest sets it as the `timeout` of
+the MCP server's config in the query options, and the Codex guest as `tool_timeout_sec`. A null
+value sets nothing, and the runtime keeps its own timeout. The wait covers every tool call of the
+turn, and each nixie tool keeps its own time limit on the host, so a long wait gives no tool more
+time. The frame holds the wait again when a step runs again, and nixie stores it nowhere.
+
+When a runtime drops a call, the host's tool call runs on to its own limit, nixie writes the call's
+result record when the call ends, and nothing reads that result. When nixie stops while a call
+waits, the step's lease lapses and the step runs again.
+
+### The guest contract
+
+A guest reads one `turn` frame and writes guest frames. It connects to the frame's tool route over
+HTTP MCP with the step token, and sends the model's tool-use ID under the record's `_meta` key on
+each tool call. It sends one `assistant` frame as each model message completes, one `call` frame per
+model API call before the next frame, and a `read` frame that lists the input messages the model
+received, and the read cursor moves only over those. It stops at `limits.modelCalls` and ends with
+the outcome `limit`, stops the loop on an `interrupt` frame and sends `ended` for the turn so far,
+and on a `purge` frame removes every file the loop holds of a session and sends `purged`. When nixie
+forgets a memory item, the session cleanup sends a `purge` frame to the guest of each open task that
+reads memory, on every harness. A guest sends `failed` and never `ended` after it: with
+`tools_not_connected` when the tool server is not connected, `model_auth` or `model_api` when the
+model API refuses, and `error` when the loop errors or its stream closes. A call frame holds its
+usage in one schema, the host prices it with the profile's price table, and the turn's usage is
+their sum. Each step starts the guest, runs one turn and ends the guest. A guest resumes, takes live
+messages and compacts only when its harness declares the capability.
+
 ### Turn outcomes and the session position
 
 Every guest ends a turn with an `ended` frame that carries an `outcome`, which its guest maps from
@@ -153,17 +190,55 @@ its runtime's own words:
 | `interrupted` | An `interrupt` frame stopped the turn             |
 | `overflow`    | The context passed the model's window             |
 
-The host reads `outcome` on the turn record that the running step built, and never reads the
-harness's own `stopReason` or `terminalReason`, which it only writes. The `ended` frame carries a
-session point exactly when the harness has a session, and a context size only when the harness
-declares `context-window`. A guest that breaks this fails the step.
+Codex reports a context overflow as a plain error, with no code of its own, so the Codex guest sends
+a Codex overflow as a failed turn, and the step fails.
 
-A step on a harness with no session finds the session position `unkept` at each step after its
-first: the task has an opening, no summary and no session point its harness owns. nixie derives
-`unkept` at each step and stores it nowhere. The step opens a session from the log with a rebuild
-whose reason is null, sends a turn frame with no `resume` key, and stores no session point. A turn
-that overflows fails its step, and the next step opens again from the log. A resumed turn that
-overflows compacts only on a harness that declares `summarize`.
+The host reads `outcome` on the turn record that the running step built, and never reads the
+harness's own `stopReason` or `terminalReason`, which it only writes. A turn counts as finished only
+when its outcome is `finished`, so a refusal or an output cap never counts as a finished turn. The
+guest sets the outcome, and each guest maps its runtime's words, so the host reads one field in the
+same words for every harness. A turn record can hold no outcome, so the key is optional and nixie
+reads it only on the record that the running step built. The `ended` frame carries a session point
+exactly when the harness has a session, and a context size only when the harness declares
+`context-window`. A guest that breaks this fails the step.
+
+The session position, in the table below, says what a step finds of its session. A step on a harness
+with no session finds the session position `fresh` at its first step and `unkept` at each step after
+it, unless a forget or a persona change made it `invalidated`. The task has a
+[session opening](./session-opening.md), no summary and no session point that its harness owns.
+nixie derives `unkept` at each step and stores it nowhere. The step opens a session from the log
+with a rebuild whose reason is null, sends a turn frame with no `resume` key, and stores no session
+point. A turn that overflows fails its step, and the next step opens again from the log. A resumed
+turn that overflows compacts only on a harness that declares `summarize`.
+
+A step opens a session from the log within the rebuild token budget, so history alone never
+overflows. A rebuild reads its clock, its status lines and its block IDs from inputs of the step, so
+the same log gives the same opening. A step on a harness with no session sends no `message` frame,
+because it starts no live inbox reader, and no `summarize` frame. It sends an `interrupt` frame only
+when the harness declares `interrupt`, and stores no session point. A message that arrives mid-turn
+waits for the next step, because nixie never marks it read in the running turn, so the step's commit
+finds it unread and sets the task to `ready`. An Agent SDK task finds `unkept` only after its
+profile moves from a harness with no session. It then stores its point and becomes `resumable`.
+
+| Position                         | Event   | Condition                       | Next         |
+| -------------------------------- | ------- | ------------------------------- | ------------ |
+| `fresh`, `invalidated`, `unkept` | open    | The step stores a point         | `resumable`  |
+| `fresh`, `invalidated`, `unkept` | open    | The step stores no point        | `unkept`     |
+| `summarized`, `lost`             | open    | Always                          | `resumable`  |
+| `resumable`                      | resume  | The context is under threshold  | `resumable`  |
+| `compaction-due`                 | compact | The compaction gives a summary  | `summarized` |
+| `compaction-due`                 | compact | The compaction gives no summary | `resumable`  |
+
+A forget or a persona change moves any position to `invalidated`. `compaction-due` exists only for a
+harness that declares `summarize` and `context-window`. The step fails as a broken contract when a
+guest sends a session point and its harness has no session, sends `ended` with no point and its
+harness has one, or sends a context size and its harness declares no `context-window`. A turn that
+opened a session and overflows fails its step.
+
+The `ended` frame's `outcome` is required, though a turn record can hold none, so the host and the
+guest images ship together. The server image's guest digests pin them as a pair. When a stored point
+belongs to another harness, nixie reads it as no point, and the step rebuilds the session from the
+log.
 
 ## Models outside Claude
 

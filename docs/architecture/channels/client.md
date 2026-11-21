@@ -266,6 +266,14 @@ does and shows a refusal beside the control. The control reads the creating reco
 ID the undo names. A definition whose content is lost shows the marker for missing content, and a
 definition's name shows as plain text.
 
+The conversation renders a `definition.changed` record as a notice, such as "Scheduled: Water the
+tomatoes, every Friday at 08:00 (next: Fri 12 Mar)", with an undo control. The control shows while
+the change is in force or adopted. Once the change is superseded or retired, the notice shows its
+state in place of the next fire and offers no undo. A notice whose content is lost shows the marker
+for missing content in place of the name and the trigger, and keeps the undo while the state allows
+it. A refused undo shows one sentence for the error's code beside the notice, and the sentence for
+`REPLACED` names the short ID of the head change.
+
 Both routes follow the live stream, which starts at the head the task list read. `/tasks/ended`
 reads again on a `trigger.fired`, `trigger.skipped` or `task.run_ended` record, and `/definitions`
 on a `definition.changed` record, so neither polls.
