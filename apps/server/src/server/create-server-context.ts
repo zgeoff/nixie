@@ -7,6 +7,7 @@ import {
   readDefinitionVersion,
   readDefinitionsInForce,
 } from '@heynixie/definitions';
+import { createDeviceStreams } from '@heynixie/devices';
 import type { Writer } from '@heynixie/log';
 import type { PlanLoginsHolder, SpendGateway, SpendTurnLimits } from '@heynixie/spend';
 import type { RunSettings, TaskLimits, TaskRunnerRegistry } from '@heynixie/tasks';
@@ -97,6 +98,7 @@ export async function createServerContext(
         }),
       settings: options.settings ?? defaultAPISettings,
       passkeys: createPasskeyState(),
+      devices: createDeviceStreams(),
       readZone: makeReadZone(writer, writer.db, options.defaultZone),
       readSessionCleanup,
     },

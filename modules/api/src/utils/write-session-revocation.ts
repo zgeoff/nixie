@@ -1,3 +1,4 @@
+import { removeDevice } from '@heynixie/devices';
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import type { Transaction } from 'kysely';
 import type { APIContext, APITables, Identity } from '../types';
@@ -123,5 +124,14 @@ async function updateRevokedAt(
     .where('identity_id', '=', revocation.sessionID)
     .execute();
 
+  await removeDevice(tx, revocation.sessionID);
+
   return revokedAt;
+}
+
+// A session signs itself out: the same revocation as an owner's, with no client action to keep.
+export function writeSessionSignOut(context: APIContext, caller: Identity): Promise<number | null> {
+  return withWriteTransaction(context.log.writer, (tx) =>
+    updateRevokedAt(tx, context, { caller, sessionID: caller.identityID }),
+  );
 }

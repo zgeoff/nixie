@@ -3,6 +3,7 @@ import { writeRefusal } from '../refusal/write-refusal';
 import type { APIContext, APITables, Identity } from '../types';
 import { deriveSecretHash } from '../utils/derive-secret-hash';
 import { isReadOnlyToken } from './is-read-only-token';
+import { isSessionLive } from './is-session-live';
 
 // Every token nixie never issued shares this external ID, which no session ID equals, so a stranger
 // with fresh random tokens still gets one refusal per interval.
@@ -24,7 +25,7 @@ export async function verifySessionToken(
 
   const row = await readIdentityRow(context, tokenHash);
 
-  if (row === undefined || !isLive(context, row)) {
+  if (row === undefined || !isSessionLive(context, row)) {
     await writeRefusal(context, {
       channel: row?.channel ?? 'client',
       externalID: row?.external_id ?? unknownTokenID,
@@ -38,6 +39,7 @@ export async function verifySessionToken(
   return {
     identityID: row.identity_id,
     channel: row.channel,
+    scope: row.scope,
     label: row.label,
     pairedAt: row.paired_at,
     lastSeenAt,
@@ -50,6 +52,7 @@ function buildReadOnlyCaller(now: number): Identity {
   return {
     identityID: 'read-only-token',
     channel: 'client',
+    scope: 'full',
     label: 'read-only token',
     pairedAt: now,
     lastSeenAt: now,
@@ -65,13 +68,6 @@ function readIdentityRow(context: APIContext, tokenHash: string): Promise<Identi
     .selectAll()
     .where('token_hash', '=', tokenHash)
     .executeTakeFirst();
-}
-
-function isLive(context: APIContext, row: IdentityRow): boolean {
-  return (
-    row.revoked_at === null &&
-    context.clock.now() - row.last_seen_at <= context.settings.sessionIdleMs
-  );
 }
 
 async function updateLastSeen(context: APIContext, row: IdentityRow): Promise<number> {

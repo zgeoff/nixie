@@ -14,7 +14,12 @@ export function createSessionProcedures(context: APIContext) {
         options.errors.UNAUTHORIZED,
       );
 
-      const result = await writeIssuedCode(context, caller, options.input.clientActionID);
+      const result = await writeIssuedCode(
+        context,
+        caller,
+        options.input.clientActionID,
+        options.input.scope,
+      );
 
       if (result.status === 'reused') {
         throw options.errors.CLIENT_ACTION_ID_REUSED();

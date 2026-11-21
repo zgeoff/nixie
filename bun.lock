@@ -175,6 +175,7 @@
         "@heynixie/db": "workspace:*",
         "@heynixie/definitions": "workspace:*",
         "@heynixie/definitions-repo-github": "workspace:*",
+        "@heynixie/devices": "workspace:*",
         "@heynixie/encoder-onnx": "workspace:*",
         "@heynixie/image-gemini": "workspace:*",
         "@heynixie/image-openai": "workspace:*",
@@ -347,6 +348,7 @@
         "@heynixie/contract": "workspace:*",
         "@heynixie/db": "workspace:*",
         "@heynixie/definitions": "workspace:*",
+        "@heynixie/devices": "workspace:*",
         "@heynixie/log": "workspace:*",
         "@heynixie/logger": "workspace:*",
         "@heynixie/memory": "workspace:*",
@@ -505,6 +507,7 @@
         "@heynixie/contract": "workspace:*",
         "@heynixie/db": "workspace:*",
         "@heynixie/definitions": "workspace:*",
+        "@heynixie/devices": "workspace:*",
         "@heynixie/log": "workspace:*",
         "@heynixie/memory": "workspace:*",
         "@heynixie/models": "workspace:*",
@@ -630,6 +633,24 @@
         "@heynixie/memory": "workspace:*",
         "@heynixie/testing": "workspace:*",
         "ajv": "catalog:",
+      },
+    },
+    "modules/devices": {
+      "name": "@heynixie/devices",
+      "version": "0.0.0",
+      "dependencies": {
+        "@heynixie/clock": "workspace:*",
+        "@heynixie/connectors": "workspace:*",
+        "@heynixie/contract": "workspace:*",
+        "@heynixie/db": "workspace:*",
+        "@heynixie/log": "workspace:*",
+        "@heynixie/tools": "workspace:*",
+        "kysely": "catalog:",
+        "tiny-invariant": "catalog:",
+        "zod": "catalog:",
+      },
+      "devDependencies": {
+        "@heynixie/testing": "workspace:*",
       },
     },
     "modules/log": {
@@ -1453,6 +1474,8 @@
     "@heynixie/definitions": ["@heynixie/definitions@workspace:modules/definitions"],
 
     "@heynixie/definitions-repo-github": ["@heynixie/definitions-repo-github@workspace:adapters/definitions-repo-github"],
+
+    "@heynixie/devices": ["@heynixie/devices@workspace:modules/devices"],
 
     "@heynixie/encoder-onnx": ["@heynixie/encoder-onnx@workspace:adapters/encoder-onnx"],
 

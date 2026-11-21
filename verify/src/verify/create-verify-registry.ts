@@ -92,6 +92,9 @@ export function createVerifyRegistry(): Wringer {
             'enrol-code': {
               command: [...buildHostCLIArgv('local', ctx.endpoints, ['enrol-code'])],
             },
+            'enrol-device-code': {
+              command: [...buildHostCLIArgv('local', ctx.endpoints, ['enrol-code', 'device'])],
+            },
           },
         }),
         db: (ctx) => ({ via: 'sql', adapter: 'sqlite', url: String(ctx.endpoints['db']) }),
@@ -163,6 +166,16 @@ export function createVerifyRegistry(): Wringer {
       input: controlRoutes.addReply.input,
       data: controlRoutes.addReply.output,
       run: (input, ctx) => postControl(ctx.drivers.http, controlRoutes.addReply, input),
+    })
+    .action({
+      name: 'show-on-device',
+      summary:
+        'Send the owner message with a photo, and queue the scripted model turn that keeps the photo and shows it on the first device it lists, with the fit --fit and the closing reply --text',
+      effect: 'write',
+      targets: ['local'],
+      input: controlRoutes.showOnDevice.input,
+      data: controlRoutes.showOnDevice.output,
+      run: (input, ctx) => postControl(ctx.drivers.http, controlRoutes.showOnDevice, input),
     })
     .action({
       name: 'reset-data',
@@ -363,6 +376,11 @@ export function createVerifyRegistry(): Wringer {
         name: 'drawing',
         summary: 'Draw a picture, edit it, and list both',
         paths: featurePaths.drawing,
+      },
+      {
+        name: 'device-screen',
+        summary: 'Enrol a device and see a picture on it',
+        paths: featurePaths['device-screen'],
       },
     )
     .shared(...sharedPaths)

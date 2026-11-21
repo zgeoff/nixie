@@ -12,3 +12,4 @@ export type { SeededPasskey } from './seed-passkey';
 export { seedRevokedPasskey } from './seed-revoked-passkey';
 export { startTestRules } from './start-test-rules';
 export { seedPublishedBackupSet } from './seed-published-backup-set';
+export { collectContractPaths } from './collect-contract-paths';

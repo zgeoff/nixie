@@ -4,7 +4,7 @@ export function createSessionCommands(
   host: HostTransport,
 ): readonly (readonly [string, Command])[] {
   return [
-    ['enrol-code', (flags, io) => runEnrolCode(host, flags.config, io)],
+    ['enrol-code', (flags, io, args) => runEnrolCode(host, { configPath: flags.config, io, args })],
     ['sessions', (flags, io) => runSessions(host, flags.config, io)],
     [
       'session-label',
@@ -13,14 +13,32 @@ export function createSessionCommands(
   ];
 }
 
-async function runEnrolCode(host: HostTransport, configPath: string, io: CLIIO): Promise<number> {
-  const socketPath = await host.resolveSocketPath(configPath);
+interface EnrolCodeCall {
+  readonly configPath: string;
+  readonly io: CLIIO;
+  readonly args: readonly string[];
+}
+
+// `nixie enrol-code device` issues a code for a device that shows pictures, which can follow only
+// its own stream.
+async function runEnrolCode(host: HostTransport, call: EnrolCodeCall): Promise<number> {
+  const [kind] = call.args;
+
+  if (kind !== undefined && kind !== 'device') {
+    call.io.print('nixie enrol-code takes no argument, or the word device');
+
+    return 2;
+  }
+
+  const socketPath = await host.resolveSocketPath(call.configPath);
+
+  const request = kind === 'device' ? { scope: 'device' as const } : undefined;
 
   const issued = await host.sendHostRequest(socketPath, 'enrolment code', (client) =>
-    client.sessions.issueCode(),
+    client.sessions.issueCode(request),
   );
 
-  io.print(`${issued.code}\nThe code works once, until ${issued.expiresAt.toISOString()}.`);
+  call.io.print(`${issued.code}\nThe code works once, until ${issued.expiresAt.toISOString()}.`);
 
   return 0;
 }

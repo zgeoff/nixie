@@ -53,6 +53,7 @@ test('it refuses a pause from an identity that never existed, and writes nothing
     {
       identityID: '9e7c5a3b-2d4f-4b6a-8c0e-1f3a5b7c9d2e',
       channel: 'web',
+      scope: 'full',
       label: 'laptop',
       pairedAt: api.clock.now(),
       lastSeenAt: api.clock.now(),

@@ -1,3 +1,4 @@
+import { updateDeviceName } from '@heynixie/devices';
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import type { APIContext, APITables } from '../types';
 
@@ -47,6 +48,12 @@ export function updateSessionLabel(context: APIContext, input: LabelInput): Prom
       .set({ label })
       .where('identity_id', '=', input.sessionID)
       .execute();
+
+    await updateDeviceName(tx, {
+      identityID: input.sessionID,
+      name: label,
+      nowMs: context.clock.now(),
+    });
 
     return { status: 'labelled', sessionID: input.sessionID, label };
   });

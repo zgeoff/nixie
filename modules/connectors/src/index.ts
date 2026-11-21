@@ -5,6 +5,8 @@ export { imagesConfigSchema } from './image/images-config-schema';
 export type { ImageSize } from './image/image-size';
 export { imageSizes } from './image/image-size';
 export { readImageEntry } from './image/read-image-entry';
+export type { ImageState } from './image/read-image-state';
+export { readImageState } from './image/read-image-state';
 export { readPhotoImageIDs } from './image/read-photo-image-ids';
 export { largestImageBytes } from './image/pick-room-left';
 export { removeImportedImageKeys } from './image/remove-imported-image-keys';

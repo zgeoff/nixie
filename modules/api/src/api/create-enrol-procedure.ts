@@ -17,11 +17,11 @@ export function createEnrolProcedure(context: APIContext) {
     }
 
     if (options.input.tokenDelivery === 'bearer') {
-      return { sessionID: result.sessionID, token: result.token };
+      return { sessionID: result.sessionID, token: result.token, scope: result.scope };
     }
 
     options.context.resHeaders?.append('set-cookie', renderSessionCookie(result.token));
 
-    return { sessionID: result.sessionID };
+    return { sessionID: result.sessionID, scope: result.scope };
   });
 }

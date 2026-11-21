@@ -50,3 +50,8 @@ export type {
   SpanSource,
   SpanState,
 } from './types';
+
+export type { DeviceEvent } from './contract/devices-contract';
+export { deviceEventSchema } from './contract/devices-contract';
+export type { ScreenContent } from './contract/screen-content-schema';
+export { screenContentSchema, screenMarkdownLimit } from './contract/screen-content-schema';

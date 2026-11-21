@@ -53,6 +53,12 @@ export const controlRoutes = {
     }),
     output: z.strictObject({ replies: z.int().positive() }),
   },
+  showOnDevice: {
+    method: 'POST',
+    path: '/control/show-on-device',
+    input: z.strictObject({ fit: z.enum(['whole', 'fill']), text: z.string().min(1) }),
+    output: z.strictObject({ replies: z.int().positive() }),
+  },
   tasks: {
     method: 'GET',
     path: '/control/tasks',

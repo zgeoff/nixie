@@ -9,6 +9,7 @@ export async function createFirstEnrolmentCode(
     .selectFrom('identities')
     .select('identity_id')
     .where('channel', '=', 'client')
+    .where('scope', '=', 'full')
     .where('revoked_at', 'is', null)
     .where('last_seen_at', '>=', context.clock.now() - context.settings.sessionIdleMs)
     .executeTakeFirst();

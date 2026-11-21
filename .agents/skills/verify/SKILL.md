@@ -21,12 +21,10 @@ changes a feature with no verdict there.
 The mistakes that cost the most time:
 
 - **Using the app before `doctor` passes.** `bun verify doctor` checks that the app answers and that
-  each driver works. Until `doctor` passes after `bun verify up` or `bun verify attach`, any command
-  that touches the app fails with exit code 3.
+  the browser and terminal drivers work. Until it passes after `bun verify up` or
+  `bun verify attach`, any command that touches the app fails with exit code 3.
 - **Editing the app's code while `up` runs it.** The next command that touches the app fails with
   `doctor-required`. Run `bun verify up --restart` and `bun verify doctor`, then the journey again.
-- **Running `done` before you check the end state.** `done` checks only that one journey command
-  succeeded.
 
 ## Key rules
 
@@ -60,6 +58,7 @@ Read a feature's file before you run its journey.
 | policy-proposal | Approve a call that an ask rule held unrun                                 | [references/feature-policy-proposal.md](references/feature-policy-proposal.md) |
 | task-control    | Pause and resume a task, and see its records agree                         | [references/feature-task-control.md](references/feature-task-control.md)       |
 | drawing         | Draw a picture, edit it, and list both                                     | [references/feature-drawing.md](references/feature-drawing.md)                 |
+| device-screen   | Enrol a device and see a picture on it                                     | [references/feature-device-screen.md](references/feature-device-screen.md)     |
 
 <!-- /wringer:features -->
 
@@ -97,17 +96,15 @@ Read a feature's file before you run its journey.
 7. Repeat steps 4 to 6 for each feature with `changed: true`, and for each feature your task names,
    in the order of the table in [References](#references). When a feature's file says to run part of
    its journey last, run that part after every other journey.
-8. Run `bun verify report --human` to read the report. Expect: `verified` on each changed feature
-   you did not skip in step 5. Repeat steps 4 to 6 for each `stale` feature.
-9. Push the branch. When no PR is open for it, open one: without an open PR, `publish` fails and
-   writes nothing.
+8. Run `bun verify report --human`. Expect: `verified` on each changed feature you did not skip in
+   step 5. Repeat steps 4 to 6 for each `stale` feature.
+9. Push the branch, and open a PR when none exists: `publish` fails without one.
 10. Check that the session's environment sets `CLOUD_FILES_URL` and `CLOUD_FILES_TOKEN_REF`. When
     either is empty, stop and report it as a blocker. `publish` uploads the evidence files to
     `CLOUD_FILES_URL`. `CLOUD_FILES_TOKEN_REF` is the 1Password `op://` reference to the upload
     token. Never run `op read` on its own: it prints the token.
 11. Publish the report, even when you skipped a feature. Read the token in a subshell, so it never
-    sits in your shell. Because `&&` joins them, a failed `op read` stops the command before
-    `publish` runs:
+    sits in your shell. A failed `op read` stops the command before `publish` runs:
 
     ```bash
     (CLOUD_FILES_TOKEN="$(op read "$CLOUD_FILES_TOKEN_REF")" && export CLOUD_FILES_TOKEN && bun verify publish)
@@ -152,7 +149,8 @@ that command alone. A command with neither runs on the registry's first target, 
 | `prod`    | `bun verify use --target prod`, then `bun verify attach`    | read-only  | Production; follow [the prod check](references/prod-check.md).                                                  |
 
 - Run `sign-in-enrol` first, and after each `up --restart`, as
-  [its file](references/feature-sign-in-enrol.md) says.
+  [its file](references/feature-sign-in-enrol.md) says. Skip it before `device-screen`, which needs
+  a browser with no session.
 
 <!-- /repo -->
 

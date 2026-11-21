@@ -31,6 +31,7 @@ test('it starts a device session from a code', async () => {
     status: 'enrolled',
     sessionID: expect.toBeString(),
     token: expect.toBeString(),
+    scope: 'full',
   });
 });
 

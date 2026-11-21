@@ -114,6 +114,15 @@ export interface NixieTables {
     readonly label: string;
     readonly created_at: number;
   };
+  readonly devices: {
+    readonly device_id: string;
+    readonly identity_id: string;
+    readonly name: string;
+    readonly capabilities: string;
+    readonly shown_sequence: number | null;
+    readonly idle_sequence: number | null;
+    readonly updated_at: number;
+  };
   readonly enrolment_codes: {
     readonly code_hash: string;
     readonly issued_at: number;
@@ -121,6 +130,7 @@ export interface NixieTables {
     readonly issued_by: string | null;
     readonly used_at: number | null;
     readonly identity_id: string | null;
+    readonly scope: string;
   };
   readonly gap_answers: {
     readonly proposal_id: string;
@@ -146,6 +156,7 @@ export interface NixieTables {
     readonly last_seen_at: number;
     readonly revoked_at: number | null;
     readonly paired_sequence: number;
+    readonly scope: string;
   };
   readonly images: {
     readonly image_id: string;

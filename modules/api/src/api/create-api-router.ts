@@ -1,6 +1,8 @@
 import type { DefinitionsContext } from '@heynixie/definitions';
 import { createApprovalProcedures } from '../approval/create-approval-procedures';
 import { createDefinitionProcedures } from '../definition/create-definition-procedures';
+import { createDeviceProcedures } from '../device/create-device-procedures';
+import { createSignOutProcedure } from '../device/create-sign-out-procedure';
 import { createFilesProcedures } from '../file/create-files-procedures';
 import { createMemoryProcedures } from '../memory/create-memory-procedures';
 import { createMemoryViewRouter } from '../memory/create-memory-view-router';
@@ -35,6 +37,7 @@ export function createAPIRouter(
     backups: createBackupProcedures(context),
     conversation: createConversationProcedures(context),
     definitions: { ...createDefinitionProcedures(context, readDefinitions), ...views.definitions },
+    devices: createDeviceProcedures(context),
     files: createFilesProcedures(context),
     memory: {
       ...createMemoryProcedures(context),
@@ -53,6 +56,7 @@ export function createAPIRouter(
     sessions: {
       enrol: createEnrolProcedure(context),
       revoke: createRevokeProcedure(context),
+      signOut: createSignOutProcedure(context),
       ...createSessionProcedures(context),
     },
     tasks: { ...createTaskProcedures(context), ...views.tasks },

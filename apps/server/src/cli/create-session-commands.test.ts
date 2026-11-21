@@ -2,6 +2,7 @@ import { expect, mock, onTestFinished, test } from 'bun:test';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import type { APITables } from '@heynixie/api';
 import invariant from 'tiny-invariant';
 import { buildRecordingHostTransport } from '../test-utils/build-recording-host-transport';
 import { buildSeeder } from '../test-utils/build-seeder';
@@ -153,4 +154,65 @@ test('it refuses a session label with no label, and reaches no server', async ()
   );
 
   expect(host.record).toStrictEqual({ configPaths: [], requests: [] });
+});
+
+test('it issues a code for a device when the word device follows', async () => {
+  const ctx = await setupTest();
+  const api = await startTestControlSocket({ path: ctx.socketPath });
+
+  const host = buildRecordingHostTransport(ctx.socketPath);
+
+  const commands = new Map(createSessionCommands(host.transport));
+
+  const parsed = await readCLIArgs(
+    ['enrol-code', 'device', '--config', '/etc/nixie/config.yaml'],
+    [...commands.keys()],
+  );
+
+  invariant(parsed.kind === 'command');
+
+  const run = commands.get(parsed.command);
+
+  invariant(run);
+
+  const io = { log: mock(), print: mock(), waitForSignal: mock() };
+
+  const exitCode = await run(parsed.flags, io, parsed.args);
+
+  const codes = await api.context.log.writer.db
+    .$extendTables<APITables>()
+    .selectFrom('enrolment_codes')
+    .select('scope')
+    .execute();
+
+  expect(exitCode).toBe(0);
+  expect(codes).toStrictEqual([{ scope: 'device' }]);
+});
+
+test('it refuses a word other than device after enrol-code', async () => {
+  const ctx = await setupTest();
+
+  await startTestControlSocket({ path: ctx.socketPath });
+
+  const host = buildRecordingHostTransport(ctx.socketPath);
+
+  const commands = new Map(createSessionCommands(host.transport));
+
+  const parsed = await readCLIArgs(
+    ['enrol-code', 'camera', '--config', '/etc/nixie/config.yaml'],
+    [...commands.keys()],
+  );
+
+  invariant(parsed.kind === 'command');
+
+  const run = commands.get(parsed.command);
+
+  invariant(run);
+
+  const io = { log: mock(), print: mock(), waitForSignal: mock() };
+
+  const exitCode = await run(parsed.flags, io, parsed.args);
+
+  expect(exitCode).toBe(2);
+  expect(host.record.requests).toStrictEqual([]);
 });

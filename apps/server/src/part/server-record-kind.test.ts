@@ -12,6 +12,8 @@ function setupTest() {
     'action.reconcile_checked': ['result', 'message'],
     'action.retry_scheduled': ['result', 'message'],
     'definition.changed': ['version'],
+    'device.idle_set': ['scene'],
+    'device.shown': ['content'],
     'image.named': ['name'],
     'memory.image_offered': ['text'],
     'memory.proposal_rejected': ['reason'],

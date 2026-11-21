@@ -3,8 +3,10 @@ import type { DefinitionsContext } from '@heynixie/definitions';
 import { RPCHandler } from '@orpc/server/fetch';
 import { ResponseHeadersPlugin } from '@orpc/server/plugins';
 import { Elysia } from 'elysia';
+import { isDeviceProcedure } from '../session/is-device-procedure';
 import { isReadOnlyProcedure } from '../session/is-read-only-procedure';
 import { isReadOnlyToken } from '../session/is-read-only-token';
+import { readSessionScope } from '../session/read-session-scope';
 import type { APIContext, APIRequestContext, ReadViewMemory } from '../types';
 import { createAPIRouter } from './create-api-router';
 
@@ -45,6 +47,13 @@ export function createAPIApp(
         !isReadOnlyProcedure(new URL(request.url).pathname)
       ) {
         return new Response('this token only reads', { status: 403 });
+      }
+
+      if (
+        !isDeviceProcedure(new URL(request.url).pathname) &&
+        (await readSessionScope(context, session.sessionToken)) === 'device'
+      ) {
+        return new Response('a device session only follows its own device', { status: 403 });
       }
 
       const result = await handler.handle(request, {
