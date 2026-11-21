@@ -76,30 +76,112 @@ Every seed asks `readSpentOneShots` and leaves a spent one-shot out of both hook
 of a spent one-shot stays as written and a disabled-then-enabled one does not fire again. An edit of
 the `at` to another instant gives another key, so the one-shot fires at the new instant.
 
+## The schedule shape
+
+A `schedule` trigger holds a `repeat`, optional `hours`, a `zone` and `catchUp`:
+
+```yaml
+trigger:
+  schedule:
+    repeat:
+      frequency: monthly # minutely | hourly | daily | weekly | monthly | yearly
+      interval: 1 # every nth frequency, default 1
+      byDay: [{ day: fri, nth: -1 }] # weekdays, with an optional nth, -1 for the last
+      byMonthDay: [1, -1] # days of the month, -1 for the last
+      byMonth: [3, 9]
+      at: ['17:00'] # times of day; daily and longer frequencies need it
+      starts: '2026-11-23' # the date a step count measures from
+    hours: { from: '09:00', until: '17:00' } # limits when it may fire, both ends included
+    zone: owner
+    catchUp: once
+```
+
+The `repeat` follows the recurrence rule of RFC 5545. `hours` with an end before its start runs past
+midnight. `starts` defaults to the local date the schedule is set, and an interval above 1 needs it.
+Nix writes the structure and never recurrence rule text.
+
+`checkSchedule` is the one check of a new schedule, and a reminder tool and `task.define` both call
+it. It is pure. It fills `starts`, sorts the times of `at`, and refuses with a code, the field's
+path and a sentence that says how to fix it when:
+
+- a field is missing or never goes with the others: `AT_REQUIRED`, `AT_NOT_ALLOWED`,
+  `NTH_NOT_ALLOWED`, `BY_MONTH_DAY_NOT_ALLOWED`, `STARTS_REQUIRED`;
+- the schedule has no fire within the check's horizon: `NO_FIRE`;
+- the smallest gap among its next fires is under the minimum gap, which is not a fixed interval:
+  `MIN_GAP`.
+
+A `task.yaml` in the definitions repo takes the same shape, and the seed refuses a mix of fields the
+same way, with the field and the fix.
+
+### The older shape
+
+Records written before the `repeat` shape hold `every` (`day`, `week`, `hour` or `{ minutes }`),
+`at`, `on`, `window` and `idleMinutes`, and each stays readable forever. The contract schema accepts
+both shapes, and new writes use only `repeat`. `toNormalizedSchedule` converts an older schedule
+when it is read, with no migration of the log and no new hash for a stored version:
+
+| Older shape               | Read as                                                                 |
+| ------------------------- | ----------------------------------------------------------------------- |
+| `day` with `at`           | `daily` with `at`                                                       |
+| `week` with `on` and `at` | `weekly` with `byDay`                                                   |
+| `hour`                    | `hourly`                                                                |
+| `{ minutes }`             | `minutely` counted from the Unix epoch, so each fire time stays         |
+| `window`                  | `hours`, with the slot at `window.from`, once per window, as before     |
+| `idleMinutes`             | kept for the window's idle wait; the `repeat` shape has no such setting |
+
+A reminder that fires always interrupts, so the `repeat` shape has no setting for when the user is
+busy, and `hours` belongs to one reminder or task, never to the user.
+
 ## Fire times
 
-`pickNextFire` is pure code over the runtime's zone data, with no port and no date library. It
-returns the first slot strictly after a watermark, with the end of the window and the dedupe key.
+`pickNextFire` is pure code over the runtime's zone data. It returns the first slot strictly after a
+watermark, with the end of the window of an older window schedule and the dedupe key. There is no
+search limit of days: a schedule is refused when it has no fire within the check's horizon, and a
+rule that never fires again, such as the 30th of February, returns null.
 
-- A `day` or `week` schedule fires at its local time. A time that the clock skips fires at the first
-  instant after the gap, and a time that it shows twice fires at the first of the two.
-- A window schedule gives `window.from` as the slot and `window.until` as the end, on the next local
-  day when it is not after the start.
-- An `hour` schedule fires whenever the zone's clock shows minute 0, so it fires 25 times on the day
-  the clock goes back and 23 on the day it goes forward.
-- A minutes schedule fires at each whole multiple of its interval since the Unix epoch, so nixie
-  stores no start time.
+Recurrence expands in one function, `pickNextWallTime`, which wraps the `rrule-temporal` library.
+The function reads and returns local wall times and gives the rule no time zone, because the library
+drops a time that falls in a spring-forward gap when a rule has one.
+[Decision 0017](../../decisions/0017-use-rrule-temporal-for-recurrence.md) gives the reason. nixie
+maps each wall time onto the clock:
+
+- A `daily`, `weekly`, `monthly` or `yearly` fire is a local date and time. A time that the clock
+  skips fires at the first instant after the gap, and a time that it shows twice fires at the first
+  of the two.
+- `hours` filters the candidates of a calendar frequency by their local minute of the day.
+- An `hourly` schedule counts elapsed time: with an interval of 1 it fires whenever the zone's clock
+  shows minute 0, so it fires 25 times on the day the clock goes back and 23 on the day it goes
+  forward. `byDay`, `byMonthDay`, `byMonth` and `hours` then drop the fires they exclude, so
+  "hourly, 9 to 5 on weekdays" fires at each hour from 09:00 to 17:00 on Monday to Friday.
+- A `minutely` schedule, and an `hourly` one with an interval above 1, fires at each step from the
+  start of its `starts` date. An older `{ minutes }` schedule counts from the Unix epoch.
 - An `at` trigger gives its instant for any watermark.
+- `collectNextFires` gives the next several fires after a watermark.
 
-The key of a `day` or `week` fire is `<definitionID>|<local date>T<HH:MM>`, so one local slot fires
-at most once when the zone changes that day. The key of any other fire is
-`<definitionID>|<UTC instant>`.
+The key of a calendar fire is `<definitionID>|<local date>T<HH:MM>`, so one local slot fires at most
+once when the zone changes that day. The key of any other fire is `<definitionID>|<UTC instant>`.
 
-`renderTrigger` gives the words of a trigger and the date of its next fire in a zone.
+## Snooze and skip
+
+A `trigger.deferred` record moves one fire of a recurring trigger, and never writes a new version,
+so the hash and the history of the reminder stay as they are. It names the definition and the slot:
+
+- A skip has `until` null. The fold moves the watermark to the slot, so the slot never fires.
+- A snooze has `until` set. The fold stores the slot and the instant in the `hold_slot` and
+  `hold_until` columns of the `trigger_definitions` row. The source waits while now is before
+  `hold_until`, and slots after the held one wait behind it. The held slot fires once its hold ends,
+  however late that is.
+
+A new trigger drops the hold, and an edit of the name or the note alone keeps it. A record for a
+slot at or before the watermark, or for a one-time trigger, changes nothing. The two columns are
+part of the projection, so a rebuild from the log fills them again.
+
+`renderTrigger` gives the words of a trigger in a zone, naming the zone, and its next fire.
 `readDefinitionNextFire` reads a definition's row and returns its next slot as an ISO instant, also
-when the slot is already past, and null for a missing or withdrawn row or a spent one-shot. The
-server resolves the zone `owner` through `ReadZone`: the zone of the newest message that carries
-one, else the configured default zone.
+when the slot is already past, and null for a missing or withdrawn row or a spent one-shot.
+`readDefinitionNextFires` returns the next several slots, with the zone, for the read-back of a
+reminder tool. The server resolves the zone `owner` through `ReadZone`: the zone of the newest
+message that carries one, else the configured default zone.
 
 ## The schedule source
 
@@ -120,6 +202,7 @@ slot:
 | #   | Trigger                             | When                                                       | Event                    |
 | --- | ----------------------------------- | ---------------------------------------------------------- | ------------------------ |
 | 1   | `at`                                | its instant is at or before now, however late              | fire, never a skip       |
+| 1a  | a slot that a snooze held           | its hold has ended, however late                           | fire                     |
 | 2   | window with `idleMinutes`           | now is at or before `until`, and the owner is idle         | fire                     |
 | 3   | window with `idleMinutes`           | now is at or before `until`, and the owner is not idle yet | none; a later tick tries |
 | 4   | window with `idleMinutes`           | now is after `until`                                       | skip `window_closed`     |
@@ -129,9 +212,10 @@ slot:
 | 8   | any other schedule, `catchUp: once` | past the threshold, at most half the interval              | fire, a catch-up         |
 | 9   | any other schedule, `catchUp: once` | late by more than half the interval                        | skip `too_late`          |
 
-The owner is idle when no message exists or the newest is at least `idleMinutes` old. The interval
-is a day for `day`, a week for `week`, an hour for `hour` and the schedule's own length for a
-minutes schedule. A window without `idleMinutes` that is past `until` takes rows 6 to 9, with its
+The owner is idle when no message exists or the newest is at least `idleMinutes` old. Rows 2 to 5
+apply to a schedule in the older window shape only. The interval is the nominal length of the
+frequency times its interval: a minute, an hour, a day, a week, a month or a year, each at its
+nominal length. A window without `idleMinutes` that is past `until` takes rows 6 to 9, with its
 lateness measured from `window.from`. An event whose newest slot is on time still carries the
 earlier missed slots, under either `catchUp` value.
 
