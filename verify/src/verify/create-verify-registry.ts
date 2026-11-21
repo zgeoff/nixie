@@ -355,8 +355,8 @@ export function createVerifyRegistry(): Wringer {
       },
       {
         name: 'drawing',
-        summary: 'Draw a picture, edit it once, and list both',
-        paths: featurePaths['drawing'],
+        summary: 'Draw a picture, edit it, and list both',
+        paths: featurePaths.drawing,
       },
     )
     .shared(...sharedPaths)

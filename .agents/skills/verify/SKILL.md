@@ -58,7 +58,7 @@ Read a feature's file before you run its journey.
 | memory-approval | Approve a memory the model proposed, and see it become active              | [references/feature-memory-approval.md](references/feature-memory-approval.md) |
 | policy-proposal | Approve a call that an ask rule held unrun                                 | [references/feature-policy-proposal.md](references/feature-policy-proposal.md) |
 | task-control    | Pause and resume a task, and see its records agree                         | [references/feature-task-control.md](references/feature-task-control.md)       |
-| drawing         | Draw a picture, edit it once, and list both                                | [references/feature-drawing.md](references/feature-drawing.md)                 |
+| drawing         | Draw a picture, edit it, and list both                                     | [references/feature-drawing.md](references/feature-drawing.md)                 |
 
 <!-- /wringer:features -->
 
@@ -149,7 +149,6 @@ that command alone. A command with neither runs on the registry's first target, 
 
 - Run the `sign-in-enrol` journey first, and again after each `up --restart`, as
   [its file](references/feature-sign-in-enrol.md) says.
-- Each feature file says what to skip on `preview`.
 
 <!-- /repo -->
 
