@@ -54,6 +54,9 @@ computer.close({ tab: 't1' }); // → { closed: true }
 
 computer.download({ tab: 't1', element: 'E9' });
 // → { file: 'report.pdf', bytes: 182044, path: '~/files/downloads/report.pdf' }
+//   or FILLED_TAB | NO_DOWNLOAD (none started in 30 seconds) | TOO_BIG (over 25 MiB) | DISK_FULL
+//   | STALE_ELEMENT | TAB_GONE. A name already taken gets " (2)" and on; the guest strips path
+//   characters from a name
 //   the browser sandbox saves it, and nixie copies it into the shell sandbox
 
 computer.run({ command: 'ls ~/files', timeoutSeconds: 30 }); // timeoutSeconds: 1 to 300
@@ -63,7 +66,8 @@ computer.readFile({ path: '~/files/notes.md', part: 1 });
 // → { path, bytes: 2210, part: 1, parts: 1, text: '…' }
 //   or { refused: 'NOT_TEXT' } | { refused: 'NO_FILE' } | { refused: 'BAD_PATH' } | { refused: 'TOO_BIG' }
 computer.writeFile({ path: '~/files/notes.md', text: '…' }); // or from: { image: 'k3x9m2p7qa' } | { file: 'f9k2m4q7ws' }
-// → { path, bytes: 2318 }   or BAD_PATH | TOO_BIG | DISK_FULL | UNKNOWN_FILE | IMAGE_FORGOTTEN
+// → { path, bytes: 2318 }   or BAD_PATH | TOO_BIG | DISK_FULL | UNKNOWN_FILE | FILE_FORGOTTEN
+//   | UNKNOWN_IMAGE | IMAGE_FORGOTTEN. A code.run file from another thread is UNKNOWN_FILE
 //   `from` copies an image or a file into the shell. A write replaces the file and makes its folders
 computer.exportFile({ path: '~/files/chart.png' });
 // → { file: 'f2r8k5w1mz', name: 'chart.png', bytes: 40211 }
@@ -94,6 +98,24 @@ computer.exportFile({ path: '~/files/chart.png' });
 - `isDiskNew` is true on the first result from a sandbox that nixie created empty: `open` for the
   browser, and `run` or a file tool for the shell.
 
+### Reading the destination first
+
+```ts
+// tools module
+interface ToolDeclaration {
+  prepare?: (input: ParsedInput) => Promise<Prepared | DirectResult>; // runs before the decision
+  // …existing fields
+}
+type Prepared = { destinations: string[]; amount?: Money; effects?: Effect[]; expectURL?: string };
+// A tool whose destination lives in the sandbox, such as a tab's host, reads it here. The decision
+// point uses Prepared in place of the declared destination and amount arguments, and effects, when
+// given, replace the declared ones for this call. The action hash covers Prepared, so a value that
+// differs when the action runs settles it as destinations_changed. A DirectResult returns at once.
+```
+
+computer.fill and computer.click prepare the tab's host and URL. A queued act re-reads the URL when
+it runs, and returns `PAGE_CHANGED` when it differs from `expectURL`.
+
 ### The guest's frames
 
 ```ts
@@ -105,7 +127,7 @@ type ComputerRequest =
   | { op: 'act'; tab: string; expectURL: string; acts: Act[]; submit: boolean }
   | { op: 'close'; tab: string }
   | { op: 'download'; tab: string; element: string }
-  | { op: 'run'; argv: string[]; timeoutSeconds: number }
+  | { op: 'run'; argv: string[]; timeoutSeconds: number } // argv: ['bash', '-lc', command], cwd ~/files
   | { op: 'readFile'; path: string } // readFile and exportFile
   | { op: 'writeFile'; path: string; bytes: Uint8Array };
 
@@ -131,6 +153,7 @@ type ComputerReply =
         | 'bad_path'
         | 'too_big'
         | 'disk_full'
+        | 'no_download'
         | 'failed';
     };
 ```
@@ -181,7 +204,8 @@ Acting:
   proposes it again, so an approved command never runs a script that changed after you read the
   card. A run that a rule allows skips this check.
 - Calls into each sandbox run one at a time, from the conversation or a started task. A call waits
-  up to 60 seconds for its turn, and `computer.run` up to its own timeout as well.
+  up to 60 seconds for its turn, and then returns `BUSY`. A `computer.run`'s own timeout starts when
+  its turn comes.
 
 Lifecycle:
 
