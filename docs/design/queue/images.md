@@ -237,7 +237,8 @@ Spend:
 - nixie never tries another profile on its own. A refusal lists the other profiles, and the
   assistant chooses.
 - The budgets `image.draw-day` ($2) and `image.draw-month` ($20) limit image spend. The image calls
-  bypass the model gateway, so the spending stop doesn't count them.
+  bypass the model gateway, and the spending stop never counts them, so a burst of drawing can't
+  stop the conversation.
 - The cost goes under `hidden.costUSD`, which the model never reads.
 - The API keys stay in the server process and never enter a sandbox.
 
@@ -284,8 +285,3 @@ Showing:
 - **Are the session's image caps roomy enough for drawing in passes?** A measurement settles it:
   count the passes in a real sitting. Until then, the caps stay as they are, and a full session
   rebuilds at the next turn.
-
-- **Are `image.draw`, `image.list` and `image.read` the right names?** The owner settles it. Until
-  then, the build uses them.
-- **Does image spend count toward the spending stop?** The owner settles it. Until then, only the 2
-  image budgets limit it.
