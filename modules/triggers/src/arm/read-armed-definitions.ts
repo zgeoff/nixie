@@ -11,6 +11,9 @@ export interface ArmedRow {
 
   // the watermark, epoch milliseconds
   readonly after: number;
+
+  // the slot that a snooze keeps back until `until`, epoch milliseconds, or null
+  readonly hold: { readonly slot: number; readonly until: number } | null;
 }
 
 // The armed definitions of one source: those that hold a hash.
@@ -21,7 +24,15 @@ export async function readArmedDefinitions(
   const rows = await db
     .$extendTables<TriggersTables>()
     .selectFrom('trigger_definitions')
-    .select(['definition_id', 'definition_hash', 'target', 'trigger', 'after'])
+    .select([
+      'definition_id',
+      'definition_hash',
+      'target',
+      'trigger',
+      'after',
+      'hold_slot',
+      'hold_until',
+    ])
     .where('source_id', '=', sourceID)
     .where('definition_hash', 'is not', null)
     .orderBy('definition_id')
@@ -37,6 +48,10 @@ export async function readArmedDefinitions(
             target: row.target,
             trigger: triggerSchema.parse(JSON.parse(row.trigger)),
             after: row.after,
+            hold:
+              row.hold_slot === null || row.hold_until === null
+                ? null
+                : { slot: row.hold_slot, until: row.hold_until },
           },
         ],
   );

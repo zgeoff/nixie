@@ -447,9 +447,7 @@ test.each([
     'a recurring reminder',
     {
       schedule: {
-        every: 'week',
-        on: 'tue',
-        at: '14:00',
+        repeat: { frequency: 'weekly', byDay: ['tue'], at: ['14:00'] },
         zone: 'Australia/Sydney',
         catchUp: 'once',
       },
@@ -519,7 +517,7 @@ test.each([
     expect(next).toBeNull();
 
     expect(inputs[0]).toMatch(
-      /<system-message type="reminder" id="[0-9a-f]+" at="Tue 9 Mar, 14:01, Sydney">\n\[#\d+\] Reminder: <model-text id="(?<block>[0-9a-f]+)">Call the dentist about the crown\.<\/model-text id="\k<block>">\nName: <model-text id="[0-9a-f]+">Call the dentist<\/model-text id="[0-9a-f]+">\nIt was set for Tue 9 Mar, 14:00, Sydney\.\n<\/system-message id="[0-9a-f]+">/u,
+      /<system-message type="reminder" id="[0-9a-f]+" at="Tue 9 Mar, 14:01, Sydney">\n\[#\d+\] Reminder: <model-text id="(?<block>[0-9a-f]+)">Call the dentist about the crown\.<\/model-text id="\k<block>">\nName: <model-text id="[0-9a-f]+">Call the dentist<\/model-text id="[0-9a-f]+">\nIt was set for Tue 9 Mar, 14:00, Sydney\.\nYou can handle this now, hand it to a task, set a one-off for later, or snooze or skip it\.\n<\/system-message id="[0-9a-f]+">/u,
     );
   },
 );

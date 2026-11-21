@@ -1,6 +1,8 @@
 import { expect, test } from 'bun:test';
 import { triggerSchema } from '@heynixie/contract';
+import { withWriteTransaction } from '@heynixie/log';
 import { seedDefinitionTask, writeTestTriggerFire } from '@heynixie/tasks/test-utils';
+import { writeTriggerDeferral } from '../arm/write-trigger-deferral';
 import { deliverTriggerBatch } from '../core/deliver-trigger-batch';
 import {
   buildTestArmedDefinition,
@@ -172,5 +174,105 @@ test('it stores the cursor of a source', async () => {
 
   expect(rows.sources.map((row) => [row.source_id, row.cursor])).toStrictEqual([
     ['poll', '{"page":2}'],
+  ]);
+});
+
+test('it holds the slot that a snooze names and leaves the watermark', async () => {
+  const ctx = await setupTest();
+
+  await seedArmedDefinitions(ctx, [buildTestArmedDefinition()]);
+
+  await withWriteTransaction(ctx.writer, (tx) =>
+    writeTriggerDeferral(tx, ctx.context, {
+      definitionID: 'water-the-tomatoes',
+      slotMs: Date.parse('2027-03-09T21:00:00Z'),
+      untilMs: Date.parse('2027-03-10T03:00:00Z'),
+    }),
+  );
+
+  const rows = await readTestTriggerRows(ctx);
+
+  expect(rows.definitions.map((row) => [row.after, row.hold_slot, row.hold_until])).toStrictEqual([
+    [
+      Date.parse('2027-03-09T00:00:00Z'),
+      Date.parse('2027-03-09T21:00:00Z'),
+      Date.parse('2027-03-10T03:00:00Z'),
+    ],
+  ]);
+});
+
+test('it moves the watermark to the slot that a skip drops and clears a hold', async () => {
+  const ctx = await setupTest();
+
+  await seedArmedDefinitions(ctx, [buildTestArmedDefinition()]);
+
+  await withWriteTransaction(ctx.writer, async (tx) => {
+    await writeTriggerDeferral(tx, ctx.context, {
+      definitionID: 'water-the-tomatoes',
+      slotMs: Date.parse('2027-03-09T21:00:00Z'),
+      untilMs: Date.parse('2027-03-10T03:00:00Z'),
+    });
+
+    await writeTriggerDeferral(tx, ctx.context, {
+      definitionID: 'water-the-tomatoes',
+      slotMs: Date.parse('2027-03-09T21:00:00Z'),
+      untilMs: null,
+    });
+  });
+
+  const rows = await readTestTriggerRows(ctx);
+
+  expect(rows.definitions.map((row) => [row.after, row.hold_slot, row.hold_until])).toStrictEqual([
+    [Date.parse('2027-03-09T21:00:00Z'), null, null],
+  ]);
+});
+
+test('it clears the hold when the definition is armed with a new trigger', async () => {
+  const ctx = await setupTest();
+
+  await seedArmedDefinitions(ctx, [buildTestArmedDefinition()]);
+
+  await withWriteTransaction(ctx.writer, (tx) =>
+    writeTriggerDeferral(tx, ctx.context, {
+      definitionID: 'water-the-tomatoes',
+      slotMs: Date.parse('2027-03-09T21:00:00Z'),
+      untilMs: Date.parse('2027-03-10T03:00:00Z'),
+    }),
+  );
+
+  await seedArmedDefinitions(ctx, [
+    buildTestArmedDefinition({
+      trigger: triggerSchema.parse({
+        schedule: { every: 'day', at: '09:00', zone: 'Australia/Sydney' },
+      }),
+    }),
+  ]);
+
+  const rows = await readTestTriggerRows(ctx);
+
+  expect(rows.definitions.map((row) => [row.hold_slot, row.hold_until])).toStrictEqual([
+    [null, null],
+  ]);
+});
+
+test('it keeps the hold when the definition is armed again with the same trigger', async () => {
+  const ctx = await setupTest();
+
+  await seedArmedDefinitions(ctx, [buildTestArmedDefinition()]);
+
+  await withWriteTransaction(ctx.writer, (tx) =>
+    writeTriggerDeferral(tx, ctx.context, {
+      definitionID: 'water-the-tomatoes',
+      slotMs: Date.parse('2027-03-09T21:00:00Z'),
+      untilMs: Date.parse('2027-03-10T03:00:00Z'),
+    }),
+  );
+
+  await seedArmedDefinitions(ctx, [buildTestArmedDefinition({ definitionHash: 'hash-2' })]);
+
+  const rows = await readTestTriggerRows(ctx);
+
+  expect(rows.definitions.map((row) => [row.definition_hash, row.hold_slot])).toStrictEqual([
+    ['hash-2', Date.parse('2027-03-09T21:00:00Z')],
   ]);
 });

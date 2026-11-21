@@ -1,6 +1,8 @@
 import type { Trigger } from '@heynixie/contract';
 import { triggerAtSchema, triggerSchema } from '@heynixie/contract';
+import { checkSchedule } from '@heynixie/triggers';
 import { z } from 'zod';
+import { taskMinGapMinutes } from './constants';
 import { formatIssue } from './format-issue';
 import type { SeedFaultCode } from './types';
 
@@ -28,15 +30,7 @@ export function parseTrigger(value: unknown): TriggerResult {
     return parseAt(record.data['at'], value);
   }
 
-  const parsed = triggerSchema.safeParse(value);
-
-  return parsed.success
-    ? { status: 'parsed', trigger: parsed.data }
-    : {
-        status: 'refused',
-        fault: 'bad_schedule',
-        reasons: parsed.error.issues.map((issue) => formatIssue(issue)),
-      };
+  return parseSchedule(value);
 }
 
 const localDateTimeSchema = z.iso.datetime({ local: true });
@@ -60,13 +54,42 @@ function parseAt(at: unknown, value: unknown): TriggerResult {
         };
   }
 
+  return parseSchedule(value);
+}
+
+// A task.yaml has no clock, and a definition must parse the same on every run, so its schedule is
+// checked at a fixed instant. Only its verdict is kept: the file's own text stays as written.
+const checkedAtMs = Date.parse('2026-01-01T00:00:00Z');
+
+// A schedule in the repeat shape also goes through the schedule check, which refuses a mix of
+// fields that never go together, a schedule with no fire in 400 days and fires closer than the
+// minimum gap, each with the field and a fix.
+function parseSchedule(value: unknown): TriggerResult {
   const parsed = triggerSchema.safeParse(value);
 
-  return parsed.success
-    ? { status: 'parsed', trigger: parsed.data }
-    : {
+  if (!parsed.success) {
+    return {
+      status: 'refused',
+      fault: 'bad_schedule',
+      reasons: parsed.error.issues.map((issue) => formatIssue(issue)),
+    };
+  }
+
+  if ('schedule' in parsed.data && 'repeat' in parsed.data.schedule) {
+    const checked = checkSchedule(parsed.data.schedule, {
+      nowMs: checkedAtMs,
+      ownerZone: 'UTC',
+      minGapMinutes: taskMinGapMinutes,
+    });
+
+    if (checked.status === 'refused') {
+      return {
         status: 'refused',
         fault: 'bad_schedule',
-        reasons: parsed.error.issues.map((issue) => formatIssue(issue)),
+        reasons: [`trigger.schedule.${checked.path}: ${checked.sentence}`],
       };
+    }
+  }
+
+  return { status: 'parsed', trigger: parsed.data };
 }

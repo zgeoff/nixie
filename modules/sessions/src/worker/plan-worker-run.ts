@@ -19,6 +19,8 @@ const neverHeldTools: ReadonlySet<string> = new Set([
   'reminder.set',
   'reminder.update',
   'reminder.cancel',
+  'reminder.snooze',
+  'reminder.skip',
   'reminders.list',
   taskReportToolName,
   silentEndToolName,

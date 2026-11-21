@@ -6,9 +6,11 @@ test('it builds the weekly schedule of the tomatoes', () => {
 brief: Water the tomatoes.
 trigger:
   schedule:
-    every: week
-    on: fri
-    at: "08:00"
+    repeat:
+      frequency: weekly
+      byDay: [fri]
+      at: ["08:00"]
+      starts: "2026-11-20"
 `);
 });
 

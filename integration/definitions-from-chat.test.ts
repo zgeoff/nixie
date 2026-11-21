@@ -114,7 +114,9 @@ test('it puts a definition in force from chat, writes its notice record and fire
   const outcome = await ctx.runDefine({
     name: 'Water the tomatoes',
     brief: 'Water the tomatoes.',
-    trigger: { schedule: { every: 'week', on: 'fri', at: '08:00', zone: 'owner' } },
+    trigger: {
+      schedule: { repeat: { frequency: 'weekly', byDay: ['fri'], at: ['08:00'] }, zone: 'owner' },
+    },
   });
 
   const changed = await ctx.readChanged();
@@ -141,7 +143,7 @@ test('it puts a definition in force from chat, writes its notice record and fire
       status: 'ok',
       result: {
         definitionID: 'water-the-tomatoes',
-        rendered: 'every Friday at 08:00',
+        rendered: 'every Friday at 08:00 (UTC)',
         next: 'Fri 12 Mar',
         changeID: expect.any(String),
       },
@@ -150,7 +152,7 @@ test('it puts a definition in force from chat, writes its notice record and fire
     notice: [
       expect.objectContaining({
         operation: 'add',
-        rendered: 'every Friday at 08:00',
+        rendered: 'every Friday at 08:00 (UTC)',
         state: 'in_force',
       }),
     ],

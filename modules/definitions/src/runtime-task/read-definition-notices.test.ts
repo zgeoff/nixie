@@ -46,7 +46,7 @@ test('it gives an added change in force its words and its next fire', async () =
     shortID: added.shortID,
     changeID: added.changeID,
     hasVersion: true,
-    rendered: 'every Friday at 08:00',
+    rendered: 'every Friday at 08:00 (UTC)',
     next: 'Fri 12 Mar',
     state: 'in_force',
     isUnreadable: false,

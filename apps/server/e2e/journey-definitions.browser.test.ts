@@ -27,7 +27,11 @@ test('it lists a definition that a turn made with the record that created it, an
           name: 'Water the tomatoes',
           brief: 'Water the tomatoes and note how dry they were.',
           trigger: {
-            schedule: { every: 'week', on: 'fri', at: '08:00', zone: 'owner', catchUp: 'once' },
+            schedule: {
+              repeat: { frequency: 'weekly', byDay: ['fri'], at: ['08:00'] },
+              zone: 'owner',
+              catchUp: 'once',
+            },
           },
         },
       },

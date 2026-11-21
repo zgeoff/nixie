@@ -1,8 +1,10 @@
 import { parseJSONObject } from '@heynixie/log';
 import type { ToolDefinition } from '@heynixie/tools';
-import { buildOffsetAt } from '@heynixie/triggers';
+import { buildOffsetAt, checkSchedule } from '@heynixie/triggers';
+import type { ScheduleFacts } from '@heynixie/triggers';
 import invariant from 'tiny-invariant';
 import { z } from 'zod';
+import { taskMinGapMinutes } from '../../task/constants';
 import { readDefinitionNotices } from '../read-definition-notices';
 import { requestDefinitionChange } from '../request-definition-change';
 import type { ChatToolOptions } from './chat-tool-options';
@@ -22,7 +24,9 @@ export function buildTaskDefineTool(options: ChatToolOptions): ToolDefinition {
     name: 'task.define',
     description:
       'Creates or replaces a task definition from a name, a brief and a trigger: a ' +
-      "schedule, or one time with `at`. When the call needs the owner's approval, it waits as a " +
+      'schedule, or one time with `at`. A schedule is a `repeat` with a frequency, such as ' +
+      '{"frequency":"weekly","byDay":["mon"],"at":["09:00"]}, and optional `hours` that limit ' +
+      "when it fires, such as hourly from 09:00 to 17:00. When the call needs the owner's approval, it waits as a " +
       'card, and you hear the result in your inbox; otherwise it takes effect at once, and the ' +
       'owner sees a notice with an undo. Pass definitionID to replace a definition, with every field you want kept: ' +
       'a field you leave out goes back to its default. An `at` without an offset is read in the ' +
@@ -68,12 +72,24 @@ export function buildTaskDefineTool(options: ChatToolOptions): ToolDefinition {
       }
 
       const { definitionID, trigger: givenTrigger, ...rest } = given;
-      const ownerZone = 'at' in givenTrigger ? await options.readZone('owner') : null;
 
-      const trigger =
-        'at' in givenTrigger
-          ? { at: buildOffsetAt(givenTrigger.at, ownerZone ?? 'UTC') }
-          : givenTrigger;
+      const ownerZone = await options.readZone('owner');
+
+      const checked = checkDefineTrigger(givenTrigger, {
+        nowMs: context.log.writer.clock.now(),
+        ownerZone,
+        minGapMinutes: taskMinGapMinutes,
+      });
+
+      if (checked.status === 'refused') {
+        return {
+          status: 'ok',
+          result: { refused: checked.refused },
+          refusalCode: checked.refused.code,
+        };
+      }
+
+      const trigger = checked.trigger;
 
       const result = await requestDefinitionChange(context, {
         kind: 'define',
@@ -112,4 +128,27 @@ export function buildTaskDefineTool(options: ChatToolOptions): ToolDefinition {
       };
     },
   };
+}
+
+type TriggerInput = z.output<typeof taskDefineInputSchema>['trigger'];
+
+// An `at` without an offset reads in the owner's zone, and a schedule goes through the schedule
+// check, which refuses with the field and a fix.
+function checkDefineTrigger(given: TriggerInput, facts: ScheduleFacts) {
+  if ('at' in given) {
+    return { status: 'ok', trigger: { at: buildOffsetAt(given.at, facts.ownerZone) } } as const;
+  }
+
+  const checked = checkSchedule(given.schedule, facts);
+
+  return checked.status === 'ok'
+    ? ({ status: 'ok', trigger: { schedule: checked.schedule } } as const)
+    : ({
+        status: 'refused',
+        refused: {
+          code: checked.code,
+          path: `trigger.schedule.${checked.path}`,
+          sentence: checked.sentence,
+        },
+      } as const);
 }

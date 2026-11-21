@@ -2,8 +2,9 @@ name: Take notes
 brief: Read your messages since the previous run and save the facts worth remembering.
 trigger:
   schedule:
-    every: day
-    at: '21:00'
+    repeat:
+      frequency: daily
+      at: ['21:00']
 context: fresh
 memory: read
 log: conversation

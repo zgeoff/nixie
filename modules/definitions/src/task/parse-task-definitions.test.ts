@@ -201,6 +201,27 @@ test.each<[SeedFaultCode, Record<string, string>, string]>([
     'tasks/rain-gauge/task.yaml',
   ],
   [
+    'bad_schedule',
+    {
+      'tasks/rain-gauge/task.yaml': `name: Check the rain gauge\nbrief: Read the gauge and note the total.\ntrigger:\n  schedule:\n    repeat:\n      frequency: minutely\n`,
+    },
+    'tasks/rain-gauge/task.yaml',
+  ],
+  [
+    'bad_schedule',
+    {
+      'tasks/rain-gauge/task.yaml': `name: Check the rain gauge\nbrief: Read the gauge and note the total.\ntrigger:\n  schedule:\n    repeat:\n      frequency: daily\n      at: ["03:00"]\n    hours:\n      from: "09:00"\n      until: "17:00"\n`,
+    },
+    'tasks/rain-gauge/task.yaml',
+  ],
+  [
+    'bad_schedule',
+    {
+      'tasks/rain-gauge/task.yaml': `name: Check the rain gauge\nbrief: Read the gauge and note the total.\ntrigger:\n  schedule:\n    repeat:\n      frequency: weekly\n      at: ["08:00"]\n`,
+    },
+    'tasks/rain-gauge/task.yaml',
+  ],
+  [
     'at_without_offset',
     {
       'tasks/rain-gauge/task.yaml': `name: Check the rain gauge\nbrief: Read the gauge and note the total.\ntrigger:\n  at: "2027-03-09T14:00:00"\n`,
@@ -325,6 +346,16 @@ test.each<[SeedFaultCode, Record<string, string>, string]>([
   const parsed = ctx.parse(files);
 
   expect(parsed.faults).toStrictEqual([{ path, fault: code, reasons: expect.any(Array) }]);
+});
+
+test('it accepts a schedule that starts more than 400 days after the seed clock', () => {
+  const ctx = setupTest();
+
+  const parsed = ctx.parse({
+    'tasks/rain-gauge/task.yaml': `name: Check the rain gauge\nbrief: Read the gauge and note the total.\ntrigger:\n  schedule:\n    repeat:\n      frequency: daily\n      at: ["09:00"]\n      starts: "2027-03-01"\n    zone: UTC\n`,
+  });
+
+  expect(parsed.faults).toStrictEqual([]);
 });
 
 test('it lists a start refusal with the sentences of the check', () => {
@@ -606,7 +637,7 @@ test('it seeds the memory consolidation example with its schedule, read memory a
   const parsed = ctx.parse(files);
 
   expect(parsed.definitions[0]?.form).toMatchObject({
-    trigger: { schedule: { every: 'week', on: 'sun', at: '03:00' } },
+    trigger: { schedule: { repeat: { frequency: 'weekly', byDay: ['sun'], at: ['03:00'] } } },
     memory: 'read',
     tools: [
       'tasks.list',
@@ -634,7 +665,7 @@ test('it seeds the moment reflection example with its daily schedule, read memor
   const parsed = ctx.parse(files);
 
   expect(parsed.definitions[0]?.form).toMatchObject({
-    trigger: { schedule: { every: 'day', at: '04:00' } },
+    trigger: { schedule: { repeat: { frequency: 'daily', at: ['04:00'] } } },
     context: 'fresh',
     memory: 'read',
     log: 'conversation',
@@ -666,7 +697,7 @@ test('it seeds the note-taking example with its daily schedule, conversation log
   const parsed = ctx.parse(files);
 
   expect(parsed.definitions[0]?.form).toMatchObject({
-    trigger: { schedule: { every: 'day', at: '21:00' } },
+    trigger: { schedule: { repeat: { frequency: 'daily', at: ['21:00'] } } },
     context: 'fresh',
     memory: 'read',
     log: 'conversation',

@@ -13,8 +13,16 @@ export { clipRecordPayloads } from './contract/clip-record-payloads';
 export { payloadClipBytes } from './contract/payload-clip-bytes';
 export { imageLimits } from './contract/image-limits';
 export { isTimeZone } from './contract/is-time-zone';
-export type { Schedule } from './contract/schedule-schema';
-export { scheduleSchema } from './contract/schedule-schema';
+
+export type {
+  Hours,
+  LegacySchedule,
+  Repeat,
+  RepeatSchedule,
+  Schedule,
+} from './contract/schedule-schema';
+
+export { repeatScheduleSchema, scheduleSchema } from './contract/schedule-schema';
 export type { Trigger } from './contract/trigger-schema';
 export { triggerAtSchema, triggerSchema } from './contract/trigger-schema';
 export { spendStopSchema } from './contract/spend-stop-schema';

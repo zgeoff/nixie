@@ -18,6 +18,7 @@ test('it reads the armed definitions of one source with their watermark', async 
         schedule: { every: 'day', at: '08:00', zone: 'Australia/Sydney', catchUp: 'once' },
       },
       after: Date.parse('2027-03-09T00:00:00Z'),
+      hold: null,
     },
   ]);
 });

@@ -18,6 +18,8 @@ export { reminderUpdatedCodec } from './record/reminder-updated-codec';
 export type { RemindersRecordKind } from './record/reminders-record-kind';
 export { buildReminderCancelTool } from './tool/build-reminder-cancel-tool';
 export { buildReminderSetTool } from './tool/build-reminder-set-tool';
+export { buildReminderSkipTool } from './tool/build-reminder-skip-tool';
+export { buildReminderSnoozeTool } from './tool/build-reminder-snooze-tool';
 export { buildReminderUpdateTool } from './tool/build-reminder-update-tool';
 export { buildRemindersListTool } from './tool/build-reminders-list-tool';
 export { remindersConfigSchema } from './reminders-config-schema';

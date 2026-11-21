@@ -3,6 +3,8 @@ import { buildPolicyCall, readStarterDecisionPoint } from '@heynixie/policy/test
 import {
   buildReminderCancelTool,
   buildReminderSetTool,
+  buildReminderSkipTool,
+  buildReminderSnoozeTool,
   buildReminderUpdateTool,
   buildRemindersListTool,
 } from '@heynixie/reminders';
@@ -12,6 +14,8 @@ test.each([
   ['reminder.set', buildReminderSetTool],
   ['reminder.update', buildReminderUpdateTool],
   ['reminder.cancel', buildReminderCancelTool],
+  ['reminder.snooze', buildReminderSnoozeTool],
+  ['reminder.skip', buildReminderSkipTool],
   ['reminders.list', buildRemindersListTool],
 ])('it allows %s under the starter rules with no approval', async (name, build) => {
   const ctx = await startTestReminders();

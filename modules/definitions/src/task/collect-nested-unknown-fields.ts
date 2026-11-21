@@ -1,9 +1,28 @@
-import { scheduleSchema } from '@heynixie/contract';
 import { z } from 'zod';
 
 const knownKeys: Readonly<Record<string, readonly string[]>> = {
   trigger: ['schedule', 'at'],
-  'trigger.schedule': Object.keys(scheduleSchema.shape),
+  'trigger.schedule': [
+    'repeat',
+    'hours',
+    'every',
+    'at',
+    'on',
+    'window',
+    'idleMinutes',
+    'zone',
+    'catchUp',
+  ],
+  'trigger.schedule.repeat': [
+    'frequency',
+    'interval',
+    'byDay',
+    'byMonthDay',
+    'byMonth',
+    'at',
+    'starts',
+  ],
+  'trigger.schedule.hours': ['from', 'until'],
   'trigger.schedule.every': ['minutes'],
   'trigger.schedule.window': ['from', 'until'],
   step: ['file', 'api'],
@@ -15,12 +34,16 @@ const knownKeys: Readonly<Record<string, readonly string[]>> = {
 export function collectNestedUnknownFields(mapping: Readonly<Record<string, unknown>>): string[] {
   const trigger = pickRecord(mapping['trigger']);
   const schedule = trigger === null ? null : pickRecord(trigger['schedule']);
+  const repeat = schedule === null ? null : pickRecord(schedule['repeat']);
+  const hours = schedule === null ? null : pickRecord(schedule['hours']);
   const every = schedule === null ? null : pickRecord(schedule['every']);
   const window = schedule === null ? null : pickRecord(schedule['window']);
 
   const objects: readonly (readonly [string, Record<string, unknown> | null])[] = [
     ['trigger', trigger],
     ['trigger.schedule', schedule],
+    ['trigger.schedule.repeat', repeat],
+    ['trigger.schedule.hours', hours],
     ['trigger.schedule.every', every],
     ['trigger.schedule.window', window],
     ['step', pickRecord(mapping['step'])],

@@ -150,7 +150,9 @@ test.each([
   const defined = await ctx.runDefine({
     name: 'Check the tide times',
     brief: 'Read the tide table and report the next high tide.',
-    trigger: { schedule: { every: 'week', on: 'fri', at: '08:00', zone: 'owner' } },
+    trigger: {
+      schedule: { repeat: { frequency: 'weekly', byDay: ['fri'], at: ['08:00'] }, zone: 'owner' },
+    },
     tools,
   });
 

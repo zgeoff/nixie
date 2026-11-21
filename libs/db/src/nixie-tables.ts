@@ -695,6 +695,8 @@ export interface NixieTables {
     readonly trigger: string;
     readonly after: number;
     readonly updated_sequence: number;
+    readonly hold_slot: number | null;
+    readonly hold_until: number | null;
   };
   readonly trigger_keys: {
     readonly source_key: string;

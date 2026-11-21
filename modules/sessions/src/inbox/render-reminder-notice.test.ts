@@ -42,7 +42,7 @@ test('it renders the note and the name in blocks of their own and the set time o
   );
 
   expect(text).toMatch(
-    /^<system-message type="reminder" id="[0-9a-f]+" at="Tue 9 Mar, 14:00, Sydney">\n\[#16040\] Reminder: <model-text id="b2d4">Call the dentist about the crown\.<\/model-text id="b2d4">\nName: <model-text id="b2d4">Dentist<\/model-text id="b2d4">\nIt was set for Tue 9 Mar, 14:00, Sydney\.\n<\/system-message id="[0-9a-f]+">$/u,
+    /^<system-message type="reminder" id="[0-9a-f]+" at="Tue 9 Mar, 14:00, Sydney">\n\[#16040\] Reminder: <model-text id="b2d4">Call the dentist about the crown\.<\/model-text id="b2d4">\nName: <model-text id="b2d4">Dentist<\/model-text id="b2d4">\nIt was set for Tue 9 Mar, 14:00, Sydney\.\nYou can handle this now, hand it to a task, set a one-off for later, or snooze or skip it\.\n<\/system-message id="[0-9a-f]+">$/u,
   );
 });
 

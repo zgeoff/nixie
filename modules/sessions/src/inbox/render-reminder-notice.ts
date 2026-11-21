@@ -18,6 +18,9 @@ export interface ReminderRead {
   readonly zone: string;
 }
 
+const reminderHandlingLine =
+  'You can handle this now, hand it to a task, set a one-off for later, or snooze or skip it.';
+
 // The note and the name are text the model wrote, so each sits in a block of its own with a fresh
 // random ID that no closing tag inside it can match.
 export function renderReminderNotice(
@@ -43,6 +46,7 @@ export function renderReminderNotice(
       `[#${record.sequence}] Reminder: <model-text id="${noteID}">${note}</model-text id="${noteID}">`,
       ...renderNameLine(reminder.name, mint),
       setLine,
+      reminderHandlingLine,
     ].join('\n'),
   });
 }
