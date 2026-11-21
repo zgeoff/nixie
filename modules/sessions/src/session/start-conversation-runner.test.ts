@@ -585,6 +585,7 @@ test("it gives each turn a step token of the step's run identity, and stops it o
           turnMessageSequence: expect.toBeNumber(),
         },
         reserveImages: expect.any(Function),
+        readImageRoom: expect.any(Function),
         endSilently: expect.any(Function),
         step: {
           signal: expect.any(AbortSignal),
@@ -609,6 +610,7 @@ test("it gives each turn a step token of the step's run identity, and stops it o
           turnMessageSequence: expect.toBeNumber(),
         },
         reserveImages: expect.any(Function),
+        readImageRoom: expect.any(Function),
         endSilently: expect.any(Function),
         step: {
           signal: expect.any(AbortSignal),
