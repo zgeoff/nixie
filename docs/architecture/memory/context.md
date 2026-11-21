@@ -200,8 +200,15 @@ user's messages, the replies and the tool results, oldest first, each with its e
 the record's sequence. A tool result also carries the event ID of the call it answers, as
 `callEventID`, because nothing else shows the model the ID of a call. The model narrows a read by a
 time range or by words that every entry must hold, and pages on with the cursor the read returns.
-Each read returns a bounded number of entries and decrypts a bounded number of records, so a search
-over a long thread can return a short page with a cursor to go on from.
+
+Each read returns a bounded number of entries. It decrypts 500 records a page, and a page that holds
+no entry keeps reading the next 500, up to 5,000 records in one call, so most searches find their
+match in one call. An empty page costs little to return, and the reads stop at the first page that
+holds an entry, so a result stays one page of the usual size. A search that still finds nothing in
+those 5,000 records returns no entries with a cursor and a `note`. The note says the read stopped
+early, so no match is not shown, and gives the time span of the records it read. The model passes
+the cursor as `after` to go on, or narrows the range with `from` and `to`. Only a `null` cursor
+means the thread holds nothing more.
 
 A list clips each entry's text at 2,000 characters and marks the entry `isCut`. A read with
 `record`, the event ID of one entry, returns that entry whole, in pages under the same byte limit as

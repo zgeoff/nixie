@@ -8,16 +8,32 @@ import { startTestMemory } from '../test-utils';
 import { buildMockToolContext } from '../test-utils/build-mock-tool-context';
 import { writeOwnerMessageRecord } from '../test-utils/write-owner-message-record';
 import { writeReplyRecord } from '../test-utils/write-reply-record';
+import type { LogReadScanLimits } from './build-log-read-tool';
 import { buildLogReadTool } from './build-log-read-tool';
 
-async function setupTest() {
+async function setupTest(scanLimits?: LogReadScanLimits) {
   const memory = await startTestMemory();
 
   onTestFinished(() => {
     setSystemTime();
   });
 
-  return { log: memory.log, tool: buildLogReadTool(memory.log, () => Promise.resolve(new Map())) };
+  const writeFillerReplies = (count: number) =>
+    writeRecords(
+      memory.log,
+      Array.from({ length: count }, (_, index) => ({
+        kind: 'model.reply' as const,
+        definitions: { snapshotHash: 'sha256:test' },
+        thread: 'conversation',
+        erasable: { text: `Nothing to see in reply ${index}` },
+      })),
+    );
+
+  return {
+    log: memory.log,
+    writeFillerReplies,
+    tool: buildLogReadTool(memory.log, () => Promise.resolve(new Map()), scanLimits),
+  };
 }
 
 test('it reads one page of a date range, with the cursor of the next page', async () => {
@@ -588,5 +604,71 @@ test('it reads a forgotten entry whole with no text', async () => {
   expect(outcome).toMatchObject({
     status: 'ok',
     result: { entries: [{ text: null, isCut: false }], next: null },
+  });
+});
+
+test('it finds a phrase that sits past the first page decrypt bound in one call', async () => {
+  const ctx = await setupTest();
+
+  await ctx.writeFillerReplies(650);
+
+  const match = await writeReplyRecord(ctx.log, 'The cobalt kettle needs descaling');
+
+  const outcome = await ctx.tool.run(
+    {
+      callID: 'call-1',
+      tool: 'log.read',
+      input: { query: 'cobalt kettle' },
+      toolUseID: null,
+    },
+    buildMockToolContext(),
+  );
+
+  expect(outcome).toStrictEqual({
+    status: 'ok',
+    result: {
+      entries: [
+        {
+          eventID: String(match),
+          role: 'assistant',
+          recordedAt: expect.any(String),
+          text: 'The cobalt kettle needs descaling',
+          isCut: false,
+        },
+      ],
+      next: null,
+    },
+    record: { eventIDs: [String(match)], next: null },
+  });
+});
+
+test('it says a search stopped early when no page in the cap holds a match', async () => {
+  const ctx = await setupTest({ scanLimit: 5, emptySearchScanLimit: 20 });
+
+  setSystemTime(new Date(Date.UTC(2026, 9, 12, 8, 15)));
+
+  await ctx.writeFillerReplies(30);
+
+  const outcome = await ctx.tool.run(
+    {
+      callID: 'call-1',
+      tool: 'log.read',
+      input: { query: 'cobalt kettle' },
+      toolUseID: null,
+    },
+    buildMockToolContext(),
+  );
+
+  expect(outcome).toStrictEqual({
+    status: 'ok',
+    result: {
+      entries: [],
+      next: expect.stringMatching(/^[0-9]+$/u),
+      note:
+        'Stopped early: no entry matched in the 20 records read from 2026-10-12 08:15 UTC to ' +
+        '2026-10-12 08:15 UTC. This does not show that nothing matches: the log holds more past ' +
+        'that point. Pass next as after to go on, or narrow the search with from and to.',
+    },
+    record: { eventIDs: [], next: expect.stringMatching(/^[0-9]+$/u) },
   });
 });
