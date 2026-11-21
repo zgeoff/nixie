@@ -92,8 +92,8 @@ labels. `undo` undoes the last text change only, so a label stays as it is until
 Every label edit moves the revision, and a tool, the API and the memory view show that number as
 `version`, while history entries, recall records, the export and a proposal's hash keep the text
 version. A session that holds the number from before a label edit gets the stale error once and
-reads the revision from it, and after a label-only edit `memory.retire` still passes the read check
-for a text recalled before the edit.
+reads the revision from it, and `memory.retire` passes its read check for a text recalled before a
+label-only edit, because that edit leaves the text unchanged.
 
 A label-only proposal's `memory.proposed` record holds the operation `remember`, the text version
 and a copy of the text, so a reader that knows no label record kind still parses it.

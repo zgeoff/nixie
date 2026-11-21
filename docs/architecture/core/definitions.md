@@ -339,29 +339,31 @@ leaves out a spent one-shot, as [Triggers](./triggers.md#which-definitions-can-f
 
 ### What opens a task run
 
-When a claim finds no open task run on a definition's task and no limit hold, the first of these
-that holds decides:
+When a step claims a definition's task and finds no open task run and no limit hold (a task that
+reached a limit and that the user has not raised), the first of these that holds decides:
 
 1. An unread `trigger.fired` whose dedupe key no task run of the task holds opens a task run that
    pins the fire's own hash, whatever hash is in force, so a one-shot runs although its own fire
    puts it out of force. When 2 such fires are unread, the newest opens the task run, and its first
    step marks both as read and renders only the newest.
-2. A raise or a restart after a task run that ended with `limit`, `stopped` or `failed` opens a
-   carrying task run. It pins the hash of the task run it carries, keeps its fire's key and brief,
-   resumes its session even under `context: fresh`, and reads an unread message.
+2. A raise of the limit or a restart by the user, after a task run that ended with `limit`,
+   `stopped` or `failed`, opens a carrying task run: a task run that carries on the work of the
+   ended one. It pins the hash of the task run it carries, keeps its fire's key and brief, resumes
+   its session even under `context: fresh`, and reads an unread message.
 3. An unread waking message, while a hash is in force, opens a task run that pins the hash in force.
 4. Anything else, such as a resume, a server start, or a message while the hash in force is null,
    opens none. The step commits with a hold, the task is `waiting`, and an unread message stays
    unread.
 
-An unread fire comes first because a fire can be unread at a carry only after a stop of an idle task
-run, which has nothing to carry, while a message after a `limit` end belongs to the work that the
-raise carries on. A claim marks read a `trigger.fired` whose kind it does not know and opens no task
-run for it. A task run of a definition has no limit of its own on effects: the decision point treats
-its calls as it treats the conversation's.
+An unread fire comes first for this reason. A fire stays unread at a carry only after the user
+stopped an idle task run, and that task run has no work to carry. A message after a `limit` end
+belongs to the work that the raise carries on. A claim marks read a `trigger.fired` whose kind it
+does not know and opens no task run for it. A task run of a definition has no limit of its own on
+effects: the decision point treats its calls as it treats the conversation's.
 
-The trigger core asks for the fire answer in the transaction that delivers the fire, before it
-writes the fire's record, and the first answer that holds decides:
+In the transaction that delivers a fire, the [trigger core](./triggers.md) asks the tasks module
+whether the task takes the fire, before it writes the fire's record. The first answer that holds
+decides:
 
 1. `held`: the task is paused, stopped or failed, or held at a limit. The core records a skip with
    `task_held`, and the definition fires again at the first slot after the user resumes, restarts or
@@ -371,15 +373,15 @@ writes the fire's record, and the first answer that holds decides:
 3. `take`: the task has no pending task run, and its open task run is idle or absent. The core
    records the fire.
 
-No table holds a pending task run, so the answer computes it: with no open task run, a task run is
-pending when rule 1, 2 or 3 above holds, and with an idle open task run, when the inbox holds an
-unread fire whose key no task run holds. A task therefore holds at most one unread fire, except
-after a stop, when it can hold 2. nixie skips a fire and never queues it, because 2 task runs at
-once would write to one thread, and a queue would hide a task run that never ends. A fire that was
-written before a hold opens a task run after the hold ends, however old it is. nixie writes no
-record for a fire of a disabled definition. The answer never reads the pause: while nixie is paused,
-the core delivers no schedule fire to a paused task, and the catch-up rule decides the first fire
-after the resume.
+The answer computes whether a task run is pending, because no table holds one. With no open task
+run, a task run is pending when item 1, 2 or 3 of the list in "What opens a task run" holds. With an
+idle open task run, it is pending when the inbox holds an unread fire whose key no task run holds. A
+task therefore holds at most one unread fire, except after a stop, when it can hold 2. nixie skips a
+fire and never queues it, because 2 task runs at once would write to one thread, and a queue would
+hide a task run that never ends. A fire that was written before a hold opens a task run after the
+hold ends, however old it is. nixie writes no record for a fire of a disabled definition. The answer
+never reads the pause: while nixie is paused, the core delivers no schedule fire to a paused task,
+and the catch-up rule decides the first fire after the resume.
 
 The task listing and the dashboard show a definition's task while its hash in force is not null,
 with the name, brief and model of that version, and while a task run of a task out of force is
@@ -390,12 +392,11 @@ task that a definition binds. The time a definition was first enabled is the tim
 `task.definition_set` of its task that holds a hash.
 
 The listing shows `nextRunAt` for a definition's task that it lists as `asleep`, from the next fire
-of the definition's trigger row, as an ISO instant in UTC. For a window schedule of the older shape,
-the instant is the window's start. It is the slot as the trigger code gives it, even when the slot
-is already past, because the trigger core decides whether that slot fires. It is null when the
-definition has no row or a withdrawn row, no `schedule` or `at` trigger, or an `at` trigger whose
-dedupe key the core already holds. The rendered trigger's `next` is a display string, so the listing
-never reads it.
+of the definition's trigger row, as an ISO instant in UTC. For a window schedule, the instant is the
+window's start. It is the slot as the trigger code gives it, even when the slot is already past,
+because the trigger core decides whether that slot fires. It is null when the definition has no row
+or a withdrawn row, no `schedule` or `at` trigger, or an `at` trigger whose dedupe key the core
+already holds. The rendered trigger's `next` is a display string, so the listing never reads it.
 
 A fire opens a task run. The trigger core writes a `trigger.fired` record on the task's thread, with
 the hash that the fire pins. The next claim opens a task run for it, and the record
@@ -608,7 +609,7 @@ An undo names a change X, and the first row of this table that fits decides:
 
 | When                                             | Result                                                                                                      |
 | ------------------------------------------------ | ----------------------------------------------------------------------------------------------------------- |
-| X is not the head of its definition              | `REPLACED`, with the head                                                                                   |
+| X is not the newest change of its definition     | `REPLACED`, with the newest change                                                                          |
 | X is in force and replaced a runtime change      | the previous version goes in force as a runtime definition, with the base of X                              |
 | X is in force, replaced none, and no conflict    | the base goes in force, and the seed in the transaction adopts the undo                                     |
 | X is in force, replaced none, and a conflict     | the repo's version goes in force and the seed adopts it, so the result says it restored the repo's version  |

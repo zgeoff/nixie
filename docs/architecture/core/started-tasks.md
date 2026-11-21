@@ -71,9 +71,10 @@ from a starter that holds the grant. The runner sets the thread of the grant at 
 step, from the started task's options or the definition version that the task run pins, and nothing
 stores it, so the model never picks a thread.
 
-A grant that the task's setup loses in the middle of a step counts until the step ends. The task's
-`log.read` records its call and its result on the task's own thread, so a forget of the task's
-thread removes what the task read and the conversation's thread holds only the conversation's work.
+A grant that the task loses in the middle of a step, because its definition or its options change,
+counts until the step ends. The task's `log.read` records its call and its result on the task's own
+thread, so a forget of the task's thread removes what the task read and the conversation's thread
+holds only the conversation's work.
 
 A forget of a record on the conversation's thread cleans the open task with the grant, as it cleans
 an open task that reads memory, because the task's session can hold the record's text from a read.
@@ -284,9 +285,11 @@ task has a pending task run when it has unread waking input and no open task run
 task's brief is its first waking input. A claim that finds the task with no open task run checks, in
 this order:
 
-1. The limit hold. A task that is held opens no task run, and the claim pauses it.
-2. A raise or a restart that is newer than the end of the task's newest task run, which ended with
-   `limit`, `stopped` or `failed`. The claim opens one carried task run for it.
+1. The limit hold: the task has reached a limit and the user has not raised it. A held task opens no
+   task run, and the claim pauses it.
+2. A raise of the limit or a restart by the user that is newer than the end of the task's newest
+   task run, which ended with `limit`, `stopped` or `failed`. The claim opens one carried task run
+   for it.
 3. The unread waking input. The task run's origin is the cause that woke the step: the brief, a task
    message, a message of the user, a timer or an outside event.
 
@@ -324,11 +327,12 @@ the control, and a step error that fails the task ends it with `failed` in the e
 Recovery ends no task run: the rerun of a step joins the open one. When the transaction that ends a
 task run throws, the task run stays open and the caller's retry ends it.
 
-A started task that reported is wakeable and waits with its sandbox asleep until the user closes it.
-It is never `done`, because a `done` task refuses messages and has no sandbox. A definition's task
-is never `done` either. A step whose task run holds a report request runs no further model turn, so
-when the lease of a step that called `task.report` expires, the rerun does no work and its commit
-sends the first summary and fields under the first report ID.
+A kept started task that reported is wakeable and waits with its sandbox asleep until the user
+closes it. A disposable one closes itself, as [the mark](#the-mark-and-closing) says. It is never
+`done`, because a `done` task refuses messages and has no sandbox. A definition's task is never
+`done` either. A step whose task run holds a report request runs no further model turn, so when the
+lease of a step that called `task.report` expires, the rerun does no work and its commit sends the
+first summary and fields under the first report ID.
 
 The end writer delivers the report, and the first row that applies decides:
 

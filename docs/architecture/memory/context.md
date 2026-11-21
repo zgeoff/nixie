@@ -83,9 +83,9 @@ the block: the count of active items that are not pinned, and the block's tokens
 The opening record stores those 2 numbers, as it stores every status value, and no item. A task with
 `memory: none` gets no memory block, and the sessions module reads no index for it. nixie writes no
 record of what the block showed, so trigger push can still place an item whose gist the block
-showed. The block reaches the model of the turn and no other provider. The sessions module places
-the block and the memory module renders and counts it, so the sessions module reaches memory only
-through its port.
+showed. The block goes to the model that runs the turn and to no other model. The sessions module
+places the block and the memory module renders and counts it, so the sessions module reaches memory
+only through its port.
 
 ## How an item reads
 
