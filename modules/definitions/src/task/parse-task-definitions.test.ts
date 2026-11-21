@@ -637,7 +637,7 @@ test('it seeds the memory consolidation example with its schedule, read memory a
   const parsed = ctx.parse(files);
 
   expect(parsed.definitions[0]?.form).toMatchObject({
-    trigger: { schedule: { every: 'week', on: 'sun', at: '03:00' } },
+    trigger: { schedule: { repeat: { frequency: 'weekly', byDay: ['sun'], at: ['03:00'] } } },
     memory: 'read',
     tools: [
       'tasks.list',
@@ -665,7 +665,7 @@ test('it seeds the moment reflection example with its daily schedule, read memor
   const parsed = ctx.parse(files);
 
   expect(parsed.definitions[0]?.form).toMatchObject({
-    trigger: { schedule: { every: 'day', at: '04:00' } },
+    trigger: { schedule: { repeat: { frequency: 'daily', at: ['04:00'] } } },
     context: 'fresh',
     memory: 'read',
     log: 'conversation',
@@ -697,7 +697,7 @@ test('it seeds the note-taking example with its daily schedule, conversation log
   const parsed = ctx.parse(files);
 
   expect(parsed.definitions[0]?.form).toMatchObject({
-    trigger: { schedule: { every: 'day', at: '21:00' } },
+    trigger: { schedule: { repeat: { frequency: 'daily', at: ['21:00'] } } },
     context: 'fresh',
     memory: 'read',
     log: 'conversation',
