@@ -34,6 +34,12 @@ const logReadInput = {
       pattern: '^[0-9]{1,15}$',
       description: 'the next cursor from the page before',
     },
+    role: {
+      type: 'string',
+      enum: ['owner', 'assistant', 'tool'],
+      description:
+        "read only this role's entries: the owner's messages, your replies, or tool results",
+    },
     limit: { type: 'integer', minimum: 1, maximum: 50 },
     record: {
       type: 'string',
@@ -113,6 +119,7 @@ const logReadArguments = z.object({
   to: z.string().optional(),
   query: z.string().optional(),
   after: z.string().optional(),
+  role: z.enum(['owner', 'assistant', 'tool']).optional(),
   limit: z.int().optional(),
   record: z.string().optional(),
 });
@@ -127,8 +134,10 @@ export function buildLogReadTool(
     description:
       "Returns one page of the log you can read, oldest first: the owner's messages, " +
       'your replies, and tool results, each with its eventID and time. A tool result also holds the callEventID of the call it answers. Pass from and to for a ' +
-      'time range, query for entries that hold every word, and after with the next cursor for ' +
-      'the next page. A read decrypts a bounded number of records, so a page with no entries and ' +
+      "time range, query for entries that hold every word, role for only the owner's messages, your " +
+      'replies or tool results, and after with the next cursor for the next page. A page never ' +
+      'exceeds the tool output limit: when it would, it holds fewer entries than limit and a next ' +
+      'cursor. A read decrypts a bounded number of records, so a page with no entries and ' +
       'a next cursor means the read stopped early and found no match yet, never that none exists: ' +
       'its note gives the span it searched, so pass next as after to go on, or narrow with from ' +
       'and to. ' +
@@ -183,6 +192,7 @@ export function buildLogReadTool(
           after: input.after === undefined ? 0 : Number(input.after),
           ...range,
           words: input.query === undefined ? [] : input.query.split(/\s+/u),
+          ...(input.role === undefined ? {} : { role: input.role }),
           limit: input.limit ?? defaultLimit,
           scanLimit: scanLimits.scanLimit,
         },
@@ -190,19 +200,20 @@ export function buildLogReadTool(
         scanLimits.emptySearchScanLimit,
       );
 
-      const next = page.next === null ? null : String(page.next);
+      const fitted = fitPageToLimit(page.entries, page.next);
+      const next = fitted.next === null ? null : String(fitted.next);
 
       return {
         status: 'ok',
         result: {
-          entries: page.entries.map((entry) => toEntryJSON(entry)),
+          entries: fitted.entries.map((entry) => toEntryJSON(entry)),
           next,
           ...(page.entries.length === 0 && page.next !== null
             ? { note: formatStoppedEarlyNote(page.scanned, page.searched) }
             : {}),
         },
         record: {
-          eventIDs: page.entries.map((entry) => String(entry.sequence)),
+          eventIDs: fitted.entries.map((entry) => String(entry.sequence)),
           next,
         },
       };
@@ -226,6 +237,7 @@ async function readWholeEntry(
     input.from !== undefined ||
     input.to !== undefined ||
     input.query !== undefined ||
+    input.role !== undefined ||
     input.limit !== undefined
   ) {
     return { status: 'error', message: 'record takes only after beside it' };
@@ -301,6 +313,34 @@ function formatRecordedAt(time: number): string {
   const iso = new Date(time).toISOString();
 
   return `${iso.slice(0, 10)} ${iso.slice(11, 16)} UTC`;
+}
+
+interface FittedPage {
+  readonly entries: readonly LogEntry[];
+  readonly next: number | null;
+}
+
+// Drops entries from the end until the page fits the tool output limit, and points the cursor at
+// the last entry kept. A page keeps at least one entry, which is cut to 2,000 characters.
+function fitPageToLimit(entries: readonly LogEntry[], next: number | null): FittedPage {
+  const kept = [...entries];
+
+  while (kept.length > 1 && measurePageBytes(kept) > recallPageLimitBytes) {
+    kept.pop();
+  }
+
+  const last = kept.at(-1);
+
+  return kept.length === entries.length || last === undefined
+    ? { entries, next }
+    : { entries: kept, next: last.sequence };
+}
+
+// The bytes of a page, with the longest cursor it can carry.
+function measurePageBytes(entries: readonly LogEntry[]): number {
+  const shell = { entries: entries.map((entry) => toEntryJSON(entry)), next: '9'.repeat(16) };
+
+  return Buffer.byteLength(JSON.stringify(shell));
 }
 
 function formatStoppedEarlyNote(scanned: number, searched: LogPageRead['searched']): string {

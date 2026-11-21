@@ -9,6 +9,7 @@ import type {
 import { readRecords } from '@heynixie/log';
 import { readVoidedReplies } from '@heynixie/models';
 import { renderImageMarkers, renderOwnerText } from '@heynixie/sessions';
+import { match } from 'ts-pattern';
 import { z } from 'zod';
 import { formatToolEntry } from '../tool/format-tool-entry';
 import { readToolShortIDs } from '../tool/read-tool-short-ids';
@@ -25,6 +26,9 @@ export interface LogPageQuery {
   readonly to: number | null;
 
   readonly words: readonly string[];
+
+  // only the entries of this role; every role when absent
+  readonly role?: 'owner' | 'assistant' | 'tool';
   readonly limit: number;
 
   readonly scanLimit: number;
@@ -124,6 +128,15 @@ export async function readLogEntry(
 
 const entryKinds: readonly RecordKind[] = [...conversationKinds, 'tool_result', 'task_message'];
 
+function pickPageKinds(query: LogPageQuery): readonly RecordKind[] {
+  return match(query.role)
+    .with(undefined, () => entryKinds)
+    .with('owner', () => ['owner_message' as const])
+    .with('assistant', () => ['model.reply' as const])
+    .with('tool', () => ['tool_result' as const])
+    .exhaustive();
+}
+
 interface SequenceBounds {
   readonly after: number;
   readonly through: number;
@@ -138,7 +151,7 @@ async function readSequenceBounds(
     .selectFrom('records')
     .select((eb) => [eb.fn.min('sequence').as('first'), eb.fn.max('sequence').as('last')])
     .where('thread', '=', query.thread)
-    .where('kind', 'in', entryKinds)
+    .where('kind', 'in', pickPageKinds(query))
     .where('sequence', '>', query.after)
     .$if(query.from !== null, (select) => select.where('recorded_at', '>=', query.from ?? 0))
     .$if(query.to !== null, (select) => select.where('recorded_at', '<', query.to ?? 0))
@@ -179,7 +192,7 @@ async function readPageEntries(
       afterSequence: scan.after,
       beforeSequence: bounds.through + 1,
       thread: query.thread,
-      kinds: entryKinds,
+      kinds: pickPageKinds(query),
       limit: Math.min(batchSize, query.scanLimit - scan.scanned),
     });
 

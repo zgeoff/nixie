@@ -38,8 +38,9 @@ export function buildTaskStartTool(
   return {
     name: 'task.start',
     description:
-      `Starts a new task for work that ${owner} asks for and that needs its own context, can ` +
-      'wait, or lasts beyond this turn. Give it a short name, such as "Garden plan", and a brief ' +
+      'Starts a new task for work that needs its own context, can wait, or lasts beyond this ' +
+      `turn, whether ${owner} asked for it or you saw it needed doing. ` +
+      'Give it a short name, such as "Garden plan", and a brief ' +
       'that holds everything the task needs to do the work, because the task sees only its ' +
       'brief and the messages it receives. When a task may already cover the work, check ' +
       'tasks.list, and pass the work to that task with task.message instead. The task speaks as you ' +

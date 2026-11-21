@@ -87,6 +87,9 @@ export interface SessionOpening {
   readonly record: OpeningRecord;
 }
 
+const summaryCue =
+  'You wrote this summary from recollection. Before you rely on a decision in it, check its note or event ID.';
+
 export async function readSessionOpening(
   context: Pick<TasksContext, 'log' | 'clock'>,
   query: SessionOpeningQuery,
@@ -147,6 +150,8 @@ export async function readSessionOpening(
     mint,
   );
 
+  const summaryBody = summary === null ? null : `${summary.text}\n${summaryCue}`;
+
   const blocks = [
     statusBlock,
     memoryBlock,
@@ -159,7 +164,7 @@ export async function readSessionOpening(
           { taskID: query.taskID, times: query.times, messaging: query.messaging },
           mint,
         ),
-    renderOpeningMessage('summary', at, summary?.text ?? null, mint),
+    renderOpeningMessage('summary', at, summaryBody, mint),
     renderOpeningMessage(
       'recent-turns',
       at,

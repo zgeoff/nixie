@@ -1012,3 +1012,17 @@ test('it starts a task with the own log when the start sets none', async () => {
 
   expect(setup.options?.log).toBe('own');
 });
+
+test('it describes a task as work that needs its own context, whether the owner asked or the model saw it needed', async () => {
+  const ctx = await setupTest();
+
+  const tool = buildTaskStartTool(
+    ctx.context,
+    { hopLimit: 20, ownerName: 'Robin' },
+    buildMockTaskStartBounds(),
+  );
+
+  expect(tool.description).toStartWith(
+    'Starts a new task for work that needs its own context, can wait, or lasts beyond this turn, whether Robin asked for it or you saw it needed doing. Give it a short name,',
+  );
+});

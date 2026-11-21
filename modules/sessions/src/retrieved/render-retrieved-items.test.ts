@@ -53,7 +53,8 @@ test('it renders each item as its text, the line that says where it came from an
       b7kq2m9xza v3 · 13 Oct 2025 · you noted it · from a pasted page · Robin approved
       How it came up: "I water the \\"fern\\" on Sundays\\nwithout fail"
     - Plays the cello on Sundays
-      h4ns8w1cpe v1 · 14 Sep · Robin said this"
+      h4ns8w1cpe v1 · 14 Sep · Robin said this
+    These are the items closest to this turn, not all that memory holds. Before you state what was said or decided, check it with memory.recall or log.read."
   `);
 });
 
@@ -79,7 +80,10 @@ test('it reads an approved item as approved with its stored source left as outsi
     now: new Date('2026-10-14T12:00:00Z'),
   });
 
-  expect(block).toEndWith('  b7kq2m9xza v2 · 12 Oct · you noted it · unconfirmed · Robin approved');
+  expect(block).toInclude(
+    '\n  b7kq2m9xza v2 · 12 Oct · you noted it · unconfirmed · Robin approved\n',
+  );
+
   expect(block).not.toInclude('untrusted');
   expect(item.source).toBe('untrusted');
 });

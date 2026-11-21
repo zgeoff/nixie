@@ -130,6 +130,10 @@ of them. The store drops each query word that the index stems the same as one of
 whatever its case, and leaves the names out of the text it encodes. While the vector index rebuilds
 after a start, a search places keyword matches alone.
 
+The block ends with a line that tells the model the items are the ones closest to the turn and not
+all that memory holds, and to check what was said or decided with `memory.recall` or `log.read`
+before stating it.
+
 Placing reads each pick's current text version under the delivery lock, so the version a turn sees
 is the version it records. A pick that was pinned, retired or forgotten since the selection drops
 out, and no other match takes its place. The turn appends one `memory.recalled` record, which lists
@@ -199,7 +203,11 @@ messages. Past messages reach the model only through this tool. A read returns o
 user's messages, the replies and the tool results, oldest first, each with its event ID, which is
 the record's sequence. A tool result also carries the event ID of the call it answers, as
 `callEventID`, because nothing else shows the model the ID of a call. The model narrows a read by a
-time range or by words that every entry must hold, and pages on with the cursor the read returns.
+time range, by words that every entry must hold, or by `role`, which keeps only the user's messages
+(`owner`), the replies (`assistant`) or the tool results (`tool`), and pages on with the cursor the
+read returns. A page never exceeds the tool output limit: when its entries would, the read returns
+the first ones that fit, with a cursor after the last of them, so a `limit` of 50 over long tool
+results returns fewer entries.
 
 Each read returns a bounded number of entries. It decrypts 500 records a page, and a page that holds
 no entry keeps reading the next 500, up to 5,000 records in one call, so most searches find their

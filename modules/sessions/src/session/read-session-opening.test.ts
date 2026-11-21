@@ -265,6 +265,11 @@ test('it opens with the newest readable summary in its slot and only the turns a
   ).toStrictEqual(['status', 'pinned-memory', 'summary', 'recent-turns']);
 
   expect(opening.blocks.at(2)).toInclude('\nThey asked after a parcel.\n');
+
+  expect(opening.blocks.at(2)).toInclude(
+    '\nYou wrote this summary from recollection. Before you rely on a decision in it, check its note or event ID.\n',
+  );
+
   expect(opening.blocks.at(3)).toInclude('] owner: It came.');
   expect(opening.blocks.at(3)).not.toInclude('parcel');
   expect(opening.record).toMatchObject({ summarySequence: 2, recentRecords: 1 });
