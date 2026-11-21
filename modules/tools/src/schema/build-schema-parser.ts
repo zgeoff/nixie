@@ -136,8 +136,13 @@ function findSize(value: unknown, segments: readonly string[]): number | null {
   }
 
   if (typeof node === 'string') {
-    return [...node].length;
+    return countCodePoints(node);
   }
 
   return Array.isArray(node) ? node.length : null;
+}
+
+// Ajv counts a limit in code points, so a character outside the basic plane counts once.
+function countCodePoints(text: string): number {
+  return text.match(/./gsu)?.length ?? 0;
 }
