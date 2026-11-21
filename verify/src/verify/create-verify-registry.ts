@@ -389,12 +389,12 @@ export function createVerifyRegistry(): Wringer {
       },
       {
         name: 'computer-browser',
-        summary: 'The assistant opens a page in its own browser',
+        summary: "Open a page in the assistant's browser",
         paths: featurePaths['computer-browser'],
       },
       {
         name: 'computer-shell',
-        summary: 'The assistant writes a file on its own shell and reads it back',
+        summary: 'Write and read back a shell file',
         paths: featurePaths['computer-shell'],
       },
       {
