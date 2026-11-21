@@ -45,27 +45,47 @@ image.draw({ prompt: 'a lighthouse keeper asleep at the lamp' });
 //     profiles: ['gemini'] }
 //   a result with refusalCode 'IMAGE_REFUSED'; profiles lists the others, and is empty when there are none
 
-image.list({ from: 'k3x9m2p7qa' });
-// → { images: [{ image: 'p8d2v6t1wz', from: 'k3x9m2p7qa', prompt: 'move the boat…', isForgotten: false,
-//                at: '2026-11-21T08:10:00Z' }], next: null }
-//   newest first; `from` lists one image's edits; a forgotten image lists with prompt null
+image.draw({
+  prompt: 'the keeper from the reference, now rowing out at dawn',
+  references: ['m4t7q1x8ze'],
+});
+// references: up to 4 image IDs the provider sees beside the prompt, so a character stays the same
+
+image.mark({ image: 'p8d2v6t1wz', name: 'cove, final', isKept: true });
+// → { image: 'p8d2v6t1wz', name: 'cove, final', isKept: true }
+
+image.import({ file: 'f9k2m4q7ws' }); // a code.run file, or { photo: { eventID: '1042', number: 1 } }
+// → { image: 'h6w3n8r2pk', from: null, size: '1024x1024', isShown: true }
+//   an imported image can be a `from` or a reference like any other
+
+image.list({ isKept: true });
+// → { images: [{ image: 'p8d2v6t1wz', name: 'cove, final', isKept: true, from: 'k3x9m2p7qa',
+//                prompt: 'move the boat…', isForgotten: false, at: '2026-11-21T08:10:00Z' }], next: null }
+//   newest first; filter by `from` for one image's edits or by `isKept`; a forgotten image lists with prompt null
 
 image.read({ image: 'k3x9m2p7qa' });
 // → { image: 'k3x9m2p7qa', from: null, prompt: 'a small cove…', size: '1536x1024', isShown: true }
 //   with the picture beside the result; a forgotten image returns "The image k3x9m2p7qa was forgotten."
 ```
 
-`isShown` is false when the session's image caps leave no room for the picture. nixie still stores
-the image, and `image.read` shows it later.
+`isShown` is false only on `image.read` and `image.import`, when the session's image caps leave no
+room. `image.draw` never pays for a picture the assistant can't see: its `check` refuses with
+`IMAGE_CAPS_FULL` before the charge, and the refusal says that the next turn opens a rebuilt
+session, where earlier pictures show as markers and `image.read` brings any one back.
 
 ```ts
 // connectors module
 type ImageDrawInput =
-  | { prompt: string; size?: ImageSize; profile?: string } // a new image; size defaults to the profile's first
-  | { prompt: string; from: string; profile?: string }; // an edit, at the size of `from`
+  | { prompt: string; size?: ImageSize; profile?: string; references?: string[] } // a new image
+  | { prompt: string; from: string; profile?: string; references?: string[] }; // an edit, at the size of `from`
 // prompt: 1 to 4,000 characters. profile: a key of images.profiles; images.default when absent.
+// size defaults to the profile's first. references: 0 to 4 image IDs.
 type ImageSize = '1024x1024' | '1536x1024' | '1024x1536';
-// declaration: paid, effects ['fetch'], execution 'direct', results { prompt: 'untrusted' }
+
+// image.draw: paid, effects ['fetch'], execution 'direct', results { prompt: 'untrusted' }
+// image.mark, image.list, image.read: effects ['note'], execution 'direct'
+// image.import: effects ['send'], queued; destination: the image providers.
+//   Your starter rules allow it for a code.run file and ask for one of your photos.
 ```
 
 ### The provider interface
@@ -81,6 +101,7 @@ interface DrawRequest {
   prompt: string;
   size: ImageSize;
   source?: { mediaType: string; bytes: Uint8Array }; // an edit: the stored image, sent whole
+  references: { mediaType: string; bytes: Uint8Array }[]; // 0 to 4
 }
 
 type DrawReply =
@@ -143,8 +164,11 @@ images                         -- connectors module
   sequence     integer         -- the tool_result record whose attachments hold the bytes
   position     integer         -- the attachment's index on that record; 0 for image.draw
   parent_id    text null       -- the image an edit started from
-  profile      text
-  model        text
+  source       text            -- 'draw', 'code_file' or 'photo'
+  name         text null       -- erasable, from image.mark
+  is_kept      integer         -- 0 or 1, from image.mark
+  profile      text null       -- null for an imported image
+  model        text null
   media_type   text
   size         text
   byte_count   integer
@@ -165,6 +189,10 @@ Storage:
   or response ID between calls.
 - A notebook page, a device and `file.send` refer to an image by its short ID, never by a copy of
   its bytes, and none of them keeps the bytes past a forget.
+- An imported photo keeps the photo's own record as its source, so a forget of your message erases
+  the imported image too.
+- A photo reaches a provider only after you approve its `image.import`, or a rule you wrote allows
+  it.
 
 Forgets:
 
@@ -209,8 +237,14 @@ Showing:
 - Drawing with code, such as SVG or a canvas. The assistant does that today with `code.run`.
 - A gallery page in the web client. `file.send` sends you an image.
 - Video, and image models beyond the 2 profiles.
+- Importing a picture from a fetched page. nixie keeps no copy of a fetched image; the computer's
+  `computer.download` saves one as a file.
 
 ## Open questions
+
+- **Are the session's image caps roomy enough for drawing in passes?** A measurement settles it:
+  count the passes in a real sitting. Until then, the caps stay as they are, and a full session
+  rebuilds at the next turn.
 
 - **Are `image.draw`, `image.list` and `image.read` the right names?** The owner settles it. Until
   then, the build uses them.
