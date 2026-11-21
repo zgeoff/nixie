@@ -1,12 +1,23 @@
+import { readFileSync } from 'node:fs';
 import { homedir, userInfo } from 'node:os';
 import { join } from 'node:path';
 import { runComputerGuest } from '@heynixie/wire';
-import { makeBrowserHandler } from './browser/make-browser-handler';
 
 // The browser of the test build: a .test host resolves to loopback and loopback is allowed.
 // The process sandbox points HOME at the sandbox's own folder, which holds no browser download, so
 // the browsers are looked up under the account's real home.
-process.env['PLAYWRIGHT_BROWSERS_PATH'] ??= join(userInfo().homedir, '.cache', 'ms-playwright');
+const account = readFileSync('/etc/passwd', 'utf8')
+  .split('\n')
+  .find((line) => line.startsWith(`${userInfo().username}:`));
+
+process.env['PLAYWRIGHT_BROWSERS_PATH'] ??= join(
+  account?.split(':')[5] ?? homedir(),
+  '.cache',
+  'ms-playwright',
+);
+
+// Playwright reads the variable when it loads, so the handler loads after it is set.
+const handlerModule = await import('./browser/make-browser-handler');
 
 await runComputerGuest(
   {
@@ -15,7 +26,7 @@ await runComputerGuest(
       await Bun.write(Bun.stdout, bytes);
     },
   },
-  makeBrowserHandler({
+  handlerModule.makeBrowserHandler({
     home: homedir(),
     resolveHost: () => Promise.resolve(['127.0.0.1']),
     checkAddress: () => true,
