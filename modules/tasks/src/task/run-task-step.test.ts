@@ -211,7 +211,7 @@ test('it aborts the step and commits nothing once the lease is lost', async () =
 
   await runTaskStep(ctx.context, claim, {
     runStep: async (input) => {
-      await waitForCondition(() => ctx.clock.countSleepers() === 1);
+      await waitForCondition(() => ctx.clock.countPending() === 1);
 
       ctx.clock.advance(60_000);
 

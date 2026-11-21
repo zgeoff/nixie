@@ -6,7 +6,7 @@ import { checkPromptProposal } from '@heynixie/definitions';
 import { writeRecords } from '@heynixie/log';
 import { promptsOverrideProposedCodec, writePromptProposalAnswer } from '@heynixie/prompts';
 import { buildEventRegistry, readEventsNote } from '@heynixie/sessions';
-import { buildTestClock } from '@heynixie/testing';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import { startTestLog } from '../test-utils/start-test-log';
 import { buildPromptProposalAnswerKind } from './build-prompt-proposal-answer-kind';
 
@@ -53,7 +53,7 @@ test("it lists the owner's rejection of a prompt proposal on the proposal's thre
   await writePromptProposalAnswer(
     {
       log: ctx.log,
-      clock: buildTestClock(Date.UTC(2025, 9, 13, 22, 40)),
+      clock: createFakeClock({ startMs: Date.UTC(2025, 9, 13, 22, 40) }),
       definitions: () => ({ snapshotHash: 'snapshot-a' }),
       readInForce: () => null,
       checkProposal: checkPromptProposal,
@@ -104,7 +104,7 @@ test('it leaves out the answers to a proposal on another thread', async () => {
   await writePromptProposalAnswer(
     {
       log: ctx.log,
-      clock: buildTestClock(Date.UTC(2025, 9, 13, 22, 40)),
+      clock: createFakeClock({ startMs: Date.UTC(2025, 9, 13, 22, 40) }),
       definitions: () => ({ snapshotHash: 'snapshot-a' }),
       readInForce: () => null,
       checkProposal: checkPromptProposal,

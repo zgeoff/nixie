@@ -1,6 +1,8 @@
 import { expect, test } from 'bun:test';
 import { readTestRecordKeyRows } from '@heynixie/log/test-utils';
+import { network } from '@heynixie/mock-server';
 import { decodeCaptureTag } from '@heynixie/wire';
+import { HttpResponse, http } from 'msw';
 import { createTurnInputs } from '../create-turn-inputs';
 import { startTestTurnInputs } from '../test-utils';
 import { getTurnInputsDB } from '../utils/get-turn-inputs-db';
@@ -146,6 +148,9 @@ test.each([
   ['a gateway of no source', 'https://other.example.test/claude'],
   ['a host that a source host prefixes', 'https://gw.example.test.evil.test/claude'],
 ])('it writes one no_capture_point miss for %s', async (_title, baseURL) => {
+  // the configured gateway is a host that nothing answers
+  network.use(http.get('https://gw.example.test/~capture', () => HttpResponse.error()));
+
   const ctx = await setupTest({
     config: {
       sources: {

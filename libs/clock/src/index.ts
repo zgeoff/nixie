@@ -1,6 +1,6 @@
 export { formatAge } from './format-age';
 export { setWorkTracker } from './set-work-tracker';
-export { systemClock } from './system-clock';
+export { systemClock } from '@zgeoff/std';
 export type { Clock, WorkTracker } from './types';
 export { withTrackedWork } from './with-tracked-work';
 export { buildDayStart } from './zone/build-day-start';

@@ -208,11 +208,11 @@ test('it ends a mandate within a minute of its expiry with the timer', async () 
 
   const timer = ctx.startTimer();
 
-  await waitForCondition(() => ctx.clock.countSleepers() === 1);
+  await waitForCondition(() => ctx.clock.countPending() === 1);
 
   ctx.clock.advance(4 * ctx.hourMs);
 
-  await waitForCondition(() => ctx.clock.countSleepers() === 1);
+  await waitForCondition(() => ctx.clock.countPending() === 1);
 
   ctx.clock.advance(60_000);
 

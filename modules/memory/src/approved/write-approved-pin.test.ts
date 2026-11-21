@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test';
 import { readRecords } from '@heynixie/log';
-import { buildTestClock } from '@heynixie/testing';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import invariant from 'tiny-invariant';
 import { buildMockProvenance } from '../test-utils/build-mock-provenance';
 import { buildMockWriteCaller } from '../test-utils/build-mock-write-caller';
@@ -200,7 +200,7 @@ test('it refuses to approve a pin of a version the item moved past', async () =>
 });
 
 test('it refuses to approve a pin of an item whose end time passed before the sweep, and keeps the proposal', async () => {
-  const clock = buildTestClock(Date.parse('2026-10-19T09:00:00Z'));
+  const clock = createFakeClock({ startMs: Date.parse('2026-10-19T09:00:00Z') });
 
   const memory = await startTestMemory({ gate: { clock } });
 

@@ -11,7 +11,8 @@ import {
   startTestServer,
 } from '@heynixie/server/test-utils';
 import { runTaskSteps } from '@heynixie/tasks/test-utils';
-import { buildTestClock, waitForCondition } from '@heynixie/testing';
+import { waitForCondition } from '@heynixie/testing';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import invariant from 'tiny-invariant';
 
 test('it turns every write a poisoned page causes into a proposal from outside content', async () => {
@@ -47,7 +48,7 @@ test('it turns every write a poisoned page causes into a proposal from outside c
 
   const server = await startTestServer(tools.buildTools, { fakeGuest: true });
 
-  const clock = buildTestClock(1_000_000);
+  const clock = createFakeClock({ startMs: 1_000_000 });
   const context = { ...server.context, clock };
 
   const store = await startMemoryStore({

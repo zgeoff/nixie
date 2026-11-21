@@ -1,9 +1,9 @@
-/* oxlint-disable id-length -- the image pointer's field is n, as the number input of log.read_image names it */
 import { expect, test } from 'bun:test';
 import { readRecords, writeRecords } from '@heynixie/log';
 import { buildAllowingDecisionPoint } from '@heynixie/policy/test-utils';
-import { buildTestClock } from '@heynixie/testing';
 import { buildToolRegistry, runToolCall } from '@heynixie/tools';
+/* oxlint-disable id-length -- the image pointer's field is n, as the number input of log.read_image names it */
+import { createFakeClock } from '@zgeoff/testing/clock';
 import invariant from 'tiny-invariant';
 import { z } from 'zod';
 import { buildMemoryTools } from '../../memory/build-memory-tools';
@@ -14,7 +14,7 @@ import type { MomentTables } from '../../utils/moment-context';
 import { buildMomentReadTool } from './build-moment-read-tool';
 
 async function setupTest() {
-  const clock = buildTestClock(Date.parse('2026-10-14T11:10:00Z'));
+  const clock = createFakeClock({ startMs: Date.parse('2026-10-14T11:10:00Z') });
 
   const memory = await startTestMemory({ logClock: clock });
 

@@ -1,11 +1,11 @@
 import { expect, test } from 'bun:test';
 import { modelsConfigSchema } from '@heynixie/models';
-import { buildTestClock } from '@heynixie/testing';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import { startTestSessionHost } from '../test-utils/start-test-session-host';
 import { startWorkerTool } from './start-worker-tool';
 
 async function setupTest() {
-  const clock = buildTestClock(1_000_000);
+  const clock = createFakeClock({ startMs: 1_000_000 });
 
   const host = await startTestSessionHost({ clock, tools: [] });
 

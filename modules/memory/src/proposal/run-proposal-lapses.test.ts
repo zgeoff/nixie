@@ -1,12 +1,12 @@
 import { expect, test } from 'bun:test';
 import { readRecordKeys } from '@heynixie/log';
-import { buildTestClock } from '@heynixie/testing';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import { createProposal } from '../test-utils/create-proposal';
 import { startTestMemory } from '../test-utils/start-test-memory';
 import type { MemoryTables } from '../types';
 
 test("it lapses a proposal past its lapse time and drops its new item's key", async () => {
-  const clock = buildTestClock(1_000_000);
+  const clock = createFakeClock({ startMs: 1_000_000 });
 
   const memory = await startTestMemory({
     gate: {
@@ -36,7 +36,7 @@ test("it lapses a proposal past its lapse time and drops its new item's key", as
 });
 
 test('it never lapses a proposal before its lapse time', async () => {
-  const clock = buildTestClock(1_000_000);
+  const clock = createFakeClock({ startMs: 1_000_000 });
 
   const memory = await startTestMemory({
     gate: {

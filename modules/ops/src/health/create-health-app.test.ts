@@ -1,6 +1,7 @@
 import { expect, mock, test } from 'bun:test';
 import type { Logger } from '@heynixie/logger';
-import { buildTestClock, waitForCondition } from '@heynixie/testing';
+import { waitForCondition } from '@heynixie/testing';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import { createHealthApp } from './create-health-app';
 
 test('it answers readiness with 200 and every part when all are ready', async () => {
@@ -81,7 +82,7 @@ test('it answers readiness with 200 while an advisory part fails, with that part
 });
 
 test('it answers readiness with 200 and the status degraded while a dependency check times out', async () => {
-  const clock = buildTestClock(0);
+  const clock = createFakeClock({ startMs: 0 });
 
   const app = createHealthApp({
     liveness: {
@@ -107,7 +108,7 @@ test('it answers readiness with 200 and the status degraded while a dependency c
 
   const pending = app.handle(new Request('http://nixie/health/ready'));
 
-  await waitForCondition(() => clock.countSleepers() === 1);
+  await waitForCondition(() => clock.countPending() === 1);
 
   clock.advance(2000);
 

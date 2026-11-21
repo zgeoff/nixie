@@ -250,7 +250,7 @@ test('it gives capture_closed for a file that arrives after the close', async ()
 
   const work = ctx.turnInputs.startWork();
 
-  await waitForCondition(() => ctx.clock.countSleepers() === 2);
+  await waitForCondition(() => ctx.clock.countPending() === 2);
 
   ctx.clock.advance(1000);
 
@@ -288,12 +288,12 @@ test('it gives intake_failed and removes the file after 5 failed intakes in a ro
 
   const work = ctx.turnInputs.startWork();
 
-  await waitForCondition(() => ctx.clock.countSleepers() === 2);
+  await waitForCondition(() => ctx.clock.countPending() === 2);
 
   for (let tick = 0; tick < 5; tick += 1) {
     ctx.clock.advance(1000);
 
-    await waitForCondition(() => ctx.clock.countSleepers() === 2);
+    await waitForCondition(() => ctx.clock.countPending() === 2);
   }
 
   await work.stop();

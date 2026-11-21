@@ -5,8 +5,8 @@ import { join } from 'node:path';
 import { createPathSource } from '@heynixie/definitions';
 import { buildStubDefinitionsRepo, buildTestTaskSeed } from '@heynixie/definitions/test-utils';
 import { buildTestRunSettings, buildTestTaskRunners } from '@heynixie/tasks/test-utils';
-import { buildTestClock } from '@heynixie/testing';
 import { buildToolRegistry } from '@heynixie/tools';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import invariant from 'tiny-invariant';
 import { refreshDefinitions } from '../definition/refresh-definitions';
 import { runDefinitionsSeed } from '../definition/run-definitions-seed';
@@ -50,7 +50,7 @@ async function setupTest() {
 
   const skillContext = {
     log: context.apiContext.log,
-    clock: buildTestClock(0),
+    clock: createFakeClock({ startMs: 0 }),
     readInForce: () => context.inForce.read(),
     runInForceSeed: () => Promise.resolve(),
     refreshDefinitions: () => refreshDefinitions(parts, context.inForce),

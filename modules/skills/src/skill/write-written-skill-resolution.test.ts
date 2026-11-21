@@ -12,7 +12,7 @@ import {
 } from '@heynixie/definitions';
 import { buildTestTaskSeed } from '@heynixie/definitions/test-utils';
 import { readRecords, startWriter, withWriteTransaction } from '@heynixie/log';
-import { buildTestClock } from '@heynixie/testing';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import invariant from 'tiny-invariant';
 import { writeWrittenSkillResolution } from './write-written-skill-resolution';
 
@@ -48,7 +48,7 @@ async function setupTest() {
     source: createPathSource({ directory: root }),
     context: {
       log,
-      clock: buildTestClock(0),
+      clock: createFakeClock({ startMs: 0 }),
       definitions: () => ({ snapshotHash: 'snapshot-a' }),
       runInForceSeed: async () => {
         await runInForceSeed({ log, buildPolicy: () => policy });

@@ -1,9 +1,10 @@
 import { expect, mock, onTestFinished, test } from 'bun:test';
 import { writeRecords } from '@heynixie/log';
-import { buildTestClock, waitForCondition } from '@heynixie/testing';
+import { waitForCondition } from '@heynixie/testing';
 import type { ToolImage } from '@heynixie/tools';
 import { buildToolRegistry } from '@heynixie/tools';
 import type { FetchReply } from '@heynixie/wire';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import { sql } from 'kysely';
 import invariant from 'tiny-invariant';
 import { makeFetchBackoff } from '../fetch/make-fetch-backoff';
@@ -18,7 +19,7 @@ import { buildWebFetchTool } from './build-web-fetch-tool';
 import { removeWebFetchThread } from './remove-web-fetch-thread';
 
 async function setupTest() {
-  const clock = buildTestClock(1_000_000);
+  const clock = createFakeClock({ startMs: 1_000_000 });
 
   return {
     log: await startTestLog(),
@@ -459,7 +460,7 @@ test("it fetches the URL of a search hit by the hit's link ID", async () => {
     },
     {
       log: ctx.log,
-      clock: buildTestClock(Date.parse('2026-11-07T01:00:00.000Z')),
+      clock: createFakeClock({ startMs: Date.parse('2026-11-07T01:00:00.000Z') }),
       dailyCallCap: 200,
       timeZone: 'UTC',
     },

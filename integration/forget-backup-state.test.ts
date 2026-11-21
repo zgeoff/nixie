@@ -30,9 +30,10 @@ import {
   buildTestRunSettings,
   buildTestTaskRunners,
 } from '@heynixie/tasks/test-utils';
-import { buildTestClock, waitForCondition } from '@heynixie/testing';
+import { waitForCondition } from '@heynixie/testing';
 import { createORPCClient } from '@orpc/client';
 import { RPCLink } from '@orpc/client/fetch';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import invariant from 'tiny-invariant';
 import { buildSeeder } from './test-utils/build-seeder';
 
@@ -45,7 +46,7 @@ async function setupTest() {
 
   stack.defer(() => rm(dataDir, { recursive: true, force: true }));
 
-  const clock = buildTestClock(Date.parse('2026-11-02T09:00:00Z'));
+  const clock = createFakeClock({ startMs: Date.parse('2026-11-02T09:00:00Z') });
 
   const writer = await startWriter({ dataDir, clock });
 

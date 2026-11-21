@@ -1,13 +1,13 @@
 import { expect, test } from 'bun:test';
 import { readRecords } from '@heynixie/log';
-import { buildTestClock } from '@heynixie/testing';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import { buildMemorySeeder } from '../test-utils/build-memory-seeder';
 import { buildMockProvenance } from '../test-utils/build-mock-provenance';
 import { startTestMemory } from '../test-utils/start-test-memory';
 import type { MemoryIndexConfig } from './default-index-settings';
 
 async function setupTest(index?: Partial<MemoryIndexConfig>) {
-  const clock = buildTestClock(Date.parse('2026-11-02T09:00:00Z'));
+  const clock = createFakeClock({ startMs: Date.parse('2026-11-02T09:00:00Z') });
 
   const memory = await startTestMemory({
     gate: { clock },

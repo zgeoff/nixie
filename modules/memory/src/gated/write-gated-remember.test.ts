@@ -7,7 +7,8 @@ import {
 import { writeRecords } from '@heynixie/log';
 import { removeTestRecordKey } from '@heynixie/log/test-utils';
 import { makeChecker } from '@heynixie/sessions';
-import { buildTestClock, makeGatedCall } from '@heynixie/testing';
+import { makeGatedCall, waitForCondition } from '@heynixie/testing';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import invariant from 'tiny-invariant';
 import {
   buildMockCheckerAnswer,
@@ -359,14 +360,15 @@ test.each([
 });
 
 test('it proposes a write when the checker times out', async () => {
+  const clock = createFakeClock({ startMs: 1_700_000_000_000 });
+
   const memory = await startTestMemory({
     gate: {
       check: makeChecker({
         ask: () => Promise.withResolvers<never>().promise,
         model: 'claude-sonnet-5-5',
-
-        clock: buildTestClock(1_700_000_000_000),
-        timeoutMs: 0,
+        clock,
+        timeoutMs: 1000,
       }),
     },
   });
@@ -377,11 +379,19 @@ test('it proposes a write when the checker times out', async () => {
     spans: [{ start: 0, end: 22, source: 'typed' }],
   });
 
-  const outcome = await memory.store.writes.remember({
+  const outcomeWait = memory.store.writes.remember({
     text: 'Takes coffee black',
     quote: 'I take my coffee black',
     caller: buildMockWriteCaller(),
   });
+
+  // the checker's timeout waits on the test clock, and the memory's own work between the writes
+  // takes real time, so the test waits in real time for the timeout to start
+  await waitForCondition(() => clock.countPending() > 0);
+
+  clock.advance(1000);
+
+  const outcome = await outcomeWait;
 
   expect(outcome).toMatchObject({ status: 'proposed', reason: 'checker_unreachable' });
 });
@@ -391,7 +401,7 @@ test('it gives the checker your one message with when and where you sent it, and
 
   const memory = await startTestMemory({
     gate: { check },
-    logClock: buildTestClock(Date.parse('2026-10-19T08:14:00Z')),
+    logClock: createFakeClock({ startMs: Date.parse('2026-10-19T08:14:00Z') }),
   });
 
   await writeOwnerMessageRecord(memory.log, {
@@ -823,8 +833,8 @@ test('it applies a write with an end time at once when the checker confirms its 
   const check = mock(() => Promise.resolve(buildMockCheckerAnswer({ verdict: 'asserted' })));
 
   const memory = await startTestMemory({
-    gate: { check, clock: buildTestClock(Date.parse('2026-10-19T08:30:00Z')) },
-    logClock: buildTestClock(Date.parse('2026-10-19T08:14:00Z')),
+    gate: { check, clock: createFakeClock({ startMs: Date.parse('2026-10-19T08:30:00Z') }) },
+    logClock: createFakeClock({ startMs: Date.parse('2026-10-19T08:14:00Z') }),
   });
 
   await writeOwnerMessageRecord(memory.log, {
@@ -866,7 +876,7 @@ test('it proposes a write with an end time that the checker does not confirm, an
   const memory = await startTestMemory({
     gate: {
       check: () => Promise.resolve(buildMockCheckerAnswer({ verdict: 'not_asserted' })),
-      clock: buildTestClock(Date.parse('2026-10-19T08:30:00Z')),
+      clock: createFakeClock({ startMs: Date.parse('2026-10-19T08:30:00Z') }),
     },
   });
 
@@ -894,7 +904,7 @@ test('it proposes a write with an end time that the checker does not confirm, an
 
 test('it lapses a proposal at its end time when that comes before the lapse window ends', async () => {
   const memory = await startTestMemory({
-    gate: { clock: buildTestClock(Date.parse('2026-10-19T08:30:00Z')) },
+    gate: { clock: createFakeClock({ startMs: Date.parse('2026-10-19T08:30:00Z') }) },
   });
 
   await memory.store.writes.remember({
@@ -909,7 +919,7 @@ test('it lapses a proposal at its end time when that comes before the lapse wind
 });
 
 test('it keeps a merged proposal lapsing at its end time when a fresh lapse window would end later', async () => {
-  const clock = buildTestClock(Date.parse('2026-10-19T08:30:00Z'));
+  const clock = createFakeClock({ startMs: Date.parse('2026-10-19T08:30:00Z') });
 
   const memory = await startTestMemory({ gate: { clock } });
 
@@ -937,7 +947,7 @@ test('it refuses a write whose end time has passed, before any check runs and wi
   const check = mock(() => Promise.resolve(buildMockCheckerAnswer()));
 
   const memory = await startTestMemory({
-    gate: { check, clock: buildTestClock(Date.parse('2026-10-26T08:30:00Z')) },
+    gate: { check, clock: createFakeClock({ startMs: Date.parse('2026-10-26T08:30:00Z') }) },
   });
 
   const write = memory.store.writes.remember({
@@ -960,7 +970,7 @@ test('it proposes an edit that adds an end time without a quote that backs it', 
   const check = mock(() => Promise.resolve(buildMockCheckerAnswer()));
 
   const memory = await startTestMemory({
-    gate: { check, clock: buildTestClock(Date.parse('2026-10-19T08:30:00Z')) },
+    gate: { check, clock: createFakeClock({ startMs: Date.parse('2026-10-19T08:30:00Z') }) },
   });
 
   const item = await memory.store.remember({
@@ -990,7 +1000,7 @@ test('it keeps the end time of an item that an edit without an end time rewrites
   const memory = await startTestMemory({
     gate: {
       check: () => Promise.resolve(buildMockCheckerAnswer()),
-      clock: buildTestClock(Date.parse('2026-10-19T08:30:00Z')),
+      clock: createFakeClock({ startMs: Date.parse('2026-10-19T08:30:00Z') }),
     },
   });
 
@@ -1028,7 +1038,7 @@ test('it keeps the end time of an item that an edit without an end time rewrites
 
 test('it keeps the end time of an item on the proposal of an edit without an end time', async () => {
   const memory = await startTestMemory({
-    gate: { clock: buildTestClock(Date.parse('2026-10-19T08:30:00Z')) },
+    gate: { clock: createFakeClock({ startMs: Date.parse('2026-10-19T08:30:00Z') }) },
   });
 
   const item = await memory.store.remember({
@@ -1054,7 +1064,7 @@ test('it clears the end time of an item that an edit with a null end time rewrit
   const memory = await startTestMemory({
     gate: {
       check: () => Promise.resolve(buildMockCheckerAnswer()),
-      clock: buildTestClock(Date.parse('2026-10-19T08:30:00Z')),
+      clock: createFakeClock({ startMs: Date.parse('2026-10-19T08:30:00Z') }),
     },
   });
 
@@ -1093,7 +1103,7 @@ test('it clears the end time of an item that an edit with a null end time rewrit
 
 test('it keeps writes of the same text with different end times as proposals of their own', async () => {
   const memory = await startTestMemory({
-    gate: { clock: buildTestClock(Date.parse('2026-10-19T08:30:00Z')) },
+    gate: { clock: createFakeClock({ startMs: Date.parse('2026-10-19T08:30:00Z') }) },
   });
 
   await memory.store.writes.remember({
@@ -1604,7 +1614,7 @@ test('it keeps a reworded write as a proposal of its own', async () => {
 });
 
 test('it moves a proposal lapse back to a full lapse window when a later write merges into it', async () => {
-  const clock = buildTestClock(1_000_000);
+  const clock = createFakeClock({ startMs: 1_000_000 });
 
   const memory = await startTestMemory({
     gate: {

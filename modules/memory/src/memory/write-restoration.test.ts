@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test';
 import { readRecords, writeRecordsInTransaction } from '@heynixie/log';
-import { buildTestClock } from '@heynixie/testing';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import { buildMockProvenance } from '../test-utils/build-mock-provenance';
 import { startTestMemory } from '../test-utils/start-test-memory';
 import type { MemoryTables } from '../types';
@@ -129,7 +129,7 @@ test("it commits the caller's own write in the restore's transaction", async () 
 });
 
 test('it clears the end time of a lapsed item it restores, so the next sweep leaves it active', async () => {
-  const clock = buildTestClock(Date.parse('2026-10-19T09:00:00Z'));
+  const clock = createFakeClock({ startMs: Date.parse('2026-10-19T09:00:00Z') });
 
   const memory = await startTestMemory({ gate: { clock } });
 
@@ -168,7 +168,7 @@ test('it clears the end time of a lapsed item it restores, so the next sweep lea
 });
 
 test('it restores an item past its end time before any sweep retires it', async () => {
-  const clock = buildTestClock(Date.parse('2026-10-19T09:00:00Z'));
+  const clock = createFakeClock({ startMs: Date.parse('2026-10-19T09:00:00Z') });
 
   const memory = await startTestMemory({ gate: { clock } });
 
@@ -190,7 +190,7 @@ test('it restores an item past its end time before any sweep retires it', async 
 });
 
 test('it rejects a restore of an active item whose end time is still to come', async () => {
-  const clock = buildTestClock(Date.parse('2026-10-19T09:00:00Z'));
+  const clock = createFakeClock({ startMs: Date.parse('2026-10-19T09:00:00Z') });
 
   const memory = await startTestMemory({ gate: { clock } });
 
@@ -206,7 +206,7 @@ test('it rejects a restore of an active item whose end time is still to come', a
 });
 
 test('it restores a pinned item past its end time unpinned, as after the sweep', async () => {
-  const clock = buildTestClock(Date.parse('2026-10-19T09:00:00Z'));
+  const clock = createFakeClock({ startMs: Date.parse('2026-10-19T09:00:00Z') });
 
   const memory = await startTestMemory({ gate: { clock } });
 

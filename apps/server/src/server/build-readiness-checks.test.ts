@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test';
 import { systemClock } from '@heynixie/clock';
-import { buildTestClock } from '@heynixie/testing';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import { buildStartState } from '../utils/build-start-state';
 import { buildReadinessChecks } from './build-readiness-checks';
 
@@ -175,7 +175,7 @@ test('it reports failing turns in the advisory part and leaves the conversation 
 
 test('it reports backups unready before the backup schedule starts', async () => {
   const state = buildStartState({ isReady: true, reason: null });
-  const clock = buildTestClock(Date.parse('2026-11-02T08:00:00Z'));
+  const clock = createFakeClock({ startMs: Date.parse('2026-11-02T08:00:00Z') });
 
   const checks = buildReadinessChecks(
     state,
@@ -190,7 +190,7 @@ test('it reports backups unready before the backup schedule starts', async () =>
 
 test('it reports backups ready when the deployment turns them off', async () => {
   const state = buildStartState({ isReady: true, reason: null });
-  const clock = buildTestClock(Date.parse('2026-11-02T08:00:00Z'));
+  const clock = createFakeClock({ startMs: Date.parse('2026-11-02T08:00:00Z') });
 
   const checks = buildReadinessChecks(
     state,
@@ -207,7 +207,7 @@ test('it reports backups ready when the deployment turns them off', async () => 
 
 test('it reports backups ready while no set has published within twice the interval of the start', async () => {
   const state = buildStartState({ isReady: true, reason: null });
-  const clock = buildTestClock(Date.parse('2026-11-02T08:00:00Z'));
+  const clock = createFakeClock({ startMs: Date.parse('2026-11-02T08:00:00Z') });
 
   const checks = buildReadinessChecks(
     state,
@@ -237,7 +237,7 @@ test('it reports backups ready while no set has published within twice the inter
 
 test('it reports backups unready once no receipt arrives within twice the interval', async () => {
   const state = buildStartState({ isReady: true, reason: null });
-  const clock = buildTestClock(Date.parse('2026-11-02T08:00:00Z'));
+  const clock = createFakeClock({ startMs: Date.parse('2026-11-02T08:00:00Z') });
 
   const checks = buildReadinessChecks(
     state,
@@ -269,7 +269,7 @@ test('it reports backups unready once no receipt arrives within twice the interv
 
 test('it reports backups ready within twice the interval of a restart, after an upload older than that', async () => {
   const state = buildStartState({ isReady: true, reason: null });
-  const clock = buildTestClock(Date.parse('2026-11-02T08:00:00Z'));
+  const clock = createFakeClock({ startMs: Date.parse('2026-11-02T08:00:00Z') });
 
   const checks = buildReadinessChecks(
     state,
@@ -301,7 +301,7 @@ test('it reports backups ready within twice the interval of a restart, after an 
 
 test('it reports backups ready once a newer upload replaces one older than twice the interval', async () => {
   const state = buildStartState({ isReady: true, reason: null });
-  const clock = buildTestClock(Date.parse('2026-11-02T08:00:00Z'));
+  const clock = createFakeClock({ startMs: Date.parse('2026-11-02T08:00:00Z') });
 
   const checks = buildReadinessChecks(
     state,

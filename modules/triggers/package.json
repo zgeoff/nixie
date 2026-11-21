@@ -25,6 +25,7 @@
   },
   "devDependencies": {
     "@heynixie/testing": "workspace:*",
+    "@zgeoff/testing": "catalog:",
     "fast-check": "catalog:"
   }
 }

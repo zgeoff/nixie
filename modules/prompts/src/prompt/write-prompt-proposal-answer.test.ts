@@ -3,7 +3,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { readRecords, startWriter, writeRecords } from '@heynixie/log';
-import { buildTestClock } from '@heynixie/testing';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import invariant from 'tiny-invariant';
 import { promptsOverrideProposedCodec } from '../override/prompts-override-proposed-codec';
 import type { CheckPromptProposal, PromptsTables } from '../types';
@@ -62,7 +62,7 @@ test('it records an approval that names you, and stores the override for the exp
   const result = await writePromptProposalAnswer(
     {
       log: ctx.log,
-      clock: buildTestClock(1000),
+      clock: createFakeClock({ startMs: 1000 }),
       definitions: () => ({ snapshotHash: 'snapshot-a' }),
       readInForce: () => null,
       checkProposal: () => [],
@@ -152,7 +152,7 @@ test('it approves edited files and entry in place of the proposal, checks them, 
   const result = await writePromptProposalAnswer(
     {
       log: ctx.log,
-      clock: buildTestClock(1000),
+      clock: createFakeClock({ startMs: 1000 }),
       definitions: () => ({ snapshotHash: 'snapshot-a' }),
       readInForce: () => null,
       checkProposal,
@@ -242,7 +242,7 @@ test('it refuses edits that fail the definitions check, and records nothing', as
   const refusal = await writePromptProposalAnswer(
     {
       log: ctx.log,
-      clock: buildTestClock(1000),
+      clock: createFakeClock({ startMs: 1000 }),
       definitions: () => ({ snapshotHash: 'snapshot-a' }),
       readInForce: () => null,
       checkProposal: () => [
@@ -333,7 +333,7 @@ test('it supersedes the approval of the same prompt before it', async () => {
 
   const context = {
     log: ctx.log,
-    clock: buildTestClock(1000),
+    clock: createFakeClock({ startMs: 1000 }),
     definitions: () => ({ snapshotHash: 'snapshot-a' }),
     readInForce: () => null,
     checkProposal: () => [],
@@ -394,7 +394,7 @@ test('it records a rejection with its reason in the erasable fields, and stores 
   const result = await writePromptProposalAnswer(
     {
       log: ctx.log,
-      clock: buildTestClock(1000),
+      clock: createFakeClock({ startMs: 1000 }),
       definitions: () => ({ snapshotHash: 'snapshot-a' }),
       readInForce: () => null,
       checkProposal: () => [],
@@ -441,7 +441,7 @@ test('it refuses an answer to a proposal that does not exist', async () => {
   const refusal = await writePromptProposalAnswer(
     {
       log: ctx.log,
-      clock: buildTestClock(1000),
+      clock: createFakeClock({ startMs: 1000 }),
       definitions: () => ({ snapshotHash: 'snapshot-a' }),
       readInForce: () => null,
       checkProposal: () => [],
@@ -494,7 +494,7 @@ test('it refuses an answer to a proposal that a rejection closed', async () => {
   const refusal = await writePromptProposalAnswer(
     {
       log: ctx.log,
-      clock: buildTestClock(1000),
+      clock: createFakeClock({ startMs: 1000 }),
       definitions: () => ({ snapshotHash: 'snapshot-a' }),
       readInForce: () => null,
       checkProposal: () => [],
@@ -541,7 +541,7 @@ test('it refuses an answer to a proposal past its lapse time as lapsed', async (
   const refusal = await writePromptProposalAnswer(
     {
       log: ctx.log,
-      clock: buildTestClock(Date.now() + 14 * 24 * 60 * 60 * 1000),
+      clock: createFakeClock({ startMs: Date.now() + 14 * 24 * 60 * 60 * 1000 }),
       definitions: () => ({ snapshotHash: 'snapshot-a' }),
       readInForce: () => null,
       checkProposal: () => [],
@@ -588,7 +588,7 @@ test('it refuses an answer under another proposal hash', async () => {
   const refusal = await writePromptProposalAnswer(
     {
       log: ctx.log,
-      clock: buildTestClock(1000),
+      clock: createFakeClock({ startMs: 1000 }),
       definitions: () => ({ snapshotHash: 'snapshot-a' }),
       readInForce: () => null,
       checkProposal: () => [],
@@ -635,7 +635,7 @@ test('it refuses an approval once the override in force moved past the base of t
   const refusal = await writePromptProposalAnswer(
     {
       log: ctx.log,
-      clock: buildTestClock(1000),
+      clock: createFakeClock({ startMs: 1000 }),
       definitions: () => ({ snapshotHash: 'snapshot-b' }),
       readInForce: () => ({
         snapshotHash: 'snapshot-b',
@@ -686,7 +686,7 @@ test('it records a rejection of a proposal whose base the override in force move
   const result = await writePromptProposalAnswer(
     {
       log: ctx.log,
-      clock: buildTestClock(1000),
+      clock: createFakeClock({ startMs: 1000 }),
       definitions: () => ({ snapshotHash: 'snapshot-b' }),
       readInForce: () => ({
         snapshotHash: 'snapshot-b',
@@ -747,7 +747,7 @@ test('it approves a proposal whose base is the override in force', async () => {
   const result = await writePromptProposalAnswer(
     {
       log: ctx.log,
-      clock: buildTestClock(1000),
+      clock: createFakeClock({ startMs: 1000 }),
       definitions: () => ({ snapshotHash: 'snapshot-a' }),
       readInForce: () => ({
         snapshotHash: 'snapshot-a',

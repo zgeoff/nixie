@@ -3,7 +3,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { startWriter, writeRecords } from '@heynixie/log';
-import { buildTestClock } from '@heynixie/testing';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import { promptsOverrideProposedCodec } from '../override/prompts-override-proposed-codec';
 import { buildPromptOverrideHash } from './build-prompt-override-hash';
 import { readPendingPromptProposals } from './read-pending-prompt-proposals';
@@ -58,7 +58,7 @@ test('it lists a pending proposal with its lapse time and the override in force 
 
   const pending = await readPendingPromptProposals({
     log: ctx.log,
-    clock: buildTestClock(proposedAt + 1000),
+    clock: createFakeClock({ startMs: proposedAt + 1000 }),
     readInForce: () => ({
       snapshotHash: 'snapshot-a',
       personaVersion: 'persona-a',
@@ -110,7 +110,7 @@ test('it marks a proposal stale once the override in force for its prompt moves'
 
   const pending = await readPendingPromptProposals({
     log: ctx.log,
-    clock: buildTestClock(Date.now()),
+    clock: createFakeClock({ startMs: Date.now() }),
     readInForce: () => ({
       snapshotHash: 'snapshot-b',
       personaVersion: 'persona-a',
@@ -149,7 +149,7 @@ test('it leaves out a proposal that waited past its lapse time', async () => {
 
   const pending = await readPendingPromptProposals({
     log: ctx.log,
-    clock: buildTestClock(proposedAt + 14 * 24 * 60 * 60 * 1000),
+    clock: createFakeClock({ startMs: proposedAt + 14 * 24 * 60 * 60 * 1000 }),
     readInForce: () => null,
   });
 
@@ -190,7 +190,7 @@ test('it leaves out a proposal that a rejection closed before its lapse time', a
 
   const pending = await readPendingPromptProposals({
     log: ctx.log,
-    clock: buildTestClock(proposedAt + 60 * 60 * 1000),
+    clock: createFakeClock({ startMs: proposedAt + 60 * 60 * 1000 }),
     readInForce: () => null,
   });
 

@@ -10,7 +10,7 @@ import type { SandboxRecorder, ToolTargetResolver } from '@heynixie/sandbox';
 import type { ReceivedFrame, StubGuestSandboxes } from '@heynixie/sandbox/test-utils';
 import { buildStubGuestSandboxes } from '@heynixie/sandbox/test-utils';
 import type { ScriptedModel } from '@heynixie/testing';
-import { createRunTemplate, startScriptedModel, waitForCondition } from '@heynixie/testing';
+import { readTestTemplate, startScriptedModel, waitForCondition } from '@heynixie/testing';
 import {
   readTestToolNames,
   sendTestToolCall,
@@ -184,7 +184,7 @@ async function startFirstRun(
   });
 
   await writeMigratedData(files.dataDir, {
-    createTemplate: createRunTemplate,
+    createTemplate: readTestTemplate,
     startWriter,
     copyDirectory: (from, to) => cp(from, to, { recursive: true }),
   });

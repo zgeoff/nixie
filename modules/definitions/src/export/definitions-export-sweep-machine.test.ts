@@ -1,10 +1,11 @@
 import { expect, mock, onTestFinished, test } from 'bun:test';
-import { buildTestClock, waitForCondition } from '@heynixie/testing';
+import { waitForCondition } from '@heynixie/testing';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import { createActor } from 'xstate';
 import { definitionsExportSweepMachine } from './definitions-export-sweep-machine';
 
 function setupTest() {
-  const clock = buildTestClock(0);
+  const clock = createFakeClock({ startMs: 0 });
 
   return { clock };
 }
@@ -105,7 +106,7 @@ test('it ticks once the interval passes', async () => {
   });
 
   await waitForCondition(
-    () => machine.getSnapshot().value === 'waiting' && ctx.clock.countSleepers() === 1,
+    () => machine.getSnapshot().value === 'waiting' && ctx.clock.countPending() === 1,
   );
 
   ctx.clock.advance(3_600_000);
@@ -348,10 +349,10 @@ test('it ticks no more once stopped', async () => {
   });
 
   await waitForCondition(
-    () => machine.getSnapshot().value === 'waiting' && ctx.clock.countSleepers() === 1,
+    () => machine.getSnapshot().value === 'waiting' && ctx.clock.countPending() === 1,
   );
 
   machine.send({ type: 'stop' });
 
-  expect(ctx.clock.countSleepers()).toBe(0);
+  expect(ctx.clock.countPending()).toBe(0);
 });

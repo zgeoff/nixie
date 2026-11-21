@@ -1,9 +1,9 @@
 import { expect, onTestFinished, test } from 'bun:test';
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { createStubBin, readStubCalls } from '@zgeoff/testing/bin';
 import { $ } from 'bun';
-import { createStubProgram } from '../test-utils/create-stub-program.ts';
 
 function setupTest() {
   const directory = mkdtempSync(join(tmpdir(), 'nixie-tag-images-'));
@@ -12,14 +12,10 @@ function setupTest() {
     rmSync(directory, { recursive: true, force: true });
   });
 
-  const callsPath = join(directory, 'calls');
-
-  writeFileSync(callsPath, '');
   mkdirSync(join(directory, '.github', 'scripts'), { recursive: true });
 
   return {
     repoPath: directory,
-    callsPath,
     binPath: join(directory, 'bin'),
     scriptPath: join(import.meta.dir, 'tag-images.ts'),
     env: {
@@ -37,7 +33,7 @@ function setupTest() {
 test('it tags the sandbox images first, then backup, web and nixie last', async () => {
   const ctx = setupTest();
 
-  createStubProgram(join(ctx.binPath, 'bash'), { callsPath: ctx.callsPath });
+  createStubBin(ctx.binPath, 'bash');
 
   const result = await $`${process.execPath} ${ctx.scriptPath}`
     .cwd(ctx.repoPath)
@@ -47,20 +43,40 @@ test('it tags the sandbox images first, then backup, web and nixie last', async 
 
   expect(result.exitCode).toBe(0);
 
-  expect(readFileSync(ctx.callsPath, 'utf8')).toBe(
-    'bash .github/scripts/tag-images.sh 1.2.3 r/nixie-conversation@sha256:aa11 r/nixie-fetch@sha256:bb22 r/nixie-backup@sha256:ab12 r/nixie-web@sha256:cc33 r/nixie@sha256:dd44\n',
-  );
+  expect(readStubCalls(ctx.binPath)).toMatchObject([
+    {
+      name: 'bash',
+      argv: [
+        '.github/scripts/tag-images.sh',
+        '1.2.3',
+        'r/nixie-conversation@sha256:aa11',
+        'r/nixie-fetch@sha256:bb22',
+        'r/nixie-backup@sha256:ab12',
+        'r/nixie-web@sha256:cc33',
+        'r/nixie@sha256:dd44',
+      ],
+    },
+  ]);
 });
 
 test('it exits with the exit code of a failing tag script', async () => {
   const ctx = setupTest();
 
-  createStubProgram(join(ctx.binPath, 'bash'), {
-    callsPath: ctx.callsPath,
-    answers: {
-      '.github/scripts/tag-images.sh 1.2.3 r/nixie-conversation@sha256:aa11 r/nixie-fetch@sha256:bb22 r/nixie-backup@sha256:ab12 r/nixie-web@sha256:cc33 r/nixie@sha256:dd44':
-        { exitCode: 42 },
-    },
+  createStubBin(ctx.binPath, 'bash', {
+    answers: [
+      {
+        args: [
+          '.github/scripts/tag-images.sh',
+          '1.2.3',
+          'r/nixie-conversation@sha256:aa11',
+          'r/nixie-fetch@sha256:bb22',
+          'r/nixie-backup@sha256:ab12',
+          'r/nixie-web@sha256:cc33',
+          'r/nixie@sha256:dd44',
+        ],
+        exitCode: 42,
+      },
+    ],
   });
 
   const result = await $`${process.execPath} ${ctx.scriptPath}`
@@ -75,7 +91,7 @@ test('it exits with the exit code of a failing tag script', async () => {
 test('it fails when the step leaves out the version', async () => {
   const ctx = setupTest();
 
-  createStubProgram(join(ctx.binPath, 'bash'), { callsPath: ctx.callsPath });
+  createStubBin(ctx.binPath, 'bash');
 
   const result = await $`${process.execPath} ${ctx.scriptPath}`
     .cwd(ctx.repoPath)
@@ -84,5 +100,5 @@ test('it fails when the step leaves out the version', async () => {
     .quiet();
 
   expect(result.exitCode).not.toBe(0);
-  expect(readFileSync(ctx.callsPath, 'utf8')).toBe('');
+  expect(readStubCalls(ctx.binPath)).toStrictEqual([]);
 });

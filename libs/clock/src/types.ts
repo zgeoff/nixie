@@ -1,9 +1,7 @@
-export interface Clock {
-  readonly now: () => number;
+import type { Clock as StdClock } from '@zgeoff/std';
 
-  // A sleep resolves early, and never rejects, when its signal aborts.
-  readonly sleep: (durationMs: number, signal?: AbortSignal) => Promise<void>;
-}
+// Nixie reads the time and waits, and never schedules, so it takes the two methods it calls.
+export type Clock = Pick<StdClock, 'now' | 'sleep'>;
 
 export interface WorkTracker {
   readonly runWork: <T>(work: () => Promise<T>) => Promise<T>;

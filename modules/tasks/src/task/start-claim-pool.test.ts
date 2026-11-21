@@ -1,18 +1,20 @@
 import { expect, mock, onTestFinished, test } from 'bun:test';
 import { setWorkTracker } from '@heynixie/clock';
-import { buildTestClock, buildWorkTracker, waitForCondition } from '@heynixie/testing';
+import { buildWorkTracker, stopWithoutGrace, waitForCondition } from '@heynixie/testing';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import { setFaultPointHandler } from '../lease/set-fault-point-handler';
 import { buildStubPoolWork } from '../test-utils/build-stub-pool-work';
 import { startClaimPool } from './start-claim-pool';
 
 function setupTest() {
-  return { clock: buildTestClock(0) };
+  return { clock: createFakeClock({ startMs: 0 }) };
 }
 
 test('it runs no more work at once than its size', async () => {
   const work = buildStubPoolWork(['a', 'b', 'c', 'd', 'e']);
+  const clock = createFakeClock({ startMs: 0 });
 
-  const pool = startClaimPool(buildTestClock(0), {
+  const pool = startClaimPool(clock, {
     size: 2,
     pollMs: 1000,
     claim: work.claim,
@@ -20,7 +22,7 @@ test('it runs no more work at once than its size', async () => {
     onError: () => {},
   });
 
-  onTestFinished(() => pool.stop(0));
+  onTestFinished(() => stopWithoutGrace(clock, pool));
 
   await waitForCondition(() => work.running.size === 2);
 
@@ -52,10 +54,10 @@ test('it claims again after the poll interval when no work was claimable', async
   onTestFinished(async () => {
     work.releaseAll();
 
-    await pool.stop(0);
+    await stopWithoutGrace(ctx.clock, pool);
   });
 
-  await waitForCondition(() => ctx.clock.countSleepers() === 1);
+  await waitForCondition(() => ctx.clock.countPending() === 1);
 
   work.queue.push('a');
   ctx.clock.advance(1000);
@@ -80,10 +82,10 @@ test('it claims at once when woken', async () => {
   onTestFinished(async () => {
     work.releaseAll();
 
-    await pool.stop(0);
+    await stopWithoutGrace(ctx.clock, pool);
   });
 
-  await waitForCondition(() => ctx.clock.countSleepers() === 1);
+  await waitForCondition(() => ctx.clock.countPending() === 1);
 
   work.queue.push('a');
   pool.wake();
@@ -109,7 +111,7 @@ test('it claims again at once when a wake lands during a claim that found nothin
   onTestFinished(async () => {
     work.releaseAll();
 
-    await pool.stop(0);
+    await stopWithoutGrace(ctx.clock, pool);
   });
 
   await miss.started;
@@ -139,7 +141,7 @@ test('it claims again at once when the poll interval passed during a claim that 
   onTestFinished(async () => {
     work.releaseAll();
 
-    await pool.stop(0);
+    await stopWithoutGrace(ctx.clock, pool);
   });
 
   await miss.started;
@@ -147,6 +149,11 @@ test('it claims again at once when the poll interval passed during a claim that 
   work.queue.push('a');
   ctx.clock.advance(1000);
   miss.release();
+
+  // the test clock holds the sleep of no time left until it moves, where the system clock ends it
+  await waitForCondition(() => ctx.clock.countPending() === 1);
+
+  ctx.clock.advance(0);
 
   await waitForCondition(() => work.running.has('a'));
 
@@ -165,7 +172,7 @@ test('it claims nothing after a stop, and waits for the work in flight', async (
     onError: () => {},
   });
 
-  onTestFinished(() => pool.stop(0));
+  onTestFinished(() => stopWithoutGrace(ctx.clock, pool));
 
   await waitForCondition(() => work.running.has('a'));
 
@@ -197,7 +204,7 @@ test('it stops waiting for work in flight at the grace deadline', async () => {
 
   const stopped = pool.stop(30_000);
 
-  await waitForCondition(() => ctx.clock.countSleepers() === 1);
+  await waitForCondition(() => ctx.clock.countPending() === 1);
 
   ctx.clock.advance(30_000);
 
@@ -228,7 +235,7 @@ test('it reaches sigterm.grace when a stop finds work in flight', async () => {
     onError: () => {},
   });
 
-  onTestFinished(() => pool.stop(0));
+  onTestFinished(() => stopWithoutGrace(ctx.clock, pool));
 
   await waitForCondition(() => work.running.has('a'));
 
@@ -241,8 +248,9 @@ test('it runs no work whose claim committed after a stop began', async () => {
   const claimed = Promise.withResolvers<string | null>();
   const claim = mock(() => claimed.promise);
   const run = mock(() => Promise.resolve());
+  const clock = createFakeClock({ startMs: 0 });
 
-  const pool = startClaimPool(buildTestClock(0), {
+  const pool = startClaimPool(clock, {
     size: 1,
     pollMs: 1000,
     claim,
@@ -250,7 +258,7 @@ test('it runs no work whose claim committed after a stop began', async () => {
     onError: () => {},
   });
 
-  onTestFinished(() => pool.stop(0));
+  onTestFinished(() => stopWithoutGrace(clock, pool));
 
   await waitForCondition(() => claim.mock.calls.length === 1);
 
@@ -278,7 +286,7 @@ test('it reports an error a run threw and stops claiming', async () => {
     onError,
   });
 
-  onTestFinished(() => pool.stop(0));
+  onTestFinished(() => stopWithoutGrace(ctx.clock, pool));
 
   await waitForCondition(() => onError.mock.calls.length === 1);
 
@@ -303,7 +311,7 @@ test('it reports a claim in flight as unsettled work, and settles once the runne
     onError: () => {},
   });
 
-  onTestFinished(() => pool.stop(0));
+  onTestFinished(() => stopWithoutGrace(ctx.clock, pool));
 
   await miss.started;
 
@@ -311,7 +319,7 @@ test('it reports a claim in flight as unsettled work, and settles once the runne
 
   miss.release();
 
-  await waitForCondition(() => ctx.clock.countSleepers() === 1);
+  await waitForCondition(() => ctx.clock.countPending() === 1);
 
   expect({ settledDuringClaim, settledAsleep: tracker.isSettled() }).toStrictEqual({
     settledDuringClaim: false,

@@ -1,7 +1,7 @@
 import { expect, mock, test } from 'bun:test';
 import { withWriteTransaction, writeRecords } from '@heynixie/log';
-import { buildTestClock } from '@heynixie/testing';
 import { buildToolRegistry } from '@heynixie/tools';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import { sql } from 'kysely';
 import invariant from 'tiny-invariant';
 import { buildStubSearchProvider } from '../test-utils/build-stub-search-provider';
@@ -43,7 +43,7 @@ test('it returns each hit with a link ID and a date only on a dated hit, and kee
 
   const tool = buildSearchTool(provider, {
     log: ctx.log,
-    clock: buildTestClock(Date.parse('2026-11-07T01:00:00.000Z')),
+    clock: createFakeClock({ startMs: Date.parse('2026-11-07T01:00:00.000Z') }),
     dailyCallCap: 200,
     timeZone: 'Australia/Sydney',
   });
@@ -105,7 +105,7 @@ test('it numbers a hit after the links the session already holds, and gives a kn
     },
     {
       log: ctx.log,
-      clock: buildTestClock(Date.parse('2026-11-07T01:00:00.000Z')),
+      clock: createFakeClock({ startMs: Date.parse('2026-11-07T01:00:00.000Z') }),
       dailyCallCap: 200,
       timeZone: 'Australia/Sydney',
     },
@@ -156,7 +156,7 @@ test('it gives two hits with one URL the same link ID', async () => {
     },
     {
       log: ctx.log,
-      clock: buildTestClock(Date.parse('2026-11-07T01:00:00.000Z')),
+      clock: createFakeClock({ startMs: Date.parse('2026-11-07T01:00:00.000Z') }),
       dailyCallCap: 200,
       timeZone: 'Australia/Sydney',
     },
@@ -204,7 +204,7 @@ test('it keys the link IDs of a call under the run token by the run', async () =
     },
     {
       log: ctx.log,
-      clock: buildTestClock(Date.parse('2026-11-07T01:00:00.000Z')),
+      clock: createFakeClock({ startMs: Date.parse('2026-11-07T01:00:00.000Z') }),
       dailyCallCap: 200,
       timeZone: 'Australia/Sydney',
     },
@@ -253,7 +253,7 @@ test('it refuses a search whose session a forget ended, and stores no link', asy
     },
     {
       log: ctx.log,
-      clock: buildTestClock(Date.parse('2026-11-07T01:00:00.000Z')),
+      clock: createFakeClock({ startMs: Date.parse('2026-11-07T01:00:00.000Z') }),
       dailyCallCap: 200,
       timeZone: 'Australia/Sydney',
     },
@@ -305,7 +305,7 @@ test.each([
     },
     {
       log: ctx.log,
-      clock: buildTestClock(Date.parse('2026-11-07T01:00:00.000Z')),
+      clock: createFakeClock({ startMs: Date.parse('2026-11-07T01:00:00.000Z') }),
       dailyCallCap: 200,
       timeZone: 'Australia/Sydney',
     },
@@ -343,7 +343,7 @@ test('it asks the provider for 10 hits from any site at any time when the call s
     { priceMicros: 12_000, readHits },
     {
       log: ctx.log,
-      clock: buildTestClock(Date.parse('2026-11-07T01:00:00.000Z')),
+      clock: createFakeClock({ startMs: Date.parse('2026-11-07T01:00:00.000Z') }),
       dailyCallCap: 200,
       timeZone: 'Australia/Sydney',
     },
@@ -382,7 +382,7 @@ test('it passes the limit, the sites and the freshness the call sets to the prov
     { priceMicros: 12_000, readHits },
     {
       log: ctx.log,
-      clock: buildTestClock(Date.parse('2026-11-07T01:00:00.000Z')),
+      clock: createFakeClock({ startMs: Date.parse('2026-11-07T01:00:00.000Z') }),
       dailyCallCap: 200,
       timeZone: 'Australia/Sydney',
     },
@@ -425,7 +425,7 @@ test('it prices a search at the provider price, and shows the model no price', a
 
   const tool = buildSearchTool(buildStubSearchProvider(), {
     log: ctx.log,
-    clock: buildTestClock(0),
+    clock: createFakeClock({ startMs: 0 }),
     dailyCallCap: 200,
     timeZone: 'UTC',
   });
@@ -439,7 +439,7 @@ test('it reports the cap as full past 200 calls in a day, naming the cap and whe
 
   const tool = buildSearchTool(buildStubSearchProvider(), {
     log: ctx.log,
-    clock: buildTestClock(Date.parse('2026-11-07T01:00:00.000Z')),
+    clock: createFakeClock({ startMs: Date.parse('2026-11-07T01:00:00.000Z') }),
     dailyCallCap: 200,
     timeZone: 'Australia/Sydney',
   });
@@ -469,7 +469,7 @@ test('it reports room under the cap, and writes no count when it checks', async 
 
   const tool = buildSearchTool(buildStubSearchProvider(), {
     log: ctx.log,
-    clock: buildTestClock(Date.parse('2026-11-07T01:00:00.000Z')),
+    clock: createFakeClock({ startMs: Date.parse('2026-11-07T01:00:00.000Z') }),
     dailyCallCap: 1,
     timeZone: 'Australia/Sydney',
   });
@@ -493,7 +493,7 @@ test('it reports room under the cap, and writes no count when it checks', async 
 test('it counts afresh from local midnight', async () => {
   const ctx = await setupTest();
 
-  const clock = buildTestClock(Date.parse('2026-11-07T12:59:59.000Z'));
+  const clock = createFakeClock({ startMs: Date.parse('2026-11-07T12:59:59.000Z') });
 
   const tool = buildSearchTool(buildStubSearchProvider(), {
     log: ctx.log,
@@ -520,7 +520,7 @@ test('it counts afresh from local midnight', async () => {
 test('it reports the cap as full before local midnight under a cap of 1', async () => {
   const ctx = await setupTest();
 
-  const clock = buildTestClock(Date.parse('2026-11-07T12:59:58.000Z'));
+  const clock = createFakeClock({ startMs: Date.parse('2026-11-07T12:59:58.000Z') });
 
   const tool = buildSearchTool(buildStubSearchProvider(), {
     log: ctx.log,
@@ -559,7 +559,7 @@ test("it returns the provider's failure as an error the model reads", async () =
     },
     {
       log: ctx.log,
-      clock: buildTestClock(Date.parse('2026-11-07T01:00:00.000Z')),
+      clock: createFakeClock({ startMs: Date.parse('2026-11-07T01:00:00.000Z') }),
       dailyCallCap: 200,
       timeZone: 'Australia/Sydney',
     },
@@ -593,7 +593,7 @@ test('it declares the fetch effect and runs inside the turn', async () => {
       priceMicros: 12_000,
       readHits: () => Promise.resolve<SearchReply>({ kind: 'failed', reason: 'unused' }),
     },
-    { log: ctx.log, clock: buildTestClock(0), dailyCallCap: 200, timeZone: 'UTC' },
+    { log: ctx.log, clock: createFakeClock({ startMs: 0 }), dailyCallCap: 200, timeZone: 'UTC' },
   );
 
   expect({ declaration: tool.declaration, execution: tool.execution }).toStrictEqual({
@@ -616,7 +616,7 @@ test('it marks every result field as outside content', async () => {
       priceMicros: 12_000,
       readHits: () => Promise.resolve<SearchReply>({ kind: 'failed', reason: 'unused' }),
     },
-    { log: ctx.log, clock: buildTestClock(0), dailyCallCap: 200, timeZone: 'UTC' },
+    { log: ctx.log, clock: createFakeClock({ startMs: 0 }), dailyCallCap: 200, timeZone: 'UTC' },
   );
 
   expect(tool.declaration.results).toStrictEqual({ hits: 'untrusted' });
@@ -630,7 +630,7 @@ test("it endorses only a hit's date, and gives the model no cost", async () => {
       priceMicros: 12_000,
       readHits: () => Promise.resolve<SearchReply>({ kind: 'failed', reason: 'unused' }),
     },
-    { log: ctx.log, clock: buildTestClock(0), dailyCallCap: 200, timeZone: 'UTC' },
+    { log: ctx.log, clock: createFakeClock({ startMs: 0 }), dailyCallCap: 200, timeZone: 'UTC' },
   );
 
   expect(tool.output['properties']).toStrictEqual({
@@ -660,7 +660,7 @@ test('it is a tool the registry accepts, whose output schema holds a dated hit',
       priceMicros: 12_000,
       readHits: () => Promise.resolve<SearchReply>({ kind: 'failed', reason: 'unused' }),
     },
-    { log: ctx.log, clock: buildTestClock(0), dailyCallCap: 200, timeZone: 'UTC' },
+    { log: ctx.log, clock: createFakeClock({ startMs: 0 }), dailyCallCap: 200, timeZone: 'UTC' },
   );
 
   const registered = buildToolRegistry([tool]).findTool('search');
