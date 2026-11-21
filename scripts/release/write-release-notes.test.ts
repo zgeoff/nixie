@@ -2,8 +2,8 @@ import { expect, onTestFinished, test } from 'bun:test';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { createStubBin, readStubCalls } from '@zgeoff/testing/bin';
 import { $ } from 'bun';
-import { createStubProgram } from '../test-utils/create-stub-program.ts';
 
 function setupTest() {
   const directory = mkdtempSync(join(tmpdir(), 'nixie-release-notes-'));
@@ -12,20 +12,17 @@ function setupTest() {
     rmSync(directory, { recursive: true, force: true });
   });
 
-  const callsPath = join(directory, 'calls');
   const outputPath = join(directory, 'output');
   const summaryPath = join(directory, 'summary');
   const runnerTemp = join(directory, 'runner-temp');
 
   mkdirSync(runnerTemp);
-  writeFileSync(callsPath, '');
   writeFileSync(outputPath, '');
   writeFileSync(summaryPath, '');
 
   return {
     runnerTemp,
     binPath: join(directory, 'bin'),
-    callsPath,
     outputPath,
     summaryPath,
     scriptPath: join(import.meta.dir, 'write-release-notes.ts'),
@@ -39,23 +36,29 @@ test('it checks both against the last release and appends the images to the note
   writeFileSync(join(ctx.runnerTemp, 'migrations.json'), '{\n  "count": 2\n}\n');
   writeFileSync(join(ctx.runnerTemp, 'config-schema.json'), '{\n  "breaking": false\n}\n');
 
-  createStubProgram(join(ctx.binPath, 'gh'), {
-    callsPath: ctx.callsPath,
-    answers: {
-      'release view v0.59.0 --json body --jq .body': { stdout: '## Features\n\n- add tasks\n' },
-    },
+  createStubBin(ctx.binPath, 'gh', {
+    answers: [
+      {
+        args: ['release', 'view', 'v0.59.0', '--json', 'body', '--jq', '.body'],
+        stdout: '## Features\n\n- add tasks\n',
+      },
+      { args: [] },
+    ],
   });
 
-  createStubProgram(join(ctx.binPath, 'git'), {
-    callsPath: ctx.callsPath,
-    answers: {
-      'describe --tags --abbrev=0 --match v* a1b2c3^': { stdout: 'v0.58.0\n' },
-      'show v0.58.0:apps/server/config.schema.json': { stdout: '{"type":"object"}\n' },
-    },
+  createStubBin(ctx.binPath, 'git', {
+    answers: [
+      {
+        args: ['describe', '--tags', '--abbrev=0', '--match', 'v*', 'a1b2c3^'],
+        stdout: 'v0.58.0\n',
+      },
+      { args: ['show', 'v0.58.0:apps/server/config.schema.json'], stdout: '{"type":"object"}\n' },
+      { args: [] },
+    ],
   });
 
-  createStubProgram(join(ctx.binPath, 'bash'), { callsPath: ctx.callsPath });
-  createStubProgram(join(ctx.binPath, 'bun'), { callsPath: ctx.callsPath });
+  createStubBin(ctx.binPath, 'bash');
+  createStubBin(ctx.binPath, 'bun');
 
   const result = await $`${process.execPath} ${ctx.scriptPath}`
     .env({
@@ -76,18 +79,51 @@ test('it checks both against the last release and appends the images to the note
 
   expect(result.exitCode).toBe(0);
 
-  expect(readFileSync(ctx.callsPath, 'utf8')).toBe(
-    [
-      'gh release view v0.59.0 --json body --jq .body',
-      'git describe --tags --abbrev=0 --match v* a1b2c3^',
-      'git show v0.58.0:apps/server/config.schema.json',
-      `bash .github/scripts/read-released-schema.sh v0.58.0 ${ctx.runnerTemp}/released.json`,
-      `bun libs/db/src/run-migration-check.ts --released ${ctx.runnerTemp}/released.json --last-tag v0.58.0 --release-body ${ctx.runnerTemp}/body.md --summary ${ctx.runnerTemp}/migrations.json`,
-      `bun apps/server/src/run-config-schema-check.ts --released ${ctx.runnerTemp}/released-config.schema.json --last-tag v0.58.0 --release-body ${ctx.runnerTemp}/body.md --summary ${ctx.runnerTemp}/config-schema.json`,
-      `gh release edit v0.59.0 --notes-file ${ctx.runnerTemp}/body.md`,
-      '',
-    ].join('\n'),
-  );
+  expect(readStubCalls(ctx.binPath)).toMatchObject([
+    { name: 'gh', argv: ['release', 'view', 'v0.59.0', '--json', 'body', '--jq', '.body'] },
+    { name: 'git', argv: ['describe', '--tags', '--abbrev=0', '--match', 'v*', 'a1b2c3^'] },
+    { name: 'git', argv: ['show', 'v0.58.0:apps/server/config.schema.json'] },
+    {
+      name: 'bash',
+      argv: [
+        '.github/scripts/read-released-schema.sh',
+        'v0.58.0',
+        `${ctx.runnerTemp}/released.json`,
+      ],
+    },
+    {
+      name: 'bun',
+      argv: [
+        'libs/db/src/run-migration-check.ts',
+        '--released',
+        `${ctx.runnerTemp}/released.json`,
+        '--last-tag',
+        'v0.58.0',
+        '--release-body',
+        `${ctx.runnerTemp}/body.md`,
+        '--summary',
+        `${ctx.runnerTemp}/migrations.json`,
+      ],
+    },
+    {
+      name: 'bun',
+      argv: [
+        'apps/server/src/run-config-schema-check.ts',
+        '--released',
+        `${ctx.runnerTemp}/released-config.schema.json`,
+        '--last-tag',
+        'v0.58.0',
+        '--release-body',
+        `${ctx.runnerTemp}/body.md`,
+        '--summary',
+        `${ctx.runnerTemp}/config-schema.json`,
+      ],
+    },
+    {
+      name: 'gh',
+      argv: ['release', 'edit', 'v0.59.0', '--notes-file', `${ctx.runnerTemp}/body.md`],
+    },
+  ]);
 
   expect(readFileSync(join(ctx.runnerTemp, 'released-config.schema.json'), 'utf8')).toBe(
     '{"type":"object"}\n',
@@ -99,10 +135,10 @@ test('it outputs both summaries as one-line JSON', async () => {
 
   writeFileSync(join(ctx.runnerTemp, 'migrations.json'), '{\n  "count": 2\n}\n');
   writeFileSync(join(ctx.runnerTemp, 'config-schema.json'), '{\n  "breaking": false\n}\n');
-  createStubProgram(join(ctx.binPath, 'gh'), { callsPath: ctx.callsPath });
-  createStubProgram(join(ctx.binPath, 'git'), { callsPath: ctx.callsPath });
-  createStubProgram(join(ctx.binPath, 'bash'), { callsPath: ctx.callsPath });
-  createStubProgram(join(ctx.binPath, 'bun'), { callsPath: ctx.callsPath });
+  createStubBin(ctx.binPath, 'gh');
+  createStubBin(ctx.binPath, 'git');
+  createStubBin(ctx.binPath, 'bash');
+  createStubBin(ctx.binPath, 'bun');
 
   await $`${process.execPath} ${ctx.scriptPath}`
     .env({
@@ -131,16 +167,19 @@ test('it appends each image to the release notes and the summary', async () => {
   writeFileSync(join(ctx.runnerTemp, 'migrations.json'), '{}\n');
   writeFileSync(join(ctx.runnerTemp, 'config-schema.json'), '{}\n');
 
-  createStubProgram(join(ctx.binPath, 'gh'), {
-    callsPath: ctx.callsPath,
-    answers: {
-      'release view v0.59.0 --json body --jq .body': { stdout: '## Features\n\n- add tasks\n' },
-    },
+  createStubBin(ctx.binPath, 'gh', {
+    answers: [
+      {
+        args: ['release', 'view', 'v0.59.0', '--json', 'body', '--jq', '.body'],
+        stdout: '## Features\n\n- add tasks\n',
+      },
+      { args: [] },
+    ],
   });
 
-  createStubProgram(join(ctx.binPath, 'git'), { callsPath: ctx.callsPath });
-  createStubProgram(join(ctx.binPath, 'bash'), { callsPath: ctx.callsPath });
-  createStubProgram(join(ctx.binPath, 'bun'), { callsPath: ctx.callsPath });
+  createStubBin(ctx.binPath, 'git');
+  createStubBin(ctx.binPath, 'bash');
+  createStubBin(ctx.binPath, 'bun');
 
   await $`${process.execPath} ${ctx.scriptPath}`
     .env({
@@ -182,15 +221,17 @@ test('it runs both checks with nothing to compare before the first release', asy
 
   writeFileSync(join(ctx.runnerTemp, 'migrations.json'), '{}\n');
   writeFileSync(join(ctx.runnerTemp, 'config-schema.json'), '{}\n');
-  createStubProgram(join(ctx.binPath, 'gh'), { callsPath: ctx.callsPath });
+  createStubBin(ctx.binPath, 'gh');
 
-  createStubProgram(join(ctx.binPath, 'git'), {
-    callsPath: ctx.callsPath,
-    answers: { 'describe --tags --abbrev=0 --match v* a1b2c3^': { exitCode: 128 } },
+  createStubBin(ctx.binPath, 'git', {
+    answers: [
+      { args: ['describe', '--tags', '--abbrev=0', '--match', 'v*', 'a1b2c3^'], exitCode: 128 },
+      { args: [] },
+    ],
   });
 
-  createStubProgram(join(ctx.binPath, 'bash'), { callsPath: ctx.callsPath });
-  createStubProgram(join(ctx.binPath, 'bun'), { callsPath: ctx.callsPath });
+  createStubBin(ctx.binPath, 'bash');
+  createStubBin(ctx.binPath, 'bun');
 
   const result = await $`${process.execPath} ${ctx.scriptPath}`
     .env({
@@ -211,16 +252,34 @@ test('it runs both checks with nothing to compare before the first release', asy
 
   expect(result.exitCode).toBe(0);
 
-  expect(readFileSync(ctx.callsPath, 'utf8')).toBe(
-    [
-      'gh release view v0.1.0 --json body --jq .body',
-      'git describe --tags --abbrev=0 --match v* a1b2c3^',
-      `bun libs/db/src/run-migration-check.ts --release-body ${ctx.runnerTemp}/body.md --summary ${ctx.runnerTemp}/migrations.json`,
-      `bun apps/server/src/run-config-schema-check.ts --release-body ${ctx.runnerTemp}/body.md --summary ${ctx.runnerTemp}/config-schema.json`,
-      `gh release edit v0.1.0 --notes-file ${ctx.runnerTemp}/body.md`,
-      '',
-    ].join('\n'),
-  );
+  expect(readStubCalls(ctx.binPath)).toMatchObject([
+    { name: 'gh', argv: ['release', 'view', 'v0.1.0', '--json', 'body', '--jq', '.body'] },
+    { name: 'git', argv: ['describe', '--tags', '--abbrev=0', '--match', 'v*', 'a1b2c3^'] },
+    {
+      name: 'bun',
+      argv: [
+        'libs/db/src/run-migration-check.ts',
+        '--release-body',
+        `${ctx.runnerTemp}/body.md`,
+        '--summary',
+        `${ctx.runnerTemp}/migrations.json`,
+      ],
+    },
+    {
+      name: 'bun',
+      argv: [
+        'apps/server/src/run-config-schema-check.ts',
+        '--release-body',
+        `${ctx.runnerTemp}/body.md`,
+        '--summary',
+        `${ctx.runnerTemp}/config-schema.json`,
+      ],
+    },
+    {
+      name: 'gh',
+      argv: ['release', 'edit', 'v0.1.0', '--notes-file', `${ctx.runnerTemp}/body.md`],
+    },
+  ]);
 });
 
 test('it checks the config schema with nothing to compare when the last release commits none', async () => {
@@ -228,18 +287,21 @@ test('it checks the config schema with nothing to compare when the last release 
 
   writeFileSync(join(ctx.runnerTemp, 'migrations.json'), '{}\n');
   writeFileSync(join(ctx.runnerTemp, 'config-schema.json'), '{}\n');
-  createStubProgram(join(ctx.binPath, 'gh'), { callsPath: ctx.callsPath });
+  createStubBin(ctx.binPath, 'gh');
 
-  createStubProgram(join(ctx.binPath, 'git'), {
-    callsPath: ctx.callsPath,
-    answers: {
-      'describe --tags --abbrev=0 --match v* a1b2c3^': { stdout: 'v0.20.0\n' },
-      'show v0.20.0:apps/server/config.schema.json': { exitCode: 128 },
-    },
+  createStubBin(ctx.binPath, 'git', {
+    answers: [
+      {
+        args: ['describe', '--tags', '--abbrev=0', '--match', 'v*', 'a1b2c3^'],
+        stdout: 'v0.20.0\n',
+      },
+      { args: ['show', 'v0.20.0:apps/server/config.schema.json'], exitCode: 128 },
+      { args: [] },
+    ],
   });
 
-  createStubProgram(join(ctx.binPath, 'bash'), { callsPath: ctx.callsPath });
-  createStubProgram(join(ctx.binPath, 'bun'), { callsPath: ctx.callsPath });
+  createStubBin(ctx.binPath, 'bash');
+  createStubBin(ctx.binPath, 'bun');
 
   await $`${process.execPath} ${ctx.scriptPath}`
     .env({
@@ -257,7 +319,16 @@ test('it checks the config schema with nothing to compare when the last release 
     })
     .quiet();
 
-  expect(readFileSync(ctx.callsPath, 'utf8')).toInclude(
-    `bun apps/server/src/run-config-schema-check.ts --release-body ${ctx.runnerTemp}/body.md --summary ${ctx.runnerTemp}/config-schema.json\n`,
+  expect(readStubCalls(ctx.binPath)).toContainEqual(
+    expect.objectContaining({
+      name: 'bun',
+      argv: [
+        'apps/server/src/run-config-schema-check.ts',
+        '--release-body',
+        `${ctx.runnerTemp}/body.md`,
+        '--summary',
+        `${ctx.runnerTemp}/config-schema.json`,
+      ],
+    }),
   );
 });

@@ -2,8 +2,8 @@ import { expect, onTestFinished, test } from 'bun:test';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { createStubBin, readStubCalls } from '@zgeoff/testing/bin';
 import { $ } from 'bun';
-import { createStubProgram } from '../test-utils/create-stub-program.ts';
 
 function setupTest() {
   const directory = mkdtempSync(join(tmpdir(), 'nixie-backup-published-'));
@@ -12,17 +12,14 @@ function setupTest() {
     rmSync(directory, { recursive: true, force: true });
   });
 
-  const callsPath = join(directory, 'calls');
   const summaryPath = join(directory, 'summary');
 
   mkdirSync(join(directory, 'deploy', 'compose'), { recursive: true });
-  writeFileSync(callsPath, '');
   writeFileSync(summaryPath, '');
 
   return {
     repoPath: directory,
     binPath: join(directory, 'bin'),
-    callsPath,
     summaryPath,
     scriptPath: join(import.meta.dir, 'check-backup-published.ts'),
   };
@@ -31,14 +28,23 @@ function setupTest() {
 test('it prints the published set that nixie logged and adds it to the summary', async () => {
   const ctx = setupTest();
 
-  createStubProgram(join(ctx.binPath, 'docker'), {
-    callsPath: ctx.callsPath,
-    answers: {
-      'compose -f compose.yaml -f ci/compose.yaml logs --no-color nixie': {
+  createStubBin(ctx.binPath, 'docker', {
+    answers: [
+      {
+        args: [
+          'compose',
+          '-f',
+          'compose.yaml',
+          '-f',
+          'ci/compose.yaml',
+          'logs',
+          '--no-color',
+          'nixie',
+        ],
         stdout:
           'nixie-1  | {"event":"backup.set_staged","sequence":1}\nnixie-1  | {"event":"backup.set_published","sequence":1}\n',
       },
-    },
+    ],
   });
 
   const result = await $`${process.execPath} ${ctx.scriptPath}`
@@ -57,13 +63,22 @@ test('it prints the published set that nixie logged and adds it to the summary',
 test('it fails once nixie logs no published set in any read', async () => {
   const ctx = setupTest();
 
-  createStubProgram(join(ctx.binPath, 'docker'), {
-    callsPath: ctx.callsPath,
-    answers: {
-      'compose -f compose.yaml -f ci/compose.yaml logs --no-color nixie': {
+  createStubBin(ctx.binPath, 'docker', {
+    answers: [
+      {
+        args: [
+          'compose',
+          '-f',
+          'compose.yaml',
+          '-f',
+          'ci/compose.yaml',
+          'logs',
+          '--no-color',
+          'nixie',
+        ],
         stdout: 'nixie-1  | {"event":"backup.set_staged","sequence":1}\n',
       },
-    },
+    ],
   });
 
   const result = await $`${process.execPath} ${ctx.scriptPath}`
@@ -78,7 +93,19 @@ test('it fails once nixie logs no published set in any read', async () => {
     '::error::nixie recorded no published backup set within 0.03 s\n',
   );
 
-  expect(readFileSync(ctx.callsPath, 'utf8')).toBe(
-    'docker compose -f compose.yaml -f ci/compose.yaml logs --no-color nixie\n'.repeat(3),
+  expect(readStubCalls(ctx.binPath)).toMatchObject(
+    Array.from({ length: 3 }, () => ({
+      name: 'docker',
+      argv: [
+        'compose',
+        '-f',
+        'compose.yaml',
+        '-f',
+        'ci/compose.yaml',
+        'logs',
+        '--no-color',
+        'nixie',
+      ],
+    })),
   );
 });
