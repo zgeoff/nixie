@@ -194,6 +194,10 @@ except 3 groups:
 - A memory item's own records, which the item's forget takes.
 - A record whose kind carries no erasable fields.
 
+A forget takes only the record it names, and the whole of it, because each record has one key and no
+field has a key of its own. A reply that quotes the forgotten text stays readable until it is
+forgotten too.
+
 The API reads the kinds from `forgettableKinds` in the contract library, and a test holds each
 erasable kind to exactly one of the 3 groups and the list. The forget is a checked action bound to
 the record's thread and sequence. The API answers `RECORD_NOT_FOUND` for a sequence that names a

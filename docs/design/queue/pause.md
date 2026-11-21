@@ -24,8 +24,8 @@ You check each one, then resume.
 
 The restore ends by writing its marker file in the state `holding`. The next start of the server
 reads the marker, pauses nixie, records the list, and removes the marker.
-[The backup pair](backup-pair.md) holds the restore's steps 1 to 5, which this design follows with
-step 6.
+[Backup and restore](../../architecture/deployment/host-commands.md#backup-and-restore) holds the
+restore's steps 1 to 5, which this design follows with step 6.
 
 Terms:
 
