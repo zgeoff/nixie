@@ -35,6 +35,7 @@ export function toStoredDecision(detail: DecisionDetail, call: PolicyCall): Deci
       sources: [...call.sources],
       turnMessageSequence: call.turnMessageSequence,
       onBehalfOf: [...call.onBehalfOf],
+      ...(call.effects === undefined ? {} : { effects: [...call.effects] }),
     },
   };
 }

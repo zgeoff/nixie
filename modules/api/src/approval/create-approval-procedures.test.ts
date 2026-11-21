@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import type { ApprovedCall } from '@heynixie/actions';
 import { claimAction, runActionAttempt } from '@heynixie/actions';
 import type { ProviderResponse } from '@heynixie/connectors';
+import { encodeTestImage, seedImage } from '@heynixie/connectors/test-utils';
 import { createPathSource, runSeed } from '@heynixie/definitions';
 import { buildTestTaskSeed, seedLegacyRuleProposal } from '@heynixie/definitions/test-utils';
 import type { LogTables } from '@heynixie/log';
@@ -1024,4 +1025,53 @@ test('#approvals.listItems shows a log.forget ask with no body when its record i
   const read = await ctx.client.approvals.readProposals({ proposalIDs: [proposed.shortID] });
 
   expect(read.proposals.map((entry) => entry.body)).toStrictEqual([null]);
+});
+
+test('#approvals.listItems shows each photo that an image.draw ask names, and not a drawn image', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.api.context);
+
+  const encoded = await encodeTestImage({ width: 8, height: 6 }, 'png');
+
+  const bytes = new Uint8Array(encoded);
+
+  await seedImage(ctx.api.context.log, { image: 'photoaaaaa', source: 'photo', bytes });
+  await seedImage(ctx.api.context.log, { image: 'drawnbbbbb', source: 'draw', bytes });
+
+  const proposed = buildActionProposalInput({
+    definitions: ctx.api.context.definitions(),
+    thread: 'conversation',
+    callSequence: 1,
+    tool: 'image.draw',
+    effects: ['fetch', 'send'],
+    cause: 'ask_rule',
+    input: { prompt: 'a cartoon of this', from: 'photoaaaaa', references: ['drawnbbbbb'] },
+    destinations: [{ value: 'openai', replyTarget: false }],
+  });
+
+  await writeRecords(ctx.api.context.log, [proposed.record]);
+
+  const read = await ctx.client.approvals.readProposals({ proposalIDs: [proposed.shortID] });
+
+  expect(read.proposals.map((entry) => entry.body?.images)).toStrictEqual([['photoaaaaa']]);
+});
+
+test('#approvals.readImage returns the stored picture of an image, and refuses an unknown one', async () => {
+  const ctx = await setupTest();
+  const encoded = await encodeTestImage({ width: 8, height: 6 }, 'png');
+
+  const bytes = new Uint8Array(encoded);
+
+  await seedImage(ctx.api.context.log, { image: 'photoaaaaa', source: 'photo', bytes });
+
+  const file = await ctx.client.approvals.readImage({ imageID: 'photoaaaaa' });
+
+  const missing = ctx.client.approvals.readImage({ imageID: 'nothing000' });
+
+  const received = await file.arrayBuffer();
+
+  expect(new Uint8Array(received)).toStrictEqual(bytes);
+  expect(file.type).toBe('image/png');
+  expect(missing).rejects.toMatchObject({ code: 'IMAGE_NOT_FOUND' });
 });

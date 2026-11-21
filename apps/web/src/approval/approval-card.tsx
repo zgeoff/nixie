@@ -8,6 +8,7 @@ import { css } from '../styled-system/css';
 import type { ApprovalRead } from '../types';
 import { ApprovalChanges } from './approval-changes';
 import { ApprovalControls } from './approval-controls';
+import { ApprovalImages } from './approval-images';
 import { ApprovalMemoryBody } from './approval-memory-body';
 import { ApprovalRuleEditor } from './approval-rule-editor';
 import { ApprovalRuleNotice } from './approval-rule-notice';
@@ -138,6 +139,9 @@ export function ApprovalCard(props: ApprovalCardProps): ReactNode {
             </button>
           ) : (
             <Bounds body={body} />
+          )}
+          {body.images === undefined || body.images.length === 0 ? null : (
+            <ApprovalImages imageIDs={body.images} />
           )}
           <p className={meta}>Asked because: {formatApprovalCause({ proposal, body })}</p>
         </>

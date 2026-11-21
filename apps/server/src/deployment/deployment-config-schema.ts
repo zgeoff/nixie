@@ -1,7 +1,12 @@
 import { actionsConfigSchema } from '@heynixie/actions';
 import { apiConfigSchema } from '@heynixie/api';
 import { backupConfigSchema } from '@heynixie/backup';
-import { searchConfigSchema, timeConfigSchema, webFetchConfigSchema } from '@heynixie/connectors';
+import {
+  imagesConfigSchema,
+  searchConfigSchema,
+  timeConfigSchema,
+  webFetchConfigSchema,
+} from '@heynixie/connectors';
 import { definitionsConfigSchema } from '@heynixie/definitions';
 import { memoryConfigSchema } from '@heynixie/memory';
 import { policyConfigSchema } from '@heynixie/policy';
@@ -27,6 +32,7 @@ export const deploymentConfigSchema = z
     definitions: definitionsConfigSchema,
     web_fetch: webFetchConfigSchema.default(webFetchConfigSchema.parse({})),
     search: searchConfigSchema.default(searchConfigSchema.parse({})),
+    images: imagesConfigSchema.nullable().default(null),
     time: timeConfigSchema.default(timeConfigSchema.parse({})),
     tasks: tasksConfigSchema.default(tasksConfigSchema.parse({})),
     reminders: remindersConfigSchema.default(remindersConfigSchema.parse({})),

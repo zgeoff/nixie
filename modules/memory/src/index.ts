@@ -3,7 +3,6 @@ export { buildCheckerRules } from './checker/build-checker-rules';
 export type { MemoryToolStore } from './tool/memory-tool-store';
 export { buildLogReadTool } from './log/build-log-read-tool';
 export { buildLogReadImageTool } from './log/build-log-read-image-tool';
-export { readOwnerImage } from './owner/read-owner-image';
 export { buildMemoryTools } from './memory/build-memory-tools';
 export { buildPinnedCoreStatus } from './pinned/build-pinned-core-status';
 export { buildMomentKeptKind } from './moment/kept/build-moment-kept-kind';

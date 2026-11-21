@@ -214,7 +214,7 @@
           },
           "budget": {
             "type": "string",
-            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+            "pattern": "^[a-z0-9]+(?:[.-][a-z0-9]+)*$",
             "description": "The ID of a budget that counts spend"
           }
         },

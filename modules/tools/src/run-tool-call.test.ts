@@ -3109,3 +3109,332 @@ test('it keeps both charges of an error that says the provider billed', async ()
   expect(day).toMatchObject({ spentMicros: 25_000 });
   expect(month).toMatchObject({ spentMicros: 25_000 });
 });
+
+test('it returns the result of a paid tool check without charging or running the tool', async () => {
+  const run = mock(() => Promise.resolve({ status: 'ok' as const, result: { text: 'a note' } }));
+
+  const ctx = await setupTest({
+    paidTools: ['web_search'],
+    tools: [
+      buildMockToolDefinition({
+        name: 'web_search',
+        paid: {
+          priceMicros: 25_000,
+          check: () => Promise.resolve({ result: { text: 'refused' }, refusalCode: 'NOT_NOW' }),
+        },
+        run,
+      }),
+    ],
+  });
+
+  const result = await runToolCall(
+    { tool: 'web_search', input: { query: 'milk' }, toolUseID: 'toolu_c1' },
+    {
+      runID: 'run-1',
+      thread: 'task-1',
+      logThread: 'task-1',
+      tools: ['web_search'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
+    ctx.options,
+  );
+
+  const day = await readBudgetLedger(ctx.log.writer.db, ctx.budgets, 'web_search-day');
+
+  expect(result).toStrictEqual({ content: [], structuredContent: { text: 'refused' } });
+  expect(run).not.toHaveBeenCalled();
+  expect(day).toMatchObject({ spentMicros: 0 });
+});
+
+test('it charges the price a paid tool computes from the input of the call', async () => {
+  const ctx = await setupTest({
+    paidTools: ['web_search'],
+    tools: [
+      buildMockToolDefinition({
+        name: 'web_search',
+        paid: { priceMicros: (input) => (input['query'] === 'milk' ? 60_000 : 1) },
+      }),
+    ],
+  });
+
+  await runToolCall(
+    { tool: 'web_search', input: { query: 'milk' }, toolUseID: 'toolu_c2' },
+    {
+      runID: 'run-1',
+      thread: 'task-1',
+      logThread: 'task-1',
+      tools: ['web_search'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
+    ctx.options,
+  );
+
+  const day = await readBudgetLedger(ctx.log.writer.db, ctx.budgets, 'web_search-day');
+
+  expect(day).toMatchObject({ spentMicros: 60_000 });
+});
+
+test('it credits both charges of a paid tool whose result carries a refusal code', async () => {
+  const ctx = await setupTest({
+    paidTools: ['web_search'],
+    tools: [
+      buildMockToolDefinition({
+        name: 'web_search',
+        paid: { priceMicros: 25_000 },
+        run: () =>
+          Promise.resolve({ status: 'ok', result: { text: 'refused' }, refusalCode: 'NO' }),
+      }),
+    ],
+  });
+
+  await runToolCall(
+    { tool: 'web_search', input: { query: 'milk' }, toolUseID: 'toolu_c3' },
+    {
+      runID: 'run-1',
+      thread: 'task-1',
+      logThread: 'task-1',
+      tools: ['web_search'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
+    ctx.options,
+  );
+
+  const day = await readBudgetLedger(ctx.log.writer.db, ctx.budgets, 'web_search-day');
+  const month = await readBudgetLedger(ctx.log.writer.db, ctx.budgets, 'web_search-month');
+
+  expect(day).toMatchObject({ spentMicros: 0 });
+  expect(month).toMatchObject({ spentMicros: 0 });
+});
+
+test('it keeps the charges of a paid tool whose refusal says the provider billed', async () => {
+  const ctx = await setupTest({
+    paidTools: ['web_search'],
+    tools: [
+      buildMockToolDefinition({
+        name: 'web_search',
+        paid: { priceMicros: 25_000 },
+        run: () =>
+          Promise.resolve({
+            status: 'ok',
+            result: { text: 'refused' },
+            refusalCode: 'NO',
+            billed: true,
+          }),
+      }),
+    ],
+  });
+
+  await runToolCall(
+    { tool: 'web_search', input: { query: 'milk' }, toolUseID: 'toolu_c4' },
+    {
+      runID: 'run-1',
+      thread: 'task-1',
+      logThread: 'task-1',
+      tools: ['web_search'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
+    ctx.options,
+  );
+
+  const day = await readBudgetLedger(ctx.log.writer.db, ctx.budgets, 'web_search-day');
+
+  expect(day).toMatchObject({ spentMicros: 25_000 });
+});
+
+test('it asks a call whose prepare step adds the send effect, and records the prepared destination', async () => {
+  const ctx = await setupTest({
+    tools: [
+      buildMockToolDefinition({
+        name: 'image_draw',
+        declaration: { effects: ['fetch'] },
+        prepare: () => Promise.resolve({ destinations: ['openai'], effects: ['fetch', 'send'] }),
+      }),
+    ],
+  });
+
+  const result = await runToolCall(
+    { tool: 'image_draw', input: { query: 'a cove' }, toolUseID: 'toolu_p1' },
+    {
+      runID: 'run-1',
+      thread: 'task-1',
+      logThread: 'task-1',
+      tools: ['image_draw'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
+    ctx.options,
+  );
+
+  const entries = await readRecords(ctx.log, { afterSequence: 0 });
+
+  const proposed = entries.find((entry) => entry.record.kind === 'policy.action_proposed');
+
+  expect(result).toMatchObject({ isError: false });
+  expect(proposed?.record.payload).toMatchObject({ effects: ['fetch', 'send'] });
+
+  expect(entries[0]?.record).toMatchObject({
+    decision: { outcome: 'ask' },
+    erasable: {
+      status: 'readable',
+      fields: { destinations: [{ value: 'openai', replyTarget: false }] },
+    },
+  });
+});
+
+test('it runs a call direct when a rule allows the send its prepare step names', async () => {
+  const run = mock(() => Promise.resolve({ status: 'ok' as const, result: { text: 'drawn' } }));
+
+  const ctx = await setupTest({
+    rules: [
+      {
+        id: 'allow-openai',
+        revision: 1,
+        rule: {
+          id: 'allow-openai',
+          outcome: 'allow',
+          effects: ['fetch', 'send'],
+          destinations: ['openai'],
+        },
+      },
+    ],
+    tools: [
+      buildMockToolDefinition({
+        name: 'image_draw',
+        declaration: { effects: ['fetch'] },
+        prepare: () => Promise.resolve({ destinations: ['openai'], effects: ['fetch', 'send'] }),
+        run,
+      }),
+    ],
+  });
+
+  const result = await runToolCall(
+    { tool: 'image_draw', input: { query: 'a cove' }, toolUseID: 'toolu_p2' },
+    {
+      runID: 'run-1',
+      thread: 'task-1',
+      logThread: 'task-1',
+      tools: ['image_draw'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
+    ctx.options,
+  );
+
+  expect(result).toStrictEqual({ content: [], structuredContent: { text: 'drawn' } });
+  expect(run).toHaveBeenCalledTimes(1);
+});
+
+test('it runs a call direct when its prepare step keeps the declared effects', async () => {
+  const run = mock(() => Promise.resolve({ status: 'ok' as const, result: { text: 'drawn' } }));
+
+  const ctx = await setupTest({
+    tools: [
+      buildMockToolDefinition({
+        name: 'image_draw',
+        declaration: { effects: ['fetch'] },
+        prepare: () => Promise.resolve({ destinations: [], effects: ['fetch'] }),
+        run,
+      }),
+    ],
+  });
+
+  const result = await runToolCall(
+    { tool: 'image_draw', input: { query: 'a cove' }, toolUseID: 'toolu_p3' },
+    {
+      runID: 'run-1',
+      thread: 'task-1',
+      logThread: 'task-1',
+      tools: ['image_draw'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
+    ctx.options,
+  );
+
+  expect(result).toStrictEqual({ content: [], structuredContent: { text: 'drawn' } });
+});
+
+test('it returns the result a prepare step gives, and never asks the decision point or runs the tool', async () => {
+  const run = mock(() => Promise.resolve({ status: 'ok' as const, result: { text: 'drawn' } }));
+  const decide = mock(() => Promise.reject(new Error('not reached')));
+
+  const ctx = await setupTest({
+    tools: [
+      buildMockToolDefinition({
+        name: 'image_draw',
+        prepare: () =>
+          Promise.resolve({ result: { text: 'no such image' }, refusalCode: 'UNKNOWN_IMAGE' }),
+        run,
+      }),
+    ],
+  });
+
+  const result = await runToolCall(
+    { tool: 'image_draw', input: { query: 'a cove' }, toolUseID: 'toolu_p4' },
+    {
+      runID: 'run-1',
+      thread: 'task-1',
+      logThread: 'task-1',
+      tools: ['image_draw'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
+    { ...ctx.options, decide },
+  );
+
+  expect(result).toStrictEqual({ content: [], structuredContent: { text: 'no such image' } });
+  expect(decide).not.toHaveBeenCalled();
+  expect(run).not.toHaveBeenCalled();
+});
+
+test('it releases what a paid check held when the budget stops the call before the tool runs', async () => {
+  const release = mock(() => {});
+  const run = mock(() => Promise.resolve({ status: 'ok' as const, result: { text: 'a note' } }));
+
+  const ctx = await setupTest({
+    paidTools: ['web_search'],
+    tools: [
+      buildMockToolDefinition({
+        name: 'web_search',
+        paid: { priceMicros: 6_000_000, release },
+        run,
+      }),
+    ],
+  });
+
+  await runToolCall(
+    { tool: 'web_search', input: { query: 'milk' }, toolUseID: 'toolu_r1' },
+    {
+      runID: 'run-1',
+      thread: 'task-1',
+      logThread: 'task-1',
+      tools: ['web_search'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
+    ctx.options,
+  );
+
+  expect(run).not.toHaveBeenCalled();
+  expect(release).toHaveBeenCalledTimes(1);
+});
+
+test('it leaves the release of a paid call that runs to the tool', async () => {
+  const release = mock(() => {});
+
+  const ctx = await setupTest({
+    paidTools: ['web_search'],
+    tools: [
+      buildMockToolDefinition({ name: 'web_search', paid: { priceMicros: 25_000, release } }),
+    ],
+  });
+
+  await runToolCall(
+    { tool: 'web_search', input: { query: 'milk' }, toolUseID: 'toolu_r2' },
+    {
+      runID: 'run-1',
+      thread: 'task-1',
+      logThread: 'task-1',
+      tools: ['web_search'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
+    ctx.options,
+  );
+
+  expect(release).not.toHaveBeenCalled();
+});

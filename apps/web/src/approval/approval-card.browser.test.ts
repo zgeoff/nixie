@@ -328,6 +328,32 @@ test('it shows what each rule of a mandate will not cover on its card', async ()
   expect(shown).toStrictEqual([true, true]);
 });
 
+test('it shows each photo that an action would send on its card', async () => {
+  const ctx = await setupTest();
+
+  await store.approvalRows.create({
+    cause: 'ask_rule',
+    choices: ['approve', 'defer', 'decline'],
+    sentence: 'Run image.draw to openai.',
+    approveLabel: 'Run image.draw to openai',
+    fields: { prompt: 'a cartoon of this' },
+    images: ['photoaaaaa', 'photobbbbb'],
+    thread: null,
+  });
+
+  await ctx.openLine('Run image.draw to openai.');
+
+  await ctx.waitForPage(
+    `document.querySelectorAll('[aria-label="Photos this would send"] img').length === 2`,
+  );
+
+  const alts = await ctx.view.evaluate(
+    `[...document.querySelectorAll('[aria-label="Photos this would send"] img')].map((image) => image.alt)`,
+  );
+
+  expect(alts).toStrictEqual(['Photo 1', 'Photo 2']);
+});
+
 test('it says Not now for a proposed rule and declines it without asking for a note', async () => {
   const ctx = await setupTest();
 

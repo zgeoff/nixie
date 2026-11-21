@@ -1,5 +1,12 @@
 import { expect, mock, test } from 'bun:test';
-import { readRecordKeys, readRecords, withWriteTransaction, writeRecords } from '@heynixie/log';
+import { seedImage } from '@heynixie/connectors/test-utils';
+import {
+  readRecordAttachments,
+  readRecordKeys,
+  readRecords,
+  withWriteTransaction,
+  writeRecords,
+} from '@heynixie/log';
 import {
   readTestRecordKeyRows,
   readTestRecordRows,
@@ -74,6 +81,41 @@ test("it leaves no readable copy of an earlier release's image offer once its im
 
   expect(keys.has(offer.keyID)).toBe(false);
   expect(JSON.stringify(entries)).not.toInclude('Biscuit');
+});
+
+test('it removes the key of an imported image when the message it was imported from is forgotten', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+
+  const sent = await writeOwnerMessage(ctx.context, laptop.caller, {
+    clientMessageId: '0b9d8f0e-6f1c-4d2a-9b7e-3c5a1d2e4f60',
+    thread: 'conversation',
+    text: 'Our new puppy',
+    spans: [{ start: 0, end: 13, source: 'typed' }],
+    images: [{ mediaType: 'image/png', bytes: new TextEncoder().encode('Puppy-image') }],
+  });
+
+  invariant(sent.status === 'written');
+
+  const held = await seedImage(ctx.context.log, {
+    image: 'k3x9m2p7qa',
+    source: 'photo',
+    sourceSequence: sent.sequence,
+    bytes: new TextEncoder().encode('Imported-puppy'),
+  });
+
+  await writeRecordForget(ctx.context, laptop.caller, {
+    clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
+    thread: 'conversation',
+    sequence: sent.sequence,
+  });
+
+  const attachments = await readRecordAttachments(ctx.context.log, [held.sequence]);
+
+  expect(attachments.get(held.sequence)?.status).not.toBe('readable');
 });
 
 test('it commits record.forgotten once when two cleanups of the same forget overlap', async () => {

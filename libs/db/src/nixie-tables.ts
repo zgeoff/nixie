@@ -147,6 +147,22 @@ export interface NixieTables {
     readonly revoked_at: number | null;
     readonly paired_sequence: number;
   };
+  readonly images: {
+    readonly image_id: string;
+    readonly uuid: string;
+    readonly sequence: number;
+    readonly position: number;
+    readonly parent_id: string | null;
+    readonly source: string;
+    readonly source_seq: number | null;
+    readonly is_pinned: number;
+    readonly profile: string | null;
+    readonly model: string | null;
+    readonly media_type: string;
+    readonly size: string;
+    readonly byte_count: number;
+    readonly created_at: number;
+  };
   readonly known_contacts: {
     readonly contact_id: string;
     readonly marked_sequence: number;

@@ -1,5 +1,6 @@
 // oxlint-disable new-cap -- oRPC names a procedure's typed errors by their upper-case codes
-import { readOwnerImage, readRecordForgetPreview } from '@heynixie/memory';
+import { readRecordForgetPreview } from '@heynixie/memory';
+import { readOwnerImage } from '@heynixie/tasks';
 import { readForgetBackupState } from '../forget/read-forget-backup-state';
 import { writeOwnerMessage } from '../kept/write-owner-message';
 import { requireCaller } from '../memory/require-caller';

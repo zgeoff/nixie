@@ -1,7 +1,7 @@
 import type { Log } from '@heynixie/log';
+import { readOwnerImage } from '@heynixie/tasks';
 import type { ToolDefinition } from '@heynixie/tools';
 import { z } from 'zod';
-import { readOwnerImage } from '../owner/read-owner-image';
 
 const logReadImageInput = {
   type: 'object',

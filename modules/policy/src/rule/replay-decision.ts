@@ -1,5 +1,6 @@
 import type { Decision, JSONObject } from '@heynixie/log';
-import type { CallDestination, PolicyDecision } from '../types';
+import type { CallDestination, Effect, PolicyDecision } from '../types';
+import { effectNames } from '../utils/effect-names';
 import type { DecisionPointOptions } from './make-decision-point';
 import { makeDecisionPoint } from './make-decision-point';
 
@@ -48,8 +49,13 @@ export function replayDecision(
     destinations: record.destinations,
     sources: inputs.sources,
     at: record.at,
+    ...(inputs.effects === undefined ? {} : { effects: inputs.effects.filter(isEffect) }),
     turnMessageSequence: inputs.turnMessageSequence,
     onBehalfOf: inputs.onBehalfOf,
     snapshot: record.snapshot,
   });
+}
+
+function isEffect(name: string): name is Effect {
+  return effectNames.some((effect) => effect === name);
 }

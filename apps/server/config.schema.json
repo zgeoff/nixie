@@ -867,6 +867,88 @@
       },
       "additionalProperties": false
     },
+    "images": {
+      "default": null,
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "default": {
+              "type": "string",
+              "minLength": 1
+            },
+            "profiles": {
+              "type": "object",
+              "propertyNames": {
+                "type": "string",
+                "minLength": 1
+              },
+              "additionalProperties": {
+                "type": "object",
+                "properties": {
+                  "provider": {
+                    "type": "string",
+                    "enum": [
+                      "openai",
+                      "gemini"
+                    ]
+                  },
+                  "model": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "credential": {
+                    "type": "string",
+                    "pattern": "^deployment:.+$"
+                  },
+                  "prices": {
+                    "type": "object",
+                    "properties": {
+                      "1024x1024": {
+                        "type": "integer",
+                        "exclusiveMinimum": 0,
+                        "maximum": 9007199254740991
+                      },
+                      "1536x1024": {
+                        "type": "integer",
+                        "exclusiveMinimum": 0,
+                        "maximum": 9007199254740991
+                      },
+                      "1024x1536": {
+                        "type": "integer",
+                        "exclusiveMinimum": 0,
+                        "maximum": 9007199254740991
+                      }
+                    },
+                    "required": [
+                      "1024x1024",
+                      "1536x1024",
+                      "1024x1536"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "provider",
+                  "model",
+                  "credential",
+                  "prices"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "default",
+            "profiles"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
     "time": {
       "default": {
         "default_zone": "Australia/Sydney"

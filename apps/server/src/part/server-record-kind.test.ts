@@ -12,6 +12,7 @@ function setupTest() {
     'action.reconcile_checked': ['result', 'message'],
     'action.retry_scheduled': ['result', 'message'],
     'definition.changed': ['version'],
+    'image.named': ['name'],
     'memory.image_offered': ['text'],
     'memory.proposal_rejected': ['reason'],
     'model.compaction_failed': ['message'],

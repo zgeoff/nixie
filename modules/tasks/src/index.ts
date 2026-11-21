@@ -108,6 +108,8 @@ export { isInboxRecord } from './utils/is-inbox-record';
 export { LeaseLostError } from './utils/lease-lost-error';
 export type { OwnerImageMediaType } from './owner/owner-message-codec';
 export { ownerImageMediaTypes, ownerMessageCodec } from './owner/owner-message-codec';
+export type { OwnerImage, OwnerImageQuery } from './owner/read-owner-image';
+export { readOwnerImage } from './owner/read-owner-image';
 export { planReadCursor } from './step/plan-read-cursor';
 export { probePauseRequested } from './pause/probe-pause-requested';
 export type { ConversationErrors } from './conversation/read-conversation-errors';

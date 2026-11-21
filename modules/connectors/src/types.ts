@@ -1,5 +1,6 @@
 import type { JSONObject } from '@heynixie/log';
 import type { ToolCall, ToolDefinition } from '@heynixie/tools';
+import type { ImageSize } from './image/image-size';
 
 export type ProviderResponse =
   | { readonly kind: 'success'; readonly result: JSONObject }
@@ -119,4 +120,44 @@ export interface Connector {
   readonly actions: readonly ConnectorAction[];
 
   readonly check: () => Promise<HealthReport>;
+}
+
+export interface DrawImage {
+  readonly mediaType: string;
+  readonly bytes: Uint8Array;
+}
+
+export interface DrawRequest {
+  readonly model: string;
+  readonly prompt: string;
+  readonly size: ImageSize;
+
+  // an edit: the stored image, sent whole
+  readonly source?: DrawImage;
+
+  // up to 4, each a PNG of at most 8 MiB
+  readonly references: readonly DrawImage[];
+
+  // aborts when the call passes its time limit
+  readonly signal: AbortSignal;
+}
+
+// the image is at most 8 MiB
+export type DrawReply =
+  | { readonly kind: 'image'; readonly mediaType: string; readonly bytes: Uint8Array }
+  | {
+      readonly kind: 'refused';
+      readonly reason: 'safety' | 'other';
+      readonly message: string;
+      readonly isBilled: boolean;
+    }
+
+  // the reason never holds the key
+  | { readonly kind: 'failed'; readonly reason: string; readonly isBilled: boolean };
+
+export interface ImageProvider {
+  // what the provider's API takes beside the prompt
+  readonly takes: { readonly source: boolean; readonly references: boolean };
+
+  readonly draw: (request: DrawRequest) => Promise<DrawReply>;
 }

@@ -11,6 +11,7 @@ import { buildTypedResult } from '../settle/build-typed-result';
 import type { Settled } from '../settle/types';
 import { toolCalledCodec } from '../tool-called-codec';
 import type { RegisteredTool, ToolCall, ToolImage, ToolRun } from '../types';
+import { probePreparedAsApproved } from './probe-prepared-as-approved';
 
 // A call the owner approved, which the run of the step that holds the task runs instead of the
 // model's own call.
@@ -96,6 +97,10 @@ export async function runApprovedCall(
 
   const registered = variant === null ? found : variant.registered;
 
+  if (!(await probePreparedAsApproved(registered, request.input, stored.destinations))) {
+    return { status: 'changed' };
+  }
+
   const settled = await tryRunApproved(registered, call, options, {
     run,
     callSequence: request.callSequence,
@@ -115,6 +120,7 @@ export async function runApprovedCall(
 interface StoredApprovedCall {
   readonly callID: string;
   readonly toolUseID: string | null;
+  readonly destinations: readonly string[];
 }
 
 const approvedCalledSchema = z.object({
@@ -149,7 +155,11 @@ async function readApprovedCall(
   });
 
   return payload.tool === request.tool && hash === request.actionHash
-    ? { callID: payload.callID, toolUseID: payload.toolUseID }
+    ? {
+        callID: payload.callID,
+        toolUseID: payload.toolUseID,
+        destinations: erasable.destinations.map((destination) => destination.value),
+      }
     : null;
 }
 
@@ -166,7 +176,7 @@ async function tryRunApproved(
   facts: ApprovedRunFacts,
 ): Promise<Settled> {
   try {
-    const outcome = await runPaidCall(registered, call, options, () =>
+    const outcome = await runPaidCall(registered, { call, run: facts.run }, options, () =>
       registered.definition.run(call, { run: facts.run, callSequence: facts.callSequence }),
     );
 

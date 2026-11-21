@@ -28,6 +28,10 @@ export { toSDKToolName } from './tool-name/to-sdk-tool-name';
 export type {
   ActionOutcome,
   ActionQueue,
+  DirectResult,
+  ImageRoom,
+  PaidCallContext,
+  Prepared,
   OpenAsk,
   OpenRepeat,
   DeadlineResolution,
