@@ -977,8 +977,10 @@
         "zod": "catalog:",
       },
       "devDependencies": {
+        "@heynixie/mock-server": "workspace:*",
         "@heynixie/testing": "workspace:*",
         "@zgeoff/testing": "catalog:",
+        "msw": "catalog:",
       },
     },
     "research/cache-lifetime": {

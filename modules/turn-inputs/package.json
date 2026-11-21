@@ -21,7 +21,9 @@
     "zod": "catalog:"
   },
   "devDependencies": {
+    "@heynixie/mock-server": "workspace:*",
     "@heynixie/testing": "workspace:*",
-    "@zgeoff/testing": "catalog:"
+    "@zgeoff/testing": "catalog:",
+    "msw": "catalog:"
   }
 }

@@ -7,7 +7,7 @@ import {
 import { writeRecords } from '@heynixie/log';
 import { removeTestRecordKey } from '@heynixie/log/test-utils';
 import { makeChecker } from '@heynixie/sessions';
-import { makeGatedCall } from '@heynixie/testing';
+import { makeGatedCall, waitForCondition } from '@heynixie/testing';
 import { createFakeClock } from '@zgeoff/testing/clock';
 import invariant from 'tiny-invariant';
 import {
@@ -360,14 +360,15 @@ test.each([
 });
 
 test('it proposes a write when the checker times out', async () => {
+  const clock = createFakeClock({ startMs: 1_700_000_000_000 });
+
   const memory = await startTestMemory({
     gate: {
       check: makeChecker({
         ask: () => Promise.withResolvers<never>().promise,
         model: 'claude-sonnet-5-5',
-
-        clock: createFakeClock({ startMs: 1_700_000_000_000 }),
-        timeoutMs: 0,
+        clock,
+        timeoutMs: 1000,
       }),
     },
   });
@@ -378,11 +379,19 @@ test('it proposes a write when the checker times out', async () => {
     spans: [{ start: 0, end: 22, source: 'typed' }],
   });
 
-  const outcome = await memory.store.writes.remember({
+  const outcomeWait = memory.store.writes.remember({
     text: 'Takes coffee black',
     quote: 'I take my coffee black',
     caller: buildMockWriteCaller(),
   });
+
+  // the checker's timeout waits on the test clock, and the memory's own work between the writes
+  // takes real time, so the test waits in real time for the timeout to start
+  await waitForCondition(() => clock.countPending() > 0);
+
+  clock.advance(1000);
+
+  const outcome = await outcomeWait;
 
   expect(outcome).toMatchObject({ status: 'proposed', reason: 'checker_unreachable' });
 });
