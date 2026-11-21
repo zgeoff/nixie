@@ -47,11 +47,14 @@ Before you start:
 
 3. Open the turn's tool calls on the page. Each snapshot gives every element a new `ref`, so take
    each `ref` from the snapshot just before its click. In the first snapshot, the turn is one
-   collapsed line that holds "computer write_file:". Pass its `ref` as `<turn_ref>`.
+   collapsed line that holds "computer write file:". Pass its `ref` as `<turn_ref>`. In the second
+   snapshot, find the line that starts with `group "Tools 2"`. Pass its `ref` as `<tools_ref>`.
 
    ```bash
    bun verify browser snapshot
    bun verify browser click --ref '<turn_ref>'
+   bun verify browser snapshot
+   bun verify browser click --ref '<tools_ref>'
    bun verify browser snapshot
    ```
 
@@ -59,8 +62,9 @@ Before you start:
 
 ## End state
 
-- The last snapshot lists the turn's 2 tool calls, `computer write_file` and `computer read_file`,
+- The last snapshot lists the turn's 2 tool calls, `computer write file` and `computer read file`,
   under "Tools 2".
-- The result of the read holds the text "hello from the shell".
+- The result of the write shows `isDiskNew` true, and the result of the read holds the text "hello
+  from the shell" with `isDiskNew` false.
 
 Once the end state matches, run `bun verify done`.

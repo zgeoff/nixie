@@ -44,21 +44,45 @@ Before you start:
    Expect: `conversation turn` exits 0. On a failure, do what its row in [Exit codes](exit-codes.md)
    says.
 
-3. Open the turn's tool calls on the page. Each snapshot gives every element a new `ref`, so take
-   each `ref` from the snapshot just before its click. In the first snapshot, the turn is one
-   collapsed line that holds "computer open:". Pass its `ref` as `<turn_ref>`.
+3. Check that nixie holds the call and did not run it. The first open of a site asks the owner, so
+   the call waits as an approval for that site:
 
    ```bash
-   bun verify browser snapshot
-   bun verify browser click --ref '<turn_ref>'
-   bun verify browser snapshot
+   bun verify proposals --tool computer.open --waiting pending
+   bun verify action script-reply --text 'Thanks, I have your answer.'
    ```
 
-   Expect: every command exits 0.
+   Expect: `proposals` exits 0. The second command returns `data.replies` of 1, the text of the turn
+   that your answer starts.
+
+4. Open the approvals page, expand the item and approve it. Take each `ref` from the snapshot just
+   before its click: the item is the line that holds "Run computer.open to" and `[cursor=pointer]`,
+   and after the first click the approve button is named "Run computer.open to" followed by the
+   site.
+
+   ```bash
+   bun verify browser goto /proposals
+   bun verify browser snapshot
+   bun verify browser click --ref '<item_ref>'
+   bun verify browser snapshot
+   bun verify browser click --ref '<button_ref>'
+   ```
+
+   Expect: the item reads "Run computer.open to pages.test:" and a port. Both clicks exit 0.
+
+5. Check the answer. `proposals --waiting none` checks once, with no wait:
+
+   ```bash
+   bun verify proposals --tool computer.open --waiting none
+   bun verify db query "select json_extract(payload, '$.status') as status from records where kind = 'action.outcome' order by sequence desc limit 1"
+   ```
+
+   Expect: `proposals` exits 0, and `status` is `done`.
 
 ## End state
 
-- The last snapshot lists the turn's tool call `computer open` under "Tools 1".
-- Its result holds the heading "Hello from the page", the text of the harness page.
+- Step 3: one pending approval for `computer.open`, which names the site's host and port.
+- Step 5: the call's action ended `done`: nixie opened the harness page in the browser after the
+  approval, and not before.
 
 Once the end state matches, run `bun verify done`.
