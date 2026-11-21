@@ -14,7 +14,7 @@
         "@zgeoff/bun-test-react": "0.2.4",
         "@zgeoff/chex": "0.3.14",
         "@zgeoff/commitlint-config": "0.1.2",
-        "@zgeoff/diet": "0.3.0",
+        "@zgeoff/diet": "0.3.2",
         "@zgeoff/format-codemod": "0.3.6",
         "@zgeoff/oxlint-config": "0.11.1",
         "@zgeoff/rig": "catalog:",
@@ -2371,7 +2371,7 @@
 
     "@zgeoff/commitlint-config": ["@zgeoff/commitlint-config@0.1.2", "", { "peerDependencies": { "@commitlint/cli": ">=21.0.0" } }, "sha512-D5OJIMD4wBDJ4ad1z8LubHoRQNYDRtwu3LCGZj9m2TLmnpLuuN82/myTx6U7pBSteUGpqH19EJhTIthLCi1Vvg=="],
 
-    "@zgeoff/diet": ["@zgeoff/diet@0.3.0", "", { "bin": { "diet": "diet.sh" } }, "sha512-CgvLXgWCMMjrWN1foqfoZV7aE3wTAE/Z8NW5Ttf64tfafw6EoE6dhVkBDGtwb3VyxcSpx/WtTOTih9lfWosDtQ=="],
+    "@zgeoff/diet": ["@zgeoff/diet@0.3.2", "", { "bin": { "diet": "diet.sh" } }, "sha512-WTr8W2oOHfGFSASJgy/8LFHmiW5vRu2jduhsM5ixsMi7gAiTcERG7JhdLcIwksuyGTmOVxlCf7cRP6crAPDOig=="],
 
     "@zgeoff/format-codemod": ["@zgeoff/format-codemod@0.3.6", "", { "dependencies": { "gunshi": "1.0.0-rc.1", "oxc-parser": "0.158.0" }, "bin": { "format-codemod": "dist/cli.js" } }, "sha512-hoa6JerU9JHgikqumdtu23VE8wemOgkTr1zrwBFGnLyBns59bTt7Z3kkV6IBxc07CveYKtPT94IDTWFmFj5qHA=="],
 
@@ -3684,6 +3684,8 @@
     "@wringer/gunshi/gunshi": ["gunshi@0.37.3", "", {}, "sha512-uwm23bguqDcleEetknuQnF5okLcgmQPM3iv4aWVHTPDbiSs9shh02F079NCY0mWkrIRjHqNhgmzW6k0FCXhy1g=="],
 
     "@zgeoff/chex/@zgeoff/std": ["@zgeoff/std@0.4.4", "", {}, "sha512-AlT4lgjyC0ZhLUxxG0Sg9pxQG/+MIziC7BA9k29QDNt/ubGvB1+RCpTr/LaYkjFxiZnKG42psa4f2cp5BHGyzQ=="],
+
+    "@zgeoff/rig/@zgeoff/diet": ["@zgeoff/diet@0.3.0", "", { "bin": { "diet": "diet.sh" } }, "sha512-CgvLXgWCMMjrWN1foqfoZV7aE3wTAE/Z8NW5Ttf64tfafw6EoE6dhVkBDGtwb3VyxcSpx/WtTOTih9lfWosDtQ=="],
 
     "babel-dead-code-elimination/@babel/core": ["@babel/core@7.29.13", "", { "dependencies": { "@babel/code-frame": "^7.29.7", "@babel/generator": "^7.29.13", "@babel/helper-compilation-targets": "^7.29.13", "@babel/helper-module-transforms": "^7.29.13", "@babel/helpers": "^7.29.13", "@babel/parser": "^7.29.13", "@babel/template": "^7.29.7", "@babel/traverse": "^7.29.13", "@babel/types": "^7.29.11", "@jridgewell/remapping": "^2.3.5", "convert-source-map": "^2.0.0", "debug": "^4.1.0", "gensync": "^1.0.0-beta.2", "json5": "^2.2.3", "semver": "^6.3.1" } }, "sha512-j1nvOQCZYSgp7HLmisnCXFTpVvFODiijQ9QHkORfGKWH6YDtskTEeCJS7eV545GZ9UBzrq0e2xsOd5QQ5PjIqw=="],
 
