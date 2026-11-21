@@ -26,7 +26,7 @@ const horizonMs = 400 * 24 * 3_600_000;
 const minuteMs = 60_000;
 
 // Pure. Refuses a mix of fields that never go together, then fills the start date, then refuses a
-// schedule with no fire in the next 400 days and next fires closer than the minimum gap.
+// schedule with no fire in the 400 days after now or its start date, whichever is later, and next fires closer than the minimum gap.
 export function checkSchedule(given: RepeatSchedule, facts: ScheduleFacts): ScheduleCheck {
   const zone = given.zone === 'owner' ? facts.ownerZone : given.zone;
   const shape = checkScheduleShape(given);
@@ -49,7 +49,10 @@ export function checkSchedule(given: RepeatSchedule, facts: ScheduleFacts): Sche
 
   const [first] = fires;
 
-  if (first === undefined || first.scheduledFor > facts.nowMs + horizonMs) {
+  if (
+    first === undefined ||
+    first.scheduledFor > horizonStartMs(schedule, facts.nowMs) + horizonMs
+  ) {
     return {
       status: 'refused',
       code: 'NO_FIRE',
@@ -87,4 +90,12 @@ function buildFilledSchedule(given: RepeatSchedule, nowMs: number, zone: string)
   const at = given.repeat.at === undefined ? {} : { at: [...new Set(given.repeat.at)].toSorted() };
 
   return { ...given, repeat: { ...given.repeat, ...at, starts } };
+}
+
+// The 400 days count from now, or from the start date when that lies later, so a schedule that
+// starts months ahead is judged the same whatever clock checks it.
+function horizonStartMs(schedule: RepeatSchedule, nowMs: number): number {
+  const startsMs = Date.parse(`${schedule.repeat.starts ?? ''}T00:00:00Z`);
+
+  return Number.isNaN(startsMs) ? nowMs : Math.max(nowMs, startsMs);
 }

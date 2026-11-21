@@ -189,6 +189,20 @@ test.each([
     { scheduledFor: '2027-03-09T10:00:00.000Z', skip: null },
   ],
   [
+    'an hourly slot 1 minute late across the end of the hours',
+    {
+      schedule: {
+        repeat: { frequency: 'hourly', byDay: ['mon', 'tue', 'wed', 'thu', 'fri'] },
+        hours: { from: '09:00', until: '17:00' },
+        zone: 'UTC',
+      },
+    },
+    '2027-03-09T16:00:00Z',
+    '2027-03-09T17:01:00Z',
+    null,
+    { scheduledFor: '2027-03-09T17:00:00.000Z', skip: 'too_late' },
+  ],
+  [
     'a daily slot caught up overnight past the hours',
     {
       schedule: {

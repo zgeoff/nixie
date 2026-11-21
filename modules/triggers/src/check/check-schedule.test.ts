@@ -134,3 +134,14 @@ test('it accepts an hourly schedule that the hours limit', () => {
 
   expect(checked.status).toBe('ok');
 });
+
+test('it counts the 400 days from the start date when that lies later than now', () => {
+  const ctx = setupTest();
+
+  const checked = ctx.check({
+    repeat: { frequency: 'daily', at: ['09:00'], starts: '2028-03-01' },
+    zone: 'UTC',
+  });
+
+  expect(checked.status).toBe('ok');
+});

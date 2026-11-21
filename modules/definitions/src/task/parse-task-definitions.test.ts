@@ -348,6 +348,16 @@ test.each<[SeedFaultCode, Record<string, string>, string]>([
   expect(parsed.faults).toStrictEqual([{ path, fault: code, reasons: expect.any(Array) }]);
 });
 
+test('it accepts a schedule that starts more than 400 days after the seed clock', () => {
+  const ctx = setupTest();
+
+  const parsed = ctx.parse({
+    'tasks/rain-gauge/task.yaml': `name: Check the rain gauge\nbrief: Read the gauge and note the total.\ntrigger:\n  schedule:\n    repeat:\n      frequency: daily\n      at: ["09:00"]\n      starts: "2027-03-01"\n    zone: UTC\n`,
+  });
+
+  expect(parsed.faults).toStrictEqual([]);
+});
+
 test('it lists a start refusal with the sentences of the check', () => {
   const ctx = setupTest();
 

@@ -156,6 +156,11 @@ function pickDecision(
     }
   }
 
+  // however slightly late, a fire that now lies outside the hours is skipped
+  if (schedule.legacy === null && isOutsideHours(schedule, nowMs, input.zone)) {
+    return { kind: 'skip', reason: 'too_late' };
+  }
+
   const lateMs = nowMs - newest.scheduledFor;
 
   if (lateMs <= catchUpThresholdMs) {
@@ -164,10 +169,6 @@ function pickDecision(
 
   if (schedule.catchUp === 'skip') {
     return { kind: 'skip', reason: 'catch_up_off' };
-  }
-
-  if (schedule.legacy === null && isOutsideHours(schedule, nowMs, input.zone)) {
-    return { kind: 'skip', reason: 'too_late' };
   }
 
   return lateMs <= getIntervalMs(schedule.repeat) / 2
