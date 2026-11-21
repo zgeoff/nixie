@@ -9,6 +9,7 @@ import { runInForceSeedAndWake } from '../seed/run-in-force-seed-and-wake';
 import { buildActions } from '../test/build-actions';
 import type { AnyPartDeclaration } from '../types';
 import { buildTestSendTool, testSendKinds } from '../utils/build-test-send-tool';
+import { buildImageProviders } from './build-image-providers';
 import type { ServerPartValues } from './server-part-values';
 import { startCodeRunPart } from './start-code-run-part';
 import { startSandboxAdapterPart } from './start-sandbox-adapter-part';
@@ -123,6 +124,13 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
                     apiURL: options.search.apiURL,
                   }),
                   dailyCallCap: options.search.dailyCallCap,
+                },
+          images:
+            options.imageSettings === null
+              ? null
+              : {
+                  config: options.imageSettings.config,
+                  providers: buildImageProviders(options.imageSettings),
                 },
           testTools:
             NIXIE_TEST_BUILD && options.harness !== undefined
