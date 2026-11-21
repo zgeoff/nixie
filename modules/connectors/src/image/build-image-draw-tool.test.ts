@@ -2,6 +2,8 @@ import { expect, test } from 'bun:test';
 import { readBudgetLedger } from '@heynixie/budgets';
 import { readRecords } from '@heynixie/log';
 import { removeTestRecordKey } from '@heynixie/log/test-utils';
+import { runToolCall } from '@heynixie/tools';
+import type { ToolRun } from '@heynixie/tools';
 import invariant from 'tiny-invariant';
 import { buildStubImageProvider } from '../test-utils/build-stub-image-provider';
 import { encodeTestImage } from '../test-utils/encode-test-image';
@@ -538,6 +540,60 @@ test('it lets only one of two draws side by side take the last room, and charges
     expect.objectContaining({ refused: { code: 'IMAGE_CAPS_FULL', message: expect.any(String) } }),
   ]);
 
+  expect(main.requests).toHaveLength(1);
+  expect(ledger?.spentMicros).toBe(40_000);
+});
+
+test('it keeps the last room for the draw that holds it while its picture is fitted', async () => {
+  const main = buildStubImageProvider();
+
+  const large = await encodeTestImage({ width: 3000, height: 2000 }, 'png');
+
+  main.replyWith(() => ({ kind: 'image', mediaType: 'image/png', bytes: large }));
+
+  const ctx = await startTestImages({
+    providers: { main, second: buildStubImageProvider() },
+    caps: { bytes: 24 * 1024 * 1024, count: 1 },
+  });
+
+  const session = ctx.run.session;
+
+  invariant(session?.releaseImageRoom !== undefined);
+
+  const release = session.releaseImageRoom;
+  let rival: ReturnType<typeof ctx.call> | null = null;
+
+  // The first release is the draw giving up its hold. A draw that starts then sees the room as
+  // free only when the hold went before the picture was reserved.
+  const watchedRun: ToolRun = {
+    ...ctx.run,
+    session: {
+      ...session,
+      releaseImageRoom: (key) => {
+        release(key);
+
+        rival ??= runToolCall(
+          { tool: 'image.draw', input: { prompt: 'another cove' }, toolUseID: null },
+          watchedRun,
+          ctx.toolOptions,
+        );
+      },
+    },
+  };
+
+  const first = await runToolCall(
+    { tool: 'image.draw', input: { prompt: 'a cove' }, toolUseID: null },
+    watchedRun,
+    ctx.toolOptions,
+  );
+
+  invariant(rival !== null);
+
+  const second = await rival;
+  const ledger = await readBudgetLedger(ctx.log.writer.db, ctx.budgets, 'image.draw-day');
+
+  expect(readToolResult(first)).toMatchObject({ isShown: true });
+  expect(readToolResult(second)).toMatchObject({ refused: { code: 'IMAGE_CAPS_FULL' } });
   expect(main.requests).toHaveLength(1);
   expect(ledger?.spentMicros).toBe(40_000);
 });
