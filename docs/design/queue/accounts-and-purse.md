@@ -52,6 +52,7 @@ account.sign_in({ tab: 't1', account: 'a7q2m9x4kd', submit: 'E7' });
 //   it fills, so a refusal fills nothing.
 
 account.sign_up({ tab: 't1', label: 'library card', username: 'nix@example.net', submit: 'E9' });
+//   it refuses as sign_in does, except the account checks. The entry exists once the fill lands.
 // → { status: 'signed_in', account: 'a7q2m9x4kd', state: 'pending', … the sign_in result's fields }
 //   the broker makes the password, fills every password field with it, fills an email field with the
 //   username, and keeps the tab's origin as the entry's one origin. The assistant fills any other
@@ -61,14 +62,19 @@ purse.pay({
   tab: 't1',
   amount: { value: 12.5, currency: 'AUD' },
   item: 'one font licence',
+  card: 'c3w8p1z6mt',
   submit: 'E12',
 });
 // → { status: 'paid', purchase: 'pq3z8w1n5v', merchant: 'https://fonts.example.com', pageTotal: '12.50 AUD' }
 //   card: an account ID, needed when the vault holds more than one card. The guest fills, rereads the
 //   total, and clicks submit only when the total still matches; computer.click never pays.
 //   or { refused: 'NO_CARD_FIELD' } | { refused: 'ORIGIN_MISMATCH' } | { refused: 'TOTAL_CHANGED' }
-//   or { refused: 'STALE_ELEMENT' } | { refused: 'WHICH_CARD' }
-//   or { status: 'needs_owner', purchase } when a bank check shows after the submit; you finish it
+//   or { refused: 'STALE_ELEMENT' } | { refused: 'WHICH_CARD' } | { refused: 'UNKNOWN_ACCOUNT' }
+//   or { refused: 'WRONG_KIND' } | { refused: 'ACCOUNT_FORGOTTEN' } | { refused: 'TAB_GONE' }
+//   or { refused: 'PAGE_CHANGED' } | { refused: 'CROSS_ORIGIN_SUBMIT' } | { refused: 'FAILED' }
+//   A bank check that shows after the submit waits up to 5 minutes for you to approve it in the
+//   bank's app, then returns 'paid'. After that, { status: 'needs_owner', purchase }: an unknown
+//   outcome that you settle, as the budgets design settles one.
 
 purse.read({});
 // → { month: { budget: '100.00 AUD', spent: '37.50 AUD', left: '62.50 AUD' },
@@ -84,8 +90,9 @@ purse.read({});
 // account.sign_in, account.sign_up: ['sign_in'], a new effect of the routine risk class, queued;
 //   destination: the tab's origin. Its "always allow" rule pins the origin and the account.
 // purse.pay: ['spend'], queued; destination: the tab's origin; amount: the page's total, see below
-// No tool takes an origin. Before the decision, the tool reads the tab's origin and the checkout's
-// total from the guest, and the action keeps both; the fill happens only on that origin.
+// No tool takes an origin. Each tool's prepare hook, from the computer design, reads the tab's
+// origin, its URL and, for purse.pay, the checkout's total from the guest before the decision.
+// The fill happens only on that origin, and a URL that changed returns PAGE_CHANGED.
 ```
 
 The approval card for a sign-in shows the account's label, its username and the origin. The card for
@@ -132,6 +139,7 @@ type FillRequest = {
   op: 'fill';
   tab: string;
   expectOrigin: string; // the origin the action kept: the sign-in page, or the merchant
+  expectURL: string; // the URL the prepare hook read
   fields: {
     role:
       | 'username'
@@ -172,7 +180,7 @@ type FillReply =
 ### The purchase record
 
 ```text
-purchase.recorded              -- budgets module, one per purse.pay that fills
+purchase.recorded              -- budgets module, one per purse.pay that clicks submit
   purchase       text          -- short ID
     amount         integer       -- micros of the card's currency, the amount the policy checked
   page_total     integer null  -- micros, the total the guest read; null when none was found
@@ -200,7 +208,8 @@ mail.reply({ message: 'mz4k8q2w7p', text, files: [] }); // threads with In-Reply
 // mail.list, mail.read, mail.saveAttachment: ['note'], direct
 // mail.send, mail.reply: ['send'], queued, destination: each address; files: up to 10 file or image
 //   IDs, 25 MiB in all
-// refusals: UNKNOWN_MESSAGE, UNKNOWN_ATTACHMENT, TOO_BIG, UNKNOWN_FILE, FILE_FORGOTTEN
+// refusals: UNKNOWN_MESSAGE, UNKNOWN_ATTACHMENT, TOO_BIG, UNKNOWN_FILE, FILE_FORGOTTEN,
+//   UNKNOWN_IMAGE, IMAGE_FORGOTTEN
 // the mail_messages table maps each message's and thread's short ID to its JMAP ID.
 // the adapter's credential is deployment:mail, a connector_credentials entry
 ```
@@ -250,7 +259,7 @@ Filling:
   frame whose own origin is the merchant's or one of the card's `frameOrigins`.
 - A `sign_up` entry lists with state `pending` until its first `sign_in` reaches `signed_in`, and
   then turns `ready`. A pending entry signs in like a ready one, so a site that took the password
-  never loses it.
+  never loses it. A pending entry that no sign-in reaches within 7 days turns `forgotten`.
 - A forget of a vault entry destroys its key, and the next `sign_in` with it returns
   `ACCOUNT_FORGOTTEN`.
 
@@ -261,8 +270,11 @@ Spending:
   card's currency, and asks with the passkey otherwise.
 - A `purse.pay` passes without asking only under a lifting rule whose destinations include the
   merchant and whose `perAction` covers the amount. Every other `purse.pay` asks with the passkey.
-- Every `purse.pay` that fills writes a `purchase.recorded` record and counts against the purse's
-  budget, whether a lift passed it or you approved it.
+- A lift charges the purse's budget when the action queues, as the budgets design says, and a
+  purchase you approved is never charged. A `purse.pay` that ends before its click, with
+  `TOTAL_CHANGED`, `STALE_ELEMENT` or `FAILED`, credits the charge, and the guest clears the card
+  fields it filled.
+- Every `purse.pay` that clicks submit writes a `purchase.recorded` record.
 - The purse starts with a lift of 25 AUD per purchase and a budget of 100 AUD a month. The card's
   own limit in the bank's app is the hard cap.
 
@@ -322,7 +334,7 @@ Mail:
 - **Which mail host and domain?** The owner settles it. Until then, the adapter targets JMAP, which
   Fastmail serves.
 - **Does the bank ask for a 3-D Secure check on each purchase?** A test purchase settles it. Until
-  then, a purchase that stops at a bank check returns `NEEDS_OWNER` and waits for you.
+  then, a purchase waits for a bank check as `purse.pay` describes.
 - **Does the assistant get a phone number?** Many sign-ups ask for one, and a number that takes
   texts costs a monthly fee. The owner settles it. Until then, a sign-up that asks for a phone
   number stops, as a CAPTCHA does.
