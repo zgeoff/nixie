@@ -159,6 +159,24 @@ test('it fails the call of a tool that errored, and writes the error as the resu
   });
 });
 
+test('it reports the call refused, with its code and result, when the tool marks a refusal', async () => {
+  const ctx = await setupTest({
+    status: 'ok',
+    result: { text: 'nothing to wipe' },
+    refusalCode: 'NOTHING_FOUND',
+  });
+
+  const approved = await ctx.approve({});
+
+  expect(approved).toStrictEqual({
+    status: 'refused',
+    resultSequence: 4,
+    code: 'NOTHING_FOUND',
+    result: { text: 'nothing to wipe' },
+    images: [],
+  });
+});
+
 test('it runs nothing when the arguments differ from the approved call', async () => {
   const ctx = await setupTest();
   const approved = await ctx.approve({ input: { query: 'new' } });

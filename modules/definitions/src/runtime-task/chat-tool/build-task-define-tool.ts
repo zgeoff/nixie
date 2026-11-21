@@ -22,8 +22,9 @@ export function buildTaskDefineTool(options: ChatToolOptions): ToolDefinition {
     name: 'task.define',
     description:
       'Creates or replaces a task definition from a name, a brief and a trigger: a ' +
-      'schedule, or one time with `at`. It takes effect at once, and the owner sees a notice ' +
-      'with an undo. Pass definitionID to replace a definition, with every field you want kept: ' +
+      "schedule, or one time with `at`. When the call needs the owner's approval, it waits as a " +
+      'card, and you hear the result in your inbox; otherwise it takes effect at once, and the ' +
+      'owner sees a notice with an undo. Pass definitionID to replace a definition, with every field you want kept: ' +
       'a field you leave out goes back to its default. An `at` without an offset is read in the ' +
       "owner's zone. A refusal comes back as `refused` with a code and what you need to retry.",
     input: inputSchema,
@@ -83,6 +84,7 @@ export function buildTaskDefineTool(options: ChatToolOptions): ToolDefinition {
         return {
           status: 'ok',
           result: { refused: parseJSONObject(JSON.stringify(result.refusal)) },
+          refusalCode: result.refusal.code,
         };
       }
 

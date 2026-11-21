@@ -45,6 +45,15 @@ export type ApprovedRun =
     }
   | { readonly status: 'failed'; readonly resultSequence: number }
 
+  // the tool refused the call and changed nothing; the result says why
+  | {
+      readonly status: 'refused';
+      readonly resultSequence: number;
+      readonly code: string;
+      readonly result: JSONObject;
+      readonly images: readonly ToolImage[];
+    }
+
   // the tool is gone, or is not one that runs inside the turn: nothing ran
   | { readonly status: 'unavailable' }
 
@@ -100,14 +109,7 @@ export async function runApprovedCall(
 
   const written = await recorder.writeSettled(request.callSequence, settled);
 
-  return written.settled.outcome === 'result' && written.settled.reply.kind === 'typed'
-    ? {
-        status: 'done',
-        resultSequence: written.sequence,
-        result: written.settled.reply.result,
-        images: written.settled.reply.images,
-      }
-    : { status: 'failed', resultSequence: written.sequence };
+  return toApprovedRun(written.sequence, written.settled);
 }
 
 interface StoredApprovedCall {
@@ -190,4 +192,16 @@ async function tryRunApproved(
       { source: 'untrusted', actionID: facts.actionID },
     );
   }
+}
+
+function toApprovedRun(resultSequence: number, settled: Settled): ApprovedRun {
+  if (settled.outcome !== 'result' || settled.reply.kind !== 'typed') {
+    return { status: 'failed', resultSequence };
+  }
+
+  const reply = { resultSequence, result: settled.reply.result, images: settled.reply.images };
+
+  return settled.refusalCode === undefined
+    ? { status: 'done', ...reply }
+    : { status: 'refused', code: settled.refusalCode, ...reply };
 }

@@ -227,6 +227,20 @@ function writeRunOutcome(
     );
   }
 
+  // the model still reads the refusal's own result, which says what it needs to retry
+  if (run.status === 'refused') {
+    return writeSettlement(
+      context,
+      attempt,
+      {
+        outcome: { status: 'failed', reason: 'refused' },
+        resultSequence: run.resultSequence,
+        details: { message: `the tool refused the call: ${run.code}` },
+      },
+      { result: run.result, images: run.images },
+    );
+  }
+
   if (run.status === 'failed') {
     return writeSettlement(
       context,

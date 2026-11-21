@@ -488,7 +488,8 @@ list them as conversation tools. The [reminder tools](./reminders.md#tools) and 
   offset. The tool reads the user's zone and gives that `at` the zone's offset at that time before
   it calls `requestDefinitionChange`. A refusal comes back as `refused` with the code and what the
   model needs to retry. A change that leaves out `model`, `persona`, `memory`, `tools` or `report`
-  puts each back to its default.
+  puts each back to its default. When the user approves a call that the define refuses, its card
+  shows it as failed with the refusal code.
 - **`task.undefine`** takes a definition ID and answers the same way.
 - **`tasks.definitions`** lists every definition with its trigger in words and its next fire, and
   marks a disabled, spent, removed or unreadable one as not in force. A definition from the repo

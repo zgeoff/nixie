@@ -26,6 +26,9 @@ export interface Settled {
   // the model's loop ends its turn after this result
   readonly endsTurn?: true;
 
+  // the code of the tool's refusal, for a result that changed nothing
+  readonly refusalCode?: string;
+
   // sealed under the result record's key, in order
   readonly attachments?: readonly Uint8Array<ArrayBuffer>[];
 
