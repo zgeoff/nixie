@@ -53,10 +53,14 @@ image.draw({
 
 image.mark({ image: 'p8d2v6t1wz', name: 'cove, final', isKept: true });
 // → { image: 'p8d2v6t1wz', name: 'cove, final', isKept: true }
+//   name and isKept are each optional, and at least one is given; name: null clears it.
+//   isKept only filters image.list; it keeps nothing past a forget.
 
-image.import({ file: 'f9k2m4q7ws' }); // a code.run file, or { photo: { eventID: '1042', number: 1 } }
+image.import({ file: 'f9k2m4q7ws' }); // a file ID, or { photo: { eventID: '1042', number: 1 } }
 // → { image: 'h6w3n8r2pk', from: null, size: '1024x1024', isShown: true }
-//   an imported image can be a `from` or a reference like any other
+//   a file ID from code.run, computer.exportFile or mail.saveAttachment. nixie converts the picture
+//   to PNG and fits it, padded, into the ImageSize nearest its shape. It can then be a `from` or a
+//   reference like any other image.
 
 image.list({ isKept: true });
 // → { images: [{ image: 'p8d2v6t1wz', name: 'cove, final', isKept: true, from: 'k3x9m2p7qa',
@@ -82,10 +86,20 @@ type ImageDrawInput =
 // size defaults to the profile's first. references: 0 to 4 image IDs.
 type ImageSize = '1024x1024' | '1536x1024' | '1024x1536';
 
-// image.draw: paid, effects ['fetch'], execution 'direct', results { prompt: 'untrusted' }
-// image.mark, image.list, image.read: effects ['note'], execution 'direct'
-// image.import: effects ['send'], queued; destination: the image providers.
-//   Your starter rules allow it for a code.run file and ask for one of your photos.
+// image.draw: paid, effects ['fetch'], execution 'direct', results { prompt: 'untrusted' }.
+//   When `from` or `references` holds an image whose source is 'photo', it declares ['send'] too,
+//   with the profile's provider as the destination, and queues; its card shows each photo.
+// image.mark, image.list, image.read, image.import: effects ['note'], execution 'direct'
+
+// refusal codes, each a result with refusalCode; check returns the first 4 before any charge
+// UNKNOWN_IMAGE, IMAGE_FORGOTTEN: a `from` or a reference; the message names which
+// UNKNOWN_PROFILE
+// NO_EDIT: the profile takes no `from` or no references
+// IMAGE_CAPS_FULL
+// IMAGE_REFUSED: a DrawReply refused, with `profiles` as above
+// IMAGE_FAILED: a DrawReply failed, a reply over 8 MiB, or bytes that don't decode
+// IMAGE_TIMEOUT: no reply in 120 seconds
+// NOT_IMAGE: image.import of a file that doesn't decode as a picture
 ```
 
 ### The provider interface
@@ -101,7 +115,7 @@ interface DrawRequest {
   prompt: string;
   size: ImageSize;
   source?: { mediaType: string; bytes: Uint8Array }; // an edit: the stored image, sent whole
-  references: { mediaType: string; bytes: Uint8Array }[]; // 0 to 4
+  references: { mediaType: string; bytes: Uint8Array }[]; // 0 to 4, each PNG and at most 8 MiB
 }
 
 type DrawReply =
@@ -164,9 +178,9 @@ images                         -- connectors module
   sequence     integer         -- the tool_result record whose attachments hold the bytes
   position     integer         -- the attachment's index on that record; 0 for image.draw
   parent_id    text null       -- the image an edit started from
-  source       text            -- 'draw', 'code_file' or 'photo'
-  name         text null       -- erasable, from image.mark
-  is_kept      integer         -- 0 or 1, from image.mark
+    source       text            -- 'draw', 'file' or 'photo'
+  source_seq   integer null    -- an import: the record that held the original
+  is_kept      integer         -- 0 or 1, from the latest image.marked record
   profile      text null       -- null for an imported image
   model        text null
   media_type   text
@@ -175,9 +189,14 @@ images                         -- connectors module
   created_at   integer
 ```
 
-The tool writes the row in the transaction that writes the tool_result record, so neither exists
-without the other. The prompt sits among the record's erasable fields, never in this table. The
-model IDs in the config are what the deployment sets; the code holds none.
+`image.mark` writes an `image.marked` record, with the name among its erasable fields, and updates
+`is_kept`. `image.list` and `image.read` read the name from the latest such record.
+
+Every image, an import too, keeps its own bytes in the attachments of its own tool_result record, so
+an image ID resolves on every thread whatever its source. The tool writes the row in the transaction
+that writes the tool_result record, so neither exists without the other. The prompt sits among the
+record's erasable fields, never in this table. The model IDs in the config are what the deployment
+sets; the code holds none.
 
 ## Constraints
 
@@ -189,10 +208,10 @@ Storage:
   or response ID between calls.
 - A notebook page, a device and `file.send` refer to an image by its short ID, never by a copy of
   its bytes, and none of them keeps the bytes past a forget.
-- An imported photo keeps the photo's own record as its source, so a forget of your message erases
-  the imported image too.
-- A photo reaches a provider only after you approve its `image.import`, or a rule you wrote allows
-  it.
+- An import keeps the original's record in `source_seq`. A forget of that record, such as your
+  message with the photo, erases the imported image too.
+- A photo reaches a provider only through an `image.draw` that you approve, or that a rule you wrote
+  allows.
 
 Forgets:
 
@@ -210,6 +229,10 @@ Spend:
 - The API keys stay in the server process and never enter a sandbox.
 
 Showing:
+
+- The `IMAGE_CAPS_FULL` check reserves one image at the largest size the fit allows. A call that
+  ends with no image releases the reservation. A source and the references go to the provider and
+  never count against the caps.
 
 - Each image passes through the same fit and reservation as a fetched image: up to 4 images beside a
   result, counted against the session's image caps.
