@@ -7,10 +7,16 @@ The release workflow then builds the conversation, fetch, code, codex and backup
 image with the sandbox digests inside it, and the web image, in that order. Each image gets a build
 provenance attestation as it is pushed, and the version tag reaches every image only after all of
 them exist. The release then publishes `release.json` and `config.schema.json`, the contract a
-deployment reads in place of nixie's tree. Pull-request CI checks the 2 compatibility rules that a
-one-release rollback depends on: the oRPC contract only grows, and each migration keeps the schema
-readable by the release before. A third check fails a config schema change that can refuse a
-released `config.yaml`, unless the pull request title marks it breaking.
+deployment reads in place of nixie's tree.
+
+Pull-request CI runs the [compatibility checks](#compatibility-checks), which keep a rollback of one
+release safe:
+
+- the oRPC contract only grows;
+- each migration keeps the schema readable by the release before;
+- the release before starts on the data that the pull request's build wrote;
+- a config schema change that can refuse a released `config.yaml` fails, unless the pull request
+  title marks it breaking.
 
 [The server](server.md) covers how nixie reads the sandbox manifest that the pipeline writes into
 the nixie image, and [the database](../core/database.md#migrations) covers migrations and the oldest
@@ -119,19 +125,24 @@ per key, each built by `buildImageShape` from the tuple, so no schema writes a k
 
 At start, nixie adds only the images that it needs: one for the harness of each configured profile
 (the profile each model role resolves to, and each profile a selectable model names), and one for
-each key that a part declaration names. It refuses to start, before any part starts, when the
-manifest lacks one of them, and the refusal names each missing image and what needs it.
+each key that a part declaration names. A part that picks its image itself declares the key in
+`images`, as the web fetch declares `fetch`. A part whose image comes from a harness record declares
+none, because the profile's harness covers it. nixie refuses to start, before any part starts, when
+the manifest lacks one of them, and the refusal names each missing image and what needs it.
 
 A pull request that adds an image holds:
 
 1. the Dockerfile, the key and its record;
 2. its job in the release workflow, listed in the `needs` of the `sandbox-manifest` job;
 3. its build step in the Images workflow, whose `id` is the key;
-4. the harness record or part declaration that uses it.
+4. the harness record or part declaration that uses it;
+5. a row in the [sandbox sizes](../connectors/sandboxes.md#sizes), when its role has none.
 
 A unit test reads both workflows and fails when a key has no release job or no Images step, or when
 a job or step builds another image or Dockerfile than the key's record. The scripts that gather the
-manifest read the tuple, so no workflow step or script names a key.
+manifest read the tuple, so no workflow step or script names a key. The `sandbox-manifest` job fails
+on a missing or an extra key, so a release that lacks a key's job stops before the nixie image is
+built.
 
 ## The release contract
 
@@ -278,6 +289,13 @@ The release notes stage runs the same check against the release before, and adds
 GitHub release: each added migration with its schema version, and whether the release before reads
 the schema it leaves. The list comes from the code, so it holds every migration whatever the commit
 messages say.
+
+The rollback check proves that the release before starts on data the pull request's build wrote. It
+starts the build on a fresh data directory, with the scripted model of the end-to-end suite, and
+waits until the build reports its database part ready. It stops the build with `SIGTERM` and needs a
+clean exit. It then starts the release before, the newest `v*` tag merged into `HEAD` other than a
+tag on `HEAD` itself, on the same data directory and config, with no step between. The check fails
+when that release does not start.
 
 The config schema check lists each change between two copies of `config.schema.json` that can refuse
 a `config.yaml` the older copy accepts: a removed or newly required key, a narrower type, bound or

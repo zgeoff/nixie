@@ -422,9 +422,9 @@ order. Step 4 runs once, after the last event.
 - A `trigger.polled` record is on no thread, so you erase it through the record on a task's thread
   that names it: a `task.event_wait_met` or a poll `trigger.fired`. `conversation.forget` on that
   record, by its thread and sequence as
-  [the redaction design](redaction.md#part-1-the-forget-takes-every-record-with-its-own-text) sets,
-  also deletes the erasure key of each `trigger.polled` record it names. The forget runs the session
-  cleanup of every task whose met wait or poll fire names one of those records.
+  [forgetting a record](../../architecture/channels/api.md#forgetting-a-record) sets, also deletes
+  the erasure key of each `trigger.polled` record it names. The forget runs the session cleanup of
+  every task whose met wait or poll fire names one of those records.
 - `task.event_wait_met` and `trigger.fired` join `forgettableKinds`, and `trigger.polled` joins its
   exceptions. This lands with the redaction design's Part 1, after the forget reaches a task's
   session.

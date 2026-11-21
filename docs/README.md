@@ -156,6 +156,8 @@ holds the design for a piece of work that is not built yet, with its spikes in
   mounts, impd and the address ranges, and the ingress
 - [Backups](architecture/deployment/backups.md) — snapshot sets, the backup job and its 2 restic
   repositories, receipts, and the shared formats
+- [The backup pair](architecture/deployment/backup-pair.md) — the snapshot tags, the newest key
+  snapshot, and how the fetch picks a data snapshot that its keys can read
 
 ## Guides
 
@@ -347,6 +349,8 @@ Backups.
 - [0013: Offsite backups and replication](decisions/0013-host-encrypted-backups.md) — backups leave
   the host only as ciphertext encrypted on the host, and a backup job of its own holds the only
   backup credential
+- [0017: Publish numbers](decisions/0017-publish-numbers-are-snapshot-tags.md) — the backup job
+  counts publishes in the repositories' snapshot tags, never in nixie's database
 
 ## Archive
 

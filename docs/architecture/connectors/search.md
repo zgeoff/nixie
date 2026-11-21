@@ -53,7 +53,8 @@ searches for. Every paid search records its cost under `hidden` in the
 [result record](./tool-calls.md#records), which the model never reads, so the event log shows what
 the search cost. That includes a search the tool refuses because a forget ended the session while
 the provider answered. Result records from earlier releases hold `costUSD` inside the result, and
-`log.read` ([reading the log](../memory/context.md#reading-the-log)) drops it.
+`log.read` ([reading the log](../memory/context.md#reading-the-log)) drops it. Code that totals
+search spend from the log reads both places.
 
 ## The budgets
 
