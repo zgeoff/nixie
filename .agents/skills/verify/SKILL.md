@@ -45,6 +45,8 @@ The mistakes that cost the most time:
 - [Exit codes](references/exit-codes.md): when a command fails, what to do for its exit code and
   `error.code`.
 - [Edit the skill](references/edit-the-skill.md): before you edit this skill or a feature file.
+- [Preview setup](references/preview-setup.md) and [the prod check](references/prod-check.md):
+  before you attach to `preview` or `prod`.
 
 Read a feature's file before you run its journey.
 
@@ -143,13 +145,13 @@ that command alone. A command with neither runs on the registry's first target, 
 
 <!-- repo: targets -->
 
-| Target    | Start with                                                  | Access     | Notes                                                                                                                     |
-| --------- | ----------------------------------------------------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------- |
-| `local`   | `bun verify use --target local`, then `bun verify up`       | read-write | A test build of this tree, with a scripted model.                                                                         |
-| `preview` | `bun verify use --target preview`, then `bun verify attach` | read-write | The PR's preview, on the real model. Leave it with `detach`, never `down`. Read [its setup](references/preview-setup.md). |
-| `prod`    | `bun verify use --target prod`, then `bun verify attach`    | read-only  | Production. Read it as [the prod check](references/prod-check.md) says.                                                   |
+| Target    | Start with                                                  | Access     | Notes                                                                                                           |
+| --------- | ----------------------------------------------------------- | ---------- | --------------------------------------------------------------------------------------------------------------- |
+| `local`   | `bun verify use --target local`, then `bun verify up`       | read-write | This tree's test build, with a scripted model.                                                                  |
+| `preview` | `bun verify use --target preview`, then `bun verify attach` | read-write | The PR's preview, real model. Read [its setup](references/preview-setup.md); leave with `detach`, never `down`. |
+| `prod`    | `bun verify use --target prod`, then `bun verify attach`    | read-only  | Production; follow [the prod check](references/prod-check.md).                                                  |
 
-- Run the `sign-in-enrol` journey first, and again after each `up --restart`, as
+- Run `sign-in-enrol` first, and after each `up --restart`, as
   [its file](references/feature-sign-in-enrol.md) says.
 
 <!-- /repo -->
@@ -168,7 +170,7 @@ for its commands.
 <!-- repo: commands -->
 
 - Pass `--role` and `--name` to `browser type` and `browser click`. When they match no single
-  element, pass `--ref`, the element's ID in the last `browser snapshot`.
+  element, pass `--ref`, an ID from the last `browser snapshot`.
 
 <!-- /repo -->
 
