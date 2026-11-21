@@ -286,6 +286,49 @@ test('it signs a device out, and its row goes', async () => {
   expect(devices).toStrictEqual([]);
 });
 
+test('it lets a browser with the token of a revoked device session enrol again', async () => {
+  const ctx = await setupTest();
+  const device = await ctx.enrol('device', 'desk panel');
+
+  await ctx.ownerClient.sessions.revoke({
+    clientActionID: crypto.randomUUID(),
+    sessionID: device.sessionID,
+  });
+
+  const issued = await ctx.ownerClient.sessions.issueCode({
+    clientActionID: crypto.randomUUID(),
+    scope: 'device',
+  });
+
+  const enrolled = await device.client.sessions.enrol({
+    clientActionID: crypto.randomUUID(),
+    code: issued.code,
+    deviceName: 'desk panel',
+    tokenDelivery: 'bearer',
+  });
+
+  expect(enrolled.scope).toBe('device');
+});
+
+test('it refuses a live device session an enrolment', async () => {
+  const ctx = await setupTest();
+  const device = await ctx.enrol('device', 'desk panel');
+
+  const issued = await ctx.ownerClient.sessions.issueCode({
+    clientActionID: crypto.randomUUID(),
+    scope: 'device',
+  });
+
+  const refused = device.client.sessions.enrol({
+    clientActionID: crypto.randomUUID(),
+    code: issued.code,
+    deviceName: 'second panel',
+    tokenDelivery: 'bearer',
+  });
+
+  await expect(refused).rejects.toMatchObject({ status: 403 });
+});
+
 test('it keeps the first enrolment code available while only a device holds a session', async () => {
   const ctx = await setupTest();
 

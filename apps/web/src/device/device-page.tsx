@@ -12,6 +12,7 @@ type Phase =
   | { readonly kind: 'checking' }
   | { readonly kind: 'enrol' }
   | { readonly kind: 'failed' }
+  | { readonly kind: 'signOutFailed' }
   | { readonly kind: 'ready'; readonly isScreenOn: boolean };
 
 const page = css({
@@ -79,6 +80,17 @@ export function DevicePage(): ReactNode {
           }}
           type="button"
         >
+          Try again
+        </button>
+      </main>
+    );
+  }
+
+  if (phase.kind === 'signOutFailed') {
+    return (
+      <main className={page}>
+        <p role="alert">Device mode could not sign out, so this device is still signed in.</p>
+        <button onClick={signOut} type="button">
           Try again
         </button>
       </main>
@@ -158,8 +170,15 @@ async function switchScreen(
 async function signOutDevice(client: ContractClient, setPhase: SetPhase): Promise<void> {
   try {
     await client.sessions.signOut({});
-  } catch {
+  } catch (error) {
     // a session that is already gone is signed out
+    const isGone = error instanceof ORPCError && error.code === 'UNAUTHORIZED';
+
+    if (!isGone) {
+      setPhase({ kind: 'signOutFailed' });
+
+      return;
+    }
   }
 
   setPhase({ kind: 'enrol' });

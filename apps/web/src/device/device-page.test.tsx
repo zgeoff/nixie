@@ -1,5 +1,7 @@
 import { expect, onTestFinished, test } from 'bun:test';
 import userEvent from '@testing-library/user-event';
+import { HttpResponse, http } from 'msw';
+import { server } from '../mocks/server';
 import { store } from '../mocks/store';
 import { createDeviceSession } from '../test-utils/create-device-session';
 import { render } from '../test-utils/render';
@@ -75,4 +77,26 @@ test('it signs the device out and shows the enrolment form', async () => {
   ).toMatchObject({
     revokedAt: expect.toBeDate(),
   });
+});
+
+test('it keeps the device signed in and says so when the sign out fails', async () => {
+  const ctx = setupTest();
+
+  const session = await createDeviceSession();
+
+  server.use(http.post('*/rpc/sessions/signOut', () => HttpResponse.error(), { once: true }));
+
+  const rendered = render(<DevicePage />);
+
+  const button = await rendered.findByRole('button', { name: 'Sign out' });
+
+  await ctx.user.click(button);
+
+  const alert = await rendered.findByRole('alert');
+
+  expect(alert).toHaveTextContent('could not sign out');
+
+  expect(
+    store.sessions.findFirst((query) => query.where({ sessionID: session.sessionID })),
+  ).toMatchObject({ revokedAt: null });
 });
