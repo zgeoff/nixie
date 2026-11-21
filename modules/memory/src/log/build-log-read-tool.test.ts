@@ -672,3 +672,93 @@ test('it says a search stopped early when no page in the cap holds a match', asy
     record: { eventIDs: [], next: expect.stringMatching(/^[0-9]+$/u) },
   });
 });
+
+test.each([
+  { role: 'owner', text: 'Is the locker code still 2291?' },
+  { role: 'assistant', text: 'It is 2291.' },
+  { role: 'tool', text: expect.stringContaining('The locker code is 2291.') },
+] as const)('it reads only the $role entries when role is $role', async (row) => {
+  const ctx = await setupTest();
+
+  await writeOwnerMessageRecord(ctx.log, {
+    thread: 'conversation',
+    text: 'Is the locker code still 2291?',
+    spans: [{ start: 0, end: 30, source: 'typed' }],
+  });
+
+  await writeReplyRecord(ctx.log, 'It is 2291.');
+
+  await writeRecords(ctx.log, [
+    {
+      kind: 'tool_result',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { result: { page: 'The locker code is 2291.' } },
+    },
+  ]);
+
+  const outcome = await ctx.tool.run(
+    { callID: 'call-1', tool: 'log.read', input: { role: row.role }, toolUseID: null },
+    buildMockToolContext(),
+  );
+
+  invariant(outcome.status === 'ok', 'the read is accepted');
+
+  const entrySchema = z.object({ role: z.string(), text: z.string() });
+  const parsed = z.object({ entries: z.array(entrySchema) }).parse(outcome.result);
+
+  expect(parsed.entries).toStrictEqual([{ role: row.role, text: row.text }]);
+});
+
+test('it keeps a page of long tool results under the byte limit and pages on with a next cursor', async () => {
+  const ctx = await setupTest();
+
+  await writeRecords(
+    ctx.log,
+    Array.from({ length: 50 }, (_, index) => ({
+      kind: 'tool_result' as const,
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { result: { page: `${String(index).padStart(2, '0')} ${'x'.repeat(2500)}` } },
+    })),
+  );
+
+  const idSchema = z.object({ eventID: z.string() });
+
+  const pageResult = z.object({
+    entries: z.array(idSchema),
+    next: z.string().nullable(),
+  });
+
+  const sizes: number[] = [];
+  const eventIDs: string[] = [];
+  let after: string | undefined;
+
+  do {
+    const outcome = await ctx.tool.run(
+      {
+        callID: 'call-1',
+        tool: 'log.read',
+        input: { role: 'tool', limit: 50, ...(after === undefined ? {} : { after }) },
+        toolUseID: null,
+      },
+      buildMockToolContext(),
+    );
+
+    invariant(outcome.status === 'ok', 'the read is accepted');
+
+    sizes.push(Buffer.byteLength(JSON.stringify(outcome.result)));
+
+    const parsed = pageResult.parse(outcome.result);
+    const pageIDs = parsed.entries.map((entry) => entry.eventID);
+
+    eventIDs.push(...pageIDs);
+
+    after = parsed.next ?? undefined;
+  } while (after !== undefined);
+
+  expect(sizes.length).toBeGreaterThan(1);
+  expect(sizes).toSatisfyAll((size: number) => size <= recallPageLimitBytes);
+  expect(eventIDs).toHaveLength(50);
+  expect(new Set(eventIDs).size).toBe(50);
+});

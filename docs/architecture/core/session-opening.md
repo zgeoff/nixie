@@ -27,7 +27,9 @@ A new session opens with seven slots, from what defines the model to the current
 4. **Memory index.** Every active item that is not pinned, one row per topic, with the gist of each
    item. [The index](../memory/context.md#the-memory-index) covers its layout and budget. The slot
    is empty, and the block left out, when no such item exists or the budget is 0.
-5. **Summary.** The newest summary that is still readable.
+5. **Summary.** The newest summary that is still readable, with a last line that tells the model it
+   wrote the summary from recollection and to check a decision's note or event ID before relying on
+   it.
 6. **Recent turns.** The user's messages and the replies after that summary, with the events over
    the same span of the log, memory changes included.
 7. **The current turn.** The retrieved items, the turn's own notes and the user's messages.

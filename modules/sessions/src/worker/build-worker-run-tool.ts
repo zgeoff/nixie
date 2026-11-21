@@ -37,7 +37,8 @@ export function buildWorkerRunTool(options: WorkerRunToolOptions): ToolDefinitio
       'answer. The worker holds only the tools you name from the tools you hold, and none that ' +
       'start tasks, send messages or touch memory. It has no history, so put everything it needs in ' +
       'the question. The call waits for the answer, and it stops at its limits of minutes, turns, ' +
-      'tokens and dollars. Its spend counts toward this task. It can run on a model you choose.',
+      'tokens and dollars. Its spend counts toward this task. It can run on a model you choose. ' +
+      'Use a worker when you need the answer in this turn, and a task when the work can run on while you keep talking.',
     input: {
       type: 'object',
       properties: {

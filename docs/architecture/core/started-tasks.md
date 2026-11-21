@@ -1,9 +1,10 @@
 # Started tasks
 
-A started task is a task that the conversation starts through the start tool, for work that the user
-asks for and that no listed task covers. It runs on the same state machine, inbox and controls as
-every [task](./tasks.md), and this doc covers what only a started task has: the start and its
-options, the sandbox runner that runs its steps, and its limits.
+A started task is a task that the conversation starts through the start tool, for work that needs
+its own context, can wait or lasts beyond the turn, and that no listed task covers. The user may
+have asked for the work, or the model may have seen it needed. It runs on the same state machine,
+inbox and controls as every [task](./tasks.md), and this doc covers what only a started task has:
+the start and its options, the sandbox runner that runs its steps, and its limits.
 
 ## The start
 

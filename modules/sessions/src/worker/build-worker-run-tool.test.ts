@@ -95,3 +95,13 @@ test('it leaves the model option out when no model is selectable', async () => {
     additionalProperties: false,
   });
 });
+
+test('it tells the model when to use a worker and when to start a task', async () => {
+  const ctx = await setupTest();
+
+  const tool = ctx.buildTool([]);
+
+  expect(tool.description).toEndWith(
+    'Use a worker when you need the answer in this turn, and a task when the work can run on while you keep talking.',
+  );
+});

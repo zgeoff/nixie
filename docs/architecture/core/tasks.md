@@ -214,9 +214,10 @@ and the waits.
 
 ## Started tasks
 
-The conversation starts a task through the start tool when the user asks for work that no listed
-task covers. [Started tasks](./started-tasks.md) covers the start and its options, the sandbox
-runner that runs a started task's steps, and its limits.
+The conversation starts a task through the start tool for work that needs its own context, can wait
+or lasts beyond the turn, whether the user asked for it or the model saw it needed, and that no
+listed task covers. [Started tasks](./started-tasks.md) covers the start and its options, the
+sandbox runner that runs a started task's steps, and its limits.
 
 ## Workers
 
@@ -225,7 +226,9 @@ holds it, calls `worker.run` with a question, an optional list of tools and an o
 call starts one worker: a model loop in a sandbox of its own, with a fresh session and the question
 as its only input. The call waits for the worker's last reply and returns it as the answer, with the
 minutes, turns, tokens and dollars the worker used. A reasoning block that the model sends after its
-text is not a reply, so the text before it stays the answer.
+text is not a reply, so the text before it stays the answer. The tool's description tells the model
+to use a worker when it needs the answer in the same turn, and a task when the work can run on while
+the conversation goes on.
 
 The `model` option takes one of the [selectable models](./model-profiles.md#selectable-models) that
 the start tool offers, with the same names and descriptions, and leaves out each entry with

@@ -1040,7 +1040,7 @@ test('it places a self-note in its own labelled block beside a fact', async () =
   const opening = turn.input[0]?.text ?? '';
 
   expect(opening).toMatch(
-    /type="retrieved-memory" [^>]+>\nFrom your memory[^\n]+\nAbout the owner:(?:\n- [^\n]+\n {2}[^\n]+){1}\n<\/system-message/u,
+    /type="retrieved-memory" [^>]+>\nFrom your memory[^\n]+\nAbout the owner:(?:\n- [^\n]+\n {2}[^\n]+){1}\nThese are the items closest to this turn[^\n]+\n<\/system-message/u,
   );
 
   expect(
