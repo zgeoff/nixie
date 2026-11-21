@@ -95,11 +95,11 @@ version. A session that holds the number from before a label edit gets the stale
 reads the revision from it, and after a label-only edit `memory.retire` still passes the read check
 for a text recalled before the edit.
 
-The release before reads the schema, because the labels add only columns with defaults and one
-table. It skips both label record kinds and refuses a revision number once with its stale error. A
-label-only proposal's `memory.proposed` record holds the operation `remember`, the text version and
-a copy of the text, so that release parses it, but if it approves one it writes a version with the
-same text and loses the reviewed labels.
+A rollback by one release keeps the schema readable, because the labels add only columns with
+defaults and one table. The release before skips both label record kinds and refuses a revision
+number once with its stale error. A label-only proposal's `memory.proposed` record holds the
+operation `remember`, the text version and a copy of the text, so that release parses it, but if it
+approves one it writes a version with the same text and loses the reviewed labels.
 
 ## States
 
@@ -370,8 +370,9 @@ match below the first `limit`. For the plain list and for topic pages it lists n
 starts at the first omitted entry. `leftOut` never lists an ID that the store drops for another
 reason, such as an unknown ID, a forgotten item, a retired item without `includeRetired`, or an item
 outside `subjects`. A call that passes `subjects` limits any kind of call to those subjects. The
-store's recall holds an item's whole current version, which is at most 2,000 characters of text and
-2,000 of quote, so the command-line program's own cut at 48,000 characters never reaches it.
+store's recall holds an item's whole current version, which is at most 6,000 characters of text
+(2,000 for an owner or shared item) and 2,000 of quote, so the command-line program's own cut at
+48,000 characters never reaches it.
 
 ### Topic pages and the topic list
 
