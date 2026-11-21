@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 export const screenMarkdownLimit = 20_000;
-export const screenFitSchema = z.enum(['whole', 'fill']);
+const screenFitSchema = z.enum(['whole', 'fill']);
 
 // What a screen shows: markdown, or an image by its short ID. An image carries how it fits the
 // screen, which 'whole' answers when the caller leaves it out.

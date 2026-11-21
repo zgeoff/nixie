@@ -647,7 +647,6 @@
         "@heynixie/tools": "workspace:*",
         "kysely": "catalog:",
         "tiny-invariant": "catalog:",
-        "ts-pattern": "catalog:",
         "zod": "catalog:",
       },
       "devDependencies": {
