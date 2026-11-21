@@ -108,8 +108,8 @@ refuses with a code, the field's path and a sentence that says how to fix it whe
 
 - a field is missing or never goes with the others: `AT_REQUIRED`, `AT_NOT_ALLOWED`,
   `NTH_NOT_ALLOWED`, `BY_MONTH_DAY_NOT_ALLOWED`, `STARTS_REQUIRED`;
-- the schedule has no fire within the check's horizon, which is 400 days from now or from its
-  `starts`, whichever is later: `NO_FIRE`;
+- the schedule has no fire within the check's horizon, which runs from now or from its `starts`,
+  whichever is later: `NO_FIRE`;
 - the smallest gap among its next fires is under the minimum gap, which is not a fixed interval:
   `MIN_GAP`.
 
