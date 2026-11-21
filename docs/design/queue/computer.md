@@ -58,13 +58,23 @@ computer.download({ tab: 't1', element: 'E9' });
 
 computer.run({ command: 'ls ~/files', timeoutSeconds: 30 }); // timeoutSeconds: 1 to 300
 // → { exitCode: 0, stdout: { text: 'notes.md\n', isCut: false }, stderr: { text: '', isCut: false }, seconds: 0.2 }
+
+computer.readFile({ path: '~/files/notes.md', part: 1 });
+// → { path, bytes: 2210, part: 1, parts: 1, text: '…' }  or { refused: 'NOT_TEXT' } | { refused: 'NO_FILE' }
+computer.writeFile({ path: '~/files/notes.md', text: '…' }); // or from: { image: 'k3x9m2p7qa' } | { file: 'f9k2m4q7ws' }
+// → { path, bytes: 2318 }   `from` copies an image or a code.run file into the shell
+computer.exportFile({ path: '~/files/chart.png' });
+// → { file: 'f2r8k5w1mz', name: 'chart.png', bytes: 40211 }
+//   a file that file.send, image.import and code.run take, as they take a code.run file; at most 25 MiB
 ```
 
 ```ts
 // connectors module: the effects each tool declares
 // computer.open, computer.read, computer.screenshot, computer.download: ['fetch'], run direct
-// computer.close: ['note'], run direct
+// computer.close, readFile, writeFile, exportFile: ['note'], run direct
+//   they touch only the shell's disk and nixie's own store, so nothing leaves nixie
 // computer.fill, computer.click: ['send'] with the tab's host as the destination, queued
+//   their "always allow" rule pins only the host: tab, element and value are free text to the card
 // computer.run: ['computer_run'], a new effect, queued; it asks unless a rule allows it
 // every result field except status, part, parts and the flags is untrusted, and so is the screenshot
 ```
@@ -87,7 +97,9 @@ type ComputerRequest =
   | { op: 'act'; tab: string; expectURL: string; acts: Act[]; submit: boolean }
   | { op: 'close'; tab: string }
   | { op: 'download'; tab: string; element: string }
-  | { op: 'run'; argv: string[]; timeoutSeconds: number };
+  | { op: 'run'; argv: string[]; timeoutSeconds: number }
+  | { op: 'readFile'; path: string }
+  | { op: 'writeFile'; path: string; bytes: Uint8Array };
 
 type Act = { kind: 'click'; element: string } | { kind: 'fill'; element: string; value: string };
 
@@ -98,7 +110,8 @@ type ComputerReply =
     }
   | { ok: true; screenshot: { mediaType: 'image/png'; bytes: Uint8Array } }
   | { ok: true; run: RunResult }
-  | { ok: true; download: { name: string; bytes: Uint8Array } }
+  | { ok: true; download: { name: string; bytes: Uint8Array } } // download and readFile
+  | { ok: true; written: { bytes: number } }
   | {
       ok: false;
       reason: 'stale_element' | 'page_changed' | 'cross_origin_submit' | 'tab_gone' | 'failed';
@@ -154,9 +167,15 @@ Lifecycle:
   its first use after the release, and copies the profile or the files into the replacement after it
   stops Chromium or the shell.
 - When a sandbox is gone, the next call creates an empty one.
-- Each sandbox sleeps after 5 minutes idle. Chromium restarts after each wake, so every tab ID from
-  before the sleep returns `TAB_GONE`. The profile keeps the sign-ins.
+- The browser sandbox sleeps after 30 minutes idle, and never while a queued act on one of its tabs
+  waits for your decision. The shell sandbox sleeps after 5 minutes idle.
+- When a wake keeps the sandbox's memory, the tabs and their IDs survive the sleep. When it doesn't,
+  Chromium restarts, every tab ID from before the sleep returns `TAB_GONE`, and the profile keeps
+  the sign-ins.
 - A forget never reaches inside either disk.
+- The disks are working space. What must last goes in the notebook or in memory, which nixie's
+  backup covers. The tools' descriptions say so, and `isDiskNew` tells the assistant that the disk
+  started empty.
 - A reset is an owner action in the web client, for the browser, the shell or both. It destroys the
   sandbox, and the next call creates an empty one.
 
@@ -197,7 +216,10 @@ Records:
 
 ## Open questions
 
+- **Does a wake keep the browser's memory?** The spike settles it. Until then, the build treats
+  every wake as a restart.
+
 - **Are `computer` and the `computer.*` tool names right?** The owner settles it. Until then, the
   build uses them.
 - **Do the sizes and the idle timeout fit?** A spike in a sandbox settles them. Until then, the
-  build uses the sizes above and 5 minutes.
+  build uses the sizes above and the idle times in [Lifecycle](#constraints).
