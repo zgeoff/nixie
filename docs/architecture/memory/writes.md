@@ -62,7 +62,14 @@ about the user or a shared item, it runs these steps in order:
    the user's latest messages in the calling thread, newest first, within the evidence window, a
    configurable count, and the newest message that holds the quote as typed text backs the write. A
    write with no quote, or with a quote that matches no such message, becomes a proposal.
-   [Reading the log](./context.md#reading-the-log) covers a write that cites an older message.
+   [Reading the log](./context.md#reading-the-log) covers a write that cites an older message. A
+   cited event that the readable thread lacks makes the write wait with `no_quote`, and so does an
+   event on any other thread. A cited record that is not the user's message gives `quote_not_typed`,
+   and a cited message that the user forgot, or that backed an item the user forgot, gives
+   `forgotten_evidence`. A quote with no event ID searches the caller's own thread only, so an
+   uncited quote from a task with the log grant waits with `no_quote`, and such a task must cite the
+   event. The gate looks up a covering allow rule by the caller's own thread, whatever the grant.
+   The grant adds no review reason and never sends a write to review on its own.
 3. **The quote check.** The quote lies wholly in text the user typed, outside any quoted block.
 4. **The token check.** Every [destination-like token](#the-token-check) in the text and the labels
    appears in the quote, so a label never carries a destination that the text could not.

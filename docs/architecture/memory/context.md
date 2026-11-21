@@ -75,7 +75,17 @@ every foldable topic is folded and the count is still over, the store drops topi
 line that gives their number and their items, the topic with the fewest items first. A tie in either
 step goes to the later topic in the block's order. `memory.recall` with `topics` lists every topic,
 so a dropped topic stays reachable. A budget of 0 turns the block and its status lines off, and the
-schema refuses a budget from 1 to 2,999.
+schema refuses a budget from 1 to 2,999, so the block always fits its opening and closing lines. The
+closing line reads "and N more topics with M items: list them with memory.recall topics".
+
+Two topics that differ only by case are one row. The status block gets 2 lines from the same read as
+the block: the count of active items that are not pinned, and the block's tokens against its budget.
+The opening record stores those 2 numbers, as it stores every status value, and no item. A task with
+`memory: none` gets no memory block, and the sessions module reads no index for it. nixie writes no
+record of what the block showed, so trigger push can still place an item whose gist the block
+showed. The block reaches the model of the turn and no other provider. The sessions module places
+the block and the memory module renders and counts it, so the sessions module reaches memory only
+through its port.
 
 ## How an item reads
 

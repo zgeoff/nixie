@@ -63,11 +63,26 @@ without it never gives it. A definition's task and a task that the user started 
 to it hold no grant as starters, as they hold no memory and no persona. The grant follows the
 runner's `logThread` of the tool run ([reading the log](../memory/context.md#reading-the-log)), and
 nothing else of the conversation's log reaches a task: memory retrieval adds no past message to a
-task's turn. A start that sets the grant beside a tool that sends data outside nixie passes the
-decision point as it would without the grant. The task's `log.read` records its call and its result
-on the task's own thread. A forget of a record on the conversation's thread cleans the open task
-with the grant, as it cleans an open task that reads memory, because the task's session can hold the
-record's text from a read.
+task's turn.
+
+A start that sets the grant beside a tool that sends data outside nixie passes the decision point as
+it would without the grant, because the decision point decides by the tool's declared effects and
+the user's rules, so the grant widens what a task reads and never where nixie sends. A definition
+file may set `log: conversation`, because the user wrote the file, and the seed checks it as a start
+from a starter that holds the grant. The runner sets the thread of the grant at the start of each
+step, from the started task's options or the definition version that the task run pins, and nothing
+stores it, so the model never picks a thread and an older release never meets the field.
+
+A grant that the task's setup loses in the middle of a step counts until the step ends. The task's
+`log.read` records its call and its result on the task's own thread, so a forget of the task's
+thread removes what the task read and the conversation's thread holds only the conversation's work.
+
+A forget of a record on the conversation's thread cleans the open task with the grant, as it cleans
+an open task that reads memory, because the task's session can hold the record's text from a read.
+The cleanup reads a started task's grant from its creation record, and a definition's task from the
+version its newest task run pinned and the version in force, because the task's session can outlive
+a task run. An older release reads every task run on its own thread and skips a definition whose
+file sets `log`, so it cleans no session for the grant.
 
 Each write from a task goes through the same [write gate](../memory/writes.md) as the
 conversation's. A task's `memory.remember` or text edit cites no message of the user on its own
@@ -250,9 +265,96 @@ its limits. A raise or a restart opens a task run that carries the one before it
 so a crash after an action ran and a rerun of the step give exactly one report.
 
 A record belongs to a task run by the `taskRunID` it carries, or, for a record with none, by its
-place between the opening and the end of a run. Each tool call in a task run carries the ID, and a
-tool can have a cap of calls per task run: a call past the cap is a `tool_result` with the outcome
-`denied` and no decision, and a call that was invalid or denied never counts toward it.
+place between the opening and the end of a run. Only a tool call's records and a failed turn's spend
+record can land after their task run ended, because a step writes them with no lease check, so only
+they carry the ID. A record that lands between one task run's end and the next one's opening, such
+as a message after a report, belongs to no task run until a claim opens one for it. Every count of a
+task run's use reads its records through one function, so the meters and the caps agree.
+
+Each tool call in a task run carries the ID, and a tool can have a cap of calls per task run: a call
+past the cap is a `tool_result` with the outcome `denied` and no decision, and a call that was
+invalid, denied, failed or errored never counts toward it. The cap needs no approval, because it
+only narrows what a task run may do. A call counts when its outcome is `result`, `queued` or
+`unknown`, or while it has not returned, and the tools module counts by `taskRunID` alone, so it
+imports nothing from the tasks module. A carried task run takes the caps of the first task run, and
+each cap counts only the carried task run's own calls. A call cap denies the call and never pauses
+the task, so the rest of the work goes on.
+
+### Opening a task run
+
+A task run is pending, then open, then ended. The projection has a row only from the claim, so a
+task has a pending task run when it has unread waking input and no open task run, and a started
+task's brief is its first waking input. A claim that finds the task with no open task run checks, in
+this order:
+
+1. The limit hold. A task that is held opens no task run, and the claim pauses it.
+2. A raise or a restart that is newer than the end of the task's newest task run, which ended with
+   `limit`, `stopped` or `failed`. The claim opens one carried task run for it.
+3. The unread waking input. The task run's origin is the cause that woke the step: the brief, a task
+   message, a message of the user, a timer or an outside event.
+
+A definition's task checks an unread fire before a raise or a restart, and a raise or a restart
+before an unread message, as [the task of a definition](definitions.md#the-task-of-a-definition)
+describes. A claim that finds an open task run that is active or waiting on a reply runs the step in
+it, whether the step is a rerun or a waking message caused it. A unique partial index allows one
+open task run per task, so a rerun of a first step opens no second one and a rebuild of the
+projection gives the same rows.
+
+The opening record pins the report mode, the report target, the report shape and the limits, and
+every reader reads those 4 values from it, so a change to a definition applies from the next task
+run. The report target is the starter for a started task and the conversation for a definition's
+task run, and null only under the mode `none`.
+
+### Ending a task run
+
+One function, which the tasks module does not export, ends every task run and writes its report. It
+runs in the transaction of the step's commit, the stop, the close or the failure that ends the task
+run, and writes nothing when the task has no open task run. When a step commits, the first row that
+applies decides:
+
+| The commit finds                           | End cause   | The task's next state                        |
+| ------------------------------------------ | ----------- | -------------------------------------------- |
+| a report request                           | `reported`  | what the step asked                          |
+| a reached limit                            | `limit`     | `paused`, under the limit hold               |
+| the runner returned `done`                 | `no_report` | `done`, or `waiting` for a definition's task |
+| a first step that found no work            | `no_work`   | `waiting`                                    |
+| a quiet turn, and the task is not wakeable | `no_report` | `waiting`                                    |
+
+A commit that finds more queued work, including a turn that an interrupt cut, an open wait for a
+reply or an event, or a quiet turn on a wakeable task, leaves the task run open. The user's stop
+ends the task run with `stopped` and the close with `closed`, each in the transaction that writes
+the control, and a step error that fails the task ends it with `failed` in the error's transaction.
+Recovery ends no task run: the rerun of a step joins the open one. When the transaction that ends a
+task run throws, the task run stays open and the caller's retry ends it.
+
+A started task that reported is wakeable and waits with its sandbox asleep until the user closes it.
+It is never `done`, because a `done` task refuses messages and has no sandbox. A definition's task
+is never `done` either. A step whose task run holds a report request runs no further model turn, so
+when the lease of a step that called `task.report` expires, the rerun does no work and its commit
+sends the first summary and fields under the first report ID.
+
+The end writer delivers the report, and the first row that applies decides:
+
+| The case                                    | What nixie writes                               | Delivery    |
+| ------------------------------------------- | ----------------------------------------------- | ----------- |
+| the end cause is `no_work`                  | no message                                      | `kept`      |
+| the report target is done, failed or closed | no message                                      | `kept`      |
+| the mode `none`                             | no message                                      | `kept`      |
+| the mode `next_turn`                        | a `task_message` of kind `report`, with no wake | `next_turn` |
+| the mode `wake`, past the hop limit         | a `task_message` of kind `report`, with no wake | `next_turn` |
+| the mode `wake`, inside the hop limit       | a `task_message` of kind `report`, with a wake  | `wake`      |
+
+The message goes from the task to the report target, with the report ID as its message ID and the
+body of `task.run_ended`. The hop of an end that a step commits is the hop of that step's lease. An
+end that commits no step, such as a stop, a close, a failure or the claim's end of an idle task run,
+takes the hop of the task's newest step, so a stop wakes the starter whenever the task run's own hop
+allows it and never resets a loop's hop count. A report to a target whose listed state is `finished`
+goes out under its report mode, because that target accepts messages and the hop limit bounds the
+wake. A kept report exists only on `task.run_ended`, because a message on the task's own thread
+would read as the task's input. A `task.message` of kind `report` that a task sends during a task
+run is an ordinary message that ends nothing. nixie never treats a report as a message from the
+user. A definition's task run reports under `next_turn` by default, because a scheduled task run
+under `wake` would spend a conversation turn on each fire.
 
 ## Reports
 
@@ -263,6 +365,39 @@ the pinned shape, refuses a second report in the task run with the first report'
 takes a closed table of keywords, and nixie adds the object type and closes every object, so one
 shape always gives one text. nixie sends nothing from a call that fails the check, and the refusal
 repeats no value that the model sent.
+
+Every task on the sandbox runner holds `task.report`, even when its start or definition omits it,
+and the conversation never holds it. Its input schema is the same for every task and holds no report
+shape, because the registry keeps one definition per tool name, so nixie checks the fields against
+the pinned shape in code. The `tool_called` record holds an empty input, so it holds neither the
+summary nor the fields. A call that passes no `fields` counts them as an empty object, so a shape
+with no required field accepts a summary alone. nixie refuses a call, with the outcome `error`, when
+the task declares no shape and the call has fields, when the fields fail the shape, or when the
+fields pass 16,000 characters as JSON. A refusal writes and ends nothing, counts toward no call cap,
+and never repeats a value or a key that the model sent, because a forget of the report never reaches
+the refused call's result. Only the turn and dollar limits bound the tries. After the check, one
+write transaction refuses a step whose lease expired, refuses a second request in the task run with
+the first report's ID, and writes the request. Of 2 calls in one turn, only the first writes.
+
+A report shape is a closed subset of JSON Schema: a table of keywords that nixie can enforce, with
+field names that match `^[A-Za-z][A-Za-z0-9_]{0,39}$`, and every `required` name a property of its
+object. It takes at most 4,000 characters as JSON, because nixie copies it into every
+`task.run_opened`, every first message and every refusal. The start and the seed check it before
+they accept the task, and a shape that the validator cannot compile is refused. nixie stores the
+shape with sorted keys and with the object type and `additionalProperties: false` on every object,
+so one shape gives one definition hash. A shape is plain payload, so a forget never destroys a field
+name or an `enum` value. A task run carries the shape in `task.run_opened`, and a carried task run
+copies it from the one it continues. A definition file takes the same `reportShape` key, and
+`task.define` takes none.
+
+The first turn of a task run renders the `trigger` block of a definition's task run, then a
+`report-shape` block, when the task run has a shape. The block tells the model to end with
+`task.report` and passes the shape as one line of JSON. Its `fence` attribute holds the first 4 hex
+digits of the task run's ID, which the model never sees, so the model cannot close the block early,
+and a rerun or a rebuild renders the same block. nixie stores neither block. They sit in a block
+because a prompt that changes at each fire would break the session of a `continuing` task. The first
+turn of a carried task run renders neither, because the resumed session holds both. A rebuilt
+session of a carried task run renders both, and takes the fire from the first task run of the chain.
 
 The task run's end writes the report, once, in the transaction of the step's commit, the stop or the
 close that ended it. When the task made no report, nixie writes a code-made summary for the cause
@@ -280,10 +415,21 @@ the end that the report target caused by closing the task, are kept the same way
 under a mode that does not wake the starter also writes a `task.limit_notice` to the starter, so the
 starter learns the task paused.
 
+The report's words sit in up to 3 records: the request, `task.run_ended`, and the delivered message
+on the report target's thread. A report that the task made reads as a summary of 1 to 8,000
+characters and, with a shape, the fields. When the task made none, the summary is a sentence that
+nixie wrote for the end cause, such as "The run stopped at its turns limit before it wrote a
+summary", and `missing` lists each top-level field of the shape. The same body reaches both
+`task.run_ended` and the message.
+
 A task that finishes a turn with no report ends its task run as `no_report`. A forget of a delivered
 report destroys the request, the end and the message together, and rebuilds the sessions of each.
-`log.read` shows each task message on the thread it reads as an entry of the role `task`, with no
-text once the message is forgotten.
+The forget accepts the message of a report from any one of the 3 records, and finds the other two
+through the task run's row. It runs the session cleanup once per destroyed record, so the cleanup
+reaches the task's thread and the report target's thread. The user cannot forget a kept report on
+its own, only by forgetting its task's thread. A forget of the request before the end leaves the
+summary that nixie writes and `missing`. `log.read` shows each task message on the thread it reads
+as an entry of the role `task`, with no text once the message is forgotten.
 
 ## Limits
 

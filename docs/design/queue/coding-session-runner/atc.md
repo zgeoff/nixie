@@ -12,7 +12,7 @@ source, the map onto atc's procedures, the config and the token, and the release
 that calls the adapter is in [the runner](runner.md). The terms, such as reach, the hello, a hop and
 a bound session, are in the [README](README.md#terms). The action queue is in
 [actions](../../../architecture/core/actions.md), and the trigger core in
-[the trigger core](../triggers.md).
+[the trigger core](../../../architecture/core/triggers.md).
 
 ## Shape
 

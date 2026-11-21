@@ -65,16 +65,41 @@ primary key of `trigger_keys`, and with it the transaction.
 `event`. Its `isCatchUp` is true when the core's clock is later than the slot by more than the
 catch-up threshold. A `trigger.skipped` lists the 20 newest slots it covers, with the full count.
 
+`trigger.fired` holds the definition ID and the hash of the version that a task run of this fire
+pins, the source, the dedupe key, the kind (`schedule`, `at` or `poll`), the slot, the core's clock
+at the write, whether it is a catch-up, and the missed slots with their full count. A poll's record
+also lists the sequences of the poll records that it covers. `trigger.skipped` holds the same
+identifiers, the newest key, the slots it covers, their count, its reason (`too_late`,
+`catch_up_off`, `window_closed`, `still_running` or `task_held`) and the core's clock. A skip takes
+the dedupe key of its newest slot, so a definition that is disabled and enabled again inside a
+skipped slot does not fire in it. The fire is an inbox record, and a skip is never one and wakes
+nothing. The core writes `trigger.fired` through the tasks module's inbox writer, which also sets
+the hop count of messages between tasks to 0, and writes `trigger.skipped` through the log module.
+
 After the record of an `at` event, the core writes a `trigger.armed` that withdraws the definition
 and calls `retireOneShot`, which puts the task's hash out of force, in the same transaction. The
 core writes `trigger.delivered` only when the batch's cursor differs from the stored one.
+
+Each record is written before the core reads for the next event, and its fold adds the key to
+`trigger_keys` at once. The conversation task exists before any source starts, so a fire for it
+never finds the task missing. When `deliver` throws or nixie dies before the commit, nothing is
+written, and the source builds the same events with the same keys at its next tick. When the clock
+moves back, nixie delivers no fire twice. A restored backup holds its keys and watermarks, so nixie
+repeats no fire it holds, and a fire due after the backup is a missed fire. After a rollback and an
+upgrade, the first seed corrects the armed rows, and until then the core drops each event whose hash
+differs from its row. `trigger_keys` grows by one row per fire or skip, so a schedule that fires
+every few minutes adds tens of thousands of rows a year. The triggers module imports the tasks
+module, the log module and the clock lib, and the definitions module imports the triggers module, so
+no import cycle forms. A trigger source that calls an outside system is an adapter named
+`trigger-<system>`, or calls that system through a connector.
 
 ## The spent one-shot
 
 A one-shot is spent when `trigger_keys` holds its dedupe key. nixie stores the fact nowhere else.
 Every seed asks `readSpentOneShots` and leaves a spent one-shot out of both hook lists, so the file
 of a spent one-shot stays as written and a disabled-then-enabled one does not fire again. An edit of
-the `at` to another instant gives another key, so the one-shot fires at the new instant.
+the `at` to another instant gives another key, so the one-shot fires at the new instant. An edit to
+an instant whose key is taken makes the one-shot spent at the next seed.
 
 ## The schedule shape
 
