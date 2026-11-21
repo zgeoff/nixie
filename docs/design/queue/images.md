@@ -51,22 +51,25 @@ image.draw({
 });
 // references: up to 4 image IDs the provider sees beside the prompt, so a character stays the same
 
-image.mark({ image: 'p8d2v6t1wz', name: 'cove, final', isKept: true });
-// → { image: 'p8d2v6t1wz', name: 'cove, final', isKept: true }
-//   name and isKept are each optional, and at least one is given; name: null clears it.
-//   isKept only filters image.list; it keeps nothing past a forget.
+image.name({ image: 'p8d2v6t1wz', name: 'cove, final' }); // name: null clears it
+// → { image: 'p8d2v6t1wz', name: 'cove, final' }
+
+image.pin({ image: 'p8d2v6t1wz' }); // image.unpin takes the same input
+// → { image: 'p8d2v6t1wz', isPinned: true }
+//   a pin only filters image.list; it keeps nothing past a forget
 
 image.import({ file: 'f9k2m4q7ws' }); // a file ID, or { photo: { eventID: '1042', number: 1 } }
 // → { image: 'h6w3n8r2pk', from: null, size: '1920x480', isShown: true, roomLeft: 3 }
 //   a file ID from code.run, computer.exportFile or mail.saveAttachment. nixie converts the picture
-//   to PNG and keeps its shape, scaled down until its long side is at most 2048 pixels and the PNG is at most 8 MiB. It can then
-//   be a `from` or a reference like any other image. As a `from`, nixie pads it into the ImageSize
+//   to PNG and keeps its shape, scaled down until its long side is at most 2048 pixels and the PNG
+//   is at most 8 MiB. It can then be a `from` or a reference like any other image. As a `from`, nixie pads it into the ImageSize
 //   nearest its shape, and the edit comes back at that size.
 
-image.list({ isKept: true });
-// → { images: [{ image: 'p8d2v6t1wz', name: 'cove, final', isKept: true, from: 'k3x9m2p7qa',
+image.list({ isPinned: true });
+// → { images: [{ image: 'p8d2v6t1wz', name: 'cove, final', isPinned: true, from: 'k3x9m2p7qa',
 //                prompt: 'move the boat…', isForgotten: false, at: '2026-11-21T08:10:00Z' }], next: null }
-//   newest first; filter by `from` for one image's edits or by `isKept`; a forgotten image lists with prompt null
+//   newest first; filter by `from` for one image's edits or by `isPinned`; a forgotten image lists
+//   with prompt null
 
 image.read({ image: 'k3x9m2p7qa' });
 // → { image: 'k3x9m2p7qa', from: null, prompt: 'a small cove…', size: '1536x1024', isShown: true }
@@ -93,7 +96,8 @@ type ImageSize = '1024x1024' | '1536x1024' | '1024x1536';
 //   When `from` or `references` holds an image whose source is 'photo', its prepare hook, from the
 //   computer design, returns ['fetch', 'send'] with the profile's provider as the destination, and
 //   the call queues; its card shows each photo. check and the charge run when the call runs.
-// image.mark, image.list, image.read, image.import: effects ['note'], execution 'direct'
+// image.name, image.pin, image.unpin, image.list, image.read, image.import: effects ['note'],
+//   execution 'direct'
 
 // refusal codes, each a result with refusalCode; check returns the first 5 before any charge
 // UNKNOWN_IMAGE, IMAGE_FORGOTTEN: a `from` or a reference; the message names which
@@ -104,9 +108,8 @@ type ImageSize = '1024x1024' | '1536x1024' | '1024x1536';
 // IMAGE_FAILED: a DrawReply failed, a reply over 8 MiB, or bytes that don't decode
 // IMAGE_TIMEOUT: no reply in 120 seconds
 // NOT_IMAGE: image.import of a file that doesn't decode as a picture
-// image.mark, image.read and image.list's `from` return UNKNOWN_IMAGE or IMAGE_FORGOTTEN.
-// image.import returns UNKNOWN_FILE, FILE_FORGOTTEN or UNKNOWN_PHOTO. A mark with neither field
-// fails the input check.
+// image.name, image.pin, image.unpin, image.read and image.list's `from` return UNKNOWN_IMAGE or
+// IMAGE_FORGOTTEN. image.import returns UNKNOWN_FILE, FILE_FORGOTTEN or UNKNOWN_PHOTO.
 ```
 
 ### The provider interface
@@ -185,9 +188,9 @@ images                         -- connectors module
   sequence     integer         -- the tool_result record whose attachments hold the bytes
   position     integer         -- the attachment's index on that record; 0 for image.draw
   parent_id    text null       -- the image an edit started from
-    source       text            -- 'draw', 'file' or 'photo'
+  source       text            -- 'draw', 'file' or 'photo'
   source_seq   integer null    -- an import: the record that held the original
-  is_kept      integer         -- 0 or 1, from the latest image.marked record
+  is_pinned    integer         -- 0 or 1, from the latest image.pinned or image.unpinned record
   profile      text null       -- null for an imported image
   model        text null
   media_type   text
@@ -196,8 +199,9 @@ images                         -- connectors module
   created_at   integer
 ```
 
-`image.mark` writes an `image.marked` record, with the name among its erasable fields, and updates
-`is_kept`. `image.list` and `image.read` read the name from the latest such record.
+`image.name` writes an `image.named` record, with the name among its erasable fields. `image.list`
+and `image.read` read the name from the latest such record. `image.pin` and `image.unpin` write
+`image.pinned` and `image.unpinned` records and update `is_pinned`.
 
 Every image, an import too, keeps its own bytes in the attachments of its own tool_result record, so
 an image ID resolves on every thread whatever its source. The tool writes the row in the transaction
