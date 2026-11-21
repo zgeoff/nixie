@@ -36,7 +36,10 @@ sequenceDiagram
 
 ```ts
 devices.list({});
-// → { devices: [{ device: 'dk4m7q2w9x', name: 'desk panel', screen: 'on', camera: 'off', online: true }] }
+// → { devices: [{ device: 'dk4m7q2w9x', name: 'desk panel', screen: 'on', camera: 'off', online: true,
+//                 pixels: { width: 1920, height: 480 },          // the screen's size, from the device
+//                 showing: { kind: 'image', image: 'k3x9m2p7qa', until: '2026-11-21T08:20:00Z' } }] }
+//   showing is { kind: 'idle' } when the idle scene shows, and null when the device is offline
 
 device.show({ device: 'dk4m7q2w9x', content: { kind: 'image', image: 'k3x9m2p7qa' }, minutes: 10 });
 // → { shown: true, until: '2026-11-21T08:20:00Z' }   // until: null when minutes is absent
@@ -48,7 +51,11 @@ device.setIdle({
   device: 'dk4m7q2w9x',
   scene: [{ kind: 'markdown', text: '# Saturday\nLow tide 14:05' }],
 });
-// → { idle: true }
+// → { idle: true }   // scene: [] leaves the screen black
+
+device.look({ device: 'tb8r3k6m1q' });
+// → { device: 'tb8r3k6m1q', at: '2026-11-21T09:02:11Z', width: 1280, height: 720 } with the still beside it
+//   or { refused: 'CAMERA_OFF' } | { refused: 'OFFLINE' } | { refused: 'UNKNOWN_DEVICE' }
 ```
 
 ```ts
@@ -66,6 +73,8 @@ interface DeviceShowInput {
   minutes?: number; // 1 to 1,440; the idle scene returns after it. Absent: until the next show
 }
 // devices.list, device.show and device.setIdle declare effects ['note'], execution 'direct'
+// device.look declares ['sense'], a new effect for reading a room, execution 'direct';
+//   your starter rules hold no rule for it, so each look asks until you write one
 ```
 
 ### The device's calls
@@ -77,9 +86,12 @@ sessions.enrol({ code: '4K7-Q2M', deviceName: 'desk panel', tokenDelivery: 'cook
 // enrolment with a device code creates the devices row, with every capability off
 
 // contract lib: the calls a device session may make
-devices.follow({});
+devices.follow({ pixels: { width: 1920, height: 480 } }); // the screen's size, sent again on each reconnect
 // yields { kind: 'show'; content: ScreenContent; until: string | null } | { kind: 'idle'; scene: ScreenContent[] }
+//   | { kind: 'look'; lookID: string }   // take one still now
 // the first event is what the screen shows now
+
+devices.sendStill({ lookID, still: Uint8Array }); // a JPEG, at most 2 MiB; only for an open look
 
 devices.setCapability({ capability: 'screen', isOn: true }); // → { screen: 'on' }; writes device.capability_changed
 devices.readImage({ image: 'k3x9m2p7qa' }); // → the bytes, or NOT_SHOWN
@@ -103,12 +115,14 @@ devices                        -- devices module
 
 - The scope comes from the code. `sessions.enrol` takes no scope, so a device code can't make a full
   session, and a normal code can't make a device session.
-- The server refuses every call from a device session except the four in
+- The server refuses every call from a device session except the five in
   [the device's calls](#the-devices-calls).
 - A capability switches on only from the device itself. No tool and no other device can switch one
   on.
-- The camera, the speaker and the microphone stay off in the first build. Their tools come with
-  their own work items.
+- The screen builds first, then the camera. The speaker and the microphone come with their own work
+  items.
+- A screen shows an image whole, scaled to fit and centred on black. An empty scene is a black
+  screen.
 - `device.show` reaches only a device enrolled to you. Your starter rules allow it.
 - A device is online while it has at least one open `devices.follow` stream. A show goes to every
   open stream of that device, and returns `OFFLINE` at once when there is none.
@@ -126,6 +140,18 @@ devices                        -- devices module
 - When an image or a page is forgotten while it shows, the server sends the idle event.
 - The device page sets a Content-Security-Policy and `frame-ancestors 'none'`.
 - Device mode keeps the screen awake with the Wake Lock API while a stream is open.
+
+The camera:
+
+- A look takes one still. The device never streams or records video, and no tool asks for more than
+  one still per call.
+- While a look runs, the device's screen shows a bright border and the words "Nix is looking", for
+  at least 3 seconds.
+- The browser's own camera permission stays on the device. The device asks for it when you switch
+  the camera on, and a look fails with `CAMERA_OFF` when the browser refuses.
+- The still goes beside the result and into the tool_result record's sealed attachments, so a forget
+  erases it. It never becomes an image the assistant can edit or send unless it imports it.
+- A look that gets no still within 10 seconds returns `OFFLINE`.
 - A device session lapses after 30 idle days, like every session, and an open stream keeps it
   active.
 
@@ -138,6 +164,8 @@ devices                        -- devices module
 - **Screens show 3 kinds of content.** Markdown, an image and a notebook page cover what the
   assistant makes today. A chart is an image the assistant draws with `code.run`. HTML stays out
   until a work item settles its sandbox.
+- **Looking has its own effect.** A still from a shared room is private to everyone in it, so your
+  rules can treat looking apart from every other read.
 - **Showing is a note, not an action.** The `device` effect means an actuator, such as a lock, and
   queues. Putting a picture on your own screen changes nothing outside nixie.
 
@@ -152,9 +180,13 @@ devices                        -- devices module
 
 - Taps on a screen that come back to the assistant as events.
 - HTML content on a screen.
-- The camera, speaker and microphone tools.
+- The speaker and microphone tools.
+- Dimming a screen on a schedule. The assistant sets an empty scene at night.
 
 ## Open questions
+
+- **Who in the house agrees to the camera?** The owner settles it before the camera's build ships to
+  prod. Until then, the camera builds and stays switched off on every device.
 
 - **Are "device", "capability" and "screen" the right names?** The owner settles it before the
   build, because the model reads them in the tools. Until then, the build uses them.
