@@ -69,6 +69,9 @@ const endedFrameSchema = z
     usage: usageSchema,
     thinkingTokens: tokenCountSchema.optional(),
     context: contextSchema.optional(),
+
+    // the model calls that an owner message cut in this turn
+    cutCalls: z.int().positive().optional(),
   })
   .readonly();
 

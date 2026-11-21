@@ -135,3 +135,33 @@ test('it resolves a wait for a message the CLI queued before the wait began', as
 
   await expect(ctx.recorder.waitForQueued('6e697869-0000-8000-8000-000000000002')).toResolve();
 });
+
+test('it resolves a wait for text once the reply streams its first text', async () => {
+  const ctx = await setupTest();
+
+  const interrupt = new AbortController();
+
+  ctx.model.addReplies({ text: 'A clock is a device that', isEndless: true });
+
+  void ctx.stack.adopt(
+    runTurn(buildMockTurnFrame({ profile: { baseURL: ctx.model.url } }), {
+      env: {
+        HOME: ctx.home,
+        PATH: process.env['PATH'] ?? '',
+        ANTHROPIC_API_KEY: 'imp-placeholder',
+      },
+      toolServer: ctx.tools.config,
+      messages: [],
+      interrupt: interrupt.signal,
+      emit: () => Promise.resolve(),
+      runQuery: ctx.recorder.runQuery,
+    }),
+    async (turn) => {
+      interrupt.abort();
+
+      await turn;
+    },
+  );
+
+  await expect(ctx.recorder.waitForText()).toResolve();
+});

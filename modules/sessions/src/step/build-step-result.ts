@@ -103,6 +103,7 @@ function buildTurnRecords(source: ModelRecordSource, completed: StepTurn): reado
       ...(buildThinkingTokens(completed.turn) > 0
         ? { thinkingTokens: buildThinkingTokens(completed.turn) }
         : {}),
+      ...(buildCutCalls(completed.turn) > 0 ? { cutCalls: buildCutCalls(completed.turn) } : {}),
       ...(completed.isSilent ? { isSilent: true } : {}),
       pinnedCore: completed.memory.pinnedCore.map((ref) => ({ ...ref })),
       retrieved: completed.memory.retrieved.map((ref) => ({ ...ref })),
@@ -183,4 +184,8 @@ function buildTurnSummary(turn: GuestTurn): TurnSummary {
 
 function buildThinkingTokens(turn: GuestTurn): number {
   return turn.ended.reduce((total, frame) => total + (frame.thinkingTokens ?? 0), 0);
+}
+
+function buildCutCalls(turn: GuestTurn): number {
+  return turn.ended.reduce((total, frame) => total + (frame.cutCalls ?? 0), 0);
 }

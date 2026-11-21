@@ -2,11 +2,14 @@ import type { McpServerConfig, query } from '@anthropic-ai/claude-agent-sdk';
 import type { GuestFrame, InboxMessage } from '@heynixie/wire';
 import type { RequestRewriterOptions } from './rewrite/start-request-rewriter';
 
+// An inbox message, with cutsCall true when it cuts the model call in flight.
+export type LiveMessage = InboxMessage & { readonly cutsCall?: true };
+
 export interface TurnDependencies {
   readonly env: Readonly<Record<string, string | undefined>>;
   readonly toolServer: McpServerConfig;
 
-  readonly messages: AsyncIterable<InboxMessage> | Iterable<InboxMessage>;
+  readonly messages: AsyncIterable<LiveMessage> | Iterable<LiveMessage>;
   readonly interrupt?: AbortSignal;
   readonly emit: (frame: GuestFrame) => Promise<void>;
 

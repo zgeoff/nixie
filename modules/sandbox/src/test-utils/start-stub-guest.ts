@@ -13,6 +13,9 @@ interface StubGuest {
 
   readonly waitForMessage: () => Promise<InboxMessage>;
 
+  // true when the message frame for this uuid carried cutsCall
+  readonly isCutting?: (uuid: string) => boolean;
+
   readonly takeMessage?: () => InboxMessage | undefined;
 
   readonly emit?: (frames: readonly GuestFrame[]) => void;
@@ -49,6 +52,9 @@ export function startStubGuest(hooks: StubGuestHooks): ExecStream {
   const interrupting = new AbortController();
 
   const inbox = buildMessageQueue(stopping.signal);
+
+  const cutting = new Set<string>();
+
   const sending = { done: Promise.resolve() };
 
   const emit = (frames: readonly GuestFrame[]) => {
@@ -78,6 +84,7 @@ export function startStubGuest(hooks: StubGuestHooks): ExecStream {
       interrupt: interrupting.signal,
       waitForMessage: inbox.wait,
       takeMessage: inbox.take,
+      isCutting: (uuid) => cutting.has(uuid),
       emit,
     });
 
@@ -98,6 +105,10 @@ export function startStubGuest(hooks: StubGuestHooks): ExecStream {
       hooks.onFrame?.(frame);
 
       if (frame.type === 'message') {
+        if (frame.cutsCall === true) {
+          cutting.add(frame.message.uuid);
+        }
+
         inbox.push(frame.message);
       } else if (frame.type === 'interrupt') {
         interrupting.abort();

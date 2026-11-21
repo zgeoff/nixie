@@ -3,13 +3,14 @@ import { mkdtemp, readdir, readlink, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { basename, join } from 'node:path';
 import { query } from '@anthropic-ai/claude-agent-sdk';
-import type { GuestFrame, InboxMessage, SessionPoint } from '@heynixie/wire';
+import type { GuestFrame, SessionPoint } from '@heynixie/wire';
 import { buildMockTurnFrame } from '@heynixie/wire/test-utils';
 import invariant from 'tiny-invariant';
 import { buildQueryRecorder } from '../test-utils/build-query-recorder';
 import { createStubToolServer } from '../test-utils/create-stub-tool-server';
 import { startStubChangingToolServer } from '../test-utils/start-stub-changing-tool-server';
 import { startStubModel } from '../test-utils/start-stub-model';
+import type { LiveMessage } from '../types';
 import { runTurn } from './run-turn';
 
 async function setupTest() {
@@ -32,7 +33,7 @@ async function setupTest() {
     frames,
     recorder,
 
-    channel: new TransformStream<InboxMessage, InboxMessage>(),
+    channel: new TransformStream<LiveMessage, LiveMessage>(),
     deps: {
       env: { HOME: home, PATH: process.env['PATH'] ?? '', ANTHROPIC_API_KEY: 'imp-placeholder' },
       toolServer: tools.config,
@@ -1650,4 +1651,263 @@ test('it sends failed with the bind error and starts no CLI when the rewriter ca
   ]);
 
   expect(ctx.recorder.options).toStrictEqual([]);
+});
+
+test('it cuts the reply in flight for a message that cuts, and the next request holds the message', async () => {
+  const ctx = await setupTest();
+
+  ctx.model.addReplies(
+    { text: 'A clock is a device that', isEndless: true },
+    { text: 'PINEAPPLE noted.' },
+  );
+
+  const turn = runTurn(
+    buildMockTurnFrame({
+      profile: { baseURL: ctx.model.url },
+      input: [{ uuid: '6e697869-0000-8000-8000-000000000001', text: 'Explain how a clock works.' }],
+    }),
+    { ...ctx.deps, messages: ctx.channel.readable },
+  );
+
+  await ctx.recorder.waitForText();
+
+  await ctx.channel.writable.getWriter().write({
+    uuid: '6e697869-0000-8000-8000-000000000002',
+    text: 'Include the word PINEAPPLE.',
+    cutsCall: true,
+  });
+
+  await turn;
+
+  expect(ctx.model.requests).toHaveLength(2);
+  expect(JSON.stringify(ctx.model.requests.at(-1)?.body?.messages)).toInclude('PINEAPPLE.');
+  expect(JSON.stringify(ctx.frames)).not.toInclude('A clock is a device that');
+
+  expect(
+    ctx.frames.flatMap((frame) => (frame.type === 'read' ? frame.uuids : [])),
+  ).toIncludeSameMembers([
+    '6e697869-0000-8000-8000-000000000001',
+    '6e697869-0000-8000-8000-000000000002',
+  ]);
+
+  expect(ctx.frames.filter((frame) => frame.type === 'ended')).toStrictEqual([
+    expect.objectContaining({
+      outcome: 'finished',
+      cutCalls: 1,
+      boundary: expect.toBeObject(),
+    }),
+  ]);
+
+  expect(ctx.frames.some((frame) => frame.type === 'failed')).toBeFalse();
+  expect(ctx.frames.filter((frame) => frame.type === 'call')).toHaveLength(2);
+});
+
+test('it reads a burst of 3 messages that cut in one request', async () => {
+  const ctx = await setupTest();
+
+  ctx.model.addReplies(
+    { text: 'A clock is a device that', isEndless: true },
+    { text: 'Burst noted.' },
+  );
+
+  const turn = runTurn(
+    buildMockTurnFrame({
+      profile: { baseURL: ctx.model.url },
+      input: [{ uuid: '6e697869-0000-8000-8000-000000000001', text: 'Explain how a clock works.' }],
+    }),
+    { ...ctx.deps, messages: ctx.channel.readable },
+  );
+
+  await ctx.recorder.waitForText();
+
+  const writer = ctx.channel.writable.getWriter();
+
+  await writer.write({
+    uuid: '6e697869-0000-8000-8000-000000000002',
+    text: 'Burst one.',
+    cutsCall: true,
+  });
+
+  await writer.write({
+    uuid: '6e697869-0000-8000-8000-000000000003',
+    text: 'Burst two.',
+    cutsCall: true,
+  });
+
+  await writer.write({
+    uuid: '6e697869-0000-8000-8000-000000000004',
+    text: 'Burst three.',
+    cutsCall: true,
+  });
+
+  await turn;
+
+  const messages = JSON.stringify(ctx.model.requests.at(-1)?.body?.messages);
+
+  expect(ctx.model.requests).toHaveLength(2);
+  expect(messages).toInclude('Burst one.');
+  expect(messages).toInclude('Burst two.');
+  expect(messages).toInclude('Burst three.');
+
+  expect(
+    ctx.frames.flatMap((frame) => (frame.type === 'read' ? frame.uuids : [])),
+  ).toIncludeSameMembers([
+    '6e697869-0000-8000-8000-000000000001',
+    '6e697869-0000-8000-8000-000000000002',
+    '6e697869-0000-8000-8000-000000000003',
+    '6e697869-0000-8000-8000-000000000004',
+  ]);
+
+  expect(ctx.frames.at(-1)).toMatchObject({ type: 'ended', outcome: 'finished' });
+});
+
+test('it sends no frame for the reply a message cut, and none of its reasoning summary', async () => {
+  const ctx = await setupTest();
+
+  ctx.model.addReplies(
+    {
+      text: 'A clock is a device that',
+      isEndless: true,
+      thinking: { summary: 'I plan a long clock answer.', signature: 'c2ln', thinkingTokens: 20 },
+    },
+    { text: 'Short answer.' },
+  );
+
+  const turn = runTurn(
+    buildMockTurnFrame({
+      profile: { baseURL: ctx.model.url },
+      input: [{ uuid: '6e697869-0000-8000-8000-000000000001', text: 'Explain how a clock works.' }],
+    }),
+    { ...ctx.deps, messages: ctx.channel.readable },
+  );
+
+  await ctx.recorder.waitForText();
+
+  await ctx.channel.writable.getWriter().write({
+    uuid: '6e697869-0000-8000-8000-000000000002',
+    text: 'Keep it short.',
+    cutsCall: true,
+  });
+
+  await turn;
+
+  const assistants = ctx.frames.flatMap((frame) => (frame.type === 'assistant' ? [frame] : []));
+
+  expect(assistants).toStrictEqual([
+    { type: 'assistant', messageID: expect.toBeString(), text: 'Short answer.', toolUses: [] },
+  ]);
+});
+
+test('it does not cut the reply in flight for a message that does not cut', async () => {
+  const ctx = await setupTest();
+
+  const interrupt = new AbortController();
+
+  ctx.model.addReplies({ text: 'A clock is a device that', isEndless: true });
+
+  const turn = runTurn(
+    buildMockTurnFrame({
+      profile: { baseURL: ctx.model.url },
+      input: [{ uuid: '6e697869-0000-8000-8000-000000000001', text: 'Explain how a clock works.' }],
+    }),
+    { ...ctx.deps, messages: ctx.channel.readable, interrupt: interrupt.signal },
+  );
+
+  await ctx.recorder.waitForText();
+
+  await Promise.all([
+    ctx.channel.writable
+      .getWriter()
+      .write({ uuid: '6e697869-0000-8000-8000-000000000002', text: 'Also buy eggs.' }),
+    ctx.recorder.waitForQueued('6e697869-0000-8000-8000-000000000002'),
+  ]);
+
+  expect(ctx.model.requests).toHaveLength(1);
+
+  interrupt.abort();
+
+  await turn;
+
+  expect(ctx.frames.at(-1)).toMatchObject({ type: 'ended', outcome: 'interrupted' });
+  expect(ctx.frames.at(-1)).not.toHaveProperty('cutCalls');
+});
+
+test('it does not cut while a tool call runs, and reads the message at the tool boundary', async () => {
+  const ctx = await setupTest();
+
+  ctx.model.addReplies(
+    { toolUse: { name: 'mcp__nixie__note_wait', input: {} } },
+    { text: 'Noted.' },
+  );
+
+  const turn = runTurn(
+    buildMockTurnFrame({
+      profile: { baseURL: ctx.model.url },
+      input: [{ uuid: '6e697869-0000-8000-8000-000000000001', text: 'Watch my note.' }],
+    }),
+    { ...ctx.deps, messages: ctx.channel.readable },
+  );
+
+  onTestFinished(async () => {
+    ctx.tools.release();
+
+    await turn;
+  });
+
+  await ctx.tools.waitForHeldCall();
+
+  await Promise.all([
+    ctx.channel.writable.getWriter().write({
+      uuid: '6e697869-0000-8000-8000-000000000002',
+      text: 'Also buy eggs.',
+      cutsCall: true,
+    }),
+    ctx.recorder.waitForQueued('6e697869-0000-8000-8000-000000000002'),
+  ]);
+
+  ctx.tools.release();
+
+  await turn;
+
+  expect(ctx.model.requests).toHaveLength(2);
+  expect(JSON.stringify(ctx.model.requests.at(-1)?.body?.messages)).toInclude('Also buy eggs.');
+  expect(ctx.frames.at(-1)).not.toHaveProperty('cutCalls');
+  expect(ctx.frames.at(-1)).toMatchObject({ type: 'ended', outcome: 'finished' });
+});
+
+test('it still ends the turn at a host interrupt that lands as a message cuts the reply', async () => {
+  const ctx = await setupTest();
+
+  const interrupt = new AbortController();
+
+  ctx.model.addReplies(
+    { text: 'A clock is a device that', isEndless: true },
+    { text: 'Still talking.', isEndless: true },
+  );
+
+  const turn = runTurn(
+    buildMockTurnFrame({
+      profile: { baseURL: ctx.model.url },
+      input: [{ uuid: '6e697869-0000-8000-8000-000000000001', text: 'Explain how a clock works.' }],
+    }),
+    { ...ctx.deps, messages: ctx.channel.readable, interrupt: interrupt.signal },
+  );
+
+  await ctx.recorder.waitForText();
+
+  await Promise.all([
+    ctx.channel.writable.getWriter().write({
+      uuid: '6e697869-0000-8000-8000-000000000002',
+      text: 'Stop talking.',
+      cutsCall: true,
+    }),
+    ctx.recorder.waitForQueued('6e697869-0000-8000-8000-000000000002'),
+  ]);
+
+  interrupt.abort();
+
+  await turn;
+
+  expect(ctx.frames.at(-1)).toMatchObject({ type: 'ended', outcome: 'interrupted' });
+  expect(ctx.frames.some((frame) => frame.type === 'failed')).toBeFalse();
 });

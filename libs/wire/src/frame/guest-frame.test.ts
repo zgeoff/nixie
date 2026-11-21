@@ -296,3 +296,21 @@ test('it refuses an assistant frame with an empty message ID', () => {
 
   expect(result.error?.issues).toPartiallyContain({ path: ['messageID'] });
 });
+
+test('it accepts an ended frame with the count of cut calls', () => {
+  const frame: GuestFrame = {
+    type: 'ended',
+    boundary: {
+      harness: 'agent-sdk',
+      sessionID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d001',
+      messageID: '7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d002',
+    },
+    outcome: 'finished',
+    stopReason: 'end_turn',
+    turns: 3,
+    usage: { inputTokens: 80, outputTokens: 5, cacheReadTokens: 0, cacheWriteTokens: 0 },
+    cutCalls: 1,
+  };
+
+  expect(guestFrameSchema.safeParse(frame).data).toStrictEqual(frame);
+});

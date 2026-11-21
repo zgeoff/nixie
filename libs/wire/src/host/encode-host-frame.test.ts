@@ -54,3 +54,15 @@ test('it encodes a turn frame with no model call limit on a harness without turn
 
   expect(() => encodeHostFrame(buildCapabilitiesWithout('turn-limit'), frame)).not.toThrow();
 });
+
+test('it throws for a message frame that cuts a call on a harness without live-cut', () => {
+  const frame = { ...buildMockMessageFrame(), cutsCall: true } as const;
+
+  expect(() => encodeHostFrame(buildCapabilitiesWithout('live-cut'), frame)).toThrow('live-cut');
+});
+
+test('it encodes a message frame that cuts a call for the agent-sdk harness', () => {
+  const frame = { ...buildMockMessageFrame(), cutsCall: true } as const;
+
+  expect(() => encodeHostFrame(harnessCapabilities['agent-sdk'], frame)).not.toThrow();
+});

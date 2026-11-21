@@ -17,6 +17,11 @@ export const turnFieldNeeds = {
   modelCalls: 'turn-limit',
 } as const satisfies Readonly<Record<string, HarnessCapability>>;
 
+// A message frame's cutsCall key.
+const messageFieldNeeds = {
+  cutsCall: 'live-cut',
+} as const satisfies Readonly<Record<string, HarnessCapability>>;
+
 // The host's only encoder of host frames. It throws before it returns any bytes, so a frame or a
 // field that the harness does not declare is never sent.
 export function encodeHostFrame(
@@ -41,6 +46,16 @@ export function encodeHostFrame(
         `The harness lacks ${turnFieldNeeds.modelCalls}, which a turn frame's limits.modelCalls needs`,
       );
     }
+  }
+
+  if (
+    frame.type === 'message' &&
+    frame.cutsCall === true &&
+    !capabilities.has(messageFieldNeeds.cutsCall)
+  ) {
+    throw new Error(
+      `The harness lacks ${messageFieldNeeds.cutsCall}, which a message frame's cutsCall needs`,
+    );
   }
 
   return encoder.encode(JSON.stringify(frame));

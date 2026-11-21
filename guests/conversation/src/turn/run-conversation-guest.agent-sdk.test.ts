@@ -229,3 +229,27 @@ test('it never removes a file in the guest home outside the session state on a p
   expect(kept).toBe('not session state');
   expect(ctx.frames).toStrictEqual([{ type: 'purged' }]);
 });
+
+test('it cuts the reply in flight for a message frame that cuts a call', async () => {
+  const ctx = await setupTest();
+
+  const turn = buildMockTurnFrame({ profile: { baseURL: ctx.model.url } });
+  const message = { ...buildMockMessageFrame(), cutsCall: true } as const;
+
+  ctx.model.addReplies(
+    { text: 'A clock is a device that', isEndless: true },
+    { text: 'Short answer.' },
+  );
+
+  await runConversationGuest({
+    input: [
+      encodeFrame(encodeHostFrame(harnessCapabilities['agent-sdk'], turn)),
+      encodeFrame(encodeHostFrame(harnessCapabilities['agent-sdk'], message)),
+    ],
+    write: ctx.write,
+    env: ctx.env,
+    createToolServer: () => createStubToolServer().config,
+  });
+
+  expect(ctx.frames.at(-1)).toMatchObject({ type: 'ended', outcome: 'finished', cutCalls: 1 });
+});

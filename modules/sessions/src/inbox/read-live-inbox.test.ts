@@ -33,6 +33,7 @@ test('it yields a message that lands during the turn and adds its images to the 
 
   const live = readLiveInbox(ctx.context, {
     taskID: 'conversation',
+    canCut: false,
     sent: new Set([0]),
     signal: ctx.signal,
     view: buildMockTaskMessageView(),
@@ -57,7 +58,7 @@ test('it yields a message that lands during the turn and adds its images to the 
 
   invariant(next.done !== true, 'the feed ended before the message');
 
-  expect(next.value.text).toInclude('The second shelf.');
+  expect(next.value.message.text).toInclude('The second shelf.');
 
   expect(images).toStrictEqual({
     spent: { bytes: 16, count: 2 },
@@ -79,6 +80,7 @@ test('it ends the feed at a message whose images would pass the session budget',
 
   const live = readLiveInbox(ctx.context, {
     taskID: 'conversation',
+    canCut: false,
     sent: new Set([0]),
     signal: ctx.signal,
     view: buildMockTaskMessageView(),
@@ -123,6 +125,7 @@ test('it ends the feed at a message whose images would pass the session count', 
 
   const live = readLiveInbox(ctx.context, {
     taskID: 'conversation',
+    canCut: false,
     sent: new Set([0]),
     signal: ctx.signal,
     view: buildMockTaskMessageView(),
@@ -162,6 +165,7 @@ test('it yields a message with no images past a spent session budget', async () 
 
   const live = readLiveInbox(ctx.context, {
     taskID: 'conversation',
+    canCut: false,
     sent: new Set([0]),
     signal: ctx.signal,
     view: buildMockTaskMessageView(),
@@ -184,7 +188,7 @@ test('it yields a message with no images past a spent session budget', async () 
 
   invariant(next.done !== true, 'the feed ended before the message');
 
-  expect(next.value.text).toInclude('Which one fits?');
+  expect(next.value.message.text).toInclude('Which one fits?');
 });
 
 test('it ends the feed at a message that lands after the turn ended silently, and leaves it unsent', async () => {
@@ -199,6 +203,7 @@ test('it ends the feed at a message that lands after the turn ended silently, an
 
   const live = readLiveInbox(ctx.context, {
     taskID: 'conversation',
+    canCut: false,
     sent,
     signal: ctx.signal,
     view: buildMockTaskMessageView(),
@@ -244,6 +249,7 @@ test("it counts an owner message that lands during the turn against the turn's s
 
   const live = readLiveInbox(ctx.context, {
     taskID: 'conversation',
+    canCut: false,
     sent: new Set([0]),
     signal: ctx.signal,
     view: buildMockTaskMessageView(),
@@ -274,6 +280,7 @@ test('it passes over a record of a kind no module registers and yields the next 
 
   const live = readLiveInbox(ctx.context, {
     taskID: 'conversation',
+    canCut: false,
     sent: new Set([0]),
     signal: ctx.signal,
     view: buildMockTaskMessageView(),
@@ -306,7 +313,7 @@ test('it passes over a record of a kind no module registers and yields the next 
 
   invariant(next.done !== true, 'the feed ended before the message');
 
-  expect(next.value.text).toInclude('The second shelf.');
+  expect(next.value.message.text).toInclude('The second shelf.');
 });
 
 test("it passes over a fire on the task's own thread that lands during the turn, neither sending it nor taking it as sent, and goes on to the message behind it", async () => {
@@ -316,6 +323,7 @@ test("it passes over a fire on the task's own thread that lands during the turn,
 
   const live = readLiveInbox(ctx.context, {
     taskID: 'water-the-tomatoes',
+    canCut: false,
     sent,
     signal: ctx.signal,
     view: buildMockTaskMessageView(),
@@ -342,7 +350,120 @@ test("it passes over a fire on the task's own thread that lands during the turn,
 
   invariant(next.done !== true, 'the feed ended before the message');
 
-  expect(next.value.text).toInclude('Skip the front bed.');
+  expect(next.value.message.text).toInclude('Skip the front bed.');
   expect(sent.has(fire)).toBeFalse();
   expect(sent.has(message?.sequence ?? 0)).toBeTrue();
+});
+
+test('it marks an owner message as cutting a call when the harness can cut', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  const live = readLiveInbox(ctx.context, {
+    taskID: 'conversation',
+    canCut: true,
+    sent: new Set([0]),
+    signal: ctx.signal,
+    view: buildMockTaskMessageView(),
+    times: { defaultZone: 'Australia/Sydney', now: new Date('2026-10-13T05:00:00Z') },
+    images: { spent: { bytes: 0, count: 0 }, budget: { bytes: 16, count: 100 }, isCapped: false },
+    silence: buildTurnSilence([]),
+    log: () => {},
+  });
+
+  await writeInboxRecords(ctx.context, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'Stop and look.' },
+    },
+  ]);
+
+  const next = await live.next();
+
+  invariant(next.done !== true, 'the feed ended before the message');
+
+  expect(next.value.cutsCall).toBeTrue();
+});
+
+test('it does not mark an owner message as cutting a call when the harness cannot cut', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  const live = readLiveInbox(ctx.context, {
+    taskID: 'conversation',
+    canCut: false,
+    sent: new Set([0]),
+    signal: ctx.signal,
+    view: buildMockTaskMessageView(),
+    times: { defaultZone: 'Australia/Sydney', now: new Date('2026-10-13T05:00:00Z') },
+    images: { spent: { bytes: 0, count: 0 }, budget: { bytes: 16, count: 100 }, isCapped: false },
+    silence: buildTurnSilence([]),
+    log: () => {},
+  });
+
+  await writeInboxRecords(ctx.context, [
+    {
+      kind: 'owner_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      erasable: { text: 'Stop and look.' },
+    },
+  ]);
+
+  const next = await live.next();
+
+  invariant(next.done !== true, 'the feed ended before the message');
+
+  expect(next.value.cutsCall).toBeFalse();
+});
+
+test('it does not mark a task message as cutting a call, even when the harness can cut', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  const live = readLiveInbox(ctx.context, {
+    taskID: 'conversation',
+    canCut: true,
+    sent: new Set([0]),
+    signal: ctx.signal,
+    view: buildMockTaskMessageView(),
+    times: { defaultZone: 'Australia/Sydney', now: new Date('2026-10-13T05:00:00Z') },
+    images: { spent: { bytes: 0, count: 0 }, budget: { bytes: 16, count: 100 }, isCapped: false },
+    silence: buildTurnSilence([]),
+    log: () => {},
+  });
+
+  await writeRecords(ctx.context.log, [
+    {
+      kind: 'task_message',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: {
+        messageID: 'm7k2',
+        from: 't4m2',
+        to: 'conversation',
+        kind: 'request',
+        replyTo: null,
+        onBehalfOf: [],
+        hop: 0,
+        hopLimit: 20,
+        wake: true,
+        woke: true,
+        opensWait: false,
+        source: 'task:t4m2',
+      },
+      erasable: { body: 'Found 3 quiet cafes near the station.' },
+    },
+  ]);
+
+  const next = await live.next();
+
+  invariant(next.done !== true, 'the feed ended before the message');
+
+  expect(next.value.cutsCall).toBeFalse();
 });
