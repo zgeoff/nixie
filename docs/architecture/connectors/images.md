@@ -44,15 +44,15 @@ room.
 
 A refusal is a result with a `refusalCode`, never a thrown error. The model reads it and chooses.
 
-| Code                               | Cause                                                                       |
-| ---------------------------------- | --------------------------------------------------------------------------- |
-| `UNKNOWN_IMAGE`, `IMAGE_FORGOTTEN` | A `from` or a reference names no image, or one the user forgot              |
-| `UNKNOWN_PROFILE`                  | `profile` names no key of `images.profiles`                                 |
-| `NO_EDIT`                          | The profile's provider takes no source or no references                     |
-| `IMAGE_CAPS_FULL`                  | The session has no room for another image; the result sets `roomLeft` to 0  |
-| `IMAGE_REFUSED`                    | The provider refused the prompt; `profiles` lists the other profiles        |
-| `IMAGE_FAILED`                     | The provider failed, or its reply is over 8 MiB, or the bytes do not decode |
-| `IMAGE_TIMEOUT`                    | The provider gave no reply in 120 seconds                                   |
+| Code                               | Cause                                                                               |
+| ---------------------------------- | ----------------------------------------------------------------------------------- |
+| `UNKNOWN_IMAGE`, `IMAGE_FORGOTTEN` | A `from` or a reference names no image, or one the user forgot                      |
+| `UNKNOWN_PROFILE`                  | `profile` names no key of `images.profiles`                                         |
+| `NO_EDIT`                          | The profile's provider takes no source or no references                             |
+| `IMAGE_CAPS_FULL`                  | The session has no room for another image; the result sets `roomLeft` to 0          |
+| `IMAGE_REFUSED`                    | The provider refused the prompt; `profiles` lists the other profiles                |
+| `IMAGE_FAILED`                     | The provider failed, its reply is over `maxStoredBytes`, or the bytes do not decode |
+| `IMAGE_TIMEOUT`                    | The provider gave no reply within `drawTimeoutMs`                                   |
 
 `image.import` also returns `UNKNOWN_FILE`, `FILE_FORGOTTEN`, `UNKNOWN_PHOTO` and `NOT_IMAGE`.
 `image.name`, `image.pin`, `image.unpin` and `image.read` return `UNKNOWN_IMAGE` or
@@ -104,10 +104,10 @@ type DrawReply =
 ```
 
 A request carries the model, the prompt, the size, the source bytes of an edit, the reference bytes
-and an abort signal that fires after 120 seconds. An adapter throws when the signal aborts, and the
-tool then returns `IMAGE_TIMEOUT`. An adapter sends its key in a request header, never in a URL, and
-replaces the key with `<the API key>` in any reason or message it returns. The tool never keeps the
-text of a thrown error.
+and an abort signal that fires after `drawTimeoutMs`, from `image-limits.ts`. An adapter throws when
+the signal aborts, and the tool then returns `IMAGE_TIMEOUT`. An adapter sends its key in a request
+header, never in a URL, and replaces the key with `<the API key>` in any reason or message it
+returns. The tool never keeps the text of a thrown error.
 
 | Adapter        | Request                                                                                                                      | Refusal                                                                          |
 | -------------- | ---------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
