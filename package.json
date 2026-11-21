@@ -177,7 +177,7 @@
     "@zgeoff/agent-hooks": "0.2.14",
     "@zgeoff/bun-test-extended": "0.2.4",
     "@zgeoff/bun-test-react": "0.2.4",
-    "@zgeoff/chex": "0.3.14",
+    "@zgeoff/chex": "0.4.1",
     "@zgeoff/commitlint-config": "0.1.2",
     "@zgeoff/diet": "0.2.4",
     "@zgeoff/format-codemod": "0.3.6",
