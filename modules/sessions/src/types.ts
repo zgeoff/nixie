@@ -1,5 +1,5 @@
 import type { CompactionSettings } from '@heynixie/compaction';
-import type { ContentSource, RecordInput } from '@heynixie/log';
+import type { ContentSource, LogRecord, RecordInput } from '@heynixie/log';
 import type { Logger } from '@heynixie/logger';
 import type { Harness, ResolvedProfile } from '@heynixie/models';
 import type { PromptOverrides } from '@heynixie/prompts';
@@ -119,6 +119,16 @@ export interface MessageTimeOptions {
   readonly defaultZone: string;
   readonly now: Date;
 }
+
+// What the element that starts a turn tells the model: each gap shows in short units, and is null
+// when there is nothing to measure from.
+export interface TurnGaps {
+  readonly sinceYourLastTurn: string | null;
+  readonly sinceOwnerLastWrote: string | null;
+}
+
+// Reads the gaps for the record that starts a turn, or that cuts into one, at the time of the call.
+export type GapReader = (record: LogRecord) => Promise<TurnGaps>;
 
 export interface ImageTally {
   readonly bytes: number;

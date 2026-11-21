@@ -345,6 +345,23 @@ the time the reminder was set for in the zone of its trigger. A reminder that ar
 adds how late it is. When the version that the fire pins is no longer stored, the note reads as a
 note that its text is gone.
 
+The element that starts a conversation turn also carries 2 gaps, which nixie computes when the turn
+starts, as in
+`<owner-message id="48213" … since-your-last-turn="3 h 12 min" since-owner-last-wrote="3 h 40 min">`:
+
+- `since-your-last-turn` is the time since the model's previous conversation turn ended, whether it
+  ended with a reply, silently or in a failure. The log's turn-ended record and step-errored record
+  give that time. The attribute is absent on the conversation's first turn.
+- `since-owner-last-wrote` is the time since the user's previous message. On a turn that an owner
+  message starts, it runs between that message and the one before it. On any other turn, such as a
+  reminder fire, it runs from the newest owner message to the turn's start. The attribute is absent
+  while the user has never written.
+
+Each gap shows in at most 2 units, largest first, rounded down: `40 s`, `12 min`, `3 h 12 min`,
+`2 days 4 h`. Only the first element of a turn carries them, and so does an owner message that cuts
+into a turn, with values computed when nixie reads it. Both sit in the user message, after the
+cached prefix of the prompt.
+
 A turn carries no list of tasks. The conversation reads them with the list tool when it needs them,
 as [sending a message](./task-messages.md#sending-a-message) describes.
 

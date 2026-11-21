@@ -1382,7 +1382,7 @@ test('it rebuilds the session with the recent turns when the guest has lost the 
           text.includes('- Start: a rebuild, because the earlier session was lost.') &&
           text.includes('] owner: Hi.\n[') &&
           text.includes('] nixie: Hello.\n</system-message') &&
-          /\n\n<owner-message id="\d+" from="the owner" sent="\w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC">\nHi again\.\n<\/owner-message>$/u.test(
+          /\n\n<owner-message id="\d+" from="the owner" sent="\w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC" since-your-last-turn="[^"]+" since-owner-last-wrote="[^"]+">\nHi again\.\n<\/owner-message>$/u.test(
             text,
           ),
       ),
@@ -1420,7 +1420,7 @@ test('it gives a resumed session your next message after its send time, with no 
       {
         uuid: expect.toBeString(),
         text: expect.toSatisfy((text: string) =>
-          /^<owner-message id="\d+" from="the owner" sent="\w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC">\nHi again\.\n<\/owner-message>$/u.test(
+          /^<owner-message id="\d+" from="the owner" sent="\w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC" since-your-last-turn="[^"]+" since-owner-last-wrote="[^"]+">\nHi again\.\n<\/owner-message>$/u.test(
             text,
           ),
         ),
@@ -1911,7 +1911,7 @@ test('it opens the first turn after a forget with a status that says so, and res
           text.startsWith('<system-message type="status"') &&
           text.includes('- Start: a rebuild after a forget.') &&
           text.includes('<system-message type="recent-turns"') &&
-          /\n\n<owner-message id="\d+" from="the owner" sent="\w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC">\nHi again\.\n<\/owner-message>$/u.test(
+          /\n\n<owner-message id="\d+" from="the owner" sent="\w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC" since-your-last-turn="[^"]+" since-owner-last-wrote="[^"]+">\nHi again\.\n<\/owner-message>$/u.test(
             text,
           ),
       ),
@@ -1924,7 +1924,7 @@ test('it opens the first turn after a forget with a status that says so, and res
       {
         uuid: expect.toBeString(),
         text: expect.toSatisfy((text: string) =>
-          /^<owner-message id="\d+" from="the owner" sent="\w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC">\nAnd again\.\n<\/owner-message>$/u.test(
+          /^<owner-message id="\d+" from="the owner" sent="\w{3} \d{1,2} \w{3}(?: \d{4})?, \d{2}:\d{2}, UTC" since-your-last-turn="[^"]+" since-owner-last-wrote="[^"]+">\nAnd again\.\n<\/owner-message>$/u.test(
             text,
           ),
         ),

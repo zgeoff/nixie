@@ -1,15 +1,22 @@
 import type { StepInput } from '@heynixie/tasks';
-import { LeaseLostError, buildStepRunID } from '@heynixie/tasks';
+import { LeaseLostError, buildStepRunID, conversationTaskID } from '@heynixie/tasks';
 import type { ToolSession } from '@heynixie/tools';
 import type { InboxMessage, SessionPoint } from '@heynixie/wire';
 import invariant from 'tiny-invariant';
 import { renderHeldMessages } from '../held/render-held-messages';
+import { makeGapReader } from '../inbox/make-gap-reader';
 import { readLiveInbox } from '../inbox/read-live-inbox';
 import { buildStepPolicyFrame } from '../step/build-step-policy-frame';
 import type { CompletedTurn } from '../step/build-step-result';
 import { makeImageReserver } from '../task/make-image-reserver';
 import type { TaskMessageView } from '../task/render-task-message';
-import type { ConversationRun, ImageTally, MessageTimeOptions, TurnNote } from '../types';
+import type {
+  ConversationRun,
+  GapReader,
+  ImageTally,
+  MessageTimeOptions,
+  TurnNote,
+} from '../types';
 import type { TurnSilence } from '../utils/build-turn-silence';
 import { buildTurnSilence } from '../utils/build-turn-silence';
 import type { AssistantFrame } from '../utils/run-guest-turn';
@@ -53,8 +60,11 @@ export async function runLiveTurn(
 ): Promise<CompletedTurn> {
   const input = await runApprovedCalls(run, stepInput, plan);
 
+  const gaps = input.taskID === conversationTaskID ? makeGapReader(run.context) : undefined;
+
   const opening = await readOpeningBatch(run.context, input.inbox, {
     ...plan,
+    ...(gaps === undefined ? {} : { gaps }),
     imageBudget: run.imageBudget,
     ...(run.inStepActions === undefined ? {} : { replies: run.inStepActions.replies }),
   });
@@ -83,6 +93,7 @@ export async function runLiveTurn(
       opening,
       silence,
       live,
+      ...(gaps === undefined ? {} : { gaps }),
     });
   } catch (error) {
     await voidFailedAttempt(run, input, live.written, error);
@@ -98,6 +109,7 @@ interface TokenTurnPlan extends LiveTurnPlan {
   readonly opening: OpeningBatch;
   readonly silence: TurnSilence;
   readonly live: LiveWrites;
+  readonly gaps?: GapReader;
 }
 
 // A turn that throws keeps none of the replies it wrote. A runner that lost its lease writes
@@ -179,6 +191,7 @@ async function runTokenTurn(
               view: plan.view,
               images: opening.images,
               silence: plan.silence,
+              ...(plan.gaps === undefined ? {} : { gaps: plan.gaps }),
               log: run.log,
             }),
       signal: plan.signal,

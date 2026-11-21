@@ -25,7 +25,12 @@ interface TestTasks {
   readonly db: Kysely<TasksTables>;
 }
 
-export async function startTestTasks(): Promise<TestTasks> {
+interface TestTasksOptions {
+  // starts the clock the log stamps its records with, so a test moves the time between records
+  readonly recordsAtMs?: number;
+}
+
+export async function startTestTasks(options: TestTasksOptions = {}): Promise<TestTasks> {
   const stack = new AsyncDisposableStack();
 
   onTestFinished(() => stack.disposeAsync());
@@ -34,7 +39,12 @@ export async function startTestTasks(): Promise<TestTasks> {
 
   stack.defer(() => rm(dataDir, { recursive: true, force: true }));
 
-  const writer = await startWriter({ dataDir });
+  const clock = buildTestClock(options.recordsAtMs ?? 1_000_000);
+
+  const writer = await startWriter({
+    dataDir,
+    ...(options.recordsAtMs === undefined ? {} : { clock }),
+  });
 
   stack.defer(() => writer.stop());
 
@@ -44,7 +54,6 @@ export async function startTestTasks(): Promise<TestTasks> {
   ]);
 
   const log: Log = { writer, deploymentKey, projections: [...logProjections, ...tasksProjections] };
-  const clock = buildTestClock(1_000_000);
   const definitionStore = buildTestDefinitionStore();
 
   return {

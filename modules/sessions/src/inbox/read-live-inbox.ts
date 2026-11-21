@@ -6,7 +6,7 @@ import { isInboxRecord } from '@heynixie/tasks';
 import type { InboxMessage } from '@heynixie/wire';
 import invariant from 'tiny-invariant';
 import type { TaskMessageView } from '../task/render-task-message';
-import type { ImageTally, LiveInboxMessage, MessageTimeOptions } from '../types';
+import type { GapReader, ImageTally, LiveInboxMessage, MessageTimeOptions } from '../types';
 import type { TurnSilence } from '../utils/build-turn-silence';
 import { countImages } from '../utils/count-images';
 import { isPastImageBudget } from '../utils/is-past-image-budget';
@@ -33,6 +33,9 @@ export interface LiveInbox {
   readonly view: TaskMessageView;
   readonly images: LiveImages;
   readonly silence: TurnSilence;
+
+  // reads the gaps that a message cutting into the turn shows
+  readonly gaps?: GapReader;
 
   readonly log: Logger;
 }
@@ -85,6 +88,8 @@ export async function* readLiveInbox(
 }
 
 interface LiveRead {
+  readonly canCut: boolean;
+  readonly gaps?: GapReader;
   readonly times: MessageTimeOptions;
   readonly view: TaskMessageView;
   readonly images: Readonly<LiveImages>;
@@ -99,6 +104,9 @@ async function readLiveMessage(
     times: live.times,
     view: live.view,
     imageBudget: { bytes: 0, count: 0 },
+    ...(live.canCut && record.kind === 'owner_message' && live.gaps !== undefined
+      ? { gaps: live.gaps }
+      : {}),
   });
 
   const [message] = read.messages;
