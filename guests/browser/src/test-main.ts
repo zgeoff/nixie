@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { homedir, userInfo } from 'node:os';
+import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { runComputerGuest } from '@heynixie/wire';
 
@@ -8,7 +8,7 @@ import { runComputerGuest } from '@heynixie/wire';
 // the browsers are looked up under the account's real home.
 const account = readFileSync('/etc/passwd', 'utf8')
   .split('\n')
-  .find((line) => line.startsWith(`${userInfo().username}:`));
+  .find((line) => line.split(':')[2] === String(process.getuid?.()));
 
 process.env['PLAYWRIGHT_BROWSERS_PATH'] ??= join(
   account?.split(':')[5] ?? homedir(),
