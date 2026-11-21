@@ -200,6 +200,7 @@ user's messages, the replies and the tool results, oldest first, each with its e
 the record's sequence. A tool result also carries the event ID of the call it answers, as
 `callEventID`, because nothing else shows the model the ID of a call. The model narrows a read by a
 time range or by words that every entry must hold, and pages on with the cursor the read returns.
+
 Each read returns a bounded number of entries. It decrypts 500 records a page, and a page that holds
 no entry keeps reading the next 500, up to 5,000 records in one call, so most searches find their
 match in one call. An empty page costs little to return, and the reads stop at the first page that
