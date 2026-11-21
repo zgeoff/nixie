@@ -1133,6 +1133,34 @@ test('it rejects invalid input with the schema errors before the decision point'
   expect(run).not.toHaveBeenCalled();
 });
 
+test('it tells the model how far over a length limit its input ran', async () => {
+  const ctx = await setupTest({
+    tools: [
+      buildMockToolDefinition({
+        name: 'notes_read',
+        input: { properties: { query: { type: 'string', maxLength: 2000 } } },
+      }),
+    ],
+  });
+
+  const result = await runToolCall(
+    { tool: 'notes_read', input: { query: 'x'.repeat(2347) }, toolUseID: 'toolu_5' },
+    {
+      runID: 'run-1',
+      thread: 'task-1',
+      logThread: 'task-1',
+      tools: ['notes_read'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
+    ctx.options,
+  );
+
+  expect(result).toStrictEqual({
+    content: [{ type: 'text', text: 'data/query is 2,347 characters, 347 over the 2,000 limit' }],
+    isError: true,
+  });
+});
+
 test('it denies a tool the registry does not hold at the registry stage', async () => {
   const ctx = await setupTest({ tools: [buildMockToolDefinition({ name: 'notes_read' })] });
 

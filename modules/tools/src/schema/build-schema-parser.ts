@@ -17,7 +17,7 @@ export function buildSchemaParser(schema: JsonSchema): (value: unknown) => Schem
 
     return parser.validate(value)
       ? { isValid: true }
-      : { isValid: false, errors: buildErrorText(parser.validate.errors ?? [], names) };
+      : { isValid: false, errors: buildErrorText(parser.validate.errors ?? [], names, value) };
   };
 }
 
@@ -72,22 +72,72 @@ function buildAjv(): Ajv2020 {
 // A path can hold a key that the call sent, so a name that the schema declares and an array index
 // stay in it and any other key reads as *. A rejected key name has its own message, which the text
 // replaces.
-function buildErrorText(errors: readonly ErrorObject[], names: ReadonlySet<string>): string {
+function buildErrorText(
+  errors: readonly ErrorObject[],
+  names: ReadonlySet<string>,
+  value: unknown,
+): string {
   return errors
     .map((error) => {
-      const segments = error.instancePath
+      const rawSegments = error.instancePath
         .split('/')
         .filter((segment) => segment !== '')
-        .map((segment) => decodePointerSegment(segment))
-        .map((segment) => (/^\d+$/u.test(segment) || names.has(segment) ? segment : '*'));
+        .map((segment) => decodePointerSegment(segment));
+
+      const segments = rawSegments.map((segment) =>
+        /^\d+$/u.test(segment) || names.has(segment) ? segment : '*',
+      );
 
       const path = segments.length === 0 ? 'data' : `data/${segments.join('/')}`;
 
-      return `${path} ${error.keyword === 'propertyNames' ? 'has a key name that is invalid' : (error.message ?? 'is invalid')}`;
+      return `${path} ${buildRuleText(error, findSize(value, rawSegments))}`;
     })
     .join(', ');
 }
 
 function decodePointerSegment(segment: string): string {
   return segment.replaceAll('~1', '/').replaceAll('~0', '~');
+}
+
+// A length limit says how far over it the value runs, so the model can cut to fit in one try.
+function buildRuleText(error: ErrorObject, size: number | null): string {
+  const limit: unknown = error.params['limit'];
+
+  if (
+    size !== null &&
+    typeof limit === 'number' &&
+    (error.keyword === 'maxLength' || error.keyword === 'maxItems')
+  ) {
+    const unit = error.keyword === 'maxLength' ? 'characters' : 'items';
+
+    return `is ${formatCount(size)} ${unit}, ${formatCount(size - limit)} over the ${formatCount(limit)} limit`;
+  }
+
+  return error.keyword === 'propertyNames'
+    ? 'has a key name that is invalid'
+    : (error.message ?? 'is invalid');
+}
+
+function formatCount(count: number): string {
+  return count.toLocaleString('en-US');
+}
+
+function findSize(value: unknown, segments: readonly string[]): number | null {
+  let node = value;
+
+  for (const segment of segments) {
+    if (Array.isArray(node)) {
+      node = node[Number(segment)];
+    } else if (typeof node === 'object' && node !== null) {
+      node = new Map(Object.entries(node)).get(segment);
+    } else {
+      return null;
+    }
+  }
+
+  if (typeof node === 'string') {
+    return [...node].length;
+  }
+
+  return Array.isArray(node) ? node.length : null;
 }
