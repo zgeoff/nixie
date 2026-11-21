@@ -10,6 +10,10 @@ export interface ActionOperation {
 
   // the time after which the action must not start; leaves the hash of an action with none as it was
   readonly deadlineAt?: number | null;
+
+  // the URL that a prepared call expects its page to hold when the action runs; leaves the hash of
+  // a call with none as it was
+  readonly expectURL?: string | undefined;
 }
 
 export function buildActionHash(operation: ActionOperation): string {
@@ -20,6 +24,7 @@ export function buildActionHash(operation: ActionOperation): string {
     ...(operation.deadlineAt === undefined || operation.deadlineAt === null
       ? {}
       : { deadlineAt: operation.deadlineAt }),
+    ...(operation.expectURL === undefined ? {} : { expectURL: operation.expectURL }),
   };
 
   return createHash('sha256').update(toCanonicalText(canonical)).digest('hex');

@@ -97,7 +97,7 @@ export async function runApprovedCall(
 
   const registered = variant === null ? found : variant.registered;
 
-  if (!(await probePreparedAsApproved(registered, request.input, stored.destinations))) {
+  if (!(await probePreparedAsApproved(registered, request.input, stored.destinations, { run }))) {
     return { status: 'changed' };
   }
 

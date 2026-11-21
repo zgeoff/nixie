@@ -133,8 +133,11 @@ export interface ToolDefinition {
 
   // Reads what only the host can read about a call before the decision, such as a stored photo. It
   // returns the destinations and effects the decision point checks in place of the declared ones,
-  // or a result that ends the call. The action hash covers the destinations.
-  readonly prepare?: (input: JSONObject) => Promise<Prepared | DirectResult>;
+  // or a result that ends the call. The action hash covers what it returns.
+  readonly prepare?: (
+    input: JSONObject,
+    context: ToolResolveContext,
+  ) => Promise<Prepared | DirectResult>;
 
   // Resolves the destinations of a call on the host, for a tool whose destinations are not plain
   // arguments, such as a reply that names a message. A tool without it takes each argument its
@@ -170,6 +173,13 @@ export interface Prepared {
 
   // replaces the declared effects for this call
   readonly effects?: readonly Effect[];
+
+  // what the call costs in dollars, which stands in for the argument the declaration names as its
+  // amount
+  readonly amount?: number;
+
+  // the URL the call expects its page to hold when its action runs; the action hash covers it
+  readonly expectURL?: string;
 }
 
 export interface PaidTool {
