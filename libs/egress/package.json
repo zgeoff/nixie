@@ -9,8 +9,5 @@
   },
   "scripts": {
     "typecheck": "tsrs --fast --noEmit"
-  },
-  "dependencies": {
-    "@heynixie/wire": "workspace:*"
   }
 }

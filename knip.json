@@ -65,6 +65,9 @@
         "src/test-utils/read-guest-bundles.ts"
       ]
     },
+    // the test build runs these in place of main.ts, so no import reaches them
+    "guests/browser": { "entry": ["src/main.ts", "src/test-main.ts"] },
+    "guests/shell": { "entry": ["src/main.ts", "src/test-main.ts"] },
     // the image build bundles the guest's entry and runs the bundle script by its path, so no import
     // reaches them
     "guests/codex": { "entry": ["src/main.ts", "src/write-guest-bundle.ts"] },

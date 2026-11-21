@@ -1,5 +1,4 @@
 import { expect, test } from 'bun:test';
-import { waitForCondition } from '@heynixie/testing';
 import { encodeFrame } from '../frame/encode-frame';
 import { makeFrameDecoder } from '../frame/make-frame-decoder';
 import { decodeComputerGuestFrame } from './decode-computer-guest-frame';
@@ -12,9 +11,11 @@ function setupTest() {
   const writer = inbound.writable.getWriter();
   const decode = makeFrameDecoder(1_000_000);
   const sent: ReturnType<typeof decodeComputerGuestFrame>[] = [];
+  const first = Promise.withResolvers<void>();
 
   return {
     sent,
+    waitForFirstFrame: () => first.promise,
     send: (message: Parameters<typeof encodeComputerMessage>[0]) =>
       writer.write(encodeFrame(encodeComputerMessage(message))),
     close: () => writer.close(),
@@ -25,6 +26,7 @@ function setupTest() {
           write: (bytes) => {
             for (const message of decode(bytes)) {
               sent.push(decodeComputerGuestFrame(message));
+              first.resolve();
             }
 
             return Promise.resolve();
@@ -62,8 +64,7 @@ test('it sends a hop frame and waits for the pass before the reply', async () =>
   });
 
   await ctx.send({ op: 'close', tab: 't1' });
-
-  await waitForCondition(() => ctx.sent.length === 1);
+  await ctx.waitForFirstFrame();
 
   expect(ctx.sent).toStrictEqual([{ kind: 'hop', url: 'https://example.org/next' }]);
 
@@ -93,9 +94,7 @@ test('it fails the hop of a guest when the server refuses it', async () => {
   });
 
   await ctx.send({ op: 'close', tab: 't1' });
-
-  await waitForCondition(() => ctx.sent.length === 1);
-
+  await ctx.waitForFirstFrame();
   await ctx.send({ kind: 'hop-refuse', reason: 'the URL holds a secret' });
   await ctx.close();
 

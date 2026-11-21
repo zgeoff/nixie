@@ -436,9 +436,6 @@
     "libs/egress": {
       "name": "@heynixie/egress",
       "version": "0.0.0",
-      "dependencies": {
-        "@heynixie/wire": "workspace:*",
-      },
     },
     "libs/logger": {
       "name": "@heynixie/logger",
@@ -496,7 +493,6 @@
       },
       "devDependencies": {
         "@faker-js/faker": "catalog:",
-        "@heynixie/testing": "workspace:*",
         "tiny-invariant": "catalog:",
       },
     },

@@ -34,7 +34,7 @@ export interface ComputerOptions {
 }
 
 // the tabs the model may name, each mapped to the guest's tab of the current browser process
-export interface ComputerTabs {
+interface ComputerTabs {
   readonly add: (guestTab: string) => string;
   readonly find: (tab: string) => string | null;
   readonly remove: (tab: string) => void;
@@ -329,7 +329,7 @@ async function stopGuest(state: KindState): Promise<void> {
   }
 }
 
-export const defaultIdleMs: Readonly<Record<ComputerKind, number>> = {
+const defaultIdleMs: Readonly<Record<ComputerKind, number>> = {
   browser: 30 * 60 * 1000,
   shell: 5 * 60 * 1000,
 };

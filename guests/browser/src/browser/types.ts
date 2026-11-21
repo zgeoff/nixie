@@ -1,4 +1,3 @@
-import type { ComputerRequest } from '@heynixie/wire';
 import type { BrowserContext, Page } from 'playwright-core';
 
 export interface Tab {
@@ -16,5 +15,3 @@ export interface BrowserState {
   // true until the first reply tells the server that the disk started empty
   isDiskNew: boolean;
 }
-
-export type OpenLimits = Extract<ComputerRequest, { op: 'open' }>['limits'];
