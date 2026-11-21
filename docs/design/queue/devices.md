@@ -39,7 +39,7 @@ devices.list({});
 // → { devices: [{ device: 'dk4m7q2w9x', name: 'desk panel', screen: 'on', camera: 'off', online: true,
 //                 pixels: { width: 1920, height: 480 },          // the screen's size, from the device
 //                 showing: { kind: 'image', image: 'k3x9m2p7qa', until: '2026-11-21T08:20:00Z' } }] }
-//   showing: { kind: 'markdown' } | { kind: 'image', image, until } | { kind: 'page', page, until }
+//   showing: { kind: 'markdown', until } | { kind: 'image', image, until } | { kind: 'page', page, until }
 //   | { kind: 'idle' }. pixels and showing are null while the device is offline. With several open
 //   streams, pixels comes from the newest
 
@@ -147,6 +147,10 @@ The server keeps each open stream's `pixels` in memory only.
 - `device.show` reaches only a device enrolled to you. Your starter rules allow it.
 - A device is online while it has at least one open `devices.follow` stream. A show goes to every
   open stream of that device, and returns `OFFLINE` at once when there is none.
+- `device.show` and `device.look` check in this order and return the first refusal:
+  `UNKNOWN_DEVICE`, `SCREEN_OFF` or `CAMERA_OFF`, `NO_NOTICE`, the image and page refusals,
+  `IMAGE_CAPS_FULL`, then `OFFLINE`.
+- A forget of the `device.shown` record that shows sends the idle event.
 - A new show replaces the one before it. When a show's `until` passes, the server sends the idle
   event, and never an older show.
 - The server works out what each screen shows from the latest `device.shown` record. A device that
@@ -176,7 +180,7 @@ The camera:
 - The still goes beside the result, fitted and counted against the session's image caps like a
   fetched image, and into the `device.looked` record's sealed attachments, so a forget erases it. It
   never becomes an image the assistant can edit, import or send.
-- A look that gets no answer within 10 seconds of its start returns `OFFLINE`.
+- A look that gets no answer within 10 seconds of the look event returns `OFFLINE`.
 - A device session lapses after 30 idle days, like every session, and an open stream keeps it
   active.
 
