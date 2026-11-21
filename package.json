@@ -75,7 +75,7 @@
       "@zgeoff/kysely-bun-sqlite": "0.3.3",
       "@zgeoff/rig": "0.2.6",
       "@zgeoff/std": "0.4.5",
-      "@zgeoff/testing": "0.3.2",
+      "@zgeoff/testing": "0.4.0",
       "ajv": "8.20.0",
       "babel-plugin-react-compiler": "1.0.0",
       "elysia": "1.4.30",
