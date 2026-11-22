@@ -181,7 +181,7 @@
     "@zgeoff/agent-hooks": "0.3.2",
     "@zgeoff/bun-test-extended": "0.2.4",
     "@zgeoff/bun-test-react": "0.2.4",
-    "@zgeoff/chex": "0.4.6",
+    "@zgeoff/chex": "0.4.7",
     "@zgeoff/commitlint-config": "0.1.2",
     "@zgeoff/diet": "0.3.2",
     "@zgeoff/format-codemod": "0.3.6",
