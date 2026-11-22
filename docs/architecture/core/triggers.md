@@ -170,7 +170,7 @@ that never fires again, such as the 30th of February, returns null.
 Recurrence expands in one function, `pickNextWallTime`, which wraps the `rrule-temporal` library.
 The function reads and returns local wall times and gives the rule no time zone, because the library
 drops a time that falls in a spring-forward gap when a rule has one.
-[Decision 0017](../../decisions/0017-use-rrule-temporal-for-recurrence.md) gives the reason. nixie
+[Decision 0018](../../decisions/0018-use-rrule-temporal-for-recurrence.md) gives the reason. nixie
 maps each wall time onto the clock:
 
 - A `daily`, `weekly`, `monthly` or `yearly` fire is a local date and time. A time that the clock

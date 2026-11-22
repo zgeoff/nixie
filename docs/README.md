@@ -295,6 +295,10 @@ The durable layer, the sandbox boundary, the database and compaction.
   with only nixie's tools, which run on the host
 - [0011: The database](decisions/0011-sqlite-on-one-host.md) — one SQLite database on one host, and
   Postgres only for a second host
+- [0018: Recurrence](decisions/0018-use-rrule-temporal-for-recurrence.md) — nixie expands schedules
+  with `rrule-temporal` and maps local times onto the clock itself
+- [0019: Possibly-sent actions](decisions/0019-never-retry-a-possibly-sent-action-blindly.md) — an
+  action that may have reached its provider is never sent again without a key, a check or the user
 - [0015: Compaction](decisions/0015-own-compaction.md) — nixie's own compactor with the summary in
   the event log, and the SDK's auto-compaction off
 
@@ -341,6 +345,10 @@ External MCP servers and connector authorization.
   reaches the model only through nixie's proxy
 - [0010: Connector authorization](decisions/0010-oauth-clients.md) — each deployment registers its
   own OAuth clients
+- [0020: The tool route](decisions/0020-the-tool-route-is-a-channel-per-sandbox.md) — a sandbox
+  reaches the tools over a channel bound to it, never a network route
+- [0021: The fetch sandbox](decisions/0021-a-fresh-sandbox-per-fetch.md) — each web fetch runs in a
+  sandbox of its own
 
 ### Deployment
 

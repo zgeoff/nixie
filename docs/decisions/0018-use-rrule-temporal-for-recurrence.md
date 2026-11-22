@@ -1,4 +1,4 @@
-# 0017: nixie uses rrule-temporal for recurrence and owns time zone mapping
+# 0018: nixie uses rrule-temporal for recurrence and owns time zone mapping
 
 - Date: 2026-11-21
 - Status: decided
