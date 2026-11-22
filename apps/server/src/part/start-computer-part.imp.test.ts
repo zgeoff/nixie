@@ -477,6 +477,56 @@ test.skipIf(!hasImpHost)(
 );
 
 test.skipIf(!hasImpHost)(
+  'it moves the real pointer for the device that holds the desktop, and not before',
+  async () => {
+    const ctx = await setupTest();
+
+    const received: Uint8Array[] = [];
+
+    const watch = ctx.computer.watch(
+      {
+        send: (bytes) => {
+          received.push(bytes);
+        },
+        close: () => {},
+      },
+      'laptop',
+    );
+
+    onTestFinished(() => {
+      watch.end();
+    });
+
+    await waitFor(() => {
+      expect(received.length).toBeGreaterThan(0);
+    });
+
+    watch.receive(new TextEncoder().encode('RFB 003.008\n'));
+    watch.receive(new Uint8Array([1]));
+    watch.receive(new Uint8Array([1]));
+
+    // PointerEvent: type 5, no buttons, x 321, y 123
+    const pointer = new Uint8Array([5, 0, 1, 65, 0, 123]);
+
+    watch.receive(pointer);
+
+    const before = await ctx.execAsRoot(['env', 'DISPLAY=:99', 'xdotool', 'getmouselocation']);
+
+    await ctx.computer.takeover.start('laptop');
+
+    watch.receive(pointer);
+
+    await waitFor(async () => {
+      const after = await ctx.execAsRoot(['env', 'DISPLAY=:99', 'xdotool', 'getmouselocation']);
+
+      expect(after).toStartWith('x:321 y:123');
+    });
+
+    expect(before).not.toStartWith('x:321 y:123');
+  },
+);
+
+test.skipIf(!hasImpHost)(
   'it lets the guest reach the VNC server on its socket and no account that Chromium or the terminal runs as',
   async () => {
     const ctx = await setupTest();
