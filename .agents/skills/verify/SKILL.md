@@ -49,21 +49,22 @@ Read a feature's file before you run its journey.
 
 <!-- wringer:features -->
 
-| Feature          | Summary                                                                    | File                                                                             |
-| ---------------- | -------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
-| sign-in-enrol    | Sign a browser in with a code from `nixie enrol-code`, and see its session | [references/feature-sign-in-enrol.md](references/feature-sign-in-enrol.md)       |
-| chat-turn        | Send a message from the page, and see the reply after it, in order         | [references/feature-chat-turn.md](references/feature-chat-turn.md)               |
-| memory-approval  | Approve a memory the model proposed, and see it become active              | [references/feature-memory-approval.md](references/feature-memory-approval.md)   |
-| policy-proposal  | Approve a call that an ask rule held unrun                                 | [references/feature-policy-proposal.md](references/feature-policy-proposal.md)   |
-| task-control     | Pause and resume a task, and see its records agree                         | [references/feature-task-control.md](references/feature-task-control.md)         |
-| drawing          | Draw a picture, edit it, and list both                                     | [references/feature-drawing.md](references/feature-drawing.md)                   |
-| images-page      | Browse and forget images                                                   | [references/feature-images-page.md](references/feature-images-page.md)           |
-| notebook-pages   | Browse notes, open a private one, forget one                               | [references/feature-notebook-pages.md](references/feature-notebook-pages.md)     |
-| computer-shell   | Write and read back a shell file                                           | [references/feature-computer-shell.md](references/feature-computer-shell.md)     |
-| computer-browser | Open a page in the assistant's browser                                     | [references/feature-computer-browser.md](references/feature-computer-browser.md) |
-| computer-screen  | Click a point of the assistant's desktop                                   | [references/feature-computer-screen.md](references/feature-computer-screen.md)   |
-| computer-watch   | Watch the assistant's desktop                                              | [references/feature-computer-watch.md](references/feature-computer-watch.md)     |
-| device-screen    | Enrol a device and see a picture on it                                     | [references/feature-device-screen.md](references/feature-device-screen.md)       |
+| Feature           | Summary                                                                    | File                                                                               |
+| ----------------- | -------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| sign-in-enrol     | Sign a browser in with a code from `nixie enrol-code`, and see its session | [references/feature-sign-in-enrol.md](references/feature-sign-in-enrol.md)         |
+| chat-turn         | Send a message from the page, and see the reply after it, in order         | [references/feature-chat-turn.md](references/feature-chat-turn.md)                 |
+| memory-approval   | Approve a memory the model proposed, and see it become active              | [references/feature-memory-approval.md](references/feature-memory-approval.md)     |
+| policy-proposal   | Approve a call that an ask rule held unrun                                 | [references/feature-policy-proposal.md](references/feature-policy-proposal.md)     |
+| task-control      | Pause and resume a task, and see its records agree                         | [references/feature-task-control.md](references/feature-task-control.md)           |
+| drawing           | Draw a picture, edit it, and list both                                     | [references/feature-drawing.md](references/feature-drawing.md)                     |
+| images-page       | Browse and forget images                                                   | [references/feature-images-page.md](references/feature-images-page.md)             |
+| notebook-pages    | Browse notes, open a private one, forget one                               | [references/feature-notebook-pages.md](references/feature-notebook-pages.md)       |
+| computer-shell    | Write and read back a shell file                                           | [references/feature-computer-shell.md](references/feature-computer-shell.md)       |
+| computer-browser  | Open a page in the assistant's browser                                     | [references/feature-computer-browser.md](references/feature-computer-browser.md)   |
+| computer-screen   | Click a point of the assistant's desktop                                   | [references/feature-computer-screen.md](references/feature-computer-screen.md)     |
+| computer-watch    | Watch the assistant's desktop                                              | [references/feature-computer-watch.md](references/feature-computer-watch.md)       |
+| device-in-browser | Make a signed-in browser a device                                          | [references/feature-device-in-browser.md](references/feature-device-in-browser.md) |
+| device-screen     | Enrol a device and see a picture on it                                     | [references/feature-device-screen.md](references/feature-device-screen.md)         |
 
 <!-- /wringer:features -->
 
@@ -152,9 +153,6 @@ that command alone. A command with neither runs on the registry's first target, 
 | `local`   | `bun verify use --target local`, then `bun verify up`       | read-write | Test build, scripted model.                                         |
 | `preview` | `bun verify use --target preview`, then `bun verify attach` | read-write | The PR's preview, real model; [setup](references/preview-setup.md). |
 | `prod`    | `bun verify use --target prod`, then `bun verify attach`    | read-only  | [The prod check](references/prod-check.md).                         |
-
-- Run [sign-in-enrol](references/feature-sign-in-enrol.md) first, and after each `up --restart`,
-  except before `device-screen`.
 
 <!-- /repo -->
 

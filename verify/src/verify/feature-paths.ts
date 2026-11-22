@@ -26,6 +26,7 @@ export const featurePaths = {
   drawing: [...everyJourney],
   'images-page': [...everyJourney],
   'notebook-pages': [...everyJourney],
+  'device-in-browser': [...everyJourney],
   'device-screen': [...everyJourney],
   'computer-browser': [...everyJourney],
   'computer-shell': [...everyJourney],

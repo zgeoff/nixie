@@ -143,6 +143,8 @@ test.each([
   ['/rpc/images/readBytes'],
   ['/rpc/conversation/read/'],
   ['/rpc/weather/forecast'],
+  ['/rpc/devices/register'],
+  ['/rpc/devices/resize'],
 ])('it refuses %s for a read-only token before any procedure runs', async (path) => {
   const ctx = await setupTest();
 

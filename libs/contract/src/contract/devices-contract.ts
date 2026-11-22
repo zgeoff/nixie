@@ -1,5 +1,6 @@
 import { eventIterator } from '@orpc/contract';
 import { z } from 'zod';
+import { reusedIDErrors } from './reused-id-errors';
 import { screenContentSchema } from './screen-content-schema';
 import { signedIn } from './signed-in';
 
@@ -20,16 +21,31 @@ export const deviceEventSchema = z.discriminatedUnion('kind', [
 
 export type DeviceEvent = z.output<typeof deviceEventSchema>;
 
+// A call on the session's own device row. A full session that holds no row registers one first.
+const ownDevice = signedIn.errors({
+  NOT_A_DEVICE: {
+    message: 'This session has no device. Register one first',
+    status: 409,
+  },
+});
+
 export const devicesContract = {
-  follow: signedIn
+  register: signedIn
+    .errors(reusedIDErrors)
+    .input(z.object({ clientActionID: z.uuid(), name: z.string().min(1).max(100) }))
+    .output(z.object({ deviceID: z.string() })),
+
+  follow: ownDevice
     .input(z.object({ pixels: pixelsSchema }))
     .output(eventIterator(deviceEventSchema)),
 
-  setCapability: signedIn
+  resize: ownDevice.input(pixelsSchema).output(z.object({})),
+
+  setCapability: ownDevice
     .input(z.object({ capability: z.enum(['screen']), isOn: z.boolean() }))
     .output(z.object({ screen: z.enum(['on', 'off']) })),
 
-  readImage: signedIn
+  readImage: ownDevice
     .errors({
       NOT_SHOWN: { message: 'The device does not show this image now', status: 404 },
     })

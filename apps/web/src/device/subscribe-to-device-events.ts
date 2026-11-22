@@ -5,7 +5,9 @@ import type { StartTimer } from '../utils/start-platform-timer';
 
 export interface DeviceSubscription {
   readonly client: ContractClient;
-  readonly pixels: { readonly width: number; readonly height: number };
+
+  // read at each connect, so a reconnect sends the size the screen has by then
+  readonly readPixels: () => { readonly width: number; readonly height: number };
 
   readonly onConnection: (state: 'open' | 'lost' | 'refused') => void;
   readonly onEvent: (event: DeviceEvent) => void;
@@ -44,7 +46,7 @@ async function readDeviceStream(options: DeviceSubscription): Promise<StreamOutc
 
   try {
     const events = await options.client.devices.follow(
-      { pixels: options.pixels },
+      { pixels: options.readPixels() },
       { signal: options.signal },
     );
 
