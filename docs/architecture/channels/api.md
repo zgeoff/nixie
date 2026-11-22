@@ -424,10 +424,13 @@ read-only token reaches none of them and gets a 403.
   each `image.name` that named it, and each `image.list`, `image.read` and `image.name` result that
   quotes its name or prompt, on whichever thread each one sits. One transaction finds those records,
   starts every record's [forget](#forgetting-a-record) and keeps the list with the client action,
-  then each cleanup runs. The answer's backup state is `failed` when any record's state is failed,
-  else `unknown` when any is unknown, else `pending` when any is pending, else the state they share.
-  A retry with the same client action ID runs the cleanups of the kept list again, which finishes
-  what a failed call left. A forget of an image that is already forgotten forgets the records that
+  then each cleanup runs. After the cleanups, it reads the image's records again and forgets any it
+  missed, until a read finds none. An `image.name` call matches by the image's short ID or its UUID.
+  The answer's backup state is `failed` when any record's state is failed, else `unknown` when any
+  is unknown, else `pending` when any is pending, else the state they share. A retry with the same
+  client action ID runs the cleanups of the kept list and of any record found since, which finishes
+  what a failed call left. An imported image's forget leaves the photo or file it came from, which
+  keeps its own record. A forget of an image that is already forgotten forgets the records that
   still have a key, and answers with the time of the first forget when none does. From the moment a
   forget starts, `image.name` refuses the image as forgotten, so no name is written between the
   start and the cleanup.
