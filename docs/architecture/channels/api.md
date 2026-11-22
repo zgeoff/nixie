@@ -125,17 +125,20 @@ random bytes that live in the API's memory for
   carries the keys and pointer of its session only while that session holds the desktop.
 - The socket closes with code 1008 when its session is revoked or lapses, including while the
   sandbox is still waking. The API follows `session.revoked` records and re-probes the session on a
-  timer of the shorter of the idle limit and the last-seen interval.
+  timer of the shorter of the idle limit and the last-seen interval. A revoked session's hold stays
+  until its idle hand-back, except when the revocation subscription failed: then the timer's check
+  that finds the session revoked ends the hold too.
 - The server serves the socket from its own `Bun.serve`, ahead of the Elysia app, so a request that
   asks for the route skips the app's handlers and takes the server's call gate like any other call.
 
 `computer.takeOver` and `computer.handBack` are checked actions with the same session rules as
-`computer.watch`, and a retry of the same action ID gets the stored answer. `takeOver` answers
-`takenOverAt`, or `BUSY_TOO_LONG` when the assistant's calls ran past their limits, or
-`HELD_ELSEWHERE` when another device holds the desktop. `handBack` answers `durationSeconds`, or
-`NOT_TAKEN_OVER` when the calling session does not hold it. Both answer `COMPUTER_UNAVAILABLE` when
-the server runs no computer. [The computer](../connectors/computer.md#taking-over) describes the
-hold.
+`computer.watch`, and a retry of the same action ID gets the stored answer, a refusal included. Two
+tries of one action ID that overlap run one after the other, so both get the first's answer.
+`takeOver` answers `takenOverAt`, or `BUSY_TOO_LONG` when the assistant's calls ran past their
+limits, or `HELD_ELSEWHERE` when another device holds the desktop. `handBack` answers
+`durationSeconds`, or `NOT_TAKEN_OVER` when the calling session does not hold it. Both answer
+`COMPUTER_UNAVAILABLE` when the server runs no computer.
+[The computer](../connectors/computer.md#taking-over) describes the hold.
 
 ## Refusals
 

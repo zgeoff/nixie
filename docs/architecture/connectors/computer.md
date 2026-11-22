@@ -26,9 +26,10 @@ and disk. The image `nixie-computer` comes from `guests/computer`.
 The desktop runs Xvfb as the display, openbox as the window manager, xterm as the terminal and
 x11vnc as a VNC server. The display is 1280 by 800. The VNC server listens on a Unix socket in a
 directory that only the screen's account can open, and on no TCP port, so the browser and the
-terminal cannot reach it. Selection and clipboard exchange are off. It accepts the keys and pointer
-of a viewer, and the relay passes them only while a device [holds the desktop](#taking-over). Read
-[Watching](#watching) for how the user's client reaches it.
+terminal cannot reach it. Selection and clipboard exchange are off, and so are the remote control
+commands that an X client can send it through the display, which Chromium is. It accepts the keys
+and pointer of a viewer, and the relay passes them only while a device
+[holds the desktop](#taking-over). Read [Watching](#watching) for how the user's client reaches it.
 
 Chromium runs in the time zone of `time.default_zone` in the config, so a page that shows "today" or
 an opening hour shows the user's. Nixie hands the zone to the guest when it starts the guest, so a
@@ -274,21 +275,32 @@ device holds the desktop at a time, and the hold lives in memory only.
 
 - From the moment `takeOver` is called, the assistant's new calls that change the desktop wait. A
   queued action of a `computer.` tool stays pending, with no attempt and no wake, until the hold
-  ends. The call waits for the calls already running, up to their own limits, and answers
-  `BUSY_TOO_LONG` when they run past them. A second device gets `HELD_ELSEWHERE`.
+  ends. The runner reads the hold at its claim and again when an attempt starts, and an in-step
+  action again when it starts, so a take-over between them leaves no attempt and no call. The call
+  waits for the calls running when it was made, each up to its own limit from the moment it took its
+  turn, and a call that arrives later is not waited for. It answers `BUSY_TOO_LONG` when they run
+  past them. A second device gets `HELD_ELSEWHERE`.
 - The relay passes the holder's keys and pointer to the VNC server. Each one holds off the idle
   hand-back, which ends the hold with `idle` after `computer.idle_hand_back_minutes` of no input, 30
-  by default. When a hold ends, the relay releases every key and button the viewer still holds.
+  by default. When a hold ends, the relay drops the holder's queued key and pointer messages, and
+  the guest releases every key and button the VNC server still holds pressed. A flush keeps the
+  protocol messages that wait in the guest.
 - A hold ends when the holder hands back, when it idles out, or when the guest restarts or nixie
-  restarts. A restart writes the end record at the next start.
-- At the start of a hold the guest starts to list the sites its browser shows. At the end, nixie
-  reads the sites, the window in focus and the terminal's text, if the terminal is in focus.
+  restarts. A restart writes the end record at the next start. The sandbox does not sleep during a
+  hold, and a guest that stops on its own ends the hold with `restart`. When a hold ends without the
+  holder, the relay releases what the viewer pressed and closes the holder's socket.
+- At the start of a hold the guest starts to list the sites its browser shows: the tab in view at
+  the start, each tab that comes into view and each page that navigates while it shows. A tab that
+  the person opens joins the tabs, so a hand-back names it. At the end, nixie reads the sites, the
+  window in focus and the terminal's text, if the terminal is in focus. The text that the screen
+  cleared is not in the terminal's text.
 
 A hold writes 2 records on the conversation's thread. `computer.takeover_started` names the device
 and wakes nothing. `computer.takeover_ended` names what ended the hold and for how long, and wakes
 the assistant. Both carry a short ID. The ended record keeps the sites and the window in focus as
 [erasable fields](../core/erasable-fields.md), so a forget of the record erases them, and the
-assistant reads them in a block that marks them as untrusted text.
+assistant reads them in a block that marks them as untrusted text, behind a fence that the text does
+not contain. The assistant reads the record by its short ID.
 
 ## The checking proxy
 
