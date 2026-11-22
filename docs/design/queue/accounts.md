@@ -283,7 +283,7 @@ Entry state:
   tried first next time.
 - nixie never drops a `previousSecret` on its own. A page can fake a success by navigating away from
   a rejected password, so no sign-in proves which password the site holds. The vault screen shows an
-  entry with two passwords, and you remove the one that fails, which settles the entry.
+  entry with two passwords, and you keep the one that works with `vault.settle`.
 
 Debugging a fill:
 
