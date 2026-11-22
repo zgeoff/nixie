@@ -563,8 +563,9 @@ request that the user closes by hand opens again at the next export.
 The conversation holds 3 tools for definitions. `task.define` and `task.undefine` have the effect
 `schedule`, and `tasks.definitions` has the effect `read`. A task's tool list never holds any of
 them: a `task.start` that names one is refused with `conversation_tools`, because the start bounds
-list them as conversation tools. The [reminder tools](./reminders.md#tools) and `tasks.runs`, which
-[tasks](./tasks.md) describes, are conversation tools too.
+list them as conversation tools. The 5 [reminder tools](./reminders.md#tools) that change reminders
+and `tasks.runs`, which [tasks](./tasks.md) describes, are conversation tools too. A task may hold
+`reminders.list`.
 
 - **`task.define`** takes a name, a brief and a trigger, and returns the ID, the trigger in words,
   the next fire and the short ID of the change. A schedule has a zone, and an `at` may hold no
