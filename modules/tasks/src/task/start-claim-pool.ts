@@ -86,8 +86,9 @@ async function runRunner<W>(
       if (!(await withTrackedWork(() => runClaim(options, state)))) {
         const remainingMs = options.pollMs - (clock.now() - claimedAt);
 
-        // A poll that already ran out claims again at once. A sleep of no time on a clock that
-        // moves only when told to would wait for the next advance, and a test clock never gets one.
+        // A poll that already ran out claims again at once. On a clock that moves only when told
+        // to, a sleep of no time waits for the next advance, which may not come while a caller
+        // waits on this claim.
         if (remainingMs > 0) {
           await clock.sleep(remainingMs, AbortSignal.any([state.stopping, wake]));
         }
