@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.97.0](https://github.com/zgeoff/nixie/compare/v0.96.0...v0.97.0) (2026-11-22)
+
+
+### Features
+
+* **computer:** add the screenshot and screen tools ([#1370](https://github.com/zgeoff/nixie/issues/1370)) ([06dc0de](https://github.com/zgeoff/nixie/commit/06dc0de134129e35449bf6060962648acf944bba))
+* **web:** add the images page ([#1374](https://github.com/zgeoff/nixie/issues/1374)) ([1fd6e29](https://github.com/zgeoff/nixie/commit/1fd6e2950c86a6663bb66d41c7ec5a384c1e69b4))
+
+
+### Bug Fixes
+
+* **tasks:** claim again at once when a claim outlasts its poll ([#1373](https://github.com/zgeoff/nixie/issues/1373)) ([bfdc7a4](https://github.com/zgeoff/nixie/commit/bfdc7a481b552828c12d2e4eb15e3efba6bc1da9))
+* **web:** trim the whitespace around a sent message ([#1377](https://github.com/zgeoff/nixie/issues/1377)) ([17f5e0e](https://github.com/zgeoff/nixie/commit/17f5e0eae0e7610db3d1402e87897fd7e797c873))
+
 ## [0.96.0](https://github.com/zgeoff/nixie/compare/v0.95.0...v0.96.0) (2026-11-22)
 
 
