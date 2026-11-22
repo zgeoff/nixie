@@ -14,17 +14,29 @@ export interface FolderEnds {
   readonly folder: ComputerFolder;
 }
 
+interface CopyOptions {
+  // the entries one listing returns, which a test lowers to reach a second page with few files
+  readonly pageEntries?: number;
+}
+
+// the entries one listing returns, which keeps its output under the 1 MiB limit of one exec
+const pageEntries = 200;
+
 // Copies one folder of one sandbox into another, with file bytes and modes, directory modes and
 // symlinks, and moves a file of any size in pieces. It throws unless the new folder lists the same
 // entries as the old one. It removes nothing from the old disk.
-export async function copyComputerFolder(ends: FolderEnds): Promise<void> {
+export async function copyComputerFolder(
+  ends: FolderEnds,
+  options: CopyOptions = {},
+): Promise<void> {
   const fromHome = await ends.from.resolveHome(ends.fromEnv);
   const toHome = await ends.to.resolveHome(ends.toEnv);
 
   const source = toRootPath(join(fromHome.copyPath, ends.folder));
   const target = toRootPath(join(toHome.copyPath, ends.folder));
+  const pageSize = options.pageEntries ?? pageEntries;
 
-  const entries = await readFolderEntries(ends.from, source);
+  const entries = await readFolderEntries(ends.from, source, pageSize);
 
   // a failed earlier copy may have left some of the folder behind
   await runStep(ends.to, ['sh', '-c', 'rm -rf -- "$1" && mkdir -p -- "$1"', 'sh', target]);
@@ -37,7 +49,7 @@ export async function copyComputerFolder(ends: FolderEnds): Promise<void> {
     await runStep(ends.to, ['chmod', '--', entry.mode, join(target, entry.path)]);
   }
 
-  const held = await readFolderEntries(ends.to, target);
+  const held = await readFolderEntries(ends.to, target, pageSize);
 
   const mismatch = findMismatch(entries, held);
 
@@ -65,8 +77,6 @@ export interface FolderEntry {
   readonly path: string;
 }
 
-// the entries one listing returns, which keeps its output under the 1 MiB limit of one exec
-const pageEntries = 200;
 const fieldsPerEntry = 5;
 
 // A folder lists a page of its entries at a time. It keeps files, directories and symlinks: a
@@ -75,7 +85,11 @@ const listScript =
   String.raw`[ -d "$1" ] || exit 0; cd -- "$1" && find . -mindepth 1 \( -type f -o -type d -o -type l \) ` +
   String.raw`-printf '%y\0%m\0%s\0%l\0%P\0' | tail -z -n +"$2" | head -z -n "$3"`;
 
-async function readFolderEntries(sandbox: Sandbox, folder: string): Promise<FolderEntry[]> {
+async function readFolderEntries(
+  sandbox: Sandbox,
+  folder: string,
+  pageSize: number,
+): Promise<FolderEntry[]> {
   const entries: FolderEntry[] = [];
 
   for (;;) {
@@ -88,7 +102,7 @@ async function readFolderEntries(sandbox: Sandbox, folder: string): Promise<Fold
       'sh',
       folder,
       String(firstField),
-      String(pageEntries * fieldsPerEntry),
+      String(pageSize * fieldsPerEntry),
     ]);
 
     if (result.isCut) {
@@ -99,7 +113,7 @@ async function readFolderEntries(sandbox: Sandbox, folder: string): Promise<Fold
 
     entries.push(...page);
 
-    if (page.length < pageEntries) {
+    if (page.length < pageSize) {
       return entries;
     }
   }

@@ -114,19 +114,22 @@ test('it copies a folder of more files than one listing holds', async () => {
   const ctx = await setupTest();
   const ends = await ctx.createEnds();
 
-  await Promise.all(
-    Array.from({ length: 250 }, (_, index) =>
-      writeDiskFiles(ctx.root, ends.from.id, {
-        [`/home/old/profile/cache/f${String(index)}`]: String(index),
-      }),
+  await writeDiskFiles(
+    ctx.root,
+    ends.from.id,
+    Object.fromEntries(
+      Array.from({ length: 5 }, (_, index) => [
+        `/home/old/profile/cache/f${String(index)}`,
+        String(index),
+      ]),
     ),
   );
 
-  await copyComputerFolder(ends);
+  await copyComputerFolder(ends, { pageEntries: 2 });
 
-  const last = await readFile(join(ends.toFolder, 'cache/f249'), 'utf8');
+  const last = await readFile(join(ends.toFolder, 'cache/f4'), 'utf8');
 
-  expect(last).toBe('249');
+  expect(last).toBe('4');
 });
 
 test('it throws and keeps the old disk when a file did not reach the new disk', async () => {
