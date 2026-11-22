@@ -1065,6 +1065,11 @@ test('it keeps the sandbox and the hold through the idle time of a longer hold, 
 
   ctx.clock.advance(60 * 60 * 1000);
 
+  // runs every task the advance queued, so a sleep that a regression allows has happened by now
+  await new Promise<void>((resolve) => {
+    setImmediate(resolve);
+  });
+
   expect([ctx.state.sleeps, ctx.takeoverEnded, ctx.computer.takeover.isHeld()]).toStrictEqual([
     0,
     [],
