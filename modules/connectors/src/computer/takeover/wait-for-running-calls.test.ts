@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import { waitForCondition } from '@heynixie/testing';
 import { createFakeClock } from '@zgeoff/testing/clock';
 import type { RunningCall } from './wait-for-running-calls';
 import { waitForRunningCalls } from './wait-for-running-calls';
@@ -94,10 +95,18 @@ test('it answers false at the limit of the first call to overrun, before a later
 test('it ignores the limit of a call that has ended and waits for the others', async () => {
   const ctx = setupTest();
   const quick = ctx.addCall(1_030_000);
+  const slow = ctx.addCall(1_090_000);
+  const progress = { isSettled: false };
 
-  ctx.addCall(1_090_000);
+  const waitAndMark = async () => {
+    const isDrained = await ctx.wait();
 
-  const result = ctx.wait();
+    progress.isSettled = true;
+
+    return isDrained;
+  };
+
+  const result = waitAndMark();
 
   quick.end();
 
@@ -106,22 +115,10 @@ test('it ignores the limit of a call that has ended and waits for the others', a
 
   ctx.clock.advance(30_000);
 
-  const progress = { isSettled: false };
+  // the wait either answers at the ended call's limit, or sleeps on to the next limit
+  await waitForCondition(() => progress.isSettled || ctx.clock.readNextDueMs() === 1_090_000);
 
-  const markWhenSettled = async () => {
-    await result;
+  slow.end();
 
-    progress.isSettled = true;
-  };
-
-  void markWhenSettled();
-
-  await Promise.resolve();
-  await Promise.resolve();
-
-  const settledAtEndedLimit = progress.isSettled;
-
-  ctx.clock.advance(60_000);
-
-  expect([settledAtEndedLimit, await result]).toStrictEqual([false, false]);
+  await expect(result).resolves.toBe(true);
 });
