@@ -355,9 +355,10 @@ With it off, a private note and every link to or from one are absent, with no pl
 Each link between the pages carries the parameter along.
 
 - `/notebook` lists the notes newest edit first from `notebook.listNotes`, 20 a page, with Load
-  more. A row shows the title, the tags, the update time and the backlink count. The search box and
-  the tag field set the `query` and `tags` search parameters, and the call searches by words and
-  meaning. When `isMeaningPartial` is true, the page says that the results match words only.
+  more. A row shows the title, the tags, the update time and the backlink count, and never the match
+  snippet of a private note, which comes from its body. The search box and the tag field set the
+  `query` and `tags` search parameters, and the call searches by words and meaning. When
+  `isMeaningPartial` is true, the page says that the results match words only.
 - `/notebook/<note ID>` shows one note from `notebook.readNote`: the title, the tags, the version
   and the version count, the body, the links grouped by type with their reasons, the backlinks and
   the history. A link shows its target's title or gist and links to the target's own page: a note,
@@ -367,21 +368,26 @@ Each link between the pages carries the parameter along.
   HTML and safe links only. `![alt](image:<image short ID>)` shows the stored image through
   `images.readBytes`, and an unknown or forgotten image shows "image unavailable". Any other image
   source renders as a link, never as an `<img>`, because a body can carry text from a fetched page
-  and a remote image would call out when the user opens the note.
+  and a remote image would call out when the user opens the note. The page keeps no stored image
+  after it leaves the screen, so a revisit reads it again.
 - A private note, with the toggle on, shows its title, links and marks, with its body folded under a
   line that says the assistant marked it private, and an Open button. The marks show when the
   assistant last read it and when the user last opened it. Open calls `notebook.openPrivate` with
   one `clientActionID` for as long as the page holds the note, so a retry after a failed call never
   moves the mark twice. It then shows the body, the time of this opening and a word diff against the
-  version before it. The history shows only after Open. With the toggle off, a private note's page
-  shows "This note is private" and a button that turns the toggle on, with no title.
+  version before it. The word diff compares whole words, and replaces the part between the shared
+  start and end of 2 very long texts as one block. The page keeps the opened body for that note and
+  version only. The history shows only after Open. With the toggle off, a private note's page shows
+  "This note is private" and a button that turns the toggle on, with no title.
 - `/notebook/check` shows `notebook.readCheck`: the orphans, the dangling links and the repeated
   reasons, each with the count the API reports and a link to its note.
 - Forget on a note's page, private ones too, reads `notebook.previewForget` and shows what goes: the
-  versions, the links and the backlinks. The confirmation calls `notebook.forget` with the version
-  the preview read. `STALE_VERSION` asks the user to reload the page. After the forget, the page
-  shows the key backup state as the images page does, and removes every cached notebook query, so no
-  cached list or note holds the title or the body.
+  versions, the links and the backlinks. A private note whose page shows no title gets a preview
+  with neither its title nor its counts. The confirmation calls `notebook.forget` with the newest
+  version the page showed, and asks the user to reload when the preview reads a newer one, or when
+  `notebook.forget` answers `STALE_VERSION`. Keep reads the preview again on the next Forget. After
+  the forget, the page shows the key backup state as the images page does, and removes every cached
+  notebook query, so no cached list or note holds the title or the body.
 - The record forget's confirmation lists the active notes that link to the record, with "A private
   note" in place of a private note's title.
 

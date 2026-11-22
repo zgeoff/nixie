@@ -154,3 +154,60 @@ test('it queues 2 note writes and a link from the private note to the first', ()
     { name: undefined, input: undefined },
   ]);
 });
+
+test('it links the 2 newest notes when earlier results name other notes', () => {
+  const replies = buildScriptedReplies({
+    text: 'Both notes are written.',
+    notebook: {
+      title: 'Boiler notes',
+      body: 'It trips at night.',
+      privateTitle: 'Winter diary',
+      privateBody: 'Dear diary, it snowed.',
+    },
+  });
+
+  const body = {
+    messages: [
+      { role: 'user', content: '{"result":{"note":"oldnoteone","version":1}}' },
+      { role: 'user', content: '{"result":{"note":"oldnotetwo","version":3}}' },
+      { role: 'user', content: '{"result":{"note":"n4w8k2c6rd","version":1}}' },
+      { role: 'user', content: '{"result":{"note":"d8p3q1z6mw","version":1}}' },
+    ],
+  };
+
+  const link = replies.at(2);
+  const toolUse = link !== undefined && 'toolUse' in link ? link.toolUse : undefined;
+  const input = toolUse?.input;
+  const linked = typeof input === 'function' ? input(body) : input;
+
+  expect(linked).toStrictEqual({
+    from: 'd8p3q1z6mw',
+    to: { note: 'n4w8k2c6rd' },
+    type: 'cites',
+    reason: 'the private note rests on it',
+  });
+});
+
+test('it queues the note writes before the task start when the reply holds both', () => {
+  const replies = buildScriptedReplies({
+    text: 'Both notes are written and the task is started.',
+    notebook: {
+      title: 'Boiler notes',
+      body: 'It trips at night.',
+      privateTitle: 'Winter diary',
+      privateBody: 'Dear diary, it snowed.',
+    },
+    task: { name: 'Check the boiler', brief: 'Look at it.', reply: 'Checked.' },
+  });
+
+  const names = replies.map((reply) => ('toolUse' in reply ? reply.toolUse.name : 'text'));
+
+  expect(names).toStrictEqual([
+    'mcp__nixie__notebook_write',
+    'mcp__nixie__notebook_write',
+    'mcp__nixie__notebook_link',
+    'mcp__nixie__task_start',
+    'text',
+    'text',
+  ]);
+});

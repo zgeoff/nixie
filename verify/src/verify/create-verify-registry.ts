@@ -394,7 +394,7 @@ export function createVerifyRegistry(): Wringer {
       },
       {
         name: 'notebook-pages',
-        summary: 'Browse notes, open a private one, and forget a note',
+        summary: 'Browse notes, open a private one, forget one',
         paths: featurePaths['notebook-pages'],
       },
       {

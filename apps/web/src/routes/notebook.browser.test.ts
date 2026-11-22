@@ -20,22 +20,17 @@ async function setupTest() {
     view.close();
   });
 
+  // Bun runs one Chrome for the whole test process, and its views share one cookie jar, so each
+  // test starts from an empty one.
   await view.navigate('about:blank');
   await view.cdp('Network.clearBrowserCookies');
 
-  const session = await store.sessions.create({});
-
-  const open = async (path: string) => {
-    await setupSignedInBrowser(view, { appURL: app.url, token: session.token });
-
-    await view.navigate(`${app.url}${path}`);
-  };
-
-  return { view, open };
+  return { appURL: app.url, view };
 }
 
 test('it lists the notes newest edit first and leaves out the private one', async () => {
   const ctx = await setupTest();
+  const session = await store.sessions.create({});
 
   await mockViewStore.notes.create({
     versions: [{ at: new Date('2026-11-19T08:00:00Z'), title: 'Boiler notes (old)', body: 'Old.' }],
@@ -52,7 +47,9 @@ test('it lists the notes newest edit first and leaves out the private one', asyn
     versions: [{ at: new Date('2026-11-20T08:00:00Z'), title: 'Winter diary', body: 'Rain.' }],
   });
 
-  await ctx.open('/notebook');
+  await setupSignedInBrowser(ctx.view, { appURL: ctx.appURL, token: session.token });
+
+  await ctx.view.navigate(`${ctx.appURL}/notebook`);
 
   await waitForPage(ctx.view, "document.body.innerText.includes('Why the boiler trips')");
 
@@ -65,6 +62,7 @@ test('it lists the notes newest edit first and leaves out the private one', asyn
 
 test('it shows a note with its links and backlinks', async () => {
   const ctx = await setupTest();
+  const session = await store.sessions.create({});
 
   await mockViewStore.notes.create({
     note: 'n4w8k2c6rd',
@@ -77,7 +75,9 @@ test('it shows a note with its links and backlinks', async () => {
     versions: [{ at: new Date(), title: 'Boiler notes (old)', body: 'Old.' }],
   });
 
-  await ctx.open('/notebook/n4w8k2c6rd');
+  await setupSignedInBrowser(ctx.view, { appURL: ctx.appURL, token: session.token });
+
+  await ctx.view.navigate(`${ctx.appURL}/notebook/n4w8k2c6rd`);
 
   await waitForPage(ctx.view, "document.body.innerText.includes('a rewrite')");
 
@@ -87,7 +87,7 @@ test('it shows a note with its links and backlinks', async () => {
 
   expect(links).toInclude('Boiler notes (old)');
 
-  await ctx.open('/notebook/h2m9t4x7qa');
+  await ctx.view.navigate(`${ctx.appURL}/notebook/h2m9t4x7qa`);
 
   await waitForPage(ctx.view, "document.body.innerText.includes('Why the boiler trips')");
 
@@ -98,8 +98,9 @@ test('it shows a note with its links and backlinks', async () => {
   expect(backlinks).toInclude('Why the boiler trips');
 });
 
-test('it folds a private note and shows its body once Open is pressed', async () => {
+test('it folds a private note and shows its body once Open is clicked', async () => {
   const ctx = await setupTest();
+  const session = await store.sessions.create({});
 
   await mockViewStore.notes.create({
     note: 'd8p3q1z6mw',
@@ -118,13 +119,18 @@ test('it folds a private note and shows its body once Open is pressed', async ()
     ],
   });
 
-  await ctx.open('/notebook?private=1');
+  await setupSignedInBrowser(ctx.view, { appURL: ctx.appURL, token: session.token });
+
+  await ctx.view.navigate(`${ctx.appURL}/notebook?private=1`);
 
   await waitForPage(ctx.view, "document.body.innerText.includes('Winter diary')");
 
   await ctx.view.click('a[href*="d8p3q1z6mw"]');
 
-  await waitForPage(ctx.view, "document.body.innerText.includes('Its body is folded')");
+  await waitForPage(
+    ctx.view,
+    'document.querySelector(\'button[name="open-private"]:enabled\') !== null',
+  );
 
   const isBodyShown: unknown = await ctx.view.evaluate(
     "document.body.innerText.includes('it snowed')",
@@ -132,9 +138,7 @@ test('it folds a private note and shows its body once Open is pressed', async ()
 
   expect(isBodyShown).toBe(false);
 
-  await ctx.view.evaluate(
-    "[...document.querySelectorAll('button')].find((button) => button.textContent === 'Open').click()",
-  );
+  await ctx.view.click('button[name="open-private"]');
 
   await waitForPage(ctx.view, "document.body.innerText.includes('Dear diary, it snowed.')");
 
@@ -143,6 +147,7 @@ test('it folds a private note and shows its body once Open is pressed', async ()
 
 test('it says only that a note is private when Show private is off', async () => {
   const ctx = await setupTest();
+  const session = await store.sessions.create({});
 
   await mockViewStore.notes.create({
     note: 'd8p3q1z6mw',
@@ -150,7 +155,9 @@ test('it says only that a note is private when Show private is off', async () =>
     versions: [{ at: new Date(), title: 'Winter diary', body: 'Dear diary.' }],
   });
 
-  await ctx.open('/notebook/d8p3q1z6mw');
+  await setupSignedInBrowser(ctx.view, { appURL: ctx.appURL, token: session.token });
+
+  await ctx.view.navigate(`${ctx.appURL}/notebook/d8p3q1z6mw`);
 
   await waitForPage(ctx.view, "document.body.innerText.includes('This note is private')");
 

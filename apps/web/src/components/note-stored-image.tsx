@@ -13,7 +13,8 @@ const picture = css({ display: 'block', maxHeight: '80dvh', maxWidth: 'full' });
 const muted = css({ color: 'textMuted', fontSize: 'sm' });
 
 // The one image a note body can load: a stored image that the images API reads by its short ID.
-// An unknown or forgotten one, or one that fails to read, shows as unavailable.
+// An unknown or forgotten one, or one that fails to read, shows as unavailable. Nothing stays
+// cached once the image leaves the screen, so a revisit after a forget reads it again.
 export function NoteStoredImage(props: NoteStoredImageProps): ReactNode {
   const nixie = useNixieClient();
 
@@ -21,8 +22,8 @@ export function NoteStoredImage(props: NoteStoredImageProps): ReactNode {
     ...nixie.queryUtils.images.readBytes.queryOptions({
       input: { image: props.image, size: 'full' },
     }),
+    gcTime: 0,
     retry: false,
-    staleTime: Number.POSITIVE_INFINITY,
   });
 
   const url = useBlobURL(read.data);

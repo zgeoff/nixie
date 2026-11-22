@@ -30,6 +30,7 @@ function Note(): ReactNode {
       session={data.session}
     >
       <NoteView
+        key={params.note}
         note={params.note}
         onShowPrivate={() => {
           void navigate({ search: makePrivateSearch(true) });

@@ -2,7 +2,7 @@ import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import { useState } from 'react';
-import { splitNoteTags } from '../notebook/split-note-tags';
+import { parseNoteTags } from '../notebook/parse-note-tags';
 import { css } from '../styled-system/css';
 import { isUnauthorizedError } from '../utils/is-unauthorized-error';
 import { useNixieClient } from '../utils/use-nixie-client';
@@ -43,11 +43,12 @@ const row = css({
 });
 
 // The notes, newest edit first. A private note shows only when the page asks for them, and a page
-// that hides them leaves no placeholder or count in their place.
+// that hides them leaves no placeholder or count in their place. A private note's match snippet
+// comes from its body, which only Open shows, so the list never prints it.
 export function NotebookList(props: NotebookListProps): ReactNode {
   const nixie = useNixieClient();
   const queryClient = useQueryClient();
-  const tags = splitNoteTags(props.tags);
+  const tags = parseNoteTags(props.tags);
 
   const listed = useInfiniteQuery(
     nixie.queryUtils.notebook.listNotes.infiniteOptions({
@@ -152,7 +153,9 @@ export function NotebookList(props: NotebookListProps): ReactNode {
                 .filter((part) => part !== null)
                 .join(' · ')}
             </span>
-            {note.match === null ? null : <span className={muted}>{note.match}</span>}
+            {note.match === null || note.isPrivate ? null : (
+              <span className={muted}>{note.match}</span>
+            )}
           </li>
         ))}
       </ul>
@@ -190,7 +193,7 @@ function SearchForm(props: SearchFormProps): ReactNode {
       className={form}
       onSubmit={(event) => {
         event.preventDefault();
-        props.onSearch(query.trim(), splitNoteTags(tags).join(','));
+        props.onSearch(query.trim(), parseNoteTags(tags).join(','));
       }}
       role="search"
     >

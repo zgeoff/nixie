@@ -29,7 +29,9 @@ export function buildScriptedReplies(
     reply.export === true ? [{ toolUse: { name: 'mcp__nixie__memory_export', input: {} } }] : [];
 
   const drawing = reply.draw === undefined ? [] : buildDrawingReplies(reply.draw);
-  const notebook = reply.notebook === undefined ? [] : buildNotebookReplies(reply.notebook);
+
+  const notebook =
+    reply.notebook === undefined ? [] : buildNotebookReplies(reply.notebook, forConversation);
 
   if (reply.task === undefined) {
     return [...memory, ...memoryExport, ...drawing, ...notebook, { text: reply.text }];
@@ -40,6 +42,7 @@ export function buildScriptedReplies(
   return [
     ...memory,
     ...memoryExport,
+    ...notebook,
     { toolUse: { name: 'mcp__nixie__task_start', input: task }, ...forConversation },
     { text: reply.text, ...forConversation },
     { text: taskReply, when: (body: ScriptedBody) => !isConversationTurn(body) },
@@ -86,29 +89,37 @@ function readLastImageID(body: ScriptedBody): string {
   return imageID;
 }
 
+interface ReplyCondition {
+  readonly when?: (body: ScriptedBody) => boolean;
+}
+
 // A note, a private note, and a link from the private note to the first. The link names both notes
-// by the IDs the writes' results gave the model.
+// by the IDs of the 2 newest write results, so notes from earlier turns never get linked.
 function buildNotebookReplies(
   notebook: NonNullable<z.output<typeof controlRoutes.addReply.input>['notebook']>,
+  when: ReplyCondition,
 ) {
   return [
     {
+      ...when,
       toolUse: {
         name: 'mcp__nixie__notebook_write',
         input: { title: notebook.title, body: notebook.body, tags: ['verify'] },
       },
     },
     {
+      ...when,
       toolUse: {
         name: 'mcp__nixie__notebook_write',
         input: { title: notebook.privateTitle, body: notebook.privateBody, isPrivate: true },
       },
     },
     {
+      ...when,
       toolUse: {
         name: 'mcp__nixie__notebook_link',
         input: (body: ScriptedBody) => {
-          const [first, second] = readNoteIDs(body);
+          const [first, second] = parseNoteIDs(body).slice(-2);
 
           invariant(first !== undefined && second !== undefined, 'the request holds no 2 note IDs');
 
@@ -124,7 +135,7 @@ function buildNotebookReplies(
   ];
 }
 
-function readNoteIDs(body: ScriptedBody): string[] {
+function parseNoteIDs(body: ScriptedBody): string[] {
   const seen = JSON.stringify(body.messages);
 
   return [...seen.matchAll(/"?note\\*":\\*"(?<id>[a-z0-9]+)/gu)].map(

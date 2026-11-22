@@ -68,7 +68,8 @@ and a task holds one only when its tool list names it.
   `backlinkCount` giving the totals, and `notebook.walk` reaches the rest. `notebook.read` reads
   `read_at` into its result, then appends `notebook.note_read` with the note's UUID alone, so
   `readAt` shows the read before this one. A refused read appends no record. Its `find` matches as
-  `web_fetch` does: case-insensitive plain text over the body as stored.
+  `web_fetch` does: case-insensitive plain text over the body as stored, returning the part where
+  the text first appears and up to 10 matches.
 - `notebook.history` lists versions newest first, 50 a call. `notebook.find` returns at most 20
   notes a call: its words search matches any query word, its meaning search ranks a note by its best
   chunk above the floor of `memory.recall`, and reciprocal rank fusion merges the two. A walk stops
@@ -85,7 +86,9 @@ and a task holds one only when its tool list names it.
   the text of a note, an item, a moment or a record. A target that was forgotten is listed as gone
   and the walk goes no further from it.
 - The check is built when it is read. An orphan is an active note that holds no link and that no
-  active note links to, and a note named only in another note's text counts as one.
+  active note links to, and a note named only in another note's text counts as one. Two reasons are
+  the same when they match after trimming, collapsing runs of spaces and ignoring case, and the
+  check reports a related reason that more than `check_reason_repeats` links hold.
 
 The call record of every notebook tool leaves out the free text of the call, and the result record
 holds short IDs and versions only, with each UUID under `hidden.uuids`

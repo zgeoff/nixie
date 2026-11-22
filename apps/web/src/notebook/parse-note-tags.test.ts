@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { splitNoteTags } from './split-note-tags';
+import { parseNoteTags } from './parse-note-tags';
 
 test.each([
   [undefined, []],
@@ -7,5 +7,5 @@ test.each([
   ['home', ['home']],
   [' home , boiler,,', ['home', 'boiler']],
 ])('it splits the tags %j', (tags, expected) => {
-  expect(splitNoteTags(tags)).toStrictEqual(expected);
+  expect(parseNoteTags(tags)).toStrictEqual(expected);
 });

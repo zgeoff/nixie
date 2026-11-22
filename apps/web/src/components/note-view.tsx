@@ -95,7 +95,9 @@ export function NoteView(props: NoteViewProps): ReactNode {
     );
   }
 
-  const first = read.data?.pages[0];
+  // A failed read leaves the last page cached, and a note forgotten elsewhere must not stay on
+  // screen, so only a failed history page keeps what loaded.
+  const first = read.isError && !read.isFetchNextPageError ? undefined : read.data?.pages[0];
 
   if (first === undefined) {
     return (
@@ -116,7 +118,12 @@ export function NoteView(props: NoteViewProps): ReactNode {
         <button onClick={props.onShowPrivate} type="button">
           Show private
         </button>
-        <NoteForgetControl note={props.note} onForgotten={setForgotten} />
+        <NoteForgetControl
+          isHidden
+          note={props.note}
+          onForgotten={setForgotten}
+          version={undefined}
+        />
       </main>
     );
   }
@@ -174,7 +181,12 @@ export function NoteView(props: NoteViewProps): ReactNode {
           showPrivate={props.showPrivate}
         />
       )}
-      <NoteForgetControl note={first.note} onForgotten={setForgotten} />
+      <NoteForgetControl
+        isHidden={false}
+        note={first.note}
+        onForgotten={setForgotten}
+        version={first.versionCount}
+      />
     </main>
   );
 }

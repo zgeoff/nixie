@@ -58,7 +58,7 @@ Read a feature's file before you run its journey.
 | task-control     | Pause and resume a task, and see its records agree                         | [references/feature-task-control.md](references/feature-task-control.md)         |
 | drawing          | Draw a picture, edit it, and list both                                     | [references/feature-drawing.md](references/feature-drawing.md)                   |
 | images-page      | Browse and forget images                                                   | [references/feature-images-page.md](references/feature-images-page.md)           |
-| notebook-pages   | Browse notes, open a private one, and forget a note                        | [references/feature-notebook-pages.md](references/feature-notebook-pages.md)     |
+| notebook-pages   | Browse notes, open a private one, forget one                               | [references/feature-notebook-pages.md](references/feature-notebook-pages.md)     |
 | computer-shell   | Write and read back a shell file                                           | [references/feature-computer-shell.md](references/feature-computer-shell.md)     |
 | computer-browser | Open a page in the assistant's browser                                     | [references/feature-computer-browser.md](references/feature-computer-browser.md) |
 | computer-screen  | Click a point of the assistant's desktop                                   | [references/feature-computer-screen.md](references/feature-computer-screen.md)   |
@@ -138,19 +138,20 @@ and do what that row says.
 
 Start a launch target's app with `bun verify up`, and stop it with `bun verify down`. Connect to an
 attach target, whose app runs apart from `bun verify`, with `bun verify attach`; `bun verify detach`
-leaves it running. Your edits never reach an attach target, so check a change on a launch target.
+leaves it running. Your edits never reach an attach target's app, so check a change on a launch
+target.
 
-Run `bun verify use --target <target>` to point every later command at a target. It saves the choice
-in `.wringer/`. `--target` on one command points that command alone. A command with neither runs on
-the registry's first target, so run `use` first.
+Run `bun verify use --target <target>` to point every later command at a target. `use` saves the
+choice in this worktree's `.wringer/`, for every shell and session. `--target` on one command points
+that command alone. A command with neither runs on the registry's first target, so run `use` first.
 
 <!-- repo: targets -->
 
-| Target    | Start with                                                  | Access     | Notes                                                               |
-| --------- | ----------------------------------------------------------- | ---------- | ------------------------------------------------------------------- |
-| `local`   | `bun verify use --target local`, then `bun verify up`       | read-write | Test build, scripted model.                                         |
-| `preview` | `bun verify use --target preview`, then `bun verify attach` | read-write | The PR's preview, real model; [setup](references/preview-setup.md). |
-| `prod`    | `bun verify use --target prod`, then `bun verify attach`    | read-only  | [The prod check](references/prod-check.md).                         |
+| Target    | Start with                                                  | Access     | Notes                                             |
+| --------- | ----------------------------------------------------------- | ---------- | ------------------------------------------------- |
+| `local`   | `bun verify use --target local`, then `bun verify up`       | read-write | Test build, scripted model.                       |
+| `preview` | `bun verify use --target preview`, then `bun verify attach` | read-write | Real model; [setup](references/preview-setup.md). |
+| `prod`    | `bun verify use --target prod`, then `bun verify attach`    | read-only  | [Prod check](references/prod-check.md).           |
 
 - Run [sign-in-enrol](references/feature-sign-in-enrol.md) first, and after each `up --restart`,
   except before `device-screen`.
@@ -160,17 +161,17 @@ the registry's first target, so run `use` first.
 ## Commands
 
 Run `bun verify --help` for the list, with each command marked `[read]` or `[write]`. A read-only
-target refuses every `[write]` command but `publish`, which writes no app data. `up` and `down` are
-`[read]`, but start and stop the app. Run `bun verify <command> --help` for flags, and
-`bun verify <group> --help`, for a group such as `action`, for its commands.
+target refuses each `[write]` command except `publish`, which writes no app data. `up` and `down`
+are `[read]`, but start and stop the app. Run `bun verify <command> --help` for a command's flags.
+The top-level list shows only the name of a group, such as `action`: run `bun verify <group> --help`
+for its commands.
 
 - Write a negative number with `=`, as in `--offset=-5`.
 - Pass an object as JSON text, as in `--filter '{"shelf":"top"}'`.
 
 <!-- repo: commands -->
 
-- Pass `--role` and `--name` to `browser type` and `browser click`, or `--ref` from the last
-  `browser snapshot`.
+- Give `browser type` and `browser click` `--role` and `--name`, or `--ref` from `browser snapshot`.
 
 <!-- /repo -->
 

@@ -50,10 +50,21 @@ export function readMockNotePage(input: MockNotePageInput) {
         updatedAt: current?.at ?? new Date(),
         backlinkCount: readMockBacklinks(row.note, showPrivate).length,
         isPrivate: row.isPrivate,
-        match: null,
+        match: pickMatch(current?.body ?? '', words),
       };
     }),
     next: matching.length > skipped + pageSize ? String(skipped + pageSize) : null,
     isMeaningPartial: words.length > 0,
   };
+}
+
+// The words' first hit in the body with a little text on each side, as the API's snippet is built.
+function pickMatch(body: string, words: readonly string[]): string | null {
+  const lower = body.toLowerCase();
+
+  const hit = words
+    .map((word) => ({ at: lower.indexOf(word), length: word.length }))
+    .find((entry) => entry.at >= 0);
+
+  return hit === undefined ? null : body.slice(Math.max(0, hit.at - 40), hit.at + hit.length + 40);
 }

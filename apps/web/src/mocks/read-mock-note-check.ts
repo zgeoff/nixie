@@ -28,12 +28,59 @@ export function readMockNoteCheck(showPrivate: boolean) {
     )
     .filter((entry) => showPrivate || !privateNotes.has(entry.from));
 
+  const repeatedReasons = collectRepeatedReasons(rows, showPrivate, privateNotes);
+
   return {
     orphans,
     dangling,
-    repeatedReasons: [],
+    repeatedReasons,
     orphanCount: orphans.length,
     danglingCount: dangling.length,
-    repeatedReasonCount: 0,
+    repeatedReasonCount: repeatedReasons.length,
   };
+}
+
+type MockNoteRow = ReturnType<typeof mockViewStore.notes.all>[number];
+
+// The API's setting: a related reason is repeated on more links than this.
+const reasonRepeats = 3;
+
+// Two reasons are the same after trimming, collapsing runs of spaces and ignoring case. Only related
+// links count, and a group lists the links that stay visible.
+function collectRepeatedReasons(
+  rows: readonly MockNoteRow[],
+  showPrivate: boolean,
+  privateNotes: ReadonlySet<string>,
+) {
+  const groups = new Map<
+    string,
+    { reason: string; links: { from: string; to: Record<string, string> }[]; total: number }
+  >();
+
+  for (const row of rows) {
+    for (const link of row.links) {
+      if (link.type !== 'related' || link.reason === null) {
+        continue;
+      }
+
+      const key = link.reason.trim().replaceAll(/\s+/gu, ' ').toLowerCase();
+      const group = groups.get(key) ?? { reason: link.reason, links: [], total: 0 };
+
+      const isHidden =
+        !showPrivate &&
+        (privateNotes.has(row.note) || (link.kind === 'note' && privateNotes.has(link.target)));
+
+      group.total += 1;
+
+      if (!isHidden) {
+        group.links.push({ from: row.note, to: { [link.kind]: link.target } });
+      }
+
+      groups.set(key, group);
+    }
+  }
+
+  return [...groups.values()]
+    .filter((group) => group.total > reasonRepeats && group.links.length > 0)
+    .map((group) => ({ reason: group.reason, count: group.links.length, links: group.links }));
 }

@@ -55,6 +55,7 @@ export function NotePrivateBody(props: NotePrivateBodyProps): ReactNode {
         <p>The assistant marked this note private. Its body is folded.</p>
         <button
           disabled={open.isPending}
+          name="open-private"
           onClick={() => {
             open.mutate({ clientActionID: actionID, note: props.note, version: props.version });
           }}

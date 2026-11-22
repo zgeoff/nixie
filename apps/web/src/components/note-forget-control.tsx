@@ -8,6 +8,13 @@ import { useNixieClient } from '../utils/use-nixie-client';
 
 export interface NoteForgetControlProps {
   readonly note: string;
+
+  // true for a private note that the page shows no title for: the preview then names neither its
+  // title nor its link counts
+  readonly isHidden: boolean;
+
+  // the newest version the page showed, or undefined when the page showed none
+  readonly version: number | undefined;
   readonly onForgotten: (backup: ForgetBackup) => void;
 }
 
@@ -23,16 +30,20 @@ const confirmation = css({
 });
 
 // The forget of a whole note, private ones too, with no open of the note. The preview says what
-// goes, and the forget binds to the version the preview read, so a note that changed since asks
-// the user to reload.
+// goes, and the forget binds to the version the page showed, so a note that changed since the page
+// loaded, or since the preview, asks the user to reload.
 export function NoteForgetControl(props: NoteForgetControlProps): ReactNode {
   const nixie = useNixieClient();
   const queryClient = useQueryClient();
   const [actionID, setActionID] = useState<string | null>(null);
   const onForgotten = props.onForgotten;
 
+  const previewOptions = nixie.queryUtils.notebook.previewForget.queryOptions({
+    input: { note: props.note },
+  });
+
   const preview = useQuery({
-    ...nixie.queryUtils.notebook.previewForget.queryOptions({ input: { note: props.note } }),
+    ...previewOptions,
     enabled: actionID !== null,
     gcTime: 0,
     refetchOnReconnect: false,
@@ -54,6 +65,9 @@ export function NoteForgetControl(props: NoteForgetControlProps): ReactNode {
     }),
   );
 
+  const isBehind =
+    preview.isSuccess && props.version !== undefined && preview.data.version !== props.version;
+
   if (actionID === null) {
     return (
       <button
@@ -74,7 +88,15 @@ export function NoteForgetControl(props: NoteForgetControlProps): ReactNode {
       {preview.isError ? (
         <p role="alert">The forget could not read what it removes. Reload the page to try again.</p>
       ) : null}
-      {preview.isSuccess ? (
+      {preview.isSuccess && props.isHidden ? (
+        <p>Forget this private note for good? It goes with all its versions and links.</p>
+      ) : null}
+      {preview.isSuccess && !props.isHidden && isBehind ? (
+        <p role="alert">
+          The note changed since this page loaded. Reload the page, then forget it.
+        </p>
+      ) : null}
+      {preview.isSuccess && !props.isHidden && !isBehind ? (
         <p>
           Forget &quot;{preview.data.title}&quot; for good? It goes with its{' '}
           {preview.data.versionCount} {preview.data.versionCount === 1 ? 'version' : 'versions'} and
@@ -83,14 +105,14 @@ export function NoteForgetControl(props: NoteForgetControlProps): ReactNode {
           other notes stay and read as gone.
         </p>
       ) : null}
-      {preview.isSuccess ? (
+      {preview.isSuccess && !isBehind ? (
         <button
           disabled={forget.isPending}
           onClick={() => {
             forget.mutate({
               clientActionID: actionID,
               note: props.note,
-              version: preview.data.version,
+              version: props.version ?? preview.data.version,
             });
           }}
           type="button"
@@ -104,6 +126,9 @@ export function NoteForgetControl(props: NoteForgetControlProps): ReactNode {
           setActionID(null);
 
           forget.reset();
+
+          // The next preview reads the note again: a note edited meanwhile has a new version.
+          queryClient.removeQueries({ queryKey: previewOptions.queryKey });
         }}
         type="button"
       >
