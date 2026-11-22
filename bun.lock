@@ -305,17 +305,6 @@
         "tiny-invariant": "catalog:",
       },
     },
-    "guests/browser": {
-      "name": "@heynixie/browser",
-      "version": "0.0.0",
-      "dependencies": {
-        "@heynixie/egress": "workspace:*",
-        "@heynixie/wire": "workspace:*",
-        "playwright-core": "catalog:",
-        "ts-pattern": "catalog:",
-        "zod": "catalog:",
-      },
-    },
     "guests/codex": {
       "name": "@heynixie/codex",
       "version": "0.0.0",
@@ -326,6 +315,18 @@
       },
       "devDependencies": {
         "@heynixie/testing": "workspace:*",
+      },
+    },
+    "guests/computer": {
+      "name": "@heynixie/computer",
+      "version": "0.0.0",
+      "dependencies": {
+        "@heynixie/egress": "workspace:*",
+        "@heynixie/wire": "workspace:*",
+        "playwright-core": "catalog:",
+        "tiny-invariant": "catalog:",
+        "ts-pattern": "catalog:",
+        "zod": "catalog:",
       },
     },
     "guests/conversation": {
@@ -350,15 +351,6 @@
         "@heynixie/egress": "workspace:*",
         "@heynixie/wire": "workspace:*",
         "entities": "catalog:",
-      },
-    },
-    "guests/shell": {
-      "name": "@heynixie/shell",
-      "version": "0.0.0",
-      "dependencies": {
-        "@heynixie/egress": "workspace:*",
-        "@heynixie/wire": "workspace:*",
-        "tiny-invariant": "catalog:",
       },
     },
     "integration": {
@@ -1543,8 +1535,6 @@
 
     "@heynixie/backup-job": ["@heynixie/backup-job@workspace:apps/backup-job"],
 
-    "@heynixie/browser": ["@heynixie/browser@workspace:guests/browser"],
-
     "@heynixie/budgets": ["@heynixie/budgets@workspace:modules/budgets"],
 
     "@heynixie/clock": ["@heynixie/clock@workspace:libs/clock"],
@@ -1552,6 +1542,8 @@
     "@heynixie/codex": ["@heynixie/codex@workspace:guests/codex"],
 
     "@heynixie/compaction": ["@heynixie/compaction@workspace:modules/compaction"],
+
+    "@heynixie/computer": ["@heynixie/computer@workspace:guests/computer"],
 
     "@heynixie/connectors": ["@heynixie/connectors@workspace:modules/connectors"],
 
@@ -1620,8 +1612,6 @@
     "@heynixie/server": ["@heynixie/server@workspace:apps/server"],
 
     "@heynixie/sessions": ["@heynixie/sessions@workspace:modules/sessions"],
-
-    "@heynixie/shell": ["@heynixie/shell@workspace:guests/shell"],
 
     "@heynixie/skills": ["@heynixie/skills@workspace:modules/skills"],
 

@@ -32,7 +32,7 @@ test('it builds release.json from the rehearsal digests and rehearses its upload
   // the release.json that the stubbed manifest script would write
   writeFileSync(
     join(ctx.runnerTemp, 'release.json'),
-    '{"images":{"server":"r/nixie:0.0.0-rehearsal@sha256:dd44","web":"r/nixie-web:0.0.0-rehearsal@sha256:cc33","backup":"r/nixie-backup:0.0.0-rehearsal@sha256:ab12"},"sandboxImages":{"conversation":"r/nixie-conversation:0.0.0-rehearsal@sha256:aa11","fetch":"r/nixie-fetch:0.0.0-rehearsal@sha256:bb22","code":"r/nixie-code:0.0.0-rehearsal@sha256:ee66","codex":"r/nixie-codex:0.0.0-rehearsal@sha256:ff77","browser":"r/nixie-browser:0.0.0-rehearsal@sha256:ab99","shell":"r/nixie-shell:0.0.0-rehearsal@sha256:ab88"}}\n',
+    '{"images":{"server":"r/nixie:0.0.0-rehearsal@sha256:dd44","web":"r/nixie-web:0.0.0-rehearsal@sha256:cc33","backup":"r/nixie-backup:0.0.0-rehearsal@sha256:ab12"},"sandboxImages":{"conversation":"r/nixie-conversation:0.0.0-rehearsal@sha256:aa11","fetch":"r/nixie-fetch:0.0.0-rehearsal@sha256:bb22","code":"r/nixie-code:0.0.0-rehearsal@sha256:ee66","codex":"r/nixie-codex:0.0.0-rehearsal@sha256:ff77","computer":"r/nixie-computer:0.0.0-rehearsal@sha256:ab99"}}\n',
   );
 
   createStubBin(ctx.binPath, 'bun');
@@ -122,22 +122,11 @@ test('it builds release.json from the rehearsal digests and rehearses its upload
           'buildx',
           'imagetools',
           'inspect',
-          'r/nixie-browser:0.0.0-rehearsal',
+          'r/nixie-computer:0.0.0-rehearsal',
           '--format',
           '{{.Manifest.Digest}}',
         ],
         stdout: 'sha256:ab99\n',
-      },
-      {
-        args: [
-          'buildx',
-          'imagetools',
-          'inspect',
-          'r/nixie-shell:0.0.0-rehearsal',
-          '--format',
-          '{{.Manifest.Digest}}',
-        ],
-        stdout: 'sha256:ab88\n',
       },
     ],
   });
@@ -281,18 +270,7 @@ test('it builds release.json from the rehearsal digests and rehearses its upload
         'buildx',
         'imagetools',
         'inspect',
-        'r/nixie-browser:0.0.0-rehearsal',
-        '--format',
-        '{{.Manifest.Digest}}',
-      ],
-    },
-    {
-      name: 'docker',
-      argv: [
-        'buildx',
-        'imagetools',
-        'inspect',
-        'r/nixie-shell:0.0.0-rehearsal',
+        'r/nixie-computer:0.0.0-rehearsal',
         '--format',
         '{{.Manifest.Digest}}',
       ],
@@ -317,7 +295,7 @@ test('it fails, and uploads nothing, when a tag in release.json names another di
 
   writeFileSync(
     join(ctx.runnerTemp, 'release.json'),
-    '{"images":{"server":"r/nixie:0.0.0-rehearsal@sha256:dd44","web":"r/nixie-web:0.0.0-rehearsal@sha256:cc33","backup":"r/nixie-backup:0.0.0-rehearsal@sha256:ab12"},"sandboxImages":{"conversation":"r/nixie-conversation:0.0.0-rehearsal@sha256:aa11","fetch":"r/nixie-fetch:0.0.0-rehearsal@sha256:bb22","code":"r/nixie-code:0.0.0-rehearsal@sha256:ee66","codex":"r/nixie-codex:0.0.0-rehearsal@sha256:ff77","browser":"r/nixie-browser:0.0.0-rehearsal@sha256:ab99","shell":"r/nixie-shell:0.0.0-rehearsal@sha256:ab88"}}\n',
+    '{"images":{"server":"r/nixie:0.0.0-rehearsal@sha256:dd44","web":"r/nixie-web:0.0.0-rehearsal@sha256:cc33","backup":"r/nixie-backup:0.0.0-rehearsal@sha256:ab12"},"sandboxImages":{"conversation":"r/nixie-conversation:0.0.0-rehearsal@sha256:aa11","fetch":"r/nixie-fetch:0.0.0-rehearsal@sha256:bb22","code":"r/nixie-code:0.0.0-rehearsal@sha256:ee66","codex":"r/nixie-codex:0.0.0-rehearsal@sha256:ff77","computer":"r/nixie-computer:0.0.0-rehearsal@sha256:ab99"}}\n',
   );
 
   createStubBin(ctx.binPath, 'bun');

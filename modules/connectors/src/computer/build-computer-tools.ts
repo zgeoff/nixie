@@ -7,7 +7,7 @@ import { buildShellTools, runShellCommand } from './build-shell-tools';
 import type { ComputerState } from './computer-state';
 import { buildComputerState } from './computer-state';
 import type { ComputerToolOptions } from './computer-tool-options';
-import { refuseComputer } from './run-computer-call';
+import { refuseComputer, refuseUntilMoved } from './run-computer-call';
 import type { ComputerAttempt } from './types';
 
 export interface ComputerTools {
@@ -27,11 +27,12 @@ export function buildComputerTools(options: ComputerToolOptions): ComputerTools 
       ...buildBrowserReadTools(options, state),
       ...buildBrowserActTools(options, state),
       ...buildShellTools(options, state),
-    ],
+    ].map((tool) => withMoveGate(options, tool)),
     connector: {
       reconcile: { kind: 'none' },
       run: async (attempt) => {
-        const result = await runQueued(options, state, attempt);
+        const moving = await refuseUntilMoved(options);
+        const result = await (moving ?? runQueued(options, state, attempt));
 
         const refused = refusedSchema.safeParse(result.result['refused']);
 
@@ -39,6 +40,34 @@ export function buildComputerTools(options: ComputerToolOptions): ComputerTools 
           ? toRefusal(refused.data)
           : { kind: 'success', result: result.result };
       },
+    },
+  };
+}
+
+// Every tool answers COMPUTER_MOVING until the disks of an earlier release are copied, whatever
+// else it would have checked first.
+function withMoveGate(options: ComputerToolOptions, tool: ToolDefinition): ToolDefinition {
+  const gated: ToolDefinition = {
+    ...tool,
+    run: async (call, context) => {
+      const moving = await refuseUntilMoved(options);
+
+      return moving === null ? tool.run(call, context) : { status: 'ok', ...moving };
+    },
+  };
+
+  if (tool.prepare === undefined) {
+    return gated;
+  }
+
+  const prepare = tool.prepare;
+
+  return {
+    ...gated,
+    prepare: async (input, context) => {
+      const moving = await refuseUntilMoved(options);
+
+      return moving ?? prepare(input, context);
     },
   };
 }
@@ -69,7 +98,7 @@ function runQueued(
 }
 
 function toRefusal(refused: z.infer<typeof refusedSchema>): ProviderResponse {
-  return refused.code === 'BUSY'
+  return refused.code === 'BUSY' || refused.code === 'COMPUTER_MOVING'
     ? { kind: 'refused_retryable', reason: refused.message }
     : { kind: 'refused', reason: refused.message };
 }

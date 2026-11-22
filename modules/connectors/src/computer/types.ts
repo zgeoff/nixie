@@ -1,8 +1,6 @@
 import type { JSONObject } from '@heynixie/log';
 import type { ComputerReply, ComputerRequest } from '@heynixie/wire';
 
-export type ComputerKind = 'browser' | 'shell';
-
 // the server's verdict on a URL a guest is about to request
 export type ScanVerdict =
   | { readonly kind: 'pass' }
@@ -16,6 +14,9 @@ export type CallResult =
 
   // another call held the sandbox for the whole wait
   | { readonly status: 'busy' }
+
+  // the browser and shell sandboxes of an earlier release are not yet copied into the computer
+  | { readonly status: 'moving' }
 
   // the kernel killed a process of the sandbox for memory during the call
   | { readonly status: 'out_of_memory' }

@@ -70,12 +70,12 @@ async function setupTest() {
             }),
           },
         ]),
-      sandbox: (owner: string) =>
+      sandbox: (owner: string, image?: string) =>
         recorder.write({
           event: 'created',
           sandboxID: `sandbox-of-${owner}`,
           adapter: 'stub',
-          spec: buildMockSandboxSpec({ owner }),
+          spec: buildMockSandboxSpec({ owner, ...(image === undefined ? {} : { image }) }),
         }),
     },
   };
@@ -103,4 +103,27 @@ test('it spares the sandboxes of the conversation, the checker and each open sta
   });
 
   expect(ctx.destroyed).toIncludeSameMembers([`sandbox-of-${closed}`, 'sandbox-of-a-stranger']);
+});
+
+test('it keeps the browser and shell sandboxes of an earlier release on images the manifest no longer lists', async () => {
+  const ctx = await setupTest();
+
+  await Promise.all([
+    ctx.seed.sandbox('computer-browser', 'nixie-browser-old'),
+    ctx.seed.sandbox('computer-shell', 'nixie-shell-old'),
+    ctx.seed.sandbox('computer-desktop', 'nixie-computer-old'),
+    ctx.seed.sandbox('a-stranger', 'nixie-browser-old'),
+  ]);
+
+  await removeRecoveredSandboxes(ctx.context, {
+    logger: () => {},
+    adapter: ctx.adapter,
+    currentImages: ['nixie-computer-new'],
+    imageExemptOwners: [],
+  });
+
+  expect(ctx.destroyed).toIncludeSameMembers([
+    'sandbox-of-computer-desktop',
+    'sandbox-of-a-stranger',
+  ]);
 });

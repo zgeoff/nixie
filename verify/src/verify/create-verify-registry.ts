@@ -388,14 +388,14 @@ export function createVerifyRegistry(): Wringer {
         paths: featurePaths.drawing,
       },
       {
-        name: 'computer-browser',
-        summary: "Open a page in the assistant's browser",
-        paths: featurePaths['computer-browser'],
-      },
-      {
         name: 'computer-shell',
         summary: 'Write and read back a shell file',
         paths: featurePaths['computer-shell'],
+      },
+      {
+        name: 'computer-browser',
+        summary: "Open a page in the assistant's browser",
+        paths: featurePaths['computer-browser'],
       },
       {
         name: 'device-screen',

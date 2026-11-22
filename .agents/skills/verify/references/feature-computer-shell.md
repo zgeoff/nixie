@@ -4,8 +4,9 @@ Contents: [Journey](#journey), [End state](#end-state).
 
 The user asks the assistant to write a file on its computer and read it back. On `local`, a scripted
 model answers in place of the real one. It calls `computer.write_file`, then `computer.read_file` on
-the same path. nixie runs both in the assistant's shell, which keeps its files on a disk of its own,
-apart from the browser's.
+the same path. nixie runs both in the shell of the computer sandbox. The shell keeps its files under
+`~/files` on the sandbox's disk, which the browser's profile shares, and only the terminal account
+can read them.
 
 Follow the steps in [Check a change](../SKILL.md#check-a-change) for this journey. Read that section
 for the commands `up` and `done`, and for the `data` field of each command's JSON output.
@@ -14,15 +15,18 @@ Run this journey on `local` only. The `use-computer` action exists only in `loca
 `preview`, skip the journey and run no `done`. In your reply, list the feature as not verified
 because it needs `local`.
 
-This journey does not check that the shell's network is closed. In a deployment, the shell runs in a
-sandbox of its own. `local`'s test build runs it as a plain process, with no network limits.
+This journey does not check that the shell's network is closed. In a deployment, each command runs
+in the computer sandbox, in a network namespace that holds only a loopback and reaches sites through
+a proxy. `local`'s test build runs the shell as a plain process of the host's user.
 
 Before you start:
 
 - When you have not run [sign-in-enrol](feature-sign-in-enrol.md) since `up`, run it first.
-- Run this journey once per `up`. Each result holds `isDiskNew`, which is true when the shell's disk
-  was empty. Only the first write after `up` finds it empty, and the end state needs that. Before
-  you run the journey again, even after a failed journey, run `bun verify up --restart` and
+- Run this journey once per `up`, before [computer-browser](feature-computer-browser.md). Each
+  result holds `isDiskNew`, which is true when the computer's disk was empty. The browser and the
+  shell share that disk, so only the first computer call after `up` finds it empty. The end state
+  needs that call to be this journey's write. When computer-browser ran first, or before you run
+  this journey again, even after a failed journey, run `bun verify up --restart` and
   `bun verify doctor`. Then run sign-in-enrol.
 
 ## Journey

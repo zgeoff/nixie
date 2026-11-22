@@ -92,7 +92,7 @@ function buildRunTool(options: ComputerToolOptions, state: ComputerState): ToolD
 
       state.epochs.set(key, state.files.count);
       state.holds.get(key)?.();
-      state.holds.set(key, options.computer.hold('shell', actionProposalLapseMs));
+      state.holds.set(key, options.computer.hold(actionProposalLapseMs));
 
       return Promise.resolve({ destinations: [] });
     },
@@ -145,7 +145,6 @@ function buildReadFileTool(options: ComputerToolOptions): ToolDefinition {
 
       const outcome = await runComputerCall(options, {
         run: context.run,
-        kind: 'shell',
         namedURL: null,
         timeoutMs: callTimeoutMs,
         request: { op: 'readFile', path: input.path },
@@ -238,7 +237,6 @@ function buildWriteFileTool(options: ComputerToolOptions, state: ComputerState):
 
       const outcome = await runComputerCall(options, {
         run: context.run,
-        kind: 'shell',
         namedURL: null,
         timeoutMs: callTimeoutMs,
         request: {
@@ -315,7 +313,6 @@ function buildExportFileTool(options: ComputerToolOptions): ToolDefinition {
 
       const outcome = await runComputerCall(options, {
         run: context.run,
-        kind: 'shell',
         namedURL: null,
         timeoutMs: callTimeoutMs,
         request: { op: 'readFile', path: input.path },
@@ -381,6 +378,13 @@ export async function runShellCommand(
   state.holds.delete(key);
   state.epochs.delete(key);
 
+  if (epoch === undefined) {
+    return refuseComputer(
+      'TAB_GONE',
+      'the computer was replaced since the command was asked for, so it did not run; ask again',
+    );
+  }
+
   if (epoch !== state.files.count) {
     return refuseComputer(
       'FILES_CHANGED',
@@ -390,13 +394,13 @@ export async function runShellCommand(
 
   const seconds = input.timeoutSeconds ?? defaultRunSeconds;
 
-  const called = await options.computer.call('shell', {
+  const called = await options.computer.call({
     timeoutMs: (seconds + 30) * 1000,
     ...makeActionScans(options),
     request: { op: 'run', argv: ['bash', '-lc', input.command], timeoutSeconds: seconds },
   });
 
-  const outcome = sortCallResult(called, 'shell');
+  const outcome = sortCallResult(called);
 
   state.files.count += 1;
 

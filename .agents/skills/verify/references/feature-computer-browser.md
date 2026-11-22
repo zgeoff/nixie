@@ -4,7 +4,9 @@ Contents: [Journey](#journey), [End state](#end-state).
 
 The user asks the assistant to open a page. On `local`, a scripted model answers in place of the
 real one. It calls `computer.browser_open`, and nixie holds the call until the user approves the
-site. Then nixie opens the page in the assistant's browser, a headless Chromium.
+site. Then nixie opens the page in the assistant's browser. In a deployment, that browser is
+Chromium on the desktop of the computer sandbox. `local`'s test build has no desktop, so it runs
+Chromium headless.
 
 Follow the steps in [Check a change](../SKILL.md#check-a-change) for this journey. Read that section
 for the commands `up` and `done`, and for the `data` field of each command's JSON output.
@@ -14,7 +16,8 @@ Run this journey on `local` only. The `use-computer` action and the page it open
 In your reply, list the feature as not verified because it needs `local`.
 
 This journey does not check that the browser's network is closed. In a deployment, the browser runs
-in a sandbox of its own. `local`'s test build runs it as a plain process, with no network limits.
+in the computer sandbox, beside the shell, and reaches sites only through the sandbox's checking
+proxy. `local`'s test build runs it as a plain process, with no network limits.
 
 Before you start:
 

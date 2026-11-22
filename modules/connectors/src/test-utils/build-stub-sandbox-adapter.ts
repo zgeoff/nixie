@@ -57,6 +57,9 @@ export interface StubSandboxAdapterOptions {
 
   readonly readMemoryKills?: () => Promise<MemoryKillRead>;
   readonly exec?: StubExec;
+
+  // a file that copyIn silently drops, so a copy of it comes back missing
+  readonly skipCopyIn?: (path: string) => boolean;
 }
 
 export function buildStubSandboxAdapter(
@@ -111,6 +114,7 @@ export function buildStubSandboxAdapter(
         execs,
         files: sandboxFiles,
         exec: options.exec ?? null,
+        skipCopyIn: options.skipCopyIn ?? (() => false),
         readMemoryKills:
           options.readMemoryKills ?? (() => Promise.resolve({ kind: 'unsupported' })),
       });
@@ -162,6 +166,7 @@ interface StubState {
   readonly execs: { sandboxID: string; command: RunSpec }[];
   readonly files: Map<string, Uint8Array<ArrayBuffer>>;
   readonly exec: StubExec | null;
+  readonly skipCopyIn: (path: string) => boolean;
   readonly readMemoryKills: () => Promise<MemoryKillRead>;
 }
 
@@ -193,7 +198,9 @@ function buildStubSandbox(id: string, spec: SandboxSpec, state: StubState): Sand
       }
 
       for (const file of specs) {
-        state.files.set(file.path, file.content);
+        if (!state.skipCopyIn(file.path)) {
+          state.files.set(file.path, file.content);
+        }
       }
 
       return Promise.resolve();
@@ -215,8 +222,17 @@ function buildStubSandbox(id: string, spec: SandboxSpec, state: StubState): Sand
         }),
       );
     },
-    resolveHome: () => Promise.reject(new Error('the stub runs no exec')),
-    readFilePaths: () => Promise.reject(new Error('the stub runs no exec')),
+    resolveHome: (env) => {
+      const home = env['HOME'] ?? '/home/stub';
+
+      return Promise.resolve({ copyPath: home, ownPath: home });
+    },
+    readFilePaths: (directory) =>
+      Promise.resolve(
+        [...state.files.keys()]
+          .filter((path) => path.startsWith(`${directory}/`))
+          .map((path) => path.slice(directory.length + 1)),
+      ),
     applyMove: () => Promise.reject(new Error('the stub runs no exec')),
     toolRoute: () => Promise.resolve(null),
     suspension: { kind: 'none' },

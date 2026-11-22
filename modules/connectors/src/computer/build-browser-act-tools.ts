@@ -139,7 +139,6 @@ async function prepareAct(
 
   const outcome = await runComputerCall(options, {
     run: preparation.context.run,
-    kind: 'browser',
     namedURL: null,
     timeoutMs: prepareTimeoutMs,
     request: { op: 'read', tab: guestTab, mode: 'text' },
@@ -158,7 +157,7 @@ async function prepareAct(
 
   state.expectations.set(key, url);
   state.holds.get(key)?.();
-  state.holds.set(key, options.computer.hold('browser', actionProposalLapseMs));
+  state.holds.set(key, options.computer.hold(actionProposalLapseMs));
 
   return { destinations: [new URL(url).host], expectURL: url };
 }
@@ -187,6 +186,10 @@ export async function runBrowserAct(
   const tab = z.object({ tab: z.string() }).parse(attempt.arguments).tab;
   const guestTab = options.computer.tabs.find(tab);
 
+  if (guestTab === null) {
+    return refuseComputer('TAB_GONE', `there is no tab ${tab}; open the page again`);
+  }
+
   if (expectURL === undefined) {
     return refuseComputer(
       'PAGE_CHANGED',
@@ -194,16 +197,12 @@ export async function runBrowserAct(
     );
   }
 
-  if (guestTab === null) {
-    return refuseComputer('TAB_GONE', `there is no tab ${tab}; open the page again`);
-  }
-
   const acts =
     attempt.tool === 'computer.browser_fill'
       ? fillActs(fillArguments.parse(attempt.arguments))
       : clickActs(clickArguments.parse(attempt.arguments));
 
-  const outcome = await options.computer.call('browser', {
+  const outcome = await options.computer.call({
     timeoutMs: 60_000,
     ...makeActionScans(options),
     request: { op: 'act', tab: guestTab, expectURL, ...acts },
@@ -211,7 +210,7 @@ export async function runBrowserAct(
 
   state.expectations.delete(key);
 
-  const sorted = sortCallResult(outcome, 'browser');
+  const sorted = sortCallResult(outcome);
 
   if (sorted.kind === 'refused') {
     return sorted.result;

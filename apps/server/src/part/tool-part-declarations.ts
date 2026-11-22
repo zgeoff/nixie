@@ -57,7 +57,7 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
   {
     name: 'computer',
     needs: ['inputs', 'context', 'sandbox_adapter'],
-    images: () => ['browser', 'shell'],
+    images: () => ['computer'],
     start: (parts) =>
       startComputerPart({
         options: parts.get('inputs').options,

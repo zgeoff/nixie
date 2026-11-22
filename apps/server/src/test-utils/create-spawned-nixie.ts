@@ -526,7 +526,13 @@ function writeReleaseManifest(files: BootFiles, imageKeys: readonly string[]): B
     .record(z.string(), z.string())
     .parse(JSON.parse(readFileSync(files.manifestPath, 'utf8')));
 
-  const kept = Object.entries(manifest).filter(([key]) => imageKeys.includes(key));
+  // A key the build under check no longer has, such as an image kind a later release replaced,
+  // still gets an image, as the manifest of the release itself would hold one.
+  const kept = imageKeys.map((key) => [
+    key,
+    manifest[key] ?? `ghcr.io/example/nixie-${key}@sha256:${'0'.repeat(64)}`,
+  ]);
+
   const manifestPath = join(dirname(files.manifestPath), 'release-sandbox-manifest.json');
 
   writeFileSync(manifestPath, JSON.stringify(Object.fromEntries(kept)));

@@ -110,21 +110,13 @@ jobs:
           dockerfile: guests/code/Dockerfile
           cache-scope: code
 
-      - name: Build the browser image
-        id: browser
+      - name: Build the computer image
+        id: computer
         uses: ./.github/actions/build-image
         with:
-          repository: ${{ env.REGISTRY }}/nixie-browser
-          dockerfile: guests/browser/Dockerfile
-          cache-scope: browser
-
-      - name: Build the shell image
-        id: shell
-        uses: ./.github/actions/build-image
-        with:
-          repository: ${{ env.REGISTRY }}/nixie-shell
-          dockerfile: guests/shell/Dockerfile
-          cache-scope: shell
+          repository: ${{ env.REGISTRY }}/nixie-computer
+          dockerfile: guests/computer/Dockerfile
+          cache-scope: computer
 
       - name: Build the codex image
         id: codex

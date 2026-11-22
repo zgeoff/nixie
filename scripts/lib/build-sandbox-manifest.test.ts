@@ -6,13 +6,12 @@ test('it prints each key with its ref in key order', () => {
     buildSandboxManifest({
       code: 'registry.test/nixie-code@sha256:cc33',
       codex: 'registry.test/nixie-codex@sha256:dd44',
-      browser: 'registry.test/nixie-browser@sha256:ab99',
-      shell: 'registry.test/nixie-shell@sha256:ab88',
+      computer: 'registry.test/nixie-computer@sha256:ab99',
       fetch: 'registry.test/nixie-fetch@sha256:bb22',
       conversation: 'registry.test/nixie-conversation@sha256:aa11',
     }),
   ).toBe(
-    '{"conversation":"registry.test/nixie-conversation@sha256:aa11","fetch":"registry.test/nixie-fetch@sha256:bb22","code":"registry.test/nixie-code@sha256:cc33","codex":"registry.test/nixie-codex@sha256:dd44","browser":"registry.test/nixie-browser@sha256:ab99","shell":"registry.test/nixie-shell@sha256:ab88"}',
+    '{"conversation":"registry.test/nixie-conversation@sha256:aa11","fetch":"registry.test/nixie-fetch@sha256:bb22","code":"registry.test/nixie-code@sha256:cc33","codex":"registry.test/nixie-codex@sha256:dd44","computer":"registry.test/nixie-computer@sha256:ab99"}',
   );
 });
 
@@ -29,8 +28,7 @@ test('it refuses a ref with no key, naming the key', () => {
       fetch: 'registry.test/nixie-fetch@sha256:bb22',
       code: 'registry.test/nixie-code@sha256:cc33',
       codex: 'registry.test/nixie-codex@sha256:dd44',
-      browser: 'registry.test/nixie-browser@sha256:ab99',
-      shell: 'registry.test/nixie-shell@sha256:ab88',
+      computer: 'registry.test/nixie-computer@sha256:ab99',
       extra: 'registry.test/nixie-extra@sha256:ee55',
     }),
   ).toThrow('extra');

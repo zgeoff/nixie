@@ -29,6 +29,7 @@ export const sandboxSpecSchema = z.object({
     'code_run',
     'fetch',
     'coding',
+    'computer',
     'browser',
     'shell',
   ]),

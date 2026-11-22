@@ -1,4 +1,4 @@
-# Runs the shell guest's tests, which start each command in new user, network and process
+# Runs the computer guest's command tests, which start each command in new user, network and process
 # namespaces. GitHub's Ubuntu runners refuse unprivileged user namespaces, so the job allows them
 # first; the runner is thrown away after the job. The shared unit lane leaves these tests out,
 # because its runner keeps the restriction. shell-namespaces-main.yml runs the same job on each push

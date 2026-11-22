@@ -63,8 +63,7 @@ test('it needs each image that a declaration names', async () => {
   expect(listImageNeeds(config, serverPartDeclarations)).toStrictEqual([
     { key: 'conversation', neededBy: 'the profile scripted on the agent-sdk harness' },
     { key: 'fetch', neededBy: 'the web_fetch part' },
-    { key: 'browser', neededBy: 'the computer part' },
-    { key: 'shell', neededBy: 'the computer part' },
+    { key: 'computer', neededBy: 'the computer part' },
     { key: 'code', neededBy: 'the code_run part' },
   ]);
 });

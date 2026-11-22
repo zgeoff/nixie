@@ -32,8 +32,7 @@ test('it writes the manifest of the digests that the build steps gave, under the
         fetch: { outputs: { digest: 'sha256:bb22' } },
         code: { outputs: { digest: 'sha256:dd44' } },
         codex: { outputs: { digest: 'sha256:ee55' } },
-        browser: { outputs: { digest: 'sha256:ab99' } },
-        shell: { outputs: { digest: 'sha256:ab88' } },
+        computer: { outputs: { digest: 'sha256:ab99' } },
         conversation: { outputs: { digest: 'sha256:aa11' } },
         web: { outputs: { digest: 'sha256:cc33' } },
       }),
@@ -44,7 +43,7 @@ test('it writes the manifest of the digests that the build steps gave, under the
   expect(result.exitCode).toBe(0);
 
   expect(readFileSync(join(ctx.repoPath, 'apps', 'server', 'sandbox-manifest.json'), 'utf8')).toBe(
-    '{"conversation":"localhost:5000/nixie-conversation@sha256:aa11","fetch":"localhost:5000/nixie-fetch@sha256:bb22","code":"localhost:5000/nixie-code@sha256:dd44","codex":"localhost:5000/nixie-codex@sha256:ee55","browser":"localhost:5000/nixie-browser@sha256:ab99","shell":"localhost:5000/nixie-shell@sha256:ab88"}\n',
+    '{"conversation":"localhost:5000/nixie-conversation@sha256:aa11","fetch":"localhost:5000/nixie-fetch@sha256:bb22","code":"localhost:5000/nixie-code@sha256:dd44","codex":"localhost:5000/nixie-codex@sha256:ee55","computer":"localhost:5000/nixie-computer@sha256:ab99"}\n',
   );
 });
 

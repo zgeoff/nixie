@@ -1,50 +1,80 @@
 # The computer
 
-The assistant has a browser and a shell of its own. Each one runs in a sandbox that stays: it keeps
-a disk between calls, so a browser sign-in or a downloaded file is still there at the next call. The
-browser sandbox runs headless Chromium and keeps the browser profile. The shell sandbox runs bash
-commands and keeps the assistant's files. The disks are working space, not a store: what must last
-goes in the notebook or in memory, which the backup covers. A forget never reaches inside either
-disk.
+The assistant has a computer of its own: one sandbox with a virtual desktop, a browser and a shell.
+The sandbox stays: it keeps a disk between calls, so a browser sign-in or a downloaded file is still
+there at the next call. Chromium runs on the desktop's display, and the shell runs bash commands in
+a terminal on the same desktop. The disk is working space, not a store: what must last goes in the
+notebook or in memory, which the backup covers. A forget never reaches inside the disk.
 
 ```mermaid
 flowchart LR
   model[assistant] -->|"computer.*"| point[decision point]
   point -->|"reads: direct"| tools[computer tools]
   point -->|"acts: queued"| queue[action queue] --> tools
-  tools -->|"frames"| browser[browser sandbox]
-  tools -->|"frames"| shell[shell sandbox]
-  browser --> proxy[checking proxy] --> web[sites]
-  shell --> proxy
+  tools -->|"frames"| computer[computer sandbox]
+  computer --> proxy[checking proxy] --> web[sites]
 ```
 
-## The sandboxes
+## The sandbox
 
-The kinds `browser` and `shell` have public egress, no grant and no tool route. A deployment holds
-one of each, owned by `computer-browser` and `computer-shell`, and recovery keeps both. The
-[sandbox sizes](sandboxes.md#sizes) hold their memory and disks. The images `nixie-browser` and
-`nixie-shell` come from `guests/browser` and `guests/shell`.
+The kind `computer` has public egress, no grant and no tool route. A deployment holds one, owned by
+`computer-desktop`, and recovery keeps it. The [sandbox sizes](sandboxes.md#sizes) hold its memory
+and disk. The image `nixie-computer` comes from `guests/computer`.
+
+The desktop is Xvfb for the display, openbox as the window manager, xterm as the terminal and x11vnc
+as a VNC server. The VNC server listens on the loopback of the sandbox only, with its clipboard off.
 
 Chromium runs in the time zone of `time.default_zone` in the config, so a page that shows "today" or
-an opening hour shows the user's. Nixie hands the zone to the browser guest when it starts the
-guest, so a changed zone reaches the browser at its next start.
+an opening hour shows the user's. Nixie hands the zone to the guest when it starts the guest, so a
+changed zone reaches the browser at its next start.
 
-A guest is one long-lived process per wake. It reads frames from `libs/wire` on stdin, answers them
-one at a time on stdout, and holds no state nixie cannot rebuild, except the disk. The computer in
-`modules/connectors` owns the sandboxes:
+The guest is one long-lived process per wake. It reads frames from `libs/wire` on stdin, answers
+them one at a time on stdout, and holds no state nixie cannot rebuild, except the disk. The computer
+in `modules/connectors` owns the sandbox:
 
-- A call waits a set time for its turn at a sandbox, and returns `BUSY` after that. The calls into
-  one sandbox therefore never overlap, whether they come from the conversation or a task.
-- Each sandbox sleeps after its own idle time, which is longer for the browser than for the shell.
-  Nixie treats every wake as a restart: it starts the guest again, so every tab ID from before the
-  sleep returns `TAB_GONE`. The profile keeps the sign-ins.
-- A queued click or fill holds the browser awake until its action runs or its approval lapses, so a
-  card the user answers late still finds its tab. A queued command holds the shell the same way.
-- When a sandbox's image or spec differs from the release, nixie creates a new one at its next call
-  and copies the profile or the files into it.
-- Resetting a sandbox destroys it, and the next call creates an empty one. `isDiskNew` is true on
+- A call waits a set time for its turn, and returns `BUSY` after that. The calls into the sandbox
+  therefore never overlap, whether they come from the conversation or a task. A browser call and a
+  shell call share one turn.
+- The sandbox sleeps after its idle time. Nixie treats every wake as a restart: it starts the guest
+  again, so every tab ID from before the sleep returns `TAB_GONE`. The profile keeps the sign-ins.
+- A queued click, fill or command holds the sandbox awake until its action runs or its approval
+  lapses, so a card the user answers late still finds its tab.
+- When the sandbox's image or spec differs from the release, nixie creates a new one at its next
+  call and copies the disk into it.
+- Resetting the sandbox destroys it, and the next call creates an empty one. `isDiskNew` is true on
   the first result from a disk that started empty, so the assistant knows what it held before is
   gone.
+
+### Accounts and the disk
+
+The guest runs as root and hands no root to anything it starts. It starts each part as an account of
+its own, so one part cannot read, signal or trace another:
+
+| Account  | Runs                                    | Holds                               |
+| -------- | --------------------------------------- | ----------------------------------- |
+| chrome   | Chromium, through a launcher script     | `profile`, readable by this account |
+| terminal | the terminal and each `computer.run`    | `files`, readable by this account   |
+| screen   | the display, openbox and the VNC server | nothing on the disk                 |
+
+The display listens on an abstract socket only, and the sandbox's network namespace is where the
+guest runs, so a command in its own network namespace cannot reach it. The terminal's processes sit
+in a cgroup with a memory limit and no swap, so a runaway command is killed there before it takes
+the browser's memory. The home folder is sticky, so the terminal cannot replace the profile folder
+beside its files.
+
+### Moving from the earlier sandboxes
+
+An earlier release kept a browser sandbox, owned by `computer-browser`, and a shell sandbox, owned
+by `computer-shell`. Their kinds, `browser` and `shell`, stay readable in stored records. Recovery
+keeps both sandboxes, whatever their image, until their disks are copied.
+
+Before the computer's first call runs, nixie copies the old browser's profile into `profile` and the
+old shell's files into `files`. The copy runs commands in both sandboxes, so it keeps symlinks and
+the modes of files and folders, and it moves a file of any size. Nixie then lists the new folder and
+compares it with the old one. Every path, kind, mode, symlink target and file size must match. It
+then writes the disk marker and destroys the old sandboxes. When a copy fails, every call returns
+`COMPUTER_MOVING`, and nothing is destroyed. A queued action treats `COMPUTER_MOVING` as a refusal
+it may retry. A reset destroys the old sandboxes too.
 
 ## Tools
 
@@ -55,7 +85,7 @@ one at a time on stdout, and holds no state nixie cannot rebuild, except the dis
 | `computer.browser_screenshot` | `note`         | direct | the viewport's picture, or one control's box, beside the result     |
 | `computer.browser_scroll`     | `note`         | direct | `isAtEnd` and the viewport's picture beside it, with no page stored |
 | `computer.browser_close`      | `note`         | direct | the tab closed                                                      |
-| `computer.browser_download`   | `fetch`        | direct | a file saved to `downloads/` on the shell's disk                    |
+| `computer.browser_download`   | `fetch`        | direct | a file saved to `downloads/` in the files                           |
 | `computer.browser_fill`       | `send`         | queued | the page after the typed value, with `submit` to press Enter        |
 | `computer.browser_click`      | `send`         | queued | the page after the click                                            |
 | `computer.run`                | `computer_run` | queued | the exit code, `stdout` and `stderr` (each cut at a limit), seconds |
@@ -120,26 +150,31 @@ A `computer.run` is its own effect, `computer_run`, because the shell reaches th
   cannot exclude an option.
 - Nixie counts each call that changes the shell's disk: `write_file`, `browser_download` and `run`.
   A run that waits for a decision keeps the count from when it was proposed, and returns
-  `FILES_CHANGED` without running when the count moved. An approved command therefore never runs a
-  script that changed after the user read the card.
+  `FILES_CHANGED` without running when the count moved. A queued run that finds no remembered count,
+  such as after a restart, returns `TAB_GONE` without running. An approved command therefore never
+  runs a script that changed after the user read the card.
 
 ## The checking proxy
 
-Every connection from either sandbox leaves through a proxy that its guest starts (`libs/egress`).
-The proxy refuses an address in a denied range, resolves each host once and pins the address it
-checked. Before it connects, it asks nixie to scan the URL of a plain request, and then the headers
-and body, which it holds in full. A body too large to hold, and a chunked body, are refused because
-the proxy cannot scan them first. The scan of headers and bodies has no typed-URL exemption.
+Every connection from the sandbox leaves through a proxy that its guest starts (`libs/egress`). The
+proxy refuses an address in a denied range, resolves each host once and pins the address it checked.
+Before it connects, it asks nixie to scan the URL of a plain request, and then the headers and body,
+which it holds in full. A body too large to hold, and a chunked body, are refused because the proxy
+cannot scan them first. The scan of headers and bodies has no typed-URL exemption.
 
 The browser also turns off QUIC and WebRTC's non-proxied UDP, and asks nixie to scan the URL of
 every request it makes, with a hop frame as the fetch guest does. Chromium may open a CONNECT
 tunnel, because the guest scans each request before it enters one.
 
-The shell runs each command in a network namespace of its own that holds a loopback and nothing
-else. A bridge there passes the command's proxy settings to a proxy on a Unix socket, so a raw
-socket or `curl --noproxy` finds no route out. The shell's proxy refuses CONNECT, because it cannot
-read an encrypted tunnel, so the shell reaches plain HTTP sites only, and the browser fetches the
-rest. A command's processes end with the command.
+The scan channel stays open between calls. A request that a page makes while no call runs, such as a
+timer in a page, is scanned with the default scans, which have no typed-URL exemption. A refused
+request fails in the page and writes no record.
+
+The terminal and each command run in a network namespace of its own that holds a loopback and
+nothing else. A bridge there passes the command's proxy settings to a proxy on a Unix socket, so a
+raw socket or `curl --noproxy` finds no route out. The proxy for commands refuses CONNECT, because
+it cannot read an encrypted tunnel, so the shell reaches plain HTTP sites only, and the browser
+fetches the rest. A command's processes end with the command.
 
 Nixie scans the URL of a click, a fill and a run the same way, with no typed-URL exemption, because
 a queued action has no message to exempt it.
@@ -156,6 +191,7 @@ build's guests resolve to the loopback address.
 ## Memory kills
 
 Nixie reads a sandbox's memory-kill count before and after each call. When it rose, the call returns
-`OUT_OF_MEMORY` with the sandbox's kind, whatever else it would have returned, and the guest
-restarts, which closes every tab of the browser. The [memory-kill watcher](memory-kills.md) logs
-`sandbox.memory_kill` with the kind and size.
+`OUT_OF_MEMORY`, whatever else it would have returned. A kill during `computer.run` stays inside the
+terminal's cgroup, so the guest and its tabs stay. A kill during any other call restarts the guest,
+which closes every tab. The [memory-kill watcher](memory-kills.md) logs `sandbox.memory_kill` with
+the kind and size.
