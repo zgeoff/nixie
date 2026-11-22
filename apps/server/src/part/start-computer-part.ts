@@ -2,7 +2,6 @@ import { join } from 'node:path';
 import type { ComputerTools } from '@heynixie/connectors';
 import {
   buildComputerTools,
-  endTakeoverCutByRestart,
   makeTakeoverRecords,
   makeUnexemptScans,
   startComputer,
@@ -72,8 +71,6 @@ export async function startComputerPart(inputs: ComputerPartInputs): Promise<Com
     logger: options.log,
     takeover: { idleMs: options.config.computer.idle_hand_back_minutes * 60_000, records },
   });
-
-  await endTakeoverCutByRestart(inputs.log, records);
 
   await options.cleanup.defer(() => computer.stop());
 

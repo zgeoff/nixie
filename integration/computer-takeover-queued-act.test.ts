@@ -3,7 +3,7 @@ import { startActionRunners } from '@heynixie/actions';
 import { createTestStep, queueTestAction } from '@heynixie/actions/test-utils';
 import { buildTestClient, createDeviceSession, startTestAPI } from '@heynixie/api/test-utils';
 import type { ActionAttempt } from '@heynixie/connectors';
-import { endTakeoverCutByRestart, makeTakeoverRecords, startComputer } from '@heynixie/connectors';
+import { makeTakeoverRecords, startComputer } from '@heynixie/connectors';
 import { buildStubSandboxAdapter } from '@heynixie/connectors/test-utils';
 import { readRecords } from '@heynixie/log';
 import { stopWithoutGrace, waitForCondition } from '@heynixie/testing';
@@ -138,31 +138,4 @@ test('it keeps a queued act pending through a hold with no attempt, and runs it 
     kindsWhileHeld.filter((kind) => kind.startsWith('action.')),
     kindsAfter.filter((kind) => kind === 'action.attempt_started'),
   ]).toStrictEqual([1, ['action.queued'], ['action.attempt_started']]);
-});
-
-test('it writes the restart end of a hold that was open when nixie stopped', async () => {
-  const ctx = await setupTest();
-
-  const first = ctx.startDesktop();
-
-  await ctx.client.computer.takeOver({ clientActionID: crypto.randomUUID() });
-  await first.stop();
-
-  const second = ctx.startDesktop();
-
-  await endTakeoverCutByRestart(ctx.api.context.log, ctx.records);
-
-  const entries = await readRecords(ctx.api.context.log, { afterSequence: 0, limit: 100 });
-
-  const kinds = entries.map((entry) => entry.record.kind);
-
-  expect([
-    kinds.filter((kind) => kind.startsWith('computer.')),
-    second.takeover.isHeld(),
-    entries.at(-1)?.record.payload,
-  ]).toStrictEqual([
-    ['computer.takeover_started', 'computer.takeover_ended'],
-    false,
-    { shortID: expect.any(String), by: 'restart', durationSeconds: 0 },
-  ]);
 });
