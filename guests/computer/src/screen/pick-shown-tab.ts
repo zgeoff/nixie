@@ -13,9 +13,9 @@ export interface ReadTab {
   readonly height: number;
 }
 
-// Picks the tab a browser window shows, or null when no tracked tab is known to be in it. With one
-// browser window it is the last visible tab, because a headless browser shows every tab. With
-// several, a visible tab belongs to the window nearest its own rectangle when that window is close enough, and to none on a tie.
+// With one browser window, the shown tab is the last visible one: a headless browser shows them all.
+// With several, a tab goes to the one window close to its rectangle, and to none when 2 are close,
+// because a window that moved between the two scans could take another's tab.
 export function pickShownTab(
   window: DesktopWindow,
   browserWindows: readonly DesktopWindow[],
@@ -38,17 +38,9 @@ export function pickShownTab(
 const maxRectangleGap = 64;
 
 function pickNearestWindow(tab: ReadTab, windows: readonly DesktopWindow[]): DesktopWindow | null {
-  const ranked = windows
-    .map((window) => ({ window, gap: measureGap(tab, window) }))
-    .toSorted((first, second) => first.gap - second.gap);
+  const close = windows.filter((window) => measureGap(tab, window) <= maxRectangleGap);
 
-  const [nearest, next] = ranked;
-
-  return nearest !== undefined &&
-    nearest.gap <= maxRectangleGap &&
-    (next === undefined || nearest.gap < next.gap)
-    ? nearest.window
-    : null;
+  return close.length === 1 ? (close[0] ?? null) : null;
 }
 
 function measureGap(tab: ReadTab, window: DesktopWindow): number {

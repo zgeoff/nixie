@@ -1,14 +1,14 @@
 import { z } from 'zod';
 import { findWindowAt } from './find-window-at';
+import { hasSameBrowserWindows } from './has-same-browser-windows';
 import type { ReadTab } from './pick-shown-tab';
 import { pickShownTab } from './pick-shown-tab';
 import type { DesktopDriver, ScreenPage, ScreenSelection, ScreenTabs, ScreenTarget } from './types';
 
 const noWindowID = 'none';
 
-// Finds the window a screen act lands on: the one under the point, or the focused one. A browser
-// window takes the tab it shows. A browser window that shows no tracked tab stays a browser window
-// with no tab, so its address bar and tab strip are never mistaken for page content.
+// A browser window that shows no tracked tab, or whose tab can't be matched safely, gets no tab, so
+// its address bar and tab strip are never mistaken for page content.
 export async function resolveScreenTarget(
   driver: DesktopDriver,
   tabs: ScreenTabs,
@@ -33,11 +33,16 @@ export async function resolveScreenTarget(
 
   const read = await readTabs(tabs);
 
-  const shown = pickShownTab(
-    found,
-    windows.filter((window) => window.kind === 'browser'),
-    read,
-  );
+  // A browser window that moved while the tabs were read could sit where another's tab reports.
+  const after = await driver.readWindows();
+
+  const shown = hasSameBrowserWindows(windows, after.windows)
+    ? pickShownTab(
+        found,
+        windows.filter((window) => window.kind === 'browser'),
+        read,
+      )
+    : null;
 
   return shown === null
     ? { binding: { windowID: found.id, kind: 'browser' }, pageTop: null }
