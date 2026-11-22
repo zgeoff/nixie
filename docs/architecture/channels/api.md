@@ -121,12 +121,21 @@ random bytes that live in the API's memory for
 - The ticket is never stored, because a retry mints a fresh one, and never logged: a refusal logs
   the route without the query.
 - The socket accepts binary messages only, up to a size cap, and closes on text with code 1003. It
-  relays both ways through [the computer's watch](../connectors/computer.md#watching).
+  relays both ways through [the computer's watch](../connectors/computer.md#watching). The socket
+  carries the keys and pointer of its session only while that session holds the desktop.
 - The socket closes with code 1008 when its session is revoked or lapses, including while the
   sandbox is still waking. The API follows `session.revoked` records and re-probes the session on a
   timer of the shorter of the idle limit and the last-seen interval.
 - The server serves the socket from its own `Bun.serve`, ahead of the Elysia app, so a request that
   asks for the route skips the app's handlers and takes the server's call gate like any other call.
+
+`computer.takeOver` and `computer.handBack` are checked actions with the same session rules as
+`computer.watch`, and a retry of the same action ID gets the stored answer. `takeOver` answers
+`takenOverAt`, or `BUSY_TOO_LONG` when the assistant's calls ran past their limits, or
+`HELD_ELSEWHERE` when another device holds the desktop. `handBack` answers `durationSeconds`, or
+`NOT_TAKEN_OVER` when the calling session does not hold it. Both answer `COMPUTER_UNAVAILABLE` when
+the server runs no computer. [The computer](../connectors/computer.md#taking-over) describes the
+hold.
 
 ## Refusals
 

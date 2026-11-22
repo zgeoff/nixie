@@ -328,18 +328,22 @@ a blob and never navigates to them.
 
 ## The computer page
 
-`/computer` shows the assistant's desktop live, view only. In the browser, it calls `computer.watch`
-with a new client action ID, loads the viewer library, opens the socket at the address in the answer
-and hands the socket to the viewer. The route's loader never calls the API for the watch, so a
-server render opens no socket. The viewer is noVNC, loaded with a dynamic import in the browser
-only, because the library reads the window when it loads.
+`/computer` shows the assistant's desktop live, and lets the user take it over. In the browser, it
+calls `computer.watch` with a new client action ID, loads the viewer library, opens the socket at
+the address in the answer and hands the socket to the viewer. The route's loader never calls the API
+for the watch, so a server render opens no socket. The viewer is noVNC, loaded with a dynamic import
+in the browser only, because the library reads the window when it loads.
 
 - The viewer runs with `viewOnly` on, `scaleViewport` on and `resizeSession` off, so the picture
-  scales to fit and a viewer never resizes the desktop or sends a key, a pointer move or a clipboard
-  change.
+  scales to fit and a viewer never resizes the desktop or sends a clipboard change.
+- Take over calls `computer.takeOver` and, once it answers, turns `viewOnly` off and focuses the
+  viewer, so the user's keys and pointer reach the desktop. The status line then says that the user
+  has taken over, and Take over becomes Hand back, which calls `computer.handBack` and turns
+  `viewOnly` on. A refused take-over shows its reason next to the button. A reconnect turns input on
+  again for the new viewer while the hold lasts.
 - The status line reads "Connecting to the computer." until the ticket comes, then "The computer is
-  waking" while the socket is open and no picture has come, and "Watching the computer. You can look
-  but not touch." once the viewer has drawn the desktop. The viewer's connect event comes before any
+  waking" while the socket is open and no picture has come, and "Watching the computer. Take over to
+  use it." once the viewer has drawn the desktop. The viewer's connect event comes before any
   picture, so the page polls the viewer's canvas for a drawn pixel.
 - A stream that ends after a picture shows that it ended, and one that ends before a picture or
   fails to start says "The computer can’t be watched right now." Both show Watch again, which asks
