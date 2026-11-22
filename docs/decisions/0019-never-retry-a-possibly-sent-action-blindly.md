@@ -5,15 +5,16 @@
 
 ## Decision
 
-nixie never sends an action a second time when the first attempt may have reached its provider. An
-action is a call whose effects reach outside nixie, such as an email, a write or a payment. When an
-attempt has no recorded result, nixie gives the action the status `unknown` and settles it in one of
-3 ways:
+An action is a call whose effects reach outside nixie, such as an email, a write or a payment, and
+its provider is the outside service that carries it out. When an attempt to send an action ends with
+no recorded result, as after a crash, the provider may have acted. nixie then gives the action the
+status `unknown`, and never sends it again unless one of these holds:
 
-- a retry that carries the first attempt's idempotency key, which the provider uses to ignore a
+- the retry carries the first attempt's idempotency key, which the provider uses to ignore a
   duplicate;
-- a check with the provider that finds whether the action happened;
-- the user's answer to whether it happened, whether to retry it, or whether to drop it.
+- a check with the provider finds that the action did not happen;
+- the user, asked about the action, chooses to retry it. The user can instead say it happened, or
+  drop it.
 
 [Actions](../architecture/core/actions.md#outcomes) covers each status an action can reach.
 
