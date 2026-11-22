@@ -20,6 +20,7 @@ const dialog = css({
   borderColor: 'borderStrong',
   borderWidth: '1px',
   color: 'text',
+  margin: 'auto',
   maxHeight: '100dvh',
   maxWidth: '100vw',
   padding: '4',
@@ -49,7 +50,7 @@ const details = css({
   minWidth: '0',
 });
 
-const closeButton = css({ alignSelf: 'flex-end' });
+const closeButton = css({ display: 'block', marginBlockEnd: '2', marginInlineStart: 'auto' });
 
 // The full image beside its name, its prompt and where it came from. It reads the image by its ID,
 // so a forgotten image shows as forgotten and keeps its link to the image it was edited from.

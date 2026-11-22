@@ -80,11 +80,14 @@ Before you start:
    bun verify browser click --role button --name Forget
    bun verify browser click --role button --name 'Forget for good'
    bun verify browser snapshot --until-text 'Key backups'
-   bun verify db query "select count(*) as readable from records where key_id is not null and sequence in (select sequence from images where image_id = '<first>' union select parent from records where sequence = (select sequence from images where image_id = '<first>'))"
+   bun verify db query "select count(*) as forgotten from records where kind = 'record.forgotten'"
+   bun verify browser goto '/images?all=true'
+   bun verify browser snapshot
    ```
 
-   Expect: the snapshot shows the text "Forgotten" in place of the picture and a line that starts
-   with "Key backups". The query's `readable` is 0.
+   Expect: the first snapshot shows the text "Forgotten" in place of the picture and a line that
+   starts with "Key backups". The query's `forgotten` is 2, one for the image's call record and one
+   for its result record. The last snapshot lists one button, "Open <second>".
 
 ## End state
 
@@ -94,5 +97,5 @@ Before you start:
   it ticked, the page lists both images.
 - Step 4: the lightbox of the edit shows "Edited from" and a link named for the first image. The
   link opens the first image's lightbox.
-- Step 5: the lightbox shows "Forgotten" and a "Key backups" line, and the result record of the
-  first image has no key left.
+- Step 5: the lightbox shows "Forgotten" and a "Key backups" line, the call and result records of
+  the first image are forgotten, and the grid lists the edit alone.

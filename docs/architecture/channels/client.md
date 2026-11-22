@@ -326,10 +326,10 @@ a blob and never navigates to them.
 
 ## The app shell
 
-Every page sits in one shell, which the root route renders. Its bar holds 11 links: Conversation,
-Memory, Proposals, Moments, Tasks, Ended runs, Files, Images, Definitions, Reminders and Passkeys.
-The link of the current page carries `aria-current="page"`, and a detail page marks its parent, so a
-task marks Tasks. A page with no entry, such as the mandates page, marks nothing. Below 768px the
+Every page sits in one shell, which the root route renders. Its bar holds 13 links: Conversation,
+Memory, Proposals, Mandates, Moments, Tasks, Ended runs, Files, Images, Definitions, Reminders,
+Passkeys and Add a device. The link of the current page carries `aria-current="page"`, and a detail
+page marks its parent, so a task marks Tasks. A page with no entry marks nothing. Below 768px the
 links fold into a menu button that opens a side drawer. The drawer is a native modal dialog, so the
 rest of the page goes inert while it is open. It closes on a link tap, on Escape and on a tap
 outside it, and focus returns to the menu button. CSS alone switches between the bar and the button,
