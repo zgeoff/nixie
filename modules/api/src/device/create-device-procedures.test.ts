@@ -1,13 +1,16 @@
 import { expect, test } from 'bun:test';
 import { seedImage } from '@heynixie/connectors/test-utils';
 import { clientHeaderName, contract, sessionCookieName } from '@heynixie/contract';
+import { readDeviceByIdentity } from '@heynixie/devices';
 import { buildDeviceToolCaller } from '@heynixie/devices/test-utils';
+import { createConversationTask } from '@heynixie/tasks';
 import invariant from 'tiny-invariant';
 import { buildTestClient } from '../test-utils/build-test-client';
 import { collectContractPaths } from '../test-utils/collect-contract-paths';
 import { createDeviceSession } from '../test-utils/create-device-session';
 import { startTestAPI } from '../test-utils/start-test-api';
 import type { APITables } from '../types';
+import { readSessions } from '../utils/read-sessions';
 
 type Client = ReturnType<typeof buildTestClient>;
 
@@ -46,24 +49,11 @@ async function setupTest() {
       streams: api.context.devices,
     }),
     readSessionCount: async () => {
-      const rows = await api.writer.db
-        .$extendTables<APITables>()
-        .selectFrom('identities')
-        .select('identity_id')
-        .execute();
+      const sessions = await readSessions(api.context, null);
 
-      return rows.length;
+      return sessions.length;
     },
-    readDevices: () =>
-      api.writer.db
-        .$extendTables<
-          APITables & {
-            devices: { device_id: string; name: string; capabilities: string };
-          }
-        >()
-        .selectFrom('devices')
-        .select(['device_id', 'name', 'capabilities'])
-        .execute(),
+    readDevice: (sessionID: string) => readDeviceByIdentity(api.writer.db, sessionID),
     callPath: async (path: string, token: string) => {
       try {
         return await fetch(`${api.url}${path}`, {
@@ -86,31 +76,27 @@ async function setupTest() {
 test('it enrols a device session with a device named for it and its screen off', async () => {
   const ctx = await setupTest();
   const device = await ctx.enrol('device', 'desk panel');
-  const devices = await ctx.readDevices();
+  const row = await ctx.readDevice(device.sessionID);
 
-  expect([device.scope, devices]).toStrictEqual([
+  expect([device.scope, row]).toStrictEqual([
     'device',
-    [
-      {
-        device_id: expect.toBeString(),
-        name: 'desk panel',
-        capabilities: JSON.stringify({
-          screen: false,
-          camera: false,
-          speaker: false,
-          microphone: false,
-        }),
-      },
-    ],
+    {
+      deviceID: expect.toBeString(),
+      identityID: device.sessionID,
+      name: 'desk panel',
+      capabilities: { screen: false, camera: false, speaker: false, microphone: false },
+      shownSequence: null,
+      idleSequence: null,
+    },
   ]);
 });
 
 test('it enrols a full session from a full code, with no device', async () => {
   const ctx = await setupTest();
   const session = await ctx.enrol('full', 'phone');
-  const devices = await ctx.readDevices();
+  const row = await ctx.readDevice(session.sessionID);
 
-  expect([session.scope, devices]).toStrictEqual(['full', []]);
+  expect([session.scope, row]).toStrictEqual(['full', null]);
 });
 
 test('it tells a full session with no device row to register before it follows', async () => {
@@ -145,22 +131,18 @@ test('it registers a device for a full session with every capability off', async
     name: 'kitchen tab',
   });
 
-  const devices = await ctx.readDevices();
+  const row = await ctx.readDevice(session.sessionID);
 
-  expect([registered, devices]).toStrictEqual([
+  expect([registered, row]).toStrictEqual([
     { deviceID: expect.toBeString() },
-    [
-      {
-        device_id: registered.deviceID,
-        name: 'kitchen tab',
-        capabilities: JSON.stringify({
-          screen: false,
-          camera: false,
-          speaker: false,
-          microphone: false,
-        }),
-      },
-    ],
+    {
+      deviceID: registered.deviceID,
+      identityID: session.sessionID,
+      name: 'kitchen tab',
+      capabilities: { screen: false, camera: false, speaker: false, microphone: false },
+      shownSequence: null,
+      idleSequence: null,
+    },
   ]);
 });
 
@@ -178,12 +160,9 @@ test('it renames the device row of a full session on a second register', async (
     name: 'hall tab',
   });
 
-  const devices = await ctx.readDevices();
+  const row = await ctx.readDevice(session.sessionID);
 
-  expect([second, devices.map((device) => [device.device_id, device.name])]).toStrictEqual([
-    first,
-    [[first.deviceID, 'hall tab']],
-  ]);
+  expect([second, row?.deviceID, row?.name]).toStrictEqual([first, first.deviceID, 'hall tab']);
 });
 
 test('it answers a retry of a register with the same device', async () => {
@@ -209,6 +188,94 @@ test('it refuses a register that reuses the client action ID of another action',
   const refused = session.client.devices.register({ clientActionID, name: 'kitchen tab' });
 
   expect(refused).rejects.toMatchObject({ code: 'CLIENT_ACTION_ID_REUSED' });
+});
+
+test('it refuses a register that reuses the client action ID with another name', async () => {
+  const ctx = await setupTest();
+  const session = await ctx.enrol('full', 'phone');
+
+  const clientActionID = crypto.randomUUID();
+
+  await session.client.devices.register({ clientActionID, name: 'kitchen tab' });
+
+  const refused = session.client.devices.register({ clientActionID, name: 'hall tab' });
+
+  expect(refused).rejects.toMatchObject({ code: 'CLIENT_ACTION_ID_REUSED' });
+});
+
+test('it keeps the chat of a full session that holds a device row', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  const session = await ctx.enrol('full', 'phone');
+
+  await session.client.devices.register({
+    clientActionID: crypto.randomUUID(),
+    name: 'kitchen tab',
+  });
+
+  const sent = await session.client.conversation.send({
+    clientMessageId: crypto.randomUUID(),
+    thread: 'conversation',
+    text: 'hello',
+    spans: [{ start: 0, end: 5, source: 'typed' as const }],
+  });
+
+  expect(sent).toStrictEqual({ duplicate: false, sequence: expect.toBeNumber() });
+});
+
+test('it updates the size that devices.list reads when a full session resizes', async () => {
+  const ctx = await setupTest();
+  const session = await ctx.enrol('full', 'phone');
+
+  await session.client.devices.register({
+    clientActionID: crypto.randomUUID(),
+    name: 'kitchen tab',
+  });
+
+  const stopped = new AbortController();
+
+  const events = await session.client.devices.follow(
+    { pixels: { width: 800, height: 600 } },
+    { signal: stopped.signal },
+  );
+
+  await events.next();
+  await session.client.devices.resize({ width: 1024, height: 768 });
+
+  const listed = await ctx.call('devices.list', {});
+
+  stopped.abort();
+
+  expect(listed).toStrictEqual({
+    status: 'ok',
+    result: {
+      devices: [expect.objectContaining({ online: true, pixels: { width: 1024, height: 768 } })],
+    },
+  });
+});
+
+test('it acts on the own row of a full session when another session holds a row too', async () => {
+  const ctx = await setupTest();
+  const panel = await ctx.enrol('device', 'desk panel');
+  const session = await ctx.enrol('full', 'phone');
+
+  const registered = await session.client.devices.register({
+    clientActionID: crypto.randomUUID(),
+    name: 'kitchen tab',
+  });
+
+  await session.client.devices.setCapability({ capability: 'screen', isOn: true });
+
+  const own = await ctx.readDevice(session.sessionID);
+  const other = await ctx.readDevice(panel.sessionID);
+
+  expect([own?.deviceID, own?.capabilities.screen, other?.capabilities.screen]).toStrictEqual([
+    registered.deviceID,
+    true,
+    false,
+  ]);
 });
 
 test('it refuses a register from a device session', async () => {
@@ -367,7 +434,7 @@ test('it lets a device session reach only the paths of its own device', async ()
 test('it follows the device from what it shows now, then each show', async () => {
   const ctx = await setupTest();
   const device = await ctx.enrol('device', 'desk panel');
-  const devices = await ctx.readDevices();
+  const row = await ctx.readDevice(device.sessionID);
 
   const stopped = new AbortController();
 
@@ -381,7 +448,7 @@ test('it follows the device from what it shows now, then each show', async () =>
   const first = await events.next();
 
   const shown = await ctx.call('device.show', {
-    device: devices[0]?.device_id ?? '',
+    device: row?.deviceID ?? '',
     content: { kind: 'markdown', text: '# Saturday' },
     minutes: 10,
   });
@@ -400,7 +467,7 @@ test('it follows the device from what it shows now, then each show', async () =>
 test('it lets a device read the image it shows and no other image', async () => {
   const ctx = await setupTest();
   const device = await ctx.enrol('device', 'desk panel');
-  const devices = await ctx.readDevices();
+  const row = await ctx.readDevice(device.sessionID);
 
   const stopped = new AbortController();
 
@@ -426,7 +493,7 @@ test('it lets a device read the image it shows and no other image', async () => 
   await events.next();
 
   await ctx.call('device.show', {
-    device: devices[0]?.device_id ?? '',
+    device: row?.deviceID ?? '',
     content: { kind: 'image', image: 'k3x9m2p7qa' },
   });
 
@@ -460,13 +527,13 @@ test('it lets a device switch its own screen on and off', async () => {
 test('it refuses a show on a screen that the device switched off', async () => {
   const ctx = await setupTest();
   const device = await ctx.enrol('device', 'desk panel');
-  const devices = await ctx.readDevices();
+  const row = await ctx.readDevice(device.sessionID);
 
   await device.client.devices.setCapability({ capability: 'screen', isOn: true });
   await device.client.devices.setCapability({ capability: 'screen', isOn: false });
 
   const outcome = await ctx.call('device.show', {
-    device: devices[0]?.device_id ?? '',
+    device: row?.deviceID ?? '',
     content: { kind: 'markdown', text: '# Saturday' },
   });
 
@@ -486,9 +553,9 @@ test('it ends the stream of a device when the owner revokes its session, and rem
   });
 
   const ended = await events.next();
-  const devices = await ctx.readDevices();
+  const row = await ctx.readDevice(device.sessionID);
 
-  expect([ended, devices]).toStrictEqual([{ done: true, value: undefined }, []]);
+  expect([ended, row]).toStrictEqual([{ done: true, value: undefined }, null]);
 });
 
 test('it signs a device out, and its row goes', async () => {
@@ -501,9 +568,9 @@ test('it signs a device out, and its row goes', async () => {
     device.client.devices.setCapability({ capability: 'screen', isOn: true }),
   ).rejects.toMatchObject({ code: 'UNAUTHORIZED' });
 
-  const devices = await ctx.readDevices();
+  const row = await ctx.readDevice(device.sessionID);
 
-  expect(devices).toStrictEqual([]);
+  expect(row).toBeNull();
 });
 
 test('it removes the row and ends the streams of a full session that signs out', async () => {
@@ -521,9 +588,9 @@ test('it removes the row and ends the streams of a full session that signs out',
   await session.client.sessions.signOut({});
 
   const ended = await events.next();
-  const devices = await ctx.readDevices();
+  const row = await ctx.readDevice(session.sessionID);
 
-  expect([ended, devices]).toStrictEqual([{ done: true, value: undefined }, []]);
+  expect([ended, row]).toStrictEqual([{ done: true, value: undefined }, null]);
 });
 
 test('it removes the row and ends the streams of a full session that the owner revokes', async () => {
@@ -545,9 +612,9 @@ test('it removes the row and ends the streams of a full session that the owner r
   });
 
   const ended = await events.next();
-  const devices = await ctx.readDevices();
+  const row = await ctx.readDevice(session.sessionID);
 
-  expect([ended, devices]).toStrictEqual([{ done: true, value: undefined }, []]);
+  expect([ended, row]).toStrictEqual([{ done: true, value: undefined }, null]);
 });
 
 test('it lets a browser with the token of a revoked device session enrol again', async () => {

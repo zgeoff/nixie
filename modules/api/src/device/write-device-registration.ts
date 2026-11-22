@@ -1,6 +1,7 @@
 import { writeSessionDevice } from '@heynixie/devices';
 import { withWriteTransaction } from '@heynixie/log';
 import type { APIContext, Identity } from '../types';
+import { buildInputHash } from '../utils/build-input-hash';
 import { probeLiveIdentity } from '../utils/probe-live-identity';
 import { readClientAction } from '../utils/read-client-action';
 import { writeClientAction } from '../utils/write-client-action';
@@ -23,6 +24,8 @@ export function writeDeviceRegistration(
   input: RegistrationInput,
 ): Promise<RegistrationResult> {
   return withWriteTransaction(context.log.writer, async (tx) => {
+    const inputHash = buildInputHash({ name: input.name });
+
     const [live, earlier] = await Promise.all([
       probeLiveIdentity(tx, context, caller.identityID),
       readClientAction(tx, input.clientActionID),
@@ -33,7 +36,12 @@ export function writeDeviceRegistration(
     }
 
     if (earlier !== null) {
-      return earlier.procedure === 'devices.register' && earlier.identityID === caller.identityID
+      const isRetry =
+        earlier.procedure === 'devices.register' &&
+        earlier.identityID === caller.identityID &&
+        earlier.inputHash === inputHash;
+
+      return isRetry
         ? { status: 'registered', deviceID: String(earlier.result['deviceID']) }
         : { status: 'reused' };
     }
@@ -48,7 +56,7 @@ export function writeDeviceRegistration(
       clientActionID: input.clientActionID,
       procedure: 'devices.register',
       identityID: caller.identityID,
-      inputHash: null,
+      inputHash,
       result: { deviceID },
       recordedAt: context.clock.now(),
     });

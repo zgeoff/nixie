@@ -156,3 +156,22 @@ test('it says so when the registration fails', async () => {
 
   expect(alert).toHaveTextContent('Registration failed');
 });
+
+test('it leaves the screen off after a registration, even when the browser left it on before', async () => {
+  const ctx = setupTest();
+
+  await createFullSession();
+
+  globalThis.localStorage.setItem('nixie.device.screen', 'on');
+
+  const rendered = render(<DevicePage />);
+
+  const submit = await rendered.findByRole('button', { name: 'Register device' });
+
+  await ctx.user.click(submit);
+
+  const button = await rendered.findByRole('button', { name: 'Switch on screen' });
+
+  expect(button).toBeVisible();
+  expect(rendered.queryByTestId('screen')).toBeNull();
+});

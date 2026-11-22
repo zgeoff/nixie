@@ -1,9 +1,13 @@
 import { expect, onTestFinished, test } from 'bun:test';
 import { waitFor } from '@testing-library/react';
+import { HttpResponse, http } from 'msw';
+import type { RefObject } from 'react';
 import { deviceStore } from '../mocks/device-store';
+import { server } from '../mocks/server';
 import { createDeviceSession } from '../test-utils/create-device-session';
 import { renderHook } from '../test-utils/render-hook';
 import type { ScreenPixels } from './read-screen-pixels';
+import { readScreenPixels } from './read-screen-pixels';
 import { useScreenResize } from './use-screen-resize';
 
 function setupTest() {
@@ -16,6 +20,7 @@ function setupTest() {
   });
 
   return {
+    buildServerPixels: (pixels: ScreenPixels): RefObject<ScreenPixels> => ({ current: pixels }),
     resizeTo: (next: ScreenPixels) => {
       globalThis.innerWidth = next.width;
       globalThis.innerHeight = next.height;
@@ -32,8 +37,10 @@ test('it sends one resize with the latest size after a burst of resize events', 
 
   await createDeviceSession();
 
+  const serverPixels = ctx.buildServerPixels({ width: 1, height: 1 });
+
   renderHook(() => {
-    useScreenResize(true);
+    useScreenResize(true, serverPixels);
   });
 
   ctx.resizeTo({ width: 700, height: 500 });
@@ -49,4 +56,66 @@ test('it sends one resize with the latest size after a burst of resize events', 
       height: Math.round(510 * globalThis.devicePixelRatio),
     },
   ]);
+});
+
+test('it sends the size again when a reconnect left the server with another size', async () => {
+  const ctx = setupTest();
+
+  await createDeviceSession();
+
+  const serverPixels = ctx.buildServerPixels(readScreenPixels());
+
+  renderHook(() => {
+    useScreenResize(true, serverPixels);
+  });
+
+  serverPixels.current = { width: 640, height: 480 };
+
+  ctx.resizeTo({ width: globalThis.innerWidth, height: globalThis.innerHeight });
+
+  await waitFor(() => {
+    expect(ctx.readResizes()).toHaveLength(1);
+  });
+
+  expect(ctx.readResizes()).toStrictEqual([readScreenPixels()]);
+});
+
+test('it sends the size again on the next resize event after a failed resize', async () => {
+  const ctx = setupTest();
+
+  await createDeviceSession();
+
+  const failures: string[] = [];
+
+  server.use(
+    http.post(
+      '*/rpc/devices/resize',
+      () => {
+        failures.push('resize');
+
+        return HttpResponse.error();
+      },
+      { once: true },
+    ),
+  );
+
+  const serverPixels = ctx.buildServerPixels({ width: 1, height: 1 });
+
+  renderHook(() => {
+    useScreenResize(true, serverPixels);
+  });
+
+  ctx.resizeTo({ width: 700, height: 500 });
+
+  await waitFor(() => {
+    expect(failures).toHaveLength(1);
+  });
+
+  ctx.resizeTo({ width: 700, height: 500 });
+
+  await waitFor(() => {
+    expect(ctx.readResizes()).toHaveLength(1);
+  });
+
+  expect(serverPixels.current).toStrictEqual(readScreenPixels());
 });

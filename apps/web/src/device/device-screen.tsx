@@ -1,7 +1,9 @@
 import type { DeviceEvent, ScreenContent } from '@heynixie/contract';
 import type { ReactNode } from 'react';
+import { useRef } from 'react';
 import { css } from '../styled-system/css';
 import { FullscreenButton } from './fullscreen-button';
+import { readScreenPixels } from './read-screen-pixels';
 import { ScreenView } from './screen-view';
 import { useDeviceEvents } from './use-device-events';
 import { useScreenResize } from './use-screen-resize';
@@ -35,10 +37,11 @@ const controls = css({
 // The screen while it is on: what the stream says it shows, with the screen kept awake as long as
 // a stream is open.
 export function DeviceScreen(props: DeviceScreenProps): ReactNode {
-  const events = useDeviceEvents(true);
+  const serverPixels = useRef(readScreenPixels());
+  const events = useDeviceEvents(true, serverPixels);
 
   useWakeLock(events.connection === 'open');
-  useScreenResize(true);
+  useScreenResize(true, serverPixels);
 
   const event = events.event;
   const blocks = pickBlocks(event);

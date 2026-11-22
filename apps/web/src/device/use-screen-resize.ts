@@ -1,4 +1,5 @@
 import type { ContractClient } from '@heynixie/contract';
+import type { RefObject } from 'react';
 import { useEffect } from 'react';
 import { startPlatformTimer } from '../utils/start-platform-timer';
 import { useNixieClient } from '../utils/use-nixie-client';
@@ -8,9 +9,15 @@ import { readScreenPixels } from './read-screen-pixels';
 
 const resizeDelayMs = 250;
 
+interface ResizeState {
+  stop: (() => void) | null;
+  inFlight: ScreenPixels | null;
+}
+
 // Tells the server the new size of the screen after the window resizes: at most one call every
-// 250 ms, and none when the size is what the server last got.
-export function useScreenResize(isActive: boolean): void {
+// 250 ms, and none when the size is what the server has. A failed resize leaves the ref as it was,
+// so the next resize event sends the size again.
+export function useScreenResize(isActive: boolean, serverPixels: RefObject<ScreenPixels>): void {
   const nixie = useNixieClient();
 
   useEffect(() => {
@@ -18,19 +25,15 @@ export function useScreenResize(isActive: boolean): void {
       return () => {};
     }
 
-    const state: { sent: ScreenPixels; stop: (() => void) | null } = {
-      sent: readScreenPixels(),
-      stop: null,
-    };
+    const state: ResizeState = { stop: null, inFlight: null };
 
     const sendSize = (): void => {
       state.stop = null;
 
-      const pixels = pickPixelsToSend(state.sent, readScreenPixels());
+      const pixels = pickPixelsToSend(state.inFlight ?? serverPixels.current, readScreenPixels());
 
       if (pixels !== null) {
-        state.sent = pixels;
-        void writeResize(nixie.client, pixels);
+        void writeResize(nixie.client, pixels, state, serverPixels);
       }
     };
 
@@ -44,13 +47,24 @@ export function useScreenResize(isActive: boolean): void {
       globalThis.removeEventListener('resize', handleResize);
       state.stop?.();
     };
-  }, [isActive, nixie.client]);
+  }, [isActive, nixie.client, serverPixels]);
 }
 
-async function writeResize(client: ContractClient, pixels: ScreenPixels): Promise<void> {
+async function writeResize(
+  client: ContractClient,
+  pixels: ScreenPixels,
+  state: ResizeState,
+  serverPixels: RefObject<ScreenPixels>,
+): Promise<void> {
+  state.inFlight = pixels;
+
   try {
     await client.devices.resize(pixels);
+
+    serverPixels.current = pixels;
   } catch {
-    // a failed call leaves the next stream to send the size again
+    // the server keeps its old size, so the next resize event sends the size again
+  } finally {
+    state.inFlight = null;
   }
 }

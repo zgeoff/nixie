@@ -103,10 +103,19 @@ test('it sends one resize with the new size after the window resizes', async () 
     expect(deviceStore.resizes.findMany()).toHaveLength(1);
   });
 
+  await ctx.setViewport({ width: 840, height: 620 });
+
+  await waitFor(() => {
+    expect(deviceStore.resizes.findMany()).toHaveLength(2);
+  });
+
   const resizes = deviceStore.resizes.findMany().map((row) => ({
     width: row.width,
     height: row.height,
   }));
 
-  expect(resizes).toStrictEqual([{ width: 820, height: 610 }]);
+  expect(resizes).toStrictEqual([
+    { width: 820, height: 610 },
+    { width: 840, height: 620 },
+  ]);
 });

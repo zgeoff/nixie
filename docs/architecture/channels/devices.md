@@ -27,7 +27,9 @@ its row. A full session holds one only after it registers.
 3. A browser with a full session calls `devices.register({ clientActionID, name })`. The call is for
    a `full` session only. It writes the row on the caller's own identity, with every capability off,
    in one write transaction, and returns the device's short ID. It issues no code, makes no session
-   and never touches the cookie. A second register renames the row and returns the same ID.
+   and never touches the cookie. A second register renames the row and returns the same ID. A retry
+   with the same client action ID and name returns the same ID, and the same ID with another name
+   gets `CLIENT_ACTION_ID_REUSED`.
 4. The device switches its screen on with `devices.setCapability`. The call sets only `screen`, and
    only on the session's own device row.
 
@@ -97,13 +99,15 @@ way the device left it, and the answer says what the browser holds:
 - A browser with a full session and no device row shows a form that names the device and calls
   `devices.register`. The session and its cookie stay as they were, so a chat tab in the same
   browser keeps working.
-- A browser with a device row shows a button that switches the screen on.
+- A browser with a device row shows a button that switches the screen on. A page that registers a
+  device starts with the screen off, whatever the browser stored before.
 
 With the screen on, the page follows `devices.follow` and renders markdown like a reply and an image
 on black: `whole` scales it to fit and centres it, `fill` covers the screen and crops evenly. The
 page sends `devices.resize` after the window resizes, at most once every 250 ms and only when the
-size changed, so the assistant reads the new size within a second. A button toggles full screen on
-the page's root element with the Fullscreen API. Its label reads Full screen or Leave full screen,
-and follows `fullscreenchange`, so Escape updates it. The page keeps the screen awake with the Wake
-Lock API while a stream is open, and asks for the lock again when the page shows again. The web
-server sends the page with a Content-Security-Policy that includes `frame-ancestors 'none'`.
+size differs from the one the server has, which each stream connect and each answered resize set, so
+the assistant reads the new size within a second. A button toggles full screen on the page's root
+element with the Fullscreen API. Its label reads Full screen or Leave full screen, and follows
+`fullscreenchange`, so Escape updates it. The page keeps the screen awake with the Wake Lock API
+while a stream is open, and asks for the lock again when the page shows again. The web server sends
+the page with a Content-Security-Policy that includes `frame-ancestors 'none'`.

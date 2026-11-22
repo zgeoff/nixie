@@ -77,7 +77,8 @@ export function DevicePage(): ReactNode {
     return (
       <RegisterDeviceForm
         onRegistered={() => {
-          setAttempt((count) => count + 1);
+          writeStoredScreen(false);
+          setPhase({ kind: 'ready', isScreenOn: false });
         }}
       />
     );
