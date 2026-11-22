@@ -774,11 +774,9 @@
         "@heynixie/wire": "workspace:*",
         "kysely": "catalog:",
         "tiny-invariant": "catalog:",
-        "ts-pattern": "catalog:",
         "zod": "catalog:",
       },
       "devDependencies": {
-        "@heynixie/testing": "workspace:*",
         "@zgeoff/testing": "catalog:",
       },
     },

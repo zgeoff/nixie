@@ -18,7 +18,7 @@ export type LinkTarget =
   | { readonly moment: string }
   | { readonly event: string };
 
-export type NoteState = 'active' | 'forgetting' | 'forgotten';
+type NoteState = 'active' | 'forgetting' | 'forgotten';
 
 interface NotebookNoteTable {
   readonly note_id: string;

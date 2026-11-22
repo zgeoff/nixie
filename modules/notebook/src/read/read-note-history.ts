@@ -19,7 +19,7 @@ export type NoteHistory =
     }
   | { readonly status: 'unknown' };
 
-export const historyPageSize = 50;
+const historyPageSize = 50;
 
 // The versions newest first, 50 a call. The cursor is the oldest version the page before showed.
 export async function readNoteHistory(

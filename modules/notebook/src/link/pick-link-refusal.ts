@@ -20,10 +20,6 @@ export interface LinkFacts {
   readonly isSelf: boolean;
 }
 
-export function isLinkAllowed(type: LinkType, kind: TargetKind): boolean {
-  return allowedKinds[type].includes(kind);
-}
-
 // The refusals of notebook.link that need no lookup, in the design's order: SELF_LINK, BAD_LINK,
 // REASON_REQUIRED.
 export function pickLinkRefusal(facts: LinkFacts): NoteRefusal | null {
@@ -43,4 +39,8 @@ export function pickLinkRefusal(facts: LinkFacts): NoteRefusal | null {
   }
 
   return null;
+}
+
+function isLinkAllowed(type: LinkType, kind: TargetKind): boolean {
+  return allowedKinds[type].includes(kind);
 }

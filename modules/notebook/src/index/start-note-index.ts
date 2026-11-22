@@ -24,7 +24,7 @@ export interface NoteMeta {
 
 export type SearchMode = 'words' | 'meaning' | 'both';
 
-export interface NoteSearch {
+interface NoteSearch {
   readonly ranked: readonly RankedMatch[];
   readonly isMeaningPartial: boolean;
 }

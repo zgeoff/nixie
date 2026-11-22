@@ -18,7 +18,7 @@ export interface FindRequest {
   readonly isPrivateShown?: boolean;
 }
 
-export interface FoundNote {
+interface FoundNote {
   readonly meta: NoteMeta;
   readonly match: string | null;
   readonly score: { readonly words: number | null; readonly meaning: number | null } | null;
@@ -30,7 +30,7 @@ export interface FoundNotes {
   readonly isMeaningPartial: boolean;
 }
 
-export const findPageSize = 20;
+const findPageSize = 20;
 
 export interface FindContext {
   readonly log: Pick<Log, 'deploymentKey' | 'writer'>;

@@ -3,13 +3,13 @@ import { readLinkReasons } from './read-link-reasons';
 import type { TargetInfo } from './read-target-infos';
 import { buildTargetKey, readTargetInfos } from './read-target-infos';
 
-export interface NoteLinkEntry {
+interface NoteLinkEntry {
   readonly type: LinkType;
   readonly target: TargetInfo;
   readonly reason: string | null;
 }
 
-export interface NoteBacklinkEntry {
+interface NoteBacklinkEntry {
   readonly type: LinkType;
   readonly fromNoteID: string;
   readonly from: string;
