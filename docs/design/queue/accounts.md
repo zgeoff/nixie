@@ -81,7 +81,7 @@ account.add_origin({ tab: 't1', account: 'a7q2m9x4kd' });
 // → { account: 'a7q2m9x4kd', origins: ['https://library.example.org', 'https://login.library.example.org'] }
 
 account.inspect({ tab: 't1', kind: 'password', dump: true }); // kind: 'password' | 'card'; dump optional
-// → { report: FillReport, dump: 'debug/fill/<record ID>.tar.zst' }
+// → { report: FillReport, dump: 'debug/fill/inspect-<UUID>.tar.zst' }; dump is null without dump: true
 //   every field and frame the broker would look at, the role it would give each, and why it skips
 //   the rest. It fills nothing and reads no secret.
 ```
@@ -263,19 +263,20 @@ Filling:
 
 Entry state:
 
-- The broker writes a `sign_up`'s pending entry before it sends the fill frame, and removes it when
-  the guest refuses before filling.
+- The broker writes a `sign_up`'s pending entry before it sends the fill frame. When the guest
+  refuses, it has filled nothing, so the site never saw the password and the broker removes the
+  entry.
 - A `sign_up` entry turns `ready` when the sign-up reaches `signed_in` or `next_step`. Otherwise it
   stays `pending` until its first `sign_in` does. A pending entry signs in like a ready one.
 - After 7 days with no sign-in, a pending entry raises a push notice that links the vault screen,
-  where you keep or remove it. nixie never forgets an entry on its own.
+  where you keep or remove it. nixie never forgets a filled entry on its own.
 - A forget of an entry, or of any of its `vault.*` records, destroys the entry's key.
 - A `rotate` that returns `changed` makes the new password the secret and keeps the old one as
   `previousSecret`. One that returns `filled` keeps the old password as the secret and the new one
   as `previousSecret`, because the site may have taken either.
 - While an entry holds a `previousSecret`, a `sign_in` whose page stays tries the other password
   once: the guest fills the password field again and clicks the form's submit button, found again on
-  the new page. A username step never retries.
+  the page as it now stands. A username step never retries.
 - The first `sign_in` that reaches `signed_in` keeps the password that `usedRetry` names, and drops
   the other.
 

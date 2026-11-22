@@ -6,8 +6,9 @@
 The assistant gets a mailbox and a mobile number of its own. It reads, waits for, sends and mutes
 mail, and reads, waits for and sends texts. Sign-up codes reach it this way, and
 [accounts and sign-in](accounts.md) uses the mailbox as every account's username and way back in.
-New mail starts a task whose trigger matches, or reaches the conversation as a system message. A new
-text reaches the conversation.
+New mail goes to a `mail.wait` that matches it, else starts each task whose trigger matches, else
+reaches the conversation as a system message. A new text goes to a `phone.wait`, else reaches the
+conversation.
 
 ## Shape
 
