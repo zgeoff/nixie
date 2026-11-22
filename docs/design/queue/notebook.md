@@ -6,17 +6,18 @@
   [images](https://linear.app/zgeoff/issue/GEO-2728) for the pictures a note shows
 
 The assistant gets a notebook for thinking that is too long or too unsettled for memory: research, a
-diary, an argument with one of its own items. Memory holds short facts that nixie puts in front of
-the assistant each turn. A note is the assistant's own writing, and the assistant reads it only when
-it opens or searches the notebook. nixie never puts a note in the context it builds for a turn.
+diary, an argument with one of its own memory items. Memory holds short facts that nixie puts in
+front of the assistant each turn. A note is the assistant's own writing, and the assistant reads a
+note only when it opens or searches the notebook. nixie never puts a note in the context it builds
+for a turn.
 
 A note has a short ID, a title, a markdown body of up to 50,000 characters, tags, versions, and a
 private flag. A typed link from a note points at another note, a memory item, a moment or an event
 of the log; the [glossary](../../glossary.md) defines these and the other nixie terms below. Recall
 and retrieval show one fact about notes: a count on each item that a note disputes or supersedes.
-You read every note in the web client, which shows the notebook read-only, with one control: Forget.
-The assistant marks a note private to ask you not to read it. The web client folds its body until
-you open it, and each opening leaves a mark the assistant sees.
+You read every note in the web client, which shows the notebook read-only: Forget is the one control
+that changes a note. The assistant marks a note private to ask you not to read it. The web client
+folds its body until you open it, and records the time of each opening, which the assistant sees.
 
 ## Shape
 
@@ -60,7 +61,7 @@ notebook.edit({ note: 'd8p3q1z6mw', append: '\n## 22 Nov\nTried the zine layout�
 notebook.read({ note: 'n4w8k2c6rd' });
 // → { note: 'n4w8k2c6rd', version: 2, versionCount: 2, title: 'Why the boiler keeps tripping',
 //     tags: ['home', 'boiler'], isPrivate: false, body: '## What I know\n…', part: 1, parts: 1,
-//     updatedAt: '2026-11-21T08:10:00Z', readAt: '2026-11-20T19:02:00Z', // its read before this one
+//     updatedAt: '2026-11-21T08:10:00Z', readAt: '2026-11-20T19:02:00Z', // the previous read; this read moves it
 //     links: [{ type: 'cites', to: { event: '48213' }, reason: 'the engineer’s visit' }],
 //     backlinks: [{ type: 'supersedes', from: 'h2m9t4x7qa', title: 'Boiler notes (old)' }],
 //     linkCount: 1, backlinkCount: 1 }
@@ -111,7 +112,7 @@ notebook.walk({ from: 'n4w8k2c6rd', hops: 2 });
 type LinkTarget = { note: string } | { memory: string } | { moment: string } | { event: string };
 // note, memory and moment take a short ID, or a UUID, looked up in the declared kind's table; the
 // link stores the UUID, and every result shows the short ID. event takes the decimal event ID that log.read shows: events have no
-// short IDs, so this is the one target that breaks the short-ID rule.
+// short IDs, so an event is the one ID the model sees that is not a short ID.
 
 type LinkType = 'supersedes' | 'disputes' | 'part-of' | 'cites' | 'related';
 
@@ -148,7 +149,7 @@ type NotebookFindInput = {
   order?: 'newest' | 'oldest'; // by last edit; only without query; default 'newest'
   after?: string; // the next cursor of the last result
 };
-// tags alone, or neither field, lists notes in order
+// tags alone, or neither query nor tags, lists notes in order
 
 type NotebookLinkInput = {
   from: string; // a note's short ID
@@ -244,10 +245,11 @@ records sit on no thread, so a
 [reset of the conversation](../../architecture/core/event-log.md#resetting-the-conversation) leaves
 every note readable, as it leaves memory items.
 
-Forgetting a record never erases a note's own records. Only forgetting the note erases them. The
-notebook module exports `notebookErasableKinds`, as memory exports `memoryItemErasableKinds`, and
-the [record forget](../../architecture/channels/api.md#forgetting-a-record) leaves those kinds out
-as it leaves memory's.
+Forgetting a conversation or task record never erases a note's own records. Only forgetting the note
+erases them. The notebook module exports `notebookErasableKinds`, as memory exports
+`memoryItemErasableKinds`, and the
+[record forget](../../architecture/channels/api.md#forgetting-a-record) leaves those kinds out as it
+leaves memory's.
 
 ### The tables
 
@@ -283,9 +285,9 @@ notebook_links
   -- primary key (from_note_id, target_kind, target_id, type)
 ```
 
-No table holds free text. At start, the notebook module decrypts the current version of every active
-note, and keeps the titles, the tags, a keyword index and a vector index in process memory only,
-built with the chunker, encoder and index code that memory exports for it, as the
+The tables never hold free text. At start, the notebook module decrypts the current version of every
+active note, and keeps the titles, the tags, a keyword index and a vector index in process memory
+only, built with the chunker, encoder and index code that memory exports for it, as the
 [memory store's indexes](../../architecture/memory/store.md#the-indexes) do. An index on disk would
 keep a forgotten note's words. The module encodes notes in the background after start, as memory
 does, and meaning search reports `isMeaningPartial` until it finishes. The builder measures the
@@ -302,7 +304,7 @@ interface ItemLinkCounts {
   // memory passes item UUIDs, the form links store
 }
 // the server passes the notebook module's implementation; memory imports nothing from notebook
-// recall counts the two fields against its page budget
+// recall counts the two fields against recallPageLimitBytes
 
 memory.recall({ query: 'boiler' });
 // → { items: [{ item: 'b7kq2m9xza', text: 'The thermostat is faulty.', …existing fields,
@@ -360,7 +362,7 @@ notebook.readCheck({ showPrivate?: boolean }); // → NotebookCheck
 notebook.previewForget({ note: 'n4w8k2c6rd' });
 // → { version: 2, title, versionCount: 2, linkCount: 4, backlinkCount: 1 }
 notebook.forget({ clientActionID, note: 'n4w8k2c6rd', version: 2 }); // a checked action
-// → { forgottenAt, backup }  // backup: the backup sets staged at or after notebook.note_forgotten
+// → { forgottenAt, backup }  // backup: as the memory forget's result, the backup sets still to publish
 //   or UNKNOWN_NOTE | STALE_VERSION
 conversation.previewForget({ sequence });
 // → { …existing fields, notes: { note, title }[] } // the active notes that link to the record
@@ -398,8 +400,8 @@ Keeping notes out of context:
   session's opening, or any block before a turn's message, even when the message matches a note's
   title word for word. The test exempts an item's own text, which may hold a note ID the assistant
   wrote there, and the events block's forget line.
-- The message of the `TEXT_TOO_LONG` refusal from `memory.remember` and `memory.edit` tells the
-  assistant to write longer text as a note.
+- When `memory.remember` or `memory.edit` refuses with `TEXT_TOO_LONG`, its message points the
+  assistant at a note for longer text.
 
 Records and text:
 
@@ -440,7 +442,7 @@ Records and text:
 Versions and limits:
 
 - Every edit writes the whole new version, title and tags included, so reading any version decrypts
-  one record. No version is ever rewritten.
+  one record. nixie never rewrites a version.
 - An edit that changes only the title, the tags or the private flag makes a new version. An edit
   that sets no field is `NOTHING_TO_CHANGE`.
 - An edit binds to the version it read, and the check and the record commit in one write
@@ -476,16 +478,17 @@ Links and walks:
   that a record forget or a conversation reset erased. A target in `gone` is never a node, and the
   walk goes no further from it.
 - `PART_OF_CYCLE` checks the part-of links that exist when the link commits.
-- A note ID written in a body is text. Only `notebook.link` makes a link, and the description of
-  `notebook.check` says that a note named only in another note's text counts as an orphan.
+- A note ID written in a body is text. Only `notebook.link` makes a link. The description of
+  `notebook.check` tells the assistant that a note named only in another note's text counts as an
+  orphan.
 
 Private notes:
 
 - The private flag changes nothing for the assistant: every tool reads and finds a private note as
   any other. `ownerOpenedAt` shows in `notebook.read` on a private note only.
 - With `showPrivate` false, the web client's calls leave out every private note, and every link to
-  or from one, from the list, a note's links and backlinks, search and the check. No placeholder or
-  count stands in.
+  or from one, from the list, a note's links and backlinks, search and the check. The web client
+  shows no placeholder or count in their place.
 - The web client keeps `showPrivate` in the URL, as `?private=1`. Turning it on writes no record.
 - Only `notebook.openPrivate` appends `notebook.private_opened`. It is a
   [checked action](../../architecture/channels/api.md#checked-actions), so a refetch or a retry
@@ -550,7 +553,7 @@ The web client:
   and when you last opened it. Its versions and diffs show only after Open.
 - A private note's path, opened with `showPrivate` false, shows "This note is private" with no
   title, and a button that turns the toggle on.
-- The note view has no control that writes, except Forget, which opens a confirmation from
+- Forget is the one control that changes a note. It opens a confirmation from
   `notebook.previewForget`.
 
 Memory guidance:
@@ -585,9 +588,9 @@ Memory guidance:
   about 3 parts, and a note that fills up continues in a new note linked `part-of`.
 - **They are notes, not pages.** `web_fetch` and `code.run` already call a fetched web page a page,
   with a short ID that looks the same.
-- **Forget is the one control in the web client.** The notebook is the assistant's own, so you ask
+- **Forget is the one control that changes a note.** The notebook is the assistant's own, so you ask
   the assistant to change a note. Forget stays because a note that quotes a forgotten message would
-  otherwise keep that text until a full reset.
+  otherwise keep that text for good.
 - **A private note is folded, not locked.** The user holds the keys, so a lock would promise what it
   can't keep. The fold makes not looking the default, and the mark on each opening means the
   assistant never has to take your word for it.
@@ -611,5 +614,5 @@ Memory guidance:
   `notebook.link` made.
 - Forget notices for memory items, moments and messages, which the
   [forget notices issue](https://linear.app/zgeoff/issue/GEO-2793) adds.
-- Showing a note on a device.
+- Showing a note on a paired device, such as a display.
 - Notes in the memory export.
