@@ -182,8 +182,9 @@ Spending:
 
 - **The page's total gates the lift.** The model's declared amount alone can be talked down, so a
   lift passes only when the page agrees with it.
-- **A merchant can keep the card.** nixie can't see a later charge from a merchant that saved the
-  card. The bank's limit caps it, and the purchase records let you spot it in the bank's app.
+- **A merchant can charge more than nixie recorded.** A checkout can show one total and charge
+  another once it has the card, and a merchant that saved the card can charge it later. nixie sees
+  neither. The bank's limit caps both, and the purchase records let you spot them in the bank's app.
 
 ## Builder decides
 

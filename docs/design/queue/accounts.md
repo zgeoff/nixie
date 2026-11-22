@@ -146,7 +146,7 @@ interface VaultEntry {
   // a card's fingerprint, frameOrigins and currency: see the wallet design
 }
 
-// contract lib: owner calls from a device session. add, remove and reveal take a passkey assertion
+// contract lib: owner calls from a device session. add, remove, settle and reveal take a passkey assertion
 // bound to a SHA-256 of the request's canonical JSON, a new challenge kind in the published contract.
 vault.add({
   kind: 'password',
@@ -156,6 +156,8 @@ vault.add({
   secret: { password },
 }); // → { account: 'b5n2x8q1rw' }
 vault.remove({ account: 'b5n2x8q1rw' }); // destroys the key; the row stays with state 'forgotten'
+vault.settle({ account: 'b5n2x8q1rw', keep: 'secret' }); // keep: 'secret' | 'previous'; drops the
+// other password and writes vault.secret_changed; NOT_UNSETTLED when the entry holds one password
 vault.list({}); // → every entry with its state; a forgotten one shows the label "forgotten"
 vault.reveal({ account: 'a7q2m9x4kd' }); // → { password }; writes vault.revealed, with no secret
 ```
@@ -277,8 +279,11 @@ Entry state:
 - While an entry holds a `previousSecret`, a `sign_in` whose page stays tries the other password
   once: the guest fills the password field again and clicks the form's submit button, found again on
   the page as it now stands. A username step never retries.
-- The first `sign_in` that reaches `signed_in` keeps the password that `usedRetry` names, and drops
-  the other.
+- A `sign_in` that reaches `signed_in` on its retry swaps the two, so the password that worked is
+  tried first next time.
+- nixie never drops a `previousSecret` on its own. A page can fake a success by navigating away from
+  a rejected password, so no sign-in proves which password the site holds. The vault screen shows an
+  entry with two passwords, and you remove the one that fails, which settles the entry.
 
 Debugging a fill:
 
@@ -306,8 +311,10 @@ Debugging a fill:
 - **The tool reads the origin, and the guest checks it again.** A model that names the origin can be
   talked into naming the wrong one, and a page can navigate between the decision and the fill.
 - **A page on the account's own origin gets the secret.** A script on that page can read the filled
-  field and send it anywhere, as it could from any browser. The origin checks keep the secret off
-  every other site.
+  field and send it anywhere, as it could from any browser. It can also write the secret into the
+  page's own text in a changed form, such as with spaces between the characters, where the assistant
+  reads it and a page dump keeps it past the dots. The origin checks keep the secret off every page
+  of every other site, and the account's own site already holds it.
 - **The assistant can reset its own passwords.** Its mailbox is every account's way back in. The
   vault keeps secrets out of the model's context; it can't stop the assistant from using its own
   mail.
