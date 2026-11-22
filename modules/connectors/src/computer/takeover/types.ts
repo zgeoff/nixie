@@ -19,7 +19,7 @@ export interface TakeoverEndedRecord {
 }
 
 // The records a hold writes, on the conversation's thread.
-export interface TakeoverStartedRecord {
+interface TakeoverStartedRecord {
   readonly device: string;
 }
 

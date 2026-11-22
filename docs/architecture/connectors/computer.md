@@ -298,9 +298,10 @@ device holds the desktop at a time, and the hold lives in memory only.
 A hold writes 2 records on the conversation's thread. `computer.takeover_started` names the device
 and wakes nothing. `computer.takeover_ended` names what ended the hold and for how long, and wakes
 the assistant. Both carry a short ID. The ended record keeps the sites and the window in focus as
-[erasable fields](../core/erasable-fields.md), so a forget of the record erases them, and the
-assistant reads them in a block that marks them as untrusted text, behind a fence that the text does
-not contain. The assistant reads the record by its short ID.
+[erasable fields](../core/erasable-fields.md), so a forget of the record erases them. The assistant
+reads the window's text inside the untrusted-text markers of a page read. Each marker carries a
+random ID that the text never holds, so the text cannot close the block early. The assistant names
+the record by its short ID.
 
 ## The checking proxy
 
