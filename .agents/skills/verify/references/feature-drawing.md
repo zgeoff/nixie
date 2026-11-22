@@ -24,16 +24,16 @@ Before you start:
 ## Journey
 
 1. Record every later command of this journey under this feature. Then script the model's next turn.
-   `--draw` queues 3 tool calls: `image.draw` with the `prompt`, `image.draw` with the `edit` text
-   as its prompt and `from` set to the first image, and `image.list`. `--text` queues the reply that
-   follows them.
+   `--draw` queues 4 tool calls: `image.draw` with the `prompt`, `image.draw` with the `edit` text
+   as its prompt and `from` set to the first image, `image.list`, and `file.send` of the image that
+   the list names last. `--text` queues the reply that follows them.
 
    ```bash
    bun verify use --feature drawing
-   bun verify action script-reply --draw '{"prompt":"A heron standing in a pond at dawn.","edit":"Make the sky pink."}' --text 'Here are the heron and its pink-sky edit.'
+   bun verify action script-reply --draw '{"prompt":"A heron standing in a pond at dawn.","edit":"Make the sky pink.","send":true}' --text 'Here are the heron and its pink-sky edit.'
    ```
 
-   Expect: `data.replies` is 4, the 3 tool calls and the reply.
+   Expect: `data.replies` is 5, the 4 tool calls and the reply.
 
 2. Send the message. `conversation turn` waits up to 10 s for the message and the reply in the event
    log.
@@ -62,7 +62,7 @@ Before you start:
    each `ref` from the snapshot just before its click.
    - In the first snapshot, the turn is one collapsed line. Its text starts with "conversation" and
      holds "image draw:", and it has `[cursor=pointer]`. Pass its `ref` as `<turn_ref>`.
-   - In the second snapshot, find the line that starts with `group "Tools 3"`. Pass its `ref` as
+   - In the second snapshot, find the line that starts with `group "Tools 4"`. Pass its `ref` as
      `<tools_ref>`.
 
    ```bash
@@ -79,7 +79,7 @@ Before you start:
 
 - Step 3: the `images` table holds 2 rows. The second row's `parent_id` is the first row's
   `image_id`.
-- The last snapshot of step 4 lists 3 tool calls under "Tools 3", in this order:
+- The last snapshot of step 4 lists 4 tool calls under "Tools 4", in this order:
   - `image.draw`, with the input `{ "prompt": "A heron standing in a pond at dawn." }`. Its result
     has `"image"` set to the first row's `image_id`, and `"from": null`.
   - `image.draw`, with the input `{ "prompt": "Make the sky pink.", "from": "<first image_id>" }`.
@@ -88,5 +88,7 @@ Before you start:
   - `image.list`, with the input `{}`. Its result has an `images` list of 2 entries. The first
     entry's `image` is the second row's `image_id`, and the second entry's `image` is the first
     row's.
+  - `file.send`, with the input `{ "file": "<first image_id>" }`.
 - In the same snapshot, the "Conversation" list ends with an item that has the label "nixie" and the
-  text "Here are the heron and its pink-sky edit.".
+  text "Here are the heron and its pink-sky edit.". An image named `<first image_id>.png` follows
+  that item, with its size under it.

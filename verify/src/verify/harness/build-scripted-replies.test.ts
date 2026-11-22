@@ -87,3 +87,23 @@ test('it queues a draw, an edit of the drawn picture, and a list before the repl
     undefined,
   ]);
 });
+
+test('it queues a send of a picture after the list when the draw asks for it', () => {
+  const replies = buildScriptedReplies({
+    text: 'Here is the picture.',
+    draw: { prompt: 'A heron at dawn.', edit: 'Make the sky pink.', send: true },
+  });
+
+  const body = {
+    messages: [{ role: 'user', content: '{"result":{"image":"cm1abc","size":"1024x1024"}}' }],
+  };
+
+  const calls = replies.map((reply) => {
+    const toolUse = 'toolUse' in reply ? reply.toolUse : undefined;
+    const input = toolUse?.input;
+
+    return { name: toolUse?.name, input: typeof input === 'function' ? input(body) : input };
+  });
+
+  expect(calls.at(-2)).toStrictEqual({ name: 'mcp__nixie__file_send', input: { file: 'cm1abc' } });
+});

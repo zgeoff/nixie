@@ -18,6 +18,9 @@ const startedTaskSchema = z.strictObject({
 const drawnPictureSchema = z.strictObject({
   prompt: z.string().min(1),
   edit: z.string().min(1),
+
+  // also send the last picture of the list to the user with the file tool
+  send: z.boolean().optional(),
 });
 
 const actionProposalSchema = z.strictObject({ proposalID: z.string(), tool: z.string() });
