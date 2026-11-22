@@ -15,10 +15,12 @@ import type { Effect } from '@heynixie/policy';
 import { buildActionProposalInput } from '@heynixie/policy';
 import { readProposal, runProposalLapses, runProposalReturns } from '@heynixie/proposals';
 import { createConversationTask, readInbox, writeTaskControl } from '@heynixie/tasks';
+import { toolCalledCodec } from '@heynixie/tools';
 import invariant from 'tiny-invariant';
 import { buildProposalCoreDeps } from '../proposal/build-proposal-core-deps';
 import { buildTestClient } from '../test-utils/build-test-client';
 import { createDeviceSession } from '../test-utils/create-device-session';
+import { seedScreenClickCard } from '../test-utils/seed-screen-click-card';
 import { startTestAPI } from '../test-utils/start-test-api';
 
 async function setupTest() {
@@ -1074,4 +1076,66 @@ test('#approvals.readImage returns the stored picture of an image, and refuses a
   expect(new Uint8Array(received)).toStrictEqual(bytes);
   expect(file.type).toBe('image/png');
   expect(missing).rejects.toMatchObject({ code: 'IMAGE_NOT_FOUND' });
+});
+
+test('#approvals.readProposals gives the card of a screen click its picture and the point', async () => {
+  const ctx = await setupTest();
+  const encoded = await encodeTestImage({ width: 8, height: 6 }, 'png');
+
+  const bytes = new Uint8Array(encoded);
+
+  const card = await seedScreenClickCard(ctx.api.context, bytes);
+  const read = await ctx.client.approvals.readProposals({ proposalIDs: [card.shortID] });
+
+  const file = await ctx.client.approvals.readImage({
+    imageID: `screen-${String(card.callSequence)}`,
+  });
+
+  expect(read.proposals.map((entry) => entry.body?.screen)).toStrictEqual([
+    { x: 412, y: 233, picture: `screen-${String(card.callSequence)}` },
+  ]);
+
+  const received = await file.arrayBuffer();
+
+  expect(new Uint8Array(received)).toStrictEqual(bytes);
+  expect(file.type).toBe('image/png');
+});
+
+test('#approvals.readProposals gives the card of a screen click with no stored picture none', async () => {
+  const ctx = await setupTest();
+  const card = await seedScreenClickCard(ctx.api.context, null);
+  const read = await ctx.client.approvals.readProposals({ proposalIDs: [card.shortID] });
+
+  expect(read.proposals.map((entry) => entry.body?.screen)).toStrictEqual([undefined]);
+});
+
+test('#approvals.readImage refuses a screen picture ID that names no screen click call', async () => {
+  const ctx = await setupTest();
+  const encoded = await encodeTestImage({ width: 8, height: 6 }, 'png');
+
+  const bytes = new Uint8Array(encoded);
+
+  const [other] = await writeRecords(ctx.api.context.log, [
+    {
+      kind: 'tool_called',
+      definitions: ctx.api.context.definitions(),
+      thread: 'conversation',
+      payload: toolCalledCodec.encode({
+        callID: 'call-2',
+        runID: 'run-1',
+        toolUseID: null,
+        tool: 'computer.run',
+      }),
+      erasable: { input: {} },
+      attachments: [bytes],
+    },
+  ]);
+
+  invariant(other, 'the call was written');
+
+  const refused = ctx.client.approvals.readImage({ imageID: `screen-${String(other.sequence)}` });
+
+  await Promise.allSettled([refused]);
+
+  expect(refused).rejects.toMatchObject({ code: 'IMAGE_NOT_FOUND' });
 });

@@ -39,6 +39,10 @@ const bodySchema = z.object({
 
   // the IDs of stored images the card shows, such as the photos a draw would send
   images: z.array(z.string()).optional(),
+
+  // the desktop as it was when a screen click was prepared, and the point the click lands on; the
+  // picture is read like an image
+  screen: z.object({ x: z.int(), y: z.int(), picture: z.string() }).optional(),
   approveLabel: z.string(),
   rule: z.record(z.string(), z.unknown()).optional(),
   memory: memoryProposalSchema.optional(),

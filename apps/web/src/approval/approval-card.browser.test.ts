@@ -354,6 +354,32 @@ test('it shows each photo that an action would send on its card', async () => {
   expect(alts).toStrictEqual(['Photo 1', 'Photo 2']);
 });
 
+test('it shows the screen of a click with a ring at the point it lands on', async () => {
+  const ctx = await setupTest();
+
+  await store.approvalRows.create({
+    cause: 'ask_rule',
+    choices: ['approve', 'defer', 'decline'],
+    sentence: 'Run computer.screen_click to site.test.',
+    approveLabel: 'Run computer.screen_click to site.test',
+    fields: { x: '320', y: '200', button: 'left' },
+    screen: { x: 320, y: 200, picture: 'screen-4' },
+    thread: null,
+  });
+
+  await ctx.openLine('Run computer.screen_click to site.test.');
+
+  await ctx.waitForPage(
+    `document.querySelector('[aria-label="Screen this click lands on"] img') !== null`,
+  );
+
+  const marker = await ctx.view.evaluate(
+    `(() => { const ring = document.querySelector('[aria-label="Click point 320, 200"]'); return [ring.style.left, ring.style.top]; })()`,
+  );
+
+  expect(marker).toStrictEqual(['25%', '25%']);
+});
+
 test('it says Not now for a proposed rule and declines it without asking for a note', async () => {
   const ctx = await setupTest();
 

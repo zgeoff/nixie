@@ -45,6 +45,9 @@ interface CallPolicy {
 
   // the declaration the decision point read: the variant's when the call picked one
   readonly declaration: EffectDeclaration | null;
+
+  // Sealed under the call record's key, for a card to show. Only a call that asks keeps them.
+  readonly attachments?: readonly Uint8Array<ArrayBuffer>[];
 }
 
 interface WrittenCall {
@@ -130,6 +133,9 @@ export function makeCallRecorder(
                   }),
             },
             ...(decided === null ? {} : { decision: decided.stored }),
+            ...(decided?.attachments === undefined || decided.policy.decision.outcome !== 'ask'
+              ? {}
+              : { attachments: decided.attachments }),
           },
         ]);
 

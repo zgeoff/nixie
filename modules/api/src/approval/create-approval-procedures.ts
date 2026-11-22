@@ -5,6 +5,7 @@ import { requireCaller } from '../memory/require-caller';
 import { createPasskeyAnswerGate } from '../passkey/create-passkey-answer-gate';
 import { buildProposalCoreDeps } from '../proposal/build-proposal-core-deps';
 import type { ProposalParts } from '../proposal/build-proposal-core-deps';
+import { readScreenPicture } from '../proposal/read-screen-picture';
 import type { APIContext } from '../types';
 import { apiImplementer } from '../utils/api-implementer';
 import { readApprovalItems } from './read-approval-items';
@@ -39,6 +40,14 @@ export function createApprovalProcedures(context: APIContext, parts: ProposalPar
 
     readImage: approvals.readImage.handler(async (options) => {
       await requireCaller(context, options.context.sessionToken, options.errors.UNAUTHORIZED);
+
+      const screen = await readScreenPicture(context.log, options.input.imageID);
+
+      if (screen !== null) {
+        return new File([screen.bytes], `screen-${options.input.imageID}`, {
+          type: screen.mediaType,
+        });
+      }
 
       const image = await readImageEntry(context.log, options.input.imageID);
 

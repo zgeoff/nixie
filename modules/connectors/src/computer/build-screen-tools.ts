@@ -1,6 +1,7 @@
+import { createHash } from 'node:crypto';
 import type { JSONObject } from '@heynixie/log';
 import { actionProposalLapseMs } from '@heynixie/policy';
-import type { DirectResult, ToolDefinition, ToolResolveContext } from '@heynixie/tools';
+import type { DirectResult, Prepared, ToolDefinition, ToolResolveContext } from '@heynixie/tools';
 import type { ComputerFocus, ScreenAct, ScreenBinding } from '@heynixie/wire';
 import { z } from 'zod';
 import type { ComputerState } from './computer-state';
@@ -303,9 +304,7 @@ async function prepareScreenAct(
   options: ComputerToolOptions,
   state: ComputerState,
   preparation: ScreenPreparation,
-): Promise<
-  DirectResult | { readonly destinations: readonly string[]; readonly expectWindow: JSONObject }
-> {
+): Promise<DirectResult | (Prepared & { readonly expectWindow: JSONObject })> {
   const outcome = await runComputerCall(options, {
     run: preparation.context.run,
     namedURL: null,
@@ -328,7 +327,24 @@ async function prepareScreenAct(
   state.holds.get(key)?.();
   state.holds.set(key, options.computer.hold(actionProposalLapseMs));
 
-  return { destinations: pickDestinations(binding), expectWindow: toBindingObject(binding) };
+  const picture =
+    preparation.act.kind === 'click' && outcome.reply.base64 !== undefined
+      ? await fitPicture(options, outcome.reply.base64)
+      : null;
+
+  // The card of a click shows the desktop as it was when the call was prepared. The picture is
+  // stored with the call, and its digest is part of the window the action hash covers, so a call
+  // prepared against a changed screen is a new question.
+  return {
+    destinations: pickDestinations(binding),
+    expectWindow: {
+      ...toBindingObject(binding),
+      ...(picture === null
+        ? {}
+        : { picture: createHash('sha256').update(picture.bytes).digest('hex') }),
+    },
+    ...(picture === null ? {} : { attachments: [new Uint8Array(picture.bytes)] }),
+  };
 }
 
 // A browser tab's host is the destination, and any other window has none.

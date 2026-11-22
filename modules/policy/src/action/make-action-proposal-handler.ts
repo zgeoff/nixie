@@ -50,6 +50,9 @@ export interface BodyFieldsRequest {
   readonly tool: string;
   readonly thread: string | null;
   readonly input: JSONObject;
+
+  // the sequence of the call's own record, which holds anything the tool stored with the call
+  readonly callSequence: number;
 }
 
 // Card fields that a tool's own records supply when the card's body is read, never stored with the
@@ -63,6 +66,9 @@ export type BodyFields =
 
       // the IDs of stored images the card shows beside its fields
       readonly images?: string[];
+
+      // the desktop picture and click point of a screen click, which the card marks
+      readonly screen?: { readonly x: number; readonly y: number; readonly picture: string };
     }
   | { readonly status: 'unreadable' };
 
@@ -188,6 +194,7 @@ async function readBody(
     tool: payload.tool,
     thread: row.thread,
     input: toJSONObject(erasable.input),
+    callSequence: payload.callSequence,
   });
 
   const extra = read ?? { status: 'none' };
@@ -236,6 +243,7 @@ function toBody(
     },
     ruleSentence: erasable.ruleSentence ?? null,
     ...(extra.status === 'fields' && extra.images !== undefined ? { images: extra.images } : {}),
+    ...(extra.status === 'fields' && extra.screen !== undefined ? { screen: extra.screen } : {}),
     approveLabel: buildActionApproveLabel(payload.tool, destinations[0]),
   };
 }

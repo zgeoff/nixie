@@ -89,6 +89,8 @@ async function setupTest(options: SetupOptions) {
         tab: 'g1',
         url: 'https://site.test/form',
       },
+      base64:
+        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg==',
     },
     stale: { kind: 'failed' as const, ok: false as const, reason: 'stale_element' as const },
     run: {
@@ -710,7 +712,14 @@ test('it prepares a click on a browser window with the tab host as its destinati
 
   expect(prepared).toStrictEqual({
     destinations: ['site.test'],
-    expectWindow: { windowID: '0x1', kind: 'browser', tab: 'g1', url: 'https://site.test/form' },
+    expectWindow: {
+      windowID: '0x1',
+      kind: 'browser',
+      tab: 'g1',
+      url: 'https://site.test/form',
+      picture: expect.stringMatching(/^[\da-f]{64}$/u),
+    },
+    attachments: [expect.any(Uint8Array)],
   });
 });
 
@@ -728,7 +737,22 @@ test('it prepares a click on another window with no destination', async () => {
 
   expect(prepared).toStrictEqual({
     destinations: [],
-    expectWindow: { windowID: '0x7', kind: 'other' },
+    expectWindow: {
+      windowID: '0x7',
+      kind: 'other',
+      picture: expect.stringMatching(/^[\da-f]{64}$/u),
+    },
+    attachments: [expect.any(Uint8Array)],
+  });
+});
+
+test('it prepares a type with no picture, whatever the guest sends beside the window', async () => {
+  const ctx = await setupTest({});
+  const prepared = await ctx.prepare('computer.screen_type', { text: 'hello' });
+
+  expect(prepared).toStrictEqual({
+    destinations: ['site.test'],
+    expectWindow: { windowID: '0x1', kind: 'browser', tab: 'g1', url: 'https://site.test/form' },
   });
 });
 

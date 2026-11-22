@@ -3568,3 +3568,79 @@ test('it queues a prepared call with the prepared effects and a hash that covers
     }),
   );
 });
+
+test.each([
+  ['asks', [], 1],
+  [
+    'is allowed by a rule',
+    [
+      {
+        id: 'allow-example',
+        revision: 1,
+        rule: {
+          id: 'allow-example',
+          outcome: 'allow' as const,
+          effects: ['send' as const],
+          destinations: ['example.org'],
+        },
+      },
+    ],
+    0,
+  ],
+] satisfies [string, RuleEntry[], number][])(
+  'it keeps the attachments of a prepared call under its record only when the call asks: %s',
+  async (_name, rules, expectedCount) => {
+    const picture = new Uint8Array([137, 80, 78, 71]);
+
+    const ctx = await setupTest({
+      rules,
+      tools: [
+        buildMockToolDefinition({
+          name: 'test.send',
+          execution: 'queued',
+          declaration: { effects: ['send'] },
+          prepare: () =>
+            Promise.resolve({
+              destinations: ['example.org'],
+              attachments: [picture],
+            }),
+        }),
+      ],
+    });
+
+    const call = runToolCall(
+      { tool: 'test.send', input: { query: 't1' }, toolUseID: 'toolu_u1' },
+      {
+        runID: 'run-1',
+        thread: 'task-1',
+        logThread: 'task-1',
+        tools: ['test.send'],
+        model: { model: 'model-a', profile: 'chat-direct' },
+      },
+      ctx.options,
+    );
+
+    if (expectedCount === 0) {
+      await waitForCondition(() => ctx.queue.waits.length === 1);
+
+      ctx.queue.drainWaits();
+    }
+
+    await call;
+
+    const entries = await readRecords(ctx.log, { afterSequence: 0 });
+
+    const called = entries.find((entry) => entry.record.kind === 'tool_called');
+
+    invariant(called, 'the call wrote its record');
+
+    const attached = await readRecordAttachments(ctx.log, [called.record.sequence]);
+
+    const expected =
+      expectedCount === 1
+        ? { status: 'readable' as const, attachments: [picture] }
+        : { status: 'none' as const };
+
+    expect(attached.get(called.record.sequence)).toStrictEqual(expected);
+  },
+);

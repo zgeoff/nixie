@@ -190,6 +190,7 @@ export async function runToolCall(
     actionHash,
     policyTool,
     declaration: pickCallDeclaration(registered, effects),
+    ...(prepared?.attachments === undefined ? {} : { attachments: prepared.attachments }),
   });
 
   const settled = written.isCapped

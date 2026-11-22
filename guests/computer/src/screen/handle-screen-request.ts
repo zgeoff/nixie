@@ -124,7 +124,22 @@ async function bindScreenAct(context: ScreenContext, act: ScreenAct): Promise<Co
 
   const refusal = pickScreenRefusal(target, checked.check, null);
 
-  return refusal ?? { kind: 'screen-target', ok: true, target: target.binding };
+  if (refusal !== null) {
+    return refusal;
+  }
+
+  if (act.kind !== 'click') {
+    return { kind: 'screen-target', ok: true, target: target.binding };
+  }
+
+  const bytes = await context.driver.capture();
+
+  return {
+    kind: 'screen-target',
+    ok: true,
+    target: target.binding,
+    base64: Buffer.from(bytes).toString('base64'),
+  };
 }
 
 interface CheckedAct {

@@ -28,6 +28,7 @@ export function toMockApprovalBody(row: StoredRow) {
     approveLabel: row.approveLabel,
     fields: { ...row.fields },
     ...(row.images === undefined ? {} : { images: [...row.images] }),
+    ...(row.screen === undefined ? {} : { screen: { ...row.screen } }),
     ...(row.memory === undefined ? {} : { memory: structuredClone(row.memory) }),
     ...(row.proposedRule === undefined ? {} : { rule: structuredClone(row.proposedRule) }),
     ruleSentence: row.ruleSentence,

@@ -64,6 +64,10 @@ test('it hashes an action that expects one window differently from one that expe
     buildActionHash({ ...operation, expectWindow: { ...first, windowID: '0x2' } }),
   );
 
+  expect(buildActionHash({ ...operation, expectWindow: { ...first, picture: 'aa' } })).not.toBe(
+    buildActionHash({ ...operation, expectWindow: { ...first, picture: 'bb' } }),
+  );
+
   expect(buildActionHash({ ...operation, expectWindow: undefined })).toBe(
     buildActionHash(operation),
   );

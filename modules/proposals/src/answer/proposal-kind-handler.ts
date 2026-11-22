@@ -105,6 +105,10 @@ export interface ProposalBody {
   // the IDs of stored images that the card shows, such as the photos a draw would send
   readonly images?: string[];
 
+  // The desktop as it was when a screen click was prepared, with the point the click lands on. The
+  // picture's ID is read through the same route as an image's.
+  readonly screen?: { readonly x: number; readonly y: number; readonly picture: string };
+
   // the approve button's text, built from the kind's template and never from a model
   readonly approveLabel: string;
 

@@ -91,6 +91,9 @@ const screenTargetReplySchema = z.strictObject({
   kind: z.literal('screen-target'),
   ok: isOk,
   target: screenBindingSchema,
+
+  // the desktop as the owner will see it on the card of a click, which only a click asks for
+  base64: textSchema.optional(),
 });
 
 const runBodySchema = z.strictObject({

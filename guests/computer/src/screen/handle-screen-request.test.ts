@@ -97,7 +97,7 @@ test('it reports the terminal as the focus when the terminal has it', async () =
   expect(reply).toMatchObject({ focus: { kind: 'terminal' } });
 });
 
-test('it binds a click to the browser window and tab under the point', async () => {
+test('it binds a click to the browser window and tab under the point, with the desktop beside it', async () => {
   const ctx = setupTest();
 
   ctx.desktop.windows = [ctx.windows.browser, ctx.windows.terminal];
@@ -108,7 +108,12 @@ test('it binds a click to the browser window and tab under the point', async () 
     act: { kind: 'click', x: 100, y: 300, button: 'left' },
   });
 
-  expect(reply).toStrictEqual({ kind: 'screen-target', ok: true, target: ctx.bound });
+  expect(reply).toStrictEqual({
+    kind: 'screen-target',
+    ok: true,
+    target: ctx.bound,
+    base64: Buffer.from('png').toString('base64'),
+  });
 });
 
 test('it binds a type to the focused window, not the one under the pointer', async () => {

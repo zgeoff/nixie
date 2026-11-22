@@ -183,6 +183,10 @@ export interface Prepared {
 
   // the window the call expects to land on when its action runs; the action hash covers it
   readonly expectWindow?: JSONObject;
+
+  // Sealed under the key of the call's own record, in order, when the call asks the owner, so a
+  // card can show them. A forget of the record erases them.
+  readonly attachments?: readonly Uint8Array<ArrayBuffer>[];
 }
 
 export interface PaidTool {

@@ -32,6 +32,7 @@ test('it shows the kind and the text of the record, with the moments and the mem
     tool: 'log.forget',
     thread: 'conversation',
     input: { record: `#${String(ctx.sequence)}` },
+    callSequence: 1,
   });
 
   expect(fields).toStrictEqual({
@@ -52,6 +53,7 @@ test('it answers none for a tool that has no extra fields', async () => {
     tool: 'mail.send',
     thread: 'conversation',
     input: { record: String(ctx.sequence) },
+    callSequence: 1,
   });
 
   expect(fields).toStrictEqual({ status: 'none' });
@@ -70,6 +72,7 @@ test('it cuts a long text and ends it with an ellipsis', async () => {
     tool: 'log.forget',
     thread: 'conversation',
     input: { record: String(long.recordSequence) },
+    callSequence: 1,
   });
 
   expect(fields).toMatchObject({
@@ -89,6 +92,7 @@ test.each([
     tool: 'log.forget',
     thread: request.thread,
     input: { record: request.record },
+    callSequence: 1,
   });
 
   expect(fields).toStrictEqual({ status: 'unreadable' });
@@ -103,6 +107,7 @@ test('it leaves the card without a body when the log cannot be read', async () =
     tool: 'log.forget',
     thread: 'conversation',
     input: { record: String(ctx.sequence) },
+    callSequence: 1,
   });
 
   expect(fields).toStrictEqual({ status: 'unreadable' });
