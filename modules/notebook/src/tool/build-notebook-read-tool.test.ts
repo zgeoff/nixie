@@ -182,7 +182,7 @@ test('it lists the links and the backlinks of a note on part 1, with the totals'
   const old = await ctx.write({ title: 'Boiler notes (old)', body: 'Old.' });
   const [message] = await ctx.seed.ownerMessages(['the engineer came on Monday']);
 
-  invariant(message);
+  invariant(message !== undefined);
 
   await ctx.call('notebook.link', {
     from: boiler,

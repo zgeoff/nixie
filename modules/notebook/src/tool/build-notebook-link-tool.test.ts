@@ -156,7 +156,7 @@ test('it refuses an event on another thread with the same UNKNOWN_TARGET as an e
   const from = await ctx.write('From');
   const [message] = await ctx.seed.ownerMessages(['the engineer came']);
 
-  invariant(message);
+  invariant(message !== undefined);
 
   const otherThread = await ctx.call(
     'notebook.link',

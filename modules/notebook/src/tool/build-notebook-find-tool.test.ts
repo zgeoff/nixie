@@ -1,6 +1,7 @@
 import { expect, test } from 'bun:test';
 import type { JSONValue } from '@heynixie/log';
 import invariant from 'tiny-invariant';
+import { z } from 'zod';
 import { pickText, startTestNotebook } from '../test-utils';
 
 interface NotebookOptions {
@@ -9,6 +10,9 @@ interface NotebookOptions {
 
 async function setupTest(options: NotebookOptions = {}) {
   const ctx = await startTestNotebook(options);
+
+  const noteSchema = z.object({ title: z.string().nullish() });
+  const findResultSchema = z.object({ notes: z.array(noteSchema), next: z.string().nullish() });
 
   const write = async (input: Record<string, JSONValue>) => {
     const outcome = await ctx.call('notebook.write', input);
@@ -27,15 +31,11 @@ async function setupTest(options: NotebookOptions = {}) {
   };
 
   const readTitles = async (input: Record<string, JSONValue>) => {
-    const result = await readFindResult(input);
+    const found = await readFindResult(input);
 
-    const notes = result['notes'];
+    const result = findResultSchema.parse(found);
 
-    invariant(Array.isArray(notes));
-
-    return notes.map((entry) =>
-      typeof entry === 'object' && entry !== null && 'title' in entry ? entry.title : null,
-    );
+    return result.notes.map((entry) => entry.title ?? null);
   };
 
   const readAllTitles = async (input: Record<string, JSONValue>) => {
@@ -45,21 +45,15 @@ async function setupTest(options: NotebookOptions = {}) {
     do {
       const pageInput = after === null ? input : { ...input, after };
 
-      const result = await readFindResult(pageInput);
+      const found = await readFindResult(pageInput);
 
-      const notes = result['notes'];
-      const next = result['next'];
+      const result = findResultSchema.parse(found);
 
-      invariant(Array.isArray(notes));
-      invariant(typeof next === 'string' || next === null);
-
-      for (const entry of notes) {
-        invariant(typeof entry === 'object' && entry !== null && 'title' in entry);
-
+      for (const entry of result.notes) {
         titles.push(pickText(entry.title));
       }
 
-      after = next;
+      after = result.next ?? null;
     } while (after !== null);
 
     return titles;

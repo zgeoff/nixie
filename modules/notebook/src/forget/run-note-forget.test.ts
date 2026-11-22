@@ -314,7 +314,7 @@ test('it lists the notes that link to a record, with a private note left without
   const ctx = await setupTest();
   const [message] = await ctx.seed.ownerMessages(['the engineer came']);
 
-  invariant(message);
+  invariant(message !== undefined);
 
   const open = await ctx.write('Open');
   const secret = await ctx.write('Secret', { isPrivate: true });

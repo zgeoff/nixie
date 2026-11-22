@@ -197,7 +197,7 @@ test('it shows an event time and role only on the own thread of a run that holds
   const first = await ctx.write('First');
   const [message] = await ctx.seed.ownerMessages(['the engineer came on Monday']);
 
-  invariant(message);
+  invariant(message !== undefined);
 
   await ctx.call('notebook.link', {
     from: first,
