@@ -40,7 +40,7 @@ keep their inputs, results, effects and refusals, except where the sketch below 
 | `computer.browser_scroll`                                | new                                                 | direct, `note`               |
 | `computer.screenshot`, `computer.screen_scroll`          | new                                                 | direct, `note`               |
 | `computer.screen_click`, `computer.screen_type`          | new                                                 | queued                       |
-| `computer.handover`                                      | new                                                 | direct, `note`               |
+| `computer.handover`, `computer.handover_cancel`          | new                                                 | direct, `note`               |
 | `computer.take_back`                                     | new                                                 | direct, `computer_take_back` |
 | `computer.run`, `read_file`, `write_file`, `export_file` | unchanged                                           | as today                     |
 
@@ -57,7 +57,9 @@ computer.browser_screenshot({ tab: 't3', control: 'E12' }); // control is option
 // → the control's box, or the viewport without one; STALE_ELEMENT for a control that moved
 
 computer.screenshot({}); // the whole desktop
-// → { width: 1280, height: 800, focus: { kind: 'browser', tab: 't3', url: 'https://…' } }
+// → { width: 1280, height: 800, focus: { kind: 'browser', tab: 't3', url: 'https://…' }, isWatched: false }
+//   isWatched: true while a device session has the live view open; every screenshot and screen act
+//   result carries it
 //   the picture sits beside the result at 1280 by 800, so its points are the ones a click takes
 //   focus.kind: 'browser' | 'terminal' | 'other'
 
@@ -71,7 +73,11 @@ computer.screen_type({ keys: 'ctrl+l' }); // keys: one chord, such as 'enter' or
 // → { focus } with a picture beside it, or SCREEN_CHANGED
 
 computer.handover({ reason: 'itch.io asks for a CAPTCHA' }); // conversation only
-// → { asked: true } or ALREADY_ASKED (an ask is open until a take-over starts) | TAKEN_OVER
+// → { asked: true } or ALREADY_ASKED (an ask is open until a take-over starts, the assistant
+//   cancels it, or it expires) | TAKEN_OVER
+
+computer.handover_cancel({}); // conversation only; for a problem the assistant got past or gave up on
+// → { cancelled: true } or NOT_ASKED
 
 computer.take_back({}); // conversation only
 // → { durationSeconds: 63 } or NOT_TAKEN_OVER
@@ -99,6 +105,8 @@ interface ScreenBinding {
 | `computer.take_back`             | `computer_take_back` | none                   |
 
 The card for a screen act shows its screenshot with the point marked, or the text or keys it types.
+Its "always allow" pins the host alone, so one answer covers every later screen act on that site,
+and a rule of yours that names the host covers them too.
 
 A screen act on a terminal window returns `USE_RUN`, with the message "Use the computer.run tool
 instead". A screen act on Chromium's address bar or tab strip, and a chord that focuses the address
@@ -116,6 +124,7 @@ allow-take-back:
 
 ```text
 computer.handover_asked    -- payload: reason (erasable)
+computer.handover_closed   -- payload: by: 'assistant' | 'expired'; an ask that no take-over answered
 computer.takeover_started  -- payload: device (the session that holds the desktop)
 computer.takeover_ended    -- payload: by, durationSeconds, origins, now (erasable)
   -- by: 'user' | 'assistant' | 'idle' | 'restart'
@@ -124,7 +133,7 @@ computer.takeover_ended    -- payload: by, durationSeconds, origins, now (erasab
   --      first part, or the terminal's visible lines; read from the guest at the hand-back
 ```
 
-The three records sit on the conversation's thread.
+The four records sit on the conversation's thread.
 
 ### The messages the assistant reads
 
@@ -141,8 +150,9 @@ Now: browser tab t4
 ```
 
 When the assistant took the computer back, the first line reads "You took the computer back from Sam
-after 1 min." An idle hand-back reads "The computer came back to you after 10 min with no input from
-Sam." A restart reads "The computer came back to you when nixie restarted."
+after 1 min." An idle hand-back reads "The computer came back to you after 30 min with no input from
+Sam." A restart reads "The computer came back to you when nixie restarted." An expired ask reads
+"Your handover ask lapsed after 60 min with no take-over."
 
 ### The web client's calls
 
@@ -153,14 +163,16 @@ computer.takeOver({ clientActionID }); // → { takenOverAt } or BUSY_TOO_LONG |
 computer.handBack({ clientActionID }); // → { durationSeconds } or NOT_TAKEN_OVER
 ```
 
-The live stream carries the three records. A `computer.handover_asked` shows as a banner with Take
-over on every open client, until a take-over starts.
+The live stream carries the four records. A `computer.handover_asked` shows as a banner with Take
+over on every open client, until a take-over starts or a `computer.handover_closed` clears it. It
+also goes out as a [push notice](push-notice.md), so an ask reaches you with no client open.
 
 ### Config
 
 ```yaml
 computer:
-  idle_hand_back_minutes: 10 # a hold with no input from its device this long ends with by 'idle'
+  idle_hand_back_minutes: 30 # a hold with no input from its device this long ends with by 'idle'
+  handover_expiry_minutes: 60 # an ask with no take-over this long closes with by 'expired'
 ```
 
 ### The sandbox and its size
@@ -214,7 +226,8 @@ Watching:
   a log.
 - The relay drops every key, pointer and clipboard message from a client whose device session does
   not hold the desktop.
-- Watching writes no record, and the assistant never learns of it.
+- Watching writes no record. The assistant learns of it only through `isWatched`, which turns true
+  when a watch's WebSocket opens and false when the last one closes.
 - A watch holds the sandbox awake, as a call does, and opening the view wakes a sleeping sandbox.
 - nixie stores no frame of the stream.
 
@@ -242,7 +255,9 @@ Taking over and handing back:
   claim. The take-over then waits for the calls already running.
 - The `now` text reaches the model inside the same untrusted-content markers as a page that
   `computer.browser_read` returns.
-- Each of the three records takes a short ID from `createShortID`.
+- Each of the four records takes a short ID from `createShortID`.
+- An expired ask writes `computer.handover_closed` with `by: 'expired'`, which wakes the
+  conversation. A cancel writes it with `by: 'assistant'`, which wakes nothing.
 - When the scan refuses a request that no tool call made, the guest writes no record, and the
   request fails in the page.
 - `computer.take_back` ends the hold at once, and the relay drops your input after it.
@@ -253,7 +268,8 @@ Taking over and handing back:
 
 The tools:
 
-- `computer.handover` and `computer.take_back` are on the conversation's tool list alone.
+- `computer.handover`, `computer.handover_cancel` and `computer.take_back` are on the conversation's
+  tool list alone.
 - The descriptions of `computer.browser_open` and `computer.run` say when to reach for the computer:
   when the result must still be there tomorrow, or when a site needs the assistant signed in.
 
@@ -264,8 +280,9 @@ The tools:
   network rules inside that machine.
 - **You watch through VNC.** It shows every window, the terminal included, where Chromium's own
   screen stream shows one tab.
-- **Watching leaves no trace.** You hold the keys to everything the assistant has, so a mark would
-  record nothing it couldn't learn another way.
+- **The assistant knows when you watch, and watching leaves no record.** Knowing lets it narrate for
+  you, as the notebook tells it when you read its notes. You hold the keys to everything it has, so
+  a record would add nothing.
 - **A hand-back message records sites, never keystrokes or paths.** You type passwords and card
   codes while you hold the desktop, and a reset link can carry its token in the path.
 - **The assistant's page tools stay its main way in.** Page text costs far fewer tokens than a
