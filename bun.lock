@@ -1095,6 +1095,16 @@
         "@types/bun": "1.4.4",
       },
     },
+    "research/desktop-memory": {
+      "name": "@heynixie/spike-desktop-memory",
+      "version": "0.0.0",
+      "dependencies": {
+        "playwright-core": "1.65.1",
+      },
+      "devDependencies": {
+        "@types/bun": "1.4.4",
+      },
+    },
     "research/fetch-sandbox-start": {
       "name": "@heynixie/spike-fetch-sandbox-start",
       "version": "0.0.0",
@@ -1606,6 +1616,8 @@
     "@heynixie/spike-connector-account-pick": ["@heynixie/spike-connector-account-pick@workspace:research/connector-account-pick"],
 
     "@heynixie/spike-consent-checker": ["@heynixie/spike-consent-checker@workspace:research/consent-checker"],
+
+    "@heynixie/spike-desktop-memory": ["@heynixie/spike-desktop-memory@workspace:research/desktop-memory"],
 
     "@heynixie/spike-fetch-sandbox-start": ["@heynixie/spike-fetch-sandbox-start@workspace:research/fetch-sandbox-start"],
 
