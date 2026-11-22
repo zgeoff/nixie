@@ -23,9 +23,10 @@ The kind `computer` has public egress, no grant and no tool route. A deployment 
 `computer-desktop`, and recovery keeps it. The [sandbox sizes](sandboxes.md#sizes) hold its memory
 and disk. The image `nixie-computer` comes from `guests/computer`.
 
-The desktop is Xvfb for the display, openbox as the window manager, xterm as the terminal and x11vnc
-as a VNC server. The display is 1280 by 800. The VNC server listens on the loopback of the sandbox
-only, with its clipboard off.
+The desktop runs Xvfb as the display, openbox as the window manager, xterm as the terminal and
+x11vnc as a VNC server. The display is 1280 by 800. The VNC server listens only on the sandbox's
+loopback, in view-only mode with selection and clipboard exchange off, so it ignores every key and
+pointer event. Read [Watching](#watching) for how the user's client reaches it.
 
 Chromium runs in the time zone of `time.default_zone` in the config, so a page that shows "today" or
 an opening hour shows the user's. Nixie hands the zone to the guest when it starts the guest, so a
@@ -129,7 +130,7 @@ takes a point on it. A screenshot's `width` and `height` give the size of the pi
 sees, which is smaller than the desktop when the image long edge is under 1280. The model then
 multiplies a point on the picture by 1280 divided by `width`. Each screenshot and each screen act
 result carries `focus`, which is `{ kind: 'browser', tab, url }`, `{ kind: 'terminal' }` or
-`{ kind: 'other' }`, and `isWatched`, which is always `false` until watching ships.
+`{ kind: 'other' }`, and `isWatched`, which is `true` while a [watch](#watching) is open.
 
 The result of a screen act carries the picture of the desktop after the act, as a screenshot does.
 The connector's response holds the picture beside the result. The action runner seals its bytes as
@@ -230,6 +231,32 @@ A `computer.run` is its own effect, `computer_run`, because the shell reaches th
   such as after a restart, returns `TAB_GONE` without running. An approved command therefore never
   runs a script that changed after the user read the card.
 
+## Watching
+
+The user watches the desktop live in the web client's
+[computer page](../channels/client.md#the-computer-page). The picture takes no port of the sandbox.
+The VNC stream rides the guest's existing wire session as `vnc-open`, `vnc-data` and `vnc-close`
+frames, each carrying a stream ID, and the guest pipes each stream to the VNC server on its
+loopback. A VNC frame never waits behind a request in the guest's queue, so a long call never stalls
+the picture. The guest holds at most 4 streams, and the server never writes a frame to disk.
+
+[The API](../channels/api.md#watching-the-computer) mints the ticket and holds the socket. The
+connector side, `openComputerWatch`, does the rest for each socket:
+
+- The watch counts as open from the moment its socket opens, so `isWatched` is `true` while the
+  sandbox still wakes. It turns `false` when the last watch closes. Neither change writes a record.
+- The watch holds the sandbox awake until it closes. It wakes a sleeping sandbox and starts the
+  guest, and a watch that closes during the wake opens no stream and releases its hold. A watch
+  never takes the turn for longer than that start, so a call never answers `BUSY` because of one.
+- The relay lets through only the messages that a viewer needs: the handshake, `SetPixelFormat`,
+  `SetEncodings` and `FramebufferUpdateRequest`. It drops `KeyEvent`, `PointerEvent` and
+  `ClientCutText` silently, and closes the socket and the stream on a message that is malformed,
+  unknown or past a size cap, including a `SetPixelFormat` with an invalid pixel format. It reads
+  the length of a `ClientCutText` as signed, because a viewer that speaks the extended clipboard
+  format sends a negative one. While the sandbox wakes, it queues the viewer's bytes up to a cap far
+  above what a viewer sends before it hears from the desktop, and closes the socket past it. The
+  client sets the viewer to view-only, and neither the relay nor the VNC server accepts input.
+
 ## The checking proxy
 
 Every connection from the sandbox leaves through a proxy that its guest starts (`libs/egress`). The
@@ -266,6 +293,12 @@ build's guests resolve to the loopback address. The test sandbox has no display,
 drive a stand-in desktop: one browser window of the display's size, whose page is the newest tab.
 Pointer and key events go to that page, and the picture is the page's own. The stand-in has no
 terminal and no address bar, so the guest's tests cover those refusals.
+
+The test build also has no VNC server. Its guest, `guests/computer/src/test-main.ts`, serves a watch
+from an in-process stand-in that speaks the protocol's handshake and answers each update request
+with one fixed picture. Only the test build's entry imports it, so the release image holds none of
+it. The imp suite runs the real server, set up as in the
+[imp isolation runbook](../../runbooks/imp-isolation-tests.md).
 
 ## Memory kills
 

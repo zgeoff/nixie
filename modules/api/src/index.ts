@@ -1,6 +1,9 @@
 export { apiProjections } from './api/api-projections';
 export { apiConfigSchema } from './session/api-config-schema';
 export { createAPIApp } from './api/create-api-app';
+export { createWatchRoute } from './computer/create-watch-route';
+export type { WatchRoute, WatchSocketData } from './computer/create-watch-route';
+export { createWatchTickets } from './computer/create-watch-tickets';
 export { createEnrolmentCode } from './enrolment/create-enrolment-code';
 export { createFirstEnrolmentCode } from './enrolment/create-first-enrolment-code';
 export { createPasskeyState } from './passkey/passkey-state';
@@ -26,6 +29,7 @@ export type {
   APITables,
   APISettings,
   CleanupRecordSessions,
+  ComputerWatchPort,
   ForgetBackupState,
   HostBackups,
   HostRouterOptions,

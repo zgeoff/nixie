@@ -19,6 +19,11 @@ cluster. [Kubernetes](../architecture/deployment/kubernetes.md) explains the sha
 
 To move to a new release, or back, follow the [upgrade runbook](../runbooks/upgrades.md).
 
+The watch socket connects to `/rpc/computer/watch-stream` with a one-use ticket in the query. The
+`/rpc` rule already sends it to nixie. When your ingress controller logs requests or errors, drop
+the query of that path from each log line, so a log never holds a ticket. Set the controller's
+WebSocket idle timeout to more than a few minutes, because a quiet desktop sends nothing.
+
 ## Check them
 
 To validate every resource against the Kubernetes schemas, render the folder with kustomize and run

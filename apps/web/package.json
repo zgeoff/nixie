@@ -17,6 +17,7 @@
     "@heynixie/contract": "workspace:*",
     "@heynixie/retry": "workspace:*",
     "@heynixie/task-control": "workspace:*",
+    "@novnc/novnc": "catalog:",
     "@orpc/client": "catalog:",
     "@simplewebauthn/browser": "catalog:",
     "@tanstack/react-query": "catalog:",

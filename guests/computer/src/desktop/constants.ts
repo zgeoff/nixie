@@ -39,6 +39,10 @@ export const displayHeight = 800;
 // the VNC server's port, on the loopback of the sandbox
 export const vncPort = 5900;
 
+// How long the guest tries a refused connection to the VNC server again. On a cold start the server
+// listened within a second of the refusal, and a supervised restart waits a second more.
+export const vncConnectWaitMs = 5000;
+
 // the memory that the terminal's processes and every command share, so a heavy command ends itself
 // before it takes Chromium's memory
 export const terminalMemoryLimitBytes = 512 * 1024 * 1024;

@@ -1,5 +1,5 @@
-import type { APIContext, ReadViewMemory } from '@heynixie/api';
-import { createAPIApp } from '@heynixie/api';
+import type { APIContext, ReadViewMemory, WatchSocketData } from '@heynixie/api';
+import { createAPIApp, createWatchRoute } from '@heynixie/api';
 import type { DefinitionsContext } from '@heynixie/definitions';
 import type { Writer } from '@heynixie/log';
 import type { Logger } from '@heynixie/logger';
@@ -52,13 +52,29 @@ export async function startHTTPServer(options: HTTPServerOptions): Promise<numbe
       ),
     );
 
-  const answerRequest = (request: Request) =>
-    options.gate.run(request, (passed) => app.handle(passed));
+  const watchRoute = createWatchRoute(options.apiContext);
 
-  const http = Bun.serve({
+  // A watch socket upgrades inside the gate, and the gate lets go when the upgrade ends, so an open
+  // socket never holds up a reset.
+  const answerRequest = (
+    request: Request,
+    server: Bun.Server<WatchSocketData>,
+  ): Promise<Response | undefined> => {
+    if (watchRoute.isWatchRequest(request)) {
+      return options.gate.runCall(
+        () => watchRoute.upgrade(request, server),
+        () => Promise.resolve(new Response('nixie is resetting', { status: 503 })),
+      );
+    }
+
+    return options.gate.run(request, (passed) => app.handle(passed));
+  };
+
+  const http = Bun.serve<WatchSocketData>({
     hostname: options.config.server.hostname,
     port: options.config.server.port,
     fetch: answerRequest,
+    websocket: watchRoute.websocket,
   });
 
   await options.cleanup.defer(() => http.stop(true));

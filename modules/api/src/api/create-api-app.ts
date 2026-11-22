@@ -1,13 +1,14 @@
-import { clientHeaderName, sessionCookieName } from '@heynixie/contract';
+import { clientHeaderName } from '@heynixie/contract';
 import type { DefinitionsContext } from '@heynixie/definitions';
 import { RPCHandler } from '@orpc/server/fetch';
 import { ResponseHeadersPlugin } from '@orpc/server/plugins';
 import { Elysia } from 'elysia';
+import { findSessionToken } from '../session/find-session-token';
 import { isDeviceProcedure } from '../session/is-device-procedure';
 import { isReadOnlyProcedure } from '../session/is-read-only-procedure';
 import { isReadOnlyToken } from '../session/is-read-only-token';
 import { readSessionScope } from '../session/read-session-scope';
-import type { APIContext, APIRequestContext, ReadViewMemory } from '../types';
+import type { APIContext, ReadViewMemory } from '../types';
 import { createAPIRouter } from './create-api-router';
 
 interface RouteContext {
@@ -65,25 +66,4 @@ export function createAPIApp(
     },
     { parse: 'none' },
   );
-}
-
-// A server render forwards the browser's session as a bearer token, so the bearer token wins over
-// the cookie.
-function findSessionToken(headers: Headers): APIRequestContext {
-  const origin = headers.get('origin') ?? undefined;
-  const bearer = /^Bearer (?<token>\S+)$/u.exec(headers.get('authorization') ?? '');
-
-  if (bearer?.groups?.['token'] !== undefined) {
-    return { sessionToken: bearer.groups['token'], tokenSource: 'bearer', origin };
-  }
-
-  for (const pair of (headers.get('cookie') ?? '').split(';')) {
-    const [name, ...value] = pair.trim().split('=');
-
-    if (name === sessionCookieName && value.length > 0) {
-      return { sessionToken: value.join('='), tokenSource: 'cookie', origin };
-    }
-  }
-
-  return { sessionToken: undefined, tokenSource: 'none', origin };
 }

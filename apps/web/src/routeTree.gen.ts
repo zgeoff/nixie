@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AddDeviceRouteImport } from './routes/add-device'
+import { Route as ComputerRouteImport } from './routes/computer'
 import { Route as DefinitionsRouteImport } from './routes/definitions'
 import { Route as DeviceRouteImport } from './routes/device'
 import { Route as FilesRouteImport } from './routes/files'
@@ -34,6 +35,11 @@ const IndexRoute = IndexRouteImport.update({
 const AddDeviceRoute = AddDeviceRouteImport.update({
   id: '/add-device',
   path: '/add-device',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ComputerRoute = ComputerRouteImport.update({
+  id: '/computer',
+  path: '/computer',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DefinitionsRoute = DefinitionsRouteImport.update({
@@ -110,6 +116,7 @@ const TasksEndedRoute = TasksEndedRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/add-device': typeof AddDeviceRoute
+  '/computer': typeof ComputerRoute
   '/definitions': typeof DefinitionsRoute
   '/device': typeof DeviceRoute
   '/files': typeof FilesRoute
@@ -128,6 +135,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/add-device': typeof AddDeviceRoute
+  '/computer': typeof ComputerRoute
   '/definitions': typeof DefinitionsRoute
   '/device': typeof DeviceRoute
   '/files': typeof FilesRoute
@@ -147,6 +155,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/add-device': typeof AddDeviceRoute
+  '/computer': typeof ComputerRoute
   '/definitions': typeof DefinitionsRoute
   '/device': typeof DeviceRoute
   '/files': typeof FilesRoute
@@ -167,6 +176,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/add-device'
+    | '/computer'
     | '/definitions'
     | '/device'
     | '/files'
@@ -185,6 +195,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/add-device'
+    | '/computer'
     | '/definitions'
     | '/device'
     | '/files'
@@ -203,6 +214,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/add-device'
+    | '/computer'
     | '/definitions'
     | '/device'
     | '/files'
@@ -222,6 +234,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AddDeviceRoute: typeof AddDeviceRoute
+  ComputerRoute: typeof ComputerRoute
   DefinitionsRoute: typeof DefinitionsRoute
   DeviceRoute: typeof DeviceRoute
   FilesRoute: typeof FilesRoute
@@ -252,6 +265,13 @@ declare module '@tanstack/react-router' {
       path: '/add-device'
       fullPath: '/add-device'
       preLoaderRoute: typeof AddDeviceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/computer': {
+      id: '/computer'
+      path: '/computer'
+      fullPath: '/computer'
+      preLoaderRoute: typeof ComputerRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/definitions': {
@@ -358,6 +378,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AddDeviceRoute: AddDeviceRoute,
+  ComputerRoute: ComputerRoute,
   DefinitionsRoute: DefinitionsRoute,
   DeviceRoute: DeviceRoute,
   FilesRoute: FilesRoute,

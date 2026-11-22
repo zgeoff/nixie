@@ -13,6 +13,8 @@ import {
   terminalAccount,
   terminalCgroupName,
   terminalMemoryLimitBytes,
+  vncConnectWaitMs,
+  vncPort,
 } from './desktop/constants';
 import { createTerminalCgroup } from './desktop/create-terminal-cgroup';
 import { prepareDisk } from './desktop/prepare-disk';
@@ -20,6 +22,7 @@ import { startDesktop } from './desktop/start-desktop';
 import { makeComputerHandler } from './make-computer-handler';
 import { makeDiskMarker } from './make-disk-marker';
 import { makeScanChannel } from './make-scan-channel';
+import { makeStdoutWriter } from './make-stdout-writer';
 import { makeXDriver } from './screen/make-x-driver';
 import { runScreenTool } from './screen/run-screen-tool';
 import {
@@ -29,6 +32,8 @@ import {
   makeShellHandler,
 } from './shell/make-shell-handler';
 import { makeSeparateAccount } from './shell/terminal-account';
+import { connectVNC } from './vnc/connect-vnc';
+import { makeVNCRelay } from './vnc/make-vnc-relay';
 
 // The image's guest runs as root, to start the desktop's processes as their own accounts and to put
 // the terminal's processes in their cgroup. It hands no root to any of them.
@@ -44,6 +49,8 @@ const deniedRanges = (process.env['NIXIE_DENIED_RANGES'] ?? '')
   .split(',')
   .filter((range) => range !== '');
 
+// one stream per open watch, and the web client opens one at a time
+const maxVNCStreams = 4;
 const channel = makeScanChannel();
 
 const cgroup = await createTerminalCgroup(
@@ -142,13 +149,17 @@ const shell = makeShellHandler({
 await runComputerGuest(
   {
     input: Bun.stdin.stream(),
-    write: async (bytes) => {
-      await Bun.write(Bun.stdout, bytes);
-    },
+    write: makeStdoutWriter(),
   },
   makeComputerHandler({ browser, shell }),
   40 * 1024 * 1024,
-  { onReady: channel.bind },
+  {
+    onReady: channel.bind,
+    onVNCFrame: makeVNCRelay({
+      connect: (events) => connectVNC({ port: vncPort, waitMs: vncConnectWaitMs }, events),
+      maxStreams: maxVNCStreams,
+    }),
+  },
 );
 
 await cgroup.kill();

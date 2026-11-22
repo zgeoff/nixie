@@ -1,15 +1,16 @@
-import { join } from 'node:path';
 import type { Clock } from '@heynixie/clock';
 import { systemClock } from '@heynixie/clock';
 import type { Logger } from '@heynixie/logger';
 import type { Sandbox, SandboxAdapter } from '@heynixie/sandbox';
 import { buildSandboxSpec, findKeptSandbox, sandboxSizes } from '@heynixie/sandbox';
 import { computerOwner, legacyComputerOwners } from './computer-owner';
-import type { ComputerFolder } from './copy-computer-folder';
 import { computerFolders, copyComputerFolder } from './copy-computer-folder';
 import type { GuestSession, OutOfCallScans } from './make-guest-session';
 import { makeGuestSession } from './make-guest-session';
+import { moveOldSandboxes, wakeOld } from './move-old-sandboxes';
 import type { CallResult, ComputerCall } from './types';
+import { openComputerWatch } from './watch/open-computer-watch';
+import type { WatchConnection, WatchSocket } from './watch/types';
 
 export interface ComputerOptions {
   readonly adapter: SandboxAdapter;
@@ -71,6 +72,14 @@ export interface Computer {
   // keeps the sandbox awake until the returned function runs, or until `forMs` passes
   readonly hold: (forMs: number) => () => void;
 
+  // Opens a watch of the desktop for a socket: it wakes the sandbox if it sleeps, holds it awake and
+  // relays the desktop's VNC stream to the socket, minus the viewer's input. The watch counts from
+  // this call until the connection it returns ends.
+  readonly watch: (socket: WatchSocket) => WatchConnection;
+
+  // true while a watch is open
+  readonly isWatched: () => boolean;
+
   // destroys the computer and any sandbox of an earlier release, so the next call makes an empty one
   readonly reset: () => Promise<void>;
 
@@ -92,6 +101,9 @@ interface ComputerState {
   idle: AbortController | null;
   readonly tabs: Map<string, string>;
   tabCount: number;
+
+  // the watches open now, which hold no turn
+  readonly watches: { count: number };
 }
 
 interface ComputerContext {
@@ -111,6 +123,7 @@ export function startComputer(options: ComputerOptions): Computer {
     idle: null,
     tabs: new Map(),
     tabCount: 0,
+    watches: { count: 0 },
   };
 
   const context: ComputerContext = { options, clock: options.clock ?? systemClock, state };
@@ -119,6 +132,17 @@ export function startComputer(options: ComputerOptions): Computer {
     call: (call) => runCall(context, call),
     settleMove: () => settleMove(context),
     hold: (forMs) => holdAwake(context, forMs),
+    watch: (socket) =>
+      openComputerWatch(
+        {
+          watches: state.watches,
+          logger: context.options.logger,
+          hold: () => holdAwake(context, null),
+          readGuest: (isEnded) => readWatchGuest(context, isEnded),
+        },
+        socket,
+      ),
+    isWatched: () => state.watches.count > 0,
     reset: () => resetComputer(context),
     tabs: buildTabs(state),
     stop: () => stopGuest(state),
@@ -323,100 +347,6 @@ async function replaceOld(
   }
 }
 
-async function wakeOld(sandbox: Sandbox): Promise<void> {
-  if (sandbox.suspension.kind === 'memory') {
-    await sandbox.suspension.wake();
-  }
-}
-
-const diskUsedMarker = '.nixie-disk-used';
-
-// Copies the profile and the files of the earlier release's browser and shell sandboxes into the
-// computer's disk and destroys both, only when every copy passed its check. It runs before the
-// guest starts, so Chromium has written nothing to the new disk.
-async function moveOldSandboxes(context: ComputerContext, sandbox: Sandbox): Promise<boolean> {
-  if (context.state.isMoved) {
-    return true;
-  }
-
-  const old = await readOldSandboxes(context);
-
-  if (old.length === 0) {
-    context.state.isMoved = true;
-
-    return true;
-  }
-
-  const startedAtMs = context.clock.now();
-
-  try {
-    for (const entry of old) {
-      await wakeOld(entry.sandbox);
-
-      await copyComputerFolder({
-        from: entry.sandbox,
-        fromEnv: context.options.legacyHomeEnv ?? {},
-        to: sandbox,
-        toEnv: context.options.homeEnv ?? {},
-        folder: entry.folder,
-      });
-    }
-
-    const home = await sandbox.resolveHome(context.options.homeEnv ?? {});
-
-    await sandbox.copyIn([
-      { path: join(home.copyPath, diskUsedMarker), content: new Uint8Array() },
-    ]);
-  } catch (error) {
-    context.options.logger(
-      'computer.move_failed',
-      { reason: error instanceof Error ? error.message : String(error) },
-      'warn',
-    );
-
-    return false;
-  }
-
-  for (const entry of old) {
-    try {
-      await entry.sandbox.destroy();
-    } catch (error) {
-      context.options.logger('computer.move_failed', { reason: String(error) }, 'warn');
-
-      return false;
-    }
-  }
-
-  context.state.isMoved = true;
-
-  context.options.logger('computer.moved', {
-    sandboxes: old.length,
-    durationMs: context.clock.now() - startedAtMs,
-  });
-
-  return true;
-}
-
-// the earlier sandboxes, each with the folder it kept: the browser's profile and the shell's files
-const legacySources = [
-  { owner: legacyComputerOwners.browser, folder: 'profile' },
-  { owner: legacyComputerOwners.shell, folder: 'files' },
-] as const satisfies readonly { readonly owner: string; readonly folder: ComputerFolder }[];
-
-async function readOldSandboxes(
-  context: ComputerContext,
-): Promise<readonly { readonly sandbox: Sandbox; readonly folder: ComputerFolder }[]> {
-  const listed = await Promise.all(
-    legacySources.map(async (source) => {
-      const sandboxes = await context.options.adapter.list(source.owner);
-
-      return sandboxes.map((sandbox) => ({ sandbox, folder: source.folder }));
-    }),
-  );
-
-  return listed.flat();
-}
-
 const defaultMaxMessageBytes = 48 * 1024 * 1024;
 
 async function readyGuest(context: ComputerContext, sandbox: Sandbox): Promise<GuestSession> {
@@ -552,7 +482,8 @@ async function settleMove(context: ComputerContext): Promise<MoveGate> {
   }
 }
 
-function holdAwake(context: ComputerContext, forMs: number): () => void {
+// A hold of null lasts until the function it returns runs.
+function holdAwake(context: ComputerContext, forMs: number | null): () => void {
   const state = context.state;
 
   const ended = new AbortController();
@@ -572,7 +503,9 @@ function holdAwake(context: ComputerContext, forMs: number): () => void {
     scheduleSleep(context);
   };
 
-  void releaseAfter(context.clock.sleep(forMs, ended.signal), release);
+  if (forMs !== null) {
+    void releaseAfter(context.clock.sleep(forMs, ended.signal), release);
+  }
 
   return release;
 }
@@ -581,6 +514,42 @@ async function releaseAfter(waiting: Promise<unknown>, release: () => void): Pro
   await waiting;
 
   release();
+}
+
+// The guest for a watch's stream: the running one, or one started after waking the sandbox. The
+// turn is held only while it starts. The result is null when another call kept the turn past the
+// limit, the move did not finish, or the watch ended first.
+async function readWatchGuest(
+  context: ComputerContext,
+  isEnded: () => boolean,
+): Promise<GuestSession | null> {
+  const state = context.state;
+
+  if (state.guest !== null && !state.isAsleep) {
+    return state.guest;
+  }
+
+  const release = await takeTurn(state, context.options.turnWaitMs ?? defaultTurnWaitMs, context);
+
+  if (release === null) {
+    return null;
+  }
+
+  state.idle?.abort();
+
+  try {
+    if (isEnded()) {
+      return null;
+    }
+
+    const sandbox = await readySandbox(context);
+    const isMoved = await moveOldSandboxes(context, sandbox);
+
+    return isMoved && !isEnded() ? await readyGuest(context, sandbox) : null;
+  } finally {
+    release();
+    scheduleSleep(context);
+  }
 }
 
 async function resetComputer(context: ComputerContext): Promise<void> {

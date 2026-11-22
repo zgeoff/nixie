@@ -6,9 +6,12 @@ import { startSocketProxy } from '@heynixie/egress';
 import { runComputerGuest } from '@heynixie/wire';
 import { makeComputerHandler } from './make-computer-handler';
 import { makeScanChannel } from './make-scan-channel';
+import { makeStdoutWriter } from './make-stdout-writer';
 import { makeStubDriver } from './screen/make-stub-driver';
 import { bridgePort, buildProxyEnv, makeShellHandler } from './shell/make-shell-handler';
 import { ownAccount } from './shell/terminal-account';
+import { makeStubVNCLink } from './vnc/make-stub-vnc-link';
+import { makeVNCRelay } from './vnc/make-vnc-relay';
 
 // The computer of the test build runs as a plain process of the host, with no display and no
 // accounts of its own, so Chromium is headless and a command runs as the host's user. Every host
@@ -76,11 +79,15 @@ const shell = makeShellHandler({
 await runComputerGuest(
   {
     input: Bun.stdin.stream(),
-    write: async (bytes) => {
-      await Bun.write(Bun.stdout, bytes);
-    },
+    write: makeStdoutWriter(),
   },
   makeComputerHandler({ browser, shell }),
   40 * 1024 * 1024,
-  { onReady: channel.bind },
+  {
+    onReady: channel.bind,
+    onVNCFrame: makeVNCRelay({
+      connect: (events) => Promise.resolve(makeStubVNCLink(events)),
+      maxStreams: 4,
+    }),
+  },
 );

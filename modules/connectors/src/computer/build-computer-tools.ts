@@ -9,6 +9,7 @@ import type { ComputerState } from './computer-state';
 import { buildComputerState } from './computer-state';
 import type { ComputerToolOptions } from './computer-tool-options';
 import { refuseComputer, refuseUntilMoved } from './run-computer-call';
+import type { Computer } from './start-computer';
 import type { ComputerAttempt } from './types';
 
 export interface ComputerTools {
@@ -17,6 +18,9 @@ export interface ComputerTools {
   // runs the queued tools: browser_fill, browser_click, screen_click, screen_type and run, and
   // settles an old name
   readonly connector: ActionConnector;
+
+  // opens a watch of the desktop for a socket
+  readonly watch: Computer['watch'];
 }
 
 const refusedSchema = z.object({ code: z.string(), message: z.string() });
@@ -25,6 +29,7 @@ export function buildComputerTools(options: ComputerToolOptions): ComputerTools 
   const state = buildComputerState();
 
   return {
+    watch: options.computer.watch,
     tools: [
       ...buildBrowserReadTools(options, state),
       ...buildBrowserActTools(options, state),

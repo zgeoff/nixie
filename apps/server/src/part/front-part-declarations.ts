@@ -1,4 +1,4 @@
-import { defaultAPISettings } from '@heynixie/api';
+import { createWatchTickets, defaultAPISettings } from '@heynixie/api';
 import { buildRunSettings } from '@heynixie/sessions';
 import { readDefinitionsContext } from '../definition/read-definitions-context';
 import { buildSeedInputs } from '../seed/build-seed-inputs';
@@ -25,7 +25,7 @@ export const frontPartDeclarations: readonly AnyPartDeclaration<ServerPartValues
   {
     name: 'context',
     needs: ['inputs'],
-    uses: ['session_cleanup', 'code_run', 'notebook'],
+    uses: ['session_cleanup', 'code_run', 'notebook', 'computer'],
     start: async (parts) => {
       const options = parts.get('inputs').options;
 
@@ -81,6 +81,11 @@ export const frontPartDeclarations: readonly AnyPartDeclaration<ServerPartValues
           ...context.apiContext,
           readCodeCleanup: () => parts.find('code_run')?.cleanup.destroyForRecords ?? null,
           readNotebook: () => parts.find('notebook') ?? null,
+          computerWatch: {
+            tickets: createWatchTickets(context.apiContext.clock),
+            logger: options.log,
+            readWatch: () => parts.find('computer')?.watch ?? null,
+          },
         },
       };
     },

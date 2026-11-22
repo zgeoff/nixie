@@ -4,7 +4,7 @@ The files in [`deploy/compose/`](../../deploy/compose/) run nixie on one host wi
 nixie and the web client from one release, each image named by its version tag and digest, and one
 Caddy origin that sends `/rpc` to nixie and every other path to the web client. impd runs on the
 same host as its own stack, outside this recipe, and nixie reaches it outbound by the URL in
-`config.yaml`. nixie decrypts its sops secrets file in its own process at start, so no plaintext
+`config.yaml`. nixie decrypts its sops secrets file in its own process at start, so no decrypted
 secret reaches the container's configuration or its disk.
 [The server](../architecture/deployment/server.md) covers the process and its secrets.
 
@@ -43,6 +43,13 @@ secret reaches the container's configuration or its disk.
 
 The origin listens on `127.0.0.1:8080`. `NIXIE_BIND` and `NIXIE_PORT` set the address and the port.
 Put HTTPS for your host name in front of the origin, on loopback or your private network only.
+
+Clients open the watch socket at `/rpc/computer/watch-stream`, with a one-use ticket in the query.
+The recipe's Caddyfile writes no access log, but Caddy writes the request address into its error log
+when nixie is down, so the Caddyfile filters the `ticket` query parameter out of every log line.
+When you add an access log, or put a proxy with its own log in front, drop the query of that path
+from each log line too. The `/rpc*` rule already sends the socket to nixie, and Caddy carries
+WebSocket upgrades without more settings.
 
 An upgrade changes the tag and the digest of 3 images together: nixie, web, and the backup image
 when the deployment runs one, as a release's notes list them. A rollback reverts that change. The

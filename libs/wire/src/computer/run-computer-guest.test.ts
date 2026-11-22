@@ -2,16 +2,19 @@ import { expect, test } from 'bun:test';
 import { encodeFrame } from '../frame/encode-frame';
 import { makeFrameDecoder } from '../frame/make-frame-decoder';
 import { decodeComputerGuestFrame } from './decode-computer-guest-frame';
+import { decodeVNCFrame } from './decode-vnc-frame';
 import { encodeComputerMessage } from './encode-computer-message';
+import { encodeVNCFrame } from './encode-vnc-frame';
 import type { ComputerScanAsks } from './run-computer-guest';
 import { runComputerGuest } from './run-computer-guest';
+import type { VNCFrame } from './vnc-frame';
 
 function setupTest() {
   const inbound = new TransformStream<Uint8Array, Uint8Array>();
 
   const writer = inbound.writable.getWriter();
   const decode = makeFrameDecoder(1_000_000);
-  const sent: ReturnType<typeof decodeComputerGuestFrame>[] = [];
+  const sent: (ReturnType<typeof decodeComputerGuestFrame> | VNCFrame)[] = [];
   const first = Promise.withResolvers<void>();
   const counted: { count: number; resolve: () => void }[] = [];
 
@@ -28,6 +31,7 @@ function setupTest() {
       }),
     send: (message: Parameters<typeof encodeComputerMessage>[0]) =>
       writer.write(encodeFrame(encodeComputerMessage(message))),
+    sendVNC: (frame: VNCFrame) => writer.write(encodeFrame(encodeVNCFrame(frame))),
     close: () => writer.close(),
     start: (
       handle: Parameters<typeof runComputerGuest>[1],
@@ -38,7 +42,7 @@ function setupTest() {
           input: inbound.readable,
           write: (bytes) => {
             for (const message of decode(bytes)) {
-              sent.push(decodeComputerGuestFrame(message));
+              sent.push(decodeVNCFrame(message) ?? decodeComputerGuestFrame(message));
               first.resolve();
 
               for (const waiter of counted) {
@@ -215,4 +219,59 @@ test('it fails a hop that waits when the input closes', async () => {
   await running;
 
   expect(asked).rejects.toThrow('the input closed before the server answered a hop');
+});
+
+test('it passes a VNC frame to its handler while a request is running, and sends its answer', async () => {
+  const ctx = setupTest();
+  const release = Promise.withResolvers<void>();
+  const received: VNCFrame[] = [];
+
+  const running = ctx.start(
+    async () => {
+      await release.promise;
+
+      return { kind: 'closed', ok: true };
+    },
+    {
+      onVNCFrame: (frame, send) => {
+        received.push(frame);
+        void send({ kind: 'vnc-close', stream: frame.stream });
+      },
+    },
+  );
+
+  await ctx.send({ op: 'close', tab: 't1' });
+  await ctx.sendVNC({ kind: 'vnc-open', stream: 's1' });
+  await ctx.waitForFrames(1);
+
+  release.resolve();
+
+  await ctx.close();
+
+  await running;
+
+  expect(received).toStrictEqual([{ kind: 'vnc-open', stream: 's1' }]);
+
+  expect(ctx.sent).toStrictEqual([
+    { kind: 'vnc-close', stream: 's1' },
+    { kind: 'closed', ok: true },
+  ]);
+});
+
+test('it never queues a VNC frame as a request', async () => {
+  const ctx = setupTest();
+  const handled: unknown[] = [];
+
+  const running = ctx.start((request) => {
+    handled.push(request);
+
+    return Promise.resolve({ kind: 'closed', ok: true });
+  });
+
+  await ctx.sendVNC({ kind: 'vnc-open', stream: 's1' });
+  await ctx.close();
+
+  await running;
+
+  expect(handled).toStrictEqual([]);
 });

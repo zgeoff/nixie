@@ -1,5 +1,20 @@
 # One origin for nixie: the API and nixie's health endpoint go to nixie, and every other path to the
 # web client, so the browser's session cookie reaches both. HTTPS terminates in front of this origin.
+# Caddy writes the request address into its error log, even with no access log, so the log drops the
+# ticket that the watch socket carries in its query.
+{
+	log {
+		format filter {
+			wrap json
+			fields {
+				request>uri query {
+					delete ticket
+				}
+			}
+		}
+	}
+}
+
 :8080 {
 	handle /rpc* {
 		reverse_proxy nixie:8080

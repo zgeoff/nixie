@@ -90,14 +90,43 @@ Enrolment, code issue, revoke, message send, record forget, the changes of the
 task definition change, and each task control share one table of client action IDs, which holds the
 first result of each action and a hash of its input. A retry with the same ID and input gets the
 first result, and the same ID with another procedure, input or caller gets
-`CLIENT_ACTION_ID_REUSED`. Two results hold secrets that nixie keeps only as hashes, so their
-retries answer with fresh values that replace the first:
+`CLIENT_ACTION_ID_REUSED`. These results hold secrets that nixie keeps only as hashes, or not at
+all, so a retry gets a fresh value that replaces the first:
 
 - The API answers an enrolment retry with the same session and a fresh token, and the first token
   stops working. It works only while the code it used would still work.
 - The API answers a code issue retry with a fresh code that keeps the first code's lapse time, so
   one action never leaves 2 codes working. Once the first code is used or lapsed the action is over,
   and a retry gets `CLIENT_ACTION_ID_REUSED`.
+- The API answers a `computer.watch` retry with a fresh watch address. The stored result records
+  that an address was minted and holds none.
+
+## Watching the computer
+
+`computer.watch` takes a client action ID and answers `streamURL`, a path on the API's own origin
+that the client resolves against the page's origin, so the browser's session cookie reaches it. The
+path never takes its host from the caller's headers. It is a checked action for a signed-in session
+of the `full` scope only. A wall-panel session and a read-only token get the refusal that every call
+outside their allow lists gets, and a revoked or lapsed session gets `UNAUTHORIZED`. It answers
+`COMPUTER_UNAVAILABLE` when the server runs no computer.
+
+The URL names `/rpc/computer/watch-stream` and carries a ticket in its query. The ticket is 32
+random bytes that live in the API's memory for
+[a short lifetime](../../../modules/api/src/computer/create-watch-tickets.ts) and open one socket.
+
+- The upgrade redeems the ticket, which deletes it, and then checks that the session cookie of the
+  upgrade request resolves to the session that minted it. Only the cookie counts, because a
+  browser's socket sends it and never a bearer token. Any failure answers a bare 401 and keeps the
+  reason out of the answer.
+- The ticket is never stored, because a retry mints a fresh one, and never logged: a refusal logs
+  the route without the query.
+- The socket accepts binary messages only, up to a size cap, and closes on text with code 1003. It
+  relays both ways through [the computer's watch](../connectors/computer.md#watching).
+- The socket closes with code 1008 when its session is revoked or lapses, including while the
+  sandbox is still waking. The API follows `session.revoked` records and re-probes the session on a
+  timer of the shorter of the idle limit and the last-seen interval.
+- The server serves the socket from its own `Bun.serve`, ahead of the Elysia app, so a request that
+  asks for the route skips the app's handlers and takes the server's call gate like any other call.
 
 ## Refusals
 
@@ -188,7 +217,7 @@ compared.
 A forget removes one record with its own text for good, so the text is gone from every copy nixie
 keeps. That covers a message, a reply, a tool call or result, an action, a proposal answer and every
 other kind that carries [erasable fields](../core/erasable-fields.md#declaring-erasable-kinds),
-except 3 groups:
+except these:
 
 - A moment's own records, which the moment's removal takes.
 - A memory item's own records, which the item's forget takes.
@@ -200,13 +229,14 @@ field has a key of its own. A reply that quotes the forgotten text stays readabl
 forgotten too.
 
 The API reads the kinds from `forgettableKinds` in the contract library, and a test holds each
-erasable kind to exactly one of the 3 groups and the list. The forget is a checked action bound to
-the record's thread and sequence. The API answers `RECORD_NOT_FOUND` for a sequence that names a
-record outside the list, a record on another thread, and a record with no thread, such as a session
-label. It answers `ACTION_NOT_FINISHED` for the record that queued an action that has neither run
-nor been cancelled, because the action reads its arguments from that record. The refusal writes
-nothing, so the same client action ID succeeds once the action has run or a stop cancelled it. It
-runs as a durable operation in 2 parts, as a [memory forget](../memory/store.md#forgetting) does:
+erasable kind to exactly one of the moment, memory item and note groups and the list. The forget is
+a checked action bound to the record's thread and sequence. The API answers `RECORD_NOT_FOUND` for a
+sequence that names a record outside the list, a record on another thread, and a record with no
+thread, such as a session label. It answers `ACTION_NOT_FINISHED` for the record that queued an
+action that has neither run nor been cancelled, because the action reads its arguments from that
+record. The refusal writes nothing, so the same client action ID succeeds once the action has run or
+a stop cancelled it. It runs as a durable operation in 2 parts, as a
+[memory forget](../memory/store.md#forgetting) does:
 
 1. In the transaction that keeps the action's result, the API commits a `record.forget_started`
    record on the record's thread, which names the record by its sequence, and a

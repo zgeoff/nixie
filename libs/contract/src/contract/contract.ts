@@ -4,6 +4,7 @@ import { codeFileSchema } from '../file/code-file-schema';
 import { spanSchema } from '../span/span-schema';
 import { approvalContract } from './approval-contract';
 import { clippedPayloadSchema } from './clipped-payload-schema';
+import { computerContract } from './computer-contract';
 import { definitionNoticeSchema } from './definition-notice-schema';
 import { definitionsContract } from './definitions-contract';
 import { devicesContract } from './devices-contract';
@@ -437,6 +438,7 @@ export const contract = {
   },
   notebook: notebookContract,
   images: imagesContract,
+  computer: computerContract,
   files: {
     read: signedIn
       .errors({

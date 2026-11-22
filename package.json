@@ -40,6 +40,7 @@
       "@modelcontextprotocol/client": "2.4.0",
       "@modelcontextprotocol/server": "2.4.0",
       "@msw/data": "1.1.8",
+      "@novnc/novnc": "1.7.0",
       "@mswjs/interceptors": "0.45.11",
       "@orpc/client": "1.16.1",
       "@orpc/contract": "1.16.1",

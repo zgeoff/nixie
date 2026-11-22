@@ -1,4 +1,6 @@
 import { expect, mock, onTestFinished, test } from 'bun:test';
+import { nativeWebSocket } from '@heynixie/testing';
+import invariant from 'tiny-invariant';
 import { startFrontProxy } from './start-front-proxy';
 
 function setupTest() {
@@ -136,4 +138,57 @@ test('it stops the proxy when the test finishes', () => {
 
     expect(reached).toBeFalse();
   });
+});
+
+test('it bridges a WebSocket on an /rpc path to the API with its cookie', async () => {
+  const received: string[] = [];
+
+  const answerRequest = (request: Request, server: Bun.Server<undefined>) => {
+    received.push(request.headers.get('cookie') ?? '');
+
+    return server.upgrade(request) ? undefined : new Response(null, { status: 400 });
+  };
+
+  const api = Bun.serve({
+    fetch: answerRequest,
+    hostname: '127.0.0.1',
+    port: 0,
+    websocket: {
+      message: (socket, message) => {
+        socket.send(`echo ${String(message)}`);
+      },
+    },
+  });
+
+  onTestFinished(async () => {
+    await api.stop(true);
+  });
+
+  const proxy = startFrontProxy({
+    apiURL: `http://127.0.0.1:${api.port}`,
+    webURL: 'http://127.0.0.1:9',
+  });
+
+  const socket: unknown = Reflect.construct(nativeWebSocket, [
+    `${proxy.url.replace('http', 'ws')}/rpc/computer/watch-stream?ticket=t`,
+    { headers: { cookie: 'session=abc' } },
+  ]);
+
+  invariant(socket instanceof nativeWebSocket, 'the socket is a WebSocket');
+
+  onTestFinished(() => {
+    socket.close();
+  });
+
+  const reply = Promise.withResolvers<string>();
+
+  socket.addEventListener('open', () => {
+    socket.send('hello');
+  });
+
+  socket.addEventListener('message', (event) => {
+    reply.resolve(String(event.data));
+  });
+
+  expect([await reply.promise, received]).toStrictEqual(['echo hello', ['session=abc']]);
 });
