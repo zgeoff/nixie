@@ -8,7 +8,8 @@
 The assistant gets a notebook for thinking that is too long or too unsettled for memory: research, a
 diary, an argument with one of its own items. Memory holds short facts that nixie puts in front of
 the assistant each turn. A note is the assistant's own writing, and the assistant reads it only when
-it opens or searches the notebook: no retrieval, opening or block shows a note.
+it opens or searches the notebook: per-turn retrieval, the session's opening and the blocks nixie
+builds before a turn never show a note.
 
 A note has a short ID, a title, a markdown body of up to 50,000 characters, tags, versions, and a
 private flag. A typed link from a note points at another note, a memory item, a moment or an event
@@ -108,15 +109,15 @@ notebook.walk({ from: 'n4w8k2c6rd', hops: 2 });
 ```ts
 // notebook module
 type LinkTarget = { note: string } | { memory: string } | { moment: string } | { event: string };
-// note, memory and moment take a short ID. A UUID is looked up in the declared kind's table and
-// stored as its short ID. event takes the decimal event ID that log.read shows: events have no
+// note, memory and moment take a short ID, or a UUID, looked up in the declared kind's table; the
+// link stores the UUID, and every result shows the short ID. event takes the decimal event ID that log.read shows: events have no
 // short IDs, so this is the one target that breaks the short-ID rule.
 
 type LinkType = 'supersedes' | 'disputes' | 'part-of' | 'cites' | 'related';
 
 type NotebookWriteInput = {
   title: string; // one line, 1 to 200 characters
-  body: string; // 1 to notebook.note_chars characters
+  body: string; // 1 character or more; past notebook.note_chars is NOTE_TOO_LONG
   tags?: string[]; // 0 to 10, each one line of 1 to 40 characters
   isPrivate?: boolean; // default false
 };
@@ -198,11 +199,11 @@ message that holds the ID it names. `notebook.find` and `notebook.check` have no
 - `NO_MATCH` and `MANY_MATCHES` name the change by its index, and no change applies. A change with
   `all: true` is never `MANY_MATCHES`.
 - `NOT_FOUND` is a `find` text that appears nowhere in the version, and carries `parts`.
-- `BAD_TARGET` is an ID in no valid format. `UNKNOWN_TARGET` is a well-formed ID with no active row
-  of the declared kind, a target already forgotten or destroyed, or an event that `log.read` would
-  not show the caller. A note links to an event only as `log.read` shows it: a message or tool
-  result on a thread the calling task run can read. The refusal reads the same for each case, so a
-  link never shows that a record on another thread exists.
+- `BAD_TARGET` is an ID in no valid format. `UNKNOWN_TARGET` is a well-formed ID with no row of the
+  declared kind, a target already forgotten or destroyed, or an event off the calling task run's own
+  thread. A retired item is a valid target, so a note can supersede it. A note links to an event
+  only on the caller's own thread: a message or tool result there. The refusal reads the same for
+  each case, so a link never shows that a record on another thread exists.
 - `BAD_LINK` is a type that the link kinds refuse between these kinds.
 
 ### Link kinds
@@ -231,6 +232,7 @@ notebook.linked            -- a link, or a new reason for it; no thread
   payload:  from (UUID), to (LinkTarget), type
   erasable: reason, when present
 notebook.unlinked          -- payload: from, to, type
+notebook.note_read         -- payload: note; each notebook.read that returns a result
 notebook.private_opened    -- payload: note; notebook.openPrivate in the web client
 notebook.note_forgetting   -- payload: note, version; the forget's first part
 notebook.note_forgotten    -- payload: note, shortID; the forget's end
@@ -259,7 +261,7 @@ notebook_notes                 -- notebook module
   is_private   integer
   created_at   integer
   edited_at    integer         -- the newest version
-  read_at      integer null    -- the newest notebook.read call record that names the note
+  read_at      integer null    -- the newest notebook.note_read record
   owner_opened_at integer null -- the newest notebook.private_opened record
 
 notebook_versions
@@ -274,7 +276,7 @@ notebook_versions
 notebook_links
   from_note_id text
   target_kind  text            -- 'note', 'memory', 'moment' or 'event'
-  target_id    text            -- a short ID, or an event ID
+  target_id    text            -- the target's UUID, or an event ID; tools show the short ID
   type         text
   reason_seq   integer null    -- the notebook.linked record that holds the reason
   created_at   integer
@@ -282,20 +284,22 @@ notebook_links
 ```
 
 No table holds free text. At start, the notebook module decrypts the current version of every active
-note, and keeps the titles, the tags, a keyword index and a vector index in process memory only, as
-the [memory store's indexes](../../architecture/memory/store.md#the-indexes) do. An index on disk
-would keep a forgotten note's words. The module encodes notes in the background after start, as
-memory does, and meaning search reports `isMeaningPartial` until it finishes. The build measures the
+note, and keeps the titles, the tags, a keyword index and a vector index in process memory only,
+built with the chunker, encoder and index code that memory exports for it, as the
+[memory store's indexes](../../architecture/memory/store.md#the-indexes) do. An index on disk would
+keep a forgotten note's words. The module encodes notes in the background after start, as memory
+does, and meaning search reports `isMeaningPartial` until it finishes. The build measures the
 indexes' memory and the start's encoding time at 1,000 notes of 50,000 characters, and states both
-in its PR.
+in its PR. When the indexes pass 512 MiB or the encoding passes 10 minutes, the build lowers the
+default `max_notes` until both fit.
 
 ### Memory's link counts
 
 ```ts
 // memory module
 interface ItemLinkCounts {
-  readCounts(itemIDs: string[]): Map<string, { disputedBy: number; supersededBy: number }>;
-  // memory passes item UUIDs; the notebook maps them to the short IDs its links store
+  readCounts(itemIDs: string[]): Promise<Map<string, { disputedBy: number; supersededBy: number }>>;
+  // memory passes item UUIDs, the form links store
 }
 // the server passes the notebook module's implementation; memory imports nothing from notebook
 // recall counts the two fields against its page budget
@@ -317,7 +321,7 @@ notebook: # the notebook module reads it
   max_notes: 1000 # active notes; a write past it is NOTEBOOK_FULL
   check_reason_repeats: 3 # a related reason on more links than this is repeated
 
-forget_notices: # the events block reads it; false turns every kind off
+forget_notices: # the server reads it; `forget_notices: false` turns every kind off
   note: true # default true
 ```
 
@@ -340,20 +344,23 @@ when it is unset, as in the session prompt.
 ```ts
 // contract lib
 notebook.listNotes({ query?: string, tags?: string[], showPrivate?: boolean, after?: string });
-// → { notes: [{ note, title, tags, version, updatedAt, backlinkCount, isPrivate }], next }
-notebook.readNote({ note: 'n4w8k2c6rd', version?: 2, showPrivate?: boolean });
+// → { notes: [{ note, title, tags, version, updatedAt, backlinkCount, isPrivate, match? }], next,
+//     isMeaningPartial }   // searches as notebook.find does with by 'both', 20 a page
+notebook.readNote({ note: 'n4w8k2c6rd', version?: 2, showPrivate?: boolean, historyAfter?: string });
+//   history: the notebook.history entries, 50 a page, with historyNext
 // → { note, version, versionCount, title, tags, isPrivate, body, links, backlinks, history,
 //     readAt, ownerOpenedAt }
 //   each link carries its target's title or gist, or isGone
 //   a private note leaves out body; a private note with showPrivate false returns
 //   { note, isPrivate: true } alone
 notebook.openPrivate({ clientActionID, note: 'd8p3q1z6mw', version?: 6 }); // a checked action
-// → { body, ownerOpenedAt }  // appends notebook.private_opened; UNKNOWN_NOTE | NOT_PRIVATE
+// → { body, previousBody, ownerOpenedAt }  // the version and the one before it, for the diff
+//   appends one notebook.private_opened; UNKNOWN_NOTE | NOT_PRIVATE
 notebook.readCheck({ showPrivate?: boolean }); // → NotebookCheck
 notebook.previewForget({ note: 'n4w8k2c6rd' });
 // → { version: 2, title, versionCount: 2, linkCount: 4, backlinkCount: 1 }
 notebook.forget({ clientActionID, note: 'n4w8k2c6rd', version: 2 }); // a checked action
-// → { forgottenAt, backup }  // backup read from the sets at or after notebook.note_forgotten
+// → { forgottenAt, backup }  // backup: the backup sets staged at or after notebook.note_forgotten
 //   or UNKNOWN_NOTE | STALE_VERSION
 conversation.previewForget({ sequence });
 // → { …existing fields, notes: { note, title }[] } // the active notes that link to the record
@@ -365,7 +372,7 @@ code.run({ language: 'python', program: '…', files: [{ path: 'zine.md', note: 
 // the note's current body, as markdown
 
 interface NoteBodies {
-  readBody(shortID: string): string | null; // null for an unknown or forgotten note
+  readBody(shortID: string): Promise<string | null>; // null for an unknown or forgotten note
 }
 // connectors owns the interface, and the server passes the notebook module's implementation
 ```
@@ -401,7 +408,9 @@ Records and text:
   versions only, with each UUID under `hidden.uuids`
   ([tool calls](../../architecture/connectors/tool-calls.md#records)). So a note forget leaves no
   readable copy in a tool's records, and `log.read` shows a notebook result as IDs only.
-- `read_at` folds from the call records of `notebook.read`, so a read writes no record of its own.
+- A read that returns a result, of any version, appends `notebook.note_read` with the note's UUID
+  alone, after it reads `read_at`. So `readAt` shows the read before this one, and a refused read
+  moves nothing.
 - A walk returns references and labels: a note's title, an item's gist and state, a moment's title
   and state as `moment.read` shows them, and an event's time and author role as `log.read` shows
   them. It never returns an item's text, a moment's text or a record's text.
@@ -422,7 +431,10 @@ Records and text:
   names the note, checked after a file ID and before a page ID.
 - A note forget deletes the captured model requests in the
   [turn-input log](../../architecture/policy/turn-input-log.md) from the note's first record on, as
-  a record forget does, because their tool results can hold the note's text.
+  a record forget does, because their tool results can hold the note's text. Notes sit on no thread,
+  so its scope holds no threads and the note's first sequence as its floor.
+- A note forget never reaches a `code.run` result or a file its program wrote, as a forget of a
+  message never reaches a reply that quoted it.
 
 Versions and limits:
 
@@ -503,8 +515,11 @@ Forgets:
   in a walk and as dangling in the check.
 - A forget of a link's target, an item, a moment or a record, leaves the link in place, and the walk
   lists the target in `gone`. A note's text that quotes the target stays until you forget the note.
-  So `conversation.previewForget` lists each note that links to the record, and the confirmation
-  shows that those notes keep their text. The API module reads those notes from the notebook module.
+  So `conversation.previewForget` lists each note that links to the record, with a private note's
+  title left out, and the confirmation shows that those notes keep their text. The API module reads
+  those notes from the notebook module. The memory and moment previews stay as they are.
+- The server parses `forget_notices`, and registers the notebook's events entry only when
+  `forget_notices.note` is true.
 - With `forget_notices.note` true, the events block lists each finished note forget once, at the
   time of `notebook.note_forgotten`, within the block's cap.
 
@@ -522,10 +537,13 @@ The web client:
 - The bar gains a Notebook link after Moments. `/notebook` lists the notes newest edit first,
   searches by words, meaning and tags with `notebook.listNotes`, and opens each note at
   `/notebook/<note short ID>`. A "Show private notes" toggle sets `showPrivate`.
-- A note shows its body, tags, versions with a word diff between each and the one before, its links
-  grouped by type with their reasons and their targets' titles or gists, its backlinks, and when the
-  assistant last read it. A target links to its own view: a note, the memory view, a moment, or the
-  record in its thread. A gone target shows as such.
+- A note shows its body, tags, versions with a word diff between each and the one before, from the
+  word diff the memory view uses, its links grouped by type with their reasons and their targets'
+  titles or gists, its backlinks, and when the assistant last read it. An event target shows its
+  time, its role and the start of its text. A target links to its own view: a note, the memory view,
+  a moment, or the record in its thread, through an anchor the conversation and task views gain
+  where they lack one. A gone target shows as such.
+- A private note's versions and diffs show only after Open.
 - A private note shows its title, links and marks, with its body folded under a line that says the
   assistant marked it private, and an Open button. The marks show when the assistant last read it
   and when you last opened it.
