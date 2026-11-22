@@ -38,10 +38,13 @@ and a meaning search reports `isMeaningPartial` until the encoding ends. Before 
 notebook encodes the notes written or edited since the last one and waits a short time for the
 encoding to end.
 
-The default `notebook.max_notes` sits below the 1,000 notes of the first design, because a start
-with that many full notes encoded for longer and held more memory than the notebook's budget allows.
-The measurement and the budget sit in a comment beside the default in the code. A deployment with
-more cores or shorter notes can raise the limit.
+The `notebook` section of the deployment config holds `note_chars`, the most characters of one body
+(50,000), `max_notes`, the active notes, where a write past it is `NOTEBOOK_FULL`, and
+`check_reason_repeats`, the number of links that must repeat a reason before the check reports it
+(3). The default `notebook.max_notes` sits below the 1,000 notes of the first design, because a
+start with that many full notes encoded for longer and held more memory than the notebook's budget
+allows. The measurement and the budget sit in a comment beside the default in the code. A deployment
+with more cores or shorter notes can raise the limit.
 
 ## The tools
 
@@ -53,9 +56,31 @@ and a task holds one only when its tool list names it.
 
 - An edit binds to the version it read, and the check and the record commit in one write
   transaction. An edit that sets only `append` binds to the current version at commit, so 2 tasks
-  can append to one note.
-- `notebook.read` pages a long body at a paragraph break so that each result fits the recall page
-  limit, and part 1 alone carries the links.
+  can append to one note. A link or an unlink never makes an edit stale.
+- Every edit writes the whole new version, title and tags included, so reading any version decrypts
+  one record, and nixie never rewrites a version. An edit that changes only the title, the tags or
+  the private flag makes a new version, and an edit that sets no field is refused with
+  `NOTHING_TO_CHANGE`. An edit applies its changes, then its append, and `NOTE_TOO_LONG` checks the
+  result. Tags that match ignoring case merge into one, with the first spelling kept.
+- `notebook.read` pages a long body so that each result fits the recall page limit, cutting at a
+  paragraph break, then a line break, then a space. Every part repeats the title and the tags. Part
+  1 alone carries the links and the backlinks, at most 25 of each, with `linkCount` and
+  `backlinkCount` giving the totals, and `notebook.walk` reaches the rest. `notebook.read` reads
+  `read_at` into its result, then appends `notebook.note_read` with the note's UUID alone, so
+  `readAt` shows the read before this one. A refused read appends no record. Its `find` matches as
+  `web_fetch` does: case-insensitive plain text over the body as stored.
+- `notebook.history` lists versions newest first, 50 a call. `notebook.find` returns at most 20
+  notes a call: its words search matches any query word, its meaning search ranks a note by its best
+  chunk above the floor of `memory.recall`, and reciprocal rank fusion merges the two. A walk stops
+  at 200 nodes, or sooner when its result would pass the tool output limit, and sets `isCut`.
+- A note holds at most one link of each type to each target, and a second `notebook.link` with the
+  same source, target and type replaces the reason. `PART_OF_CYCLE` checks the part-of links that
+  exist when the link commits. A note ID written in a body is text: only `notebook.link` makes a
+  link.
+- A walk shows an event's time and role only for an event on the calling task run's own thread, when
+  the run's tool list holds `log.read`, and an item's gist only when the list holds `memory.recall`.
+  Otherwise the node holds the ID alone. The web client is the user's own view, so
+  `notebook.readNote` shows every target's title or gist.
 - A walk follows links both ways and visits each node once. It returns references and labels, never
   the text of a note, an item, a moment or a record. A target that was forgotten is listed as gone
   and the walk goes no further from it.
@@ -74,6 +99,17 @@ retrieval show `disputedBy` and `supersededBy` on an item: a count of active not
 included, above 0 only. A count holds no note ID and no title, and it falls when a note is unlinked
 or forgotten. Memory never imports the notebook, and the root `turbo.json` denies the dependency.
 
+Nothing that builds a turn's context reads a note's text, title or ID: per-turn retrieval, the
+pinned core, the memory index, the session status and the compaction instruction. The notes' indexes
+belong to the notebook, so a note never enters the item index, the trigger index or the moments'
+vector index, and a note has no trigger phrases. `memory.recall` and `moment.read` never list the
+notes that link to an item or a moment. The notebook adds no entry to the session status. A
+retrieval test holds that nixie adds no note text and no note ID to the blocks it builds, even when
+a message matches a note's title word for word. When `memory.remember` or `memory.edit` refuses with
+`TEXT_TOO_LONG`, its message points the assistant at a note. The descriptions of `memory.edit` and
+`memory.retire` say to keep an argument with an item in the notebook, linked with `supersedes` or
+`disputes`.
+
 `code.run` takes a note as an input file only when the caller's tool list holds `notebook.read`. The
 [code tool](../connectors/code-tool.md#the-steps-of-a-call) owns the rule.
 
@@ -85,7 +121,8 @@ note, and every link to or from one, unless the call sets `showPrivate`, and the
 every note before the private entries go, so a note that only a private note links never shows as an
 orphan. The body stays out of `notebook.readNote`. Only the checked action `notebook.openPrivate`
 returns it, with the version before it, and appends `notebook.private_opened`, so a refetch or a
-retry never moves the mark.
+retry never moves the mark. Opening a note that is not private writes nothing.
+`notebook.previewForget` and `notebook.forget` work on a private note without opening it.
 
 ## Forgetting a note
 

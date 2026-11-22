@@ -346,17 +346,56 @@ only, because the library reads the window when it loads.
   for a new ticket. A server with no computer shows no button and says it has none.
 - Leaving the page closes the socket and stops the viewer.
 
+## The notebook pages
+
+The notebook pages show the [notebook](../memory/notebook.md) read-only. Forget is the one control
+that changes a note. Each page keeps the private toggle in the `private` search parameter, as
+`?private=1`, and sends it as `showPrivate` on every notebook call. Turning it on writes nothing.
+With it off, a private note and every link to or from one are absent, with no placeholder or count.
+Each link between the pages carries the parameter along.
+
+- `/notebook` lists the notes newest edit first from `notebook.listNotes`, 20 a page, with Load
+  more. A row shows the title, the tags, the update time and the backlink count. The search box and
+  the tag field set the `query` and `tags` search parameters, and the call searches by words and
+  meaning. When `isMeaningPartial` is true, the page says that the results match words only.
+- `/notebook/<note ID>` shows one note from `notebook.readNote`: the title, the tags, the version
+  and the version count, the body, the links grouped by type with their reasons, the backlinks and
+  the history. A link shows its target's title or gist and links to the target's own page: a note,
+  the memory page or a moment. A target that is gone shows "Gone". The history pages 50 versions at
+  a time, and a version link sets the `version` search parameter to read an older version.
+- The body renders as a [reply](#the-conversation-view) renders, with the chat's renderer: no raw
+  HTML and safe links only. `![alt](image:<image short ID>)` shows the stored image through
+  `images.readBytes`, and an unknown or forgotten image shows "image unavailable". Any other image
+  source renders as a link, never as an `<img>`, because a body can carry text from a fetched page
+  and a remote image would call out when the user opens the note.
+- A private note, with the toggle on, shows its title, links and marks, with its body folded under a
+  line that says the assistant marked it private, and an Open button. The marks show when the
+  assistant last read it and when the user last opened it. Open calls `notebook.openPrivate` with
+  one `clientActionID` for as long as the page holds the note, so a retry after a failed call never
+  moves the mark twice. It then shows the body, the time of this opening and a word diff against the
+  version before it. The history shows only after Open. With the toggle off, a private note's page
+  shows "This note is private" and a button that turns the toggle on, with no title.
+- `/notebook/check` shows `notebook.readCheck`: the orphans, the dangling links and the repeated
+  reasons, each with the count the API reports and a link to its note.
+- Forget on a note's page, private ones too, reads `notebook.previewForget` and shows what goes: the
+  versions, the links and the backlinks. The confirmation calls `notebook.forget` with the version
+  the preview read. `STALE_VERSION` asks the user to reload the page. After the forget, the page
+  shows the key backup state as the images page does, and removes every cached notebook query, so no
+  cached list or note holds the title or the body.
+- The record forget's confirmation lists the active notes that link to the record, with "A private
+  note" in place of a private note's title.
+
 ## The app shell
 
-Every page sits in one shell, which the root route renders. Its bar holds 14 links: Conversation,
-Memory, Proposals, Mandates, Moments, Tasks, Ended runs, Files, Images, Computer, Definitions,
-Reminders, Passkeys and Add a device. The link of the current page carries `aria-current="page"`,
-and a detail page marks its parent, so a task marks Tasks. A page with no entry marks nothing. Below
-768px the links fold into a menu button that opens a side drawer. The drawer is a native modal
-dialog, so the rest of the page goes inert while it is open. It closes on a link tap, on Escape and
-on a tap outside it, and focus returns to the menu button. CSS alone switches between the bar and
-the button, so the server render matches the client. The conversation fills the height below the
-bar.
+Every page sits in one shell, which the root route renders. Its bar holds 15 links: Conversation,
+Memory, Proposals, Mandates, Moments, Tasks, Ended runs, Files, Images, Computer, Notebook,
+Definitions, Reminders, Passkeys and Add a device. The link of the current page carries
+`aria-current="page"`, and a detail page marks its parent, so a task marks Tasks. A page with no
+entry marks nothing. Below 768px the links fold into a menu button that opens a side drawer. The
+drawer is a native modal dialog, so the rest of the page goes inert while it is open. It closes on a
+link tap, on Escape and on a tap outside it, and focus returns to the menu button. CSS alone
+switches between the bar and the button, so the server render matches the client. The conversation
+fills the height below the bar.
 
 ## Approvals
 
