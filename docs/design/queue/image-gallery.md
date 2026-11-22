@@ -162,8 +162,9 @@ images: {
 - With "Show all" on and no image, the page says that images appear here when the assistant draws or
   imports one.
 - When `images.list` fails, the page says that it can't load the images, with a Retry button.
-- A thumbnail or a full image that fails to load shows "Unavailable", and the lightbox keeps its
-  text. A tile that gets `IMAGE_FORGOTTEN` leaves the grid.
+- A read that gets `IMAGE_FORGOTTEN` removes the tile from the grid, and shows "Forgotten" in the
+  lightbox. Any other failed read of a thumbnail or a full image shows "Unavailable", and the
+  lightbox keeps its text.
 - An `UNAUTHORIZED` answer renders the enrolment form, as on every page.
 
 ## Decisions
