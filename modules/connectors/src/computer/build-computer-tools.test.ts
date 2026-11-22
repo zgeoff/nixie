@@ -69,6 +69,7 @@ async function setupTest(options: SetupOptions) {
     images: { browser: 'browser-image', shell: 'shell-image' },
     argv: { browser: ['guest'], shell: ['guest'] },
     deniedRanges: [],
+    timeZone: 'UTC',
     logger: () => {},
   });
 

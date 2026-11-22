@@ -73,7 +73,12 @@ async function setupTest() {
     canTunnel: true,
   });
 
-  const state = await launchBrowser({ home: join(folder, 'browser'), proxyPort: proxy.port, gate });
+  const state = await launchBrowser({
+    home: join(folder, 'browser'),
+    proxyPort: proxy.port,
+    gate,
+    timeZone: 'Pacific/Auckland',
+  });
 
   onTestFinished(async () => {
     await state.context.close();
@@ -125,3 +130,10 @@ test.skipIf(!hasChromium)(
     expect(ctx.scannedTexts).toSatisfyAny((text: string) => text.endsWith('\n\nplain body'));
   },
 );
+
+test.skipIf(!hasChromium)('it runs the pages in the time zone it is given', async () => {
+  const ctx = await setupTest();
+  const zone = await ctx.page.evaluate(() => new Intl.DateTimeFormat().resolvedOptions().timeZone);
+
+  expect(zone).toBe('Pacific/Auckland');
+});

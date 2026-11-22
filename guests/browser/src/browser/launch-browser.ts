@@ -10,6 +10,7 @@ export interface BrowserLaunch {
   readonly home: string;
   readonly proxyPort: number;
   readonly gate: ScanGate;
+  readonly timeZone: string;
   readonly executablePath?: string;
 }
 
@@ -32,6 +33,7 @@ export async function launchBrowser(launch: BrowserLaunch): Promise<BrowserState
   const context = await chromium.launchPersistentContext(profile, {
     headless: true,
     viewport,
+    timezoneId: launch.timeZone,
     ...(launch.executablePath === undefined ? {} : { executablePath: launch.executablePath }),
     acceptDownloads: true,
     serviceWorkers: 'block',

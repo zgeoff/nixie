@@ -45,6 +45,7 @@ export async function startComputerPart(inputs: ComputerPartInputs): Promise<Com
     },
     argv: isTestSandbox(inputs.adapter) ? testArgv : imageArgv,
     deniedRanges: [...(publicEgress?.hostAddresses ?? []), ...(publicEgress?.egressDeny ?? [])],
+    timeZone: options.config.time.default_zone,
     logger: options.log,
   });
 

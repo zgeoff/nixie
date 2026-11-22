@@ -20,6 +20,9 @@ export interface ComputerOptions {
 
   // the ranges the deployment lists as internal, which each guest's proxy refuses
   readonly deniedRanges: readonly string[];
+
+  // the time zone the browser's pages see
+  readonly timeZone: string;
   readonly logger: Logger;
   readonly clock?: Clock;
 
@@ -300,7 +303,10 @@ async function readyGuest(
 
   const stream = await sandbox.spawn({
     argv: context.options.argv[kind],
-    env: { NIXIE_DENIED_RANGES: context.options.deniedRanges.join(',') },
+    env: {
+      NIXIE_DENIED_RANGES: context.options.deniedRanges.join(','),
+      ...(kind === 'browser' ? { NIXIE_TIME_ZONE: context.options.timeZone } : {}),
+    },
     maxMessageBytes: context.options.maxMessageBytes ?? defaultMaxMessageBytes,
   });
 

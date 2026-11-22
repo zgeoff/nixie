@@ -30,6 +30,7 @@ await runComputerGuest(
     home: homedir(),
     resolveHost: () => Promise.resolve(['127.0.0.1']),
     checkAddress: () => true,
+    timeZone: process.env['NIXIE_TIME_ZONE'] ?? 'UTC',
     deniedRanges: [],
   }),
   1024 * 1024,

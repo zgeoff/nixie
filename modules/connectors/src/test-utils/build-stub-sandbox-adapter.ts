@@ -19,7 +19,11 @@ export type StubGuest = (
 export interface StubSandboxAdapter extends SandboxAdapter {
   readonly created: readonly { readonly id: string; readonly spec: SandboxSpec }[];
   readonly destroyed: readonly string[];
-  readonly spawned: readonly { readonly sandboxID: string; readonly argv: readonly string[] }[];
+  readonly spawned: readonly {
+    readonly sandboxID: string;
+    readonly argv: readonly string[];
+    readonly env: Readonly<Record<string, string>>;
+  }[];
   readonly countMostLive: () => number;
 
   // every exec a sandbox ran, in order
@@ -64,7 +68,13 @@ export function buildStubSandboxAdapter(
   const destroyFailures = [...(options.destroyFailures ?? [])];
   const created: { id: string; spec: SandboxSpec }[] = [];
   const destroyed: string[] = [];
-  const spawned: { sandboxID: string; argv: readonly string[] }[] = [];
+
+  const spawned: {
+    sandboxID: string;
+    argv: readonly string[];
+    env: Readonly<Record<string, string>>;
+  }[] = [];
+
   const execs: { sandboxID: string; command: RunSpec }[] = [];
 
   const files = new Map<string, Map<string, Uint8Array<ArrayBuffer>>>();
@@ -142,7 +152,11 @@ async function applyCallFailure(failure: StubCallFailure | undefined): Promise<v
 interface StubState {
   readonly guest: StubGuest;
   readonly live: Map<string, Sandbox>;
-  readonly spawned: { sandboxID: string; argv: readonly string[] }[];
+  readonly spawned: {
+    sandboxID: string;
+    argv: readonly string[];
+    env: Readonly<Record<string, string>>;
+  }[];
   readonly destroyed: string[];
   readonly destroyFailures: StubCallFailure[];
   readonly execs: { sandboxID: string; command: RunSpec }[];
@@ -169,7 +183,7 @@ function buildStubSandbox(id: string, spec: SandboxSpec, state: StubState): Sand
         return Promise.reject(new Error(`sandbox ${id} is destroyed`));
       }
 
-      state.spawned.push({ sandboxID: id, argv: command.argv });
+      state.spawned.push({ sandboxID: id, argv: command.argv, env: command.env ?? {} });
 
       return Promise.resolve(startExecStream(startGuest(state.guest), command.maxMessageBytes));
     },

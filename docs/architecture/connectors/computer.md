@@ -25,6 +25,10 @@ one of each, owned by `computer-browser` and `computer-shell`, and recovery keep
 [sandbox sizes](sandboxes.md#sizes) hold their memory and disks. The images `nixie-browser` and
 `nixie-shell` come from `guests/browser` and `guests/shell`.
 
+Chromium runs in the time zone of `time.default_zone` in the config, so a page that shows "today" or
+an opening hour shows the user's. Nixie hands the zone to the browser guest when it starts the
+guest, so a changed zone reaches the browser at its next start.
+
 A guest is one long-lived process per wake. It reads frames from `libs/wire` on stdin, answers them
 one at a time on stdout, and holds no state nixie cannot rebuild, except the disk. The computer in
 `modules/connectors` owns the sandboxes:
