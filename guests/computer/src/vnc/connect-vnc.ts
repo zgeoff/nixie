@@ -19,12 +19,20 @@ interface Backlog {
 
   // the keys and buttons that the messages already written hold pressed
   readonly pressed: PressedInput;
+
+  // whether the link has ended, so the socket closes once the backlog has gone out
+  isEnding: boolean;
 }
 
 // Connects to the VNC server on its Unix socket. The server listens on no TCP port, and the socket's
 // folder is closed to every account but the server's and the guest's, so no other path reaches it.
 export async function connectVNC(target: VNCTarget, events: VNCLinkEvents): Promise<VNCLink> {
-  const backlog: Backlog = { chunks: [], sent: 0, pressed: makePressedInput() };
+  const backlog: Backlog = {
+    chunks: [],
+    sent: 0,
+    pressed: makePressedInput(),
+    isEnding: false,
+  };
 
   const socket = await connectWhenListening(target, {
     data: (_socket, data) => {
@@ -52,7 +60,9 @@ export async function connectVNC(target: VNCTarget, events: VNCLinkEvents): Prom
       flushBacklog(socket, backlog);
     },
     end: () => {
-      socket.end();
+      backlog.isEnding = true;
+
+      flushBacklog(socket, backlog);
     },
   };
 }
@@ -83,6 +93,7 @@ async function connectWhenListening(
 
 interface WritableSocket {
   readonly write: (bytes: Uint8Array) => number;
+  readonly end: () => void;
 }
 
 function flushBacklog(socket: WritableSocket, backlog: Backlog): void {
@@ -90,6 +101,10 @@ function flushBacklog(socket: WritableSocket, backlog: Backlog): void {
     const [head] = backlog.chunks;
 
     if (head === undefined) {
+      if (backlog.isEnding) {
+        socket.end();
+      }
+
       return;
     }
 

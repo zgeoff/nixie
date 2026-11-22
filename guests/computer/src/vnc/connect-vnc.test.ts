@@ -189,3 +189,27 @@ test('it releases a key that went down when its key-up is dropped in the backlog
     Buffer.from(new Uint8Array([4, 0, 0, 0, 0, 0, 0, 65])),
   ]);
 });
+
+test('it sends the releases that wait behind the socket before it closes on end', async () => {
+  const ctx = setupTest();
+
+  ctx.listen({ isPaused: true });
+
+  const link = await ctx.connect(0);
+
+  link.write(new Uint8Array([4, 1, 0, 0, 0, 0, 0, 65]));
+  link.write(ctx.bigMessage);
+  link.write(new Uint8Array([4, 0, 0, 0, 0, 0, 0, 65]));
+  link.flush();
+  link.end();
+
+  await ctx.readUntil(8 + ctx.bigMessage.byteLength + 8);
+
+  await ctx.clientClosed;
+
+  const received = ctx.readBytes();
+
+  expect(received.subarray(received.byteLength - 8)).toStrictEqual(
+    Buffer.from(new Uint8Array([4, 0, 0, 0, 0, 0, 0, 65])),
+  );
+});
