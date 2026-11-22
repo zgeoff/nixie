@@ -104,10 +104,10 @@ way the device left it, and the answer says what the browser holds:
 
 With the screen on, the page follows `devices.follow` and renders markdown like a reply and an image
 on black: `whole` scales it to fit and centres it, `fill` covers the screen and crops evenly. The
-page sends `devices.resize` after the window resizes, at most once every 250 ms and only when the
-size differs from the one the server has, which each stream connect and each answered resize set, so
-the assistant reads the new size within a second. A button toggles full screen on the page's root
-element with the Fullscreen API. Its label reads Full screen or Leave full screen, and follows
+page sends `devices.resize` after the window resizes, at most once per debounce window and only when
+the size differs from the one the server has, which each stream connect and each answered resize
+set, so the assistant reads the new size within a second. A button toggles full screen on the page's
+root element with the Fullscreen API. Its label reads Full screen or Leave full screen, and follows
 `fullscreenchange`, so Escape updates it. The page keeps the screen awake with the Wake Lock API
 while a stream is open, and asks for the lock again when the page shows again. The web server sends
 the page with a Content-Security-Policy that includes `frame-ancestors 'none'`.
