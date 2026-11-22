@@ -40,6 +40,10 @@ interface CallPolicy {
   // the hash of the operation the policy checked, which an open proposal for the same call carries
   readonly actionHash: string;
 
+  // what the hash covers beyond the call's own fields, which the call's proposal keeps
+  readonly expectURL?: string | undefined;
+  readonly expectWindow?: JSONObject | undefined;
+
   // the name the decision point and an action proposal know the call by, which a variant extends
   readonly policyTool: string;
 
@@ -216,6 +220,8 @@ export function makeCallRecorder(
           callSequence: written.sequence,
           tool: decided.policyTool,
           actionHash: decided.actionHash,
+          expectURL: decided.expectURL,
+          expectWindow: decided.expectWindow,
           effects: declaration.effects,
           cause,
           input: call.input,

@@ -1,7 +1,8 @@
 import { expect, test } from 'bun:test';
-import { writeRecords } from '@heynixie/log';
+import { withWriteTransaction, writeRecords } from '@heynixie/log';
 import { startTestLog } from '@heynixie/log/test-utils';
 import { buildMockSharedProposal } from '@heynixie/proposals/test-utils';
+import { buildActionHash } from './build-action-hash';
 import { buildActionProposalInput } from './build-action-proposal-input';
 import { makeActionProposalHandler } from './make-action-proposal-handler';
 
@@ -22,6 +23,47 @@ async function setupTest() {
 
   return {
     ...started,
+    approveBoundClick: async () => {
+      const input = { x: 10, y: 20 };
+      const expectWindow = { id: '0x1', picture: 'sha256:picture-1' };
+
+      const actionHash = buildActionHash({
+        tool: 'computer.screen_click',
+        input,
+        destinations: ['site.test'],
+        expectWindow,
+      });
+
+      const proposed = buildActionProposalInput({
+        definitions: { snapshotHash: 'snapshot-1' },
+        thread: 'conversation',
+        callSequence: 1,
+        tool: 'computer.screen_click',
+        actionHash,
+        expectWindow,
+        effects: ['send'],
+        cause: 'ask_rule',
+        input,
+        destinations: [{ value: 'site.test', replyTarget: false }],
+      });
+
+      const [written] = await writeRecords(started.log, [proposed.record]);
+
+      const row = buildMockSharedProposal({
+        thread: 'conversation',
+        createdSequence: written?.sequence ?? 0,
+        actionHash,
+      });
+
+      return withWriteTransaction(started.writer, (tx) =>
+        handler.approve({ tx, guard: () => Promise.resolve() }, row, {
+          proposalID: row.id,
+          actionHash,
+          choice: 'approve',
+          identityID: 'identity-1',
+        }),
+      );
+    },
     readBody: async (budgetReached?: string) => {
       const proposed = buildActionProposalInput({
         definitions: { snapshotHash: 'snapshot-1' },
@@ -70,4 +112,11 @@ test('it shows no budget sentence on the card of a call no budget refused', asyn
   const body = await ctx.readBody();
 
   expect(body?.sentence).toBe('Run test.buy (spend).');
+});
+
+test('it queues the approval of a click that its window and picture bind', async () => {
+  const ctx = await setupTest();
+  const outcome = await ctx.approveBoundClick();
+
+  expect(outcome.status).toBe('done');
 });

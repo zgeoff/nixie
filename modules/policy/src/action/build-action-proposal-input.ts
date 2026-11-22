@@ -17,6 +17,11 @@ export interface ActionProposalFacts {
   // or window, so an approval answers that call alone. Absent, the hash covers the tool, its input,
   // its destinations and its deadline.
   readonly actionHash?: string;
+
+  // the URL or the window that the hash covers, which the record keeps so an approval can rebuild
+  // the hash
+  readonly expectURL?: string | undefined;
+  readonly expectWindow?: JSONObject | undefined;
   readonly effects: readonly Effect[];
   readonly cause: AskCause;
   readonly input: JSONObject;
@@ -104,6 +109,10 @@ export function buildActionProposalInput(facts: ActionProposalFacts): ActionProp
       rule: alwaysAllow === null ? null : { hash: alwaysAllow.hash },
       ...gap,
       ...(facts.reopen === undefined ? {} : { actionID: facts.reopen.actionID }),
+      ...(facts.expectURL === undefined ? {} : { expectURL: facts.expectURL }),
+      ...(facts.expectWindow === undefined
+        ? {}
+        : { expectWindow: JSON.stringify(facts.expectWindow) }),
       ...(facts.stepKey === undefined ? {} : { stepKey: facts.stepKey }),
       ...(facts.budgetReached === undefined ? {} : { budgetReached: facts.budgetReached }),
       ...(facts.deadlineAt === undefined || facts.deadlineAt === null || facts.now === undefined

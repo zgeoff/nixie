@@ -40,6 +40,11 @@ export const actionProposedCodec = defineRecordCodec(
     sources: z.enum(ruleSources).array().exactOptional(),
     content: z.string().array().exactOptional(),
 
+    // What the action hash covers beyond the tool, its input, its destinations and its deadline, kept
+    // so that an approval rebuilds the same hash: the URL the call expects, or the window it expects as JSON text.
+    expectURL: z.string().exactOptional(),
+    expectWindow: z.string().exactOptional(),
+
     // the action a reopening proposal asks about, when it is not the proposal's own ID
     actionID: z.string().exactOptional(),
 

@@ -188,6 +188,8 @@ export async function runToolCall(
     deadlineAt,
     repeatOf,
     actionHash,
+    expectURL: prepared?.expectURL,
+    expectWindow: prepared?.expectWindow,
     policyTool,
     declaration: pickCallDeclaration(registered, effects),
     ...(prepared?.attachments === undefined ? {} : { attachments: prepared.attachments }),

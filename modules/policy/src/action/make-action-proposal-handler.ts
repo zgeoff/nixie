@@ -1,5 +1,10 @@
 import type { Definitions, JSONObject, Log, LogRecord, RecordInput } from '@heynixie/log';
-import { JSON_OBJECT_SCHEMA, readRecords, writeRecordsInTransaction } from '@heynixie/log';
+import {
+  JSON_OBJECT_SCHEMA,
+  parseJSONObject,
+  readRecords,
+  writeRecordsInTransaction,
+} from '@heynixie/log';
 import type {
   ApplyOutcome,
   ApplyRun,
@@ -400,6 +405,9 @@ async function queueAction(
     input: toJSONObject(erasable.input),
     destinations: erasable.destinations.map((destination) => destination.value),
     deadlineAt: payload.deadlineAt ?? null,
+    expectURL: payload.expectURL,
+    expectWindow:
+      payload.expectWindow === undefined ? undefined : parseJSONObject(payload.expectWindow),
   });
 
   if (hash !== row.actionHash) {
