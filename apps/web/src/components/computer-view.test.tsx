@@ -282,3 +282,80 @@ test('it says that another device holds the computer and sends no input', async 
     false,
   ]);
 });
+
+test('it stops the input and shows the hold over when the server ends the stream of the holder', async () => {
+  const user = userEvent.setup();
+  const ctx = setupTest();
+
+  network.use(
+    http.post('https://nixie.test/rpc/computer/takeOver', () =>
+      HttpResponse.json({ json: { takenOverAt: 1_700_000_000_000 }, meta: [] }),
+    ),
+  );
+
+  await createDeviceSession();
+
+  const rendered = render(<ComputerView loadViewer={ctx.loadViewer} />);
+
+  await rendered.findByText('The computer is waking');
+
+  ctx.started[0]?.events.onConnect();
+
+  const takeOverButton = await rendered.findByRole('button', { name: 'Take over' });
+
+  await user.click(takeOverButton);
+  await rendered.findByRole('button', { name: 'Hand back' });
+
+  ctx.started[0]?.events.onDisconnect();
+
+  const alert = await rendered.findByRole('alert');
+
+  expect([
+    alert.textContent,
+    rendered.queryByRole('button', { name: 'Hand back' }),
+    ctx.inputs.at(-1),
+  ]).toStrictEqual(['Your hold on the computer ended.', null, false]);
+});
+
+test('it shows the hold over when a hand-back finds that this device no longer holds it', async () => {
+  const user = userEvent.setup();
+  const ctx = setupTest();
+
+  network.use(
+    http.post('https://nixie.test/rpc/computer/takeOver', () =>
+      HttpResponse.json({ json: { takenOverAt: 1_700_000_000_000 }, meta: [] }),
+    ),
+    http.post('https://nixie.test/rpc/computer/handBack', () =>
+      HttpResponse.json(
+        {
+          json: { defined: true, code: 'NOT_TAKEN_OVER', status: 409, message: 'not held' },
+          meta: [],
+        },
+        { status: 409 },
+      ),
+    ),
+  );
+
+  await createDeviceSession();
+
+  const rendered = render(<ComputerView loadViewer={ctx.loadViewer} />);
+
+  await rendered.findByText('The computer is waking');
+
+  ctx.started[0]?.events.onConnect();
+
+  const takeOverButton = await rendered.findByRole('button', { name: 'Take over' });
+
+  await user.click(takeOverButton);
+
+  const handBackButton = await rendered.findByRole('button', { name: 'Hand back' });
+
+  await user.click(handBackButton);
+
+  const alert = await rendered.findByRole('alert');
+
+  expect([alert.textContent, ctx.inputs.at(-1)]).toStrictEqual([
+    'Your hold on the computer ended.',
+    false,
+  ]);
+});

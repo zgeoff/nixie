@@ -16,7 +16,7 @@ function setupTest(options: SetupOptions = {}) {
   const started: string[] = [];
   const ended: TakeoverEndedRecord[] = [];
   const calls = Promise.withResolvers<boolean>();
-  const releases = { count: 0 };
+  const releases = { count: 0, closes: 0 };
   const awake = { holds: 0, releases: 0 };
 
   const read: HandBackRead = {
@@ -60,6 +60,9 @@ function setupTest(options: SetupOptions = {}) {
     end: () => {},
     releaseInput: () => {
       releases.count += 1;
+    },
+    closeAfterRelease: () => {
+      releases.closes += 1;
     },
   };
 
@@ -290,4 +293,20 @@ test('it leaves a hold alone when an end names another device', async () => {
   const result = await ctx.takeover.end('idle', 'phone');
 
   expect([result.kind, ctx.takeover.isHeld()]).toStrictEqual(['not_taken_over', true]);
+});
+
+test.each([
+  { by: 'idle' as const, closes: 1 },
+  { by: 'restart' as const, closes: 1 },
+  { by: 'user' as const, closes: 0 },
+])('it closes the holder watches after a $by end $closes times', async (row) => {
+  const ctx = setupTest();
+
+  await ctx.takeover.start('laptop');
+
+  ctx.takeover.addWatch('laptop', ctx.watch);
+
+  await ctx.takeover.end(row.by, 'laptop');
+
+  expect(ctx.releases.closes).toBe(row.closes);
 });

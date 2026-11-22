@@ -30,6 +30,9 @@ interface WatchState {
   // the viewer's bytes that came before the stream opened
   readonly pending: Uint8Array[];
   pendingBytes: number;
+
+  // the release of the viewer's input that went out last
+  release: Promise<void>;
 }
 
 // A viewer sends a few hundred bytes before it hears from the desktop, so a wake that holds more
@@ -47,7 +50,14 @@ export function openComputerWatch(
 
   const releaseHold = host.hold();
   const filter = makeClientMessageFilter({ canInput: input.canInput });
-  const state: WatchState = { stream: null, isEnded: false, pending: [], pendingBytes: 0 };
+
+  const state: WatchState = {
+    stream: null,
+    isEnded: false,
+    pending: [],
+    pendingBytes: 0,
+    release: Promise.resolve(),
+  };
 
   const end = (): void => {
     if (state.isEnded) {
@@ -72,6 +82,9 @@ export function openComputerWatch(
     end,
     releaseInput: () => {
       releaseInput(host, state, filter, endAndClose);
+    },
+    closeAfterRelease: () => {
+      void closeAfter(state.release, endAndClose);
     },
     receive: (bytes) => {
       if (state.isEnded) {
@@ -192,7 +205,7 @@ function releaseInput(
     return;
   }
 
-  void sendRelease(host, stream, [...releases, fullUpdateRequest], end);
+  state.release = sendRelease(host, stream, [...releases, fullUpdateRequest], end);
 }
 
 async function sendRelease(
@@ -212,4 +225,10 @@ async function sendRelease(
 
     end();
   }
+}
+
+async function closeAfter(release: Promise<void>, close: () => void): Promise<void> {
+  await release;
+
+  close();
 }

@@ -188,3 +188,21 @@ test('it drops the viewer input that waits for a guest that is still waking', as
     '1',
   ]);
 });
+
+test('it closes the socket after the release has gone out, when the hold ended on its own', async () => {
+  const ctx = setupTest({ isGuestOpen: true });
+  const watch = ctx.open();
+
+  ctx.state.isHolding = true;
+
+  watch.receive(new Uint8Array([...ctx.version, 5, 1, 0, 10, 0, 20]));
+
+  await waitForCondition(() => ctx.streamed.length === 4);
+
+  watch.releaseInput();
+  watch.closeAfterRelease();
+
+  await waitForCondition(() => ctx.state.closed);
+
+  expect(ctx.streamed.slice(4)).toStrictEqual(['flush', '5,0,0,10,0,20', '3,0,0,0,0,0,5,0,3,32']);
+});

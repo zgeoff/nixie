@@ -16,7 +16,12 @@ async function setupTest() {
     readOnlyTokenHashes: [deriveSecretHash(readOnlyToken)],
   });
 
-  api.setWatch(() => ({ receive: () => {}, releaseInput: () => {}, end: () => {} }));
+  api.setWatch(() => ({
+    receive: () => {},
+    releaseInput: () => {},
+    closeAfterRelease: () => {},
+    end: () => {},
+  }));
 
   const owner = await createDeviceSession(api.context, 'laptop');
 

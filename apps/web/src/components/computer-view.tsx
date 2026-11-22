@@ -48,6 +48,8 @@ const messages = {
   failed: 'The computer can’t be watched right now.',
 } as const satisfies Record<WatchState['kind'], string>;
 
+const holdEndedMessage = 'Your hold on the computer ended.';
+
 export function ComputerView(props: ComputerViewProps): ReactNode {
   const nixie = useNixieClient();
   const target = useRef<HTMLDivElement>(null);
@@ -88,6 +90,14 @@ export function ComputerView(props: ComputerViewProps): ReactNode {
   }, [viewer, isHolding]);
 
   const isOver = state.kind === 'ended' || state.kind === 'failed';
+
+  // The server closes the holder's stream when a hold ends without the holder, by the idle time or a
+  // restart, and a stream that ended holds no desktop whatever the buttons last said.
+  useEffect(() => {
+    if (isOver && isHolding) {
+      setTakeover({ kind: 'refused', message: holdEndedMessage });
+    }
+  }, [isOver, isHolding]);
 
   const takeOver = async (): Promise<void> => {
     setTakeover({ kind: 'taking' });
@@ -164,6 +174,7 @@ export function ComputerView(props: ComputerViewProps): ReactNode {
 }
 
 const takeoverRefusals: Record<string, string> = {
+  NOT_TAKEN_OVER: holdEndedMessage,
   BUSY_TOO_LONG: 'The assistant is mid-action. Try again in a moment.',
   HELD_ELSEWHERE: 'Another device holds the computer.',
   COMPUTER_UNAVAILABLE: 'This nixie has no computer to take over.',
