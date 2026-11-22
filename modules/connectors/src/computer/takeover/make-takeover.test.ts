@@ -179,6 +179,28 @@ test('it ends a hold for its device, writes what the guest saw and drops the inp
   ]);
 });
 
+test('it closes the streams of every tab of the holder device when one tab hands back', async () => {
+  const ctx = setupTest();
+  const closed: string[] = [];
+
+  const buildTab = (name: string): WatchConnection => ({
+    ...ctx.watch,
+    closeAfterRelease: () => {
+      closed.push(name);
+    },
+  });
+
+  await ctx.takeover.start('laptop');
+
+  ctx.takeover.addWatch('laptop', buildTab('first tab'));
+  ctx.takeover.addWatch('laptop', buildTab('second tab'));
+  ctx.takeover.addWatch('phone', buildTab('phone'));
+
+  await ctx.takeover.end('user', 'laptop');
+
+  expect(closed).toStrictEqual(['first tab', 'second tab']);
+});
+
 test('it keeps the hold when another device hands back', async () => {
   const ctx = setupTest();
 
@@ -298,7 +320,7 @@ test('it leaves a hold alone when an end names another device', async () => {
 test.each([
   { by: 'idle' as const, closes: 1 },
   { by: 'restart' as const, closes: 1 },
-  { by: 'user' as const, closes: 0 },
+  { by: 'user' as const, closes: 1 },
 ])('it closes the holder watches after a $by end $closes times', async (row) => {
   const ctx = setupTest();
 

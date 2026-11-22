@@ -287,8 +287,9 @@ device holds the desktop at a time, and the hold lives in memory only.
   protocol messages that wait in the guest.
 - A hold ends when the holder hands back, when it idles out, or when the guest restarts or nixie
   restarts. A restart writes the end record at the next start. The sandbox does not sleep during a
-  hold, and a guest that stops on its own ends the hold with `restart`. When a hold ends without the
-  holder, the relay releases what the viewer pressed and closes the holder's socket.
+  hold, and a guest that stops on its own ends the hold with `restart`. When a hold ends, whoever
+  ends it, the relay releases what the viewer pressed and closes every socket of the holder's
+  device.
 - At the start of a hold the guest starts to list the sites its browser shows: the tab in view at
   the start, each tab that comes into view and each page that navigates while it shows. A tab that
   the person opens joins the tabs, so a hand-back names it. At the end, nixie reads the sites, the

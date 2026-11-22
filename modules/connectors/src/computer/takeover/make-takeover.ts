@@ -222,11 +222,9 @@ async function endHold(
   for (const watch of state.watches.get(held.deviceID) ?? []) {
     watch.releaseInput();
 
-    // the holder handed it back, or the hold ended on its own, which its viewer learns from the end
-    // of its stream
-    if (by !== 'user') {
-      watch.closeAfterRelease();
-    }
+    // every stream of the holder's device ends with the hold, whichever tab handed it back, so no
+    // viewer of that device goes on showing a hold that is over
+    watch.closeAfterRelease();
   }
 
   const read = by === 'restart' ? null : await readGuest(dependencies);

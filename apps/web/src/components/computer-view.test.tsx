@@ -243,8 +243,48 @@ test('it takes the desktop over and lets the viewer send input until it hands ba
 
   expect([calls, ctx.inputs]).toStrictEqual([
     ['takeOver', 'handBack'],
-    [false, true, false],
+    [false, true, false, false],
   ]);
+});
+
+test('it watches again with a new ticket after a hand-back, because the server ends the stream', async () => {
+  const user = userEvent.setup();
+  const ctx = setupTest();
+
+  network.use(
+    http.post('https://nixie.test/rpc/computer/takeOver', () =>
+      HttpResponse.json({ json: { takenOverAt: 1_700_000_000_000 }, meta: [] }),
+    ),
+    http.post('https://nixie.test/rpc/computer/handBack', () =>
+      HttpResponse.json({ json: { durationSeconds: 5 }, meta: [] }),
+    ),
+  );
+
+  await createDeviceSession();
+
+  const rendered = render(<ComputerView loadViewer={ctx.loadViewer} />);
+
+  await rendered.findByText('The computer is waking');
+
+  ctx.started[0]?.events.onConnect();
+
+  const takeOverButton = await rendered.findByRole('button', { name: 'Take over' });
+
+  await user.click(takeOverButton);
+
+  const handBackButton = await rendered.findByRole('button', { name: 'Hand back' });
+
+  await user.click(handBackButton);
+
+  await waitFor(() => {
+    expect(ctx.started).toHaveLength(2);
+  });
+
+  expect([
+    ctx.started[0]?.state.isStopped,
+    ctx.tickets.length,
+    new Set(ctx.tickets).size,
+  ]).toStrictEqual([true, 2, 2]);
 });
 
 test('it says that another device holds the computer and sends no input', async () => {

@@ -339,10 +339,11 @@ in the browser only, because the library reads the window when it loads.
 - Take over calls `computer.takeOver` and, once it answers, turns `viewOnly` off and focuses the
   viewer, so the user's keys and pointer reach the desktop. The status line then says that the user
   has taken over, and Take over becomes Hand back, which calls `computer.handBack` and turns
-  `viewOnly` on. A refused take-over shows its reason next to the button. The server closes the
-  holder's stream when a hold ends without the holder, by the idle time or a restart, and a page
-  whose stream ended shows "Your hold on the computer ended." and returns to view only. A hand-back
-  that finds the hold gone shows the same line.
+  `viewOnly` on, and then the page opens a new stream. A refused take-over shows its reason next to
+  the button. The server closes every stream of the holder's device when a hold ends, by a hand-back
+  from any tab, the idle time or a restart, and a page whose stream ended while it held shows "Your
+  hold on the computer ended." and returns to view only. A hand-back that finds the hold gone shows
+  the same line.
 - The status line reads "Connecting to the computer." until the ticket comes, then "The computer is
   waking" while the socket is open and no picture has come, and "Watching the computer. Take over to
   use it." once the viewer has drawn the desktop. The viewer's connect event comes before any

@@ -16,8 +16,8 @@ export interface WatchConnection {
   // device has ended, so none of its input passes after this.
   readonly releaseInput: () => void;
 
-  // Closes the socket once the release of that input has gone out. The hold ended for a reason its
-  // viewer did not choose, so the viewer's page learns it from the stream's end.
+  // Closes the socket once the release of that input has gone out. The hold ended, so every viewer
+  // of the holder's device learns it from the stream's end.
   readonly closeAfterRelease: () => void;
 
   // The socket closed or its session ended. Frames stop, and the watch releases the sandbox. Safe to

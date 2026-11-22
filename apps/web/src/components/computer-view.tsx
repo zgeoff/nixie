@@ -115,7 +115,9 @@ export function ComputerView(props: ComputerViewProps): ReactNode {
     try {
       await nixie.client.computer.handBack({ clientActionID: crypto.randomUUID() });
 
+      // the server ends every stream of this device with the hold, this tab's too, so it watches again
       setTakeover({ kind: 'watching' });
+      setAttempt((earlier) => earlier + 1);
     } catch (error) {
       setTakeover({ kind: 'refused', message: toRefusal(error) });
     }
