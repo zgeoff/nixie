@@ -7,9 +7,9 @@
 A device screen shows one thing at a time today: a block of markdown or an image. The assistant
 gains layouts: a grid of named regions, each showing its own content and updated or timed out on its
 own. A region holds markdown, an image, a live value that the device keeps fresh, or a web page the
-assistant writes. A page runs sealed in a sandboxed frame. It can load packages the owner approved,
-read the URLs declared with it, take messages from the assistant, and send events back when the
-owner touches it. The assistant sees a preview of the screen and each page's errors.
+assistant writes. A page runs sealed in a sandboxed frame. It can load packages you approved, read
+the URLs declared with it, take messages from the assistant, and send events back when you touch it.
+The assistant sees a preview of the screen and each page's errors.
 
 ## Shape
 
@@ -22,7 +22,8 @@ flowchart LR
   frame -->|"nixie.send"| device
   device -->|"devices.pageEvent"| server
   server -->|"device.page_event record"| model
-  server -->|"declared fetches, checking proxy"| web[the web]
+  server -->|"declared fetches, packages"| fetch[fetch sandbox]
+  fetch -->|"checking proxy"| web[the web]
 ```
 
 ## Contracts
@@ -30,7 +31,7 @@ flowchart LR
 ### Layouts and regions
 
 ```ts
-// connectors module: the device tools
+// devices module: the device tools
 device.layout({
   device: 'tb8r3k6m1q',
   columns: ['1fr', '2fr', '1fr'], // each a whole number of fr, 1 to 12; at most 6 columns
@@ -43,8 +44,10 @@ device.layout({
 });
 // → { device: 'tb8r3k6m1q', regions: ['pond', 'note', 'clock'] }
 //   or UNKNOWN_DEVICE | SCREEN_OFF | BAD_LAYOUT (overlapping or out-of-grid regions, bad names) | OFFLINE
-//   A new layout clears every region. device.show still shows one thing on the whole screen and
-//   leaves the layout; the next device.region puts the layout back.
+//   A new layout clears every region.
+
+device.layout({ device: 'tb8r3k6m1q', clear: true }); // removes the layout; the idle scene shows
+// → { device: 'tb8r3k6m1q', regions: [] }
 
 device.region({
   device: 'tb8r3k6m1q',
@@ -68,27 +71,47 @@ type PageContent = {
   html: string; // at most 200,000 characters
   packages?: string[]; // 'name@version', each one approved through device.addPackage
   fetches?: { url: string; refreshMinutes?: number }[]; // exact URLs, at most 8; refresh 5 to 1,440
+  images?: string[]; // image store short IDs the page may show, at most 20
 };
-// device.region with fetches declares a read of each URL's host as its destination, so the
-// decision point judges the URLs when the page is sent. Without fetches the page reads nothing.
+// device.region with fetches declares the existing `read` effect, with each URL's host as a
+// destination, so the decision point judges the URLs when the page is sent. Without fetches the
+// page reads nothing.
 ```
 
+The screen shows the first of these that holds:
+
+1. A `device.show` whose minutes have not passed.
+2. The layout, when it has one and at least one region shows content.
+3. The idle scene.
+
 ```ts
-// connectors module: a message into a page that shows, with no reload
+// devices module: a message into a page that shows, with no reload
 device.sendToPage({ device: 'tb8r3k6m1q', region: 'pond', data: { ripples: 3 } }); // data: JSON, at most 16 KiB
 // → { delivered: true } or UNKNOWN_REGION | NOT_A_PAGE | OFFLINE
 
-// connectors module: what the screen looks like, and what went wrong on it
+// devices module: what the screen looks like, and what went wrong on it
 device.preview({ device: 'tb8r3k6m1q' });
-// → { width: 2560, height: 551, errors: [{ region: 'pond', at, message: 'TypeError: …' }] } with a picture
-//   beside it. The picture comes from rendering the device's current layout in the computer
-//   sandbox's browser at the device's size. The errors come from the device itself: the last 20
-//   uncaught errors and console errors of each page region since its content last changed.
+// → { width: 1280, height: 276, pixelRatio: 2, errors: [{ region: 'pond', at, message: 'TypeError: …' }],
+//     picture: 'shown' } with the picture beside it,
+//   or picture: 'busy' | 'unavailable' with no picture when the computer is busy or not set up
 //   UNKNOWN_DEVICE | SCREEN_OFF; a device that is offline still returns its last errors.
 ```
 
-All five tools declare the `note` effect and run direct, as `device.show` does, except where a
-page's `fetches` add a read.
+The server sends the layout to the computer sandbox over the wire as files: the device page's grid,
+each region's content, the package files the pages name, the images they declare, and the last body
+of each declared fetch. The computer's browser opens them as a local page at the device's CSS size
+and pixel ratio, takes the picture, and fetches nothing. The preview takes the computer's busy slot,
+as a browser tool does.
+
+The errors come from the device: the last 20 uncaught errors and console errors of each page region
+since its content last changed, which the server keeps in memory.
+
+| Tool                                 | Effect                                             | Runs                                     |
+| ------------------------------------ | -------------------------------------------------- | ---------------------------------------- |
+| `device.layout`, `device.sendToPage` | `note`                                             | direct                                   |
+| `device.preview`                     | `note`                                             | direct                                   |
+| `device.region`                      | `note`, and a `read` of each declared fetch's host | direct when the rules allow, else queued |
+| `device.addPackage`                  | `install_package`, in the always-ask risk class    | queued                                   |
 
 ### The page's bridge
 
@@ -104,21 +127,27 @@ nixie.onMessage((data: JSONValue) => void): void; // device.sendToPage delivers 
 nixie.data(url: string): Promise<{ status: number; type: string; body: string; fetchedAt: string }>;
 // one of the page's declared fetches, as the server last fetched it; NOT_DECLARED for any other URL
 nixie.onData((url: string) => void): void; // a declared fetch refreshed
-nixie.size(): { width: number; height: number }; // the region's size in pixels, kept current
-nixie.image(image: string): string; // a URL for an image store short ID the frame may load
+nixie.size(): { width: number; height: number }; // the region's size in CSS pixels, kept current
+nixie.image(image: string): string; // the URL of a declared image; throws NOT_DECLARED for any other
 ```
 
 ```ts
-// contract lib: device session calls
-devices.pageEvent({ region, name, data, wake }); // from nixie.send
-devices.pageData({ region, url }); // from nixie.data; a declared URL of the region's page alone
-devices.pageError({ region, message }); // the bridge reports each uncaught error and console error
+// contract lib: device session calls; shown is the device.region_shown short ID of the page
+devices.pageEvent({ region, shown, name, data, wake }); // from nixie.send
+devices.pageData({ region, shown, url }); // from nixie.data; a declared URL of that page alone
+devices.pageError({ region, shown, message }); // each uncaught error and console error
+// A call whose shown no longer matches the region's content returns STALE and changes nothing.
+
+// contract lib: the devices.follow event for a region carries shown, and an image ticket for each
+// declared image. devices.follow's size gains pixelRatio, so CSS size = width / pixelRatio.
 ```
 
-The frame's opaque origin sends no session cookie, so the web server serves package files under
-`/device/packages/` with no session: they are public npm code. `nixie.image` returns a URL that
-carries a ticket for that one image, made with `crypto.randomUUID()` and valid for 10 minutes while
-the image shows in that region.
+The frame's opaque origin sends no session cookie. The API serves package files at
+`/rpc/device/packages/<name>@<version>/<path>` with no session: they are public npm code, and
+nothing else lives under that path. It serves each declared image at `/rpc/device/images/<ticket>`,
+where the ticket comes from `crypto.randomUUID()` when the region shows, works for that one image,
+and ends when the region's content changes. Both paths sit under `/rpc`, which the reverse proxy
+already sends to the API.
 
 ```text
 device.layout_set     -- payload: columns, rows, regions
@@ -127,26 +156,45 @@ device.page_event     -- payload: device, region, name, data (erasable), wake; o
 device.package_added  -- payload: name, version, integrity, size, publisher
 ```
 
-A `device.page_event` with `wake` wakes the conversation, and one without it waits in the events
-block of the conversation's next turn. The assistant reads each inside the untrusted-content
-markers, as "a page event from <device name>, region <region>: <name> <data>".
+A `device.page_event` with `wake` reaches the conversation through its inbox and wakes it, as a
+fired timer does. One without `wake` waits in the events block of the conversation's next turn.
+Either way the assistant reads the event's name and data inside an untrusted block, after the line
+"a page event from <device name>, region <region>".
 
 ### Packages
 
 ```ts
-// connectors module
+// devices module
 device.addPackage({ name: 'chart.js', version: '4.4.6' }); // an exact version; no ranges or tags
 // → { package: 'chart.js@4.4.6', files: ['dist/chart.umd.js', …] }
 //   or UNKNOWN_PACKAGE | TOO_BIG (over 5 MiB unpacked) | PACKAGE_KNOWN
 // declares ['install_package'], a new effect in the always-ask risk class, queued; destination:
-//   the registry's host. Its card shows the name, the version, the unpacked size, the publisher and
-//   the package's own description. No starter rule allows it, and the card offers no "always allow".
+//   the registry's host. No starter rule allows it, and the card offers no "always allow".
 ```
 
-On approval, the server downloads the tarball from the npm registry, checks it against the
-registry's integrity hash, unpacks it into nixie's data folder, and writes `device.package_added`. A
-page then loads a file with
-`<script src="/device/packages/chart.js@4.4.6/dist/chart.umd.js"></script>`.
+```ts
+// contract lib: the proposal gains a package block, which the card shows
+type ProposalPackage = {
+  name: string;
+  version: string;
+  unpackedBytes: number;
+  publisher: string; // the registry's _npmUser
+  description: string; // the publisher's own text; the card marks it as the publisher's words
+  integrity: string; // the registry's sha512; part of the action hash, so the approval binds it
+};
+```
+
+The name must be a valid npm package name and the version an exact semver version. The tool reads
+the registry's metadata through the fetch sandbox when it proposes the call. On approval, the fetch
+sandbox downloads the tarball, checks it against the approved integrity hash, and unpacks it. It
+refuses the whole package when an entry is a link, holds an absolute path or a `..` segment, or
+lands outside the package's own folder, or when the files pass 5 MiB. It hands the files back over
+the wire, and the server stores them in its data folder and writes `device.package_added`. A page
+then loads a file with
+`<script src="/rpc/device/packages/chart.js@4.4.6/dist/chart.umd.js"></script>`.
+
+Backups leave package files out. On start, the server downloads again each package whose
+`device.package_added` record has no files, and checks the same hash.
 
 ## Constraints
 
@@ -167,19 +215,25 @@ Page events:
 
 - A page event carries no authority. The assistant weighs it like any page it reads, and anything it
   does next goes through the rules and approval cards as before.
-- The device sends at most 1 page event a second and 30 a minute from one region, and drops the
-  rest. The server enforces the same limit. At most 6 events an hour from one device wake the
-  conversation; the rest wait for its next turn.
+- A page event can carry what the page read from its declared fetches. It reaches the assistant only
+  inside the untrusted-content markers, and the same markers wrap the preview's errors.
+- Each region sends at most 1 page event a second and 30 a minute; the device drops the rest, and
+  the server enforces the same limits. Each device wakes the conversation at most 6 times an hour; a
+  later event marked `wake` waits for the next turn.
 - Page events come only from a device whose screen is on and whose region shows a page.
 
 The network:
 
-- The server fetches each declared URL when the region shows and every `refreshMinutes` after,
-  through the checking proxy. The page's script can't name a URL of its own, so it can't put what it
-  holds into a query string.
+- The fetch sandbox fetches each declared URL, through its checking proxy, when the region shows and
+  every `refreshMinutes` after, while the device is online. The page's script can't name a URL of
+  its own, so it can't put what it holds into a query string.
+- Before each refresh the server checks the rules again, with no card. When the rules no longer
+  allow the host, the refreshes stop and `nixie.data` returns `REFUSED` for that URL.
 - A fetch takes GET alone, follows at most 3 redirects within the declared URL's host, and keeps at
   most 1 MiB of body as text. A redirect to another host fails that fetch.
-- A refresh stops when the region's content changes or its minutes pass.
+- A refresh stops when the region's content changes, its minutes pass, or a forget erases it.
+- The checking proxy refuses private and internal addresses after each DNS lookup and each redirect,
+  as it does for every fetch.
 
 Regions:
 
@@ -212,6 +266,7 @@ Regions:
 - How the device page draws the grid, and how a region fades between contents.
 - The look of a live value, and the fonts the device page offers a page.
 - How the server stores package files, and how it serves them with their content types.
+- The wire frames that carry a fetch, a package and a preview to and from their sandboxes.
 - The tool descriptions and the refusal wording.
 
 ## Out of scope
