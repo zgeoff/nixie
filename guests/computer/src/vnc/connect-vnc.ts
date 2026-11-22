@@ -1,3 +1,6 @@
+import { isInputMessage } from './is-input-message';
+import type { PressedInput } from './make-pressed-input';
+import { makePressedInput } from './make-pressed-input';
 import type { VNCLink, VNCLinkEvents } from './types';
 
 export interface VNCTarget {
@@ -13,12 +16,15 @@ export interface VNCTarget {
 interface Backlog {
   chunks: Uint8Array[];
   sent: number;
+
+  // the keys and buttons that the messages already written hold pressed
+  readonly pressed: PressedInput;
 }
 
 // Connects to the VNC server on its Unix socket. The server listens on no TCP port, and the socket's
 // folder is closed to every account but the server's and the guest's, so no other path reaches it.
 export async function connectVNC(target: VNCTarget, events: VNCLinkEvents): Promise<VNCLink> {
-  const backlog: Backlog = { chunks: [], sent: 0 };
+  const backlog: Backlog = { chunks: [], sent: 0, pressed: makePressedInput() };
 
   const socket = await connectWhenListening(target, {
     data: (_socket, data) => {
@@ -42,8 +48,8 @@ export async function connectVNC(target: VNCTarget, events: VNCLinkEvents): Prom
       flushBacklog(socket, backlog);
     },
     flush: () => {
-      // a message that is half written has to finish, or the server would read the rest as a message
-      backlog.chunks = backlog.sent > 0 ? backlog.chunks.slice(0, 1) : [];
+      dropInput(backlog);
+      flushBacklog(socket, backlog);
     },
     end: () => {
       socket.end();
@@ -95,8 +101,26 @@ function flushBacklog(socket: WritableSocket, backlog: Backlog): void {
       return;
     }
 
+    backlog.pressed.track(head);
     backlog.chunks.shift();
 
     backlog.sent = 0;
   }
+}
+
+// Drops the key and pointer messages that the socket has not taken, and queues a release for each
+// key and button that the server holds pressed, so a dropped key-up still reaches it. Other
+// messages stay. A message that is half written finishes, or the server reads its rest as a message.
+function dropInput(backlog: Backlog): void {
+  const isHalfWritten = backlog.sent > 0;
+  const [head] = backlog.chunks;
+  const ahead = isHalfWritten ? head : undefined;
+
+  const kept = backlog.chunks.filter(
+    (chunk, index) => (index === 0 && isHalfWritten) || !isInputMessage(chunk),
+  );
+
+  const releases = backlog.pressed.listReleases(ahead);
+
+  backlog.chunks = [...kept, ...releases];
 }

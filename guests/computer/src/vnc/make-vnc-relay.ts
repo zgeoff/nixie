@@ -1,5 +1,6 @@
 import type { SendVNCFrame, VNCFrame } from '@heynixie/wire';
 import { vncChunkLimitBytes } from '@heynixie/wire';
+import { isInputMessage } from './is-input-message';
 import type { ConnectVNC, VNCLink } from './types';
 
 export interface VNCRelayOptions {
@@ -43,7 +44,7 @@ export function makeVNCRelay(
       context.streams.delete(frame.stream);
       entry.link?.end();
     } else if (frame.kind === 'vnc-flush') {
-      entry.pending.splice(0);
+      entry.pending.splice(0, entry.pending.length, ...entry.pending.filter(isNotInput));
       entry.link?.flush();
     } else if (entry.link === null) {
       entry.pending.push(frame.data);
@@ -134,4 +135,8 @@ function closeStream(context: RelayContext, stream: string, send: SendVNCFrame):
   if (context.streams.delete(stream)) {
     void sendQuietly(send, { kind: 'vnc-close', stream });
   }
+}
+
+function isNotInput(bytes: Uint8Array): boolean {
+  return !isInputMessage(bytes);
 }

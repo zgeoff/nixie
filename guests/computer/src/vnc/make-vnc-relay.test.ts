@@ -164,18 +164,21 @@ test('it refuses a stream past the limit of open streams', () => {
   expect(ctx.sent).toStrictEqual([{ kind: 'vnc-close', stream: 's2' }]);
 });
 
-test('it drops the bytes held for a stream whose connection is not ready, on a flush', async () => {
+test('it drops only the input held for a stream whose connection is not ready, on a flush', async () => {
   const ctx = setupTest();
+
+  const keyDown = new Uint8Array([4, 1, 0, 0, 0, 0, 0, 65]);
 
   ctx.deliver({ kind: 'vnc-open', stream: 's1' });
   ctx.deliver({ kind: 'vnc-data', stream: 's1', data: new Uint8Array([1]) });
+  ctx.deliver({ kind: 'vnc-data', stream: 's1', data: keyDown });
   ctx.deliver({ kind: 'vnc-flush', stream: 's1' });
 
   await Promise.resolve();
 
   ctx.deliver({ kind: 'vnc-data', stream: 's1', data: new Uint8Array([2]) });
 
-  expect(ctx.written).toStrictEqual([new Uint8Array([2])]);
+  expect(ctx.written).toStrictEqual([new Uint8Array([1]), new Uint8Array([2])]);
 });
 
 test('it flushes the connection of the stream a flush frame names, and no other', async () => {

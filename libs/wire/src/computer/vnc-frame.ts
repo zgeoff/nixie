@@ -3,7 +3,9 @@ export const vncChunkLimitBytes = 64 * 1024;
 
 // The frames of a VNC stream, which share the computer guest's wire with its requests. The server
 // opens a stream and either side closes it. Data runs both ways, as the bytes of the RFB protocol.
-// A flush drops what the guest holds and has not written to the VNC server.
+
+// A flush drops the key and pointer messages that the guest holds and has not written to the VNC
+// server, and releases the keys and buttons that the server holds pressed.
 export type VNCFrame =
   | { readonly kind: 'vnc-open'; readonly stream: string }
   | { readonly kind: 'vnc-data'; readonly stream: string; readonly data: Uint8Array<ArrayBuffer> }
