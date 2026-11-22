@@ -1,9 +1,9 @@
 import { connect, createServer } from 'node:net';
 
-// Runs inside the network namespace of one command. The namespace holds only a loopback, so this
-// process listens there and passes each connection to the proxy's Unix socket, which is the one way
-// out. Arguments: the socket path, the loopback port, then the command and its arguments.
-const [socketPath = '', portText = '', ...argv] = Bun.argv.slice(2);
+// Runs inside the network namespace of one command, where only a loopback exists, so it passes each
+// connection to the proxy's Unix socket, the one way out. Arguments: the socket path, the port,
+// `inherit` or `closed` for the command's standard input, then the command and its arguments.
+const [socketPath = '', portText = '', stdinMode = 'closed', ...argv] = Bun.argv.slice(2);
 const [command = 'true', ...args] = argv;
 const lift = Bun.spawnSync(['ip', 'link', 'set', 'lo', 'up']);
 
@@ -34,7 +34,7 @@ await new Promise<void>((resolve) => {
 });
 
 const child = Bun.spawn([command, ...args], {
-  stdin: 'ignore',
+  stdin: stdinMode === 'inherit' ? 'inherit' : 'ignore',
   stdout: 'inherit',
   stderr: 'inherit',
 });

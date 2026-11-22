@@ -92,7 +92,11 @@ const bridgeURL = `http://127.0.0.1:${String(bridgePort)}`;
 await startDesktop(
   buildDesktopProcesses({
     terminal: account,
-    terminalShellArgv: buildUnshareArgv({ bridgeScript, proxySocketPath }, ['bash', '-l']),
+    terminalShellArgv: buildUnshareArgv(
+      { bridgeScript, proxySocketPath },
+      ['bash', '-l'],
+      'inherit',
+    ),
     terminalEnv: { ...buildProxyEnv(terminalBaseEnv, bridgeURL), TERM: 'xterm-256color' },
     filesFolder,
   }),

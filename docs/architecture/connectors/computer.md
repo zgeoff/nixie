@@ -69,10 +69,12 @@ by `computer-shell`. Their kinds, `browser` and `shell`, stay readable in stored
 keeps both sandboxes, whatever their image, until their disks are copied.
 
 Before the computer's first call runs, nixie copies the old browser's profile into `profile` and the
-old shell's files into `files`, one file at a time, and checks each file's size and the file count.
-It then writes the disk marker and destroys the old sandboxes. When a copy fails, every call returns
-`COMPUTER_MOVING`, and nothing is destroyed. A queued action treats `COMPUTER_MOVING` as a refusal
-it may retry. A reset destroys the old sandboxes too.
+old shell's files into `files`. The copy runs commands in both sandboxes, so it keeps symlinks and
+the modes of files and folders, and it moves a file of any size in pieces of 1 MiB. Nixie then lists
+the new folder and compares it with the old one. Every path, kind, mode, symlink target and file
+size must match. It then writes the disk marker and destroys the old sandboxes. When a copy fails,
+every call returns `COMPUTER_MOVING`, and nothing is destroyed. A queued action treats
+`COMPUTER_MOVING` as a refusal it may retry. A reset destroys the old sandboxes too.
 
 ## Tools
 

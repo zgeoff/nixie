@@ -1,4 +1,7 @@
 import { expect, onTestFinished, test } from 'bun:test';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import type { Sandbox } from '@heynixie/sandbox';
 import { buildSandboxSpec, watchMemoryKills } from '@heynixie/sandbox';
 import { waitForCondition } from '@heynixie/testing';
@@ -11,16 +14,25 @@ import type {
 import { runComputerGuest } from '@heynixie/wire';
 import { createFakeClock } from '@zgeoff/testing/clock';
 import { buildStubSandboxAdapter } from '../test-utils/build-stub-sandbox-adapter';
+import { makeFolderExec, readDiskFiles, writeDiskFiles } from '../test-utils/make-folder-exec';
 import type { OutOfCallScans } from './make-guest-session';
 import { startComputer } from './start-computer';
 
 interface SetupOptions {
   readonly answer?: ComputerHandler;
   readonly outOfCallScans?: OutOfCallScans;
-  readonly skipCopyIn?: (path: string) => boolean;
+
+  // a write to a file of the new disk that goes missing, by the path the command names
+  readonly loseWrite?: (path: string) => boolean;
 }
 
-function setupTest(options: SetupOptions = {}) {
+async function setupTest(options: SetupOptions = {}) {
+  const disks = await mkdtemp(join(tmpdir(), 'computer-disks-'));
+
+  onTestFinished(async () => {
+    await rm(disks, { recursive: true, force: true });
+  });
+
   const clock = createFakeClock({ startMs: 0 });
   const log: { event: string; fields: Record<string, unknown> }[] = [];
   const state = { kills: 0, sleeps: 0, wakes: 0, guests: 0 };
@@ -60,7 +72,7 @@ function setupTest(options: SetupOptions = {}) {
     },
     {
       readMemoryKills: () => Promise.resolve({ kind: 'count', kills: state.kills }),
-      ...(options.skipCopyIn === undefined ? {} : { skipCopyIn: options.skipCopyIn }),
+      exec: makeFolderExec(disks, { loseWrite: (path) => options.loseWrite?.(path) === true }),
     },
   );
 
@@ -118,6 +130,7 @@ function setupTest(options: SetupOptions = {}) {
 
   return {
     stub,
+    readDisk: (sandboxID: string) => readDiskFiles(disks, sandboxID),
     asks,
     clock,
     log,
@@ -134,9 +147,7 @@ function setupTest(options: SetupOptions = {}) {
         }),
       );
 
-      for (const [path, text] of Object.entries(files)) {
-        stub.files.get(sandbox.id)?.set(path, new TextEncoder().encode(text));
-      }
+      await writeDiskFiles(disks, sandbox.id, files);
 
       return sandbox;
     },
@@ -149,7 +160,7 @@ function setupTest(options: SetupOptions = {}) {
 }
 
 test('it creates one computer sandbox at its size and reuses it for the next call', async () => {
-  const ctx = setupTest();
+  const ctx = await setupTest();
 
   const first = await ctx.computer.call({
     request: ctx.run('ls'),
@@ -183,7 +194,7 @@ test('it creates one computer sandbox at its size and reuses it for the next cal
 test('it returns busy to a call that waits past the limit for its turn', async () => {
   const gate = Promise.withResolvers<void>();
 
-  const ctx = setupTest({
+  const ctx = await setupTest({
     answer: async () => {
       await gate.promise;
 
@@ -221,7 +232,7 @@ test('it returns busy to a call that waits past the limit for its turn', async (
 });
 
 test('it returns out_of_memory and logs sandbox.memory_kill when the kill count rises in a call', async () => {
-  const ctx = setupTest({
+  const ctx = await setupTest({
     answer: () => {
       ctx.state.kills += 1;
 
@@ -250,7 +261,7 @@ test('it returns out_of_memory and logs sandbox.memory_kill when the kill count 
 test('it asks the text scan about the headers and body a guest is about to send', async () => {
   const texts: string[] = [];
 
-  const ctx = setupTest({
+  const ctx = await setupTest({
     answer: async (_request, _askScan, askScanText) => {
       try {
         await askScanText('POST body synthetic-secret');
@@ -285,7 +296,7 @@ test('it asks the text scan about the headers and body a guest is about to send'
 test('it asks the scan about each hop a guest sends and says why one was refused', async () => {
   const scanned: string[] = [];
 
-  const ctx = setupTest({
+  const ctx = await setupTest({
     answer: async (_request, askScan) => {
       try {
         await askScan('https://example.org/next');
@@ -318,7 +329,7 @@ test('it asks the scan about each hop a guest sends and says why one was refused
 });
 
 test('it sleeps an idle sandbox, wakes it for the next call and starts its guest again', async () => {
-  const ctx = setupTest();
+  const ctx = await setupTest();
 
   await ctx.computer.call({
     request: ctx.run('a'),
@@ -343,7 +354,7 @@ test('it sleeps an idle sandbox, wakes it for the next call and starts its guest
 });
 
 test('it keeps the computer awake for 30 minutes', async () => {
-  const ctx = setupTest();
+  const ctx = await setupTest();
 
   await ctx.computer.call({
     request: { op: 'close', tab: 't1' },
@@ -362,7 +373,7 @@ test('it keeps the computer awake for 30 minutes', async () => {
 });
 
 test('it keeps a sandbox awake while a hold stands', async () => {
-  const ctx = setupTest();
+  const ctx = await setupTest();
 
   await ctx.computer.call({
     request: ctx.run('a'),
@@ -385,7 +396,7 @@ test('it keeps a sandbox awake while a hold stands', async () => {
 });
 
 test('it drops every tab at a wake, so a tab from before the sleep is gone', async () => {
-  const ctx = setupTest();
+  const ctx = await setupTest();
 
   await ctx.computer.call({
     request: { op: 'close', tab: 't1' },
@@ -404,7 +415,7 @@ test('it drops every tab at a wake, so a tab from before the sleep is gone', asy
 });
 
 test('it destroys a sandbox at a reset, and the next call makes an empty one', async () => {
-  const ctx = setupTest();
+  const ctx = await setupTest();
 
   await ctx.computer.call({
     request: ctx.run('a'),
@@ -427,7 +438,7 @@ test('it destroys a sandbox at a reset, and the next call makes an empty one', a
 });
 
 test('it starts the guest with the denied ranges, the time zone and the home of the disk', async () => {
-  const ctx = setupTest();
+  const ctx = await setupTest();
 
   await ctx.computer.call({
     request: ctx.run('ls'),
@@ -445,7 +456,7 @@ test('it scans a request that no call made with the scans of the computer and fa
   const scanned: string[] = [];
   const texts: string[] = [];
 
-  const ctx = setupTest({
+  const ctx = await setupTest({
     outOfCallScans: {
       scan: (url) => {
         scanned.push(url);
@@ -483,7 +494,7 @@ test('it scans a request that no call made with the scans of the computer and fa
 });
 
 test('it lets a refused request of no call leave no refusal on the next call', async () => {
-  const ctx = setupTest({
+  const ctx = await setupTest({
     outOfCallScans: {
       scan: () => Promise.resolve({ kind: 'refuse' as const, reason: 'holds a secret' }),
       scanText: () => Promise.resolve({ kind: 'pass' as const }),
@@ -510,7 +521,7 @@ test('it lets a refused request of no call leave no refusal on the next call', a
 });
 
 test('it keeps the guest when a command takes the memory kill, and stops it for any other call', async () => {
-  const ctx = setupTest({
+  const ctx = await setupTest({
     answer: (request) => {
       ctx.state.kills += 1;
 
@@ -553,7 +564,7 @@ test('it keeps the guest when a command takes the memory kill, and stops it for 
 });
 
 test('it copies the profile and the files of the earlier release into the new disk and destroys both old sandboxes', async () => {
-  const ctx = setupTest();
+  const ctx = await setupTest();
 
   const browser = await ctx.createOldSandbox('browser', {
     '/home/bun/profile/Default/Cookies': 'cookie-bytes',
@@ -573,30 +584,29 @@ test('it copies the profile and the files of the earlier release into the new di
   });
 
   const created = ctx.stub.created.find((entry) => entry.spec.kind === 'computer');
-  const copied = ctx.stub.files.get(created?.id ?? '');
+
+  const copied = await ctx.readDisk(created?.id ?? '');
 
   expect(result).toMatchObject({ status: 'reply' });
   expect(ctx.stub.destroyed).toIncludeSameMembers([browser.id, shell.id]);
 
-  expect(
-    [...(copied?.entries() ?? [])].map(([path, content]) => [
-      path,
-      new TextDecoder().decode(content),
-    ]),
-  ).toIncludeSameMembers([
+  expect(copied).toIncludeSameMembers([
     ['/home/computer/profile/Default/Cookies', 'cookie-bytes'],
     ['/home/computer/profile/Local State', '{"sign":"in"}'],
     ['/home/computer/files/notes/tides.md', 'high at six'],
     ['/home/computer/files/downloads/report.txt', 'report body'],
-    ['/home/computer/.nixie-disk-used', ''],
+  ]);
+
+  expect([...(ctx.stub.files.get(created?.id ?? '')?.keys() ?? [])]).toStrictEqual([
+    '/home/computer/.nixie-disk-used',
   ]);
 });
 
 test('it answers moving and destroys nothing when a copy fails its check, and moves at the next call', async () => {
   const drop = { enabled: true };
 
-  const ctx = setupTest({
-    skipCopyIn: (path) => drop.enabled && path.endsWith('Local State'),
+  const ctx = await setupTest({
+    loseWrite: (path) => drop.enabled && path.endsWith('Local State'),
   });
 
   const browser = await ctx.createOldSandbox('browser', {
@@ -638,7 +648,7 @@ test('it answers moving and destroys nothing when a copy fails its check, and mo
 });
 
 test('it starts no guest while the move has not succeeded', async () => {
-  const ctx = setupTest({ skipCopyIn: (path) => path.endsWith('Cookies') });
+  const ctx = await setupTest({ loseWrite: (path) => path.endsWith('Cookies') });
 
   await ctx.createOldSandbox('browser', {
     '/home/bun/profile/Default/Cookies': 'cookie-bytes',
@@ -656,7 +666,7 @@ test('it starts no guest while the move has not succeeded', async () => {
 });
 
 test('it moves a lone browser sandbox and finds nothing to move at the next call', async () => {
-  const ctx = setupTest();
+  const ctx = await setupTest();
 
   const browser = await ctx.createOldSandbox('browser', {
     '/home/bun/profile/Default/Cookies': 'cookie-bytes',
@@ -679,7 +689,7 @@ test('it moves a lone browser sandbox and finds nothing to move at the next call
 });
 
 test('it settles the move without a call and answers moving while it has not succeeded', async () => {
-  const ctx = setupTest({ skipCopyIn: (path) => path.endsWith('tides.md') });
+  const ctx = await setupTest({ loseWrite: (path) => path.endsWith('tides.md') });
 
   await ctx.createOldSandbox('shell', {
     '/home/bun/files/notes/tides.md': 'high at six',
@@ -692,7 +702,7 @@ test('it settles the move without a call and answers moving while it has not suc
 });
 
 test('it destroys the sandboxes of the earlier release at a reset, so no later move brings their data back', async () => {
-  const ctx = setupTest();
+  const ctx = await setupTest();
 
   const browser = await ctx.createOldSandbox('browser', {
     '/home/bun/profile/Default/Cookies': 'cookie-bytes',
@@ -711,5 +721,8 @@ test('it destroys the sandboxes of the earlier release at a reset, so no later m
   const created = ctx.stub.created.find((entry) => entry.spec.kind === 'computer');
 
   expect(ctx.stub.destroyed).toStrictEqual([browser.id]);
-  expect([...(ctx.stub.files.get(created?.id ?? '')?.keys() ?? [])]).toStrictEqual([]);
+
+  const files = await ctx.readDisk(created?.id ?? '');
+
+  expect(files).toStrictEqual([]);
 });

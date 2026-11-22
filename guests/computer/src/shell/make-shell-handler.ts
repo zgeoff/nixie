@@ -15,6 +15,10 @@ export interface ShellHandlerOptions {
   readonly bridgeScript: string;
 }
 
+// What a command reads from the bridge's standard input: nothing, as for `computer.run`, or the
+// terminal that the terminal app gives its shell.
+export type BridgeStdin = 'closed' | 'inherit';
+
 // the loopback port of the bridge, which only the command's own namespace holds
 export const bridgePort = 3128;
 
@@ -61,7 +65,7 @@ export function buildNamespacedArgv(
   options: Pick<ShellHandlerOptions, 'account' | 'bridgeScript' | 'proxySocketPath'>,
   argv: readonly string[],
 ): string[] {
-  return options.account.wrap(buildUnshareArgv(options, argv));
+  return options.account.wrap(buildUnshareArgv(options, argv, 'closed'));
 }
 
 // The same command for a process that already runs as the terminal's user, such as the shell that
@@ -69,6 +73,7 @@ export function buildNamespacedArgv(
 export function buildUnshareArgv(
   options: Pick<ShellHandlerOptions, 'bridgeScript' | 'proxySocketPath'>,
   argv: readonly string[],
+  stdin: BridgeStdin,
 ): string[] {
   return [
     'unshare',
@@ -82,6 +87,7 @@ export function buildUnshareArgv(
     options.bridgeScript,
     options.proxySocketPath,
     String(bridgePort),
+    stdin,
     ...argv,
   ];
 }

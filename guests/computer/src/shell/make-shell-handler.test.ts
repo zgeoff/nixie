@@ -8,7 +8,7 @@ function setupTest() {
 test('it puts a command in new user, network and process namespaces behind the bridge to the proxy', () => {
   const ctx = setupTest();
 
-  expect(buildUnshareArgv(ctx, ['bash', '-lc', 'ls'])).toStrictEqual([
+  expect(buildUnshareArgv(ctx, ['bash', '-lc', 'ls'], 'closed')).toStrictEqual([
     'unshare',
     '--user',
     '--map-root-user',
@@ -20,6 +20,7 @@ test('it puts a command in new user, network and process namespaces behind the b
     '/app/bridge.js',
     '/run/nixie-computer/proxy.sock',
     '3128',
+    'closed',
     'bash',
     '-lc',
     'ls',
@@ -35,4 +36,17 @@ test('it starts a command as the terminal account, with the namespaces made afte
   );
 
   expect(argv.slice(0, 3)).toStrictEqual(['as-terminal', 'unshare', '--user']);
+});
+
+test('it tells the bridge to pass its standard input to the shell of the terminal app', () => {
+  const ctx = setupTest();
+  const argv = buildUnshareArgv(ctx, ['bash', '-l'], 'inherit');
+
+  expect(argv.slice(-5)).toStrictEqual([
+    '/run/nixie-computer/proxy.sock',
+    '3128',
+    'inherit',
+    'bash',
+    '-l',
+  ]);
 });
