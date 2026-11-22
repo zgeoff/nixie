@@ -73,7 +73,7 @@ type ScreenContent = … | { kind: 'page'; page: string }; // a notebook page's 
 
 ## Out of scope
 
-- Taps on a screen that come back to the assistant as events.
-- HTML content on a screen.
+- Regions, live values, pages the assistant writes, and taps that come back as events, in
+  [device layouts](device-layout.md).
 - The speaker and microphone tools.
 - Dimming a screen on a schedule. The assistant sets an empty scene at night.
