@@ -31,21 +31,19 @@ test('it passes the bytes of a connection to the target port and the reply back'
 });
 
 test('it ends a connection whose target refuses it', async () => {
-  const answerEmpty = mock(() => new Response(''));
-  const closed = Bun.serve({ hostname: '127.0.0.1', port: 0, fetch: answerEmpty });
-  const refusedPort = closed.port ?? 0;
-
-  await closed.stop(true);
-
-  const relay = startRelayForward({
-    hostname: '127.0.0.1',
-    listenPort: 0,
-    targetPort: refusedPort,
-  });
+  // Port 1 is below the range the system hands out for port 0, so no other test's server can take
+  // it. The test assumes the host runs nothing on it and refuses the connect, as CI and stock
+  // Linux do. A port that a test frees can go to another test's server in the same run.
+  const relay = startRelayForward({ hostname: '127.0.0.1', listenPort: 0, targetPort: 1 });
 
   onTestFinished(() => {
     relay.stop();
   });
 
-  expect(fetch(`http://127.0.0.1:${String(relay.port)}/`)).rejects.toThrow();
+  const outcome = await fetch(`http://127.0.0.1:${String(relay.port)}/`).then(
+    () => 'answered',
+    () => 'refused',
+  );
+
+  expect(outcome).toBe('refused');
 });

@@ -150,11 +150,6 @@ test('it claims again at once when the poll interval passed during a claim that 
   ctx.clock.advance(1000);
   miss.release();
 
-  // the test clock holds the sleep of no time left until it moves, where the system clock ends it
-  await waitForCondition(() => ctx.clock.countPending() === 1);
-
-  ctx.clock.advance(0);
-
   await waitForCondition(() => work.running.has('a'));
 
   expect(ctx.clock.now()).toBe(1000);
