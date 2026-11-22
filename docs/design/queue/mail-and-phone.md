@@ -34,7 +34,7 @@ asks you or lets the call run by the effects it declares.
 
 ```ts
 // connectors module; MailProvider interface, adapter mail-jmap, against the host's JMAP API with fetch
-mail.list({ unread: true, from: 'penpal@example.com', text: 'chess' }); // from, subject, text: JMAP filters
+mail.list({ unread: true, from: 'hello@library.example.org', text: 'code' }); // from, subject, text: JMAP filters
 // → { messages: [{ message: 'mz4k8q2w7p', thread: 'th6p2k9w4x', from: 'hello@library.example.org',
 //                  subject: 'Your code', at, isUnread: true }], next: null }
 mail.read({ message: 'mz4k8q2w7p' });
@@ -46,8 +46,8 @@ mail.saveAttachment({ message: 'mz4k8q2w7p', attachment: 1 });
 mail.send({ to: 'hello@library.example.org', subject, text, files: ['f2r8k5w1mz'] }); // one address
 mail.reply({ message: 'mz4k8q2w7p', text, files: [] }); // threads with In-Reply-To; to: the sender
 mail.wait({ from: 'hello@library.example.org', seconds: 120 }); // from, subject, text: as mail.list
-// → the first matching mail that no wait returned yet, received up to 2 minutes before the call or
-//   during it, as mail.list lists it; or { message: null } after seconds
+// → the first matching mail, as mail.list lists it, or { message: null } after seconds. The
+//   constraints say which mail a wait can take.
 mail.mute({ from: 'news@shop.example' }); // an address, or a domain after @
 mail.unmute({ from: 'news@shop.example' });
 // → { muted: ['news@shop.example'] }
@@ -59,7 +59,13 @@ mail.unmute({ from: 'news@shop.example' });
 | `mail.mark`                                                  | `note`  | direct | none          |
 | `mail.mute`, `mail.unmute`                                   | `write` | queued | the address   |
 | `mail.send`, `mail.reply`                                    | `send`  | queued | the recipient |
+| `phone.list`, `phone.wait`                                   | `read`  | direct | none          |
+| `phone.send`                                                 | `send`  | queued | the number    |
 
+- The effects are those of [the decision point](../../architecture/policy/decision-point.md). Muting
+  asks because it decides what wakes the conversation, and a mail could ask the assistant to mute a
+  site's security notices.
+- The "always allow" rule of `phone.send` pins `to`.
 - The "always allow" rule of `mail.send` pins `to`. The rule of `mail.reply` pins its destination,
   the sender of the message, which the rule builder pins as it pins an argument.
 - `files` takes up to 10 IDs, 25 MiB in all. Each ID names a file, such as a saved attachment, or an
@@ -87,7 +93,10 @@ type Trigger =
   | { at: string }
   | { poll: PollFilter }
   | { mail: MailFilter };
-type MailFilter = { from?: string[] }; // addresses, or a domain after @, without case; absent: every mail
+type MailFilter = {
+  from?: string[]; // addresses, or a domain after @, without case; absent: every mail
+  subject?: string; // a substring of the subject, without case
+}; // no body filter: a trigger matches on the push, before nixie reads the body
 
 // a task run's first message, one line per mail it takes, from and subject marked outside:
 // New mail from <from>: <subject> (message mz4k8q2w7p)
@@ -105,8 +114,6 @@ phone.list({ from: '+61400000000' }); // from: optional
 //     at }], next: null }   number: the assistant's own
 phone.wait({ from: 'Example', seconds: 120 }); // as mail.wait: the first matching text, or { text: null }
 phone.send({ to: '+61400000000', body: 'Running 10 minutes late.' }); // → { text: 'tx2w9q4k8m' }
-// phone.list, phone.wait: ['read'], direct
-// phone.send: ['send'], queued; destination: the number. Its "always allow" rule pins `to`.
 // refusals: BAD_NUMBER, TOO_LONG (over 640 characters), SEND_FAILED
 ```
 
@@ -131,7 +138,9 @@ Reading:
   `computer.browser_fill`.
 - `mail.wait` and `phone.wait` take `seconds` up to 300, or the turn frame's tool-call wait less 10
   seconds when that is shorter.
-- `phone.wait` matches `from` as a number in E.164 form, or as a sender name without case.
+- `phone.wait` matches `from` as a number in E.164 form, or as a sender name without case. Anyone
+  can send a text under any sender name, so a code from a named sender is only as good as a code
+  from a stranger.
 
 New mail:
 
@@ -140,8 +149,13 @@ New mail:
 - At its first start, the adapter records the mailbox's state and writes no record for older mail.
   After a resync, it writes a record for each mail it missed, and only mail from the last hour
   starts a task or a system message.
-- Mail that a `mail.wait` returns starts no task and no system message. Mail from a muted sender
-  starts neither, and `mail.list` and `mail.wait` still find it.
+- A wait can take a matching mail that arrived up to 2 minutes before the call or during it, and
+  that no task, system message or other wait took. Of two open waits that match, the older takes the
+  mail.
+- A new mail that matches an open wait goes to that wait, and starts no task and no system message.
+- Mail from a muted sender starts no task and no system message, and `mail.list` and `mail.wait`
+  still find it.
+- `phone.wait` takes texts by the same rules.
 - One mail starts every task whose trigger matches, one trigger event per definition, keyed by the
   definition and the JMAP ID.
 - A mail that finds its task still running waits, and the trigger fires again when that task run
@@ -159,8 +173,12 @@ Mailbox and number:
 - The phone adapter reads the provider's message list every 20 seconds, and every 3 seconds while a
   `phone.wait` runs, so nixie needs no address the internet can reach.
 - The number takes texts only. The provider's settings refuse calls, and nixie places none.
-- A send by phone reconciles an unknown outcome by finding a sent message to the same number with
-  the same body after the attempt, and asks you when it finds none.
+- A send by phone reconciles an unknown outcome by finding a message to the same number with the
+  same body, created during the attempt and recorded by no other send. The provider takes no
+  idempotency key, so two identical texts sent in the same minute can still confuse it. The send
+  asks you when it finds no message.
+- The 15-minute fold window, the hour of mail a resync delivers, and the 20-second and 3-second
+  polls are settings with those defaults.
 - Forgetting a `mail.received` record erases nixie's copy of its fields, and leaves the mail at the
   host.
 

@@ -74,7 +74,8 @@ account.sign_up({
 account.rotate({ tab: 't1', account: 'a7q2m9x4kd', submit: 'E4', passwordRules });
 //   on the site's change-password page: the broker fills the current-password field with the
 //   current password, every new-password field with a new one, and clicks submit. Refuses as sign_in
-//   does, and refuses NO_FIELD when the guest can't tell the current-password field from the new.
+//   does, refuses NO_FIELD when the guest can't tell the current-password field from the new, and
+//   refuses ROTATE_UNSETTLED while the entry holds a previous password.
 // → { status: 'changed', account: 'a7q2m9x4kd', … } when the page navigated after the click, else
 //   { status: 'filled', … } and the entry keeps both passwords, as the constraints say
 
@@ -84,15 +85,15 @@ account.add_origin({ tab: 't1', account: 'a7q2m9x4kd' });
 //   'https://login.library.example.org'] } or UNKNOWN_ACCOUNT | WRONG_KIND | ACCOUNT_FORGOTTEN |
 //   ORIGIN_KNOWN | TAB_GONE
 
-account.inspect({ tab: 't1', kind: 'password' }); // 'password' | 'card'
-// → { report: FillReport }: every field and frame the broker would look at, the role it would give
+account.inspect({ tab: 't1', kind: 'password', dump: true }); // kind: 'password' | 'card'; dump optional
+// → { report: FillReport, dump: 'debug/fill/01J….tar.zst' }: every field and frame the broker would look at, the role it would give
 //   each, and why it skips the rest. It fills nothing and reads no secret. A refusal of NO_FIELD,
 //   NO_CARD_FIELD, CROSS_ORIGIN_SUBMIT or FAILED, and a sign_in, sign_up or rotate that returns
 //   'filled', carry the same report as `report`.
 
 wallet.pay({
   tab: 't1',
-  amount: { value: 8.0, currency: 'USD' }, // in the page's own currency
+  amount: { value: '8.00', currency: 'USD' }, // a decimal string, in the page's own currency
   item: 'one font licence',
   card: 'c3w8p1z6mt',
   submit: 'E12',
@@ -113,7 +114,8 @@ wallet.pay({
 //   outcome that you settle, as the budgets design settles one.
 
 wallet.read({});
-// → { month: { budget: '100.00 AUD', spent: '37.50 AUD', left: '62.50 AUD' },
+// → { month: { liftBudget: '100.00 AUD', liftSpent: '37.50 AUD', left: '62.50 AUD', approvedSpent: '40.00 AUD' },
+//   liftSpent counts lifted purchases, which the budget caps; approvedSpent counts the ones you approved
 //     lifts: [{ merchants: ['https://fonts.example.com'], perAction: '25.00 AUD' }],
 //     purchases: [{ purchase: 'pq3z8w1n5v', at, merchant: 'https://fonts.example.com', amount: '8.00 USD',
 //                   charged: '12.71 AUD', item: 'one font licence', approval: 'owner', repeats: 'monthly' }],
@@ -167,12 +169,19 @@ interface VaultEntry {
   previousSecret: SealedValue | null; // a password: the one before a rotate, kept as the constraints say
   fingerprint: string | null; // a card: an HMAC of its number under a server key; the only form in records
   frameOrigins: string[]; // a card: the payment frames you allow, such as https://js.pay.example; else []
+  currency: string | null; // a card: the ISO code it bills in, which charged converts into
   state: 'pending' | 'ready' | 'forgotten'; // a sign_up is pending until it or a sign_in reaches signed_in; a card starts ready
 }
 
 // contract lib: owner calls from a device session. add, remove and reveal take a passkey
 // assertion bound to a SHA-256 of the request, a new challenge kind in the published contract.
-vault.add({ kind: 'card', label: 'wallet', secret: { number, expiry, code }, frameOrigins: [] }); // → { account: 'c3w8p1z6mt' }
+vault.add({
+  kind: 'card',
+  label: 'wallet',
+  currency: 'AUD',
+  secret: { number, expiry, code },
+  frameOrigins: [],
+}); // → { account: 'c3w8p1z6mt' }
 vault.add({
   kind: 'password',
   label: 'forum',
@@ -309,6 +318,8 @@ Secrets:
   page. The descriptions of the computer tools say the same.
 - The browser profile never saves a password or a card. Chromium's password manager and autofill are
   off.
+- The browser guest and the screen tools share the computer sandbox. Before each screen act, the
+  screen tool asks the browser guest which windows show a tab that holds a filled card.
 - Chromium runs as its own user on the desktop, as [the desktop](desktop.md) sets, so no command the
   assistant runs reads the page's memory or its profile.
 - The desktop stream that you watch shows a filled page as it is. Only a device session watches.
@@ -332,15 +343,27 @@ Filling:
   pending entry stays until you remove it: after 7 days with no sign-in, nixie asks you whether to
   keep it, and never forgets it on its own.
 - Each fill that refuses with a report, or returns `filled`, writes an `account.fill_failed` record
-  with the tool, the account, the origin and the report, so a fill that a site breaks can be
-  debugged from the log. The report holds no value, so the record holds no secret.
+  with the tool, the account, the origin, the report and the name of a page dump. The report holds
+  no value, so the record holds no secret.
+- With that record, the guest writes a page dump to `debug/fill/<record ID>.tar.zst` in nixie's data
+  folder, for a developer on the server to unpack. It holds the tab's MHTML snapshot with every
+  frame, each frame's DOM, the accessibility tree, the URLs the page requested, the console log, the
+  report, and a screenshot unless a card field was filled. The guest takes the dump from a copy of
+  the page in which every input's value, and every vault secret in the text, reads as dots.
+- `account.inspect({ tab, kind, dump: true })` writes the same dump on demand, and returns its name.
+- nixie keeps the newest 50 page dumps and deletes older ones, a setting with that default. The
+  model never reads a dump.
 - A forget of a vault entry destroys its key, and the next `sign_in` with it returns
   `ACCOUNT_FORGOTTEN`.
 - A `rotate` that returns `changed` makes the new password the entry's secret, and keeps the old one
   as `previousSecret`. A `rotate` that returns `filled` keeps the old password as the secret and the
   new one as `previousSecret`, because the site may have taken either. While an entry holds a
   `previousSecret`, a `sign_in` that stays on the page tries the other password once. The first
-  `sign_in` that reaches `signed_in` keeps the password that worked and drops the other one.
+  `sign_in` that reaches `signed_in` keeps the password that worked and drops the other one. A
+  `rotate` on an entry that still holds a `previousSecret` returns `ROTATE_UNSETTLED`, so a second
+  rotate never drops a password the site may hold.
+- A page after the submit that asks for a second factor or an email check counts as `signed_in`: the
+  site took the password.
 - `add_origin` keeps the origin exactly, with no wildcard. The fill rules apply to it as to the
   first origin.
 - A sign-up that shows a CAPTCHA or a check that wants a person stops, and the assistant calls
