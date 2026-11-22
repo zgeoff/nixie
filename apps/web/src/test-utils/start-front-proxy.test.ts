@@ -1,5 +1,6 @@
 import { expect, mock, onTestFinished, test } from 'bun:test';
 import { nativeWebSocket } from '@heynixie/testing';
+import invariant from 'tiny-invariant';
 import { startFrontProxy } from './start-front-proxy';
 
 function setupTest() {
@@ -168,10 +169,12 @@ test('it bridges a WebSocket on an /rpc path to the API with its cookie', async 
     webURL: 'http://127.0.0.1:9',
   });
 
-  const socket: WebSocket = Reflect.construct(nativeWebSocket, [
+  const socket: unknown = Reflect.construct(nativeWebSocket, [
     `${proxy.url.replace('http', 'ws')}/rpc/computer/watch-stream?ticket=t`,
     { headers: { cookie: 'session=abc' } },
   ]);
+
+  invariant(socket instanceof nativeWebSocket, 'the socket is a WebSocket');
 
   onTestFinished(() => {
     socket.close();

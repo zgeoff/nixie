@@ -38,7 +38,7 @@ function setupTest(options: { isGuestSlow?: boolean } = {}) {
       };
     },
     readGuest: () =>
-      options.isGuestSlow ? new Promise<GuestSession>(() => {}) : Promise.resolve(guest),
+      options.isGuestSlow === true ? new Promise<GuestSession>(() => {}) : Promise.resolve(guest),
   };
 
   return {

@@ -4,8 +4,7 @@ export function makeStdoutWriter(): (bytes: Uint8Array) => Promise<void> {
   const sink = Bun.stdout.writer();
 
   return async (bytes) => {
-    sink.write(bytes);
-
+    await sink.write(bytes);
     await sink.flush();
   };
 }

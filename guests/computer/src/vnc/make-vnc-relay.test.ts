@@ -33,12 +33,13 @@ function setupTest(options: { readonly maxStreams?: number; readonly isRefused?:
     written,
     ended,
     connections,
-    deliver: (frame: VNCFrame) =>
+    deliver: (frame: VNCFrame) => {
       relay(frame, (outgoing) => {
         sent.push(outgoing);
 
         return Promise.resolve();
-      }),
+      });
+    },
   };
 }
 

@@ -1,4 +1,5 @@
 import { nativeWebSocket } from '@heynixie/testing';
+import invariant from 'tiny-invariant';
 import { buildEndingResponse } from './build-ending-response';
 
 export interface FrontProxyTargets {
@@ -54,10 +55,12 @@ export function createFrontProxy(targets: FrontProxyTargets): Bun.Server<BridgeD
         const headers = socket.data.cookie === null ? {} : { cookie: socket.data.cookie };
 
         // Bun's WebSocket takes a headers option that the DOM types leave out.
-        const upstream: WebSocket = Reflect.construct(nativeWebSocket, [
+        const upstream: unknown = Reflect.construct(nativeWebSocket, [
           socket.data.upstreamURL,
           { headers },
         ]);
+
+        invariant(upstream instanceof nativeWebSocket, 'the upstream is a WebSocket');
 
         upstream.binaryType = 'arraybuffer';
         socket.data.upstream = upstream;
@@ -71,9 +74,11 @@ export function createFrontProxy(targets: FrontProxyTargets): Bun.Server<BridgeD
         });
 
         upstream.addEventListener('message', (event) => {
-          const data: string | ArrayBuffer = event.data;
+          const data: unknown = event.data;
 
-          socket.send(data);
+          if (typeof data === 'string' || data instanceof ArrayBuffer) {
+            socket.send(data);
+          }
         });
 
         upstream.addEventListener('close', (event) => {
