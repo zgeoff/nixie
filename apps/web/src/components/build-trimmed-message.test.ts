@@ -9,6 +9,11 @@ test.each<[string, SpanState, SpanState]>([
     { spans: [{ end: 5, source: 'typed', start: 0 }], text: 'hello' },
   ],
   [
+    'tabs around typed text',
+    { spans: [{ end: 7, source: 'typed', start: 0 }], text: '\thello\t' },
+    { spans: [{ end: 5, source: 'typed', start: 0 }], text: 'hello' },
+  ],
+  [
     'blank lines before a pasted block, keeping its span on the same characters',
     {
       spans: [
