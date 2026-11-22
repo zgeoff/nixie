@@ -95,8 +95,8 @@ it may retry. A reset destroys the old sandboxes too.
 | `computer.browser_click`      | `send`         | queued | the page after the click                                            |
 | `computer.screenshot`         | `note`         | direct | the whole desktop's picture and the window in focus                 |
 | `computer.screen_scroll`      | `note`         | direct | the wheel turned over a point, the picture and the window in focus  |
-| `computer.screen_click`       | `send`         | queued | a click at a point, and the window in focus after it                |
-| `computer.screen_type`        | `send`         | queued | text or one key chord typed, and the window in focus after it       |
+| `computer.screen_click`       | `send`         | queued | a click at a point, the window in focus and the picture after it    |
+| `computer.screen_type`        | `send`         | queued | text or one key chord typed, the window in focus and the picture    |
 | `computer.run`                | `computer_run` | queued | the exit code, `stdout` and `stderr` (each cut at a limit), seconds |
 | `computer.read_file`          | `note`         | direct | the text of a file under `~/files`                                  |
 | `computer.write_file`         | `note`         | direct | a file written under `~/files`, which replaces one of that name     |
@@ -127,12 +127,15 @@ settles as `TAB_GONE` when the action runner reaches it, as an act on a replaced
 picture. The screen tools are for what they cannot reach. A screenshot is 1280 by 800, so a point on
 it is a point a click takes. Each screenshot and each screen act result carries `focus`, which is
 `{ kind: 'browser', tab, url }`, `{ kind: 'terminal' }` or `{ kind: 'other' }`, and `isWatched`,
-which is always `false` until watching ships. The result of a screen act has no picture, because a
-queued action returns no image: take a screenshot after it. A point outside 0 to 1279 by 0 to 799
-returns `BAD_POINT`. `screen_scroll` takes `by` as a whole number of wheel steps, 1 to 50 in either
-direction, where a negative number scrolls up, and returns `BAD_STEPS` outside that range.
-`screen_type` takes `text`, at most 1,000 characters, or `keys`, one chord such as `enter`,
-`shift+tab` or `ctrl+a`, and exactly one of the two.
+which is always `false` until watching ships. The result of a screen act carries the picture of the
+desktop after the act, as a screenshot does. The connector's response holds the picture beside the
+result. The action runner seals its bytes as an attachment of the outcome record and keeps the media
+type in the record's erasable fields, so the picture reaches the model beside the outcome, whether
+the model waits for the action or reads it later in its inbox, and a forget of the outcome erases
+it. A point outside 0 to 1279 by 0 to 799 returns `BAD_POINT`. `screen_scroll` takes `by` as a whole
+number of wheel steps, 1 to 50 in either direction, where a negative number scrolls up, and returns
+`BAD_STEPS` outside that range. `screen_type` takes `text`, at most 1,000 characters, or `keys`, one
+chord such as `enter`, `shift+tab` or `ctrl+a`, and exactly one of the two.
 
 **Paths.** A path is under `~/files`, and a relative path starts there. A path that leaves it by
 `..` or by a symlink returns `BAD_PATH`. A file read or written has a size limit, and a larger file
@@ -158,7 +161,16 @@ on: the one under the point for a click, and the focused one for typing. That wi
 `ScreenBinding`, with its window ID, its kind, and for a browser its tab and URL. For a browser
 window the tab's host is the destination, and for any other window the act has no destination, so it
 always asks. Nixie keeps the binding in memory, as it keeps `expectURL`, and the action hash covers
-it. When the action runs, the guest finds the window under the point again, or the focused one, and
+it. A click also stores the desktop's picture from the moment of the call, with the click's point
+marked on the card. The guest takes the picture when it binds the click. The tool stores it as an
+attachment of the call's own record, only when the call asks the user, and a digest of its bytes is
+part of the binding that the action hash covers. A call prepared against a changed screen is
+therefore a new question. The card shows the picture through the same route as a stored image, with
+a ring drawn over it in the web client at the click's point, so the stored picture stays as the
+screen showed it. A forget of the call erases the picture. A `screen_type` card shows the typed text
+or the keys, and no picture.
+
+When the action runs, the guest finds the window under the point again, or the focused one, and
 returns `SCREEN_CHANGED` when it differs from the binding on any field. A restart between the call
 and the action loses the binding, so the action returns `SCREEN_CHANGED` and never runs against a
 screen nobody looked at.

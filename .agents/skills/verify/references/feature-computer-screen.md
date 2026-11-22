@@ -99,7 +99,8 @@ Before you start:
    bun verify browser click --ref '<button_ref>'
    ```
 
-   Expect: both clicks exit 0.
+   Expect: both clicks exit 0. The snapshot after the first click shows a group named "Screen this
+   click lands on" that holds an image, and a marker named "Click point 640, 400".
 
 8. Check the outcomes. `proposals --waiting none` checks once, with no wait, and exits 0 when nixie
    holds no call of the tool.
@@ -108,16 +109,19 @@ Before you start:
    bun verify proposals --tool computer.screen_click --waiting none
    bun verify db query "select json_extract(payload, '$.status') as status from records where kind = 'action.outcome' and json_extract(payload, '$.tool') = 'computer.screen_click'"
    bun verify db query "select json_extract(res.payload, '$.outcome') as outcome from records call join records res on json_extract(res.payload, '$.callID') = json_extract(call.payload, '$.callID') where call.kind = 'tool_called' and res.kind = 'tool_result' and json_extract(call.payload, '$.tool') = 'computer.screenshot'"
+   bun verify db query "select count(*) as pictures from record_attachments where sequence in (select sequence from records where kind = 'action.outcome' and json_extract(payload, '$.tool') = 'computer.screen_click')"
    ```
 
    Expect: `proposals` exits 0. The first query returns one row, with `status` `done`. The second
-   returns one row, with `outcome` `result`.
+   returns one row, with `outcome` `result`. The third returns one row, with `pictures` 1: the
+   desktop after the click, sealed under the outcome record.
 
 ## End state
 
 - In step 4, nixie held one call of `computer.screen_click`.
-- In step 6, the approvals page showed the host `pages.test` and its port, with the effect `send`.
+- In step 6, the approvals page showed the host `pages.test` and its port, with the effect `send`,
+  and the screenshot of the click with the marker at 640, 400.
 - In step 8, nixie holds no call, the click's outcome is `done`, and the model's one call of
-  `computer.screenshot` returned a result.
+  `computer.screenshot` returned a result. The click's outcome holds one picture.
 
 Once the end state matches, run `bun verify done`.

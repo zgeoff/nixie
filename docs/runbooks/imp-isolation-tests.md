@@ -169,7 +169,11 @@ the computer image. They check that a command sees only a loopback and no displa
 command proxy refuses a tunnel, that the terminal account cannot read the browser profile or signal
 or trace Chromium, and that the terminal's cgroup holds 512 MiB with no swap. One test moves the
 files of a stand-in browser sandbox and shell sandbox into the computer and checks that both old
-sandboxes are gone.
+sandboxes are gone. Five more tests drive the guest's screen code on the image's real display: Xvfb,
+openbox, xterm and Chromium. They check that a screenshot is a PNG of 1280 by 800, and that a click
+on a page in Chromium changes the page's title. They also check that a click on the terminal returns
+`USE_RUN`, that a click on the browser's address bar returns `USE_BROWSER_OPEN`, and that a click
+returns `SCREEN_CHANGED` once a new tab replaced the window it was bound to.
 
 1. Build the computer image into impd from `guests/computer/Dockerfile`, with the repo root as the
    build folder, as step 1 of [the fetch sandbox tests](#the-fetch-sandbox-tests) does. Rebuild it
@@ -188,4 +192,5 @@ sandboxes are gone.
    sandboxes keeps them.
 
 The tests skip while any of the 4 variables is unset. With all 4 set, expect `0 fail`, with no
-skipped test. Remove the image when you finish, by its exact name.
+skipped test. Each test boots its own computer sandbox. Remove the image when you finish, by its
+exact name.
