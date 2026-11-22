@@ -1,4 +1,9 @@
-import { listCodeFiles, readCodeFileBytes, readCodeFileEntry } from '@heynixie/connectors';
+import {
+  listCodeFiles,
+  readCodeFileBytes,
+  readCodeFileEntry,
+  readImageEntry,
+} from '@heynixie/connectors';
 // oxlint-disable new-cap -- oRPC names a procedure's typed errors by their upper-case codes
 import { imageLimits } from '@heynixie/contract';
 import { readTaskNames } from '@heynixie/tasks';
@@ -17,7 +22,17 @@ export function createFilesProcedures(context: APIContext) {
       const entry = await readCodeFileEntry(context.log, options.input.file);
 
       if (entry.kind === 'missing') {
-        throw options.errors.FILE_NOT_FOUND();
+        const image = await readImageEntry(context.log, options.input.file);
+
+        if (image.kind === 'missing') {
+          throw options.errors.FILE_NOT_FOUND();
+        }
+
+        if (image.kind === 'forgotten') {
+          throw options.errors.FILE_FORGOTTEN();
+        }
+
+        return new File([image.bytes], `${image.row.image_id}.png`, { type: image.row.media_type });
       }
 
       const bytes =

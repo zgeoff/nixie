@@ -12,6 +12,7 @@ import { buildToolErrorResult } from '../test-utils/build-tool-error-result';
 import type { StubProgram } from '../test-utils/make-stub-code-exec';
 import { makeStubCodeExec } from '../test-utils/make-stub-code-exec';
 import { readCodeRunFiles } from '../test-utils/read-code-run-files';
+import { seedImage } from '../test-utils/seed-image';
 import { startTestLog } from '../test-utils/start-test-log';
 import { buildCodeRunTool } from './build-code-run-tool';
 import { buildFileSendTool } from './build-file-send-tool';
@@ -95,7 +96,7 @@ async function setupTest() {
     await removeRecordKey(log, row.key_id);
   };
 
-  return { start, readSends, readResultSequences, forgetRecord };
+  return { start, readSends, readResultSequences, forgetRecord, log };
 }
 
 test('it sends a file that a code run wrote and records the send beside the result', async () => {
@@ -142,7 +143,9 @@ test('it refuses a file of another thread', async () => {
   const sends = await ctx.readSends();
 
   expect({ result, sends }).toStrictEqual({
-    result: buildToolErrorResult(`No file ${written.file} belongs to this thread.`),
+    result: buildToolErrorResult(
+      `No file of a code run on this thread and no image has the ID ${written.file}.`,
+    ),
     sends: [],
   });
 });
@@ -194,5 +197,55 @@ test('it refuses an unknown file ID', async () => {
 
   const result = await code.send({ file: 'zzzzzzzzzz' });
 
-  expect(result).toStrictEqual(buildToolErrorResult('No file zzzzzzzzzz belongs to this thread.'));
+  expect(result).toStrictEqual(
+    buildToolErrorResult(
+      'No file of a code run on this thread and no image has the ID zzzzzzzzzz.',
+    ),
+  );
+});
+
+test('it sends an image by its short ID from any thread and writes no send row', async () => {
+  const ctx = await setupTest();
+
+  const code = ctx.start(() => ({}));
+
+  await seedImage(ctx.log, { image: 'im4k9q2x7a', source: 'draw', bytes: new Uint8Array(30) });
+
+  const sent = await code.send(
+    { file: 'im4k9q2x7a', caption: 'The cove' },
+    { thread: 'task-2', logThread: 'task-2' },
+  );
+
+  const sends = await ctx.readSends();
+
+  expect({ sent, sends }).toStrictEqual({
+    sent: {
+      content: [],
+      structuredContent: {
+        file: 'im4k9q2x7a',
+        name: 'im4k9q2x7a.png',
+        bytes: 30,
+        mediaType: 'image/png',
+      },
+    },
+    sends: [],
+  });
+});
+
+test('it refuses an image whose result record a forget made unreadable', async () => {
+  const ctx = await setupTest();
+
+  const code = ctx.start(() => ({}));
+
+  const seeded = await seedImage(ctx.log, {
+    image: 'im4k9q2x7a',
+    source: 'draw',
+    bytes: new Uint8Array(30),
+  });
+
+  await ctx.forgetRecord(seeded.sequence);
+
+  const result = await code.send({ file: 'im4k9q2x7a' });
+
+  expect(result).toStrictEqual(buildToolErrorResult('The image im4k9q2x7a was forgotten.'));
 });

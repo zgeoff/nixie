@@ -438,7 +438,7 @@ export const contract = {
   files: {
     read: signedIn
       .errors({
-        FILE_NOT_FOUND: { message: 'No code-run file has this ID', status: 404 },
+        FILE_NOT_FOUND: { message: 'No code-run file or image has this ID', status: 404 },
         FILE_FORGOTTEN: { message: 'A forget made this file unreadable', status: 410 },
       })
       .input(z.object({ file: z.string().min(1).max(100) }))

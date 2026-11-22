@@ -406,11 +406,12 @@ private note's title left out, so the confirmation can show that those notes kee
 ## Reading a code-run file
 
 `files.read` takes a file ID and returns that file's bytes with its name, to any signed-in session,
-whichever thread the code run wrote the file on. It returns the stored type for PNG, JPEG, GIF and
-WebP, and `application/octet-stream` for every other type, so a client never receives a type that a
-browser would run. An unknown ID returns `FILE_NOT_FOUND`, and a file whose result record a forget
-made unreadable returns `FILE_FORGOTTEN`. [The code tool](../connectors/code-tool.md#sending-a-file)
-covers how a file reaches the user.
+whichever thread the code run wrote the file on. An ID that no code-run file has resolves as an
+image's short ID, and returns the stored PNG named `{id}.png`. It returns the stored type for PNG,
+JPEG, GIF and WebP, and `application/octet-stream` for every other type, so a client never receives
+a type that a browser would run. An unknown ID returns `FILE_NOT_FOUND`, and a file whose result
+record a forget made unreadable returns `FILE_FORGOTTEN`.
+[The code tool](../connectors/code-tool.md#sending-a-file) covers how a file reaches the user.
 
 `files.list` takes an optional `kind`, `image` or `other`, and an optional cursor, and returns up to
 30 files, newest run first, with `nextCursor`. `image` lists the 4 types that `files.read` serves
@@ -418,8 +419,8 @@ with their stored type, and `other` lists every other type. Each file holds its 
 type, the time of its result record, its thread, the task's ID and name (null for the conversation),
 the position of its result record, whether `file.send` sent it, and how many files its code run
 wrote. A call reads at most 300 stored rows, so a page can hold fewer than 30 files while
-`nextCursor` remains. The list leaves out the kept streams and every file whose result record a
-forget made unreadable.
+`nextCursor` remains. The list leaves out the kept streams, every file whose result record a forget
+made unreadable, and every stored image, although `files.read` serves an image by its ID.
 
 ## Reading and the live stream
 

@@ -63,6 +63,16 @@ function buildDrawingReplies(
       },
     },
     { toolUse: { name: 'mcp__nixie__image_list', input: {} } },
+    ...(draw.send === true
+      ? [
+          {
+            toolUse: {
+              name: 'mcp__nixie__file_send',
+              input: (body: ScriptedBody) => ({ file: readLastImageID(body) }),
+            },
+          },
+        ]
+      : []),
   ];
 }
 

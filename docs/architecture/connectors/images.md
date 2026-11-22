@@ -151,7 +151,8 @@ and a row in the `images` table, which the call writes in the same transaction a
 
 nixie stores every image as PNG, converting a provider's reply first, and refuses a reply over 8
 MiB. The prompt and the references sit among the call record's erasable fields, never in the table.
-An image ID resolves on every thread.
+An image ID resolves on every thread, and [`file.send`](./code-tool.md#sending-a-file) takes one to
+show the image under a reply.
 
 `image.name` writes an `image.named` record, whose name is erasable, and `image.pin` and
 `image.unpin` write `image.pinned` and `image.unpinned` records.
