@@ -87,7 +87,7 @@ async function runAct(
   }
 }
 
-function toSelector(element: string): string {
+export function toSelector(element: string): string {
   return `[data-nixie-e="${element.replaceAll(/[^A-Za-z0-9]/gu, '')}"]`;
 }
 

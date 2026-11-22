@@ -1,9 +1,10 @@
 import type { ComputerTools } from '@heynixie/connectors';
-import { computerToolNames } from '@heynixie/connectors';
+import { computerToolNames, legacyComputerToolNames } from '@heynixie/connectors';
 import type { ActionsWithForget } from '../forget/add-log-forget';
 
 // The queued computer tools need the browser and the shell, which the other actions' tests have no
-// use for, so the part adds their connector after the queue is built.
+// use for, so the part adds their connector after the queue is built. An action queued under an old
+// tool name still waits in the queue, so the connector answers to those names too.
 export function addComputerConnector(
   actions: ActionsWithForget,
   computer: ComputerTools,
@@ -16,7 +17,7 @@ export function addComputerConnector(
     ...actions,
     connectors: new Map([
       ...actions.connectors,
-      ...queued.map((name) => [name, computer.connector] as const),
+      ...[...queued, ...legacyComputerToolNames].map((name) => [name, computer.connector] as const),
     ]),
   };
 }

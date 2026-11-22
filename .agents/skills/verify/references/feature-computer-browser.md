@@ -3,8 +3,8 @@
 Contents: [Journey](#journey), [End state](#end-state).
 
 The user asks the assistant to open a page. On `local`, a scripted model answers in place of the
-real one. It calls `computer.open`, and nixie holds the call until the user approves the site. Then
-nixie opens the page in the assistant's browser, a headless Chromium.
+real one. It calls `computer.browser_open`, and nixie holds the call until the user approves the
+site. Then nixie opens the page in the assistant's browser, a headless Chromium.
 
 Follow the steps in [Check a change](../SKILL.md#check-a-change) for this journey. Read that section
 for the commands `up` and `done`, and for the `data` field of each command's JSON output.
@@ -32,8 +32,8 @@ Before you start:
    ```
 
 2. Send the user's message and script the model's turn. `use-computer --kind browser` sends the
-   message "Open the page in your browser.", and queues 2 replies: a `computer.open` call on the
-   `pages.test` page, and the text in `--text`.
+   message "Open the page in your browser.", and queues 2 replies: a `computer.browser_open` call on
+   the `pages.test` page, and the text in `--text`.
 
    ```bash
    bun verify action use-computer --kind browser --text 'The assistant opened the page.'
@@ -56,7 +56,7 @@ Before you start:
    with no wait, and exits 0 when nixie holds exactly one call of the tool.
 
    ```bash
-   bun verify proposals --tool computer.open --waiting pending
+   bun verify proposals --tool computer.browser_open --waiting pending
    ```
 
    Expect: exit 0.
@@ -77,14 +77,14 @@ Before you start:
    bun verify browser snapshot
    ```
 
-   Expect: one item that reads "Run computer.open to pages.test:", then a port, then "(fetch).".
-   "fetch" is the effect that `computer.open` declares. Find the line that holds that text and
-   `[cursor=pointer]`. Pass its `ref`, such as `f3e32`, as `<item_ref>`.
+   Expect: one item that reads "Run computer.browser_open to pages.test:", then a port, then
+   "(fetch).". "fetch" is the effect that `computer.browser_open` declares. Find the line that holds
+   that text and `[cursor=pointer]`. Pass its `ref`, such as `f3e32`, as `<item_ref>`.
 
 7. Click the item to expand it, then click its approve button. Take the button's `ref` from the
    snapshot after the first click. Each snapshot gives every element a new `ref`. The button's name
    repeats the item's text without "(fetch).", so find the line that starts with
-   `button "Run computer.open to pages.test:`. Pass its `ref` as `<button_ref>`.
+   `button "Run computer.browser_open to pages.test:`. Pass its `ref` as `<button_ref>`.
 
    ```bash
    bun verify browser click --ref '<item_ref>'
@@ -98,15 +98,15 @@ Before you start:
    nixie holds no call of the tool.
 
    ```bash
-   bun verify proposals --tool computer.open --waiting none
-   bun verify db query "select json_extract(payload, '$.status') as status from records where kind = 'action.outcome' and json_extract(payload, '$.tool') = 'computer.open'"
+   bun verify proposals --tool computer.browser_open --waiting none
+   bun verify db query "select json_extract(payload, '$.status') as status from records where kind = 'action.outcome' and json_extract(payload, '$.tool') = 'computer.browser_open'"
    ```
 
    Expect: `proposals` exits 0, and the query returns one row, with `status` `done`.
 
 ## End state
 
-- In step 4, nixie held one call of `computer.open`.
+- In step 4, nixie held one call of `computer.browser_open`.
 - In step 6, the approvals page showed the site's host, `pages.test`, and its port.
 - In step 8, nixie holds no call, and the call's outcome is `done`: nixie opened the page after the
   approval.

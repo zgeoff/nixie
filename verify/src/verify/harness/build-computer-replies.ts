@@ -13,7 +13,7 @@ export function buildComputerReplies(
 ): ScriptedReply[] {
   if (input.kind === 'browser') {
     return [
-      { toolUse: { name: 'mcp__nixie__computer_open', input: { url: siteURL } } },
+      { toolUse: { name: 'mcp__nixie__computer_browser_open', input: { url: siteURL } } },
       { text: input.text },
     ];
   }

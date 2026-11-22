@@ -48,19 +48,20 @@ one at a time on stdout, and holds no state nixie cannot rebuild, except the dis
 
 ## Tools
 
-| Tool                   | Effect         | Runs   | Result                                                              |
-| ---------------------- | -------------- | ------ | ------------------------------------------------------------------- |
-| `computer.open`        | `fetch`        | direct | a new tab and its page text                                         |
-| `computer.read`        | `note`         | direct | the page again, as `text` or as a `snapshot` that marks controls    |
-| `computer.screenshot`  | `note`         | direct | the viewport's picture beside the result                            |
-| `computer.close`       | `note`         | direct | the tab closed                                                      |
-| `computer.download`    | `fetch`        | direct | a file saved to `downloads/` on the shell's disk                    |
-| `computer.fill`        | `send`         | queued | the page after the typed value, with `submit` to press Enter        |
-| `computer.click`       | `send`         | queued | the page after the click                                            |
-| `computer.run`         | `computer_run` | queued | the exit code, `stdout` and `stderr` (each cut at a limit), seconds |
-| `computer.read_file`   | `note`         | direct | the text of a file under `~/files`                                  |
-| `computer.write_file`  | `note`         | direct | a file written under `~/files`, which replaces one of that name     |
-| `computer.export_file` | `note`         | direct | a file kept with the result, so `file.send` can send it             |
+| Tool                          | Effect         | Runs   | Result                                                              |
+| ----------------------------- | -------------- | ------ | ------------------------------------------------------------------- |
+| `computer.browser_open`       | `fetch`        | direct | a new tab and its page text                                         |
+| `computer.browser_read`       | `note`         | direct | the page again, as `text` or as a `snapshot` that marks controls    |
+| `computer.browser_screenshot` | `note`         | direct | the viewport's picture, or one control's box, beside the result     |
+| `computer.browser_scroll`     | `note`         | direct | `isAtEnd` and the viewport's picture beside it, with no page stored |
+| `computer.browser_close`      | `note`         | direct | the tab closed                                                      |
+| `computer.browser_download`   | `fetch`        | direct | a file saved to `downloads/` on the shell's disk                    |
+| `computer.browser_fill`       | `send`         | queued | the page after the typed value, with `submit` to press Enter        |
+| `computer.browser_click`      | `send`         | queued | the page after the click                                            |
+| `computer.run`                | `computer_run` | queued | the exit code, `stdout` and `stderr` (each cut at a limit), seconds |
+| `computer.read_file`          | `note`         | direct | the text of a file under `~/files`                                  |
+| `computer.write_file`         | `note`         | direct | a file written under `~/files`, which replaces one of that name     |
+| `computer.export_file`        | `note`         | direct | a file kept with the result, so `file.send` can send it             |
 
 Every result field except the tab, the flags and a refusal's code is untrusted. A refusal comes back
 as a result with `refused: { code, message }`, never as an error.
@@ -72,6 +73,17 @@ page ID reads the other parts. The stored page carries a fetch URL that no URL p
 at most 5 pages (`TAB_LIMIT`). The model's tab IDs (`t1`, `t2` and on) count up for the life of the
 server, so a restart never reuses one.
 
+**Scrolling and pictures.** `browser_scroll` takes `to` as `up`, `down` or a control ID such as
+`E12`. It moves the viewport by most of a screen, or scrolls the control into view, and returns
+`{ tab, isAtEnd }`. For `up`, `isAtEnd` means the top; otherwise it means the bottom. It stores no
+page, so it never counts toward a tab's 5 pages. `browser_screenshot` takes an optional `control`
+and then pictures that control's box. Both return `STALE_ELEMENT` for a control that no longer holds
+its number.
+
+**Old names.** Every browser tool carries the `browser_` prefix, and a call under a name from before
+it is an unknown tool. An action queued under `computer.fill` or `computer.click` before the rename
+settles as `TAB_GONE` when the action runner reaches it, as an act on a replaced sandbox does.
+
 **Paths.** A path is under `~/files`, and a relative path starts there. A path that leaves it by
 `..` or by a symlink returns `BAD_PATH`. A file read or written has a size limit, and a larger file
 returns `TOO_BIG`. `export_file` returns the result shape of a `code.run` file, and stores its bytes
@@ -79,8 +91,9 @@ as an attachment of the result record, so a forget of that record erases them.
 
 ## Reads and acts
 
-A read changes nothing outside nixie, so `open` and `download` are `fetch` effects, and the decision
-point asks about each site on its first visit, with the site's host and port as the destination.
+A read changes nothing outside nixie, so `browser_open` and `browser_download` are `fetch` effects,
+and the decision point asks about each site on its first visit, with the site's host and port as the
+destination.
 
 A click or a fill can post a form, so each is a queued `send`. The tool's `prepare` hook reads the
 tab's URL before the decision. The host becomes the call's destination, and the URL becomes
@@ -105,10 +118,10 @@ A `computer.run` is its own effect, `computer_run`, because the shell reaches th
   `which`, one rule each, so a line passes when every command on it is the same one of them. They
   leave out `find` and `file`, because their options can run a program or write a file and a pattern
   cannot exclude an option.
-- Nixie counts each call that changes the shell's disk: `write_file`, `download` and `run`. A run
-  that waits for a decision keeps the count from when it was proposed, and returns `FILES_CHANGED`
-  without running when the count moved. An approved command therefore never runs a script that
-  changed after the user read the card.
+- Nixie counts each call that changes the shell's disk: `write_file`, `browser_download` and `run`.
+  A run that waits for a decision keeps the count from when it was proposed, and returns
+  `FILES_CHANGED` without running when the count moved. An approved command therefore never runs a
+  script that changed after the user read the card.
 
 ## The checking proxy
 
@@ -124,9 +137,9 @@ tunnel, because the guest scans each request before it enters one.
 
 The shell runs each command in a network namespace of its own that holds a loopback and nothing
 else. A bridge there passes the command's proxy settings to a proxy on a Unix socket, so a raw
-socket or `curl --noproxy` finds no route out. The proxy refuses CONNECT, because it cannot read an
-encrypted tunnel, so the shell reaches plain HTTP sites only, and the browser fetches the rest. A
-command's processes end with the command.
+socket or `curl --noproxy` finds no route out. The shell's proxy refuses CONNECT, because it cannot
+read an encrypted tunnel, so the shell reaches plain HTTP sites only, and the browser fetches the
+rest. A command's processes end with the command.
 
 Nixie scans the URL of a click, a fill and a run the same way, with no typed-URL exemption, because
 a queued action has no message to exempt it.

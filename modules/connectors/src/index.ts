@@ -76,7 +76,13 @@ export type { SecretsEntryName } from './web/secrets-entry-names';
 export { secretsEntryNames } from './web/secrets-entry-names';
 export type { IsOwnerTyped } from './page/secret-scan';
 export type { ComputerTools } from './computer/build-computer-tools';
-export { buildComputerTools, computerToolNames } from './computer/build-computer-tools';
+
+export {
+  buildComputerTools,
+  computerToolNames,
+  legacyComputerToolNames,
+} from './computer/build-computer-tools';
+
 export type { ComputerToolOptions } from './computer/computer-tool-options';
 export type { Computer, ComputerOptions } from './computer/start-computer';
 export { startComputer } from './computer/start-computer';

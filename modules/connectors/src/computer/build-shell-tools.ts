@@ -38,11 +38,13 @@ function buildRunTool(options: ComputerToolOptions, state: ComputerState): ToolD
   return {
     name: 'computer.run',
     description: [
-      'Runs one bash command in your own shell, in ~/files, and returns its exit code and output ',
+      'Runs one bash command in your own shell, in ~/files, and returns its exit code and output. ',
+      'Reach for the computer when the result must still be there tomorrow, or when a site needs ',
+      'you signed in. ',
       '(each stream is cut at 64 KiB). The call waits for the owner to allow the command, which ',
       'an owner can allow once or for every command that starts with the same words. A ',
-      'computer.write_file, a computer.download or another computer.run that finishes before ',
-      'this one starts cancels it with FILES_CHANGED, so check what it ran against. ',
+      'computer.write_file, a computer.browser_download or another computer.run that finishes ',
+      'before this one starts cancels it with FILES_CHANGED, so check what it ran against. ',
       diskNote,
     ].join(''),
     input: {
