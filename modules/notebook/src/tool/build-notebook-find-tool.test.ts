@@ -38,7 +38,34 @@ async function setupTest(options: NotebookOptions = {}) {
     );
   };
 
-  return { ...ctx, write, readFindResult, readTitles };
+  const readAllTitles = async (input: Record<string, JSONValue>) => {
+    const titles: string[] = [];
+    let after: string | null = null;
+
+    do {
+      const pageInput = after === null ? input : { ...input, after };
+
+      const result = await readFindResult(pageInput);
+
+      const notes = result['notes'];
+      const next = result['next'];
+
+      invariant(Array.isArray(notes));
+      invariant(typeof next === 'string' || next === null);
+
+      for (const entry of notes) {
+        invariant(typeof entry === 'object' && entry !== null && 'title' in entry);
+
+        titles.push(String(entry.title));
+      }
+
+      after = next;
+    } while (after !== null);
+
+    return titles;
+  };
+
+  return { ...ctx, write, readFindResult, readTitles, readAllTitles };
 }
 
 test('it finds a note by any word of the query, and shows the text around the match and a words score', async () => {
@@ -221,4 +248,38 @@ test('it leaves the query and the tags out of the call record', async () => {
   expect(outcome.record).toStrictEqual({
     notes: [{ note: expect.any(String), version: 1 }],
   });
+});
+
+test('it pages through every note of a list that its size cut', async () => {
+  const ctx = await setupTest();
+
+  for (let index = 0; index < 20; index += 1) {
+    await ctx.write({
+      title: `${String(index).padStart(2, '0')}${'題'.repeat(100)}`,
+      body: `note ${String(index)}`,
+      tags: Array.from({ length: 8 }, (_, tag) => `${'語'.repeat(30)}${String(tag)}`),
+    });
+  }
+
+  const titles = await ctx.readAllTitles({});
+
+  expect(titles).toHaveLength(20);
+  expect(new Set(titles).size).toBe(20);
+});
+
+test('it pages through every note of a ranked result that its size cut', async () => {
+  const ctx = await setupTest();
+
+  for (let index = 0; index < 20; index += 1) {
+    await ctx.write({
+      title: `${String(index).padStart(2, '0')}${'題'.repeat(100)}`,
+      body: `note ${String(index)}`,
+      tags: Array.from({ length: 8 }, (_, tag) => `${'語'.repeat(30)}${String(tag)}`),
+    });
+  }
+
+  const titles = await ctx.readAllTitles({ query: 'note', by: 'words' });
+
+  expect(titles).toHaveLength(20);
+  expect(new Set(titles).size).toBe(20);
 });

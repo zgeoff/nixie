@@ -134,3 +134,25 @@ test.each([
 ])('it normalizes the reason %j to %j', (reason, expected) => {
   expect(normalizeReason(reason)).toBe(expected);
 });
+
+test('it leaves a private target out of a repeated reason when private notes are hidden', () => {
+  const toPrivate = {
+    type: 'related',
+    kind: 'note',
+    targetID: 'private-uuid',
+    targetShownID: 'privateshort',
+    reason: 'same topic',
+  } as const;
+
+  const check = buildCheck(
+    [
+      buildCheckNote('aaaaaaaaaa', 1),
+      buildCheckNote('bbbbbbbbbb', 2),
+      { ...buildCheckNote('cccccccccc', 3, true), noteID: 'private-uuid' },
+    ],
+    [buildCheckLink('aaaaaaaaaa', toPrivate), buildCheckLink('bbbbbbbbbb', toPrivate)],
+    { checkReasonRepeats: 1, isPrivateShown: false },
+  );
+
+  expect(check.repeatedReasons).toStrictEqual([]);
+});

@@ -215,3 +215,13 @@ test('it keeps the note UUID under hidden.uuids and the find text out of the cal
     hidden: { uuids: { [note]: expect.any(String) } },
   });
 });
+
+test('it keeps the whole result of a find read within the output limit', async () => {
+  const ctx = await setupTest();
+  const note = await ctx.write({ title: 'Long', body: 'needle '.repeat(7000) });
+  const outcome = await ctx.call('notebook.read', { note, find: 'needle' });
+
+  invariant(outcome.status === 'ok');
+
+  expect(Buffer.byteLength(JSON.stringify(outcome.result))).toBeLessThanOrEqual(20_000);
+});

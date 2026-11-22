@@ -99,7 +99,10 @@ export function buildCheck(
   const repeated = collectRepeatedReasons(links.toSorted(byLinkOrder), options.checkReasonRepeats)
     .map((group) => ({
       reason: group.reason,
-      links: group.links.filter((link) => !hidden.has(link.fromNoteID)),
+      links: group.links.filter(
+        (link) =>
+          !hidden.has(link.fromNoteID) && !(link.kind === 'note' && hidden.has(link.targetID)),
+      ),
     }))
     .filter((group) => group.links.length > 0)
     .map((group) => ({

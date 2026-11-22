@@ -2,6 +2,7 @@ import type { JSONObject } from '@heynixie/log';
 import type { ToolDefinition } from '@heynixie/tools';
 import { z } from 'zod';
 import { formatUTC } from '../note/format-utc';
+import { buildCursor } from '../read/read-found-notes';
 import { cutResultLists } from './cut-result-lists';
 import { makeInputRecorder } from './make-input-recorder';
 import type { NotebookToolStore } from './notebook-tool-store';
@@ -94,12 +95,25 @@ export function buildNotebookFindTool(readStore: () => NotebookToolStore): ToolD
         ...(entry.score === null ? {} : { score: entry.score }),
       }));
 
-      const result = cutResultLists(
+      const cut = cutResultLists(
         { notes, next: found.next, isMeaningPartial: found.isMeaningPartial },
         ['notes'],
       );
 
-      const shownCount = Array.isArray(result['notes']) ? result['notes'].length : 0;
+      const shownCount = Array.isArray(cut['notes']) ? cut['notes'].length : 0;
+      const lastShown = found.notes[shownCount - 1];
+
+      // A cut page resumes after the last note shown, so no note falls between 2 pages.
+      const result =
+        shownCount === found.notes.length || lastShown === undefined
+          ? cut
+          : {
+              ...cut,
+              next:
+                input.query === undefined
+                  ? buildCursor(lastShown.meta)
+                  : String(Number(input.after ?? '0') + shownCount),
+            };
 
       return {
         status: 'ok',

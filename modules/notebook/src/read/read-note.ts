@@ -3,6 +3,7 @@ import { writeRecords } from '@heynixie/log';
 import { recallPageLimitBytes } from '@heynixie/wire';
 import type { NoteIndex } from '../index/start-note-index';
 import { readNoteLinks } from '../link/read-note-links';
+import type { BodyMatch } from '../note/collect-body-matches';
 import { collectBodyMatches } from '../note/collect-body-matches';
 import { cutBodyParts } from '../note/cut-body-parts';
 import { formatUTC } from '../note/format-utc';
@@ -86,15 +87,11 @@ export async function readNote(
   );
 
   const rest = buildMetadata({ row, version, text, versionAt: versionRow.created_at }, null);
-
-  const parts = cutBodyParts(
-    text.body,
-    recallPageLimitBytes - Buffer.byteLength(JSON.stringify(first)) - marginBytes,
-    recallPageLimitBytes - Buffer.byteLength(JSON.stringify(rest)) - marginBytes,
-  );
-
-  const found =
-    request.find === undefined ? [] : collectBodyMatches(text.body, parts, request.find);
+  const firstBudget = recallPageLimitBytes - Buffer.byteLength(JSON.stringify(first)) - marginBytes;
+  const restBudget = recallPageLimitBytes - Buffer.byteLength(JSON.stringify(rest)) - marginBytes;
+  const cut = cutWithMatches(text.body, request.find, firstBudget, restBudget);
+  const parts = cut.parts;
+  const found = cut.found;
 
   if (request.find !== undefined && found.length === 0) {
     return {
@@ -172,4 +169,24 @@ function buildMetadata(facts: NoteFacts, links: JSONObject | null): JSONObject {
       : {}),
     ...links,
   };
+}
+
+// The matches ride beside the body in the result, so the body's budget gives up their size. A
+// match's size does not depend on where the parts fall, so one more cut settles both.
+function cutWithMatches(
+  body: string,
+  find: string | undefined,
+  firstBudgetBytes: number,
+  restBudgetBytes: number,
+): { readonly parts: readonly string[]; readonly found: readonly BodyMatch[] } {
+  const parts = cutBodyParts(body, firstBudgetBytes, restBudgetBytes);
+
+  if (find === undefined) {
+    return { parts, found: [] };
+  }
+
+  const matchBytes = Buffer.byteLength(JSON.stringify(collectBodyMatches(body, parts, find)));
+  const fitted = cutBodyParts(body, firstBudgetBytes - matchBytes, restBudgetBytes - matchBytes);
+
+  return { parts: fitted, found: collectBodyMatches(body, fitted, find) };
 }
