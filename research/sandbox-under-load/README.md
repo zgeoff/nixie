@@ -3,8 +3,8 @@
 This spike runs Agent SDK turns in an imp, where impd's broker adds the model token to each request,
 with nixie's stub tools over HTTP MCP (Model Context Protocol). It rotates the model secret during a
 long turn, and asks the model for parallel tool calls. It informs the
-[sandbox adapter design](../../docs/design/platform/connectors/sandbox-adapter.md), which follows
-decision [0003](../../docs/decisions/0003-sdk-placement.md) on where the SDK runs.
+[sandboxes doc](../../docs/architecture/connectors/sandboxes.md), which follows decision
+[0003](../../docs/decisions/0003-sdk-placement.md) on where the SDK runs.
 
 ## Question
 

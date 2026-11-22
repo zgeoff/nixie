@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { buildTestClock } from '@heynixie/testing';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import { createTestClient } from './create-test-client';
 import { sendClientMessage } from './send-client-message';
 import { startInProcessNixie } from './start-in-process-nixie';
@@ -62,7 +62,7 @@ test('it rejects once the clock it is given reaches the timeout before the reply
   const ctx = await setupTest();
   const api = await createTestClient(ctx);
 
-  const clock = buildTestClock(0);
+  const clock = createFakeClock({ startMs: 0 });
 
   ctx.guest.addReplies({ text: 'Hello back.' });
 

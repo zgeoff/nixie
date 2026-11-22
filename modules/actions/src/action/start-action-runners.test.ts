@@ -1,7 +1,7 @@
 import { expect, onTestFinished, test } from 'bun:test';
 import type { ProviderResponse } from '@heynixie/connectors';
 import { buildRecordedCommits } from '@heynixie/log/test-utils';
-import { waitForCondition } from '@heynixie/testing';
+import { stopWithoutGrace, waitForCondition } from '@heynixie/testing';
 import { buildStubConnector } from '../test-utils/build-stub-connector';
 import { createTestStep } from '../test-utils/create-test-step';
 import { queueTestAction } from '../test-utils/queue-test-action';
@@ -43,7 +43,7 @@ test('it retries a refusal that can clear on the schedule', async () => {
     onError: () => {},
   });
 
-  onTestFinished(() => runners.stop(0));
+  onTestFinished(() => stopWithoutGrace(ctx.clock, runners));
 
   for (const [index, delayMs] of [30_000, 120_000, 480_000, 1_800_000, 0].entries()) {
     await waitForCondition(async () => {
@@ -80,7 +80,7 @@ test('it fails a refusal that can clear on its fifth attempt', async () => {
     onError: () => {},
   });
 
-  onTestFinished(() => runners.stop(0));
+  onTestFinished(() => stopWithoutGrace(ctx.clock, runners));
 
   for (const [index, delayMs] of [30_000, 120_000, 480_000, 1_800_000, 0].entries()) {
     await waitForCondition(async () => {
@@ -108,9 +108,9 @@ test('it attempts an action queued while every runner sleeps without waiting for
     onError: () => {},
   });
 
-  onTestFinished(() => runners.stop(0));
+  onTestFinished(() => stopWithoutGrace(ctx.clock, runners));
 
-  await waitForCondition(() => ctx.clock.countSleepers() === 4);
+  await waitForCondition(() => ctx.clock.countPending() === 4);
 
   const queuedAt = ctx.clock.now();
 
@@ -140,7 +140,7 @@ test('it removes its commit listener once stopped', async () => {
     { connectors: new Map(), onError: () => {} },
   );
 
-  await runners.stop(0);
+  await stopWithoutGrace(ctx.clock, runners);
 
   expect(recorded.calls).toStrictEqual(['add commit', 'remove commit']);
 });
@@ -174,9 +174,9 @@ test('it runs 4 actions at once by default', async () => {
     onError: () => {},
   });
 
-  onTestFinished(() => runners.stop(0));
+  onTestFinished(() => stopWithoutGrace(ctx.clock, runners));
 
-  await waitForCondition(() => stub.calls.length === 4 && ctx.clock.countSleepers() === 4);
+  await waitForCondition(() => stub.calls.length === 4 && ctx.clock.countPending() === 4);
 
   const untouched = await ctx.db
     .selectFrom('actions')

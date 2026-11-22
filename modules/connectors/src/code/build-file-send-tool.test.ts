@@ -2,9 +2,9 @@ import { expect, test } from 'bun:test';
 import type { JSONObject, LogTables } from '@heynixie/log';
 import { readRecords, removeRecordKey } from '@heynixie/log';
 import { buildAllowingDecisionPoint } from '@heynixie/policy/test-utils';
-import { buildTestClock } from '@heynixie/testing';
 import type { ToolRun } from '@heynixie/tools';
 import { buildToolRegistry, runToolCall } from '@heynixie/tools';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import invariant from 'tiny-invariant';
 import { z } from 'zod';
 import { buildStubSandboxAdapter } from '../test-utils/build-stub-sandbox-adapter';
@@ -18,7 +18,7 @@ import { buildFileSendTool } from './build-file-send-tool';
 import type { CodeFileSendsTables } from './code-files-tables';
 
 async function setupTest() {
-  const clock = buildTestClock(1_000_000);
+  const clock = createFakeClock({ startMs: 1_000_000 });
 
   const log = await startTestLog(clock);
 

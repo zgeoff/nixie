@@ -4,6 +4,7 @@ export { budgetCreditedCodec } from './record/budget-credited-codec';
 export type { BudgetRecordKind } from './record/budget-record-kind';
 export { buildBudgetPeriod } from './period/build-budget-period';
 export type { BudgetPeriodBounds } from './period/build-budget-period';
+export type { PaidToolLimits } from './limit/build-built-in-budgets';
 export { buildBuiltInBudgets } from './limit/build-built-in-budgets';
 export { pickBudgetLimit } from './limit/pick-budget-limit';
 export { readBudgetsInForce } from './limit/read-budgets-in-force';

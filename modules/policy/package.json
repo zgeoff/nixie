@@ -19,6 +19,7 @@
     "kysely": "catalog:",
     "tiny-invariant": "catalog:",
     "ts-pattern": "catalog:",
+    "unbash": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {

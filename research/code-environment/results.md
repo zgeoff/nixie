@@ -15,8 +15,8 @@ files. Both images ship Node.js 20, whose upstream support ended on 2026-04-30.
 The code tool runs a program that the model writes, under the limits in the
 [coding design](../../docs/design/platform/connectors/coding.md#the-code-tool): no network, 1 vCPU,
 1 GiB of memory, and no swap. The
-[sandbox adapter design](../../docs/design/platform/connectors/sandbox-adapter.md#images) lists 2
-images for it:
+[sandboxes doc](../../docs/architecture/connectors/sandboxes.md#kinds-of-work) lists 2 images for
+it:
 
 - **The code image** is the sandbox for a code run from the conversation or a task: Debian with
   Node.js, Python and a toolbox of jq, ripgrep, grep and the common Linux file and text tools.

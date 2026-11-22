@@ -7,6 +7,12 @@ export interface ControlHandlers {
 
   readonly addReply: (reply: z.output<typeof controlRoutes.addReply.input>) => number;
 
+  readonly showOnDevice: (
+    show: z.output<typeof controlRoutes.showOnDevice.input>,
+  ) => Promise<number>;
+
+  readonly useComputer: (use: z.output<typeof controlRoutes.useComputer.input>) => Promise<number>;
+
   readonly readTasks: () => Promise<z.input<typeof controlRoutes.tasks.output>>;
 
   readonly readActionProposals: () => Promise<z.input<typeof controlRoutes.actionProposals.output>>;
@@ -27,6 +33,16 @@ export function serveControl(handlers: ControlHandlers): Bun.Server<undefined> {
       },
       [controlRoutes.actionProposals.path]: {
         GET: makeRouteHandler(controlRoutes.actionProposals, handlers.readActionProposals),
+      },
+      [controlRoutes.showOnDevice.path]: {
+        POST: makeRouteHandler(controlRoutes.showOnDevice, async (show) => ({
+          replies: await handlers.showOnDevice(show),
+        })),
+      },
+      [controlRoutes.useComputer.path]: {
+        POST: makeRouteHandler(controlRoutes.useComputer, async (use) => ({
+          replies: await handlers.useComputer(use),
+        })),
       },
       [controlRoutes.addReply.path]: {
         POST: makeRouteHandler(controlRoutes.addReply, (reply) => ({

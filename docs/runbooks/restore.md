@@ -4,8 +4,8 @@ These steps take you from a lost host to a restored nixie that you have checked 
 backups running again. They cover Compose, Kubernetes with the reference manifests, and Kubernetes
 with the Pulumi component.
 [Backup and restore](../design/platform/deployment/backup-and-restore.md#restoring-on-a-new-host)
-gives the design, and [the backup pair](../design/queue/backup-pair.md) gives the fetch and the
-restore.
+gives the design, and [the backup pair](../architecture/deployment/backup-pair.md) gives how the
+fetch picks the copies it restores.
 
 ## Before you start
 

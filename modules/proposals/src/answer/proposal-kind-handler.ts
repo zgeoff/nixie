@@ -102,6 +102,9 @@ export interface ProposalBody {
   readonly fields: Readonly<Record<string, string>>;
   readonly ruleSentence: string | null;
 
+  // the IDs of stored images that the card shows, such as the photos a draw would send
+  readonly images?: string[];
+
   // the approve button's text, built from the kind's template and never from a model
   readonly approveLabel: string;
 

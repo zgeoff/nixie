@@ -5,8 +5,8 @@ import { join } from 'node:path';
 import { createPathSource, runInForceSeed, runSeed, writeRuntimeRule } from '@heynixie/definitions';
 import { buildTestTaskSeed, seedLegacyRuleProposal } from '@heynixie/definitions/test-utils';
 import { startWriter } from '@heynixie/log';
-import { buildTestClock } from '@heynixie/testing';
 import { createRouterClient } from '@orpc/server';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import { createHostRuleProcedures } from './create-host-rule-procedures';
 
 async function setupTest() {
@@ -22,7 +22,7 @@ async function setupTest() {
 
   await mkdir(join(root, 'rules'), { recursive: true });
 
-  const clock = buildTestClock(Date.UTC(2026, 9, 16, 9, 0));
+  const clock = createFakeClock({ startMs: Date.UTC(2026, 9, 16, 9, 0) });
 
   const writer = await startWriter({
     dataDir: directory,

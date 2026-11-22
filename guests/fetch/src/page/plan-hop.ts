@@ -1,6 +1,6 @@
 import { isIP } from 'node:net';
-import type { AddressCheck } from './make-address-check';
-import { toBareHost } from './to-bare-host';
+import type { AddressCheck } from '@heynixie/egress';
+import { toBareHost } from '@heynixie/egress';
 
 export interface HopOptions {
   readonly checkAddress: AddressCheck;

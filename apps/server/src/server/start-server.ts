@@ -16,6 +16,7 @@ import { buildCleanup } from './build-cleanup';
 import type { CrashHarness } from './join-crash-harness';
 import type { Secrets } from './load-secrets';
 import { loadServerInputs } from './load-server-inputs';
+import type { ImageSettings } from './resolve-image-settings';
 import type { SearchSettings } from './resolve-search-settings';
 import { startServerWork } from './start-server-work';
 
@@ -57,6 +58,7 @@ export interface ServerPartsOptions extends ServerOptions {
 
   readonly definitionsExport: DefinitionsExportSettings | null;
   readonly search: SearchSettings | null;
+  readonly imageSettings: ImageSettings | null;
 
   // the gateway that counts every model request, or null when the config sets no spendStop
   readonly spend: SpendInputs | null;

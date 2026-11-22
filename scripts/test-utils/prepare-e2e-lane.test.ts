@@ -1,8 +1,8 @@
 import { expect, onTestFinished, test } from 'bun:test';
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { createStubProgram } from './create-stub-program';
+import { createStubBin, readStubCalls } from '@zgeoff/testing/bin';
 import prepareE2ELane from './prepare-e2e-lane';
 
 async function setupTest() {
@@ -13,8 +13,7 @@ async function setupTest() {
   const binDir = join(directory, 'bin');
 
   return {
-    bunPath: join(binDir, 'bun'),
-    callsPath: join(directory, 'calls'),
+    binDir,
     env: { PATH: `${binDir}:/usr/bin:/bin` },
   };
 }
@@ -22,7 +21,7 @@ async function setupTest() {
 test('it builds the model files, both bundles and the previous release before the e2e lane runs', async () => {
   const ctx = await setupTest();
 
-  createStubProgram(ctx.bunPath, { callsPath: ctx.callsPath });
+  createStubBin(ctx.binDir, 'bun');
 
   prepareE2ELane({
     repoRoot: '/srv/orchard',
@@ -39,7 +38,11 @@ test('it builds the model files, both bundles and the previous release before th
     },
   });
 
-  const calls = await readFile(ctx.callsPath, 'utf8');
+  const calls = readStubCalls(ctx.binDir).map((call) => call.argv);
 
-  expect(calls).toBe('bun run models\nbun run test:bundles\nbun run test:previous-release-build\n');
+  expect(calls).toStrictEqual([
+    ['run', 'models'],
+    ['run', 'test:bundles'],
+    ['run', 'test:previous-release-build'],
+  ]);
 });

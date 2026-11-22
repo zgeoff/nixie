@@ -1,0 +1,24 @@
+{
+  "name": "@heynixie/image-gemini",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts",
+    "./mocks": "./src/mocks/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsrs --fast --noEmit"
+  },
+  "dependencies": {
+    "@heynixie/connectors": "workspace:*",
+    "@heynixie/wire": "workspace:*",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@heynixie/log": "workspace:*",
+    "@heynixie/mock-server": "workspace:*",
+    "msw": "catalog:"
+  }
+}

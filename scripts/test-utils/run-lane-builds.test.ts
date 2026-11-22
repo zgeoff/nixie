@@ -1,8 +1,8 @@
 import { expect, onTestFinished, test } from 'bun:test';
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { createStubProgram } from './create-stub-program';
+import { createStubBin, readStubCalls } from '@zgeoff/testing/bin';
 import { runLaneBuilds } from './run-lane-builds';
 
 async function setupTest() {
@@ -13,8 +13,7 @@ async function setupTest() {
   const binDir = join(directory, 'bin');
 
   return {
-    bunPath: join(binDir, 'bun'),
-    callsPath: join(directory, 'calls'),
+    binDir,
     env: { PATH: `${binDir}:/usr/bin:/bin` },
   };
 }
@@ -22,27 +21,29 @@ async function setupTest() {
 test('it runs each build script in order', async () => {
   const ctx = await setupTest();
 
-  createStubProgram(ctx.bunPath, { callsPath: ctx.callsPath });
+  createStubBin(ctx.binDir, 'bun');
   runLaneBuilds(ctx.env, ['build:kiosk', 'build:ledger']);
 
-  const calls = await readFile(ctx.callsPath, 'utf8');
+  const calls = readStubCalls(ctx.binDir).map((call) => call.argv);
 
-  expect(calls).toBe('bun run build:kiosk\nbun run build:ledger\n');
+  expect(calls).toStrictEqual([
+    ['run', 'build:kiosk'],
+    ['run', 'build:ledger'],
+  ]);
 });
 
 test('it throws on a build that fails, and runs none after it', async () => {
   const ctx = await setupTest();
 
-  createStubProgram(ctx.bunPath, {
-    callsPath: ctx.callsPath,
-    answers: { 'run build:kiosk': { exitCode: 3 } },
+  createStubBin(ctx.binDir, 'bun', {
+    answers: [{ args: ['run', 'build:kiosk'], exitCode: 3 }],
   });
 
   expect(() => {
     runLaneBuilds(ctx.env, ['build:kiosk', 'build:ledger']);
   }).toThrowWithMessage(Error, 'bun run build:kiosk exited with 3');
 
-  const calls = await readFile(ctx.callsPath, 'utf8');
+  const calls = readStubCalls(ctx.binDir).map((call) => call.argv);
 
-  expect(calls).toBe('bun run build:kiosk\n');
+  expect(calls).toStrictEqual([['run', 'build:kiosk']]);
 });

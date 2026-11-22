@@ -1,12 +1,12 @@
 import { expect, test } from 'bun:test';
 import { removeRecordKey } from '@heynixie/log';
-import { buildTestClock } from '@heynixie/testing';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import { buildMockProvenance } from '../test-utils/build-mock-provenance';
 import { startFaultPointHold } from '../test-utils/start-fault-point-hold';
 import { startTestMemory } from '../test-utils/start-test-memory';
 
 test('it retires a lapsed item once, with the lapse origin, and leaves an item with no end time alone', async () => {
-  const clock = buildTestClock(Date.parse('2026-10-19T09:00:00Z'));
+  const clock = createFakeClock({ startMs: Date.parse('2026-10-19T09:00:00Z') });
 
   const memory = await startTestMemory({ gate: { clock } });
 
@@ -53,7 +53,7 @@ test('it retires a lapsed item once, with the lapse origin, and leaves an item w
 });
 
 test('it leaves an item whose end time is still to come active', async () => {
-  const clock = buildTestClock(Date.parse('2026-10-19T09:00:00Z'));
+  const clock = createFakeClock({ startMs: Date.parse('2026-10-19T09:00:00Z') });
 
   const memory = await startTestMemory({ gate: { clock } });
 
@@ -73,7 +73,7 @@ test('it leaves an item whose end time is still to come active', async () => {
 });
 
 test('it takes a pinned item that lapses out of the pinned core', async () => {
-  const clock = buildTestClock(Date.parse('2026-10-19T09:00:00Z'));
+  const clock = createFakeClock({ startMs: Date.parse('2026-10-19T09:00:00Z') });
 
   const memory = await startTestMemory({ gate: { clock } });
 
@@ -99,7 +99,7 @@ test('it takes a pinned item that lapses out of the pinned core', async () => {
 });
 
 test('it skips an item that an edit changed after the sweep read it, and retires it on the next sweep', async () => {
-  const clock = buildTestClock(Date.parse('2026-10-19T09:00:00Z'));
+  const clock = createFakeClock({ startMs: Date.parse('2026-10-19T09:00:00Z') });
 
   const memory = await startTestMemory({ gate: { clock } });
 
@@ -137,7 +137,7 @@ test('it skips an item that an edit changed after the sweep read it, and retires
 });
 
 test('it retires the other lapsed items when one has no readable key, and reports that one', async () => {
-  const clock = buildTestClock(Date.parse('2026-10-19T09:00:00Z'));
+  const clock = createFakeClock({ startMs: Date.parse('2026-10-19T09:00:00Z') });
 
   const memory = await startTestMemory({ gate: { clock } });
 

@@ -3,11 +3,9 @@
 nixie runs untrusted work in sandboxes: the conversation's model loop, the memory checker, each
 worker, each code run, the fetch sandbox and each coding session. A sandbox gets only the network
 and the credentials its kind of work needs, and the caller names only that kind. nixie reaches
-sandboxes through its own sandbox interface, which the
-[sandbox adapter design](../../design/platform/connectors/sandbox-adapter.md) defines. The reference
-adapter runs each sandbox as an [imp](../../glossary.md), a microVM that impd, imp's host daemon,
-runs. The test sandbox runs each guest as a local process, so any module's tests can run a real
-guest.
+sandboxes through its own sandbox interface, `Sandbox` in `modules/sandbox`. The reference adapter
+runs each sandbox as an [imp](../../glossary.md), a microVM that impd, imp's host daemon, runs. The
+test sandbox runs each guest as a local process, so any module's tests can run a real guest.
 
 [Tool calls](./tool-calls.md) covers the endpoint a sandbox's tool route reaches.
 [The code tool](./code-tool.md) covers the code run's sandbox. [Web fetch](./web-fetch.md) covers
@@ -30,6 +28,8 @@ route from the kind:
 | worker       | None      | Yes              | No           | Yes        |
 | code run     | None      | No               | No           | No         |
 | fetch        | Public    | No               | No           | No         |
+| browser      | Public    | No               | No           | No         |
+| shell        | Public    | No               | No           | No         |
 | coding       | Allowlist | Yes              | Yes          | Yes        |
 
 The owner is the ID that crash recovery checks to decide whether the sandbox still has work. For a
@@ -61,11 +61,30 @@ to a role. A sandbox kind or an image never picks a row.
 | system task  | the checker, each started task and each system task | 1     | 384 MiB | 4096 MiB |
 | fetch        | web fetch and skill fetch                           | 1     | 192 MiB | 4096 MiB |
 | code run     | each `code.run` call                                | 1     | 512 MiB | 4096 MiB |
+| browser      | the assistant's [browser](computer.md)              | 2     | 1024 MiB | 8192 MiB |
+| shell        | the assistant's [shell](computer.md)                | 1     | 512 MiB | 16384 MiB |
 ```
 
-A size is a constant with no config key, and a release changes it. A kept sandbox whose stored size
-differs from its row is replaced once, by the rule that finds a kept sandbox.
-[The sandbox sizes design](../../design/queue/sandbox-sizes.md) gives the reasons for each figure.
+A size is a constant with no config key, and a release changes it. Each row's memory is an even
+number of MiB, no smaller than the runtime's smallest sandbox, and a unit test fails on any other
+figure. The even rule exists because a host that reserves large pages for sandbox memory cannot
+place an odd size in that reserve. Each figure comes from the measurements of the
+[sandbox memory spike](../../../research/sandbox-memory/README.md).
+
+When a row's sandbox is killed for running out of memory, raise the row step by step to the first
+figure at which the spike's `probe.sh` passes. `probe.sh` runs one of the spike's scenarios in a new
+test imp of a given size, and passes when no process in it is killed for memory. Ship the new figure
+in a release. A memory kill in the code run row is the program's own limit, as the
+[code tool](code-tool.md) describes, and changes no row. When you add an image for a role with no
+row, add the role's row in the same pull request, size it with `probe.sh` on that image, and quote
+the probe's output.
+
+The server keeps one sandbox across its restarts for the conversation, for each started task and for
+the checker. Each time the server starts, it compares the stored spec of each kept sandbox with the
+spec it would create now, which carries the row's size. When any field differs, the server replaces
+the sandbox once. The comparison is by equality, so a rollback replaces it as an upgrade does. The
+conversation's new sandbox copies the session from the one it replaces, then removes it. A task's or
+the checker's new sandbox starts empty.
 
 ## Records and recovery
 
@@ -118,7 +137,8 @@ creates a new sandbox, and the guest opens a new session from the log.
 ## The tool route
 
 A sandbox with a tool route reaches nixie's tools over a reverse forward, and has no network route
-to the host.
+to the host. An egress allow entry would not do: imp's allow entry admits a whole address, so an imp
+allowed to reach nixie's endpoint would also reach impd's API on the same address.
 
 ```mermaid
 flowchart LR
@@ -164,9 +184,10 @@ and the secrets.
   the adapter refuses a grant whose secret the broker would send to any host but its own one.
 - **Public egress.** Public egress reaches the internet and nothing inside the deployment: not the
   host, not impd's API, not another sandbox. The deployment's operator lists the host's own
-  addresses and the deployment's private address ranges, and the same lists go to impd and to nixie.
-  The adapter refuses public egress when the list of host addresses is empty, or when impd cannot
-  enforce public egress, because a public imp can reach any host address the list leaves out.
+  addresses and the deployment's private address ranges, in `IMP_HOST_ADDRESSES` and
+  `IMP_EGRESS_DENY`, and the same lists go to impd and to nixie. The adapter refuses public egress
+  when the list of host addresses is empty, or when impd cannot enforce public egress, because a
+  public imp can reach any host address the list leaves out.
 - **Closed egress.** A sandbox with no egress, a worker's included, has no internet route except its
   broker. The broker adds the model grant from the host side, so code in the sandbox that holds a
   key of its own gets no answer from the model API's host when it connects directly. A worker reads

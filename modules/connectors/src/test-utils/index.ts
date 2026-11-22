@@ -9,3 +9,11 @@ export type { StubProgram, StubProgramContext, StubProgramScript } from './make-
 export { makeStubCodeExec } from './make-stub-code-exec';
 export type { CodeRunFilesSeed, SeededCodeRunFiles } from './seed-code-run-files';
 export { seedCodeRunFiles } from './seed-code-run-files';
+export { seedImage } from './seed-image';
+export { seedOwnerPhoto } from './seed-owner-photo';
+export { seedCodeRunImage } from './seed-code-run-image';
+export type { TestImagesOptions } from './start-test-images';
+export { startTestImages } from './start-test-images';
+export type { StubImageProvider } from './build-stub-image-provider';
+export { buildStubImageProvider } from './build-stub-image-provider';
+export { readImageID, readToolResult } from './read-tool-result';

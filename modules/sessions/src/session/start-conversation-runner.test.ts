@@ -23,8 +23,9 @@ import {
   writeInboxRecords,
 } from '@heynixie/tasks';
 import { readTestTaskProgress, writeTestTaskMessage } from '@heynixie/tasks/test-utils';
-import { buildTestClock, waitForCondition } from '@heynixie/testing';
+import { waitForCondition } from '@heynixie/testing';
 import type { InboxMessage } from '@heynixie/wire';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import invariant from 'tiny-invariant';
 import { buildSeeder } from '../test-utils/build-seeder';
 import { buildStubLiveTurnScript } from '../test-utils/build-stub-live-turn-script';
@@ -585,6 +586,9 @@ test("it gives each turn a step token of the step's run identity, and stops it o
           turnMessageSequence: expect.toBeNumber(),
         },
         reserveImages: expect.any(Function),
+        readImageRoom: expect.any(Function),
+        holdImageRoom: expect.any(Function),
+        releaseImageRoom: expect.any(Function),
         endSilently: expect.any(Function),
         step: {
           signal: expect.any(AbortSignal),
@@ -609,6 +613,9 @@ test("it gives each turn a step token of the step's run identity, and stops it o
           turnMessageSequence: expect.toBeNumber(),
         },
         reserveImages: expect.any(Function),
+        readImageRoom: expect.any(Function),
+        holdImageRoom: expect.any(Function),
+        releaseImageRoom: expect.any(Function),
         endSilently: expect.any(Function),
         step: {
           signal: expect.any(AbortSignal),
@@ -686,7 +693,7 @@ test('it clears every web fetch pause on a forget, so the next fetch of a paused
 
   await createConversationTask(ctx.context);
 
-  const clock = buildTestClock(1_000_000);
+  const clock = createFakeClock({ startMs: 1_000_000 });
   const backoff = makeFetchBackoff({ backoffMs: 30_000, backoffCapMs: 300_000, clock });
   const requestedURLs: string[] = [];
 

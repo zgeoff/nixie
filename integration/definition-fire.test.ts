@@ -33,7 +33,7 @@ import {
   writeTestTaskMessage,
   writeTestTriggerFire,
 } from '@heynixie/tasks/test-utils';
-import { buildTestClock, waitForCondition } from '@heynixie/testing';
+import { waitForCondition } from '@heynixie/testing';
 import type { ToolDefinition, ToolEndpoint } from '@heynixie/tools';
 import { buildToolRegistry, startToolEndpoint } from '@heynixie/tools';
 import {
@@ -44,6 +44,7 @@ import {
   withTestToolClient,
 } from '@heynixie/tools/test-utils';
 import { buildScheduleSource, deliverTriggerBatch, triggersProjections } from '@heynixie/triggers';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import invariant from 'tiny-invariant';
 
 interface TaskRunnerRoute {
@@ -52,7 +53,7 @@ interface TaskRunnerRoute {
 }
 
 async function setupTest() {
-  const clock = buildTestClock(Date.parse('2027-03-08T21:15:00.000Z'));
+  const clock = createFakeClock({ startMs: Date.parse('2027-03-08T21:15:00.000Z') });
 
   const models = modelsConfigSchema.parse({
     profiles: {
@@ -198,7 +199,7 @@ async function setupTest() {
         signal: controller.signal,
       });
 
-      await waitForCondition(() => clock.countSleepers() === 1);
+      await waitForCondition(() => clock.countPending() === 1);
 
       clock.advance(advanceMs);
 

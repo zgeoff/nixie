@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { readRecords, startWriter, withWriteTransaction, writeRecords } from '@heynixie/log';
 import { promptsOverrideProposedCodec, writePromptProposalAnswer } from '@heynixie/prompts';
-import { buildTestClock } from '@heynixie/testing';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import { sql } from 'kysely';
 import invariant from 'tiny-invariant';
 import { createPathSource } from '../definition/create-path-source';
@@ -52,7 +52,7 @@ async function setupTest() {
     repo: buildStubDefinitionsRepo(root),
     answerContext: {
       log,
-      clock: buildTestClock(Date.parse('2026-10-16T09:00:00Z')),
+      clock: createFakeClock({ startMs: Date.parse('2026-10-16T09:00:00Z') }),
       definitions: () => ({ snapshotHash: 'snapshot-a' }),
       readInForce: () => null,
       checkProposal: checkPromptProposal,

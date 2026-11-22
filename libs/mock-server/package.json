@@ -10,6 +10,8 @@
     "typecheck": "tsrs --fast --noEmit"
   },
   "dependencies": {
+    "@mswjs/interceptors": "catalog:",
+    "@zgeoff/testing": "catalog:",
     "msw": "catalog:"
   }
 }

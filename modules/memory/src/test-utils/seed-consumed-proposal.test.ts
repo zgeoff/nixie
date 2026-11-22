@@ -1,11 +1,11 @@
 import { expect, test } from 'bun:test';
-import { buildTestClock } from '@heynixie/testing';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import type { MemoryTables } from '../types';
 import { seedConsumedProposal } from './seed-consumed-proposal';
 import { startTestMemory } from './start-test-memory';
 
 async function setupTest() {
-  const clock = buildTestClock(Date.parse('2026-11-02T09:00:00Z'));
+  const clock = createFakeClock({ startMs: Date.parse('2026-11-02T09:00:00Z') });
 
   const memory = await startTestMemory({ gate: { clock } });
 

@@ -1,1 +1,1 @@
-export { mockServer as server } from '@heynixie/mock-server';
+export { network as server } from '@heynixie/mock-server';

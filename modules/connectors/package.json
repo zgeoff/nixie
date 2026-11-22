@@ -28,8 +28,10 @@
     "zod": "catalog:"
   },
   "devDependencies": {
+    "@heynixie/budgets": "workspace:*",
     "@heynixie/policy": "workspace:*",
     "@heynixie/testing": "workspace:*",
-    "@modelcontextprotocol/server": "catalog:"
+    "@modelcontextprotocol/server": "catalog:",
+    "@zgeoff/testing": "catalog:"
   }
 }

@@ -3,8 +3,8 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { startWriter } from '@heynixie/log';
-import { buildTestClock } from '@heynixie/testing';
 import { buildToolRegistry } from '@heynixie/tools';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import { buildSkillTools } from './build-skill-tools';
 
 async function setupTest() {
@@ -33,7 +33,7 @@ test('it builds skill_read, skill_reload, skill_reload_all, skill_write and skil
 
   const tools = buildSkillTools({
     log: ctx.log,
-    clock: buildTestClock(0),
+    clock: createFakeClock({ startMs: 0 }),
     readInForce: () => null,
     runInForceSeed: () => Promise.resolve(),
     refreshDefinitions: () => Promise.resolve(null),

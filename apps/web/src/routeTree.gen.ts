@@ -10,7 +10,9 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AddDeviceRouteImport } from './routes/add-device'
 import { Route as DefinitionsRouteImport } from './routes/definitions'
+import { Route as DeviceRouteImport } from './routes/device'
 import { Route as FilesRouteImport } from './routes/files'
 import { Route as MandatesRouteImport } from './routes/mandates'
 import { Route as MemoryRouteImport } from './routes/memory'
@@ -28,9 +30,19 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AddDeviceRoute = AddDeviceRouteImport.update({
+  id: '/add-device',
+  path: '/add-device',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DefinitionsRoute = DefinitionsRouteImport.update({
   id: '/definitions',
   path: '/definitions',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DeviceRoute = DeviceRouteImport.update({
+  id: '/device',
+  path: '/device',
   getParentRoute: () => rootRouteImport,
 } as any)
 const FilesRoute = FilesRouteImport.update({
@@ -91,7 +103,9 @@ const TasksEndedRoute = TasksEndedRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/add-device': typeof AddDeviceRoute
   '/definitions': typeof DefinitionsRoute
+  '/device': typeof DeviceRoute
   '/files': typeof FilesRoute
   '/mandates': typeof MandatesRoute
   '/memory': typeof MemoryRoute
@@ -106,7 +120,9 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/add-device': typeof AddDeviceRoute
   '/definitions': typeof DefinitionsRoute
+  '/device': typeof DeviceRoute
   '/files': typeof FilesRoute
   '/mandates': typeof MandatesRoute
   '/memory': typeof MemoryRoute
@@ -122,7 +138,9 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/add-device': typeof AddDeviceRoute
   '/definitions': typeof DefinitionsRoute
+  '/device': typeof DeviceRoute
   '/files': typeof FilesRoute
   '/mandates': typeof MandatesRoute
   '/memory': typeof MemoryRoute
@@ -139,7 +157,9 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/add-device'
     | '/definitions'
+    | '/device'
     | '/files'
     | '/mandates'
     | '/memory'
@@ -154,7 +174,9 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/add-device'
     | '/definitions'
+    | '/device'
     | '/files'
     | '/mandates'
     | '/memory'
@@ -169,7 +191,9 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/add-device'
     | '/definitions'
+    | '/device'
     | '/files'
     | '/mandates'
     | '/memory'
@@ -185,7 +209,9 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AddDeviceRoute: typeof AddDeviceRoute
   DefinitionsRoute: typeof DefinitionsRoute
+  DeviceRoute: typeof DeviceRoute
   FilesRoute: typeof FilesRoute
   MandatesRoute: typeof MandatesRoute
   MemoryRoute: typeof MemoryRoute
@@ -208,11 +234,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/add-device': {
+      id: '/add-device'
+      path: '/add-device'
+      fullPath: '/add-device'
+      preLoaderRoute: typeof AddDeviceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/definitions': {
       id: '/definitions'
       path: '/definitions'
       fullPath: '/definitions'
       preLoaderRoute: typeof DefinitionsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/device': {
+      id: '/device'
+      path: '/device'
+      fullPath: '/device'
+      preLoaderRoute: typeof DeviceRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/files': {
@@ -297,7 +337,9 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AddDeviceRoute: AddDeviceRoute,
   DefinitionsRoute: DefinitionsRoute,
+  DeviceRoute: DeviceRoute,
   FilesRoute: FilesRoute,
   MandatesRoute: MandatesRoute,
   MemoryRoute: MemoryRoute,

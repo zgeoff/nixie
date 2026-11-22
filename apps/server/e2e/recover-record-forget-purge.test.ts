@@ -72,7 +72,7 @@ test.skipIf(!isPreviousReleaseReadable)(
     await killed.waitForArrival('memory.forget.key_removed');
     await killed.kill();
 
-    const rolledBack = nixie.harness.startRelease(previous.testEntry);
+    const rolledBack = nixie.harness.startRelease(previous.testEntry, previous.imageKeys);
 
     await nixie.waitForRecord((record) => record.kind === 'record.forgotten');
     await rolledBack.kill();
@@ -124,7 +124,7 @@ test
     await killed.waitForArrival(point);
     await killed.kill();
 
-    const restarted = ctx.nixie.harness.startRelease(previous.testEntry);
+    const restarted = ctx.nixie.harness.startRelease(previous.testEntry, previous.imageKeys);
 
     await ctx.nixie.waitForRecord((record) => record.kind === 'record.forgotten');
     await restarted.kill();
@@ -157,7 +157,7 @@ test.skipIf(isPreviousReleaseReadable)(
     await killed.waitForArrival('memory.purge.closed');
     await killed.kill();
 
-    const rolledBack = ctx.nixie.harness.startRelease(previous.testEntry);
+    const rolledBack = ctx.nixie.harness.startRelease(previous.testEntry, previous.imageKeys);
 
     const rolledBackRun = await rolledBack.waitForExit();
 

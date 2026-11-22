@@ -13,6 +13,7 @@
     "@heynixie/contract": "workspace:*",
     "@heynixie/db": "workspace:*",
     "@heynixie/definitions": "workspace:*",
+    "@heynixie/devices": "workspace:*",
     "@heynixie/log": "workspace:*",
     "@heynixie/logger": "workspace:*",
     "@heynixie/memory": "workspace:*",
@@ -40,5 +41,8 @@
     "kysely": "catalog:",
     "tiny-invariant": "catalog:",
     "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@zgeoff/testing": "catalog:"
   }
 }

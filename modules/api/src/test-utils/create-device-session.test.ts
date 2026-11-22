@@ -15,6 +15,7 @@ test('it creates a session whose token resolves to its row', async () => {
   expect(result).toStrictEqual({
     identityID: session.sessionID,
     channel: 'client',
+    scope: 'full',
     label: 'laptop',
     pairedAt: 1_000_000,
     lastSeenAt: 1_000_000,
@@ -28,6 +29,7 @@ test('it returns the identity its token resolves to as the caller', async () => 
   expect(session.caller).toStrictEqual({
     identityID: session.sessionID,
     channel: 'client',
+    scope: 'full',
     label: 'laptop',
     pairedAt: 1_000_000,
     lastSeenAt: 1_000_000,

@@ -1,12 +1,11 @@
-import type { RequestHandler, WebSocketHandler } from 'msw';
-import { mockServer } from './mock-server';
-import { unmatchedRequestHandler } from './unmatched-request-handler';
+import { beforeEach } from 'bun:test';
+import type { RequestHandler } from 'msw';
+import { network } from './network';
 
-export function addMockHandlers(...handlers: (RequestHandler | WebSocketHandler)[]): void {
-  const current = mockServer
-    .listHandlers()
-    .filter((handler) => handler !== unmatchedRequestHandler);
-
-  // A reset with handlers makes them the ones that every later reset returns to.
-  mockServer.resetHandlers(...current, ...handlers, unmatchedRequestHandler);
+// Call it from a package's test preload, so each test of the run starts with these handlers. A
+// handler that a test adds with `network.use` answers before them.
+export function addMockHandlers(...handlers: readonly RequestHandler[]): void {
+  beforeEach(() => {
+    network.use(...handlers);
+  });
 }

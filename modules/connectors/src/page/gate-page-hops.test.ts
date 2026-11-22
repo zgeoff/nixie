@@ -2,14 +2,15 @@ import { expect, mock, test } from 'bun:test';
 import type { ExecStream, StreamExit } from '@heynixie/sandbox';
 import { makeSecretFinder } from '@heynixie/secret-scan';
 import { buildKey } from '@heynixie/secret-scan/test-utils';
-import { buildTestClock, waitForCondition } from '@heynixie/testing';
+import { waitForCondition } from '@heynixie/testing';
 import { encodeFetchMessage } from '@heynixie/wire';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import type { HopScan, HopVerdict, PageHop } from './gate-page-hops';
 import { gatePageHops } from './gate-page-hops';
 import { makeHopScan } from './make-hop-scan';
 
 function setupTest(exitCode = 0) {
-  const clock = buildTestClock(0);
+  const clock = createFakeClock({ startMs: 0 });
   const queue: (Uint8Array<ArrayBuffer> | null)[] = [];
   const waiting: PromiseWithResolvers<void>[] = [];
   const sent: string[] = [];
@@ -236,7 +237,7 @@ test('it fails the fetch when the time limit passes while it waits for a frame',
     ctx.gate(() => Promise.resolve(ctx.pass)),
   );
 
-  await waitForCondition(() => ctx.clock.countSleepers() === 1);
+  await waitForCondition(() => ctx.clock.countPending() === 1);
 
   ctx.clock.advance(10_000);
 

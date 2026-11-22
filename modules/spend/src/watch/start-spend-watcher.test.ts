@@ -306,12 +306,12 @@ test('it polls every 10 seconds until it stops', async () => {
   const watcher = startSpendWatcher(ctx.options);
 
   await waitForCondition(() => ctx.gateway.readStatus.mock.calls.length === 1);
-  await waitForCondition(() => ctx.clock.countSleepers() === 1);
+  await waitForCondition(() => ctx.clock.countPending() === 1);
 
   ctx.clock.advance(10_000);
 
   await waitForCondition(() => ctx.gateway.readStatus.mock.calls.length === 2);
-  await waitForCondition(() => ctx.clock.countSleepers() === 1);
+  await waitForCondition(() => ctx.clock.countPending() === 1);
 
   ctx.stopping.abort();
 
@@ -328,7 +328,7 @@ test('it logs a failed poll and polls again', async () => {
   const watcher = startSpendWatcher(ctx.options);
 
   await waitForCondition(() => ctx.log.mock.calls.some((call) => call[0] === 'spend.watch_failed'));
-  await waitForCondition(() => ctx.clock.countSleepers() === 1);
+  await waitForCondition(() => ctx.clock.countPending() === 1);
 
   ctx.stopping.abort();
 

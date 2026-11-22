@@ -10,7 +10,7 @@ import {
 } from '@heynixie/definitions';
 import { buildTestTaskSeed } from '@heynixie/definitions/test-utils';
 import { startWriter, withWriteTransaction, writeRecords } from '@heynixie/log';
-import { buildTestClock } from '@heynixie/testing';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import invariant from 'tiny-invariant';
 import { skillsWriteProposedCodec } from '../write/skills-write-proposed-codec';
 import { readPendingSkillProposals } from './read-pending-skill-proposals';
@@ -103,7 +103,7 @@ test('it lists each pending proposal with the version of its skill in force, or 
 
   const pending = await readPendingSkillProposals({
     log: ctx.log,
-    clock: buildTestClock(proposedAt + 1000),
+    clock: createFakeClock({ startMs: proposedAt + 1000 }),
   });
 
   expect(pending).toStrictEqual([
@@ -200,10 +200,13 @@ test('it leaves out a proposal that an answer closed, and one whose lapse time h
 
   const before = await readPendingSkillProposals({
     log: ctx.log,
-    clock: buildTestClock(lapseAt - 1),
+    clock: createFakeClock({ startMs: lapseAt - 1 }),
   });
 
-  const after = await readPendingSkillProposals({ log: ctx.log, clock: buildTestClock(lapseAt) });
+  const after = await readPendingSkillProposals({
+    log: ctx.log,
+    clock: createFakeClock({ startMs: lapseAt }),
+  });
 
   expect(before.map((entry) => entry.proposal.proposalID)).toStrictEqual(['p8w2n4c6ld']);
   expect(after).toStrictEqual([]);
@@ -248,7 +251,7 @@ test('it marks a proposal stale once the version in force moves past its base', 
 
   const pending = await readPendingSkillProposals({
     log: ctx.log,
-    clock: buildTestClock(Date.now()),
+    clock: createFakeClock({ startMs: Date.now() }),
   });
 
   expect(pending.map((entry) => entry.isStale)).toStrictEqual([true]);
@@ -301,7 +304,7 @@ test('it marks a proposal stale once an approval of its skill commits, before th
 
   const pending = await readPendingSkillProposals({
     log: ctx.log,
-    clock: buildTestClock(Date.now()),
+    clock: createFakeClock({ startMs: Date.now() }),
   });
 
   expect(pending.map((entry) => entry.isStale)).toStrictEqual([true]);

@@ -2,6 +2,7 @@ import type { BackupSchedule, ForgetBackup } from '@heynixie/backup';
 import type { DefinitionNotice, ImageMediaType } from '@heynixie/contract';
 import type { CheckedTables } from '@heynixie/db';
 import type { DefinitionsContext } from '@heynixie/definitions';
+import type { DeviceStreams } from '@heynixie/devices';
 import type { RecordKind } from '@heynixie/log';
 import type {
   HostMemoryStore,
@@ -73,6 +74,9 @@ export interface APIContext extends TasksContext {
 
   // the gateway's spending stop; absent when the deployment sets no spendStop
   readonly spend?: SpendContext;
+
+  // the open stream of each device, which a restart drops
+  readonly devices: DeviceStreams;
 
   // challenges, registration options and the host code, which a restart drops
   readonly passkeys: PasskeyState;
@@ -192,9 +196,12 @@ export interface APIRequestContext extends ResponseHeadersPluginContext {
   readonly origin?: string | undefined;
 }
 
+export type SessionScope = 'full' | 'device';
+
 export interface Identity {
   readonly identityID: string;
   readonly channel: string;
+  readonly scope: SessionScope;
   readonly label: string;
   readonly pairedAt: number;
   readonly lastSeenAt: number;
@@ -210,6 +217,7 @@ interface IdentityRow {
   readonly last_seen_at: number;
   readonly revoked_at: number | null;
   readonly paired_sequence: number;
+  readonly scope: SessionScope;
 }
 
 interface EnrolmentCodeRow {
@@ -219,6 +227,7 @@ interface EnrolmentCodeRow {
   readonly issued_by: string | null;
   readonly used_at: number | null;
   readonly identity_id: string | null;
+  readonly scope: SessionScope;
 }
 
 interface ClientActionRow {

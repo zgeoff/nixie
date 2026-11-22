@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { mockServer } from '@heynixie/mock-server';
+import { network } from '@heynixie/mock-server';
 import { HttpResponse, http } from 'msw';
 import invariant from 'tiny-invariant';
 import { buildGitHubDefinitionsRepo } from './build-github-definitions-repo';
@@ -464,7 +464,7 @@ test.each([
   ['an answer of the wrong shape', '{}'],
   ['an answer that is not JSON', 'not json'],
 ])('it refuses %s with no status', async (_, answer) => {
-  mockServer.use(http.get(`${githubAPIURL}/*`, () => new HttpResponse(answer)));
+  network.use(http.get(`${githubAPIURL}/*`, () => new HttpResponse(answer)));
 
   const repo = buildGitHubDefinitionsRepo({
     repository: 'harbour/definitions',

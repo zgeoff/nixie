@@ -6,7 +6,7 @@ description:
   running app, run the journey of a feature, put the verdicts in a PR, or check prod after a release
   deploys."
 metadata:
-  wringer-template: 'sha256:3a8295eb8ec4'
+  wringer-template: 'sha256:c276ebe8d896'
   wringer-command: bun verify
 ---
 
@@ -21,13 +21,10 @@ changes a feature with no verdict there.
 The mistakes that cost the most time:
 
 - **Using the app before `doctor` passes.** `bun verify doctor` checks that the app answers and that
-  each driver works. A driver is a package, such as `@wringer/http`, that adds a group of commands,
-  such as `bun verify http request`. Until `doctor` passes after `bun verify up` or
+  the browser and terminal drivers work. Until it passes after `bun verify up` or
   `bun verify attach`, any command that touches the app fails with exit code 3.
 - **Editing the app's code while `up` runs it.** The next command that touches the app fails with
   `doctor-required`. Run `bun verify up --restart` and `bun verify doctor`, then the journey again.
-- **Running `done` before you check the end state.** `done` checks only that one command of the
-  journey succeeded.
 
 ## Key rules
 
@@ -35,8 +32,7 @@ The mistakes that cost the most time:
   then `done`; then push and publish with the upload token read in a subshell.
 - [Read the envelope](#read-the-envelope): branch on the exit code and `error.code`, never on the
   message, which can change in any release.
-- [Targets](#targets): check a change on a launch target, a target whose app `bun verify up` starts
-  from your worktree.
+- [Targets](#targets): check a change on a launch target, which `bun verify up` starts.
 - [Commands](#commands): read `--help` before you guess a flag.
 - [Edit the skill and the registry](#edit-the-skill-and-the-registry): map each new file in the
   registry, read the reference before you edit the skill, and run `lint`.
@@ -46,18 +42,24 @@ The mistakes that cost the most time:
 - [Exit codes](references/exit-codes.md): when a command fails, what to do for its exit code and
   `error.code`.
 - [Edit the skill](references/edit-the-skill.md): before you edit this skill or a feature file.
+- [Preview setup](references/preview-setup.md) and [the prod check](references/prod-check.md):
+  before you attach to `preview` or `prod`.
 
 Read a feature's file before you run its journey.
 
 <!-- wringer:features -->
 
-| Feature         | Summary                                                                    | File                                                                           |
-| --------------- | -------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
-| sign-in-enrol   | Sign a browser in with a code from `nixie enrol-code`, and see its session | [references/feature-sign-in-enrol.md](references/feature-sign-in-enrol.md)     |
-| chat-turn       | Send a message from the page, and see the reply after it, in order         | [references/feature-chat-turn.md](references/feature-chat-turn.md)             |
-| memory-approval | Approve a memory the model proposed, and see it become active              | [references/feature-memory-approval.md](references/feature-memory-approval.md) |
-| policy-proposal | Approve a call that an ask rule held unrun                                 | [references/feature-policy-proposal.md](references/feature-policy-proposal.md) |
-| task-control    | Pause and resume a task, and see its records agree                         | [references/feature-task-control.md](references/feature-task-control.md)       |
+| Feature          | Summary                                                                    | File                                                                             |
+| ---------------- | -------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| sign-in-enrol    | Sign a browser in with a code from `nixie enrol-code`, and see its session | [references/feature-sign-in-enrol.md](references/feature-sign-in-enrol.md)       |
+| chat-turn        | Send a message from the page, and see the reply after it, in order         | [references/feature-chat-turn.md](references/feature-chat-turn.md)               |
+| memory-approval  | Approve a memory the model proposed, and see it become active              | [references/feature-memory-approval.md](references/feature-memory-approval.md)   |
+| policy-proposal  | Approve a call that an ask rule held unrun                                 | [references/feature-policy-proposal.md](references/feature-policy-proposal.md)   |
+| task-control     | Pause and resume a task, and see its records agree                         | [references/feature-task-control.md](references/feature-task-control.md)         |
+| drawing          | Draw a picture, edit it, and list both                                     | [references/feature-drawing.md](references/feature-drawing.md)                   |
+| computer-browser | Open a page in the assistant's browser                                     | [references/feature-computer-browser.md](references/feature-computer-browser.md) |
+| computer-shell   | Write and read back a shell file                                           | [references/feature-computer-shell.md](references/feature-computer-shell.md)     |
+| device-screen    | Enrol a device and see a picture on it                                     | [references/feature-device-screen.md](references/feature-device-screen.md)       |
 
 <!-- /wringer:features -->
 
@@ -85,33 +87,34 @@ Read a feature's file before you run its journey.
    - In any other case, such as a `read-only` failure or a bug your change did not cause, skip
      `done` for this feature. List it in your reply with the end state you expected and the `data`
      you got.
-6. Finish each edit to a file that matches the feature's `paths` before you run `done`. An edit
-   after `done` makes the feature's verdict `stale`. A commit alone leaves the verdict as it was.
-   Run `bun verify done` to record a verdict for the feature that `use --feature` set. Expect:
-   `ok: true`. It fails with `check-failed` until a journey command succeeds after `doctor`.
+6. Record the verdict:
+   - Finish each edit to a file that matches the feature's `paths` first. An edit after `done` makes
+     the verdict `stale`. A commit alone leaves the verdict as it was.
+   - Once the end state matches in step 5, run `bun verify done`. Expect: `ok: true`. `done` records
+     a verdict for the feature that `use --feature` set.
+   - `done` checks only that a journey command succeeded after `doctor`, and never reads the end
+     state. Until a journey command succeeds, `done` fails with `check-failed`.
 7. Repeat steps 4 to 6 for each feature with `changed: true`, and for each feature your task names,
    in the order of the table in [References](#references). When a feature's file says to run part of
    its journey last, run that part after every other journey.
-8. Run `bun verify report --human` to read the report. Expect: `verified` on each changed feature
-   you did not skip in step 5. Repeat steps 4 to 6 for each `stale` feature.
-9. Push the branch. When no PR is open for it, open one: without an open PR, `publish` fails and
-   writes nothing.
-10. Check that `VERIFY_UPLOAD_URL` and `VERIFY_UPLOAD_TOKEN_REF` are set. When either is empty, stop
-    and report it as a blocker. `VERIFY_UPLOAD_URL` is the file host that takes the evidence files.
-    `VERIFY_UPLOAD_TOKEN_REF` is the 1Password `op://` reference to the upload token. Never run
-    `op read` on its own: it prints the token.
+8. Run `bun verify report --human`. Expect: `verified` on each changed feature you did not skip in
+   step 5. Repeat steps 4 to 6 for each `stale` feature.
+9. Push the branch, and open a PR when none exists: `publish` fails without one.
+10. Check that the session's environment sets `CLOUD_FILES_URL` and `CLOUD_FILES_TOKEN_REF`. When
+    either is empty, stop and report it as a blocker. `publish` uploads the evidence files to
+    `CLOUD_FILES_URL`. `CLOUD_FILES_TOKEN_REF` is the 1Password `op://` reference to the upload
+    token. Never run `op read` on its own: it prints the token.
 11. Publish the report, even when you skipped a feature. Read the token in a subshell, so it never
-    sits in your shell. Because `&&` joins them, a failed `op read` stops the command before
-    `publish` runs:
+    sits in your shell. A failed `op read` stops the command before `publish` runs:
 
     ```bash
-    (VERIFY_UPLOAD_TOKEN="$(op read "$VERIFY_UPLOAD_TOKEN_REF")" && export VERIFY_UPLOAD_TOKEN && bun verify publish)
+    (CLOUD_FILES_TOKEN="$(op read "$CLOUD_FILES_TOKEN_REF")" && export CLOUD_FILES_TOKEN && bun verify publish)
     ```
 
-    To write to a PR other than the branch's own, add `--pr <number>`. When `op read` fails, stop
-    and report it as a blocker. Expect: `ok: true`, and `data.action` of `created`, `replaced` or
-    `unchanged`. `publish` writes the report into the PR's description, the only report the gate
-    reads.
+    To write to another PR, add `--pr <number>`. When `op read` fails, stop and report a blocker.
+    Expect: `ok: true`, and `data.action` of `created`, `replaced` or `unchanged`, and `data.local`
+    of 0: each file it counts stayed on your machine, where a reviewer can't open it. `publish`
+    writes the report into the PR's description, the only report the gate reads.
 
 12. End the run: `bun verify down` after `up`, or `bun verify detach` after `attach`.
 
@@ -130,9 +133,9 @@ and do what that row says.
 ## Targets
 
 Start a launch target's app with `bun verify up`, and stop it with `bun verify down`. Connect to an
-attach target, a target whose app runs apart from `bun verify`, with `bun verify attach`.
-`bun verify detach` leaves it running. Your edits never reach an attach target's app, so check a
-change on a launch target.
+attach target, whose app runs apart from `bun verify`, with `bun verify attach`; `bun verify detach`
+leaves it running. Your edits never reach an attach target's app, so check a change on a launch
+target.
 
 Run `bun verify use --target <target>` to point every later command at a target. `use` saves the
 choice in this worktree's `.wringer/`, for every shell and session. `--target` on one command points
@@ -140,15 +143,15 @@ that command alone. A command with neither runs on the registry's first target, 
 
 <!-- repo: targets -->
 
-| Target    | Start with                                                  | Access     | Notes                                                                                                                     |
-| --------- | ----------------------------------------------------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------- |
-| `local`   | `bun verify use --target local`, then `bun verify up`       | read-write | A test build of this tree, with a scripted model.                                                                         |
-| `preview` | `bun verify use --target preview`, then `bun verify attach` | read-write | The PR's preview, on the real model. Leave it with `detach`, never `down`. Read [its setup](references/preview-setup.md). |
-| `prod`    | `bun verify use --target prod`, then `bun verify attach`    | read-only  | Production. Read it as [the prod check](references/prod-check.md) says.                                                   |
+| Target    | Start with                                                  | Access     | Notes                                                                                    |
+| --------- | ----------------------------------------------------------- | ---------- | ---------------------------------------------------------------------------------------- |
+| `local`   | `bun verify use --target local`, then `bun verify up`       | read-write | This tree's test build; scripted model.                                                  |
+| `preview` | `bun verify use --target preview`, then `bun verify attach` | read-write | The PR's preview, real model; [setup](references/preview-setup.md); leave with `detach`. |
+| `prod`    | `bun verify use --target prod`, then `bun verify attach`    | read-only  | [The prod check](references/prod-check.md).                                              |
 
-- Run the `sign-in-enrol` journey first, and again after each `up --restart`, as
-  [its file](references/feature-sign-in-enrol.md) says.
-- Each feature file says what to skip on `preview`, or that it runs on `local` only.
+- Run `sign-in-enrol` first, and after each `up --restart`, as
+  [its file](references/feature-sign-in-enrol.md) says, except before `device-screen`, which needs a
+  browser with no session.
 
 <!-- /repo -->
 
@@ -165,8 +168,8 @@ for its commands.
 
 <!-- repo: commands -->
 
-- Pass `--role` and `--name` to `browser type` and `browser click`. When they match no single
-  element, pass `--ref`, the element's ID in the last `browser snapshot`.
+- Pass `--role` and `--name` to `browser type` and `browser click`, or `--ref`, an ID from the last
+  `browser snapshot`.
 
 <!-- /repo -->
 

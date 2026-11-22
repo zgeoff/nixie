@@ -1,10 +1,11 @@
 import { expect, mock, onTestFinished, test } from 'bun:test';
-import { buildTestClock, waitForCondition } from '@heynixie/testing';
+import { waitForCondition } from '@heynixie/testing';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import { createActor } from 'xstate';
 import { proposalLapseSweepMachine } from './proposal-lapse-sweep-machine';
 
 function setupTest() {
-  const clock = buildTestClock(0);
+  const clock = createFakeClock({ startMs: 0 });
 
   return { clock };
 }
@@ -59,7 +60,7 @@ test('it ticks once the interval passes', async () => {
     machine.stop();
   });
 
-  await waitForCondition(() => ctx.clock.countSleepers() === 1);
+  await waitForCondition(() => ctx.clock.countPending() === 1);
 
   ctx.clock.advance(3_600_000);
 
@@ -80,15 +81,15 @@ test('it starts no second sweep when the timer ticks while a sweep runs', async 
     machine.stop();
   });
 
-  await waitForCondition(() => ctx.clock.countSleepers() === 1);
+  await waitForCondition(() => ctx.clock.countPending() === 1);
 
   ctx.clock.advance(3_600_000);
 
-  await waitForCondition(() => ctx.clock.countSleepers() === 1);
+  await waitForCondition(() => ctx.clock.countPending() === 1);
 
   ctx.clock.advance(3_600_000);
 
-  await waitForCondition(() => ctx.clock.countSleepers() === 1);
+  await waitForCondition(() => ctx.clock.countPending() === 1);
 
   expect(sweep).toHaveBeenCalledOnce();
 });
@@ -335,9 +336,9 @@ test('it ticks no more once stopped', async () => {
     machine.stop();
   });
 
-  await waitForCondition(() => ctx.clock.countSleepers() === 1);
+  await waitForCondition(() => ctx.clock.countPending() === 1);
 
   machine.send({ type: 'stop' });
 
-  expect(ctx.clock.countSleepers()).toBe(0);
+  expect(ctx.clock.countPending()).toBe(0);
 });

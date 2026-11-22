@@ -1,7 +1,8 @@
+import { writeDevice } from '@heynixie/devices';
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import type { Transaction } from 'kysely';
 import invariant from 'tiny-invariant';
-import type { APIContext, APITables } from '../types';
+import type { APIContext, APITables, SessionScope } from '../types';
 import { buildInputHash } from '../utils/build-input-hash';
 import { deriveSecretHash } from '../utils/derive-secret-hash';
 import { readClientAction } from '../utils/read-client-action';
@@ -17,7 +18,12 @@ interface EnrolInput {
 }
 
 type EnrolResult =
-  | { readonly status: 'enrolled'; readonly sessionID: string; readonly token: string }
+  | {
+      readonly status: 'enrolled';
+      readonly sessionID: string;
+      readonly token: string;
+      readonly scope: SessionScope;
+    }
   | { readonly status: 'invalid' }
   | { readonly status: 'reused' };
 
@@ -63,7 +69,7 @@ async function writeEnrolment(
   const code = await tx
     .$extendTables<APITables>()
     .selectFrom('enrolment_codes')
-    .select(['issued_by'])
+    .select(['issued_by', 'scope'])
     .where('code_hash', '=', pending.codeHash)
     .where('used_at', 'is', null)
     .where('expires_at', '>', context.clock.now())
@@ -76,7 +82,16 @@ async function writeEnrolment(
   const session = await writeSession(tx, context, {
     deviceName: pending.input.deviceName,
     issuedBy: code.issued_by,
+    scope: code.scope,
   });
+
+  if (code.scope === 'device') {
+    await writeDevice(tx, {
+      identityID: session.sessionID,
+      name: pending.input.deviceName,
+      nowMs: context.clock.now(),
+    });
+  }
 
   await tx
     .$extendTables<APITables>()
@@ -100,13 +115,14 @@ async function writeEnrolment(
 interface NewSession {
   readonly deviceName: string;
   readonly issuedBy: string | null;
+  readonly scope: SessionScope;
 }
 
 async function writeSession(
   tx: Transaction<unknown>,
   context: APIContext,
   session: NewSession,
-): Promise<{ readonly sessionID: string; readonly token: string }> {
+): Promise<{ readonly sessionID: string; readonly token: string; readonly scope: SessionScope }> {
   const sessionID = crypto.randomUUID();
   const token = createSecret('session-token');
 
@@ -134,10 +150,11 @@ async function writeSession(
       last_seen_at: context.clock.now(),
       revoked_at: null,
       paired_sequence: record.sequence,
+      scope: session.scope,
     })
     .execute();
 
-  return { sessionID, token };
+  return { sessionID, token, scope: session.scope };
 }
 
 interface EnrolmentRetry {
@@ -171,10 +188,10 @@ async function updateEnrolmentToken(
     .set({ token_hash: deriveSecretHash(token) })
     .where('identity_id', '=', retry.sessionID)
     .where('revoked_at', 'is', null)
-    .returning('identity_id')
+    .returning('scope')
     .executeTakeFirst();
 
   return updated === undefined
     ? { status: 'invalid' }
-    : { status: 'enrolled', sessionID: retry.sessionID, token };
+    : { status: 'enrolled', sessionID: retry.sessionID, token, scope: updated.scope };
 }

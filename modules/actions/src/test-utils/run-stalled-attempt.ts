@@ -1,12 +1,12 @@
 import type { TasksContext } from '@heynixie/tasks';
-import type { TestClock } from '@heynixie/testing';
+import type { FakeClock } from '@zgeoff/testing/clock';
 import { claimAction } from '../action/claim-action';
 import { runActionAttempt } from '../action/run-action-attempt';
 import { buildStubConnector } from './build-stub-connector';
 
 interface StalledAttemptOptions {
   readonly context: TasksContext;
-  readonly clock: TestClock;
+  readonly clock: FakeClock;
 }
 
 export async function runStalledAttempt(options: StalledAttemptOptions): Promise<number> {

@@ -13,8 +13,8 @@ import {
 } from '@heynixie/definitions';
 import { buildTestTaskSeed } from '@heynixie/definitions/test-utils';
 import { startWriter, withWriteTransaction } from '@heynixie/log';
-import { buildTestClock } from '@heynixie/testing';
 import { createRouterClient } from '@orpc/server';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import invariant from 'tiny-invariant';
 import { createHostWrittenSkillProcedures } from './create-host-written-skill-procedures';
 
@@ -42,7 +42,7 @@ async function setupTest() {
 
   const log = { writer, deploymentKey, projections: [] };
   const policy = { rules: [], tools: [] };
-  const clock = buildTestClock(Date.UTC(2026, 2, 3, 10, 0));
+  const clock = createFakeClock({ startMs: Date.UTC(2026, 2, 3, 10, 0) });
 
   const runWrittenSeed = async () => {
     await runInForceSeed({ log, buildPolicy: () => policy });

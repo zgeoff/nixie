@@ -42,6 +42,7 @@
             "spend",
             "schedule",
             "code_run",
+            "computer_run",
             "device",
             "policy_widen",
             "policy_narrow",
@@ -159,7 +160,7 @@
                 },
                 "value": {
                   "type": "string",
-                  "pattern": "^\\S+$",
+                  "minLength": 1,
                   "description": "Exact text, or a pattern whose only wildcard is *, which matches any run of text"
                 }
               },
@@ -214,7 +215,7 @@
           },
           "budget": {
             "type": "string",
-            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+            "pattern": "^[a-z0-9]+(?:[.-][a-z0-9]+)*$",
             "description": "The ID of a budget that counts spend"
           }
         },

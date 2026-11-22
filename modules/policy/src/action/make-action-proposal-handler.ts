@@ -57,7 +57,13 @@ export interface BodyFieldsRequest {
 // unreadable, which leaves the card without a body.
 export type BodyFields =
   | { readonly status: 'none' }
-  | { readonly status: 'fields'; readonly fields: Readonly<Record<string, string>> }
+  | {
+      readonly status: 'fields';
+      readonly fields: Readonly<Record<string, string>>;
+
+      // the IDs of stored images the card shows beside its fields
+      readonly images?: string[];
+    }
   | { readonly status: 'unreadable' };
 
 export interface ActionHandlerDeps {
@@ -229,6 +235,7 @@ function toBody(
       ...(extra.status === 'fields' ? extra.fields : {}),
     },
     ruleSentence: erasable.ruleSentence ?? null,
+    ...(extra.status === 'fields' && extra.images !== undefined ? { images: extra.images } : {}),
     approveLabel: buildActionApproveLabel(payload.tool, destinations[0]),
   };
 }

@@ -194,6 +194,10 @@ except 3 groups:
 - A memory item's own records, which the item's forget takes.
 - A record whose kind carries no erasable fields.
 
+A forget takes only the record it names, and the whole of it, because each record has one key and no
+field has a key of its own. A reply that quotes the forgotten text stays readable until it is
+forgotten too.
+
 The API reads the kinds from `forgettableKinds` in the contract library, and a test holds each
 erasable kind to exactly one of the 3 groups and the list. The forget is a checked action bound to
 the record's thread and sequence. The API answers `RECORD_NOT_FOUND` for a sequence that names a
@@ -283,10 +287,10 @@ A `definition.changed` record reaches the client with a `definitionNotice` field
 its name, the operation, the change's IDs, whether the change leaves a version, the trigger in
 words, the next fire, the state of the change and whether its version is unreadable. A client tells
 an undo that removes the definition from an undo that restores a version with no trigger by
-`hasVersion`, because both carry no trigger words. `hasVersion` is the one field that the notice
-holds beyond the `DefinitionNotice` shape in the
-[definitions from chat design](../../design/queue/definitions-from-chat.md). The record kinds in the
-stream do not change, and a client that does not know the field ignores it.
+`hasVersion`, because both carry no trigger words.
+[Changes from the conversation](../core/definitions.md#changes-from-the-conversation) says when
+`next` is null. The record kinds in the stream do not change, and a client that does not know the
+field ignores it.
 
 ## Reading tasks
 

@@ -229,13 +229,14 @@ report that is still useful an hour late.
 A worker is disposable work behind one tool call, such as "read this page and return the price". It
 runs inside the calling step, has no conversation, and returns a result to its caller.
 
-Each worker run gets its own imp through the [sandbox adapter](../connectors/sandbox-adapter.md),
-and the whole worker runs inside it: the model loop and any code it runs. The imp's one credential
-grant is the model credential of the worker's [model profile](models.md), limited to that profile's
-host, as [sandboxes](../../../architecture/connectors/sandboxes.md) describes. The worker reaches
-anything else through nixie's tools on the host, where the destination limits apply. A worker holds
-a subset of its caller's tools, so delegation only narrows. Its transcript becomes records whose
-parent is the tool call, and nixie destroys the imp when the tool call returns.
+Each worker run gets its own imp through the
+[sandbox adapter](../../../architecture/connectors/sandboxes.md), and the whole worker runs inside
+it: the model loop and any code it runs. The imp's one credential grant is the model credential of
+the worker's [model profile](models.md), limited to that profile's host, as
+[sandboxes](../../../architecture/connectors/sandboxes.md) describes. The worker reaches anything
+else through nixie's tools on the host, where the destination limits apply. A worker holds a subset
+of its caller's tools, so delegation only narrows. Its transcript becomes records whose parent is
+the tool call, and nixie destroys the imp when the tool call returns.
 
 A minimal image per kind of work keeps a fresh worker's start short, as the
 [imp worker spike](../../../../research/imp-worker-start/README.md) measured.
@@ -260,7 +261,7 @@ Before any task starts, nixie finishes any pending cleanup of invalid transcript
    hold returns to `ready`.
 2. Marks each step that started without a commit as interrupted, with a record.
 3. Marks each action that started an attempt without a recorded result as unknown, under
-   [actions](actions.md).
+   [actions](../../../architecture/core/actions.md).
 4. Fires every timer that fell due while nixie was down.
 5. Destroys every sandbox of a step that no longer runs, through its recorded sandbox adapter, and
    keeps the imp of each started task that is not done or closed.

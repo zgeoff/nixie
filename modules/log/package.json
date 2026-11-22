@@ -24,6 +24,7 @@
   },
   "devDependencies": {
     "@faker-js/faker": "catalog:",
-    "@heynixie/testing": "workspace:*"
+    "@heynixie/testing": "workspace:*",
+    "@zgeoff/testing": "catalog:"
   }
 }

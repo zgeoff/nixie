@@ -9,6 +9,8 @@ const everyJourney = [
   'guests/**',
   'adapters/definitions-repo-github/**',
   'adapters/encoder-onnx/**',
+  'adapters/image-gemini/**',
+  'adapters/image-openai/**',
   'adapters/search-kagi/**',
   'adapters/spend-model-gateway/**',
   'nixie-test-build.d.ts',
@@ -21,6 +23,10 @@ export const featurePaths = {
   'memory-approval': [...everyJourney],
   'policy-proposal': [...everyJourney],
   'task-control': [...everyJourney],
+  drawing: [...everyJourney],
+  'device-screen': [...everyJourney],
+  'computer-browser': [...everyJourney],
+  'computer-shell': [...everyJourney],
 } as const satisfies Record<string, readonly string[]>;
 
 // A change to one of these changes every feature: the verify CLI and its harness, the test helpers

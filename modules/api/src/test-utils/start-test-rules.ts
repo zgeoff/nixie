@@ -16,6 +16,7 @@ import {
   writeProposedRuleEdit,
 } from '@heynixie/definitions';
 import { buildTestTaskSeed } from '@heynixie/definitions/test-utils';
+import { createDeviceStreams } from '@heynixie/devices';
 import type { JSONObject, Log } from '@heynixie/log';
 import {
   logProjections,
@@ -40,7 +41,7 @@ import {
   buildTestRunSettings,
   buildTestTaskRunners,
 } from '@heynixie/tasks/test-utils';
-import { buildTestClock } from '@heynixie/testing';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import { sql } from 'kysely';
 import invariant from 'tiny-invariant';
 import { z } from 'zod';
@@ -73,7 +74,7 @@ export async function startTestRules(settings: APIContext['settings'] = defaultA
 
   stack.defer(() => rm(dataDir, { recursive: true, force: true }));
 
-  const clock = buildTestClock(Date.parse('2026-11-02T09:00:00Z'));
+  const clock = createFakeClock({ startMs: Date.parse('2026-11-02T09:00:00Z') });
 
   const writer = await startWriter({ dataDir, clock });
 
@@ -108,6 +109,7 @@ export async function startTestRules(settings: APIContext['settings'] = defaultA
     runners: buildTestTaskRunners(),
     settings,
     passkeys: createPasskeyState(),
+    devices: createDeviceStreams(),
     readZone: () => Promise.resolve('Australia/Sydney'),
     readSessionCleanup: () => null,
   };

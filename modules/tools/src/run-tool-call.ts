@@ -1,6 +1,13 @@
 import type { BudgetsContext } from '@heynixie/budgets';
 import type { Decision, Definitions, JSONObject, Log } from '@heynixie/log';
-import type { CallDestination, DecisionPoint, NamingRule, PolicyDecision } from '@heynixie/policy';
+import type {
+  CallDestination,
+  DecisionPoint,
+  Effect,
+  EffectDeclaration,
+  NamingRule,
+  PolicyDecision,
+} from '@heynixie/policy';
 import { buildActionHash, makeFaultSafeDecisionPoint, toStoredDecision } from '@heynixie/policy';
 import type { CallToolResult } from '@modelcontextprotocol/server';
 import invariant from 'tiny-invariant';
@@ -21,8 +28,10 @@ import { readQueuedResult } from './settle/read-queued-result';
 import type { Settled } from './settle/types';
 import type {
   ActionQueue,
+  DirectResult,
   MemoryWriteVerdict,
   OpenRepeat,
+  Prepared,
   RegisteredTool,
   SchemaCheck,
   ToolCall,
@@ -92,7 +101,25 @@ export async function runToolCall(
     return writeInvalidCall(recorder, resolution.message);
   }
 
-  const destinations = resolution.destinations;
+  const prepare = registered !== null && isListed ? registered.definition.prepare : undefined;
+  const prepared = prepare === undefined ? null : await prepare(call.input, { run });
+
+  if (prepared !== null && !isPrepared(prepared)) {
+    invariant(registered, 'a prepare step belongs to a registered tool');
+
+    return writeDirectResult(recorder, registered, prepared);
+  }
+
+  // what the tool read about the call's input stands in for the declared destinations
+  const destinations =
+    prepared === null
+      ? resolution.destinations
+      : prepared.destinations.map((value) => ({
+          value: value.normalize('NFC'),
+          replyTarget: false,
+        }));
+
+  const effects = prepared?.effects;
 
   const deadline =
     registered !== null && isListed
@@ -118,7 +145,7 @@ export async function runToolCall(
     options.decisionDeadlineMs === undefined ? {} : { deadlineMs: options.decisionDeadlineMs };
 
   const decide = makeFaultSafeDecisionPoint(options.decide, decisionTimeout);
-  const policyArgs = facts?.args ?? call.input;
+  const policyArgs = withPreparedAmount(facts?.args ?? call.input, registered, prepared);
 
   const policyCall = buildToolPolicyCall(run, {
     tool: policyTool,
@@ -126,6 +153,7 @@ export async function runToolCall(
     destinations,
     definitions,
     at: options.log.writer.clock.now(),
+    ...(effects === undefined ? {} : { effects }),
     ...(facts === null ? {} : { sources: facts.sources }),
   });
 
@@ -138,6 +166,7 @@ export async function runToolCall(
     input: call.input,
     destinations: destinations.map((destination) => destination.value),
     deadlineAt,
+    expectURL: prepared?.expectURL,
   });
 
   const repeatOf = await readAskedRepeat({
@@ -159,7 +188,7 @@ export async function runToolCall(
     repeatOf,
     actionHash,
     policyTool,
-    declaration: registered?.definition.declaration ?? null,
+    declaration: pickCallDeclaration(registered, effects),
   });
 
   const settled = written.isCapped
@@ -175,6 +204,7 @@ export async function runToolCall(
         repeatOf: written.repeatOf,
         destinations,
         deadlineAt,
+        prepared,
         options,
       });
 
@@ -234,6 +264,48 @@ function toCallToolResult(settled: Settled): CallToolResult {
   };
 }
 
+function isPrepared(value: Prepared | DirectResult): value is Prepared {
+  return 'destinations' in value;
+}
+
+// A prepare step that ends the call, such as a refusal, records the call with no decision.
+async function writeDirectResult(
+  recorder: CallRecorder,
+  registered: RegisteredTool,
+  result: DirectResult,
+): Promise<CallToolResult> {
+  const written = await recorder.writeCall(null);
+
+  const settled = buildTypedResult(registered, result, null);
+
+  const recorded = await recorder.writeSettled(written.sequence, settled);
+
+  return toCallToolResult(recorded.settled);
+}
+
+// A prepared amount stands in for the argument the declaration names as the call's amount.
+function withPreparedAmount(
+  args: JSONObject,
+  registered: RegisteredTool | null,
+  prepared: Prepared | null,
+): JSONObject {
+  const name = registered?.definition.declaration.amount ?? null;
+
+  return prepared?.amount === undefined || name === null
+    ? args
+    : { ...args, [name]: prepared.amount };
+}
+
+// A prepared call's effects stand in for the declared ones in the proposal the call may write.
+function pickCallDeclaration(
+  registered: RegisteredTool | null,
+  effects: readonly Effect[] | undefined,
+): EffectDeclaration | null {
+  const declaration = registered?.definition.declaration ?? null;
+
+  return declaration === null || effects === undefined ? declaration : { ...declaration, effects };
+}
+
 function renderCallCapRefusal(run: ToolRun, tool: string): string {
   const cap = run.taskRun?.calls[tool] ?? 0;
 
@@ -251,6 +323,7 @@ interface DecidedCall {
   readonly repeatOf: OpenRepeat | null;
   readonly destinations: readonly CallDestination[];
   readonly deadlineAt: number | null;
+  readonly prepared: Prepared | null;
   readonly options: ToolCallOptions;
 }
 
@@ -313,6 +386,7 @@ interface AllowedCall {
   readonly callSequence: number;
   readonly destinations: readonly CallDestination[];
   readonly deadlineAt: number | null;
+  readonly prepared: Prepared | null;
   readonly options: ToolCallOptions;
 
   readonly verdict?: MemoryWriteVerdict;
@@ -336,13 +410,17 @@ function runAllowedCall(allowed: AllowedCall): Promise<Settled> {
 }
 
 async function runDirect(allowed: AllowedCall): Promise<Settled> {
-  const outcome = await runPaidCall(allowed.registered, allowed.call, allowed.options, () =>
-    allowed.registered.definition.run(allowed.call, {
-      run: allowed.run,
-      callSequence: allowed.callSequence,
-      ...(allowed.verdict === undefined ? {} : { verdict: allowed.verdict }),
-      ...(allowed.namingRules === undefined ? {} : { namingRules: allowed.namingRules }),
-    }),
+  const outcome = await runPaidCall(
+    allowed.registered,
+    { call: allowed.call, run: allowed.run },
+    allowed.options,
+    () =>
+      allowed.registered.definition.run(allowed.call, {
+        run: allowed.run,
+        callSequence: allowed.callSequence,
+        ...(allowed.verdict === undefined ? {} : { verdict: allowed.verdict }),
+        ...(allowed.namingRules === undefined ? {} : { namingRules: allowed.namingRules }),
+      }),
   );
 
   if (outcome.status === 'budget_reached') {
@@ -366,9 +444,10 @@ async function runQueued(allowed: AllowedCall): Promise<Settled> {
       input: allowed.call.input,
       destinations: allowed.destinations.map((destination) => destination.value),
       deadlineAt: allowed.deadlineAt,
+      expectURL: allowed.prepared?.expectURL,
     }),
     deadlineAt: allowed.deadlineAt,
-    effects: allowed.registered.definition.declaration.effects,
+    effects: allowed.prepared?.effects ?? allowed.registered.definition.declaration.effects,
     destinations: allowed.destinations,
     content: allowed.registered.definition.declaration.content,
   });

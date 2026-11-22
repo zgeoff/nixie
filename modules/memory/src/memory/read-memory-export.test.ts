@@ -1,7 +1,7 @@
-/* oxlint-disable id-length -- the image pointer's field is n, as the number input of log.read_image names it */
 import { expect, onTestFinished, setSystemTime, test } from 'bun:test';
 import { writeRecords } from '@heynixie/log';
-import { buildTestClock } from '@heynixie/testing';
+/* oxlint-disable id-length -- the image pointer's field is n, as the number input of log.read_image names it */
+import { createFakeClock } from '@zgeoff/testing/clock';
 import invariant from 'tiny-invariant';
 import { seedBegunPurge } from '../test-utils/seed-begun-purge';
 import { seedSharedKeyVersion } from '../test-utils/seed-shared-key-version';
@@ -224,7 +224,7 @@ test('it exports every item in the order it was created across more than one pag
 });
 
 test('it exports the end time of each version and the lapse that retired it', async () => {
-  const clock = buildTestClock(Date.parse('2026-10-19T09:00:00Z'));
+  const clock = createFakeClock({ startMs: Date.parse('2026-10-19T09:00:00Z') });
 
   const ctx = await setupTest({ gate: { clock } });
 

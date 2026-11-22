@@ -1,6 +1,7 @@
 import { expect, mock, test } from 'bun:test';
 import { createPasskeyState, defaultAPISettings } from '@heynixie/api';
 import { readLinkTarget } from '@heynixie/connectors';
+import { createDeviceStreams } from '@heynixie/devices';
 import { readRecords, withWriteTransaction, writeRecords } from '@heynixie/log';
 import type { Logger } from '@heynixie/logger';
 import { buildMockSandboxSpec } from '@heynixie/sandbox/test-utils';
@@ -19,6 +20,7 @@ async function setupTest() {
     readSessionCleanup: () => null,
     readZone: () => Promise.resolve('UTC'),
     passkeys: createPasskeyState(),
+    devices: createDeviceStreams(),
   };
 
   return {

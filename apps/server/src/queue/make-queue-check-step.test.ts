@@ -17,7 +17,7 @@ import {
   buildTestRunSettings,
   buildTestTaskRunners,
 } from '@heynixie/tasks/test-utils';
-import { buildTestClock } from '@heynixie/testing';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import type { TestStep } from '../test-utils/claim-test-step';
 import { claimTestStep } from '../test-utils/claim-test-step';
 import { createTestStep } from '../test-utils/create-test-step';
@@ -36,7 +36,7 @@ async function setupTest() {
     await rm(dataDir, { recursive: true, force: true });
   });
 
-  const clock = buildTestClock(1_000_000);
+  const clock = createFakeClock({ startMs: 1_000_000 });
 
   const context: TasksContext = {
     log: {

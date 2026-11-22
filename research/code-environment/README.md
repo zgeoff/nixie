@@ -3,8 +3,7 @@
 This spike runs a report program in Node.js, Python and shell in nixie's code and worker images,
 under the code tool's limits, and measures the size of each image. It informs whether the image
 contents and sizes in the
-[sandbox adapter design](../../docs/design/platform/connectors/sandbox-adapter.md#images) are
-enough.
+[sandboxes doc](../../docs/architecture/connectors/sandboxes.md#kinds-of-work) are enough.
 
 ## Question
 

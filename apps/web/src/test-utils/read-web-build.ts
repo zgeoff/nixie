@@ -1,5 +1,5 @@
 import { join } from 'node:path';
-import { createRunTemplate } from '@heynixie/testing';
+import { readTestTemplate } from '@heynixie/testing';
 import { runWebBuild } from './run-web-build';
 
 const repoRoot = join(import.meta.dir, '..', '..', '..', '..');
@@ -7,11 +7,18 @@ const repoRoot = join(import.meta.dir, '..', '..', '..', '..');
 // A web build takes longer than a test's limit on a host with 2 cores, so the e2e lane fills the
 // template before its tests start, and each suite reads it.
 export async function readWebBuild(): Promise<string> {
-  const directory = await createRunTemplate({
+  const directory = await readTestTemplate({
     name: 'nixie-web-build',
     root: repoRoot,
-    parentDir: join(repoRoot, 'node_modules', '.cache', 'nixie-test-bundles'),
-    inputs: ['apps/web/**/*', 'libs/*/src/**/*', '*/*/package.json', 'bun.lock'],
+
+    // the web app's own folders and config files, with no node_modules folder and no e2e suite
+    inputs: [
+      'apps/web/{src,public,icons}/**/*',
+      'apps/web/*.{json,ts,js}',
+      'libs/*/src/**/*',
+      '*/*/package.json',
+      'bun.lock',
+    ],
     write: (building) => runWebBuild(building),
   });
 

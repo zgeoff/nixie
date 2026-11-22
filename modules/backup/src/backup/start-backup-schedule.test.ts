@@ -123,7 +123,7 @@ test('it records a receipt at the next poll, and stages the next set an interval
   onTestFinished(() => schedule.stop());
 
   await waitForCondition(
-    () => ctx.onPass.mock.calls.length === 1 && ctx.clock.countSleepers() === 1,
+    () => ctx.onPass.mock.calls.length === 1 && ctx.clock.countPending() === 1,
   );
 
   await writeFile(
@@ -199,9 +199,7 @@ test('it passes a failed pass to onError, and tries again at the next poll', asy
 
   onTestFinished(() => schedule.stop());
 
-  await waitForCondition(
-    () => ctx.onError.mock.calls.length > 0 && ctx.clock.countSleepers() === 1,
-  );
+  await waitForCondition(() => ctx.onError.mock.calls.length > 0 && ctx.clock.countPending() === 1);
 
   const failures = ctx.onError.mock.calls.length;
 
@@ -257,7 +255,7 @@ test('it passes the receipts of a pass that fails after it records them to onPas
   onTestFinished(() => schedule.stop());
 
   await waitForCondition(
-    () => ctx.onPass.mock.calls.length === 1 && ctx.clock.countSleepers() === 1,
+    () => ctx.onPass.mock.calls.length === 1 && ctx.clock.countPending() === 1,
   );
 
   await sql`drop table backup_notices`.execute(ctx.writer.db);
@@ -295,7 +293,7 @@ test('it passes one failure to onError for a pass whose only failure is its heal
   onTestFinished(() => schedule.stop());
 
   await waitForCondition(
-    () => ctx.onPass.mock.calls.length === 1 && ctx.clock.countSleepers() === 1,
+    () => ctx.onPass.mock.calls.length === 1 && ctx.clock.countPending() === 1,
   );
 
   // SQLite computes a view's column only when a query reads it, and only the health read reads
@@ -367,7 +365,7 @@ test('it raises one notice for a failed receipt, however many passes follow it',
   onTestFinished(() => schedule.stop());
 
   await waitForCondition(
-    () => ctx.onPass.mock.calls.length === 1 && ctx.clock.countSleepers() === 1,
+    () => ctx.onPass.mock.calls.length === 1 && ctx.clock.countPending() === 1,
   );
 
   await writeTestBackupReceipt(ctx.dataDir, {
@@ -379,7 +377,7 @@ test('it raises one notice for a failed receipt, however many passes follow it',
   ctx.clock.advance(60_000);
 
   await waitForCondition(
-    () => ctx.onPass.mock.calls.length === 2 && ctx.clock.countSleepers() === 1,
+    () => ctx.onPass.mock.calls.length === 2 && ctx.clock.countPending() === 1,
   );
 
   ctx.clock.advance(60_000);
@@ -407,13 +405,13 @@ test('it raises one notice for a set with no receipt an interval after it staged
   onTestFinished(() => schedule.stop());
 
   await waitForCondition(
-    () => ctx.onPass.mock.calls.length === 1 && ctx.clock.countSleepers() === 1,
+    () => ctx.onPass.mock.calls.length === 1 && ctx.clock.countPending() === 1,
   );
 
   ctx.clock.advance(3_600_000);
 
   await waitForCondition(
-    () => ctx.onPass.mock.calls.length === 2 && ctx.clock.countSleepers() === 1,
+    () => ctx.onPass.mock.calls.length === 2 && ctx.clock.countPending() === 1,
   );
 
   ctx.clock.advance(60_000);
@@ -441,7 +439,7 @@ test('it passes the time of the last upload once a published receipt is recorded
   onTestFinished(() => schedule.stop());
 
   await waitForCondition(
-    () => ctx.onPass.mock.calls.length === 1 && ctx.clock.countSleepers() === 1,
+    () => ctx.onPass.mock.calls.length === 1 && ctx.clock.countPending() === 1,
   );
 
   await writeTestBackupReceipt(ctx.dataDir, { sequence: 1, status: 'published' });
@@ -480,7 +478,7 @@ test('it stages no set while a restore pause holds, and stages one after the res
   onTestFinished(() => schedule.stop());
 
   await waitForCondition(
-    () => ctx.onPass.mock.calls.length === 1 && ctx.clock.countSleepers() === 1,
+    () => ctx.onPass.mock.calls.length === 1 && ctx.clock.countPending() === 1,
   );
 
   ctx.clock.advance(3_600_000);

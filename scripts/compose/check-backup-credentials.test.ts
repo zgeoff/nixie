@@ -1,9 +1,9 @@
 import { expect, onTestFinished, test } from 'bun:test';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { createStubBin } from '@zgeoff/testing/bin';
 import { $ } from 'bun';
-import { createStubProgram } from '../test-utils/create-stub-program.ts';
 
 function setupTest() {
   const directory = mkdtempSync(join(tmpdir(), 'nixie-backup-credentials-'));
@@ -12,15 +12,11 @@ function setupTest() {
     rmSync(directory, { recursive: true, force: true });
   });
 
-  const callsPath = join(directory, 'calls');
-
   mkdirSync(join(directory, 'deploy', 'compose'), { recursive: true });
-  writeFileSync(callsPath, '');
 
   return {
     repoPath: directory,
     binPath: join(directory, 'bin'),
-    callsPath,
     scriptPath: join(import.meta.dir, 'check-backup-credentials.ts'),
   };
 }
@@ -28,10 +24,19 @@ function setupTest() {
 test('it passes when only the backup service holds the backup variables and mounts only staging', async () => {
   const ctx = setupTest();
 
-  createStubProgram(join(ctx.binPath, 'docker'), {
-    callsPath: ctx.callsPath,
-    answers: {
-      'compose -f compose.yaml -f ci/compose.yaml config --format json': {
+  createStubBin(ctx.binPath, 'docker', {
+    answers: [
+      {
+        args: [
+          'compose',
+          '-f',
+          'compose.yaml',
+          '-f',
+          'ci/compose.yaml',
+          'config',
+          '--format',
+          'json',
+        ],
         stdout: JSON.stringify({
           services: {
             nixie: { environment: { NIXIE_ORIGIN: 'http://127.0.0.1:8080' } },
@@ -42,7 +47,7 @@ test('it passes when only the backup service holds the backup variables and moun
           },
         }),
       },
-    },
+    ],
   });
 
   const result = await $`${process.execPath} ${ctx.scriptPath}`
@@ -58,10 +63,19 @@ test('it passes when only the backup service holds the backup variables and moun
 test('it fails when the nixie service holds a backup variable', async () => {
   const ctx = setupTest();
 
-  createStubProgram(join(ctx.binPath, 'docker'), {
-    callsPath: ctx.callsPath,
-    answers: {
-      'compose -f compose.yaml -f ci/compose.yaml config --format json': {
+  createStubBin(ctx.binPath, 'docker', {
+    answers: [
+      {
+        args: [
+          'compose',
+          '-f',
+          'compose.yaml',
+          '-f',
+          'ci/compose.yaml',
+          'config',
+          '--format',
+          'json',
+        ],
         stdout: JSON.stringify({
           services: {
             nixie: { environment: { NIXIE_BACKUP_KEY_PASSWORD: 'key-pass' } },
@@ -71,7 +85,7 @@ test('it fails when the nixie service holds a backup variable', async () => {
           },
         }),
       },
-    },
+    ],
   });
 
   const result = await $`${process.execPath} ${ctx.scriptPath}`

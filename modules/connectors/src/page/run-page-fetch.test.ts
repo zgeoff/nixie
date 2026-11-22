@@ -1,7 +1,8 @@
 import { expect, onTestFinished, test } from 'bun:test';
 import { writeRecords } from '@heynixie/log';
-import { buildTestClock, waitForCondition } from '@heynixie/testing';
+import { waitForCondition } from '@heynixie/testing';
 import type { FetchReply } from '@heynixie/wire';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import invariant from 'tiny-invariant';
 import { makeFetchBackoff } from '../fetch/make-fetch-backoff';
 import { startFetchSandbox } from '../fetch/start-fetch-sandbox';
@@ -29,7 +30,7 @@ interface SetupOptions {
 async function setupTest(answer: (url: string) => FetchReply, options: SetupOptions = {}) {
   const requestedURLs: string[] = [];
   const hold = Promise.withResolvers<void>();
-  const clock = buildTestClock(1_000_000);
+  const clock = createFakeClock({ startMs: 1_000_000 });
 
   const log = await startTestLog(clock);
 
@@ -350,7 +351,7 @@ test('it waits on the clock for a pause of backoff_wait_ms or less before it fet
 
   const running = ctx.runFetch('https://example.com/b');
 
-  await waitForCondition(() => ctx.clock.countSleepers() === 1);
+  await waitForCondition(() => ctx.clock.countPending() === 1);
 
   expect(ctx.requestedURLs).toStrictEqual(['https://example.com/a']);
 
@@ -377,7 +378,7 @@ test('it ends with the pause error, rounded up to whole seconds, for a pause pas
     message: 'example.com asked for a pause, so fetch it again in 42 seconds',
   });
 
-  expect(ctx.clock.countSleepers()).toBe(0);
+  expect(ctx.clock.countPending()).toBe(0);
 });
 
 test('it fetches again once a pause has ended', async () => {
@@ -542,7 +543,7 @@ test('it waits out a short pause of a same-host rewrite before the second pass',
 
   const running = ctx.runFetch('https://pypi.org/project/reefkit/');
 
-  await waitForCondition(() => ctx.clock.countSleepers() === 1);
+  await waitForCondition(() => ctx.clock.countPending() === 1);
 
   ctx.clock.advance(3000);
 

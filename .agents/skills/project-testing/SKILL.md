@@ -2,10 +2,10 @@
 name: project-testing
 description:
   "nixie's test facts, the shared testing rules it replaces for the model API lane and the MSW
-  server, and its own test topics: the MSW server, the unit tests' prerequisites, the imp and model
-  API lanes, time limits, the test build, where e2e code lives, the browser lane, the e2e, bundle,
-  journeys and restic lanes and the nixie harnesses. Load it beside testing before you design,
-  write, run or review a nixie test."
+  server, and its own test topics: the MSW server, the unit tests' prerequisites, the imp, userns
+  and model API lanes, time limits, the test build, where e2e code lives, the browser lane, the e2e,
+  bundle, journeys and restic lanes and the nixie harnesses. Load it beside testing before you
+  design, write, run or review a nixie test."
 metadata:
   kind: rule-set
 ---
@@ -41,14 +41,12 @@ a lib.
   [Where each test runs](../testing/references/slow-tests.md#where-each-test-runs) to run the
   `model-api` lane nightly and on an SDK bump. For when to run them and where their output goes,
   read the Agent SDK bump rule in [AGENTS.md](../../../AGENTS.md).
-- Never build an MSW server of your own, and never write the `onUnhandledFrame` callback from
-  [The server and its lifecycle](../testing/references/http.md#the-server-and-its-lifecycle). A
-  `bun test` from the repo root runs every package's tests in one process, and
-  `@heynixie/mock-server` starts one MSW server for all of them from a preload in the root
-  [`bunfig.toml`](../../../bunfig.toml). Under Bun, MSW's own unhandled-request error never stops a
-  request, so the server ends its handler list with a catch-all handler in place of the callback.
-  Expect it to fail each unmatched request with `Failed to fetch`, except a request to a loopback
-  host, a `data:` URL, or a host under the reserved `.test` domain.
+- Never build an MSW server of your own. A `bun test` from the repo root runs every package's tests
+  in one process, and `@heynixie/mock-server` builds one test network for all of them, with
+  `createTestNetwork` from `@zgeoff/testing/fetch`, from a preload in the root
+  [`bunfig.toml`](../../../bunfig.toml). Expect the network to reject each request that no handler
+  matches and to fail the test in `afterEach`. A request to a loopback host goes to Bun's own
+  `fetch`.
 
 ## The MSW server
 
@@ -59,7 +57,7 @@ a lib.
   end of the `preload` list in the root `bunfig.toml`.
 - Give each handler a URL that no other package's handler matches. Of 2 matching handlers, the one
   whose preload comes first in `bunfig.toml` wins.
-- For one test's handler, call `mockServer.use(...)`, as
+- For one test's handler, call `network.use(...)`, as
   [Per-test handlers](../testing/references/http.md#per-test-handlers) says. After each test,
   `@heynixie/mock-server` resets the handlers to those that `addMockHandlers` added.
 - When the code under test takes a resolver for host names, as the code in `guests/fetch/` does, use
@@ -74,17 +72,18 @@ a lib.
 Before you call a test done, run it with its command from this table. Use the first row whose files
 match the test file.
 
-| Files                                                                                                               | Command                                       | In CI             |
-| ------------------------------------------------------------------------------------------------------------------- | --------------------------------------------- | ----------------- |
-| `*.browser.test.ts` outside `apps/server/e2e/`, except `start-web-journey.browser.test.ts`                          | `bun run test:browser`                        | in `pr.yml`       |
-| `*.agent-sdk.test.ts`                                                                                               | `bun run test:agent-sdk`                      | in `pr.yml`       |
-| `apps/*/e2e/**`, except `*.browser.test.ts` and `*.restic.test.ts`                                                  | `bun run test:e2e`                            | in `pr.yml`       |
-| `*.browser.test.ts` in `apps/server/e2e/`, and `start-web-journey.browser.test.ts` in `apps/server/src/test-utils/` | `bun run test:journeys`                       | in `journeys.yml` |
-| `*.bundle.test.ts` outside `e2e/`                                                                                   | `bun run test:bundle`                         | in `pr.yml`       |
-| `*.restic.test.ts` in `apps/*/e2e/`                                                                                 | `bun run test:restic`                         | in `images.yml`   |
-| `*.imp.test.ts`                                                                                                     | `bun run test:imp`                            | no                |
-| `*.model-api.test.ts`                                                                                               | `NIXIE_SDK_CONTRACT=1 bun run test:model-api` | no                |
-| every other `*.test.ts`: the unit tests                                                                             | `bun run test`                                | in `pr.yml`       |
+| Files                                                                                                               | Command                                       | In CI                     |
+| ------------------------------------------------------------------------------------------------------------------- | --------------------------------------------- | ------------------------- |
+| `*.browser.test.ts` outside `apps/server/e2e/`, except `start-web-journey.browser.test.ts`                          | `bun run test:browser`                        | in `pr.yml`               |
+| `*.agent-sdk.test.ts`                                                                                               | `bun run test:agent-sdk`                      | in `pr.yml`               |
+| `apps/*/e2e/**`, except `*.browser.test.ts` and `*.restic.test.ts`                                                  | `bun run test:e2e`                            | in `pr.yml`               |
+| `*.browser.test.ts` in `apps/server/e2e/`, and `start-web-journey.browser.test.ts` in `apps/server/src/test-utils/` | `bun run test:journeys`                       | in `journeys.yml`         |
+| `*.bundle.test.ts` outside `e2e/`                                                                                   | `bun run test:bundle`                         | in `pr.yml`               |
+| `*.restic.test.ts` in `apps/*/e2e/`                                                                                 | `bun run test:restic`                         | in `images.yml`           |
+| `*.imp.test.ts`                                                                                                     | `bun run test:imp`                            | no                        |
+| `*.userns.test.ts`                                                                                                  | `bun run test:userns`                         | in `shell-namespaces.yml` |
+| `*.model-api.test.ts`                                                                                               | `NIXIE_SDK_CONTRACT=1 bun run test:model-api` | no                        |
+| every other `*.test.ts`: the unit tests                                                                             | `bun run test`                                | in `pr.yml`               |
 
 ### One unit test file
 
@@ -126,6 +125,18 @@ test file, run each one that the file needs, from the repo root:
   fail: only the imp's broker supplies the model credential. To run one file, add its path to the
   table's command. Without `NIXIE_SDK_CONTRACT=1`, every test skips and the command passes with no
   test run.
+
+### The userns lane
+
+The shell guest runs each command in new user, network and process namespaces, through `unshare`.
+Its `*.userns.test.ts` suites need a Linux host that allows unprivileged user namespaces.
+
+- Check your host with `unshare --user --map-root-user true`. When it fails, run
+  `sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0`, the step CI runs before the lane.
+- Never add a skip for a host that refuses them. A skipped suite has not passed, and CI's runner
+  allows them.
+- Put a test in a `*.userns.test.ts` file only when it runs a command through `unshare`. Test the
+  rest of the shell guest in its unit tests.
 
 ## Time limits
 

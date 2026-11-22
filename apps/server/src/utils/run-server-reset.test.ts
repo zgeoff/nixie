@@ -10,6 +10,8 @@ import {
   runSeed,
 } from '@heynixie/definitions';
 import { buildTestTaskSeed } from '@heynixie/definitions/test-utils';
+import { createDeviceStreams, readDeviceByIdentity } from '@heynixie/devices';
+import { buildDeviceToolCaller, seedScreenOnDevice } from '@heynixie/devices/test-utils';
 import { readRecords, writeRecords } from '@heynixie/log';
 import { buildMockSandboxSpec } from '@heynixie/sandbox/test-utils';
 import { createConversationTask, startTaskClaimPools } from '@heynixie/tasks';
@@ -28,6 +30,7 @@ async function setupTest() {
     readSessionCleanup: () => null,
     readZone: () => Promise.resolve('UTC'),
     passkeys: createPasskeyState(),
+    devices: createDeviceStreams(),
   };
 
   return { ...server, context };
@@ -240,6 +243,7 @@ test('it refuses a reset before any definitions are in force, and stops no work'
       readSessionCleanup: () => null,
       readZone: () => Promise.resolve('UTC'),
       passkeys: createPasskeyState(),
+      devices: createDeviceStreams(),
     },
     adapter: server.sandboxes,
     stopWork,
@@ -356,4 +360,48 @@ test('it keeps each live passkey and deletes each revoked one through a reset', 
   const kept = await readAllPasskeys(ctx.context.log.writer.db);
 
   expect(kept.map((row) => row.passkey_id)).toStrictEqual([live.passkeyID]);
+});
+
+test('it keeps an enrolled device through a reset and clears what it showed', async () => {
+  const ctx = await setupTest();
+
+  await runTestSeed(ctx.context.log, ctx.dataDir);
+  await createConversationTask(ctx.context);
+
+  const device = await seedScreenOnDevice({ log: ctx.context.log, clock: ctx.context.clock });
+
+  ctx.context.devices.open(device.deviceID, { width: 1920, height: 480 });
+
+  const call = buildDeviceToolCaller({
+    log: ctx.context.log,
+    definitions: ctx.context.definitions,
+    clock: ctx.context.clock,
+    streams: ctx.context.devices,
+  });
+
+  await call('device.setIdle', {
+    device: device.deviceID,
+    scene: [{ kind: 'markdown', text: '# Saturday' }],
+  });
+
+  await call('device.show', {
+    device: device.deviceID,
+    content: { kind: 'markdown', text: '# Saturday' },
+  });
+
+  await runServerReset({
+    context: ctx.context,
+    adapter: ctx.sandboxes,
+    stopWork: () => Promise.resolve(),
+    log: () => {},
+  });
+
+  const kept = await readDeviceByIdentity(ctx.context.log.writer.db, device.identityID);
+
+  expect(kept).toMatchObject({
+    deviceID: device.deviceID,
+    name: 'desk panel',
+    shownSequence: null,
+    idleSequence: null,
+  });
 });

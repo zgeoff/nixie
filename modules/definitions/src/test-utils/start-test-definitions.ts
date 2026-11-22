@@ -11,9 +11,9 @@ import {
   buildTestRunSettings,
   buildTestTaskRunners,
 } from '@heynixie/tasks/test-utils';
-import type { TestClock } from '@heynixie/testing';
 import type { TriggerCoreContext } from '@heynixie/triggers';
 import { triggersProjections } from '@heynixie/triggers';
+import type { FakeClock } from '@zgeoff/testing/clock';
 import { createPathSource } from '../definition/create-path-source';
 import type { SeedResult } from '../rule/run-seed';
 import { runSeed } from '../rule/run-seed';
@@ -38,7 +38,7 @@ export interface TestDefinitions {
   readonly source: DefinitionsSource;
   readonly writer: Writer;
   readonly log: Log;
-  readonly clock: TestClock;
+  readonly clock: FakeClock;
   readonly context: DefinitionsContext;
 
   // the tasks module's context on the same log

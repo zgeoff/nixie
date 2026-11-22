@@ -1,6 +1,12 @@
 // oxlint-disable zgeoff/file-named-for-export -- TanStack Router finds the root route by this file path
 
-import { HeadContent, Outlet, Scripts, createRootRouteWithContext } from '@tanstack/react-router';
+import {
+  HeadContent,
+  Outlet,
+  Scripts,
+  createRootRouteWithContext,
+  useLocation,
+} from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import { AppShell } from '../components/app-shell';
 import { css } from '../styled-system/css';
@@ -29,6 +35,7 @@ export const Route = createRootRouteWithContext<RouterContext>()({
 
 function RootDocument(): ReactNode {
   const context = Route.useRouteContext();
+  const pathname = useLocation({ select: (location) => location.pathname });
 
   // The head script sets the theme attribute before React hydrates the page.
   return (
@@ -38,9 +45,13 @@ function RootDocument(): ReactNode {
       </head>
       <body className={css({ fontFamily: 'sans', lineHeight: 'relaxed' })}>
         <NixieClientContext value={{ client: context.client, queryUtils: context.queryUtils }}>
-          <AppShell>
+          {pathname === '/device' ? (
             <Outlet />
-          </AppShell>
+          ) : (
+            <AppShell>
+              <Outlet />
+            </AppShell>
+          )}
         </NixieClientContext>
         <Scripts />
       </body>

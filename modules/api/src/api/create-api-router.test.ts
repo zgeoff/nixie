@@ -62,7 +62,11 @@ test('#sessions.enrol sends no cookie to a client that takes a bearer token', as
     tokenDelivery: 'bearer',
   });
 
-  expect(enrolled).toStrictEqual({ sessionID: expect.toBeString(), token: expect.toBeString() });
+  expect(enrolled).toStrictEqual({
+    scope: 'full',
+    sessionID: expect.toBeString(),
+    token: expect.toBeString(),
+  });
 });
 
 test('#sessions.enrol refuses a used code with a typed error', async () => {

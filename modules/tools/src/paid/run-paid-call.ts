@@ -7,7 +7,8 @@ import type { BudgetsContext } from '@heynixie/budgets';
 import type { Log } from '@heynixie/log';
 import { withWriteTransaction } from '@heynixie/log';
 import invariant from 'tiny-invariant';
-import type { RegisteredTool, ToolCall, ToolOutcome } from '../types';
+import { isPriceMicros } from '../build-tool-registry';
+import type { RegisteredTool, ToolCall, ToolOutcome, ToolRun } from '../types';
 
 export interface PaidCallOptions {
   readonly log: Log;
@@ -16,20 +17,26 @@ export interface PaidCallOptions {
   readonly budgets?: BudgetsContext;
 }
 
+export interface PaidCallFacts {
+  readonly call: ToolCall;
+  readonly run: ToolRun;
+}
+
 export type PaidOutcome =
   | ToolOutcome
   | { readonly status: 'budget_reached'; readonly message: string };
 
-// The charge lands before the provider sees the call, in the transaction that checks and counts the
-// tool's call cap. An error credits the charges unless it says the provider billed, and a throw
-// leaves an unknown outcome, so they stand. The cap's count is never credited.
+// A check that refuses charges nothing. The charge lands before the provider sees the call, in the
+// transaction that checks and counts the tool's call cap. An error or a refusalCode credits it,
+// unless the provider billed, and a throw leaves an unknown outcome, so it stands.
 export async function runPaidCall(
   registered: RegisteredTool,
-  call: ToolCall,
+  facts: PaidCallFacts,
   options: PaidCallOptions,
   run: () => Promise<ToolOutcome>,
 ): Promise<PaidOutcome> {
   const paid = registered.definition.paid;
+  const call = facts.call;
 
   if (paid === undefined) {
     return run();
@@ -39,7 +46,49 @@ export async function runPaidCall(
 
   invariant(budgets, `the paid tool ${registered.definition.name} needs the budgets of the server`);
 
+  const context = { run: facts.run, callID: call.callID };
+
+  const refusal = await paid.check?.(call.input, context);
+
+  if (refusal !== undefined && refusal !== null) {
+    return { status: 'ok', ...refusal };
+  }
+
+  const started = { isRun: false };
+
+  try {
+    return await chargeAndRun(registered, facts, options, () => {
+      started.isRun = true;
+
+      return run();
+    });
+  } finally {
+    if (!started.isRun) {
+      paid.release?.(context);
+    }
+  }
+}
+
+async function chargeAndRun(
+  registered: RegisteredTool,
+  facts: PaidCallFacts,
+  options: PaidCallOptions,
+  run: () => Promise<ToolOutcome>,
+): Promise<PaidOutcome> {
+  const paid = registered.definition.paid;
+  const budgets = options.budgets;
+
+  invariant(paid, 'a charged call belongs to a paid tool');
+  invariant(budgets, 'a charged call has the budgets of the server');
+
+  const call = facts.call;
   const name = registered.definition.name;
+
+  const priceMicros =
+    typeof paid.priceMicros === 'number' ? paid.priceMicros : await paid.priceMicros(call.input);
+
+  invariant(isPriceMicros(priceMicros), `the paid tool ${name} priced a call at ${priceMicros}`);
+
   const target = { for: { kind: 'tool_call' as const, id: call.callID } };
   const capCall = paid.callCap?.openCall();
 
@@ -52,7 +101,7 @@ export async function runPaidCall(
 
     const charged = await chargeBudgetsInTransaction(tx, budgets, {
       budgetIDs: [`${name}-day`, `${name}-month`],
-      amountMicros: paid.priceMicros,
+      amountMicros: priceMicros,
       for: target.for,
     });
 
@@ -77,11 +126,19 @@ export async function runPaidCall(
 
   const outcome = await run();
 
-  if (outcome.status === 'error' && outcome.billed !== true) {
+  if (isUnbilledFailure(outcome)) {
     await withWriteTransaction(options.log.writer, (tx) =>
       creditBudgetChargesInTransaction(tx, budgets, target),
     );
   }
 
   return outcome;
+}
+
+function isUnbilledFailure(outcome: ToolOutcome): boolean {
+  if (outcome.status === 'error') {
+    return outcome.billed !== true;
+  }
+
+  return outcome.refusalCode !== undefined && outcome.billed !== true;
 }

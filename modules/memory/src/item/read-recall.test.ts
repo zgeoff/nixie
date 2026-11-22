@@ -1,6 +1,7 @@
 import { expect, mock, test } from 'bun:test';
 import { readRecords, writeRecords } from '@heynixie/log';
-import { buildTestClock, makeGatedCall } from '@heynixie/testing';
+import { makeGatedCall } from '@heynixie/testing';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import invariant from 'tiny-invariant';
 import { buildMockProvenance } from '../test-utils/build-mock-provenance';
 import { buildStubEncoder } from '../test-utils/build-stub-encoder';
@@ -1020,7 +1021,7 @@ test('it recalls an edited item by the meaning of its new text', async () => {
 });
 
 test('it drops an item from search and from the listing at its end time, before any sweep runs', async () => {
-  const clock = buildTestClock(Date.parse('2026-10-19T09:00:00Z'));
+  const clock = createFakeClock({ startMs: Date.parse('2026-10-19T09:00:00Z') });
 
   const memory = await startTestMemory({ gate: { clock } });
 
@@ -1042,7 +1043,7 @@ test('it drops an item from search and from the listing at its end time, before 
 });
 
 test('it keeps an item in search until its end time', async () => {
-  const clock = buildTestClock(Date.parse('2026-10-19T09:00:00Z'));
+  const clock = createFakeClock({ startMs: Date.parse('2026-10-19T09:00:00Z') });
 
   const memory = await startTestMemory({ gate: { clock } });
 
@@ -1060,7 +1061,7 @@ test('it keeps an item in search until its end time', async () => {
 });
 
 test('it fills a listing page with a live item when an item past its end time comes first', async () => {
-  const clock = buildTestClock(Date.parse('2026-10-19T09:00:00Z'));
+  const clock = createFakeClock({ startMs: Date.parse('2026-10-19T09:00:00Z') });
 
   const memory = await startTestMemory({ gate: { clock } });
 
@@ -1080,7 +1081,7 @@ test('it fills a listing page with a live item when an item past its end time co
 });
 
 test('it ranks a live match in place of a better match past its end time', async () => {
-  const clock = buildTestClock(Date.parse('2026-10-19T09:00:00Z'));
+  const clock = createFakeClock({ startMs: Date.parse('2026-10-19T09:00:00Z') });
 
   const memory = await startTestMemory({ gate: { clock } });
 
@@ -1105,7 +1106,7 @@ test('it ranks a live match in place of a better match past its end time', async
 });
 
 test('it returns an item past its end time as retired to a recall that includes retired items', async () => {
-  const clock = buildTestClock(Date.parse('2026-10-19T09:00:00Z'));
+  const clock = createFakeClock({ startMs: Date.parse('2026-10-19T09:00:00Z') });
 
   const memory = await startTestMemory({ gate: { clock } });
 

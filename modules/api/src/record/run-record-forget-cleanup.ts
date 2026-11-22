@@ -1,3 +1,4 @@
+import { removeImportedImageKeys } from '@heynixie/connectors';
 import { removeRecordKey, withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import { recordForgottenCodec, removeImageOfferKeys, writeRecordPurgeSet } from '@heynixie/memory';
 import { waitAtFaultPoint } from '@heynixie/tasks';
@@ -39,6 +40,7 @@ export async function runRecordForgetCleanup(
   }
 
   await removeImageOfferKeys(context.log, recordSequence);
+  await removeImportedImageKeys(context.log, recordSequence);
 
   const cleanupSessions = context.readSessionCleanup();
 

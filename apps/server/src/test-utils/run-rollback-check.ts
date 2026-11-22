@@ -1,6 +1,4 @@
-import { readFile, writeFile } from 'node:fs/promises';
 import { nixieSchema } from '@heynixie/db';
-import { z } from 'zod';
 import type { RollbackCheckResult } from './pick-rollback-result';
 import { isDatabaseReady, pickRollbackResult } from './pick-rollback-result';
 import { readReleaseStartOutcome } from './read-release-start-outcome';
@@ -66,22 +64,8 @@ export async function runRollbackCheck(
 
   await options.seed?.(nixie);
 
-  const imageKeys = options.previous.imageKeys;
-
-  if (imageKeys !== undefined) {
-    const text = await readFile(nixie.manifestPath, 'utf8');
-
-    const manifest = z.record(z.string(), z.string()).parse(JSON.parse(text));
-
-    const kept = Object.fromEntries(
-      Object.entries(manifest).filter(([key]) => imageKeys.includes(key)),
-    );
-
-    await writeFile(nixie.manifestPath, JSON.stringify(kept));
-  }
-
   const outcome = await readReleaseStartOutcome(
-    nixie.harness.startRelease(options.previous.entry),
+    nixie.harness.startRelease(options.previous.entry, options.previous.imageKeys),
     {
       timeoutMs: waitMs,
     },

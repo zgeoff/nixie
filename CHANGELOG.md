@@ -1,5 +1,44 @@
 # Changelog
 
+## [0.94.0](https://github.com/zgeoff/nixie/compare/v0.93.0...v0.94.0) (2026-11-22)
+
+
+### Features
+
+* **computer:** give the assistant a browser and a shell ([#1338](https://github.com/zgeoff/nixie/issues/1338)) ([1b86cd5](https://github.com/zgeoff/nixie/commit/1b86cd5bb3fd0fb9e3ac78db4c9b11b03c449e21))
+
+## [0.93.0](https://github.com/zgeoff/nixie/compare/v0.92.0...v0.93.0) (2026-11-21)
+
+
+### Features
+
+* **devices:** put pictures and markdown on a device screen ([#1333](https://github.com/zgeoff/nixie/issues/1333)) ([6c758f7](https://github.com/zgeoff/nixie/commit/6c758f7208898b53b667a600c4c3db78a385e2fe))
+
+## [0.92.0](https://github.com/zgeoff/nixie/compare/v0.91.0...v0.92.0) (2026-11-21)
+
+
+### Features
+
+* **verify:** add a drawing journey on a stubbed image provider ([#1327](https://github.com/zgeoff/nixie/issues/1327)) ([3219958](https://github.com/zgeoff/nixie/commit/3219958af45329a0dc49ddc8fd2fa79e896ec330))
+
+
+### Bug Fixes
+
+* **verify:** report a preview checkout with no commit as environment ([#1335](https://github.com/zgeoff/nixie/issues/1335)) ([1ccb9fa](https://github.com/zgeoff/nixie/commit/1ccb9fa856775d484013974768101fe79acd932e))
+
+## [0.91.0](https://github.com/zgeoff/nixie/compare/v0.90.0...v0.91.0) (2026-11-21)
+
+
+### Features
+
+* **images:** draw and edit pictures in passes ([#1320](https://github.com/zgeoff/nixie/issues/1320)) ([a6224dc](https://github.com/zgeoff/nixie/commit/a6224dc722b95cbcaff8ee4c6619bc549dbb1a30))
+* **verify:** upload evidence from the local and preview targets ([#1318](https://github.com/zgeoff/nixie/issues/1318)) ([7ee5e97](https://github.com/zgeoff/nixie/commit/7ee5e97d8d7daeb5ea3f4bb74c58bfe051ff02f7))
+
+
+### Bug Fixes
+
+* **deps:** update @zgeoff/std to v0.4.5 ([#1313](https://github.com/zgeoff/nixie/issues/1313)) ([16d6c5c](https://github.com/zgeoff/nixie/commit/16d6c5c1190d789200c85ccb24a2957c1974c862))
+
 ## [0.90.0](https://github.com/zgeoff/nixie/compare/v0.89.0...v0.90.0) (2026-11-21)
 
 

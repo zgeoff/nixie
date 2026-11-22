@@ -7,11 +7,12 @@ import {
   readDefinitionVersion,
   readDefinitionsInForce,
 } from '@heynixie/definitions';
+import { createDeviceStreams } from '@heynixie/devices';
 import type { Writer } from '@heynixie/log';
 import type { PlanLoginsHolder, SpendGateway, SpendTurnLimits } from '@heynixie/spend';
 import type { RunSettings, TaskLimits, TaskRunnerRegistry } from '@heynixie/tasks';
 import { readDefinitionNextFire } from '@heynixie/triggers';
-import { paidToolNames } from '../budget/paid-tool-names';
+import { paidToolLimits, paidToolNames } from '../budget/paid-tool-names';
 import type { InForce } from '../types';
 import { buildServerLog } from './build-server-log';
 import { makeReadZone } from './make-read-zone';
@@ -69,7 +70,7 @@ export async function createServerContext(
         clock: writer.clock,
         zone: options.defaultZone,
         definitions,
-        builtIn: () => buildBuiltInBudgets(paidToolNames),
+        builtIn: () => buildBuiltInBudgets(paidToolNames, paidToolLimits),
       },
       ...(options.spend === undefined
         ? {}
@@ -97,6 +98,7 @@ export async function createServerContext(
         }),
       settings: options.settings ?? defaultAPISettings,
       passkeys: createPasskeyState(),
+      devices: createDeviceStreams(),
       readZone: makeReadZone(writer, writer.db, options.defaultZone),
       readSessionCleanup,
     },

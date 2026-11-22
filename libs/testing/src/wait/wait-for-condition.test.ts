@@ -1,5 +1,5 @@
 import { expect, onTestFinished, setSystemTime, test } from 'bun:test';
-import { buildTestClock } from '../harness/build-test-clock';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import { waitForCondition } from './wait-for-condition';
 
 test('it resolves once the condition holds', async () => {
@@ -36,7 +36,7 @@ test('it keeps waiting when the wall clock jumps past the deadline', async () =>
 });
 
 test('it rejects once the clock it is given passes the timeout', () => {
-  const clock = buildTestClock(0);
+  const clock = createFakeClock({ startMs: 0 });
 
   const wait = waitForCondition(
     () => {

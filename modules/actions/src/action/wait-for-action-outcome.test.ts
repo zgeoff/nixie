@@ -48,7 +48,7 @@ test('it returns the outcome on the commit that settles the action, without poll
     result: { messageID: 'm-1' },
   });
 
-  expect(ctx.clock.countSleepers()).toBe(0);
+  expect(ctx.clock.countPending()).toBe(0);
 });
 
 test('it returns "queued as" with the action ID once 10 s pass with the action pending', async () => {
@@ -65,7 +65,7 @@ test('it returns "queued as" with the action ID once 10 s pass with the action p
 
   const waiting = waitForActionOutcome(ctx.context, queued.actionID);
 
-  await waitForCondition(() => ctx.clock.countSleepers() === 1);
+  await waitForCondition(() => ctx.clock.countPending() === 1);
 
   ctx.clock.advance(10_000);
 

@@ -1,6 +1,14 @@
 import type { CheckedTables } from '@heynixie/db';
 
-export type SandboxKind = 'conversation' | 'checker' | 'worker' | 'code_run' | 'fetch' | 'coding';
+export type SandboxKind =
+  | 'conversation'
+  | 'checker'
+  | 'worker'
+  | 'code_run'
+  | 'fetch'
+  | 'coding'
+  | 'browser'
+  | 'shell';
 
 export type Egress =
   | { readonly kind: 'none' }

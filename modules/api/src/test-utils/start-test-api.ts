@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { actionsProjection } from '@heynixie/actions';
 import { readDefinitionNotices, readDefinitionVersion } from '@heynixie/definitions';
 import { definitionTaskProjections } from '@heynixie/definitions/test-utils';
+import { createDeviceStreams } from '@heynixie/devices';
 import type { Writer } from '@heynixie/log';
 import { logProjections, startWriter } from '@heynixie/log';
 import { memoryProjections } from '@heynixie/memory';
@@ -17,8 +18,8 @@ import {
   buildTestRunSettings,
   buildTestTaskRunners,
 } from '@heynixie/tasks/test-utils';
-import type { TestClock } from '@heynixie/testing';
-import { buildTestClock } from '@heynixie/testing';
+import type { FakeClock } from '@zgeoff/testing/clock';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import type { Kysely } from 'kysely';
 import { apiProjections } from '../api/api-projections';
 import { createAPIApp } from '../api/create-api-app';
@@ -39,7 +40,7 @@ interface TestAPI {
   // the session cleanup that a running nixie gives a record forget once memory starts
   readonly setSessionCleanup: (cleanup: CleanupRecordSessions) => void;
   readonly writer: Writer;
-  readonly clock: TestClock;
+  readonly clock: FakeClock;
   readonly context: APIContext;
   readonly definitionStore: TestDefinitionStore;
 
@@ -108,7 +109,7 @@ async function createTestContext(
   settings: APIContext['settings'],
   definitionStore: TestDefinitionStore,
   deps: TestContextDeps,
-): Promise<APIContext & { readonly clock: TestClock }> {
+): Promise<APIContext & { readonly clock: FakeClock }> {
   const deploymentKey = await crypto.subtle.generateKey({ name: 'AES-KW', length: 256 }, false, [
     'wrapKey',
     'unwrapKey',
@@ -137,7 +138,7 @@ async function createTestContext(
 
   const context = {
     log,
-    clock: buildTestClock(1_000_000),
+    clock: createFakeClock({ startMs: 1_000_000 }),
     definitions: readTestDefinitions,
     ...(deps.spendGateway === null
       ? {}
@@ -164,6 +165,7 @@ async function createTestContext(
     runners: buildTestTaskRunners(),
     settings,
     passkeys: createPasskeyState(),
+    devices: createDeviceStreams(),
 
     readZone: () => Promise.resolve('UTC'),
     readSessionCleanup: deps.readSessionCleanup,

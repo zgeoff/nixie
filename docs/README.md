@@ -106,8 +106,12 @@ holds the design for a piece of work that is not built yet, with its spikes in
   content, its limits, and how the host downscales it
 - [The code tool](architecture/connectors/code-tool.md) — `code.run`, its fresh sandbox, the limits,
   the files it writes and how a forget destroys its sandbox
+- [The computer](architecture/connectors/computer.md) — the assistant's browser and shell, their
+  disks, the tools, the checking proxy and the approval of a command
 - [Time](architecture/connectors/time.md) — the time zone on each message, and the time tool that
   answers in the user's newest zone
+- [Images](architecture/connectors/images.md) — drawing and editing pictures in passes, the provider
+  profiles, the charge and the stored attempts
 - [Search](architecture/connectors/search.md) — the search tool on the host, its daily call cap, the
   Kagi provider and its key
 
@@ -117,6 +121,8 @@ holds the design for a piece of work that is not built yet, with its spikes in
   conversation view, the outbox and paste spans
 - [The API](architecture/channels/api.md) — device sessions and the identity record, checked
   actions, refusals, message sends and the live stream
+- [Devices](architecture/channels/devices.md) — enrolling a device, its scoped session, the screen
+  and the tools that put pictures on it
 
 ### Memory
 
@@ -154,6 +160,8 @@ holds the design for a piece of work that is not built yet, with its spikes in
   mounts, impd and the address ranges, and the ingress
 - [Backups](architecture/deployment/backups.md) — snapshot sets, the backup job and its 2 restic
   repositories, receipts, and the shared formats
+- [The backup pair](architecture/deployment/backup-pair.md) — the snapshot tags, the newest key
+  snapshot, and how the fetch picks a data snapshot that its keys can read
 
 ## Guides
 
@@ -207,8 +215,6 @@ rests on.
   semantics, projections, the data behind the dashboard and the live view, export and retention
 - [Tasks](design/platform/core/tasks.md) — tasks as state machines with leases and an inbox, waits,
   the conversation's task tools, task runs of a definition, workers in imps, and crash recovery
-- [Actions](design/platform/core/actions.md) — the action queue, its outcomes, approval consumption,
-  reconciliation per connector, and unknown outcomes
 - [Model profiles](design/platform/core/models.md) — the profile, model roles and their defaults,
   and how nixie computes model cost
 
@@ -231,8 +237,6 @@ rests on.
 
 ### Memory
 
-- [The memory store](design/platform/memory/store.md) — the first build, bulk deletion of retired
-  memories, forget completion with key backups, the memory view and export
 - [Memory writes](design/platform/memory/writes.md) — the client's proposal cards and notices
 - [Memory in context](design/platform/memory/context.md) — past messages in retrieval, the recall
   tools, compaction summaries, and the SDK transcript as a cache
@@ -345,6 +349,8 @@ Backups.
 - [0013: Offsite backups and replication](decisions/0013-host-encrypted-backups.md) — backups leave
   the host only as ciphertext encrypted on the host, and a backup job of its own holds the only
   backup credential
+- [0017: Publish numbers](decisions/0017-publish-numbers-are-snapshot-tags.md) — the backup job
+  counts publishes in the repositories' snapshot tags, never in nixie's database
 
 ## Archive
 

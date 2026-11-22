@@ -51,6 +51,14 @@ test('it prints each sandbox image with the name nixie gives it in impd', async 
           name: 'nixie-codex-eeeeeeeeeeee',
           ref: `ghcr.io/example/nixie-codex@sha256:${'e'.repeat(64)}`,
         },
+        browser: {
+          name: 'nixie-browser-aaaaaaaaaaaa',
+          ref: `ghcr.io/example/nixie-browser@sha256:${'a'.repeat(64)}`,
+        },
+        shell: {
+          name: 'nixie-shell-bbbbbbbbbbbb',
+          ref: `ghcr.io/example/nixie-shell@sha256:${'b'.repeat(64)}`,
+        },
       }),
     ],
   ]);
@@ -114,6 +122,14 @@ test('it prints only the needed images from sandbox-manifest --needed', async ()
           name: 'nixie-code-dddddddddddd',
           ref: `ghcr.io/example/nixie-code@sha256:${'d'.repeat(64)}`,
         },
+        browser: {
+          name: 'nixie-browser-aaaaaaaaaaaa',
+          ref: `ghcr.io/example/nixie-browser@sha256:${'a'.repeat(64)}`,
+        },
+        shell: {
+          name: 'nixie-shell-bbbbbbbbbbbb',
+          ref: `ghcr.io/example/nixie-shell@sha256:${'b'.repeat(64)}`,
+        },
       }),
     ],
   ]);
@@ -151,7 +167,7 @@ test('it exits 1 from sandbox-manifest --needed on a manifest that lacks the fet
     command: 'sandbox-manifest',
     error: 'Error',
     message:
-      'nixie refuses to start: the web_fetch part needs the fetch image; the code_run part needs the code image, and the sandbox manifest holds conversation',
+      'nixie refuses to start: the web_fetch part needs the fetch image; the computer part needs the browser image; the computer part needs the shell image; the code_run part needs the code image, and the sandbox manifest holds conversation',
   });
 });
 

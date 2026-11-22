@@ -16,6 +16,8 @@
     { "match": "guests/**", "skills": ["verify"] },
     { "match": "adapters/definitions-repo-github/**", "skills": ["verify"] },
     { "match": "adapters/encoder-onnx/**", "skills": ["verify"] },
+    { "match": "adapters/image-gemini/**", "skills": ["verify"] },
+    { "match": "adapters/image-openai/**", "skills": ["verify"] },
     { "match": "adapters/search-kagi/**", "skills": ["verify"] },
     { "match": "adapters/spend-model-gateway/**", "skills": ["verify"] },
     { "match": "nixie-test-build.d.ts", "skills": ["verify"] },

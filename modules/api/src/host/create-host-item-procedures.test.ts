@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import { createDeviceStreams } from '@heynixie/devices';
 import { createMemoryItem, startTestMemory } from '@heynixie/memory/test-utils';
 import {
   buildTestDefinitionReaders,
@@ -25,6 +26,7 @@ async function setupTest() {
     readSessionCleanup: () => null,
     readZone: () => Promise.resolve('UTC'),
     passkeys: createPasskeyState(),
+    devices: createDeviceStreams(),
   };
 
   return {

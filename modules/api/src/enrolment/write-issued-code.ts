@@ -1,6 +1,6 @@
 import { withWriteTransaction } from '@heynixie/log';
 import type { Transaction } from 'kysely';
-import type { APIContext, APITables, Identity } from '../types';
+import type { APIContext, APITables, Identity, SessionScope } from '../types';
 import { deriveSecretHash } from '../utils/derive-secret-hash';
 import { probeLiveIdentity } from '../utils/probe-live-identity';
 import type { ClientAction } from '../utils/read-client-action';
@@ -20,6 +20,7 @@ export function writeIssuedCode(
   context: APIContext,
   caller: Identity,
   clientActionID: string,
+  scope: SessionScope = 'full',
 ): Promise<IssueResult> {
   return withWriteTransaction(context.log.writer, async (tx) => {
     const live = await probeLiveIdentity(tx, context, caller.identityID);
@@ -32,7 +33,7 @@ export function writeIssuedCode(
 
     const issued =
       earlier === null
-        ? await writeEnrolmentCode(tx, context, caller.identityID)
+        ? await writeEnrolmentCode(tx, context, caller.identityID, scope)
         : await updateRetriedCode(tx, context, { caller, earlier });
 
     if (issued === null) {

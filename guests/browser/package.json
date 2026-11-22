@@ -1,0 +1,16 @@
+{
+  "name": "@heynixie/browser",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsrs --fast --noEmit"
+  },
+  "dependencies": {
+    "@heynixie/egress": "workspace:*",
+    "@heynixie/wire": "workspace:*",
+    "playwright-core": "catalog:",
+    "ts-pattern": "catalog:",
+    "zod": "catalog:"
+  }
+}

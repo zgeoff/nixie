@@ -149,36 +149,41 @@ import escapes the zones. The Agent SDK runs only inside a sandbox
 
 Each module package covers one area of the architecture, and its doc covers the package.
 
-| Package       | Area                                                                                                                                       |
-| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| `log`         | [The event log](core/event-log.md), keys, projections and the [single writer](core/database.md)                                            |
-| `tasks`       | [Tasks](core/tasks.md), [leases](core/leases-and-recovery.md), the inbox, waits and timers                                                 |
-| `actions`     | [The action queue](core/actions.md), attempts, outcomes and retries                                                                        |
-| `models`      | [Model profiles](core/model-profiles.md), roles and cost                                                                                   |
-| `sessions`    | The [conversation's turns](core/conversation-turns.md), [session opening](core/session-opening.md) and each system task's own session      |
-| `compaction`  | The [compactor](core/compaction.md) and its summary records                                                                                |
-| `triggers`    | [Triggers](core/triggers.md): the trigger core, the arming hook, the watermark and the fire times                                          |
-| `definitions` | [The definitions](core/definitions.md) and the path source                                                                                 |
-| `prompts`     | The built-in [prompts](core/prompts.md), their parts and templates, and the render that applies the overrides                              |
-| `policy`      | [The decision point](policy/decision-point.md) and its fixed rules                                                                         |
-| `api`         | [The API](channels/api.md): the oRPC router, device sessions and the live stream                                                           |
-| `sandbox`     | The [sandbox adapter](connectors/sandboxes.md) interface, sandboxes by kind and the sandbox double                                         |
-| `tools`       | The [tool endpoint](connectors/tool-calls.md) per task run                                                                                 |
-| `connectors`  | The [web fetch](connectors/web-fetch.md), [time](connectors/time.md) and [search](connectors/search.md) tools                              |
-| `memory`      | The [memory store](memory/store.md) and its context                                                                                        |
-| `backup`      | The snapshot sets and receipts of [backups](deployment/backups.md) and their schedule                                                      |
-| `ops`         | The health checks behind [the server's](deployment/server.md) health endpoint                                                              |
-| `skills`      | [Skills](core/skills.md): the pins, the catalog, the skill tools and the skill proposals                                                   |
-| `proposals`   | The review lifecycle that [skill proposals](core/skills.md#skills-that-nixie-writes) run on: its moves, its lapse time and the lapse sweep |
-| `turn-inputs` | The [turn-input log](policy/turn-input-log.md): the capture of a step, the intake, the removals and the reading                            |
+| Package       | Area                                                                                                                                            |
+| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `log`         | [The event log](core/event-log.md), keys, projections and the [single writer](core/database.md)                                                 |
+| `tasks`       | [Tasks](core/tasks.md), [leases](core/leases-and-recovery.md), the inbox, waits and timers                                                      |
+| `actions`     | [The action queue](core/actions.md), attempts, outcomes and retries                                                                             |
+| `models`      | [Model profiles](core/model-profiles.md), roles and cost                                                                                        |
+| `sessions`    | The [conversation's turns](core/conversation-turns.md), [session opening](core/session-opening.md) and each system task's own session           |
+| `compaction`  | The [compactor](core/compaction.md) and its summary records                                                                                     |
+| `triggers`    | [Triggers](core/triggers.md): the trigger core, the arming hook, the watermark and the fire times                                               |
+| `definitions` | [The definitions](core/definitions.md) and the path source                                                                                      |
+| `prompts`     | The built-in [prompts](core/prompts.md), their parts and templates, and the render that applies the overrides                                   |
+| `policy`      | [The decision point](policy/decision-point.md) and its fixed rules                                                                              |
+| `api`         | [The API](channels/api.md): the oRPC router, device sessions and the live stream                                                                |
+| `devices`     | [Devices](channels/devices.md): the device record, the screen state, the open streams and the device tools                                      |
+| `sandbox`     | The [sandbox adapter](connectors/sandboxes.md) interface, sandboxes by kind and the sandbox double                                              |
+| `tools`       | The [tool endpoint](connectors/tool-calls.md) per task run                                                                                      |
+| `connectors`  | The [web fetch](connectors/web-fetch.md), [time](connectors/time.md) and [search](connectors/search.md) and [image](connectors/images.md) tools |
+| `memory`      | The [memory store](memory/store.md) and its context                                                                                             |
+| `backup`      | The snapshot sets and receipts of [backups](deployment/backups.md) and their schedule                                                           |
+| `ops`         | The health checks behind [the server's](deployment/server.md) health endpoint                                                                   |
+| `skills`      | [Skills](core/skills.md): the pins, the catalog, the skill tools and the skill proposals                                                        |
+| `proposals`   | The review lifecycle that [skill proposals](core/skills.md#skills-that-nixie-writes) run on: its moves, its lapse time and the lapse sweep      |
+| `turn-inputs` | The [turn-input log](policy/turn-input-log.md): the capture of a step, the intake, the removals and the reading                                 |
 
 The other packages each hold one piece the modules and apps share:
 
 - `guests/conversation` runs the conversation's turns through the Agent SDK.
 - `guests/fetch` runs the web fetch inside the fetch sandbox.
+- `guests/browser` and `guests/shell` run the assistant's headless browser and its shell inside
+  their sandboxes.
 - `adapters/definitions-repo-github` is the definitions repo on GitHub's API.
 - `adapters/sandbox-imp` is the sandbox adapter on imp.
 - `adapters/search-kagi` is the search tool's provider on Kagi's search API.
+- `adapters/image-openai` and `adapters/image-gemini` are the image provider on OpenAI's images API
+  and on the Gemini API.
 - `adapters/encoder-onnx` is the memory module's text encoder, which runs a pinned embedding model
   on ONNX Runtime.
 - `libs/contract` holds the oRPC contracts of the API and the host commands, with the client code
@@ -188,6 +193,8 @@ The other packages each hold one piece the modules and apps share:
 - `libs/secret-scan` scans a URL for a key or a token, with the pinned public rules and nixie's own
   values, tagged `server-only`. [The secret scan](connectors/secret-scan.md) covers its rules.
 - `libs/wire` holds the message formats that cross a sandbox boundary.
+- `libs/egress` holds the address checks and the checking proxy that the guests with public egress
+  share.
 - `libs/clock` is the one clock that every time and every wait reads. A test build replaces it with
   a clock the test steps.
 - `libs/retry` is the backoff that sets the wait before each retry, so every part that retries backs

@@ -1,6 +1,6 @@
 import { join } from 'node:path';
 import { browser } from '@wringer/browser';
-import { WringerError, createWringer, local } from '@wringer/core';
+import { WringerError, createHostUploader, createWringer, local } from '@wringer/core';
 import type { Wringer } from '@wringer/core';
 import { db } from '@wringer/db';
 import { http } from '@wringer/http';
@@ -23,10 +23,10 @@ import type { ServedContainer } from './preview/build-served-blobs-argv';
 import { createPreviewHost } from './preview/create-preview-host';
 import { pickCommitRefusal } from './preview/pick-commit-refusal';
 import { collectExtraPaths, pickSourceRefusal } from './preview/pick-source-refusal';
-import { previewCheckout } from './preview/preview-checkout';
 import { readPreviewEndpoints } from './preview/read-preview-endpoints';
 import type { PullRequest } from './preview/read-pull-request';
 import { readPullRequest } from './preview/read-pull-request';
+import { readServedCommit, servedCommitArgv } from './preview/read-served-commit';
 import { buildProdEndpoints } from './prod/build-prod-endpoints';
 import { readProdCall } from './prod/read-prod-call';
 import { readProdErrors } from './prod/read-prod-errors';
@@ -64,6 +64,7 @@ export function createVerifyRegistry(): Wringer {
     .use(terminal({ cols: 120, rows: 30 }))
     .use(db({}))
     .target('local', {
+      evidence: 'upload',
       mode: 'launch',
       access: 'read-write',
       refusalHint,
@@ -91,6 +92,9 @@ export function createVerifyRegistry(): Wringer {
             'enrol-code': {
               command: [...buildHostCLIArgv('local', ctx.endpoints, ['enrol-code'])],
             },
+            'enrol-device-code': {
+              command: [...buildHostCLIArgv('local', ctx.endpoints, ['enrol-code', 'device'])],
+            },
           },
         }),
         db: (ctx) => ({ via: 'sql', adapter: 'sqlite', url: String(ctx.endpoints['db']) }),
@@ -98,6 +102,7 @@ export function createVerifyRegistry(): Wringer {
       },
     })
     .target('preview', {
+      evidence: 'upload',
       mode: 'attach',
       access: 'read-write',
       refusalHint,
@@ -127,6 +132,10 @@ export function createVerifyRegistry(): Wringer {
               }),
             },
     })
+    .hook(
+      'upload',
+      createHostUploader({ urlEnv: 'CLOUD_FILES_URL', tokenEnv: 'CLOUD_FILES_TOKEN' }),
+    )
     .secret('NIXIE_PREVIEW_SSH', 'NIXIE_PREVIEW_IMP_EXEC')
     .secret('NIXIE_PROD_TOKEN', 'NIXIE_PROD_KUBECONFIG')
     .action({
@@ -157,6 +166,26 @@ export function createVerifyRegistry(): Wringer {
       input: controlRoutes.addReply.input,
       data: controlRoutes.addReply.output,
       run: (input, ctx) => postControl(ctx.drivers.http, controlRoutes.addReply, input),
+    })
+    .action({
+      name: 'show-on-device',
+      summary:
+        'Send the owner message with a photo, and queue the scripted model turn that keeps the photo and shows it on the first device it lists, with the fit --fit and the closing reply --text',
+      effect: 'write',
+      targets: ['local'],
+      input: controlRoutes.showOnDevice.input,
+      data: controlRoutes.showOnDevice.output,
+      run: (input, ctx) => postControl(ctx.drivers.http, controlRoutes.showOnDevice, input),
+    })
+    .action({
+      name: 'use-computer',
+      summary:
+        "Send the owner message and queue the scripted model turn that uses the assistant's browser (--kind browser: opens the harness page) or shell (--kind shell: writes a file and reads it back), with the closing reply --text",
+      effect: 'write',
+      targets: ['local'],
+      input: controlRoutes.useComputer.input,
+      data: controlRoutes.useComputer.output,
+      run: (input, ctx) => postControl(ctx.drivers.http, controlRoutes.useComputer, input),
     })
     .action({
       name: 'reset-data',
@@ -353,6 +382,26 @@ export function createVerifyRegistry(): Wringer {
         summary: 'Pause and resume a task, and see its records agree',
         paths: featurePaths['task-control'],
       },
+      {
+        name: 'drawing',
+        summary: 'Draw a picture, edit it, and list both',
+        paths: featurePaths.drawing,
+      },
+      {
+        name: 'computer-browser',
+        summary: "Open a page in the assistant's browser",
+        paths: featurePaths['computer-browser'],
+      },
+      {
+        name: 'computer-shell',
+        summary: 'Write and read back a shell file',
+        paths: featurePaths['computer-shell'],
+      },
+      {
+        name: 'device-screen',
+        summary: 'Enrol a device and see a picture on it',
+        paths: featurePaths['device-screen'],
+      },
     )
     .shared(...sharedPaths)
     .ignore(...ignoredPaths)
@@ -368,20 +417,6 @@ function makeCachedRead(read: () => Promise<PullRequest>): () => Promise<PullReq
 
     return cached.read;
   };
-}
-
-const servedCommitArgv = ['git', '-C', previewCheckout, 'rev-parse', 'HEAD'];
-
-type PreviewHost = ReturnType<typeof createPreviewHost>;
-
-async function readServedCommit(host: PreviewHost): Promise<string> {
-  const ran = await host.run({ argv: servedCommitArgv, access: 'read-only' });
-
-  if (ran.exitCode !== 0) {
-    throw new Error(`the preview's checkout has no commit: ${ran.stderr.trim()}`);
-  }
-
-  return ran.stdout.trim();
 }
 
 async function postControl<Input extends z.ZodType, Output extends z.ZodType>(
@@ -428,6 +463,8 @@ function refuseOffProd(target: string, command: string): void {
 
 const previewRefusalHint =
   'Push this commit, open the preview link on the pull request to rebuild the preview, then run `bun verify attach` and `bun verify doctor` again.';
+
+type PreviewHost = ReturnType<typeof createPreviewHost>;
 
 // The checkout can move on while a container from an older build still serves, so the doctor also
 // compares the container's files with this tree. A doctor check's exec refuses every raw command,

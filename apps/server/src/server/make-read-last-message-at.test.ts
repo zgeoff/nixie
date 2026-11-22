@@ -3,7 +3,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { writeRecords } from '@heynixie/log';
-import { buildTestClock } from '@heynixie/testing';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import { startTestLog } from '../test-utils/start-test-log';
 import { makeReadLastMessageAt } from './make-read-last-message-at';
 
@@ -12,7 +12,7 @@ async function setupTest() {
 
   onTestFinished(() => rm(dataDir, { recursive: true, force: true }));
 
-  const clock = buildTestClock(Date.parse('2027-03-09T00:00:00Z'));
+  const clock = createFakeClock({ startMs: Date.parse('2027-03-09T00:00:00Z') });
 
   const log = await startTestLog(dataDir, clock);
 

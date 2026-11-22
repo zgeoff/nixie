@@ -1,10 +1,11 @@
 import { expect, mock, onTestFinished, test } from 'bun:test';
-import { buildTestClock, waitForCondition } from '@heynixie/testing';
+import { waitForCondition } from '@heynixie/testing';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import type { DefinitionsProbe } from './start-definitions-poll';
 import { startDefinitionsPoll } from './start-definitions-poll';
 
 function setupTest() {
-  const clock = buildTestClock(0);
+  const clock = createFakeClock({ startMs: 0 });
 
   return { clock };
 }
@@ -50,7 +51,7 @@ test('it seeds on the first probe token once the interval passes', async () => {
 
   ctx.clock.advance(60_000);
 
-  await waitForCondition(() => ctx.clock.countSleepers() === 1);
+  await waitForCondition(() => ctx.clock.countPending() === 1);
 
   expect(runSeed).toHaveBeenCalledOnce();
 });
@@ -74,11 +75,11 @@ test('it skips the seed for a probe token it seeded already', async () => {
 
   ctx.clock.advance(60_000);
 
-  await waitForCondition(() => ctx.clock.countSleepers() === 1);
+  await waitForCondition(() => ctx.clock.countPending() === 1);
 
   ctx.clock.advance(60_000);
 
-  await waitForCondition(() => ctx.clock.countSleepers() === 1);
+  await waitForCondition(() => ctx.clock.countPending() === 1);
 
   expect(runSeed).toHaveBeenCalledOnce();
 });
@@ -103,7 +104,7 @@ test('it seeds a probe token it seeded already while a seed outside the poll is 
 
   ctx.clock.advance(60_000);
 
-  await waitForCondition(() => ctx.clock.countSleepers() === 1);
+  await waitForCondition(() => ctx.clock.countPending() === 1);
 
   ctx.clock.advance(60_000);
 
@@ -132,7 +133,7 @@ test('it seeds a probe token it seeded already while the database holds a change
 
   ctx.clock.advance(60_000);
 
-  await waitForCondition(() => ctx.clock.countSleepers() === 1);
+  await waitForCondition(() => ctx.clock.countPending() === 1);
 
   ctx.clock.advance(60_000);
 
@@ -160,11 +161,11 @@ test('it seeds again on a new probe token', async () => {
 
   ctx.clock.advance(60_000);
 
-  await waitForCondition(() => ctx.clock.countSleepers() === 1);
+  await waitForCondition(() => ctx.clock.countPending() === 1);
 
   ctx.clock.advance(60_000);
 
-  await waitForCondition(() => ctx.clock.countSleepers() === 1);
+  await waitForCondition(() => ctx.clock.countPending() === 1);
 
   expect(runSeed).toHaveBeenCalledTimes(2);
 });
@@ -188,11 +189,11 @@ test('it reports every probe, one whose token it seeded already included', async
 
   ctx.clock.advance(60_000);
 
-  await waitForCondition(() => ctx.clock.countSleepers() === 1);
+  await waitForCondition(() => ctx.clock.countPending() === 1);
 
   ctx.clock.advance(60_000);
 
-  await waitForCondition(() => ctx.clock.countSleepers() === 1);
+  await waitForCondition(() => ctx.clock.countPending() === 1);
 
   expect(onProbed.mock.calls).toStrictEqual([[{ isChanged: true }], [{ isChanged: false }]]);
 });
@@ -216,7 +217,7 @@ test('it reports no probe for a probe that throws', async () => {
 
   ctx.clock.advance(60_000);
 
-  await waitForCondition(() => ctx.clock.countSleepers() === 1);
+  await waitForCondition(() => ctx.clock.countPending() === 1);
 
   expect(onProbed).not.toHaveBeenCalled();
 });
@@ -240,11 +241,11 @@ test('it reports a probe that throws and keeps polling', async () => {
 
   ctx.clock.advance(60_000);
 
-  await waitForCondition(() => ctx.clock.countSleepers() === 1);
+  await waitForCondition(() => ctx.clock.countPending() === 1);
 
   ctx.clock.advance(60_000);
 
-  await waitForCondition(() => ctx.clock.countSleepers() === 1);
+  await waitForCondition(() => ctx.clock.countPending() === 1);
 
   expect(onError.mock.calls).toStrictEqual([
     [new Error('the definitions directory is gone')],
@@ -293,7 +294,7 @@ test('it seeds once the retry delay passes when the seed at start was refused', 
 
   ctx.clock.advance(1000);
 
-  await waitForCondition(() => ctx.clock.countSleepers() === 1);
+  await waitForCondition(() => ctx.clock.countPending() === 1);
 
   expect(runSeed).toHaveBeenCalledOnce();
 });
@@ -319,11 +320,11 @@ test('it seeds a checkout that lands after a failed probe, 2 s after that probe'
 
   ctx.clock.advance(1000);
 
-  await waitForCondition(() => ctx.clock.countSleepers() === 1);
+  await waitForCondition(() => ctx.clock.countPending() === 1);
 
   ctx.clock.advance(2000);
 
-  await waitForCondition(() => ctx.clock.countSleepers() === 1);
+  await waitForCondition(() => ctx.clock.countPending() === 1);
 
   expect(runSeed).toHaveBeenCalledOnce();
 });
@@ -347,11 +348,11 @@ test('it waits 4 s before the probe after 2 failed probes', async () => {
 
   ctx.clock.advance(1000);
 
-  await waitForCondition(() => ctx.clock.countSleepers() === 1);
+  await waitForCondition(() => ctx.clock.countPending() === 1);
 
   ctx.clock.advance(2000);
 
-  await waitForCondition(() => ctx.clock.countSleepers() === 1);
+  await waitForCondition(() => ctx.clock.countPending() === 1);
 
   ctx.clock.advance(3999);
 
@@ -377,11 +378,11 @@ test('it waits no longer than the interval between failed probes', async () => {
 
   ctx.clock.advance(1000);
 
-  await waitForCondition(() => ctx.clock.countSleepers() === 1);
+  await waitForCondition(() => ctx.clock.countPending() === 1);
 
   ctx.clock.advance(1500);
 
-  await waitForCondition(() => ctx.clock.countSleepers() === 1);
+  await waitForCondition(() => ctx.clock.countPending() === 1);
 
   expect(probe).toHaveBeenCalledTimes(2);
 });
@@ -405,11 +406,11 @@ test('it seeds the same probe token again after the retry delay when a seed is r
 
   ctx.clock.advance(60_000);
 
-  await waitForCondition(() => ctx.clock.countSleepers() === 1);
+  await waitForCondition(() => ctx.clock.countPending() === 1);
 
   ctx.clock.advance(1000);
 
-  await waitForCondition(() => ctx.clock.countSleepers() === 1);
+  await waitForCondition(() => ctx.clock.countPending() === 1);
 
   expect(runSeed).toHaveBeenCalledTimes(2);
 });
@@ -438,11 +439,11 @@ test('it seeds the last good probe token again when the source returns to it aft
 
   ctx.clock.advance(60_000);
 
-  await waitForCondition(() => ctx.clock.countSleepers() === 1);
+  await waitForCondition(() => ctx.clock.countPending() === 1);
 
   ctx.clock.advance(60_000);
 
-  await waitForCondition(() => ctx.clock.countSleepers() === 1);
+  await waitForCondition(() => ctx.clock.countPending() === 1);
 
   ctx.clock.advance(1000);
 
@@ -490,7 +491,7 @@ test('it probes again after an interval shorter than the retry delay when a prob
 
   ctx.clock.advance(100);
 
-  await waitForCondition(() => ctx.clock.countSleepers() === 1);
+  await waitForCondition(() => ctx.clock.countPending() === 1);
 
   ctx.clock.advance(100);
 
@@ -516,7 +517,7 @@ test('it waits the interval again once a retried seed applies', async () => {
 
   ctx.clock.advance(1000);
 
-  await waitForCondition(() => ctx.clock.countSleepers() === 1);
+  await waitForCondition(() => ctx.clock.countPending() === 1);
 
   ctx.clock.advance(59_999);
 

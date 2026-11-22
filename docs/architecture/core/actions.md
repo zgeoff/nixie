@@ -198,7 +198,9 @@ A connector declares how an unknown outcome can be settled, and each declaration
 A check answers found, not found or inconclusive. Found settles the action as done with the check's
 result. Not found schedules a retry, unless the connector declares `onNotFound: 'ask'`. Inconclusive
 goes to the user. The third unknown outcome in a row goes to the user whatever the connector
-declares, and so does a key the provider no longer keeps. Each check writes a record of its answer.
+declares, because three in a row point at a fault at the provider that another attempt will not
+clear. A key the provider no longer keeps goes to the user too. Each check writes a record of its
+answer.
 
 An outcome that goes to the user is an `unknown` outcome record that names the reason, and the
 approvals digest lists it before every other group, oldest first. The user answers with one of 3

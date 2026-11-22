@@ -37,6 +37,7 @@
   },
   "devDependencies": {
     "@heynixie/testing": "workspace:*",
+    "@zgeoff/testing": "catalog:",
     "kysely": "catalog:"
   }
 }

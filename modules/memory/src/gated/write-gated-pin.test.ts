@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test';
 import { readRecords } from '@heynixie/log';
-import { buildTestClock } from '@heynixie/testing';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import invariant from 'tiny-invariant';
 import { buildAllowVerdict } from '../test-utils/build-allow-verdict';
 import { buildMockProvenance } from '../test-utils/build-mock-provenance';
@@ -64,7 +64,7 @@ test('it refuses a pin of a retired item, and writes nothing', async () => {
 });
 
 test('it refuses a pin of an item whose end time passed before the sweep, and writes nothing', async () => {
-  const clock = buildTestClock(Date.parse('2026-10-19T09:00:00Z'));
+  const clock = createFakeClock({ startMs: Date.parse('2026-10-19T09:00:00Z') });
 
   const memory = await startTestMemory({ gate: { clock } });
 

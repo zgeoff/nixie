@@ -10,7 +10,7 @@ import {
   buildTestTaskRunners,
   readTestTasks,
 } from '@heynixie/tasks/test-utils';
-import { buildTestClock } from '@heynixie/testing';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import invariant from 'tiny-invariant';
 import { createTestStep } from './create-test-step';
 
@@ -35,7 +35,7 @@ async function setupTest() {
   return {
     context: {
       log: { writer, deploymentKey, projections: [...logProjections, ...tasksProjections] },
-      clock: buildTestClock(1_000_000),
+      clock: createFakeClock({ startMs: 1_000_000 }),
       definitions: () => ({ snapshotHash: 'sha256:test' }),
       runSettings: buildTestRunSettings(),
       ...buildTestDefinitionReaders(),

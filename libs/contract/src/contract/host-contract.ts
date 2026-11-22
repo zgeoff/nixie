@@ -7,6 +7,7 @@ import { hostBackupsContract } from './host-backups-contract';
 import { hostBudgetsContract } from './host-budgets-contract';
 import { hostMandatesContract } from './host-mandates-contract';
 import { hostPasskeyContract } from './host-passkey-contract';
+import { hostSessionSchema } from './host-session-schema';
 import { knownContactSchema } from './known-contact-schema';
 import { pauseStateSchema } from './pause-state-schema';
 import { recoverySchema } from './recovery-schema';
@@ -105,13 +106,6 @@ const itemHistorySchema = z.object({
 const proposalAnswerSchema = z.strictObject({
   proposalID: z.string().min(1),
   actionHash: z.string().min(1),
-});
-
-const hostSessionSchema = z.object({
-  sessionID: z.string(),
-  deviceName: z.string(),
-  createdAt: z.date(),
-  lastUsedAt: z.date(),
 });
 
 const subjectCountSchema = z.object({
@@ -412,7 +406,9 @@ export const hostContract = {
       ),
   },
   sessions: {
-    issueCode: oc.output(z.object({ code: z.string(), expiresAt: z.date() })),
+    issueCode: oc
+      .input(z.object({ scope: z.enum(['full', 'device']).optional() }).optional())
+      .output(z.object({ code: z.string(), expiresAt: z.date() })),
     list: oc.output(z.array(hostSessionSchema)),
 
     label: oc

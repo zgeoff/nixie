@@ -15,6 +15,11 @@ const startedTaskSchema = z.strictObject({
   reply: z.string().min(1),
 });
 
+const drawnPictureSchema = z.strictObject({
+  prompt: z.string().min(1),
+  edit: z.string().min(1),
+});
+
 const actionProposalSchema = z.strictObject({ proposalID: z.string(), tool: z.string() });
 
 // The harness's control routes, which the verify CLI's actions and checks call through the http
@@ -41,7 +46,23 @@ export const controlRoutes = {
 
       // a task the model starts with the task tool before its reply, and the task's first reply
       task: startedTaskSchema.optional(),
+
+      // a picture the model draws with the image tool before its reply, the one edit it then makes
+      // to that picture, and a list of its pictures
+      draw: drawnPictureSchema.optional(),
     }),
+    output: z.strictObject({ replies: z.int().positive() }),
+  },
+  showOnDevice: {
+    method: 'POST',
+    path: '/control/show-on-device',
+    input: z.strictObject({ fit: z.enum(['whole', 'fill']), text: z.string().min(1) }),
+    output: z.strictObject({ replies: z.int().positive() }),
+  },
+  useComputer: {
+    method: 'POST',
+    path: '/control/use-computer',
+    input: z.strictObject({ kind: z.enum(['browser', 'shell']), text: z.string().min(1) }),
     output: z.strictObject({ replies: z.int().positive() }),
   },
   tasks: {

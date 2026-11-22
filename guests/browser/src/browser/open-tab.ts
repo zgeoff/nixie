@@ -1,0 +1,55 @@
+import type { ComputerReply, ComputerRequest } from '@heynixie/wire';
+import { readTabPage } from './read-tab-page';
+import type { BrowserState } from './types';
+
+const tabLimit = 5;
+
+// Opens a page in a new tab and reads it as a snapshot. The navigation passes the browser's route
+// first, which asks the server to scan each hop.
+export async function openTab(
+  state: BrowserState,
+  request: Extract<ComputerRequest, { op: 'open' }>,
+): Promise<ComputerReply> {
+  if (state.tabs.size >= tabLimit) {
+    return { kind: 'failed', ok: false, reason: 'tab_limit' };
+  }
+
+  const page = await state.context.newPage();
+
+  state.counter += 1;
+
+  const id = `t${String(state.counter)}`;
+  const tab = { page, status: 0 };
+
+  state.tabs.set(id, tab);
+
+  try {
+    const response = await page.goto(request.url, {
+      timeout: request.limits.timeoutMs,
+      waitUntil: 'load',
+    });
+
+    tab.status = response?.status() ?? 0;
+  } catch (error) {
+    state.tabs.delete(id);
+
+    await page.close();
+
+    return {
+      kind: 'failed',
+      ok: false,
+      reason: 'failed',
+      message: error instanceof Error ? error.message : String(error),
+    };
+  }
+
+  const isDiskNew = state.isDiskNew;
+
+  state.isDiskNew = false;
+
+  return readTabPage(id, tab, {
+    mode: 'snapshot',
+    textBytes: request.limits.textBytes * 3,
+    isDiskNew,
+  });
+}

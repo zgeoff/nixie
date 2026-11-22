@@ -1,3 +1,20 @@
+export type { ImageToolOptions } from './image/types';
+export { buildImageTools } from './image/build-image-tools';
+export type { ImageProfile, ImagesConfig } from './image/images-config-schema';
+export { imagesConfigSchema } from './image/images-config-schema';
+export type { ImageSize } from './image/image-size';
+export { imageSizes } from './image/image-size';
+export { readImageEntry } from './image/read-image-entry';
+export type { ImageState } from './image/read-image-state';
+export { readImageState } from './image/read-image-state';
+export { readPhotoImageIDs } from './image/read-photo-image-ids';
+export { largestImageBytes } from './image/pick-room-left';
+export { removeImportedImageKeys } from './image/remove-imported-image-keys';
+export type { ImagesRecordKind } from './image/images-record-kind';
+export { imageNamedCodec } from './image/image-named-codec';
+export { imagePinnedCodec } from './image/image-pinned-codec';
+export { imageUnpinnedCodec } from './image/image-unpinned-codec';
+export type { ImageTables } from './image/image-tables';
 export type { SearchToolOptions } from './search/build-search-tool';
 export { buildSearchTool } from './search/build-search-tool';
 export { buildTimeTool } from './time/build-time-tool';
@@ -38,6 +55,10 @@ export type {
   HealthReport,
   ProviderResponse,
   Reconcile,
+  DrawImage,
+  DrawReply,
+  DrawRequest,
+  ImageProvider,
   SearchFreshness,
   SearchHit,
   SearchProvider,
@@ -54,3 +75,10 @@ export { webFetchDefaults } from './web/web-fetch-defaults';
 export type { SecretsEntryName } from './web/secrets-entry-names';
 export { secretsEntryNames } from './web/secrets-entry-names';
 export type { IsOwnerTyped } from './page/secret-scan';
+export type { ComputerTools } from './computer/build-computer-tools';
+export { buildComputerTools, computerToolNames } from './computer/build-computer-tools';
+export type { ComputerToolOptions } from './computer/computer-tool-options';
+export type { Computer, ComputerOptions } from './computer/start-computer';
+export { startComputer } from './computer/start-computer';
+export type { ComputerKind } from './computer/types';
+export { computerOwners } from './computer/computer-owners';

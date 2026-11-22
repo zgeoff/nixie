@@ -2,8 +2,8 @@ import { onTestFinished } from 'bun:test';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import type { TestClock } from '@heynixie/testing';
-import { buildTestClock } from '@heynixie/testing';
+import type { FakeClock } from '@zgeoff/testing/clock';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import { logProjections } from '../record/log-projections';
 import type { Log, Writer } from '../types';
 import { startWriter } from '../writer/start-writer';
@@ -12,7 +12,7 @@ interface TestLog {
   readonly dataDir: string;
   readonly writer: Writer;
   readonly log: Log;
-  readonly clock: TestClock;
+  readonly clock: FakeClock;
 }
 
 interface TestLogOptions {
@@ -28,7 +28,7 @@ export async function startTestLog(options: TestLogOptions = {}): Promise<TestLo
 
   stack.defer(() => rm(dataDir, { recursive: true, force: true }));
 
-  const clock = buildTestClock(Date.parse('2026-10-16T09:00:00Z'));
+  const clock = createFakeClock({ startMs: Date.parse('2026-10-16T09:00:00Z') });
 
   const writer = await startWriter({
     dataDir,

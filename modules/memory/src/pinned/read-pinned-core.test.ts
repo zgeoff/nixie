@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { buildTestClock } from '@heynixie/testing';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import { buildMockProvenance } from '../test-utils/build-mock-provenance';
 import { startFaultPointHold } from '../test-utils/start-fault-point-hold';
 import { startTestMemory } from '../test-utils/start-test-memory';
@@ -118,7 +118,7 @@ test('it never reads an item that a forget began', async () => {
 });
 
 test('it leaves a pinned item out from its end time, before any sweep runs', async () => {
-  const clock = buildTestClock(Date.parse('2026-10-19T09:00:00Z'));
+  const clock = createFakeClock({ startMs: Date.parse('2026-10-19T09:00:00Z') });
 
   const memory = await startTestMemory({ gate: { clock } });
 

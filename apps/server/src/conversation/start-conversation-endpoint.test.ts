@@ -485,6 +485,39 @@ test("it serves search to the conversation with the key from the secrets file, s
   });
 });
 
+test('it serves the image tools to the conversation when the config sets an images block', async () => {
+  const nixie = await startInProcessNixie({
+    extraConfig: [
+      'images:',
+      '  default: main',
+      '  profiles:',
+      '    main:',
+      '      provider: openai',
+      '      model: model-a',
+      '      credential: deployment:images',
+      '      prices: { 1024x1024: 40000, 1536x1024: 60000, 1024x1536: 60000 }',
+    ],
+    extraSecrets: ['connector_credentials:', '  images: images-key-a'],
+  });
+
+  const api = await createTestClient(nixie);
+
+  nixie.guest.addReplies(
+    { toolUse: { name: 'image.list', input: {} } },
+    { text: 'No pictures yet.' },
+  );
+
+  await sendClientMessage(api.client, { text: 'What pictures do we have?' }, 'No pictures yet.');
+
+  const listed = nixie.toolResults.at(-1);
+
+  invariant(listed);
+
+  expect(JSON.parse(listed.result)).toMatchObject({
+    structuredContent: { images: [], next: null },
+  });
+});
+
 test('it keeps the search key out of every record, log event and sandbox', async () => {
   const nixie = await startInProcessNixie({
     extraConfig: ['search:', '  credential: deployment:search', `  api_url: ${kagiAPIURL}`],

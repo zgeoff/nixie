@@ -2,8 +2,8 @@ import { expect, onTestFinished, setSystemTime, test } from 'bun:test';
 import { buildShortIDFromUUID } from '@heynixie/db';
 import { readRecords } from '@heynixie/log';
 import { buildAllowingDecisionPoint } from '@heynixie/policy/test-utils';
-import { buildTestClock } from '@heynixie/testing';
 import { buildToolRegistry, runToolCall } from '@heynixie/tools';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import { buildMockProvenance } from '../test-utils/build-mock-provenance';
 import { buildMockWriteCaller } from '../test-utils/build-mock-write-caller';
 import { createProposal } from '../test-utils/create-proposal';
@@ -21,7 +21,7 @@ async function setupTest() {
 
   const memory = await startTestMemory();
 
-  const clock = buildTestClock(startedAt);
+  const clock = createFakeClock({ startMs: startedAt });
   const registry = buildToolRegistry([buildPendingTool(memory.store, clock)]);
 
   return {

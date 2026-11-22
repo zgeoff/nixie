@@ -4,13 +4,10 @@ nixie's tools reach the model over MCP, outside services reach nixie through con
 model loop and code run sits in a sandbox.
 
 - [Connectors](connector.md) — the connector interface, setup and OAuth, Google, and search
-- [Web fetch](web-fetch.md) — the fetch sandbox, the address check, the limits and the result
 - [The credential store](credentials.md) — backends, the fetcher, grants into a sandbox, refresh,
   disconnect and forget
 - [Serving nixie's tools](tools.md) — tool definitions, what the model sees, one endpoint per task
   run, and how a model loop starts
-- [The sandbox adapter](sandbox-adapter.md) — the lifecycle, sandboxes by kind of work, the route to
-  nixie's tools, images, and a container sketch
 - [The definitions source](definitions-source.md) — one interface over a git repo, a local path and
   bucket storage
 - [The MCP proxy](mcp-proxy.md) — external servers, pinning, effect declarations and authorization

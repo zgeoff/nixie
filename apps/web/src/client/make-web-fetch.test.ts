@@ -251,3 +251,51 @@ test('it marks a rendered page private to the browser that asked for it', async 
   expect(response.headers.get('cache-control')).toBe('private, no-store');
   expect(response.headers.get('vary')).toBe('cookie');
 });
+
+test('it gives the device page a content security policy that forbids framing', async () => {
+  const ctx = await setupTest();
+
+  const webFetch = makeWebFetch({
+    apiURL: 'http://127.0.0.1:9',
+    clientDir: ctx.clientDir,
+    startFetch: () => new Response('page'),
+  });
+
+  const response = await webFetch(new Request('http://web.test/device'));
+
+  const policy = response.headers.get('content-security-policy') ?? '';
+
+  expect(policy.split('; ')).toIncludeAllMembers([
+    "default-src 'self'",
+    "connect-src 'self'",
+    "frame-ancestors 'none'",
+  ]);
+});
+
+test('it keeps the device page private like every other page', async () => {
+  const ctx = await setupTest();
+
+  const webFetch = makeWebFetch({
+    apiURL: 'http://127.0.0.1:9',
+    clientDir: ctx.clientDir,
+    startFetch: () => new Response('page'),
+  });
+
+  const response = await webFetch(new Request('http://web.test/device'));
+
+  expect(response.headers.get('cache-control')).toBe('private, no-store');
+});
+
+test('it sets no content security policy on the conversation page', async () => {
+  const ctx = await setupTest();
+
+  const webFetch = makeWebFetch({
+    apiURL: 'http://127.0.0.1:9',
+    clientDir: ctx.clientDir,
+    startFetch: () => new Response('page'),
+  });
+
+  const response = await webFetch(new Request('http://web.test/'));
+
+  expect(response.headers.get('content-security-policy')).toBeNull();
+});

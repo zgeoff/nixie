@@ -61,14 +61,18 @@ reset.
 ## Paid tools
 
 A tool that costs money for each call sets `paid: { priceMicros }` in its definition, and runs
-direct. Each paid tool has the built-in budgets `<tool>-day` at $5 and `<tool>-month` at $50, and a
-budget in the definitions with the same ID replaces one. `run-tool-call` charges both in one
-transaction before the provider sees the call:
+direct. `priceMicros` is a number, or a function of the input for a tool whose price depends on it.
+The tool's `check` can refuse the call first, and a refused call charges nothing. Each paid tool has
+the built-in budgets `<tool>-day` at $5 and `<tool>-month` at $50, and a budget in the definitions
+with the same ID replaces one. `image.draw` has its own limits: `image.draw-day` at $2 and
+`image.draw-month` at $20, and its cost never counts toward the spending stop. `run-tool-call`
+charges both in one transaction before the provider sees the call:
 
 - At the limit, the call returns `budget reached: search-day ($5.00 of $5.00). Resets at midnight.`
   to the model, and nothing else is written.
-- A tool that answers with an error did not spend, so its charges are credited. An error that sets
-  `billed`, because the provider answered before the error, keeps its charges.
+- A tool that answers with an error, or with a refusal code, did not spend, so its charges are
+  credited. An error that sets `billed`, because the provider answered before the error, keeps its
+  charges.
 - A tool that throws leaves an unknown outcome, so its charges stand.
 
 A paid tool can also set a call cap, a limit on the count of its calls, such as the search tool's

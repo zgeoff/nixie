@@ -9,5 +9,8 @@
   },
   "scripts": {
     "typecheck": "tsrs --fast --noEmit"
+  },
+  "dependencies": {
+    "@zgeoff/std": "catalog:"
   }
 }

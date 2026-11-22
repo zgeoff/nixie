@@ -1,6 +1,11 @@
 import { join } from 'node:path';
-import type { SearchProvider } from '@heynixie/connectors';
-import { buildSearchTool, buildTimeTool, readMessageTimeZone } from '@heynixie/connectors';
+import type { ImageProvider, ImagesConfig, SearchProvider } from '@heynixie/connectors';
+import {
+  buildImageTools,
+  buildSearchTool,
+  buildTimeTool,
+  readMessageTimeZone,
+} from '@heynixie/connectors';
 import type { DefinitionsContext, DefinitionsInForce } from '@heynixie/definitions';
 import {
   buildTaskDefineTool,
@@ -8,6 +13,8 @@ import {
   buildTasksDefinitionsTool,
   checkPromptProposal,
 } from '@heynixie/definitions';
+import type { DeviceStreams } from '@heynixie/devices';
+import { buildDeviceTools } from '@heynixie/devices';
 import type { MemoryToolStore } from '@heynixie/memory';
 import { buildLogReadImageTool, buildLogReadTool } from '@heynixie/memory';
 import { buildPromptReadTool, buildPromptWriteTool } from '@heynixie/prompts';
@@ -51,12 +58,24 @@ interface ConversationSearch {
   readonly dailyCallCap: number;
 }
 
+interface ConversationImages {
+  readonly config: ImagesConfig;
+  readonly providers: Readonly<Record<string, ImageProvider>>;
+}
+
 export interface ConversationEndpointTools {
   readonly webFetch: ToolDefinition;
+  readonly computer: readonly ToolDefinition[];
   readonly codeRun: ToolDefinition;
   readonly fileSend: ToolDefinition;
   readonly forget: ToolDefinition;
   readonly search: ConversationSearch | null;
+
+  // absent when the deployment sets no images block
+  readonly images: ConversationImages | null;
+
+  // the open streams of each device, which the API's device calls share
+  readonly deviceStreams: DeviceStreams;
 
   // absent when the deployment sets no worker role
   readonly worker: WorkerTool | null;
@@ -189,6 +208,25 @@ export async function startConversationEndpoint(
           }),
         ];
 
+  const images =
+    tools.images === null
+      ? []
+      : buildImageTools({
+          log: options.context.log,
+          definitions: options.context.definitions,
+          clock: options.context.clock,
+          imageLongEdge: options.config.web_fetch.imageLongEdge,
+          images: tools.images.config,
+          providers: tools.images.providers,
+        });
+
+  const devices = buildDeviceTools({
+    log: options.context.log,
+    definitions: options.context.definitions,
+    clock: options.context.clock,
+    streams: tools.deviceStreams,
+  });
+
   const worker = tools.worker === null ? [] : [tools.worker.buildTool(bounds)];
 
   const definitions = [
@@ -206,7 +244,10 @@ export async function startConversationEndpoint(
       },
       memory,
     ),
+    ...tools.computer,
     ...search,
+    ...images,
+    ...devices,
     ...definitionTools,
     ...worker,
     buildContactTool(options.context, tools.refreshDefinitions),
