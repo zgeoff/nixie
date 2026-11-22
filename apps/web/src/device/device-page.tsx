@@ -6,11 +6,14 @@ import { EnrolForm } from '../components/enrol-form';
 import { css } from '../styled-system/css';
 import { useNixieClient } from '../utils/use-nixie-client';
 import { DeviceScreen } from './device-screen';
+import { FullscreenButton } from './fullscreen-button';
 import { readStoredScreen, writeStoredScreen } from './read-stored-screen';
+import { RegisterDeviceForm } from './register-device-form';
 
 type Phase =
   | { readonly kind: 'checking' }
   | { readonly kind: 'enrol' }
+  | { readonly kind: 'register' }
   | { readonly kind: 'failed' }
   | { readonly kind: 'signOutFailed' }
   | { readonly kind: 'ready'; readonly isScreenOn: boolean };
@@ -26,8 +29,8 @@ const page = css({
 });
 
 // Device mode: a device with a screen that the assistant puts pictures on. The page asks the server
-// to set its screen the way this device left it, which also tells it whether this browser holds a
-// device session. A browser with none shows the enrolment form.
+// to set its screen the way this device left it, which tells it what this browser holds: no session
+// shows the enrolment form, and a full session with no device shows the form that names one.
 export function DevicePage(): ReactNode {
   const nixie = useNixieClient();
   const [phase, setPhase] = useState<Phase>({ kind: 'checking' });
@@ -67,6 +70,16 @@ export function DevicePage(): ReactNode {
           }}
         />
       </>
+    );
+  }
+
+  if (phase.kind === 'register') {
+    return (
+      <RegisterDeviceForm
+        onRegistered={() => {
+          setAttempt((count) => count + 1);
+        }}
+      />
     );
   }
 
@@ -120,6 +133,7 @@ export function DevicePage(): ReactNode {
       >
         Switch on screen
       </button>
+      <FullscreenButton />
       <button onClick={signOut} type="button">
         Sign out
       </button>
@@ -145,11 +159,21 @@ async function startDevice(
       return;
     }
 
-    const isRefused = error instanceof ORPCError && error.code === 'UNAUTHORIZED';
-    const next: Phase = isRefused ? { kind: 'enrol' } : { kind: 'failed' };
-
-    setPhase(next);
+    setPhase(pickRefusedPhase(error));
   }
+}
+
+// A browser with no session enrols with a code. A session that holds no device registers one.
+function pickRefusedPhase(error: unknown): Phase {
+  if (!(error instanceof ORPCError)) {
+    return { kind: 'failed' };
+  }
+
+  if (error.code === 'UNAUTHORIZED') {
+    return { kind: 'enrol' };
+  }
+
+  return error.code === 'NOT_A_DEVICE' ? { kind: 'register' } : { kind: 'failed' };
 }
 
 async function switchScreen(

@@ -2,6 +2,7 @@ import type { DeviceEvent } from '@heynixie/contract';
 import { useEffect, useState } from 'react';
 import { startPlatformTimer } from '../utils/start-platform-timer';
 import { useNixieClient } from '../utils/use-nixie-client';
+import { readScreenPixels } from './read-screen-pixels';
 import { subscribeToDeviceEvents } from './subscribe-to-device-events';
 
 export interface DeviceEvents {
@@ -26,10 +27,7 @@ export function useDeviceEvents(isScreenOn: boolean): DeviceEvents {
 
     void subscribeToDeviceEvents({
       client: nixie.client,
-      pixels: {
-        width: Math.round(globalThis.innerWidth * globalThis.devicePixelRatio),
-        height: Math.round(globalThis.innerHeight * globalThis.devicePixelRatio),
-      },
+      readPixels: readScreenPixels,
       onConnection: (connection) => {
         setEvents((current) => ({ ...current, connection }));
       },

@@ -4,6 +4,7 @@ import { taskControls } from '@heynixie/task-control';
 import { Collection } from '@msw/data';
 import { z } from 'zod';
 import { approvalRows } from './approval-rows';
+import { deviceStore } from './device-store';
 import { fileRows } from './file-rows';
 import { mockSequence } from './mock-sequence';
 import { mockViewStore } from './mock-view-store';
@@ -542,6 +543,7 @@ export const store = {
       collection.clear();
     }
 
+    deviceStore.reset();
     pauseStore.reset();
     spendStore.reset();
     mockViewStore.reset();

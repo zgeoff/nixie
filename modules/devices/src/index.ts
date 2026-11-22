@@ -14,6 +14,7 @@ export { followDevice } from './stream/follow-device';
 export { writeDevice } from './device/write-device';
 export { removeDevice } from './device/remove-device';
 export { removeDevicePointers } from './device/remove-device-pointers';
+export { writeSessionDevice } from './device/write-session-device';
 export { updateDeviceName } from './device/update-device-name';
 export { readDeviceByIdentity } from './device/read-device-by-identity';
 export { writeScreenSwitch } from './device/write-screen-switch';

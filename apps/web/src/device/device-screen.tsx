@@ -1,8 +1,10 @@
 import type { DeviceEvent, ScreenContent } from '@heynixie/contract';
 import type { ReactNode } from 'react';
 import { css } from '../styled-system/css';
+import { FullscreenButton } from './fullscreen-button';
 import { ScreenView } from './screen-view';
 import { useDeviceEvents } from './use-device-events';
+import { useScreenResize } from './use-screen-resize';
 import { useWakeLock } from './use-wake-lock';
 
 export interface DeviceScreenProps {
@@ -36,6 +38,7 @@ export function DeviceScreen(props: DeviceScreenProps): ReactNode {
   const events = useDeviceEvents(true);
 
   useWakeLock(events.connection === 'open');
+  useScreenResize(true);
 
   const event = events.event;
   const blocks = pickBlocks(event);
@@ -44,6 +47,7 @@ export function DeviceScreen(props: DeviceScreenProps): ReactNode {
     <>
       <ScreenView blocks={blocks} />
       <div className={controls}>
+        <FullscreenButton />
         <button onClick={props.onSwitchOff} type="button">
           Switch off screen
         </button>
