@@ -110,7 +110,9 @@ export type {
   AskScan,
   AskScanText,
   ComputerGuestIO,
+  ComputerGuestOptions,
   ComputerHandler,
+  ComputerScanAsks,
 } from './computer/run-computer-guest';
 
 export { runComputerGuest } from './computer/run-computer-guest';
