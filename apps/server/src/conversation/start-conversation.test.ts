@@ -36,7 +36,7 @@ async function setupTest(options: TestOptions = {}) {
     context,
     (cause) => runners.last?.cleanupSessions(cause) ?? Promise.resolve(),
     options.encoderTopics,
-    { turn: { trigger: { items: 5, minScore: 0, minSimilarity: 1, ...options.trigger } } },
+    { trigger: { items: 5, minScore: 0, minSimilarity: 1, ...options.trigger } },
   );
 
   return {

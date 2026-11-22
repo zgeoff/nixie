@@ -149,19 +149,16 @@ test('it renders every rule of the starter template as one sentence', async () =
       '**Allow** a call when every effect it has is `budget_lower` or `policy_narrow`.',
     ],
     ['allow-notes', '**Allow** a call when every effect it has is `note`.'],
-    [
-      'allow-read-commands',
-      [
-        '**Allow** `computer.run` when every effect it has is `computer_run`, `command` matches none',
-        'of `file * -*`, `file -*`, `find *-delete*`, `find *-exec*`, `find *-fls*`,',
-        '`find *-fprint*` or `find *-ok*` and `command` matches `cat *`, `df *`, `du *`, `file *`,',
-        '`find *`, `grep *`, `head *`, `ls *`, `pwd *`, `stat *`, `tail *`, `wc *` or `which *`.',
-      ].join(' '),
-    ],
     ['allow-reads', '**Allow** a call when every effect it has is `fetch` or `read`.'],
     ['allow-sandboxed-code', '**Allow** a call when every effect it has is `code_run`.'],
     ['allow-sends-within-limits', '**Allow** a call when every effect it has is `send`.'],
     ['allow-service-writes', '**Allow** a call when every effect it has is `write`.'],
+    ...['cat', 'df', 'du', 'grep', 'head', 'ls', 'pwd', 'stat', 'tail', 'wc', 'which'].map(
+      (name) => [
+        `allow-shell-${name}`,
+        `**Allow** \`computer.run\` when every effect it has is \`computer_run\` and \`command\` matches \`${name} *\`.`,
+      ],
+    ),
     ['ask-exports', '**Ask** before a call when it has the effect `export`.'],
     ['ask-permanent-deletes', '**Ask** before a call when it has the effect `delete`.'],
     [

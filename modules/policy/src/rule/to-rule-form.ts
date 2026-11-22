@@ -57,17 +57,13 @@ function toCheckForm(check: RuleCheck): RuleCheck {
         .toSorted(([left], [right]) => (left < right ? -1 : 1))
         .map(([, value]) => value),
     }))
-    .with({ op: 'matches' }, { op: 'excludes' }, (pattern): RuleCheck => ({
+    .with({ op: 'matches' }, (pattern): RuleCheck => ({
       ...pattern,
-      value: toPatternsForm(pattern.value),
+      value: pattern.value.normalize('NFC'),
     }))
     .exhaustive();
 }
 
 function toScalarForm(value: string | number | boolean): string | number | boolean {
   return typeof value === 'string' ? value.normalize('NFC') : value;
-}
-
-function toPatternsForm(value: string | readonly string[]): string | string[] {
-  return typeof value === 'string' ? value.normalize('NFC') : toSortedText(value);
 }

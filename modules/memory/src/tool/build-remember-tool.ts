@@ -124,7 +124,7 @@ export function buildRememberTool(
       resolveWriteFacts(async () => {
         const input = rememberArguments.parse(rawInput);
         const subject = input.subject ?? 'owner';
-        const limitError = findTextLimitError(input.text, subject, true);
+        const limitError = findTextLimitError(input.text, subject);
 
         if (limitError !== null) {
           throw new TextLimitError(limitError);

@@ -1,9 +1,8 @@
 import { match } from 'ts-pattern';
 import type { Rule, RuleCheck } from '../types';
-import { isCommandMatch, isCommandMentioned } from './is-command-match';
+import { isCommandMatch } from './is-command-match';
 import { isPatternInside } from './is-pattern-inside';
 import { isPatternMatch } from './is-pattern-match';
-import { toCheckPatterns } from './to-check-patterns';
 
 export function isRuleMatchInside(inner: Rule, outer: Rule): boolean {
   return (
@@ -70,7 +69,7 @@ function isCheckImplied(strong: RuleCheck, weak: RuleCheck): boolean {
   const values = match(strong)
     .with({ op: 'eq' }, (eq) => [eq.value])
     .with({ op: 'in' }, (within) => within.value)
-    .with({ op: 'matches' }, { op: 'excludes' }, () => null)
+    .with({ op: 'matches' }, () => null)
     .exhaustive();
 
   return match(weak)
@@ -81,30 +80,14 @@ function isCheckImplied(strong: RuleCheck, weak: RuleCheck): boolean {
         values !== null &&
         values.every((value) => within.value.some((listed) => isSameScalar(value, listed))),
     )
-    .with({ op: 'matches' }, (pattern) => {
-      const wide = toCheckPatterns(pattern.value);
-
-      return strong.op === 'matches'
-        ? toCheckPatterns(strong.value).every((narrow) =>
-            wide.some((outer) => isPatternInside(narrow, outer)),
-          )
+    .with({ op: 'matches' }, (pattern) =>
+      strong.op === 'matches'
+        ? isPatternInside(strong.value, pattern.value)
         : values !== null &&
-            values.every(
-              (value) => typeof value === 'string' && isValueMatched(wide, value, weak.arg),
-            );
-    })
-    .with({ op: 'excludes' }, (pattern) => {
-      const kept = toCheckPatterns(pattern.value);
-
-      return strong.op === 'excludes'
-        ? kept.every((inner) =>
-            toCheckPatterns(strong.value).some((outer) => isPatternInside(inner, outer)),
-          )
-        : values !== null &&
-            values.every(
-              (value) => typeof value === 'string' && isValueClear(kept, value, weak.arg),
-            );
-    })
+          values.every(
+            (value) => typeof value === 'string' && isValueMatched(pattern.value, value, weak.arg),
+          ),
+    )
     .exhaustive();
 }
 
@@ -121,17 +104,6 @@ const commandArg = 'command';
 
 // A command check reads the value as a syntax tree, so a value such as `ls; rm x` passes it only
 // when every reading of the check would pass it too.
-function isValueMatched(patterns: readonly string[], value: string, arg: string): boolean {
-  return (
-    patterns.some((pattern) => isPatternMatch(pattern, value)) &&
-    (arg !== commandArg || isCommandMatch(patterns, value))
-  );
-}
-
-function isValueClear(patterns: readonly string[], value: string, arg: string): boolean {
-  return patterns.every(
-    (pattern) =>
-      !isPatternMatch(pattern, value) &&
-      (arg !== commandArg || !isCommandMentioned(pattern, value)),
-  );
+function isValueMatched(pattern: string, value: string, arg: string): boolean {
+  return isPatternMatch(pattern, value) && (arg !== commandArg || isCommandMatch(pattern, value));
 }

@@ -33,11 +33,9 @@ const codeRunInput = {
       type: 'array',
       maxItems: 50,
       description:
-        'input files: a file an earlier code run on this thread wrote, by its file ID; a note, ' +
-        "by its short ID, whose current body is the file's content as markdown, which only a " +
-        'caller that holds notebook.read can use; or a page this session fetched, by its page ' +
-        "ID, whose stored text is the file's content",
-      items: { oneOf: [buildFileInput('file'), buildFileInput('note'), buildFileInput('page')] },
+        'input files: a file an earlier code run on this thread wrote, by its file ID, or a ' +
+        "page this session fetched, by its page ID, whose stored text is the file's content",
+      items: { oneOf: [buildFileInput('file'), buildFileInput('page')] },
     },
     skills: {
       type: 'array',
@@ -161,7 +159,7 @@ export function buildCodeRunTool(options: CodeRunToolOptions): ToolDefinition {
   };
 }
 
-function buildFileInput(idKey: 'file' | 'note' | 'page'): JsonSchema {
+function buildFileInput(idKey: 'file' | 'page'): JsonSchema {
   return {
     type: 'object',
     properties: { path: pathProperty, [idKey]: { type: 'string', minLength: 1 } },

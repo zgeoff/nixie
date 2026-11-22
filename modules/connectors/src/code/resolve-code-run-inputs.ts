@@ -19,16 +19,8 @@ export type SkillLookup =
   | { readonly kind: 'ok'; readonly skills: readonly CodeSkill[] }
   | { readonly kind: 'missing'; readonly name: string };
 
-// The notebook's reader of a note's current body. Connectors owns the shape, and the server passes
-// the notebook module's implementation.
-export interface NoteBodies {
-  // null for an unknown or forgotten note
-  readonly readBody: (shortID: string) => Promise<string | null>;
-}
-
 export interface CodeRunInputDeps {
   readonly log: Pick<Log, 'deploymentKey' | 'writer'>;
-  readonly notes: NoteBodies;
   readonly readSkills: (run: ToolRun, names: readonly string[]) => Promise<SkillLookup>;
 }
 
@@ -48,8 +40,8 @@ export type InputResolution =
 export const workDirectory = '/work';
 export const skillsDirectory = '/skills';
 
-// Resolves every input of the call, and refuses in the order the design lists: a file ID, a note
-// ID, a page ID, a skill, then the total size.
+// Resolves every input of the call, and refuses in the order the design lists: a file ID, a page
+// ID, a skill, then the total size.
 export async function resolveCodeRunInputs(
   deps: CodeRunInputDeps,
   run: ToolRun,
@@ -70,28 +62,6 @@ export async function resolveCodeRunInputs(
       }
 
       files.push({ path: `${workDirectory}/${entry.path}`, content: read.bytes });
-    }
-  }
-
-  for (const entry of input.files) {
-    if ('note' in entry) {
-      if (!run.tools.includes('notebook.read')) {
-        return {
-          kind: 'refused',
-          message: `You cannot use the note ${entry.note} as a file, because you do not hold notebook.read.`,
-        };
-      }
-
-      const body = await deps.notes.readBody(entry.note);
-
-      if (body === null) {
-        return { kind: 'refused', message: `No note ${entry.note} exists.` };
-      }
-
-      files.push({
-        path: `${workDirectory}/${entry.path}`,
-        content: new TextEncoder().encode(body),
-      });
     }
   }
 

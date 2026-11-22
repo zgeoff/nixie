@@ -16,7 +16,7 @@ export async function readCleanedTaskIDs(
 
   const recordThread = await readForgottenRecordThread(context, cause);
 
-  return pickCleanedTaskIDs(candidates, recordThread, 'noteID' in cause);
+  return pickCleanedTaskIDs(candidates, recordThread);
 }
 
 // The forget deletes the record's key and keeps its row, so a rerun at start reads the same thread.

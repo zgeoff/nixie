@@ -1,5 +1,4 @@
 import { readForgetFloor } from '@heynixie/memory';
-import { readNoteForgetFloor } from '@heynixie/notebook';
 import type { SessionCleanupCause } from '@heynixie/sessions';
 import { readCleanedTaskIDs } from '@heynixie/sessions';
 import type { TasksContext } from '@heynixie/tasks';
@@ -22,24 +21,11 @@ export async function runTurnInputForget(
 
   await options.turnInputs.closeCaptures({ cause: 'forget' });
 
-  const threads = pickForgetThreads(cause, cleaned);
+  const threads = 'recordSequence' in cause ? cleaned : [conversationTaskID, ...cleaned];
 
   const scope = await readForgetScope(options.context, cause, threads);
 
   await options.turnInputs.removeForgotten(scope);
-}
-
-// A note sits on no thread, so its forget names none and starts at the note's first record. A record
-// forget covers the threads of the sessions it cleaned, and any other forget the conversation too.
-function pickForgetThreads(
-  cause: SessionCleanupCause,
-  cleaned: readonly string[],
-): readonly string[] {
-  if ('noteID' in cause) {
-    return [];
-  }
-
-  return 'recordSequence' in cause ? cleaned : [conversationTaskID, ...cleaned];
 }
 
 // From the first record that can hold the forgotten text on, every request is covered. A forget
@@ -51,10 +37,6 @@ async function readForgetScope(
 ): Promise<ForgetScope> {
   if ('recordSequence' in cause) {
     return { threads, fromSequence: cause.recordSequence };
-  }
-
-  if ('noteID' in cause) {
-    return { threads, fromSequence: await readNoteForgetFloor(context.log, cause.noteID) };
   }
 
   const floor = await readForgetFloor(context.log, cause);

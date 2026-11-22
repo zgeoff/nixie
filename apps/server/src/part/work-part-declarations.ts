@@ -255,7 +255,7 @@ export const workPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
   },
   {
     name: 'ready',
-    needs: ['inputs', 'server_parts', 'seed_poll', 'notebook'],
+    needs: ['inputs', 'server_parts', 'seed_poll'],
     start: async (reader) => {
       const parts = reader.get('server_parts');
 

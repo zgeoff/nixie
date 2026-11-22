@@ -39,15 +39,8 @@ export function createConversationProcedures(context: APIContext) {
       }
 
       const preview = await readRecordForgetPreview(context.log, options.input);
-      const linking = await context.readNotebook?.()?.readLinkingNotes(options.input.sequence);
 
-      const notes = linking ?? [];
-
-      return {
-        momentCount: preview.momentCount,
-        memoryItems: [...preview.memoryItems],
-        notes: [...notes],
-      };
+      return { momentCount: preview.momentCount, memoryItems: [...preview.memoryItems] };
     }),
 
     forget: apiImplementer.conversation.forget.handler(async (options) => {

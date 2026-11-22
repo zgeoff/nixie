@@ -290,11 +290,3 @@ test('it returns the error of an edit of an item that does not exist, as the fac
 
   expect(facts).toMatchObject({ status: 'error', message: expect.toStartWith('no memory item') });
 });
-
-test('it tells the assistant to keep the argument for a change of mind in the notebook', async () => {
-  const memory = await startTestMemory();
-
-  expect(buildEditTool(memory.store).description).toInclude(
-    'When you change your mind about an item, edit or retire it, and keep the argument in the notebook, linked to the item with supersedes or disputes.',
-  );
-});

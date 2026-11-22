@@ -11,8 +11,6 @@ test('it sorts each list and drops its duplicates', () => {
     checks: [
       { arg: 'model', op: 'in', value: ['sol', 'glm', 'sol'] },
       { arg: 'memory', op: 'eq', value: 'read' },
-      { arg: 'subject', op: 'matches', value: ['Re: *', 'Fwd: *', 'Re: *'] },
-      { arg: 'to', op: 'excludes', value: ['*.net', '*.com'] },
     ],
   });
 
@@ -25,8 +23,6 @@ test('it sorts each list and drops its duplicates', () => {
     checks: [
       { arg: 'memory', op: 'eq', value: 'read' },
       { arg: 'model', op: 'in', value: ['glm', 'sol'] },
-      { arg: 'subject', op: 'matches', value: ['Fwd: *', 'Re: *'] },
-      { arg: 'to', op: 'excludes', value: ['*.com', '*.net'] },
     ],
   });
 });

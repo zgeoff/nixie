@@ -18,7 +18,6 @@ export function placeTurnMemory(
       itemIDs: selection.picks.map((pick) => pick.itemID),
       states: ['active'],
       includeHistory: false,
-      includeLinkCounts: true,
     });
 
     const items = loaded.filter((item) => !item.isPinned);

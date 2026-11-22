@@ -329,38 +329,6 @@ test.each<[string, Rule | null, Rule | null, RuleChange]>([
     'unchanged',
   ],
   [
-    'a command pattern list with one pattern fewer on an allow',
-    {
-      id: 'allow-reads',
-      outcome: 'allow',
-      tools: ['computer.run'],
-      checks: [{ arg: 'command', op: 'matches', value: ['cat *', 'ls *'] }],
-    },
-    {
-      id: 'allow-reads',
-      outcome: 'allow',
-      tools: ['computer.run'],
-      checks: [{ arg: 'command', op: 'matches', value: ['ls *'] }],
-    },
-    'narrowing',
-  ],
-  [
-    'a command pattern list with one pattern more on an allow',
-    {
-      id: 'allow-reads',
-      outcome: 'allow',
-      tools: ['computer.run'],
-      checks: [{ arg: 'command', op: 'matches', value: 'ls *' }],
-    },
-    {
-      id: 'allow-reads',
-      outcome: 'allow',
-      tools: ['computer.run'],
-      checks: [{ arg: 'command', op: 'matches', value: ['ls *', 'rm *'] }],
-    },
-    'widening',
-  ],
-  [
     'an exact command that chains another command on an allow of a pattern',
     {
       id: 'allow-reads',
@@ -391,69 +359,6 @@ test.each<[string, Rule | null, Rule | null, RuleChange]>([
       checks: [{ arg: 'command', op: 'eq', value: 'ls -la' }],
     },
     'narrowing',
-  ],
-  [
-    'an excluded pattern added to an allow',
-    {
-      id: 'allow-find',
-      outcome: 'allow',
-      tools: ['computer.run'],
-      checks: [
-        { arg: 'command', op: 'matches', value: 'find *' },
-        { arg: 'command', op: 'excludes', value: 'find *-delete*' },
-      ],
-    },
-    {
-      id: 'allow-find',
-      outcome: 'allow',
-      tools: ['computer.run'],
-      checks: [
-        { arg: 'command', op: 'matches', value: 'find *' },
-        { arg: 'command', op: 'excludes', value: ['find *-delete*', 'find *-exec*'] },
-      ],
-    },
-    'narrowing',
-  ],
-  [
-    'an excluded pattern dropped from an allow',
-    {
-      id: 'allow-find',
-      outcome: 'allow',
-      tools: ['computer.run'],
-      checks: [
-        { arg: 'command', op: 'matches', value: 'find *' },
-        { arg: 'command', op: 'excludes', value: ['find *-delete*', 'find *-exec*'] },
-      ],
-    },
-    {
-      id: 'allow-find',
-      outcome: 'allow',
-      tools: ['computer.run'],
-      checks: [
-        { arg: 'command', op: 'matches', value: 'find *' },
-        { arg: 'command', op: 'excludes', value: 'find *-delete*' },
-      ],
-    },
-    'widening',
-  ],
-  [
-    'an exact command that the excluded pattern of an allow mentions',
-    {
-      id: 'allow-find',
-      outcome: 'allow',
-      tools: ['computer.run'],
-      checks: [
-        { arg: 'command', op: 'matches', value: 'find *' },
-        { arg: 'command', op: 'excludes', value: 'find *-delete*' },
-      ],
-    },
-    {
-      id: 'allow-find',
-      outcome: 'allow',
-      tools: ['computer.run'],
-      checks: [{ arg: 'command', op: 'eq', value: 'find . -name x; find . -delete' }],
-    },
-    'widening',
   ],
 ])('it classifies %s', (_label, before, after, change) => {
   expect(pickRuleChange(before, after)).toBe(change);

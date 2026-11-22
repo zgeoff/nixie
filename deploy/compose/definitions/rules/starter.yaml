@@ -24,40 +24,84 @@ allow-sandboxed-code:
   outcome: allow
   effects: [code_run]
 
-allow-read-commands:
+# Shell commands that only read. Each rule allows a line only when every command on it is that one
+# command, with plain words and no redirection, substitution or variable.
+allow-shell-cat:
   outcome: allow
   tools: [computer.run]
   effects: [computer_run]
   checks:
-    - arg: command
-      op: matches
-      value:
-        - cat *
-        - df *
-        - du *
-        - file *
-        - find *
-        - grep *
-        - head *
-        - ls *
-        - pwd *
-        - stat *
-        - tail *
-        - wc *
-        - which *
-    - arg: command
-      op: excludes
-      value:
-        - file * -*
-        - file -*
-        - find *-delete*
-        - find *-exec*
-        - find *-fls*
-        - find *-fprint*
-        - find *-ok*
-  note: >-
-    These commands only read. Each command on the line must be one of them, with no redirection or
-    substitution. find loses the actions that run, delete or write, and file takes no options.
+    - { arg: command, op: matches, value: 'cat *' }
+
+allow-shell-df:
+  outcome: allow
+  tools: [computer.run]
+  effects: [computer_run]
+  checks:
+    - { arg: command, op: matches, value: 'df *' }
+
+allow-shell-du:
+  outcome: allow
+  tools: [computer.run]
+  effects: [computer_run]
+  checks:
+    - { arg: command, op: matches, value: 'du *' }
+
+allow-shell-grep:
+  outcome: allow
+  tools: [computer.run]
+  effects: [computer_run]
+  checks:
+    - { arg: command, op: matches, value: 'grep *' }
+
+allow-shell-head:
+  outcome: allow
+  tools: [computer.run]
+  effects: [computer_run]
+  checks:
+    - { arg: command, op: matches, value: 'head *' }
+
+allow-shell-ls:
+  outcome: allow
+  tools: [computer.run]
+  effects: [computer_run]
+  checks:
+    - { arg: command, op: matches, value: 'ls *' }
+
+allow-shell-pwd:
+  outcome: allow
+  tools: [computer.run]
+  effects: [computer_run]
+  checks:
+    - { arg: command, op: matches, value: 'pwd *' }
+
+allow-shell-stat:
+  outcome: allow
+  tools: [computer.run]
+  effects: [computer_run]
+  checks:
+    - { arg: command, op: matches, value: 'stat *' }
+
+allow-shell-tail:
+  outcome: allow
+  tools: [computer.run]
+  effects: [computer_run]
+  checks:
+    - { arg: command, op: matches, value: 'tail *' }
+
+allow-shell-wc:
+  outcome: allow
+  tools: [computer.run]
+  effects: [computer_run]
+  checks:
+    - { arg: command, op: matches, value: 'wc *' }
+
+allow-shell-which:
+  outcome: allow
+  tools: [computer.run]
+  effects: [computer_run]
+  checks:
+    - { arg: command, op: matches, value: 'which *' }
 
 allow-narrowing:
   outcome: allow

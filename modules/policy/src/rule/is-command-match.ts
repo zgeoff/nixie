@@ -3,15 +3,15 @@ import { parse } from 'unbash';
 import { isPatternMatch } from './is-pattern-match';
 
 // Whether a shell command line is plain commands of literal words joined by `;`, `&&`, `||` or `|`,
-// and each command's words match one of the patterns. A trailing ` *` in a pattern also takes the
-// command with no words after the rest, so `git status *` allows `git status`.
-export function isCommandMatch(patterns: readonly string[], command: string): boolean {
+// and each command's words match the pattern. A trailing ` *` in the pattern also takes the command
+// with no words after the rest, so `git status *` allows `git status`.
+export function isCommandMatch(pattern: string, command: string): boolean {
   const commands = collectPlainCommands(command);
 
   return (
     commands !== null &&
     commands.length > 0 &&
-    commands.every((words) => patterns.some((pattern) => isWordsMatch(pattern, words)))
+    commands.every((words) => isWordsMatch(pattern, words))
   );
 }
 
@@ -103,6 +103,17 @@ function toLiteralText(argument: CommandArgument | Redirection | Word): string |
   }
 
   const parts = argument.parts ?? [];
+
+  // unbash reads `{x}>(cmd)` as one plain word, yet bash runs `cmd` as a process substitution, so
+  // an unquoted character that bash can give a meaning refuses the word.
+  const unquoted =
+    argument.parts === undefined
+      ? [argument.text]
+      : parts.flatMap((part) => (part.type === 'Literal' ? [part.text] : []));
+
+  if (unquoted.some((text) => /[(){}<>$`*?[]/u.test(text))) {
+    return null;
+  }
 
   return parts.every((part) => isLiteralPart(part)) ? argument.value : null;
 }

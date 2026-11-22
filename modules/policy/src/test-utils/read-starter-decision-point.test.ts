@@ -66,27 +66,23 @@ test('it allows task.close with no approval, under the starter rule for notes', 
   expect(decided.decision).toMatchObject({ outcome: 'allow', rule: { id: 'allow-notes' } });
 });
 
-test.each<[string]>([
-  ['ls'],
-  ['ls -la /var/log'],
-  ['pwd'],
-  ['cat notes.txt'],
-  ['df -h'],
-  ['which git'],
-  ['head -n 5 notes.txt'],
-  ['tail -n 20 build.log'],
-  ['wc -l notes.txt'],
-  ['grep -rn todo .'],
-  ['du -sh .'],
-  ['file photo.png'],
-  ['file my-photo.png notes.txt'],
-  ['stat notes.txt'],
-  ["find . -name '*.md'"],
-  ['find . -type f -newer notes.txt -print'],
-  ['ls | grep draft'],
-  ['cat notes.txt | head -n 3 | wc -l'],
-  ['ls && pwd'],
-])('it allows the read-only command %s under the starter rule', async (command) => {
+test.each<[string, string]>([
+  ['ls', 'ls'],
+  ['ls -la /var/log', 'ls'],
+  ['pwd', 'pwd'],
+  ['cat notes.txt', 'cat'],
+  ['df -h', 'df'],
+  ['which git', 'which'],
+  ['head -n 5 notes.txt', 'head'],
+  ['tail -n 20 build.log', 'tail'],
+  ['wc -l notes.txt', 'wc'],
+  ['grep -rn todo .', 'grep'],
+  ['du -sh .', 'du'],
+  ['stat notes.txt', 'stat'],
+  ["grep -r 'two words' .", 'grep'],
+  ['ls -l | ls', 'ls'],
+  ['cat notes.txt && cat build.log', 'cat'],
+])('it allows the read-only command %s under the starter rule for %s', async (command, name) => {
   const decide = readStarterDecisionPoint(() => ({
     effects: ['computer_run'],
     destinations: [],
@@ -101,7 +97,7 @@ test.each<[string]>([
 
   expect(decided.decision).toMatchObject({
     outcome: 'allow',
-    rule: { id: 'allow-read-commands' },
+    rule: { id: `allow-shell-${name}` },
   });
 });
 
@@ -119,6 +115,7 @@ test.each<[string, string]>([
   ['cat $(echo notes.txt)', 'a command substitution'],
   ['cat `echo notes.txt`', 'a backtick substitution'],
   ['cat <(ls)', 'a process substitution'],
+  ['ls {x}>(touch notes.txt)', 'a process substitution glued to a word'],
   ['ls; rm notes.txt', 'a ; before another command'],
   ['ls && rm notes.txt', 'an && before another command'],
   ['ls || rm notes.txt', 'an || before another command'],
@@ -136,6 +133,7 @@ test.each<[string, string]>([
   ['"ls x" notes', 'a quoted command name with a space'],
   ['rm notes.txt', 'a command off the list'],
   ['/bin/ls', 'a command named by its path'],
+  ["find . -name '*.md'", 'find, which the rules leave out'],
   ['find . -exec rm {} +', 'find with -exec'],
   ["find . -ex'ec' rm {} +", 'find with a quoted -exec'],
   ['find -exec rm {} +', 'find with -exec and no start path'],
@@ -147,13 +145,10 @@ test.each<[string, string]>([
   ['find . -fprint0 out.txt', 'find with -fprint0'],
   ['find . -fprintf out.txt %p', 'find with -fprintf'],
   ['find . -fls out.txt', 'find with -fls'],
-  ['file -C -m magic', 'file with -C, which writes a compiled magic file'],
-  ['file -bC -m magic', 'file with -C among other short flags'],
-  ['file --compile -m magic', 'file with --compile'],
-  ['file -zS archive.Z', 'file with -z, which can run a decompressor'],
-  ['file photo.png -z', 'file with an option after a path'],
-  ['file -p notes.txt', 'file with -p, which resets the access time'],
-  ['file --preserve-date notes.txt', 'file with --preserve-date'],
+  ['file -zS archive.Z', 'file, which -z lets run a decompressor'],
+  ['file -p notes.txt', 'file, which -p lets rewrite the times'],
+  ['ls | grep draft', 'a pipe between 2 listed commands'],
+  ['ls && pwd', 'a chain of 2 listed commands'],
 ])('it asks before the command %s, %s, under the starter rules', async (command) => {
   const decide = readStarterDecisionPoint(() => ({
     effects: ['computer_run'],

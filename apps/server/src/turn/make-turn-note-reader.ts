@@ -8,7 +8,6 @@ import {
   buildProposalAnswerKind,
   buildProposalMergeKind,
 } from '@heynixie/memory';
-import { buildNoteForgottenKind } from '@heynixie/notebook';
 import type { TurnNote, TurnNoteRequest } from '@heynixie/sessions';
 import {
   buildCompactionHeadsUpKind,
@@ -34,9 +33,6 @@ export interface TurnNoteReaderOptions {
   readonly compaction: Pick<CompactionSettings, 'threshold' | 'headsUp'>;
 
   readonly getTaskName: (taskID: string) => string;
-
-  // which kinds of forget the events block lists
-  readonly forgetNotices: { readonly note: boolean };
 }
 
 export function makeTurnNoteReader(
@@ -50,7 +46,7 @@ export function makeTurnNoteReader(
     },
   };
 
-  const kinds = buildEventRegistry([
+  const events = buildEventRegistry([
     buildMemoryChangeKind(options.log, store),
     buildProposalMergeKind(options.log),
     buildProposalAnswerKind(options.log, store),
@@ -64,10 +60,6 @@ export function makeTurnNoteReader(
     buildMandateStartedKind(options.log),
     buildMandateEndedKind(options.log),
   ]);
-
-  const events = options.forgetNotices.note
-    ? [...kinds, ...buildEventRegistry([buildNoteForgottenKind(options.log)])]
-    : kinds;
 
   return (request) => readTurnNotes({ ...options, events }, request);
 }

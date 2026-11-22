@@ -1,6 +1,5 @@
 import { match } from 'ts-pattern';
 import type { Rule, RuleCheck, RuleContext, RuleSource } from '../types';
-import { toCheckPatterns } from './to-check-patterns';
 
 export function renderRule(rule: Rule): string {
   const isAllow = rule.outcome === 'allow';
@@ -92,16 +91,8 @@ function renderCheck(check: RuleCheck): string {
       { op: 'in' },
       (within) => `${arg} is ${joinOr(within.value.map((value) => renderCode(String(value))))}`,
     )
-    .with({ op: 'matches' }, (pattern) => `${arg} matches ${renderPatterns(pattern.value)}`)
-    .with(
-      { op: 'excludes' },
-      (pattern) => `${arg} matches none of ${renderPatterns(pattern.value)}`,
-    )
+    .with({ op: 'matches' }, (pattern) => `${arg} matches ${renderCode(pattern.value)}`)
     .exhaustive();
-}
-
-function renderPatterns(value: string | readonly string[]): string {
-  return joinOr(toCheckPatterns(value).map((pattern) => renderCode(pattern)));
 }
 
 function renderDestinations(destinations: readonly string[], isAllow: boolean): string {

@@ -42,7 +42,6 @@ async function setupTest() {
       logger: () => {},
       image: 'nixie-code-dddddddddddd',
       imageLongEdge: 1568,
-      notes: { readBody: () => Promise.resolve(null) },
       readSkills: () => Promise.resolve({ kind: 'ok', skills: [] }),
     });
 

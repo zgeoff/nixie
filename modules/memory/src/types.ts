@@ -229,10 +229,6 @@ export interface RecalledItem extends RecalledVersion {
   readonly topic: string;
   readonly triggers: readonly string[];
 
-  // set only above 0
-  readonly disputedBy?: number;
-  readonly supersededBy?: number;
-
   readonly history?: readonly RecalledVersion[];
 
   readonly labelHistory?: readonly LabelRevision[];
@@ -330,22 +326,7 @@ export interface ItemIDStore {
   readonly readShortIDs: (itemIDs: readonly string[]) => Promise<ReadonlyMap<string, string>>;
 }
 
-export type CleanupCause =
-  | { readonly itemID: string }
-  | { readonly momentID: string }
-  | { readonly noteID: string };
-
-// How many active notes dispute or supersede an item. The notebook module counts them, and memory
-// learns nothing else about a note.
-export interface ItemLinkCount {
-  readonly disputedBy: number;
-  readonly supersededBy: number;
-}
-
-export interface ItemLinkCounts {
-  // memory passes item UUIDs, the form links store
-  readonly readCounts: (itemIDs: readonly string[]) => Promise<ReadonlyMap<string, ItemLinkCount>>;
-}
+type CleanupCause = { readonly itemID: string } | { readonly momentID: string };
 
 // The cleanup must be safe to run again, because a forget or a moment destroy that a crash cut
 // short runs it again on resume.
@@ -377,9 +358,6 @@ export interface MemoryContext {
   readonly index?: MemoryIndexConfig;
 
   readonly semanticSearch?: SemanticSearch;
-
-  // Without it, no item shows a count of the notes that dispute or supersede it.
-  readonly linkCounts?: ItemLinkCounts;
 
   // What a turn brings. Without it, trigger push runs on its config defaults and no similarity
   // limit is above 0.

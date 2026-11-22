@@ -1,7 +1,6 @@
 import { toErrorFields } from '@heynixie/logger';
 import type { CleanupSessions, StartedMemoryStore } from '@heynixie/memory';
 import { startLapseSweep, startMemoryStore } from '@heynixie/memory';
-import { buildItemLinkCounts } from '@heynixie/notebook';
 import type { RunCheck } from '@heynixie/sessions';
 import type { ServerParts } from '../types';
 
@@ -14,7 +13,6 @@ export async function startMemory(
     log: parts.context.log,
     definitions: parts.context.definitions,
     cleanupSessions,
-    linkCounts: buildItemLinkCounts(parts.context.log),
     pinnedCoreTokens: parts.config.memory.pinnedCoreTokens,
     index: parts.config.memory.index,
     turn: parts.config.memory.turn,

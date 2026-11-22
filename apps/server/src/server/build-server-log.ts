@@ -11,7 +11,6 @@ import {
 import type { Log, Writer } from '@heynixie/log';
 import { logProjections } from '@heynixie/log';
 import { memoryProjections } from '@heynixie/memory';
-import { notebookProjections } from '@heynixie/notebook';
 import { knownContactsProjection } from '@heynixie/policy';
 import { remindersProjections } from '@heynixie/reminders';
 import { sandboxesProjection } from '@heynixie/sandbox';
@@ -32,7 +31,6 @@ export function buildServerLog(writer: Writer, deploymentKey: CryptoKey): Log {
       sandboxesProjection,
       ...apiProjections,
       ...memoryProjections,
-      ...notebookProjections,
       ruleFiresProjection,
       gapAnswersProjection,
       gapGroupsProjection,

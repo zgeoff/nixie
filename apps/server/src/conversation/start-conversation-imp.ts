@@ -51,7 +51,6 @@ export async function startConversationImp(
         defaultZone: parts.config.time.default_zone,
         compaction: parts.config.compaction,
         getTaskName: (taskID) => getTaskName(messaging, taskID),
-        forgetNotices: parts.config.forget_notices,
       },
       memory,
     ),

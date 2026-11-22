@@ -167,7 +167,6 @@ Each module package covers one area of the architecture, and its doc covers the 
 | `tools`       | The [tool endpoint](connectors/tool-calls.md) per task run                                                                                      |
 | `connectors`  | The [web fetch](connectors/web-fetch.md), [time](connectors/time.md) and [search](connectors/search.md) and [image](connectors/images.md) tools |
 | `memory`      | The [memory store](memory/store.md) and its context                                                                                             |
-| `notebook`    | The [notebook](memory/notebook.md): notes, their links, the tools and the forget                                                                |
 | `backup`      | The snapshot sets and receipts of [backups](deployment/backups.md) and their schedule                                                           |
 | `ops`         | The health checks behind [the server's](deployment/server.md) health endpoint                                                                   |
 | `skills`      | [Skills](core/skills.md): the pins, the catalog, the skill tools and the skill proposals                                                        |

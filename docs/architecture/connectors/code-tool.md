@@ -46,8 +46,7 @@ limit with its figure, and where the program writes its output (`out/`) and read
 1. Parse the call, and refuse a malformed one.
 2. Take a slot. At most `runsAtOnce` code runs run at once in one server process, and a further call
    gets the tool error that names the limit
-3. Resolve the inputs, refusing in this order: a file ID, a note ID, a page ID, a skill, then the
-   total size.
+3. Resolve the inputs, refusing in this order: a file ID, a page ID, a skill, then the total size.
 4. Create a sandbox of kind `code_run` from the code image at the `codeRun` size row, with owner
    `code_run:<callID>`. The setup copies each input in, and the program goes to `/opt/nixie`.
 5. Run the program as the user `code` in `/work`, under the wall-time limit, and read the guest's
@@ -87,13 +86,6 @@ the `codeRun` size row after a memory kill, because the program chose how much m
   erasable fields.
 - A stream longer than the text the result shows is kept, up to `streamBytes`, as a file at
   `.stdout` or `.stderr`. The two stream files count toward neither `files` limit.
-- A note file copies the note's current body into the work folder as markdown. It resolves only when
-  the caller's tool list holds `notebook.read`, so a task without the tool never reaches a note
-  through `code.run`. An unknown note, a forgotten note and a caller without the tool each get a
-  refusal that holds the note's ID. The connectors package owns the interface that reads a body, and
-  the server passes the notebook's implementation. The sandbox holds the body unencrypted until the
-  code run ends, as it holds a fetched page, and a forget of the note never reaches a file that the
-  program wrote.
 - A file ID resolves only on its own thread. A worker's tool calls write their records on the
   caller's thread, so the caller reads the files of its worker's code runs. A stored page lasts one
   session, so a page ID works only in the session that fetched it.

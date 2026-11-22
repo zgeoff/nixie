@@ -18,8 +18,6 @@ const checkPatternSchema = z
   .min(1)
   .describe('Exact text, or a pattern whose only wildcard is *, which matches any run of text');
 
-const checkPatternsSchema = z.union([checkPatternSchema, z.array(checkPatternSchema).min(1)]);
-
 const checkSchema = z.discriminatedUnion('op', [
   z.strictObject({ arg: argumentPathSchema, op: z.literal('eq'), value: scalarSchema }),
   z.strictObject({
@@ -30,12 +28,7 @@ const checkSchema = z.discriminatedUnion('op', [
   z.strictObject({
     arg: argumentPathSchema,
     op: z.literal('matches'),
-    value: checkPatternsSchema.describe('A pattern, or a list of patterns of which one must match'),
-  }),
-  z.strictObject({
-    arg: argumentPathSchema,
-    op: z.literal('excludes'),
-    value: checkPatternsSchema.describe('A pattern, or a list of patterns of which none may match'),
+    value: checkPatternSchema,
   }),
 ]);
 

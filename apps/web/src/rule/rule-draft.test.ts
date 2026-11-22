@@ -101,21 +101,6 @@ test('it drops a check with no argument', () => {
   expect(toRuleForm(draft)).toStrictEqual({ outcome: 'allow' });
 });
 
-test('it reads a pattern check with several lines as a list of patterns', () => {
-  const draft = {
-    ...buildEmptyRuleDraft(),
-    checks: [
-      { arg: 'command', op: 'matches' as const, value: 'ls *\n\n grep * ' },
-      { arg: 'command', op: 'excludes' as const, value: 'find *-delete*' },
-    ],
-  };
-
-  expect(toRuleForm(draft)['checks']).toStrictEqual([
-    { arg: 'command', op: 'matches', value: ['ls *', 'grep *'] },
-    { arg: 'command', op: 'excludes', value: 'find *-delete*' },
-  ]);
-});
-
 test('it keeps every check of a rule when one holds an operator the form does not know', () => {
   const rule = {
     outcome: 'allow',

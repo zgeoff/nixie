@@ -3,7 +3,6 @@ import type { Clock } from '@heynixie/clock';
 import type { Log, Writer } from '@heynixie/log';
 import { logProjections, startWriter } from '@heynixie/log';
 import { memoryProjections } from '@heynixie/memory';
-import { notebookProjections } from '@heynixie/notebook';
 import { knownContactsProjection } from '@heynixie/policy';
 import { remindersProjections } from '@heynixie/reminders';
 import { sandboxesProjection } from '@heynixie/sandbox';
@@ -33,7 +32,6 @@ export async function startTestLog(
       ...remindersProjections,
       sandboxesProjection,
       ...memoryProjections,
-      ...notebookProjections,
       knownContactsProjection,
       proposalsProjection,
     ],

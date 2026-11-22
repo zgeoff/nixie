@@ -17,8 +17,6 @@ import type { DeviceStreams } from '@heynixie/devices';
 import { buildDeviceTools } from '@heynixie/devices';
 import type { MemoryToolStore } from '@heynixie/memory';
 import { buildLogReadImageTool, buildLogReadTool } from '@heynixie/memory';
-import type { NotebookToolStore } from '@heynixie/notebook';
-import { buildNotebookTools } from '@heynixie/notebook';
 import { buildPromptReadTool, buildPromptWriteTool } from '@heynixie/prompts';
 import {
   buildReminderCancelTool,
@@ -87,7 +85,6 @@ export interface ConversationEndpointTools {
   readonly queue: ActionQueue;
   readonly makeDecide: DecisionPointFactory;
   readonly readStore: () => MemoryToolStore | null;
-  readonly readNotebook: () => NotebookToolStore | null;
 
   readonly readInForce: () => DefinitionsInForce | null;
   readonly refreshDefinitions: () => Promise<DefinitionsInForce | null>;
@@ -153,16 +150,6 @@ export async function startConversationEndpoint(
     ownerName: options.config.owner.name,
     defaultZone: options.config.time.default_zone,
   };
-
-  const notebook = buildNotebookTools(() => {
-    const store = tools.readNotebook();
-
-    if (store === null) {
-      throw new Error('a tool call ran before the notebook started');
-    }
-
-    return store;
-  });
 
   const definitionToolOptions = {
     readDefinitions: tools.readDefinitions,
@@ -257,7 +244,6 @@ export async function startConversationEndpoint(
       },
       memory,
     ),
-    ...notebook,
     ...tools.computer,
     ...search,
     ...images,

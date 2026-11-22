@@ -2,14 +2,13 @@ import { z } from 'zod';
 
 export const ruleContextChoices = ['conversation', 'task', 'coding'] as const;
 export const ruleSourceChoices = ['owner', 'own_data', 'task', 'outside'] as const;
-export const checkOperations = ['eq', 'in', 'matches', 'excludes'] as const;
+export const checkOperations = ['eq', 'in', 'matches'] as const;
 
 export interface CheckDraft {
   readonly arg: string;
   readonly op: (typeof checkOperations)[number];
 
-  // the text of the check's value; an `in` check lists its values one to a line, and a `matches` or
-  // `excludes` check its patterns
+  // the text of the check's value; an `in` check lists its values one to a line
   readonly value: string;
 
   // the check as the rule held it, so text the owner left alone keeps its type
@@ -133,13 +132,8 @@ function toCheckValue(check: CheckDraft): CheckValue {
 
   const text = check.value.trim();
 
-  if (check.op === 'matches' || check.op === 'excludes') {
-    const patterns = text
-      .split('\n')
-      .map((line) => line.trim())
-      .filter((line) => line !== '');
-
-    return patterns.length === 1 ? text : patterns;
+  if (check.op === 'matches') {
+    return text;
   }
 
   if (text === 'true' || text === 'false') {

@@ -192,7 +192,6 @@ except 3 groups:
 
 - A moment's own records, which the moment's removal takes.
 - A memory item's own records, which the item's forget takes.
-- A note's own records, which the note's forget takes.
 - A record whose kind carries no erasable fields.
 
 A forget takes only the record it names, and the whole of it, because each record has one key and no
@@ -377,31 +376,6 @@ The 3 worker record kinds map to `worker`: `started` with the worker run's short
 and limits, `turn` with the sum of its 4 token counts, its dollars and its text, and `ended` with
 its outcome, limit, usage and failure detail. A tool call and its result carry `toolCall.runID`, the
 run that made the call. A worker's own tool calls carry the worker run's ID.
-
-## The notebook
-
-The web client reads the [notebook](../memory/notebook.md) with `notebook.listNotes`,
-`notebook.readNote` and `notebook.readCheck`. Each takes `showPrivate`, which defaults to off. With
-it off, the calls leave out every private note and every link to or from one, and `readNote` of a
-private note answers its ID alone. `readNote` never returns a private note's body. A call that runs
-before the notebook starts answers `NOTEBOOK_NOT_STARTED`, and an unknown or forgotten note answers
-`UNKNOWN_NOTE`.
-
-`notebook.openPrivate` is a checked action that returns a private note's body and the version before
-it, and appends one `notebook.private_opened`. A retry answers with the same body and appends
-nothing. It answers `NOT_PRIVATE`, and writes nothing, for a note that is not private.
-
-### Forgetting a note
-
-`notebook.previewForget` reads a note's version, title, version count and link counts without
-opening a private note. `notebook.forget` is a checked action that binds to that version and answers
-`STALE_VERSION` when the note moved on. It runs the
-[2-part forget](../memory/notebook.md#forgetting-a-note) and answers `forgottenAt` and `backup`, the
-backup state that a [memory forget](../memory/store.md#forgetting) reports, read fresh on every
-answer. A retry of the action finishes a cleanup that a failed call left.
-
-The `conversation.previewForget` answer also lists the active notes that link to the record, with a
-private note's title left out, so the confirmation can show that those notes keep their text.
 
 ## Reading a code-run file
 
