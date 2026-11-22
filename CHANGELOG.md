@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.99.0](https://github.com/zgeoff/nixie/compare/v0.98.0...v0.99.0) (2026-11-22)
+
+
+### Features
+
+* **computer:** watch the desktop live from the web client ([#1381](https://github.com/zgeoff/nixie/issues/1381)) ([1f73d8e](https://github.com/zgeoff/nixie/commit/1f73d8eea44899eb6713e1c87606957e89d275f0))
+
 ## [0.98.0](https://github.com/zgeoff/nixie/compare/v0.97.0...v0.98.0) (2026-11-22)
 
 
