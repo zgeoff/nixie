@@ -68,8 +68,8 @@ export function ImageForgetControl(props: ImageForgetControlProps): ReactNode {
   return (
     <div aria-label="Forget this image" className={confirmation} role="group">
       <span>
-        Forget this image for good? Its picture, its prompt, its name and the assistant&apos;s
-        request for it go from everywhere nixie keeps them. Edits made from it keep their pictures.
+        Forget this picture? It leaves the images page and the assistant&apos;s image tools. A photo
+        or file you sent stays in the conversation.
       </span>
       <button
         disabled={forget.isPending}

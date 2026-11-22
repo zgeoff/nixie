@@ -171,7 +171,11 @@ test('it forgets an image from the lightbox, shows the backup state and drops it
 
   await user.click(forget);
 
-  expect(rendered.getByText(/Edits made from it keep their pictures/u)).toBeVisible();
+  expect(
+    rendered.getByText(
+      "Forget this picture? It leaves the images page and the assistant's image tools. A photo or file you sent stays in the conversation.",
+    ),
+  ).toBeVisible();
 
   await user.click(rendered.getByRole('button', { name: 'Forget for good' }));
   await rendered.findByText(/Key backups: pending/u);
