@@ -197,6 +197,7 @@ async function setupTest(options: SetupOptions) {
 
   return {
     copy,
+    computer,
 
     // a sandbox of the earlier release whose disk the new one cannot copy while `copy` blocks it
     createOldBrowserSandbox: async () => {
@@ -691,6 +692,28 @@ test('it takes a desktop screenshot that names the focused tab and says nobody w
     },
     images: [expect.anything()],
   });
+});
+
+test('it says in a desktop screenshot that the user is watching while a watch is open', async () => {
+  const picture = await encodeTestImage({ width: 1280, height: 800 }, 'png');
+
+  const ctx = await setupTest({
+    answer: (replies) => () =>
+      Promise.resolve({ ...replies.desktop, base64: Buffer.from(picture).toString('base64') }),
+  });
+
+  const connection = ctx.computer.watch({ send: () => {}, close: () => {} });
+
+  const watched = await ctx.call('computer.screenshot', {});
+
+  connection.end();
+
+  const unwatched = await ctx.call('computer.screenshot', {});
+
+  expect([watched, unwatched]).toMatchObject([
+    { result: { isWatched: true } },
+    { result: { isWatched: false } },
+  ]);
 });
 
 test('it reports the size of the picture the model sees when the image limit shrinks it', async () => {

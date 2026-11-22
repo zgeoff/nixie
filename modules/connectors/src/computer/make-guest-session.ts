@@ -1,8 +1,14 @@
 import type { Clock } from '@heynixie/clock';
 import type { Logger } from '@heynixie/logger';
 import type { ExecStream } from '@heynixie/sandbox';
-import type { ComputerHopFrame, ComputerReply } from '@heynixie/wire';
-import { decodeComputerGuestFrame, encodeComputerMessage } from '@heynixie/wire';
+import type { ComputerHopFrame, ComputerReply, VNCFrame } from '@heynixie/wire';
+import {
+  decodeComputerGuestFrame,
+  decodeVNCFrame,
+  encodeComputerMessage,
+  encodeVNCFrame,
+  vncChunkLimitBytes,
+} from '@heynixie/wire';
 import type { TimeLimit } from '../utils/wait-or-time-out';
 import { waitOrTimeOut } from '../utils/wait-or-time-out';
 import type { ComputerCall, ComputerScan, ScanVerdict } from './types';
@@ -17,7 +23,26 @@ type ExchangeResult =
   | { readonly kind: 'reply'; readonly reply: ComputerReply; readonly refusal: string | null }
   | { readonly kind: 'broken'; readonly message: string };
 
+// what a VNC stream's owner hears from the guest
+export interface VNCStreamListener {
+  readonly onData: (bytes: Uint8Array) => void;
+
+  // the guest closed the stream, or the guest ended
+  readonly onClose: () => void;
+}
+
+export interface VNCStream {
+  readonly send: (bytes: Uint8Array) => Promise<void>;
+
+  // closes the stream and tells the guest, and the listener hears nothing more
+  readonly close: () => void;
+}
+
 export interface GuestSession {
+  // Opens a VNC stream to the guest. The guest answers with data, or with a close when its VNC
+  // server refuses. A stream runs beside the guest's calls and never takes the turn.
+  readonly openStream: (listener: VNCStreamListener) => VNCStream;
+
   // Sends one request and waits for its reply. A guest that exits, sends nonsense or passes the
   // call's time limit leaves the exchange broken, and the caller stops the guest.
   readonly exchange: (call: ComputerCall) => Promise<ExchangeResult>;
@@ -47,17 +72,31 @@ interface ActiveRef {
 export function makeGuestSession(options: GuestSessionOptions): GuestSession {
   const active: ActiveRef = { current: null };
 
-  void pumpFrames(options, active);
+  const streams = new Map<string, VNCStreamListener>();
+
+  void pumpFrames(options, active, streams);
 
   return {
     stream: options.stream,
+    openStream: (listener) => openStream(options, streams, listener),
     exchange: (call) => exchange(options, active, call),
   };
 }
 
-async function pumpFrames(options: GuestSessionOptions, active: ActiveRef): Promise<void> {
+async function pumpFrames(
+  options: GuestSessionOptions,
+  active: ActiveRef,
+  streams: Map<string, VNCStreamListener>,
+): Promise<void> {
   try {
     for await (const bytes of options.stream.messages) {
+      const vncFrame = decodeVNCFrame(bytes);
+
+      if (vncFrame !== null) {
+        routeStreamFrame(streams, vncFrame);
+        continue;
+      }
+
       const frame = decodeComputerGuestFrame(bytes);
 
       if (frame.kind === 'hop' || frame.kind === 'hop-content') {
@@ -69,15 +108,35 @@ async function pumpFrames(options: GuestSessionOptions, active: ActiveRef): Prom
       }
     }
 
+    closeStreams(streams);
+
     active.current?.reply.resolve({
       kind: 'broken',
       message: 'the guest closed its output with no reply',
     });
   } catch (error) {
+    closeStreams(streams);
+
     active.current?.reply.resolve({
       kind: 'broken',
       message: error instanceof Error ? error.message : String(error),
     });
+  }
+}
+
+// A frame for a stream that is not open, such as a late one after a close, is dropped.
+function routeStreamFrame(streams: Map<string, VNCStreamListener>, frame: VNCFrame): void {
+  const listener = streams.get(frame.stream);
+
+  if (listener === undefined) {
+    return;
+  }
+
+  if (frame.kind === 'vnc-data') {
+    listener.onData(frame.data);
+  } else if (frame.kind === 'vnc-close') {
+    streams.delete(frame.stream);
+    listener.onClose();
   }
 }
 
@@ -114,6 +173,54 @@ async function scanHop(
     options.logger('computer.scan_failed', { reason: String(error) }, 'warn');
 
     return { kind: 'refuse', reason: 'the request could not be scanned, so it was not sent' };
+  }
+}
+
+function closeStreams(streams: Map<string, VNCStreamListener>): void {
+  const closing = [...streams.values()];
+
+  streams.clear();
+
+  for (const listener of closing) {
+    listener.onClose();
+  }
+}
+
+function openStream(
+  options: GuestSessionOptions,
+  streams: Map<string, VNCStreamListener>,
+  listener: VNCStreamListener,
+): VNCStream {
+  const id = crypto.randomUUID();
+
+  streams.set(id, listener);
+
+  const sendFrame = (frame: Parameters<typeof encodeVNCFrame>[0]): Promise<void> =>
+    options.stream.send(encodeVNCFrame(frame));
+
+  void sendQuietly(sendFrame({ kind: 'vnc-open', stream: id }), options.logger);
+
+  return {
+    send: async (bytes) => {
+      for (let start = 0; start < bytes.byteLength; start += vncChunkLimitBytes) {
+        const data = new Uint8Array(bytes.subarray(start, start + vncChunkLimitBytes));
+
+        await sendFrame({ kind: 'vnc-data', stream: id, data });
+      }
+    },
+    close: () => {
+      if (streams.delete(id)) {
+        void sendQuietly(sendFrame({ kind: 'vnc-close', stream: id }), options.logger);
+      }
+    },
+  };
+}
+
+async function sendQuietly(sending: Promise<void>, logger: Logger): Promise<void> {
+  try {
+    await sending;
+  } catch (error) {
+    logger('computer.vnc_send_failed', { reason: String(error) }, 'warn');
   }
 }
 

@@ -93,5 +93,6 @@ export {
 export type { ComputerToolOptions } from './computer/computer-tool-options';
 export type { Computer, ComputerOptions } from './computer/start-computer';
 export { startComputer } from './computer/start-computer';
+export type { WatchConnection, WatchSocket } from './computer/watch/types';
 export { computerOwner, legacyComputerOwners } from './computer/computer-owner';
 export { makeUnexemptScans } from './computer/run-computer-call';

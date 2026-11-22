@@ -10,6 +10,7 @@ import type {
   ComputerReply,
   ComputerRequest,
   ComputerScanAsks,
+  VNCFrame,
 } from '@heynixie/wire';
 import { runComputerGuest } from '@heynixie/wire';
 import { createFakeClock } from '@zgeoff/testing/clock';
@@ -24,6 +25,15 @@ interface SetupOptions {
 
   // a write to a file of the new disk that goes missing, by the path the command names
   readonly loseWrite?: (path: string) => boolean;
+
+  // holds each wake of the sandbox until the promise settles
+  readonly wakeGate?: Promise<void>;
+}
+
+interface WatchSetup {
+  readonly connection: { readonly receive: (bytes: Uint8Array) => void; readonly end: () => void };
+  readonly received: Uint8Array[];
+  readonly closed: { isClosed: boolean };
 }
 
 async function setupTest(options: SetupOptions = {}) {
@@ -37,6 +47,7 @@ async function setupTest(options: SetupOptions = {}) {
   const log: { event: string; fields: Record<string, unknown> }[] = [];
   const state = { kills: 0, sleeps: 0, wakes: 0, guests: 0 };
   const asks: { current: ComputerScanAsks | null } = { current: null };
+  const vnc: { frames: VNCFrame[] } = { frames: [] };
 
   const answerRequest: ComputerHandler =
     options.answer ??
@@ -65,6 +76,17 @@ async function setupTest(options: SetupOptions = {}) {
           onReady: (ready) => {
             asks.current = ready;
           },
+          onVNCFrame: (frame, send) => {
+            vnc.frames.push(frame);
+
+            if (frame.kind === 'vnc-open') {
+              void send({
+                kind: 'vnc-data',
+                stream: frame.stream,
+                data: new TextEncoder().encode('RFB 003.008\n'),
+              });
+            }
+          },
         },
       );
 
@@ -91,10 +113,10 @@ async function setupTest(options: SetupOptions = {}) {
 
             return Promise.resolve();
           },
-          wake: () => {
+          wake: async () => {
             state.wakes += 1;
 
-            return Promise.resolve();
+            await options.wakeGate;
           },
         },
       } satisfies Sandbox;
@@ -132,6 +154,22 @@ async function setupTest(options: SetupOptions = {}) {
     stub,
     readDisk: (sandboxID: string) => readDiskFiles(disks, sandboxID),
     asks,
+    vnc,
+    openWatch: (): WatchSetup => {
+      const received: Uint8Array[] = [];
+      const closed = { isClosed: false };
+
+      const connection = computer.watch({
+        send: (bytes) => {
+          received.push(bytes);
+        },
+        close: () => {
+          closed.isClosed = true;
+        },
+      });
+
+      return { connection, received, closed };
+    },
     clock,
     log,
     state,
@@ -725,4 +763,200 @@ test('it destroys the sandboxes of the earlier release at a reset, so no later m
   const files = await ctx.readDisk(created?.id ?? '');
 
   expect(files).toStrictEqual([]);
+});
+
+test('it wakes a sleeping sandbox for a watch and relays the desktop stream to its socket', async () => {
+  const ctx = await setupTest();
+
+  await ctx.computer.call({
+    request: ctx.run('a'),
+    scan: ctx.pass,
+    scanText: ctx.pass,
+    timeoutMs: 5000,
+  });
+
+  ctx.clock.advance(30 * 60 * 1000);
+
+  await waitForCondition(() => ctx.state.sleeps === 1);
+
+  const watch = ctx.openWatch();
+
+  await waitForCondition(() => watch.received.length === 1);
+
+  expect([
+    new TextDecoder().decode(watch.received[0]),
+    ctx.state.wakes,
+    ctx.state.guests,
+  ]).toStrictEqual(['RFB 003.008\n', 1, 2]);
+});
+
+test('it counts a watch as open before the sandbox has woken', async () => {
+  const gate = Promise.withResolvers<void>();
+
+  const ctx = await setupTest({ wakeGate: gate.promise });
+
+  await ctx.computer.call({
+    request: ctx.run('a'),
+    scan: ctx.pass,
+    scanText: ctx.pass,
+    timeoutMs: 5000,
+  });
+
+  ctx.clock.advance(30 * 60 * 1000);
+
+  await waitForCondition(() => ctx.state.sleeps === 1);
+
+  const before = ctx.computer.isWatched();
+
+  ctx.openWatch();
+
+  expect([before, ctx.computer.isWatched()]).toStrictEqual([false, true]);
+
+  gate.resolve();
+});
+
+test('it reports not watched when the last watch closes, and not before', async () => {
+  const ctx = await setupTest();
+
+  const first = ctx.openWatch();
+  const second = ctx.openWatch();
+
+  first.connection.end();
+
+  const afterFirst = ctx.computer.isWatched();
+
+  second.connection.end();
+
+  expect([afterFirst, ctx.computer.isWatched()]).toStrictEqual([true, false]);
+});
+
+test('it counts a watch that ends twice once', async () => {
+  const ctx = await setupTest();
+
+  const first = ctx.openWatch();
+
+  ctx.openWatch();
+  first.connection.end();
+  first.connection.end();
+
+  expect(ctx.computer.isWatched()).toBe(true);
+});
+
+test('it keeps the sandbox awake for a watch until it closes', async () => {
+  const ctx = await setupTest();
+
+  const watch = ctx.openWatch();
+
+  await waitForCondition(() => watch.received.length === 1);
+
+  ctx.clock.advance(5 * 60 * 60 * 1000);
+
+  const sleepsWhileWatched = ctx.state.sleeps;
+
+  watch.connection.end();
+  ctx.clock.advance(30 * 60 * 1000);
+
+  await waitForCondition(() => ctx.state.sleeps === 1);
+
+  expect(sleepsWhileWatched).toBe(0);
+});
+
+test('it opens no stream and releases the hold when a watch closes during the wake', async () => {
+  const gate = Promise.withResolvers<void>();
+
+  const ctx = await setupTest({ wakeGate: gate.promise });
+
+  await ctx.computer.call({
+    request: ctx.run('a'),
+    scan: ctx.pass,
+    scanText: ctx.pass,
+    timeoutMs: 5000,
+  });
+
+  ctx.clock.advance(30 * 60 * 1000);
+
+  await waitForCondition(() => ctx.state.sleeps === 1);
+
+  const watch = ctx.openWatch();
+
+  await waitForCondition(() => ctx.state.wakes === 1);
+
+  watch.connection.end();
+  gate.resolve();
+
+  await waitForCondition(() => {
+    ctx.clock.advance(30 * 60 * 1000);
+
+    return ctx.state.sleeps === 2;
+  });
+
+  expect(ctx.vnc.frames).toStrictEqual([]);
+});
+
+test('it never makes a call wait for the turn because of a watch', async () => {
+  const ctx = await setupTest();
+
+  const watch = ctx.openWatch();
+
+  await waitForCondition(() => watch.received.length === 1);
+
+  const result = await ctx.computer.call({
+    request: ctx.run('a'),
+    scan: ctx.pass,
+    scanText: ctx.pass,
+    timeoutMs: 5000,
+  });
+
+  expect(result).toMatchObject({ status: 'reply' });
+});
+
+test('it passes the viewer handshake and viewing messages to the guest and drops its input', async () => {
+  const ctx = await setupTest();
+
+  const watch = ctx.openWatch();
+
+  await waitForCondition(() => watch.received.length === 1);
+
+  const handshake = new Uint8Array([...new TextEncoder().encode('RFB 003.008\n'), 1, 1]);
+  const request = new Uint8Array([3, 1, 0, 0, 0, 0, 5, 0, 3, 32]);
+
+  watch.connection.receive(handshake);
+  watch.connection.receive(new Uint8Array([4, 1, 0, 0, 0, 0, 0, 97]));
+  watch.connection.receive(new Uint8Array([5, 1, 0, 10, 0, 20]));
+  watch.connection.receive(request);
+
+  await waitForCondition(() => ctx.vnc.frames.length === 5);
+
+  expect(
+    ctx.vnc.frames.flatMap((frame) => (frame.kind === 'vnc-data' ? [[...frame.data]] : [])),
+  ).toStrictEqual([[...handshake.subarray(0, 12)], [1], [1], [...request]]);
+});
+
+test('it closes the socket and the stream of a watch whose viewer sends a message it cannot read', async () => {
+  const ctx = await setupTest();
+
+  const watch = ctx.openWatch();
+
+  await waitForCondition(() => watch.received.length === 1);
+
+  watch.connection.receive(new Uint8Array([...new TextEncoder().encode('RFB 003.008\n'), 1, 1]));
+  watch.connection.receive(new Uint8Array([200]));
+
+  await waitForCondition(() => ctx.vnc.frames.some((frame) => frame.kind === 'vnc-close'));
+
+  expect([watch.closed.isClosed, ctx.computer.isWatched()]).toStrictEqual([true, false]);
+});
+
+test('it tells the guest to close the stream when a watch ends', async () => {
+  const ctx = await setupTest();
+
+  const watch = ctx.openWatch();
+
+  await waitForCondition(() => watch.received.length === 1);
+
+  watch.connection.end();
+
+  await waitForCondition(() => ctx.vnc.frames.some((frame) => frame.kind === 'vnc-close'));
+
+  expect(ctx.vnc.frames.at(-1)).toMatchObject({ kind: 'vnc-close' });
 });

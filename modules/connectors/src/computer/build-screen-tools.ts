@@ -17,8 +17,8 @@ import { fitPicture, showPicture } from './show-picture';
 import type { ComputerAttempt } from './types';
 
 // The tools that look at and drive the whole desktop: a screenshot and a scroll run directly, and a
-// click and typing are queued. Each result says which window has focus, and whether the owner is
-// watching, which is never yet.
+// click and typing are queued. Each result says which window has focus, and whether the user is
+// watching.
 export function buildScreenTools(
   options: ComputerToolOptions,
   state: ComputerState,
@@ -110,7 +110,7 @@ function buildScreenshotTool(options: ComputerToolOptions): ToolDefinition {
           width: outcome.reply.width,
           height: outcome.reply.height,
           focus: toFocusResult(options, outcome.reply.focus),
-          isWatched: false,
+          isWatched: options.computer.isWatched(),
         },
       });
     },
@@ -182,7 +182,10 @@ function buildScrollTool(options: ComputerToolOptions): ToolDefinition {
         return { status: 'ok', ...(outcome.kind === 'refused' ? outcome.result : unexpected()) };
       }
 
-      const result = { focus: toFocusResult(options, outcome.reply.focus), isWatched: false };
+      const result = {
+        focus: toFocusResult(options, outcome.reply.focus),
+        isWatched: options.computer.isWatched(),
+      };
 
       // the scroll happened, so a picture the desktop could not take leaves it done and unshown
       return outcome.reply.base64 === undefined
@@ -545,7 +548,7 @@ async function runPreparedAct(
   return {
     result: {
       focus: toFocusResult(options, outcome.reply.focus),
-      isWatched: false,
+      isWatched: options.computer.isWatched(),
       isShown: picture !== null,
     },
     ...(picture === null ? {} : { images: [picture] }),
