@@ -29,7 +29,7 @@ export function renderTakeoverEnded(
   return renderSystemMessage({
     type: 'computer',
     at: formatMessageTime(record.recordedAt, null, times),
-    body: [`[#${record.sequence}] ${first}`, ...renderSeen(fields, mint)].join('\n'),
+    body: [`[#${ended.shortID}] ${first}`, ...renderSeen(fields, mint)].join('\n'),
   });
 }
 
@@ -75,7 +75,7 @@ function renderSeen(fields: EndedFields | null, mint: () => string): string[] {
     return [...sites, `Now: ${label}`];
   }
 
-  const fence = mint();
+  const fence = pickFence(mint, now.text);
 
   return [
     ...sites,
@@ -89,4 +89,12 @@ function renderSeen(fields: EndedFields | null, mint: () => string): string[] {
 // a secure site by its host alone, and any other with its scheme, so a plain address shows as one
 function toSite(origin: string): string {
   return origin.startsWith('https://') ? origin.slice('https://'.length) : origin;
+}
+
+// A fence that the text does not hold, so no text closes its block early. The minted ID is random,
+// and a fresh one replaces any that the text happens to hold.
+function pickFence(mint: () => string, text: string): string {
+  const fence = mint();
+
+  return text.includes(fence) ? pickFence(mint, text) : fence;
 }
