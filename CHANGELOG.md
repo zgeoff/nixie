@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.100.0](https://github.com/zgeoff/nixie/compare/v0.99.0...v0.100.0) (2026-11-22)
+
+
+### Features
+
+* **web:** add the notebook's read-only pages ([#1382](https://github.com/zgeoff/nixie/issues/1382)) ([61ec15f](https://github.com/zgeoff/nixie/commit/61ec15f131602c41a82cf0a26f215afca3b0a5d7))
+
 ## [0.99.0](https://github.com/zgeoff/nixie/compare/v0.98.0...v0.99.0) (2026-11-22)
 
 
