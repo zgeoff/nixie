@@ -1,6 +1,7 @@
 import type { Log } from '@heynixie/log';
 import type { FileSpec } from '@heynixie/sandbox';
 import type { ToolRun } from '@heynixie/tools';
+import { readImageEntry } from '../image/read-image-entry';
 import { readWebFetchPage } from '../web/read-web-fetch-page';
 import type { CodeRunInput } from './code-run-input';
 import { codeRunLimits } from './code-run-limits';
@@ -49,7 +50,7 @@ export const workDirectory = '/work';
 export const skillsDirectory = '/skills';
 
 // Resolves every input of the call, and refuses in the order the design lists: a file ID, a note
-// ID, a page ID, a skill, then the total size.
+// ID, an image ID, a page ID, a skill, then the total size.
 export async function resolveCodeRunInputs(
   deps: CodeRunInputDeps,
   run: ToolRun,
@@ -92,6 +93,23 @@ export async function resolveCodeRunInputs(
         path: `${workDirectory}/${entry.path}`,
         content: new TextEncoder().encode(body),
       });
+    }
+  }
+
+  for (const entry of input.files) {
+    if ('image' in entry) {
+      // an image resolves on every thread, with no tool requirement, as file.send does
+      const image = await readImageEntry(deps.log, entry.image);
+
+      if (image.kind === 'missing') {
+        return { kind: 'refused', message: `No image has the ID ${entry.image}.` };
+      }
+
+      if (image.kind === 'forgotten') {
+        return { kind: 'refused', message: `The image ${entry.image} was forgotten.` };
+      }
+
+      files.push({ path: `${workDirectory}/${entry.path}`, content: image.bytes });
     }
   }
 

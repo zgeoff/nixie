@@ -35,9 +35,19 @@ const codeRunInput = {
       description:
         'input files: a file an earlier code run on this thread wrote, by its file ID; a note, ' +
         "by its short ID, whose current body is the file's content as markdown, which only a " +
-        'caller that holds notebook.read can use; or a page this session fetched, by its page ' +
+        'caller that holds notebook.read can use; a stored image, by its image ID, whose bytes are ' +
+        'the image as stored, with the media type the store holds (PNG unless the image says ' +
+        'otherwise), so a path whose extension does not match is your choice; or a page this ' +
+        'session fetched, by its page ' +
         "ID, whose stored text is the file's content",
-      items: { oneOf: [buildFileInput('file'), buildFileInput('note'), buildFileInput('page')] },
+      items: {
+        oneOf: [
+          buildFileInput('file'),
+          buildFileInput('note'),
+          buildFileInput('image'),
+          buildFileInput('page'),
+        ],
+      },
     },
     skills: {
       type: 'array',
@@ -161,7 +171,7 @@ export function buildCodeRunTool(options: CodeRunToolOptions): ToolDefinition {
   };
 }
 
-function buildFileInput(idKey: 'file' | 'note' | 'page'): JsonSchema {
+function buildFileInput(idKey: 'file' | 'note' | 'image' | 'page'): JsonSchema {
   return {
     type: 'object',
     properties: { path: pathProperty, [idKey]: { type: 'string', minLength: 1 } },
