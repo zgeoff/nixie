@@ -136,10 +136,12 @@ multiplies a point on the picture by 1280 divided by `width`. Each screenshot an
 result carries `focus`, which is `{ kind: 'browser', tab, url }`, `{ kind: 'terminal' }` or
 `{ kind: 'other' }`, and `isWatched`, which is `true` while a [watch](#watching) is open.
 
-While a device holds the desktop, a screenshot still works and an act, a scroll, a page open, a
-close, a download and a file write answer `TAKEN_OVER`. A queued act that was prepared before a hold
-began, and runs after one ended, answers `SCREEN_CHANGED`, because the person may have moved the
-page or the focus.
+While a device holds the desktop, the direct reads still run: `browser_read`, `browser_screenshot`,
+`screenshot` and `read_file`. A scroll, a page open, a close, a download, a file write and a file
+export answer `TAKEN_OVER`, so the assistant never moves the person's view. A queued act stays
+pending, and the runner claims it after the hand-back, as [Taking over](#taking-over) says. A queued
+act that was prepared before a hold began, and runs after it ended, answers `SCREEN_CHANGED`,
+because the person may have moved the page or the focus.
 
 The result of a screen act carries the picture of the desktop after the act, as a screenshot does.
 The connector's response holds the picture beside the result. The action runner seals its bytes as
@@ -275,11 +277,15 @@ device holds the desktop at a time, and the hold lives in memory only.
 
 - From the moment `takeOver` is called, the assistant's new calls that change the desktop wait. A
   queued action of a `computer.` tool stays pending, with no attempt and no wake, until the hold
-  ends. The runner reads the hold at its claim and again when an attempt starts, and an in-step
-  action again when it starts, so a take-over between them leaves no attempt and no call. The call
-  waits for the calls running when it was made, each up to its own limit from the moment it took its
-  turn, and a call that arrives later is not waited for. It answers `BUSY_TOO_LONG` when they run
-  past them. A second device gets `HELD_ELSEWHERE`.
+  ends. The runner reads the hold at its claim. As the transaction that writes an attempt ends, the
+  attempt asks the computer to admit its call, which checks the hold and counts the call as running
+  in one synchronous step. When a hold has begun, the transaction rolls back, so the attempt leaves
+  no record and makes no call. A take-over after the admission waits for that call. An in-step
+  action starts its attempt the same way.
+- The take-over waits for the calls running when it was made, each up to its own limit, and a call
+  that arrives later is not waited for. An admitted call's limit is the turn wait until its computer
+  call takes the turn, and then that call's limit. The take-over answers `BUSY_TOO_LONG` when a call
+  runs past its limit. A second device gets `HELD_ELSEWHERE`.
 - The relay passes the holder's keys and pointer to the VNC server. Each one holds off the idle
   hand-back, which ends the hold with `idle` after `computer.idle_hand_back_minutes` of no input, 30
   by default. When a hold ends, the relay drops the holder's queued key and pointer messages, and
@@ -291,10 +297,12 @@ device holds the desktop at a time, and the hold lives in memory only.
   ends it, the relay releases what the viewer pressed and closes every socket of the holder's
   device.
 - At the start of a hold the guest starts to list the sites its browser shows: the tab in view at
-  the start, each tab that comes into view and each page that navigates while it shows. A tab that
-  the person opens joins the tabs, so a hand-back names it. At the end, nixie reads the sites, the
-  window in focus and the terminal's text, if the terminal is in focus. The text that the screen
-  cleared is not in the terminal's text.
+  the start, each page that navigates and each tab that the person opens. The guest reads each
+  address from the browser, never from a page. Playwright turns on focus emulation for each page, so
+  Chromium reports every tab as visible: a background tab's navigation is listed too, and a switch
+  to a tab that does not navigate is not. A tab that the person opens joins the tabs, so a hand-back
+  names it. At the end, nixie reads the sites, the window in focus and the terminal's text, if the
+  terminal is in focus. The text that the screen cleared is not in the terminal's text.
 
 A hold writes 2 records on the conversation's thread. `computer.takeover_started` names the device
 and wakes nothing. `computer.takeover_ended` names what ended the hold and for how long, and wakes
