@@ -35,9 +35,9 @@ run it since `up`.
    bun verify browser snapshot --until-text 'Watching the computer'
    ```
 
-   Expect: both commands exit 0. The status text comes only after the viewer drew the picture, so a
-   blank desktop times the wait out. The snapshot shows the heading "Computer", the status "Watching
-   the computer. You can look but not touch." and an image named "The computer's desktop".
+   Expect: both commands exit 0. The status text appears once the viewer has drawn the picture, so
+   the wait times out on a blank desktop. The snapshot shows the heading "Computer", the status
+   "Watching the computer. You can look but not touch." and an image named "The computer's desktop".
 
 3. Check that nixie stored no watch address:
 
@@ -45,8 +45,8 @@ run it since `up`.
    bun verify db query "select count(*) as leaked from client_actions where procedure = 'computer.watch' and result like '%ticket%'"
    ```
 
-   Expect: one row, with `leaked` 0. A retry of the call mints a fresh address, so nixie keeps no
-   address in the stored result.
+   Expect: one row, with `leaked` 0. The stored result holds no address, because a retry of the call
+   mints a fresh one.
 
 4. Leave the page, and come back to it:
 
