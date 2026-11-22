@@ -43,7 +43,7 @@ async function setupTest() {
         { headers: { 'Content-Type': 'text/html' } },
       ),
       '/opener': new Response(
-        `<html><title>Opener</title><body><button onclick="window.open('/terms')">New tab</button></body></html>`,
+        `<html><title>Opener</title><body><button onclick="window.open('http://other.test:' + location.port + '/terms')">New tab</button></body></html>`,
         { headers: { 'Content-Type': 'text/html' } },
       ),
       '/terms': new Response('<html><title>Terms</title><body>the terms</body></html>', {
@@ -414,7 +414,7 @@ test.skipIf(!hasChromium)(
 
     expect(ended).toMatchObject({
       kind: 'takeover-ended',
-      origins: ['http://pages.test'],
+      origins: ['http://pages.test', 'http://other.test'],
       now: { kind: 'browser', tab: 't2', text: expect.stringContaining('the terms') },
     });
   },

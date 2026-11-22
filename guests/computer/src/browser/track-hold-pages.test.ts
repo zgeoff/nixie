@@ -23,7 +23,12 @@ async function setupTest() {
   const context = await browser.newContext();
 
   await context.route('**/*', (route) =>
-    route.fulfill({ contentType: 'text/html', body: '<html><title>page</title>page</html>' }),
+    route.fulfill({
+      contentType: 'text/html',
+      body: route.request().url().endsWith('/opener')
+        ? `<html><body><button style="width:200px;height:100px" onclick="window.open('http://popup.test/terms')">open</button></body></html>`
+        : '<html><title>page</title>page</html>',
+    }),
   );
 
   const state: BrowserState = {
@@ -35,12 +40,30 @@ async function setupTest() {
   };
 
   const log = makeOriginLog();
+  const arrivals = Array.from({ length: 4 }, () => Promise.withResolvers<void>());
+  const popupArrival = Promise.withResolvers<void>();
+  const seen = { count: 0 };
 
-  await trackHoldPages(state, log);
+  await trackHoldPages(state, {
+    ...log,
+    record: (url) => {
+      log.record(url);
+      arrivals[seen.count]?.resolve();
+      seen.count += 1;
+
+      if (url.startsWith('http://popup.test')) {
+        popupArrival.resolve();
+      }
+    },
+  });
 
   return {
     state,
     log,
+
+    // settles once the guest has been told of that many pages in view since the page was set up
+    reported: (number: number) => arrivals[number - 1]?.promise,
+    popupReported: popupArrival.promise,
     openPage: async (url: string) => {
       const page = await context.newPage();
 
@@ -52,19 +75,21 @@ async function setupTest() {
 }
 
 test.skipIf(!hasChromium)(
-  'it lists a tab that comes into view without navigating, in the order shown',
+  'it lists the sites of tabs that report coming into view, in the order shown',
   async () => {
     const ctx = await setupTest();
     const first = await ctx.openPage('http://one.test/a');
     const second = await ctx.openPage('http://two.test/b');
 
+    // each page's navigation reports it once
+    await ctx.reported(2);
+
     ctx.log.begin(null);
 
     await first.evaluate("document.dispatchEvent(new Event('visibilitychange'))");
+    await ctx.reported(3);
     await second.evaluate("document.dispatchEvent(new Event('visibilitychange'))");
-
-    // the binding answers asynchronously, so a third call that comes back after it has seen both
-    await first.evaluate('1');
+    await ctx.reported(4);
 
     expect(ctx.log.end()).toStrictEqual(['http://one.test', 'http://two.test']);
   },
@@ -106,3 +131,24 @@ test.skipIf(!hasChromium)('it leaves a tab that a tool opens to the tool', async
 
   expect(ctx.state.tabs.size).toBe(0);
 });
+
+test.skipIf(!hasChromium)(
+  'it lists the site of a tab that a click opened, after the site that was in view',
+  async () => {
+    const ctx = await setupTest();
+    const opener = await ctx.openPage('http://opener.test/opener');
+
+    await ctx.reported(1);
+
+    ctx.log.begin(opener.url());
+
+    const popup = ctx.state.context.waitForEvent('page');
+
+    await opener.mouse.click(100, 50);
+
+    await popup;
+    await ctx.popupReported;
+
+    expect(ctx.log.end()).toStrictEqual(['http://opener.test', 'http://popup.test']);
+  },
+);
