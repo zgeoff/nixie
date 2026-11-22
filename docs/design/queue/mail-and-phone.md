@@ -5,9 +5,9 @@
 
 The assistant gets a mailbox and a mobile number of its own. It reads, waits for, sends and mutes
 mail, and reads, waits for and sends texts. Sign-up codes reach it this way, and
-[accounts, sign-in and the wallet](accounts-and-wallet.md) uses the mailbox as every account's
-username and way back in. New mail starts a task whose trigger matches, or reaches the conversation
-as a system message. A new text reaches the conversation.
+[accounts and sign-in](accounts.md) uses the mailbox as every account's username and way back in.
+New mail starts a task whose trigger matches, or reaches the conversation as a system message. A new
+text reaches the conversation.
 
 ## Shape
 
@@ -15,18 +15,14 @@ as a system message. A new text reaches the conversation.
 flowchart LR
   host[mail host] -->|"JMAP push"| mail[mail-jmap adapter]
   provider[phone provider] -->|"polled"| phone[phone-twilio adapter]
-  mail --> log[(event log)]
-  phone --> log
-  log -->|"mail trigger"| task[task run]
-  log -->|"system message"| conv[conversation]
+  mail --> source[connectors module]
+  phone --> source
+  source -->|"open wait"| wait[mail.wait, phone.wait]
+  source -->|"mail trigger"| task[task run]
+  source -->|"system message"| conv[conversation]
   model[assistant] -->|"mail.*, phone.*"| point[decision point]
-  point --> conn[connectors module]
-  conn --> mail
-  conn --> phone
+  point --> source
 ```
-
-The [decision point](../../architecture/policy/decision-point.md) runs before every tool call, and
-asks you or lets the call run by the effects it declares.
 
 ## Contracts
 
@@ -42,12 +38,11 @@ mail.read({ message: 'mz4k8q2w7p' });
 //     attachments: [{ attachment: 1, name: 'board.png', bytes: 30422 }] }
 mail.mark({ message: 'mz4k8q2w7p', isUnread: false }); // → { message: 'mz4k8q2w7p', isUnread: false }
 mail.saveAttachment({ message: 'mz4k8q2w7p', attachment: 1 });
-// → { file: 'f7m3q8k2wz', name: 'board.png' }   a file like computer.export_file's; at most 25 MiB
-mail.send({ to: 'hello@library.example.org', subject, text, files: ['f2r8k5w1mz'] }); // one address
-mail.reply({ message: 'mz4k8q2w7p', text, files: [] }); // threads with In-Reply-To; to: the sender
+// → { file: 'f7m3q8k2wz', name: 'board.png' }   stored as computer.export_file stores a file
+mail.send({ to: 'hello@library.example.org', subject, text, files: ['f2r8k5w1mz'], images: [] });
+mail.reply({ message: 'mz4k8q2w7p', text, files: [], images: [] }); // In-Reply-To; to: the sender
 mail.wait({ from: 'hello@library.example.org', seconds: 120 }); // from, subject, text: as mail.list
-// → the first matching mail, as mail.list lists it, or { message: null } after seconds. The
-//   constraints say which mail a wait can take.
+// → the first mail it takes, as mail.list lists it, or { message: null } after seconds
 mail.mute({ from: 'news@shop.example' }); // an address, or a domain after @
 mail.unmute({ from: 'news@shop.example' });
 // → { muted: ['news@shop.example'] }
@@ -56,53 +51,65 @@ mail.unmute({ from: 'news@shop.example' });
 | Tool                                                         | Effect  | Runs   | Destination   |
 | ------------------------------------------------------------ | ------- | ------ | ------------- |
 | `mail.list`, `mail.read`, `mail.saveAttachment`, `mail.wait` | `read`  | direct | none          |
-| `mail.mark`                                                  | `note`  | direct | none          |
-| `mail.mute`, `mail.unmute`                                   | `write` | queued | the address   |
+| `mail.mark`                                                  | `write` | direct | none          |
+| `mail.mute`, `mail.unmute`                                   | `write` | queued | none          |
 | `mail.send`, `mail.reply`                                    | `send`  | queued | the recipient |
 | `phone.list`, `phone.wait`                                   | `read`  | direct | none          |
 | `phone.send`                                                 | `send`  | queued | the number    |
 
-- The effects are those of [the decision point](../../architecture/policy/decision-point.md). Muting
-  asks because it decides what wakes the conversation, and a mail could ask the assistant to mute a
-  site's security notices.
-- The "always allow" rule of `phone.send` pins `to`.
-- The "always allow" rule of `mail.send` pins `to`. The rule of `mail.reply` pins its destination,
-  the sender of the message, which the rule builder pins as it pins an argument.
-- `files` takes up to 10 IDs, 25 MiB in all. Each ID names a file, such as a saved attachment, or an
-  image.
+- The effects are those of [the decision point](../../architecture/policy/decision-point.md). No
+  starter rule allows `mail.mute`, so it asks: it decides what wakes the conversation, and a mail
+  could ask the assistant to mute a site's security notices.
+- The "always allow" rules of `mail.send` and `phone.send` pin `to`. The rule of `mail.reply` pins
+  its destination, the sender of the message. The rule builder in the policy module gains that pin
+  in this build.
+- `mail.reply` sets no reply target, so a task run that a mail started never replies without a rule
+  or your answer.
+- `files` takes up to 10 file IDs and `images` up to 10 image IDs, 25 MiB in all. A file resolves
+  only on the conversation or task run that made it. The tool checks each ID at the call, and the
+  send checks again when the queued action runs.
+- `mail.saveAttachment` refuses `TOO_BIG` above the attachments table's limit.
 - Refusals: `UNKNOWN_MESSAGE`, `UNKNOWN_ATTACHMENT`, `TOO_BIG`, `UNKNOWN_FILE`, `FILE_FORGOTTEN`,
   `UNKNOWN_IMAGE`, `IMAGE_FORGOTTEN`, `BAD_ADDRESS` and `SEND_FAILED`.
 - A send reconciles an unknown outcome by checking the Sent mailbox for an `X-Nixie-Action` header
   that holds the action's ID.
 
 ```text
-mail_messages                -- connectors module; short ID → JMAP ID, for messages and threads
+mail_messages                -- connectors module; short ID → JMAP ID for messages and threads, and
+                                taken: null | 'wait' | 'task' | 'conversation'
 mail.received                -- one per new mail, keyed by its JMAP ID; from and subject erasable
-mail.muted, mail.unmuted     -- the mute list is their projection; the address is erasable
+mail.muted, mail.unmuted     -- the mute list is their projection; the address is plain
 ```
 
 The adapter's credential is `deployment:mail`, a `connector_credentials` entry whose value is JSON:
-`{ sessionURL, token }`.
+`{ sessionURL, token }`. The JMAP state, the adapter's cursor, is written in the transaction that
+writes the mail's record.
 
 ### New mail
 
 ```ts
-// core module; a new member of the trigger union, beside the poll filter of the polls design
-type Trigger =
-  | { schedule: Schedule }
-  | { at: string }
-  | { poll: PollFilter }
-  | { mail: MailFilter };
+// contract lib: a new member of the trigger union, in the next definitions format
+type Trigger = { schedule: Schedule } | { at: string } | { mail: MailFilter }; // …existing members
 type MailFilter = {
   from?: string[]; // addresses, or a domain after @, without case; absent: every mail
   subject?: string; // a substring of the subject, without case
 }; // no body filter: a trigger matches on the push, before nixie reads the body
+```
 
-// a task run's first message, one line per mail it takes, from and subject marked outside:
-// New mail from <from>: <subject> (message mz4k8q2w7p)
+A task run that mail starts gets one line per mail, with from and subject in the untrusted block
+that system messages use:
 
-// with no task matching, the conversation gets a system message
-// <system type="mail">{ messages: [{ message: 'mz4k8q2w7p', from, subject }] }</system>
+```text
+New mail from <from>: <subject> (message mz4k8q2w7p)
+```
+
+Mail that no task takes reaches the conversation as a system message, rendered as the built ones
+are:
+
+```text
+<system-message type="mail" id="…" at="…">
+New mail: 1 message. <untrusted id="…">from hello@library.example.org: Your code</untrusted> (message mz4k8q2w7p)
+</system-message>
 ```
 
 ### The phone
@@ -112,13 +119,13 @@ type MailFilter = {
 phone.list({ from: '+61400000000' }); // from: optional
 // → { number: '+61411111111', texts: [{ text: 'tx8k2m4q9w', from: 'Example', body: 'Your code is 5521',
 //     at }], next: null }   number: the assistant's own
-phone.wait({ from: 'Example', seconds: 120 }); // as mail.wait: the first matching text, or { text: null }
+phone.wait({ from: 'Example', seconds: 120 }); // as mail.wait: the first text it takes, or { text: null }
 phone.send({ to: '+61400000000', body: 'Running 10 minutes late.' }); // → { text: 'tx2w9q4k8m' }
 // refusals: BAD_NUMBER, TOO_LONG (over 640 characters), SEND_FAILED
 ```
 
 ```text
-phone_texts                  -- connectors module; short ID → the provider's message ID
+phone_texts                  -- connectors module; short ID → the provider's message ID, and taken
 phone.text_received          -- one per new text, keyed by the provider's message ID; from and body erasable
 ```
 
@@ -131,7 +138,8 @@ Reading:
 
 - Every field of a mail or a text comes back marked as outside content, and each link in a mail as a
   link ID. HTML mail is parsed in a fetch sandbox, through a new frame of the wire lib that carries
-  the HTML, as [the Gmail design](gmail-calendar-drive-tools.md) parses it.
+  the HTML. This build defines that frame, and the [Gmail design](gmail-calendar-drive-tools.md)
+  uses it.
 - Link IDs count per conversation session, or per task run.
 - A saved attachment counts as untrusted, like a download.
 - A one-time code in a mail or a text is visible to the assistant, which types it with
@@ -142,29 +150,37 @@ Reading:
   can send a text under any sender name, so a code from a named sender is only as good as a code
   from a stranger.
 
-New mail:
+Where new mail goes:
 
-- The adapter follows the host's JMAP push stream. A lost stream reconnects, and nixie reads what
-  arrived since its JMAP state, the adapter's cursor.
-- At its first start, the adapter records the mailbox's state and writes no record for older mail.
-  After a resync, it writes a record for each mail it missed, and only mail from the last hour
-  starts a task or a system message.
-- A wait can take a matching mail that arrived up to 2 minutes before the call or during it, and
-  that no task, system message or other wait took. Of two open waits that match, the older takes the
-  mail.
-- A new mail that matches an open wait goes to that wait, and starts no task and no system message.
+- The connectors module runs the push loop and the phone poll, which `apps/server` starts. For each
+  new mail it writes the record, then gives the mail to the first of these that takes it, and marks
+  `taken`:
+  1. the oldest open `mail.wait` that matches;
+  2. every task whose trigger matches, with one trigger event per definition, keyed by the
+     definition and the JMAP ID;
+  3. the conversation's `mail` system message.
+- A wait also takes a matching mail from the 2 minutes before its call whose `taken` is still null.
 - Mail from a muted sender starts no task and no system message, and `mail.list` and `mail.wait`
   still find it.
-- `phone.wait` takes texts by the same rules.
-- One mail starts every task whose trigger matches, one trigger event per definition, keyed by the
-  definition and the JMAP ID.
-- A mail that finds its task still running waits, and the trigger fires again when that task run
-  ends, with every mail that waited.
-- New mail that no task takes goes to the conversation in a `mail` system message, which wakes the
-  conversation as a reminder does. The first mail goes at once, and each mail in the next 15 minutes
-  folds into one message at the window's end. A restart rebuilds the window from the log.
-- A text that no `phone.wait` returns goes to the conversation in a `text` system message with its
-  from and body, folded in the same 15-minute window.
+- A mail whose task is still running reaches the conversation's system message instead, so no mail
+  is lost to a skipped trigger.
+- The source matches triggers and mutes on the values it just read from the host, never on a
+  projection of erasable fields.
+- The first mail goes to the conversation at once, and wakes it as a reminder does. Each mail in the
+  next 15 minutes folds into one message at the window's end, and a mail after a quiet window goes
+  at once again. A restart rebuilds the window from `taken`, and a mail forgotten inside the window
+  drops out of it.
+- Texts follow the same rules, with no task step: an open `phone.wait`, then a `text` system message
+  in a window of its own.
+
+Start and resync:
+
+- At its first start, each adapter records the host's or the provider's state, and writes no record
+  for older mail or texts.
+- After a resync or an outage, it writes a record for each mail or text it missed, and only those
+  from the last hour start a task or a system message.
+- The 15-minute fold window, the hour a resync delivers, and the 20-second and 3-second polls are
+  settings with those defaults.
 
 Mailbox and number:
 
@@ -177,8 +193,6 @@ Mailbox and number:
   same body, created during the attempt and recorded by no other send. The provider takes no
   idempotency key, so two identical texts sent in the same minute can still confuse it. The send
   asks you when it finds no message.
-- The 15-minute fold window, the hour of mail a resync delivers, and the 20-second and 3-second
-  polls are settings with those defaults.
 - Forgetting a `mail.received` record erases nixie's copy of its fields, and leaves the mail at the
   host.
 
@@ -187,7 +201,6 @@ Mailbox and number:
 - The JMAP calls, and how `mail.list` pages.
 - The provider's API calls, and how `phone.list` pages.
 - The tools' descriptions and the refusal wording.
-- How the trigger source holds mail that waits for a task run to end.
 
 ## Out of scope
 
