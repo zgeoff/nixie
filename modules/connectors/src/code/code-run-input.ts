@@ -6,6 +6,7 @@ const pathPattern = /^[\w./-]{1,200}$/u;
 type CodeRunFileInput =
   | { readonly path: string; readonly file: string }
   | { readonly path: string; readonly note: string }
+  | { readonly path: string; readonly image: string }
   | { readonly path: string; readonly page: string };
 
 export interface CodeRunInput {
@@ -20,6 +21,7 @@ const pathSchema = z.string().regex(pathPattern);
 const fileInputSchema = z.union([
   z.strictObject({ path: pathSchema, file: z.string().min(1) }),
   z.strictObject({ path: pathSchema, note: z.string().min(1) }),
+  z.strictObject({ path: pathSchema, image: z.string().min(1) }),
   z.strictObject({ path: pathSchema, page: z.string().min(1) }),
 ]);
 

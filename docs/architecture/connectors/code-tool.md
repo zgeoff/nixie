@@ -24,10 +24,10 @@ flowchart LR
 The input schema is strict. A call names a `language` (`python`, `javascript`, `typescript` or
 `bash`), a `program` of 1 to 100,000 characters, up to 50 `files` and up to 10 distinct `skills`.
 Each file has a `path` in the work folder and either a `file` ID, which a code run on the same
-thread wrote, or a `page` ID, whose stored text is the file's content. A path holds 1 to 200
-characters of `A-Z a-z 0-9 . _ / -`, has no empty, `.` or `..` segment, is never under `out/`, and
-appears once. A skill is one that the caller's task pinned, and it lands at `/skills/<name>/`, owned
-by root and read-only to the program.
+thread wrote, a `note` ID, an `image` ID, which names a stored image, or a `page` ID, whose stored
+text is the file's content. A path holds 1 to 200 characters of `A-Z a-z 0-9 . _ / -`, has no empty,
+`.` or `..` segment, is never under `out/`, and appears once. A skill is one that the caller's task
+pinned, and it lands at `/skills/<name>/`, owned by root and read-only to the program.
 
 The result holds `exitCode` (null when a signal ended the program), `stdout` and `stderr` (the start
 of each stream as `text`, its `bytes`, `isCut`, and `file`, the ID of the kept stream when the
@@ -46,8 +46,8 @@ limit with its figure, and where the program writes its output (`out/`) and read
 1. Parse the call, and refuse a malformed one.
 2. Take a slot. At most `runsAtOnce` code runs run at once in one server process, and a further call
    gets the tool error that names the limit
-3. Resolve the inputs, refusing in this order: a file ID, a note ID, a page ID, a skill, then the
-   total size.
+3. Resolve the inputs, refusing in this order: a file ID, a note ID, an image ID, a page ID, a
+   skill, then the total size.
 4. Create a sandbox of kind `code_run` from the code image at the `codeRun` size row, with owner
    `code_run:<callID>`. The setup copies each input in, and the program goes to `/opt/nixie`.
 5. Run the program as the user `code` in `/work`, under the wall-time limit, and read the guest's
@@ -94,6 +94,12 @@ the `codeRun` size row after a memory kill, because the program chose how much m
   the server passes the notebook's implementation. The sandbox holds the body unencrypted until the
   code run ends, as it holds a fetched page, and a forget of the note never reaches a file that the
   program wrote.
+- An image file copies the stored image's bytes into the work folder as they are stored, with no
+  conversion, so the media type is the one the store holds and a path whose extension does not match
+  is the model's choice. An image ID resolves on every thread with no tool requirement, as it does
+  for `file.send`, and an unknown or forgotten image gets a refusal that holds its ID. The bytes
+  count toward the total input size. A forget of the image never reaches a file that the program
+  wrote.
 - A file ID resolves only on its own thread. A worker's tool calls write their records on the
   caller's thread, so the caller reads the files of its worker's code runs. A stored page lasts one
   session, so a page ID works only in the session that fetched it.
