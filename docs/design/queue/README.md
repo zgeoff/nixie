@@ -25,6 +25,7 @@ is deleted.
 | Google tools    | [Gmail, Calendar and Drive](gmail-calendar-drive-tools.md)                                        |
 | MCP servers     | [the MCP proxy build](mcp-proxy-build.md)                                                         |
 | Channels        | [the push notice](push-notice.md)                                                                 |
+| Web client      | [the images page](image-gallery.md)                                                               |
 | Devices         | [the camera, the speaker and the microphone](devices.md)                                          |
 | Accounts        | [accounts and sign-in](accounts.md), [the wallet](wallet.md), [mail and phone](mail-and-phone.md) |
 
