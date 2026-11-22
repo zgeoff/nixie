@@ -428,3 +428,30 @@ test('it runs no call for an action when a hold begins after the batch was read'
     0,
   ]);
 });
+
+test('it runs no call and records no attempt when a hold begins between the last check and the write', async () => {
+  const ctx = await setupTest();
+  const queued = await ctx.seed.inStepAction({ step: ctx.step });
+
+  // the reads before the write find no hold, and the read after it finds one
+  const reads: { count: number } = { count: 0 };
+
+  const settled = await ctx.runStep({
+    runCall: ctx.runCall({ status: 'done', resultSequence: 7, result: {}, images: [] }),
+    readHeldToolPrefixes: () => {
+      reads.count += 1;
+
+      return reads.count <= 2 ? [] : ['test.'];
+    },
+    checkAttempt: () => Promise.resolve({ kind: 'go', destinations: [] }),
+  });
+
+  const action = await readTestAction(ctx.writer, queued.action_id);
+
+  expect([settled, ctx.calls, action.status, action.attempt_count]).toStrictEqual([
+    [],
+    [],
+    'pending',
+    0,
+  ]);
+});

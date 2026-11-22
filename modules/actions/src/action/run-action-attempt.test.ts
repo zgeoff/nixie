@@ -852,3 +852,46 @@ test('it starts no attempt and calls nothing when a hold begins after the policy
     null,
   ]);
 });
+
+test('it starts no attempt and calls nothing when a hold begins between the last check and the write', async () => {
+  const ctx = await setupTest();
+  const step = await createTestStep(ctx.context);
+
+  const queued = await queueTestAction(ctx.context, {
+    step,
+    tool: 'test.send',
+    actionHash: 'sha256:send-1',
+    arguments: { to: 'team' },
+    decision: { outcome: 'allow', stage: 4, rule: { id: 'test-rule', revision: 1 } },
+  });
+
+  const stub = buildStubConnector(() => ({ kind: 'success', result: {} }));
+
+  const lease = await claimTestAction(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  // the first read finds no hold, and the read after the write finds one
+  const reads: { count: number } = { count: 0 };
+
+  await runActionAttempt(ctx.context, lease, {
+    connectors: new Map([['test.send', stub.connector]]),
+    leaseMs: 60_000,
+    readHeldToolPrefixes: () => {
+      reads.count += 1;
+
+      return reads.count === 1 ? [] : ['test.'];
+    },
+    checkAttempt: () => Promise.resolve({ kind: 'go', destinations: [] }),
+  });
+
+  const action = await readTestAction(ctx.writer, queued.actionID);
+  const leases = await readTestLeases(ctx.writer);
+
+  const actionLease = leases.find((entry) => entry.kind === 'action');
+
+  expect([stub.calls, action.status, action.attempt_count, actionLease?.holder]).toStrictEqual([
+    [],
+    'pending',
+    0,
+    null,
+  ]);
+});

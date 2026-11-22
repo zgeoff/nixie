@@ -12,8 +12,8 @@ export interface AttemptStartOptions {
   // whether a barred attempt releases its lease; a step that holds the task's lease keeps it
   readonly resetWhenBarred: boolean;
 
-  // The tool name prefixes whose actions wait. The start reads them last, so a hold that begins after
-  // the policy check bars the attempt before it records.
+  // The tool name prefixes whose actions wait. The start reads them again after it writes the
+  // attempt, and rolls the write back when a hold has begun, so no attempt outlives a hold.
   readonly readHeldToolPrefixes?: (() => readonly string[]) | undefined;
 }
 
@@ -29,52 +29,7 @@ export async function writeAttemptStarted(
   attempt: Attempt,
   options: AttemptStartOptions,
 ): Promise<AttemptStart> {
-  const start = await withWriteTransaction(
-    context.log.writer,
-    async (tx): Promise<AttemptStart> => {
-      const now = context.clock.now();
-
-      await requireLease(tx, attempt.lease, now);
-
-      const action = await tx
-        .$extendTables<ActionsTables>()
-        .selectFrom('actions')
-        .innerJoin('tasks', 'tasks.task_id', 'actions.task_id')
-        .select((eb) => eb.or([buildCancelledCheck(eb), buildHeldCheck(eb)]).as('is_barred'))
-        .select(['actions.held_by_proposal_id', 'actions.deadline_at', 'actions.tool'])
-        .where('actions.action_id', '=', attempt.action.action_id)
-        .executeTakeFirstOrThrow();
-
-      const isPaused = await probeTaskPaused(tx, attempt.action.task_id);
-
-      const isBarred = action.is_barred === 1 || action.is_barred === true;
-      const heldPrefixes = options.readHeldToolPrefixes?.() ?? [];
-      const isToolHeld = heldPrefixes.some((prefix) => action.tool.startsWith(prefix));
-
-      if (isBarred || isPaused || isToolHeld || action.held_by_proposal_id !== null) {
-        if (options.resetWhenBarred) {
-          await resetLease(tx, attempt.lease);
-        }
-
-        return 'barred';
-      }
-
-      if (isPastDeadline(action, now)) {
-        return 'past_deadline';
-      }
-
-      await writeRecordsInTransaction(tx, context.log, [
-        {
-          kind: 'action.attempt_started',
-          definitions: context.definitions(),
-          thread: attempt.action.task_id,
-          payload: { actionID: attempt.action.action_id, attempt: attempt.attempt },
-        },
-      ]);
-
-      return 'started';
-    },
-  );
+  const start = await runAttemptStart(context, attempt, options);
 
   if (start === 'started' && NIXIE_TEST_BUILD) {
     await waitAtFaultPoint('attempt.record.after', {
@@ -84,4 +39,90 @@ export async function writeAttemptStarted(
   }
 
   return start;
+}
+
+// Thrown inside the start's transaction to roll the attempt's record back
+class HoldBegunError extends Error {
+  override name = 'HoldBegunError';
+}
+
+async function runAttemptStart(
+  context: TasksContext,
+  attempt: Attempt,
+  options: AttemptStartOptions,
+): Promise<AttemptStart> {
+  try {
+    return await readAndWriteStart(context, attempt, options);
+  } catch (error) {
+    if (!(error instanceof HoldBegunError)) {
+      throw error;
+    }
+  }
+
+  if (options.resetWhenBarred) {
+    await withWriteTransaction(context.log.writer, async (tx) => {
+      await resetLease(tx, attempt.lease);
+    });
+  }
+
+  return 'barred';
+}
+
+function readAndWriteStart(
+  context: TasksContext,
+  attempt: Attempt,
+  options: AttemptStartOptions,
+): Promise<AttemptStart> {
+  return withWriteTransaction(context.log.writer, async (tx): Promise<AttemptStart> => {
+    const now = context.clock.now();
+
+    await requireLease(tx, attempt.lease, now);
+
+    const action = await tx
+      .$extendTables<ActionsTables>()
+      .selectFrom('actions')
+      .innerJoin('tasks', 'tasks.task_id', 'actions.task_id')
+      .select((eb) => eb.or([buildCancelledCheck(eb), buildHeldCheck(eb)]).as('is_barred'))
+      .select(['actions.held_by_proposal_id', 'actions.deadline_at', 'actions.tool'])
+      .where('actions.action_id', '=', attempt.action.action_id)
+      .executeTakeFirstOrThrow();
+
+    const isPaused = await probeTaskPaused(tx, attempt.action.task_id);
+
+    const isBarred = action.is_barred === 1 || action.is_barred === true;
+    const isToolHeld = probeToolHeld(options, action.tool);
+
+    if (isBarred || isPaused || isToolHeld || action.held_by_proposal_id !== null) {
+      if (options.resetWhenBarred) {
+        await resetLease(tx, attempt.lease);
+      }
+
+      return 'barred';
+    }
+
+    if (isPastDeadline(action, now)) {
+      return 'past_deadline';
+    }
+
+    await writeRecordsInTransaction(tx, context.log, [
+      {
+        kind: 'action.attempt_started',
+        definitions: context.definitions(),
+        thread: attempt.action.task_id,
+        payload: { actionID: attempt.action.action_id, attempt: attempt.attempt },
+      },
+    ]);
+
+    if (probeToolHeld(options, action.tool)) {
+      throw new HoldBegunError();
+    }
+
+    return 'started';
+  });
+}
+
+function probeToolHeld(options: AttemptStartOptions, tool: string): boolean {
+  const heldPrefixes = options.readHeldToolPrefixes?.() ?? [];
+
+  return heldPrefixes.some((prefix) => tool.startsWith(prefix));
 }
