@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { seedCodeRunFiles } from '@heynixie/connectors/test-utils';
+import { seedCodeRunFiles, seedImage } from '@heynixie/connectors/test-utils';
 import { clientHeaderName } from '@heynixie/contract';
 import type { LogTables } from '@heynixie/log';
 import { removeRecordKey } from '@heynixie/log';
@@ -36,6 +36,50 @@ test('#files.read returns the bytes of a file with its name and image type', asy
     type: 'image/png',
     bytes: pngHeader,
   });
+});
+
+test('#files.read serves a stored image by its short ID', async () => {
+  const ctx = await setupTest();
+
+  const bytes = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0, 1, 2, 3]);
+
+  await seedImage(ctx.context.log, { image: 'im4k9q2x7a', source: 'draw', bytes });
+
+  const file = await ctx.client.files.read({ file: 'im4k9q2x7a' });
+  const buffer = await file.arrayBuffer();
+
+  expect({ name: file.name, type: file.type, bytes: new Uint8Array(buffer) }).toStrictEqual({
+    name: 'im4k9q2x7a.png',
+    type: 'image/png',
+    bytes,
+  });
+});
+
+test('#files.read answers FILE_FORGOTTEN for an image whose record a forget removed', async () => {
+  const ctx = await setupTest();
+
+  const seeded = await seedImage(ctx.context.log, {
+    image: 'im4k9q2x7a',
+    source: 'draw',
+    bytes: new Uint8Array(4),
+  });
+
+  const row = await ctx.context.log.writer.db
+    .$extendTables<LogTables>()
+    .selectFrom('records')
+    .select('key_id')
+    .where('sequence', '=', seeded.sequence)
+    .executeTakeFirst();
+
+  invariant(typeof row?.key_id === 'string');
+
+  await removeRecordKey(ctx.context.log, row.key_id);
+
+  const refused = ctx.client.files.read({ file: 'im4k9q2x7a' });
+
+  await refused.catch(() => {});
+
+  expect(refused).rejects.toMatchObject({ code: 'FILE_FORGOTTEN' });
 });
 
 test('#files.read serves a file of another thread to the owner', async () => {

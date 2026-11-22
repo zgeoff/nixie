@@ -114,24 +114,30 @@ the `codeRun` size row after a memory kill, because the program chose how much m
 
 ## Sending a file
 
-`file.send` shows the user a file that a code run on the same thread wrote, under nixie's reply. It
-takes a `file` ID from a `code.run` result's `files` and an optional plain-text `caption` of 1 to
-1,000 characters, and sends one file per call. The result holds the file's `file`, `name`, `bytes`
-and `mediaType`, and every field is outside content, because the program chose the name and the
-type.
+`file.send` shows the user a file that a code run on the same thread wrote, or a stored
+[image](./images.md), under nixie's reply. It takes a `file` ID from a `code.run` result's `files`
+or an image's short ID, and an optional plain-text `caption` of 1 to 1,000 characters, and sends one
+file per call. The result holds the file's `file`, `name`, `bytes` and `mediaType`, and every field
+is outside content, because the program chose the name and the type of a code-run file.
 
 - The tool declares the `note` effect, no destination and no amount, with `caption` as its content.
   The file goes only to the user inside nixie, so the starter rule `allow-notes` allows it, and the
   tool runs direct.
-- A file ID resolves only on the thread of the call, as it does for `code.run`'s inputs. The call
-  refuses a file of another thread, an unknown ID and a forgotten file with the messages that
-  `code.run` gives for them.
+- A code-run file ID resolves only on the thread of the call, as it does for `code.run`'s inputs.
+  The call refuses a file of another thread with "No file of a code run on this thread and no image
+  has the ID {file}.", the same message as for an unknown ID, and a forgotten file with "The file
+  {file} was forgotten."
+- An ID that no code-run file has resolves as an image on any thread, as it does for every image
+  tool. The name is the image's short ID with `.png`, because nixie stores every image as a PNG. An
+  image whose record a forget made unreadable gets "The image {file} was forgotten." A send of an
+  image writes no `code_file_sends` row, because that table holds code-run files only.
 - The call refuses a kept stream file (`.stdout` or `.stderr`), because it is the code run's output
   and not a file the program wrote. The tool finds one by the `stdout.file` and `stderr.file` of the
   code run's result record.
 - The name is the last segment of the file's path in that result.
 - A send stores the file ID and never a copy of the bytes. The bytes stay one attachment of the code
-  run's `tool_result` record, so a forget of that record makes the sent file unreadable as well.
+  run's `tool_result` record, or of the image's, so a forget of that record makes the sent file
+  unreadable as well.
 - The result record's transaction also writes one `code_file_sends` row with the record's sequence,
   the file ID and the thread. The row holds no free text and sits outside the erasable fields, so it
   marks which files went to the user even after a forget.
