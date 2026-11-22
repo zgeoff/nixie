@@ -103,8 +103,9 @@ all, so their retries answer with fresh values that replace the first:
 
 ## Watching the computer
 
-`computer.watch` takes a client action ID and answers `streamURL`, a WebSocket URL on the API's own
-origin, so the browser's session cookie reaches it. It is a checked action for a signed-in session
+`computer.watch` takes a client action ID and answers `streamURL`, a path on the API's own origin
+that the client resolves against the page's origin, so the browser's session cookie reaches it. The
+path never takes its host from the caller's headers. It is a checked action for a signed-in session
 of the `full` scope only. A wall-panel session and a read-only token get the refusal that every call
 outside their allow lists gets, and a revoked or lapsed session gets `UNAUTHORIZED`. It answers
 `COMPUTER_UNAVAILABLE` when the server runs no computer.
@@ -113,9 +114,10 @@ The URL names `/rpc/computer/watch-stream` and carries a ticket in its query. Th
 random bytes that live in the API's memory for
 [a short lifetime](../../../modules/api/src/computer/create-watch-tickets.ts) and open one socket.
 
-- The upgrade redeems the ticket, which deletes it, and then checks that the cookie or bearer token
-  of the upgrade request resolves to the session that minted it. Any failure answers a bare 401 and
-  keeps the reason out of the answer.
+- The upgrade redeems the ticket, which deletes it, and then checks that the session cookie of the
+  upgrade request resolves to the session that minted it. A bearer token never counts, because a
+  browser's socket sends the cookie. Any failure answers a bare 401 and keeps the reason out of the
+  answer.
 - The ticket is never stored, because a retry mints a fresh one, and never logged: a refusal logs
   the route and no query.
 - The socket accepts binary messages only, up to a size cap, and closes on text with code 1003. It

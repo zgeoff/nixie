@@ -192,11 +192,11 @@ function takeCutText(state: FilterState): Uint8Array | null {
     return null;
   }
 
-  const length = new DataView(
-    state.buffer.buffer,
-    state.buffer.byteOffset,
-    state.buffer.byteLength,
-  ).getUint32(4);
+  // A negative length is the extended clipboard format, which a viewer such as noVNC answers with
+  // even when it is view only. The size of its data is the length without the sign.
+  const length = Math.abs(
+    new DataView(state.buffer.buffer, state.buffer.byteOffset, state.buffer.byteLength).getInt32(4),
+  );
 
   if (length > maxCutTextBytes) {
     return reject(state);
@@ -208,7 +208,6 @@ function takeCutText(state: FilterState): Uint8Array | null {
   return new Uint8Array();
 }
 
-const setPixelFormatBytes = 20;
 const framebufferRequestBytes = 10;
 const setEncodingsHeaderBytes = 4;
 
@@ -217,7 +216,7 @@ const maxEncodings = 256;
 
 function takePassed(state: FilterState, type: number): Uint8Array | null {
   if (type === 0) {
-    return takeBytes(state, setPixelFormatBytes, true);
+    return takePixelFormat(state);
   }
 
   if (type === 3) {
@@ -237,4 +236,49 @@ function takePassed(state: FilterState, type: number): Uint8Array | null {
   return count > maxEncodings
     ? reject(state)
     : takeBytes(state, setEncodingsHeaderBytes + 4 * count, true);
+}
+
+const setPixelFormatBytes = 20;
+const pixelFormatOffset = 4;
+
+// SetPixelFormat is the type, 3 bytes of padding, then the 16-byte format that RFC 6143 lays out.
+function takePixelFormat(state: FilterState): Uint8Array | null {
+  if (state.buffer.byteLength < setPixelFormatBytes) {
+    return null;
+  }
+
+  return isPixelFormat(state.buffer.subarray(pixelFormatOffset, setPixelFormatBytes))
+    ? takeBytes(state, setPixelFormatBytes, true)
+    : reject(state);
+}
+
+// A format the VNC server could not draw with: a depth that does not fit its bits per pixel, a flag
+// that is no boolean, or a colour channel that does not fit in the pixel.
+function isPixelFormat(format: Uint8Array): boolean {
+  const view = new DataView(format.buffer, format.byteOffset, format.byteLength);
+
+  const bitsPerPixel = view.getUint8(0);
+  const depth = view.getUint8(1);
+  const isBigEndian = view.getUint8(2);
+  const isTrueColour = view.getUint8(3);
+
+  if (![8, 16, 32].includes(bitsPerPixel) || depth < 1 || depth > bitsPerPixel) {
+    return false;
+  }
+
+  if (isBigEndian > 1 || isTrueColour > 1) {
+    return false;
+  }
+
+  return (
+    isTrueColour === 0 ||
+    [
+      { max: view.getUint16(4), shift: view.getUint8(10) },
+      { max: view.getUint16(6), shift: view.getUint8(11) },
+      { max: view.getUint16(8), shift: view.getUint8(12) },
+    ].every(
+      (channel) =>
+        channel.max > 0 && channel.shift + channel.max.toString(2).length <= bitsPerPixel,
+    )
+  );
 }

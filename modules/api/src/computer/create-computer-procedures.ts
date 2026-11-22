@@ -35,7 +35,7 @@ export function createComputerProcedures(context: APIContext) {
 
       return match(result)
         .with({ status: 'minted' }, (minted) => ({
-          streamURL: buildWatchStreamURL(options.context.origin, minted.ticket),
+          streamURL: buildWatchStreamURL(minted.ticket),
         }))
         .with({ status: 'reused' }, () => {
           throw options.errors.CLIENT_ACTION_ID_REUSED();

@@ -4,9 +4,11 @@ Contents: [Journey](#journey), [End state](#end-state).
 
 The computer page at `/computer` shows the assistant's desktop live, view only. The page asks nixie
 for a one-use watch address, opens a socket to it and draws the desktop. While the computer sleeps,
-the page says "The computer is waking", and nixie wakes it. Once the desktop shows, the page says
-"Watching the computer". The user can look but cannot touch: nixie drops every key, pointer and
-clipboard message. `local`'s test build serves a fixed gradient picture in place of a real desktop.
+the page says "The computer is waking", and nixie wakes it. Once the viewer has drawn a picture, the
+page says "Watching the computer". A connection that finishes the handshake and sends no picture
+stays on "The computer is waking". The user can look but cannot touch: nixie drops every key,
+pointer and clipboard message. `local`'s test build serves a fixed gradient picture in place of a
+real desktop.
 
 Follow the steps in [Check a change](../SKILL.md#check-a-change) for this journey. Read that section
 for the commands `up` and `done`, and for the `data` field of each command's JSON output.
@@ -33,8 +35,9 @@ run it since `up`.
    bun verify browser snapshot --until-text 'Watching the computer'
    ```
 
-   Expect: both commands exit 0. The snapshot shows the heading "Computer", the status "Watching the
-   computer. You can look but not touch." and an image named "The computer's desktop".
+   Expect: both commands exit 0. The status text comes only after the viewer drew the picture, so a
+   blank desktop times the wait out. The snapshot shows the heading "Computer", the status "Watching
+   the computer. You can look but not touch." and an image named "The computer's desktop".
 
 3. Check that nixie stored no watch address:
 

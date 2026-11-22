@@ -88,6 +88,16 @@ async function setupTest() {
 
       return { socket, messages, closed: closed.promise, opened: opened.promise };
     },
+    tryBearerUpgrade: (path: string, token: string) =>
+      fetch(httpURL(path), {
+        headers: {
+          upgrade: 'websocket',
+          connection: 'Upgrade',
+          'sec-websocket-version': '13',
+          'sec-websocket-key': socketKey,
+          authorization: `Bearer ${token}`,
+        },
+      }),
     tryUpgrade: (path: string, token: string | null = owner.token) =>
       fetch(httpURL(path), {
         headers: {
@@ -219,6 +229,14 @@ test('it refuses a ticket from a browser with no session cookie, wakes nothing a
   const retried = await ctx.tryUpgrade(url);
 
   expect([signedOut.status, retried.status, ctx.watches.length]).toStrictEqual([401, 401, 0]);
+});
+
+test('it refuses a ticket that its own bearer token presents with no cookie', async () => {
+  const ctx = await setupTest();
+  const url = await ctx.mint();
+  const bearer = await ctx.tryBearerUpgrade(url, ctx.owner.token);
+
+  expect([bearer.status, await bearer.text(), ctx.watches.length]).toStrictEqual([401, '', 0]);
 });
 
 test('it refuses a ticket that another session presents', async () => {

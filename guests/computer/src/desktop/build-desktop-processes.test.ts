@@ -51,6 +51,9 @@ test('it listens for VNC on the loopback of the sandbox, view-only, with the cli
   expect(vnc).toIncludeAllMembers([
     '-localhost',
     '-viewonly',
+    '-nosel',
+    '-noprimary',
+    '-nosetprimary',
     '-noclipboard',
     '-nosetclipboard',
     '-nopw',

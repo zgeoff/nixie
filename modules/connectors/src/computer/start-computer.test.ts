@@ -893,6 +893,47 @@ test('it opens no stream and releases the hold when a watch closes during the wa
   expect(ctx.vnc.frames).toStrictEqual([]);
 });
 
+test('it closes a watch that floods the wake with requests, and releases the hold', async () => {
+  const gate = Promise.withResolvers<void>();
+
+  const ctx = await setupTest({ wakeGate: gate.promise });
+
+  await ctx.computer.call({
+    request: ctx.run('a'),
+    scan: ctx.pass,
+    scanText: ctx.pass,
+    timeoutMs: 5000,
+  });
+
+  ctx.clock.advance(30 * 60 * 1000);
+
+  await waitForCondition(() => ctx.state.sleeps === 1);
+
+  const watch = ctx.openWatch();
+
+  await waitForCondition(() => ctx.state.wakes === 1);
+
+  watch.connection.receive(new Uint8Array([...new TextEncoder().encode('RFB 003.008\n'), 1, 1]));
+
+  for (let sent = 0; sent < 7000; sent += 1) {
+    watch.connection.receive(new Uint8Array([3, 1, 0, 0, 0, 0, 5, 0, 3, 32]));
+  }
+
+  gate.resolve();
+
+  await waitForCondition(() => {
+    ctx.clock.advance(30 * 60 * 1000);
+
+    return ctx.state.sleeps === 2;
+  });
+
+  expect([watch.closed.isClosed, ctx.computer.isWatched(), ctx.vnc.frames]).toStrictEqual([
+    true,
+    false,
+    [],
+  ]);
+});
+
 test('it never makes a call wait for the turn because of a watch', async () => {
   const ctx = await setupTest();
 

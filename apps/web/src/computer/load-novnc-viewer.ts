@@ -1,4 +1,5 @@
 import type { StartViewer, ViewerEvents } from './types';
+import { waitForFrame } from './wait-for-frame';
 
 // noVNC reads the window when it loads, so the page loads it in the browser alone. The viewer is
 // view only: it sends no key, pointer or clipboard message, and the server drops any that arrive.
@@ -17,11 +18,19 @@ export async function loadNoVNCViewer(): Promise<StartViewer> {
     viewer.focusOnClick = false;
     viewer.background = 'transparent';
 
-    viewer.addEventListener('connect', events.onConnect);
+    const frame: { stop: (() => void) | null } = { stop: null };
+
+    // the handshake ends before the desktop draws, so the page waits for a picture
+    const onConnect = (): void => {
+      frame.stop = waitForFrame(target, events.onConnect);
+    };
+
+    viewer.addEventListener('connect', onConnect);
     viewer.addEventListener('disconnect', events.onDisconnect);
 
     return () => {
-      viewer.removeEventListener('connect', events.onConnect);
+      frame.stop?.();
+      viewer.removeEventListener('connect', onConnect);
       viewer.removeEventListener('disconnect', events.onDisconnect);
       viewer.disconnect();
     };

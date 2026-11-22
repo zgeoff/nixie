@@ -339,7 +339,8 @@ library reads the window when it loads.
   change.
 - The status line reads "Connecting to the computer." until the ticket comes, then "The computer is
   waking" while the socket is open and no picture has come, and "Watching the computer. You can look
-  but not touch." once the viewer has the desktop.
+  but not touch." once the viewer has drawn the desktop. The viewer's connect event comes before any
+  picture, so the page polls the viewer's canvas for a drawn pixel.
 - A stream that ends after a picture says so, and one that ends before a picture or fails to start
   says "The computer can’t be watched right now." Both show Watch again, which asks for a new
   ticket. A server with no computer says so and shows no button.

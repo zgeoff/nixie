@@ -198,7 +198,11 @@ function openStream(
   const sendFrame = (frame: Parameters<typeof encodeVNCFrame>[0]): Promise<void> =>
     options.stream.send(encodeVNCFrame(frame));
 
-  void sendQuietly(sendFrame({ kind: 'vnc-open', stream: id }), options.logger);
+  void sendOpen(sendFrame({ kind: 'vnc-open', stream: id }), options.logger, () => {
+    if (streams.delete(id)) {
+      listener.onClose();
+    }
+  });
 
   return {
     send: async (bytes) => {
@@ -214,6 +218,20 @@ function openStream(
       }
     },
   };
+}
+
+// A stream the guest never heard of can carry nothing, so a failed open ends it for its owner.
+async function sendOpen(
+  sending: Promise<void>,
+  logger: Logger,
+  onFailure: () => void,
+): Promise<void> {
+  try {
+    await sending;
+  } catch (error) {
+    logger('computer.vnc_send_failed', { reason: String(error) }, 'warn');
+    onFailure();
+  }
 }
 
 async function sendQuietly(sending: Promise<void>, logger: Logger): Promise<void> {

@@ -52,8 +52,8 @@ export function createWatchRoute(context: APIContext): WatchRoute {
 }
 
 // The ticket goes first: it is spent whatever else is wrong with the request, so a failed attempt
-// never leaves a ticket to try again. The session behind the cookie must be the one the ticket was
-// minted for, so a ticket carried to a signed-out browser or to another session wakes nothing.
+// never leaves a ticket to try again. Only the session cookie counts, and its session must be the
+// one the ticket was minted for, so a ticket carried anywhere else wakes nothing.
 async function upgradeWatch(
   context: APIContext,
   request: Request,
@@ -69,10 +69,12 @@ async function upgradeWatch(
     return buildRefusal();
   }
 
-  const sessionID = await readSessionIdentity(
-    context,
-    findSessionToken(request.headers).sessionToken,
-  );
+  const credential = findSessionToken(request.headers);
+
+  const sessionID =
+    credential.tokenSource === 'cookie'
+      ? await readSessionIdentity(context, credential.sessionToken)
+      : null;
 
   if (sessionID !== ticketOwner) {
     watch.logger('computer.watch_refused', { route: watchRoutePath, reason: 'session' });

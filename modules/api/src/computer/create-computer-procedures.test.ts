@@ -49,21 +49,21 @@ async function setupTest() {
   };
 }
 
-test('#computer.watch gives a signed-in session a WebSocket URL on its own origin', async () => {
+test('#computer.watch gives a signed-in session a path on the API origin', async () => {
   const ctx = await setupTest();
   const watch = await ctx.client.computer.watch({ clientActionID: crypto.randomUUID() });
 
-  expect(watch.streamURL).toMatch(
-    /^wss:\/\/nixie\.test\/rpc\/computer\/watch-stream\?ticket=[\w-]{43}$/u,
-  );
+  expect(watch.streamURL).toMatch(/^\/rpc\/computer\/watch-stream\?ticket=[\w-]{43}$/u);
 });
 
-test('#computer.watch gives a plain path to a call that names no origin', async () => {
+test('#computer.watch ignores the origin the caller names', async () => {
   const ctx = await setupTest();
 
-  const watch = await buildTestClient(ctx.url, ctx.owner.token).computer.watch({
-    clientActionID: crypto.randomUUID(),
-  });
+  const watch = await buildTestClient(
+    ctx.url,
+    ctx.owner.token,
+    'https://example.invalid',
+  ).computer.watch({ clientActionID: crypto.randomUUID() });
 
   expect(watch.streamURL).toMatch(/^\/rpc\/computer\/watch-stream\?ticket=[\w-]{43}$/u);
 });

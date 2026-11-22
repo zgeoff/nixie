@@ -20,7 +20,12 @@ interface WatchState {
 
   // the viewer's bytes that came before the stream opened
   readonly pending: Uint8Array[];
+  pendingBytes: number;
 }
+
+// A viewer sends a few hundred bytes before it hears from the desktop, so a wake that holds more
+// than this is a viewer that floods the server while the sandbox starts.
+const maxPendingBytes = 64 * 1024;
 
 // A watch counts as open from the moment its socket opens, so the assistant sees that someone is
 // there while the sandbox still wakes.
@@ -29,7 +34,7 @@ export function openComputerWatch(host: WatchHost, socket: WatchSocket): WatchCo
 
   const releaseHold = host.hold();
   const filter = makeClientMessageFilter();
-  const state: WatchState = { stream: null, isEnded: false, pending: [] };
+  const state: WatchState = { stream: null, isEnded: false, pending: [], pendingBytes: 0 };
 
   const end = (): void => {
     if (state.isEnded) {
@@ -62,13 +67,19 @@ export function openComputerWatch(host: WatchHost, socket: WatchSocket): WatchCo
       for (const message of result.forward) {
         if (state.stream === null) {
           state.pending.push(message);
+
+          state.pendingBytes += message.byteLength;
         } else {
-          void sendToStream(host, state.stream, message);
+          void sendToStream(host, state.stream, message, endAndClose);
         }
       }
 
       if (result.isMalformed) {
         host.logger('computer.watch_malformed', {}, 'warn');
+
+        endAndClose();
+      } else if (state.pendingBytes > maxPendingBytes) {
+        host.logger('computer.watch_flooded', {}, 'warn');
 
         endAndClose();
       }
@@ -107,9 +118,10 @@ async function startStream(host: WatchHost, start: StreamStart): Promise<void> {
     });
 
     start.state.stream = stream;
+    start.state.pendingBytes = 0;
 
     for (const message of start.state.pending.splice(0)) {
-      void sendToStream(host, stream, message);
+      void sendToStream(host, stream, message, start.end);
     }
   } catch (error) {
     host.logger('computer.watch_failed', { reason: String(error) }, 'warn');
@@ -117,10 +129,19 @@ async function startStream(host: WatchHost, start: StreamStart): Promise<void> {
   }
 }
 
-async function sendToStream(host: WatchHost, stream: VNCStream, bytes: Uint8Array): Promise<void> {
+// A write to the guest that fails leaves a stream that no longer reaches the desktop, so it ends
+// the watch.
+async function sendToStream(
+  host: WatchHost,
+  stream: VNCStream,
+  bytes: Uint8Array,
+  end: () => void,
+): Promise<void> {
   try {
     await stream.send(bytes);
   } catch (error) {
     host.logger('computer.watch_send_failed', { reason: String(error) }, 'warn');
+
+    end();
   }
 }

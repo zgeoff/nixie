@@ -21,9 +21,9 @@ To move to a new release, or back, follow the [upgrade runbook](../runbooks/upgr
 
 The watch socket's address carries a one-use ticket in its query, on the path
 `/rpc/computer/watch-stream`. The `/rpc` rule already sends it to nixie. When your ingress
-controller logs requests, drop the query of that path from each log line, so a log never holds a
-ticket. Your controller's idle timeout for a WebSocket must exceed a few minutes, because a quiet
-desktop sends nothing.
+controller logs requests or errors, drop the query of that path from each log line, so a log never
+holds a ticket. Your controller's idle timeout for a WebSocket must exceed a few minutes, because a
+quiet desktop sends nothing.
 
 ## Check them
 
