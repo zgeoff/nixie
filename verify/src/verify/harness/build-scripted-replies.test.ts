@@ -107,3 +107,50 @@ test('it queues a send of a picture after the list when the draw asks for it', (
 
   expect(calls.at(-2)).toStrictEqual({ name: 'mcp__nixie__file_send', input: { file: 'cm1abc' } });
 });
+
+test('it queues 2 note writes and a link from the private note to the first', () => {
+  const replies = buildScriptedReplies({
+    text: 'Both notes are written.',
+    notebook: {
+      title: 'Boiler notes',
+      body: 'It trips at night.',
+      privateTitle: 'Winter diary',
+      privateBody: 'Dear diary, it snowed.',
+    },
+  });
+
+  const body = {
+    messages: [
+      { role: 'user', content: '{"result":{"note":"n4w8k2c6rd","version":1}}' },
+      { role: 'user', content: '{"result":{"note":"d8p3q1z6mw","version":1}}' },
+    ],
+  };
+
+  const calls = replies.map((reply) => {
+    const toolUse = 'toolUse' in reply ? reply.toolUse : undefined;
+    const input = toolUse?.input;
+
+    return { name: toolUse?.name, input: typeof input === 'function' ? input(body) : input };
+  });
+
+  expect(calls).toStrictEqual([
+    {
+      name: 'mcp__nixie__notebook_write',
+      input: { title: 'Boiler notes', body: 'It trips at night.', tags: ['verify'] },
+    },
+    {
+      name: 'mcp__nixie__notebook_write',
+      input: { title: 'Winter diary', body: 'Dear diary, it snowed.', isPrivate: true },
+    },
+    {
+      name: 'mcp__nixie__notebook_link',
+      input: {
+        from: 'd8p3q1z6mw',
+        to: { note: 'n4w8k2c6rd' },
+        type: 'cites',
+        reason: 'the private note rests on it',
+      },
+    },
+    { name: undefined, input: undefined },
+  ]);
+});

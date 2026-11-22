@@ -160,7 +160,7 @@ export function createVerifyRegistry(): Wringer {
     .action({
       name: 'script-reply',
       summary:
-        "Queue the scripted model's next reply. With --memory it first proposes that memory, with --export it first asks to export memory, and with --task it first starts that task",
+        "Queue the scripted model's next reply. With --memory it first proposes that memory, with --export it first asks to export memory, with --task it first starts that task, and with --notebook it first writes 2 notes, one private, and links them",
       effect: 'write',
       targets: ['local'],
       input: controlRoutes.addReply.input,
@@ -391,6 +391,11 @@ export function createVerifyRegistry(): Wringer {
         name: 'images-page',
         summary: 'Browse and forget images',
         paths: featurePaths['images-page'],
+      },
+      {
+        name: 'notebook-pages',
+        summary: 'Browse notes, open a private one, and forget a note',
+        paths: featurePaths['notebook-pages'],
       },
       {
         name: 'computer-shell',
