@@ -73,7 +73,8 @@ account.sign_up({
 
 account.rotate({ tab: 't1', account: 'a7q2m9x4kd', submit: 'E4', passwordRules });
 // on the change-password page: fills the current-password field with the current password and every
-// new-password field with a new one, then clicks submit.
+// new-password field with a new one, then clicks submit. On a reset page, which holds new-password
+// fields and no current-password field, it fills the new ones alone.
 // → { status: 'changed', account: 'a7q2m9x4kd', … } when the page navigated, else { status: 'filled', … }
 
 account.add_origin({ tab: 't1', account: 'a7q2m9x4kd' });
@@ -89,23 +90,22 @@ account.inspect({ tab: 't1', kind: 'password', dump: true }); // kind: 'password
 Every refusal is `{ refused, message, origin?, report? }`. The `message` says what happened and what
 to do next.
 
-| Refusal               | Tools                       | When                                                                                                                                  |
-| --------------------- | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| `UNKNOWN_ACCOUNT`     | sign_in, rotate, add_origin | no entry has that ID                                                                                                                  |
-| `WRONG_KIND`          | sign_in, rotate, add_origin | the entry is a card                                                                                                                   |
-| `ACCOUNT_FORGOTTEN`   | sign_in, rotate, add_origin | the entry is forgotten                                                                                                                |
-| `ORIGIN_MISMATCH`     | sign_in, rotate             | the tab's origin is not one of the entry's; carries `origin`                                                                          |
-| `ORIGIN_KNOWN`        | add_origin                  | the entry already holds the tab's origin                                                                                              |
-| `BAD_RULES`           | sign_up, rotate             | `maxLength` outside 8 to 64                                                                                                           |
-| `ROTATE_UNSETTLED`    | rotate                      | the entry still holds a previous password                                                                                             |
-| `NO_FIELD`            | sign_in, sign_up, rotate    | no field to fill; for sign_up, no new-password field; for rotate, no current-password field told apart from the new; carries `report` |
-| `CROSS_ORIGIN_SUBMIT` | sign_in, sign_up, rotate    | the form posts to another origin; carries `report`                                                                                    |
-| `STALE_ELEMENT`       | sign_in, sign_up, rotate    | `submit` no longer holds its number                                                                                                   |
-| `PAGE_CHANGED`        | sign_in, sign_up, rotate    | the tab's URL differs from the one the prepare hook read                                                                              |
-| `TAB_GONE`            | every tool but list         | the tab closed                                                                                                                        |
-| `FAILED`              | sign_in, sign_up, rotate    | the guest threw; carries `report`                                                                                                     |
+| Refusal               | Tools                       | When                                                                                                      |
+| --------------------- | --------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `UNKNOWN_ACCOUNT`     | sign_in, rotate, add_origin | no entry has that ID                                                                                      |
+| `WRONG_KIND`          | sign_in, rotate, add_origin | the entry is a card                                                                                       |
+| `ACCOUNT_FORGOTTEN`   | sign_in, rotate, add_origin | the entry is forgotten                                                                                    |
+| `ORIGIN_MISMATCH`     | sign_in, rotate             | the tab's origin is not one of the entry's; carries `origin`                                              |
+| `ORIGIN_KNOWN`        | add_origin                  | the entry already holds the tab's origin                                                                  |
+| `BAD_RULES`           | sign_up, rotate             | `maxLength` outside 8 to 64                                                                               |
+| `NO_FIELD`            | sign_in, sign_up, rotate    | no field to fill; for sign_up, no new-password field; for rotate, no new-password field; carries `report` |
+| `CROSS_ORIGIN_SUBMIT` | sign_in, sign_up, rotate    | the form posts to another origin; carries `report`                                                        |
+| `STALE_ELEMENT`       | sign_in, sign_up, rotate    | `submit` no longer holds its number                                                                       |
+| `PAGE_CHANGED`        | sign_in, sign_up, rotate    | the tab's URL differs from the one the prepare hook read                                                  |
+| `TAB_GONE`            | every tool but list         | the tab closed                                                                                            |
+| `FAILED`              | sign_in, sign_up, rotate    | the guest threw; carries `report`                                                                         |
 
-The first 7 return from the prepare hook before the decision, as a direct result, so no card shows.
+The first 6 return from the prepare hook before the decision, as a direct result, so no card shows.
 The guest checks the submit element and the form before it fills, so a refusal fills nothing. A
 result of `filled` carries `report` too.
 
@@ -136,17 +136,16 @@ the vault when the card renders, and "forgotten" once the entry is.
 interface VaultEntry {
   entryID: string; // crypto.randomUUID(); keys the entry's own erasure key in the key store
   account: string; // short ID from createShortID; the only ID the model sees
-  label: string; // sealed under the entry's key, with secret and previousSecret
+  label: string; // sealed under the entry's key, with secret
   kind: 'password' | 'card';
   origins: string[]; // exact origins, no wildcards; a card has none; kept after a forget
   username: string | null; // the assistant's own address; kept after a forget
   secret: SealedValue; // a password, or a card's number, expiry and code
-  previousSecret: SealedValue | null; // a password: the other one after a rotate, as the constraints say
   state: 'pending' | 'ready' | 'forgotten'; // a card starts ready
   // a card's fingerprint, frameOrigins and currency: see the wallet design
 }
 
-// contract lib: owner calls from a device session. add, remove, settle and reveal take a passkey assertion
+// contract lib: owner calls from a device session. add, remove and reveal take a passkey assertion
 // bound to a SHA-256 of the request's canonical JSON, a new challenge kind in the published contract.
 vault.add({
   kind: 'password',
@@ -156,8 +155,6 @@ vault.add({
   secret: { password },
 }); // → { account: 'b5n2x8q1rw' }
 vault.remove({ account: 'b5n2x8q1rw' }); // destroys the key; the row stays with state 'forgotten'
-vault.settle({ account: 'b5n2x8q1rw', keep: 'secret' }); // keep: 'secret' | 'previous'; drops the
-// other password and writes vault.secret_changed; NOT_UNSETTLED when the entry holds one password
 vault.list({}); // → every entry with its state; a forgotten one shows the label "forgotten"
 vault.reveal({ account: 'a7q2m9x4kd' }); // → { password }; writes vault.revealed, with no secret
 ```
@@ -177,7 +174,6 @@ type FillRequest = {
   expectURL: string; // the URL the prepare hook read
   fields: { role: FillRole; value: string }[]; // new_password fills every new-password field
   submit: { element: string }; // the wallet adds expectTotal
-  retry?: { value: string }; // a sign_in on an entry with a previousSecret: the other password
 };
 type FillRole = 'username' | 'email' | 'password' | 'current_password' | 'new_password'; // the wallet adds the card roles
 type FillReply =
@@ -188,7 +184,6 @@ type FillReply =
       filled: FillRole[];
       isNavigated: boolean;
       hasPasswordField: boolean; // on the page after the submit
-      usedRetry: boolean; // the retry value is the one that reached the page after
       report: FillReport | null; // set when the page stayed
     }
   | {
@@ -237,9 +232,9 @@ Secrets:
 - A page that shows a filled password as text can put it in a screenshot. The design accepts that
   for passwords, and the acceptance test leaves screenshots out of its search for a password.
 - Before any result of an `account.*`, `wallet.*` or `computer.*` tool reaches the model, the server
-  replaces each vault secret it finds in the result's text with dots: every secret and previous
-  secret, of pending entries too. A stored page read later through `web_fetch` gets the same pass.
-  This catches a page that copies a filled value verbatim, and misses one that encodes it.
+  replaces each vault secret it finds in the result's text with dots: every entry's secret, pending
+  entries included. A stored page read later through `web_fetch` gets the same pass. This catches a
+  page that copies a filled value verbatim, and misses one that encodes it.
 - The checking proxy's scan of each request URL refuses a URL that carries a vault secret to a host
   outside its entry's origins. The body of an HTTPS request goes unscanned.
 - The browser profile never saves a password or a card. Chromium's password manager and autofill are
@@ -273,17 +268,13 @@ Entry state:
 - After 7 days with no sign-in, a pending entry raises a push notice that links the vault screen,
   where you keep or remove it. nixie never forgets a filled entry on its own.
 - A forget of an entry, or of any of its `vault.*` records, destroys the entry's key.
-- A `rotate` that returns `changed` makes the new password the secret and keeps the old one as
-  `previousSecret`. One that returns `filled` keeps the old password as the secret and the new one
-  as `previousSecret`, because the site may have taken either.
-- While an entry holds a `previousSecret`, a `sign_in` whose page stays tries the other password
-  once: the guest fills the password field again and clicks the form's submit button, found again on
-  the page as it now stands. A username step never retries.
-- A `sign_in` that reaches `signed_in` on its retry swaps the two, so the password that worked is
-  tried first next time.
-- nixie never drops a `previousSecret` on its own. A page can fake a success by navigating away from
-  a rejected password, so no sign-in proves which password the site holds. The vault screen shows an
-  entry with two passwords, and you keep the one that works with `vault.settle`.
+- An entry holds one password. A `rotate` that returns `changed` makes the new password the secret,
+  and one that returns `filled` keeps the old one.
+- A `sign_in` that returns `filled` tells the assistant in its message to reset the password: open
+  the site's reset link from its mailbox, then call `rotate` on the reset page.
+- A page can fake a `changed` result by navigating away from a refused password, so the entry can
+  end up holding a password the site never took. The next sign-in then fails, and the reset puts the
+  account right with no step of yours.
 
 Debugging a fill:
 
@@ -318,6 +309,9 @@ Debugging a fill:
 - **The assistant can reset its own passwords.** Its mailbox is every account's way back in. The
   vault keeps secrets out of the model's context; it can't stop the assistant from using its own
   mail.
+- **An entry holds one password, and a reset recovers a wrong one.** A page can make a rotate look
+  like it worked when the site kept the old password. A mail reset fixes that with no step of yours,
+  where keeping both passwords would ask you to pick one after every rotate.
 
 ## Builder decides
 
