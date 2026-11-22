@@ -180,7 +180,7 @@ export function createVerifyRegistry(): Wringer {
     .action({
       name: 'use-computer',
       summary:
-        "Send the owner message and queue the scripted model turn that uses the assistant's browser (--kind browser: opens the harness page), shell (--kind shell: writes a file and reads it back) or screen (--kind screen: opens the harness page, takes a screenshot of the desktop and clicks its middle), with the closing reply --text",
+        "Send the owner message and queue the scripted model turn that uses the assistant's browser (--kind browser: opens the harness page), shell (--kind shell: writes a file and reads it back) or screen (--kind screen: takes a screenshot of the desktop and clicks its middle), with the closing reply --text",
       effect: 'write',
       targets: ['local'],
       input: controlRoutes.useComputer.input,

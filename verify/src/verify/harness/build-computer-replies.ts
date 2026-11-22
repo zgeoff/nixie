@@ -6,8 +6,8 @@ export interface ComputerSessionInput {
 }
 
 // The replies of a turn in which the model opens the harness's own page in its browser, writes a
-// file on its shell's disk and reads it back, or opens the page, takes a screenshot of the desktop
-// and clicks a point of it.
+// file on its shell's disk and reads it back, or takes a screenshot of the desktop and clicks a point
+// of it.
 export function buildComputerReplies(
   input: ComputerSessionInput,
   siteURL: string,
@@ -21,7 +21,6 @@ export function buildComputerReplies(
 
   if (input.kind === 'screen') {
     return [
-      { toolUse: { name: 'mcp__nixie__computer_browser_open', input: { url: siteURL } } },
       { toolUse: { name: 'mcp__nixie__computer_screenshot', input: {} } },
       {
         toolUse: {

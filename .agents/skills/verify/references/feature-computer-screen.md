@@ -3,12 +3,12 @@
 Contents: [Journey](#journey), [End state](#end-state).
 
 The user asks the assistant to look at its screen and click the middle of it. On `local`, a scripted
-model answers in place of the real one. It calls `computer.browser_open` on the harness page,
-`computer.screenshot`, and `computer.screen_click` at the point 640, 400. The screenshot runs at
-once. nixie holds the click until the user approves it, because a screen act on a browser window is
-a `send` to the host of the tab it lands on. In a deployment, the screen is the desktop of the
-computer sandbox. `local`'s test build has no desktop, so a stand-in drives the headless browser,
-with one browser window the size of the display.
+model answers in place of the real one. It calls `computer.screenshot`, then `computer.screen_click`
+at the point 640, 400, on the tab that computer-browser left open on the harness page. The
+screenshot runs at once. nixie holds the click until the user approves it, because a screen act on a
+browser window is a `send` to the host of the tab it lands on. In a deployment, the screen is the
+desktop of the computer sandbox. `local`'s test build has no desktop, so a stand-in drives the
+headless browser, with one browser window the size of the display.
 
 Follow the steps in [Check a change](../SKILL.md#check-a-change) for this journey. Read that section
 for the commands `up` and `done`, and for the `data` field of each command's JSON output.
@@ -22,9 +22,9 @@ stand-in has neither, and the guest's tests cover both refusals.
 
 Before you start:
 
-- Run [computer-browser](feature-computer-browser.md) first, in the same `up`, and approve its site.
-  nixie asks about a site only on its first visit, so the open in step 2 then runs at once. Without
-  that approval, the open waits for the user and the click never queues.
+- Run [computer-browser](feature-computer-browser.md) first, in the same `up`. It leaves a tab open
+  on the harness page, which the click lands on. Without that tab, the click lands on no browser
+  window and nixie asks about it with no host.
 - Run this journey once per `up`. Before you run it again, even after a failed journey, run
   `bun verify up --restart` and `bun verify doctor`. Then run sign-in-enrol, computer-browser and
   this journey, in that order.
@@ -39,15 +39,14 @@ Before you start:
    ```
 
 2. Send the user's message and script the model's turn. `use-computer --kind screen` sends the
-   message "Look at your screen and click the middle of it.", and queues 4 replies: the open of the
-   `pages.test` page, a `computer.screenshot` call, a `computer.screen_click` call at 640, 400, and
-   the text in `--text`.
+   message "Look at your screen and click the middle of it.", and queues 3 replies: a
+   `computer.screenshot` call, a `computer.screen_click` call at 640, 400, and the text in `--text`.
 
    ```bash
    bun verify action use-computer --kind screen --text 'The assistant clicked the middle of the screen.'
    ```
 
-   Expect: `data.replies` is 4.
+   Expect: `data.replies` is 3.
 
 3. Wait for the turn. `conversation turn` waits up to 10 s for the message and the reply in the
    event log. Give `--reply` the same text as `--text` in step 2. The reply arrives before the
@@ -107,17 +106,17 @@ Before you start:
    ```bash
    bun verify proposals --tool computer.screen_click --waiting none
    bun verify db query "select json_extract(payload, '$.status') as status from records where kind = 'action.outcome' and json_extract(payload, '$.tool') = 'computer.screen_click'"
-   bun verify db query "select count(*) as calls from records where kind = 'tool_called' and json_extract(payload, '$.tool') = 'computer.screenshot'"
+   bun verify db query "select json_extract(res.payload, '$.outcome') as outcome from records call join records res on json_extract(res.payload, '$.callID') = json_extract(call.payload, '$.callID') where call.kind = 'tool_called' and res.kind = 'tool_result' and json_extract(call.payload, '$.tool') = 'computer.screenshot'"
    ```
 
    Expect: `proposals` exits 0. The first query returns one row, with `status` `done`. The second
-   returns one row, with `calls` 1.
+   returns one row, with `outcome` `result`.
 
 ## End state
 
 - In step 4, nixie held one call of `computer.screen_click`.
 - In step 6, the approvals page showed the host `pages.test` and its port, with the effect `send`.
-- In step 8, nixie holds no call, the click's outcome is `done`, and the model called
-  `computer.screenshot` once.
+- In step 8, nixie holds no call, the click's outcome is `done`, and the model's one call of
+  `computer.screenshot` returned a result.
 
 Once the end state matches, run `bun verify done`.
