@@ -287,6 +287,8 @@ function toItemJSON(
     itemID: item.shortID,
     isPinned: item.isPinned,
     subject: item.subject,
+    ...(item.disputedBy === undefined ? {} : { disputedBy: item.disputedBy }),
+    ...(item.supersededBy === undefined ? {} : { supersededBy: item.supersededBy }),
     ...(item.history === undefined
       ? {}
       : { history: item.history.map((version) => toPastVersionJSON(item, version, lines)) }),

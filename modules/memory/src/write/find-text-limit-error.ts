@@ -13,5 +13,7 @@ export function findTextLimitError(text: string, subject: MemorySubject): string
   const size = countCodePoints(text);
   const limit = textLimits[subject];
 
-  return size > limit ? `data/text ${formatOverLimit(size, limit, 'characters')}` : null;
+  return size > limit
+    ? `data/text ${formatOverLimit(size, limit, 'characters')}; for longer text, write a note with notebook.write`
+    : null;
 }

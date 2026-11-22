@@ -47,6 +47,10 @@ export interface MemoryItem extends MemoryRef {
 
   // true for a version a purge wrote, which no one noted or said
   readonly isBridge?: boolean;
+
+  // how many notes of the notebook dispute or supersede the item, set above 0 on a retrieved item
+  readonly disputedBy?: number;
+  readonly supersededBy?: number;
 }
 
 export interface MemoryApproval {
@@ -138,7 +142,8 @@ export interface ImageTally {
 export type SessionCleanupCause =
   | { readonly itemID: string }
   | { readonly recordSequence: number }
-  | { readonly momentID: string };
+  | { readonly momentID: string }
+  | { readonly noteID: string };
 
 export interface SessionDefinitions {
   readonly persona: string;

@@ -38,7 +38,12 @@ export async function readRecall(parts: StoreParts, request: RecallRequest): Pro
     const includeHistory = request.includeHistory === true;
 
     const [deliverable, pastLimit] = await Promise.all([
-      readDeliverableItems(parts, { itemIDs: candidates.itemIDs, states, includeHistory }),
+      readDeliverableItems(parts, {
+        itemIDs: candidates.itemIDs,
+        states,
+        includeHistory,
+        includeLinkCounts: true,
+      }),
       readDeliverableItems(parts, {
         itemIDs: candidates.pastLimitIDs,
         states,

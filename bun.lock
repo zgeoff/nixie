@@ -184,6 +184,7 @@
         "@heynixie/logger": "workspace:*",
         "@heynixie/memory": "workspace:*",
         "@heynixie/models": "workspace:*",
+        "@heynixie/notebook": "workspace:*",
         "@heynixie/ops": "workspace:*",
         "@heynixie/policy": "workspace:*",
         "@heynixie/prompts": "workspace:*",
@@ -756,6 +757,28 @@
       },
       "devDependencies": {
         "@faker-js/faker": "catalog:",
+      },
+    },
+    "modules/notebook": {
+      "name": "@heynixie/notebook",
+      "version": "0.0.0",
+      "dependencies": {
+        "@heynixie/clock": "workspace:*",
+        "@heynixie/db": "workspace:*",
+        "@heynixie/log": "workspace:*",
+        "@heynixie/memory": "workspace:*",
+        "@heynixie/sessions": "workspace:*",
+        "@heynixie/tasks": "workspace:*",
+        "@heynixie/tools": "workspace:*",
+        "@heynixie/wire": "workspace:*",
+        "kysely": "catalog:",
+        "tiny-invariant": "catalog:",
+        "ts-pattern": "catalog:",
+        "zod": "catalog:",
+      },
+      "devDependencies": {
+        "@heynixie/testing": "workspace:*",
+        "@zgeoff/testing": "catalog:",
       },
     },
     "modules/ops": {
@@ -1560,6 +1583,8 @@
     "@heynixie/model-gateway": ["@heynixie/model-gateway@workspace:apps/model-gateway"],
 
     "@heynixie/models": ["@heynixie/models@workspace:modules/models"],
+
+    "@heynixie/notebook": ["@heynixie/notebook@workspace:modules/notebook"],
 
     "@heynixie/ops": ["@heynixie/ops@workspace:modules/ops"],
 

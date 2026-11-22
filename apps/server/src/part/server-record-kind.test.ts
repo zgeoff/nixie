@@ -2,6 +2,7 @@ import { expect, test } from 'bun:test';
 import { forgettableKinds } from '@heynixie/contract';
 import type { ErasableRecordKind } from '@heynixie/log';
 import { memoryItemErasableKinds, momentErasableKinds } from '@heynixie/memory';
+import { notebookErasableKinds } from '@heynixie/notebook';
 
 function setupTest() {
   // Each kind that carries erasable fields, with the names of those fields. A new erasable kind
@@ -22,6 +23,9 @@ function setupTest() {
     'model.session_summarized': ['text'],
     moment_edited: ['title', 'note', 'reflection'],
     moment_kept: ['title'],
+    'notebook.linked': ['reason'],
+    'notebook.note_edited': ['title', 'body', 'tags'],
+    'notebook.note_written': ['title', 'body', 'tags'],
     owner_message: ['text', 'spans', 'sessionLabel'],
     'passkey.registered': ['label'],
     'policy.action_answered': ['reason'],
@@ -56,12 +60,13 @@ function setupTest() {
     unforgettableKinds,
     momentErasableKinds,
     memoryItemErasableKinds,
+    notebookErasableKinds,
   ];
 
   return { erasableKinds: Object.keys(erasableFieldNames), groups };
 }
 
-test('it holds each erasable kind in exactly one of the 4 groups', () => {
+test('it holds each erasable kind in exactly one of the 5 groups', () => {
   const ctx = setupTest();
 
   const misplaced = ctx.erasableKinds.filter(
@@ -71,14 +76,14 @@ test('it holds each erasable kind in exactly one of the 4 groups', () => {
   expect(misplaced).toStrictEqual([]);
 });
 
-test('it keeps a kind that carries no erasable fields out of the 4 groups', () => {
+test('it keeps a kind that carries no erasable fields out of the 5 groups', () => {
   const ctx = setupTest();
   const stray = ctx.groups.flat().filter((kind) => !ctx.erasableKinds.includes(kind));
 
   expect(stray).toStrictEqual([]);
 });
 
-test('it lists no kind twice across the 4 groups', () => {
+test('it lists no kind twice across the 5 groups', () => {
   const ctx = setupTest();
   const kinds = ctx.groups.flat();
 
