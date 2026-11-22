@@ -13,13 +13,12 @@ interface Attempt {
   readonly name: string;
 }
 
-const page = css({
+const page = css({ marginInline: 'auto', maxWidth: 'md', padding: '4' });
+
+const fields = css({
   display: 'flex',
   flexDirection: 'column',
   gap: '3',
-  marginInline: 'auto',
-  maxWidth: 'md',
-  padding: '4',
   '& input': {
     backgroundColor: 'surface',
     borderColor: 'borderStrong',
@@ -46,7 +45,7 @@ export function RegisterDeviceForm(props: RegisterDeviceFormProps): ReactNode {
     <main className={page}>
       <h1>Use this browser as a device</h1>
       <form
-        className={page}
+        className={fields}
         onSubmit={(event) => {
           event.preventDefault();
 

@@ -21,10 +21,10 @@ import { pickTaskRefusal } from './pick-task-refusal';
 import { buildServedBlobsArgv, servedSourceFolders } from './preview/build-served-blobs-argv';
 import type { ServedContainer } from './preview/build-served-blobs-argv';
 import { createPreviewHost } from './preview/create-preview-host';
+import { makeCachedRead } from './preview/make-cached-read';
 import { pickCommitRefusal } from './preview/pick-commit-refusal';
 import { collectExtraPaths, pickSourceRefusal } from './preview/pick-source-refusal';
 import { readPreviewEndpoints } from './preview/read-preview-endpoints';
-import type { PullRequest } from './preview/read-pull-request';
 import { readPullRequest } from './preview/read-pull-request';
 import { readServedCommit, servedCommitArgv } from './preview/read-served-commit';
 import { buildProdEndpoints } from './prod/build-prod-endpoints';
@@ -415,6 +415,11 @@ export function createVerifyRegistry(): Wringer {
         paths: featurePaths['computer-watch'],
       },
       {
+        name: 'device-in-browser',
+        summary: 'Make a signed-in browser a device',
+        paths: featurePaths['device-in-browser'],
+      },
+      {
         name: 'device-screen',
         summary: 'Enrol a device and see a picture on it',
         paths: featurePaths['device-screen'],
@@ -423,17 +428,6 @@ export function createVerifyRegistry(): Wringer {
     .shared(...sharedPaths)
     .ignore(...ignoredPaths)
     .build();
-}
-
-// The pull request is read once per command, for the preview's host, endpoints and revision.
-function makeCachedRead(read: () => Promise<PullRequest>): () => Promise<PullRequest> {
-  const cached: { read: Promise<PullRequest> | null } = { read: null };
-
-  return () => {
-    cached.read ??= read();
-
-    return cached.read;
-  };
 }
 
 async function postControl<Input extends z.ZodType, Output extends z.ZodType>(
