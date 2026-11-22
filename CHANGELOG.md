@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.94.0](https://github.com/zgeoff/nixie/compare/v0.93.0...v0.94.0) (2026-11-22)
+
+
+### Features
+
+* **computer:** give the assistant a browser and a shell ([#1338](https://github.com/zgeoff/nixie/issues/1338)) ([1b86cd5](https://github.com/zgeoff/nixie/commit/1b86cd5bb3fd0fb9e3ac78db4c9b11b03c449e21))
+
 ## [0.93.0](https://github.com/zgeoff/nixie/compare/v0.92.0...v0.93.0) (2026-11-21)
 
 
