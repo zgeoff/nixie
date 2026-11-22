@@ -14,7 +14,7 @@ is deleted.
 | Memory writes   | [no built-in memory task](no-built-in-memory-tasks.md)        |
 | Tasks           | [the coding session runner](coding-session-runner/README.md)  |
 | Definitions     | [mail and calendar polls](mail-and-calendar-polls.md)         |
-| The computer    | [the browser and the shell](computer.md)                      |
+| The computer    | [the rest of the browser and the shell](computer.md)          |
 | Web             | [the hop gate](hop-gate.md)                                   |
 | Approvals       | [the approval record](../../architecture/policy/approvals.md) |
 | Operations      | [the pause after a restore](pause.md)                         |

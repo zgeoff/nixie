@@ -106,6 +106,8 @@ holds the design for a piece of work that is not built yet, with its spikes in
   content, its limits, and how the host downscales it
 - [The code tool](architecture/connectors/code-tool.md) — `code.run`, its fresh sandbox, the limits,
   the files it writes and how a forget destroys its sandbox
+- [The computer](architecture/connectors/computer.md) — the assistant's browser and shell, their
+  disks, the tools, the checking proxy and the approval of a command
 - [Time](architecture/connectors/time.md) — the time zone on each message, and the time tool that
   answers in the user's newest zone
 - [Images](architecture/connectors/images.md) — drawing and editing pictures in passes, the provider

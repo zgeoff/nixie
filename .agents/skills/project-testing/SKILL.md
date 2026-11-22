@@ -2,10 +2,10 @@
 name: project-testing
 description:
   "nixie's test facts, the shared testing rules it replaces for the model API lane and the MSW
-  server, and its own test topics: the MSW server, the unit tests' prerequisites, the imp and model
-  API lanes, time limits, the test build, where e2e code lives, the browser lane, the e2e, bundle,
-  journeys and restic lanes and the nixie harnesses. Load it beside testing before you design,
-  write, run or review a nixie test."
+  server, and its own test topics: the MSW server, the unit tests' prerequisites, the imp, userns
+  and model API lanes, time limits, the test build, where e2e code lives, the browser lane, the e2e,
+  bundle, journeys and restic lanes and the nixie harnesses. Load it beside testing before you
+  design, write, run or review a nixie test."
 metadata:
   kind: rule-set
 ---
@@ -72,17 +72,18 @@ a lib.
 Before you call a test done, run it with its command from this table. Use the first row whose files
 match the test file.
 
-| Files                                                                                                               | Command                                       | In CI             |
-| ------------------------------------------------------------------------------------------------------------------- | --------------------------------------------- | ----------------- |
-| `*.browser.test.ts` outside `apps/server/e2e/`, except `start-web-journey.browser.test.ts`                          | `bun run test:browser`                        | in `pr.yml`       |
-| `*.agent-sdk.test.ts`                                                                                               | `bun run test:agent-sdk`                      | in `pr.yml`       |
-| `apps/*/e2e/**`, except `*.browser.test.ts` and `*.restic.test.ts`                                                  | `bun run test:e2e`                            | in `pr.yml`       |
-| `*.browser.test.ts` in `apps/server/e2e/`, and `start-web-journey.browser.test.ts` in `apps/server/src/test-utils/` | `bun run test:journeys`                       | in `journeys.yml` |
-| `*.bundle.test.ts` outside `e2e/`                                                                                   | `bun run test:bundle`                         | in `pr.yml`       |
-| `*.restic.test.ts` in `apps/*/e2e/`                                                                                 | `bun run test:restic`                         | in `images.yml`   |
-| `*.imp.test.ts`                                                                                                     | `bun run test:imp`                            | no                |
-| `*.model-api.test.ts`                                                                                               | `NIXIE_SDK_CONTRACT=1 bun run test:model-api` | no                |
-| every other `*.test.ts`: the unit tests                                                                             | `bun run test`                                | in `pr.yml`       |
+| Files                                                                                                               | Command                                       | In CI                     |
+| ------------------------------------------------------------------------------------------------------------------- | --------------------------------------------- | ------------------------- |
+| `*.browser.test.ts` outside `apps/server/e2e/`, except `start-web-journey.browser.test.ts`                          | `bun run test:browser`                        | in `pr.yml`               |
+| `*.agent-sdk.test.ts`                                                                                               | `bun run test:agent-sdk`                      | in `pr.yml`               |
+| `apps/*/e2e/**`, except `*.browser.test.ts` and `*.restic.test.ts`                                                  | `bun run test:e2e`                            | in `pr.yml`               |
+| `*.browser.test.ts` in `apps/server/e2e/`, and `start-web-journey.browser.test.ts` in `apps/server/src/test-utils/` | `bun run test:journeys`                       | in `journeys.yml`         |
+| `*.bundle.test.ts` outside `e2e/`                                                                                   | `bun run test:bundle`                         | in `pr.yml`               |
+| `*.restic.test.ts` in `apps/*/e2e/`                                                                                 | `bun run test:restic`                         | in `images.yml`           |
+| `*.imp.test.ts`                                                                                                     | `bun run test:imp`                            | no                        |
+| `*.userns.test.ts`                                                                                                  | `bun run test:userns`                         | in `shell-namespaces.yml` |
+| `*.model-api.test.ts`                                                                                               | `NIXIE_SDK_CONTRACT=1 bun run test:model-api` | no                        |
+| every other `*.test.ts`: the unit tests                                                                             | `bun run test`                                | in `pr.yml`               |
 
 ### One unit test file
 
@@ -124,6 +125,18 @@ test file, run each one that the file needs, from the repo root:
   fail: only the imp's broker supplies the model credential. To run one file, add its path to the
   table's command. Without `NIXIE_SDK_CONTRACT=1`, every test skips and the command passes with no
   test run.
+
+### The userns lane
+
+The shell guest runs each command in new user, network and process namespaces, through `unshare`.
+Its `*.userns.test.ts` suites need a Linux host that allows unprivileged user namespaces.
+
+- Check your host with `unshare --user --map-root-user true`. When it fails, run
+  `sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0`, the step CI runs before the lane.
+- Never add a skip for a host that refuses them. A skipped suite has not passed, and CI's runner
+  allows them.
+- Put a test in a `*.userns.test.ts` file only when it runs a command through `unshare`. Test the
+  rest of the shell guest in its unit tests.
 
 ## Time limits
 

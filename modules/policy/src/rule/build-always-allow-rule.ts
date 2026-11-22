@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import type { JSONObject } from '@heynixie/log';
 import type { Rule, RuleCheck, RuleForm } from '../types';
 import { toCanonicalText } from '../utils/to-canonical-text';
+import { buildCommandPattern } from './is-command-match';
 import { renderRule } from './render-rule';
 import { toRuleForm } from './to-rule-form';
 
@@ -22,6 +23,7 @@ export interface AlwaysAllowRule {
   readonly sentence: string;
 }
 
+const commandTool = 'computer.run';
 const unpinnableDestination = /[\s*]/u;
 
 // The rule that Always allow creates: the tool, this action's destinations, and an eq check for
@@ -30,7 +32,20 @@ const unpinnableDestination = /[\s*]/u;
 export function buildAlwaysAllowRule(facts: AlwaysAllowFacts): AlwaysAllowRule | null {
   const checks: RuleCheck[] = [];
 
-  for (const [name, value] of Object.entries(facts.input)) {
+  if (facts.tool === commandTool) {
+    const command = typeof facts.input['command'] === 'string' ? facts.input['command'] : '';
+    const pattern = buildCommandPattern(command);
+
+    if (pattern === null) {
+      return null;
+    }
+
+    checks.push({ arg: 'command', op: 'matches', value: pattern });
+  }
+
+  const pinned = facts.tool === commandTool ? {} : facts.input;
+
+  for (const [name, value] of Object.entries(pinned)) {
     if (facts.content.includes(name)) {
       continue;
     }

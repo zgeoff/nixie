@@ -102,7 +102,7 @@ export async function runToolCall(
   }
 
   const prepare = registered !== null && isListed ? registered.definition.prepare : undefined;
-  const prepared = prepare === undefined ? null : await prepare(call.input);
+  const prepared = prepare === undefined ? null : await prepare(call.input, { run });
 
   if (prepared !== null && !isPrepared(prepared)) {
     invariant(registered, 'a prepare step belongs to a registered tool');
@@ -145,7 +145,7 @@ export async function runToolCall(
     options.decisionDeadlineMs === undefined ? {} : { deadlineMs: options.decisionDeadlineMs };
 
   const decide = makeFaultSafeDecisionPoint(options.decide, decisionTimeout);
-  const policyArgs = facts?.args ?? call.input;
+  const policyArgs = withPreparedAmount(facts?.args ?? call.input, registered, prepared);
 
   const policyCall = buildToolPolicyCall(run, {
     tool: policyTool,
@@ -166,6 +166,7 @@ export async function runToolCall(
     input: call.input,
     destinations: destinations.map((destination) => destination.value),
     deadlineAt,
+    expectURL: prepared?.expectURL,
   });
 
   const repeatOf = await readAskedRepeat({
@@ -203,6 +204,7 @@ export async function runToolCall(
         repeatOf: written.repeatOf,
         destinations,
         deadlineAt,
+        prepared,
         options,
       });
 
@@ -281,6 +283,19 @@ async function writeDirectResult(
   return toCallToolResult(recorded.settled);
 }
 
+// A prepared amount stands in for the argument the declaration names as the call's amount.
+function withPreparedAmount(
+  args: JSONObject,
+  registered: RegisteredTool | null,
+  prepared: Prepared | null,
+): JSONObject {
+  const name = registered?.definition.declaration.amount ?? null;
+
+  return prepared?.amount === undefined || name === null
+    ? args
+    : { ...args, [name]: prepared.amount };
+}
+
 // A prepared call's effects stand in for the declared ones in the proposal the call may write.
 function pickCallDeclaration(
   registered: RegisteredTool | null,
@@ -308,6 +323,7 @@ interface DecidedCall {
   readonly repeatOf: OpenRepeat | null;
   readonly destinations: readonly CallDestination[];
   readonly deadlineAt: number | null;
+  readonly prepared: Prepared | null;
   readonly options: ToolCallOptions;
 }
 
@@ -370,6 +386,7 @@ interface AllowedCall {
   readonly callSequence: number;
   readonly destinations: readonly CallDestination[];
   readonly deadlineAt: number | null;
+  readonly prepared: Prepared | null;
   readonly options: ToolCallOptions;
 
   readonly verdict?: MemoryWriteVerdict;
@@ -427,9 +444,10 @@ async function runQueued(allowed: AllowedCall): Promise<Settled> {
       input: allowed.call.input,
       destinations: allowed.destinations.map((destination) => destination.value),
       deadlineAt: allowed.deadlineAt,
+      expectURL: allowed.prepared?.expectURL,
     }),
     deadlineAt: allowed.deadlineAt,
-    effects: allowed.registered.definition.declaration.effects,
+    effects: allowed.prepared?.effects ?? allowed.registered.definition.declaration.effects,
     destinations: allowed.destinations,
     content: allowed.registered.definition.declaration.content,
   });

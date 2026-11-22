@@ -65,6 +65,7 @@ interface ConversationImages {
 
 export interface ConversationEndpointTools {
   readonly webFetch: ToolDefinition;
+  readonly computer: readonly ToolDefinition[];
   readonly codeRun: ToolDefinition;
   readonly fileSend: ToolDefinition;
   readonly forget: ToolDefinition;
@@ -243,6 +244,7 @@ export async function startConversationEndpoint(
       },
       memory,
     ),
+    ...tools.computer,
     ...search,
     ...images,
     ...devices,

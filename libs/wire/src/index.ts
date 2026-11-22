@@ -95,3 +95,22 @@ export { parseSpoolFileName } from './spool/parse-spool-file-name';
 export { capturePath } from './capture/capture-path';
 export type { CaptureAnswer } from './capture/capture-answer-schema';
 export { captureAnswerSchema } from './capture/capture-answer-schema';
+export type { ComputerFailureReason, ComputerReply } from './computer/computer-reply';
+export { computerFailureReasons, computerReplySchema } from './computer/computer-reply';
+export type { ComputerAct, ComputerRequest } from './computer/computer-request';
+export { computerRequestSchema } from './computer/computer-request';
+export type { ComputerGuestFrame } from './computer/decode-computer-guest-frame';
+export { decodeComputerGuestFrame } from './computer/decode-computer-guest-frame';
+export { decodeComputerRequest } from './computer/decode-computer-request';
+export type { ComputerHopRefuse } from './computer/encode-computer-message';
+export { encodeComputerMessage } from './computer/encode-computer-message';
+export type { ComputerContentHop, ComputerHopFrame } from './computer/computer-hop-frame';
+
+export type {
+  AskScan,
+  AskScanText,
+  ComputerGuestIO,
+  ComputerHandler,
+} from './computer/run-computer-guest';
+
+export { runComputerGuest } from './computer/run-computer-guest';

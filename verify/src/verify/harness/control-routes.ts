@@ -59,6 +59,12 @@ export const controlRoutes = {
     input: z.strictObject({ fit: z.enum(['whole', 'fill']), text: z.string().min(1) }),
     output: z.strictObject({ replies: z.int().positive() }),
   },
+  useComputer: {
+    method: 'POST',
+    path: '/control/use-computer',
+    input: z.strictObject({ kind: z.enum(['browser', 'shell']), text: z.string().min(1) }),
+    output: z.strictObject({ replies: z.int().positive() }),
+  },
   tasks: {
     method: 'GET',
     path: '/control/tasks',

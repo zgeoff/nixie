@@ -178,6 +178,16 @@ export function createVerifyRegistry(): Wringer {
       run: (input, ctx) => postControl(ctx.drivers.http, controlRoutes.showOnDevice, input),
     })
     .action({
+      name: 'use-computer',
+      summary:
+        "Send the owner message and queue the scripted model turn that uses the assistant's browser (--kind browser: opens the harness page) or shell (--kind shell: writes a file and reads it back), with the closing reply --text",
+      effect: 'write',
+      targets: ['local'],
+      input: controlRoutes.useComputer.input,
+      data: controlRoutes.useComputer.output,
+      run: (input, ctx) => postControl(ctx.drivers.http, controlRoutes.useComputer, input),
+    })
+    .action({
       name: 'reset-data',
       summary:
         "Reset the preview's data with `nixie reset --keep-sessions`, which keeps each signed-in browser",
@@ -376,6 +386,16 @@ export function createVerifyRegistry(): Wringer {
         name: 'drawing',
         summary: 'Draw a picture, edit it, and list both',
         paths: featurePaths.drawing,
+      },
+      {
+        name: 'computer-browser',
+        summary: "Open a page in the assistant's browser",
+        paths: featurePaths['computer-browser'],
+      },
+      {
+        name: 'computer-shell',
+        summary: 'Write and read back a shell file',
+        paths: featurePaths['computer-shell'],
       },
       {
         name: 'device-screen',

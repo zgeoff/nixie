@@ -36,3 +36,13 @@ test('it hashes two deadlines differently', () => {
     buildActionHash({ ...operation, deadlineAt: 2_000_001 }),
   );
 });
+
+test('it hashes an action that expects a URL differently from one that expects another', () => {
+  const operation = { tool: 'computer.click', input: { tab: 't1' }, destinations: ['example.org'] };
+
+  expect(buildActionHash({ ...operation, expectURL: 'https://example.org/a' })).not.toBe(
+    buildActionHash({ ...operation, expectURL: 'https://example.org/b' }),
+  );
+
+  expect(buildActionHash({ ...operation, expectURL: undefined })).toBe(buildActionHash(operation));
+});

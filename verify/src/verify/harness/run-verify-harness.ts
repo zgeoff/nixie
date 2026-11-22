@@ -3,6 +3,7 @@ import { getDataFilePath } from '@heynixie/log';
 import { createSpawnedNixie, createTestClient, readTestBundle } from '@heynixie/server/test-utils';
 import { createBuiltWeb, createFrontProxy, readWebBuild } from '@heynixie/web/test-utils';
 import { buildScriptedReplies } from './build-scripted-replies';
+import { runComputerSession } from './run-computer-session';
 import { runDeviceShow } from './run-device-show';
 import { serveControl } from './serve-control';
 
@@ -53,6 +54,19 @@ export async function runVerifyHarness(): Promise<void> {
 
   stack.defer(() => front.stop(true));
 
+  // the page the assistant's browser opens; its .test host resolves to this loopback server only in
+  // the test build's browser, so no journey reaches the internet
+  const site = Bun.serve({
+    port: 0,
+    routes: {
+      '/': new Response('<h1>Hello from the page</h1><p>Plain page for the browser.</p>', {
+        headers: { 'content-type': 'text/html' },
+      }),
+    },
+  });
+
+  stack.defer(() => site.stop(true));
+
   const control = serveControl({
     isNixieRunning: () => running.isRunning,
     addReply: (reply) => {
@@ -62,6 +76,11 @@ export async function runVerifyHarness(): Promise<void> {
 
       return replies.length;
     },
+    useComputer: (use) =>
+      runComputerSession(api.client, nixie.model, {
+        input: use,
+        siteURL: `http://pages.test:${String(site.port)}/`,
+      }),
     showOnDevice: (show) => runDeviceShow(api.client, nixie.model, show),
     readTasks: async () => {
       const listed = await api.client.tasks.list();

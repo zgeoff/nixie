@@ -13,6 +13,11 @@ const argumentPathSchema = z
 
 const scalarSchema = z.union([z.string(), z.number(), z.boolean()]);
 
+const checkPatternSchema = z
+  .string()
+  .min(1)
+  .describe('Exact text, or a pattern whose only wildcard is *, which matches any run of text');
+
 const checkSchema = z.discriminatedUnion('op', [
   z.strictObject({ arg: argumentPathSchema, op: z.literal('eq'), value: scalarSchema }),
   z.strictObject({
@@ -23,7 +28,7 @@ const checkSchema = z.discriminatedUnion('op', [
   z.strictObject({
     arg: argumentPathSchema,
     op: z.literal('matches'),
-    value: destinationPatternSchema,
+    value: checkPatternSchema,
   }),
 ]);
 

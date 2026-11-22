@@ -76,7 +76,7 @@ test('it refuses a key that is no image key', async () => {
 
   await writeFile(
     ctx.path,
-    JSON.stringify({ browser: `ghcr.io/example/nixie-browser@sha256:${'a'.repeat(64)}` }),
+    JSON.stringify({ desktop: `ghcr.io/example/nixie-desktop@sha256:${'a'.repeat(64)}` }),
   );
 
   expect(loadSandboxManifest(ctx.path)).rejects.toThrow('nixie refuses the sandbox manifest');

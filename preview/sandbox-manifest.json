@@ -2,5 +2,7 @@
   "conversation": "ghcr.io/example/nixie-conversation@sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
   "fetch": "ghcr.io/example/nixie-fetch@sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
   "code": "ghcr.io/example/nixie-code@sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
-  "codex": "ghcr.io/example/nixie-codex@sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+  "codex": "ghcr.io/example/nixie-codex@sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+  "browser": "ghcr.io/example/nixie-browser@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "shell": "ghcr.io/example/nixie-shell@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
 }

@@ -3438,3 +3438,68 @@ test('it leaves the release of a paid call that runs to the tool', async () => {
 
   expect(release).not.toHaveBeenCalled();
 });
+
+test('it queues a prepared call with the prepared effects and a hash that covers the expected URL', async () => {
+  const seen: string[] = [];
+
+  const ctx = await setupTest({
+    rules: [
+      {
+        id: 'allow-example',
+        revision: 1,
+        rule: {
+          id: 'allow-example',
+          outcome: 'allow',
+          effects: ['send'],
+          destinations: ['example.org'],
+        },
+      },
+    ],
+    tools: [
+      buildMockToolDefinition({
+        name: 'test.send',
+        execution: 'queued',
+        declaration: { effects: ['send'] },
+        prepare: (_input, context) => {
+          seen.push(context.run.thread);
+
+          return Promise.resolve({
+            destinations: ['example.org'],
+            effects: ['send'],
+            expectURL: 'https://example.org/signup',
+          });
+        },
+      }),
+    ],
+  });
+
+  const call = runToolCall(
+    { tool: 'test.send', input: { query: 't1' }, toolUseID: 'toolu_u1' },
+    {
+      runID: 'run-1',
+      thread: 'task-1',
+      logThread: 'task-1',
+      tools: ['test.send'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
+    ctx.options,
+  );
+
+  await waitForCondition(() => ctx.queue.waits.length === 1);
+
+  ctx.queue.drainWaits();
+
+  await call;
+
+  expect(seen).toStrictEqual(['task-1']);
+
+  expect(ctx.queue.actions[0]?.action.actionHash).toBe(
+    buildActionHash({
+      tool: 'test.send',
+      input: { query: 't1' },
+      destinations: ['example.org'],
+      deadlineAt: null,
+      expectURL: 'https://example.org/signup',
+    }),
+  );
+});

@@ -28,6 +28,8 @@ route from the kind:
 | worker       | None      | Yes              | No           | Yes        |
 | code run     | None      | No               | No           | No         |
 | fetch        | Public    | No               | No           | No         |
+| browser      | Public    | No               | No           | No         |
+| shell        | Public    | No               | No           | No         |
 | coding       | Allowlist | Yes              | Yes          | Yes        |
 
 The owner is the ID that crash recovery checks to decide whether the sandbox still has work. For a
@@ -59,6 +61,8 @@ to a role. A sandbox kind or an image never picks a row.
 | system task  | the checker, each started task and each system task | 1     | 384 MiB | 4096 MiB |
 | fetch        | web fetch and skill fetch                           | 1     | 192 MiB | 4096 MiB |
 | code run     | each `code.run` call                                | 1     | 512 MiB | 4096 MiB |
+| browser      | the assistant's [browser](computer.md)              | 2     | 1024 MiB | 8192 MiB |
+| shell        | the assistant's [shell](computer.md)                | 1     | 512 MiB | 16384 MiB |
 ```
 
 A size is a constant with no config key, and a release changes it. Each row's memory is an even

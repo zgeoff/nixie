@@ -1,7 +1,7 @@
-import { statSync } from 'node:fs';
+import { readFileSync, statSync, writeFileSync } from 'node:fs';
 import { mkdtemp, readdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import type { TestAction } from '@heynixie/actions/test-utils';
 import { readTestActions } from '@heynixie/actions/test-utils';
 import type { TestBackupSet } from '@heynixie/backup/test-utils';
@@ -76,9 +76,10 @@ interface SpawnedNixieHarness {
 
   readonly start: (faultPoints?: readonly FaultPointArm[]) => SpawnedNixieProcess;
 
-  // Starts another release entry on the same config, data directory and doubles. It never waits
-  // for ready, which a release does not reach without an impd.
-  readonly startRelease: (entry: string) => SpawnedNixieProcess;
+  // Starts another release entry on the same config, data directory and doubles, and never waits
+  // for ready, which a release does not reach without an impd. Given image keys, it keeps only
+  // those in the release's manifest, as a rollback to that release's own manifest does.
+  readonly startRelease: (entry: string, imageKeys?: readonly string[]) => SpawnedNixieProcess;
 
   readonly advance: (durationMs: number, options?: AdvanceOptions) => Promise<void>;
 }
@@ -234,7 +235,11 @@ export async function createSpawnedNixie(
   const harness: SpawnedNixieHarness = {
     now: crashHarness.now,
     start: (faultPoints) => startProcess(faultPoints),
-    startRelease: (entry) => startRelease({ ...launch, entry }, stack),
+    startRelease: (entry, imageKeys) => {
+      const releaseFiles = imageKeys === undefined ? files : writeReleaseManifest(files, imageKeys);
+
+      return startRelease({ ...launch, entry, args: buildServeArgs(releaseFiles) }, stack);
+    },
     advance: crashHarness.advance,
   };
 
@@ -513,6 +518,20 @@ function startRelease(launch: Launch, stack: AsyncDisposableStack): SpawnedNixie
   void Promise.allSettled([ready]);
 
   return { ...started, ready };
+}
+
+// Sync, so that startRelease hands back its process at once, as the build's own start does
+function writeReleaseManifest(files: BootFiles, imageKeys: readonly string[]): BootFiles {
+  const manifest = z
+    .record(z.string(), z.string())
+    .parse(JSON.parse(readFileSync(files.manifestPath, 'utf8')));
+
+  const kept = Object.entries(manifest).filter(([key]) => imageKeys.includes(key));
+  const manifestPath = join(dirname(files.manifestPath), 'release-sandbox-manifest.json');
+
+  writeFileSync(manifestPath, JSON.stringify(Object.fromEntries(kept)));
+
+  return { ...files, manifestPath };
 }
 
 // Each start of nixie checks its action queue with an action of its own, which reaches every

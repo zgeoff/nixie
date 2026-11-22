@@ -51,7 +51,7 @@ jobs:
     needs: changes
     if: ${{ !cancelled() && needs.changes.outputs.changed != 'false' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     services:
       registry:
         image: registry:3@sha256:82f6ff4a7f982960c8aa51617fea3aabc485df6e55cce80d22deb1de36f1bc3c
@@ -109,6 +109,22 @@ jobs:
           repository: ${{ env.REGISTRY }}/nixie-code
           dockerfile: guests/code/Dockerfile
           cache-scope: code
+
+      - name: Build the browser image
+        id: browser
+        uses: ./.github/actions/build-image
+        with:
+          repository: ${{ env.REGISTRY }}/nixie-browser
+          dockerfile: guests/browser/Dockerfile
+          cache-scope: browser
+
+      - name: Build the shell image
+        id: shell
+        uses: ./.github/actions/build-image
+        with:
+          repository: ${{ env.REGISTRY }}/nixie-shell
+          dockerfile: guests/shell/Dockerfile
+          cache-scope: shell
 
       - name: Build the codex image
         id: codex

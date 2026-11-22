@@ -7,6 +7,7 @@
     "typecheck": "tsrs --fast --noEmit"
   },
   "dependencies": {
+    "@heynixie/egress": "workspace:*",
     "@heynixie/wire": "workspace:*",
     "entities": "catalog:"
   }

@@ -1,5 +1,6 @@
 import { expect, onTestFinished, test } from 'bun:test';
 import { gzipSync } from 'node:zlib';
+import { makeAddressCheck } from '@heynixie/egress';
 import { defaultFetchTextBytes } from '@heynixie/wire';
 import { buildStubResolver } from '../test-utils/build-stub-resolver';
 import { readClosedPort } from '../test-utils/read-closed-port';
@@ -8,7 +9,6 @@ import { startSilentListener } from '../test-utils/start-silent-listener';
 import { startTestSite } from '../test-utils/start-test-site';
 import { buildReadableText } from '../utils/build-readable-text';
 import { createWebTransports } from './create-web-transports';
-import { makeAddressCheck } from './make-address-check';
 import { readPage } from './read-page';
 
 test('it returns the readable text of an HTML page over a connection to the checked address', async () => {

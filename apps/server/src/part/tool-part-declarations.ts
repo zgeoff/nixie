@@ -1,5 +1,6 @@
 import { buildGitHubDefinitionsRepo } from '@heynixie/definitions-repo-github';
 import { buildKagiSearch } from '@heynixie/search-kagi';
+import { addComputerConnector } from '../computer/add-computer-connector';
 import { startConversationEndpoint } from '../conversation/start-conversation-endpoint';
 import { readDefinitionsContext } from '../definition/read-definitions-context';
 import { refreshDefinitions } from '../definition/refresh-definitions';
@@ -13,6 +14,7 @@ import { buildTestSendTool, testSendKinds } from '../utils/build-test-send-tool'
 import { buildImageProviders } from './build-image-providers';
 import type { ServerPartValues } from './server-part-values';
 import { startCodeRunPart } from './start-code-run-part';
+import { startComputerPart } from './start-computer-part';
 import { startSandboxAdapterPart } from './start-sandbox-adapter-part';
 import { startWebFetchPart } from './start-web-fetch-part';
 import { startWorkerPart } from './start-worker-part';
@@ -53,6 +55,17 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
       }),
   },
   {
+    name: 'computer',
+    needs: ['inputs', 'context', 'sandbox_adapter'],
+    images: () => ['browser', 'shell'],
+    start: (parts) =>
+      startComputerPart({
+        options: parts.get('inputs').options,
+        adapter: parts.get('sandbox_adapter'),
+        log: parts.get('context').apiContext.log,
+      }),
+  },
+  {
     name: 'code_run',
     needs: ['inputs', 'context', 'sandbox_adapter'],
     images: () => ['code'],
@@ -80,7 +93,7 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
   },
   {
     name: 'actions',
-    needs: ['inputs', 'context'],
+    needs: ['inputs', 'context', 'computer'],
     start: (parts) => {
       const options = parts.get('inputs').options;
       const apiContext = parts.get('context').apiContext;
@@ -91,12 +104,23 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
         testProviderURL: NIXIE_TEST_BUILD ? (options.harness?.providerURL ?? null) : null,
       });
 
-      return Promise.resolve(addLogForget(actions, buildLogForgetTool(apiContext)));
+      const withForget = addLogForget(actions, buildLogForgetTool(apiContext));
+
+      return Promise.resolve(addComputerConnector(withForget, parts.get('computer')));
     },
   },
   {
     name: 'tool_endpoint',
-    needs: ['inputs', 'context', 'web_fetch', 'code_run', 'worker', 'actions', 'decisions'],
+    needs: [
+      'inputs',
+      'context',
+      'web_fetch',
+      'computer',
+      'code_run',
+      'worker',
+      'actions',
+      'decisions',
+    ],
     uses: ['memory', 'server_parts', 'checker', 'definitions_exports'],
     start: (parts) => {
       const options = parts.get('inputs').options;
@@ -112,6 +136,7 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
         },
         {
           webFetch: parts.get('web_fetch').tool,
+          computer: parts.get('computer').tools,
           codeRun: parts.get('code_run').tool,
           fileSend: parts.get('code_run').sendTool,
           forget: parts.get('actions').forget.tool,

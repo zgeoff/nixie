@@ -1,9 +1,9 @@
 import type { ClientRequest, IncomingMessage } from 'node:http';
 import type { LookupFunction } from 'node:net';
 import { isIP } from 'node:net';
+import { toBareHost } from '@heynixie/egress';
 import { ConnectionNotOpenError } from './connection-not-open-error';
 import type { WebTransports } from './create-web-transports';
-import { toBareHost } from './to-bare-host';
 
 export interface PinnedTarget {
   readonly url: URL;

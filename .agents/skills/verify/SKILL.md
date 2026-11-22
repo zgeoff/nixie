@@ -32,8 +32,7 @@ The mistakes that cost the most time:
   then `done`; then push and publish with the upload token read in a subshell.
 - [Read the envelope](#read-the-envelope): branch on the exit code and `error.code`, never on the
   message, which can change in any release.
-- [Targets](#targets): check a change on a launch target, a target whose app `bun verify up` starts
-  from your worktree.
+- [Targets](#targets): check a change on a launch target, which `bun verify up` starts.
 - [Commands](#commands): read `--help` before you guess a flag.
 - [Edit the skill and the registry](#edit-the-skill-and-the-registry): map each new file in the
   registry, read the reference before you edit the skill, and run `lint`.
@@ -50,15 +49,17 @@ Read a feature's file before you run its journey.
 
 <!-- wringer:features -->
 
-| Feature         | Summary                                                                    | File                                                                           |
-| --------------- | -------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
-| sign-in-enrol   | Sign a browser in with a code from `nixie enrol-code`, and see its session | [references/feature-sign-in-enrol.md](references/feature-sign-in-enrol.md)     |
-| chat-turn       | Send a message from the page, and see the reply after it, in order         | [references/feature-chat-turn.md](references/feature-chat-turn.md)             |
-| memory-approval | Approve a memory the model proposed, and see it become active              | [references/feature-memory-approval.md](references/feature-memory-approval.md) |
-| policy-proposal | Approve a call that an ask rule held unrun                                 | [references/feature-policy-proposal.md](references/feature-policy-proposal.md) |
-| task-control    | Pause and resume a task, and see its records agree                         | [references/feature-task-control.md](references/feature-task-control.md)       |
-| drawing         | Draw a picture, edit it, and list both                                     | [references/feature-drawing.md](references/feature-drawing.md)                 |
-| device-screen   | Enrol a device and see a picture on it                                     | [references/feature-device-screen.md](references/feature-device-screen.md)     |
+| Feature          | Summary                                                                    | File                                                                             |
+| ---------------- | -------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| sign-in-enrol    | Sign a browser in with a code from `nixie enrol-code`, and see its session | [references/feature-sign-in-enrol.md](references/feature-sign-in-enrol.md)       |
+| chat-turn        | Send a message from the page, and see the reply after it, in order         | [references/feature-chat-turn.md](references/feature-chat-turn.md)               |
+| memory-approval  | Approve a memory the model proposed, and see it become active              | [references/feature-memory-approval.md](references/feature-memory-approval.md)   |
+| policy-proposal  | Approve a call that an ask rule held unrun                                 | [references/feature-policy-proposal.md](references/feature-policy-proposal.md)   |
+| task-control     | Pause and resume a task, and see its records agree                         | [references/feature-task-control.md](references/feature-task-control.md)         |
+| drawing          | Draw a picture, edit it, and list both                                     | [references/feature-drawing.md](references/feature-drawing.md)                   |
+| computer-browser | Open a page in the assistant's browser                                     | [references/feature-computer-browser.md](references/feature-computer-browser.md) |
+| computer-shell   | Write and read back a shell file                                           | [references/feature-computer-shell.md](references/feature-computer-shell.md)     |
+| device-screen    | Enrol a device and see a picture on it                                     | [references/feature-device-screen.md](references/feature-device-screen.md)       |
 
 <!-- /wringer:features -->
 
@@ -132,9 +133,9 @@ and do what that row says.
 ## Targets
 
 Start a launch target's app with `bun verify up`, and stop it with `bun verify down`. Connect to an
-attach target, a target whose app runs apart from `bun verify`, with `bun verify attach`.
-`bun verify detach` leaves it running. Your edits never reach an attach target's app, so check a
-change on a launch target.
+attach target, whose app runs apart from `bun verify`, with `bun verify attach`; `bun verify detach`
+leaves it running. Your edits never reach an attach target's app, so check a change on a launch
+target.
 
 Run `bun verify use --target <target>` to point every later command at a target. `use` saves the
 choice in this worktree's `.wringer/`, for every shell and session. `--target` on one command points
@@ -142,15 +143,15 @@ that command alone. A command with neither runs on the registry's first target, 
 
 <!-- repo: targets -->
 
-| Target    | Start with                                                  | Access     | Notes                                                                                                           |
-| --------- | ----------------------------------------------------------- | ---------- | --------------------------------------------------------------------------------------------------------------- |
-| `local`   | `bun verify use --target local`, then `bun verify up`       | read-write | This tree's test build, with a scripted model.                                                                  |
-| `preview` | `bun verify use --target preview`, then `bun verify attach` | read-write | The PR's preview, real model. Read [its setup](references/preview-setup.md); leave with `detach`, never `down`. |
-| `prod`    | `bun verify use --target prod`, then `bun verify attach`    | read-only  | Production; follow [the prod check](references/prod-check.md).                                                  |
+| Target    | Start with                                                  | Access     | Notes                                                                                    |
+| --------- | ----------------------------------------------------------- | ---------- | ---------------------------------------------------------------------------------------- |
+| `local`   | `bun verify use --target local`, then `bun verify up`       | read-write | This tree's test build; scripted model.                                                  |
+| `preview` | `bun verify use --target preview`, then `bun verify attach` | read-write | The PR's preview, real model; [setup](references/preview-setup.md); leave with `detach`. |
+| `prod`    | `bun verify use --target prod`, then `bun verify attach`    | read-only  | [The prod check](references/prod-check.md).                                              |
 
 - Run `sign-in-enrol` first, and after each `up --restart`, as
-  [its file](references/feature-sign-in-enrol.md) says. Skip it before `device-screen`, which needs
-  a browser with no session.
+  [its file](references/feature-sign-in-enrol.md) says, except before `device-screen`, which needs a
+  browser with no session.
 
 <!-- /repo -->
 
@@ -167,8 +168,8 @@ for its commands.
 
 <!-- repo: commands -->
 
-- Pass `--role` and `--name` to `browser type` and `browser click`. When they match no single
-  element, pass `--ref`, an ID from the last `browser snapshot`.
+- Pass `--role` and `--name` to `browser type` and `browser click`, or `--ref`, an ID from the last
+  `browser snapshot`.
 
 <!-- /repo -->
 
