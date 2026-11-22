@@ -21,6 +21,11 @@ export interface TakeoverDependencies {
   // Waits for the calls already running, up to their own limit, and says whether they all finished.
   readonly waitForCalls: () => Promise<boolean>;
 
+  // Keeps the sandbox awake until the returned function runs. A hold takes it from its start to its
+  // end, so the sandbox never sleeps with a person at the desktop, and the guest it would stop for
+  // the sleep stays.
+  readonly keepAwake: () => () => void;
+
   // tells the guest a hold begins, so it starts listing the sites the browser shows
   readonly begin: () => Promise<void>;
 
@@ -41,6 +46,7 @@ type Phase =
       readonly startedAtMs: number;
       lastInputAtMs: number;
       readonly idle: AbortController;
+      readonly releaseAwake: () => void;
     }
 
   // the hold has ended for its device, whose input stops, while the guest is read and the record
@@ -145,7 +151,17 @@ async function waitAndHold(
 
   const idle = new AbortController();
 
-  state.phase = { kind: 'held', deviceID, startedAtMs, lastInputAtMs: startedAtMs, idle };
+  const releaseAwake = dependencies.keepAwake();
+
+  state.phase = {
+    kind: 'held',
+    deviceID,
+    startedAtMs,
+    lastInputAtMs: startedAtMs,
+    idle,
+    releaseAwake,
+  };
+
   state.epoch += 1;
 
   try {
@@ -215,6 +231,8 @@ async function endHold(
 
   state.epoch += 1;
   state.phase = { kind: 'idle' };
+
+  held.releaseAwake();
 
   return { kind: 'ended', durationSeconds };
 }

@@ -168,6 +168,7 @@ export function startComputer(options: ComputerOptions): Computer {
     logger: options.logger,
     idleMs: options.takeover?.idleMs ?? defaultTakeoverIdleMs,
     records: options.takeover?.records ?? noTakeoverRecords,
+    keepAwake: () => holdAwake(context, null),
     waitForCalls: () => waitForRunningCalls({ running: state.running, clock: context.clock }),
     ...hooks,
   });
@@ -455,6 +456,11 @@ async function readyGuest(context: ComputerContext, sandbox: Sandbox): Promise<G
     scans: context.options.scans,
     clock: context.clock,
     logger: context.options.logger,
+    onClosed: () => {
+      if (state.guest === guest) {
+        void stopGuest(state);
+      }
+    },
   });
 
   state.guest = guest;

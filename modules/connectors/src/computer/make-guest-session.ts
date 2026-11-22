@@ -57,6 +57,9 @@ export interface GuestSessionOptions {
   readonly scans: OutOfCallScans;
   readonly clock: Clock;
   readonly logger: Logger;
+
+  // runs once the guest's output ends or fails, for a guest that stops on its own
+  readonly onClosed?: () => void;
 }
 
 interface ActiveCall {
@@ -117,6 +120,8 @@ async function pumpFrames(
       kind: 'broken',
       message: 'the guest closed its output with no reply',
     });
+
+    options.onClosed?.();
   } catch (error) {
     closeStreams(streams);
 
@@ -124,6 +129,8 @@ async function pumpFrames(
       kind: 'broken',
       message: error instanceof Error ? error.message : String(error),
     });
+
+    options.onClosed?.();
   }
 }
 

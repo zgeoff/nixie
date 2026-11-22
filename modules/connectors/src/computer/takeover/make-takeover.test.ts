@@ -17,6 +17,7 @@ function setupTest(options: SetupOptions = {}) {
   const ended: TakeoverEndedRecord[] = [];
   const calls = Promise.withResolvers<boolean>();
   const releases = { count: 0 };
+  const awake = { holds: 0, releases: 0 };
 
   const read: HandBackRead = {
     origins: ['https://itch.io'],
@@ -43,6 +44,13 @@ function setupTest(options: SetupOptions = {}) {
       options.isWaitingOnCalls === true
         ? calls.promise
         : Promise.resolve(options.isDrained !== false),
+    keepAwake: () => {
+      awake.holds += 1;
+
+      return () => {
+        awake.releases += 1;
+      };
+    },
     begin: () => Promise.resolve(),
     finish: () => Promise.resolve(read),
   });
@@ -62,6 +70,7 @@ function setupTest(options: SetupOptions = {}) {
     ended,
     read,
     releases,
+    awake,
     watch,
     finishCalls: (isDrained: boolean) => {
       calls.resolve(isDrained);
@@ -242,4 +251,19 @@ test('it writes an end by restart with nothing read from the guest', async () =>
   await ctx.takeover.end('restart');
 
   expect(ctx.ended).toStrictEqual([{ by: 'restart', durationSeconds: 10, read: null }]);
+});
+
+test('it keeps the sandbox awake from the start of a hold to its end', async () => {
+  const ctx = setupTest();
+
+  await ctx.takeover.start('laptop');
+
+  const whileHeld = { ...ctx.awake };
+
+  await ctx.takeover.end('user', 'laptop');
+
+  expect([whileHeld, ctx.awake]).toStrictEqual([
+    { holds: 1, releases: 0 },
+    { holds: 1, releases: 1 },
+  ]);
 });
