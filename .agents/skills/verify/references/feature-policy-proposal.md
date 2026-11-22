@@ -14,8 +14,10 @@ the model makes, nixie holds the call until you answer it:
   whose `family` is `action`.
 
 When you approve the call, its row's `state` becomes `approved`, and nixie adds a
-`policy.action_answered` record. nixie then starts a new model turn to tell the model your answer.
-The test build starts with the
+`policy.action_answered` record. That record wakes nothing and shows the model no message. nixie
+runs the call, and its `action.outcome` record starts one model turn. In that turn the model reads
+the outcome and the time you approved the call. A decline reaches the model as a message with your
+reason. The test build starts with the
 [starter rules](../../../../deploy/compose/definitions/rules/starter.yaml), the rules file that the
 Compose recipe ships. nixie holds every call whose effect is `export`, such as `memory.export`, by
 its rule `ask-exports`.
@@ -73,8 +75,8 @@ Before you start:
    Expect: `proposals` exits 0. The last row of `data.rows` is the export call's result, with
    `outcome` `queued` and `action` `null`. Earlier rows are from earlier journeys' tool calls.
 
-4. Script the model's text for the turn that your answer starts. Without it, that turn fails. No
-   step checks that turn's reply.
+4. Script the model's text for the turn that the call's outcome starts. Without it, that turn fails.
+   No step checks that turn's reply.
 
    ```bash
    bun verify action script-reply --text 'Thanks, I have your answer.'
