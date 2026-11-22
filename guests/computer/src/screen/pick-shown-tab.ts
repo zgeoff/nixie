@@ -27,6 +27,12 @@ export function pickShownTab(
     return visible.at(-1) ?? null;
   }
 
+  // Each browser window shows one tab, so fewer visible tracked tabs than windows means a window is
+  // untracked, and geometry alone can't keep a tab from a window that moved during the scan.
+  if (visible.length < browserWindows.length) {
+    return null;
+  }
+
   return (
     visible.findLast((tab) => pickNearestWindow(tab, browserWindows)?.id === window.id) ?? null
   );

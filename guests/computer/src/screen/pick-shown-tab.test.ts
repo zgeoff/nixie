@@ -79,6 +79,17 @@ test('it gives none to a browser window that sits far from where the tab reports
   ]).toStrictEqual([null, null]);
 });
 
+test('it gives none to any window when a browser window shows no tracked tab', () => {
+  const ctx = setupTest();
+  const untracked = { ...ctx.right, x: 200 };
+  const scannedMidMove = { ...ctx.leftTab, left: 199 };
+
+  expect([
+    pickShownTab(ctx.left, [ctx.left, untracked], [scannedMidMove]),
+    pickShownTab(untracked, [ctx.left, untracked], [scannedMidMove]),
+  ]).toStrictEqual([null, null]);
+});
+
 test('it gives none when an untracked browser window sits close to the tab beside its own', () => {
   const ctx = setupTest();
   const tracked = { ...ctx.left, x: 0 };

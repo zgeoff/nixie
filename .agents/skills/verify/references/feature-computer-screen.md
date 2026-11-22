@@ -28,8 +28,8 @@ Before you start:
 - Run this journey once per `up`. Before you run it again, even after a failed journey, run
   `bun verify up --restart` and `bun verify doctor`. Then run sign-in-enrol, computer-browser and
   this journey, in that order.
-- Run computer-shell before or after this journey, as you like. Its order changes only `isDiskNew`,
-  which this journey's end state does not check.
+- Keep the table's order, which runs computer-shell first. This journey's end state holds either
+  way: computer-shell changes only `isDiskNew`, which this journey does not check.
 
 ## Journey
 
@@ -58,7 +58,7 @@ Before you start:
    bun verify conversation turn --message 'Look at your screen and click the middle of it.' --reply 'The assistant clicked the middle of the screen.'
    ```
 
-   Expect: exit 0. On a failure, do what its row in [Exit codes](exit-codes.md) says.
+   Expect: exit 0. On a failure, follow its row in [Exit codes](exit-codes.md).
 
 4. Check that nixie holds the click and did not run it:
 
