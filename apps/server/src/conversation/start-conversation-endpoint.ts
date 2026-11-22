@@ -185,7 +185,6 @@ export async function startConversationEndpoint(
     buildTasksRunsTool(options.context, messaging),
     buildTaskDefineTool(definitionToolOptions),
     buildTaskUndefineTool(definitionToolOptions),
-    buildRemindersListTool(reminders),
     buildReminderSetTool(reminders),
     buildReminderUpdateTool(reminders),
     buildReminderCancelTool(reminders),
@@ -193,8 +192,11 @@ export async function startConversationEndpoint(
     buildReminderSkipTool(reminders),
   ];
 
+  const remindersList = buildRemindersListTool(reminders);
+
   // A started task's thread has no skill list, so a skill tool would refuse its every call. The
-  // tools that list or change the task definitions and the reminders belong to the conversation alone.
+  // tools that list or change the task definitions and the tools that change the reminders belong
+  // to the conversation alone. A task may hold the tool that lists the reminders.
   const bounds = buildTaskStartBounds(
     options.config.models,
     buildConversationMemoryTools(memory),
@@ -263,6 +265,7 @@ export async function startConversationEndpoint(
     ...images,
     ...devices,
     ...definitionTools,
+    remindersList,
     ...worker,
     buildContactTool(options.context, tools.refreshDefinitions),
     buildMandateTool({

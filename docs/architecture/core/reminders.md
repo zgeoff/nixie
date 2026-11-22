@@ -35,7 +35,8 @@ from the server as extra armed triggers, so a seed leaves the reminders armed.
 
 ## Tools
 
-The conversation holds 6 tools, and no task's tool list holds any of them:
+The conversation holds 6 tools. A task's tool list may hold `reminders.list` and none of the other
+5:
 
 - **`reminder.set`** takes a name, a note and a trigger. An `at` with no offset reads in the user's
   zone.
@@ -47,7 +48,9 @@ The conversation holds 6 tools, and no task's tool list holds any of them:
 - **`reminder.skip`** takes a short ID and drops the next fire of a recurring reminder.
 - **`reminders.list`** lists the reminders that wait and the one-time reminders that fired in the
   last day, newest set first, in pages that stop at the output limit of a recall page, with a cursor
-  for the next.
+  for the next. A task that holds it reads the same reminders as the conversation, and a task
+  definition may name it. A task definition or a `task.start` that names any other reminder tool is
+  refused, like any conversation tool in [tasks](./tasks.md).
 
 Snooze and skip write a `trigger.deferred` record, as
 [snooze and skip](./triggers.md#snooze-and-skip) describes, and never a new version, so the
