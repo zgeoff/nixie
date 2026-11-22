@@ -170,6 +170,7 @@ interface ForgetPreviewProps {
   readonly preview: {
     readonly momentCount: number;
     readonly memoryItems: readonly { readonly itemID: string; readonly text: string }[];
+    readonly notes: readonly { readonly note: string; readonly title?: string | undefined }[];
   };
 }
 
@@ -197,6 +198,20 @@ function ForgetPreview(props: ForgetPreviewProps): ReactNode {
           <ul aria-label="Memory items that quote it" className={quotingItems}>
             {props.preview.memoryItems.map((item) => (
               <li key={item.itemID}>{item.text}</li>
+            ))}
+          </ul>
+        </>
+      )}
+      {props.preview.notes.length === 0 ? null : (
+        <>
+          <p>
+            {props.preview.notes.length}{' '}
+            {props.preview.notes.length === 1 ? 'note links' : 'notes link'} to it and keep their
+            own text until you forget them:
+          </p>
+          <ul aria-label="Notes that link to it" className={quotingItems}>
+            {props.preview.notes.map((note) => (
+              <li key={note.note}>{note.title ?? 'A private note'}</li>
             ))}
           </ul>
         </>

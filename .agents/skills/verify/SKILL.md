@@ -15,8 +15,8 @@ metadata:
 Use `bun verify` to start the app, use each feature your change touches the way a user would, and
 record a verdict that it works. Put the report in the PR with step 11 of
 [Check a change](#check-a-change), and hand back the PR link and each feature you could not verify.
-Leave `bun verify gate` to CI: it reads the report from the PR description, and fails a PR that
-changes a feature with no verdict there.
+Leave `bun verify gate` to CI: it fails a PR that changes a feature with no verdict in its
+description.
 
 The mistakes that cost the most time:
 
@@ -29,9 +29,9 @@ The mistakes that cost the most time:
 ## Key rules
 
 - [Check a change](#check-a-change): for each changed feature, run its journey, check the end state,
-  then `done`; then push and publish with the upload token read in a subshell.
+  then `done`; then push and publish.
 - [Read the envelope](#read-the-envelope): branch on the exit code and `error.code`, never on the
-  message, which can change in any release.
+  message.
 - [Targets](#targets): check a change on a launch target, which `bun verify up` starts.
 - [Commands](#commands): read `--help` before you guess a flag.
 - [Edit the skill and the registry](#edit-the-skill-and-the-registry): map each new file in the
@@ -58,6 +58,7 @@ Read a feature's file before you run its journey.
 | task-control     | Pause and resume a task, and see its records agree                         | [references/feature-task-control.md](references/feature-task-control.md)         |
 | drawing          | Draw a picture, edit it, and list both                                     | [references/feature-drawing.md](references/feature-drawing.md)                   |
 | images-page      | Browse and forget images                                                   | [references/feature-images-page.md](references/feature-images-page.md)           |
+| notebook-pages   | Browse notes, open a private one, forget one                               | [references/feature-notebook-pages.md](references/feature-notebook-pages.md)     |
 | computer-shell   | Write and read back a shell file                                           | [references/feature-computer-shell.md](references/feature-computer-shell.md)     |
 | computer-browser | Open a page in the assistant's browser                                     | [references/feature-computer-browser.md](references/feature-computer-browser.md) |
 | computer-screen  | Click a point of the assistant's desktop                                   | [references/feature-computer-screen.md](references/feature-computer-screen.md)   |

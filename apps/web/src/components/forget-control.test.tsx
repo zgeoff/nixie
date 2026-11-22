@@ -3,6 +3,7 @@ import { focusManager } from '@tanstack/react-query';
 import { act, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { HttpResponse, http } from 'msw';
+import { mockViewStore } from '../mocks/mock-view-store';
 import { server } from '../mocks/server';
 import { store } from '../mocks/store';
 import { createDeviceSession } from '../test-utils/create-device-session';
@@ -227,6 +228,52 @@ test('it shows what the forget removes before the confirm, and forgets nothing u
   expect(
     store.records.findFirst((query) => query.where({ sequence: stored.sequence }))?.message?.text,
   ).toBe('The shed code is 4417.');
+});
+
+test('it lists the active notes that link to the record, with a private note unnamed', async () => {
+  const ctx = setupTest();
+
+  await createDeviceSession();
+
+  const stored = await store.records.create({
+    kind: 'owner_message',
+    message: { text: 'The shed code is 4417.' },
+  });
+
+  await mockViewStore.notes.create({
+    versions: [{ at: new Date(), title: 'Shed notes', body: 'The code.' }],
+    links: [{ kind: 'event', target: String(stored.sequence), type: 'cites', reason: null }],
+  });
+
+  await mockViewStore.notes.create({
+    isPrivate: true,
+    versions: [{ at: new Date(), title: 'Secret diary', body: 'The code.' }],
+    links: [{ kind: 'event', target: String(stored.sequence), type: 'cites', reason: null }],
+  });
+
+  await mockViewStore.notes.create({
+    versions: [{ at: new Date(), title: 'Unrelated', body: 'Nothing.' }],
+  });
+
+  const rendered = render(
+    <ForgetControl
+      hasText
+      kind="owner_message"
+      label="Forget"
+      onForgotten={() => {}}
+      onOpenChange={() => {}}
+      sequence={stored.sequence}
+      thread={stored.thread}
+    />,
+  );
+
+  await ctx.user.click(rendered.getByRole('button', { name: 'Forget' }));
+
+  const notes = await rendered.findByRole('list', { name: 'Notes that link to it' });
+
+  expect(notes.textContent).toBe('Shed notesA private note');
+  expect(rendered.getByText(/2 notes link to it and keep their own text/u)).toBeVisible();
+  expect(rendered.queryByText(/Secret diary/u)).toBeNull();
 });
 
 test('it words no memory sentence when no memory item quotes the record', async () => {

@@ -1,6 +1,6 @@
 import type { ScriptedModelRequest, ScriptedReply } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
-import type { z } from 'zod';
+import { z } from 'zod';
 import type { controlRoutes } from './control-routes';
 
 type ScriptedBody = NonNullable<ScriptedModelRequest['body']>;
@@ -30,8 +30,11 @@ export function buildScriptedReplies(
 
   const drawing = reply.draw === undefined ? [] : buildDrawingReplies(reply.draw);
 
+  const notebook =
+    reply.notebook === undefined ? [] : buildNotebookReplies(reply.notebook, forConversation);
+
   if (reply.task === undefined) {
-    return [...memory, ...memoryExport, ...drawing, { text: reply.text }];
+    return [...memory, ...memoryExport, ...drawing, ...notebook, { text: reply.text }];
   }
 
   const { reply: taskReply, ...task } = reply.task;
@@ -39,6 +42,7 @@ export function buildScriptedReplies(
   return [
     ...memory,
     ...memoryExport,
+    ...notebook,
     { toolUse: { name: 'mcp__nixie__task_start', input: task }, ...forConversation },
     { text: reply.text, ...forConversation },
     { text: taskReply, when: (body: ScriptedBody) => !isConversationTurn(body) },
@@ -83,4 +87,86 @@ function readLastImageID(body: ScriptedBody): string {
   invariant(imageID !== undefined, 'the request holds no image ID');
 
   return imageID;
+}
+
+interface ReplyCondition {
+  readonly when?: (body: ScriptedBody) => boolean;
+}
+
+// A note, a private note, and a link from the private note to the first. The link names each note
+// by the result of the write that carried its title, so a refused write, or a note from an earlier
+// turn, never gets linked: the request fails instead.
+function buildNotebookReplies(
+  notebook: NonNullable<z.output<typeof controlRoutes.addReply.input>['notebook']>,
+  when: ReplyCondition,
+) {
+  return [
+    {
+      ...when,
+      toolUse: {
+        name: 'mcp__nixie__notebook_write',
+        input: { title: notebook.title, body: notebook.body, tags: ['verify'] },
+      },
+    },
+    {
+      ...when,
+      toolUse: {
+        name: 'mcp__nixie__notebook_write',
+        input: { title: notebook.privateTitle, body: notebook.privateBody, isPrivate: true },
+      },
+    },
+    {
+      ...when,
+      toolUse: {
+        name: 'mcp__nixie__notebook_link',
+        input: (body: ScriptedBody) => ({
+          from: readWrittenNoteID(body, notebook.privateTitle),
+          to: { note: readWrittenNoteID(body, notebook.title) },
+          type: 'cites',
+          reason: 'the private note rests on it',
+        }),
+      },
+    },
+  ];
+}
+
+const toolUseBlockSchema = z.looseObject({
+  type: z.literal('tool_use'),
+  id: z.string(),
+  name: z.string(),
+  input: z.looseObject({ title: z.string().exactOptional() }),
+});
+
+const toolResultBlockSchema = z.looseObject({
+  type: z.literal('tool_result'),
+  tool_use_id: z.string(),
+  content: z.unknown(),
+});
+
+function readWrittenNoteID(body: ScriptedBody, title: string): string {
+  const blocks = (body.messages ?? []).flatMap(
+    (message) => z.array(z.unknown()).safeParse(message.content).data ?? [],
+  );
+
+  const write = blocks
+    .map((block) => toolUseBlockSchema.safeParse(block))
+    .filter((parsed) => parsed.success)
+    .map((parsed) => parsed.data)
+    .findLast((use) => use.name === 'mcp__nixie__notebook_write' && use.input.title === title);
+
+  invariant(write !== undefined, `the request holds no write of the note "${title}"`);
+
+  const result = blocks
+    .map((block) => toolResultBlockSchema.safeParse(block))
+    .filter((parsed) => parsed.success)
+    .map((parsed) => parsed.data)
+    .find((block) => block.tool_use_id === write.id);
+
+  const noteID = /"?note\\*":\\*"(?<id>[a-z0-9]+)/u.exec(JSON.stringify(result?.content))?.groups?.[
+    'id'
+  ];
+
+  invariant(noteID !== undefined, `the write of the note "${title}" returned no note ID`);
+
+  return noteID;
 }

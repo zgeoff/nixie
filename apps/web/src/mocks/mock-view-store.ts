@@ -115,11 +115,73 @@ const imageForgets = new Collection({
   }),
 });
 
+const noteVersionSchema = z.object({
+  at: z.date(),
+  body: z.string(),
+  model: z.string().default('claude-model'),
+  tags: z.array(z.string()).default([]),
+  title: z.string(),
+  writer: z.string().default('conversation'),
+});
+
+const noteLinkSchema = z.object({
+  kind: z.enum(['note', 'memory', 'moment', 'event']),
+  reason: z.string().nullable().default(null),
+  target: z.string(),
+  type: z.enum(['supersedes', 'disputes', 'part-of', 'cites', 'related']),
+});
+
+// A note of the notebook, with every version it was written in, oldest first. A forgotten note
+// keeps its row and loses every version.
+const notes = new Collection({
+  schema: z.object({
+    isForgotten: z.boolean().default(false),
+    isPrivate: z.boolean().default(false),
+    links: z.array(noteLinkSchema).default([]),
+    note: z.string().default(buildShortID),
+    ownerOpenedAt: z.date().nullable().default(null),
+    readAt: z.date().nullable().default(null),
+
+    // the order the rows were made in, which the page's cursor follows
+    rowID: z.int().default(nextSequence),
+    versions: z.array(noteVersionSchema).default([]),
+  }),
+});
+
+const noteOpens = new Collection({
+  schema: z.object({
+    clientActionID: z.uuid(),
+    note: z.string(),
+    openedAt: z.date(),
+    version: z.int().positive(),
+  }),
+});
+
+const noteForgets = new Collection({
+  schema: z.object({
+    clientActionID: z.uuid(),
+    forgottenAt: z.date(),
+    note: z.string(),
+    version: z.int().positive(),
+  }),
+});
+
+// Every notebook.openPrivate call, with the action ID it carried, whether or not it finished; and
+// the number of the next calls that fail before they write anything.
+const noteOpenCalls: { clientActionIDs: string[]; failuresLeft: number } = {
+  clientActionIDs: [],
+  failuresLeft: 0,
+};
+
 export const mockViewStore = {
   definitions,
   endedRuns,
   imageForgets,
   images,
+  noteForgets,
+  noteOpenCalls,
+  noteOpens,
+  notes,
   reminders,
   reportEntries,
 
@@ -130,6 +192,12 @@ export const mockViewStore = {
     reminders.clear();
     images.clear();
     imageForgets.clear();
+    notes.clear();
+    noteOpens.clear();
+    noteForgets.clear();
+
+    noteOpenCalls.clientActionIDs = [];
+    noteOpenCalls.failuresLeft = 0;
   },
 };
 

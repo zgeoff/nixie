@@ -94,3 +94,11 @@ export type MomentSpanRecord = ReadonlyDeep<
 export type MomentDestroyPreview = ReadonlyDeep<ContractOutputs['memory']['previewMomentDestroy']>;
 
 export type SpendRaiseOutput = ContractOutputs['spend']['raise'];
+
+export type Note = ReadonlyDeep<
+  Extract<ContractOutputs['notebook']['readNote'], { title: string }>
+>;
+
+export type NoteLink = Note['links'][number];
+
+export type NoteCheck = ReadonlyDeep<ContractOutputs['notebook']['readCheck']>;

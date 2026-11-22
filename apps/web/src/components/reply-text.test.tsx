@@ -110,3 +110,33 @@ test('it shows a linked image as one link to the outer link', () => {
   expect(links[0]).toHaveAttribute('href', 'https://example.com/report');
   expect(rendered.container.querySelector('img')).toBeNull();
 });
+
+test('it draws a stored image only through the renderer the caller passes', () => {
+  const rendered = render(
+    <ReplyText
+      renderStoredImage={(image, alt) => (
+        <span>
+          stored {image} as {alt}
+        </span>
+      )}
+      text="![a chart](image:k3x9m2p7qa)"
+    />,
+  );
+
+  expect(rendered.getByText('stored k3x9m2p7qa as a chart')).toBeVisible();
+  expect(rendered.container.querySelector('img')).toBeNull();
+});
+
+test('it shows a stored image as its label when no renderer is passed', () => {
+  const rendered = render(<ReplyText text="![a chart](image:k3x9m2p7qa)" />);
+
+  expect(rendered.getByText('image: a chart')).toBeVisible();
+  expect(rendered.queryByRole('link')).toBeNull();
+});
+
+test('it blanks an image: address on a link', () => {
+  const rendered = render(<ReplyText text="[a chart](image:k3x9m2p7qa)" />);
+
+  expect(rendered.queryByRole('link')).toBeNull();
+  expect(rendered.getByText('a chart')).toBeVisible();
+});

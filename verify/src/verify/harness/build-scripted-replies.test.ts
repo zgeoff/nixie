@@ -107,3 +107,270 @@ test('it queues a send of a picture after the list when the draw asks for it', (
 
   expect(calls.at(-2)).toStrictEqual({ name: 'mcp__nixie__file_send', input: { file: 'cm1abc' } });
 });
+
+test('it queues 2 note writes and a link from the private note to the first', () => {
+  const replies = buildScriptedReplies({
+    text: 'Both notes are written.',
+    notebook: {
+      title: 'Boiler notes',
+      body: 'It trips at night.',
+      privateTitle: 'Winter diary',
+      privateBody: 'Dear diary, it snowed.',
+    },
+  });
+
+  const names = replies.map((reply) => ('toolUse' in reply ? reply.toolUse.name : 'text'));
+
+  const inputs = replies
+    .slice(0, 2)
+    .map((reply) => ('toolUse' in reply ? reply.toolUse.input : null));
+
+  expect(names).toStrictEqual([
+    'mcp__nixie__notebook_write',
+    'mcp__nixie__notebook_write',
+    'mcp__nixie__notebook_link',
+    'text',
+  ]);
+
+  expect(inputs).toStrictEqual([
+    { title: 'Boiler notes', body: 'It trips at night.', tags: ['verify'] },
+    { title: 'Winter diary', body: 'Dear diary, it snowed.', isPrivate: true },
+  ]);
+});
+
+test('it links the notes that the writes of this turn returned, not older notes', () => {
+  const link = buildScriptedReplies({
+    text: 'Both notes are written.',
+    notebook: {
+      title: 'Boiler notes',
+      body: 'It trips at night.',
+      privateTitle: 'Winter diary',
+      privateBody: 'Dear diary, it snowed.',
+    },
+  }).at(2);
+
+  const toolUse = link !== undefined && 'toolUse' in link ? link.toolUse : undefined;
+  const input = toolUse?.input;
+
+  const messages = [
+    {
+      role: 'assistant',
+      content: [
+        {
+          type: 'tool_use',
+          id: 'old1',
+          name: 'mcp__nixie__notebook_write',
+          input: { title: 'Boiler notes' },
+        },
+      ],
+    },
+    {
+      role: 'user',
+      content: [
+        {
+          type: 'tool_result',
+          tool_use_id: 'old1',
+          content: '{"result":{"note":"oldnoteone","version":3}}',
+        },
+      ],
+    },
+    {
+      role: 'assistant',
+      content: [
+        {
+          type: 'tool_use',
+          id: 'old2',
+          name: 'mcp__nixie__notebook_write',
+          input: { title: 'Winter diary' },
+        },
+      ],
+    },
+    {
+      role: 'user',
+      content: [
+        {
+          type: 'tool_result',
+          tool_use_id: 'old2',
+          content: '{"result":{"note":"oldnotetwo","version":1}}',
+        },
+      ],
+    },
+    {
+      role: 'assistant',
+      content: [
+        {
+          type: 'tool_use',
+          id: 'new1',
+          name: 'mcp__nixie__notebook_write',
+          input: { title: 'Boiler notes' },
+        },
+      ],
+    },
+    {
+      role: 'user',
+      content: [
+        {
+          type: 'tool_result',
+          tool_use_id: 'new1',
+          content: '{"result":{"note":"n4w8k2c6rd","version":4}}',
+        },
+      ],
+    },
+    {
+      role: 'assistant',
+      content: [
+        {
+          type: 'tool_use',
+          id: 'new2',
+          name: 'mcp__nixie__notebook_write',
+          input: { title: 'Winter diary' },
+        },
+      ],
+    },
+    {
+      role: 'user',
+      content: [
+        {
+          type: 'tool_result',
+          tool_use_id: 'new2',
+          content: '{"result":{"note":"d8p3q1z6mw","version":2}}',
+        },
+      ],
+    },
+  ];
+
+  const linked = typeof input === 'function' ? input({ messages }) : input;
+
+  expect(linked).toStrictEqual({
+    from: 'd8p3q1z6mw',
+    to: { note: 'n4w8k2c6rd' },
+    type: 'cites',
+    reason: 'the private note rests on it',
+  });
+});
+
+test('it fails the link when a write was refused and an older note holds the title', () => {
+  const link = buildScriptedReplies({
+    text: 'Both notes are written.',
+    notebook: {
+      title: 'Boiler notes',
+      body: 'It trips at night.',
+      privateTitle: 'Winter diary',
+      privateBody: 'Dear diary, it snowed.',
+    },
+  }).at(2);
+
+  const toolUse = link !== undefined && 'toolUse' in link ? link.toolUse : undefined;
+  const input = toolUse?.input;
+
+  const messages = [
+    {
+      role: 'assistant',
+      content: [
+        {
+          type: 'tool_use',
+          id: 'old1',
+          name: 'mcp__nixie__notebook_write',
+          input: { title: 'Boiler notes' },
+        },
+      ],
+    },
+    {
+      role: 'user',
+      content: [
+        {
+          type: 'tool_result',
+          tool_use_id: 'old1',
+          content: '{"result":{"note":"oldnoteone","version":3}}',
+        },
+      ],
+    },
+    {
+      role: 'assistant',
+      content: [
+        {
+          type: 'tool_use',
+          id: 'old2',
+          name: 'mcp__nixie__notebook_write',
+          input: { title: 'Winter diary' },
+        },
+      ],
+    },
+    {
+      role: 'user',
+      content: [
+        {
+          type: 'tool_result',
+          tool_use_id: 'old2',
+          content: '{"result":{"note":"oldnotetwo","version":1}}',
+        },
+      ],
+    },
+    {
+      role: 'assistant',
+      content: [
+        {
+          type: 'tool_use',
+          id: 'new1',
+          name: 'mcp__nixie__notebook_write',
+          input: { title: 'Boiler notes' },
+        },
+      ],
+    },
+    {
+      role: 'user',
+      content: [
+        { type: 'tool_result', tool_use_id: 'new1', content: '{"error":{"code":"REFUSED"}}' },
+      ],
+    },
+    {
+      role: 'assistant',
+      content: [
+        {
+          type: 'tool_use',
+          id: 'new2',
+          name: 'mcp__nixie__notebook_write',
+          input: { title: 'Winter diary' },
+        },
+      ],
+    },
+    {
+      role: 'user',
+      content: [
+        {
+          type: 'tool_result',
+          tool_use_id: 'new2',
+          content: '{"result":{"note":"d8p3q1z6mw","version":2}}',
+        },
+      ],
+    },
+  ];
+
+  const readInput = typeof input === 'function' ? input : () => input;
+
+  expect(() => readInput({ messages })).toThrow(/returned no note ID/u);
+});
+
+test('it queues the note writes before the task start when the reply holds both', () => {
+  const replies = buildScriptedReplies({
+    text: 'Both notes are written and the task is started.',
+    notebook: {
+      title: 'Boiler notes',
+      body: 'It trips at night.',
+      privateTitle: 'Winter diary',
+      privateBody: 'Dear diary, it snowed.',
+    },
+    task: { name: 'Check the boiler', brief: 'Look at it.', reply: 'Checked.' },
+  });
+
+  const names = replies.map((reply) => ('toolUse' in reply ? reply.toolUse.name : 'text'));
+
+  expect(names).toStrictEqual([
+    'mcp__nixie__notebook_write',
+    'mcp__nixie__notebook_write',
+    'mcp__nixie__notebook_link',
+    'mcp__nixie__task_start',
+    'text',
+    'text',
+  ]);
+});

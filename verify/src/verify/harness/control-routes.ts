@@ -23,6 +23,15 @@ const drawnPictureSchema = z.strictObject({
   send: z.boolean().optional(),
 });
 
+const writtenNotesSchema = z.strictObject({
+  title: z.string().min(1),
+  body: z.string().min(1),
+
+  // the second note is private, and links to the first
+  privateTitle: z.string().min(1),
+  privateBody: z.string().min(1),
+});
+
 const actionProposalSchema = z.strictObject({ proposalID: z.string(), tool: z.string() });
 
 // The harness's control routes, which the verify CLI's actions and checks call through the http
@@ -53,6 +62,10 @@ export const controlRoutes = {
       // a picture the model draws with the image tool before its reply, the one edit it then makes
       // to that picture, and a list of its pictures
       draw: drawnPictureSchema.optional(),
+
+      // 2 notes the model writes with the notebook tool before its reply, the second private, and
+      // a link from the second to the first
+      notebook: writtenNotesSchema.optional(),
     }),
     output: z.strictObject({ replies: z.int().positive() }),
   },

@@ -45,3 +45,28 @@ test('it reads an empty earlier text as all added', () => {
     { kind: 'added', text: 'Drinks oat milk' },
   ]);
 });
+
+test('it diffs two long texts that differ in one place, keeping the shared ends', () => {
+  const words = Array.from({ length: 3000 }, (_, index) => `word${index}`);
+  const head = words.slice(0, 1500).join(' ');
+  const tail = words.slice(1501).join(' ');
+
+  expect(buildWordDiff(`${head} word1500 ${tail}`, `${head} changed ${tail}`)).toStrictEqual([
+    { kind: 'same', text: `${head} ` },
+    { kind: 'removed', text: 'word1500' },
+    { kind: 'added', text: 'changed' },
+    { kind: 'same', text: ` ${tail}` },
+  ]);
+});
+
+test('it marks the whole middle as replaced when two long texts share only their ends', () => {
+  const before = Array.from({ length: 2000 }, (_, index) => `old${index}`).join(' ');
+  const after = Array.from({ length: 2000 }, (_, index) => `new${index}`).join(' ');
+
+  expect(buildWordDiff(`start ${before} end`, `start ${after} end`)).toStrictEqual([
+    { kind: 'same', text: 'start ' },
+    { kind: 'removed', text: before },
+    { kind: 'added', text: after },
+    { kind: 'same', text: ' end' },
+  ]);
+});

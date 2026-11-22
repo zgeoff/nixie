@@ -25,6 +25,7 @@ export const featurePaths = {
   'task-control': [...everyJourney],
   drawing: [...everyJourney],
   'images-page': [...everyJourney],
+  'notebook-pages': [...everyJourney],
   'device-screen': [...everyJourney],
   'computer-browser': [...everyJourney],
   'computer-shell': [...everyJourney],

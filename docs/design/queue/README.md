@@ -16,7 +16,6 @@ is deleted.
 | Definitions     | [mail and calendar polls](mail-and-calendar-polls.md)                                             |
 | The computer    | [the rest of the browser and the shell](computer.md), [the desktop and take-over](desktop.md)     |
 | Web             | [the hop gate](hop-gate.md)                                                                       |
-| Notebook        | [notes, links and walks](notebook.md)                                                             |
 | Approvals       | [the approval record](../../architecture/policy/approvals.md)                                     |
 | Operations      | [the pause after a restore](pause.md)                                                             |
 | Model harnesses | [the turn-input log](turn-input-log.md)                                                           |
