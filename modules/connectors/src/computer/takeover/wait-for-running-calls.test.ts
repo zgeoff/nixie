@@ -77,3 +77,51 @@ test('it waits to the new limit of a call that took its turn late', async () => 
 
   expect([settledAtOldLimit, await result]).toStrictEqual([false, false]);
 });
+
+test('it answers false at the limit of the first call to overrun, before a later call limit', async () => {
+  const ctx = setupTest();
+
+  ctx.addCall(1_030_000);
+  ctx.addCall(1_090_000);
+
+  const result = ctx.wait();
+
+  ctx.clock.advance(30_000);
+
+  await expect(result).resolves.toBe(false);
+});
+
+test('it ignores the limit of a call that has ended and waits for the others', async () => {
+  const ctx = setupTest();
+  const quick = ctx.addCall(1_030_000);
+
+  ctx.addCall(1_090_000);
+
+  const result = ctx.wait();
+
+  quick.end();
+
+  await Promise.resolve();
+  await Promise.resolve();
+
+  ctx.clock.advance(30_000);
+
+  const progress = { isSettled: false };
+
+  const markWhenSettled = async () => {
+    await result;
+
+    progress.isSettled = true;
+  };
+
+  void markWhenSettled();
+
+  await Promise.resolve();
+  await Promise.resolve();
+
+  const settledAtEndedLimit = progress.isSettled;
+
+  ctx.clock.advance(60_000);
+
+  expect([settledAtEndedLimit, await result]).toStrictEqual([false, false]);
+});

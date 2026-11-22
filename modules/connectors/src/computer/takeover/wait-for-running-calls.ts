@@ -15,8 +15,9 @@ export interface RunningCalls {
   readonly running: ReadonlySet<RunningCall>;
 }
 
-// Waits until the calls running now have ended, up to the latest of their own limits, and says
-// whether they ended. A call that starts later is not waited for.
+// Waits until the calls running now have ended, and says whether they ended. It answers false as
+// soon as one of them is still running past its own limit. A call that starts later is not waited
+// for.
 export async function waitForRunningCalls(calls: RunningCalls): Promise<boolean> {
   const waiting = [...calls.running];
 
@@ -24,13 +25,15 @@ export async function waitForRunningCalls(calls: RunningCalls): Promise<boolean>
     return true;
   }
 
-  const latestEndMs = Math.max(...waiting.map((call) => call.endsAtMs));
-
   const gave = new AbortController();
+  const unfinished = new Set(waiting);
 
-  // a call that takes its turn late moves its end, so the wait reads the limit again after each sleep
+  for (const call of waiting) {
+    void dropWhenEnded(unfinished, call);
+  }
+
   const allEnded = Promise.all(waiting.map((call) => call.ended));
-  const pastLimit = sleepPastLimit(calls.clock, waiting, latestEndMs, gave.signal);
+  const pastLimit = sleepPastLimit(calls.clock, unfinished, gave.signal);
 
   const outcome = await Promise.race([
     labelAfter(allEnded, 'drained'),
@@ -42,20 +45,24 @@ export async function waitForRunningCalls(calls: RunningCalls): Promise<boolean>
   return outcome === 'drained';
 }
 
+async function dropWhenEnded(unfinished: Set<RunningCall>, call: RunningCall): Promise<void> {
+  await call.ended;
+
+  unfinished.delete(call);
+}
+
+// A call that takes its turn late moves its end, so the wait reads each limit again after each sleep.
 async function sleepPastLimit(
   clock: Clock,
-  waiting: readonly RunningCall[],
-  firstLimitMs: number,
+  unfinished: ReadonlySet<RunningCall>,
   signal: AbortSignal,
 ): Promise<void> {
-  let limitMs = firstLimitMs;
-
   while (!signal.aborted) {
+    const limitMs = Math.min(...[...unfinished].map((call) => call.endsAtMs));
+
     await clock.sleep(Math.max(0, limitMs - clock.now()), signal);
 
-    limitMs = Math.max(...waiting.map((call) => call.endsAtMs));
-
-    if (clock.now() >= limitMs) {
+    if ([...unfinished].some((call) => clock.now() >= call.endsAtMs)) {
       return;
     }
   }
