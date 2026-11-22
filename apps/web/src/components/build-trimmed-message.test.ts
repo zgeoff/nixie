@@ -59,6 +59,28 @@ test.each<[string, SpanState, SpanState]>([
     },
   ],
   [
+    'a dropped block with blank lines before it and spaces after it',
+    {
+      spans: [
+        { end: 2, source: 'typed', start: 0 },
+        { end: 8, source: 'dropped', start: 2 },
+      ],
+      text: '\n\n a b  ',
+    },
+    { spans: [{ end: 6, source: 'dropped', start: 0 }], text: ' a b  ' },
+  ],
+  [
+    'an unknown block with blank lines before it and spaces after it',
+    {
+      spans: [
+        { end: 2, source: 'typed', start: 0 },
+        { end: 8, source: 'unknown', start: 2 },
+      ],
+      text: '\n\n a b  ',
+    },
+    { spans: [{ end: 6, source: 'unknown', start: 0 }], text: ' a b  ' },
+  ],
+  [
     'whitespace between words',
     { spans: [{ end: 9, source: 'typed', start: 0 }], text: 'a  b\n\n c ' },
     { spans: [{ end: 8, source: 'typed', start: 0 }], text: 'a  b\n\n c' },

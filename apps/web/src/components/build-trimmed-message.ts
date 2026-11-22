@@ -1,17 +1,18 @@
 import type { Span, SpanState } from '@heynixie/contract';
 
-// Whitespace inside a pasted block is content, so the trim stops at the edge of the first and last
-// pasted block. Typed text has no such edge: the trim cuts it and its span shrinks to match.
+// Whitespace inside a block that came from outside the keyboard (pasted, dropped or unknown) is
+// content, so the trim stops at the edge of the first and last such block and never clips or drops
+// one. Typed text has no such edge: the trim cuts it and its span shrinks to match.
 export function buildTrimmedMessage(message: SpanState): SpanState {
   if (message.text.trim() === '') {
     return { spans: [], text: '' };
   }
 
-  const pasted = message.spans.filter((span) => span.source === 'pasted');
-  const firstPastedStart = Math.min(...pasted.map((span) => span.start));
-  const lastPastedEnd = Math.max(...pasted.map((span) => span.end));
-  const start = Math.min(message.text.length - message.text.trimStart().length, firstPastedStart);
-  const end = Math.max(message.text.trimEnd().length, lastPastedEnd);
+  const blocks = message.spans.filter((span) => span.source !== 'typed');
+  const firstBlockStart = Math.min(...blocks.map((span) => span.start));
+  const lastBlockEnd = Math.max(...blocks.map((span) => span.end));
+  const start = Math.min(message.text.length - message.text.trimStart().length, firstBlockStart);
+  const end = Math.max(message.text.trimEnd().length, lastBlockEnd);
 
   return {
     spans: message.spans.flatMap((span) => toShiftedSpan(span, start, end)),
