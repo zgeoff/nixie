@@ -232,9 +232,9 @@ Secrets:
 - A page that shows a filled password as text can put it in a screenshot. The design accepts that
   for passwords, and the acceptance test leaves screenshots out of its search for a password.
 - Before any result of an `account.*`, `wallet.*` or `computer.*` tool reaches the model, the server
-  replaces each vault secret it finds in the result's text with dots: every secret and previous
-  secret, of pending entries too. A stored page read later through `web_fetch` gets the same pass.
-  This catches a page that copies a filled value verbatim, and misses one that encodes it.
+  replaces each vault secret it finds in the result's text with dots: every entry's secret, pending
+  entries included. A stored page read later through `web_fetch` gets the same pass. This catches a
+  page that copies a filled value verbatim, and misses one that encodes it.
 - The checking proxy's scan of each request URL refuses a URL that carries a vault secret to a host
   outside its entry's origins. The body of an HTTPS request goes unscanned.
 - The browser profile never saves a password or a card. Chromium's password manager and autofill are
