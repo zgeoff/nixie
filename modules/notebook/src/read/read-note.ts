@@ -5,6 +5,7 @@ import type { NoteIndex } from '../index/start-note-index';
 import { readNoteLinks } from '../link/read-note-links';
 import type { BodyMatch } from '../note/collect-body-matches';
 import { collectBodyMatches } from '../note/collect-body-matches';
+import { cutBodyMatches, matchBudgetBytes } from '../note/cut-body-matches';
 import { cutBodyParts } from '../note/cut-body-parts';
 import { formatUTC } from '../note/format-utc';
 import type { NoteRefusal } from '../note/note-refusal';
@@ -171,22 +172,24 @@ function buildMetadata(facts: NoteFacts, links: JSONObject | null): JSONObject {
   };
 }
 
-// The matches ride beside the body in the result, so the body's budget gives up their size. A
-// match's size does not depend on where the parts fall, so one more cut settles both.
+// The matches ride beside the body in the result, so the body's budget gives up the most they can
+// spend, and the matches are cut to that. Where the parts fall changes only a match's part number,
+// so one more cut settles both.
 function cutWithMatches(
   body: string,
   find: string | undefined,
   firstBudgetBytes: number,
   restBudgetBytes: number,
 ): { readonly parts: readonly string[]; readonly found: readonly BodyMatch[] } {
-  const parts = cutBodyParts(body, firstBudgetBytes, restBudgetBytes);
-
   if (find === undefined) {
-    return { parts, found: [] };
+    return { parts: cutBodyParts(body, firstBudgetBytes, restBudgetBytes), found: [] };
   }
 
-  const matchBytes = Buffer.byteLength(JSON.stringify(collectBodyMatches(body, parts, find)));
-  const fitted = cutBodyParts(body, firstBudgetBytes - matchBytes, restBudgetBytes - matchBytes);
+  const parts = cutBodyParts(
+    body,
+    firstBudgetBytes - matchBudgetBytes,
+    restBudgetBytes - matchBudgetBytes,
+  );
 
-  return { parts: fitted, found: collectBodyMatches(body, fitted, find) };
+  return { parts, found: cutBodyMatches(collectBodyMatches(body, parts, find), matchBudgetBytes) };
 }

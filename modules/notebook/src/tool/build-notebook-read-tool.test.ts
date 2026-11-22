@@ -225,3 +225,16 @@ test('it keeps the whole result of a find read within the output limit', async (
 
   expect(Buffer.byteLength(JSON.stringify(outcome.result))).toBeLessThanOrEqual(20_000);
 });
+
+test('it keeps the whole result within the output limit when the matches alone pass it', async () => {
+  const ctx = await setupTest();
+
+  const needle = 'x'.repeat(2000);
+
+  const note = await ctx.write({ title: 'Long', body: `${needle} `.repeat(10) });
+  const outcome = await ctx.call('notebook.read', { note, find: needle });
+
+  invariant(outcome.status === 'ok');
+
+  expect(Buffer.byteLength(JSON.stringify(outcome.result))).toBeLessThanOrEqual(20_000);
+});
