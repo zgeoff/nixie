@@ -48,3 +48,16 @@ test('it keeps at most 20 sites', () => {
 
   expect(log.end()).toHaveLength(20);
 });
+
+test('it is open from the start of a list to its end', () => {
+  const log = makeOriginLog();
+  const before = log.isOpen();
+
+  log.begin(null);
+
+  const during = log.isOpen();
+
+  log.end();
+
+  expect([before, during, log.isOpen()]).toStrictEqual([false, true, false]);
+});

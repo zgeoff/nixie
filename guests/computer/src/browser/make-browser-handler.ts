@@ -1,7 +1,6 @@
 import type { AddressCheck } from '@heynixie/egress';
 import { makeAddressCheck, startCheckingProxy } from '@heynixie/egress';
 import type { ComputerHandler, ComputerReply } from '@heynixie/wire';
-import type { Page } from 'playwright-core';
 import { match } from 'ts-pattern';
 import { evaluateIsolated } from '../screen/evaluate-isolated';
 import { handleScreenRequest, readScreenFocus } from '../screen/handle-screen-request';
@@ -14,6 +13,7 @@ import { openTab } from './open-tab';
 import { readTabPage } from './read-tab-page';
 import { scrollTab } from './scroll-tab';
 import { shootTab } from './shoot-tab';
+import { trackHoldPages } from './track-hold-pages';
 import type { BrowserState, ScanGate } from './types';
 
 export interface BrowserHandlerOptions {
@@ -70,14 +70,6 @@ export function makeBrowserHandler(options: BrowserHandlerOptions): ComputerHand
 
   const originLog = makeOriginLog();
 
-  const watchPage = (page: Page): void => {
-    page.on('framenavigated', (frame) => {
-      if (frame === page.mainFrame()) {
-        originLog.record(frame.url());
-      }
-    });
-  };
-
   const checkAddress: AddressCheck =
     options.checkAddress ?? ((address) => makeAddressCheck(ranges.current)(address));
 
@@ -119,11 +111,7 @@ export function makeBrowserHandler(options: BrowserHandlerOptions): ComputerHand
       isClosed = true;
     });
 
-    for (const page of state.context.pages()) {
-      watchPage(page);
-    }
-
-    state.context.on('page', watchPage);
+    await trackHoldPages(state, originLog);
 
     return state;
   };
@@ -162,7 +150,9 @@ export function makeBrowserHandler(options: BrowserHandlerOptions): ComputerHand
     };
 
     if (request.op === 'takeoverBegin') {
-      originLog.begin([...browser.tabs.values()].at(-1)?.page.url() ?? null);
+      const shownURL = await readShownURL(readScreen(), options);
+
+      originLog.begin(shownURL);
 
       return { kind: 'takeover-begun', ok: true };
     }
@@ -187,6 +177,24 @@ export function makeBrowserHandler(options: BrowserHandlerOptions): ComputerHand
 
     return handleRequest(browser, request);
   };
+}
+
+// The address of the tab in view, or null when none shows or the desktop cannot be read.
+async function readShownURL(
+  desktop: { driver: DesktopDriver; tabs: ScreenTabs } | null,
+  options: BrowserHandlerOptions,
+): Promise<string | null> {
+  if (desktop === null || options.screen === undefined) {
+    return null;
+  }
+
+  try {
+    const focus = await readScreenFocus({ ...desktop, settleMs: options.screen.settleMs });
+
+    return focus.kind === 'browser' ? focus.url : null;
+  } catch {
+    return null;
+  }
 }
 
 type NowReply = Extract<ComputerReply, { kind: 'takeover-ended' }>['now'];

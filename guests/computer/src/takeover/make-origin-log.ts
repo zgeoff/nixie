@@ -5,6 +5,9 @@ export interface OriginLog {
   // adds the site of a page the browser shows, while a list is open
   readonly record: (url: string) => void;
 
+  // whether a list is open, which is while a person holds the desktop
+  readonly isOpen: () => boolean;
+
   // the sites in the order shown, and the list closed
   readonly end: () => string[];
 }
@@ -39,6 +42,7 @@ export function makeOriginLog(): OriginLog {
       }
     },
     record,
+    isOpen: () => open.origins !== null,
     end: () => {
       const origins = open.origins ?? [];
 

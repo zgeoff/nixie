@@ -59,7 +59,13 @@ export async function launchBrowser(launch: BrowserLaunch): Promise<BrowserState
     ],
   });
 
-  const state: BrowserState = { context, tabs: new Map(), counter: 0, isDiskNew: !isUsed };
+  const state: BrowserState = {
+    context,
+    tabs: new Map(),
+    counter: 0,
+    isOpening: false,
+    isDiskNew: !isUsed,
+  };
 
   context.on('close', () => {
     state.tabs.clear();
