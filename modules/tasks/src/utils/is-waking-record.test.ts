@@ -11,3 +11,15 @@ test.each([
 ] as const)('it reads a %s record on thread %s as waking: %p', (kind, thread, expected) => {
   expect(isWakingRecord({ kind, thread, payload: {} })).toBe(expected);
 });
+
+test.each([
+  ['an approval that queued an action', { answer: 'approved', actionID: 'a-1' }, false],
+  ['an approval that queued nothing', { answer: 'approved' }, true],
+  ['a decline', { answer: 'declined' }, true],
+] as const)('it reads %s as waking: %p', (_name, answer, expected) => {
+  const payload = { proposalID: 'p-1', shortID: 'k3vq8m2xpa', ...answer };
+
+  expect(isWakingRecord({ kind: 'policy.action_answered', thread: 'task-1', payload })).toBe(
+    expected,
+  );
+});

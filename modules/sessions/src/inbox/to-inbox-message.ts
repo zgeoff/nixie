@@ -18,6 +18,9 @@ export interface InboxExtras {
   // the result of the call that an action settled, when the call ran inside the turn
   readonly result?: ActionResultBlock | null;
 
+  // when the owner approved the action that an outcome settles
+  readonly approvedAt?: Date | null;
+
   // set on the message that starts a turn, or cuts into one
   readonly gaps?: TurnGaps;
 }

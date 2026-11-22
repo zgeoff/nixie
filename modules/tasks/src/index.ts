@@ -105,6 +105,7 @@ export { createTask } from './task/create-task';
 export { DEFAULT_MAX_STEP_ERRORS } from './step/default-max-step-errors';
 export { isFinishedState, taskControls } from '@heynixie/task-control';
 export { isInboxRecord } from './utils/is-inbox-record';
+export { isQueuedApproval } from './utils/is-queued-approval';
 export { LeaseLostError } from './utils/lease-lost-error';
 export type { OwnerImageMediaType } from './owner/owner-message-codec';
 export { ownerImageMediaTypes, ownerMessageCodec } from './owner/owner-message-codec';

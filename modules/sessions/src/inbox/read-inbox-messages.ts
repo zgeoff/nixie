@@ -9,8 +9,9 @@ import type { GapReader, ImageTally, MessageTimeOptions, TurnGaps } from '../typ
 import { countImages } from '../utils/count-images';
 import { isPastImageBudget } from '../utils/is-past-image-budget';
 import { mergeImageTallies } from '../utils/merge-image-tallies';
-import { isSilentFire } from './is-silent-fire';
+import { isSilentRecord } from './is-silent-record';
 import { readActionResult } from './read-action-result';
+import { readApprovalTime } from './read-approval-time';
 import { readReminder } from './read-reminder';
 import { toInboxMessage } from './to-inbox-message';
 
@@ -56,7 +57,7 @@ export async function readInboxMessages(
       continue;
     }
 
-    if (isSilentFire(record)) {
+    if (isSilentRecord(record)) {
       taken.push(record);
       silent.push(record);
       continue;
@@ -95,11 +96,14 @@ async function readInboxMessage(
     read.replies?.get(record.sequence) ?? null,
   );
 
+  const approvedAt = await readApprovalTime(context, record);
+
   if (ownerMessageCodec.tryDecodePartial(record.payload)?.images === undefined) {
     return toInboxMessage(record, read.times, read.view, {
       attachments: [],
       reminder,
       result,
+      approvedAt,
       ...(gaps === undefined ? {} : { gaps }),
     });
   }
@@ -113,6 +117,7 @@ async function readInboxMessage(
     attachments: bytes,
     reminder,
     result,
+    approvedAt,
     ...(gaps === undefined ? {} : { gaps }),
   });
 }

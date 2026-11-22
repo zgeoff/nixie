@@ -29,9 +29,14 @@ The actions projection holds each action's outcome, its attempt count, whether a
 the time of its next attempt and the time of its next reconcile step, so a restart resumes both
 schedules where they stopped. Done and failed are final, and unknown is final until the user answers
 it. An outcome record is a record on the task's thread, so it lands in the task's inbox and wakes
-the task. Its erasable fields hold the connector's result or the provider's reason. An unknown
-outcome writes no outcome record while nixie reconciles it, so the task is not woken for a question
-that nixie may settle itself. Only an unknown outcome that goes to the user writes one.
+the task. Its erasable fields hold the connector's result or the provider's reason. Both are outside
+text, so the outcome's message puts a done action's result inside a
+`<tool-result source="untrusted">` block and a failed action's reason inside a block of its own. The
+outcome is the one record of an action that wakes the task: queuing, a release and an attempt's
+start wake nothing.
+
+An unknown outcome writes no outcome record while nixie reconciles it, so the task is not woken for
+a question that nixie may settle itself. Only an unknown outcome that goes to the user writes one.
 
 ### Cancelled actions
 
@@ -92,19 +97,22 @@ time past a row's deadline.
 
 An approval queues the action once. The approved proposal's ID becomes the action's ID, and the
 proposal row's `usedBy` names it, so a second tap on the same approval finds the action and queues
-nothing. The inbox record for the approval reads "Approved `<id>`. Queued as `<id>`.". Declining or
-letting the proposal lapse closes an action that was held for it.
+nothing. An approval that queues or releases an action wakes nothing and renders no message: the
+task hears of it once, from the action's outcome, whose message adds the time of the approval. A
+decline still lands in the task's inbox as a message with the user's reason, and closes an action
+that was held for the proposal, as a lapse does.
 
 Approving a call to a tool that runs inside the turn, such as `worker.run`, queues an action too,
 flagged to run in the step. The action runner never claims it, because only a step has the turn's
-session, its hold on the turn's budget and its task run's bounds. The next step of the task runs the
-action before its model turn, under the step's lease, and one turn reads the approval and the
-result. The result is a second `tool_result` record under the call's `tool_called`, and the action's
-`action.outcome` record names it without copying it. A tool can record less than it returns, such as
-the IDs of the entries it read, so the turn reads the full reply, which the step keeps in memory. A
-later turn reads that reply too when its batch ends before the outcome, and after a restart a turn
-reads what the result record kept. The result takes the content sources of the variant that the call
-picked.
+session, its hold on the turn's budget and its task run's bounds. Because the approval wakes
+nothing, the approval also writes a `task.wake` record that names the action, which renders no
+message and starts the task's next step. That step runs the action before its model turn, under the
+step's lease, and the turn reads the outcome with its result. The result is a second `tool_result`
+record under the call's `tool_called`, and the action's `action.outcome` record names it without
+copying it. A tool can record less than it returns, such as the IDs of the entries it read, so the
+turn reads the full reply, which the step keeps in memory. A later turn reads that reply too when
+its batch ends before the outcome, and after a restart a turn reads what the result record kept. The
+result takes the content sources of the variant that the call picked.
 
 The step runs such an action by the same rules as an attempt:
 

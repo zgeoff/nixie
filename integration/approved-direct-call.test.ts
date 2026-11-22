@@ -61,6 +61,38 @@ async function setupTest() {
   return { nixie, api, readThread, approve, waitForOutcome, readTurnTexts };
 }
 
+test('it starts one turn for an approved call, which reads its outcome with the approval time and no message of the approval', async () => {
+  const ctx = await setupTest();
+
+  ctx.nixie.guest.addReplies(
+    { toolUse: { name: 'memory.export', input: {} } },
+    { text: 'I asked you first.' },
+    { text: 'It could not export.' },
+  );
+
+  await sendClientMessage(ctx.api.client, { text: 'Export my memory.' }, 'I asked you first.');
+
+  const listed = await ctx.api.client.approvals.listItems();
+
+  const item = listed.items.at(0);
+
+  invariant(item, 'the call asks');
+
+  await ctx.approve(item.proposal.proposalID, item.proposal.actionHash);
+  await ctx.waitForOutcome();
+
+  await waitForCondition(() => ctx.readTurnTexts().length >= 2);
+
+  expect(ctx.readTurnTexts()).toStrictEqual([
+    expect.toInclude('Export my memory.'),
+    expect.toSatisfy(
+      (turn: string) =>
+        !turn.includes(`Approved \`${item.proposal.shortID}\``) &&
+        /An action settled[^\n]*\nApproved \w{3} \d+ \w{3}, \d\d:\d\d, /v.test(turn),
+    ),
+  ]);
+});
+
 test('it runs an approved memory export once, under the approval, and the next turn reads its message', async () => {
   const ctx = await setupTest();
 

@@ -11,7 +11,7 @@ import type { TurnSilence } from '../utils/build-turn-silence';
 import { countImages } from '../utils/count-images';
 import { isPastImageBudget } from '../utils/is-past-image-budget';
 import { mergeImageTallies } from '../utils/merge-image-tallies';
-import { isSilentFire } from './is-silent-fire';
+import { isSilentRecord } from './is-silent-record';
 import { readInboxMessages } from './read-inbox-messages';
 
 export interface LiveImages {
@@ -52,12 +52,12 @@ export async function* readLiveInbox(
   });
 
   for await (const entry of entries) {
-    // A fire on the task's own thread renders no text. It stays unread for the step that opens its
-    // task run.
+    // A record that renders no text stays unread for the next step: a fire opens its task run, and
+    // an action's wake runs the action.
     if (
       isInboxRecord(entry.record) &&
       !live.sent.has(entry.record.sequence) &&
-      !isSilentFire(entry.record)
+      !isSilentRecord(entry.record)
     ) {
       const message = await readLiveMessage(context, live, entry.record);
 
