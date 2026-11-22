@@ -58,9 +58,9 @@ its own, so one part cannot read, signal or trace another:
 
 The display listens on an abstract socket only, and the sandbox's network namespace is where the
 guest runs, so a command in its own network namespace cannot reach it. The terminal's processes sit
-in a cgroup with a memory limit of 512 MiB and no swap, so a runaway command is killed there before
-it takes the browser's memory. The home folder is sticky, so the terminal cannot replace the profile
-folder beside its files.
+in a cgroup with a memory limit and no swap, so a runaway command is killed there before it takes
+the browser's memory. The home folder is sticky, so the terminal cannot replace the profile folder
+beside its files.
 
 ### Moving from the earlier sandboxes
 
@@ -70,11 +70,11 @@ keeps both sandboxes, whatever their image, until their disks are copied.
 
 Before the computer's first call runs, nixie copies the old browser's profile into `profile` and the
 old shell's files into `files`. The copy runs commands in both sandboxes, so it keeps symlinks and
-the modes of files and folders, and it moves a file of any size in pieces of 1 MiB. Nixie then lists
-the new folder and compares it with the old one. Every path, kind, mode, symlink target and file
-size must match. It then writes the disk marker and destroys the old sandboxes. When a copy fails,
-every call returns `COMPUTER_MOVING`, and nothing is destroyed. A queued action treats
-`COMPUTER_MOVING` as a refusal it may retry. A reset destroys the old sandboxes too.
+the modes of files and folders, and it moves a file of any size. Nixie then lists the new folder and
+compares it with the old one. Every path, kind, mode, symlink target and file size must match. It
+then writes the disk marker and destroys the old sandboxes. When a copy fails, every call returns
+`COMPUTER_MOVING`, and nothing is destroyed. A queued action treats `COMPUTER_MOVING` as a refusal
+it may retry. A reset destroys the old sandboxes too.
 
 ## Tools
 
