@@ -1,7 +1,8 @@
 # The images page
 
 - **Status:** draft
-- **Work items:** [the images page](https://linear.app/zgeoff/issue/GEO-2802)
+- **Work items:** [the images page](https://linear.app/zgeoff/issue/GEO-2802), which builds this
+  design once the owner approves it
 
 The assistant draws and edits pictures with the
 [image tools](../../architecture/connectors/images.md), and you see each one only in the
