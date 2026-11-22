@@ -12,7 +12,7 @@
         "@zgeoff/agent-hooks": "0.3.2",
         "@zgeoff/bun-test-extended": "0.2.4",
         "@zgeoff/bun-test-react": "0.2.4",
-        "@zgeoff/chex": "0.4.6",
+        "@zgeoff/chex": "0.4.7",
         "@zgeoff/commitlint-config": "0.1.2",
         "@zgeoff/diet": "0.3.2",
         "@zgeoff/format-codemod": "0.3.6",
@@ -2453,7 +2453,7 @@
 
     "@zgeoff/bun-test-react": ["@zgeoff/bun-test-react@0.2.4", "", { "dependencies": { "@happy-dom/global-registrator": "21.0.4", "@testing-library/jest-dom": "7.0.1", "happy-dom": "21.0.4" }, "peerDependencies": { "@testing-library/react": ">=16.0.0", "react": ">=19.0.0", "react-dom": ">=19.0.0", "zustand": ">=5.0.0" }, "optionalPeers": ["zustand"] }, "sha512-omM4Wf/oy5YHuwnt5OMEOB5ZQZeHNVobj+t88tNf/axKt3VVQVikjHcqFDdnRKTi2IHK97wfO6S/hK3034m+KQ=="],
 
-    "@zgeoff/chex": ["@zgeoff/chex@0.4.6", "", { "dependencies": { "@zgeoff/std": "0.4.5", "oxc-parser": "0.158.0", "ts-pattern": "5.9.2" }, "bin": { "chex": "src/cli.ts" } }, "sha512-GoF9VAdClgmhqK+yrsC+hYnlnDYeB0H2/YPxvdGz/vnznP3ObFgbvauJIh9AyDfYpTNfyLgUhB2prJXXLb3wAw=="],
+    "@zgeoff/chex": ["@zgeoff/chex@0.4.7", "", { "dependencies": { "@zgeoff/std": "0.4.5", "oxc-parser": "0.158.0", "ts-pattern": "5.9.2" }, "bin": { "chex": "src/cli.ts" } }, "sha512-+DyIzT1jJM6v8WSS65iITIHHg6UckFUx1FxqNsKxoMufJt00u16bb9BS71oZ9SkkkTjxMLlDGU6qYSNpCWq1Gg=="],
 
     "@zgeoff/commitlint-config": ["@zgeoff/commitlint-config@0.1.2", "", { "peerDependencies": { "@commitlint/cli": ">=21.0.0" } }, "sha512-D5OJIMD4wBDJ4ad1z8LubHoRQNYDRtwu3LCGZj9m2TLmnpLuuN82/myTx6U7pBSteUGpqH19EJhTIthLCi1Vvg=="],
 
