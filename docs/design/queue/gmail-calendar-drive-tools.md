@@ -24,7 +24,7 @@ model. Other terms are in the [glossary](../../glossary.md).
 
 ```mermaid
 flowchart LR
-  model[model] -->|"mail.reply"| endpoint[tool endpoint]
+  model[model] -->|"gmail.reply"| endpoint[tool endpoint]
   endpoint -->|"1. resolveDestinations: read the message"| gmail[Gmail API]
   endpoint -->|"2. decide"| dp[decision point]
   dp -->|ask| card[send card]
@@ -48,19 +48,19 @@ The Google connector's actions become these tools. The Effect column holds the
 the turn, and a `queued` tool runs as an action, as
 [a tool definition](../platform/connectors/tools.md#a-tool-definition) sets.
 
-A tool that acts on an item a connection returned, such as `mail.reply` on a message, takes its
+A tool that acts on an item a connection returned, such as `gmail.reply` on a message, takes its
 connection from the item. Every other tool takes the
 [connection argument](../platform/connectors/connector.md#the-connection-argument) when the tool
 list of its conversation, task or worker names 2 or more Google connections for it.
 
 | Tool                                | Effect  | Runs   | Scope                            | Reconciliation                    |
 | ----------------------------------- | ------- | ------ | -------------------------------- | --------------------------------- |
-| `mail.search`                       | `read`  | direct | `gmail.modify`                   | none                              |
-| `mail.read`                         | `read`  | direct | `gmail.modify`                   | none                              |
-| `mail.read_attachment`              | `read`  | direct | `gmail.modify`                   | none                              |
-| `mail.label`                        | `write` | queued | `gmail.modify`                   | check: the threads' labels        |
-| `mail.send`                         | `send`  | queued | `gmail.modify`                   | check: the Sent folder            |
-| `mail.reply`                        | `send`  | queued | `gmail.modify`                   | check: the Sent folder            |
+| `gmail.search`                      | `read`  | direct | `gmail.modify`                   | none                              |
+| `gmail.read`                        | `read`  | direct | `gmail.modify`                   | none                              |
+| `gmail.read_attachment`             | `read`  | direct | `gmail.modify`                   | none                              |
+| `gmail.label`                       | `write` | queued | `gmail.modify`                   | check: the threads' labels        |
+| `gmail.send`                        | `send`  | queued | `gmail.modify`                   | check: the Sent folder            |
+| `gmail.reply`                       | `send`  | queued | `gmail.modify`                   | check: the Sent folder            |
 | `calendar.list_calendars`           | `read`  | direct | `calendar.calendarlist.readonly` | none                              |
 | `calendar.list_events`              | `read`  | direct | `calendar.events`                | none                              |
 | `calendar.read_event`               | `read`  | direct | `calendar.events`                | none                              |
@@ -90,19 +90,19 @@ Each tool that reads text returns at most one part of it per call: `part` names 
 from 1, and `parts` gives how many there are. [Every tool](#every-tool) sets the part size.
 
 ```ts
-mail.search({ query: 'from:sam@example.org newer_than:7d', limit: 20 });
+gmail.search({ query: 'from:sam@example.org newer_than:7d', limit: 20 });
 // → { messages: [{ message: '18c2f0a9b4d1e7c3', thread: '18c2f0a9b4d1e7c3',
 //       from: 'Sam Lee <sam@example.org>', to: ['you@example.com'], subject: 'Q3 numbers',
 //       date: '2026-11-12T23:04:00Z', snippet: 'Here are the…', labels: ['INBOX', 'Reports'],
 //       isUnread: true, hasAttachments: true }],
 //     next: 'eyJwIjoyfQ' }   // null on the last page; pass it back as `after`
 
-mail.read({ message: '18c2f0a9b4d1e7c3', part: 1 });
+gmail.read({ message: '18c2f0a9b4d1e7c3', part: 1 });
 // → { message, thread, from, replyTo: null, to, cc, subject, date, labels,
 //     text: 'Hi, the numbers are in the sheet [L3]…', part: 1, parts: 2,
 //     attachments: [{ attachment: '1.2', name: 'q3.csv', type: 'text/csv', bytes: 18233 }] }
 
-mail.read_attachment({ message: '18c2f0a9b4d1e7c3', attachment: '1.2', part: 1 });
+gmail.read_attachment({ message: '18c2f0a9b4d1e7c3', attachment: '1.2', part: 1 });
 // → { name: 'q3.csv', type: 'text/csv', bytes: 18233, text: 'region,total\n…', part: 1, parts: 1 }
 //   an image: text null, and the model gets the image beside the result, as for a fetched image
 //   any other type: text null, parts 0, unsupported: true
@@ -157,13 +157,13 @@ const mailResultSources = {
 ### The changes
 
 ```ts
-mail.label({ threads: ['18c2f0a9b4d1e7c3'], add: ['Reports'], remove: ['INBOX', 'UNREAD'] });
+gmail.label({ threads: ['18c2f0a9b4d1e7c3'], add: ['Reports'], remove: ['INBOX', 'UNREAD'] });
 // → done: { threads: ['18c2f0a9b4d1e7c3'], created: [] }   created: user labels the call made
 
-mail.send({ to: ['sam@example.org'], cc: [], bcc: [], subject: 'Q3 numbers', text: 'Hi Sam, …' });
+gmail.send({ to: ['sam@example.org'], cc: [], bcc: [], subject: 'Q3 numbers', text: 'Hi Sam, …' });
 // → done: { message: '18c2f1…', thread: '18c2f1…' }
 
-mail.reply({ message: '18c2f0a9b4d1e7c3', text: 'Thanks, got it.', replyAll: false });
+gmail.reply({ message: '18c2f0a9b4d1e7c3', text: 'Thanks, got it.', replyAll: false });
 // → done: { message, thread }
 
 calendar.create_event_with_guests({
@@ -189,12 +189,12 @@ drive.create({ name: 'Trip plan', text: '# Trip plan\n…', as: 'google_doc' });
 drive.change({ file: '1Bx9QvR2…', name: null, text: '# Trip plan\n…' }); // replaces the whole content
 ```
 
-- `mail.label` takes up to 50 threads. `add` and `remove` take user label names and the system
+- `gmail.label` takes up to 50 threads. `add` and `remove` take user label names and the system
   labels `INBOX`, `UNREAD`, `STARRED` and `IMPORTANT`, and nothing else. When `add` names a user
   label that does not exist, the tool creates it.
-- `mail.send` takes up to 20 addresses across `to`, `cc` and `bcc`, and a plain-text body of up to
+- `gmail.send` takes up to 20 addresses across `to`, `cc` and `bcc`, and a plain-text body of up to
   100 KB. It sends no attachment and no HTML.
-- `mail.reply` takes its recipients from the message, never from the model: the message's
+- `gmail.reply` takes its recipients from the message, never from the model: the message's
   `Reply-To`, else its `From`, and with `replyAll` the message's `To` and `Cc` too, without your own
   address. It threads the reply with `In-Reply-To`, `References`, the thread ID and the subject.
 - The create, change and cancel tools without guests have no guest argument.
@@ -230,8 +230,8 @@ is one of those permissions. `CallDestination` is defined in the decision point 
 
 | Tool                                | Its destinations                                     | Reply target            |
 | ----------------------------------- | ---------------------------------------------------- | ----------------------- |
-| `mail.send`                         | each address in `to`, `cc` and `bcc`                 | none                    |
-| `mail.reply`                        | the recipients it reads from the message             | `Reply-To`, else `From` |
+| `gmail.send`                        | each address in `to`, `cc` and `bcc`                 | none                    |
+| `gmail.reply`                       | the recipients it reads from the message             | `Reply-To`, else `From` |
 | `calendar.create_event_with_guests` | each guest                                           | none                    |
 | `calendar.change_event_with_guests` | each guest before the change, and each guest it adds | none                    |
 | `calendar.cancel_event_with_guests` | each guest of the event                              | none                    |
@@ -242,7 +242,7 @@ is one of those permissions. `CallDestination` is defined in the decision point 
 - A reply target covers only the reply or response whose resolver returned that address, and never
   another send. An address the model writes in an argument is never a reply target, even when it
   equals a sender or an organizer.
-- `mail.reply` marks no recipient as a reply target when the message sits in Spam or Trash, or when
+- `gmail.reply` marks no recipient as a reply target when the message sits in Spam or Trash, or when
   the message's `From` is the connection's own account. Each recipient of such a reply then needs
   another permission or your consent. Without one, the reply waits on its card.
 - The resolution is a direct read, with the direct call's time budget. A failure returns the error
@@ -270,9 +270,9 @@ layout.
 
 | Tool                                | Sentence                                             | Approve button   |
 | ----------------------------------- | ---------------------------------------------------- | ---------------- |
-| `mail.send`                         | Send an email from {from} to {to}: "{subject}"       | Send email       |
-| `mail.reply`                        | Reply to {replyTo} from {from}: "{subject}"          | Send reply       |
-| `mail.label`                        | Label {count} threads: add {add}, remove {remove}    | Label            |
+| `gmail.send`                        | Send an email from {from} to {to}: "{subject}"       | Send email       |
+| `gmail.reply`                       | Reply to {replyTo} from {from}: "{subject}"          | Send reply       |
+| `gmail.label`                       | Label {count} threads: add {add}, remove {remove}    | Label            |
 | `calendar.create_event_with_guests` | Invite {guests} to "{title}" on {start}              | Send invitations |
 | `calendar.change_event_with_guests` | Change "{title}" on {start} and email {guests}       | Send changes     |
 | `calendar.cancel_event_with_guests` | Cancel "{title}" on {start} and email {guests}       | Cancel and email |
@@ -291,7 +291,7 @@ type MailCardFields = {
   Cc: string; // left out when empty, and so is Bcc
   Bcc: string;
   Subject: string;
-  'In reply to': string; // mail.reply only: the original's sender, date and subject
+  'In reply to': string; // gmail.reply only: the original's sender, date and subject
   Body: string; // the whole body, as plain text
 };
 ```
@@ -311,9 +311,14 @@ Message-ID: <0b9d3c4e-7a21-4f0e-8c55-1e6f2a9d4c03@example.com>   the action ID @
 ```
 
 ```ts
-// connectors module: the declaration of mail.send and mail.reply. 'mail.find_sent' is a read-only
+// connectors module: the declaration of gmail.send and gmail.reply. 'gmail.find_sent' is a read-only
 // connector action that only the action queue calls; no tool list holds it.
-const reconcile = { kind: 'check', action: 'mail.find_sent', settleAfter: '5m', onNotFound: 'ask' };
+const reconcile = {
+  kind: 'check',
+  action: 'gmail.find_sent',
+  settleAfter: '5m',
+  onNotFound: 'ask',
+};
 ```
 
 The check runs at least 5 minutes after the attempt started, and asks Gmail 2 ways:
@@ -383,7 +388,7 @@ const driveCheck = { kind: 'check', action: 'drive.find_change', settleAfter: '5
 | `calendar.respond` | the account's attendee entry holds the response             | never                                      |
 | `drive.create`     | a file holds the marker, found by `appProperties` search    | the search finds none                      |
 | `drive.change`     | the file holds the action's marker                          | the file lacks it, with under 10 markers   |
-| `mail.label`       | each thread holds every label in `add` and none in `remove` | never                                      |
+| `gmail.label`      | each thread holds every label in `add` and none in `remove` | never                                      |
 
 - Found wins over every other answer. A check never answers not found while any read it makes fails.
 - Every other answer, a failed call included, is inconclusive. A response or a label that differs is
@@ -453,12 +458,12 @@ type PickerSettings = { pickerKey: string; projectNumber: string };
   web page does, so nixie never parses mail HTML on the host. Each link in a body reads as a
   [link ID](../../architecture/connectors/web-fetch.md#link-ids), such as `[L3]`, as a fetched
   page's links do.
-- `mail.read_attachment` reads text types (`text/*` and `application/json`) as UTF-8 text, and
+- `gmail.read_attachment` reads text types (`text/*` and `application/json`) as UTF-8 text, and
   decodes images as [web fetch images](../../architecture/connectors/web-fetch-images.md) does,
   under the same caps. Every other type answers `unsupported`. An item over 25 MB answers
   `too_large`, whatever its type.
 - `drive.read` exports a Google Doc as Markdown, a Sheet's first sheet as CSV and a Slides file as
-  plain text, and reads other files as `mail.read_attachment` does.
+  plain text, and reads other files as `gmail.read_attachment` does.
 - Each provider error maps to an action response as the
   [connector design](../platform/connectors/connector.md#the-interface) sets, and a Gmail 403 with
   `rateLimitExceeded` or `userRateLimitExceeded` is `retry`.
@@ -488,9 +493,9 @@ type PickerSettings = { pickerKey: string; projectNumber: string };
 
 ## Decisions
 
-- **The tool names are `mail.search`, `mail.read`, `mail.read_attachment`, `mail.label`,
-  `mail.send`, `mail.reply`, and the `calendar.*` and `drive.*` names in [the tools](#the-tools).**
-  The owner chose them on 14 Nov 2026.
+- **The tool names are `gmail.search`, `gmail.read`, `gmail.read_attachment`, `gmail.label`,
+  `gmail.send`, `gmail.reply`, and the `calendar.*` and `drive.*` names in
+  [the tools](#the-tools).** The owner chose them on 14 Nov 2026.
 - **Every event change that emails guests is its own `…_with_guests` tool, with the `send` effect.**
   The owner chose this on 14 Nov 2026, so the send rules decide each one: a tool's effects are fixed
   per tool, and the owner made an event with guests a `send`.
@@ -521,7 +526,7 @@ type PickerSettings = { pickerKey: string; projectNumber: string };
 
 ## Builder decides
 
-- Internal names, file layout, and how the connector batches metadata reads for `mail.search`.
+- Internal names, file layout, and how the connector batches metadata reads for `gmail.search`.
 - The MIME encoding of a sent mail, within plain text and the headers above.
 - The wording of each refusal, and of each tool's description.
 - How the card lays out the fields, within the rules above.

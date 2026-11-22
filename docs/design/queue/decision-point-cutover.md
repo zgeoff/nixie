@@ -233,7 +233,7 @@ known_contacts, a projection that one appended migration adds
 # effects/mail.yaml in the definitions repo: a map of tool name to a change of its effects
 mail.trash:
   add: [delete]
-mail.label:
+gmail.label:
   remove: [write]
 ```
 

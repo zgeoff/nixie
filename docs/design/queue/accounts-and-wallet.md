@@ -84,6 +84,12 @@ account.add_origin({ tab: 't1', account: 'a7q2m9x4kd' });
 //   'https://login.library.example.org'] } or UNKNOWN_ACCOUNT | WRONG_KIND | ACCOUNT_FORGOTTEN |
 //   ORIGIN_KNOWN | TAB_GONE
 
+account.inspect({ tab: 't1', kind: 'password' }); // 'password' | 'card'
+// → { report: FillReport }: every field and frame the broker would look at, the role it would give
+//   each, and why it skips the rest. It fills nothing and reads no secret. A refusal of NO_FIELD,
+//   NO_CARD_FIELD, CROSS_ORIGIN_SUBMIT or FAILED, and a sign_in, sign_up or rotate that returns
+//   'filled', carry the same report as `report`.
+
 wallet.pay({
   tab: 't1',
   amount: { value: 8.0, currency: 'USD' }, // in the page's own currency
@@ -122,6 +128,7 @@ wallet.cancel({ purchase: 'pq3z8w1n5v' }); // after the assistant cancels it on 
 ```ts
 // connectors module: the effects each tool declares
 // accounts.list, wallet.read, wallet.cancel: ['note'], run direct
+// account.inspect: ['read'], run direct
 // account.sign_in, account.sign_up, account.rotate: ['sign_in'], a new effect of the routine risk
 //   class, queued; destination: the tab's origin. Its "always allow" rule pins the origin and the
 //   account.
@@ -154,7 +161,7 @@ interface VaultEntry {
   account: string; // short ID from createShortID; the only ID the model sees
   label: string; // sealed under the entry's key, with secret and previousSecret; a forget destroys all three
   kind: 'password' | 'card';
-  origins: string[]; // exact origins, no wildcards; a card has none; kept after a forget, for FILLED_ORIGIN
+  origins: string[]; // exact origins, no wildcards; a card has none; kept after a forget
   username: string | null; // the model reads it; it's the assistant's own address; kept after a forget
   secret: SealedValue; // a password, or a card's number, expiry and code, under the entry's own key
   previousSecret: SealedValue | null; // a password: the one before a rotate, kept as the constraints say
@@ -206,8 +213,8 @@ type FillRequest = {
   submit?: { element: string; expectTotal?: string }; // with expectTotal, click only while the total matches
   retry?: { value: string }; // a sign_in with a previousSecret: the other password, tried once as the constraints say
 };
-// the server sends the guest the filled origins with each request, and the guest enforces
-// FILLED_ORIGIN and FILLED_TAB itself
+// the guest keeps which tabs hold a filled card field, and enforces FILLED_TAB itself
+type InspectRequest = { op: 'inspect'; tab: string; kind: 'password' | 'card' }; // → { ok: true; report: FillReport }
 type FillReply = // joins the built replies with kind: 'filled'
   | {
       ok: true;
@@ -217,6 +224,7 @@ type FillReply = // joins the built replies with kind: 'filled'
       pageTotal: string | null;
       isNavigated: boolean; // after the submit
       isBankCheck: boolean; // a bank's check frame showed after the submit
+      report: FillReport | null; // set when the page stayed after the submit
     }
   | {
       ok: false;
@@ -230,7 +238,29 @@ type FillReply = // joins the built replies with kind: 'filled'
         | 'total_changed'
         | 'failed';
       origin: string | null;
+      report: FillReport | null; // set for no_field, cross_origin_submit and failed
     };
+
+// what the guest saw when it looked for fields; never a value, typed or filled
+type FillReport = {
+  url: string;
+  frames: { origin: string; isAllowed: boolean }[];
+  fields: {
+    element: string; // the snapshot's element ID
+    tag: string; // 'input' | 'select' | 'textarea'
+    type: string | null;
+    name: string | null;
+    id: string | null;
+    autocomplete: string | null;
+    label: string | null; // the label text, its aria-label or its placeholder
+    frameOrigin: string;
+    formAction: string | null; // the origin the field's form posts to
+    isVisible: boolean;
+    role: FillRequest['fields'][number]['role'] | null; // the role the guest gave it
+    skipped: string | null; // why the guest gave it no role, such as 'form posts to another origin'
+  }[];
+  error: string | null; // for failed: what threw, with no value in it
+};
 ```
 
 ### The purchase record
@@ -256,27 +286,27 @@ purchase.cancelled             -- budgets module, one per wallet.cancel
 
 Secrets:
 
-- The secret never reaches the model's context, a tool result, a `hidden` value, a screenshot, a
+- The broker never puts a secret in the model's context, a tool result, a `hidden` value, a
   snapshot, an approval card, the event log or the server log. Nothing logs the body of a fill
-  frame.
+  frame. A page that shows a filled password as text can put it in a screenshot, and the design
+  accepts that for passwords.
 - Before any result of an `account.*`, `wallet.*` or `computer.*` tool reaches the model, the server
   replaces each vault secret it finds in the result's text with dots: every secret and previous
   secret, of pending entries too. A stored page read later through `web_fetch` gets the same pass.
   This catches a page that copies a filled value verbatim, and misses one that encodes it.
 - The checking proxy scans every request for each vault secret, and refuses one that carries a
   secret to an origin outside its entry's origins.
-- `computer.browser_screenshot` returns `FILLED_ORIGIN` for a tab with any frame on an origin that a
-  fill reached: every password entry's origins, and each merchant and payment frame a card filled.
-  `computer.screenshot` returns `FILLED_ORIGIN` while a browser window shows such a tab. The vault
-  keeps those origins, so a browser restart keeps the block. Every snapshot shows each filled field
-  as dots. A page can show a secret as text that the dots never catch, so a picture of the origin is
-  the one way the model could read it.
+- A tab holds a filled card field from the fill until `wallet.pay` clicks submit, the guest clears
+  the fields after a refusal, or the tab closes. A card number shows in full in a picture, so while
+  a tab holds one, `computer.browser_screenshot` on it and `computer.screenshot` while a window
+  shows it return `FILLED_TAB`.
 - `computer.browser_click`, `computer.browser_fill`, `computer.browser_download`,
   `computer.screen_click` and `computer.screen_type` return `FILLED_TAB` on a tab that holds a
-  filled card field, so only `wallet.pay` submits a payment. `computer.browser_download` also
-  returns `FILLED_TAB` on a tab that holds a filled password field.
-- The descriptions of the computer tools name `FILLED_ORIGIN` and `FILLED_TAB`, say why each exists,
-  and point to `computer.browser_read` for a filled origin and `wallet.pay` for a filled card.
+  filled card field, so only `wallet.pay` submits a payment.
+- Every refusal in this design carries a `message` that says what happened and what to do next. The
+  message of `FILLED_TAB` says the tab holds a filled card, that screenshots and clicks are off
+  until `wallet.pay` submits or the tab closes, and that `computer.browser_read` still reads the
+  page. The descriptions of the computer tools say the same.
 - The browser profile never saves a password or a card. Chromium's password manager and autofill are
   off.
 - Chromium runs as its own user on the desktop, as [the desktop](desktop.md) sets, so no command the
@@ -301,6 +331,9 @@ Filling:
   pending entry signs in like a ready one, so a site that took the password never loses it. A
   pending entry stays until you remove it: after 7 days with no sign-in, nixie asks you whether to
   keep it, and never forgets it on its own.
+- Each fill that refuses with a report, or returns `filled`, writes an `account.fill_failed` record
+  with the tool, the account, the origin and the report, so a fill that a site breaks can be
+  debugged from the log. The report holds no value, so the record holds no secret.
 - A forget of a vault entry destroys its key, and the next `sign_in` with it returns
   `ACCOUNT_FORGOTTEN`.
 - A `rotate` that returns `changed` makes the new password the entry's secret, and keeps the old one

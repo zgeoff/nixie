@@ -171,11 +171,6 @@ Mailbox and number:
 - The tools' descriptions and the refusal wording.
 - How the trigger source holds mail that waits for a task run to end.
 
-## Open questions
-
-- The [Gmail design](gmail-calendar-drive-tools.md) defines `mail.read`, `mail.send` and
-  `mail.reply` for your Gmail. The owner names one side again before either is built.
-
 ## Out of scope
 
 - Phone calls, in and out.
