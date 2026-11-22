@@ -4,8 +4,8 @@
   device, switch its screen on, and have the model show a photo.
 - [End state](#end-state): what the second tab, the chat tab, the device row and the session show.
 
-A signed-in browser needs no code to become a device. The device page asks for a name, and keeps the
-session and its cookie, so the chat tab keeps working.
+Register a signed-in browser as a device with a name and no code. Registering keeps the session and
+its cookie, so the chat tab keeps working.
 
 Run this journey on `local` only, before `device-screen`. It needs the scripted model and the
 `show-on-device` action, which the harness that runs nixie on `local` serves. On `preview`, list the
@@ -66,8 +66,8 @@ which needs a browser with no session.
    Expect: one `devices` row, "desk tab", whose `capabilities` holds `"screen":true`, and the
    session `hallway tablet` still listed.
 
-5. Have the model show the photo, as `device-screen` does. The model reaches the device only while
-   its page holds a stream, so a shown photo proves the device is online:
+5. Have the model show the photo, as `device-screen` does. A shown photo proves the device is
+   online, because the model reaches a device only while its page holds a stream:
 
    ```bash
    bun verify action show-on-device --fit whole --text 'The desk tab shows the photo.'

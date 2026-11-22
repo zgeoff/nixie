@@ -34,8 +34,8 @@ its row. A full session holds one only after it registers.
    only on the session's own device row.
 
 `devices.follow`, `devices.setCapability`, `devices.readImage` and `devices.resize` act on the
-caller's own row. A full session with no row gets `NOT_A_DEVICE`, which says to register first. A
-device session whose row a revoke removed gets the refusal of a missing session.
+caller's own row. A full session with no row gets `NOT_A_DEVICE` and has to register first. A device
+session whose row a revoke removed gets the refusal of a missing session.
 
 `create-api-app.ts` refuses with 403 each call from a device session except `devices.follow`,
 `devices.resize`, `devices.setCapability`, `devices.readImage` and `sessions.signOut`. The test in
@@ -70,8 +70,8 @@ An idle device with no scene shows black.
 `devices.follow` takes the screen's size in pixels, which the device sends again on each reconnect.
 The server keeps each open stream and its size in memory in `createDeviceStreams`, and a device is
 online while it has one open. `devices.resize({ width, height })` gives every open stream of the
-caller's device a new size, which one pixels schema bounds for both calls, so `devices.list` reads
-the new size at once. The first event is what the screen shows now. A later event follows a commit
+caller's device a new size, and `devices.list` reads the new size at once. One pixels schema bounds
+the size in both calls. The first event is what the screen shows now. A later event follows a commit
 that touches the device, and the stream sends an event only when the state changes. The event of a
 show carries the `fit` of an image, `whole` or `fill`.
 
@@ -100,8 +100,9 @@ browser holds:
 - A browser with a full session and no device row shows a form that names the device and calls
   `devices.register`. The session and its cookie stay as they were, so a chat tab in the same
   browser keeps working.
-- A browser with a device row shows a button that switches the screen on. A page that registers a
-  device starts with the screen off, whatever the browser stored before.
+- A browser with a device row comes back with the screen on or off as it stored, and a button
+  switches the screen. A page that registers a device starts with the screen off, whatever the
+  browser stored before.
 
 With the screen on, the page follows `devices.follow` and renders markdown like a reply and an image
 on black: `whole` scales it to fit and centres it, `fill` covers the screen and crops evenly. The
