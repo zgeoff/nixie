@@ -88,7 +88,7 @@
       "kysely": "0.29.8",
       "msw": "3.0.4",
       "onnxruntime-node": "1.31.1",
-      "playwright-core": "1.64.1",
+      "playwright-core": "1.65.1",
       "re2js": "2.10.0",
       "rrule-temporal": "2.2.9",
       "react": "19.3.1",
