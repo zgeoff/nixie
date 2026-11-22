@@ -2,16 +2,17 @@
 
 - **Status:** draft
 - **Work items:**
-  [the assistant keeps a notebook of linked pages](https://linear.app/zgeoff/issue/GEO-2726), with
-  [images](https://linear.app/zgeoff/issue/GEO-2728) for the pictures a page shows
+  [the assistant keeps a notebook of linked notes](https://linear.app/zgeoff/issue/GEO-2726), with
+  [images](https://linear.app/zgeoff/issue/GEO-2728) for the pictures a note shows
 
-The assistant gets a notebook: pages it writes, edits, searches, links and walks, kept apart from
-memory. A page has a short ID, a title, a markdown body of up to 50,000 characters, tags and
-versions. A typed link from a page points at another page, a memory item, a moment or an event of
-the log. A page never comes to the assistant on its own: no retrieval, opening or block shows one,
-so the assistant reads a page only when it opens or searches the notebook. You read every page, its
-links and its backlinks in the web client, which shows the notebook read-only and offers one
-control, the forget of a page.
+The assistant gets a notebook: notes it writes, edits, searches, links and walks, kept apart from
+memory. A note has a short ID, a title, a markdown body of up to 50,000 characters, tags, versions,
+and a private flag. A typed link from a note points at another note, a memory item, a moment or an
+event of the log. A note never comes to the assistant on its own: no retrieval, opening or block
+shows one, so the assistant reads a note only when it opens or searches the notebook. Memory shows
+one fact about notes, a count on an item that a note disputes or supersedes. You read every note in
+the web client, which shows the notebook read-only, folds private notes, and offers one control, the
+forget of a note.
 
 ## Shape
 
@@ -19,14 +20,16 @@ control, the forget of a page.
 flowchart LR
   model[assistant] -->|"notebook.*"| tools[notebook tools]
   tools -->|"records with no thread"| log[(event log)]
-  log -->|"fold"| tables[(pages, versions, links)]
-  tools -->|"find"| index[page indexes in process memory]
+  log -->|"fold"| tables[(notes, versions, links)]
+  tools -->|"find"| index[note indexes in process memory]
   index -->|"chunks and vectors"| encoder[text encoder]
-  web[web client] -->|"page reads, forget"| api[API]
+  tables -->|"link counts, through a port"| memory[memory recall and retrieval]
+  web[web client] -->|"note reads, forget"| api[API]
   api --> tables
 ```
 
-Per-turn retrieval has no edge to the notebook: memory never depends on the notebook module.
+Memory never imports the notebook module. The server hands memory the notebook's link counts through
+an interface that memory owns.
 
 ## Contracts
 
@@ -38,41 +41,51 @@ notebook.write({
   body: '## What I know\nThe trip happens after a cold night…',
   tags: ['home', 'boiler'],
 });
-// → { page: 'n4w8k2c6rd', version: 1 }
+// → { note: 'n4w8k2c6rd', version: 1 }
 
 notebook.edit({
-  page: 'n4w8k2c6rd',
+  note: 'n4w8k2c6rd',
   version: 1, // the version the assistant read
   changes: [{ find: 'after a cold night', replace: 'after a night under 2 °C' }],
 });
-// → { page: 'n4w8k2c6rd', version: 2 }
+// → { note: 'n4w8k2c6rd', version: 2 }
 
-notebook.read({ page: 'n4w8k2c6rd' });
-// → { page: 'n4w8k2c6rd', version: 2, versionCount: 2, title: 'Why the boiler keeps tripping',
-//     tags: ['home', 'boiler'], body: '## What I know\n…', part: 1, parts: 1,
-//     updatedAt: '2026-11-21T08:10:00Z',
+notebook.edit({ note: 'd8p3q1z6mw', append: '\n## 22 Nov\nTried the zine layout…' });
+// → { note: 'd8p3q1z6mw', version: 15 }  // an append alone needs no version
+
+notebook.read({ note: 'n4w8k2c6rd' });
+// → { note: 'n4w8k2c6rd', version: 2, versionCount: 2, title: 'Why the boiler keeps tripping',
+//     tags: ['home', 'boiler'], isPrivate: false, body: '## What I know\n…', part: 1, parts: 1,
+//     updatedAt: '2026-11-21T08:10:00Z', readAt: '2026-11-20T19:02:00Z',
 //     links: [{ type: 'cites', to: { event: '48213' }, reason: 'the engineer’s visit' }],
 //     backlinks: [{ type: 'supersedes', from: 'h2m9t4x7qa', title: 'Boiler notes (old)' }],
 //     linkCount: 1, backlinkCount: 1 }
 
-notebook.history({ page: 'n4w8k2c6rd' });
-// → { page: 'n4w8k2c6rd', versions: [{ version: 2, at, writer: 'conversation', model, chars }, …],
+notebook.read({ note: 'd8p3q1z6mw', find: 'zine layout' });
+// → { …, isPrivate: true, ownerOpenedAt: null, part: 3, parts: 3, body: '…',
+//     matches: [{ part: 3, text: '…Tried the zine layout with two columns…' }] }
+
+notebook.history({ note: 'n4w8k2c6rd' });
+// → { note: 'n4w8k2c6rd', versions: [{ version: 2, at, writer: 'conversation', model, chars }, …],
 //     next: null }
 
 notebook.find({ query: 'heating cuts out in winter', tags: ['home'] });
-// → { pages: [{ page: 'n4w8k2c6rd', title: 'Why the boiler keeps tripping', tags: ['home', 'boiler'],
+// → { notes: [{ note: 'n4w8k2c6rd', title: 'Why the boiler keeps tripping', tags: ['home', 'boiler'],
 //               version: 2, updatedAt, match: '…the trip happens after a night under 2 °C…',
 //               score: { words: 4.1, meaning: 0.52 } }],
 //     next: null, isMeaningPartial: false }
 
-notebook.tidy({});
-// → TidyReport, the same report the web client shows
+notebook.find({ order: 'oldest' });
+// → the notes, oldest edit first, with no match or score
+
+notebook.check({});
+// → NotebookCheck, the same report the web client shows
 
 notebook.link({
   from: 'n4w8k2c6rd',
   to: { memory: 'b7kq2m9xza' },
   type: 'disputes',
-  reason: 'the note blames the thermostat; the trips say otherwise',
+  reason: 'the item blames the thermostat; the trips say otherwise',
 });
 // → { linked: true }
 
@@ -80,7 +93,7 @@ notebook.unlink({ from: 'n4w8k2c6rd', to: { memory: 'b7kq2m9xza' }, type: 'dispu
 // → { unlinked: true }, or { unlinked: false } when no such link existed
 
 notebook.walk({ from: 'n4w8k2c6rd', hops: 2 });
-// → { nodes: [{ page: 'n4w8k2c6rd', hops: 0, title: 'Why the boiler keeps tripping' },
+// → { nodes: [{ note: 'n4w8k2c6rd', hops: 0, title: 'Why the boiler keeps tripping' },
 //             { memory: 'b7kq2m9xza', hops: 1, gist: 'boiler serviced in March', state: 'active' },
 //             { event: '48213', hops: 1, at: '2026-10-02T09:12:00Z', role: 'user' },
 //             { moment: 'm3c8v1k5wy', hops: 2, title: 'The engineer’s visit', state: 'active' }],
@@ -90,8 +103,8 @@ notebook.walk({ from: 'n4w8k2c6rd', hops: 2 });
 
 ```ts
 // notebook module
-type LinkTarget = { page: string } | { memory: string } | { moment: string } | { event: string };
-// page, memory and moment take a short ID. A UUID is looked up in the declared kind's table and
+type LinkTarget = { note: string } | { memory: string } | { moment: string } | { event: string };
+// note, memory and moment take a short ID. A UUID is looked up in the declared kind's table and
 // stored as its short ID. event takes the decimal event ID that log.read shows: events have no
 // short IDs, so this is the one target that breaks the short-ID rule.
 
@@ -99,35 +112,41 @@ type LinkType = 'supersedes' | 'disputes' | 'part-of' | 'cites' | 'related';
 
 type NotebookWriteInput = {
   title: string; // one line, 1 to 200 characters
-  body: string; // 1 to notebook.page_chars characters
+  body: string; // 1 to notebook.note_chars characters
   tags?: string[]; // 0 to 10, each one line of 1 to 40 characters
+  isPrivate?: boolean; // default false
 };
 
 type NotebookEditInput = {
-  page: string;
-  version: number;
-  body?: string; // a whole new body; never with changes
-  changes?: { find: string; replace: string }[]; // applied in order, each to the result of the last
+  note: string;
+  version?: number; // required unless append is the only field set
+  body?: string; // a whole new body; never with changes or append
+  changes?: { find: string; replace: string; all?: boolean }[]; // applied in order, each to the
+  //   result of the last; all replaces every match, else a change needs exactly one match
+  append?: string; // added to the end of the body, after any changes
   title?: string;
   tags?: string[]; // replaces the tags; [] clears them
+  isPrivate?: boolean;
 };
 
 type NotebookReadInput = {
-  page: string;
+  note: string;
   version?: number; // default: the current version
-  part?: number; // from 1; default 1
+  part?: number; // from 1; default 1; never with find
+  find?: string; // plain text; returns the part where it first appears; never with part
 };
 
 type NotebookFindInput = {
   query?: string;
-  tags?: string[]; // a page must hold every one
+  tags?: string[]; // a note must hold every one
   by?: 'words' | 'meaning' | 'both'; // default 'both'
+  order?: 'newest' | 'oldest'; // by last edit; only without query; default 'newest'
   after?: string; // the next cursor of the last result
 };
-// tags alone, or neither field, lists pages newest edit first
+// tags alone, or neither field, lists notes in order
 
 type NotebookLinkInput = {
-  from: string; // a page's short ID
+  from: string; // a note's short ID
   to: LinkTarget;
   type: LinkType;
   reason?: string; // one line, 1 to 200 characters; required for related
@@ -136,36 +155,39 @@ type NotebookLinkInput = {
 type WalkInput = { from: string; hops?: number; types?: LinkType[] };
 // hops: 1 to 3, default 1. types narrows the links the walk follows
 
-interface TidyReport {
-  orphans: { page: string; title: string }[];
+interface NotebookCheck {
+  orphans: { note: string; title: string }[];
   dangling: { from: string; to: LinkTarget; type: LinkType }[]; // links whose target is gone
-  untouched: { page: string; title: string; touchedAt: string }[];
   repeatedReasons: { reason: string; count: number; links: { from: string; to: LinkTarget }[] }[];
 }
 
 // notebook.write, notebook.edit, notebook.link, notebook.unlink: effects ['note'], execution 'direct'
-// notebook.read, notebook.history, notebook.find, notebook.tidy, notebook.walk: effects ['read'],
+// notebook.read, notebook.history, notebook.find, notebook.check, notebook.walk: effects ['read'],
 //   execution 'direct'
-// every result field that holds page, title, tag, reason, gist or match text is 'untrusted';
-//   IDs, versions, counts and flags are 'owner_data'
+// every result field that holds note, title, tag, reason, gist or match text is 'untrusted';
+//   IDs, versions, counts, flags and times are 'owner_data'
 ```
 
 Each tool checks its refusals in this order, and returns the first as a result with `refusalCode`
 and a message that holds the ID it names:
 
-| Tool               | Refusals, in order                                                                                                    |
-| ------------------ | --------------------------------------------------------------------------------------------------------------------- |
-| `notebook.write`   | `PAGE_TOO_LONG`, `NOTEBOOK_FULL`                                                                                      |
-| `notebook.edit`    | `UNKNOWN_PAGE`, `NOTHING_TO_CHANGE`, `BODY_AND_CHANGES`, `STALE_VERSION`, `NO_MATCH`, `MANY_MATCHES`, `PAGE_TOO_LONG` |
-| `notebook.read`    | `UNKNOWN_PAGE`, `UNKNOWN_VERSION`, `UNKNOWN_PART`                                                                     |
-| `notebook.history` | `UNKNOWN_PAGE`                                                                                                        |
-| `notebook.link`    | `UNKNOWN_PAGE`, `BAD_TARGET`, `UNKNOWN_TARGET`, `SELF_LINK`, `BAD_LINK`, `REASON_REQUIRED`, `PART_OF_CYCLE`           |
-| `notebook.unlink`  | `UNKNOWN_PAGE`, `BAD_TARGET`                                                                                          |
-| `notebook.walk`    | `UNKNOWN_PAGE`                                                                                                        |
+| Tool               | Refusals, in order                                                                                                                        |
+| ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `notebook.write`   | `NOTE_TOO_LONG`, `NOTEBOOK_FULL`                                                                                                          |
+| `notebook.edit`    | `UNKNOWN_NOTE`, `NOTHING_TO_CHANGE`, `BODY_AND_CHANGES`, `VERSION_REQUIRED`, `STALE_VERSION`, `NO_MATCH`, `MANY_MATCHES`, `NOTE_TOO_LONG` |
+| `notebook.read`    | `UNKNOWN_NOTE`, `UNKNOWN_VERSION`, `UNKNOWN_PART`, `NOT_FOUND`                                                                            |
+| `notebook.history` | `UNKNOWN_NOTE`                                                                                                                            |
+| `notebook.link`    | `UNKNOWN_NOTE`, `BAD_TARGET`, `UNKNOWN_TARGET`, `SELF_LINK`, `BAD_LINK`, `REASON_REQUIRED`, `PART_OF_CYCLE`                               |
+| `notebook.unlink`  | `UNKNOWN_NOTE`, `BAD_TARGET`                                                                                                              |
+| `notebook.walk`    | `UNKNOWN_NOTE`                                                                                                                            |
 
-- `UNKNOWN_PAGE` covers a page that never existed, and one that is being forgotten or was forgotten.
+- `UNKNOWN_NOTE` covers a note that never existed, and one that is being forgotten or was forgotten.
+- `BODY_AND_CHANGES` is a `body` with `changes` or `append`. `VERSION_REQUIRED` is an edit with no
+  `version` that sets a field other than `append`.
 - `STALE_VERSION` carries `currentVersion` beside `refusalCode`.
-- `NO_MATCH` and `MANY_MATCHES` name the change by its index, and no change applies.
+- `NO_MATCH` and `MANY_MATCHES` name the change by its index, and no change applies. A change with
+  `all: true` is never `MANY_MATCHES`.
+- `NOT_FOUND` is a `find` text that appears nowhere in the version, and carries `parts`.
 - `BAD_TARGET` is an ID in no valid format. `UNKNOWN_TARGET` is a well-formed ID with no row of the
   declared kind, or an event with no record.
 - `BAD_LINK` is a type that the link kinds refuse between these kinds.
@@ -174,39 +196,40 @@ and a message that holds the ID it names:
 
 | Type         | From | To                          | Meaning                                |
 | ------------ | ---- | --------------------------- | -------------------------------------- |
-| `supersedes` | page | page, memory                | this page replaces that one            |
-| `disputes`   | page | page, memory                | this page argues with that; both stand |
-| `part-of`    | page | page                        | this page belongs to that one          |
-| `cites`      | page | page, memory, moment, event | this page rests on that                |
-| `related`    | page | page, memory, moment, event | anything else, with its reason         |
+| `supersedes` | note | note, memory                | this note replaces that one            |
+| `disputes`   | note | note, memory                | this note argues with that; both stand |
+| `part-of`    | note | note                        | this note belongs to that one          |
+| `cites`      | note | note, memory, moment, event | this note rests on that                |
+| `related`    | note | note, memory, moment, event | anything else, with its reason         |
 
-A page holds at most one link of each type to each target. A second `notebook.link` with the same
+A note holds at most one link of each type to each target. A second `notebook.link` with the same
 source, target and type replaces the reason.
 
 ### The records
 
 ```text
-notebook.page_written      -- the first version; no thread
-  payload:  page (UUID), shortID, version 1, writer, model, chars
+notebook.note_written      -- the first version; no thread
+  payload:  note (UUID), shortID, version 1, writer, model, chars, isPrivate
   erasable: title, body, tags
-notebook.page_edited       -- each later version, written whole; no thread
-  payload:  page, version, chars, writer, model
+notebook.note_edited       -- each later version, written whole; no thread
+  payload:  note, version, chars, writer, model, isPrivate
   erasable: title, body, tags
 notebook.linked            -- a link, or a new reason for it; no thread
   payload:  from (UUID), to (LinkTarget), type
   erasable: reason, when present
 notebook.unlinked          -- payload: from, to, type
-notebook.page_forgetting   -- payload: page, version; the forget's first part
-notebook.page_forgotten    -- payload: page; the forget's end
+notebook.private_opened    -- payload: note; you opened a private note's body in the web client
+notebook.note_forgetting   -- payload: note, version; the forget's first part
+notebook.note_forgotten    -- payload: note, shortID; the forget's end
 ```
 
 `writer` is `'conversation'`, or the task ID of the task run whose turn called the tool. `model` is
-the task run's model ID. The server sets both from the turn, never from the tool's input. The page
+the task run's model ID. The server sets both from the turn, never from the tool's input. The note
 records sit on no thread, so a
 [reset of the conversation](../../architecture/core/event-log.md#resetting-the-conversation) leaves
-every page readable, as it leaves memory items.
+every note readable, as it leaves memory items.
 
-A record forget never takes a page's own records: only the page's forget does. The notebook module
+A record forget never takes a note's own records: only the note's forget does. The notebook module
 exports `notebookErasableKinds`, as memory exports `memoryItemErasableKinds`, and the
 [record forget](../../architecture/channels/api.md#forgetting-a-record) leaves those kinds out as it
 leaves memory's.
@@ -214,17 +237,20 @@ leaves memory's.
 ### The tables
 
 ```text
-notebook_pages                 -- notebook module
-  page_id      text            -- primary key; the page's UUID
-  short_id     text            -- from createShortID, carried in notebook.page_written
+notebook_notes                 -- notebook module
+  note_id      text            -- primary key; the note's UUID
+  short_id     text            -- from createShortID, carried in notebook.note_written
   state        text            -- 'active', 'forgetting' or 'forgotten'
   version      integer
   text_seq     integer         -- the record that holds the current title, body and tags
+  is_private   integer
   created_at   integer
-  touched_at   integer         -- the newest version, or link added from or to the page
+  edited_at    integer         -- the newest version
+  read_at      integer null    -- the newest notebook.read call record that names the note
+  owner_opened_at integer null -- the newest notebook.private_opened record
 
 notebook_versions
-  page_id      text
+  note_id      text
   version      integer
   seq          integer         -- the record that holds this version's text
   writer       text            -- 'conversation' or a task ID
@@ -233,169 +259,245 @@ notebook_versions
   created_at   integer
 
 notebook_links
-  from_page_id text
-  target_kind  text            -- 'page', 'memory', 'moment' or 'event'
+  from_note_id text
+  target_kind  text            -- 'note', 'memory', 'moment' or 'event'
   target_id    text            -- a short ID, or an event ID
   type         text
   reason_seq   integer null    -- the notebook.linked record that holds the reason
   created_at   integer
-  -- primary key (from_page_id, target_kind, target_id, type)
+  -- primary key (from_note_id, target_kind, target_id, type)
 ```
 
 No table holds free text. At start, the notebook module decrypts the current version of every active
-page, and keeps the titles, the tags, a keyword index and a vector index in process memory only, as
+note, and keeps the titles, the tags, a keyword index and a vector index in process memory only, as
 the [memory store's indexes](../../architecture/memory/store.md#the-indexes) do. An index on disk
-would keep a forgotten page's words.
+would keep a forgotten note's words.
+
+### Memory's link counts
+
+```ts
+// memory module
+interface ItemLinkCounts {
+  readCounts(itemIDs: string[]): Map<string, { disputedBy: number; supersededBy: number }>;
+}
+// the server passes the notebook module's implementation; memory imports nothing from notebook
+
+memory.recall({ query: 'boiler' });
+// → { items: [{ item: 'b7kq2m9xza', text: 'The thermostat is faulty.', …existing fields,
+//               disputedBy: 1 }] }   // a count above 0 only; never a note ID or title
+```
+
+Per-turn retrieval renders the same counts after the item's text, such as
+`(disputed by 1 note · superseded by 1 note)`.
 
 ### The config
 
 ```yaml
-# deployment config; the notebook module reads it
-notebook:
-  page_chars: 50000 # the most characters of one body
-  max_pages: 1000 # active pages; a write past it is NOTEBOOK_FULL
-  tidy_untouched_days: 90
-  tidy_reason_repeats: 3 # a related reason on more links than this is repeated
+# deployment config
+notebook: # the notebook module reads it
+  note_chars: 50000 # the most characters of one body
+  max_notes: 1000 # active notes; a write past it is NOTEBOOK_FULL
+  check_reason_repeats: 3 # a related reason on more links than this is repeated
+
+forget_notices: # the events block reads it; false turns every kind off
+  note: true # default true
 ```
+
+The [forget notices issue](https://linear.app/zgeoff/issue/GEO-2793) adds the `memory`, `moment` and
+`message` keys.
+
+### The events block
+
+```text
+22 Nov 14:05  Geoff forgot note n4w8k2c6rd
+```
+
+The notebook module registers one entry in the
+[events block](../../architecture/core/conversation-turns.md#the-events-block): one line for each
+`notebook.note_forgotten` record, with the note's short ID. The name is `owner.name`, or "the owner"
+when it is unset, as in the session prompt.
 
 ### The web client's calls
 
 ```ts
 // contract lib
-notebook.listPages({ query?: string, tags?: string[], after?: string });
-// → { pages: [{ page, title, tags, version, updatedAt, backlinkCount }], next }
-notebook.readPage({ page: 'n4w8k2c6rd', version?: 2 });
-// → { page, version, versionCount, title, tags, body, links, backlinks, history }
+notebook.listNotes({ query?: string, tags?: string[], showPrivate?: boolean, after?: string });
+// → { notes: [{ note, title, tags, version, updatedAt, backlinkCount, isPrivate }], next }
+notebook.readNote({ note: 'n4w8k2c6rd', version?: 2, showPrivate?: boolean, open?: boolean });
+// → { note, version, versionCount, title, tags, isPrivate, body, links, backlinks, history,
+//     readAt, ownerOpenedAt }
 //   each link carries its target's title or gist, or isGone
-notebook.readTidy({}); // → TidyReport
-notebook.previewForget({ page: 'n4w8k2c6rd' });
+//   a private note without open: true leaves out body; with it, appends notebook.private_opened
+//   a private note with showPrivate false returns { note, isPrivate: true } alone
+notebook.readCheck({ showPrivate?: boolean }); // → NotebookCheck
+notebook.previewForget({ note: 'n4w8k2c6rd' });
 // → { version: 2, title, versionCount: 2, linkCount: 4, backlinkCount: 1 }
-notebook.forget({ clientActionID, page: 'n4w8k2c6rd', version: 2 }); // a checked action
-// → { forgottenAt, backup }  // backup read from the sets at or after notebook.page_forgotten
-//   or UNKNOWN_PAGE | STALE_VERSION
+notebook.forget({ clientActionID, note: 'n4w8k2c6rd', version: 2 }); // a checked action
+// → { forgottenAt, backup }  // backup read from the sets at or after notebook.note_forgotten
+//   or UNKNOWN_NOTE | STALE_VERSION
 conversation.previewForget({ sequence });
-// → { …existing fields, pages: { page, title }[] } // the active pages that link to the record
+// → { …existing fields, notes: { note, title }[] } // the active notes that link to the record
+```
+
+```ts
+// connectors module: code_run gains a third kind of input file
+code_run({ language: 'python', program: '…', files: [{ path: 'zine.md', note: 'd8p3q1z6mw' }] });
+// the note's current body, as markdown; the code tool reads it through the notebook module
 ```
 
 ## Constraints
 
-Keeping pages out of context:
+Keeping notes out of context:
 
-- Per-turn retrieval, the pinned core, the memory index, the events block, the session status and
-  the compaction instruction never read the notebook. The notebook module depends on memory, and
-  memory never depends on the notebook module. The notebook registers no entry in the events block
-  or the session status.
-- The page indexes are the notebook module's own. A page never enters the item index, the trigger
-  index or the moments' vector index, and a page has no trigger phrases.
-- `memory.recall` and `moment.read` never list the pages that link to an item or a moment. A
-  backlink to an item shows only in `notebook.read`, `notebook.walk` and the web client.
+- Per-turn retrieval, the pinned core, the memory index, the session status and the compaction
+  instruction never read a note's text, title or ID. The notebook module depends on memory, and
+  memory never depends on the notebook module. Memory reads link counts only through
+  `ItemLinkCounts`.
+- The notebook registers no entry in the session status, and one entry in the events block, the
+  forget line.
+- The note indexes are the notebook module's own. A note never enters the item index, the trigger
+  index or the moments' vector index, and a note has no trigger phrases.
+- `memory.recall` and `moment.read` never list the notes that link to an item or a moment. Recall
+  and retrieval show only the `disputedBy` and `supersededBy` counts, which count active notes,
+  private ones included.
 - A task gets the notebook tools only when its tool list holds them. The conversation's tool list
   holds all 9.
-- A retrieval test holds that the blocks nixie builds, the session's opening and every block before
-  a turn's message, hold no page text and no page ID, even when the message matches a page's title
-  word for word.
+- A retrieval test holds that nixie adds no note text and no note ID to the blocks it builds, the
+  session's opening, or any block before a turn's message, even when the message matches a note's
+  title word for word. Two kinds of text are exempt: an item's own text, which may hold a note ID
+  the assistant wrote there, and the events block's forget line.
+- The `TEXT_TOO_LONG` refusal of `memory.remember` and `memory.edit` says that a note holds longer
+  text.
 
 Records and text:
 
 - The call record of every notebook tool leaves out the title, the body, the tags, the changes, the
-  reason and the query. The result record holds page short IDs and versions only, with each UUID
-  under `hidden.uuids` ([tool calls](../../architecture/connectors/tool-calls.md#records)). So a
-  page forget leaves no readable copy in a tool's records, and `log.read` shows a notebook result as
-  IDs only.
-- A walk returns references and labels: a page's title, an item's gist and state, a moment's title
+  append, the find text, the reason and the query. The result record holds note short IDs and
+  versions only, with each UUID under `hidden.uuids`
+  ([tool calls](../../architecture/connectors/tool-calls.md#records)). So a note forget leaves no
+  readable copy in a tool's records, and `log.read` shows a notebook result as IDs only.
+- `read_at` folds from the call records of `notebook.read`, so a read writes no record of its own.
+- A walk returns references and labels: a note's title, an item's gist and state, a moment's title
   and state as `moment.read` shows them, and an event's time and author role as `log.read` shows
   them. It never returns an item's text, a moment's text or a record's text.
 - An event node shows its time and role only when the event sits on the calling task run's own
   thread and the run's tool list holds `log.read`. Otherwise the node holds the event ID alone. An
   item node shows its gist only when the run's tool list holds `memory.recall`.
-- The web client is the user's own view, so `notebook.readPage` shows every target's title or gist.
+- The web client is the user's own view, so `notebook.readNote` shows every target's title or gist.
 - A body renders as a reply renders: markdown with no raw HTML and safe links only.
   `![alt](image:<image short ID>)` shows a stored image, and the web client shows "image
   unavailable" for an image that is unknown or forgotten. `notebook.read` returns the body as
   written, and the assistant opens an image with `image.read`.
 - The rules treat the `note` effect as they treat memory's writes: the 4 write tools run with no
   card.
+- A `code_run` file with `note` copies the current body into the sandbox, which holds it unencrypted
+  until the code run ends, as it holds fetched pages and files. `code_run` refuses an unknown or
+  forgotten note with `UNKNOWN_NOTE`, after a file ID and before a page ID.
 
 Versions and limits:
 
 - Every edit writes the whole new version, title and tags included, so reading any version decrypts
   one record. No version is ever rewritten.
-- An edit that changes only the title or the tags makes a new version. An edit that sets no field is
-  `NOTHING_TO_CHANGE`.
+- An edit that changes only the title, the tags or the private flag makes a new version. An edit
+  that sets no field is `NOTHING_TO_CHANGE`.
 - An edit binds to the version it read, and the check and the record commit in one write
-  transaction. A link or an unlink never makes an edit stale.
+  transaction. An edit that sets only `append` binds to the current version at commit, so 2 tasks
+  that append to one note never refuse each other. A link or an unlink never makes an edit stale.
+- An edit applies its changes, then its append. `NOTE_TOO_LONG` checks the result.
 - Tags that match ignoring case merge into one, with the first spelling kept.
 - `notebook.read` pages a long body in parts that fit `recallPageLimitBytes`, cut at a paragraph
   break, then a line break, then a space. Every part repeats the title and the tags. Part 1 alone
   holds the links and the backlinks, at most 100 of each, and `linkCount` and `backlinkCount` give
   the totals. `notebook.walk` reaches the rest.
+- `find` in `notebook.read` matches as `web_fetch` does: case-insensitive plain text over the body
+  as stored, returning the part where the text first appears and up to 10 matches with about 50
+  characters on each side.
 - `notebook.history` lists versions newest first, 50 a call.
-- `notebook.find` returns at most 20 pages a call. Its words search matches any query word, as the
+- `notebook.find` returns at most 20 notes a call. Its words search matches any query word, as the
   item keyword index does. Its meaning search encodes the title, the tags and the body in chunks
-  with the encoder and chunking of the item vector index, and ranks a page by its best chunk above
+  with the encoder and chunking of the item vector index, and ranks a note by its best chunk above
   the 0.3 floor of `memory.recall`. Reciprocal rank fusion merges the two.
-- Before each search, the module encodes every page written or edited since the last search, and
-  waits up to 5 seconds. A page still unencoded then matches by words only, and the result sets
+- Before each search, the module encodes every note written or edited since the last search, and
+  waits up to 5 seconds. A note still unencoded then matches by words only, and the result sets
   `isMeaningPartial: true`.
 
 Links and walks:
 
-- A walk visits each node once, breadth first, and follows links both ways: a page's own links, and
-  the links from other active pages to each node it reaches. So a walk passes through a memory item
-  to the other pages that cite it.
-- A walk stops at 200 nodes and sets `isCut`. `gone` lists each target whose page, item or moment
+- A walk visits each node once, breadth first, and follows links both ways: a note's own links, and
+  the links from other active notes to each node it reaches. So a walk passes through a memory item
+  to the other notes that cite it.
+- A walk stops at 200 nodes and sets `isCut`. `gone` lists each target whose note, item or moment
   was forgotten or destroyed, and each event whose key is gone, whether a record forget or a
   conversation reset took it. A target in `gone` is never a node, and the walk goes no further from
   it.
 - `PART_OF_CYCLE` checks the part-of links that exist when the link commits.
+- A note ID written in a body is text. Only `notebook.link` makes a link, and the description of
+  `notebook.check` says that a note named only in another note's text counts as an orphan.
+
+Private notes:
+
+- The private flag changes nothing for the assistant: every tool reads and finds a private note as
+  any other. `ownerOpenedAt` shows in `notebook.read` on a private note only.
+- With `showPrivate` false, the web client's calls leave out every private note, and every link to
+  or from one, from the list, a note's links and backlinks, search and the check. No placeholder or
+  count stands in.
+- The web client keeps `showPrivate` in the URL, as `?private=1`. Turning it on writes no record.
+- Only `notebook.readNote` with `open: true` on a private note appends `notebook.private_opened`.
+  Opening a note that isn't private writes nothing.
+- `notebook.previewForget` and `notebook.forget` work on a private note without opening it.
 
 Forgets:
 
-- Only `notebook.forget` in the web client forgets a page. No tool reaches it, so the assistant can
-  supersede or rewrite a page and never destroy one.
-- A page forget runs in 2 parts, as a
+- Only `notebook.forget` in the web client forgets a note. No tool reaches it, so the assistant can
+  supersede or rewrite a note and never destroy one.
+- A note forget runs in 2 parts, as a
   [moment destroy](../../architecture/memory/moments.md#destroying-a-moment) does. One write
-  transaction commits the client action, checks the version and appends `notebook.page_forgetting`,
-  and from then on no tool or read reaches the page. The cleanup deletes the key of every version
-  record and every `notebook.linked` record from the page, drops the page from the indexes, runs the
+  transaction commits the client action, checks the version and appends `notebook.note_forgetting`,
+  and from then on no tool or read reaches the note. The cleanup deletes the key of every version
+  record and every `notebook.linked` record from the note, drops the note from the indexes, runs the
   [session cleanup](../../architecture/memory/context.md#forgetting-and-the-live-session) with
-  `{ pageID }` as its cause, and appends `notebook.page_forgotten`. Each step is safe to run twice,
+  `{ noteID }` as its cause, and appends `notebook.note_forgotten`. Each step is safe to run twice,
   and the server's start finishes a forget that a crash cut short.
 - The session cleanup runs for the conversation and for each open task whose tool list holds
-  `notebook.read`, `notebook.find` or `notebook.walk`. Memory's `CleanupCause` gains the `pageID`
+  `notebook.read`, `notebook.find` or `notebook.walk`. Memory's `CleanupCause` gains the `noteID`
   variant.
-- The backup schedule counts `notebook.page_forgotten` as a forget record, beside the 4 kinds that
+- The backup schedule counts `notebook.note_forgotten` as a forget record, beside the 4 kinds that
   [staging a set](../../architecture/deployment/backups.md#staging-a-set) lists, so it makes a
   forget set due. The backup module names the kind as a string, and imports nothing from the
   notebook module.
-- A page forget drops the page's own links. A link from another page to it stays, and reads as gone
-  in a walk and as dangling in the tidy report.
+- A note forget drops the note's own links. A link from another note to it stays, and reads as gone
+  in a walk and as dangling in the check.
 - A forget of a link's target, an item, a moment or a record, leaves the link in place, and the walk
-  lists the target in `gone`. A page's text that quotes the target stays until you forget the page.
-  So `conversation.previewForget` lists each page that links to the record, and the confirmation
-  shows that those pages keep their text. The API module reads those pages from the notebook module.
+  lists the target in `gone`. A note's text that quotes the target stays until you forget the note.
+  So `conversation.previewForget` lists each note that links to the record, and the confirmation
+  shows that those notes keep their text. The API module reads those notes from the notebook module.
+- With `forget_notices.note` true, the events block lists each finished note forget once, at the
+  time of `notebook.note_forgotten`, within the block's cap.
 
-The tidy report:
+The check:
 
-- The notebook module builds the report when it is read and stores nothing, so it holds no copy of a
-  page's text. The web client's notebook page shows it on a tab of its own, and the assistant reads
-  it only with `notebook.tidy`.
-- A page is an orphan when it is active, holds no link, and no active page links to it. A page is
-  untouched when its `touched_at` is older than `notebook.tidy_untouched_days`. A read never counts
-  as a touch.
+- The notebook module builds the check when it is read and stores nothing, so it holds no copy of a
+  note's text. The web client's notebook view shows it on a tab of its own, and the assistant reads
+  it only with `notebook.check`.
+- A note is an orphan when it is active, holds no link, and no active note links to it.
 - Two reasons are the same when they match after trimming, collapsing runs of spaces and ignoring
   case.
 
 The web client:
 
-- The bar gains a Notebook link after Moments. `/notebook` lists the pages newest edit first,
-  searches by words, meaning and tags with `notebook.listPages`, and opens each page at
-  `/notebook/<page short ID>`.
-- A page shows its body, tags, versions with a word diff between each and the one before, its links
-  grouped by type with their reasons and their targets' titles or gists, and its backlinks. A target
-  links to its own view: a page, the memory view, a moment, or the record in its thread. A gone
-  target shows as such.
-- The page view has no control that writes, except Forget, which opens a confirmation from
+- The bar gains a Notebook link after Moments. `/notebook` lists the notes newest edit first,
+  searches by words, meaning and tags with `notebook.listNotes`, and opens each note at
+  `/notebook/<note short ID>`. A "Show private notes" toggle sets `showPrivate`.
+- A note shows its body, tags, versions with a word diff between each and the one before, its links
+  grouped by type with their reasons and their targets' titles or gists, its backlinks, and when the
+  assistant last read it. A target links to its own view: a note, the memory view, a moment, or the
+  record in its thread. A gone target shows as such.
+- A private note shows its title, links and marks, with its body folded under a line that says the
+  assistant marked it private, and an Open button. The marks show when the assistant last read it
+  and when you last opened it.
+- A private note's path, opened with `showPrivate` false, shows "This note is private" with no
+  title, and a button that turns the toggle on.
+- The note view has no control that writes, except Forget, which opens a confirmation from
   `notebook.previewForget`.
 
 Memory guidance:
@@ -406,37 +508,52 @@ Memory guidance:
 
 ## Decisions
 
-- **Pages are records of the log with no thread.** The encrypted log, its backups and its history
+- **Notes are records of the log with no thread.** The encrypted log, its backups and its history
   cover them, and neither a conversation reset nor a task's close shreds them.
 - **The notebook is its own module, beside memory and never inside it.** A dependency that runs one
-  way only keeps every path that builds context unable to read a page.
-- **A link carries its target's kind.** A short ID alone does not show whether it belongs to a page,
+  way only keeps every path that builds context unable to read a note. Memory gets link counts
+  through an interface it owns.
+- **A link carries its target's kind.** A short ID alone does not show whether it belongs to a note,
   an item or a moment.
-- **Only you forget a page.** The assistant's memory tools never forget an item either, so a misread
-  "drop that" never destroys a page.
+- **Only you forget a note.** The assistant's memory tools never forget an item either, so a misread
+  "drop that" never destroys a note.
 - **A walk returns labels, never text.** The text of an item, a moment or a record stays behind the
   tool that checks who may read it.
-- **The tidy report is a read.** nixie never pushes the report: a pushed report would list pages the
-  assistant never asked for. The assistant reads it with `notebook.tidy`, and sets itself a reminder
-  when it wants to tidy on a schedule.
+- **An item shows how many notes dispute or supersede it.** A count holds no text, and it stays true
+  when a note is unlinked or forgotten. Without it, an item a note argues with still reads as
+  settled when retrieval puts it in front of the assistant.
+- **The check is a read.** nixie never pushes it: a pushed report would list notes the assistant
+  never asked for. The assistant reads it with `notebook.check`, and sets itself a reminder when it
+  wants to check on a schedule. The check lists only what the assistant can fix; `notebook.find`
+  with `order: 'oldest'` finds old notes.
+- **Every edit stores the whole version, and a body stops at 50,000 characters.** A full note reads
+  in 3 parts, and a note that fills up continues in a new note linked `part-of`.
+- **They are notes, not pages.** `web_fetch` and `code_run` already call a fetched web page a page,
+  with a short ID that looks the same.
 - **Forget is the one control in the web client.** The notebook is the assistant's own, so you ask
-  the assistant to change a page. Forget stays because a page that quotes a forgotten message would
+  the assistant to change a note. Forget stays because a note that quotes a forgotten message would
   otherwise keep that text until a full reset.
+- **A private note is folded, not locked.** You hold the keys, so a lock would promise what it can't
+  keep. The fold makes not looking the default, and the mark on each opening means the assistant
+  never has to take your word for it.
 
 ## Builder decides
 
-- The tools' descriptions, beyond the memory guidance sentence.
+- The tools' descriptions, beyond the memory guidance sentence and the orphan rule.
 - The indexes on the tables, and the migration's number.
-- The cursor format of `notebook.find`, `notebook.history` and `notebook.listPages`, and the length
+- The cursor format of `notebook.find`, `notebook.history` and `notebook.listNotes`, and the length
   of `match`.
-- The refusal wording, and how the web client lays out the list, the page and the tidy tab.
+- The refusal wording, and how the web client lays out the list, the note, the check tab and the
+  fold.
 
 ## Out of scope
 
 - Links that start from a memory item, a moment or an event.
-- A page in retrieval, the pinned core or the memory index.
-- Editing a page in the web client.
-- Forgetting one version of a page. A forget takes the whole page.
+- A note in retrieval, the pinned core or the memory index.
+- Editing a note in the web client.
+- Forgetting one version of a note. A forget takes the whole note.
 - Links inside a body. A body's markdown links are text, and a walk follows only the links that
   `notebook.link` made.
-- Showing a page on a device. The devices build adds it.
+- Forget notices for memory items, moments and messages, which the
+  [forget notices issue](https://linear.app/zgeoff/issue/GEO-2793) adds.
+- Showing a note on a device.
