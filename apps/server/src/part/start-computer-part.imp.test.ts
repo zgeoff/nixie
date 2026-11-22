@@ -334,7 +334,10 @@ test.skipIf(!hasImpHost)(
   async () => {
     const ctx = await setupTest();
 
-    // Chromium opens over the whole display, so alt+tab brings the terminal, at 24, 24, to the front.
+    // A browser window with no tracked tab refuses every act, so a page opens first. Chromium opens
+    // over the whole display, so alt+tab brings the terminal, at 24, 24, to the front.
+    await ctx.openPage('before');
+
     const chord = { kind: 'keys', keys: 'alt+tab' } as const;
 
     const browser = await ctx.send({ op: 'screenBind', act: chord });
