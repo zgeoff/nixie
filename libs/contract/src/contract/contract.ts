@@ -18,6 +18,7 @@ import {
   taskStateSchema,
 } from './listed-task-schema';
 import { memoryViewContract } from './memory-view-contract';
+import { notebookContract } from './notebook-contract';
 import { passkeyContract } from './passkey-contract';
 import { pauseStateSchema } from './pause-state-schema';
 import { readPayloadContract } from './read-payload-contract';
@@ -197,9 +198,15 @@ const sessionSchema = z.object({
 const checkedAction = signedIn.errors(reusedIDErrors);
 const forgetPreviewItemSchema = z.object({ itemID: z.string(), text: z.string() });
 
+// a private note's title is left out
+const linkingNoteSchema = z.object({ note: z.string(), title: z.string().optional() });
+
 const recordForgetPreviewSchema = z.object({
   momentCount: actionCountSchema,
   memoryItems: z.array(forgetPreviewItemSchema),
+
+  // the active notes that link to the record
+  notes: z.array(linkingNoteSchema),
 });
 
 const controlledTaskSchema = z.object({
@@ -427,6 +434,7 @@ export const contract = {
 
     ...memoryViewContract,
   },
+  notebook: notebookContract,
   files: {
     read: signedIn
       .errors({

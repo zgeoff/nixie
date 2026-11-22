@@ -54,6 +54,14 @@ export const recallOutputSchema = {
               'owner for a fact about the owner, shared for something between the owner and you, such as ' +
               'a deal, a nickname or a running joke, self for a self-note you wrote about yourself',
           },
+          disputedBy: {
+            type: 'integer',
+            description: 'how many notes in your notebook dispute the item; left out at 0',
+          },
+          supersededBy: {
+            type: 'integer',
+            description: 'how many notes in your notebook supersede the item; left out at 0',
+          },
           history: {
             type: 'array',
             items: {

@@ -1,6 +1,13 @@
 import { expect, mock, onTestFinished, setSystemTime, test } from 'bun:test';
 import { writeRecords } from '@heynixie/log';
-import { startTestMemoryStore } from '@heynixie/memory/test-utils';
+import { createMemoryItem, startTestMemoryStore } from '@heynixie/memory/test-utils';
+import {
+  buildItemLinkCounts,
+  buildNotebookMemory,
+  defaultNotebookSettings,
+  noteForgottenCodec,
+  startNotebook,
+} from '@heynixie/notebook';
 import { recordSkillPin, skillsReloadedCodec } from '@heynixie/skills';
 import { conversationTaskID, createConversationTask, getTaskName } from '@heynixie/tasks';
 import invariant from 'tiny-invariant';
@@ -16,9 +23,25 @@ async function setupTest() {
   const memory = await startTestMemoryStore(
     server.context,
     mock(() => Promise.resolve()),
+    undefined,
+    {
+      turn: { trigger: { items: 5, minScore: 0, minSimilarity: 1 } },
+      linkCounts: buildItemLinkCounts(server.context.log),
+    },
   );
 
-  const startRunner = (image: string) =>
+  const notebook = await startNotebook({
+    log: server.context.log,
+    definitions: server.context.definitions,
+    clock: server.context.clock,
+    settings: defaultNotebookSettings,
+    memory: buildNotebookMemory(() => memory),
+    cleanupSessions: () => Promise.resolve(),
+  });
+
+  onTestFinished(() => notebook.stop());
+
+  const startRunner = (image: string, isNoteNoticeOn = true) =>
     startConversation({
       context: server.context,
       models: buildTestModelsConfig({ modelURL: 'http://127.0.0.1:1' }),
@@ -40,6 +63,7 @@ async function setupTest() {
           ownerName: null,
           defaultZone: 'UTC',
           compaction: { threshold: 0.8, headsUp: 0.7 },
+          forgetNotices: { note: isNoteNoticeOn },
           getTaskName: (taskID) =>
             getTaskName(
               {
@@ -63,7 +87,7 @@ async function setupTest() {
       log: mock<Parameters<typeof startConversation>[0]['log']>(),
     });
 
-  return { ...server, memory, startRunner };
+  return { ...server, memory, notebook, startRunner };
 }
 
 test('it carries an answered proposal the model saw into the recent turns of a rebuilt session, and leaves it out of the current turn note', async () => {
@@ -446,4 +470,168 @@ test('it keeps each failed turn in the event log, the recovered ones included', 
       },
     },
   ]);
+});
+
+test("it lists a finished note forget in the next turn's events, with the owner's name", async () => {
+  const ctx = await setupTest();
+
+  const [runner] = await Promise.all([
+    ctx.startRunner('nixie-conversation-0123456789ab'),
+    createConversationTask(ctx.context),
+  ]);
+
+  const conversation = buildConversationDriver({
+    context: ctx.context,
+    guest: ctx.guest,
+    getRunStep: () => runner.runStep,
+  });
+
+  ctx.guest.addReplies({ text: 'High tide is at noon.' }, { text: 'Noted.' });
+
+  await conversation.send('When is high tide?');
+
+  await writeRecords(ctx.context.log, [
+    {
+      kind: 'notebook.note_forgotten',
+      definitions: { snapshotHash: 'snapshot-a', personaVersion: 'persona-a' },
+      payload: noteForgottenCodec.encode({ note: 'note-uuid-a', shortID: 'n4w8k2c6rd' }),
+    },
+  ]);
+
+  const turn = await conversation.send('And tomorrow?');
+
+  expect(turn.input[0]?.text).toInclude('the owner forgot note n4w8k2c6rd');
+});
+
+test("it leaves a finished note forget out of the next turn's events when the note notice is off", async () => {
+  const ctx = await setupTest();
+
+  const [runner] = await Promise.all([
+    ctx.startRunner('nixie-conversation-0123456789ab', false),
+    createConversationTask(ctx.context),
+  ]);
+
+  const conversation = buildConversationDriver({
+    context: ctx.context,
+    guest: ctx.guest,
+    getRunStep: () => runner.runStep,
+  });
+
+  ctx.guest.addReplies({ text: 'High tide is at noon.' }, { text: 'Noted.' });
+
+  await conversation.send('When is high tide?');
+
+  await writeRecords(ctx.context.log, [
+    {
+      kind: 'notebook.note_forgotten',
+      definitions: { snapshotHash: 'snapshot-a', personaVersion: 'persona-a' },
+      payload: noteForgottenCodec.encode({ note: 'note-uuid-a', shortID: 'n4w8k2c6rd' }),
+    },
+  ]);
+
+  const turn = await conversation.send('And tomorrow?');
+
+  expect(turn.input[0]?.text).not.toInclude('n4w8k2c6rd');
+});
+
+test("it adds no note text, title or ID to a turn's context, even when the message is a note's title word for word", async () => {
+  const ctx = await setupTest();
+
+  const [runner] = await Promise.all([
+    ctx.startRunner('nixie-conversation-0123456789ab'),
+    createConversationTask(ctx.context),
+  ]);
+
+  const conversation = buildConversationDriver({
+    context: ctx.context,
+    guest: ctx.guest,
+    getRunStep: () => runner.runStep,
+  });
+
+  const item = await createMemoryItem(ctx.memory, {
+    text: 'The thermostat is faulty',
+    labels: { gist: 'thermostat state', topic: 'home', triggers: ['boiler'] },
+  });
+
+  const written = await ctx.notebook.write(
+    { writer: 'conversation', model: 'model-a' },
+    {
+      title: 'Why the boiler keeps tripping',
+      body: 'XYZZY-BODY The trips happen after a night under 2 degrees.',
+    },
+  );
+
+  invariant(written.status === 'written');
+
+  await ctx.notebook.link({
+    from: written.shortID,
+    to: { memory: item.itemID },
+    type: 'disputes',
+    reason: 'XYZZY-REASON the trips say otherwise',
+    logThread: 'conversation',
+  });
+
+  ctx.guest.addReplies({ text: 'Looking.' }, { text: 'Still looking.' });
+
+  const first = await conversation.send('Why the boiler keeps tripping');
+  const second = await conversation.send('Why the boiler keeps tripping');
+
+  const frames = JSON.stringify(ctx.guest.received.map((received) => received.frame));
+
+  const context = JSON.stringify([first.input, second.input]).replaceAll(
+    /<owner-message[\s\S]*?<\/owner-message>/gu,
+    '',
+  );
+
+  const everything = `${frames}${context}`.replaceAll('Why the boiler keeps tripping', '');
+
+  expect(context).toInclude('disputed by 1 note');
+  expect(everything).not.toInclude(written.shortID);
+  expect(everything).not.toInclude(written.noteID);
+  expect(everything).not.toInclude('XYZZY');
+  expect(everything).not.toInclude('boiler keeps');
+});
+
+test('it shows the count of notes that dispute a retrieved item, and never the note', async () => {
+  const ctx = await setupTest();
+
+  const [runner] = await Promise.all([
+    ctx.startRunner('nixie-conversation-0123456789ab'),
+    createConversationTask(ctx.context),
+  ]);
+
+  const conversation = buildConversationDriver({
+    context: ctx.context,
+    guest: ctx.guest,
+    getRunStep: () => runner.runStep,
+  });
+
+  const item = await createMemoryItem(ctx.memory, {
+    text: 'The thermostat is faulty',
+    labels: { gist: 'thermostat state', topic: 'home', triggers: ['thermostat'] },
+  });
+
+  const written = await ctx.notebook.write(
+    { writer: 'conversation', model: 'model-a' },
+    { title: 'Thermostat argument', body: 'It is the pump.' },
+  );
+
+  invariant(written.status === 'written');
+
+  await ctx.notebook.link({
+    from: written.shortID,
+    to: { memory: item.itemID },
+    type: 'disputes',
+    logThread: 'conversation',
+  });
+
+  ctx.guest.addReplies({ text: 'Looking.' });
+
+  const turn = await conversation.send('Is the thermostat faulty?');
+
+  const text = turn.input.map((block) => block.text).join('\n');
+
+  expect(text).toInclude('disputed by 1 note');
+  expect(text).not.toInclude(written.shortID);
+  expect(text).not.toInclude('Thermostat argument');
 });

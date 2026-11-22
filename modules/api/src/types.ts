@@ -11,6 +11,7 @@ import type {
   MemoryStore,
   MomentStore,
 } from '@heynixie/memory';
+import type { NotebookStore } from '@heynixie/notebook';
 import type { PromptsInForce } from '@heynixie/prompts';
 import type { QuietHours } from '@heynixie/proposals';
 import type { SpendContext } from '@heynixie/spend';
@@ -85,6 +86,10 @@ export interface APIContext extends TasksContext {
   readonly readZone: ReadZone;
 
   readonly readSessionCleanup: () => CleanupRecordSessions | null;
+
+  // The notebook, which starts after the API context. Null before it starts, and absent where the
+  // server holds none.
+  readonly readNotebook?: () => ViewNotebookStore | null;
 
   // the notice of each named change, by change ID, in the owner's zone at read time
   // Absent, no record carries a notice.
@@ -165,6 +170,21 @@ export type ViewMemoryStore = Pick<
 } & Pick<ItemIDStore, 'readItemIDMap'>;
 
 export type ReadViewMemory = () => ViewMemoryStore | null;
+
+// What the web client's notebook calls reach.
+export type ViewNotebookStore = Pick<
+  NotebookStore,
+  | 'listNotes'
+  | 'readClientNote'
+  | 'readClientCheck'
+  | 'readPrivateBodies'
+  | 'writeOpened'
+  | 'readForgetPreview'
+  | 'forget'
+  | 'finishForget'
+  | 'readForgottenSequence'
+  | 'readLinkingNotes'
+>;
 
 interface HostReset {
   readonly resetAt: Date;

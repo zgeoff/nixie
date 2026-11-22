@@ -2,6 +2,7 @@ import type { CleanupRecordSessions, HostBackups } from '@heynixie/api';
 import type { ComputerTools } from '@heynixie/connectors';
 import type { DefinitionsExportSweep, SeedResult } from '@heynixie/definitions';
 import type { StartedMemoryStore } from '@heynixie/memory';
+import type { NotebookStore } from '@heynixie/notebook';
 import type { CheckerTask, SandboxRunner, WorkerTool } from '@heynixie/sessions';
 import type { TurnInputs } from '@heynixie/turn-inputs';
 import type { ConversationImp } from '../conversation/start-conversation-imp';
@@ -39,6 +40,7 @@ export interface ServerPartValues {
   readonly conversation_imp: ConversationImp;
   readonly checker: CheckerTask;
   readonly memory: StartedMemoryStore;
+  readonly notebook: NotebookStore;
 
   readonly session_cleanup: CleanupRecordSessions;
   readonly record_forgets: void;

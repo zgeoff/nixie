@@ -32,7 +32,7 @@ export { listCodeFiles } from './code/list-code-files';
 export { readCodeFileBytes } from './code/read-code-file';
 export type { CodeRunCleanup } from './code/make-code-run-cleanup';
 export { makeCodeRunCleanup } from './code/make-code-run-cleanup';
-export type { CodeSkill, SkillLookup } from './code/resolve-code-run-inputs';
+export type { CodeSkill, NoteBodies, SkillLookup } from './code/resolve-code-run-inputs';
 export { buildWebFetchTool } from './web/build-web-fetch-tool';
 export { readLinkTarget } from './web/read-link-target';
 export { readMessageTimeZone } from './time/read-message-time-zone';

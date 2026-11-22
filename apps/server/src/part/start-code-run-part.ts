@@ -2,6 +2,7 @@ import type { CodeRunCleanup } from '@heynixie/connectors';
 import { buildCodeRunTool, buildFileSendTool, makeCodeRunCleanup } from '@heynixie/connectors';
 import type { DefinitionsInForce } from '@heynixie/definitions';
 import type { Log } from '@heynixie/log';
+import { buildNoteBodies } from '@heynixie/notebook';
 import type { SandboxAdapter } from '@heynixie/sandbox';
 import type { ToolDefinition } from '@heynixie/tools';
 import { readConversationSkills } from '../conversation/read-conversation-skills';
@@ -35,6 +36,7 @@ export function startCodeRunPart(inputs: CodeRunPartInputs): Promise<CodeRunPart
       logger: inputs.options.log,
       image: getSandboxImage(inputs.options.images, 'code').name,
       imageLongEdge: inputs.options.config.web_fetch.imageLongEdge,
+      notes: buildNoteBodies(inputs.log),
       readSkills: (run, names) =>
         readConversationSkills(inputs.log, inputs.readInForce(), run, names),
     }),

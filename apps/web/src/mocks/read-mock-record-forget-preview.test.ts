@@ -39,6 +39,7 @@ test('it counts the live moments that hold the record and lists the items and pe
       { itemID: quoting.itemID, text: 'Keeps two hives' },
       { itemID: proposal.itemID, text: 'Grows chillies' },
     ].toSorted((left, right) => left.itemID.localeCompare(right.itemID)),
+    notes: [],
   });
 });
 

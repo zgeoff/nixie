@@ -121,7 +121,7 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
       'actions',
       'decisions',
     ],
-    uses: ['memory', 'server_parts', 'checker', 'definitions_exports'],
+    uses: ['memory', 'notebook', 'server_parts', 'checker', 'definitions_exports'],
     start: (parts) => {
       const options = parts.get('inputs').options;
       const inForce = parts.get('context').inForce;
@@ -171,6 +171,7 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
           queue: parts.get('actions').queue,
           makeDecide: parts.get('decisions'),
           readStore: () => parts.find('memory'),
+          readNotebook: () => parts.find('notebook'),
           readInForce: () => inForce.read(),
           refreshDefinitions: () => refreshDefinitions(parts.find('server_parts'), inForce),
           runInForceSeed: () =>

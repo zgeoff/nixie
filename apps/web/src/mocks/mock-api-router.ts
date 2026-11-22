@@ -11,6 +11,7 @@ import { mockFileProcedures } from './mock-file-procedures';
 import { mockImplementer } from './mock-implementer';
 import { mockMandateProcedures } from './mock-mandate-procedures';
 import { mockMemoryRouter } from './mock-memory-router';
+import { mockNotebookProcedures } from './mock-notebook-procedures';
 import { mockPasskeyProcedures } from './mock-passkey-procedures';
 import { mockReadPayloadProcedure } from './mock-read-payload-procedure';
 import { mockReminderProcedures } from './mock-reminder-procedures';
@@ -54,6 +55,7 @@ export const mockAPIRouter = os.router({
     }),
   },
   devices: mockDeviceProcedures,
+  notebook: mockNotebookProcedures,
   files: mockFileProcedures,
   reminders: mockReminderProcedures,
   conversation: {
