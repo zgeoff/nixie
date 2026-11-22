@@ -299,6 +299,10 @@ The durable layer, the sandbox boundary, the database and compaction.
   with `rrule-temporal` and maps local times onto the clock itself
 - [0019: Possibly-sent actions](decisions/0019-never-retry-a-possibly-sent-action-blindly.md) — an
   action that may have reached its provider is never sent again without a key, a check or the user
+- [0022: A busy task's fires](decisions/0022-a-busy-task-skips-a-fire.md) — a trigger that fires
+  while the task is still busy is skipped, never queued
+- [0024: Undoing a definition change](decisions/0024-only-the-user-undoes-a-definition-change.md) —
+  only the user undoes one, and the agent has no tool for it
 - [0015: Compaction](decisions/0015-own-compaction.md) — nixie's own compactor with the summary in
   the event log, and the SDK's auto-compaction off
 
@@ -324,6 +328,10 @@ Forgetting, and the memory writes that skip review.
 
 - [0007: Forgetting](decisions/0007-crypto-shredding.md) — forgetting destroys the item's key, and
   stays pending until every backup drops it
+- [0023: Topics](decisions/0023-a-topic-has-no-id.md) — a memory topic has no ID or hash, so a
+  forget leaves nothing that leads to it
+- [0025: Reading kept moments](decisions/0025-memory-read-gates-moment-read.md) — `memory: read`
+  decides which task reads a kept moment, and the log grant plays no part
 - [0008: Which memory writes skip review](decisions/0008-memory-write-review.md) — a write applies
   at once only when a quote you typed backs it and the token check and the checker pass, and every
   other write is a proposal
