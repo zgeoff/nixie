@@ -24,11 +24,12 @@ Before you start:
 
 - Run [computer-browser](feature-computer-browser.md) first, in the same `up`. It leaves a tab open
   on the harness page, which the click lands on. Without that tab, the click lands on no browser
-  window and nixie asks about it with no host.
+  window, and nixie asks for approval without naming a host.
 - Run this journey once per `up`. Before you run it again, even after a failed journey, run
   `bun verify up --restart` and `bun verify doctor`. Then run sign-in-enrol, computer-browser and
   this journey, in that order.
-- The end state does not read `isDiskNew`, so the order of the computer journeys does not change it.
+- Run computer-shell before or after this journey, as you like. Its order changes only `isDiskNew`,
+  which this journey's end state does not check.
 
 ## Journey
 
