@@ -145,14 +145,14 @@ that command alone. A command with neither runs on the registry's first target, 
 
 <!-- repo: targets -->
 
-| Target    | Start with                                                  | Access     | Notes                                                                                    |
-| --------- | ----------------------------------------------------------- | ---------- | ---------------------------------------------------------------------------------------- |
-| `local`   | `bun verify use --target local`, then `bun verify up`       | read-write | This tree's test build; scripted model.                                                  |
-| `preview` | `bun verify use --target preview`, then `bun verify attach` | read-write | The PR's preview, real model; [setup](references/preview-setup.md); leave with `detach`. |
-| `prod`    | `bun verify use --target prod`, then `bun verify attach`    | read-only  | [The prod check](references/prod-check.md).                                              |
+| Target    | Start with                                                  | Access     | Notes                                                               |
+| --------- | ----------------------------------------------------------- | ---------- | ------------------------------------------------------------------- |
+| `local`   | `bun verify use --target local`, then `bun verify up`       | read-write | Test build, scripted model.                                         |
+| `preview` | `bun verify use --target preview`, then `bun verify attach` | read-write | The PR's preview, real model; [setup](references/preview-setup.md). |
+| `prod`    | `bun verify use --target prod`, then `bun verify attach`    | read-only  | [The prod check](references/prod-check.md).                         |
 
 - Run [sign-in-enrol](references/feature-sign-in-enrol.md) first, and after each `up --restart`,
-  except before `device-screen`, which needs a browser with no session.
+  except before `device-screen`, which needs no session.
 
 <!-- /repo -->
 
@@ -180,8 +180,8 @@ for its commands.
 
 [`create-verify-registry.ts`](../../../verify/src/verify/create-verify-registry.ts) declares the
 targets, actions, commands, checks and features.
-[`feature-paths.ts`](../../../verify/src/verify/feature-paths.ts) holds each feature's `paths`, the
-shared globs and the `.ignore` list.
+[`feature-paths.ts`](../../../verify/src/verify/feature-paths.ts) holds the `paths`, shared globs
+and `.ignore` list.
 
 <!-- /repo -->
 
