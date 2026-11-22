@@ -14,12 +14,20 @@ export interface NotebookSearch {
 export function parseNotebookSearch(search: Record<string, unknown>): NotebookSearch {
   const query = search['query'];
   const tags = search['tags'];
-  const version = Number(search['version']);
+  const version = parseVersion(search['version']);
 
   return {
     ...(search['private'] === 1 || search['private'] === '1' ? { private: 1 as const } : {}),
     ...(typeof query === 'string' && query !== '' ? { query } : {}),
     ...(typeof tags === 'string' && tags !== '' ? { tags } : {}),
-    ...(Number.isInteger(version) && version > 0 ? { version } : {}),
+    ...(version === undefined ? {} : { version }),
   };
+}
+
+function parseVersion(value: unknown): number | undefined {
+  const version = typeof value === 'string' && /^[1-9]\d*$/u.test(value) ? Number(value) : value;
+
+  return typeof version === 'number' && Number.isSafeInteger(version) && version > 0
+    ? version
+    : undefined;
 }

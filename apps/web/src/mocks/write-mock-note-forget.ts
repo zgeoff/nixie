@@ -48,6 +48,7 @@ export async function writeMockNoteForget(input: NoteForgetInput): Promise<NoteF
   await mockViewStore.noteForgets.create({
     clientActionID: input.clientActionID,
     note: input.note,
+    version: input.version,
     forgottenAt,
   });
 

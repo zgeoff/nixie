@@ -162,6 +162,7 @@ const noteForgets = new Collection({
     clientActionID: z.uuid(),
     forgottenAt: z.date(),
     note: z.string(),
+    version: z.int().positive(),
   }),
 });
 

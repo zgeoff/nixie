@@ -69,7 +69,7 @@ test('it finds notes by a search word and by a tag', async () => {
   });
 
   expect(rendered.getByRole('link', { name: 'Zine diary' })).toBeVisible();
-  expect(rendered.getByText(/words only/u)).toBeVisible();
+  expect(rendered.getByText(/match by their words alone/u)).toBeVisible();
 
   await ctx.user.clear(rendered.getByLabelText('Search notes'));
   await ctx.user.type(rendered.getByLabelText('Tags'), 'home');
@@ -77,6 +77,25 @@ test('it finds notes by a search word and by a tag', async () => {
   await rendered.findByRole('link', { name: 'Boiler notes' });
 
   expect(rendered.queryByRole('link', { name: 'Zine diary' })).toBeNull();
+});
+
+test('it refuses a search of more than 10 tags without sending it', async () => {
+  const ctx = await setupTest();
+
+  await mockViewStore.notes.create({
+    versions: [{ at: new Date(), title: 'Boiler notes', body: 'It trips.', tags: ['home'] }],
+  });
+
+  const rendered = renderRoute('/notebook');
+
+  await rendered.findByRole('link', { name: 'Boiler notes' });
+  await ctx.user.type(rendered.getByLabelText('Tags'), 'a,b,c,d,e,f,g,h,i,j,k');
+  await ctx.user.click(rendered.getByRole('button', { name: 'Search' }));
+  await rendered.findByText('Search by at most 10 tags.');
+
+  expect(rendered.getAllByRole('alert').map((alert) => alert.textContent)).toStrictEqual([
+    'Search by at most 10 tags.',
+  ]);
 });
 
 test('it loads the next 20 notes with Load more', async () => {
@@ -919,13 +938,13 @@ test('it drops a note from the screen when Load older versions finds it forgotte
   expect(rendered.queryByRole('heading', { name: 'Boiler notes' })).toBeNull();
 });
 
-test('it forgets the whole note from an older version and says which versions go', async () => {
+test('it previews and forgets the current version when the page shows an older one', async () => {
   const ctx = await setupTest();
 
   await mockViewStore.notes.create({
     note: 'n4w8k2c6rd',
     versions: [
-      { at: new Date('2026-11-20T08:00:00Z'), title: 'Boiler notes', body: 'It trips.' },
+      { at: new Date('2026-11-20T08:00:00Z'), title: 'Boiler draft', body: 'It trips.' },
       { at: new Date('2026-11-21T08:00:00Z'), title: 'Boiler notes', body: 'It trips at night.' },
     ],
   });
@@ -938,14 +957,23 @@ test('it forgets the whole note from an older version and says which versions go
   await rendered.findByText('Version 1 of 2');
   await ctx.user.click(rendered.getByRole('button', { name: 'Forget' }));
 
-  await rendered.findByText(
-    'This page shows version 1. The forget removes the note with every version, up to version 2.',
-  );
+  const confirmation = await rendered.findByRole('group', { name: 'Forget this note' });
 
-  await ctx.user.click(rendered.getByRole('button', { name: 'Forget for good' }));
+  await within(confirmation).findByText(/^Forget "Boiler notes" for good\?/u);
+
+  expect(
+    within(confirmation)
+      .getAllByRole('paragraph')
+      .map((line) => line.textContent),
+  ).toStrictEqual([
+    'Forget "Boiler notes" for good? It goes with its 2 versions and its 0 links. The 0 links from other notes stay and read as gone.',
+    'This page shows version 1. The forget removes the note with every version, up to version 2.',
+  ]);
+
+  await ctx.user.click(within(confirmation).getByRole('button', { name: 'Forget for good' }));
   await rendered.findByText('The note is forgotten.');
 
-  expect(mockViewStore.notes.all().map((note) => note.isForgotten)).toStrictEqual([true]);
+  expect(mockViewStore.noteForgets.all().map((forget) => forget.version)).toStrictEqual([2]);
 });
 
 test('it never shows the bytes that the image lightbox cached for a forgotten image', async () => {

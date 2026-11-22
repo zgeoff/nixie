@@ -357,8 +357,10 @@ Each link between the pages carries the parameter along.
 - `/notebook` lists the notes newest edit first from `notebook.listNotes`, 20 a page, with Load
   more. A row shows the title, the tags, the update time and the backlink count, and never the match
   snippet of a private note, which comes from its body. The search box and the tag field set the
-  `query` and `tags` search parameters, and the call searches by words and meaning. When
-  `isMeaningPartial` is true, the page says that the results match words only.
+  `query` and `tags` search parameters, and the call searches by words and meaning. The form refuses
+  a search that `notebook.listNotes` would refuse: more than 500 characters of words, more than 10
+  tags, or a tag longer than 40 characters. When `isMeaningPartial` is true, meaning search has not
+  reached every note yet, and the page says that some notes match by their words alone.
 - `/notebook/<note ID>` shows one note from `notebook.readNote`: the title, the tags, the version
   and the version count, the body, the links grouped by type with their reasons, the backlinks and
   the history. A link shows its target's title or gist and links to the target's own page: a note,
@@ -383,11 +385,13 @@ Each link between the pages carries the parameter along.
   reasons, each with the count the API reports and a link to its note.
 - Forget on a note's page, private ones too, reads `notebook.previewForget` and shows what goes: the
   versions, the links and the backlinks. A private note whose page shows no title gets a preview
-  with neither its title nor its counts. The confirmation calls `notebook.forget` with the newest
-  version the page showed, and asks the user to reload when the preview reads a newer one, or when
-  `notebook.forget` answers `STALE_VERSION`. Keep reads the preview again on the next Forget. After
-  the forget, the page shows the key backup state as the images page does, and removes every cached
-  notebook query, so no cached list or note holds the title or the body.
+  with neither its title nor its counts. A forget always takes the whole note, so the preview reads
+  the note's current version and the confirmation calls `notebook.forget` with that version, even
+  when the page shows an older version from the history. The page asks the user to reload when the
+  preview reads a version newer than the one the page loaded, or when `notebook.forget` answers
+  `STALE_VERSION`. Keep reads the preview again on the next Forget. After the forget, the page shows
+  the key backup state as the images page does, and removes every cached notebook query, so no
+  cached list or note holds the title or the body.
 - The record forget's confirmation lists the active notes that link to the record, with "A private
   note" in place of a private note's title.
 

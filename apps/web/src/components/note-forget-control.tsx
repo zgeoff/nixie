@@ -13,7 +13,8 @@ export interface NoteForgetControlProps {
   // title nor its link counts
   readonly isHidden: boolean;
 
-  // the newest version the page knew, or undefined when the page showed none
+  // the note's current version as the page loaded it, or undefined when the page showed none: a
+  // preview of a later version asks the user to reload
   readonly version: number | undefined;
 
   // the version whose body the page shows, which an older one from the history differs from
@@ -32,8 +33,8 @@ const confirmation = css({
   marginTop: '1',
 });
 
-// The forget of a whole note, private ones too, with no open of the note. The preview says what
-// goes, and the forget binds to the version the page showed, so a note that changed since the page
+// A forget always takes the whole note, private ones too, so the preview and the request both name
+// the note's current version, whatever version the page shows. A note that changed since the page
 // loaded, or since the preview, asks the user to reload.
 export function NoteForgetControl(props: NoteForgetControlProps): ReactNode {
   const nixie = useNixieClient();
@@ -126,7 +127,7 @@ export function NoteForgetControl(props: NoteForgetControlProps): ReactNode {
             forget.mutate({
               clientActionID: actionID,
               note: props.note,
-              version: props.version ?? preview.data.version,
+              version: preview.data.version,
             });
           }}
           type="button"

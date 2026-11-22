@@ -2,6 +2,7 @@ import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import { useState } from 'react';
+import { findNoteSearchProblem } from '../notebook/find-note-search-problem';
 import { parseNoteTags } from '../notebook/parse-note-tags';
 import { css } from '../styled-system/css';
 import { isUnauthorizedError } from '../utils/is-unauthorized-error';
@@ -108,7 +109,7 @@ export function NotebookList(props: NotebookListProps): ReactNode {
       </div>
       {isPartial ? (
         <p className={muted}>
-          Meaning search is still warming up, so these results match words only.
+          Meaning search has not reached every note yet, so some notes match by their words alone.
         </p>
       ) : null}
       {listed.isError ? (
@@ -187,13 +188,23 @@ const form = css({ alignItems: 'center', display: 'flex', flexWrap: 'wrap', gap:
 function SearchForm(props: SearchFormProps): ReactNode {
   const [query, setQuery] = useState(props.query);
   const [tags, setTags] = useState(props.tags);
+  const [problem, setProblem] = useState<string | null>(null);
 
   return (
     <form
       className={form}
       onSubmit={(event) => {
         event.preventDefault();
-        props.onSearch(query.trim(), parseNoteTags(tags).join(','));
+
+        const trimmed = query.trim();
+        const parsed = parseNoteTags(tags);
+        const found = findNoteSearchProblem(trimmed, parsed);
+
+        setProblem(found);
+
+        if (found === null) {
+          props.onSearch(trimmed, parsed.join(','));
+        }
       }}
       role="search"
     >
@@ -219,6 +230,7 @@ function SearchForm(props: SearchFormProps): ReactNode {
         />
       </label>
       <button type="submit">Search</button>
+      {problem === null ? null : <p role="alert">{problem}</p>}
     </form>
   );
 }
