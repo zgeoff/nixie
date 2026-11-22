@@ -12,17 +12,20 @@ open.
 
 ## Contracts
 
-- `computer.read` and `computer.read_file` take a `part`, and page a long text as `web_fetch` does.
-  Until then, `computer.read` stores the page, and `web_fetch` with the page ID reads its parts.
-- `computer.write_file` takes `from: { image }` or `from: { file }`, which copies an image or a
-  `code.run` file into the shell. It returns `voids`, the action IDs of the waiting `computer.run`
-  calls that the write cancelled. Until then, a waiting run returns `FILES_CHANGED` when it starts.
+- `computer.browser_read` and `computer.read_file` take a `part`, and page a long text as
+  `web_fetch` does. Until then, `computer.browser_read` stores the page, and `web_fetch` with the
+  page ID reads its parts.
+- `computer.write_file` takes `from: { image }`, `from: { file }` or `from: { note }`, which copies
+  an image, a `code.run` file or a note's current body into the shell. It returns `voids`, the
+  action IDs of the waiting `computer.run` calls that the write cancelled. Until then, a waiting run
+  returns `FILES_CHANGED` when it starts.
 - A waiting `computer.run`'s pending result tells the assistant that a write before the decision
   cancels it.
-- `computer.open` takes `link`, the `L` ID of a link on a stored page, as `web_fetch` does.
-- `computer.download` returns `FILLED_TAB` for a tab that holds a field the sign-in broker filled.
-- The web client has a reset for the browser, the shell or both. It calls the computer's reset,
-  which destroys the sandbox.
+- `computer.browser_open` takes `link`, the `L` ID of a link on a stored page, as `web_fetch` does.
+- `computer.browser_download` returns `FILLED_TAB` for a tab that holds a field the sign-in broker
+  filled.
+- The web client has a reset for the computer. It calls the computer's reset, which destroys the
+  sandbox.
 
 ## Constraints
 
@@ -37,8 +40,9 @@ open.
 
 - Signing in. [Email and accounts](https://linear.app/zgeoff/issue/GEO-2731) adds the sign-in
   broker.
-- A shell session that persists between `computer.run` calls.
-- A desktop with a window manager, and screen sharing.
+- A shell session that persists between `computer.run` calls. The desktop's terminal window is the
+  owner's, and `computer.run` never uses it.
+- A desktop with a window manager, and screen sharing, which [the desktop](desktop.md) designs.
 
 ## Open questions
 
