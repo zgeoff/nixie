@@ -52,7 +52,8 @@ export interface Takeover {
   // Starts a hold for the device. It waits for the calls already running, up to their own limit.
   readonly start: (deviceID: string) => Promise<TakeOverResult>;
 
-  // Ends the hold. A `user` end counts only from the device that holds it.
+  // Ends the hold. A `user` end, and any end that names a device, counts only for the device that
+  // holds it.
   readonly end: (by: TakeoverEnd, deviceID?: string) => Promise<HandBackResult>;
 
   // notes input from the device, which holds off the idle hand-back

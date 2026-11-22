@@ -267,3 +267,27 @@ test('it keeps the sandbox awake from the start of a hold to its end', async () 
     { holds: 1, releases: 1 },
   ]);
 });
+
+test('it ends an idle hold named for its holder, so the assistant is admitted again', async () => {
+  const ctx = setupTest();
+
+  await ctx.takeover.start('laptop');
+
+  const result = await ctx.takeover.end('idle', 'laptop');
+
+  expect([result.kind, ctx.takeover.isHeld(), ctx.ended.map((record) => record.by)]).toStrictEqual([
+    'ended',
+    false,
+    ['idle'],
+  ]);
+});
+
+test('it leaves a hold alone when an end names another device', async () => {
+  const ctx = setupTest();
+
+  await ctx.takeover.start('laptop');
+
+  const result = await ctx.takeover.end('idle', 'phone');
+
+  expect([result.kind, ctx.takeover.isHeld()]).toStrictEqual(['not_taken_over', true]);
+});

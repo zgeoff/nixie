@@ -208,7 +208,10 @@ async function endHold(
 ): Promise<HandBackResult> {
   const held = state.phase;
 
-  if (held.kind !== 'held' || (by === 'user' && held.deviceID !== deviceID)) {
+  if (
+    held.kind !== 'held' ||
+    ((by === 'user' || deviceID !== undefined) && held.deviceID !== deviceID)
+  ) {
     return { kind: 'not_taken_over' };
   }
 

@@ -109,10 +109,15 @@ async function openWatch(
     return;
   }
 
-  const stopWatching = await watchSessionEnd(context, socket.data.identityID, () => {
-    closeWatch(socket.data);
+  const stopWatching = await watchSessionEnd(context, socket.data.identityID, {
+    onEnd: () => {
+      closeWatch(socket.data);
 
-    socket.close(1008, 'session ended');
+      socket.close(1008, 'session ended');
+    },
+    onRevokedUnheard: () => {
+      void context.computerWatch?.readTakeover()?.end('idle', socket.data.identityID);
+    },
   });
 
   if (socket.data.isClosed) {
