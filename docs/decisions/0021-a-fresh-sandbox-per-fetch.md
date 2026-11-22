@@ -20,9 +20,10 @@ sandbox.
 
 ## Rejected alternatives
 
-| Option                                       | Why not                                                                                      |
-| -------------------------------------------- | -------------------------------------------------------------------------------------------- |
-| a pool of sandboxes created ahead and reused | Code that takes control of one fetcher can read or change every later fetch in that sandbox. |
+| Option                                              | Why not                                                                                   |
+| --------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| one long-lived fetch sandbox, replaced now and then | Code that takes control of the fetcher sees the URLs of every later fetch until the swap. |
+| a warm pool of fetch sandboxes, each used once      | Each waiting sandbox holds RAM, and a new sandbox starts in about 1.2 s on impd anyway.   |
 
 ## Consequences
 

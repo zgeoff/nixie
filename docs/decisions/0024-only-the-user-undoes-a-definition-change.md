@@ -11,6 +11,9 @@ force. nixie never gives the agent a tool that undoes a change. Only the user ca
 
 ## Why
 
+- When the user asks for a change in chat, the agent's change goes in force with no prompt. nixie
+  shows the user a notice of each change with an undo control, and that undo is the user's way back
+  from a change the agent got wrong. An agent that could undo would hold that way back itself.
 - The agent reads web pages and messages that may hold instructions planted to mislead it. An agent
   misled that way could undo a change and bring back a version of a definition that the user had
   replaced, such as one with a tool the user took away.
