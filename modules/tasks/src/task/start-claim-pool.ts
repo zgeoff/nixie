@@ -84,10 +84,13 @@ async function runRunner<W>(
       // A claim reads the time when it starts, so the poll counts from there: work that fell due
       // while a slow claim waited on the database is claimed at once, not a full poll later.
       if (!(await withTrackedWork(() => runClaim(options, state)))) {
-        await clock.sleep(
-          options.pollMs - (clock.now() - claimedAt),
-          AbortSignal.any([state.stopping, wake]),
-        );
+        const remainingMs = options.pollMs - (clock.now() - claimedAt);
+
+        // A poll that already ran out claims again at once. A sleep of no time on a clock that
+        // moves only when told to would wait for the next advance, and a test clock never gets one.
+        if (remainingMs > 0) {
+          await clock.sleep(remainingMs, AbortSignal.any([state.stopping, wake]));
+        }
       }
     }
   } catch (error) {
