@@ -33,7 +33,15 @@ const readSchema = z.strictObject({
   mode: z.enum(['text', 'snapshot']),
 });
 
-const screenshotSchema = z.strictObject({ op: z.literal('screenshot'), tab: z.string() });
+// control is a control ID such as E12; without it the picture is the viewport
+const screenshotSchema = z.strictObject({
+  op: z.literal('screenshot'),
+  tab: z.string(),
+  control: z.string().optional(),
+});
+
+// to is 'up', 'down' or a control ID such as E12
+const scrollSchema = z.strictObject({ op: z.literal('scroll'), tab: z.string(), to: z.string() });
 
 const actRequestSchema = z.strictObject({
   op: z.literal('act'),
@@ -70,6 +78,7 @@ export const computerRequestSchema = z.discriminatedUnion('op', [
   openSchema,
   readSchema,
   screenshotSchema,
+  scrollSchema,
   actRequestSchema,
   closeSchema,
   downloadSchema,

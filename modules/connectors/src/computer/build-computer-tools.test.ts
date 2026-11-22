@@ -11,6 +11,9 @@ import { startComputer } from './start-computer';
 interface Replies {
   readonly page: Extract<ComputerReply, { kind: 'page' }>;
   readonly run: Extract<ComputerReply, { kind: 'run' }>;
+  readonly scroll: Extract<ComputerReply, { kind: 'scroll' }>;
+  readonly shot: Extract<ComputerReply, { kind: 'screenshot' }>;
+  readonly stale: Extract<ComputerReply, { kind: 'failed' }>;
 }
 
 interface SetupOptions {
@@ -35,6 +38,28 @@ async function setupTest(options: SetupOptions) {
         links: [],
       },
     },
+    scroll: {
+      kind: 'scroll' as const,
+      ok: true as const,
+      tab: 'g1',
+      url: 'https://site.test/form',
+      width: 1280,
+      height: 800,
+      isAtEnd: true,
+      base64:
+        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg==',
+    },
+    shot: {
+      kind: 'screenshot' as const,
+      ok: true as const,
+      tab: 'g1',
+      url: 'https://site.test/form',
+      width: 120,
+      height: 30,
+      base64:
+        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg==',
+    },
+    stale: { kind: 'failed' as const, ok: false as const, reason: 'stale_element' as const },
     run: {
       kind: 'run' as const,
       ok: true as const,
@@ -115,6 +140,7 @@ async function setupTest(options: SetupOptions) {
   };
 
   return {
+    toolNames: built.tools.map((tool) => tool.name),
     requests,
     context,
     call: (name: string, input: Record<string, string | number | boolean>) =>
@@ -140,7 +166,7 @@ async function setupTest(options: SetupOptions) {
 
 test('it opens a page in a tab the model can name and stores its text as a page', async () => {
   const ctx = await setupTest({ answer: (replies) => () => Promise.resolve(replies.page) });
-  const outcome = await ctx.call('computer.open', { url: 'https://site.test/form' });
+  const outcome = await ctx.call('computer.browser_open', { url: 'https://site.test/form' });
 
   expect(outcome).toStrictEqual({
     status: 'ok',
@@ -172,7 +198,7 @@ test('it refuses an open whose redirect holds a secret and tells the model why',
     },
   });
 
-  const outcome = await ctx.call('computer.open', { url: 'https://site.test/form' });
+  const outcome = await ctx.call('computer.browser_open', { url: 'https://site.test/form' });
 
   expect(outcome).toMatchObject({
     status: 'ok',
@@ -195,7 +221,7 @@ test('it refuses a call whose request body holds a secret the URL does not', asy
     },
   });
 
-  const outcome = await ctx.call('computer.open', { url: 'https://site.test/form' });
+  const outcome = await ctx.call('computer.browser_open', { url: 'https://site.test/form' });
 
   expect(outcome).toMatchObject({
     status: 'ok',
@@ -206,7 +232,7 @@ test('it refuses a call whose request body holds a secret the URL does not', asy
 
 test('it refuses a read of a tab the browser does not hold', async () => {
   const ctx = await setupTest({ answer: (replies) => () => Promise.resolve(replies.page) });
-  const outcome = await ctx.call('computer.read', { tab: 't9', mode: 'text' });
+  const outcome = await ctx.call('computer.browser_read', { tab: 't9', mode: 'text' });
 
   expect(outcome).toMatchObject({ status: 'ok', refusalCode: 'TAB_GONE' });
 });
@@ -214,9 +240,9 @@ test('it refuses a read of a tab the browser does not hold', async () => {
 test('it prepares a click with the host of the tab as its destination and the URL it expects', async () => {
   const ctx = await setupTest({ answer: (replies) => () => Promise.resolve(replies.page) });
 
-  await ctx.call('computer.open', { url: 'https://site.test/form' });
+  await ctx.call('computer.browser_open', { url: 'https://site.test/form' });
 
-  const prepared = await ctx.prepare('computer.click', { tab: 't1', element: 'E1' });
+  const prepared = await ctx.prepare('computer.browser_click', { tab: 't1', element: 'E1' });
 
   expect(prepared).toStrictEqual({
     destinations: ['site.test'],
@@ -227,10 +253,10 @@ test('it prepares a click with the host of the tab as its destination and the UR
 test('it runs a queued click against the URL its preparation saw', async () => {
   const ctx = await setupTest({ answer: (replies) => () => Promise.resolve(replies.page) });
 
-  await ctx.call('computer.open', { url: 'https://site.test/form' });
-  await ctx.prepare('computer.click', { tab: 't1', element: 'E1' });
+  await ctx.call('computer.browser_open', { url: 'https://site.test/form' });
+  await ctx.prepare('computer.browser_click', { tab: 't1', element: 'E1' });
 
-  const response = await ctx.attempt('computer.click', { tab: 't1', element: 'E1' });
+  const response = await ctx.attempt('computer.browser_click', { tab: 't1', element: 'E1' });
 
   expect(response.kind).toBe('success');
 
@@ -258,10 +284,10 @@ test('it refuses a queued click when the guest says the page changed', async () 
     },
   });
 
-  await ctx.call('computer.open', { url: 'https://site.test/form' });
-  await ctx.prepare('computer.click', { tab: 't1', element: 'E1' });
+  await ctx.call('computer.browser_open', { url: 'https://site.test/form' });
+  await ctx.prepare('computer.browser_click', { tab: 't1', element: 'E1' });
 
-  const response = await ctx.attempt('computer.click', { tab: 't1', element: 'E1' });
+  const response = await ctx.attempt('computer.browser_click', { tab: 't1', element: 'E1' });
 
   expect(response.kind).toBe('refused');
 });
@@ -345,4 +371,126 @@ test('it reads a text file of the shell and refuses a file that is not text', as
   });
 
   expect(binary).toMatchObject({ refusalCode: 'NOT_TEXT' });
+});
+
+test('it offers the renamed browser tools and none under an old name', async () => {
+  const ctx = await setupTest({ answer: (replies) => () => Promise.resolve(replies.page) });
+
+  expect(ctx.toolNames).toStrictEqual([
+    'computer.browser_open',
+    'computer.browser_read',
+    'computer.browser_screenshot',
+    'computer.browser_scroll',
+    'computer.browser_close',
+    'computer.browser_download',
+    'computer.browser_fill',
+    'computer.browser_click',
+    'computer.run',
+    'computer.read_file',
+    'computer.write_file',
+    'computer.export_file',
+  ]);
+});
+
+test.each(['computer.open', 'computer.read', 'computer.screenshot', 'computer.click'])(
+  'it has no tool named %s',
+  async (name) => {
+    const ctx = await setupTest({ answer: (replies) => () => Promise.resolve(replies.page) });
+
+    expect(() => ctx.call(name, { tab: 't1' })).toThrow(`no tool ${name}`);
+  },
+);
+
+test.each(['computer.fill', 'computer.click'])(
+  'it settles a pending %s as TAB_GONE',
+  async (tool) => {
+    const ctx = await setupTest({ answer: (replies) => () => Promise.resolve(replies.page) });
+    const response = await ctx.attempt(tool, { tab: 't1', element: 'E1', value: 'x' });
+
+    expect(response).toStrictEqual({
+      kind: 'refused',
+      reason: expect.stringContaining('tab is gone'),
+    });
+  },
+);
+
+test('it scrolls a tab and shows the viewport beside the result', async () => {
+  const ctx = await setupTest({
+    answer: (replies) => (request) => {
+      const reply = request.op === 'scroll' ? replies.scroll : replies.page;
+
+      return Promise.resolve(reply);
+    },
+  });
+
+  await ctx.call('computer.browser_open', { url: 'https://site.test/form' });
+
+  const outcome = await ctx.call('computer.browser_scroll', { tab: 't1', to: 'down' });
+
+  expect(outcome).toStrictEqual({
+    status: 'ok',
+    result: { tab: 't1', isAtEnd: true, isShown: true },
+    images: [expect.objectContaining({ mediaType: 'image/png' })],
+  });
+
+  expect(ctx.requests.at(-1)).toStrictEqual({ op: 'scroll', tab: 'g1', to: 'down' });
+});
+
+test('it refuses a scroll to a control that moved', async () => {
+  const ctx = await setupTest({
+    answer: (replies) => (request) => {
+      const reply = request.op === 'scroll' ? replies.stale : replies.page;
+
+      return Promise.resolve(reply);
+    },
+  });
+
+  await ctx.call('computer.browser_open', { url: 'https://site.test/form' });
+
+  const outcome = await ctx.call('computer.browser_scroll', { tab: 't1', to: 'E9' });
+
+  expect(outcome).toMatchObject({ refusalCode: 'STALE_ELEMENT' });
+});
+
+test('it refuses a scroll of a tab the browser does not hold', async () => {
+  const ctx = await setupTest({ answer: (replies) => () => Promise.resolve(replies.page) });
+  const outcome = await ctx.call('computer.browser_scroll', { tab: 't9', to: 'up' });
+
+  expect(outcome).toMatchObject({ refusalCode: 'TAB_GONE' });
+});
+
+test('it asks for the picture of one control when the screenshot names it', async () => {
+  const ctx = await setupTest({
+    answer: (replies) => (request) => {
+      const reply = request.op === 'screenshot' ? replies.shot : replies.page;
+
+      return Promise.resolve(reply);
+    },
+  });
+
+  await ctx.call('computer.browser_open', { url: 'https://site.test/form' });
+
+  const outcome = await ctx.call('computer.browser_screenshot', { tab: 't1', control: 'E1' });
+
+  expect(outcome).toMatchObject({
+    result: { tab: 't1', width: 120, height: 30, isShown: true },
+  });
+
+  expect(ctx.requests.at(-1)).toStrictEqual({ op: 'screenshot', tab: 'g1', control: 'E1' });
+});
+
+test('it refuses a screenshot of a control that moved', async () => {
+  const ctx = await setupTest({
+    answer: (replies) => (request) => {
+      const reply = request.op === 'screenshot' ? replies.stale : replies.page;
+
+      return Promise.resolve(reply);
+    },
+  });
+
+  await ctx.call('computer.browser_open', { url: 'https://site.test/form' });
+
+  const outcome = await ctx.call('computer.browser_screenshot', { tab: 't1', control: 'E9' });
+
+  expect(outcome).toMatchObject({ refusalCode: 'STALE_ELEMENT' });
 });

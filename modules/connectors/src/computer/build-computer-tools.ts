@@ -1,16 +1,19 @@
-import type { ToolDefinition } from '@heynixie/tools';
+import type { DirectResult, ToolDefinition } from '@heynixie/tools';
 import { z } from 'zod';
 import type { ActionConnector, ProviderResponse } from '../types';
 import { buildBrowserActTools, runBrowserAct } from './build-browser-act-tools';
 import { buildBrowserReadTools } from './build-browser-read-tools';
 import { buildShellTools, runShellCommand } from './build-shell-tools';
+import type { ComputerState } from './computer-state';
 import { buildComputerState } from './computer-state';
 import type { ComputerToolOptions } from './computer-tool-options';
+import { refuseComputer } from './run-computer-call';
+import type { ComputerAttempt } from './types';
 
 export interface ComputerTools {
   readonly tools: readonly ToolDefinition[];
 
-  // runs the queued tools: fill, click and run
+  // runs the queued tools: browser_fill, browser_click and run, and settles an old name
   readonly connector: ActionConnector;
 }
 
@@ -28,10 +31,7 @@ export function buildComputerTools(options: ComputerToolOptions): ComputerTools 
     connector: {
       reconcile: { kind: 'none' },
       run: async (attempt) => {
-        const result =
-          attempt.tool === 'computer.run'
-            ? await runShellCommand(options, state, { arguments: attempt.arguments })
-            : await runBrowserAct(options, state, attempt);
+        const result = await runQueued(options, state, attempt);
 
         const refused = refusedSchema.safeParse(result.result['refused']);
 
@@ -43,6 +43,31 @@ export function buildComputerTools(options: ComputerToolOptions): ComputerTools 
   };
 }
 
+// The queued tools under the names they had before the browser_ prefix. No tool carries them, but
+// an action queued under one may still wait, and it settles as TAB_GONE.
+export const legacyComputerToolNames = ['computer.fill', 'computer.click'] as const;
+
+function runQueued(
+  options: ComputerToolOptions,
+  state: ComputerState,
+  attempt: ComputerAttempt,
+): Promise<DirectResult> {
+  if (attempt.tool === 'computer.run') {
+    return runShellCommand(options, state, { arguments: attempt.arguments });
+  }
+
+  if (legacyComputerToolNames.some((name) => name === attempt.tool)) {
+    return Promise.resolve(
+      refuseComputer(
+        'TAB_GONE',
+        'the browser was replaced since the call was queued, so its tab is gone; open the page again',
+      ),
+    );
+  }
+
+  return runBrowserAct(options, state, attempt);
+}
+
 function toRefusal(refused: z.infer<typeof refusedSchema>): ProviderResponse {
   return refused.code === 'BUSY'
     ? { kind: 'refused_retryable', reason: refused.message }
@@ -50,13 +75,14 @@ function toRefusal(refused: z.infer<typeof refusedSchema>): ProviderResponse {
 }
 
 export const computerToolNames = [
-  'computer.open',
-  'computer.read',
-  'computer.screenshot',
-  'computer.close',
-  'computer.download',
-  'computer.fill',
-  'computer.click',
+  'computer.browser_open',
+  'computer.browser_read',
+  'computer.browser_screenshot',
+  'computer.browser_scroll',
+  'computer.browser_close',
+  'computer.browser_download',
+  'computer.browser_fill',
+  'computer.browser_click',
   'computer.run',
   'computer.read_file',
   'computer.write_file',

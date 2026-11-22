@@ -50,7 +50,7 @@ export function buildBrowserActTools(
 ): readonly ToolDefinition[] {
   return [
     {
-      name: 'computer.fill',
+      name: 'computer.browser_fill',
       description: [
         'Types a value into one control of an open tab, and with submit true presses Enter in it ',
         'to submit its form. A form that posts to another site is never submitted.',
@@ -77,11 +77,12 @@ export function buildBrowserActTools(
       },
       execution: 'queued',
       prepare: (input, context) =>
-        prepareAct(options, state, { tool: 'computer.fill', input, context }),
-      run: () => Promise.resolve({ status: 'error', message: 'computer.fill runs only queued' }),
+        prepareAct(options, state, { tool: 'computer.browser_fill', input, context }),
+      run: () =>
+        Promise.resolve({ status: 'error', message: 'computer.browser_fill runs only queued' }),
     },
     {
-      name: 'computer.click',
+      name: 'computer.browser_click',
       description: [
         'Clicks one control of an open tab, such as a link, a button or a checkbox.',
         queuedNote,
@@ -105,8 +106,9 @@ export function buildBrowserActTools(
       },
       execution: 'queued',
       prepare: (input, context) =>
-        prepareAct(options, state, { tool: 'computer.click', input, context }),
-      run: () => Promise.resolve({ status: 'error', message: 'computer.click runs only queued' }),
+        prepareAct(options, state, { tool: 'computer.browser_click', input, context }),
+      run: () =>
+        Promise.resolve({ status: 'error', message: 'computer.browser_click runs only queued' }),
     },
   ];
 }
@@ -197,7 +199,7 @@ export async function runBrowserAct(
   }
 
   const acts =
-    attempt.tool === 'computer.fill'
+    attempt.tool === 'computer.browser_fill'
       ? fillActs(fillArguments.parse(attempt.arguments))
       : clickActs(clickArguments.parse(attempt.arguments));
 

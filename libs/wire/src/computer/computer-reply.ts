@@ -47,6 +47,17 @@ const screenshotReplySchema = z.strictObject({
   base64: textSchema,
 });
 
+const scrollReplySchema = z.strictObject({
+  kind: z.literal('scroll'),
+  ok: isOk,
+  tab: textSchema,
+  url: textSchema,
+  width: numberSchema,
+  height: numberSchema,
+  isAtEnd: z.boolean(),
+  base64: textSchema,
+});
+
 const runBodySchema = z.strictObject({
   exitCode: numberSchema.nullable(),
   stdout: outputSchema,
@@ -85,6 +96,7 @@ const failedReplySchema = z.strictObject({
 export const computerReplySchema = z.discriminatedUnion('kind', [
   pageReplySchema,
   screenshotReplySchema,
+  scrollReplySchema,
   runReplySchema,
   fileReplySchema,
   writtenReplySchema,

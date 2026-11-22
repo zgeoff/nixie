@@ -8,6 +8,7 @@ import { launchBrowser } from './launch-browser';
 import { makeScanGate } from './make-scan-gate';
 import { openTab } from './open-tab';
 import { readTabPage } from './read-tab-page';
+import { scrollTab } from './scroll-tab';
 import { shootTab } from './shoot-tab';
 import type { BrowserState } from './types';
 
@@ -125,7 +126,16 @@ function handleRequest(
         return Promise.resolve(tabGone);
       }
 
-      return shootTab(shot.tab, tab);
+      return shootTab(shot.tab, tab, shot.control);
+    })
+    .with({ op: 'scroll' }, (scroll) => {
+      const tab = state.tabs.get(scroll.tab);
+
+      if (tab === undefined) {
+        return Promise.resolve(tabGone);
+      }
+
+      return scrollTab(scroll.tab, tab, scroll.to);
     })
     .with({ op: 'act' }, (act) => {
       const tab = state.tabs.get(act.tab);

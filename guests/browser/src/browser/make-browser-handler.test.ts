@@ -29,7 +29,8 @@ async function setupTest() {
         <form action="/done" method="post"><input name="n" placeholder="Name" />
         <button type="submit">Create account</button></form>
         <form action="http://other.test/post" method="post"><button type="submit">Elsewhere</button></form>
-        <a href="/report.txt" download>Download</a></body></html>`,
+        <a href="/report.txt" download>Download</a>
+        <div style="height:3000px">tall</div><button id="low">Bottom button</button></body></html>`,
         { headers: { 'Content-Type': 'text/html' } },
       ),
       '/terms': new Response('<html><title>Terms</title><body>the terms</body></html>', {
@@ -243,4 +244,103 @@ test.skipIf(!hasChromium)('it refuses a sixth tab', async () => {
   const reply = await ctx.send(ctx.open(ctx.url));
 
   expect(reply).toStrictEqual({ kind: 'failed', ok: false, reason: 'tab_limit' });
+});
+
+test.skipIf(!hasChromium)(
+  'it scrolls down to the end of the page and then up to the top',
+  async () => {
+    const ctx = await setupTest();
+
+    await ctx.send(ctx.open(ctx.url));
+
+    const first = await ctx.send({ op: 'scroll', tab: 't1', to: 'down' });
+    const second = await ctx.send({ op: 'scroll', tab: 't1', to: 'down' });
+    const third = await ctx.send({ op: 'scroll', tab: 't1', to: 'down' });
+    const fourth = await ctx.send({ op: 'scroll', tab: 't1', to: 'down' });
+    const up = await ctx.send({ op: 'scroll', tab: 't1', to: 'up' });
+
+    expect(
+      [first, second, third, fourth].map((reply) => reply.kind === 'scroll' && reply.isAtEnd),
+    ).toStrictEqual([false, false, false, true]);
+
+    expect(up).toMatchObject({ kind: 'scroll', isAtEnd: false });
+  },
+);
+
+test.skipIf(!hasChromium)(
+  'it reports the top as the end when scrolling up from the top',
+  async () => {
+    const ctx = await setupTest();
+
+    await ctx.send(ctx.open(ctx.url));
+
+    const reply = await ctx.send({ op: 'scroll', tab: 't1', to: 'up' });
+
+    expect(reply).toMatchObject({
+      kind: 'scroll',
+      tab: 't1',
+      isAtEnd: true,
+      width: 1280,
+      height: 800,
+    });
+  },
+);
+
+test.skipIf(!hasChromium)('it scrolls a control into view', async () => {
+  const ctx = await setupTest();
+
+  await ctx.send(ctx.open(ctx.url));
+  await ctx.send({ op: 'read', tab: 't1', mode: 'snapshot' });
+
+  const reply = await ctx.send({ op: 'scroll', tab: 't1', to: 'E5' });
+
+  expect(reply).toMatchObject({ kind: 'scroll', isAtEnd: true });
+});
+
+test.skipIf(!hasChromium)('it refuses a scroll to a control that is not on the page', async () => {
+  const ctx = await setupTest();
+
+  await ctx.send(ctx.open(ctx.url));
+
+  const reply = await ctx.send({ op: 'scroll', tab: 't1', to: 'E99' });
+
+  expect(reply).toStrictEqual({ kind: 'failed', ok: false, reason: 'stale_element' });
+});
+
+test.skipIf(!hasChromium)('it answers tab_gone for a scroll of a closed tab', async () => {
+  const ctx = await setupTest();
+  const reply = await ctx.send({ op: 'scroll', tab: 't1', to: 'down' });
+
+  expect(reply).toStrictEqual({ kind: 'failed', ok: false, reason: 'tab_gone' });
+});
+
+test.skipIf(!hasChromium)(
+  'it takes the picture of one control as the size of its box',
+  async () => {
+    const ctx = await setupTest();
+
+    await ctx.send(ctx.open(ctx.url));
+    await ctx.send({ op: 'read', tab: 't1', mode: 'snapshot' });
+
+    const control = await ctx.send({ op: 'screenshot', tab: 't1', control: 'E1' });
+    const viewport = await ctx.send({ op: 'screenshot', tab: 't1' });
+
+    expect(control).toMatchObject({
+      kind: 'screenshot',
+      width: expect.toBeWithin(10, 1280),
+      height: expect.toBeWithin(5, 100),
+    });
+
+    expect(viewport).toMatchObject({ kind: 'screenshot', width: 1280, height: 800 });
+  },
+);
+
+test.skipIf(!hasChromium)('it refuses the picture of a control that moved', async () => {
+  const ctx = await setupTest();
+
+  await ctx.send(ctx.open(ctx.url));
+
+  const reply = await ctx.send({ op: 'screenshot', tab: 't1', control: 'E99' });
+
+  expect(reply).toStrictEqual({ kind: 'failed', ok: false, reason: 'stale_element' });
 });
