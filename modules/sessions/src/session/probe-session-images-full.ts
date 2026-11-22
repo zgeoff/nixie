@@ -1,6 +1,6 @@
 import { isInboxRecord } from '@heynixie/tasks';
 import type { StepInput } from '@heynixie/tasks';
-import { isSilentFire } from '../inbox/is-silent-fire';
+import { isSilentRecord } from '../inbox/is-silent-record';
 import { readInboxMessages } from '../inbox/read-inbox-messages';
 import type { ConversationRun, ImageTally } from '../types';
 import { countImages } from '../utils/count-images';
@@ -22,7 +22,7 @@ export async function probeSessionImagesFull(
   }
 
   const firstVisible = session.inbox.find(
-    (record) => isInboxRecord(record) && !isSilentFire(record),
+    (record) => isInboxRecord(record) && !isSilentRecord(record),
   );
 
   if (firstVisible === undefined) {

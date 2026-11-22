@@ -6,10 +6,11 @@ import { startTestTasks } from '../test-utils/start-test-tasks';
 import { readInboxMessages } from './read-inbox-messages';
 
 async function setupTest() {
-  const tasks = await startTestTasks();
+  const tasks = await startTestTasks({ recordsAtMs: Date.parse('2027-03-09T03:00:00Z') });
 
   return {
     log: tasks.context.log,
+    clock: tasks.clock,
     context: tasks.context,
     writeVersion: (hash: string, version: Parameters<typeof writeReminderVersion>[2]) =>
       withWriteTransaction(tasks.writer, (tx) => writeReminderVersion(tx, hash, version)),
@@ -336,5 +337,184 @@ test('it renders no message for a fire on the thread of a task, and takes its re
 
   expect(read.messages).toStrictEqual([
     { uuid: expect.toBeString(), text: expect.toInclude('Start with the greenhouse.') },
+  ]);
+});
+
+test('it renders no message for an approval that queued an action, and takes its record as silent', async () => {
+  const ctx = await setupTest();
+
+  const records = await writeRecords(ctx.log, [
+    {
+      kind: 'policy.action_answered',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: {
+        proposalID: 'b-uuid',
+        shortID: 'k3vq8m2xpa',
+        answer: 'approved',
+        actionID: 'b-uuid',
+      },
+    },
+    {
+      kind: 'task.wake',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: { at: 1, actionID: 'b-uuid' },
+    },
+  ]);
+
+  const read = await readInboxMessages(ctx.context, records, {
+    times: { defaultZone: 'Australia/Sydney', now: new Date('2027-03-09T03:30:00Z') },
+    view: buildMockTaskMessageView(),
+    imageBudget: { bytes: 1024, count: 100 },
+  });
+
+  expect(read).toStrictEqual({ records, messages: [], silent: records });
+});
+
+test('it names the approval time and the command output in the message of an approved action that settled done', async () => {
+  const ctx = await setupTest();
+
+  await writeRecords(ctx.log, [
+    {
+      kind: 'policy.action_answered',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: {
+        proposalID: 'b-uuid',
+        shortID: 'k3vq8m2xpa',
+        answer: 'approved',
+        actionID: 'b-uuid',
+      },
+    },
+  ]);
+
+  ctx.clock.advance(5 * 60_000);
+
+  const records = await writeRecords(ctx.log, [
+    {
+      kind: 'action.outcome',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: {
+        actionID: 'b-uuid',
+        tool: 'computer.run',
+        status: 'done',
+        attempt: 1,
+        reason: null,
+      },
+      erasable: {
+        result: {
+          exitCode: 2,
+          stdout: 'tide-table.csv\n',
+          stderr: 'ls: cannot access harbour: No such file\n',
+          isStdoutCut: false,
+          isStderrCut: false,
+          seconds: 0.4,
+          isDiskNew: false,
+        },
+      },
+    },
+  ]);
+
+  const read = await readInboxMessages(ctx.context, records, {
+    times: { defaultZone: 'Australia/Sydney', now: new Date('2027-03-09T03:30:00Z') },
+    view: buildMockTaskMessageView(),
+    imageBudget: { bytes: 1024, count: 100 },
+  });
+
+  expect(read.messages).toStrictEqual([
+    {
+      uuid: expect.toBeString(),
+      text: expect.toSatisfy(
+        (text: string) =>
+          text.includes('Approved Tue 9 Mar, 14:00, Sydney.') &&
+          text.includes('<tool-result source="untrusted"') &&
+          text.includes(
+            String.raw`{"exitCode":2,"stdout":"tide-table.csv\n","stderr":"ls: cannot access harbour: No such file\n","isStdoutCut":false,"isStderrCut":false,"seconds":0.4,"isDiskNew":false}`,
+          ),
+      ),
+    },
+  ]);
+});
+
+test('it names the approval time and the reason in the message of an approved action that failed', async () => {
+  const ctx = await setupTest();
+
+  await writeRecords(ctx.log, [
+    {
+      kind: 'policy.action_answered',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: {
+        proposalID: 'b-uuid',
+        shortID: 'k3vq8m2xpa',
+        answer: 'approved',
+        actionID: 'b-uuid',
+      },
+    },
+  ]);
+
+  ctx.clock.advance(60_000);
+
+  const records = await writeRecords(ctx.log, [
+    {
+      kind: 'action.outcome',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: {
+        actionID: 'b-uuid',
+        tool: 'computer.click',
+        status: 'failed',
+        attempt: 1,
+        reason: 'refused',
+      },
+      erasable: { message: 'there is no tab t2; open the page again' },
+    },
+  ]);
+
+  const read = await readInboxMessages(ctx.context, records, {
+    times: { defaultZone: 'Australia/Sydney', now: new Date('2027-03-09T03:30:00Z') },
+    view: buildMockTaskMessageView(),
+    imageBudget: { bytes: 1024, count: 100 },
+  });
+
+  expect(read.messages).toStrictEqual([
+    {
+      uuid: expect.toBeString(),
+      text: expect.toSatisfy(
+        (text: string) =>
+          text.includes('Approved Tue 9 Mar, 14:00, Sydney.') &&
+          text.includes('The call `computer.click` (`b-uuid`) failed') &&
+          text.includes('there is no tab t2; open the page again'),
+      ),
+    },
+  ]);
+});
+
+test('it renders a decline as a message with its reason', async () => {
+  const ctx = await setupTest();
+
+  const records = await writeRecords(ctx.log, [
+    {
+      kind: 'policy.action_answered',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: { proposalID: 'b-uuid', shortID: 'k3vq8m2xpa', answer: 'declined' },
+      erasable: { reason: 'Not the harbour page.' },
+    },
+  ]);
+
+  const read = await readInboxMessages(ctx.context, records, {
+    times: { defaultZone: 'Australia/Sydney', now: new Date('2027-03-09T03:30:00Z') },
+    view: buildMockTaskMessageView(),
+    imageBudget: { bytes: 1024, count: 100 },
+  });
+
+  expect(read.messages).toStrictEqual([
+    {
+      uuid: expect.toBeString(),
+      text: expect.toInclude('Declined `k3vq8m2xpa`. Not the harbour page.'),
+    },
   ]);
 });

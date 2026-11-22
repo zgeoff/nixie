@@ -22,6 +22,7 @@ import { renderReminderNotice } from './render-reminder-notice';
 interface RenderedExtras {
   readonly reminder?: ReminderRead | null;
   readonly result?: ActionResultBlock | null;
+  readonly approvedAt?: Date | null;
 }
 
 export function renderInboxMessage(
@@ -45,7 +46,10 @@ export function renderInboxMessage(
   }
 
   if (record.kind === 'action.outcome') {
-    return renderRecordMessage(record, 'outcome', times, extras.result ?? null);
+    return renderRecordMessage(record, 'outcome', times, {
+      result: extras.result ?? null,
+      approvedAt: extras.approvedAt ?? null,
+    });
   }
 
   if (record.kind === 'task.limit_notice') {
@@ -109,20 +113,33 @@ type RecordMessageType = Extract<SystemMessageType, 'timer' | 'outcome'>;
 
 const recordSummaries = { timer: 'A timer fired', outcome: 'An action settled' } as const;
 
+// What an outcome's message shows beside its record: the call's result, and when the owner approved
+// the action.
+interface OutcomeExtras {
+  readonly result: ActionResultBlock | null;
+  readonly approvedAt: Date | null;
+}
+
 function renderRecordMessage(
   record: LogRecord,
   type: RecordMessageType,
   times: MessageTimeOptions,
-  result: ActionResultBlock | null = null,
+  extras: OutcomeExtras | null = null,
 ): string {
   const line = `[#${record.sequence}] ${recordSummaries[type]}: ${JSON.stringify(record.payload)}`;
   const failure = type === 'outcome' ? renderActionFailure(record) : null;
+  const approvedAt = extras?.approvedAt ?? null;
+  const result = extras?.result ?? null;
+
+  const approved =
+    approvedAt === null ? null : `Approved ${formatMessageTime(approvedAt, null, times)}.`;
 
   return renderSystemMessage({
     type,
     at: formatMessageTime(record.recordedAt, null, times),
     body: [
       line,
+      ...(approved === null ? [] : [approved]),
       ...(failure === null ? [] : [failure]),
       ...(result === null ? [] : [result.text]),
     ].join('\n'),

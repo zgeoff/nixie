@@ -157,6 +157,7 @@ async function runTokenTurn(
   const opening = plan.opening;
 
   const sent = new Set(opening.batch.records.map((record) => record.sequence));
+  const silent = new Set(opening.batch.silent.map((record) => record.sequence));
 
   const held = renderHeldMessages(opening.batch.records, plan.times, plan.view);
 
@@ -190,6 +191,7 @@ async function runTokenTurn(
               taskID: input.taskID,
               canCut: capabilities.has('live-cut'),
               sent,
+              silent,
               signal: live.signal,
               times: plan.times,
               view: plan.view,
@@ -208,7 +210,7 @@ async function runTokenTurn(
     return {
       turn,
       sent,
-      silent: new Set(opening.batch.silent.map((record) => record.sequence)),
+      silent,
       hasMore: hasMore || opening.images.isCapped,
       notedThrough: note?.throughSequence ?? null,
       images: opening.images.spent,

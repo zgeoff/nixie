@@ -158,6 +158,23 @@ test('it names the tool in the outcome of an action approved past its deadline',
   ]);
 });
 
+test.each<[boolean, number | null, string[]]>([
+  [true, null, ['proposal-1']],
+  [false, null, []],
+  [true, 999_000, []],
+])(
+  'it writes a step wake only for an action that runs in the step, runsInStep %s and deadline %p',
+  async (runsInStep, deadlineAt, expected) => {
+    const ctx = await setupTest();
+
+    await ctx.approve({ runsInStep, deadlineAt });
+
+    const entries = await readRecords(ctx.context.log, { afterSequence: 0, kinds: ['task.wake'] });
+
+    expect(entries.map((entry) => entry.record.payload['actionID'])).toStrictEqual(expected);
+  },
+);
+
 test('it releases the action a proposal held, and runs it once', async () => {
   const ctx = await setupTest();
   const queued = await ctx.queueAllowed();

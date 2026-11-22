@@ -117,7 +117,7 @@ export async function readLogEntry(
 
   const voided = await readVoidedReplies(log.writer.db, [read.record.sequence]);
 
-  if (voided.has(read.record.sequence)) {
+  if (voided.has(read.record.sequence) || !isShownRecord(read.record)) {
     return null;
   }
 
@@ -126,14 +126,19 @@ export async function readLogEntry(
   return buildScannedEntry(read.record, lookup, taskNames).entry;
 }
 
-const entryKinds: readonly RecordKind[] = [...conversationKinds, 'tool_result', 'task_message'];
+const entryKinds: readonly RecordKind[] = [
+  ...conversationKinds,
+  'tool_result',
+  'action.outcome',
+  'task_message',
+];
 
 function pickPageKinds(query: LogPageQuery): readonly RecordKind[] {
   return match(query.role)
     .with(undefined, () => entryKinds)
     .with('owner', () => ['owner_message' as const])
     .with('assistant', () => ['model.reply' as const])
-    .with('tool', () => ['tool_result' as const])
+    .with('tool', () => ['tool_result' as const, 'action.outcome' as const])
     .exhaustive();
 }
 
@@ -217,6 +222,16 @@ async function readPageEntries(
   return scan;
 }
 
+// An action that the runner settled keeps the connector's result on its outcome, which no tool
+// result holds. An action that ran inside the turn has a tool result of its own, so its outcome
+// shows nothing more.
+function isShownRecord(record: LogRecord): boolean {
+  return (
+    record.kind !== 'action.outcome' ||
+    (typeof record.payload['resultSequence'] !== 'number' && record.erasable.status !== 'none')
+  );
+}
+
 function normalizeSearchText(text: string): string {
   return text.normalize('NFKC').toLocaleLowerCase('en-US').trim();
 }
@@ -258,7 +273,7 @@ function buildNextScan(
       throughAt: recordedAt,
     };
 
-    if (filter.voided.has(read.record.sequence)) {
+    if (filter.voided.has(read.record.sequence) || !isShownRecord(read.record)) {
       continue;
     }
 
@@ -356,7 +371,22 @@ function formatEntryText(
     return parseReplyText(fields);
   }
 
+  if (record.kind === 'action.outcome') {
+    return fields === null ? null : formatOutcomeEntry(record, fields, lookup);
+  }
+
   return fields === null ? null : formatToolEntry(record, fields, lookup);
+}
+
+const outcomeHeader = z.object({ tool: z.string(), actionID: z.string(), status: z.string() });
+
+function formatOutcomeEntry(record: LogRecord, fields: JSONObject, lookup: ShortIDLookup): string {
+  const header = outcomeHeader.safeParse(record.payload);
+  const body = formatToolEntry(record, fields, lookup);
+
+  return header.success
+    ? `${header.data.tool} \`${header.data.actionID}\` ${header.data.status}: ${body}`
+    : body;
 }
 
 const replyFields = z.object({ text: z.string() });

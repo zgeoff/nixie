@@ -244,6 +244,12 @@ show it, with each pasted or dropped span in its own block and a marker line for
 search matches only the words, never those blocks. A log read never returns an image's bytes, so
 memory learns only what the user wrote.
 
+An action that the action runner settled keeps the connector's result on its outcome record, which
+no tool result holds, so a read lists that outcome as a tool entry: the tool, the action ID and the
+status, then the result or the reason. An approved `computer.run` shows its exit code, `stdout`,
+`stderr` and seconds this way. An action that ran inside the turn has a tool result of its own, so
+its outcome adds no entry.
+
 A tool entry shows the call's `result` or its `message` alone, so a field the tool records under
 `hidden` never reaches the model, and `moment.read` prints a tool result the same way. A stored
 result of an earlier release can hold a UUID under `momentID`, `itemID`, `momentIDs` or `itemIDs`,
