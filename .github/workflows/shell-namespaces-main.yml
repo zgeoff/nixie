@@ -1,4 +1,4 @@
-# Runs the shell guest's namespace tests on each push to main, as shell-namespaces.yml runs them on a
+# Runs the computer guest's namespace tests on each push to main, as shell-namespaces.yml runs them on a
 # pull request. A push to main keeps each run, so every merged commit is tested.
 name: Shell namespaces main
 
