@@ -4,7 +4,7 @@ import { renderReminderNotice } from './render-reminder-notice';
 
 function setupTest() {
   return {
-    times: { defaultZone: 'Australia/Sydney', now: new Date('2027-03-09T03:30:00Z') },
+    times: { defaultZone: 'Australia/Sydney', now: new Date('2027-03-09T03:00:30Z') },
     record: buildMockLogRecord({
       sequence: 16_040,
       kind: 'trigger.fired',
@@ -47,30 +47,20 @@ test('it renders the note and the name in blocks of their own and the set time o
 });
 
 test.each([
-  [7500, 'It was set for Tue 9 Mar, 14:00, Sydney, and arrives 2 hours 5 minutes late.'],
-  [3600, 'It was set for Tue 9 Mar, 14:00, Sydney, and arrives 1 hour late.'],
-  [60, 'It was set for Tue 9 Mar, 14:00, Sydney, and arrives 1 minute late.'],
-  [2700, 'It was set for Tue 9 Mar, 14:00, Sydney, and arrives 45 minutes late.'],
-])('it says a catch-up that arrives %p seconds late', (lateBySeconds, line) => {
+  ['2027-03-09T05:05:00Z', 'fired 2 h 5 min late'],
+  ['2027-03-09T04:00:00Z', 'fired 1 h late'],
+  ['2027-03-09T03:01:01Z', 'fired 1 min late'],
+])('it says a reminder delivered at %s %s', (deliveredAt, lateness) => {
   const ctx = setupTest();
 
   const text = renderReminderNotice(
     ctx.record,
-    ctx.times,
-    {
-      fire: {
-        ...ctx.fire,
-        isCatchUp: true,
-        firedAt: new Date(Date.parse(ctx.fire.scheduledFor) + lateBySeconds * 1000).toISOString(),
-      },
-      name: 'Dentist',
-      note: 'Call the dentist.',
-      zone: 'Australia/Sydney',
-    },
+    { ...ctx.times, now: new Date(deliveredAt) },
+    { fire: ctx.fire, name: 'Dentist', note: 'Call the dentist.', zone: 'Australia/Sydney' },
     () => 'b2d4',
   );
 
-  expect(text).toInclude(`\n${line}\n`);
+  expect(text).toInclude(`\nIt was set for Tue 9 Mar, 14:00, Sydney, and ${lateness}.\n`);
 });
 
 test('it says a reminder whose version is no longer stored', () => {
