@@ -1,9 +1,9 @@
 import { join } from 'node:path';
 import type { StartWriterOptions, Writer } from '@heynixie/log';
-import type { RunTemplateOptions } from '@heynixie/testing';
+import type { TestTemplateOptions } from '@heynixie/testing';
 
 export interface MigratedDataIO {
-  readonly createTemplate: (options: RunTemplateOptions) => Promise<string>;
+  readonly createTemplate: (options: TestTemplateOptions) => Promise<string>;
 
   readonly startWriter: (options: StartWriterOptions) => Promise<Pick<Writer, 'stop'>>;
 
@@ -22,9 +22,6 @@ export function createMigratedTemplate(io: MigratedTemplateIO): Promise<string> 
     name: 'nixie-migrated-data',
     root: repoRoot,
 
-    // a checkout with other database sources would replace a template in a shared folder while a
-    // start in this checkout copies it
-    parentDir: join(repoRoot, 'node_modules', '.cache', 'nixie-run-templates'),
     inputs: ['libs/db/src/**/*', 'modules/log/src/**/*', 'bun.lock'],
     write: async (building) => {
       const writer = await io.startWriter({ dataDir: building });

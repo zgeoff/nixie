@@ -36,8 +36,8 @@ spent one-shot is out of the list.
 The `trigger_definitions` fold keeps a watermark per definition: the instant after which nixie looks
 for the next fire. The watermark starts at the time of the `trigger.armed` record when the
 definition is new, was withdrawn or has another trigger, and an edit of the instructions alone
-leaves it. A zone change therefore moves the next fire at once, because nixie stores no time of a
-pending fire. A `trigger.fired` moves the watermark to its slot, and a `trigger.skipped` to its
+leaves it. A zone change therefore moves the next fire at once, because nixie never stores the time
+of a pending fire. A `trigger.fired` moves the watermark to its slot, and a `trigger.skipped` to its
 newest slot, so the slots a skip covers never fire. No fold moves a watermark back, and none moves
 it for an `at` trigger.
 
@@ -61,20 +61,45 @@ Each record is written before the core reads for the next event, and its fold ad
 because the seed binds each task before it arms the definition. Writing one key twice fails the
 primary key of `trigger_keys`, and with it the transaction.
 
-`trigger.fired` goes through the tasks module's inbox writer, which wakes the task with the cause
-`event`. Its `isCatchUp` is true when the core's clock is later than the slot by more than the
-catch-up threshold. A `trigger.skipped` lists the 20 newest slots it covers, with the full count.
+The core writes `trigger.fired` through the tasks module's inbox writer, which wakes the task with
+the cause `event` and sets the [hop count](./task-messages.md#the-hop-limit) of messages between
+tasks to 0. It writes `trigger.skipped` through the log module, and a skip wakes nothing. A fire's
+`isCatchUp` is true when the core's clock is later than the slot by more than the catch-up
+threshold. A `trigger.skipped` lists the 20 newest slots it covers, with the full count.
+
+`trigger.fired` holds the hash of the version that a task run of this fire pins, so the task run
+reads the definition the fire was armed with. A skip's reason is one of `too_late`, `catch_up_off`,
+`window_closed`, `still_running` or `task_held`. A skip takes the dedupe key of its newest slot, so
+a definition that is disabled and enabled again inside a skipped slot never fires in it.
 
 After the record of an `at` event, the core writes a `trigger.armed` that withdraws the definition
 and calls `retireOneShot`, which puts the task's hash out of force, in the same transaction. The
 core writes `trigger.delivered` only when the batch's cursor differs from the stored one.
+
+### Crashes, clock changes and restores
+
+The conversation task exists before any source starts, so a fire for it never finds the task
+missing. When `deliver` throws or nixie dies before the commit, nothing is written, and the source
+builds the same events with the same keys at its next tick. When the clock moves back, nixie never
+delivers a fire twice. A restored backup holds its keys and watermarks, so nixie never repeats a
+fire it holds, and a fire due after the backup is a missed fire. Until the first seed corrects the
+armed rows, the core drops each event whose hash differs from its row. `trigger_keys` grows by one
+row per fire or skip, so a schedule that fires every few minutes adds tens of thousands of rows a
+year.
+
+### Modules
+
+The triggers module imports the tasks module, the log module and the clock lib, and the definitions
+module imports the triggers module, so the imports form no cycle. A trigger source that calls an
+outside system is an adapter named `trigger-<system>`, or it calls that system through a connector.
 
 ## The spent one-shot
 
 A one-shot is spent when `trigger_keys` holds its dedupe key. nixie stores the fact nowhere else.
 Every seed asks `readSpentOneShots` and leaves a spent one-shot out of both hook lists, so the file
 of a spent one-shot stays as written and a disabled-then-enabled one does not fire again. An edit of
-the `at` to another instant gives another key, so the one-shot fires at the new instant.
+the `at` to another instant gives another key, so the one-shot fires at the new instant. An edit to
+an instant whose key is taken makes the one-shot spent at the next seed.
 
 ## The schedule shape
 
@@ -138,9 +163,9 @@ busy, and `hours` belongs to one reminder or task, never to the user.
 ## Fire times
 
 `pickNextFire` is pure code over the runtime's zone data. It returns the first slot strictly after a
-watermark, with the end of the window of an older window schedule and the dedupe key. There is no
-search limit of days: a schedule is refused when it has no fire within the check's horizon, and a
-rule that never fires again, such as the 30th of February, returns null.
+watermark, with the end of the window of an older window schedule and the dedupe key. The search has
+no limit in days: a schedule is refused when it has no fire within the check's horizon, and a rule
+that never fires again, such as the 30th of February, returns null.
 
 Recurrence expands in one function, `pickNextWallTime`, which wraps the `rrule-temporal` library.
 The function reads and returns local wall times and gives the rule no time zone, because the library

@@ -2,7 +2,7 @@ import { expect, test } from 'bun:test';
 import { writeRecordsInTransaction } from '@heynixie/log';
 import type { ProposalAnswerInput } from '@heynixie/proposals';
 import { answerProposal, buildProposalsProjection } from '@heynixie/proposals';
-import { buildTestClock } from '@heynixie/testing';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import invariant from 'tiny-invariant';
 import { mapMemoryProposalRecord } from '../proposal/map-memory-proposal-record';
 import { buildMockProvenance } from '../test-utils/build-mock-provenance';
@@ -12,7 +12,7 @@ import { startTestMemory } from '../test-utils/start-test-memory';
 import { makeMemoryProposalHandler } from './make-memory-proposal-handler';
 
 async function setupTest() {
-  const clock = buildTestClock(Date.parse('2026-11-02T09:00:00Z'));
+  const clock = createFakeClock({ startMs: Date.parse('2026-11-02T09:00:00Z') });
 
   const memory = await startTestMemory({ gate: { clock } });
 

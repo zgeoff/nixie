@@ -1,9 +1,10 @@
 import { expect, test } from 'bun:test';
-import { buildTestClock, waitForCondition } from '@heynixie/testing';
+import { waitForCondition } from '@heynixie/testing';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import { runWithRetry } from './run-with-retry';
 
 test('it runs the step again after each failure until it succeeds, logging each failure', async () => {
-  const clock = buildTestClock(1_700_000_000_000);
+  const clock = createFakeClock({ startMs: 1_700_000_000_000 });
   const lines: unknown[] = [];
   const failures = [new Error('impd does not answer'), new Error('impd does not answer')];
 
@@ -23,11 +24,11 @@ test('it runs the step again after each failure until it succeeds, logging each 
     },
   );
 
-  await waitForCondition(() => clock.countSleepers() === 1);
+  await waitForCondition(() => clock.countPending() === 1);
 
   clock.advance(1000);
 
-  await waitForCondition(() => clock.countSleepers() === 1);
+  await waitForCondition(() => clock.countPending() === 1);
 
   clock.advance(2000);
 
@@ -52,7 +53,7 @@ test('it runs the step again after each failure until it succeeds, logging each 
 });
 
 test('it ends the wait between attempts once the signal aborts', async () => {
-  const clock = buildTestClock(1_700_000_000_000);
+  const clock = createFakeClock({ startMs: 1_700_000_000_000 });
 
   const stopping = new AbortController();
 
@@ -63,7 +64,7 @@ test('it ends the wait between attempts once the signal aborts', async () => {
     clock,
   });
 
-  await waitForCondition(() => clock.countSleepers() === 1);
+  await waitForCondition(() => clock.countPending() === 1);
 
   stopping.abort(new Error('nixie is stopping'));
 
@@ -83,7 +84,7 @@ test('it stops retrying once the signal aborts', () => {
       step: 'add_images',
       signal: stopping.signal,
       log: () => {},
-      clock: buildTestClock(1_700_000_000_000),
+      clock: createFakeClock({ startMs: 1_700_000_000_000 }),
       firstDelayMs: 60_000,
     },
   );

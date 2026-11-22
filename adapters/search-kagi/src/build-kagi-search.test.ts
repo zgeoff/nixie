@@ -1,5 +1,5 @@
 import { expect, mock, test } from 'bun:test';
-import { mockServer } from '@heynixie/mock-server';
+import { network } from '@heynixie/mock-server';
 import { HttpResponse, http } from 'msw';
 import { buildKagiSearch } from './build-kagi-search';
 import { kagiAPIURL } from './mocks/kagi-api-url';
@@ -92,7 +92,7 @@ test('it sends the sites as lens.sites_included and the freshness as lens.time_r
   const ctx = setupTest();
   const received = mock<(body: unknown) => void>();
 
-  mockServer.use(
+  network.use(
     http.post(`${kagiAPIURL}/search`, async (info) => {
       const body: unknown = await info.request.clone().json();
 
@@ -121,7 +121,7 @@ test('it sends no lens for a search of any site at any time', async () => {
   const ctx = setupTest();
   const received = mock<(body: unknown) => void>();
 
-  mockServer.use(
+  network.use(
     http.post(`${kagiAPIURL}/search`, async (info) => {
       const body: unknown = await info.request.clone().json();
 
@@ -217,7 +217,7 @@ test('it returns only the hits published within the freshness the search sets', 
 test('it fails with a reason that never holds the key when the error Kagi sends repeats the key', async () => {
   const ctx = setupTest();
 
-  mockServer.use(
+  network.use(
     http.post(`${kagiAPIURL}/search`, () =>
       HttpResponse.json(
         { error: [{ code: '2', message: 'Unknown key kagi-key-a' }] },
@@ -257,7 +257,7 @@ test("it fails with Kagi's error, which never quotes the key, when Kagi refuses 
 test('it fails with the status when Kagi answers with an error it does not describe', async () => {
   const ctx = setupTest();
 
-  mockServer.use(
+  network.use(
     http.post(`${kagiAPIURL}/search`, () => new HttpResponse('upstream down', { status: 503 })),
   );
 
@@ -274,7 +274,7 @@ test('it fails with the status when Kagi answers with an error it does not descr
 test('it fails when Kagi answers 200 with a body that holds no results', async () => {
   const ctx = setupTest();
 
-  mockServer.use(http.post(`${kagiAPIURL}/search`, () => HttpResponse.json({ data: null })));
+  network.use(http.post(`${kagiAPIURL}/search`, () => HttpResponse.json({ data: null })));
 
   const reply = await ctx.provider.readHits({
     query: 'tide times',
@@ -292,7 +292,7 @@ test('it fails when Kagi answers 200 with a body that holds no results', async (
 test('it fails when Kagi cannot be reached', async () => {
   const ctx = setupTest();
 
-  mockServer.use(http.post(`${kagiAPIURL}/search`, () => HttpResponse.error()));
+  network.use(http.post(`${kagiAPIURL}/search`, () => HttpResponse.error()));
 
   const reply = await ctx.provider.readHits({
     query: 'tide times',

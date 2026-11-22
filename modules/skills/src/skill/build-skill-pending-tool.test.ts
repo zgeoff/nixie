@@ -5,8 +5,8 @@ import { join } from 'node:path';
 import { createPathSource, runSeed } from '@heynixie/definitions';
 import { buildTestTaskSeed } from '@heynixie/definitions/test-utils';
 import { readRecords, startWriter, writeRecords } from '@heynixie/log';
-import { buildTestClock } from '@heynixie/testing';
 import { buildToolRegistry } from '@heynixie/tools';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import invariant from 'tiny-invariant';
 import { skillsWriteApprovedCodec } from '../write/skills-write-approved-codec';
 import { skillsWriteProposedCodec } from '../write/skills-write-proposed-codec';
@@ -70,7 +70,7 @@ test('it lists each proposal that skill_write made, oldest first, as a new skill
   const registry = buildToolRegistry(
     buildSkillTools({
       log: ctx.log,
-      clock: buildTestClock(proposedAt + 3 * 24 * 60 * 60 * 1000),
+      clock: createFakeClock({ startMs: proposedAt + 3 * 24 * 60 * 60 * 1000 }),
       readInForce: () => seeded.inForce,
       runInForceSeed: () => Promise.resolve(),
       refreshDefinitions: () => Promise.resolve(seeded.inForce),
@@ -155,7 +155,7 @@ test('it lists each proposal that skill_write made, oldest first, as a new skill
 test('it declares read, runs direct, and writes no record, so it never changes a proposal', async () => {
   const ctx = await setupTest();
 
-  const clock = buildTestClock(Date.now());
+  const clock = createFakeClock({ startMs: Date.now() });
 
   const registry = buildToolRegistry(
     buildSkillTools({
@@ -233,7 +233,7 @@ test('it leaves out a proposal that an approval, a rejection or a lapse closed',
   const firstAt = Date.UTC(2026, 2, 3, 9, 30);
   const laterAt = firstAt + 10 * 24 * 60 * 60 * 1000;
   const now = firstAt + 15 * 24 * 60 * 60 * 1000;
-  const clock = buildTestClock(now);
+  const clock = createFakeClock({ startMs: now });
 
   onTestFinished(() => setSystemTime());
 

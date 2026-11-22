@@ -4,7 +4,7 @@ This spike runs a Claude Agent SDK tool call from an imp with egress `none` to n
 through a reverse forward on the imp's loopback, and compares it with the bridge-address route. It
 backs the tools route in
 [the sandboxes doc](../../docs/architecture/connectors/sandboxes.md#the-tool-route) and the
-[sandbox adapter design](../../docs/design/platform/connectors/sandbox-adapter.md).
+[sandboxes doc](../../docs/architecture/connectors/sandboxes.md).
 
 ## Question
 

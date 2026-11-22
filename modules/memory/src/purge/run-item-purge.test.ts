@@ -9,7 +9,7 @@ import {
 } from '@heynixie/log';
 import { readTestRecordKeyRows } from '@heynixie/log/test-utils';
 import { startFaultPointFailure } from '@heynixie/tasks/test-utils';
-import { buildTestClock } from '@heynixie/testing';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import { buildMockProvenance } from '../test-utils/build-mock-provenance';
 import type { QuotedProposal } from '../test-utils/create-quoted-proposal';
 import { createQuotedProposal } from '../test-utils/create-quoted-proposal';
@@ -24,7 +24,7 @@ import { writeOwnerMessageRecord } from '../test-utils/write-owner-message-recor
 import type { MemoryTables } from '../types';
 
 async function setupTest() {
-  const clock = buildTestClock(Date.parse('2026-11-02T09:00:00Z'));
+  const clock = createFakeClock({ startMs: Date.parse('2026-11-02T09:00:00Z') });
 
   const memory = await startTestMemory({ gate: { clock }, keyStoreBusyTimeoutMs: 50 });
 

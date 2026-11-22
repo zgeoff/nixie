@@ -1,5 +1,5 @@
 import { writeRecords } from '@heynixie/log';
-import { buildTestClock } from '@heynixie/testing';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import { startDataLog } from './start-data-log';
 import type { SpawnedNixie } from './start-spawned-nixie';
 
@@ -10,7 +10,7 @@ export async function writeSeedMessages(
   const testLog = await startDataLog({
     dataDir: nixie.dataDir,
     deploymentKey: nixie.deploymentKey,
-    clock: buildTestClock(1_000_000),
+    clock: createFakeClock({ startMs: 1_000_000 }),
   });
 
   try {

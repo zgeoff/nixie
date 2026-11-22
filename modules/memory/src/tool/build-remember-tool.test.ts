@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { buildTestClock } from '@heynixie/testing';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import invariant from 'tiny-invariant';
 import { startTestMemory } from '../test-utils';
 import { buildMockCheckerAnswer } from '../test-utils/build-mock-checker-answer';
@@ -13,7 +13,7 @@ test('it stores a backed fact with the end time it is given, as a time in UTC', 
   const memory = await startTestMemory({
     gate: {
       check: () => Promise.resolve(buildMockCheckerAnswer()),
-      clock: buildTestClock(Date.parse('2026-10-19T08:30:00Z')),
+      clock: createFakeClock({ startMs: Date.parse('2026-10-19T08:30:00Z') }),
     },
   });
 
@@ -79,7 +79,7 @@ test('it refuses an end time that names no real day, and writes nothing', async 
 
 test('it answers an end time that has passed with a tool error', async () => {
   const memory = await startTestMemory({
-    gate: { clock: buildTestClock(Date.parse('2026-10-26T08:30:00Z')) },
+    gate: { clock: createFakeClock({ startMs: Date.parse('2026-10-26T08:30:00Z') }) },
   });
 
   const outcome = await buildRememberTool(memory.store).run(

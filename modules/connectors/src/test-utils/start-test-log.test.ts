@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test';
 import { logProjections, readRecords, writeRecords } from '@heynixie/log';
-import { buildTestClock } from '@heynixie/testing';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import { startTestLog } from './start-test-log';
 
 test('it starts a log that writes and reads records, with the log projections', async () => {
@@ -17,7 +17,9 @@ test('it starts a log that writes and reads records, with the log projections', 
 });
 
 test("it starts the log's writer on the clock it is given", async () => {
-  const log = await startTestLog(buildTestClock(Date.parse('2026-11-02T09:00:00.000Z')));
+  const log = await startTestLog(
+    createFakeClock({ startMs: Date.parse('2026-11-02T09:00:00.000Z') }),
+  );
 
   expect(log.writer.clock.now()).toBe(Date.parse('2026-11-02T09:00:00.000Z'));
 });

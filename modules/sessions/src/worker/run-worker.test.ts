@@ -5,9 +5,10 @@ import { modelsConfigSchema } from '@heynixie/models';
 import { sandboxCreatedCodec } from '@heynixie/sandbox';
 import { createPlanLoginsHolder, spendProjections } from '@heynixie/spend';
 import { buildStubSpendGateway } from '@heynixie/spend/test-utils';
-import { buildTestClock, waitForCondition } from '@heynixie/testing';
+import { waitForCondition } from '@heynixie/testing';
 import type { ToolOutcome, ToolStepHold } from '@heynixie/tools';
 import { buildMockToolContext, buildMockToolDefinition } from '@heynixie/tools/test-utils';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import invariant from 'tiny-invariant';
 import { startTestSessionHost } from '../test-utils/start-test-session-host';
 import { startWorkerTool } from './start-worker-tool';
@@ -40,7 +41,7 @@ interface SetupConfig {
 }
 
 async function setupTest(config: SetupConfig = {}) {
-  const clock = buildTestClock(1_000_000);
+  const clock = createFakeClock({ startMs: 1_000_000 });
 
   const fetchTool = buildMockToolDefinition({
     name: 'notes_read',
@@ -797,7 +798,7 @@ test('it frees the tool run, the stops, the sandbox and the slot when the end re
   const ended = await ctx.readKinds(['worker.run_ended']);
 
   const stoppedRuns = ctx.stoppedRuns.length;
-  const sleepers = ctx.clock.countSleepers();
+  const sleepers = ctx.clock.countPending();
 
   const second = await ctx.callWorker({ question: 'Second?' });
 

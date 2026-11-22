@@ -41,5 +41,8 @@
     "kysely": "catalog:",
     "tiny-invariant": "catalog:",
     "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@zgeoff/testing": "catalog:"
   }
 }

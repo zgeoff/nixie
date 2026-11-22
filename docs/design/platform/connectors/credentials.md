@@ -46,12 +46,12 @@ A connector never reads a token. It calls the service through `fetcher`, which a
 on the host and refuses any host outside the credential's `hosts`. A fetcher with no credential, for
 a service that takes none, makes the same checks and adds nothing. The fetcher drops the credential
 on a redirect to another host. On every hop it resolves the host, refuses any
-[non-public address](web-fetch.md#non-public-addresses), and connects to the address it checked. A
-service on a private network passes only when the fetcher's `pairing` names its host with an allowed
-address range, the hop goes to that host, and the resolved address falls in that range. The caller
-builds the pairing from the service's configuration, with or without a credential. **Why:** a
-connector that follows a link from an email must never carry your token to the address the link
-names.
+[non-public address](../../../architecture/connectors/web-fetch.md#the-fetcher), and connects to the
+address it checked. A service on a private network passes only when the fetcher's `pairing` names
+its host with an allowed address range, the hop goes to that host, and the resolved address falls in
+that range. The caller builds the pairing from the service's configuration, with or without a
+credential. **Why:** a connector that follows a link from an email must never carry your token to
+the address the link names.
 
 A service that speaks no HTTP, such as atc's TCP listener, takes its credential through `socket`.
 The store makes the same address checks as the fetcher, then replaces the placeholder in the first
@@ -129,14 +129,14 @@ credential outside the store: it lives in the model gateway, as
 [the model gateway's plan route](../../../architecture/policy/model-gateway.md#the-plan-route)
 gives. A request the service rejects as unauthorised gets one refresh and one retry, and a second
 rejection marks the credential failing. Any other failure goes to the
-[action queue](../core/actions.md) and its reconciliation. The store runs one refresh per credential
-at a time, and writes a rotated refresh token in the same transaction as the refresh's record, so a
-crash after the commit never loses a rotated token. A crash before it loses the rotated token, and
-when the provider has spent the old one, the next refresh marks the credential `needs_consent`.
-Every OAuth token refreshes at least every 7 days, by default, so a quiet connection never lapses. A
-refresh that fails for a while, such as during a provider outage, backs off as a poll does in the
-[trigger source](../channels/trigger-source.md#polls), and marks the credential failing after 3
-failures in a row.
+[action queue](../../../architecture/core/actions.md) and its reconciliation. The store runs one
+refresh per credential at a time, and writes a rotated refresh token in the same transaction as the
+refresh's record, so a crash after the commit never loses a rotated token. A crash before it loses
+the rotated token, and when the provider has spent the old one, the next refresh marks the
+credential `needs_consent`. Every OAuth token refreshes at least every 7 days, by default, so a
+quiet connection never lapses. A refresh that fails for a while, such as during a provider outage,
+backs off as a poll does in the [trigger source](../channels/trigger-source.md#polls), and marks the
+credential failing after 3 failures in a row.
 
 A refresh the provider refuses for good, such as `invalid_grant`, marks the credential
 `needs_consent`, disables the tools and polls that need it, and puts an item in the client that
@@ -203,5 +203,6 @@ restart resumes this cleanup, and the removal shows as pending until every copy 
 - **Forget** applies to a credential in the database. It makes one attempt at the provider's
   revocation, an action with an outcome of confirmed, refused or unknown, then destroys the
   credential's key, including the copies in every registered backup, as
-  [forgetting a memory item](../memory/store.md) does. The client shows the local erasure apart from
-  the provider's revocation, and never reports a revocation without a confirmed outcome.
+  [forgetting a memory item](../../../architecture/memory/store.md) does. The client shows the local
+  erasure apart from the provider's revocation, and never reports a revocation without a confirmed
+  outcome.

@@ -3,7 +3,7 @@ import { readTestProjectionDrift } from '@heynixie/log/test-utils';
 import type { TaskState, TasksContext } from '@heynixie/tasks';
 import { runRecovery } from '@heynixie/tasks';
 import type { TestTask } from '@heynixie/tasks/test-utils';
-import { buildTestClock } from '@heynixie/testing';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import { startDataLog } from './start-data-log';
 import type { RecoveredState, SpawnedNixie } from './start-spawned-nixie';
 
@@ -30,7 +30,7 @@ export async function runOracle(nixie: SpawnedNixie): Promise<OracleReport> {
   const testLog = await startDataLog({
     dataDir: nixie.dataDir,
     deploymentKey: nixie.deploymentKey,
-    clock: buildTestClock(nixie.harness.now()),
+    clock: createFakeClock({ startMs: nixie.harness.now() }),
   });
 
   const context = testLog.context;

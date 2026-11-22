@@ -36,11 +36,11 @@ change to it is a record. It holds:
 
 The registered operation fixes the proposal's kind, and neither model output nor a client request
 changes it. Every kind shares the operation hash, the identity check, the lapse, rejection and
-deferral. An action goes to the [action queue](../core/actions.md), a memory write applies an item
-version under the [memory write contract](../memory/writes.md), and an internal change to policy, a
-mandate or a job runs its registered host mutation. A memory write reaches review through the same
-rules as an action: its tool declares `memory_write`, your rules decide first, and the memory gate
-decides a write that no rule matches, as the
+deferral. An action goes to the [action queue](../../../architecture/core/actions.md), a memory
+write applies an item version under the [memory write contract](../memory/writes.md), and an
+internal change to policy, a mandate or a job runs its registered host mutation. A memory write
+reaches review through the same rules as an action: its tool declares `memory_write`, your rules
+decide first, and the memory gate decides a write that no rule matches, as the
 [memory writes design](../memory/writes.md#the-gate-as-a-rule-lookup) covers. A memory proposal
 carries its operation, remember or retire, its quote, and the exact item and version it targets. Its
 review reason is not one of the [prompt causes](decision-point.md#prompt-causes), so memory review
@@ -93,13 +93,14 @@ nixie accepts the answer only when the hash matches the proposal's current hash 
 from your identity on that channel. **Why:** the kind's current hash can differ from the hash a
 screen showed, so a stale screen never approves a different operation. A closed proposal never
 reopens: an approved action that newly falls in the always-ask set waits on a new proposal, as
-[policy before each attempt](../core/actions.md#policy-before-each-attempt) sets.
+[policy before each attempt](../../../architecture/core/actions.md#policy-before-each-attempt) sets.
 
 The approval record holds the proposal ID, the action hash, the rule hash for an "always allow", the
 answer, the channel and device, the check used, and the chosen option. The host checks the current
 operation, policy, target version and permitted choice, then consumes the approval by kind:
 
-- an action consumes it in the transaction that queues it, under [actions](../core/actions.md);
+- an action consumes it in the transaction that queues it, under
+  [actions](../../../architecture/core/actions.md);
 - a memory write consumes it in the transaction that applies the item version, its notice and its
   receipt;
 - an internal change consumes it with its registered host mutation.

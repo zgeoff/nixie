@@ -1,7 +1,7 @@
 import type { Log, Writer } from '@heynixie/log';
 import { logProjections, withWriteTransaction } from '@heynixie/log';
 import { startTestLog } from '@heynixie/log/test-utils';
-import type { TestClock } from '@heynixie/testing';
+import type { FakeClock } from '@zgeoff/testing/clock';
 import { chargeBudgetsInTransaction } from '../charge/charge-budgets-in-transaction';
 import { creditBudgetChargesInTransaction } from '../charge/credit-budget-charges-in-transaction';
 import type { CreditTarget } from '../charge/credit-budget-charges-in-transaction';
@@ -13,7 +13,7 @@ import { seedBudgetInForce } from './seed-budget-in-force';
 export interface TestBudgets {
   readonly writer: Writer;
   readonly log: Log;
-  readonly clock: TestClock;
+  readonly clock: FakeClock;
   readonly context: BudgetsContext;
   readonly charge: (request: ChargeRequest) => Promise<ChargeResult>;
   readonly credit: (target: CreditTarget) => Promise<number>;

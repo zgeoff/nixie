@@ -1,15 +1,14 @@
 import { join } from 'node:path';
-import { createRunTemplate } from '@heynixie/testing';
+import { readTestTemplate } from '@heynixie/testing';
 
 const repoRoot = join(import.meta.dir, '..', '..', '..', '..');
 
 // The suites run the job as the image does, from its bundle, so the e2e and restic lanes fill the
 // template before their tests start, and each suite reads it.
 export async function readBackupJobBundle(): Promise<string> {
-  const directory = await createRunTemplate({
+  const directory = await readTestTemplate({
     name: 'nixie-backup-job',
     root: repoRoot,
-    parentDir: join(repoRoot, 'node_modules', '.cache', 'nixie-test-bundles'),
     inputs: ['apps/backup-job/src/**/*', 'libs/*/src/**/*', '*/*/package.json', 'bun.lock'],
     write: async (building) => {
       await Bun.build({

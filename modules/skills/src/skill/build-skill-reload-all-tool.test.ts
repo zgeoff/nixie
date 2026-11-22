@@ -5,8 +5,8 @@ import { join } from 'node:path';
 import { createPathSource, loadSkillVersions, runSeed } from '@heynixie/definitions';
 import { buildTestTaskSeed } from '@heynixie/definitions/test-utils';
 import { startWriter } from '@heynixie/log';
-import { buildTestClock } from '@heynixie/testing';
 import { buildToolRegistry } from '@heynixie/tools';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import invariant from 'tiny-invariant';
 import { buildSkillReloadAllTool } from './build-skill-reload-all-tool';
 import { loadSkillPin } from './load-skill-pin';
@@ -68,7 +68,7 @@ test('it reloads every skill on the list, with a result the output schema accept
   const registry = buildToolRegistry([
     buildSkillReloadAllTool({
       log: ctx.log,
-      clock: buildTestClock(0),
+      clock: createFakeClock({ startMs: 0 }),
       readInForce: () => seeded.inForce,
       runInForceSeed: () => Promise.resolve(),
       refreshDefinitions: () => Promise.resolve(seeded.inForce),
@@ -139,7 +139,7 @@ test('it moves a pinned skill to the version a later seed put in force', async (
 
   const tool = buildSkillReloadAllTool({
     log: ctx.log,
-    clock: buildTestClock(0),
+    clock: createFakeClock({ startMs: 0 }),
     readInForce: () => first.inForce,
     runInForceSeed: () => Promise.resolve(),
     refreshDefinitions: async () => {

@@ -7,7 +7,8 @@ import type { LogFields } from '@heynixie/logger';
 import { buildImpSandboxAdapter } from '@heynixie/sandbox-imp';
 import { startFakeImp, startSharedImpd } from '@heynixie/sandbox-imp/test-utils';
 import { setupTestRecorder } from '@heynixie/sandbox/test-utils';
-import { buildTestClock, waitForCondition } from '@heynixie/testing';
+import { waitForCondition } from '@heynixie/testing';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import { buildCleanup } from '../server/build-cleanup';
 import { startServerHealth } from '../server/start-server-health';
 import { buildStartState } from '../utils/build-start-state';
@@ -46,7 +47,7 @@ async function setupTest() {
 
   stack.defer(() => writer.stop());
 
-  const clock = buildTestClock(0);
+  const clock = createFakeClock({ startMs: 0 });
   const cleanup = buildCleanup();
 
   stack.defer(() => cleanup.stop());

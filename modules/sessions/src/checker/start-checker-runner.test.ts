@@ -6,7 +6,7 @@ import {
   setupTestRecorder,
 } from '@heynixie/sandbox/test-utils';
 import { buildStubSpendGateway } from '@heynixie/spend/test-utils';
-import { buildTestClock } from '@heynixie/testing';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import { startCheckerRunner } from './start-checker-runner';
 
 test('it starts the checker in a checker sandbox with a model grant, no egress and no tool route', async () => {
@@ -18,7 +18,7 @@ test('it starts the checker in a checker sandbox with a model grant, no egress a
     image: 'nixie-conversation-0123456789ab',
     limits: { vcpus: 1, memoryMiB: 1024, diskMiB: 2048 },
     command: { argv: ['bun', '--no-install', '/app/conversation/check.js'], env: {} },
-    clock: buildTestClock(1_700_000_000_000),
+    clock: createFakeClock({ startMs: 1_700_000_000_000 }),
     log: () => {},
   });
 
@@ -44,7 +44,7 @@ test('it keeps the checker sandbox when its spec still matches', async () => {
     image: 'nixie-conversation-0123456789ab',
     limits: { vcpus: 1, memoryMiB: 1024, diskMiB: 2048 },
     command: { argv: ['bun', '--no-install', '/app/conversation/check.js'], env: {} },
-    clock: buildTestClock(1_700_000_000_000),
+    clock: createFakeClock({ startMs: 1_700_000_000_000 }),
     log: () => {},
   });
 
@@ -54,7 +54,7 @@ test('it keeps the checker sandbox when its spec still matches', async () => {
     image: 'nixie-conversation-0123456789ab',
     limits: { vcpus: 1, memoryMiB: 1024, diskMiB: 2048 },
     command: { argv: ['bun', '--no-install', '/app/conversation/check.js'], env: {} },
-    clock: buildTestClock(1_700_000_000_000),
+    clock: createFakeClock({ startMs: 1_700_000_000_000 }),
     log: () => {},
   });
 
@@ -72,7 +72,7 @@ test('it replaces the checker sandbox when the image changed', async () => {
     image: 'nixie-conversation-0123456789ab',
     limits: { vcpus: 1, memoryMiB: 1024, diskMiB: 2048 },
     command: { argv: ['bun', '--no-install', '/app/conversation/check.js'], env: {} },
-    clock: buildTestClock(1_700_000_000_000),
+    clock: createFakeClock({ startMs: 1_700_000_000_000 }),
     log: () => {},
   });
 
@@ -82,7 +82,7 @@ test('it replaces the checker sandbox when the image changed', async () => {
     image: 'nixie-conversation-ba9876543210',
     limits: { vcpus: 1, memoryMiB: 1024, diskMiB: 2048 },
     command: { argv: ['bun', '--no-install', '/app/conversation/check.js'], env: {} },
-    clock: buildTestClock(1_700_000_000_000),
+    clock: createFakeClock({ startMs: 1_700_000_000_000 }),
     log: () => {},
   });
 
@@ -105,7 +105,7 @@ test('it logs a failed destroy of the old checker sandbox and still starts the c
     image: 'nixie-conversation-0123456789ab',
     limits: { vcpus: 1, memoryMiB: 1024, diskMiB: 2048 },
     command: { argv: ['bun', '--no-install', '/app/conversation/check.js'], env: {} },
-    clock: buildTestClock(1_700_000_000_000),
+    clock: createFakeClock({ startMs: 1_700_000_000_000 }),
     log: () => {},
   });
 
@@ -117,7 +117,7 @@ test('it logs a failed destroy of the old checker sandbox and still starts the c
     image: 'nixie-conversation-ba9876543210',
     limits: { vcpus: 1, memoryMiB: 1024, diskMiB: 2048 },
     command: { argv: ['bun', '--no-install', '/app/conversation/check.js'], env: {} },
-    clock: buildTestClock(1_700_000_000_000),
+    clock: createFakeClock({ startMs: 1_700_000_000_000 }),
     log: (event) => {
       events.push(event);
     },
@@ -152,7 +152,7 @@ test('it sends a check to the base URL with the checker sandbox name and the pro
     image: 'nixie-conversation-0123456789ab',
     limits: { vcpus: 1, memoryMiB: 1024, diskMiB: 2048 },
     command: { argv: ['bun', '--no-install', '/app/conversation/check.js'], env: {} },
-    clock: buildTestClock(1_700_000_000_000),
+    clock: createFakeClock({ startMs: 1_700_000_000_000 }),
     gateway: buildStubSpendGateway(),
     log: () => {},
   });
@@ -187,7 +187,7 @@ test('it sends a check to the base URL of the profile when no gateway counts', a
     image: 'nixie-conversation-0123456789ab',
     limits: { vcpus: 1, memoryMiB: 1024, diskMiB: 2048 },
     command: { argv: ['bun', '--no-install', '/app/conversation/check.js'], env: {} },
-    clock: buildTestClock(1_700_000_000_000),
+    clock: createFakeClock({ startMs: 1_700_000_000_000 }),
     log: () => {},
   });
 

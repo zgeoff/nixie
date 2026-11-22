@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test';
 import { readRecordKeys, readRecords } from '@heynixie/log';
-import { buildTestClock } from '@heynixie/testing';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import invariant from 'tiny-invariant';
 import { buildMockWriteCaller } from '../test-utils/build-mock-write-caller';
 import { createProposal } from '../test-utils/create-proposal';
@@ -36,7 +36,7 @@ test('it applies an approved proposal as proposed, keeping its outside source', 
 
 test('it sets the end time a proposal holds on the item you approve', async () => {
   const memory = await startTestMemory({
-    gate: { clock: buildTestClock(Date.parse('2026-10-19T08:30:00Z')) },
+    gate: { clock: createFakeClock({ startMs: Date.parse('2026-10-19T08:30:00Z') }) },
   });
 
   await memory.store.writes.remember({
@@ -66,7 +66,7 @@ test('it sets the end time a proposal holds on the item you approve', async () =
 });
 
 test('it refuses an approval at the end time a proposal holds as lapsed, and writes no item', async () => {
-  const clock = buildTestClock(Date.parse('2026-10-19T08:30:00Z'));
+  const clock = createFakeClock({ startMs: Date.parse('2026-10-19T08:30:00Z') });
 
   const memory = await startTestMemory({ gate: { clock } });
 
@@ -97,7 +97,7 @@ test('it refuses an approval at the end time a proposal holds as lapsed, and wri
 });
 
 test('it refuses as lapsed an approval whose end time passes after the proposal is read, and writes no item', async () => {
-  const clock = buildTestClock(Date.parse('2026-10-25T23:59:00Z'));
+  const clock = createFakeClock({ startMs: Date.parse('2026-10-25T23:59:00Z') });
 
   const memory = await startTestMemory({ gate: { clock } });
 
@@ -133,7 +133,7 @@ test('it refuses as lapsed an approval whose end time passes after the proposal 
 
 test('it keeps the end time of the item you approve a proposal with none as a revision of', async () => {
   const memory = await startTestMemory({
-    gate: { clock: buildTestClock(Date.parse('2026-10-19T08:30:00Z')) },
+    gate: { clock: createFakeClock({ startMs: Date.parse('2026-10-19T08:30:00Z') }) },
   });
 
   const item = await memory.store.remember({
@@ -163,7 +163,7 @@ test('it keeps the end time of the item you approve a proposal with none as a re
 
 test("it keeps the item's end time when you approve an edit proposed without one", async () => {
   const memory = await startTestMemory({
-    gate: { clock: buildTestClock(Date.parse('2026-10-19T08:30:00Z')) },
+    gate: { clock: createFakeClock({ startMs: Date.parse('2026-10-19T08:30:00Z') }) },
   });
 
   const item = await memory.store.remember({
@@ -200,7 +200,7 @@ test("it keeps the item's end time when you approve an edit proposed without one
 
 test('it clears the end time of the item when you approve an edit proposed with a null end time', async () => {
   const memory = await startTestMemory({
-    gate: { clock: buildTestClock(Date.parse('2026-10-19T08:30:00Z')) },
+    gate: { clock: createFakeClock({ startMs: Date.parse('2026-10-19T08:30:00Z') }) },
   });
 
   const item = await memory.store.remember({
@@ -892,7 +892,7 @@ test('it refuses a second approval of one proposal', async () => {
 });
 
 test("it refuses an approval after the proposal's lapse time", async () => {
-  const clock = buildTestClock(1_000_000);
+  const clock = createFakeClock({ startMs: 1_000_000 });
 
   const memory = await startTestMemory({
     gate: {
@@ -1017,7 +1017,7 @@ test('it retires an item when you approve a retirement proposal', async () => {
 });
 
 test('it holds an approval whose text a live item matches when more lapsed items rank above that item', async () => {
-  const clock = buildTestClock(Date.parse('2026-10-19T09:00:00Z'));
+  const clock = createFakeClock({ startMs: Date.parse('2026-10-19T09:00:00Z') });
 
   const memory = await startTestMemory({ gate: { clock } });
 

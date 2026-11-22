@@ -1,6 +1,6 @@
 import { mkdir, readdir, rm } from 'node:fs/promises';
 import { join } from 'node:path';
-import { createRunTemplate } from '@heynixie/testing';
+import { readTestTemplate } from '@heynixie/testing';
 import { $ } from 'bun';
 import { z } from 'zod';
 import { readPreviousReleaseTag } from './read-previous-release-tag';
@@ -54,10 +54,10 @@ export async function readPreviousReleaseBuild(
 
   const state: { times: PreviousReleaseTimes | null } = { times: null };
 
-  const directory = await createRunTemplate({
+  const directory = await readTestTemplate({
     name: `nixie-previous-release-${tag}`,
+    checkout: location.parentDir,
     root: sourceRoot,
-    parentDir: location.parentDir,
     inputs: ['apps/server/src/test-utils/read-previous-release-build.ts'],
     write: async (building) => {
       state.times = await writeBuildOfTag(location, tag, join(building, 'out'));

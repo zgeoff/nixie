@@ -3,9 +3,10 @@ import { readRecordAttachments, readRecords, removeRecordKey, writeRecords } fro
 import type { LogTables } from '@heynixie/log';
 import { buildAllowingDecisionPoint } from '@heynixie/policy/test-utils';
 import type { MemoryKillRead } from '@heynixie/sandbox';
-import { buildTestClock, waitForCondition } from '@heynixie/testing';
+import { waitForCondition } from '@heynixie/testing';
 import type { ToolImage, ToolRun } from '@heynixie/tools';
 import { buildToolRegistry, runToolCall } from '@heynixie/tools';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import { sql } from 'kysely';
 import invariant from 'tiny-invariant';
 import type { StubSandboxAdapterOptions } from '../test-utils/build-stub-sandbox-adapter';
@@ -30,7 +31,7 @@ interface ToolConfig {
 }
 
 async function setupTest() {
-  const clock = buildTestClock(1_000_000);
+  const clock = createFakeClock({ startMs: 1_000_000 });
 
   const log = await startTestLog(clock);
 

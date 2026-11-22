@@ -1,9 +1,10 @@
 import { expect, test } from 'bun:test';
-import { buildTestClock, waitForCondition } from '@heynixie/testing';
+import { waitForCondition } from '@heynixie/testing';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import { startInterval } from './start-interval';
 
 test('it runs once for each interval of the clock and stops', async () => {
-  const clock = buildTestClock(0);
+  const clock = createFakeClock({ startMs: 0 });
   const runs: number[] = [];
 
   const interval = startInterval({
@@ -17,12 +18,12 @@ test('it runs once for each interval of the clock and stops', async () => {
     onError: () => {},
   });
 
-  await waitForCondition(() => clock.countSleepers() === 1);
+  await waitForCondition(() => clock.countPending() === 1);
 
   clock.advance(1000);
 
   await waitForCondition(() => runs.length === 1);
-  await waitForCondition(() => clock.countSleepers() === 1);
+  await waitForCondition(() => clock.countPending() === 1);
 
   clock.advance(1000);
 
@@ -34,7 +35,7 @@ test('it runs once for each interval of the clock and stops', async () => {
 });
 
 test('it goes on after a run throws', async () => {
-  const clock = buildTestClock(0);
+  const clock = createFakeClock({ startMs: 0 });
   const errors: unknown[] = [];
 
   const interval = startInterval({
@@ -46,7 +47,7 @@ test('it goes on after a run throws', async () => {
     },
   });
 
-  await waitForCondition(() => clock.countSleepers() === 1);
+  await waitForCondition(() => clock.countPending() === 1);
 
   clock.advance(1000);
 

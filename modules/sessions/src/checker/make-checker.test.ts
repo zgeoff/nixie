@@ -1,5 +1,6 @@
 import { expect, mock, test } from 'bun:test';
-import { buildTestClock, waitForCondition } from '@heynixie/testing';
+import { waitForCondition } from '@heynixie/testing';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import { makeChecker } from './make-checker';
 
 test('it answers with the verdict the query returned and the profile model', async () => {
@@ -8,7 +9,7 @@ test('it answers with the verdict the query returned and the profile model', asy
   const check = makeChecker({
     ask,
     model: 'claude-test-1',
-    clock: buildTestClock(1_700_000_000_000),
+    clock: createFakeClock({ startMs: 1_700_000_000_000 }),
   });
 
   const answer = await check({ prompt: 'You check one memory.', input: 'the input' });
@@ -27,7 +28,7 @@ test('it answers with the verdict the query returned and the profile model', asy
 });
 
 test('it answers unsure and aborts the query when the query outlasts the timeout', async () => {
-  const clock = buildTestClock(1_700_000_000_000);
+  const clock = createFakeClock({ startMs: 1_700_000_000_000 });
   const signals: AbortSignal[] = [];
 
   const check = makeChecker({
@@ -43,7 +44,7 @@ test('it answers unsure and aborts the query when the query outlasts the timeout
 
   const answering = check({ prompt: 'You check one memory.', input: 'the input' });
 
-  await waitForCondition(() => clock.countSleepers() === 1);
+  await waitForCondition(() => clock.countPending() === 1);
 
   clock.advance(20_000);
 
@@ -60,7 +61,7 @@ test('it answers unsure and aborts the query when the query outlasts the timeout
 });
 
 test('it answers the verdict and ends the timeout when the query answers inside it', async () => {
-  const clock = buildTestClock(1_700_000_000_000);
+  const clock = createFakeClock({ startMs: 1_700_000_000_000 });
 
   const check = makeChecker({
     ask: () => Promise.resolve({ verdict: 'not_asserted', reason: 'It is a question.' }),
@@ -72,14 +73,14 @@ test('it answers the verdict and ends the timeout when the query answers inside 
   const answer = await check({ prompt: 'You check one memory.', input: 'the input' });
 
   expect(answer.verdict).toBe('not_asserted');
-  expect(clock.countSleepers()).toBe(0);
+  expect(clock.countPending()).toBe(0);
 });
 
 test('it answers unsure when the query fails', async () => {
   const check = makeChecker({
     ask: () => Promise.reject(new Error('the guest exited')),
     model: 'claude-test-1',
-    clock: buildTestClock(1_700_000_000_000),
+    clock: createFakeClock({ startMs: 1_700_000_000_000 }),
   });
 
   const answer = await check({ prompt: 'You check one memory.', input: 'the input' });

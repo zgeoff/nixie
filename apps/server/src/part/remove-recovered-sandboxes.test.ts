@@ -8,7 +8,7 @@ import { buildMockSandboxSpec } from '@heynixie/sandbox/test-utils';
 import { checkerOwner } from '@heynixie/sessions';
 import { conversationTaskID, taskCreatedCodec } from '@heynixie/tasks';
 import { buildTaskSeeder } from '@heynixie/tasks/test-utils';
-import { buildTestClock } from '@heynixie/testing';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import { startDataLog } from '../test-utils/start-data-log';
 import { removeRecoveredSandboxes } from './remove-recovered-sandboxes';
 
@@ -22,7 +22,7 @@ async function setupTest() {
   const data = await startDataLog({
     dataDir,
     deploymentKey: Buffer.from(keyBytes).toString('base64'),
-    clock: buildTestClock(1_000_000),
+    clock: createFakeClock({ startMs: 1_000_000 }),
   });
 
   onTestFinished(() => data.writer.stop());

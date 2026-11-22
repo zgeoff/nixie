@@ -7,7 +7,7 @@ import {
   withWriteTransaction,
   writeRecordsInTransaction,
 } from '@heynixie/log';
-import { buildTestClock } from '@heynixie/testing';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import { createProposal } from '../../test-utils/create-proposal';
 import { startKeyStoreReader } from '../../test-utils/start-key-store-reader';
 import { startNextTestMemory } from '../../test-utils/start-next-test-memory';
@@ -89,7 +89,7 @@ test('it never removes the key of a pending proposal', async () => {
 });
 
 test('it finishes on the next lapse sweep a key removal whose checkpoint a reader blocked', async () => {
-  const clock = buildTestClock(1_000_000);
+  const clock = createFakeClock({ startMs: 1_000_000 });
 
   const memory = await startTestMemory({
     keyStoreBusyTimeoutMs: 50,

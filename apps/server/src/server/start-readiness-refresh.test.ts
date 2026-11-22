@@ -4,12 +4,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { buildImpPort, buildImpSandboxAdapter } from '@heynixie/sandbox-imp';
 import { setupTestRecorder } from '@heynixie/sandbox/test-utils';
-import {
-  buildSettleRecorder,
-  buildStubCheck,
-  buildTestClock,
-  waitForCondition,
-} from '@heynixie/testing';
+import { buildSettleRecorder, buildStubCheck, waitForCondition } from '@heynixie/testing';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import { startReadinessRefresh } from './start-readiness-refresh';
 
 async function setupTest() {
@@ -17,7 +13,7 @@ async function setupTest() {
 
   onTestFinished(() => rm(dataDir, { recursive: true, force: true }));
 
-  const clock = buildTestClock(0);
+  const clock = createFakeClock({ startMs: 0 });
 
   return { dataDir, clock };
 }
@@ -80,7 +76,7 @@ test('it reports the imp runtime ready once impd answers again after a call that
   // The refresh skips a part whose check is still running, and a loaded runner can settle the
   // aborted call after the next round starts, so the clock moves on only once it has settled.
   await waitForCondition(() => runtime.settled.mock.calls.length === 1);
-  await waitForCondition(() => ctx.clock.countSleepers() === 1);
+  await waitForCondition(() => ctx.clock.countPending() === 1);
 
   ctx.clock.advance(5000);
 

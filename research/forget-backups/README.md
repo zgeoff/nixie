@@ -2,8 +2,8 @@
 
 This spike checks whether a forget can remove a deleted memory key from a local restic backup
 repository before the forget reports completion. It tests the
-[forget contract](../../docs/design/platform/memory/store.md#forget-completion-and-key-backups)
-against a candidate backup tool, and the deployment choice does not adopt restic through it.
+[forget contract](../../docs/architecture/memory/store.md#a-forget-and-the-key-backups) against a
+candidate backup tool, and the deployment choice does not adopt restic through it.
 
 ## Question
 

@@ -1,5 +1,5 @@
 import { join } from 'node:path';
-import { createRunTemplate } from '@heynixie/testing';
+import { readTestTemplate } from '@heynixie/testing';
 import { z } from 'zod';
 import type { ReleaseBundle } from '../release/write-release-bundle';
 import { writeReleaseBundle } from '../release/write-release-bundle';
@@ -34,10 +34,11 @@ export async function readTestBundle(isTestBuild: boolean): Promise<TestBundle> 
 const repoRoot = join(import.meta.dir, '..', '..', '..', '..');
 
 function writeBundleTemplate(isTestBuild: boolean): Promise<string> {
-  return createRunTemplate({
-    name: isTestBuild ? 'nixie-test-bundle' : 'nixie-release-bundle',
+  const name = isTestBuild ? 'nixie-test-bundle' : 'nixie-release-bundle';
+
+  return readTestTemplate({
+    name,
     root: repoRoot,
-    parentDir: join(repoRoot, 'node_modules', '.cache', 'nixie-test-bundles'),
     inputs: ['{apps,modules,libs,adapters,guests}/*/src/**/*', '*/*/package.json', 'bun.lock'],
     write: async (building) => {
       const bundle = await writeReleaseBundle(join(building, 'out'), isTestBuild);

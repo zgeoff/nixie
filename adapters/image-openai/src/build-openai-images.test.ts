@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test';
 import { startTestImages } from '@heynixie/connectors/test-utils';
 import { readRecords } from '@heynixie/log';
-import { mockServer } from '@heynixie/mock-server';
+import { network } from '@heynixie/mock-server';
 import { HttpResponse, http } from 'msw';
 import { buildOpenAIImages } from './build-openai-images';
 import { openAIImagesAPIURL } from './mocks/openai-images-api-url';
@@ -23,7 +23,7 @@ test('it draws a new image from the generations endpoint, with the key in a head
   const ctx = setupTest();
   const seen: { auth: string | null; body: unknown; url: string }[] = [];
 
-  mockServer.use(
+  network.use(
     http.post(`${openAIImagesAPIURL}/images/generations`, async (info) => {
       seen.push({
         auth: info.request.headers.get('authorization'),
@@ -63,7 +63,7 @@ test('it sends the source and then each reference to the edits endpoint', async 
   const sizes: number[] = [];
   const fields: Record<string, string> = {};
 
-  mockServer.use(
+  network.use(
     http.post(`${openAIImagesAPIURL}/images/edits`, async (info) => {
       const boundary = /boundary=(?<boundary>.+)$/u.exec(
         info.request.headers.get('content-type') ?? '',
@@ -108,7 +108,7 @@ test('it sends the source and then each reference to the edits endpoint', async 
 test('it returns a moderation block of the prompt as an unbilled refusal', async () => {
   const ctx = setupTest();
 
-  mockServer.use(
+  network.use(
     http.post(`${openAIImagesAPIURL}/images/generations`, () =>
       HttpResponse.json(
         {
@@ -143,7 +143,7 @@ test('it returns a moderation block of the prompt as an unbilled refusal', async
 test('it returns a moderation block of the output as a billed refusal', async () => {
   const ctx = setupTest();
 
-  mockServer.use(
+  network.use(
     http.post(`${openAIImagesAPIURL}/images/generations`, () =>
       HttpResponse.json(
         {
@@ -172,7 +172,7 @@ test('it returns a moderation block of the output as a billed refusal', async ()
 test('it returns another error status as an unbilled failure that names the status', async () => {
   const ctx = setupTest();
 
-  mockServer.use(
+  network.use(
     http.post(`${openAIImagesAPIURL}/images/generations`, () =>
       HttpResponse.json({ error: { message: 'The server had an error.' } }, { status: 500 }),
     ),
@@ -196,7 +196,7 @@ test('it returns another error status as an unbilled failure that names the stat
 test('it returns a reply with no image as a billed failure', async () => {
   const ctx = setupTest();
 
-  mockServer.use(
+  network.use(
     http.post(`${openAIImagesAPIURL}/images/generations`, () => HttpResponse.json({ data: [] })),
   );
 
@@ -214,7 +214,7 @@ test('it returns a reply with no image as a billed failure', async () => {
 test('it returns an unreachable host as an unbilled failure', async () => {
   const ctx = setupTest();
 
-  mockServer.use(http.post(`${openAIImagesAPIURL}/images/generations`, () => HttpResponse.error()));
+  network.use(http.post(`${openAIImagesAPIURL}/images/generations`, () => HttpResponse.error()));
 
   const reply = await ctx.provider.draw({
     model: 'model-a',
@@ -233,10 +233,7 @@ test('it throws when the time limit aborts the call, so the tool can tell a time
   const controller = new AbortController();
 
   controller.abort();
-
-  mockServer.use(
-    http.post(`${openAIImagesAPIURL}/images/generations`, () => HttpResponse.json({})),
-  );
+  network.use(http.post(`${openAIImagesAPIURL}/images/generations`, () => HttpResponse.json({})));
 
   const drawn = ctx.provider.draw({
     model: 'model-a',
@@ -252,7 +249,7 @@ test('it throws when the time limit aborts the call, so the tool can tell a time
 test('it never lets the key reach a reply, a result or the log when the API echoes it', async () => {
   const ctx = setupTest();
 
-  mockServer.use(
+  network.use(
     http.post(`${openAIImagesAPIURL}/images/generations`, (info) =>
       HttpResponse.json(
         {

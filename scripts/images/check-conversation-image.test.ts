@@ -1,9 +1,9 @@
 import { expect, onTestFinished, test } from 'bun:test';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { createStubBin, readStubCalls } from '@zgeoff/testing/bin';
 import { $ } from 'bun';
-import { createStubProgram } from '../test-utils/create-stub-program.ts';
 
 function setupTest() {
   const directory = mkdtempSync(join(tmpdir(), 'nixie-conversation-image-'));
@@ -12,28 +12,39 @@ function setupTest() {
     rmSync(directory, { recursive: true, force: true });
   });
 
-  const callsPath = join(directory, 'calls');
-
-  writeFileSync(callsPath, '');
-
   return {
     repoPath: directory,
     binPath: join(directory, 'bin'),
-    callsPath,
     scriptPath: join(import.meta.dir, 'check-conversation-image.ts'),
-    versionCall:
-      'run --rm --network none --entrypoint /app/claude r/nixie-conversation@sha256:cc33 --version',
-    modulesCall:
-      'run --rm --network none --entrypoint test r/nixie-conversation@sha256:cc33 -e /app/node_modules',
+    versionArgs: [
+      'run',
+      '--rm',
+      '--network',
+      'none',
+      '--entrypoint',
+      '/app/claude',
+      'r/nixie-conversation@sha256:cc33',
+      '--version',
+    ],
+    modulesArgs: [
+      'run',
+      '--rm',
+      '--network',
+      'none',
+      '--entrypoint',
+      'test',
+      'r/nixie-conversation@sha256:cc33',
+      '-e',
+      '/app/node_modules',
+    ],
   };
 }
 
 test('it passes when the CLI runs and the image holds no node_modules', async () => {
   const ctx = setupTest();
 
-  createStubProgram(join(ctx.binPath, 'docker'), {
-    callsPath: ctx.callsPath,
-    answers: { [ctx.modulesCall]: { exitCode: 1 } },
+  createStubBin(ctx.binPath, 'docker', {
+    answers: [{ args: ctx.modulesArgs, exitCode: 1 }, { args: [] }],
   });
 
   const result = await $`${process.execPath} ${ctx.scriptPath}`
@@ -42,18 +53,20 @@ test('it passes when the CLI runs and the image holds no node_modules', async ()
     .nothrow()
     .quiet();
 
-  expect({ exitCode: result.exitCode, calls: readFileSync(ctx.callsPath, 'utf8') }).toStrictEqual({
+  expect({ exitCode: result.exitCode, calls: readStubCalls(ctx.binPath) }).toMatchObject({
     exitCode: 0,
-    calls: `docker ${ctx.versionCall}\ndocker ${ctx.modulesCall}\n`,
+    calls: [
+      { name: 'docker', argv: ctx.versionArgs },
+      { name: 'docker', argv: ctx.modulesArgs },
+    ],
   });
 });
 
 test('it fails when the CLI does not run', async () => {
   const ctx = setupTest();
 
-  createStubProgram(join(ctx.binPath, 'docker'), {
-    callsPath: ctx.callsPath,
-    answers: { [ctx.versionCall]: { exitCode: 1 } },
+  createStubBin(ctx.binPath, 'docker', {
+    answers: [{ args: ctx.versionArgs, exitCode: 1 }, { args: [] }],
   });
 
   const result = await $`${process.execPath} ${ctx.scriptPath}`
@@ -68,7 +81,7 @@ test('it fails when the CLI does not run', async () => {
 test('it fails when the image holds node_modules', async () => {
   const ctx = setupTest();
 
-  createStubProgram(join(ctx.binPath, 'docker'), { callsPath: ctx.callsPath });
+  createStubBin(ctx.binPath, 'docker');
 
   const result = await $`${process.execPath} ${ctx.scriptPath}`
     .cwd(ctx.repoPath)
@@ -85,9 +98,8 @@ test('it fails when the image holds node_modules', async () => {
 test('it fails when the node_modules check does not run', async () => {
   const ctx = setupTest();
 
-  createStubProgram(join(ctx.binPath, 'docker'), {
-    callsPath: ctx.callsPath,
-    answers: { [ctx.modulesCall]: { exitCode: 125 } },
+  createStubBin(ctx.binPath, 'docker', {
+    answers: [{ args: ctx.modulesArgs, exitCode: 125 }, { args: [] }],
   });
 
   const result = await $`${process.execPath} ${ctx.scriptPath}`

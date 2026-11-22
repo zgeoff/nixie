@@ -3,7 +3,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { readRecords, startWriter, writeRecords } from '@heynixie/log';
-import { buildTestClock } from '@heynixie/testing';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import { skillsWriteProposedCodec } from '../write/skills-write-proposed-codec';
 import { writeSkillProposalLapses } from './write-skill-proposal-lapses';
 
@@ -75,7 +75,7 @@ test('it lapses a proposal left unanswered for 14 days, and keeps a younger one 
 
   const lapsed = await writeSkillProposalLapses({
     log: ctx.log,
-    clock: buildTestClock(olderAt + 14 * 24 * 60 * 60 * 1000),
+    clock: createFakeClock({ startMs: olderAt + 14 * 24 * 60 * 60 * 1000 }),
     definitions: () => ({ snapshotHash: 'snapshot-a' }),
   });
 
@@ -147,7 +147,7 @@ test('it lapses no proposal twice, and none that an answer closed', async () => 
 
   const lapsed = await writeSkillProposalLapses({
     log: ctx.log,
-    clock: buildTestClock(proposedAt + 30 * 24 * 60 * 60 * 1000),
+    clock: createFakeClock({ startMs: proposedAt + 30 * 24 * 60 * 60 * 1000 }),
     definitions: () => ({ snapshotHash: 'snapshot-a' }),
   });
 

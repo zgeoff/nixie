@@ -312,8 +312,91 @@ the hash writes the record again. A seed that drops the definition or disables i
 null hash, and the task stays: its history and any open task run outlive the definition. A task
 never closes, so the close control of a definition's task gets `definition_task_never_closes`.
 
+The tasks module reads definitions only through 3 readers that the server passes in: the version a
+hash names, the run policy of a pinned hash, and the next fire of a definition. The tasks module
+therefore imports neither the definitions module nor the triggers module. The seed's hook compares
+the definitions in force with the task rows, and for each one does the first that fits:
+
+1. A definition with no row gets `task.created` and `task.definition_set`.
+2. A definition whose row holds another hash, or null, gets `task.definition_set` with the new hash.
+3. A definition whose row holds the same hash gets nothing.
+4. A row that holds a hash for a definition no longer in force gets `task.definition_set` with a
+   null hash.
+
+A second task for one definition fails a unique index and the seed's transaction with it. A
+definition that comes back in force under the same ID gets its old task back, with its thread, its
+read cursor and its sleeping sandbox. A crash before the seed's commit writes no task, and the next
+seed finds case 1 again. A rebuild of the projections gives the same task rows. Between task runs
+the task holds the binding, the thread, the read cursor, the session boundary, each message that did
+not wake it and its sandbox, and holds no timer, no options and no count toward a limit. Its states
+are `waiting`, `ready`, `running`, `paused`, `stopped` and `failed`. A definition that goes out of
+force opens no further task run, whether a fire or a message arrives. A task run that is pending or
+open at that commit runs to its end on its pinned version and limits, and the user ends it sooner
+with the stop control.
+
 At every accepted seed, the same transaction also arms each definition that holds a trigger, and
 leaves out a spent one-shot, as [Triggers](./triggers.md#which-definitions-can-fire) describes.
+
+### What opens a task run
+
+When a step claims a definition's task and finds no open task run and no limit hold (a task that
+reached a limit and that the user has not raised), the first of these that holds decides:
+
+1. An unread `trigger.fired` whose dedupe key no task run of the task holds opens a task run that
+   pins the fire's own hash, whatever hash is in force, so a one-shot runs although its own fire
+   puts it out of force. When 2 such fires are unread, the newest opens the task run, and its first
+   step marks both as read and renders only the newest.
+2. A raise of the limit or a restart by the user, after a task run that ended with `limit`,
+   `stopped` or `failed`, opens a carrying task run: a task run that carries on the work of the
+   ended one. It pins the hash of the task run it carries, keeps its fire's key and brief, resumes
+   its session even under `context: fresh`, and reads an unread message.
+3. An unread waking message, while a hash is in force, opens a task run that pins the hash in force.
+4. Anything else, such as a resume, a server start, or a message while the hash in force is null,
+   opens none. The step commits with a hold, the task is `waiting`, and an unread message stays
+   unread.
+
+An unread fire comes first for this reason. A fire stays unread at a carry only after the user
+stopped an idle task run, and that task run has no work to carry. A message after a `limit` end
+belongs to the work that the raise carries on. A claim marks read a `trigger.fired` whose kind it
+does not know and opens no task run for it. A task run of a definition has no limit of its own on
+effects: the decision point treats its calls as it treats the conversation's.
+
+In the transaction that delivers a fire, the [trigger core](./triggers.md) asks the tasks module
+whether the task takes the fire, before it writes the fire's record. The first answer that holds
+decides:
+
+1. `held`: the task is paused, stopped or failed, or held at a limit. The core records a skip with
+   `task_held`, and the definition fires again at the first slot after the user resumes, restarts or
+   raises the task.
+2. `still_running`: the task has a pending task run, or an open one that is active or waiting on a
+   reply. The core records a skip with `still_running`.
+3. `take`: the task has no pending task run, and its open task run is idle or absent. The core
+   records the fire.
+
+The answer computes whether a task run is pending, because no table holds one. With no open task
+run, a task run is pending when item 1, 2 or 3 of the list in "What opens a task run" holds. With an
+idle open task run, it is pending when the inbox holds an unread fire whose key no task run holds. A
+task therefore holds at most one unread fire, except after a stop, when it can hold 2. nixie skips a
+fire and never queues it, because 2 task runs at once would write to one thread, and a queue would
+hide a task run that never ends. A fire that was written before a hold opens a task run after the
+hold ends, however old it is. nixie writes no record for a fire of a disabled definition. The answer
+never reads the pause: while nixie is paused, the core delivers no schedule fire to a paused task,
+and the catch-up rule decides the first fire after the resume.
+
+The task listing and the dashboard show a definition's task while its hash in force is not null,
+with the name, brief and model of that version, and while a task run of a task out of force is
+pending or open, with the name of the pinned version, so the user reaches its stop control. A
+message cannot address a task out of force. The runner destroys the sandbox of a definition's task
+that is out of force and has no pending or open task run. A forget's session cleanup covers every
+task that a definition binds. The time a definition was first enabled is the time of the first
+`task.definition_set` of its task that holds a hash.
+
+The listing shows `nextRunAt` for a definition's task that it lists as `asleep`, from the next fire
+of the definition's trigger row, as an ISO instant in UTC. For a window schedule, the instant is the
+window's start. It is the slot as the trigger code gives it, even when the slot is already past,
+because the trigger core decides whether that slot fires. It is null when the definition has no row
+or a withdrawn row, no `schedule` or `at` trigger, or an `at` trigger whose dedupe key the core
+already holds. The rendered trigger's `next` is a display string, so the listing never reads it.
 
 A fire opens a task run. The trigger core writes a `trigger.fired` record on the task's thread, with
 the hash that the fire pins. The next claim opens a task run for it, and the record
@@ -502,6 +585,45 @@ inside its transaction and gives `pickDefinitionMove` a boolean for it. The chec
 define only, so an undefine of such a definition goes through. The define refusals come in this
 order: `NOT_FOUND`, `ID_TAKEN`, `FILE_ONLY_KEYS`, `UNCHANGED`, `ONE_SHOT_OVER_REPO`.
 
+The ID of a defined task is the slug of its name: the lowercase name with each run of characters
+outside `a-z` and `0-9` turned into one hyphen, hyphens trimmed from both ends, and cut to 64
+characters. A name with an empty slug is refused with `INVALID`. An ID is taken when the last
+accepted seed of the repo holds it, enabled or not, or a runtime change in force holds it. An ID
+whose runtime definition was undone or undefined is free, and a new definition under it gets the
+same task back. A change takes the input as the whole version, so an optional key it omits takes its
+default and never the value in force. A change may turn a schedule into a one-shot, except over a
+definition that the repo holds. The tools take the starter `conversation`, so a runtime definition
+holds only what a `task.start` from the conversation can hold. A change that puts a definition in
+force, or an undefine, commits its notice in the same transaction, so every runtime change in force
+has one.
+
+An undefine or an undo records the repo version it went on with, so the next seed compares it with
+the repo. A merge that the decision missed then ends as an adoption or a conflict and never as a
+silent overwrite. One definition has at most one runtime change in force, so a second change fails
+the unique index and its transaction. The lists show a definition whose change lost its body as
+unreadable.
+
+An undo names a change X, and the first row of this table that fits decides:
+
+| When                                             | Result                                                                                                      |
+| ------------------------------------------------ | ----------------------------------------------------------------------------------------------------------- |
+| X is not the newest change of its definition     | `REPLACED`, with the newest change                                                                          |
+| X is in force and replaced a runtime change      | the previous version goes in force as a runtime definition, with the base of X                              |
+| X is in force, replaced none, and no conflict    | the base goes in force, and the seed in the transaction adopts the undo                                     |
+| X is in force, replaced none, and a conflict     | the repo's version goes in force and the seed adopts it, so the result says it restored the repo's version  |
+| X is adopted, and the repo holds its hash        | the previous version goes in force over the merged one, and the next export writes it or deletes the folder |
+| X is adopted, and the repo holds another version | `REPO_MOVED`                                                                                                |
+| X is retired                                     | `NOT_IN_FORCE`, with the cause                                                                              |
+
+A restore that would bring back a one-shot refuses with `ONE_SHOT_OVER_REPO` when the repo holds the
+definition, and with `ONE_SHOT_PAST` when its time is before the clock reading the caller passes. An
+undo is a runtime change with its own notice, and an undo of an undo follows the same rows. Only the
+user undoes a change, because the agent has no tool that reaches the undo. A merge that races an
+undo settles by which seed reads it: when the undo's own seed reads the merge, that seed adopts the
+change and the undo takes the adopted-change row of the table above, and when that seed fails, the
+undo restores the earlier version, and the next seed reads the merged change from the repo, which
+wins.
+
 No fixed rule names `task.define` or `task.undefine`, so the decision point treats them like any
 tool of the `schedule` effect with no destination. The user's own request allows a call at the
 consent stage, stage 8 of [the decision point's stages](../policy/decision-point.md#the-stages), and
@@ -562,6 +684,16 @@ snapshot hash from it.
 | Seeded    | The source, repo, revision, content hash or snapshot hash differs from the last, a written skill, a runtime rule change or a runtime task change becomes adopted, a runtime task change finds a new repo version, or a pending rule change proposal is withdrawn | The rows                                          |
 | Unchanged | The newest seed holds the same source, repo, revision and both hashes, no written skill or runtime change becomes adopted, no runtime task change finds a new repo version, and no pending rule change proposal is withdrawn                                     | Only the record of an adopted skill that lacks it |
 | Refused   | The snapshot failed to read, parse or validate                                                                                                                                                                                                                   | Nothing                                           |
+
+The seed's one write transaction runs in this order: every refusal, the hook that binds each task
+([the task of a definition](#the-task-of-a-definition)), the hook that arms each trigger
+([triggers](./triggers.md#which-definitions-can-fire)), and then the `unchanged` return. A refused
+seed calls neither hook, and an `unchanged` seed calls both. A task definition goes through the one
+check of a start that `task.start` runs, so the seed applies no separate rule about which memory
+tools a task may hold. A definition with no `trigger` is bound to its task and never opens a task
+run from a trigger. When a task run's pinned hash has no row in the version store, its step fails,
+and after the step error limit the task is `failed`. The definitions module imports the tasks module
+for the start input, and the tasks module imports nothing from the definitions module.
 
 A task definition that holds a fault refuses the seed too. A refused seed comes back as a value with
 its error and the definitions still in force, never as a throw, so the caller reports the refusal

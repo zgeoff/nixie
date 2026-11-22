@@ -6,31 +6,33 @@
 
 Every 5 minutes, nixie asks Gmail and Google Calendar what changed for each Google connection. Each
 new mail and each changed calendar event becomes one record. That record wakes each task that waits
-for it, and starts a task run of each [task definition](task-definition-format.md) whose `poll`
-trigger matches it. The record, the wakes, the task runs it starts and the service's cursor commit
-in one write transaction of the [trigger core](triggers.md). A restart therefore misses no event,
-and a poll that asks for the same changes again repeats none. A task waits on one mail thread or one
-calendar event through a tool, and the wait also sees an event that arrived before it opened.
+for it, and starts a task run of each
+[task definition](../../architecture/core/definitions.md#task-definitions) whose `poll` trigger
+matches it. The record, the wakes, the task runs it starts and the service's cursor commit in one
+write transaction of the [trigger core](../../architecture/core/triggers.md). A restart therefore
+misses no event, and a poll that asks for the same changes again repeats none. A task waits on one
+mail thread or one calendar event through a tool, and the wait also sees an event that arrived
+before it opened.
 
 This design uses the terms below. The linked docs define each one in full.
 
-| Term             | Meaning                                                                                                                                        |
-| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| poll             | one call of Gmail or Calendar for one connection                                                                                               |
-| polled event     | one new mail, or one change to one calendar event                                                                                              |
-| event wait       | a task's wait on one mail thread or one calendar event, opened by `events.wait`                                                                |
-| open wait        | an event wait, or a [message wait](../../architecture/core/task-messages.md), that nothing has answered or released yet                        |
-| armed            | a definition that has a trigger, is enabled, and is in the last accepted seed ([trigger core terms](triggers.md#shape))                        |
-| fire             | one event of a definition's trigger, recorded as `trigger.fired` or `trigger.skipped` ([fire records](definition-tasks.md))                    |
-| fire answer      | the tasks module's answer to a fire: take it, or skip it ([the fire answer](definition-tasks.md#the-fire-answer-1))                            |
-| dedupe key       | the text that identifies one polled event or one fire; a record claims it, and `trigger_keys` holds each claimed key                           |
-| erasure key      | the encryption key of one record alone, which encrypts that record's free text ([erasable fields](../../architecture/core/erasable-fields.md)) |
-| seed             | the load of the definitions repo into nixie ([the seed](task-definition-format.md#the-seed))                                                   |
-| inbox record     | a record that lands in a task's inbox and wakes it ([the inbox](../../architecture/core/tasks.md#the-inbox))                                   |
-| the core         | `deliverTriggerBatch`, which each source reaches through `deliver` ([the port](triggers.md#the-port))                                          |
-| met record       | `task.event_wait_met`: the inbox record that tells a task its event wait matched                                                               |
-| the conversation | the task that holds your chat with nixie ([tasks](../../architecture/core/tasks.md))                                                           |
-| effect           | what a tool may do, which policy rules match on ([effects](../platform/policy/decision-point.md#effects))                                      |
+| Term             | Meaning                                                                                                                                                              |
+| ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| poll             | one call of Gmail or Calendar for one connection                                                                                                                     |
+| polled event     | one new mail, or one change to one calendar event                                                                                                                    |
+| event wait       | a task's wait on one mail thread or one calendar event, opened by `events.wait`                                                                                      |
+| open wait        | an event wait, or a [message wait](../../architecture/core/task-messages.md), that nothing has answered or released yet                                              |
+| armed            | a definition that has a trigger, is enabled, and is in the last accepted seed ([trigger core terms](../../architecture/core/triggers.md#which-definitions-can-fire)) |
+| fire             | one event of a definition's trigger, recorded as `trigger.fired` or `trigger.skipped` ([fire records](../../architecture/core/triggers.md#one-deliver-call))         |
+| fire answer      | the tasks module's answer to a fire: take it, or skip it ([the fire answer](../../architecture/core/definitions.md#what-opens-a-task-run))                           |
+| dedupe key       | the text that identifies one polled event or one fire; a record claims it, and `trigger_keys` holds each claimed key                                                 |
+| erasure key      | the encryption key of one record alone, which encrypts that record's free text ([erasable fields](../../architecture/core/erasable-fields.md))                       |
+| seed             | the load of the definitions repo into nixie ([the seed](../../architecture/core/definitions.md#seeding))                                                             |
+| inbox record     | a record that lands in a task's inbox and wakes it ([the inbox](../../architecture/core/tasks.md#the-inbox))                                                         |
+| the core         | `deliverTriggerBatch`, which each source reaches through `deliver` ([the port](../../architecture/core/triggers.md#what-a-source-hands-over))                        |
+| met record       | `task.event_wait_met`: the inbox record that tells a task its event wait matched                                                                                     |
+| the conversation | the task that holds your chat with nixie ([tasks](../../architecture/core/tasks.md))                                                                                 |
+| effect           | what a tool may do, which policy rules match on ([effects](../platform/policy/decision-point.md#effects))                                                            |
 
 ## Shape
 
@@ -275,9 +277,10 @@ interface TriggerResynced {
 }
 ```
 
-For a poll, `trigger.fired` of [the 2 fire records](definition-tasks.md#the-2-fire-records) holds
-`kind: 'poll'`, and `polled`: the sequences of its `trigger.polled` records, oldest first.
-`trigger.skipped` holds no field of its own for a poll.
+For a poll, `trigger.fired` of
+[the 2 fire records](../../architecture/core/triggers.md#one-deliver-call) holds `kind: 'poll'`, and
+`polled`: the sequences of its `trigger.polled` records, oldest first. `trigger.skipped` holds no
+field of its own for a poll.
 
 ```text
 2 projections, one appended migration:
@@ -347,8 +350,8 @@ task_event_waits   tasks module. key wait_id. short_id, task_id, source_id, conn
 ### One `deliver` call of a poll batch
 
 The core runs these steps inside the transaction of
-[one `deliver` call](triggers.md#one-deliver-call). Steps 1 to 3 run for each poll event, in batch
-order. Step 4 runs once, after the last event.
+[one `deliver` call](../../architecture/core/triggers.md#one-deliver-call). Steps 1 to 3 run for
+each poll event, in batch order. Step 4 runs once, after the last event.
 
 1. For a calendar cancellation without an `etag`, the core first completes the dedupe key with the
    sequence of the event's newest `trigger_polled` row that has an `etag`. A replay finds the same
@@ -361,11 +364,11 @@ order. Step 4 runs once, after the last event.
    `writeEventWaitMetInTransaction`.
 4. For each armed definition of the source that one or more new events of the batch match, by
    definition ID, the core decides once, by the rows after the dedupe check in
-   [the core's table](triggers.md#one-deliver-call): it writes nothing for a definition that is
-   withdrawn, `trigger.skipped` when the fire answer is `still_running` or `held`, and
-   `trigger.fired` otherwise. The fire takes `definitionHash` from the armed row. Its dedupe key is
-   `<definitionID>|<the dedupe key of its first matching event>`, and its `polled` holds the
-   sequence of each matching event.
+   [the core's table](../../architecture/core/triggers.md#one-deliver-call): it writes nothing for a
+   definition that is withdrawn, `trigger.skipped` when the fire answer is `still_running` or
+   `held`, and `trigger.fired` otherwise. The fire takes `definitionHash` from the armed row. Its
+   dedupe key is `<definitionID>|<the dedupe key of its first matching event>`, and its `polled`
+   holds the sequence of each matching event.
 
 - The core stores the cursor of a poll batch whether or not its events were new.
 - While nixie is [paused](pause.md), the core delivers poll events as on any other day. Their fires
@@ -373,7 +376,8 @@ order. Step 4 runs once, after the last event.
 - Every event of a batch shares one `occurredAt`, the start of its poll. A poll fire sets
   `scheduledFor` to it, `skipped` (the missed slots) to `[]` and `skippedCount` to 0. A poll skip
   sets `scheduledFor` to `[occurredAt]`, and `count` to the number of its matching events.
-- A poll event never moves a definition's [watermark](triggers.md#the-watermark).
+- A poll event never moves a definition's
+  [watermark](../../architecture/core/triggers.md#which-definitions-can-fire).
 - Mail that matches a definition while its task run is open or pending skips with `still_running`,
   so that mail never opens a task run. A definition that must see every mail lists the Gmail search
   tool, and searches since its last task run.
@@ -454,11 +458,11 @@ it never runs, and logs a warning that names the definition and the field. It dr
 from a definition's `tools` with a warning, and keeps the rest of that definition.
 
 The definitions format number stays at 4, so the release a rollback returns to still reads the
-manifest ([the folder and the keys](task-definition-format.md#the-folder-and-the-keys)).
+manifest ([the folder and the keys](../../architecture/core/definitions.md#the-definitions-format)).
 
 ## Changes to the trigger core and the baseline
 
-This design extends [the trigger core](triggers.md) in these places:
+This design extends [the trigger core](../../architecture/core/triggers.md) in these places:
 
 - `TriggerSource.kind` takes `'poll'`, and `TriggerEvent` becomes the union of its schedule member
   and `PollEvent`.
@@ -526,7 +530,7 @@ after the resume.
   ([the trigger source](../platform/channels/trigger-source.md#webhooks-and-streams)).
 - Calendars other than `primary`, and other mail providers.
 - A `poll` trigger from chat: `task.define` takes `schedule` and `at`
-  ([definitions from chat](definitions-from-chat.md)).
+  ([definitions from chat](../../architecture/core/definitions.md#changes-from-the-conversation)).
 - A view of source health and of `trigger.resynced` records.
 - Pruning `trigger_polled`.
 - The Gmail and Calendar tools, the reads of the morning report among them:

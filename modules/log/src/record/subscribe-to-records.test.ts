@@ -69,7 +69,7 @@ test('it yields the records after the sequence, then a new record on the next co
     ],
   });
 
-  expect(ctx.clock.countSleepers()).toBe(0);
+  expect(ctx.clock.countPending()).toBe(0);
 });
 
 test('it yields a new record to a reader in another process on the poll when the commit shows after the WAL settles', async () => {
@@ -102,7 +102,7 @@ test('it yields a new record to a reader in another process on the poll when the
     return Bun.peek.status(waiting);
   });
 
-  await waitForCondition(() => ctx.clock.countSleepers() === 1);
+  await waitForCondition(() => ctx.clock.countPending() === 1);
 
   ctx.clock.advance(1000);
 

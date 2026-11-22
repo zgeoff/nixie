@@ -5,8 +5,8 @@ import { join } from 'node:path';
 import { createPathSource, readWrittenSkills, runSeed } from '@heynixie/definitions';
 import { buildTestTaskSeed } from '@heynixie/definitions/test-utils';
 import { readRecords, startWriter, writeRecords } from '@heynixie/log';
-import { buildTestClock } from '@heynixie/testing';
 import { buildToolRegistry } from '@heynixie/tools';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import invariant from 'tiny-invariant';
 import { buildSkillWriteTool } from './build-skill-write-tool';
 
@@ -55,7 +55,7 @@ test('it proposes a new skill for review and records its files and the run that 
   const registry = buildToolRegistry([
     buildSkillWriteTool({
       log: ctx.log,
-      clock: buildTestClock(0),
+      clock: createFakeClock({ startMs: 0 }),
       readInForce: () => seeded.inForce,
       runInForceSeed: () => Promise.resolve(),
       refreshDefinitions: () => Promise.resolve(seeded.inForce),
@@ -156,7 +156,7 @@ test('it records the version in force that a change to a skill would replace', a
 
   const tool = buildSkillWriteTool({
     log: ctx.log,
-    clock: buildTestClock(0),
+    clock: createFakeClock({ startMs: 0 }),
     readInForce: () => seeded.inForce,
     runInForceSeed: () => Promise.resolve(),
     refreshDefinitions: () => Promise.resolve(seeded.inForce),
@@ -229,7 +229,7 @@ test('it records a destination the owner never typed and the definitions lack', 
 
   const tool = buildSkillWriteTool({
     log: ctx.log,
-    clock: buildTestClock(0),
+    clock: createFakeClock({ startMs: 0 }),
     readInForce: () => seeded.inForce,
     runInForceSeed: () => Promise.resolve(),
     refreshDefinitions: () => Promise.resolve(seeded.inForce),
@@ -288,7 +288,7 @@ test('it records an untyped destination that only a reference file holds', async
 
   const tool = buildSkillWriteTool({
     log: ctx.log,
-    clock: buildTestClock(0),
+    clock: createFakeClock({ startMs: 0 }),
     readInForce: () => seeded.inForce,
     runInForceSeed: () => Promise.resolve(),
     refreshDefinitions: () => Promise.resolve(seeded.inForce),
@@ -348,7 +348,7 @@ test('it refuses 2 files at one path, and records no proposal', async () => {
 
   const tool = buildSkillWriteTool({
     log: ctx.log,
-    clock: buildTestClock(0),
+    clock: createFakeClock({ startMs: 0 }),
     readInForce: () => seeded.inForce,
     runInForceSeed: () => Promise.resolve(),
     refreshDefinitions: () => Promise.resolve(seeded.inForce),
@@ -415,7 +415,7 @@ test('it records no untyped token for a destination that the persona holds', asy
 
   const tool = buildSkillWriteTool({
     log: ctx.log,
-    clock: buildTestClock(0),
+    clock: createFakeClock({ startMs: 0 }),
     readInForce: () => seeded.inForce,
     runInForceSeed: () => Promise.resolve(),
     refreshDefinitions: () => Promise.resolve(seeded.inForce),
@@ -483,7 +483,7 @@ test('it records no untyped token for a destination that a skill in force holds 
 
   const tool = buildSkillWriteTool({
     log: ctx.log,
-    clock: buildTestClock(0),
+    clock: createFakeClock({ startMs: 0 }),
     readInForce: () => seeded.inForce,
     runInForceSeed: () => Promise.resolve(),
     refreshDefinitions: () => Promise.resolve(seeded.inForce),
@@ -540,7 +540,7 @@ test('it refuses a skill that fails a seed check, and records no proposal', asyn
 
   const tool = buildSkillWriteTool({
     log: ctx.log,
-    clock: buildTestClock(0),
+    clock: createFakeClock({ startMs: 0 }),
     readInForce: () => seeded.inForce,
     runInForceSeed: () => Promise.resolve(),
     refreshDefinitions: () => Promise.resolve(seeded.inForce),
@@ -603,7 +603,7 @@ test('it refuses a skill with every problem the seed checks find, and records no
 
   const tool = buildSkillWriteTool({
     log: ctx.log,
-    clock: buildTestClock(0),
+    clock: createFakeClock({ startMs: 0 }),
     readInForce: () => seeded.inForce,
     runInForceSeed: () => Promise.resolve(),
     refreshDefinitions: () => Promise.resolve(seeded.inForce),
@@ -673,7 +673,7 @@ test('it refuses files that match the version in force', async () => {
 
   const tool = buildSkillWriteTool({
     log: ctx.log,
-    clock: buildTestClock(0),
+    clock: createFakeClock({ startMs: 0 }),
     readInForce: () => seeded.inForce,
     runInForceSeed: () => Promise.resolve(),
     refreshDefinitions: () => Promise.resolve(seeded.inForce),
@@ -718,7 +718,7 @@ test('it refuses a write before the first seed', async () => {
 
   const tool = buildSkillWriteTool({
     log: ctx.log,
-    clock: buildTestClock(0),
+    clock: createFakeClock({ startMs: 0 }),
     readInForce: () => null,
     runInForceSeed: () => Promise.resolve(),
     refreshDefinitions: () => Promise.resolve(null),
@@ -773,7 +773,7 @@ test('it applies a skill at once under an allow rule that names skill_write, and
   const registry = buildToolRegistry([
     buildSkillWriteTool({
       log: ctx.log,
-      clock: buildTestClock(1_794_550_000_000),
+      clock: createFakeClock({ startMs: 1_794_550_000_000 }),
       readInForce: () => seeded.inForce,
       runInForceSeed: () => {
         seeds.push('seed');
@@ -886,7 +886,7 @@ test('it proposes a skill that names a destination the owner never typed, under 
 
   const tool = buildSkillWriteTool({
     log: ctx.log,
-    clock: buildTestClock(0),
+    clock: createFakeClock({ startMs: 0 }),
     readInForce: () => seeded.inForce,
     runInForceSeed: () => Promise.resolve(),
     refreshDefinitions: () => Promise.resolve(seeded.inForce),
@@ -944,7 +944,7 @@ test('it proposes a skill whose version in force moved since the call read it, u
 
   const tool = buildSkillWriteTool({
     log: ctx.log,
-    clock: buildTestClock(0),
+    clock: createFakeClock({ startMs: 0 }),
     readInForce: () => seeded.inForce,
     runInForceSeed: () => Promise.resolve(),
     refreshDefinitions: () => Promise.resolve(seeded.inForce),
@@ -1009,7 +1009,7 @@ test('it describes a write that a covering rule applies at once, and no approval
 
   const tool = buildSkillWriteTool({
     log: ctx.log,
-    clock: buildTestClock(0),
+    clock: createFakeClock({ startMs: 0 }),
     readInForce: () => null,
     runInForceSeed: () => Promise.resolve(),
     refreshDefinitions: () => Promise.resolve(null),

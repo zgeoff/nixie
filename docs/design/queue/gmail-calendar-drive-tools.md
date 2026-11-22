@@ -8,12 +8,12 @@
 
 nixie reads, searches and labels your mail, sends mail, and reads and changes your calendar and the
 Drive files you give it, through one Google connection. A read runs inside the model's turn and
-returns its result at once. A change or a send runs as an [action](../platform/core/actions.md) on
-the action queue, and the [decision point](../platform/policy/decision-point.md) decides it before
-every attempt. When an attempt's outcome is unknown, a read-only check at Google settles it, and
-nixie never repeats the action blind. A sent mail carries its action ID in its `Message-ID`, so a
-check of the Sent folder can find an unknown send. When it finds none, nixie asks you and never
-sends again on its own.
+returns its result at once. A change or a send runs as an
+[action](../../architecture/core/actions.md) on the action queue, and the
+[decision point](../platform/policy/decision-point.md) decides it before every attempt. When an
+attempt's outcome is unknown, a read-only check at Google settles it, and nixie never repeats the
+action blind. A sent mail carries its action ID in its `Message-ID`, so a check of the Sent folder
+can find an unknown send. When it finds none, nixie asks you and never sends again on its own.
 
 The Google connection design owns the tokens, the consent, the scopes and the setup steps. The
 [connector interface](../platform/connectors/connector.md) owns the shape of a connector action, and
@@ -472,7 +472,7 @@ type PickerSettings = { pickerKey: string; projectNumber: string };
   send waits on its card.
 - A send never carries an attachment.
 - 3 unknown outcomes in a row bring the action to you, as
-  [reconciliation](../platform/core/actions.md#reconciliation-per-connector) sets.
+  [reconciliation](../../architecture/core/actions.md#reconciling-an-unknown-outcome) sets.
 
 ### Scopes
 

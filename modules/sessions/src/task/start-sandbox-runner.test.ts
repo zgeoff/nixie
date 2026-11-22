@@ -22,7 +22,8 @@ import {
   writeTestTaskMessage,
   writeTestTriggerFire,
 } from '@heynixie/tasks/test-utils';
-import { buildTestClock, waitForCondition } from '@heynixie/testing';
+import { waitForCondition } from '@heynixie/testing';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import invariant from 'tiny-invariant';
 import { buildSeeder } from '../test-utils/build-seeder';
 import { buildStubMemory } from '../test-utils/build-stub-memory';
@@ -40,7 +41,7 @@ import type { SandboxRunnerOptions } from './sandbox-runner-options';
 import { startSandboxRunner } from './start-sandbox-runner';
 
 async function setupTest() {
-  const clock = buildTestClock(1_000_000);
+  const clock = createFakeClock({ startMs: 1_000_000 });
 
   const models = modelsConfigSchema.parse({
     profiles: {

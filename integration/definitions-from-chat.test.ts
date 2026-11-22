@@ -91,7 +91,7 @@ async function setupTest() {
         signal: controller.signal,
       });
 
-      await waitForCondition(() => ctx.clock.countSleepers() === 1);
+      await waitForCondition(() => ctx.clock.countPending() === 1);
 
       ctx.clock.advance(Date.parse(instant) - ctx.clock.now());
 

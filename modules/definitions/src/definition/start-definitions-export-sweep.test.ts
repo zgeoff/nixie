@@ -3,7 +3,8 @@ import { mkdir, mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { startWriter, withWriteTransaction } from '@heynixie/log';
-import { buildTestClock, waitForCondition } from '@heynixie/testing';
+import { waitForCondition } from '@heynixie/testing';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import invariant from 'tiny-invariant';
 import { buildSkillChangeKind } from '../skill/build-skill-change-kind';
 import { checkSkillFiles } from '../skill/check-skill-files';
@@ -89,7 +90,7 @@ test('it passes a failed run to onError, and runs again each interval', async ()
   const ctx = await setupTest();
 
   const onError = mock<(error: unknown) => void>();
-  const clock = buildTestClock(0);
+  const clock = createFakeClock({ startMs: 0 });
 
   await ctx.writer.stop();
 
@@ -104,7 +105,7 @@ test('it passes a failed run to onError, and runs again each interval', async ()
 
   onTestFinished(() => sweep.stop());
 
-  await waitForCondition(() => onError.mock.calls.length === 1 && clock.countSleepers() === 1);
+  await waitForCondition(() => onError.mock.calls.length === 1 && clock.countPending() === 1);
 
   clock.advance(3_600_000);
 

@@ -64,7 +64,7 @@ test('it reports backups unready once no receipt arrives within twice the interv
   await waitForCondition(
     () =>
       ctx.logged.mock.calls.some((call) => call[0] === 'backup.set_staged') &&
-      ctx.clock.countSleepers() === 1,
+      ctx.clock.countPending() === 1,
   );
 
   ctx.clock.advance(7_200_000);
@@ -88,7 +88,7 @@ test('it reports backups ready again once a published receipt arrives', async ()
   await waitForCondition(
     () =>
       ctx.logged.mock.calls.some((call) => call[0] === 'backup.set_staged') &&
-      ctx.clock.countSleepers() === 1,
+      ctx.clock.countPending() === 1,
   );
 
   ctx.clock.advance(7_200_000);
@@ -96,7 +96,7 @@ test('it reports backups ready again once a published receipt arrives', async ()
   await waitForCondition(
     () =>
       ctx.logged.mock.calls.some((call) => call[0] === 'backup.notice_raised') &&
-      ctx.clock.countSleepers() === 1,
+      ctx.clock.countPending() === 1,
   );
 
   await writeTestBackupReceipt(ctx.dataDir, { sequence: 1, status: 'published' });
@@ -127,7 +127,7 @@ test('it keeps the last backup health in readiness after a pass that fails to re
   await waitForCondition(
     () =>
       ctx.logged.mock.calls.some((call) => call[0] === 'backup.set_staged') &&
-      ctx.clock.countSleepers() === 1,
+      ctx.clock.countPending() === 1,
   );
 
   await ctx.writer.db.schema.dropTable('backup_notices').execute();
@@ -155,7 +155,7 @@ test('it logs a notice for a set with no receipt an interval after it staged', a
   await waitForCondition(
     () =>
       ctx.logged.mock.calls.some((call) => call[0] === 'backup.set_staged') &&
-      ctx.clock.countSleepers() === 1,
+      ctx.clock.countPending() === 1,
   );
 
   ctx.clock.advance(3_600_000);

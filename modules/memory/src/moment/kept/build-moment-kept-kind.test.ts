@@ -1,12 +1,12 @@
 import { expect, test } from 'bun:test';
 import { writeRecords } from '@heynixie/log';
-import { buildTestClock } from '@heynixie/testing';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import invariant from 'tiny-invariant';
 import { startTestMemory } from '../../test-utils/start-test-memory';
 import { buildMomentKeptKind } from './build-moment-kept-kind';
 
 async function setupTest() {
-  const clock = buildTestClock(Date.parse('2026-10-14T11:10:00Z'));
+  const clock = createFakeClock({ startMs: Date.parse('2026-10-14T11:10:00Z') });
 
   const memory = await startTestMemory({ logClock: clock });
 

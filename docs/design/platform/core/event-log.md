@@ -74,7 +74,7 @@ and replay need it without a decryption per row.
 The keys live in a key store apart from the database, each one wrapped by a deployment key. **Why:**
 a key kept in the database would come back with any restore of a backup taken before its deletion,
 so database backups hold only ciphertext. Forget completes only once every recoverable key copy is
-gone, under [memory](../memory/store.md) and
+gone, under [memory](../../../architecture/memory/store.md) and
 [backup and restore](../deployment/backup-and-restore.md). A restore takes the database backup, the
 current key store backup and the deployment key.
 
@@ -92,7 +92,8 @@ transaction, so a projection never disagrees with the log at a commit. The core 
   definition versions, covered in [tasks](tasks.md).
 - **Proposals and approvals:** each proposal's action hash, status, lapse time, optional
   `deadlineAt`, deferred-until time and defer generation.
-- **Actions:** each queued action and its outcome, covered in [actions](actions.md).
+- **Actions:** each queued action and its outcome, covered in
+  [actions](../../../architecture/core/actions.md).
 - **Tasks:** one row per task with its status, last update and what it waits on, which the
   conversation's `tasks.list` tool and the dashboard read.
 

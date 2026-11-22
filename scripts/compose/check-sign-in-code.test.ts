@@ -1,9 +1,9 @@
 import { expect, onTestFinished, test } from 'bun:test';
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { createStubBin, readStubCalls } from '@zgeoff/testing/bin';
 import { $ } from 'bun';
-import { createStubProgram } from '../test-utils/create-stub-program.ts';
 
 function setupTest() {
   const directory = mkdtempSync(join(tmpdir(), 'nixie-sign-in-code-'));
@@ -12,16 +12,12 @@ function setupTest() {
     rmSync(directory, { recursive: true, force: true });
   });
 
-  const callsPath = join(directory, 'calls');
-
   mkdirSync(join(directory, 'deploy', 'compose'), { recursive: true });
   mkdirSync(join(directory, 'preview'), { recursive: true });
-  writeFileSync(callsPath, '');
 
   return {
     repoPath: directory,
     binPath: join(directory, 'bin'),
-    callsPath,
     scriptPath: join(import.meta.dir, 'check-sign-in-code.ts'),
   };
 }
@@ -29,13 +25,13 @@ function setupTest() {
 test('it prints the code that the recipe enrol run prints', async () => {
   const ctx = setupTest();
 
-  createStubProgram(join(ctx.binPath, 'docker'), {
-    callsPath: ctx.callsPath,
-    answers: {
-      'compose -f compose.yaml -f ci/compose.yaml run --rm enrol': {
+  createStubBin(ctx.binPath, 'docker', {
+    answers: [
+      {
+        args: ['compose', '-f', 'compose.yaml', '-f', 'ci/compose.yaml', 'run', '--rm', 'enrol'],
         stdout: 'K7Q2M-9XW4T\nThe code works once, for 10 minutes.\n',
       },
-    },
+    ],
   });
 
   const result = await $`${process.execPath} ${ctx.scriptPath} recipe`
@@ -51,9 +47,8 @@ test('it prints the code that the recipe enrol run prints', async () => {
 test('it reads the code from the preview enrol service log', async () => {
   const ctx = setupTest();
 
-  createStubProgram(join(ctx.binPath, 'docker'), {
-    callsPath: ctx.callsPath,
-    answers: { 'compose logs --no-log-prefix enrol': { stdout: 'P3R8D-2HN6V\n' } },
+  createStubBin(ctx.binPath, 'docker', {
+    answers: [{ args: ['compose', 'logs', '--no-log-prefix', 'enrol'], stdout: 'P3R8D-2HN6V\n' }],
   });
 
   const result = await $`${process.execPath} ${ctx.scriptPath} preview`
@@ -63,19 +58,22 @@ test('it reads the code from the preview enrol service log', async () => {
     .quiet();
 
   expect(result.exitCode).toBe(0);
-  expect(readFileSync(ctx.callsPath, 'utf8')).toBe('docker compose logs --no-log-prefix enrol\n');
+
+  expect(readStubCalls(ctx.binPath)).toMatchObject([
+    { name: 'docker', argv: ['compose', 'logs', '--no-log-prefix', 'enrol'] },
+  ]);
 });
 
 test('it fails when enrol prints no code', async () => {
   const ctx = setupTest();
 
-  createStubProgram(join(ctx.binPath, 'docker'), {
-    callsPath: ctx.callsPath,
-    answers: {
-      'compose -f compose.yaml -f ci/compose.yaml run --rm enrol': {
+  createStubBin(ctx.binPath, 'docker', {
+    answers: [
+      {
+        args: ['compose', '-f', 'compose.yaml', '-f', 'ci/compose.yaml', 'run', '--rm', 'enrol'],
         stdout: 'error: nixie is not ready\n',
       },
-    },
+    ],
   });
 
   const result = await $`${process.execPath} ${ctx.scriptPath} recipe`
@@ -91,7 +89,7 @@ test('it fails when enrol prints no code', async () => {
 test('it prints its usage, and runs nothing, for a stack it does not know', async () => {
   const ctx = setupTest();
 
-  createStubProgram(join(ctx.binPath, 'docker'), { callsPath: ctx.callsPath });
+  createStubBin(ctx.binPath, 'docker');
 
   const result = await $`${process.execPath} ${ctx.scriptPath} staging`
     .cwd(ctx.repoPath)
@@ -101,5 +99,5 @@ test('it prints its usage, and runs nothing, for a stack it does not know', asyn
 
   expect(result.exitCode).toBe(2);
   expect(result.stderr.toString()).toBe('usage: check-sign-in-code.ts <recipe|preview>\n');
-  expect(readFileSync(ctx.callsPath, 'utf8')).toBe('');
+  expect(readStubCalls(ctx.binPath)).toStrictEqual([]);
 });

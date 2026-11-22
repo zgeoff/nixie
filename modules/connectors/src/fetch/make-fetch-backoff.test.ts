@@ -1,9 +1,9 @@
 import { expect, test } from 'bun:test';
-import { buildTestClock } from '@heynixie/testing';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import { makeFetchBackoff } from './make-fetch-backoff';
 
 function setupTest() {
-  const clock = buildTestClock(1_000_000);
+  const clock = createFakeClock({ startMs: 1_000_000 });
 
   return { clock, backoff: makeFetchBackoff({ backoffMs: 30_000, backoffCapMs: 300_000, clock }) };
 }

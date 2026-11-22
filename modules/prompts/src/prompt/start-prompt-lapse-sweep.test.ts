@@ -3,7 +3,8 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { readRecords, startWriter, writeRecords } from '@heynixie/log';
-import { buildTestClock, waitForCondition } from '@heynixie/testing';
+import { waitForCondition } from '@heynixie/testing';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import { promptsOverrideProposedCodec } from '../override/prompts-override-proposed-codec';
 import { startPromptLapseSweep } from './start-prompt-lapse-sweep';
 
@@ -54,7 +55,7 @@ test('it records the lapse of a proposal past its lapse time on the hourly sweep
     },
   ]);
 
-  const clock = buildTestClock(proposedAt + 14 * 24 * 60 * 60 * 1000);
+  const clock = createFakeClock({ startMs: proposedAt + 14 * 24 * 60 * 60 * 1000 });
 
   const sweep = startPromptLapseSweep({
     context: { log: ctx.log, clock, definitions: () => ({ snapshotHash: 'snapshot-a' }) },
@@ -64,7 +65,7 @@ test('it records the lapse of a proposal past its lapse time on the hourly sweep
 
   onTestFinished(() => sweep.stop());
 
-  await waitForCondition(() => clock.countSleepers() > 0);
+  await waitForCondition(() => clock.countPending() > 0);
 
   clock.advance(60 * 60 * 1000);
 

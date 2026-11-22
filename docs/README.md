@@ -215,8 +215,6 @@ rests on.
   semantics, projections, the data behind the dashboard and the live view, export and retention
 - [Tasks](design/platform/core/tasks.md) — tasks as state machines with leases and an inbox, waits,
   the conversation's task tools, task runs of a definition, workers in imps, and crash recovery
-- [Actions](design/platform/core/actions.md) — the action queue, its outcomes, approval consumption,
-  reconciliation per connector, and unknown outcomes
 - [Model profiles](design/platform/core/models.md) — the profile, model roles and their defaults,
   and how nixie computes model cost
 
@@ -239,8 +237,6 @@ rests on.
 
 ### Memory
 
-- [The memory store](design/platform/memory/store.md) — the first build, bulk deletion of retired
-  memories, forget completion with key backups, the memory view and export
 - [Memory writes](design/platform/memory/writes.md) — the client's proposal cards and notices
 - [Memory in context](design/platform/memory/context.md) — past messages in retrieval, the recall
   tools, compaction summaries, and the SDK transcript as a cache

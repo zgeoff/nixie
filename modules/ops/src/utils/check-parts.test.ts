@@ -1,5 +1,6 @@
 import { expect, mock, test } from 'bun:test';
-import { buildTestClock, waitForCondition } from '@heynixie/testing';
+import { waitForCondition } from '@heynixie/testing';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import type { PartCheck } from '../types';
 import { checkParts } from './check-parts';
 
@@ -52,7 +53,7 @@ test('it reports a check that throws as unready with the error name alone', asyn
 });
 
 test('it reports a check that never settles as unready once the timeout passes', async () => {
-  const clock = buildTestClock(0);
+  const clock = createFakeClock({ startMs: 0 });
 
   const pending = checkParts(
     { imp_host: () => Promise.withResolvers<never>().promise },
@@ -60,7 +61,7 @@ test('it reports a check that never settles as unready once the timeout passes',
     clock,
   );
 
-  await waitForCondition(() => clock.countSleepers() === 1);
+  await waitForCondition(() => clock.countPending() === 1);
 
   clock.advance(2000);
 
@@ -73,11 +74,11 @@ test('it reports a check that never settles as unready once the timeout passes',
 });
 
 test('it aborts the signal of a check that outlasts the timeout, so the check ends its calls', async () => {
-  const clock = buildTestClock(0);
+  const clock = createFakeClock({ startMs: 0 });
   const check = mock<PartCheck>(() => Promise.withResolvers<never>().promise);
   const pending = checkParts({ imp_host: check }, 2000, clock);
 
-  await waitForCondition(() => clock.countSleepers() === 1);
+  await waitForCondition(() => clock.countPending() === 1);
 
   clock.advance(2000);
 
@@ -87,7 +88,7 @@ test('it aborts the signal of a check that outlasts the timeout, so the check en
 });
 
 test('it waits on a check that never settles until the timeout passes', async () => {
-  const clock = buildTestClock(0);
+  const clock = createFakeClock({ startMs: 0 });
 
   const pending = checkParts(
     { imp_host: () => Promise.withResolvers<never>().promise },
@@ -95,18 +96,18 @@ test('it waits on a check that never settles until the timeout passes', async ()
     clock,
   );
 
-  await waitForCondition(() => clock.countSleepers() === 1);
+  await waitForCondition(() => clock.countPending() === 1);
 
   clock.advance(1999);
 
-  expect(clock.countSleepers()).toBe(1);
+  expect(clock.countPending()).toBe(1);
   expect(Bun.peek.status(pending)).toBe('pending');
 });
 
 test('it ends the timeout of a check that settles in time', async () => {
-  const clock = buildTestClock(0);
+  const clock = createFakeClock({ startMs: 0 });
 
   await checkParts({ disk: () => Promise.resolve({ isReady: true, reason: null }) }, 2000, clock);
 
-  expect(clock.countSleepers()).toBe(0);
+  expect(clock.countPending()).toBe(0);
 });

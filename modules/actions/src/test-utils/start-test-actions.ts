@@ -11,7 +11,7 @@ import {
   buildTestTaskRunners,
 } from '@heynixie/tasks/test-utils';
 import type { TestTasks } from '@heynixie/tasks/test-utils';
-import { buildTestClock } from '@heynixie/testing';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import { actionsProjection } from '../action/actions-projection';
 
 export async function startTestActions(): Promise<TestTasks> {
@@ -38,7 +38,7 @@ export async function startTestActions(): Promise<TestTasks> {
     projections: [...logProjections, ...tasksProjections, actionsProjection],
   };
 
-  const clock = buildTestClock(1_000_000);
+  const clock = createFakeClock({ startMs: 1_000_000 });
   const definitionStore = buildTestDefinitionStore();
 
   return {

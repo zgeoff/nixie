@@ -3,7 +3,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { defineRecordCodec, readRecords, startWriter } from '@heynixie/log';
-import { buildTestClock } from '@heynixie/testing';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import { z } from 'zod';
 import { buildMockProposalState } from './test-utils/build-mock-proposal-state';
 import { writeProposalLapses } from './write-proposal-lapses';
@@ -44,7 +44,7 @@ test('it lapses a pending proposal 14 days old under the lapsed kind, and keeps 
   const lapsed = await writeProposalLapses(
     {
       log: ctx.log,
-      clock: buildTestClock(olderAt + 14 * 24 * 60 * 60 * 1000),
+      clock: createFakeClock({ startMs: olderAt + 14 * 24 * 60 * 60 * 1000 }),
       definitions: () => ({ snapshotHash: 'snapshot-c' }),
     },
     {
@@ -81,7 +81,7 @@ test('it lapses a proposal with no thread without a thread', async () => {
   await writeProposalLapses(
     {
       log: ctx.log,
-      clock: buildTestClock(proposedAt + 20 * 24 * 60 * 60 * 1000),
+      clock: createFakeClock({ startMs: proposedAt + 20 * 24 * 60 * 60 * 1000 }),
       definitions: () => ({ snapshotHash: 'snapshot-c' }),
     },
     {
@@ -113,7 +113,7 @@ test('it lapses no proposal that an answer or a lapse closed', async () => {
   const lapsed = await writeProposalLapses(
     {
       log: ctx.log,
-      clock: buildTestClock(proposedAt + 30 * 24 * 60 * 60 * 1000),
+      clock: createFakeClock({ startMs: proposedAt + 30 * 24 * 60 * 60 * 1000 }),
       definitions: () => ({ snapshotHash: 'snapshot-c' }),
     },
     {

@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test';
-import { buildTestClock } from '@heynixie/testing';
 import { buildToolRegistry } from '@heynixie/tools';
 import type { ToolCall, ToolContext } from '@heynixie/tools';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import invariant from 'tiny-invariant';
 import { buildTimeTool } from './build-time-tool';
 
@@ -20,7 +20,7 @@ test('it answers in the zone of the newest message', async () => {
   const call: ToolCall = { callID: 'call-1', tool: 'time.now', input: {}, toolUseID: null };
 
   const tool = buildTimeTool({
-    clock: buildTestClock(Date.parse('2026-10-13T22:30:15.000Z')),
+    clock: createFakeClock({ startMs: Date.parse('2026-10-13T22:30:15.000Z') }),
     findTimeZone: () => Promise.resolve('Europe/London'),
     defaultZone: 'Australia/Sydney',
   });
@@ -54,7 +54,7 @@ test('it answers in the configured default zone when no message carries a zone',
   const call: ToolCall = { callID: 'call-1', tool: 'time.now', input: {}, toolUseID: null };
 
   const tool = buildTimeTool({
-    clock: buildTestClock(Date.parse('2026-10-13T22:30:15.000Z')),
+    clock: createFakeClock({ startMs: Date.parse('2026-10-13T22:30:15.000Z') }),
     findTimeZone: () => Promise.resolve(null),
     defaultZone: 'Australia/Sydney',
   });
@@ -88,7 +88,7 @@ test('it gives a zone at UTC itself an offset of +00:00', async () => {
   const call: ToolCall = { callID: 'call-1', tool: 'time.now', input: {}, toolUseID: null };
 
   const tool = buildTimeTool({
-    clock: buildTestClock(Date.parse('2026-01-05T08:00:00.000Z')),
+    clock: createFakeClock({ startMs: Date.parse('2026-01-05T08:00:00.000Z') }),
     findTimeZone: () => Promise.resolve('Atlantic/Reykjavik'),
     defaultZone: 'Australia/Sydney',
   });
@@ -115,7 +115,7 @@ test('it passes the registry rules, with a result the output schema accepts', as
   const call: ToolCall = { callID: 'call-1', tool: 'time.now', input: {}, toolUseID: null };
 
   const tool = buildTimeTool({
-    clock: buildTestClock(Date.parse('2026-10-13T22:30:15.000Z')),
+    clock: createFakeClock({ startMs: Date.parse('2026-10-13T22:30:15.000Z') }),
     findTimeZone: () => Promise.resolve(null),
     defaultZone: 'Australia/Sydney',
   });

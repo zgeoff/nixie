@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import { startTestBudgets } from '../test-utils';
 import { readBudgetLedger } from './read-budget-ledger';
 
@@ -19,6 +20,8 @@ test('it lists the charges of the period in force, oldest first, with the credit
 
   await ctx.credit({ for: { kind: 'tool_call', id: 'call-1' } });
 
+  const firstDayMs = ctx.clock.now();
+
   ctx.clock.advance(24 * 60 * 60 * 1000);
 
   await ctx.charge({
@@ -27,9 +30,10 @@ test('it lists the charges of the period in force, oldest first, with the credit
     for: { kind: 'tool_call', id: 'call-2' },
   });
 
-  ctx.clock.advance(-24 * 60 * 60 * 1000);
+  // the test clock never runs backwards, so the ledger is read at the first day on a clock of its own
+  const firstDayContext = { ...ctx.context, clock: createFakeClock({ startMs: firstDayMs }) };
 
-  const ledger = await readBudgetLedger(ctx.writer.db, ctx.context, 'search-day');
+  const ledger = await readBudgetLedger(ctx.writer.db, firstDayContext, 'search-day');
 
   expect(ledger).toStrictEqual({
     budgetID: 'search-day',

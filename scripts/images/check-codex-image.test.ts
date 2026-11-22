@@ -1,9 +1,9 @@
 import { expect, onTestFinished, test } from 'bun:test';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { createStubBin, readStubCalls } from '@zgeoff/testing/bin';
 import { $ } from 'bun';
-import { createStubProgram } from '../test-utils/create-stub-program.ts';
 
 function setupTest() {
   const directory = mkdtempSync(join(tmpdir(), 'nixie-codex-image-'));
@@ -12,25 +12,28 @@ function setupTest() {
     rmSync(directory, { recursive: true, force: true });
   });
 
-  const callsPath = join(directory, 'calls');
-
-  writeFileSync(callsPath, '');
-
   return {
     repoPath: directory,
     binPath: join(directory, 'bin'),
-    callsPath,
     scriptPath: join(import.meta.dir, 'check-codex-image.ts'),
-    versionCall: 'run --rm --network none --entrypoint codex r/nixie-codex@sha256:ee55 --version',
+    versionArgs: [
+      'run',
+      '--rm',
+      '--network',
+      'none',
+      '--entrypoint',
+      'codex',
+      'r/nixie-codex@sha256:ee55',
+      '--version',
+    ],
   };
 }
 
 test('it passes when the image prints the pinned version', async () => {
   const ctx = setupTest();
 
-  createStubProgram(join(ctx.binPath, 'docker'), {
-    callsPath: ctx.callsPath,
-    answers: { [ctx.versionCall]: { stdout: 'codex-cli 0.166.0\n' } },
+  createStubBin(ctx.binPath, 'docker', {
+    answers: [{ args: ctx.versionArgs, stdout: 'codex-cli 0.166.0\n' }],
   });
 
   const result = await $`${process.execPath} ${ctx.scriptPath}`
@@ -39,18 +42,17 @@ test('it passes when the image prints the pinned version', async () => {
     .nothrow()
     .quiet();
 
-  expect({ exitCode: result.exitCode, calls: readFileSync(ctx.callsPath, 'utf8') }).toStrictEqual({
+  expect({ exitCode: result.exitCode, calls: readStubCalls(ctx.binPath) }).toMatchObject({
     exitCode: 0,
-    calls: `docker ${ctx.versionCall}\n`,
+    calls: [{ name: 'docker', argv: ctx.versionArgs }],
   });
 });
 
 test('it fails when the image prints another version', async () => {
   const ctx = setupTest();
 
-  createStubProgram(join(ctx.binPath, 'docker'), {
-    callsPath: ctx.callsPath,
-    answers: { [ctx.versionCall]: { stdout: 'codex-cli 0.165.0\n' } },
+  createStubBin(ctx.binPath, 'docker', {
+    answers: [{ args: ctx.versionArgs, stdout: 'codex-cli 0.165.0\n' }],
   });
 
   const result = await $`${process.execPath} ${ctx.scriptPath}`
@@ -68,10 +70,7 @@ test('it fails when the image prints another version', async () => {
 test('it fails when the image does not run', async () => {
   const ctx = setupTest();
 
-  createStubProgram(join(ctx.binPath, 'docker'), {
-    callsPath: ctx.callsPath,
-    answers: { [ctx.versionCall]: { exitCode: 1 } },
-  });
+  createStubBin(ctx.binPath, 'docker', { answers: [{ args: ctx.versionArgs, exitCode: 1 }] });
 
   const result = await $`${process.execPath} ${ctx.scriptPath}`
     .cwd(ctx.repoPath)

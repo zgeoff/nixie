@@ -28,8 +28,8 @@ committed rolls back. Other failures reduce to it or belong to a later slice:
   action queue keeps the rerun from repeating an action.
 
 The tests never kill SQLite mid-transaction to test SQLite. They kill nixie between its own
-transactions and check that each commit group in the [tasks](tasks.md) and [actions](actions.md)
-designs applied whole or not at all.
+transactions and check that each commit group in the [tasks](tasks.md) and
+[actions](../../../architecture/core/actions.md) designs applied whole or not at all.
 
 ## The harness
 
@@ -128,7 +128,7 @@ and restarts. A second run kills nixie at `timer.fire.before` on the restart.
 
 The test connector refuses `test.send` with a refusal that can clear. The test kills nixie at
 `attempt.result.after`, restarts, and advances the clock through the retry schedule in
-[actions](actions.md).
+[actions](../../../architecture/core/actions.md).
 
 - The attempt count continues across the restart, and each delay matches the schedule.
 - The next attempt time survives the restart, so the action stores it in its own row.

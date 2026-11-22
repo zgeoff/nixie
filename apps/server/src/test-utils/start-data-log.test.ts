@@ -4,7 +4,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { readRecords, writeRecords } from '@heynixie/log';
-import { buildTestClock } from '@heynixie/testing';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import { startDataLog } from './start-data-log';
 
 async function setupTest() {
@@ -18,7 +18,7 @@ async function setupTest() {
 test('it records each record at the time on the clock it takes', async () => {
   const ctx = await setupTest();
 
-  const clock = buildTestClock(1_000_000);
+  const clock = createFakeClock({ startMs: 1_000_000 });
 
   const testLog = await startDataLog({
     dataDir: ctx.dataDir,

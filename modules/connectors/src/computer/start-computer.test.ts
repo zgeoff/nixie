@@ -1,9 +1,10 @@
 import { expect, onTestFinished, test } from 'bun:test';
 import type { Sandbox } from '@heynixie/sandbox';
 import { watchMemoryKills } from '@heynixie/sandbox';
-import { buildTestClock, waitForCondition } from '@heynixie/testing';
+import { waitForCondition } from '@heynixie/testing';
 import type { ComputerHandler, ComputerRequest } from '@heynixie/wire';
 import { runComputerGuest } from '@heynixie/wire';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import { buildStubSandboxAdapter } from '../test-utils/build-stub-sandbox-adapter';
 import { startComputer } from './start-computer';
 
@@ -12,7 +13,7 @@ interface SetupOptions {
 }
 
 function setupTest(options: SetupOptions = {}) {
-  const clock = buildTestClock(0);
+  const clock = createFakeClock({ startMs: 0 });
   const log: { event: string; fields: Record<string, unknown> }[] = [];
   const state = { kills: 0, sleeps: 0, wakes: 0, guests: 0 };
 

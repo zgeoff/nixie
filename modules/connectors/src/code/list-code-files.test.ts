@@ -2,8 +2,8 @@ import { expect, test } from 'bun:test';
 import type { LogTables } from '@heynixie/log';
 import { removeRecordKey } from '@heynixie/log';
 import { buildAllowingDecisionPoint } from '@heynixie/policy/test-utils';
-import { buildTestClock } from '@heynixie/testing';
 import { buildToolRegistry, runToolCall } from '@heynixie/tools';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import invariant from 'tiny-invariant';
 import type { CodeRunFilesSeed } from '../test-utils/seed-code-run-files';
 import { seedCodeRunFiles } from '../test-utils/seed-code-run-files';
@@ -12,7 +12,7 @@ import { buildFileSendTool } from './build-file-send-tool';
 import { listCodeFiles } from './list-code-files';
 
 async function setupTest() {
-  const clock = buildTestClock(1_000_000);
+  const clock = createFakeClock({ startMs: 1_000_000 });
 
   const log = await startTestLog(clock);
 

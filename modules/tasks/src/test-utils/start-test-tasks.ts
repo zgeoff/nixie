@@ -4,8 +4,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { Log, Writer } from '@heynixie/log';
 import { logProjections, startWriter } from '@heynixie/log';
-import type { TestClock } from '@heynixie/testing';
-import { buildTestClock } from '@heynixie/testing';
+import type { FakeClock } from '@zgeoff/testing/clock';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import { tasksProjections } from '../task/projection/tasks-projections';
 import type { TasksContext } from '../types';
 import type { TestDefinitionStore } from './build-test-definition-readers';
@@ -17,7 +17,7 @@ export interface TestTasks {
   readonly defer: (cleanup: () => Promise<void>) => void;
   readonly dataDir: string;
   readonly writer: Writer;
-  readonly clock: TestClock;
+  readonly clock: FakeClock;
   readonly context: TasksContext;
 
   // the versions and run policies that the context's definition readers answer with
@@ -43,7 +43,7 @@ export async function startTestTasks(): Promise<TestTasks> {
   ]);
 
   const log: Log = { writer, deploymentKey, projections: [...logProjections, ...tasksProjections] };
-  const clock = buildTestClock(1_000_000);
+  const clock = createFakeClock({ startMs: 1_000_000 });
   const definitionStore = buildTestDefinitionStore();
 
   return {

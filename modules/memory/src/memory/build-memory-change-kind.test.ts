@@ -2,7 +2,7 @@ import { expect, test } from 'bun:test';
 import { buildShortIDFromUUID } from '@heynixie/db';
 import { readRecords, writeRecords } from '@heynixie/log';
 import { buildEventRegistry, readEventsNote } from '@heynixie/sessions';
-import { buildTestClock } from '@heynixie/testing';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import invariant from 'tiny-invariant';
 import { buildProposalAnswerKind } from '../proposal/build-proposal-answer-kind';
 import { createProposal } from '../test-utils/create-proposal';
@@ -13,7 +13,7 @@ import { writeOwnerMessageRecord } from '../test-utils/write-owner-message-recor
 import { buildMemoryChangeKind } from './build-memory-change-kind';
 
 async function setupTest() {
-  const clock = buildTestClock(Date.UTC(2025, 0, 1));
+  const clock = createFakeClock({ startMs: Date.UTC(2025, 0, 1) });
 
   return { clock, memory: await startTestMemory({ gate: { clock }, logClock: clock }) };
 }

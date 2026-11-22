@@ -1,9 +1,9 @@
 import { expect, onTestFinished, test } from 'bun:test';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { createStubBin, readStubCalls } from '@zgeoff/testing/bin';
 import { $ } from 'bun';
-import { createStubProgram } from '../test-utils/create-stub-program.ts';
 
 function setupTest() {
   const directory = mkdtempSync(join(tmpdir(), 'nixie-unused-version-'));
@@ -12,13 +12,8 @@ function setupTest() {
     rmSync(directory, { recursive: true, force: true });
   });
 
-  const callsPath = join(directory, 'calls');
-
-  writeFileSync(callsPath, '');
-
   return {
     binPath: join(directory, 'bin'),
-    callsPath,
     scriptPath: join(import.meta.dir, 'check-unused-version.ts'),
   };
 }
@@ -26,15 +21,26 @@ function setupTest() {
 test('it passes when no image carries the version yet', async () => {
   const ctx = setupTest();
 
-  createStubProgram(join(ctx.binPath, 'docker'), {
-    callsPath: ctx.callsPath,
-    answers: {
-      'buildx imagetools inspect ghcr.io/heynixie/nixie-conversation:0.59.0': { exitCode: 1 },
-      'buildx imagetools inspect ghcr.io/heynixie/nixie-fetch:0.59.0': { exitCode: 1 },
-      'buildx imagetools inspect ghcr.io/heynixie/nixie-backup:0.59.0': { exitCode: 1 },
-      'buildx imagetools inspect ghcr.io/heynixie/nixie:0.59.0': { exitCode: 1 },
-      'buildx imagetools inspect ghcr.io/heynixie/nixie-web:0.59.0': { exitCode: 1 },
-    },
+  createStubBin(ctx.binPath, 'docker', {
+    answers: [
+      {
+        args: ['buildx', 'imagetools', 'inspect', 'ghcr.io/heynixie/nixie-conversation:0.59.0'],
+        exitCode: 1,
+      },
+      {
+        args: ['buildx', 'imagetools', 'inspect', 'ghcr.io/heynixie/nixie-fetch:0.59.0'],
+        exitCode: 1,
+      },
+      {
+        args: ['buildx', 'imagetools', 'inspect', 'ghcr.io/heynixie/nixie-backup:0.59.0'],
+        exitCode: 1,
+      },
+      { args: ['buildx', 'imagetools', 'inspect', 'ghcr.io/heynixie/nixie:0.59.0'], exitCode: 1 },
+      {
+        args: ['buildx', 'imagetools', 'inspect', 'ghcr.io/heynixie/nixie-web:0.59.0'],
+        exitCode: 1,
+      },
+    ],
   });
 
   const result = await $`${process.execPath} ${ctx.scriptPath}`
@@ -44,27 +50,41 @@ test('it passes when no image carries the version yet', async () => {
 
   expect(result.exitCode).toBe(0);
 
-  expect(readFileSync(ctx.callsPath, 'utf8')).toBe(
-    [
-      'docker buildx imagetools inspect ghcr.io/heynixie/nixie-conversation:0.59.0',
-      'docker buildx imagetools inspect ghcr.io/heynixie/nixie-fetch:0.59.0',
-      'docker buildx imagetools inspect ghcr.io/heynixie/nixie-backup:0.59.0',
-      'docker buildx imagetools inspect ghcr.io/heynixie/nixie:0.59.0',
-      'docker buildx imagetools inspect ghcr.io/heynixie/nixie-web:0.59.0',
-      '',
-    ].join('\n'),
-  );
+  expect(readStubCalls(ctx.binPath)).toMatchObject([
+    {
+      name: 'docker',
+      argv: ['buildx', 'imagetools', 'inspect', 'ghcr.io/heynixie/nixie-conversation:0.59.0'],
+    },
+    {
+      name: 'docker',
+      argv: ['buildx', 'imagetools', 'inspect', 'ghcr.io/heynixie/nixie-fetch:0.59.0'],
+    },
+    {
+      name: 'docker',
+      argv: ['buildx', 'imagetools', 'inspect', 'ghcr.io/heynixie/nixie-backup:0.59.0'],
+    },
+    { name: 'docker', argv: ['buildx', 'imagetools', 'inspect', 'ghcr.io/heynixie/nixie:0.59.0'] },
+    {
+      name: 'docker',
+      argv: ['buildx', 'imagetools', 'inspect', 'ghcr.io/heynixie/nixie-web:0.59.0'],
+    },
+  ]);
 });
 
 test('it refuses a version that an image already carries', async () => {
   const ctx = setupTest();
 
-  createStubProgram(join(ctx.binPath, 'docker'), {
-    callsPath: ctx.callsPath,
-    answers: {
-      'buildx imagetools inspect ghcr.io/heynixie/nixie-conversation:0.59.0': { exitCode: 1 },
-      'buildx imagetools inspect ghcr.io/heynixie/nixie-fetch:0.59.0': { exitCode: 0 },
-    },
+  createStubBin(ctx.binPath, 'docker', {
+    answers: [
+      {
+        args: ['buildx', 'imagetools', 'inspect', 'ghcr.io/heynixie/nixie-conversation:0.59.0'],
+        exitCode: 1,
+      },
+      {
+        args: ['buildx', 'imagetools', 'inspect', 'ghcr.io/heynixie/nixie-fetch:0.59.0'],
+        exitCode: 0,
+      },
+    ],
   });
 
   const result = await $`${process.execPath} ${ctx.scriptPath}`

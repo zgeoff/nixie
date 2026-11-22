@@ -1,7 +1,7 @@
 import { expect, mock, onTestFinished, test } from 'bun:test';
 import { stat } from 'node:fs/promises';
 import { readRecords } from '@heynixie/log';
-import { buildTestClock } from '@heynixie/testing';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import { buildStubEncoder } from './build-stub-encoder';
 import { startTestMemory } from './start-test-memory';
 
@@ -61,7 +61,7 @@ test('it gives the store the definitions snapshot the test passes', async () => 
 
 test('it stamps each record with the time of the log clock the test passes', async () => {
   const ctx = await startTestMemory({
-    logClock: buildTestClock(Date.parse('2026-10-19T08:14:00Z')),
+    logClock: createFakeClock({ startMs: Date.parse('2026-10-19T08:14:00Z') }),
   });
 
   await ctx.store.remember({

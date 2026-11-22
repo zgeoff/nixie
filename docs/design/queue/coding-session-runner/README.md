@@ -41,7 +41,7 @@ Three sibling designs touch this one:
 | adapter        | a package that reaches one outside system for an interface that nixie owns; the coding runner calls its adapter for every atc call                  |
 | turn           | one reply cycle of the coding agent inside the session, which atc reports when it ends                                                              |
 | bound session  | the coding session that a coding task's start created, once the task has recorded its ID                                                            |
-| coding source  | the [trigger source](../triggers.md) that reads atc's event trail into each coding task's inbox                                                     |
+| coding source  | the [trigger source](../../../architecture/core/triggers.md) that reads atc's event trail into each coding task's inbox                             |
 | report target  | the task that started a coding task, usually the conversation; it receives each report                                                              |
 | variant        | one form of a tool's input, picked by a field such as `runner`, with its own policy rule name, such as `task.start/atc`                             |
 | hop            | the count of task messages in one exchange; past the [hop limit](../../../architecture/core/task-messages.md#the-hop-limit) a message wakes nobody  |

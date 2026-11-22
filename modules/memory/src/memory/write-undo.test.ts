@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test';
 import { readRecords, writeRecordsInTransaction } from '@heynixie/log';
-import { buildTestClock } from '@heynixie/testing';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import { buildMockProvenance } from '../test-utils/build-mock-provenance';
 import { startTestMemory } from '../test-utils/start-test-memory';
 
@@ -344,7 +344,7 @@ test('it undoes the creation of an item by retiring it', async () => {
 });
 
 test('it clears the end time when it undoes a lapse, so the next sweep leaves the item active', async () => {
-  const clock = buildTestClock(Date.parse('2026-10-19T09:00:00Z'));
+  const clock = createFakeClock({ startMs: Date.parse('2026-10-19T09:00:00Z') });
 
   const memory = await startTestMemory({ gate: { clock } });
 
@@ -371,7 +371,7 @@ test('it clears the end time when it undoes a lapse, so the next sweep leaves th
 });
 
 test('it keeps the end time of the version it returns to when it undoes an edit', async () => {
-  const clock = buildTestClock(Date.parse('2026-10-19T09:00:00Z'));
+  const clock = createFakeClock({ startMs: Date.parse('2026-10-19T09:00:00Z') });
 
   const memory = await startTestMemory({ gate: { clock } });
 

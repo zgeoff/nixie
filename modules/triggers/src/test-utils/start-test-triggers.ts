@@ -15,14 +15,14 @@ import {
   buildTestRunSettings,
   buildTestTaskRunners,
 } from '@heynixie/tasks/test-utils';
-import type { TestClock } from '@heynixie/testing';
-import { buildTestClock } from '@heynixie/testing';
+import type { FakeClock } from '@zgeoff/testing/clock';
+import { createFakeClock } from '@zgeoff/testing/clock';
 import { triggersProjections } from '../projection/triggers-projections';
 import type { TriggerCoreContext } from '../types';
 
 export interface TestTriggers {
   readonly writer: Writer;
-  readonly clock: TestClock;
+  readonly clock: FakeClock;
 
   // the tasks module's context, on a log that folds the trigger records too
   readonly context: TasksContext;
@@ -44,7 +44,7 @@ export async function startTestTriggers(): Promise<TestTriggers> {
 
   stack.defer(() => rm(dataDir, { recursive: true, force: true }));
 
-  const clock = buildTestClock(Date.parse('2027-03-09T00:00:00Z'));
+  const clock = createFakeClock({ startMs: Date.parse('2027-03-09T00:00:00Z') });
 
   const writer = await startWriter({ dataDir, clock });
 
