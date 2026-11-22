@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.96.0](https://github.com/zgeoff/nixie/compare/v0.95.0...v0.96.0) (2026-11-22)
+
+
+### Features
+
+* **computer:** run the browser and shell in one desktop sandbox ([#1364](https://github.com/zgeoff/nixie/issues/1364)) ([3a8446d](https://github.com/zgeoff/nixie/commit/3a8446d4766122192d8a1817defc99d60c76a725))
+
 ## [0.95.0](https://github.com/zgeoff/nixie/compare/v0.94.0...v0.95.0) (2026-11-22)
 
 
