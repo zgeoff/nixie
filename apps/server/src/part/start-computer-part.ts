@@ -2,9 +2,9 @@ import { join } from 'node:path';
 import type { ComputerTools } from '@heynixie/connectors';
 import {
   buildComputerTools,
+  endTakeoverCutByRestart,
   makeTakeoverRecords,
   makeUnexemptScans,
-  readOpenTakeover,
   startComputer,
 } from '@heynixie/connectors';
 import type { Definitions, Log } from '@heynixie/log';
@@ -73,7 +73,7 @@ export async function startComputerPart(inputs: ComputerPartInputs): Promise<Com
     takeover: { idleMs: options.config.computer.idle_hand_back_minutes * 60_000, records },
   });
 
-  await endTakeoverCutByRestart(inputs, records);
+  await endTakeoverCutByRestart(inputs.log, records);
 
   await options.cleanup.defer(() => computer.stop());
 
@@ -85,24 +85,5 @@ export async function startComputerPart(inputs: ComputerPartInputs): Promise<Com
     logger: options.log,
     deniedRanges,
     fetch: webFetch,
-  });
-}
-
-// A hold lives in memory, so one that was open when nixie stopped is over. Its end is written now,
-// with no sites and no window, because nothing is left to read them from.
-async function endTakeoverCutByRestart(
-  inputs: ComputerPartInputs,
-  records: ReturnType<typeof makeTakeoverRecords>,
-): Promise<void> {
-  const startedAtMs = await readOpenTakeover(inputs.log.writer.db);
-
-  if (startedAtMs === null) {
-    return;
-  }
-
-  await records.writeEnded({
-    by: 'restart',
-    durationSeconds: Math.round((inputs.log.writer.clock.now() - startedAtMs) / 1000),
-    read: null,
   });
 }

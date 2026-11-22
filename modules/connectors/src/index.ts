@@ -106,7 +106,7 @@ export type {
 
 export type { ComputerTakeoverRecordKind } from './computer/takeover/computer-takeover-record-kind';
 export { makeTakeoverRecords } from './computer/takeover/make-takeover-records';
-export { readOpenTakeover } from './computer/takeover/read-open-takeover';
+export { endTakeoverCutByRestart } from './computer/takeover/end-takeover-cut-by-restart';
 
 export {
   takeoverEndedCodec,

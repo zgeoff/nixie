@@ -101,8 +101,21 @@ async function setupTest() {
       socket.send(new Uint8Array([1]));
       socket.send(new Uint8Array([1]));
 
-      return { sendPointer: () => socket.send(new Uint8Array([5, 0, 0, 10, 0, 10])) };
+      // A whole-screen update request always passes, so once the guest has seen the marker of one,
+      // it has seen every message the viewer sent before it.
+      return {
+        sendPointer: () => socket.send(new Uint8Array([5, 0, 0, 10, 0, 10])),
+        sendMarker: (marker: number) =>
+          socket.send(new Uint8Array([3, 0, 0, marker, 0, 0, 0, 1, 0, 1])),
+      };
     },
+    waitForMarker: (marker: number) =>
+      waitForCondition(() =>
+        frames.some(
+          (frame) =>
+            frame.kind === 'vnc-data' && frame.data.length === 10 && frame.data[3] === marker,
+        ),
+      ),
     countPointerFrames: () =>
       frames.filter(
         (frame) => frame.kind === 'vnc-data' && frame.data.length === 6 && frame.data[0] === 5,
@@ -115,8 +128,9 @@ test('it drops the pointer of a viewer until its device takes over, and passes i
   const watch = await ctx.openWatch(ctx.laptop.token);
 
   watch.sendPointer();
+  watch.sendMarker(1);
 
-  await waitForCondition(() => ctx.frames.some((frame) => frame.kind === 'vnc-data'));
+  await ctx.waitForMarker(1);
 
   const before = ctx.countPointerFrames();
 
@@ -150,8 +164,9 @@ test('it drops the pointer of a second device while the first holds the desktop'
   await Promise.allSettled([refused]);
 
   watch.sendPointer();
+  watch.sendMarker(1);
 
-  await waitForCondition(() => ctx.frames.some((frame) => frame.kind === 'vnc-data'));
+  await ctx.waitForMarker(1);
 
   expect(refused).rejects.toMatchObject({ code: 'HELD_ELSEWHERE' });
   expect(ctx.countPointerFrames()).toBe(0);
@@ -172,8 +187,9 @@ test('it stops passing pointer messages once the device hands the desktop back',
   await client.computer.handBack({ clientActionID: crypto.randomUUID() });
 
   watch.sendPointer();
+  watch.sendMarker(2);
 
-  await waitForCondition(() => ctx.frames.filter((frame) => frame.kind === 'vnc-data').length >= 2);
+  await ctx.waitForMarker(2);
 
   expect([ctx.countPointerFrames(), ctx.computer.takeover.isHeld()]).toStrictEqual([1, false]);
 });
