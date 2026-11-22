@@ -30,8 +30,10 @@ nixie's backup schedule runs a pass on a poll, and early when a record commits. 
 every receipt that the job wrote, then stages a set when one is due:
 
 1. A forget set is due once a forget record is newer than the log position of every set that staged,
-   published or failed. A forget record closes a memory forget, a message forget, a moment destroy
-   or a reset of the conversations, each of which deletes its keys before it writes that record.
+   published or failed. A forget record closes a memory forget, a message forget, a note forget, a
+   moment destroy or a reset of the conversations, each of which deletes its keys before it writes
+   that record. The backup module names a note forget's record kind as a string, and imports nothing
+   from the notebook.
 2. A scheduled set is due once the newest staged set is a backup interval old, and never while a set
    waits for its receipt.
 

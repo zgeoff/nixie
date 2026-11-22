@@ -186,4 +186,6 @@ reply, [`log.read`](../memory/context.md#reading-the-log) and `moment.read`. A f
 records each search's cost there. The [moment tools](../memory/moments.md#the-tools),
 `memory.recall`, `memory.pending` and the `proposed` result of the 4 memory write tools,
 `memory.remember`, `memory.edit`, `memory.retire` and `memory.pin`, record the UUID behind each
-short ID of their result there, under `hidden.uuids`, so the stored result shows short IDs only.
+short ID of their result there, under `hidden.uuids`, so the stored result shows short IDs only. The
+[notebook tools](../memory/notebook.md#the-tools) do the same, and each also leaves its free text
+out of the call record, so a forget of a note leaves no readable copy in a tool's records.

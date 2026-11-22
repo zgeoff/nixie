@@ -88,7 +88,7 @@ test('it reads every section, with the default of each setting the file leaves o
     tasks: { runners: 3, startedClaimLoops: 2, messaging: { hopLimit: 20 } },
     reminders: { min_gap_minutes: 15 },
     actions: { runners: 4 },
-    notebook: { noteChars: 50_000, maxNotes: 1000, checkReasonRepeats: 3 },
+    notebook: { noteChars: 50_000, maxNotes: 250, checkReasonRepeats: 3 },
     forget_notices: { note: true },
     policy: {
       consent: { linkMaxAgeMs: 86_400_000 },

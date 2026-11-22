@@ -119,7 +119,7 @@ export function buildEditTool(memory: ModelWriteStore & ItemIDStore): ToolDefini
         const subject = input.subject ?? itemSubject;
 
         const limitError =
-          input.text === undefined ? null : findTextLimitError(input.text, subject);
+          input.text === undefined ? null : findTextLimitError(input.text, subject, true);
 
         if (limitError !== null) {
           throw new TextLimitError(limitError);

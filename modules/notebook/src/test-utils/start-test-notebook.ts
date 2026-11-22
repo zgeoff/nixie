@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { Log } from '@heynixie/log';
 import { logProjections, readRecords, startWriter } from '@heynixie/log';
-import type { CleanupCause } from '@heynixie/memory';
+import type { CleanupCause, CleanupSessions } from '@heynixie/memory';
 import {
   defaultGateLimits,
   defaultOwnerPronouns,
@@ -17,6 +17,7 @@ import {
   writeOwnerMessages,
 } from '@heynixie/memory/test-utils';
 import { createFakeClock } from '@zgeoff/testing/clock';
+import { buildItemLinkCounts } from '../count/build-item-link-counts';
 import { buildNotebookMemory } from '../memory/build-notebook-memory';
 import { notebookProjections } from '../projection/notebook-projections';
 import { startNotebook } from '../start-notebook';
@@ -30,6 +31,9 @@ export interface TestNotebookOptions {
 
   // the topics of the stub encoder; without any, no meaning search runs
   readonly topics?: readonly (readonly string[])[];
+
+  // runs after the cleanup is recorded, so a test can fail a forget's session cleanup
+  readonly cleanupSessions?: CleanupSessions;
 }
 
 // Starts a log with the notebook over it, and a memory store beside it, so a test calls a tool and
@@ -71,6 +75,7 @@ export async function startTestNotebook(options: TestNotebookOptions = {}) {
     log,
     definitions,
     cleanupSessions: () => Promise.resolve(),
+    linkCounts: buildItemLinkCounts(log),
     ...(semanticSearch === undefined ? {} : { semanticSearch }),
     gate: {
       check: () =>
@@ -101,7 +106,7 @@ export async function startTestNotebook(options: TestNotebookOptions = {}) {
       cleanupSessions: (cause) => {
         cleanups.push(cause);
 
-        return Promise.resolve();
+        return options.cleanupSessions?.(cause) ?? Promise.resolve();
       },
       ...(semanticSearch === undefined ? {} : { semanticSearch }),
     });

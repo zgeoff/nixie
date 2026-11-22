@@ -94,7 +94,10 @@ export interface NotebookSettings {
 
 export const defaultNotebookSettings: NotebookSettings = {
   noteChars: 50_000,
-  maxNotes: 1000,
+
+  // Measured: 1,000 notes of 50,000 characters take about 33 minutes to encode and about 600 MiB
+  // of memory, past the 10 minutes and 512 MiB that fit; 250 notes take about 8 minutes.
+  maxNotes: 250,
   checkReasonRepeats: 3,
 };
 
