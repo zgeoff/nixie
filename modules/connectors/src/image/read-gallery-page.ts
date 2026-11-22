@@ -6,8 +6,8 @@ import type { ImageRow, ImageTables } from './image-tables';
 import type { GalleryImage } from './read-gallery-image';
 import { readGalleryImages } from './read-gallery-image';
 
-export const galleryPageSize = 30;
-export const galleryScanLimit = 300;
+const galleryPageSize = 30;
+const galleryScanLimit = 300;
 
 export interface GalleryPageQuery {
   readonly isPinnedOnly: boolean;
