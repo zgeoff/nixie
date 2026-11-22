@@ -18,10 +18,15 @@ const muted = css({ color: 'textMuted', fontSize: 'sm' });
 export function NoteStoredImage(props: NoteStoredImageProps): ReactNode {
   const nixie = useNixieClient();
 
+  const options = nixie.queryUtils.images.readBytes.queryOptions({
+    input: { image: props.image, size: 'full' },
+  });
+
+  // The key is the note body's own: the lightbox keeps the same bytes cached for good, and a
+  // forgotten image must not show from there.
   const read = useQuery({
-    ...nixie.queryUtils.images.readBytes.queryOptions({
-      input: { image: props.image, size: 'full' },
-    }),
+    ...options,
+    queryKey: [...options.queryKey, 'note-body'],
     gcTime: 0,
     retry: false,
   });

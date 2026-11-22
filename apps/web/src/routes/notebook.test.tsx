@@ -1,7 +1,9 @@
-import { expect, test } from 'bun:test';
+import { expect, onTestFinished, spyOn, test } from 'bun:test';
+import { buildQueryUtils } from '@heynixie/contract';
 import { waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import invariant from 'tiny-invariant';
+import { buildBrowserClient } from '../client/build-browser-client';
 import { mockViewStore } from '../mocks/mock-view-store';
 import { createDeviceSession } from '../test-utils/create-device-session';
 import { renderRoute } from '../test-utils/render-route';
@@ -885,4 +887,100 @@ test('it pages the history of a note with 51 versions', async () => {
 
   expect(within(history).getAllByRole('link')).toHaveLength(51);
   expect(within(history).queryByRole('button', { name: 'Load older versions' })).toBeNull();
+});
+
+test('it drops a note from the screen when Load older versions finds it forgotten', async () => {
+  const ctx = await setupTest();
+
+  const note = await mockViewStore.notes.create({
+    note: 'n4w8k2c6rd',
+    versions: Array.from({ length: 51 }, (_, index) => ({
+      at: new Date(2026, 10, 1, 8, index),
+      title: 'Boiler notes',
+      body: `A secret boiler body ${index + 1}`,
+    })),
+  });
+
+  const rendered = renderRoute('/notebook/n4w8k2c6rd');
+
+  await rendered.findByText('A secret boiler body 51');
+
+  await mockViewStore.notes.update(note, {
+    data(draft) {
+      draft.isForgotten = true;
+      draft.versions = [];
+    },
+  });
+
+  await ctx.user.click(rendered.getByRole('button', { name: 'Load older versions' }));
+  await rendered.findByRole('alert');
+
+  expect(rendered.queryByText('A secret boiler body 51')).toBeNull();
+  expect(rendered.queryByRole('heading', { name: 'Boiler notes' })).toBeNull();
+});
+
+test('it forgets the whole note from an older version and says which versions go', async () => {
+  const ctx = await setupTest();
+
+  await mockViewStore.notes.create({
+    note: 'n4w8k2c6rd',
+    versions: [
+      { at: new Date('2026-11-20T08:00:00Z'), title: 'Boiler notes', body: 'It trips.' },
+      { at: new Date('2026-11-21T08:00:00Z'), title: 'Boiler notes', body: 'It trips at night.' },
+    ],
+  });
+
+  const rendered = renderRoute('/notebook/n4w8k2c6rd');
+
+  const versionLink = await rendered.findByRole('link', { name: 'Version 1' });
+
+  await ctx.user.click(versionLink);
+  await rendered.findByText('Version 1 of 2');
+  await ctx.user.click(rendered.getByRole('button', { name: 'Forget' }));
+
+  await rendered.findByText(
+    'This page shows version 1. The forget removes the note with every version, up to version 2.',
+  );
+
+  await ctx.user.click(rendered.getByRole('button', { name: 'Forget for good' }));
+  await rendered.findByText('The note is forgotten.');
+
+  expect(mockViewStore.notes.all().map((note) => note.isForgotten)).toStrictEqual([true]);
+});
+
+test('it never shows the bytes that the image lightbox cached for a forgotten image', async () => {
+  await setupTest();
+
+  const image = await mockViewStore.images.create({ image: 'k3x9m2p7qa', name: 'harbour' });
+
+  await mockViewStore.notes.create({
+    note: 'n4w8k2c6rd',
+    versions: [{ at: new Date(), title: 'Pictures', body: '![the harbour](image:k3x9m2p7qa)' }],
+  });
+
+  await mockViewStore.images.update(image, {
+    data(draft) {
+      draft.isForgotten = true;
+    },
+  });
+
+  const createObjectURL = spyOn(URL, 'createObjectURL');
+
+  onTestFinished(() => {
+    createObjectURL.mockRestore();
+  });
+
+  const rendered = renderRoute('/notebook/n4w8k2c6rd');
+
+  const cachedBytes = new File(['old bytes'], 'old.png');
+
+  const lightboxKey = buildQueryUtils(buildBrowserClient()).images.readBytes.queryOptions({
+    input: { image: 'k3x9m2p7qa', size: 'full' },
+  }).queryKey;
+
+  rendered.queryClient.setQueryData(lightboxKey, cachedBytes);
+
+  await rendered.findByText('image unavailable');
+
+  expect(createObjectURL).not.toHaveBeenCalledWith(cachedBytes);
 });

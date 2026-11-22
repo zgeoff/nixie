@@ -13,8 +13,11 @@ export interface NoteForgetControlProps {
   // title nor its link counts
   readonly isHidden: boolean;
 
-  // the newest version the page showed, or undefined when the page showed none
+  // the newest version the page knew, or undefined when the page showed none
   readonly version: number | undefined;
+
+  // the version whose body the page shows, which an older one from the history differs from
+  readonly shownVersion: number | undefined;
   readonly onForgotten: (backup: ForgetBackup) => void;
 }
 
@@ -68,6 +71,11 @@ export function NoteForgetControl(props: NoteForgetControlProps): ReactNode {
   const isBehind =
     preview.isSuccess && props.version !== undefined && preview.data.version !== props.version;
 
+  const isOlderShown =
+    props.shownVersion !== undefined &&
+    props.version !== undefined &&
+    props.shownVersion !== props.version;
+
   if (actionID === null) {
     return (
       <button
@@ -103,6 +111,12 @@ export function NoteForgetControl(props: NoteForgetControlProps): ReactNode {
           its {preview.data.linkCount} {preview.data.linkCount === 1 ? 'link' : 'links'}. The{' '}
           {preview.data.backlinkCount} {preview.data.backlinkCount === 1 ? 'link' : 'links'} from
           other notes stay and read as gone.
+        </p>
+      ) : null}
+      {preview.isSuccess && !props.isHidden && !isBehind && isOlderShown ? (
+        <p>
+          This page shows version {props.shownVersion}. The forget removes the note with every
+          version, up to version {props.version}.
         </p>
       ) : null}
       {preview.isSuccess && !isBehind ? (

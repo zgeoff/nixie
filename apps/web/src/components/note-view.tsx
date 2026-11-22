@@ -96,8 +96,10 @@ export function NoteView(props: NoteViewProps): ReactNode {
   }
 
   // A failed read leaves the last page cached, and a note forgotten elsewhere must not stay on
-  // screen, so only a failed history page keeps what loaded.
-  const first = read.isError && !read.isFetchNextPageError ? undefined : read.data?.pages[0];
+  // screen, so only a history page that failed for another reason keeps what loaded.
+  const isGone = isUnknownNoteError(read.error);
+  const keepsPage = read.isFetchNextPageError && !isGone;
+  const first = read.isError && !keepsPage ? undefined : read.data?.pages[0];
 
   if (first === undefined) {
     return (
@@ -122,6 +124,7 @@ export function NoteView(props: NoteViewProps): ReactNode {
           isHidden
           note={props.note}
           onForgotten={setForgotten}
+          shownVersion={undefined}
           version={undefined}
         />
       </main>
@@ -131,6 +134,14 @@ export function NoteView(props: NoteViewProps): ReactNode {
   const history = (read.data?.pages ?? []).flatMap((loaded) =>
     'history' in loaded ? loaded.history : [],
   );
+
+  const loadMore = async (): Promise<void> => {
+    const result = await read.fetchNextPage();
+
+    if (isUnknownNoteError(result.error)) {
+      queryClient.removeQueries({ queryKey: nixie.queryUtils.notebook.key() });
+    }
+  };
 
   const openedHere = opened?.version === first.version ? opened : null;
   const isHidden = first.isPrivate && openedHere === null;
@@ -176,7 +187,7 @@ export function NoteView(props: NoteViewProps): ReactNode {
           isLoadingMore={read.isFetchingNextPage}
           note={first.note}
           onLoadMore={() => {
-            void read.fetchNextPage();
+            void loadMore();
           }}
           showPrivate={props.showPrivate}
         />
@@ -185,14 +196,19 @@ export function NoteView(props: NoteViewProps): ReactNode {
         isHidden={false}
         note={first.note}
         onForgotten={setForgotten}
+        shownVersion={first.version}
         version={first.versionCount}
       />
     </main>
   );
 }
 
+function isUnknownNoteError(error: unknown): boolean {
+  return error instanceof ORPCError && error.code === 'UNKNOWN_NOTE';
+}
+
 function formatReadError(error: unknown): string {
-  return error instanceof ORPCError && error.code === 'UNKNOWN_NOTE'
+  return isUnknownNoteError(error)
     ? 'No note has this ID. It may be forgotten.'
     : 'The note did not load.';
 }
