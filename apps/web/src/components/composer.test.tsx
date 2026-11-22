@@ -60,6 +60,41 @@ test('it clears the box once the message is sent', async () => {
   expect(rendered.getByRole('textbox', { name: 'Message' })).toHaveValue('');
 });
 
+test('it sends the message without its leading and trailing whitespace', async () => {
+  const user = userEvent.setup();
+  const onSend = mock<(message: SpanState) => void>();
+  const rendered = render(<Composer onSend={onSend} />);
+
+  await user.type(
+    rendered.getByRole('textbox', { name: 'Message' }),
+    '{Shift>}{Enter}{Enter}{/Shift}  hello  {Shift>}{Enter}{/Shift}{Enter}',
+  );
+
+  expect(onSend).toHaveBeenCalledExactlyOnceWith({
+    spans: [{ end: 5, source: 'typed', start: 0 }],
+    text: 'hello',
+  });
+});
+
+test('it keeps a pasted block on the same characters when blank lines come before it', async () => {
+  const user = userEvent.setup();
+  const onSend = mock<(message: SpanState) => void>();
+  const rendered = render(<Composer onSend={onSend} />);
+
+  await user.type(
+    rendered.getByRole('textbox', { name: 'Message' }),
+    '{Shift>}{Enter}{Enter}{/Shift}',
+  );
+
+  await user.paste('  pasted  ');
+  await user.keyboard('{Enter}');
+
+  expect(onSend).toHaveBeenCalledExactlyOnceWith({
+    spans: [{ end: 10, source: 'pasted', start: 0 }],
+    text: '  pasted  ',
+  });
+});
+
 test('it sends nothing when the box holds only whitespace', async () => {
   const user = userEvent.setup();
   const onSend = mock<(message: SpanState) => void>();

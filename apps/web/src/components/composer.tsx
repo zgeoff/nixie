@@ -8,6 +8,7 @@ import { useAttachedImages } from '../image/use-attached-images';
 import { css } from '../styled-system/css';
 import { usePendingInput } from '../task/use-pending-input';
 import { AttachedImages } from './attached-images';
+import { buildTrimmedMessage } from './build-trimmed-message';
 import { ImagePickers } from './image-pickers';
 
 export interface ComposedMessage extends SpanState {
@@ -61,7 +62,7 @@ export function Composer(props: ComposerProps): ReactNode {
         if (message.text.trim() !== '' && !attached.isPending) {
           const images = attached.images.map((image) => image.file);
 
-          props.onSend({ spans: message.spans, text: message.text, ...pickImages(images) });
+          props.onSend({ ...buildTrimmedMessage(message), ...pickImages(images) });
 
           setMessage(emptyMessage);
 
