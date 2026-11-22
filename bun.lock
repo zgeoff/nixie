@@ -12,7 +12,7 @@
         "@zgeoff/agent-hooks": "0.2.14",
         "@zgeoff/bun-test-extended": "0.2.4",
         "@zgeoff/bun-test-react": "0.2.4",
-        "@zgeoff/chex": "0.3.14",
+        "@zgeoff/chex": "0.4.5",
         "@zgeoff/commitlint-config": "0.1.2",
         "@zgeoff/diet": "0.3.2",
         "@zgeoff/format-codemod": "0.3.6",
@@ -2391,7 +2391,7 @@
 
     "@zgeoff/bun-test-react": ["@zgeoff/bun-test-react@0.2.4", "", { "dependencies": { "@happy-dom/global-registrator": "21.0.4", "@testing-library/jest-dom": "7.0.1", "happy-dom": "21.0.4" }, "peerDependencies": { "@testing-library/react": ">=16.0.0", "react": ">=19.0.0", "react-dom": ">=19.0.0", "zustand": ">=5.0.0" }, "optionalPeers": ["zustand"] }, "sha512-omM4Wf/oy5YHuwnt5OMEOB5ZQZeHNVobj+t88tNf/axKt3VVQVikjHcqFDdnRKTi2IHK97wfO6S/hK3034m+KQ=="],
 
-    "@zgeoff/chex": ["@zgeoff/chex@0.3.14", "", { "dependencies": { "@zgeoff/std": "0.4.4", "oxc-parser": "0.158.0", "ts-pattern": "5.9.2" }, "bin": { "chex": "src/cli.ts" } }, "sha512-3/6TzltFP9dwkpznlkqHLT+YuhIAP9RVdqIg9RtdhXTNAU1UuzfImksbuocryDjJNEst8Ms5NYHKgqBkmF5hMQ=="],
+    "@zgeoff/chex": ["@zgeoff/chex@0.4.5", "", { "dependencies": { "@zgeoff/std": "0.4.5", "oxc-parser": "0.158.0", "ts-pattern": "5.9.2" }, "bin": { "chex": "src/cli.ts" } }, "sha512-xqJYNxg7jJeaer7Jf7dQ2ic728qDxyf6H+3OkQ+6rBr3I/+hZ4stY+tR+jZifKvRnwCKD6Ld0gl9iPWxqr5KAA=="],
 
     "@zgeoff/commitlint-config": ["@zgeoff/commitlint-config@0.1.2", "", { "peerDependencies": { "@commitlint/cli": ">=21.0.0" } }, "sha512-D5OJIMD4wBDJ4ad1z8LubHoRQNYDRtwu3LCGZj9m2TLmnpLuuN82/myTx6U7pBSteUGpqH19EJhTIthLCi1Vvg=="],
 
@@ -3702,8 +3702,6 @@
     "@wringer/browser/playwright-core": ["playwright-core@1.65.0", "", { "bin": { "playwright-core": "cli.js" } }, "sha512-vNSKgH6YqtN7cdT/L334zo0a+YwkrpicyrHJlWWPIm/Q+Nn2SWInil01oT0mbu96U4GgoRtCYQD9CzJQgju+lA=="],
 
     "@wringer/gunshi/gunshi": ["gunshi@0.37.3", "", {}, "sha512-uwm23bguqDcleEetknuQnF5okLcgmQPM3iv4aWVHTPDbiSs9shh02F079NCY0mWkrIRjHqNhgmzW6k0FCXhy1g=="],
-
-    "@zgeoff/chex/@zgeoff/std": ["@zgeoff/std@0.4.4", "", {}, "sha512-AlT4lgjyC0ZhLUxxG0Sg9pxQG/+MIziC7BA9k29QDNt/ubGvB1+RCpTr/LaYkjFxiZnKG42psa4f2cp5BHGyzQ=="],
 
     "@zgeoff/rig/@zgeoff/diet": ["@zgeoff/diet@0.3.0", "", { "bin": { "diet": "diet.sh" } }, "sha512-CgvLXgWCMMjrWN1foqfoZV7aE3wTAE/Z8NW5Ttf64tfafw6EoE6dhVkBDGtwb3VyxcSpx/WtTOTih9lfWosDtQ=="],
 
