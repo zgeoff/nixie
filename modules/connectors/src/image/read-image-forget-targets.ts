@@ -88,9 +88,12 @@ async function readQuotingRecords(
 ): Promise<Locatable[]> {
   const db = log.writer.db.$extendTables<LogTables>();
 
+  // A rename call whose refusal is not written yet still holds the name it asked for.
   const results = await db
-    .selectFrom('records as result')
-    .innerJoin('records as call', 'call.sequence', 'result.parent')
+    .selectFrom('records as call')
+    .leftJoin('records as result', (join) =>
+      join.onRef('result.parent', '=', 'call.sequence').on('result.kind', '=', 'tool_result'),
+    )
     .select([
       'result.sequence as result_sequence',
       'result.thread as result_thread',
@@ -98,7 +101,6 @@ async function readQuotingRecords(
       'call.thread as call_thread',
       sql`json_extract(call.payload, '$.tool')`.as('tool'),
     ])
-    .where('result.kind', '=', 'tool_result')
     .where('call.kind', '=', 'tool_called')
     .where(sql`json_extract(call.payload, '$.tool')`, 'in', quotingTools)
     .execute();
@@ -109,7 +111,11 @@ async function readQuotingRecords(
 
   const entries = await readRecords(log, {
     afterSequence: 0,
-    sequences: results.flatMap((result) => [result.result_sequence, result.call_sequence]),
+    sequences: results.flatMap((result) =>
+      result.result_sequence === null
+        ? [result.call_sequence]
+        : [result.result_sequence, result.call_sequence],
+    ),
     limit: results.length * 2,
   });
 
@@ -119,10 +125,13 @@ async function readQuotingRecords(
 
   for (const result of results) {
     const isNaming = result.tool === 'image.name';
-    const isQuotingResult = isQuoting(readable.get(result.result_sequence), ids.image);
+
+    const isQuotingResult =
+      result.result_sequence !== null && isQuoting(readable.get(result.result_sequence), ids.image);
+
     const isNamingCall = isNaming && isNamedBy(readable.get(result.call_sequence), ids);
 
-    if (isQuotingResult || isNamingCall) {
+    if (result.result_sequence !== null && (isQuotingResult || isNamingCall)) {
       located.push({ sequence: result.result_sequence, thread: result.result_thread });
     }
 

@@ -9,7 +9,7 @@ import {
   startTestImages,
 } from '@heynixie/connectors/test-utils';
 import { clientHeaderName } from '@heynixie/contract';
-import { readRecords } from '@heynixie/log';
+import { readRecords, writeRecords } from '@heynixie/log';
 import { buildTestClient } from '../test-utils/build-test-client';
 import { createDeviceSession } from '../test-utils/create-device-session';
 import { startTestAPI } from '../test-utils/start-test-api';
@@ -590,6 +590,55 @@ test('#images.forget leaves no rename by short ID or UUID readable after a retry
   await ctx.images.read('image.name', { image: 'k3x9m2p7qa', name: 'ferry portrait' });
   await ctx.images.read('image.name', { image: seeded.uuid, name: 'quay at noon' });
   await ctx.client.images.forget(input);
+
+  const entries = await readRecords(ctx.context.log, {
+    afterSequence: 0,
+    kinds: ['tool_called', 'tool_result'],
+    limit: 100,
+  });
+
+  expect(
+    entries
+      .flatMap((found) =>
+        found.record.erasable.status === 'readable'
+          ? [JSON.stringify(found.record.erasable.fields)]
+          : [],
+      )
+      .join(' '),
+  ).not.toMatch(/harbour|ferry|quay/u);
+});
+
+test('#images.forget leaves no rename readable whose refusal is not written yet', async () => {
+  const ctx = await setupTest();
+
+  const seeded = await seedImage(ctx.context.log, {
+    image: 'k3x9m2p7qa',
+    source: 'draw',
+    bytes: ctx.png,
+    prompt: 'a harbour at dusk',
+  });
+
+  await writeRecords(ctx.context.log, [
+    {
+      kind: 'tool_called',
+      definitions: ctx.context.definitions(),
+      thread: 'conversation',
+      payload: { callID: 'call-1', runID: 'conversation', toolUseID: null, tool: 'image.name' },
+      erasable: { input: { image: 'k3x9m2p7qa', name: 'ferry portrait' } },
+    },
+    {
+      kind: 'tool_called',
+      definitions: ctx.context.definitions(),
+      thread: 'conversation',
+      payload: { callID: 'call-2', runID: 'conversation', toolUseID: null, tool: 'image.name' },
+      erasable: { input: { image: seeded.uuid, name: 'quay at noon' } },
+    },
+  ]);
+
+  await ctx.client.images.forget({
+    clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
+    image: 'k3x9m2p7qa',
+  });
 
   const entries = await readRecords(ctx.context.log, {
     afterSequence: 0,
