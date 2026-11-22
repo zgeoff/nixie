@@ -34,10 +34,7 @@ import { readProdHealth } from './prod/read-prod-health';
 import { readProdVersion } from './prod/read-prod-version';
 import { readConversationTurn } from './read-conversation-turn';
 import { runHostCLI } from './run-host-cli';
-
-const sessionsSchema = z.array(
-  z.object({ deviceName: z.string(), createdAt: z.string(), lastUsedAt: z.string() }),
-);
+import { sessionsSchema } from './sessions-schema';
 
 const conversationTurnSchema = z.strictObject({ records: z.array(conversationRecordSchema) });
 const harnessPath = join(import.meta.dir, 'harness', 'run-verify-harness.ts');
