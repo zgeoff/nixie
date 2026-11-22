@@ -23,7 +23,7 @@ export interface DesktopProcessOptions {
 
 // The processes of the virtual desktop: the display, a window manager, the terminal and a VNC server.
 // The display listens on an abstract socket alone, and the VNC server on the loopback of the
-// sandbox with its clipboard off.
+// sandbox, view-only, with its clipboard off.
 export function buildDesktopProcesses(options: DesktopProcessOptions): readonly DesktopProcess[] {
   const screenEnv = { DISPLAY: display, HOME: screenAccount.home };
 
@@ -64,6 +64,7 @@ export function buildDesktopProcesses(options: DesktopProcessOptions): readonly 
         '-nopw',
         '-forever',
         '-shared',
+        '-viewonly',
         '-noclipboard',
         '-nosetclipboard',
         '-quiet',

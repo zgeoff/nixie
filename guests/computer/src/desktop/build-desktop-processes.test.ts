@@ -44,11 +44,18 @@ test('it starts the display first, at 1280 by 800 on an abstract socket alone', 
   ]);
 });
 
-test('it listens for VNC on the loopback of the sandbox with the clipboard off', () => {
+test('it listens for VNC on the loopback of the sandbox, view-only, with the clipboard off', () => {
   const ctx = setupTest();
   const vnc = ctx.readArgv('vnc');
 
-  expect(vnc).toIncludeAllMembers(['-localhost', '-noclipboard', '-nosetclipboard', '-nopw']);
+  expect(vnc).toIncludeAllMembers([
+    '-localhost',
+    '-viewonly',
+    '-noclipboard',
+    '-nosetclipboard',
+    '-nopw',
+  ]);
+
   expect(vnc[vnc.indexOf('-rfbport') + 1]).toBe('5900');
 });
 
