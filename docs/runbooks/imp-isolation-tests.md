@@ -187,4 +187,5 @@ sandboxes are gone.
    The tests list and remove only the sandboxes that they created, so an impd that runs other
    sandboxes keeps them.
 
-Expect `0 fail`, with no skipped test. Remove the image when you finish, by its exact name.
+The tests skip while any of the 4 variables is unset. With all 4 set, expect `0 fail`, with no
+skipped test. Remove the image when you finish, by its exact name.
