@@ -3,6 +3,7 @@ import type { Rule, RuleCall, RuleCheck } from '../types';
 import { findArgument } from './find-argument';
 import { isCommandMatch, isCommandMentioned } from './is-command-match';
 import { isPatternMatch } from './is-pattern-match';
+import { toCheckPatterns } from './to-check-patterns';
 
 export function isRuleMatch(rule: Rule, call: RuleCall): boolean {
   const isAllow = rule.outcome === 'allow';
@@ -81,7 +82,13 @@ function isCheckPassed(check: RuleCheck, value: unknown, read: CommandRead): boo
     .with({ op: 'in' }, (within) => within.value.some((listed) => isSameScalar(listed, value)))
     .with(
       { op: 'matches' },
-      (pattern) => typeof value === 'string' && isMatches(pattern.value, value, read),
+      (pattern) =>
+        typeof value === 'string' && isMatches(toCheckPatterns(pattern.value), value, read),
+    )
+    .with(
+      { op: 'excludes' },
+      (pattern) =>
+        typeof value === 'string' && isClearOf(toCheckPatterns(pattern.value), value, read),
     )
     .exhaustive();
 }
@@ -93,11 +100,27 @@ function isSameScalar(listed: string | number | boolean, value: unknown): boolea
 }
 
 // A command that a rule reads as a syntax tree passes an allow rule only when it is plain commands,
-// and a deny or ask rule reads it more loosely, so a line the tree refuses still meets the rule.
-function isMatches(pattern: string, value: string, read: CommandRead): boolean {
+// each matching one of the patterns, and a deny or ask rule reads it more loosely, so a line the
+// tree refuses still meets the rule.
+function isMatches(patterns: readonly string[], value: string, read: CommandRead): boolean {
   if (!read.isCommand) {
-    return isPatternMatch(pattern, value);
+    return patterns.some((pattern) => isPatternMatch(pattern, value));
   }
 
-  return read.isAllow ? isCommandMatch(pattern, value) : isCommandMentioned(pattern, value);
+  return read.isAllow
+    ? isCommandMatch(patterns, value)
+    : patterns.some((pattern) => isCommandMentioned(pattern, value));
+}
+
+// Whether a value matches none of the patterns. For a command, an allow rule fails the check when any
+// part of the line mentions a pattern, and a deny or ask rule only when every plain command matches
+// one, so each outcome errs toward stopping the call.
+function isClearOf(patterns: readonly string[], value: string, read: CommandRead): boolean {
+  if (!read.isCommand) {
+    return !patterns.some((pattern) => isPatternMatch(pattern, value));
+  }
+
+  return read.isAllow
+    ? !patterns.some((pattern) => isCommandMentioned(pattern, value))
+    : !isCommandMatch(patterns, value);
 }

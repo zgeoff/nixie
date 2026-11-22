@@ -28,8 +28,17 @@ test.each<[string, string, string, boolean]>([
   ['git status *', '', 'an empty line', false],
   ['ls', 'ls', 'an exact pattern', true],
   ['ls', 'ls -l', 'an exact pattern with another word', false],
+  ['git status *', '"git status" -s', 'a quoted command name that holds a space', false],
 ])('it checks %s against %s, %s', (pattern, command, _name, expected) => {
-  expect(isCommandMatch(pattern, command)).toBe(expected);
+  expect(isCommandMatch([pattern], command)).toBe(expected);
+});
+
+test.each<[string, boolean]>([
+  ['ls -l | grep draft', true],
+  ['ls && grep -r draft .', true],
+  ['ls | wc -l', false],
+])('it checks %s against the patterns ls * and grep * as %p', (command, expected) => {
+  expect(isCommandMatch(['ls *', 'grep *'], command)).toBe(expected);
 });
 
 test.each<[string, string, boolean]>([

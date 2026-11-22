@@ -149,6 +149,15 @@ test('it renders every rule of the starter template as one sentence', async () =
       '**Allow** a call when every effect it has is `budget_lower` or `policy_narrow`.',
     ],
     ['allow-notes', '**Allow** a call when every effect it has is `note`.'],
+    [
+      'allow-read-commands',
+      [
+        '**Allow** `computer.run` when every effect it has is `computer_run`, `command` matches none',
+        'of `file *-*C*`, `file *--co*`, `find *-delete*`, `find *-exec*`, `find *-fls*`,',
+        '`find *-fprint*` or `find *-ok*` and `command` matches `cat *`, `df *`, `du *`, `file *`,',
+        '`find *`, `grep *`, `head *`, `ls *`, `pwd *`, `stat *`, `tail *`, `wc *` or `which *`.',
+      ].join(' '),
+    ],
     ['allow-reads', '**Allow** a call when every effect it has is `fetch` or `read`.'],
     ['allow-sandboxed-code', '**Allow** a call when every effect it has is `code_run`.'],
     ['allow-sends-within-limits', '**Allow** a call when every effect it has is `send`.'],

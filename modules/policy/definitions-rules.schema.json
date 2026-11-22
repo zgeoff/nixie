@@ -159,9 +159,62 @@
                   "const": "matches"
                 },
                 "value": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "minLength": 1,
+                      "description": "Exact text, or a pattern whose only wildcard is *, which matches any run of text"
+                    },
+                    {
+                      "minItems": 1,
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": "Exact text, or a pattern whose only wildcard is *, which matches any run of text"
+                      }
+                    }
+                  ],
+                  "description": "A pattern, or a list of patterns of which one must match"
+                }
+              },
+              "required": [
+                "arg",
+                "op",
+                "value"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "arg": {
                   "type": "string",
-                  "minLength": 1,
-                  "description": "Exact text, or a pattern whose only wildcard is *, which matches any run of text"
+                  "pattern": "^[A-Za-z_]\\w*(?:\\.[A-Za-z_]\\w*)*$",
+                  "description": "The argument the check reads, such as memory or to.address"
+                },
+                "op": {
+                  "type": "string",
+                  "const": "excludes"
+                },
+                "value": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "minLength": 1,
+                      "description": "Exact text, or a pattern whose only wildcard is *, which matches any run of text"
+                    },
+                    {
+                      "minItems": 1,
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": "Exact text, or a pattern whose only wildcard is *, which matches any run of text"
+                      }
+                    }
+                  ],
+                  "description": "A pattern, or a list of patterns of which none may match"
                 }
               },
               "required": [

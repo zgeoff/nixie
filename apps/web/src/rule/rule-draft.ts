@@ -2,13 +2,14 @@ import { z } from 'zod';
 
 export const ruleContextChoices = ['conversation', 'task', 'coding'] as const;
 export const ruleSourceChoices = ['owner', 'own_data', 'task', 'outside'] as const;
-export const checkOperations = ['eq', 'in', 'matches'] as const;
+export const checkOperations = ['eq', 'in', 'matches', 'excludes'] as const;
 
 export interface CheckDraft {
   readonly arg: string;
   readonly op: (typeof checkOperations)[number];
 
-  // the text of the check's value; an `in` check lists its values one to a line
+  // the text of the check's value; an `in` check lists its values one to a line, and a `matches` or
+  // `excludes` check its patterns
   readonly value: string;
 
   // the check as the rule held it, so text the owner left alone keeps its type
@@ -50,12 +51,6 @@ function collectList(value: unknown): string[] {
   return parsed.success ? parsed.data : [];
 }
 
-function collectChecks(value: unknown): z.infer<typeof checkListSchema> {
-  const parsed = checkListSchema.safeParse(value);
-
-  return parsed.success ? parsed.data : [];
-}
-
 function toCheckText(value: CheckValue): string {
   if (Array.isArray(value)) {
     const items = value.map(String);
@@ -90,8 +85,10 @@ export function buildEmptyRuleDraft(): RuleDraft {
   };
 }
 
+// Checks the form cannot show ride along in `rest` whole, so saving the rule never drops one.
 export function toRuleDraft(rule: Readonly<Record<string, unknown>>): RuleDraft {
-  const checks = collectChecks(rule['checks']);
+  const parsed = checkListSchema.safeParse(rule['checks']);
+  const checks = parsed.success ? parsed.data : [];
 
   return {
     tools: collectList(rule['tools']).join('\n'),
@@ -106,7 +103,11 @@ export function toRuleDraft(rule: Readonly<Record<string, unknown>>): RuleDraft 
       value: toCheckText(check.value),
       original: { op: check.op, value: check.value },
     })),
-    rest: Object.fromEntries(Object.entries(rule).filter(([key]) => !knownKeys.has(key))),
+    rest: Object.fromEntries(
+      Object.entries(rule).filter(
+        ([key]) => !knownKeys.has(key) || (key === 'checks' && !parsed.success),
+      ),
+    ),
   };
 }
 
@@ -132,8 +133,13 @@ function toCheckValue(check: CheckDraft): CheckValue {
 
   const text = check.value.trim();
 
-  if (check.op === 'matches') {
-    return text;
+  if (check.op === 'matches' || check.op === 'excludes') {
+    const patterns = text
+      .split('\n')
+      .map((line) => line.trim())
+      .filter((line) => line !== '');
+
+    return patterns.length === 1 ? text : patterns;
   }
 
   if (text === 'true' || text === 'false') {
@@ -156,10 +162,14 @@ export function toRuleForm(draft: RuleDraft): Record<string, unknown> {
   };
 
   const filled = Object.entries(lists).filter(([, list]) => list.length > 0);
+  const kept = listValueSchema.safeParse(draft.rest['checks']);
 
-  const checks = draft.checks
-    .filter((check) => check.arg.trim() !== '')
-    .map((check) => ({ arg: check.arg.trim(), op: check.op, value: toCheckValue(check) }));
+  const checks = [
+    ...(kept.success ? kept.data : []),
+    ...draft.checks
+      .filter((check) => check.arg.trim() !== '')
+      .map((check) => ({ arg: check.arg.trim(), op: check.op, value: toCheckValue(check) })),
+  ];
 
   return {
     ...draft.rest,

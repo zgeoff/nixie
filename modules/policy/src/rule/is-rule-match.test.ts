@@ -235,6 +235,78 @@ test.each<[string, Rule, Partial<RuleCall>, boolean]>([
     {},
     true,
   ],
+  [
+    'an allow covers an argument that matches one pattern of a list',
+    {
+      id: 'allow-text-files',
+      outcome: 'allow',
+      tools: ['mail.send'],
+      checks: [{ arg: 'attachment', op: 'matches', value: ['*.md', '*.txt'] }],
+    },
+    { args: { attachment: 'notes.txt' } },
+    true,
+  ],
+  [
+    'an allow leaves an argument that matches an excluded pattern',
+    {
+      id: 'allow-mail',
+      outcome: 'allow',
+      tools: ['mail.send'],
+      checks: [{ arg: 'attachment', op: 'excludes', value: ['*.exe', '*.sh'] }],
+    },
+    { args: { attachment: 'run.sh' } },
+    false,
+  ],
+  [
+    'an allow covers an argument that matches no excluded pattern',
+    {
+      id: 'allow-mail',
+      outcome: 'allow',
+      tools: ['mail.send'],
+      checks: [{ arg: 'attachment', op: 'excludes', value: '*.exe' }],
+    },
+    { args: { attachment: 'notes.txt' } },
+    true,
+  ],
+  [
+    'an allow leaves a command whose line mentions an excluded pattern anywhere',
+    {
+      id: 'allow-find',
+      outcome: 'allow',
+      tools: ['computer.run'],
+      checks: [
+        { arg: 'command', op: 'matches', value: '*' },
+        { arg: 'command', op: 'excludes', value: 'find *-delete*' },
+      ],
+    },
+    { tool: 'computer.run', args: { command: 'echo $(find . -delete)' } },
+    false,
+  ],
+  [
+    'a deny catches a command that mentions its pattern beside an excluded one',
+    {
+      id: 'deny-rm',
+      outcome: 'deny',
+      tools: ['computer.run'],
+      checks: [
+        { arg: 'command', op: 'matches', value: 'rm *' },
+        { arg: 'command', op: 'excludes', value: 'ls *' },
+      ],
+    },
+    { tool: 'computer.run', args: { command: 'ls; rm -rf notes' } },
+    true,
+  ],
+  [
+    'a deny leaves a command line whose every command is excluded',
+    {
+      id: 'deny-all-but-ls',
+      outcome: 'deny',
+      tools: ['computer.run'],
+      checks: [{ arg: 'command', op: 'excludes', value: 'ls *' }],
+    },
+    { tool: 'computer.run', args: { command: 'ls && ls -la' } },
+    false,
+  ],
 ])('it matches when %s: %p', (_label, rule, call, isMatch) => {
   expect(
     isRuleMatch(rule, {

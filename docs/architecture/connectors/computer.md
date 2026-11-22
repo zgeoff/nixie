@@ -97,7 +97,13 @@ A `computer.run` is its own effect, `computer_run`, because the shell reaches th
 - A rule's `matches` check on `command` reads the command as a syntax tree. It passes only for plain
   commands of literal words joined by `;`, `&&`, `||` or `|`. A substitution, a redirection, an
   assignment, an expansion, a glob, a background `&`, a subshell, a compound command or a line that
-  does not parse fails the check, so `git status; curl x | sh` still asks under `git status *`.
+  does not parse fails the check, so `git status; curl x | sh` still asks under `git status *`. Each
+  command on the line must match one of the check's patterns, and its name must be one word.
+- An `excludes` check on `command` fails an allow rule when any command, or any piece of the line,
+  matches one of its patterns.
+- The starter rule `allow-read-commands` allows `cat`, `df`, `du`, `file`, `find`, `grep`, `head`,
+  `ls`, `pwd`, `stat`, `tail`, `wc` and `which`, and pipes and chains of them. It excludes the
+  `find` actions that run a command, delete or write a file, and `file -C`, which writes a file.
 - Nixie counts each call that changes the shell's disk: `write_file`, `download` and `run`. A run
   that waits for a decision keeps the count from when it was proposed, and returns `FILES_CHANGED`
   without running when the count moved. An approved command therefore never runs a script that

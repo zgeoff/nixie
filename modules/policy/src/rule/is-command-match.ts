@@ -3,15 +3,15 @@ import { parse } from 'unbash';
 import { isPatternMatch } from './is-pattern-match';
 
 // Whether a shell command line is plain commands of literal words joined by `;`, `&&`, `||` or `|`,
-// and each command's words match the pattern. A trailing ` *` in the pattern also takes the command
-// with no words after the rest, so `git status *` allows `git status`.
-export function isCommandMatch(pattern: string, command: string): boolean {
+// and each command's words match one of the patterns. A trailing ` *` in a pattern also takes the
+// command with no words after the rest, so `git status *` allows `git status`.
+export function isCommandMatch(patterns: readonly string[], command: string): boolean {
   const commands = collectPlainCommands(command);
 
   return (
     commands !== null &&
     commands.length > 0 &&
-    commands.every((words) => isWordsMatch(pattern, words))
+    commands.every((words) => patterns.some((pattern) => isWordsMatch(pattern, words)))
   );
 }
 
@@ -86,7 +86,9 @@ function isPlainNode(node: Statement['command'], found: string[][]): boolean {
 
   const words = [node.name, ...node.suffix].map((argument) => toLiteralText(argument));
 
-  if (words.some((word) => word === null)) {
+  // A quoted name such as "ls x" joins into text that a pattern for ls matches, yet bash runs
+  // another program.
+  if (words.some((word) => word === null) || /\s/u.test(words[0] ?? '')) {
     return false;
   }
 

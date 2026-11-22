@@ -24,6 +24,41 @@ allow-sandboxed-code:
   outcome: allow
   effects: [code_run]
 
+allow-read-commands:
+  outcome: allow
+  tools: [computer.run]
+  effects: [computer_run]
+  checks:
+    - arg: command
+      op: matches
+      value:
+        - cat *
+        - df *
+        - du *
+        - file *
+        - find *
+        - grep *
+        - head *
+        - ls *
+        - pwd *
+        - stat *
+        - tail *
+        - wc *
+        - which *
+    - arg: command
+      op: excludes
+      value:
+        - file *--co*
+        - file *-*C*
+        - find *-delete*
+        - find *-exec*
+        - find *-fls*
+        - find *-fprint*
+        - find *-ok*
+  note: >-
+    These commands only read. Each command on the line must be one of them, with no redirection or
+    substitution, and find and file lose the options that run, delete or write.
+
 allow-narrowing:
   outcome: allow
   effects: [policy_narrow, budget_lower]
