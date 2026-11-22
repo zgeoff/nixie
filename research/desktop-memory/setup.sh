@@ -9,4 +9,4 @@ ln -sf /opt/bun/bin/bun /usr/local/bin/bun
 cd /root/spike
 bun install > /dev/null
 PLAYWRIGHT_BROWSERS_PATH=/opt/browsers bun node_modules/playwright-core/cli.js install --with-deps chromium chromium-headless-shell > /dev/null 2>&1
-echo setup done
+echo "setup done"
