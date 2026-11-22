@@ -341,9 +341,10 @@ as one system message that names the restore time and the backup time.
 A reminder fire, whose trigger has the target `conversation`, wakes the conversation once and
 renders as a `reminder` system message: `Reminder:` and the note in a `<model-text>` block with a
 fresh random ID, so text inside the note cannot close it, then the name in a block of its own, and
-the time the reminder was set for in the zone of its trigger. A reminder that arrives as a catch-up
-adds how late it is. When the version that the fire pins is no longer stored, the note reads as a
-note that its text is gone.
+the time the reminder was set for in the zone of its trigger. A reminder that reaches the
+conversation more than a minute after that time adds how late it is, as `fired 1 h 39 min late`,
+counted to the turn that delivers it. When the version that the fire pins is no longer stored, the
+note reads as a note that its text is gone.
 
 The element that starts a conversation turn also carries 2 gaps, which nixie computes when the turn
 starts, as in

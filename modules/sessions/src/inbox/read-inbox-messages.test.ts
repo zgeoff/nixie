@@ -262,7 +262,7 @@ test.each([
     ]);
 
     const read = await readInboxMessages(ctx.context, records, {
-      times: { defaultZone: 'Australia/Sydney', now: new Date('2027-03-09T03:30:00Z') },
+      times: { defaultZone: 'Australia/Sydney', now: new Date('2027-03-09T03:00:30Z') },
       view: buildMockTaskMessageView(),
       imageBudget: { bytes: 1024, count: 100 },
     });
@@ -297,7 +297,7 @@ test.each([
   ]);
 
   const read = await readInboxMessages(ctx.context, records, {
-    times: { defaultZone: 'Australia/Sydney', now: new Date('2027-03-09T03:30:00Z') },
+    times: { defaultZone: 'Australia/Sydney', now: new Date('2027-03-09T03:00:30Z') },
     view: buildMockTaskMessageView(),
     imageBudget: { bytes: 1024, count: 100 },
   });
@@ -326,7 +326,7 @@ test('it renders no message for a fire on the thread of a task, and takes its re
   ]);
 
   const read = await readInboxMessages(ctx.context, records, {
-    times: { defaultZone: 'Australia/Sydney', now: new Date('2027-03-09T03:30:00Z') },
+    times: { defaultZone: 'Australia/Sydney', now: new Date('2027-03-09T03:00:30Z') },
     view: buildMockTaskMessageView(),
     imageBudget: { bytes: 1024, count: 100 },
   });

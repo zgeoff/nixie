@@ -1,9 +1,10 @@
 import type { LogRecord } from '@heynixie/log';
-import { findLateBySeconds, missingReminderBrief } from '@heynixie/tasks';
+import { missingReminderBrief } from '@heynixie/tasks';
 import type { TriggerFired } from '@heynixie/tasks';
 import { mintBlockID, renderSystemMessage } from '@heynixie/wire';
 import { formatMessageTime } from '../message/format-message-time';
 import type { MessageTimeOptions } from '../types';
+import { formatReminderLateness } from './format-reminder-lateness';
 
 // What a reminder needs beyond its record: the name, the note and the zone, which the inbox read
 // pre-reads.
@@ -32,12 +33,10 @@ export function renderReminderNotice(
   const noteID = mint();
   const note = reminder.note ?? missingReminderBrief;
   const setFor = formatMessageTime(new Date(reminder.fire.scheduledFor), reminder.zone, times);
-  const lateBySeconds = findLateBySeconds(reminder.fire);
+  const lateness = formatReminderLateness(reminder.fire, times.now.getTime());
 
   const setLine =
-    lateBySeconds === null
-      ? `It was set for ${setFor}.`
-      : `It was set for ${setFor}, and arrives ${formatDuration(lateBySeconds)} late.`;
+    lateness === null ? `It was set for ${setFor}.` : `It was set for ${setFor}, and ${lateness}.`;
 
   return renderSystemMessage({
     type: 'reminder',
@@ -49,25 +48,6 @@ export function renderReminderNotice(
       reminderHandlingLine,
     ].join('\n'),
   });
-}
-
-function formatDuration(seconds: number): string {
-  const totalMinutes = Math.max(1, Math.round(seconds / 60));
-
-  if (totalMinutes < 60) {
-    return formatUnit(totalMinutes, 'minute');
-  }
-
-  const hours = Math.floor(totalMinutes / 60);
-  const minutes = totalMinutes % 60;
-
-  return minutes === 0
-    ? formatUnit(hours, 'hour')
-    : `${formatUnit(hours, 'hour')} ${formatUnit(minutes, 'minute')}`;
-}
-
-function formatUnit(count: number, unit: string): string {
-  return `${String(count)} ${unit}${count === 1 ? '' : 's'}`;
 }
 
 function renderNameLine(name: string | null, mint: () => string): readonly string[] {
