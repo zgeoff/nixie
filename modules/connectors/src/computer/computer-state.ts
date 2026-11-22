@@ -1,14 +1,21 @@
 import type { JSONObject } from '@heynixie/log';
 import type { ScreenBinding } from '@heynixie/wire';
 
+// The window a screen act was prepared for, with the part of the action hash that names it.
+export interface ScreenPrepared {
+  readonly binding: ScreenBinding;
+  readonly expectWindow: JSONObject;
+}
+
 // What the computer tools remember between a call's preparation and its queued action. Nothing
 // here survives a restart, and a lost entry makes the action refuse, so a restart fails safe.
 export interface ComputerState {
   // the URL a tab held when a click or a fill was prepared, by action key
   readonly expectations: Map<string, string>;
 
-  // the window a screen act was prepared for, by action key
-  readonly screens: Map<string, ScreenBinding>;
+  // The windows a screen act was prepared for, by action key. Two calls with the same input can be
+  // prepared against different windows, and each keeps its own entry until its action runs.
+  readonly screens: Map<string, ScreenPrepared[]>;
 
   // the files count when a run was prepared, by action key
   readonly epochs: Map<string, number>;

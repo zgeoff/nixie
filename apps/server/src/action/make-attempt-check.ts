@@ -93,7 +93,7 @@ function buildVerdict(options: AttemptCheckOptions, facts: VerdictFacts): Attemp
     thread: action.task_id,
     callSequence: invariantSequence(action.call_sequence),
     tool: facts.policyTool,
-    actionTool: facts.stored.tool,
+    actionHash: action.action_hash,
     effects: facts.declaration.effects,
     cause,
     input: facts.input.arguments,

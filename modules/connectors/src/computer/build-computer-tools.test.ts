@@ -1,11 +1,14 @@
 import { expect, onTestFinished, test } from 'bun:test';
+import { buildActionHash } from '@heynixie/policy';
 import { buildSandboxSpec } from '@heynixie/sandbox';
-import type { ToolDefinition } from '@heynixie/tools';
+import type { DirectResult, Prepared, ToolDefinition } from '@heynixie/tools';
 import type { ComputerHandler, ComputerReply, ComputerRequest } from '@heynixie/wire';
 import { runComputerGuest } from '@heynixie/wire';
+import { waitFor } from '@zgeoff/testing';
 import invariant from 'tiny-invariant';
 import { match } from 'ts-pattern';
 import { buildStubSandboxAdapter } from '../test-utils/build-stub-sandbox-adapter';
+import { encodeTestImage } from '../test-utils/encode-test-image';
 import { startTestLog } from '../test-utils/start-test-log';
 import { buildComputerTools } from './build-computer-tools';
 import { startComputer } from './start-computer';
@@ -24,6 +27,8 @@ interface Replies {
 interface SetupOptions {
   readonly answer?: (replies: Replies) => ComputerHandler;
   readonly secret?: string;
+  readonly imageLongEdge?: number;
+  readonly turnWaitMs?: number;
 }
 
 async function setupTest(options: SetupOptions) {
@@ -146,6 +151,7 @@ async function setupTest(options: SetupOptions) {
     deniedRanges: [],
     timeZone: 'UTC',
     logger: () => {},
+    ...(options.turnWaitMs === undefined ? {} : { turnWaitMs: options.turnWaitMs }),
   });
 
   onTestFinished(async () => {
@@ -164,7 +170,7 @@ async function setupTest(options: SetupOptions) {
       limits: { bodyBytes: 100, timeoutMs: 1000, redirects: 2, textBytes: 20_000, imageBytes: 100 },
       linkPathChars: 24,
       pageStoreBytes: 20_971_520,
-      imageLongEdge: 1568,
+      imageLongEdge: options.imageLongEdge ?? 1568,
       secretTypedURLCovers: 'redirects',
     },
   });
@@ -217,7 +223,12 @@ async function setupTest(options: SetupOptions) {
 
       return prepare(input, context);
     },
-    attempt: (tool: string, args: Record<string, string | number>, destinations: string[] = []) =>
+    attempt: (
+      tool: string,
+      args: Record<string, string | number>,
+      destinations: string[] = [],
+      prepared: DirectResult | Prepared | null = null,
+    ) =>
       built.connector.run({
         actionID: 'action-1',
         tool,
@@ -225,6 +236,15 @@ async function setupTest(options: SetupOptions) {
         attempt: 1,
         idempotencyKey: 'key',
         destinations,
+        actionHash: buildActionHash({
+          tool,
+          input: args,
+          destinations,
+          deadlineAt: null,
+          expectWindow:
+            prepared !== null && 'expectWindow' in prepared ? prepared.expectWindow : undefined,
+        }),
+        deadlineAt: null,
       }),
   };
 }
@@ -645,7 +665,16 @@ test.each(['computer.browser_click', 'computer.browser_fill'])(
 );
 
 test('it takes a desktop screenshot that names the focused tab and says nobody watches', async () => {
-  const ctx = await setupTest({});
+  const picture = await encodeTestImage({ width: 1280, height: 800 }, 'png');
+
+  const ctx = await setupTest({
+    answer: (replies) => (request) => {
+      const shot = { ...replies.desktop, base64: Buffer.from(picture).toString('base64') };
+      const reply = request.op === 'desktopShot' ? shot : replies.page;
+
+      return Promise.resolve(reply);
+    },
+  });
 
   await ctx.call('computer.browser_open', { url: 'https://site.test/form' });
 
@@ -662,6 +691,20 @@ test('it takes a desktop screenshot that names the focused tab and says nobody w
     },
     images: [expect.anything()],
   });
+});
+
+test('it reports the size of the picture the model sees when the image limit shrinks it', async () => {
+  const picture = await encodeTestImage({ width: 1280, height: 800 }, 'png');
+
+  const ctx = await setupTest({
+    imageLongEdge: 800,
+    answer: (replies) => () =>
+      Promise.resolve({ ...replies.desktop, base64: Buffer.from(picture).toString('base64') }),
+  });
+
+  const outcome = await ctx.call('computer.screenshot', {});
+
+  expect(outcome).toMatchObject({ status: 'ok', result: { width: 800, height: 500 } });
 });
 
 test('it names a focused tab that the model has no ID for with the next ID', async () => {
@@ -787,9 +830,8 @@ test('it runs a queued click against the window its preparation saw', async () =
 
   const input = { x: 412, y: 233, button: 'right' };
 
-  await ctx.prepare('computer.screen_click', input);
-
-  const response = await ctx.attempt('computer.screen_click', input, ['site.test']);
+  const prepared = await ctx.prepare('computer.screen_click', input);
+  const response = await ctx.attempt('computer.screen_click', input, ['site.test'], prepared);
 
   expect([response, ctx.requests.at(-1)]).toStrictEqual([
     {
@@ -797,6 +839,7 @@ test('it runs a queued click against the window its preparation saw', async () =
       result: {
         focus: { kind: 'browser', tab: 't1', url: 'https://site.test/form' },
         isWatched: false,
+        isShown: true,
       },
       images: [{ mediaType: 'image/png', bytes: expect.any(Uint8Array) }],
     },
@@ -836,9 +879,8 @@ test('it refuses a queued click when the guest says the window moved', async () 
 
   const input = { x: 1, y: 2, button: 'left' };
 
-  await ctx.prepare('computer.screen_click', input);
-
-  const response = await ctx.attempt('computer.screen_click', input, ['site.test']);
+  const prepared = await ctx.prepare('computer.screen_click', input);
+  const response = await ctx.attempt('computer.screen_click', input, ['site.test'], prepared);
 
   expect(response).toStrictEqual({
     kind: 'refused',
@@ -851,10 +893,8 @@ test.each([
   [{ keys: 'shift+tab' }, { kind: 'keys', keys: 'shift+tab' }],
 ])('it runs a queued type of %p', async (input, act) => {
   const ctx = await setupTest({});
-
-  await ctx.prepare('computer.screen_type', input);
-
-  const response = await ctx.attempt('computer.screen_type', input, ['site.test']);
+  const prepared = await ctx.prepare('computer.screen_type', input);
+  const response = await ctx.attempt('computer.screen_type', input, ['site.test'], prepared);
 
   expect([response.kind, ctx.requests.at(-1)]).toMatchObject(['success', { op: 'screenAct', act }]);
 });
@@ -864,15 +904,15 @@ test('it returns the picture of the desktop after a queued type beside its resul
 
   const input = { keys: 'enter' };
 
-  await ctx.prepare('computer.screen_type', input);
-
-  const response = await ctx.attempt('computer.screen_type', input, ['site.test']);
+  const prepared = await ctx.prepare('computer.screen_type', input);
+  const response = await ctx.attempt('computer.screen_type', input, ['site.test'], prepared);
 
   expect(response).toStrictEqual({
     kind: 'success',
     result: {
       focus: { kind: 'browser', tab: 't1', url: 'https://site.test/form' },
       isWatched: false,
+      isShown: true,
     },
     images: [{ mediaType: 'image/png', bytes: expect.any(Uint8Array) }],
   });
@@ -893,12 +933,123 @@ test('it refuses a queued screen act whose allowed host is not the one its bindi
 
   const input = { keys: 'enter' };
 
-  await ctx.prepare('computer.screen_type', input);
-
-  const response = await ctx.attempt('computer.screen_type', input, ['other.test']);
+  const prepared = await ctx.prepare('computer.screen_type', input);
+  const response = await ctx.attempt('computer.screen_type', input, ['other.test'], prepared);
 
   expect([response, ctx.requests.at(-1)?.op]).toStrictEqual([
     { kind: 'refused', reason: expect.stringContaining('not the one the owner allowed') },
     'screenBind',
   ]);
+});
+
+test('it runs the click each approval answers when 2 preparations share an input', async () => {
+  let windowID = '0x1';
+
+  const ctx = await setupTest({
+    answer: (replies) => (request) => {
+      const bound = { ...replies.target, target: { ...replies.target.target, windowID } };
+      const reply = request.op === 'screenBind' ? bound : replies.screen;
+
+      return Promise.resolve(reply);
+    },
+  });
+
+  const input = { x: 412, y: 233, button: 'left' };
+
+  const first = await ctx.prepare('computer.screen_click', input);
+
+  windowID = '0x2';
+
+  const second = await ctx.prepare('computer.screen_click', input);
+
+  await ctx.attempt('computer.screen_click', input, ['site.test'], first);
+
+  const response = await ctx.attempt('computer.screen_click', input, ['site.test'], second);
+
+  expect([
+    response.kind,
+    ctx.requests.filter((request) => request.op === 'screenAct'),
+  ]).toMatchObject([
+    'success',
+    [{ binding: { windowID: '0x1' } }, { binding: { windowID: '0x2' } }],
+  ]);
+});
+
+test('it refuses a click whose window and picture the owner never answered', async () => {
+  const ctx = await setupTest({});
+
+  const input = { x: 412, y: 233, button: 'left' };
+
+  await ctx.prepare('computer.screen_click', input);
+
+  const response = await ctx.attempt('computer.screen_click', input, ['site.test']);
+
+  expect([response, ctx.requests.at(-1)?.op]).toStrictEqual([
+    { kind: 'refused', reason: expect.stringContaining('restarted') },
+    'screenBind',
+  ]);
+});
+
+test('it keeps the binding of a queued click while the computer is busy, so a retry runs it', async () => {
+  const gate = Promise.withResolvers<void>();
+
+  const ctx = await setupTest({
+    turnWaitMs: 20,
+    answer: (replies) => async (request) => {
+      if (request.op === 'screenBind') {
+        return replies.target;
+      }
+
+      if (request.op === 'screenAct') {
+        return replies.screen;
+      }
+
+      await gate.promise;
+
+      return replies.page;
+    },
+  });
+
+  const input = { x: 412, y: 233, button: 'left' };
+
+  const prepared = await ctx.prepare('computer.screen_click', input);
+
+  const opening = ctx.call('computer.browser_open', { url: 'https://site.test/form' });
+
+  await waitFor(() => ctx.requests.some((request) => request.op !== 'screenBind'));
+
+  const busy = await ctx.attempt('computer.screen_click', input, ['site.test'], prepared);
+
+  gate.resolve();
+
+  await opening;
+
+  const retried = await ctx.attempt('computer.screen_click', input, ['site.test'], prepared);
+
+  expect([busy.kind, retried.kind]).toStrictEqual(['refused_retryable', 'success']);
+});
+
+test('it reports a queued click done with no picture when the desktop could not be captured', async () => {
+  const ctx = await setupTest({
+    answer: (replies) => (request) => {
+      const { base64: _omitted, ...bare } = replies.screen;
+      const reply = request.op === 'screenBind' ? replies.target : bare;
+
+      return Promise.resolve(reply);
+    },
+  });
+
+  const input = { x: 412, y: 233, button: 'left' };
+
+  const prepared = await ctx.prepare('computer.screen_click', input);
+  const response = await ctx.attempt('computer.screen_click', input, ['site.test'], prepared);
+
+  expect(response).toStrictEqual({
+    kind: 'success',
+    result: {
+      focus: { kind: 'browser', tab: 't1', url: 'https://site.test/form' },
+      isWatched: false,
+      isShown: false,
+    },
+  });
 });

@@ -13,7 +13,9 @@ import { createConversationTask, taskRunEndedCodec, taskRunOpenedCodec } from '@
 import invariant from 'tiny-invariant';
 import { writeOwnerMessage } from '../kept/write-owner-message';
 import { buildSeeder } from '../test-utils/build-seeder';
+import { buildTestClient } from '../test-utils/build-test-client';
 import { createDeviceSession } from '../test-utils/create-device-session';
+import { seedScreenClickCard } from '../test-utils/seed-screen-click-card';
 import { seedTaskStartCall } from '../test-utils/seed-task-start-call';
 import { startTestAPI } from '../test-utils/start-test-api';
 import type { CleanupRecordSessions } from '../types';
@@ -903,4 +905,27 @@ test('it fails the forget with the destroy sentence when a code sandbox will not
 
   expect(retried.status).toBe('forgotten');
   expect(gap).toMatchObject({ isRemoved: true });
+});
+
+test('it forgets the proposal of a screen click, so its picture can no longer be read', async () => {
+  const ctx = await setupTest();
+  const laptop = await createDeviceSession(ctx.context, 'laptop');
+
+  const client = buildTestClient(ctx.url, laptop.token);
+
+  const card = await seedScreenClickCard(ctx.context, new Uint8Array([137, 80, 78, 71]));
+
+  const pictureID = `screen-${String(card.callSequence)}`;
+
+  await writeRecordForget(ctx.context, laptop.caller, {
+    clientActionID: '7a1d4c02-3b5e-4f68-9c27-d8e0a6b14f93',
+    thread: 'conversation',
+    sequence: card.proposalSequence,
+  });
+
+  const read = client.approvals.readImage({ imageID: pictureID });
+
+  await Promise.allSettled([read]);
+
+  expect(read).rejects.toMatchObject({ code: 'IMAGE_NOT_FOUND' });
 });

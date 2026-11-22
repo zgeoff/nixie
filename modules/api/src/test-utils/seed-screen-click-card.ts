@@ -9,6 +9,9 @@ interface ScreenClickCard {
 
   // the sequence of the click's call record, which holds its stored picture
   readonly callSequence: number;
+
+  // the sequence of the proposal's record, which a forget names
+  readonly proposalSequence: number;
 }
 
 // The call of a screen click at 412, 233 with its stored picture, when it has one, and the proposal
@@ -48,7 +51,13 @@ export async function seedScreenClickCard(
     destinations: [{ value: 'site.test', replyTarget: false }],
   });
 
-  await writeRecords(context.log, [proposed.record]);
+  const [written] = await writeRecords(context.log, [proposed.record]);
 
-  return { shortID: proposed.shortID, callSequence: called.sequence };
+  invariant(written, 'the log wrote the proposal');
+
+  return {
+    shortID: proposed.shortID,
+    callSequence: called.sequence,
+    proposalSequence: written.sequence,
+  };
 }

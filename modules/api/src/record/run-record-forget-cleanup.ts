@@ -1,9 +1,17 @@
 import { removeImportedImageKeys } from '@heynixie/connectors';
-import { removeRecordKey, withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
+import {
+  parseJSONObject,
+  removeRecordKey,
+  withWriteTransaction,
+  writeRecordsInTransaction,
+} from '@heynixie/log';
 import { recordForgottenCodec, removeImageOfferKeys, writeRecordPurgeSet } from '@heynixie/memory';
+import { actionProposedCodec } from '@heynixie/policy';
 import { waitAtFaultPoint } from '@heynixie/tasks';
+import { sql } from 'kysely';
 import invariant from 'tiny-invariant';
 import { readForgetStartCalls } from '../forget/read-forget-start-calls';
+import { screenClickToolName } from '../proposal/read-screen-picture';
 import type { APIContext, APITables } from '../types';
 import { readRecordForget } from '../utils/read-record-forget';
 
@@ -35,7 +43,7 @@ export async function runRecordForgetCleanup(
 
   const thread = await removeForgottenKey(context, recordSequence);
 
-  for (const call of startCalls) {
+  for (const call of [...startCalls, ...(await readScreenPictureCalls(context, recordSequence))]) {
     await removeCallKey(context, call);
   }
 
@@ -84,6 +92,28 @@ async function removeForgottenKey(context: APIContext, recordSequence: number): 
   }
 
   return target.thread;
+}
+
+// The proposal of a screen click shows a picture that sits under the click's own call record, so
+// forgetting the proposal removes that call's key too, and the card can no longer read the picture.
+async function readScreenPictureCalls(
+  context: APIContext,
+  recordSequence: number,
+): Promise<readonly number[]> {
+  const row = await context.log.writer.db
+    .$extendTables<APITables>()
+    .selectFrom('records')
+    .select('payload')
+    .where('sequence', '=', recordSequence)
+    .where('kind', '=', actionProposedCodec.kind)
+    .where(sql`json_extract(payload, '$.tool')`, '=', screenClickToolName)
+    .executeTakeFirst();
+
+  if (row === undefined) {
+    return [];
+  }
+
+  return [actionProposedCodec.decode(parseJSONObject(row.payload)).callSequence];
 }
 
 async function removeCallKey(context: APIContext, callSequence: number): Promise<void> {

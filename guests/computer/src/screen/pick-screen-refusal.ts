@@ -31,9 +31,9 @@ const screenChanged: ComputerReply = {
     'the window under the act is not the one that was shown; take a screenshot and try again',
 };
 
-// Picks the refusal for a screen act on a target, or null when the act may run. The terminal and the
-// browser's own controls belong to computer.run and computer.browser_open. A bound act also refuses
-// when its target differs from the binding on any field.
+// Picks the refusal for a screen act on a target, or null when the act may run. The terminal, the
+// browser's own controls and a browser window with no tracked tab belong to other tools. A bound act
+// also refuses when its target differs from the binding on any field.
 export function pickScreenRefusal(
   target: ScreenTarget,
   check: ScreenCheck,
@@ -43,15 +43,30 @@ export function pickScreenRefusal(
     return useRun;
   }
 
-  if (isBrowserControl(target, check)) {
-    return useBrowserOpen;
-  }
-
   if (bound !== null && !isSameWindow(target.binding, bound)) {
     return screenChanged;
   }
 
+  if (isBrowserWithoutTab(target) || isBrowserControl(target, check)) {
+    return useBrowserOpen;
+  }
+
   return null;
+}
+
+function isSameWindow(current: ScreenBinding, bound: ScreenBinding): boolean {
+  return (
+    current.windowID === bound.windowID &&
+    current.kind === bound.kind &&
+    current.tab === bound.tab &&
+    current.url === bound.url
+  );
+}
+
+// A browser window that shows no tracked tab has no known page top, so a click or a key could land
+// on its address bar. Opening the page with the browser tool makes it a tab the guest tracks.
+function isBrowserWithoutTab(target: ScreenTarget): boolean {
+  return target.binding.kind === 'browser' && target.binding.tab === undefined;
 }
 
 // chords that move focus to the address bar or open a new window or tab
@@ -76,13 +91,4 @@ function isBrowserControl(target: ScreenTarget, check: ScreenCheck): boolean {
   }
 
   return check.kind === 'chord' && browserChords.has(check.chord.join('+'));
-}
-
-function isSameWindow(current: ScreenBinding, bound: ScreenBinding): boolean {
-  return (
-    current.windowID === bound.windowID &&
-    current.kind === bound.kind &&
-    current.tab === bound.tab &&
-    current.url === bound.url
-  );
 }

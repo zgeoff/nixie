@@ -124,18 +124,24 @@ it is an unknown tool. An action queued under `computer.fill` or `computer.click
 settles as `TAB_GONE` when the action runner reaches it, as an act on a replaced sandbox does.
 
 **The screen.** The page tools stay the main way in, because page text costs far fewer tokens than a
-picture. The screen tools are for what they cannot reach. A screenshot is 1280 by 800, so a point on
-it is a point a click takes. Each screenshot and each screen act result carries `focus`, which is
-`{ kind: 'browser', tab, url }`, `{ kind: 'terminal' }` or `{ kind: 'other' }`, and `isWatched`,
-which is always `false` until watching ships. The result of a screen act carries the picture of the
-desktop after the act, as a screenshot does. The connector's response holds the picture beside the
-result. The action runner seals its bytes as an attachment of the outcome record and keeps the media
-type in the record's erasable fields, so the picture reaches the model beside the outcome, whether
-the model waits for the action or reads it later in its inbox, and a forget of the outcome erases
-it. A point outside 0 to 1279 by 0 to 799 returns `BAD_POINT`. `screen_scroll` takes `by` as a whole
-number of wheel steps, 1 to 50 in either direction, where a negative number scrolls up, and returns
-`BAD_STEPS` outside that range. `screen_type` takes `text`, at most 1,000 characters, or `keys`, one
-chord such as `enter`, `shift+tab` or `ctrl+a`, and exactly one of the two.
+picture. The screen tools are for what they cannot reach. The desktop is 1280 by 800, and a click
+takes a point on it. A screenshot's `width` and `height` give the size of the picture the model
+sees, which is smaller than the desktop when the image long edge is under 1280. The model then
+multiplies a point on the picture by 1280 divided by `width`. Each screenshot and each screen act
+result carries `focus`, which is `{ kind: 'browser', tab, url }`, `{ kind: 'terminal' }` or
+`{ kind: 'other' }`, and `isWatched`, which is always `false` until watching ships. The result of a
+screen act carries the picture of the desktop after the act, as a screenshot does. The connector's
+response holds the picture beside the result. The action runner seals its bytes as an attachment of
+the outcome record and keeps the media type in the record's erasable fields, so the picture reaches
+the model beside the outcome, whether the model waits for the action or reads it later in its inbox,
+and a forget of the outcome erases it. The input has landed by the time the guest takes that
+picture, so a picture it cannot take leaves the act done: the reply omits it and `isShown` is
+`false`. A queued act reserves its picture against the session's image budget as a screenshot does,
+and a picture past the budget is left out the same way. A point outside 0 to 1279 by 0 to 799
+returns `BAD_POINT`. `screen_scroll` takes `by` as a whole number of wheel steps, 1 to 50 in either
+direction, where a negative number scrolls up, and returns `BAD_STEPS` outside that range.
+`screen_type` takes `text`, at most 1,000 characters, or `keys`, one chord such as `enter`,
+`shift+tab` or `ctrl+a`, and exactly one of the two.
 
 **Paths.** A path is under `~/files`, and a relative path starts there. A path that leaves it by
 `..` or by a symlink returns `BAD_PATH`. A file read or written has a size limit, and a larger file
@@ -161,14 +167,17 @@ on: the one under the point for a click, and the focused one for typing. That wi
 `ScreenBinding`, with its window ID, its kind, and for a browser its tab and URL. For a browser
 window the tab's host is the destination, and for any other window the act has no destination, so it
 always asks. Nixie keeps the binding in memory, as it keeps `expectURL`, and the action hash covers
-it. A click also stores the desktop's picture from the moment of the call, with the click's point
-marked on the card. The guest takes the picture when it binds the click. The tool stores it as an
-attachment of the call's own record, only when the call asks the user, and a digest of its bytes is
-part of the binding that the action hash covers. A call prepared against a changed screen is
-therefore a new question. The card shows the picture through the same route as a stored image, with
-a ring drawn over it in the web client at the click's point, so the stored picture stays as the
-screen showed it. A forget of the call erases the picture. A `screen_type` card shows the typed text
-or the keys, and no picture.
+it. Two calls with the same input can be prepared against different windows, so nixie keeps each
+binding apart and matches it to the action by the hash the owner answered. A busy computer leaves
+the binding in place for the retry, and only a terminal outcome removes it. A click also stores the
+desktop's picture from the moment of the call, with the click's point marked on the card. The guest
+takes the picture when it binds the click. The tool stores it as an attachment of the call's own
+record, only when the call asks the user, and a digest of its bytes is part of the binding that the
+action hash covers. A call prepared against a changed screen is therefore a new question. The card
+shows the picture through the same route as a stored image, with a ring drawn over it in the web
+client at the click's point, so the stored picture stays as the screen showed it. A forget of the
+call, or of its proposal, erases the picture. A `screen_type` card shows the typed text or the keys,
+and no picture.
 
 When the action runs, the guest finds the window under the point again, or the focused one, and
 returns `SCREEN_CHANGED` when it differs from the binding on any field. A restart between the call
@@ -185,6 +194,10 @@ when it runs it:
   the page's viewport, which the page reports. A chord that focuses the address bar or opens a tab
   or a window (`ctrl+l`, `alt+d`, `f6`, `ctrl+k`, `ctrl+e`, `ctrl+t`, `ctrl+n`, `ctrl+shift+n`)
   returns it too, in any case and any order of its modifiers.
+- A browser window that shows no tab the guest tracks, such as a popup the page opened, returns
+  `USE_BROWSER_OPEN` for any act, because its page top is unknown. With several browser windows, the
+  guest gives a window the visible tab whose rectangle is nearest its own, and none when 2 windows
+  are equally near.
 - Keys that are not one known chord return `BAD_KEYS`.
 
 An "always allow" on a screen act pins the host alone, in one rule for `computer.screen_click` and

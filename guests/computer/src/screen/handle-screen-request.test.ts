@@ -6,11 +6,13 @@ import type { DesktopDriver, DesktopWindow, ScreenTabs } from './types';
 
 function setupTest() {
   const inputs: string[] = [];
+  const camera = { isBroken: false };
 
   const windows = {
     browser: { id: '0x1', kind: 'browser', x: 0, y: 0, width: 1280, height: 800 },
     terminal: { id: '0x2', kind: 'terminal', x: 800, y: 400, width: 400, height: 300 },
     dialog: { id: '0x3', kind: 'other', x: 300, y: 300, width: 200, height: 100 },
+    popup: { id: '0x4', kind: 'browser', x: 300, y: 300, width: 200, height: 100 },
   } as const satisfies Record<string, DesktopWindow>;
 
   const bound: ScreenBinding = {
@@ -24,7 +26,10 @@ function setupTest() {
 
   const driver: DesktopDriver = {
     readWindows: () => Promise.resolve({ windows: desktop.windows, activeID: desktop.activeID }),
-    capture: () => Promise.resolve(new TextEncoder().encode('png')),
+    capture: () =>
+      camera.isBroken
+        ? Promise.reject(new Error('the display did not answer'))
+        : Promise.resolve(new TextEncoder().encode('png')),
     click: (x, y, button) => {
       inputs.push(`click ${String(x)},${String(y)} ${button}`);
 
@@ -53,7 +58,17 @@ function setupTest() {
       {
         page: {
           url: () => 'https://pages.test/',
-          evaluate: () => Promise.resolve(JSON.stringify({ isVisible: true, pageTop: 85 })),
+          evaluate: () =>
+            Promise.resolve(
+              JSON.stringify({
+                isVisible: true,
+                pageTop: 85,
+                left: 0,
+                top: 0,
+                width: 1280,
+                height: 800,
+              }),
+            ),
         },
       },
     ],
@@ -61,6 +76,7 @@ function setupTest() {
 
   return {
     inputs,
+    camera,
     windows,
     bound,
     desktop,
@@ -282,4 +298,56 @@ test('it refuses a scroll over the terminal with use_run', async () => {
     kind: 'failed',
     reason: 'use_run',
   });
+});
+
+test('it refuses a click on a second browser window that shows no tracked tab', async () => {
+  const ctx = setupTest();
+
+  ctx.desktop.windows = [ctx.windows.browser, ctx.windows.popup];
+  ctx.desktop.activeID = '0x1';
+
+  const reply = await ctx.send({
+    op: 'screenBind',
+    act: { kind: 'click', x: 400, y: 320, button: 'left' },
+  });
+
+  expect(reply).toMatchObject({ kind: 'failed', reason: 'use_browser_open' });
+});
+
+test('it refuses a bound click with screen_changed when an untracked browser window is now under the point', async () => {
+  const ctx = setupTest();
+
+  ctx.desktop.windows = [ctx.windows.browser, ctx.windows.popup];
+  ctx.desktop.activeID = '0x1';
+
+  const reply = await ctx.send({
+    op: 'screenAct',
+    binding: ctx.bound,
+    act: { kind: 'click', x: 400, y: 320, button: 'left' },
+  });
+
+  expect([reply, ctx.inputs]).toMatchObject([{ kind: 'failed', reason: 'screen_changed' }, []]);
+});
+
+test('it reports a click done with no picture when the desktop cannot be captured after it', async () => {
+  const ctx = setupTest();
+
+  ctx.desktop.windows = [ctx.windows.browser];
+  ctx.desktop.activeID = '0x1';
+  ctx.camera.isBroken = true;
+
+  const reply = await ctx.send({
+    op: 'screenAct',
+    binding: ctx.bound,
+    act: { kind: 'click', x: 412, y: 233, button: 'left' },
+  });
+
+  expect([reply, ctx.inputs]).toStrictEqual([
+    {
+      kind: 'screen',
+      ok: true,
+      focus: { kind: 'browser', tab: 't1', url: 'https://pages.test/' },
+    },
+    ['click 412,233 left'],
+  ]);
 });

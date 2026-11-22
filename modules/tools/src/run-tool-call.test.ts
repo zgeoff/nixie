@@ -3644,3 +3644,46 @@ test.each([
     expect(attached.get(called.record.sequence)).toStrictEqual(expected);
   },
 );
+
+test('it records an ask for a prepared call under a hash that covers the expected window', async () => {
+  const ctx = await setupTest({
+    tools: [
+      buildMockToolDefinition({
+        name: 'test.send',
+        execution: 'queued',
+        declaration: { effects: ['send'] },
+        prepare: () =>
+          Promise.resolve({
+            destinations: ['example.org'],
+            expectWindow: { windowID: '0x1', kind: 'browser', picture: 'aa' },
+          }),
+      }),
+    ],
+  });
+
+  await runToolCall(
+    { tool: 'test.send', input: { query: 't1' }, toolUseID: 'toolu_u1' },
+    {
+      runID: 'run-1',
+      thread: 'task-1',
+      logThread: 'task-1',
+      tools: ['test.send'],
+      model: { model: 'model-a', profile: 'chat-direct' },
+    },
+    ctx.options,
+  );
+
+  const written = await readRecords(ctx.log, { afterSequence: 0 });
+
+  const proposed = written.find((entry) => entry.record.kind === 'policy.action_proposed');
+
+  expect(proposed?.record.payload['actionHash']).toBe(
+    buildActionHash({
+      tool: 'test.send',
+      input: { query: 't1' },
+      destinations: ['example.org'],
+      deadlineAt: null,
+      expectWindow: { windowID: '0x1', kind: 'browser', picture: 'aa' },
+    }),
+  );
+});

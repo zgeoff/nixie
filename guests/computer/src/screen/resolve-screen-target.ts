@@ -1,20 +1,14 @@
-import type { ScreenBinding } from '@heynixie/wire';
 import { z } from 'zod';
 import { findWindowAt } from './find-window-at';
-import type {
-  DesktopDriver,
-  DesktopWindow,
-  ScreenPage,
-  ScreenSelection,
-  ScreenTabs,
-  ScreenTarget,
-} from './types';
+import type { ReadTab } from './pick-shown-tab';
+import { pickShownTab } from './pick-shown-tab';
+import type { DesktopDriver, ScreenPage, ScreenSelection, ScreenTabs, ScreenTarget } from './types';
 
 const noWindowID = 'none';
 
 // Finds the window a screen act lands on: the one under the point, or the focused one. A browser
-// window takes the tab it shows, which is the visible one. A browser window that shows no tab is
-// another window.
+// window takes the tab it shows. A browser window that shows no tracked tab stays a browser window
+// with no tab, so its address bar and tab strip are never mistaken for page content.
 export async function resolveScreenTarget(
   driver: DesktopDriver,
   tabs: ScreenTabs,
@@ -37,28 +31,34 @@ export async function resolveScreenTarget(
     return { binding: { windowID: found.id, kind: found.kind }, pageTop: null };
   }
 
-  return resolveBrowserWindow(found, tabs);
+  const read = await readTabs(tabs);
+
+  const shown = pickShownTab(
+    found,
+    windows.filter((window) => window.kind === 'browser'),
+    read,
+  );
+
+  return shown === null
+    ? { binding: { windowID: found.id, kind: 'browser' }, pageTop: null }
+    : {
+        binding: { windowID: found.id, kind: 'browser', tab: shown.id, url: shown.url },
+        pageTop: shown.pageTop,
+      };
 }
 
-async function resolveBrowserWindow(
-  window: DesktopWindow,
-  tabs: ScreenTabs,
-): Promise<ScreenTarget> {
-  // the last visible tab wins, because a headless browser shows every tab
-  let shown: { binding: ScreenBinding; pageTop: number } | null = null;
+async function readTabs(tabs: ScreenTabs): Promise<ReadTab[]> {
+  const read: ReadTab[] = [];
 
   for (const [id, tab] of tabs) {
-    const read = await readTab(tab.page);
+    const page = await readTab(tab.page);
 
-    if (read !== null && read.isVisible) {
-      shown = {
-        binding: { windowID: window.id, kind: 'browser', tab: id, url: tab.page.url() },
-        pageTop: read.pageTop,
-      };
+    if (page !== null) {
+      read.push({ id, url: tab.page.url(), ...page });
     }
   }
 
-  return shown ?? { binding: { windowID: window.id, kind: 'other' }, pageTop: null };
+  return read;
 }
 
 // The viewport's top on the display is the window's top plus the height that its tab strip and
@@ -66,9 +66,20 @@ async function resolveBrowserWindow(
 const readPageScript = `JSON.stringify({
   isVisible: document.visibilityState === 'visible',
   pageTop: Math.round(window.screenY + window.outerHeight - window.innerHeight),
+  left: window.screenX,
+  top: window.screenY,
+  width: window.outerWidth,
+  height: window.outerHeight,
 })`;
 
-const pageSchema = z.object({ isVisible: z.boolean(), pageTop: z.number() });
+const pageSchema = z.object({
+  isVisible: z.boolean(),
+  pageTop: z.number(),
+  left: z.number(),
+  top: z.number(),
+  width: z.number(),
+  height: z.number(),
+});
 
 async function readTab(page: ScreenPage): Promise<z.infer<typeof pageSchema> | null> {
   try {

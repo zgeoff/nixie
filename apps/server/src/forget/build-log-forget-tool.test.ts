@@ -227,6 +227,8 @@ test('it refuses at run time what became unremovable after the ask, with the sam
     attempt: 1,
     idempotencyKey: action.action_id,
     destinations: [],
+    actionHash: 'hash-1',
+    deadlineAt: null,
   });
 
   expect(response).toStrictEqual({
@@ -248,6 +250,8 @@ test('it removes the record and answers with its eventID and kind, never its tex
     attempt: 1,
     idempotencyKey: action.action_id,
     destinations: [],
+    actionHash: 'hash-1',
+    deadlineAt: null,
   });
 
   expect(response).toStrictEqual({
@@ -269,6 +273,8 @@ test('it answers not found to a check before the forget started, and found with 
     attempt: 1,
     idempotencyKey: action.action_id,
     destinations: [],
+    actionHash: 'hash-1',
+    deadlineAt: null,
   };
 
   const before = await ctx.forget.connector.check?.(attempt);
@@ -303,6 +309,8 @@ test('it answers not found to a check after a forget that started and failed in 
     attempt: 1,
     idempotencyKey: action.action_id,
     destinations: [],
+    actionHash: 'hash-1',
+    deadlineAt: null,
   };
 
   const failed = await failing.connector.run(attempt).catch((error: unknown) => error);

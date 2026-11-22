@@ -13,9 +13,10 @@ export interface ActionProposalFacts {
   readonly callSequence: number;
   readonly tool: string;
 
-  // the name the action hash knows the tool by, when it differs from `tool`: a tool with variants
-  // hashes under its registry name, so a repeat of the call finds the same action
-  readonly actionTool?: string;
+  // The hash the queue holds the call under, which covers what a prepared call expects of its page
+  // or window, so an approval answers that call alone. Absent, the hash covers the tool, its input,
+  // its destinations and its deadline.
+  readonly actionHash?: string;
   readonly effects: readonly Effect[];
   readonly cause: AskCause;
   readonly input: JSONObject;
@@ -90,12 +91,14 @@ export function buildActionProposalInput(facts: ActionProposalFacts): ActionProp
       callSequence: facts.callSequence,
       tool: facts.tool,
       effects: [...facts.effects],
-      actionHash: buildActionHash({
-        tool: facts.actionTool ?? facts.tool,
-        input: facts.input,
-        destinations: facts.destinations.map((destination) => destination.value),
-        deadlineAt: facts.deadlineAt ?? null,
-      }),
+      actionHash:
+        facts.actionHash ??
+        buildActionHash({
+          tool: facts.tool,
+          input: facts.input,
+          destinations: facts.destinations.map((destination) => destination.value),
+          deadlineAt: facts.deadlineAt ?? null,
+        }),
       cause: facts.cause,
       riskClass: facts.cause === 'always_ask' ? 'always_ask' : 'routine',
       rule: alwaysAllow === null ? null : { hash: alwaysAllow.hash },

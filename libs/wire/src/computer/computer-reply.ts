@@ -79,12 +79,14 @@ const desktopReplySchema = z.strictObject({
   base64: textSchema,
 });
 
-// the picture after a screen scroll or act, with the window that has focus
+// The picture after a screen scroll or act, with the window that has focus. The input has landed
+// when this reply comes, so a picture that could not be taken leaves base64 out rather than fail
+// the act.
 const screenReplySchema = z.strictObject({
   kind: z.literal('screen'),
   ok: isOk,
   focus: focusSchema,
-  base64: textSchema,
+  base64: textSchema.optional(),
 });
 
 const screenTargetReplySchema = z.strictObject({

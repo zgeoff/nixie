@@ -7,6 +7,7 @@ import type { ComputerReply, ComputerRequest, ScreenBinding } from '@heynixie/wi
 import { waitFor } from '@zgeoff/testing';
 import invariant from 'tiny-invariant';
 import { buildButtonPageURL } from '../test-utils/build-button-page-url';
+import { buildPopupPageURL } from '../test-utils/build-popup-page-url';
 
 // These tests need a real impd on a host with /dev/kvm and the computer image built into it.
 // docs/runbooks/imp-isolation-tests.md names the variables that turn them on. CI skips them, so a
@@ -108,10 +109,10 @@ async function setupTest() {
     return result.reply;
   };
 
-  const openPage = (title: string) =>
+  const openURL = (url: string) =>
     send({
       op: 'open',
-      url: buildButtonPageURL(title),
+      url,
       limits: {
         bodyBytes: 1_000_000,
         timeoutMs: 30_000,
@@ -121,6 +122,8 @@ async function setupTest() {
       },
       deniedRanges: [],
     });
+
+  const openPage = (title: string) => openURL(buildButtonPageURL(title));
 
   const readTitle = async (): Promise<string | null> => {
     const reply = await send({ op: 'read', tab: 't1', mode: 'text' });
@@ -146,6 +149,7 @@ async function setupTest() {
     callComputer,
     createOldSandbox,
     send,
+    openURL,
     openPage,
     readTitle,
     bind,
@@ -365,22 +369,31 @@ test.skipIf(!hasImpHost)(
 );
 
 test.skipIf(!hasImpHost)(
-  'it refuses a click with SCREEN_CHANGED when the window under the point changed',
+  'it refuses a click with SCREEN_CHANGED when another X window is under the point',
   async () => {
     const ctx = await setupTest();
 
-    await ctx.openPage('first');
+    // The page's button opens a second Chromium window over the middle of the display, so the X
+    // window under the point changes while the tab and its URL stay as they were.
+    await ctx.openURL(buildPopupPageURL('first'));
 
-    const binding = await ctx.bind(640, 500);
+    const binding = await ctx.bind(640, 400);
 
-    await ctx.openPage('second');
+    const opened = await ctx.send({
+      op: 'screenAct',
+      binding,
+      act: { kind: 'click', x: 640, y: 400, button: 'left' },
+    });
 
     const reply = await ctx.send({
       op: 'screenAct',
       binding,
-      act: { kind: 'click', x: 640, y: 500, button: 'left' },
+      act: { kind: 'click', x: 640, y: 400, button: 'left' },
     });
 
-    expect(reply).toMatchObject({ kind: 'failed', reason: 'screen_changed' });
+    expect([opened.kind, reply]).toMatchObject([
+      'screen',
+      { kind: 'failed', reason: 'screen_changed' },
+    ]);
   },
 );

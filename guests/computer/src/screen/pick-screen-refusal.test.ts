@@ -125,3 +125,12 @@ test('it refuses with screen_changed when the point is on a window of another ki
     ),
   ).toMatchObject({ reason: 'screen_changed' });
 });
+
+test.each([{ kind: 'click', y: 400 }, { kind: 'scroll' }, { kind: 'text' }] as const)(
+  'it refuses a %o on a browser window that shows no tracked tab with use_browser_open',
+  (check) => {
+    const target: ScreenTarget = { binding: { windowID: '0x9', kind: 'browser' }, pageTop: null };
+
+    expect(pickScreenRefusal(target, check, null)).toMatchObject({ reason: 'use_browser_open' });
+  },
+);

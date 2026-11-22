@@ -338,6 +338,7 @@ function runDecidedCall(decided: DecidedCall): Promise<Settled> {
       return readQueuedResult(registered, rest.options.queue, {
         actionID: repeatOf.actionID,
         timeoutMs: repeatOf.runsInStep ? 0 : rest.options.queuedWaitMs,
+        reserveImages: rest.run.session?.reserveImages,
       });
     }
 
@@ -462,5 +463,6 @@ async function runQueued(allowed: AllowedCall): Promise<Settled> {
   return readQueuedResult(allowed.registered, allowed.options.queue, {
     actionID: enqueued.actionID,
     timeoutMs: allowed.options.queuedWaitMs,
+    reserveImages: allowed.run.session?.reserveImages,
   });
 }

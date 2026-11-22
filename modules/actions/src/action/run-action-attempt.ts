@@ -239,6 +239,8 @@ async function runConnector(
       attempt: attempt.attempt,
       idempotencyKey: attempt.action.action_id,
       destinations: call.destinations,
+      actionHash: attempt.action.action_hash,
+      deadlineAt: attempt.action.deadline_at,
     });
   } catch (error) {
     return { kind: 'ambiguous', reason: error instanceof Error ? error.message : String(error) };

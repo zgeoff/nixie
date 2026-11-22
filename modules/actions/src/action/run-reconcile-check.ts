@@ -72,6 +72,8 @@ async function runCheck(
       attempt: claimed.action.attempt_count,
       idempotencyKey: claimed.action.action_id,
       destinations: [],
+      actionHash: claimed.action.action_hash,
+      deadlineAt: claimed.action.deadline_at,
     });
   } catch {
     return { kind: 'inconclusive' };

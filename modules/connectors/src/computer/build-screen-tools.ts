@@ -1,10 +1,10 @@
 import { createHash } from 'node:crypto';
 import type { JSONObject } from '@heynixie/log';
-import { actionProposalLapseMs } from '@heynixie/policy';
+import { actionProposalLapseMs, buildActionHash } from '@heynixie/policy';
 import type { DirectResult, Prepared, ToolDefinition, ToolResolveContext } from '@heynixie/tools';
 import type { ComputerFocus, ScreenAct, ScreenBinding } from '@heynixie/wire';
 import { z } from 'zod';
-import type { ComputerState } from './computer-state';
+import type { ComputerState, ScreenPrepared } from './computer-state';
 import { buildActionKey } from './computer-state';
 import type { ComputerToolOptions } from './computer-tool-options';
 import {
@@ -75,9 +75,10 @@ function buildScreenshotTool(options: ComputerToolOptions): ToolDefinition {
   return {
     name: 'computer.screenshot',
     description: [
-      'Shows a picture of the whole desktop beside the result, 1280 by 800, so a point on the ',
-      'picture is the point a screen click takes. The result names the window that has focus: a ',
-      'browser tab, the terminal or another window.',
+      'Shows a picture of the whole desktop beside the result. The desktop is 1280 by 800, and a ',
+      'screen click takes a point on it. The result gives the picture’s own width and height: if ',
+      'it is smaller than 1280 wide, multiply a point on it by 1280 divided by its width. The ',
+      'result names the window that has focus: a browser tab, the terminal or another window.',
       screenNote,
     ].join(''),
     input: { type: 'object', properties: {}, additionalProperties: false },
@@ -103,6 +104,7 @@ function buildScreenshotTool(options: ComputerToolOptions): ToolDefinition {
       }
 
       return showPicture(options, context.run, {
+        isDesktop: true,
         base64: outcome.reply.base64,
         result: {
           width: outcome.reply.width,
@@ -180,10 +182,16 @@ function buildScrollTool(options: ComputerToolOptions): ToolDefinition {
         return { status: 'ok', ...(outcome.kind === 'refused' ? outcome.result : unexpected()) };
       }
 
-      return showPicture(options, context.run, {
-        base64: outcome.reply.base64,
-        result: { focus: toFocusResult(options, outcome.reply.focus), isWatched: false },
-      });
+      const result = { focus: toFocusResult(options, outcome.reply.focus), isWatched: false };
+
+      // the scroll happened, so a picture the desktop could not take leaves it done and unshown
+      return outcome.reply.base64 === undefined
+        ? { status: 'ok', result: { ...result, isShown: false } }
+        : showPicture(options, context.run, {
+            isDesktop: true,
+            base64: outcome.reply.base64,
+            result,
+          });
     },
   };
 }
@@ -230,11 +238,21 @@ const queuedNote = [
 
 const actOutput = {
   type: 'object',
-  properties: { focus: focusSchema, isWatched: { type: 'boolean' }, refused: { type: 'object' } },
+  properties: {
+    focus: focusSchema,
+    isWatched: { type: 'boolean' },
+    isShown: { type: 'boolean' },
+    refused: { type: 'object' },
+  },
   additionalProperties: false,
 };
 
-const actResults = { focus: 'untrusted', isWatched: 'owner_data', refused: 'untrusted' } as const;
+const actResults = {
+  focus: 'untrusted',
+  isWatched: 'owner_data',
+  isShown: 'owner_data',
+  refused: 'untrusted',
+} as const;
 
 const clickArguments = z.object({
   x: z.number(),
@@ -246,8 +264,8 @@ function buildClickTool(options: ComputerToolOptions, state: ComputerState): Too
   return {
     name: 'computer.screen_click',
     description: [
-      'Clicks a point of the screen, x 0 to 1279 and y 0 to 799 on the picture that ',
-      'computer.screenshot shows, with the left or the right button.',
+      'Clicks a point of the desktop, x 0 to 1279 and y 0 to 799, with the left or the right ',
+      'button. A point on a screenshot smaller than 1280 wide needs the scaling that the screenshot result gives.',
       screenNote,
       queuedNote,
     ].join(''),
@@ -323,10 +341,6 @@ async function prepareScreenAct(
   const binding = outcome.reply.target;
   const key = buildActionKey(preparation.tool, preparation.input);
 
-  state.screens.set(key, binding);
-  state.holds.get(key)?.();
-  state.holds.set(key, options.computer.hold(actionProposalLapseMs));
-
   const picture =
     preparation.act.kind === 'click' && outcome.reply.base64 !== undefined
       ? await fitPicture(options, outcome.reply.base64)
@@ -335,21 +349,26 @@ async function prepareScreenAct(
   // The card of a click shows the desktop as it was when the call was prepared. The picture is
   // stored with the call, and its digest is part of the window the action hash covers, so a call
   // prepared against a changed screen is a new question.
+  const expectWindow = {
+    ...toBindingObject(binding),
+    ...(picture === null
+      ? {}
+      : { picture: createHash('sha256').update(picture.bytes).digest('hex') }),
+  };
+
+  const kept = (state.screens.get(key) ?? []).filter(
+    (entry) => JSON.stringify(entry.expectWindow) !== JSON.stringify(expectWindow),
+  );
+
+  state.screens.set(key, [...kept, { binding, expectWindow }]);
+  state.holds.get(key)?.();
+  state.holds.set(key, options.computer.hold(actionProposalLapseMs));
+
   return {
     destinations: pickDestinations(binding),
-    expectWindow: {
-      ...toBindingObject(binding),
-      ...(picture === null
-        ? {}
-        : { picture: createHash('sha256').update(picture.bytes).digest('hex') }),
-    },
+    expectWindow,
     ...(picture === null ? {} : { attachments: [new Uint8Array(picture.bytes)] }),
   };
-}
-
-// A browser tab's host is the destination, and any other window has none.
-function pickDestinations(binding: ScreenBinding): string[] {
-  return binding.kind === 'browser' && binding.url !== undefined ? [new URL(binding.url).host] : [];
 }
 
 function toBindingObject(binding: ScreenBinding): JSONObject {
@@ -359,6 +378,11 @@ function toBindingObject(binding: ScreenBinding): JSONObject {
     ...(binding.tab === undefined ? {} : { tab: binding.tab }),
     ...(binding.url === undefined ? {} : { url: binding.url }),
   };
+}
+
+// A browser tab's host is the destination, and any other window has none.
+function pickDestinations(binding: ScreenBinding): string[] {
+  return binding.kind === 'browser' && binding.url !== undefined ? [new URL(binding.url).host] : [];
 }
 
 const maxTypedChars = 1000;
@@ -422,24 +446,65 @@ function readTypeAct(input: z.infer<typeof typeArguments>): ScreenAct | null {
 
 // The attempt of a queued click or type: the same act against the window it was prepared for. A
 // restart loses the binding, and then the act refuses, never running against a screen nobody saw.
+// The binding stays until the act reaches a terminal outcome, so a busy computer can be retried.
 export async function runScreenAct(
   options: ComputerToolOptions,
   state: ComputerState,
   attempt: ComputerAttempt,
 ): Promise<DirectResult> {
   const key = buildActionKey(attempt.tool, attempt.arguments);
-  const binding = state.screens.get(key);
+  const prepared = findPrepared(state.screens.get(key) ?? [], attempt);
 
-  state.holds.get(key)?.();
-  state.holds.delete(key);
-  state.screens.delete(key);
-
-  if (binding === undefined) {
+  if (prepared === undefined) {
     return refuseComputer(
       'SCREEN_CHANGED',
       'nixie restarted since the call was prepared, so it cannot tell the window is the same',
     );
   }
+
+  const result = await runPreparedAct(options, attempt, prepared);
+
+  if (result.refusalCode === 'BUSY' || result.refusalCode === 'COMPUTER_MOVING') {
+    return result;
+  }
+
+  const rest = (state.screens.get(key) ?? []).filter((entry) => entry !== prepared);
+
+  if (rest.length === 0) {
+    state.screens.delete(key);
+    state.holds.get(key)?.();
+    state.holds.delete(key);
+  } else {
+    state.screens.set(key, rest);
+  }
+
+  return result;
+}
+
+// The entry whose window the owner's answer covers: the action hash names the window and the
+// picture the call was prepared against, so a changed screen finds no entry.
+function findPrepared(
+  entries: readonly ScreenPrepared[],
+  attempt: ComputerAttempt,
+): ScreenPrepared | undefined {
+  return entries.find(
+    (entry) =>
+      buildActionHash({
+        tool: attempt.tool,
+        input: attempt.arguments,
+        destinations: attempt.destinations,
+        deadlineAt: attempt.deadlineAt,
+        expectWindow: entry.expectWindow,
+      }) === attempt.actionHash,
+  );
+}
+
+async function runPreparedAct(
+  options: ComputerToolOptions,
+  attempt: ComputerAttempt,
+  prepared: ScreenPrepared,
+): Promise<DirectResult> {
+  const binding = prepared.binding;
 
   if (!isSameList(pickDestinations(binding), attempt.destinations)) {
     return refuseComputer(
@@ -473,10 +538,16 @@ export async function runScreenAct(
     return unexpected();
   }
 
-  const picture = await fitPicture(options, outcome.reply.base64);
+  const picture =
+    outcome.reply.base64 === undefined ? null : await fitPicture(options, outcome.reply.base64);
 
+  // the act ran either way; isShown says whether a picture of the desktop follows it
   return {
-    result: { focus: toFocusResult(options, outcome.reply.focus), isWatched: false },
+    result: {
+      focus: toFocusResult(options, outcome.reply.focus),
+      isWatched: false,
+      isShown: picture !== null,
+    },
     ...(picture === null ? {} : { images: [picture] }),
   };
 }

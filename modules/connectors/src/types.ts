@@ -26,6 +26,11 @@ export interface ActionAttempt {
 
   // the destinations the policy checked for the call
   readonly destinations: readonly string[];
+
+  // the hash the queue holds the action under, and the deadline it covers, so a connector can tell
+  // which of its prepared calls the owner answered
+  readonly actionHash: string;
+  readonly deadlineAt: number | null;
 }
 
 // What a read-only check of the provider found.

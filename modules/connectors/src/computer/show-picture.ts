@@ -6,6 +6,11 @@ import type { ComputerToolOptions } from './computer-tool-options';
 export interface Picture {
   readonly base64: string;
   readonly result: JSONObject;
+
+  // Set for a picture of the desktop: the result's width and height become those of the picture the
+  // model sees, which is smaller than the desktop when the image limit is below the desktop's long
+  // edge.
+  readonly isDesktop?: true;
 }
 
 // Fits the picture and reserves its place beside the result; isShown says whether it fit.
@@ -24,7 +29,13 @@ export async function showPicture(
 
   return {
     status: 'ok',
-    result: { ...picture.result, isShown: reserved },
+    result: {
+      ...picture.result,
+      ...(fitted.kind === 'image' && picture.isDesktop === true
+        ? { width: fitted.width, height: fitted.height }
+        : {}),
+      isShown: reserved,
+    },
     images: reserved && fitted.kind === 'image' ? [fitted.image] : [],
   };
 }

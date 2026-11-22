@@ -97,13 +97,21 @@ async function scrollScreen(
   return pictureAfterInput(context);
 }
 
+// The input has landed by now, so a focus or a picture that cannot be read never fails the act: a
+// window that cannot be read counts as another window, and a picture that cannot be taken is left
+// out of the reply.
 async function pictureAfterInput(context: ScreenContext): Promise<ComputerReply> {
   await Bun.sleep(context.settleMs);
 
-  const focus = await readFocus(context);
-  const bytes = await context.driver.capture();
+  const focus = await readFocus(context).catch((): ComputerFocus => ({ kind: 'other' }));
+  const bytes = await context.driver.capture().catch(() => null);
 
-  return { kind: 'screen', ok: true, focus, base64: Buffer.from(bytes).toString('base64') };
+  return {
+    kind: 'screen',
+    ok: true,
+    focus,
+    ...(bytes === null ? {} : { base64: Buffer.from(bytes).toString('base64') }),
+  };
 }
 
 const badKeys: ComputerReply = {

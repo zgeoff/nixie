@@ -86,6 +86,8 @@ test('it calls the provider with the action ID as the idempotency key', async ()
       attempt: 1,
       idempotencyKey: queued.actionID,
       destinations: [],
+      actionHash: expect.any(String),
+      deadlineAt: null,
     },
   ]);
 });
