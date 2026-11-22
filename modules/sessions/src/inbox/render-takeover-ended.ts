@@ -49,8 +49,8 @@ function parseEndedFields(record: LogRecord): EndedFields | null {
   return parsed.success ? parsed.data : null;
 }
 
-// The sites, and the window in focus with its text inside the markers that a page read shows, so
-// text that holds a closing marker cannot end them early.
+// The sites, and the window in focus with its text inside the markers that a page read shows. The
+// text is escaped as a page read escapes it, so no text can write a closing marker.
 function renderSeen(fields: EndedFields | null, mint: () => string): string[] {
   if (fields === null) {
     return [];
@@ -75,13 +75,13 @@ function renderSeen(fields: EndedFields | null, mint: () => string): string[] {
     return [...sites, `Now: ${label}`];
   }
 
-  const fence = pickFence(mint, now.text);
+  const fence = mint();
 
   return [
     ...sites,
     `Now: ${label}`,
     `<tool-result source="untrusted" fence="${fence}">`,
-    now.text,
+    JSON.stringify(now.text),
     `</tool-result fence="${fence}">`,
   ];
 }
@@ -89,12 +89,4 @@ function renderSeen(fields: EndedFields | null, mint: () => string): string[] {
 // a secure site by its host alone, and any other with its scheme, so a plain address shows as one
 function toSite(origin: string): string {
   return origin.startsWith('https://') ? origin.slice('https://'.length) : origin;
-}
-
-// A fence that the text does not hold, so no text closes its block early. The minted ID is random,
-// and a fresh one replaces any that the text happens to hold.
-function pickFence(mint: () => string, text: string): string {
-  const fence = mint();
-
-  return text.includes(fence) ? pickFence(mint, text) : fence;
 }
