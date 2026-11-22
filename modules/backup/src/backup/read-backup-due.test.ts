@@ -45,6 +45,7 @@ test('it reads a forget as due once its record is newer than every set copy', as
 
 test.each<[string, boolean, Exclude<RecordKind, ErasableRecordKind>, JSONObject]>([
   ['a message forget', true, 'record.forgotten', { sequence: 4, thread: 'thread-a' }],
+  ['a note forget', true, 'notebook.note_forgotten', { note: 'note-a', shortID: 'n4w8k2c6rd' }],
   [
     'a finished moment destroy',
     true,

@@ -9,6 +9,7 @@ export { readNoteForgetFloor } from './forget/read-note-forget-floor';
 export { buildNotebookTools } from './tool/build-notebook-tools';
 export type { NotebookToolStore } from './tool/notebook-tool-store';
 export { buildNoteForgottenKind } from './event/build-note-forgotten-kind';
+export { noteForgottenCodec } from './record/note-forgotten-codec';
 export type { NotebookStore, StartNotebookOptions } from './start-notebook';
 export { startNotebook } from './start-notebook';
 export { notebookToolNames } from './tool/notebook-tool-names';

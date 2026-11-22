@@ -23,6 +23,7 @@
     "@heynixie/log": "workspace:*",
     "@heynixie/memory": "workspace:*",
     "@heynixie/models": "workspace:*",
+    "@heynixie/notebook": "workspace:*",
     "@heynixie/policy": "workspace:*",
     "@heynixie/prompts": "workspace:*",
     "@heynixie/proposals": "workspace:*",

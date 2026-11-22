@@ -26,6 +26,7 @@ interface ToolConfig {
   readonly program?: StubProgram;
   readonly adapter?: StubSandboxAdapterOptions;
   readonly skills?: readonly CodeSkill[];
+  readonly notes?: Readonly<Record<string, string>>;
   readonly listingCutBytes?: number;
   readonly growAfterListing?: Readonly<Record<string, Uint8Array<ArrayBuffer>>>;
 }
@@ -63,6 +64,7 @@ async function setupTest() {
       logger: () => {},
       image: 'nixie-code-dddddddddddd',
       imageLongEdge: 1568,
+      notes: { readBody: (shortID) => Promise.resolve(config.notes?.[shortID] ?? null) },
       readSkills: (_run, names): Promise<SkillLookup> => {
         const found = (config.skills ?? []).filter((skill) => names.includes(skill.name));
         const missing = names.find((name) => !found.some((skill) => skill.name === name));
@@ -716,6 +718,86 @@ test('it copies the stored text of a page of the session into the work folder', 
   const copied = code.adapter.files.get(created.id)?.get('/work/page.txt');
 
   expect(new TextDecoder().decode(copied)).toBe('Ferries leave at nine.');
+});
+
+test('it copies the current body of a note into the work folder as markdown', async () => {
+  const ctx = await setupTest();
+
+  const code = ctx.start({ notes: { n4w8k2c6rd: '## Boiler\nTrips after cold nights.' } });
+
+  await code.call(
+    { files: [{ path: 'zine.md', note: 'n4w8k2c6rd' }] },
+    { tools: ['code.run', 'notebook.read'] },
+  );
+
+  const [created] = code.adapter.created;
+
+  invariant(created);
+
+  const copied = code.adapter.files.get(created.id)?.get('/work/zine.md');
+
+  expect(new TextDecoder().decode(copied)).toBe('## Boiler\nTrips after cold nights.');
+});
+
+test('it refuses a note file for a caller that does not hold notebook.read', async () => {
+  const ctx = await setupTest();
+
+  const code = ctx.start({ notes: { n4w8k2c6rd: 'Trips after cold nights.' } });
+
+  const result = await code.call({ files: [{ path: 'zine.md', note: 'n4w8k2c6rd' }] });
+
+  expect(result).toStrictEqual(
+    buildToolErrorResult(
+      'You cannot use the note n4w8k2c6rd as a file, because you do not hold notebook.read.',
+    ),
+  );
+
+  expect(code.adapter.created).toStrictEqual([]);
+});
+
+test('it refuses an unknown or forgotten note, before it creates a sandbox', async () => {
+  const ctx = await setupTest();
+
+  const code = ctx.start();
+
+  const result = await code.call(
+    { files: [{ path: 'zine.md', note: 'd8p3q1z6mw' }] },
+    { tools: ['code.run', 'notebook.read'] },
+  );
+
+  expect(result).toStrictEqual(buildToolErrorResult('No note d8p3q1z6mw exists.'));
+  expect(code.adapter.created).toStrictEqual([]);
+});
+
+test('it checks a note file after a file ID and before a page ID', async () => {
+  const ctx = await setupTest();
+
+  const code = ctx.start();
+
+  const noteFirst = await code.call(
+    {
+      files: [
+        { path: 'page.txt', page: 'tz4a98xxat' },
+        { path: 'zine.md', note: 'd8p3q1z6mw' },
+      ],
+    },
+    { tools: ['code.run', 'notebook.read'] },
+  );
+
+  const fileFirst = await code.call(
+    {
+      files: [
+        { path: 'zine.md', note: 'd8p3q1z6mw' },
+        { path: 'orders.csv', file: 'f8k2m4q9za' },
+      ],
+    },
+    { tools: ['code.run', 'notebook.read'] },
+  );
+
+  expect([noteFirst, fileFirst]).toStrictEqual([
+    buildToolErrorResult('No note d8p3q1z6mw exists.'),
+    buildToolErrorResult('No file f8k2m4q9za belongs to this thread.'),
+  ]);
 });
 
 test('it refuses a skill that the calling task has not pinned, before it creates a sandbox', async () => {

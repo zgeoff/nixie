@@ -20,6 +20,7 @@ import { runBegunNoteForgets } from './forget/run-begun-note-forgets';
 import type { NoteForget, NoteForgetTarget } from './forget/run-note-forget';
 import { runNoteForget } from './forget/run-note-forget';
 import { startNoteIndex } from './index/start-note-index';
+import { readNoteRow } from './note/read-note-row';
 import { readFoundNotes } from './read/read-found-notes';
 import { readNote } from './read/read-note';
 import { readNoteHistory } from './read/read-note-history';
@@ -49,9 +50,11 @@ export interface NotebookStore extends NotebookToolStore {
     writeInTransaction?: (tx: WriteTransaction) => Promise<void>,
   ) => Promise<NoteForget>;
 
-  // finishes a forget whose first part committed
-  readonly finishForget: (noteID: string) => Promise<void>;
-  readonly readForgottenSequence: (noteID: string) => Promise<number | null>;
+  // finishes a forget whose first part committed; the note is a short ID or a UUID
+  readonly finishForget: (note: string) => Promise<void>;
+
+  // the sequence of the record that ended the note's forget, or null while the cleanup still runs
+  readonly readForgottenSequence: (note: string) => Promise<number | null>;
   readonly readForgetFloor: (noteID: string) => Promise<number | null>;
   readonly readLinkingNotes: (sequence: number) => Promise<readonly LinkingNote[]>;
 
@@ -96,8 +99,18 @@ export async function startNotebook(options: StartNotebookOptions): Promise<Note
     readForgetPreview: (note) => readNoteForgetPreview(context, note),
     forget: (target, writeInTransaction) =>
       runNoteForget(context, index, target, writeInTransaction),
-    finishForget: (noteID) => runBegunNoteForgets(context, index, noteID),
-    readForgottenSequence: (noteID) => readNoteForgottenSequence(context.log, noteID),
+    finishForget: async (note) => {
+      const row = await readNoteRow(context.log.writer.db, note);
+
+      if (row !== null) {
+        await runBegunNoteForgets(context, index, row.note_id);
+      }
+    },
+    readForgottenSequence: async (note) => {
+      const row = await readNoteRow(context.log.writer.db, note);
+
+      return row === null ? null : readNoteForgottenSequence(context.log, row.note_id);
+    },
     readForgetFloor: (noteID) => readNoteForgetFloor(context.log, noteID),
     readLinkingNotes: (sequence) => readNotesLinkingEvent(context.log, sequence),
 

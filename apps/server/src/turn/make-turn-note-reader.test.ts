@@ -1,6 +1,7 @@
 import { expect, mock, onTestFinished, setSystemTime, test } from 'bun:test';
 import { writeRecords } from '@heynixie/log';
 import { startTestMemoryStore } from '@heynixie/memory/test-utils';
+import { noteForgottenCodec } from '@heynixie/notebook';
 import { recordSkillPin, skillsReloadedCodec } from '@heynixie/skills';
 import { conversationTaskID, createConversationTask, getTaskName } from '@heynixie/tasks';
 import invariant from 'tiny-invariant';
@@ -18,7 +19,7 @@ async function setupTest() {
     mock(() => Promise.resolve()),
   );
 
-  const startRunner = (image: string) =>
+  const startRunner = (image: string, isNoteNoticeOn = true) =>
     startConversation({
       context: server.context,
       models: buildTestModelsConfig({ modelURL: 'http://127.0.0.1:1' }),
@@ -40,6 +41,7 @@ async function setupTest() {
           ownerName: null,
           defaultZone: 'UTC',
           compaction: { threshold: 0.8, headsUp: 0.7 },
+          forgetNotices: { note: isNoteNoticeOn },
           getTaskName: (taskID) =>
             getTaskName(
               {
@@ -446,4 +448,66 @@ test('it keeps each failed turn in the event log, the recovered ones included', 
       },
     },
   ]);
+});
+
+test("it lists a finished note forget in the next turn's events, with the owner's name", async () => {
+  const ctx = await setupTest();
+
+  const [runner] = await Promise.all([
+    ctx.startRunner('nixie-conversation-0123456789ab'),
+    createConversationTask(ctx.context),
+  ]);
+
+  const conversation = buildConversationDriver({
+    context: ctx.context,
+    guest: ctx.guest,
+    getRunStep: () => runner.runStep,
+  });
+
+  ctx.guest.addReplies({ text: 'High tide is at noon.' }, { text: 'Noted.' });
+
+  await conversation.send('When is high tide?');
+
+  await writeRecords(ctx.context.log, [
+    {
+      kind: 'notebook.note_forgotten',
+      definitions: { snapshotHash: 'snapshot-a', personaVersion: 'persona-a' },
+      payload: noteForgottenCodec.encode({ note: 'note-uuid-a', shortID: 'n4w8k2c6rd' }),
+    },
+  ]);
+
+  const turn = await conversation.send('And tomorrow?');
+
+  expect(turn.input[0]?.text).toInclude('the owner forgot note n4w8k2c6rd');
+});
+
+test("it leaves a finished note forget out of the next turn's events when the note notice is off", async () => {
+  const ctx = await setupTest();
+
+  const [runner] = await Promise.all([
+    ctx.startRunner('nixie-conversation-0123456789ab', false),
+    createConversationTask(ctx.context),
+  ]);
+
+  const conversation = buildConversationDriver({
+    context: ctx.context,
+    guest: ctx.guest,
+    getRunStep: () => runner.runStep,
+  });
+
+  ctx.guest.addReplies({ text: 'High tide is at noon.' }, { text: 'Noted.' });
+
+  await conversation.send('When is high tide?');
+
+  await writeRecords(ctx.context.log, [
+    {
+      kind: 'notebook.note_forgotten',
+      definitions: { snapshotHash: 'snapshot-a', personaVersion: 'persona-a' },
+      payload: noteForgottenCodec.encode({ note: 'note-uuid-a', shortID: 'n4w8k2c6rd' }),
+    },
+  ]);
+
+  const turn = await conversation.send('And tomorrow?');
+
+  expect(turn.input[0]?.text).not.toInclude('n4w8k2c6rd');
 });

@@ -6,6 +6,7 @@ import { createSignOutProcedure } from '../device/create-sign-out-procedure';
 import { createFilesProcedures } from '../file/create-files-procedures';
 import { createMemoryProcedures } from '../memory/create-memory-procedures';
 import { createMemoryViewRouter } from '../memory/create-memory-view-router';
+import { createNotebookProcedures } from '../notebook/create-notebook-procedures';
 import { createPasskeyProcedures } from '../passkey/create-passkey-procedures';
 import { createNixieProcedures } from '../pause/create-nixie-procedures';
 import { createRecoveryProcedures } from '../pause/create-recovery-procedures';
@@ -44,6 +45,7 @@ export function createAPIRouter(
       ...createMemoryViewRouter(context, readMemory),
     },
     nixie: createNixieProcedures(context),
+    notebook: createNotebookProcedures(context),
     spend: createSpendProcedures(context),
     ...createRecordProcedures(context),
     passkeys: createPasskeyProcedures(context),
