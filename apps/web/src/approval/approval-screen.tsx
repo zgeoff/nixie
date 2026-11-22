@@ -78,16 +78,14 @@ function useObjectURL(blob: Blob | undefined): string | null {
   const [url, setURL] = useState<string | null>(null);
 
   useEffect(() => {
-    if (blob === undefined) {
-      return;
-    }
-
-    const created = URL.createObjectURL(blob);
+    const created = blob === undefined ? null : URL.createObjectURL(blob);
 
     setURL(created);
 
     return () => {
-      URL.revokeObjectURL(created);
+      if (created !== null) {
+        URL.revokeObjectURL(created);
+      }
     };
   }, [blob]);
 
