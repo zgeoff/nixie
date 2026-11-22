@@ -44,8 +44,10 @@ account.sign_in({ tab: 't1', account: 'a7q2m9x4kd', submit: 'E7' });
 //     part: 1, parts: 1, text: '…the page after the submit…' }
 //   submit: an element of the tab's latest snapshot, which the guest clicks right after the fill, in
 //   the same action, so a sign-in is one card or none. status is 'signed_in' when the page navigated
-//   after the click, and 'filled' with no submit or when the page stayed. fields lists what the page
-//   had, so a two-step sign-in takes one call for the username and one on the next page.
+//   after the click and the new page holds no password field, and 'filled' otherwise. fields lists
+//   what the page had: the guest fills each role it finds, and refuses NO_FIELD when it finds none.
+//   A two-step sign-in takes one call for the username and one on the next page, so it shows two
+//   cards until a rule allows it.
 //   or { refused: 'ORIGIN_MISMATCH', origin: 'https://library-example.top' } | { refused: 'NO_FIELD' }
 //   or { refused: 'CROSS_ORIGIN_SUBMIT' } | { refused: 'UNKNOWN_ACCOUNT' } | { refused: 'WRONG_KIND' }
 //   or { refused: 'ACCOUNT_FORGOTTEN' } | { refused: 'TAB_GONE' } | { refused: 'STALE_ELEMENT' }
@@ -59,18 +61,20 @@ account.sign_up({
   submit: 'E9',
   passwordRules: { maxLength: 20, symbols: false }, // optional: the site's stated rules
 });
-//   it refuses as sign_in does, except the account checks. The entry exists once the fill lands.
+//   it refuses as sign_in does, except the account checks, and refuses NO_FIELD on a page with no
+//   password field.
 // → { status: 'signed_in', account: 'a7q2m9x4kd', state: 'ready', … the sign_in result's fields }
 //   state is 'ready' when status is 'signed_in', and 'pending' when status is 'filled'
-//   the broker makes the password, fills every password field with it, fills an email field with the
-//   username, and keeps the tab's origin as the entry's one origin. The assistant fills any other
-//   field, such as a name, with computer.browser_fill first.
+//   the broker makes the password, fills every new-password field with it, fills an email or a
+//   username field with the username, and keeps the tab's origin as the entry's one origin. The
+//   assistant fills any other field, such as a name, with computer.browser_fill first.
 //   passwordRules: maxLength from 8 to 64, and symbols; without it the password is 24 characters with
 //   symbols. or { refused: 'BAD_RULES' } for a maxLength outside 8 to 64
 
 account.rotate({ tab: 't1', account: 'a7q2m9x4kd', submit: 'E4', passwordRules });
-//   on the site's change-password page: the broker fills the current password and a new one, and
-//   clicks submit. Refuses as sign_in does.
+//   on the site's change-password page: the broker fills the current-password field with the
+//   current password, every new-password field with a new one, and clicks submit. Refuses as sign_in
+//   does, and refuses NO_FIELD when the guest can't tell the current-password field from the new.
 // → { status: 'changed', account: 'a7q2m9x4kd', … } when the page navigated after the click, else
 //   { status: 'filled', … } and the entry keeps both passwords, as the constraints say
 
@@ -121,37 +125,46 @@ wallet.cancel({ purchase: 'pq3z8w1n5v' }); // after the assistant cancels it on 
 // account.sign_in, account.sign_up, account.rotate: ['sign_in'], a new effect of the routine risk
 //   class, queued; destination: the tab's origin. Its "always allow" rule pins the origin and the
 //   account.
-// account.add_origin: ['account_origin'], a new effect, queued; destination: the new origin. No
-//   starter rule allows it, so it asks, and its card shows the entry's origins beside the new one.
+// account.add_origin: ['account_origin'], a new effect of the always-ask risk class, so it asks
+//   with your passkey and offers no "always allow"; queued; destination: the new origin. Its card
+//   shows the entry's origins beside the new one.
 // wallet.pay: ['spend'], queued; destination: the tab's origin; amount: the page's total, see below
+// A destination here is an origin: scheme, host and port. An "always allow" rule pins the account
+// with an `eq` check on the `account` argument.
 // No tool takes an origin. Each tool's prepare hook, from the computer design, reads the tab's
 // origin, its URL and, for wallet.pay, the checkout's total from the guest before the decision.
 // The fill happens only on that origin, and a URL that changed returns PAGE_CHANGED.
+// Every refusal before the decision (BAD_RULES, UNKNOWN_ACCOUNT, WRONG_KIND, ACCOUNT_FORGOTTEN,
+// ORIGIN_MISMATCH, ORIGIN_KNOWN, WHICH_CARD, NO_RATE) returns from the prepare hook as a direct
+// result, so no card shows.
 ```
 
-The approval card for a sign-in shows the account's label, its username and the origin. The card for
-a purchase shows the merchant, the declared amount and the total the guest read from the page, or
-"no total found"
+The approval card for a sign-in shows the account's label, its username and the origin, read from
+the vault when the card renders, and "forgotten" once the entry is. The card for a purchase shows
+the merchant, the declared amount and the total the guest read from the page, or "no total found"
 
 ### The vault
 
 ```ts
-// connectors module; the vault_entries table, sealed like erasable fields
+// connectors module; the vault_entries table, a projection of the vault.* records
+// records: vault.entry_added, vault.entry_ready, vault.secret_changed (a rotate), vault.origin_added,
+//   vault.entry_forgotten, vault.revealed. No record holds a secret.
 interface VaultEntry {
   entryID: string; // crypto.randomUUID(); keys the entry's own key in the key store
   account: string; // short ID from createShortID; the only ID the model sees
-  label: string; // erasable
+  label: string; // sealed under the entry's key, with secret and previousSecret; a forget destroys all three
   kind: 'password' | 'card';
-  origins: string[]; // exact origins, no wildcards; a card has none
-  username: string | null; // the model reads it; it's the assistant's own address
+  origins: string[]; // exact origins, no wildcards; a card has none; kept after a forget, for FILLED_ORIGIN
+  username: string | null; // the model reads it; it's the assistant's own address; kept after a forget
   secret: SealedValue; // a password, or a card's number, expiry and code, under the entry's own key
   previousSecret: SealedValue | null; // a password: the one before a rotate, kept as the constraints say
   fingerprint: string | null; // a card: an HMAC of its number under a server key; the only form in records
   frameOrigins: string[]; // a card: the payment frames you allow, such as https://js.pay.example; else []
-  state: 'pending' | 'ready' | 'forgotten'; // a sign_up is pending until it or a sign_in reaches signed_in
+  state: 'pending' | 'ready' | 'forgotten'; // a sign_up is pending until it or a sign_in reaches signed_in; a card starts ready
 }
 
-// contract lib: owner calls, each behind the passkey check
+// contract lib: owner calls from a device session. add, remove and reveal take a passkey
+// assertion bound to a SHA-256 of the request, a new challenge kind in the published contract.
 vault.add({ kind: 'card', label: 'wallet', secret: { number, expiry, code }, frameOrigins: [] }); // → { account: 'c3w8p1z6mt' }
 vault.add({
   kind: 'password',
@@ -183,18 +196,23 @@ type FillRequest = {
       | 'username'
       | 'email'
       | 'password'
+      | 'current_password' // rotate: the field marked autocomplete="current-password"
       | 'new_password'
       | 'card_number'
       | 'card_expiry'
       | 'card_code';
-    value: string; // new_password fills every password field on the page
+    value: string; // new_password fills every new-password field on the page
   }[];
   submit?: { element: string; expectTotal?: string }; // with expectTotal, click only while the total matches
+  retry?: { value: string }; // a sign_in with a previousSecret: the other password, tried once as the constraints say
 };
-type FillReply =
+// the server sends the guest the filled origins with each request, and the guest enforces
+// FILLED_ORIGIN and FILLED_TAB itself
+type FillReply = // joins the built replies with kind: 'filled'
   | {
       ok: true;
       origin: string;
+      page: PageBody; // the page after the submit, as the act op's reply carries it
       filled: FillRequest['fields'][number]['role'][];
       pageTotal: string | null;
       isNavigated: boolean; // after the submit
@@ -241,18 +259,22 @@ Secrets:
 - The secret never reaches the model's context, a tool result, a `hidden` value, a screenshot, a
   snapshot, an approval card, the event log or the server log. Nothing logs the body of a fill
   frame.
-- Before any `computer.*` result reaches the model, the server replaces each vault secret it finds
-  in the result's text with dots. This catches a page that copies a filled value verbatim, and
-  misses one that encodes it.
+- Before any result of an `account.*`, `wallet.*` or `computer.*` tool reaches the model, the server
+  replaces each vault secret it finds in the result's text with dots: every secret and previous
+  secret, of pending entries too. A stored page read later through `web_fetch` gets the same pass.
+  This catches a page that copies a filled value verbatim, and misses one that encodes it.
+- The checking proxy scans every request for each vault secret, and refuses one that carries a
+  secret to an origin outside its entry's origins.
 - `computer.browser_screenshot` returns `FILLED_ORIGIN` for a tab with any frame on an origin that a
   fill reached: every password entry's origins, and each merchant and payment frame a card filled.
   `computer.screenshot` returns `FILLED_ORIGIN` while a browser window shows such a tab. The vault
   keeps those origins, so a browser restart keeps the block. Every snapshot shows each filled field
   as dots. A page can show a secret as text that the dots never catch, so a picture of the origin is
   the one way the model could read it.
-- `computer.browser_click`, `computer.browser_fill`, `computer.screen_click` and
-  `computer.screen_type` return `FILLED_TAB` on a tab that holds a filled card field, so only
-  `wallet.pay` submits a payment.
+- `computer.browser_click`, `computer.browser_fill`, `computer.browser_download`,
+  `computer.screen_click` and `computer.screen_type` return `FILLED_TAB` on a tab that holds a
+  filled card field, so only `wallet.pay` submits a payment. `computer.browser_download` also
+  returns `FILLED_TAB` on a tab that holds a filled password field.
 - The descriptions of the computer tools name `FILLED_ORIGIN` and `FILLED_TAB`, say why each exists,
   and point to `computer.browser_read` for a filled origin and `wallet.pay` for a filled card.
 - The browser profile never saves a password or a card. Chromium's password manager and autofill are
@@ -277,7 +299,8 @@ Filling:
 - A `sign_up` entry turns `ready` when the sign-up itself reaches `signed_in`. Otherwise it lists
   with state `pending` until its first `sign_in` reaches `signed_in`, and then turns `ready`. A
   pending entry signs in like a ready one, so a site that took the password never loses it. A
-  pending entry that no sign-in reaches within 7 days turns `forgotten`.
+  pending entry stays until you remove it: after 7 days with no sign-in, nixie asks you whether to
+  keep it, and never forgets it on its own.
 - A forget of a vault entry destroys its key, and the next `sign_in` with it returns
   `ACCOUNT_FORGOTTEN`.
 - A `rotate` that returns `changed` makes the new password the entry's secret, and keeps the old one
@@ -295,21 +318,25 @@ Filling:
 Spending:
 
 - Before the decision, the guest reads the checkout's total from the page. The policy checks the
-  page's total when the guest found one and it matches the declared amount to the cent, in the
-  page's currency, and asks with the passkey otherwise.
+  page's total when the guest found one and it matches the declared amount to the currency's minor
+  unit, in the page's currency, and asks with the passkey otherwise. The guest reads the currency
+  from an ISO code on the page or a symbol only one currency uses. A total in a symbol several
+  currencies share, such as `$` alone, counts as no total found, so the purchase asks.
 - When the page's currency differs from the card's, the server converts the amount at the day's
-  reference rate and adds 3% for the bank's conversion fee. That `charged` amount is what a lift and
-  the budget check. A currency with no rate returns `NO_RATE`.
+  reference rate and adds a margin for the bank's conversion fee, a setting whose default is 3%.
+  That `charged` amount is what a lift and the budget check. A currency with no rate returns
+  `NO_RATE`.
 - A `wallet.pay` with `repeats` always asks with the passkey, and its card says it repeats. A lift
   never covers one.
 - A repeating purchase counts in the budget once, when it's made. nixie never sees a later charge,
   and `wallet.read` lists it under subscriptions until `wallet.cancel` marks it.
 - A `wallet.pay` passes without asking only under a lifting rule whose destinations include the
   merchant and whose `perAction` covers the amount. Every other `wallet.pay` asks with the passkey.
-- A lift charges the wallet's budget when the action queues, as the budgets design says, and a
-  purchase you approved is never charged. A `wallet.pay` that ends before its click, with
-  `TOTAL_CHANGED`, `STALE_ELEMENT` or `FAILED`, credits the charge, and the guest clears the card
-  fields it filled.
+- A lift charges the wallet's budget when the action queues, as
+  [budgets](../../architecture/policy/budgets.md#lifts) says. A purchase you approved never counts
+  against the budget, so `wallet.read`'s `spent` counts only lifted purchases. A `wallet.pay` that
+  ends before its click, with `TOTAL_CHANGED`, `STALE_ELEMENT` or `FAILED`, credits the charge, and
+  the guest clears the card fields it filled.
 - Every `wallet.pay` that clicks submit writes a `purchase.recorded` record.
 - The wallet starts with a lift of 25 AUD per purchase and a budget of 100 AUD a month. The card's
   own limit in the bank's app is the hard cap.
