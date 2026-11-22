@@ -5,24 +5,26 @@
 
 ## Decision
 
-When a trigger fires for a task definition whose task already has a task run pending or open and
-active, nixie records the fire as skipped and never queues it. A task therefore holds at most one
-unread fire, except after a stop, when it can hold 2.
-[Task definitions](../architecture/core/definitions.md) covers when a fire opens a task run.
+A [task definition](../architecture/core/definitions.md) is a task that a trigger, such as a
+schedule or a webhook, starts again and again. Each time the trigger goes off, nixie writes a fire,
+and the fire opens a task run of the definition's task. When a fire arrives while the task's last
+task run is still pending or working, nixie records the fire as skipped and never queues it for
+later.
 
 ## Why
 
-- Two task runs of one task at once would write to the same thread.
-- A queue of fires would hide a task run that never ends, because the queue grows and nothing fails.
+- Each task has one thread, where its task runs write their records. Two task runs of one task at
+  once would write to that thread together.
+- With a queue, a task run that never ends would let fires pile up behind it, and nothing would
+  fail. nixie records each skip instead, so a task run that hangs shows as a run of skips.
 
 ## Rejected alternatives
 
-| Option                                  | Why not                                                             |
-| --------------------------------------- | ------------------------------------------------------------------- |
-| queue each fire until the task run ends | A task run that never ends leaves a growing queue that nobody sees. |
-| open a second task run beside the first | Two task runs write to one thread at once.                          |
+| Option                                  | Why not                                            |
+| --------------------------------------- | -------------------------------------------------- |
+| queue each fire until the task run ends | A task run that hangs leaves a queue nobody sees.  |
+| open a second task run beside the first | Both task runs write to the task's thread at once. |
 
 ## Consequences
 
-- A schedule shorter than its task runs fires less often than its schedule says, and each skip is a
-  record the user can see.
+- A schedule that fires more often than its task runs finish starts fewer task runs than it fires.

@@ -5,21 +5,19 @@
 
 ## Decision
 
-nixie gives the agent no tool that reaches the undo of a task definition change. Only the user
-undoes a change. [Task definitions](../architecture/core/definitions.md) covers what an undo
-restores.
+The agent can change a [task definition](../architecture/core/definitions.md), such as its schedule,
+its instructions or its tools, and each change can be undone, which puts the version before it back
+in force. nixie never gives the agent a tool that undoes a change. Only the user can undo one.
 
 ## Why
 
-- An undo can put back an earlier version of a definition, with its schedule, brief and tools. A
-  model that a page or a message has steered could use an undo to bring back a version the user
-  replaced.
-- Each change the agent makes already reaches the user as a notice, and the undo is the user's way
-  to reverse one.
+- The agent reads web pages and messages that may hold instructions planted to mislead it. An agent
+  misled that way could undo a change and bring back a version of a definition that the user had
+  replaced, such as one with a tool the user took away.
 
 ## Rejected alternatives
 
-| Option                               | Why not                                                                    |
-| ------------------------------------ | -------------------------------------------------------------------------- |
-| an undo tool for the agent           | A steered model could restore a version that the user replaced.            |
-| an agent undo that the user approves | The user already holds the undo, so the approval adds a step and no reach. |
+| Option                               | Why not                                                               |
+| ------------------------------------ | --------------------------------------------------------------------- |
+| an undo tool for the agent           | A misled agent could restore a version the user replaced.             |
+| an agent undo that the user approves | The user can already undo directly, so the approval only adds a step. |
