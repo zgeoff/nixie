@@ -25,7 +25,7 @@ export const frontPartDeclarations: readonly AnyPartDeclaration<ServerPartValues
   {
     name: 'context',
     needs: ['inputs'],
-    uses: ['session_cleanup', 'code_run'],
+    uses: ['session_cleanup', 'code_run', 'notebook'],
     start: async (parts) => {
       const options = parts.get('inputs').options;
 
@@ -80,6 +80,7 @@ export const frontPartDeclarations: readonly AnyPartDeclaration<ServerPartValues
         apiContext: {
           ...context.apiContext,
           readCodeCleanup: () => parts.find('code_run')?.cleanup.destroyForRecords ?? null,
+          readNotebook: () => parts.find('notebook') ?? null,
         },
       };
     },

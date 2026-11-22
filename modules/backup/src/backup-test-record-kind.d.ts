@@ -1,6 +1,10 @@
-// The memory module owns these kinds, and the backup module does not depend on it. The merge lets the
+// The memory and notebook modules own these kinds, and the backup module does not depend on it. The merge lets the
 // backup tests write it through the log's writer, as the memory forget does.
-export type BackupTestRecordKind = 'memory.forgotten' | 'moment_destroyed' | 'record.forgotten';
+export type BackupTestRecordKind =
+  | 'memory.forgotten'
+  | 'moment_destroyed'
+  | 'notebook.note_forgotten'
+  | 'record.forgotten';
 
 declare module '@heynixie/log' {
   // oxlint-disable-next-line typescript/no-empty-interface -- the merge adds the kinds above to the registry

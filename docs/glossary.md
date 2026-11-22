@@ -53,6 +53,8 @@ one person a nixie deployment works for, and the architecture docs call that per
 | ------------------ | -------------------------------------------------------------------------------------------- |
 | memory item        | One stored fact, with its provenance and its evidence                                        |
 | subject            | Whose a memory item is: owner for a fact about you, shared, or self for a self-note          |
+| note               | One entry of the assistant's notebook: a titled markdown body with versions, tags and links  |
+| notebook           | The assistant's own notes, which it opens and searches and nixie never puts in a turn        |
 | shared item        | A memory item that lives between you and nixie, such as a deal, a nickname or a running joke |
 | self-note          | A memory item nixie writes about itself in its own voice, which you always review            |
 | evidence           | Your quote that backs a memory item                                                          |

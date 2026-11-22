@@ -151,3 +151,14 @@ export type {
 
 export { makeMemoryProposalHandler } from './memory/make-memory-proposal-handler';
 export { mapMemoryProposalRecord } from './proposal/map-memory-proposal-record';
+export type { IndexEntry, MemoryIndex } from './memory/start-memory-index';
+export { startMemoryIndex } from './memory/start-memory-index';
+export type { VectorIndex, VectorMatch } from './view/start-vector-index';
+export { startVectorIndex } from './view/start-vector-index';
+export type { RankedMatch } from './view/merge-rankings';
+export { mergeRankings } from './view/merge-rankings';
+export { splitContentWords } from './memory/split-content-words';
+export { defaultMinSimilarity } from './utils/default-min-similarity';
+export type { CleanupCause, ItemLinkCount, ItemLinkCounts } from './types';
+export type { MomentLabel } from './moment/read-moment-labels';
+export { readMomentLabels } from './moment/read-moment-labels';

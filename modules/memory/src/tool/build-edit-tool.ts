@@ -16,6 +16,7 @@ import { buildWriteCaller } from '../write/build-write-caller';
 import { findTextLimitError } from '../write/find-text-limit-error';
 import { resolveWriteFacts } from '../write/resolve-write-facts';
 import { runWriteCall } from '../write/run-write-call';
+import { changeOfMindGuidance } from './change-of-mind-guidance';
 
 const editDescription =
   `Rewrites an existing memory item as a new version, by its itemID and the version you read ` +
@@ -37,7 +38,7 @@ const editDescription =
   `you leave out keeps its value, and triggers replaces the whole list, so [] clears it. Leave ` +
   `text out for an edit of labels only: it takes none of quote, eventID, until and subject, and ` +
   `it waits for the owner's review as a proposal unless an allow rule covers it. ` +
-  `A write to a self-note needs an allow rule that checks subject is self. ${labelInputSchema.description}`;
+  `A write to a self-note needs an allow rule that checks subject is self. ${changeOfMindGuidance} ${labelInputSchema.description}`;
 
 const editInput = {
   type: 'object',
@@ -118,7 +119,7 @@ export function buildEditTool(memory: ModelWriteStore & ItemIDStore): ToolDefini
         const subject = input.subject ?? itemSubject;
 
         const limitError =
-          input.text === undefined ? null : findTextLimitError(input.text, subject);
+          input.text === undefined ? null : findTextLimitError(input.text, subject, true);
 
         if (limitError !== null) {
           throw new TextLimitError(limitError);

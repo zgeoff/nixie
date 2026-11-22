@@ -2628,21 +2628,29 @@ test('it saves a self-note of 5,000 characters whole under an allow rule', async
 });
 
 test.each([
-  { subject: 'self', length: 6001, error: 'data/text is 6,001 characters, 1 over the 6,000 limit' },
+  {
+    subject: 'self',
+    length: 6001,
+    error:
+      'data/text is 6,001 characters, 1 over the 6,000 limit; for longer text, write a note with notebook.write',
+  },
   {
     subject: 'owner',
     length: 2001,
-    error: 'data/text is 2,001 characters, 1 over the 2,000 limit',
+    error:
+      'data/text is 2,001 characters, 1 over the 2,000 limit; for longer text, write a note with notebook.write',
   },
   {
     subject: 'owner',
     length: 6001,
-    error: 'data/text is 6,001 characters, 4,001 over the 2,000 limit',
+    error:
+      'data/text is 6,001 characters, 4,001 over the 2,000 limit; for longer text, write a note with notebook.write',
   },
   {
     subject: 'shared',
     length: 2001,
-    error: 'data/text is 2,001 characters, 1 over the 2,000 limit',
+    error:
+      'data/text is 2,001 characters, 1 over the 2,000 limit; for longer text, write a note with notebook.write',
   },
 ])(
   'it refuses a remember of a $subject note of $length characters with how far over its limit it runs',
@@ -2672,7 +2680,12 @@ test('it refuses a remember of 2,001 characters that names no subject with the 2
   );
 
   expect(result).toStrictEqual({
-    content: [{ type: 'text', text: 'data/text is 2,001 characters, 1 over the 2,000 limit' }],
+    content: [
+      {
+        type: 'text',
+        text: 'data/text is 2,001 characters, 1 over the 2,000 limit; for longer text, write a note with notebook.write',
+      },
+    ],
     isError: true,
   });
 });
@@ -2717,28 +2730,32 @@ test.each([
     from: 'self',
     change: {},
     length: 6001,
-    error: 'data/text is 6,001 characters, 1 over the 6,000 limit',
+    error:
+      'data/text is 6,001 characters, 1 over the 6,000 limit; for longer text, write a note with notebook.write',
   },
   {
     name: 'an owner item that keeps its subject',
     from: 'owner',
     change: {},
     length: 2001,
-    error: 'data/text is 2,001 characters, 1 over the 2,000 limit',
+    error:
+      'data/text is 2,001 characters, 1 over the 2,000 limit; for longer text, write a note with notebook.write',
   },
   {
     name: 'an owner item that keeps its subject',
     from: 'owner',
     change: {},
     length: 6001,
-    error: 'data/text is 6,001 characters, 4,001 over the 2,000 limit',
+    error:
+      'data/text is 6,001 characters, 4,001 over the 2,000 limit; for longer text, write a note with notebook.write',
   },
   {
     name: 'a self-note moved to owner',
     from: 'self',
     change: { subject: 'owner' },
     length: 2001,
-    error: 'data/text is 2,001 characters, 1 over the 2,000 limit',
+    error:
+      'data/text is 2,001 characters, 1 over the 2,000 limit; for longer text, write a note with notebook.write',
   },
 ] as const)(
   'it refuses an edit of $name to $length characters with the limit of the subject it ends with',

@@ -35,6 +35,10 @@ Each part's doc owns the meaning of its own settings, and the file only carries 
 - the task and action [claim pool](../core/leases-and-recovery.md#claim-pools) sizes
 - whether nixie stages [backups](backups.md), and how often
 - the tuning of [memory in context](../memory/context.md)
+- the limits of the [notebook](../memory/notebook.md#the-indexes): the characters of a body, the
+  active notes, and how many links must repeat a reason before the check reports it
+- `forget_notices`, which turns the line that the events block shows for each kind of forget on or
+  off: `forget_notices: false` turns every kind off, and the `note` key turns the note line off
 
 The model profiles and the definitions source have no defaults, so the file always sets them. The
 imp section is required when the sandbox adapter is imp, which a release build always runs. Every

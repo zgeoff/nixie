@@ -1579,6 +1579,48 @@
       },
       "additionalProperties": false
     },
+    "notebook": {
+      "type": "object",
+      "properties": {
+        "note_chars": {
+          "default": 50000,
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
+        "max_notes": {
+          "default": 250,
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
+        "check_reason_repeats": {
+          "default": 3,
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        }
+      },
+      "additionalProperties": false
+    },
+    "forget_notices": {
+      "anyOf": [
+        {
+          "type": "boolean",
+          "const": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "note": {
+              "default": true,
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
     "policy": {
       "type": "object",
       "properties": {

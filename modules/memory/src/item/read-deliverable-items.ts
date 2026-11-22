@@ -31,6 +31,10 @@ export interface DeliverableQuery {
   readonly states: readonly MemoryState[];
   readonly includeHistory: boolean;
 
+  // Only a recall and per-turn retrieval show how many notes dispute or supersede an item, so the
+  // pinned core and the index never gain the counts.
+  readonly includeLinkCounts?: boolean;
+
   readonly db?: Kysely<unknown>;
 }
 
@@ -74,7 +78,9 @@ export async function readDeliverableItems(
     }),
   );
 
-  return items.filter((item) => item !== null);
+  const delivered = items.filter((item) => item !== null);
+
+  return query.includeLinkCounts === true ? addLinkCounts(parts, delivered) : delivered;
 }
 
 function toDeliveredRow(row: MemoryItemRow, now: number): MemoryItemRow {
@@ -224,4 +230,30 @@ async function readLabelHistory(
   );
 
   return revisions.filter((revision) => revision !== null);
+}
+
+// A count above 0 only, so an item no note argues with shows no field.
+async function addLinkCounts(
+  parts: StoreParts,
+  items: readonly RecalledItem[],
+): Promise<readonly RecalledItem[]> {
+  const linkCounts = parts.context.linkCounts;
+
+  if (linkCounts === undefined || items.length === 0) {
+    return items;
+  }
+
+  const counts = await linkCounts.readCounts(items.map((item) => item.itemID));
+
+  return items.map((item) => {
+    const count = counts.get(item.itemID);
+
+    return {
+      ...item,
+      ...(count === undefined || count.disputedBy === 0 ? {} : { disputedBy: count.disputedBy }),
+      ...(count === undefined || count.supersededBy === 0
+        ? {}
+        : { supersededBy: count.supersededBy }),
+    };
+  });
 }

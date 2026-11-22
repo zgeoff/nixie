@@ -7,7 +7,7 @@ export interface BackupDue {
   readonly newestStagedAt: number | null;
 }
 
-// A forget, a moment destroy or a reset of the conversations deletes its keys before it writes its
+// A forget, a note forget, a moment destroy or a reset of the conversations deletes its keys before it writes its
 // closing record, so a set whose copy started after that record lacks the key. A failed set counts
 // too, so a backend that stays down fails one set per interval rather than one per pass.
 export async function readBackupDue(writer: BackupWriter): Promise<BackupDue> {
@@ -30,7 +30,7 @@ export async function readBackupDue(writer: BackupWriter): Promise<BackupDue> {
     .select('sequence')
     .where((eb) =>
       eb.or([
-        eb('kind', 'in', ['memory.forgotten', 'record.forgotten']),
+        eb('kind', 'in', ['memory.forgotten', 'notebook.note_forgotten', 'record.forgotten']),
         eb.and([
           eb('kind', '=', 'moment_destroyed'),
           eb(sql`json_extract(payload, '$.stage')`, '=', 'done'),

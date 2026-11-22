@@ -8,6 +8,7 @@ import { createDeviceStreams } from '@heynixie/devices';
 import type { Writer } from '@heynixie/log';
 import { logProjections, startWriter } from '@heynixie/log';
 import { memoryProjections } from '@heynixie/memory';
+import { notebookProjections } from '@heynixie/notebook';
 import { createPlanLoginsHolder, spendProjections } from '@heynixie/spend';
 import { buildStubSpendGateway } from '@heynixie/spend/test-utils';
 import type { ReadDefinitionVersion } from '@heynixie/tasks';
@@ -25,7 +26,7 @@ import { apiProjections } from '../api/api-projections';
 import { createAPIApp } from '../api/create-api-app';
 import { createPasskeyState } from '../passkey/passkey-state';
 import { proposalsProjection } from '../proposal/proposals-projection';
-import type { CleanupRecordSessions } from '../types';
+import type { CleanupRecordSessions, ViewNotebookStore } from '../types';
 import { defaultAPISettings } from '../utils/default-api-settings';
 
 type APIContext = Parameters<typeof createAPIApp>[0];
@@ -36,6 +37,8 @@ interface TestAPI {
   readonly dataDir: string;
 
   readonly setMemory: (store: ViewMemoryStore) => void;
+
+  readonly setNotebook: (store: ViewNotebookStore) => void;
 
   // the session cleanup that a running nixie gives a record forget once memory starts
   readonly setSessionCleanup: (cleanup: CleanupRecordSessions) => void;
@@ -73,10 +76,12 @@ export async function startTestAPI(
 
   const definitionStore = buildTestDefinitionStore();
   const sessions: { cleanup: CleanupRecordSessions | null } = { cleanup: null };
+  const notebook: { store: ViewNotebookStore | null } = { store: null };
   const spendGateway = buildStubSpendGateway();
 
   const context = await createTestContext(writer, settings, definitionStore, {
     readSessionCleanup: () => sessions.cleanup,
+    readNotebook: () => notebook.store,
     spendGateway: options.isSpendOn === true ? spendGateway : null,
   });
 
@@ -93,6 +98,9 @@ export async function startTestAPI(
     definitionStore,
     url: served.url,
     setMemory: served.setMemory,
+    setNotebook: (store) => {
+      notebook.store = store;
+    },
     setSessionCleanup: (cleanup) => {
       sessions.cleanup = cleanup;
     },
@@ -101,6 +109,7 @@ export async function startTestAPI(
 
 interface TestContextDeps {
   readonly readSessionCleanup: APIContext['readSessionCleanup'];
+  readonly readNotebook: NonNullable<APIContext['readNotebook']>;
   readonly spendGateway: ReturnType<typeof buildStubSpendGateway> | null;
 }
 
@@ -131,6 +140,7 @@ async function createTestContext(
       actionsProjection,
       ...apiProjections,
       ...memoryProjections,
+      ...notebookProjections,
       proposalsProjection,
       ...spendProjections,
     ],
@@ -169,6 +179,7 @@ async function createTestContext(
 
     readZone: () => Promise.resolve('UTC'),
     readSessionCleanup: deps.readSessionCleanup,
+    readNotebook: deps.readNotebook,
   };
 
   return context;
