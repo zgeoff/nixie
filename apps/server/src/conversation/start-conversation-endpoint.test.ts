@@ -220,6 +220,80 @@ test('it refuses a task start from the conversation that gives the task tasks.de
   expect(refused?.result).not.toInclude('tasks.definitions or mcp__nixie__tasks_definitions');
 });
 
+test("it lists the conversation's reminders to a started task that holds reminders.list", async () => {
+  const ctx = await setupTest();
+  const api = await createTestClient(ctx);
+
+  ctx.guest.addKindReplies(
+    'conversation',
+    {
+      toolUse: {
+        name: 'reminder.set',
+        input: {
+          name: 'Water the ferns',
+          note: 'Give the ferns a cup of water.',
+          trigger: { at: '2099-01-01T09:00:00' },
+        },
+      },
+    },
+    {
+      toolUse: {
+        name: 'task.start',
+        input: {
+          name: 'Reminder check',
+          brief: 'Read the reminders that wait.',
+          tools: ['reminders.list'],
+        },
+      },
+    },
+    { text: 'Started.' },
+  );
+
+  ctx.guest.addKindReplies(
+    'worker',
+    { toolUse: { name: 'reminders.list', input: {} } },
+    { text: 'Listed.' },
+  );
+
+  await sendClientMessage(api.client, { text: 'Remind me to water the ferns.' }, 'Started.');
+  await waitForCondition(() => ctx.toolResults.some((result) => result.name === 'reminders.list'));
+
+  const listed = ctx.toolResults.find((result) => result.name === 'reminders.list');
+
+  expect(listed?.result).toInclude('Water the ferns');
+  expect(listed?.result).not.toInclude('"isError":true');
+});
+
+test.each([
+  'reminder.set',
+  'reminder.update',
+  'reminder.cancel',
+  'reminder.snooze',
+  'reminder.skip',
+])('it refuses a task start from the conversation that gives the task %s', async (name) => {
+  const ctx = await setupTest();
+  const api = await createTestClient(ctx);
+
+  ctx.guest.addKindReplies(
+    'conversation',
+    {
+      toolUse: {
+        name: 'task.start',
+        input: { name: 'Fern care', brief: 'Look after the ferns.', tools: [name] },
+      },
+    },
+    { text: 'Refused.' },
+  );
+
+  await sendClientMessage(api.client, { text: 'Look after the ferns.' }, 'Refused.');
+
+  const refused = ctx.toolResults.at(-1);
+
+  expect(refused?.result).toInclude(
+    `only the conversation can use ${name}, so nixie started nothing.`,
+  );
+});
+
 test('it holds a started task waiting with its message unread, and never fails it', async () => {
   const ctx = await setupTest();
   const api = await createTestClient(ctx);

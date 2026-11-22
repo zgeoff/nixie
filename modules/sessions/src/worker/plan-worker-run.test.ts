@@ -114,6 +114,34 @@ test.each([
   });
 });
 
+test.each([
+  'reminder.set',
+  'reminder.update',
+  'reminder.cancel',
+  'reminder.snooze',
+  'reminder.skip',
+])('it refuses %s, which only the conversation holds', (tool) => {
+  const facts = setupTest();
+  const call = { ...facts.call, tools: [tool] };
+  const run = { ...facts.run, tools: [...facts.run.tools, tool] };
+
+  expect(planWorkerRun({ ...facts, call, run })).toStrictEqual({
+    status: 'refused',
+    sentence: `A worker can never use ${tool}, so nixie started none.`,
+  });
+});
+
+test('it plans a worker with reminders.list when the caller holds it', () => {
+  const facts = setupTest();
+  const call = { ...facts.call, tools: ['reminders.list'] };
+  const run = { ...facts.run, tools: [...facts.run.tools, 'reminders.list'] };
+
+  expect(planWorkerRun({ ...facts, call, run })).toMatchObject({
+    status: 'planned',
+    plan: { tools: ['reminders.list'] },
+  });
+});
+
 test('it refuses a call that no model turn made', () => {
   const facts = setupTest();
 

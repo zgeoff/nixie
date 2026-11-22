@@ -8,7 +8,7 @@ import type { WorkerPlan, WorkerTargets } from './types';
 import { workerRunToolName } from './worker-run-tool-name';
 
 // A worker starts, messages, closes and lists no task, reports for none and starts no worker. The
-// definitions list and the reminder tools belong to the conversation alone.
+// definitions list and the tools that change reminders belong to the conversation alone.
 const neverHeldTools: ReadonlySet<string> = new Set([
   'task.start',
   'task.message',
@@ -21,7 +21,6 @@ const neverHeldTools: ReadonlySet<string> = new Set([
   'reminder.cancel',
   'reminder.snooze',
   'reminder.skip',
-  'reminders.list',
   taskReportToolName,
   silentEndToolName,
   workerRunToolName,
