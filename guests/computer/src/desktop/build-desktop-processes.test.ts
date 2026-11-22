@@ -1,6 +1,7 @@
 import { expect, test } from 'bun:test';
 import { ownAccount } from '../shell/terminal-account';
 import { buildDesktopProcesses } from './build-desktop-processes';
+import { vncSocketPath } from './constants';
 
 function setupTest() {
   const processes = buildDesktopProcesses({
@@ -44,7 +45,7 @@ test('it starts the display first, at 1280 by 800 on an abstract socket alone', 
   ]);
 });
 
-test('it listens for VNC on the loopback of the sandbox, view-only, with the clipboard off', () => {
+test('it listens for VNC on a Unix socket alone, view-only, with the clipboard off', () => {
   const ctx = setupTest();
   const vnc = ctx.readArgv('vnc');
 
@@ -59,7 +60,9 @@ test('it listens for VNC on the loopback of the sandbox, view-only, with the cli
     '-nopw',
   ]);
 
-  expect(vnc[vnc.indexOf('-rfbport') + 1]).toBe('5900');
+  expect(vnc[vnc.indexOf('-unixsock') + 1]).toBe(vncSocketPath);
+  expect(vnc[vnc.indexOf('-rfbport') + 1]).toBe('0');
+  expect(vnc[vnc.indexOf('-rfbportv6') + 1]).toBe('-1');
 });
 
 test('it runs the terminal as its own account, with the namespaced shell, in the files folder', () => {

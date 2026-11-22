@@ -8,6 +8,8 @@ import { waitFor } from '@zgeoff/testing';
 import invariant from 'tiny-invariant';
 import { buildButtonPageURL } from '../test-utils/build-button-page-url';
 import { buildPopupPageURL } from '../test-utils/build-popup-page-url';
+import { buildSocketProbeArgv } from '../test-utils/build-socket-probe-argv';
+import { buildWorkerSocketPageURL } from '../test-utils/build-worker-socket-page-url';
 
 // These tests need a real impd on a host with /dev/kvm and the computer image built into it.
 // docs/runbooks/imp-isolation-tests.md names the variables that turn them on. CI skips them, so a
@@ -142,9 +144,50 @@ async function setupTest() {
     return reply.target;
   };
 
+  // Runs a command as root in the computer sandbox, and returns its output.
+  const execAsRoot = async (argv: readonly string[]) => {
+    await callComputer({ op: 'desktopShot' });
+
+    const [sandbox] = await adapter.list('computer-desktop');
+
+    invariant(sandbox !== undefined, 'the computer sandbox exists');
+
+    const result = await sandbox.exec({ argv });
+
+    return new TextDecoder().decode(result.stdout.bytes);
+  };
+
+  // A WebSocket server on a loopback port of the sandbox, run as root.
+  const startSocketServer = async (port: number) => {
+    await callComputer({ op: 'desktopShot' });
+
+    const [sandbox] = await adapter.list('computer-desktop');
+
+    invariant(sandbox !== undefined, 'the computer sandbox exists');
+
+    const script = `Bun.serve({ hostname: '127.0.0.1', port: ${String(port)}, fetch: (request, server) => { server.upgrade(request); }, websocket: { message: () => {} } }); await new Promise(() => {});`;
+
+    const stream = await sandbox.spawn({
+      argv: ['/usr/local/bin/bun', '-e', script],
+      maxMessageBytes: 1024,
+    });
+
+    await waitFor(async () => {
+      const lines = await execAsRoot(
+        buildSocketProbeArgv([{ kind: 'tcp', host: '127.0.0.1', port }]),
+      );
+
+      expect(lines).toBe('open\n');
+    });
+
+    return { stop: () => stream.stop() };
+  };
+
   return {
     adapter,
     computer,
+    execAsRoot,
+    startSocketServer,
     runCommand,
     callComputer,
     createOldSandbox,
@@ -427,5 +470,83 @@ test.skipIf(!hasImpHost)(
     });
 
     expect(new TextDecoder().decode(received[0]).startsWith('RFB 00')).toBe(true);
+  },
+);
+
+test.skipIf(!hasImpHost)(
+  'it lets the guest reach the VNC server on its socket and no account that Chromium or the terminal runs as',
+  async () => {
+    const ctx = await setupTest();
+
+    const asRoot = await ctx.execAsRoot(
+      buildSocketProbeArgv([{ kind: 'unix', path: '/run/nixie-vnc/vnc.sock' }]),
+    );
+
+    const asChrome = await ctx.execAsRoot([
+      'setpriv',
+      '--reuid=1001',
+      '--regid=1001',
+      '--clear-groups',
+      ...buildSocketProbeArgv([
+        { kind: 'tcp', host: '127.0.0.1', port: 5900 },
+        { kind: 'tcp', host: '::1', port: 5900 },
+        { kind: 'unix', path: '/run/nixie-vnc/vnc.sock' },
+      ]),
+    ]);
+
+    expect([asRoot, asChrome]).toStrictEqual(['open\n', 'closed\nclosed\nclosed\n']);
+  },
+);
+
+test.skipIf(!hasImpHost)(
+  'it gives a command in the terminal no route to the display or the VNC server',
+  async () => {
+    const ctx = await setupTest();
+
+    const result = await ctx.runCommand(
+      buildSocketProbeArgv([
+        { kind: 'tcp', host: '127.0.0.1', port: 5900 },
+        { kind: 'tcp', host: '::1', port: 5900 },
+        { kind: 'unix', path: '/run/nixie-vnc/vnc.sock' },
+        { kind: 'abstract', name: '/tmp/.X11-unix/X99' },
+      ])
+        .map((word) => `'${word.replaceAll("'", String.raw`'\''`)}'`)
+        .join(' '),
+    );
+
+    expect(result).toMatchObject({
+      status: 'reply',
+      reply: { kind: 'run', run: { stdout: { text: 'closed\nclosed\nclosed\nclosed\n' } } },
+    });
+  },
+);
+
+test.skipIf(!hasImpHost)(
+  'it gives a page in Chromium no WebSocket to the VNC port, though a Worker reaches another loopback port',
+  async () => {
+    const ctx = await setupTest();
+
+    // A stand-in server on 5901 shows that a Worker's WebSocket can reach a loopback port at all.
+    const server = await ctx.startSocketServer(5901);
+
+    onTestFinished(() => server.stop());
+
+    await ctx.openURL(
+      buildWorkerSocketPageURL([
+        'ws://127.0.0.1:5900/',
+        'ws://[::1]:5900/',
+        'ws://127.0.0.1:5901/',
+      ]),
+    );
+
+    await waitFor(async () => {
+      const title = await ctx.readTitle();
+
+      expect(title).not.toBe('waiting');
+    });
+
+    const title = await ctx.readTitle();
+
+    expect(title).toBe('failed,failed,open');
   },
 );

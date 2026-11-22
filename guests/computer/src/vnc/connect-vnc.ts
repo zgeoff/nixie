@@ -1,14 +1,15 @@
 import type { VNCLink, VNCLinkEvents } from './types';
 
 export interface VNCTarget {
-  readonly port: number;
+  // the Unix socket of the VNC server
+  readonly path: string;
 
   // how long a refused connection is tried again, for a VNC server that has not started listening
   readonly waitMs: number;
 }
 
-// Connects to the VNC server on the loopback of the sandbox. The server's own `-localhost` flag
-// refuses every other address, so no other path reaches it.
+// Connects to the VNC server on its Unix socket. The server listens on no TCP port, and the socket's
+// folder is closed to every account but the server's and the guest's, so no other path reaches it.
 export async function connectVNC(target: VNCTarget, events: VNCLinkEvents): Promise<VNCLink> {
   const backlog: { bytes: Uint8Array | null } = { bytes: null };
 
@@ -52,7 +53,7 @@ async function connectWhenListening(
 
   for (;;) {
     try {
-      return await Bun.connect({ hostname: '127.0.0.1', port: target.port, socket: handler });
+      return await Bun.connect({ unix: target.path, socket: handler });
     } catch (error) {
       if (Date.now() + retryDelayMs > deadlineMs) {
         throw error;

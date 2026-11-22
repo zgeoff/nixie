@@ -1,20 +1,24 @@
 import { expect, onTestFinished, test } from 'bun:test';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { connectVNC } from './connect-vnc';
 
 function setupTest() {
   const fromClient: Uint8Array[] = [];
   const clientClosed = Promise.withResolvers<void>();
 
-  // a port that nothing listens on until the test starts the server
-  const probe = Bun.listen({ hostname: '127.0.0.1', port: 0, socket: { data: () => {} } });
-  const port = probe.port;
+  // a socket path that nothing listens on until the test starts the server
+  const folder = mkdtempSync(join(tmpdir(), 'nixie-vnc-'));
+  const path = join(folder, 'vnc.sock');
 
-  probe.stop(true);
+  onTestFinished(() => {
+    rmSync(folder, { recursive: true, force: true });
+  });
 
   const listen = (): void => {
     const server = Bun.listen({
-      hostname: '127.0.0.1',
-      port,
+      unix: path,
       socket: {
         open: (socket) => {
           socket.write(new Uint8Array([9, 8, 7]));
@@ -38,7 +42,7 @@ function setupTest() {
 
   const connect = (waitMs: number) =>
     connectVNC(
-      { port, waitMs },
+      { path, waitMs },
       {
         onData: (bytes) => {
           received.push(bytes);
@@ -100,5 +104,5 @@ test('it connects to a VNC server that starts listening after the first try is r
 test('it rejects when the VNC server still refuses once the wait has passed', () => {
   const ctx = setupTest();
 
-  expect(ctx.connect(300)).rejects.toMatchObject({ code: 'ECONNREFUSED' });
+  expect(ctx.connect(300)).rejects.toMatchObject({ code: 'ENOENT' });
 });

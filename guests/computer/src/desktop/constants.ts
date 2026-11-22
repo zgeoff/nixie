@@ -36,11 +36,14 @@ export const display = ':99';
 export const displayWidth = 1280;
 export const displayHeight = 800;
 
-// the VNC server's port, on the loopback of the sandbox
-export const vncPort = 5900;
+// The VNC server listens on a Unix socket alone, in a folder that only the screen account, which
+// runs the server, and the guest, which runs as root, can open. It listens on no TCP port, so a page
+// in Chromium, which runs as another account, has no way to reach it.
+export const vncSocketFolder = '/run/nixie-vnc';
+export const vncSocketPath = `${vncSocketFolder}/vnc.sock`;
 
-// How long the guest tries a refused connection to the VNC server again. On a cold start the server
-// listened within a second of the refusal, and a supervised restart waits a second more.
+// How long the guest tries a missing socket again. On a cold start the server listened within a
+// second of the first try, and a supervised restart waits a second more.
 export const vncConnectWaitMs = 5000;
 
 // the memory that the terminal's processes and every command share, so a heavy command ends itself

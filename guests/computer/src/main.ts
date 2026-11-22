@@ -14,7 +14,8 @@ import {
   terminalCgroupName,
   terminalMemoryLimitBytes,
   vncConnectWaitMs,
-  vncPort,
+  vncSocketFolder,
+  vncSocketPath,
 } from './desktop/constants';
 import { createTerminalCgroup } from './desktop/create-terminal-cgroup';
 import { prepareDisk } from './desktop/prepare-disk';
@@ -72,6 +73,13 @@ await chmod(downloadsPath, 0o700);
 await mkdir(screenFolder, { recursive: true });
 await chown(screenFolder, screenAccount.uid, screenAccount.gid);
 await chmod(screenFolder, 0o700);
+
+// The VNC server's socket sits in a folder that only the screen account, which runs the server, and
+// root, which runs the guest, can open. Chromium's account and the terminal's can open neither the
+// folder nor the socket in it.
+await mkdir(vncSocketFolder, { recursive: true });
+await chown(vncSocketFolder, screenAccount.uid, screenAccount.gid);
+await chmod(vncSocketFolder, 0o700);
 await mkdir('/tmp/.X11-unix', { recursive: true });
 await chmod('/tmp/.X11-unix', 0o1777);
 
@@ -156,7 +164,7 @@ await runComputerGuest(
   {
     onReady: channel.bind,
     onVNCFrame: makeVNCRelay({
-      connect: (events) => connectVNC({ port: vncPort, waitMs: vncConnectWaitMs }, events),
+      connect: (events) => connectVNC({ path: vncSocketPath, waitMs: vncConnectWaitMs }, events),
       maxStreams: maxVNCStreams,
     }),
   },
