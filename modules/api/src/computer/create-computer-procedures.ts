@@ -1,13 +1,11 @@
 // oxlint-disable new-cap -- oRPC names a procedure's typed errors by their upper-case codes
 import { match } from 'ts-pattern';
+import { z } from 'zod';
 import { requireCaller } from '../memory/require-caller';
 import type { APIContext } from '../types';
 import { apiImplementer } from '../utils/api-implementer';
 import { buildWatchStreamURL } from './build-watch-stream-url';
-import {
-  writeCheckedComputerAction,
-  writeComputerActionResult,
-} from './write-checked-computer-action';
+import { runComputerAction } from './run-computer-action';
 import { writeCheckedComputerWatch } from './write-checked-computer-watch';
 
 export function createComputerProcedures(context: APIContext) {
@@ -68,44 +66,38 @@ export function createComputerProcedures(context: APIContext) {
         throw options.errors.COMPUTER_UNAVAILABLE();
       }
 
-      const action = {
-        procedure: 'computer.takeOver',
-        clientActionID: options.input.clientActionID,
-        result: {},
-      };
+      const run = await runComputerAction(
+        context,
+        caller,
+        { procedure: 'computer.takeOver', clientActionID: options.input.clientActionID },
+        async () => {
+          const result = await takeover.start(caller.identityID);
 
-      const checked = await writeCheckedComputerAction(context, caller, action);
+          return match(result)
+            .with({ kind: 'started' }, (started) => ({ takenOverAt: started.takenOverAt }))
+            .with({ kind: 'busy_too_long' }, () => ({ refused: 'BUSY_TOO_LONG' }))
+            .with({ kind: 'held_elsewhere' }, () => ({ refused: 'HELD_ELSEWHERE' }))
+            .exhaustive();
+        },
+      );
 
-      if (checked.status === 'reused') {
+      if (run.status === 'reused') {
         throw options.errors.CLIENT_ACTION_ID_REUSED();
       }
 
-      if (checked.status === 'unauthorized') {
+      if (run.status === 'unauthorized') {
         throw options.errors.UNAUTHORIZED();
       }
 
-      const stored = checked.earlier?.['takenOverAt'];
-
-      if (typeof stored === 'number') {
-        return { takenOverAt: stored };
-      }
-
-      const result = await takeover.start(caller.identityID);
-
-      if (result.kind === 'busy_too_long') {
+      if (run.result['refused'] === 'BUSY_TOO_LONG') {
         throw options.errors.BUSY_TOO_LONG();
       }
 
-      if (result.kind === 'held_elsewhere') {
+      if (run.result['refused'] === 'HELD_ELSEWHERE') {
         throw options.errors.HELD_ELSEWHERE();
       }
 
-      await writeComputerActionResult(context, caller, {
-        ...action,
-        result: { takenOverAt: result.takenOverAt },
-      });
-
-      return { takenOverAt: result.takenOverAt };
+      return { takenOverAt: z.number().parse(run.result['takenOverAt']) };
     }),
 
     handBack: apiImplementer.computer.handBack.handler(async (options) => {
@@ -125,40 +117,32 @@ export function createComputerProcedures(context: APIContext) {
         throw options.errors.COMPUTER_UNAVAILABLE();
       }
 
-      const action = {
-        procedure: 'computer.handBack',
-        clientActionID: options.input.clientActionID,
-        result: {},
-      };
+      const run = await runComputerAction(
+        context,
+        caller,
+        { procedure: 'computer.handBack', clientActionID: options.input.clientActionID },
+        async () => {
+          const result = await takeover.end('user', caller.identityID);
 
-      const checked = await writeCheckedComputerAction(context, caller, action);
+          return result.kind === 'ended'
+            ? { durationSeconds: result.durationSeconds }
+            : { refused: 'NOT_TAKEN_OVER' };
+        },
+      );
 
-      if (checked.status === 'reused') {
+      if (run.status === 'reused') {
         throw options.errors.CLIENT_ACTION_ID_REUSED();
       }
 
-      if (checked.status === 'unauthorized') {
+      if (run.status === 'unauthorized') {
         throw options.errors.UNAUTHORIZED();
       }
 
-      const stored = checked.earlier?.['durationSeconds'];
-
-      if (typeof stored === 'number') {
-        return { durationSeconds: stored };
-      }
-
-      const result = await takeover.end('user', caller.identityID);
-
-      if (result.kind === 'not_taken_over') {
+      if (run.result['refused'] === 'NOT_TAKEN_OVER') {
         throw options.errors.NOT_TAKEN_OVER();
       }
 
-      await writeComputerActionResult(context, caller, {
-        ...action,
-        result: { durationSeconds: result.durationSeconds },
-      });
-
-      return { durationSeconds: result.durationSeconds };
+      return { durationSeconds: z.number().parse(run.result['durationSeconds']) };
     }),
   };
 }

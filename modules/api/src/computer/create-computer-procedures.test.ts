@@ -247,6 +247,38 @@ test('#computer.takeOver gives a retry of the same action the answer of the firs
   expect([retry, calls.count]).toStrictEqual([{ takenOverAt: 1_700_000_000_000 }, 1]);
 });
 
+test('#computer.takeOver answers a retry of a refused action with the same refusal', async () => {
+  const ctx = await setupTest();
+
+  const calls = { count: 0 };
+
+  ctx.setTakeover({
+    start: () => {
+      calls.count += 1;
+
+      const answer =
+        calls.count === 1
+          ? { kind: 'busy_too_long' as const }
+          : { kind: 'started' as const, takenOverAt: 1 };
+
+      return Promise.resolve(answer);
+    },
+    end: () => Promise.resolve({ kind: 'not_taken_over' }),
+  });
+
+  const clientActionID = crypto.randomUUID();
+  const first = ctx.client.computer.takeOver({ clientActionID });
+
+  await Promise.allSettled([first]);
+
+  const retry = ctx.client.computer.takeOver({ clientActionID });
+
+  await Promise.allSettled([retry]);
+
+  expect(retry).rejects.toMatchObject({ code: 'BUSY_TOO_LONG' });
+  expect(calls.count).toBe(1);
+});
+
 test('#computer.takeOver refuses an action ID that another session used', async () => {
   const ctx = await setupTest();
   const other = await createDeviceSession(ctx.context, 'phone');
@@ -395,6 +427,71 @@ test('#computer.handBack gives a retry of the same action the answer of the firs
   const retry = await ctx.client.computer.handBack({ clientActionID });
 
   expect([retry, calls.count]).toStrictEqual([{ durationSeconds: 63 }, 1]);
+});
+
+test('#computer.handBack gives two overlapping tries of one action the same answer', async () => {
+  const ctx = await setupTest();
+
+  const gate = Promise.withResolvers<void>();
+  const calls = { count: 0 };
+
+  ctx.setTakeover({
+    start: () => Promise.resolve({ kind: 'started', takenOverAt: 1 }),
+    end: async () => {
+      calls.count += 1;
+
+      await gate.promise;
+
+      return calls.count === 1
+        ? { kind: 'ended', durationSeconds: 63 }
+        : { kind: 'not_taken_over' };
+    },
+  });
+
+  const clientActionID = crypto.randomUUID();
+  const first = ctx.client.computer.handBack({ clientActionID });
+  const second = ctx.client.computer.handBack({ clientActionID });
+
+  gate.resolve();
+
+  const results = await Promise.all([first, second]);
+
+  expect([results, calls.count]).toStrictEqual([
+    [{ durationSeconds: 63 }, { durationSeconds: 63 }],
+    1,
+  ]);
+});
+
+test('#computer.handBack answers a retry of a refused action with the same refusal', async () => {
+  const ctx = await setupTest();
+
+  const calls = { count: 0 };
+
+  ctx.setTakeover({
+    start: () => Promise.resolve({ kind: 'started', takenOverAt: 1 }),
+    end: () => {
+      calls.count += 1;
+
+      const answer =
+        calls.count === 1
+          ? { kind: 'not_taken_over' as const }
+          : { kind: 'ended' as const, durationSeconds: 63 };
+
+      return Promise.resolve(answer);
+    },
+  });
+
+  const clientActionID = crypto.randomUUID();
+  const first = ctx.client.computer.handBack({ clientActionID });
+
+  await Promise.allSettled([first]);
+
+  const retry = ctx.client.computer.handBack({ clientActionID });
+
+  await Promise.allSettled([retry]);
+
+  expect(retry).rejects.toMatchObject({ code: 'NOT_TAKEN_OVER' });
+  expect(calls.count).toBe(1);
 });
 
 test('#computer.handBack says the computer is unavailable before it starts', async () => {
