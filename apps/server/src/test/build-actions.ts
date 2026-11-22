@@ -1,4 +1,4 @@
-import type { ActionQueueBridge } from '@heynixie/actions';
+import type { ActionQueueBridge, AdmitTool } from '@heynixie/actions';
 import { buildActionQueue } from '@heynixie/actions';
 import type { ActionConnector } from '@heynixie/connectors';
 import type { Logger } from '@heynixie/logger';
@@ -14,6 +14,9 @@ export interface Actions extends ActionQueueBridge {
 
   // The tool name prefixes whose actions wait, such as `computer.` while a person holds the computer.
   readonly readHeldToolPrefixes?: () => readonly string[];
+
+  // admits an action's call past such a hold as its attempt starts
+  readonly admitTool?: AdmitTool;
 }
 
 export interface ActionsOptions {

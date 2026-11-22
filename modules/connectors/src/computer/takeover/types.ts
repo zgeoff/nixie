@@ -67,5 +67,10 @@ export interface Takeover {
   readonly stop: () => void;
 }
 
-// what a device session calls to take the desktop and give it back
-export type ComputerTakeover = Pick<Takeover, 'isHeld' | 'epoch' | 'start' | 'end'>;
+// what a device session calls to take the desktop and give it back, and what an action's call
+// passes to start
+export interface ComputerTakeover extends Pick<Takeover, 'isHeld' | 'epoch' | 'start' | 'end'> {
+  // Lets an action's call start unless a hold is open, and counts it as a running call that a
+  // take-over waits for until the returned function runs. It answers null while a hold is open.
+  readonly admit: () => (() => void) | null;
+}

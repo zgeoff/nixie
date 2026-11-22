@@ -1,5 +1,6 @@
-import { expect, test } from 'bun:test';
+import { expect, onTestFinished, test } from 'bun:test';
 import { readRecords, withWriteTransaction } from '@heynixie/log';
+import { setFaultPointHandler } from '@heynixie/tasks';
 import type { ApprovedCallRequest, ApprovedRun } from '@heynixie/tools';
 import { buildActionSeeder } from '../test-utils/build-action-seeder';
 import { createTestStep } from '../test-utils/create-test-step';
@@ -429,20 +430,26 @@ test('it runs no call for an action when a hold begins after the batch was read'
   ]);
 });
 
-test('it runs no call and records no attempt when a hold begins between the last check and the write', async () => {
+test('it runs no call and records no attempt when a hold begins between the last check and the commit', async () => {
   const ctx = await setupTest();
   const queued = await ctx.seed.inStepAction({ step: ctx.step });
 
-  // the reads before the write find no hold, and the read after it finds one
-  const reads: { count: number } = { count: 0 };
+  const hold: { isHeld: boolean } = { isHeld: false };
+
+  setFaultPointHandler((id) => {
+    if (id === 'attempt.admit.before') {
+      hold.isHeld = true;
+    }
+  });
+
+  onTestFinished(() => {
+    setFaultPointHandler(null);
+  });
 
   const settled = await ctx.runStep({
     runCall: ctx.runCall({ status: 'done', resultSequence: 7, result: {}, images: [] }),
-    readHeldToolPrefixes: () => {
-      reads.count += 1;
-
-      return reads.count <= 2 ? [] : ['test.'];
-    },
+    readHeldToolPrefixes: () => (hold.isHeld ? ['test.'] : []),
+    admitTool: () => (hold.isHeld ? null : () => {}),
     checkAttempt: () => Promise.resolve({ kind: 'go', destinations: [] }),
   });
 

@@ -1,20 +1,28 @@
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import type { TasksContext } from '@heynixie/tasks';
 import { probeTaskPaused, requireLease, resetLease, waitAtFaultPoint } from '@heynixie/tasks';
-import type { ActionRow, ActionsTables } from '../types';
+import type { ActionRow, ActionsTables, AdmitTool } from '../types';
 import { buildCancelledCheck } from './build-cancelled-check';
 import { buildHeldCheck } from './build-held-check';
 import type { Attempt } from './leased-records';
 
-export type AttemptStart = 'started' | 'barred' | 'past_deadline';
+// A started attempt holds its admission until its call has settled, and then calls `release`.
+export type AttemptStart =
+  | { readonly kind: 'started'; readonly release: () => void }
+  | { readonly kind: 'barred' }
+  | { readonly kind: 'past_deadline' };
 
 export interface AttemptStartOptions {
   // whether a barred attempt releases its lease; a step that holds the task's lease keeps it
   readonly resetWhenBarred: boolean;
 
-  // The tool name prefixes whose actions wait. The start reads them again after it writes the
-  // attempt, and rolls the write back when a hold has begun, so no attempt outlives a hold.
+  // the tool name prefixes whose actions wait, read before the attempt is written
   readonly readHeldToolPrefixes?: (() => readonly string[]) | undefined;
+
+  // Admits the call as the last act of the start's transaction, after the attempt is written. A
+  // hold that began since the check rolls the write back, and a hold that begins after the
+  // admission waits for the call.
+  readonly admitTool?: AdmitTool | undefined;
 }
 
 export function isPastDeadline(action: Pick<ActionRow, 'deadline_at'>, now: number): boolean {
@@ -31,7 +39,7 @@ export async function writeAttemptStarted(
 ): Promise<AttemptStart> {
   const start = await runAttemptStart(context, attempt, options);
 
-  if (start === 'started' && NIXIE_TEST_BUILD) {
+  if (start.kind === 'started' && NIXIE_TEST_BUILD) {
     await waitAtFaultPoint('attempt.record.after', {
       kind: 'action',
       id: attempt.action.action_id,
@@ -46,14 +54,23 @@ class HoldBegunError extends Error {
   override name = 'HoldBegunError';
 }
 
+// the admission the transaction took, which a failed commit gives back
+interface Admission {
+  release: (() => void) | null;
+}
+
 async function runAttemptStart(
   context: TasksContext,
   attempt: Attempt,
   options: AttemptStartOptions,
 ): Promise<AttemptStart> {
+  const admission: Admission = { release: null };
+
   try {
-    return await readAndWriteStart(context, attempt, options);
+    return await readAndWriteStart(context, attempt, options, admission);
   } catch (error) {
+    admission.release?.();
+
     if (!(error instanceof HoldBegunError)) {
       throw error;
     }
@@ -65,13 +82,14 @@ async function runAttemptStart(
     });
   }
 
-  return 'barred';
+  return { kind: 'barred' };
 }
 
 function readAndWriteStart(
   context: TasksContext,
   attempt: Attempt,
   options: AttemptStartOptions,
+  admission: Admission,
 ): Promise<AttemptStart> {
   return withWriteTransaction(context.log.writer, async (tx): Promise<AttemptStart> => {
     const now = context.clock.now();
@@ -97,11 +115,11 @@ function readAndWriteStart(
         await resetLease(tx, attempt.lease);
       }
 
-      return 'barred';
+      return { kind: 'barred' };
     }
 
     if (isPastDeadline(action, now)) {
-      return 'past_deadline';
+      return { kind: 'past_deadline' };
     }
 
     await writeRecordsInTransaction(tx, context.log, [
@@ -113,11 +131,25 @@ function readAndWriteStart(
       },
     ]);
 
-    if (probeToolHeld(options, action.tool)) {
+    if (NIXIE_TEST_BUILD) {
+      await waitAtFaultPoint('attempt.admit.before', {
+        kind: 'action',
+        id: attempt.action.action_id,
+      });
+    }
+
+    // The admission checks the hold and counts the call as running in one synchronous step, so a
+    // hold either rolls this attempt back or waits for its call.
+    const release =
+      options.admitTool === undefined ? releaseNothing : options.admitTool(action.tool);
+
+    if (release === null) {
       throw new HoldBegunError();
     }
 
-    return 'started';
+    admission.release = release;
+
+    return { kind: 'started', release };
   });
 }
 
@@ -126,3 +158,5 @@ function probeToolHeld(options: AttemptStartOptions, tool: string): boolean {
 
   return heldPrefixes.some((prefix) => tool.startsWith(prefix));
 }
+
+function releaseNothing(): void {}

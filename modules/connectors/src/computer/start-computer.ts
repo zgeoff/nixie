@@ -11,6 +11,7 @@ import type { GuestSession, OutOfCallScans } from './make-guest-session';
 import { makeGuestSession } from './make-guest-session';
 import { moveOldSandboxes, wakeOld } from './move-old-sandboxes';
 import { takeTurn } from './take-turn';
+import { admitRunningCall, extendAdmissions } from './takeover/admit-running-call';
 import { makeGuestHooks } from './takeover/make-guest-hooks';
 import { makeTakeover } from './takeover/make-takeover';
 import { trackRunningCall } from './takeover/track-running-call';
@@ -116,6 +117,9 @@ interface ComputerState {
 
   // the calls from the tools, which a take-over waits for
   readonly running: Set<RunningCall>;
+
+  // the actions' calls admitted past the hold, which count among the running calls
+  readonly admitted: Set<RunningCall>;
   takeover: Takeover | null;
 }
 
@@ -132,6 +136,8 @@ const noTakeoverRecords: TakeoverRecords = {
   writeEnded: () => Promise.resolve(),
 };
 
+const defaultTurnWaitMs = 60_000;
+
 export function startComputer(options: ComputerOptions): Computer {
   const state: ComputerState = {
     sandbox: null,
@@ -145,6 +151,7 @@ export function startComputer(options: ComputerOptions): Computer {
     tabCount: 0,
     watches: { count: 0 },
     running: new Set(),
+    admitted: new Set(),
     takeover: null,
   };
 
@@ -185,6 +192,14 @@ export function startComputer(options: ComputerOptions): Computer {
       epoch: takeover.epoch,
       start: takeover.start,
       end: takeover.end,
+      admit: () =>
+        admitRunningCall({
+          clock: context.clock,
+          running: state.running,
+          admitted: state.admitted,
+          isHeld: takeover.isHeld,
+          turnWaitMs: options.turnWaitMs ?? defaultTurnWaitMs,
+        }),
     },
     isWatched: () => state.watches.count > 0,
     reset: () => resetComputer(context),
@@ -306,8 +321,6 @@ async function releaseAfter(waiting: Promise<unknown>, release: () => void): Pro
 
   release();
 }
-
-const defaultTurnWaitMs = 60_000;
 
 // The guest for a watch's stream: the running one, or one started after waking the sandbox. The
 // turn is held only while it starts. The result is null when another call kept the turn past the
@@ -551,10 +564,15 @@ async function runInTurn(context: ComputerContext, call: ComputerCall): Promise<
 // it takes the turn.
 function runCall(context: ComputerContext, call: ComputerCall): Promise<CallResult> {
   const turnWaitMs = context.options.turnWaitMs ?? defaultTurnWaitMs;
+  const endsAtMs = context.clock.now() + turnWaitMs;
 
-  return trackRunningCall(context.state.running, context.clock.now() + turnWaitMs, (running) =>
+  extendAdmissions(context.state.admitted, endsAtMs);
+
+  return trackRunningCall(context.state.running, endsAtMs, (running) =>
     runInTurnOrBusy(context, call, () => {
       running.endsAtMs = context.clock.now() + call.timeoutMs;
+
+      extendAdmissions(context.state.admitted, running.endsAtMs);
     }),
   );
 }

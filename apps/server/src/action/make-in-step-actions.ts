@@ -26,6 +26,9 @@ export function makeInStepActions(parts: ServerParts): InStepActions {
         ...(parts.tools.actions.readHeldToolPrefixes === undefined
           ? {}
           : { readHeldToolPrefixes: parts.tools.actions.readHeldToolPrefixes }),
+        ...(parts.tools.actions.admitTool === undefined
+          ? {}
+          : { admitTool: parts.tools.actions.admitTool }),
       });
 
       return settled.map((entry) => ({

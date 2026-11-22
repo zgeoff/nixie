@@ -489,6 +489,7 @@ test('it reaches each attempt fault point in order', async () => {
   });
 
   expect(reached).toStrictEqual([
+    'attempt.admit.before',
     'attempt.record.after',
     'attempt.result.before',
     'attempt.result.after',
@@ -853,7 +854,47 @@ test('it starts no attempt and calls nothing when a hold begins after the policy
   ]);
 });
 
-test('it starts no attempt and calls nothing when a hold begins between the last check and the write', async () => {
+test('it keeps the admission of an attempt through its call, and ends it once the call settles', async () => {
+  const ctx = await setupTest();
+  const step = await createTestStep(ctx.context);
+
+  await queueTestAction(ctx.context, {
+    step,
+    tool: 'test.send',
+    actionHash: 'sha256:send-1',
+    arguments: { to: 'team' },
+    decision: { outcome: 'allow', stage: 4, rule: { id: 'test-rule', revision: 1 } },
+  });
+
+  const lease = await claimTestAction(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  const admissions: { open: number; openDuringCall: number | null } = {
+    open: 0,
+    openDuringCall: null,
+  };
+
+  const stub = buildStubConnector(() => {
+    admissions.openDuringCall = admissions.open;
+
+    return { kind: 'success', result: {} };
+  });
+
+  await runActionAttempt(ctx.context, lease, {
+    connectors: new Map([['test.send', stub.connector]]),
+    leaseMs: 60_000,
+    admitTool: () => {
+      admissions.open += 1;
+
+      return () => {
+        admissions.open -= 1;
+      };
+    },
+  });
+
+  expect(admissions).toStrictEqual({ open: 0, openDuringCall: 1 });
+});
+
+test('it starts no attempt and calls nothing when a hold begins between the last check and the commit', async () => {
   const ctx = await setupTest();
   const step = await createTestStep(ctx.context);
 
@@ -869,17 +910,23 @@ test('it starts no attempt and calls nothing when a hold begins between the last
 
   const lease = await claimTestAction(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
 
-  // the first read finds no hold, and the read after the write finds one
-  const reads: { count: number } = { count: 0 };
+  const hold: { isHeld: boolean } = { isHeld: false };
+
+  setFaultPointHandler((id) => {
+    if (id === 'attempt.admit.before') {
+      hold.isHeld = true;
+    }
+  });
+
+  onTestFinished(() => {
+    setFaultPointHandler(null);
+  });
 
   await runActionAttempt(ctx.context, lease, {
     connectors: new Map([['test.send', stub.connector]]),
     leaseMs: 60_000,
-    readHeldToolPrefixes: () => {
-      reads.count += 1;
-
-      return reads.count === 1 ? [] : ['test.'];
-    },
+    readHeldToolPrefixes: () => (hold.isHeld ? ['test.'] : []),
+    admitTool: () => (hold.isHeld ? null : () => {}),
     checkAttempt: () => Promise.resolve({ kind: 'go', destinations: [] }),
   });
 

@@ -12,6 +12,7 @@ const faultPointTexts: Readonly<Record<FaultPointID, string>> = {
   'queue.commit.before': 'queue.commit.before',
   'queue.commit.after': 'queue.commit.after',
   'attempt.record.after': 'attempt.record.after',
+  'attempt.admit.before': 'attempt.admit.before',
   'attempt.result.before': 'attempt.result.before',
   'attempt.result.after': 'attempt.result.after',
   'timer.fire.before': 'timer.fire.before',

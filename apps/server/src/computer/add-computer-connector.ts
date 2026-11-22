@@ -16,9 +16,13 @@ export function addComputerConnector(
   return {
     ...actions,
     readHeldToolPrefixes: () => (computer.takeover.isHeld() ? ['computer.'] : []),
+    admitTool: (tool) =>
+      tool.startsWith('computer.') ? computer.takeover.admit() : releaseNothing,
     connectors: new Map([
       ...actions.connectors,
       ...[...queued, ...legacyComputerToolNames].map((name) => [name, computer.connector] as const),
     ]),
   };
 }
+
+function releaseNothing(): void {}

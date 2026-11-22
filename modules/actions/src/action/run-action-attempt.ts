@@ -159,15 +159,16 @@ async function runAttempt(
   const start = await writeAttemptStarted(context, attempt, {
     resetWhenBarred: true,
     readHeldToolPrefixes: options.readHeldToolPrefixes,
+    admitTool: options.admitTool,
   });
 
-  if (start === 'past_deadline') {
+  if (start.kind === 'past_deadline') {
     await writeFailure(context, attempt, 'deadline_passed', 'the action passed its deadline');
 
     return;
   }
 
-  if (start === 'barred') {
+  if (start.kind === 'barred') {
     return;
   }
 
@@ -178,7 +179,7 @@ async function runAttempt(
     args,
     destinations: step.destinations,
     options,
-  });
+  }).finally(start.release);
 
   await writeAttemptResult(context, attempt, {
     response,

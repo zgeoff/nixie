@@ -2,7 +2,7 @@ import type { JSONObject } from '@heynixie/log';
 import type { Lease, TasksContext } from '@heynixie/tasks';
 import { waitAtFaultPoint } from '@heynixie/tasks';
 import type { ApprovedCallRequest, ApprovedReply, ApprovedRun } from '@heynixie/tools';
-import type { ActionRow, ActionsTables, OutcomeReason } from '../types';
+import type { ActionRow, ActionsTables, AdmitTool, OutcomeReason } from '../types';
 import type { AttemptCheck } from './attempt-check';
 import { buildCancelledCheck } from './build-cancelled-check';
 import { buildHeldCheck } from './build-held-check';
@@ -23,6 +23,9 @@ export interface InStepActionsOptions {
 
   // The tool name prefixes whose actions wait, as a claim reads them: a held action stays pending.
   readonly readHeldToolPrefixes?: () => readonly string[];
+
+  // admits each call past a hold, as its attempt's start ends
+  readonly admitTool?: AdmitTool;
 }
 
 // An action the step settled: the outcome record it wrote, and what its call returned, which no
@@ -138,25 +141,28 @@ async function runInStepAction(
   const start = await writeAttemptStarted(context, attempt, {
     resetWhenBarred: false,
     readHeldToolPrefixes: options.readHeldToolPrefixes,
+    admitTool: options.admitTool,
   });
 
-  if (start === 'past_deadline') {
+  if (start.kind === 'past_deadline') {
     return writeFailure(context, attempt, 'deadline_passed', {
       message: 'the action passed its deadline',
     });
   }
 
-  if (start === 'barred') {
+  if (start.kind === 'barred') {
     return null;
   }
 
-  const run = await options.runCall({
-    actionID: action.action_id,
-    tool: action.tool,
-    input: args,
-    callSequence: action.call_sequence,
-    actionHash: action.action_hash,
-  });
+  const run = await options
+    .runCall({
+      actionID: action.action_id,
+      tool: action.tool,
+      input: args,
+      callSequence: action.call_sequence,
+      actionHash: action.action_hash,
+    })
+    .finally(start.release);
 
   if (NIXIE_TEST_BUILD) {
     await waitAtFaultPoint('attempt.result.before', { kind: 'action', id: action.action_id });

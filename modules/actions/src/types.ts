@@ -31,6 +31,11 @@ export type OwnerReason =
 
 export type ActionRiskClass = 'routine' | 'always_ask' | 'lifting';
 
+// Lets one call of the tool start, or answers null while the tool is held. The call counts as
+// running from that moment, so a hold that begins later waits for it, until the returned function
+// ends it.
+export type AdmitTool = (tool: string) => (() => void) | null;
+
 export type CheckAnswer = 'found' | 'not_found' | 'inconclusive';
 
 export type UnknownChoice = 'happened' | 'retry' | 'drop';

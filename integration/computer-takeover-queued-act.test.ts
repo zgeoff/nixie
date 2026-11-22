@@ -2,7 +2,7 @@ import { expect, onTestFinished, test } from 'bun:test';
 import { startActionRunners } from '@heynixie/actions';
 import { createTestStep, queueTestAction } from '@heynixie/actions/test-utils';
 import { buildTestClient, createDeviceSession, startTestAPI } from '@heynixie/api/test-utils';
-import type { ActionAttempt } from '@heynixie/connectors';
+import type { ActionAttempt, ProviderResponse, TakeOverResult } from '@heynixie/connectors';
 import { makeTakeoverRecords, startComputer } from '@heynixie/connectors';
 import { buildStubSandboxAdapter } from '@heynixie/connectors/test-utils';
 import { readRecords } from '@heynixie/log';
@@ -63,6 +63,18 @@ async function setupTest() {
   const calls: ActionAttempt[] = [];
   const claims = { reads: 0 };
 
+  const queueRun = async () => {
+    const step = await createTestStep(api.context);
+
+    await queueTestAction(api.context, {
+      step,
+      tool: 'computer.run',
+      actionHash: 'sha256:run-1',
+      arguments: { command: 'ls' },
+      decision: { outcome: 'allow', stage: 4, rule: { id: 'test-rule', revision: 1 } },
+    });
+  };
+
   return {
     api,
     laptop,
@@ -70,7 +82,19 @@ async function setupTest() {
     startDesktop,
     calls,
     claims,
+    clock,
+    queueRun,
     client: buildTestClient(api.url, laptop.token),
+    startAdmittingRunner: (
+      computer: ReturnType<typeof startDesktop>,
+      run: (call: ActionAttempt) => Promise<ProviderResponse>,
+    ) =>
+      startActionRunners(api.context, {
+        connectors: new Map([['computer.run', { reconcile: { kind: 'none' as const }, run }]]),
+        readHeldToolPrefixes: () => (computer.takeover.isHeld() ? ['computer.'] : []),
+        admitTool: () => computer.takeover.admit(),
+        onError: () => {},
+      }),
     startRunner: (isHeld: () => boolean) =>
       startActionRunners(api.context, {
         connectors: new Map([
@@ -138,4 +162,61 @@ test('it keeps a queued act pending through a hold with no attempt, and runs it 
     kindsWhileHeld.filter((kind) => kind.startsWith('action.')),
     kindsAfter.filter((kind) => kind === 'action.attempt_started'),
   ]).toStrictEqual([1, ['action.queued'], ['action.attempt_started']]);
+});
+
+test('it makes a take-over that starts during an admitted act wait for it, and give up past its limit', async () => {
+  const ctx = await setupTest();
+
+  const computer = ctx.startDesktop();
+
+  await ctx.queueRun();
+
+  const outcome: { result: TakeOverResult | null } = { result: null };
+
+  const runners = ctx.startAdmittingRunner(computer, async () => {
+    const result = computer.takeover.start(ctx.laptop.caller.identityID);
+
+    ctx.clock.advance(100);
+
+    outcome.result = await result;
+
+    return { kind: 'success', result: {} };
+  });
+
+  onTestFinished(() => stopWithoutGrace(ctx.api.clock, runners));
+
+  await waitForCondition(() => outcome.result !== null);
+
+  expect(outcome.result).toStrictEqual({ kind: 'busy_too_long' });
+});
+
+test('it starts a take-over called during an admitted act once the act has settled', async () => {
+  const ctx = await setupTest();
+
+  const computer = ctx.startDesktop();
+
+  await ctx.queueRun();
+
+  const takeOver: { result: Promise<TakeOverResult> | null } = { result: null };
+
+  const runners = ctx.startAdmittingRunner(computer, () => {
+    takeOver.result = computer.takeover.start(ctx.laptop.caller.identityID);
+
+    return Promise.resolve({ kind: 'success', result: {} });
+  });
+
+  onTestFinished(() => stopWithoutGrace(ctx.api.clock, runners));
+
+  await waitForCondition(() => takeOver.result !== null);
+
+  const result = await takeOver.result;
+  const kinds = await ctx.readKinds();
+
+  expect([
+    result,
+    kinds.filter((kind) => kind === 'action.attempt_started' || kind.startsWith('computer.')),
+  ]).toStrictEqual([
+    { kind: 'started', takenOverAt: 0 },
+    ['action.attempt_started', 'computer.takeover_started'],
+  ]);
 });
