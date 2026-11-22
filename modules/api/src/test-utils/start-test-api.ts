@@ -24,9 +24,12 @@ import { createFakeClock } from '@zgeoff/testing/clock';
 import type { Kysely } from 'kysely';
 import { apiProjections } from '../api/api-projections';
 import { createAPIApp } from '../api/create-api-app';
+import type { WatchSocketData } from '../computer/create-watch-route';
+import { createWatchRoute } from '../computer/create-watch-route';
+import { createWatchTickets } from '../computer/create-watch-tickets';
 import { createPasskeyState } from '../passkey/passkey-state';
 import { proposalsProjection } from '../proposal/proposals-projection';
-import type { CleanupRecordSessions, ViewNotebookStore } from '../types';
+import type { CleanupRecordSessions, ComputerWatchPort, ViewNotebookStore } from '../types';
 import { defaultAPISettings } from '../utils/default-api-settings';
 
 type APIContext = Parameters<typeof createAPIApp>[0];
@@ -42,6 +45,12 @@ interface TestAPI {
 
   // the session cleanup that a running nixie gives a record forget once memory starts
   readonly setSessionCleanup: (cleanup: CleanupRecordSessions) => void;
+
+  // the computer that a watch opens, which a running nixie sets once its computer starts
+  readonly setWatch: (open: ReturnType<ComputerWatchPort['readWatch']>) => void;
+
+  // every line the watch route and its relay logged
+  readonly logged: readonly string[];
   readonly writer: Writer;
   readonly clock: FakeClock;
   readonly context: APIContext;
@@ -78,10 +87,16 @@ export async function startTestAPI(
   const sessions: { cleanup: CleanupRecordSessions | null } = { cleanup: null };
   const notebook: { store: ViewNotebookStore | null } = { store: null };
   const spendGateway = buildStubSpendGateway();
+  const watching: { open: ReturnType<ComputerWatchPort['readWatch']> } = { open: null };
+  const logged: string[] = [];
 
   const context = await createTestContext(writer, settings, definitionStore, {
     readSessionCleanup: () => sessions.cleanup,
     readNotebook: () => notebook.store,
+    readWatch: () => watching.open,
+    logger: (event, fields) => {
+      logged.push(JSON.stringify({ event, fields }));
+    },
     spendGateway: options.isSpendOn === true ? spendGateway : null,
   });
 
@@ -104,12 +119,18 @@ export async function startTestAPI(
     setSessionCleanup: (cleanup) => {
       sessions.cleanup = cleanup;
     },
+    setWatch: (open) => {
+      watching.open = open;
+    },
+    logged,
   };
 }
 
 interface TestContextDeps {
   readonly readSessionCleanup: APIContext['readSessionCleanup'];
   readonly readNotebook: NonNullable<APIContext['readNotebook']>;
+  readonly readWatch: ComputerWatchPort['readWatch'];
+  readonly logger: ComputerWatchPort['logger'];
   readonly spendGateway: ReturnType<typeof buildStubSpendGateway> | null;
 }
 
@@ -146,9 +167,16 @@ async function createTestContext(
     ],
   };
 
+  const clock = createFakeClock({ startMs: 1_000_000 });
+
   const context = {
     log,
-    clock: createFakeClock({ startMs: 1_000_000 }),
+    clock,
+    computerWatch: {
+      tickets: createWatchTickets(clock),
+      logger: deps.logger,
+      readWatch: deps.readWatch,
+    },
     definitions: readTestDefinitions,
     ...(deps.spendGateway === null
       ? {}
@@ -200,16 +228,28 @@ function startTestApp(
     () => memory.store,
     () => Promise.resolve(),
     () => null,
-  ).listen({
+  );
+
+  const route = createWatchRoute(context);
+
+  const answerRequest = (
+    request: Request,
+    server: Bun.Server<WatchSocketData>,
+  ): Promise<Response | undefined> | Promise<Response> =>
+    route.isWatchRequest(request) ? route.upgrade(request, server) : app.handle(request);
+
+  const server = Bun.serve<WatchSocketData>({
     hostname: '127.0.0.1',
     port: 0,
+    fetch: answerRequest,
+    websocket: route.websocket,
   });
 
   return {
     stop: async () => {
-      await app.stop(true);
+      await server.stop(true);
     },
-    url: `http://127.0.0.1:${app.server?.port}`,
+    url: `http://127.0.0.1:${server.port}`,
     setMemory: (store) => {
       memory.store = store;
     },

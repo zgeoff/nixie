@@ -5,6 +5,7 @@ import { match } from 'ts-pattern';
 import type { ReadonlyDeep } from '../types';
 import { isForgettableKind } from './is-forgettable-kind';
 import { mockApprovalProcedures } from './mock-approval-procedures';
+import { mockComputerProcedures } from './mock-computer-procedures';
 import { mockDefinitionProcedures } from './mock-definition-procedures';
 import { mockDeviceProcedures } from './mock-device-procedures';
 import { mockFileProcedures } from './mock-file-procedures';
@@ -55,6 +56,7 @@ export const mockAPIRouter = os.router({
       return readMockBackupNotice();
     }),
   },
+  computer: mockComputerProcedures,
   devices: mockDeviceProcedures,
   notebook: mockNotebookProcedures,
   files: mockFileProcedures,

@@ -1,9 +1,11 @@
 import type { BackupSchedule, ForgetBackup } from '@heynixie/backup';
+import type { WatchConnection, WatchSocket } from '@heynixie/connectors';
 import type { DefinitionNotice, ImageMediaType } from '@heynixie/contract';
 import type { CheckedTables } from '@heynixie/db';
 import type { DefinitionsContext } from '@heynixie/definitions';
 import type { DeviceStreams } from '@heynixie/devices';
 import type { RecordKind } from '@heynixie/log';
+import type { Logger } from '@heynixie/logger';
 import type {
   HostMemoryStore,
   ItemIDStore,
@@ -20,6 +22,7 @@ import type { ReadZone } from '@heynixie/triggers';
 import type { TurnInputs } from '@heynixie/turn-inputs';
 import type { ResponseHeadersPluginContext } from '@orpc/server/plugins';
 import type { Kysely } from 'kysely';
+import type { WatchTickets } from './computer/create-watch-tickets';
 import type { PasskeyState } from './passkey/passkey-state';
 
 export interface APISettings {
@@ -70,6 +73,15 @@ interface ForgottenRecord {
 // be safe to rerun.
 export type CleanupRecordSessions = (cause: ForgottenRecord) => Promise<void>;
 
+// What the API needs to let a browser watch the computer's desktop.
+export interface ComputerWatchPort {
+  readonly tickets: WatchTickets;
+  readonly logger: Logger;
+
+  // Opens a watch for a socket. Null before the computer starts, and where the server holds none.
+  readonly readWatch: () => ((socket: WatchSocket) => WatchConnection) | null;
+}
+
 export interface APIContext extends TasksContext {
   readonly settings: APISettings;
 
@@ -86,6 +98,9 @@ export interface APIContext extends TasksContext {
   readonly readZone: ReadZone;
 
   readonly readSessionCleanup: () => CleanupRecordSessions | null;
+
+  // absent, the server holds no computer to watch
+  readonly computerWatch?: ComputerWatchPort;
 
   // The notebook, which starts after the API context. Null before it starts, and absent where the
   // server holds none.
