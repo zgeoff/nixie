@@ -13,6 +13,7 @@ import {
   terminalAccount,
   terminalCgroupName,
   terminalMemoryLimitBytes,
+  vncConnectWaitMs,
   vncPort,
 } from './desktop/constants';
 import { createTerminalCgroup } from './desktop/create-terminal-cgroup';
@@ -155,7 +156,7 @@ await runComputerGuest(
   {
     onReady: channel.bind,
     onVNCFrame: makeVNCRelay({
-      connect: (events) => connectVNC(vncPort, events),
+      connect: (events) => connectVNC({ port: vncPort, waitMs: vncConnectWaitMs }, events),
       maxStreams: maxVNCStreams,
     }),
   },
