@@ -365,6 +365,36 @@ export interface NixieTables {
     readonly recovery_id: string | null;
     readonly paused_sequence: number;
   };
+  readonly notebook_links: {
+    readonly link_key: string;
+    readonly from_note_id: string;
+    readonly target_kind: string;
+    readonly target_id: string;
+    readonly type: string;
+    readonly reason_seq: number | null;
+    readonly created_at: number;
+  };
+  readonly notebook_notes: {
+    readonly note_id: string;
+    readonly short_id: string;
+    readonly state: string;
+    readonly version: number;
+    readonly text_seq: number;
+    readonly is_private: number;
+    readonly created_at: number;
+    readonly edited_at: number;
+    readonly read_at: number | null;
+    readonly owner_opened_at: number | null;
+  };
+  readonly notebook_versions: {
+    readonly note_id: string;
+    readonly version: number;
+    readonly seq: number;
+    readonly writer: string;
+    readonly model: string;
+    readonly chars: number;
+    readonly created_at: number;
+  };
   readonly passkeys: {
     readonly passkey_id: string;
     readonly credential_id: string;
