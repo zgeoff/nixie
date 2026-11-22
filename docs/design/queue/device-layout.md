@@ -138,23 +138,37 @@ devices.pageData({ region, shown, url }); // from nixie.data; a declared URL of 
 devices.pageError({ region, shown, message }); // each uncaught error and console error
 // A call whose shown no longer matches the region's content returns STALE and changes nothing.
 
-// contract lib: the devices.follow event for a region carries shown, and an image ticket for each
-// declared image. devices.follow's size gains pixelRatio, so CSS size = width / pixelRatio.
+// contract lib: the devices.follow event for a page region carries shown, a frame ticket and an
+// image ticket for each declared image. A region_data event { region, shown, url } follows each
+// refresh of a declared fetch. devices.follow's size gains pixelRatio: CSS size = width / pixelRatio.
 ```
 
-The frame's opaque origin sends no session cookie. The API serves package files at
-`/rpc/device/packages/<name>@<version>/<path>` with no session: they are public npm code, and
-nothing else lives under that path. It serves each declared image at `/rpc/device/images/<ticket>`,
-where the ticket comes from `crypto.randomUUID()` when the region shows, works for that one image,
-and ends when the region's content changes. Both paths sit under `/rpc`, which the reverse proxy
-already sends to the API.
+The frame's opaque origin sends no session cookie, so the API's session check skips three paths
+under `/rpc/device/`, which the reverse proxy already sends to the API:
+
+| Path                                           | Serves                     | Checked by                                             |
+| ---------------------------------------------- | -------------------------- | ------------------------------------------------------ |
+| `/rpc/device/frames/<ticket>`                  | the page, with its CSP     | a ticket that ends when the region's content changes   |
+| `/rpc/device/images/<ticket>`                  | one declared image         | a ticket that ends when the region's content changes   |
+| `/rpc/device/packages/<name>@<version>/<path>` | an approved package's file | nothing: public npm code, and nothing else lives there |
+
+Each ticket comes from `crypto.randomUUID()` when the region shows. The device page's own CSP gains
+`frame-src 'self'`, and the frame's CSP names the API's origin for the package and image paths,
+because an opaque origin can't use `'self'`. Image and markdown regions keep using
+`devices.readImage`, which serves an image that any region of the layout shows.
+
+The three page calls join the device session's allowed calls. A full session may make them only for
+a device it holds, after
+[a signed-in browser as a device](https://linear.app/zgeoff/issue/GEO-2804).
 
 ```text
-device.layout_set     -- payload: columns, rows, regions
-device.region_shown   -- payload: region, content (sealed under the record's own key), until
-device.page_event     -- payload: device, region, name, data (erasable), wake; on the conversation's thread
+device.layout_set     -- payload: columns, rows, regions; a short ID
+device.region_shown   -- payload: region, content (sealed under the record's own key), until; a short ID
+device.page_event     -- payload: device, region, shown, name, data (erasable), wake; on the conversation's thread
 device.package_added  -- payload: name, version, integrity, size, publisher
 ```
+
+Every page event goes to the conversation, whichever conversation or task wrote the region.
 
 A `device.page_event` with `wake` reaches the conversation through its inbox and wakes it, as a
 fired timer does. One without `wake` waits in the events block of the conversation's next turn.
@@ -182,7 +196,13 @@ type ProposalPackage = {
   description: string; // the publisher's own text; the card marks it as the publisher's words
   integrity: string; // the registry's sha512; part of the action hash, so the approval binds it
 };
+// unpackedBytes is null when the registry leaves it out; the unpack then checks the 5 MiB limit.
+// The registry's address is a config value, registry.npmjs.org by default.
 ```
+
+`install_package` is a new effect in the definitions schema, open to rules with destinations. The
+always-ask risk class gives it the passkey and the card with no "always allow", as it does for every
+always-ask effect.
 
 The name must be a valid npm package name and the version an exact semver version. The tool reads
 the registry's metadata through the fetch sandbox when it proposes the call. On approval, the fetch
@@ -216,10 +236,11 @@ Page events:
 - A page event carries no authority. The assistant weighs it like any page it reads, and anything it
   does next goes through the rules and approval cards as before.
 - A page event can carry what the page read from its declared fetches. It reaches the assistant only
-  inside the untrusted-content markers, and the same markers wrap the preview's errors.
+  inside an untrusted block, and the preview's errors reach it the same way.
 - Each region sends at most 1 page event a second and 30 a minute; the device drops the rest, and
-  the server enforces the same limits. Each device wakes the conversation at most 6 times an hour; a
-  later event marked `wake` waits for the next turn.
+  the server enforces the same limits in memory and logs one line for each drop. Each device wakes
+  the conversation at most 6 times an hour, counted from its `device.page_event` records; a later
+  event marked `wake` waits for the next turn.
 - Page events come only from a device whose screen is on and whose region shows a page.
 
 The network:
@@ -232,6 +253,12 @@ The network:
 - A fetch takes GET alone, follows at most 3 redirects within the declared URL's host, and keeps at
   most 1 MiB of body as text. A redirect to another host fails that fetch.
 - A refresh stops when the region's content changes, its minutes pass, or a forget erases it.
+- The server keeps the last body of each declared fetch in memory, drops it when a refresh stops,
+  and fetches again after a restart.
+- A refresh runs with the mandate of the call that sent the page, and counts toward the web fetch
+  rate limits and the spending budget as a `web.fetch` does.
+- Each declared URL is `https`, may hold a query string, and goes through the web fetch URL parser
+  and its private-address check when the page is sent and at each fetch.
 - The checking proxy refuses private and internal addresses after each DNS lookup and each redirect,
   as it does for every fetch.
 
@@ -241,8 +268,19 @@ Regions:
   and hyphens.
 - A region's content replaces the one before it. A forget of a `device.region_shown` record erases
   its content, and the region goes blank.
-- `devices.list` shows each device's layout and what each region shows.
+- `devices.list` shows each device's layout and, for each region, its kind, until, packages, fetch
+  URLs and `device.region_shown` short ID, and never the page's HTML.
+- A layout never times out. A region's minutes keep counting while a `device.show` covers the
+  layout, and the region's page stays loaded, hidden, taking messages, events and refreshes.
+- A queued `device.region` returns the proposal, as any queued call does, and the region keeps its
+  content until the approval. When the region or its layout is gone by then, the approved call fails
+  with `UNKNOWN_REGION`.
 - A live value runs in the device page, with no event from the server after it starts.
+
+The preview:
+
+- In the computer's local render, the bridge serves `nixie.data` and `nixie.image` from the bundled
+  files, and the render runs with the computer's network off.
 
 ## Decisions
 
