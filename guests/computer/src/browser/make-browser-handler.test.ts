@@ -35,6 +35,13 @@ async function setupTest() {
         <div style="height:3000px">tall</div><button id="low">Bottom button</button></body></html>`,
         { headers: { 'Content-Type': 'text/html' } },
       ),
+      '/tamper': new Response(
+        `<html><title>Tamper</title><body><script>
+        Object.defineProperty(window, 'outerHeight', { value: 5000 });
+        Object.defineProperty(document, 'visibilityState', { value: 'hidden' });
+        </script>page</body></html>`,
+        { headers: { 'Content-Type': 'text/html' } },
+      ),
       '/terms': new Response('<html><title>Terms</title><body>the terms</body></html>', {
         headers: { 'Content-Type': 'text/html' },
       }),
@@ -73,6 +80,16 @@ async function setupTest() {
     await rm(home, { recursive: true, force: true });
   });
 
+  const send = (request: ComputerRequest, refuse?: string) => {
+    refusal.reason = refuse ?? null;
+
+    return handle(
+      request,
+      () => Promise.resolve(),
+      () => Promise.resolve(),
+    );
+  };
+
   return {
     open: (url: string): ComputerRequest => ({
       op: 'open',
@@ -88,14 +105,17 @@ async function setupTest() {
     }),
     url: `http://pages.test:${String(site.port)}/`,
     scanned,
-    send: (request: ComputerRequest, refuse?: string) => {
-      refusal.reason = refuse ?? null;
+    send,
+    waitUntilTitle: async (title: string): Promise<void> => {
+      let current = '';
 
-      return handle(
-        request,
-        () => Promise.resolve(),
-        () => Promise.resolve(),
-      );
+      while (current !== title) {
+        await Bun.sleep(20);
+
+        const read = await send({ op: 'read', tab: 't1', mode: 'text' });
+
+        current = read.kind === 'page' ? read.page.title : '';
+      }
     },
   };
 }
@@ -399,13 +419,52 @@ test.skipIf(!hasChromium)('it clicks a point on the page and follows the link th
 
   expect(reply).toMatchObject({ kind: 'screen' });
 
+  await ctx.waitUntilTitle('Terms');
+
   const page = await ctx.send({ op: 'read', tab: 't1', mode: 'text' });
 
-  expect(page).toMatchObject({
-    kind: 'page',
-    page: { title: 'Terms' },
-  });
+  expect(page).toMatchObject({ kind: 'page', page: { title: 'Terms' } });
 });
+
+test.skipIf(!hasChromium)(
+  'it types into the focused field and submits it with a chord',
+  async () => {
+    const ctx = await setupTest();
+
+    await ctx.send(ctx.open(ctx.url));
+
+    const binding = { windowID: 'stub-browser', kind: 'browser' as const, tab: 't1', url: ctx.url };
+
+    await ctx.send({ op: 'screenAct', binding, act: { kind: 'keys', keys: 'tab' } });
+    await ctx.send({ op: 'screenAct', binding, act: { kind: 'keys', keys: 'tab' } });
+    await ctx.send({ op: 'screenAct', binding, act: { kind: 'text', text: 'Ada' } });
+    await ctx.send({ op: 'screenAct', binding, act: { kind: 'keys', keys: 'enter' } });
+    await ctx.waitUntilTitle('Done');
+
+    const page = await ctx.send({ op: 'read', tab: 't1', mode: 'text' });
+
+    expect(page).toMatchObject({ kind: 'page', page: { title: 'Done' } });
+  },
+);
+
+test.skipIf(!hasChromium)(
+  'it reads the window from outside the page, so a page cannot hide its address bar',
+  async () => {
+    const ctx = await setupTest();
+
+    await ctx.send(ctx.open(`${ctx.url}tamper`));
+
+    const bound = await ctx.send({
+      op: 'screenBind',
+      act: { kind: 'click', x: 20, y: 75, button: 'left' },
+    });
+
+    expect(bound).toMatchObject({
+      kind: 'screen-target',
+      target: { kind: 'browser', tab: 't1', url: `${ctx.url}tamper` },
+    });
+  },
+);
 
 test.skipIf(!hasChromium)(
   'it refuses a screen act on a page that moved since it was bound',

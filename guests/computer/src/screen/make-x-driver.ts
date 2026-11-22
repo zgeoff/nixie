@@ -1,6 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { buildXdotoolArgv } from './build-xdotool-argv';
 import { parseActiveWindow } from './parse-active-window';
+import { parseFrameExtents } from './parse-frame-extents';
 import { parseWindowClass } from './parse-window-class';
 import { parseWindowGeometry } from './parse-window-geometry';
 import { parseWindowIDs } from './parse-window-ids';
@@ -59,14 +60,18 @@ async function readWindows(options: XDriverOptions): Promise<DesktopWindows> {
   return { windows, activeID: parseActiveWindow(active) };
 }
 
-// A window that closed since the list was read, or is not on the display, is left out.
+// A window's rectangle includes its frame, so a point on a title bar or a close button belongs to the
+// window and never falls through to the one beneath. A window that closed since the list was read,
+// or is not on the display, is left out.
 async function readWindow(options: XDriverOptions, id: string): Promise<DesktopWindow | null> {
   try {
     const classText = await options.runTool(['xprop', '-id', id, 'WM_CLASS']);
     const infoText = await options.runTool(['xwininfo', '-id', id]);
+    const frameText = await options.runTool(['xprop', '-id', id, '_NET_FRAME_EXTENTS']);
 
     const windowClass = parseWindowClass(classText);
     const geometry = parseWindowGeometry(infoText);
+    const frame = parseFrameExtents(frameText);
 
     if (geometry === null || !geometry.isViewable) {
       return null;
@@ -75,10 +80,10 @@ async function readWindow(options: XDriverOptions, id: string): Promise<DesktopW
     return {
       id,
       kind: pickWindowKind(windowClass),
-      x: geometry.x,
-      y: geometry.y,
-      width: geometry.width,
-      height: geometry.height,
+      x: geometry.x - frame.left,
+      y: geometry.y - frame.top,
+      width: geometry.width + frame.left + frame.right,
+      height: geometry.height + frame.top + frame.bottom,
     };
   } catch {
     return null;

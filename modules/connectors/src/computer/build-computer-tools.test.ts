@@ -215,14 +215,14 @@ async function setupTest(options: SetupOptions) {
 
       return prepare(input, context);
     },
-    attempt: (tool: string, args: Record<string, string | number>) =>
+    attempt: (tool: string, args: Record<string, string | number>, destinations: string[] = []) =>
       built.connector.run({
         actionID: 'action-1',
         tool,
         arguments: args,
         attempt: 1,
         idempotencyKey: 'key',
-        destinations: [],
+        destinations,
       }),
   };
 }
@@ -765,7 +765,7 @@ test('it runs a queued click against the window its preparation saw', async () =
 
   await ctx.prepare('computer.screen_click', input);
 
-  const response = await ctx.attempt('computer.screen_click', input);
+  const response = await ctx.attempt('computer.screen_click', input, ['site.test']);
 
   expect([response, ctx.requests.at(-1)]).toStrictEqual([
     {
@@ -813,7 +813,7 @@ test('it refuses a queued click when the guest says the window moved', async () 
 
   await ctx.prepare('computer.screen_click', input);
 
-  const response = await ctx.attempt('computer.screen_click', input);
+  const response = await ctx.attempt('computer.screen_click', input, ['site.test']);
 
   expect(response).toStrictEqual({
     kind: 'refused',
@@ -829,7 +829,7 @@ test.each([
 
   await ctx.prepare('computer.screen_type', input);
 
-  const response = await ctx.attempt('computer.screen_type', input);
+  const response = await ctx.attempt('computer.screen_type', input, ['site.test']);
 
   expect([response.kind, ctx.requests.at(-1)]).toMatchObject(['success', { op: 'screenAct', act }]);
 });
@@ -843,3 +843,18 @@ test.each([[{ text: 'a', keys: 'enter' }], [{}]])(
     expect([prepared, ctx.requests]).toMatchObject([{ refusalCode: expect.any(String) }, []]);
   },
 );
+
+test('it refuses a queued screen act whose allowed host is not the one its binding saw', async () => {
+  const ctx = await setupTest({});
+
+  const input = { keys: 'enter' };
+
+  await ctx.prepare('computer.screen_type', input);
+
+  const response = await ctx.attempt('computer.screen_type', input, ['other.test']);
+
+  expect([response, ctx.requests.at(-1)?.op]).toStrictEqual([
+    { kind: 'refused', reason: expect.stringContaining('not the one the owner allowed') },
+    'screenBind',
+  ]);
+});

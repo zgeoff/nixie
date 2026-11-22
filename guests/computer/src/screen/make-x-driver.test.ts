@@ -18,6 +18,7 @@ function setupTest() {
       'Absolute upper-left X: 0\nAbsolute upper-left Y: 0\nWidth: 1280\nHeight: 800\nMap State: IsViewable',
     'xwininfo -id 0x400003':
       'Absolute upper-left X: 24\nAbsolute upper-left Y: 24\nWidth: 700\nHeight: 500\nMap State: IsViewable',
+    'xprop -id 0x400003 _NET_FRAME_EXTENTS': '_NET_FRAME_EXTENTS(CARDINAL) = 1, 1, 20, 1',
     'xwininfo -id 0x500001':
       'Absolute upper-left X: 0\nAbsolute upper-left Y: 0\nWidth: 10\nHeight: 10\nMap State: IsUnMapped',
   };
@@ -34,7 +35,7 @@ function setupTest() {
   return { ran, driver };
 }
 
-test('it reads the visible windows from bottom to top and the active one', async () => {
+test('it reads the visible windows with their frames from bottom to top and the active one', async () => {
   const ctx = setupTest();
 
   const read = await ctx.driver.readWindows();
@@ -42,7 +43,7 @@ test('it reads the visible windows from bottom to top and the active one', async
   expect(read).toStrictEqual({
     windows: [
       { id: '0x200004', kind: 'browser', x: 0, y: 0, width: 1280, height: 800 },
-      { id: '0x400003', kind: 'terminal', x: 24, y: 24, width: 700, height: 500 },
+      { id: '0x400003', kind: 'terminal', x: 23, y: 4, width: 702, height: 521 },
     ],
     activeID: '0x400003',
   });

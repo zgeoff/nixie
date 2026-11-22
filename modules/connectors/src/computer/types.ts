@@ -39,4 +39,7 @@ export interface ComputerCall {
 export interface ComputerAttempt {
   readonly tool: string;
   readonly arguments: JSONObject;
+
+  // the destinations the policy checked for the call
+  readonly destinations: readonly string[];
 }

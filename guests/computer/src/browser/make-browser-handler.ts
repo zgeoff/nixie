@@ -2,6 +2,7 @@ import type { AddressCheck } from '@heynixie/egress';
 import { makeAddressCheck, startCheckingProxy } from '@heynixie/egress';
 import type { ComputerHandler, ComputerReply } from '@heynixie/wire';
 import { match } from 'ts-pattern';
+import { evaluateIsolated } from '../screen/evaluate-isolated';
 import { handleScreenRequest } from '../screen/handle-screen-request';
 import type { DesktopDriver } from '../screen/types';
 import { actOnTab } from './act-on-tab';
@@ -123,10 +124,19 @@ export function makeBrowserHandler(options: BrowserHandlerOptions): ComputerHand
 
       drivers.set(browser, driver);
 
-      return handleScreenRequest(
-        { driver, tabs: browser.tabs, settleMs: screen.settleMs },
-        request,
+      const tabs = new Map(
+        [...browser.tabs].map(([id, tab]) => [
+          id,
+          {
+            page: {
+              url: () => tab.page.url(),
+              evaluate: (script: string) => evaluateIsolated(tab.page, script),
+            },
+          },
+        ]),
       );
+
+      return handleScreenRequest({ driver, tabs, settleMs: screen.settleMs }, request);
     }
 
     return handleRequest(browser, request);

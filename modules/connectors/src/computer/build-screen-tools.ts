@@ -425,6 +425,13 @@ export async function runScreenAct(
     );
   }
 
+  if (!isSameList(pickDestinations(binding), attempt.destinations)) {
+    return refuseComputer(
+      'SCREEN_CHANGED',
+      'the window this call was prepared for is not the one the owner allowed',
+    );
+  }
+
   const act =
     attempt.tool === 'computer.screen_click'
       ? readClickAct(clickArguments.parse(attempt.arguments))
@@ -451,6 +458,12 @@ export async function runScreenAct(
   }
 
   return { result: { focus: toFocusResult(options, outcome.reply.focus), isWatched: false } };
+}
+
+// Two calls with the same input share a key, so the binding found must be for the host that the
+// policy allowed.
+function isSameList(first: readonly string[], second: readonly string[]): boolean {
+  return first.length === second.length && first.every((item, index) => item === second[index]);
 }
 
 function readClickAct(input: z.infer<typeof clickArguments>): ScreenAct {
