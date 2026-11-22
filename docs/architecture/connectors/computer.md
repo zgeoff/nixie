@@ -137,9 +137,9 @@ tunnel, because the guest scans each request before it enters one.
 
 The shell runs each command in a network namespace of its own that holds a loopback and nothing
 else. A bridge there passes the command's proxy settings to a proxy on a Unix socket, so a raw
-socket or `curl --noproxy` finds no route out. The proxy refuses CONNECT, because it cannot read an
-encrypted tunnel, so the shell reaches plain HTTP sites only, and the browser fetches the rest. A
-command's processes end with the command.
+socket or `curl --noproxy` finds no route out. The shell's proxy refuses CONNECT, because it cannot
+read an encrypted tunnel, so the shell reaches plain HTTP sites only, and the browser fetches the
+rest. A command's processes end with the command.
 
 Nixie scans the URL of a click, a fill and a run the same way, with no typed-URL exemption, because
 a queued action has no message to exempt it.
