@@ -88,9 +88,9 @@ Before you start:
    ```
 
    Expect: the first snapshot shows the text "Forgotten" in place of the picture and a line that
-   starts with "Key backups". The query's `forgotten` is 2, one for the image's call record and one
-   for its result record. The last snapshot lists the button "Open <second>" and no button "Open
-   <first>".
+   starts with "Key backups". The query's `forgotten` is 3: the image's call record, its result
+   record, and the result of the `image.list` call that `--draw` queues, which quotes the image's
+   prompt. The last snapshot lists the button "Open <second>" and no button "Open <first>".
 
 ## End state
 
@@ -101,4 +101,5 @@ Before you start:
 - Step 4: the lightbox of the edit shows "Edited from" and a link named for the first image. The
   link opens the first image's lightbox.
 - Step 5: the lightbox shows "Forgotten" and a "Key backups" line, the call and result records of
-  the first image are forgotten, and the grid lists the edit but not the first image.
+  the first image and the list result that quotes it are forgotten, and the grid lists the edit but
+  not the first image.
