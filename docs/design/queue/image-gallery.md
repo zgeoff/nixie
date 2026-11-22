@@ -1,16 +1,17 @@
 # The images page
 
 - **Status:** draft
+- **Work items:** [the images page](https://linear.app/zgeoff/issue/GEO-2802)
 
 The assistant draws and edits pictures with the
 [image tools](../../architecture/connectors/images.md), and you see each one only in the
 conversation where it was made. The web client gains an images page at `/images`: a grid of the
 stored images, newest first, showing pinned images until you tick "Show all". A tap opens an image
 in a lightbox with its name, its prompt, when it was made and a link to the image it was edited
-from, so you can walk back through the passes, and the lightbox carries the same forget control as
-the rest of the client.
+from, so you can walk back through the passes. A forget from the lightbox takes the whole image: its
+picture, its prompt and its name.
 
-The page reads the stored images through 3 new API calls in an `images` namespace.
+The page reads and forgets the stored images through 4 new API calls in an `images` namespace.
 
 ## Shape
 
@@ -19,20 +20,21 @@ flowchart LR
   page["/images grid"] -->|"images.list"| api[api module]
   page -->|"images.readBytes, thumbnail"| api
   lightbox[lightbox] -->|"images.read, images.readBytes full"| api
-  lightbox -->|"conversation.forget"| api
-  api --> connectors[connectors module: images table and result records]
+  lightbox -->|"images.forget"| api
+  api --> connectors[connectors module: images table and image records]
 ```
 
 ## Contracts
 
-The api module serves the 3 calls. The connectors module exports the reads they need of the `images`
-table, the result records and the names, as it does for `files.*`.
+The api module serves the 4 calls. The connectors module exports the reads they need of the `images`
+table, the result records and the names, as it does for `files.*`, and the lookup of the records
+that `images.forget` takes.
 
 ### The image in a reply
 
-Each call returns an image in this shape. Every image, an import included, has one `tool_result`
-record, which holds its bytes and its prompt. `thread` and `sequence` name that record, so the
-forget control can take it.
+Each read returns an image in this shape. Every image, an import included, has one `tool_called`
+record, one `tool_result` record that holds its bytes and its prompt, and any number of
+`image.named` records.
 
 ```ts
 // libs/contract
@@ -45,10 +47,6 @@ const galleryImageSchema = z.object({
   isPinned: z.boolean(),
   isForgotten: z.boolean(), // true when a forget made the result record unreadable; always false in images.list
   createdAt: z.date(), // created_at of the images row
-
-  // the tool_result record that holds the bytes; a forgotten image keeps both
-  thread: threadSchema,
-  sequence: sequenceSchema,
 });
 ```
 
@@ -58,7 +56,7 @@ const galleryImageSchema = z.object({
 const page = await nixie.images.list({ pinnedOnly: true });
 // → { images: [{ image: 'i7', name: 'harbour at dusk', prompt: 'a harbour at dusk, in oil paint',
 //      from: 'i4', source: 'draw', isPinned: true, isForgotten: false,
-//      createdAt: new Date('2026-11-20T18:04:00Z'), thread: 'conversation', sequence: 48120 }],
+//      createdAt: new Date('2026-11-20T18:04:00Z') }],
 //    nextCursor: '812' }
 ```
 
@@ -108,6 +106,24 @@ images: {
 }
 ```
 
+### Forgetting an image
+
+```ts
+const forgotten = await nixie.images.forget({ clientActionID, image: 'i7' });
+// → { forgottenAt: new Date('2026-11-22T09:12:00Z'), backup: { state: 'pending' } }
+```
+
+```ts
+// libs/contract
+images: {
+  // …list, read, readBytes
+  forget: checkedAction // a device session and a client action ID, as conversation.forget takes
+    .errors({ UNKNOWN_IMAGE })
+    .input(z.object({ clientActionID: clientActionIDSchema, image: z.string().min(1).max(100) }))
+    .output(z.object({ forgottenAt: z.date(), backup: forgetBackupSchema })),
+}
+```
+
 ## Constraints
 
 ### The API
@@ -145,12 +161,24 @@ images: {
 
 ### Forgetting an image
 
-- The forget control in the lightbox runs `conversation.forget` on the image's `tool_result` record,
-  on any thread, a task's included, and first asks, as every forget control does.
-- Each result record holds one image, so the forget takes that image alone. The confirmation says
-  that the picture and the prompt stored with it are forgotten, that edits made from it keep their
-  pictures, and that the prompt in the assistant's request and the image's name stay, as the open
-  question below explains.
+- `images.forget` takes the image's `tool_called` record, its `tool_result` record and every
+  `image.named` record that names it, on whichever thread each one sits, as one forget. It runs the
+  2-part forget of a [record forget](../../architecture/channels/api.md#forgetting-a-record): one
+  transaction commits a `record.forget_started` for each record, and the cleanup deletes every key,
+  runs the session cleanup and commits a `record.forgotten` for each record.
+- The answer's `backup` is `failed` when any record's state is failed, else `unknown` when any is
+  unknown, else `pending` when any is pending, else the state they share. A retry with the same
+  client action ID finishes a cleanup that a failed call left.
+- A forget of an image that is already forgotten forgets whatever of its records still has a key,
+  and answers with the time of the first forget when none does.
+- The forget keeps the image's row, as the
+  [image store](../../architecture/connectors/images.md#storage) does for every forget, so the edit
+  chain keeps its shape. An edit made from a forgotten pass keeps its picture and its "Edited from"
+  link. `images.read` of that pass returns its `from`, so the walk goes on through it to the passes
+  before it.
+- The forget control in the lightbox first asks, as every forget control does. The confirmation says
+  that the picture, its prompt, its name and the assistant's request for it are forgotten, and that
+  edits made from it keep their pictures.
 - After the forget, the lightbox shows the line with the key backup state in place of the control,
   the client drops the image's cached bytes, and the grid drops the image and reads `images.list`
   again.
@@ -170,12 +198,13 @@ images: {
 ## Decisions
 
 - **Pinned images by default.** A pin marks the images worth keeping; "Show all" holds every pass.
-- **The forget takes the result record alone.** The files page forgets a code-run file the same way.
+- **A forget takes the whole image.** The call record holds the prompt and the `image.named` records
+  hold the name, and no other control in the client forgets either kind.
 
 ## Builder decides
 
 - The layout of the grid and the lightbox, and how the lightbox reuses the image viewer of the files
-  page.
+  page and the forget control of the conversation.
 - How the tile shows a pin, a name and an edit.
 - The wording of each message and confirmation.
 - The WebP quality of a thumbnail, and how many thumbnails the server encodes at once.
@@ -187,11 +216,3 @@ images: {
   you ask, and the page shows the change on its next read.
 - Downloading an image, and sending one into the chat, which
   [`file.send`](../../architecture/connectors/code-tool.md#sending-a-file) does.
-
-## Open questions
-
-- **Does a forget from the page also forget the call record and the name?** The `tool_called` record
-  of a draw holds the prompt in its input, and each `image.named` record holds a name, so both
-  outlive a forget of the result record. No control in the client forgets a `tool_called` or an
-  `image.named` record. The owner settles it. Until then, the page forgets the result record alone,
-  and the confirmation says so.
