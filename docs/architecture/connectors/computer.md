@@ -23,10 +23,10 @@ The kind `computer` has public egress, no grant and no tool route. A deployment 
 `computer-desktop`, and recovery keeps it. The [sandbox sizes](sandboxes.md#sizes) hold its memory
 and disk. The image `nixie-computer` comes from `guests/computer`.
 
-The desktop is Xvfb for the display, openbox as the window manager, xterm as the terminal and x11vnc
-as a VNC server. The display is 1280 by 800. The VNC server listens on the loopback of the sandbox
-only, with every selection and clipboard exchange off and in view-only mode, so it ignores every key
-and pointer event. [Watching](#watching) shows how the user's client reaches it.
+The desktop runs Xvfb as the display, openbox as the window manager, xterm as the terminal and
+x11vnc as a VNC server. The display is 1280 by 800. The VNC server listens only on the sandbox's
+loopback, in view-only mode with selection and clipboard exchange off, so it ignores every key and
+pointer event. Read [Watching](#watching) for how the user's client reaches it.
 
 Chromium runs in the time zone of `time.default_zone` in the config, so a page that shows "today" or
 an opening hour shows the user's. Nixie hands the zone to the guest when it starts the guest, so a
@@ -250,13 +250,12 @@ connector side, `openComputerWatch`, does the rest for each socket:
   never takes the turn for longer than that start, so a call never answers `BUSY` because of one.
 - The relay lets through only the messages that a viewer needs: the handshake, `SetPixelFormat`,
   `SetEncodings` and `FramebufferUpdateRequest`. It drops `KeyEvent`, `PointerEvent` and
-  `ClientCutText` without a trace, and closes the socket and the stream on a message that is
-  malformed, unknown or past a size cap, including a `SetPixelFormat` with an invalid pixel format.
-  It reads the length of a `ClientCutText` as signed, because a viewer that speaks the extended
-  clipboard format sends a negative one. While the sandbox wakes, it queues the viewer's bytes up to
-  a cap far above what a viewer sends before it hears from the desktop, and closes the socket past
-  it. The viewer is view-only twice over: the client sets it, and neither the relay nor the VNC
-  server accepts input.
+  `ClientCutText` silently, and closes the socket and the stream on a message that is malformed,
+  unknown or past a size cap, including a `SetPixelFormat` with an invalid pixel format. It reads
+  the length of a `ClientCutText` as signed, because a viewer that speaks the extended clipboard
+  format sends a negative one. While the sandbox wakes, it queues the viewer's bytes up to a cap far
+  above what a viewer sends before it hears from the desktop, and closes the socket past it. The
+  client sets the viewer to view-only, and neither the relay nor the VNC server accepts input.
 
 ## The checking proxy
 
@@ -298,8 +297,8 @@ terminal and no address bar, so the guest's tests cover those refusals.
 The test build also has no VNC server. Its guest, `guests/computer/src/test-main.ts`, serves a watch
 from an in-process stand-in that speaks the protocol's handshake and answers each update request
 with one fixed picture. Only the test build's entry imports it, so the release image holds none of
-it. The imp suite runs the real server, as the
-[imp isolation runbook](../../runbooks/imp-isolation-tests.md) describes.
+it. The imp suite runs the real server, set up as in the
+[imp isolation runbook](../../runbooks/imp-isolation-tests.md).
 
 ## Memory kills
 

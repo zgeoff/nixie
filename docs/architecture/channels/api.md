@@ -90,16 +90,16 @@ Enrolment, code issue, revoke, message send, record forget, the changes of the
 task definition change, and each task control share one table of client action IDs, which holds the
 first result of each action and a hash of its input. A retry with the same ID and input gets the
 first result, and the same ID with another procedure, input or caller gets
-`CLIENT_ACTION_ID_REUSED`. Three results hold secrets that nixie keeps only as hashes, or not at
-all, so their retries answer with fresh values that replace the first:
+`CLIENT_ACTION_ID_REUSED`. These results hold secrets that nixie keeps only as hashes, or not at
+all, so a retry gets a fresh value that replaces the first:
 
 - The API answers an enrolment retry with the same session and a fresh token, and the first token
   stops working. It works only while the code it used would still work.
 - The API answers a code issue retry with a fresh code that keeps the first code's lapse time, so
   one action never leaves 2 codes working. Once the first code is used or lapsed the action is over,
   and a retry gets `CLIENT_ACTION_ID_REUSED`.
-- The API answers a `computer.watch` retry with a fresh watch address. The stored result holds no
-  address, only that one was minted.
+- The API answers a `computer.watch` retry with a fresh watch address. The stored result records
+  that an address was minted and holds none.
 
 ## Watching the computer
 
@@ -115,11 +115,11 @@ random bytes that live in the API's memory for
 [a short lifetime](../../../modules/api/src/computer/create-watch-tickets.ts) and open one socket.
 
 - The upgrade redeems the ticket, which deletes it, and then checks that the session cookie of the
-  upgrade request resolves to the session that minted it. A bearer token never counts, because a
-  browser's socket sends the cookie. Any failure answers a bare 401 and keeps the reason out of the
-  answer.
+  upgrade request resolves to the session that minted it. Only the cookie counts, because a
+  browser's socket sends it and never a bearer token. Any failure answers a bare 401 and keeps the
+  reason out of the answer.
 - The ticket is never stored, because a retry mints a fresh one, and never logged: a refusal logs
-  the route and no query.
+  the route without the query.
 - The socket accepts binary messages only, up to a size cap, and closes on text with code 1003. It
   relays both ways through [the computer's watch](../connectors/computer.md#watching).
 - The socket closes with code 1008 when its session is revoked or lapses, including while the

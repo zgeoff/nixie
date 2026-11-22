@@ -329,10 +329,10 @@ a blob and never navigates to them.
 ## The computer page
 
 `/computer` shows the assistant's desktop live, view only. In the browser, it calls `computer.watch`
-with a new client action ID, loads the viewer library, opens the socket the answer names and hands
-the socket to the viewer. The route's loader never calls the API for the watch, so a server render
-opens no socket. The viewer is noVNC, loaded with a dynamic import in the browser only, because the
-library reads the window when it loads.
+with a new client action ID, loads the viewer library, opens the socket at the address in the answer
+and hands the socket to the viewer. The route's loader never calls the API for the watch, so a
+server render opens no socket. The viewer is noVNC, loaded with a dynamic import in the browser
+only, because the library reads the window when it loads.
 
 - The viewer runs with `viewOnly` on, `scaleViewport` on and `resizeSession` off, so the picture
   scales to fit and a viewer never resizes the desktop or sends a key, a pointer move or a clipboard
@@ -341,9 +341,9 @@ library reads the window when it loads.
   waking" while the socket is open and no picture has come, and "Watching the computer. You can look
   but not touch." once the viewer has drawn the desktop. The viewer's connect event comes before any
   picture, so the page polls the viewer's canvas for a drawn pixel.
-- A stream that ends after a picture says so, and one that ends before a picture or fails to start
-  says "The computer can’t be watched right now." Both show Watch again, which asks for a new
-  ticket. A server with no computer says so and shows no button.
+- A stream that ends after a picture shows that it ended, and one that ends before a picture or
+  fails to start says "The computer can’t be watched right now." Both show Watch again, which asks
+  for a new ticket. A server with no computer shows no button and says it has none.
 - Leaving the page closes the socket and stops the viewer.
 
 ## The app shell
