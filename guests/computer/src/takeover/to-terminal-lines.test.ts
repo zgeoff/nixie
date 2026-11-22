@@ -22,3 +22,12 @@ test('it keeps the last 32 lines', () => {
 test('it returns an empty string for an empty log', () => {
   expect(toTerminalLines('')).toBe('');
 });
+
+test.each([
+  ['a clear-screen sequence', 'old output\u001B[2Jnew prompt'],
+  ['a clear with scrollback', 'old output\u001B[3Jnew prompt'],
+  ['the home and erase that clear prints', 'old output\u001B[H\u001B[Jnew prompt'],
+  ['a full reset', 'old output\u001Bcnew prompt'],
+])('it drops what %s wiped from the screen', (_name, raw) => {
+  expect(toTerminalLines(raw)).toBe('new prompt');
+});

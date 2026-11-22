@@ -9,10 +9,18 @@ const escapePattern = new RegExp(
   'gu',
 );
 
-// The last lines that a terminal's log shows: its escape sequences gone, a carriage return taking the
-// line back to its start, and a backspace taking a character off.
+// A sequence that wipes the screen: erase all or erase with scrollback, a full reset, and the home
+// then erase below that `clear` prints
+const resetPattern = new RegExp(`${escape}(?:\\[[23]J|c|\\[(?:1;1)?H${escape}\\[0?J)`, 'gu');
+
+// The last lines that a terminal's log shows: what a clear or a reset wiped gone, its escape
+// sequences gone, a carriage return taking the line back to its start, and a backspace taking a
+// character off.
 export function toTerminalLines(raw: string): string {
-  const text = raw.replaceAll(escapePattern, '');
+  const resets = [...raw.matchAll(resetPattern)];
+  const lastReset = resets.at(-1);
+  const shown = lastReset === undefined ? raw : raw.slice(lastReset.index + lastReset[0].length);
+  const text = shown.replaceAll(escapePattern, '');
   const lines: string[] = [];
   let line: string[] = [];
   let column = 0;
