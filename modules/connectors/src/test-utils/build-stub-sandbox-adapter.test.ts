@@ -36,7 +36,7 @@ test('it runs each spawn as a guest behind frames and records it', async () => {
 
   expect(first).toStrictEqual({ done: false, value: encoder.encode('echo') });
   expect(exit).toMatchObject({ code: 0, signal: null });
-  expect(adapter.spawned).toStrictEqual([{ sandboxID: sandbox.id, argv: ['fetcher'] }]);
+  expect(adapter.spawned).toStrictEqual([{ sandboxID: sandbox.id, argv: ['fetcher'], env: {} }]);
 });
 
 test('it takes a write that the guest never reads, as a pipe buffers it', async () => {

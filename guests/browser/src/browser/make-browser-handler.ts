@@ -15,6 +15,7 @@ export interface BrowserHandlerOptions {
   readonly home: string;
   readonly resolveHost: (host: string) => Promise<readonly string[]>;
   readonly deniedRanges: readonly string[];
+  readonly timeZone: string;
 
   // replaces the check of the ranges, for a test that serves a page from the loopback
   readonly checkAddress?: AddressCheck;
@@ -59,6 +60,7 @@ export function makeBrowserHandler(options: BrowserHandlerOptions): ComputerHand
       home: options.home,
       proxyPort,
       gate,
+      timeZone: options.timeZone,
       ...(options.executablePath === undefined ? {} : { executablePath: options.executablePath }),
     });
 

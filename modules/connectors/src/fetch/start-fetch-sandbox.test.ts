@@ -146,8 +146,8 @@ test('it runs two fetches in a row in two different sandboxes, and destroys each
   expect(first).not.toBe(second);
 
   expect(adapter.spawned).toStrictEqual([
-    { sandboxID: first, argv: ['bun', '/app/fetch.js'] },
-    { sandboxID: second, argv: ['bun', '/app/fetch.js'] },
+    { sandboxID: first, argv: ['bun', '/app/fetch.js'], env: {} },
+    { sandboxID: second, argv: ['bun', '/app/fetch.js'], env: {} },
   ]);
 
   expect(adapter.destroyed).toStrictEqual([first, second]);

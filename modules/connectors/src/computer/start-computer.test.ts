@@ -83,6 +83,7 @@ function setupTest(options: SetupOptions = {}) {
     images: { browser: 'browser-image', shell: 'shell-image' },
     argv: { browser: ['guest'], shell: ['guest'] },
     deniedRanges: [],
+    timeZone: 'Pacific/Auckland',
     logger: () => {},
     clock,
     turnWaitMs: 100,
@@ -400,4 +401,20 @@ test('it destroys a sandbox at a reset, and the next call makes an empty one', a
 
   expect(ctx.stub.destroyed).toHaveLength(1);
   expect(ctx.stub.created).toHaveLength(2);
+});
+
+test.each([
+  ['browser', { NIXIE_DENIED_RANGES: '', NIXIE_TIME_ZONE: 'Pacific/Auckland' }],
+  ['shell', { NIXIE_DENIED_RANGES: '' }],
+] as const)('it starts the %s guest with the environment %j', async (kind, env) => {
+  const ctx = setupTest();
+
+  await ctx.computer.call(kind, {
+    request: ctx.run('ls'),
+    scan: ctx.pass,
+    scanText: ctx.pass,
+    timeoutMs: 5000,
+  });
+
+  expect(ctx.stub.spawned.map((spawned) => spawned.env)).toStrictEqual([env]);
 });

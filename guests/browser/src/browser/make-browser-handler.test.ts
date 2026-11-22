@@ -47,6 +47,7 @@ async function setupTest() {
   const handle = makeBrowserHandler({
     home,
     deniedRanges: [],
+    timeZone: 'UTC',
     checkAddress: () => true,
     resolveHost: () => Promise.resolve(['127.0.0.1']),
   });
