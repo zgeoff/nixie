@@ -103,7 +103,8 @@ A `computer.run` is its own effect, `computer_run`, because the shell reaches th
   matches one of its patterns.
 - The starter rule `allow-read-commands` allows `cat`, `df`, `du`, `file`, `find`, `grep`, `head`,
   `ls`, `pwd`, `stat`, `tail`, `wc` and `which`, and pipes and chains of them. It excludes the
-  `find` actions that run a command, delete or write a file, and `file -C`, which writes a file.
+  `find` actions that run a command, delete or write a file, and every option of `file`, because
+  `file -z` can run a decompressor and `file -p` resets a file's access time.
 - Nixie counts each call that changes the shell's disk: `write_file`, `download` and `run`. A run
   that waits for a decision keeps the count from when it was proposed, and returns `FILES_CHANGED`
   without running when the count moved. An approved command therefore never runs a script that

@@ -153,7 +153,7 @@ test('it renders every rule of the starter template as one sentence', async () =
       'allow-read-commands',
       [
         '**Allow** `computer.run` when every effect it has is `computer_run`, `command` matches none',
-        'of `file *-*C*`, `file *--co*`, `find *-delete*`, `find *-exec*`, `find *-fls*`,',
+        'of `file * -*`, `file -*`, `find *-delete*`, `find *-exec*`, `find *-fls*`,',
         '`find *-fprint*` or `find *-ok*` and `command` matches `cat *`, `df *`, `du *`, `file *`,',
         '`find *`, `grep *`, `head *`, `ls *`, `pwd *`, `stat *`, `tail *`, `wc *` or `which *`.',
       ].join(' '),

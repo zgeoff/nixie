@@ -48,8 +48,8 @@ allow-read-commands:
     - arg: command
       op: excludes
       value:
-        - file *--co*
-        - file *-*C*
+        - file * -*
+        - file -*
         - find *-delete*
         - find *-exec*
         - find *-fls*
@@ -57,7 +57,7 @@ allow-read-commands:
         - find *-ok*
   note: >-
     These commands only read. Each command on the line must be one of them, with no redirection or
-    substitution, and find and file lose the options that run, delete or write.
+    substitution. find loses the actions that run, delete or write, and file takes no options.
 
 allow-narrowing:
   outcome: allow

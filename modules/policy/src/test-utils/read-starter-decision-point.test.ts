@@ -79,6 +79,7 @@ test.each<[string]>([
   ['grep -rn todo .'],
   ['du -sh .'],
   ['file photo.png'],
+  ['file my-photo.png notes.txt'],
   ['stat notes.txt'],
   ["find . -name '*.md'"],
   ['find . -type f -newer notes.txt -print'],
@@ -149,7 +150,10 @@ test.each<[string, string]>([
   ['file -C -m magic', 'file with -C, which writes a compiled magic file'],
   ['file -bC -m magic', 'file with -C among other short flags'],
   ['file --compile -m magic', 'file with --compile'],
-  ['file --comp -m magic', 'file with an abbreviated --compile'],
+  ['file -zS archive.Z', 'file with -z, which can run a decompressor'],
+  ['file photo.png -z', 'file with an option after a path'],
+  ['file -p notes.txt', 'file with -p, which resets the access time'],
+  ['file --preserve-date notes.txt', 'file with --preserve-date'],
 ])('it asks before the command %s, %s, under the starter rules', async (command) => {
   const decide = readStarterDecisionPoint(() => ({
     effects: ['computer_run'],
