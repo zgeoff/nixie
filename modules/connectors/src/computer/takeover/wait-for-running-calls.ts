@@ -2,42 +2,61 @@ import type { Clock } from '@heynixie/clock';
 import { labelAfter } from '../label-after';
 
 export interface RunningCall {
-  readonly endsAtMs: number;
+  // when the call gives up at the latest: its turn wait first, then its own timeout from the moment
+  // it takes its turn
+  endsAtMs: number;
+
+  // settles once the call has been answered
+  readonly ended: Promise<void>;
 }
 
 export interface RunningCalls {
   readonly clock: Clock;
   readonly running: ReadonlySet<RunningCall>;
-
-  // what runs when the last call ends
-  readonly drains: (() => void)[];
 }
 
-// Waits until the calls from the tools have ended, up to the longest of their own limits, and says
-// whether they ended.
+// Waits until the calls running now have ended, up to the latest of their own limits, and says
+// whether they ended. A call that starts later is not waited for.
 export async function waitForRunningCalls(calls: RunningCalls): Promise<boolean> {
-  if (calls.running.size === 0) {
+  const waiting = [...calls.running];
+
+  if (waiting.length === 0) {
     return true;
   }
 
-  const endTimes = [...calls.running].map((call) => call.endsAtMs);
-  const latestEndMs = Math.max(...endTimes);
-  const drained = Promise.withResolvers<void>();
-
-  calls.drains.push(() => {
-    drained.resolve();
-  });
+  const latestEndMs = Math.max(...waiting.map((call) => call.endsAtMs));
 
   const gave = new AbortController();
 
-  const waitMs = Math.max(0, latestEndMs - calls.clock.now());
+  // a call that takes its turn late moves its end, so the wait reads the limit again after each sleep
+  const allEnded = Promise.all(waiting.map((call) => call.ended));
+  const pastLimit = sleepPastLimit(calls.clock, waiting, latestEndMs, gave.signal);
 
   const outcome = await Promise.race([
-    labelAfter(drained.promise, 'drained'),
-    labelAfter(calls.clock.sleep(waitMs, gave.signal), 'late'),
+    labelAfter(allEnded, 'drained'),
+    labelAfter(pastLimit, 'late'),
   ]);
 
   gave.abort();
 
   return outcome === 'drained';
+}
+
+async function sleepPastLimit(
+  clock: Clock,
+  waiting: readonly RunningCall[],
+  firstLimitMs: number,
+  signal: AbortSignal,
+): Promise<void> {
+  let limitMs = firstLimitMs;
+
+  while (!signal.aborted) {
+    await clock.sleep(Math.max(0, limitMs - clock.now()), signal);
+
+    limitMs = Math.max(...waiting.map((call) => call.endsAtMs));
+
+    if (clock.now() >= limitMs) {
+      return;
+    }
+  }
 }

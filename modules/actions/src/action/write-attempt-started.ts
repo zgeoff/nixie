@@ -11,6 +11,10 @@ export type AttemptStart = 'started' | 'barred' | 'past_deadline';
 export interface AttemptStartOptions {
   // whether a barred attempt releases its lease; a step that holds the task's lease keeps it
   readonly resetWhenBarred: boolean;
+
+  // The tool name prefixes whose actions wait. The start reads them last, so a hold that begins after
+  // the policy check bars the attempt before it records.
+  readonly readHeldToolPrefixes?: (() => readonly string[]) | undefined;
 }
 
 export function isPastDeadline(action: Pick<ActionRow, 'deadline_at'>, now: number): boolean {
@@ -37,15 +41,17 @@ export async function writeAttemptStarted(
         .selectFrom('actions')
         .innerJoin('tasks', 'tasks.task_id', 'actions.task_id')
         .select((eb) => eb.or([buildCancelledCheck(eb), buildHeldCheck(eb)]).as('is_barred'))
-        .select(['actions.held_by_proposal_id', 'actions.deadline_at'])
+        .select(['actions.held_by_proposal_id', 'actions.deadline_at', 'actions.tool'])
         .where('actions.action_id', '=', attempt.action.action_id)
         .executeTakeFirstOrThrow();
 
       const isPaused = await probeTaskPaused(tx, attempt.action.task_id);
 
       const isBarred = action.is_barred === 1 || action.is_barred === true;
+      const heldPrefixes = options.readHeldToolPrefixes?.() ?? [];
+      const isToolHeld = heldPrefixes.some((prefix) => action.tool.startsWith(prefix));
 
-      if (isBarred || isPaused || action.held_by_proposal_id !== null) {
+      if (isBarred || isPaused || isToolHeld || action.held_by_proposal_id !== null) {
         if (options.resetWhenBarred) {
           await resetLease(tx, attempt.lease);
         }

@@ -19,13 +19,13 @@ export function claimAction(
   context: TasksContext,
   options: ClaimActionOptions,
 ): Promise<Lease | null> {
-  const held = options.readHeldToolPrefixes?.() ?? [];
-
   return claimLease(context, {
     kind: 'action',
     holder: options.holder,
     durationMs: options.leaseMs,
     readCandidate: async (tx, now) => {
+      const held = options.readHeldToolPrefixes?.() ?? [];
+
       const row = await tx
         .$extendTables<ActionsTables>()
         .selectFrom('actions')

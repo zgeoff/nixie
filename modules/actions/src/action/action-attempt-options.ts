@@ -7,4 +7,7 @@ export interface ActionAttemptOptions {
 
   // Decides the action again before each attempt. With none, every attempt goes ahead.
   readonly checkAttempt?: AttemptCheck;
+
+  // The tool name prefixes whose actions wait, read again when an attempt starts.
+  readonly readHeldToolPrefixes?: () => readonly string[];
 }

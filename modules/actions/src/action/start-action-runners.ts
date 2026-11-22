@@ -49,6 +49,9 @@ export function startActionRunners(
         connectors: options.connectors,
         leaseMs,
         ...(options.checkAttempt === undefined ? {} : { checkAttempt: options.checkAttempt }),
+        ...(options.readHeldToolPrefixes === undefined
+          ? {}
+          : { readHeldToolPrefixes: options.readHeldToolPrefixes }),
       }),
     onError: options.onError,
   });

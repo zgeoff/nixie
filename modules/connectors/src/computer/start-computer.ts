@@ -7,10 +7,10 @@ import { buildTabs } from './build-tabs';
 import type { ComputerTabs } from './build-tabs';
 import { computerOwner, legacyComputerOwners } from './computer-owner';
 import { computerFolders, copyComputerFolder } from './copy-computer-folder';
-import { labelAfter } from './label-after';
 import type { GuestSession, OutOfCallScans } from './make-guest-session';
 import { makeGuestSession } from './make-guest-session';
 import { moveOldSandboxes, wakeOld } from './move-old-sandboxes';
+import { takeTurn } from './take-turn';
 import { makeGuestHooks } from './takeover/make-guest-hooks';
 import { makeTakeover } from './takeover/make-takeover';
 import { trackRunningCall } from './takeover/track-running-call';
@@ -116,7 +116,6 @@ interface ComputerState {
 
   // the calls from the tools, which a take-over waits for
   readonly running: Set<RunningCall>;
-  readonly drains: (() => void)[];
   takeover: Takeover | null;
 }
 
@@ -146,7 +145,6 @@ export function startComputer(options: ComputerOptions): Computer {
     tabCount: 0,
     watches: { count: 0 },
     running: new Set(),
-    drains: [],
     takeover: null,
   };
 
@@ -170,7 +168,7 @@ export function startComputer(options: ComputerOptions): Computer {
     logger: options.logger,
     idleMs: options.takeover?.idleMs ?? defaultTakeoverIdleMs,
     records: options.takeover?.records ?? noTakeoverRecords,
-    waitForCalls: () => waitForRunningCalls({ ...state, clock: context.clock }),
+    waitForCalls: () => waitForRunningCalls({ running: state.running, clock: context.clock }),
     ...hooks,
   });
 
@@ -261,7 +259,7 @@ async function sleepAfterIdle(
     return;
   }
 
-  const release = await takeTurn(state, 0, context);
+  const release = await takeTurn(state, 0, context.clock);
 
   if (release === null) {
     return;
@@ -282,47 +280,6 @@ async function sleepAfterIdle(
   } finally {
     release();
   }
-}
-
-// Waits for the calls ahead, up to the limit. A call that times out leaves its place in the chain,
-// which frees when the calls ahead end.
-async function takeTurn(
-  state: ComputerState,
-  limitMs: number,
-  context: ComputerContext,
-): Promise<(() => void) | null> {
-  const previous = state.turn;
-  const ended = Promise.withResolvers<void>();
-
-  state.turn = ended.promise;
-
-  const gave = new AbortController();
-
-  const outcome = await Promise.race([
-    labelAfter(previous, 'turn'),
-    labelAfter(context.clock.sleep(limitMs, gave.signal), 'late'),
-  ]);
-
-  gave.abort();
-
-  if (outcome === 'late') {
-    void resolveAfter(previous, ended);
-
-    return null;
-  }
-
-  return () => {
-    ended.resolve();
-  };
-}
-
-async function resolveAfter(
-  waiting: Promise<unknown>,
-  ended: PromiseWithResolvers<void>,
-): Promise<void> {
-  await waiting;
-
-  ended.resolve();
 }
 
 // A guest that stops takes the desktop's windows with it, so a hold on it ends.
@@ -364,7 +321,11 @@ async function readWatchGuest(
     return state.guest;
   }
 
-  const release = await takeTurn(state, context.options.turnWaitMs ?? defaultTurnWaitMs, context);
+  const release = await takeTurn(
+    state,
+    context.options.turnWaitMs ?? defaultTurnWaitMs,
+    context.clock,
+  );
 
   if (release === null) {
     return null;
@@ -511,17 +472,22 @@ async function runHoldCall(context: ComputerContext, request: ComputerCall['requ
   return await runInTurnOrBusy(context, { request, timeoutMs: 30_000, ...scans });
 }
 
-async function runInTurnOrBusy(context: ComputerContext, call: ComputerCall): Promise<CallResult> {
+async function runInTurnOrBusy(
+  context: ComputerContext,
+  call: ComputerCall,
+  onTurn?: () => void,
+): Promise<CallResult> {
   const release = await takeTurn(
     context.state,
     context.options.turnWaitMs ?? defaultTurnWaitMs,
-    context,
+    context.clock,
   );
 
   if (release === null) {
     return { status: 'busy' };
   }
 
+  onTurn?.();
   context.state.idle?.abort();
 
   try {
@@ -575,12 +541,16 @@ async function runInTurn(context: ComputerContext, call: ComputerCall): Promise<
 }
 
 // A call from a tool counts as running from the moment it asks for its turn, until it is answered,
-// so a take-over waits for it.
+// so a take-over waits for it. Its limit is the turn wait, and then its own timeout from the moment
+// it takes the turn.
 function runCall(context: ComputerContext, call: ComputerCall): Promise<CallResult> {
   const turnWaitMs = context.options.turnWaitMs ?? defaultTurnWaitMs;
-  const running: RunningCall = { endsAtMs: context.clock.now() + turnWaitMs + call.timeoutMs };
 
-  return trackRunningCall(context.state, running, () => runInTurnOrBusy(context, call));
+  return trackRunningCall(context.state.running, context.clock.now() + turnWaitMs, (running) =>
+    runInTurnOrBusy(context, call, () => {
+      running.endsAtMs = context.clock.now() + call.timeoutMs;
+    }),
+  );
 }
 
 async function settleMove(context: ComputerContext): Promise<MoveGate> {
@@ -591,7 +561,7 @@ async function settleMove(context: ComputerContext): Promise<MoveGate> {
   const release = await takeTurn(
     context.state,
     context.options.turnWaitMs ?? defaultTurnWaitMs,
-    context,
+    context.clock,
   );
 
   if (release === null) {
@@ -620,7 +590,7 @@ async function resetComputer(context: ComputerContext): Promise<void> {
 
   state.idle?.abort();
 
-  const release = await takeTurn(state, Number.POSITIVE_INFINITY, context);
+  const release = await takeTurn(state, Number.POSITIVE_INFINITY, context.clock);
 
   try {
     await stopGuest(state);

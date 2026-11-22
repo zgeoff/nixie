@@ -156,7 +156,10 @@ async function runAttempt(
     return;
   }
 
-  const start = await writeAttemptStarted(context, attempt, { resetWhenBarred: true });
+  const start = await writeAttemptStarted(context, attempt, {
+    resetWhenBarred: true,
+    readHeldToolPrefixes: options.readHeldToolPrefixes,
+  });
 
   if (start === 'past_deadline') {
     await writeFailure(context, attempt, 'deadline_passed', 'the action passed its deadline');

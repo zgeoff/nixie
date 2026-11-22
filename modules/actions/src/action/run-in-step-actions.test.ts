@@ -402,3 +402,29 @@ test('it shows the action pending again once its prefix is free', async () => {
 
   expect(isPending).toBe(true);
 });
+
+test('it runs no call for an action when a hold begins after the batch was read', async () => {
+  const ctx = await setupTest();
+  const queued = await ctx.seed.inStepAction({ step: ctx.step });
+
+  const hold: { prefixes: string[] } = { prefixes: [] };
+
+  const settled = await ctx.runStep({
+    runCall: ctx.runCall({ status: 'done', resultSequence: 7, result: {}, images: [] }),
+    readHeldToolPrefixes: () => hold.prefixes,
+    checkAttempt: () => {
+      hold.prefixes = ['test.'];
+
+      return Promise.resolve({ kind: 'go', destinations: [] });
+    },
+  });
+
+  const action = await readTestAction(ctx.writer, queued.action_id);
+
+  expect([settled, ctx.calls, action.status, action.attempt_count]).toStrictEqual([
+    [],
+    [],
+    'pending',
+    0,
+  ]);
+});

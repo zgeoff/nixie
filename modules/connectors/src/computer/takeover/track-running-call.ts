@@ -1,23 +1,21 @@
-import type { RunningCall, RunningCalls } from './wait-for-running-calls';
+import type { RunningCall } from './wait-for-running-calls';
 
 // Counts a call as running from the moment it asks for its turn until it is answered, so a take-over
-// waits for it. The limit is when the call gives up at the latest.
+// waits for it. The call gets its record, whose limit it moves when it takes its turn.
 export async function trackRunningCall<Result>(
-  calls: Omit<RunningCalls, 'clock'> & { readonly running: Set<RunningCall> },
-  running: RunningCall,
-  run: () => Promise<Result>,
+  running: Set<RunningCall>,
+  endsAtMs: number,
+  run: (call: RunningCall) => Promise<Result>,
 ): Promise<Result> {
-  calls.running.add(running);
+  const ended = Promise.withResolvers<void>();
+  const call: RunningCall = { endsAtMs, ended: ended.promise };
+
+  running.add(call);
 
   try {
-    return await run();
+    return await run(call);
   } finally {
-    calls.running.delete(running);
-
-    if (calls.running.size === 0) {
-      for (const drained of calls.drains.splice(0)) {
-        drained();
-      }
-    }
+    running.delete(call);
+    ended.resolve();
   }
 }

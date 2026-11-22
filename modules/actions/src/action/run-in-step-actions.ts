@@ -135,7 +135,10 @@ async function runInStepAction(
       : null;
   }
 
-  const start = await writeAttemptStarted(context, attempt, { resetWhenBarred: false });
+  const start = await writeAttemptStarted(context, attempt, {
+    resetWhenBarred: false,
+    readHeldToolPrefixes: options.readHeldToolPrefixes,
+  });
 
   if (start === 'past_deadline') {
     return writeFailure(context, attempt, 'deadline_passed', {
