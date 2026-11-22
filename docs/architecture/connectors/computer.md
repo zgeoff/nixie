@@ -253,9 +253,10 @@ connector side, `openComputerWatch`, does the rest for each socket:
   `ClientCutText` without a trace, and closes the socket and the stream on a message that is
   malformed, unknown or past a size cap, including a `SetPixelFormat` with an invalid pixel format.
   It reads the length of a `ClientCutText` as signed, because a viewer that speaks the extended
-  clipboard format sends a negative one. While the sandbox wakes, it queues at most 64 KiB of viewer
-  messages and closes the socket past that. The viewer is view-only twice over: the client sets it,
-  and neither the relay nor the VNC server accepts input.
+  clipboard format sends a negative one. While the sandbox wakes, it queues the viewer's bytes up to
+  a cap far above what a viewer sends before it hears from the desktop, and closes the socket past
+  it. The viewer is view-only twice over: the client sets it, and neither the relay nor the VNC
+  server accepts input.
 
 ## The checking proxy
 
