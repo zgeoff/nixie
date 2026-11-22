@@ -27,7 +27,7 @@ export function readMockNotePage(input: MockNotePageInput) {
 
       return (
         (words.some((word) => text.includes(word)) || words.length === 0) &&
-        (input.tags ?? []).every((tag) => current?.tags.includes(tag))
+        (input.tags ?? []).every((tag) => current?.tags.includes(tag) === true)
       );
     })
     .toSorted(
