@@ -70,7 +70,7 @@ test('it ends the watch and releases the hold when a write to the guest fails', 
   ]);
 });
 
-test('it closes the watch when one batch of messages crosses the limit before the guest opens', async () => {
+test('it closes the watch as flooded before it parses a batch that crosses the limit while the guest wakes', async () => {
   const ctx = setupTest({ isGuestSlow: true });
   const watch = ctx.open();
   const encodings = [2, 0, 0, 255, ...Array.from({ length: 255 * 4 }, () => 0)];
@@ -81,6 +81,7 @@ test('it closes the watch when one batch of messages crosses the limit before th
       1,
       1,
       ...Array.from({ length: 70 }, () => encodings).flat(),
+      99,
     ]),
   );
 

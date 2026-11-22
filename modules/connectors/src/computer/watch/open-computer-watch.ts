@@ -62,28 +62,30 @@ export function openComputerWatch(host: WatchHost, socket: WatchSocket): WatchCo
         return;
       }
 
+      if (state.stream === null) {
+        if (state.pendingBytes + bytes.byteLength > maxPendingBytes) {
+          host.logger('computer.watch_flooded', {}, 'warn');
+
+          endAndClose();
+
+          return;
+        }
+
+        state.pendingBytes += bytes.byteLength;
+      }
+
       const result = filter.push(bytes);
-      let isFlooded = false;
 
       for (const message of result.forward) {
-        if (state.stream !== null) {
-          void sendToStream(host, state.stream, message, endAndClose);
-        } else if (state.pendingBytes + message.byteLength > maxPendingBytes) {
-          isFlooded = true;
-          break;
-        } else {
+        if (state.stream === null) {
           state.pending.push(message);
-
-          state.pendingBytes += message.byteLength;
+        } else {
+          void sendToStream(host, state.stream, message, endAndClose);
         }
       }
 
       if (result.isMalformed) {
         host.logger('computer.watch_malformed', {}, 'warn');
-
-        endAndClose();
-      } else if (isFlooded) {
-        host.logger('computer.watch_flooded', {}, 'warn');
 
         endAndClose();
       }

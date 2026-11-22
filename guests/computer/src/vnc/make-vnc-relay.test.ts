@@ -117,14 +117,36 @@ test('it drops bytes for a stream the server never opened', () => {
   expect(ctx.written).toStrictEqual([]);
 });
 
-test('it never opens a stream of its own, and refuses a second open of one id', () => {
+test('it never opens a stream of its own, and closes both on a second open of one id', async () => {
   const ctx = setupTest();
 
   ctx.deliver({ kind: 'vnc-open', stream: 's1' });
+
+  await Promise.resolve();
+
   ctx.deliver({ kind: 'vnc-open', stream: 's1' });
 
-  expect(ctx.connections).toHaveLength(1);
-  expect(ctx.sent).toStrictEqual([{ kind: 'vnc-close', stream: 's1' }]);
+  expect([ctx.connections.length, ctx.ended, ctx.sent]).toStrictEqual([
+    1,
+    [0],
+    [{ kind: 'vnc-close', stream: 's1' }],
+  ]);
+});
+
+test('it frees the slot of a stream that a second open of its id closed', async () => {
+  const ctx = setupTest({ maxStreams: 1 });
+
+  ctx.deliver({ kind: 'vnc-open', stream: 's1' });
+
+  await Promise.resolve();
+
+  ctx.deliver({ kind: 'vnc-open', stream: 's1' });
+  ctx.deliver({ kind: 'vnc-open', stream: 's2' });
+
+  expect([ctx.connections.length, ctx.sent]).toStrictEqual([
+    2,
+    [{ kind: 'vnc-close', stream: 's1' }],
+  ]);
 });
 
 test('it refuses a stream past the limit of open streams', () => {

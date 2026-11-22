@@ -51,7 +51,18 @@ export function makeVNCRelay(
 }
 
 function openStream(context: RelayContext, stream: string, send: SendVNCFrame): void {
-  if (context.streams.has(stream) || context.streams.size >= context.options.maxStreams) {
+  const existing = context.streams.get(stream);
+
+  // The server reads the close as the end of the stream with that id, so the open one ends too.
+  if (existing !== undefined) {
+    context.streams.delete(stream);
+    existing.link?.end();
+    void sendQuietly(send, { kind: 'vnc-close', stream });
+
+    return;
+  }
+
+  if (context.streams.size >= context.options.maxStreams) {
     void sendQuietly(send, { kind: 'vnc-close', stream });
 
     return;
