@@ -103,25 +103,25 @@ async function readQuotingRecords(
 
   const entries = await readRecords(log, {
     afterSequence: 0,
-    sequences: results.map((result) => result.result_sequence),
-    limit: results.length,
+    sequences: results.flatMap((result) => [result.result_sequence, result.call_sequence]),
+    limit: results.length * 2,
   });
 
-  const quoted = new Set(
-    entries
-      .filter((entry) => isQuoting(entry.record.erasable, image))
-      .map((entry) => entry.record.sequence),
-  );
+  const readable = new Map(entries.map((entry) => [entry.record.sequence, entry.record.erasable]));
 
   const located: Locatable[] = [];
 
   for (const result of results) {
-    if (quoted.has(result.result_sequence)) {
-      located.push({ sequence: result.result_sequence, thread: result.result_thread });
+    const isNaming = result.tool === 'image.name';
+    const isQuotingResult = isQuoting(readable.get(result.result_sequence), image);
+    const isNamingCall = isNaming && isNamedBy(readable.get(result.call_sequence), image);
 
-      if (result.tool === 'image.name') {
-        located.push({ sequence: result.call_sequence, thread: result.call_thread });
-      }
+    if (isQuotingResult || isNamingCall) {
+      located.push({ sequence: result.result_sequence, thread: result.result_thread });
+    }
+
+    if (isNaming && (isQuotingResult || isNamingCall)) {
+      located.push({ sequence: result.call_sequence, thread: result.call_thread });
     }
   }
 
@@ -137,8 +137,8 @@ const quotedResultSchema = z.object({
   }),
 });
 
-function isQuoting(erasable: ErasableFields, image: string): boolean {
-  if (erasable.status !== 'readable') {
+function isQuoting(erasable: ErasableFields | undefined, image: string): boolean {
+  if (erasable?.status !== 'readable') {
     return false;
   }
 
@@ -151,4 +151,17 @@ function isQuoting(erasable: ErasableFields, image: string): boolean {
   const listed = parsed.data.result.images ?? [];
 
   return parsed.data.result.image === image || listed.some((entry) => entry.image === image);
+}
+
+const calledSchema = z.object({ input: z.object({ image: z.string() }) });
+
+// A rename that was refused has no image in its result, so its call names the image by its input.
+function isNamedBy(erasable: ErasableFields | undefined, image: string): boolean {
+  if (erasable?.status !== 'readable') {
+    return false;
+  }
+
+  const parsed = calledSchema.safeParse(erasable.fields);
+
+  return parsed.success && parsed.data.input.image === image;
 }

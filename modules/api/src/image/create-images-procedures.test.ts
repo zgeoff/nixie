@@ -458,6 +458,62 @@ test('#images.forget keeps a name from being written while its cleanup is unfini
   expect(renamed).toMatchObject({ refused: { code: 'IMAGE_FORGOTTEN' } });
 });
 
+test('#images.forget leaves no rename or list made while its cleanup was unfinished readable after a retry', async () => {
+  const ctx = await setupTest();
+  const drawn = await ctx.images.read('image.draw', { prompt: 'a harbour at dusk' });
+
+  const image = readImageID(drawn);
+
+  await ctx.images.read('image.name', { image, name: 'ferry portrait' });
+
+  let isFailing = true;
+
+  ctx.setSessionCleanup(() => {
+    if (isFailing) {
+      isFailing = false;
+
+      return Promise.reject(new Error('the session rebuild failed'));
+    }
+
+    return Promise.resolve();
+  });
+
+  const input = { clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85', image };
+
+  await ctx.client.images.forget(input).catch(() => null);
+
+  const renamed = await ctx.images.read('image.name', { image, name: 'quay at noon' });
+
+  await ctx.images.read('image.list', {});
+  await ctx.client.images.forget(input);
+
+  const entries = await readRecords(ctx.context.log, {
+    afterSequence: 0,
+    kinds: ['tool_called', 'tool_result', 'image.named'],
+    limit: 100,
+  });
+
+  const listed = await ctx.images.read('image.list', {});
+
+  expect({
+    renamed,
+    listed: listed['images'],
+    readableText: entries
+      .flatMap((found) =>
+        found.record.erasable.status === 'readable'
+          ? [JSON.stringify(found.record.erasable.fields)]
+          : [],
+      )
+      .join(' '),
+  }).toStrictEqual({
+    renamed: expect.objectContaining({
+      refused: { code: 'IMAGE_FORGOTTEN', message: expect.any(String) },
+    }),
+    listed: [expect.objectContaining({ name: null, isForgotten: true })],
+    readableText: expect.not.stringMatching(/harbour|dusk|ferry|quay|noon/u),
+  });
+});
+
 test('#images.forget answers the time of the first forget for an image that is already forgotten', async () => {
   const ctx = await setupTest();
 

@@ -107,7 +107,10 @@ export function buildImageListTool(options: ImageToolOptions): ToolDefinition {
         result: {
           images: page.map((row) => ({
             image: row.image_id,
-            name: names.get(row.image_id) ?? null,
+            name:
+              prompts.get(row.image_id)?.isForgotten === true
+                ? null
+                : (names.get(row.image_id) ?? null),
             isPinned: row.is_pinned === 1,
             from: row.parent_id,
             prompt: prompts.get(row.image_id)?.prompt ?? null,

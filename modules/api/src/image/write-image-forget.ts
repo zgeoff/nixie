@@ -41,7 +41,8 @@ const storedForgetSchema = z.object({
 });
 
 // Forgets every record of the image as one forget. One transaction finds the records, starts each
-// forget and keeps the list with the client action. A retry runs the cleanups of that list again.
+// forget and keeps the list with the client action. A retry reads the records again inside its own transaction, so it takes in a record written since,
+// and runs the cleanups of the whole list.
 export async function writeImageForget(
   context: APIContext,
   caller: Identity,
@@ -71,12 +72,25 @@ export async function writeImageForget(
     if (earlier !== null) {
       const stored = storedForgetSchema.safeParse(earlier.result);
 
-      return earlier.procedure === procedure &&
-        earlier.identityID === caller.identityID &&
-        earlier.inputHash === inputHash &&
-        stored.success
-        ? ({ status: 'forgotten', ...stored.data } as const)
-        : ({ status: 'reused' } as const);
+      if (
+        earlier.procedure !== procedure ||
+        earlier.identityID !== caller.identityID ||
+        earlier.inputHash !== inputHash ||
+        !stored.success
+      ) {
+        return { status: 'reused' } as const;
+      }
+
+      // A record written since the first call, such as a list that read the name, joins the forget.
+      const retried = await writeStarts(tx, context, forgettable);
+
+      return retried.status === 'forgotten'
+        ? ({
+            status: 'forgotten',
+            forgottenAt: stored.data.forgottenAt,
+            targets: forgettable.targets,
+          } as const)
+        : retried;
     }
 
     const started = await writeStarts(tx, context, forgettable);
