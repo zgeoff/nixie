@@ -416,9 +416,12 @@ Memory guidance:
   "drop that" never destroys a page.
 - **A walk returns labels, never text.** The text of an item, a moment or a record stays behind the
   tool that checks who may read it.
-- **The tidy report is a read.** A report that nixie pushed would list pages the assistant never
-  asked for, so the report reaches the assistant only when it asks, or when a task definition you
-  write asks on a schedule.
+- **The tidy report is a read.** nixie never pushes the report: a pushed report would list pages the
+  assistant never asked for. The assistant reads it with `notebook.tidy`, and sets itself a reminder
+  when it wants to tidy on a schedule.
+- **Forget is the one control in the web client.** The notebook is the assistant's own, so you ask
+  the assistant to change a page. Forget stays because a page that quotes a forgotten message would
+  otherwise keep that text until a full reset.
 
 ## Builder decides
 
@@ -437,12 +440,3 @@ Memory guidance:
 - Links inside a body. A body's markdown links are text, and a walk follows only the links that
   `notebook.link` made.
 - Showing a page on a device. The devices build adds it.
-
-## Open questions
-
-- **Should a weekly tidy report reach the assistant on its own?** The owner settles it, because a
-  report that lists pages the assistant never asked for breaks the rule that a page never comes to
-  it on its own. Until then, the report reaches the assistant only through `notebook.tidy`.
-- **Is Forget the right one control in a read-only notebook view?** The owner settles it. Until
-  then, the page view offers Forget, because without it a page that quotes a forgotten message keeps
-  that text until a full reset.
