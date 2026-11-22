@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.98.0](https://github.com/zgeoff/nixie/compare/v0.97.0...v0.98.0) (2026-11-22)
+
+
+### Features
+
+* **connectors:** take a stored image as a code run input file ([#1378](https://github.com/zgeoff/nixie/issues/1378)) ([28e7289](https://github.com/zgeoff/nixie/commit/28e728928d6501a65e35e2aa148fe580d9a7288d))
+
 ## [0.97.0](https://github.com/zgeoff/nixie/compare/v0.96.0...v0.97.0) (2026-11-22)
 
 
