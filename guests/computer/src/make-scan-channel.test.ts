@@ -142,12 +142,10 @@ async function setupTest() {
   };
 }
 
-test('it refuses a scan before the channel is open', async () => {
+test('it refuses a scan before the channel is open', () => {
   const channel = makeScanChannel();
 
-  await expect(channel.scan('https://example.org/')).rejects.toThrow(
-    'the scan channel is not open',
-  );
+  expect(channel.scan('https://example.org/')).rejects.toThrow('the scan channel is not open');
 });
 
 test('it passes each scan to the server once the channel is open', async () => {
@@ -169,8 +167,7 @@ test('it passes each scan to the server once the channel is open', async () => {
 
   await channel.scan('https://example.org/');
 
-  await expect(channel.scanText('x-note: tide')).rejects.toThrow('holds a secret');
-
+  expect(channel.scanText('x-note: tide')).rejects.toThrow('holds a secret');
   expect(asked).toStrictEqual(['url https://example.org/', 'text x-note: tide']);
 });
 

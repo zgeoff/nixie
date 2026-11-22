@@ -46,7 +46,7 @@ await startSocketProxy(
 );
 
 const hostEnv = Object.entries(Bun.env).flatMap(([name, value]) =>
-  value === undefined ? [] : [[name, value]],
+  value === undefined ? [] : [[name, value] as const],
 );
 
 const bridgeURL = `http://127.0.0.1:${String(bridgePort)}`;

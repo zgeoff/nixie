@@ -140,7 +140,7 @@ test('it throws and keeps the old disk when a file did not reach the new disk', 
 
   ctx.lost.path = 'home/new/profile/Local State';
 
-  await expect(copyComputerFolder(ends)).rejects.toThrow(/Local State is missing/u);
+  expect(copyComputerFolder(ends)).rejects.toThrow(/Local State is missing/u);
 
   const kept = await readFile(join(ends.fromFolder, 'Local State'), 'utf8');
 

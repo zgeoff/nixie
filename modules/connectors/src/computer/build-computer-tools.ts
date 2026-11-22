@@ -32,8 +32,8 @@ export function buildComputerTools(options: ComputerToolOptions): ComputerTools 
       reconcile: { kind: 'none' },
       run: async (attempt) => {
         const moving = await refuseUntilMoved(options);
+        const result = await (moving ?? runQueued(options, state, attempt));
 
-        const result = moving === null ? await runQueued(options, state, attempt) : moving;
         const refused = refusedSchema.safeParse(result.result['refused']);
 
         return refused.success
@@ -67,7 +67,7 @@ function withMoveGate(options: ComputerToolOptions, tool: ToolDefinition): ToolD
     prepare: async (input, context) => {
       const moving = await refuseUntilMoved(options);
 
-      return moving === null ? prepare(input, context) : moving;
+      return moving ?? prepare(input, context);
     },
   };
 }

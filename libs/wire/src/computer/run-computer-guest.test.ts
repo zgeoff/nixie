@@ -214,5 +214,5 @@ test('it fails a hop that waits when the input closes', async () => {
 
   await running;
 
-  await expect(asked).rejects.toThrow('the input closed before the server answered a hop');
+  expect(asked).rejects.toThrow('the input closed before the server answered a hop');
 });
