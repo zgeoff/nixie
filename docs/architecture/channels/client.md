@@ -334,8 +334,10 @@ the address in the answer and hands the socket to the viewer. The route's loader
 for the watch, so a server render opens no socket. The viewer is noVNC, loaded with a dynamic import
 in the browser only, because the library reads the window when it loads.
 
-- The viewer runs with `viewOnly` on, `scaleViewport` on and `resizeSession` off, so the picture
-  scales to fit and a viewer never resizes the desktop or sends a clipboard change.
+- The viewer starts with `viewOnly` on, so it sends no keys or pointer, with `scaleViewport` on so
+  the picture scales to fit, and with `resizeSession` off so it never resizes the desktop. The
+  server gives no viewer more than that: it passes a viewer's keys and pointer only while the
+  viewer's device holds the desktop, and drops every clipboard change.
 - Take over calls `computer.takeOver` and, once it answers, turns `viewOnly` off and focuses the
   viewer, so the user's keys and pointer reach the desktop. The status line then says that the user
   has taken over, and Take over becomes Hand back, which calls `computer.handBack` and turns
@@ -345,9 +347,9 @@ in the browser only, because the library reads the window when it loads.
   hold on the computer ended." and returns to view only. A hand-back that finds the hold gone shows
   the same line.
 - The status line reads "Connecting to the computer." until the ticket comes, then "The computer is
-  waking" while the socket is open and no picture has come, and "Watching the computer. Take over to
-  use it." once the viewer has drawn the desktop. The viewer's connect event comes before any
-  picture, so the page polls the viewer's canvas for a drawn pixel.
+  waking." while the socket is open and no picture has come, and "Your input won't reach the
+  computer until you take over." once the viewer has drawn the desktop. The viewer's connect event
+  comes before any picture, so the page polls the viewer's canvas for a drawn pixel.
 - A stream that ends after a picture shows that it ended, and one that ends before a picture or
   fails to start says "The computer can’t be watched right now." Both show Watch again, which asks
   for a new ticket. A server with no computer shows no button and says it has none.

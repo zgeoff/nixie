@@ -44,7 +44,10 @@ test('it takes the computer over and hands it back with the buttons of the page'
 
   await ctx.view.navigate(`${ctx.appURL}/computer`);
 
-  await waitForPage(ctx.view, "document.body.innerText.includes('Watching the computer')");
+  await waitForPage(
+    ctx.view,
+    "document.body.innerText.includes('reach the computer until you take over.')",
+  );
 
   await waitForPage(
     ctx.view,
@@ -65,7 +68,10 @@ test('it takes the computer over and hands it back with the buttons of the page'
   // view.click does not return while the viewer holds the keyboard, so the hand-back clicks in the page
   await ctx.view.evaluate("document.querySelector('main button').click()");
 
-  await waitForPage(ctx.view, "document.body.innerText.includes('Watching the computer')");
+  await waitForPage(
+    ctx.view,
+    "document.body.innerText.includes('reach the computer until you take over.')",
+  );
 
   const afterHandBack: unknown = await ctx.view.evaluate(
     "[...document.querySelectorAll('main button')].map((button) => button.innerText)",

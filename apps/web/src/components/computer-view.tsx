@@ -41,8 +41,8 @@ type TakeoverState =
 
 const messages = {
   connecting: 'Connecting to the computer.',
-  waking: 'The computer is waking',
-  watching: 'Watching the computer. Take over to use it.',
+  waking: 'The computer is waking.',
+  watching: "Your input won't reach the computer until you take over.",
   ended: 'The connection to the computer ended.',
   unavailable: 'This nixie has no computer to watch.',
   failed: 'The computer can’t be watched right now.',

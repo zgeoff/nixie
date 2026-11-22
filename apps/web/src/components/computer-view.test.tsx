@@ -107,7 +107,7 @@ test('it says the computer is waking while the socket is open and no desktop has
 
   const rendered = render(<ComputerView loadViewer={ctx.loadViewer} />);
 
-  const status = await rendered.findByText('The computer is waking');
+  const status = await rendered.findByText('The computer is waking.');
 
   expect(status).toBeVisible();
 });
@@ -119,11 +119,13 @@ test('it says it is watching once the viewer has the desktop', async () => {
 
   const rendered = render(<ComputerView loadViewer={ctx.loadViewer} />);
 
-  await rendered.findByText('The computer is waking');
+  await rendered.findByText('The computer is waking.');
 
   ctx.started[0]?.events.onConnect();
 
-  const status = await rendered.findByText(/Watching the computer/u);
+  const status = await rendered.findByText(
+    "Your input won't reach the computer until you take over.",
+  );
 
   expect(status).toBeVisible();
 });
@@ -136,7 +138,7 @@ test('it offers to watch again when the stream ends, with a new ticket', async (
 
   const rendered = render(<ComputerView loadViewer={ctx.loadViewer} />);
 
-  await rendered.findByText('The computer is waking');
+  await rendered.findByText('The computer is waking.');
 
   ctx.started[0]?.events.onConnect();
   ctx.started[0]?.events.onDisconnect();
@@ -159,7 +161,7 @@ test('it says the computer cannot be watched when the stream ends before the des
 
   const rendered = render(<ComputerView loadViewer={ctx.loadViewer} />);
 
-  await rendered.findByText('The computer is waking');
+  await rendered.findByText('The computer is waking.');
 
   ctx.started[0]?.events.onDisconnect();
 
@@ -195,7 +197,7 @@ test('it stops the viewer and closes the socket when the page goes away', async 
 
   const rendered = render(<ComputerView loadViewer={ctx.loadViewer} />);
 
-  await rendered.findByText('The computer is waking');
+  await rendered.findByText('The computer is waking.');
 
   rendered.unmount();
 
@@ -228,7 +230,7 @@ test('it takes the desktop over and lets the viewer send input until it hands ba
 
   const rendered = render(<ComputerView loadViewer={ctx.loadViewer} />);
 
-  await rendered.findByText('The computer is waking');
+  await rendered.findByText('The computer is waking.');
 
   ctx.started[0]?.events.onConnect();
 
@@ -264,7 +266,7 @@ test('it watches again with a new ticket after a hand-back, because the server e
 
   const rendered = render(<ComputerView loadViewer={ctx.loadViewer} />);
 
-  await rendered.findByText('The computer is waking');
+  await rendered.findByText('The computer is waking.');
 
   ctx.started[0]?.events.onConnect();
 
@@ -307,7 +309,7 @@ test('it says that another device holds the computer and sends no input', async 
 
   const rendered = render(<ComputerView loadViewer={ctx.loadViewer} />);
 
-  await rendered.findByText('The computer is waking');
+  await rendered.findByText('The computer is waking.');
 
   ctx.started[0]?.events.onConnect();
 
@@ -337,7 +339,7 @@ test('it stops the input and shows the hold over when the server ends the stream
 
   const rendered = render(<ComputerView loadViewer={ctx.loadViewer} />);
 
-  await rendered.findByText('The computer is waking');
+  await rendered.findByText('The computer is waking.');
 
   ctx.started[0]?.events.onConnect();
 
@@ -380,7 +382,7 @@ test('it shows the hold over when a hand-back finds that this device no longer h
 
   const rendered = render(<ComputerView loadViewer={ctx.loadViewer} />);
 
-  await rendered.findByText('The computer is waking');
+  await rendered.findByText('The computer is waking.');
 
   ctx.started[0]?.events.onConnect();
 
