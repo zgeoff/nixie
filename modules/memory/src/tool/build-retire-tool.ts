@@ -8,6 +8,7 @@ import { memoryWriteOutput } from '../utils/memory-write-output';
 import { buildWriteCaller } from '../write/build-write-caller';
 import { resolveWriteFacts } from '../write/resolve-write-facts';
 import { runWriteCall } from '../write/run-write-call';
+import { changeOfMindGuidance } from './change-of-mind-guidance';
 
 const retireArguments = z.object({
   itemID: z.string(),
@@ -19,13 +20,15 @@ export function buildRetireTool(memory: ModelWriteStore & ItemIDStore): ToolDefi
   return {
     name: 'memory.retire',
     description:
-      'Retires a memory item that stopped being true, such as an old address, by its itemID and ' +
-      'the version you read with memory.recall. A self-note of yours retires at once and needs ' +
-      'no intentQuote. For any other item, pass intentQuote: the exact words from one of the ' +
-      "owner's own recent messages that ask to drop the item or say it stopped being true. That " +
-      'retirement applies at once only when those typed words back it; otherwise it waits for ' +
-      "the owner's review, unless an allow rule that covers the retirement applies it at once and " +
-      'leaves a notice. A retired item keeps its history and can be restored by the owner.',
+      `Retires a memory item that stopped being true, such as an old address, by its itemID and ` +
+      `the version you read with memory.recall. A self-note of yours retires at once and needs ` +
+      `no intentQuote. For any other item, pass intentQuote: the exact words from one of the ` +
+      `owner's own recent messages that ask to drop the item or say it stopped being true. That ` +
+      `retirement applies at once only when those typed words back it; otherwise it waits for ` +
+      `the owner's review, unless an allow rule that covers the retirement applies it at once and ` +
+      `leaves a notice. A retired item keeps its history and can be restored by the owner. ${
+        changeOfMindGuidance
+      }`,
     input: {
       type: 'object',
       properties: {

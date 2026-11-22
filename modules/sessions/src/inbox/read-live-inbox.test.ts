@@ -36,6 +36,7 @@ test('it yields a message that lands during the turn and adds its images to the 
     taskID: 'conversation',
     canCut: false,
     sent: new Set([0]),
+    silent: new Set(),
     signal: ctx.signal,
     view: buildMockTaskMessageView(),
     times: { defaultZone: 'Australia/Sydney', now: new Date('2026-10-13T05:00:00Z') },
@@ -83,6 +84,7 @@ test('it ends the feed at a message whose images would pass the session budget',
     taskID: 'conversation',
     canCut: false,
     sent: new Set([0]),
+    silent: new Set(),
     signal: ctx.signal,
     view: buildMockTaskMessageView(),
     times: { defaultZone: 'Australia/Sydney', now: new Date('2026-10-13T05:00:00Z') },
@@ -128,6 +130,7 @@ test('it ends the feed at a message whose images would pass the session count', 
     taskID: 'conversation',
     canCut: false,
     sent: new Set([0]),
+    silent: new Set(),
     signal: ctx.signal,
     view: buildMockTaskMessageView(),
     times: { defaultZone: 'Australia/Sydney', now: new Date('2026-10-13T05:00:00Z') },
@@ -168,6 +171,7 @@ test('it yields a message with no images past a spent session budget', async () 
     taskID: 'conversation',
     canCut: false,
     sent: new Set([0]),
+    silent: new Set(),
     signal: ctx.signal,
     view: buildMockTaskMessageView(),
     times: { defaultZone: 'Australia/Sydney', now: new Date('2026-10-13T05:00:00Z') },
@@ -206,6 +210,7 @@ test('it ends the feed at a message that lands after the turn ended silently, an
     taskID: 'conversation',
     canCut: false,
     sent,
+    silent: new Set(),
     signal: ctx.signal,
     view: buildMockTaskMessageView(),
     times: { defaultZone: 'Australia/Sydney', now: new Date('2026-10-13T05:00:00Z') },
@@ -252,6 +257,7 @@ test("it counts an owner message that lands during the turn against the turn's s
     taskID: 'conversation',
     canCut: false,
     sent: new Set([0]),
+    silent: new Set(),
     signal: ctx.signal,
     view: buildMockTaskMessageView(),
     times: { defaultZone: 'Australia/Sydney', now: new Date('2026-10-13T05:00:00Z') },
@@ -283,6 +289,7 @@ test('it passes over a record of a kind no module registers and yields the next 
     taskID: 'conversation',
     canCut: false,
     sent: new Set([0]),
+    silent: new Set(),
     signal: ctx.signal,
     view: buildMockTaskMessageView(),
     times: { defaultZone: 'Australia/Sydney', now: new Date('2026-10-13T05:00:00Z') },
@@ -326,6 +333,7 @@ test("it passes over a fire on the task's own thread that lands during the turn,
     taskID: 'water-the-tomatoes',
     canCut: false,
     sent,
+    silent: new Set(),
     signal: ctx.signal,
     view: buildMockTaskMessageView(),
     times: { defaultZone: 'Australia/Sydney', now: new Date('2026-10-13T05:00:00Z') },
@@ -356,6 +364,57 @@ test("it passes over a fire on the task's own thread that lands during the turn,
   expect(sent.has(message?.sequence ?? 0)).toBeTrue();
 });
 
+test('it takes an approval that queued an action as read with no message, and yields the outcome behind it', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  const silent = new Set<number>();
+
+  const live = readLiveInbox(ctx.context, {
+    taskID: 'conversation',
+    canCut: false,
+    sent: new Set([0]),
+    silent,
+    signal: ctx.signal,
+    view: buildMockTaskMessageView(),
+    times: { defaultZone: 'Australia/Sydney', now: new Date('2026-10-13T05:00:00Z') },
+    images: { spent: { bytes: 0, count: 0 }, budget: { bytes: 16, count: 100 }, isCapped: false },
+    silence: buildTurnSilence([]),
+    log: () => {},
+  });
+
+  const [approval] = await writeInboxRecords(ctx.context, [
+    {
+      kind: 'policy.action_answered',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: {
+        proposalID: 'b-uuid',
+        shortID: 'k3vq8m2xpa',
+        answer: 'approved',
+        actionID: 'b-uuid',
+      },
+    },
+    {
+      kind: 'action.outcome',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: { actionID: 'b-uuid', tool: 'test.send', status: 'done', attempt: 1, reason: null },
+      erasable: { result: {} },
+    },
+  ]);
+
+  invariant(approval, 'the approval was written');
+
+  const next = await live.next();
+
+  invariant(next.done !== true, 'the feed ended before the outcome');
+
+  expect(next.value.message.text).toInclude('An action settled');
+  expect([...silent]).toStrictEqual([approval.sequence]);
+});
+
 test('it marks an owner message as cutting a call when the harness can cut', async () => {
   const ctx = await setupTest();
 
@@ -365,6 +424,7 @@ test('it marks an owner message as cutting a call when the harness can cut', asy
     taskID: 'conversation',
     canCut: true,
     sent: new Set([0]),
+    silent: new Set(),
     signal: ctx.signal,
     view: buildMockTaskMessageView(),
     times: { defaultZone: 'Australia/Sydney', now: new Date('2026-10-13T05:00:00Z') },
@@ -398,6 +458,7 @@ test('it does not mark an owner message as cutting a call when the harness canno
     taskID: 'conversation',
     canCut: false,
     sent: new Set([0]),
+    silent: new Set(),
     signal: ctx.signal,
     view: buildMockTaskMessageView(),
     times: { defaultZone: 'Australia/Sydney', now: new Date('2026-10-13T05:00:00Z') },
@@ -431,6 +492,7 @@ test('it does not mark a task message as cutting a call, even when the harness c
     taskID: 'conversation',
     canCut: true,
     sent: new Set([0]),
+    silent: new Set(),
     signal: ctx.signal,
     view: buildMockTaskMessageView(),
     times: { defaultZone: 'Australia/Sydney', now: new Date('2026-10-13T05:00:00Z') },
@@ -502,6 +564,7 @@ test.each([
       taskID: 'conversation',
       canCut: row.canCut,
       sent: new Set([0, earlier.sequence]),
+      silent: new Set(),
       signal: ctx.signal,
       view: buildMockTaskMessageView(),
       times: { defaultZone: 'Australia/Sydney', now: new Date('2026-10-13T05:00:00Z') },

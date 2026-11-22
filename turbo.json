@@ -64,6 +64,11 @@
       "integration": {
         "dependencies": { "allow": ["app", "client", "sidecar", "module", "adapter", "lib"] }
       },
+      // the notebook depends on memory and never the other way, so no path that builds a turn's
+      // context can reach a note
+      "memory": {
+        "dependencies": { "deny": ["notebook"] }
+      },
       "server-only": {
         "dependents": {
           "allow": [

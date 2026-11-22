@@ -1,6 +1,6 @@
-// Every kind of record that carries its own text, except a moment's records and a memory item's
-// records, which their own removals take. A kind that gains erasable fields joins this list, or
-// one of the two exceptions, and a test holds each one to exactly one.
+// Every kind of record that carries its own text, except a moment's records, a memory item's
+// records and a note's records, which their own removals take. A kind that gains erasable fields
+// joins this list, or one of the exceptions, and a test holds each one to exactly one.
 export const forgettableKinds = [
   'action.outcome',
   'action.queued',

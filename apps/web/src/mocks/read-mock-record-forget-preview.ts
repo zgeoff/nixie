@@ -3,6 +3,7 @@ import { store } from './store';
 interface MockRecordForgetPreview {
   readonly momentCount: number;
   readonly memoryItems: { itemID: string; text: string }[];
+  readonly notes: { note: string; title?: string }[];
 }
 
 export function readMockRecordForgetPreview(
@@ -57,5 +58,6 @@ export function readMockRecordForgetPreview(
       })),
       ...[...newItemTexts].map(([itemID, text]) => ({ itemID, text })),
     ].toSorted((left, right) => left.itemID.localeCompare(right.itemID)),
+    notes: [],
   };
 }

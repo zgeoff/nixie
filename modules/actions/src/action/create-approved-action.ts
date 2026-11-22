@@ -2,6 +2,7 @@ import type { BudgetsContext } from '@heynixie/budgets';
 import type { Clock } from '@heynixie/clock';
 import type { Definitions, JSONObject, Log } from '@heynixie/log';
 import { writeRecordsInTransaction } from '@heynixie/log';
+import { writeThreadRecordInTransaction } from '@heynixie/tasks';
 import type { Transaction } from 'kysely';
 import type { ActionRiskClass, ActionsTables } from '../types';
 import { creditFailedActions } from './credit-failed-actions';
@@ -71,6 +72,10 @@ export async function createApprovedAction(
     await writeRecordsInTransaction(tx, context.log, records);
     await creditFailedActions(tx, context.budgets, records);
 
+    if (approved.runsInStep && !isPastDeadline) {
+      await writeStepWake(tx, context, { taskID: held.task_id, actionID: held.action_id });
+    }
+
     return held.action_id;
   }
 
@@ -117,6 +122,10 @@ export async function createApprovedAction(
       : []),
   ]);
 
+  if (approved.runsInStep && !isPastDeadline) {
+    await writeStepWake(tx, context, { taskID: approved.taskID, actionID: approved.proposalID });
+  }
+
   return approved.proposalID;
 }
 
@@ -141,4 +150,24 @@ function buildDeadlineRecord(context: ApprovedActionContext, facts: DeadlineFact
     },
     erasable: { message: 'the action passed its deadline' },
   };
+}
+
+interface StepWake {
+  readonly taskID: string;
+  readonly actionID: string;
+}
+
+// The approval wakes nothing, and no runner claims an action that the task's step runs, so only
+// this wake starts that step.
+async function writeStepWake(
+  tx: Transaction<unknown>,
+  context: ApprovedActionContext,
+  wake: StepWake,
+): Promise<void> {
+  await writeThreadRecordInTransaction(tx, context, {
+    kind: 'task.wake',
+    definitions: context.definitions(),
+    thread: wake.taskID,
+    payload: { at: context.clock.now(), actionID: wake.actionID },
+  });
 }

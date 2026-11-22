@@ -615,6 +615,84 @@ test('it shows a tool result as its fields', async () => {
   ]);
 });
 
+test('it shows the command output of an action that the runner settled, with its tool, ID and status', async () => {
+  const ctx = await setupTest();
+
+  const [outcome] = await writeRecords(ctx.log, [
+    {
+      kind: 'action.outcome',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: {
+        actionID: 'b-uuid',
+        tool: 'computer.run',
+        status: 'done',
+        attempt: 1,
+        reason: null,
+      },
+      erasable: {
+        result: { exitCode: 0, stdout: 'Linux harbour\n', stderr: '', seconds: 0.2 },
+      },
+    },
+  ]);
+
+  invariant(outcome);
+
+  const page = await readLogPage(ctx.log, {
+    thread: 'conversation',
+    after: 0,
+    from: null,
+    to: null,
+    words: [],
+    role: 'tool',
+    limit: 20,
+    scanLimit: 500,
+  });
+
+  expect(page.entries).toStrictEqual([
+    {
+      sequence: outcome.sequence,
+      role: 'tool',
+      recordedAt: expect.toBeNumber(),
+      text: 'computer.run `b-uuid` done: {"result":{"exitCode":0,"stdout":"Linux harbour\\n","stderr":"","seconds":0.2}}',
+      isCut: false,
+    },
+  ]);
+});
+
+test('it leaves out the outcome of an action that ran in the turn, whose tool result shows instead', async () => {
+  const ctx = await setupTest();
+
+  await writeRecords(ctx.log, [
+    {
+      kind: 'action.outcome',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: {
+        actionID: 'b-uuid',
+        tool: 'worker.run',
+        status: 'done',
+        attempt: 1,
+        reason: null,
+        resultSequence: 7,
+      },
+      erasable: {},
+    },
+  ]);
+
+  const page = await readLogPage(ctx.log, {
+    thread: 'conversation',
+    after: 0,
+    from: null,
+    to: null,
+    words: [],
+    limit: 20,
+    scanLimit: 500,
+  });
+
+  expect(page).toStrictEqual({ entries: [], next: null });
+});
+
 test('it cuts a text longer than 2000 characters', async () => {
   const ctx = await setupTest();
 

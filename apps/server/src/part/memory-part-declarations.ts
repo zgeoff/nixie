@@ -5,6 +5,7 @@ import type { AnyPartDeclaration } from '../types';
 import { makeRetriedStart } from './make-retried-start';
 import type { ServerPartValues } from './server-part-values';
 import { startChecker } from './start-checker';
+import { startNotebookPart } from './start-notebook-part';
 
 export const memoryPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>[] = [
   {
@@ -29,6 +30,21 @@ export const memoryPartDeclarations: readonly AnyPartDeclaration<ServerPartValue
         },
         reader.get('checker').check,
       );
+    }),
+  },
+  {
+    name: 'notebook',
+    needs: ['server_parts', 'conversation_imp', 'sandbox_runner', 'memory'],
+    start: makeRetriedStart('notebook', (parts, reader) => {
+      const conversation = reader.get('conversation_imp');
+      const tasks = reader.get('sandbox_runner');
+
+      return startNotebookPart(parts, reader.get('memory'), async (cause) => {
+        await conversation.cleanupSessions(cause);
+        await tasks.cleanupSessions(cause);
+
+        await runTurnInputForget(parts, cause);
+      });
     }),
   },
   {

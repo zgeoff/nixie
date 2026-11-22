@@ -244,6 +244,12 @@ show it, with each pasted or dropped span in its own block and a marker line for
 search matches only the words, never those blocks. A log read never returns an image's bytes, so
 memory learns only what the user wrote.
 
+An action that the action runner settled keeps the connector's result on its outcome record, which
+no tool result holds, so a read lists that outcome as a tool entry: the tool, the action ID and the
+status, then the result or the reason. An approved `computer.run` shows its exit code, `stdout`,
+`stderr` and seconds this way. An action that ran inside the turn has a tool result of its own, so
+its outcome adds no entry.
+
 A tool entry shows the call's `result` or its `message` alone, so a field the tool records under
 `hidden` never reaches the model, and `moment.read` prints a tool result the same way. A stored
 result of an earlier release can hold a UUID under `momentID`, `itemID`, `momentIDs` or `itemIDs`,
@@ -304,7 +310,9 @@ also cleans the open task whose thread holds the record, whatever its memory set
 task's session holds the record's text, and a record on the conversation's thread also cleans each
 open task with the log grant, because its session can hold the record's text from a log read. A task
 that reads no memory never received an item, so a memory item forget or a moment destroy leaves its
-session as it is.
+session as it is. A [note forget](./notebook.md#forgetting-a-note) cleans the conversation and each
+open task whose tool list holds a notebook tool, because a note's text reaches a session only
+through those tools.
 
 A turn and a cleanup never overlap: a turn that starts while a cleanup runs waits for it, and each
 cleanup waits for the one before it. Turns never wait for each other, because a runner that took a

@@ -9,6 +9,7 @@ import {
 } from '@heynixie/connectors';
 import { definitionsConfigSchema } from '@heynixie/definitions';
 import { memoryConfigSchema } from '@heynixie/memory';
+import { notebookConfigSchema } from '@heynixie/notebook';
 import { policyConfigSchema } from '@heynixie/policy';
 import { approvalsConfigSchema, quietHoursSchema } from '@heynixie/proposals';
 import { remindersConfigSchema } from '@heynixie/reminders';
@@ -16,6 +17,7 @@ import { skillsConfigSchema } from '@heynixie/skills';
 import { tasksConfigSchema } from '@heynixie/tasks';
 import { turnInputLogConfigSchema } from '@heynixie/turn-inputs';
 import { z } from 'zod';
+import { forgetNoticesConfigSchema } from '../config/forget-notices-config-schema';
 import { serverConfigSchema } from '../config/server-config-schema';
 import { sandboxSections } from '../sandbox/sandbox-sections';
 import { spendStopSchema } from '../spend/spend-stop-schema';
@@ -38,6 +40,8 @@ export const deploymentConfigSchema = z
     reminders: remindersConfigSchema.default(remindersConfigSchema.parse({})),
     actions: actionsConfigSchema.default(actionsConfigSchema.parse({})),
     memory: memoryConfigSchema.default(memoryConfigSchema.parse({})),
+    notebook: notebookConfigSchema.default(notebookConfigSchema.parse({})),
+    forget_notices: forgetNoticesConfigSchema.default(forgetNoticesConfigSchema.parse({})),
     policy: policyConfigSchema.default(policyConfigSchema.parse({})),
     approvals: approvalsConfigSchema.default(approvalsConfigSchema.parse({})),
     quiet_hours: quietHoursSchema.optional(),

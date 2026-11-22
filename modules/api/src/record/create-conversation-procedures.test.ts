@@ -248,6 +248,7 @@ test('#conversation.previewForget counts the live moments that hold the record a
   expect(preview).toStrictEqual({
     momentCount: 2,
     memoryItems: [{ itemID: quoting.itemID, text: 'The cat uses the flap' }],
+    notes: [],
   });
 });
 

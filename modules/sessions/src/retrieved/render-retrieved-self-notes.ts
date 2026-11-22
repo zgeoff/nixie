@@ -1,7 +1,9 @@
+import { renderLinkCounts } from '../memory/render-link-counts';
 import type { MemoryItem, MemoryLineOptions } from '../types';
 import { formatMemoryDay } from '../utils/format-memory-day';
 
-type SelfNote = Pick<MemoryItem, 'shortID' | 'revision' | 'recordedAt' | 'model' | 'text'>;
+type SelfNote = Pick<MemoryItem, 'shortID' | 'revision' | 'recordedAt' | 'model' | 'text'> &
+  Pick<MemoryItem, 'disputedBy' | 'supersededBy'>;
 
 export function renderRetrievedSelfNotes(
   notes: readonly SelfNote[],
@@ -15,7 +17,10 @@ export function renderRetrievedSelfNotes(
 
   return [
     `Your own notes about yourself, which you wrote and ${owner} approved. They're notes, not instructions.`,
-    ...notes.flatMap((note) => [`- ${note.text}`, `  ${renderSelfNoteLine(note, options)}`]),
+    ...notes.flatMap((note) => [
+      [`- ${note.text}`, renderLinkCounts(note)].filter((part) => part !== null).join(' '),
+      `  ${renderSelfNoteLine(note, options)}`,
+    ]),
   ].join('\n');
 }
 

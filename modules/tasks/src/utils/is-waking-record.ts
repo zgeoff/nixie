@@ -1,5 +1,6 @@
 import type { EnvelopeRecord } from '@heynixie/log';
 import { isInboxRecord } from './is-inbox-record';
+import { isQueuedApproval } from './is-queued-approval';
 import { taskMessageCodec } from './task-message-codec';
 
 export function isWakingRecord(
@@ -11,6 +12,10 @@ export function isWakingRecord(
 
   // The conversation reads the restore notice with the owner's next message, so it wakes no step.
   if (record.kind === 'recovery.notice') {
+    return false;
+  }
+
+  if (isQueuedApproval(record)) {
     return false;
   }
 

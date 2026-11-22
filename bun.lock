@@ -184,6 +184,7 @@
         "@heynixie/logger": "workspace:*",
         "@heynixie/memory": "workspace:*",
         "@heynixie/models": "workspace:*",
+        "@heynixie/notebook": "workspace:*",
         "@heynixie/ops": "workspace:*",
         "@heynixie/policy": "workspace:*",
         "@heynixie/prompts": "workspace:*",
@@ -547,6 +548,7 @@
         "@heynixie/log": "workspace:*",
         "@heynixie/memory": "workspace:*",
         "@heynixie/models": "workspace:*",
+        "@heynixie/notebook": "workspace:*",
         "@heynixie/policy": "workspace:*",
         "@heynixie/prompts": "workspace:*",
         "@heynixie/proposals": "workspace:*",
@@ -756,6 +758,26 @@
       },
       "devDependencies": {
         "@faker-js/faker": "catalog:",
+      },
+    },
+    "modules/notebook": {
+      "name": "@heynixie/notebook",
+      "version": "0.0.0",
+      "dependencies": {
+        "@heynixie/clock": "workspace:*",
+        "@heynixie/db": "workspace:*",
+        "@heynixie/log": "workspace:*",
+        "@heynixie/memory": "workspace:*",
+        "@heynixie/sessions": "workspace:*",
+        "@heynixie/tasks": "workspace:*",
+        "@heynixie/tools": "workspace:*",
+        "@heynixie/wire": "workspace:*",
+        "kysely": "catalog:",
+        "tiny-invariant": "catalog:",
+        "zod": "catalog:",
+      },
+      "devDependencies": {
+        "@zgeoff/testing": "catalog:",
       },
     },
     "modules/ops": {
@@ -1090,6 +1112,16 @@
         "@anthropic-ai/claude-agent-sdk": "0.3.318",
         "@heynixie/async": "workspace:*",
         "zod": "4.6.7",
+      },
+      "devDependencies": {
+        "@types/bun": "1.4.4",
+      },
+    },
+    "research/desktop-memory": {
+      "name": "@heynixie/spike-desktop-memory",
+      "version": "0.0.0",
+      "dependencies": {
+        "playwright-core": "1.65.1",
       },
       "devDependencies": {
         "@types/bun": "1.4.4",
@@ -1561,6 +1593,8 @@
 
     "@heynixie/models": ["@heynixie/models@workspace:modules/models"],
 
+    "@heynixie/notebook": ["@heynixie/notebook@workspace:modules/notebook"],
+
     "@heynixie/ops": ["@heynixie/ops@workspace:modules/ops"],
 
     "@heynixie/policy": ["@heynixie/policy@workspace:modules/policy"],
@@ -1606,6 +1640,8 @@
     "@heynixie/spike-connector-account-pick": ["@heynixie/spike-connector-account-pick@workspace:research/connector-account-pick"],
 
     "@heynixie/spike-consent-checker": ["@heynixie/spike-consent-checker@workspace:research/consent-checker"],
+
+    "@heynixie/spike-desktop-memory": ["@heynixie/spike-desktop-memory@workspace:research/desktop-memory"],
 
     "@heynixie/spike-fetch-sandbox-start": ["@heynixie/spike-fetch-sandbox-start@workspace:research/fetch-sandbox-start"],
 

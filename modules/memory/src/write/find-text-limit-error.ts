@@ -9,9 +9,21 @@ const textLimits: Readonly<Record<MemorySubject, number>> = {
   self: 6000,
 };
 
-export function findTextLimitError(text: string, subject: MemorySubject): string | null {
+// The assistant's tools point at a note for longer text. The owner's own writes do not, since the
+// owner has no notebook tool to call.
+export function findTextLimitError(
+  text: string,
+  subject: MemorySubject,
+  pointsToNote = false,
+): string | null {
   const size = countCodePoints(text);
   const limit = textLimits[subject];
 
-  return size > limit ? `data/text ${formatOverLimit(size, limit, 'characters')}` : null;
+  if (size <= limit) {
+    return null;
+  }
+
+  const message = `data/text ${formatOverLimit(size, limit, 'characters')}`;
+
+  return pointsToNote ? `${message}; for longer text, write a note with notebook.write` : message;
 }
