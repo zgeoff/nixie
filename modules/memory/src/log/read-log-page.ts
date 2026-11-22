@@ -378,12 +378,15 @@ function formatEntryText(
   return fields === null ? null : formatToolEntry(record, fields, lookup);
 }
 
-function formatOutcomeEntry(record: LogRecord, fields: JSONObject, lookup: ShortIDLookup): string {
-  const tool = String(record.payload['tool']);
-  const actionID = String(record.payload['actionID']);
-  const status = String(record.payload['status']);
+const outcomeHeader = z.object({ tool: z.string(), actionID: z.string(), status: z.string() });
 
-  return `${tool} \`${actionID}\` ${status}: ${formatToolEntry(record, fields, lookup)}`;
+function formatOutcomeEntry(record: LogRecord, fields: JSONObject, lookup: ShortIDLookup): string {
+  const header = outcomeHeader.safeParse(record.payload);
+  const body = formatToolEntry(record, fields, lookup);
+
+  return header.success
+    ? `${header.data.tool} \`${header.data.actionID}\` ${header.data.status}: ${body}`
+    : body;
 }
 
 const replyFields = z.object({ text: z.string() });
