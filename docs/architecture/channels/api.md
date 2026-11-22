@@ -419,8 +419,8 @@ with their stored type, and `other` lists every other type. Each file holds its 
 type, the time of its result record, its thread, the task's ID and name (null for the conversation),
 the position of its result record, whether `file.send` sent it, and how many files its code run
 wrote. A call reads at most 300 stored rows, so a page can hold fewer than 30 files while
-`nextCursor` remains. The list leaves out the kept streams and every file whose result record a
-forget made unreadable.
+`nextCursor` remains. The list leaves out the kept streams, every file whose result record a forget
+made unreadable, and every stored image, although `files.read` serves an image by its ID.
 
 ## Reading and the live stream
 

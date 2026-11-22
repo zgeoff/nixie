@@ -134,13 +134,13 @@ is outside content, because the program chose the name and the type of a code-ru
 - The call refuses a kept stream file (`.stdout` or `.stderr`), because it is the code run's output
   and not a file the program wrote. The tool finds one by the `stdout.file` and `stderr.file` of the
   code run's result record.
-- The name is the last segment of the file's path in that result.
+- The name of a code-run file is the last segment of its path in that result.
 - A send stores the file ID and never a copy of the bytes. The bytes stay one attachment of the code
   run's `tool_result` record, or of the image's, so a forget of that record makes the sent file
   unreadable as well.
-- The result record's transaction also writes one `code_file_sends` row with the record's sequence,
-  the file ID and the thread. The row holds no free text and sits outside the erasable fields, so it
-  marks which files went to the user even after a forget.
+- For a code-run file, the result record's transaction also writes one `code_file_sends` row with
+  the record's sequence, the file ID and the thread. The row holds no free text and sits outside the
+  erasable fields, so it marks which files went to the user even after a forget.
 
 [The conversation view](../channels/client.md#the-conversation-view) covers how the user sees the
 file, and [the API](../channels/api.md#reading-a-code-run-file) covers how the client reads its
