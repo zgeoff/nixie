@@ -16,6 +16,7 @@ import { encodeTestImage } from '../test-utils/encode-test-image';
 import type { StubProgram } from '../test-utils/make-stub-code-exec';
 import { makeStubCodeExec } from '../test-utils/make-stub-code-exec';
 import { readCodeRunFiles } from '../test-utils/read-code-run-files';
+import { seedImage } from '../test-utils/seed-image';
 import { startTestLog } from '../test-utils/start-test-log';
 import { writeWebFetchPage } from '../web/write-web-fetch-page';
 import { buildCodeRunTool } from './build-code-run-tool';
@@ -737,6 +738,24 @@ test('it copies the current body of a note into the work folder as markdown', as
   const copied = code.adapter.files.get(created.id)?.get('/work/zine.md');
 
   expect(new TextDecoder().decode(copied)).toBe('## Boiler\nTrips after cold nights.');
+});
+
+test('it copies a stored image from another thread into the work folder as stored', async () => {
+  const ctx = await setupTest();
+
+  const bytes = new Uint8Array([137, 80, 78, 71, 1, 2, 3]);
+
+  await seedImage(ctx.log, { image: 'im4k9q2x7a', source: 'draw', bytes });
+
+  const code = ctx.start();
+
+  await code.call({ files: [{ path: 'in.png', image: 'im4k9q2x7a' }] });
+
+  const [created] = code.adapter.created;
+
+  invariant(created);
+
+  expect(code.adapter.files.get(created.id)?.get('/work/in.png')).toStrictEqual(bytes);
 });
 
 test('it refuses a note file for a caller that does not hold notebook.read', async () => {

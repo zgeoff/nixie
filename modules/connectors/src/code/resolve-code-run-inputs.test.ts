@@ -1,9 +1,7 @@
 import { expect, test } from 'bun:test';
-import type { LogTables } from '@heynixie/log';
-import { removeRecordKey } from '@heynixie/log';
+import { removeThreadKeys } from '@heynixie/log';
 import type { ToolRun } from '@heynixie/tools';
 import { createFakeClock } from '@zgeoff/testing/clock';
-import invariant from 'tiny-invariant';
 import { seedImage } from '../test-utils/seed-image';
 import { startTestLog } from '../test-utils/start-test-log';
 import { codeRunLimits } from './code-run-limits';
@@ -31,20 +29,10 @@ async function setupTest() {
       { language: 'bash', program: 'true', files, skills: [] },
     );
 
-  const forgetRecord = async (sequence: number) => {
-    const row = await log.writer.db
-      .$extendTables<LogTables>()
-      .selectFrom('records')
-      .select('key_id')
-      .where('sequence', '=', sequence)
-      .executeTakeFirst();
+  // the seeded images live on the conversation thread, so this forgets them
+  const forgetImages = () => removeThreadKeys(log, 'conversation');
 
-    invariant(typeof row?.key_id === 'string');
-
-    await removeRecordKey(log, row.key_id);
-  };
-
-  return { log, resolve, forgetRecord };
+  return { log, resolve, forgetImages };
 }
 
 test('it puts the stored bytes of an image at its path in the work folder', async () => {
@@ -79,13 +67,13 @@ test('it refuses an image that no ID names', async () => {
 test('it refuses a forgotten image', async () => {
   const ctx = await setupTest();
 
-  const seeded = await seedImage(ctx.log, {
+  await seedImage(ctx.log, {
     image: 'im4k9q2x7a',
     source: 'draw',
     bytes: new Uint8Array(30),
   });
 
-  await ctx.forgetRecord(seeded.sequence);
+  await ctx.forgetImages();
 
   const resolution = await ctx.resolve([{ path: 'in.png', image: 'im4k9q2x7a' }]);
 

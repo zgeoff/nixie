@@ -99,7 +99,7 @@ the `codeRun` size row after a memory kill, because the program chose how much m
   is the model's choice. An image ID resolves on every thread with no tool requirement, as it does
   for `file.send`, and an unknown or forgotten image gets a refusal that holds its ID. The bytes
   count toward the total input size. A forget of the image never reaches a file that the program
-  wrote, as a forget never reaches a file that `file.send` sent.
+  wrote.
 - A file ID resolves only on its own thread. A worker's tool calls write their records on the
   caller's thread, so the caller reads the files of its worker's code runs. A stored page lasts one
   session, so a page ID works only in the session that fetched it.
