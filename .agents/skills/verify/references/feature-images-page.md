@@ -25,8 +25,9 @@ Before you start:
 ## Journey
 
 1. Record every later command of this journey under this feature. Then script the model's next turn.
-   `--draw` queues 2 `image.draw` calls, a new image and an edit of it, and `--text` queues the
-   reply that follows them. Neither image is pinned, so the page shows none until "Show all".
+   `--draw` queues 2 `image.draw` calls, a new image and an edit of it, then an `image.list` call,
+   and `--text` queues the reply that follows them. Neither image is pinned, so the page shows none
+   until "Show all".
 
    ```bash
    bun verify use --feature images-page
@@ -96,8 +97,8 @@ Before you start:
 
 - Step 2: the 2 newest rows of the `images` table are the journey's: the newest row's `parent_id` is
   the other row's `image_id`.
-- Step 3: with "Show all" unticked, the page lists no image and says that no image is pinned. With
-  it ticked, the page lists both images of the journey.
+- Step 3: with "Show all" unticked, the page lists no image and shows "No image is pinned". With it
+  ticked, the page lists both images of the journey.
 - Step 4: the lightbox of the edit shows "Edited from" and a link named for the first image. The
   link opens the first image's lightbox.
 - Step 5: the lightbox shows "Forgotten" and a "Key backups" line, the call and result records of
