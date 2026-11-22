@@ -8,8 +8,8 @@ shows markdown or an image on a screen that is on. The camera, the speaker and t
 not built: a device record holds their capabilities, and every one of them stays off.
 
 The `devices` module owns the record, the screen state, the open streams and the tools. The
-[API](api.md) owns registration, enrolment and the session scope, and the web client owns device
-mode.
+[API](api.md) owns registration, enrolment and the session scope, and the [web client](client.md)
+owns device mode.
 
 ## Enrolment and the session scope
 
@@ -70,10 +70,10 @@ An idle device with no scene shows black.
 `devices.follow` takes the screen's size in pixels, which the device sends again on each reconnect.
 The server keeps each open stream and its size in memory in `createDeviceStreams`, and a device is
 online while it has one open. `devices.resize({ width, height })` gives every open stream of the
-caller's device a new size, within the bounds of `follow`'s size, so `devices.list` reads the new
-size at once. The first event is what the screen shows now. A later event follows a commit that
-touches the device, and the stream sends an event only when the state changes. The event of a show
-carries the `fit` of an image, `whole` or `fill`.
+caller's device a new size, which one pixels schema bounds for both calls, so `devices.list` reads
+the new size at once. The first event is what the screen shows now. A later event follows a commit
+that touches the device, and the stream sends an event only when the state changes. The event of a
+show carries the `fit` of an image, `whole` or `fill`.
 
 `devices.readImage` serves an image only while it is in the current show or the idle scene, and
 returns `NOT_SHOWN` otherwise.
@@ -92,8 +92,9 @@ first refusal: `UNKNOWN_DEVICE`, `SCREEN_OFF`, then the image refusals `UNKNOWN_
 
 ## Device mode
 
-Device mode is the route `/device` of the web client. The page asks the server to set the screen the
-way the device left it, and the answer says what the browser holds:
+Device mode is the route `/device` of the web client. On load, the page calls
+`devices.setCapability` with the screen setting the browser stored, and the answer shows what the
+browser holds:
 
 - A browser with no session shows the enrolment form, which makes a device session.
 - A browser with a full session and no device row shows a form that names the device and calls

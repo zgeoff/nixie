@@ -54,9 +54,15 @@ async function setupTest() {
     // timers and replies alike whatever the test machine's speed, then the clock pauses again
     advancePageClock: async (budgetMs: number) => {
       const budgetSpent = new Promise<void>((resolve) => {
-        view.addEventListener('Emulation.virtualTimeBudgetExpired', () => resolve(), {
-          once: true,
-        });
+        view.addEventListener(
+          'Emulation.virtualTimeBudgetExpired',
+          () => {
+            resolve();
+          },
+          {
+            once: true,
+          },
+        );
       });
 
       await view.cdp('Emulation.setVirtualTimePolicy', {
