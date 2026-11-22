@@ -1,12 +1,12 @@
 import type { ContractClient } from '@heynixie/contract';
 import { ORPCError } from '@orpc/client';
 import { buildSocketURL } from './build-socket-url';
-import type { StartViewer, WatchState } from './types';
+import type { LoadViewer, StartViewer, WatchState } from './types';
 
 export interface ComputerWatchRun {
   readonly client: ContractClient;
   readonly target: HTMLElement;
-  readonly startViewer: StartViewer;
+  readonly loadViewer: LoadViewer;
   readonly signal: AbortSignal;
   readonly onState: (state: WatchState) => void;
 }
@@ -16,9 +16,9 @@ export interface ComputerWatchRun {
 export async function runComputerWatch(run: ComputerWatchRun): Promise<void> {
   run.onState({ kind: 'connecting' });
 
-  const streamURL = await readStreamURL(run);
+  const [streamURL, startViewer] = await Promise.all([readStreamURL(run), loadViewerQuietly(run)]);
 
-  if (streamURL === null || run.signal.aborted) {
+  if (streamURL === null || startViewer === null || run.signal.aborted) {
     return;
   }
 
@@ -32,7 +32,7 @@ export async function runComputerWatch(run: ComputerWatchRun): Promise<void> {
     }
   });
 
-  const stop = await startViewerQuietly(run, socket, connected);
+  const stop = startViewerQuietly({ run, startViewer, socket, connected });
 
   if (stop === null) {
     return;
@@ -73,19 +73,36 @@ async function readStreamURL(run: ComputerWatchRun): Promise<string | null> {
   }
 }
 
+async function loadViewerQuietly(run: ComputerWatchRun): Promise<StartViewer | null> {
+  try {
+    return await run.loadViewer();
+  } catch {
+    if (!run.signal.aborted) {
+      run.onState({ kind: 'failed' });
+    }
+
+    return null;
+  }
+}
+
 interface ConnectionState {
   isConnected: boolean;
 }
 
-async function startViewerQuietly(
-  run: ComputerWatchRun,
-  socket: WebSocket,
-  connected: ConnectionState,
-): Promise<(() => void) | null> {
+interface ViewerStart {
+  readonly run: ComputerWatchRun;
+  readonly startViewer: StartViewer;
+  readonly socket: WebSocket;
+  readonly connected: ConnectionState;
+}
+
+function startViewerQuietly(start: ViewerStart): (() => void) | null {
+  const run = start.run;
+
   try {
-    return await run.startViewer(run.target, socket, {
+    return start.startViewer(run.target, start.socket, {
       onConnect: () => {
-        connected.isConnected = true;
+        start.connected.isConnected = true;
 
         if (!run.signal.aborted) {
           run.onState({ kind: 'watching' });
@@ -93,12 +110,12 @@ async function startViewerQuietly(
       },
       onDisconnect: () => {
         if (!run.signal.aborted) {
-          run.onState({ kind: connected.isConnected ? 'ended' : 'failed' });
+          run.onState({ kind: start.connected.isConnected ? 'ended' : 'failed' });
         }
       },
     });
   } catch {
-    socket.close();
+    start.socket.close();
 
     if (!run.signal.aborted) {
       run.onState({ kind: 'failed' });

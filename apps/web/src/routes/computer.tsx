@@ -4,7 +4,7 @@ import { createFileRoute, useRouter } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import { ComputerView } from '../components/computer-view';
 import { SignedInPage } from '../components/signed-in-page';
-import { startNoVNCViewer } from '../computer/start-novnc-viewer';
+import { loadNoVNCViewer } from '../computer/load-novnc-viewer';
 import { readRouteSession } from '../conversation/read-route-session';
 
 export const Route = createFileRoute('/computer')({
@@ -23,7 +23,7 @@ function Computer(): ReactNode {
       }}
       session={data.session}
     >
-      <ComputerView startViewer={startNoVNCViewer} />
+      <ComputerView loadViewer={loadNoVNCViewer} />
     </SignedInPage>
   );
 }

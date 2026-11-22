@@ -7,12 +7,16 @@ export interface ViewerEvents {
 }
 
 // Starts a viewer that draws the socket's desktop into the element, view only. It returns the
-// function that stops the viewer.
+// function that stops the viewer. It runs in the same turn as the socket's creation, so the viewer
+// hears the first bytes the server sends.
 export type StartViewer = (
   target: HTMLElement,
   socket: WebSocket,
   events: ViewerEvents,
-) => Promise<() => void>;
+) => () => void;
+
+// Loads the viewer's code, which the page does before it opens the socket.
+export type LoadViewer = () => Promise<StartViewer>;
 
 export type WatchState =
   | { readonly kind: 'connecting' }

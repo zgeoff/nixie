@@ -3,7 +3,7 @@ import { network } from '@heynixie/mock-server';
 import { waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { HttpResponse, http } from 'msw';
-import type { StartViewer, ViewerEvents } from '../computer/types';
+import type { LoadViewer, StartViewer, ViewerEvents } from '../computer/types';
 import { createDeviceSession } from '../test-utils/create-device-session';
 import { render } from '../test-utils/render';
 import { ComputerView } from './computer-view';
@@ -54,12 +54,14 @@ function setupTest() {
 
     started.push({ target, socket, events, state });
 
-    return Promise.resolve(() => {
+    return () => {
       state.isStopped = true;
-    });
+    };
   };
 
-  return { started, tickets, startViewer };
+  const loadViewer: LoadViewer = () => Promise.resolve(startViewer);
+
+  return { started, tickets, loadViewer };
 }
 
 test('it asks for a ticket and gives the viewer the socket that the API names', async () => {
@@ -67,7 +69,7 @@ test('it asks for a ticket and gives the viewer the socket that the API names', 
 
   await createDeviceSession();
 
-  render(<ComputerView startViewer={ctx.startViewer} />);
+  render(<ComputerView loadViewer={ctx.loadViewer} />);
 
   await waitFor(() => {
     expect(ctx.started).toHaveLength(1);
@@ -81,7 +83,7 @@ test('it draws the desktop into an element of its own', async () => {
 
   await createDeviceSession();
 
-  const rendered = render(<ComputerView startViewer={ctx.startViewer} />);
+  const rendered = render(<ComputerView loadViewer={ctx.loadViewer} />);
 
   await waitFor(() => {
     expect(ctx.started).toHaveLength(1);
@@ -97,7 +99,7 @@ test('it says the computer is waking while the socket is open and no desktop has
 
   await createDeviceSession();
 
-  const rendered = render(<ComputerView startViewer={ctx.startViewer} />);
+  const rendered = render(<ComputerView loadViewer={ctx.loadViewer} />);
 
   const status = await rendered.findByText('The computer is waking');
 
@@ -109,7 +111,7 @@ test('it says it is watching once the viewer has the desktop', async () => {
 
   await createDeviceSession();
 
-  const rendered = render(<ComputerView startViewer={ctx.startViewer} />);
+  const rendered = render(<ComputerView loadViewer={ctx.loadViewer} />);
 
   await rendered.findByText('The computer is waking');
 
@@ -126,7 +128,7 @@ test('it offers to watch again when the stream ends, with a new ticket', async (
 
   await createDeviceSession();
 
-  const rendered = render(<ComputerView startViewer={ctx.startViewer} />);
+  const rendered = render(<ComputerView loadViewer={ctx.loadViewer} />);
 
   await rendered.findByText('The computer is waking');
 
@@ -149,7 +151,7 @@ test('it says the computer cannot be watched when the stream ends before the des
 
   await createDeviceSession();
 
-  const rendered = render(<ComputerView startViewer={ctx.startViewer} />);
+  const rendered = render(<ComputerView loadViewer={ctx.loadViewer} />);
 
   await rendered.findByText('The computer is waking');
 
@@ -172,7 +174,7 @@ test('it says the computer cannot be watched when the API refuses the call', asy
     ),
   );
 
-  const rendered = render(<ComputerView startViewer={ctx.startViewer} />);
+  const rendered = render(<ComputerView loadViewer={ctx.loadViewer} />);
 
   const status = await rendered.findByText(/can’t be watched right now/u);
 
@@ -185,7 +187,7 @@ test('it stops the viewer and closes the socket when the page goes away', async 
 
   await createDeviceSession();
 
-  const rendered = render(<ComputerView startViewer={ctx.startViewer} />);
+  const rendered = render(<ComputerView loadViewer={ctx.loadViewer} />);
 
   await rendered.findByText('The computer is waking');
 

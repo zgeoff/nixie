@@ -1,12 +1,12 @@
 import type { ReactNode } from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { runComputerWatch } from '../computer/run-computer-watch';
-import type { StartViewer, WatchState } from '../computer/types';
+import type { LoadViewer, WatchState } from '../computer/types';
 import { css } from '../styled-system/css';
 import { useNixieClient } from '../utils/use-nixie-client';
 
 export interface ComputerViewProps {
-  readonly startViewer: StartViewer;
+  readonly loadViewer: LoadViewer;
 }
 
 const page = css({
@@ -57,7 +57,7 @@ export function ComputerView(props: ComputerViewProps): ReactNode {
       void runComputerWatch({
         client: nixie.client,
         target: element,
-        startViewer: props.startViewer,
+        loadViewer: props.loadViewer,
         signal: running.signal,
         onState: setState,
       });
@@ -66,7 +66,7 @@ export function ComputerView(props: ComputerViewProps): ReactNode {
     return () => {
       running.abort();
     };
-  }, [attempt, nixie.client, props.startViewer]);
+  }, [attempt, nixie.client, props.loadViewer]);
 
   const isOver = state.kind === 'ended' || state.kind === 'failed';
 

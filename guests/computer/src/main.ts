@@ -21,6 +21,7 @@ import { startDesktop } from './desktop/start-desktop';
 import { makeComputerHandler } from './make-computer-handler';
 import { makeDiskMarker } from './make-disk-marker';
 import { makeScanChannel } from './make-scan-channel';
+import { makeStdoutWriter } from './make-stdout-writer';
 import { makeXDriver } from './screen/make-x-driver';
 import { runScreenTool } from './screen/run-screen-tool';
 import {
@@ -147,9 +148,7 @@ const shell = makeShellHandler({
 await runComputerGuest(
   {
     input: Bun.stdin.stream(),
-    write: async (bytes) => {
-      await Bun.write(Bun.stdout, bytes);
-    },
+    write: makeStdoutWriter(),
   },
   makeComputerHandler({ browser, shell }),
   40 * 1024 * 1024,

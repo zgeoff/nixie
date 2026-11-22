@@ -960,3 +960,21 @@ test('it tells the guest to close the stream when a watch ends', async () => {
 
   expect(ctx.vnc.frames.at(-1)).toMatchObject({ kind: 'vnc-close' });
 });
+
+test('it relays the desktop to a second watch after the first one ended', async () => {
+  const ctx = await setupTest();
+
+  const first = ctx.openWatch();
+
+  await waitForCondition(() => first.received.length === 1);
+
+  first.connection.end();
+
+  await waitForCondition(() => ctx.vnc.frames.some((frame) => frame.kind === 'vnc-close'));
+
+  const second = ctx.openWatch();
+
+  await waitForCondition(() => second.received.length === 1);
+
+  expect(new TextDecoder().decode(second.received[0])).toBe('RFB 003.008\n');
+});

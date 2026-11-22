@@ -6,6 +6,7 @@ import { startSocketProxy } from '@heynixie/egress';
 import { runComputerGuest } from '@heynixie/wire';
 import { makeComputerHandler } from './make-computer-handler';
 import { makeScanChannel } from './make-scan-channel';
+import { makeStdoutWriter } from './make-stdout-writer';
 import { makeStubDriver } from './screen/make-stub-driver';
 import { bridgePort, buildProxyEnv, makeShellHandler } from './shell/make-shell-handler';
 import { ownAccount } from './shell/terminal-account';
@@ -78,9 +79,7 @@ const shell = makeShellHandler({
 await runComputerGuest(
   {
     input: Bun.stdin.stream(),
-    write: async (bytes) => {
-      await Bun.write(Bun.stdout, bytes);
-    },
+    write: makeStdoutWriter(),
   },
   makeComputerHandler({ browser, shell }),
   40 * 1024 * 1024,

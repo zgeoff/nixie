@@ -29,6 +29,7 @@ export const featurePaths = {
   'computer-browser': [...everyJourney],
   'computer-shell': [...everyJourney],
   'computer-screen': [...everyJourney],
+  'computer-watch': [...everyJourney],
 } as const satisfies Record<string, readonly string[]>;
 
 // A change to one of these changes every feature: the verify CLI and its harness, the test helpers
