@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.102.0](https://github.com/zgeoff/nixie/compare/v0.101.0...v0.102.0) (2026-11-22)
+
+
+### Features
+
+* **reminders:** let a task list reminders ([#1387](https://github.com/zgeoff/nixie/issues/1387)) ([f958bec](https://github.com/zgeoff/nixie/commit/f958bec86955288ae40b250b236f8bc9c28d1256))
+
 ## [0.101.0](https://github.com/zgeoff/nixie/compare/v0.100.0...v0.101.0) (2026-11-22)
 
 
