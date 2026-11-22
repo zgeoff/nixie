@@ -11,12 +11,13 @@ const resizeDelayMs = 250;
 
 interface ResizeState {
   stop: (() => void) | null;
-  inFlight: ScreenPixels | null;
+  isInFlight: boolean;
+  hasPendingEvent: boolean;
+  isClosed: boolean;
 }
 
-// Tells the server the new size of the screen after the window resizes: at most one call every
-// 250 ms, and none when the size is what the server has. A failed resize leaves the ref as it was,
-// so the next resize event sends the size again.
+// At most one resize call every 250 ms and one at a time. A resize event during a call sends the
+// size again once it settles, and a failed call leaves the ref as it was.
 export function useScreenResize(isActive: boolean, serverPixels: RefObject<ScreenPixels>): void {
   const nixie = useNixieClient();
 
@@ -25,25 +26,51 @@ export function useScreenResize(isActive: boolean, serverPixels: RefObject<Scree
       return () => {};
     }
 
-    const state: ResizeState = { stop: null, inFlight: null };
+    const state: ResizeState = {
+      stop: null,
+      isInFlight: false,
+      hasPendingEvent: false,
+      isClosed: false,
+    };
 
-    const sendSize = (): void => {
+    const sendSize = async (): Promise<void> => {
       state.stop = null;
 
-      const pixels = pickPixelsToSend(state.inFlight ?? serverPixels.current, readScreenPixels());
+      if (state.isInFlight) {
+        state.hasPendingEvent = true;
 
-      if (pixels !== null) {
-        void writeResize(nixie.client, pixels, state, serverPixels);
+        return;
+      }
+
+      const pixels = pickPixelsToSend(serverPixels.current, readScreenPixels());
+
+      if (pixels === null) {
+        return;
+      }
+
+      state.isInFlight = true;
+      state.hasPendingEvent = false;
+
+      await writeResize(nixie.client, pixels, serverPixels);
+
+      state.isInFlight = false;
+
+      if (state.hasPendingEvent && !state.isClosed) {
+        await sendSize();
       }
     };
 
     const handleResize = (): void => {
-      state.stop ??= startPlatformTimer(sendSize, resizeDelayMs);
+      state.stop ??= startPlatformTimer(() => {
+        void sendSize();
+      }, resizeDelayMs);
     };
 
     globalThis.addEventListener('resize', handleResize);
 
     return () => {
+      state.isClosed = true;
+
       globalThis.removeEventListener('resize', handleResize);
       state.stop?.();
     };
@@ -53,18 +80,18 @@ export function useScreenResize(isActive: boolean, serverPixels: RefObject<Scree
 async function writeResize(
   client: ContractClient,
   pixels: ScreenPixels,
-  state: ResizeState,
   serverPixels: RefObject<ScreenPixels>,
 ): Promise<void> {
-  state.inFlight = pixels;
+  const before = serverPixels.current;
 
   try {
     await client.devices.resize(pixels);
 
-    serverPixels.current = pixels;
+    // a reconnect while the call was in flight sent its own size, which is what the server keeps
+    if (serverPixels.current === before) {
+      serverPixels.current = pixels;
+    }
   } catch {
     // the server keeps its old size, so the next resize event sends the size again
-  } finally {
-    state.inFlight = null;
   }
 }

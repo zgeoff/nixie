@@ -119,3 +119,105 @@ test('it sends the size again on the next resize event after a failed resize', a
 
   expect(serverPixels.current).toStrictEqual(readScreenPixels());
 });
+
+test('it sends the size again when a reconnect changed the size of the server while a resize was in flight', async () => {
+  const ctx = setupTest();
+
+  await createDeviceSession();
+
+  const held = Promise.withResolvers<void>();
+  const received: string[] = [];
+
+  server.use(
+    http.post(
+      '*/rpc/devices/resize',
+      async () => {
+        received.push('resize');
+
+        await held.promise;
+      },
+      { once: true },
+    ),
+  );
+
+  const serverPixels = ctx.buildServerPixels({ width: 1, height: 1 });
+
+  renderHook(() => {
+    useScreenResize(true, serverPixels);
+  });
+
+  ctx.resizeTo({ width: 700, height: 500 });
+
+  await waitFor(() => {
+    expect(received).toHaveLength(1);
+  });
+
+  serverPixels.current = { width: 1024, height: 768 };
+
+  ctx.resizeTo({ width: 700, height: 500 });
+
+  const resizedAtMs = performance.now();
+
+  await waitFor(() => {
+    expect(performance.now() - resizedAtMs).toBeGreaterThan(300);
+  });
+
+  held.resolve();
+
+  await waitFor(() => {
+    expect(ctx.readResizes()).toHaveLength(2);
+  });
+
+  expect(serverPixels.current).toStrictEqual(readScreenPixels());
+});
+
+test('it sends the size again when a resize event arrived while a failing resize was in flight', async () => {
+  const ctx = setupTest();
+
+  await createDeviceSession();
+
+  const held = Promise.withResolvers<void>();
+  const received: string[] = [];
+
+  server.use(
+    http.post(
+      '*/rpc/devices/resize',
+      async () => {
+        received.push('resize');
+
+        await held.promise;
+
+        return HttpResponse.error();
+      },
+      { once: true },
+    ),
+  );
+
+  const serverPixels = ctx.buildServerPixels({ width: 1, height: 1 });
+
+  renderHook(() => {
+    useScreenResize(true, serverPixels);
+  });
+
+  ctx.resizeTo({ width: 700, height: 500 });
+
+  await waitFor(() => {
+    expect(received).toHaveLength(1);
+  });
+
+  ctx.resizeTo({ width: 700, height: 500 });
+
+  const resizedAtMs = performance.now();
+
+  await waitFor(() => {
+    expect(performance.now() - resizedAtMs).toBeGreaterThan(300);
+  });
+
+  held.resolve();
+
+  await waitFor(() => {
+    expect(ctx.readResizes()).toHaveLength(1);
+  });
+
+  expect(serverPixels.current).toStrictEqual(readScreenPixels());
+});

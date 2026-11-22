@@ -256,6 +256,47 @@ test('it updates the size that devices.list reads when a full session resizes', 
   });
 });
 
+test('it resizes only the open streams of the session that resizes when 2 devices follow', async () => {
+  const ctx = await setupTest();
+  const panel = await ctx.enrol('device', 'desk panel');
+  const session = await ctx.enrol('full', 'phone');
+
+  await session.client.devices.register({
+    clientActionID: crypto.randomUUID(),
+    name: 'kitchen tab',
+  });
+
+  const stopped = new AbortController();
+
+  const panelEvents = await panel.client.devices.follow(
+    { pixels: { width: 640, height: 480 } },
+    { signal: stopped.signal },
+  );
+
+  const sessionEvents = await session.client.devices.follow(
+    { pixels: { width: 800, height: 600 } },
+    { signal: stopped.signal },
+  );
+
+  await panelEvents.next();
+  await sessionEvents.next();
+  await session.client.devices.resize({ width: 1024, height: 768 });
+
+  const listed = await ctx.call('devices.list', {});
+
+  stopped.abort();
+
+  expect(listed).toStrictEqual({
+    status: 'ok',
+    result: {
+      devices: expect.toIncludeSameMembers([
+        expect.objectContaining({ name: 'desk panel', pixels: { width: 640, height: 480 } }),
+        expect.objectContaining({ name: 'kitchen tab', pixels: { width: 1024, height: 768 } }),
+      ]),
+    },
+  });
+});
+
 test('it acts on the own row of a full session when another session holds a row too', async () => {
   const ctx = await setupTest();
   const panel = await ctx.enrol('device', 'desk panel');
