@@ -12,6 +12,7 @@ function setupTest() {
     'action.queued': ['arguments'],
     'action.reconcile_checked': ['result', 'message'],
     'action.retry_scheduled': ['result', 'message'],
+    'computer.takeover_ended': ['origins', 'now'],
     'definition.changed': ['version'],
     'device.idle_set': ['scene'],
     'device.shown': ['content'],

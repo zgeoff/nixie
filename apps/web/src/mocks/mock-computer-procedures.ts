@@ -7,4 +7,14 @@ export const mockComputerProcedures = {
 
     return { streamURL: `/rpc/computer/watch-stream?ticket=${crypto.randomUUID()}` };
   }),
+  takeOver: mockImplementer.computer.takeOver.handler((options) => {
+    requireMockSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
+
+    return { takenOverAt: Date.now() };
+  }),
+  handBack: mockImplementer.computer.handBack.handler((options) => {
+    requireMockSession(options.context.sessionToken, options.errors.UNAUTHORIZED);
+
+    return { durationSeconds: 0 };
+  }),
 };

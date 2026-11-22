@@ -13,6 +13,7 @@ import {
   runComputerCall,
   sortCallResult,
 } from './run-computer-call';
+import { screenMessages } from './screen-messages';
 import { fitPicture, showPicture } from './show-picture';
 import type { ComputerAttempt } from './types';
 
@@ -363,7 +364,11 @@ async function prepareScreenAct(
     (entry) => JSON.stringify(entry.expectWindow) !== JSON.stringify(expectWindow),
   );
 
-  state.screens.set(key, [...kept, { binding, expectWindow }]);
+  state.screens.set(key, [
+    ...kept,
+    { binding, expectWindow, epoch: options.computer.takeover.epoch() },
+  ]);
+
   state.holds.get(key)?.();
   state.holds.set(key, options.computer.hold(actionProposalLapseMs));
 
@@ -459,13 +464,13 @@ export async function runScreenAct(
   const prepared = findPrepared(state.screens.get(key) ?? [], attempt);
 
   if (prepared === undefined) {
-    return refuseComputer(
-      'SCREEN_CHANGED',
-      'nixie restarted since the call was prepared, so it cannot tell the window is the same',
-    );
+    return refuseComputer('SCREEN_CHANGED', screenMessages.restarted);
   }
 
-  const result = await runPreparedAct(options, attempt, prepared);
+  const result =
+    prepared.epoch === options.computer.takeover.epoch()
+      ? await runPreparedAct(options, attempt, prepared)
+      : refuseComputer('SCREEN_CHANGED', screenMessages.held);
 
   if (result.refusalCode === 'BUSY' || result.refusalCode === 'COMPUTER_MOVING') {
     return result;

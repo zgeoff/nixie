@@ -49,6 +49,9 @@ interface TestAPI {
   // the computer that a watch opens, which a running nixie sets once its computer starts
   readonly setWatch: (open: ReturnType<ComputerWatchPort['readWatch']>) => void;
 
+  // the hold on the desktop that a device session takes, which a running nixie sets with its computer
+  readonly setTakeover: (takeover: ReturnType<ComputerWatchPort['readTakeover']>) => void;
+
   // every line the watch route and its relay logged
   readonly logged: readonly string[];
   readonly writer: Writer;
@@ -87,13 +90,19 @@ export async function startTestAPI(
   const sessions: { cleanup: CleanupRecordSessions | null } = { cleanup: null };
   const notebook: { store: ViewNotebookStore | null } = { store: null };
   const spendGateway = buildStubSpendGateway();
-  const watching: { open: ReturnType<ComputerWatchPort['readWatch']> } = { open: null };
+
+  const watching: {
+    open: ReturnType<ComputerWatchPort['readWatch']>;
+    takeover: ReturnType<ComputerWatchPort['readTakeover']>;
+  } = { open: null, takeover: null };
+
   const logged: string[] = [];
 
   const context = await createTestContext(writer, settings, definitionStore, {
     readSessionCleanup: () => sessions.cleanup,
     readNotebook: () => notebook.store,
     readWatch: () => watching.open,
+    readTakeover: () => watching.takeover,
     logger: (event, fields) => {
       logged.push(JSON.stringify({ event, fields }));
     },
@@ -122,6 +131,9 @@ export async function startTestAPI(
     setWatch: (open) => {
       watching.open = open;
     },
+    setTakeover: (takeover) => {
+      watching.takeover = takeover;
+    },
     logged,
   };
 }
@@ -130,6 +142,7 @@ interface TestContextDeps {
   readonly readSessionCleanup: APIContext['readSessionCleanup'];
   readonly readNotebook: NonNullable<APIContext['readNotebook']>;
   readonly readWatch: ComputerWatchPort['readWatch'];
+  readonly readTakeover: ComputerWatchPort['readTakeover'];
   readonly logger: ComputerWatchPort['logger'];
   readonly spendGateway: ReturnType<typeof buildStubSpendGateway> | null;
 }
@@ -176,6 +189,7 @@ async function createTestContext(
       tickets: createWatchTickets(clock),
       logger: deps.logger,
       readWatch: deps.readWatch,
+      readTakeover: deps.readTakeover,
     },
     definitions: readTestDefinitions,
     ...(deps.spendGateway === null

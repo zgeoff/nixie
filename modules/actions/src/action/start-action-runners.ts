@@ -13,6 +13,9 @@ export interface ActionRunnersOptions {
   // decides an action again before each attempt
   readonly checkAttempt?: AttemptCheck;
 
+  // see ClaimActionOptions
+  readonly readHeldToolPrefixes?: () => readonly string[];
+
   readonly size?: number;
   readonly holder?: string;
   readonly leaseMs?: number;
@@ -33,7 +36,14 @@ export function startActionRunners(
   const pool = startClaimPool(context.clock, {
     size: options.size ?? DEFAULT_SIZE,
     pollMs: options.pollMs ?? DEFAULT_POLL_MS,
-    claim: () => claimAction(context, { holder, leaseMs }),
+    claim: () =>
+      claimAction(context, {
+        holder,
+        leaseMs,
+        ...(options.readHeldToolPrefixes === undefined
+          ? {}
+          : { readHeldToolPrefixes: options.readHeldToolPrefixes }),
+      }),
     run: (lease) =>
       runActionAttempt(context, lease, {
         connectors: options.connectors,

@@ -19,26 +19,37 @@ export interface ComputerTools {
   // settles an old name
   readonly connector: ActionConnector;
 
-  // opens a watch of the desktop for a socket
+  // opens a watch of the desktop for a socket of a device session
   readonly watch: Computer['watch'];
+
+  // the hold that a device session takes on the desktop and gives back
+  readonly takeover: Computer['takeover'];
 }
 
 const refusedSchema = z.object({ code: z.string(), message: z.string() });
+
+const takenOverMessage =
+  'the user has taken over the computer; try again after it comes back to you';
 
 export function buildComputerTools(options: ComputerToolOptions): ComputerTools {
   const state = buildComputerState();
 
   return {
     watch: options.computer.watch,
+    takeover: options.computer.takeover,
     tools: [
       ...buildBrowserReadTools(options, state),
       ...buildBrowserActTools(options, state),
       ...buildScreenTools(options, state),
       ...buildShellTools(options, state),
-    ].map((tool) => withMoveGate(options, tool)),
+    ].map((tool) => withTakeoverGate(options, withMoveGate(options, tool))),
     connector: {
       reconcile: { kind: 'none' },
       run: async (attempt) => {
+        if (options.computer.takeover.isHeld()) {
+          return { kind: 'refused_retryable', reason: takenOverMessage };
+        }
+
         const moving = await refuseUntilMoved(options);
         const result = await (moving ?? runQueued(options, state, attempt));
 
@@ -55,6 +66,32 @@ export function buildComputerTools(options: ComputerToolOptions): ComputerTools 
             };
       },
     },
+  };
+}
+
+// While a person holds the desktop, the assistant reads it and changes nothing: these direct calls
+// would move the screen under the person's hands.
+const takenOverTools: ReadonlySet<string> = new Set([
+  'computer.browser_open',
+  'computer.browser_close',
+  'computer.browser_download',
+  'computer.browser_scroll',
+  'computer.screen_scroll',
+  'computer.write_file',
+  'computer.export_file',
+]);
+
+function withTakeoverGate(options: ComputerToolOptions, tool: ToolDefinition): ToolDefinition {
+  if (!takenOverTools.has(tool.name)) {
+    return tool;
+  }
+
+  return {
+    ...tool,
+    run: (call, context) =>
+      options.computer.takeover.isHeld()
+        ? Promise.resolve({ status: 'ok', ...refuseComputer('TAKEN_OVER', takenOverMessage) })
+        : tool.run(call, context),
   };
 }
 

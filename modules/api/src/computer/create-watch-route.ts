@@ -132,7 +132,7 @@ async function openWatch(
         socket.close(1000, 'the desktop stream ended');
       },
     },
-    { canInput: () => false, onInput: () => {} },
+    socket.data.identityID,
   );
 }
 

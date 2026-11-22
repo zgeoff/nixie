@@ -6,14 +6,18 @@ export interface ViewerEvents {
   readonly onDisconnect: () => void;
 }
 
-// Starts a viewer that draws the socket's desktop into the element, view only. It returns the
-// function that stops the viewer. It runs in the same turn as the socket's creation, so the viewer
-// hears the first bytes the server sends.
-export type StartViewer = (
-  target: HTMLElement,
-  socket: WebSocket,
-  events: ViewerEvents,
-) => () => void;
+export interface Viewer {
+  readonly stop: () => void;
+
+  // Lets the viewer send the keys and pointer of the person, or stops it. The server passes them
+  // only while this device holds the desktop.
+  readonly setInput: (isOn: boolean) => void;
+}
+
+// Starts a viewer that draws the socket's desktop into the element, view only until `setInput` turns
+// input on. It runs in the same turn as the socket's creation, so the viewer hears the first bytes
+// the server sends.
+export type StartViewer = (target: HTMLElement, socket: WebSocket, events: ViewerEvents) => Viewer;
 
 // Loads the viewer's code, which the page does before it opens the socket.
 export type LoadViewer = () => Promise<StartViewer>;

@@ -183,3 +183,226 @@ test('#computer.watch says the computer is unavailable before it starts', async 
 
   expect(refused).rejects.toMatchObject({ code: 'COMPUTER_UNAVAILABLE' });
 });
+
+test('#computer.takeOver takes over for the calling session and returns when it started', async () => {
+  const ctx = await setupTest();
+
+  const started: string[] = [];
+
+  ctx.setTakeover({
+    start: (deviceID) => {
+      started.push(deviceID);
+
+      return Promise.resolve({ kind: 'started', takenOverAt: 1_700_000_000_000 });
+    },
+    end: () => Promise.resolve({ kind: 'not_taken_over' }),
+  });
+
+  const result = await ctx.client.computer.takeOver({ clientActionID: crypto.randomUUID() });
+
+  expect([result, started]).toStrictEqual([
+    { takenOverAt: 1_700_000_000_000 },
+    [ctx.owner.sessionID],
+  ]);
+});
+
+test.each([
+  { kind: 'busy_too_long', code: 'BUSY_TOO_LONG' },
+  { kind: 'held_elsewhere', code: 'HELD_ELSEWHERE' },
+] as const)('#computer.takeOver answers $code when the hold says $kind', async (row) => {
+  const ctx = await setupTest();
+
+  ctx.setTakeover({
+    start: () => Promise.resolve({ kind: row.kind }),
+    end: () => Promise.resolve({ kind: 'not_taken_over' }),
+  });
+
+  const refused = ctx.client.computer.takeOver({ clientActionID: crypto.randomUUID() });
+
+  await Promise.allSettled([refused]);
+
+  expect(refused).rejects.toMatchObject({ code: row.code });
+});
+
+test('#computer.takeOver gives a retry of the same action the answer of the first try', async () => {
+  const ctx = await setupTest();
+
+  const calls = { count: 0 };
+
+  ctx.setTakeover({
+    start: () => {
+      calls.count += 1;
+
+      return Promise.resolve({ kind: 'started', takenOverAt: 1_700_000_000_000 });
+    },
+    end: () => Promise.resolve({ kind: 'not_taken_over' }),
+  });
+
+  const clientActionID = crypto.randomUUID();
+
+  await ctx.client.computer.takeOver({ clientActionID });
+
+  const retry = await ctx.client.computer.takeOver({ clientActionID });
+
+  expect([retry, calls.count]).toStrictEqual([{ takenOverAt: 1_700_000_000_000 }, 1]);
+});
+
+test('#computer.takeOver refuses an action ID that another session used', async () => {
+  const ctx = await setupTest();
+  const other = await createDeviceSession(ctx.context, 'phone');
+
+  ctx.setTakeover({
+    start: () => Promise.resolve({ kind: 'started', takenOverAt: 1 }),
+    end: () => Promise.resolve({ kind: 'not_taken_over' }),
+  });
+
+  const clientActionID = crypto.randomUUID();
+
+  await ctx.client.computer.takeOver({ clientActionID });
+
+  const reused = buildTestClient(ctx.url, other.token).computer.takeOver({ clientActionID });
+
+  await Promise.allSettled([reused]);
+
+  expect(reused).rejects.toMatchObject({ code: 'CLIENT_ACTION_ID_REUSED' });
+});
+
+test('#computer.takeOver refuses a revoked session before it takes anything', async () => {
+  const ctx = await setupTest();
+  const other = await createDeviceSession(ctx.context, 'phone');
+
+  const started: string[] = [];
+
+  ctx.setTakeover({
+    start: (deviceID) => {
+      started.push(deviceID);
+
+      return Promise.resolve({ kind: 'started', takenOverAt: 1 });
+    },
+    end: () => Promise.resolve({ kind: 'not_taken_over' }),
+  });
+
+  await ctx.client.sessions.revoke({
+    clientActionID: crypto.randomUUID(),
+    sessionID: other.sessionID,
+  });
+
+  const refused = buildTestClient(ctx.url, other.token).computer.takeOver({
+    clientActionID: crypto.randomUUID(),
+  });
+
+  await Promise.allSettled([refused]);
+
+  expect(started).toStrictEqual([]);
+  expect(refused).rejects.toMatchObject({ code: 'UNAUTHORIZED' });
+});
+
+test('#computer.takeOver refuses a read-only token before any procedure runs', async () => {
+  const ctx = await setupTest();
+
+  const response = await fetch(`${ctx.url}/rpc/computer/takeOver`, {
+    method: 'POST',
+    headers: {
+      [clientHeaderName]: 'verify',
+      'content-type': 'application/json',
+      authorization: `Bearer ${ctx.readOnlyToken}`,
+    },
+    body: JSON.stringify({ json: { clientActionID: crypto.randomUUID() } }),
+  });
+
+  expect(response.status).toBe(403);
+});
+
+test('#computer.takeOver refuses the session of a wall panel before any procedure runs', async () => {
+  const ctx = await setupTest();
+  const screenToken = await ctx.enrolScreen();
+
+  const response = await fetch(`${ctx.url}/rpc/computer/takeOver`, {
+    method: 'POST',
+    headers: {
+      [clientHeaderName]: 'web',
+      'content-type': 'application/json',
+      authorization: `Bearer ${screenToken}`,
+    },
+    body: JSON.stringify({ json: { clientActionID: crypto.randomUUID() } }),
+  });
+
+  expect(response.status).toBe(403);
+});
+
+test('#computer.takeOver says the computer is unavailable before it starts', async () => {
+  const ctx = await setupTest();
+
+  const refused = ctx.client.computer.takeOver({ clientActionID: crypto.randomUUID() });
+
+  await Promise.allSettled([refused]);
+
+  expect(refused).rejects.toMatchObject({ code: 'COMPUTER_UNAVAILABLE' });
+});
+
+test('#computer.handBack ends the hold of the calling session and returns how long it lasted', async () => {
+  const ctx = await setupTest();
+
+  const ended: [string, string | undefined][] = [];
+
+  ctx.setTakeover({
+    start: () => Promise.resolve({ kind: 'started', takenOverAt: 1 }),
+    end: (by, deviceID) => {
+      ended.push([by, deviceID]);
+
+      return Promise.resolve({ kind: 'ended', durationSeconds: 63 });
+    },
+  });
+
+  const result = await ctx.client.computer.handBack({ clientActionID: crypto.randomUUID() });
+
+  expect([result, ended]).toStrictEqual([{ durationSeconds: 63 }, [['user', ctx.owner.sessionID]]]);
+});
+
+test('#computer.handBack answers NOT_TAKEN_OVER when this session does not hold the desktop', async () => {
+  const ctx = await setupTest();
+
+  ctx.setTakeover({
+    start: () => Promise.resolve({ kind: 'started', takenOverAt: 1 }),
+    end: () => Promise.resolve({ kind: 'not_taken_over' }),
+  });
+
+  const refused = ctx.client.computer.handBack({ clientActionID: crypto.randomUUID() });
+
+  await Promise.allSettled([refused]);
+
+  expect(refused).rejects.toMatchObject({ code: 'NOT_TAKEN_OVER' });
+});
+
+test('#computer.handBack gives a retry of the same action the answer of the first try', async () => {
+  const ctx = await setupTest();
+
+  const calls = { count: 0 };
+
+  ctx.setTakeover({
+    start: () => Promise.resolve({ kind: 'started', takenOverAt: 1 }),
+    end: () => {
+      calls.count += 1;
+
+      return Promise.resolve({ kind: 'ended', durationSeconds: 63 });
+    },
+  });
+
+  const clientActionID = crypto.randomUUID();
+
+  await ctx.client.computer.handBack({ clientActionID });
+
+  const retry = await ctx.client.computer.handBack({ clientActionID });
+
+  expect([retry, calls.count]).toStrictEqual([{ durationSeconds: 63 }, 1]);
+});
+
+test('#computer.handBack says the computer is unavailable before it starts', async () => {
+  const ctx = await setupTest();
+
+  const refused = ctx.client.computer.handBack({ clientActionID: crypto.randomUUID() });
+
+  await Promise.allSettled([refused]);
+
+  expect(refused).rejects.toMatchObject({ code: 'COMPUTER_UNAVAILABLE' });
+});

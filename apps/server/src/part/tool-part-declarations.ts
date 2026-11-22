@@ -63,6 +63,7 @@ export const toolPartDeclarations: readonly AnyPartDeclaration<ServerPartValues>
         options: parts.get('inputs').options,
         adapter: parts.get('sandbox_adapter'),
         log: parts.get('context').apiContext.log,
+        definitions: parts.get('context').apiContext.definitions,
       }),
   },
   {

@@ -20,12 +20,3 @@ export interface WatchConnection {
   // call more than once.
   readonly end: () => void;
 }
-
-// What a watch asks of the hold on the desktop.
-export interface WatchInput {
-  // whether this viewer's device holds the desktop now
-  readonly canInput: () => boolean;
-
-  // called when a key or pointer message from the viewer passes on to the VNC server
-  readonly onInput: () => void;
-}

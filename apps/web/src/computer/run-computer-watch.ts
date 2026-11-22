@@ -1,7 +1,7 @@
 import type { ContractClient } from '@heynixie/contract';
 import { ORPCError } from '@orpc/client';
 import { buildSocketURL } from './build-socket-url';
-import type { LoadViewer, StartViewer, WatchState } from './types';
+import type { LoadViewer, StartViewer, Viewer, WatchState } from './types';
 
 export interface ComputerWatchRun {
   readonly client: ContractClient;
@@ -9,6 +9,9 @@ export interface ComputerWatchRun {
   readonly loadViewer: LoadViewer;
   readonly signal: AbortSignal;
   readonly onState: (state: WatchState) => void;
+
+  // called with the viewer once it starts, and with null when the run ends
+  readonly onViewer: (viewer: Viewer | null) => void;
 }
 
 // Asks the API for a ticket, opens the socket it names and hands the socket to the viewer. A run ends
@@ -32,15 +35,17 @@ export async function runComputerWatch(run: ComputerWatchRun): Promise<void> {
     }
   });
 
-  const stop = startViewerQuietly({ run, startViewer, socket, connected });
+  const viewer = startViewerQuietly({ run, startViewer, socket, connected });
 
-  if (stop === null) {
+  if (viewer === null) {
     return;
   }
 
-  const end = (): void => {
-    stop();
+  run.onViewer(viewer);
 
+  const end = (): void => {
+    run.onViewer(null);
+    viewer.stop();
     socket.close();
   };
 
@@ -96,7 +101,7 @@ interface ViewerStart {
   readonly connected: ConnectionState;
 }
 
-function startViewerQuietly(start: ViewerStart): (() => void) | null {
+function startViewerQuietly(start: ViewerStart): Viewer | null {
   const run = start.run;
 
   try {

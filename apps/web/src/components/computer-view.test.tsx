@@ -18,6 +18,7 @@ interface StartedViewer {
 function setupTest() {
   const started: StartedViewer[] = [];
   const tickets: string[] = [];
+  const inputs: boolean[] = [];
 
   const answerRequest = (request: Request, server: Bun.Server<undefined>) =>
     tickets.some((ticket) => request.url.endsWith(ticket)) && server.upgrade(request)
@@ -54,14 +55,19 @@ function setupTest() {
 
     started.push({ target, socket, events, state });
 
-    return () => {
-      state.isStopped = true;
+    return {
+      stop: () => {
+        state.isStopped = true;
+      },
+      setInput: (isOn) => {
+        inputs.push(isOn);
+      },
     };
   };
 
   const loadViewer: LoadViewer = () => Promise.resolve(startViewer);
 
-  return { started, tickets, loadViewer };
+  return { started, tickets, inputs, loadViewer };
 }
 
 test('it asks for a ticket and gives the viewer the socket that the API names', async () => {
@@ -198,4 +204,81 @@ test('it stops the viewer and closes the socket when the page goes away', async 
   });
 
   expect(ctx.started[0]?.socket.readyState).toBeOneOf([WebSocket.CLOSING, WebSocket.CLOSED]);
+});
+
+test('it takes the desktop over and lets the viewer send input until it hands back', async () => {
+  const user = userEvent.setup();
+  const ctx = setupTest();
+  const calls: string[] = [];
+
+  network.use(
+    http.post('https://nixie.test/rpc/computer/takeOver', () => {
+      calls.push('takeOver');
+
+      return HttpResponse.json({ json: { takenOverAt: 1_700_000_000_000 }, meta: [] });
+    }),
+    http.post('https://nixie.test/rpc/computer/handBack', () => {
+      calls.push('handBack');
+
+      return HttpResponse.json({ json: { durationSeconds: 5 }, meta: [] });
+    }),
+  );
+
+  await createDeviceSession();
+
+  const rendered = render(<ComputerView loadViewer={ctx.loadViewer} />);
+
+  await rendered.findByText('The computer is waking');
+
+  ctx.started[0]?.events.onConnect();
+
+  const takeOverButton = await rendered.findByRole('button', { name: 'Take over' });
+
+  await user.click(takeOverButton);
+
+  const handBackButton = await rendered.findByRole('button', { name: 'Hand back' });
+
+  await user.click(handBackButton);
+  await rendered.findByRole('button', { name: 'Take over' });
+
+  expect([calls, ctx.inputs]).toStrictEqual([
+    ['takeOver', 'handBack'],
+    [false, true, false],
+  ]);
+});
+
+test('it says that another device holds the computer and sends no input', async () => {
+  const user = userEvent.setup();
+  const ctx = setupTest();
+
+  network.use(
+    http.post('https://nixie.test/rpc/computer/takeOver', () =>
+      HttpResponse.json(
+        {
+          json: { defined: true, code: 'HELD_ELSEWHERE', status: 409, message: 'held' },
+          meta: [],
+        },
+        { status: 409 },
+      ),
+    ),
+  );
+
+  await createDeviceSession();
+
+  const rendered = render(<ComputerView loadViewer={ctx.loadViewer} />);
+
+  await rendered.findByText('The computer is waking');
+
+  ctx.started[0]?.events.onConnect();
+
+  const takeOverButton = await rendered.findByRole('button', { name: 'Take over' });
+
+  await user.click(takeOverButton);
+
+  const alert = await rendered.findByRole('alert');
+
+  expect([alert.textContent, ctx.inputs.includes(true)]).toStrictEqual([
+    'Another device holds the computer.',
+    false,
+  ]);
 });

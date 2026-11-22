@@ -461,7 +461,7 @@ test.skipIf(!hasImpHost)(
           closed.isClosed = true;
         },
       },
-      { canInput: () => false, onInput: () => {} },
+      'laptop',
     );
 
     onTestFinished(() => {

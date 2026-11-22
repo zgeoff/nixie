@@ -20,6 +20,9 @@ export interface InStepActionsOptions {
 
   // Runs the approved call with the tool run of the step that calls this.
   readonly runCall: (request: ApprovedCallRequest) => Promise<ApprovedRun>;
+
+  // The tool name prefixes whose actions wait, as a claim reads them: a held action stays pending.
+  readonly readHeldToolPrefixes?: () => readonly string[];
 }
 
 // An action the step settled: the outcome record it wrote, and what its call returned, which no
@@ -38,7 +41,11 @@ export async function runInStepActions(
   lease: Lease,
   options: InStepActionsOptions,
 ): Promise<readonly InStepSettled[]> {
-  const rows = await readInStepActions(context, lease.workID);
+  const rows = await readInStepActions(
+    context,
+    lease.workID,
+    options.readHeldToolPrefixes?.() ?? [],
+  );
 
   const settled: InStepSettled[] = [];
 
@@ -58,8 +65,9 @@ export async function runInStepActions(
 export async function probeInStepActionPending(
   context: Pick<TasksContext, 'log'>,
   taskID: string,
+  readHeldToolPrefixes?: () => readonly string[],
 ): Promise<boolean> {
-  const rows = await readInStepActions(context, taskID);
+  const rows = await readInStepActions(context, taskID, readHeldToolPrefixes?.() ?? []);
 
   return rows.length > 0;
 }
@@ -67,6 +75,7 @@ export async function probeInStepActionPending(
 function readInStepActions(
   context: Pick<TasksContext, 'log'>,
   taskID: string,
+  heldPrefixes: readonly string[],
 ): Promise<readonly ActionRow[]> {
   return context.log.writer.db
     .$extendTables<ActionsTables>()
@@ -77,6 +86,9 @@ function readInStepActions(
     .where('actions.runs_in_step', '=', 1)
     .where('actions.status', '=', 'pending')
     .where('actions.held_by_proposal_id', 'is', null)
+    .where((eb) =>
+      eb.and(heldPrefixes.map((prefix) => eb('actions.tool', 'not like', `${prefix}%`))),
+    )
     .where((eb) => eb.not(buildCancelledCheck(eb)))
     .where((eb) => eb.not(buildHeldCheck(eb)))
     .orderBy('actions.queued_sequence')

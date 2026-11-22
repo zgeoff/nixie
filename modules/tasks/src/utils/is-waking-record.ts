@@ -15,6 +15,15 @@ export function isWakingRecord(
     return false;
   }
 
+  // A person taking the desktop wakes nothing: the assistant reads that with its next input, and
+  // its queued acts stay pending until the desktop comes back, which does wake it.
+  // the connectors module registers this kind, and tasks depends on no connector
+  const kind: string = record.kind;
+
+  if (kind === 'computer.takeover_started') {
+    return false;
+  }
+
   if (isQueuedApproval(record)) {
     return false;
   }

@@ -15,6 +15,7 @@ export function addComputerConnector(
 
   return {
     ...actions,
+    readHeldToolPrefixes: () => (computer.takeover.isHeld() ? ['computer.'] : []),
     connectors: new Map([
       ...actions.connectors,
       ...[...queued, ...legacyComputerToolNames].map((name) => [name, computer.connector] as const),

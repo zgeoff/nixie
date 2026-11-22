@@ -17,6 +17,8 @@ import { renderProposalDefer } from './render-proposal-defer';
 import { renderRecoveryNotice } from './render-recovery-notice';
 import type { ReminderRead } from './render-reminder-notice';
 import { renderReminderNotice } from './render-reminder-notice';
+import { renderTakeoverEnded } from './render-takeover-ended';
+import { renderTakeoverStarted } from './render-takeover-started';
 
 // What the inbox read fetched beside the record, for the kinds that show it.
 interface RenderedExtras {
@@ -58,6 +60,14 @@ export function renderInboxMessage(
 
   if (record.kind === 'recovery.notice') {
     return renderRecoveryNotice(record, times);
+  }
+
+  if (record.kind === 'computer.takeover_started') {
+    return renderTakeoverStarted(record, times, view.messaging.ownerName);
+  }
+
+  if (record.kind === 'computer.takeover_ended') {
+    return renderTakeoverEnded(record, times, view.messaging.ownerName);
   }
 
   if (record.kind === 'policy.action_answered') {

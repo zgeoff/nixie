@@ -1,7 +1,8 @@
+import { ORPCError } from '@orpc/client';
 import type { ReactNode } from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { runComputerWatch } from '../computer/run-computer-watch';
-import type { LoadViewer, WatchState } from '../computer/types';
+import type { LoadViewer, Viewer, WatchState } from '../computer/types';
 import { css } from '../styled-system/css';
 import { useNixieClient } from '../utils/use-nixie-client';
 
@@ -30,11 +31,18 @@ const screen = css({
 });
 
 const notice = css({ color: 'textMuted', fontSize: 'sm' });
+const controls = css({ alignItems: 'center', display: 'flex', gap: '3' });
+
+type TakeoverState =
+  | { readonly kind: 'watching' }
+  | { readonly kind: 'taking' }
+  | { readonly kind: 'holding' }
+  | { readonly kind: 'refused'; readonly message: string };
 
 const messages = {
   connecting: 'Connecting to the computer.',
   waking: 'The computer is waking',
-  watching: 'Watching the computer. You can look but not touch.',
+  watching: 'Watching the computer. Take over to use it.',
   ended: 'The connection to the computer ended.',
   unavailable: 'This nixie has no computer to watch.',
   failed: 'The computer can’t be watched right now.',
@@ -45,6 +53,8 @@ export function ComputerView(props: ComputerViewProps): ReactNode {
   const target = useRef<HTMLDivElement>(null);
   const [state, setState] = useState<WatchState>({ kind: 'connecting' });
   const [attempt, setAttempt] = useState(0);
+  const [takeover, setTakeover] = useState<TakeoverState>({ kind: 'watching' });
+  const [viewer, setViewer] = useState<Viewer | null>(null);
 
   // Each attempt asks for its own ticket, because a ticket opens one socket. A new attempt, and
   // leaving the page, end the run before it.
@@ -60,6 +70,7 @@ export function ComputerView(props: ComputerViewProps): ReactNode {
         loadViewer: props.loadViewer,
         signal: running.signal,
         onState: setState,
+        onViewer: setViewer,
       });
     }
 
@@ -68,14 +79,73 @@ export function ComputerView(props: ComputerViewProps): ReactNode {
     };
   }, [attempt, nixie.client, props.loadViewer]);
 
+  const isHolding = takeover.kind === 'holding';
+
+  // The viewer sends the person's keys only while this device holds the desktop, and a new viewer
+  // after a reconnect starts view only, so it takes the state again.
+  useEffect(() => {
+    viewer?.setInput(isHolding);
+  }, [viewer, isHolding]);
+
   const isOver = state.kind === 'ended' || state.kind === 'failed';
+
+  const takeOver = async (): Promise<void> => {
+    setTakeover({ kind: 'taking' });
+
+    try {
+      await nixie.client.computer.takeOver({ clientActionID: crypto.randomUUID() });
+
+      setTakeover({ kind: 'holding' });
+    } catch (error) {
+      setTakeover({ kind: 'refused', message: toRefusal(error) });
+    }
+  };
+
+  const handBack = async (): Promise<void> => {
+    try {
+      await nixie.client.computer.handBack({ clientActionID: crypto.randomUUID() });
+
+      setTakeover({ kind: 'watching' });
+    } catch (error) {
+      setTakeover({ kind: 'refused', message: toRefusal(error) });
+    }
+  };
 
   return (
     <main className={page}>
       <h1>Computer</h1>
       <p className={notice} role="status">
-        {messages[state.kind]}
+        {isHolding
+          ? 'You have taken over the computer. Your keys and pointer reach it.'
+          : messages[state.kind]}
       </p>
+      <div className={controls}>
+        {isHolding ? (
+          <button
+            onClick={() => {
+              void handBack();
+            }}
+            type="button"
+          >
+            Hand back
+          </button>
+        ) : (
+          <button
+            disabled={state.kind !== 'watching' || takeover.kind === 'taking'}
+            onClick={() => {
+              void takeOver();
+            }}
+            type="button"
+          >
+            Take over
+          </button>
+        )}
+        {takeover.kind === 'refused' ? (
+          <span className={notice} role="alert">
+            {takeover.message}
+          </span>
+        ) : null}
+      </div>
       {isOver ? (
         <div>
           <button
@@ -90,5 +160,18 @@ export function ComputerView(props: ComputerViewProps): ReactNode {
       ) : null}
       <div aria-label="The computer's desktop" className={screen} ref={target} role="img" />
     </main>
+  );
+}
+
+const takeoverRefusals: Record<string, string> = {
+  BUSY_TOO_LONG: 'The assistant is mid-action. Try again in a moment.',
+  HELD_ELSEWHERE: 'Another device holds the computer.',
+  COMPUTER_UNAVAILABLE: 'This nixie has no computer to take over.',
+};
+
+function toRefusal(error: unknown): string {
+  return (
+    (error instanceof ORPCError ? takeoverRefusals[error.code] : undefined) ??
+    'The computer can’t be taken over right now.'
   );
 }

@@ -19,7 +19,8 @@ export type SystemMessageType =
   | 'task-limit'
   | 'approval'
   | 'reminder'
-  | 'restore';
+  | 'restore'
+  | 'computer';
 
 export interface SystemMessage {
   readonly type: SystemMessageType;

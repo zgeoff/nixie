@@ -5,6 +5,9 @@ import type { ScreenBinding } from '@heynixie/wire';
 export interface ScreenPrepared {
   readonly binding: ScreenBinding;
   readonly expectWindow: JSONObject;
+
+  // the hold's epoch when the act was prepared, so a hold since then refuses the act
+  readonly epoch: number;
 }
 
 // What the computer tools remember between a call's preparation and its queued action. Nothing

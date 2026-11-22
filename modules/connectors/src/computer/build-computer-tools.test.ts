@@ -702,10 +702,7 @@ test('it says in a desktop screenshot that the user is watching while a watch is
       Promise.resolve({ ...replies.desktop, base64: Buffer.from(picture).toString('base64') }),
   });
 
-  const connection = ctx.computer.watch(
-    { send: () => {}, close: () => {} },
-    { canInput: () => false, onInput: () => {} },
-  );
+  const connection = ctx.computer.watch({ send: () => {}, close: () => {} }, 'laptop');
 
   const watched = await ctx.call('computer.screenshot', {});
 

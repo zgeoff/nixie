@@ -286,7 +286,27 @@ test('it keeps the device page private like every other page', async () => {
   expect(response.headers.get('cache-control')).toBe('private, no-store');
 });
 
-test('it sets no content security policy on the conversation page', async () => {
+test.each(['/', '/computer', '/device'])(
+  'it forbids any site to frame the page at %s',
+  async (path) => {
+    const ctx = await setupTest();
+
+    const webFetch = makeWebFetch({
+      apiURL: 'http://127.0.0.1:9',
+      clientDir: ctx.clientDir,
+      startFetch: () => new Response('page'),
+    });
+
+    const response = await webFetch(new Request(`http://web.test${path}`));
+
+    expect([
+      response.headers.get('x-frame-options'),
+      response.headers.get('content-security-policy')?.includes("frame-ancestors 'none'"),
+    ]).toStrictEqual(['DENY', true]);
+  },
+);
+
+test('it keeps the conversation page to the frame rule alone in its content security policy', async () => {
   const ctx = await setupTest();
 
   const webFetch = makeWebFetch({
@@ -297,5 +317,5 @@ test('it sets no content security policy on the conversation page', async () => 
 
   const response = await webFetch(new Request('http://web.test/'));
 
-  expect(response.headers.get('content-security-policy')).toBeNull();
+  expect(response.headers.get('content-security-policy')).toBe("frame-ancestors 'none'");
 });

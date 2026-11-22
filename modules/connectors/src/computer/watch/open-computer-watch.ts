@@ -1,7 +1,7 @@
 import type { Logger } from '@heynixie/logger';
 import type { GuestSession, VNCStream } from '../make-guest-session';
 import { makeClientMessageFilter } from './make-client-message-filter';
-import type { WatchConnection, WatchInput, WatchSocket } from './types';
+import type { WatchConnection, WatchSocket } from './types';
 
 export interface WatchHost {
   readonly watches: { count: number };
@@ -12,6 +12,15 @@ export interface WatchHost {
 
   // the guest to open the stream on, or null when none can start; it wakes the sandbox
   readonly readGuest: (isEnded: () => boolean) => Promise<GuestSession | null>;
+}
+
+// What a watch asks of the hold on the desktop.
+export interface WatchInput {
+  // whether this viewer's device holds the desktop now
+  readonly canInput: () => boolean;
+
+  // called when a key or pointer message from the viewer passes on to the VNC server
+  readonly onInput: () => void;
 }
 
 interface WatchState {

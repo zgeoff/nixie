@@ -11,6 +11,9 @@ import { buildTestConnector } from './build-test-connector';
 export interface Actions extends ActionQueueBridge {
   readonly logConnector: LogConnector;
   readonly connectors: ReadonlyMap<string, ActionConnector>;
+
+  // The tool name prefixes whose actions wait, such as `computer.` while a person holds the computer.
+  readonly readHeldToolPrefixes?: () => readonly string[];
 }
 
 export interface ActionsOptions {

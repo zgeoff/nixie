@@ -168,7 +168,7 @@ async function setupTest(options: SetupOptions = {}) {
             closed.isClosed = true;
           },
         },
-        { canInput: () => false, onInput: () => {} },
+        'laptop',
       );
 
       return { connection, received, closed };
