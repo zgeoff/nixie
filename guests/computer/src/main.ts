@@ -9,6 +9,7 @@ import {
   chromeAccount,
   chromiumLauncherPath,
   display,
+  screenAccount,
   terminalAccount,
   terminalCgroupName,
   terminalMemoryLimitBytes,
@@ -19,6 +20,8 @@ import { startDesktop } from './desktop/start-desktop';
 import { makeComputerHandler } from './make-computer-handler';
 import { makeDiskMarker } from './make-disk-marker';
 import { makeScanChannel } from './make-scan-channel';
+import { makeXDriver } from './screen/make-x-driver';
+import { runScreenTool } from './screen/run-screen-tool';
 import {
   bridgePort,
   buildProxyEnv,
@@ -34,6 +37,7 @@ const filesFolder = join(home, 'files');
 const runFolder = '/run/nixie-computer';
 const proxySocketPath = join(runFolder, 'proxy.sock');
 const downloadsPath = '/tmp/nixie-downloads';
+const screenFolder = '/tmp/nixie-screen';
 const bridgeScript = join(dirname(Bun.main), 'bridge.js');
 
 const deniedRanges = (process.env['NIXIE_DENIED_RANGES'] ?? '')
@@ -58,6 +62,9 @@ await prepareDisk(buildDiskEntries(home));
 await mkdir(downloadsPath, { recursive: true });
 await chown(downloadsPath, chromeAccount.uid, chromeAccount.gid);
 await chmod(downloadsPath, 0o700);
+await mkdir(screenFolder, { recursive: true });
+await chown(screenFolder, screenAccount.uid, screenAccount.gid);
+await chmod(screenFolder, 0o700);
 await mkdir('/tmp/.X11-unix', { recursive: true });
 await chmod('/tmp/.X11-unix', 0o1777);
 
@@ -116,6 +123,11 @@ const browser = makeBrowserHandler({
   display,
   executablePath: chromiumLauncherPath,
   downloadsPath,
+  screen: {
+    makeDriver: () =>
+      makeXDriver({ runTool: runScreenTool, shotPath: join(screenFolder, 'shot.png') }),
+    settleMs: 300,
+  },
 });
 
 const shell = makeShellHandler({

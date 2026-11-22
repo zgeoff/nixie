@@ -11,6 +11,8 @@ test('it answers each call with the response the test set, and records the call'
     attempt: 1,
     idempotencyKey: 'action-1',
     destinations: [],
+    actionHash: 'hash-1',
+    deadlineAt: null,
   });
 
   expect(response).toStrictEqual({ kind: 'success', result: { messageID: 'm-1' } });
@@ -23,6 +25,8 @@ test('it answers each call with the response the test set, and records the call'
       attempt: 1,
       idempotencyKey: 'action-1',
       destinations: [],
+      actionHash: 'hash-1',
+      deadlineAt: null,
     },
   ]);
 });
@@ -39,6 +43,8 @@ test('it rejects the call when the response throws, as a dropped connection does
     attempt: 1,
     idempotencyKey: 'action-1',
     destinations: [],
+    actionHash: 'hash-1',
+    deadlineAt: null,
   });
 
   expect(call).rejects.toThrowWithMessage(Error, 'socket hang up');
@@ -57,6 +63,8 @@ test('it declares how an unknown outcome settles, and answers and records each c
     attempt: 1,
     idempotencyKey: 'action-1',
     destinations: [],
+    actionHash: 'hash-1',
+    deadlineAt: null,
   });
 
   expect(stub.connector.reconcile).toStrictEqual({ kind: 'check', tool: 'test.send' });
@@ -76,6 +84,8 @@ test('it answers a check inconclusive when the test gave no answer', async () =>
     attempt: 1,
     idempotencyKey: 'action-1',
     destinations: [],
+    actionHash: 'hash-1',
+    deadlineAt: null,
   });
 
   expect(answer).toStrictEqual({ kind: 'inconclusive' });

@@ -5,6 +5,7 @@ import type { TasksContext } from '@heynixie/tasks';
 import type { ActionRow, ActionsTables, ModelView } from '../types';
 import { buildCancelledCheck } from './build-cancelled-check';
 import { buildModelView } from './build-model-view';
+import { readOutcomeImages } from './read-outcome-images';
 
 export interface WaitForActionOutcomeOptions {
   readonly timeoutMs?: number;
@@ -95,5 +96,8 @@ async function readModelView(
       ? []
       : await readRecords(context.log, { afterSequence: sequence - 1, limit: 1 });
 
-  return buildModelView(row, entry?.record ?? null, { ownerName });
+  const record = entry?.record ?? null;
+  const images = record === null ? [] : await readOutcomeImages(context.log, record);
+
+  return buildModelView(row, record, { ownerName, images });
 }

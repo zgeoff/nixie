@@ -32,3 +32,14 @@ test('it keeps the three accounts apart, so none can signal or trace another', (
 
   expect(new Set(ids).size).toBe(3);
 });
+
+test.each(['xdotool', 'x11-utils', 'scrot'])(
+  'it installs %s, which the screen tools run as the display account',
+  async (name) => {
+    const ctx = await setupTest();
+
+    expect(ctx.dockerfile).toMatch(
+      new RegExp(`apt-get install[^\\n]*\\s${name}(?:\\s|\\\\|$)`, 'u'),
+    );
+  },
+);

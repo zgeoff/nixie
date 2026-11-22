@@ -40,11 +40,18 @@ interface CallPolicy {
   // the hash of the operation the policy checked, which an open proposal for the same call carries
   readonly actionHash: string;
 
+  // what the hash covers beyond the call's own fields, which the call's proposal keeps
+  readonly expectURL?: string | undefined;
+  readonly expectWindow?: JSONObject | undefined;
+
   // the name the decision point and an action proposal know the call by, which a variant extends
   readonly policyTool: string;
 
   // the declaration the decision point read: the variant's when the call picked one
   readonly declaration: EffectDeclaration | null;
+
+  // Sealed under the call record's key, for a card to show. Only a call that asks keeps them.
+  readonly attachments?: readonly Uint8Array<ArrayBuffer>[];
 }
 
 interface WrittenCall {
@@ -130,6 +137,9 @@ export function makeCallRecorder(
                   }),
             },
             ...(decided === null ? {} : { decision: decided.stored }),
+            ...(decided?.attachments === undefined || decided.policy.decision.outcome !== 'ask'
+              ? {}
+              : { attachments: decided.attachments }),
           },
         ]);
 
@@ -209,7 +219,9 @@ export function makeCallRecorder(
           thread: run.thread,
           callSequence: written.sequence,
           tool: decided.policyTool,
-          actionTool: call.tool,
+          actionHash: decided.actionHash,
+          expectURL: decided.expectURL,
+          expectWindow: decided.expectWindow,
           effects: declaration.effects,
           cause,
           input: call.input,

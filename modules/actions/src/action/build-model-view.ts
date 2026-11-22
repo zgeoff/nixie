@@ -1,10 +1,14 @@
 import type { JSONObject, LogRecord } from '@heynixie/log';
+import type { ToolImage } from '@heynixie/tools';
 import type { ActionRow, ModelView } from '../types';
 import { isJSONObject } from './is-json-object';
 
 export interface ModelViewOptions {
   // the owner's name from the config, or null when it is unset
   readonly ownerName: string | null;
+
+  // the pictures of the outcome, which a read of its attachments supplies
+  readonly images?: readonly ToolImage[];
 }
 
 export function buildModelView(
@@ -22,7 +26,14 @@ export function buildModelView(
   }
 
   if (action.status === 'done') {
-    return { status: 'done', actionID, result: toResult(fields) };
+    const images = options?.images ?? [];
+
+    return {
+      status: 'done',
+      actionID,
+      result: toResult(fields),
+      ...(images.length === 0 ? {} : { images }),
+    };
   }
 
   if (action.status === 'failed') {

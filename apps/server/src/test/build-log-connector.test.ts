@@ -11,6 +11,8 @@ test('it writes one log line with the action ID and the attempt, and reports suc
     attempt: 2,
     idempotencyKey: 'action-7',
     destinations: [],
+    actionHash: 'hash-1',
+    deadlineAt: null,
   });
 
   expect(log).toHaveBeenCalledExactlyOnceWith('action.logged', {

@@ -12,6 +12,9 @@ export interface Settlement {
   readonly outcome: SettledOutcome;
 
   readonly details?: JSONObject;
+
+  // Sealed under the outcome record's own key, in order, as its attachments.
+  readonly attachments?: readonly Uint8Array<ArrayBuffer>[];
   readonly ownerReason?: OwnerReason;
 
   // the result record of a call that ran inside the turn, which the outcome names and never copies
@@ -51,6 +54,7 @@ export function buildOutcomeRecord(
         : { rule: { id: settlement.rule.id, revision: settlement.rule.revision } }),
     },
     erasable: settlement.details ?? {},
+    ...(settlement.attachments === undefined ? {} : { attachments: settlement.attachments }),
   };
 }
 

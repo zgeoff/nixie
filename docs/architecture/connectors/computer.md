@@ -3,8 +3,10 @@
 The assistant has a computer of its own: one sandbox with a virtual desktop, a browser and a shell.
 The sandbox stays: it keeps a disk between calls, so a browser sign-in or a downloaded file is still
 there at the next call. Chromium runs on the desktop's display, and the shell runs bash commands in
-a terminal on the same desktop. The disk is working space, not a store: what must last goes in the
-notebook or in memory, which the backup covers. A forget never reaches inside the disk.
+a terminal on the same desktop. The assistant reads the whole screen and drives it with a pointer
+and a keyboard, for what the page tools cannot reach. The disk is working space, not a store: what
+must last goes in the notebook or in memory, which the backup covers. A forget never reaches inside
+the disk.
 
 ```mermaid
 flowchart LR
@@ -22,7 +24,8 @@ The kind `computer` has public egress, no grant and no tool route. A deployment 
 and disk. The image `nixie-computer` comes from `guests/computer`.
 
 The desktop is Xvfb for the display, openbox as the window manager, xterm as the terminal and x11vnc
-as a VNC server. The VNC server listens on the loopback of the sandbox only, with its clipboard off.
+as a VNC server. The display is 1280 by 800. The VNC server listens on the loopback of the sandbox
+only, with its clipboard off.
 
 Chromium runs in the time zone of `time.default_zone` in the config, so a page that shows "today" or
 an opening hour shows the user's. Nixie hands the zone to the guest when it starts the guest, so a
@@ -37,8 +40,8 @@ in `modules/connectors` owns the sandbox:
   shell call share one turn.
 - The sandbox sleeps after its idle time. Nixie treats every wake as a restart: it starts the guest
   again, so every tab ID from before the sleep returns `TAB_GONE`. The profile keeps the sign-ins.
-- A queued click, fill or command holds the sandbox awake until its action runs or its approval
-  lapses, so a card the user answers late still finds its tab.
+- A queued click, fill, screen act or command holds the sandbox awake until its action runs or its
+  approval lapses, so a card the user answers late still finds its tab.
 - When the sandbox's image or spec differs from the release, nixie creates a new one at its next
   call and copies the disk into it.
 - Resetting the sandbox destroys it, and the next call creates an empty one. `isDiskNew` is true on
@@ -57,10 +60,12 @@ its own, so one part cannot read, signal or trace another:
 | screen   | the display, openbox and the VNC server | nothing on the disk                 |
 
 The display listens on an abstract socket only, and the sandbox's network namespace is where the
-guest runs, so a command in its own network namespace cannot reach it. The terminal's processes sit
-in a cgroup with a memory limit and no swap, so a runaway command is killed there before it takes
-the browser's memory. The home folder is sticky, so the terminal cannot replace the profile folder
-beside its files.
+guest runs, so a command in its own network namespace cannot reach it. The guest injects the screen
+tools' input and reads the windows and the picture with xdotool, xprop, xwininfo and scrot, each run
+as the `screen` account in the sandbox's own namespace. The terminal's processes sit in a cgroup
+with a memory limit and no swap, so a runaway command is killed there before it takes the browser's
+memory. The home folder is sticky, so the terminal cannot replace the profile folder beside its
+files.
 
 ### Moving from the earlier sandboxes
 
@@ -88,6 +93,10 @@ it may retry. A reset destroys the old sandboxes too.
 | `computer.browser_download`   | `fetch`        | direct | a file saved to `downloads/` in the files                           |
 | `computer.browser_fill`       | `send`         | queued | the page after the typed value, with `submit` to press Enter        |
 | `computer.browser_click`      | `send`         | queued | the page after the click                                            |
+| `computer.screenshot`         | `note`         | direct | the whole desktop's picture and the window in focus                 |
+| `computer.screen_scroll`      | `note`         | direct | the wheel turned over a point, the picture and the window in focus  |
+| `computer.screen_click`       | `send`         | queued | a click at a point, the window in focus and the picture after it    |
+| `computer.screen_type`        | `send`         | queued | text or one key chord typed, the window in focus and the picture    |
 | `computer.run`                | `computer_run` | queued | the exit code, `stdout` and `stderr` (each cut at a limit), seconds |
 | `computer.read_file`          | `note`         | direct | the text of a file under `~/files`                                  |
 | `computer.write_file`         | `note`         | direct | a file written under `~/files`, which replaces one of that name     |
@@ -114,6 +123,28 @@ its number.
 it is an unknown tool. An action queued under `computer.fill` or `computer.click` before the rename
 settles as `TAB_GONE` when the action runner reaches it, as an act on a replaced sandbox does.
 
+**The screen.** The page tools stay the main way in, because page text costs far fewer tokens than a
+picture. The screen tools are for what they cannot reach. The desktop is 1280 by 800, and a click
+takes a point on it. A screenshot's `width` and `height` give the size of the picture the model
+sees, which is smaller than the desktop when the image long edge is under 1280. The model then
+multiplies a point on the picture by 1280 divided by `width`. Each screenshot and each screen act
+result carries `focus`, which is `{ kind: 'browser', tab, url }`, `{ kind: 'terminal' }` or
+`{ kind: 'other' }`, and `isWatched`, which is always `false` until watching ships.
+
+The result of a screen act carries the picture of the desktop after the act, as a screenshot does.
+The connector's response holds the picture beside the result. The action runner seals its bytes as
+an attachment of the outcome record and keeps the media type in the record's erasable fields, so the
+picture reaches the model beside the outcome, whether the model waits for the action or reads it
+later in its inbox, and a forget of the outcome erases it. The input has landed by the time the
+guest takes that picture, so a picture it cannot take leaves the act done: the reply omits it and
+`isShown` is `false`. A queued act reserves its picture against the session's image budget as a
+screenshot does, and a picture past the budget is left out the same way.
+
+A point outside 0 to 1279 by 0 to 799 returns `BAD_POINT`. `screen_scroll` takes `by` as a whole
+number of wheel steps, 1 to 50 in either direction, where a negative number scrolls up, and returns
+`BAD_STEPS` outside that range. `screen_type` takes `text`, at most 1,000 characters, or `keys`, one
+chord such as `enter`, `shift+tab` or `ctrl+a`, and exactly one of the two.
+
 **Paths.** A path is under `~/files`, and a relative path starts there. A path that leaves it by
 `..` or by a symlink returns `BAD_PATH`. A file read or written has a size limit, and a larger file
 returns `TOO_BIG`. `export_file` returns the result shape of a `code.run` file, and stores its bytes
@@ -132,6 +163,51 @@ with `expectURL` and returns `PAGE_CHANGED` when they differ. It also returns `S
 control that no longer holds its number, and `CROSS_ORIGIN_SUBMIT` for a form that posts to another
 origin. Nixie keeps `expectURL` in memory, so a restart between the call and the action makes the
 action refuse with `PAGE_CHANGED`, never run against a page nobody looked at.
+
+A screen act is a queued `send`. Its `prepare` hook asks the guest for the window the act would land
+on: the one under the point for a click, and the focused one for typing. That window is the
+`ScreenBinding`, with its window ID, its kind, and for a browser its tab and URL. For a browser
+window the tab's host is the destination, and for any other window the act has no destination, so it
+always asks. Nixie keeps the binding in memory, as it keeps `expectURL`, and the action hash covers
+it. Two calls with the same input can be prepared against different windows, so nixie keeps each
+binding apart and matches it to the action by the hash the owner answered. A busy computer leaves
+the binding in place for the retry, and only a terminal outcome removes it.
+
+A click also stores the desktop's picture from the moment of the call, with the click's point marked
+on the card. The guest takes the picture when it binds the click. The tool stores it as an
+attachment of the call's own record, only when the call asks the user, and a digest of its bytes is
+part of the binding that the action hash covers. A call prepared against a changed screen is
+therefore a new question. The card shows the picture through the same route as a stored image, with
+a ring drawn over it in the web client at the click's point, so the stored picture stays as the
+screen showed it. A forget of the call, or of its proposal, erases the picture. A `screen_type` card
+shows the typed text or the keys, and no picture.
+
+When the action runs, the guest finds the window under the point again, or the focused one, and
+returns `SCREEN_CHANGED` when it differs from the binding on any field. A restart between the call
+and the action loses the binding, so the action returns `SCREEN_CHANGED` and never runs against a
+screen nobody looked at.
+
+The guest also refuses a screen act that belongs to another tool, both when it prepares the act and
+when it runs it:
+
+- An act on the terminal window returns `USE_RUN`, with the message "Use the computer.run tool
+  instead". A scroll over the terminal returns it too.
+- A click on the browser's tab strip or address bar returns `USE_BROWSER_OPEN`, with the message
+  "Use the computer.browser_open tool instead". The chrome is the part of the browser window above
+  the page's viewport, which the page reports. A chord that focuses the address bar or opens a tab
+  or a window (`ctrl+l`, `alt+d`, `f6`, `ctrl+k`, `ctrl+e`, `ctrl+t`, `ctrl+n`, `ctrl+shift+n`)
+  returns it too, in any case and any order of its modifiers.
+- A browser window that shows no tab the guest tracks, such as a popup the page opened, returns
+  `USE_BROWSER_OPEN` for any act, because its page top is unknown. With several browser windows, the
+  guest gives a window the visible tab whose rectangle is nearest its own, and none when 2 windows
+  are equally near.
+- Keys that are not one known chord return `BAD_KEYS`.
+
+An "always allow" on a screen act pins the host alone, in one rule for `computer.screen_click` and
+`computer.screen_type`, with no check on the coordinates, the text, the keys or the window. One
+answer therefore covers every later screen act on that site, and a rule that names the host covers
+them too. The rule names those 2 tools and never widens to another `send` tool. A screen act on a
+window with no host gets no "always allow", so each one asks. No starter rule allows a screen act.
 
 A `computer.run` is its own effect, `computer_run`, because the shell reaches the internet and
 `code_run` means a sandbox with none. It asks unless a rule allows it.
@@ -186,7 +262,10 @@ no route out except the proxy, and that the secret scan stops a secret in a URL,
 body. The shell's namespace needs unprivileged user namespaces in the sandbox's kernel; a command
 fails closed when they are off. The browser's network is closed by Chromium's proxy settings alone.
 A journey in `bun verify` runs against a page the harness serves on a `.test` host, which the test
-build's guests resolve to the loopback address.
+build's guests resolve to the loopback address. The test sandbox has no display, so the screen tools
+drive a stand-in desktop: one browser window of the display's size, whose page is the newest tab.
+Pointer and key events go to that page, and the picture is the page's own. The stand-in has no
+terminal and no address bar, so the guest's tests cover those refusals.
 
 ## Memory kills
 

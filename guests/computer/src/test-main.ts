@@ -6,6 +6,7 @@ import { startSocketProxy } from '@heynixie/egress';
 import { runComputerGuest } from '@heynixie/wire';
 import { makeComputerHandler } from './make-computer-handler';
 import { makeScanChannel } from './make-scan-channel';
+import { makeStubDriver } from './screen/make-stub-driver';
 import { bridgePort, buildProxyEnv, makeShellHandler } from './shell/make-shell-handler';
 import { ownAccount } from './shell/terminal-account';
 
@@ -60,6 +61,7 @@ const browser = browserModule.makeBrowserHandler({
   timeZone: process.env['NIXIE_TIME_ZONE'] ?? 'UTC',
   deniedRanges: [],
   isHeadless: true,
+  screen: { makeDriver: (state) => makeStubDriver(state.tabs), settleMs: 150 },
 });
 
 const shell = makeShellHandler({

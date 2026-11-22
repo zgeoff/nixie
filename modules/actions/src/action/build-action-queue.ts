@@ -112,7 +112,13 @@ export function buildActionQueue(
 
 function toActionOutcome(view: ModelView): ActionOutcome | null {
   if (view.status === 'done') {
-    return view.result === null ? null : { outcome: 'done', result: view.result };
+    return view.result === null
+      ? null
+      : {
+          outcome: 'done',
+          result: view.result,
+          ...(view.images === undefined ? {} : { images: view.images }),
+        };
   }
 
   if (view.status === 'failed') {

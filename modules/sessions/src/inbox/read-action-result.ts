@@ -1,3 +1,4 @@
+import { readOutcomeReply } from '@heynixie/actions';
 import type { LogRecord } from '@heynixie/log';
 import { readRecords } from '@heynixie/log';
 import type { TasksContext } from '@heynixie/tasks';
@@ -20,7 +21,13 @@ export async function readActionResult(
   const sequence = record.payload['resultSequence'];
 
   if (typeof sequence !== 'number') {
-    return hasConnectorResult(record) ? renderActionResult(record, null) : null;
+    if (!hasConnectorResult(record)) {
+      return null;
+    }
+
+    const connectorReply = await readOutcomeReply(context.log, record);
+
+    return renderActionResult(record, connectorReply);
   }
 
   const [entry] = await readRecords(context.log, { afterSequence: sequence - 1, limit: 1 });

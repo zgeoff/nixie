@@ -50,3 +50,25 @@ test('it hashes an action that expects a URL differently from one that expects a
 
   expect(buildActionHash({ ...operation, expectURL: undefined })).toBe(buildActionHash(operation));
 });
+
+test('it hashes an action that expects one window differently from one that expects another', () => {
+  const operation = {
+    tool: 'computer.screen_click',
+    input: { x: 10, y: 20, button: 'left' },
+    destinations: ['example.org'],
+  };
+
+  const first = { windowID: '0x1', kind: 'browser', tab: 't1', url: 'https://example.org/a' };
+
+  expect(buildActionHash({ ...operation, expectWindow: first })).not.toBe(
+    buildActionHash({ ...operation, expectWindow: { ...first, windowID: '0x2' } }),
+  );
+
+  expect(buildActionHash({ ...operation, expectWindow: { ...first, picture: 'aa' } })).not.toBe(
+    buildActionHash({ ...operation, expectWindow: { ...first, picture: 'bb' } }),
+  );
+
+  expect(buildActionHash({ ...operation, expectWindow: undefined })).toBe(
+    buildActionHash(operation),
+  );
+});

@@ -65,7 +65,10 @@ export const controlRoutes = {
   useComputer: {
     method: 'POST',
     path: '/control/use-computer',
-    input: z.strictObject({ kind: z.enum(['browser', 'shell']), text: z.string().min(1) }),
+    input: z.strictObject({
+      kind: z.enum(['browser', 'shell', 'screen']),
+      text: z.string().min(1),
+    }),
     output: z.strictObject({ replies: z.int().positive() }),
   },
   tasks: {

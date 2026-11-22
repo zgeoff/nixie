@@ -1,10 +1,9 @@
-import type { JSONObject } from '@heynixie/log';
-import type { DirectResult, ToolDefinition, ToolRun } from '@heynixie/tools';
+import type { DirectResult, ToolDefinition } from '@heynixie/tools';
 import { z } from 'zod';
-import { fitFetchedImage } from '../fetch/fit-fetched-image';
 import type { ComputerState } from './computer-state';
 import type { ComputerToolOptions } from './computer-tool-options';
 import { refuseComputer, runComputerCall } from './run-computer-call';
+import { showPicture } from './show-picture';
 import { writeComputerPage } from './write-computer-page';
 
 // The browser tools that run directly: open, read, screenshot, scroll, close and download.
@@ -75,6 +74,9 @@ function buildOpenTool(options: ComputerToolOptions): ToolDefinition {
       'runs scripts and keeps its sign-ins, so use it for a page web_fetch cannot read. A tab ',
       'stays open until you close it or the browser sleeps; at most 5 tabs. Reach for the ',
       'computer when the result must still be there tomorrow, or when a site needs you signed in. ',
+      'The page tools stay your main way in, because page text costs far fewer tokens than a ',
+      'screenshot; computer.screenshot and the computer.screen_* tools are for what they cannot ',
+      'reach. ',
       diskNote,
       pageNote,
     ].join(''),
@@ -295,32 +297,6 @@ function buildScreenshotTool(options: ComputerToolOptions): ToolDefinition {
         },
       });
     },
-  };
-}
-
-interface Picture {
-  readonly base64: string;
-  readonly result: JSONObject;
-}
-
-// Fits the picture and reserves its place beside the result; isShown says whether it fit.
-async function showPicture(
-  options: ComputerToolOptions,
-  run: ToolRun,
-  picture: Picture,
-): Promise<{ readonly status: 'ok' } & DirectResult> {
-  const fitted = await fitFetchedImage(
-    Buffer.from(picture.base64, 'base64'),
-    options.fetch.imageLongEdge,
-  );
-
-  const reserved =
-    fitted.kind === 'image' && (run.session?.reserveImages?.([fitted.image]) ?? true);
-
-  return {
-    status: 'ok',
-    result: { ...picture.result, isShown: reserved },
-    images: reserved && fitted.kind === 'image' ? [fitted.image] : [],
   };
 }
 

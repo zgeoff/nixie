@@ -59,6 +59,7 @@ export { runActionAttempt } from './action/run-action-attempt';
 export type { ActionRunnersOptions } from './action/start-action-runners';
 export { startActionRunners } from './action/start-action-runners';
 export type { WaitForActionOutcomeOptions } from './action/wait-for-action-outcome';
+export { readOutcomeReply } from './action/read-outcome-images';
 export { waitForActionOutcome } from './action/wait-for-action-outcome';
 export { writeUnknownOutcomes } from './action/write-unknown-outcomes';
 export type { ActionsRecordKind } from './action/actions-record-kind';

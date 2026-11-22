@@ -3,6 +3,7 @@ import { z } from 'zod';
 import type { ActionConnector, ProviderResponse } from '../types';
 import { buildBrowserActTools, runBrowserAct } from './build-browser-act-tools';
 import { buildBrowserReadTools } from './build-browser-read-tools';
+import { buildScreenTools, runScreenAct } from './build-screen-tools';
 import { buildShellTools, runShellCommand } from './build-shell-tools';
 import type { ComputerState } from './computer-state';
 import { buildComputerState } from './computer-state';
@@ -13,7 +14,8 @@ import type { ComputerAttempt } from './types';
 export interface ComputerTools {
   readonly tools: readonly ToolDefinition[];
 
-  // runs the queued tools: browser_fill, browser_click and run, and settles an old name
+  // runs the queued tools: browser_fill, browser_click, screen_click, screen_type and run, and
+  // settles an old name
   readonly connector: ActionConnector;
 }
 
@@ -26,6 +28,7 @@ export function buildComputerTools(options: ComputerToolOptions): ComputerTools 
     tools: [
       ...buildBrowserReadTools(options, state),
       ...buildBrowserActTools(options, state),
+      ...buildScreenTools(options, state),
       ...buildShellTools(options, state),
     ].map((tool) => withMoveGate(options, tool)),
     connector: {
@@ -38,7 +41,13 @@ export function buildComputerTools(options: ComputerToolOptions): ComputerTools 
 
         return refused.success
           ? toRefusal(refused.data)
-          : { kind: 'success', result: result.result };
+          : {
+              kind: 'success',
+              result: result.result,
+              ...(result.images === undefined || result.images.length === 0
+                ? {}
+                : { images: result.images }),
+            };
       },
     },
   };
@@ -85,6 +94,10 @@ function runQueued(
     return runShellCommand(options, state, { arguments: attempt.arguments });
   }
 
+  if (attempt.tool === 'computer.screen_click' || attempt.tool === 'computer.screen_type') {
+    return runScreenAct(options, state, attempt);
+  }
+
   if (legacyComputerToolNames.some((name) => name === attempt.tool)) {
     return Promise.resolve(
       refuseComputer(
@@ -112,6 +125,10 @@ export const computerToolNames = [
   'computer.browser_download',
   'computer.browser_fill',
   'computer.browser_click',
+  'computer.screenshot',
+  'computer.screen_scroll',
+  'computer.screen_click',
+  'computer.screen_type',
   'computer.run',
   'computer.read_file',
   'computer.write_file',

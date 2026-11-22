@@ -64,3 +64,85 @@ test('it offers a rule that allows git status and refuses a chained command', ()
 
   expect(isRuleMatch(rule.form, { ...base, args: { command: 'git status $(id)' } })).toBe(false);
 });
+
+function setupTest() {
+  const base = {
+    effects: ['send' as const],
+    context: 'conversation' as const,
+    task: null,
+    sources: [],
+    at: 0,
+  };
+
+  const click = { x: 412, y: 233, button: 'left' };
+
+  const rule = buildAlwaysAllowRule({
+    shortID: 'ab12cd34ef',
+    tool: 'computer.screen_click',
+    input: click,
+    destinations: ['a.test'],
+    content: [],
+  });
+
+  invariant(rule !== null, 'a screen act on a site gets a rule');
+
+  return {
+    rule,
+    isCovered: (tool: string, args: Record<string, string | number>, host: string) =>
+      isRuleMatch(rule.form, { ...base, tool, args, destinations: [host] }),
+  };
+}
+
+test('it offers a screen act a rule that names the host alone, with no check', () => {
+  const ctx = setupTest();
+
+  expect(ctx.rule.form).toMatchObject({
+    outcome: 'allow',
+    tools: ['computer.screen_click', 'computer.screen_type'],
+    destinations: ['a.test'],
+  });
+
+  expect(ctx.rule.form.checks).toBeUndefined();
+});
+
+test('it covers a screen click at other coordinates on the same host', () => {
+  const ctx = setupTest();
+
+  expect(ctx.isCovered('computer.screen_click', { x: 1, y: 2, button: 'right' }, 'a.test')).toBe(
+    true,
+  );
+});
+
+test('it covers a screen type on the same host', () => {
+  const ctx = setupTest();
+
+  expect(ctx.isCovered('computer.screen_type', { text: 'hello' }, 'a.test')).toBe(true);
+});
+
+test('it leaves a screen click on another host to ask', () => {
+  const ctx = setupTest();
+
+  expect(ctx.isCovered('computer.screen_click', { x: 412, y: 233, button: 'left' }, 'b.test')).toBe(
+    false,
+  );
+});
+
+test('it does not cover a browser click on the same host', () => {
+  const ctx = setupTest();
+
+  expect(ctx.isCovered('computer.browser_click', { tab: 't1', element: 'E1' }, 'a.test')).toBe(
+    false,
+  );
+});
+
+test('it offers a screen act on a window with no host no rule', () => {
+  expect(
+    buildAlwaysAllowRule({
+      shortID: 'ab12cd34ef',
+      tool: 'computer.screen_type',
+      input: { text: 'hello' },
+      destinations: [],
+      content: [],
+    }),
+  ).toBeNull();
+});

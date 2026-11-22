@@ -22,6 +22,8 @@ test('it sends the call to the provider with its idempotency key and returns its
     attempt: 1,
     idempotencyKey: 'send-1',
     destinations: [],
+    actionHash: 'hash-1',
+    deadlineAt: null,
   });
 
   expect(response).toStrictEqual({ kind: 'success', result: { delivered: true } });
@@ -47,6 +49,8 @@ test('it reports a provider that asks for a retry later as retryable, with its d
     attempt: 1,
     idempotencyKey: 'send-2',
     destinations: [],
+    actionHash: 'hash-1',
+    deadlineAt: null,
   });
 
   expect(response).toStrictEqual({
@@ -68,6 +72,8 @@ test('it reports a provider that refuses the call as refused', async () => {
     attempt: 1,
     idempotencyKey: 'send-3',
     destinations: [],
+    actionHash: 'hash-1',
+    deadlineAt: null,
   });
 
   expect(response).toStrictEqual({ kind: 'refused', reason: 'the list is closed' });
@@ -101,6 +107,8 @@ test('it reports a send whose destinations changed as destinations changed', asy
     attempt: 1,
     idempotencyKey: 'send-4',
     destinations: ['team'],
+    actionHash: 'hash-1',
+    deadlineAt: null,
   });
 
   expect(response).toStrictEqual({ kind: 'destinations_changed', reason: 'the list grew' });
@@ -129,6 +137,8 @@ test.each([
     attempt: 1,
     idempotencyKey: 'send-5',
     destinations: [],
+    actionHash: 'hash-1',
+    deadlineAt: null,
   });
 
   expect(answer).toStrictEqual(expected);

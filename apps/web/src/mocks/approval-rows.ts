@@ -18,6 +18,7 @@ const approvalStateSchema = z.enum([
 const fieldsSchema = z.record(z.string(), z.string());
 const choicesSchema = z.array(approvalChoiceSchema);
 const imagesSchema = z.array(z.string());
+const screenSchema = z.object({ x: z.int(), y: z.int(), picture: z.string() });
 
 type ApprovalChoice = z.infer<typeof approvalChoiceSchema>;
 
@@ -70,6 +71,7 @@ export const approvalRows = new Collection({
     lapsesAt: z.date().default(() => faker.date.soon({ days: 3 })),
     memory: z.custom<ApprovalMemory>().optional(),
     images: imagesSchema.optional(),
+    screen: screenSchema.optional(),
     proposalID: z.uuid().default(() => faker.string.uuid()),
     riskClass: z.enum(['routine', 'always_ask', 'lifting']).default('routine'),
     rule: ruleRefSchema.optional(),

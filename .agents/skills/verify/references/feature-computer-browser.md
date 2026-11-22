@@ -22,7 +22,8 @@ proxy. `local`'s test build runs it as a plain process, with no network limits.
 Before you start:
 
 - When you have not run [sign-in-enrol](feature-sign-in-enrol.md) since `up`, run it first.
-- Run this journey once per `up`. Once the user approves the site, nixie stops asking about it. A
+- Run this journey once per `up`, before [computer-screen](feature-computer-screen.md), which needs
+  the approval this journey gives. Once the user approves the site, nixie stops asking about it. A
   second journey finds no call to approve in step 4. Before you run it again, even after a failed
   journey, run `bun verify up --restart` and `bun verify doctor`. Then run sign-in-enrol.
 

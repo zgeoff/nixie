@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { screenBindingSchema } from './computer-request';
 
 export const computerFailureReasons = [
   'stale_element',
@@ -7,6 +8,11 @@ export const computerFailureReasons = [
   'tab_gone',
   'tab_limit',
   'filled_tab',
+  'screen_changed',
+  'use_run',
+  'use_browser_open',
+  'bad_point',
+  'bad_keys',
   'no_file',
   'bad_path',
   'too_big',
@@ -58,6 +64,40 @@ const scrollReplySchema = z.strictObject({
   base64: textSchema,
 });
 
+const focusSchema = z.discriminatedUnion('kind', [
+  z.strictObject({ kind: z.literal('browser'), tab: textSchema, url: textSchema }),
+  z.strictObject({ kind: z.literal('terminal') }),
+  z.strictObject({ kind: z.literal('other') }),
+]);
+
+const desktopReplySchema = z.strictObject({
+  kind: z.literal('desktop'),
+  ok: isOk,
+  width: numberSchema,
+  height: numberSchema,
+  focus: focusSchema,
+  base64: textSchema,
+});
+
+// The picture after a screen scroll or act, with the window that has focus. The input has landed
+// when this reply comes, so a picture that could not be taken leaves base64 out rather than fail
+// the act.
+const screenReplySchema = z.strictObject({
+  kind: z.literal('screen'),
+  ok: isOk,
+  focus: focusSchema,
+  base64: textSchema.optional(),
+});
+
+const screenTargetReplySchema = z.strictObject({
+  kind: z.literal('screen-target'),
+  ok: isOk,
+  target: screenBindingSchema,
+
+  // the desktop as the owner will see it on the card of a click, which only a click asks for
+  base64: textSchema.optional(),
+});
+
 const runBodySchema = z.strictObject({
   exitCode: numberSchema.nullable(),
   stdout: outputSchema,
@@ -97,6 +137,9 @@ export const computerReplySchema = z.discriminatedUnion('kind', [
   pageReplySchema,
   screenshotReplySchema,
   scrollReplySchema,
+  desktopReplySchema,
+  screenReplySchema,
+  screenTargetReplySchema,
   runReplySchema,
   fileReplySchema,
   writtenReplySchema,
@@ -107,3 +150,5 @@ export const computerReplySchema = z.discriminatedUnion('kind', [
 export type ComputerReply = z.infer<typeof computerReplySchema>;
 
 export type ComputerFailureReason = (typeof computerFailureReasons)[number];
+
+export type ComputerFocus = z.infer<typeof focusSchema>;

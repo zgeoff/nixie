@@ -2,6 +2,9 @@ import type { AddressCheck } from '@heynixie/egress';
 import { makeAddressCheck, startCheckingProxy } from '@heynixie/egress';
 import type { ComputerHandler, ComputerReply } from '@heynixie/wire';
 import { match } from 'ts-pattern';
+import { evaluateIsolated } from '../screen/evaluate-isolated';
+import { handleScreenRequest } from '../screen/handle-screen-request';
+import type { DesktopDriver } from '../screen/types';
 import { actOnTab } from './act-on-tab';
 import { downloadTabFile } from './download-tab-file';
 import { launchBrowser } from './launch-browser';
@@ -30,7 +33,22 @@ export interface BrowserHandlerOptions {
   // replaces the check of the ranges, for a test that serves a page from the loopback
   readonly checkAddress?: AddressCheck;
   readonly executablePath?: string;
+
+  // the desktop that the screen tools drive; without it they refuse
+  readonly screen?: {
+    readonly makeDriver: (state: BrowserState) => DesktopDriver;
+
+    // how long the display takes to show the result of an input
+    readonly settleMs: number;
+  };
 }
+
+const noDisplay: ComputerReply = {
+  kind: 'failed',
+  ok: false,
+  reason: 'failed',
+  message: 'the computer has no display',
+};
 
 // One browser per guest process, started at its first request and again after it dies. The browser
 // reaches the network only through a checking proxy, and every request it makes is scanned by the
@@ -41,6 +59,8 @@ export function makeBrowserHandler(options: BrowserHandlerOptions): ComputerHand
   let state: BrowserState | null = null;
   let isClosed = false;
   let isProxyUp: Promise<number> | null = null;
+
+  const drivers = new WeakMap<BrowserState, DesktopDriver>();
 
   const checkAddress: AddressCheck =
     options.checkAddress ?? ((address) => makeAddressCheck(ranges.current)(address));
@@ -93,8 +113,48 @@ export function makeBrowserHandler(options: BrowserHandlerOptions): ComputerHand
 
     const browser = await ensure();
 
+    const screen = options.screen;
+
+    if (isScreenRequest(request)) {
+      if (screen === undefined) {
+        return noDisplay;
+      }
+
+      const driver = drivers.get(browser) ?? screen.makeDriver(browser);
+
+      drivers.set(browser, driver);
+
+      const tabs = new Map(
+        [...browser.tabs].map(([id, tab]) => [
+          id,
+          {
+            page: {
+              url: () => tab.page.url(),
+              evaluate: (script: string) => evaluateIsolated(tab.page, script),
+            },
+          },
+        ]),
+      );
+
+      return handleScreenRequest({ driver, tabs, settleMs: screen.settleMs }, request);
+    }
+
     return handleRequest(browser, request);
   };
+}
+
+type ScreenOp = Extract<
+  Parameters<ComputerHandler>[0],
+  { op: 'desktopShot' | 'screenScroll' | 'screenBind' | 'screenAct' }
+>;
+
+function isScreenRequest(request: Parameters<ComputerHandler>[0]): request is ScreenOp {
+  return (
+    request.op === 'desktopShot' ||
+    request.op === 'screenScroll' ||
+    request.op === 'screenBind' ||
+    request.op === 'screenAct'
+  );
 }
 
 const tabGone: ComputerReply = { kind: 'failed', ok: false, reason: 'tab_gone' };
@@ -174,8 +234,15 @@ function handleRequest(
 
       return downloadTabFile(tab, download.element);
     })
-    .with({ op: 'run' }, { op: 'readFile' }, { op: 'writeFile' }, () =>
-      Promise.resolve(fileOnlyReply),
+    .with(
+      { op: 'run' },
+      { op: 'readFile' },
+      { op: 'writeFile' },
+      { op: 'desktopShot' },
+      { op: 'screenScroll' },
+      { op: 'screenBind' },
+      { op: 'screenAct' },
+      () => Promise.resolve(fileOnlyReply),
     )
     .exhaustive();
 }

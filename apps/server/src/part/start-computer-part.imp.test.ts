@@ -3,7 +3,11 @@ import { startComputer } from '@heynixie/connectors';
 import { buildSandboxSpec } from '@heynixie/sandbox';
 import { buildImpPort, buildImpSandboxAdapter, parseImpConfig } from '@heynixie/sandbox-imp';
 import { setupTestRecorder } from '@heynixie/sandbox/test-utils';
-import type { ComputerRequest } from '@heynixie/wire';
+import type { ComputerReply, ComputerRequest, ScreenBinding } from '@heynixie/wire';
+import { waitFor } from '@zgeoff/testing';
+import invariant from 'tiny-invariant';
+import { buildButtonPageURL } from '../test-utils/build-button-page-url';
+import { buildPopupPageURL } from '../test-utils/build-popup-page-url';
 
 // These tests need a real impd on a host with /dev/kvm and the computer image built into it.
 // docs/runbooks/imp-isolation-tests.md names the variables that turn them on. CI skips them, so a
@@ -92,7 +96,64 @@ async function setupTest() {
     return sandbox;
   };
 
-  return { adapter, computer, runCommand, callComputer, createOldSandbox };
+  const send = async (request: ComputerRequest): Promise<ComputerReply> => {
+    const result = await computer.call({
+      request,
+      scan: () => Promise.resolve({ kind: 'pass' }),
+      scanText: () => Promise.resolve({ kind: 'pass' }),
+      timeoutMs: 120_000,
+    });
+
+    invariant(result.status === 'reply', 'the computer answered');
+
+    return result.reply;
+  };
+
+  const openURL = (url: string) =>
+    send({
+      op: 'open',
+      url,
+      limits: {
+        bodyBytes: 1_000_000,
+        timeoutMs: 30_000,
+        redirects: 5,
+        textBytes: 20_000,
+        imageBytes: 0,
+      },
+      deniedRanges: [],
+    });
+
+  const openPage = (title: string) => openURL(buildButtonPageURL(title));
+
+  const readTitle = async (): Promise<string | null> => {
+    const reply = await send({ op: 'read', tab: 't1', mode: 'text' });
+
+    return reply.kind === 'page' ? reply.page.title : null;
+  };
+
+  const bind = async (x: number, y: number): Promise<ScreenBinding> => {
+    const reply = await send({
+      op: 'screenBind',
+      act: { kind: 'click', x, y, button: 'left' },
+    });
+
+    invariant(reply.kind === 'screen-target', 'the click bound to a window');
+
+    return reply.target;
+  };
+
+  return {
+    adapter,
+    computer,
+    runCommand,
+    callComputer,
+    createOldSandbox,
+    send,
+    openURL,
+    openPage,
+    readTitle,
+    bind,
+  };
 }
 
 test.skipIf(!hasImpHost)(
@@ -229,5 +290,110 @@ test.skipIf(!hasImpHost)(
     ]);
 
     expect([keptBrowsers, keptShells]).toStrictEqual([[], []]);
+  },
+);
+
+test.skipIf(!hasImpHost)('it takes a 1280 by 800 picture of the desktop', async () => {
+  const ctx = await setupTest();
+  const reply = await ctx.send({ op: 'desktopShot' });
+
+  invariant(reply.kind === 'desktop', 'the reply is a desktop picture');
+
+  const bytes = Buffer.from(reply.base64, 'base64');
+
+  expect({
+    isPNG: bytes.subarray(1, 4).toString('latin1') === 'PNG',
+    width: bytes.readUInt32BE(16),
+    height: bytes.readUInt32BE(20),
+  }).toStrictEqual({ isPNG: true, width: 1280, height: 800 });
+});
+
+test.skipIf(!hasImpHost)(
+  'it clicks a point on a page in Chromium and the page reacts',
+  async () => {
+    const ctx = await setupTest();
+
+    await ctx.openPage('before');
+
+    const binding = await ctx.bind(640, 500);
+
+    const reply = await ctx.send({
+      op: 'screenAct',
+      binding,
+      act: { kind: 'click', x: 640, y: 500, button: 'left' },
+    });
+
+    expect(reply).toMatchObject({ kind: 'screen', focus: { kind: 'browser', tab: 't1' } });
+
+    await waitFor(async () => (await ctx.readTitle()) === 'clicked');
+  },
+);
+
+test.skipIf(!hasImpHost)(
+  'it refuses a screen act on the terminal window with USE_RUN',
+  async () => {
+    const ctx = await setupTest();
+
+    // Chromium opens over the whole display, so alt+tab brings the terminal, at 24, 24, to the front.
+    const chord = { kind: 'keys', keys: 'alt+tab' } as const;
+
+    const browser = await ctx.send({ op: 'screenBind', act: chord });
+
+    invariant(browser.kind === 'screen-target', 'the chord bound to a window');
+
+    await ctx.send({ op: 'screenAct', binding: browser.target, act: chord });
+
+    const reply = await ctx.send({
+      op: 'screenBind',
+      act: { kind: 'click', x: 100, y: 100, button: 'left' },
+    });
+
+    expect(reply).toMatchObject({ kind: 'failed', reason: 'use_run' });
+  },
+);
+
+test.skipIf(!hasImpHost)(
+  'it refuses a click on the address bar of the browser with USE_BROWSER_OPEN',
+  async () => {
+    const ctx = await setupTest();
+
+    await ctx.openPage('before');
+
+    const reply = await ctx.send({
+      op: 'screenBind',
+      act: { kind: 'click', x: 640, y: 50, button: 'left' },
+    });
+
+    expect(reply).toMatchObject({ kind: 'failed', reason: 'use_browser_open' });
+  },
+);
+
+test.skipIf(!hasImpHost)(
+  'it refuses a click with SCREEN_CHANGED when another X window is under the point',
+  async () => {
+    const ctx = await setupTest();
+
+    // The page's button opens a second Chromium window over the middle of the display, so the X
+    // window under the point changes while the tab and its URL stay as they were.
+    await ctx.openURL(buildPopupPageURL('first'));
+
+    const binding = await ctx.bind(640, 400);
+
+    const opened = await ctx.send({
+      op: 'screenAct',
+      binding,
+      act: { kind: 'click', x: 640, y: 400, button: 'left' },
+    });
+
+    const reply = await ctx.send({
+      op: 'screenAct',
+      binding,
+      act: { kind: 'click', x: 640, y: 400, button: 'left' },
+    });
+
+    expect([opened.kind, reply]).toMatchObject([
+      'screen',
+      { kind: 'failed', reason: 'screen_changed' },
+    ]);
   },
 );

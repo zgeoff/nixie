@@ -1,9 +1,15 @@
 import type { JSONObject } from '@heynixie/log';
-import type { ToolCall, ToolDefinition } from '@heynixie/tools';
+import type { ToolCall, ToolDefinition, ToolImage } from '@heynixie/tools';
 import type { ImageSize } from './image/image-size';
 
 export type ProviderResponse =
-  | { readonly kind: 'success'; readonly result: JSONObject }
+  | {
+      readonly kind: 'success';
+      readonly result: JSONObject;
+
+      // pictures the model reads beside the result, sealed under the outcome record's own key
+      readonly images?: readonly ToolImage[];
+    }
   | { readonly kind: 'refused'; readonly reason: string }
   | { readonly kind: 'refused_retryable'; readonly reason: string; readonly retryAfterMs?: number }
   | { readonly kind: 'ambiguous'; readonly reason: string }
@@ -20,6 +26,11 @@ export interface ActionAttempt {
 
   // the destinations the policy checked for the call
   readonly destinations: readonly string[];
+
+  // the hash the queue holds the action under, and the deadline it covers, so a connector can tell
+  // which of its prepared calls the owner answered
+  readonly actionHash: string;
+  readonly deadlineAt: number | null;
 }
 
 // What a read-only check of the provider found.

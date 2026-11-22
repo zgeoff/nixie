@@ -3,6 +3,9 @@
 # it into impd from the repo root. impd refuses a FROM that names its image with a variable, so each
 # FROM writes out the Bun version in .bun-version.
 #
+# xdotool injects the screen tools' pointer and key events, x11-utils (xprop, xwininfo) reads the
+# windows, and scrot takes the desktop's picture. The guest runs each as the `screen` account.
+#
 # The guest runs as root. It starts the display, the window manager and the VNC server as the
 # `screen` account, Chromium as `chrome`, and the terminal and every command as `terminal`. The ids
 # below must match desktop-layout.ts, and a test checks that they do.
@@ -18,7 +21,7 @@ RUN bun install --frozen-lockfile --ignore-scripts \
 FROM oven/bun:1.4.4
 ENV PLAYWRIGHT_BROWSERS_PATH=/opt/browsers
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends git curl ca-certificates python3 jq unzip iproute2 util-linux procps xvfb openbox xterm x11vnc \
+  && apt-get install -y --no-install-recommends git curl ca-certificates python3 jq unzip iproute2 util-linux procps xvfb openbox xterm x11vnc xdotool x11-utils scrot \
   && rm -rf /var/lib/apt/lists/*
 COPY --from=build /out/playwright-core /app/node_modules/playwright-core
 RUN bun /app/node_modules/playwright-core/cli.js install --with-deps chromium \

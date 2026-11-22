@@ -167,6 +167,7 @@ export async function runToolCall(
     destinations: destinations.map((destination) => destination.value),
     deadlineAt,
     expectURL: prepared?.expectURL,
+    expectWindow: prepared?.expectWindow,
   });
 
   const repeatOf = await readAskedRepeat({
@@ -187,8 +188,11 @@ export async function runToolCall(
     deadlineAt,
     repeatOf,
     actionHash,
+    expectURL: prepared?.expectURL,
+    expectWindow: prepared?.expectWindow,
     policyTool,
     declaration: pickCallDeclaration(registered, effects),
+    ...(prepared?.attachments === undefined ? {} : { attachments: prepared.attachments }),
   });
 
   const settled = written.isCapped
@@ -336,6 +340,7 @@ function runDecidedCall(decided: DecidedCall): Promise<Settled> {
       return readQueuedResult(registered, rest.options.queue, {
         actionID: repeatOf.actionID,
         timeoutMs: repeatOf.runsInStep ? 0 : rest.options.queuedWaitMs,
+        reserveImages: rest.run.session?.reserveImages,
       });
     }
 
@@ -445,6 +450,7 @@ async function runQueued(allowed: AllowedCall): Promise<Settled> {
       destinations: allowed.destinations.map((destination) => destination.value),
       deadlineAt: allowed.deadlineAt,
       expectURL: allowed.prepared?.expectURL,
+      expectWindow: allowed.prepared?.expectWindow,
     }),
     deadlineAt: allowed.deadlineAt,
     effects: allowed.prepared?.effects ?? allowed.registered.definition.declaration.effects,
@@ -459,5 +465,6 @@ async function runQueued(allowed: AllowedCall): Promise<Settled> {
   return readQueuedResult(allowed.registered, allowed.options.queue, {
     actionID: enqueued.actionID,
     timeoutMs: allowed.options.queuedWaitMs,
+    reserveImages: allowed.run.session?.reserveImages,
   });
 }
