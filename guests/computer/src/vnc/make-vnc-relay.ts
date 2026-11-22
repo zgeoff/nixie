@@ -42,6 +42,9 @@ export function makeVNCRelay(
     if (frame.kind === 'vnc-close') {
       context.streams.delete(frame.stream);
       entry.link?.end();
+    } else if (frame.kind === 'vnc-flush') {
+      entry.pending.splice(0);
+      entry.link?.flush();
     } else if (entry.link === null) {
       entry.pending.push(frame.data);
     } else {

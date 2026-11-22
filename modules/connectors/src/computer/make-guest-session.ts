@@ -34,6 +34,9 @@ interface VNCStreamListener {
 export interface VNCStream {
   readonly send: (bytes: Uint8Array) => Promise<void>;
 
+  // drops the bytes the guest holds for the stream and has not written to the VNC server
+  readonly flush: () => Promise<void>;
+
   // closes the stream and tells the guest, and the listener hears nothing more
   readonly close: () => void;
 }
@@ -212,6 +215,7 @@ function openStream(
         await sendFrame({ kind: 'vnc-data', stream: id, data });
       }
     },
+    flush: () => sendFrame({ kind: 'vnc-flush', stream: id }),
     close: () => {
       if (streams.delete(id)) {
         void sendQuietly(sendFrame({ kind: 'vnc-close', stream: id }), options.logger);

@@ -106,3 +106,19 @@ test('it rejects when the VNC server still refuses once the wait has passed', ()
 
   expect(ctx.connect(300)).rejects.toMatchObject({ code: 'ENOENT' });
 });
+
+test('it drops the messages the server has not taken when it flushes', async () => {
+  const ctx = setupTest();
+
+  ctx.listen();
+
+  const link = await ctx.connect(0);
+
+  link.flush();
+  link.write(new Uint8Array([4]));
+  link.end();
+
+  await ctx.clientClosed;
+
+  expect(ctx.fromClient).toStrictEqual([new Uint8Array([4])]);
+});

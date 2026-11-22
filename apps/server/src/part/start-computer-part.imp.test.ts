@@ -452,14 +452,17 @@ test.skipIf(!hasImpHost)(
     const received: Uint8Array[] = [];
     const closed = { isClosed: false };
 
-    const watch = ctx.computer.watch({
-      send: (bytes) => {
-        received.push(bytes);
+    const watch = ctx.computer.watch(
+      {
+        send: (bytes) => {
+          received.push(bytes);
+        },
+        close: () => {
+          closed.isClosed = true;
+        },
       },
-      close: () => {
-        closed.isClosed = true;
-      },
-    });
+      { canInput: () => false, onInput: () => {} },
+    );
 
     onTestFinished(() => {
       watch.end();

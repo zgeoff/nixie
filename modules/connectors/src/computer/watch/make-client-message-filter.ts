@@ -6,10 +6,25 @@ interface ClientFilterResult {
 
   // true once the viewer sent a message the filter cannot read or does not allow
   readonly isMalformed: boolean;
+
+  // true when a key or pointer message is among the bytes to pass on
+  readonly isInput: boolean;
 }
 
 export interface ClientMessageFilter {
   readonly push: (bytes: Uint8Array) => ClientFilterResult;
+
+  // true for a message that push returned among its key and pointer messages
+  readonly isInputMessage: (message: Uint8Array) => boolean;
+
+  // The messages that release every key and button the filter passed as pressed, which it then
+  // forgets. The keys come first, and the pointer last at the point where it was.
+  readonly collectReleases: () => Uint8Array[];
+}
+
+export interface ClientFilterOptions {
+  // whether the viewer holds the desktop now: only then does a key or pointer message pass
+  readonly canInput: () => boolean;
 }
 
 interface FilterState {
@@ -19,24 +34,40 @@ interface FilterState {
   // the bytes of a dropped clipboard message that the viewer has still to send
   skipBytes: number;
   isMalformed: boolean;
+  readonly canInput: () => boolean;
+
+  // the keys passed down and not yet up, and the pointer as it was last passed on
+  readonly pressedKeys: Set<number>;
+  pointer: { readonly buttons: number; readonly x: number; readonly y: number } | null;
+
+  // how many key and pointer messages have passed, and which they were
+  inputCount: number;
+  readonly inputMessages: WeakSet<Uint8Array>;
 }
 
-// Reads the viewer's bytes as RFB messages, whatever size the chunks arrive in. The handshake is the
-// 3.8 version with no security, which the VNC server offers alone. A message of a type outside the
-// handshake, the three passed types and the three dropped ones ends the stream as malformed.
-export function makeClientMessageFilter(): ClientMessageFilter {
+// Reads the viewer's bytes as RFB messages, whatever size the chunks arrive in. A key or pointer
+// message passes only while the viewer holds the desktop, and the clipboard message never does.
+// The handshake is the 3.8 version with no security, which the VNC server offers alone.
+export function makeClientMessageFilter(options: ClientFilterOptions): ClientMessageFilter {
   const state: FilterState = {
     phase: 'version',
     buffer: new Uint8Array(),
     skipBytes: 0,
     isMalformed: false,
+    canInput: options.canInput,
+    pressedKeys: new Set(),
+    pointer: null,
+    inputCount: 0,
+    inputMessages: new WeakSet(),
   };
 
   return {
     push: (bytes) => {
       if (state.isMalformed) {
-        return { forward: [], isMalformed: true };
+        return { forward: [], isMalformed: true, isInput: false };
       }
+
+      const inputBefore = state.inputCount;
 
       state.buffer = join(state.buffer, bytes);
 
@@ -54,8 +85,14 @@ export function makeClientMessageFilter(): ClientMessageFilter {
         }
       }
 
-      return { forward: state.isMalformed ? [] : forward, isMalformed: state.isMalformed };
+      return {
+        forward: state.isMalformed ? [] : forward,
+        isMalformed: state.isMalformed,
+        isInput: !state.isMalformed && state.inputCount !== inputBefore,
+      };
     },
+    isInputMessage: (message) => state.inputMessages.has(message),
+    collectReleases: () => collectReleases(state),
   };
 }
 
@@ -69,12 +106,9 @@ function join(first: Uint8Array, second: Uint8Array): Uint8Array {
 }
 
 // The messages a viewer sends to the VNC server, as RFC 6143 lays them out. A watch passes the
-// handshake and the three messages that ask to see the screen, and drops the three that act on the
-// desktop, because nobody holds the desktop while a watch runs.
+// handshake and the three messages that ask to see the screen. It passes the two that act on the
+// desktop, a key and a pointer event, only while the viewer holds it, and never the clipboard.
 const passedTypes: ReadonlySet<number> = new Set([0, 2, 3]);
-
-const keyEventBytes = 8;
-const pointerEventBytes = 6;
 
 // The bytes of the next message to pass on, an empty array for a message dropped, or null when the
 // buffer holds no whole message yet.
@@ -97,12 +131,8 @@ function takeNext(state: FilterState): Uint8Array | null {
     return null;
   }
 
-  if (type === 4) {
-    return takeBytes(state, keyEventBytes, false);
-  }
-
-  if (type === 5) {
-    return takeBytes(state, pointerEventBytes, false);
+  if (type === 4 || type === 5) {
+    return takeInput(state, type);
   }
 
   if (type === 6) {
@@ -182,6 +212,41 @@ function reject(state: FilterState): null {
   state.buffer = new Uint8Array();
 
   return null;
+}
+
+const keyEventBytes = 8;
+const pointerEventBytes = 6;
+
+// A key or pointer message passes, and is remembered as pressed or not, only for a viewer that
+// holds the desktop. Any other viewer's is read whole and dropped.
+function takeInput(state: FilterState, type: 4 | 5): Uint8Array | null {
+  const size = type === 4 ? keyEventBytes : pointerEventBytes;
+  const isAllowed = state.canInput();
+  const message = takeBytes(state, size, isAllowed);
+
+  if (message === null || message.byteLength === 0) {
+    return message;
+  }
+
+  const view = new DataView(message.buffer, message.byteOffset, message.byteLength);
+
+  state.inputCount += 1;
+
+  state.inputMessages.add(message);
+
+  if (type === 4) {
+    const key = view.getUint32(4);
+
+    if (message[1] === 0) {
+      state.pressedKeys.delete(key);
+    } else {
+      state.pressedKeys.add(key);
+    }
+  } else {
+    state.pointer = { buttons: view.getUint8(1), x: view.getUint16(2), y: view.getUint16(4) };
+  }
+
+  return message;
 }
 
 const cutTextHeaderBytes = 8;
@@ -283,4 +348,42 @@ function isPixelFormat(format: Uint8Array): boolean {
         channel.shift + channel.max.toString(2).length <= bitsPerPixel,
     )
   );
+}
+
+function collectReleases(state: FilterState): Uint8Array[] {
+  const releases = [...state.pressedKeys].map((key) => buildKeyEvent(key, false));
+
+  if (state.pointer !== null && state.pointer.buttons !== 0) {
+    releases.push(buildPointerEvent(0, state.pointer.x, state.pointer.y));
+  }
+
+  state.pressedKeys.clear();
+
+  state.pointer = null;
+
+  return releases;
+}
+
+function buildKeyEvent(key: number, isDown: boolean): Uint8Array {
+  const message = new Uint8Array(keyEventBytes);
+
+  message[0] = 4;
+  message[1] = isDown ? 1 : 0;
+
+  new DataView(message.buffer).setUint32(4, key);
+
+  return message;
+}
+
+function buildPointerEvent(buttons: number, x: number, y: number): Uint8Array {
+  const message = new Uint8Array(pointerEventBytes);
+  const view = new DataView(message.buffer);
+
+  message[0] = 5;
+  message[1] = buttons;
+
+  view.setUint16(2, x);
+  view.setUint16(4, y);
+
+  return message;
 }

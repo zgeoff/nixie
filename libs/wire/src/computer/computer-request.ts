@@ -92,6 +92,12 @@ const screenActRequestSchema = z.strictObject({
   act: screenActSchema,
 });
 
+// A hold on the desktop begins: the guest starts a list of the sites the browser shows
+const takeoverBeginSchema = z.strictObject({ op: z.literal('takeoverBegin') });
+
+// A hold on the desktop ends: the guest answers with the sites the browser showed and the window in
+// focus, and stops the list
+const takeoverEndSchema = z.strictObject({ op: z.literal('takeoverEnd') });
 const closeSchema = z.strictObject({ op: z.literal('close'), tab: z.string() });
 
 const downloadSchema = z.strictObject({
@@ -124,6 +130,8 @@ export const computerRequestSchema = z.discriminatedUnion('op', [
   screenScrollSchema,
   screenBindSchema,
   screenActRequestSchema,
+  takeoverBeginSchema,
+  takeoverEndSchema,
   actRequestSchema,
   closeSchema,
   downloadSchema,

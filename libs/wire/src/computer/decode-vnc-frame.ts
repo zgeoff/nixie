@@ -11,6 +11,7 @@ const streamSchema = z.string().min(1).max(64);
 const vncFrameSchema = z.discriminatedUnion('kind', [
   z.strictObject({ kind: z.literal('vnc-open'), stream: streamSchema }),
   z.strictObject({ kind: z.literal('vnc-data'), stream: streamSchema, data: z.base64() }),
+  z.strictObject({ kind: z.literal('vnc-flush'), stream: streamSchema }),
   z.strictObject({ kind: z.literal('vnc-close'), stream: streamSchema }),
 ]);
 

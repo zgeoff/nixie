@@ -1,7 +1,7 @@
 import type { Logger } from '@heynixie/logger';
 import type { GuestSession, VNCStream } from '../make-guest-session';
 import { makeClientMessageFilter } from './make-client-message-filter';
-import type { WatchConnection, WatchSocket } from './types';
+import type { WatchConnection, WatchInput, WatchSocket } from './types';
 
 export interface WatchHost {
   readonly watches: { count: number };
@@ -29,11 +29,15 @@ const maxPendingBytes = 64 * 1024;
 
 // A watch counts as open from the moment its socket opens, so the assistant sees that someone is
 // there while the sandbox still wakes.
-export function openComputerWatch(host: WatchHost, socket: WatchSocket): WatchConnection {
+export function openComputerWatch(
+  host: WatchHost,
+  socket: WatchSocket,
+  input: WatchInput,
+): WatchConnection {
   host.watches.count += 1;
 
   const releaseHold = host.hold();
-  const filter = makeClientMessageFilter();
+  const filter = makeClientMessageFilter({ canInput: input.canInput });
   const state: WatchState = { stream: null, isEnded: false, pending: [], pendingBytes: 0 };
 
   const end = (): void => {
@@ -57,6 +61,9 @@ export function openComputerWatch(host: WatchHost, socket: WatchSocket): WatchCo
 
   return {
     end,
+    releaseInput: () => {
+      releaseInput(host, state, filter, endAndClose);
+    },
     receive: (bytes) => {
       if (state.isEnded) {
         return;
@@ -75,6 +82,10 @@ export function openComputerWatch(host: WatchHost, socket: WatchSocket): WatchCo
       }
 
       const result = filter.push(bytes);
+
+      if (result.isInput) {
+        input.onInput();
+      }
 
       for (const message of result.forward) {
         if (state.stream === null) {
@@ -145,6 +156,48 @@ async function sendToStream(
 ): Promise<void> {
   try {
     await stream.send(bytes);
+  } catch (error) {
+    host.logger('computer.watch_send_failed', { reason: String(error) }, 'warn');
+
+    end();
+  }
+}
+
+// the viewer's whole-screen update request, which stands in for one that a flush may have dropped
+const fullUpdateRequest = new Uint8Array([3, 0, 0, 0, 0, 0, 0x05, 0x00, 0x03, 0x20]);
+
+function releaseInput(
+  host: WatchHost,
+  state: WatchState,
+  filter: ReturnType<typeof makeClientMessageFilter>,
+  end: () => void,
+): void {
+  const releases = filter.collectReleases();
+  const kept = state.pending.filter((message) => !filter.isInputMessage(message));
+
+  state.pending.splice(0, state.pending.length, ...kept);
+
+  const stream = state.stream;
+
+  if (stream === null || state.isEnded) {
+    return;
+  }
+
+  void sendRelease(host, stream, [...releases, fullUpdateRequest], end);
+}
+
+async function sendRelease(
+  host: WatchHost,
+  stream: VNCStream,
+  messages: readonly Uint8Array[],
+  end: () => void,
+): Promise<void> {
+  try {
+    await stream.flush();
+
+    for (const message of messages) {
+      await stream.send(message);
+    }
   } catch (error) {
     host.logger('computer.watch_send_failed', { reason: String(error) }, 'warn');
 

@@ -159,14 +159,17 @@ async function setupTest(options: SetupOptions = {}) {
       const received: Uint8Array[] = [];
       const closed = { isClosed: false };
 
-      const connection = computer.watch({
-        send: (bytes) => {
-          received.push(bytes);
+      const connection = computer.watch(
+        {
+          send: (bytes) => {
+            received.push(bytes);
+          },
+          close: () => {
+            closed.isClosed = true;
+          },
         },
-        close: () => {
-          closed.isClosed = true;
-        },
-      });
+        { canInput: () => false, onInput: () => {} },
+      );
 
       return { connection, received, closed };
     },

@@ -46,6 +46,11 @@ export const vncSocketPath = `${vncSocketFolder}/vnc.sock`;
 // second of the first try, and a supervised restart waits a second more.
 export const vncConnectWaitMs = 5000;
 
+// Where xterm logs what the terminal shows, in a folder that only the terminal account and the guest
+// open. A hand-back reads the last lines of it to tell the assistant what the screen held.
+export const terminalLogFolder = '/var/lib/nixie-terminal';
+export const terminalLogPath = `${terminalLogFolder}/terminal.log`;
+
 // the memory that the terminal's processes and every command share, so a heavy command ends itself
 // before it takes Chromium's memory
 export const terminalMemoryLimitBytes = 512 * 1024 * 1024;

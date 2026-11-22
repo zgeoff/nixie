@@ -1,6 +1,13 @@
 import type { TerminalAccount } from '../shell/terminal-account';
 import type { DesktopAccount } from './constants';
-import { display, displayHeight, displayWidth, screenAccount, vncSocketPath } from './constants';
+import {
+  display,
+  displayHeight,
+  displayWidth,
+  screenAccount,
+  terminalLogPath,
+  vncSocketPath,
+} from './constants';
 
 export interface DesktopProcess {
   readonly name: string;
@@ -23,7 +30,7 @@ export interface DesktopProcessOptions {
 
 // The processes of the virtual desktop: the display, a window manager, the terminal and a VNC server.
 // The display listens on an abstract socket alone, and the VNC server on a Unix socket alone, with
-// its clipboard off, in view-only mode.
+// its clipboard off.
 export function buildDesktopProcesses(options: DesktopProcessOptions): readonly DesktopProcess[] {
   const screenEnv = { DISPLAY: display, HOME: screenAccount.home };
 
@@ -59,7 +66,6 @@ export function buildDesktopProcesses(options: DesktopProcessOptions): readonly 
         '-display',
         display,
         '-localhost',
-        '-viewonly',
         '-unixsock',
         vncSocketPath,
 
@@ -85,6 +91,9 @@ export function buildDesktopProcesses(options: DesktopProcessOptions): readonly 
       name: 'terminal',
       argv: options.terminal.wrap([
         'xterm',
+        '-l',
+        '-lf',
+        terminalLogPath,
         '-geometry',
         '100x32+24+24',
         '-e',

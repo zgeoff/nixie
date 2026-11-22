@@ -1,4 +1,4 @@
-import { chmod, chown, mkdir } from 'node:fs/promises';
+import { chmod, chown, mkdir, rm } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { makeAddressCheck, resolveHostAddresses, startSocketProxy } from '@heynixie/egress';
 import { runComputerGuest } from '@heynixie/wire';
@@ -12,6 +12,8 @@ import {
   screenAccount,
   terminalAccount,
   terminalCgroupName,
+  terminalLogFolder,
+  terminalLogPath,
   terminalMemoryLimitBytes,
   vncConnectWaitMs,
   vncSocketFolder,
@@ -33,6 +35,7 @@ import {
   makeShellHandler,
 } from './shell/make-shell-handler';
 import { makeSeparateAccount } from './shell/terminal-account';
+import { makeTerminalTextReader } from './takeover/make-terminal-text-reader';
 import { connectVNC } from './vnc/connect-vnc';
 import { makeVNCRelay } from './vnc/make-vnc-relay';
 
@@ -80,6 +83,13 @@ await chmod(screenFolder, 0o700);
 await mkdir(vncSocketFolder, { recursive: true });
 await chown(vncSocketFolder, screenAccount.uid, screenAccount.gid);
 await chmod(vncSocketFolder, 0o700);
+
+// xterm logs the terminal's text where only the terminal account and the guest can open it, and a
+// hand-back reads its last lines. A log from an earlier run of the guest is dropped.
+await mkdir(terminalLogFolder, { recursive: true });
+await chown(terminalLogFolder, terminalAccount.uid, terminalAccount.gid);
+await chmod(terminalLogFolder, 0o700);
+await rm(terminalLogPath, { force: true });
 await mkdir('/tmp/.X11-unix', { recursive: true });
 await chmod('/tmp/.X11-unix', 0o1777);
 
@@ -138,6 +148,7 @@ const browser = makeBrowserHandler({
   display,
   executablePath: chromiumLauncherPath,
   downloadsPath,
+  readTerminalText: makeTerminalTextReader(terminalLogPath),
   screen: {
     makeDriver: () =>
       makeXDriver({ runTool: runScreenTool, shotPath: join(screenFolder, 'shot.png') }),

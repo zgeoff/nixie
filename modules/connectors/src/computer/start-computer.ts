@@ -10,7 +10,7 @@ import { makeGuestSession } from './make-guest-session';
 import { moveOldSandboxes, wakeOld } from './move-old-sandboxes';
 import type { CallResult, ComputerCall } from './types';
 import { openComputerWatch } from './watch/open-computer-watch';
-import type { WatchConnection, WatchSocket } from './watch/types';
+import type { WatchConnection, WatchInput, WatchSocket } from './watch/types';
 
 export interface ComputerOptions {
   readonly adapter: SandboxAdapter;
@@ -73,9 +73,9 @@ export interface Computer {
   readonly hold: (forMs: number) => () => void;
 
   // Opens a watch of the desktop for a socket: it wakes the sandbox if it sleeps, holds it awake and
-  // relays the desktop's VNC stream to the socket, minus the viewer's input. The watch counts from
-  // this call until the connection it returns ends.
-  readonly watch: (socket: WatchSocket) => WatchConnection;
+  // relays the desktop's VNC stream to the socket. The viewer's key and pointer messages pass only
+  // while `input` says its device holds the desktop.
+  readonly watch: (socket: WatchSocket, input: WatchInput) => WatchConnection;
 
   // true while a watch is open
   readonly isWatched: () => boolean;
@@ -132,7 +132,7 @@ export function startComputer(options: ComputerOptions): Computer {
     call: (call) => runCall(context, call),
     settleMove: () => settleMove(context),
     hold: (forMs) => holdAwake(context, forMs),
-    watch: (socket) =>
+    watch: (socket, input) =>
       openComputerWatch(
         {
           watches: state.watches,
@@ -141,6 +141,7 @@ export function startComputer(options: ComputerOptions): Computer {
           readGuest: (isEnded) => readWatchGuest(context, isEnded),
         },
         socket,
+        input,
       ),
     isWatched: () => state.watches.count > 0,
     reset: () => resetComputer(context),

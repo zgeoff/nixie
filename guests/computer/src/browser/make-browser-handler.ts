@@ -1,10 +1,12 @@
 import type { AddressCheck } from '@heynixie/egress';
 import { makeAddressCheck, startCheckingProxy } from '@heynixie/egress';
 import type { ComputerHandler, ComputerReply } from '@heynixie/wire';
+import type { Page } from 'playwright-core';
 import { match } from 'ts-pattern';
 import { evaluateIsolated } from '../screen/evaluate-isolated';
-import { handleScreenRequest } from '../screen/handle-screen-request';
-import type { DesktopDriver } from '../screen/types';
+import { handleScreenRequest, readScreenFocus } from '../screen/handle-screen-request';
+import type { DesktopDriver, ScreenTabs } from '../screen/types';
+import { makeOriginLog } from '../takeover/make-origin-log';
 import { actOnTab } from './act-on-tab';
 import { downloadTabFile } from './download-tab-file';
 import { launchBrowser } from './launch-browser';
@@ -41,6 +43,10 @@ export interface BrowserHandlerOptions {
     // how long the display takes to show the result of an input
     readonly settleMs: number;
   };
+
+  // the terminal's visible lines, for the window a hand-back finds in focus; without it the terminal
+  // shows no text
+  readonly readTerminalText?: () => Promise<string>;
 }
 
 const noDisplay: ComputerReply = {
@@ -61,6 +67,16 @@ export function makeBrowserHandler(options: BrowserHandlerOptions): ComputerHand
   let isProxyUp: Promise<number> | null = null;
 
   const drivers = new WeakMap<BrowserState, DesktopDriver>();
+
+  const originLog = makeOriginLog();
+
+  const watchPage = (page: Page): void => {
+    page.on('framenavigated', (frame) => {
+      if (frame === page.mainFrame()) {
+        originLog.record(frame.url());
+      }
+    });
+  };
 
   const checkAddress: AddressCheck =
     options.checkAddress ?? ((address) => makeAddressCheck(ranges.current)(address));
@@ -103,6 +119,12 @@ export function makeBrowserHandler(options: BrowserHandlerOptions): ComputerHand
       isClosed = true;
     });
 
+    for (const page of state.context.pages()) {
+      watchPage(page);
+    }
+
+    state.context.on('page', watchPage);
+
     return state;
   };
 
@@ -115,9 +137,9 @@ export function makeBrowserHandler(options: BrowserHandlerOptions): ComputerHand
 
     const screen = options.screen;
 
-    if (isScreenRequest(request)) {
+    const readScreen = (): { driver: DesktopDriver; tabs: ScreenTabs } | null => {
       if (screen === undefined) {
-        return noDisplay;
+        return null;
       }
 
       const driver = drivers.get(browser) ?? screen.makeDriver(browser);
@@ -136,11 +158,79 @@ export function makeBrowserHandler(options: BrowserHandlerOptions): ComputerHand
         ]),
       );
 
-      return handleScreenRequest({ driver, tabs, settleMs: screen.settleMs }, request);
+      return { driver, tabs };
+    };
+
+    if (request.op === 'takeoverBegin') {
+      originLog.begin([...browser.tabs.values()].at(-1)?.page.url() ?? null);
+
+      return { kind: 'takeover-begun', ok: true };
+    }
+
+    if (request.op === 'takeoverEnd') {
+      const origins = originLog.end();
+
+      const now = await readNow(browser, options, readScreen());
+
+      return { kind: 'takeover-ended', ok: true, origins, now };
+    }
+
+    if (isScreenRequest(request)) {
+      const desktop = readScreen();
+
+      if (desktop === null || screen === undefined) {
+        return noDisplay;
+      }
+
+      return handleScreenRequest({ ...desktop, settleMs: screen.settleMs }, request);
     }
 
     return handleRequest(browser, request);
   };
+}
+
+type NowReply = Extract<ComputerReply, { kind: 'takeover-ended' }>['now'];
+
+// how much of the page in focus a hand-back reads, as the first part of a page read does
+const nowTextBytes = 4000;
+
+// The window that has focus as a hand-back reports it: a browser tab with its text as a page read
+// gives it, the terminal with its visible lines, or another window with nothing. A desktop that
+// cannot be read, or has no display, reports another window.
+async function readNow(
+  browser: BrowserState,
+  options: BrowserHandlerOptions,
+  desktop: { driver: DesktopDriver; tabs: ScreenTabs } | null,
+): Promise<NowReply> {
+  if (desktop === null || options.screen === undefined) {
+    return { kind: 'other' };
+  }
+
+  try {
+    const focus = await readScreenFocus({ ...desktop, settleMs: options.screen.settleMs });
+
+    if (focus.kind === 'terminal') {
+      const text = await options.readTerminalText?.();
+
+      return { kind: 'terminal', text: text ?? '' };
+    }
+
+    const tab = focus.kind === 'browser' ? browser.tabs.get(focus.tab) : undefined;
+
+    if (focus.kind !== 'browser' || tab === undefined) {
+      return { kind: 'other' };
+    }
+
+    const read = await readTabPage(focus.tab, tab, {
+      mode: 'text',
+      textBytes: nowTextBytes,
+      isDiskNew: false,
+    });
+
+    return { kind: 'browser', tab: focus.tab, text: read.page.text };
+  } catch {
+    return { kind: 'other' };
+  }
 }
 
 type ScreenOp = Extract<
@@ -242,6 +332,8 @@ function handleRequest(
       { op: 'screenScroll' },
       { op: 'screenBind' },
       { op: 'screenAct' },
+      { op: 'takeoverBegin' },
+      { op: 'takeoverEnd' },
       () => Promise.resolve(fileOnlyReply),
     )
     .exhaustive();

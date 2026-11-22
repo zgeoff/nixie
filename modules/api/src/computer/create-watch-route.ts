@@ -123,14 +123,17 @@ async function openWatch(
 
   socket.data.stopWatching = stopWatching;
 
-  socket.data.connection = openWatchOnComputer({
-    send: (bytes) => {
-      socket.sendBinary(bytes);
+  socket.data.connection = openWatchOnComputer(
+    {
+      send: (bytes) => {
+        socket.sendBinary(bytes);
+      },
+      close: () => {
+        socket.close(1000, 'the desktop stream ended');
+      },
     },
-    close: () => {
-      socket.close(1000, 'the desktop stream ended');
-    },
-  });
+    { canInput: () => false, onInput: () => {} },
+  );
 }
 
 function closeWatch(data: WatchSocketData): void {

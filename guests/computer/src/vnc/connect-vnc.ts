@@ -4,21 +4,28 @@ export interface VNCTarget {
   // the Unix socket of the VNC server
   readonly path: string;
 
-  // how long a refused connection is tried again, for a VNC server that has not started listening
+  // how long a missing socket is tried again, for a VNC server that has not started listening
   readonly waitMs: number;
+}
+
+// The messages written to the VNC server and not yet taken by the socket, in order. The first may
+// be half written, and then `sent` is how many of its bytes the socket took.
+interface Backlog {
+  chunks: Uint8Array[];
+  sent: number;
 }
 
 // Connects to the VNC server on its Unix socket. The server listens on no TCP port, and the socket's
 // folder is closed to every account but the server's and the guest's, so no other path reaches it.
 export async function connectVNC(target: VNCTarget, events: VNCLinkEvents): Promise<VNCLink> {
-  const backlog: { bytes: Uint8Array | null } = { bytes: null };
+  const backlog: Backlog = { chunks: [], sent: 0 };
 
   const socket = await connectWhenListening(target, {
     data: (_socket, data) => {
       events.onData(new Uint8Array(data));
     },
     drain: (open) => {
-      backlog.bytes = flushBacklog(open, backlog.bytes);
+      flushBacklog(open, backlog);
     },
     close: () => {
       events.onClose();
@@ -30,9 +37,13 @@ export async function connectVNC(target: VNCTarget, events: VNCLinkEvents): Prom
 
   return {
     write: (bytes) => {
-      const queued = backlog.bytes === null ? bytes : concat(backlog.bytes, bytes);
+      backlog.chunks.push(bytes);
 
-      backlog.bytes = flushBacklog(socket, queued);
+      flushBacklog(socket, backlog);
+    },
+    flush: () => {
+      // a message that is half written has to finish, or the server would read the rest as a message
+      backlog.chunks = backlog.sent > 0 ? backlog.chunks.slice(0, 1) : [];
     },
     end: () => {
       socket.end();
@@ -68,21 +79,24 @@ interface WritableSocket {
   readonly write: (bytes: Uint8Array) => number;
 }
 
-function flushBacklog(socket: WritableSocket, bytes: Uint8Array | null): Uint8Array | null {
-  if (bytes === null) {
-    return null;
+function flushBacklog(socket: WritableSocket, backlog: Backlog): void {
+  for (;;) {
+    const [head] = backlog.chunks;
+
+    if (head === undefined) {
+      return;
+    }
+
+    const written = socket.write(head.subarray(backlog.sent));
+
+    backlog.sent += written;
+
+    if (backlog.sent < head.byteLength) {
+      return;
+    }
+
+    backlog.chunks.shift();
+
+    backlog.sent = 0;
   }
-
-  const written = socket.write(bytes);
-
-  return written < bytes.byteLength ? bytes.subarray(written) : null;
-}
-
-function concat(first: Uint8Array, second: Uint8Array): Uint8Array {
-  const joined = new Uint8Array(first.byteLength + second.byteLength);
-
-  joined.set(first);
-  joined.set(second, first.byteLength);
-
-  return joined;
 }

@@ -8,6 +8,7 @@ function setupTest(options: { readonly maxStreams?: number; readonly isRefused?:
   const sent: VNCFrame[] = [];
   const written: Uint8Array[] = [];
   const ended: number[] = [];
+  const flushes: number[] = [];
   const connections: VNCLinkEvents[] = [];
 
   const relay = makeVNCRelay({
@@ -21,6 +22,9 @@ function setupTest(options: { readonly maxStreams?: number; readonly isRefused?:
             write: (bytes) => {
               written.push(bytes);
             },
+            flush: () => {
+              flushes.push(written.length);
+            },
             end: () => {
               ended.push(ended.length);
             },
@@ -32,6 +36,7 @@ function setupTest(options: { readonly maxStreams?: number; readonly isRefused?:
     sent,
     written,
     ended,
+    flushes,
     connections,
     deliver: (frame: VNCFrame) => {
       relay(frame, (outgoing) => {
@@ -157,4 +162,31 @@ test('it refuses a stream past the limit of open streams', () => {
   ctx.deliver({ kind: 'vnc-open', stream: 's2' });
 
   expect(ctx.sent).toStrictEqual([{ kind: 'vnc-close', stream: 's2' }]);
+});
+
+test('it drops the bytes held for a stream whose connection is not ready, on a flush', async () => {
+  const ctx = setupTest();
+
+  ctx.deliver({ kind: 'vnc-open', stream: 's1' });
+  ctx.deliver({ kind: 'vnc-data', stream: 's1', data: new Uint8Array([1]) });
+  ctx.deliver({ kind: 'vnc-flush', stream: 's1' });
+
+  await Promise.resolve();
+
+  ctx.deliver({ kind: 'vnc-data', stream: 's1', data: new Uint8Array([2]) });
+
+  expect(ctx.written).toStrictEqual([new Uint8Array([2])]);
+});
+
+test('it flushes the connection of the stream a flush frame names, and no other', async () => {
+  const ctx = setupTest();
+
+  ctx.deliver({ kind: 'vnc-open', stream: 's1' });
+
+  await Promise.resolve();
+
+  ctx.deliver({ kind: 'vnc-flush', stream: 's1' });
+  ctx.deliver({ kind: 'vnc-flush', stream: 'unknown' });
+
+  expect(ctx.flushes).toHaveLength(1);
 });

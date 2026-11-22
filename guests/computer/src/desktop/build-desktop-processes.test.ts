@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test';
 import { ownAccount } from '../shell/terminal-account';
 import { buildDesktopProcesses } from './build-desktop-processes';
-import { vncSocketPath } from './constants';
+import { terminalLogPath, vncSocketPath } from './constants';
 
 function setupTest() {
   const processes = buildDesktopProcesses({
@@ -45,13 +45,12 @@ test('it starts the display first, at 1280 by 800 on an abstract socket alone', 
   ]);
 });
 
-test('it listens for VNC on a Unix socket alone, view-only, with the clipboard off', () => {
+test('it listens for VNC on a Unix socket alone, with the clipboard off', () => {
   const ctx = setupTest();
   const vnc = ctx.readArgv('vnc');
 
   expect(vnc).toIncludeAllMembers([
     '-localhost',
-    '-viewonly',
     '-nosel',
     '-noprimary',
     '-nosetprimary',
@@ -71,6 +70,9 @@ test('it runs the terminal as its own account, with the namespaced shell, in the
   expect(ctx.readArgv('terminal')).toStrictEqual([
     'as-terminal',
     'xterm',
+    '-l',
+    '-lf',
+    terminalLogPath,
     '-geometry',
     '100x32+24+24',
     '-e',
@@ -104,6 +106,9 @@ test('it leaves a terminal of the test build as the guest’s own user', () => {
 
   expect(processes.find((process) => process.name === 'terminal')?.argv).toStrictEqual([
     'xterm',
+    '-l',
+    '-lf',
+    terminalLogPath,
     '-geometry',
     '100x32+24+24',
     '-e',

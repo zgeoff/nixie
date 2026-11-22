@@ -100,6 +100,7 @@ export type {
   ComputerFailureReason,
   ComputerFocus,
   ComputerReply,
+  TakeoverNow,
 } from './computer/computer-reply';
 
 export { computerFailureReasons, computerReplySchema } from './computer/computer-reply';
