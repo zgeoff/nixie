@@ -153,6 +153,12 @@ test('it renders every rule of the starter template as one sentence', async () =
     ['allow-sandboxed-code', '**Allow** a call when every effect it has is `code_run`.'],
     ['allow-sends-within-limits', '**Allow** a call when every effect it has is `send`.'],
     ['allow-service-writes', '**Allow** a call when every effect it has is `write`.'],
+    ...['cat', 'df', 'du', 'grep', 'head', 'ls', 'pwd', 'stat', 'tail', 'wc', 'which'].map(
+      (name) => [
+        `allow-shell-${name}`,
+        `**Allow** \`computer.run\` when every effect it has is \`computer_run\` and \`command\` matches \`${name} *\`.`,
+      ],
+    ),
     ['ask-exports', '**Ask** before a call when it has the effect `export`.'],
     ['ask-permanent-deletes', '**Ask** before a call when it has the effect `delete`.'],
     [

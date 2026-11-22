@@ -86,7 +86,9 @@ function isPlainNode(node: Statement['command'], found: string[][]): boolean {
 
   const words = [node.name, ...node.suffix].map((argument) => toLiteralText(argument));
 
-  if (words.some((word) => word === null)) {
+  // A quoted name such as "ls x" joins into text that a pattern for ls matches, yet bash runs
+  // another program.
+  if (words.some((word) => word === null) || /\s/u.test(words[0] ?? '')) {
     return false;
   }
 
@@ -101,6 +103,17 @@ function toLiteralText(argument: CommandArgument | Redirection | Word): string |
   }
 
   const parts = argument.parts ?? [];
+
+  // unbash reads `{x}>(cmd)` as one plain word, yet bash runs `cmd` as a process substitution, so
+  // an unquoted character that bash can give a meaning refuses the word.
+  const unquoted =
+    argument.parts === undefined
+      ? [argument.text]
+      : parts.flatMap((part) => (part.type === 'Literal' ? [part.text] : []));
+
+  if (unquoted.some((text) => /[(){}<>$`*?[]/u.test(text))) {
+    return null;
+  }
 
   return parts.every((part) => isLiteralPart(part)) ? argument.value : null;
 }

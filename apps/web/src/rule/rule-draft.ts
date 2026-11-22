@@ -50,12 +50,6 @@ function collectList(value: unknown): string[] {
   return parsed.success ? parsed.data : [];
 }
 
-function collectChecks(value: unknown): z.infer<typeof checkListSchema> {
-  const parsed = checkListSchema.safeParse(value);
-
-  return parsed.success ? parsed.data : [];
-}
-
 function toCheckText(value: CheckValue): string {
   if (Array.isArray(value)) {
     const items = value.map(String);
@@ -90,8 +84,10 @@ export function buildEmptyRuleDraft(): RuleDraft {
   };
 }
 
+// Checks the form cannot show ride along in `rest` whole, so saving the rule never drops one.
 export function toRuleDraft(rule: Readonly<Record<string, unknown>>): RuleDraft {
-  const checks = collectChecks(rule['checks']);
+  const parsed = checkListSchema.safeParse(rule['checks']);
+  const checks = parsed.success ? parsed.data : [];
 
   return {
     tools: collectList(rule['tools']).join('\n'),
@@ -106,7 +102,11 @@ export function toRuleDraft(rule: Readonly<Record<string, unknown>>): RuleDraft 
       value: toCheckText(check.value),
       original: { op: check.op, value: check.value },
     })),
-    rest: Object.fromEntries(Object.entries(rule).filter(([key]) => !knownKeys.has(key))),
+    rest: Object.fromEntries(
+      Object.entries(rule).filter(
+        ([key]) => !knownKeys.has(key) || (key === 'checks' && !parsed.success),
+      ),
+    ),
   };
 }
 
@@ -156,10 +156,14 @@ export function toRuleForm(draft: RuleDraft): Record<string, unknown> {
   };
 
   const filled = Object.entries(lists).filter(([, list]) => list.length > 0);
+  const kept = listValueSchema.safeParse(draft.rest['checks']);
 
-  const checks = draft.checks
-    .filter((check) => check.arg.trim() !== '')
-    .map((check) => ({ arg: check.arg.trim(), op: check.op, value: toCheckValue(check) }));
+  const checks = [
+    ...(kept.success ? kept.data : []),
+    ...draft.checks
+      .filter((check) => check.arg.trim() !== '')
+      .map((check) => ({ arg: check.arg.trim(), op: check.op, value: toCheckValue(check) })),
+  ];
 
   return {
     ...draft.rest,

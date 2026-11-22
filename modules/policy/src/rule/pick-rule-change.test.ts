@@ -328,6 +328,38 @@ test.each<[string, Rule | null, Rule | null, RuleChange]>([
     },
     'unchanged',
   ],
+  [
+    'an exact command that chains another command on an allow of a pattern',
+    {
+      id: 'allow-reads',
+      outcome: 'allow',
+      tools: ['computer.run'],
+      checks: [{ arg: 'command', op: 'matches', value: 'ls *' }],
+    },
+    {
+      id: 'allow-reads',
+      outcome: 'allow',
+      tools: ['computer.run'],
+      checks: [{ arg: 'command', op: 'eq', value: 'ls x; rm -rf notes' }],
+    },
+    'widening',
+  ],
+  [
+    'an exact command inside an allow of a pattern',
+    {
+      id: 'allow-reads',
+      outcome: 'allow',
+      tools: ['computer.run'],
+      checks: [{ arg: 'command', op: 'matches', value: 'ls *' }],
+    },
+    {
+      id: 'allow-reads',
+      outcome: 'allow',
+      tools: ['computer.run'],
+      checks: [{ arg: 'command', op: 'eq', value: 'ls -la' }],
+    },
+    'narrowing',
+  ],
 ])('it classifies %s', (_label, before, after, change) => {
   expect(pickRuleChange(before, after)).toBe(change);
 });

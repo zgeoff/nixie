@@ -1,5 +1,6 @@
 import { match } from 'ts-pattern';
 import type { Rule, RuleCheck } from '../types';
+import { isCommandMatch } from './is-command-match';
 import { isPatternInside } from './is-pattern-inside';
 import { isPatternMatch } from './is-pattern-match';
 
@@ -84,7 +85,7 @@ function isCheckImplied(strong: RuleCheck, weak: RuleCheck): boolean {
         ? isPatternInside(strong.value, pattern.value)
         : values !== null &&
           values.every(
-            (value) => typeof value === 'string' && isPatternMatch(pattern.value, value),
+            (value) => typeof value === 'string' && isValueMatched(pattern.value, value, weak.arg),
           ),
     )
     .exhaustive();
@@ -97,4 +98,12 @@ function isSameScalar(
   return typeof left === 'string' && typeof right === 'string'
     ? left.normalize('NFC') === right.normalize('NFC')
     : left === right;
+}
+
+const commandArg = 'command';
+
+// A command check reads the value as a syntax tree, so a value such as `ls; rm x` passes it only
+// when every reading of the check would pass it too.
+function isValueMatched(pattern: string, value: string, arg: string): boolean {
+  return isPatternMatch(pattern, value) && (arg !== commandArg || isCommandMatch(pattern, value));
 }

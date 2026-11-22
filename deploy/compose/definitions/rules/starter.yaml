@@ -24,6 +24,85 @@ allow-sandboxed-code:
   outcome: allow
   effects: [code_run]
 
+# Shell commands that only read. Each rule allows a line only when every command on it is that one
+# command, with plain words and no redirection, substitution or variable.
+allow-shell-cat:
+  outcome: allow
+  tools: [computer.run]
+  effects: [computer_run]
+  checks:
+    - { arg: command, op: matches, value: 'cat *' }
+
+allow-shell-df:
+  outcome: allow
+  tools: [computer.run]
+  effects: [computer_run]
+  checks:
+    - { arg: command, op: matches, value: 'df *' }
+
+allow-shell-du:
+  outcome: allow
+  tools: [computer.run]
+  effects: [computer_run]
+  checks:
+    - { arg: command, op: matches, value: 'du *' }
+
+allow-shell-grep:
+  outcome: allow
+  tools: [computer.run]
+  effects: [computer_run]
+  checks:
+    - { arg: command, op: matches, value: 'grep *' }
+
+allow-shell-head:
+  outcome: allow
+  tools: [computer.run]
+  effects: [computer_run]
+  checks:
+    - { arg: command, op: matches, value: 'head *' }
+
+allow-shell-ls:
+  outcome: allow
+  tools: [computer.run]
+  effects: [computer_run]
+  checks:
+    - { arg: command, op: matches, value: 'ls *' }
+
+allow-shell-pwd:
+  outcome: allow
+  tools: [computer.run]
+  effects: [computer_run]
+  checks:
+    - { arg: command, op: matches, value: 'pwd *' }
+
+allow-shell-stat:
+  outcome: allow
+  tools: [computer.run]
+  effects: [computer_run]
+  checks:
+    - { arg: command, op: matches, value: 'stat *' }
+
+allow-shell-tail:
+  outcome: allow
+  tools: [computer.run]
+  effects: [computer_run]
+  checks:
+    - { arg: command, op: matches, value: 'tail *' }
+
+allow-shell-wc:
+  outcome: allow
+  tools: [computer.run]
+  effects: [computer_run]
+  checks:
+    - { arg: command, op: matches, value: 'wc *' }
+
+allow-shell-which:
+  outcome: allow
+  tools: [computer.run]
+  effects: [computer_run]
+  checks:
+    - { arg: command, op: matches, value: 'which *' }
+
 allow-narrowing:
   outcome: allow
   effects: [policy_narrow, budget_lower]

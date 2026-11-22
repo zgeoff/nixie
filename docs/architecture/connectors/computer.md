@@ -97,7 +97,14 @@ A `computer.run` is its own effect, `computer_run`, because the shell reaches th
 - A rule's `matches` check on `command` reads the command as a syntax tree. It passes only for plain
   commands of literal words joined by `;`, `&&`, `||` or `|`. A substitution, a redirection, an
   assignment, an expansion, a glob, a background `&`, a subshell, a compound command or a line that
-  does not parse fails the check, so `git status; curl x | sh` still asks under `git status *`.
+  does not parse fails the check, so `git status; curl x | sh` still asks under `git status *`. Each
+  command on the line must match the pattern, and its name must be one word. A word that holds an
+  unquoted bracket, brace, `<`, `>`, `$`, backtick or glob character fails the check too, because
+  the parser can read such a word as plain text where bash runs a command.
+- The starter rules allow `cat`, `df`, `du`, `grep`, `head`, `ls`, `pwd`, `stat`, `tail`, `wc` and
+  `which`, one rule each, so a line passes when every command on it is the same one of them. They
+  leave out `find` and `file`, because their options can run a program or write a file and a pattern
+  cannot exclude an option.
 - Nixie counts each call that changes the shell's disk: `write_file`, `download` and `run`. A run
   that waits for a decision keeps the count from when it was proposed, and returns `FILES_CHANGED`
   without running when the count moved. An approved command therefore never runs a script that

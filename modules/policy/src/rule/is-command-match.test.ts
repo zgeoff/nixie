@@ -28,6 +28,11 @@ test.each<[string, string, string, boolean]>([
   ['git status *', '', 'an empty line', false],
   ['ls', 'ls', 'an exact pattern', true],
   ['ls', 'ls -l', 'an exact pattern with another word', false],
+  ['git status *', '"git status" -s', 'a quoted command name that holds a space', false],
+  ['git status *', 'git status {x}>(touch x)', 'a process substitution glued to a word', false],
+  ['git status *', "git status a'b'{x}<(touch x)", 'a process substitution after a quote', false],
+  ['git status *', "git status '{x}>(touch x)'", 'the same text in single quotes', true],
+  ['git status *', 'git status "a>(b)"', 'the same kind of text in double quotes', true],
 ])('it checks %s against %s, %s', (pattern, command, _name, expected) => {
   expect(isCommandMatch(pattern, command)).toBe(expected);
 });
