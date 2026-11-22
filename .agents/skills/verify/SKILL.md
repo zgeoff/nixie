@@ -149,9 +149,9 @@ that command alone. A command with neither runs on the registry's first target, 
 | `preview` | `bun verify use --target preview`, then `bun verify attach` | read-write | The PR's preview, real model; [setup](references/preview-setup.md); leave with `detach`. |
 | `prod`    | `bun verify use --target prod`, then `bun verify attach`    | read-only  | [The prod check](references/prod-check.md).                                              |
 
-- Run `sign-in-enrol` first, and after each `up --restart`, as
-  [its file](references/feature-sign-in-enrol.md) says, except before `device-screen`, which needs a
-  browser with no session.
+- Run `sign-in-enrol` first and after each `up --restart`, except before `device-screen`.
+- Run `computer-shell` before `computer-browser`. For the reason, read
+  [the shell journey](references/feature-computer-shell.md).
 
 <!-- /repo -->
 
