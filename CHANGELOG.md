@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.95.0](https://github.com/zgeoff/nixie/compare/v0.94.0...v0.95.0) (2026-11-22)
+
+
+### Features
+
+* **actions:** wake the task once per approved action, with its outcome ([#1353](https://github.com/zgeoff/nixie/issues/1353)) ([f170663](https://github.com/zgeoff/nixie/commit/f170663d0699ed26aa4b32d13eac937b679fc7e7))
+* **computer:** rename the browser tools and add browser_scroll ([#1356](https://github.com/zgeoff/nixie/issues/1356)) ([a7cc07e](https://github.com/zgeoff/nixie/commit/a7cc07e10d6e0e58fc6975f34a99e277c09c9f4b))
+* **notebook:** add the notebook module, its tools and forgetting ([#1355](https://github.com/zgeoff/nixie/issues/1355)) ([96ec2b2](https://github.com/zgeoff/nixie/commit/96ec2b263159eac00ef2d880fabf97ad67890c0a))
+* **policy:** let read-only shell commands run without asking ([#1358](https://github.com/zgeoff/nixie/issues/1358)) ([04173d4](https://github.com/zgeoff/nixie/commit/04173d4d72c93cf34ad11066ed5f205e1b89fe21))
+* **sessions:** say how late a reminder fired in its message ([#1351](https://github.com/zgeoff/nixie/issues/1351)) ([06a2a91](https://github.com/zgeoff/nixie/commit/06a2a91de6f99bddadfdfe0c02cbdc9482da0a4b))
+
+
+### Bug Fixes
+
+* **code:** let file.send send an image ([#1361](https://github.com/zgeoff/nixie/issues/1361)) ([6523b4b](https://github.com/zgeoff/nixie/commit/6523b4b0abac7e03a5a054062619ab7845646f8e))
+* **computer:** run the assistant's browser in the configured time zone ([#1352](https://github.com/zgeoff/nixie/issues/1352)) ([9a6f4c6](https://github.com/zgeoff/nixie/commit/9a6f4c663eea1c61dad3c0f63d63a3150c39255f))
+* **deps:** update playwright-core to v1.65.0 ([#1003](https://github.com/zgeoff/nixie/issues/1003)) ([3a40293](https://github.com/zgeoff/nixie/commit/3a4029389af869f7a8c221797dd557a871434199))
+
 ## [0.94.0](https://github.com/zgeoff/nixie/compare/v0.93.0...v0.94.0) (2026-11-22)
 
 
