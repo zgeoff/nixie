@@ -552,6 +552,29 @@ test.skipIf(!hasImpHost)(
 );
 
 test.skipIf(!hasImpHost)(
+  'it gives a client on the X display no way to command the VNC server',
+  async () => {
+    const ctx = await setupTest();
+
+    const answer = await ctx.execAsRoot([
+      'setpriv',
+      '--reuid=1001',
+      '--regid=1001',
+      '--clear-groups',
+      'env',
+      'DISPLAY=:99',
+      'timeout',
+      '15',
+      'x11vnc',
+      '-R',
+      'ping',
+    ]);
+
+    expect(answer).not.toInclude('ans=');
+  },
+);
+
+test.skipIf(!hasImpHost)(
   'it gives a command in the terminal no route to the display or the VNC server',
   async () => {
     const ctx = await setupTest();

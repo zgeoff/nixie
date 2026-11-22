@@ -75,6 +75,10 @@ export function buildDesktopProcesses(options: DesktopProcessOptions): readonly 
         '-rfbportv6',
         '-1',
         '-nopw',
+
+        // x11vnc takes remote control commands from X properties, and Chromium is an X client
+        '-noremote',
+        '-novncconnect',
         '-forever',
         '-shared',
         '-nosel',

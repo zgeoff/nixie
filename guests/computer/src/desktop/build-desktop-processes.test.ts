@@ -64,6 +64,12 @@ test('it listens for VNC on a Unix socket alone, with the clipboard off', () => 
   expect(vnc[vnc.indexOf('-rfbportv6') + 1]).toBe('-1');
 });
 
+test('it refuses remote control commands that an X client sends through the display', () => {
+  const ctx = setupTest();
+
+  expect(ctx.readArgv('vnc')).toIncludeAllMembers(['-noremote', '-novncconnect']);
+});
+
 test('it runs the terminal as its own account, with the namespaced shell, in the files folder', () => {
   const ctx = setupTest();
 
