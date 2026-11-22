@@ -119,8 +119,8 @@ Before you start:
 ## End state
 
 - In step 4, nixie held one call of `computer.screen_click`.
-- In step 6, the approvals page showed the host `pages.test` and its port, with the effect `send`,
-  and the screenshot of the click with the marker at 640, 400.
+- In step 6, the approvals page showed the host `pages.test` and its port, with the effect `send`.
+- In step 7, the expanded item showed the screenshot of the click with the marker at 640, 400.
 - In step 8, nixie holds no call, the click's outcome is `done`, and the model's one call of
   `computer.screenshot` returned a result. The click's outcome holds one picture.
 
