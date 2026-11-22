@@ -18512,7 +18512,7 @@
                         },
                         "message": {
                           "type": "string",
-                          "default": "No code-run file has this ID"
+                          "default": "No code-run file or image has this ID"
                         },
                         "data": {}
                       },
