@@ -54,10 +54,12 @@ device.region({
   region: 'note',
   content: { kind: 'markdown', markdown: 'Bins go out **tonight**' },
   minutes: 90, // optional; without it the region keeps its content until the next device.region
+  then: 'previous', // 'blank' (the default) or 'previous': what shows when the minutes pass
 });
 // → { device: 'tb8r3k6m1q', region: 'note', until: '2026-11-22T21:30:00Z' }
 //   or UNKNOWN_REGION, and the refusals device.show returns for its content
-//   A region whose minutes pass goes blank; the other regions stay.
+//   When the minutes pass, the region goes blank, or with then: 'previous' shows again the content
+//   this call replaced, when that content's own minutes have not passed. The other regions stay.
 
 type RegionContent =
   | { kind: 'markdown'; markdown: string } // at most 20,000 characters
@@ -86,8 +88,11 @@ The screen shows the first of these that holds:
 
 ```ts
 // devices module: a message into a page that shows, with no reload
-device.sendToPage({ device: 'tb8r3k6m1q', region: 'pond', data: { ripples: 3 } }); // data: JSON, at most 16 KiB
-// → { delivered: true } or UNKNOWN_REGION | NOT_A_PAGE | OFFLINE
+device.sendToPage({ device: 'tb8r3k6m1q', region: 'pond', data: { ripples: 3 }, retain: true });
+// data: JSON, at most 16 KiB. retain: true keeps this message as the page's state: the server holds
+// the last retained message of each page region, and the device hands it to nixie.onMessage each
+// time the page loads, after a reload or a reconnect. A new content for the region drops it.
+// → { delivered: true } or UNKNOWN_REGION | NOT_A_PAGE | OFFLINE; with retain, OFFLINE still keeps it
 
 // devices module: what the screen looks like, and what went wrong on it
 device.preview({ device: 'tb8r3k6m1q' });
@@ -95,6 +100,8 @@ device.preview({ device: 'tb8r3k6m1q' });
 //     picture: 'shown' } with the picture beside it,
 //   or picture: 'busy' | 'unavailable' with no picture when the computer is busy or not set up
 //   UNKNOWN_DEVICE | SCREEN_OFF; a device that is offline still returns its last errors.
+// The tool's description says the picture is a render in the computer's browser, not a capture of
+// the device: fonts and drawing can differ, so it is no proof of what the device shows.
 ```
 
 The server sends the layout to the computer sandbox over the wire as files: the device page's grid,
@@ -223,9 +230,9 @@ The frame:
 - A page runs in an `<iframe sandbox="allow-scripts">`, with no `allow-same-origin`, so it has an
   opaque origin and can't read the device page's cookie, storage or DOM.
 - The frame's content-security policy is `default-src 'none'`, with `script-src` and `style-src`
-  open to inline code and to the package paths of the packages the page names, `img-src` open to
-  `nixie.image` URLs and `data:`, and `connect-src 'none'`. A page reaches the web only through its
-  declared fetches.
+  open to inline code and to the package paths of the packages the page names, `font-src` open to
+  those package paths and `data:`, `img-src` open to `nixie.image` URLs and `data:`, and
+  `connect-src 'none'`. A page reaches the web only through its declared fetches.
 - `device.region` returns `UNKNOWN_PACKAGE`, and leaves the region as it was, for a page that names
   a package nixie doesn't hold.
 - The bridge talks to the device page by `postMessage` and checks that each message comes from its
