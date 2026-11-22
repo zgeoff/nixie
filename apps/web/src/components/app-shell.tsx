@@ -14,6 +14,7 @@ const entries = [
   { exact: false, label: 'Files', to: '/files' },
   { exact: false, label: 'Images', to: '/images' },
   { exact: false, label: 'Computer', to: '/computer' },
+  { exact: false, label: 'Notebook', to: '/notebook' },
   { exact: false, label: 'Definitions', to: '/definitions' },
   { exact: false, label: 'Reminders', to: '/reminders' },
   { exact: false, label: 'Passkeys', to: '/passkeys' },

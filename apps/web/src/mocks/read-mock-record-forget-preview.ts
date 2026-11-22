@@ -1,3 +1,4 @@
+import { mockViewStore } from './mock-view-store';
 import { store } from './store';
 
 interface MockRecordForgetPreview {
@@ -49,6 +50,7 @@ export function readMockRecordForgetPreview(
     }
   }
 
+  // A private note's title is left out of the notes.
   return {
     momentCount: moments.length,
     memoryItems: [
@@ -58,6 +60,17 @@ export function readMockRecordForgetPreview(
       })),
       ...[...newItemTexts].map(([itemID, text]) => ({ itemID, text })),
     ].toSorted((left, right) => left.itemID.localeCompare(right.itemID)),
-    notes: [],
+    notes: mockViewStore.notes
+      .all()
+      .filter(
+        (note) =>
+          !note.isForgotten &&
+          note.links.some((link) => link.kind === 'event' && link.target === String(sequence)),
+      )
+      .map((note) =>
+        note.isPrivate
+          ? { note: note.note }
+          : { note: note.note, title: note.versions.at(-1)?.title ?? '' },
+      ),
   };
 }

@@ -1,5 +1,4 @@
 import type { ReactNode } from 'react';
-import { buildWordDiff } from '../conversation/build-word-diff';
 import { splitEvidenceMessage } from '../conversation/split-evidence-message';
 import { formatMemoryChecks } from '../memory/format-memory-checks';
 import { formatMemoryDate } from '../memory/format-memory-date';
@@ -7,6 +6,7 @@ import { formatMemoryProvenance } from '../memory/format-memory-provenance';
 import { css } from '../styled-system/css';
 import type { MemoryVersion } from '../types';
 import { MessageImage } from './message-image';
+import { WordDiff } from './word-diff';
 
 export interface MemoryVersionListProps {
   readonly versions: readonly MemoryVersion[];
@@ -93,39 +93,11 @@ function VersionText(props: VersionEntryProps): ReactNode {
       <p className={css({ whiteSpace: 'pre-wrap' })}>{text}</p>
       {before === undefined || before === text ? null : (
         <p aria-label="Changes" className={css({ fontSize: 'sm', whiteSpace: 'pre-wrap' })}>
-          <DiffRuns after={text} before={before} />
+          <WordDiff after={text} before={before} />
         </p>
       )}
     </>
   );
-}
-
-interface DiffRunsProps {
-  readonly before: string;
-  readonly after: string;
-}
-
-function DiffRuns(props: DiffRunsProps): ReactNode {
-  const parts = buildWordDiff(props.before, props.after);
-
-  return parts.map((part, index) => <DiffRun key={index} kind={part.kind} text={part.text} />);
-}
-
-interface DiffRunProps {
-  readonly kind: 'same' | 'added' | 'removed';
-  readonly text: string;
-}
-
-function DiffRun(props: DiffRunProps): ReactNode {
-  if (props.kind === 'added') {
-    return <ins className={css({ backgroundColor: 'surface' })}>{props.text}</ins>;
-  }
-
-  if (props.kind === 'removed') {
-    return <del className={css({ color: 'textMuted' })}>{props.text}</del>;
-  }
-
-  return props.text;
 }
 
 function formatUnavailableText(version: MemoryVersion): string {

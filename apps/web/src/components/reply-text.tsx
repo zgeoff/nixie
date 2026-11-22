@@ -1,11 +1,15 @@
 import type { ComponentProps, ReactNode } from 'react';
 import { createContext, use } from 'react';
-import Markdown from 'react-markdown';
+import Markdown, { defaultUrlTransform } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { css } from '../styled-system/css';
 
 export interface ReplyTextProps {
   readonly text: string;
+
+  // Draws the stored image that an `image:<short ID>` source names. Without it, every image
+  // renders as a link, as in a reply.
+  readonly renderStoredImage?: ((image: string, alt: string) => ReactNode) | undefined;
 }
 
 const reply = css({
@@ -24,15 +28,23 @@ const reply = css({
   '& ul': { listStyleType: 'disc', paddingInlineStart: '6' },
 });
 
+const StoredImageRenderer = createContext<ReplyTextProps['renderStoredImage']>(undefined);
+
 // A reply can quote fetched web text, so raw HTML never becomes markup, and an outside link opens
 // in a new tab with no opener and no referrer.
 export function ReplyText(props: ReplyTextProps): ReactNode {
   return (
     <div className={reply}>
-      {/* oxlint-disable-next-line id-length -- react-markdown keys each component by its HTML tag, here `a` */}
-      <Markdown components={{ a: ReplyLink, img: ReplyImage }} remarkPlugins={[remarkGfm]}>
-        {props.text}
-      </Markdown>
+      <StoredImageRenderer value={props.renderStoredImage}>
+        <Markdown
+          // oxlint-disable-next-line id-length -- react-markdown keys each component by its HTML tag, here `a`
+          components={{ a: ReplyLink, img: ReplyImage }}
+          remarkPlugins={[remarkGfm]}
+          urlTransform={transformURL}
+        >
+          {props.text}
+        </Markdown>
+      </StoredImageRenderer>
     </div>
   );
 }
@@ -75,10 +87,22 @@ function readDataProp(props: object, name: string): unknown {
   return value;
 }
 
+const storedImagePrefix = 'image:';
+
 // An image would load from wherever the reply points, so it renders as a link. HTML breaks an
-// anchor nested in another anchor, so inside a link the image renders as its label alone.
+// anchor nested in another anchor, so inside a link the image renders as its label alone. Only a
+// stored image, which the caller draws, is no link.
+
 function ReplyImage(props: ComponentProps<'img'>): ReactNode {
   const label = `image: ${props.alt ?? 'untitled'}`;
+  const renderStoredImage = use(StoredImageRenderer);
+  const source = typeof props.src === 'string' ? props.src : '';
+
+  if (source.startsWith(storedImagePrefix)) {
+    return renderStoredImage === undefined
+      ? label
+      : renderStoredImage(source.slice(storedImagePrefix.length), props.alt ?? '');
+  }
 
   if (use(InsideLink)) {
     return label;
@@ -87,4 +111,17 @@ function ReplyImage(props: ComponentProps<'img'>): ReactNode {
   return (
     <ReplyLink href={typeof props.src === 'string' ? props.src : undefined}>{label}</ReplyLink>
   );
+}
+
+interface URLNode {
+  readonly tagName?: string;
+}
+
+// An image source with the image: scheme survives only on an image, so a link never takes it.
+function transformURL(url: string, key: string, node: URLNode): string {
+  if (key === 'src' && node.tagName === 'img' && url.startsWith(storedImagePrefix)) {
+    return url;
+  }
+
+  return defaultUrlTransform(url);
 }
