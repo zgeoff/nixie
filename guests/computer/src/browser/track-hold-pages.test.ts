@@ -44,7 +44,7 @@ async function setupTest() {
   const popupArrival = Promise.withResolvers<void>();
   const seen = { count: 0 };
 
-  await trackHoldPages(state, {
+  trackHoldPages(state, {
     ...log,
     record: (url) => {
       log.record(url);
@@ -74,26 +74,39 @@ async function setupTest() {
   };
 }
 
-test.skipIf(!hasChromium)(
-  'it lists the sites of tabs that report coming into view, in the order shown',
-  async () => {
-    const ctx = await setupTest();
-    const first = await ctx.openPage('http://one.test/a');
-    const second = await ctx.openPage('http://two.test/b');
+test.skipIf(!hasChromium)('it lists the site of each page a hold navigates, in order', async () => {
+  const ctx = await setupTest();
+  const page = await ctx.openPage('http://one.test/a');
 
-    // each page's navigation reports it once
-    await ctx.reported(2);
+  await ctx.reported(1);
 
-    ctx.log.begin(null);
+  ctx.log.begin(page.url());
 
-    await first.evaluate("document.dispatchEvent(new Event('visibilitychange'))");
-    await ctx.reported(3);
-    await second.evaluate("document.dispatchEvent(new Event('visibilitychange'))");
-    await ctx.reported(4);
+  await page.goto('http://two.test/b');
+  await ctx.reported(2);
 
-    expect(ctx.log.end()).toStrictEqual(['http://one.test', 'http://two.test']);
-  },
-);
+  expect(ctx.log.end()).toStrictEqual(['http://one.test', 'http://two.test']);
+});
+
+test.skipIf(!hasChromium)('it lists no site for a page that says it came into view', async () => {
+  const ctx = await setupTest();
+  const first = await ctx.openPage('http://one.test/a');
+  const second = await ctx.openPage('http://two.test/b');
+
+  await ctx.reported(2);
+
+  ctx.log.begin(second.url());
+
+  await first.evaluate(
+    "document.dispatchEvent(new Event('visibilitychange')); globalThis.nixieShown?.()",
+  );
+
+  // a navigation after the claim proves the tracker has seen everything before it
+  await second.goto('http://three.test/c');
+  await ctx.reported(3);
+
+  expect(ctx.log.end()).toStrictEqual(['http://two.test', 'http://three.test']);
+});
 
 test.skipIf(!hasChromium)(
   'it adds a tab that a person opens during a hold, and drops it when it closes',

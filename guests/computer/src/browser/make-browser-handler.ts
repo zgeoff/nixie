@@ -111,7 +111,7 @@ export function makeBrowserHandler(options: BrowserHandlerOptions): ComputerHand
       isClosed = true;
     });
 
-    await trackHoldPages(state, originLog);
+    trackHoldPages(state, originLog);
 
     return state;
   };
