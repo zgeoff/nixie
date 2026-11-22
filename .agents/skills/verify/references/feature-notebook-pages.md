@@ -114,8 +114,8 @@ Before you start:
 
 - Step 2: the log holds 2 `notebook.note_written` records and 1 `notebook.linked` record, and no
   `notebook.private_opened` record.
-- Step 3: with the toggle off, the list and the first note's page show nothing of the private note,
-  neither its title, nor a link to it, nor a count.
+- Step 3: with the toggle off, the list and the first note's page show no title of the private note,
+  no link to it and no count.
 - Step 4: the private note's page folds its body until Open. After Open, the body shows, and the log
   holds exactly 1 `notebook.private_opened` record.
 - Step 5: the first note's page lists the private note under Backlinks, and after the forget it
