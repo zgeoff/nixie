@@ -1,5 +1,4 @@
 import { expect, onTestFinished, test } from 'bun:test';
-import { waitFor } from '@testing-library/react';
 import { deviceStore } from '../mocks/device-store';
 import { store } from '../mocks/store';
 import { setupSignedInBrowser } from '../test-utils/setup-signed-in-browser';
@@ -40,6 +39,33 @@ async function setupTest() {
   return {
     appURL: proxy.url,
     view,
+    readResizes: () =>
+      deviceStore.resizes.findMany().map((row) => ({ width: row.width, height: row.height })),
+    countResizeEvents: () =>
+      view.evaluate(
+        `(globalThis.resizeEventCount = 0, addEventListener('resize', () => { resizeEventCount += 1 }), true)`,
+      ),
+
+    // Chrome still renders and delivers resize events while the virtual clock is paused, but runs
+    // no timer, so the debounce window lasts until the test advances the clock
+    pausePageClock: () => view.cdp('Emulation.setVirtualTimePolicy', { policy: 'pause' }),
+
+    // Chrome holds the virtual clock while a request is in flight, so the budget covers the page's
+    // timers and replies alike whatever the test machine's speed, then the clock pauses again
+    advancePageClock: async (budgetMs: number) => {
+      const budgetSpent = new Promise<void>((resolve) => {
+        view.addEventListener('Emulation.virtualTimeBudgetExpired', () => resolve(), {
+          once: true,
+        });
+      });
+
+      await view.cdp('Emulation.setVirtualTimePolicy', {
+        policy: 'pauseIfNetworkFetchesPending',
+        budget: budgetMs,
+      });
+
+      await budgetSpent;
+    },
     setViewport: (size: Viewport) =>
       view.cdp('Emulation.setDeviceMetricsOverride', {
         ...size,
@@ -96,24 +122,13 @@ test('it sends one resize with the new size after the window resizes', async () 
   await ctx.waitForPage(`document.body.innerText.includes('Switch on screen')`);
   await ctx.view.click('button');
   await ctx.waitForPage(`document.querySelector('[data-testid="screen"] h1') !== null`);
+  await ctx.countResizeEvents();
+  await ctx.pausePageClock();
   await ctx.setViewport({ width: 800, height: 600 });
+  await ctx.waitForPage('resizeEventCount === 1');
   await ctx.setViewport({ width: 820, height: 610 });
+  await ctx.waitForPage('resizeEventCount === 2');
+  await ctx.advancePageClock(2500);
 
-  await waitFor(() => {
-    expect(deviceStore.resizes.findMany()).toHaveLength(1);
-  });
-
-  // a duplicate send comes a debounce or a reply later, so the count settles over 3 debounces
-  const settledAtMs = performance.now();
-
-  await waitFor(() => {
-    expect(performance.now() - settledAtMs).toBeGreaterThan(750);
-  });
-
-  const resizes = deviceStore.resizes.findMany().map((row) => ({
-    width: row.width,
-    height: row.height,
-  }));
-
-  expect(resizes).toStrictEqual([{ width: 820, height: 610 }]);
+  expect(ctx.readResizes()).toStrictEqual([{ width: 820, height: 610 }]);
 });
