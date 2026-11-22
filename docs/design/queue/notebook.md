@@ -5,25 +5,28 @@
   [the assistant keeps a notebook of linked notes](https://linear.app/zgeoff/issue/GEO-2726), with
   [images](https://linear.app/zgeoff/issue/GEO-2728) for the pictures a note shows
 
-The assistant gets a notebook: notes it writes, edits, searches, links and walks, kept apart from
-memory. A note has a short ID, a title, a markdown body of up to 50,000 characters, tags, versions,
-and a private flag. A typed link from a note points at another note, a memory item, a moment or an
-event of the log. A note never comes to the assistant on its own: no retrieval, opening or block
-shows one, so the assistant reads a note only when it opens or searches the notebook. Memory shows
-one fact about notes, a count on an item that a note disputes or supersedes. You read every note in
-the web client, which shows the notebook read-only, folds private notes, and offers one control, the
-forget of a note.
+The assistant gets a notebook for thinking that is too long or too unsettled for memory: research, a
+diary, an argument with one of its own items. Memory holds short facts that nixie puts in front of
+the assistant each turn. A note is the assistant's own writing, and the assistant reads it only when
+it opens or searches the notebook: no retrieval, opening or block shows a note.
+
+A note has a short ID, a title, a markdown body of up to 50,000 characters, tags, versions, and a
+private flag. A typed link from a note points at another note, a memory item, a moment or an event
+of the log. Memory shows one fact about notes: a count on each item that a note disputes or
+supersedes. You read every note in the web client, which shows the notebook read-only and offers one
+control, the forget of a note. The assistant marks a note private to ask you not to read it: the web
+client folds its body until you open it, and each opening leaves a mark the assistant sees.
 
 ## Shape
 
 ```mermaid
 flowchart LR
   model[assistant] -->|"notebook.*"| tools[notebook tools]
-  tools -->|"records with no thread"| log[(event log)]
-  log -->|"fold"| tables[(notes, versions, links)]
+  tools -->|"note records"| log[(event log)]
+  log -->|"builds"| tables[(notes, versions, links)]
   tools -->|"find"| index[note indexes in process memory]
   index -->|"chunks and vectors"| encoder[text encoder]
-  tables -->|"link counts, through a port"| memory[memory recall and retrieval]
+  tables -->|"link counts only"| memory[memory recall and retrieval]
   web[web client] -->|"note reads, forget"| api[API]
   api --> tables
 ```
@@ -56,13 +59,14 @@ notebook.edit({ note: 'd8p3q1z6mw', append: '\n## 22 Nov\nTried the zine layout�
 notebook.read({ note: 'n4w8k2c6rd' });
 // → { note: 'n4w8k2c6rd', version: 2, versionCount: 2, title: 'Why the boiler keeps tripping',
 //     tags: ['home', 'boiler'], isPrivate: false, body: '## What I know\n…', part: 1, parts: 1,
-//     updatedAt: '2026-11-21T08:10:00Z', readAt: '2026-11-20T19:02:00Z',
+//     updatedAt: '2026-11-21T08:10:00Z', readAt: '2026-11-20T19:02:00Z', // its read before this one
 //     links: [{ type: 'cites', to: { event: '48213' }, reason: 'the engineer’s visit' }],
 //     backlinks: [{ type: 'supersedes', from: 'h2m9t4x7qa', title: 'Boiler notes (old)' }],
 //     linkCount: 1, backlinkCount: 1 }
 
 notebook.read({ note: 'd8p3q1z6mw', find: 'zine layout' });
-// → { …, isPrivate: true, ownerOpenedAt: null, part: 3, parts: 3, body: '…',
+// → { …, isPrivate: true, ownerOpenedAt: null, part: 3, parts: 3, body: '…', // the part found
+//     // ownerOpenedAt: your last opening of a private note in the web client, or null
 //     matches: [{ part: 3, text: '…Tried the zine layout with two columns…' }] }
 
 notebook.history({ note: 'n4w8k2c6rd' });
@@ -95,7 +99,7 @@ notebook.unlink({ from: 'n4w8k2c6rd', to: { memory: 'b7kq2m9xza' }, type: 'dispu
 notebook.walk({ from: 'n4w8k2c6rd', hops: 2 });
 // → { nodes: [{ note: 'n4w8k2c6rd', hops: 0, title: 'Why the boiler keeps tripping' },
 //             { memory: 'b7kq2m9xza', hops: 1, gist: 'boiler serviced in March', state: 'active' },
-//             { event: '48213', hops: 1, at: '2026-10-02T09:12:00Z', role: 'user' },
+//             { event: '48213', hops: 1, at: '2026-10-02T09:12:00Z', role: 'owner' },
 //             { moment: 'm3c8v1k5wy', hops: 2, title: 'The engineer’s visit', state: 'active' }],
 //     links: [{ from: 'n4w8k2c6rd', to: { memory: 'b7kq2m9xza' }, type: 'disputes', reason: '…' }, …],
 //     gone: [{ moment: 'k1v6c3m8xe' }], isCut: false }
@@ -159,6 +163,10 @@ interface NotebookCheck {
   orphans: { note: string; title: string }[];
   dangling: { from: string; to: LinkTarget; type: LinkType }[]; // links whose target is gone
   repeatedReasons: { reason: string; count: number; links: { from: string; to: LinkTarget }[] }[];
+  // each list holds at most 50 entries, oldest edit first; the counts give each total
+  orphanCount: number;
+  danglingCount: number;
+  repeatedReasonCount: number;
 }
 
 // notebook.write, notebook.edit, notebook.link, notebook.unlink: effects ['note'], execution 'direct'
@@ -168,8 +176,10 @@ interface NotebookCheck {
 //   IDs, versions, counts, flags and times are 'owner_data'
 ```
 
-Each tool checks its refusals in this order, and returns the first as a result with `refusalCode`
-and a message that holds the ID it names:
+An input outside the shapes and limits above, such as a title over 200 characters, `hops` of 4 or
+`order` with `query`, is a schema error that the tool layer returns before any refusal. Each tool
+then checks its refusals in this order, and returns the first as a result with `refusalCode` and a
+message that holds the ID it names. `notebook.find` and `notebook.check` have none.
 
 | Tool               | Refusals, in order                                                                                                                        |
 | ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------- |
@@ -188,8 +198,11 @@ and a message that holds the ID it names:
 - `NO_MATCH` and `MANY_MATCHES` name the change by its index, and no change applies. A change with
   `all: true` is never `MANY_MATCHES`.
 - `NOT_FOUND` is a `find` text that appears nowhere in the version, and carries `parts`.
-- `BAD_TARGET` is an ID in no valid format. `UNKNOWN_TARGET` is a well-formed ID with no row of the
-  declared kind, or an event with no record.
+- `BAD_TARGET` is an ID in no valid format. `UNKNOWN_TARGET` is a well-formed ID with no active row
+  of the declared kind, a target already forgotten or destroyed, or an event that `log.read` would
+  not show the caller. A note links to an event only as `log.read` shows it: a message or tool
+  result on a thread the calling task run can read. The refusal reads the same for each case, so a
+  link never shows that a record on another thread exists.
 - `BAD_LINK` is a type that the link kinds refuse between these kinds.
 
 ### Link kinds
@@ -218,7 +231,7 @@ notebook.linked            -- a link, or a new reason for it; no thread
   payload:  from (UUID), to (LinkTarget), type
   erasable: reason, when present
 notebook.unlinked          -- payload: from, to, type
-notebook.private_opened    -- payload: note; you opened a private note's body in the web client
+notebook.private_opened    -- payload: note; notebook.openPrivate in the web client
 notebook.note_forgetting   -- payload: note, version; the forget's first part
 notebook.note_forgotten    -- payload: note, shortID; the forget's end
 ```
@@ -271,7 +284,10 @@ notebook_links
 No table holds free text. At start, the notebook module decrypts the current version of every active
 note, and keeps the titles, the tags, a keyword index and a vector index in process memory only, as
 the [memory store's indexes](../../architecture/memory/store.md#the-indexes) do. An index on disk
-would keep a forgotten note's words.
+would keep a forgotten note's words. The module encodes notes in the background after start, as
+memory does, and meaning search reports `isMeaningPartial` until it finishes. The build measures the
+indexes' memory and the start's encoding time at 1,000 notes of 50,000 characters, and states both
+in its PR.
 
 ### Memory's link counts
 
@@ -279,8 +295,10 @@ would keep a forgotten note's words.
 // memory module
 interface ItemLinkCounts {
   readCounts(itemIDs: string[]): Map<string, { disputedBy: number; supersededBy: number }>;
+  // memory passes item UUIDs; the notebook maps them to the short IDs its links store
 }
 // the server passes the notebook module's implementation; memory imports nothing from notebook
+// recall counts the two fields against its page budget
 
 memory.recall({ query: 'boiler' });
 // → { items: [{ item: 'b7kq2m9xza', text: 'The thermostat is faulty.', …existing fields,
@@ -323,12 +341,14 @@ when it is unset, as in the session prompt.
 // contract lib
 notebook.listNotes({ query?: string, tags?: string[], showPrivate?: boolean, after?: string });
 // → { notes: [{ note, title, tags, version, updatedAt, backlinkCount, isPrivate }], next }
-notebook.readNote({ note: 'n4w8k2c6rd', version?: 2, showPrivate?: boolean, open?: boolean });
+notebook.readNote({ note: 'n4w8k2c6rd', version?: 2, showPrivate?: boolean });
 // → { note, version, versionCount, title, tags, isPrivate, body, links, backlinks, history,
 //     readAt, ownerOpenedAt }
 //   each link carries its target's title or gist, or isGone
-//   a private note without open: true leaves out body; with it, appends notebook.private_opened
-//   a private note with showPrivate false returns { note, isPrivate: true } alone
+//   a private note leaves out body; a private note with showPrivate false returns
+//   { note, isPrivate: true } alone
+notebook.openPrivate({ clientActionID, note: 'd8p3q1z6mw', version?: 6 }); // a checked action
+// → { body, ownerOpenedAt }  // appends notebook.private_opened; UNKNOWN_NOTE | NOT_PRIVATE
 notebook.readCheck({ showPrivate?: boolean }); // → NotebookCheck
 notebook.previewForget({ note: 'n4w8k2c6rd' });
 // → { version: 2, title, versionCount: 2, linkCount: 4, backlinkCount: 1 }
@@ -340,9 +360,14 @@ conversation.previewForget({ sequence });
 ```
 
 ```ts
-// connectors module: code_run gains a third kind of input file
-code_run({ language: 'python', program: '…', files: [{ path: 'zine.md', note: 'd8p3q1z6mw' }] });
-// the note's current body, as markdown; the code tool reads it through the notebook module
+// connectors module: code.run gains a third kind of input file
+code.run({ language: 'python', program: '…', files: [{ path: 'zine.md', note: 'd8p3q1z6mw' }] });
+// the note's current body, as markdown
+
+interface NoteBodies {
+  readBody(shortID: string): string | null; // null for an unknown or forgotten note
+}
+// connectors owns the interface, and the server passes the notebook module's implementation
 ```
 
 ## Constraints
@@ -360,8 +385,8 @@ Keeping notes out of context:
 - `memory.recall` and `moment.read` never list the notes that link to an item or a moment. Recall
   and retrieval show only the `disputedBy` and `supersededBy` counts, which count active notes,
   private ones included.
-- A task gets the notebook tools only when its tool list holds them. The conversation's tool list
-  holds all 9.
+- A task gets the notebook tools only when its effective tool list holds them. The conversation's
+  tool list holds all 9.
 - A retrieval test holds that nixie adds no note text and no note ID to the blocks it builds, the
   session's opening, or any block before a turn's message, even when the message matches a note's
   title word for word. Two kinds of text are exempt: an item's own text, which may hold a note ID
@@ -388,11 +413,16 @@ Records and text:
   `![alt](image:<image short ID>)` shows a stored image, and the web client shows "image
   unavailable" for an image that is unknown or forgotten. `notebook.read` returns the body as
   written, and the assistant opens an image with `image.read`.
-- The rules treat the `note` effect as they treat memory's writes: the 4 write tools run with no
-  card.
-- A `code_run` file with `note` copies the current body into the sandbox, which holds it unencrypted
-  until the code run ends, as it holds fetched pages and files. `code_run` refuses an unknown or
-  forgotten note with `UNKNOWN_NOTE`, after a file ID and before a page ID.
+- The 4 write tools declare the `note` effect, which the starter `allow-notes` rule allows. Notes
+  never go through the memory gate: they are the assistant's own writing, never a claim about you.
+- A `code.run` file with `note` copies the current body into the sandbox, which holds it unencrypted
+  until the code run ends, as it holds fetched pages and files. `code.run` takes a `note` file only
+  when the caller's effective tool list holds `notebook.read`, so it never reaches past that gate.
+  It refuses an unknown or forgotten note, or a caller without `notebook.read`, with a message that
+  names the note, checked after a file ID and before a page ID.
+- A note forget deletes the captured model requests in the
+  [turn-input log](../../architecture/policy/turn-input-log.md) from the note's first record on, as
+  a record forget does, because their tool results can hold the note's text.
 
 Versions and limits:
 
@@ -405,10 +435,13 @@ Versions and limits:
   that append to one note never refuse each other. A link or an unlink never makes an edit stale.
 - An edit applies its changes, then its append. `NOTE_TOO_LONG` checks the result.
 - Tags that match ignoring case merge into one, with the first spelling kept.
-- `notebook.read` pages a long body in parts that fit `recallPageLimitBytes`, cut at a paragraph
-  break, then a line break, then a space. Every part repeats the title and the tags. Part 1 alone
-  holds the links and the backlinks, at most 100 of each, and `linkCount` and `backlinkCount` give
-  the totals. `notebook.walk` reaches the rest.
+- `notebook.read` pages a long body so that each whole result fits `recallPageLimitBytes`, 20,000
+  bytes, cut at a paragraph break, then a line break, then a space. Every part repeats the title and
+  the tags. Part 1 alone holds the links and the backlinks, at most 25 of each, and `linkCount` and
+  `backlinkCount` give the totals; `notebook.walk` reaches the rest. A full note of plain English
+  reads in about 3 parts, and text with many multi-byte characters in more.
+- Every other result is cut to fit the tool output limit. A walk stops at 200 nodes, or sooner when
+  its result would pass the limit, and sets `isCut` either way.
 - `find` in `notebook.read` matches as `web_fetch` does: case-insensitive plain text over the body
   as stored, returning the part where the text first appears and up to 10 matches with about 50
   characters on each side.
@@ -426,10 +459,9 @@ Links and walks:
 - A walk visits each node once, breadth first, and follows links both ways: a note's own links, and
   the links from other active notes to each node it reaches. So a walk passes through a memory item
   to the other notes that cite it.
-- A walk stops at 200 nodes and sets `isCut`. `gone` lists each target whose note, item or moment
-  was forgotten or destroyed, and each event whose key is gone, whether a record forget or a
-  conversation reset took it. A target in `gone` is never a node, and the walk goes no further from
-  it.
+- `gone` lists each target whose note, item or moment was forgotten or destroyed, and each event
+  whose key is gone, whether a record forget or a conversation reset took it. A target in `gone` is
+  never a node, and the walk goes no further from it.
 - `PART_OF_CYCLE` checks the part-of links that exist when the link commits.
 - A note ID written in a body is text. Only `notebook.link` makes a link, and the description of
   `notebook.check` says that a note named only in another note's text counts as an orphan.
@@ -442,8 +474,10 @@ Private notes:
   or from one, from the list, a note's links and backlinks, search and the check. No placeholder or
   count stands in.
 - The web client keeps `showPrivate` in the URL, as `?private=1`. Turning it on writes no record.
-- Only `notebook.readNote` with `open: true` on a private note appends `notebook.private_opened`.
-  Opening a note that isn't private writes nothing.
+- Only `notebook.openPrivate` appends `notebook.private_opened`. It is a checked action, so a
+  refetch or a retry never moves the mark. Opening a note that isn't private writes nothing.
+- With `showPrivate` false, the web client's check is built over every note, then has the private
+  entries removed, so a note linked only from a private note never shows as an orphan.
 - `notebook.previewForget` and `notebook.forget` work on a private note without opening it.
 
 Forgets:
@@ -458,9 +492,9 @@ Forgets:
   [session cleanup](../../architecture/memory/context.md#forgetting-and-the-live-session) with
   `{ noteID }` as its cause, and appends `notebook.note_forgotten`. Each step is safe to run twice,
   and the server's start finishes a forget that a crash cut short.
-- The session cleanup runs for the conversation and for each open task whose tool list holds
-  `notebook.read`, `notebook.find` or `notebook.walk`. Memory's `CleanupCause` gains the `noteID`
-  variant.
+- The session cleanup runs for the conversation and for each open task whose effective tool list
+  holds any notebook tool. Memory's `CleanupCause`, the sessions module's cause and the record shape
+  in the models module each gain the `noteID` variant.
 - The backup schedule counts `notebook.note_forgotten` as a forget record, beside the 4 kinds that
   [staging a set](../../architecture/deployment/backups.md#staging-a-set) lists, so it makes a
   forget set due. The backup module names the kind as a string, and imports nothing from the
@@ -526,9 +560,11 @@ Memory guidance:
   never asked for. The assistant reads it with `notebook.check`, and sets itself a reminder when it
   wants to check on a schedule. The check lists only what the assistant can fix; `notebook.find`
   with `order: 'oldest'` finds old notes.
-- **Every edit stores the whole version, and a body stops at 50,000 characters.** A full note reads
-  in 3 parts, and a note that fills up continues in a new note linked `part-of`.
-- **They are notes, not pages.** `web_fetch` and `code_run` already call a fetched web page a page,
+- **Every edit stores the whole version, and a body stops at 50,000 characters.** Reading any
+  version stays one decrypt. The cost is accepted: a note that grows to the limit through 50 appends
+  stores about 1.25 MB of versions, and only the note's forget reclaims it. A full note reads in
+  about 3 parts, and a note that fills up continues in a new note linked `part-of`.
+- **They are notes, not pages.** `web_fetch` and `code.run` already call a fetched web page a page,
   with a short ID that looks the same.
 - **Forget is the one control in the web client.** The notebook is the assistant's own, so you ask
   the assistant to change a note. Forget stays because a note that quotes a forgotten message would
@@ -557,3 +593,4 @@ Memory guidance:
 - Forget notices for memory items, moments and messages, which the
   [forget notices issue](https://linear.app/zgeoff/issue/GEO-2793) adds.
 - Showing a note on a device.
+- Notes in the memory export.
