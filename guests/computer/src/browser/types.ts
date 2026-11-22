@@ -15,3 +15,9 @@ export interface BrowserState {
   // true until the first reply tells the server that the disk started empty
   isDiskNew: boolean;
 }
+
+// The scans of the guest's scan channel, which every request of Chromium passes
+export interface ScanGate {
+  readonly scan: (url: string) => Promise<void>;
+  readonly scanText: (text: string) => Promise<void>;
+}

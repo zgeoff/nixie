@@ -5,7 +5,6 @@ import { join } from 'node:path';
 import { startCheckingProxy } from '@heynixie/egress';
 import { chromium } from 'playwright-core';
 import { launchBrowser } from './launch-browser';
-import { makeScanGate } from './make-scan-gate';
 
 const hasChromium = await chromium.launch({ headless: true }).then(
   async (browser) => {
@@ -52,11 +51,10 @@ async function setupTest() {
   });
 
   const scannedTexts: string[] = [];
-  const gate = makeScanGate();
 
-  gate.current = {
-    askScan: () => Promise.resolve(),
-    askScanText: (text) => {
+  const gate = {
+    scan: () => Promise.resolve(),
+    scanText: (text: string) => {
       scannedTexts.push(text);
 
       return text.includes('synthetic-secret')
@@ -78,6 +76,7 @@ async function setupTest() {
     proxyPort: proxy.port,
     gate,
     timeZone: 'Pacific/Auckland',
+    isHeadless: true,
   });
 
   onTestFinished(async () => {

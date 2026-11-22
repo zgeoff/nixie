@@ -19,6 +19,7 @@ async function setupTest() {
   const home = await mkdtemp(join(tmpdir(), 'browser-'));
 
   const scanned: string[] = [];
+  const refusal: { reason: string | null } = { reason: null };
 
   const site = Bun.serve({
     port: 0,
@@ -49,6 +50,17 @@ async function setupTest() {
     home,
     deniedRanges: [],
     timeZone: 'UTC',
+    isHeadless: true,
+    gate: {
+      scan: (url) => {
+        scanned.push(url);
+
+        return refusal.reason === null
+          ? Promise.resolve()
+          : Promise.reject(new Error(refusal.reason));
+      },
+      scanText: () => Promise.resolve(),
+    },
     checkAddress: () => true,
     resolveHost: () => Promise.resolve(['127.0.0.1']),
   });
@@ -74,16 +86,15 @@ async function setupTest() {
     }),
     url: `http://pages.test:${String(site.port)}/`,
     scanned,
-    send: (request: ComputerRequest, refuse?: string) =>
-      handle(
-        request,
-        (url) => {
-          scanned.push(url);
+    send: (request: ComputerRequest, refuse?: string) => {
+      refusal.reason = refuse ?? null;
 
-          return refuse === undefined ? Promise.resolve() : Promise.reject(new Error(refuse));
-        },
+      return handle(
+        request,
         () => Promise.resolve(),
-      ),
+        () => Promise.resolve(),
+      );
+    },
   };
 }
 

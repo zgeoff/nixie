@@ -1,6 +1,6 @@
 import { join } from 'node:path';
 import type { ComputerTools } from '@heynixie/connectors';
-import { buildComputerTools, startComputer } from '@heynixie/connectors';
+import { buildComputerTools, makeUnexemptScans, startComputer } from '@heynixie/connectors';
 import type { Log } from '@heynixie/log';
 import { makeOwnerTypedCheck } from '@heynixie/memory';
 import type { SandboxAdapter } from '@heynixie/sandbox';
@@ -21,31 +21,46 @@ export interface ComputerPartInputs {
   readonly log: Pick<Log, 'deploymentKey' | 'writer'>;
 }
 
-const imageArgv = {
-  browser: ['/usr/local/bin/bun', '/app/browser.js'],
-  shell: ['/usr/local/bin/bun', '/app/shell.js'],
-} as const;
+const imageArgv = ['/usr/local/bin/bun', '/app/computer.js'] as const;
 
-const testArgv = {
-  browser: [process.execPath, join(import.meta.dir, '../../../../guests/browser/src/test-main.ts')],
-  shell: [process.execPath, join(import.meta.dir, '../../../../guests/shell/src/test-main.ts')],
-} as const;
+const testArgv = [
+  process.execPath,
+  join(import.meta.dir, '../../../../guests/computer/src/test-main.ts'),
+] as const;
 
-// The assistant's browser and shell: two long-lived sandboxes and the tools that drive them.
+// where the computer image keeps its disk, and where the browser and shell images of the release
+// before it kept theirs: the home of the image's own user
+const imageHomeEnv = { HOME: '/home/computer' } as const;
+const legacyImageHomeEnv = { HOME: '/home/bun' } as const;
+
+// The assistant's computer: one long-lived sandbox and the tools that drive it.
 export async function startComputerPart(inputs: ComputerPartInputs): Promise<ComputerTools> {
   const options = inputs.options;
   const webFetch = options.config.web_fetch;
   const publicEgress = options.sandbox.adapter === 'imp' ? options.sandbox.imp.publicEgress : null;
 
+  const deniedRanges = [
+    ...(publicEgress?.hostAddresses ?? []),
+    ...(publicEgress?.egressDeny ?? []),
+  ];
+
+  const findSecret = makeSecretFinder(
+    options.secrets.collectOwnValues({
+      entries: webFetch.secretOwnValues,
+      minChars: webFetch.secretOwnValueMinChars,
+    }),
+  );
+
+  const isTest = isTestSandbox(inputs.adapter);
+
   const computer = startComputer({
     adapter: inputs.adapter,
-    images: {
-      browser: getSandboxImage(options.images, 'browser').name,
-      shell: getSandboxImage(options.images, 'shell').name,
-    },
-    argv: isTestSandbox(inputs.adapter) ? testArgv : imageArgv,
-    deniedRanges: [...(publicEgress?.hostAddresses ?? []), ...(publicEgress?.egressDeny ?? [])],
+    image: getSandboxImage(options.images, 'computer').name,
+    argv: isTest ? testArgv : imageArgv,
+    ...(isTest ? {} : { homeEnv: imageHomeEnv, legacyHomeEnv: legacyImageHomeEnv }),
+    deniedRanges,
     timeZone: options.config.time.default_zone,
+    scans: makeUnexemptScans({ findSecret, logger: options.log }),
     logger: options.log,
   });
 
@@ -54,15 +69,10 @@ export async function startComputerPart(inputs: ComputerPartInputs): Promise<Com
   return buildComputerTools({
     computer,
     log: inputs.log,
-    findSecret: makeSecretFinder(
-      options.secrets.collectOwnValues({
-        entries: webFetch.secretOwnValues,
-        minChars: webFetch.secretOwnValueMinChars,
-      }),
-    ),
+    findSecret,
     isOwnerTyped: makeOwnerTypedCheck(inputs.log),
     logger: options.log,
-    deniedRanges: [...(publicEgress?.hostAddresses ?? []), ...(publicEgress?.egressDeny ?? [])],
+    deniedRanges,
     fetch: webFetch,
   });
 }

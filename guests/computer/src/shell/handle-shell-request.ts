@@ -1,13 +1,18 @@
-import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
-import { basename, dirname } from 'node:path';
+import { stat } from 'node:fs/promises';
+import { basename } from 'node:path';
 import type { ComputerReply, ComputerRequest } from '@heynixie/wire';
 import { resolveFilesPath } from './resolve-files-path';
 import { runShellCommand } from './run-shell-command';
+import type { TerminalAccount } from './terminal-account';
 
 export interface ShellContext {
   // the folder `~/files` names
   readonly root: string;
   readonly env: Readonly<Record<string, string>>;
+
+  // the account the files are read and written as, so a link planted in the files folder never
+  // reaches more than the terminal's user can
+  readonly account: TerminalAccount;
 
   // true once, on the first request that reaches a disk the guest started on empty
   readonly takeIsDiskNew: () => Promise<boolean>;
@@ -30,11 +35,11 @@ export async function handleShellRequest(
   }
 
   if (request.op === 'readFile') {
-    return readFilesFile(context.root, request.path, isDiskNew);
+    return readFilesFile(context, request.path, isDiskNew);
   }
 
   if (request.op === 'writeFile') {
-    return writeFilesFile(context.root, request, isDiskNew);
+    return writeFilesFile(context, request, isDiskNew);
   }
 
   return {
@@ -48,11 +53,11 @@ export async function handleShellRequest(
 const fileLimitBytes = 25 * 1024 * 1024;
 
 async function readFilesFile(
-  root: string,
+  context: ShellContext,
   path: string,
   isDiskNew: boolean,
 ): Promise<ComputerReply> {
-  const resolved = await resolveFilesPath(root, path);
+  const resolved = await resolveFilesPath(context.root, path);
 
   if (resolved === null) {
     return { kind: 'failed', ok: false, reason: 'bad_path' };
@@ -68,7 +73,26 @@ async function readFilesFile(
     return { kind: 'failed', ok: false, reason: 'too_big' };
   }
 
-  const bytes = await readFile(resolved);
+  const readArgv = context.account.wrap(['head', '-c', String(fileLimitBytes + 1), '--', resolved]);
+
+  const read = Bun.spawn(readArgv, {
+    env: context.env,
+    stdin: 'ignore',
+    stdout: 'pipe',
+    stderr: 'ignore',
+  });
+
+  const content = await new Response(read.stdout).arrayBuffer();
+
+  const bytes = Buffer.from(content);
+
+  if ((await read.exited) !== 0) {
+    return { kind: 'failed', ok: false, reason: 'no_file' };
+  }
+
+  if (bytes.byteLength > fileLimitBytes) {
+    return { kind: 'failed', ok: false, reason: 'too_big' };
+  }
 
   return {
     kind: 'file',
@@ -80,13 +104,13 @@ async function readFilesFile(
 }
 
 async function writeFilesFile(
-  root: string,
+  context: ShellContext,
   request: Extract<ComputerRequest, { op: 'writeFile' }>,
   isDiskNew: boolean,
 ): Promise<ComputerReply> {
-  const resolved = await resolveFilesPath(root, request.path);
+  const resolved = await resolveFilesPath(context.root, request.path);
 
-  if (resolved === null || resolved === root) {
+  if (resolved === null || resolved === context.root) {
     return { kind: 'failed', ok: false, reason: 'bad_path' };
   }
 
@@ -96,11 +120,15 @@ async function writeFilesFile(
     return { kind: 'failed', ok: false, reason: 'too_big' };
   }
 
-  try {
-    await mkdir(dirname(resolved), { recursive: true });
-    await writeFile(resolved, bytes);
-  } catch (error) {
-    const isFull = error instanceof Error && 'code' in error && error.code === 'ENOSPC';
+  const write = Bun.spawn(
+    context.account.wrap(['sh', '-c', 'mkdir -p "$(dirname "$1")" && cat > "$1"', 'sh', resolved]),
+    { env: context.env, stdin: bytes, stdout: 'ignore', stderr: 'pipe' },
+  );
+
+  const [stderr, exitCode] = await Promise.all([new Response(write.stderr).text(), write.exited]);
+
+  if (exitCode !== 0) {
+    const isFull = stderr.includes('No space left');
 
     return { kind: 'failed', ok: false, reason: isFull ? 'disk_full' : 'failed' };
   }

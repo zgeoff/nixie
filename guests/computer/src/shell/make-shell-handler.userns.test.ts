@@ -2,9 +2,11 @@ import { expect, onTestFinished, test } from 'bun:test';
 import { mkdir, mkdtemp, readFile, realpath, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { startSocketProxy } from '@heynixie/egress';
 import type { ComputerRequest } from '@heynixie/wire';
 import invariant from 'tiny-invariant';
 import { makeShellHandler } from './make-shell-handler';
+import { ownAccount } from './terminal-account';
 
 async function setupTest() {
   const made = await mkdtemp(join(tmpdir(), 'shell-'));
@@ -20,14 +22,43 @@ async function setupTest() {
 
   const scanned: string[] = [];
   const scannedTexts: string[] = [];
+  const refusal: { reason: string | null } = { reason: null };
   let isNew = true;
+  const proxySocketPath = join(base, 'proxy.sock');
+
+  const proxy = await startSocketProxy(
+    {
+      checkAddress: () => true,
+      resolveHost: () => Promise.resolve(['127.0.0.1']),
+      scanURL: (url) => {
+        scanned.push(url);
+
+        return refusal.reason === null
+          ? Promise.resolve()
+          : Promise.reject(new Error(refusal.reason));
+      },
+      scanText: (text) => {
+        scannedTexts.push(text);
+
+        return text.includes('synthetic-secret')
+          ? Promise.reject(new Error('holds a secret'))
+          : Promise.resolve();
+      },
+      canTunnel: false,
+    },
+    proxySocketPath,
+  );
+
+  onTestFinished(async () => {
+    await proxy.stop();
+  });
 
   const handle = makeShellHandler({
     root,
     baseEnv: { PATH: process.env['PATH'] ?? '', HOME: base },
+    account: ownAccount,
+    proxySocketPath,
     bridgeScript: join(import.meta.dir, 'bridge-main.ts'),
-    checkAddress: () => true,
-    resolveHost: () => Promise.resolve(['127.0.0.1']),
     takeIsDiskNew: () => {
       const was = isNew;
 
@@ -41,22 +72,15 @@ async function setupTest() {
     root,
     scanned,
     scannedTexts,
-    send: (request: ComputerRequest, refuse?: string) =>
-      handle(
+    send: (request: ComputerRequest, refuse?: string) => {
+      refusal.reason = refuse ?? null;
+
+      return handle(
         request,
-        (url) => {
-          scanned.push(url);
-
-          return refuse === undefined ? Promise.resolve() : Promise.reject(new Error(refuse));
-        },
-        (text) => {
-          scannedTexts.push(text);
-
-          return text.includes('synthetic-secret')
-            ? Promise.reject(new Error('holds a secret'))
-            : Promise.resolve();
-        },
-      ),
+        () => Promise.resolve(),
+        () => Promise.resolve(),
+      );
+    },
   };
 }
 
@@ -279,4 +303,39 @@ test('it refuses an encrypted tunnel a command opens', async () => {
 
   expect(reply).toMatchObject({ run: { stdout: { text: '000' } } });
   expect(ctx.scanned).toStrictEqual([]);
+});
+
+test('it gives a command no route to a socket in the guest network namespace, such as the display', async () => {
+  const ctx = await setupTest();
+
+  const accepted: string[] = [];
+
+  const listener = Bun.listen({
+    unix: '\0nixie-test-display',
+    socket: {
+      open: () => {
+        accepted.push('connection');
+      },
+      data: () => {},
+    },
+  });
+
+  onTestFinished(() => {
+    listener.stop(true);
+  });
+
+  const script = `import { connect } from 'node:net'; const socket = connect({ path: '\\0nixie-test-display' }); socket.on('connect', () => { console.log('reached'); process.exit(0); }); socket.on('error', () => { console.log('unreachable'); process.exit(0); });`;
+
+  const reply = await ctx.send({
+    op: 'run',
+    argv: [process.execPath, '-e', script],
+    timeoutSeconds: 20,
+  });
+
+  invariant(reply.kind === 'run');
+
+  expect({ stdout: reply.run.stdout.text, accepted }).toStrictEqual({
+    stdout: 'unreachable\n',
+    accepted: [],
+  });
 });

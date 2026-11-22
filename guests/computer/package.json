@@ -1,5 +1,5 @@
 {
-  "name": "@heynixie/browser",
+  "name": "@heynixie/computer",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -10,6 +10,7 @@
     "@heynixie/egress": "workspace:*",
     "@heynixie/wire": "workspace:*",
     "playwright-core": "catalog:",
+    "tiny-invariant": "catalog:",
     "ts-pattern": "catalog:",
     "zod": "catalog:"
   }

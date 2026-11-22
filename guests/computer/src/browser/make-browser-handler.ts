@@ -5,12 +5,11 @@ import { match } from 'ts-pattern';
 import { actOnTab } from './act-on-tab';
 import { downloadTabFile } from './download-tab-file';
 import { launchBrowser } from './launch-browser';
-import { makeScanGate } from './make-scan-gate';
 import { openTab } from './open-tab';
 import { readTabPage } from './read-tab-page';
 import { scrollTab } from './scroll-tab';
 import { shootTab } from './shoot-tab';
-import type { BrowserState } from './types';
+import type { BrowserState, ScanGate } from './types';
 
 export interface BrowserHandlerOptions {
   readonly home: string;
@@ -18,16 +17,26 @@ export interface BrowserHandlerOptions {
   readonly deniedRanges: readonly string[];
   readonly timeZone: string;
 
+  // the guest's scan channel, which scans every request Chromium makes, in a call or between calls
+  readonly gate: ScanGate;
+
+  // true for the test build, which has no display
+  readonly isHeadless: boolean;
+  readonly display?: string;
+
+  // a folder that Chromium's account can write, where its downloads land before the guest reads them
+  readonly downloadsPath?: string;
+
   // replaces the check of the ranges, for a test that serves a page from the loopback
   readonly checkAddress?: AddressCheck;
   readonly executablePath?: string;
 }
 
 // One browser per guest process, started at its first request and again after it dies. The browser
-// reaches the network only through a checking proxy, and a navigation asks the server to scan its
-// URL while a request runs.
+// reaches the network only through a checking proxy, and every request it makes is scanned by the
+// server through the guest's scan channel, whether or not a tool call runs.
 export function makeBrowserHandler(options: BrowserHandlerOptions): ComputerHandler {
-  const gate = makeScanGate();
+  const gate = options.gate;
   const ranges = { current: options.deniedRanges };
   let state: BrowserState | null = null;
   let isClosed = false;
@@ -62,6 +71,9 @@ export function makeBrowserHandler(options: BrowserHandlerOptions): ComputerHand
       proxyPort,
       gate,
       timeZone: options.timeZone,
+      isHeadless: options.isHeadless,
+      ...(options.display === undefined ? {} : { display: options.display }),
+      ...(options.downloadsPath === undefined ? {} : { downloadsPath: options.downloadsPath }),
       ...(options.executablePath === undefined ? {} : { executablePath: options.executablePath }),
     });
 
@@ -74,20 +86,14 @@ export function makeBrowserHandler(options: BrowserHandlerOptions): ComputerHand
     return state;
   };
 
-  return async (request, askScan, askScanText) => {
-    gate.current = { askScan, askScanText };
-
+  return async (request) => {
     if (request.op === 'open') {
       ranges.current = request.deniedRanges;
     }
 
-    try {
-      const browser = await ensure();
+    const browser = await ensure();
 
-      return await handleRequest(browser, request);
-    } finally {
-      gate.current = null;
-    }
+    return handleRequest(browser, request);
   };
 }
 
