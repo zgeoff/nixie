@@ -162,3 +162,7 @@ unreadable and leaves the row, so the edit chain keeps its shape. The forget cle
 the key of each image imported from the forgotten record, so a forgotten photo erases its imports. A
 source, a reference and a provider reply never count against the session's image caps; only the
 picture shown beside a result does.
+
+The web client's [images page](../channels/client.md#the-images-page) reads the stored images
+through [the `images` calls](../channels/api.md#reading-and-forgetting-images). Its forget takes the
+call record, the result record and every name record of one image.

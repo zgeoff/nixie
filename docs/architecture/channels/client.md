@@ -298,16 +298,42 @@ search parameter, so a reload keeps the filter.
 - An empty gallery says that files appear when nixie runs code that writes them, and a filter with
   no match says so.
 
+## The images page
+
+`/images` lists the stored images from `images.list`, newest first, as a grid of tiles. It shows the
+pinned images until the user ticks Show all, which sets the `all` search parameter. A tile shows the
+thumbnail, the name, and whether the image is pinned, an edit or an import. The tile reads its
+thumbnail through `images.readBytes` only when it scrolls into view, and the page keeps the bytes as
+a blob and never navigates to them.
+
+- A tap opens the image in a lightbox and sets the `image` search parameter, so a reload keeps the
+  open image and the Back button steps back along a walk. The lightbox shows the full image beside
+  its name, its prompt as plain text, when it was made in the browser's time zone, and one line
+  about where it came from. An edit shows "Edited from" and a link to the earlier image, named for
+  its name or its ID. An import shows "Imported from a file" or "Imported from a photo".
+- An image that `images.read` returns as forgotten shows "Forgotten" in place of the picture, the
+  name and the prompt, and keeps its "Edited from" link.
+- The forget control in the lightbox asks first, and warns that the picture, its prompt, its name
+  and the assistant's request for it are forgotten and that edits made from it keep their pictures.
+  After the forget, the lightbox shows the key backup state in place of the control, the client
+  drops the cached bytes, and the grid drops the image and reads the list again.
+- The grid loads 30 images, then the next page when its end scrolls into view and when the user
+  presses Load more.
+- With Show all off and no pinned image, the page says that no image is pinned and points at the
+  checkbox. With it on and no image, the page says that images appear when the assistant draws or
+  imports one. A failed list shows a Retry button. A thumbnail that answers `IMAGE_FORGOTTEN` takes
+  its tile off the grid, and any other failed read shows "Unavailable".
+
 ## The app shell
 
-Every page sits in one shell, which the root route renders. Its bar holds 10 links: Conversation,
-Memory, Proposals, Moments, Tasks, Ended runs, Files, Definitions, Reminders and Passkeys. The link
-of the current page carries `aria-current="page"`, and a detail page marks its parent, so a task
-marks Tasks. A page with no entry, such as the mandates page, marks nothing. Below 768px the links
-fold into a menu button that opens a side drawer. The drawer is a native modal dialog, so the rest
-of the page goes inert while it is open. It closes on a link tap, on Escape and on a tap outside it,
-and focus returns to the menu button. CSS alone switches between the bar and the button, so the
-server render matches the client. The conversation fills the height below the bar.
+Every page sits in one shell, which the root route renders. Its bar holds 11 links: Conversation,
+Memory, Proposals, Moments, Tasks, Ended runs, Files, Images, Definitions, Reminders and Passkeys.
+The link of the current page carries `aria-current="page"`, and a detail page marks its parent, so a
+task marks Tasks. A page with no entry, such as the mandates page, marks nothing. Below 768px the
+links fold into a menu button that opens a side drawer. The drawer is a native modal dialog, so the
+rest of the page goes inert while it is open. It closes on a link tap, on Escape and on a tap
+outside it, and focus returns to the menu button. CSS alone switches between the bar and the button,
+so the server render matches the client. The conversation fills the height below the bar.
 
 ## Approvals
 

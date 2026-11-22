@@ -403,6 +403,31 @@ answer. A retry of the action finishes a cleanup that a failed call left.
 The `conversation.previewForget` answer also lists the active notes that link to the record, with a
 private note's title left out, so the confirmation can show that those notes keep their text.
 
+## Reading and forgetting images
+
+The `images` calls serve the stored [images](../connectors/images.md#storage) to a device session. A
+read-only token reaches none of them and gets a 403.
+
+- `images.list` takes `pinnedOnly` and a cursor, and returns up to 30 images newest first by the
+  `images` table's rowid, with `nextCursor`. A call reads at most 300 rows and leaves out each
+  forgotten image, so a page can hold fewer than 30 images, or none, while `nextCursor` remains. The
+  cursor is the rowid of the oldest row the call read.
+- `images.read` returns one image by its short ID: its name, prompt, `from`, source, pin, creation
+  time and `isForgotten`. A forgotten image returns no name and no prompt, and keeps its `from`, so
+  a client can walk back through the edits past it. An ID that names no image returns
+  `UNKNOWN_IMAGE`.
+- `images.readBytes` returns the stored PNG for `full`, and a WebP of at most 512 pixels on its long
+  edge for `thumbnail`. The server makes each thumbnail on the read and stores none, so a forget
+  leaves no copy of the picture. A forgotten image returns `IMAGE_FORGOTTEN`.
+- `images.forget` takes a client action ID and an image ID, and forgets the image's `tool_called`
+  record, its `tool_result` record and every `image.named` record that names it, on whichever thread
+  each one sits. It starts every record's [forget](#forgetting-a-record) in one transaction, then
+  runs each cleanup. The answer's backup state is `failed` when any record's state is failed, else
+  `unknown` when any is unknown, else `pending` when any is pending, else the state they share. A
+  retry with the same client action ID runs the cleanups again, which finishes what a failed call
+  left. A forget of an image that is already forgotten forgets the records that still have a key,
+  and answers with the time of the first forget when none does.
+
 ## Reading a code-run file
 
 `files.read` takes a file ID and returns that file's bytes with its name, to any signed-in session,

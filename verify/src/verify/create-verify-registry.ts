@@ -389,7 +389,7 @@ export function createVerifyRegistry(): Wringer {
       },
       {
         name: 'images-page',
-        summary: 'Open the images page, walk an edit chain, and forget an image',
+        summary: 'Browse and forget images',
         paths: featurePaths['images-page'],
       },
       {
