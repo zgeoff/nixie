@@ -186,8 +186,11 @@ test('it stops passing pointer messages once the device hands the desktop back',
 
   await client.computer.handBack({ clientActionID: crypto.randomUUID() });
 
-  watch.sendPointer();
-  watch.sendMarker(2);
+  // the hand-back ends the holder's streams, so the page watches again with a stream of its own
+  const watchAgain = await ctx.openWatch(ctx.laptop.token);
+
+  watchAgain.sendPointer();
+  watchAgain.sendMarker(2);
 
   await ctx.waitForMarker(2);
 
