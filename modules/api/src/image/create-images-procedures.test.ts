@@ -315,20 +315,21 @@ test('#images.forget leaves no prompt, name or picture readable to the client or
   expect({
     forgottenAt: forgotten.forgottenAt,
     backup: forgotten.backup,
-    readableText: entries
+    rememberedWords: entries
       .flatMap((found) =>
         found.record.erasable.status === 'readable'
           ? [JSON.stringify(found.record.erasable.fields)]
           : [],
       )
-      .join(' '),
+      .join(' ')
+      .match(/harbour|dusk/gu),
     image: read,
     assistantEntry: entry.kind,
     assistantList: listed['images'],
   }).toStrictEqual({
     forgottenAt: expect.toBeValidDate(),
     backup: { state: 'pending' },
-    readableText: expect.not.stringMatching(/harbour|dusk/u),
+    rememberedWords: null,
     image: expect.objectContaining({ name: null, prompt: null, isForgotten: true }),
     assistantEntry: 'forgotten',
     assistantList: [expect.objectContaining({ name: null, prompt: null, isForgotten: true })],
@@ -402,22 +403,25 @@ test('#images.forget finishes the cleanup of a retry with the same client action
   expect({
     leftReadable: after.some((found) => found.record.erasable.status === 'readable'),
     retried: retry.forgottenAt,
-    readableText: finished
+    rememberedWords: finished
       .flatMap((found) =>
         found.record.erasable.status === 'readable'
           ? [JSON.stringify(found.record.erasable.fields)]
           : [],
       )
-      .join(' '),
-    forgotten: forgotten.map((found) => found.record.payload['recordSequence']).toSorted(),
+      .join(' ')
+      .match(/harbour|dusk/gu),
+    forgotten: forgotten
+      .map((found) => Number(found.record.payload['recordSequence']))
+      .toSorted((left, right) => left - right),
   }).toStrictEqual({
     leftReadable: true,
     retried: expect.toBeValidDate(),
-    readableText: expect.not.stringMatching(/harbour|dusk/u),
+    rememberedWords: null,
     forgotten: finished
       .filter((found) => found.record.erasable.status === 'shredded')
       .map((found) => found.record.sequence)
-      .toSorted(),
+      .toSorted((left, right) => left - right),
   });
 });
 
@@ -498,19 +502,20 @@ test('#images.forget leaves no rename or list made while its cleanup was unfinis
   expect({
     renamed,
     listed: listed['images'],
-    readableText: entries
+    rememberedWords: entries
       .flatMap((found) =>
         found.record.erasable.status === 'readable'
           ? [JSON.stringify(found.record.erasable.fields)]
           : [],
       )
-      .join(' '),
+      .join(' ')
+      .match(/harbour|dusk|ferry|quay|noon/gu),
   }).toStrictEqual({
     renamed: expect.objectContaining({
       refused: { code: 'IMAGE_FORGOTTEN', message: expect.any(String) },
     }),
     listed: [expect.objectContaining({ name: null, isForgotten: true })],
-    readableText: expect.not.stringMatching(/harbour|dusk|ferry|quay|noon/u),
+    rememberedWords: null,
   });
 });
 

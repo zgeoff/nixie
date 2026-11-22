@@ -102,7 +102,7 @@ async function readKeyedSequences(
 
   return new Set(
     records
-      .filter((record) => record.key_id !== null && keys.get(record.key_id))
+      .filter((record) => record.key_id !== null && (keys.get(record.key_id) ?? null) !== null)
       .map((record) => record.sequence),
   );
 }

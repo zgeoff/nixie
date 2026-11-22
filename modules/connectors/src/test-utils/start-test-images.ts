@@ -35,8 +35,9 @@ const prices = { '1024x1024': 40_000, '1536x1024': 60_000, '1024x1536': 60_000 }
 // provider, so a test sends a call and reads what the model, the budgets and the log hold after it.
 export async function startTestImages(options: TestImagesOptions) {
   const clock = createFakeClock({ startMs: Date.parse('2026-11-21T08:00:00.000Z') });
-  const given = options.log;
-  const started = given === undefined ? await startTestLog(clock) : given;
+
+  const started = await (options.log ?? startTestLog(clock));
+
   const log: Log = { ...started, projections: [...started.projections, ...budgetProjections] };
   const spent = { bytes: 0, count: 0 };
   const caps = options.caps ?? { bytes: 24 * 1024 * 1024, count: 100 };

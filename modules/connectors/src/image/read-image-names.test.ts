@@ -41,7 +41,7 @@ test('it reads the latest name of each image', async () => {
 
   const names = await readImageNames(log, ['img0000001', 'img0000002']);
 
-  expect([...names].toSorted()).toStrictEqual([
+  expect([...names].toSorted((left, right) => left[0].localeCompare(right[0]))).toStrictEqual([
     ['img0000001', null],
     ['img0000002', 'other, final'],
   ]);
