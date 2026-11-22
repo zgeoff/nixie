@@ -316,13 +316,15 @@ a blob and never navigates to them.
 - The forget control in the lightbox asks first, and warns that the picture, its prompt, its name
   and the assistant's request for it are forgotten and that edits made from it keep their pictures.
   After the forget, the lightbox shows the key backup state in place of the control, the client
-  drops the cached bytes, and the grid drops the image and reads the list again.
+  drops the cached bytes and starts every cached image list and read over, including the view that
+  is not on screen, and the grid drops the image.
 - The grid loads 30 images, then the next page when its end scrolls into view and when the user
   presses Load more.
 - With Show all off and no pinned image, the page says that no image is pinned and points at the
   checkbox. With it on and no image, the page says that images appear when the assistant draws or
-  imports one. A failed list shows a Retry button. A thumbnail that answers `IMAGE_FORGOTTEN` takes
-  its tile off the grid, and any other failed read shows "Unavailable".
+  imports one. A failed list shows a Retry button, except a refused session, which shows the
+  enrolment form. A thumbnail that answers `IMAGE_FORGOTTEN` takes its tile off the grid, and any
+  other failed read shows "Unavailable".
 
 ## The app shell
 

@@ -1,9 +1,11 @@
-import { useInfiniteQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { css } from '../styled-system/css';
+import { isUnauthorizedError } from '../utils/is-unauthorized-error';
 import { useIsSeen } from '../utils/use-is-seen';
 import { useNixieClient } from '../utils/use-nixie-client';
+import { EnrolForm } from './enrol-form';
 import { ImageLightbox } from './image-lightbox';
 import { ImageTile } from './image-tile';
 
@@ -47,6 +49,7 @@ const emptyAll = 'No images yet. Images appear here when the assistant draws or 
 
 export function ImageGallery(props: ImageGalleryProps): ReactNode {
   const nixie = useNixieClient();
+  const queryClient = useQueryClient();
   const [forgotten, setForgotten] = useState<ReadonlySet<string>>(new Set());
 
   const listed = useInfiniteQuery(
@@ -70,6 +73,16 @@ export function ImageGallery(props: ImageGalleryProps): ReactNode {
     },
     [refetch],
   );
+
+  if (isUnauthorizedError(listed.error)) {
+    return (
+      <EnrolForm
+        onEnrolled={() => {
+          void queryClient.resetQueries({ queryKey: nixie.queryUtils.images.list.key() });
+        }}
+      />
+    );
+  }
 
   const images = (listed.data?.pages ?? [])
     .flatMap((loaded) => loaded.images)

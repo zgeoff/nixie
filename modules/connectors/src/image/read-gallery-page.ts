@@ -3,8 +3,8 @@ import { readRecordKeys } from '@heynixie/log';
 import { sql } from 'kysely';
 import { z } from 'zod';
 import type { ImageRow, ImageTables } from './image-tables';
-import type { GalleryImage } from './read-gallery-image';
-import { readGalleryImages } from './read-gallery-image';
+import { readGalleryImages } from './read-gallery-images';
+import type { GalleryImage } from './types';
 
 const galleryPageSize = 30;
 const galleryScanLimit = 300;

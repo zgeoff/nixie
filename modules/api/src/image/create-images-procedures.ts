@@ -1,17 +1,13 @@
 // oxlint-disable new-cap -- oRPC names a procedure's typed errors by their upper-case codes
-import {
-  readGalleryImage,
-  readGalleryPage,
-  readImageEntry,
-  readImageForgetTargets,
-} from '@heynixie/connectors';
+import { readGalleryImage, readGalleryPage, readImageEntry } from '@heynixie/connectors';
 import { ORPCError } from '@orpc/server';
 import { requireCaller } from '../memory/require-caller';
 import type { APIContext } from '../types';
 import { apiImplementer } from '../utils/api-implementer';
 import { createThumbnail } from './create-thumbnail';
+import { readImageForgetBackup } from './read-image-forget-backup';
 import { toContractGalleryImage } from './to-contract-gallery-image';
-import { readImageForgetBackup, writeImageForget } from './write-image-forget';
+import { writeImageForget } from './write-image-forget';
 
 export function createImagesProcedures(context: APIContext) {
   return {
@@ -67,15 +63,9 @@ export function createImagesProcedures(context: APIContext) {
         options.errors.UNAUTHORIZED,
       );
 
-      const forgettable = await readImageForgetTargets(context.log, options.input.image);
-
-      if (forgettable === null) {
-        throw options.errors.UNKNOWN_IMAGE();
-      }
-
       const result = await writeImageForget(context, caller, {
         clientActionID: options.input.clientActionID,
-        forgettable,
+        image: options.input.image,
       });
 
       if (result.status === 'action_not_finished') {
@@ -94,7 +84,7 @@ export function createImagesProcedures(context: APIContext) {
 
       return {
         forgottenAt: new Date(result.forgottenAt),
-        backup: await readImageForgetBackup(context, forgettable),
+        backup: await readImageForgetBackup(context, result.targets),
       };
     }),
   };

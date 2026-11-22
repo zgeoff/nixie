@@ -2,6 +2,7 @@ import { expect, test } from 'bun:test';
 import { waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { mockViewStore } from '../mocks/mock-view-store';
+import { store } from '../mocks/store';
 import { createDeviceSession } from '../test-utils/create-device-session';
 import { renderRoute } from '../test-utils/render-route';
 
@@ -203,4 +204,65 @@ test('it keeps the image when the forget is not confirmed', async () => {
 
   expect(rendered.getByText('a harbour')).toBeVisible();
   expect(mockViewStore.images.all().map((row) => row.isForgotten)).toStrictEqual([false]);
+});
+
+test('it leaves no name or prompt of a forgotten image in any cached list', async () => {
+  const user = userEvent.setup();
+
+  await createDeviceSession();
+
+  await mockViewStore.images.create({
+    image: 'k3x9m2p7qa',
+    name: 'harbour at dusk',
+    prompt: 'a secret prompt',
+    isPinned: true,
+  });
+
+  const rendered = renderRoute('/images');
+
+  await rendered.findByRole('button', { name: 'Open harbour at dusk' });
+  await user.click(rendered.getByRole('checkbox', { name: 'Show all' }));
+
+  const tile = await rendered.findByRole('button', { name: 'Open harbour at dusk' });
+
+  await user.click(tile);
+
+  const forget = await rendered.findByRole('button', { name: 'Forget' });
+
+  await user.click(forget);
+  await user.click(rendered.getByRole('button', { name: 'Forget for good' }));
+  await rendered.findByText(/Key backups: pending/u);
+
+  await waitFor(() => {
+    const cached = rendered.queryClient
+      .getQueryCache()
+      .getAll()
+      .map((query) => JSON.stringify(query.state.data ?? null))
+      .join(' ');
+
+    expect(cached).not.toMatch(/harbour at dusk|a secret prompt/u);
+  });
+});
+
+test('it asks for enrolment when the session was revoked after the page loaded', async () => {
+  const user = userEvent.setup();
+
+  const session = await createDeviceSession();
+
+  const rendered = renderRoute('/images');
+
+  await rendered.findByText(/No image is pinned/u);
+
+  await store.sessions.update(session, {
+    data(draft) {
+      draft.revokedAt = new Date();
+    },
+  });
+
+  await user.click(rendered.getByRole('checkbox', { name: 'Show all' }));
+
+  const heading = await rendered.findByRole('heading', { name: 'Enrol this browser' });
+
+  expect(heading).toBeVisible();
+  expect(rendered.queryByText(/The images can.t load/u)).toBeNull();
 });

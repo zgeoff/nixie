@@ -82,12 +82,12 @@ export function ImageTile(props: ImageTileProps): ReactNode {
         {!read.isError && url !== null ? <img alt={label} className={picture} src={url} /> : null}
       </button>
       {image.name === null ? null : <span className={name}>{image.name}</span>}
-      <span className={muted}>{describeImage(image)}</span>
+      <span className={muted}>{formatImageSummary(image)}</span>
     </li>
   );
 }
 
-function describeImage(image: GalleryImage): string {
+function formatImageSummary(image: GalleryImage): string {
   const parts = [
     image.isPinned ? 'Pinned' : null,
     image.from === null ? null : 'Edit',

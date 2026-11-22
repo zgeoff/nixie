@@ -94,7 +94,10 @@ export function buildImageListTool(options: ImageToolOptions): ToolDefinition {
 
       const [prompts, names] = await Promise.all([
         readImagePrompts(options.log, page),
-        readImageNames(options.log),
+        readImageNames(
+          options.log,
+          page.map((row) => row.image_id),
+        ),
       ]);
 
       const hasMore = rows.length > input.limit;

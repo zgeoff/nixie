@@ -165,4 +165,5 @@ picture shown beside a result does.
 
 The web client's [images page](../channels/client.md#the-images-page) reads the stored images
 through [the `images` calls](../channels/api.md#reading-and-forgetting-images). Its forget takes the
-call record, the result record and every name record of one image.
+call record, the result record, every name record and every tool record that quotes the name or
+prompt of one image.

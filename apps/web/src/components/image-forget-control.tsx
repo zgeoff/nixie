@@ -37,7 +37,11 @@ export function ImageForgetControl(props: ImageForgetControlProps): ReactNode {
         setBackup(result.backup);
 
         queryClient.removeQueries({ queryKey: nixie.queryUtils.images.readBytes.key() });
-        void queryClient.invalidateQueries({ queryKey: nixie.queryUtils.images.read.key() });
+
+        // Every cached list and read can hold the name and prompt, so each one starts again,
+        // the view that is not on screen too.
+        void queryClient.resetQueries({ queryKey: nixie.queryUtils.images.list.key() });
+        void queryClient.resetQueries({ queryKey: nixie.queryUtils.images.read.key() });
         props.onForgotten(input.image);
       },
     }),

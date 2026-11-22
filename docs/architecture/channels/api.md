@@ -419,14 +419,18 @@ read-only token reaches none of them and gets a 403.
 - `images.readBytes` returns the stored PNG for `full`, and a WebP of at most 512 pixels on its long
   edge for `thumbnail`. The server makes each thumbnail on the read and stores none, so a forget
   leaves no copy of the picture. A forgotten image returns `IMAGE_FORGOTTEN`.
-- `images.forget` takes a client action ID and an image ID, and forgets the image's `tool_called`
-  record, its `tool_result` record and every `image.named` record that names it, on whichever thread
-  each one sits. It starts every record's [forget](#forgetting-a-record) in one transaction, then
-  runs each cleanup. The answer's backup state is `failed` when any record's state is failed, else
-  `unknown` when any is unknown, else `pending` when any is pending, else the state they share. A
-  retry with the same client action ID runs the cleanups again, which finishes what a failed call
-  left. A forget of an image that is already forgotten forgets the records that still have a key,
-  and answers with the time of the first forget when none does.
+- `images.forget` takes a client action ID and an image ID. It forgets the image's `tool_called`
+  record and `tool_result` record, every `image.named` record that names it, the call and result of
+  each `image.name` that named it, and each `image.list`, `image.read` and `image.name` result that
+  quotes its name or prompt, on whichever thread each one sits. One transaction finds those records,
+  starts every record's [forget](#forgetting-a-record) and keeps the list with the client action,
+  then each cleanup runs. The answer's backup state is `failed` when any record's state is failed,
+  else `unknown` when any is unknown, else `pending` when any is pending, else the state they share.
+  A retry with the same client action ID runs the cleanups of the kept list again, which finishes
+  what a failed call left. A forget of an image that is already forgotten forgets the records that
+  still have a key, and answers with the time of the first forget when none does. From the moment a
+  forget starts, `image.name` refuses the image as forgotten, so no name is written between the
+  start and the cleanup.
 
 ## Reading a code-run file
 

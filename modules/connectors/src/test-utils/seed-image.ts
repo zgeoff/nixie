@@ -1,8 +1,7 @@
 import type { Log } from '@heynixie/log';
-import { writeRecords } from '@heynixie/log';
+import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import invariant from 'tiny-invariant';
-import { imageNamedCodec } from '../image/image-named-codec';
-import type { ImageTables } from '../image/image-tables';
+import { writeImageRow } from '../image/write-image-row';
 
 export interface ImageSeed {
   readonly image: string;
@@ -31,54 +30,52 @@ export interface SeededImage {
 
 // Writes the tool_called and tool_result records that hold the bytes and the prompt, and the images
 // row that names the result, as an image tool leaves them.
-export async function seedImage(log: Log, seed: ImageSeed): Promise<SeededImage> {
-  const [call] = await writeRecords(log, [
-    {
-      kind: 'tool_called',
-      definitions: { snapshotHash: 'sha256:test' },
-      thread: 'conversation',
-      payload: {
-        callID: `call-${seed.image}`,
-        runID: 'run-1',
-        toolUseID: null,
-        tool: seed.source === 'draw' ? 'image.draw' : 'image.import',
-      },
-      erasable: { input: seed.prompt === undefined ? {} : { prompt: seed.prompt } },
-    },
-  ]);
-
-  invariant(call, 'the log wrote the call record');
-
-  const [record] = await writeRecords(log, [
-    {
-      kind: 'tool_result',
-      definitions: { snapshotHash: 'sha256:test' },
-      thread: 'conversation',
-      parent: call.sequence,
-      payload: {
-        callID: `call-${seed.image}`,
-        runID: 'run-1',
-        toolUseID: null,
-        outcome: 'result',
-        actionID: null,
-        sources: {},
-      },
-      erasable: {
-        result: {
-          image: seed.image,
-          ...(seed.prompt === undefined ? {} : { prompt: seed.prompt }),
+export function seedImage(log: Log, seed: ImageSeed): Promise<SeededImage> {
+  return withWriteTransaction(log.writer, async (tx) => {
+    const [call] = await writeRecordsInTransaction(tx, log, [
+      {
+        kind: 'tool_called',
+        definitions: { snapshotHash: 'sha256:test' },
+        thread: 'conversation',
+        payload: {
+          callID: `call-${seed.image}`,
+          runID: 'run-1',
+          toolUseID: null,
+          tool: seed.source === 'draw' ? 'image.draw' : 'image.import',
         },
+        erasable: { input: seed.prompt === undefined ? {} : { prompt: seed.prompt } },
       },
-      attachments: [seed.bytes],
-    },
-  ]);
+    ]);
 
-  invariant(record, 'the log wrote the result record');
+    invariant(call, 'the log wrote the call record');
 
-  await log.writer.db
-    .$extendTables<ImageTables>()
-    .insertInto('images')
-    .values({
+    const [record] = await writeRecordsInTransaction(tx, log, [
+      {
+        kind: 'tool_result',
+        definitions: { snapshotHash: 'sha256:test' },
+        thread: 'conversation',
+        parent: call.sequence,
+        payload: {
+          callID: `call-${seed.image}`,
+          runID: 'run-1',
+          toolUseID: null,
+          outcome: 'result',
+          actionID: null,
+          sources: {},
+        },
+        erasable: {
+          result: {
+            image: seed.image,
+            ...(seed.prompt === undefined ? {} : { prompt: seed.prompt }),
+          },
+        },
+        attachments: [seed.bytes],
+      },
+    ]);
+
+    invariant(record, 'the log wrote the result record');
+
+    await writeImageRow(tx, {
       image_id: seed.image,
       uuid: crypto.randomUUID(),
       sequence: record.sequence,
@@ -93,32 +90,8 @@ export async function seedImage(log: Log, seed: ImageSeed): Promise<SeededImage>
       size: '64x48',
       byte_count: seed.bytes.byteLength,
       created_at: seed.createdAtMs ?? 1,
-    })
-    .execute();
+    });
 
-  return { callSequence: call.sequence, sequence: record.sequence };
-}
-
-export interface ImageNameSeed {
-  readonly image: string;
-
-  // null clears the name
-  readonly name: string | null;
-}
-
-// Writes the image.named record that the name tool leaves.
-export async function seedImageName(log: Log, seed: ImageNameSeed): Promise<{ sequence: number }> {
-  const [record] = await writeRecords(log, [
-    {
-      kind: imageNamedCodec.kind,
-      definitions: { snapshotHash: 'sha256:test' },
-      thread: 'conversation',
-      payload: imageNamedCodec.encode({ image: seed.image }),
-      erasable: { name: seed.name },
-    },
-  ]);
-
-  invariant(record, 'the log wrote the name record');
-
-  return { sequence: record.sequence };
+    return { callSequence: call.sequence, sequence: record.sequence };
+  });
 }

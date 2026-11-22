@@ -1,12 +1,10 @@
-import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import type { ToolDefinition } from '@heynixie/tools';
 import { z } from 'zod';
 import { buildImageOutput } from './build-image-output';
-import { imageNamedCodec } from './image-named-codec';
 import { noteDeclaration } from './note-declaration';
-import { readImageEntry } from './read-image-entry';
 import { refuseImage } from './refuse-image';
 import type { ImageToolOptions } from './types';
+import { writeImageName } from './write-image-name';
 
 const nameInput = {
   type: 'object',
@@ -39,7 +37,11 @@ export function buildImageNameTool(options: ImageToolOptions): ToolDefinition {
     run: async (call, context) => {
       const input = nameArguments.parse(call.input);
 
-      const entry = await readImageEntry(options.log, input.image);
+      const entry = await writeImageName(options, {
+        thread: context.run.thread,
+        image: input.image,
+        name: input.name,
+      });
 
       if (entry.kind === 'missing') {
         return {
@@ -54,18 +56,6 @@ export function buildImageNameTool(options: ImageToolOptions): ToolDefinition {
           ...refuseImage('IMAGE_FORGOTTEN', `The image ${input.image} was forgotten.`),
         };
       }
-
-      await withWriteTransaction(options.log.writer, (tx) =>
-        writeRecordsInTransaction(tx, options.log, [
-          {
-            kind: imageNamedCodec.kind,
-            definitions: options.definitions(),
-            thread: context.run.thread,
-            payload: imageNamedCodec.encode({ image: entry.row.image_id }),
-            erasable: { name: input.name },
-          },
-        ]),
-      );
 
       return { status: 'ok', result: { image: entry.row.image_id, name: input.name } };
     },

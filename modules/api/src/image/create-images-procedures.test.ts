@@ -1,6 +1,13 @@
 import { expect, test } from 'bun:test';
 import { readImageEntry } from '@heynixie/connectors';
-import { encodeTestImage, seedImage, seedImageName } from '@heynixie/connectors/test-utils';
+import {
+  buildStubImageProvider,
+  encodeTestImage,
+  readImageID,
+  seedImage,
+  seedImageName,
+  startTestImages,
+} from '@heynixie/connectors/test-utils';
 import { clientHeaderName } from '@heynixie/contract';
 import { readRecords } from '@heynixie/log';
 import { buildTestClient } from '../test-utils/build-test-client';
@@ -20,8 +27,14 @@ async function setupTest() {
   const laptop = await createDeviceSession(api.context, 'laptop');
   const png = await encodeTestImage({ width: 4, height: 3 }, 'png');
 
+  const images = await startTestImages({
+    log: api.context.log,
+    providers: { main: buildStubImageProvider(), second: buildStubImageProvider() },
+  });
+
   return {
     ...api,
+    images,
     readOnlyToken,
     png: new Uint8Array(png),
     token: laptop.token,
@@ -275,52 +288,50 @@ test.each(['thumbnail', 'full'] as const)(
 
 test('#images.forget leaves no prompt, name or picture readable to the client or the assistant', async () => {
   const ctx = await setupTest();
+  const drawn = await ctx.images.read('image.draw', { prompt: 'a harbour at dusk' });
 
-  const seeded = await seedImage(ctx.context.log, {
-    image: 'k3x9m2p7qa',
-    source: 'draw',
-    bytes: ctx.png,
-    prompt: 'a harbour at dusk',
-  });
+  const image = readImageID(drawn);
 
-  const earlierName = await seedImageName(ctx.context.log, {
-    image: 'k3x9m2p7qa',
-    name: 'harbour',
-  });
-
-  const latestName = await seedImageName(ctx.context.log, {
-    image: 'k3x9m2p7qa',
-    name: 'harbour at dusk',
-  });
+  await ctx.images.read('image.name', { image, name: 'harbour' });
+  await ctx.images.read('image.name', { image, name: 'harbour at dusk' });
+  await ctx.images.read('image.list', {});
+  await ctx.images.read('image.read', { image });
 
   const forgotten = await ctx.client.images.forget({
     clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
-    image: 'k3x9m2p7qa',
+    image,
   });
 
-  const sequences = [
-    seeded.callSequence,
-    seeded.sequence,
-    earlierName.sequence,
-    latestName.sequence,
-  ];
+  const entries = await readRecords(ctx.context.log, {
+    afterSequence: 0,
+    kinds: ['tool_called', 'tool_result', 'image.named'],
+    limit: 100,
+  });
 
-  const entries = await readRecords(ctx.context.log, { afterSequence: 0, sequences, limit: 10 });
-  const entry = await readImageEntry(ctx.context.log, 'k3x9m2p7qa');
-  const image = await ctx.client.images.read({ image: 'k3x9m2p7qa' });
+  const entry = await readImageEntry(ctx.context.log, image);
+  const read = await ctx.client.images.read({ image });
+  const listed = await ctx.images.read('image.list', {});
 
   expect({
     forgottenAt: forgotten.forgottenAt,
     backup: forgotten.backup,
-    erasable: entries.map((found) => found.record.erasable.status),
-    image,
+    readableText: entries
+      .flatMap((found) =>
+        found.record.erasable.status === 'readable'
+          ? [JSON.stringify(found.record.erasable.fields)]
+          : [],
+      )
+      .join(' '),
+    image: read,
     assistantEntry: entry.kind,
+    assistantList: listed['images'],
   }).toStrictEqual({
     forgottenAt: expect.toBeValidDate(),
     backup: { state: 'pending' },
-    erasable: ['shredded', 'shredded', 'shredded', 'shredded'],
+    readableText: expect.not.stringMatching(/harbour|dusk/u),
     image: expect.objectContaining({ name: null, prompt: null, isForgotten: true }),
     assistantEntry: 'forgotten',
+    assistantList: [expect.objectContaining({ name: null, prompt: null, isForgotten: true })],
   });
 });
 
@@ -351,6 +362,65 @@ test('#images.forget keeps the picture of an edit made from the forgotten image'
   });
 });
 
+test('#images.forget finishes the cleanup of a retry with the same client action ID', async () => {
+  const ctx = await setupTest();
+  const drawn = await ctx.images.read('image.draw', { prompt: 'a harbour at dusk' });
+
+  const image = readImageID(drawn);
+
+  await ctx.images.read('image.name', { image, name: 'harbour' });
+  await ctx.images.read('image.list', {});
+
+  let isFailing = true;
+
+  ctx.setSessionCleanup(() => {
+    if (isFailing) {
+      isFailing = false;
+
+      return Promise.reject(new Error('the session rebuild failed'));
+    }
+
+    return Promise.resolve();
+  });
+
+  const input = { clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85', image };
+
+  await ctx.client.images.forget(input).catch(() => null);
+
+  const kinds = ['tool_called', 'tool_result', 'image.named'] as const;
+
+  const after = await readRecords(ctx.context.log, { afterSequence: 0, kinds, limit: 100 });
+  const retry = await ctx.client.images.forget(input);
+  const finished = await readRecords(ctx.context.log, { afterSequence: 0, kinds, limit: 100 });
+
+  const forgotten = await readRecords(ctx.context.log, {
+    afterSequence: 0,
+    kinds: ['record.forgotten'],
+    limit: 100,
+  });
+
+  expect({
+    leftReadable: after.some((found) => found.record.erasable.status === 'readable'),
+    retried: retry.forgottenAt,
+    readableText: finished
+      .flatMap((found) =>
+        found.record.erasable.status === 'readable'
+          ? [JSON.stringify(found.record.erasable.fields)]
+          : [],
+      )
+      .join(' '),
+    forgotten: forgotten.map((found) => found.record.payload['recordSequence']).toSorted(),
+  }).toStrictEqual({
+    leftReadable: true,
+    retried: expect.toBeValidDate(),
+    readableText: expect.not.stringMatching(/harbour|dusk/u),
+    forgotten: finished
+      .filter((found) => found.record.erasable.status === 'shredded')
+      .map((found) => found.record.sequence)
+      .toSorted(),
+  });
+});
+
 test('#images.forget answers the same time to a retry with the same client action ID', async () => {
   const ctx = await setupTest();
 
@@ -369,6 +439,23 @@ test('#images.forget answers the same time to a retry with the same client actio
   });
 
   expect(retry.forgottenAt).toStrictEqual(first.forgottenAt);
+});
+
+test('#images.forget keeps a name from being written while its cleanup is unfinished', async () => {
+  const ctx = await setupTest();
+  const drawn = await ctx.images.read('image.draw', { prompt: 'a harbour at dusk' });
+
+  const image = readImageID(drawn);
+
+  ctx.setSessionCleanup(() => Promise.reject(new Error('the session rebuild failed')));
+
+  await ctx.client.images
+    .forget({ clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85', image })
+    .catch(() => null);
+
+  const renamed = await ctx.images.read('image.name', { image, name: 'ink study' });
+
+  expect(renamed).toMatchObject({ refused: { code: 'IMAGE_FORGOTTEN' } });
 });
 
 test('#images.forget answers the time of the first forget for an image that is already forgotten', async () => {
