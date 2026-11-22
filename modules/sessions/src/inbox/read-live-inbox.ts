@@ -11,6 +11,7 @@ import type { TurnSilence } from '../utils/build-turn-silence';
 import { countImages } from '../utils/count-images';
 import { isPastImageBudget } from '../utils/is-past-image-budget';
 import { mergeImageTallies } from '../utils/merge-image-tallies';
+import { isSilentFire } from './is-silent-fire';
 import { isSilentRecord } from './is-silent-record';
 import { readInboxMessages } from './read-inbox-messages';
 
@@ -27,6 +28,9 @@ export interface LiveInbox {
   readonly canCut: boolean;
 
   readonly sent: Set<number>;
+
+  // the records the turn took that render no message, which the step marks read
+  readonly silent: Set<number>;
   readonly signal: AbortSignal;
 
   readonly times: MessageTimeOptions;
@@ -52,8 +56,18 @@ export async function* readLiveInbox(
   });
 
   for await (const entry of entries) {
-    // A record that renders no text stays unread for the next step: a fire opens its task run, and
-    // an action's wake runs the action.
+    // A fire on the task's own thread stays unread for the step that opens its task run. Any other
+    // record that renders no text is taken as read, so the read mark never stops short of the
+    // messages this turn read after it.
+    if (
+      isInboxRecord(entry.record) &&
+      isSilentRecord(entry.record) &&
+      !isSilentFire(entry.record)
+    ) {
+      live.silent.add(entry.record.sequence);
+      continue;
+    }
+
     if (
       isInboxRecord(entry.record) &&
       !live.sent.has(entry.record.sequence) &&

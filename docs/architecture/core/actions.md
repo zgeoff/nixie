@@ -31,9 +31,10 @@ schedules where they stopped. Done and failed are final, and unknown is final un
 it. An outcome record is a record on the task's thread, so it lands in the task's inbox and wakes
 the task. Its erasable fields hold the connector's result or the provider's reason. Both are outside
 text, so the outcome's message puts a done action's result inside a
-`<tool-result source="untrusted">` block and a failed action's reason inside a block of its own. The
-outcome is the one record of an action that wakes the task: queuing, a release and an attempt's
-start wake nothing.
+`<tool-result source="untrusted">` block and a failed action's reason inside a block of its own.
+Queuing, a release and an attempt's start wake nothing, so the outcome is the one message the task
+gets about an action. An action that runs in the step also needs a wake that starts the step, which
+[approved actions](#approved-actions) covers.
 
 An unknown outcome writes no outcome record while nixie reconciles it, so the task is not woken for
 a question that nixie may settle itself. Only an unknown outcome that goes to the user writes one.

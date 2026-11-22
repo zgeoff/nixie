@@ -51,6 +51,42 @@ test('it reads the time of the approval that queued the settled action', async (
   expect(approvedAt).toStrictEqual(new Date('2027-03-09T03:00:00Z'));
 });
 
+test('it reads the time of an approval written after the outcome, as an approval past the deadline is', async () => {
+  const ctx = await setupTest();
+
+  const [outcome] = await writeRecords(ctx.log, [
+    {
+      kind: 'action.outcome',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: {
+        actionID: 'b-uuid',
+        tool: 'test.send',
+        status: 'failed',
+        attempt: 0,
+        reason: 'deadline_passed',
+      },
+    },
+    {
+      kind: 'policy.action_answered',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: {
+        proposalID: 'b-uuid',
+        shortID: 'k3vq8m2xpa',
+        answer: 'approved',
+        actionID: 'b-uuid',
+      },
+    },
+  ]);
+
+  invariant(outcome, 'the outcome was written');
+
+  const approvedAt = await readApprovalTime(ctx.context, outcome);
+
+  expect(approvedAt).toStrictEqual(new Date('2027-03-09T03:00:00Z'));
+});
+
 test('it reads no approval time for an action that an allow rule queued', async () => {
   const ctx = await setupTest();
 
