@@ -368,6 +368,25 @@ test.skipIf(!hasChromium)(
   },
 );
 
+test.skipIf(!hasChromium)(
+  'it takes the picture of a control below the viewport without scrolling the page',
+  async () => {
+    const ctx = await setupTest();
+
+    await ctx.send(ctx.open(ctx.url));
+    await ctx.send({ op: 'read', tab: 't1', mode: 'snapshot' });
+
+    const before = await ctx.send({ op: 'screenshot', tab: 't1' });
+    const control = await ctx.send({ op: 'screenshot', tab: 't1', control: 'E5' });
+    const after = await ctx.send({ op: 'screenshot', tab: 't1' });
+
+    expect([control, after]).toStrictEqual([
+      { kind: 'failed', ok: false, reason: 'stale_element' },
+      before,
+    ]);
+  },
+);
+
 test.skipIf(!hasChromium)('it refuses the picture of a control that moved', async () => {
   const ctx = await setupTest();
 

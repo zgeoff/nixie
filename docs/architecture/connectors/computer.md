@@ -119,8 +119,9 @@ server, so a restart never reuses one.
 `E12`. It moves the viewport by most of a screen, or scrolls the control into view, and returns
 `{ tab, isAtEnd }`. For `up`, `isAtEnd` means the top; otherwise it means the bottom. It stores no
 page, so it never counts toward a tab's 5 pages. `browser_screenshot` takes an optional `control`
-and then pictures that control's box. Both return `STALE_ELEMENT` for a control that no longer holds
-its number.
+and then pictures that control's box, cut to the viewport, without scrolling the page, so a person
+who holds the desktop keeps their view. A picture of a control wholly outside the viewport returns
+`STALE_ELEMENT`, and so does either tool for a control that no longer holds its number.
 
 **Old names.** Every browser tool carries the `browser_` prefix, and a call under a name from before
 it is an unknown tool. An action queued under `computer.fill` or `computer.click` before the rename

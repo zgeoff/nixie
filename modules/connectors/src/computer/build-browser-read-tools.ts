@@ -232,8 +232,9 @@ function buildScreenshotTool(options: ComputerToolOptions): ToolDefinition {
     name: 'computer.browser_screenshot',
     description: [
       'Shows a picture of an open tab beside the result. With control, such as E4, the picture ',
-      'is that control’s box; without it, the viewport. A control that has moved is refused with ',
-      'STALE_ELEMENT, so read the page again.',
+      'is that control’s box, cut to the viewport, and it never scrolls the page; without it, the ',
+      'viewport. A control that has moved or lies outside the viewport is refused with ',
+      'STALE_ELEMENT, so scroll to it or read the page again.',
     ].join(''),
     input: {
       type: 'object',
