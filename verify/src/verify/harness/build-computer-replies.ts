@@ -1,12 +1,13 @@
 import type { ScriptedReply } from '@heynixie/testing';
 
 export interface ComputerSessionInput {
-  readonly kind: 'browser' | 'shell';
+  readonly kind: 'browser' | 'shell' | 'screen';
   readonly text: string;
 }
 
-// The replies of a turn in which the model opens the harness's own page in its browser, or writes a
-// file on its shell's disk and reads it back.
+// The replies of a turn in which the model opens the harness's own page in its browser, writes a
+// file on its shell's disk and reads it back, or opens the page, takes a screenshot of the desktop
+// and clicks a point of it.
 export function buildComputerReplies(
   input: ComputerSessionInput,
   siteURL: string,
@@ -14,6 +15,20 @@ export function buildComputerReplies(
   if (input.kind === 'browser') {
     return [
       { toolUse: { name: 'mcp__nixie__computer_browser_open', input: { url: siteURL } } },
+      { text: input.text },
+    ];
+  }
+
+  if (input.kind === 'screen') {
+    return [
+      { toolUse: { name: 'mcp__nixie__computer_browser_open', input: { url: siteURL } } },
+      { toolUse: { name: 'mcp__nixie__computer_screenshot', input: {} } },
+      {
+        toolUse: {
+          name: 'mcp__nixie__computer_screen_click',
+          input: { x: 640, y: 400, button: 'left' },
+        },
+      },
       { text: input.text },
     ];
   }

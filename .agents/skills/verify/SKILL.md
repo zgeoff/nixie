@@ -59,6 +59,7 @@ Read a feature's file before you run its journey.
 | drawing          | Draw a picture, edit it, and list both                                     | [references/feature-drawing.md](references/feature-drawing.md)                   |
 | computer-shell   | Write and read back a shell file                                           | [references/feature-computer-shell.md](references/feature-computer-shell.md)     |
 | computer-browser | Open a page in the assistant's browser                                     | [references/feature-computer-browser.md](references/feature-computer-browser.md) |
+| computer-screen  | Click a point of the assistant's desktop                                   | [references/feature-computer-screen.md](references/feature-computer-screen.md)   |
 | device-screen    | Enrol a device and see a picture on it                                     | [references/feature-device-screen.md](references/feature-device-screen.md)       |
 
 <!-- /wringer:features -->
@@ -149,9 +150,8 @@ that command alone. A command with neither runs on the registry's first target, 
 | `preview` | `bun verify use --target preview`, then `bun verify attach` | read-write | The PR's preview, real model; [setup](references/preview-setup.md); leave with `detach`. |
 | `prod`    | `bun verify use --target prod`, then `bun verify attach`    | read-only  | [The prod check](references/prod-check.md).                                              |
 
-- Run `sign-in-enrol` first, and after each `up --restart`, as
-  [its file](references/feature-sign-in-enrol.md) says, except before `device-screen`, which needs a
-  browser with no session.
+- Run [sign-in-enrol](references/feature-sign-in-enrol.md) first, and after each `up --restart`,
+  except before `device-screen`, which needs a browser with no session.
 
 <!-- /repo -->
 
@@ -168,7 +168,7 @@ for its commands.
 
 <!-- repo: commands -->
 
-- Pass `--role` and `--name` to `browser type` and `browser click`, or `--ref`, an ID from the last
+- Pass `--role` and `--name` to `browser type` and `browser click`, or `--ref` from the last
   `browser snapshot`.
 
 <!-- /repo -->
@@ -178,9 +178,9 @@ for its commands.
 <!-- repo: registry -->
 
 [`create-verify-registry.ts`](../../../verify/src/verify/create-verify-registry.ts) declares the
-targets, actions, commands, doctor checks and features.
+targets, actions, commands, checks and features.
 [`feature-paths.ts`](../../../verify/src/verify/feature-paths.ts) holds each feature's `paths`, the
-shared globs that make every verdict stale, and the `.ignore` list.
+shared globs and the `.ignore` list.
 
 <!-- /repo -->
 
