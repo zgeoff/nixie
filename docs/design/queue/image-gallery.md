@@ -27,9 +27,9 @@ flowchart LR
 
 ## Contracts
 
-The api module serves the 4 calls. The connectors module exports the reads they need of the `images`
-table, the result records and the names, as it does for `files.*`, and the lookup of the records
-that `images.forget` takes.
+The api module serves the 4 calls. The connectors module exports the reads of the `images` table,
+the result records and the names that the calls need, as it does for `files.*`, and the lookup of
+the records that `images.forget` takes.
 
 ### The image in a reply
 
@@ -177,9 +177,9 @@ images: {
   chain keeps its shape. An edit made from a forgotten pass keeps its picture and its "Edited from"
   link. `images.read` of that pass returns its `from`, so the walk goes on through it to the passes
   before it.
-- The forget control in the lightbox first asks, as every forget control does. The confirmation says
-  that the picture, its prompt, its name and the assistant's request for it are forgotten, and that
-  edits made from it keep their pictures.
+- The forget control in the lightbox asks for confirmation first, as every forget control does. The
+  confirmation warns that the picture, its prompt, its name and the assistant's request for it are
+  forgotten, and that edits made from it keep their pictures.
 - After the forget, the lightbox shows the line with the key backup state in place of the control,
   the client drops the image's cached bytes, and the grid drops the image and reads `images.list`
   again.
