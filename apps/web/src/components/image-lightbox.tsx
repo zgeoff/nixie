@@ -1,12 +1,13 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { css } from '../styled-system/css';
-import type { GalleryImage } from '../types';
+import type { ForgetBackup, GalleryImage } from '../types';
 import { isImageForgottenError } from '../utils/is-image-forgotten-error';
 import { useBlobURL } from '../utils/use-blob-url';
 import { useNixieClient } from '../utils/use-nixie-client';
+import { ForgetBackupLine } from './forget-backup-line';
 import { ImageForgetControl } from './image-forget-control';
 
 export interface ImageLightboxProps {
@@ -50,6 +51,11 @@ const details = css({
   minWidth: '0',
 });
 
+interface ForgottenImage {
+  readonly image: string;
+  readonly backup: ForgetBackup;
+}
+
 const closeButton = css({ display: 'block', marginBlockEnd: '2', marginInlineStart: 'auto' });
 
 // The full image beside its name, its prompt and where it came from. It reads the image by its ID,
@@ -66,11 +72,14 @@ export function ImageLightbox(props: ImageLightboxProps): ReactNode {
     }
   }, []);
 
+  const [forget, setForget] = useState<ForgottenImage | null>(null);
+
   const read = useQuery({
     ...nixie.queryUtils.images.read.queryOptions({ input: { image: props.image } }),
     retry: false,
   });
 
+  const backup = forget?.image === props.image ? forget.backup : null;
   const title = read.data?.name ?? props.image;
 
   return (
@@ -85,7 +94,15 @@ export function ImageLightbox(props: ImageLightboxProps): ReactNode {
         <div className={details}>
           {read.isError ? <p role="alert">This image could not be read.</p> : null}
           {read.isSuccess ? (
-            <ImageDetails image={read.data} onForgotten={props.onForgotten} />
+            <ImageDetails
+              backup={backup}
+              image={read.data}
+              onForgotten={(image, forgetBackup) => {
+                setForget({ image, backup: forgetBackup });
+
+                props.onForgotten(image);
+              }}
+            />
           ) : null}
         </div>
       </div>
@@ -133,8 +150,9 @@ function FullImage(props: FullImageProps): ReactNode {
 const prompt = css({ overflowWrap: 'anywhere', whiteSpace: 'pre-wrap' });
 
 interface ImageDetailsProps {
+  readonly backup: ForgetBackup | null;
   readonly image: GalleryImage;
-  readonly onForgotten: (image: string) => void;
+  readonly onForgotten: (image: string, backup: ForgetBackup) => void;
 }
 
 function ImageDetails(props: ImageDetailsProps): ReactNode {
@@ -150,7 +168,10 @@ function ImageDetails(props: ImageDetailsProps): ReactNode {
         </time>
       )}
       <ImageSource image={image} />
-      <ImageForgetControl image={image.image} key={image.image} onForgotten={props.onForgotten} />
+      {props.backup === null ? null : <ForgetBackupLine backup={props.backup} />}
+      {image.isForgotten || props.backup !== null ? null : (
+        <ImageForgetControl image={image.image} key={image.image} onForgotten={props.onForgotten} />
+      )}
     </>
   );
 }

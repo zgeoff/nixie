@@ -4,11 +4,10 @@ import { useState } from 'react';
 import { css } from '../styled-system/css';
 import type { ForgetBackup } from '../types';
 import { useNixieClient } from '../utils/use-nixie-client';
-import { ForgetBackupLine } from './forget-backup-line';
 
 export interface ImageForgetControlProps {
   readonly image: string;
-  readonly onForgotten: (image: string) => void;
+  readonly onForgotten: (image: string, backup: ForgetBackup) => void;
 }
 
 const control = css({ color: 'textMuted', display: 'block', fontSize: 'sm', marginTop: '1' });
@@ -23,18 +22,16 @@ const confirmation = css({
 });
 
 // The forget of a whole image: its picture, its prompt, its name and the assistant's request for it.
-// The control asks first, and after the forget it shows the key backup state in its place.
+// The control asks first, and hands the key backup state to its caller after the forget.
 export function ImageForgetControl(props: ImageForgetControlProps): ReactNode {
   const nixie = useNixieClient();
   const queryClient = useQueryClient();
   const [actionID, setActionID] = useState<string | null>(null);
-  const [backup, setBackup] = useState<ForgetBackup | null>(null);
 
   const forget = useMutation(
     nixie.queryUtils.images.forget.mutationOptions({
       onSuccess: (result, input) => {
         setActionID(null);
-        setBackup(result.backup);
 
         queryClient.removeQueries({ queryKey: nixie.queryUtils.images.readBytes.key() });
 
@@ -42,14 +39,10 @@ export function ImageForgetControl(props: ImageForgetControlProps): ReactNode {
         // the view that is not on screen too.
         void queryClient.resetQueries({ queryKey: nixie.queryUtils.images.list.key() });
         void queryClient.resetQueries({ queryKey: nixie.queryUtils.images.read.key() });
-        props.onForgotten(input.image);
+        props.onForgotten(input.image, result.backup);
       },
     }),
   );
-
-  if (backup !== null) {
-    return <ForgetBackupLine backup={backup} />;
-  }
 
   if (actionID === null) {
     return (
