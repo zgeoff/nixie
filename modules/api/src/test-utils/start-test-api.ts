@@ -52,6 +52,10 @@ interface TestAPI {
   // the hold on the desktop that a device session takes, which a running nixie sets with its computer
   readonly setTakeover: (takeover: ReturnType<ComputerWatchPort['readTakeover']>) => void;
 
+  // how many times a request has asked for the hold on the desktop, which says that it reached its
+  // handler
+  readonly readTakeoverCount: () => number;
+
   // every line the watch route and its relay logged
   readonly logged: readonly string[];
   readonly writer: Writer;
@@ -94,7 +98,8 @@ export async function startTestAPI(
   const watching: {
     open: ReturnType<ComputerWatchPort['readWatch']>;
     takeover: ReturnType<ComputerWatchPort['readTakeover']>;
-  } = { open: null, takeover: null };
+    takeoverReads: number;
+  } = { open: null, takeover: null, takeoverReads: 0 };
 
   const logged: string[] = [];
 
@@ -102,7 +107,11 @@ export async function startTestAPI(
     readSessionCleanup: () => sessions.cleanup,
     readNotebook: () => notebook.store,
     readWatch: () => watching.open,
-    readTakeover: () => watching.takeover,
+    readTakeover: () => {
+      watching.takeoverReads += 1;
+
+      return watching.takeover;
+    },
     logger: (event, fields) => {
       logged.push(JSON.stringify({ event, fields }));
     },
@@ -134,6 +143,7 @@ export async function startTestAPI(
     setTakeover: (takeover) => {
       watching.takeover = takeover;
     },
+    readTakeoverCount: () => watching.takeoverReads,
     logged,
   };
 }

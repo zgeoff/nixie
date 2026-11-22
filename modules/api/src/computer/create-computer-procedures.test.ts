@@ -1,5 +1,6 @@
 import { expect, test } from 'bun:test';
 import { clientHeaderName } from '@heynixie/contract';
+import { waitForCondition } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
 import { buildTestClient } from '../test-utils/build-test-client';
 import { createDeviceSession } from '../test-utils/create-device-session';
@@ -438,12 +439,15 @@ test('#computer.handBack gives two overlapping tries of one action the same answ
   const ctx = await setupTest();
 
   const gate = Promise.withResolvers<void>();
+  const insideEnd = Promise.withResolvers<void>();
   const calls = { count: 0 };
 
   ctx.setTakeover({
     start: () => Promise.resolve({ kind: 'started', takenOverAt: 1 }),
     end: async () => {
       calls.count += 1;
+
+      insideEnd.resolve();
 
       await gate.promise;
 
@@ -455,7 +459,13 @@ test('#computer.handBack gives two overlapping tries of one action the same answ
 
   const clientActionID = crypto.randomUUID();
   const first = ctx.client.computer.handBack({ clientActionID });
+
+  await insideEnd.promise;
+
+  const readsBeforeSecond = ctx.readTakeoverCount();
   const second = ctx.client.computer.handBack({ clientActionID });
+
+  await waitForCondition(() => ctx.readTakeoverCount() > readsBeforeSecond);
 
   gate.resolve();
 
