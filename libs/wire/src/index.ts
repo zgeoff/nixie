@@ -129,3 +129,8 @@ export type {
 } from './computer/run-computer-guest';
 
 export { runComputerGuest } from './computer/run-computer-guest';
+export type { SendVNCFrame } from './computer/run-computer-guest';
+export type { VNCFrame } from './computer/vnc-frame';
+export { vncChunkLimitBytes } from './computer/vnc-frame';
+export { decodeVNCFrame } from './computer/decode-vnc-frame';
+export { encodeVNCFrame } from './computer/encode-vnc-frame';

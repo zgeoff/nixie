@@ -5,7 +5,10 @@ import type { ComputerHopFrame } from './computer-hop-frame';
 import type { ComputerReply } from './computer-reply';
 import type { ComputerRequest } from './computer-request';
 import { decodeComputerRequest } from './decode-computer-request';
+import { decodeVNCFrame } from './decode-vnc-frame';
 import { encodeComputerMessage } from './encode-computer-message';
+import { encodeVNCFrame } from './encode-vnc-frame';
+import type { VNCFrame } from './vnc-frame';
 
 export interface ComputerGuestIO {
   readonly input: ReadableStream<Uint8Array>;
@@ -29,10 +32,17 @@ export interface ComputerScanAsks {
   readonly askScanText: AskScanText;
 }
 
+// sends a VNC frame to the server, between the frames of any reply
+export type SendVNCFrame = (frame: VNCFrame) => Promise<void>;
+
 export interface ComputerGuestOptions {
   // Called once, before the first frame is read, with the asks of the guest's scan channel. The
   // channel stays open until the input closes, so a guest can ask for a scan while no request runs.
   readonly onReady?: (asks: ComputerScanAsks) => void;
+
+  // Called for each VNC frame the server sends, outside the request queue, so a long request never
+  // stalls a stream. It gets the function that sends the guest's own frames.
+  readonly onVNCFrame?: (frame: VNCFrame, send: SendVNCFrame) => void;
 }
 
 // A guest answers request frames one at a time, until its input closes. Its scan channel is
@@ -56,7 +66,13 @@ export async function runComputerGuest(
   };
 
   options.onReady?.(asks);
-  const pumping = pumpFrames(io.input, maxFrameBytes, requests, answers);
+  const sendVNCFrame: SendVNCFrame = (frame) => send(encodeFrame(encodeVNCFrame(frame)));
+
+  const pumping = pumpFrames(io.input, maxFrameBytes, {
+    requests,
+    answers,
+    onVNCFrame: (frame) => options.onVNCFrame?.(frame, sendVNCFrame),
+  });
 
   for (;;) {
     const frame = await requests.next();
@@ -212,12 +228,19 @@ function makeAsker(
     });
 }
 
+interface PumpTargets {
+  readonly requests: FrameQueue;
+  readonly answers: AnswerQueue;
+  readonly onVNCFrame: (frame: VNCFrame) => void;
+}
+
 async function pumpFrames(
   input: ReadableStream<Uint8Array>,
   maxFrameBytes: number,
-  requests: FrameQueue,
-  answers: AnswerQueue,
+  targets: PumpTargets,
 ): Promise<void> {
+  const requests = targets.requests;
+  const answers = targets.answers;
   const decode = makeFrameDecoder(maxFrameBytes);
   const reader = input.getReader();
 
@@ -230,6 +253,13 @@ async function pumpFrames(
       }
 
       for (const frame of decode(chunk.value)) {
+        const vncFrame = decodeVNCFrame(frame);
+
+        if (vncFrame !== null) {
+          targets.onVNCFrame(vncFrame);
+          continue;
+        }
+
         const answer = readHopAnswer(frame);
 
         if (answer === null) {
