@@ -40,5 +40,10 @@ test('it ends a connection whose target refuses it', async () => {
     relay.stop();
   });
 
-  await expect(fetch(`http://127.0.0.1:${String(relay.port)}/`)).rejects.toThrow();
+  const outcome = await fetch(`http://127.0.0.1:${String(relay.port)}/`).then(
+    () => 'answered',
+    () => 'refused',
+  );
+
+  expect(outcome).toBe('refused');
 });
