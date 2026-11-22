@@ -15,8 +15,8 @@ metadata:
 Use `bun verify` to start the app, use each feature your change touches the way a user would, and
 record a verdict that it works. Put the report in the PR with step 11 of
 [Check a change](#check-a-change), and hand back the PR link and each feature you could not verify.
-Leave `bun verify gate` to CI: it reads the report from the PR description, and fails a PR that
-changes a feature with no verdict there.
+Leave `bun verify gate` to CI: it fails a PR that changes a feature with no verdict in its
+description.
 
 The mistakes that cost the most time:
 
@@ -29,9 +29,9 @@ The mistakes that cost the most time:
 ## Key rules
 
 - [Check a change](#check-a-change): for each changed feature, run its journey, check the end state,
-  then `done`; then push and publish with the upload token read in a subshell.
+  then `done`; then push and publish.
 - [Read the envelope](#read-the-envelope): branch on the exit code and `error.code`, never on the
-  message, which can change in any release.
+  message.
 - [Targets](#targets): check a change on a launch target, which `bun verify up` starts.
 - [Commands](#commands): read `--help` before you guess a flag.
 - [Edit the skill and the registry](#edit-the-skill-and-the-registry): map each new file in the
@@ -147,11 +147,11 @@ that command alone. A command with neither runs on the registry's first target, 
 
 <!-- repo: targets -->
 
-| Target    | Start with                                                  | Access     | Notes                                             |
-| --------- | ----------------------------------------------------------- | ---------- | ------------------------------------------------- |
-| `local`   | `bun verify use --target local`, then `bun verify up`       | read-write | Test build, scripted model.                       |
-| `preview` | `bun verify use --target preview`, then `bun verify attach` | read-write | Real model; [setup](references/preview-setup.md). |
-| `prod`    | `bun verify use --target prod`, then `bun verify attach`    | read-only  | [Prod check](references/prod-check.md).           |
+| Target    | Start with                                                  | Access     | Notes                                                               |
+| --------- | ----------------------------------------------------------- | ---------- | ------------------------------------------------------------------- |
+| `local`   | `bun verify use --target local`, then `bun verify up`       | read-write | Test build, scripted model.                                         |
+| `preview` | `bun verify use --target preview`, then `bun verify attach` | read-write | The PR's preview, real model; [setup](references/preview-setup.md). |
+| `prod`    | `bun verify use --target prod`, then `bun verify attach`    | read-only  | [The prod check](references/prod-check.md).                         |
 
 - Run [sign-in-enrol](references/feature-sign-in-enrol.md) first, and after each `up --restart`,
   except before `device-screen`.
@@ -171,7 +171,8 @@ for its commands.
 
 <!-- repo: commands -->
 
-- Give `browser type` and `browser click` `--role` and `--name`, or `--ref` from `browser snapshot`.
+- Pass `--role` and `--name` to `browser type` and `browser click`, or `--ref` from the last
+  `browser snapshot`.
 
 <!-- /repo -->
 
