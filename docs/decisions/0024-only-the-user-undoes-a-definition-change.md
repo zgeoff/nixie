@@ -5,9 +5,9 @@
 
 ## Decision
 
-The agent can change a [task definition](../architecture/core/definitions.md), such as its schedule,
-its instructions or its tools, and each change can be undone, which puts the version before it back
-in force. nixie never gives the agent a tool that undoes a change. Only the user can undo one.
+The agent can change a [task definition](../architecture/core/definitions.md): its schedule, its
+instructions or its tools. An undo of a change puts the previous version of the definition back in
+force. nixie never gives the agent a tool that undoes a change. Only the user can undo one.
 
 ## Why
 
@@ -17,7 +17,7 @@ in force. nixie never gives the agent a tool that undoes a change. Only the user
 
 ## Rejected alternatives
 
-| Option                               | Why not                                                               |
-| ------------------------------------ | --------------------------------------------------------------------- |
-| an undo tool for the agent           | A misled agent could restore a version the user replaced.             |
-| an agent undo that the user approves | The user can already undo directly, so the approval only adds a step. |
+| Option                              | Why not                                                               |
+| ----------------------------------- | --------------------------------------------------------------------- |
+| an undo tool for the agent          | A misled agent could restore a version the user replaced.             |
+| an undo tool that the user approves | The user can already undo directly, so the approval only adds a step. |
