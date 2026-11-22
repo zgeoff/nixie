@@ -90,14 +90,41 @@ Enrolment, code issue, revoke, message send, record forget, the changes of the
 task definition change, and each task control share one table of client action IDs, which holds the
 first result of each action and a hash of its input. A retry with the same ID and input gets the
 first result, and the same ID with another procedure, input or caller gets
-`CLIENT_ACTION_ID_REUSED`. Two results hold secrets that nixie keeps only as hashes, so their
-retries answer with fresh values that replace the first:
+`CLIENT_ACTION_ID_REUSED`. Three results hold secrets that nixie keeps only as hashes, or not at
+all, so their retries answer with fresh values that replace the first:
 
 - The API answers an enrolment retry with the same session and a fresh token, and the first token
   stops working. It works only while the code it used would still work.
 - The API answers a code issue retry with a fresh code that keeps the first code's lapse time, so
   one action never leaves 2 codes working. Once the first code is used or lapsed the action is over,
   and a retry gets `CLIENT_ACTION_ID_REUSED`.
+- The API answers a `computer.watch` retry with a fresh watch address. The stored result holds no
+  address, only that one was minted.
+
+## Watching the computer
+
+`computer.watch` takes a client action ID and answers `streamURL`, a WebSocket URL on the API's own
+origin, so the browser's session cookie reaches it. It is a checked action for a signed-in session
+of the `full` scope only. A wall-panel session and a read-only token get the refusal that every call
+outside their allow lists gets, and a revoked or lapsed session gets `UNAUTHORIZED`. It answers
+`COMPUTER_UNAVAILABLE` when the server runs no computer.
+
+The URL names `/rpc/computer/watch-stream` and carries a ticket in its query. The ticket is 32
+random bytes that live in the API's memory for
+[a short lifetime](../../../modules/api/src/computer/create-watch-tickets.ts) and open one socket.
+
+- The upgrade redeems the ticket, which deletes it, and then checks that the cookie or bearer token
+  of the upgrade request resolves to the session that minted it. Any failure answers a bare 401 and
+  keeps the reason out of the answer.
+- The ticket is never stored, because a retry mints a fresh one, and never logged: a refusal logs
+  the route and no query.
+- The socket accepts binary messages only, up to a size cap, and closes on text with code 1003. It
+  relays both ways through [the computer's watch](../connectors/computer.md#watching).
+- The socket closes with code 1008 when its session is revoked or lapses, including while the
+  sandbox is still waking. The API follows `session.revoked` records and re-probes the session on a
+  timer of the shorter of the idle limit and the last-seen interval.
+- The server serves the socket from its own `Bun.serve`, ahead of the Elysia app, so a request that
+  asks for the route skips the app's handlers and takes the server's call gate like any other call.
 
 ## Refusals
 

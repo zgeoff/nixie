@@ -400,3 +400,32 @@ test.skipIf(!hasImpHost)(
     ]);
   },
 );
+
+test.skipIf(!hasImpHost)(
+  'it relays the real VNC server to a watch, which greets with a version',
+  async () => {
+    const ctx = await setupTest();
+
+    const received: Uint8Array[] = [];
+    const closed = { isClosed: false };
+
+    const watch = ctx.computer.watch({
+      send: (bytes) => {
+        received.push(bytes);
+      },
+      close: () => {
+        closed.isClosed = true;
+      },
+    });
+
+    onTestFinished(() => {
+      watch.end();
+    });
+
+    await waitFor(() => {
+      expect(received.length).toBeGreaterThan(0);
+    });
+
+    expect(new TextDecoder().decode(received[0]).startsWith('RFB 00')).toBe(true);
+  },
+);

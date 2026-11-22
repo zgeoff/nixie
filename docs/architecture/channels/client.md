@@ -326,16 +326,36 @@ a blob and never navigates to them.
   enrolment form. A thumbnail that answers `IMAGE_FORGOTTEN` takes its tile off the grid, and any
   other failed read shows "Unavailable".
 
+## The computer page
+
+`/computer` shows the assistant's desktop live, view only. In the browser, it calls `computer.watch`
+with a new client action ID, loads the viewer library, opens the socket the answer names and hands
+the socket to the viewer. The route's loader never calls the API for the watch, so a server render
+opens no socket. The viewer is noVNC, loaded with a dynamic import in the browser only, because the
+library reads the window when it loads.
+
+- The viewer runs with `viewOnly` on, `scaleViewport` on and `resizeSession` off, so the picture
+  scales to fit and a viewer never resizes the desktop or sends a key, a pointer move or a clipboard
+  change.
+- The status line reads "Connecting to the computer." until the ticket comes, then "The computer is
+  waking" while the socket is open and no picture has come, and "Watching the computer. You can look
+  but not touch." once the viewer has the desktop.
+- A stream that ends after a picture says so, and one that ends before a picture or fails to start
+  says "The computer can’t be watched right now." Both show Watch again, which asks for a new
+  ticket. A server with no computer says so and shows no button.
+- Leaving the page closes the socket and stops the viewer.
+
 ## The app shell
 
-Every page sits in one shell, which the root route renders. Its bar holds 13 links: Conversation,
-Memory, Proposals, Mandates, Moments, Tasks, Ended runs, Files, Images, Definitions, Reminders,
-Passkeys and Add a device. The link of the current page carries `aria-current="page"`, and a detail
-page marks its parent, so a task marks Tasks. A page with no entry marks nothing. Below 768px the
-links fold into a menu button that opens a side drawer. The drawer is a native modal dialog, so the
-rest of the page goes inert while it is open. It closes on a link tap, on Escape and on a tap
-outside it, and focus returns to the menu button. CSS alone switches between the bar and the button,
-so the server render matches the client. The conversation fills the height below the bar.
+Every page sits in one shell, which the root route renders. Its bar holds 14 links: Conversation,
+Memory, Proposals, Mandates, Moments, Tasks, Ended runs, Files, Images, Computer, Definitions,
+Reminders, Passkeys and Add a device. The link of the current page carries `aria-current="page"`,
+and a detail page marks its parent, so a task marks Tasks. A page with no entry marks nothing. Below
+768px the links fold into a menu button that opens a side drawer. The drawer is a native modal
+dialog, so the rest of the page goes inert while it is open. It closes on a link tap, on Escape and
+on a tap outside it, and focus returns to the menu button. CSS alone switches between the bar and
+the button, so the server render matches the client. The conversation fills the height below the
+bar.
 
 ## Approvals
 

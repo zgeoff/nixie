@@ -24,7 +24,7 @@ type ExchangeResult =
   | { readonly kind: 'broken'; readonly message: string };
 
 // what a VNC stream's owner hears from the guest
-export interface VNCStreamListener {
+interface VNCStreamListener {
   readonly onData: (bytes: Uint8Array) => void;
 
   // the guest closed the stream, or the guest ended

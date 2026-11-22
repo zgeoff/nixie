@@ -44,6 +44,12 @@ secret reaches the container's configuration or its disk.
 The origin listens on `127.0.0.1:8080`. `NIXIE_BIND` and `NIXIE_PORT` set the address and the port.
 Put HTTPS for your host name in front of the origin, on loopback or your private network only.
 
+The watch socket's address carries a one-use ticket in its query, on the path
+`/rpc/computer/watch-stream`. The recipe's Caddyfile writes no access log. When you add one, or put
+a proxy with its own log in front, drop the query of that path from each log line, so a log never
+holds a ticket. The `/rpc*` rule already sends the socket to nixie, and Caddy carries WebSocket
+upgrades without more settings.
+
 An upgrade changes the tag and the digest of 3 images together: nixie, web, and the backup image
 when the deployment runs one, as a release's notes list them. A rollback reverts that change. The
 [upgrade runbook](../runbooks/upgrades.md) gives the steps.

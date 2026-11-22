@@ -1,6 +1,6 @@
 type Phase = 'version' | 'security' | 'init' | 'messages';
 
-export interface ClientFilterResult {
+interface ClientFilterResult {
   // the bytes to pass on to the VNC server, in order
   readonly forward: readonly Uint8Array[];
 
