@@ -31,6 +31,7 @@ export { pickSpanSource } from './span/pick-span-source';
 export { renderSessionCookie } from './contract/render-session-cookie';
 export { sessionCookieName } from './contract/session-cookie-name';
 export { spanSchema } from './span/span-schema';
+export { galleryImageSchema } from './image/gallery-image-schema';
 export { fileSendInputSchema } from './file/file-send-input-schema';
 export { fileSendResultSchema } from './file/file-send-result-schema';
 export { taskMessageInputSchema } from './message/task-message-input-schema';

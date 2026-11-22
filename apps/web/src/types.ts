@@ -49,6 +49,8 @@ export type SpendRaiseInput = ContractInputs['spend']['raise'];
 
 export type MemoryItem = ContractOutputs['memory']['listItems']['items'][number];
 
+export type GalleryImage = ReadonlyDeep<ContractOutputs['images']['read']>;
+
 export type ForgetBackup = ReadonlyDeep<ContractOutputs['conversation']['forget']['backup']>;
 
 export type ForgetPreview = ReadonlyDeep<ContractOutputs['memory']['previewForget']>;

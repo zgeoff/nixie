@@ -388,6 +388,11 @@ export function createVerifyRegistry(): Wringer {
         paths: featurePaths.drawing,
       },
       {
+        name: 'images-page',
+        summary: 'Open the images page, walk an edit chain, and forget an image',
+        paths: featurePaths['images-page'],
+      },
+      {
         name: 'computer-shell',
         summary: 'Write and read back a shell file',
         paths: featurePaths['computer-shell'],

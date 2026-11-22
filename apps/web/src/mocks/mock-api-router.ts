@@ -8,6 +8,7 @@ import { mockApprovalProcedures } from './mock-approval-procedures';
 import { mockDefinitionProcedures } from './mock-definition-procedures';
 import { mockDeviceProcedures } from './mock-device-procedures';
 import { mockFileProcedures } from './mock-file-procedures';
+import { mockImageProcedures } from './mock-image-procedures';
 import { mockImplementer } from './mock-implementer';
 import { mockMandateProcedures } from './mock-mandate-procedures';
 import { mockMemoryRouter } from './mock-memory-router';
@@ -57,6 +58,7 @@ export const mockAPIRouter = os.router({
   devices: mockDeviceProcedures,
   notebook: mockNotebookProcedures,
   files: mockFileProcedures,
+  images: mockImageProcedures,
   reminders: mockReminderProcedures,
   conversation: {
     read: os.conversation.read.handler((options) => {

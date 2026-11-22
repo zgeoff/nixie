@@ -24,6 +24,7 @@ export const featurePaths = {
   'policy-proposal': [...everyJourney],
   'task-control': [...everyJourney],
   drawing: [...everyJourney],
+  'images-page': [...everyJourney],
   'device-screen': [...everyJourney],
   'computer-browser': [...everyJourney],
   'computer-shell': [...everyJourney],
