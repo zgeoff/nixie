@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.101.0](https://github.com/zgeoff/nixie/compare/v0.100.0...v0.101.0) (2026-11-22)
+
+
+### Features
+
+* **devices:** let a signed-in browser be a device ([#1385](https://github.com/zgeoff/nixie/issues/1385)) ([24c42e5](https://github.com/zgeoff/nixie/commit/24c42e56d3da01a3c030d359c0befa3012f89dd4))
+
 ## [0.100.0](https://github.com/zgeoff/nixie/compare/v0.99.0...v0.100.0) (2026-11-22)
 
 
