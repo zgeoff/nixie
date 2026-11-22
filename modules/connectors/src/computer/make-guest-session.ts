@@ -13,7 +13,7 @@ export interface OutOfCallScans {
   readonly scanText: ComputerScan;
 }
 
-export type ExchangeResult =
+type ExchangeResult =
   | { readonly kind: 'reply'; readonly reply: ComputerReply; readonly refusal: string | null }
   | { readonly kind: 'broken'; readonly message: string };
 

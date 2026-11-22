@@ -56,7 +56,7 @@ interface ComputerTabs {
   readonly isEmpty: () => boolean;
 }
 
-export type MoveGate = 'ready' | 'moving' | 'busy';
+type MoveGate = 'ready' | 'moving' | 'busy';
 
 export interface Computer {
   readonly call: (call: ComputerCall) => Promise<CallResult>;
