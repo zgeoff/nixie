@@ -57,8 +57,8 @@ Read a feature's file before you run its journey.
 | policy-proposal  | Approve a call that an ask rule held unrun                                 | [references/feature-policy-proposal.md](references/feature-policy-proposal.md)   |
 | task-control     | Pause and resume a task, and see its records agree                         | [references/feature-task-control.md](references/feature-task-control.md)         |
 | drawing          | Draw a picture, edit it, and list both                                     | [references/feature-drawing.md](references/feature-drawing.md)                   |
-| computer-browser | Open a page in the assistant's browser                                     | [references/feature-computer-browser.md](references/feature-computer-browser.md) |
 | computer-shell   | Write and read back a shell file                                           | [references/feature-computer-shell.md](references/feature-computer-shell.md)     |
+| computer-browser | Open a page in the assistant's browser                                     | [references/feature-computer-browser.md](references/feature-computer-browser.md) |
 | device-screen    | Enrol a device and see a picture on it                                     | [references/feature-device-screen.md](references/feature-device-screen.md)       |
 
 <!-- /wringer:features -->
@@ -149,9 +149,9 @@ that command alone. A command with neither runs on the registry's first target, 
 | `preview` | `bun verify use --target preview`, then `bun verify attach` | read-write | The PR's preview, real model; [setup](references/preview-setup.md); leave with `detach`. |
 | `prod`    | `bun verify use --target prod`, then `bun verify attach`    | read-only  | [The prod check](references/prod-check.md).                                              |
 
-- Run `sign-in-enrol` first and after each `up --restart`, except before `device-screen`.
-- Run `computer-shell` before `computer-browser`. For the reason, read
-  [the shell journey](references/feature-computer-shell.md).
+- Run `sign-in-enrol` first, and after each `up --restart`, as
+  [its file](references/feature-sign-in-enrol.md) says, except before `device-screen`, which needs a
+  browser with no session.
 
 <!-- /repo -->
 
