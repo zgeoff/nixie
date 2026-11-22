@@ -110,7 +110,6 @@ function buildOpenTool(options: ComputerToolOptions): ToolDefinition {
 
       const outcome = await runComputerCall(options, {
         run: context.run,
-        kind: 'browser',
         namedURL: target,
         timeoutMs: openTimeoutMs,
         request: {
@@ -188,7 +187,6 @@ function buildReadTool(options: ComputerToolOptions): ToolDefinition {
 
       const outcome = await runComputerCall(options, {
         run: context.run,
-        kind: 'browser',
         namedURL: null,
         timeoutMs: readTimeoutMs,
         request: { op: 'read', tab: guestTab, mode: input.mode },
@@ -274,7 +272,6 @@ function buildScreenshotTool(options: ComputerToolOptions): ToolDefinition {
 
       const outcome = await runComputerCall(options, {
         run: context.run,
-        kind: 'browser',
         namedURL: null,
         timeoutMs: readTimeoutMs,
         request: {
@@ -380,7 +377,6 @@ function buildScrollTool(options: ComputerToolOptions): ToolDefinition {
 
       const outcome = await runComputerCall(options, {
         run: context.run,
-        kind: 'browser',
         namedURL: null,
         timeoutMs: readTimeoutMs,
         request: { op: 'scroll', tab: guestTab, to: input.to },
@@ -433,7 +429,6 @@ function buildCloseTool(options: ComputerToolOptions): ToolDefinition {
 
       const outcome = await runComputerCall(options, {
         run: context.run,
-        kind: 'browser',
         namedURL: null,
         timeoutMs: readTimeoutMs,
         request: { op: 'close', tab: guestTab },
@@ -501,7 +496,6 @@ function buildDownloadTool(options: ComputerToolOptions, state: ComputerState): 
 
       const outcome = await runComputerCall(options, {
         run: context.run,
-        kind: 'browser',
         namedURL: null,
         timeoutMs: 60_000,
         request: { op: 'download', tab: guestTab, element: input.element },
@@ -516,7 +510,6 @@ function buildDownloadTool(options: ComputerToolOptions, state: ComputerState): 
 
       const written = await runComputerCall(options, {
         run: context.run,
-        kind: 'shell',
         namedURL: null,
         timeoutMs: readTimeoutMs,
         request: { op: 'writeFile', path, base64: outcome.reply.base64 },

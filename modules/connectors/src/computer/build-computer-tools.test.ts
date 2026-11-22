@@ -1,4 +1,5 @@
 import { expect, onTestFinished, test } from 'bun:test';
+import { buildSandboxSpec } from '@heynixie/sandbox';
 import type { ToolDefinition } from '@heynixie/tools';
 import type { ComputerHandler, ComputerReply, ComputerRequest } from '@heynixie/wire';
 import { runComputerGuest } from '@heynixie/wire';
@@ -74,25 +75,33 @@ async function setupTest(options: SetupOptions) {
   };
 
   const answer = options.answer(replies);
+  const copy = { isBlocked: false };
 
-  const adapter = buildStubSandboxAdapter(async (stdin, stdout) => {
-    await runComputerGuest(
-      { input: stdin, write: (bytes) => stdout.write(bytes) },
-      (request, askScan, askScanText) => {
-        requests.push(request);
+  const adapter = buildStubSandboxAdapter(
+    async (stdin, stdout) => {
+      await runComputerGuest(
+        { input: stdin, write: (bytes) => stdout.write(bytes) },
+        (request, askScan, askScanText) => {
+          requests.push(request);
 
-        return answer(request, askScan, askScanText);
-      },
-      10_000_000,
-    );
+          return answer(request, askScan, askScanText);
+        },
+        10_000_000,
+      );
 
-    return 0;
-  });
+      return 0;
+    },
+    { skipCopyIn: () => copy.isBlocked },
+  );
 
   const computer = startComputer({
     adapter,
-    images: { browser: 'browser-image', shell: 'shell-image' },
-    argv: { browser: ['guest'], shell: ['guest'] },
+    image: 'computer-image',
+    argv: ['guest'],
+    scans: {
+      scan: () => Promise.resolve({ kind: 'pass' as const }),
+      scanText: () => Promise.resolve({ kind: 'pass' as const }),
+    },
     deniedRanges: [],
     timeZone: 'UTC',
     logger: () => {},
@@ -140,6 +149,21 @@ async function setupTest(options: SetupOptions) {
   };
 
   return {
+    copy,
+
+    // a sandbox of the earlier release whose disk the new one cannot copy while `copy` blocks it
+    createOldBrowserSandbox: async () => {
+      const old = await adapter.create(
+        buildSandboxSpec({
+          kind: 'browser',
+          image: 'nixie-browser-old',
+          owner: 'computer-browser',
+          limits: { vcpus: 1, memoryMiB: 512, diskMiB: 8192 },
+        }),
+      );
+
+      adapter.files.get(old.id)?.set('/home/stub/profile/Cookies', new Uint8Array([1, 2, 3]));
+    },
     toolNames: built.tools.map((tool) => tool.name),
     requests,
     context,
@@ -494,3 +518,83 @@ test('it refuses a screenshot of a control that moved', async () => {
 
   expect(outcome).toMatchObject({ refusalCode: 'STALE_ELEMENT' });
 });
+
+test.each([
+  'computer.browser_open',
+  'computer.browser_read',
+  'computer.browser_screenshot',
+  'computer.browser_scroll',
+  'computer.browser_close',
+  'computer.browser_download',
+  'computer.run',
+  'computer.read_file',
+  'computer.write_file',
+  'computer.export_file',
+])('it answers COMPUTER_MOVING from %s while the move has not succeeded', async (name) => {
+  const ctx = await setupTest({ answer: (replies) => () => Promise.resolve(replies.page) });
+
+  await ctx.createOldBrowserSandbox();
+
+  ctx.copy.isBlocked = true;
+
+  const outcome = await ctx.call(name, {
+    url: 'https://site.test/',
+    tab: 't1',
+    element: 'E1',
+    path: 'a.txt',
+    text: 'x',
+    command: 'ls',
+  });
+
+  expect(outcome).toMatchObject({
+    status: 'ok',
+    result: { refused: { code: 'COMPUTER_MOVING' } },
+  });
+});
+
+test.each(['computer.browser_click', 'computer.browser_fill'])(
+  'it answers COMPUTER_MOVING when %s is prepared while the move has not succeeded',
+  async (name) => {
+    const ctx = await setupTest({ answer: (replies) => () => Promise.resolve(replies.page) });
+
+    await ctx.createOldBrowserSandbox();
+
+    ctx.copy.isBlocked = true;
+
+    const prepared = await ctx.prepare(name, { tab: 't1', element: 'E1', value: 'x' });
+
+    expect(prepared).toMatchObject({ result: { refused: { code: 'COMPUTER_MOVING' } } });
+  },
+);
+
+test('it settles a queued command as retryable while the move has not succeeded', async () => {
+  const ctx = await setupTest({ answer: (replies) => () => Promise.resolve(replies.run) });
+
+  await ctx.createOldBrowserSandbox();
+
+  ctx.copy.isBlocked = true;
+
+  const outcome = await ctx.attempt('computer.run', { command: 'ls' });
+
+  expect(outcome).toMatchObject({ kind: 'refused_retryable' });
+});
+
+test('it settles a queued command with no remembered preparation as TAB_GONE', async () => {
+  const ctx = await setupTest({ answer: (replies) => () => Promise.resolve(replies.run) });
+  const outcome = await ctx.attempt('computer.run', { command: 'ls' });
+
+  expect(outcome).toMatchObject({ kind: 'refused', reason: expect.stringContaining('replaced') });
+});
+
+test.each(['computer.browser_click', 'computer.browser_fill'])(
+  'it settles a queued %s of an earlier release as TAB_GONE',
+  async (tool) => {
+    const ctx = await setupTest({ answer: (replies) => () => Promise.resolve(replies.page) });
+    const outcome = await ctx.attempt(tool, { tab: 't9', element: 'E1', value: 'x' });
+
+    expect(outcome).toMatchObject({
+      kind: 'refused',
+      reason: expect.stringContaining('no tab t9'),
+    });
+  },
+);
