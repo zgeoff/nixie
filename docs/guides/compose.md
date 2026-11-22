@@ -4,7 +4,7 @@ The files in [`deploy/compose/`](../../deploy/compose/) run nixie on one host wi
 nixie and the web client from one release, each image named by its version tag and digest, and one
 Caddy origin that sends `/rpc` to nixie and every other path to the web client. impd runs on the
 same host as its own stack, outside this recipe, and nixie reaches it outbound by the URL in
-`config.yaml`. nixie decrypts its sops secrets file in its own process at start, so no plaintext
+`config.yaml`. nixie decrypts its sops secrets file in its own process at start, so no decrypted
 secret reaches the container's configuration or its disk.
 [The server](../architecture/deployment/server.md) covers the process and its secrets.
 

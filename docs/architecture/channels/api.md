@@ -217,7 +217,7 @@ compared.
 A forget removes one record with its own text for good, so the text is gone from every copy nixie
 keeps. That covers a message, a reply, a tool call or result, an action, a proposal answer and every
 other kind that carries [erasable fields](../core/erasable-fields.md#declaring-erasable-kinds),
-except 3 groups:
+except these:
 
 - A moment's own records, which the moment's removal takes.
 - A memory item's own records, which the item's forget takes.
@@ -229,13 +229,14 @@ field has a key of its own. A reply that quotes the forgotten text stays readabl
 forgotten too.
 
 The API reads the kinds from `forgettableKinds` in the contract library, and a test holds each
-erasable kind to exactly one of the 3 groups and the list. The forget is a checked action bound to
-the record's thread and sequence. The API answers `RECORD_NOT_FOUND` for a sequence that names a
-record outside the list, a record on another thread, and a record with no thread, such as a session
-label. It answers `ACTION_NOT_FINISHED` for the record that queued an action that has neither run
-nor been cancelled, because the action reads its arguments from that record. The refusal writes
-nothing, so the same client action ID succeeds once the action has run or a stop cancelled it. It
-runs as a durable operation in 2 parts, as a [memory forget](../memory/store.md#forgetting) does:
+erasable kind to exactly one of the moment, memory item and note groups and the list. The forget is
+a checked action bound to the record's thread and sequence. The API answers `RECORD_NOT_FOUND` for a
+sequence that names a record outside the list, a record on another thread, and a record with no
+thread, such as a session label. It answers `ACTION_NOT_FINISHED` for the record that queued an
+action that has neither run nor been cancelled, because the action reads its arguments from that
+record. The refusal writes nothing, so the same client action ID succeeds once the action has run or
+a stop cancelled it. It runs as a durable operation in 2 parts, as a
+[memory forget](../memory/store.md#forgetting) does:
 
 1. In the transaction that keeps the action's result, the API commits a `record.forget_started`
    record on the record's thread, which names the record by its sequence, and a
