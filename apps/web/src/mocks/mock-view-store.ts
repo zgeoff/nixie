@@ -84,9 +84,42 @@ const reminders = new Collection({
   }),
 });
 
+// A stored image that the images page reads. A forgotten one answers as a forget does: it keeps its
+// row and its edit source, and loses its name, its prompt and its picture.
+const images = new Collection({
+  schema: z.object({
+    createdAt: z.date().default(() => faker.date.recent()),
+    data: z
+      .base64()
+      .default(
+        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
+      ),
+    from: z.string().nullable().default(null),
+    image: z.string().default(buildShortID),
+    isForgotten: z.boolean().default(false),
+    isPinned: z.boolean().default(false),
+    name: z.string().nullable().default(null),
+    prompt: z.string().nullable().default(null),
+
+    // the order the rows were made in, which the page's cursor follows
+    rowID: z.int().default(nextSequence),
+    source: z.enum(['draw', 'file', 'photo']).default('draw'),
+  }),
+});
+
+const imageForgets = new Collection({
+  schema: z.object({
+    clientActionID: z.uuid(),
+    forgottenAt: z.date(),
+    image: z.string(),
+  }),
+});
+
 export const mockViewStore = {
   definitions,
   endedRuns,
+  imageForgets,
+  images,
   reminders,
   reportEntries,
 
@@ -95,6 +128,8 @@ export const mockViewStore = {
     reportEntries.clear();
     definitions.clear();
     reminders.clear();
+    images.clear();
+    imageForgets.clear();
   },
 };
 

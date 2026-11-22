@@ -94,7 +94,10 @@ export function buildImageListTool(options: ImageToolOptions): ToolDefinition {
 
       const [prompts, names] = await Promise.all([
         readImagePrompts(options.log, page),
-        readImageNames(options.log),
+        readImageNames(
+          options.log,
+          page.map((row) => row.image_id),
+        ),
       ]);
 
       const hasMore = rows.length > input.limit;
@@ -104,7 +107,10 @@ export function buildImageListTool(options: ImageToolOptions): ToolDefinition {
         result: {
           images: page.map((row) => ({
             image: row.image_id,
-            name: names.get(row.image_id) ?? null,
+            name:
+              prompts.get(row.image_id)?.isForgotten === true
+                ? null
+                : (names.get(row.image_id) ?? null),
             isPinned: row.is_pinned === 1,
             from: row.parent_id,
             prompt: prompts.get(row.image_id)?.prompt ?? null,

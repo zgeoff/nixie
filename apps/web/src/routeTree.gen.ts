@@ -14,6 +14,7 @@ import { Route as AddDeviceRouteImport } from './routes/add-device'
 import { Route as DefinitionsRouteImport } from './routes/definitions'
 import { Route as DeviceRouteImport } from './routes/device'
 import { Route as FilesRouteImport } from './routes/files'
+import { Route as ImagesRouteImport } from './routes/images'
 import { Route as MandatesRouteImport } from './routes/mandates'
 import { Route as MemoryRouteImport } from './routes/memory'
 import { Route as MomentsRouteImport } from './routes/moments'
@@ -48,6 +49,11 @@ const DeviceRoute = DeviceRouteImport.update({
 const FilesRoute = FilesRouteImport.update({
   id: '/files',
   path: '/files',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ImagesRoute = ImagesRouteImport.update({
+  id: '/images',
+  path: '/images',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MandatesRoute = MandatesRouteImport.update({
@@ -107,6 +113,7 @@ export interface FileRoutesByFullPath {
   '/definitions': typeof DefinitionsRoute
   '/device': typeof DeviceRoute
   '/files': typeof FilesRoute
+  '/images': typeof ImagesRoute
   '/mandates': typeof MandatesRoute
   '/memory': typeof MemoryRoute
   '/moments': typeof MomentsRoute
@@ -124,6 +131,7 @@ export interface FileRoutesByTo {
   '/definitions': typeof DefinitionsRoute
   '/device': typeof DeviceRoute
   '/files': typeof FilesRoute
+  '/images': typeof ImagesRoute
   '/mandates': typeof MandatesRoute
   '/memory': typeof MemoryRoute
   '/moments': typeof MomentsRoute
@@ -142,6 +150,7 @@ export interface FileRoutesById {
   '/definitions': typeof DefinitionsRoute
   '/device': typeof DeviceRoute
   '/files': typeof FilesRoute
+  '/images': typeof ImagesRoute
   '/mandates': typeof MandatesRoute
   '/memory': typeof MemoryRoute
   '/moments': typeof MomentsRoute
@@ -161,6 +170,7 @@ export interface FileRouteTypes {
     | '/definitions'
     | '/device'
     | '/files'
+    | '/images'
     | '/mandates'
     | '/memory'
     | '/moments'
@@ -178,6 +188,7 @@ export interface FileRouteTypes {
     | '/definitions'
     | '/device'
     | '/files'
+    | '/images'
     | '/mandates'
     | '/memory'
     | '/moments'
@@ -195,6 +206,7 @@ export interface FileRouteTypes {
     | '/definitions'
     | '/device'
     | '/files'
+    | '/images'
     | '/mandates'
     | '/memory'
     | '/moments'
@@ -213,6 +225,7 @@ export interface RootRouteChildren {
   DefinitionsRoute: typeof DefinitionsRoute
   DeviceRoute: typeof DeviceRoute
   FilesRoute: typeof FilesRoute
+  ImagesRoute: typeof ImagesRoute
   MandatesRoute: typeof MandatesRoute
   MemoryRoute: typeof MemoryRoute
   MomentsRoute: typeof MomentsRoute
@@ -260,6 +273,13 @@ declare module '@tanstack/react-router' {
       path: '/files'
       fullPath: '/files'
       preLoaderRoute: typeof FilesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/images': {
+      id: '/images'
+      path: '/images'
+      fullPath: '/images'
+      preLoaderRoute: typeof ImagesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/mandates': {
@@ -341,6 +361,7 @@ const rootRouteChildren: RootRouteChildren = {
   DefinitionsRoute: DefinitionsRoute,
   DeviceRoute: DeviceRoute,
   FilesRoute: FilesRoute,
+  ImagesRoute: ImagesRoute,
   MandatesRoute: MandatesRoute,
   MemoryRoute: MemoryRoute,
   MomentsRoute: MomentsRoute,

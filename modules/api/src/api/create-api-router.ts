@@ -4,6 +4,7 @@ import { createDefinitionProcedures } from '../definition/create-definition-proc
 import { createDeviceProcedures } from '../device/create-device-procedures';
 import { createSignOutProcedure } from '../device/create-sign-out-procedure';
 import { createFilesProcedures } from '../file/create-files-procedures';
+import { createImagesProcedures } from '../image/create-images-procedures';
 import { createMemoryProcedures } from '../memory/create-memory-procedures';
 import { createMemoryViewRouter } from '../memory/create-memory-view-router';
 import { createNotebookProcedures } from '../notebook/create-notebook-procedures';
@@ -40,6 +41,7 @@ export function createAPIRouter(
     definitions: { ...createDefinitionProcedures(context, readDefinitions), ...views.definitions },
     devices: createDeviceProcedures(context),
     files: createFilesProcedures(context),
+    images: createImagesProcedures(context),
     memory: {
       ...createMemoryProcedures(context),
       ...createMemoryViewRouter(context, readMemory),

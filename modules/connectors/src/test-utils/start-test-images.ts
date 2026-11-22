@@ -24,6 +24,9 @@ export interface TestImagesOptions {
   // what the session's image caps hold; 24 MiB and 100 images when absent
   readonly caps?: { readonly bytes: number; readonly count: number };
   readonly drawTimeoutMs?: number;
+
+  // a log that another package's test already started, in place of a new one
+  readonly log?: Log;
 }
 
 const prices = { '1024x1024': 40_000, '1536x1024': 60_000, '1024x1536': 60_000 };
@@ -33,7 +36,7 @@ const prices = { '1024x1024': 40_000, '1536x1024': 60_000, '1024x1536': 60_000 }
 export async function startTestImages(options: TestImagesOptions) {
   const clock = createFakeClock({ startMs: Date.parse('2026-11-21T08:00:00.000Z') });
 
-  const started = await startTestLog(clock);
+  const started = await (options.log ?? startTestLog(clock));
 
   const log: Log = { ...started, projections: [...started.projections, ...budgetProjections] };
   const spent = { bytes: 0, count: 0 };

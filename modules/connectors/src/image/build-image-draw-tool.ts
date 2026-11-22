@@ -10,7 +10,6 @@ import { drawArguments } from './draw-arguments';
 import { imageLimits } from './image-limits';
 import { formatImageSize, imageSizes } from './image-size';
 import type { ImageSize } from './image-size';
-import type { ImageTables } from './image-tables';
 import { noteDeclaration } from './note-declaration';
 import { padPng } from './pad-png';
 import { pickImageProfile } from './pick-image-profile';
@@ -22,6 +21,7 @@ import { readPhotoImageIDs } from './read-photo-image-ids';
 import { refuseImage } from './refuse-image';
 import { showImage } from './show-image';
 import type { ImageToolOptions } from './types';
+import { writeImageRow } from './write-image-row';
 
 const drawInput = {
   type: 'object',
@@ -338,26 +338,22 @@ async function writeDraw(
         );
       }
 
-      await tx
-        .$extendTables<ImageTables>()
-        .insertInto('images')
-        .values({
-          image_id: image,
-          uuid,
-          sequence: resultSequence,
-          position: 0,
-          parent_id: from,
-          source: 'draw',
-          source_seq: null,
-          is_pinned: 0,
-          profile: sources.picked.key,
-          model: sources.picked.profile.model,
-          media_type: 'image/png',
-          size,
-          byte_count: png.bytes.byteLength,
-          created_at: options.clock.now(),
-        })
-        .execute();
+      await writeImageRow(tx, {
+        image_id: image,
+        uuid,
+        sequence: resultSequence,
+        position: 0,
+        parent_id: from,
+        source: 'draw',
+        source_seq: null,
+        is_pinned: 0,
+        profile: sources.picked.key,
+        model: sources.picked.profile.model,
+        media_type: 'image/png',
+        size,
+        byte_count: png.bytes.byteLength,
+        created_at: options.clock.now(),
+      });
     },
   };
 }

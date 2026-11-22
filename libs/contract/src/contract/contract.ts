@@ -11,6 +11,7 @@ import { forgetBackupSchema } from './forget-backup-schema';
 import { imageLimits } from './image-limits';
 import { imageNotFoundError } from './image-not-found-error';
 import { imageRefusedError } from './image-refused-error';
+import { imagesContract } from './images-contract';
 import {
   actionCountSchema,
   listedStateSchema,
@@ -435,6 +436,7 @@ export const contract = {
     ...memoryViewContract,
   },
   notebook: notebookContract,
+  images: imagesContract,
   files: {
     read: signedIn
       .errors({

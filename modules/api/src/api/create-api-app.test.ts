@@ -139,6 +139,8 @@ test.each([
   ['/rpc/sessions/revoke'],
   ['/rpc/tasks/pause'],
   ['/rpc/records/follow'],
+  ['/rpc/images/list'],
+  ['/rpc/images/readBytes'],
   ['/rpc/conversation/read/'],
   ['/rpc/weather/forecast'],
 ])('it refuses %s for a read-only token before any procedure runs', async (path) => {

@@ -57,6 +57,7 @@ Read a feature's file before you run its journey.
 | policy-proposal  | Approve a call that an ask rule held unrun                                 | [references/feature-policy-proposal.md](references/feature-policy-proposal.md)   |
 | task-control     | Pause and resume a task, and see its records agree                         | [references/feature-task-control.md](references/feature-task-control.md)         |
 | drawing          | Draw a picture, edit it, and list both                                     | [references/feature-drawing.md](references/feature-drawing.md)                   |
+| images-page      | Browse and forget images                                                   | [references/feature-images-page.md](references/feature-images-page.md)           |
 | computer-shell   | Write and read back a shell file                                           | [references/feature-computer-shell.md](references/feature-computer-shell.md)     |
 | computer-browser | Open a page in the assistant's browser                                     | [references/feature-computer-browser.md](references/feature-computer-browser.md) |
 | computer-screen  | Click a point of the assistant's desktop                                   | [references/feature-computer-screen.md](references/feature-computer-screen.md)   |
@@ -144,14 +145,14 @@ that command alone. A command with neither runs on the registry's first target, 
 
 <!-- repo: targets -->
 
-| Target    | Start with                                                  | Access     | Notes                                                                                    |
-| --------- | ----------------------------------------------------------- | ---------- | ---------------------------------------------------------------------------------------- |
-| `local`   | `bun verify use --target local`, then `bun verify up`       | read-write | This tree's test build; scripted model.                                                  |
-| `preview` | `bun verify use --target preview`, then `bun verify attach` | read-write | The PR's preview, real model; [setup](references/preview-setup.md); leave with `detach`. |
-| `prod`    | `bun verify use --target prod`, then `bun verify attach`    | read-only  | [The prod check](references/prod-check.md).                                              |
+| Target    | Start with                                                  | Access     | Notes                                                               |
+| --------- | ----------------------------------------------------------- | ---------- | ------------------------------------------------------------------- |
+| `local`   | `bun verify use --target local`, then `bun verify up`       | read-write | Test build, scripted model.                                         |
+| `preview` | `bun verify use --target preview`, then `bun verify attach` | read-write | The PR's preview, real model; [setup](references/preview-setup.md). |
+| `prod`    | `bun verify use --target prod`, then `bun verify attach`    | read-only  | [The prod check](references/prod-check.md).                         |
 
 - Run [sign-in-enrol](references/feature-sign-in-enrol.md) first, and after each `up --restart`,
-  except before `device-screen`, which needs a browser with no session.
+  except before `device-screen`, which needs no session.
 
 <!-- /repo -->
 
@@ -177,10 +178,10 @@ for its commands.
 
 <!-- repo: registry -->
 
-[`create-verify-registry.ts`](../../../verify/src/verify/create-verify-registry.ts) declares the
-targets, actions, commands, checks and features.
-[`feature-paths.ts`](../../../verify/src/verify/feature-paths.ts) holds each feature's `paths`, the
-shared globs and the `.ignore` list.
+Declare the targets, actions, commands, checks and features in
+[`create-verify-registry.ts`](../../../verify/src/verify/create-verify-registry.ts). Edit the
+`paths`, shared globs and `.ignore` list in
+[`feature-paths.ts`](../../../verify/src/verify/feature-paths.ts).
 
 <!-- /repo -->
 

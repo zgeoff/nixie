@@ -18,3 +18,19 @@ export interface ImageToolOptions {
   // the time a draw may take before it counts as timed out; 120 seconds when absent
   readonly drawTimeoutMs?: number;
 }
+
+// One stored image in the shape the images page shows.
+export interface GalleryImage {
+  readonly image: string;
+
+  // null when cleared, never set, or the image is forgotten
+  readonly name: string | null;
+
+  // null for an import and for a forgotten image
+  readonly prompt: string | null;
+  readonly from: string | null;
+  readonly source: 'draw' | 'file' | 'photo';
+  readonly isPinned: boolean;
+  readonly isForgotten: boolean;
+  readonly createdAtMs: number;
+}

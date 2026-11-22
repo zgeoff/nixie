@@ -11,12 +11,12 @@ import { buildImageOutput } from './build-image-output';
 import { convertToPng } from './convert-to-png';
 import { imageLimits } from './image-limits';
 import { formatImageSize } from './image-size';
-import type { ImageTables } from './image-tables';
 import { noteDeclaration } from './note-declaration';
 import { pickRoomLeft } from './pick-room-left';
 import { refuseImage } from './refuse-image';
 import { showImage } from './show-image';
 import type { ImageToolOptions } from './types';
+import { writeImageRow } from './write-image-row';
 
 const importInput = {
   type: 'object',
@@ -177,26 +177,22 @@ async function writeImport(
         );
       }
 
-      await tx
-        .$extendTables<ImageTables>()
-        .insertInto('images')
-        .values({
-          image_id: image,
-          uuid,
-          sequence: resultSequence,
-          position: 0,
-          parent_id: null,
-          source: read.source,
-          source_seq: read.sourceSequence,
-          is_pinned: 0,
-          profile: null,
-          model: null,
-          media_type: 'image/png',
-          size,
-          byte_count: png.bytes.byteLength,
-          created_at: options.clock.now(),
-        })
-        .execute();
+      await writeImageRow(tx, {
+        image_id: image,
+        uuid,
+        sequence: resultSequence,
+        position: 0,
+        parent_id: null,
+        source: read.source,
+        source_seq: read.sourceSequence,
+        is_pinned: 0,
+        profile: null,
+        model: null,
+        media_type: 'image/png',
+        size,
+        byte_count: png.bytes.byteLength,
+        created_at: options.clock.now(),
+      });
     },
   };
 }
