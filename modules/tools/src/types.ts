@@ -180,6 +180,9 @@ export interface Prepared {
 
   // the URL the call expects its page to hold when its action runs; the action hash covers it
   readonly expectURL?: string;
+
+  // the window the call expects to land on when its action runs; the action hash covers it
+  readonly expectWindow?: JSONObject;
 }
 
 export interface PaidTool {

@@ -167,6 +167,7 @@ export async function runToolCall(
     destinations: destinations.map((destination) => destination.value),
     deadlineAt,
     expectURL: prepared?.expectURL,
+    expectWindow: prepared?.expectWindow,
   });
 
   const repeatOf = await readAskedRepeat({
@@ -445,6 +446,7 @@ async function runQueued(allowed: AllowedCall): Promise<Settled> {
       destinations: allowed.destinations.map((destination) => destination.value),
       deadlineAt: allowed.deadlineAt,
       expectURL: allowed.prepared?.expectURL,
+      expectWindow: allowed.prepared?.expectWindow,
     }),
     deadlineAt: allowed.deadlineAt,
     effects: allowed.prepared?.effects ?? allowed.registered.definition.declaration.effects,

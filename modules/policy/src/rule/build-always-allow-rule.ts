@@ -24,13 +24,22 @@ export interface AlwaysAllowRule {
 }
 
 const commandTool = 'computer.run';
+
+// The screen acts share one rule, so an answer on a site covers a click and a type there. It names
+// these 2 tools and no other, and pins nothing but the host.
+const screenTools = ['computer.screen_click', 'computer.screen_type'];
 const unpinnableDestination = /[\s*]/u;
 
 // The rule that Always allow creates: the tool, this action's destinations, and an eq check for
 // each argument that is not free text. An action with an argument that no eq check can pin gets
-// no rule.
+// no rule. A screen act pins its host alone, and with no host it gets no rule.
 export function buildAlwaysAllowRule(facts: AlwaysAllowFacts): AlwaysAllowRule | null {
   const checks: RuleCheck[] = [];
+  const isScreenAct = screenTools.includes(facts.tool);
+
+  if (isScreenAct && facts.destinations.length === 0) {
+    return null;
+  }
 
   if (facts.tool === commandTool) {
     const command = typeof facts.input['command'] === 'string' ? facts.input['command'] : '';
@@ -43,7 +52,7 @@ export function buildAlwaysAllowRule(facts: AlwaysAllowFacts): AlwaysAllowRule |
     checks.push({ arg: 'command', op: 'matches', value: pattern });
   }
 
-  const pinned = facts.tool === commandTool ? {} : facts.input;
+  const pinned = facts.tool === commandTool || isScreenAct ? {} : facts.input;
 
   for (const [name, value] of Object.entries(pinned)) {
     if (facts.content.includes(name)) {
@@ -61,12 +70,13 @@ export function buildAlwaysAllowRule(facts: AlwaysAllowFacts): AlwaysAllowRule |
     return null;
   }
 
-  const ruleID = `${facts.tool.toLowerCase().replaceAll(/[^a-z0-9]+/gu, '-')}-${facts.shortID.toLowerCase()}`;
+  const ruleName = isScreenAct ? 'computer-screen-acts' : facts.tool;
+  const ruleID = `${ruleName.toLowerCase().replaceAll(/[^a-z0-9]+/gu, '-')}-${facts.shortID.toLowerCase()}`;
 
   const rule: Rule = {
     id: ruleID,
     outcome: 'allow',
-    tools: [facts.tool],
+    tools: isScreenAct ? screenTools : [facts.tool],
     ...(checks.length === 0 ? {} : { checks }),
     ...(facts.destinations.length === 0 ? {} : { destinations: [...facts.destinations] }),
   };

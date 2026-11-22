@@ -52,6 +52,9 @@ export interface ComputerOptions {
 interface ComputerTabs {
   readonly add: (guestTab: string) => string;
   readonly find: (tab: string) => string | null;
+
+  // the tab the model names for a guest's tab, or null when none does
+  readonly findGuest: (guestTab: string) => string | null;
   readonly remove: (tab: string) => void;
   readonly isEmpty: () => boolean;
 }
@@ -618,6 +621,11 @@ function buildTabs(state: ComputerState): ComputerTabs {
       return tab;
     },
     find: (tab) => state.tabs.get(tab) ?? null,
+    findGuest: (guestTab) => {
+      const named = [...state.tabs].find(([, guest]) => guest === guestTab);
+
+      return named === undefined ? null : named[0];
+    },
     remove: (tab) => {
       state.tabs.delete(tab);
     },

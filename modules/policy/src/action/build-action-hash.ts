@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import type { JSONValue } from '@heynixie/log';
+import type { JSONObject, JSONValue } from '@heynixie/log';
 import { toCanonicalText } from '../utils/to-canonical-text';
 
 // The SHA-256 of the canonical operation: the tool, its input and its resolved destinations.
@@ -14,6 +14,10 @@ export interface ActionOperation {
   // the URL that a prepared call expects its page to hold when the action runs; leaves the hash of
   // a call with none as it was
   readonly expectURL?: string | undefined;
+
+  // the window that a prepared call expects to land on when the action runs; leaves the hash of a
+  // call with none as it was
+  readonly expectWindow?: JSONObject | undefined;
 }
 
 export function buildActionHash(operation: ActionOperation): string {
@@ -25,6 +29,7 @@ export function buildActionHash(operation: ActionOperation): string {
       ? {}
       : { deadlineAt: operation.deadlineAt }),
     ...(operation.expectURL === undefined ? {} : { expectURL: operation.expectURL }),
+    ...(operation.expectWindow === undefined ? {} : { expectWindow: operation.expectWindow }),
   };
 
   return createHash('sha256').update(toCanonicalText(canonical)).digest('hex');

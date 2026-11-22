@@ -1,10 +1,14 @@
 import type { JSONObject } from '@heynixie/log';
+import type { ScreenBinding } from '@heynixie/wire';
 
 // What the computer tools remember between a call's preparation and its queued action. Nothing
 // here survives a restart, and a lost entry makes the action refuse, so a restart fails safe.
 export interface ComputerState {
   // the URL a tab held when a click or a fill was prepared, by action key
   readonly expectations: Map<string, string>;
+
+  // the window a screen act was prepared for, by action key
+  readonly screens: Map<string, ScreenBinding>;
 
   // the files count when a run was prepared, by action key
   readonly epochs: Map<string, number>;
@@ -19,6 +23,7 @@ export interface ComputerState {
 export function buildComputerState(): ComputerState {
   return {
     expectations: new Map(),
+    screens: new Map(),
     epochs: new Map(),
     holds: new Map(),
     files: { count: 0 },
