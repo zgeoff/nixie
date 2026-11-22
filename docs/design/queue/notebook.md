@@ -8,15 +8,15 @@
 The assistant gets a notebook for thinking that is too long or too unsettled for memory: research, a
 diary, an argument with one of its own items. Memory holds short facts that nixie puts in front of
 the assistant each turn. A note is the assistant's own writing, and the assistant reads it only when
-it opens or searches the notebook: per-turn retrieval, the session's opening and the blocks nixie
-builds before a turn never show a note.
+it opens or searches the notebook. nixie never puts a note in the context it builds for a turn.
 
 A note has a short ID, a title, a markdown body of up to 50,000 characters, tags, versions, and a
 private flag. A typed link from a note points at another note, a memory item, a moment or an event
-of the log. Memory shows one fact about notes: a count on each item that a note disputes or
-supersedes. You read every note in the web client, which shows the notebook read-only and offers one
-control, the forget of a note. The assistant marks a note private to ask you not to read it: the web
-client folds its body until you open it, and each opening leaves a mark the assistant sees.
+of the log; the [glossary](../../glossary.md) defines these and the other nixie terms below. Recall
+and retrieval show one fact about notes: a count on each item that a note disputes or supersedes.
+You read every note in the web client, which shows the notebook read-only, with one control: Forget.
+The assistant marks a note private to ask you not to read it. The web client folds its body until
+you open it, and each opening leaves a mark the assistant sees.
 
 ## Shape
 
@@ -180,7 +180,7 @@ interface NotebookCheck {
 An input outside the shapes and limits above, such as a title over 200 characters, `hops` of 4 or
 `order` with `query`, is a schema error that the tool layer returns before any refusal. Each tool
 then checks its refusals in this order, and returns the first as a result with `refusalCode` and a
-message that holds the ID it names. `notebook.find` and `notebook.check` have none.
+message that holds the ID the refusal is about. `notebook.find` and `notebook.check` have none.
 
 | Tool               | Refusals, in order                                                                                                                        |
 | ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------- |
@@ -200,8 +200,8 @@ message that holds the ID it names. `notebook.find` and `notebook.check` have no
   `all: true` is never `MANY_MATCHES`.
 - `NOT_FOUND` is a `find` text that appears nowhere in the version, and carries `parts`.
 - `BAD_TARGET` is an ID in no valid format. `UNKNOWN_TARGET` is a well-formed ID with no row of the
-  declared kind, a target already forgotten or destroyed, or an event off the calling task run's own
-  thread. A retired item is a valid target, so a note can supersede it. A note links to an event
+  declared kind, a target already forgotten or destroyed, or an event on a thread other than the
+  caller's. A retired item is a valid target, so a note can supersede it. A note links to an event
   only on the caller's own thread: a message or tool result there. The refusal reads the same for
   each case, so a link never shows that a record on another thread exists.
 - `BAD_LINK` is a type that the link kinds refuse between these kinds.
@@ -244,10 +244,10 @@ records sit on no thread, so a
 [reset of the conversation](../../architecture/core/event-log.md#resetting-the-conversation) leaves
 every note readable, as it leaves memory items.
 
-A record forget never takes a note's own records: only the note's forget does. The notebook module
-exports `notebookErasableKinds`, as memory exports `memoryItemErasableKinds`, and the
-[record forget](../../architecture/channels/api.md#forgetting-a-record) leaves those kinds out as it
-leaves memory's.
+Forgetting a record never erases a note's own records. Only forgetting the note erases them. The
+notebook module exports `notebookErasableKinds`, as memory exports `memoryItemErasableKinds`, and
+the [record forget](../../architecture/channels/api.md#forgetting-a-record) leaves those kinds out
+as it leaves memory's.
 
 ### The tables
 
@@ -288,10 +288,10 @@ note, and keeps the titles, the tags, a keyword index and a vector index in proc
 built with the chunker, encoder and index code that memory exports for it, as the
 [memory store's indexes](../../architecture/memory/store.md#the-indexes) do. An index on disk would
 keep a forgotten note's words. The module encodes notes in the background after start, as memory
-does, and meaning search reports `isMeaningPartial` until it finishes. The build measures the
-indexes' memory and the start's encoding time at 1,000 notes of 50,000 characters, and states both
-in its PR. When the indexes pass 512 MiB or the encoding passes 10 minutes, the build lowers the
-default `max_notes` until both fit.
+does, and meaning search reports `isMeaningPartial` until it finishes. The builder measures the
+indexes' memory and the encoding time after a start with 1,000 notes of 50,000 characters, and
+states both in the PR. When the indexes pass 512 MiB or the encoding passes 10 minutes, the builder
+lowers the default `max_notes` until both fit.
 
 ### Memory's link counts
 
@@ -331,7 +331,7 @@ The [forget notices issue](https://linear.app/zgeoff/issue/GEO-2793) adds the `m
 ### The events block
 
 ```text
-22 Nov 14:05  Geoff forgot note n4w8k2c6rd
+22 Nov 14:05  Sam forgot note n4w8k2c6rd
 ```
 
 The notebook module registers one entry in the
@@ -396,10 +396,10 @@ Keeping notes out of context:
   tool list holds all 9.
 - A retrieval test holds that nixie adds no note text and no note ID to the blocks it builds, the
   session's opening, or any block before a turn's message, even when the message matches a note's
-  title word for word. Two kinds of text are exempt: an item's own text, which may hold a note ID
-  the assistant wrote there, and the events block's forget line.
-- The `TEXT_TOO_LONG` refusal of `memory.remember` and `memory.edit` says that a note holds longer
-  text.
+  title word for word. The test exempts an item's own text, which may hold a note ID the assistant
+  wrote there, and the events block's forget line.
+- The message of the `TEXT_TOO_LONG` refusal from `memory.remember` and `memory.edit` tells the
+  assistant to write longer text as a note.
 
 Records and text:
 
@@ -408,9 +408,9 @@ Records and text:
   versions only, with each UUID under `hidden.uuids`
   ([tool calls](../../architecture/connectors/tool-calls.md#records)). So a note forget leaves no
   readable copy in a tool's records, and `log.read` shows a notebook result as IDs only.
-- A read that returns a result, of any version, appends `notebook.note_read` with the note's UUID
-  alone, after it reads `read_at`. So `readAt` shows the read before this one, and a refused read
-  moves nothing.
+- `notebook.read` reads `read_at` into its result, then appends `notebook.note_read` with the note's
+  UUID alone. So `readAt` shows the read before this one. A refused read appends no record, and
+  `read_at` stays as it was.
 - A walk returns references and labels: a note's title, an item's gist and state, a moment's title
   and state as `moment.read` shows them, and an event's time and author role as `log.read` shows
   them. It never returns an item's text, a moment's text or a record's text.
@@ -423,16 +423,17 @@ Records and text:
   unavailable" for an image that is unknown or forgotten. `notebook.read` returns the body as
   written, and the assistant opens an image with `image.read`.
 - The 4 write tools declare the `note` effect, which the starter `allow-notes` rule allows. Notes
-  never go through the memory gate: they are the assistant's own writing, never a claim about you.
+  skip the memory gate, which checks claims about the user, because a note is the assistant's own
+  writing.
 - A `code.run` file with `note` copies the current body into the sandbox, which holds it unencrypted
   until the code run ends, as it holds fetched pages and files. `code.run` takes a `note` file only
   when the caller's effective tool list holds `notebook.read`, so it never reaches past that gate.
   It refuses an unknown or forgotten note, or a caller without `notebook.read`, with a message that
-  names the note, checked after a file ID and before a page ID.
+  holds the note's ID. `code.run` checks note files after file IDs and before page IDs.
 - A note forget deletes the captured model requests in the
   [turn-input log](../../architecture/policy/turn-input-log.md) from the note's first record on, as
   a record forget does, because their tool results can hold the note's text. Notes sit on no thread,
-  so its scope holds no threads and the note's first sequence as its floor.
+  so the deletion names no threads and starts at the note's first record.
 - A note forget never reaches a `code.run` result or a file its program wrote, as a forget of a
   message never reaches a reply that quoted it.
 
@@ -472,8 +473,8 @@ Links and walks:
   the links from other active notes to each node it reaches. So a walk passes through a memory item
   to the other notes that cite it.
 - `gone` lists each target whose note, item or moment was forgotten or destroyed, and each event
-  whose key is gone, whether a record forget or a conversation reset took it. A target in `gone` is
-  never a node, and the walk goes no further from it.
+  that a record forget or a conversation reset erased. A target in `gone` is never a node, and the
+  walk goes no further from it.
 - `PART_OF_CYCLE` checks the part-of links that exist when the link commits.
 - A note ID written in a body is text. Only `notebook.link` makes a link, and the description of
   `notebook.check` says that a note named only in another note's text counts as an orphan.
@@ -486,8 +487,9 @@ Private notes:
   or from one, from the list, a note's links and backlinks, search and the check. No placeholder or
   count stands in.
 - The web client keeps `showPrivate` in the URL, as `?private=1`. Turning it on writes no record.
-- Only `notebook.openPrivate` appends `notebook.private_opened`. It is a checked action, so a
-  refetch or a retry never moves the mark. Opening a note that isn't private writes nothing.
+- Only `notebook.openPrivate` appends `notebook.private_opened`. It is a
+  [checked action](../../architecture/channels/api.md#checked-actions), so a refetch or a retry
+  never moves the mark. Opening a note that isn't private writes nothing.
 - With `showPrivate` false, the web client's check is built over every note, then has the private
   entries removed, so a note linked only from a private note never shows as an orphan.
 - `notebook.previewForget` and `notebook.forget` work on a private note without opening it.
@@ -502,20 +504,20 @@ Forgets:
   and from then on no tool or read reaches the note. The cleanup deletes the key of every version
   record and every `notebook.linked` record from the note, drops the note from the indexes, runs the
   [session cleanup](../../architecture/memory/context.md#forgetting-and-the-live-session) with
-  `{ noteID }` as its cause, and appends `notebook.note_forgotten`. Each step is safe to run twice,
-  and the server's start finishes a forget that a crash cut short.
+  `{ noteID }` as its cause, and appends `notebook.note_forgotten`. Each step is safe to run twice.
+  When a crash cuts a forget short, the server finishes it at its next start.
 - The session cleanup runs for the conversation and for each open task whose effective tool list
-  holds any notebook tool. Memory's `CleanupCause`, the sessions module's cause and the record shape
-  in the models module each gain the `noteID` variant.
+  holds any notebook tool. Memory's `CleanupCause`, the sessions module's `SessionCleanupCause` and
+  the models module's `sessionCleanupCauseShape` each gain the `noteID` variant.
 - The backup schedule counts `notebook.note_forgotten` as a forget record, beside the 4 kinds that
   [staging a set](../../architecture/deployment/backups.md#staging-a-set) lists, so it makes a
   forget set due. The backup module names the kind as a string, and imports nothing from the
   notebook module.
 - A note forget drops the note's own links. A link from another note to it stays, and reads as gone
   in a walk and as dangling in the check.
-- A forget of a link's target, an item, a moment or a record, leaves the link in place, and the walk
-  lists the target in `gone`. A note's text that quotes the target stays until you forget the note.
-  So `conversation.previewForget` lists each note that links to the record, with a private note's
+- When you forget the item, moment or record a link points at, the link stays, and the walk lists
+  the target in `gone`. A note's text that quotes the target also stays until you forget the note,
+  so `conversation.previewForget` lists each note that links to the record, with a private note's
   title left out, and the confirmation shows that those notes keep their text. The API module reads
   those notes from the notebook module. The memory and moment previews stay as they are.
 - The server parses `forget_notices`, and registers the notebook's events entry only when
@@ -537,16 +539,15 @@ The web client:
 - The bar gains a Notebook link after Moments. `/notebook` lists the notes newest edit first,
   searches by words, meaning and tags with `notebook.listNotes`, and opens each note at
   `/notebook/<note short ID>`. A "Show private notes" toggle sets `showPrivate`.
-- A note shows its body, tags, versions with a word diff between each and the one before, from the
-  word diff the memory view uses, its links grouped by type with their reasons and their targets'
-  titles or gists, its backlinks, and when the assistant last read it. An event target shows its
-  time, its role and the start of its text. A target links to its own view: a note, the memory view,
-  a moment, or the record in its thread, through an anchor the conversation and task views gain
-  where they lack one. A gone target shows as such.
-- A private note's versions and diffs show only after Open.
+- A note shows its body, tags, versions with a word diff between each and the one before, its links
+  grouped by type with their reasons and their targets' titles or gists, its backlinks, and when the
+  assistant last read it. An event target shows its time, its role and the start of its text. A
+  target links to its own view: a note, the memory view, a moment, or the record in its thread,
+  through an anchor the conversation and task views gain where they lack one. A gone target shows as
+  such. The diff reuses the memory view's word diff.
 - A private note shows its title, links and marks, with its body folded under a line that says the
   assistant marked it private, and an Open button. The marks show when the assistant last read it
-  and when you last opened it.
+  and when you last opened it. Its versions and diffs show only after Open.
 - A private note's path, opened with `showPrivate` false, shows "This note is private" with no
   title, and a button that turns the toggle on.
 - The note view has no control that writes, except Forget, which opens a confirmation from
@@ -571,9 +572,9 @@ Memory guidance:
   "drop that" never destroys a note.
 - **A walk returns labels, never text.** The text of an item, a moment or a record stays behind the
   tool that checks who may read it.
-- **An item shows how many notes dispute or supersede it.** A count holds no text, and it stays true
-  when a note is unlinked or forgotten. Without it, an item a note argues with still reads as
-  settled when retrieval puts it in front of the assistant.
+- **An item shows how many notes dispute or supersede it.** A count holds no text, and it drops on
+  its own when a note is unlinked or forgotten. Without it, an item a note argues with still reads
+  as settled when retrieval puts it in front of the assistant.
 - **The check is a read.** nixie never pushes it: a pushed report would list notes the assistant
   never asked for. The assistant reads it with `notebook.check`, and sets itself a reminder when it
   wants to check on a schedule. The check lists only what the assistant can fix; `notebook.find`
@@ -587,9 +588,9 @@ Memory guidance:
 - **Forget is the one control in the web client.** The notebook is the assistant's own, so you ask
   the assistant to change a note. Forget stays because a note that quotes a forgotten message would
   otherwise keep that text until a full reset.
-- **A private note is folded, not locked.** You hold the keys, so a lock would promise what it can't
-  keep. The fold makes not looking the default, and the mark on each opening means the assistant
-  never has to take your word for it.
+- **A private note is folded, not locked.** The user holds the keys, so a lock would promise what it
+  can't keep. The fold makes not looking the default, and the mark on each opening means the
+  assistant never has to take your word for it.
 
 ## Builder decides
 
