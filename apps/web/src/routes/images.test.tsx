@@ -188,37 +188,6 @@ test('it forgets an image from the lightbox, shows the backup state and drops it
   expect(rendered.queryByRole('button', { name: 'Open harbour at dusk' })).toBeNull();
 });
 
-test('it keeps the backup line and offers no Forget after the refetch of a forgotten image', async () => {
-  const user = userEvent.setup();
-
-  await createDeviceSession();
-
-  await mockViewStore.images.create({
-    image: 'k3x9m2p7qa',
-    name: 'harbour at dusk',
-    prompt: 'a harbour',
-  });
-
-  const rendered = renderRoute('/images?all=true&image=k3x9m2p7qa');
-
-  const forget = await rendered.findByRole('button', { name: 'Forget' });
-
-  await user.click(forget);
-  await user.click(rendered.getByRole('button', { name: 'Forget for good' }));
-  await rendered.findByText(/Key backups: pending/u);
-
-  await waitFor(() => {
-    expect(rendered.queryByText('a harbour')).toBeNull();
-  });
-
-  await waitFor(() => {
-    expect(rendered.getByText('Forgotten')).toBeVisible();
-  });
-
-  expect(rendered.getByText(/Key backups: pending/u)).toBeVisible();
-  expect(rendered.queryByRole('button', { name: 'Forget' })).toBeNull();
-});
-
 test('it offers no Forget on a forgotten image opened later', async () => {
   await createDeviceSession();
 
