@@ -40,9 +40,8 @@ const storedForgetSchema = z.object({
   targets: z.array(storedTargetSchema),
 });
 
-// Forgets every record of the image as one forget. One transaction finds the records, starts each
-// forget and keeps the list with the client action. A retry reads the records again inside its own transaction, so it takes in a record written since,
-// and runs the cleanups of the whole list.
+// A retry cleans up the kept list as well as the records read now, because a record whose key went
+// before a failed cleanup no longer reads as the image's.
 export async function writeImageForget(
   context: APIContext,
   caller: Identity,
@@ -58,10 +57,7 @@ export async function writeImageForget(
       return { status: 'unauthorized' } as const;
     }
 
-    const forgettable = await readImageForgetTargets(
-      { deploymentKey: context.log.deploymentKey, writer: { ...context.log.writer, db: tx } },
-      input.image,
-    );
+    const forgettable = await readImageForgetTargets(buildTransactionLog(context, tx), input.image);
 
     if (forgettable === null) {
       return { status: 'not_found' } as const;
@@ -84,13 +80,26 @@ export async function writeImageForget(
       // A record written since the first call, such as a list that read the name, joins the forget.
       const retried = await writeStarts(tx, context, forgettable);
 
-      return retried.status === 'forgotten'
-        ? ({
-            status: 'forgotten',
-            forgottenAt: stored.data.forgottenAt,
-            targets: forgettable.targets,
-          } as const)
-        : retried;
+      if (retried.status !== 'forgotten') {
+        return retried;
+      }
+
+      const targets = collectMergedTargets(stored.data.targets, forgettable.targets);
+
+      await writeKeptTargets(tx, context, {
+        clientActionID: input.clientActionID,
+        identityID: caller.identityID,
+        inputHash,
+        forgottenAt: stored.data.forgottenAt,
+        targets,
+      });
+
+      return {
+        status: 'forgotten',
+        forgottenAt: stored.data.forgottenAt,
+        image: forgettable.image,
+        targets,
+      } as const;
     }
 
     const started = await writeStarts(tx, context, forgettable);
@@ -99,25 +108,36 @@ export async function writeImageForget(
       return started;
     }
 
-    const kept = forgettable.targets.map(toStoredTarget);
-
-    await writeClientAction(tx, {
+    await writeKeptTargets(tx, context, {
       clientActionID: input.clientActionID,
-      procedure,
       identityID: caller.identityID,
       inputHash,
-      result: { forgottenAt: started.forgottenAt, targets: kept },
-      recordedAt: context.clock.now(),
+      forgottenAt: started.forgottenAt,
+      targets: forgettable.targets,
     });
 
-    return { ...started, targets: forgettable.targets } as const;
+    return { ...started, image: forgettable.image, targets: forgettable.targets } as const;
   });
 
-  if (result.status === 'forgotten') {
-    await runCleanups(context, result.targets);
+  if (result.status !== 'forgotten') {
+    return result;
   }
 
-  return result;
+  const late = await runCleanups(context, {
+    clientActionID: input.clientActionID,
+    identityID: caller.identityID,
+    image: result.image,
+    forgottenAt: result.forgottenAt,
+    targets: result.targets,
+  });
+
+  return late.status === 'forgotten'
+    ? { status: 'forgotten', forgottenAt: result.forgottenAt, targets: late.targets }
+    : late;
+}
+
+function buildTransactionLog(context: APIContext, tx: Transaction<unknown>) {
+  return { deploymentKey: context.log.deploymentKey, writer: { ...context.log.writer, db: tx } };
 }
 
 type StartsResult =
@@ -161,13 +181,88 @@ async function writeStarts(
     : { status: 'forgotten', forgottenAt: Math.min(...times) };
 }
 
+// The kept list and the records read now, once each, in the order of the log.
+function collectMergedTargets(
+  kept: readonly ImageForgetTarget[],
+  fresh: readonly ImageForgetTarget[],
+): ImageForgetTarget[] {
+  const bySequence = new Map<number, ImageForgetTarget>();
+
+  for (const target of [...kept, ...fresh]) {
+    bySequence.set(target.sequence, toStoredTarget(target));
+  }
+
+  return [...bySequence.values()].toSorted((left, right) => left.sequence - right.sequence);
+}
+
 function toStoredTarget(target: ImageForgetTarget) {
   return { thread: target.thread, sequence: target.sequence };
 }
 
+interface KeptTargets {
+  readonly clientActionID: string;
+  readonly identityID: string;
+  readonly inputHash: string;
+  readonly forgottenAt: number;
+  readonly targets: readonly ImageForgetTarget[];
+}
+
+function writeKeptTargets(
+  tx: Transaction<unknown>,
+  context: APIContext,
+  kept: KeptTargets,
+): Promise<void> {
+  return writeClientAction(tx, {
+    clientActionID: kept.clientActionID,
+    procedure,
+    identityID: kept.identityID,
+    inputHash: kept.inputHash,
+    result: { forgottenAt: kept.forgottenAt, targets: kept.targets.map(toStoredTarget) },
+    recordedAt: context.clock.now(),
+  });
+}
+
+interface CleanupRun {
+  readonly clientActionID: string;
+  readonly identityID: string;
+
+  // the short ID of the image
+  readonly image: string;
+  readonly forgottenAt: number;
+  readonly targets: readonly ImageForgetTarget[];
+}
+
+type CleanupResult =
+  | { readonly status: 'forgotten'; readonly targets: readonly ImageForgetTarget[] }
+  | { readonly status: 'action_not_finished' }
+  | { readonly status: 'not_found' };
+
+// Runs the cleanup of each target, then reads the image's records again and starts and cleans up any
+// record that a call wrote while the cleanups ran, until a read finds none.
+async function runCleanups(context: APIContext, run: CleanupRun): Promise<CleanupResult> {
+  let pending = run.targets;
+  let handled: readonly ImageForgetTarget[] = [];
+
+  while (pending.length > 0) {
+    await runTargetCleanups(context, pending);
+
+    handled = collectMergedTargets(handled, pending);
+
+    const late = await writeLateStarts(context, run, handled);
+
+    if (late.status !== 'forgotten') {
+      return late;
+    }
+
+    pending = late.targets;
+  }
+
+  return { status: 'forgotten', targets: handled };
+}
+
 // A code sandbox that will not go fails the forget with the sentence that tells the owner to try
 // again, through the API's error path for an unexpected failure.
-async function runCleanups(
+async function runTargetCleanups(
   context: APIContext,
   targets: readonly ImageForgetTarget[],
 ): Promise<void> {
@@ -182,4 +277,46 @@ async function runCleanups(
 
     throw error;
   }
+}
+
+function writeLateStarts(
+  context: APIContext,
+  run: CleanupRun,
+  handled: readonly ImageForgetTarget[],
+): Promise<CleanupResult> {
+  return withWriteTransaction(context.log.writer, async (tx) => {
+    const found = await readImageForgetTargets(buildTransactionLog(context, tx), run.image);
+
+    const late = collectLateTargets(found?.targets ?? [], handled);
+
+    if (late.length === 0) {
+      return { status: 'forgotten', targets: [] } as const;
+    }
+
+    const started = await writeStarts(tx, context, { image: run.image, targets: late });
+
+    if (started.status !== 'forgotten') {
+      return started;
+    }
+
+    await writeKeptTargets(tx, context, {
+      clientActionID: run.clientActionID,
+      identityID: run.identityID,
+      inputHash: buildInputHash({ image: run.image }),
+      forgottenAt: run.forgottenAt,
+      targets: collectMergedTargets(handled, late),
+    });
+
+    return { status: 'forgotten', targets: late } as const;
+  });
+}
+
+// The records read now that no cleanup has taken yet.
+function collectLateTargets(
+  found: readonly ImageForgetTarget[],
+  handled: readonly ImageForgetTarget[],
+): ImageForgetTarget[] {
+  const handledSequences = new Set(handled.map((target) => target.sequence));
+
+  return found.filter((target) => !handledSequences.has(target.sequence));
 }

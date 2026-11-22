@@ -35,9 +35,14 @@ test('it writes the call and result records and the images row in one transactio
   const entry = await readImageEntry(log, 'k3x9m2p7qa');
 
   expect({ seeded, row: entry.kind === 'missing' ? null : entry.row }).toMatchObject({
-    seeded: { callSequence: expect.any(Number), sequence: expect.any(Number) },
+    seeded: {
+      callSequence: expect.any(Number),
+      sequence: expect.any(Number),
+      uuid: expect.any(String),
+    },
     row: {
       sequence: seeded.sequence,
+      uuid: seeded.uuid,
       parent_id: 'earlier001',
       is_pinned: 1,
       created_at: 5,

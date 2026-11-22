@@ -26,6 +26,9 @@ export interface SeededImage {
 
   // the tool_result record that holds the bytes
   readonly sequence: number;
+
+  // the UUID of the images row, which a session can name the image by
+  readonly uuid: string;
 }
 
 // Writes the tool_called and tool_result records that hold the bytes and the prompt, and the images
@@ -75,9 +78,11 @@ export function seedImage(log: Log, seed: ImageSeed): Promise<SeededImage> {
 
     invariant(record, 'the log wrote the result record');
 
+    const uuid = crypto.randomUUID();
+
     await writeImageRow(tx, {
       image_id: seed.image,
-      uuid: crypto.randomUUID(),
+      uuid,
       sequence: record.sequence,
       position: 0,
       parent_id: seed.from ?? null,
@@ -92,6 +97,6 @@ export function seedImage(log: Log, seed: ImageSeed): Promise<SeededImage> {
       created_at: seed.createdAtMs ?? 1,
     });
 
-    return { callSequence: call.sequence, sequence: record.sequence };
+    return { callSequence: call.sequence, sequence: record.sequence, uuid };
   });
 }

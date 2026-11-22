@@ -514,6 +514,146 @@ test('#images.forget leaves no rename or list made while its cleanup was unfinis
   });
 });
 
+test('#images.forget leaves no rename by short ID or UUID made during its cleanup readable', async () => {
+  const ctx = await setupTest();
+
+  const seeded = await seedImage(ctx.context.log, {
+    image: 'k3x9m2p7qa',
+    source: 'draw',
+    bytes: ctx.png,
+    prompt: 'a harbour at dusk',
+  });
+
+  let isPaused = true;
+
+  ctx.setSessionCleanup(async () => {
+    if (isPaused) {
+      isPaused = false;
+
+      await ctx.images.read('image.name', { image: 'k3x9m2p7qa', name: 'ferry portrait' });
+      await ctx.images.read('image.name', { image: seeded.uuid, name: 'quay at noon' });
+    }
+  });
+
+  await ctx.client.images.forget({
+    clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85',
+    image: 'k3x9m2p7qa',
+  });
+
+  const entries = await readRecords(ctx.context.log, {
+    afterSequence: 0,
+    kinds: ['tool_called', 'tool_result'],
+    limit: 100,
+  });
+
+  expect(
+    entries
+      .flatMap((found) =>
+        found.record.erasable.status === 'readable'
+          ? [JSON.stringify(found.record.erasable.fields)]
+          : [],
+      )
+      .join(' '),
+  ).not.toMatch(/harbour|ferry|quay/u);
+});
+
+test('#images.forget leaves no rename by short ID or UUID readable after a retry', async () => {
+  const ctx = await setupTest();
+
+  const seeded = await seedImage(ctx.context.log, {
+    image: 'k3x9m2p7qa',
+    source: 'draw',
+    bytes: ctx.png,
+    prompt: 'a harbour at dusk',
+  });
+
+  let isFailing = true;
+
+  ctx.setSessionCleanup(() => {
+    if (isFailing) {
+      isFailing = false;
+
+      return Promise.reject(new Error('the session rebuild failed'));
+    }
+
+    return Promise.resolve();
+  });
+
+  const input = { clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85', image: 'k3x9m2p7qa' };
+
+  await ctx.client.images.forget(input).catch(() => null);
+  await ctx.images.read('image.name', { image: 'k3x9m2p7qa', name: 'ferry portrait' });
+  await ctx.images.read('image.name', { image: seeded.uuid, name: 'quay at noon' });
+  await ctx.client.images.forget(input);
+
+  const entries = await readRecords(ctx.context.log, {
+    afterSequence: 0,
+    kinds: ['tool_called', 'tool_result'],
+    limit: 100,
+  });
+
+  expect(
+    entries
+      .flatMap((found) =>
+        found.record.erasable.status === 'readable'
+          ? [JSON.stringify(found.record.erasable.fields)]
+          : [],
+      )
+      .join(' '),
+  ).not.toMatch(/harbour|ferry|quay/u);
+});
+
+test('#images.forget rebuilds the session of a list result whose key went before a failed rebuild, on a retry', async () => {
+  const ctx = await setupTest();
+  const drawn = await ctx.images.read('image.draw', { prompt: 'a harbour at dusk' });
+
+  const image = readImageID(drawn);
+
+  await ctx.images.read('image.list', {});
+
+  const [listResult] = await readRecords(ctx.context.log, {
+    afterSequence: 0,
+    kinds: ['tool_result'],
+    order: 'newest',
+    limit: 1,
+  });
+
+  const listSequence = listResult?.record.sequence;
+  const rebuilt: number[] = [];
+  let isFailing = true;
+
+  ctx.setSessionCleanup((cause) => {
+    if (isFailing && cause.recordSequence === listSequence) {
+      isFailing = false;
+
+      return Promise.reject(new Error('the session rebuild failed'));
+    }
+
+    rebuilt.push(cause.recordSequence);
+
+    return Promise.resolve();
+  });
+
+  const input = { clientActionID: '5f2c7a14-8e3b-4c9d-a1f0-6b2e9d3c7a85', image };
+
+  await ctx.client.images.forget(input).catch(() => null);
+  await ctx.client.images.forget(input);
+
+  const forgotten = await readRecords(ctx.context.log, {
+    afterSequence: 0,
+    kinds: ['record.forgotten'],
+    limit: 100,
+  });
+
+  expect({
+    rebuilt,
+    forgotten: forgotten.map((found) => found.record.payload['recordSequence']),
+  }).toStrictEqual({
+    rebuilt: expect.arrayContaining([listSequence]),
+    forgotten: expect.arrayContaining([listSequence]),
+  });
+});
+
 test('#images.forget answers the time of the first forget for an image that is already forgotten', async () => {
   const ctx = await setupTest();
 

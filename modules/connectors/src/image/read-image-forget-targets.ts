@@ -52,7 +52,7 @@ export async function readImageForgetTargets(
     .where(sql`json_extract(payload, '$.image')`, '=', row.image_id)
     .execute();
 
-  const quoting = await readQuotingRecords(log, row.image_id);
+  const quoting = await readQuotingRecords(log, { image: row.image_id, uuid: row.uuid });
 
   const bySequence = new Map<number, ImageForgetTarget>();
 
@@ -76,9 +76,15 @@ interface Locatable {
   readonly thread: string | null;
 }
 
+// the two IDs a call can name an image by: a session can hold the UUID from before the short ID
+interface ImageIDs {
+  readonly image: string;
+  readonly uuid: string;
+}
+
 async function readQuotingRecords(
   log: Pick<Log, 'deploymentKey' | 'writer'>,
-  image: string,
+  ids: ImageIDs,
 ): Promise<Locatable[]> {
   const db = log.writer.db.$extendTables<LogTables>();
 
@@ -113,8 +119,8 @@ async function readQuotingRecords(
 
   for (const result of results) {
     const isNaming = result.tool === 'image.name';
-    const isQuotingResult = isQuoting(readable.get(result.result_sequence), image);
-    const isNamingCall = isNaming && isNamedBy(readable.get(result.call_sequence), image);
+    const isQuotingResult = isQuoting(readable.get(result.result_sequence), ids.image);
+    const isNamingCall = isNaming && isNamedBy(readable.get(result.call_sequence), ids);
 
     if (isQuotingResult || isNamingCall) {
       located.push({ sequence: result.result_sequence, thread: result.result_thread });
@@ -155,13 +161,17 @@ function isQuoting(erasable: ErasableFields | undefined, image: string): boolean
 
 const calledSchema = z.object({ input: z.object({ image: z.string() }) });
 
-// A rename that was refused has no image in its result, so its call names the image by its input.
-function isNamedBy(erasable: ErasableFields | undefined, image: string): boolean {
+// A rename that was refused has no image in its result, so its call names the image by its input,
+// with either ID.
+function isNamedBy(erasable: ErasableFields | undefined, ids: ImageIDs): boolean {
   if (erasable?.status !== 'readable') {
     return false;
   }
 
   const parsed = calledSchema.safeParse(erasable.fields);
 
-  return parsed.success && parsed.data.input.image === image;
+  return (
+    parsed.success &&
+    (parsed.data.input.image === ids.image || parsed.data.input.image === ids.uuid)
+  );
 }
