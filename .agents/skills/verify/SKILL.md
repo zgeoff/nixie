@@ -178,10 +178,10 @@ for its commands.
 
 <!-- repo: registry -->
 
-[`create-verify-registry.ts`](../../../verify/src/verify/create-verify-registry.ts) declares the
-targets, actions, commands, checks and features.
-[`feature-paths.ts`](../../../verify/src/verify/feature-paths.ts) holds the `paths`, shared globs
-and `.ignore` list.
+Declare the targets, actions, commands, checks and features in
+[`create-verify-registry.ts`](../../../verify/src/verify/create-verify-registry.ts). Edit the
+`paths`, shared globs and `.ignore` list in
+[`feature-paths.ts`](../../../verify/src/verify/feature-paths.ts).
 
 <!-- /repo -->
 
