@@ -159,14 +159,19 @@ test.skipIf(!hasImpHost)(
       [
         'stat -c %a /home/computer/profile',
         'ls /home/computer/profile > /dev/null 2>&1; echo "list=$?"',
-        'for pid in $(pgrep -f "chrome-linux64/chrome"); do kill -0 "$pid" 2>/dev/null && echo signalled; done; echo done',
-        'for pid in $(pgrep -f "chrome-linux64/chrome"); do cat /proc/$pid/environ > /dev/null 2>&1 && echo traced; done; echo done',
+
+        // A bare pattern matches this command's own bash line, which the terminal may trace, so the
+        // bracket keeps the match to Chromium's processes.
+        'pids=$(pgrep -f "chrome-linux64/[c]hrome")',
+        '[ -n "$pids" ] && echo found',
+        'for pid in $pids; do kill -0 "$pid" 2>/dev/null && echo signalled; done; echo done',
+        'for pid in $pids; do cat /proc/$pid/environ > /dev/null 2>&1 && echo traced; done; echo done',
       ].join('; '),
     );
 
     expect(result).toMatchObject({
       status: 'reply',
-      reply: { kind: 'run', run: { stdout: { text: '700\nlist=2\ndone\ndone\n' } } },
+      reply: { kind: 'run', run: { stdout: { text: '700\nlist=2\nfound\ndone\ndone\n' } } },
     });
   },
 );
@@ -177,12 +182,12 @@ test.skipIf(!hasImpHost)(
     const ctx = await setupTest();
 
     const result = await ctx.runCommand(
-      'cat /proc/self/cgroup; cat /sys/fs/cgroup/memory.max 2>/dev/null || echo unreadable',
+      'cat /proc/self/cgroup /sys/fs/cgroup/nixie-terminal/memory.max /sys/fs/cgroup/nixie-terminal/memory.swap.max',
     );
 
     expect(result).toMatchObject({
       status: 'reply',
-      reply: { kind: 'run', run: { stdout: { text: expect.toStartWith('0::/nixie-terminal\n') } } },
+      reply: { kind: 'run', run: { stdout: { text: '0::/nixie-terminal\n536870912\n0\n' } } },
     });
   },
 );

@@ -161,3 +161,30 @@ failing on it. Run the tests from a machine with IPv6 to prove the IPv6 targets 
 
 Expect `0 fail`, with no skipped test. Each test destroys the imps it created when it ends; a run
 that you stop with Ctrl-C leaves them, each named `nixie-<id>`.
+
+## The computer sandbox tests
+
+The imp tests in `apps/server/src/part/start-computer-part.imp.test.ts` run the computer sandbox on
+the computer image. They check that a command sees only a loopback and no display socket, that the
+command proxy refuses a tunnel, that the terminal account cannot read the browser profile or signal
+or trace Chromium, and that the terminal's cgroup holds 512 MiB with no swap. One test moves the
+files of a stand-in browser sandbox and shell sandbox into the computer and checks that both old
+sandboxes are gone.
+
+1. Build the computer image into impd from `guests/computer/Dockerfile`, with the repo root as the
+   build folder, as step 1 of [the fetch sandbox tests](#the-fetch-sandbox-tests) does. Rebuild it
+   after each change under `guests/computer/` or a package the guest imports.
+2. Run the tests from the repo root:
+
+   ```bash
+   NIXIE_IMP_TEST_URL=<impd_url> \
+   NIXIE_IMP_TEST_TOKEN=<impd_token> \
+   NIXIE_IMP_TEST_HOST_ADDRESSES=<host_addresses> \
+   NIXIE_IMP_TEST_COMPUTER_IMAGE=<computer_image_name> \
+   bun run test:imp apps/server/src/part/start-computer-part.imp.test.ts
+   ```
+
+   The tests list and remove only the sandboxes that they created, so an impd that runs other
+   sandboxes keeps them.
+
+Expect `0 fail`, with no skipped test. Remove the image when you finish, by its exact name.
