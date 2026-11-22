@@ -20,6 +20,10 @@ export function makeComputerHandler(handlers: ComputerHandlers): ComputerHandler
         'act',
         'close',
         'download',
+        'desktopShot',
+        'screenScroll',
+        'screenBind',
+        'screenAct',
         () => handlers.browser,
       )
       .exhaustive();

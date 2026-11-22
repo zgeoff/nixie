@@ -51,6 +51,47 @@ const actRequestSchema = z.strictObject({
   submit: z.boolean(),
 });
 
+// The window a screen act binds to. tab is the guest's own tab ID, and url the page that tab holds.
+export const screenBindingSchema = z.strictObject({
+  windowID: z.string(),
+  kind: z.enum(['browser', 'terminal', 'other']),
+  tab: z.string().optional(),
+  url: z.string().optional(),
+});
+
+const screenActSchema = z.discriminatedUnion('kind', [
+  z.strictObject({
+    kind: z.literal('click'),
+    x: z.number(),
+    y: z.number(),
+    button: z.enum(['left', 'right']),
+  }),
+  z.strictObject({ kind: z.literal('text'), text: z.string().max(1000) }),
+  z.strictObject({ kind: z.literal('keys'), keys: z.string() }),
+]);
+
+// The whole desktop's picture
+const desktopShotSchema = z.strictObject({ op: z.literal('desktopShot') });
+
+// by is wheel steps: positive scrolls down, negative up
+const screenScrollSchema = z.strictObject({
+  op: z.literal('screenScroll'),
+  x: z.number(),
+  y: z.number(),
+  by: z.number(),
+});
+
+// Reads the window a screen act would land on: the one under a click's point, or the focused one
+// for typing. The guest refuses an act it would never run, so the owner is not asked about it.
+const screenBindSchema = z.strictObject({ op: z.literal('screenBind'), act: screenActSchema });
+
+// Runs a screen act when the window it lands on is still the bound one
+const screenActRequestSchema = z.strictObject({
+  op: z.literal('screenAct'),
+  binding: screenBindingSchema,
+  act: screenActSchema,
+});
+
 const closeSchema = z.strictObject({ op: z.literal('close'), tab: z.string() });
 
 const downloadSchema = z.strictObject({
@@ -79,6 +120,10 @@ export const computerRequestSchema = z.discriminatedUnion('op', [
   readSchema,
   screenshotSchema,
   scrollSchema,
+  desktopShotSchema,
+  screenScrollSchema,
+  screenBindSchema,
+  screenActRequestSchema,
   actRequestSchema,
   closeSchema,
   downloadSchema,
@@ -90,3 +135,7 @@ export const computerRequestSchema = z.discriminatedUnion('op', [
 export type ComputerRequest = z.infer<typeof computerRequestSchema>;
 
 export type ComputerAct = z.infer<typeof actSchema>;
+
+export type ScreenBinding = z.infer<typeof screenBindingSchema>;
+
+export type ScreenAct = z.infer<typeof screenActSchema>;

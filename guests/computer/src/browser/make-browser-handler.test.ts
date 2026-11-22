@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { ComputerRequest } from '@heynixie/wire';
 import { chromium } from 'playwright-core';
+import { makeStubDriver } from '../screen/make-stub-driver';
 import { makeBrowserHandler } from './make-browser-handler';
 
 const hasChromium = await chromium.launch({ headless: true }).then(
@@ -63,6 +64,7 @@ async function setupTest() {
     },
     checkAddress: () => true,
     resolveHost: () => Promise.resolve(['127.0.0.1']),
+    screen: { makeDriver: (state) => makeStubDriver(state.tabs), settleMs: 50 },
   });
 
   onTestFinished(async () => {
@@ -355,3 +357,69 @@ test.skipIf(!hasChromium)('it refuses the picture of a control that moved', asyn
 
   expect(reply).toStrictEqual({ kind: 'failed', ok: false, reason: 'stale_element' });
 });
+
+test.skipIf(!hasChromium)(
+  'it takes a picture of the desktop that names the tab in focus',
+  async () => {
+    const ctx = await setupTest();
+
+    await ctx.send(ctx.open(ctx.url));
+
+    const shot = await ctx.send({ op: 'desktopShot' });
+
+    expect(shot).toMatchObject({
+      kind: 'desktop',
+      width: 1280,
+      height: 800,
+      focus: { kind: 'browser', tab: 't1', url: ctx.url },
+    });
+  },
+);
+
+test.skipIf(!hasChromium)('it clicks a point on the page and follows the link there', async () => {
+  const ctx = await setupTest();
+
+  await ctx.send(ctx.open(ctx.url));
+
+  const bound = await ctx.send({
+    op: 'screenBind',
+    act: { kind: 'click', x: 20, y: 75, button: 'left' },
+  });
+
+  expect(bound).toMatchObject({
+    kind: 'screen-target',
+    target: { kind: 'browser', tab: 't1', url: ctx.url },
+  });
+
+  const reply = await ctx.send({
+    op: 'screenAct',
+    binding: { windowID: 'stub-browser', kind: 'browser', tab: 't1', url: ctx.url },
+    act: { kind: 'click', x: 20, y: 75, button: 'left' },
+  });
+
+  expect(reply).toMatchObject({ kind: 'screen' });
+
+  const page = await ctx.send({ op: 'read', tab: 't1', mode: 'text' });
+
+  expect(page).toMatchObject({
+    kind: 'page',
+    page: { title: 'Terms' },
+  });
+});
+
+test.skipIf(!hasChromium)(
+  'it refuses a screen act on a page that moved since it was bound',
+  async () => {
+    const ctx = await setupTest();
+
+    await ctx.send(ctx.open(ctx.url));
+
+    const reply = await ctx.send({
+      op: 'screenAct',
+      binding: { windowID: 'stub-browser', kind: 'browser', tab: 't1', url: `${ctx.url}elsewhere` },
+      act: { kind: 'click', x: 20, y: 75, button: 'left' },
+    });
+
+    expect(reply).toMatchObject({ kind: 'failed', reason: 'screen_changed' });
+  },
+);
