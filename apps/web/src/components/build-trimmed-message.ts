@@ -1,8 +1,7 @@
 import type { Span, SpanState } from '@heynixie/contract';
 
-// Whitespace inside a block that came from outside the keyboard (pasted, dropped or unknown) is
-// content, so the trim stops at the edge of the first and last such block and never clips or drops
-// one. Typed text has no such edge: the trim cuts it and its span shrinks to match.
+// Whitespace in a pasted, dropped or unknown block is content the user brought in, so the trim stops
+// at those blocks' edges. Typed whitespace is trimmed, and a typed span left empty goes.
 export function buildTrimmedMessage(message: SpanState): SpanState {
   if (message.text.trim() === '') {
     return { spans: [], text: '' };
