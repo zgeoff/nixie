@@ -39,7 +39,9 @@ wallet.pay({
 });
 // → { status: 'paid', purchase: 'pq3z8w1n5v', merchant: 'https://fonts.example.com',
 //     pageTotal: '8.00 USD', charged: '12.71 AUD' }
-//   The guest fills the card, reads the total again, and clicks submit only while it still matches.
+//   The guest fills the card and reads the total again. When the prepare hook found a total, the
+//   guest clicks submit only while it still matches; when it found none, you approved the purchase
+//   without one, and the guest clicks with no total check.
 //   A bank check that shows after the submit waits up to 5 minutes for you to approve it in the
 //   bank's app, then returns 'paid'. After that, { status: 'needs_owner', purchase }: an unknown
 //   outcome that you settle, as the budgets rules settle one.
@@ -69,7 +71,8 @@ wallet.cancel({ purchase: 'pq3z8w1n5v' }); // after the assistant cancels it on 
 | `UNKNOWN_PURCHASE` | `wallet.cancel`: no purchase has that ID                     |
 | `NOT_REPEATING`    | `wallet.cancel`: the purchase doesn't repeat                 |
 
-`WHICH_CARD` and `NO_RATE` return from the prepare hook before the decision, so no card shows.
+`WHICH_CARD` and `NO_RATE` return from the prepare hook before the decision, so no approval card
+shows.
 
 ```ts
 // connectors module: the effects each tool declares
@@ -86,7 +89,7 @@ from the page or "no total found", `charged`, and whether it repeats.
 ```ts
 // connectors module; fields a card entry adds to VaultEntry
 interface VaultEntry {
-  // …the fields the accounts design defines
+  // …the fields that accounts.md#the-vault defines
   fingerprint: string | null; // an HMAC of the number under a server key; the only form in records
   frameOrigins: string[]; // the payment frames you allow, such as https://js.pay.example; else []
   currency: string | null; // the ISO code the card bills in, which charged converts into
@@ -98,13 +101,13 @@ vault.add({
   secret: { number, expiry, code },
   frameOrigins: [],
 }); // → { account: 'c3w8p1z6mt' }
-// vault.reveal of a card → { number, expiry, code }
+// vault.reveal of a card → { number, expiry, code }; behind your passkey, from a device session only
 ```
 
 ### The fill frame for a card
 
 ```ts
-// wire lib: the card's additions to the accounts design's frame
+// wire lib: the card's additions to the frame in accounts.md#the-fill-frame
 type TotalRequest = { op: 'total'; tab: string }; // → { ok: true; pageTotal: string | null } | tab_gone
 // FillRole gains 'card_number' | 'card_expiry' | 'card_code'
 // FillRequest.submit gains expectTotal?: string: click only while the total matches
@@ -124,7 +127,7 @@ purchase.recorded              -- budgets module, one per wallet.pay that clicks
   rate           text null     -- the exchange rate and its date; null when the two currencies match
   merchant       text          -- the origin the card was filled on
   item           text          -- erasable
-  approval       text          -- 'lift' or the approval's ID
+  approval       text          -- 'lift' or the approval's ID; wallet.read shows an ID as 'owner'
   card           text          -- the card entry's fingerprint
   repeats        text null     -- 'monthly' | 'yearly'
 purchase.cancelled             -- budgets module, one per wallet.cancel
@@ -164,15 +167,16 @@ Spending:
 - A `wallet.pay` passes without asking only under a lifting rule whose destinations include the
   merchant, whose `perAction` covers `charged`, and whose page total matched. Every other
   `wallet.pay` asks with the passkey.
-- A `wallet.pay` with `repeats` always asks with the passkey, and its card says it repeats.
+- A `wallet.pay` with `repeats` always asks with the passkey, and its approval card says it repeats.
 - A repeating purchase counts once, when it's made. nixie never sees a later charge.
 - A lift charges the budget when the action queues, as
   [budgets](../../architecture/policy/budgets.md#lifts) says. A purchase you approved never counts
   against the budget. A `wallet.pay` that ends before its click credits the charge, and the guest
   clears the card fields it filled.
 - Every `wallet.pay` that clicks submit writes a `purchase.recorded` record.
-- The wallet starts with a lift of 25 AUD per purchase and a budget of 100 AUD a month. The card's
-  own limit in the bank's app is the hard cap.
+- The wallet starts with a budget of 100 AUD a month and a lifting rule of 25 AUD per purchase that
+  names no merchant, so it lifts nothing until you add one. The card's own limit in the bank's app
+  is the hard cap.
 
 ## Decisions
 

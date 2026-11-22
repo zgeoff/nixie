@@ -100,7 +100,7 @@ A task run that mail starts gets one line per mail, with from and subject in the
 that system messages use:
 
 ```text
-New mail from <from>: <subject> (message mz4k8q2w7p)
+New mail <untrusted id="…">from <from>: <subject></untrusted> (message mz4k8q2w7p)
 ```
 
 Mail that no task takes reaches the conversation as a system message, rendered as the built ones

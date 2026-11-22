@@ -44,7 +44,7 @@ account.sign_in({ tab: 't1', account: 'a7q2m9x4kd', submit: 'E7' });
 ```
 
 `submit` is an element of the tab's latest snapshot. The guest fills each role it finds on the page,
-then clicks `submit` in the same action, so one sign-in raises one approval card or none. `fields`
+then clicks `submit` in the same action, so each call raises one approval card or none. `fields`
 lists the roles it filled.
 
 | `status`    | When                                                                          |
@@ -66,7 +66,7 @@ account.sign_up({
   passwordRules: { maxLength: 20, symbols: false }, // optional: the site's stated rules
 });
 // → { status: 'signed_in', account: 'a7q2m9x4kd', state: 'ready', … the sign_in result's fields }
-//   state is 'ready' for signed_in, else 'pending'. The broker makes the password, fills every
+//   state is 'ready' for signed_in and next_step, else 'pending'. The broker makes the password, fills every
 //   new-password field with it and an email or username field with the username, and keeps the
 //   tab's origin as the entry's one origin. The assistant fills any other field, such as a name,
 //   with computer.browser_fill first. Without passwordRules the password is 24 characters with symbols.
@@ -89,21 +89,21 @@ account.inspect({ tab: 't1', kind: 'password', dump: true }); // kind: 'password
 Every refusal is `{ refused, message, origin?, report? }`. The `message` says what happened and what
 to do next.
 
-| Refusal               | Tools                    | When                                                                                                                                  |
-| --------------------- | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------- |
-| `UNKNOWN_ACCOUNT`     | all but sign_up, inspect | no entry has that ID                                                                                                                  |
-| `WRONG_KIND`          | all but sign_up, inspect | the entry is a card                                                                                                                   |
-| `ACCOUNT_FORGOTTEN`   | all but sign_up, inspect | the entry is forgotten                                                                                                                |
-| `ORIGIN_MISMATCH`     | sign_in, rotate          | the tab's origin is not one of the entry's; carries `origin`                                                                          |
-| `ORIGIN_KNOWN`        | add_origin               | the entry already holds the tab's origin                                                                                              |
-| `BAD_RULES`           | sign_up, rotate          | `maxLength` outside 8 to 64                                                                                                           |
-| `ROTATE_UNSETTLED`    | rotate                   | the entry still holds a previous password                                                                                             |
-| `NO_FIELD`            | sign_in, sign_up, rotate | no field to fill; for sign_up, no new-password field; for rotate, no current-password field told apart from the new; carries `report` |
-| `CROSS_ORIGIN_SUBMIT` | sign_in, sign_up, rotate | the form posts to another origin; carries `report`                                                                                    |
-| `STALE_ELEMENT`       | sign_in, sign_up, rotate | `submit` no longer holds its number                                                                                                   |
-| `PAGE_CHANGED`        | sign_in, sign_up, rotate | the tab's URL differs from the one the prepare hook read                                                                              |
-| `TAB_GONE`            | all                      | the tab closed                                                                                                                        |
-| `FAILED`              | sign_in, sign_up, rotate | the guest threw; carries `report`                                                                                                     |
+| Refusal               | Tools                       | When                                                                                                                                  |
+| --------------------- | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `UNKNOWN_ACCOUNT`     | sign_in, rotate, add_origin | no entry has that ID                                                                                                                  |
+| `WRONG_KIND`          | sign_in, rotate, add_origin | the entry is a card                                                                                                                   |
+| `ACCOUNT_FORGOTTEN`   | sign_in, rotate, add_origin | the entry is forgotten                                                                                                                |
+| `ORIGIN_MISMATCH`     | sign_in, rotate             | the tab's origin is not one of the entry's; carries `origin`                                                                          |
+| `ORIGIN_KNOWN`        | add_origin                  | the entry already holds the tab's origin                                                                                              |
+| `BAD_RULES`           | sign_up, rotate             | `maxLength` outside 8 to 64                                                                                                           |
+| `ROTATE_UNSETTLED`    | rotate                      | the entry still holds a previous password                                                                                             |
+| `NO_FIELD`            | sign_in, sign_up, rotate    | no field to fill; for sign_up, no new-password field; for rotate, no current-password field told apart from the new; carries `report` |
+| `CROSS_ORIGIN_SUBMIT` | sign_in, sign_up, rotate    | the form posts to another origin; carries `report`                                                                                    |
+| `STALE_ELEMENT`       | sign_in, sign_up, rotate    | `submit` no longer holds its number                                                                                                   |
+| `PAGE_CHANGED`        | sign_in, sign_up, rotate    | the tab's URL differs from the one the prepare hook read                                                                              |
+| `TAB_GONE`            | every tool but list         | the tab closed                                                                                                                        |
+| `FAILED`              | sign_in, sign_up, rotate    | the guest threw; carries `report`                                                                                                     |
 
 The first 7 return from the prepare hook before the decision, as a direct result, so no card shows.
 The guest checks the submit element and the form before it fills, so a refusal fills nothing. A
@@ -249,7 +249,8 @@ Secrets:
 
 Filling:
 
-- `sign_in` asks unless a rule allows it. A rule scopes it by host and may pin the account.
+- `sign_in` asks unless a rule allows it. An "always allow" rule scopes it by host and pins the
+  account.
 - The guest compares `expectOrigin` with the live top frame's origin right before it fills, and
   fills nothing when they differ.
 - A password goes only into an `<input type=password>` whose form posts to the same origin, or that
