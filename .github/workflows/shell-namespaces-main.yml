@@ -1,0 +1,39 @@
+# Runs the shell guest's namespace tests on each push to main, as shell-namespaces.yml runs them on a
+# pull request. A push to main keeps each run, so every merged commit is tested.
+name: Shell namespaces main
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+# keyed by commit and never cancelled; two runs of one commit, such as a rerun, wait for each other
+concurrency:
+  group: ${{ github.workflow }}-${{ github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  userns:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version-file: .bun-version
+
+      - name: Install
+        run: bun install --frozen-lockfile --ignore-scripts
+
+      - name: Allow unprivileged user namespaces
+        run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+
+      - name: Test
+        run: bun run test:userns

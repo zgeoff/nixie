@@ -8,6 +8,9 @@ export default defineRig({
   lanes: {
     browser: { memory: '8G' },
     imp: { limit: '14s' },
+
+    // the shell guest's commands run in their own user namespace, which needs a runner that allows it
+    userns: { limit: '5s' },
     e2e: { start: 'scripts/test-utils/prepare-e2e-lane.ts' },
     restic: { limit: '40s', start: 'scripts/test-utils/prepare-restic-lane.ts' },
     'agent-sdk': { start: 'scripts/test-utils/prepare-agent-sdk-lane.ts' },
