@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test';
 import { readRecords } from '@heynixie/log';
 import invariant from 'tiny-invariant';
-import { startTestNotebook } from '../test-utils';
+import { pickText, startTestNotebook } from '../test-utils';
 
 async function setupTest() {
   const state = { isCleanupFailing: false };
@@ -22,7 +22,7 @@ async function setupTest() {
 
     invariant(outcome.status === 'ok');
 
-    return String(outcome.result['note']);
+    return pickText(outcome.result['note']);
   };
 
   const readNoteID = async (shortID: string) => {
@@ -30,7 +30,7 @@ async function setupTest() {
 
     const found = records.find((entry) => entry.record.payload['shortID'] === shortID);
 
-    return String(found?.record.payload['note']);
+    return pickText(found?.record.payload['note']);
   };
 
   return { ...ctx, state, write, readNoteID };

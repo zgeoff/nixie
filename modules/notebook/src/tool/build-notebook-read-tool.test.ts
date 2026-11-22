@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test';
 import type { JSONValue } from '@heynixie/log';
 import invariant from 'tiny-invariant';
-import { startTestNotebook } from '../test-utils';
+import { pickText, startTestNotebook } from '../test-utils';
 
 async function setupTest() {
   const ctx = await startTestNotebook({ settings: { noteChars: 200_000 } });
@@ -11,7 +11,7 @@ async function setupTest() {
 
     invariant(outcome.status === 'ok');
 
-    return String(outcome.result['note']);
+    return pickText(outcome.result['note']);
   };
 
   return { ...ctx, write };

@@ -101,7 +101,7 @@ export function createNotebookProcedures(context: APIContext) {
         throw toNotebookError(error, options.errors);
       });
 
-      await match(outcome)
+      match(outcome)
         .with('unauthorized', () => {
           throw options.errors.UNAUTHORIZED();
         })

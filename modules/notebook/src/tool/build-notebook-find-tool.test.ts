@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test';
 import type { JSONValue } from '@heynixie/log';
 import invariant from 'tiny-invariant';
-import { startTestNotebook } from '../test-utils';
+import { pickText, startTestNotebook } from '../test-utils';
 
 interface NotebookOptions {
   readonly topics?: readonly (readonly string[])[];
@@ -15,7 +15,7 @@ async function setupTest(options: NotebookOptions = {}) {
 
     invariant(outcome.status === 'ok');
 
-    return String(outcome.result['note']);
+    return pickText(outcome.result['note']);
   };
 
   const readFindResult = async (input: Record<string, JSONValue>) => {
@@ -56,7 +56,7 @@ async function setupTest(options: NotebookOptions = {}) {
       for (const entry of notes) {
         invariant(typeof entry === 'object' && entry !== null && 'title' in entry);
 
-        titles.push(String(entry.title));
+        titles.push(pickText(entry.title));
       }
 
       after = next;

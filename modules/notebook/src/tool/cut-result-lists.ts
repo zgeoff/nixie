@@ -12,7 +12,7 @@ export function cutResultLists(
     keys.flatMap((key) => {
       const value = result[key];
 
-      return Array.isArray(value) ? [[key, [...value]] as const] : [];
+      return isList(value) ? [[key, [...value]] as const] : [];
     }),
   );
 
@@ -35,4 +35,8 @@ export function cutResultLists(
 
     longest[1].pop();
   }
+}
+
+function isList(value: JSONValue | undefined): value is readonly JSONValue[] {
+  return Array.isArray(value);
 }

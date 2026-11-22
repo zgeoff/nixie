@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test';
 import invariant from 'tiny-invariant';
-import { startTestNotebook } from '../test-utils';
+import { pickText, startTestNotebook } from '../test-utils';
 
 async function setupTest() {
   const ctx = await startTestNotebook();
@@ -10,7 +10,7 @@ async function setupTest() {
 
     invariant(outcome.status === 'ok');
 
-    return String(outcome.result['note']);
+    return pickText(outcome.result['note']);
   };
 
   const recallItem = async (query: string) => {

@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { startTestNotebook } from '../test-utils';
+import { pickText, startTestNotebook } from '../test-utils';
 import { buildNotebookTools } from './build-notebook-tools';
 
 test('it writes a note and answers its short ID and version 1', async () => {
@@ -24,10 +24,10 @@ test('it keeps each UUID under hidden.uuids, keyed by the short ID the result sh
   const outcome = await ctx.call('notebook.write', { title: 'T', body: 'B' });
   const [written] = await ctx.readRecords(['notebook.note_written']);
 
-  const shortID = String(written?.record.payload['shortID']);
+  const shortID = pickText(written?.record.payload['shortID']);
 
   expect(outcome).toMatchObject({
-    hidden: { uuids: { [shortID]: String(written?.record.payload['note']) } },
+    hidden: { uuids: { [shortID]: pickText(written?.record.payload['note']) } },
   });
 });
 

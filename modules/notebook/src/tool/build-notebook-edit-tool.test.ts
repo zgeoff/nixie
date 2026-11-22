@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test';
 import invariant from 'tiny-invariant';
-import { startTestNotebook } from '../test-utils';
+import { pickText, startTestNotebook } from '../test-utils';
 
 async function setupTest() {
   const ctx = await startTestNotebook({ settings: { noteChars: 40 } });
@@ -10,7 +10,7 @@ async function setupTest() {
 
     invariant(outcome.status === 'ok');
 
-    return String(outcome.result['note']);
+    return pickText(outcome.result['note']);
   };
 
   const readBody = async (note: string, version?: number) => {
@@ -21,7 +21,7 @@ async function setupTest() {
 
     invariant(outcome.status === 'ok');
 
-    return String(outcome.result['body']);
+    return pickText(outcome.result['body']);
   };
 
   return { ...ctx, write, readBody };

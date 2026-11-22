@@ -1,6 +1,6 @@
 import { expect, mock, test } from 'bun:test';
 import { createMemoryItem } from '@heynixie/memory/test-utils';
-import { startTestNotebook } from '@heynixie/notebook/test-utils';
+import { pickText, startTestNotebook } from '@heynixie/notebook/test-utils';
 import { conversationTaskID } from '@heynixie/tasks';
 import {
   buildTestDefinitionReaders,
@@ -122,8 +122,12 @@ test('it removes the requests from the first record of a forgotten note on, and 
 
   const [first] = await ctx.readRecords(['notebook.note_written']);
 
-  await ctx.call('notebook.edit', { note: String(first?.record.payload['shortID']), append: 'x' });
-  await ctx.forget({ noteID: String(first?.record.payload['note']) });
+  await ctx.call('notebook.edit', {
+    note: pickText(first?.record.payload['shortID']),
+    append: 'x',
+  });
+
+  await ctx.forget({ noteID: pickText(first?.record.payload['note']) });
 
   expect(ctx.removeForgotten).toHaveBeenCalledWith({
     threads: [],

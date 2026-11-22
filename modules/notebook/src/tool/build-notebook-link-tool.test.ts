@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test';
 import type { JSONObject } from '@heynixie/log';
 import invariant from 'tiny-invariant';
-import { startTestNotebook } from '../test-utils';
+import { pickText, startTestNotebook } from '../test-utils';
 
 async function setupTest() {
   const ctx = await startTestNotebook();
@@ -11,7 +11,7 @@ async function setupTest() {
 
     invariant(outcome.status === 'ok');
 
-    return String(outcome.result['note']);
+    return pickText(outcome.result['note']);
   };
 
   const readLinks = async (note: string) => {
@@ -47,7 +47,7 @@ test.each([
   const moment = await ctx.seed.moment('The engineer visit');
   const [message] = await ctx.seed.ownerMessages(['the engineer came']);
 
-  invariant(moment && message);
+  invariant(moment !== undefined && moment !== null && message !== undefined);
 
   const targets: Record<string, JSONObject> = {
     note: { note: other },
@@ -85,7 +85,7 @@ test.each([
   const moment = await ctx.seed.moment('The engineer visit');
   const [message] = await ctx.seed.ownerMessages(['the engineer came']);
 
-  invariant(moment && message);
+  invariant(moment !== undefined && moment !== null && message !== undefined);
 
   const targets: Record<string, JSONObject> = {
     memory: { memory: item.shortID },
