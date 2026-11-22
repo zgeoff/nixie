@@ -10,9 +10,7 @@ in a lightbox with its name, its prompt, when it was made and a link to the imag
 from, so you can walk back through the passes, and the lightbox carries the same forget control as
 the rest of the client.
 
-The page reads the stored images through 3 new API calls in an `images` namespace. One image reaches
-the chat through [`file.send`](../../architecture/connectors/code-tool.md#sending-a-file), and this
-design leaves that path unchanged.
+The page reads the stored images through 3 new API calls in an `images` namespace.
 
 ## Shape
 
@@ -118,8 +116,6 @@ images: {
   `tasks.list` and `tasks.read`, so it gets a 403 on each `images` call with no change to that list.
 - `images.list` reads at most 300 rows a call and leaves out every forgotten image, so a page can
   hold fewer than 30 images, or none, while `nextCursor` remains.
-- A pin or an unpin between two pages changes no image's place in the order, because the rowid sets
-  it.
 - `images.read` returns a forgotten image with its `from`, so a walk back through the passes goes on
   past it.
 - The server makes a thumbnail on each read and never stores it, so a forget leaves no copy of the
@@ -127,14 +123,12 @@ images: {
 
 ### The page
 
-- The page and its link, Images, after Files in the shell's bar, exist whether or not the deployment
-  config has an `images` block, because stored images stay readable.
+- The shell's bar links Images after Files, with or without an `images` block in the config.
 - The next page of images loads when the grid's end scrolls into view and when you press Load more.
 - Each tile reads its thumbnail only when it scrolls into view. The client reads bytes through the
   oRPC client, keeps them as blobs and never navigates to them, as the
   [files page](../../architecture/channels/client.md#the-files-page) does.
-- The name and the prompt came from a model, so the page shows them as plain text, never as
-  Markdown.
+- The page shows the name and the prompt as plain text, because a model wrote them.
 - The "Show all" checkbox sets the `all` search parameter, and the open image sets the `image`
   search parameter, so a reload keeps both and the browser's Back button steps back along the walk.
 
@@ -144,8 +138,8 @@ images: {
   time zone, and one line about where it came from:
   - an edit shows "Edited from" and the earlier image's name, or its ID when it has no name. The
     link opens that image in the lightbox.
-  - an import shows "Imported from a file" or "Imported from a photo", with no link.
-  - a new draw shows no such line.
+  - an import shows "Imported from a file" or "Imported from a photo", with no link, and a new draw
+    shows no such line.
 - An image that `images.read` returns with `isForgotten` shows "Forgotten" in place of the picture,
   the name and the prompt, and keeps its "Edited from" link.
 
@@ -174,8 +168,7 @@ images: {
 
 ## Decisions
 
-- **Pinned images by default.** A pin marks the images worth keeping, so the default view holds
-  those and "Show all" holds every pass.
+- **Pinned images by default.** A pin marks the images worth keeping; "Show all" holds every pass.
 - **The forget takes the result record alone.** The files page forgets a code-run file the same way.
 
 ## Builder decides
@@ -191,7 +184,8 @@ images: {
 
 - Pinning, naming or editing an image from the page. The assistant does each one with its tools when
   you ask, and the page shows the change on its next read.
-- Downloading an image. `file.send` puts a picture in the chat.
+- Downloading an image, and sending one into the chat, which
+  [`file.send`](../../architecture/connectors/code-tool.md#sending-a-file) does.
 
 ## Open questions
 
