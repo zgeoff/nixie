@@ -375,3 +375,30 @@ test('it runs the call once more after the owner answers retry to the unknown ou
   expect(settled).toMatchObject({ status: 'done', attempt_open: 0 });
   expect(kinds.map((entry) => entry.record.kind)).toContain('task.wake');
 });
+
+test('it runs nothing for an action of a held tool prefix, and shows none pending', async () => {
+  const ctx = await setupTest();
+
+  await ctx.seed.inStepAction({ step: ctx.step });
+
+  const settled = await ctx.runStep({
+    runCall: ctx.runCall({ status: 'done', resultSequence: 7, result: {}, images: [] }),
+    readHeldToolPrefixes: () => ['test.'],
+  });
+
+  const isPending = await probeInStepActionPending(ctx.context, ctx.step.lease.workID, () => [
+    'test.',
+  ]);
+
+  expect([settled, ctx.calls, isPending]).toStrictEqual([[], [], false]);
+});
+
+test('it shows the action pending again once its prefix is free', async () => {
+  const ctx = await setupTest();
+
+  await ctx.seed.inStepAction({ step: ctx.step });
+
+  const isPending = await probeInStepActionPending(ctx.context, ctx.step.lease.workID, () => []);
+
+  expect(isPending).toBe(true);
+});
