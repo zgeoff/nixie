@@ -370,6 +370,19 @@ test.each([
     { outcome: 'done', result: { delivered: true } },
   ],
   [
+    'done with a picture',
+    {
+      kind: 'success',
+      result: { delivered: true },
+      images: [{ mediaType: 'image/png', bytes: new Uint8Array([137, 80, 78, 71]) }],
+    },
+    {
+      outcome: 'done',
+      result: { delivered: true },
+      images: [{ mediaType: 'image/png', bytes: new Uint8Array([137, 80, 78, 71]) }],
+    },
+  ],
+  [
     'failed',
     { kind: 'refused', reason: 'no such address' },
     { outcome: 'failed', reason: 'no such address' },

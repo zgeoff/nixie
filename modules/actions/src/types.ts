@@ -2,6 +2,7 @@ import type { CheckedTables } from '@heynixie/db';
 import type { Decision, JSONObject } from '@heynixie/log';
 import type { CallDestination, Effect } from '@heynixie/policy';
 import type { TaskClaim, TasksTables } from '@heynixie/tasks';
+import type { ToolImage } from '@heynixie/tools';
 
 export type ActionStatus = 'pending' | 'done' | 'failed' | 'unknown';
 
@@ -56,7 +57,14 @@ export interface AllowedCall {
 }
 
 export type ModelView =
-  | { readonly status: 'done'; readonly actionID: string; readonly result: JSONObject | null }
+  | {
+      readonly status: 'done';
+      readonly actionID: string;
+      readonly result: JSONObject | null;
+
+      // the pictures the connector's result carried, which the model reads beside it
+      readonly images?: readonly ToolImage[];
+    }
   | { readonly status: 'failed'; readonly actionID: string; readonly reason: string }
   | { readonly status: 'pending'; readonly actionID: string; readonly message: string }
   | { readonly status: 'unknown'; readonly actionID: string; readonly message: string }

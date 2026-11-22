@@ -774,6 +774,7 @@ test('it runs a queued click against the window its preparation saw', async () =
         focus: { kind: 'browser', tab: 't1', url: 'https://site.test/form' },
         isWatched: false,
       },
+      images: [{ mediaType: 'image/png', bytes: expect.any(Uint8Array) }],
     },
     {
       op: 'screenAct',
@@ -832,6 +833,25 @@ test.each([
   const response = await ctx.attempt('computer.screen_type', input, ['site.test']);
 
   expect([response.kind, ctx.requests.at(-1)]).toMatchObject(['success', { op: 'screenAct', act }]);
+});
+
+test('it returns the picture of the desktop after a queued type beside its result', async () => {
+  const ctx = await setupTest({});
+
+  const input = { keys: 'enter' };
+
+  await ctx.prepare('computer.screen_type', input);
+
+  const response = await ctx.attempt('computer.screen_type', input, ['site.test']);
+
+  expect(response).toStrictEqual({
+    kind: 'success',
+    result: {
+      focus: { kind: 'browser', tab: 't1', url: 'https://site.test/form' },
+      isWatched: false,
+    },
+    images: [{ mediaType: 'image/png', bytes: expect.any(Uint8Array) }],
+  });
 });
 
 test.each([[{ text: 'a', keys: 'enter' }], [{}]])(

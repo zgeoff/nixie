@@ -2,6 +2,7 @@ import { expect, onTestFinished, test } from 'bun:test';
 import {
   exemptTaskInTransaction,
   pauseNixieInTransaction,
+  readRecordAttachments,
   readRecords,
   resumeNixieInTransaction,
   withWriteTransaction,
@@ -9,6 +10,7 @@ import {
 import { buildActionProposalInput } from '@heynixie/policy';
 import { setFaultPointHandler, writeStepCommit, writeTaskControl } from '@heynixie/tasks';
 import { readTestLeases } from '@heynixie/tasks/test-utils';
+import invariant from 'tiny-invariant';
 import { claimAction, runActionAttempt } from '../index';
 import { buildActionSeeder } from '../test-utils/build-action-seeder';
 import { buildStubConnector } from '../test-utils/build-stub-connector';
@@ -189,6 +191,54 @@ test('it puts the result of a success in the task inbox', async () => {
       erasable: { status: 'readable', fields: { result: { messageID: 'm-1' } } },
     },
   ]);
+});
+
+test('it seals the pictures of a success under the outcome record, with their media types', async () => {
+  const ctx = await setupTest();
+  const step = await createTestStep(ctx.context);
+
+  const picture = new Uint8Array([137, 80, 78, 71]);
+
+  await queueTestAction(ctx.context, {
+    step,
+    tool: 'test.send',
+    actionHash: 'sha256:send-1',
+    arguments: { to: 'team' },
+    decision: { outcome: 'allow', stage: 4, rule: { id: 'test-rule', revision: 1 } },
+  });
+
+  const lease = await claimTestAction(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  const stub = buildStubConnector(() => ({
+    kind: 'success',
+    result: { messageID: 'm-1' },
+    images: [{ mediaType: 'image/png', bytes: picture }],
+  }));
+
+  await runActionAttempt(ctx.context, lease, {
+    connectors: new Map([['test.send', stub.connector]]),
+    leaseMs: 60_000,
+  });
+
+  const entries = await readRecords(ctx.context.log, { afterSequence: 0 });
+
+  const outcome = entries
+    .map((entry) => entry.record)
+    .find((record) => record.kind === 'action.outcome');
+
+  invariant(outcome, 'the attempt wrote an outcome');
+
+  const attachments = await readRecordAttachments(ctx.context.log, [outcome.sequence]);
+
+  expect(outcome.erasable).toStrictEqual({
+    status: 'readable',
+    fields: { result: { messageID: 'm-1' }, imageTypes: ['image/png'] },
+  });
+
+  expect(attachments.get(outcome.sequence)).toStrictEqual({
+    status: 'readable',
+    attachments: [picture],
+  });
 });
 
 test('it settles a refusal with no effect as failed, with the reason in the inbox', async () => {

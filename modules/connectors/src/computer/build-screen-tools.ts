@@ -12,7 +12,7 @@ import {
   runComputerCall,
   sortCallResult,
 } from './run-computer-call';
-import { showPicture } from './show-picture';
+import { fitPicture, showPicture } from './show-picture';
 import type { ComputerAttempt } from './types';
 
 // The tools that look at and drive the whole desktop: a screenshot and a scroll run directly, and a
@@ -223,8 +223,8 @@ const queuedNote = [
   ' The call waits for the owner to allow it, per site, and then runs against the window it was ',
   'asked about: if another window is there by then, it is refused with SCREEN_CHANGED. A click ',
   'or a key on the terminal is refused with USE_RUN, and one on the browser’s address bar or ',
-  'tab strip with USE_BROWSER_OPEN. The result names the window that has focus; take a ',
-  'screenshot to see the screen.',
+  'tab strip with USE_BROWSER_OPEN. Once it runs, the result names the window that has focus ',
+  'and shows the desktop after the act beside it.',
 ].join('');
 
 const actOutput = {
@@ -457,7 +457,12 @@ export async function runScreenAct(
     return unexpected();
   }
 
-  return { result: { focus: toFocusResult(options, outcome.reply.focus), isWatched: false } };
+  const picture = await fitPicture(options, outcome.reply.base64);
+
+  return {
+    result: { focus: toFocusResult(options, outcome.reply.focus), isWatched: false },
+    ...(picture === null ? {} : { images: [picture] }),
+  };
 }
 
 // Two calls with the same input share a key, so the binding found must be for the host that the

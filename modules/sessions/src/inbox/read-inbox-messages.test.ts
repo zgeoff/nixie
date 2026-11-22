@@ -438,6 +438,56 @@ test('it names the approval time and the command output in the message of an app
   ]);
 });
 
+test('it sends the picture an approved action settled done with beside its result', async () => {
+  const ctx = await setupTest();
+
+  const picture = new Uint8Array([137, 80, 78, 71]);
+
+  const records = await writeRecords(ctx.log, [
+    {
+      kind: 'action.outcome',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: {
+        actionID: 'b-uuid',
+        tool: 'computer.screen_click',
+        status: 'done',
+        attempt: 1,
+        reason: null,
+      },
+      erasable: {
+        result: { focus: { kind: 'terminal' }, isWatched: false },
+        imageTypes: ['image/png'],
+      },
+      attachments: [picture],
+    },
+  ]);
+
+  const read = await readInboxMessages(ctx.context, records, {
+    times: { defaultZone: 'Australia/Sydney', now: new Date('2027-03-09T03:30:00Z') },
+    view: buildMockTaskMessageView(),
+    imageBudget: { bytes: 1024, count: 100 },
+  });
+
+  expect(read.messages).toStrictEqual([
+    {
+      uuid: expect.toBeString(),
+      text: expect.toSatisfy(
+        (text: string) =>
+          text.includes('{"focus":{"kind":"terminal"},"isWatched":false}') &&
+          text.includes('<tool-image id='),
+      ),
+      images: [
+        {
+          marker: expect.toStartWith('<tool-image id='),
+          mediaType: 'image/png',
+          data: picture.toBase64(),
+        },
+      ],
+    },
+  ]);
+});
+
 test('it names the approval time and the reason in the message of an approved action that failed', async () => {
   const ctx = await setupTest();
 

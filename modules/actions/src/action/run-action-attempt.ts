@@ -262,6 +262,7 @@ async function writeAttemptResult(
 ): Promise<void> {
   const outcome = pickOutcome(result.response, attempt.attempt, result.retryDelaysMs);
   const details = toDetails(result.response);
+  const attachments = toAttachments(result.response);
 
   if (NIXIE_TEST_BUILD) {
     await waitAtFaultPoint('attempt.result.before', {
@@ -282,7 +283,11 @@ async function writeAttemptResult(
   }
 
   if (outcome.status !== 'pending') {
-    await writeOutcome(context, attempt, { outcome, details });
+    await writeOutcome(context, attempt, {
+      outcome,
+      details,
+      ...(attachments.length === 0 ? {} : { attachments }),
+    });
 
     return;
   }
@@ -313,6 +318,22 @@ async function writeAttemptResult(
   }
 }
 
+// The media type of each picture stays in the outcome's erasable fields, and the bytes are its
+// attachments, so a forget erases both.
 function toDetails(response: ProviderResponse): JSONObject {
-  return response.kind === 'success' ? { result: response.result } : { message: response.reason };
+  if (response.kind !== 'success') {
+    return { message: response.reason };
+  }
+
+  const images = response.images ?? [];
+
+  return images.length === 0
+    ? { result: response.result }
+    : { result: response.result, imageTypes: images.map((image) => image.mediaType) };
+}
+
+function toAttachments(response: ProviderResponse): Uint8Array<ArrayBuffer>[] {
+  return response.kind === 'success'
+    ? (response.images ?? []).map((image) => new Uint8Array(image.bytes))
+    : [];
 }

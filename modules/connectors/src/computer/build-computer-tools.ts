@@ -41,7 +41,13 @@ export function buildComputerTools(options: ComputerToolOptions): ComputerTools 
 
         return refused.success
           ? toRefusal(refused.data)
-          : { kind: 'success', result: result.result };
+          : {
+              kind: 'success',
+              result: result.result,
+              ...(result.images === undefined || result.images.length === 0
+                ? {}
+                : { images: result.images }),
+            };
       },
     },
   };

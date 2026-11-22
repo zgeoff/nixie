@@ -1,9 +1,15 @@
 import type { JSONObject } from '@heynixie/log';
-import type { ToolCall, ToolDefinition } from '@heynixie/tools';
+import type { ToolCall, ToolDefinition, ToolImage } from '@heynixie/tools';
 import type { ImageSize } from './image/image-size';
 
 export type ProviderResponse =
-  | { readonly kind: 'success'; readonly result: JSONObject }
+  | {
+      readonly kind: 'success';
+      readonly result: JSONObject;
+
+      // pictures the model reads beside the result, sealed under the outcome record's own key
+      readonly images?: readonly ToolImage[];
+    }
   | { readonly kind: 'refused'; readonly reason: string }
   | { readonly kind: 'refused_retryable'; readonly reason: string; readonly retryAfterMs?: number }
   | { readonly kind: 'ambiguous'; readonly reason: string }

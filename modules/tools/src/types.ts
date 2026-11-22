@@ -390,7 +390,13 @@ export type Enqueued =
   | { readonly status: 'asked'; readonly shortID: string };
 
 export type ActionOutcome =
-  | { readonly outcome: 'done'; readonly result: JSONObject }
+  | {
+      readonly outcome: 'done';
+      readonly result: JSONObject;
+
+      // the pictures the connector's result carried
+      readonly images?: readonly ToolImage[];
+    }
   | {
       readonly outcome: 'failed' | 'unknown' | 'cancelled';
       readonly reason: string;

@@ -1,5 +1,5 @@
 import type { JSONObject } from '@heynixie/log';
-import type { DirectResult, ToolRun } from '@heynixie/tools';
+import type { DirectResult, ToolImage, ToolRun } from '@heynixie/tools';
 import { fitFetchedImage } from '../fetch/fit-fetched-image';
 import type { ComputerToolOptions } from './computer-tool-options';
 
@@ -27,4 +27,14 @@ export async function showPicture(
     result: { ...picture.result, isShown: reserved },
     images: reserved && fitted.kind === 'image' ? [fitted.image] : [],
   };
+}
+
+// Fits a picture for the model or a card, or returns null when it cannot be read or fit.
+export async function fitPicture(
+  options: ComputerToolOptions,
+  base64: string,
+): Promise<ToolImage | null> {
+  const fitted = await fitFetchedImage(Buffer.from(base64, 'base64'), options.fetch.imageLongEdge);
+
+  return fitted.kind === 'image' ? fitted.image : null;
 }
