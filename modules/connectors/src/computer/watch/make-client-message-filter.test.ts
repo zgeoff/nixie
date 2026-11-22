@@ -195,6 +195,10 @@ test.each([
     message: [0, 0, 0, 0, 32, 24, 0, 1, 0, 0, 0, 255, 0, 255, 16, 8, 0, 0, 0, 0],
   },
   {
+    name: 'a SetPixelFormat with a channel maximum that is not 2^n-1',
+    message: [0, 0, 0, 0, 32, 24, 0, 1, 0, 254, 0, 255, 0, 255, 16, 8, 0, 0, 0, 0],
+  },
+  {
     name: 'a SetPixelFormat with a channel past the pixel',
     message: [0, 0, 0, 0, 32, 24, 0, 1, 0, 255, 0, 255, 0, 255, 30, 8, 0, 0, 0, 0],
   },

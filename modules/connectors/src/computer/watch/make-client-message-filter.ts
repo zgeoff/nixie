@@ -253,7 +253,7 @@ function takePixelFormat(state: FilterState): Uint8Array | null {
 }
 
 // A format the VNC server could not draw with: a depth that does not fit its bits per pixel, a flag
-// that is no boolean, or a colour channel that does not fit in the pixel.
+// that is no boolean, or a colour channel whose maximum is not 2^n-1 or does not fit in the pixel.
 function isPixelFormat(format: Uint8Array): boolean {
   const view = new DataView(format.buffer, format.byteOffset, format.byteLength);
 
@@ -278,7 +278,9 @@ function isPixelFormat(format: Uint8Array): boolean {
       { max: view.getUint16(8), shift: view.getUint8(12) },
     ].every(
       (channel) =>
-        channel.max > 0 && channel.shift + channel.max.toString(2).length <= bitsPerPixel,
+        channel.max > 0 &&
+        (channel.max & (channel.max + 1)) === 0 &&
+        channel.shift + channel.max.toString(2).length <= bitsPerPixel,
     )
   );
 }
