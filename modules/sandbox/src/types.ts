@@ -7,8 +7,13 @@ export type SandboxKind =
   | 'code_run'
   | 'fetch'
   | 'coding'
-  | 'browser'
-  | 'shell';
+  | 'computer'
+  | LegacySandboxKind;
+
+// The kinds of the assistant's browser and shell sandboxes, which the computer kind replaced. A
+// stored spec can still hold one until the move to the computer destroys its sandbox, so a spec
+// parses with either, and nothing builds a new one.
+export type LegacySandboxKind = 'browser' | 'shell';
 
 export type Egress =
   | { readonly kind: 'none' }

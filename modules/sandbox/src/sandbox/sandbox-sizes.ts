@@ -7,8 +7,7 @@ export const sandboxSizes = {
   systemTask: { vcpus: 1, memoryMiB: 384, diskMiB: 4096 },
   fetch: { vcpus: 1, memoryMiB: 192, diskMiB: 4096 },
   codeRun: { vcpus: 1, memoryMiB: 512, diskMiB: 4096 },
-  browser: { vcpus: 2, memoryMiB: 1024, diskMiB: 8192 },
-  shell: { vcpus: 1, memoryMiB: 512, diskMiB: 16_384 },
+  computer: { vcpus: 2, memoryMiB: 1536, diskMiB: 24_576 },
 
   // The Codex CLI and its guest run one turn here. A scripted turn of a page-limit result and a
   // compaction peaked at 253 MB at this size and at 237 MB at 320 MiB, with no kill at either.

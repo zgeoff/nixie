@@ -107,3 +107,22 @@ test('it leaves the extra grants out of a worker', () => {
     }).grants,
   ).toStrictEqual([modelGrant]);
 });
+
+test('it builds a computer spec with public egress, no grant and no tool route', () => {
+  expect(
+    buildSandboxSpec({
+      kind: 'computer',
+      image: 'image-a',
+      owner: 'computer-desktop',
+      limits: { vcpus: 2, memoryMiB: 1536, diskMiB: 24_576 },
+    }),
+  ).toStrictEqual({
+    kind: 'computer',
+    image: 'image-a',
+    owner: 'computer-desktop',
+    egress: { kind: 'public' },
+    grants: [],
+    toolRoute: false,
+    limits: { vcpus: 2, memoryMiB: 1536, diskMiB: 24_576 },
+  });
+});

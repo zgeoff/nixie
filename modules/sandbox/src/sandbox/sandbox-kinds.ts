@@ -13,6 +13,7 @@ export const sandboxKinds: Readonly<Record<SandboxKind, SandboxKindRule>> = {
   code_run: { egress: 'none', hasModelGrant: false, toolRoute: false },
   fetch: { egress: 'public', hasModelGrant: false, toolRoute: false },
   coding: { egress: 'allow', hasModelGrant: true, toolRoute: true },
+  computer: { egress: 'public', hasModelGrant: false, toolRoute: false },
   browser: { egress: 'public', hasModelGrant: false, toolRoute: false },
   shell: { egress: 'public', hasModelGrant: false, toolRoute: false },
 };

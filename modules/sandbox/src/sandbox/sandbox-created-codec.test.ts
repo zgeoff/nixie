@@ -48,3 +48,24 @@ test('it refuses a spec with an egress of another kind', () => {
     }),
   ).toThrow(/"egress"/u);
 });
+
+test.each(['browser', 'shell'] as const)(
+  'it still decodes the spec of a %s sandbox that an earlier release recorded',
+  (kind) => {
+    const payload = sandboxCreatedCodec.encode({
+      sandboxID: 'sandbox-1',
+      adapter: 'imp',
+      spec: {
+        kind,
+        image: `nixie-${kind}`,
+        owner: `computer-${kind}`,
+        egress: { kind: 'public' },
+        grants: [],
+        toolRoute: false,
+        limits: { vcpus: 1, memoryMiB: 512, diskMiB: 8192 },
+      },
+    });
+
+    expect(sandboxCreatedCodec.decode(payload)).toMatchObject({ spec: { kind } });
+  },
+);
