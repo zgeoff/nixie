@@ -25,15 +25,16 @@ interface LockedKey {
 type PRFUnlock = { credentialID: string; output: string };
 
 // the approval of a held call on a locked entry carries the unlock
-proposals.approve({ proposal, assertion, prf });
-// the server checks the assertion against the proposal's action hash, the credential against the
-// entry's LockedKey, and the entry's version against the one the card showed; it unwraps the secret
-// key in memory for that one action, and drops the key and the PRF output when the action ends
+proposals.approve({ proposal, actionHash, attempt, assertion, prf });
+// the server checks the assertion against the proposal's action hash and attempt number,
+// prf.credentialID against the assertion's own credential and the entry's LockedKey, and the
+// entry's version against the one the card showed; it unwraps the secret key in memory for that one
+// attempt, and drops the key and the PRF output when the attempt ends
 
 vault.lock({ account, prf }); // new secret key, sealed again, wrapped under prf's passkey; the old
 //   key is destroyed. Refuses NO_PRF when the assertion returned no PRF output
 vault.addLockPasskey({ account, prf, newPRF }); // two assertions in one request: prf from a passkey
-//   that holds a copy, newPRF from the one to add
+//   that holds a copy, newPRF from the one to add; nothing changes unless both verify
 vault.unlock({ account, prf }); // a new secret key that the key store holds unwrapped again
 vault.reveal({ account, prf }); // prf only for a locked entry
 ```
@@ -50,15 +51,24 @@ vault.reveal({ account, prf }); // prf only for a locked entry
   or whose assertion answers another proposal.
 - The unwrapped key and the PRF output live in memory for one attempt of one action, and the server
   drops both when the attempt ends, whatever its outcome. A retry, an answer to an unknown outcome,
-  a restart and a task that pauses before its attempt each ask for the passkey again. Nothing writes
-  either to disk or to a log.
+  a restart and a task that pauses before its attempt each ask for the passkey again, and the queue
+  holds the retry until you answer from a device. The server drops both on success, refusal, timeout
+  and cancel, and also when the action ends before its attempt starts. The web client drops the PRF
+  output once the request returns. Nothing writes either to disk or to a log.
 - `vault.lock` makes a new secret key, seals the secret again under it, wraps it, and destroys the
   old key, so a backup of the key store from before the lock can't open the secret sealed after it.
   `vault.unlock` makes a new secret key the same way.
+- A backup from before the lock still holds the old key and the old sealed secret, as a backup from
+  before a forget does. The vault screen shows the lock's backup state the way
+  [a forget's backup state](../../architecture/deployment/backups.md#a-forgets-backup-state) shows,
+  and the lock is whole only once that state is complete.
 - A lock covers only the passkey that answered it. `vault.addLockPasskey` adds another, and each
   copy needs that passkey's own PRF output.
-- Revoking a passkey removes its copies, and refuses while it holds the last copy of a locked entry.
-  Unlock or forget that entry first.
+- Revoking a passkey removes its copies, and refuses while it holds the last copy of a locked entry,
+  from a device and from the server's command line alike. Unlock or forget that entry first.
+- The redaction pass and the proxy's URL scan look for each unlocked secret and each locked secret
+  that an attempt holds open. They can't look for a locked secret outside an attempt, because the
+  server can't read it.
 - The `LockedKey` rows live in the key store, so a forget destroys them with the entry's other keys,
   and the key store's purge of older copies covers them as it covers any key.
 - A forget of an entry that an action holds open ends that action before the forget completes, and

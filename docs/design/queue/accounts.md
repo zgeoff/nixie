@@ -136,9 +136,9 @@ result of `filled` carries `report` too.
 // decision. The fill happens only on that origin.
 ```
 
-The approval card for a sign-in shows the account's label, its group, its username and the origin,
-read from the vault when the card renders, "locked" for a locked entry, and "forgotten" once the
-entry is.
+The approval card for a sign-in shows the account's short ID, label, group, username and the origin,
+from the entry's version that the proposal recorded, "locked" for a locked entry, and "forgotten"
+once the entry is.
 
 ### The vault
 
@@ -324,9 +324,9 @@ Groups:
   decision. `wallet.pay` matches on the card's group.
 - Removing `vaultGroups` from an allow or a lift widens the rule, so the widening check asks for it.
 - The default group can't be removed.
-- An approval records the entry's version. An attempt whose entry's version changed since refuses
-  with `ENTRY_CHANGED` before it fills, so the assistant asks again. Policy runs again before each
-  attempt, and a deny wins.
+- An approval records the entry's version. An attempt whose entry's version changed since, or whose
+  entry is forgotten, refuses with `ENTRY_CHANGED` before it fills, so the assistant asks again.
+  Policy runs again before each attempt, and a deny wins.
 
 Debugging a fill:
 
@@ -358,9 +358,9 @@ Debugging a fill:
   page's own text in a changed form, such as with spaces between the characters, where the assistant
   reads it and a page dump keeps it past the dots. The origin checks keep the secret off every page
   of every other site, and the account's own site already holds it.
-- **The assistant can reset its own passwords.** Its mailbox is every account's way back in. The
-  vault keeps secrets out of the model's context; it can't stop the assistant from using its own
-  mail.
+- **The assistant can reset its own passwords.** Its mailbox is the way back in to every account it
+  signed up for, so it resets those alone, and asks you about any other account. The vault keeps
+  secrets out of the model's context; it can't stop the assistant from using its own mail.
 - **Groups sit in the vault, and rules match them.** Several vaults with rules of their own would
   put access rules in two places, the vault and the policy. One vault with groups keeps every rule
   in the policy.

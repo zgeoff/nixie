@@ -84,9 +84,9 @@ shows.
 // The prepare hook reads the tab's origin, its URL and the checkout's total from the guest.
 ```
 
-The approval card for a purchase shows the card's label and group, the merchant, the declared
-amount, the total the guest read from the page or "no total found", `charged`, and whether it
-repeats.
+The approval card for a purchase shows the card's short ID, label and group from the entry's version
+that the proposal recorded, the merchant, the declared amount, the total the guest read from the
+page or "no total found", `charged`, and whether it repeats.
 
 ### The card in the vault
 
@@ -174,7 +174,9 @@ Spending:
   reference rate and adds a margin for the bank's conversion fee, a setting whose default is 3%.
   That `charged` amount is what a lift and the budget check.
 - Each card has its own spend budget, `card-<account>`, in the budgets ledger, in the card's
-  currency. A lifting rule for `wallet.pay` names one card's budget, as every lift names a budget.
+  currency. The vault defines it, so the rule parser accepts a lift that names it, as it accepts a
+  budget a file defines. A lifting rule for `wallet.pay` names one card's budget, as every lift
+  names a budget.
 - The prepare hook resolves the card before the decision, from the call's `card` or the vault's one
   card, so the rule match and the ledger charge use the same card.
 - A `wallet.pay` passes without asking only under a lifting rule whose budget is the card's, whose
@@ -190,6 +192,8 @@ Spending:
   [budgets](../../architecture/policy/budgets.md#lifts) says. A purchase you approved never counts
   against the budget. A `wallet.pay` that ends before its click credits the charge, and the guest
   clears the card fields it filled.
+- The action writes that the click may happen before it asks the guest to submit. After a crash, an
+  attempt with that record is an unknown outcome, and one without it credits the charge.
 - Every `wallet.pay` that clicks submit writes a `purchase.recorded` record.
 - A new card starts with a monthly budget of 100 in its own currency and no lifting rule, so it
   lifts nothing until you add one.
