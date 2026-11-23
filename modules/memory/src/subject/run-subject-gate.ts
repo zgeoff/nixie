@@ -14,6 +14,7 @@ import type { MemorySubject, MemoryTables, StoreParts } from '../types';
 import { getRowSubject } from '../utils/get-row-subject';
 import { requireItem } from '../utils/item/require-item';
 import { pickSubjectChangeReview } from './pick-subject-change-review';
+import { requireGrantedSelfSubject } from './require-granted-self-subject';
 import { requireSelfNoteCaller } from './require-self-note-caller';
 
 export interface SubjectGateResult {
@@ -46,6 +47,10 @@ export async function runSubjectGate(
     item === null || request.subject === undefined || request.subject === subject
       ? null
       : request.subject;
+
+  const touched = newSubject === null ? [subject] : [subject, newSubject];
+
+  requireGrantedSelfSubject(request.caller, touched);
 
   const image = request.image;
 

@@ -2,6 +2,7 @@ import { expect, test } from 'bun:test';
 import { buildMockProvenance } from '../test-utils/build-mock-provenance';
 import { buildMockWriteCaller } from '../test-utils/build-mock-write-caller';
 import { startTestMemory } from '../test-utils/start-test-memory';
+import { SelfNoteError } from '../utils/error/self-note-error';
 
 test.each([
   { from: 'conversation', caller: buildMockWriteCaller(), thread: 'conversation' },
@@ -33,4 +34,28 @@ test.each([
   expect(notices.flatMap((notice) => notice.entries)).toMatchObject([
     { itemID: item.itemID, change: 'unpinned', version: null },
   ]);
+});
+
+test('it refuses a granted task an unpin, and keeps the item pinned', async () => {
+  const memory = await startTestMemory();
+
+  const note = await memory.store.remember({
+    text: 'I like tidy lists',
+    subject: 'self',
+    provenance: buildMockProvenance(),
+  });
+
+  await memory.store.writes.pin({ target: note, caller: buildMockWriteCaller() });
+
+  const write = memory.store.writes.unpin({
+    itemID: note.itemID,
+    caller: buildMockWriteCaller({
+      origin: 'task',
+      thread: 'task-1',
+      taskID: 'task-1',
+      hasSelfNoteGrant: true,
+    }),
+  });
+
+  expect(write).rejects.toThrowWithMessage(SelfNoteError, /a pin or an unpin is not one/u);
 });

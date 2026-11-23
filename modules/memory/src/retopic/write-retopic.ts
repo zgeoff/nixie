@@ -6,6 +6,7 @@ import { pickCoveringRule } from '../gate/pick-covering-rule';
 import { readCurrentItemKey } from '../item-key/read-current-item-key';
 import { writeLabelsInTransaction } from '../label/write-labels-in-transaction';
 import { readNewestMessage } from '../message/read-newest-message';
+import { requireGrantedSelfSubject } from '../subject/require-granted-self-subject';
 import type { Labels, MemoryTables, StoreParts } from '../types';
 import { SelfNoteError } from '../utils/error/self-note-error';
 import { TopicMoveError } from '../utils/error/topic-move-error';
@@ -32,6 +33,11 @@ export interface RetopicRequest {
 export function writeRetopic(parts: StoreParts, request: RetopicRequest): Promise<RetopicPlan> {
   return parts.lock(async () => {
     const plan = await requireRetopicPlan(parts, request.source, request.to);
+
+    requireGrantedSelfSubject(request.caller, [
+      plan.to.subject,
+      ...plan.moves.map((move) => move.fromSubject),
+    ]);
 
     requireMoveCovered(plan, request);
     requireMoveShown(plan, request);

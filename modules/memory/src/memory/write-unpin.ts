@@ -1,5 +1,6 @@
 import type { UnpinRequest, WriteOutcome } from '../gate/gate-context';
 import { readNewestMessage } from '../message/read-newest-message';
+import { requirePinCaller } from '../pin/require-pin-caller';
 import { writePin } from '../pin/write-pin';
 import type { MemoryTables, StoreParts } from '../types';
 import { MemoryItemNotFoundError } from '../utils/error/memory-item-not-found-error';
@@ -7,6 +8,8 @@ import { NotPinnedError } from '../utils/error/not-pinned-error';
 import { buildWriteGroup } from '../write/build-write-group';
 
 export async function writeUnpin(parts: StoreParts, request: UnpinRequest): Promise<WriteOutcome> {
+  requirePinCaller(request.caller);
+
   const item = await parts.context.log.writer.db
     .$extendTables<MemoryTables>()
     .selectFrom('memory_items')

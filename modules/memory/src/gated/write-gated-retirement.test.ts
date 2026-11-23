@@ -9,6 +9,7 @@ import { buildMockWriteCaller } from '../test-utils/build-mock-write-caller';
 import { readVersionChecks } from '../test-utils/read-version-checks';
 import { startTestMemory } from '../test-utils/start-test-memory';
 import { writeOwnerMessageRecord } from '../test-utils/write-owner-message-record';
+import { SelfNoteError } from '../utils/error/self-note-error';
 import { readVersion } from '../version/read-version';
 
 test('it retires an item you asked to retire, with your intent quote and the checks', async () => {
@@ -629,5 +630,61 @@ test.each([
     expect(notices.flatMap((notice) => notice.entries)).toMatchObject([
       { itemID: item.itemID, change: 'retired', version: 2 },
     ]);
+  },
+);
+
+test('it retires a self-note for a granted task with no intent quote', async () => {
+  const memory = await startTestMemory();
+
+  const note = await memory.store.remember({
+    text: 'I like tidy lists',
+    subject: 'self',
+    provenance: buildMockProvenance(),
+  });
+
+  const outcome = await memory.store.writes.retire({
+    target: note,
+    caller: buildMockWriteCaller({
+      origin: 'task',
+      thread: 'task-1',
+      taskID: 'task-1',
+      hasSelfNoteGrant: true,
+    }),
+  });
+
+  expect(outcome).toMatchObject({ status: 'applied', itemID: note.itemID });
+});
+
+test.each(['owner', 'shared'] as const)(
+  'it refuses a granted task a retirement of a %s item, and keeps it active',
+  async (subject) => {
+    const memory = await startTestMemory();
+
+    const item = await memory.store.remember({
+      text: 'Lives on Elm Street',
+      subject,
+      provenance: buildMockProvenance(),
+    });
+
+    const write = memory.store.writes.retire({
+      target: item,
+      caller: buildMockWriteCaller({
+        origin: 'task',
+        thread: 'task-1',
+        taskID: 'task-1',
+        hasSelfNoteGrant: true,
+      }),
+    });
+
+    await Promise.allSettled([write]);
+
+    const items = await memory.store.recall({ itemIDs: [item.itemID], thread: 'task-1' });
+
+    expect(write).rejects.toThrowWithMessage(
+      SelfNoteError,
+      new RegExp(`subject is ${subject}`, 'u'),
+    );
+
+    expect(items.items.map((entry) => entry.itemID)).toStrictEqual([item.itemID]);
   },
 );

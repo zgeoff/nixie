@@ -12,5 +12,8 @@ export function buildWriteCaller(context: Pick<ToolContext, 'run'>): WriteCaller
     taskID: thread,
     runID: context.run.runID,
     model: context.run.model.model,
+    ...(thread !== conversationTaskID && context.run.hasSelfNoteGrant === true
+      ? { hasSelfNoteGrant: true }
+      : {}),
   };
 }

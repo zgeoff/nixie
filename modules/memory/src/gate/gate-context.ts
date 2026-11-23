@@ -84,6 +84,9 @@ export interface WriteCaller {
   readonly taskID: string;
   readonly runID: string;
   readonly model: string;
+
+  // a task whose definition grants it the assistant's self-note writes
+  readonly hasSelfNoteGrant?: boolean | undefined;
 }
 
 export interface GatedRememberRequest {
