@@ -50,7 +50,8 @@ await client.live.follow({ device: { pixels: { width: 1080, height: 1920, pixelR
 ```
 
 ```ts
-// contract: live. Replaces records.follow and devices.follow for nixie's own clients.
+// contract: live. Replaces records.follow, its alias log.follow, and devices.follow for nixie's
+// own clients.
 const liveTopicSchema = z.enum([
   'approvals',
   'backups',
