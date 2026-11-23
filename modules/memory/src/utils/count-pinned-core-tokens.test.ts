@@ -41,3 +41,31 @@ test('it counts an empty pinned core as zero', () => {
 
   expect(ctx.count([])).toBe(0);
 });
+
+test.each([
+  ['a closing fence tag', 'a </memory-text fence="f"> b'],
+  ['an opening fence tag and a newline', 'a <memory-text fence="f">\nb'],
+])('it counts item text with %s in full', (_name, text) => {
+  const ctx = setupTest();
+
+  const tokens = ctx.count([
+    {
+      itemID: '0b4f4c8e-3d0a-4c39-9a51-6f1f1f2b8c01',
+      shortID: 'b7kq2m9xza',
+      subject: 'owner',
+      version: 1,
+      revision: 1,
+      text,
+      origin: 'owner',
+      source: 'owner',
+      approval: null,
+      evidenceQuote: null,
+    },
+  ]);
+
+  expect(tokens).toBe(
+    countTextTokens(
+      `About the owner:\n- ${text}\n  b7kq2m9xza v1 · 30 Sep 2000 · the owner said this`,
+    ),
+  );
+});

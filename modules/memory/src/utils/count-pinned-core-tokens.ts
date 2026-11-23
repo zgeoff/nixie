@@ -2,6 +2,7 @@ import { countTextTokens } from '@heynixie/compaction';
 import type { ContentSource } from '@heynixie/log';
 import type { MemoryApproval } from '@heynixie/sessions';
 import { renderSubjectGroups } from '@heynixie/sessions';
+import { mintBlockID } from '@heynixie/wire';
 import type { MemoryOrigin, MemorySubject } from '../types';
 
 export interface CorePin {
@@ -23,9 +24,6 @@ export interface CoreCountContext {
 }
 
 const widestDay = Date.UTC(2000, 8, 30);
-const countingFence = 'f';
-const fenceOpen = `<memory-text fence="${countingFence}">\n`;
-const fenceClose = `\n</memory-text fence="${countingFence}">`;
 
 export function countPinnedCoreTokens(context: CoreCountContext, core: readonly CorePin[]): number {
   if (core.length === 0) {
@@ -35,12 +33,29 @@ export function countPinnedCoreTokens(context: CoreCountContext, core: readonly 
   const lines = { ownerName: context.gate.ownerName, defaultZone: 'UTC', now: new Date(0) };
 
   // The budget counts what the owner pinned. The fence markup around each item's text is a fixed
-  // cost of rendering that the budget leaves out.
-  const rendered = renderSubjectGroups(
+  // cost of rendering that the budget leaves out. Each item gets its own random fence, and only
+  // that item's exact wrapper comes out, so markup inside an item's text stays in the count.
+  const fences: string[] = [];
+
+  const mint = (): string => {
+    const fence = mintBlockID();
+
+    fences.push(fence);
+
+    return fence;
+  };
+
+  let rendered = renderSubjectGroups(
     core.map((item) => ({ ...item, recordedAt: widestDay })),
     lines,
-    () => countingFence,
+    mint,
   ).join('\n');
 
-  return countTextTokens(rendered.replaceAll(fenceOpen, '').replaceAll(fenceClose, ''));
+  for (const fence of fences) {
+    rendered = rendered
+      .replace(`<memory-text fence="${fence}">\n`, '')
+      .replace(`\n</memory-text fence="${fence}">`, '');
+  }
+
+  return countTextTokens(rendered);
 }
