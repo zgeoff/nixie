@@ -152,7 +152,8 @@ runs in 2 parts, as a [moment destroy](./moments.md#destroying-a-moment) does:
 The cleanup aborts every turn in flight and waits for it, so a forget that the assistant makes
 inside a turn runs part 1 and returns, and the cleanup runs beside the turn. The turn's step fails
 and runs again after its retry delay, on a rebuilt session, as
-[the live session](./context.md#forgetting-and-the-live-session) describes.
+[the live session](./context.md#forgetting-and-the-live-session) describes. A cleanup that fails
+runs again after a short wait, up to 10 tries, and the next start finishes one that still fails.
 
 Every step is safe to run twice, so the server's start finishes a forget that a crash cut short. The
 session cleanup runs for the conversation and for each open task whose tool list holds a notebook

@@ -36,13 +36,11 @@ export function buildNotebookForgetTool(readStore: () => NotebookToolStore): Too
       const input = forgetArguments.parse(call.input);
       const store = readStore();
 
-      const read = await store.readForgetPreview(input.id);
-
-      if (read.status === 'unknown') {
-        return { status: 'ok', ...refuseNote(buildUnknownNote(input.id).refusal) };
-      }
-
-      const forgotten = await store.forgetBeside({ note: input.id, by: 'assistant' });
+      const forgotten = await store.forgetBeside({
+        note: input.id,
+        by: 'assistant',
+        isShortIDOnly: true,
+      });
 
       if (forgotten.status === 'refused') {
         return { status: 'ok', ...refuseNote(buildUnknownNote(input.id).refusal) };
@@ -50,7 +48,7 @@ export function buildNotebookForgetTool(readStore: () => NotebookToolStore): Too
 
       return {
         status: 'ok',
-        result: { note: forgotten.shortID, title: read.preview.title },
+        result: { note: forgotten.shortID, title: forgotten.title },
         record: { note: forgotten.shortID },
         ...buildNoteHidden({ [forgotten.shortID]: forgotten.noteID }),
       };

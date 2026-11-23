@@ -119,14 +119,15 @@ Before you start:
    bun verify browser goto /
    bun verify browser type --role textbox --name Message --value 'Forget the diary note.'
    bun verify browser click --role button --name Send
-   bun verify conversation turn --message 'Forget the diary note.' --reply 'The diary note is forgotten.'
+   bun verify conversation turn --message 'Forget the diary note.' --reply 'The diary note is forgotten.' --wait-ms 60000
    bun verify browser goto '/notebook?private=1'
-   bun verify browser snapshot --until-text 'Notebook'
+   bun verify browser snapshot --until-text 'No notes yet'
    bun verify db query "select json_extract(payload, '$.by') as by, count(*) as n from records where kind = 'notebook.note_forgotten' group by by order by by"
    ```
 
-   Expect: the query lists 1 note, the private one. The list shows no link "Winter diary". The last
-   query lists `assistant` with `n` 1 and `user` with `n` 1.
+   Expect: the first query lists 1 note, the private one. The `conversation turn` waits up to 60 s,
+   because a failed cleanup retries after 30 s. The list shows "No notes yet" and no link "Winter
+   diary". The last query lists `assistant` with `n` 1 and `user` with `n` 1.
 
 ## End state
 
@@ -141,5 +142,5 @@ Before you start:
   record.
 - Step 6: the list holds only the private note, and its link to the forgotten note reads "Gone
   (note)".
-- Step 7: the list holds no note. The log holds 2 `notebook.note_forgotten` records, one with `by`
-  `user` and one with `by` `assistant`.
+- Step 7: the list shows "No notes yet". The log holds 2 `notebook.note_forgotten` records, one with
+  `by` `user` and one with `by` `assistant`.

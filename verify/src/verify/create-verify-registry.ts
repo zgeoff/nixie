@@ -223,9 +223,13 @@ export function createVerifyRegistry(): Wringer {
     .command({
       path: ['conversation', 'turn'],
       summary:
-        'Check that the records since `use` hold the owner message --message, then the reply --reply',
+        'Check that the records since `use` hold the owner message --message, then the reply --reply, waiting up to --wait-ms (10000 by default)',
       effect: 'read',
-      args: z.strictObject({ message: z.string().min(1), reply: z.string().min(1) }),
+      args: z.strictObject({
+        message: z.string().min(1),
+        reply: z.string().min(1),
+        waitMs: z.int().positive().optional(),
+      }),
       data: conversationTurnSchema,
       run: (args, ctx) => readConversationTurn(ctx.drivers.stream, args),
     })

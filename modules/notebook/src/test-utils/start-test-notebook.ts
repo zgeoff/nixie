@@ -34,6 +34,9 @@ export interface TestNotebookOptions {
 
   // runs after the cleanup is recorded, so a test can fail a forget's session cleanup
   readonly cleanupSessions?: CleanupSessions;
+
+  // the wait before a tool forget's cleanup runs again; a test sets it short
+  readonly cleanupRetryMs?: number;
 }
 
 // Starts a log with the notebook over it, and a memory store beside it, so a test calls a tool and
@@ -102,6 +105,7 @@ export async function startTestNotebook(options: TestNotebookOptions = {}) {
       definitions,
       clock,
       settings: { ...defaultNotebookSettings, ...options.settings },
+      cleanupRetryMs: options.cleanupRetryMs ?? 1,
       memory: buildNotebookMemory(() => memory),
       cleanupSessions: (cause) => {
         cleanups.push(cause);

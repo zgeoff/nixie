@@ -13,6 +13,7 @@ import { writeNoteOpened } from './client/write-note-opened';
 import type { LinkingNote } from './count/read-notes-linking-event';
 import { readNotesLinkingEvent } from './count/read-notes-linking-event';
 import { readNoteForgetFloor } from './forget/read-note-forget-floor';
+import type { NoteForgetPreviewRead } from './forget/read-note-forget-preview';
 import { readNoteForgetPreview } from './forget/read-note-forget-preview';
 import { readNoteForgottenSequence } from './forget/read-note-forgotten-sequence';
 import { runBegunNoteForgets } from './forget/run-begun-note-forgets';
@@ -44,6 +45,7 @@ export interface NotebookStore extends NotebookToolStore {
     writeInTransaction?: (tx: WriteTransaction) => Promise<void>,
   ) => Promise<NoteOpened>;
 
+  readonly readForgetPreview: (note: string) => Promise<NoteForgetPreviewRead>;
   readonly forget: (
     target: NoteForgetTarget,
     writeInTransaction?: (tx: WriteTransaction) => Promise<void>,
@@ -68,7 +70,13 @@ export interface NotebookStore extends NotebookToolStore {
 export interface StartNotebookOptions extends NotebookContext {
   // without it, meaning search is never ready and a search reports a partial meaning
   readonly semanticSearch?: SemanticSearch;
+
+  // the wait before a tool forget's cleanup runs again after it failed
+  readonly cleanupRetryMs?: number;
 }
+
+const defaultCleanupRetryMs = 1000;
+const maxCleanupAttempts = 10;
 
 // Starts the in-process indexes from every active note, and finishes each forget that a crash cut
 // short.
@@ -82,14 +90,21 @@ export async function startNotebook(options: StartNotebookOptions): Promise<Note
   await runBegunNoteForgets(context, index);
 
   // A tool's forget runs inside a turn, and the cleanup waits for that turn to end, so the cleanup
-  // runs beside it. A cleanup that fails leaves the note forgetting, and the next start finishes it.
+  // runs beside it. A cleanup that fails runs again, and one that fails every try leaves the note
+  // forgetting, which the next start finishes.
   const cleanups: Promise<void>[] = [];
+  const retryMs = options.cleanupRetryMs ?? defaultCleanupRetryMs;
+  const state = { isStopping: false };
 
   const runCleanupBeside = async (noteID: string): Promise<void> => {
-    try {
-      await runNoteForgetCleanup(context, index, noteID);
-    } catch {
-      // the note stays forgetting, which no tool reaches, and the next start finishes it
+    for (let attempt = 1; attempt <= maxCleanupAttempts && !state.isStopping; attempt += 1) {
+      try {
+        await runNoteForgetCleanup(context, index, noteID);
+
+        return;
+      } catch {
+        await Bun.sleep(retryMs);
+      }
     }
   };
 
@@ -104,7 +119,12 @@ export async function startNotebook(options: StartNotebookOptions): Promise<Note
 
     cleanups.push(cleanup);
 
-    return { status: 'forgotten', noteID: begun.noteID, shortID: begun.shortID };
+    return {
+      status: 'forgotten',
+      noteID: begun.noteID,
+      shortID: begun.shortID,
+      title: begun.title,
+    };
   };
 
   return {
@@ -117,7 +137,6 @@ export async function startNotebook(options: StartNotebookOptions): Promise<Note
     link: (request) => writeNoteLink(context, request),
     unlink: (request) => writeNoteUnlink(context, request),
     walk: (access, request) => readWalk(context, index, access, request),
-    readForgetPreview: (note) => readNoteForgetPreview(context, note),
     forgetBeside,
 
     listNotes: (request) => listClientNotes(context, index, request),
@@ -126,6 +145,7 @@ export async function startNotebook(options: StartNotebookOptions): Promise<Note
     readPrivateBodies: (request) => readPrivateBodies(context, request),
     writeOpened: (note, writeInTransaction) => writeNoteOpened(context, note, writeInTransaction),
 
+    readForgetPreview: (note) => readNoteForgetPreview(context, note),
     forget: (target, writeInTransaction) =>
       runNoteForget(context, index, target, writeInTransaction),
     finishForget: async (note) => {
@@ -148,6 +168,8 @@ export async function startNotebook(options: StartNotebookOptions): Promise<Note
     },
     waitForSemanticIndex: () => index.waitForLoadedVectors(),
     stop: async () => {
+      state.isStopping = true;
+
       await Promise.all(cleanups);
       await index.stop();
     },

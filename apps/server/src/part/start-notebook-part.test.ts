@@ -114,6 +114,12 @@ test('it lets the conversation forget a note, which the web client then lists as
   const read = await ctx.api.client.notebook.readNote({ note }).catch((error: unknown) => error);
 
   expect(read).toMatchObject({ code: 'UNKNOWN_NOTE' });
+
+  ctx.signalStop();
+
+  const stopped = await ctx.waitForExit();
+
+  expect(stopped.records.map((record) => record.kind)).not.toContain('policy.action_proposed');
 });
 
 test('it forgets a note from the web client, and the conversation then reads it as unknown', async () => {

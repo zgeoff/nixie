@@ -2,9 +2,10 @@ import { expect, test } from 'bun:test';
 import { readRecords } from '@heynixie/log';
 import invariant from 'tiny-invariant';
 import { pickText, startTestNotebook } from '../test-utils';
+import type { TestNotebookOptions } from '../test-utils';
 
-async function setupTest() {
-  const ctx = await startTestNotebook();
+async function setupTest(options: TestNotebookOptions = {}) {
+  const ctx = await startTestNotebook(options);
 
   const write = async (title: string, extra: Record<string, unknown> = {}) => {
     const outcome = await ctx.call('notebook.write', {
@@ -18,7 +19,15 @@ async function setupTest() {
     return pickText(outcome.result['note']);
   };
 
-  return { ...ctx, write };
+  const readNoteID = async (shortID: string) => {
+    const records = await ctx.readRecords(['notebook.note_written']);
+
+    const found = records.find((entry) => entry.record.payload['shortID'] === shortID);
+
+    return pickText(found?.record.payload['note']);
+  };
+
+  return { ...ctx, write, readNoteID };
 }
 
 test('it forgets a note by its short ID and confirms the short ID and the title', async () => {
@@ -109,4 +118,50 @@ test('it refuses an unknown ID with UNKNOWN_NOTE', async () => {
   const outcome = await ctx.call('notebook.forget', { id: 'zzzzzzzzzz' });
 
   expect(outcome).toMatchObject({ refusalCode: 'UNKNOWN_NOTE' });
+});
+
+test('it refuses a note UUID with UNKNOWN_NOTE and leaves the note', async () => {
+  const ctx = await setupTest();
+  const note = await ctx.write('Boiler');
+  const noteID = await ctx.readNoteID(note);
+  const outcome = await ctx.call('notebook.forget', { id: noteID });
+  const read = await ctx.call('notebook.read', { note });
+
+  expect([outcome, read]).toMatchObject([
+    { refusalCode: 'UNKNOWN_NOTE' },
+    { status: 'ok', result: { title: 'Boiler' } },
+  ]);
+});
+
+test('it confirms the title of the version that the forget erased', async () => {
+  const ctx = await setupTest();
+  const note = await ctx.write('Before');
+  const edited = await ctx.call('notebook.edit', { note, version: 1, title: 'After' });
+  const outcome = await ctx.call('notebook.forget', { id: note });
+
+  expect([edited.status, outcome]).toMatchObject([
+    'ok',
+    { status: 'ok', result: { note, title: 'After' } },
+  ]);
+});
+
+test('it finishes a forget whose session cleanup failed once', async () => {
+  let attempts = 0;
+
+  const ctx = await setupTest({
+    cleanupSessions: () => {
+      attempts += 1;
+
+      return attempts === 1 ? Promise.reject(new Error('cleanup failed')) : Promise.resolve();
+    },
+  });
+
+  const note = await ctx.write('Boiler');
+  const outcome = await ctx.call('notebook.forget', { id: note });
+
+  await ctx.notebook.waitForForgets();
+
+  const records = await ctx.readRecords(['notebook.note_forgotten']);
+
+  expect([outcome.status, records.length]).toStrictEqual(['ok', 1]);
 });

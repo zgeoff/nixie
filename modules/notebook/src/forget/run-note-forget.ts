@@ -2,6 +2,7 @@ import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import type { WriteTransaction } from '@heynixie/log';
 import type { NoteIndex } from '../index/start-note-index';
 import { readActiveNoteRow } from '../note/read-note-row';
+import { readNoteText } from '../note/read-note-text';
 import type { ForgetBy } from '../record/forget-by-schema';
 import { noteForgettingCodec } from '../record/note-forgetting-codec';
 import type { NotebookContext } from '../types';
@@ -15,10 +16,20 @@ export interface NoteForgetTarget {
 
   // who forgets: the user by default
   readonly by?: ForgetBy;
+
+  // refuses a UUID as an unknown note, for a caller that the model drives
+  readonly isShortIDOnly?: boolean;
 }
 
 export type NoteForget =
-  | { readonly status: 'forgotten'; readonly noteID: string; readonly shortID: string }
+  | {
+      readonly status: 'forgotten';
+      readonly noteID: string;
+      readonly shortID: string;
+
+      // the title of the version that the forget erased
+      readonly title: string;
+    }
   | { readonly status: 'refused'; readonly reason: 'not_found' | 'stale' };
 
 // A forget in 2 parts. One transaction runs the client action's hook, checks the version and
@@ -38,11 +49,21 @@ export async function runNoteForget(
 
   await runNoteForgetCleanup(context, index, begun.noteID);
 
-  return { status: 'forgotten', noteID: begun.noteID, shortID: begun.shortID };
+  return {
+    status: 'forgotten',
+    noteID: begun.noteID,
+    shortID: begun.shortID,
+    title: begun.title,
+  };
 }
 
 export type BegunNoteForget =
-  | { readonly status: 'begun'; readonly noteID: string; readonly shortID: string }
+  | {
+      readonly status: 'begun';
+      readonly noteID: string;
+      readonly shortID: string;
+      readonly title: string;
+    }
   | { readonly status: 'refused'; readonly reason: 'not_found' | 'stale' };
 
 // The first part alone, for a caller that runs inside a turn: the cleanup aborts every turn in
@@ -57,7 +78,7 @@ export async function beginNoteForget(
 
     const row = await readActiveNoteRow(tx, target.note);
 
-    if (row === null) {
+    if (row === null || (target.isShortIDOnly === true && row.short_id !== target.note)) {
       throw new NoteForgetRefusedError('not_found');
     }
 
@@ -77,7 +98,13 @@ export async function beginNoteForget(
       },
     ]);
 
-    return { noteID: row.note_id, shortID: row.short_id };
+    // read in the same transaction, so the title is the one of the version the forget erases
+    const text = await readNoteText(
+      { deploymentKey: context.log.deploymentKey, writer: { ...context.log.writer, db: tx } },
+      row.text_seq,
+    );
+
+    return { noteID: row.note_id, shortID: row.short_id, title: text?.title ?? '' };
   }).catch((error: unknown) => {
     if (error instanceof NoteForgetRefusedError) {
       return error;

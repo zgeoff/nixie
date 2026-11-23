@@ -45,6 +45,7 @@ test('it forgets a note and answers its short ID', async () => {
     status: 'forgotten',
     noteID: expect.any(String),
     shortID: note,
+    title: 'Boiler',
   });
 });
 
