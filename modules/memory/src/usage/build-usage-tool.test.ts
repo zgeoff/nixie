@@ -88,7 +88,7 @@ async function setupTest() {
 
             recalledOnce.resolve();
 
-            return await new Promise<typeof recalled>(() => {});
+            return new Promise<typeof recalled>(() => {});
           },
         },
         { clock, ownerName: null, defaultZone: 'UTC' },
