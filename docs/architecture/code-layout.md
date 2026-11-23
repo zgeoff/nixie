@@ -31,8 +31,9 @@ libs/       shared code that belongs to no domain
 - **An adapter** is a provider that reaches one outside system, as a package named
   `<interface>-<system>`, such as `sandbox-imp`. [The ports doc](ports.md) holds the rules for
   ports, providers and adapters.
-- **A guest** holds the code a sandbox image runs. It depends only on `libs/wire`, and speaks to
-  nixie through those wire formats over the sandbox's route back to nixie.
+- **A guest** holds the code a sandbox image runs. It depends only on libs without `server-only`,
+  such as `libs/wire` and `libs/egress`, and speaks to nixie through the wire formats of `libs/wire`
+  over the sandbox's route back to nixie.
 
 The workspace globs cover those 5 folders, the Pulumi component, the root `verify/`, `integration/`
 and `evals/` packages, and the spikes in `research/`. The spikes join the workspace so that CI

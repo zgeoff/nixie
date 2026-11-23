@@ -213,7 +213,8 @@ and the action loses the binding, so the action returns `SCREEN_CHANGED` and nev
 screen nobody looked at.
 
 The guest also refuses a screen act that belongs to another tool, both when it prepares the act and
-when it runs it:
+when it runs it. The rules read a command from `computer.run` and a site from
+`computer.browser_open`, and from a screen act they would see only keystrokes in a window:
 
 - An act on the terminal window returns `USE_RUN`, with the message "Use the computer.run tool
   instead". A scroll over the terminal returns it too.
@@ -264,6 +265,10 @@ The VNC stream rides the guest's existing wire session as `vnc-open`, `vnc-data`
 frames, each carrying a stream ID, and the guest pipes each stream to the VNC server's Unix socket.
 A VNC frame never waits behind a request in the guest's queue, so a long call never stalls the
 picture. The guest holds at most 4 streams, and the server never writes a frame to disk.
+
+**Why:** VNC shows every window, the terminal included, where Chromium's own screen stream shows one
+tab. The assistant learns of a watch through `isWatched` so it can narrate for the user, and
+watching writes no record because the user already holds the keys to everything the assistant has.
 
 [The API](../channels/api.md#watching-the-computer) mints the ticket and holds the socket. The
 connector side, `openComputerWatch`, does the rest for each socket:

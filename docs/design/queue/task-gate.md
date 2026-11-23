@@ -30,7 +30,8 @@ flowchart LR
 
 - A task is **held** when the gate answers anything but open. Every other word for it, such as
   paused, barred or stopped, names a reason.
-- An **exempt task** is one you resumed while nixie is paused, as in the [pause design](pause.md).
+- An **exempt task** is one you resumed while nixie is paused, as in
+  [pausing nixie](../../architecture/core/pause.md).
 
 ## Contracts
 
@@ -111,7 +112,8 @@ stop that trips after the claim.
   reads the gate in a read transaction. Both run where today's spending check runs.
 - A step held for `spend` ends at once and commits nothing. The claim filter holds the next claim.
   The two-second wait of today's spending check goes.
-- A step under way when nixie pauses runs to its commit, as the [pause design](pause.md) says.
+- A step under way when nixie pauses runs to its commit, as
+  [pausing nixie](../../architecture/core/pause.md#what-a-pause-stops) says.
 - A worker run reads the gate of the task whose step started it: for a conversation step, the
   conversation's task. Held for `spend`, it returns today's "spending is stopped" sentence.
 - When the stop trips during a turn, that turn finishes. The stop's limit has room for one turn past
@@ -154,5 +156,6 @@ point IDs.
 
 ## Out of scope
 
-- What a resume does, and which tasks can be exempt. The [pause design](pause.md) holds them.
+- What a resume does, and which tasks can be exempt.
+  [Pausing nixie](../../architecture/core/pause.md) holds them.
 - The spending stop's limits and its watcher.

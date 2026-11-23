@@ -56,6 +56,8 @@ holds the design for a piece of work that is not built yet, with its spikes in
   message waits
 - [Leases and recovery](architecture/core/leases-and-recovery.md) — the one claim path, lease
   generations, claim pools, crash recovery and fault points
+- [Pausing nixie](architecture/core/pause.md) — the pause and its records, what it stops, the reader
+  gate and the pause after a restore
 - [Actions](architecture/core/actions.md) — the action queue, outcomes, attempts, retries and what
   the model sees
 - [The definitions](architecture/core/definitions.md) — sources, the content hash, the definitions

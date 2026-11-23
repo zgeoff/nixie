@@ -27,7 +27,7 @@ hides an exempt task's work. The candidate also names its task, and the claim ch
 before it takes the lease, so a candidate query that skips the filter still takes nothing. Under the
 test build, such a candidate makes the claim throw. A refused claim writes nothing. Inbox records,
 fired timers and action outcomes still land on a paused task's thread, and the claim that follows
-them is refused until the resume. [The pause design](../../design/queue/pause.md) holds the rest.
+them is refused until the resume. [Pausing nixie](pause.md) holds the rest.
 
 The generation is what makes a lease safe to lose. Every write a step or an attempt makes checks,
 first and inside its own transaction, that its lease still stands with the same holder and

@@ -70,9 +70,10 @@ stores it:
 4. One transaction sets the row to `stored`.
 
 A body that holds an own secret value in plain or JSON-escaped form is never stored and gives a
-`holds_own_value` miss. A file that fails to open gives `undecodable`, and 5 failed intakes of one
-file give `intake_failed` and remove the file. nixie opens each spool file without following a link
-and reads only a regular file, so a symlink or a FIFO in the spool is never followed and never
+`holds_own_value` miss. nixie never masks a value in place, so every stored body is the exact
+request the model received. A file that fails to open gives `undecodable`, and 5 failed intakes of
+one file give `intake_failed` and remove the file. nixie opens each spool file without following a
+link and reads only a regular file, so a symlink or a FIFO in the spool is never followed and never
 stalls the intake.
 
 nixie trusts every writer of the spool folder as it trusts the gateway. The capture's public key is
@@ -108,5 +109,5 @@ any removal, before it writes its `log_reset` record. A failed removal fails the
 
 Each open is a record first: `model.input_opened` commits before nixie reads any body, and a failed
 commit gives `OPEN_NOT_RECORDED` and no body. The state comes from the latest `model.input_log_set`
-record, or from `default`. See [host commands](../deployment/host-commands.md#turn-inputs) for the
-commands.
+record, or from `default`. These 2 kinds are the log's only records, and neither payload holds any
+request text. See [host commands](../deployment/host-commands.md#turn-inputs) for the commands.

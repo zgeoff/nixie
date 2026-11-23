@@ -156,7 +156,7 @@ rotates every secret the file ever held.
 The [definitions source](../connectors/definitions-source.md) returns a snapshot of your definitions
 with a revision and a content hash. nixie seeds the database from it at start, after migrations and
 before any runner claims work, and again on each new revision. nixie polls every 5 minutes by
-default, or takes a webhook.
+default.
 
 A seed runs in one transaction. Narrowing changes apply with a record, a widening change becomes a
 proposal you confirm in the client, and a rule edited at runtime shows its conflict with the repo.

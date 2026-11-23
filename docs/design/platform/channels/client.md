@@ -21,8 +21,8 @@ implements and both clients import as types only. The contract has 3 kinds of pr
 - **The live stream**, server-sent events that follow the event log by sequence. Each event's ID is
   the record's sequence, so a client that reconnects receives exactly the records it missed.
 
-A WebSocket transport stays available behind the same contract for 2-way streaming such as voice.
-The
+nixie's API has no WebSocket transport. The one socket is the computer view's VNC stream, which
+[watching the computer](../../../architecture/channels/api.md#watching-the-computer) describes. The
 [typed API spike](https://github.com/zgeoff/nixie/tree/e232631a587680970a5c8804455415e7f97140bc/docs/design/platform/spikes/client-rpc/)
 holds the transport and resume evidence.
 

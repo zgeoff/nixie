@@ -298,6 +298,18 @@ no refusal frame. A fetch with no `scanHop` sends `hops: 'none'` and the same by
 `hop` frame on it fails the fetch. Every reply carries `isGated`, which is true when the fetcher
 asked before each hop, and the fetch tool never passes it on to the model.
 
+The server takes only the URL from a `hop` frame. It counts the hops itself, and takes the host that
+sent each redirect from the URL before it. It reads one frame at a time, and the fetcher waits while
+the scan runs. The fetch's one time limit covers every read, scan and pass. A gated fetch fails,
+with the fetcher stopped, when the scan throws, when more hop frames arrive than the redirect limit,
+when a frame does not decode or its URL does not parse, when the fetcher's output closes before its
+reply, or when the time limit passes. The https try of an `http` URL is still hop 0 and asks
+nothing.
+
+**Why:** the scan runs on the server because nixie's secret values and rules never enter the
+sandbox, and with the stream held open, a redirect needs no new sandbox. The wire holds no refusal
+frame because a fetcher that a hostile page has taken over could ignore a frame, but not a stop.
+
 The server and the fetch image can be of different releases. A fetch image before the hop gate reads
 a redirect limit of 0 and sends no hop frame, so it never follows an unscanned redirect, and the
 server replaces the reason of its failed reply with one that names the older image. A server before

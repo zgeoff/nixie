@@ -150,8 +150,8 @@ reaches the step at once.
   while it was paused. A resume of a running task withdraws its pause request. A resume refuses a
   started task that its [limit](./started-tasks.md#limits) holds. While nixie is paused, a resume
   exempts the task from nixie's pause, so that task runs alone, and a task the user paused is
-  resumed in the same transaction, as [the pause design](../../design/queue/pause.md) describes.
-  Resume nixie ends every exemption, and a task the user paused stays paused after it. The
+  resumed in the same transaction, as [pausing nixie](pause.md) describes. Resume nixie ends every
+  exemption, and a task the user paused stays paused after it. The
   [API](../channels/api.md#pausing-nixie), the host and the web client pause and resume nixie. A
   raise of a limit never exempts a task.
 - **Stop** ends the current task run. It frees the lease, so the running step's commit fails as a

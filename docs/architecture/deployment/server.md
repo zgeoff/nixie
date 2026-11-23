@@ -62,7 +62,7 @@ owns an action with no outcome. The list reads each task's state and open step b
 a running task or writes an `unknown` outcome, so the list shows the backup as it was. A start that
 stops after the pause commits and before the marker goes finds the recovery already recorded, writes
 nothing, and removes the marker. Nothing takes a step on the restored data until a resume
-([the pause design](../../design/queue/pause.md)).
+([the pause after a restore](../core/pause.md#the-pause-after-a-restore)).
 
 The server adds each image in the manifest to impd before any part creates a sandbox, because a step
 that creates a sandbox on an image impd lacks would fail. The server sends no add for an image that

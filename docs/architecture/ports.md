@@ -73,18 +73,19 @@ the rules for ports, providers and adapters, and lists where the code departs fr
     added in the pull request that adds the second real provider. Only a shared suite proves the
     providers agree.
 
-## Departures on main
+## Where the code breaks a rule
 
-These are places where the code departs from a rule today. Do not copy them into new code.
+The code breaks a rule in these places. New code follows the rules.
 
-- `RunCheck` in the sessions module lives in its provider's module (rule 1).
+- `RunCheck`, which the skills module calls, lives in the sessions module, its provider (rule 1).
 - `isTestSandbox` in the sandbox module checks `adapter.id === 'process'`, and the sessions module's
-  `buildGuestCommand` calls it (rule 9). The server's web fetch start also calls it, inside the
-  composition root.
-- The wire lib lists `harnessIDs` and `harnessCapabilityLists`, `codex` included, and the models
-  module's `harnesses` list has one definition, with no test across them (rule 10).
-- Two harness unions are assembled by hand: the wire lib's turn profile schema in `host-frame.ts`
-  and its session point schema in `session-point.ts`, which each name an `agent-sdk` member (rule
-  10).
+  `buildGuestCommand` calls it (rule 9). The server's web fetch and computer starts call it too,
+  inside the composition root, where rule 9 allows it.
+- Two harness unions are written by hand: the wire lib's turn profile schema in `host-frame.ts` and
+  its session point schema in `session-point.ts`. Each names only an `agent-sdk` member, and neither
+  derives from `harnessIDs` (rule 10).
 - `pickCapturePlan` in the turn-inputs module checks `profile.harness === 'codex'` to skip the
   capture for a Codex step (rule 9).
+
+The wire lib's `harnessIDs` is a second list of the models module's `harnesses`, which rule 10
+allows: a test in the models module fails when the two lists differ.
