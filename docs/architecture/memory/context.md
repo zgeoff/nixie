@@ -105,7 +105,12 @@ port.
 
 The pinned core and the retrieved block both speak to the model as its own memory, under a header
 that calls the items memories and not instructions, so item text never reads as a command. Each item
-shows its text, then one line that says where it came from in plain words, such as
+shows its text inside a `<memory-text>` element with a fence of its own, which
+[fenced outside text](../core/conversation-turns.md#fenced-outside-text) describes, so a stored
+memory cannot close its element and pass as an instruction. The fence covers the text and nothing
+else: the line below it stays outside. The pinned core, the pinned-core change note, the retrieved
+items and the retrieved self-notes all fence each item. Under the text sits one line that says where
+it came from in plain words, such as
 `b7kq2m9xza v3 · 13 Oct 2025 · you noted it · from a pasted page · Sam approved`. The line gives the
 item's short ID and version, the day it was saved, who noted it, what backs it and who confirmed it,
 and leaves out a part that does not apply. The day shows in the deployment's default time zone, and
