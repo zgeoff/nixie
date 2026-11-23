@@ -90,6 +90,22 @@ const writeKinds: readonly WriteKind[] = [
     sources: typedOrNot,
   },
   {
+    phrase: 'a re-file of items to another topic',
+    tool: 'memory.retopic',
+    subjects: nonSelf,
+    need: 'none',
+    hasImage: false,
+    sources: untyped,
+  },
+  {
+    phrase: 'a re-file of items into self',
+    tool: 'memory.retopic',
+    subjects: ['self'],
+    need: 'self_note',
+    hasImage: false,
+    sources: untyped,
+  },
+  {
     phrase: 'a write from a photo',
     tool: 'memory.remember',
     subjects: nonSelf,

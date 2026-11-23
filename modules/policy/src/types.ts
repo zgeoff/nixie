@@ -132,6 +132,10 @@ export interface AllowingRule {
 export interface MemoryWriteFacts {
   // every allow rule that matched the call, by ID; the first is the rule the decision names
   readonly allowing: readonly AllowingRule[];
+
+  // set for a tool whose held call is an action proposal, so an ask rule holds it there and not as
+  // a memory proposal
+  readonly holdsAsAction?: true;
 }
 
 // An allow rule that matched the call and lists the call's tool by its exact name.

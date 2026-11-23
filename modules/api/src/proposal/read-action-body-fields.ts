@@ -2,6 +2,7 @@ import type { Log } from '@heynixie/log';
 import type { BodyFields, BodyFieldsRequest } from '@heynixie/policy';
 import { readForgetBodyFields } from './read-forget-body-fields';
 import { readImageBodyFields } from './read-image-body-fields';
+import { readRetopicBodyFields } from './read-retopic-body-fields';
 import { readScreenBodyFields } from './read-screen-body-fields';
 
 // The extra card fields of an action: the tool that owns the call answers, and a tool with none
@@ -14,6 +15,12 @@ export async function readActionBodyFields(
 
   if (forget.status !== 'none') {
     return forget;
+  }
+
+  const retopic = await readRetopicBodyFields(log, request);
+
+  if (retopic.status !== 'none') {
+    return retopic;
   }
 
   const image = await readImageBodyFields(log, request);

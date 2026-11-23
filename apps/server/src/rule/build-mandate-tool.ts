@@ -29,6 +29,7 @@ export function buildMandateDescription(maxHours: number): string {
     'For memory, a rule by tool name (memory.remember, memory.edit, memory.retire, memory.pin) and ' +
     'a rule by effect (memory_write) cover the same writes, and an allow rule that covers a write ' +
     'applies it at once with a notice; a write that no rule covers waits for review. A rule that ' +
+    'covers memory.edit also covers memory.retopic, which re-files a topic or a list of items. A rule that ' +
     'checks no subject leaves self-notes uncovered: add a check that subject is self to cover ' +
     'them. A write from a photo needs a check on an image argument. memory.unpin has the note ' +
     'effect, so only a rule by its tool name reaches it. The arguments that a rule can check, by ' +

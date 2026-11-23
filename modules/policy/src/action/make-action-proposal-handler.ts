@@ -69,6 +69,9 @@ export type BodyFields =
       readonly status: 'fields';
       readonly fields: Readonly<Record<string, string>>;
 
+      // replaces the card's sentence, for a tool that says in its own words what the call does
+      readonly sentence?: string;
+
       // the IDs of stored images the card shows beside its fields
       readonly images?: string[];
 
@@ -233,7 +236,8 @@ function toBody(
   extra: Exclude<BodyFields, { readonly status: 'unreadable' }>,
 ): ProposalBody {
   const destinations = erasable.destinations.map((destination) => destination.value);
-  const sentence = buildActionProposalSentence(payload.tool, payload.effects, destinations);
+  const own = extra.status === 'fields' ? extra.sentence : undefined;
+  const sentence = own ?? buildActionProposalSentence(payload.tool, payload.effects, destinations);
 
   return {
     sentence:
