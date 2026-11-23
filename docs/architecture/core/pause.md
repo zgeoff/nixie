@@ -1,9 +1,10 @@
 # Pausing nixie
 
-The user can pause all of nixie at once. While nixie is paused, no task takes a step and no action
+The user can pause all of nixie at once. While nixie is paused, no task starts a step and no action
 starts an attempt. Messages, notices and action outcomes still land, and each waits until a resume.
 The user can resume one task, such as the conversation, while the rest stay paused, and talk to the
 assistant while checking the rest. A restore starts nixie paused, with a list of the tasks to check.
+Read this before you change a claim, an attempt start, the start after a restore or the reader gate.
 
 ```mermaid
 flowchart LR
@@ -37,13 +38,15 @@ signed-in read of the pause state for that reason.
 - nixie stores the pause only in `nixie_pause`, never as a task state, a lease or a far
   `claimable_at`. A pause, a resume and an exemption change none of them. A task the user paused
   stays paused after nixie resumes, and a task's own resume never resumes nixie.
-- A pause while nixie is paused replaces the cause, except a `spending` pause, which never replaces
-  another cause. A resume while nixie is not paused writes nothing.
+- A pause while nixie is paused replaces the cause and clears every exemption, except a `spending`
+  pause, which never replaces another cause. A resume while nixie is not paused writes nothing.
 - An exemption needs nixie to be paused, and a second one for the same task writes nothing new.
-- Only the user pauses or resumes nixie, or resumes one task: through the API, a host command or the
-  web client. No tool does any of these. The one exception is the
-  [hard spending stop](../policy/spending-stop.md), which pauses with the cause `spending` and a
-  `by` of null, and resumes only that pause.
+- The user pauses or resumes nixie, or resumes one task, through the API, a host command or the web
+  client. No tool does any of these. nixie pauses itself in 2 cases:
+  - the [hard spending stop](../policy/spending-stop.md) pauses with the cause `spending` and a `by`
+    of null, and resumes only that pause;
+  - the start after a restore pauses with the cause `restore`, as
+    [the pause after a restore](#the-pause-after-a-restore) describes.
 - The pause lives in the log module, which the tasks module, the trigger core and the backup
   schedule each import already. `readPause` returns the cause and the recovery ID, or null.
 
@@ -100,11 +103,12 @@ migrations run only at a start. So the next start pauses nixie:
    removes the marker.
 3. The start part `recovery` runs, then the runners.
 
-`toCheck` lists every task that was running at the backup, and every task that owns an action with
-no outcome, the conversation included. A done, stopped or closed task can own one, because a started
-attempt runs on to its outcome. The install reads each task's row before the start part `recovery`
-moves a running task. When a `recoveries` row exists for the recovery ID, the install writes
-nothing, so a repeated install never pauses nixie again after the user resumed.
+The tasks to check, `toCheck` in `recovery.started`, are every task that was running at the backup,
+and every task that owns an action with no outcome, the conversation included. A done, stopped or
+closed task can own one, because a started attempt runs on to its outcome. The install reads each
+task's row before the start part `recovery` moves a running task, so the list shows each task as the
+backup held it. When a `recoveries` row exists for the recovery ID, the install writes nothing, so a
+repeated install never pauses nixie again after the user resumed.
 
 | A kill lands                              | The next start                                                          |
 | ----------------------------------------- | ----------------------------------------------------------------------- |
