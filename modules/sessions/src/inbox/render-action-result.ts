@@ -1,7 +1,7 @@
 import type { LogRecord } from '@heynixie/log';
 import type { ApprovedReply, ToolImage } from '@heynixie/tools';
 import type { InboxImage } from '@heynixie/wire';
-import { mintBlockID } from '@heynixie/wire';
+import { mintBlockID, renderFenced } from '@heynixie/wire';
 
 // The result of a call that ran inside the turn, as the inbox shows it beside the action's outcome.
 export interface ActionResultBlock {
@@ -22,12 +22,12 @@ export function renderActionResult(
   const markers = (kept?.images ?? []).flatMap((image) => toInboxImage(image, mint()));
 
   return {
-    text: [
-      `<tool-result source="${source}" fence="${fence}">`,
-      toResultText(record, kept),
-      ...markers.map((marker) => marker.marker),
-      `</tool-result fence="${fence}">`,
-    ].join('\n'),
+    text: renderFenced({
+      tag: 'tool-result',
+      attributes: { source },
+      text: [toResultText(record, kept), ...markers.map((marker) => marker.marker)].join('\n'),
+      fence,
+    }),
     images: markers,
   };
 }

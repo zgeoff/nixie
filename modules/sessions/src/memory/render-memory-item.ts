@@ -1,7 +1,8 @@
+import { mintBlockID } from '@heynixie/wire';
 import type { MemoryItem, MemoryLineOptions } from '../types';
 import { renderItemQuote } from './render-item-quote';
-import { renderLinkCounts } from './render-link-counts';
 import { renderMemoryLine } from './render-memory-line';
+import { renderMemoryText } from './render-memory-text';
 
 export function renderMemoryItem(
   item: Pick<
@@ -19,10 +20,11 @@ export function renderMemoryItem(
     | 'supersededBy'
   >,
   options: MemoryLineOptions,
+  mint: () => string = mintBlockID,
 ): readonly string[] {
   return [
-    [`- ${item.text}`, renderLinkCounts(item)].filter((part) => part !== null).join(' '),
+    renderMemoryText(item, mint),
     `  ${renderMemoryLine({ ...item, shownVersion: item.revision }, options)}`,
-    ...renderItemQuote(item),
+    ...renderItemQuote(item, mint),
   ];
 }

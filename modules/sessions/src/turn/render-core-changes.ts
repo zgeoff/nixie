@@ -1,3 +1,4 @@
+import { mintBlockID } from '@heynixie/wire';
 import { renderMemoryItem } from '../memory/render-memory-item';
 import type { MemoryItem, MemoryLineOptions, MemoryRef, PinnedCoreUse } from '../types';
 
@@ -12,6 +13,7 @@ export function renderCoreChanges(
   previous: readonly MemoryRef[] | null,
   current: readonly PinnedItem[],
   options: CoreChangeOptions,
+  mint: () => string = mintBlockID,
 ): string | null {
   if (previous === null) {
     return null;
@@ -25,10 +27,10 @@ export function renderCoreChanges(
       const version = before.get(item.itemID);
 
       if (version === undefined) {
-        return renderChangedItem('Pinned', item, options);
+        return renderChangedItem('Pinned', item, options, mint);
       }
 
-      return version === item.version ? [] : renderChangedItem('Changed', item, options);
+      return version === item.version ? [] : renderChangedItem('Changed', item, options, mint);
     }),
     ...previous
       .filter((ref) => !now.has(ref.itemID))
@@ -50,10 +52,11 @@ function renderChangedItem(
   label: 'Pinned' | 'Changed',
   item: PinnedItem,
   options: MemoryLineOptions,
+  mint: () => string,
 ): readonly string[] {
   return [
     `- ${label} [${item.shortID}]:`,
-    ...renderMemoryItem(item, options).map((line) => `  ${line}`),
+    ...renderMemoryItem(item, options, mint).map((line) => `  ${line}`),
   ];
 }
 

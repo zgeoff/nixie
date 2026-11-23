@@ -48,18 +48,27 @@ test('it renders each subject under its own heading, shared after the owner and 
       },
     ],
     { ownerName: 'Robin', defaultZone: 'UTC', now: new Date('2026-10-14T12:00:00Z') },
+    () => 'f00000000001',
   );
 
   expect(lines.join('\n')).toMatchInlineSnapshot(`
     "About Robin:
-    - Plays the cello on Sundays
+    - <memory-text fence="f00000000001">
+    Plays the cello on Sundays
+    </memory-text fence="f00000000001">
       h4ns8w1cpe v2 · 14 Sep · Robin said this
     Between you and Robin:
-    - Robin and the assistant call the kettle Captain Steam
+    - <memory-text fence="f00000000001">
+    Robin and the assistant call the kettle Captain Steam
+    </memory-text fence="f00000000001">
       b7kq2m9xza v1 · 12 Oct · you noted it · Robin said this
-      How it came up: "ask Captain Steam"
+      How it came up: <memory-quote fence="f00000000001">
+    ask Captain Steam
+    </memory-quote fence="f00000000001">
     About yourself, in your own words:
-    - I like a story that ends on a small joke
+    - <memory-text fence="f00000000001">
+    I like a story that ends on a small joke
+    </memory-text fence="f00000000001">
       q4wz8n2kpa v1 · 13 Oct · you noted it · unconfirmed · Robin approved"
   `);
 });
@@ -83,11 +92,12 @@ test('it leaves out the heading of a subject with no item', () => {
       },
     ],
     { ownerName: null, defaultZone: 'UTC', now: new Date('2026-10-14T12:00:00Z') },
+    () => 'f00000000001',
   );
 
   expect(lines).toStrictEqual([
     'About the owner:',
-    '- Plays the cello on Sundays',
+    '- <memory-text fence="f00000000001">\nPlays the cello on Sundays\n</memory-text fence="f00000000001">',
     '  h4ns8w1cpe v1 · 14 Sep · the owner said this',
   ]);
 });

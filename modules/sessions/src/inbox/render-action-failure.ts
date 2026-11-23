@@ -1,6 +1,6 @@
 import { describeOutcomeReason, isOutcomeReason } from '@heynixie/actions';
 import type { LogRecord } from '@heynixie/log';
-import { mintBlockID } from '@heynixie/wire';
+import { mintBlockID, renderFenced } from '@heynixie/wire';
 
 // The provider's own words show only inside a fenced block, so what an outside service said cannot
 // pass as nixie's message. Returns null for an outcome that did not fail.
@@ -31,14 +31,14 @@ export function renderActionFailure(
     return line;
   }
 
-  const fence = mint();
+  const detail = renderFenced({
+    tag: 'failure-detail',
+    attributes: { source: 'untrusted' },
+    text: message,
+    fence: mint(),
+  });
 
-  return [
-    line,
-    `<failure-detail source="untrusted" fence="${fence}">`,
-    message,
-    `</failure-detail fence="${fence}">`,
-  ].join('\n');
+  return [line, detail].join('\n');
 }
 
 function pickMessage(record: LogRecord): string | null {

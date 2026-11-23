@@ -352,6 +352,11 @@ test('it stops the input and shows the hold over when the server ends the stream
 
   const alert = await rendered.findByRole('alert');
 
+  // the viewer learns of the lost hold in an effect, which can run after the alert shows
+  await waitFor(() => {
+    expect(ctx.inputs.at(-1)).toBe(false);
+  });
+
   expect([
     alert.textContent,
     rendered.queryByRole('button', { name: 'Hand back' }),
@@ -395,6 +400,10 @@ test('it shows the hold over when a hand-back finds that this device no longer h
   await user.click(handBackButton);
 
   const alert = await rendered.findByRole('alert');
+
+  await waitFor(() => {
+    expect(ctx.inputs.at(-1)).toBe(false);
+  });
 
   expect([alert.textContent, ctx.inputs.at(-1)]).toStrictEqual([
     'Your hold on the computer ended.',

@@ -1,7 +1,7 @@
 import type { LogRecord } from '@heynixie/log';
 import { missingReminderBrief } from '@heynixie/tasks';
 import type { TriggerFired } from '@heynixie/tasks';
-import { mintBlockID, renderSystemMessage } from '@heynixie/wire';
+import { mintBlockID, renderFenced, renderSystemMessage } from '@heynixie/wire';
 import { formatMessageTime } from '../message/format-message-time';
 import type { MessageTimeOptions } from '../types';
 import { formatReminderLateness } from './format-reminder-lateness';
@@ -30,7 +30,6 @@ export function renderReminderNotice(
   reminder: ReminderRead,
   mint: () => string = mintBlockID,
 ): string {
-  const noteID = mint();
   const note = reminder.note ?? missingReminderBrief;
   const setFor = formatMessageTime(new Date(reminder.fire.scheduledFor), reminder.zone, times);
   const lateness = formatReminderLateness(reminder.fire, times.now.getTime());
@@ -42,11 +41,22 @@ export function renderReminderNotice(
     type: 'reminder',
     at: formatMessageTime(record.recordedAt, reminder.zone, times),
     body: [
-      `[#${record.sequence}] Reminder: <model-text id="${noteID}">${note}</model-text id="${noteID}">`,
+      `[#${record.sequence}] Reminder: ${renderModelText(note, mint)}`,
       ...renderNameLine(reminder.name, mint),
       setLine,
       reminderHandlingLine,
     ].join('\n'),
+  });
+}
+
+function renderModelText(text: string, mint: () => string): string {
+  return renderFenced({
+    tag: 'model-text',
+    attributes: {},
+    text,
+    fence: mint(),
+    marker: 'id',
+    inline: true,
   });
 }
 
@@ -55,7 +65,5 @@ function renderNameLine(name: string | null, mint: () => string): readonly strin
     return [];
   }
 
-  const nameID = mint();
-
-  return [`Name: <model-text id="${nameID}">${name}</model-text id="${nameID}">`];
+  return [`Name: ${renderModelText(name, mint)}`];
 }

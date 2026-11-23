@@ -500,11 +500,11 @@
       "name": "@heynixie/wire",
       "version": "0.0.0",
       "dependencies": {
+        "tiny-invariant": "catalog:",
         "zod": "catalog:",
       },
       "devDependencies": {
         "@faker-js/faker": "catalog:",
-        "tiny-invariant": "catalog:",
       },
     },
     "modules/actions": {

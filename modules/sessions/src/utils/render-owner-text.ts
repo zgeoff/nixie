@@ -1,5 +1,5 @@
 import type { LogRecord } from '@heynixie/log';
-import { mintBlockID } from '@heynixie/wire';
+import { mintBlockID, renderFenced } from '@heynixie/wire';
 import { z } from 'zod';
 
 const messageSpans = z.array(z.object({ start: z.number(), end: z.number(), source: z.string() }));
@@ -35,7 +35,12 @@ function renderSpan(part: string, source: string, mint: () => string): string {
 
   // Pasted text is untrusted, so each block gets a fresh random ID that a pasted closing tag cannot
   // match.
-  const blockID = mint();
-
-  return `<${source} id="${blockID}">${part}</${source} id="${blockID}">`;
+  return renderFenced({
+    tag: source,
+    attributes: {},
+    text: part,
+    fence: mint(),
+    marker: 'id',
+    inline: true,
+  });
 }

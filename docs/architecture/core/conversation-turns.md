@@ -307,10 +307,31 @@ On the `agent-sdk` harness it is a declared value, and the conversation guest se
 per-server MCP tool-call timeout of nixie's tool server. When the value is null, the guest sets no
 timeout.
 
+## Sealed outside text
+
+Every piece of outside text that the model reads goes through one helper, `renderFenced` in
+`libs/wire`. It wraps the text in a tag whose opening and closing tags both carry a random ID that
+the caller mints with `mintBlockID`, and it throws when the text holds the closing tag with that ID.
+The attribute that carries the ID is `fence` for most elements and `id` for `<pasted>`, `<dropped>`
+and `<model-text>`. The sealed elements are:
+
+- `<tool-result>`, for a tool's result and for text a page or the model supplied, with a `source`
+  attribute;
+- `<failure-detail>`, for a provider's message about a failed call;
+- `<task-message>`, for another task's message;
+- `<model-text>`, for a reminder's note and name;
+- `<pasted>` and `<dropped>`, for the spans of the user's message that the client labelled so;
+- `<memory-text>`, for the text of a memory item, and `<memory-quote>`, for the quote that backs it,
+  as [How an item reads](../memory/context.md#how-an-item-reads) says.
+
+The random ID stops the text from closing its element early. It does not prove who wrote the
+element.
+
 ## System messages
 
-Every block that nixie writes into a user message is a system message: a `<system-message>` element
-with a type, a random ID and the time nixie wrote it, as in
+Every block that nixie writes into a user message, apart from the user's own message and the sealed
+elements above, is a system message: a `<system-message>` element with a type, a random ID and the
+time nixie wrote it, as in
 `<system-message type="events" id="7f3a9c21b04e" at="Tue 14 Oct, 22:50, Sydney">`. The closing tag
 repeats the ID, which is fresh for each element as a pasted block's is, so a memory or an event
 whose text holds a closing tag cannot end the element early. The ID proves nothing about the sender,

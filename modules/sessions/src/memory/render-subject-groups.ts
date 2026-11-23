@@ -1,3 +1,4 @@
+import { mintBlockID } from '@heynixie/wire';
 import type { MemoryItem, MemoryLineOptions } from '../types';
 import { renderMemoryItem } from './render-memory-item';
 
@@ -21,6 +22,7 @@ export function renderSubjectHeading(
 export function renderSubjectGroups(
   items: readonly SubjectItem[],
   options: MemoryLineOptions,
+  mint: () => string = mintBlockID,
 ): readonly string[] {
   const lines: string[] = [];
 
@@ -30,7 +32,7 @@ export function renderSubjectGroups(
     if (group.length > 0) {
       lines.push(
         renderSubjectHeading(subject, options.ownerName),
-        ...group.flatMap((item) => renderMemoryItem(item, options)),
+        ...group.flatMap((item) => renderMemoryItem(item, options, mint)),
       );
     }
   }
