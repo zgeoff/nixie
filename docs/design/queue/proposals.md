@@ -174,11 +174,13 @@ const result = await tools.call('proposals.withdraw', { shortID: 'K7' });
   proposer, it withdraws that proposal in the same transaction, then writes the new one with
   `replaces` set. Both commit or neither does. A proposal with no proposer never replaces one.
 - A withdrawal that nixie makes itself, such as closing a suggested rule after an action decline,
-  also goes through `withdrawInTransaction`, and its proposer hears it like any other settlement.
+  also goes through `withdrawInTransaction`. When the proposal has a proposer, the proposer hears it
+  like any other settlement.
 - When the new proposal settles, its line in the settlement note gives the short ID of the proposal
   it replaced.
-- A withdrawal that the proposer made itself, by `proposals.withdraw` or by a replacement, sends the
-  proposer no note, because the call's result holds the outcome.
+- A withdrawal that the proposer made itself, by `proposals.withdraw` or by a replacement, still
+  writes `proposals.settled` on its thread, but the turn note and the inbox record leave it out,
+  because the call's result holds the outcome.
 
 ### The lapse schedule
 
@@ -187,7 +189,7 @@ const result = await tools.call('proposals.withdraw', { shortID: 'K7' });
 approvals:
   lapse_days:
     action: 3
-    memory: 14 # no default: memory uses this, else memory.proposal_lapse_days, else 14
+    memory: 14 # optional; when unset, memory.proposal_lapse_days, else 14
     skill: 14
     rule_change: 14 # rule widenings and suggested rules; a mandate lapses at its deadline only
     prompt: 14
@@ -251,7 +253,8 @@ A prompt override's export after approval stays a note of its own: it isn't a se
 - The inbox predicate, the inbox renderer and the turn-note kinds read `proposals.settled` from
   release N+1 of the [release order](#release-order). The same change drops the old decline kinds
   from them, so a proposer never hears one outcome twice.
-- The inbox predicate reads `family` from the payload to leave out action settlements.
+- The inbox predicate and the turn-note builder read `family` from the payload to leave out action
+  settlements.
 
 ### The pending tool
 
@@ -339,8 +342,9 @@ type PendingRow = {
   stop at release N+2.
 - `proposals.settled.reason` is an erasable field, and the forgettable kinds list in the published
   contract gains `proposals.settled`. The change is additive, so it ships in a minor release.
-- Delete the skill, rule and action lapse writers, the test-only action answer writer, and the
-  prompt lapse sweep. Move the action answer types to the module that uses them.
+- Delete the separate skill, rule and action lapse writers and the test-only action answer writer;
+  until release N+2, `discard` writes those families' lapse records. Delete the prompt lapse sweep
+  at N+2. Move the action answer types to the module that uses them.
 - The code, tables and records that carry the name "gap check" take the name "suggested rules". The
   old record codecs stay, so a rebuild still reads every old record.
 
