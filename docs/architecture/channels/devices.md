@@ -62,8 +62,9 @@ holds the content outside the log.
 
 `readScreenState` reads the two pointed records and `pickScreenState` picks the state: the show,
 while it has no `until` or its `until` is ahead, or else the idle scene. A new show replaces the one
-before it, and an `until` that passes returns the screen to the idle scene, never to an older show.
-An idle device with no scene shows black.
+before it, and an `until` that passes ends the show, never returning to an older one. The screen
+then draws the layout while a region shows content, as [Layouts and regions](#layouts-and-regions)
+says, or else the idle scene. An idle device with no scene shows black.
 
 ## Layouts and regions
 
