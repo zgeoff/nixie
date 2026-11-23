@@ -180,7 +180,8 @@ async function setupTest() {
       expect(lines).toBe('open\n');
     });
 
-    return { stop: () => stream.stop() };
+    // imp ends a stopped process's stream before its exit arrives, and rejects both promises then.
+    return { stop: () => Promise.allSettled([stream.stop(), stream.exit]) };
   };
 
   return {
