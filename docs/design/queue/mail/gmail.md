@@ -29,9 +29,11 @@ flowchart LR
 // connectors module. The server app passes it to startTriggerSources beside the schedule source.
 declare function buildGmailArrivalSource(input: {
   clock: Clock;
-  listConnections: () => Promise<GmailConnection[]>; // each Google connection granted gmail.modify
+  // each Google connection granted gmail.modify, the scope the Gmail tools already hold; the
+  // source asks for no scope of its own
+  listConnections: () => Promise<GmailConnection[]>;
   readContext: (connectionID: string) => ConnectorContext; // the connection's fetcher
-}): TriggerSource; // id 'gmail', kind 'gmail'
+}): TriggerSource; // id 'gmail', kind 'mail'; it replaces the Gmail entry of a connector's `polls`
 
 // The source's cursor in trigger_sources: one entry per connection.
 type GmailSourceCursor = Record<string, { historyID: string; polledAt: number }>; // key: connectionID
@@ -68,22 +70,30 @@ gmail.wake_cancel({ rule: 'wz7p2k9q4m' }); // → { rule: 'wz7p2k9q4m', ended: t
   [starter rule](../../platform/policy/rules.md#the-starter-rule-set) allows `schedule`, so a call
   asks you unless consent or an allow rule covers it. One allow rule with `tools: [gmail.wake_set]`
   makes every Gmail rule free.
-
+- The rule starts when the approved action runs: `createdAt` and the expiry count from then, and
+  mail that arrived while the call waited for you is found with `gmail.search`. When the task has
+  ended by then, the action fails with `TASK_ENDED`.
+- In the conversation, `gmail.wake_set` refuses `CONVERSATION`, as `mail.wake_set` does.
+- `gmail.wake_list` lists only the calling task's rules on that connection. `gmail.wake_cancel`
+  refuses `UNKNOWN_RULE` for a rule of another task or another mailbox.
 - Cancelling and listing never ask: a cancel only narrows what wakes the assistant.
 
 ### Reply rules
 
-- When a `gmail.send` or `gmail.reply` outcome records a sent mail, the same transaction calls
-  `setWakeRuleInTransaction` with Gmail's thread ID of the sent mail, the sending task,
-  `origin: 'reply'` and an expiry of `replyWake`, which defaults to `mail.reply_wake`.
-  `replyWake: 'off'` registers none.
-- The send's decision covers its reply rule, and the send's approval card shows the rule's expiry.
-  [GEO-2829](https://linear.app/zgeoff/issue/GEO-2829) holds that choice.
+- `gmail.send` and `gmail.reply` in the [Gmail tools design](../gmail-calendar-drive-tools.md) gain
+  the argument `replyWake`, as `mail.send` has it.
+- When their outcome records a sent mail, the same transaction calls `setWakeRuleInTransaction` with
+  Gmail's thread ID of the sent mail, the sending task, `origin: 'reply'` and an expiry of
+  `replyWake`, which defaults to `wake_rules.reply_expiry`. `replyWake: 'off'` registers none, and
+  so does a send from the conversation.
+- Until the owner decides otherwise in [GEO-2829](https://linear.app/zgeoff/issue/GEO-2829), the
+  send's decision covers its reply rule, and the send's approval card shows the rule's expiry.
 
 ## Constraints
 
-- Every `gmail.poll_interval`, default `2m`, the source polls each connection that `listConnections`
-  returns and whose status is `active`, `failing` or `expiring`, one at a time.
+- Every `gmail.poll_interval`, default `2m` in the connectors module's `gmail` config section, the
+  source polls each connection that `listConnections` returns and whose status is `active`,
+  `failing` or `expiring`, one at a time.
 - A poll calls `history.list` with `startHistoryId` and `historyTypes: messageAdded`, over every
   page, and keeps the `historyId` of the last page.
 - It reads each added message with `messages.get`, format `metadata`, for From, Subject, `threadId`,
@@ -99,16 +109,16 @@ gmail.wake_cancel({ rule: 'wz7p2k9q4m' }); // → { rule: 'wz7p2k9q4m', ended: t
   arrival already recorded.
 - A failed poll keeps the connection's last cursor. The source polls the connection again after 1
   minute, doubles the wait after each further failure up to 1 hour, and waits longer when Google
-  gives a retry time. After 3 failed polls in a row of any connection, it reports `unhealthy`.
+  gives a retry time. After 3 failed polls in a row of any connection, it reports `unhealthy`, and
+  it reports `running` again once the last poll of every connection succeeded.
 - At its next `deliver`, the source drops the cursor entry of each connection that `listConnections`
   no longer returns.
 - The source makes read calls only, through the connection's fetcher, and never reaches the decision
   point.
 - A match wakes its task within `gmail.poll_interval` plus 1 minute of the mail's arrival, while the
   source reports `running` and the rule's window and throttle are open.
-- Forgetting a Google connection erases every `trigger.mail_arrived` of that connection. The
-  [erasure design](https://github.com/zgeoff/nixie/pull/1413) runs it as a child of the connection's
-  credential.
+- Forgetting a Google connection ends its rules and erases its mail text, as
+  [wake rules](wake-rules.md#erasure) says.
 
 ## Builder decides
 

@@ -21,15 +21,13 @@ of [mail and calendar polls](../mail-and-calendar-polls.md). The phone, the cale
 ```mermaid
 flowchart LR
   host[mail host] --> own[mailbox source]
-  own -->|"stores mail.received"| store[(the assistant's mail)]
+  own -->|"stores every mail"| store[(the assistant's mail)]
   google[Gmail] --> gsrc[Gmail source]
   own -->|"arrivals"| core[arrival path]
   gsrc -->|"arrivals"| core
-  tools["wake_set tools and sends"] --> rules[(wake rules)]
-  rules --> core
-  core -->|"window open: wake now"| task[the rule's task]
-  core -->|"window shut: hold"| flush[flush at window end]
-  flush -->|"one wake"| task
+  tools["wake_set tools, sends"] -->|"register"| rules[(wake rules)]
+  rules -->|"match"| core
+  core -->|"wake now, or hold for one later wake"| task[the rule's task]
 ```
 
 ## The parts
@@ -40,26 +38,36 @@ flowchart LR
 | [The assistant's mailbox](mailbox.md)    | the mail host interface, the store, the `mail.*` tools, reply rules on sends    | [GEO-2816](https://linear.app/zgeoff/issue/GEO-2816) |
 | [Gmail arrivals](gmail.md)               | the Gmail source, the `gmail.wake_*` tools, reply rules on Gmail sends          | [GEO-1827](https://linear.app/zgeoff/issue/GEO-1827) |
 
-Build wake rules and arrivals first. The mailbox waits on the choice of mail host, and the Gmail
-part waits on the [Google connection](https://linear.app/zgeoff/issue/GEO-1824) and the
-[Gmail tools](https://linear.app/zgeoff/issue/GEO-1825).
+Build wake rules and arrivals first, against a fake source. The other parts wait on these:
+
+- the mailbox, on the choice of mail host and the
+  [credentials design](https://github.com/zgeoff/nixie/pull/1414);
+- Gmail arrivals, on the [Google connection](https://linear.app/zgeoff/issue/GEO-1824) and the
+  [Gmail tools](https://linear.app/zgeoff/issue/GEO-1825);
+- forgetting a Google connection's mail, on the
+  [erasure design](https://github.com/zgeoff/nixie/pull/1413).
+
+The mail polls item still describes the older polls design. It gets new acceptance lines from this
+design once the owner agrees it, and the calendar poll moves to an item of its own.
 
 ## Terms
 
 - **Arrival:** one new mail in one mailbox, which its source hands to the arrival path.
 - **Wake rule:** a request to wake the task that registered it when an arrival in one mailbox
   matches, until the rule expires.
-- **Wake:** one `trigger.mail_woke` record in a task's inbox, which names one or more arrivals.
+- **Wake:** one `trigger.mail_woke` record in a task's inbox, which shows one or more mails.
 - **Window:** the time after a rule's wake during which its later matches wait, to arrive together.
-- **Throttle:** the time after any wake of a task from one mailbox during which every rule of that
-  mailbox for that task waits the same way.
+- **Throttle:** the time after any wake of a task from one mailbox during which that task's other
+  rules on that mailbox wait too, so several rules can't wake one task in quick turns.
 
 ## Decisions
 
 - **Two products, one arrival path.** The assistant's mail and yours differ in identity, storage and
   policy, so each keeps its own tools. Only the wake logic is shared, so a rule works the same way
   in both.
-- **A rule wakes only the task that registered it.** A task can't wake a task it doesn't own.
+- **Google's tools are `gmail.*`.** `mail.*` names only the assistant's own mailbox.
+- **A rule wakes only the task that registered it.** A task can't wake a task it doesn't own, and
+  the conversation holds no rule: it starts a task that holds one.
 - **A wake rule is not a task definition.** A rule arms nothing in `trigger_definitions`, and its
   wakes never pass `readDefinitionTask`. A busy or held task gets its mail in its inbox, never as a
   `still_running` or `task_held` skip.
@@ -69,8 +77,8 @@ part waits on the [Google connection](https://linear.app/zgeoff/issue/GEO-1824) 
 - **Only a matched Gmail arrival is recorded.** Gmail stays the one copy of your mail, and an
   arrival that matched nothing leaves nothing to forget.
 - **Durations are text.** `expires` and `window` take the form `parseDuration` reads, such as `30m`,
-  `2h` or `7d`. `parseDuration` moves from the turn-inputs module to the clock lib, because 3
-  modules read it.
+  `2h` or `7d`, and so do the config keys. `parseDuration` and `buildDurationSchema` move from the
+  turn-inputs module to the clock lib, because 4 modules read them.
 
 ## Out of scope
 

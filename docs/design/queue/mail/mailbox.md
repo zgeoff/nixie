@@ -72,8 +72,9 @@ mail.save_attachment({ message: 'mz4k8q2w7p', attachment: 1 }); // → { file: '
 mail.send({ to: ['hello@library.example.org'], subject, text, files: [], replyWake: '7d' });
 mail.reply({ message: 'mz4k8q2w7p', text, files: [], replyWake: 'off' });
 // → { message: 'mr8w2k4q9z', thread: 'th6p2k9w4x', replyRule: 'wq4k8m2x7p' | null }
-mail.wake_set({ from: ['@library.example.org'], subject: 'code', expires: '30m', window: '15m' });
-// → { rule: 'wq4k8m2x7p', expiresAt: '2026-11-24T10:45:00Z', window: '15m', replaced: false }
+mail.wake_set({ from: ['@library.example.org'], subject: 'code', expires: '30m', window: '1m' });
+// → { rule: 'wq4k8m2x7p', expiresAt: '2026-11-24T10:45:00Z', window: '1m', replaced: false,
+//     recent: [] }   recent: stored mail of the last 10 minutes that the match takes, as mail.list
 mail.wake_list(); // → { rules: [{ rule, match, expiresAt, window, origin: 'tool' | 'reply' }] }
 mail.wake_cancel({ rule: 'wq4k8m2x7p' }); // → { rule: 'wq4k8m2x7p', ended: true }
 ```
@@ -89,13 +90,17 @@ mail.wake_cancel({ rule: 'wq4k8m2x7p' }); // → { rule: 'wq4k8m2x7p', ended: tr
   assistant's own mailbox never asks, as [`reminder.set`](../../../architecture/core/reminders.md)
   never does.
 - `mail.wake_set` calls `setWakeRuleInTransaction` with the mailbox `{ kind: 'mail' }` and the
-  calling task. `expires` runs from `1m` to `mail.wake_max_expiry`. `window` runs from `1m` to
-  `expires`, and defaults to `mail.wake_window`.
+  calling task. `expires` runs from `1m` to `wake_rules.max_expiry`. `window` runs from `1m` to
+  `expires`, and defaults to `wake_rules.window`. In the conversation, the tool refuses
+  `CONVERSATION`.
+- A rule matches only mail received after it, so `recent` shows a code that arrived while the
+  assistant set the rule. The tool's description tells the assistant to set the rule before it asks
+  a site for a code, and to give a short window when it waits on one.
 - `mail.wake_cancel` refuses `UNKNOWN_RULE` for a rule of another task or another mailbox.
 - `files` takes up to 10 file IDs, 25 MiB in all. A file resolves only on the conversation or task
   run that made it.
 - Refusals: `UNKNOWN_MESSAGE`, `UNKNOWN_ATTACHMENT`, `UNKNOWN_FILE`, `UNKNOWN_RULE`, `TOO_BIG`,
-  `BAD_ADDRESS`, `BAD_DURATION` and `SEND_FAILED`.
+  `BAD_ADDRESS`, `BAD_DURATION`, `CONVERSATION` and `SEND_FAILED`.
 
 ### The store
 
@@ -114,8 +119,8 @@ mail.sent           -- one per sent mail, written by the send's outcome
 
 - When a `mail.send` or `mail.reply` outcome writes `mail.sent`, the same transaction calls
   `setWakeRuleInTransaction` with `{ thread }` of the sent mail, the sending task, `origin: 'reply'`
-  and an expiry of `replyWake`, which defaults to `mail.reply_wake`. `replyWake: 'off'` registers
-  none.
+  and an expiry of `replyWake`, which defaults to `wake_rules.reply_expiry`. `replyWake: 'off'`
+  registers none, and so does a send from the conversation.
 - A send whose outcome is unknown registers its rule once the reconcile finds the sent mail.
 
 ## Constraints
@@ -123,9 +128,10 @@ mail.sent           -- one per sent mail, written by the send's outcome
 - The mailbox source stores each new mail in a write transaction of its own, then delivers its
   arrival. A crash between the two stores nothing twice, because `host_message_id` is unique. The
   next read delivers the arrival again, because the cursor commits only with the arrival.
-- The source reads the host every `mail.host_poll_interval`, default `30s`, and at once on a `watch`
-  hint. It retries a failed read after 1 minute, doubles the wait after each further failure up to 1
-  hour, and reports `unhealthy` after 3 failures in a row.
+- The source reads the host every `mail.host_poll_interval`, default `30s` in the mail module's
+  `mail` config section, and at once on a `watch` hint. It retries a failed read after 1 minute,
+  doubles the wait after each further failure up to 1 hour, and reports `unhealthy` after 3 failures
+  in a row.
 - At its first start, the source calls `begin` and stores no older mail. After a `resynced` answer,
   it stores each mail it missed and delivers each one, and the rules' `createdAt` keeps a rule from
   matching mail older than itself.
