@@ -208,10 +208,25 @@ them. When the manifest holds format 1, the pull request tells the user to move 
 the merge.
 
 The export runs only when the configuration names the definitions repo on GitHub. It writes through
-GitHub's REST API with a fine-grained token that holds contents and pull-requests write on that one
-repo, and the token lives in the secrets file under `definitions_export_token`. A configuration that
-names the repo without the token stops nixie at start. Without the repo, a written skill stays in
-force over the definitions until the user copies it into them.
+GitHub's REST API and signs in one of 2 ways. A configuration that names the repo with both ways, or
+with neither, stops nixie at start, and the message says which. Without the repo, a written skill
+stays in force over the definitions until the user copies it into them.
+
+- **A fine-grained token.** The token holds contents and pull-requests write on that one repo, and
+  lives in the secrets file under `definitions_export_token`.
+- **A GitHub App.** `definitions.export.app` names the App's `client_id` and the `installation_id`
+  of its installation on the definitions repo, and the App's private key (a PEM) lives in the
+  secrets file under `definitions_export_app_key`. The App holds contents and pull requests write
+  and metadata read, and is installed on that one repo. The export signs a JWT with the key (RS256,
+  backdated against clock drift, valid for less than GitHub's maximum), trades it at
+  `POST /app/installations/{installation_id}/access_tokens` for an installation token, and sends
+  that token where the token path sends the fixed one. The export keeps the installation token and
+  mints a new one shortly before its `expires_at`.
+
+The key and each token stay out of every log line, record, error message and tool result. The key is
+one of the secrets file's own values, which
+[the secret scan](../connectors/secret-scan.md#the-own-values) refuses in a fetched URL. A failed
+mint fails the export, and the log holds only GitHub's HTTP status and error message.
 
 Two optional templates under `definitions.export` set the export's text: `title` for the commit
 subject and the pull request's title, and `message` for the commit body and the pull request's body.

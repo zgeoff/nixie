@@ -33,6 +33,7 @@ test('it keeps the deployment key, the impd token and the model credentials', as
   expect(rest).toStrictEqual({
     impdToken: 'impd-token',
     definitionsExportToken: null,
+    definitionsExportAppKey: null,
     models: { model_credentials: { anthropic: 'model-key' } },
     connectorCredentials: {},
     settings: {},
@@ -82,6 +83,21 @@ test("it keeps the definitions repo's export token", async () => {
   const secrets = await loadSecrets({ path: ctx.path, sopsArgv: ctx.sopsArgv });
 
   expect(secrets.definitionsExportToken).toBe('export-token');
+});
+
+test("it keeps the definitions repo's export app key", async () => {
+  const ctx = await setupTest();
+
+  const key = Buffer.alloc(32, 7).toString('base64');
+
+  await writeFile(
+    ctx.path,
+    `deployment_key: ${key}\ndefinitions_export_app_key: |\n  line-one\n  line-two\n`,
+  );
+
+  const secrets = await loadSecrets({ path: ctx.path, sopsArgv: ctx.sopsArgv });
+
+  expect(secrets.definitionsExportAppKey).toBe('line-one\nline-two\n');
 });
 
 test('it keeps the connector credentials', async () => {

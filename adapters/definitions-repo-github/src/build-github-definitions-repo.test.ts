@@ -22,7 +22,7 @@ test("it reads the base branch's newest commit as the base revision", async () =
   const repo = buildGitHubDefinitionsRepo({
     repository: 'harbour/definitions',
     base: 'main',
-    token: 'token-a',
+    readToken: () => Promise.resolve('token-a'),
     apiURL: githubAPIURL,
   });
 
@@ -54,7 +54,7 @@ test('it reads a file at a revision, and null for a missing one', async () => {
   const repo = buildGitHubDefinitionsRepo({
     repository: 'harbour/definitions',
     base: 'main',
-    token: 'token-a',
+    readToken: () => Promise.resolve('token-a'),
     apiURL: githubAPIURL,
   });
 
@@ -79,7 +79,7 @@ test('it reads a file at the pinned revision after the base branch moves', async
   const repo = buildGitHubDefinitionsRepo({
     repository: 'harbour/definitions',
     base: 'main',
-    token: 'token-a',
+    readToken: () => Promise.resolve('token-a'),
     apiURL: githubAPIURL,
   });
 
@@ -124,7 +124,7 @@ test('it lists the files under a folder at a revision, nested ones included', as
   const repo = buildGitHubDefinitionsRepo({
     repository: 'harbour/definitions',
     base: 'main',
-    token: 'token-a',
+    readToken: () => Promise.resolve('token-a'),
     apiURL: githubAPIURL,
   });
 
@@ -154,7 +154,7 @@ test('it reads the byte size of every file at the base revision', async () => {
   const repo = buildGitHubDefinitionsRepo({
     repository: 'harbour/definitions',
     base: 'main',
-    token: 'token-a',
+    readToken: () => Promise.resolve('token-a'),
     apiURL: githubAPIURL,
   });
 
@@ -188,7 +188,7 @@ test('it refuses a size listing that GitHub cut short', async () => {
   const repo = buildGitHubDefinitionsRepo({
     repository: 'harbour/definitions',
     base: 'main',
-    token: 'token-a',
+    readToken: () => Promise.resolve('token-a'),
     apiURL: githubAPIURL,
   });
 
@@ -218,7 +218,7 @@ test('it refuses a folder listing that GitHub cut short', async () => {
   const repo = buildGitHubDefinitionsRepo({
     repository: 'harbour/definitions',
     base: 'main',
-    token: 'token-a',
+    readToken: () => Promise.resolve('token-a'),
     apiURL: githubAPIURL,
   });
 
@@ -249,7 +249,7 @@ test('it opens a pull request from a branch that holds the change on the pinned 
   const repo = buildGitHubDefinitionsRepo({
     repository: 'harbour/definitions',
     base: 'main',
-    token: 'token-a',
+    readToken: () => Promise.resolve('token-a'),
     apiURL: githubAPIURL,
   });
 
@@ -315,7 +315,7 @@ test('it rebuilds the branch on a later revision and updates the open pull reque
   const repo = buildGitHubDefinitionsRepo({
     repository: 'harbour/definitions',
     base: 'main',
-    token: 'token-a',
+    readToken: () => Promise.resolve('token-a'),
     apiURL: githubAPIURL,
   });
 
@@ -380,7 +380,7 @@ test('it closes a pull request', async () => {
   const repo = buildGitHubDefinitionsRepo({
     repository: 'harbour/definitions',
     base: 'main',
-    token: 'token-a',
+    readToken: () => Promise.resolve('token-a'),
     apiURL: githubAPIURL,
   });
 
@@ -408,7 +408,7 @@ test("it reads a branch's open pull request", async () => {
   const repo = buildGitHubDefinitionsRepo({
     repository: 'harbour/definitions',
     base: 'main',
-    token: 'token-a',
+    readToken: () => Promise.resolve('token-a'),
     apiURL: githubAPIURL,
   });
 
@@ -436,7 +436,7 @@ test('it reads no open pull request for a branch whose pull request closed', asy
   const repo = buildGitHubDefinitionsRepo({
     repository: 'harbour/definitions',
     base: 'main',
-    token: 'token-a',
+    readToken: () => Promise.resolve('token-a'),
     apiURL: githubAPIURL,
   });
 
@@ -469,7 +469,7 @@ test.each([
   const repo = buildGitHubDefinitionsRepo({
     repository: 'harbour/definitions',
     base: 'main',
-    token: 'token-a',
+    readToken: () => Promise.resolve('token-a'),
     apiURL: githubAPIURL,
   });
 
@@ -487,7 +487,7 @@ test('it refuses a request GitHub refuses, with its status and never the token',
   const repo = buildGitHubDefinitionsRepo({
     repository: 'harbour/definitions',
     base: 'main',
-    token: 'token-b',
+    readToken: () => Promise.resolve('token-b'),
     apiURL: githubAPIURL,
   });
 

@@ -77,6 +77,7 @@ test('it reads every section, with the default of each setting the file leaves o
         'deployment_key',
         'impd_token',
         'definitions_export_token',
+        'definitions_export_app_key',
         'model_credentials',
         'connector_credentials',
       ],

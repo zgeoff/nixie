@@ -1,5 +1,6 @@
-import type { SkillExportText } from '@heynixie/definitions';
+import type { DefinitionsExportConfig, SkillExportText } from '@heynixie/definitions';
 import type { GitHubDefinitionsOptions } from '@heynixie/definitions-repo-github';
+import { makeInstallationTokenReader } from '@heynixie/definitions-repo-github';
 import type { DeploymentConfig } from '../deployment/deployment-config-schema';
 
 export interface DefinitionsExportSettings {
@@ -7,9 +8,14 @@ export interface DefinitionsExportSettings {
   readonly text: SkillExportText;
 }
 
+export interface DefinitionsExportSecrets {
+  readonly token: string | null;
+  readonly appKey: string | null;
+}
+
 export function resolveDefinitionsExport(
   config: Pick<DeploymentConfig, 'definitions' | 'agent' | 'owner'>,
-  token: string | null,
+  secrets: DefinitionsExportSecrets,
 ): DefinitionsExportSettings | null {
   const exportConfig = config.definitions.export;
 
@@ -17,18 +23,14 @@ export function resolveDefinitionsExport(
     return null;
   }
 
-  if (token === null) {
-    throw new Error(
-      'the secrets file holds no definitions_export_token, and definitions.export needs it',
-    );
-  }
+  const readToken = pickTokenReader(exportConfig, secrets);
 
   return {
     repo: {
       repository: exportConfig.repository,
       base: exportConfig.base,
       apiURL: exportConfig.apiURL,
-      token,
+      readToken,
     },
     text: {
       title: exportConfig.title,
@@ -37,4 +39,51 @@ export function resolveDefinitionsExport(
       ownerName: config.owner.name,
     },
   };
+}
+
+function pickTokenReader(
+  exportConfig: DefinitionsExportConfig,
+  secrets: DefinitionsExportSecrets,
+): () => Promise<string> {
+  const app = exportConfig.app;
+
+  if (app === null) {
+    const token = secrets.token;
+
+    if (token === null) {
+      throw new Error(
+        'definitions.export names no app, so the secrets file needs definitions_export_token',
+      );
+    }
+
+    if (secrets.appKey !== null) {
+      throw new Error(
+        'the secrets file holds definitions_export_app_key, but definitions.export names no app: ' +
+          'sign the export in with the token or with the app, not both',
+      );
+    }
+
+    return () => Promise.resolve(token);
+  }
+
+  if (secrets.token !== null) {
+    throw new Error(
+      'the secrets file holds definitions_export_token, and definitions.export names an app: ' +
+        'sign the export in with the token or with the app, not both',
+    );
+  }
+
+  if (secrets.appKey === null) {
+    throw new Error(
+      'definitions.export names an app, so the secrets file needs definitions_export_app_key',
+    );
+  }
+
+  return makeInstallationTokenReader({
+    apiURL: exportConfig.apiURL,
+    clientID: app.clientID,
+    installationID: app.installationID,
+    privateKey: secrets.appKey,
+    readNowMs: () => Date.now(),
+  });
 }

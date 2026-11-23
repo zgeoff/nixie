@@ -9,8 +9,9 @@ export interface GitHubDefinitionsOptions {
   readonly repository: string;
   readonly base: string;
 
-  // A fine-grained token needs contents and pull-requests write on the definitions repo alone.
-  readonly token: string;
+  // Reads the token each request sends. A fine-grained token or an App installation token needs
+  // contents and pull-requests write on the definitions repo alone.
+  readonly readToken: () => Promise<string>;
 
   readonly apiURL: string;
 }
@@ -110,7 +111,7 @@ function makeGitHubSender(options: GitHubDefinitionsOptions): GitHubSender {
       method: operation.method,
       headers: {
         accept: 'application/vnd.github+json',
-        authorization: `Bearer ${options.token}`,
+        authorization: `Bearer ${await options.readToken()}`,
         'content-type': 'application/json',
         'user-agent': 'nixie',
         'x-github-api-version': '2022-11-28',
