@@ -88,6 +88,12 @@ export const controlRoutes = {
     input: z.strictObject({ step: z.enum(['set', 'update']), text: z.string().min(1) }),
     output: z.strictObject({ replies: z.int().positive() }),
   },
+  advanceClock: {
+    method: 'POST',
+    path: '/control/advance-clock',
+    input: z.strictObject({ minutes: z.int().min(1).max(60) }),
+    output: z.strictObject({ minutes: z.int().positive() }),
+  },
   useComputer: {
     method: 'POST',
     path: '/control/use-computer',

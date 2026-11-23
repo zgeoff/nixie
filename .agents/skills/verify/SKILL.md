@@ -45,8 +45,6 @@ The mistakes that cost the most time:
 - [Preview setup](references/preview-setup.md) and [the prod check](references/prod-check.md):
   before you attach to `preview` or `prod`.
 
-Read a feature's file before you run its journey.
-
 <!-- wringer:features -->
 
 | Feature           | Summary                                                                    | File                                                                               |
@@ -65,7 +63,7 @@ Read a feature's file before you run its journey.
 | computer-watch    | Watch the assistant's desktop                                              | [references/feature-computer-watch.md](references/feature-computer-watch.md)       |
 | device-in-browser | Make a signed-in browser a device                                          | [references/feature-device-in-browser.md](references/feature-device-in-browser.md) |
 | device-screen     | Enrol a device and see a picture on it                                     | [references/feature-device-screen.md](references/feature-device-screen.md)         |
-| device-layout     | Lay out a device screen in regions, update one and time another out        | [references/feature-device-layout.md](references/feature-device-layout.md)         |
+| device-layout     | Lay out a screen in regions, and change them                               | [references/feature-device-layout.md](references/feature-device-layout.md)         |
 
 <!-- /wringer:features -->
 
@@ -144,8 +142,8 @@ leaves it running. Your edits never reach an attach target's app, so check a cha
 target.
 
 Run `bun verify use --target <target>` to point every later command at a target. `use` saves the
-choice in this worktree's `.wringer/`, for every shell and session. `--target` on one command points
-that command alone. A command with neither runs on the registry's first target, so run `use` first.
+choice in this worktree's `.wringer/`. `--target` on one command points that command alone. A
+command with neither runs on the registry's first target, so run `use` first.
 
 <!-- repo: targets -->
 

@@ -69,17 +69,19 @@ model updates or times out one region with no change to the others.
    Expect: `data.replies` of 3. The snapshot shows "Dentist at 3", "Ripples" and a time, and no
    "Bins go out tonight".
 
-5. Wait up to 100 seconds for the first region to time out, then read the region pointers:
+5. Move nixie's clock forward 2 minutes, so the first region's minute passes with no wait. Then read
+   the region pointers:
 
    ```bash
-   bun verify browser snapshot --until-no-text 'Ripples' --timeout-ms 100000
+   bun verify action advance-clock --minutes 2
+   bun verify browser snapshot --until-no-text 'Ripples'
    bun verify browser screenshot
    bun verify db query "select region from device_regions order by region"
    ```
 
-   Expect: the snapshot no longer shows "Ripples", and still shows "Dentist at 3" and a time. The
-   query lists `clock`, `note` and `pond`: a timed-out region keeps its pointer, and the server
-   reads that its minutes passed.
+   Expect: `advance-clock` returns `data.minutes` of 2. The snapshot no longer shows "Ripples", and
+   still shows "Dentist at 3" and a time. The query lists `clock`, `note` and `pond`: a timed-out
+   region keeps its pointer, and the server reads that its minutes passed.
 
 ## End state
 

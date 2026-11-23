@@ -186,6 +186,16 @@ export function createVerifyRegistry(): Wringer {
       run: (input, ctx) => postControl(ctx.drivers.http, controlRoutes.layoutOnDevice, input),
     })
     .action({
+      name: 'advance-clock',
+      summary:
+        "Move nixie's clock forward by --minutes, so content that lasts minutes ends with no wait",
+      effect: 'write',
+      targets: ['local'],
+      input: controlRoutes.advanceClock.input,
+      data: controlRoutes.advanceClock.output,
+      run: (input, ctx) => postControl(ctx.drivers.http, controlRoutes.advanceClock, input),
+    })
+    .action({
       name: 'use-computer',
       summary:
         "Send the owner message and queue the scripted model turn that uses the assistant's browser (--kind browser: opens the harness page), shell (--kind shell: writes a file and reads it back) or screen (--kind screen: takes a screenshot of the desktop and clicks its middle), with the closing reply --text",

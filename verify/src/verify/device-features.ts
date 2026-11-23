@@ -14,7 +14,7 @@ export const deviceFeatures = [
   },
   {
     name: 'device-layout',
-    summary: 'Lay out a device screen in regions, update one and time another out',
+    summary: 'Lay out a screen in regions, and change them',
     paths: featurePaths['device-layout'],
   },
 ] as const;

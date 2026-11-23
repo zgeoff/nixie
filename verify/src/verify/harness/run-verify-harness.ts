@@ -84,6 +84,11 @@ export async function runVerifyHarness(): Promise<void> {
       }),
     showOnDevice: (show) => runDeviceShow(api.client, nixie.model, show),
     layoutOnDevice: (layout) => runDeviceLayout(api.client, nixie.model, layout),
+    advanceClock: async (minutes) => {
+      await nixie.harness.advance(minutes * 60_000);
+
+      return minutes;
+    },
     readTasks: async () => {
       const listed = await api.client.tasks.list();
       const records = await nixie.readRecords();
