@@ -4,13 +4,16 @@
 
 The web client hears of a pause, a spending stop or a backup notice up to a minute late, because it
 polls for them. One page can also hold 3 record streams. The server pushes changes to the web client
-and to devices through one server-sent stream per client tab, `live.follow`, in place of today's 2
-kinds of stream and 7 polls of 15 to 60 s.
+and to devices through one server-sent stream in each client tab, `live.follow`, in place of today's
+2 kinds of stream and 7 polls of 15 to 60 s, with a short overlap when a tab switches threads.
 
 A page's stream carries the records of the thread on screen, and a `changed` event that names each
 kind of state a commit changed, such as the pause or the task list. A device screen's stream carries
 only its screen. One in-memory client registry in the API holds presence and the open device
 streams, and the push notifier and the devices module each read their part.
+
+The owner approves this design and settles its open questions. The builder of the stream, the topic
+marks, the web client's move onto the stream and the client registry starts from it.
 
 ## Shape
 
@@ -177,9 +180,10 @@ interface Presence {
 
 ### The stream
 
-- The web client holds one `live.follow` per tab, and each page reads records and topics from that
-  stream. A tab holds 2 only while it switches threads.
-- The stream sends `opened` first, as soon as it has registered, and before any other event.
+- The web client holds one `live.follow` in each tab, and each page reads records and topics from
+  that stream. The one exception is the overlap of a thread switch, below.
+- The stream sends `opened` first, once it listens on `writer.commits` and, for the device form,
+  once its device stream is open. It sends no event before `opened`.
 - The stream sends a `record` event only for a record whose thread is the input's `thread`, in
   sequence order.
 - The stream starts after `lastEventId` when that is a sequence of 1 to 15 digits, and otherwise
@@ -234,8 +238,9 @@ interface Presence {
 - An open stream never counts as present. Only a `sessions.shown` beat does.
 - A device-scope session never calls `sessions.shown`, and a browser in device mode never calls it.
 - The push notifier reads `presence`, and the devices module reads `devices`, from the one registry.
-- When a client goes away, the server ends its stream and drops it from the registry within 10 s. A
-  test closes the connection and asserts the device turns offline.
+- When a client goes away, the server ends its stream within 10 s, and drops a device-form stream
+  from the registry in the same step. A test closes the connection and asserts the device turns
+  offline.
 
 ### Keepalive and the transport
 
