@@ -2,23 +2,25 @@
 
 - **Status:** draft
 - **Work items:** [the atc runner](https://linear.app/zgeoff/issue/GEO-1843),
-  [typing into a coding session](https://linear.app/zgeoff/issue/GEO-945),
   [supervised sessions in the live view](https://linear.app/zgeoff/issue/GEO-311)
 
 You ask nixie for a coding session, such as "fix the flaky login test in the shop repo", and nixie
 starts it in atc, a separate program that runs coding agents, once your policy rules allow it. Or
 you point nixie at a session you already run in atc, and nixie joins it. Either way the session
-shows as a task in nixie. You message it like any other task, and so does the conversation, the task
-where nixie talks with you. This design adds the code that runs such a task, the coding runner, and
-its first adapter: the package `coding-atc`, whose adapter ID is `atc`.
+shows as a task in nixie. nixie steers the session by typing into its input, so each line nixie
+sends is a user turn of the session, as a line you type is. nixie reads the session's state and last
+reply when it needs them, and only the session events that nixie picked wake it. This design adds
+the code that runs such a task, the coding runner, its tools, and its first adapter: the package
+`coding-atc`, whose adapter ID is `atc`.
 
 The owner approves this design, and the builder of
-[the atc runner](https://linear.app/zgeoff/issue/GEO-1843) starts from it and its two parts.
+[the atc runner](https://linear.app/zgeoff/issue/GEO-1843) starts from it and its three parts.
 
-The coding runner calls no model of its own. Each step of a coding task passes the messages in the
-task's inbox to the session, and turns what the session does into task messages and one report per
-task run. The runner plugs into the [task runner port](../../../architecture/core/tasks.md), and
-this design adds members to the port's types. It also rewrites the coding adapter section of the
+The coding runner calls no model of its own, and judges nothing about the session's work. Each step
+of a coding task moves text and events between the task and the session. nixie's conversation reads
+what the step forwards, and decides whether the session is done, waits on you, or needs a steer. The
+runner plugs into the [task runner port](../../../architecture/core/tasks.md), and this design adds
+members to the port's types. It also rewrites the coding adapter section of the
 [coding design](../../platform/connectors/coding.md).
 
 These sibling designs touch this one:
@@ -26,85 +28,100 @@ These sibling designs touch this one:
 - The [code tool](../../../architecture/connectors/code-tool.md) owns the code tool section of the
   coding design.
 - The [MCP proxy build](../mcp-proxy-build.md) leaves atc out: the proxy carries none of atc's
-  tools, because this runner calls atc directly.
+  tools, because this runner calls atc-gateway directly.
 - The [decision point cutover](../decision-point-cutover.md) builds the policy stages that decide
-  each start of a coding session and each message to one.
+  each start of a coding session and each line typed into one.
 
 ## Terms
 
 | Term           | Meaning                                                                                                                                             |
 | -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| atc            | a separate program that runs coding sessions on targets, such as a cloud VM, under its own rules                                                    |
-| principal      | a named caller that atc's config lists, with the targets it may use; nixie calls atc as one                                                         |
+| atc            | a separate program that runs coding sessions on targets, such as a cloud VM, under its own rules; each machine runs one atc daemon                  |
+| atc-gateway    | atc's MCP server for several daemons at once, which routes each tool call to one daemon; nixie calls atc only through it                            |
+| service client | a caller of atc-gateway with a static token and no browser sign-in; nixie is the service client `service:nixie`                                     |
+| principal      | a named caller that a daemon's config lists, with the targets it may use; a service client is the principal `service:<name>`                        |
+| target         | one place that a daemon runs sessions, named by the daemon and the daemon's target ID, such as `cloud` on the daemon `cloud`                        |
 | reach          | the sessions a principal can see: every session on its targets, those nixie never started included                                                  |
-| the hello      | the first request on a connection to atc, which carries the token, the protocol version and the contract's major version                            |
 | event trail    | atc's stored list of what each session did, which a caller reads from a cursor                                                                      |
 | coding task    | a task whose runner is a coding runner                                                                                                              |
 | adapter        | a package that reaches one outside system for an interface that nixie owns; the coding runner calls its adapter for every atc call                  |
-| turn           | one reply cycle of the coding agent inside the session, which atc reports when it ends                                                              |
+| turn           | one reply cycle of the coding agent inside the session, from a user input to the agent's reply                                                      |
+| steer          | a line nixie types into the session's input, which the agent takes as a user turn                                                                   |
+| note           | a message that atc's bridge hands the agent beside its conversation; the agent can answer it, and a note never steers                               |
+| wake set       | the session events that wake nixie's conversation; every other event lands on the coding task only                                                  |
 | bound session  | the session a coding task works with, once the task has recorded its ID                                                                             |
 | started        | a bound session that the task's start created in atc                                                                                                |
 | joined         | a bound session that already ran in atc before the task, such as one you started yourself                                                           |
-| coding source  | the [trigger source](../../../architecture/core/triggers.md) that reads atc's event trail into each coding task's inbox                             |
-| report target  | the task that started a coding task, usually the conversation; it receives each report                                                              |
+| coding source  | the [trigger source](../../../architecture/core/triggers.md) that reads atc's event trail into each coding task's thread                            |
+| report target  | the task that started a coding task, usually the conversation; it receives each forwarded event and the report                                      |
 | variant        | one form of a tool's input, picked by a field such as `runner`, with its own policy rule name, such as `task.start/atc`                             |
 | hop            | the count of task messages in one exchange; past the [hop limit](../../../architecture/core/task-messages.md#the-hop-limit) a message wakes nobody  |
 | claim          | the step of the task runner that takes a task's lease before a step runs ([leases and recovery](../../../architecture/core/leases-and-recovery.md)) |
 | decision point | the code that decides allow, ask or deny for each tool call and each attempt of an action ([actions](../../../architecture/core/actions.md))        |
 | harness        | the model client a profile runs on, such as `agent-sdk` or `codex` ([model profiles](../../../architecture/core/model-profiles.md#harnesses))       |
 
-[The runner](runner.md) and [the atc adapter](atc.md) use these terms too. Other terms, such as an
-inbox, a task run, a projection and an imp, are in the [glossary](../../../glossary.md).
+[The runner](runner.md), [the tools](tools.md) and [the atc adapter](atc.md) use these terms too.
+Other terms, such as an inbox, a task run, a projection and an imp, are in the
+[glossary](../../../glossary.md).
 
 ## Shape
 
 ```mermaid
 flowchart LR
-  conv[conversation] -->|"task.start/atc"| start[start: task.created + spawn or join]
-  start -->|"coding.start action"| queue[action queue]
-  queue -->|"session.spawn, key: action ID"| atc[atc]
-  atc -->|"events.read, cursor"| source[coding source]
+  conv[conversation] -->|"task.start/atc, coding.steer"| queue[action queue]
+  queue -->|"atc_session_spawn, atc_terminal_type"| gw[atc-gateway]
+  gw -->|"atc_events_read, cursor"| source[coding source]
   source -->|"trigger.task_input"| thread[coding task's thread]
   queue -->|"outcome"| thread
   thread --> step[coding runner step]
-  step -->|"coding.message action"| queue
-  step -->|"task_message, report"| target[report target]
+  step -->|"task_message for the wake set, report"| conv
+  conv -->|"coding.read"| gw
 ```
 
-A start writes the coding task and queues the spawn, a `coding.start` action; a join reads the
-session from atc and binds it in the same step. The spawn's outcome and the session's events land on
-the task's thread. Each step then moves them on: a message to the task goes to the session as a
-`coding.message` action, and the session's answers, notes and reports go back to the report target
-as `task_message` records.
+A start writes the coding task and queues the spawn, a `coding.start` action, whose prompt is the
+brief; a join reads the session from atc and binds it in the same step, and sends the session
+nothing. nixie steers the session with `coding.steer`, an action that types nixie's text into the
+session's input. The spawn's outcome and the session's events land on the task's thread. The step
+forwards each event in the wake set to the report target as a `task_message`, and ends the task with
+a report when the session ends. nixie reads the session's state, last reply and recent turns with
+`coding.read`.
 
 ## Parts
 
-| Doc                       | What it holds                                                                                                                      |
-| ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| [the runner](runner.md)   | the start and the join, their policy, the runner definition, the records, what one step does, delivery, ends and limits, the lists |
-| [the atc adapter](atc.md) | `CodingAdapter`, the coding source, the map onto atc, the config and the token, the release pairs, typing                          |
+| Doc                       | What it holds                                                                                          |
+| ------------------------- | ------------------------------------------------------------------------------------------------------ |
+| [the runner](runner.md)   | the start and the join, their policy, the runner definition, the records, what one step does, the ends |
+| [the tools](tools.md)     | `coding.sessions`, `coding.steer`, `coding.message`, `coding.read`, `coding.watch`, and their policy   |
+| [the atc adapter](atc.md) | `CodingAdapter`, the coding source, the map onto atc-gateway's tools, the config, the release pairs    |
 
 ## Decisions
 
-- **A coding runner runs no model.** Its step only moves records between the task and the session,
-  so it spends no model money and needs no sandbox.
+- **A coding runner runs no model, and judges nothing.** Its step only moves text and events between
+  the task and the session, so it spends no model money and needs no sandbox. An idle session is no
+  sign that the work is done: an agent ends a turn while a background shell still runs. nixie's
+  conversation reads the session and decides.
+- **nixie steers a session by typing into its input.** A coding agent runs in auto mode, where a
+  judge model decides each tool call from the user turns it sees. A note from atc's bridge never
+  reaches the judge, so only typed input steers the session. nixie spawns and steers sessions in a
+  system built for nixie, so nixie's typed line stands as the session's user input.
+- **One task run spans the whole binding.** The start or the join opens it, and the session's end, a
+  failed start, a stop, a close or a failure ends it, with one report. Between those, each event in
+  the wake set reaches the report target as a `task_message`, and no event ends the task run.
 - **This runner's key is `atc`.** The config section `coding.atc` and the variant `task.start/atc`
   take their names from the key.
 - **The coding runner is generic over `CodingAdapter`, and its key is the adapter's ID.** A later
   adapter, such as a built-in one that runs a session in an [imp](../../../glossary.md), gets its
-  own key and its own `task.start` variant.
-- **The spawn (`coding.start`) and each message delivery (`coding.message`) are actions on the
-  action queue, keyed by the action ID.** They declare `idempotency_key` reconciliation, so an
-  attempt with no result is retried under the same key while atc keeps the key, and a crash never
-  spawns a second session.
-- **Each message to a session is decided as its own action, `coding.message`.** A rule on
-  `coding.message` covers every message to every coding session, whoever sent it.
+  own key and its own `task.start` variant. The wake set, the tools and the `coding.wake` config are
+  the same for every adapter, and only `coding.<key>` holds what the adapter needs.
+- **The spawn, each steer, each note and each stop are actions on the action queue.** The spawn and
+  each note declare `idempotency_key` reconciliation, so a crash never spawns a second session. A
+  steer declares `none`, because atc's typing call takes no key and a retry types the line again.
 - **A stop of a coding task stops its session, joined or started, through a `coding.stop` action.**
   The starter rules ask you before nixie stops a session it joined. A close or a failure of the task
   only unbinds a joined session, which runs on in atc as yours.
-- **One task run is one stretch of the session's work, from a message nixie delivers to the turn
-  that leaves the session idle.** The report target gets one report for each such stretch, as it
-  gets one for every task run.
+- **nixie reaches atc only through atc-gateway, as a service client.** The gateway reaches every
+  daemon in its registry, so one connection sees the sessions on your desktop and on a cloud VM
+  alike.
 - **nixie's atc token is a deployment secret.** The adapter takes it as a plain value, as every
   adapter takes its deployment secrets.
 
@@ -117,9 +134,9 @@ as `task_message` records.
 - The container sandbox adapter ([GEO-308](https://linear.app/zgeoff/issue/GEO-308)).
 - A limit on a session's spend or wall time. The coding agent spends on its own account in atc,
   outside nixie's [budgets](../../platform/policy/budgets.md).
-- Answering a session's question or its permission menu. The design session on
-  [typing](https://linear.app/zgeoff/issue/GEO-945) and the
-  [approval forwarding](https://linear.app/zgeoff/issue/GEO-70) design own them.
+- Answering a session's permission menu or any other menu. The agent's auto mode judge decides its
+  permission prompts, and the [approval forwarding](https://linear.app/zgeoff/issue/GEO-70) design
+  and [typing into a coding session](https://linear.app/zgeoff/issue/GEO-945) own the rest.
 - A coding task from a definition file. The
   [task definitions work](https://linear.app/zgeoff/issue/GEO-1330) adds a `runner` key to the
   definition format.
@@ -132,8 +149,10 @@ as `task_message` records.
   with both variants in the tool's input schema, and check that the API takes the schema and the
   call parses. Until the probe passes on a harness, the server leaves the coding variant out of
   `task.start` on that harness.
-- **When does a line that nixie types into a session carry your authority?** A design session with
-  the owner, held after the approval forwarding design, settles it, with the questions of
-  [GEO-945](https://linear.app/zgeoff/issue/GEO-945). Until then, nixie types nothing into a
-  session's terminal. Typing means keystrokes, such as an answer to the session's question or a
-  choice in its permission menu. A `coding.message` is not typing: atc delivers it as a message.
+- **How does a steer avoid a menu that atc cannot see?** atc refuses a typed line while a Claude
+  Code permission prompt is open, and the adapter refuses a steer to a session in `waiting`. A menu
+  that opens between that check and the keystrokes, or a menu of an agent whose prompts atc never
+  sees, takes the line's Enter as a pick of its highlighted option. The owner settles, with
+  [typing into a coding session](https://linear.app/zgeoff/issue/GEO-945), whether a steer needs a
+  check from atc that is atomic with the keystrokes. Until then, the adapter checks the state first,
+  as [the tools](tools.md#steering) describe.

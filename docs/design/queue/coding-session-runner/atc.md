@@ -1,16 +1,16 @@
 # The coding session runner: the atc adapter
 
 - **Status:** draft
-- **Work items:** [the atc runner](https://linear.app/zgeoff/issue/GEO-1843),
-  [typing into a coding session](https://linear.app/zgeoff/issue/GEO-945)
+- **Work items:** [the atc runner](https://linear.app/zgeoff/issue/GEO-1843)
 
-atc is a separate program that runs coding sessions, and nixie calls it over its TCP listener as a
-principal, a named caller that atc's config lists. The `coding-atc` adapter implements
-`CodingAdapter` with atc's procedures, and the coding source reads atc's event trail, its stored
-list of what each session did, into the inbox of each coding task. This doc holds the interface, the
-source, the map onto atc's procedures, the config and the token, and the release pairs. The step
-that calls the adapter is in [the runner](runner.md). The terms, such as reach, the hello, a hop and
-a bound session, are in the [README](README.md#terms). The action queue is in
+atc is a separate program that runs coding sessions, one daemon per machine, and atc-gateway serves
+the tools of several daemons as one MCP server. nixie calls atc-gateway's MCP tools over HTTP as the
+service client `service:nixie`. The `coding-atc` adapter implements `CodingAdapter` with those
+tools, and the coding source reads atc's event trail into the thread of each coding task. This doc
+holds the interface, the source, the map onto the gateway's tools, the config and the token, and the
+release pairs. The step that calls the adapter is in [the runner](runner.md), and the tools that
+call it are in [the tools](tools.md). The terms, such as reach, a target, a steer and a bound
+session, are in the [README](README.md#terms). The action queue is in
 [actions](../../../architecture/core/actions.md), and the trigger core in
 [the trigger core](../../../architecture/core/triggers.md).
 
@@ -18,9 +18,10 @@ a bound session, are in the [README](README.md#terms). The action queue is in
 
 ```mermaid
 flowchart LR
-  queue[action queue] -->|"start, message"| adapter[coding-atc]
-  adapter -->|"the hello with the token"| atc[atc]
-  atc -->|"events.read, cursor"| source[coding source]
+  queue[action queue] -->|"start, steer, message, stop"| adapter[coding-atc]
+  adapter -->|"MCP over HTTP, service token"| gw[atc-gateway]
+  gw --> daemons[atc daemons]
+  gw -->|"atc_events_read, cursor"| source[coding source]
   source -->|"deliver: TaskInputEvent"| core[trigger core]
   core -->|"trigger.task_input"| thread[coding task's thread]
 ```
@@ -33,69 +34,82 @@ flowchart LR
 // coding module. Adapters: coding-atc, and an in-memory fake for tests.
 interface CodingAdapter {
   id: string; // the runner key, such as 'atc'
-  start(
-    brief: SessionBrief,
-    idempotencyKey: string,
-    options: { replayOnly: boolean }, // true: read the key's first answer, start nothing new
-  ): Promise<AdapterReply<StartedSession>>;
+  start(brief: SessionBrief, idempotencyKey: string): Promise<AdapterReply<StartedSession>>;
   join(session: SessionRef): Promise<AdapterReply<StartedSession>>; // sends no key
   list(): Promise<AdapterReply<ReachableSession[]>>;
-  status(session: SessionRef): Promise<AdapterReply<SessionStatus>>;
+  read(session: SessionRef, options: ReadOptions): Promise<AdapterReply<SessionRead>>;
+  steer(session: SessionRef, text: string): Promise<AdapterReply<{ typed: true }>>; // no key
   message(
     session: SessionRef,
     text: string,
     idempotencyKey: string,
   ): Promise<AdapterReply<{ messageRef: string }>>;
-  results(session: SessionRef): Promise<AdapterReply<SessionResult>>;
   stop(session: SessionRef): Promise<AdapterReply<{ stopped: boolean }>>; // started or joined
   events(
-    cursor: JSONValue | null,
+    cursor: string | null,
     signal: AbortSignal,
-    session?: SessionRef, // narrows the read to one session, for the catch-up
-  ): AsyncIterable<{ cursor: JSONValue; events: SessionEvent[] }>;
+  ): AsyncIterable<{ cursor: string; events: SessionEvent[] }>;
 }
-// idempotencyKey: the ID of the action that calls it. Every attempt of one action sends the same key.
+// idempotencyKey: '<action ID>', and '<action ID>.<n>' after n refused attempts of the action.
+// An attempt after an unknown outcome keeps the key of the attempt before it.
 
 interface SessionBrief {
   name: string;
   prompt: string; // the task's brief
   repo: { url: string; ref: string };
+  target: TargetRef;
   agent?: string;
   model?: string;
+}
+
+interface TargetRef {
+  daemon: string; // a daemon name in the gateway's registry
+  target: string; // that daemon's target ID
 }
 
 interface StartedSession {
   session: SessionRef;
   state: SessionState;
-  fromCursor: JSONValue; // the event trail's position, read just before the spawn or the join
+  fromCursor: string; // the event trail's cursor, read just before the spawn or the join
 }
 
 interface SessionRef {
-  id: string; // the adapter's session ID, such as atc's 's7-m4x2p'
+  id: string; // the gateway's session ID, '<daemon>.<incarnation>.<id>', such as 'cloud.a1.s7-m4x2p'
 }
 
 interface ReachableSession {
   session: SessionRef;
+  target: TargetRef;
   name: string; // untrusted
   cwd: string; // untrusted
   state: SessionState;
 }
 
-type SessionState = 'running' | 'waiting' | 'idle' | 'ended' | 'gone'; // gone: left reach
+type SessionState = 'running' | 'waiting' | 'idle' | 'ended' | 'gone'; // gone: out of sight
 
-interface SessionStatus {
-  state: SessionState;
-  question: string | null; // untrusted: the question the session waits on
+interface ReadOptions {
+  prompt: boolean;
+  tailTurns: number; // 0 for none
 }
 
-interface SessionResult {
-  text: string | null; // untrusted: the final reply of the session's last finished turn
-  truncated: boolean;
+interface SessionRead {
+  state: SessionState;
+  question: string | null; // untrusted: the text of the session's pending question
+  lastReply: string | null; // untrusted: the final reply of the session's latest finished turn
+  prompt: string | null; // untrusted: the prompt the session was spawned with
+  tail: TranscriptTurn[] | 'unsupported'; // [] when tailTurns is 0
+}
+
+interface TranscriptTurn {
+  user: string; // untrusted
+  assistant: string; // untrusted
+  tools: string[]; // untrusted
 }
 
 // Every member also holds { session: string; eventKey: string; at: string }.
-// eventKey: unique per adapter: '<daemonID>|<origin cursor>' for a trail event, which stays the same
-// through an atc gateway; '<sessionID>|state|<state>|<at>' for a state read. Every text is untrusted.
+// eventKey: unique per adapter: '<daemon>.<incarnation>|<daemon cursor>' from the event's `origin`,
+// which stays the same whatever the gateway's merged cursor holds; '<sessionID>|state|<state>|<at>'
+// for a state read. Every text is untrusted.
 type SessionEvent =
   | { kind: 'state'; state: SessionState; question: string | null }
   | { kind: 'answered'; messageRef: string; answer: string }
@@ -107,8 +121,8 @@ type AdapterReply<T> =
   | { status: 'ok'; value: T }
   | { status: 'refused'; canClear: boolean; reason: string } // reason: atc's error code
   | { status: 'unknown'; reason: string }; // the queue's `ambiguous` response
-// canClear true: a refusal that may pass, such as atc being down, so the queue tries again on its
-// backoff and fails the action when its tries run out. false: the queue fails the action at once.
+// canClear true: a refusal that may pass, such as a daemon that is down, so the queue tries again
+// on its backoff and fails the action when its tries run out. false: the queue fails it at once.
 ```
 
 ### The coding source
@@ -126,7 +140,7 @@ interface TaskInputEvent {
   dedupeKey: string; // the SessionEvent's eventKey
   occurredAt: string; // ISO
   hop: number; // coding_sessions.hop of the session
-  wake: boolean;
+  wake: boolean; // true: the event is `ended`, or in the session's wake set
   payload: JSONObject; // the SessionEvent, kept in the record's erasable fields, which a forget destroys
 }
 
@@ -141,80 +155,100 @@ and gives hop 0 to every other waking record that is not a task message.
 
 ### The atc adapter
 
-Each adapter call maps to atc calls on `@atcx/contract`:
+Each adapter call maps to atc-gateway's tools:
 
-| Adapter call | atc procedure                                                                                                                    |
-| ------------ | -------------------------------------------------------------------------------------------------------------------------------- |
-| `start`      | `events.read` with `limit` 1, then `session.spawn` with `idempotencyKey` and `replayOnly`                                        |
-| `join`       | `session.get`, then `events.read` narrowed to the session with `limit` 1                                                         |
-| `list`       | `session.list`, kept to descriptors whose `locator.targetID` is the configured target                                            |
-| `message`    | `session.message`, with `idempotencyKey` and `notice: false`                                                                     |
-| `status`     | `session.get`, read for `state` and `pending.message`                                                                            |
-| `results`    | `session.get`, read for `result`                                                                                                 |
-| `stop`       | `session.kill`, with `stopOnly: true`                                                                                            |
-| `events`     | `events.read` with a cursor, `waitMs`, and `limit` 200; `answer.get` and `note.get` for full texts; `session.get` for each state |
+| Adapter call | atc-gateway tools                                                                                     |
+| ------------ | ----------------------------------------------------------------------------------------------------- |
+| `start`      | `atc_events_read` with `limit` 1 and no cursor, then `atc_session_spawn` with `idempotencyKey`        |
+| `join`       | `atc_session_get`, then `atc_events_read` with `limit` 1 and no cursor                                |
+| `list`       | `atc_sessions_list`, kept to the sessions whose `locator` names a configured target                   |
+| `read`       | `atc_session_get` for the state, `pending`, `result` and `prompt`; `atc_transcript_read` for the tail |
+| `steer`      | `atc_session_get` for the state, then `atc_terminal_type`                                             |
+| `message`    | `atc_message_send`, with `idempotencyKey`                                                             |
+| `stop`       | `atc_session_stop`                                                                                    |
+| `events`     | `atc_events_read` with a cursor, `waitMs` 25,000 and `limit` 200; `atc_session_get` for each state    |
 
-- `start`'s first read gives `fromCursor`. The spawn takes a git workspace from `repo`, the `target`
-  from [the config](#the-config-and-the-token), and the brief as its `prompt`.
-- A message's answer comes back through `events`.
-- `result` is the final reply of the last finished turn, at most 16,384 bytes.
-- `stopOnly` stops the session's process and keeps atc's record of the session.
-- `events` reads every session in reach, and the adapter keeps only the bound sessions. With
-  `session`, atc narrows its read to that one session.
+- `start`'s first read gives `fromCursor`. The spawn takes a git workspace from `repo`, and the
+  `daemon` and `target` from the brief.
+- A note's answer comes back through `events`.
+- `atc_session_stop` stops the session's process and keeps atc's record of the session. On a target
+  that suspends its hosts, it puts the host to sleep.
+- `events` reads every session in reach, with no session filter, and the adapter keeps only the
+  bound sessions. A read with a filter refuses a cursor read without it, under the gateway.
 
 ```ts
 // coding-atc adapter: the spawn it sends, and no other field
 const spawn = {
   name,
-  prompt,
+  prompt, // the brief: the session's first user turn
   agent,
   model,
-  target,
+  daemon: target.daemon, // the gateway's input that names the daemon
+  target: target.target,
   workspace: { kind: 'git', url: repo.url, ref: repo.ref },
   trustClonedWorkspace: true,
   idempotencyKey,
-  replayOnly,
 };
 ```
 
-The adapter maps `session.get`'s states: `running` to `running`, `needs_you` to `waiting`, `done` to
-`idle`, and `exited` to `ended`. A session that leaves reach maps to `gone`.
+The adapter maps the session's state from `atc_session_get`:
+
+| atc                                            | `SessionState` |
+| ---------------------------------------------- | -------------- |
+| `running`                                      | `running`      |
+| `needs_you`                                    | `waiting`      |
+| `done`                                         | `idle`         |
+| `exited`, with `lifecycle.harness` `suspended` | `gone`         |
+| `exited`, otherwise                            | `ended`        |
+| the answer `no_such_session`                   | `gone`         |
 
 `events` builds each `SessionEvent` from the trail as follows:
 
-- `message-answered` gives `answered`, with the whole text from `answer.get`. An answer that atc
-  marks `complete: false` keeps its text and ends with a line that says atc cut it.
-- `message-unanswered` gives `unanswered`, and `note` gives `note`, with the whole text from
-  `note.get`.
-- Each `state` event comes from a `session.get` of a bound session, mapped as above. `events` reads
-  one after every trail event of that session, and every 60 s for each bound session that has not
-  ended, and yields a `state` event only when the state changed. A `no_such_session` answer gives
-  `gone`.
+- `message-answered` gives `answered`, with the whole answer from the event's `text`. An answer that
+  atc marks `complete: false`, or whose `textError` is set, keeps the preview in `detail` and ends
+  with a line that says atc cut it.
+- `message-unanswered` gives `unanswered`, and `note` gives `note`, with its text read the same way.
+- Each `state` event comes from an `atc_session_get` of a bound session, mapped as above. `events`
+  reads one after every trail event of that session, and every 60 s for each bound session that has
+  not ended, and yields a `state` event only when the state changed. A read that fails for any
+  reason but `no_such_session` yields nothing.
 - Every other kind is dropped.
 
-The trail carries no sender. The step matches each answer to nixie's own message by its
-`messageRef`, as [the runner](runner.md#what-one-step-does) describes, and drops an answer to a
-joined session that matches none.
+The trail carries no sender. The step matches each answer to nixie's own note by its `messageRef`,
+as [the runner](runner.md#what-one-step-does) describes.
 
-atc's answers map to replies:
+`read` builds the tail from `atc_transcript_read`, which pages oldest first. It pages from the start
+with `limit` 200 until `more` is false, groups the rows into turns, each one a `user` row and every
+`assistant` row after it, and keeps the last `tailTurns`. An agent with no transcript reader answers
+`unsupported`, which gives `'unsupported'`.
 
-| atc answer                                                                                                                                            | Reply                                                                    |
-| ----------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
-| `outcome_unknown`, `idempotency_key_unknown`, or `connection_lost` on a call that carried a key                                                       | `unknown`                                                                |
-| `no_such_session` with a session ID, to a resent spawn                                                                                                | `ok`, with that session; its state comes from the source's next read     |
-| `target_unavailable`, `host_unavailable`, `connection_lost` on a call with no key, `timeout`, `too_slow`, `broker_not_ready`, `unsupported_operation` | `refused`, `canClear: true`                                              |
-| `idempotency_conflict`                                                                                                                                | `refused`, `canClear: false`; a bug, since an action's args never change |
-| `protocol_mismatch`, a refused connection, `unauthorized` at the hello                                                                                | `refused`, `canClear: true`                                              |
-| `bad_args`, `target_forbidden`, `session_dead`, `scope_invalid`                                                                                       | `refused`, `canClear: false`                                             |
-| any other code                                                                                                                                        | `refused`, `canClear: false`                                             |
+atc's answers map to replies. A failed tool call carries atc's code in its structured content; an
+HTTP refusal carries none:
 
-- `outcome_unknown` carries the session or message ID in its data when atc has one. The adapter
-  keeps it in the reply's `reason`, so the record of the unknown outcome names it.
-- The start's plan resolves `agent` from the config into the action's args, so every attempt sends
-  the same spawn.
-- Both actions declare `idempotency_key` reconciliation with `keptForMs` set to the
-  `completedRetentionMs` that the first hello after the server starts returns. The queue's own key
-  expiry then sends an unknown outcome to you once atc no longer keeps its key.
+| atc answer                                                                                      | Reply                                                                    |
+| ----------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| `outcome_unknown`; a lost connection or a timeout after the request left                        | `unknown`                                                                |
+| `daemon_unavailable` with the reason `daemon_changed`, on a call with a key                     | `unknown`                                                                |
+| `no_such_session`, to a resent spawn                                                            | `unknown`                                                                |
+| `daemon_unavailable` otherwise, `target_unavailable`, `host_unavailable`, `timeout`, `too_slow` | `refused`, `canClear: true`                                              |
+| `permission_pending`, to a steer                                                                | `refused`, `canClear: true`                                              |
+| HTTP 401, or a connection refused before the request left                                       | `refused`, `canClear: true`                                              |
+| `idempotency_conflict`                                                                          | `refused`, `canClear: false`; a bug, since an action's args never change |
+| HTTP 403 `insufficient_scope`, `bad_args`, `target_forbidden`, `session_dead`, `unsupported`    | `refused`, `canClear: false`                                             |
+| `menu_open`, the adapter's own refusal of a steer to a session in `waiting`                     | `refused`, `canClear: false`                                             |
+| any other code                                                                                  | `refused`, `canClear: false`                                             |
+
+- A steer's lost connection after the request left is `unknown`, and its action's `none`
+  reconciliation sends it to you, because the line may have reached the terminal.
+- The start's plan resolves `agent` and `target` from the config into the action's args, so every
+  attempt sends the same spawn.
+- `coding.start` and `coding.message` declare `idempotency_key` reconciliation with `keptForMs` 23
+  h. atc forgets a key 24 h after its call completed, and the hour between keeps a resend from
+  reaching a key the gateway has dropped. The queue's own key expiry then sends an unknown outcome
+  to you.
+- A refused attempt's key is spent at the gateway: a resend of it gets `outcome_unknown` and runs
+  nothing. So the next attempt after a refusal takes the next key, `<action ID>.<n>`, and an attempt
+  after an unknown outcome keeps its key, which the gateway resends to the daemon as a replay.
 
 ### The config and the token
 
@@ -223,29 +257,31 @@ atc's answers map to replies:
 # a warning at start.
 coding:
   atc:
-    address: 100.64.12.7 # an IP literal: atc's listener binds only an IP address
-    port: 7391
-    range: 100.64.0.0/10 # the private range the address must fall in
-    principal: nixie # sent in the hello and as x-atc-as on every request
+    url: https://atc.example.net/mcp # the gateway's MCP endpoint; https only
+    principal: service:nixie # the service client the token belongs to, named in logs and errors
     token: deployment:atc_token # a key of the deployment's secrets file
-    target: cloud # the one target every spawn names, and the one `list` reads
+    targets: # the targets nixie lists, joins and starts on
+      - { daemon: laptop, target: local }
+      - { daemon: cloud, target: cloud }
+    defaultTarget: cloud/cloud # '<daemon>/<target>', one of targets; a start that names none
     agent: coder # optional: the agent of a start that names none
 ```
 
 The composition root resolves `token` from the secrets file, as it resolves every `deployment:`
-value, and passes the adapter the plain string. The token is a static credential that never expires.
+value, and passes the adapter the plain string. The token is one of the gateway's static service
+tokens, which starts with `atcs_` and never expires.
 
 ### The release pairs
 
-atc deploys apart from nixie, and either can roll back alone. Rule 12 of the
-[port rules](../../../architecture/ports.md) covers an implementation that runs in another process:
-its design lists the pairs of releases that work together, and nixie stops using it on a pair the
-list lacks. Each nixie release pins one `@atcx/contract` version, and sends that contract's protocol
-version and major version in the hello:
+atc-gateway and its daemons deploy apart from nixie, and either side can roll back alone. Rule 12 of
+the [port rules](../../../architecture/ports.md) covers an implementation that runs in another
+process: its design lists the pairs of releases that work together, and nixie stops using it on a
+pair the list lacks. The gateway reports its version in its MCP server info, and refuses a daemon on
+another major atc version itself.
 
-| nixie release                   | atc protocol version | `@atcx/contract` |
-| ------------------------------- | -------------------- | ---------------- |
-| the release that adds this work | 15                   | 7.25.1           |
+| nixie release                   | atc-gateway          | atc daemons |
+| ------------------------------- | -------------------- | ----------- |
+| the release that adds this work | 7.12.0 or later in 7 | major 7     |
 
 ## Constraints
 
@@ -255,19 +291,21 @@ version and major version in the hello:
   stores nothing of it, because nixie's principal reaches sessions that nixie is not working with.
 - The source can read a session's events before the coding task's step writes
   `coding.session_bound`. So for each bound session whose state is not `ended`, when the source
-  starts and when the session's row appears, the source reads that session's events from the row's
-  `from_cursor` until the narrowed read answers `more: false`. The batch carries the source's stored
-  cursor, so the cursor stays where it was. Each event keeps its dedupe key, so an event that both
-  reads deliver lands once.
+  starts and when the session's row appears, the source reads the whole trail from the row's
+  `from_cursor` until a read answers `more: false`, and keeps that session's events. The batch
+  carries the source's stored cursor, so the cursor stays where it was. Each event keeps its dedupe
+  key, so an event that both reads deliver lands once.
 - The source stores its cursor through `deliver`, so a batch's records and its cursor commit
   together. At its first start, it reads without a cursor and keeps only the cursor it gets, so it
   never replays the trail.
-- atc prunes old events from the trail, and a cursor still reads every event after the pruned ones.
-  An outage longer than atc's retention therefore loses only the pruned events.
-- The source writes a `state` event of `running` with `wake: false`. The core's write then updates
-  the session's state in `coding_sessions` and wakes no step.
-- For a joined session, the source writes `idle` and `note` events with `wake: true` only while the
-  task has a delivery that waits on an answer or a task run open; otherwise with `wake: false`.
+- atc deletes events older than 30 days, and a cursor still reads every event after the deleted
+  ones. An outage longer than that loses only the deleted events.
+- A page that lists a daemon under `unavailable` keeps that daemon's place in the cursor, and the
+  source reads it on the next call. A page that lists one under `truncated` lost that daemon's older
+  events: the source logs it with the daemon's name.
+- The source writes an event with `wake: true` when the event is `ended`, or its kind is in the
+  session's wake set: the state for a `state` event, and the label for a `note`. Every other event
+  gets `wake: false`, and the core's write updates `coding_sessions` and wakes no step.
 - The source drops an event of a task that is done, failed or closed, and of a session whose row has
   `unbound_at` set, and still moves its cursor.
 - After a failed read, the source waits from 1 s, doubling to 5 min, and reports itself unhealthy
@@ -275,36 +313,33 @@ version and major version in the hello:
 
 ### Versions
 
-- nixie learns the pairing at each hello. atc refuses a hello on another protocol version or major
-  version with `protocol_mismatch`. Its data may hold `daemonProtocol` and `daemonMajor`, and an
-  older atc may send no data; the adapter logs what it gets and never retries the hello with another
-  version.
-- On a pairing that the table lacks, the adapter sends nothing past the hello. The source reports
-  unhealthy and tries the hello again on its backoff. Each action attempt gets `refused` with
-  `canClear: true`, so the queue tries again on its backoff and fails the action when its tries run
-  out.
-- The contract's `checkDaemon` lists each feature, a capability that an atc release adds within its
-  major version, that atc lacks. The adapter logs them and refuses nothing, because this work needs
-  no feature.
+- The adapter reads the gateway's version from the server info of each MCP initialize. On a version
+  the table lacks, it sends nothing past the initialize. The source reports unhealthy and tries
+  again on its backoff. Each action attempt gets `refused` with `canClear: true`, so the queue tries
+  again on its backoff and fails the action when its tries run out.
+- A daemon on a version the gateway cannot serve answers `daemon_unavailable`, which the table above
+  maps.
 
 ### The token and reach
 
-- The adapter sends the token only in the hello, and never logs it. The config schema refuses an
-  `address` that is not an IP literal or that falls outside `range`.
-- atc's config grants nixie's principal only the configured target. atc owns that grant, and the
-  adapter names that target in every spawn and every list.
+- The adapter sends the token only as the bearer of each request, and never logs it. The config
+  schema refuses a `url` that is not `https://`.
+- The gateway's service token file gives `service:nixie` the scopes `read`, `message`, `spawn` and
+  `kill`. `spawn` covers typing into a session as well as a spawn.
+- Each daemon's `principals` config grants `service:nixie` only the configured targets. atc owns
+  that grant, and the adapter names a configured target in every spawn and keeps only those in every
+  list.
 - A principal's grant reaches every session on its targets, so `coding.sessions` shows your own
-  sessions on that target, and a join can bind one. Sessions on other targets stay out of reach.
+  sessions on those targets, and a join can bind one. Sessions on other targets stay out of reach.
 - atc lets nixie's principal stop every session in its reach. nixie's
   [`coding.stop` rules](runner.md#ends-stops-and-the-sweep) decide which of your sessions it stops.
 
 ### Typing
 
-- `CodingAdapter` has the calls above, and no call types into a session's terminal. The adapter maps
-  none of atc's terminal procedures: `session.input`, `session.submit`, `session.choose`,
-  `session.screen`, `session.menu`, `session.eject` and `permission.respond`.
-- A typing tool waits on [its design session](https://linear.app/zgeoff/issue/GEO-945). Once agreed,
-  it is a nixie tool on this runner, and declares the effect that the design session sets.
+- `steer` is the only call that types into a session. It never calls `atc_terminal_choose`, so the
+  adapter answers no menu.
+- A steer reads the session's state first, and refuses a session in `waiting` with `menu_open`. atc
+  refuses the line itself with `permission_pending` while a Claude Code permission prompt is open.
 
 ### Rollback
 
@@ -316,19 +351,20 @@ version and major version in the hello:
 - **This doc holds the coding adapter's signatures, and the coding design links to it.** The
   catch-up in [Events](#events) reads from the `fromCursor` that `start` and `join` return, and one
   copy of the interface keeps the two docs from drifting.
-- **The adapter package is `coding-atc`, and only it imports `@atcx/contract` and `@atcx/client`.**
-  `@atcx/client` makes the connection, the hello and the version check, and raises atc's typed
-  errors, so nixie writes none of atc's wire protocol. The `zgeoff/import-zones` lint rule names
-  both packages. An adapter package is named after the interface and the outside system, and one
-  package holds all of nixie's code that imports a system's client.
+- **The adapter package is `coding-atc`, and it is the one package that calls atc-gateway.** It
+  speaks MCP with `@modelcontextprotocol/client`, which the workspace catalog already holds, so
+  nixie writes none of atc's wire protocol. An adapter package is named after the interface and the
+  outside system, and one package holds all of nixie's code that reaches a system.
+- **nixie authenticates with a static service token.** A static token needs no token endpoint and no
+  refresh, and the gateway's token file rotates it with no outage.
 - **The spawn sends `trustClonedWorkspace`.** atc makes the checkout from the repo that the start
   names, which you approved with the start. A session in a folder the agent does not trust waits on
-  the agent's trust prompt, which nixie cannot answer.
+  the agent's trust prompt, which nixie never answers.
 - **A session's events enter as `trigger.task_input` records that carry a hop.** A session's answer
-  to a message from the conversation belongs to the same exchange, so it keeps that exchange's hop
+  to a note from the conversation belongs to the same exchange, so it keeps that exchange's hop
   count.
 
 ## Builder decides
 
 - Internal names, file layout and test layout.
-- The hello's client name, and how the connection reconnects.
+- The MCP client's name in its initialize, and how the connection reconnects.
