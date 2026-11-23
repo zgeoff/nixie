@@ -110,8 +110,8 @@ of the `full` scope only. A wall-panel session and a read-only token get the ref
 outside their allow lists gets, and a revoked or lapsed session gets `UNAUTHORIZED`. It answers
 `COMPUTER_UNAVAILABLE` when the server runs no computer.
 
-The URL names `/rpc/computer/watch-stream` and carries a ticket in its query. The ticket is 32
-random bytes that live in the API's memory for
+The URL is `/rpc/computer/watch-stream` with a ticket in its query. The ticket is 32 random bytes
+that live in the API's memory for
 [a short lifetime](../../../modules/api/src/computer/create-watch-tickets.ts) and open one socket.
 
 - The upgrade redeems the ticket, which deletes it, and then checks that the session cookie of the

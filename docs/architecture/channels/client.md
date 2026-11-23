@@ -350,9 +350,9 @@ in the browser only, because the library reads the window when it loads.
   waking." while the socket is open and no picture has come, and "Your input won't reach the
   computer until you take over." once the viewer has drawn the desktop. The viewer's connect event
   comes before any picture, so the page polls the viewer's canvas for a drawn pixel.
-- A stream that ends after a picture shows that it ended, and one that ends before a picture or
-  fails to start says "The computer can’t be watched right now." Both show Watch again, which asks
-  for a new ticket. A server with no computer shows no button and says it has none.
+- When a stream ends after a picture, the page shows that it ended. When one ends before a picture
+  or fails to start, the page says "The computer can’t be watched right now." Both show Watch again,
+  which asks for a new ticket. A server with no computer shows no button and says it has none.
 - Leaving the page closes the socket and stops the viewer.
 
 ## The notebook pages

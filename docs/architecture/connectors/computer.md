@@ -27,9 +27,9 @@ The desktop runs Xvfb as the display, openbox as the window manager, xterm as th
 x11vnc as a VNC server. The display is 1280 by 800. The VNC server listens on a Unix socket in a
 directory that only the screen's account can open, and on no TCP port, so the browser and the
 terminal cannot reach it. Selection and clipboard exchange are off, and so are the remote control
-commands that an X client can send it through the display, which Chromium is. It accepts the keys
-and pointer of a viewer, and the relay passes them only while a device
-[holds the desktop](#taking-over). Read [Watching](#watching) for how the user's client reaches it.
+commands that an X client can send it through the display, which Chromium is. The VNC server accepts
+the keys and pointer of a viewer, and the relay passes them only while a device
+[holds the desktop](#taking-over). The user's client reaches it as [Watching](#watching) says.
 
 Chromium runs in the time zone of `time.default_zone` in the config, so a page that shows "today" or
 an opening hour shows the user's. Nixie hands the zone to the guest when it starts the guest, so a
