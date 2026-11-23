@@ -1,6 +1,7 @@
 import type { LogRecord } from '@heynixie/log';
 import { StaleWriterError } from '@heynixie/log';
 import type { Logger } from '@heynixie/logger';
+import { readTaskGateSnapshot } from '../gate/read-task-gate-snapshot';
 import { readInbox } from '../inbox/read-inbox';
 import { startLeaseRenewal } from '../lease/start-lease-renewal';
 import { pickRunDefinition } from '../run/pick-run-definition';
@@ -21,9 +22,6 @@ export interface TaskStepOptions extends StepErrorOptions {
   readonly runStep: RunStep;
   readonly leaseMs: number;
   readonly logger: Logger;
-
-  // set with spendStop: whether the spending stop stands, read after a step failed
-  readonly probeSpendStop?: () => Promise<boolean>;
 }
 
 export async function runTaskStep(
@@ -45,7 +43,7 @@ export async function runTaskStep(
       return null;
     }
 
-    const isStopped = await probeFailureOfSpendStop(failure.error, options);
+    const isStopped = await probeFailureOfSpendStop(context, claim, failure.error);
 
     if (isStopped) {
       await writeStepCommit(context, claim, {
@@ -162,10 +160,16 @@ async function runOrHoldStep(
 // A step that ran a model turn and failed while the stop stands failed because of it, such as at the
 // gateway's refusal. It counts no step error, and the task keeps its state and its work for the next
 // claim, which comes after the stop clears.
-function probeFailureOfSpendStop(error: unknown, options: TaskStepOptions): Promise<boolean> {
-  if (options.probeSpendStop === undefined || isBeforeTurnFailure(error)) {
-    return Promise.resolve(false);
+async function probeFailureOfSpendStop(
+  context: TasksContext,
+  claim: StartedClaim,
+  error: unknown,
+): Promise<boolean> {
+  if (isBeforeTurnFailure(error)) {
+    return false;
   }
 
-  return options.probeSpendStop();
+  const gate = await readTaskGateSnapshot(context, claim.lease.workID);
+
+  return !gate.open && gate.reason === 'spend';
 }

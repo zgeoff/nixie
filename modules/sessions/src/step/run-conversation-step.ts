@@ -1,7 +1,12 @@
 import { modelTurnEndedCodec } from '@heynixie/models';
-import { checkSpendTurns, stoppedStepDelayMs } from '@heynixie/spend';
+import { checkSpendTurns } from '@heynixie/spend';
 import type { StepInput, StepResult } from '@heynixie/tasks';
-import { buildStepRunID, readTaskDirectory, readUnlistedProfiles } from '@heynixie/tasks';
+import {
+  buildStepRunID,
+  readTaskDirectory,
+  readTaskGateSnapshot,
+  readUnlistedProfiles,
+} from '@heynixie/tasks';
 import { runCompactionStep } from '../compaction/run-compaction-step';
 import { runInboxStep } from '../inbox/run-inbox-step';
 import { canSessionTake } from '../session/can-session-take';
@@ -65,20 +70,22 @@ export async function runConversationStep(
   }
 }
 
-// With the spending stop standing, or the turn count at a limit, the step ends before it opens a
-// capture, runs an approved call or makes a model turn. The task keeps its state and its queued
-// calls for its next claim, which comes after the stop clears.
+// The step start: it trips the stop at a turn limit, then reads the gate. A step held for the stop
+// ends before a capture, an approved call or a model turn, and writes no record. The task keeps its
+// state and queued calls, and the claim filter holds its next claim until the clear.
 async function runSpendCheck(
   conversation: ConversationRun,
   input: StepInput,
 ): Promise<StepResult | null> {
-  const spend = conversation.spend;
-
-  if (spend === undefined || (await checkSpendTurns(spend)) === 'open') {
-    return null;
+  if (conversation.spend !== undefined) {
+    await checkSpendTurns(conversation.spend);
   }
 
-  await spend.clock.sleep(stoppedStepDelayMs, input.signal);
+  const gate = await readTaskGateSnapshot(conversation.context, input.taskID);
+
+  if (gate.open || gate.reason !== 'spend') {
+    return null;
+  }
 
   return {
     next: 'continue',

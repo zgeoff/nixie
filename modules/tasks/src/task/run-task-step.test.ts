@@ -1,5 +1,6 @@
 import { expect, mock, test } from 'bun:test';
 import { readRecords } from '@heynixie/log';
+import { buildLogSeeder } from '@heynixie/log/test-utils';
 import { waitForCondition } from '@heynixie/testing';
 import invariant from 'tiny-invariant';
 import { createConversationTask } from '../conversation/create-conversation-task';
@@ -461,9 +462,10 @@ test('it counts no step error when the step failed while the spending stop stand
 
   invariant(claim);
 
+  await buildLogSeeder(ctx.context).spendStop();
+
   const errored = await runTaskStep(ctx.context, claim, {
     runStep: () => Promise.reject(new Error('the model API refused the request')),
-    probeSpendStop: () => Promise.resolve(true),
     leaseMs: 60_000,
     logger: () => {},
     maxStepErrors: 3,
@@ -483,7 +485,7 @@ test('it counts no step error when the step failed while the spending stop stand
   expect(task).toMatchObject({ state: 'ready', step_errors: 0, read_cursor: 0 });
 });
 
-test('it counts the step error of a failed step when the stop does not stand', async () => {
+test('it counts the step error of a failed step when no stop stands', async () => {
   const ctx = await setupTest();
 
   await createConversationTask(ctx.context);
@@ -503,7 +505,6 @@ test('it counts the step error of a failed step when the stop does not stand', a
 
   await runTaskStep(ctx.context, claim, {
     runStep: () => Promise.reject(new Error('the model API refused the request')),
-    probeSpendStop: () => Promise.resolve(false),
     leaseMs: 60_000,
     logger: () => {},
     maxStepErrors: 3,
@@ -534,13 +535,14 @@ test('it counts the step error of a step that failed before its model turn, thou
 
   invariant(claim);
 
+  await buildLogSeeder(ctx.context).spendStop();
+
   const failure = new Error('the approved call failed');
 
   markBeforeTurnFailure(failure);
 
   await runTaskStep(ctx.context, claim, {
     runStep: () => Promise.reject(failure),
-    probeSpendStop: () => Promise.resolve(true),
     leaseMs: 60_000,
     logger: () => {},
     maxStepErrors: 3,
@@ -551,34 +553,4 @@ test('it counts the step error of a step that failed before its model turn, thou
   const task = await ctx.db.selectFrom('tasks').selectAll().executeTakeFirstOrThrow();
 
   expect(task).toMatchObject({ state: 'ready', step_errors: 1 });
-});
-
-test('it reads no stop for a task step with no spend check', async () => {
-  const ctx = await setupTest();
-
-  await createConversationTask(ctx.context);
-
-  await writeInboxRecords(ctx.context, [
-    {
-      kind: 'owner_message',
-      definitions: { snapshotHash: 'sha256:test' },
-      thread: 'conversation',
-      erasable: { text: 'what is on today?' },
-    },
-  ]);
-
-  const claim = await claimTask(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
-
-  invariant(claim);
-
-  const errored = await runTaskStep(ctx.context, claim, {
-    runStep: () => Promise.reject(new Error('the model API refused the request')),
-    leaseMs: 60_000,
-    logger: () => {},
-    maxStepErrors: 3,
-    retryDelayMs: 30_000,
-    maxRetryDelayMs: 300_000,
-  });
-
-  expect(errored).toMatchObject({ errors: 1 });
 });

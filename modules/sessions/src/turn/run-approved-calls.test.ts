@@ -8,7 +8,6 @@ import {
   readSpendStopRow,
   spendLimitRaisedCodec,
   spendProjections,
-  stoppedStepDelayMs,
   writeSpendClear,
   writeSpendTrip,
 } from '@heynixie/spend';
@@ -16,7 +15,6 @@ import type { SpendContext, SpendTurnLimits } from '@heynixie/spend';
 import { buildStubSpendGateway } from '@heynixie/spend/test-utils';
 import { claimTask, createConversationTask, runTaskStep, writeInboxRecords } from '@heynixie/tasks';
 import { readTestTaskProgress } from '@heynixie/tasks/test-utils';
-import { waitForCondition } from '@heynixie/testing';
 import type { ApprovedRun, ToolImage } from '@heynixie/tools';
 import invariant from 'tiny-invariant';
 import { startConversationRunner } from '../session/start-conversation-runner';
@@ -175,44 +173,22 @@ async function setupTest() {
       ...(spend === undefined ? {} : { spend }),
     });
 
-  const stoppedSleeps = { count: 0 };
-
   const buildSpend = (limits: SpendTurnLimits): SpendContext => ({
     gateway: buildStubSpendGateway(),
     log,
 
-    // the records are stamped by the writer's clock, and the stop's delay runs on the test clock
-    clock: {
-      now: () => tasks.writer.clock.now(),
-      sleep: (durationMs, signal) => {
-        stoppedSleeps.count += 1;
-
-        return tasks.clock.sleep(durationMs, signal);
-      },
-    },
+    // the records are stamped by the writer's clock
+    clock: { now: () => tasks.writer.clock.now(), sleep: tasks.clock.sleep },
     zone: 'UTC',
     limits,
     definitions: () => definitions,
     planLogins: createPlanLoginsHolder(),
   });
 
-  const stoppedStep = async (runner: Awaited<ReturnType<typeof startRunner>>) => {
-    const step = runNextStep(context, runner.runStep);
-
-    await waitForCondition(() => stoppedSleeps.count > 0);
-
-    stoppedSleeps.count = 0;
-
-    tasks.clock.advance(stoppedStepDelayMs);
-
-    await step;
-  };
-
   return {
     ...tasks,
     context,
     buildSpend,
-    stoppedStep,
     sandboxes,
     tools,
     state,
@@ -504,7 +480,8 @@ test('it ends the step at the turn limit before the approved call runs, and runs
   ctx.state.pending.push({ text: 'the memory export is ready' });
 
   await ctx.writeMessage('Export my memory.');
-  await ctx.stoppedStep(runner);
+
+  await runNextStep(ctx.context, runner.runStep);
 
   const stopped = ctx.state.pending.length;
   const turnsAtStop = ctx.sandboxes.turns.length;
@@ -576,7 +553,8 @@ test('it ends a conversation step at the month turn limit with no turn', async (
   await runNextStep(ctx.context, runner.runStep);
 
   await ctx.writeMessage('Second.');
-  await ctx.stoppedStep(runner);
+
+  await runNextStep(ctx.context, runner.runStep);
 
   const stop = await readSpendStopRow(ctx.writer.db);
 
@@ -606,7 +584,7 @@ test('it reads no turn count and writes no stop for a runner with no spend conte
   expect([ctx.sandboxes.turns.length, stop]).toStrictEqual([2, null]);
 });
 
-test('it counts the step error of an approved call that failed, though the stop stands', async () => {
+test('it counts the step error of an approved call that failed', async () => {
   const ctx = await setupTest();
 
   await createConversationTask(ctx.context);
@@ -625,7 +603,6 @@ test('it counts the step error of an approved call that failed, though the stop 
 
   await runTaskStep(ctx.context, claim, {
     runStep: runner.runStep,
-    probeSpendStop: () => Promise.resolve(true),
     leaseMs: 60_000,
     logger: () => {},
     maxStepErrors: 3,

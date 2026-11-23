@@ -5,6 +5,7 @@ import type { Sandbox } from '@heynixie/sandbox';
 import { buildSandboxSpec, buildWorkerRunOwner } from '@heynixie/sandbox';
 import type { SandboxCount } from '@heynixie/spend';
 import { checkSpendTurns } from '@heynixie/spend';
+import { readTaskGateSnapshot } from '@heynixie/tasks';
 import type { RunEndpoint } from '@heynixie/tools';
 import type { ModelCallUsage } from '@heynixie/wire';
 import invariant from 'tiny-invariant';
@@ -106,7 +107,7 @@ async function runOpenWorker(
   plan: WorkerPlan,
   run: WorkerRun,
 ): Promise<WorkerResult> {
-  const isStoppedAtCall = await probeSpendStopped(deps);
+  const isStoppedAtCall = await probeSpendStopped(deps, plan);
 
   if (isStoppedAtCall) {
     return spendStoppedResult;
@@ -125,7 +126,7 @@ async function runOpenWorker(
     run.held.release = grant.release;
 
     // the stop can trip while the call waits for its slot
-    const isStoppedAtSlot = await probeSpendStopped(deps);
+    const isStoppedAtSlot = await probeSpendStopped(deps, plan);
 
     if (isStoppedAtSlot) {
       return spendStoppedResult;
@@ -159,8 +160,17 @@ async function runOpenWorker(
   return toResult(plan, run, end, used);
 }
 
-async function probeSpendStopped(deps: WorkerDeps): Promise<boolean> {
-  return deps.spend !== undefined && (await checkSpendTurns(deps.spend)) === 'stopped';
+// The gate of the task whose step started the worker: for a conversation step, the conversation's.
+async function probeSpendStopped(deps: WorkerDeps, plan: WorkerPlan): Promise<boolean> {
+  if (deps.spend === undefined) {
+    return false;
+  }
+
+  await checkSpendTurns(deps.spend);
+
+  const gate = await readTaskGateSnapshot(deps, plan.caller.thread);
+
+  return !gate.open && gate.reason === 'spend';
 }
 
 // A call that waits for a slot counts the wait in its minutes, and a stop can end the wait.

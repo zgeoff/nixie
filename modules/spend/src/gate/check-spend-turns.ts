@@ -6,11 +6,6 @@ import { buildSpendPeriods } from '../time/build-spend-periods';
 import type { SpendContext } from '../types';
 import { pickTurnTrip } from './pick-turn-trip';
 
-// How long a step that finds the stop waits before it ends. A task that is exempt from a pause by
-// its owner stays claimable while the stop stands, and a step that ends at once would be claimed
-// again at once.
-export const stoppedStepDelayMs = 2000;
-
 // The check before each step's turn: 'stopped' when the stop stands for any reason, or when the
 // turn count has reached a limit, which trips the stop. It reads no gateway.
 export async function checkSpendTurns(context: SpendContext): Promise<'open' | 'stopped'> {
