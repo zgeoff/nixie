@@ -17,9 +17,10 @@ Once the owner approves this design, build each work item above from it and the
 [decision point](../../architecture/policy/decision-point.md) it extends. The directory's own work
 items, filed at approval, are:
 
-1. the matcher, the directory, its records and the decision point's changes, with the contacts
-   folded in and `web_fetch` declaring its host;
-2. the card's answers, `places.propose` and `places.narrow`;
+1. the matcher with the public-suffix list, the directory, its records and the decision point's
+   changes, with the contacts folded in, `web_fetch` declaring its host and the computer tools'
+   destinations and effects;
+2. the card's answers, `places.propose`, `places.narrow` and `places.list`;
 3. the places page and `nixie places`, which retire the contacts code;
 4. the one evidence window, and the skill guard's move to first use.
 
@@ -32,7 +33,7 @@ flowchart LR
   key --> dir[(directory)]
   dir -->|"trust level"| dp[decision point: stages 3, 5, 7]
   page[places page] --> dir
-  card[approval card] -->|"trust this place"| dir
+  card[approval card] -->|"trust these places"| dir
   propose[places.propose] -->|"asks"| card
   dir --> users[vault, wallet, mail, devices read keys]
 ```
@@ -44,6 +45,8 @@ flowchart LR
 - A **place key** is the normal form of a place, the only form the directory stores and compares.
 - A **reading effect** is `read` or `fetch`. An **acting effect** is any other effect except
   `spend`, which no place covers.
+- A **public suffix** is a name on the public-suffix list, in its ICANN or its private section, such
+  as `org`, `co.uk` or `github.io`.
 
 ## Contracts
 
@@ -55,6 +58,8 @@ strings.
 ```ts
 parsePlace('https://Docs.Example.org:8443/a?b=1');
 // → { kind: 'site', domain: 'docs.example.org' }
+parsePlace('https://www.example.org/');
+// → { kind: 'site', domain: 'example.org' }
 parsePlace('Sam@Example.org');
 // → { kind: 'address', address: 'sam@example.org' }
 parsePlace('+61 420 000 000');
@@ -74,7 +79,7 @@ isPlaceCovered(entry.key, parsePlace(destination));
 // places module (new). parsePlace and isPlaceCovered do no I/O.
 // A destination is one concrete place: what a call reaches.
 type Destination =
-  | { kind: 'site'; domain: string } // lower case, IDNA ASCII, no port, no trailing dot
+  | { kind: 'site'; domain: string } // lower case, IDNA ASCII, no port, no trailing dot, no www.
   | { kind: 'address'; address: string } // the whole address in lower case
   | { kind: 'phone'; e164: string }
   | { kind: 'handle'; channel: string; id: string };
@@ -93,12 +98,19 @@ type PlaceKey =
   no country code.
 - A handle parses only as `<channel>:<id>`.
 - An IP address or a host with one label, such as `localhost`, parses as a `site`.
-- A `site` or `mail_domain` key with `subdomains: true` needs at least two labels, so no entry
-  covers a whole top-level domain.
+- A site's normal form drops one leading `www.` label, unless what remains is a public suffix. So an
+  entry for `example.org` covers `www.example.org`, and an entry typed as `www.example.org` is the
+  entry for `example.org`. Every other subdomain needs its own entry or `subdomains: true`. A mail
+  domain keeps its `www.`.
+- A `site` or `mail_domain` key with `subdomains: true` never names a public suffix. The matcher
+  reads the list through `tldts` with `allowPrivateDomains: true`, and every writer of an entry
+  refuses such a key. An exact key on a public suffix, such as `github.io` alone, stays allowed.
+  `tldts` goes in the root catalog at an exact version at least two weeks old, such as 7.4.19.
 
 `parsePlacePattern('@shop.example')` reads a place key from what you or a rule write: a domain gives
 a `site` key with `subdomains: true`, `@domain` gives a `mail_domain` key, and `=example.org` gives
-a `site` key with `subdomains: false`.
+a `site` key with `subdomains: false`. A public suffix, such as `github.io`, gives
+`subdomains: false`.
 
 ### The directory
 
@@ -129,9 +141,14 @@ interface Place {
   key: PlaceKey;
   trust: Trust;
   name: string | null; // erasable for an address, phone or handle place
-  addedBy: 'you' | 'proposal' | 'card' | 'seed';
+  addedBy: 'you' | 'proposal' | 'card' | 'seed' | 'nixie_own';
 }
 ```
+
+nixie's own places, such as its phone number and its website, are entries at `act` with
+`addedBy: 'nixie_own'`. The server seeds one for each address, number or site that a connector's
+config names as nixie's own. The page and `places.list` show each as nixie's own, and you can change
+or remove it like any other entry. `self` holds only your places.
 
 The directory writes these records. The first three carry no thread, as contact records don't today,
 and each makes a new definitions snapshot. `places.acted` goes on the call's thread and makes none.
@@ -140,13 +157,13 @@ and each makes a new definitions snapshot. `places.acted` goes on the call's thr
 places.added    { placeID, shortID, key, trust, name, addedBy }
 places.changed  { placeID, trust?, name? }
 places.removed  { placeID }
-places.acted    { placeID, shortID, callID }  // a call that an 'act' place allowed
+places.acted    { placeID, shortID, callID, tool }  // a call that an 'act' place allowed
 ```
 
-- The `places` projection holds each entry's IDs, kind, level and sequences. For an `address`,
-  `phone` or `handle` place, the key and the name are erasable fields of `places.added`, and the
-  projection reads them back from the record, as it reads a contact's today. `places.added` joins
-  the forgettable kinds.
+- The `places` projection holds each entry's IDs, kind, level, sequences and the time a call last
+  used it. For an `address`, `phone` or `handle` place, the key and the name are erasable fields of
+  `places.added`, and the projection reads them back from the record, as it reads a contact's today.
+  `places.added` joins the forgettable kinds.
 - The projection keeps a keyed hash of each key, under the deployment's key, for the
   one-entry-per-key check. A forget clears the hash.
 - You can forget an `address`, `phone` or `handle` place. A forget removes it whatever its level, so
@@ -196,42 +213,111 @@ type DecisionDetail = { place: { placeID: string; shortID: string } | null }; //
   entry wins: an exact key, then the longer domain.
 - A rule's `destinations` keep their patterns and the `*` match. Both the pattern and the
   destination are put in lower case before the match.
+
+### What the tools declare
+
 - `web_fetch` declares the host of its `url`, or of the link a `link` call names, through
   `resolveDestinations`. A call that reads a stored page fetches nothing and declares none.
 - `search` with `sites`, `computer.browser_download` and a device page's fetches declare their URL's
   host too, in their own work items.
+- `computer.screen_click` and `computer.screen_type` declare the host of the browser tab in front
+  when the browser window has focus. With any other window in front they declare no destination, so
+  no place allows the call and the rules decide it, as today.
+- `computer.browser_fill` declares `send`, with the tab's host.
+- `computer.browser_click` declares `send` with the tab's host, unless its element is a plain link.
+  On a plain link it declares `fetch`, with the tab's host and the link's host.
+
+`prepare` of `computer.browser_click` reads the clicked element from the guest and returns the
+effects and destinations in place of the declared ones:
+
+```ts
+// computer module, the guest's reply to an element read at prepare.
+interface ClickedElement {
+  role: string; // the snapshot's role; 'link' is an <a> with an http(s) href and no download
+  href: string | null; // the absolute target of an <a>
+  isInForm: boolean; // the element sits inside a <form>
+  hasClickHandler: boolean; // an onclick attribute, or role="button"
+}
+// A plain link: role 'link', isInForm and hasClickHandler false. Any other element is a button.
+```
+
+- A click on a plain link runs without asking at a `read` place or an unlisted one. A click on a
+  button asks unless the place is at `act` or `self`.
 - The server's hop gate refuses a redirect hop to a `blocked` site. The browser tools read the tab's
   host at each call, so the next call on a tab that a redirect or a click took to a `blocked` site
-  is denied. Navigation inside the browser between calls isn't checked.
+  is denied. Navigation inside the browser between calls, and a script listener behind a plain link,
+  aren't checked.
+
+### The notice of an act
+
+Each turn that ends with calls allowed through an `act` place shows at most one line per place,
+styled like a tool call. The line names the place and the tools that ran there, from the turn's
+`places.acted` records, with a count for each tool:
+
+```text
+tickets.example.com: computer.browser_click ×2, mail.send
+```
 
 ### The card and the proposal
 
 ```ts
 // An approval card's answer, beside Allow once and Always allow.
-type TrustAnswer = { trust: 'read' | 'act'; key: PlaceKey }; // the card offers the call's place
+type TrustAnswer = { trust: 'read' | 'act'; key: PlaceKey }; // the call's place, subdomains: false
 ```
 
 ```ts
 const proposal = await tools.call('places.propose', {
-  place: 'https://tickets.example.com',
-  trust: 'act',
-  why: 'You asked me to book here every week.',
+  places: [
+    { place: 'tickets.example.com', trust: 'act', why: 'You asked me to book here every week.' },
+    { place: '*.library.example.org', trust: 'read', why: 'Your library splits its catalog.' },
+  ],
 });
-// → { proposal: 'Q7' }, a card for you
+// → { proposal: 'Q7' }, one card for you that lists every place
 ```
 
 - When every destination of a held call is one place, the card offers "Trust this place to read" and
   "Trust this place to act". Either answer adds the entry or raises its level, and writes no rule.
-- A card or a proposal offers the exact host, with `subdomains: false`. You widen an entry to its
-  subdomains on the places page.
-- `places.propose` declares `policy_widen`, so it always asks.
+- `places.propose` reads each `place` as an exact host, and `*.<domain>` as the domain and every
+  subdomain. The card shows each in words, such as "library.example.org and every subdomain", with
+  its level and its reason. The card has no subdomain checkbox.
+- `places.propose` declares `policy_widen`, so it always asks. It refuses a list with a key on a
+  whole public suffix, such as `*.github.io`.
+- You approve the whole card, or untick some places first. Approval adds or raises each ticked place
+  at its level, and leaves the unticked ones as they are.
 - nixie narrows a place with `places.narrow`. It declares `policy_narrow` and applies at once with a
   notice.
 
 ```ts
 await tools.call('places.narrow', { place: 'P4', trust: 'known' }); // or { place: 'P4', remove: true }
-// → { place: 'P4', trust: 'known' }; refuses a level that isn't lower than the current one
+// → { place: 'P4', trust: 'known' }; refuses a level that isn't lower than the current one, and
+// refuses remove on a blocked entry, which would make the place free to read
 ```
+
+### The list
+
+```ts
+await tools.call('places.list', { trust: 'read', kind: 'site', query: 'library', limit: 20 });
+// → { total: 3, places: [{ place: 'P4', key: '*.library.example.org', trust: 'read', name: 'The library' }, …] }
+
+await tools.call('places.list', { place: 'catalog.library.example.org' });
+// → { total: 1, places: [{ place: 'P4', … }] }, the entry the decision point picks; total 0 for none
+```
+
+```ts
+// places module. Every filter is optional.
+interface PlacesListInput {
+  trust?: Trust;
+  kind?: PlaceKey['kind'];
+  query?: string; // matches the key or the name, in any case
+  place?: string; // a host, address, number or handle; returns only the entry that covers it
+  detail?: boolean; // adds addedBy and lastUsedAt to each row
+  limit?: number; // 50 when unset
+  after?: string; // a short ID, for the next page
+}
+```
+
+- `places.list` declares `read` with no destination, as `tasks.list` does. `total` counts every
+  match, whatever the limit. `place` goes through `parsePlace` and `places.find`.
 
 ### Evidence from what you typed
 
@@ -271,13 +357,15 @@ and when a call last used it. You add, change and remove entries there. The host
   `policy.places`, the place IDs and levels, where it held `policy.contacts`, and never holds an
   address.
 - The vault keeps each entry's exact origins as a fill constraint. A password fills only on an exact
-  origin of its entry, even on a site at `act`. The vault entry links its site's place ID.
+  origin of its entry, even on a site at `act`, and the `www.` rule never widens it. The vault entry
+  links its site's place ID.
 - A wallet lift names places, never origins. Its merchants are site places.
 - A mail trigger's or wake rule's `from` names `address` or `mail_domain` keys, matched by
   `isPlaceCovered`. A place's level never wakes a task by itself.
 - Typing a domain counts as naming its subdomains: typing `example.org` names `api.example.org`. You
-  name a site by its domain, and rarely type the host a tool reaches. This rule covers typed
-  evidence only; an entry covers subdomains only when its key has `subdomains: true`.
+  name a site by its domain, and rarely type the host a tool reaches. Typing a public suffix, such
+  as `github.io`, names that exact name only. This rule covers typed evidence only; an entry covers
+  subdomains only when its key has `subdomains: true`.
 - The skill guard checks a place when a skill's call reaches it, never when the skill is written. A
   write can't reach anyone; a call can, and every call meets the decision point.
 - Known contacts become places at `known` with no new records: the `places` projection also folds
@@ -300,8 +388,8 @@ and when a call last used it. You add, change and remove entries there. The host
 
 - The module's name and where the matcher lives, if not in `modules/places`.
 - The page's layout and its sort order.
-- The notice's wording.
 - Whether `places.narrow` is one tool or two.
+- How the guest reads the clicked element: a new read mode, or a field on the snapshot read.
 - How the Always allow rules that pin only a host are left: they keep working, and the builder may
   offer a one-time conversion to places on the page.
 
@@ -310,16 +398,3 @@ and when a call last used it. You add, change and remove entries there. The host
 - Groups of places, such as "every bank". A later design can add them over the same keys.
 - A place's history beyond its records.
 - Trust for MCP servers, which the [MCP proxy design](mcp-proxy-build.md) keeps in its own config.
-
-## Open questions
-
-- **The levels.** The design has five: `blocked`, `known`, `read`, `act` and `self`. The owner may
-  want fewer names, or a level that allows acts without a notice. Until the owner decides, the five
-  stand.
-- **Reads from an unlisted site.** The design keeps them free, as `allow-reads` does today. The
-  owner may prefer that a fetch from an unlisted site asks once. Until then, reads stay free.
-- **Whole-domain entries for shared suffixes.** A two-label minimum still allows an entry for
-  `co.uk` with subdomains. A public-suffix list would refuse it, at the cost of a library. Until the
-  owner decides, only you make a subdomain entry, on the page or in `places.yaml`.
-- **Who sees the notice of an act.** The design shows it in the conversation. The owner may want a
-  digest instead.
