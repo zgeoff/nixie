@@ -40,6 +40,9 @@ async function tryRunLapse(
   try {
     await lapse();
   } catch (error) {
-    onError(error);
+    // A throw from onError is swallowed here: the shared loop would report it to the same onError.
+    try {
+      onError(error);
+    } catch {}
   }
 }

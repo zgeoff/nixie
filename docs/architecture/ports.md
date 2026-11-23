@@ -23,7 +23,8 @@ the rules for ports, providers and adapters, and lists where the code departs fr
 - The memory checker's model has no port: the `checker` role needs `structured-output`, and only the
   Agent SDK harness declares it.
 - The backup schedule and the definitions poll each keep their own loop on the clock. Every other
-  periodic sweep, such as the 2 lapse sweeps, runs on `startSweep` in `libs/clock`.
+  periodic sweep, such as the lapse sweeps of prompts, proposals and memory, runs on `startSweep` in
+  `libs/clock`.
 - The key store and the backup target have no interface: the key store has one implementation, and
   the backup job's one client reaches each storage backend itself.
 

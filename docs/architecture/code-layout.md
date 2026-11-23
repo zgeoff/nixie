@@ -198,8 +198,9 @@ The other packages each hold one piece the modules and apps share:
   share.
 - `libs/clock` is the one clock that every time and every wait reads. A test build replaces it with
   a clock the test steps. It also holds `startSweep`, the loop that every periodic sweep runs on. A
-  sweep's next run starts one interval after its last run ends, so runs never overlap, and a failed
-  run goes to the sweep's `onError` while the loop goes on.
+  sweep's next pass starts one interval after its last pass started, or at once when that pass
+  lasted longer, so passes never overlap. A wake starts a pass early, and the interval counts from
+  that pass. A failed pass goes to the sweep's `onError` while the loop goes on.
 - `libs/retry` is the backoff that sets the wait before each retry, so every part that retries backs
   off the same way.
 - `libs/task-control` holds the transition table of the task controls, so the tasks module and the

@@ -22,24 +22,25 @@ export interface Sweep {
 }
 
 // Runs `run` in a loop on the injected clock. The next run starts one interval after the last run
-// ends, so runs never overlap. A run that throws goes to onError, and the loop goes on.
+// started, or at once when that run lasted longer, so ticks keep their fixed spacing and runs never
+// overlap. A run that throws goes to onError, and the loop goes on.
 export function startSweep(options: SweepOptions): Sweep {
   const stopped = new AbortController();
 
   let sleeping: AbortController | null = null;
   let isWoken = options.runOnStart ?? false;
+  let nextDueMs = options.clock.now() + options.intervalMs;
 
   const loop = (async () => {
     while (!stopped.signal.aborted) {
-      if (!isWoken) {
+      const waitMs = nextDueMs - options.clock.now();
+
+      if (!isWoken && waitMs > 0) {
         const sleep = new AbortController();
 
         sleeping = sleep;
 
-        await options.clock.sleep(
-          options.intervalMs,
-          AbortSignal.any([stopped.signal, sleep.signal]),
-        );
+        await options.clock.sleep(waitMs, AbortSignal.any([stopped.signal, sleep.signal]));
 
         sleeping = null;
 
@@ -49,6 +50,7 @@ export function startSweep(options: SweepOptions): Sweep {
       }
 
       isWoken = false;
+      nextDueMs = options.clock.now() + options.intervalMs;
 
       try {
         await options.run();

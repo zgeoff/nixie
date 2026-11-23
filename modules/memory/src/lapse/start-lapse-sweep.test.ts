@@ -4,44 +4,11 @@ import { createFakeClock } from '@zgeoff/testing/clock';
 import { buildMockProvenance } from '../test-utils/build-mock-provenance';
 import { createProposal } from '../test-utils/create-proposal';
 import { startTestMemory } from '../test-utils/start-test-memory';
+import type { LapseSweepOptions } from './start-lapse-sweep';
 import { startLapseSweep } from './start-lapse-sweep';
 
-test('it retires a memory item past its end time on the next sweep', async () => {
-  const clock = createFakeClock({ startMs: Date.parse('2026-10-19T09:00:00Z') });
-
-  const memory = await startTestMemory({ gate: { clock } });
-
-  const item = await memory.store.remember({
-    text: 'Is in Lisbon this week',
-    until: Date.parse('2026-10-19T22:59:59Z'),
-    provenance: buildMockProvenance(),
-  });
-
-  clock.advance(Date.parse('2026-10-20T00:41:00Z') - clock.now());
-
-  const sweep = startLapseSweep({ store: memory.store, clock, onError: () => {} });
-
-  onTestFinished(() => sweep.stop());
-
-  await waitForCondition(() => clock.countPending() === 1);
-
-  clock.advance(3_600_000);
-
-  await waitForCondition(async () => {
-    const recalled = await memory.store.recall({ itemIDs: [item.itemID], includeRetired: true });
-
-    return recalled.items.at(0)?.version === 2;
-  });
-
-  await sweep.stop();
-
-  const recalled = await memory.store.recall({ itemIDs: [item.itemID], includeRetired: true });
-
-  expect(recalled.items).toMatchObject([{ version: 2, change: 'retired', origin: 'lapse' }]);
-});
-
-test('it lapses a proposal past its lapse time on the next sweep', async () => {
-  const clock = createFakeClock({ startMs: 1_000_000 });
+async function setupTest() {
+  const clock = createFakeClock({ startMs: 0 });
 
   const memory = await startTestMemory({
     gate: {
@@ -50,53 +17,98 @@ test('it lapses a proposal past its lapse time on the next sweep', async () => {
     },
   });
 
-  await createProposal(memory.store, { text: 'Likes jazz' });
+  const start = (options: Partial<LapseSweepOptions> = {}) => {
+    const sweep = startLapseSweep({ store: memory.store, clock, onError: () => {}, ...options });
 
-  clock.advance(5000);
+    onTestFinished(() => sweep.stop());
 
-  const sweep = startLapseSweep({ store: memory.store, clock, onError: () => {} });
+    return sweep;
+  };
 
-  onTestFinished(() => sweep.stop());
+  return { clock, memory, start };
+}
 
-  await waitForCondition(() => clock.countPending() === 1);
+test('it retires a memory item past its end time on the next sweep', async () => {
+  const ctx = await setupTest();
 
-  clock.advance(3_600_000);
+  ctx.clock.advance(Date.parse('2026-10-19T09:00:00Z'));
+
+  const item = await ctx.memory.store.remember({
+    text: 'Is in Lisbon this week',
+    until: Date.parse('2026-10-19T22:59:59Z'),
+    provenance: buildMockProvenance(),
+  });
+
+  ctx.clock.advance(Date.parse('2026-10-20T00:41:00Z') - ctx.clock.now());
+
+  const sweep = ctx.start();
+
+  await waitForCondition(() => ctx.clock.countPending() === 1);
+
+  ctx.clock.advance(3_600_000);
 
   await waitForCondition(async () => {
-    const pending = await memory.store.proposals.listPending();
+    const recalled = await ctx.memory.store.recall({
+      itemIDs: [item.itemID],
+      includeRetired: true,
+    });
+
+    return recalled.items.at(0)?.version === 2;
+  });
+
+  await sweep.stop();
+
+  const recalled = await ctx.memory.store.recall({ itemIDs: [item.itemID], includeRetired: true });
+
+  expect(recalled.items).toMatchObject([{ version: 2, change: 'retired', origin: 'lapse' }]);
+});
+
+test('it lapses a proposal past its lapse time on the next sweep', async () => {
+  const ctx = await setupTest();
+
+  await createProposal(ctx.memory.store, { text: 'Likes jazz' });
+
+  ctx.clock.advance(5000);
+
+  const sweep = ctx.start();
+
+  await waitForCondition(() => ctx.clock.countPending() === 1);
+
+  ctx.clock.advance(3_600_000);
+
+  await waitForCondition(async () => {
+    const pending = await ctx.memory.store.proposals.listPending();
 
     return pending.length === 0;
   });
 
   await sweep.stop();
 
-  const pending = await memory.store.proposals.listPending();
+  const pending = await ctx.memory.store.proposals.listPending();
 
   expect(pending).toStrictEqual([]);
 });
 
 test('it passes a failed sweep to onError, and sweeps again', async () => {
-  const clock = createFakeClock({ startMs: 0 });
+  const ctx = await setupTest();
+
   const onError = mock<(error: unknown) => void>();
 
-  const sweep = startLapseSweep({
+  ctx.start({
     store: {
       lapse: () => Promise.resolve(0),
       proposals: { lapse: () => Promise.reject(new Error('the database is locked')) },
     },
-    clock,
     onError,
   });
 
-  onTestFinished(() => sweep.stop());
+  await waitForCondition(() => ctx.clock.countPending() === 1);
 
-  await waitForCondition(() => clock.countPending() === 1);
+  ctx.clock.advance(3_600_000);
 
-  clock.advance(3_600_000);
+  await waitForCondition(() => onError.mock.calls.length === 1 && ctx.clock.countPending() === 1);
 
-  await waitForCondition(() => onError.mock.calls.length === 1 && clock.countPending() === 1);
-
-  clock.advance(3_600_000);
+  ctx.clock.advance(3_600_000);
 
   await waitForCondition(() => onError.mock.calls.length === 2);
 
@@ -106,32 +118,31 @@ test('it passes a failed sweep to onError, and sweeps again', async () => {
   ]);
 });
 
-test('it sweeps again after onError throws', async () => {
-  const clock = createFakeClock({ startMs: 0 });
+test('it reports a failed lapse once and sweeps again after onError throws', async () => {
+  const ctx = await setupTest();
+
   const lapseProposals = mock(() => Promise.reject(new Error('the database is locked')));
 
-  const sweep = startLapseSweep({
-    store: {
-      lapse: () => Promise.resolve(0),
-      proposals: { lapse: lapseProposals },
-    },
-    clock,
-    onError: () => {
-      throw new Error('the log is closed');
-    },
+  const onError = mock<(error: unknown) => void>(() => {
+    throw new Error('the log is closed');
   });
 
-  onTestFinished(() => sweep.stop());
+  ctx.start({
+    store: { lapse: () => Promise.resolve(0), proposals: { lapse: lapseProposals } },
+    onError,
+  });
 
-  await waitForCondition(() => clock.countPending() === 1);
+  await waitForCondition(() => ctx.clock.countPending() === 1);
 
-  clock.advance(3_600_000);
+  ctx.clock.advance(3_600_000);
 
   await waitForCondition(
-    () => lapseProposals.mock.calls.length === 1 && clock.countPending() === 1,
+    () => lapseProposals.mock.calls.length === 1 && ctx.clock.countPending() === 1,
   );
 
-  clock.advance(3_600_000);
+  expect(onError).toHaveBeenCalledTimes(1);
+
+  ctx.clock.advance(3_600_000);
 
   await expect(waitForCondition(() => lapseProposals.mock.calls.length === 2)).toResolve();
 });
