@@ -10,8 +10,8 @@ memory write, a skill write, a rule change, a held action and a prompt override 
 approvals list, can all be deferred, lapse on the same schedule rules, and all report back the same
 way. A held action is the one exception to the message: its task hears the action's own outcome.
 
-The owner approves this design. The builder of each work item it files starts from it, together with
-the built [approvals](../../architecture/policy/approvals.md) it extends.
+Once the owner approves this design, build each of its work items from it and the built
+[approvals](../../architecture/policy/approvals.md) it extends.
 
 ## Shape
 
@@ -95,7 +95,7 @@ type ApplyOutcome = {
 type ProposalOutcome = 'approved' | 'declined' | 'lapsed' | 'withdrawn';
 ```
 
-Records, written by the core for every family:
+The core writes these records for every family:
 
 ```text
 proposals.proposed  { proposalID, shortID, family, kind, cause, riskClass, actionHash, ruleHash,
@@ -112,7 +112,7 @@ proposals.withdrawn …existing; new withdrawals write proposals.settled instead
   Handlers find a body by proposal ID.
 - A body record creates a row only when no `proposals.proposed` for that proposal came before it,
   which holds only for records written before this design. A rebuild over a log that mixes old and
-  new records creates exactly one row per proposal, and a test holds that.
+  new records creates exactly one row per proposal, and a test checks it.
 - An approval keeps the family's own approval record when it carries data the apply needs, such as
   `skills.write_approved` with edited files, beside `proposals.settled`.
 - The family records for a decline, a lapse and a withdrawal stop at release N+2 of the
@@ -135,12 +135,12 @@ approvals:
 ```
 
 - A proposal lapses at the earlier of its creation plus its family's `lapse_days` and its deadline.
-  A mandate lapses at its deadline, its expiry, and its own expiry timer stays.
+  A mandate lapses only at its deadline, which is its expiry, and keeps its own expiry timer.
 - A memory merge extends the shared row's lapse by `lapse_days.memory`, recorded in the merge record
   as today.
-- One sweep lapses every family: the core's sweep, on the shared sweep helper. Memory's own sweep
-  keeps only its item lapses and the key-store cleanup of closed proposals, after the commit. The
-  prompt sweep is deleted.
+- The core's sweep, built on the shared sweep helper, lapses every family. Memory's own sweep keeps
+  only its item lapses and the key-store cleanup of closed proposals, after the commit. The prompt
+  sweep is deleted.
 
 ### Telling the proposer
 
@@ -202,8 +202,8 @@ It replaces `memory.pending` and `skill_pending`.
 
 - The `family` column accepts `prompt`. A migration adds it, and backfills every prompt override,
   open and closed, from its records, as the shared table's first migration did for the other
-  families; a test holds the backfill equal to a rebuild. A backfilled row keeps its old proposal ID
-  as `short_id`.
+  families; a test checks that the backfill equals a rebuild. A backfilled row keeps its old
+  proposal ID as `short_id`.
 - A prompt row takes `kind` `internal_change`, cause `prompt_override` and risk class `always_ask`,
   so approving it needs a passkey. Its `action_hash` is the proposed override's hash, and
   `readHashes` folds in the base it replaces, so a stale base refuses.
@@ -221,9 +221,9 @@ It replaces `memory.pending` and `skill_pending`.
 - `memory_proposals` keeps each memory proposal's sealed body and its merges. Its `status` and
   `lapse_at` columns stay but are no longer written; memory reads the state from the shared row.
 - `proposals.settled.reason` is an erasable field, and the forgettable kinds list in the published
-  contract gains `proposals.settled`, an additive change in a minor release.
-- These writers are deleted: the skill, rule and action lapse writers, the test-only action answer
-  writer, and the prompt lapse sweep. The action answer types move to the module that uses them.
+  contract gains `proposals.settled`. The change is additive, so it ships in a minor release.
+- Delete the skill, rule and action lapse writers, the test-only action answer writer, and the
+  prompt lapse sweep. Move the action answer types to the module that uses them.
 
 ## Release order
 
@@ -253,5 +253,5 @@ Each step ships in its own release, so a rollback by one release still reads eve
   unknown family and fails to load it. The owner may accept that this one rollback needs a restore,
   or ask for a release that reads `prompt` rows before any are written. Until the owner decides, the
   release order above stands.
-- **A proposal with no proposer.** The gap check's proposed rules settle silently. The owner may
-  want the conversation told when one lapses. Until the owner decides, they settle silently.
+- **A proposal with no proposer.** The owner may want the conversation told when one of the gap
+  check's proposed rules lapses. Until the owner decides, those rules settle silently.
