@@ -509,6 +509,57 @@ test('it hands the memory held lists that read nothing until called, and none fo
   expect(versions).toStrictEqual([]);
 });
 
+test('it hands the memory the start of the session that its writes belong to, and none for a new session', async () => {
+  const ctx = await setupTest();
+
+  const [invalidated] = await writeRecords(ctx.tasks.context.log, [
+    {
+      kind: 'model.session_invalidated',
+      definitions: { snapshotHash: 'sha256:test' },
+      thread: 'conversation',
+      payload: {},
+    },
+  ]);
+
+  const askWriteStart = async (isNewSession: boolean) => {
+    const memory = buildStubMemory({
+      pinned: [],
+      pinnedUse: { items: 0, tokens: 0, budget: 2000 },
+    });
+
+    await readTurnContext(
+      {
+        context: ctx.tasks.context,
+        frame: { kind: 'conversation' } as const,
+        memory: () => memory,
+        memorySettings: ctx.memorySettings,
+        messaging: { directory: [], unlisted: [], hopLimit: 20, ownerName: null, agentName: null },
+        defaultZone: 'UTC',
+      },
+      {
+        taskID: 'conversation',
+        persona: 'You are Pip.',
+        prompts: {},
+        skillCatalog: null,
+        runBlocks: null,
+        batch: [],
+        brief: null,
+        previousCore: null,
+        isNewSession,
+        isFirstSession: false,
+        isContinuation: false,
+      },
+    );
+
+    return memory.readTurnMemory.mock.calls[0]?.[0].held.readWriteStart();
+  };
+
+  expect({
+    resumed: await askWriteStart(false),
+    fresh: await askWriteStart(true),
+  }).toStrictEqual({ resumed: invalidated?.sequence, fresh: null });
+});
+
 test('it asks nothing of a run with no memory', async () => {
   const ctx = await setupTest();
 

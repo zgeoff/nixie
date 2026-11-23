@@ -30,6 +30,11 @@ export interface PushPick extends MemoryRef, MatchScores {
   readonly isSelf: boolean;
 }
 
+export interface WrittenItemsQuery {
+  readonly thread: string;
+  readonly afterSequence: number;
+}
+
 export interface TurnSources {
   readonly index: MemoryIndex;
 
@@ -37,6 +42,9 @@ export interface TurnSources {
   readonly vectors: VectorIndex | null;
   readonly triggers: TriggerIndex;
   readonly readItemStates: () => Promise<readonly ItemState[]>;
+
+  // the items that a memory write on the thread touched after the sequence
+  readonly readWrittenItemIDs: (query: WrittenItemsQuery) => Promise<readonly string[]>;
 }
 
 interface PushResult {
