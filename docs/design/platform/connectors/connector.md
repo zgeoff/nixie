@@ -176,8 +176,7 @@ production client kept a working refresh token past that limit.
   which also grants IMAP access, and the trash keeps a message restorable for 30 days.
 
 The [Google connections](../../queue/google-connections.md) design holds the consent, the refresh
-and Forget, and the [Google tools](../../queue/gmail-calendar-drive-tools.md) design holds the
-tools, the Sent-folder check and the read path.
+and Forget, and lists its parts, such as the tools, the Sent-folder check and the read path.
 
 ## Search
 
