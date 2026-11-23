@@ -10,15 +10,17 @@ compares, a search's price is a constant in its adapter, and a task run's dollar
 server pricing turn records its own way, so they disagree with the gateway's count of the same
 replies. Budgets keep integer micros while the task meter sums floats, and each counter has its own
 idea of a day. After this design, each price has one source, the gateway counts every model dollar
-nixie limits, every other money count lands in one ledger keyed by counter, unit and period, and one
-helper says when every period starts.
+nixie limits, a task run's dollars included, and holds a request's worst case before it sends it.
+Every other money count lands in one ledger keyed by counter, unit and period, and one helper says
+when every period starts. Near a limit, a request with a large `max_tokens` is refused where today
+it would pass.
 
 Once the owner approves this design, build its work items from it and the built
 [spending stop](../../architecture/policy/spending-stop.md),
 [budgets](../../architecture/policy/budgets.md) and
-[model gateway](../../architecture/policy/model-gateway.md) it changes. The period helper comes
-first, then the gateway's held admission, then the task meter's move to the gateway, then the
-ledger. The wallet builds on the ledger.
+[model gateway](../../architecture/policy/model-gateway.md) it changes. The gateway's held admission
+and the period helper come first, in either order, then the task meter's move to the gateway, then
+the ledger. The wallet builds on the ledger.
 
 ## Shape
 
@@ -85,62 +87,92 @@ type Period = { kind: PeriodKind; start: string; startsAtMs: number; endsAtMs: n
 ### The gateway's held admission
 
 ```ts
-// model gateway. After it parses the body, admission adds a hold of the request's worst case to
-// the day, the month and the request's sandbox, in dollars and tokens; the reply settles it.
-const hold = pickRequestHold(body, route); // today's reply estimate, worked out before sending
-// → { dollars: 0.21, tokens: 41000 } for a 33,000-token body and max_tokens 8,000
+// model gateway. After the body, header and model checks, admission adds a hold of the request's
+// worst case to the day, the month and the request's sandbox, in dollars and tokens, just before
+// it sends. The reply settles it.
+const hold = pickRequestHold(body, route); // buildReplyEstimate, worked out before sending
+// → { dollars: 0.23, tokens: 45096 }: a 33,000-token body, max_tokens 8,000, the 4,096 allowance
 
-// GET /status and GET /sandboxes/<name> show the open holds beside each count.
-// → { count: { dollars: 1.84, tokens: 610000 }, held: { dollars: 0.21, tokens: 41000 }, … }
+// GET /status and GET /sandboxes/<name> keep today's fields and gain the open holds beside them.
+// GET /sandboxes/<name> also gains the last refusal, so the runner can tell why a step stopped.
+// → { dollars: 1.84, tokens: 610000, tripped: false, held: { dollars: 0.23, tokens: 45096 },
+//     lastRefusal: { counter: 'sandbox', atMs: 1795960000000 } }
 ```
 
-- The hold is today's estimate of a reply with no usage: the body's measured input at the highest
-  input-side rate, plus `max_tokens`, or the route's `maxOutputTokens`, for output.
+```json
+// The 403 for lack of room, whether the count or the holds filled it.
+{ "type": "error", "error": { "type": "limit_reached", "counter": "day", "message": "…" } }
+```
+
+- The hold is exactly today's estimate of a reply with no usage, its 4,096-token allowance included:
+  the body's measured input at the highest input-side rate, plus `max_tokens`, or the route's
+  `maxOutputTokens`, for output.
 - A request whose input the estimate can't bound, such as one that continues a stored response,
-  holds the route's `contextWindow` in place of the measured input. A route that admits such
-  requests must set `contextWindow`, and the gateway refuses to start without it. A request with no
-  output bound gets a 400 and sends nothing, so no request leaves the gateway unbounded.
+  holds the route's `contextWindow` in place of the measured input, and settles to that hold when
+  its reply has no usage, with no lost mark. Every route sets `contextWindow`. A request with no
+  output bound gets a 400 and sends nothing. Token counts and the model list take no hold.
 - The gateway admits a request only when, for each counter, the count plus its open holds plus this
   hold stays within the limit in force, raises and overrides included. It adds the hold under the
-  store's lock, so two requests can't both take the last of a limit.
-- A refusal for lack of room is a 403 with the error type `limit_reached`, whether the count or the
-  holds filled the room. The runner ends a step with `limit` on it. The spending stop still trips
-  only on the count.
-- Settling replaces the hold with the charge that today's rules pick: the reply's usage, today's
+  store's lock, so two requests can't both take the last of a limit. A request whose hold alone
+  passes a limit is never admitted; the server refuses to plan a worker run whose limit is below its
+  route's smallest hold.
+- `tripped` keeps its meaning: the count reached the limit. The spending stop trips only on it.
+- A step whose sandbox refused it, by `lastRefusal` since the step began, ends with `limit`. A
+  conversation step or a task step refused on the day or the month waits and retries as a step does
+  while the stop is unreachable.
+- Settling replaces the hold with the charge that today's rules pick: the reply's usage, the
   estimate when the reply spent with no usage, and nothing when the provider refused it.
 - A hold counts against the period it settles in, so the open holds carry into a new day or month.
-- The gateway writes each hold to `<store>.holds.json`, version 1, before it sends the request. It
-  adds the charge to the store before it removes the hold, so a crash between them counts twice and
-  never not at all. When the holds file can't be written, the request gets a 503 and sends nothing.
-- After a restart, the gateway settles each hold in the file at its full amount, into the current
-  day and month, and into its sandbox when the store still has it. The store file keeps its version
-  and its float dollars, and a gateway of the release before ignores the holds file.
-- Both the `periods` and the `limits` configs hold, so a preview holds too.
+
+#### The holds file
+
+- The gateway writes each hold to `<store>.holds.json`, version 1, before it sends the request: its
+  random ID, its sandbox and route, its dollars and tokens, and when it began.
+- It adds the charge to the store before it removes the hold, so a crash between them counts twice
+  and never not at all. When the holds file can't be written, the request gets a 503 and sends
+  nothing.
+- At start, before the first request, the gateway settles each hold in the file at its full amount,
+  into the current day and month, and into its sandbox when the store still has it. It drops the
+  holds instead when the store changed after the holds file, which means a gateway of the release
+  before ran in between and counted those requests itself.
+- The store file keeps its version and its float dollars. A gateway of the release before ignores
+  the holds file. Both the `periods` and the `limits` configs hold, so a preview holds too.
 
 ### The task and worker meters
 
-```ts
-// model gateway control listener. PATCH sets a sandbox's limit and keeps its count and holds.
-PATCH / sandboxes / <name>{ limit: { dollars: 1.6 } | null }; // → 200, or 404 for an unknown name
+```text
+PATCH /sandboxes/<name>   { "limit": { "dollars": 1.6, "tokens"?: 2000000 } | null }
+  sets the sandbox's limit whole, and keeps its count and holds; 200, or 404 for an unknown name
+
+task.meter_read           { taskRunID, sandbox, reason, countMicros }
+  reason: 'run_start' | 'step_start' | 'step_end' | 'worker_end' | 'run_end'
 ```
 
-- A task keeps its sandbox across its runs, so a run's dollars are the sandbox's count when the run
-  ends less its count when the run began, plus each of its worker runs' dollars.
-- At a run's start, the server sets the sandbox's limit to its count plus the run's limit. While a
-  worker runs, the limit drops by the worker's planned limit, and after it ends, by what the worker
-  spent. A `task-raise` patches the limit in the same transaction's after-commit step.
-- The server reads the count with `GET /sandboxes/<name>` before and after each step, after each
-  worker run and when the run ends, and writes each read as `task.meter_read`, with the run's ID and
-  the count in micros, rounded up. When a read gets no answer, the step doesn't start and retries as
-  a step does while the stop is unreachable.
+- A task keeps its sandbox across its runs, and replaces it when the host loses it. A run's dollars
+  are, for each sandbox it used, the last count less the count at the run's start or at the
+  sandbox's creation, summed, plus each of its worker runs' dollars.
+- What a run has left is its limit less its dollars and its open holds.
+- At a run's start, the server sets the sandbox's limit to its count plus the run's limit. When a
+  worker starts, the limit drops by the worker's planned limit; when it ends, the planned limit
+  comes back and what the worker spent comes off. Each worker's planned limit is at most what the
+  run has left after the planned limits of the workers already running.
+- A `task-raise` patches the limit after its commit, retried until it succeeds; the next run's start
+  sets it too.
+- The server reads the count with `GET /sandboxes/<name>` at each reason above, and writes each read
+  as `task.meter_read`, rounded up to the micro. When a read before a step gets no answer, the step
+  doesn't start and retries as a step does while the stop is unreachable. When any other read gets
+  no answer, the next read catches up, and a run waits to close until its end read succeeds.
 - At a restart, the server registers a sandbox with `PUT` only when the gateway has no such name,
-  and patches the limit of every other. The server refuses to start against a gateway that answers
-  405 to `PATCH`, so the gateway ships first.
+  and patches every other. At start it sends a `PATCH` for a name no sandbox has, and refuses to
+  start when the gateway answers 405 in place of 404, so the gateway ships first.
 - A worker run keeps today's rule: its limit is the smaller of `workerRun` and what its task run has
   left, and when the gateway doesn't answer at its end, it charges the larger of its planned dollars
-  and its own tally.
-- With a gateway, the runner's own pricing of each call, `task.failed_turn_spent` and
-  `task.turn_spend_unrecorded` go: the sandbox's limit replaces them.
+  and its own tally, recorded in `worker.gateway_charged` as today.
+- With a gateway, the runner's own pricing of each call, its interrupt at the dollar limit, its read
+  of late spend, `task.failed_turn_spent` and `task.turn_spend_unrecorded` go: the sandbox's limit
+  replaces them.
+- A rollback by one release prices a `meter: 'gateway'` run's turn records as today, and counts it
+  low for the rest of that run. The release before ignores the unknown `meter` field.
 - Without a gateway, the task meter prices the guest's call frames with the profile's table, as
   today, and writes `task.meter_read` at the same points.
 - A run's start record gains `meter: 'gateway' | 'records'`. A run whose start record has no `meter`
