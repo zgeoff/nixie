@@ -235,7 +235,9 @@ test('it runs the session cleanup only once the step that called the forget has 
 
   await ctx.call('notebook.forget', { id: note });
 
-  await waitFor(() => step.reads >= 3);
+  await waitFor(() => {
+    expect(step.reads).toBeGreaterThanOrEqual(3);
+  });
 
   const whileRunning = ctx.cleanups.length;
 
@@ -244,6 +246,30 @@ test('it runs the session cleanup only once the step that called the forget has 
   await ctx.notebook.waitForForgets();
 
   expect([whileRunning, ctx.cleanups.length]).toStrictEqual([0, 1]);
+});
+
+test('it drops the note from a search while the step that called the forget still runs', async () => {
+  const step = { reads: 0 };
+
+  const ctx = await setupTest({
+    readStartedStep: () => {
+      step.reads += 1;
+
+      return Promise.resolve('conversation:1');
+    },
+  });
+
+  const note = await ctx.write('Boiler');
+
+  await ctx.call('notebook.forget', { id: note });
+
+  await waitFor(() => {
+    expect(step.reads).toBeGreaterThanOrEqual(2);
+  });
+
+  const found = await ctx.call('notebook.find', { query: 'Boiler' });
+
+  expect([JSON.stringify(found).includes(note), ctx.cleanups.length]).toStrictEqual([false, 0]);
 });
 
 test('it finishes at the next start a forget whose calling step still ran at the stop', async () => {

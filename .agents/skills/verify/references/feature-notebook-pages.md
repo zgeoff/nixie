@@ -126,9 +126,9 @@ Before you start:
    ```
 
    Expect: the first query lists 1 note, the private one. The `conversation turn` exits 0, and the
-   turn replies once because the note's cleanup starts only after the step that forgets the note has
-   committed. The list shows "No notes yet" and no link "Winter diary". The last query lists
-   `assistant` with `n` 1 and `user` with `n` 1.
+   turn replies once because the note's session cleanup starts only after the step that forgets the
+   note has committed. The list shows "No notes yet" and no link "Winter diary". The last query
+   lists `assistant` with `n` 1 and `user` with `n` 1.
 
 ## End state
 

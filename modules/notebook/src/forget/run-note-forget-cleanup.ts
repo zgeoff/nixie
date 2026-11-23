@@ -14,6 +14,7 @@ export async function runNoteForgetCleanup(
   context: NotebookContext,
   index: NoteIndex,
   noteID: string,
+  waitForSessions: () => Promise<void> = () => Promise.resolve(),
 ): Promise<void> {
   const db = context.log.writer.db.$extendTables<NotebookTables & LogTables>();
 
@@ -38,6 +39,9 @@ export async function runNoteForgetCleanup(
   }
 
   await index.drop(noteID);
+
+  await waitForSessions();
+
   await context.cleanupSessions({ noteID });
 
   await withWriteTransaction(context.log.writer, async (tx) => {

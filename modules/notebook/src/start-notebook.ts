@@ -96,21 +96,31 @@ export async function startNotebook(options: StartNotebookOptions): Promise<Note
 
   await runBegunNoteForgets(context, index);
 
-  // A tool's forget runs inside a step, and the cleanup aborts every turn in flight, so it starts
-  // only once the calling step has committed what it wrote. The cleanup runs again until it ends or
-  // the notebook stops, and the next start finishes one that a stop cut short.
+  // A tool's forget runs inside a step, and the session cleanup aborts every turn in flight, so it
+  // starts only once the calling step has committed what it wrote. The cleanup runs again until it
+  // ends or the notebook stops, and the next start finishes one that a stop cut short.
   const cleanups = new Map<string, Promise<void>>();
 
   const retryMs = options.cleanupRetryMs ?? defaultCleanupRetryMs;
   const state = { isStopping: false };
 
-  const runFinishOnce = async (noteID: string, step: CallingStep | null): Promise<boolean> => {
-    try {
-      if (step !== null && (await options.readStartedStep(step.thread)) === step.stepKey) {
-        return false;
+  const waitForStepEnd = async (step: CallingStep | null): Promise<void> => {
+    if (step === null) {
+      return;
+    }
+
+    while ((await options.readStartedStep(step.thread)) === step.stepKey) {
+      if (state.isStopping) {
+        throw new Error('the notebook stopped before the calling step ended');
       }
 
-      await runBegunNoteForgets(context, index, noteID);
+      await Bun.sleep(retryMs);
+    }
+  };
+
+  const runFinishOnce = async (noteID: string, step: CallingStep | null): Promise<boolean> => {
+    try {
+      await runBegunNoteForgets(context, index, noteID, () => waitForStepEnd(step));
 
       return true;
     } catch {
