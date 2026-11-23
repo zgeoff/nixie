@@ -4,15 +4,16 @@
   out in 3 regions, update one and let another time out.
 - [End state](#end-state): what the page and the records show.
 
-Run this journey on `local` only, after every other journey. It needs the scripted model and the
-`layout-on-device` action, which the harness that runs nixie on `local` serves. On `preview`, list
-the feature as not verified, and run no `bun verify done`.
+Run this journey on `local` only, after every other journey, because enrolling a device replaces the
+browser's session (see below). It needs the scripted model and the `layout-on-device` action, which
+the harness that runs nixie on `local` serves. On `preview`, list the feature as not verified, and
+run no `bun verify done`.
 
 Start from a browser with no session, because the device page shows the enrolment form only to such
 a browser. Run `bun verify up --restart` and `bun verify doctor`. Skip `sign-in-enrol`, which signs
-the browser in. Enrolling replaces the browser's session, so a journey after this one needs a new
-restart and a `sign-in-enrol` run. Restart the same way before each repeat of this journey, even
-after a failed one: a restart gives nixie a new, empty database.
+the browser in. After this journey, a later one needs a new restart and a `sign-in-enrol` run.
+Restart the same way before each repeat of this journey, even after a failed one: a restart gives
+nixie a new, empty database.
 
 A layout is a grid of named regions on a device's screen. Each region shows its own content, and the
 model updates or times out one region with no change to the others.
@@ -44,8 +45,8 @@ model updates or times out one region with no change to the others.
 
    Expect: the buttons "Switch off screen" and "Sign out".
 
-3. Have the model lay out the screen in 3 regions and fill each one. The first region holds the text
-   "Ripples" for 1 minute, the second holds "Bins go out tonight", and the third holds a clock. Copy
+3. Have the model lay out the screen in 3 regions and fill each one. The region `pond` holds the
+   text "Ripples" for 1 minute, `note` holds "Bins go out tonight", and `clock` holds a clock. Copy
    the `conversation turn` message as written:
 
    ```bash
@@ -58,7 +59,8 @@ model updates or times out one region with no change to the others.
    Expect: `layout-on-device` returns `data.replies` of 6, and `conversation turn` exits 0. The
    snapshot shows "Ripples", "Bins go out tonight" and a time such as `14:05`.
 
-4. Have the model update the second region, and check that the other two keep their content:
+4. Have the model replace the text of `note` with "Dentist at 3", and check that the other two keep
+   their content:
 
    ```bash
    bun verify action layout-on-device --step update --text 'The note changed.'
