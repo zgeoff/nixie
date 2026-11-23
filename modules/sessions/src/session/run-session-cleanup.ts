@@ -5,6 +5,7 @@ import { modelSessionCleanupCompletedCodec } from '@heynixie/models';
 import { conversationTaskID } from '@heynixie/tasks';
 import type { ConversationRun, SessionCleanupCause } from '../types';
 import { runGuestPurge } from '../utils/run-guest-purge';
+import { waitForStepEnd } from '../utils/wait-for-step-end';
 import { writeSessionInvalidated } from './write-session-invalidated';
 
 type CleanupRun = Pick<
@@ -13,7 +14,9 @@ type CleanupRun = Pick<
 >;
 
 export function runSessionCleanup(run: CleanupRun, cause: SessionCleanupCause): Promise<void> {
-  return run.session.withInvalidation(async () => {
+  return run.session.withInvalidation(async (lastStep) => {
+    await waitForStepEnd(run.context, conversationTaskID, lastStep);
+
     run.clearFetchPauses();
 
     await writeSessionInvalidated(run.context, cause);

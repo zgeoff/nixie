@@ -34,6 +34,7 @@ import { createWorkerSandbox } from '../utils/create-worker-sandbox';
 import type { SessionGuard } from '../utils/make-session-guard';
 import { makeSessionGuard } from '../utils/make-session-guard';
 import { runGuestPurge } from '../utils/run-guest-purge';
+import { waitForStepEnd } from '../utils/wait-for-step-end';
 import { buildReachedLimit } from './build-reached-limit';
 import { buildSpendRecord } from './build-spend-record';
 import { buildTaskRun } from './build-task-run';
@@ -284,8 +285,9 @@ function buildTaskImpParts(runner: TaskRunner, taskID: string): TaskImpParts {
 // A forget's cleanup waits for the whole step, the imp's acquire and release included, so its purge
 // never meets the imp part way through a change.
 function runStartedStep(runner: TaskRunner, input: StepInput): Promise<StepResult> {
-  return resolveTaskGuard(runner, input.taskID).withTurn((invalidated) =>
-    runGuardedStep(runner, input, invalidated),
+  return resolveTaskGuard(runner, input.taskID).withTurn(
+    (invalidated) => runGuardedStep(runner, input, invalidated),
+    { stepKey: input.stepKey, generation: input.lease.generation },
   );
 }
 
@@ -491,9 +493,10 @@ async function runTaskSessionCleanup(
     const cleaned = await readCleanedTaskIDs(runner.options.context, cause);
 
     for (const taskID of cleaned) {
-      await resolveTaskGuard(runner, taskID).withInvalidation(() =>
-        cleanTaskSession(runner, taskID, cause),
-      );
+      await resolveTaskGuard(runner, taskID).withInvalidation(async (lastStep) => {
+        await waitForStepEnd(runner.options.context, taskID, lastStep);
+        await cleanTaskSession(runner, taskID, cause);
+      });
     }
   } finally {
     // A turn that was in flight can set a pause until it drains, so the clear comes last.
@@ -501,8 +504,8 @@ async function runTaskSessionCleanup(
   }
 }
 
-// The invalidation goes in even before the task's first session opens, because a step that ended
-// before the forget can still commit that session after the cleanup returns.
+// The invalidation goes in even before the task's first session opens, because the step whose turn
+// ended before the forget commits that session only now.
 async function cleanTaskSession(
   runner: TaskRunner,
   taskID: string,

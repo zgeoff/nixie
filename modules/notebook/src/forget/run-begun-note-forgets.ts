@@ -7,6 +7,7 @@ export async function runBegunNoteForgets(
   context: NotebookContext,
   index: NoteIndex,
   noteID?: string,
+  waitForSessions?: () => Promise<void>,
 ): Promise<void> {
   const rows = await context.log.writer.db
     .$extendTables<NotebookTables>()
@@ -17,6 +18,6 @@ export async function runBegunNoteForgets(
     .execute();
 
   for (const row of rows) {
-    await runNoteForgetCleanup(context, index, row.note_id);
+    await runNoteForgetCleanup(context, index, row.note_id, waitForSessions);
   }
 }

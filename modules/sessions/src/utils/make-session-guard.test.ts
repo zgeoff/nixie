@@ -132,6 +132,38 @@ test('it holds a turn until a cleanup asked for during an earlier cleanup is don
   expect(order).toStrictEqual(['first cleanup', 'second cleanup', 'turn']);
 });
 
+test('it hands a cleanup the step of the last turn that started', async () => {
+  const guard = makeSessionGuard();
+  const handed: unknown[] = [];
+
+  await guard.withTurn(() => Promise.resolve(), { stepKey: 'conversation:1', generation: 1 });
+  await guard.withTurn(() => Promise.resolve(), { stepKey: 'conversation:2', generation: 3 });
+
+  await guard.withInvalidation((lastStep) => {
+    handed.push(lastStep);
+
+    return Promise.resolve();
+  });
+
+  expect(handed).toStrictEqual([{ stepKey: 'conversation:2', generation: 3 }]);
+});
+
+test('it keeps the step of the newest claim when a turn of an older claim starts after it', async () => {
+  const guard = makeSessionGuard();
+  const handed: unknown[] = [];
+
+  await guard.withTurn(() => Promise.resolve(), { stepKey: 'conversation:4', generation: 6 });
+  await guard.withTurn(() => Promise.resolve(), { stepKey: 'conversation:4', generation: 5 });
+
+  await guard.withInvalidation((lastStep) => {
+    handed.push(lastStep);
+
+    return Promise.resolve();
+  });
+
+  expect(handed).toStrictEqual([{ stepKey: 'conversation:4', generation: 6 }]);
+});
+
 test('it runs a cleanup at once when no turn runs', async () => {
   const guard = makeSessionGuard();
   const ran: string[] = [];

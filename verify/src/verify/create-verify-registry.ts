@@ -157,7 +157,7 @@ export function createVerifyRegistry(): Wringer {
     .action({
       name: 'script-reply',
       summary:
-        "Queue the scripted model's next reply. With --memory it first proposes that memory, with --export it first asks to export memory, with --task it first starts that task, and with --notebook it first writes 2 notes, one private, and links them",
+        "Queue the scripted model's next reply. With --memory it first proposes that memory, with --export it first asks to export memory, with --task it first starts that task, and with --notebook it first writes 2 notes, one private, and links them, and with --forget-note it first forgets the note with that short ID",
       effect: 'write',
       targets: ['local'],
       input: controlRoutes.addReply.input,
@@ -223,9 +223,13 @@ export function createVerifyRegistry(): Wringer {
     .command({
       path: ['conversation', 'turn'],
       summary:
-        'Check that the records since `use` hold the owner message --message, then the reply --reply',
+        'Check that the records since `use` hold the owner message --message, then the reply --reply, waiting up to --wait-ms (10000 by default)',
       effect: 'read',
-      args: z.strictObject({ message: z.string().min(1), reply: z.string().min(1) }),
+      args: z.strictObject({
+        message: z.string().min(1),
+        reply: z.string().min(1),
+        waitMs: z.int().positive().optional(),
+      }),
       data: conversationTurnSchema,
       run: (args, ctx) => readConversationTurn(ctx.drivers.stream, args),
     })

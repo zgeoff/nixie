@@ -33,8 +33,20 @@ export function buildScriptedReplies(
   const notebook =
     reply.notebook === undefined ? [] : buildNotebookReplies(reply.notebook, forConversation);
 
+  const forgetNote =
+    reply.forgetNote === undefined
+      ? []
+      : [{ toolUse: { name: 'mcp__nixie__notebook_forget', input: { id: reply.forgetNote } } }];
+
   if (reply.task === undefined) {
-    return [...memory, ...memoryExport, ...drawing, ...notebook, { text: reply.text }];
+    return [
+      ...memory,
+      ...memoryExport,
+      ...drawing,
+      ...notebook,
+      ...forgetNote,
+      { text: reply.text },
+    ];
   }
 
   const { reply: taskReply, ...task } = reply.task;
@@ -43,6 +55,7 @@ export function buildScriptedReplies(
     ...memory,
     ...memoryExport,
     ...notebook,
+    ...forgetNote,
     { toolUse: { name: 'mcp__nixie__task_start', input: task }, ...forConversation },
     { text: reply.text, ...forConversation },
     { text: taskReply, when: (body: ScriptedBody) => !isConversationTurn(body) },

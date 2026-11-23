@@ -89,51 +89,54 @@ async function runSpendCheck(
 }
 
 function runSessionTurn(conversation: ConversationRun, input: StepInput): Promise<StepResult> {
-  return conversation.session.withTurn(async (invalidated) => {
-    const signal = AbortSignal.any([input.signal, invalidated]);
-    const definitions = conversation.getDefinitions();
+  return conversation.session.withTurn(
+    async (invalidated) => {
+      const signal = AbortSignal.any([input.signal, invalidated]);
+      const definitions = conversation.getDefinitions();
 
-    const listed = await readTaskDirectory(conversation.context, conversation.messaging);
+      const listed = await readTaskDirectory(conversation.context, conversation.messaging);
 
-    const run = {
-      ...conversation,
-      messaging: {
-        ...listed,
-        unlisted: await readUnlistedProfiles(conversation.context, listed.directory),
-      },
-    };
+      const run = {
+        ...conversation,
+        messaging: {
+          ...listed,
+          unlisted: await readUnlistedProfiles(conversation.context, listed.directory),
+        },
+      };
 
-    const marks = await readSessionMarks(run.context, input.taskID, run.sinceSequence);
-    const catalog = await run.loadOrPinSkillCatalog?.(input.taskID);
+      const marks = await readSessionMarks(run.context, input.taskID, run.sinceSequence);
+      const catalog = await run.loadOrPinSkillCatalog?.(input.taskID);
 
-    const skillCatalog = catalog ?? null;
+      const skillCatalog = catalog ?? null;
 
-    const position = pickSessionPosition({
-      marks,
-      personaHash: definitions.personaHash,
-      isTask: run.frame.kind === 'task',
+      const position = pickSessionPosition({
+        marks,
+        personaHash: definitions.personaHash,
+        isTask: run.frame.kind === 'task',
 
-      // A run of a fresh window that has opened no session yet holds a point of an earlier run's.
-      boundary:
-        run.sinceSequence !== undefined && !marks.hasOpening
-          ? null
-          : parseSessionBoundary(input.sessionBoundary),
-      session: run.harness.session,
-      capabilities: run.harness.capabilities,
-      threshold: run.compaction.threshold,
-    });
+        // A run of a fresh window that has opened no session yet holds a point of an earlier run's.
+        boundary:
+          run.sinceSequence !== undefined && !marks.hasOpening
+            ? null
+            : parseSessionBoundary(input.sessionBoundary),
+        session: run.harness.session,
+        capabilities: run.harness.capabilities,
+        threshold: run.compaction.threshold,
+      });
 
-    const step = { run, input, signal, definitions, skillCatalog, marks, position };
+      const step = { run, input, signal, definitions, skillCatalog, marks, position };
 
-    const result = await runSessionStep(step);
+      const result = await runSessionStep(step);
 
-    const settled =
-      run.frame.kind === 'task' && isStepTurnCut(input.interrupt, result.records)
-        ? buildCutResult(result)
-        : result;
+      const settled =
+        run.frame.kind === 'task' && isStepTurnCut(input.interrupt, result.records)
+          ? buildCutResult(result)
+          : result;
 
-    return keepApprovedCallsReady(run, input.taskID, settled);
-  });
+      return keepApprovedCallsReady(run, input.taskID, settled);
+    },
+    { stepKey: input.stepKey, generation: input.lease.generation },
+  );
 }
 
 async function runSessionStep(step: SessionStep): Promise<StepResult> {
