@@ -1,6 +1,12 @@
 import { withWriteTransaction, writeRecordsInTransaction } from '@heynixie/log';
 import type { TasksContext } from '@heynixie/tasks';
-import { probeTaskPaused, requireLease, resetLease, waitAtFaultPoint } from '@heynixie/tasks';
+import {
+  isGateBarring,
+  readTaskHolds,
+  requireLease,
+  resetLease,
+  waitAtFaultPoint,
+} from '@heynixie/tasks';
 import type { ActionRow, ActionsTables, Admission, AdmitTool } from '../types';
 import { buildCancelledCheck } from './build-cancelled-check';
 import { buildHeldCheck } from './build-held-check';
@@ -104,16 +110,22 @@ function readAndWriteStart(
       .selectFrom('actions')
       .innerJoin('tasks', 'tasks.task_id', 'actions.task_id')
       .select((eb) => eb.or([buildCancelledCheck(eb), buildHeldCheck(eb)]).as('is_barred'))
-      .select(['actions.held_by_proposal_id', 'actions.deadline_at', 'actions.tool'])
+      .select([
+        'actions.held_by_proposal_id',
+        'actions.deadline_at',
+        'actions.tool',
+        'actions.attempt_count',
+      ])
       .where('actions.action_id', '=', attempt.action.action_id)
       .executeTakeFirstOrThrow();
 
-    const isPaused = await probeTaskPaused(tx, attempt.action.task_id);
+    const holds = await readTaskHolds(tx, attempt.action.task_id);
 
+    const isGateHeld = isGateBarring('action', holds, { isStarted: action.attempt_count > 0 });
     const isBarred = action.is_barred === 1 || action.is_barred === true;
     const isToolHeld = probeToolHeld(options, action.tool);
 
-    if (isBarred || isPaused || isToolHeld || action.held_by_proposal_id !== null) {
+    if (isBarred || isGateHeld || isToolHeld || action.held_by_proposal_id !== null) {
       if (options.resetWhenBarred) {
         await resetLease(tx, attempt.lease);
       }

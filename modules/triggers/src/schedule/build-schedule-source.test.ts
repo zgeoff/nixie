@@ -1,6 +1,12 @@
 import { expect, onTestFinished, test } from 'bun:test';
 import { triggerSchema } from '@heynixie/contract';
-import { readRecords } from '@heynixie/log';
+import {
+  pauseNixieInTransaction,
+  readRecords,
+  resumeNixieInTransaction,
+  withWriteTransaction,
+} from '@heynixie/log';
+import { buildLogSeeder } from '@heynixie/log/test-utils';
 import { writeTaskControl } from '@heynixie/tasks';
 import { seedDefinitionTask } from '@heynixie/tasks/test-utils';
 import { waitForCondition } from '@heynixie/testing';
@@ -91,8 +97,28 @@ async function setupTest() {
     ]);
   };
 
+  const definitions = { snapshotHash: 'sha256:test' };
+
+  const pauseNixie = () =>
+    withWriteTransaction(triggers.writer, (tx) =>
+      pauseNixieInTransaction(tx, triggers.context.log, {
+        cause: 'owner',
+        recoveryID: null,
+        by: 'session-a',
+        definitions,
+      }),
+    );
+
+  const resumeNixie = () =>
+    withWriteTransaction(triggers.writer, (tx) =>
+      resumeNixieInTransaction(tx, triggers.context.log, { by: 'session-a', definitions }),
+    );
+
   return {
     ...triggers,
+    pauseNixie,
+    resumeNixie,
+    seed: buildLogSeeder(triggers.context),
     armTaskDefinition,
     owner,
     lastMessage,
@@ -596,4 +622,77 @@ test('it does not fire a one-shot in a restored backup that holds its key', asyn
     ['trigger.fired'],
     1,
   ]);
+});
+
+test('it fires once as a catch-up when nixie resumes within half the interval of a slot that it held', async () => {
+  const ctx = await setupTest();
+
+  await ctx.armTaskDefinition({ schedule: { every: { minutes: 5 } } });
+  await ctx.pauseNixie();
+  await ctx.startSource();
+  await ctx.settle();
+  await ctx.advance(5 * 60_000 + 20_000);
+
+  const heldOutcomes = await ctx.readOutcomes();
+
+  await ctx.resumeNixie();
+  await ctx.advance(80_000);
+
+  const outcomes = await ctx.readOutcomes();
+
+  expect(heldOutcomes).toStrictEqual([]);
+
+  expect(
+    outcomes.map((outcome) => [
+      outcome.kind,
+      outcome.payload['scheduledFor'],
+      outcome.payload['isCatchUp'],
+    ]),
+  ).toStrictEqual([['trigger.fired', '2027-03-09T00:05:00.000Z', true]]);
+});
+
+test('it skips with too_late a slot that nixie held past half the interval', async () => {
+  const ctx = await setupTest();
+
+  await ctx.armTaskDefinition({ schedule: { every: { minutes: 5 } } });
+  await ctx.pauseNixie();
+  await ctx.startSource();
+  await ctx.settle();
+  await ctx.advance(5 * 60_000 + 140_000);
+  await ctx.resumeNixie();
+  await ctx.advance(20_000);
+
+  const outcomes = await ctx.readOutcomes();
+
+  expect(outcomes.map((outcome) => [outcome.kind, outcome.payload['reason']])).toStrictEqual([
+    ['trigger.skipped', 'too_late'],
+  ]);
+});
+
+test('it keeps a one-shot in force while the spending stop holds it, and fires and retires it when the stop clears', async () => {
+  const ctx = await setupTest();
+
+  await ctx.armTaskDefinition({ at: '2027-03-09T00:10:00.000Z' });
+  await ctx.seed.spendStop();
+  await ctx.startSource();
+  await ctx.settle();
+  await ctx.advance(10 * 60_000 + 10_000);
+
+  const held = await readTestTriggerRows(ctx);
+
+  await ctx.seed.record({
+    kind: 'spend.stop_cleared',
+    payload: { reason: 'reset' },
+  });
+
+  await ctx.advance(20_000);
+
+  const outcomes = await ctx.readOutcomes();
+  const rows = await readTestTriggerRows(ctx);
+
+  expect([
+    held.definitions.map((row) => row.definition_hash),
+    outcomes.map((outcome) => outcome.kind),
+    rows.definitions.map((row) => row.definition_hash),
+  ]).toStrictEqual([['hash-1'], ['trigger.fired'], [null]]);
 });

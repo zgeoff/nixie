@@ -5,6 +5,7 @@ import {
   resumeNixieInTransaction,
   withWriteTransaction,
 } from '@heynixie/log';
+import { buildLogSeeder } from '@heynixie/log/test-utils';
 import { writeStepCommit, writeTaskControl, writeTaskResume } from '@heynixie/tasks';
 import { buildActionSeeder } from '../test-utils/build-action-seeder';
 import { createTestStep } from '../test-utils/create-test-step';
@@ -373,4 +374,59 @@ test('it reads the held prefixes at the moment of the claim, after the transacti
   });
 
   expect([lease?.holder, reads.count]).toStrictEqual(['runner-a', 1]);
+});
+
+test('it claims no action of an exempt task while the spending stop stands', async () => {
+  const ctx = await setupTest();
+  const step = await createTestStep(ctx.context);
+
+  await ctx.seed.action({ step });
+  await ctx.pauseNixie();
+  await ctx.exemptTask(step.lease.workID);
+
+  await buildLogSeeder(ctx.context).spendStop();
+
+  const lease = await claimAction(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  expect(lease).toBeNull();
+});
+
+test('it claims no action of a done task while nixie is paused', async () => {
+  const ctx = await setupTest();
+  const step = await createTestStep(ctx.context);
+
+  await ctx.seed.action({ step });
+
+  await writeStepCommit(ctx.context, step, { next: 'done', records: [], acknowledged: [] });
+
+  await ctx.pauseNixie();
+
+  const lease = await claimAction(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  expect(lease).toBeNull();
+});
+
+test('it claims no unstarted action of a task at its limit, and claims one with a started attempt', async () => {
+  const ctx = await setupTest();
+  const step = await createTestStep(ctx.context);
+  const queued = await ctx.seed.action({ step });
+
+  await buildLogSeeder(ctx.context).record({
+    kind: 'task.limit_reached',
+    thread: step.lease.workID,
+    payload: {
+      taskID: step.lease.workID,
+      stepKey: step.stepKey,
+      used: { turns: 1, dollars: 0.1 },
+      limits: { turns: 1, dollars: 2 },
+    },
+  });
+
+  const unstarted = await claimAction(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  await ctx.db.updateTable('actions').set({ attempt_count: 1 }).execute();
+
+  const started = await claimAction(ctx.context, { holder: 'runner-a', leaseMs: 60_000 });
+
+  expect([unstarted, started?.workID]).toStrictEqual([null, queued.action_id]);
 });

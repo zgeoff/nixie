@@ -1,7 +1,8 @@
 import { withWriteTransaction } from '@heynixie/log';
 import type { Transaction } from 'kysely';
+import { isGateBarring } from '../gate/is-gate-barring';
+import { readTaskHolds } from '../gate/read-task-holds';
 import type { ClaimCandidate, Lease, LeaseKind, TasksContext, TasksTables } from '../types';
-import { probeTaskPaused } from '../utils/probe-task-paused';
 import { waitAtFaultPoint } from './wait-at-fault-point';
 
 export interface ClaimRequest {
@@ -31,7 +32,7 @@ export async function claimLease(
       return null;
     }
 
-    const isRefused = await probeRefusalAsPaused(tx, candidate);
+    const isRefused = await probeRefusalByGate(tx, request.kind, candidate);
 
     if (isRefused) {
       return null;
@@ -60,19 +61,30 @@ export async function claimLease(
   return lease;
 }
 
-async function probeRefusalAsPaused(
+// The claim queries filter with the gate's own predicate, so a candidate that the gate bars means a
+// query that skipped it: the test build throws, and a release refuses the claim.
+async function probeRefusalByGate(
   tx: Transaction<unknown>,
+  kind: LeaseKind,
   candidate: ClaimCandidate,
 ): Promise<boolean> {
-  const isPaused = await probeTaskPaused(tx, candidate.taskID);
+  const holds = await readTaskHolds(tx, candidate.taskID);
 
-  if (isPaused && NIXIE_TEST_BUILD) {
+  const caller = kind === 'task' ? 'task_claim' : 'action';
+  const isBarred = isGateBarring(caller, holds, { isStarted: candidate.isStarted === true });
+
+  if (isBarred && NIXIE_TEST_BUILD) {
+    const reasons = Object.entries(holds)
+      .filter(([, isHeld]) => isHeld)
+      .map(([reason]) => reason)
+      .join(', ');
+
     throw new Error(
-      `a candidate query returned work ${candidate.workID} of task ${candidate.taskID}, which nixie's pause stops`,
+      `a candidate query returned work ${candidate.workID} of task ${candidate.taskID}, which the task gate holds for ${reasons}`,
     );
   }
 
-  return isPaused;
+  return isBarred;
 }
 
 type LeaseClaim = Omit<Lease, 'generation'> & { readonly now: number };

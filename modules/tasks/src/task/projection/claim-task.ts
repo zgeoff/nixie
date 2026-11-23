@@ -3,8 +3,8 @@ import { parseJSONObject, writeRecordsInTransaction } from '@heynixie/log';
 import type { Transaction } from 'kysely';
 import { sql } from 'kysely';
 import invariant from 'tiny-invariant';
+import { buildGateFilter } from '../../gate/build-gate-filter';
 import { claimLease } from '../../lease/claim-lease';
-import { buildPauseCheck } from '../../pause/build-pause-check';
 import { writeRunOpenInTransaction } from '../../run/write-run-open-in-transaction';
 import { buildStepWake } from '../../step/build-step-wake';
 import { taskStepStartedCodec } from '../../step/task-step-started-codec';
@@ -84,7 +84,12 @@ async function readClaimableTask(
         return tasks === 'started' ? isStarted : eb.not(isStarted);
       }),
     )
-    .where((eb) => buildPauseCheck(eb, 'tasks.task_id'))
+    .where((eb) =>
+      buildGateFilter(eb, 'task_claim', {
+        taskID: sql.ref('tasks.task_id'),
+        isStarted: sql.lit(0),
+      }),
+    )
     .where((eb) => (taskID === undefined ? eb.and([]) : eb('tasks.task_id', '=', taskID)))
     .orderBy('tasks.updated_sequence')
     .limit(1)
