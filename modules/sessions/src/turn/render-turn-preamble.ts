@@ -1,5 +1,5 @@
 import type { SystemMessageType } from '@heynixie/wire';
-import { renderSystemMessage } from '@heynixie/wire';
+import { mintBlockID, renderSystemMessage } from '@heynixie/wire';
 import { renderRetrievedItems } from '../retrieved/render-retrieved-items';
 import { renderRetrievedSelfNotes } from '../retrieved/render-retrieved-self-notes';
 import type { MemoryLineOptions } from '../types';
@@ -21,6 +21,7 @@ export interface TurnPreamble {
 export function renderTurnPreamble(
   preamble: TurnPreamble,
   lines: MemoryLineOptions,
+  mint: () => string = mintBlockID,
 ): readonly string[] {
   const retrieval = preamble.retrieval;
   const at = preamble.at;
@@ -28,11 +29,15 @@ export function renderTurnPreamble(
   return [
     renderPreambleMessage('task-continue', at, preamble.continuation),
     renderPreambleMessage('pinned-memory-changes', at, preamble.changes),
-    renderPreambleMessage('retrieved-memory', at, renderRetrievedItems(retrieval.items, lines)),
+    renderPreambleMessage(
+      'retrieved-memory',
+      at,
+      renderRetrievedItems(retrieval.items, lines, mint),
+    ),
     renderPreambleMessage(
       'retrieved-self-notes',
       at,
-      renderRetrievedSelfNotes(retrieval.selfNotes, lines),
+      renderRetrievedSelfNotes(retrieval.selfNotes, lines, mint),
     ),
     preamble.runBlocks,
     preamble.brief,

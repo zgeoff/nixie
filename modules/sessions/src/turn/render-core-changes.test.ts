@@ -25,6 +25,7 @@ test('it renders no note before the first turn', () => {
       unpinnedShortIDs: new Map(),
       use: { items: 1, tokens: 31, budget: 2000 },
     },
+    () => 'f00000000001',
   );
 
   expect(note).toBeNull();
@@ -54,6 +55,7 @@ test('it renders no note when the pinned core is unchanged', () => {
       unpinnedShortIDs: new Map(),
       use: { items: 1, tokens: 31, budget: 2000 },
     },
+    () => 'f00000000001',
   );
 
   expect(note).toBeNull();
@@ -98,15 +100,20 @@ test('it notes each item pinned and edited since the last turn in full, and each
       unpinnedShortIDs: new Map([['7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d001', 'r2vd6t0jmy']]),
       use: { items: 2, tokens: 64, budget: 2000 },
     },
+    () => 'f00000000001',
   );
 
   expect(note).toMatchInlineSnapshot(`
     "The pinned memory changed since your last turn. Where these differ from the pinned memory this session opened with, or from anything said earlier, these hold.
     - Changed [h4ns8w1cpe]:
-      - Goes by Sasha
+      - <memory-text fence="f00000000001">
+    Goes by Sasha
+    </memory-text fence="f00000000001">
         h4ns8w1cpe v2 · 13 Oct · you noted it · the owner said this
     - Pinned [b7kq2m9xza]:
-      - Uses they/them
+      - <memory-text fence="f00000000001">
+    Uses they/them
+    </memory-text fence="f00000000001">
         b7kq2m9xza v1 · 12 Oct · you noted it · the owner said this
     - Unpinned [r2vd6t0jmy]
     Pinned memory now: 2 items, 64 of 2000 tokens."
@@ -124,6 +131,7 @@ test('it gives the count and the tokens of an empty core after the last item is 
       unpinnedShortIDs: new Map([['7d3c1a52-8a3c-4b46-9a4e-1c51f0f6d001', 'r2vd6t0jmy']]),
       use: { items: 0, tokens: 0, budget: 1500 },
     },
+    () => 'f00000000001',
   );
 
   expect(note).toEndWith('- Unpinned [r2vd6t0jmy]\nPinned memory now: 0 items, 0 of 1500 tokens.');
@@ -182,9 +190,10 @@ test('it keeps where a changed item came from, so an unconfirmed edit still read
       unpinnedShortIDs: new Map(),
       use: { items: 1, tokens: 31, budget: 2000 },
     },
+    () => 'f00000000001',
   );
 
   expect(note).toInclude(
-    '\n- Changed [h4ns8w1cpe]:\n  - The clinic is on Elm Street\n    h4ns8w1cpe v2 · 13 Oct · you noted it · unconfirmed\n    How it came up: "the clinic moved to Elm Street"',
+    '\n- Changed [h4ns8w1cpe]:\n  - <memory-text fence="f00000000001">\nThe clinic is on Elm Street\n</memory-text fence="f00000000001">\n    h4ns8w1cpe v2 · 13 Oct · you noted it · unconfirmed\n    How it came up: "the clinic moved to Elm Street"',
   );
 });
