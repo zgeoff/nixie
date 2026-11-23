@@ -6,10 +6,10 @@
 
 A coding task's runner calls no model and judges nothing. Each of its steps moves text and events
 between the task and the bound session: it forwards the events in the wake set to the report target,
-and ends the task with a report when the session ends. This doc holds the start and the join of a
-coding task, the runner's definition, its records, what one step does, and how the task ends. The
-tools nixie calls on a coding task are in [the tools](tools.md), and the adapter that the step calls
-is in [the atc adapter](atc.md). The terms, such as a bound session, a joined session, a hop and a
+and ends the task with a report when the session ends. Below are the start and the join of a coding
+task, the runner's definition, its records, what one step does, and how the task ends. The tools
+nixie calls on a coding task are in [the tools](tools.md), and the adapter that the step calls is in
+[the atc adapter](atc.md). The terms, such as a bound session, a joined session, a hop and a
 variant, are in the [README](README.md#terms). Once the owner approves the design, build this part
 in [the atc runner](https://linear.app/zgeoff/issue/GEO-1843).
 
@@ -371,7 +371,8 @@ tasks.list({ runner: 'atc', state: 'waiting', limit: 20 });
 ### Ends, stops and the sweep
 
 - A coding task ends as `done` when its session ends, started or joined alike. It keeps waiting on
-  `gone`, because a session out of sight can come back: a daemon back up, or a host that wakes.
+  `gone`, because a session out of sight can come back when its daemon comes back up or its host
+  wakes.
 - A stop, a close or a failure calls the definition's `ended` after its transaction commits.
 - After a stop, `ended` queues a `coding.stop` action for the bound session, started or joined, and
   writes `coding.session_unbound` in the same commit. A stop cancels only the actions queued before
@@ -394,7 +395,7 @@ tasks.list({ runner: 'atc', state: 'waiting', limit: 20 });
 - A step never throws when an outside read fails. Only a record it cannot parse makes it throw.
 - A done coding task refuses messages, as every done task does. The step that returns `done`
   releases every [message wait](../../../architecture/core/task-messages.md#message-waits) that is
-  open on the task: each sender that waits on a reply from it stops waiting.
+  open on the task, so no sender keeps waiting on a reply from the task.
 
 ### Limits
 

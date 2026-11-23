@@ -3,7 +3,7 @@
 - **Status:** draft
 - **Work items:** [the atc runner](https://linear.app/zgeoff/issue/GEO-1843)
 
-nixie works with a coding session through five tools of the coding module: it lists the sessions it
+nixie works with a coding session through these tools of the coding module: it lists the sessions it
 can join, steers a session by typing into its input, sends a note through atc's bridge, reads a
 session, and picks the events that wake it. Below are each tool's contract, its effect declaration
 and its policy. The start and the join are in [the runner](runner.md), and the adapter calls that
@@ -171,9 +171,8 @@ coding:
 - A start or a join takes the `wake` option. Without it, the task takes the default set for its
   origin from `coding.wake`.
 - The coding source writes each event of a bound session on the coding task's thread. An event in
-  the wake set, and `ended` in or out of it, wakes the step; `ended` always wakes it because the
-  step ends the task. Every other event lands as a record that wakes nothing and changes only
-  `coding_sessions`.
+  the wake set wakes the step. `ended` wakes it even outside the set, because the step ends the
+  task. Every other event lands as a record that wakes nothing and changes only `coding_sessions`.
 - `coding.watch` takes a whole set. An empty set is valid: then only the session's end and the
   report reach nixie.
 
@@ -191,11 +190,11 @@ coding:
 - **The step forwards an event to the report target and never summarises it.** The `task_message` to
   the report target carries the event's kind, the state, and the question or the note's text. nixie
   calls `coding.read` for more.
-- **`coding.read` is lean by default.** Its default answer fits one screen, so a check on a session
-  costs nixie's context little. The prompt and the tail come only on request.
-- **The tail reads atc's transcript from the start, a page at a time.** atc's transcript read has no
-  tail, so the adapter pages forward with the largest page atc takes and keeps the last turns. A
-  long session's tail costs one call per 200 rows.
+- **`coding.read` is lean by default.** Its default answer fits one screen, so checking a session
+  uses little of nixie's context. The prompt and the tail come only on request.
+- **For the tail, the adapter reads atc's transcript from the start, a page at a time.** atc's
+  transcript read has no tail, so the adapter pages forward with the largest page atc takes and
+  keeps the last turns. A long session's tail costs one call per 200 rows.
 
 ## Builder decides
 

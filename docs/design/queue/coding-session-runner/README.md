@@ -9,8 +9,8 @@ starts it in atc, a separate program that runs coding agents, once your policy r
 you point nixie at a session you already run in atc, and nixie joins it. Either way the session
 shows as a task in nixie. nixie steers the session by typing into its input, so each steer is a user
 turn of the session, as a line you type is. nixie reads the session's state and last reply when it
-needs them, and only the session events that nixie picked wake it. This design adds the code that
-runs such a task, the coding runner, its tools, and its first adapter: the package `coding-atc`,
+needs them, and only the session events that nixie picked wake it. This design adds the coding
+runner, which runs such a task, with its tools and its first adapter: the package `coding-atc`,
 whose adapter ID is `atc`.
 
 Once the owner approves this design, build
@@ -20,7 +20,7 @@ The coding runner calls no model of its own, and judges nothing about the sessio
 of a coding task moves text and events between the task and the session. nixie's conversation reads
 what the step forwards, and decides whether the session is done, waits on you, or needs a steer. The
 runner plugs into the [task runner port](../../../architecture/core/tasks.md), and this design adds
-members to the port's types. It also rewrites the coding adapter section of the
+members to the port's types. This design also rewrites the coding adapter section of the
 [coding design](../../platform/connectors/coding.md).
 
 These sibling designs touch this one:
@@ -111,9 +111,8 @@ This work changes these modules that every runner or connector uses:
   conversation reads the session and decides.
 - **nixie steers a session by typing into its input.** A coding agent runs in auto mode, where a
   judge model decides each tool call from the user turns it sees. A note from atc's bridge never
-  reaches the judge, so only typed input steers the session. nixie's typed line stands as the
-  session's user input, which holds because nixie spawns and steers these sessions in a system built
-  for it.
+  reaches the judge, so only typed input steers the session. nixie's typed line counts as the
+  session's user input, because nixie spawns and steers these sessions in a system built for that.
 - **One task run spans the whole binding.** The start or the join opens it, and the session's end, a
   failed start, a stop, a close or a failure ends it, with one report. Between those, each event in
   the wake set reaches the report target as a `task_message`, and no event but `ended` ends the task
@@ -126,11 +125,11 @@ This work changes these modules that every runner or connector uses:
   the same for every adapter, and only `coding.<key>` holds what the adapter needs.
 - **The spawn, each steer, each note and each `coding.stop` are actions on the action queue.** The
   spawn and each note declare `idempotency_key` reconciliation, so a crash never spawns a second
-  session. A steer declares `none`, because atc's typing call takes no key and a retry types the
-  line again.
+  session or sends a note twice. A steer declares `none`, because atc's typing call takes no key and
+  a retry types the line again.
 - **A stop of a coding task stops its session, joined or started, through a `coding.stop` action.**
-  The starter rules ask you before nixie stops a session it joined. A close or a failure of the task
-  only unbinds a joined session, which runs on in atc as yours.
+  Under the starter rules, nixie asks you before it stops a session it joined. A close or a failure
+  of the task only unbinds a joined session, which runs on in atc as yours.
 - **nixie reaches atc only through atc-gateway, as a service client.** The gateway reaches every
   daemon in its registry, so one connection sees the sessions on your desktop and on a cloud VM
   alike.

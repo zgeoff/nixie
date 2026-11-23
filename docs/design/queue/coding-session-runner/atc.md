@@ -266,18 +266,18 @@ HTTP refusal carries none:
   15 s after the session started, and for an agent that takes no notes. The adapter takes an
   `unsupported` in the session's first minute as a refusal that may clear, and a later one as final.
 - atc's MCP answer carries only the error's code and `problem`, so the adapter cannot tell a daemon
-  whose identity changed under a key from a daemon that is down. A keyed call takes either as
-  `unknown`, and the queue resends it under the same key.
+  whose identity changed under a key from a daemon that is down. On a keyed call, the adapter treats
+  either as `unknown`, and the queue resends the call under the same key.
 - A steer's lost connection after the request left is `unknown`, and its action's `none`
   reconciliation sends it to you, because the line may have reached the terminal.
 - The start's plan resolves `agent` and `target` from the config into the action's args, so every
   attempt sends the same spawn.
 - `coding.start` and `coding.message` declare `idempotency_key` reconciliation with `keptForMs` 23
   h. A daemon forgets a completed key 24 h after its call, and the gateway keeps its own binding of
-  the key for 48 h, so in the first 23 h a resend never runs the call twice. The queue's own key
-  expiry then sends an unknown outcome to you.
+  the key for 48 h, so in the first 23 h a resend never runs the call twice. After 23 h, the queue's
+  own key expires, and the queue sends the unknown outcome to you.
 - A refused attempt's key is spent at the gateway: a resend of it gets `outcome_unknown` and runs
-  nothing. So the next attempt after a refusal takes the next key, `<action ID>.<n>`, and an attempt
+  nothing. So the next attempt after a refusal takes the next key, `<action ID>.<n>`. An attempt
   after an unknown outcome keeps its key, which the gateway resends to the daemon as a replay.
 - A replay gets the first answer only when the daemon holds the key as completed. When the first
   send never reached the daemon, or the daemon holds the outcome as unknown, every resend gets
@@ -325,11 +325,11 @@ service tokens and every tool this adapter calls.
 - The coding source drops each event of a session that has no bound `coding_sessions` row, and
   stores nothing of it, because nixie's principal reaches sessions that nixie is not working with.
 - The source can read a session's events before the coding task's step writes
-  `coding.session_bound`. So for each bound session whose state is not `ended`, when the source
-  starts and when the session's row appears, the source reads the whole trail from the row's
-  `from_cursor` until a read answers `more: false`, and keeps that session's events. The batch
-  carries the source's stored cursor, so the cursor stays where it was. Each event keeps its dedupe
-  key, so an event that both reads deliver lands once.
+  `coding.session_bound`. So when the source starts, and when a session's row appears, it catches up
+  each bound session whose state is not `ended`: it reads the whole trail from the row's
+  `from_cursor` until a read returns `more: false`, and keeps that session's events. The catch-up's
+  batch carries the source's stored cursor, so the cursor stays where it was. Each event keeps its
+  dedupe key, so an event that both reads deliver lands once.
 - The source stores its cursor through `deliver`, so a batch's records and its cursor commit
   together. At its first start, it reads without a cursor and keeps only the cursor it gets, so it
   never replays the trail.
@@ -337,10 +337,10 @@ service tokens and every tool this adapter calls.
   still reads every event after the deleted ones. An outage longer than that loses only the deleted
   events.
 - A page that lists a daemon under `unavailable` keeps that daemon's place in the cursor, and the
-  source reads it on the next call. A page that lists one under `truncated` lost that daemon's older
-  events: the source logs it with the daemon's name.
-- The source writes an event with `wake: true` when the event is `ended`, or its kind is in the
-  session's wake set: the state for a `state` event, and the label for a `note`. Every other event
+  source reads that daemon again on the next call. When a page lists a daemon under `truncated`,
+  that daemon's older events are lost, and the source logs the loss with the daemon's name.
+- The source writes an event with `wake: true` when the event is `ended`, or when the session's wake
+  set holds the event's state, for a `state` event, or its label, for a `note`. Every other event
   gets `wake: false`, and its record wakes no step: only the coding module's fold of it updates
   `coding_sessions`.
 - The source drops an event of a task that is done, failed or closed, and of a session whose row has
