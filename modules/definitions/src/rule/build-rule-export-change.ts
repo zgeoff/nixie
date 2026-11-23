@@ -106,13 +106,15 @@ function isGapLine(line: string): boolean {
   return line.trim() === '' || line.startsWith('#');
 }
 
-// JSON is a subset of YAML's flow style, so each value serialises with no YAML writer.
+// The definitions repo formats its YAML with oxfmt, so the block is written the way oxfmt leaves
+// it: strings double-quoted, a flow list only while its line fits, and every mapping or list of
+// mappings in block style.
 function renderRuleBlock(rule: RuleForm): string {
   const fields = Object.keys(rule)
     .filter((field) => field !== 'id')
     .toSorted((left, right) => toFieldRank(left) - toFieldRank(right));
 
-  const lines = fields.map((field) => `  ${field}: ${JSON.stringify(rule[field])}`);
+  const lines = fields.flatMap((field) => renderEntry(field, rule[field], 1));
 
   return [`${rule.id}:`, ...lines].join('\n');
 }
@@ -137,6 +139,53 @@ function toFieldRank(field: string): number {
   const rank = ruleFieldOrder.indexOf(field);
 
   return rank === -1 ? ruleFieldOrder.length : rank;
+}
+
+const maxLineWidth = 100;
+
+function renderEntry(key: string, value: unknown, depth: number): string[] {
+  const indent = '  '.repeat(depth);
+
+  if (Array.isArray(value)) {
+    const flow = `${indent}${key}: [${value.map((item) => JSON.stringify(item)).join(', ')}]`;
+
+    if (value.every((item) => isScalar(item)) && flow.length <= maxLineWidth) {
+      return [flow];
+    }
+
+    return [`${indent}${key}:`, ...value.flatMap((item) => renderItem(item, depth + 1))];
+  }
+
+  if (isRecord(value) && Object.keys(value).length > 0) {
+    return [
+      `${indent}${key}:`,
+      ...Object.entries(value).flatMap(([name, entry]) => renderEntry(name, entry, depth + 1)),
+    ];
+  }
+
+  return [`${indent}${key}: ${isRecord(value) ? '{}' : JSON.stringify(value)}`];
+}
+
+function isScalar(value: unknown): boolean {
+  return typeof value !== 'object' || value === null;
+}
+
+function renderItem(item: unknown, depth: number): string[] {
+  const indent = '  '.repeat(depth);
+
+  if (isRecord(item) && Object.keys(item).length > 0) {
+    const [first = '', ...rest] = Object.entries(item).flatMap(([name, entry]) =>
+      renderEntry(name, entry, depth + 1),
+    );
+
+    return [`${indent}- ${first.trimStart()}`, ...rest];
+  }
+
+  return [`${indent}- ${isRecord(item) ? '{}' : JSON.stringify(item)}`];
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 function pickCurrentText(

@@ -412,7 +412,7 @@ test("it rebuilds the rolling pull request on the repo's newer version when you 
       number: 1,
       state: 'open',
       isOnNewestBase: true,
-      text: 'ask-mail:\n  outcome: "ask"\n  tools: ["mail.reply","mail.send"]\n',
+      text: 'ask-mail:\n  outcome: "ask"\n  tools: ["mail.reply", "mail.send"]\n',
     },
   ]);
 });
