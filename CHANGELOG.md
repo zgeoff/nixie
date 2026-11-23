@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.104.0](https://github.com/zgeoff/nixie/compare/v0.103.0...v0.104.0) (2026-11-23)
+
+
+### Features
+
+* **definitions:** sign the skill export in with a github app ([#1396](https://github.com/zgeoff/nixie/issues/1396)) ([58a076a](https://github.com/zgeoff/nixie/commit/58a076a4f09b0cc82bee836eda987c72f72c37b6))
+* **memory:** show memory usage and skip this session's writes ([#1398](https://github.com/zgeoff/nixie/issues/1398)) ([f716f8b](https://github.com/zgeoff/nixie/commit/f716f8b67333d7f814f85bd1c11d60848eda7ce8))
+
 ## [0.103.0](https://github.com/zgeoff/nixie/compare/v0.102.0...v0.103.0) (2026-11-23)
 
 

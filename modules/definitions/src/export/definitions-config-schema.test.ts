@@ -37,6 +37,7 @@ test('it reads the export repo with the main branch and GitHub API by default', 
       repository: 'harbour/definitions',
       base: 'main',
       apiURL: 'https://api.github.com',
+      app: null,
       title: null,
       message: null,
     },
@@ -60,6 +61,7 @@ test('it reads the title and message templates of the export', () => {
       repository: 'harbour/definitions',
       base: 'main',
       apiURL: 'https://api.github.com',
+      app: null,
       title: 'skills: {operation} {skill}',
       message: '{agent} for {owner}: approval {approval}, proposal {proposal}.\n\n{notes}',
     },
@@ -142,4 +144,32 @@ test('it refuses an unknown key', () => {
     code: 'unrecognized_keys',
     keys: ['probe_intervall_ms'],
   });
+});
+
+test('it reads the GitHub App that signs the export in', () => {
+  const result = definitionsConfigSchema.safeParse({
+    source: { kind: 'path', path: '/etc/nixie/definitions' },
+    export: {
+      repository: 'harbour/definitions',
+      app: { client_id: 'Iv1.harbour', installation_id: 4242 },
+    },
+  });
+
+  expect(result.data?.export?.app).toStrictEqual({ clientID: 'Iv1.harbour', installationID: 4242 });
+});
+
+test.each([
+  [
+    'an installation ID that is not a whole number',
+    { client_id: 'Iv1.harbour', installation_id: 1.5 },
+  ],
+  ['an empty client ID', { client_id: '', installation_id: 4242 }],
+  ['an app with a private key inline', { client_id: 'a', installation_id: 1, private_key: 'x' }],
+])('it refuses %s', (_title, app) => {
+  const result = definitionsConfigSchema.safeParse({
+    source: { kind: 'path', path: '/etc/nixie/definitions' },
+    export: { repository: 'harbour/definitions', app },
+  });
+
+  expect(result.success).toBeFalse();
 });

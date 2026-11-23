@@ -700,6 +700,25 @@
               "type": "string",
               "format": "uri"
             },
+            "app": {
+              "type": "object",
+              "properties": {
+                "client_id": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "installation_id": {
+                  "type": "integer",
+                  "exclusiveMinimum": 0,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "client_id",
+                "installation_id"
+              ],
+              "additionalProperties": false
+            },
             "title": {
               "type": "string",
               "minLength": 1
@@ -808,6 +827,7 @@
             "deployment_key",
             "impd_token",
             "definitions_export_token",
+            "definitions_export_app_key",
             "model_credentials",
             "connector_credentials"
           ],
@@ -818,6 +838,7 @@
               "deployment_key",
               "impd_token",
               "definitions_export_token",
+              "definitions_export_app_key",
               "model_credentials",
               "connector_credentials",
               "settings"

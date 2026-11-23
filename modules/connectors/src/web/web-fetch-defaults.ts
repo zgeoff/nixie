@@ -47,6 +47,7 @@ export const webFetchDefaults: WebFetchConfig = {
     'deployment_key',
     'impd_token',
     'definitions_export_token',
+    'definitions_export_app_key',
     'model_credentials',
     'connector_credentials',
   ],
