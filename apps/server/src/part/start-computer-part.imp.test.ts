@@ -8,8 +8,10 @@ import { waitFor } from '@zgeoff/testing';
 import invariant from 'tiny-invariant';
 import { buildButtonPageURL } from '../test-utils/build-button-page-url';
 import { buildPopupPageURL } from '../test-utils/build-popup-page-url';
+import { buildSocketDumpArgv } from '../test-utils/build-socket-dump-argv';
 import { buildSocketProbeArgv } from '../test-utils/build-socket-probe-argv';
 import { buildWorkerSocketPageURL } from '../test-utils/build-worker-socket-page-url';
+import { parseSocketDump } from '../test-utils/parse-socket-dump';
 
 // These tests need a real impd on a host with /dev/kvm and the computer image built into it.
 // docs/runbooks/imp-isolation-tests.md names the variables that turn them on. CI skips them, so a
@@ -528,13 +530,17 @@ test.skipIf(!hasImpHost)(
 );
 
 test.skipIf(!hasImpHost)(
-  'it lets the guest reach the VNC server on its socket and no account that Chromium or the terminal runs as',
+  'it serves VNC on its Unix socket alone, which the guest reaches and the account that Chromium runs as does not',
   async () => {
     const ctx = await setupTest();
 
     const asRoot = await ctx.execAsRoot(
       buildSocketProbeArgv([{ kind: 'unix', path: '/run/nixie-vnc/vnc.sock' }]),
     );
+
+    const dumped = await ctx.execAsRoot(buildSocketDumpArgv('x11vnc'));
+
+    const dump = parseSocketDump(dumped);
 
     const asChrome = await ctx.execAsRoot([
       'setpriv',
@@ -548,7 +554,17 @@ test.skipIf(!hasImpHost)(
       ]),
     ]);
 
-    expect([asRoot, asChrome]).toStrictEqual(['open\n', 'closed\nclosed\nclosed\n']);
+    expect([
+      asRoot,
+      asChrome,
+      dump.processes.map((process) => ({ inet: process.inet, unixPaths: process.unixPaths })),
+      dump.control.inet.map((socket) => `${socket.table} ${socket.state}`),
+    ]).toStrictEqual([
+      'open\n',
+      'closed\nclosed\nclosed\n',
+      [{ inet: [], unixPaths: expect.arrayContaining(['/run/nixie-vnc/vnc.sock']) }],
+      ['tcp 0A', 'udp 07'],
+    ]);
   },
 );
 
