@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.109.0](https://github.com/zgeoff/nixie/compare/v0.108.0...v0.109.0) (2026-11-23)
+
+
+### Features
+
+* **memory:** let a task definition grant self-note writes ([#1423](https://github.com/zgeoff/nixie/issues/1423)) ([8cde46f](https://github.com/zgeoff/nixie/commit/8cde46fbdbd7e65d9617b53de8c6c98e46a83c2f))
+
 ## [0.108.0](https://github.com/zgeoff/nixie/compare/v0.107.0...v0.108.0) (2026-11-23)
 
 
