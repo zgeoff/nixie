@@ -27,8 +27,9 @@ user and nixie, such as a deal, a nickname or a running joke, and self for a
 [self-note](./writes.md#self-notes) that nixie writes about itself. A new item, or a new item's
 proposal, is owner unless the same write transaction commits a subject mark: a record of its own,
 `memory.shared_noted` or `memory.self_noted`, or the `memory.proposal_` form of each for a proposal.
-Later, only an approved [subject change](./writes.md#subject-changes), or an undo of one, moves the
-item, through a subject change record beside the version record that moves it.
+Later, only an approved [subject change](./writes.md#subject-changes), an undo of one, or a
+`memory.retopic` call moves the item. The first two write a subject change record beside the version
+record that moves it; [a re-file](#moving-a-topic) writes a label record.
 
 The subject travels in records of its own because nixie keeps its log and tables readable by the
 release before it, so a rollback by one release works
@@ -89,9 +90,9 @@ The label record always holds the whole label set, and one function writes it fo
 updates the in-memory entries. A waiting proposal writes nothing to its item. A label-only proposal
 matches a pending one only when both whole label sets are equal: a second proposal with the same
 labels merges into the pending one, and one with other labels waits beside it, so approving one
-makes the other stale. A change of an item's subject writes no label record, and the item keeps its
-labels. `undo` undoes the last text change only, so a label stays as it is until an edit changes it.
-A session that holds the number from before a label edit gets the stale error once and reads the
+makes the other stale. A subject change writes no label record, and the item keeps its labels.
+`undo` undoes the last text change only, so a label stays as it is until an edit changes it. A
+session that holds the number from before a label edit gets the stale error once and reads the
 revision from it. A label-only edit leaves the text unchanged, so `memory.retire` still accepts a
 recall of the text from before that edit as the
 [proof that the thread read the item](./writes.md#retirement-intent).
@@ -606,13 +607,13 @@ rules `allow-reads` and `allow-notes` allow `read` and `note`. No starter rule a
 the memory gate decides none of its calls, and a call that no allow rule covers waits for the user
 as an [action proposal](#moving-a-topic).
 
-Each write tool runs its gate, and returns either the revision it applied or the proposal it became,
-with its review reason. A missing quote never fails the tool, because the gate turns it into a
-proposal. The result gives the review reason as its code and a fixed sentence that says why the
-write waits for the user's review, rendered with the user's name and the gate's evidence window, the
-number of the user's latest messages it searches for a quote (`evidence_window`, 20 by default), so
-the model reads the rule the gate applied. The model never writes the sentence, so the reasons stay
-a closed set.
+Each write tool except `memory.retopic` runs its gate, and returns either the revision it applied or
+the proposal it became, with its review reason. A missing quote never fails the tool, because the
+gate turns it into a proposal. The result gives the review reason as its code and a fixed sentence
+that says why the write waits for the user's review, rendered with the user's name and the gate's
+evidence window, the number of the user's latest messages it searches for a quote
+(`evidence_window`, 20 by default), so the model reads the rule the gate applied. The model never
+writes the sentence, so the reasons stay a closed set.
 
 Each tool takes its provenance from the task run: the conversation's thread gives the conversation
 as origin, any other thread gives a task, and the run's model gives the model ID. nixie marks a
