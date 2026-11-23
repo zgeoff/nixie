@@ -244,9 +244,9 @@ type MissingScope = { scope: string; reason: 'not_granted' | 'api_disabled' };
 [Checked actions](../../architecture/channels/api.md#checked-actions) keep each action's first
 result beside a hash of its input, so a retry with the same `clientActionID` gets that result.
 
-- The hash leaves out `clientSecret` and `label`, through a list of left-out fields that the shared
-  input hash gains. A hash of a secret is a copy of it, and a hash of a label outlives a Forget and
-  confirms a guess at the label. A retry with another secret gets the first result.
+- The hash leaves out `clientSecret` and `label`. To allow that, the shared input hash gains a list
+  of fields to leave out. A hash of a secret is a copy of it, and a hash of a label outlives a
+  Forget and confirms a guess at the label. A retry with another secret gets the first result.
 - `startConsent` stores its consent ID and `expiresAt` as its result, never the URL. A retry gets a
   fresh `state` and consent URL, which replace the first ones and keep the first `expiresAt`.
 - The API passes the request's `Origin` header to `registerClient`, which compares it with `origin`.
@@ -344,8 +344,8 @@ stays a `POST` with nixie's custom client header
   kinds, "Settings → Connections" and `/connections/google/return`.**
 - **The fewer-scopes notice shows on the connection's page and in the connections list, never in the
   conversation.**
-- **The account comes from the ID token, with `openid` and `email` asked for.** Google shows sign-in
-  scopes on a page of their own, so nixie knows the account when you untick Gmail, and `sub`
+- **The account comes from the ID token, with `openid` and `email` asked for.** Google grants the
+  sign-in scopes without a checkbox, so nixie knows the account when you untick Gmail, and `sub`
   survives an address change.
 - **The return route is a web server route that calls a procedure.** The API keeps one way in, and
   the browser's `Lax` cookie reaches a top-level navigation from Google.
@@ -374,5 +374,5 @@ stays a `POST` with nixie's custom client header
   client?** [The OAuth return spike](https://linear.app/zgeoff/issue/GEO-267) settles it. Until
   then, the return route is built as above, and the guide asks for a redirect URI host under a
   public suffix. The browser follows the redirect, so a public name that resolves only inside the
-  private network serves. When Google refuses PKCE on a Web application client, nixie drops it,
+  private network works. When Google refuses PKCE on a Web application client, nixie drops it,
   because the return's security never rests on it.

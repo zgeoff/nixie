@@ -13,15 +13,14 @@ send runs as an [action](../../architecture/core/actions.md), and the
 the effects the tool declares and the destinations nixie reads from Google. When an attempt's
 outcome is unknown, a read-only check at Google settles it, and nixie never repeats a send blind.
 
-This page holds the rules every Google tool keeps, and the Gmail tools.
-[Calendar and Drive tools](google-calendar-drive-tools.md) holds the rest. The Gmail tools are
-`gmail.*`. The `mail.*` tools belong to the assistant's own mailbox in the
-[mail design](https://github.com/zgeoff/nixie/pull/1420), which also holds `gmail.wake_set`,
+Below are the rules every Google tool keeps, and the Gmail tools. Find the rest in
+[Calendar and Drive tools](google-calendar-drive-tools.md). The Gmail tools are `gmail.*`. The
+`mail.*` tools belong to the assistant's own mailbox, in the
+[mail design](https://github.com/zgeoff/nixie/pull/1420). That design also holds `gmail.wake_set`,
 `gmail.wake_list` and `gmail.wake_cancel`, and the `replyWake` argument of `gmail.send` and
-`gmail.reply`, which the mail polls work item builds. The [Google connection](google-connections.md)
-owns the tokens, the consent and the scopes.
-[Tool calls](../../architecture/connectors/tool-calls.md) owns how a call and its errors reach the
-model.
+`gmail.reply`, which the mail polls work item builds. The tokens, the consent and the scopes belong
+to the [Google connection](google-connections.md). How a call and its errors reach the model is in
+[tool calls](../../architecture/connectors/tool-calls.md).
 
 ## Shape
 
@@ -144,8 +143,8 @@ interface BodyFields {
   permission, and marks one that no permission covered with "no permission".
 - nixie fills each card's sentence from the call's structured fields and its `card` fields, as
   [proposals and approvals](../platform/policy/approvals.md#the-proposal) sets, and the model writes
-  none of it. [Approvals in the client](../platform/channels/approvals.md#cards) holds the card's
-  layout.
+  none of it. The card's layout is in
+  [approvals in the client](../platform/channels/approvals.md#cards).
 
 Each result field has a source: `untrusted` is outside content, and `owner_data` is your own data. A
 field that holds a list or an object takes the least trusted source of its members, so `messages`
@@ -282,7 +281,7 @@ The check runs at least 5 minutes after the attempt started, and asks Gmail 2 wa
 ### Checks
 
 - Found wins over every other answer. A check never answers not found while any read it makes fails.
-  Every other answer is inconclusive, a response or a label that differs included, because a later
+  Every other answer is inconclusive, including a response or a label that differs, because a later
   change can have replaced it.
 - An inconclusive answer brings the action to you, as
   [reconciliation](../../architecture/core/actions.md#reconciling-an-unknown-outcome) sets.
@@ -304,9 +303,9 @@ The check runs at least 5 minutes after the attempt started, and asks Gmail 2 wa
   nixie never parses mail HTML on the host. Each link in a body reads as a
   [link ID](../../architecture/connectors/web-fetch.md#link-ids), such as `[L3]`.
 - The fetch guest gains a request `{ kind: 'html', html, limits }` that opens no connection, so no
-  tracking pixel loads. A fetch image that lacks the kind answers an unknown-request error, and the
-  server answers that HTML-only mail with `text: null` and `unsupported: true`, so the image and the
-  server still roll out in either order.
+  tracking pixel loads. A fetch image that lacks the kind answers an unknown-request error. The
+  server then answers that HTML-only mail with `text: null` and `unsupported: true`, so the image
+  and the server can roll out in either order.
 - `gmail.read_attachment` reads `text/*` and `application/json` as UTF-8 text, and decodes images as
   [web fetch images](../../architecture/connectors/web-fetch-images.md) does. Every other type
   answers `unsupported`. An item over 25 MB answers `too_large`. The Gmail work item builds this
@@ -315,9 +314,9 @@ The check runs at least 5 minutes after the attempt started, and asks Gmail 2 wa
 ### Sends and errors
 
 - nixie has no draft tool. Every send passes the decision point. The starter rule
-  `allow-sends-within-limits` ([rules](../platform/policy/rules.md)) allows a send, and it runs at
-  once only when each destination has a permission at stage 5 or your consent. Every other send
-  waits on its card.
+  `allow-sends-within-limits` ([rules](../platform/policy/rules.md)) allows a send, and the send
+  runs at once only when each destination has a permission at stage 5 or your consent. Every other
+  send waits on its card.
 - A send never carries an attachment.
 - Each Google error maps to one `ProviderResponse` kind, and a Gmail 403 with `rateLimitExceeded` or
   `userRateLimitExceeded` is `refused_retryable`.
@@ -359,6 +358,6 @@ The check runs at least 5 minutes after the attempt started, and asks Gmail 2 wa
   address is decided like any other.
 - **Is a `Reply-To` address a reply target?** Mailing lists and support desks set `Reply-To`, so
   treating it as a reply target saves a card for each reply to them. A sender writes `Reply-To`,
-  though, so it could aim a reply that runs without asking at anyone. The owner settles it in
-  [GEO-2839](https://linear.app/zgeoff/issue/GEO-2839); the recommendation is `From` only. Until
+  though, so the sender could aim a reply that runs without asking at anyone. The owner settles it
+  in [GEO-2839](https://linear.app/zgeoff/issue/GEO-2839); the recommendation is `From` only. Until
   then, only `From` is a reply target.

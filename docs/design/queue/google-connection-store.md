@@ -168,7 +168,7 @@ which the connections module registers with the
   `unknown`. The connections module writes `connection.revocation_recorded` from the `RevokeResult`,
   and returns the outcome to the runner, `not_attempted` as `unknown`.
 - When the key store lacks the token's key, such as after a restore, the store's `revoke` sends
-  nothing and answers `not_attempted`.
+  nothing and returns `not_attempted`.
 - At start, before the runner's catch-up, the connections module writes
   `connection.revocation_recorded` with `unknown` for each `erasure.started` of kind `credential`
   that has none, so the catch-up never sends again.
@@ -194,14 +194,13 @@ which the connections module registers with the
 - A full [reset](../../architecture/core/event-log.md#the-reset) makes one revocation attempt per
   live connection before it deletes the keys, 10 s each. Its answer gains
   `revocations: { connection: string; outcome: Revocation }[]`. A failed attempt never stops the
-  reset. A reset of the conversation leaves connections alone. This work adds the revocations to
-  today's reset, as an additive field of its answer.
-- A restore of a data copy from before a Forget meets a connection whose keys are gone. At start,
-  the server begins a Forget of each connection whose binding is `enabled` and whose `token_key_id`
-  the key store lacks, and that Forget records `not_attempted`.
+  reset. A reset of the conversation leaves connections alone. This applies to today's reset.
+- A data copy restored from before a Forget holds a connection whose keys are gone. At start, the
+  server begins a Forget of each connection whose binding is `enabled` and whose `token_key_id` the
+  key store lacks, and that Forget records `not_attempted`.
 - A restore of a data copy from before a connection existed loses the connection, and its grant
-  stays live at Google. The restore steps ask you to check the third-party access page of each
-  Google account you connected.
+  stays live at Google. In the restore steps, you check the third-party access page of each Google
+  account you connected.
 - A Forget left part way finishes only at the server start of a release that has this design.
 
 ## Decisions

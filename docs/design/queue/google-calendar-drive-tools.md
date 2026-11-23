@@ -5,10 +5,10 @@
   [Google connection](google-connections.md) and the [Google tools](gmail-calendar-drive-tools.md),
   which hold the rules every Google tool keeps.
 
-nixie reads and changes your calendar, and reads and writes the Drive files you give it. Each read
-asks Google live. Each change runs as an action under the decision point, and an event change that
-emails guests is a send with its own tool. When an attempt's outcome is unknown, nixie checks for a
-private marker that the change wrote on the event or the file.
+nixie reads and changes your calendar, and reads and writes the Drive files you give it. nixie asks
+Google live for each read. Each change runs as an action under the decision point, and an event
+change that emails guests is a send with its own tool. When an attempt's outcome is unknown, nixie
+checks for a private marker that the change wrote on the event or the file.
 
 ## Shape
 
@@ -106,18 +106,18 @@ drive.change({ file: 'k3x9m2p7qa.1Bx9QvR2…', name: null, text: '# Trip plan\n�
 
 - `calendar.respond` and the change and cancel tools with guests read their destinations and card
   fields in `prepare`, as [the declarations](gmail-calendar-drive-tools.md#the-declarations) set
-  out. `calendar.create_event_with_guests` names its `guests` argument as its destinations.
+  out. `calendar.create_event_with_guests` takes its `guests` argument as its destinations.
 - A calendar card shows the event's title, times with their zone, calendar, location and each guest.
   A change card shows each changed field before and after.
-- A time in a sentence shows the date, the time and the zone, in the zone that the
-  [time tool](../../architecture/connectors/time.md) answers in.
+- A time in a sentence shows the date, the time and the zone, in the zone of the
+  [time tool](../../architecture/connectors/time.md).
 
 ### The marker checks
 
 Calendar uses `calendar.find_change`, and Drive uses `drive.find_change`, each a read-only check
 with `trustNegativeAfterMs: 300_000`. A calendar create's event ID is the action ID without its
-hyphens, which fits Google's base32hex event IDs. A 409 on that insert answers done with the event
-read by its ID.
+hyphens, which fits Google's base32hex event IDs. When that insert gets a 409, nixie reads the event
+by its ID and answers done.
 
 ```ts
 // The marker: one private property per action, written in the same request as its change. Each
@@ -186,7 +186,7 @@ connections.checkPicked({ connection: 'k3x9m2p7qa', files: ['1Bx9QvR2…', '1Zq7
   organize the event.
 - The change and cancel tools with guests send the `etag` of the attempt's read in `If-Match`, so
   Google refuses the write with 412 when the event changed after that read. On a 412 the connector
-  reads the event again: when the guests differ, it answers `destinations_changed`; otherwise
+  reads the event again: when the guests differ, it answers `destinations_changed`, and otherwise
   `refused_retryable`.
 - With `calendar.calendarlist.readonly` missing, the Calendar tools take `primary` or a calendar ID
   you give.
