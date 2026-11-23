@@ -3,28 +3,27 @@ import { readRunningStep } from '@heynixie/tasks';
 
 const stepEndPollMs = 25;
 
-// Resolves once the step that a task runs now commits, fails or loses its lease. A step whose turn
-// has ended can still commit records that hold session text, such as a summary, so a forget's
-// cleanup erases that text only after this resolves.
+// Only a step whose turn started: one still waiting to start waits for the cleanup in turn.
+// Resolves once that step commits, fails or loses its lease, because a step whose turn ended can
+// still commit a session summary that the cleanup must then erase.
 export async function waitForStepEnd(
   context: Pick<TasksContext, 'log' | 'clock'>,
   taskID: string,
+  step: RunningStep | undefined,
 ): Promise<void> {
-  const running = await readRunningStep(context, taskID);
-
-  if (running === null) {
+  if (step === undefined) {
     return;
   }
 
-  let current: RunningStep | null = running;
+  let current = await readRunningStep(context, taskID);
 
-  while (isSameStep(current, running)) {
+  while (isSameStep(current, step)) {
     await Bun.sleep(stepEndPollMs);
 
     current = await readRunningStep(context, taskID);
   }
 }
 
-function isSameStep(current: RunningStep | null, running: RunningStep): boolean {
-  return current?.stepKey === running.stepKey && current.generation === running.generation;
+function isSameStep(current: RunningStep | null, step: RunningStep): boolean {
+  return current?.stepKey === step.stepKey && current.generation === step.generation;
 }

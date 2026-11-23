@@ -285,8 +285,9 @@ function buildTaskImpParts(runner: TaskRunner, taskID: string): TaskImpParts {
 // A forget's cleanup waits for the whole step, the imp's acquire and release included, so its purge
 // never meets the imp part way through a change.
 function runStartedStep(runner: TaskRunner, input: StepInput): Promise<StepResult> {
-  return resolveTaskGuard(runner, input.taskID).withTurn((invalidated) =>
-    runGuardedStep(runner, input, invalidated),
+  return resolveTaskGuard(runner, input.taskID).withTurn(
+    (invalidated) => runGuardedStep(runner, input, invalidated),
+    { stepKey: input.stepKey, generation: input.lease.generation },
   );
 }
 
@@ -492,9 +493,10 @@ async function runTaskSessionCleanup(
     const cleaned = await readCleanedTaskIDs(runner.options.context, cause);
 
     for (const taskID of cleaned) {
-      await resolveTaskGuard(runner, taskID).withInvalidation(() =>
-        cleanTaskSession(runner, taskID, cause),
-      );
+      await resolveTaskGuard(runner, taskID).withInvalidation(async (lastStep) => {
+        await waitForStepEnd(runner.options.context, taskID, lastStep);
+        await cleanTaskSession(runner, taskID, cause);
+      });
     }
   } finally {
     // A turn that was in flight can set a pause until it drains, so the clear comes last.
@@ -510,8 +512,6 @@ async function cleanTaskSession(
   cause: SessionCleanupCause,
 ): Promise<void> {
   const context = runner.options.context;
-
-  await waitForStepEnd(context, taskID);
 
   await writeRecords(context.log, [
     {
