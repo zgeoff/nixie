@@ -115,13 +115,10 @@ export function buildDeviceRegionTool(options: DeviceToolOptions): ToolDefinitio
         return refuseDevice(found.refusal);
       }
 
-      // the layout is part of what the owner approves: a layout that replaced this one by the time
-      // the call runs changes the destination, so the call does not fill a region of the new layout
+      // a layout set after the call was queued is refused when the call runs, by its sequence
       return {
         destinations:
-          found.status === 'ready'
-            ? [`${found.device.deviceID}/${found.layout.layoutID}/${found.region.name}`]
-            : [],
+          found.status === 'ready' ? [`${found.device.deviceID}/${found.region.name}`] : [],
       };
     },
     run: async (call, context) => {
@@ -143,7 +140,7 @@ export function buildDeviceRegionTool(options: DeviceToolOptions): ToolDefinitio
       const written = await writeRegion(options, {
         deviceID: found.device.deviceID,
         thread: context.run.thread,
-        layoutID: found.layout.layoutID,
+        callSequence: context.callSequence,
         region: found.region.name,
         content: found.content,
         untilMs,

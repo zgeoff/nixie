@@ -97,11 +97,11 @@ screen draws, in order, an unexpired `device.show`, the layout while at least on
 content, then the idle scene.
 
 `device.region` reads the layout when its call runs, so a call that waited for approval fails with
-`UNKNOWN_REGION` when a clear or a new layout removed its region in the meantime. The layout's ID is
-part of the call's destination, so a new layout that keeps the region's name makes the approval
-stale, and nothing runs. The write reads the region and the content it covers in its own
-transaction, so two calls for one region never cover the same content. Until then the region keeps
-its content.
+`UNKNOWN_REGION` when a clear or a new layout removed its region in the meantime. A layout set after
+the call's own record also fails the call, even when it keeps the region's name, so an approval
+never fills a region of a layout the user did not see. The write checks that, and reads the region
+and the content it covers, in its own transaction, so two calls for one region never cover the same
+content. Until then the region keeps its content.
 
 ## The streams
 

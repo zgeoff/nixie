@@ -1,12 +1,102 @@
 import { expect, test } from 'bun:test';
+import type { JSONObject } from '@heynixie/log';
+import { readRecords } from '@heynixie/log';
+import { buildActionHash } from '@heynixie/policy';
+import { buildToolRegistry, runApprovedCall, runToolCall } from '@heynixie/tools';
+import type { ToolCallOptions, ToolRun } from '@heynixie/tools';
+import { buildStubActionQueue } from '@heynixie/tools/test-utils';
 import { startTestDevices } from '../test-utils';
+import { buildDeviceTools } from './build-device-tools';
 import { writeRegion } from './write-region';
 
 async function setupTest() {
   const ctx = await startTestDevices();
 
+  const options = {
+    log: ctx.log,
+    definitions: ctx.definitions,
+    clock: ctx.clock,
+    streams: ctx.streams,
+  };
+
+  const tools = buildDeviceTools(options);
+
+  const run: ToolRun = {
+    runID: 'run-1',
+    thread: 'conversation',
+    logThread: 'conversation',
+    tools: tools.map((tool) => tool.name),
+    model: { model: 'model-a', profile: 'chat-direct' },
+    stepRunID: 'conversation@1',
+  };
+
+  // every call asks, so the runner stores it and waits for the owner
+  const toolOptions: ToolCallOptions = {
+    registry: buildToolRegistry(tools),
+    decide: () =>
+      Promise.resolve({
+        decision: {
+          outcome: 'ask',
+          stage: 9,
+          rule: null,
+          cause: 'no_rule',
+          destinations: [],
+          snapshot: 'sha256:test',
+        },
+        sentence: null,
+      }),
+    log: ctx.log,
+    definitions: ctx.definitions,
+    queue: buildStubActionQueue().queue,
+    queuedWaitMs: 10_000,
+  };
+
   return {
     ...ctx,
+
+    // the sequence of the newest record, which a call queued now follows
+    newestSequence: async () => {
+      const [newest] = await readRecords(ctx.log, { afterSequence: 0, order: 'newest', limit: 1 });
+
+      return newest?.record.sequence ?? 0;
+    },
+
+    // queues a call through the runner, as a conversation turn does, and answers how the owner's
+    // approval runs it
+    queue: async (tool: string, input: JSONObject) => {
+      const destinations = await ctx.prepare(tool, input);
+
+      await runToolCall({ tool, input, toolUseID: 'toolu_1' }, run, toolOptions);
+
+      const [called] = await readRecords(ctx.log, {
+        afterSequence: 0,
+        kinds: ['tool_called'],
+        order: 'newest',
+        limit: 1,
+      });
+
+      const callSequence = called?.record.sequence ?? 0;
+
+      return {
+        approve: () =>
+          runApprovedCall(
+            {
+              actionID: 'proposal-1',
+              tool,
+              input,
+              callSequence,
+              actionHash: buildActionHash({
+                tool,
+                input,
+                destinations: 'destinations' in destinations ? destinations.destinations : [],
+                deadlineAt: null,
+              }),
+            },
+            run,
+            toolOptions,
+          ),
+      };
+    },
 
     // each region of the device's layout as devices.list shows it, by name
     readRegions: async () => {
@@ -657,7 +747,7 @@ test('it fails a call for a region that a new layout dropped', async () => {
   expect(outcome).toMatchObject({ status: 'ok', refusalCode: 'UNKNOWN_REGION' });
 });
 
-test('it makes an approval stale when a new layout keeps the name of the region', async () => {
+test('it refuses an approved call with UNKNOWN_REGION when a new layout kept the name of the region', async () => {
   const ctx = await setupTest();
   const device = await ctx.seed.screenOnDevice();
 
@@ -665,14 +755,11 @@ test('it makes an approval stale when a new layout keeps the name of the region'
 
   await ctx.seed.layout(device.deviceID);
 
-  const input = {
+  const queued = await ctx.queue('device.region', {
     device: device.deviceID,
     region: 'note',
     content: { kind: 'markdown', markdown: 'Dentist at 3' },
-  };
-
-  const first = await ctx.readLayout(device.deviceID);
-  const queued = await ctx.prepare('device.region', input);
+  });
 
   await ctx.call('device.layout', {
     device: device.deviceID,
@@ -681,15 +768,37 @@ test('it makes an approval stale when a new layout keeps the name of the region'
     regions: [{ name: 'note', column: 1, row: 1 }],
   });
 
-  const second = await ctx.readLayout(device.deviceID);
-  const approved = await ctx.prepare('device.region', input);
+  const approved = await queued.approve();
+  const layout = await ctx.readLayout(device.deviceID);
 
-  expect([queued, approved]).toStrictEqual([
-    { destinations: [`${device.deviceID}/${first?.layoutID}/note`] },
-    { destinations: [`${device.deviceID}/${second?.layoutID}/note`] },
+  expect(approved).toMatchObject({ status: 'refused', code: 'UNKNOWN_REGION' });
+  expect(layout?.regions.map((region) => region.shown)).toStrictEqual([null]);
+});
+
+test('it fills the region when the approved call finds the layout it was queued against', async () => {
+  const ctx = await setupTest();
+  const device = await ctx.seed.screenOnDevice();
+
+  ctx.streams.open(device.deviceID, { width: 1920, height: 480, pixelRatio: 1 });
+
+  await ctx.seed.layout(device.deviceID);
+
+  const queued = await ctx.queue('device.region', {
+    device: device.deviceID,
+    region: 'note',
+    content: { kind: 'markdown', markdown: 'Dentist at 3' },
+  });
+
+  const approved = await queued.approve();
+  const layout = await ctx.readLayout(device.deviceID);
+
+  expect(approved).toMatchObject({ status: 'done' });
+
+  expect(layout?.regions.map((region) => region.shown?.content?.kind ?? null)).toStrictEqual([
+    null,
+    'markdown',
+    null,
   ]);
-
-  expect(first?.layoutID).not.toBe(second?.layoutID);
 });
 
 test('it keeps a region as it is until its call is approved, and fails it when the layout is gone', async () => {
@@ -726,7 +835,7 @@ test('it never fills a region of a layout that replaced the one the write read',
 
   await ctx.seed.layout(device.deviceID);
 
-  const stale = await ctx.readLayout(device.deviceID);
+  const callSequence = await ctx.newestSequence();
 
   await ctx.call('device.layout', {
     device: device.deviceID,
@@ -740,7 +849,7 @@ test('it never fills a region of a layout that replaced the one the write read',
     {
       deviceID: device.deviceID,
       thread: 'conversation',
-      layoutID: stale?.layoutID ?? '',
+      callSequence,
       region: 'note',
       content: { kind: 'markdown', markdown: 'Dentist at 3' },
       untilMs: null,

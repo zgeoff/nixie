@@ -11,7 +11,7 @@ import {
 } from '@heynixie/definitions';
 import { buildTestTaskSeed } from '@heynixie/definitions/test-utils';
 import { createDeviceStreams, readDeviceByIdentity } from '@heynixie/devices';
-import { buildDeviceToolCaller, seedScreenOnDevice } from '@heynixie/devices/test-utils';
+import { makeDeviceToolCaller, seedScreenOnDevice } from '@heynixie/devices/test-utils';
 import { readRecords, writeRecords } from '@heynixie/log';
 import { buildMockSandboxSpec } from '@heynixie/sandbox/test-utils';
 import { createConversationTask, startTaskClaimPools } from '@heynixie/tasks';
@@ -372,7 +372,7 @@ test('it keeps an enrolled device through a reset and clears what it showed', as
 
   ctx.context.devices.open(device.deviceID, { width: 1920, height: 480, pixelRatio: 1 });
 
-  const call = buildDeviceToolCaller({
+  const call = makeDeviceToolCaller({
     log: ctx.context.log,
     definitions: ctx.context.definitions,
     clock: ctx.context.clock,

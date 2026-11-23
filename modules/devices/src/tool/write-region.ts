@@ -12,17 +12,18 @@ interface RegionWrite {
   readonly deviceID: string;
   readonly thread: string;
 
-  // the layout the call read, which the region must still belong to when the write runs
-  readonly layoutID: string;
+  // the sequence of the call's own record: a layout set after it replaced the one the call was
+  // queued against, so the write refuses
+  readonly callSequence: number;
   readonly region: string;
   readonly content: RegionContent;
   readonly untilMs: number | null;
   readonly onEnd: 'blank' | 'previous';
 }
 
-// Records a region's content with the content sealed under the record's own key, and points the
-// region at it. The layout and the content it covers are read in the write's own transaction, so
-// null comes back, with nothing written, when the device holds another layout or no such region.
+// Records a region's content sealed under the record's own key, and points the region at it. The
+// layout and the content it covers are read in the write's own transaction, so null comes back,
+// with nothing written, for a layout set after the call or a region it lacks.
 export function writeRegion(
   options: DeviceToolOptions,
   write: RegionWrite,
@@ -34,7 +35,14 @@ export function writeRegion(
 
     const region = layout?.regions.find((candidate) => candidate.name === write.region);
 
-    if (layout?.layoutID !== write.layoutID || region === undefined) {
+    const row = await tx
+      .$extendTables<DeviceTables>()
+      .selectFrom('device_layouts')
+      .select('layout_sequence')
+      .where('device_id', '=', write.deviceID)
+      .executeTakeFirst();
+
+    if (row === undefined || row.layout_sequence > write.callSequence || region === undefined) {
       return null;
     }
 

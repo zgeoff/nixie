@@ -3,7 +3,7 @@ import { createFakeClock } from '@zgeoff/testing/clock';
 import { readDeviceByIdentity } from '../device/read-device-by-identity';
 import { readLayout } from '../layout/read-layout';
 import { createDeviceStreams } from '../stream/create-device-streams';
-import { buildDeviceToolCaller } from './build-device-tool-caller';
+import { makeDeviceToolCaller } from './make-device-tool-caller';
 import { makeDeviceToolPreparer } from './make-device-tool-preparer';
 import { removeTestRecordKey } from './remove-test-record-key';
 import { restartTestLog } from './restart-test-log';
@@ -46,7 +46,7 @@ export async function startTestDevices() {
       return {
         log: restarted,
         readLayout: (deviceID: string) => readLayout(restarted, deviceID, clock.now()),
-        call: buildDeviceToolCaller({
+        call: makeDeviceToolCaller({
           log: restarted,
           definitions,
           clock,
@@ -55,7 +55,7 @@ export async function startTestDevices() {
       };
     },
     readDevice: (identityID: string) => readDeviceByIdentity(log.writer.db, identityID),
-    call: buildDeviceToolCaller({ log, definitions, clock, streams }),
+    call: makeDeviceToolCaller({ log, definitions, clock, streams }),
     prepare: makeDeviceToolPreparer({ log, definitions, clock, streams }),
   };
 }

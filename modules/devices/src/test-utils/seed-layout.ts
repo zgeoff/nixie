@@ -1,10 +1,10 @@
 import type { DeviceToolOptions } from '../tool/device-tool-options';
-import { buildDeviceToolCaller } from './build-device-tool-caller';
+import { makeDeviceToolCaller } from './make-device-tool-caller';
 
 // A layout of 3 blank regions in a row, `pond`, `note` and `clock`, set the way the assistant sets
 // one. The device needs its screen on and an open stream.
 export async function seedLayout(options: DeviceToolOptions, deviceID: string): Promise<void> {
-  const outcome = await buildDeviceToolCaller(options)('device.layout', {
+  const outcome = await makeDeviceToolCaller(options)('device.layout', {
     device: deviceID,
     columns: ['1fr', '2fr', '1fr'],
     rows: ['1fr'],

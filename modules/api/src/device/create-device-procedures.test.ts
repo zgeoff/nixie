@@ -2,7 +2,7 @@ import { expect, test } from 'bun:test';
 import { seedImage } from '@heynixie/connectors/test-utils';
 import { clientHeaderName, contract, sessionCookieName } from '@heynixie/contract';
 import { readDeviceByIdentity } from '@heynixie/devices';
-import { buildDeviceToolCaller } from '@heynixie/devices/test-utils';
+import { makeDeviceToolCaller } from '@heynixie/devices/test-utils';
 import { createConversationTask } from '@heynixie/tasks';
 import invariant from 'tiny-invariant';
 import { buildTestClient } from '../test-utils/build-test-client';
@@ -42,7 +42,7 @@ async function setupTest() {
     ...api,
     ownerClient,
     enrol,
-    call: buildDeviceToolCaller({
+    call: makeDeviceToolCaller({
       log: api.context.log,
       definitions: api.context.definitions,
       clock: api.context.clock,
