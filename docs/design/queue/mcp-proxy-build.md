@@ -15,8 +15,9 @@ result reaches the model inside untrusted markers, and the server's credential n
 credential store. The first build serves 2 HTTP servers of your own: a work tracker and a
 delivery-metrics server. [The MCP proxy design](../platform/connectors/mcp-proxy.md) sets the rules
 for pins, failed listings and declarations, and this design adds the contracts the build follows.
-Once the owner settles the [open questions](#open-questions) and sets Status to agreed, the proxy
-item is built from it.
+Once the owner sets Status to agreed, the proxy item is built from it. The
+[open questions](#open-questions) change only config values and declarations, so the build ships
+with the default each one gives, and needs no answer first.
 
 ## Shape
 
@@ -151,7 +152,13 @@ type ServerState = 'held' | 'added' | 'removed'; // held: waits for its widened 
 // mcp module: the operation of an mcp proposal, whose SHA-256 is the proposal's action hash
 type McpOperation =
   | { change: 'server'; serverID: string; facts: ServerFacts }
-  | { change: 'declare'; tool: string; hash: string; declaration: ToolDeclared['declaration'] }
+  | {
+      change: 'declare';
+      tool: string;
+      hash: string;
+      declaration: ToolDeclared['declaration'];
+      reconcile: ToolDeclared['reconcile'];
+    }
   | { change: 'allow'; tool: string; fromHash: string; hash: string }; // allow a changed tool
 ```
 
@@ -220,8 +227,9 @@ mcp_tool_forms, a projection, one row per tool form a server listing has held
   because a new argument may carry a destination or free text that the declaration leaves out.
 - After a pin move, the fit check runs on the new form. A tool both changed and unfit shows
   `stopped_changed` until the change is allowed, then `stopped_unfit` until a new declaration.
-- A stopped tool, and every tool of a `held` server, stays on each tool list in its pinned form. A
-  call to it returns an error such as "tracker.item_get changed and waits for your review". A hidden
+- A stopped tool, and every tool of a `held` server, stays on each tool list in its pinned form,
+  except a tool whose pinned form a forget made unreadable, as the last bullet here sets out. A call
+  to it returns an error such as "tracker.item_get changed and waits for your review". A hidden
   tool, a removed tool and every tool of a `removed` server are on no tool list.
 - Each pin move calls `onPinMoved(tx, move)` inside its transaction. The 2 items that build on this
   one add their writes there, and this item ships it with no listener.
