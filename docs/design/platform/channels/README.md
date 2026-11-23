@@ -13,5 +13,4 @@ and the trigger sources that start work without you.
   questions of where a call commits and which device carries it
 - [The live view and the dashboard](live-view.md) — the 2 tiers, a task as a conversation, stepping
   in, and how the client stays current
-- [The trigger source](trigger-source.md) — the interface, schedules, polls, webhooks, and which
-  services need push
+- [The trigger source](trigger-source.md) — the interface, schedules and polls

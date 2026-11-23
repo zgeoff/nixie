@@ -2,10 +2,9 @@
 
 - Decisions: [0005](../../../decisions/0005-untrusted-conversation.md)
 
-A trigger source starts work without you: a schedule, a poll, a held stream or a webhook. A batch of
-events commits in one transaction with the source's cursor and the fire and skip records and task
-wake-ups it causes, so a restart neither misses nor repeats an event. The first build has schedules
-and polls.
+A trigger source starts work without you: a schedule or a poll. A batch of events commits in one
+transaction with the source's cursor and the fire and skip records and task wake-ups it causes, so a
+restart neither misses nor repeats an event.
 
 ## The interface
 
@@ -15,7 +14,7 @@ A source produces events and owns nothing durable; nixie's core stores its curso
 interface TriggerSource {
   // stable across restarts, such as 'schedule'
   readonly id: string;
-  readonly kind: 'schedule'; // 'poll', 'webhook' and 'stream' arrive with their sources
+  readonly kind: 'schedule'; // 'poll' arrives with the poll sources
 
   // resolves once the source runs
   readonly start: (context: TriggerContext) => Promise<void>;
@@ -127,11 +126,8 @@ record the possible gap.
 
 ## Webhooks and streams
 
-The first build takes no push from any service: a 5-minute poll covers mail and calendar with no
-inbound route. A task definition that must react in seconds uses a `stream` source, such as IMAP
-`IDLE`, which holds an outbound connection and polls on reconnect. A webhook is a deployment choice,
-off by default: it checks the service's signature, refuses requests older than 5 min, and answers
-success only after `deliver` commits.
+nixie takes no push from any service, through neither a webhook nor a held connection. A 5-minute
+poll covers mail and calendar with no inbound route.
 
 The connector supplies each poll's call and runs it under its read effect, the credential store
 gives the connector its token, and the definitions source supplies schedules and task definition

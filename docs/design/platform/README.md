@@ -19,7 +19,7 @@ nixie takes its tools from MCP and defines 6 interfaces of its own where MCP has
 boundary where a deployment picks its own technology:
 
 - [Channel adapter](channels/channel-adapter.md): your messages in, replies and pushes out
-- [Trigger source](channels/trigger-source.md): schedules, webhooks and mailbox events
+- [Trigger source](channels/trigger-source.md): schedules and polls of mail and calendars
 - [Connector](connectors/connector.md): typed calls to one outside service
 - [Credential store](connectors/credentials.md): OAuth clients, refresh and the credentials a tool
   gets without the model seeing them
