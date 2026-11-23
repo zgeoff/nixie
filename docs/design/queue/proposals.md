@@ -8,7 +8,7 @@ table and sweep, prompt overrides live outside the shared table, each family nam
 differently, and a task that proposed something hears only some outcomes. After this design, a
 memory write, a skill write, a rule change, a held action and a prompt override all show in your
 approvals list, can all be deferred, lapse on the same schedule rules, and all report back the same
-way.
+way. A held action is the one exception to the message: its task hears the action's own outcome.
 
 The owner approves this design. The builder of each work item it files starts from it, together with
 the built [approvals](../../architecture/policy/approvals.md) it extends.
@@ -22,10 +22,10 @@ flowchart LR
   core --> rec1[proposals.proposed]
   card[approval card] -->|"answerProposal"| core
   sweep[lapse sweep] --> core
-  core --> rec2[proposals.settled]
-  rec2 -->|"then, same transaction"| handler[family handler: approve or discard]
+  core -->|"approve or discard"| handler[family handler]
+  handler -->|"if it succeeds, same transaction"| rec2[proposals.settled]
   rec2 -->|"inbox or turn note"| proposer[conversation or task]
-  pending[proposals.pending] --> row
+  pending[proposals.pending] -->|"reads"| row
 ```
 
 ## Terms
@@ -59,27 +59,29 @@ const proposal = await proposals.proposeInTransaction(tx, {
 ```
 
 ```ts
-// proposals module. discard replaces today's decline and lapse members; the rest stay.
+// proposals module. discard replaces the decline and lapse members; the rest stay as they are.
 interface ProposalKindHandler {
   family: ProposalFamily; // …existing families, plus 'prompt'
-  // Read through the server's config reader at each use, so a changed value applies to the next
-  // proposal and the next defer. An open proposal keeps the lapsesAt it has.
-  lapseAfterMs(config: ProposalConfig): number;
+  // Replaces the lapseIntervalMs constant. Read through the server's config reader at each use, so
+  // a changed value applies to the next proposal and the next defer. An open proposal keeps its
+  // lapsesAt.
+  lapseIntervalMs(config: ProposalConfig): number;
   ownsTransaction: boolean; // …existing
-  readBodies: ReadBodies; // …existing
-  readHashes: ReadHashes; // …existing
-  approve(run: AnswerRun, row: ProposalRow, answer: ProposalAnswer): Promise<ApproveResult>; // …existing
-  // Called after the core wrote the settlement. Undoes what the proposal held, such as a held
-  // action or a sealed body. Writes no outcome record of its own.
+  approve(run: ApplyRun, row: SharedProposal, answer: ProposalAnswerInput): Promise<ApplyOutcome>; // …existing
+  // Undoes what the proposal held, such as a held action or a sealed body, and writes no outcome
+  // record of its own. It runs inside the answer's transaction, or inside the family's own
+  // transaction when ownsTransaction is set, as approve does. On a decline it may refuse, and a
+  // refusal leaves the row open; on a lapse or a withdrawal it never refuses.
   discard(
-    tx: Transaction,
-    row: ProposalRow,
+    run: ApplyRun,
+    row: SharedProposal,
     outcome: 'declined' | 'lapsed' | 'withdrawn',
-  ): Promise<void>;
+  ): Promise<ApplyOutcome>;
 }
 
-// Replaces today's ProposalOutcome ('approved' | 'rejected' | 'lapsed') and its state machine:
-// the shared row's states are the only states.
+// Replaces the older ProposalOutcome ('approved' | 'rejected' | 'lapsed') and the canMoveProposal
+// state machine: the shared row's states are the only states. A family's old rejection records
+// fold as 'declined'.
 type ProposalOutcome = 'approved' | 'declined' | 'lapsed' | 'withdrawn';
 ```
 
@@ -96,15 +98,15 @@ proposals.withdrawn …existing; new withdrawals write proposals.settled instead
 ```
 
 - `proposals.proposed` creates the row, and its sequence is the row's `created_sequence`. A family
-  writes its body record in the same transaction, such as `skills.write_proposed` with the files. A
-  body record written after `proposals.proposed` creates no row; the mappers create rows only from
-  body records with no `proposals.proposed` before them. Handlers find a body by proposal ID.
+  writes its body record in the same transaction, such as `skills.write_proposed` with the files.
+  Handlers find a body by proposal ID.
+- A body record creates a row only when no `proposals.proposed` for that proposal came before it,
+  which holds only for records written before this design. A rebuild over a log that mixes old and
+  new records creates exactly one row per proposal, and a test holds that.
 - An approval keeps the family's own approval record when it carries data the apply needs, such as
   `skills.write_approved` with edited files, beside `proposals.settled`.
 - The family records for a decline, a lapse and a withdrawal stop. Their codecs and mappers stay, so
   a rebuild still folds every old record.
-- For one release, the core also writes each family's old decline and lapse record, so the release
-  before still closes the rows. The release after drops them.
 
 ### The lapse schedule
 
@@ -113,7 +115,7 @@ proposals.withdrawn …existing; new withdrawals write proposals.settled instead
 approvals:
   lapse_days:
     action: 3
-    memory: 14 # memory.proposal_lapse_days still works for one release, with a warning
+    memory: 14 # replaces memory.proposal_lapse_days
     skill: 14
     rule_change: 14 # rule widenings and proposed rules; a mandate lapses at its deadline
     prompt: 14
@@ -145,8 +147,8 @@ type ProposalSettledNote = {
 - An action proposal's settlement is never an inbox record. The task hears `action.outcome`, which
   the action module already writes when an approval queues the action, or when a decline or a lapse
   fails the held action.
-- The readers switch in the same work item that stops the old records: the inbox predicate, the
-  inbox renderer and the turn-note kinds read `proposals.settled`.
+- The inbox predicate, the inbox renderer and the turn-note kinds read `proposals.settled`, from the
+  release in [Release order](#release-order) that switches the readers.
 - A proposal with no proposer settles with no message.
 - A task that has closed gets no message. The record still lands on its thread.
 
@@ -185,16 +187,25 @@ It replaces `memory.pending` and `skill_pending`.
   defer, as the owner asked for every card.
 - A deferred proposal's lapse uses its family's `lapse_days`, the same value as a fresh one.
 - An open short ID is unique among open proposals. `proposeInTransaction` draws again on a clash.
-- The core writes `proposals.settled` before it calls `discard`, in one transaction.
-- On an approval, the core writes `proposals.settled` after the family's apply succeeds, in the same
-  transaction. For a family that owns its transaction, such as memory, the core writes it through
-  the family's guard. An apply that refuses writes no settlement, and the row stays open.
+- The core calls `approve` or `discard` first, and writes `proposals.settled` only when it succeeds,
+  in the same transaction. For a family that owns its transaction, such as memory, the core writes
+  it through the family's guard. A refusal writes no settlement, and the row stays open.
 - `memory_proposals` keeps each memory proposal's sealed body and its merges. Its `status` and
   `lapse_at` columns stay but are no longer written; memory reads the state from the shared row.
 - `proposals.settled.reason` is an erasable field, and the forgettable kinds list in the published
   contract gains `proposals.settled`, an additive change in a minor release.
 - These writers are deleted: the skill, rule and action lapse writers, the test-only action answer
   writer, and the prompt lapse sweep. The action answer types move to the module that uses them.
+
+## Release order
+
+Each step ships in its own release, so a rollback by one release still reads every row.
+
+| Release | Ships                                                                                      |
+| ------- | ------------------------------------------------------------------------------------------ |
+| N       | `proposals.proposed` and `proposals.settled`, written beside each family's old records     |
+| N+1     | the readers switch to the new records; `memory.proposal_lapse_days` is read with a warning |
+| N+2     | the old outcome records and the memory key stop; the prompt family joins the shared table  |
 
 ## Builder decides
 
@@ -210,10 +221,9 @@ It replaces `memory.pending` and `skill_pending`.
 
 ## Open questions
 
-- **Rolling back past the prompt migration.** The release before reads a `prompt` row as an unknown
-  family and fails to load it. The owner may accept that a rollback past this release needs a
-  restore, or keep prompts off the shared table for one more release. Until the owner decides, the
-  prompt family ships in a release of its own, after the rest.
-
+- **Rolling back past the prompt migration.** The release before N+2 reads a `prompt` row as an
+  unknown family and fails to load it. The owner may accept that this one rollback needs a restore,
+  or ask for a release that reads `prompt` rows before any are written. Until the owner decides, the
+  release order above stands.
 - **A proposal with no proposer.** The gap check's proposed rules settle silently. The owner may
   want the conversation told when one lapses. Until the owner decides, they settle silently.
