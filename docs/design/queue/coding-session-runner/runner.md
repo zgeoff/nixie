@@ -122,7 +122,7 @@ const codingDefinition = {
   fixedTasks: [],
   keepsSandboxes: false,
   meters: [],
-  ended: releaseBoundSession, // stops a started session; only unbinds a joined one
+  ended: releaseBoundSession, // a stop queues `coding.stop`; a close or a failure releases
 } satisfies TaskRunnerDefinition;
 
 // `task.start/atc`, for a start and a join alike
@@ -140,6 +140,15 @@ const codingMessageDeclaration: EffectDeclaration = {
   destinations: [], // filled with the adapter ID and the session ID, such as 'atc:s7-m4x2p'
   amount: null,
   content: ['text'],
+  results: {},
+};
+
+// `coding.stop`: the action a stop of the task queues, for a started and a joined session alike
+const codingStopDeclaration: EffectDeclaration = {
+  effects: ['code_run'],
+  destinations: [], // as `coding.message`, such as 'atc:s7-m4x2p'
+  amount: null,
+  content: ['origin'], // 'started' | 'joined', which the starter rules match on
   results: {},
 };
 ```
@@ -273,9 +282,9 @@ tasks.list({ runner: 'atc', state: 'waiting', limit: 20 });
   `task.created` with `runner: 'atc'`, then queues the spawn as a `RunnerAction` caused by the
   start's tool call. The action hash binds the call's approval, so nixie asks you at most once per
   start.
-- The coding module registers `coding.start` and `coding.message` with the action queue as connector
-  actions that no tool list holds, each with its declaration, its `idempotency_key` reconciliation
-  and the adapter call its attempt makes.
+- The coding module registers `coding.start`, `coding.message` and `coding.stop` with the action
+  queue as connector actions that no tool list holds, each with its declaration, its
+  `idempotency_key` reconciliation and the adapter call its attempt makes.
 - The queue writes the outcome of every attempt that started, as it does for every action, so a
   spawn that finishes after its task stopped still leaves its outcome on the task's thread.
 - A join reads the session in its plan, then writes `task.created` and `coding.session_bound` with
@@ -291,6 +300,10 @@ tasks.list({ runner: 'atc', state: 'waiting', limit: 20 });
   its destination. The starter rule set allows `send`, so nixie asks you before a message only when
   you add an ask rule on `coding.message`. The `task.message` call that caused it keeps its own
   declaration.
+- Each `coding.stop` attempt meets the decision point under the tool name `coding.stop`. This work
+  adds the starter rule `ask-stop-joined-sessions`, which asks on a `coding.stop` whose `origin` is
+  `joined`, so nixie asks you before it stops a session of yours. A stop of a started session runs
+  under the starter rules that allow `code_run`.
 
 ### Delivery
 
@@ -309,16 +322,20 @@ tasks.list({ runner: 'atc', state: 'waiting', limit: 20 });
 
 ### Ends, stops and the sweep
 
-- A stop, a close or a failure calls the definition's `ended` after its transaction commits. For a
-  started session, `ended` calls `stop` on it and logs a failure. For a joined session, `ended`
-  writes `coding.session_unbound` and calls no adapter.
+- A stop, a close or a failure calls the definition's `ended` after its transaction commits.
+- After a stop, `ended` queues a `coding.stop` action for the bound session, started or joined. When
+  it is done, the step writes `coding.session_unbound`. When you deny a joined session's stop, the
+  step writes `coding.session_unbound` and the session runs on in atc.
+- After a close or a failure, `ended` calls `stop` on a started session and logs a failure, and for
+  a joined session writes `coding.session_unbound` and calls no adapter.
 - A joined session that ends or leaves reach never ends its task: the task waits, and you close it.
 - The coding module sweeps when the server starts and every 10 min after, to catch an `ended` call
   that a crash cut short. For each coding task that is stopped, closed or failed, with a started
   session whose state is not `ended`, the sweep calls `stop`. A spawn can also finish after a stop.
   No step then runs to write `coding.session_bound`, so the sweep reads the session's ID from the
   spawn's outcome, which is a record on the task's thread. For a joined session still bound to such
-  a task, the sweep writes `coding.session_unbound` and never calls `stop`.
+  a task, the sweep queues the `coding.stop` that a stop's `ended` never queued, or writes
+  `coding.session_unbound` for a closed or failed task.
 - A coding runner lacks `restart` and `interrupt`, so both controls get `runner_lacks_control`. A
   stopped coding task can only be closed.
 - A pause holds the task's queued deliveries. The session runs on in atc, and its events land in the
@@ -343,8 +360,10 @@ tasks.list({ runner: 'atc', state: 'waiting', limit: 20 });
 - **The report repeats the session's final reply, even when an answer to a message carried the same
   text.** The answer closes its sender's message wait, and the report ends the task run, so each
   needs its own message.
-- **Stop and close stop a started session and keep atc's record of it.** atc's record is outside
-  data, and nixie deletes outside data only through a tool that declares `delete`.
+- **A stop of the task stops its session, joined or started, as a `coding.stop` action.** Your rules
+  decide each one, so a joined session stops only when they allow it.
+- **Every stop keeps atc's record of the session.** atc's record is outside data, and nixie deletes
+  outside data only through a tool that declares `delete`.
 - **A start declares `code_run`.** It runs a coding agent on a repo, which is code running outside
   nixie's view, one call at a time.
 

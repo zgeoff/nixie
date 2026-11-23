@@ -47,7 +47,7 @@ interface CodingAdapter {
     idempotencyKey: string,
   ): Promise<AdapterReply<{ messageRef: string }>>;
   results(session: SessionRef): Promise<AdapterReply<SessionResult>>;
-  stop(session: SessionRef): Promise<AdapterReply<{ stopped: boolean }>>; // started sessions only
+  stop(session: SessionRef): Promise<AdapterReply<{ stopped: boolean }>>; // started or joined
   events(
     cursor: JSONValue | null,
     signal: AbortSignal,
@@ -295,8 +295,8 @@ version and major version in the hello:
   adapter names that target in every spawn and every list.
 - A principal's grant reaches every session on its targets, so `coding.sessions` shows your own
   sessions on that target, and a join can bind one. Sessions on other targets stay out of reach.
-- The adapter calls `stop` only on a started session. atc itself would let it stop a joined one, as
-  the [open question](README.md#open-questions) on atc scopes says.
+- atc lets nixie's principal stop every session in its reach. nixie's
+  [`coding.stop` rules](runner.md#ends-stops-and-the-sweep) decide which of your sessions it stops.
 
 ### Typing
 

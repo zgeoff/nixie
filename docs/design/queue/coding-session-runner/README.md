@@ -99,8 +99,9 @@ as `task_message` records.
   spawns a second session.
 - **Each message to a session is decided as its own action, `coding.message`.** A rule on
   `coding.message` covers every message to every coding session, whoever sent it.
-- **A task that joins a session never stops it.** A stop, a close or a failure of the task only
-  unbinds the session, which runs on in atc as yours.
+- **A stop of a coding task stops its session, joined or started, through a `coding.stop` action.**
+  The starter rules ask you before nixie stops a session it joined. A close or a failure of the task
+  only unbinds a joined session, which runs on in atc as yours.
 - **One task run is one stretch of the session's work, from a message nixie delivers to the turn
   that leaves the session idle.** The report target gets one report for each such stretch, as it
   gets one for every task run.
@@ -131,10 +132,6 @@ as `task_message` records.
   with both variants in the tool's input schema, and check that the API takes the schema and the
   call parses. Until the probe passes on a harness, the server leaves the coding variant out of
   `task.start` on that harness.
-- **Does atc limit nixie's principal so it cannot stop your sessions?** The owner decides. nixie
-  never stops a joined session, but atc lets a principal stop every session in its reach, so nixie's
-  token could stop yours. Per-principal scopes in atc would let nixie read and message your sessions
-  and never stop them. Until the owner decides, nixie's own rule is the only guard.
 - **When does a line that nixie types into a session carry your authority?** A design session with
   the owner, held after the approval forwarding design, settles it, with the questions of
   [GEO-945](https://linear.app/zgeoff/issue/GEO-945). Until then, nixie types nothing into a
