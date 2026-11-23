@@ -97,12 +97,13 @@ type PlaceKey =
   | { kind: 'raw'; value: string }; // a migrated contact that parsePlace can't read; exact match
 ```
 
-- `parsePlace` tries each form in this order: a URL with a scheme, an address, a phone number, a
+- `parsePlace` tries each form in this order: a URL with `://`, an address, a phone number, a
   handle, then a host with an optional port.
 - A phone number parses only from `+` and its digits, with spaces and dashes dropped. nixie guesses
   no country code.
-- A handle parses only as `<channel>:<id>`, where the channel is the name of a chat connector, such
-  as `telegram`. Any other `<name>:<digits>`, such as `example.org:8443`, is a host and a port.
+- A handle parses only as `<channel>:<id>`, where the channel is on the matcher's fixed list of chat
+  connector names. Each chat connector's work item adds its name; the examples assume `telegram`.
+  Any other `<name>:<digits>`, such as `example.org:8443`, is a host and a port.
 - An IP address or a host with one label, such as `localhost`, parses as a `site`.
 - Tools keep declaring the destination strings they declare today. The decision point runs
   `parsePlace` for places only, and a rule's `destinations` match the declared string.
@@ -143,7 +144,8 @@ const place = await places.add({
 });
 // → { placeID: '6b0e…', shortID: 'k3p9m2x7qa', trust: 'read' }
 
-const verdict = places.find(snapshot, parsePlace('https://catalog.library.example.org/x'));
+const destination = 'https://catalog.library.example.org/x';
+const verdict = places.find(snapshot, { parsed: parsePlace(destination), raw: destination });
 // → { placeID: '6b0e…', shortID: 'k3p9m2x7qa', trust: 'read' }, or null for a place with no entry
 ```
 
@@ -154,8 +156,8 @@ type Trust =
   | 'known' // the place passes stage 5; the rules decide the call, as for a known contact today
   | 'read' // a call with only reading effects is allowed; an acting call is decided as at 'known'
   | 'act' // a call with reading or acting effects is allowed, and each act leaves a notice
-  | 'self'; // one of your own addresses, numbers or handles, never a site or mail domain; as
-// 'act', with no notice
+  // one of your own addresses, numbers or handles, never a site or mail domain; as 'act', no notice
+  | 'self';
 
 interface Place {
   placeID: string; // crypto.randomUUID()
@@ -168,9 +170,10 @@ interface Place {
 ```
 
 nixie's own places, such as its phone number and its website, are entries at `act` with
-`addedBy: 'nixie_own'`. The server seeds one for each address, number or site that a connector's
-config names as nixie's own. The page and `places.list` show each as nixie's own, and you can change
-or remove it like any other entry. `self` holds only your places.
+`addedBy: 'nixie_own'`. At start the server adds one for each address, number or site that a
+connector's config names as nixie's own, unless it added that value before, so a value you removed
+stays removed. No built connector names one yet. The page and `places.list` show each as nixie's
+own, and you can change or remove it like any other entry. `self` holds only your places.
 
 The directory writes these records. The first three carry no thread, as contact records don't today,
 and each makes a new definitions snapshot. `places.acted` goes on the call's thread and makes none.
@@ -183,18 +186,19 @@ places.acted    { placeID, shortID, callID, tool }  // a call that an 'act' plac
 ```
 
 - The `places` projection holds each entry's IDs, kind, level and sequences, and the key and name of
-  a `site` or `mail_domain` place. It sets the time a call last used a place from each `tool_called`
-  whose decision carries that place's permission.
+  a `site` or `mail_domain` place. It keeps a removed entry's row, so a replay of an older call
+  finds its key. It sets the time a call last used a place from each `tool_called` whose decision
+  carries that place's permission.
 - For an `address`, `phone` or `handle` place, the key and the name are erasable fields of
   `places.added` and `places.changed`, and nixie reads them back from the record at each call, as it
   reads a contact's today. Both kinds join the forgettable kinds in the contract.
 - `places.add` and `places.changed` check the one entry per key inside their write transaction,
   against the keys read back. The projection stores no copy or hash of a personal key.
-- You can forget an `address`, `phone` or `handle` place. Its key then reads back empty, so it
-  covers nothing whatever its level, and the page and `places.list` leave it out. Forgetting a
-  `blocked` address unblocks it. A forget is yours alone; nixie's `places.narrow` never removes a
-  `blocked` entry. A `site` or `mail_domain` place holds nothing personal: you remove it, and its
-  records stay.
+- You can forget an `address`, `phone` or `handle` place. The forget takes its `places.added` and
+  every `places.changed` of it. Its key then reads back empty, so it covers nothing whatever its
+  level, and the page and `places.list` leave it out. Forgetting a `blocked` address unblocks it. A
+  forget is yours alone; nixie's `places.narrow` never removes a `blocked` entry. A `site` or
+  `mail_domain` place holds nothing personal: you remove it, and its records stay.
 
 ### The decision point
 
@@ -212,6 +216,7 @@ call's destinations come from its tool as today, and each goes through `parsePla
 
 ```ts
 // log module, where the decision record's types live. Replaces the owner and known_contact tiers.
+// Stage 5 gives each destination the first permission that holds, in this order.
 type DestinationPermission =
   | { by: 'place'; placeID: string; trust: 'known' | 'read' | 'act' | 'self' }
   | { by: 'reading' } // a destination with no entry, on a call with only reading effects
@@ -232,24 +237,27 @@ type DecisionDetail = { places: { placeID: string; shortID: string }[] | null };
 - `ownerDestinations` leaves the decision point's inputs, and `self` places take the owner tier's
   place. A decision recorded before this design keeps its old strings, and the decision schema reads
   both forms. No published contract type carries decision permissions.
-- The tool runner writes one `places.acted` for each `act` place, on the call's thread beside
-  `tool_called`, when a call with an acting effect was allowed through places. A call with only
-  reading effects writes none. The decision point stays a pure function, so a replay writes nothing.
+- The tool runner writes one `places.acted` for each `act` place, on the call's thread, when a call
+  with an acting effect that places allowed runs. A queued call writes it when its attempt runs. A
+  call with only reading effects writes none. The decision point stays a pure function, so a replay
+  writes nothing.
 - When several entries cover a destination, a `blocked` entry wins. Otherwise the most specific
-  entry wins: an exact key, then the longer domain.
+  entry wins: an exact or `raw` key, then the longer domain.
 - A rule's `destinations` keep their patterns and the `*` match. Both the pattern and the
   destination are put in lower case before the match.
 
 ### What the tools declare
 
 - `web_fetch` declares the host of its `url`, or of the link a `link` call names, through
-  `resolveDestinations`. A call that reads a stored page fetches nothing and declares none.
+  `resolveDestinations`, before any known-site rewrite. A call that reads a stored page fetches
+  nothing and declares none.
 - `search` with `sites`, `computer.browser_download` and a device page's fetches declare their URL's
   host too, in their own work items.
 - `computer.screen_click` and `computer.screen_type` declare the host of the browser tab in front
   when the browser window has focus. With any other window in front they declare no destination, and
-  the call asks: their declarations carry a flag that stops stage 7 allowing them with no
-  destination, through a place or a rule.
+  the call asks: their declarations carry a flag that stops stages 7 and 8 allowing them with no
+  destination. The flag is part of the declaration that the snapshot hash covers, and an `effects/`
+  override can't change it.
 - `computer.screenshot`, `computer.screen_scroll` and the browser read tools, such as
   `computer.browser_read`, declare no destination, as the [open question](#open-questions) says.
 - `computer.browser_fill` declares `send`, with the tab's host.
@@ -275,10 +283,12 @@ interface ClickedElement {
 - The queued attempt of a click reads the element again, and refuses when its effects or
   destinations differ from the ones decided.
 - A click handler that a script adds is invisible to `prepare`, so a plain-link click can start a
-  script's action without asking. The design accepts this risk; a click inside a form still asks.
-- The server's hop gate refuses a redirect hop to a `blocked` site. The browser act tools read the
-  tab's host at each call, so the next act on a tab that a redirect or a click took to a `blocked`
-  site is denied. Navigation inside the browser between calls isn't checked.
+  script's action without asking. A plain link can act on its own too, such as a one-click
+  unsubscribe. The design accepts both risks; a click inside a form still asks.
+- The server's hop gate refuses each hop to a `blocked` site, the rewritten URL and each redirect,
+  under the call's own snapshot. The browser act tools read the tab's host at each call, so the next
+  act on a tab that a redirect or a click took to a `blocked` site is denied. Navigation inside the
+  browser between calls isn't checked.
 
 ### The notice of an act
 
@@ -407,9 +417,9 @@ and when a call last used it. You add, change and remove entries there. The host
   ID, and its short ID comes from `buildShortIDFromUUID`, so a rebuild gives the same short ID. Old
   snapshots' contact IDs read as places at `known`.
 - A contact's destination becomes an `address`, `phone` or `handle` key through `parsePlace`. Any
-  other contact, such as a site, becomes a `raw` key, and so does a later contact whose key an
-  earlier contact already holds. A `raw` key covers the exact NFC string. No call a contact covers
-  gains an allow or loses one, except that an address now matches in any case.
+  other contact, such as a site, becomes a `raw` key, and so does a contact whose key another place
+  already holds, including one marked after the upgrade. A `raw` key covers the exact NFC string. No
+  call a contact covers gains an allow or loses one, except that an address now matches in any case.
 - A migrated place's kind comes from its erasable destination, so the projection sets it in
   `afterRebuild`.
 - A forget of the old contact record erases the place.
@@ -418,10 +428,11 @@ and when a call last used it. You add, change and remove entries there. The host
   them. Until then they write contact records and read only places at `known`. The `known_contacts`
   table goes when they move.
 - The definitions repo may hold `places.yaml`, a list of `{ place, trust, name? }` with `site` and
-  `mail_domain` entries, seeded like rules with `addedBy: 'seed'`. Each `place` goes through
-  `parsePlacePattern`. A key already in the directory keeps its level, and a line dropped from the
-  file removes only the place that the seed added. An `address`, `phone` or `handle` place never
-  leaves the database.
+  `mail_domain` entries, seeded like rules with `addedBy: 'seed'` under a new definitions format
+  number. Each `place` goes through `parsePlacePattern`, and one bad line refuses the whole seed, as
+  a bad `effects/` file does. The seed sets and removes only the entries it added and nobody has
+  changed since; an entry you added or changed keeps its level. An `address`, `phone` or `handle`
+  place never leaves the database.
 
 ## Builder decides
 
