@@ -40,11 +40,11 @@ encoding to end.
 
 The `notebook` section of the deployment config holds `note_chars`, the most characters of one body
 (50,000), `max_notes`, the active notes, where a write past it is `NOTEBOOK_FULL`, and
-`check_reason_repeats` (3): the check reports a reason only when more links than this repeat it. The
-default `notebook.max_notes` sits below the 1,000 notes of the first design, because a start with
-that many full notes encoded for longer and held more memory than the notebook's budget allows. The
-measurement and the budget sit in a comment beside the default in the code. A deployment with more
-cores or shorter notes can raise the limit.
+`check_reason_repeats`, which defaults to 3 and makes the check report a reason only when more links
+than that number repeat it. The default `notebook.max_notes` sits below the 1,000 notes of the first
+design, because a start with that many full notes encoded for longer and held more memory than the
+notebook's budget allows. The measurement and the budget sit in a comment beside the default in the
+code. A deployment with more cores or shorter notes can raise the limit.
 
 ## The tools
 
