@@ -13,6 +13,8 @@ records mark each forget, and both lists come from the registry.
 
 Once the owner approves this design, build its work items from it and the built
 [forgetting in the memory store](../../architecture/memory/store.md#forgetting) it generalises.
+Notes and moments move first; memory items, records, images and the reset follow, each in its own
+work item.
 
 ## Shape
 
@@ -43,22 +45,24 @@ flowchart LR
 
 ### The registry
 
-Each module exports a static descriptor, which the server registers at start and the list generator
-imports without starting anything.
+Each module exports a static descriptor for every kind it can forget, which the server registers at
+start and the list generator imports without starting anything. A store gains its runner methods in
+the work item that moves it; until then the runner leaves it to its own pipeline.
 
 ```ts
 // log module: the descriptor types. The runner lives in the server, which can reach sessions,
 // turn inputs and sandboxes.
 interface ErasableDescriptor {
   kind: ErasableKind; // 'memory_item' | 'moment' | 'note' | 'record' | 'image' | 'conversation'
-  //                     | 'vault_entry' | 'locked_entry'
+  //                     | 'vault_entry' | 'locked_entry' (the last two join when they are built)
   recordKinds: {
     erasable: readonly string[]; // records this erasable's own forget erases
     forgettable: readonly string[]; // records a record forget may target (the record erasable only)
     unforgettable: readonly string[]; // records no forget may target, such as definition.changed
   };
   // The old end records that make a backup due, with any payload filter, such as
-  // { kind: 'moment_destroyed', where: { stage: 'done' } }.
+  // { kind: 'moment_destroyed', where: { stage: 'done' } }. The server passes these to the backup
+  // module, which imports no store.
   legacyEnds: readonly { kind: string; where?: Record<string, string> }[];
 }
 
@@ -66,10 +70,11 @@ interface Erasable<Target> extends ErasableDescriptor {
   // Throws the store's refusal error, so a client action written in the same transaction rolls
   // back: not_found, stale, action_not_finished.
   start(tx: Transaction, target: Target): Promise<ErasureCapture>;
-  hide(target: Target): Promise<void>; // after commit, under the store's lock; drops index entries
-  readOpen(tx: Transaction): Promise<Target[]>; // targets in the store's in-progress state
+  // After the start commits, under the store's lock, or with none for a store that has none: makes
+  // the target unreachable at once, such as dropping it from search and from image.list.
+  hide(target: Target): Promise<void>;
   readChildren(tx: Transaction, target: Target): Promise<ErasureTarget[]>;
-  cleanIndexes(target: Target): Promise<void>;
+  cleanIndexes(target: Target): Promise<void>; // after the keys go; repeats hide's work safely
   before?(target: Target): Promise<void>; // the reset's stop-work barrier and guest destroy
 }
 
@@ -78,72 +83,88 @@ type ErasureCapture = {
   keys: KeySelection; // { ids: string[] } | { family: string } | { thread: string }
   cleanupKeys: string[]; // keys found through readable data: report copies, briefs, pictures
   sandboxCallIDs: string[]; // code sandboxes that hold clear text
-  purges: number[]; // record sequences whose quotes to purge from memory items
+  purges: { recordSequence: number; itemIDs: string[] }[]; // the purge set, saved at start
   sessionCause: SessionCleanupCause; // …existing, such as { noteID }
-  turnInputs: { threads: string[] | 'all'; floor: number | null };
+  // fixed threads, plus the threads the session cleanup reports when cleaned is true
+  turnInputs: { threads: string[] | 'all'; cleaned: boolean; floor: number | null };
 };
 
-type ErasureTarget = { kind: ErasableKind; targetID: string; version: number | null }; // targetID: UUID
+// targetID: the target's stable ID: a UUID, a record's sequence as text, or the conversation's
+// task ID. The model never sees it; a tool passes the target's short ID or event number.
+type ErasureTarget = { kind: ErasableKind; targetID: string; version: number | null };
 ```
 
 ### The records
 
 ```text
 erasure.started   { erasureID, kind, targetID, shortID, version, parentID, by, capture }
-erasure.finished  { erasureID, kind, targetID, shortID, by }
+erasure.finished  { erasureID, kind, targetID, shortID, by, removedKeys }
 ```
 
+- `by` is `user` or `assistant`, as the note forget records today. `version` is null for a kind with
+  no version.
+- Both records hold IDs and sequences only, carry no erasable field, and are written in clear.
 - Each store's projection folds `erasure.started` and `erasure.finished` for its own kind, as it
   folds its old start and end records, so a rebuild reproduces every state a forget sets: the
-  forgotten-evidence block, the removed-record readers, a note's forget notice.
-- `erasureID` is a UUID and never reaches the model. A tool passes the target's short ID.
+  forgotten-evidence block, the removed-record readers, a note's forget notice. When both an old
+  record and its new one exist, the two folds set the same state.
+- `erasureID` is a UUID and never reaches the model.
 - For one release, the runner also writes each store's old start and end records, so the release
-  before can finish a forget the new release began. The release after stops them.
+  before can finish a forget the new release began. The release after stops them. A reset that the
+  new release began finishes only on the new release, because the release before writes no reset
+  start.
 - The release before skips a record kind it doesn't know. The first work item checks this, and ships
   the skip a release ahead of the rest when it is missing.
 - The evidence purge keeps its own three records.
 
 ### The runner
 
-1. Under the store's lock, or in the write transaction for a store with no lock: call `start`, write
-   `erasure.started` with the capture, and commit. Then call `hide`, still under the lock.
-2. Close the turn-input capture for the erasure's threads, so no spool file lands after the sweep.
-3. Find the children, start each as an erasure with `parentID`, and repeat until a pass finds no new
-   target. A target already open joins its erasure, and a target seen once in this tree is skipped,
-   so shared and cyclic children finish once.
-4. Run `before`, then destroy every code sandbox in the tree. When one destroy fails, no key goes.
+1. Run `before`, if any. Then, under the store's lock, or in the write transaction for a store with
+   no lock: call `start`, write `erasure.started` with the capture, and commit. Then call `hide`.
+2. Close every open turn-input capture, on every thread, so no spool file lands after the sweep.
+3. Find the children, start each as an erasure with `parentID` in its own transaction under its
+   store's lock, and repeat until a pass finds no new target.
+4. Destroy every code sandbox in the tree. When one destroy fails, no key goes.
 5. Delete every key in the tree, then checkpoint the key store.
-6. Clean the indexes and close the sessions for each erasure, then run the evidence purges. A purge
+6. Scan for children again. A new one runs steps 3 to 5 before the parent goes on.
+7. Clean the indexes and close the sessions for each erasure, then run the evidence purges. A purge
    waits for an item forget already under way.
-7. Remove the turn inputs on the captured threads from the floor on.
-8. Write `erasure.finished` for each child, then the parent.
+8. Remove the turn inputs from the floor on, on the captured threads and the cleaned ones, then
+   reopen capture.
+9. Write `erasure.finished` for each child, then the parent.
 
-- At each start, after the session-cleanup parts and before any claim pool starts, the runner
-  finishes every erasure that `readOpen` returns, children before parents. `readOpen` reads row
-  state, so it also finds a forget an older release began with its old records.
+- A target that already has an open erasure joins it: the open erasure does the work, and a parent
+  that reached the target waits for it to finish. A target seen once in a tree is skipped, so shared
+  and cyclic children finish once.
+- At each start, after the session-cleanup parts and before any claim pool or turn-input intake
+  starts, the runner finishes every `erasure.started` with no `erasure.finished`, children before
+  parents, and every evidence purge no erasure owns. A crash in step 3 leaves the parent open, and
+  the catch-up runs step 3 again.
+- For one release, each store also keeps its old catch-up, for a forget an older release began with
+  its old records.
 - Each step runs again after a crash with the same result.
-- A note forget from a tool runs steps 1 to 5 at once, and steps 6 to 8 after the calling step ends,
+- A note forget from a tool runs step 1 at once, and steps 2 to 9 after the calling step ends,
   retried until they succeed.
 
 ### The conversation reset
 
-- A reset is an erasure of kind `conversation`. Its `before` stops work on the thread and destroys
-  the conversation's guest before any key goes; when the destroy fails, the keys stay.
-- Its start writes the `log_reset` boundary that the inbox and history read, and cleans the fetch
-  pages it stored.
-- It purges memory quotes of the thread's records, as a record forget does.
-- A crash between key batches finishes at the next start, and the reply keeps its count.
+- A reset is an erasure of kind `conversation`. Its `before` stops work on the thread, invalidates
+  the conversation's session, and destroys its guest; when the destroy fails, nothing is written and
+  no key goes.
+- It writes the `log_reset` boundary in the transaction of `erasure.finished`, after the keys are
+  gone, so the inbox moves and a backup falls due only once the reset is done.
+- It cleans the fetch pages and the fetch pauses it stored, and purges memory quotes of the thread's
+  records, as a record forget does.
+- `erasure.finished.removedKeys` holds the count of keys it deleted, which the reply reports.
 
 ### The reply
 
-```ts
-// Each route keeps its output. A route with no backup state today, such as the moment destroy,
-// gains an optional one; the contract change is additive.
-type ForgetBackup = 'off' | 'pending' | { failed: string } | 'complete' | 'unknown'; // …existing
-```
-
+- Each route keeps its output and its backup state, `forgetBackupSchema`, unchanged. A route with no
+  backup state today, such as the moment destroy, gains it as an optional field, in the work item
+  that moves its store.
 - A route runs the forget to its end before it replies, as today. When a step fails, it replies
-  pending, and a retry with the same client action finds the open erasure by target and finishes it.
+  pending. A retry with the same client action returns the stored result when the forget is done, or
+  finds the open erasure by target and finishes it.
 - A bulk forget replies with the targets done and the targets pending.
 
 ## Constraints
@@ -153,16 +174,17 @@ type ForgetBackup = 'off' | 'pending' | { failed: string } | 'complete' | 'unkno
   [a forget's backup state](../../architecture/deployment/backups.md#a-forgets-backup-state):
   complete only once a set at or after `erasure.finished` is published.
 - The backup module reads `erasure.finished` and each descriptor's `legacyEnds` to decide a set is
-  due.
+  due. The backup job never publishes a set staged before a finished erasure that no published set
+  covers yet.
 - A script generates the contract's forgettable kinds list from the descriptors, because the
   published contract lib can't import a module. A check fails when the committed list differs.
 - Every record kind of the server sits in exactly one descriptor list, or carries no erasable field.
   The partition test reads the descriptors.
 - A vault entry's forget resolves any of its `vault.*` records to the entry, through the entry ID in
-  the record, and never to its group. The route asks for a passkey, as the
-  [vault design](accounts.md) says.
-- A locked entry's forget deletes every passkey wrapper, waits for an attempt to drop its unwrapped
-  key, and erases the page dumps the vault stores. A lock or an unlock makes a backup due.
+  the record, and never to its group. It erases the entry's page dumps, locked or not. The route
+  asks for a passkey, as the [vault design](accounts.md) says.
+- A locked entry's forget deletes every passkey wrapper and waits for an attempt to drop its
+  unwrapped key. A lock or an unlock writes a record that makes a backup due.
 - Who may forget each kind stays as it is: nixie forgets notes without asking, asks before it
   forgets a record, and has no tool for the rest.
 
@@ -170,7 +192,7 @@ type ForgetBackup = 'off' | 'pending' | { failed: string } | 'complete' | 'unkno
 
 - The generator's file name and the check's command.
 - How the web client shows the backup state for kinds that show none today.
-- The order the stores move onto the runner, notes and moments first.
+- How each store's runner methods attach to its descriptor at registration.
 
 ## Out of scope
 
