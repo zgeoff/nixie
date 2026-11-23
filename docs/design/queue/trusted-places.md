@@ -8,10 +8,10 @@
 
 nixie keeps one directory of the places it deals with: websites, email addresses, mail domains,
 phone numbers and chat handles. Each entry carries one trust level, and the decision point reads the
-level for every tool that reaches the place. Today the same website is free for `web_fetch`, asks
-for `computer.browser_open`, and asks again for each click, because each tool and each Always allow
-answer keeps its own list. With the directory, you trust a site once, on one page, and every tool
-sees the same answer.
+level for every tool that reaches the place. Today `web_fetch` reads a website without asking,
+`computer.browser_open` asks before it opens the same site, and each click asks again, because each
+tool and each Always allow answer has its own list. With the directory, you trust a site once, on
+one page, and every tool sees the same answer.
 
 Once the owner approves this design, build each work item above from it and the
 [decision point](../../architecture/policy/decision-point.md) it extends. The directory's own work
@@ -144,8 +144,9 @@ places.acted    { placeID, shortID, callID }  // a call that an 'act' place allo
 ```
 
 - The `places` projection holds each entry's IDs, kind, level and sequences. For an `address`,
-  `phone` or `handle` place, the key and the name are erasable fields of `places.added`, read back
-  from the record as a contact's are today, and `places.added` joins the forgettable kinds.
+  `phone` or `handle` place, the key and the name are erasable fields of `places.added`, and the
+  projection reads them back from the record, as it reads a contact's today. `places.added` joins
+  the forgettable kinds.
 - The projection keeps a keyed hash of each key, under the deployment's key, for the
   one-entry-per-key check. A forget clears the hash.
 - You can forget an `address`, `phone` or `handle` place. A forget removes it whatever its level, so
@@ -220,7 +221,7 @@ const proposal = await tools.call('places.propose', {
 ```
 
 - When every destination of a held call is one place, the card offers "Trust this place to read" and
-  "Trust this place to act". The answer adds or raises the entry. It writes no rule.
+  "Trust this place to act". Either answer adds the entry or raises its level, and writes no rule.
 - A card or a proposal offers the exact host, with `subdomains: false`. You widen an entry to its
   subdomains on the places page.
 - `places.propose` declares `policy_widen`, so it always asks.
@@ -234,19 +235,20 @@ await tools.call('places.narrow', { place: 'P4', trust: 'known' }); // or { plac
 
 ### Evidence from what you typed
 
-nixie checks whether you named a place in three spots today, each with its own window: the consent
-check (the turn's message, plus your linked messages within `policy.consent.link_max_age` hours),
-the memory gate (your last 20 messages) and the skill guard (the same 20). The skill guard's check
-goes, as [the next section](#the-skill-guard-moves-to-first-use) says. The other two share one
-window, the consent check's, and one comparison, `isPlaceCovered` over `parsePlacePattern` of each
-place you typed. The secret scan's exemption for a URL you typed keeps its own rule, the whole URL,
-because it guards a secret, not a place.
+Today the consent check, the memory gate and the skill guard each check whether you named a place,
+over a window of its own. The consent check reads the turn's message, plus your linked messages
+within `policy.consent.link_max_age` hours. The memory gate and the skill guard each read your last
+20 messages. This design drops the skill guard's check, as
+[the next section](#the-skill-guard-moves-to-first-use) says. The consent check and the memory gate
+share one window, the consent check's, and one comparison: `isPlaceCovered` over `parsePlacePattern`
+of each place you typed. The secret scan's exemption for a URL you typed keeps its own rule, the
+whole URL, because it guards a secret, not a place.
 
 ### The skill guard moves to first use
 
-nixie writes its own skills freely. `skill_write` applies under its rules, and no longer checks the
-places a skill names. A skill that names a place you never trusted takes effect, and its first call
-to that place meets the decision point like any other call: an acting call there asks.
+nixie writes its own skills freely. `skill_write` stops checking the places a skill names, and
+applies under its own rules. A skill that names a place you never trusted takes effect. Its first
+call to that place meets the decision point like any other call, and an acting call there asks.
 
 ### The places page
 
@@ -265,8 +267,8 @@ and when a call last used it. You add, change and remove entries there. The host
 - No level allows a `spend` call: it asks at `known`, `read`, `act` and `self`, and `blocked` denies
   it. A lift covers a spend as it does today.
 - Each call reads the directory of its own definitions snapshot. `places.added`, `places.changed`
-  and `places.removed` each make a new snapshot, as a contact record does today. The snapshot's form
-  holds `policy.places`, the place IDs and levels, in place of `policy.contacts`, and never an
+  and `places.removed` each make a new snapshot, as a contact record does today. The snapshot holds
+  `policy.places`, the place IDs and levels, where it held `policy.contacts`, and never holds an
   address.
 - The vault keeps each entry's exact origins as a fill constraint. A password fills only on an exact
   origin of its entry, even on a site at `act`. The vault entry links its site's place ID.
@@ -275,7 +277,7 @@ and when a call last used it. You add, change and remove entries there. The host
   `isPlaceCovered`. A place's level never wakes a task by itself.
 - Typing a domain counts as naming its subdomains: typing `example.org` names `api.example.org`. You
   name a site by its domain, and rarely type the host a tool reaches. This rule covers typed
-  evidence only; an entry covers subdomains only when its key says so.
+  evidence only; an entry covers subdomains only when its key has `subdomains: true`.
 - The skill guard checks a place when a skill's call reaches it, never when the skill is written. A
   write can't reach anyone; a call can, and every call meets the decision point.
 - Known contacts become places at `known` with no new records: the `places` projection also folds
