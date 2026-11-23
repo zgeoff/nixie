@@ -528,9 +528,8 @@ has no token limit: it ends at its turns and its dollars.
 ## The capture
 
 The gateway copies the exact body of a model request to a spool folder, sealed to a key that only
-nixie holds, so a guest cannot vouch for its own input. The
-[turn-input log design](../../design/queue/turn-input-log.md) describes the nixie side: the tag, the
-intake and the store.
+nixie holds, so a guest cannot vouch for its own input. The [turn-input log](turn-input-log.md)
+describes the nixie side: the tag, the intake and the store.
 
 ### The tag
 

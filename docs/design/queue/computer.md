@@ -42,7 +42,8 @@ open.
   broker.
 - A shell session that persists between `computer.run` calls. The desktop's terminal window is the
   owner's, and `computer.run` never uses it.
-- A desktop with a window manager, and screen sharing, which [the desktop](desktop.md) designs.
+- The desktop and take-over, which [the computer](../../architecture/connectors/computer.md)
+  describes.
 
 ## Open questions
 

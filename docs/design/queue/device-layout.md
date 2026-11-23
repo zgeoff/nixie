@@ -4,18 +4,18 @@
 - **Work items:** [the device layout](https://linear.app/zgeoff/issue/GEO-2805), after
   [a signed-in browser as a device](https://linear.app/zgeoff/issue/GEO-2804)
 
-A device screen shows one thing at a time today: a block of markdown or an image. The assistant
-gains layouts: a grid of named regions, each showing its own content and updated or timed out on its
-own. A region holds markdown, an image, a live value that the device keeps fresh, or a web page the
-assistant writes. A page runs sealed in a sandboxed frame. It can load packages you approved, read
-the URLs declared with it, take messages from the assistant, and send events back when you touch it.
-The assistant sees a preview of the screen and each page's errors.
+Layouts are built: a grid of named regions, each holding markdown, an image or a live value, as
+[layouts and regions](../../architecture/channels/devices.md#layouts-and-regions) describes. A
+region also holds a web page the assistant writes. A page runs sealed in a sandboxed frame. It can
+load packages you approved, read the URLs declared with it, take messages from the assistant, and
+send events back when you touch it. The assistant sees a preview of the screen and each page's
+errors. Until pages are built, `device.region` refuses a page with `PAGE_NOT_BUILT`.
 
 ## Shape
 
 ```mermaid
 flowchart LR
-  model[assistant] -->|"device.layout, device.region"| server[devices module]
+  model[assistant] -->|"device.region, device.sendToPage"| server[devices module]
   server -->|"devices.follow events"| device[device mode]
   device --> grid[region grid]
   grid --> frame[sealed page frame]
@@ -28,48 +28,24 @@ flowchart LR
 
 ## Contracts
 
-### Layouts and regions
+### Pages in a region
 
 ```ts
-// devices module: the device tools
-device.layout({
-  device: 'tb8r3k6m1q',
-  columns: ['1fr', '2fr', '1fr'], // each a whole number of fr, 1 to 12; at most 6 columns
-  rows: ['1fr'], // the same, at most 6 rows
-  regions: [
-    { name: 'pond', column: 1, row: 1 }, // 1-based; span with columnSpan and rowSpan
-    { name: 'note', column: 2, row: 1 },
-    { name: 'clock', column: 3, row: 1 },
-  ],
-});
-// → { device: 'tb8r3k6m1q', regions: ['pond', 'note', 'clock'] }
-//   or UNKNOWN_DEVICE | SCREEN_OFF | BAD_LAYOUT (overlapping or out-of-grid regions, bad names) | OFFLINE
-//   A new layout clears every region.
-
-device.layout({ device: 'tb8r3k6m1q', clear: true }); // removes the layout; the idle scene shows
-// → { device: 'tb8r3k6m1q', regions: [] }
-
+// devices module: a page is one more kind of region content
 device.region({
   device: 'tb8r3k6m1q',
-  region: 'note',
-  content: { kind: 'markdown', markdown: 'Bins go out **tonight**' },
-  minutes: 90, // optional; without it the region keeps its content until the next device.region
-  then: 'previous', // 'blank' (the default) or 'previous': what shows when the minutes pass
+  region: 'pond',
+  content: { kind: 'html', html: '<canvas id="pond"></canvas><script>…</script>' },
 });
-// → { device: 'tb8r3k6m1q', region: 'note', until: '2026-11-22T21:30:00Z' }
-//   or UNKNOWN_REGION, and the refusals device.show returns for its content
-//   When the minutes pass, the region goes blank, or with then: 'previous' shows again the content
-//   this call replaced, when that content's own minutes have not passed. The other regions stay.
+// → { device: 'tb8r3k6m1q', region: 'pond', until: null }
+//   or the refusals device.region returns today, and UNKNOWN_PACKAGE
 
 type RegionContent =
-  | { kind: 'markdown'; markdown: string } // at most 20,000 characters
-  | { kind: 'image'; image: string; fit: 'whole' | 'fill' } // an image store short ID
-  | { kind: 'live'; live: 'clock'; format: 'HH:mm' | 'HH:mm:ss' | 'EEE d MMM' }
-  | { kind: 'live'; live: 'countdown'; to: string; label?: string } // ISO time; shows 0 after it
-  | PageContent;
+  // …existing kinds: markdown, image, live
+  HTMLContent;
 
-type PageContent = {
-  kind: 'page';
+type HTMLContent = {
+  kind: 'html';
   html: string; // at most 200,000 characters
   packages?: string[]; // 'name@version', each one approved through device.addPackage
   fetches?: { url: string; refreshMinutes?: number }[]; // exact URLs, at most 8; refresh 5 to 1,440
@@ -79,12 +55,6 @@ type PageContent = {
 // destination, so the decision point judges the URLs when the page is sent. Without fetches the
 // page reads nothing.
 ```
-
-The screen shows the first of these that holds:
-
-1. A `device.show` whose minutes have not passed.
-2. The layout, when it has one and at least one region shows content.
-3. The idle scene.
 
 ```ts
 // devices module: a message into a page that shows, with no reload
@@ -113,12 +83,11 @@ as a browser tool does.
 The errors come from the device: the last 20 uncaught errors and console errors of each page region
 since its content last changed, which the server keeps in memory.
 
-| Tool                                 | Effect                                             | Runs                                     |
-| ------------------------------------ | -------------------------------------------------- | ---------------------------------------- |
-| `device.layout`, `device.sendToPage` | `note`                                             | direct                                   |
-| `device.preview`                     | `note`                                             | direct                                   |
-| `device.region`                      | `note`, and a `read` of each declared fetch's host | direct when the rules allow, else queued |
-| `device.addPackage`                  | `install_package`, in the always-ask risk class    | queued                                   |
+| Tool                                  | Effect                                             | Runs                                     |
+| ------------------------------------- | -------------------------------------------------- | ---------------------------------------- |
+| `device.sendToPage`, `device.preview` | `note`                                             | direct                                   |
+| `device.region` with a page           | `note`, and a `read` of each declared fetch's host | direct when the rules allow, else queued |
+| `device.addPackage`                   | `install_package`, in the always-ask risk class    | queued                                   |
 
 ### The page's bridge
 
@@ -147,7 +116,7 @@ devices.pageError({ region, shown, message }); // each uncaught error and consol
 
 // contract lib: the devices.follow event for a page region carries shown, a frame ticket and an
 // image ticket for each declared image. A region_data event { region, shown, url } follows each
-// refresh of a declared fetch. devices.follow's size gains pixelRatio: CSS size = width / pixelRatio.
+// refresh of a declared fetch.
 ```
 
 The frame's opaque origin sends no session cookie, so the API's session check skips three paths
@@ -162,15 +131,12 @@ under `/rpc/device/`, which the reverse proxy already sends to the API:
 Each ticket comes from `crypto.randomUUID()` when the region shows. The device page's own CSP gains
 `frame-src 'self'`, and the frame's CSP names the API's origin for the package and image paths,
 because an opaque origin can't use `'self'`. Image and markdown regions keep using
-`devices.readImage`, which serves an image that any region of the layout shows.
+`devices.readImage`.
 
 The three page calls join the device session's allowed calls. A full session may make them only for
-a device it holds, after
-[a signed-in browser as a device](https://linear.app/zgeoff/issue/GEO-2804).
+a device it holds.
 
 ```text
-device.layout_set     -- payload: columns, rows, regions; a short ID
-device.region_shown   -- payload: region, content (sealed under the record's own key), until; a short ID
 device.page_event     -- payload: device, region, shown, name, data (erasable), wake; on the conversation's thread
 device.package_added  -- payload: name, version, integrity, size, publisher
 ```
@@ -271,18 +237,10 @@ The network:
 
 Regions:
 
-- A layout has at most 12 regions. A region name is 1 to 32 characters of lowercase letters, digits
-  and hyphens.
-- A region's content replaces the one before it. A forget of a `device.region_shown` record erases
-  its content, and the region goes blank.
-- `devices.list` shows each device's layout and, for each region, its kind, until, packages, fetch
-  URLs and `device.region_shown` short ID, and never the page's HTML.
-- A layout never times out. A region's minutes keep counting while a `device.show` covers the
-  layout, and the region's page stays loaded, hidden, taking messages, events and refreshes.
-- A queued `device.region` returns the proposal, as any queued call does, and the region keeps its
-  content until the approval. When the region or its layout is gone by then, the approved call fails
-  with `UNKNOWN_REGION`.
-- A live value runs in the device page, with no event from the server after it starts.
+- `devices.list` shows a page region's packages and fetch URLs beside its kind, and never the page's
+  HTML.
+- A page stays loaded while a `device.show` covers the layout, hidden, taking messages, events and
+  refreshes.
 
 The preview:
 
@@ -308,8 +266,8 @@ The preview:
 
 ## Builder decides
 
-- How the device page draws the grid, and how a region fades between contents.
-- The look of a live value, and the fonts the device page offers a page.
+- How a region fades between contents.
+- The fonts the device page offers a page.
 - How the server stores package files, and how it serves them with their content types.
 - The wire frames that carry a fetch, a package and a preview to and from their sandboxes.
 - The tool descriptions and the refusal wording.

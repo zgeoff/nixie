@@ -544,3 +544,7 @@ The live stream answers at a path with no `log` segment, because EasyPrivacy, a 
 content blockers enable by default, blocks `/rpc/log/` on every domain. The stream's first path
 stays in the contract as a deprecated alias for the clients of earlier releases, which a later
 release may remove.
+
+`memory.writerStatus` stays in the contract, deprecated, for the same reason: a tab loaded from an
+earlier web client probes its session with it. nixie has no built-in memory task, so the call always
+answers the same constant, with `isEnabled: false`, every count 0 and no error.

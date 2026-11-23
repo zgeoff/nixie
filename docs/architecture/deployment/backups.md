@@ -58,7 +58,7 @@ nixie stages no set of any kind while it is paused after a restore. The first pu
 restore replaces the key snapshot that the restore came from, and nothing undoes that, so staging
 waits until the user has read the recovery and resumed nixie. The check reads the pause in the
 transaction that inserts the set's row. A pause with cause `owner` or `spending` stages as on any
-day. See [the pause](../../design/queue/pause.md).
+day. See [pausing nixie](../core/pause.md).
 
 A set that fails before its marker exists, in its copy or in the marker's own write, removes its set
 folder and moves its row to abandoned, so the schedule's next try starts from a clean staging
