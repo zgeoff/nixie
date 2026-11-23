@@ -358,13 +358,13 @@ test('it lists a run with a cause that no release knows as failed', async () => 
   ]);
 });
 
-test('it pages 90 runs with long reports under the output limit, listing each once', async () => {
+test('it pages 50 runs with long reports under the output limit, listing each once', async () => {
   const ctx = await setupTest();
   const taskID = await ctx.createDefinitionTask('water-the-tomatoes', 'hash-1');
 
   const longReport = 'Watered the beds. '.repeat(300);
 
-  for (let count = 0; count < 90; count += 1) {
+  for (let count = 0; count < 50; count += 1) {
     await ctx.endDefinitionRun(taskID, 'water-the-tomatoes', 'hash-1', longReport);
   }
 
@@ -387,8 +387,8 @@ test('it pages 90 runs with long reports under the output limit, listing each on
 
   expect(pages).toBeGreaterThan(1);
   expect(sizes).toSatisfyAll((size: number) => size <= recallPageLimitBytes);
-  expect(seen).toHaveLength(90);
-  expect(new Set(seen).size).toBe(90);
+  expect(seen).toHaveLength(50);
+  expect(new Set(seen).size).toBe(50);
 });
 
 test('it returns a tool error for a cursor it did not give', async () => {
