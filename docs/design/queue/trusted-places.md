@@ -396,10 +396,9 @@ and when a call last used it. You add, change and remove entries there. The host
 - No level allows a `spend` call. `blocked` denies it; at every other level stage 4 asks, unless a
   lift covers it, as today.
 - Each call reads the directory of its own definitions snapshot. `places.added`, `places.changed`
-  and `places.removed` each make a new snapshot, as a contact record does today. The snapshot holds
-  `policy.places`, a list of `{ placeID, trust }` sorted by place ID, where it held
-  `policy.contacts`, and never holds an address. The first snapshot after the upgrade has a new
-  hash.
+  and `places.removed` each make a new snapshot, as a contact record does today. `policy.places`
+  replaces `policy.contacts` in the snapshot. It is a list of `{ placeID, trust }` sorted by place
+  ID, and never holds an address. The first snapshot after the upgrade has a new hash.
 - The vault keeps each entry's exact origins as a fill constraint. A password fills only on an exact
   origin of its entry, even on a site at `act`, and the `www.` rule never widens it. The vault entry
   links its site's place ID.
@@ -410,8 +409,8 @@ and when a call last used it. You add, change and remove entries there. The host
   name a site by its domain, and rarely type the host a tool reaches. Typing a public suffix, such
   as `github.io`, names that exact name only. This rule covers typed evidence only; an entry covers
   subdomains only when its key has `subdomains: true`.
-- Nothing checks the places a skill names when the skill is written. A write can't reach anyone; a
-  call can, and the decision point checks each place a skill's call reaches.
+- Nothing checks the places a skill names when the skill is written. Writing a skill reaches no one,
+  and the decision point checks each place the skill's calls reach.
 - Known contacts become places at `known` with no new records: the `places` projection also folds
   `policy.contact_marked_known` and `policy.contact_unmarked`. A migrated place's ID is its contact
   ID, and its short ID comes from `buildShortIDFromUUID`, so a rebuild gives the same short ID. Old
