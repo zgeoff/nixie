@@ -10,8 +10,8 @@ pause and limit. So a schedule fires into a task's inbox while all of nixie is p
 [pause design](pause.md) says never happens. After this design, one function answers whether a task
 may go on and why not, and every claim, action attempt, turn and trigger fire asks it.
 
-The word "recovery" also means two things: the restart sweep after a crash, and one restore. After
-this design it means one.
+The same cleanup settles a word. "Recovery" means two things today, the restart sweep after a crash
+and one restore. After this design it means one.
 
 Once the owner approves this design, build its work items from it and the built
 [claim path](../../architecture/core/leases-and-recovery.md#the-claim-path) it extends.
@@ -25,7 +25,7 @@ flowchart LR
   fire[trigger fire] --> gate
   turn[turn start] --> gate
   gate -->|"open"| go[go on]
-  gate -->|"held: task or limit"| skip[skip; a fire writes a record]
+  gate -->|"held: ended, task or limit"| skip[skip; a fire writes a record]
   gate -->|"held: nixie or spend"| wait[wait; a fire comes again]
 ```
 
@@ -46,13 +46,17 @@ const gate = await readTaskGate(tx, taskID);
 
 ```ts
 // tasks module. The one answer to "may this task go on", read inside the caller's transaction.
-type TaskGate = { open: true } | { open: false; reason: TaskHoldReason; since: number }; // since: epoch ms of the hold's record
+// since: the recorded time, in epoch ms, of the record that started the hold, such as
+// task.stopped, spend.stop_tripped, nixie.paused, task.paused or task.limit_reached.
+type TaskGate = { open: true } | { open: false; reason: TaskHoldReason; since: number };
 
-// In order of precedence: the first that holds is the reason.
+// In order of precedence: the first that holds is the reason. An ended task comes first, because
+// it never runs again, so a caller never waits on it.
 type TaskHoldReason =
+  | 'ended' // the task is stopped, failed or closed
   | 'spend' // the spending stop stands; an exemption doesn't lift it
   | 'nixie' // nixie is paused, by you or by a restore, and the task isn't exempt
-  | 'task' // the task's own state: paused, stopped, failed or closed
+  | 'task' // you paused the task
   | 'limit'; // the task reached a limit and nothing raised it
 ```
 
@@ -65,32 +69,37 @@ type TaskHoldReason =
 
 ### What each caller does when held
 
-| Caller         | `task` or `limit`                                      | `nixie` or `spend`                                            |
-| -------------- | ------------------------------------------------------ | ------------------------------------------------------------- |
-| task claim     | skips the task                                         | skips the task                                                |
-| action attempt | barred; an attempt already started runs to its outcome | barred; the attempt stays pending and the lease is freed      |
-| trigger fire   | writes `trigger.skipped` with `task_held`, as today    | writes nothing and takes no key; the source delivers it again |
-| turn start     | –                                                      | the step waits, as a step under the spending stop does today  |
+| Caller         | `ended`                            | `task` or `limit`                                        | `nixie` or `spend`                                       |
+| -------------- | ---------------------------------- | -------------------------------------------------------- | -------------------------------------------------------- |
+| task claim     | skips the task                     | skips the task                                           | skips the task                                           |
+| action attempt | cancelled, as today                | barred, stays pending; a started attempt runs to its end | barred, stays pending, and the lease is freed            |
+| schedule fire  | `trigger.skipped` with `task_held` | `trigger.skipped` with `task_held`, as today             | writes nothing and claims no trigger key; it comes again |
+| turn start     | the claim already skipped it       | the claim already skipped it                             | the step waits, as a step under the spending stop does   |
 
-- A schedule fire that waited through a hold is late when the hold ends. The
+- A schedule fire that nixie holds claims no trigger key, the key that stops a fire landing twice,
+  so the source's next tick delivers it again. When the hold ends, the fire is late, and the
   [catch-up rule](../../architecture/core/triggers.md#the-schedule-source) decides it, as for a fire
   missed while nixie was down: one catch-up within half the interval, otherwise a `too_late` skip.
+- Poll sources, such as mail, never read the gate. Their events land in the inbox while nixie is
+  paused, and wait there.
 - A trigger whose target is the conversation reads the gate of the conversation's task.
-- Poll sources, such as mail, deliver while nixie is paused, and their events wait in the inbox.
+- A step already under way when its task is paused finishes, as a pause request does today.
 - Timers, inbox records and action outcomes land while a task is held, as they do today.
 
 ### The two recoveries
 
-```text
-crash side, after this design   restore side, unchanged
-the restart sweep               recovery: one restore under one recoveryID
-start part restart_sweep        recoveries table, recovery.started, recovery.notice, recovery.read
-runRestartSweep                 installRestorePause
-fault points restart_sweep.*    fault points recovery.pause.*
-```
+The rename shares no code with the gate and ships as its own work item.
 
-The restore side keeps the word, because its names are stored and published: a table, two record
-kinds and an API route. The crash side holds only code names and fault point IDs.
+| Name             | Crash side, after the rename | Restore side, unchanged                                                    |
+| ---------------- | ---------------------------- | -------------------------------------------------------------------------- |
+| the thing        | the restart sweep            | recovery: one restore under one `recoveryID`                               |
+| start part       | `restart_sweep`              | –                                                                          |
+| entry point      | `runRestartSweep`            | `installRestorePause`                                                      |
+| stored or public | –                            | `recoveries` table, `recovery.started`, `recovery.notice`, `recovery.read` |
+| fault points     | `restart_sweep.*`            | `recovery.pause.*`                                                         |
+
+The restore side keeps the word, because its names are stored and published. The crash side holds
+only code names and fault point IDs.
 
 ## Constraints
 
@@ -106,7 +115,6 @@ kinds and an API route. The crash side holds only code names and fault point IDs
 
 - How the claim filter and the gate share the predicate.
 - The fault point IDs' new prefix, once the old IDs are gone.
-- Whether `since` comes from the record's sequence or its time.
 
 ## Out of scope
 
@@ -118,4 +126,5 @@ kinds and an API route. The crash side holds only code names and fault point IDs
 - **Which side gives up "recovery".** The owner chose to rename the restore side. Its names are
   stored and published, so that rename needs a migration, new record kinds with the old ones still
   read, and a new API route beside the old one for a minor release. Renaming the crash side touches
-  code and fault point IDs only. Until the owner decides, the design renames the crash side.
+  code and fault point IDs only. The design shows the crash-side rename. Until the owner decides,
+  the rename's work item waits, and the gate ships without it.
