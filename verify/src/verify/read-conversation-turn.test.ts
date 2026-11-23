@@ -10,7 +10,7 @@ function setupTest() {
   return { client };
 }
 
-test('it fails with check-failed once the wait set by waitMs passes with no records', async () => {
+test('it fails with check-failed once the wait set by waitMs passes with no records', () => {
   const ctx = setupTest();
 
   const outcome = readConversationTurn(ctx.client, {
@@ -19,5 +19,5 @@ test('it fails with check-failed once the wait set by waitMs passes with no reco
     waitMs: 1,
   });
 
-  await expect(outcome).rejects.toMatchObject({ code: 'check-failed' });
+  expect(outcome).rejects.toMatchObject({ code: 'check-failed' });
 });
