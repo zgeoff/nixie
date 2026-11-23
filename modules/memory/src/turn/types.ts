@@ -28,6 +28,9 @@ export interface ItemState {
 
 export interface PushPick extends MemoryRef, MatchScores {
   readonly isSelf: boolean;
+
+  // the keys of the trigger phrases behind the pick
+  readonly triggers: readonly string[];
 }
 
 export interface WrittenItemsQuery {

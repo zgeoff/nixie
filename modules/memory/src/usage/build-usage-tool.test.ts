@@ -87,6 +87,8 @@ async function setupTest() {
         },
       }),
     callTool,
+    buildLongPhrases: (gist: string) =>
+      Array.from({ length: 5 }, (_, index) => `${gist} phrase ${String(index)} ${'w'.repeat(40)}`),
     readUsage: async (input: JSONObject) => {
       const result = await callTool('memory.usage', input);
 
@@ -245,7 +247,7 @@ test('it counts a search as a surface, and its trigger phrases as unfired', asyn
   ]);
 });
 
-test('it leaves out a pinned item', async () => {
+test('it lists a pinned item with the rest', async () => {
   const ctx = await setupTest();
   const piano = await ctx.remember('piano tuning', []);
 
@@ -257,7 +259,20 @@ test('it leaves out a pinned item', async () => {
 
   const listed = await ctx.readUsage({ days: 1 });
 
-  expect(listed.items).toStrictEqual([]);
+  expect(listed.items.map((item) => item.gist)).toStrictEqual(['piano tuning']);
+});
+
+test('it lists a trigger phrase that no push named when another phrase of the item fired', async () => {
+  const ctx = await setupTest();
+
+  await ctx.remember('boiler service', ['boiler service', 'radiator bleed']);
+  await ctx.push('boiler service');
+
+  ctx.clock.advance(10 * ctx.dayMs);
+
+  const listed = await ctx.readUsage({ days: 1 });
+
+  expect(listed.items.map((item) => item.neverFiredTriggers)).toStrictEqual([['radiator bleed']]);
 });
 
 test('it pages the list with a cursor, and writes no recalled record', async () => {
@@ -279,11 +294,51 @@ test('it pages the list with a cursor, and writes no recalled record', async () 
     surfaced: recalled.items[0]?.usage,
   }).toStrictEqual({
     first: 100,
-    next: '100',
+    next: expect.stringMatching(/^never\.\d+$/u),
     second: ['item 100'],
     secondNext: null,
     surfaced: 'never surfaced',
   });
+});
+
+test('it cuts a page at the size limit and continues after its last entry', async () => {
+  const ctx = await setupTest();
+
+  const gists = Array.from({ length: 60 }, (_, count) => `item ${String(count).padStart(2, '0')}`);
+
+  for (const gist of gists) {
+    await ctx.remember(gist, ctx.buildLongPhrases(gist));
+  }
+
+  const first = await ctx.readUsage({ days: 1 });
+  const second = await ctx.readUsage({ days: 1, cursor: first.next });
+
+  expect([...first.items, ...second.items].map((item) => item.gist)).toStrictEqual(gists);
+  expect([first.items.length < 60, second.next]).toStrictEqual([true, null]);
+});
+
+test('it skips no item on the next page when an item of the first page surfaces between the pages', async () => {
+  const ctx = await setupTest();
+
+  const gists = Array.from({ length: 60 }, (_, count) => `item ${String(count).padStart(2, '0')}`);
+
+  await ctx.remember('item 00', ['boiler service']);
+
+  for (const gist of gists.slice(1)) {
+    await ctx.remember(gist, ctx.buildLongPhrases(gist));
+  }
+
+  ctx.clock.advance(10 * ctx.dayMs);
+
+  const first = await ctx.readUsage({ days: 1 });
+
+  await ctx.push('boiler service');
+
+  const second = await ctx.readUsage({ days: 1, cursor: first.next });
+
+  expect([...first.items.slice(1), ...second.items].map((item) => item.gist)).toStrictEqual(
+    gists.slice(1),
+  );
 });
 
 test.each([

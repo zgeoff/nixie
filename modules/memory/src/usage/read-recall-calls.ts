@@ -8,12 +8,12 @@ import type { RecallCallEntry } from './types';
 const rowSchema = z.object({
   sequence: z.number(),
   thread: z.string().nullable(),
-  result_sequence: z.number().nullable(),
+  end_sequence: z.number().nullable(),
 });
 
-// Every `memory.recall` call that ran before the sequence, with the sequence of its result. Whether
-// a call named items comes from its recorded input, which reads as `other` once a
-// forget erased it.
+// Every `memory.recall` call before the sequence, with where its span ends: its result, or else the
+// next record on its thread that is no recalled record. Whether a call named items comes from its
+// recorded input, which reads as `other` once a forget erased it.
 export async function readRecallCalls(
   parts: StoreParts,
   beforeSequence: number,
@@ -21,9 +21,14 @@ export async function readRecallCalls(
   const log = parts.context.log;
 
   const result = await sql`select called.sequence as sequence, called.thread as thread,
-      (select min(returned.sequence) from records as returned
-        where returned.kind = 'tool_result' and returned.parent = called.sequence
-      ) as result_sequence
+      coalesce(
+        (select min(returned.sequence) from records as returned
+          where returned.kind = 'tool_result' and returned.parent = called.sequence),
+        (select min(next.sequence) from records as next
+          where next.thread is called.thread
+            and next.sequence > called.sequence
+            and next.kind <> 'memory.recalled')
+      ) as end_sequence
     from records as called
     where called.kind = 'tool_called'
       and called.sequence < ${beforeSequence}
@@ -37,7 +42,7 @@ export async function readRecallCalls(
   return rows.map((row) => ({
     sequence: row.sequence,
     thread: row.thread,
-    resultSequence: row.result_sequence,
+    endSequence: row.end_sequence,
     kind: kinds.get(row.sequence) ?? 'other',
   }));
 }

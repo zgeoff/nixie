@@ -6,6 +6,9 @@ const recalledItemSchema = z.object({
   version: z.int().positive(),
   score: z.number().exactOptional(),
   similarity: z.number().exactOptional(),
+
+  // the keys of the trigger phrases that placed the item in a push
+  triggers: z.string().array().exactOptional(),
 });
 
 export const memoryRecalledCodec = defineRecordCodec(

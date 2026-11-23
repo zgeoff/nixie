@@ -47,6 +47,11 @@ async function readRecalledEntries(
           thread: record.thread,
           recordedAtMs: record.recordedAt.getTime(),
           itemIDs: decoded.items.map((item) => item.itemID),
+          triggers: new Map(
+            decoded.items.flatMap((item) =>
+              item.triggers === undefined ? [] : [[item.itemID, item.triggers] as const],
+            ),
+          ),
           hasSearchMode: decoded.searchMode !== undefined,
           isTurnNote: decoded.isTurnNote === true,
         });

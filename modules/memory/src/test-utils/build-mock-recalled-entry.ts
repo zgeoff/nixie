@@ -6,6 +6,7 @@ export function buildMockRecalledEntry(overrides: Partial<RecalledEntry> = {}): 
     thread: 'conversation',
     recordedAtMs: 1000,
     itemIDs: ['item-a'],
+    triggers: new Map(),
     hasSearchMode: true,
     isTurnNote: false,
     ...overrides,

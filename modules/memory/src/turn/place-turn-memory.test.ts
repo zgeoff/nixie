@@ -53,7 +53,7 @@ test('it drops a pick that was retired after the selection and records nothing',
     labels: { gist: 'Piano tuning', topic: 'general', triggers: ['piano tuning'] },
   });
 
-  const pick = { itemID: piano.itemID, version: piano.version, isSelf: false };
+  const pick = { itemID: piano.itemID, version: piano.version, isSelf: false, triggers: ['key-1'] };
 
   await ctx.memory.store.retire({ target: piano, provenance: buildMockProvenance() });
 

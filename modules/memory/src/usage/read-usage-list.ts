@@ -12,26 +12,37 @@ export interface UsageListRequest {
   readonly beforeSequence: number;
 }
 
-// The active items that no search or push surfaced in the last `days` days. Pinned items and
-// lapsed items are left out: the session's opening holds a pinned item, and a lapsed item surfaces
-// nowhere.
+// The active items that no search or push surfaced in the last `days` days, pinned items too. The
+// history is read outside the lock, so the rows are read again under it: an item forgotten
+// meanwhile is gone, and no row carries its old gist.
 export async function readUsageList(
   parts: StoreParts,
   request: UsageListRequest,
 ): Promise<readonly UsageListEntry[]> {
   const nowMs = parts.context.gate.clock.now();
 
-  const rows = await parts.lock(() => readIndexRows(parts));
+  const listed = await parts.lock(() => readIndexRows(parts, { isPinnedIncluded: true }));
   const usage = await readMemoryUsage(parts, request.beforeSequence);
 
   const savedTimes = await readSavedTimes(
     parts,
-    rows.map((row) => row.itemID),
+    listed.map((row) => row.itemID),
   );
 
-  const triggers = new Map(
-    rows.map((row) => [row.itemID, parts.labels.find(row.itemID)?.triggers ?? []] as const),
-  );
+  const current = await parts.lock(async () => {
+    const found = await readIndexRows(parts, { isPinnedIncluded: true });
 
-  return collectUsageList({ rows, triggers, usage, savedTimes }, request.days, nowMs);
+    return {
+      rows: found,
+      triggers: new Map(
+        found.map((row) => [row.itemID, parts.labels.find(row.itemID)?.triggers ?? []] as const),
+      ),
+    };
+  });
+
+  return collectUsageList(
+    { rows: current.rows, triggers: current.triggers, usage, savedTimes },
+    request.days,
+    nowMs,
+  );
 }

@@ -11,6 +11,10 @@ export interface PageShape<T> {
   // what the stored result keeps of the page's entries
   readonly toRecordEntries: (entries: readonly T[]) => JSONObject;
   readonly toUUIDs: (entry: T) => readonly (readonly [string, string])[];
+
+  // the cursor that continues after an entry, for a list that pages by key; without it the cursor
+  // is the offset of the first entry left out
+  readonly toCursor?: (entry: T) => string;
 }
 
 export interface PageCall {
@@ -27,7 +31,12 @@ export function buildPageOutcome<T>(
 ): ToolOutcome {
   const kept = cutEntries(page.entries, shape, call.searched);
   const end = call.offset + kept.length;
-  const next = end < page.total ? String(end) : null;
+  const last = kept.at(-1);
+
+  const next =
+    end < page.total
+      ? ((last === undefined ? undefined : shape.toCursor?.(last)) ?? String(end))
+      : null;
 
   const leftOut: JSONObject =
     end < page.total ? { leftOut: { count: page.total - end, itemIDs: [], versions: 0 } } : {};

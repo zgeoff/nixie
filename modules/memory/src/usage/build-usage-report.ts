@@ -5,6 +5,8 @@ const noUsage: ItemUsage = {
   pushed: 0,
   lastSurfacedAtMs: null,
   lastRecalledByIDAtMs: null,
+  firedTriggers: [],
+  hasUnkeyedPush: false,
 };
 
 interface UsageItem {

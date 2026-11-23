@@ -1,6 +1,8 @@
 import type { IndexRow } from '../index-block/read-index-rows';
 import type { MemorySubject } from '../types';
+import { buildTriggerKey } from '../utils/build-trigger-key';
 import { buildUsageReport } from './build-usage-report';
+import { compareUsagePosition } from './compare-usage-position';
 import type { ItemUsageReport, MemoryUsage } from './types';
 
 export interface UsageListEntry {
@@ -9,11 +11,14 @@ export interface UsageListEntry {
 
   // the item's UUID, which the model never reads
   readonly itemUUID: string;
+
+  // the order of creation, the tiebreak of the list
+  readonly createdSequence: number;
   readonly subject: MemorySubject;
   readonly topic: string;
   readonly gist: string;
 
-  // the trigger phrases of an item that no push ever placed, so none of them ever fired
+  // the trigger phrases that no push ever placed the item by
   readonly neverFiredTriggers: readonly string[];
   readonly report: ItemUsageReport;
 }
@@ -47,27 +52,32 @@ export function collectUsageList(
 
       return isStale ? [{ row, report }] : [];
     })
-    .toSorted(
-      (left, right) =>
-        compareSurfaced(left.report.lastSurfacedAtMs, right.report.lastSurfacedAtMs) ||
-        left.row.createdSequence - right.row.createdSequence,
+    .toSorted((left, right) =>
+      compareUsagePosition(
+        { surfacedAtMs: left.report.lastSurfacedAtMs, createdSequence: left.row.createdSequence },
+        { surfacedAtMs: right.report.lastSurfacedAtMs, createdSequence: right.row.createdSequence },
+      ),
     )
     .map((stale): UsageListEntry => ({
       itemID: stale.row.shortID,
       itemUUID: stale.row.itemID,
+      createdSequence: stale.row.createdSequence,
       subject: stale.row.subject,
       topic: stale.row.topic,
       gist: stale.row.gist,
-      neverFiredTriggers:
-        stale.report.pushed === 0 ? (input.triggers.get(stale.row.itemID) ?? []) : [],
+      neverFiredTriggers: collectNeverFired(
+        input.triggers.get(stale.row.itemID) ?? [],
+        stale.report,
+      ),
       report: stale.report,
     }));
 }
 
-function compareSurfaced(left: number | null, right: number | null): number {
-  if (left === null || right === null) {
-    return Number(left !== null) - Number(right !== null);
+// A push that names no phrase leaves every phrase possibly fired, so none is reported.
+function collectNeverFired(phrases: readonly string[], report: ItemUsageReport): readonly string[] {
+  if (report.hasUnkeyedPush) {
+    return [];
   }
 
-  return left - right;
+  return phrases.filter((phrase) => !report.firedTriggers.includes(buildTriggerKey(phrase)));
 }

@@ -1,6 +1,7 @@
 import type { IndexEntry, MemoryIndex } from '../memory/start-memory-index';
 import { startMemoryIndex } from '../memory/start-memory-index';
 import type { SearchMode, SemanticSearch } from '../types';
+import { buildTriggerKey } from '../utils/build-trigger-key';
 import { buildVectorQuery } from '../utils/build-vector-query';
 import { defaultMinSimilarity } from '../utils/default-min-similarity';
 import type { MatchScores, RankedMatch } from '../view/merge-rankings';
@@ -10,6 +11,10 @@ import { startVectorIndex } from '../view/start-vector-index';
 
 interface TriggerMatch extends MatchScores {
   readonly itemID: string;
+
+  // the key of each phrase that was the best match of its search, which a record keeps in place of
+  // the phrase
+  readonly triggers: readonly string[];
 }
 
 interface TriggerMatches {
@@ -52,6 +57,9 @@ interface TriggerState {
   // each item's phrase keys, and the item that owns each key
   readonly keysByItem: Map<string, readonly string[]>;
   readonly itemByKey: Map<string, string>;
+
+  // the trigger key of the text behind each phrase key
+  readonly triggerByKey: Map<string, string>;
 }
 
 // The index lives only in process memory, so a forgotten item's phrases never outlive the process.
@@ -63,6 +71,7 @@ export async function startTriggerIndex(
     vectors: semantic === undefined ? null : startVectorIndex(semantic.encoder, semantic.onError),
     keysByItem: new Map(),
     itemByKey: new Map(),
+    triggerByKey: new Map(),
   };
 
   return {
@@ -109,11 +118,12 @@ async function readTriggerMatches(
   const keywordItems = pickBestPerItem(state, keywordMatches);
   const vectorItems = pickBestPerItem(state, vectorMatches ?? []);
   const searchMode = pickSearchMode(state, vectorMatches);
+  const triggers = collectBestTriggers(state, [keywordMatches, vectorMatches ?? []]);
 
   return {
     matches: mergeRankings(keywordItems, vectorItems)
       .slice(0, options.limit)
-      .map((match) => toTriggerMatch(match)),
+      .map((match) => toTriggerMatch(match, triggers.get(match.itemID) ?? [])),
     searchMode,
   };
 }
@@ -143,9 +153,33 @@ function pickSearchMode(state: TriggerState, vectorMatches: readonly unknown[] |
   return vectorMatches === null ? 'keyword-fallback' : 'hybrid';
 }
 
-function toTriggerMatch(match: RankedMatch): TriggerMatch {
+function collectBestTriggers(
+  state: TriggerState,
+  lists: readonly (readonly { readonly itemID: string }[])[],
+): ReadonlyMap<string, readonly string[]> {
+  const triggers = new Map<string, Set<string>>();
+
+  for (const list of lists) {
+    const seen = new Set<string>();
+
+    for (const match of list) {
+      const itemID = state.itemByKey.get(match.itemID);
+      const trigger = state.triggerByKey.get(match.itemID);
+
+      if (itemID !== undefined && trigger !== undefined && !seen.has(itemID)) {
+        seen.add(itemID);
+        triggers.set(itemID, (triggers.get(itemID) ?? new Set()).add(trigger));
+      }
+    }
+  }
+
+  return new Map([...triggers].map(([itemID, keys]) => [itemID, [...keys]]));
+}
+
+function toTriggerMatch(match: RankedMatch, triggers: readonly string[]): TriggerMatch {
   return {
     itemID: match.itemID,
+    triggers,
     ...(match.score === undefined ? {} : { score: match.score }),
     ...(match.similarity === undefined ? {} : { similarity: match.similarity }),
   };
@@ -164,7 +198,7 @@ async function writeItemPhrases(
     await state.index.update(entry);
 
     state.vectors?.update(entry);
-    recordKey(state, entry.itemID);
+    recordKey(state, entry);
   }
 }
 
@@ -174,6 +208,7 @@ async function removeItemPhrases(state: TriggerState, itemID: string): Promise<v
 
     state.vectors?.remove(key);
     state.itemByKey.delete(key);
+    state.triggerByKey.delete(key);
   }
 
   state.keysByItem.delete(itemID);
@@ -187,10 +222,12 @@ function buildPhraseKey(itemID: string, position: number): string {
   return `${itemID}#${position}`;
 }
 
-function recordKey(state: TriggerState, key: string): void {
+function recordKey(state: TriggerState, entry: IndexEntry): void {
+  const key = entry.itemID;
   const itemID = key.slice(0, key.lastIndexOf('#'));
 
   state.itemByKey.set(key, itemID);
+  state.triggerByKey.set(key, buildTriggerKey(entry.text));
   state.keysByItem.set(itemID, [...(state.keysByItem.get(itemID) ?? []), key]);
 }
 
@@ -204,9 +241,10 @@ async function writeAllPhrases(
 
   state.keysByItem.clear();
   state.itemByKey.clear();
+  state.triggerByKey.clear();
 
   for (const entry of entries) {
-    recordKey(state, entry.itemID);
+    recordKey(state, entry);
   }
 }
 

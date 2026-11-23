@@ -4,6 +4,7 @@ import { buildTestTaskRun } from '@heynixie/tasks/test-utils';
 import { renderRunBlocks } from '../task/render-run-blocks';
 import { buildMockDefinitionBrief } from '../test-utils/build-mock-definition-brief';
 import { buildStubMemory } from '../test-utils/build-stub-memory';
+import { seedSessionInvalidated } from '../test-utils/seed-session-invalidated';
 import { startTestTasks } from '../test-utils/start-test-tasks';
 import { readTurnContext } from './read-turn-context';
 
@@ -512,14 +513,16 @@ test('it hands the memory held lists that read nothing until called, and none fo
 test('it hands the memory the start of the session that its writes belong to, and none for a new session', async () => {
   const ctx = await setupTest();
 
-  const [invalidated] = await writeRecords(ctx.tasks.context.log, [
+  const [ended] = await writeRecords(ctx.tasks.context.log, [
     {
-      kind: 'model.session_invalidated',
+      kind: 'model.turn_ended',
       definitions: { snapshotHash: 'sha256:test' },
       thread: 'conversation',
       payload: {},
     },
   ]);
+
+  await seedSessionInvalidated(ctx.tasks.context);
 
   const askWriteStart = async (isNewSession: boolean) => {
     const memory = buildStubMemory({
@@ -557,7 +560,7 @@ test('it hands the memory the start of the session that its writes belong to, an
   expect({
     resumed: await askWriteStart(false),
     fresh: await askWriteStart(true),
-  }).toStrictEqual({ resumed: invalidated?.sequence, fresh: null });
+  }).toStrictEqual({ resumed: ended?.sequence, fresh: null });
 });
 
 test('it asks nothing of a run with no memory', async () => {

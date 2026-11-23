@@ -1,6 +1,7 @@
 import { expect, test } from 'bun:test';
 import invariant from 'tiny-invariant';
 import { buildIndexRows } from '../test-utils/build-index-rows';
+import { buildTriggerKey } from '../utils/build-trigger-key';
 import { collectUsageList } from './collect-usage-list';
 
 function setupTest() {
@@ -22,6 +23,8 @@ function setupTest() {
       pushed: 1,
       lastSurfacedAtMs: nowMs - daysAgo * dayMs,
       lastRecalledByIDAtMs: null,
+      firedTriggers: [],
+      hasUnkeyedPush: false,
     }),
   };
 }
@@ -71,7 +74,32 @@ test('it leaves out an item that surfaced inside the period', () => {
   expect(entries.map((entry) => entry.itemID)).toStrictEqual([ctx.second.shortID]);
 });
 
-test('it lists the trigger phrases only of an item that no push placed', () => {
+test('it lists the trigger phrases that no push named, one by one', () => {
+  const ctx = setupTest();
+
+  const entries = collectUsageList(
+    {
+      rows: [ctx.first],
+      triggers: new Map([[ctx.first.itemID, ['boiler service', 'radiator bleed']]]),
+      usage: {
+        items: new Map([
+          [
+            ctx.first.itemID,
+            { ...ctx.surfaced(30), firedTriggers: [buildTriggerKey('boiler service')] },
+          ],
+        ]),
+        earliestAtMs: null,
+      },
+      savedTimes: new Map(),
+    },
+    7,
+    ctx.nowMs,
+  );
+
+  expect(entries.map((entry) => entry.neverFiredTriggers)).toStrictEqual([['radiator bleed']]);
+});
+
+test('it lists every phrase of an item that no push placed, and none for a push that named no phrase', () => {
   const ctx = setupTest();
 
   const entries = collectUsageList(
@@ -81,7 +109,10 @@ test('it lists the trigger phrases only of an item that no push placed', () => {
         [ctx.first.itemID, ['boiler service']],
         [ctx.second.itemID, ['piano tuning']],
       ]),
-      usage: { items: new Map([[ctx.first.itemID, ctx.surfaced(30)]]), earliestAtMs: null },
+      usage: {
+        items: new Map([[ctx.first.itemID, { ...ctx.surfaced(30), hasUnkeyedPush: true }]]),
+        earliestAtMs: null,
+      },
       savedTimes: new Map(),
     },
     7,

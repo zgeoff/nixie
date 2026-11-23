@@ -7,6 +7,8 @@ test('it builds the report of an item that never surfaced and lets a field be re
     pushed: 2,
     lastSurfacedAtMs: null,
     lastRecalledByIDAtMs: null,
+    firedTriggers: [],
+    hasUnkeyedPush: false,
     sinceMs: null,
   });
 });

@@ -11,6 +11,8 @@ test('it counts a record outside every recall call as a push', () => {
     pushed: 1,
     lastSurfacedAtMs: 1000,
     lastRecalledByIDAtMs: null,
+    firedTriggers: [],
+    hasUnkeyedPush: true,
   });
 });
 
@@ -31,6 +33,8 @@ test('it counts a record with no search mode inside an ID call as a recall by ID
     pushed: 0,
     lastSurfacedAtMs: null,
     lastRecalledByIDAtMs: 4000,
+    firedTriggers: [],
+    hasUnkeyedPush: false,
   });
 });
 
@@ -63,6 +67,44 @@ test('it counts an item once per record and keeps the newest time', () => {
   );
 
   expect(usage.items.get('item-a')).toMatchObject({ pushed: 2, lastSurfacedAtMs: 3000 });
+});
+
+test('it keeps the trigger keys that push records name, and notes a push that names none', () => {
+  const usage = collectMemoryUsage(
+    [
+      buildMockRecalledEntry({
+        sequence: 10,
+        itemIDs: ['item-a', 'item-b'],
+        triggers: new Map([['item-a', ['key-1']]]),
+      }),
+      buildMockRecalledEntry({
+        sequence: 11,
+        itemIDs: ['item-a'],
+        triggers: new Map([['item-a', ['key-2', 'key-1']]]),
+      }),
+    ],
+    [],
+  );
+
+  expect([
+    usage.items.get('item-a')?.firedTriggers,
+    usage.items.get('item-a')?.hasUnkeyedPush,
+    usage.items.get('item-b')?.firedTriggers,
+    usage.items.get('item-b')?.hasUnkeyedPush,
+  ]).toStrictEqual([['key-1', 'key-2'], false, [], true]);
+});
+
+test('it ends a call with no result at the next record of its thread that is no recalled record, so a later push counts as a push', () => {
+  const usage = collectMemoryUsage(
+    [buildMockRecalledEntry({ sequence: 30 })],
+    [buildMockRecallCall({ sequence: 5, kind: 'ids', endSequence: 12 })],
+  );
+
+  expect(usage.items.get('item-a')).toMatchObject({
+    searched: 0,
+    pushed: 1,
+    lastRecalledByIDAtMs: null,
+  });
 });
 
 test('it reports the earliest record time over every record, whether or not it counts', () => {

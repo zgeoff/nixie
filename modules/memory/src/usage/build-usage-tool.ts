@@ -1,13 +1,15 @@
 import type { ToolDefinition } from '@heynixie/tools';
 import { z } from 'zod';
-import { parseItemCursor } from '../item/parse-item-cursor';
 import type { StartedMemoryStore } from '../memory/start-memory-store';
 import type { PageShape } from '../recall/build-page-outcome';
 import { buildPageOutcome } from '../recall/build-page-outcome';
 import type { RecallLineOptions } from '../recall/build-recall-tool';
 import { recallLimits } from '../recall/recall-limits';
+import { buildUsageCursor } from './build-usage-cursor';
 import type { UsageListEntry } from './collect-usage-list';
+import { compareUsagePosition } from './compare-usage-position';
 import { formatUsageLine } from './format-usage-line';
+import { parseUsageCursor } from './parse-usage-cursor';
 
 const maxDays = 3650;
 
@@ -22,7 +24,7 @@ const usageInput = {
     },
     cursor: {
       type: 'string',
-      pattern: '^[0-9]+$',
+      pattern: String.raw`^(never|[0-9]+)\.[0-9]+$`,
       description: 'the next cursor from the page before',
     },
   },
@@ -36,7 +38,7 @@ const usageOutput = {
     items: {
       type: 'array',
       description:
-        'the unpinned active items that no search or push surfaced in the period, the ' +
+        'the active items that no search or push surfaced in the period, the ' +
         'never-surfaced first and then the longest unsurfaced',
       items: {
         type: 'object',
@@ -88,9 +90,9 @@ export function buildUsageTool(
     description:
       'Lists the active items that no search or push surfaced in the last days days, with the ' +
       'never-surfaced first and then the longest unsurfaced. Each item shows its ID, topic, gist ' +
-      'and usage, and the trigger phrases that never fired. Pinned items are left out, because ' +
-      'the session opens with them. Use it to find items to retire or reword. A page is capped ' +
-      'in size: next continues from the first entry left out, and passes back as cursor.',
+      'and usage, and the trigger phrases that never fired. Use it to find items to retire or ' +
+      'reword. A page is capped in size: next continues after the last entry shown, and passes ' +
+      'back as cursor.',
     input: usageInput,
     output: usageOutput,
     declaration: {
@@ -108,7 +110,7 @@ export function buildUsageTool(
     execution: 'direct',
     run: async (call, context) => {
       const input = usageArguments.parse(call.input);
-      const offset = parseItemCursor(input.cursor);
+      const after = parseUsageCursor(input.cursor);
 
       const entries = await memory.readUsageList({
         days: input.days,
@@ -128,12 +130,31 @@ export function buildUsageTool(
         }),
         toRecordEntries: (kept) => ({ items: kept.map((entry) => ({ itemID: entry.itemID })) }),
         toUUIDs: (entry) => [[entry.itemID, entry.itemUUID]],
+        toCursor: (entry) =>
+          buildUsageCursor({
+            surfacedAtMs: entry.report.lastSurfacedAtMs,
+            createdSequence: entry.createdSequence,
+          }),
       };
 
+      const remaining =
+        after === null
+          ? entries
+          : entries.filter(
+              (entry) =>
+                compareUsagePosition(
+                  {
+                    surfacedAtMs: entry.report.lastSurfacedAtMs,
+                    createdSequence: entry.createdSequence,
+                  },
+                  after,
+                ) > 0,
+            );
+
       return buildPageOutcome(
-        { entries: entries.slice(offset, offset + recallLimits.max), total: entries.length },
+        { entries: remaining.slice(0, recallLimits.max), total: remaining.length },
         shape,
-        { offset, searched: { days: input.days } },
+        { offset: 0, searched: { days: input.days } },
       );
     },
   };
