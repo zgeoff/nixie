@@ -13,8 +13,8 @@ reply when it needs them, and only the session events that nixie picked wake it.
 the code that runs such a task, the coding runner, its tools, and its first adapter: the package
 `coding-atc`, whose adapter ID is `atc`.
 
-The owner approves this design, and the builder of
-[the atc runner](https://linear.app/zgeoff/issue/GEO-1843) starts from it and its three parts.
+Once the owner approves this design, build
+[the atc runner](https://linear.app/zgeoff/issue/GEO-1843) from it and its three parts.
 
 The coding runner calls no model of its own, and judges nothing about the session's work. Each step
 of a coding task moves text and events between the task and the session. nixie's conversation reads
@@ -60,8 +60,8 @@ These sibling designs touch this one:
 | decision point | the code that decides allow, ask or deny for each tool call and each attempt of an action ([actions](../../../architecture/core/actions.md))        |
 | harness        | the model client a profile runs on, such as `agent-sdk` or `codex` ([model profiles](../../../architecture/core/model-profiles.md#harnesses))       |
 
-[The runner](runner.md), [the tools](tools.md) and [the atc adapter](atc.md) use these terms too.
-Other terms, such as an inbox, a task run, a projection and an imp, are in the
+These terms hold in [the runner](runner.md), [the tools](tools.md) and [the atc adapter](atc.md)
+too. Look up other terms, such as an inbox, a task run, a projection and an imp, in the
 [glossary](../../../glossary.md).
 
 ## Shape
@@ -78,13 +78,13 @@ flowchart LR
   conv -->|"coding.read"| gw
 ```
 
-A start writes the coding task and queues the spawn, a `coding.start` action, whose prompt is the
-brief; a join reads the session from atc and binds it in the same step, and sends the session
-nothing. nixie steers the session with `coding.steer`, an action that types nixie's text into the
-session's input. The spawn's outcome and the session's events land on the task's thread. The step
-forwards each event in the wake set to the report target as a `task_message`, and ends the task with
-a report when the session ends. nixie reads the session's state, last reply and recent turns with
-`coding.read`.
+To start a session, nixie writes the coding task and queues the spawn, a `coding.start` action whose
+prompt is the brief. To join one, nixie reads the session from atc and binds it in the same step,
+and sends the session nothing. nixie steers the session with `coding.steer`, an action that types
+nixie's text into the session's input. The spawn's outcome and the session's events land on the
+task's thread. The step forwards each event in the wake set to the report target as a
+`task_message`, and ends the task with a report when the session ends. nixie reads the session's
+state, last reply and recent turns with `coding.read`.
 
 ## Parts
 
@@ -111,8 +111,9 @@ This work changes these modules that every runner or connector uses:
   conversation reads the session and decides.
 - **nixie steers a session by typing into its input.** A coding agent runs in auto mode, where a
   judge model decides each tool call from the user turns it sees. A note from atc's bridge never
-  reaches the judge, so only typed input steers the session. nixie spawns and steers sessions in a
-  system built for nixie, so nixie's typed line stands as the session's user input.
+  reaches the judge, so only typed input steers the session. nixie's typed line stands as the
+  session's user input, which holds because nixie spawns and steers these sessions in a system built
+  for it.
 - **One task run spans the whole binding.** The start or the join opens it, and the session's end, a
   failed start, a stop, a close or a failure ends it, with one report. Between those, each event in
   the wake set reaches the report target as a `task_message`, and no event ends the task run.
@@ -122,10 +123,10 @@ This work changes these modules that every runner or connector uses:
   adapter, such as a built-in one that runs a session in an [imp](../../../glossary.md), gets its
   own key and its own `task.start` variant. The wake set, the tools and the `coding.wake` config are
   the same for every adapter, and only `coding.<key>` holds what the adapter needs.
-- **The spawn, each steer, each note and the stop that a stop of the task makes are actions on the
-  action queue.** The spawn and each note declare `idempotency_key` reconciliation, so a crash never
-  spawns a second session. A steer declares `none`, because atc's typing call takes no key and a
-  retry types the line again.
+- **The spawn, each steer, each note and each `coding.stop` are actions on the action queue.** The
+  spawn and each note declare `idempotency_key` reconciliation, so a crash never spawns a second
+  session. A steer declares `none`, because atc's typing call takes no key and a retry types the
+  line again.
 - **A stop of a coding task stops its session, joined or started, through a `coding.stop` action.**
   The starter rules ask you before nixie stops a session it joined. A close or a failure of the task
   only unbinds a joined session, which runs on in atc as yours.
@@ -154,12 +155,12 @@ This work changes these modules that every runner or connector uses:
 ## Open questions
 
 - **Does each model API accept a `oneOf` under an object root for the `task.start` input?** The
-  `task.start` tool already sends that root once a second runner can start tasks. Settle it with one
+  `task.start` tool sends that root as soon as a second runner can start tasks. Settle it with one
   probe per harness, for `agent-sdk` and `codex`: have the conversation's model call `task.start`
   with both variants in the tool's input schema, and check that the API takes the schema and the
   call parses. This work runs both probes. Until the probe passes on a harness, the server leaves
-  the coding variant out of `task.start` on that harness, through a list in the tasks module's code
-  of the harnesses that passed.
+  the coding variant out of `task.start` on that harness. The tasks module's code keeps the list of
+  harnesses that passed.
 - **How does a steer avoid a menu that atc cannot see?** atc refuses a typed line while a Claude
   Code permission prompt is open, and the adapter refuses a steer to a session in `waiting`. A menu
   that opens between that check and the keystrokes, or a menu of an agent whose prompts atc never

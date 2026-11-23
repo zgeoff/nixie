@@ -254,21 +254,21 @@ record oldest first, and commits once. `state`, `answered`, `unanswered` and `no
 `done` finishes the task, and `wait` leaves it waiting for its next inbox record. A row that names
 no state returns `wait`.
 
-| Inbox record                                            | The step                                                                                                                                                                      |
-| ------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| the brief of a start or a join                          | nothing: the start queued the spawn, and a join sends nothing                                                                                                                 |
-| `coding.start` done, with a result                      | writes `coding.session_bound`                                                                                                                                                 |
-| `coding.start` done, with no result                     | ends the task run with a report that says nixie cannot find the session and you can join it by its ID, and returns `done`; this is your answer that an unknown spawn happened |
-| `coding.start` failed                                   | ends the task run with a report that says atc refused the start, and returns `done`                                                                                           |
-| `coding.start` unknown, sent to you                     | sends the report target a waking `task_message` that says nixie asked you whether the session started; your answer lands as the action's next outcome                         |
-| `coding.steer` done                                     | writes `coding.steered`                                                                                                                                                       |
-| `coding.steer` failed, or unknown sent to you           | sends the report target a waking `task_message` that says the session did not get the steer, or may have, with the reason                                                     |
-| a `task_message` or `owner_message` to the task         | queues a `coding.message` action, caused by that record                                                                                                                       |
-| `coding.message` done                                   | writes `coding.delivered`, and replies with each held answer whose `messageRef` it matches                                                                                    |
-| `coding.message` failed, or unknown sent to you         | replies to the message's sender that the session did not get it, or may not have                                                                                              |
-| `trigger.task_input`, `answered` or `unanswered`        | replies to the sender of the note that `coding.delivered` matches by `messageRef`, with `replyTo` set to it                                                                   |
-| `trigger.task_input`, `state` or `note` in the wake set | sends the report target a `task_message` of kind `progress` that wakes it, with the state and the question, or the note's label and text                                      |
-| `trigger.task_input`, `state` `ended`                   | ends the task run with a report, and returns `done`; when the wake set lists `ended`, also sends the report target a waking `progress` message                                |
+| Inbox record                                                                          | The step                                                                                                                                              |
+| ------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| the brief of a start or a join                                                        | nothing: the start queued the spawn, and a join sends nothing                                                                                         |
+| `coding.start` done, with a result                                                    | writes `coding.session_bound`                                                                                                                         |
+| `coding.start` done with no result, after you answered that an unknown spawn happened | ends the task run with a report that says nixie cannot find the session and you can join it by its ID, and returns `done`                             |
+| `coding.start` failed                                                                 | ends the task run with a report that says atc refused the start, and returns `done`                                                                   |
+| `coding.start` unknown, sent to you                                                   | sends the report target a waking `task_message` that says nixie asked you whether the session started; your answer lands as the action's next outcome |
+| `coding.steer` done                                                                   | writes `coding.steered`                                                                                                                               |
+| `coding.steer` failed, or unknown sent to you                                         | sends the report target a waking `task_message` that says the session did not get the steer, or may have, with the reason                             |
+| a `task_message` or `owner_message` to the task                                       | queues a `coding.message` action, caused by that record                                                                                               |
+| `coding.message` done                                                                 | writes `coding.delivered`, and replies with each held answer whose `messageRef` it matches                                                            |
+| `coding.message` failed, or unknown sent to you                                       | replies to the message's sender that the session did not get it, or may not have                                                                      |
+| `trigger.task_input`, `answered` or `unanswered`                                      | replies to the sender of the note that `coding.delivered` matches by `messageRef`, with `replyTo` set to it                                           |
+| `trigger.task_input`, `state` or `note` in the wake set                               | sends the report target a `task_message` of kind `progress` that wakes it, with the state and the question, or the note's label and text              |
+| `trigger.task_input`, `state` `ended`                                                 | ends the task run with a report, and returns `done`; when the wake set lists `ended`, also sends the report target a waking `progress` message        |
 
 - nixie writes no record of an unknown outcome while it reconciles one, so the step sees only the
   unknown outcomes sent to you.
@@ -279,8 +279,8 @@ no state returns `wait`.
   held by a pause, in an attempt, or unknown), the step writes `coding.answer_held` and marks the
   answer read. The note's done outcome wakes a later step, which replies with the held answer. When
   no such action is pending and none matches, the step drops the answer: it answers a note that
-  nixie never sent. A held answer whose note fails, and every held answer when the task ends, is
-  dropped.
+  nixie never sent. The step drops a held answer whose note fails, and every held answer when the
+  task ends.
 - The report's summary is the session's last reply from the adapter's
   [`read`](atc.md#the-coding-adapter), cut to 8,000 characters. When the read fails or the reply is
   null, the summary is "The session ended, and nixie could not read its final reply."

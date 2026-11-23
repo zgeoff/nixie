@@ -5,10 +5,10 @@
 
 nixie works with a coding session through five tools of the coding module: it lists the sessions it
 can join, steers a session by typing into its input, sends a note through atc's bridge, reads a
-session, and picks the events that wake it. This doc holds each tool's contract, its effect
-declaration and its policy. The start and the join are in [the runner](runner.md), and the adapter
-calls that each tool makes are in [the atc adapter](atc.md). The terms, such as a steer, a note, the
-wake set and a bound session, are in the [README](README.md#terms).
+session, and picks the events that wake it. Below are each tool's contract, its effect declaration
+and its policy. The start and the join are in [the runner](runner.md), and the adapter calls that
+each tool makes are in [the atc adapter](atc.md). The terms, such as a steer, a note, the wake set
+and a bound session, are in the [README](README.md#terms).
 
 ## Shape
 
@@ -59,8 +59,8 @@ const codingSteerDeclaration: EffectDeclaration = {
 const codingMessageDeclaration = codingSteerDeclaration; // the same shape, under its own tool name
 ```
 
-A `task_message` or an `owner_message` to a coding task becomes a `coding.message` action, as
-[what one step does](runner.md#what-one-step-does) describes.
+A `task_message` or an `owner_message` to a coding task becomes a `coding.message` action; see
+[what one step does](runner.md#what-one-step-does).
 
 ### Reading a session
 
@@ -138,8 +138,8 @@ coding:
   model reads.
 - A steer and a note sit on the coding task's thread, so a pause of the task holds them, and a stop
   cancels them before their first attempt, as the action queue does for every action.
-- The hop of a steer or a note is the hop of the turn that called the tool. The step that reads its
-  done outcome writes it into `coding_sessions.hop`.
+- The hop of a steer or a note is the hop of the turn that called the tool. When the step reads the
+  done outcome of a steer or a note, it writes that hop into `coding_sessions.hop`.
 
 ### Steering
 
@@ -151,16 +151,17 @@ coding:
   typed Enter would pick its highlighted option.
 - A steer declares `none` reconciliation. Its unknown outcome goes to you at once, because a resend
   types the line again.
-- The step tells the report target when a steer fails or its unknown outcome reaches you, so a steer
-  that a later turn queued still reaches nixie.
+- The step tells the report target when a steer fails or its unknown outcome reaches you, so the
+  news reaches nixie even for a steer that a later turn queued.
 - A steer carries no label of its sender. The session takes it as user input, as a line you type.
 
 ### Reading
 
 - `coding.read` makes one adapter `read` per call. A failed read gives a refusal sentence with atc's
   reason, and the tool never throws.
-- The cut keeps the end of a reply and the newest turns. The tail keeps whole turns while they fit
-  in 8,000 characters, and cuts the oldest turn it keeps only when the newest one alone is longer.
+- When nixie cuts, it keeps the end of a reply and the newest turns. It fills the tail with whole
+  turns while they fit in 8,000 characters, and cuts the oldest turn it keeps only when the newest
+  one alone is longer.
 - A session whose agent has no transcript reader gives `tail: { unsupported: true }`.
 
 ### The wake set
@@ -188,7 +189,7 @@ coding:
 - **The step forwards an event and never summarises it.** The `task_message` carries the event's
   kind, the state, and the question or the note's text. nixie calls `coding.read` for more.
 - **`coding.read` is lean by default.** Its default answer fits one screen, so a check on a session
-  costs nixie's context little, and the prompt and the tail come only on request.
+  costs nixie's context little. The prompt and the tail come only on request.
 - **The tail reads atc's transcript from the start, a page at a time.** atc's transcript read has no
   tail, so the adapter pages forward with the largest page atc takes and keeps the last turns. A
   long session's tail costs one call per 200 rows.

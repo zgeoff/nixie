@@ -123,7 +123,7 @@ type SessionEvent =
   | { kind: 'unanswered'; messageRef: string; reason: string }
   | { kind: 'note'; label: 'progress' | 'blocked' | 'decision'; text: string };
 
-// What an adapter call returns to the action queue's attempt. The queue's 3 outcomes follow it.
+// What an adapter call returns to the action queue's attempt, one member per queue outcome.
 type AdapterReply<T> =
   | { status: 'ok'; value: T }
   | { status: 'refused'; canClear: boolean; reason: string } // reason: atc's error code
@@ -192,7 +192,8 @@ Each adapter call maps to atc-gateway's tools:
 - `atc_session_stop` stops the session's process and keeps atc's record of the session. On a target
   that suspends its hosts, it puts the host to sleep.
 - `events` reads every session in reach, with no session filter, and the adapter keeps only the
-  bound sessions. A read with a filter refuses a cursor read without it, under the gateway.
+  bound sessions. The gateway refuses a cursor in a read whose filter differs from the read that
+  gave the cursor.
 
 ```ts
 // coding-atc adapter: the spawn it sends, and no other field
