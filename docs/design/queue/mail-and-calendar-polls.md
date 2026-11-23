@@ -3,6 +3,8 @@
 - **Status:** draft
 - **Work items:** [the Gmail and Calendar polls](https://linear.app/zgeoff/issue/GEO-1827). They
   build on [the schedule source and the trigger core](https://linear.app/zgeoff/issue/GEO-1835).
+- **Replaced in part:** the [mail design](mail.md) replaces every part of this design about Gmail,
+  including mail in event waits and the `poll.mail` trigger. The calendar parts stand.
 
 Every 5 minutes, nixie asks Gmail and Google Calendar what changed for each Google connection. Each
 new mail and each changed calendar event becomes one record. That record wakes each task that waits
