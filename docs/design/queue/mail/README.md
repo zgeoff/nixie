@@ -8,10 +8,10 @@ The assistant has 2 mail products that share nothing but one arrival path. Its o
 `mail.*` tools, keeps every mail in nixie. Your Gmail, under `gmail.*` tools, stays at Google: nixie
 stores no copy, `gmail.search` asks Gmail live, and an arrival leaves at most a small erasable
 record. Both hand each new mail to the [trigger core](../../../architecture/core/triggers.md), which
-wakes a task only when a wake rule matches. The assistant registers each rule with a mailbox, a
-match, the task to wake and an expiry. The first match wakes the task at once. Later matches of the
-same rule inside its window, and matches of any rule soon after the task's last wake from that
-mailbox, wait and arrive together in one wake, so a burst of mail costs one turn.
+wakes a task only when a wake rule matches. A task registers each rule for itself, with a mailbox, a
+match and an expiry. A match wakes the task at once, unless the same rule woke it within the rule's
+window, or any rule on that mailbox woke it within the throttle. Then the match waits, and every
+match that waits arrives in one later wake, so a burst of mail costs one turn.
 
 The owner reads this page to approve the design and settle its open questions. A builder reads it,
 then the part their work item builds.

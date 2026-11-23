@@ -5,7 +5,7 @@
 
 The triggers module holds the wake rules and the one arrival path that both mail products share.
 Each mail source hands its new mail to the [trigger core](../../../architecture/core/triggers.md) as
-arrivals. The core matches each arrival against the live rules of its mailbox, and either wakes the
+arrivals. The core matches each arrival against the rules of its mailbox, and either wakes the
 rule's task at once or holds the match for one later wake. See the [README](README.md) for the
 terms. Read this part to build the triggers module's half of the mail polls item. Build and test it
 against a fake mail source, so it waits on neither mailbox.
@@ -14,7 +14,7 @@ against a fake mail source, so it waits on neither mailbox.
 
 ```mermaid
 flowchart LR
-  src[a mail source] -->|"deliver"| match{a live rule matches?}
+  src[a mail source] -->|"deliver"| match{a rule matches?}
   match -->|"no"| none[nothing written]
   match -->|"yes"| arrived[trigger.mail_arrived]
   arrived -->|"rule and task ready"| woke[trigger.mail_woke]
@@ -40,7 +40,7 @@ const rule = await setWakeRuleInTransaction(tx, {
 // → { ruleID: '7c1e…', shortID: 'wq4k8m2x7p', createdAt: 1795941300000, replaced: false, …input }
 //   or { refused: 'CONVERSATION' } when taskID is the conversation's task
 await endWakeRuleInTransaction(tx, rule.ruleID, 'cancelled');
-const rules = await readWakeRules(tx, { mailbox, taskID }); // live rules only, newest first
+const rules = await readWakeRules(tx, { mailbox, taskID }); // rules not expired or ended, newest first
 ```
 
 ```ts
@@ -82,8 +82,9 @@ wake_rules                -- projection: one row per rule, with ended_at and rea
 - A set with the same mailbox, match and task as a live rule replaces that rule in place. The rule
   keeps its ID, short ID, `createdAt` and the time of its last wake, and takes the new expiry and
   window length. The result holds `replaced: true`.
-- An expired rule writes no record. It stops matching at `expiresAt`.
-- `readWakeRules` leaves out a rule that expired, ended, or belongs to a task that ended.
+- An expired rule writes no record. It matches no mail received at or after `expiresAt`.
+- `readWakeRules`, which the list tools call, leaves out a rule that expired, ended, or belongs to a
+  task that ended.
 - A rule's match is stored in plain text, as a definition's filter is.
 - The conversation never holds a wake rule. It starts a task that holds one instead, as it does for
   the event waits this design replaces. A send from the conversation registers no reply rule.
@@ -120,8 +121,8 @@ kind: 'schedule' | 'mail'; // both mail sources: id 'mail' for the assistant's, 
 takes these, in the same write transaction:
 
 1. When `trigger_keys` holds the event's key, the core skips the event.
-2. The core finds each live rule of the event's mailbox that matches, with `createdAt` at or before
-   `receivedAt`, and `receivedAt` before `expiresAt`.
+2. The core finds each rule of the event's mailbox that has not ended and matches, with `createdAt`
+   at or before `receivedAt`, and `receivedAt` before `expiresAt`.
 3. For each matching rule whose task has ended, the core ends the rule as `task_ended` and drops it.
    When no rule is left, the core writes no arrival record and claims no key.
 4. The core writes one `trigger.mail_arrived`. Its fold adds the key to `trigger_keys`, as the folds
@@ -198,8 +199,8 @@ Wake rule wq4k8m2x7p (mail from @library.example.org, subject "code", until 10:4
 - `trigger.mail_woke` sits on its task's thread with `from` and `subject` erasable, so you forget it
   as you forget any record, and the forget takes the mail's text with it.
 - A wake whose fields are erased renders each mail as forgotten.
-- Forgetting a Google connection ends its live rules as `connection_forgotten`, and erases the
-  fields of its wakes and its held arrivals. That waits on the
+- Forgetting a Google connection ends its rules as `connection_forgotten`, and erases the fields of
+  its wakes and its held arrivals. That waits on the
   [erasure design](https://github.com/zgeoff/nixie/pull/1413), which runs it as a child of the
   connection's credential.
 
@@ -218,13 +219,14 @@ wake_rules:
 
 ## Constraints
 
-- Nothing wakes the assistant on mail unless a live wake rule matches.
-- The arrival path never drops a match. Each match wakes its task at once or in a later flush,
-  unless the task ends first, when `trigger.wake_rule_ended` lists it in `released`. The mail itself
-  stays in its mailbox.
-- A rule that expires or is cancelled matches nothing more. Its held matches still flush.
-- A rule matches only mail received between its `createdAt` and its `expiresAt`, both by the host's
-  receive time.
+- Nothing wakes the assistant on mail unless a wake rule matched that mail.
+- The arrival path never drops a match. Each match wakes its task at once or in a later flush. When
+  the task has ended, the core records no match for it, and a match already held is listed in
+  `released`. The mail itself stays in its mailbox.
+- A rule that has not ended matches mail received from its `createdAt` up to its `expiresAt`, both
+  by the host's receive time, even when that mail is delivered after `expiresAt`.
+- A rule that is cancelled matches nothing more. Its held matches still flush, because each matched
+  while the rule stood.
 - A ready task with a ready rule wakes in the transaction that delivers the match. A held match
   wakes its task within 20 seconds of both becoming ready.
 - A rule wakes its task at most once per window, and a mailbox wakes a task at most once per
