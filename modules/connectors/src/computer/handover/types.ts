@@ -2,11 +2,11 @@ import type { handoverCloses } from './handover-closed-codec';
 
 export type HandoverClose = (typeof handoverCloses)[number];
 
-export interface HandoverAsk {
+interface HandoverAsk {
   readonly reason: string;
 }
 
-export interface HandoverEnd {
+interface HandoverEnd {
   readonly by: HandoverClose;
   readonly waitedSeconds: number;
 }

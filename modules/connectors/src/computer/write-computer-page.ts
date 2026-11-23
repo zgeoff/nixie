@@ -4,7 +4,7 @@ import type { ComputerReply } from '@heynixie/wire';
 import { getPageSession } from '../utils/get-page-session';
 import { writeWebFetchPage } from '../web/write-web-fetch-page';
 import type { ComputerToolOptions } from './computer-tool-options';
-import { buildChallengeField } from './handover/challenge-line';
+import { buildChallengeField } from './handover/build-challenge-field';
 import { refuseComputer } from './run-computer-call';
 
 type PageReply = Extract<ComputerReply, { kind: 'page' }>;

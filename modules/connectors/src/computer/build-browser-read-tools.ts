@@ -2,7 +2,7 @@ import type { DirectResult, ToolDefinition } from '@heynixie/tools';
 import { z } from 'zod';
 import type { ComputerState } from './computer-state';
 import type { ComputerToolOptions } from './computer-tool-options';
-import { buildChallengeField } from './handover/challenge-line';
+import { buildChallengeField } from './handover/build-challenge-field';
 import { refuseComputer, runComputerCall } from './run-computer-call';
 import { showPicture } from './show-picture';
 import { writeComputerPage } from './write-computer-page';
