@@ -113,8 +113,8 @@ proposals.withdrawn …existing; written beside proposals.settled until release 
 - A body record creates a row only when no `proposals.proposed` for that proposal came before it,
   which holds only for records written before this design. A rebuild over a log that mixes old and
   new records creates exactly one row per proposal, and a test checks it.
-- An approval keeps the family's own approval record when it carries data the apply needs, such as
-  `skills.write_approved` with edited files, beside `proposals.settled`.
+- When a family's approval record carries data the apply needs, such as `skills.write_approved` with
+  edited files, an approval still writes it, beside `proposals.settled`.
 - The family records for a decline, a lapse and a withdrawal stop at release N+2 of the
   [release order](#release-order). Until then `discard` writes them as well, with the answer's
   identity and note. Their codecs and mappers stay, so a rebuild still folds every old record.
@@ -134,20 +134,20 @@ approvals:
     prompt: 14
 ```
 
-- A new proposal lapses at the earlier of its creation plus its family's `lapse_days` and its
-  deadline. A defer sets a new lapse from its own time, by the same rule. A mandate lapses only at
-  its deadline, which is its expiry, and keeps its own expiry timer.
+- A new proposal lapses at its deadline or at its creation plus its family's `lapse_days`, whichever
+  comes first. A defer sets a new lapse by the same rule, counted from the defer. A mandate lapses
+  only at its deadline, which is its expiry, and keeps its own expiry timer.
 - A memory merge extends the shared row's lapse by `lapse_days.memory`, recorded in the merge record
   as today.
 - The core's sweep, built on the shared sweep helper, lapses every family. Memory's own sweep keeps
-  only its item lapses and the key-store cleanup of closed proposals, after the commit. The prompt
-  sweep is deleted.
+  only its item lapses and the key-store cleanup of closed proposals, after the commit. Delete the
+  prompt sweep.
 
 ### Telling the proposer
 
 ```ts
 // The message a proposer reads, for every outcome of every family but action.
-// Conversation: a turn note. Task: an inbox record that wakes the task.
+// A conversation gets it as a turn note, and a task as an inbox record that wakes it.
 // "Your skill write K7 was declined: not this week."
 type ProposalSettledNote = {
   shortID: string;
@@ -161,8 +161,8 @@ type ProposalSettledNote = {
 
 A prompt override's export after approval stays a note of its own: it isn't a settlement.
 
-- `proposals.settled` is written on the proposal's thread. Outside the action family, it is an inbox
-  record for a task and a turn note for the conversation.
+- The core writes `proposals.settled` on the proposal's thread. Outside the action family, it is an
+  inbox record for a task and a turn note for the conversation.
 - An action proposal's settlement is never an inbox record. The task hears `action.outcome`, which
   the action module already writes when an approval queues the action, or when a decline or a lapse
   fails the held action.
@@ -187,23 +187,23 @@ It replaces `memory.pending` and `skill_pending`.
 ### Short IDs
 
 - `proposeInTransaction` stores every new proposal's short ID in `proposals.proposed`, so a rebuild
-  keeps it. It creates the short ID with `createShortID`, except for memory, which passes the one it
-  derives from the UUID, so a rollback rebuilds the same IDs.
-- Every proposal's ID is a UUID, skills and prompts included. A release before this design shows a
-  new skill or prompt proposal's UUID where it shows a short ID.
+  keeps it. It creates the short ID with `createShortID`. Memory passes its own, derived from the
+  UUID, so a rollback rebuilds the same IDs.
+- Every proposal's ID is a UUID, skills and prompts included. A release before this design shows the
+  UUID of a new skill or prompt proposal in place of its short ID.
 - A proposal's UUID never reaches the model. The answer path finds a proposal by its short ID among
   open proposals only. `approvals.readProposals` matches a short ID among open rows first, then the
   newest closed row.
 - Old proposals keep the short IDs their rows already hold.
-- Notices to the model mark a record with `[#n]`, an event number that `log.read` accepts. The
-  take-over notices put a random short ID in that slot today, which nothing can look up, so they
-  print their record's event number instead. `[#n]` means an event number and nothing else.
+- Notices to the model mark a record with `[#n]`, an event number that `log.read` accepts. Today the
+  take-over notices put a random short ID in that slot, which nothing can look up. Make them print
+  their record's event number instead. `[#n]` means an event number and nothing else.
 
 ## Constraints
 
-- The `family` column accepts `prompt`. A migration adds it, and backfills every prompt override,
+- The `family` column accepts `prompt`. A migration adds it and backfills every prompt override,
   open and closed, from its records, as the shared table's first migration did for the other
-  families; a test checks that the backfill equals a rebuild. A backfilled row keeps its old
+  families. A test checks that the backfill equals a rebuild. A backfilled row keeps its old
   proposal ID as `short_id`.
 - A prompt row takes `kind` `internal_change`, cause `prompt_override` and risk class `always_ask`,
   so approving it needs a passkey. Its `action_hash` is the proposed override's hash, and
@@ -231,7 +231,8 @@ It replaces `memory.pending` and `skill_pending`.
 ## Release order
 
 Each step ships in its own release, so a rollback by one release still reads every row. The one
-exception is a rollback past N+2, which meets prompt rows; the open question on it holds.
+exception is a rollback from N+2: the release before it can't read prompt rows, and the first
+[open question](#open-questions) covers it.
 
 | Release | Ships                                                                                            |
 | ------- | ------------------------------------------------------------------------------------------------ |
