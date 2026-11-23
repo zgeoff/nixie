@@ -200,6 +200,7 @@ test('it writes the extra definitions lines under the definitions section', asyn
     repository: 'harbour/definitions',
     base: 'main',
     apiURL: 'https://api.github.com',
+    app: null,
     title: null,
     message: null,
   });

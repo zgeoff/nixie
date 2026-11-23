@@ -74,12 +74,12 @@ The builder makes these choices, and the rule file's header lists each one where
 
 ## The own values
 
-The server picks the own values from the 5 credential entries of the secrets file by default:
-`deployment_key`, `impd_token`, `definitions_export_token`, `model_credentials` and
-`connector_credentials`. The `settings` entry holds the user's name and pronouns, and a scan for
-them would refuse an ordinary URL that holds the user's name. A map entry contributes its values and
-never its keys. [Web fetch](./web-fetch.md#the-config-keys) covers the keys that change the entries
-and the minimum length of a value.
+The server picks the own values from the 6 credential entries of the secrets file by default:
+`deployment_key`, `impd_token`, `definitions_export_token`, `definitions_export_app_key`,
+`model_credentials` and `connector_credentials`. The `settings` entry holds the user's name and
+pronouns, and a scan for them would refuse an ordinary URL that holds the user's name. A map entry
+contributes its values and never its keys. [Web fetch](./web-fetch.md#the-config-keys) covers the
+keys that change the entries and the minimum length of a value.
 
 ## Tests
 

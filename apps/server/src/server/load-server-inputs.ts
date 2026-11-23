@@ -47,7 +47,12 @@ export async function loadServerInputs(options: ServerOptions): Promise<ServerIn
 
   const config = { ...loaded, owner: resolveOwnerConfig(loaded.owner, secrets.settings) };
   const sandbox = resolveSandboxSettings(loaded, secrets.impdToken);
-  const definitionsExport = resolveDefinitionsExport(config, secrets.definitionsExportToken);
+
+  const definitionsExport = resolveDefinitionsExport(config, {
+    token: secrets.definitionsExportToken,
+    appKey: secrets.definitionsExportAppKey,
+  });
+
   const search = resolveSearchSettings(loaded.search, secrets.connectorCredentials);
   const imageSettings = resolveImageSettings(loaded.images, secrets.connectorCredentials);
   const spend = createSpendInputs(loaded.spendStop, secrets.settings);
