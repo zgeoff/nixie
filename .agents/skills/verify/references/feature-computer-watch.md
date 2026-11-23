@@ -22,6 +22,10 @@ because it needs `local`.
 Before you start, run [sign-in-enrol](feature-sign-in-enrol.md) in the same `up`, when you have not
 run it since `up`.
 
+After this journey, run `bun verify up --restart`, `bun verify doctor` and sign-in-enrol before any
+journey that sends a message. The hand-back record starts a conversation turn, and the journey gives
+that turn no reply, so the turn fails.
+
 ## Journey
 
 1. Record every later command of this journey under this feature:
