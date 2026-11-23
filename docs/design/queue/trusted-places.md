@@ -21,7 +21,7 @@ items, filed at approval, are:
    folded in and `web_fetch` declaring its host;
 2. the card's answers, `places.propose` and `places.narrow`;
 3. the places page and `nixie places`, which retire the contacts code;
-4. the one evidence window and the skill guard's move to first use.
+4. the one evidence window, and the skill guard's move to first use.
 
 ## Shape
 
@@ -236,17 +236,17 @@ await tools.call('places.narrow', { place: 'P4', trust: 'known' }); // or { plac
 
 nixie checks whether you named a place in three spots today, each with its own window: the consent
 check (the turn's message, plus your linked messages within `policy.consent.link_max_age` hours),
-the memory gate (your last 20 messages) and the skill guard (the same 20). The design gives them one
+the memory gate (your last 20 messages) and the skill guard (the same 20). The skill guard's check
+goes, as [the next section](#the-skill-guard-moves-to-first-use) says. The other two share one
 window, the consent check's, and one comparison, `isPlaceCovered` over `parsePlacePattern` of each
 place you typed. The secret scan's exemption for a URL you typed keeps its own rule, the whole URL,
 because it guards a secret, not a place.
 
 ### The skill guard moves to first use
 
-The owner decided that nixie writes its own skills freely. `skill_write` applies under its rules,
-and no longer checks the places a skill names. A skill that names a place you never trusted takes
-effect, and its first call to that place meets the decision point like any other call: an acting
-call there asks.
+nixie writes its own skills freely. `skill_write` applies under its rules, and no longer checks the
+places a skill names. A skill that names a place you never trusted takes effect, and its first call
+to that place meets the decision point like any other call: an acting call there asks.
 
 ### The places page
 
@@ -258,14 +258,16 @@ and when a call last used it. You add, change and remove entries there. The host
 
 - The directory holds at most one entry per place key.
 - `parsePlace` returns `null` for a string it can't read as a place. A `null` destination has no
-  place tier and falls through.
+  place tier. On a call with only reading effects it gets the `reading` permission, as an unlisted
+  destination does; otherwise it falls through to the other tiers.
 - An entry covers a place by key alone. A site entry never covers an address at that domain.
 - A `blocked` entry beats every rule, mandate and lift.
 - No level allows a `spend` call: it asks at `known`, `read`, `act` and `self`, and `blocked` denies
   it. A lift covers a spend as it does today.
-- Each call reads the directory of its own definitions snapshot. Each place record makes a new
-  snapshot, as a contact record does today. The snapshot's form holds `policy.places`, the place IDs
-  and levels, in place of `policy.contacts`, and never an address.
+- Each call reads the directory of its own definitions snapshot. `places.added`, `places.changed`
+  and `places.removed` each make a new snapshot, as a contact record does today. The snapshot's form
+  holds `policy.places`, the place IDs and levels, in place of `policy.contacts`, and never an
+  address.
 - The vault keeps each entry's exact origins as a fill constraint. A password fills only on an exact
   origin of its entry, even on a site at `act`. The vault entry links its site's place ID.
 - A wallet lift names places, never origins. Its merchants are site places.
