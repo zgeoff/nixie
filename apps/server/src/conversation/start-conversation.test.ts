@@ -1,6 +1,14 @@
-import { expect, mock, test } from 'bun:test';
+import { expect, mock, onTestFinished, setSystemTime, test } from 'bun:test';
 import type { TurnMemorySettings } from '@heynixie/memory';
 import { startTestMemoryStore } from '@heynixie/memory/test-utils';
+import type { NotebookStore } from '@heynixie/notebook';
+import {
+  buildNotebookMemory,
+  buildNotebookTools,
+  defaultNotebookSettings,
+  startNotebook,
+} from '@heynixie/notebook';
+import { readStarterDecisionPoint } from '@heynixie/policy/test-utils';
 import { sandboxCreatedCodec } from '@heynixie/sandbox';
 import { conversationTaskID, createConversationTask } from '@heynixie/tasks';
 import invariant from 'tiny-invariant';
@@ -1245,6 +1253,86 @@ test('it places no moment text in a turn whose message matches its title and ref
   expect(sent).not.toInclude('chose the bramble shelter over the box');
   expect(sent).not.toInclude(kept.shortID);
   expect(sent).not.toInclude('Bramble shelter hedgehogs');
+});
+
+test('it delivers a message once when the turn that answers it forgets a note', async () => {
+  const store: { notebook: NotebookStore | null } = { notebook: null };
+
+  const notebookTools = buildNotebookTools(() => {
+    invariant(store.notebook);
+
+    return store.notebook;
+  });
+
+  const ctx = await setupTest({
+    tools: {
+      definitions: notebookTools,
+      decide: readStarterDecisionPoint(
+        (tool) => notebookTools.find((entry) => entry.name === tool)?.declaration ?? null,
+      ),
+    },
+  });
+
+  const [runner] = await Promise.all([
+    ctx.startRunner({ image: 'nixie-conversation-0123456789ab', toolNames: ['notebook.forget'] }),
+    createConversationTask(ctx.context),
+  ]);
+
+  const notebook = await startNotebook({
+    log: ctx.context.log,
+    definitions: ctx.context.definitions,
+    clock: ctx.context.clock,
+    settings: defaultNotebookSettings,
+    memory: buildNotebookMemory(() => ctx.memory),
+    cleanupSessions: (cause, options) => runner.cleanupSessions(cause, options),
+  });
+
+  store.notebook = notebook;
+
+  onTestFinished(() => notebook.stop());
+
+  const written = await notebook.write(
+    { writer: 'conversation', model: 'claude-test-1' },
+    { title: 'Boiler', body: 'The boiler trips after a cold night.' },
+  );
+
+  invariant(written.status === 'written');
+
+  ctx.guest.addReplies(
+    { toolUse: { name: 'notebook.forget', input: { id: written.shortID } } },
+    { text: 'The boiler note is forgotten.' },
+    { text: 'You are welcome.' },
+  );
+
+  await ctx.conversation.sendForStep('Forget the boiler note.');
+  await notebook.waitForForgets();
+
+  setSystemTime(new Date(Date.now() + 60_000));
+  onTestFinished(() => setSystemTime());
+
+  await ctx.conversation.sendForStep('Thanks.');
+
+  const deliveries = ctx.guest.turns.filter((turn) =>
+    /<owner-message[^>]*>\\nForget the boiler note\./u.test(JSON.stringify(turn.input)),
+  );
+
+  const records = await ctx.readRecords();
+
+  const kinds = records
+    .map((record) => record.kind)
+    .filter((kind) =>
+      [
+        'task.step_errored',
+        'model.session_invalidated',
+        'model.session_cleanup_completed',
+        'notebook.note_forgotten',
+      ].includes(kind),
+    );
+
+  expect([deliveries.length, kinds]).toStrictEqual([
+    1,
+    ['model.session_invalidated', 'model.session_cleanup_completed', 'notebook.note_forgotten'],
+  ]);
 });
 
 test('it creates the conversation sandbox at the conversation size', async () => {

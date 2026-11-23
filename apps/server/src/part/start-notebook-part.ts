@@ -1,6 +1,6 @@
 import { toErrorFields } from '@heynixie/logger';
-import type { CleanupSessions, StartedMemoryStore } from '@heynixie/memory';
-import type { NotebookStore } from '@heynixie/notebook';
+import type { StartedMemoryStore } from '@heynixie/memory';
+import type { NoteCleanupSessions, NotebookStore } from '@heynixie/notebook';
 import { buildNotebookMemory, startNotebook } from '@heynixie/notebook';
 import type { ServerParts } from '../types';
 
@@ -9,7 +9,7 @@ import type { ServerParts } from '../types';
 export async function startNotebookPart(
   parts: ServerParts,
   memory: StartedMemoryStore,
-  cleanupSessions: CleanupSessions,
+  cleanupSessions: NoteCleanupSessions,
 ): Promise<NotebookStore> {
   const store = await startNotebook({
     log: parts.context.log,

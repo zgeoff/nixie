@@ -125,11 +125,10 @@ Before you start:
    bun verify db query "select json_extract(payload, '$.by') as by, count(*) as n from records where kind = 'notebook.note_forgotten' group by by order by by"
    ```
 
-   Expect: the first query lists 1 note, the private one. The `conversation turn` exits 0: the reply
-   comes in the turn that forgets the note, before the note's cleanup aborts that turn. On `local`
-   the clock stands still, so the conversation never retries a turn that the cleanup aborted. The
-   list shows "No notes yet" and no link "Winter diary". The last query lists `assistant` with `n` 1
-   and `user` with `n` 1.
+   Expect: the first query lists 1 note, the private one. The `conversation turn` exits 0: the
+   note's cleanup waits for the turn that forgets the note, so that turn replies once and its step
+   commits. The list shows "No notes yet" and no link "Winter diary". The last query lists
+   `assistant` with `n` 1 and `user` with `n` 1.
 
 ## End state
 

@@ -5,7 +5,7 @@ import type { NoteIndex } from '../index/start-note-index';
 import { forgetBySchema } from '../record/forget-by-schema';
 import { noteForgettingCodec } from '../record/note-forgetting-codec';
 import { noteForgottenCodec } from '../record/note-forgotten-codec';
-import type { NotebookContext, NotebookTables } from '../types';
+import type { NoteCleanupOptions, NotebookContext, NotebookTables } from '../types';
 
 // Every step is safe to run twice, so the server's start finishes a forget that a crash cut short.
 // It deletes the key of every version record and of every link record from the note, replaced
@@ -14,6 +14,7 @@ export async function runNoteForgetCleanup(
   context: NotebookContext,
   index: NoteIndex,
   noteID: string,
+  options: NoteCleanupOptions = {},
 ): Promise<void> {
   const db = context.log.writer.db.$extendTables<NotebookTables & LogTables>();
 
@@ -38,7 +39,7 @@ export async function runNoteForgetCleanup(
   }
 
   await index.drop(noteID);
-  await context.cleanupSessions({ noteID });
+  await context.cleanupSessions({ noteID }, options);
 
   await withWriteTransaction(context.log.writer, async (tx) => {
     const row = await tx

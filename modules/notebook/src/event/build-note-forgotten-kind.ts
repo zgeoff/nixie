@@ -10,8 +10,8 @@ export interface NoteForgottenEvent {
 const defaultReadLimit = 1000;
 
 // The notebook's one entry in the events block: a line for each finished note forget by the user,
-// such as "Sam forgot note n4w8k2c6rd", with the user's name or "the user" when it is unset. A
-// forget by the assistant adds no line.
+// such as "Sam forgot note n4w8k2c6rd", with the owner's name or "the owner" when it is unset, as
+// the session prompt says. A forget by the assistant adds no line.
 export function buildNoteForgottenKind(
   log: Pick<Log, 'deploymentKey' | 'writer'>,
   readLimit = defaultReadLimit,
@@ -55,6 +55,6 @@ export function buildNoteForgottenKind(
       return events;
     },
     render: (detail, settings) =>
-      `${settings.ownerName ?? 'the user'} forgot note ${detail.shortID}`,
+      `${settings.ownerName ?? 'the owner'} forgot note ${detail.shortID}`,
   };
 }

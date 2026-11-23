@@ -46,15 +46,14 @@ export function buildNotebookForgetTool(readStore: () => NotebookToolStore): Too
       },
     },
     execution: 'direct',
-    run: async (call) => {
+    run: async (call, context) => {
       const input = forgetArguments.parse(call.input);
       const store = readStore();
 
-      const forgotten = await store.forgetBeside({
-        note: input.id,
-        by: 'assistant',
-        isShortIDOnly: true,
-      });
+      const forgotten = await store.forgetBeside(
+        { note: input.id, by: 'assistant', isShortIDOnly: true },
+        { sparedThread: context.run.thread },
+      );
 
       if (forgotten.status === 'refused') {
         return { status: 'ok', ...refuseNote(buildUnknownNote(input.id).refusal) };

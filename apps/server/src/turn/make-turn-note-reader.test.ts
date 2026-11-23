@@ -471,7 +471,7 @@ test('it keeps each failed turn in the event log, the recovered ones included', 
   ]);
 });
 
-test("it lists a finished note forget in the next turn's events as by the user when no name is set", async () => {
+test("it lists a finished note forget in the next turn's events as by the owner when no name is set", async () => {
   const ctx = await setupTest();
 
   const [runner] = await Promise.all([
@@ -500,7 +500,7 @@ test("it lists a finished note forget in the next turn's events as by the user w
 
   const turn = await conversation.send('And tomorrow?');
 
-  expect(turn.input[0]?.text).toInclude(`the user forgot note ${written.shortID}`);
+  expect(turn.input[0]?.text).toInclude(`the owner forgot note ${written.shortID}`);
 });
 
 test("it adds no line to the next turn's events for a note forget by the assistant", async () => {
@@ -528,7 +528,11 @@ test("it adds no line to the next turn's events for a note forget by the assista
 
   invariant(written.status === 'written');
 
-  await ctx.notebook.forgetBeside({ note: written.shortID, by: 'assistant' });
+  await ctx.notebook.forgetBeside(
+    { note: written.shortID, by: 'assistant' },
+    { sparedThread: conversationTaskID },
+  );
+
   await ctx.notebook.waitForForgets();
 
   const turn = await conversation.send('And tomorrow?');

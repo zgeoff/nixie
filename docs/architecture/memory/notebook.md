@@ -152,13 +152,13 @@ which differ only in who forgot. The client's call is in the
    `notebook.note_forgotten`, with the same `by`. A record that has no `by` reads as a forget by the
    user.
 
-The cleanup aborts every turn in flight and waits for each to end, the turn that called the tool
-included. The tool therefore never waits for the cleanup: it runs part 1, starts the cleanup beside
-the turn, and answers `forgetting`. When the cleanup aborts the turn before it ends, the turn's step
-fails and runs again after its retry delay, on a rebuilt session, as
-[the live session](./context.md#forgetting-and-the-live-session) describes. A cleanup that fails
-runs again after a short wait until it ends, through the same step that the server's start runs for
-a note left `forgetting`. The next start finishes a cleanup that a stop cut short.
+The cleanup waits for every turn in flight to end, the turn that called the tool included. The tool
+therefore never waits for the cleanup: it runs part 1, starts the cleanup beside the turn, and
+answers `forgetting`. The cleanup aborts the turns of every other session, as
+[the live session](./context.md#forgetting-and-the-live-session) describes, and lets the calling
+turn finish, so the turn's step commits and its messages get one answer. A cleanup that fails runs
+again after a short wait until it ends, through the same step that the server's start runs for a
+note left `forgetting`. The next start finishes a cleanup that a stop cut short.
 
 Every step is safe to run twice, so the server's start finishes a forget that a crash cut short. The
 session cleanup runs for the conversation and for each open task whose tool list holds a notebook

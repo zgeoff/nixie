@@ -1,5 +1,5 @@
 import type { NoteIndex } from '../index/start-note-index';
-import type { NotebookContext, NotebookTables } from '../types';
+import type { NoteCleanupOptions, NotebookContext, NotebookTables } from '../types';
 import { runNoteForgetCleanup } from './run-note-forget-cleanup';
 
 // Finishes each forget that a crash cut short, at the server's start.
@@ -7,6 +7,7 @@ export async function runBegunNoteForgets(
   context: NotebookContext,
   index: NoteIndex,
   noteID?: string,
+  options: NoteCleanupOptions = {},
 ): Promise<void> {
   const rows = await context.log.writer.db
     .$extendTables<NotebookTables>()
@@ -17,6 +18,6 @@ export async function runBegunNoteForgets(
     .execute();
 
   for (const row of rows) {
-    await runNoteForgetCleanup(context, index, row.note_id);
+    await runNoteForgetCleanup(context, index, row.note_id, options);
   }
 }

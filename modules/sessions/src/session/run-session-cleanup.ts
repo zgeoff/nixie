@@ -3,7 +3,7 @@ import { removeWebFetchThread } from '@heynixie/connectors';
 import { writeRecords } from '@heynixie/log';
 import { modelSessionCleanupCompletedCodec, modelSessionInvalidatedCodec } from '@heynixie/models';
 import { conversationTaskID } from '@heynixie/tasks';
-import type { ConversationRun, SessionCleanupCause } from '../types';
+import type { ConversationRun, SessionCleanupCause, SessionCleanupOptions } from '../types';
 import { runGuestPurge } from '../utils/run-guest-purge';
 
 type CleanupRun = Pick<
@@ -11,7 +11,13 @@ type CleanupRun = Pick<
   'context' | 'harness' | 'sandbox' | 'command' | 'session' | 'clearFetchPauses'
 >;
 
-export function runSessionCleanup(run: CleanupRun, cause: SessionCleanupCause): Promise<void> {
+export function runSessionCleanup(
+  run: CleanupRun,
+  cause: SessionCleanupCause,
+  options: SessionCleanupOptions = {},
+): Promise<void> {
+  const invalidation = { shouldAbortTurns: options.sparedThread !== conversationTaskID };
+
   return run.session.withInvalidation(async () => {
     run.clearFetchPauses();
 
@@ -36,5 +42,5 @@ export function runSessionCleanup(run: CleanupRun, cause: SessionCleanupCause): 
         payload: modelSessionCleanupCompletedCodec.encode(cause),
       },
     ]);
-  });
+  }, invalidation);
 }

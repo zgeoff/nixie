@@ -145,6 +145,12 @@ export type SessionCleanupCause =
   | { readonly momentID: string }
   | { readonly noteID: string };
 
+export interface SessionCleanupOptions {
+  // the thread whose running turn asked for the cleanup: the cleanup waits for that turn to end and
+  // never aborts it, because an aborted turn reruns and answers its messages again
+  readonly sparedThread?: string;
+}
+
 export interface SessionDefinitions {
   readonly persona: string;
   readonly prompts: PromptOverrides;

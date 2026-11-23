@@ -500,9 +500,10 @@ builds the registry when the conversation starts, and each entry's package owns 
 reads.
 
 - **A note forget** reads each `notebook.note_forgotten` record that the user made as a line such as
-  "Sam forgot note n4w8k2c6rd", with the user's name or "the user" when none is set. A record that
-  the assistant made adds no line. The [notebook](../memory/notebook.md) owns the entry, and the
-  server registers it only when `forget_notices.note` is on.
+  "Sam forgot note n4w8k2c6rd", with the user's name, or with the literal text "the owner" when none
+  is set, as the session prompt does. A record that the assistant made adds no line. The
+  [notebook](../memory/notebook.md) owns the entry, and the server registers it only when
+  `forget_notices.note` is on.
 - **A memory change** and a merge into one of the conversation's proposals are memory's own kinds. A
   memory change is an item that anything but the conversation itself wrote, such as an edit in the
   memory view. Each item lists once, at its latest version in the block's range, with its current

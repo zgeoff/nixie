@@ -291,8 +291,9 @@ cleanup, and completes only after the cleanup returns ([forgetting](./store.md#f
 because the session holds the record's text too, and the cleanup's records name the item or the
 record it ran for. The cleanup runs in order:
 
-1. It aborts every turn in flight and waits for each one to end, so it never removes a transcript
-   that a live CLI still writes.
+1. It aborts every turn in flight except the one that called the assistant's `notebook.forget`, and
+   waits for each one to end, so it never removes a transcript that a live CLI still writes. It lets
+   that turn finish, because an aborted turn reruns and answers its messages again.
 2. It commits a session-invalidated record on the conversation's thread. From then on, no turn
    resumes a session that existed before the record, even one whose step commits later.
 3. It deletes the key of every session summary on the conversation's thread, because any summary can

@@ -4,7 +4,7 @@ import type { EditInput } from '../note/plan-edit';
 import type { FindRequest, FoundNotes } from '../read/read-found-notes';
 import type { NoteReadOutcome, NoteReadRequest } from '../read/read-note';
 import type { NoteHistory } from '../read/read-note-history';
-import type { NoteWriter } from '../types';
+import type { NoteCleanupOptions, NoteWriter } from '../types';
 import type { NoteWalk, WalkAccess, WalkRequest } from '../walk/read-walk';
 import type { NoteWrite, WriteNoteInput } from '../write/write-note';
 import type { NoteEdit } from '../write/write-note-edit';
@@ -24,5 +24,8 @@ export interface NotebookToolStore {
   readonly walk: (access: WalkAccess, request: WalkRequest) => Promise<NoteWalk>;
 
   // runs the cleanup beside the call, which a turn's tool needs: the cleanup waits for the turn
-  readonly forgetBeside: (target: NoteForgetTarget) => Promise<BegunNoteForget>;
+  readonly forgetBeside: (
+    target: NoteForgetTarget,
+    cleanup: NoteCleanupOptions,
+  ) => Promise<BegunNoteForget>;
 }

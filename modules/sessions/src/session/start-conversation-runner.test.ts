@@ -2131,6 +2131,63 @@ test('it aborts a running turn on a forget, and fails the step so it retries on 
   expect([task.sessionBoundary, task.stepErrors]).toStrictEqual([null, 1]);
 });
 
+test('it lets the turn that asked for a forget end unaborted, so its step commits', async () => {
+  const ctx = await setupTest();
+
+  await createConversationTask(ctx.context);
+
+  const runner = await ctx.startRunner({
+    models: buildMockModelsConfig(),
+    credential: 'not-a-real-key',
+    toolNames: ['notes_read'],
+  });
+
+  const started = Promise.withResolvers<void>();
+  const held = Promise.withResolvers<void>();
+
+  ctx.sandboxes.setGuestScript(async (turn) => {
+    started.resolve();
+
+    await held.promise;
+
+    return [
+      { type: 'read', uuids: [turn.input[0]?.uuid ?? ''] },
+      { type: 'assistant', messageID: crypto.randomUUID(), text: 'Hello.', toolUses: [] },
+      {
+        type: 'ended',
+        boundary: {
+          harness: 'agent-sdk',
+          sessionID: crypto.randomUUID(),
+          messageID: crypto.randomUUID(),
+        },
+        outcome: 'finished',
+        stopReason: 'end_turn',
+        turns: 1,
+        usage: { inputTokens: 10, outputTokens: 5, cacheReadTokens: 0, cacheWriteTokens: 0 },
+      },
+    ];
+  });
+
+  await ctx.writeMessage('Hi.');
+
+  const step = ctx.runNextStep(runner);
+
+  await started.promise;
+
+  const cleanup = runner.cleanupSessions(
+    { noteID: '5d49b66c-a092-4997-b912-fb1c8e3944cc' },
+    { sparedThread: 'conversation' },
+  );
+
+  held.resolve();
+
+  await Promise.all([step, cleanup]);
+
+  const task = await readTestTaskProgress(ctx.context, 'conversation');
+
+  expect(task.stepErrors).toBe(0);
+});
+
 test('it fails the step and voids the reply it wrote when nixie tool server is not connected', async () => {
   const ctx = await setupTest();
 

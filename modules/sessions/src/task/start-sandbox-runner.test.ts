@@ -1406,6 +1406,42 @@ test('it purges the guest of a task that reads memory when a forget aborts its f
   expect(ctx.guest.purged).toHaveLength(1);
 });
 
+test('it lets the turn of a task that asked for a forget end unaborted, then purges its guest', async () => {
+  const ctx = await setupTest();
+  const starter = await ctx.seed.conversationStep();
+
+  const taskID = await ctx.seed.task({
+    starter: starter.claim,
+    name: 'Tide tables',
+    brief: 'Find the high tides for Saturday.',
+    options: { persona: 'default', memory: 'read' },
+  });
+
+  const runner = await ctx.startRunner();
+
+  const held = Promise.withResolvers<void>();
+
+  onTestFinished(() => {
+    held.resolve();
+  });
+
+  ctx.guest.addKindReplies('worker', { text: 'Checking the tides.', gate: () => held.promise });
+
+  const step = ctx.runNextStepWithNoRetryDelay(runner);
+
+  await waitForCondition(() => ctx.guest.turns.length === 1);
+
+  const cleanup = runner.cleanupSessions({ itemID: 'item-bees' }, { sparedThread: taskID });
+
+  held.resolve();
+
+  await Promise.all([step, cleanup]);
+
+  const errored = await ctx.readKinds('task.step_errored');
+
+  expect([errored, ctx.guest.purged.length]).toStrictEqual([[], 1]);
+});
+
 test('it leaves the session of a task that reads no memory as it is on a forget', async () => {
   const ctx = await setupTest();
   const starter = await ctx.seed.conversationStep();

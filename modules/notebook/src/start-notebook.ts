@@ -25,7 +25,7 @@ import { readFoundNotes } from './read/read-found-notes';
 import { readNote } from './read/read-note';
 import { readNoteHistory } from './read/read-note-history';
 import type { NotebookToolStore } from './tool/notebook-tool-store';
-import type { NotebookContext } from './types';
+import type { NoteCleanupOptions, NotebookContext } from './types';
 import { readWalk } from './walk/read-walk';
 import { writeNote } from './write/write-note';
 import { writeNoteEdit } from './write/write-note-edit';
@@ -95,10 +95,10 @@ export async function startNotebook(options: StartNotebookOptions): Promise<Note
   const retryMs = options.cleanupRetryMs ?? defaultCleanupRetryMs;
   const state = { isStopping: false };
 
-  const runFinishBeside = async (noteID: string): Promise<void> => {
+  const runFinishBeside = async (noteID: string, cleanup: NoteCleanupOptions): Promise<void> => {
     while (!state.isStopping) {
       try {
-        await runBegunNoteForgets(context, index, noteID);
+        await runBegunNoteForgets(context, index, noteID, cleanup);
 
         return;
       } catch {
@@ -107,19 +107,22 @@ export async function startNotebook(options: StartNotebookOptions): Promise<Note
     }
   };
 
-  const runTrackedFinish = async (noteID: string): Promise<void> => {
+  const runTrackedFinish = async (noteID: string, cleanup: NoteCleanupOptions): Promise<void> => {
     try {
-      await runFinishBeside(noteID);
+      await runFinishBeside(noteID, cleanup);
     } finally {
       cleanups.delete(noteID);
     }
   };
 
-  const forgetBeside = async (target: NoteForgetTarget): Promise<BegunNoteForget> => {
+  const forgetBeside = async (
+    target: NoteForgetTarget,
+    cleanup: NoteCleanupOptions,
+  ): Promise<BegunNoteForget> => {
     const begun = await beginNoteForget(context, target);
 
     if (begun.status === 'begun') {
-      cleanups.set(begun.noteID, runTrackedFinish(begun.noteID));
+      cleanups.set(begun.noteID, runTrackedFinish(begun.noteID, cleanup));
     }
 
     return begun;
