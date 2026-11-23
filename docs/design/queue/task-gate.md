@@ -20,11 +20,10 @@ Once the owner approves this design, build its work items from it and the built
 flowchart LR
   claim[task claim] --> gate{readTaskGate}
   attempt[action attempt] --> gate
-  fire[trigger fire] --> gate
+  fire[schedule fire] --> gate
   step[step start] --> gate
   gate -->|"open"| go[go on]
-  gate -->|"held: ended, task or limit"| skip[skip; a fire writes a record]
-  gate -->|"held: nixie or spend"| wait[wait; a fire comes again]
+  gate -->|"held, with a reason"| rule[the caller's rule for that reason]
 ```
 
 ## Terms
@@ -76,17 +75,18 @@ type TaskHoldReason =
 
 ### What each caller does when held
 
-| Caller         | `ended`                            | `task` or `limit`                             | `nixie` or `spend`                                       |
-| -------------- | ---------------------------------- | --------------------------------------------- | -------------------------------------------------------- |
-| task claim     | skips the task                     | skips the task                                | skips the task                                           |
-| action claim   | as today, by the task's state      | skips an unstarted attempt                    | skips every attempt                                      |
-| action attempt | as today, by the task's state      | barred, stays pending, and the lease is freed | barred, stays pending, and the lease is freed            |
-| schedule fire  | `trigger.skipped` with `task_held` | `trigger.skipped` with `task_held`, as today  | writes nothing and claims no trigger key; it comes again |
-| step start     | the claim already skipped it       | the claim already skipped it                  | `spend` ends the step; `nixie` lets it run to its commit |
+| Caller         | `ended`                            | `task` or `limit`                                  | `nixie` or `spend`                                       |
+| -------------- | ---------------------------------- | -------------------------------------------------- | -------------------------------------------------------- |
+| task claim     | skips the task                     | skips a paused task; claims a task at a limit once | skips the task                                           |
+| action claim   | as today, by the task's state      | skips an unstarted attempt                         | skips every attempt                                      |
+| action attempt | as today, by the task's state      | barred, stays pending, and the lease is freed      | barred, stays pending, and the lease is freed            |
+| schedule fire  | `trigger.skipped` with `task_held` | `trigger.skipped` with `task_held`, as today       | writes nothing and claims no trigger key; it comes again |
+| step start     | the claim already skipped it       | the claim already skipped it                       | `spend` ends the step; `nixie` lets it run to its commit |
 
 - Where the table says "as today, by the task's state", a stop cancels the task's actions, a closed
   task's unstarted attempt is barred, and a done or failed task's action runs.
-- An attempt already started runs to its outcome for every reason but `nixie` and `spend`.
+- An attempt already started runs to its outcome, except under `nixie` or `spend`, or when a stop
+  cancels it.
 - An unstarted action of a task at a limit waits until the limit is raised.
 - A schedule fire that nixie holds claims no trigger key, the key that stops a fire landing twice,
   so the source's next tick delivers it again. When the hold ends, the fire is late, and the
@@ -160,8 +160,8 @@ stored and published, and the crash side holds only code names and fault point I
   gate one read. The other choice is a reader that the server passes in. Until the owner decides,
   the row moves.
 
-- **Which side gives up "recovery".** The owner chose to rename the restore side. Its names are
-  stored and published, so that rename needs a migration, new record kinds with the old ones still
-  read, and a new API route beside the old one for a minor release. Renaming the crash side touches
-  code and fault point IDs only. The design shows the crash-side rename. Until the owner decides,
-  the rename's work item waits, and the gate ships without it.
+- **Which side gives up "recovery".** Renaming the restore side needs a migration, new record kinds
+  with the old ones still read, and a new API route beside the old one for a minor release, because
+  its names are stored and published. Renaming the crash side touches code and fault point IDs only.
+  The design shows the crash-side rename. Until the owner decides, the rename's work item waits, and
+  the gate ships without it.
