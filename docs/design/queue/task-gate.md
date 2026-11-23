@@ -2,14 +2,14 @@
 
 - **Status:** draft
 
-A task can be held for four reasons: you paused it, you paused all of nixie, the spending stop
-tripped, or the task reached one of its limits. Today each check reads its own subset. The claim
-filter reads the task's state and the nixie pause, the attempt check reads another list of states,
-the spending stop runs a check of its own before each turn, and a schedule reads only the task's own
-pause and limit. So a schedule fires into a task's inbox while all of nixie is paused, which the
-[pause design](pause.md) says never happens. After this design, one function answers whether a task
-may go on and why not, and every claim, action attempt, step and trigger fire asks it. A small
-rename at the end gives "recovery" one meaning.
+A task is held when you paused it, you paused all of nixie, the spending stop tripped, or the task
+reached one of its limits. Today each check reads its own subset. The claim filter reads the task's
+state and the nixie pause, the attempt check reads another list of states, the spending stop runs a
+check of its own before each turn, and a schedule reads only the task's own pause and limit. So a
+schedule fires into a task's inbox while all of nixie is paused, which the [pause design](pause.md)
+says never happens. After this design, one function answers whether a task may go on and why not,
+and every claim, action attempt, step and trigger fire asks it. A small rename at the end gives
+"recovery" one meaning.
 
 Once the owner approves this design, build its work items from it and the built
 [claim path](../../architecture/core/leases-and-recovery.md#the-claim-path) it extends.
@@ -84,17 +84,17 @@ type TaskHoldReason =
 | schedule fire  | `trigger.skipped` with `task_held` | `trigger.skipped` with `task_held`, as today  | writes nothing and claims no trigger key; it comes again |
 | step start     | the claim already skipped it       | the claim already skipped it                  | `spend` ends the step; `nixie` lets it run to its commit |
 
-- "As today, by the task's state": a stop cancels the task's actions, a closed task's unstarted
-  attempt is barred, and a done or failed task's action runs.
+- Where the table says "as today, by the task's state", a stop cancels the task's actions, a closed
+  task's unstarted attempt is barred, and a done or failed task's action runs.
 - An attempt already started runs to its outcome for every reason but `nixie` and `spend`.
 - An unstarted action of a task at a limit waits until the limit is raised.
 - A schedule fire that nixie holds claims no trigger key, the key that stops a fire landing twice,
   so the source's next tick delivers it again. When the hold ends, the fire is late, and the
-  [catch-up rule](../../architecture/core/triggers.md#the-schedule-source) decides it, as for a fire
+  [catch-up rule](../../architecture/core/triggers.md#the-schedule-source) applies, as for a fire
   missed while nixie was down: one catch-up within half the interval, otherwise a `too_late` skip.
-- A one-shot schedule that waits is not retired. It retires when it fires or is skipped.
-- Poll sources, such as mail, never read the gate. They keep their cursor, and their events land in
-  the inbox while nixie is paused, and wait there.
+- A one-shot schedule that waits retires only when it fires or is skipped.
+- Poll sources, such as mail, never read the gate. They keep their cursor, and while nixie is paused
+  their events land in the inbox and wait there.
 - A trigger whose target is the conversation reads the gate of the conversation's task, and heeds
   only `nixie` and `spend`. It fires into a conversation you paused yourself, as today, so a
   reminder still lands.
@@ -103,8 +103,8 @@ type TaskHoldReason =
 
 ### The step start
 
-The claim filter already holds a task that is held when it is claimed. The step start covers a
-spending stop that trips after the claim.
+The claim filter already skips a task that is held at claim time. The step start catches a spending
+stop that trips after the claim.
 
 - Once per step, before its turn, where today's spending check runs, the step trips the stop if the
   turn count reached its limit, then reads the gate in a read transaction.
