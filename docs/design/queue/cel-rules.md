@@ -5,11 +5,11 @@
 - **Decision records:** [0004](../../decisions/0004-rule-engine.md)
 
 A rule's fixed fields can't say "only before 17:00 in London" or "only when every attachment is a
-PDF". A rule already carries a `cel` field for such a condition, but nixie never evaluates it, so
-today such a rule acts as if the condition were false for an allow and true for an ask or a deny.
-This design makes nixie evaluate the condition with `@marcbachmann/cel-js`, inside a subset of CEL
-that nixie checks when the rule is written and tests with its own conformance suite. Every rule with
-a condition carries a note in your words, and shows to you as a card that phrases the condition in
+PDF". A rule already carries a `cel` field for such a condition, but nixie never evaluates it: an
+allow with a condition never matches, and an ask or a deny matches on its other fields alone. This
+design makes nixie evaluate the condition with `@marcbachmann/cel-js`, inside a subset of CEL that
+nixie checks when the rule is written and tests with its own conformance suite. Every rule with a
+condition carries a note in your words, and shows to you as a card that phrases the condition in
 plain words, never as raw CEL alone.
 
 ## Shape
@@ -72,21 +72,22 @@ The environment declares each name with its CEL type: `args` is `map<string, dyn
 - A number in `args` compares with an `int` or a `double` literal alike, because its type is `dyn`:
   `args.amount < 100` is true for `99.5`. Two literals of different number types, such as
   `1 == 1.0`, fail the type check.
-- `RuleCall` gains `contentArgs`, the names the tool's declaration marks as content, so the
-  condition input can leave them out. The fixed `checks` read `args` as today.
+- `RuleCall` gains `contentArgs`, the top-level argument names that the tool's declaration lists in
+  `content`, filled where `buildRuleCall` builds the call, so the condition input can leave them
+  out. The fixed `checks` read `args` as today.
 - A condition never reads memory, secrets, the vault, contacts, budgets or spend, the conversation,
   the task's history or another call's result, because `RuleCall` holds none of them.
 - A condition never reads a place or its trust level. A rule about a place uses `destinations` or
   [the trusted places](https://github.com/zgeoff/nixie/pull/1410) directory, and a condition sees
   only the declared destination strings.
-- A content argument, such as a mail body or a memory item's text, is left out of `args`. When the
-  rule lists its tools, `checkCondition` refuses a path to an argument that one of them declares as
-  content, with `condition_not_allowed`. Otherwise reading one errors with `no_such_key` when the
-  rule is evaluated. Whether any rule may read content is [open](#open-questions).
-- A time-zone method takes a zone name as a string literal, and the type check refuses a zone that
-  the runtime's zone data doesn't hold. As in CEL, `getMonth` counts from 0 for January and
-  `getDayOfWeek` from 0 for Sunday; `getDate` counts the day of the month from 1. The card's words
-  name the month and the day, so you never read the counts.
+- A content argument, such as a mail body or a memory item's text, is left out of `args`, so a
+  condition that reads one errors with `no_such_key` and fails closed. Whether any rule may read
+  content is [open](#open-questions).
+- A timestamp method takes a zone name as a string literal. nixie's walk refuses a method with no
+  zone, or with a zone that the runtime's zone data doesn't hold, with `condition_not_allowed`. As
+  in CEL, `getMonth` counts from 0 for January and `getDayOfWeek` from 0 for Sunday; `getDate`
+  counts the day of the month from 1. The card's words name the month and the day, so you never read
+  the counts.
 
 ### The subset
 
@@ -111,7 +112,7 @@ which can backtrack for seconds.
 ### Checking a condition
 
 ```ts
-const checked = checkCondition(rule); // the rule's cel, note and tools
+const checked = checkCondition(rule); // reads the rule's cel and note
 // → { ok: true, view: { kind: 'all', parts: [ … ] } }
 //   or { ok: false, fault: 'condition_not_allowed', detail: 'matches' }
 ```
@@ -143,8 +144,11 @@ type ConditionFault =
 
 - In the rules-file parser, a fault is a problem of the rule's file, with the fault code and the
   detail as its reason, and it refuses the seed as any rule fault does.
-- A read of the rule store never runs the check. A stored condition that fails it, such as one
-  written before this design, evaluates as an error with the code `condition_invalid`.
+- A read of the rule store never runs the check. The first evaluation of each condition text runs
+  steps 1 to 4 and caches the result, and a stored condition that fails them, such as one written
+  before this design, evaluates as an error with the code `condition_invalid`.
+- Evaluation, the card's new sentence and the check on every write path ship in one release, so no
+  release shows a condition as working while `isRuleMatch` still skips it.
 
 ### Evaluating a condition
 
@@ -176,14 +180,18 @@ type Decision = {
 | deny     | catches it      | doesn't catch it | the call asks, with the cause `condition_error` |
 
 - A deny whose condition errors makes the call ask, so a broken condition never refuses a call that
-  you can't see. Stage 3 sets such a deny aside when no other deny matches, and stage 6 counts it as
-  an ask rule with the cause `condition_error`. A deny that matches wins over one that errored.
+  you can't see. The decision point's deny stage sets such a deny aside when no other deny matches,
+  and its ask-rule stage counts it as an ask rule with the cause `condition_error`. A deny that
+  matches wins over one that errored.
+- A call that leaves out an argument a deny's condition reads errors with `no_such_key`, so it asks
+  where the deny meant to refuse. To refuse such a call, write the condition so a missing argument
+  gives true, such as `!has(args.to) || …`.
 - The approval card for a call that asks with `condition_error`, or through an ask rule whose
   condition errored, names each rule in `conditionErrors` with its code.
 - The record holds the error code and never the library's message, which can quote argument text.
-- `pickLift` and `pickDestinationPermissions` evaluate a condition as `isRuleMatch` does. A caller
-  that matches against a call it built, such as `listUncoveredMemoryWrites`, counts every condition
-  as an error.
+- The lift check and the destination permissions read allow rules through `isRuleMatch`, so they
+  evaluate a condition the same way. A caller that matches rules against a call it built itself,
+  such as the memory gate's `listUncoveredMemoryWrites`, counts every condition as an error.
 - An error inside one side of `&&` or `||` that the other side settles is no error, as CEL defines:
   `false && args.missing == 1` is `false`.
 
@@ -205,7 +213,8 @@ type ConditionView =
   | { kind: 'code'; source: string }; // any part with no phrase, shown as code
 
 type Subject =
-  | { kind: 'variable'; name: string; path: string[] } // args.to.address → name 'args', path ['to', 'address']
+  // args.to.address → name 'args', path ['to', 'address']
+  | { kind: 'variable'; name: string; path: string[] }
   | { kind: 'time'; part: 'hour' | 'minute' | 'weekday' | 'day' | 'month' | 'year'; zone: string }
   | { kind: 'item' } // the element inside each or some
   | { kind: 'code'; source: string };
@@ -213,11 +222,13 @@ type Literal = string | number | boolean | Literal[];
 ```
 
 ```ts
-// libs/contract: the rule a client reads.
-// …existing fields: ruleID, revision, sentence, outcome, destinations
+// libs/contract. Every schema that carries a rule's sentence gains `condition`: the rule in force
+// (ruleInForceSchema), the rule versions in a proposal, the approval card's rule and the rule notice.
 type RuleCondition = {
   note: string;
-  noteBy: 'you' | 'nixie'; // 'nixie' when the rule in force is a runtime change nixie made
+  // 'nixie' when the rule in force is a runtime change whose changed_by is nixie; no path makes one
+  // with a condition yet, and a mandate would if its open question allows conditions
+  noteBy: 'you' | 'nixie';
   words: string; // the view as one sentence: "the hour in Europe/London is before 17, and …"
   source: string; // the raw CEL
 };
@@ -297,7 +308,7 @@ changes it.
 - A condition evaluates only after every fixed field of its rule matched the call.
 - The library evaluates synchronously, so no timer can stop it. The limits bound the work instead:
   one macro level, every list in the condition input at most 1,000 elements, and the strings in it
-  at most 262,144 UTF-16 code units in total. A call whose input passes either bound makes every
+  at most 262,144 UTF-16 code units in total. A call whose input exceeds either bound makes every
   condition on it an error with the code `input_too_large`.
 - A test in the unit lane evaluates the costliest condition the limits allow over the largest input
   they allow, and fails above 50 ms. That case takes about 4 ms on a desktop machine.
@@ -315,8 +326,9 @@ changes it.
 - **CEL as a condition inside nixie's own rules.** Rule IDs, precedence, the widening check and the
   record stay nixie's own, as [0004](../../decisions/0004-rule-engine.md) requires.
 - **`@marcbachmann/cel-js` 8.0.0.** It is MIT, has no dependencies, ships ESM with types, and has a
-  parse step, a type check, structural limits and an error code on each error. Its project runs no
-  cel-spec conformance suite, so nixie keeps its own.
+  parse step, a type check, structural limits, an error code on each error, and timestamp methods
+  that take a zone and read a JavaScript `Date`. Its project runs no cel-spec conformance suite, so
+  nixie keeps its own.
 - **A required note, and words built from the condition.** The note says what you meant, and the
   words say what the rule checks. A card shows both, so a wrong note shows beside the condition it
   describes.
