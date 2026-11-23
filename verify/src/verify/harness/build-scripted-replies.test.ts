@@ -106,6 +106,30 @@ test('it queues a handover ask with its reason before the reply, and an answer t
   ]);
 });
 
+test('it queues the handover ask for the conversation when the reply also starts a task', () => {
+  const replies = buildScriptedReplies({
+    text: 'I started the tide tables.',
+    task: { name: 'Tide tables', brief: 'Write down the tides.', reply: 'Tides noted.' },
+    handover: { reason: 'itch.io asks for a CAPTCHA' },
+  });
+
+  const conversation = { tools: [{ name: 'mcp__nixie__task_start' }] };
+
+  const forConversation = replies
+    .filter((reply) => reply.when?.(conversation) === true)
+    .map(
+      (reply) =>
+        ('toolUse' in reply ? reply.toolUse?.name : undefined) ?? Reflect.get(reply, 'text'),
+    );
+
+  expect(forConversation).toStrictEqual([
+    'mcp__nixie__computer_handover',
+    'mcp__nixie__task_start',
+    'I started the tide tables.',
+    'I will wait for you to take over.',
+  ]);
+});
+
 test('it queues a send of a picture after the list when the draw asks for it', () => {
   const replies = buildScriptedReplies({
     text: 'Here is the picture.',

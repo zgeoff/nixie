@@ -54,6 +54,19 @@ async function setupTest() {
         .filter((record) => record.kind === 'computer.handover_closed')
         .map((record) => record.payload);
     },
+    readKinds: async () => {
+      const records = await journey.nixie.readRecords();
+
+      return records.map((record) => record.kind);
+    },
+    probeRecord: async (kind: string) => {
+      const records = await journey.nixie.readRecords();
+
+      return records.some((record) => record.kind === kind);
+    },
+
+    // the messages of the request that follows the open of the page, which end in its result
+    readOpenResult: () => JSON.stringify(journey.nixie.model.requests.at(1)?.body?.messages ?? []),
     readToolCalls: async () => {
       const records = await journey.nixie.readRecords();
 
@@ -120,8 +133,11 @@ test('it clears the banner of an open page when the ask expires on the clock', a
   expect(closes).toMatchObject([{ by: 'expired' }]);
 });
 
-test('it shows the banner for an ask that follows the open of a page with a CAPTCHA', async () => {
+test('it shows the banner for an ask after a CAPTCHA, then takes over from it and hands back', async () => {
   const ctx = await setupTest();
+
+  // the decision point asks about a site on its first visit, which a known contact settles
+  await ctx.nixie.markKnownContact(new URL(ctx.siteURL).host);
 
   ctx.nixie.model.addReplies(
     {
@@ -137,5 +153,38 @@ test('it shows the banner for an ask that follows the open of a page with a CAPT
 
   const calls = await ctx.readToolCalls();
 
+  const openResult = ctx.readOpenResult();
+
+  await ctx.view.evaluate(
+    "[...document.querySelectorAll('section button')].find((button) => button.innerText === 'Take over').click()",
+  );
+
+  await waitForPage(
+    ctx.view,
+    "document.body.innerText.includes('You have taken over the computer')",
+  );
+
+  await waitForCondition(() => ctx.probeRecord('computer.takeover_started'));
+
+  await waitForPage(
+    ctx.view,
+    "!document.body.innerText.includes('asks you to take over the computer')",
+  );
+
+  await ctx.view.evaluate("document.querySelector('main button').click()");
+
+  await waitForCondition(() => ctx.probeRecord('computer.takeover_ended'));
+
+  const kinds = await ctx.readKinds();
+
   expect(calls).toStrictEqual(['computer.browser_open', 'computer.handover']);
+
+  expect(openResult).toInclude(
+    'The tab shows a CAPTCHA or human check. A person must solve it: call computer.handover with a reason, and the user can take over the computer to solve it.',
+  );
+
+  expect(kinds.filter((kind) => kind.startsWith('computer.takeover_'))).toStrictEqual([
+    'computer.takeover_started',
+    'computer.takeover_ended',
+  ]);
 });

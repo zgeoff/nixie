@@ -47,12 +47,15 @@ export function buildScriptedReplies(
               name: 'mcp__nixie__computer_handover',
               input: { reason: reply.handover.reason },
             },
+            ...forConversation,
           },
         ];
 
   // the turn reads the record of its own ask as it ends, and answers it with one more reply
   const handoverAnswer =
-    reply.handover === undefined ? [] : [{ text: 'I will wait for you to take over.' }];
+    reply.handover === undefined
+      ? []
+      : [{ text: 'I will wait for you to take over.', ...forConversation }];
 
   if (reply.task === undefined) {
     return [
@@ -74,8 +77,10 @@ export function buildScriptedReplies(
     ...memoryExport,
     ...notebook,
     ...forgetNote,
+    ...handover,
     { toolUse: { name: 'mcp__nixie__task_start', input: task }, ...forConversation },
     { text: reply.text, ...forConversation },
+    ...handoverAnswer,
     { text: taskReply, when: (body: ScriptedBody) => !isConversationTurn(body) },
   ];
 }

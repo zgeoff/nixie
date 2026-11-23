@@ -36,9 +36,7 @@ export function useHandoverAsk(): HandoverAsk | null {
 
     const following = new AbortController();
 
-    const current = {
-      ask: readAsk === undefined || readAsk === null ? null : { reason: readAsk.reason },
-    };
+    const current = { ask: readAsk ?? null };
 
     void subscribeToLiveRecords({
       afterSequence,
@@ -66,5 +64,5 @@ export function useHandoverAsk(): HandoverAsk | null {
     return streamed.ask;
   }
 
-  return readAsk === undefined || readAsk === null ? null : { reason: readAsk.reason };
+  return readAsk ?? null;
 }

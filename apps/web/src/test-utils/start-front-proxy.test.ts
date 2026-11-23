@@ -60,6 +60,20 @@ test('it sends each /rpc request to the API', async () => {
   expect(ctx.paths).toStrictEqual(['api POST /rpc/sessions/list']);
 });
 
+test('it follows an API address that a function names on each request', async () => {
+  const ctx = setupTest();
+  const target = { apiURL: 'http://127.0.0.1:9' };
+  const proxy = startFrontProxy({ apiURL: () => target.apiURL, webURL: ctx.webURL });
+
+  const down = await fetch(`${proxy.url}/rpc/sessions/list`, { body: '{}', method: 'POST' });
+
+  target.apiURL = ctx.apiURL;
+
+  const up = await fetch(`${proxy.url}/rpc/sessions/list`, { body: '{}', method: 'POST' });
+
+  expect([down.status, await up.text()]).toStrictEqual([502, 'api']);
+});
+
 test('it answers 502 when the server behind it is down', async () => {
   const ctx = setupTest();
   const answerProbe = mock(() => new Response(null));
