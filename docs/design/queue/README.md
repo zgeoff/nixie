@@ -19,7 +19,7 @@ is deleted.
 | Approvals       | [the approval record](../../architecture/policy/approvals.md)                                     |
 | Operations      | [the restart sweep rename](task-gate.md)                                                          |
 | Model harnesses | [the turn-input log](turn-input-log.md)                                                           |
-| Policy          | [the decision point cutover](decision-point-cutover.md)                                           |
+| Policy          | [the decision point cutover](decision-point-cutover.md), [CEL conditions on rules](cel-rules.md)  |
 | Mail            | [mail and wake rules](mail/README.md)                                                             |
 | Connections     | [Google connections](google-connections.md)                                                       |
 | Google tools    | [Gmail, Calendar and Drive](gmail-calendar-drive-tools.md)                                        |
