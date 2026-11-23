@@ -4,7 +4,7 @@ import { buildMockWriteCaller } from '../test-utils/build-mock-write-caller';
 import { startTestMemory } from '../test-utils/start-test-memory';
 import { SelfNoteError } from '../utils/error/self-note-error';
 
-test('it moves self-notes to another topic for a granted task', async () => {
+test('it moves self-notes to another topic for a task that holds the tool only through the grant', async () => {
   const memory = await startTestMemory();
 
   const item = await memory.store.remember({
@@ -22,6 +22,7 @@ test('it moves self-notes to another topic for a granted task', async () => {
       thread: 'task-1',
       taskID: 'task-1',
       hasSelfNoteGrant: true,
+      isSelfNoteOnly: true,
     }),
   });
 
