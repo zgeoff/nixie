@@ -76,7 +76,6 @@ gmail.wake_cancel({ rule: 'wz7p2k9q4m' }); // → { rule: 'wz7p2k9q4m', ended: t
 - The rule starts when the approved action runs: `createdAt` and the expiry count from then, and
   mail that arrived while the call waited for you is found with `gmail.search`. When the task has
   ended by then, the action fails with `TASK_ENDED`.
-- In the conversation, `gmail.wake_set` refuses `CONVERSATION`, as `mail.wake_set` does.
 - `gmail.wake_list` lists only the calling task's rules on that connection. `gmail.wake_cancel`
   refuses `UNKNOWN_RULE` for a rule of another task or another mailbox.
 - Cancelling and listing never ask: a cancel only narrows what wakes the assistant.
@@ -87,8 +86,7 @@ gmail.wake_cancel({ rule: 'wz7p2k9q4m' }); // → { rule: 'wz7p2k9q4m', ended: t
   the argument `replyWake`, as `mail.send` has it.
 - When their outcome records a sent mail, the same transaction calls `setWakeRuleInTransaction` with
   Gmail's thread ID of the sent mail, the sending task, `origin: 'reply'` and an expiry of
-  `replyWake`, which defaults to `wake_rules.reply_expiry`. `replyWake: 'off'` registers none, and
-  so does a send from the conversation.
+  `replyWake`, which defaults to `wake_rules.reply_expiry`. `replyWake: 'off'` registers none.
 - Until the owner decides otherwise in [GEO-2829](https://linear.app/zgeoff/issue/GEO-2829), the
   send's decision covers its reply rule, and the send's approval card shows the rule's expiry.
 
@@ -118,9 +116,9 @@ gmail.wake_cancel({ rule: 'wz7p2k9q4m' }); // → { rule: 'wz7p2k9q4m', ended: t
   no longer returns.
 - The source makes read calls only, through the connection's fetcher, and never reaches the decision
   point.
-- While every poll of the connection succeeds, a match whose rule and task are ready wakes the task
-  within `gmail.poll_interval` plus 1 minute of the mail's arrival. A failed poll delays the wake by
-  the retry wait.
+- While every poll of the connection succeeds, a match whose rule and mailbox are ready wakes its
+  task within `gmail.poll_interval` plus 1 minute of the mail's arrival. A failed poll delays the
+  wake by the retry wait.
 - Forgetting a Google connection ends its rules and erases its mail text, by the steps in
   [wake rules](wake-rules.md#erasure).
 

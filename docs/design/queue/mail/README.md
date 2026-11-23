@@ -10,8 +10,9 @@ stores no copy, `gmail.search` asks Gmail live, and an arrival leaves at most a 
 record. Both hand each new mail to the [trigger core](../../../architecture/core/triggers.md), which
 wakes a task only when a wake rule matches. A task registers each rule for itself, with a mailbox, a
 match and an expiry. A match wakes the task at once, unless the same rule woke it within the rule's
-window, or any rule on that mailbox woke it within the throttle. In that case the match waits, and
-every waiting match arrives in one later wake, so a burst of mail costs one turn.
+window, or the mailbox woke any task within the throttle. In that case the match waits, and every
+waiting match arrives in one later wake, so a burst of mail costs one turn. The throttle can hold
+back the first match of a rule for up to 5 minutes, the price of one limit per mailbox.
 
 The owner reads this page to approve the design and settle its open questions. A builder reads it,
 then the part their work item builds.
@@ -61,8 +62,8 @@ design once the owner agrees it, and the calendar poll moves to an item of its o
   matches, until the rule expires.
 - **Wake:** one `trigger.mail_woke` record in a task's inbox, with one or more mails.
 - **Window:** the time after a rule's wake during which its later matches wait, to arrive together.
-- **Throttle:** the time after any wake of a task from one mailbox during which every rule of that
-  task on that mailbox waits, so several rules can't wake one task in quick turns.
+- **Throttle:** the time after any wake from one mailbox, to any task, during which every rule on
+  that mailbox waits, so a burst of mail can't wake tasks in quick turns.
 
 ## Decisions
 
@@ -70,8 +71,7 @@ design once the owner agrees it, and the calendar poll moves to an item of its o
   policy, so each keeps its own tools. Only the wake logic is shared, so a rule works the same way
   in both.
 - **Google's tools are `gmail.*`.** `mail.*` names only the assistant's own mailbox.
-- **A rule wakes only the task that registered it.** A task can't wake a task it doesn't own, and
-  the conversation holds no rule: it starts a task that holds one.
+- **A rule wakes only the task that registered it.** A task can't wake a task it doesn't own.
 - **A wake rule is not a task definition.** A rule arms nothing in `trigger_definitions`, and its
   wakes never pass `readDefinitionTask`. A busy or held task gets its mail in its inbox, never as a
   `still_running` or `task_held` skip.
@@ -101,3 +101,7 @@ design once the owner agrees it, and the calendar poll moves to an item of its o
   [GEO-2830](https://linear.app/zgeoff/issue/GEO-2830). The recommendation is no: a definition that
   must see every mail runs on a schedule and searches since its last task run. Until then, the seed
   refuses a `mail` or `poll` trigger, as it does today.
+- **May the conversation hold a wake rule?** The owner settles it in
+  [GEO-2831](https://linear.app/zgeoff/issue/GEO-2831), because an earlier answer kept mail waits
+  out of the conversation, which never ends. Every rule now expires, so the recommendation is yes,
+  and a send from the conversation registers its reply rule there. Until then, the code does that.

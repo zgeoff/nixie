@@ -95,8 +95,7 @@ mail.wake_cancel({ rule: 'wq4k8m2x7p' }); // → { rule: 'wq4k8m2x7p', ended: tr
   [`reminder.set`](../../../architecture/core/reminders.md) never does.
 - `mail.wake_set` calls `setWakeRuleInTransaction` with the mailbox `{ kind: 'mail' }` and the
   calling task. `expires` runs from `1m` to `wake_rules.max_expiry`. `window` runs from `1m` to
-  `expires`, and defaults to `wake_rules.window`. In the conversation, the tool refuses
-  `CONVERSATION`.
+  `expires`, and defaults to `wake_rules.window`.
 - `recent` shows a code that arrived while the assistant set the rule. The rule itself never matches
   that code. In the tool's description, ask the assistant to set the rule before it asks a site for
   a code, and to give a short window when it waits on one.
@@ -104,7 +103,7 @@ mail.wake_cancel({ rule: 'wq4k8m2x7p' }); // → { rule: 'wq4k8m2x7p', ended: tr
 - `files` takes up to 10 file IDs, 25 MiB in all. A file resolves only on the conversation or task
   run that made it.
 - The tools can refuse `UNKNOWN_MESSAGE`, `UNKNOWN_ATTACHMENT`, `UNKNOWN_FILE`, `UNKNOWN_RULE`,
-  `TOO_BIG`, `BAD_ADDRESS`, `BAD_DURATION`, `CONVERSATION` or `SEND_FAILED`.
+  `TOO_BIG`, `BAD_ADDRESS`, `BAD_DURATION` or `SEND_FAILED`.
 
 ### The store
 
@@ -124,7 +123,7 @@ mail.sent           -- one per sent mail, written by the send's outcome
 - When a `mail.send` or `mail.reply` outcome writes `mail.sent`, the same transaction calls
   `setWakeRuleInTransaction` with `{ thread }` of the sent mail, the sending task, `origin: 'reply'`
   and an expiry of `replyWake`, which defaults to `wake_rules.reply_expiry`. `replyWake: 'off'`
-  registers none, and so does a send from the conversation.
+  registers none.
 - A send whose outcome is unknown registers its rule once the reconcile finds the sent mail.
 
 ## Constraints
